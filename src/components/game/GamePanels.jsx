@@ -4,7 +4,7 @@ import { TypeWriter } from '../ui/typewriter';
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Send, RefreshCw, Pencil, Languages, Loader2, Headphones } from "lucide-react";
+import { Send, RefreshCw, Pencil, Languages, Loader2, Headphones, Square } from "lucide-react";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Progress } from "@/components/ui/progress";
 import { Slider } from "@/components/ui/slider";
@@ -128,6 +128,7 @@ export const MiddlePanel = ({
   handleSendAction,
   handleKeyPress,
   handleRollback,
+  abortGeneration,
   disabled,
   onTTSClick
 }) => {
@@ -413,20 +414,33 @@ export const MiddlePanel = ({
           )}
           {isWaitingForAI && <IndeterminateProgress />}
           <div className="flex flex-col gap-2">
-            
             <div className="flex">
               <Input
-              type="text"
-              value={playerInput}
-              onChange={(e) => setPlayerInput(e.target.value)}
-              onKeyPress={handleKeyPress}
-              placeholder="Type your action..."
-              className="flex-grow mr-2"
-              disabled={disabled}
+                type="text"
+                value={playerInput}
+                onChange={(e) => setPlayerInput(e.target.value)}
+                onKeyPress={handleKeyPress}
+                placeholder="Type your action..."
+                className="flex-grow mr-2"
+                disabled={disabled}
               />
-              <Button onClick={handleSendAction} disabled={disabled} className="border-dashed border-2 w-32">
-              <Send className="h-4 w-4" />
-              </Button>
+              {isWaitingForAI ? (
+                <Button 
+                  onClick={abortGeneration} 
+                  variant="destructive" 
+                  className="border-dashed border-2 w-32"
+                >
+                  <Square className="h-4 w-4" />
+                </Button>
+              ) : (
+                <Button 
+                  onClick={handleSendAction} 
+                  disabled={disabled} 
+                  className="border-dashed border-2 w-32"
+                >
+                  <Send className="h-4 w-4" />
+                </Button>
+              )}
             </div>
           </div>
         </div>

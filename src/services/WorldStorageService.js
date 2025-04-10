@@ -110,7 +110,10 @@ class WorldStorageService {
               });
               reject('Invalid world data format');
             } else {
-              resolve(request.result.data);
+              // Add the ID to the data before returning it
+              const worldData = request.result.data;
+              worldData.id = worldId; // Ensure the ID is included in the returned data
+              resolve(worldData);
             }
           } else {
             reject('World not found');

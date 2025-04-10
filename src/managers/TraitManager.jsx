@@ -3,6 +3,7 @@ import { useGameData } from '@/contexts/GameDataContext';
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
+import { Trash2 } from "lucide-react";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
 const TraitManager = ({ trait }) => {
@@ -34,6 +35,14 @@ const TraitManager = ({ trait }) => {
   const handleStatChangeUpdate = (index, field, value) => {
     const updatedStatChanges = [...editingTrait.statChanges];
     updatedStatChanges[index] = { ...updatedStatChanges[index], [field]: value };
+    const updatedTrait = { ...editingTrait, statChanges: updatedStatChanges };
+    setEditingTrait(updatedTrait);
+    updateTrait(updatedTrait);
+  };
+
+  const handleStatChangeRemove = (index) => {
+    const updatedStatChanges = [...editingTrait.statChanges];
+    updatedStatChanges.splice(index, 1);
     const updatedTrait = { ...editingTrait, statChanges: updatedStatChanges };
     setEditingTrait(updatedTrait);
     updateTrait(updatedTrait);
@@ -95,6 +104,13 @@ const TraitManager = ({ trait }) => {
                 <SelectItem value="regen">Regen</SelectItem>
               </SelectContent>
             </Select>
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={() => handleStatChangeRemove(index)}
+            >
+              <Trash2 className="h-4 w-4" />
+            </Button>
           </div>
         ))}
         <Button onClick={handleStatChangeAdd}>Add Stat Change</Button>

@@ -25,6 +25,8 @@ const debugLog = (message, data, isError = false) => {
 };
 
 const GameViewer = ({ initialTraits = [], initialCharacterData, onExitToMenu }) => {
+  // AbortController reference for canceling AI requests
+  const abortControllerRef = useRef(null);
   const { 
     stats, locations, entities, traits, statUpdates,
     updateStat, worldOverview 
@@ -419,39 +421,47 @@ const GameViewer = ({ initialTraits = [], initialCharacterData, onExitToMenu }) 
 
 
       // Make choices and stat updates requests concurrently since they both only depend on game text
-      let updatedChoicesPrompt = choicesPrompt
-        .replace('<WORLD DESCRIPTION>', worldOverview.systemPrompt || '')
-        .replace('<STATS DESCRIPTION>', statDescriptions)
-        .replace('<LOCATION JSON DATA>', locationDataString)
-        .replace('<TRAITS DESCRIPTION>', generateTraitDescriptions());
+      let choicesResponse = [];
+      let statUpdatesResponse = '';
       
+      // Only prepare and make choices request if not disabled
+      if (choicesPrompt !== 'DISABLED') {
+        let updatedChoicesPrompt = choicesPrompt
+          .replace('<WORLD DESCRIPTION>', worldOverview.systemPrompt || '')
+          .replace('<STATS DESCRIPTION>', statDescriptions)
+          .replace('<LOCATION JSON DATA>', locationDataString)
+          .replace('<TRAITS DESCRIPTION>', generateTraitDescriptions());
+        
         if (language.toLowerCase() != 'english')
           updatedChoicesPrompt += `\n Choice language: ` + language;
-
-      let updatedStatUpdatesPrompt = statUpdatesPrompt
-      .replace('<WORLD DESCRIPTION>', worldOverview.systemPrompt || '')
-      .replace('<LOCATION JSON DATA>', locationDataString)
-      .replace('<STATS DESCRIPTION>', statDescriptions)
-      .replace('<TRAITS DESCRIPTION>', generateTraitDescriptions());
-
-      if (language.toLowerCase() != 'english')
-        updatedStatUpdatesPrompt += '\n Please write in english';
-
-      const [choicesResponse, statUpdatesResponse] = await Promise.all([
-        makeAIRequest(
+          
+        choicesResponse = await makeAIRequest(
           updatedChoicesPrompt,
           [{ role: 'user', content: `Game text: ${gameTextResponse}` }],
           'choices'
-        ),
-        makeAIRequest(
+        );
+      }
+      
+      // Only prepare and make stat updates request if not disabled
+      if (statUpdatesPrompt !== 'DISABLED') {
+        let updatedStatUpdatesPrompt = statUpdatesPrompt
+          .replace('<WORLD DESCRIPTION>', worldOverview.systemPrompt || '')
+          .replace('<LOCATION JSON DATA>', locationDataString)
+          .replace('<STATS DESCRIPTION>', statDescriptions)
+          .replace('<TRAITS DESCRIPTION>', generateTraitDescriptions());
+
+        if (language.toLowerCase() != 'english')
+          updatedStatUpdatesPrompt += '\n Please write in english';
+          
+        statUpdatesResponse = await makeAIRequest(
           updatedStatUpdatesPrompt.replace('<STATS DESCRIPTION>', statDescriptions),
           [{ role: 'user', content: `Game events: ${gameTextResponse}` }],
           'statUpdates'
-        )
-      ]);
+        );
+      }
 
       // Parse choices (line-separated)
-      const choicesList = choicesResponse.split('\n').filter(choice => choice.trim());
+      const choicesList = choicesPrompt === 'DISABLED' ? [] : choicesResponse.split('\n').filter(choice => choice.trim());
       setChoices(choicesList);
 
       // Update visible entities based on game text
@@ -460,31 +470,33 @@ const GameViewer = ({ initialTraits = [], initialCharacterData, onExitToMenu }) 
 
       // Parse stat updates (key: value pairs)
       const statChanges = [];
-      statUpdatesResponse.split('\n').forEach(line => {
-        const [key, valueWithComment] = line.split(':').map(s => s.trim());
-        if (key && valueWithComment) {
-          // Extract the first signed number from the value part
-          const match = valueWithComment.match(/[+-]?\d+/);
-          if (match) {
-            const value = parseInt(match[0]);
-            if (!isNaN(value)) {
-              // Check if 'MAX' appears after the number
-              const isMaxUpdate = valueWithComment.slice(match.index + match[0].length).toUpperCase().includes('MAX');
-              if (isMaxUpdate) {
-                // Update the stat's max value
-                setPlayerStats(prevStats => prevStats.map(stat => 
-                  stat.name.toLowerCase() === key.toLowerCase() 
-                    ? { ...stat, max: stat.max + value } 
-                    : stat
-                ));
-              } else {
-                // Update the stat's current value
-                statChanges.push({ [key]: value });
+      if (statUpdatesPrompt !== 'DISABLED' && statUpdatesResponse) {
+        statUpdatesResponse.split('\n').forEach(line => {
+          const [key, valueWithComment] = line.split(':').map(s => s.trim());
+          if (key && valueWithComment) {
+            // Extract the first signed number from the value part
+            const match = valueWithComment.match(/[+-]?\d+/);
+            if (match) {
+              const value = parseInt(match[0]);
+              if (!isNaN(value)) {
+                // Check if 'MAX' appears after the number
+                const isMaxUpdate = valueWithComment.slice(match.index + match[0].length).toUpperCase().includes('MAX');
+                if (isMaxUpdate) {
+                  // Update the stat's max value
+                  setPlayerStats(prevStats => prevStats.map(stat => 
+                    stat.name.toLowerCase() === key.toLowerCase() 
+                      ? { ...stat, max: stat.max + value } 
+                      : stat
+                  ));
+                } else {
+                  // Update the stat's current value
+                  statChanges.push({ [key]: value });
+                }
               }
             }
           }
-        }
-      });
+        });
+      }
 
       // Update final assistant message with complete data
       setFullMessageHistory(prev => {
@@ -652,8 +664,27 @@ const GameViewer = ({ initialTraits = [], initialCharacterData, onExitToMenu }) 
     });
   }, []);
 
+  // Function to abort ongoing AI generation
+  const abortGeneration = () => {
+    if (abortControllerRef.current) {
+      // Abort the fetch request
+      abortControllerRef.current.abort();
+      abortControllerRef.current = null;
+      
+      // Reset waiting state
+      setIsWaitingForAI(false);
+      
+      // Add log entry
+      addLogEntry('AI generation aborted');
+    }
+  };
+
   const makeAIRequest = async (systemPrompt, messages, requestType = 'gametext') => {
     try {
+      // Create a new AbortController for this request
+      abortControllerRef.current = new AbortController();
+      const signal = abortControllerRef.current.signal;
+      
       const response = await fetch(getEndpointUrl(), {
         method: 'POST',
         headers: {
@@ -669,7 +700,8 @@ const GameViewer = ({ initialTraits = [], initialCharacterData, onExitToMenu }) 
           max_tokens: maxTokens,
           stream: true,
           ...(requestType === 'gametext' && shortform && { stop: ["\n"] })
-        })
+        }),
+        signal // Add the abort signal to the fetch request
       });
 
       if (!response.ok) {
@@ -952,6 +984,7 @@ const GameViewer = ({ initialTraits = [], initialCharacterData, onExitToMenu }) 
           handleSendAction={handleSendAction}
           handleKeyPress={handleKeyPress}
           handleRollback={handleRollback}
+          abortGeneration={abortGeneration}
           disabled={isWaitingForAI}
           onTTSClick={() => setIsTTSModalOpen(true)}
         />

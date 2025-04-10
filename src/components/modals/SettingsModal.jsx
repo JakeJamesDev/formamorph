@@ -202,26 +202,32 @@ export const SettingsModal = ({ isOpen, onOpenChange, onSave }) => {
                 <label htmlFor="choicesPrompt" className="text-left sm:text-right">
                   Choices Prompt
                 </label>
-                <Textarea
-                  id="choicesPrompt"
-                  value={choicesPrompt}
-                  onChange={(e) => setChoicesPrompt(e.target.value)}
-                  className="col-span-3"
-                  rows={4}
-                />
+                <div className="col-span-3">
+                  <Textarea
+                    id="choicesPrompt"
+                    value={choicesPrompt}
+                    onChange={(e) => setChoicesPrompt(e.target.value)}
+                    className="w-full"
+                    rows={4}
+                  />
+                  <p className="text-xs text-gray-500 mt-1">Write 'DISABLED' to disable</p>
+                </div>
               </div>
               <div className="grid grid-cols-1 sm:grid-cols-4 items-center gap-4">
-                <label htmlFor="statUpdatesPrompt" className="text-left sm:text-right">
-                  Stat Updates Prompt
-                </label>
+              <label htmlFor="statUpdatesPrompt" className="text-left sm:text-right">
+                Stat Updates Prompt
+              </label>
+              <div className="col-span-3">
                 <Textarea
                   id="statUpdatesPrompt"
                   value={statUpdatesPrompt}
                   onChange={(e) => setStatUpdatesPrompt(e.target.value)}
-                  className="col-span-3"
+                  className="w-full"
                   rows={6}
                 />
+                <p className="text-xs text-gray-500 mt-1">Write 'DISABLED' to disable</p>
               </div>
+            </div>
               <div className="flex justify-end">
                 <ConfirmDialog
                   title="Reset AI Prompts"
