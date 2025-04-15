@@ -9,7 +9,7 @@
 ### Installation
 ```bash
 # Clone the repository
-git clone https://github.com/yourusername/ai-text-rpg-framework.git
+git clone https://github.com/FieryLionite/formamorph.git
 cd formamorph
 
 # Install dependencies
