@@ -20,7 +20,8 @@ export const GameDataProvider = ({ children }) => {
     thumbnail: null, // Base64 encoded string of the image file
     bgm: null, // Base64 encoded string of the audio file
     systemPrompt: '',
-    use3DModel: true
+    use3DModel: true,
+    tags: []
   });
   const [stats, setStats] = useState([]);
   const [locations, setLocations] = useState([]);
@@ -132,7 +133,8 @@ export const GameDataProvider = ({ children }) => {
       thumbnail: null,
       bgm: null,
       systemPrompt: '',
-      use3DModel: true
+      use3DModel: true,
+      tags: []
     };
     
     // Handle world overview with validation
@@ -144,7 +146,8 @@ export const GameDataProvider = ({ children }) => {
       thumbnail: overview.thumbnail || defaultOverview.thumbnail,
       bgm: overview.bgm || defaultOverview.bgm,
       systemPrompt: overview.systemPrompt || defaultOverview.systemPrompt,
-      use3DModel: typeof overview.use3DModel === 'boolean' ? overview.use3DModel : defaultOverview.use3DModel
+      use3DModel: typeof overview.use3DModel === 'boolean' ? overview.use3DModel : defaultOverview.use3DModel,
+      tags: Array.isArray(overview.tags) ? overview.tags : defaultOverview.tags
     });
 
     // Load other data with array validation

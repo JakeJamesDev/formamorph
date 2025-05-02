@@ -1,5 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { useGameplay } from '@/contexts/GameplayContext';
+import { useSettings } from '@/contexts/SettingsContext';
 import { TypeWriter } from '../ui/typewriter';
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -24,6 +25,8 @@ import IndeterminateProgress from '../ui/indeterminate-progress';
 import { EditTextModal } from './GameModals';
 
 export const LeftPanel = ({ entities, onEntityClick }) => {
+  // Import systemPrompt from settings context
+  const { systemPrompt } = useSettings();
   const {
     characterData,
     stomachPercent,
@@ -31,7 +34,9 @@ export const LeftPanel = ({ entities, onEntityClick }) => {
     breastsizePercent,
     visibleEntities,
     logEntries,
-    logsEndRef
+    logsEndRef,
+    playerNotes,
+    setPlayerNotes
   } = useGameplay();
   const [showVRMViewer, setShowVRMViewer] = React.useState(false);
 
@@ -68,9 +73,10 @@ export const LeftPanel = ({ entities, onEntityClick }) => {
         </div>
       )}
       
-      <Tabs defaultValue="entities" className="w-full flex-grow flex flex-col overflow-hidden">
+      <Tabs defaultValue="notes" className="w-full flex-grow flex flex-col overflow-hidden">
         <TabsList className="flex-shrink-0">
           <TabsTrigger value="entities">Entities</TabsTrigger>
+          <TabsTrigger value="notes">Notes</TabsTrigger>
           <TabsTrigger value="logs">Logs ({logEntries.reduce((sum, entry) => sum + 1 + (entry.repeat || 0), 0)})</TabsTrigger>
         </TabsList>
         <TabsContent value="entities" className="flex-grow overflow-hidden min-h-[100px]">
@@ -100,6 +106,23 @@ export const LeftPanel = ({ entities, onEntityClick }) => {
               )}
             </div>
           </ScrollArea>
+        </TabsContent>
+        
+        <TabsContent value="notes" className="flex-grow overflow-hidden min-h-[100px]">
+          <div className="h-full p-2 flex flex-col">
+            {!systemPrompt.includes('<NOTES>') && (
+              <div className="mb-2 p-2 bg-yellow-500/20 border border-yellow-500 rounded  text-sm">
+                Warning: The current system prompt does not include the &lt;NOTES&gt; placeholder!
+              </div>
+            )}
+            <textarea
+              className="w-full flex-grow p-2 bg-background/80 border border-border rounded resize-none"
+              value={playerNotes}
+              onChange={(e) => setPlayerNotes(e.target.value)}
+              placeholder="Add notes here... These will be sent to the AI along with your actions."
+              style={{ height: "calc(100% - 8px)" }}
+            />
+          </div>
         </TabsContent>
         <TabsContent value="logs" className="flex-grow overflow-hidden min-h-[100px]">
           <ScrollArea className="h-[calc(100%-1rem)]">

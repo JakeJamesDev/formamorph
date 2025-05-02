@@ -1,8 +1,14 @@
+import AuthService from './AuthService';
+
 class WorldStorageService {
   constructor() {
     this.dbName = 'worldsDB';
     this.storeName = 'worlds';
     this.db = null;
+    // Use different API URL based on environment
+    this.API_URL = import.meta.env.MODE === 'production' 
+      ? import.meta.env.VITE_API_URL_PROD
+      : import.meta.env.VITE_API_URL_DEV;
     this.initialize();
   }
 
@@ -232,6 +238,117 @@ class WorldStorageService {
       request.onsuccess = () => resolve();
       request.onerror = () => reject('Failed to delete world');
     });
+  }
+
+  // Fetch worlds from the server with optional filtering
+  async fetchRemoteWorlds(page = 1, limit = 10, search = '', ownedOnly = false, searchByAuthor = false) {
+    try {
+      let url = `${this.API_URL}/worlds?page=${page}&limit=${limit}`;
+      if (search) url += `&search=${encodeURIComponent(search)}`;
+      if (searchByAuthor) url += `&searchByAuthor=true`;
+      
+      const headers = {};
+      if (AuthService.isAuthenticated()) {
+        headers['Authorization'] = `Bearer ${AuthService.token}`;
+      }
+      
+      // If ownedOnly is true, fetch only the user's worlds
+      if (ownedOnly) {
+        if (!AuthService.isAuthenticated()) {
+          return { success: false, error: 'Authentication required', data: [] };
+        }
+        url = `${this.API_URL}/users/me/worlds`;
+      }
+      
+      const response = await fetch(url, { headers });
+      
+      if (!response.ok) {
+        throw new Error('Failed to fetch worlds');
+      }
+      
+      const responseData = await response.json();
+      console.log('Remote worlds response:', responseData);
+      
+      return {
+        success: true,
+        data: responseData.data || [],
+        pagination: responseData.pagination,
+        total: responseData.total || 0
+      };
+    } catch (error) {
+      console.error('Error fetching remote worlds:', error);
+      return { success: false, error: error.message, data: [] };
+    }
+  }
+  
+  // Get worlds published by the current user
+  async getUserWorlds() {
+    if (!AuthService.isAuthenticated()) return [];
+    
+    try {
+      const response = await fetch(`${this.API_URL}/users/me/worlds`, {
+        headers: {
+          'Authorization': `Bearer ${AuthService.token}`
+        }
+      });
+      
+      if (!response.ok) {
+        throw new Error('Failed to fetch user worlds');
+      }
+      
+      const responseData = await response.json();
+      console.log('User worlds response:', responseData);
+      
+      // Return just the data array, not the entire response object
+      return responseData.data || [];
+    } catch (error) {
+      console.error('Error fetching user worlds:', error);
+      return [];
+    }
+  }
+
+  // Publish a world to the server
+  async publishWorld(worldData, worldId = null) {
+    if (!AuthService.isAuthenticated()) {
+      throw new Error('You must be logged in to publish worlds');
+    }
+    
+    const endpoint = worldId 
+      ? `${this.API_URL}/worlds/${worldId}` // Update existing world
+      : `${this.API_URL}/worlds`;           // Create new world
+    
+    const method = worldId ? 'PUT' : 'POST';
+    
+    try {
+      const response = await fetch(endpoint, {
+        method,
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${AuthService.token}`
+        },
+        body: JSON.stringify({
+          name: worldData.worldOverview.name,
+          description: worldData.worldOverview.description,
+          thumbnail: worldData.worldOverview.thumbnail,
+          previewData: {
+            name: worldData.worldOverview.name,
+            description: worldData.worldOverview.description,
+            thumbnail: worldData.worldOverview.thumbnail
+          },
+          contentData: worldData
+        })
+      });
+      
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.message || 'Failed to publish world');
+      }
+      
+      return await response.json();
+    } catch (error) {
+      console.error('Error publishing world:', error);
+      throw error;
+    }
   }
 }
 

@@ -11,6 +11,9 @@ Player Traits:
 Current Location:
 <LOCATION JSON DATA>
 
+Important Player Notes:
+<NOTES>
+
 Respond in plaintext narrating what happens. Paragraph, essay-style. No choice list.`;
 
 export const defaultChoicesPrompt = `Given the following information:
@@ -20,6 +23,12 @@ Game World:
 
 Player Stats:
 <STATS DESCRIPTION>
+
+Player Traits:
+<TRAITS DESCRIPTION>
+
+Player Notes:
+<NOTES>
 
 Current Location:
 <LOCATION JSON DATA>
@@ -37,6 +46,12 @@ Game World:
 
 Player Stats:
 <STATS DESCRIPTION>
+
+Player Traits:
+<TRAITS DESCRIPTION>
+
+Player Notes:
+<NOTES>
 
 
 Return stat changes as key: value pairs, one per line. Values must be numbers between -20 and 20.

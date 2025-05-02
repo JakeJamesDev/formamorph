@@ -7,6 +7,7 @@ import GameViewer from './views/GameViewer';
 import WorldEditor from './views/WorldEditor';
 import MainMenu from './views/MainMenu';
 
+
 function App() {
   const [currentView, setCurrentView] = useState('mainMenu');
   const [selectedTraits, setSelectedTraits] = useState([]);

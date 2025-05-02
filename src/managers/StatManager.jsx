@@ -1,29 +1,50 @@
 import React, { useState, useEffect } from 'react';
 import { useGameData } from '@/contexts/GameDataContext';
 import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
-import { Trash2, Plus } from "lucide-react";
+import { Trash2, Plus, ChevronDown, ChevronUp, Code } from "lucide-react";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Collapsible, CollapsibleTrigger, CollapsibleContent } from "@/components/ui/collapsible";
+import { executeStatCode } from '@/lib/statCodeExecutor';
 
 const StatManager = ({ stat }) => {
-  const { updateStat } = useGameData();
+  const { updateStat, stats } = useGameData();
   const [editingStat, setEditingStat] = useState(stat);
   const [newDescriptor, setNewDescriptor] = useState({ threshold: '', description: '' });
   const [newListItem, setNewListItem] = useState({ name: '', description: '', number: 0 });
+  const [codeOpen, setCodeOpen] = useState(stat?.code ? true : false);
+  const [codeResult, setCodeResult] = useState(null);
+  const [codeError, setCodeError] = useState(null);
+  const [isTestingCode, setIsTestingCode] = useState(false);
 
   useEffect(() => {
     const initialStat = stat ? { ...stat } : {};
     if (!initialStat.type) {
       initialStat.type = 'number';
     }
+    if (!initialStat.code) {
+      initialStat.code = '';
+    }
     setEditingStat(initialStat);
+    
+    // Set code section to open by default if stat has code
+    if (initialStat.code && initialStat.code.trim() !== '') {
+      setCodeOpen(true);
+    }
   }, [stat]);
 
   const handleChange = (field, value) => {
     const updatedStat = { ...editingStat, [field]: value };
     setEditingStat(updatedStat);
     updateStat(updatedStat);
+    
+    // Reset code test results when code changes
+    if (field === 'code') {
+      setCodeResult(null);
+      setCodeError(null);
+    }
   };
 
   const handleTypeChange = (value) => {
@@ -256,6 +277,89 @@ const StatManager = ({ stat }) => {
           <Button onClick={handleAddDescriptor}>Add</Button>
         </div>
       </div>
+      
+      {/* Code Section */}
+      {editingStat.type?.toLowerCase() === 'number' && (
+        <Collapsible
+          open={codeOpen}
+          onOpenChange={setCodeOpen}
+          className="border p-2 rounded"
+        >
+          <div className="flex items-center justify-between">
+            <div className="flex items-center">
+              <Code className="h-4 w-4 mr-2" />
+              <h3 className="text-xl font-semibold">Dynamic Value Calculation (Optional)</h3>
+            </div>
+            <CollapsibleTrigger asChild>
+              <Button variant="ghost" size="sm">
+                {codeOpen ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
+              </Button>
+            </CollapsibleTrigger>
+          </div>
+          
+          <CollapsibleContent className="space-y-2 mt-2">
+            <p className="text-sm text-muted-foreground">
+              Write JavaScript code to dynamically calculate this stat's value based on other stats.
+              The code should return a number. You have access to the 'stats' array containing all stats.
+            </p>
+            
+            <Textarea
+              value={editingStat.code || ''}
+              onChange={(e) => handleChange('code', e.target.value)}
+              placeholder="// Example: Return the average of Health and Strength stats
+const health = stats.find(s => s.name === 'Health')?.value || 0;
+const strength = stats.find(s => s.name === 'Strength')?.value || 0;
+return (health + strength) / 2;"
+              className="font-mono text-sm"
+              rows={6}
+            />
+            
+            <div className="flex justify-between items-center">
+              <Button 
+                onClick={async () => {
+                  setIsTestingCode(true);
+                  setCodeResult(null);
+                  setCodeError(null);
+                  
+                  try {
+                    const result = await executeStatCode(editingStat.code, stats, editingStat);
+                    if (result.error) {
+                      setCodeError(result.error);
+                    } else if (result.value !== null) {
+                      setCodeResult(result.value);
+                    }
+                  } catch (error) {
+                    setCodeError(error.message);
+                  } finally {
+                    setIsTestingCode(false);
+                  }
+                }}
+                disabled={isTestingCode || !editingStat.code}
+                variant="outline"
+              >
+                {isTestingCode ? 'Testing...' : 'Test Code'}
+              </Button>
+              
+              {codeResult !== null && (
+                <div className="text-green-500">
+                  Result: {codeResult}
+                </div>
+              )}
+              
+              {codeError && (
+                <div className="text-red-500 text-sm">
+                  Error: {codeError}
+                </div>
+              )}
+            </div>
+            
+            <p className="text-xs text-muted-foreground">
+              Note: When code is provided, it will override the manual value setting.
+              Leave empty to use the manual value. AI can't modify stats with code (but it can see the stat value and desc).
+            </p>
+          </CollapsibleContent>
+        </Collapsible>
+      )}
     </div>
   );
 };

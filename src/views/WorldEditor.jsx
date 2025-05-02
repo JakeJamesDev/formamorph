@@ -7,6 +7,8 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Download, Upload, Plus, X, ArrowLeft, Save } from "lucide-react";
 import { Panel, PanelGroup, PanelResizeHandle } from 'react-resizable-panels';
 import { ScrollArea } from "@/components/ui/scroll-area";
+import { ToastContainer, toast } from 'react-toastify';
+import 'react-toastify/dist/ReactToastify.css';
 import StatManager from '../managers/StatManager';
 import EntityManager from '../managers/EntityManager';
 import LocationManager from '../managers/LocationManager';
@@ -57,10 +59,10 @@ const WorldEditor = ({ onClose }) => {
         thumbnail: worldOverview.thumbnail,
         data: worldData
       });
-      alert('World saved successfully!');
+      toast.dark('World saved successfully!');
     } catch (error) {
       console.error('Error saving world:', error);
-      alert('Error saving world. Please try again.');
+      toast.dark('Error saving world. Please try again.', { type: 'error' });
     }
   };
 
@@ -74,7 +76,7 @@ const WorldEditor = ({ onClose }) => {
           loadWorldData(loadedWorld, false);
         } catch (error) {
           console.error('Error parsing JSON:', error);
-          alert('Error loading world data. Please check the file format.');
+          toast.dark('Error loading world data. Please check the file format.', { type: 'error' });
         }
       };
       reader.readAsText(file);
@@ -203,6 +205,18 @@ const WorldEditor = ({ onClose }) => {
 
   return (
     <div className="h-screen flex flex-col overflow-hidden">
+      <ToastContainer
+        position="top-right"
+        autoClose={3000}
+        hideProgressBar={false}
+        newestOnTop
+        closeOnClick
+        rtl={false}
+        pauseOnFocusLoss
+        draggable
+        pauseOnHover
+        theme="dark"
+      />
       <div className="flex-grow flex overflow-hidden">
         <PanelGroup direction="horizontal">
           <Panel defaultSize={50} minSize={30}>

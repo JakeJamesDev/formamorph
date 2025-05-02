@@ -2,6 +2,7 @@ import React, { useState, useEffect, useCallback, useRef  } from 'react';
 import { useGameData } from '../contexts/GameDataContext';
 import { useSettings, DEFAULT_ENDPOINT } from '@/contexts/SettingsContext';
 import { useGameplay, GameplayProvider } from '@/contexts/GameplayContext';
+import { processStatCode } from '@/contexts/GameplayContextUtils';
 import { Button } from "@/components/ui/button";
 import { Menu, Music } from "lucide-react";
 import { ToastContainer, toast } from 'react-toastify';
@@ -90,6 +91,7 @@ const GameViewer = ({ initialTraits = [], initialCharacterData, onExitToMenu }) 
     setFatnessPercent,
     breastsizePercent,
     setBreastsizePercent,
+    playerNotes,
     saveGame,
     loadGame,
     saveCurrentGameState,
@@ -166,9 +168,14 @@ const GameViewer = ({ initialTraits = [], initialCharacterData, onExitToMenu }) 
         // Use existing loadGameState function to restore state
         const success = loadGameState(targetState, locations);
         if (success) {
-          // Remove states after current page
-          setGameStates(prevStates => prevStates.slice(0, currentPage));
+          // We no longer need to remove states after current page
+          // This allows for potential "redo" functionality in the future
           addLogEntry('Rolled back to previous game state');
+          
+          // Ensure notes are loaded from the target state
+          if (targetState.playerNotes !== undefined) {
+            setPlayerNotes(targetState.playerNotes);
+          }
         }
       }
     }
@@ -287,7 +294,20 @@ const GameViewer = ({ initialTraits = [], initialCharacterData, onExitToMenu }) 
         }));
       }
     }
-  }, [getStatByName, setStatByName, addLogEntry]);
+    
+    // Process any code-based stats after all direct changes
+    //REMOVE
+    // setTimeout(async () => {
+    //   try {
+    //     const updatedStats = await processStatCode(playerStats);
+    //     if (updatedStats !== playerStats) {
+    //       setPlayerStats(updatedStats);
+    //     }
+    //   } catch (error) {
+    //     console.error('Error processing stat code after time passed:', error);
+    //   }
+    // }, 0);
+  }, [getStatByName, setStatByName, addLogEntry, playerStats]);
 
   function safeJsonParse(input) {
     try {
@@ -388,6 +408,23 @@ const GameViewer = ({ initialTraits = [], initialCharacterData, onExitToMenu }) 
       .replace('<LOCATION JSON DATA>', locationDataString)
       .replace('<STATS DESCRIPTION>', statDescriptions)
       .replace('<TRAITS DESCRIPTION>', generateTraitDescriptions());
+      
+    // Add player notes to the system prompt
+    if (updatedPrompt.includes('<NOTES>')) {
+      updatedPrompt = updatedPrompt.replace('<NOTES>', playerNotes || 'No notes available');
+    } else {
+      // If <NOTES> placeholder doesn't exist, add notes section before the location data
+      const notesSection = `
+Player Notes:
+${playerNotes || 'No notes available'}
+
+`;
+      // Insert notes before Current Location section
+      const locationIndex = updatedPrompt.indexOf('Current Location:');
+      if (locationIndex !== -1) {
+        updatedPrompt = updatedPrompt.slice(0, locationIndex) + notesSection + updatedPrompt.slice(locationIndex);
+      }
+    }
       setIsWaitingForAI(true);
 
     if (language.toLowerCase() != 'english')
@@ -415,8 +452,11 @@ const GameViewer = ({ initialTraits = [], initialCharacterData, onExitToMenu }) 
         'gametext'
       );
       
+      // If the request was aborted, exit early without throwing an error
       if (!gameTextResponse) {
-        throw new Error('Received null or empty game text from AI');
+        // Clean up any partial state updates
+        setIsWaitingForAI(false);
+        return; // Exit the function early
       }
 
 
@@ -431,6 +471,11 @@ const GameViewer = ({ initialTraits = [], initialCharacterData, onExitToMenu }) 
           .replace('<STATS DESCRIPTION>', statDescriptions)
           .replace('<LOCATION JSON DATA>', locationDataString)
           .replace('<TRAITS DESCRIPTION>', generateTraitDescriptions());
+          
+        // Add player notes to the choices prompt
+        if (updatedChoicesPrompt.includes('<NOTES>')) {
+          updatedChoicesPrompt = updatedChoicesPrompt.replace('<NOTES>', playerNotes || 'No notes available');
+        }
         
         if (language.toLowerCase() != 'english')
           updatedChoicesPrompt += `\n Choice language: ` + language;
@@ -449,6 +494,11 @@ const GameViewer = ({ initialTraits = [], initialCharacterData, onExitToMenu }) 
           .replace('<LOCATION JSON DATA>', locationDataString)
           .replace('<STATS DESCRIPTION>', statDescriptions)
           .replace('<TRAITS DESCRIPTION>', generateTraitDescriptions());
+          
+        // Add player notes to the stat updates prompt
+        if (updatedStatUpdatesPrompt.includes('<NOTES>')) {
+          updatedStatUpdatesPrompt = updatedStatUpdatesPrompt.replace('<NOTES>', playerNotes || 'No notes available');
+        }
 
         if (language.toLowerCase() != 'english')
           updatedStatUpdatesPrompt += '\n Please write in english';
@@ -520,7 +570,14 @@ const GameViewer = ({ initialTraits = [], initialCharacterData, onExitToMenu }) 
         const newStates = [...prevStates];
         // Store state at the current page index
         const pageIndex = Math.ceil(fullMessageHistory.length / messagesPerPage) - 1;
-        newStates[pageIndex] = newState;
+        
+        // Check if we already have a state at this index
+        if (pageIndex < newStates.length) {
+          newStates[pageIndex] = newState;
+        } else {
+          // Add the new state to the array
+          newStates.push(newState);
+        }
         return newStates;
       });
 
@@ -632,7 +689,7 @@ const GameViewer = ({ initialTraits = [], initialCharacterData, onExitToMenu }) 
 
 
   // Update the applyStatChanges function to handle specific stat updates
-  const applyStatChanges = useCallback((changes, affectedStats = null) => {
+  const applyStatChanges = useCallback(async (changes, affectedStats = null) => {
     // Merge all changes objects into a single normalized object
     const normalizedChanges = changes.reduce((acc, changeObj) => {
       // For each object in the changes array
@@ -651,8 +708,9 @@ const GameViewer = ({ initialTraits = [], initialCharacterData, onExitToMenu }) 
       setRecentStatChanges({});
     }, 10000);
   
+    // First update stats with direct changes
     setPlayerStats(prevStats => {
-      return prevStats.map(stat => {
+      const updatedStats = prevStats.map(stat => {
         if (affectedStats === null || affectedStats.includes(stat.name)) {
           const change = typeof normalizedChanges[stat.name.toLowerCase()] === 'number'
             ? normalizedChanges[stat.name.toLowerCase()] : 0;
@@ -661,7 +719,34 @@ const GameViewer = ({ initialTraits = [], initialCharacterData, onExitToMenu }) 
         }
         return stat;
       });
+      
+      return updatedStats;
     });
+    
+    // Then process any code-based stats
+    // We need to wait for the state update to complete, so we use setTimeout
+    setTimeout(async () => {
+      try {
+        // Get the latest playerStats from state instead of using closure value
+        setPlayerStats(currentStats => {
+          // Process the current stats asynchronously
+          processStatCode(currentStats)
+            .then(updatedStats => {
+              if (updatedStats !== currentStats) {
+                setPlayerStats(updatedStats);
+              }
+            })
+            .catch(error => {
+              console.error('Error processing stat code after changes:', error);
+            });
+          
+          // Return the current stats unchanged for this update
+          return currentStats;
+        });
+      } catch (error) {
+        console.error('Error processing stat code after changes:', error);
+      }
+    }, 0);
   }, []);
 
   // Function to abort ongoing AI generation
@@ -673,6 +758,19 @@ const GameViewer = ({ initialTraits = [], initialCharacterData, onExitToMenu }) 
       
       // Reset waiting state
       setIsWaitingForAI(false);
+      
+      // Reset any partial UI updates
+      setChoices([]);
+      
+      // Remove the last assistant message if it was being created
+      setFullMessageHistory(prev => {
+        // If the last message is from the assistant and was being created during this request
+        if (prev.length > 0 && prev[prev.length - 1].role === 'assistant') {
+          // Remove it by returning all messages except the last one
+          return prev.slice(0, -1);
+        }
+        return prev;
+      });
       
       // Add log entry
       addLogEntry('AI generation aborted');
@@ -783,6 +881,13 @@ const GameViewer = ({ initialTraits = [], initialCharacterData, onExitToMenu }) 
 
       return content.trim();
     } catch (error) {
+      // Check if this is an abort error (user canceled the request)
+      if (error.name === 'AbortError') {
+        console.log('Request was aborted by user');
+        // Return empty content for aborted requests instead of throwing
+        return '';
+      }
+      
       console.error('Error in makeAIRequest:', error);
       toast.error('Failed to process AI request');
       throw error;

@@ -1,16 +1,19 @@
-import React, { useRef, useEffect } from 'react';
+import React, { useRef, useEffect, useState } from 'react';
 import { useGameData } from '@/contexts/GameDataContext';
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Button } from "@/components/ui/button";
+import { X } from "lucide-react";
+import { toast } from 'react-toastify';
 
 const WorldOverviewManager = () => {
   const { worldOverview, updateWorldOverview } = useGameData();
   const fileInputRef = useRef(null);
   const bgmInputRef = useRef(null);
   const thumbnailRef = useRef(null);
+  const [tagInput, setTagInput] = useState('');
 
   useEffect(() => {
     if (worldOverview.thumbnail && thumbnailRef.current) {
@@ -23,7 +26,7 @@ const WorldOverviewManager = () => {
     if (file) {
       // Check file type
       if (!file.type.startsWith('image/')) {
-        alert('Please select an image file');
+        toast.dark('Please select an image file', { type: 'error' });
         return;
       }
 
@@ -36,13 +39,13 @@ const WorldOverviewManager = () => {
           updateWorldOverview({ thumbnail: base64String });
         } catch (error) {
           console.error('Error processing image:', error);
-          alert('Error processing image. Please try again.');
+          toast.dark('Error processing image. Please try again.', { type: 'error' });
         }
       };
 
       reader.onerror = () => {
         console.error('Error reading file');
-        alert('Error reading file. Please try again.');
+        toast.dark('Error reading file. Please try again.', { type: 'error' });
       };
 
       reader.readAsDataURL(file);
@@ -58,7 +61,7 @@ const WorldOverviewManager = () => {
     if (file) {
       // Check file type
       if (!file.type.startsWith('audio/')) {
-        alert('Please select an audio file');
+        toast.dark('Please select an audio file', { type: 'error' });
         return;
       }
 
@@ -70,13 +73,13 @@ const WorldOverviewManager = () => {
           updateWorldOverview({ bgm: base64String });
         } catch (error) {
           console.error('Error processing audio:', error);
-          alert('Error processing audio. Please try again.');
+          toast.dark('Error processing audio. Please try again.', { type: 'error' });
         }
       };
 
       reader.onerror = () => {
         console.error('Error reading file');
-        alert('Error reading file. Please try again.');
+        toast.dark('Error reading file. Please try again.', { type: 'error' });
       };
 
       reader.readAsDataURL(file);
@@ -85,6 +88,29 @@ const WorldOverviewManager = () => {
 
   const handleBGMClick = () => {
     bgmInputRef.current?.click();
+  };
+
+  const handleAddTag = () => {
+    if (tagInput.trim()) {
+      const newTags = [...(worldOverview.tags || [])];
+      if (!newTags.includes(tagInput.trim())) {
+        newTags.push(tagInput.trim());
+        updateWorldOverview({ tags: newTags });
+      }
+      setTagInput('');
+    }
+  };
+
+  const handleRemoveTag = (tagToRemove) => {
+    const newTags = (worldOverview.tags || []).filter(tag => tag !== tagToRemove);
+    updateWorldOverview({ tags: newTags });
+  };
+
+  const handleTagKeyDown = (e) => {
+    if (e.key === 'Enter') {
+      e.preventDefault();
+      handleAddTag();
+    }
   };
 
   return (
@@ -186,6 +212,38 @@ const WorldOverviewManager = () => {
           </div>
         )}
       </div>
+      <div className="space-y-2">
+        <Label htmlFor="worldTags">Tags</Label>
+        <div className="flex gap-2">
+          <Input
+            id="worldTags"
+            value={tagInput}
+            onChange={(e) => setTagInput(e.target.value)}
+            onKeyDown={handleTagKeyDown}
+            placeholder="Add tags (press Enter to add)..."
+          />
+          <Button onClick={handleAddTag} type="button">Add</Button>
+        </div>
+        <div className="flex flex-wrap gap-2 mt-2">
+          {(worldOverview.tags || []).map((tag, index) => (
+            <div 
+              key={index} 
+              className="bg-secondary text-secondary-foreground px-3 py-1 rounded-full flex items-center gap-1"
+            >
+              <span>{tag}</span>
+              <Button 
+                variant="ghost" 
+                size="icon" 
+                className="h-4 w-4 rounded-full" 
+                onClick={() => handleRemoveTag(tag)}
+              >
+                <X className="h-3 w-3" />
+              </Button>
+            </div>
+          ))}
+        </div>
+      </div>
+      
       <div className="space-y-2">
         <Label htmlFor="systemPrompt">System Prompt Addition</Label>
         <Textarea
