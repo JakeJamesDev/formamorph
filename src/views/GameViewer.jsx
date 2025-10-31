@@ -616,13 +616,13 @@ ${playerNotes || "No notes available"}
                   setPlayerStats((prevStats) =>
                     prevStats.map((stat) => {
                       if (stat.name.toLowerCase() === key.toLowerCase()) {
-                        if (value > 0) {
-                          // a falsy check is better as older worlds will not have the new variables
-                          // and thus will be set to undefined, which passes a falsy check
-                          if (!stat.noIncreaseMax) {
-                            return { ...stat, max: stat.max + value };
-                          }
-                        } else if (!stat.noDecreaseMax) {
+                        // A falsy check on the stat values since old saves will have this as undefined
+                        // default behavior is the ai is allowed to change all stats
+                        const shouldUpdate =
+                          (value > 0 && !stat.noIncreaseMax) ||
+                          (value < 0 && !stat.noDecreaseMax);
+
+                        if (shouldUpdate) {
                           return { ...stat, max: stat.max + value };
                         }
                       }
@@ -804,6 +804,7 @@ ${playerNotes || "No notes available"}
       }, 10000);
 
       // First update stats with direct changes
+      // These are only the changes made by the AI, not regen or script
       setPlayerStats((prevStats) => {
         const updatedStats = prevStats.map((stat) => {
           if (affectedStats === null || affectedStats.includes(stat.name)) {
@@ -811,12 +812,24 @@ ${playerNotes || "No notes available"}
               typeof normalizedChanges[stat.name.toLowerCase()] === "number"
                 ? normalizedChanges[stat.name.toLowerCase()]
                 : 0;
-            const newValue = Math.max(
-              stat.min,
-              Math.min(stat.max, stat.value + change),
-            );
-            return { ...stat, value: newValue };
+
+            // A falsy check on the stat values since old saves will have this as undefined
+            // default behavior is the ai is allowed to change all stats
+            const shouldUpdate =
+              (change > 0 && !stat.noIncrease) ||
+              (change < 0 && !stat.noDecrease);
+
+            if (shouldUpdate) {
+              const newValue = Math.max(
+                stat.min,
+                Math.min(stat.max, stat.value + change),
+              );
+
+              return { ...stat, value: newValue };
+            }
           }
+
+          // Return the stat unchanged if condition not met
           return stat;
         });
 
