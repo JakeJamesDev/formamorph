@@ -204,54 +204,51 @@ const StatManager = ({ stat }) => {
             </div>
           </div>
           <div>
-            <h3 className="text-xl font-semibold">AI Changes</h3>
+            <h3 className="text-xl font-semibold">Prevent AI Changes</h3>
+            <p className="py-2"> Stop the AI from changing this stat </p>
             <div className="grid grid-cols-2 gap-2">
               <label className="flex items-center space-x-2">
                 <input
                   type="checkbox"
                   className="form-checkbox"
-                  checked={editingStat.canIncrease}
-                  onChange={(e) =>
-                    handleChange("noIncrease", e.target.checked)
-                  }
+                  checked={editingStat.noIncrease}
+                  onChange={(e) => handleChange("noIncrease", e.target.checked)}
                 />
-                <span>Increase</span>
+                <span>Don&apos;t increase</span>
               </label>
 
               <label className="flex items-center space-x-2">
                 <input
                   type="checkbox"
                   className="form-checkbox"
-                  checked={editingStat.canIncreaseMax}
+                  checked={editingStat.noIncreaseMax}
                   onChange={(e) =>
                     handleChange("noIncreaseMax", e.target.checked)
                   }
                 />
-                <span>Increase Max</span>
+                <span>Don&apos;t increase max</span>
               </label>
 
               <label className="flex items-center space-x-2">
                 <input
                   type="checkbox"
                   className="form-checkbox"
-                  checked={editingStat.canDecrease}
-                  onChange={(e) =>
-                    handleChange("noDecrease", e.target.checked)
-                  }
+                  checked={editingStat.noDecrease}
+                  onChange={(e) => handleChange("noDecrease", e.target.checked)}
                 />
-                <span>Decrease</span>
+                <span>Don&apos;t decrease</span>
               </label>
 
               <label className="flex items-center space-x-2">
                 <input
                   type="checkbox"
                   className="form-checkbox"
-                  checked={editingStat.canDecreaseMax}
+                  checked={editingStat.noDecreaseMax}
                   onChange={(e) =>
                     handleChange("noDecreaseMax", e.target.checked)
                   }
                 />
-                <span>Decrease Max</span>
+                <span>Don&apos;t decrease Max</span>
               </label>
             </div>
           </div>
