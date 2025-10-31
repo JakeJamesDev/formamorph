@@ -39,8 +39,9 @@ const WorldEditor = ({ onClose }) => {
     const blob = new Blob([jsonData], { type: 'application/json' });
     const href = URL.createObjectURL(blob);
     const link = document.createElement('a');
+
     link.href = href;
-    link.download = 'rpg_world.json';
+    link.download = worldOverview.name || 'rpg_world.json';
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
