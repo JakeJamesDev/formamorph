@@ -172,10 +172,10 @@ export const SettingsModal = ({
   onSave
 }) => {
   const handleResetEndpointSettings = () => {
-    setEndpointUrl('https://mistral.lyonade.net/v1/chat/completions');
-    setModelName('shuyuej/Mistral-Nemo-Instruct-2407-GPTQ');
+    setEndpointUrl('https://api.lyonade.net/v1/chat/completions');
+    setModelName('default');
     setApiToken('');
-    setAiMessageLimit(2000);
+    setAiMessageLimit(10512);
     setMaxTokens(1024);
   };
 
