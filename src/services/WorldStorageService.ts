@@ -1,4 +1,5 @@
 import AuthService from './AuthService';
+import type { WorldMetadata } from '@/types';
 
 class WorldStorageService {
   dbName: string;
@@ -47,7 +48,7 @@ class WorldStorageService {
     }
   }
 
-  async getWorldMetadata(): Promise<Array<{ id: string; name: string; description: string; author: string; thumbnail: string }>> {
+  async getWorldMetadata(): Promise<WorldMetadata[]> {
     await this.ensureInitialized();
     return new Promise((resolve, reject) => {
       const transaction = this.db.transaction([this.storeName], 'readonly');

@@ -1,19 +1,20 @@
-import React, { createContext, useContext, useState, useCallback, useEffect } from 'react';
+import { createContext, useContext, useState, useCallback, useEffect, type ReactNode } from 'react';
 import WorldStorageService from '../services/WorldStorageService';
+import type {
+  WorldMetadata,
+  WorldOverview,
+  Stat,
+  GameLocation,
+  Entity,
+  Trait,
+  StatUpdate,
+  DictionaryEntry,
+  World,
+} from '@/types';
 
-const GameDataContext = createContext();
-
-export const useGameData = () => {
-  const context = useContext(GameDataContext);
-  if (!context) {
-    throw new Error('useGameData must be used within a GameDataProvider');
-  }
-  return context;
-};
-
-export const GameDataProvider = ({ children }) => {
-  const [worldMetadata, setWorldMetadata] = useState([]);
-  const [worldOverview, setWorldOverview] = useState({
+function useProvideGameData() {
+  const [worldMetadata, setWorldMetadata] = useState<WorldMetadata[]>([]);
+  const [worldOverview, setWorldOverview] = useState<WorldOverview>({
     name: '',
     description: '',
     author: '',
@@ -24,15 +25,15 @@ export const GameDataProvider = ({ children }) => {
     tags: [],
     customPlayerVRM: null // { data, type } of an optional custom player VRM model
   });
-  const [stats, setStats] = useState([]);
-  const [locations, setLocations] = useState([]);
-  const [entities, setEntities] = useState([]);
-  const [traits, setTraits] = useState([]);
-  const [statUpdates, setStatUpdates] = useState([]);
-  const [dictionary, setDictionary] = useState([]);
-  const [worldId, setWorldId] = useState(null);
+  const [stats, setStats] = useState<Stat[]>([]);
+  const [locations, setLocations] = useState<GameLocation[]>([]);
+  const [entities, setEntities] = useState<Entity[]>([]);
+  const [traits, setTraits] = useState<Trait[]>([]);
+  const [statUpdates, setStatUpdates] = useState<StatUpdate[]>([]);
+  const [dictionary, setDictionary] = useState<DictionaryEntry[]>([]);
+  const [worldId, setWorldId] = useState<string | null>(null);
 
-  const addStat = useCallback((newStat) => {
+  const addStat = useCallback((newStat: Stat) => {
     const defaultDescriptors = [
       { id: Date.now(), threshold: 30, description: `${newStat.name} is low` },
       { id: Date.now() + 1, threshold: 60, description: `${newStat.name} is medium` },
@@ -42,67 +43,67 @@ export const GameDataProvider = ({ children }) => {
     setStats(prevStats => [...prevStats, statWithDescriptors]);
   }, []);
 
-  const updateStat = useCallback((updatedStat) => {
-    setStats(prevStats => prevStats.map(stat => 
+  const updateStat = useCallback((updatedStat: Stat) => {
+    setStats(prevStats => prevStats.map(stat =>
       stat.id === updatedStat.id ? updatedStat : stat
     ));
   }, []);
 
-  const removeStat = useCallback((statId) => {
+  const removeStat = useCallback((statId: string) => {
     setStats(prevStats => prevStats.filter(stat => stat.id !== statId));
   }, []);
 
-  const addLocation = useCallback((newLocation) => {
+  const addLocation = useCallback((newLocation: GameLocation) => {
     setLocations(prevLocations => [...prevLocations, newLocation]);
   }, []);
 
-  const updateLocation = useCallback((updatedLocation) => {
-    setLocations(prevLocations => prevLocations.map(location => 
+  const updateLocation = useCallback((updatedLocation: GameLocation) => {
+    setLocations(prevLocations => prevLocations.map(location =>
       location.id === updatedLocation.id ? updatedLocation : location
     ));
   }, []);
 
-  const removeLocation = useCallback((locationId) => {
+  const removeLocation = useCallback((locationId: string) => {
     setLocations(prevLocations => prevLocations.filter(location => location.id !== locationId));
   }, []);
 
-  const addEntity = useCallback((newEntity) => {
+  const addEntity = useCallback((newEntity: Entity) => {
     setEntities(prevEntities => [...prevEntities, newEntity]);
   }, []);
 
-  const updateEntity = useCallback((updatedEntity) => {
-    setEntities(prevEntities => prevEntities.map(entity => 
+  const updateEntity = useCallback((updatedEntity: Entity) => {
+    setEntities(prevEntities => prevEntities.map(entity =>
       entity.id === updatedEntity.id ? updatedEntity : entity
     ));
   }, []);
 
-  const removeEntity = useCallback((entityId) => {
+  const removeEntity = useCallback((entityId: string) => {
     setEntities(prevEntities => prevEntities.filter(entity => entity.id !== entityId));
   }, []);
 
-  const addTrait = useCallback((newTrait) => {
+  const addTrait = useCallback((newTrait: Trait) => {
     setTraits(prevTraits => [...prevTraits, newTrait]);
   }, []);
 
-  const updateTrait = useCallback((updatedTrait) => {
-    setTraits(prevTraits => prevTraits.map(trait => 
+  const updateTrait = useCallback((updatedTrait: Trait) => {
+    setTraits(prevTraits => prevTraits.map(trait =>
       trait.id === updatedTrait.id ? updatedTrait : trait
     ));
   }, []);
 
-  const removeTrait = useCallback((traitId) => {
+  const removeTrait = useCallback((traitId: string) => {
     setTraits(prevTraits => prevTraits.filter(trait => trait.id !== traitId));
   }, []);
 
-  const addStatUpdate = useCallback((newStatUpdate) => {
+  const addStatUpdate = useCallback((newStatUpdate: StatUpdate) => {
     setStatUpdates(prevStatUpdates => [...prevStatUpdates, {
       ...newStatUpdate,
       messageHistory: newStatUpdate.messageHistory || []
     }]);
   }, []);
 
-  const updateStatUpdate = useCallback((updatedStatUpdate) => {
-    setStatUpdates(prevStatUpdates => prevStatUpdates.map(statUpdate => 
+  const updateStatUpdate = useCallback((updatedStatUpdate: StatUpdate) => {
+    setStatUpdates(prevStatUpdates => prevStatUpdates.map(statUpdate =>
       statUpdate.id === updatedStatUpdate.id ? {
         ...updatedStatUpdate,
         messageHistory: updatedStatUpdate.messageHistory || statUpdate.messageHistory || []
@@ -110,25 +111,25 @@ export const GameDataProvider = ({ children }) => {
     ));
   }, []);
 
-  const removeStatUpdate = useCallback((statUpdateId) => {
+  const removeStatUpdate = useCallback((statUpdateId: string) => {
     setStatUpdates(prevStatUpdates => prevStatUpdates.filter(statUpdate => statUpdate.id !== statUpdateId));
   }, []);
 
-  const addDictionaryEntry = useCallback((newEntry) => {
+  const addDictionaryEntry = useCallback((newEntry: DictionaryEntry) => {
     setDictionary(prev => [...prev, { name: '', key: '', value: '', ...newEntry }]);
   }, []);
 
-  const updateDictionaryEntry = useCallback((updatedEntry) => {
+  const updateDictionaryEntry = useCallback((updatedEntry: DictionaryEntry) => {
     setDictionary(prev => prev.map(entry =>
       entry.id === updatedEntry.id ? updatedEntry : entry
     ));
   }, []);
 
-  const removeDictionaryEntry = useCallback((entryId) => {
+  const removeDictionaryEntry = useCallback((entryId: string) => {
     setDictionary(prev => prev.filter(entry => entry.id !== entryId));
   }, []);
 
-  const updateWorldOverview = useCallback((updates) => {
+  const updateWorldOverview = useCallback((updates: Partial<WorldOverview>) => {
     setWorldOverview(prev => ({ ...prev, ...updates }));
   }, []);
 
@@ -141,8 +142,8 @@ export const GameDataProvider = ({ children }) => {
     }
   }, []);
 
-  const loadWorldData = useCallback((worldData, isDefault = false) => {
-    const defaultOverview = {
+  const loadWorldData = useCallback((worldData: World, isDefault = false) => {
+    const defaultOverview: WorldOverview = {
       name: '',
       description: '',
       author: '',
@@ -153,7 +154,7 @@ export const GameDataProvider = ({ children }) => {
       tags: [],
       customPlayerVRM: null
     };
-    
+
     // Handle world overview with validation
     const overview = worldData.worldOverview || defaultOverview;
     updateWorldOverview({
@@ -225,6 +226,24 @@ export const GameDataProvider = ({ children }) => {
     loadWorldData,
     worldId, setWorldId
   };
+
+  return value;
+}
+
+type GameDataContextValue = ReturnType<typeof useProvideGameData>;
+
+const GameDataContext = createContext<GameDataContextValue | null>(null);
+
+export const useGameData = () => {
+  const context = useContext(GameDataContext);
+  if (!context) {
+    throw new Error('useGameData must be used within a GameDataProvider');
+  }
+  return context;
+};
+
+export const GameDataProvider = ({ children }: { children: ReactNode }) => {
+  const value = useProvideGameData();
 
   return (
     <GameDataContext.Provider value={value}>

@@ -1,18 +1,18 @@
 import { executeStatCode } from '../lib/statCodeExecutor';
+import type { Stat } from '@/types';
 
 /**
- * Processes stats with dynamic code and updates their values
- * @param {Array} stats - The array of all stats
- * @returns {Promise<Array>} - The updated stats array
+ * Processes stats with dynamic code and updates their values.
+ * Returns the updated stats array.
  */
-export const processStatCode = async (stats) => {
+export const processStatCode = async (stats: Stat[]) => {
   if (!stats || !Array.isArray(stats)) {
     return stats;
   }
 
   // Create a copy of the stats array to avoid mutation during processing
   const updatedStats = [...stats];
-  
+
   // Process each stat with code
   const codePromises = updatedStats
     .filter(stat => stat.code && stat.code.trim() !== '')
@@ -22,12 +22,12 @@ export const processStatCode = async (stats) => {
       try {
         // Execute the code with all stats as context
         const result = await executeStatCode(stat.code, updatedStats, stat);
-        
+
         if (result.error) {
           console.error(`Error executing code for stat ${stat.name}:`, result.error);
           return null;
         }
-        
+
         if (result.value !== null) {
           // Return the stat ID and new value
           return { id: stat.id, value: result.value };
@@ -37,10 +37,10 @@ export const processStatCode = async (stats) => {
       }
       return null;
     });
-  
+
   // Wait for all code executions to complete
   const results = await Promise.all(codePromises);
-  
+
   // Apply the results to the stats array
   results.forEach(result => {
     if (result) {
@@ -53,6 +53,6 @@ export const processStatCode = async (stats) => {
       }
     }
   });
-  
+
   return updatedStats;
 };
