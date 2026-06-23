@@ -1,6 +1,6 @@
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 
-export const TypeWriter = ({ text, speed = 30 }) => {
+export const TypeWriter = ({ text, speed = 30 }: { text: string; speed?: number }) => {
   const [displayedText, setDisplayedText] = useState('');
   const [isComplete, setIsComplete] = useState(false);
 
@@ -13,14 +13,14 @@ export const TypeWriter = ({ text, speed = 30 }) => {
 
     setDisplayedText('');
     setIsComplete(false);
-    
+
     let currentIndex = 0;
     const textLength = text.length;
 
     const timer = setInterval(() => {
       setDisplayedText(text.slice(0, currentIndex + 1));
       currentIndex++;
-      
+
       if (currentIndex >= textLength) {
         setIsComplete(true);
         clearInterval(timer);
