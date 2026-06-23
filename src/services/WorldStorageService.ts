@@ -1,12 +1,17 @@
 import AuthService from './AuthService';
 
 class WorldStorageService {
+  dbName: string;
+  storeName: string;
+  db: IDBDatabase | null;
+  API_URL: string;
+
   constructor() {
     this.dbName = 'worldsDB';
     this.storeName = 'worlds';
     this.db = null;
     // Use different API URL based on environment
-    this.API_URL = import.meta.env.MODE === 'production' 
+    this.API_URL = import.meta.env.MODE === 'production'
       ? import.meta.env.VITE_API_URL_PROD
       : import.meta.env.VITE_API_URL_DEV;
     this.initialize();
@@ -14,24 +19,24 @@ class WorldStorageService {
 
   async initialize() {
     if (this.db) return; // Already initialized
-    
-    return new Promise((resolve, reject) => {
+
+    return new Promise<void>((resolve, reject) => {
       const request = indexedDB.open(this.dbName, 1);
-      
+
       request.onupgradeneeded = (event) => {
-        const db = event.target.result;
+        const db = (event.target as IDBOpenDBRequest).result;
         if (!db.objectStoreNames.contains(this.storeName)) {
           db.createObjectStore(this.storeName, { keyPath: 'id' });
         }
       };
 
       request.onsuccess = (event) => {
-        this.db = event.target.result;
+        this.db = (event.target as IDBOpenDBRequest).result;
         resolve();
       };
 
       request.onerror = (event) => {
-        reject(`IndexedDB error: ${event.target.errorCode}`);
+        reject(`IndexedDB error: ${(event.target as IDBOpenDBRequest).error}`);
       };
     });
   }
@@ -42,7 +47,7 @@ class WorldStorageService {
     }
   }
 
-  async getWorldMetadata() {
+  async getWorldMetadata(): Promise<Array<{ id: string; name: string; description: string; author: string; thumbnail: string }>> {
     await this.ensureInitialized();
     return new Promise((resolve, reject) => {
       const transaction = this.db.transaction([this.storeName], 'readonly');
@@ -66,16 +71,16 @@ class WorldStorageService {
     });
   }
 
-  async getWorldData(worldId) {
+  async getWorldData(worldId: string) {
     await this.ensureInitialized();
 
     console.log("WorldID: ", worldId);
-    
+
     // Validate worldId
     if (!worldId) {
       return Promise.reject('World ID is required');
     }
-    
+
     // Normalize worldId
     const normalizedWorldId = String(worldId).trim();
     if (!normalizedWorldId) {
@@ -87,7 +92,7 @@ class WorldStorageService {
       try {
         const transaction = this.db.transaction([this.storeName], 'readonly');
         const store = transaction.objectStore(this.storeName);
-        
+
         // Validate the store exists
         if (!store) {
           throw new Error('Object store not found');
@@ -126,8 +131,8 @@ class WorldStorageService {
           }
         };
         request.onerror = (event) => {
-          console.error('Database error:', event.target.error);
-          reject(`Failed to get world data: ${event.target.error}`);
+          console.error('Database error:', (event.target as IDBRequest).error);
+          reject(`Failed to get world data: ${(event.target as IDBRequest).error}`);
         };
       } catch (error) {
         console.error('Transaction setup error:', error);
@@ -138,22 +143,22 @@ class WorldStorageService {
 
   async storeWorld(world) {
     await this.ensureInitialized();
-    
+
     //Generate unique ID always
     // world.id = `world-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
     //  console.log('Generated new world ID:', world.id);
 
     // Validate world data structure
-    if (!world.name || !world.data || 
-        !world.data.worldOverview || !world.data.stats || 
-        !world.data.locations || !world.data.entities || 
+    if (!world.name || !world.data ||
+        !world.data.worldOverview || !world.data.stats ||
+        !world.data.locations || !world.data.entities ||
         !world.data.traits || !world.data.statUpdates) {
       throw new Error('Invalid world data: missing required fields');
     }
 
     console.log(world.id);
 
-    return new Promise((resolve, reject) => {
+    return new Promise<void>((resolve, reject) => {
       const transaction = this.db.transaction([this.storeName], 'readwrite');
       const store = transaction.objectStore(this.storeName);
       const request = store.put({
@@ -185,7 +190,7 @@ class WorldStorageService {
             // Import the world JSON file
             const module = await import(`../defaultworlds/${world.id}.json`);
             const worldData = module.default;
-            
+
             // Create a full world object with the correct structure
             const fullWorld = {
               id: world.id,
@@ -223,14 +228,14 @@ class WorldStorageService {
     }
   }
 
-  async deleteWorld(worldId) {
+  async deleteWorld(worldId: string) {
     await this.ensureInitialized();
-    
+
     if (!worldId) {
       throw new Error('World ID is required');
     }
 
-    return new Promise((resolve, reject) => {
+    return new Promise<void>((resolve, reject) => {
       const transaction = this.db.transaction([this.storeName], 'readwrite');
       const store = transaction.objectStore(this.storeName);
       const request = store.delete(worldId);
@@ -246,12 +251,12 @@ class WorldStorageService {
       let url = `${this.API_URL}/worlds?page=${page}&limit=${limit}`;
       if (search) url += `&search=${encodeURIComponent(search)}`;
       if (searchByAuthor) url += `&searchByAuthor=true`;
-      
+
       const headers = {};
       if (AuthService.isAuthenticated()) {
         headers['Authorization'] = `Bearer ${AuthService.token}`;
       }
-      
+
       // If ownedOnly is true, fetch only the user's worlds
       if (ownedOnly) {
         if (!AuthService.isAuthenticated()) {
@@ -259,16 +264,16 @@ class WorldStorageService {
         }
         url = `${this.API_URL}/users/me/worlds`;
       }
-      
+
       const response = await fetch(url, { headers });
-      
+
       if (!response.ok) {
         throw new Error('Failed to fetch worlds');
       }
-      
+
       const responseData = await response.json();
       console.log('Remote worlds response:', responseData);
-      
+
       return {
         success: true,
         data: responseData.data || [],
@@ -280,25 +285,25 @@ class WorldStorageService {
       return { success: false, error: error.message, data: [] };
     }
   }
-  
+
   // Get worlds published by the current user
   async getUserWorlds() {
     if (!AuthService.isAuthenticated()) return [];
-    
+
     try {
       const response = await fetch(`${this.API_URL}/users/me/worlds`, {
         headers: {
           'Authorization': `Bearer ${AuthService.token}`
         }
       });
-      
+
       if (!response.ok) {
         throw new Error('Failed to fetch user worlds');
       }
-      
+
       const responseData = await response.json();
       console.log('User worlds response:', responseData);
-      
+
       // Return just the data array, not the entire response object
       return responseData.data || [];
     } catch (error) {
@@ -308,17 +313,17 @@ class WorldStorageService {
   }
 
   // Publish a world to the server
-  async publishWorld(worldData, worldId = null) {
+  async publishWorld(worldData, worldId: string | null = null) {
     if (!AuthService.isAuthenticated()) {
       throw new Error('You must be logged in to publish worlds');
     }
-    
-    const endpoint = worldId 
+
+    const endpoint = worldId
       ? `${this.API_URL}/worlds/${worldId}` // Update existing world
       : `${this.API_URL}/worlds`;           // Create new world
-    
+
     const method = worldId ? 'PUT' : 'POST';
-    
+
     try {
       const response = await fetch(endpoint, {
         method,
@@ -338,12 +343,12 @@ class WorldStorageService {
           contentData: worldData
         })
       });
-      
+
       if (!response.ok) {
         const errorData = await response.json();
         throw new Error(errorData.message || 'Failed to publish world');
       }
-      
+
       return await response.json();
     } catch (error) {
       console.error('Error publishing world:', error);
