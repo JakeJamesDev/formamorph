@@ -4,7 +4,6 @@ import { toast } from 'react-toastify';
 import { convertSaveFile, terminateWorker } from '../lib/saveConversionWorkerUtils';
 import type {
   CharacterData,
-  Entity,
   LogEntry,
   GameLocation,
   PlayerStat,
@@ -13,11 +12,12 @@ import type {
   GameState,
   SaveObject,
   Choice,
+  TTSAudio,
 } from '@/types';
 
 function useProvideGameplay() {
   const [characterData, setCharacterData] = useState<CharacterData | null>(null);
-  const [visibleEntities, setVisibleEntities] = useState<Entity[]>([]);
+  const [visibleEntities, setVisibleEntities] = useState<string[]>([]);
   const [logEntries, setLogEntries] = useState<LogEntry[]>([]);
   const [gameTime, setGameTime] = useState(0);
   const [currentLocation, setCurrentLocation] = useState<GameLocation | null>(null);
@@ -32,7 +32,7 @@ function useProvideGameplay() {
   const [gameplayText, setGameplayText] = useState("");
   const [isFlashing, setIsFlashing] = useState(false);
   const [isEditMode, setIsEditMode] = useState(false);
-  const [ttsAudio, setTTSAudio] = useState<string | null>(null);
+  const [ttsAudio, setTTSAudio] = useState<TTSAudio | null>(null);
   const [choices, setChoices] = useState<Choice[]>([]);
   const [isGameStarted, setIsGameStarted] = useState(false);
   const [playerInput, setPlayerInput] = useState('');

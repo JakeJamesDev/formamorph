@@ -1,9 +1,8 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useRef } from 'react';
 import { useGameplay } from '@/contexts/GameplayContext';
 import { useSettings } from '@/contexts/SettingsContext';
 import { useGameData } from '@/contexts/GameDataContext';
 import { useIsMobile } from '@/lib/useIsMobile';
-import { TypeWriter } from '../ui/typewriter';
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -24,9 +23,13 @@ import {
 import VRMViewer from '@/views/VRMViewer';
 import { ConfirmDialog } from '../ConfirmDialog';
 import IndeterminateProgress from '../ui/indeterminate-progress';
-import { EditTextModal } from './GameModals';
+import { EditTextModal } from '../modals/EditTextModal';
+import type { Entity } from '@/types';
 
-export const LeftPanel = ({ entities, onEntityClick }) => {
+export const LeftPanel = ({ entities, onEntityClick }: {
+  entities: Entity[];
+  onEntityClick: (entityId: string) => void;
+}) => {
   // Import systemPrompt from settings context
   const { systemPrompt } = useSettings();
   const {
@@ -119,14 +122,14 @@ export const LeftPanel = ({ entities, onEntityClick }) => {
             <div className="p-2">
               {visibleEntities.length > 0 ? (
                 visibleEntities.map((entityId, index) => {
-                  const entityItem = entities.find(f => 
-                    f.name.toLowerCase().includes(entityId.toLowerCase()) || 
+                  const entityItem = entities.find(f =>
+                    f.name.toLowerCase().includes(entityId.toLowerCase()) ||
                     entityId.toLowerCase().includes(f.name.toLowerCase())
                   );
                   const isDisabled = !entityItem;
                   return (
-                    <div 
-                      key={index} 
+                    <div
+                      key={index}
                       className={`mb-1 flex justify-between items-center p-2 ${
                         isDisabled ? 'opacity-50 cursor-not-allowed' : 'hover:bg-muted cursor-pointer'
                       }`}
@@ -142,7 +145,7 @@ export const LeftPanel = ({ entities, onEntityClick }) => {
             </div>
           </ScrollArea>
         </TabsContent>
-        
+
         <TabsContent value="notes" className="flex-grow overflow-hidden min-h-[100px]">
           <div className="h-full p-2 flex flex-col">
             {!systemPrompt.includes('<NOTES>') && (
@@ -191,6 +194,19 @@ export const MiddlePanel = ({
   onTTSClick,
   memoryBar,
   locationSuggestion
+}: {
+  parseAssistantMessage: (content: string) => React.ReactNode;
+  totalPages: number;
+  handlePageChange: (page: number) => void;
+  sendGameAction: (action: string) => void;
+  handleSendAction: () => void;
+  handleKeyPress: (e: React.KeyboardEvent<HTMLInputElement>) => void;
+  handleRollback: () => void;
+  abortGeneration: () => void;
+  disabled: boolean;
+  onTTSClick: () => void;
+  memoryBar: React.ReactNode;
+  locationSuggestion: React.ReactNode;
 }) => {
   const {
     displayedMessages,
@@ -207,12 +223,11 @@ export const MiddlePanel = ({
     isEditMode,
     setIsEditMode,
     ttsAudio,
-    fullMessageHistory,
     setFullMessageHistory
   } = useGameplay();
 
   const renderPaginationItems = () => {
-    let items = [];
+    const items = [];
     for (let i = 1; i <= totalPages; i++) {
       if (
         i === 1 ||
@@ -244,8 +259,8 @@ export const MiddlePanel = ({
     return items;
   };
 
-  const messagesEndRef = useRef(null);
-  const audioRef = useRef(null);
+  const messagesEndRef = useRef<HTMLDivElement>(null);
+  const audioRef = useRef<HTMLAudioElement>(null);
 
   useEffect(() => {
     if (audioRef.current) {
@@ -265,7 +280,7 @@ export const MiddlePanel = ({
       <CardContent className="flex-grow flex flex-col overflow-hidden p-4 sm:p-1">
         {memoryBar}
         <div className="flex flex-col flex-grow overflow-hidden">
-          
+
           <ScrollArea className={`flex-grow border border-border p-2 mb-1 bg-muted/80 min-h-0 ${isFlashing ? 'flash-animation' : ''} relative`}>
             <div className="absolute top-2 right-2 z-10 flex gap-2">
               <Button
@@ -284,18 +299,19 @@ export const MiddlePanel = ({
               </Button>
             </div>
             {displayedMessages.map((message, index) => {
+              const isLatestMessage = index === displayedMessages.length - 1;
               if (index === 0 && ttsAudio) {
                 return (
                   <React.Fragment key={`audio-${index}`}>
                     <div>
             {ttsAudio && (
-              <audio 
+              <audio
                 ref={audioRef}
-                key={ttsAudio.audio.length} 
-                controls 
+                key={ttsAudio.audio.length}
+                controls
                 className="w-2/3"
               >
-                <source src={URL.createObjectURL(new Blob([ttsAudio.audio], { type: 'audio/wav' }))} type="audio/wav" />
+                <source src={URL.createObjectURL(new Blob([ttsAudio.audio as BlobPart], { type: 'audio/wav' }))} type="audio/wav" />
                 Your browser does not support the audio element.
               </audio>
             )}
@@ -313,7 +329,6 @@ export const MiddlePanel = ({
                   </React.Fragment>
                 );
               }
-              const isLatestMessage = index === displayedMessages.length - 1;
               return (
                 <div key={index} className={`mb-2 ${message.role === 'user' ? 'text-yellow-500' : ''}`}>
                   <strong>{message.role === 'user' ? 'You:' : 'Event:'}</strong>
@@ -343,9 +358,9 @@ export const MiddlePanel = ({
                           : "border-primary hover:bg-accent hover:text-accent-foreground"
                         }`}
                     >
-                      {choice.split('**').map((part, i) => 
-                        i % 2 === 0 ? 
-                          <span key={i}>{part}</span> : 
+                      {choice.split('**').map((part, i) =>
+                        i % 2 === 0 ?
+                          <span key={i}>{part}</span> :
                           <strong key={i}>{part}</strong>
                       )}
                     </Button>
@@ -377,7 +392,7 @@ export const MiddlePanel = ({
                           game_text: text
                         })
                       };
-                    } catch (e) {
+                    } catch {
                       // If parsing fails, create new content object
                       updatedHistory[messageIndex] = {
                         role: 'assistant',
@@ -406,7 +421,7 @@ export const MiddlePanel = ({
                         game_text: text
                       })
                     };
-                  } catch (e) {
+                  } catch {
                     updatedMessages[assistantMessageIndex] = {
                       role: 'assistant',
                       content: JSON.stringify({
@@ -453,7 +468,7 @@ export const MiddlePanel = ({
                       description="Are you sure you want to rollback to the previous state? This action cannot be undone."
                       onConfirm={handleRollback}
                     >
-                      <Button 
+                      <Button
                         variant="outline"
                         size="sm"
                         className="text-xs gap-1"
@@ -487,17 +502,17 @@ export const MiddlePanel = ({
                 disabled={disabled}
               />
               {isWaitingForAI ? (
-                <Button 
-                  onClick={abortGeneration} 
-                  variant="destructive" 
+                <Button
+                  onClick={abortGeneration}
+                  variant="destructive"
                   className="border-dashed border-2 w-32"
                 >
                   <Square className="h-4 w-4" />
                 </Button>
               ) : (
-                <Button 
-                  onClick={handleSendAction} 
-                  disabled={disabled} 
+                <Button
+                  onClick={handleSendAction}
+                  disabled={disabled}
                   className="border-dashed border-2 w-32"
                 >
                   <Send className="h-4 w-4" />
@@ -511,7 +526,11 @@ export const MiddlePanel = ({
   );
 };
 
-export const RightPanel = ({ onLocationClick, language, setLanguage }) => {
+export const RightPanel = ({ onLocationClick, language, setLanguage }: {
+  onLocationClick: () => void;
+  language: string;
+  setLanguage: (value: string) => void;
+}) => {
   const {
     gameTime,
     currentLocation,
@@ -523,7 +542,7 @@ export const RightPanel = ({ onLocationClick, language, setLanguage }) => {
     recentStatChanges
   } = useGameplay();
   const [isEditMode, setIsEditMode] = React.useState(false);
-  
+
   return (
     <Card className="w-full md:w-1/4 md:ml-1 grow md:grow-0 min-h-0 flex flex-col md:h-full bg-background/60 border-border overflow-hidden">
       <CardContent className="flex flex-col h-full overflow-hidden p-4 sm:p-1">
@@ -539,7 +558,7 @@ export const RightPanel = ({ onLocationClick, language, setLanguage }) => {
         </div>
         <p className="text-center">{Math.floor(gameTime / 24)} days, {gameTime % 24} hours</p>
       </div>
-      
+
       <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full flex-grow flex flex-col overflow-hidden">
         <TabsList className="flex-shrink-0">
           <TabsTrigger value="stats">Stats</TabsTrigger>
@@ -548,7 +567,9 @@ export const RightPanel = ({ onLocationClick, language, setLanguage }) => {
         </TabsList>
         <TabsContent value="stats" className="flex-grow overflow-hidden">
           <ScrollArea className="h-[calc(100%-1rem)] relative">
-            {playerStats.map((stat, index) => (
+            {playerStats.map((stat, index) => {
+              const statValue = stat.value as number;
+              return (
               <div key={index} className="mb-2">
                 <div className="flex justify-between items-center">
                   <span>{stat.name}</span>
@@ -558,12 +579,12 @@ export const RightPanel = ({ onLocationClick, language, setLanguage }) => {
                         {recentStatChanges[stat.name.toLowerCase()] > 0 ? '+' : ''}{recentStatChanges[stat.name.toLowerCase()]}
                       </span>
                     )}
-                    <span>{stat.value} / {stat.max}</span>
+                    <span>{statValue} / {stat.max}</span>
                   </div>
                 </div>
                 {isEditMode ? (
                   <Slider
-                    value={[stat.value]}
+                    value={[statValue]}
                     min={stat.min}
                     max={stat.max}
                     step={1}
@@ -575,13 +596,14 @@ export const RightPanel = ({ onLocationClick, language, setLanguage }) => {
                     }}
                   />
                 ) : (
-                  <Progress value={(stat.value - stat.min) / (stat.max - stat.min) * 100} />
+                  <Progress value={(statValue - stat.min) / (stat.max - stat.min) * 100} />
                 )}
               </div>
-            ))}
+              );
+            })}
             <div className="absolute bottom-2 right-2">
-              <Button 
-                variant="ghost" 
+              <Button
+                variant="ghost"
                 size="icon"
                 onClick={() => setIsEditMode(!isEditMode)}
                 className="h-8 w-8"

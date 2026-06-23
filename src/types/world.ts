@@ -81,10 +81,14 @@ export interface GameLocation {
   name: string;
   inGameDescription?: string;
   detailedDescription?: string;
+  /** Legacy alias some views fall back to when `inGameDescription` is absent. */
+  description?: string;
   backgroundImage?: Base64Data;
   ambientSound?: MediaAsset;
   /** Entity ids present at this location. */
   entities?: string[];
+  /** Optional names of connected locations (shown in the gameplay location panel). */
+  connections?: string[];
   /** v1.2.0: a candidate starting location (one chosen at random on new game). */
   isStarting?: boolean;
 }

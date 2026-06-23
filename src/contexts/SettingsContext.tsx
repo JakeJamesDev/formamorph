@@ -1,5 +1,5 @@
 import { createContext, useContext, useState, useEffect, type ReactNode } from 'react';
-import { defaultSystemPrompt, defaultChoicesPrompt, defaultStatUpdatesPrompt, defaultLocationChangePrompt } from '../components/game/GamePrompts.js';
+import { defaultSystemPrompt, defaultChoicesPrompt, defaultStatUpdatesPrompt, defaultLocationChangePrompt } from '../components/game/GamePrompts';
 
 const APP_ID = 'FORMAMORPH';
 export const DEFAULT_ENDPOINT = 'https://mistral.lyonade.net/v1/chat/completions';
