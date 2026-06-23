@@ -137,7 +137,8 @@ export interface WorldMetadata {
   description: string;
   author: string;
   thumbnail: Base64Data;
-  createdAt: string;
-  lastAccessed: string;
+  /** Omitted by the metadata-list query; present on full stored records. */
+  createdAt?: string;
+  lastAccessed?: string;
   tags?: string[];
 }

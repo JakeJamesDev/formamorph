@@ -1,81 +1,71 @@
-import React, { createContext, useContext, useState, useEffect } from 'react';
+import { createContext, useContext, useState, useEffect, type ReactNode } from 'react';
 import { defaultSystemPrompt, defaultChoicesPrompt, defaultStatUpdatesPrompt, defaultLocationChangePrompt } from '../components/game/GamePrompts.js';
 
 const APP_ID = 'FORMAMORPH';
 export const DEFAULT_ENDPOINT = 'https://mistral.lyonade.net/v1/chat/completions';
 
-const SettingsContext = createContext();
-
-export const useSettings = () => {
-  const context = useContext(SettingsContext);
-  if (!context) {
-    throw new Error('useSettings must be used within a SettingsProvider');
-  }
-  return context;
-};
-
-export const SettingsProvider = ({ children }) => {
-  const [bgmEnabled, setBgmEnabled] = useState(() => {
+function useProvideSettings() {
+  const [bgmEnabled, setBgmEnabled] = useState<boolean>(() => {
     const savedBgm = localStorage.getItem('bgmEnabled');
     return savedBgm ? JSON.parse(savedBgm) : true;
   });
 
-  const [language, setLanguage] = useState(() => {
+  const [language, setLanguage] = useState<string>(() => {
     const savedLanguage = localStorage.getItem('language');
     return savedLanguage || 'English';
   });
 
-  const [shortform, setShortform] = useState(() => {
+  const [shortform, setShortform] = useState<boolean>(() => {
     const saved = localStorage.getItem(`${APP_ID}_shortform`);
     return saved ? JSON.parse(saved) : true;
   });
 
-  const [autoscroll, setAutoscroll] = useState(() => {
+  const [autoscroll, setAutoscroll] = useState<boolean>(() => {
     const saved = localStorage.getItem(`${APP_ID}_autoscroll`);
     return saved ? JSON.parse(saved) : false;
   });
 
-  const [endpointUrl, setEndpointUrl] = useState(() => {
+  const [endpointUrl, setEndpointUrl] = useState<string>(() => {
     const saved = localStorage.getItem(`${APP_ID}_endpointUrl`);
     return saved ? saved : (import.meta.env.VITE_DEFAULT_ENDPOINT || DEFAULT_ENDPOINT);
   });
 
-  const [apiToken, setApiToken] = useState(() => {
+  const [apiToken, setApiToken] = useState<string>(() => {
     const saved = localStorage.getItem(`${APP_ID}_apiToken`);
     return saved ? saved : (import.meta.env.VITE_DEFAULT_API_TOKEN || '');
   });
 
-  const [modelName, setModelName] = useState(() => {
+  const [modelName, setModelName] = useState<string>(() => {
     const saved = localStorage.getItem(`${APP_ID}_modelName`);
     return saved ? saved : (import.meta.env.VITE_DEFAULT_MODEL_NAME || 'shuyuej/Mistral-Nemo-Instruct-2407-GPTQ');
   });
 
-  const [maxTokens, setMaxTokens] = useState(() => {
+  const [maxTokens, setMaxTokens] = useState<number>(() => {
     const saved = localStorage.getItem(`${APP_ID}_maxTokens`);
     return saved ? parseInt(saved) : (parseInt(import.meta.env.VITE_DEFAULT_MAX_TOKENS) || 1024);
   });
 
-  const [aiMessageLimit, setAiMessageLimit] = useState(() => {
+  const [aiMessageLimit, setAiMessageLimit] = useState<number>(() => {
     const saved = localStorage.getItem(`${APP_ID}_aiMessageLimit`);
     return saved ? parseInt(saved) : (parseInt(import.meta.env.VITE_DEFAULT_AI_MESSAGE_LIMIT) || 3900);
   });
 
-  const [systemPrompt, setSystemPrompt] = useState(() => {
+  const [systemPrompt, setSystemPrompt] = useState<string>(() => {
     const saved = localStorage.getItem(`${APP_ID}_narrationPrompt2`);
     return saved ? saved : defaultSystemPrompt;
   });
 
-  const [choicesPrompt, setChoicesPrompt] = useState(() => {
+  const [choicesPrompt, setChoicesPrompt] = useState<string>(() => {
     const saved = localStorage.getItem(`${APP_ID}_choicesPrompt2`);
     return saved ? saved : defaultChoicesPrompt;
   });
 
-  const [statUpdatesPrompt, setStatUpdatesPrompt] = useState(() => {
+  const [statUpdatesPrompt, setStatUpdatesPrompt] = useState<string>(() => {
     const saved = localStorage.getItem(`${APP_ID}_statUpdatesPrompt2`);
     return saved ? saved : defaultStatUpdatesPrompt;
   });
 
-  const [locationChangePromptText, setLocationChangePromptText] = useState(() => {
+  const [locationChangePromptText, setLocationChangePromptText] = useState<string>(() => {
     const saved = localStorage.getItem(`${APP_ID}_locationChangePrompt`);
     return saved ? saved : defaultLocationChangePrompt;
   });
@@ -161,6 +151,24 @@ export const SettingsProvider = ({ children }) => {
     locationChangePromptText,
     setLocationChangePromptText
   };
+
+  return value;
+}
+
+type SettingsContextValue = ReturnType<typeof useProvideSettings>;
+
+const SettingsContext = createContext<SettingsContextValue | null>(null);
+
+export const useSettings = () => {
+  const context = useContext(SettingsContext);
+  if (!context) {
+    throw new Error('useSettings must be used within a SettingsProvider');
+  }
+  return context;
+};
+
+export const SettingsProvider = ({ children }: { children: ReactNode }) => {
+  const value = useProvideSettings();
 
   return (
     <SettingsContext.Provider value={value}>

@@ -1,28 +1,30 @@
-import React, { createContext, useContext, useState, useRef, useCallback, useEffect } from 'react';
+import { createContext, useContext, useState, useRef, useCallback, useEffect, type ReactNode } from 'react';
 import { saveToDB, loadFromDB } from '../components/modals/dbUtils';
 import { toast } from 'react-toastify';
 import { convertSaveFile, terminateWorker } from '../lib/saveConversionWorkerUtils';
+import type {
+  CharacterData,
+  Entity,
+  LogEntry,
+  GameLocation,
+  PlayerStat,
+  Trait,
+  ChatMessage,
+  GameState,
+  SaveObject,
+  Choice,
+} from '@/types';
 
-const GameplayContext = createContext();
-
-export const useGameplay = () => {
-  const context = useContext(GameplayContext);
-  if (!context) {
-    throw new Error('useGameplay must be used within a GameplayProvider');
-  }
-  return context;
-};
-
-export const GameplayProvider = ({ children }) => {
-  const [characterData, setCharacterData] = useState(null);
-  const [visibleEntities, setVisibleEntities] = useState([]);
-  const [logEntries, setLogEntries] = useState([]);
+function useProvideGameplay() {
+  const [characterData, setCharacterData] = useState<CharacterData | null>(null);
+  const [visibleEntities, setVisibleEntities] = useState<Entity[]>([]);
+  const [logEntries, setLogEntries] = useState<LogEntry[]>([]);
   const [gameTime, setGameTime] = useState(0);
-  const [currentLocation, setCurrentLocation] = useState(null);
-  const [playerStats, setPlayerStats] = useState([]);
+  const [currentLocation, setCurrentLocation] = useState<GameLocation | null>(null);
+  const [playerStats, setPlayerStats] = useState<PlayerStat[]>([]);
   const [isProcessingStatCode, setIsProcessingStatCode] = useState(false);
-  const [playerTraits, setPlayerTraits] = useState([]);
-  const [recentStatChanges, setRecentStatChanges] = useState({});
+  const [playerTraits, setPlayerTraits] = useState<Trait[]>([]);
+  const [recentStatChanges, setRecentStatChanges] = useState<Record<string, number>>({});
   const [activeTab, setActiveTab] = useState("stats");
   const [stomachPercent, setStomachPercent] = useState(0);
   const [fatnessPercent, setFatnessPercent] = useState(0);
@@ -30,20 +32,20 @@ export const GameplayProvider = ({ children }) => {
   const [gameplayText, setGameplayText] = useState("");
   const [isFlashing, setIsFlashing] = useState(false);
   const [isEditMode, setIsEditMode] = useState(false);
-  const [ttsAudio, setTTSAudio] = useState(null);
-  const [choices, setChoices] = useState([]);
+  const [ttsAudio, setTTSAudio] = useState<string | null>(null);
+  const [choices, setChoices] = useState<Choice[]>([]);
   const [isGameStarted, setIsGameStarted] = useState(false);
   const [playerInput, setPlayerInput] = useState('');
   const [isWaitingForAI, setIsWaitingForAI] = useState(false);
-  const [fullMessageHistory, setFullMessageHistory] = useState([]);
-  const [displayedMessages, setDisplayedMessages] = useState([]);
+  const [fullMessageHistory, setFullMessageHistory] = useState<ChatMessage[]>([]);
+  const [displayedMessages, setDisplayedMessages] = useState<ChatMessage[]>([]);
   const [currentPage, setCurrentPage] = useState(1);
-  const [gameStates, setGameStates] = useState([]);
+  const [gameStates, setGameStates] = useState<GameState[]>([]);
   const [playerNotes, setPlayerNotes] = useState('');
 
-  const logsEndRef = useRef(null);
+  const logsEndRef = useRef<HTMLDivElement>(null);
 
-  const addLogEntry = useCallback((entry) => {
+  const addLogEntry = useCallback((entry: string) => {
     setLogEntries(prevEntries => {
       if (prevEntries.length > 0 && prevEntries[prevEntries.length - 1].text === entry) {
         // If the new entry matches the last entry, increment its repeat count
@@ -53,8 +55,8 @@ export const GameplayProvider = ({ children }) => {
         return updatedEntries;
       } else {
         // Otherwise, add a new entry with game time
-        return [...prevEntries, { 
-          text: entry, 
+        return [...prevEntries, {
+          text: entry,
           gameTime: gameTime,
           repeat: 0
         }];
@@ -62,14 +64,14 @@ export const GameplayProvider = ({ children }) => {
     });
   }, [gameTime]);
 
-  const changeLocation = useCallback((newLocation) => {
+  const changeLocation = useCallback((newLocation: GameLocation) => {
     setCurrentLocation(newLocation);
     addLogEntry(`Entered new location: ${newLocation.name}`);
   }, [addLogEntry]);
 
   // Note: flattenNestedGameStates has been moved to a web worker to prevent UI freezing
 
-  const saveCurrentGameState = useCallback(() => {
+  const saveCurrentGameState = useCallback((): GameState => {
     // Create a state object without the gameStates array
     return {
       playerStats,
@@ -91,10 +93,10 @@ export const GameplayProvider = ({ children }) => {
       // Add a version flag for backward compatibility
       stateVersion: 2
     };
-  }, [playerStats, playerTraits, visibleEntities, logEntries, gameplayText, currentLocation, 
+  }, [playerStats, playerTraits, visibleEntities, logEntries, gameplayText, currentLocation,
       gameTime, fullMessageHistory, characterData, choices, isGameStarted, playerNotes, currentPage]);
 
-  const loadGameState = useCallback((gameState, locations) => {
+  const loadGameState = useCallback((gameState: GameState, locations: GameLocation[]) => {
     try {
       // Restore all state
       setPlayerStats(gameState.playerStats);
@@ -107,7 +109,7 @@ export const GameplayProvider = ({ children }) => {
       setCharacterData(gameState.characterData);
       setChoices(gameState.choices);
       setIsGameStarted(gameState.isGameStarted);
-      
+
       // Load notes from the game state or from the latest game state if available
       if (gameState.playerNotes !== undefined) {
         setPlayerNotes(gameState.playerNotes);
@@ -135,7 +137,7 @@ export const GameplayProvider = ({ children }) => {
           setCurrentLocation(fullLocation);
         }
       }
-      
+
       return true;
     } catch (error) {
       console.error('Error loading game state:', error);
@@ -145,18 +147,18 @@ export const GameplayProvider = ({ children }) => {
     }
   }, [addLogEntry]);
 
-  const saveGame = useCallback(async (saveName, worldName) => {
+  const saveGame = useCallback(async (saveName: string, worldName: string) => {
     try {
       const gameState = saveCurrentGameState();
       gameState.worldName = worldName;
-      
+
       // Save the current gameStates array separately from the current state
       const saveObject = {
         currentState: gameState,
         stateHistory: gameStates,
         version: 2 // Add version for migration handling
       };
-      
+
       await saveToDB(saveName, saveObject);
       addLogEntry(`Game saved as "${saveName}"`);
       return true;
@@ -168,10 +170,11 @@ export const GameplayProvider = ({ children }) => {
     }
   }, [saveCurrentGameState, gameStates, addLogEntry]);
 
-  const loadGame = useCallback(async (saveName, locations) => {
+  const loadGame = useCallback(async (saveName: string, locations: GameLocation[]) => {
     try {
-      const savedData = await loadFromDB(saveName);
-      
+      // IndexedDB returns dynamically-shaped data; narrowed by the runtime checks below.
+      const savedData = await loadFromDB(saveName) as SaveObject | null;
+
       if (!savedData) {
         addLogEntry('No save data found');
         return false;
@@ -187,7 +190,7 @@ export const GameplayProvider = ({ children }) => {
           addLogEntry(`Game loaded from "${saveName}"`);
         }
         return success;
-      } 
+      }
       // Handle legacy format (version 1 or unversioned)
       else {
         try {
@@ -201,17 +204,17 @@ export const GameplayProvider = ({ children }) => {
             draggable: false,
             progress: undefined,
           });
-          
+
           // Use web worker to convert old save format to prevent UI freezing
-          const { convertedData, flattenedStates } = await convertSaveFile(savedData);
-          
+          const { convertedData, flattenedStates } = await convertSaveFile(savedData) as { convertedData: GameState; flattenedStates: GameState[] };
+
           // Close the loading toast
           toast.dismiss(loadingToastId);
-          
+
           // If we have flattened states, use them
           if (flattenedStates && flattenedStates.length > 0) {
             setGameStates(flattenedStates);
-            
+
             // Show toast message for successful conversion
             toast.success('Old save format converted to new format successfully', {
               position: "top-right",
@@ -221,10 +224,10 @@ export const GameplayProvider = ({ children }) => {
               pauseOnHover: true,
               draggable: true
             });
-            
+
             addLogEntry('Old save format converted to new format successfully');
           }
-          
+
           const success = loadGameState(convertedData, locations);
           if (success) {
             addLogEntry(`Game loaded from "${saveName}"`);
@@ -240,12 +243,12 @@ export const GameplayProvider = ({ children }) => {
             pauseOnHover: true,
             draggable: true
           });
-          
+
           addLogEntry('Failed to convert old save format');
-          
-          // Try to load the save anyway
+
+          // Try to load the save anyway (legacy shape, best-effort)
           try {
-            const success = loadGameState(savedData, locations);
+            const success = loadGameState(savedData as unknown as GameState, locations);
             if (success) {
               addLogEntry(`Game loaded from "${saveName}" (with conversion errors)`);
             }
@@ -333,6 +336,24 @@ export const GameplayProvider = ({ children }) => {
     saveCurrentGameState,
     loadGameState
   };
+
+  return value;
+}
+
+type GameplayContextValue = ReturnType<typeof useProvideGameplay>;
+
+const GameplayContext = createContext<GameplayContextValue | null>(null);
+
+export const useGameplay = () => {
+  const context = useContext(GameplayContext);
+  if (!context) {
+    throw new Error('useGameplay must be used within a GameplayProvider');
+  }
+  return context;
+};
+
+export const GameplayProvider = ({ children }: { children: ReactNode }) => {
+  const value = useProvideGameplay();
 
   return (
     <GameplayContext.Provider value={value}>
