@@ -1,13 +1,20 @@
-import React, { useCallback, useState  } from 'react';
+import { useCallback, useState, type ChangeEvent } from 'react';
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Upload, Box as LucideBox, Music } from "lucide-react";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import ModelViewer from '../views/ModelViewer';
 
-export const getModelType = (fileName) => {
+/** An uploaded media file, base64-encoded as a data URL. */
+interface UploadedMedia {
+  name: string;
+  type: string;
+  size: number;
+  data: string;
+}
+
+export const getModelType = (fileName: string) => {
   const extension = fileName.split('.').pop().toLowerCase();
   switch (extension) {
     case 'glb':
@@ -22,13 +29,17 @@ export const getModelType = (fileName) => {
   }
 };
 
-export const ImageUpload = ({ onChange, id, value }) => {
-  const handleImageChange = useCallback((e) => {
+export const ImageUpload = ({ onChange, id, value }: {
+  onChange: (value: string) => void;
+  id: string | number;
+  value?: string | null;
+}) => {
+  const handleImageChange = useCallback((e: ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files[0];
     if (file) {
       const reader = new FileReader();
       reader.onloadend = () => {
-        const base64String = reader.result;
+        const base64String = reader.result as string;
         onChange(base64String);
       };
       reader.readAsDataURL(file);
@@ -60,13 +71,17 @@ export const ImageUpload = ({ onChange, id, value }) => {
   );
 };
 
-export const SoundUpload = ({ onChange, id, value }) => {
-  const handleSoundChange = useCallback((e) => {
+export const SoundUpload = ({ onChange, id, value }: {
+  onChange: (value: UploadedMedia) => void;
+  id: string | number;
+  value?: { name?: string; data?: string } | null;
+}) => {
+  const handleSoundChange = useCallback((e: ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files[0];
     if (file) {
       const reader = new FileReader();
       reader.onloadend = () => {
-        const base64String = reader.result;
+        const base64String = reader.result as string;
         onChange({
           name: file.name,
           type: file.type,
@@ -106,15 +121,19 @@ export const SoundUpload = ({ onChange, id, value }) => {
   );
 };
 
-export const ModelUpload = ({ model, onModelChange, uniqueId }) => {
+export const ModelUpload = ({ model, onModelChange, uniqueId }: {
+  model?: { name?: string; type?: string; size?: number; data?: string } | null;
+  onModelChange: (model: UploadedMedia) => void;
+  uniqueId: string | number;
+}) => {
   const [isModelViewerOpen, setIsModelViewerOpen] = useState(false);
 
-  const handleModelChange = (e) => {
+  const handleModelChange = (e: ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files[0];
     if (file) {
       const reader = new FileReader();
       reader.onloadend = () => {
-        const base64String = reader.result;
+        const base64String = reader.result as string;
         onModelChange({
           name: file.name,
           type: file.type,

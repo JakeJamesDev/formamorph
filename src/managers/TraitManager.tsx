@@ -1,21 +1,22 @@
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { useGameData } from '@/contexts/GameDataContext';
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { Trash2 } from "lucide-react";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import type { Trait, StatChange } from '@/types';
 
-const TraitManager = ({ trait }) => {
+const TraitManager = ({ trait }: { trait: Trait }) => {
   const { updateTrait, stats } = useGameData();
-  const [editingTrait, setEditingTrait] = useState(trait);
+  const [editingTrait, setEditingTrait] = useState<Trait>(trait);
 
   useEffect(() => {
     setEditingTrait(trait);
   }, [trait]);
 
-  const handleChange = (field, value) => {
-    const updatedTrait = { ...editingTrait, [field]: value };
+  const handleChange = (field: string, value: unknown) => {
+    const updatedTrait = { ...editingTrait, [field]: value } as Trait;
     setEditingTrait(updatedTrait);
     updateTrait(updatedTrait);
   };
@@ -27,20 +28,20 @@ const TraitManager = ({ trait }) => {
         ...editingTrait.statChanges,
         { statId: '', value: 0, type: 'min' }
       ]
-    };
+    } as Trait;
     setEditingTrait(updatedTrait);
     updateTrait(updatedTrait);
   };
 
-  const handleStatChangeUpdate = (index, field, value) => {
+  const handleStatChangeUpdate = (index: number, field: string, value: string | number) => {
     const updatedStatChanges = [...editingTrait.statChanges];
-    updatedStatChanges[index] = { ...updatedStatChanges[index], [field]: value };
+    updatedStatChanges[index] = { ...updatedStatChanges[index], [field]: value } as StatChange;
     const updatedTrait = { ...editingTrait, statChanges: updatedStatChanges };
     setEditingTrait(updatedTrait);
     updateTrait(updatedTrait);
   };
 
-  const handleStatChangeRemove = (index) => {
+  const handleStatChangeRemove = (index: number) => {
     const updatedStatChanges = [...editingTrait.statChanges];
     updatedStatChanges.splice(index, 1);
     const updatedTrait = { ...editingTrait, statChanges: updatedStatChanges };

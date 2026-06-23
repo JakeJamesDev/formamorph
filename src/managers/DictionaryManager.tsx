@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, type ChangeEvent, type KeyboardEvent } from 'react';
 import { useGameData } from '@/contexts/GameDataContext';
 import {
   DndContext,
@@ -7,6 +7,7 @@ import {
   KeyboardSensor,
   useSensor,
   useSensors,
+  type DragEndEvent,
 } from '@dnd-kit/core';
 import {
   SortableContext,
@@ -19,8 +20,9 @@ import { CSS } from '@dnd-kit/utilities';
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { X } from "lucide-react";
+import type { DictionaryEntry } from '@/types';
 
-function SortableChip({ kw, onRemove }) {
+function SortableChip({ kw, onRemove }: { kw: string; onRemove: (kw: string) => void }) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } =
     useSortable({ id: kw });
   const style = {
@@ -52,21 +54,21 @@ function SortableChip({ kw, onRemove }) {
   );
 }
 
-function KeywordChips({ keywords, onChange }) {
+function KeywordChips({ keywords, onChange }: { keywords: string[]; onChange: (keywords: string[]) => void }) {
   const [inputValue, setInputValue] = useState('');
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 5 } }),
     useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates }),
   );
 
-  const addKeyword = (raw) => {
+  const addKeyword = (raw: string) => {
     const kw = raw.trim();
     if (kw && !keywords.includes(kw)) {
       onChange([...keywords, kw]);
     }
   };
 
-  const handleKeyDown = (e) => {
+  const handleKeyDown = (e: KeyboardEvent<HTMLInputElement>) => {
     if (e.key === ',' || e.key === 'Enter') {
       e.preventDefault();
       addKeyword(inputValue);
@@ -76,7 +78,7 @@ function KeywordChips({ keywords, onChange }) {
     }
   };
 
-  const handleChange = (e) => {
+  const handleChange = (e: ChangeEvent<HTMLInputElement>) => {
     const v = e.target.value;
     // Handle pasted text that contains commas (keydown only catches typed commas)
     if (v.includes(',')) {
@@ -92,11 +94,11 @@ function KeywordChips({ keywords, onChange }) {
     }
   };
 
-  const handleDragEnd = (event) => {
+  const handleDragEnd = (event: DragEndEvent) => {
     const { active, over } = event;
     if (!over || active.id === over.id) return;
-    const oldIndex = keywords.indexOf(active.id);
-    const newIndex = keywords.indexOf(over.id);
+    const oldIndex = keywords.indexOf(String(active.id));
+    const newIndex = keywords.indexOf(String(over.id));
     if (oldIndex === -1 || newIndex === -1) return;
     onChange(arrayMove(keywords, oldIndex, newIndex));
   };
@@ -136,22 +138,22 @@ function KeywordChips({ keywords, onChange }) {
   );
 }
 
-const DictionaryManager = ({ entry }) => {
+const DictionaryManager = ({ entry }: { entry: DictionaryEntry }) => {
   const { updateDictionaryEntry } = useGameData();
-  const [editingEntry, setEditingEntry] = useState(entry);
+  const [editingEntry, setEditingEntry] = useState<DictionaryEntry>(entry);
 
   useEffect(() => {
     setEditingEntry(entry);
   }, [entry]);
 
-  const handleChange = (field, value) => {
-    const updated = { ...editingEntry, [field]: value };
+  const handleChange = (field: string, value: unknown) => {
+    const updated = { ...editingEntry, [field]: value } as DictionaryEntry;
     setEditingEntry(updated);
     updateDictionaryEntry(updated);
   };
 
   // The key is a comma-separated string (v1.2 format); name mirrors it for the list display.
-  const handleKeyChange = (arr) => {
+  const handleKeyChange = (arr: string[]) => {
     const key = arr.join(', ');
     const updated = { ...editingEntry, key, name: key };
     setEditingEntry(updated);

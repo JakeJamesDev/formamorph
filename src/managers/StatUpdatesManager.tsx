@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { useGameData } from '@/contexts/GameDataContext';
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -6,22 +6,23 @@ import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Plus, X } from "lucide-react";
+import type { StatUpdate, ChatMessage } from '@/types';
 
-const StatUpdatesManager = ({ statUpdate }) => {
+const StatUpdatesManager = ({ statUpdate }: { statUpdate: StatUpdate }) => {
   const { stats, updateStatUpdate } = useGameData();
-  const [editingStatUpdate, setEditingStatUpdate] = useState(statUpdate);
+  const [editingStatUpdate, setEditingStatUpdate] = useState<StatUpdate>(statUpdate);
 
   useEffect(() => {
     setEditingStatUpdate(statUpdate);
   }, [statUpdate]);
 
-  const handleChange = (field, value) => {
-    const updatedStatUpdate = { ...editingStatUpdate, [field]: value };
+  const handleChange = (field: string, value: unknown) => {
+    const updatedStatUpdate = { ...editingStatUpdate, [field]: value } as StatUpdate;
     setEditingStatUpdate(updatedStatUpdate);
     updateStatUpdate(updatedStatUpdate);
   };
 
-  const handleStatToggle = (statName) => {
+  const handleStatToggle = (statName: string) => {
     const updatedStats = editingStatUpdate.stats.includes(statName)
       ? editingStatUpdate.stats.filter(s => s !== statName)
       : [...editingStatUpdate.stats, statName];
@@ -30,17 +31,17 @@ const StatUpdatesManager = ({ statUpdate }) => {
 
   const handleAddMessage = () => {
     const newMessageRole = (editingStatUpdate.messageHistory?.length || 0) % 2 === 0 ? 'user' : 'assistant';
-    const newMessage = { role: newMessageRole, content: '' };
+    const newMessage: ChatMessage = { role: newMessageRole, content: '' };
     handleChange('messageHistory', [...(editingStatUpdate.messageHistory || []), newMessage]);
   };
 
-  const handleUpdateMessage = (index, content) => {
+  const handleUpdateMessage = (index: number, content: string) => {
     const updatedMessages = [...(editingStatUpdate.messageHistory || [])];
     updatedMessages[index] = { ...updatedMessages[index], content };
     handleChange('messageHistory', updatedMessages);
   };
 
-  const handleRemoveMessage = (index) => {
+  const handleRemoveMessage = (index: number) => {
     const updatedMessages = (editingStatUpdate.messageHistory || []).filter((_, i) => i !== index);
     handleChange('messageHistory', updatedMessages);
   };
@@ -82,7 +83,7 @@ const StatUpdatesManager = ({ statUpdate }) => {
           ))}
         </ScrollArea>
       </div>
-      
+
       <div className="space-y-2">
         <Label>Message History</Label>
         <Button onClick={handleAddMessage} size="sm">

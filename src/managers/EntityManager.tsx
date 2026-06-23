@@ -1,20 +1,21 @@
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { useGameData } from '../contexts/GameDataContext';
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { ImageUpload, SoundUpload, ModelUpload } from '../lib/UtilityComponents';
+import type { Entity } from '@/types';
 
-const EntityManager = ({ entity }) => {
+const EntityManager = ({ entity }: { entity: Entity }) => {
   const { updateEntity } = useGameData();
-  const [editingEntity, setEditingEntity] = useState(entity);
+  const [editingEntity, setEditingEntity] = useState<Entity>(entity);
 
   useEffect(() => {
     setEditingEntity(entity);
   }, [entity]);
 
-  const handleChange = (field, value) => {
-    const updatedEntity = { ...editingEntity, [field]: value };
+  const handleChange = (field: string, value: unknown) => {
+    const updatedEntity = { ...editingEntity, [field]: value } as Entity;
     setEditingEntity(updatedEntity);
     updateEntity(updatedEntity);
   };

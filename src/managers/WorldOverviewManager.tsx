@@ -1,4 +1,4 @@
-import React, { useRef, useEffect, useState } from 'react';
+import { useRef, useEffect, useState, type ChangeEvent, type KeyboardEvent } from 'react';
 import { useGameData } from '@/contexts/GameDataContext';
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
@@ -10,10 +10,10 @@ import { toast } from 'react-toastify';
 
 const WorldOverviewManager = () => {
   const { worldOverview, updateWorldOverview } = useGameData();
-  const fileInputRef = useRef(null);
-  const bgmInputRef = useRef(null);
-  const thumbnailRef = useRef(null);
-  const vrmInputRef = useRef(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const bgmInputRef = useRef<HTMLInputElement>(null);
+  const thumbnailRef = useRef<HTMLImageElement>(null);
+  const vrmInputRef = useRef<HTMLInputElement>(null);
   const [tagInput, setTagInput] = useState('');
 
   useEffect(() => {
@@ -22,7 +22,7 @@ const WorldOverviewManager = () => {
     }
   }, [worldOverview.thumbnail]);
 
-  const handleThumbnailChange = (e) => {
+  const handleThumbnailChange = (e: ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files[0];
     if (file) {
       // Check file type
@@ -32,10 +32,10 @@ const WorldOverviewManager = () => {
       }
 
       const reader = new FileReader();
-      
+
       reader.onload = (e) => {
         try {
-          const base64String = e.target.result;
+          const base64String = e.target.result as string;
           // Store the base64 string in the world overview
           updateWorldOverview({ thumbnail: base64String });
         } catch (error) {
@@ -57,7 +57,7 @@ const WorldOverviewManager = () => {
     fileInputRef.current?.click();
   };
 
-  const handleBGMChange = (e) => {
+  const handleBGMChange = (e: ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files[0];
     if (file) {
       // Check file type
@@ -67,10 +67,10 @@ const WorldOverviewManager = () => {
       }
 
       const reader = new FileReader();
-      
+
       reader.onload = (e) => {
         try {
-          const base64String = e.target.result;
+          const base64String = e.target.result as string;
           updateWorldOverview({ bgm: base64String });
         } catch (error) {
           console.error('Error processing audio:', error);
@@ -91,14 +91,14 @@ const WorldOverviewManager = () => {
     bgmInputRef.current?.click();
   };
 
-  const handleVRMChange = (e) => {
+  const handleVRMChange = (e: ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files[0];
     if (file) {
       const reader = new FileReader();
       reader.onload = (e) => {
         try {
           updateWorldOverview({
-            customPlayerVRM: { data: e.target.result, type: file.type || 'model/vrm' },
+            customPlayerVRM: { data: e.target.result as string, type: file.type || 'model/vrm' },
           });
         } catch (error) {
           console.error('Error processing VRM:', error);
@@ -127,12 +127,12 @@ const WorldOverviewManager = () => {
     }
   };
 
-  const handleRemoveTag = (tagToRemove) => {
+  const handleRemoveTag = (tagToRemove: string) => {
     const newTags = (worldOverview.tags || []).filter(tag => tag !== tagToRemove);
     updateWorldOverview({ tags: newTags });
   };
 
-  const handleTagKeyDown = (e) => {
+  const handleTagKeyDown = (e: KeyboardEvent<HTMLInputElement>) => {
     if (e.key === 'Enter') {
       e.preventDefault();
       handleAddTag();
@@ -173,7 +173,7 @@ const WorldOverviewManager = () => {
         <Checkbox
           id="use3DModel"
           checked={worldOverview.use3DModel}
-          onCheckedChange={(checked) => updateWorldOverview({ use3DModel: checked })}
+          onCheckedChange={(checked) => updateWorldOverview({ use3DModel: checked === true })}
         />
         <Label htmlFor="use3DModel">Enable 3D Character Model (also allow the player to customize it)</Label>
       </div>
@@ -187,7 +187,7 @@ const WorldOverviewManager = () => {
           onChange={handleThumbnailChange}
           className="hidden"
         />
-        <div 
+        <div
           onClick={handleThumbnailClick}
           className="w-[350px] h-[262.5px] relative bg-gray-100 rounded-md cursor-pointer hover:bg-gray-200 transition-colors mx-auto"
         >
@@ -216,8 +216,8 @@ const WorldOverviewManager = () => {
           className="hidden"
         />
         <div className="flex gap-2">
-          <Button 
-            variant="outline" 
+          <Button
+            variant="outline"
             onClick={handleBGMClick}
             className="flex-1"
           >
@@ -283,15 +283,15 @@ const WorldOverviewManager = () => {
         </div>
         <div className="flex flex-wrap gap-2 mt-2">
           {(worldOverview.tags || []).map((tag, index) => (
-            <div 
-              key={index} 
+            <div
+              key={index}
               className="bg-secondary text-secondary-foreground px-3 py-1 rounded-full flex items-center gap-1"
             >
               <span>{tag}</span>
-              <Button 
-                variant="ghost" 
-                size="icon" 
-                className="h-4 w-4 rounded-full" 
+              <Button
+                variant="ghost"
+                size="icon"
+                className="h-4 w-4 rounded-full"
                 onClick={() => handleRemoveTag(tag)}
               >
                 <X className="h-3 w-3" />
@@ -300,7 +300,7 @@ const WorldOverviewManager = () => {
           ))}
         </div>
       </div>
-      
+
       <div className="space-y-2">
         <Label htmlFor="systemPrompt">System Prompt Addition</Label>
         <Textarea
@@ -311,7 +311,7 @@ const WorldOverviewManager = () => {
           className="min-h-[150px]"
         />
       </div>
-      
+
     </div>
   );
 };
