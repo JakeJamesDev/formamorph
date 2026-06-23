@@ -6,7 +6,7 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { ConfirmDialog } from '../ConfirmDialog';
-import { defaultSystemPrompt, defaultChoicesPrompt, defaultStatUpdatesPrompt } from '../game/GamePrompts';
+import { defaultSystemPrompt, defaultChoicesPrompt, defaultStatUpdatesPrompt, defaultLocationChangePrompt } from '../game/GamePrompts';
 
 export const SettingsModal = ({ isOpen, onOpenChange, onSave }) => {
   const {
@@ -30,6 +30,8 @@ export const SettingsModal = ({ isOpen, onOpenChange, onSave }) => {
     setChoicesPrompt,
     statUpdatesPrompt,
     setStatUpdatesPrompt,
+    locationChangePromptText,
+    setLocationChangePromptText,
     shortform,
     setShortform,
     autoscroll,
@@ -47,6 +49,7 @@ export const SettingsModal = ({ isOpen, onOpenChange, onSave }) => {
     setSystemPrompt(defaultSystemPrompt);
     setChoicesPrompt(defaultChoicesPrompt);
     setStatUpdatesPrompt(defaultStatUpdatesPrompt);
+    setLocationChangePromptText(defaultLocationChangePrompt);
   };
 
   return (
@@ -228,6 +231,21 @@ export const SettingsModal = ({ isOpen, onOpenChange, onSave }) => {
                 <p className="text-xs text-gray-500 mt-1">Write 'DISABLED' to disable</p>
               </div>
             </div>
+              <div className="grid grid-cols-1 sm:grid-cols-4 items-center gap-4">
+                <label htmlFor="locationChangePrompt" className="text-left sm:text-right">
+                  Location Change Prompt
+                </label>
+                <div className="col-span-3">
+                  <Textarea
+                    id="locationChangePrompt"
+                    value={locationChangePromptText}
+                    onChange={(e) => setLocationChangePromptText(e.target.value)}
+                    className="w-full"
+                    rows={6}
+                  />
+                  <p className="text-xs text-gray-500 mt-1">Lets the AI move the player between locations. Write DISABLED to turn off.</p>
+                </div>
+              </div>
               <div className="flex justify-end">
                 <ConfirmDialog
                   title="Reset AI Prompts"

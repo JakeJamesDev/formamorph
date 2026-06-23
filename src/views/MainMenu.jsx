@@ -7,7 +7,7 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import {ConfirmDialog} from "@/components/ConfirmDialog";
 import {RadioGroup,RadioGroupItem } from"@/components/ui/radio-group";
 import {Label} from "@/components/ui/label"
-import {FilePlus2, DoorOpen, Pencil, Github, AlertTriangle, Code, User, LogIn, LogOut, Key, Upload, Search, Globe } from "lucide-react";
+import {FilePlus2, DoorOpen, Pencil, Github, AlertTriangle, Code, User, LogIn, LogOut, Key, Upload, Search, Globe, EyeOff, RotateCcw } from "lucide-react";
 import {
   Dialog,
   DialogContent,
@@ -80,7 +80,17 @@ const MainMenu = ({ onStartGame, onOpenWorldEditor }) => {
   const [remoteWorldToDelete, setRemoteWorldToDelete] = useState(null);
   const [selectedRemoteWorld, setSelectedRemoteWorld] = useState(null);
   const [showRemoteWorldDetailsModal, setShowRemoteWorldDetailsModal] = useState(false);
-  
+
+  // Discover hide preferences (client-side, persisted in localStorage)
+  const [hiddenWorldIds, setHiddenWorldIds] = useState(() => {
+    try { return JSON.parse(localStorage.getItem('FORMAMORPH_hiddenWorldIds') || '[]'); }
+    catch { return []; }
+  });
+  const [hiddenTags, setHiddenTags] = useState(() => {
+    try { return JSON.parse(localStorage.getItem('FORMAMORPH_hiddenTags') || '[]'); }
+    catch { return []; }
+  });
+
   // Manage users dialog states
   const [showManageUsersDialog, setShowManageUsersDialog] = useState(false);
   const [users, setUsers] = useState([]);
@@ -624,6 +634,33 @@ const MainMenu = ({ onStartGame, onOpenWorldEditor }) => {
     }
   };
   
+  // Persist discover hide preferences
+  useEffect(() => {
+    localStorage.setItem('FORMAMORPH_hiddenWorldIds', JSON.stringify(hiddenWorldIds));
+  }, [hiddenWorldIds]);
+  useEffect(() => {
+    localStorage.setItem('FORMAMORPH_hiddenTags', JSON.stringify(hiddenTags));
+  }, [hiddenTags]);
+
+  const hideRemoteWorld = (worldId) => {
+    setHiddenWorldIds((prev) => (prev.includes(worldId) ? prev : [...prev, worldId]));
+  };
+  const hideRemoteTag = (tag) => {
+    setHiddenTags((prev) => (prev.includes(tag) ? prev : [...prev, tag]));
+  };
+  const resetHiddenWorlds = () => {
+    setHiddenWorldIds([]);
+    setHiddenTags([]);
+  };
+
+  // Worlds left after applying hide-by-id and hide-by-tag filters
+  const visibleRemoteWorlds = remoteWorlds.filter((world) => {
+    const id = world._id || world.id;
+    if (hiddenWorldIds.includes(id)) return false;
+    if ((world.tags || []).some((t) => hiddenTags.includes(t))) return false;
+    return true;
+  });
+
   // Fetch users from the server
   const fetchUsers = async () => {
     if (!showManageUsersDialog) return;
@@ -1409,6 +1446,19 @@ const MainMenu = ({ onStartGame, onOpenWorldEditor }) => {
               </div>
             </div>
             
+            {/* Hidden worlds control */}
+            {(hiddenWorldIds.length > 0 || hiddenTags.length > 0) && (
+              <div className="flex items-center justify-between text-xs text-gray-500 mb-4">
+                <span>
+                  Hidden: {hiddenWorldIds.length} world(s)
+                  {hiddenTags.length > 0 && `, tags: ${hiddenTags.join(', ')}`}
+                </span>
+                <Button variant="ghost" size="sm" onClick={resetHiddenWorlds}>
+                  <RotateCcw className="h-3 w-3 mr-1" /> Reset hidden
+                </Button>
+              </div>
+            )}
+
             {/* World grid */}
             <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4 mb-6">
               {isLoadingRemoteWorlds ? (
@@ -1420,14 +1470,14 @@ const MainMenu = ({ onStartGame, onOpenWorldEditor }) => {
                     </div>
                   </div>
                 ))
-              ) : remoteWorlds.length === 0 ? (
+              ) : visibleRemoteWorlds.length === 0 ? (
                 <div className="col-span-2 text-center py-12 text-gray-500">
                   {searchQuery ? 
                     "No worlds found matching your criteria." : 
                     "No worlds available. Be the first to publish one!"}
                 </div>
               ) : (
-                remoteWorlds.map((world) => {
+                visibleRemoteWorlds.map((world) => {
                   // Get the world ID (server uses _id)
                   const worldId = world._id || world.id;
                   
@@ -1444,6 +1494,13 @@ const MainMenu = ({ onStartGame, onOpenWorldEditor }) => {
                       className="relative rounded-lg overflow-hidden border border-gray-200 dark:border-gray-700 cursor-pointer"
                       onClick={() => handleViewRemoteWorldDetails(world)}
                     >
+                      <button
+                        onClick={(e) => { e.stopPropagation(); hideRemoteWorld(worldId); }}
+                        className="absolute top-1 right-1 z-10 p-1 rounded bg-black/50 text-white hover:bg-black/70"
+                        title="Hide this world"
+                      >
+                        <EyeOff className="h-4 w-4" />
+                      </button>
                       <div className="h-32 bg-gray-100 dark:bg-gray-800">
                         {world.thumbnail_file ? (
                           <img
@@ -1480,9 +1537,11 @@ const MainMenu = ({ onStartGame, onOpenWorldEditor }) => {
                         <div className="flex flex-wrap gap-1 mb-2">
                           {world.tags && world.tags.length > 0 ? (
                             world.tags.map((tag, index) => (
-                              <span 
-                                key={index} 
-                                className="px-1.5 py-0.5 bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-300 text-xs rounded-full"
+                              <span
+                                key={index}
+                                onClick={(e) => { e.stopPropagation(); hideRemoteTag(tag); }}
+                                title={`Hide all worlds tagged "${tag}"`}
+                                className="px-1.5 py-0.5 bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-300 text-xs rounded-full cursor-pointer hover:line-through"
                               >
                                 {tag}
                               </span>

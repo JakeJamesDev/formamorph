@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
-import { defaultSystemPrompt, defaultChoicesPrompt, defaultStatUpdatesPrompt } from '../components/game/GamePrompts.js';
+import { defaultSystemPrompt, defaultChoicesPrompt, defaultStatUpdatesPrompt, defaultLocationChangePrompt } from '../components/game/GamePrompts.js';
 
 const APP_ID = 'FORMAMORPH';
 export const DEFAULT_ENDPOINT = 'https://mistral.lyonade.net/v1/chat/completions';
@@ -57,7 +57,7 @@ export const SettingsProvider = ({ children }) => {
 
   const [aiMessageLimit, setAiMessageLimit] = useState(() => {
     const saved = localStorage.getItem(`${APP_ID}_aiMessageLimit`);
-    return saved ? parseInt(saved) : (parseInt(import.meta.env.VITE_DEFAULT_AI_MESSAGE_LIMIT) || 2000);
+    return saved ? parseInt(saved) : (parseInt(import.meta.env.VITE_DEFAULT_AI_MESSAGE_LIMIT) || 3900);
   });
 
   const [systemPrompt, setSystemPrompt] = useState(() => {
@@ -73,6 +73,11 @@ export const SettingsProvider = ({ children }) => {
   const [statUpdatesPrompt, setStatUpdatesPrompt] = useState(() => {
     const saved = localStorage.getItem(`${APP_ID}_statUpdatesPrompt2`);
     return saved ? saved : defaultStatUpdatesPrompt;
+  });
+
+  const [locationChangePromptText, setLocationChangePromptText] = useState(() => {
+    const saved = localStorage.getItem(`${APP_ID}_locationChangePrompt`);
+    return saved ? saved : defaultLocationChangePrompt;
   });
 
   // Save settings to localStorage whenever they change
@@ -124,6 +129,10 @@ export const SettingsProvider = ({ children }) => {
     localStorage.setItem(`${APP_ID}_statUpdatesPrompt2`, statUpdatesPrompt);
   }, [statUpdatesPrompt]);
 
+  useEffect(() => {
+    localStorage.setItem(`${APP_ID}_locationChangePrompt`, locationChangePromptText);
+  }, [locationChangePromptText]);
+
   const value = {
     bgmEnabled,
     setBgmEnabled,
@@ -148,7 +157,9 @@ export const SettingsProvider = ({ children }) => {
     choicesPrompt,
     setChoicesPrompt,
     statUpdatesPrompt,
-    setStatUpdatesPrompt
+    setStatUpdatesPrompt,
+    locationChangePromptText,
+    setLocationChangePromptText
   };
 
   return (

@@ -4,7 +4,9 @@ import { useSettings, DEFAULT_ENDPOINT } from "@/contexts/SettingsContext";
 import { useGameplay, GameplayProvider } from "@/contexts/GameplayContext";
 import { processStatCode } from "@/contexts/GameplayContextUtils";
 import { Button } from "@/components/ui/button";
-import { Menu, Music } from "lucide-react";
+import { Menu, Music, SquarePen, Database } from "lucide-react";
+import { Dialog, DialogContent } from "@/components/ui/dialog";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { ToastContainer, toast } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
 import TTSModal from "../components/game/TTSModal";
@@ -12,6 +14,8 @@ import { EntityModal } from "../components/modals/EntityModal";
 import { LocationModal } from "../components/modals/LocationModal";
 import { SettingsModal } from "../components/modals/SettingsModal";
 import { MenuModal } from "../components/modals/MenuModal";
+import WorldEditor from "./WorldEditor";
+import { estimateHistoryChars } from "../lib/memoryUtils";
 import {
   LeftPanel,
   MiddlePanel,
@@ -60,6 +64,7 @@ const GameViewer = ({
     systemPrompt,
     choicesPrompt,
     statUpdatesPrompt,
+    locationChangePromptText,
   } = useSettings();
 
   const {
@@ -163,6 +168,9 @@ const GameViewer = ({
   const [ambientSound, setAmbientSound] = useState(null);
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
+  const [isEditingWorld, setIsEditingWorld] = useState(false);
+  const [lastPromptChars, setLastPromptChars] = useState(0);
+  const [suggestedLocation, setSuggestedLocation] = useState(null);
   const [showPotatoPCDialog, setShowPotatoPCDialog] = useState(false);
   const [isLocationModalOpen, setIsLocationModalOpen] = useState(false);
 
@@ -502,6 +510,7 @@ ${playerNotes || "No notes available"}
 
     try {
       setChoices([]);
+      setSuggestedLocation(null);
 
       // Create message array for game text request
       const gameTextMessages = [
@@ -511,6 +520,9 @@ ${playerNotes || "No notes available"}
 
       // Add user message to history after getting trimmed history
       addMessageToHistory("user", action);
+
+      // Track the assembled system-prompt size for the memory-usage breakdown
+      setLastPromptChars(updatedPrompt.length);
 
       // Get game text first since choices and stat updates depend on it
       const gameTextResponse = await makeAIRequest(
@@ -585,11 +597,43 @@ ${playerNotes || "No notes available"}
         );
       }
 
-      // Parse choices (line-separated)
+      // Ask the AI whether the player should move to a different location (v1.2.0)
+      if (locationChangePromptText && locationChangePromptText !== "DISABLED") {
+        const locationList = locations.map((loc) => loc.name).join("\n");
+        const updatedLocationPrompt = locationChangePromptText
+          .replace("<WORLD DESCRIPTION>", worldOverview.systemPrompt || "")
+          .replace("<LOCATION JSON DATA>", locationDataString)
+          .replace("<LOCATION LIST>", locationList);
+
+        const locationResponse = await makeAIRequest(
+          updatedLocationPrompt,
+          [{ role: "user", content: `Game events: ${gameTextResponse}` }],
+          "locationChange",
+        );
+
+        const suggested = (locationResponse || "").trim();
+        if (suggested && suggested.toUpperCase() !== "NONE") {
+          const lower = suggested.toLowerCase();
+          // Exact name match first, then a lenient "name appears in response" match
+          const target =
+            locations.find((loc) => loc.name.toLowerCase() === lower) ||
+            locations.find(
+              (loc) => loc.name && lower.includes(loc.name.toLowerCase()),
+            );
+          if (target && target.id !== currentLocation?.id) {
+            setSuggestedLocation(target);
+          }
+        }
+      }
+
+      // Parse choices (line-separated), hard-capped to 6 to stop the AI over-producing
       const choicesList =
         choicesPrompt === "DISABLED"
           ? []
-          : choicesResponse.split("\n").filter((choice) => choice.trim());
+          : choicesResponse
+              .split("\n")
+              .filter((choice) => choice.trim())
+              .slice(0, 6);
       setChoices(choicesList);
 
       // Update visible entities based on game text
@@ -881,14 +925,17 @@ ${playerNotes || "No notes available"}
       // Reset any partial UI updates
       setChoices([]);
 
-      // Remove the last assistant message if it was being created
+      // Drop the aborted turn (partial assistant + its user action) so history stays paired.
+      // A leftover unpaired user message corrupts getTrimmedMessageHistory's pair-walking.
       setFullMessageHistory((prev) => {
-        // If the last message is from the assistant and was being created during this request
-        if (prev.length > 0 && prev[prev.length - 1].role === "assistant") {
-          // Remove it by returning all messages except the last one
-          return prev.slice(0, -1);
+        let next = [...prev];
+        if (next.length > 0 && next[next.length - 1].role === "assistant") {
+          next = next.slice(0, -1);
         }
-        return prev;
+        if (next.length > 0 && next[next.length - 1].role === "user") {
+          next = next.slice(0, -1);
+        }
+        return next;
       });
 
       // Add log entry
@@ -993,7 +1040,8 @@ ${playerNotes || "No notes available"}
                 const choicesList = content
                   .split("\n")
                   .map((line) => line.trim())
-                  .filter((line) => line.length > 0);
+                  .filter((line) => line.length > 0)
+                  .slice(0, 6);
                 if (choicesList.length > 0) {
                   setChoices(choicesList);
                 }
@@ -1159,8 +1207,12 @@ ${playerNotes || "No notes available"}
         }
       });
 
+      // Prefer locations flagged as starting points; fall back to any location.
+      const startingLocations = locations.filter((loc) => loc.isStarting);
+      const pickFrom =
+        startingLocations.length > 0 ? startingLocations : locations;
       const randomLocation =
-        locations[Math.floor(Math.random() * locations.length)];
+        pickFrom[Math.floor(Math.random() * pickFrom.length)];
       changeLocation(randomLocation);
       addLogEntry(`Starting in location: ${randomLocation.name}`);
     }
@@ -1233,6 +1285,82 @@ ${playerNotes || "No notes available"}
     }
   };
 
+  // Memory usage bar (rendered at the top of the center panel). Database icon + full-width
+  // bar (green <50% / yellow >=50% / red >=90%); click the icon for the usage breakdown.
+  const memoryBar = (() => {
+    const limit = aiMessageLimit || 1;
+    const promptChars = lastPromptChars;
+    const historyChars = estimateHistoryChars(fullMessageHistory);
+    const outputChars = maxTokens;
+    const promptPct = (promptChars / limit) * 100;
+    const historyPct = (historyChars / limit) * 100;
+    const outputPct = (outputChars / limit) * 100;
+    const usedPct = promptPct + historyPct + outputPct;
+    const availablePct = Math.max(0, 100 - usedPct);
+    const fillPct = Math.min(100, usedPct);
+    const barColor =
+      usedPct >= 90
+        ? "bg-red-500"
+        : usedPct >= 50
+          ? "bg-yellow-500"
+          : "bg-green-500";
+    const trimmed = getTrimmedMessageHistory();
+    return (
+      <div className="flex items-center gap-2 mb-1">
+        <Popover>
+          <PopoverTrigger asChild>
+            <button
+              className="text-muted-foreground hover:text-foreground"
+              title="Memory usage"
+            >
+              <Database className="h-4 w-4" />
+            </button>
+          </PopoverTrigger>
+          <PopoverContent align="start" className="w-56 text-xs space-y-1">
+            <div className="font-semibold">Memory Usage Breakdown:</div>
+            <div className="flex justify-between"><span>Prompt:</span><span>{promptPct.toFixed(1)}%</span></div>
+            <div className="flex justify-between"><span>History:</span><span>{historyPct.toFixed(1)}%</span></div>
+            <div className="flex justify-between"><span>Output Tokens:</span><span>{outputPct.toFixed(1)}%</span></div>
+            <div className="flex justify-between"><span>Messages kept:</span><span>{trimmed.length} / {fullMessageHistory.length}</span></div>
+            <div className="flex justify-between font-medium"><span>Available:</span><span>{availablePct.toFixed(1)}%</span></div>
+          </PopoverContent>
+        </Popover>
+        <div className="flex-grow h-2 rounded-full bg-muted/70 overflow-hidden">
+          <div
+            className={`h-full ${barColor} transition-all`}
+            style={{ width: `${fillPct}%` }}
+          />
+        </div>
+      </div>
+    );
+  })();
+
+  // AI location-change suggestion (rendered at the bottom of the center panel, above pagination).
+  const locationSuggestion = suggestedLocation ? (
+    <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 z-30 flex items-center justify-center gap-2 whitespace-nowrap rounded-md border bg-background px-3 py-2 text-sm shadow-lg">
+      <span>
+        Move to <b>{suggestedLocation.name}</b>?
+      </span>
+      <Button
+        size="sm"
+        onClick={() => {
+          changeLocation(suggestedLocation);
+          addLogEntry(`Moved to location: ${suggestedLocation.name}`);
+          setSuggestedLocation(null);
+        }}
+      >
+        Go
+      </Button>
+      <Button
+        size="sm"
+        variant="ghost"
+        onClick={() => setSuggestedLocation(null)}
+      >
+        Dismiss
+      </Button>
+    </div>
+  ) : null;
+
   return (
     <div
       className="flex h-screen p-4 text-sm md:text-base bg-cover bg-center overflow-hidden"
@@ -1262,6 +1390,8 @@ ${playerNotes || "No notes available"}
         abortGeneration={abortGeneration}
         disabled={isWaitingForAI}
         onTTSClick={() => setIsTTSModalOpen(true)}
+        memoryBar={memoryBar}
+        locationSuggestion={locationSuggestion}
       />
 
       <RightPanel
@@ -1283,8 +1413,15 @@ ${playerNotes || "No notes available"}
         </Button>
       </div>
 
-      {/* Menu button */}
-      <div className="absolute top-2 right-2 flex">
+      {/* Edit-world + Menu buttons */}
+      <div className="absolute top-2 right-2 flex gap-2">
+        <Button
+          onClick={() => setIsEditingWorld(true)}
+          className="flex items-center justify-center rounded-full w-10 h-10 p-0"
+          title="Edit World"
+        >
+          <SquarePen className="h-5 w-5" />
+        </Button>
         <Button
           onClick={() => setIsMenuOpen(true)}
           className="flex items-center justify-center rounded-full w-10 h-10 p-0"
@@ -1325,6 +1462,13 @@ ${playerNotes || "No notes available"}
         worldOverview={worldOverview}
         onExitToMenu={onExitToMenu}
       />
+
+      {/* Edit-world popup: non-fullscreen; keeps GameViewer + live session mounted */}
+      <Dialog open={isEditingWorld} onOpenChange={setIsEditingWorld}>
+        <DialogContent className="max-w-[95vw] w-[95vw] h-[90vh] p-0 overflow-hidden">
+          <WorldEditor embedded onClose={() => setIsEditingWorld(false)} />
+        </DialogContent>
+      </Dialog>
 
       {/* Potato PC Dialog */}
       <ConfirmDialog

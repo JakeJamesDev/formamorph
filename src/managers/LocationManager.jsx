@@ -31,6 +31,16 @@ const LocationManager = ({ location }) => {
           onChange={(e) => handleChange('name', e.target.value)}
         />
       </div>
+      <div className="flex items-center space-x-2">
+        <Checkbox
+          id={`location-starting-${editingLocation.id}`}
+          checked={!!editingLocation.isStarting}
+          onCheckedChange={(checked) => handleChange('isStarting', !!checked)}
+        />
+        <Label htmlFor={`location-starting-${editingLocation.id}`}>
+          Starting location (new games may begin here)
+        </Label>
+      </div>
       <div className="space-y-2">
         <Label>In-Game Description</Label>
         <Textarea
