@@ -1,4 +1,3 @@
-import React from 'react';
 import { useSettings } from '@/contexts/SettingsContext';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
@@ -8,7 +7,11 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { ConfirmDialog } from '../ConfirmDialog';
 import { defaultSystemPrompt, defaultChoicesPrompt, defaultStatUpdatesPrompt, defaultLocationChangePrompt } from '../game/GamePrompts';
 
-export const SettingsModal = ({ isOpen, onOpenChange, onSave }) => {
+export const SettingsModal = ({ isOpen, onOpenChange, onSave }: {
+  isOpen: boolean;
+  onOpenChange: (open: boolean) => void;
+  onSave?: () => void;
+}) => {
   const {
     bgmEnabled,
     setBgmEnabled,
@@ -64,7 +67,7 @@ export const SettingsModal = ({ isOpen, onOpenChange, onSave }) => {
             <TabsTrigger value="endpoint">Endpoint</TabsTrigger>
             <TabsTrigger value="prompts">System Prompts</TabsTrigger>
           </TabsList>
-          
+
           <TabsContent value="gameplay" className="py-4 px-2">
             <div className="grid gap-4">
               <div className="grid grid-cols-1 sm:grid-cols-4 items-center gap-4">

@@ -1,4 +1,4 @@
-import React from 'react';
+import { useState, useEffect } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
@@ -8,10 +8,15 @@ export const EditTextModal = ({
   onOpenChange,
   text,
   onSave
+}: {
+  isOpen: boolean;
+  onOpenChange: (open: boolean) => void;
+  text: string;
+  onSave: (text: string) => void;
 }) => {
-  const [editedText, setEditedText] = React.useState(text);
+  const [editedText, setEditedText] = useState(text);
 
-  React.useEffect(() => {
+  useEffect(() => {
     setEditedText(text);
   }, [text]);
 

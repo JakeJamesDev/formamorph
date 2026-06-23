@@ -1,8 +1,13 @@
-import React from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import type { GameLocation } from "@/types";
 
-export const LocationModal = ({ isOpen, onOpenChange, locations, changeLocation }) => {
+export const LocationModal = ({ isOpen, onOpenChange, locations, changeLocation }: {
+  isOpen: boolean;
+  onOpenChange: (open: boolean) => void;
+  locations: GameLocation[];
+  changeLocation: (location: GameLocation) => void;
+}) => {
   return (
     <Dialog open={isOpen} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-[425px] max-h-[90vh] flex flex-col">
