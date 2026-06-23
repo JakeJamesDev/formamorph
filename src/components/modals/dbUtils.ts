@@ -2,7 +2,7 @@ export const DB_NAME = 'FORMAMORPH_DB';
 export const STORE_NAME = 'saves';
 export const DB_VERSION = 1;
 
-export const initDB = () => {
+export const initDB = (): Promise<IDBDatabase> => {
   return new Promise((resolve, reject) => {
     // Open without specifying version to avoid version mismatch errors
     const request = indexedDB.open(DB_NAME);
@@ -11,7 +11,7 @@ export const initDB = () => {
     request.onsuccess = () => resolve(request.result);
 
     request.onupgradeneeded = (event) => {
-      const db = event.target.result;
+      const db = (event.target as IDBOpenDBRequest).result;
       if (!db.objectStoreNames.contains(STORE_NAME)) {
         db.createObjectStore(STORE_NAME, { keyPath: 'name' });
       }
@@ -19,9 +19,9 @@ export const initDB = () => {
   });
 };
 
-export const saveToDB = async (name, data) => {
+export const saveToDB = async (name: string, data) => {
   const db = await initDB();
-  return new Promise((resolve, reject) => {
+  return new Promise<void>((resolve, reject) => {
     const transaction = db.transaction([STORE_NAME], 'readwrite');
     const store = transaction.objectStore(STORE_NAME);
     const request = store.put({ name, ...data });
@@ -31,7 +31,7 @@ export const saveToDB = async (name, data) => {
   });
 };
 
-export const loadFromDB = async (name) => {
+export const loadFromDB = async (name: string) => {
   const db = await initDB();
   return new Promise((resolve, reject) => {
     const transaction = db.transaction([STORE_NAME], 'readonly');
@@ -55,9 +55,9 @@ export const getAllSaves = async () => {
   });
 };
 
-export const deleteFromDB = async (name) => {
+export const deleteFromDB = async (name: string) => {
   const db = await initDB();
-  return new Promise((resolve, reject) => {
+  return new Promise<void>((resolve, reject) => {
     const transaction = db.transaction([STORE_NAME], 'readwrite');
     const store = transaction.objectStore(STORE_NAME);
     const request = store.delete(name);
