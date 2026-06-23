@@ -73,6 +73,7 @@ const VRMViewer = ({
   currentHairStyle,
   hairLength,
   bodyShape,
+  modelUrl = './readheadedit.vrm',
   animationFiles = ['./idle.fbx', './bashful.fbx', './idle_dwarf.fbx']
 }) => {
   const mountRef = useRef(null);
@@ -414,7 +415,7 @@ const VRMViewer = ({
     loader.register((parser) => new VRMLoaderPlugin(parser));
 
     loader.load(
-      './readheadedit.vrm',
+      modelUrl,
       (gltf) => {
         const vrm = gltf.userData.vrm;
         

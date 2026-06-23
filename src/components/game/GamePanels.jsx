@@ -1,11 +1,13 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { useGameplay } from '@/contexts/GameplayContext';
 import { useSettings } from '@/contexts/SettingsContext';
+import { useGameData } from '@/contexts/GameDataContext';
+import { useIsMobile } from '@/lib/useIsMobile';
 import { TypeWriter } from '../ui/typewriter';
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Send, RefreshCw, Pencil, Languages, Loader2, Headphones, Square } from "lucide-react";
+import { Send, RefreshCw, Pencil, Languages, Loader2, Headphones, Square, ChevronUp, ChevronDown } from "lucide-react";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Progress } from "@/components/ui/progress";
 import { Slider } from "@/components/ui/slider";
@@ -38,7 +40,16 @@ export const LeftPanel = ({ entities, onEntityClick }) => {
     playerNotes,
     setPlayerNotes
   } = useGameplay();
+  const { worldOverview } = useGameData();
+  const isMobile = useIsMobile();
+  const [showModel, setShowModel] = React.useState(true);
+  const [leftTab, setLeftTab] = React.useState(isMobile ? "model" : "notes");
   const [showVRMViewer, setShowVRMViewer] = React.useState(false);
+
+  // In landscape the model lives on top, not in a tab; leave the "model" tab.
+  React.useEffect(() => {
+    if (!isMobile && leftTab === "model") setLeftTab("notes");
+  }, [isMobile, leftTab]);
 
   React.useEffect(() => {
     const timer = setTimeout(() => {
@@ -47,38 +58,62 @@ export const LeftPanel = ({ entities, onEntityClick }) => {
     return () => clearTimeout(timer);
   }, []);
 
+  const modelViewer = characterData ? (
+    <div className="w-full relative" style={{ paddingTop: '120%' }}>
+      <div className="absolute top-0 left-0 w-full h-full flex items-center justify-center">
+        {!showVRMViewer ? (
+          <Loader2 className="animate-spin" size={32} />
+        ) : (
+          <VRMViewer
+            bellySize={characterData.bellySize + (characterData.bellySize || 0) + stomachPercent}
+            bodyWeight={characterData.bodyWeight + (characterData.bodyWeight || 0) + fatnessPercent}
+            breastSize={characterData.breastsSize + (characterData.breastsSize || 0) + breastsizePercent}
+            hairColor={characterData.hairColor}
+            eyeColor={characterData.eyeColor}
+            skinColor={characterData.skinColor}
+            hairTypes={characterData.hairTypes}
+            currentHairStyle={characterData.currentHairStyle}
+            hairLength={characterData.hairLength}
+            bodyShape={characterData.bodyShape}
+            modelUrl={worldOverview?.customPlayerVRM?.data || undefined}
+          />
+        )}
+      </div>
+    </div>
+  ) : null;
+
   return (
-  <Card className="w-1/4 mr-4 sm:mr-1 flex flex-col bg-background/60 border-border overflow-hidden">
+  <Card className="w-full md:w-1/4 md:mr-1 grow md:grow-0 min-h-0 flex flex-col bg-background/60 border-border overflow-hidden">
     <CardContent className="flex-grow flex flex-col overflow-hidden p-4 sm:p-1">
-      {characterData && (
-        <div className="w-full mb-4 relative" style={{ paddingTop: '120%' }}>
-          <div className="absolute top-0 left-0 w-full h-full flex items-center justify-center">
-            {!showVRMViewer ? (
-              <Loader2 className="animate-spin" size={32} />
-            ) : (
-              <VRMViewer 
-                bellySize={characterData.bellySize + (characterData.bellySize || 0) + stomachPercent}
-                bodyWeight={characterData.bodyWeight + (characterData.bodyWeight || 0) + fatnessPercent}
-                breastSize={characterData.breastsSize + (characterData.breastsSize || 0) + breastsizePercent} 
-                hairColor={characterData.hairColor} 
-                eyeColor={characterData.eyeColor} 
-                skinColor={characterData.skinColor}
-                hairTypes={characterData.hairTypes} 
-                currentHairStyle={characterData.currentHairStyle} 
-                hairLength={characterData.hairLength}
-                bodyShape={characterData.bodyShape}
-              />
-            )}
+      {/* Landscape: model on top with a show/hide toggle in the upper right */}
+      {!isMobile && characterData && (
+        <div className="mb-2">
+          <div className="flex justify-end">
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={() => setShowModel((s) => !s)}
+              title={showModel ? "Hide model" : "Show model"}
+            >
+              {showModel ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
+            </Button>
           </div>
+          {showModel && modelViewer}
         </div>
       )}
-      
-      <Tabs defaultValue="notes" className="w-full flex-grow flex flex-col overflow-hidden">
+
+      <Tabs value={leftTab} onValueChange={setLeftTab} className="w-full flex-grow flex flex-col overflow-hidden">
         <TabsList className="flex-shrink-0">
+          {isMobile && <TabsTrigger value="model">Model</TabsTrigger>}
           <TabsTrigger value="entities">Entities</TabsTrigger>
           <TabsTrigger value="notes">Notes</TabsTrigger>
           <TabsTrigger value="logs">Logs ({logEntries.reduce((sum, entry) => sum + 1 + (entry.repeat || 0), 0)})</TabsTrigger>
         </TabsList>
+        {isMobile && (
+          <TabsContent value="model" className="flex-grow overflow-auto min-h-[100px]">
+            {modelViewer}
+          </TabsContent>
+        )}
         <TabsContent value="entities" className="flex-grow overflow-hidden min-h-[100px]">
           <ScrollArea className="h-[calc(100%-1rem)]">
             <div className="p-2">
@@ -226,7 +261,7 @@ export const MiddlePanel = ({
   }, [displayedMessages, choices]);
 
   return (
-    <Card className="flex-grow mx-1 sm:mx-0.5 flex flex-col bg-background/60 border-border overflow-hidden" style={{maxWidth:'48%'}}>
+    <Card className="w-full flex-grow md:mx-0.5 md:max-w-[48%] min-h-0 flex flex-col bg-background/60 border-border overflow-hidden">
       <CardContent className="flex-grow flex flex-col overflow-hidden p-4 sm:p-1">
         {memoryBar}
         <div className="flex flex-col flex-grow overflow-hidden">
@@ -490,7 +525,7 @@ export const RightPanel = ({ onLocationClick, language, setLanguage }) => {
   const [isEditMode, setIsEditMode] = React.useState(false);
   
   return (
-    <Card className="w-1/4 ml-4 sm:ml-1 flex flex-col h-full bg-background/60 border-border overflow-hidden">
+    <Card className="w-full md:w-1/4 md:ml-1 grow md:grow-0 min-h-0 flex flex-col md:h-full bg-background/60 border-border overflow-hidden">
       <CardContent className="flex flex-col h-full overflow-hidden p-4 sm:p-1">
       <div className="mb-4 sm:mb-1 flex-shrink-0 flex flex-col gap-2">
         <div className="flex items-center gap-2 pl-2">

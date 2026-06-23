@@ -6,8 +6,10 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Button } from "@/components/ui/button"
 import VRMViewer from './VRMViewer';
+import { useGameData } from '../contexts/GameDataContext';
 
 const CharacterCustomization = ({onCharacterCustomized }) => {
+  const { worldOverview } = useGameData();
   const [bodyShape, setBodyShape] = useState({
     pear: 0,
     apple: 0,
@@ -91,6 +93,7 @@ const CharacterCustomization = ({onCharacterCustomized }) => {
               currentHairStyle={currentHairStyle} 
               hairLength={hairLength}
               bodyShape={bodyShape}
+              modelUrl={worldOverview?.customPlayerVRM?.data || undefined}
             />
           </div>
         </CardContent>

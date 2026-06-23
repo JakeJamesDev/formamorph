@@ -16,18 +16,20 @@ export const GameDataProvider = ({ children }) => {
   const [worldOverview, setWorldOverview] = useState({
     name: '',
     description: '',
-    author: '', 
+    author: '',
     thumbnail: null, // Base64 encoded string of the image file
     bgm: null, // Base64 encoded string of the audio file
     systemPrompt: '',
     use3DModel: true,
-    tags: []
+    tags: [],
+    customPlayerVRM: null // { data, type } of an optional custom player VRM model
   });
   const [stats, setStats] = useState([]);
   const [locations, setLocations] = useState([]);
   const [entities, setEntities] = useState([]);
   const [traits, setTraits] = useState([]);
   const [statUpdates, setStatUpdates] = useState([]);
+  const [dictionary, setDictionary] = useState([]);
   const [worldId, setWorldId] = useState(null);
 
   const addStat = useCallback((newStat) => {
@@ -112,6 +114,20 @@ export const GameDataProvider = ({ children }) => {
     setStatUpdates(prevStatUpdates => prevStatUpdates.filter(statUpdate => statUpdate.id !== statUpdateId));
   }, []);
 
+  const addDictionaryEntry = useCallback((newEntry) => {
+    setDictionary(prev => [...prev, { keywords: [], description: '', ...newEntry }]);
+  }, []);
+
+  const updateDictionaryEntry = useCallback((updatedEntry) => {
+    setDictionary(prev => prev.map(entry =>
+      entry.id === updatedEntry.id ? updatedEntry : entry
+    ));
+  }, []);
+
+  const removeDictionaryEntry = useCallback((entryId) => {
+    setDictionary(prev => prev.filter(entry => entry.id !== entryId));
+  }, []);
+
   const updateWorldOverview = useCallback((updates) => {
     setWorldOverview(prev => ({ ...prev, ...updates }));
   }, []);
@@ -134,7 +150,8 @@ export const GameDataProvider = ({ children }) => {
       bgm: null,
       systemPrompt: '',
       use3DModel: true,
-      tags: []
+      tags: [],
+      customPlayerVRM: null
     };
     
     // Handle world overview with validation
@@ -147,7 +164,8 @@ export const GameDataProvider = ({ children }) => {
       bgm: overview.bgm || defaultOverview.bgm,
       systemPrompt: overview.systemPrompt || defaultOverview.systemPrompt,
       use3DModel: typeof overview.use3DModel === 'boolean' ? overview.use3DModel : defaultOverview.use3DModel,
-      tags: Array.isArray(overview.tags) ? overview.tags : defaultOverview.tags
+      tags: Array.isArray(overview.tags) ? overview.tags : defaultOverview.tags,
+      customPlayerVRM: overview.customPlayerVRM || defaultOverview.customPlayerVRM
     });
 
     // Load other data with array validation
@@ -159,6 +177,7 @@ export const GameDataProvider = ({ children }) => {
     setEntities(Array.isArray(worldData.entities) ? worldData.entities : []);
     setTraits(Array.isArray(worldData.traits) ? worldData.traits : []);
     setStatUpdates(Array.isArray(worldData.statUpdates) ? worldData.statUpdates : []);
+    setDictionary(Array.isArray(worldData.dictionary) ? worldData.dictionary : []);
 
     return isDefault;
   }, [updateWorldOverview, setStats, setLocations, setEntities, setTraits, setStatUpdates]);
@@ -178,6 +197,7 @@ export const GameDataProvider = ({ children }) => {
     entities,
     traits,
     statUpdates,
+    dictionary,
     addStat,
     updateStat,
     removeStat,
@@ -193,11 +213,15 @@ export const GameDataProvider = ({ children }) => {
     addStatUpdate,
     updateStatUpdate,
     removeStatUpdate,
+    addDictionaryEntry,
+    updateDictionaryEntry,
+    removeDictionaryEntry,
     setStats,
     setLocations,
     setEntities,
     setTraits,
     setStatUpdates,
+    setDictionary,
     loadWorldData,
     worldId, setWorldId
   };

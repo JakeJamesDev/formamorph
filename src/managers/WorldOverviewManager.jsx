@@ -13,6 +13,7 @@ const WorldOverviewManager = () => {
   const fileInputRef = useRef(null);
   const bgmInputRef = useRef(null);
   const thumbnailRef = useRef(null);
+  const vrmInputRef = useRef(null);
   const [tagInput, setTagInput] = useState('');
 
   useEffect(() => {
@@ -88,6 +89,31 @@ const WorldOverviewManager = () => {
 
   const handleBGMClick = () => {
     bgmInputRef.current?.click();
+  };
+
+  const handleVRMChange = (e) => {
+    const file = e.target.files[0];
+    if (file) {
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        try {
+          updateWorldOverview({
+            customPlayerVRM: { data: e.target.result, type: file.type || 'model/vrm' },
+          });
+        } catch (error) {
+          console.error('Error processing VRM:', error);
+          toast.dark('Error processing VRM. Please try again.', { type: 'error' });
+        }
+      };
+      reader.onerror = () => {
+        toast.dark('Error reading file. Please try again.', { type: 'error' });
+      };
+      reader.readAsDataURL(file);
+    }
+  };
+
+  const handleVRMClick = () => {
+    vrmInputRef.current?.click();
   };
 
   const handleAddTag = () => {
@@ -211,6 +237,37 @@ const WorldOverviewManager = () => {
             <audio controls src={worldOverview.bgm} className="w-full" />
           </div>
         )}
+      </div>
+      <div className="space-y-2">
+        <Label htmlFor="customVRM">Custom Player Model (VRM)</Label>
+        <input
+          ref={vrmInputRef}
+          id="customVRM"
+          type="file"
+          accept=".vrm,.glb"
+          onChange={handleVRMChange}
+          className="hidden"
+        />
+        <div className="flex gap-2">
+          <Button
+            variant="outline"
+            onClick={handleVRMClick}
+            className="flex-1"
+          >
+            {worldOverview.customPlayerVRM ? "Change Player VRM" : "Upload Player VRM"}
+          </Button>
+          {worldOverview.customPlayerVRM && (
+            <Button
+              variant="destructive"
+              onClick={() => updateWorldOverview({ customPlayerVRM: null })}
+            >
+              Remove
+            </Button>
+          )}
+        </div>
+        <p className="text-xs text-muted-foreground">
+          Overrides the default 3D player model. Requires 3D model enabled.
+        </p>
       </div>
       <div className="space-y-2">
         <Label htmlFor="worldTags">Tags</Label>

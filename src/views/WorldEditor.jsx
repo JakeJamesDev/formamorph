@@ -15,6 +15,7 @@ import LocationManager from '../managers/LocationManager';
 import TraitManager from '../managers/TraitManager';
 import StatUpdatesManager from '../managers/StatUpdatesManager';
 import WorldOverviewManager from '../managers/WorldOverviewManager';
+import DictionaryManager from '../managers/DictionaryManager';
 import { ConfirmDialog } from "@/components/ConfirmDialog";
 import WorldStorageService from '../services/WorldStorageService';
 
@@ -22,9 +23,9 @@ const WorldEditor = ({ onClose, embedded = false }) => {
   const { 
     worldOverview,
     loadWorldData,
-    stats, locations, entities, traits, statUpdates,
-    addStat, addLocation, addEntity, addTrait, addStatUpdate,
-    removeStat, removeLocation, removeEntity, removeTrait, removeStatUpdate,
+    stats, locations, entities, traits, statUpdates, dictionary,
+    addStat, addLocation, addEntity, addTrait, addStatUpdate, addDictionaryEntry,
+    removeStat, removeLocation, removeEntity, removeTrait, removeStatUpdate, removeDictionaryEntry,
     setStats, setLocations, setEntities, setTraits, setStatUpdates,
     updateWorldOverview, worldId
   } = useGameData();
@@ -34,7 +35,7 @@ const WorldEditor = ({ onClose, embedded = false }) => {
   const [selectedItemIndex, setSelectedItemIndex] = useState(null);
 
   const downloadWorld = () => {
-    const worldData = { worldOverview, stats, locations, entities, traits, statUpdates };
+    const worldData = { worldOverview, stats, locations, entities, traits, statUpdates, dictionary };
     const jsonData = JSON.stringify(worldData, null, 2);
     const blob = new Blob([jsonData], { type: 'application/json' });
     const href = URL.createObjectURL(blob);
@@ -50,7 +51,7 @@ const WorldEditor = ({ onClose, embedded = false }) => {
 
   const saveWorld = async () => {
     console.log("worldId: ", worldId)
-    const worldData = { worldOverview, stats, locations, entities, traits, statUpdates };
+    const worldData = { worldOverview, stats, locations, entities, traits, statUpdates, dictionary };
     try {
       await WorldStorageService.storeWorld({
         id: worldId,
@@ -136,8 +137,15 @@ const WorldEditor = ({ onClose, embedded = false }) => {
           stats: [],
           messageHistory: []
         });
+      } else if (activeTab === "dictionary") {
+        addDictionaryEntry({
+          id: newId,
+          name: newName,
+          keywords: [],
+          description: ''
+        });
       }
-      
+
       setSearchTerm('');
       setSelectedItemIndex(0);
     }
@@ -149,12 +157,13 @@ const WorldEditor = ({ onClose, embedded = false }) => {
       activeTab === "entities" ? entities : 
       activeTab === "locations" ? locations : 
       activeTab === "traits" ? traits :
-      activeTab === "statUpdates" ? statUpdates : [];
-    
-    return itemsToFilter.filter(item => 
+      activeTab === "statUpdates" ? statUpdates :
+      activeTab === "dictionary" ? dictionary : [];
+
+    return itemsToFilter.filter(item =>
       item.name.toLowerCase().includes(searchTerm.toLowerCase())
     );
-  }, [activeTab, stats, entities, locations, traits, statUpdates, searchTerm]);
+  }, [activeTab, stats, entities, locations, traits, statUpdates, dictionary, searchTerm]);
 
   const removeItem = (id) => {
     if (activeTab === "stats") {
@@ -167,6 +176,8 @@ const WorldEditor = ({ onClose, embedded = false }) => {
       removeTrait(id);
     } else if (activeTab === "statUpdates") {
       removeStatUpdate(id);
+    } else if (activeTab === "dictionary") {
+      removeDictionaryEntry(id);
     }
     setSelectedItemIndex(null);
   };
@@ -264,6 +275,7 @@ const WorldEditor = ({ onClose, embedded = false }) => {
                         <TabsTrigger value="entities">Entities</TabsTrigger>
                         <TabsTrigger value="locations">Locations</TabsTrigger>
                         <TabsTrigger value="traits">Traits</TabsTrigger>
+                        <TabsTrigger value="dictionary">Dictionary</TabsTrigger>
                         {/*<TabsTrigger value="statUpdates">Updates</TabsTrigger>*/}
                       </TabsList>
                     <div className="flex-grow overflow-auto mt-4">
@@ -281,6 +293,9 @@ const WorldEditor = ({ onClose, embedded = false }) => {
                           {renderItemList(filteredItems)}
                         </TabsContent>
                         <TabsContent value="traits">
+                          {renderItemList(filteredItems)}
+                        </TabsContent>
+                        <TabsContent value="dictionary">
                           {renderItemList(filteredItems)}
                         </TabsContent>
                         <TabsContent value="statUpdates">
@@ -332,6 +347,9 @@ const WorldEditor = ({ onClose, embedded = false }) => {
                     )}
                     {activeTab === "traits" && selectedItemIndex !== null && (
                       <TraitManager trait={filteredItems[selectedItemIndex]} />
+                    )}
+                    {activeTab === "dictionary" && selectedItemIndex !== null && (
+                      <DictionaryManager entry={filteredItems[selectedItemIndex]} />
                     )}
                     {activeTab === "statUpdates" && selectedItemIndex !== null && (
                       <StatUpdatesManager statUpdate={filteredItems[selectedItemIndex]} />
