@@ -1,4 +1,4 @@
-import { KokoroTTS } from "kokoro-js";
+import { KokoroTTS, type GenerateOptions } from "kokoro-js";
 import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import {
@@ -17,27 +17,28 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import IndeterminateProgress from "@/components/ui/indeterminate-progress";
+import type { TTSAudio } from "@/types";
 
 // Function to create a WAV file from audio data
-function createWAV(audioData, sampleRate) {
+function createWAV(audioData: Float32Array, sampleRate: number) {
   const numChannels = 1; // Mono audio
   const bitsPerSample = 16;
   const bytesPerSample = bitsPerSample / 8;
-  
+
   // Convert Float32Array to Int16Array
   const samples = new Int16Array(audioData.length);
   for (let i = 0; i < audioData.length; i++) {
     const s = Math.max(-1, Math.min(1, audioData[i]));
     samples[i] = s < 0 ? s * 0x8000 : s * 0x7FFF;
   }
-  
+
   // Create the WAV header
   const headerLength = 44;
   const dataLength = samples.length * bytesPerSample;
   const fileLength = headerLength + dataLength;
   const header = new ArrayBuffer(headerLength);
   const view = new DataView(header);
-  
+
   // RIFF chunk descriptor
   view.setUint8(0, 'R'.charCodeAt(0));
   view.setUint8(1, 'I'.charCodeAt(0));
@@ -48,7 +49,7 @@ function createWAV(audioData, sampleRate) {
   view.setUint8(9, 'A'.charCodeAt(0));
   view.setUint8(10, 'V'.charCodeAt(0));
   view.setUint8(11, 'E'.charCodeAt(0));
-  
+
   // fmt sub-chunk
   view.setUint8(12, 'f'.charCodeAt(0));
   view.setUint8(13, 'm'.charCodeAt(0));
@@ -61,26 +62,31 @@ function createWAV(audioData, sampleRate) {
   view.setUint32(28, sampleRate * numChannels * bytesPerSample, true); // byte rate
   view.setUint16(32, numChannels * bytesPerSample, true); // block align
   view.setUint16(34, bitsPerSample, true);
-  
+
   // data sub-chunk
   view.setUint8(36, 'd'.charCodeAt(0));
   view.setUint8(37, 'a'.charCodeAt(0));
   view.setUint8(38, 't'.charCodeAt(0));
   view.setUint8(39, 'a'.charCodeAt(0));
   view.setUint32(40, dataLength, true);
-  
+
   // Combine header and audio data
   const wavBuffer = new Uint8Array(fileLength);
   wavBuffer.set(new Uint8Array(header));
   wavBuffer.set(new Uint8Array(samples.buffer), headerLength);
-  
+
   return wavBuffer;
 }
 
-export default function TTSModal({ isOpen, onOpenChange, gameText = "Hello World", onTTSGenerated }) {
+export default function TTSModal({ isOpen, onOpenChange, gameText = "Hello World", onTTSGenerated }: {
+  isOpen: boolean;
+  onOpenChange: (open: boolean) => void;
+  gameText?: string;
+  onTTSGenerated: (audioData: TTSAudio) => void;
+}) {
   const [isLoading, setIsLoading] = useState(false);
-  const [tts, setTTS] = useState(null);
-  const [voices, setVoices] = useState([]);
+  const [tts, setTTS] = useState<KokoroTTS | null>(null);
+  const [voices, setVoices] = useState<string[]>([]);
   const [selectedVoice, setSelectedVoice] = useState("");
   const [isPlaying, setIsPlaying] = useState(false);
   const [webGPUSupported, setWebGPUSupported] = useState(false);
@@ -89,11 +95,12 @@ export default function TTSModal({ isOpen, onOpenChange, gameText = "Hello World
     // Check for WebGPU support
     const checkWebGPU = async () => {
       try {
-        if (!navigator.gpu) {
+        const gpu = (navigator as Navigator & { gpu?: { requestAdapter(): Promise<unknown> } }).gpu;
+        if (!gpu) {
           setWebGPUSupported(false);
           return;
         }
-        const adapter = await navigator.gpu.requestAdapter();
+        const adapter = await gpu.requestAdapter();
         setWebGPUSupported(!!adapter);
       } catch (error) {
         console.error("WebGPU check failed:", error);
@@ -143,8 +150,8 @@ export default function TTSModal({ isOpen, onOpenChange, gameText = "Hello World
                 <SelectContent>
                   {voices.map((voice) => (
                     <SelectItem key={voice} value={voice}>
-                      {voice.replace(/_/g, ' ').replace(/^[ab][fm]_/, '')} ({voice.startsWith('af_') ? 'Female US' : 
-                        voice.startsWith('am_') ? 'Male US' : 
+                      {voice.replace(/_/g, ' ').replace(/^[ab][fm]_/, '')} ({voice.startsWith('af_') ? 'Female US' :
+                        voice.startsWith('am_') ? 'Male US' :
                         voice.startsWith('bf_') ? 'Female UK' : 'Male UK'})
                     </SelectItem>
                   ))}
@@ -157,21 +164,21 @@ export default function TTSModal({ isOpen, onOpenChange, gameText = "Hello World
                 try {
                   setIsPlaying(true);
                   const result = await tts.generate(gameText, {
-                    voice: selectedVoice,
+                    voice: selectedVoice as GenerateOptions['voice'],
                   });
-                  
+
                   // Create a Float32Array from the audio data
                   const audioArray = new Float32Array(result.audio);
-                  
+
                   // Create a WAV file with the correct format
                   const wavData = createWAV(audioArray, result.sampling_rate);
-                  
+
                   // Create audio data object with WAV buffer
                   const audioData = {
                     audio: wavData,
                     samplingRate: result.sampling_rate
                   };
-                  
+
                   // Call the callback with the WAV audio data
                   onTTSGenerated(audioData);
                   setIsPlaying(false);
@@ -195,7 +202,7 @@ export default function TTSModal({ isOpen, onOpenChange, gameText = "Hello World
                   WebGPU is not supported in your browser. Please use a WebGPU-enabled browser like Chrome Canary or Edge Canary.
                 </div>
               )}
-              <Button 
+              <Button
                 onClick={async () => {
                   try {
                     setIsLoading(true);

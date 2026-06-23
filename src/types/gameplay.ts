@@ -1,4 +1,4 @@
-import type { Stat, Trait, Entity } from './world';
+import type { Stat, Trait } from './world';
 import type { ChatMessage } from './ai';
 
 /** A stat during gameplay — same shape as a definition Stat, with a live `value`. */
@@ -24,6 +24,12 @@ export interface HairTypeDef {
   canChangeLength: boolean;
 }
 
+/** Generated TTS clip handed from the TTS modal to the gameplay view (WAV bytes). */
+export interface TTSAudio {
+  audio: Uint8Array;
+  samplingRate: number;
+}
+
 export interface CharacterData {
   bodyShape: BodyShape;
   bellySize: number;
@@ -41,7 +47,8 @@ export interface CharacterData {
 export interface GameState {
   playerStats: PlayerStat[];
   playerTraits: Trait[];
-  visibleEntities: Entity[];
+  /** Names of entities currently visible (matched against the world's entity list by name). */
+  visibleEntities: string[];
   logEntries: LogEntry[];
   gameplayText: string;
   locationId?: string;
