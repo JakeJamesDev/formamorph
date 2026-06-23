@@ -7,12 +7,39 @@ import { Save, Download, Upload, Trash2, Loader2 } from "lucide-react";
 import { ConfirmDialog } from '../ConfirmDialog';
 import { saveToDB, getAllSaves, deleteFromDB, loadFromDB } from './dbUtils';
 import { downloadSaveFile, terminateWorker as terminateDownloadWorker } from '../../lib/saveDownloadWorkerUtils';
+import type { WorldOverview, GameState } from "@/types";
 
-export const MenuModal = ({ isOpen, onOpenChange, onSettingsClick, onSave, onLoad, worldOverview, onExitToMenu }) => {
+/** A stored save record as read back from IndexedDB (v2 envelope or a legacy flat state). */
+interface RawSave {
+  name: string;
+  version?: number;
+  currentState?: GameState;
+  timestamp?: string;
+  gameTime?: number;
+  worldName?: string | null;
+}
+
+/** A row shown in the load list. */
+interface SaveListItem {
+  name: string;
+  timestamp: string;
+  gameTime: number;
+  worldName: string | null;
+}
+
+export const MenuModal = ({ isOpen, onOpenChange, onSettingsClick, onSave, onLoad, worldOverview, onExitToMenu }: {
+  isOpen: boolean;
+  onOpenChange: (open: boolean) => void;
+  onSettingsClick: () => void;
+  onSave: (saveName: string) => Promise<unknown> | void;
+  onLoad: (saveName: string) => Promise<unknown> | void;
+  worldOverview?: WorldOverview;
+  onExitToMenu: () => void;
+}) => {
   const [showSaveDialog, setShowSaveDialog] = React.useState(false);
   const [showLoadDialog, setShowLoadDialog] = React.useState(false);
   const [saveName, setSaveName] = React.useState('');
-  const [saveList, setSaveList] = React.useState([]);
+  const [saveList, setSaveList] = React.useState<SaveListItem[]>([]);
   const [isLoading, setIsLoading] = React.useState(false);
   const [loadingMessage, setLoadingMessage] = React.useState('');
   const [isDownloading, setIsDownloading] = React.useState(false);
@@ -46,19 +73,19 @@ export const MenuModal = ({ isOpen, onOpenChange, onSettingsClick, onSave, onLoa
 
           localStorageSaves.forEach(key => localStorage.removeItem(key));
 
-          const saves = await getAllSaves();
+          const saves = await getAllSaves() as RawSave[];
           setSaveList(saves.map(save => {
             // Handle both old and new save formats
             const isNewFormat = save.version === 2 && save.currentState;
             const state = isNewFormat ? save.currentState : save;
-            
+
             return {
               name: save.name,
               timestamp: new Date(state.timestamp).toLocaleString(),
               gameTime: state.gameTime,
               worldName: state.worldName
             };
-          }).sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp)));
+          }).sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime()));
         } catch (error) {
           console.error('Error loading saves:', error);
           setSaveList([]);
@@ -80,7 +107,7 @@ export const MenuModal = ({ isOpen, onOpenChange, onSettingsClick, onSave, onLoa
     }
   };
 
-  const handleDelete = async (saveName) => {
+  const handleDelete = async (saveName: string) => {
     try {
       await deleteFromDB(saveName);
       setSaveList(prevList => prevList.filter(save => save.name !== saveName));
@@ -89,7 +116,7 @@ export const MenuModal = ({ isOpen, onOpenChange, onSettingsClick, onSave, onLoa
     }
   };
 
-  const formatGameTime = (time) => {
+  const formatGameTime = (time: number) => {
     const hours = Math.floor(time);
     const minutes = Math.floor((time - hours) * 60);
     return `${hours}h ${minutes}m`;
@@ -104,21 +131,21 @@ export const MenuModal = ({ isOpen, onOpenChange, onSettingsClick, onSave, onLoa
         <div className="flex-1 overflow-y-auto py-4">
           {!showSaveDialog && !showLoadDialog && (
             <div className="space-y-4 px-4">
-              <Button 
-                variant="outline" 
+              <Button
+                variant="outline"
                 onClick={() => setShowSaveDialog(true)}
                 className="w-full"
               >
                 Save Game
               </Button>
-              <Button 
+              <Button
                 variant="outline"
                 onClick={() => setShowLoadDialog(true)}
                 className="w-full"
               >
                 Load Game
               </Button>
-              <Button 
+              <Button
                 variant="outline"
                 onClick={onSettingsClick}
                 className="w-full"
@@ -152,7 +179,7 @@ export const MenuModal = ({ isOpen, onOpenChange, onSettingsClick, onSave, onLoa
                     if (e.key === 'Enter') handleSave();
                   }}
                 />
-                <Button 
+                <Button
                   onClick={handleSave}
                   className="flex items-center justify-center gap-2"
                 >
@@ -160,7 +187,7 @@ export const MenuModal = ({ isOpen, onOpenChange, onSettingsClick, onSave, onLoa
                   <span>Save</span>
                 </Button>
               </div>
-              <Button 
+              <Button
                 variant="outline"
                 onClick={() => {
                   setShowSaveDialog(false);
@@ -177,7 +204,7 @@ export const MenuModal = ({ isOpen, onOpenChange, onSettingsClick, onSave, onLoa
               <h3 className="font-semibold mb-4 flex-shrink-0">Load Game</h3>
               <div className="flex-shrink-0 mb-4">
                 <div className="grid grid-cols-2 gap-2">
-                  <Button 
+                  <Button
                     variant="outline"
                     onClick={() => setShowLoadDialog(false)}
                   >
@@ -192,26 +219,26 @@ export const MenuModal = ({ isOpen, onOpenChange, onSettingsClick, onSave, onLoa
                     try {
                       const file = e.target.files[0];
                       if (!file) return;
-                      
+
                       const text = await file.text();
                       const save = JSON.parse(text);
-                      
+
                       await saveToDB(save.name, save);
-                      
-                      const saves = await getAllSaves();
+
+                      const saves = await getAllSaves() as RawSave[];
                       setSaveList(saves.map(save => {
                         // Handle both old and new save formats
                         const isNewFormat = save.version === 2 && save.currentState;
                         const state = isNewFormat ? save.currentState : save;
-                        
+
                         return {
                           name: save.name,
                           timestamp: new Date(state.timestamp).toLocaleString(),
                           gameTime: state.gameTime,
                           worldName: state.worldName
                         };
-                      }).sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp)));
-                      
+                      }).sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime()));
+
                       e.target.value = '';
                     } catch (error) {
                       console.error('Error uploading save:', error);
@@ -232,7 +259,7 @@ export const MenuModal = ({ isOpen, onOpenChange, onSettingsClick, onSave, onLoa
                 <ScrollArea className="h-full">
                   <div className="space-y-2 p-4">
                   {saveList.map((save) => (
-                      <Button 
+                      <Button
                         key={save.name}
                         variant="outline"
                         className="w-full text-left"
@@ -241,10 +268,10 @@ export const MenuModal = ({ isOpen, onOpenChange, onSettingsClick, onSave, onLoa
                           try {
                             setIsLoading(true);
                             setLoadingMessage('Loading save file. Please wait...');
-                            
+
                             // Add a small delay to ensure the loading state is visible
                             await new Promise(resolve => setTimeout(resolve, 100));
-                            
+
                             await onLoad(save.name);
                             setShowLoadDialog(false);
                             onOpenChange(false);
@@ -270,13 +297,13 @@ export const MenuModal = ({ isOpen, onOpenChange, onSettingsClick, onSave, onLoa
                                 setIsDownloading(true);
                                 setDownloadingSaveName(save.name);
                                 setLoadingMessage(`Preparing ${save.name} for download...`);
-                                
+
                                 // Load the save data
                                 const fullSaveData = await loadFromDB(save.name);
-                                
+
                                 // Use web worker to process the save data
-                                const { dataUrl, fileName } = await downloadSaveFile(fullSaveData);
-                                
+                                const { dataUrl, fileName } = await downloadSaveFile(fullSaveData) as { dataUrl: string; fileName: string };
+
                                 // Create a download link
                                 const element = document.createElement('a');
                                 element.href = dataUrl;
@@ -328,14 +355,14 @@ export const MenuModal = ({ isOpen, onOpenChange, onSettingsClick, onSave, onLoa
                         {loadingMessage || 'Processing...'}
                       </div>
                       <div className="text-xs text-amber-500 max-w-xs">
-                        {isDownloading 
+                        {isDownloading
                           ? `Please wait while the save file "${downloadingSaveName}" is being prepared for download. For large save files, this may take a moment.`
                           : 'Please wait while the save file is being processed. For large save files, this may take a moment. Do not attempt to load another save until this process completes.'
                         }
                       </div>
                     </div>
                   )}
-                  
+
                   {!isLoading && saveList.length === 0 && (
                     <div className="text-center py-4 opacity-70">
                       No saved games found

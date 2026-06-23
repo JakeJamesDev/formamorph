@@ -1,3 +1,4 @@
+import { type ReactNode } from "react"
 import {
   AlertDialog,
   AlertDialogAction,
@@ -9,7 +10,6 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "./ui/alert-dialog"
-import { Button } from "./ui/button"
 
 export function ConfirmDialog({
   triggerText = "Open Dialog",
@@ -20,6 +20,15 @@ export function ConfirmDialog({
   children,
   open,
   onOpenChange,
+}: {
+  triggerText?: string
+  title?: ReactNode
+  description?: ReactNode
+  onConfirm?: () => void
+  onCancel?: () => void
+  children?: ReactNode
+  open?: boolean
+  onOpenChange?: (open: boolean) => void
 }) {
   const handleConfirm = () => {
     onConfirm?.()

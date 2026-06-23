@@ -1,11 +1,15 @@
-import React from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { getModelType } from '../../lib/UtilityComponents';
 import ModelViewer from '../../views/ModelViewer';
+import type { Entity } from "@/types";
 
-export const EntityModal = ({ entity, isOpen, onOpenChange }) => {
+export const EntityModal = ({ entity, isOpen, onOpenChange }: {
+  entity: Entity | null;
+  isOpen: boolean;
+  onOpenChange: (open: boolean) => void;
+}) => {
   if (!entity) return null;
 
   return (
@@ -35,7 +39,7 @@ export const EntityModal = ({ entity, isOpen, onOpenChange }) => {
                   <DialogHeader>
                     <DialogTitle>3D Model Viewer</DialogTitle>
                   </DialogHeader>
-                  <ModelViewer modelData={entity.model.data} modelType={getModelType(entity.model.type)} />
+                  <ModelViewer model={entity.model} modelType={getModelType(entity.model.type)} />
                 </DialogContent>
               </Dialog>
             )}
