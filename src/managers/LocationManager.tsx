@@ -1,21 +1,22 @@
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { useGameData } from '@/contexts/GameDataContext';
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Checkbox } from "@/components/ui/checkbox";
 import { ImageUpload, SoundUpload } from '../lib/UtilityComponents';
+import type { GameLocation } from '@/types';
 
-const LocationManager = ({ location }) => {
+const LocationManager = ({ location }: { location: GameLocation }) => {
   const { updateLocation, entities } = useGameData();
-  const [editingLocation, setEditingLocation] = useState(location);
+  const [editingLocation, setEditingLocation] = useState<GameLocation>(location);
 
   useEffect(() => {
     setEditingLocation(location);
   }, [location]);
 
-  const handleChange = (field, value) => {
-    const updatedLocation = { ...editingLocation, [field]: value };
+  const handleChange = (field: string, value: unknown) => {
+    const updatedLocation = { ...editingLocation, [field]: value } as GameLocation;
     setEditingLocation(updatedLocation);
     updateLocation(updatedLocation);
   };

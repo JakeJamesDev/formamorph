@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import { useState, useEffect } from "react";
 import { useGameData } from "@/contexts/GameDataContext";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -18,26 +18,30 @@ import {
   CollapsibleContent,
 } from "@/components/ui/collapsible";
 import { executeStatCode } from "@/lib/statCodeExecutor";
+import type { Stat, StatDescriptor, StatListItem } from "@/types";
 
-const StatManager = ({ stat }) => {
+/** The stat being edited — a loose, partial Stat while fields are filled in. */
+type EditingStat = Partial<Stat>;
+
+const StatManager = ({ stat }: { stat: Stat }) => {
   const { updateStat, stats } = useGameData();
-  const [editingStat, setEditingStat] = useState(stat);
-  const [newDescriptor, setNewDescriptor] = useState({
+  const [editingStat, setEditingStat] = useState<EditingStat>(stat);
+  const [newDescriptor, setNewDescriptor] = useState<{ threshold: number | string; description: string }>({
     threshold: "",
     description: "",
   });
-  const [newListItem, setNewListItem] = useState({
+  const [newListItem, setNewListItem] = useState<{ name: string; description: string; number: number }>({
     name: "",
     description: "",
     number: 0,
   });
   const [codeOpen, setCodeOpen] = useState(stat?.code ? true : false);
-  const [codeResult, setCodeResult] = useState(null);
-  const [codeError, setCodeError] = useState(null);
+  const [codeResult, setCodeResult] = useState<number | null>(null);
+  const [codeError, setCodeError] = useState<string | null>(null);
   const [isTestingCode, setIsTestingCode] = useState(false);
 
   useEffect(() => {
-    const initialStat = stat ? { ...stat } : {};
+    const initialStat: EditingStat = stat ? { ...stat } : {};
     if (!initialStat.type) {
       initialStat.type = "number";
     }
@@ -52,12 +56,12 @@ const StatManager = ({ stat }) => {
     }
   }, [stat]);
 
-  const handleChange = (field, value) => {
-    console.log(`Updated ${field} to ${value}`);
+  const handleChange = (field: string, value: unknown) => {
+    console.log(`Updated ${field} to ${String(value)}`);
 
-    const updatedStat = { ...editingStat, [field]: value };
+    const updatedStat = { ...editingStat, [field]: value } as EditingStat;
     setEditingStat(updatedStat);
-    updateStat(updatedStat);
+    updateStat(updatedStat as Stat);
 
     // Reset code test results when code changes
     if (field === "code") {
@@ -67,7 +71,7 @@ const StatManager = ({ stat }) => {
   };
 
   const handleTypeChange = (value) => {
-    let updatedStat = { ...editingStat, type: value };
+    const updatedStat = { ...editingStat, type: value };
     if (value === "list") {
       updatedStat.value = updatedStat.value || [];
     } else {
@@ -75,15 +79,15 @@ const StatManager = ({ stat }) => {
         typeof updatedStat.value === "number" ? updatedStat.value : 0;
     }
     setEditingStat(updatedStat);
-    updateStat(updatedStat);
+    updateStat(updatedStat as Stat);
   };
 
-  const handleDescriptorChange = (index, field, value) => {
+  const handleDescriptorChange = (index: number, field: string, value: string | number) => {
     const updatedDescriptors = [...(editingStat.descriptors || [])];
     updatedDescriptors[index] = {
       ...updatedDescriptors[index],
       [field]: value,
-    };
+    } as StatDescriptor;
     handleChange("descriptors", updatedDescriptors);
   };
 
@@ -98,7 +102,7 @@ const StatManager = ({ stat }) => {
     }
   };
 
-  const handleRemoveDescriptor = (descriptorId) => {
+  const handleRemoveDescriptor = (descriptorId: string | number) => {
     const updatedDescriptors = (editingStat.descriptors || []).filter(
       (desc) => desc.id !== descriptorId,
     );
@@ -108,7 +112,7 @@ const StatManager = ({ stat }) => {
   const handleAddListItem = () => {
     if (newListItem.name && editingStat.type === "list") {
       const updatedValue = [
-        ...(editingStat.value || []),
+        ...((editingStat.value as StatListItem[]) || []),
         { ...newListItem, id: Date.now() },
       ];
       handleChange("value", updatedValue);
@@ -116,18 +120,18 @@ const StatManager = ({ stat }) => {
     }
   };
 
-  const handleRemoveListItem = (itemId) => {
+  const handleRemoveListItem = (itemId: string | number) => {
     if (editingStat.type === "list") {
-      const updatedValue = editingStat.value.filter(
+      const updatedValue = (editingStat.value as StatListItem[]).filter(
         (item) => item.id !== itemId,
       );
       handleChange("value", updatedValue);
     }
   };
 
-  const handleListItemChange = (itemId, field, value) => {
+  const handleListItemChange = (itemId: string | number, field: string, value: string | number) => {
     if (editingStat.type === "list") {
-      const updatedValue = editingStat.value.map((item) =>
+      const updatedValue = (editingStat.value as StatListItem[]).map((item) =>
         item.id === itemId ? { ...item, [field]: value } : item,
       );
       handleChange("value", updatedValue);
@@ -190,7 +194,7 @@ const StatManager = ({ stat }) => {
               <Label>Initial Value</Label>
               <Input
                 type="number"
-                value={editingStat.value || 0}
+                value={(editingStat.value as number) || 0}
                 onChange={(e) => handleChange("value", Number(e.target.value))}
               />
             </div>
@@ -259,7 +263,7 @@ const StatManager = ({ stat }) => {
         <div className="space-y-2">
           <Label>Items</Label>
           {editingStat.value &&
-            editingStat.value.map((item) => (
+            (editingStat.value as StatListItem[]).map((item) => (
               <div key={item.id} className="space-y-2 border p-2 rounded">
                 <div className="flex items-center space-x-2">
                   <Input
@@ -454,7 +458,7 @@ return (health + strength) / 2;"
                     const result = await executeStatCode(
                       editingStat.code,
                       stats,
-                      editingStat,
+                      editingStat as Stat,
                     );
                     if (result.error) {
                       setCodeError(result.error);

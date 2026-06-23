@@ -16,7 +16,7 @@ import { SettingsModal } from "../components/modals/SettingsModal";
 import { MenuModal } from "../components/modals/MenuModal";
 import WorldEditor from "./WorldEditor";
 import { estimateHistoryChars } from "../lib/memoryUtils";
-import { getActivatedDictionary, buildDictionaryContext } from "../lib/dictionaryUtils";
+import { getActivatedDictionary, buildDictionaryContext, parseKeywords } from "../lib/dictionaryUtils";
 import { highlightSegments } from "../lib/highlightUtils";
 import { useIsMobile } from "../lib/useIsMobile";
 import {
@@ -1557,88 +1557,113 @@ ${playerNotes || "No notes available"}
       {/* Debug: full AI context sent during the last turn */}
       <Dialog open={isDebugOpen} onOpenChange={setIsDebugOpen}>
         <DialogContent className="max-w-[90vw] w-[90vw] h-[85vh] flex flex-col overflow-hidden">
-          <DialogHeader>
-            <DialogTitle>Last AI context (debug)</DialogTitle>
-          </DialogHeader>
-          <div className="flex-grow overflow-auto space-y-4 text-xs">
-            {debugRequests.length === 0 ? (
-              <p className="text-muted-foreground">
-                No request captured yet. Take an action first, then reopen this.
-              </p>
-            ) : (
-              (() => {
-                const palette = [
-                  "#fde68a", "#bbf7d0", "#bfdbfe", "#fbcfe8",
-                  "#ddd6fe", "#fed7aa", "#a5f3fc", "#fecaca",
-                ];
-                const colorMap = {};
-                const highlightRules = [];
-                dictionary.forEach((entry, i) => {
-                  const color = palette[i % palette.length];
-                  colorMap[entry.id] = color;
-                  if (disabledHighlights[entry.id]) return;
-                  // Trigger keywords highlight anywhere they occur; the entry name highlights
-                  // only at its declaration ("Name:") in the injected Relevant Information block.
-                  [
-                    ...(entry.keywords || []),
-                    ...(entry.name ? [`${entry.name}:`] : []),
-                  ]
-                    .filter(Boolean)
-                    .forEach((term) => highlightRules.push({ term, color }));
-                });
-                const renderContent = (text) =>
-                  highlightSegments(text, highlightRules).map((seg, k) =>
-                    seg.color ? (
-                      <mark
-                        key={k}
-                        style={{ backgroundColor: seg.color, color: "#000" }}
-                        className="rounded px-0.5"
-                      >
-                        {seg.text}
-                      </mark>
-                    ) : (
-                      <span key={k}>{seg.text}</span>
-                    ),
-                  );
-                return (
-                  <>
-                    {dictionary.length > 0 && (
-                      <div className="flex flex-wrap items-center gap-2">
-                        <span className="text-muted-foreground">Dictionary:</span>
-                        {dictionary.map((entry) => {
-                          const disabled = disabledHighlights[entry.id];
-                          return (
-                            <button
-                              key={entry.id}
-                              onClick={() =>
-                                setDisabledHighlights((prev) => ({
-                                  ...prev,
-                                  [entry.id]: !prev[entry.id],
-                                }))
-                              }
-                              className="rounded border px-1.5 py-0.5"
-                              style={
-                                disabled
-                                  ? { borderColor: colorMap[entry.id], opacity: 0.5 }
-                                  : {
-                                      backgroundColor: colorMap[entry.id],
-                                      borderColor: colorMap[entry.id],
-                                      color: "#000",
-                                    }
-                              }
-                              title={
-                                disabled
-                                  ? "Click to enable highlight"
-                                  : "Click to disable highlight"
-                              }
-                            >
-                              {entry.name || (entry.keywords && entry.keywords[0]) || "unnamed"}
-                            </button>
-                          );
-                        })}
-                      </div>
-                    )}
-                    {debugRequests.map((req, i) => (
+          {(() => {
+            const palette = [
+              "#fde68a", "#bbf7d0", "#bfdbfe", "#fbcfe8",
+              "#ddd6fe", "#fed7aa", "#a5f3fc", "#fecaca",
+            ];
+            const colorMap = {};
+            // Trigger keywords highlight in the narrative/history (showing why an entry
+            // activated); inside the injected "Relevant Information:" block only the entry
+            // name declaration ("Name:") highlights — not keyword occurrences in the value.
+            const triggerRules = [];
+            const declarationRules = [];
+            dictionary.forEach((entry, i) => {
+              const color = palette[i % palette.length];
+              colorMap[entry.id] = color;
+              if (disabledHighlights[entry.id]) return;
+              parseKeywords(entry).forEach((term) => triggerRules.push({ term, color }));
+              if (entry.name) declarationRules.push({ term: `${entry.name}:`, color });
+            });
+            const RELEVANT_MARKER = "Relevant Information:";
+            // Highlight only a "Name:" at the start of a line — the declaration prepended by
+            // buildDictionaryContext — not a "Name:" that recurs inside the entry's value text.
+            const highlightDeclarations = (block) => {
+              const segments = [];
+              block.split("\n").forEach((line, li) => {
+                if (li > 0) segments.push({ text: "\n" });
+                const rule = declarationRules
+                  .filter((r) => line.startsWith(r.term))
+                  .sort((a, b) => b.term.length - a.term.length)[0];
+                if (rule) {
+                  segments.push({ text: rule.term, color: rule.color });
+                  segments.push({ text: line.slice(rule.term.length) });
+                } else if (line) {
+                  segments.push({ text: line });
+                }
+              });
+              return segments;
+            };
+            const renderContent = (text) => {
+              const idx = text.indexOf(RELEVANT_MARKER);
+              const segments = idx === -1
+                ? highlightSegments(text, triggerRules)
+                : [
+                    ...highlightSegments(text.slice(0, idx), triggerRules),
+                    ...highlightDeclarations(text.slice(idx)),
+                  ];
+              return segments.map((seg, k) =>
+                seg.color ? (
+                  <mark
+                    key={k}
+                    style={{ backgroundColor: seg.color, color: "#000" }}
+                    className="rounded px-0.5"
+                  >
+                    {seg.text}
+                  </mark>
+                ) : (
+                  <span key={k}>{seg.text}</span>
+                ),
+              );
+            };
+            return (
+              <>
+                <DialogHeader className="flex-shrink-0">
+                  <DialogTitle>Last AI context (debug)</DialogTitle>
+                </DialogHeader>
+                {dictionary.length > 0 && (
+                  <div className="flex flex-wrap items-center gap-2 flex-shrink-0 text-xs">
+                    <span className="text-muted-foreground">Dictionary:</span>
+                    {dictionary.map((entry) => {
+                      const disabled = disabledHighlights[entry.id];
+                      return (
+                        <button
+                          key={entry.id}
+                          onClick={() =>
+                            setDisabledHighlights((prev) => ({
+                              ...prev,
+                              [entry.id]: !prev[entry.id],
+                            }))
+                          }
+                          className="rounded border px-1.5 py-0.5"
+                          style={
+                            disabled
+                              ? { borderColor: colorMap[entry.id], opacity: 0.5 }
+                              : {
+                                  backgroundColor: colorMap[entry.id],
+                                  borderColor: colorMap[entry.id],
+                                  color: "#000",
+                                }
+                          }
+                          title={
+                            disabled
+                              ? "Click to enable highlight"
+                              : "Click to disable highlight"
+                          }
+                        >
+                          {entry.name || parseKeywords(entry)[0] || "unnamed"}
+                        </button>
+                      );
+                    })}
+                  </div>
+                )}
+                <div className="flex-grow overflow-auto space-y-4 text-xs min-h-0">
+                  {debugRequests.length === 0 ? (
+                    <p className="text-muted-foreground">
+                      No request captured yet. Take an action first, then reopen this.
+                    </p>
+                  ) : (
+                    debugRequests.map((req, i) => (
                       <div key={i} className="border border-border rounded-md p-2">
                         <div className="font-semibold mb-2">
                           Request {i + 1}: {req.type}
@@ -1654,12 +1679,12 @@ ${playerNotes || "No notes available"}
                           </div>
                         ))}
                       </div>
-                    ))}
-                  </>
-                );
-              })()
-            )}
-          </div>
+                    ))
+                  )}
+                </div>
+              </>
+            );
+          })()}
         </DialogContent>
       </Dialog>
 

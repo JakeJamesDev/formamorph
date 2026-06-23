@@ -40,6 +40,11 @@ export interface Stat {
   descriptors: StatDescriptor[];
   /** Optional JS executed to derive this stat's value from others. */
   code?: string;
+  /** Editor flags that stop the AI from changing this stat in a given direction. */
+  noIncrease?: boolean;
+  noIncreaseMax?: boolean;
+  noDecrease?: boolean;
+  noDecreaseMax?: boolean;
 }
 
 /** How a trait or stat-update modifies a stat. */
@@ -87,8 +92,10 @@ export interface GameLocation {
 export interface StatUpdate {
   id: string;
   name: string;
-  description: string;
-  statChanges: StatChange[];
+  /** AI prompt sent to evaluate this update. */
+  prompt: string;
+  /** Names of the stats this update can change. */
+  stats: string[];
   messageHistory: ChatMessage[];
 }
 
