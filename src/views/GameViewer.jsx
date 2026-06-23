@@ -4,8 +4,8 @@ import { useSettings, DEFAULT_ENDPOINT } from "@/contexts/SettingsContext";
 import { useGameplay, GameplayProvider } from "@/contexts/GameplayContext";
 import { processStatCode } from "@/contexts/GameplayContextUtils";
 import { Button } from "@/components/ui/button";
-import { Menu, Music, SquarePen, Database } from "lucide-react";
-import { Dialog, DialogContent } from "@/components/ui/dialog";
+import { Menu, Music, SquarePen, Database, Bug } from "lucide-react";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { ToastContainer, toast } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
@@ -16,6 +16,9 @@ import { SettingsModal } from "../components/modals/SettingsModal";
 import { MenuModal } from "../components/modals/MenuModal";
 import WorldEditor from "./WorldEditor";
 import { estimateHistoryChars } from "../lib/memoryUtils";
+import { getActivatedDictionary, buildDictionaryContext } from "../lib/dictionaryUtils";
+import { highlightSegments } from "../lib/highlightUtils";
+import { useIsMobile } from "../lib/useIsMobile";
 import {
   LeftPanel,
   MiddlePanel,
@@ -46,6 +49,7 @@ const GameViewer = ({
     entities,
     traits,
     statUpdates,
+    dictionary,
     updateStat,
     worldOverview,
   } = useGameData();
@@ -171,6 +175,11 @@ const GameViewer = ({
   const [isEditingWorld, setIsEditingWorld] = useState(false);
   const [lastPromptChars, setLastPromptChars] = useState(0);
   const [suggestedLocation, setSuggestedLocation] = useState(null);
+  const [isDebugOpen, setIsDebugOpen] = useState(false);
+  const [debugRequests, setDebugRequests] = useState([]);
+  const [disabledHighlights, setDisabledHighlights] = useState({});
+  const isMobile = useIsMobile();
+  const [mobilePanel, setMobilePanel] = useState("game");
   const [showPotatoPCDialog, setShowPotatoPCDialog] = useState(false);
   const [isLocationModalOpen, setIsLocationModalOpen] = useState(false);
 
@@ -505,12 +514,28 @@ ${playerNotes || "No notes available"}
     if (language.toLowerCase() != "english")
       updatedPrompt += `\n Narration language: ` + language;
 
+    // Inject dictionary entries whose keywords appear in the current location context
+    // (location + entities present), the action, or the message history. Scanning the
+    // location context activates lore proactively the same turn a term enters play,
+    // rather than a turn late. The always-present world description is intentionally
+    // excluded so its terms don't fire every turn.
+    const activatedEntries = getActivatedDictionary(dictionary, [
+      locationDataString,
+      action,
+      ...fullMessageHistory.map((m) => m.content),
+    ]);
+    const dictionaryContext = buildDictionaryContext(activatedEntries);
+    if (dictionaryContext) {
+      updatedPrompt += `\n\n${dictionaryContext}`;
+    }
+
     // Get trimmed history before adding new action
     const trimmedHistory = getTrimmedMessageHistory(action);
 
     try {
       setChoices([]);
       setSuggestedLocation(null);
+      setDebugRequests([]);
 
       // Create message array for game text request
       const gameTextMessages = [
@@ -953,6 +978,15 @@ ${playerNotes || "No notes available"}
       abortControllerRef.current = new AbortController();
       const signal = abortControllerRef.current.signal;
 
+      // Capture the exact payload for the debug viewer
+      setDebugRequests((prev) => [
+        ...prev,
+        {
+          type: requestType,
+          messages: [{ role: "system", content: systemPrompt }, ...messages],
+        },
+      ]);
+
       const response = await fetch(getEndpointUrl(), {
         method: "POST",
         headers: {
@@ -1361,9 +1395,45 @@ ${playerNotes || "No notes available"}
     </div>
   ) : null;
 
+  const leftPanel = (
+    <LeftPanel
+      entities={entities}
+      onEntityClick={(entityId) => {
+        setSelectedEntity(entityId);
+        setIsEntityModalOpen(true);
+      }}
+    />
+  );
+
+  const middlePanel = (
+    <MiddlePanel
+      parseAssistantMessage={parseAssistantMessage}
+      totalPages={totalPages}
+      handlePageChange={handlePageChange}
+      sendGameAction={sendGameAction}
+      handleSendAction={handleSendAction}
+      handleKeyPress={handleKeyPress}
+      handleRollback={handleRollback}
+      abortGeneration={abortGeneration}
+      disabled={isWaitingForAI}
+      onTTSClick={() => setIsTTSModalOpen(true)}
+      memoryBar={memoryBar}
+      locationSuggestion={locationSuggestion}
+    />
+  );
+
+  const rightPanel = (
+    <RightPanel
+      onLocationClick={() => setIsLocationModalOpen(true)}
+      onExitToMenu={onExitToMenu}
+      language={language}
+      setLanguage={setLanguage}
+    />
+  );
+
   return (
     <div
-      className="flex h-screen p-4 text-sm md:text-base bg-cover bg-center overflow-hidden"
+      className={`flex ${isMobile ? "flex-col" : ""} h-screen p-4 text-sm md:text-base bg-cover bg-center overflow-hidden`}
       style={{
         backgroundImage: currentLocation
           ? `url(${currentLocation.backgroundImage})`
@@ -1371,38 +1441,45 @@ ${playerNotes || "No notes available"}
       }}
     >
       <ToastContainer theme="dark" />
-      <LeftPanel
-        entities={entities}
-        onEntityClick={(entityId) => {
-          setSelectedEntity(entityId);
-          setIsEntityModalOpen(true);
-        }}
-      />
 
-      <MiddlePanel
-        parseAssistantMessage={parseAssistantMessage}
-        totalPages={totalPages}
-        handlePageChange={handlePageChange}
-        sendGameAction={sendGameAction}
-        handleSendAction={handleSendAction}
-        handleKeyPress={handleKeyPress}
-        handleRollback={handleRollback}
-        abortGeneration={abortGeneration}
-        disabled={isWaitingForAI}
-        onTTSClick={() => setIsTTSModalOpen(true)}
-        memoryBar={memoryBar}
-        locationSuggestion={locationSuggestion}
-      />
+      {isMobile && (
+        <div className="flex shrink-0 gap-1 mb-1">
+          {[
+            { key: "character", label: "Character" },
+            { key: "game", label: "Game" },
+            { key: "status", label: "Status" },
+          ].map((t) => (
+            <button
+              key={t.key}
+              onClick={() => setMobilePanel(t.key)}
+              className={`flex-1 rounded py-2 text-sm ${
+                mobilePanel === t.key
+                  ? "bg-primary text-primary-foreground"
+                  : "bg-muted text-muted-foreground"
+              }`}
+            >
+              {t.label}
+            </button>
+          ))}
+        </div>
+      )}
 
-      <RightPanel
-        onLocationClick={() => setIsLocationModalOpen(true)}
-        onExitToMenu={onExitToMenu}
-        language={language}
-        setLanguage={setLanguage}
-      />
+      {isMobile ? (
+        <div className="flex-grow min-h-0 flex flex-col">
+          {mobilePanel === "character" && leftPanel}
+          {mobilePanel === "game" && middlePanel}
+          {mobilePanel === "status" && rightPanel}
+        </div>
+      ) : (
+        <>
+          {leftPanel}
+          {middlePanel}
+          {rightPanel}
+        </>
+      )}
 
-      {/* BGM button */}
-      <div className="absolute top-2 left-2 flex">
+      {/* BGM + Debug buttons */}
+      <div className="absolute top-16 left-2 md:top-2 flex gap-2">
         <Button
           onClick={() => setBgmEnabled(!bgmEnabled)}
           className="flex items-center justify-center rounded-full w-10 h-10 p-0"
@@ -1411,10 +1488,17 @@ ${playerNotes || "No notes available"}
             className={`h-5 w-5 ${bgmEnabled ? "" : "text-muted-foreground"}`}
           />
         </Button>
+        <Button
+          onClick={() => setIsDebugOpen(true)}
+          className="flex items-center justify-center rounded-full w-10 h-10 p-0"
+          title="Show the full AI context from the last turn"
+        >
+          <Bug className="h-5 w-5" />
+        </Button>
       </div>
 
       {/* Edit-world + Menu buttons */}
-      <div className="absolute top-2 right-2 flex gap-2">
+      <div className="absolute top-16 right-2 md:top-2 flex gap-2">
         <Button
           onClick={() => setIsEditingWorld(true)}
           className="flex items-center justify-center rounded-full w-10 h-10 p-0"
@@ -1467,6 +1551,115 @@ ${playerNotes || "No notes available"}
       <Dialog open={isEditingWorld} onOpenChange={setIsEditingWorld}>
         <DialogContent className="max-w-[95vw] w-[95vw] h-[90vh] p-0 overflow-hidden">
           <WorldEditor embedded onClose={() => setIsEditingWorld(false)} />
+        </DialogContent>
+      </Dialog>
+
+      {/* Debug: full AI context sent during the last turn */}
+      <Dialog open={isDebugOpen} onOpenChange={setIsDebugOpen}>
+        <DialogContent className="max-w-[90vw] w-[90vw] h-[85vh] flex flex-col overflow-hidden">
+          <DialogHeader>
+            <DialogTitle>Last AI context (debug)</DialogTitle>
+          </DialogHeader>
+          <div className="flex-grow overflow-auto space-y-4 text-xs">
+            {debugRequests.length === 0 ? (
+              <p className="text-muted-foreground">
+                No request captured yet. Take an action first, then reopen this.
+              </p>
+            ) : (
+              (() => {
+                const palette = [
+                  "#fde68a", "#bbf7d0", "#bfdbfe", "#fbcfe8",
+                  "#ddd6fe", "#fed7aa", "#a5f3fc", "#fecaca",
+                ];
+                const colorMap = {};
+                const highlightRules = [];
+                dictionary.forEach((entry, i) => {
+                  const color = palette[i % palette.length];
+                  colorMap[entry.id] = color;
+                  if (disabledHighlights[entry.id]) return;
+                  // Trigger keywords highlight anywhere they occur; the entry name highlights
+                  // only at its declaration ("Name:") in the injected Relevant Information block.
+                  [
+                    ...(entry.keywords || []),
+                    ...(entry.name ? [`${entry.name}:`] : []),
+                  ]
+                    .filter(Boolean)
+                    .forEach((term) => highlightRules.push({ term, color }));
+                });
+                const renderContent = (text) =>
+                  highlightSegments(text, highlightRules).map((seg, k) =>
+                    seg.color ? (
+                      <mark
+                        key={k}
+                        style={{ backgroundColor: seg.color, color: "#000" }}
+                        className="rounded px-0.5"
+                      >
+                        {seg.text}
+                      </mark>
+                    ) : (
+                      <span key={k}>{seg.text}</span>
+                    ),
+                  );
+                return (
+                  <>
+                    {dictionary.length > 0 && (
+                      <div className="flex flex-wrap items-center gap-2">
+                        <span className="text-muted-foreground">Dictionary:</span>
+                        {dictionary.map((entry) => {
+                          const disabled = disabledHighlights[entry.id];
+                          return (
+                            <button
+                              key={entry.id}
+                              onClick={() =>
+                                setDisabledHighlights((prev) => ({
+                                  ...prev,
+                                  [entry.id]: !prev[entry.id],
+                                }))
+                              }
+                              className="rounded border px-1.5 py-0.5"
+                              style={
+                                disabled
+                                  ? { borderColor: colorMap[entry.id], opacity: 0.5 }
+                                  : {
+                                      backgroundColor: colorMap[entry.id],
+                                      borderColor: colorMap[entry.id],
+                                      color: "#000",
+                                    }
+                              }
+                              title={
+                                disabled
+                                  ? "Click to enable highlight"
+                                  : "Click to disable highlight"
+                              }
+                            >
+                              {entry.name || (entry.keywords && entry.keywords[0]) || "unnamed"}
+                            </button>
+                          );
+                        })}
+                      </div>
+                    )}
+                    {debugRequests.map((req, i) => (
+                      <div key={i} className="border border-border rounded-md p-2">
+                        <div className="font-semibold mb-2">
+                          Request {i + 1}: {req.type}
+                        </div>
+                        {req.messages.map((m, j) => (
+                          <div key={j} className="mb-2">
+                            <div className="font-medium text-muted-foreground uppercase">
+                              {m.role}
+                            </div>
+                            <pre className="whitespace-pre-wrap break-words bg-muted/50 p-2 rounded">
+                              {renderContent(m.content)}
+                            </pre>
+                          </div>
+                        ))}
+                      </div>
+                    ))}
+                  </>
+                );
+              })()
+            )}
+          </div>
         </DialogContent>
       </Dialog>
 
