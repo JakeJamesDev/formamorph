@@ -115,7 +115,7 @@ export const GameDataProvider = ({ children }) => {
   }, []);
 
   const addDictionaryEntry = useCallback((newEntry) => {
-    setDictionary(prev => [...prev, { keywords: [], description: '', ...newEntry }]);
+    setDictionary(prev => [...prev, { name: '', key: '', value: '', ...newEntry }]);
   }, []);
 
   const updateDictionaryEntry = useCallback((updatedEntry) => {

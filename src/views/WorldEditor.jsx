@@ -4,7 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Download, Upload, Plus, X, ArrowLeft, Save } from "lucide-react";
+import { Download, Upload, Plus, X, ArrowLeft, Save, GripVertical } from "lucide-react";
 import { Panel, PanelGroup, PanelResizeHandle } from 'react-resizable-panels';
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { ToastContainer, toast } from 'react-toastify';
@@ -16,8 +16,74 @@ import TraitManager from '../managers/TraitManager';
 import StatUpdatesManager from '../managers/StatUpdatesManager';
 import WorldOverviewManager from '../managers/WorldOverviewManager';
 import DictionaryManager from '../managers/DictionaryManager';
+import {
+  DndContext,
+  closestCenter,
+  PointerSensor,
+  KeyboardSensor,
+  useSensor,
+  useSensors,
+} from '@dnd-kit/core';
+import {
+  SortableContext,
+  useSortable,
+  arrayMove,
+  verticalListSortingStrategy,
+  sortableKeyboardCoordinates,
+} from '@dnd-kit/sortable';
+import { CSS } from '@dnd-kit/utilities';
+import {
+  restrictToVerticalAxis,
+  restrictToFirstScrollableAncestor,
+} from '@dnd-kit/modifiers';
 import { ConfirmDialog } from "@/components/ConfirmDialog";
 import WorldStorageService from '../services/WorldStorageService';
+
+// A single reorderable entry row. The grip is the drag handle (handle-only drag),
+// so clicking the row body still selects it.
+function SortableRow({ item, selected, onSelect, onRemove }) {
+  const { attributes, listeners, setNodeRef, transform, transition, isDragging } =
+    useSortable({ id: item.id });
+  const style = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+    opacity: isDragging ? 0.5 : 1,
+    zIndex: isDragging ? 1 : undefined,
+  };
+  return (
+    <div
+      ref={setNodeRef}
+      style={style}
+      onClick={() => onSelect(item.id)}
+      className={`p-2 cursor-pointer rounded-md transition-colors flex justify-between items-center
+        ${selected ? 'bg-primary text-primary-foreground' : 'hover:bg-secondary'}`}
+    >
+      <span className="flex-grow">{item.name}</span>
+      <Button
+        variant="ghost"
+        size="icon"
+        onClick={(e) => {
+          e.stopPropagation();
+          onRemove(item.id);
+        }}
+        className={selected ? 'text-primary-foreground' : 'text-muted-foreground'}
+      >
+        <X className="h-4 w-4" />
+      </Button>
+      <span
+        {...attributes}
+        {...listeners}
+        onClick={(e) => e.stopPropagation()}
+        className={`cursor-grab touch-none px-1 ${
+          selected ? 'text-primary-foreground' : 'text-muted-foreground'
+        }`}
+        title="Drag to reorder"
+      >
+        <GripVertical className="h-4 w-4" />
+      </span>
+    </div>
+  );
+}
 
 const WorldEditor = ({ onClose, embedded = false }) => {
   const { 
@@ -26,13 +92,13 @@ const WorldEditor = ({ onClose, embedded = false }) => {
     stats, locations, entities, traits, statUpdates, dictionary,
     addStat, addLocation, addEntity, addTrait, addStatUpdate, addDictionaryEntry,
     removeStat, removeLocation, removeEntity, removeTrait, removeStatUpdate, removeDictionaryEntry,
-    setStats, setLocations, setEntities, setTraits, setStatUpdates,
+    setStats, setLocations, setEntities, setTraits, setStatUpdates, setDictionary,
     updateWorldOverview, worldId
   } = useGameData();
 
   const [activeTab, setActiveTab] = useState("overview");
   const [searchTerm, setSearchTerm] = useState('');
-  const [selectedItemIndex, setSelectedItemIndex] = useState(null);
+  const [selectedItemId, setSelectedItemId] = useState(null);
 
   const downloadWorld = () => {
     const worldData = { worldOverview, stats, locations, entities, traits, statUpdates, dictionary };
@@ -138,16 +204,17 @@ const WorldEditor = ({ onClose, embedded = false }) => {
           messageHistory: []
         });
       } else if (activeTab === "dictionary") {
+        // v1.2 format: name mirrors key; value is the injected content.
         addDictionaryEntry({
           id: newId,
           name: newName,
-          keywords: [],
-          description: ''
+          key: newName,
+          value: ''
         });
       }
 
       setSearchTerm('');
-      setSelectedItemIndex(0);
+      setSelectedItemId(newId);
     }
   };
 
@@ -165,6 +232,35 @@ const WorldEditor = ({ onClose, embedded = false }) => {
     );
   }, [activeTab, stats, entities, locations, traits, statUpdates, dictionary, searchTerm]);
 
+  const selectedItem = filteredItems.find(item => item.id === selectedItemId);
+
+  // Per-tab data + setter so list behavior (selection, drag-reorder) is uniform across tabs.
+  const tabConfig = {
+    stats: { items: stats, setItems: setStats },
+    entities: { items: entities, setItems: setEntities },
+    locations: { items: locations, setItems: setLocations },
+    traits: { items: traits, setItems: setTraits },
+    dictionary: { items: dictionary, setItems: setDictionary },
+    statUpdates: { items: statUpdates, setItems: setStatUpdates },
+  };
+
+  const sensors = useSensors(
+    useSensor(PointerSensor, { activationConstraint: { distance: 5 } }),
+    useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates }),
+  );
+
+  // Reorder the active tab's full array (filter-safe: located by id).
+  const handleRowDragEnd = (event) => {
+    const { active, over } = event;
+    if (!over || active.id === over.id) return;
+    const config = tabConfig[activeTab];
+    if (!config) return;
+    const oldIndex = config.items.findIndex((it) => it.id === active.id);
+    const newIndex = config.items.findIndex((it) => it.id === over.id);
+    if (oldIndex === -1 || newIndex === -1) return;
+    config.setItems(arrayMove(config.items, oldIndex, newIndex));
+  };
+
   const removeItem = (id) => {
     if (activeTab === "stats") {
       removeStat(id);
@@ -179,40 +275,42 @@ const WorldEditor = ({ onClose, embedded = false }) => {
     } else if (activeTab === "dictionary") {
       removeDictionaryEntry(id);
     }
-    setSelectedItemIndex(null);
+    setSelectedItemId(null);
   };
 
   const renderItemList = (items) => (
-    <div className="flex flex-col space-y-2">
-      {items.map((item, index) => (
-        <div
-          key={item.id}
-          className={`p-2 cursor-pointer rounded-md transition-colors flex justify-between items-center
-            ${selectedItemIndex === index 
-              ? 'bg-primary text-primary-foreground' 
-              : 'hover:bg-secondary'
-            }`}
-        >
-          <span
-            className="flex-grow"
-            onClick={() => setSelectedItemIndex(index)}
-          >
-            {item.name}
-          </span>
-          <Button
-            variant="ghost"
-            size="icon"
-            onClick={(e) => {
-              e.stopPropagation();
-              removeItem(item.id);
-            }}
-            className={selectedItemIndex === index ? 'text-primary-foreground' : 'text-muted-foreground'}
-          >
-            <X className="h-4 w-4" />
-          </Button>
+    <DndContext
+      sensors={sensors}
+      collisionDetection={closestCenter}
+      onDragEnd={handleRowDragEnd}
+      // Vertical-only movement, clamped to the scroll viewport's bounds so dragging can't
+      // extend the scrollable area infinitely.
+      modifiers={[restrictToVerticalAxis, restrictToFirstScrollableAncestor]}
+      autoScroll={{
+        // Only auto-scroll a real inner scroll viewport (the list), never the page/window.
+        canScroll: (el) =>
+          el !== document.scrollingElement &&
+          el !== document.body &&
+          el !== document.documentElement,
+      }}
+    >
+      <SortableContext
+        items={items.map((i) => i.id)}
+        strategy={verticalListSortingStrategy}
+      >
+        <div className="flex flex-col gap-2">
+          {items.map((item) => (
+            <SortableRow
+              key={item.id}
+              item={item}
+              selected={selectedItemId === item.id}
+              onSelect={setSelectedItemId}
+              onRemove={removeItem}
+            />
+          ))}
         </div>
-      ))}
-    </div>
+      </SortableContext>
+    </DndContext>
   );
 
   return (
@@ -252,9 +350,8 @@ const WorldEditor = ({ onClose, embedded = false }) => {
                 </div>
               </CardHeader>
               <CardContent className="flex-grow flex flex-col overflow-hidden pt-6">
-                <ScrollArea className="flex-grow">
                 {activeTab !== "overview" && (
-                  <div className="mb-4 space-y-2">
+                  <div className="mb-4 space-y-2 flex-shrink-0">
                     <div className="flex space-x-2">
                       <Button onClick={addItem} size="icon">
                         <Plus className="h-4 w-4" />
@@ -268,8 +365,8 @@ const WorldEditor = ({ onClose, embedded = false }) => {
                   </div>
                 )}
                 
-                  <Tabs value={activeTab} onValueChange={setActiveTab} className="flex-grow flex flex-col">
-                      <TabsList>
+                  <Tabs value={activeTab} onValueChange={setActiveTab} className="flex-grow flex flex-col min-h-0">
+                      <TabsList className="flex-shrink-0">
                         <TabsTrigger value="overview">Overview</TabsTrigger>
                         <TabsTrigger value="stats">Stats</TabsTrigger>
                         <TabsTrigger value="entities">Entities</TabsTrigger>
@@ -278,7 +375,7 @@ const WorldEditor = ({ onClose, embedded = false }) => {
                         <TabsTrigger value="dictionary">Dictionary</TabsTrigger>
                         {/*<TabsTrigger value="statUpdates">Updates</TabsTrigger>*/}
                       </TabsList>
-                    <div className="flex-grow overflow-auto mt-4">
+                    <div className="flex-grow min-h-0 mt-4">
                       <ScrollArea className="h-full">
                         <TabsContent value="overview">
                           <WorldOverviewManager />
@@ -304,7 +401,6 @@ const WorldEditor = ({ onClose, embedded = false }) => {
                       </ScrollArea>
                     </div>
                   </Tabs>
-                </ScrollArea>
               </CardContent>
               <div className="p-4 border-t flex justify-between">
                 <Button variant="outline" size="sm" onClick={downloadWorld}>
@@ -336,23 +432,23 @@ const WorldEditor = ({ onClose, embedded = false }) => {
               <CardContent className="h-full p-0">
                 <ScrollArea className="h-full">
                   <div className="p-6">
-                    {activeTab === "stats" && selectedItemIndex !== null && (
-                      <StatManager stat={filteredItems[selectedItemIndex]} />
+                    {activeTab === "stats" && selectedItem && (
+                      <StatManager key={selectedItem.id} stat={selectedItem} />
                     )}
-                    {activeTab === "entities" && selectedItemIndex !== null && (
-                      <EntityManager entity={filteredItems[selectedItemIndex]} />
+                    {activeTab === "entities" && selectedItem && (
+                      <EntityManager key={selectedItem.id} entity={selectedItem} />
                     )}
-                    {activeTab === "locations" && selectedItemIndex !== null && (
-                      <LocationManager location={filteredItems[selectedItemIndex]} />
+                    {activeTab === "locations" && selectedItem && (
+                      <LocationManager key={selectedItem.id} location={selectedItem} />
                     )}
-                    {activeTab === "traits" && selectedItemIndex !== null && (
-                      <TraitManager trait={filteredItems[selectedItemIndex]} />
+                    {activeTab === "traits" && selectedItem && (
+                      <TraitManager key={selectedItem.id} trait={selectedItem} />
                     )}
-                    {activeTab === "dictionary" && selectedItemIndex !== null && (
-                      <DictionaryManager entry={filteredItems[selectedItemIndex]} />
+                    {activeTab === "dictionary" && selectedItem && (
+                      <DictionaryManager key={selectedItem.id} entry={selectedItem} />
                     )}
-                    {activeTab === "statUpdates" && selectedItemIndex !== null && (
-                      <StatUpdatesManager statUpdate={filteredItems[selectedItemIndex]} />
+                    {activeTab === "statUpdates" && selectedItem && (
+                      <StatUpdatesManager key={selectedItem.id} statUpdate={selectedItem} />
                     )}
                   </div>
                 </ScrollArea>

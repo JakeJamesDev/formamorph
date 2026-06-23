@@ -93,16 +93,16 @@ export interface StatUpdate {
 }
 
 /**
- * v1.2.0 dictionary entry: trigger keywords plus a long description injected into
- * the AI context only when a keyword appears in the message history.
- * NOTE: field shape is provisional (minified bundle obscured it) — confirm during the
- * dictionary feature work (plan Part B3).
+ * Dictionary entry — matches the v1.2.0 save format:
+ * `key` is a comma-separated list of trigger keywords; `value` is the content injected
+ * into the AI prompt when a keyword appears in play. `name` mirrors `key` (used for the
+ * list display, as in v1.2).
  */
 export interface DictionaryEntry {
   id: string;
-  name?: string;
-  keywords: string[];
-  description: string;
+  name: string;
+  key: string;
+  value: string;
 }
 
 export interface WorldOverview {
