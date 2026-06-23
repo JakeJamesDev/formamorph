@@ -18,7 +18,7 @@ import WorldOverviewManager from '../managers/WorldOverviewManager';
 import { ConfirmDialog } from "@/components/ConfirmDialog";
 import WorldStorageService from '../services/WorldStorageService';
 
-const WorldEditor = ({ onClose }) => {
+const WorldEditor = ({ onClose, embedded = false }) => {
   const { 
     worldOverview,
     loadWorldData,
@@ -205,34 +205,38 @@ const WorldEditor = ({ onClose }) => {
   );
 
   return (
-    <div className="h-screen flex flex-col overflow-hidden">
-      <ToastContainer
-        position="top-right"
-        autoClose={3000}
-        hideProgressBar={false}
-        newestOnTop
-        closeOnClick
-        rtl={false}
-        pauseOnFocusLoss
-        draggable
-        pauseOnHover
-        theme="dark"
-      />
+    <div className={`${embedded ? "h-full" : "h-screen"} flex flex-col overflow-hidden`}>
+      {!embedded && (
+        <ToastContainer
+          position="top-right"
+          autoClose={3000}
+          hideProgressBar={false}
+          newestOnTop
+          closeOnClick
+          rtl={false}
+          pauseOnFocusLoss
+          draggable
+          pauseOnHover
+          theme="dark"
+        />
+      )}
       <div className="flex-grow flex overflow-hidden">
         <PanelGroup direction="horizontal">
           <Panel defaultSize={50} minSize={30}>
             <Card className="h-full flex flex-col m-4">
               <CardHeader className="space-y-0 pb-2">
                 <div className="flex items-center space-x-4">
-                  <ConfirmDialog
-                    title="Return to Main Menu?"
-                    description="Any unsaved changes will be lost. Please save your progress using the Save or Download button below before returning to the main menu if you want to keep your changes."
-                    onConfirm={onClose}
-                  >
-                    <Button variant="ghost" size="icon">
-                      <ArrowLeft className="h-4 w-4" />
-                    </Button>
-                  </ConfirmDialog>
+                  {!embedded && (
+                    <ConfirmDialog
+                      title="Return to Main Menu?"
+                      description="Any unsaved changes will be lost. Please save your progress using the Save or Download button below before returning to the main menu if you want to keep your changes."
+                      onConfirm={onClose}
+                    >
+                      <Button variant="ghost" size="icon">
+                        <ArrowLeft className="h-4 w-4" />
+                      </Button>
+                    </ConfirmDialog>
+                  )}
                   <CardTitle>World Editor</CardTitle>
                 </div>
               </CardHeader>

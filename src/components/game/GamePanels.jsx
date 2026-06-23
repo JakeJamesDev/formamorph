@@ -153,7 +153,9 @@ export const MiddlePanel = ({
   handleRollback,
   abortGeneration,
   disabled,
-  onTTSClick
+  onTTSClick,
+  memoryBar,
+  locationSuggestion
 }) => {
   const {
     displayedMessages,
@@ -226,6 +228,7 @@ export const MiddlePanel = ({
   return (
     <Card className="flex-grow mx-1 sm:mx-0.5 flex flex-col bg-background/60 border-border overflow-hidden" style={{maxWidth:'48%'}}>
       <CardContent className="flex-grow flex flex-col overflow-hidden p-4 sm:p-1">
+        {memoryBar}
         <div className="flex flex-col flex-grow overflow-hidden">
           
           <ScrollArea className={`flex-grow border border-border p-2 mb-1 bg-muted/80 min-h-0 ${isFlashing ? 'flash-animation' : ''} relative`}>
@@ -383,7 +386,8 @@ export const MiddlePanel = ({
               });
             }}
           />
-          <div className="flex flex-col items-center gap-2">
+          <div className="relative flex flex-col items-center gap-2">
+            {locationSuggestion}
             <Pagination>
               <PaginationContent>
                 <PaginationItem>

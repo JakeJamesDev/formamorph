@@ -60,3 +60,16 @@ Note that stat changes are optional, only update stats that actually change basd
 Example:
 Health: 50 MAX
 Hunger: -10`;
+
+export const defaultLocationChangePrompt = `Based on the game events, decide whether the player should move to a different location.
+
+Game World:
+<WORLD DESCRIPTION>
+
+Current Location:
+<LOCATION JSON DATA>
+
+Available Locations:
+<LOCATION LIST>
+
+If the events clearly indicate the player has moved or should move, respond with ONLY the exact name of the destination from the available list. Otherwise respond with exactly: NONE`;
