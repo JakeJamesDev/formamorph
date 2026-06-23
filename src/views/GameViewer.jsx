@@ -4,7 +4,10 @@ import { useSettings, DEFAULT_ENDPOINT } from "@/contexts/SettingsContext";
 import { useGameplay, GameplayProvider } from "@/contexts/GameplayContext";
 import { processStatCode } from "@/contexts/GameplayContextUtils";
 import { Button } from "@/components/ui/button";
-import { Menu, Music, SquarePen, Database, Bug } from "lucide-react";
+import { Input } from "@/components/ui/input";
+import { ScrollArea } from "@/components/ui/scroll-area";
+import { Collapsible, CollapsibleTrigger, CollapsibleContent } from "@/components/ui/collapsible";
+import { Menu, Music, SquarePen, Database, Bug, ChevronDown, ChevronRight, ChevronsDownUp, ChevronsUpDown, Search } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { ToastContainer, toast } from "react-toastify";
@@ -178,6 +181,8 @@ const GameViewer = ({
   const [isDebugOpen, setIsDebugOpen] = useState(false);
   const [debugRequests, setDebugRequests] = useState([]);
   const [disabledHighlights, setDisabledHighlights] = useState({});
+  const [debugSearch, setDebugSearch] = useState("");
+  const [collapsedDebug, setCollapsedDebug] = useState({});
   const isMobile = useIsMobile();
   const [mobilePanel, setMobilePanel] = useState("game");
   const [showPotatoPCDialog, setShowPotatoPCDialog] = useState(false);
@@ -1594,15 +1599,43 @@ ${playerNotes || "No notes available"}
               });
               return segments;
             };
-            const renderContent = (text) => {
+            const searchTerms = debugSearch.trim().toLowerCase().split(/\s+/).filter(Boolean);
+            const searchActive = searchTerms.length > 0;
+            // Keep only lines matching any search term; collapse each run of dropped lines into "...".
+            const filterLines = (text) => {
+              const out = [];
+              let pendingGap = false;
+              let shownAny = false;
+              text.split("\n").forEach((line) => {
+                if (searchTerms.some((t) => line.toLowerCase().includes(t))) {
+                  if (pendingGap) out.push("...");
+                  out.push(line);
+                  shownAny = true;
+                  pendingGap = false;
+                } else {
+                  pendingGap = true;
+                }
+              });
+              if (shownAny && pendingGap) out.push("...");
+              return shownAny ? out.join("\n") : "";
+            };
+            // Section-aware highlight (+ optional search filter); returns [] when search hides everything.
+            const buildSegments = (text) => {
               const idx = text.indexOf(RELEVANT_MARKER);
-              const segments = idx === -1
-                ? highlightSegments(text, triggerRules)
-                : [
-                    ...highlightSegments(text.slice(0, idx), triggerRules),
-                    ...highlightDeclarations(text.slice(idx)),
-                  ];
-              return segments.map((seg, k) =>
+              let body = idx === -1 ? text : text.slice(0, idx);
+              let block = idx === -1 ? "" : text.slice(idx);
+              if (searchActive) {
+                body = filterLines(body);
+                block = filterLines(block);
+              }
+              const segs = [];
+              if (body) segs.push(...highlightSegments(body, triggerRules));
+              if (searchActive && body && block) segs.push({ text: "\n" });
+              if (block) segs.push(...highlightDeclarations(block));
+              return segs;
+            };
+            const renderSegs = (segs) =>
+              segs.map((seg, k) =>
                 seg.color ? (
                   <mark
                     key={k}
@@ -1615,6 +1648,16 @@ ${playerNotes || "No notes available"}
                   <span key={k}>{seg.text}</span>
                 ),
               );
+            const allCollapsed =
+              debugRequests.length > 0 && debugRequests.every((_, i) => collapsedDebug[i]);
+            const toggleAll = () => {
+              if (allCollapsed) {
+                setCollapsedDebug({});
+              } else {
+                const next = {};
+                debugRequests.forEach((_, i) => { next[i] = true; });
+                setCollapsedDebug(next);
+              }
             };
             return (
               <>
@@ -1657,30 +1700,89 @@ ${playerNotes || "No notes available"}
                     })}
                   </div>
                 )}
-                <div className="flex-grow overflow-auto space-y-4 text-xs min-h-0">
-                  {debugRequests.length === 0 ? (
-                    <p className="text-muted-foreground">
-                      No request captured yet. Take an action first, then reopen this.
-                    </p>
-                  ) : (
-                    debugRequests.map((req, i) => (
-                      <div key={i} className="border border-border rounded-md p-2">
-                        <div className="font-semibold mb-2">
-                          Request {i + 1}: {req.type}
-                        </div>
-                        {req.messages.map((m, j) => (
-                          <div key={j} className="mb-2">
-                            <div className="font-medium text-muted-foreground uppercase">
-                              {m.role}
-                            </div>
-                            <pre className="whitespace-pre-wrap break-words bg-muted/50 p-2 rounded">
-                              {renderContent(m.content)}
-                            </pre>
-                          </div>
-                        ))}
-                      </div>
-                    ))
-                  )}
+                <div className="flex items-center gap-2 flex-shrink-0">
+                  <div className="relative flex-grow">
+                    <Search className="pointer-events-none absolute left-2 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                    <Input
+                      value={debugSearch}
+                      onChange={(e) => setDebugSearch(e.target.value)}
+                      placeholder="Search lines (space-separated terms)…"
+                      className="pl-8 h-8 text-xs"
+                    />
+                  </div>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={toggleAll}
+                    disabled={searchActive || debugRequests.length === 0}
+                    className="h-8 flex-shrink-0 gap-1"
+                    title={searchActive ? "Disabled while searching" : undefined}
+                  >
+                    {allCollapsed ? (
+                      <ChevronsUpDown className="h-4 w-4" />
+                    ) : (
+                      <ChevronsDownUp className="h-4 w-4" />
+                    )}
+                    {allCollapsed ? "Expand all" : "Collapse all"}
+                  </Button>
+                </div>
+                <div className="flex-grow min-h-0">
+                  <ScrollArea className="h-full">
+                    <div className="space-y-4 text-xs">
+                      {debugRequests.length === 0 ? (
+                        <p className="text-muted-foreground">
+                          No request captured yet. Take an action first, then reopen this.
+                        </p>
+                      ) : (
+                        debugRequests.map((req, i) => {
+                          const msgSegs = req.messages.map((m) => ({
+                            role: m.role,
+                            segs: buildSegments(m.content),
+                          }));
+                          if (searchActive && !msgSegs.some((ms) => ms.segs.length > 0)) {
+                            return null;
+                          }
+                          const open = searchActive ? true : !collapsedDebug[i];
+                          return (
+                            <Collapsible
+                              key={i}
+                              open={open}
+                              onOpenChange={(o) =>
+                                setCollapsedDebug((prev) => ({ ...prev, [i]: !o }))
+                              }
+                              className="border border-border rounded-md"
+                            >
+                              <CollapsibleTrigger asChild>
+                                <button className="flex w-full items-center justify-between gap-2 p-2 text-left font-semibold">
+                                  <span>Request {i + 1}: {req.type}</span>
+                                  {open ? (
+                                    <ChevronDown className="h-4 w-4 flex-shrink-0" />
+                                  ) : (
+                                    <ChevronRight className="h-4 w-4 flex-shrink-0" />
+                                  )}
+                                </button>
+                              </CollapsibleTrigger>
+                              <CollapsibleContent className="p-2 pt-0">
+                                {msgSegs.map((ms, j) => {
+                                  if (searchActive && ms.segs.length === 0) return null;
+                                  return (
+                                    <div key={j} className="mb-2">
+                                      <div className="font-medium text-muted-foreground uppercase">
+                                        {ms.role}
+                                      </div>
+                                      <pre className="whitespace-pre-wrap break-words bg-muted/50 p-2 rounded">
+                                        {renderSegs(ms.segs)}
+                                      </pre>
+                                    </div>
+                                  );
+                                })}
+                              </CollapsibleContent>
+                            </Collapsible>
+                          );
+                        })
+                      )}
+                    </div>
+                  </ScrollArea>
                 </div>
               </>
             );
