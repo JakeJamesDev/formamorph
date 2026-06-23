@@ -37,27 +37,27 @@ export const SettingsProvider = ({ children }) => {
 
   const [endpointUrl, setEndpointUrl] = useState(() => {
     const saved = localStorage.getItem(`${APP_ID}_endpointUrl`);
-    return saved ? saved : DEFAULT_ENDPOINT;
+    return saved ? saved : (import.meta.env.VITE_DEFAULT_ENDPOINT || DEFAULT_ENDPOINT);
   });
 
   const [apiToken, setApiToken] = useState(() => {
     const saved = localStorage.getItem(`${APP_ID}_apiToken`);
-    return saved ? saved : '';
+    return saved ? saved : (import.meta.env.VITE_DEFAULT_API_TOKEN || '');
   });
 
   const [modelName, setModelName] = useState(() => {
     const saved = localStorage.getItem(`${APP_ID}_modelName`);
-    return saved ? saved : 'shuyuej/Mistral-Nemo-Instruct-2407-GPTQ';
+    return saved ? saved : (import.meta.env.VITE_DEFAULT_MODEL_NAME || 'shuyuej/Mistral-Nemo-Instruct-2407-GPTQ');
   });
 
   const [maxTokens, setMaxTokens] = useState(() => {
     const saved = localStorage.getItem(`${APP_ID}_maxTokens`);
-    return saved ? parseInt(saved) : 1024;
+    return saved ? parseInt(saved) : (parseInt(import.meta.env.VITE_DEFAULT_MAX_TOKENS) || 1024);
   });
 
   const [aiMessageLimit, setAiMessageLimit] = useState(() => {
     const saved = localStorage.getItem(`${APP_ID}_aiMessageLimit`);
-    return saved ? parseInt(saved) : 2000;
+    return saved ? parseInt(saved) : (parseInt(import.meta.env.VITE_DEFAULT_AI_MESSAGE_LIMIT) || 2000);
   });
 
   const [systemPrompt, setSystemPrompt] = useState(() => {

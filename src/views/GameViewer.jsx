@@ -105,6 +105,7 @@ const GameViewer = ({
     breastsizePercent,
     setBreastsizePercent,
     playerNotes,
+    setPlayerNotes,
     saveGame,
     loadGame,
     saveCurrentGameState,
