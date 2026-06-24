@@ -17,7 +17,14 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import IndeterminateProgress from "@/components/ui/indeterminate-progress";
+import VramReadout from "./VramReadout";
+import { useVramStats } from "@/lib/useVramStats";
+import { useSettings } from "@/contexts/SettingsContext";
 import type { TTSAudio } from "@/types";
+
+// Kokoro-82M at fp32 ≈ 331 MB of weights; WebGPU runtime buffers push the live footprint
+// higher, so this is a conservative estimate used only for the pre-load low-VRAM warning.
+const KOKORO_VRAM_ESTIMATE_MB = 400;
 
 // Function to create a WAV file from audio data
 function createWAV(audioData: Float32Array, sampleRate: number) {
@@ -90,6 +97,24 @@ export default function TTSModal({ isOpen, onOpenChange, gameText = "Hello World
   const [selectedVoice, setSelectedVoice] = useState("");
   const [isPlaying, setIsPlaying] = useState(false);
   const [webGPUSupported, setWebGPUSupported] = useState(false);
+  const { vramHelperUrl } = useSettings();
+  const vramStats = useVramStats(vramHelperUrl, { enabled: isOpen });
+  const [freeBeforeLoad, setFreeBeforeLoad] = useState<number | null>(null);
+
+  // Min free VRAM across GPUs while the helper is online; null otherwise.
+  const minFreeMB =
+    vramStats.status === "online"
+      ? vramStats.gpus.reduce<number | null>((min, g) => {
+          if (g.freeMB == null) return min;
+          return min == null ? g.freeMB : Math.min(min, g.freeMB);
+        }, null)
+      : null;
+  const lowVram = minFreeMB != null && minFreeMB < KOKORO_VRAM_ESTIMATE_MB;
+  // Once loaded, the drop in free VRAM is Kokoro's actual usage (best-effort).
+  const actualUsedMB =
+    tts && freeBeforeLoad != null && minFreeMB != null && freeBeforeLoad - minFreeMB > 0
+      ? freeBeforeLoad - minFreeMB
+      : null;
 
   useEffect(() => {
     // Check for WebGPU support
@@ -141,6 +166,11 @@ export default function TTSModal({ isOpen, onOpenChange, gameText = "Hello World
           </div>
         ) : tts ? (
           <div className="py-4 space-y-4">
+            {actualUsedMB != null && (
+              <p className="text-xs text-muted-foreground">
+                Kokoro is using ~{actualUsedMB} MB of VRAM.
+              </p>
+            )}
             <div className="flex flex-col gap-2">
               <label className="text-sm font-medium mb-2">Voice Selection</label>
               <Select value={selectedVoice} onValueChange={setSelectedVoice}>
@@ -196,15 +226,22 @@ export default function TTSModal({ isOpen, onOpenChange, gameText = "Hello World
         ) : null}
         {!tts && (
           <DialogFooter>
-            <div className="space-y-4">
+            <div className="space-y-4 w-full">
+              <VramReadout stats={vramStats} compact />
               {!webGPUSupported && (
                 <div className="text-sm text-red-500">
                   WebGPU is not supported in your browser. Please use a WebGPU-enabled browser like Chrome Canary or Edge Canary.
                 </div>
               )}
+              {lowVram && (
+                <div className="text-sm text-red-500">
+                  Low VRAM: ~{KOKORO_VRAM_ESTIMATE_MB} MB needed, only {minFreeMB} MB free — loading may fail or fall back to CPU.
+                </div>
+              )}
               <Button
                 onClick={async () => {
                   try {
+                    setFreeBeforeLoad(minFreeMB);
                     setIsLoading(true);
                     const model = await KokoroTTS.from_pretrained("onnx-community/Kokoro-82M-v1.0-ONNX", {
                       dtype: "fp32",

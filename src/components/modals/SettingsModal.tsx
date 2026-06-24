@@ -6,6 +6,8 @@ import { Textarea } from "@/components/ui/textarea";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { ConfirmDialog } from '../ConfirmDialog';
 import { defaultSystemPrompt, defaultChoicesPrompt, defaultStatUpdatesPrompt, defaultLocationChangePrompt } from '../game/GamePrompts';
+import VramReadout from '../game/VramReadout';
+import { useVramStats } from '@/lib/useVramStats';
 
 export const SettingsModal = ({ isOpen, onOpenChange, onSave }: {
   isOpen: boolean;
@@ -38,8 +40,11 @@ export const SettingsModal = ({ isOpen, onOpenChange, onSave }: {
     shortform,
     setShortform,
     autoscroll,
-    setAutoscroll
+    setAutoscroll,
+    vramHelperUrl,
+    setVramHelperUrl
   } = useSettings();
+  const vramStats = useVramStats(vramHelperUrl, { enabled: isOpen });
   const handleResetEndpointSettings = () => {
     setEndpointUrl('https://mistral.lyonade.net/v1/chat/completions');
     setModelName('shuyuej/Mistral-Nemo-Instruct-2407-GPTQ');
@@ -62,10 +67,11 @@ export const SettingsModal = ({ isOpen, onOpenChange, onSave }: {
           <DialogTitle>Settings</DialogTitle>
         </DialogHeader>
         <Tabs defaultValue="gameplay" className="w-full">
-          <TabsList className="grid w-full grid-cols-3">
+          <TabsList className="grid w-full grid-cols-4">
             <TabsTrigger value="gameplay">Gameplay</TabsTrigger>
             <TabsTrigger value="endpoint">Endpoint</TabsTrigger>
             <TabsTrigger value="prompts">System Prompts</TabsTrigger>
+            <TabsTrigger value="hardware">Hardware</TabsTrigger>
           </TabsList>
 
           <TabsContent value="gameplay" className="py-4 px-2">
@@ -260,6 +266,27 @@ export const SettingsModal = ({ isOpen, onOpenChange, onSave }: {
                   </Button>
                 </ConfirmDialog>
               </div>
+            </div>
+          </TabsContent>
+
+          <TabsContent value="hardware" className="py-4 px-2">
+            <div className="grid gap-4">
+              <div className="grid grid-cols-[1fr_3fr] items-center gap-4">
+                <label htmlFor="vramHelperUrl" className="text-right">
+                  VRAM Helper URL
+                </label>
+                <Input
+                  id="vramHelperUrl"
+                  value={vramHelperUrl}
+                  onChange={(e) => setVramHelperUrl(e.target.value)}
+                />
+              </div>
+              <p className="text-xs text-gray-500">
+                Run <code>npm run vram-helper</code> alongside the app for a live VRAM readout
+                and a low-VRAM warning before loading text-to-speech. Requires an NVIDIA GPU with
+                <code> nvidia-smi</code> on your PATH.
+              </p>
+              <VramReadout stats={vramStats} />
             </div>
           </TabsContent>
         </Tabs>

@@ -70,6 +70,11 @@ function useProvideSettings() {
     return saved ? saved : defaultLocationChangePrompt;
   });
 
+  const [vramHelperUrl, setVramHelperUrl] = useState<string>(() => {
+    const saved = localStorage.getItem(`${APP_ID}_vramHelperUrl`);
+    return saved ? saved : 'http://localhost:5179';
+  });
+
   // Save settings to localStorage whenever they change
   useEffect(() => {
     localStorage.setItem('bgmEnabled', JSON.stringify(bgmEnabled));
@@ -123,6 +128,10 @@ function useProvideSettings() {
     localStorage.setItem(`${APP_ID}_locationChangePrompt`, locationChangePromptText);
   }, [locationChangePromptText]);
 
+  useEffect(() => {
+    localStorage.setItem(`${APP_ID}_vramHelperUrl`, vramHelperUrl);
+  }, [vramHelperUrl]);
+
   const value = {
     bgmEnabled,
     setBgmEnabled,
@@ -149,7 +158,9 @@ function useProvideSettings() {
     statUpdatesPrompt,
     setStatUpdatesPrompt,
     locationChangePromptText,
-    setLocationChangePromptText
+    setLocationChangePromptText,
+    vramHelperUrl,
+    setVramHelperUrl
   };
 
   return value;

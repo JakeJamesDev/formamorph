@@ -60,6 +60,18 @@ All configuration is **optional** — the app ships with working defaults, and t
 | `VITE_DEFAULT_MAX_TOKENS` | Max tokens per AI response |
 | `VITE_API_URL_DEV` | Workshop backend URL (worlds / auth) |
 
+### 🌡️ Optional VRAM monitor
+
+Text-to-speech (Kokoro) loads a model into your GPU. To see live VRAM usage and get a warning before loading TTS would exhaust it, run the optional helper next to the app:
+
+```bash
+npm run vram-helper   # serves at http://localhost:5179
+```
+
+Then open **Settings → Hardware** and confirm the helper URL. Requires an **NVIDIA GPU** with `nvidia-smi` on your PATH. The helper is local-only; if you serve the app over **https**, browsers block it from reaching an `http://localhost` helper, so use it with the local dev server.
+
+> ℹ️ Total/used/free VRAM (which drives the low-VRAM warning) always works. The **per-process** list often shows `N/A` — it needs an elevated (Administrator) terminal, and even then consumer GeForce cards in the default WDDM driver mode usually can't report it. That's an `nvidia-smi` limitation, not a bug.
+
 ---
 
 ## 🧱 Tech stack

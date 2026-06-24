@@ -22,7 +22,6 @@ import {
 } from "@/components/ui/pagination";
 import VRMViewer from '@/views/VRMViewer';
 import { ConfirmDialog } from '../ConfirmDialog';
-import IndeterminateProgress from '../ui/indeterminate-progress';
 import { EditTextModal } from '../modals/EditTextModal';
 import type { Entity } from '@/types';
 
@@ -195,6 +194,7 @@ export const MiddlePanel = ({
   disabled,
   onTTSClick,
   memoryBar,
+  progressBar,
   locationSuggestion
 }: {
   parseAssistantMessage: (content: string) => React.ReactNode;
@@ -208,6 +208,7 @@ export const MiddlePanel = ({
   disabled: boolean;
   onTTSClick: () => void;
   memoryBar: React.ReactNode;
+  progressBar: React.ReactNode;
   locationSuggestion: React.ReactNode;
 }) => {
   const {
@@ -491,7 +492,7 @@ export const MiddlePanel = ({
               </Button>
             </div>
           )}
-          {isWaitingForAI && <IndeterminateProgress />}
+          {progressBar}
           <div className="flex flex-col gap-2">
             <div className="flex">
               <Input
