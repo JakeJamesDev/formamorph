@@ -1,4 +1,4 @@
-﻿import React, { useState, useRef, useEffect, useMemo } from 'react';
+﻿import React, { useState, useRef, useEffect, useLayoutEffect, useMemo } from 'react';
 import { useGameData } from '../contexts/GameDataContext';
 import { toast, ToastContainer  } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import {ConfirmDialog} from "@/components/ConfirmDialog";
 import {RadioGroup,RadioGroupItem } from"@/components/ui/radio-group";
 import {Label} from "@/components/ui/label"
-import {FilePlus2, DoorOpen, Pencil, Github, AlertTriangle, Code, User, LogIn, LogOut, Key, Upload, Import, Search, Globe, EyeOff, RotateCcw, Settings, ArrowDownWideNarrow, ArrowUpNarrowWide, ArrowLeft, Check, X } from "lucide-react";
+import {FilePlus2, DoorOpen, Pencil, Github, AlertTriangle, Code, User, LogIn, LogOut, Key, Upload, Import, Search, Globe, EyeOff, RotateCcw, Settings, ArrowDownWideNarrow, ArrowUpNarrowWide, ArrowLeft, Check, X, Download, MessageSquare } from "lucide-react";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import {
   Pagination,
@@ -66,13 +66,15 @@ const defaultWorlds = [
 
 // Normalize a tag so formatting variants collapse to one value for matching:
 // fold accents (NFKD + strip combining marks), lowercase, treat any run of non-alphanumerics
-// (spaces, hyphens, underscores, punctuation) as a single space, then trim. '' for junk-only input.
+// as a single space -- except '/', which is kept (often used as "this/that"; spacing around it is
+// normalized so "a / b" == "a/b"), then trim. '' for junk-only input.
 const sanitizeTag = (tag: string): string =>
   String(tag ?? '')
     .normalize('NFKD')
     .replace(/[\u0300-\u036f]/g, '')
     .toLowerCase()
-    .replace(/[^a-z0-9]+/g, ' ')
+    .replace(/[^a-z0-9/]+/g, ' ')
+    .replace(/\s*\/+\s*/g, '/')
     .trim();
 
 // User-defined world ordering is a UI preference, persisted as an ordered list of ids.
@@ -135,6 +137,87 @@ function SortableWorldCard({ world, onSelect, onDelete }: {
   );
 }
 
+// Tag chips for a world card. Collapsed view shows as many chips as fit in ~4 rows with an inline
+// "(Show More)" link at the end (chips that don't fit are hidden — the link never overlaps one).
+// Hovering reveals the full set as an elevated overlay that floats over the layout (no reflow);
+// the mouse leaving collapses it. Clicking a chip hides that tag.
+function CardTags({ tags, onHide }: { tags: string[]; onHide: (tag: string) => void }) {
+  const ref = useRef<HTMLDivElement>(null);
+  const [count, setCount] = useState(tags.length); // visible chips before the link
+  const [open, setOpen] = useState(false);
+  const lastWidth = useRef(0);
+  const truncated = count < tags.length;
+
+  // Re-measure from scratch when the tag set changes.
+  useLayoutEffect(() => { setCount(tags.length); }, [tags]);
+
+  // Re-measure when the available width changes (but not as our own height shrinks during fitting).
+  useEffect(() => {
+    const el = ref.current;
+    if (!el) return;
+    const ro = new ResizeObserver((entries) => {
+      const w = entries[0].contentRect.width;
+      if (w !== lastWidth.current) { lastWidth.current = w; setCount(tags.length); }
+    });
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, [tags]);
+
+  // Shrink the visible chip count until the chips (+ inline link) fit within the 4-row clamp.
+  // Re-runs after each setCount (and on reset) until it fits — a converging loop.
+  useLayoutEffect(() => {
+    const el = ref.current;
+    if (el && el.scrollHeight > el.clientHeight + 1 && count > 0) setCount((c) => c - 1);
+  }, [count, tags]);
+
+  if (!tags || tags.length === 0) {
+    return <span className="text-gray-400 text-xs italic">No tags</span>;
+  }
+
+  const chip = (tag: string, i: number) => (
+    <span
+      key={i}
+      onClick={(e) => { e.stopPropagation(); onHide(tag); }}
+      title={`Hide all worlds tagged "${tag}"`}
+      className="px-1.5 py-0.5 bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-300 text-xs rounded-full cursor-pointer hover:line-through"
+    >
+      {tag}
+    </span>
+  );
+
+  // One wrapper owns the hover: entering opens, leaving closes. The expanded overlay is a CHILD
+  // (absolutely positioned, elevated) so the whole window counts as "inside" — and it escapes the
+  // card's clip (which now lives on the thumbnail) to float over the layout without reflow.
+  return (
+    <div
+      className="relative"
+      onMouseEnter={() => { if (truncated) setOpen(true); }}
+      onMouseLeave={() => setOpen(false)}
+    >
+      {/* ~4 rows (chip ≈ 20px + 4px gap) */}
+      <div ref={ref} className="flex flex-wrap gap-1 max-h-[92px] overflow-hidden">
+        {tags.slice(0, count).map(chip)}
+        {truncated && (
+          <span className="self-center whitespace-nowrap px-1 text-xs font-medium text-primary">
+            (Show More)
+          </span>
+        )}
+      </div>
+      {truncated && open && (
+        // Offset by border(1px) + p-1(4px) so the first chip lands exactly where the collapsed
+        // one was — no down/right jump when it opens.
+        <div
+          onClick={(e) => e.stopPropagation()}
+          className="absolute z-30 rounded-md border bg-background p-1 shadow-lg"
+          style={{ top: -5, left: -5, width: 'calc(100% + 10px)' }}
+        >
+          <div className="flex flex-wrap gap-1">{tags.map(chip)}</div>
+        </div>
+      )}
+    </div>
+  );
+}
+
 const MainMenu = ({ onStartGame, onOpenWorldEditor }) => {
   const { traits, stats, loadWorldData } = useGameData();
   const [selectedWorld, setSelectedWorld] = useState(null);
@@ -149,7 +232,7 @@ const MainMenu = ({ onStartGame, onOpenWorldEditor }) => {
   const fileInputRef = useRef(null);
   const [worlds, setWorlds] = useState([]);
   const [isLoadingWorlds, setIsLoadingWorlds] = useState(true);
-  
+
   // Authentication states
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [currentUser, setCurrentUser] = useState(null);
@@ -157,27 +240,27 @@ const MainMenu = ({ onStartGame, onOpenWorldEditor }) => {
   const [showProfileDialog, setShowProfileDialog] = useState(false);
   const [authMode, setAuthMode] = useState('login'); // 'login' or 'register'
   const [authError, setAuthError] = useState('');
-  
+
   // Auth form states
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [currentPassword, setCurrentPassword] = useState('');
   const [newPassword, setNewPassword] = useState('');
-  
+
   // Publish modal states
   const [showPublishModal, setShowPublishModal] = useState(false);
   const [userWorlds, setUserWorlds] = useState([]);
   const [selectedWorldToOverride, setSelectedWorldToOverride] = useState(null);
   const [isPublishing, setIsPublishing] = useState(false);
   const [publishError, setPublishError] = useState('');
-  
+
   // Discover dialog states
   const [showDiscoverDialog, setShowDiscoverDialog] = useState(false);
   const [remoteWorlds, setRemoteWorlds] = useState([]);
   const [isLoadingRemoteWorlds, setIsLoadingRemoteWorlds] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
-  
+
   const [authorFilter, setAuthorFilter] = useState<string[]>([]);
   const [tagFilter, setTagFilter] = useState<string[]>([]);
   const [tagMode, setTagMode] = useState<'any' | 'all'>('any');
@@ -212,6 +295,12 @@ const MainMenu = ({ onStartGame, onOpenWorldEditor }) => {
       return Array.from(new Set((Array.isArray(raw) ? raw : []).map(sanitizeTag).filter(Boolean)));
     } catch { return []; }
   });
+  const [hiddenAuthors, setHiddenAuthors] = useState<string[]>(() => {
+    try {
+      const raw = JSON.parse(localStorage.getItem('FORMAMORPH_hiddenAuthors') || '[]');
+      return Array.from(new Set((Array.isArray(raw) ? raw : []).filter(Boolean)));
+    } catch { return []; }
+  });
 
   // Manage users dialog states
   const [showManageUsersDialog, setShowManageUsersDialog] = useState(false);
@@ -227,29 +316,29 @@ const MainMenu = ({ onStartGame, onOpenWorldEditor }) => {
       const isLoggedIn = AuthService.isAuthenticated();
       console.log('Is logged in:', isLoggedIn);
       setIsAuthenticated(isLoggedIn);
-      
+
       if (isLoggedIn) {
         const user = AuthService.getCurrentUser();
         console.log('Current user from AuthService:', user);
-        
+
         // If we have a user object but no username, create one with the username from the login form
         if (user && !user.username && username) {
           user.username = username;
         }
-        
+
         setCurrentUser(user);
-        
+
         // Refresh user profile
         try {
           const refreshedUser = await AuthService.fetchUserProfile();
           console.log('Refreshed user profile:', refreshedUser);
-          
+
           if (refreshedUser) {
             // Ensure we have a username
             if (!refreshedUser.username && user && user.username) {
               refreshedUser.username = user.username;
             }
-            
+
             setCurrentUser(refreshedUser);
           } else {
             // Token expired or invalid
@@ -258,7 +347,7 @@ const MainMenu = ({ onStartGame, onOpenWorldEditor }) => {
           }
         } catch (error) {
           console.error('Error refreshing user profile:', error);
-          
+
           // If we failed to refresh but have a user with username, keep using it
           if (user && user.username) {
             console.log('Using existing user data:', user);
@@ -266,7 +355,7 @@ const MainMenu = ({ onStartGame, onOpenWorldEditor }) => {
         }
       }
     };
-    
+
     checkAuth();
   }, []);
 
@@ -281,14 +370,14 @@ const MainMenu = ({ onStartGame, onOpenWorldEditor }) => {
           toast.success("Loaded default worlds");
         }
         const worldMetadata = await WorldStorageService.getWorldMetadata();
-        
+
         const mapped = worldMetadata.map(world => ({
           ...world,
           isLoading: false,
           defaultName: defaultWorlds.find(dw => dw.id === world.id)?.defaultName || world.name
         }));
         setWorlds(applyWorldOrder(mapped, loadWorldOrder()));
-        
+
       } catch (error) {
         console.error('Error initializing worlds:', error);
       } finally {
@@ -312,7 +401,7 @@ const MainMenu = ({ onStartGame, onOpenWorldEditor }) => {
   // Generate concatenated code from all stats with code
   const generateConcatenatedCode = (statsArray) => {
     const statsWithCode = getStatsWithCode(statsArray);
-    
+
     return statsWithCode.map(stat => (
       `# ${stat.name || 'Unnamed Stat'}\n${stat.code}`
     )).join('\n\n----\n\n');
@@ -322,7 +411,7 @@ const MainMenu = ({ onStartGame, onOpenWorldEditor }) => {
     try {
       const worldData = await WorldStorageService.getWorldData(worldId);
       const selectedWorld = worlds.find(w => w.id === worldId);
-      
+
       if (worldData && selectedWorld) {
         loadWorldData(worldData as World, true);
         setSelectedWorld({
@@ -346,7 +435,7 @@ const MainMenu = ({ onStartGame, onOpenWorldEditor }) => {
           const worldId = `uploaded-${Date.now()}`;
 
           parsedWorldData.id = worldId;
-          
+
           await WorldStorageService.storeWorld({
             id: worldId,
             name: parsedWorldData.worldOverview?.name || 'Uploaded World',
@@ -381,13 +470,13 @@ const MainMenu = ({ onStartGame, onOpenWorldEditor }) => {
   };
 
   const handleTraitSelection = (traitId) => {
-    setSelectedTraits(prev => 
+    setSelectedTraits(prev =>
       prev.includes(traitId)
         ? prev.filter(id => id !== traitId)
         : [...prev, traitId]
     );
   };
-  
+
   const handleDuplicateWorld = async () => {
     try {
       if (!selectedWorld) {
@@ -397,10 +486,10 @@ const MainMenu = ({ onStartGame, onOpenWorldEditor }) => {
 
       // Get the current world data
       const worldToDuplicate = selectedWorld.data;
-      
+
       // Generate a unique ID for the duplicated world
       const worldId = `duplicate-${Date.now()}`;
-      
+
       // Create a copy of the world with a new ID and modified name
       const duplicatedWorld = {
         ...worldToDuplicate,
@@ -410,7 +499,7 @@ const MainMenu = ({ onStartGame, onOpenWorldEditor }) => {
           name: `${worldToDuplicate.worldOverview.name || 'World'} (Copy)`,
         }
       };
-      
+
       // Store the duplicated world
       await WorldStorageService.storeWorld({
         id: worldId,
@@ -419,7 +508,7 @@ const MainMenu = ({ onStartGame, onOpenWorldEditor }) => {
         thumbnail: duplicatedWorld.worldOverview.thumbnail,
         data: duplicatedWorld
       });
-      
+
       // Add the duplicated world to the local list
       setWorlds(prev => [...prev, {
         id: worldId,
@@ -428,22 +517,22 @@ const MainMenu = ({ onStartGame, onOpenWorldEditor }) => {
         thumbnail: duplicatedWorld.worldOverview.thumbnail,
         isLoading: false
       }]);
-      
+
       // Close the world modal
       setShowWorldModal(false);
-      
+
       toast.success('World duplicated successfully!');
     } catch (error) {
       console.error('Error duplicating world:', error);
       toast.error('Failed to duplicate world');
     }
   };
-  
+
   const handleCreateNewWorld = async () => {
     try {
       // Generate a unique ID for the new world
       const worldId = `new-${Date.now()}`;
-      
+
       // Create a basic blank world structure
       const blankWorld = {
         id: worldId,
@@ -463,7 +552,7 @@ const MainMenu = ({ onStartGame, onOpenWorldEditor }) => {
         entities: [],
         statUpdates: [] // This field is required by WorldStorageService
       };
-      
+
       // Store the world
       await WorldStorageService.storeWorld({
         id: worldId,
@@ -472,7 +561,7 @@ const MainMenu = ({ onStartGame, onOpenWorldEditor }) => {
         thumbnail: 'https://via.placeholder.com/400x300/2a2a2a/ffffff?text=New+World',
         data: blankWorld
       });
-      
+
       // Add the world to the local list
       setWorlds(prev => [...prev, {
         id: worldId,
@@ -481,17 +570,17 @@ const MainMenu = ({ onStartGame, onOpenWorldEditor }) => {
         thumbnail: 'https://via.placeholder.com/400x300/2a2a2a/ffffff?text=New+World',
         isLoading: false
       }]);
-      
+
       // Load the world data into context
       loadWorldData(blankWorld, true);
-      
+
       // Open the world editor
       if (window.innerWidth < 1024) {
         setShowMobileWorldEditorWarning(true);
       } else {
         onOpenWorldEditor();
       }
-      
+
       toast.success('New world created! You can now start editing.');
     } catch (error) {
       console.error('Error creating new world:', error);
@@ -502,12 +591,12 @@ const MainMenu = ({ onStartGame, onOpenWorldEditor }) => {
   // Handle login
   const handleLogin = async () => {
     setAuthError('');
-    
+
     if (!username || !password) {
       setAuthError('Username and password are required');
       return;
     }
-    
+
     try {
       await AuthService.login(username, password);
       setIsAuthenticated(true);
@@ -519,37 +608,37 @@ const MainMenu = ({ onStartGame, onOpenWorldEditor }) => {
       setAuthError(error.message || 'Login failed');
     }
   };
-  
+
   // Handle registration
   const handleRegister = async () => {
     setAuthError('');
-    
+
     // Validate username and password according to server requirements
     if (!username) {
       setAuthError('Username is required');
       return;
     }
-    
+
     if (username.length < 3 || username.length > 20) {
       setAuthError('Username must be between 3 and 20 characters');
       return;
     }
-    
+
     if (!password) {
       setAuthError('Password is required');
       return;
     }
-    
+
     if (password.length < 6) {
       setAuthError('Password must be at least 6 characters long');
       return;
     }
-    
+
     if (password !== confirmPassword) {
       setAuthError('Passwords do not match');
       return;
     }
-    
+
     try {
       await AuthService.register(username, password);
       setIsAuthenticated(true);
@@ -561,16 +650,16 @@ const MainMenu = ({ onStartGame, onOpenWorldEditor }) => {
       setAuthError(error.message || 'Registration failed');
     }
   };
-  
+
   // Handle password change
   const handleChangePassword = async () => {
     setAuthError('');
-    
+
     if (!currentPassword || !newPassword) {
       setAuthError('Both current and new passwords are required');
       return;
     }
-    
+
     try {
       await AuthService.changePassword(currentPassword, newPassword);
       setShowProfileDialog(false);
@@ -580,7 +669,7 @@ const MainMenu = ({ onStartGame, onOpenWorldEditor }) => {
       setAuthError(error.message || 'Failed to change password');
     }
   };
-  
+
   // Handle logout
   const handleLogout = () => {
     AuthService.logout();
@@ -589,7 +678,7 @@ const MainMenu = ({ onStartGame, onOpenWorldEditor }) => {
     setShowProfileDialog(false);
     toast.success('Logged out successfully');
   };
-  
+
   // Reset auth forms
   const resetAuthForms = () => {
     setUsername('');
@@ -599,15 +688,15 @@ const MainMenu = ({ onStartGame, onOpenWorldEditor }) => {
     setNewPassword('');
     setAuthError('');
   };
-  
+
   // Fetch user's published worlds
   const fetchUserWorlds = async () => {
     if (!isAuthenticated) return;
-    
+
     try {
       const worlds = await WorldStorageService.getUserWorlds();
       setUserWorlds(worlds);
-      
+
       // Set default selection to "publish as new"
       setSelectedWorldToOverride('new');
     } catch (error) {
@@ -615,30 +704,30 @@ const MainMenu = ({ onStartGame, onOpenWorldEditor }) => {
       setPublishError('Failed to load your published worlds');
     }
   };
-  
+
   // Handle publishing as a new world
   const handlePublishAsNew = async () => {
     setPublishError('');
     setIsPublishing(true);
-    
+
     try {
       // Get the current world data
       const worldToPublish = selectedWorld.data;
-      
+
       // Ensure tags are included in the world data
       if (!worldToPublish.worldOverview.tags) {
         worldToPublish.worldOverview.tags = [];
       }
-      
+
       // Publish the world
       const publishedWorld = await WorldStorageService.publishWorld(worldToPublish);
       console.log('Published world:', publishedWorld);
-      
+
       // Update the user worlds list directly
       const updatedWorlds = await WorldStorageService.getUserWorlds();
       console.log('Updated user worlds after publish:', updatedWorlds);
       setUserWorlds(updatedWorlds);
-      
+
       // Close the modal and show success message
       setShowPublishModal(false);
       toast.success('World published successfully!');
@@ -648,37 +737,37 @@ const MainMenu = ({ onStartGame, onOpenWorldEditor }) => {
       setIsPublishing(false);
     }
   };
-  
+
   // Handle overriding an existing world
   const handleOverrideWorld = async () => {
     if (!selectedWorldToOverride) return;
-    
+
     // If "new" is selected, call handlePublishAsNew instead
     if (selectedWorldToOverride === 'new') {
       return handlePublishAsNew();
     }
-    
+
     setPublishError('');
     setIsPublishing(true);
-    
+
     try {
       // Get the current world data
       const worldToPublish = selectedWorld.data;
-      
+
       // Ensure tags are included in the world data
       if (!worldToPublish.worldOverview.tags) {
         worldToPublish.worldOverview.tags = [];
       }
-      
+
       // Update the existing world
       const updatedWorld = await WorldStorageService.publishWorld(worldToPublish, selectedWorldToOverride);
       console.log('Updated world:', updatedWorld);
-      
+
       // Update the user worlds list directly
       const updatedWorlds = await WorldStorageService.getUserWorlds();
       console.log('Updated user worlds after override:', updatedWorlds);
       setUserWorlds(updatedWorlds);
-      
+
       // Close the modal and show success message
       setShowPublishModal(false);
       toast.success('World updated successfully!');
@@ -688,14 +777,14 @@ const MainMenu = ({ onStartGame, onOpenWorldEditor }) => {
       setIsPublishing(false);
     }
   };
-  
+
   // Load user worlds when publish modal is opened
   useEffect(() => {
     if (showPublishModal) {
       fetchUserWorlds();
     }
   }, [showPublishModal, isAuthenticated]);
-  
+
   // Debounced search query
   // Load the world catalog when Discover opens: render the cached copy instantly, then refresh
   // the whole catalog from the server in the background (one request) and re-cache it.
@@ -737,7 +826,7 @@ const MainMenu = ({ onStartGame, onOpenWorldEditor }) => {
       setIsSyncingCatalog(false);
     }
   };
-  
+
   // Persist discover hide preferences
   useEffect(() => {
     localStorage.setItem('FORMAMORPH_hiddenWorldIds', JSON.stringify(hiddenWorldIds));
@@ -745,6 +834,9 @@ const MainMenu = ({ onStartGame, onOpenWorldEditor }) => {
   useEffect(() => {
     localStorage.setItem('FORMAMORPH_hiddenTags', JSON.stringify(hiddenTags));
   }, [hiddenTags]);
+  useEffect(() => {
+    localStorage.setItem('FORMAMORPH_hiddenAuthors', JSON.stringify(hiddenAuthors));
+  }, [hiddenAuthors]);
 
   const hideRemoteWorld = (worldId) => {
     setHiddenWorldIds((prev) => (prev.includes(worldId) ? prev : [...prev, worldId]));
@@ -754,32 +846,44 @@ const MainMenu = ({ onStartGame, onOpenWorldEditor }) => {
     if (!t) return;
     setHiddenTags((prev) => (prev.includes(t) ? prev : [...prev, t]));
   };
+  const hideRemoteAuthor = (name) => {
+    const n = String(name || '').trim();
+    if (!n) return;
+    setHiddenAuthors((prev) => (prev.some((a) => a.toLowerCase() === n.toLowerCase()) ? prev : [...prev, n]));
+  };
   const resetHiddenWorlds = () => {
     setHiddenWorldIds([]);
     setHiddenTags([]);
+    setHiddenAuthors([]);
   };
   const unhideWorld = (id) => setHiddenWorldIds((prev) => prev.filter((w) => w !== id));
   const unhideTag = (tag) => setHiddenTags((prev) => prev.filter((t) => t !== tag));
+  const unhideAuthor = (name) => setHiddenAuthors((prev) => prev.filter((a) => a !== name));
   // Resolve a hidden world id to its name from the catalog (falls back to a short id).
   const hiddenWorldName = (id: string) =>
     remoteWorlds.find((w) => (w._id || w.id) === id)?.name || `${id.slice(0, 8)}…`;
 
-  // Unique authors/tags from the cached catalog, used for the filter autocomplete.
+  // Unique authors/tags from the cached catalog (excluding hidden ones), for the filter autocomplete.
   const allAuthors = useMemo(() => {
+    const hidden = new Set(hiddenAuthors.map((a) => a.toLowerCase()));
     const set = new Set<string>();
-    remoteWorlds.forEach((w) => { if (w.author?.username) set.add(w.author.username); });
+    remoteWorlds.forEach((w) => {
+      const name = w.author?.username;
+      if (name && !hidden.has(name.toLowerCase())) set.add(name);
+    });
     return Array.from(set).sort((a, b) => a.localeCompare(b));
-  }, [remoteWorlds]);
+  }, [remoteWorlds, hiddenAuthors]);
   const allTags = useMemo(() => {
+    const hidden = new Set(hiddenTags); // hiddenTags are already sanitized
     const seen = new Set<string>();
     const out: string[] = [];
     // Normalize tags so casing/spacing/punctuation variants collapse into one suggestion.
     remoteWorlds.forEach((w) => (w.tags || []).forEach((t) => {
       const s = sanitizeTag(t);
-      if (s && !seen.has(s)) { seen.add(s); out.push(s); }
+      if (s && !seen.has(s) && !hidden.has(s)) { seen.add(s); out.push(s); }
     }));
     return out.sort((a, b) => a.localeCompare(b));
-  }, [remoteWorlds]);
+  }, [remoteWorlds, hiddenTags]);
 
   // Client-side browse pipeline: hide filters → text search → author/tag include filters → sort.
   const PAGE_SIZE = 12;
@@ -791,6 +895,7 @@ const MainMenu = ({ onStartGame, onOpenWorldEditor }) => {
       const id = world._id || world.id;
       if (hiddenWorldIds.includes(id)) return false;
       if ((world.tags || []).some((t) => hiddenTags.includes(sanitizeTag(t)))) return false;
+      if (hiddenAuthors.some((a) => a.toLowerCase() === (world.author?.username || '').toLowerCase())) return false;
       if (q && !`${world.name || ''} ${world.description || ''}`.toLowerCase().includes(q)) return false;
       if (authors.length && !authors.includes((world.author?.username || '').toLowerCase())) return false;
       if (tags.length) {
@@ -806,7 +911,7 @@ const MainMenu = ({ onStartGame, onOpenWorldEditor }) => {
       const bv = sortField === 'downloads' ? (b.downloads || 0) : toEpoch(b[sortField]);
       return (av - bv) * dir;
     });
-  }, [remoteWorlds, searchQuery, authorFilter, tagFilter, tagMode, hiddenWorldIds, hiddenTags, sortField, sortOrder]);
+  }, [remoteWorlds, searchQuery, authorFilter, tagFilter, tagMode, hiddenWorldIds, hiddenTags, hiddenAuthors, sortField, sortOrder]);
 
   const totalPages = Math.max(1, Math.ceil(filteredRemoteWorlds.length / PAGE_SIZE));
   const pagedRemoteWorlds = filteredRemoteWorlds.slice((currentPage - 1) * PAGE_SIZE, currentPage * PAGE_SIZE);
@@ -845,9 +950,9 @@ const MainMenu = ({ onStartGame, onOpenWorldEditor }) => {
   // Fetch users from the server
   const fetchUsers = async () => {
     if (!showManageUsersDialog) return;
-    
+
     setIsLoadingUsers(true);
-    
+
     try {
       // Fetch users from the API
       const response = await fetch(`${WorldStorageService.API_URL}/users?page=${userCurrentPage}&limit=10&search=${userSearchQuery}`, {
@@ -855,17 +960,17 @@ const MainMenu = ({ onStartGame, onOpenWorldEditor }) => {
           'Authorization': `Bearer ${AuthService.token}`
         }
       });
-      
+
       if (!response.ok) {
         const errorData = await response.json();
         throw new Error(errorData.message || 'Failed to fetch users');
       }
-      
+
       const result = await response.json();
-      
+
       if (result.success) {
         setUsers(result.data);
-        
+
         // Calculate total pages
         const total = result.total || 0;
         const pages = Math.ceil(total / 10);
@@ -883,13 +988,13 @@ const MainMenu = ({ onStartGame, onOpenWorldEditor }) => {
       setIsLoadingUsers(false);
     }
   };
-  
+
   // Handle user status change
   const handleUserStatusChange = async (userId, newStatus) => {
     try {
       // Call API to update user status - use the same endpoint for both actions
       const endpoint = `${WorldStorageService.API_URL}/users/${userId}/status`;
-      
+
       const response = await fetch(endpoint, {
         method: 'PUT',
         headers: {
@@ -898,24 +1003,24 @@ const MainMenu = ({ onStartGame, onOpenWorldEditor }) => {
         },
         body: JSON.stringify({ status: newStatus })
       });
-      
+
       if (!response.ok) {
         const errorData = await response.json();
         throw new Error(errorData.message || `Failed to ${newStatus === "normal" ? "activate" : "suspend"} user`);
       }
-      
+
       // Update the user in the list
-      setUsers(prev => prev.map(user => 
+      setUsers(prev => prev.map(user =>
         user._id === userId ? { ...user, status: newStatus } : user
       ));
-      
+
       toast.success(`User ${newStatus === "normal" ? "activated" : "suspended"} successfully`);
     } catch (error) {
       console.error('Error updating user status:', error);
       toast.error(error.message || `Failed to ${newStatus === "normal" ? "activate" : "suspend"} user`);
     }
   };
-  
+
   // Handle remote world deletion
   const handleRemoteWorldDelete = async (worldId) => {
     try {
@@ -926,12 +1031,12 @@ const MainMenu = ({ onStartGame, onOpenWorldEditor }) => {
           'Authorization': `Bearer ${AuthService.token}`
         }
       });
-      
+
       if (!response.ok) {
         const errorData = await response.json();
         throw new Error(errorData.message || 'Failed to delete world');
       }
-      
+
       // Remove the world from the list
       setRemoteWorlds(prev => prev.filter(w => (w._id || w.id) !== worldId));
       setRemoteWorldToDelete(null);
@@ -941,40 +1046,40 @@ const MainMenu = ({ onStartGame, onOpenWorldEditor }) => {
       toast.error(error.message || 'Failed to delete world');
     }
   };
-  
+
   // Handle viewing remote world details
   const handleViewRemoteWorldDetails = (world) => {
     setSelectedRemoteWorld(world);
     setShowRemoteWorldDetailsModal(true);
   };
-  
+
   // Handle downloading a remote world
   const handleDownloadWorld = async (world) => {
     try {
       // Get the world ID
       const worldId = world._id || world.id;
-      
+
       // Fetch the world content
       const response = await fetch(`${WorldStorageService.API_URL}/worlds/${worldId}/content`, {
         headers: AuthService.isAuthenticated() ? {
           'Authorization': `Bearer ${AuthService.token}`
         } : {}
       });
-      
+
       if (!response.ok) {
         const errorData = await response.json();
         throw new Error(errorData.message || 'Failed to download world');
       }
-      
+
       const worldData = await response.json();
-      
+
       if (!worldData.success || !worldData.data) {
         throw new Error('Invalid world data received');
       }
-      
+
       // Generate a unique ID for the downloaded world
       const localWorldId = `downloaded-${Date.now()}`;
-      
+
       // Determine the thumbnail URL
       let thumbnailUrl = '';
       if (world.thumbnail_file) {
@@ -982,7 +1087,7 @@ const MainMenu = ({ onStartGame, onOpenWorldEditor }) => {
       } else if (world.thumbnail) {
         thumbnailUrl = world.thumbnail;
       }
-      
+
       // Store the world locally
       await WorldStorageService.storeWorld({
         id: localWorldId,
@@ -992,7 +1097,7 @@ const MainMenu = ({ onStartGame, onOpenWorldEditor }) => {
         author: world.author?.username || '',
         data: worldData.data.contentData
       });
-      
+
       // Add the world to the local list
       setWorlds(prev => [...prev, {
         id: localWorldId,
@@ -1002,7 +1107,7 @@ const MainMenu = ({ onStartGame, onOpenWorldEditor }) => {
         author: world.author?.username || '',
         isLoading: false
       }]);
-      
+
       toast.success('World downloaded successfully');
       // Keep the browser open; mark this world as downloaded for button feedback.
       setDownloadedIds((prev) => new Set(prev).add(world._id || world.id));
@@ -1053,24 +1158,24 @@ const MainMenu = ({ onStartGame, onOpenWorldEditor }) => {
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [showRemoteWorldDetailsModal, selectedRemoteWorld?._id, selectedRemoteWorld?.id]);
-  
+
   // Get user initial for the avatar button
   const getUserInitial = () => {
     if (!currentUser) return 'U';
-    
+
     // Handle different possible user object structures
     if (typeof currentUser === 'string') {
       return currentUser.charAt(0).toUpperCase();
     }
-    
+
     if (currentUser.username) {
       return currentUser.username.charAt(0).toUpperCase();
     }
-    
+
     if (currentUser.name) {
       return currentUser.name.charAt(0).toUpperCase();
     }
-    
+
     // If we can't find a username property, log the object and return a default
     console.log('Could not find username in user object:', currentUser);
     return 'U';
@@ -1108,7 +1213,7 @@ const MainMenu = ({ onStartGame, onOpenWorldEditor }) => {
   return (
     <div className="container mx-auto px-4 py-6 relative flex flex-col h-screen overflow-hidden">
       <ToastContainer theme="dark" />
-      
+
       {/* Top-right controls: settings + user avatar */}
       <div className="fixed top-4 right-4 z-10 flex items-center gap-2">
         <button
@@ -1142,21 +1247,21 @@ const MainMenu = ({ onStartGame, onOpenWorldEditor }) => {
         >
           <Globe className="mr-2 h-4 w-4" /> Discover Worlds
         </Button>
-        
+
         <Button
           className="bg-gradient-to-r from-amber-200 to-yellow-200 hover:from-amber-300 hover:to-yellow-300 text-black font-bold"
           onClick={() => handleCreateNewWorld()}
         >
           <FilePlus2  className="mr-2 h-4 w-4" /> New World
         </Button>
-        
+
   <Button
     className="bg-gradient-to-r from-green-200 to-emerald-200 hover:from-green-300 hover:to-emerald-300 text-black font-bold"
     onClick={() => fileInputRef.current?.click()}
   >
     <Import className="mr-2 h-4 w-4" /> Import World
   </Button>
-  
+
   <Button
     className="bg-gradient-to-r from-purple-200 to-pink-200 hover:from-purple-300 hover:to-pink-300 text-black font-bold"
     onClick={() => isAuthenticated ? handleLogout() : setShowAuthDialog(true)}
@@ -1167,7 +1272,7 @@ const MainMenu = ({ onStartGame, onOpenWorldEditor }) => {
       <><LogIn className="mr-2 h-4 w-4" /> Login</>
     )}
   </Button>
-  
+
   {isAuthenticated && currentUser?.accountType === "admin" && (
           <Button
             className="bg-gradient-to-r from-purple-200 to-pink-200 hover:from-purple-300 hover:to-pink-300 text-black font-bold"
@@ -1177,7 +1282,7 @@ const MainMenu = ({ onStartGame, onOpenWorldEditor }) => {
           </Button>
         )}
       </div>
-      
+
       <input
         type="file"
         ref={fileInputRef}
@@ -1185,7 +1290,7 @@ const MainMenu = ({ onStartGame, onOpenWorldEditor }) => {
         accept=".json"
         className="hidden"
       />
-      
+
       {/* Bounded scroll viewport (Radix ScrollArea Root is overflow-hidden) so drag-reorder
           auto-scroll stays inside this frame instead of growing the page in either axis. */}
       <ScrollArea className="flex-1 min-h-0">
@@ -1234,7 +1339,7 @@ const MainMenu = ({ onStartGame, onOpenWorldEditor }) => {
           <DialogHeader>
             <DialogTitle>{selectedWorld?.name}</DialogTitle>
           </DialogHeader>
-          
+
           <div className="mt-4">
             {hasStatWithCode(stats) && (
               <div className="mb-4 p-3 bg-amber-100 dark:bg-amber-900 border border-amber-300 dark:border-amber-700 rounded-md flex items-start">
@@ -1243,9 +1348,9 @@ const MainMenu = ({ onStartGame, onOpenWorldEditor }) => {
                   <p className="font-medium">Warning</p>
                   <p>This world contains stats with custom code execution. Please ensure you trust the source of this world.</p>
                 </div>
-                <Button 
-                  variant="outline" 
-                  size="sm" 
+                <Button
+                  variant="outline"
+                  size="sm"
                   className="ml-2 bg-amber-200 dark:bg-amber-800 border-amber-300 dark:border-amber-700 text-amber-800 dark:text-amber-300 hover:bg-amber-300 dark:hover:bg-amber-700"
                   onClick={(e) => {
                     e.stopPropagation();
@@ -1265,7 +1370,7 @@ const MainMenu = ({ onStartGame, onOpenWorldEditor }) => {
                   className="absolute top-0 left-0 w-full h-full object-cover rounded-lg"
                 />
               </div>
-              
+
               <p className="text-sm text-gray-600 dark:text-gray-400">
                 {selectedWorld?.description}
               </p>
@@ -1281,7 +1386,7 @@ const MainMenu = ({ onStartGame, onOpenWorldEditor }) => {
                   >
                     <DoorOpen className="mr-2 h-4 w-4" /> Enter World
                   </Button>
-                  
+
                   <Button
                     className="w-1/3 bg-gradient-to-r from-amber-100 to-yellow-100 hover:from-amber-200 hover:to-yellow-200 text-black font-bold rounded-l-none"
                     onClick={() => {
@@ -1293,7 +1398,7 @@ const MainMenu = ({ onStartGame, onOpenWorldEditor }) => {
                     Skip Customize
                   </Button>
                 </div>
-                
+
                 <Button
                   className="w-full bg-gradient-to-r from-orange-100 to-orange-200 hover:from-orange-200 hover:to-orange-300 text-black font-bold"
                   onClick={() => {
@@ -1306,14 +1411,14 @@ const MainMenu = ({ onStartGame, onOpenWorldEditor }) => {
                 >
                   <Pencil className="mr-2 h-4 w-4" /> Edit World
                 </Button>
-                
+
                 <Button
                   className="w-full bg-gradient-to-r from-purple-100 to-purple-200 hover:from-purple-200 hover:to-purple-300 text-black font-bold"
                   onClick={() => handleDuplicateWorld()}
                 >
                   <FilePlus2 className="mr-2 h-4 w-4" /> Duplicate World
                 </Button>
-                
+
                 {isAuthenticated && (
                   <Button
                     className="w-full bg-gradient-to-r from-red-100 to-red-200 hover:from-purple-200 hover:to-indigo-300 text-black font-bold"
@@ -1349,18 +1454,18 @@ const MainMenu = ({ onStartGame, onOpenWorldEditor }) => {
           <DialogHeader>
             <DialogTitle>Custom Code Execution</DialogTitle>
           </DialogHeader>
-          
+
           <div className="mt-4">
             <p className="text-sm text-gray-600 dark:text-gray-400 mb-4">
               This world contains the following custom code in its stats:
             </p>
-            
+
             <div className="bg-gray-100 dark:bg-gray-800 p-4 rounded-md overflow-auto">
               <pre className="text-sm font-mono whitespace-pre-wrap">
                 {generateConcatenatedCode(stats)}
               </pre>
             </div>
-            
+
             <div className="mt-4 flex justify-end">
               <Button onClick={() => setShowCodeModal(false)}>
                 Close
@@ -1379,13 +1484,13 @@ const MainMenu = ({ onStartGame, onOpenWorldEditor }) => {
             The World Editor is not optimized for mobile devices. Please use a desktop computer for the best experience.
           </div>
           <div className="flex justify-end gap-2">
-            <Button 
-              variant="outline" 
+            <Button
+              variant="outline"
               onClick={() => setShowMobileWorldEditorWarning(false)}
             >
               Cancel
             </Button>
-            <Button 
+            <Button
               onClick={() => {
                 setShowMobileWorldEditorWarning(false);
                 onOpenWorldEditor();
@@ -1419,7 +1524,7 @@ const MainMenu = ({ onStartGame, onOpenWorldEditor }) => {
           }}
         />
       )}
-      
+
       {/* Auth Dialog */}
       <Dialog open={showAuthDialog} onOpenChange={(open) => {
         setShowAuthDialog(open);
@@ -1429,19 +1534,19 @@ const MainMenu = ({ onStartGame, onOpenWorldEditor }) => {
           <DialogHeader>
             <DialogTitle>{authMode === 'login' ? 'Login' : 'Register'}</DialogTitle>
             <DialogDescription>
-              {authMode === 'login' 
-                ? 'Enter your credentials to access your account.' 
+              {authMode === 'login'
+                ? 'Enter your credentials to access your account.'
                 : 'Create a new account to save and share your worlds.'}
             </DialogDescription>
           </DialogHeader>
-          
+
           <div className="space-y-4 py-4">
             {authError && (
               <div className="text-sm text-red-500 p-2 bg-red-50 dark:bg-red-900/20 rounded-md">
                 {authError}
               </div>
             )}
-            
+
             <div className="space-y-2">
               <label htmlFor="username" className="text-sm font-medium">Username</label>
               <Input
@@ -1451,7 +1556,7 @@ const MainMenu = ({ onStartGame, onOpenWorldEditor }) => {
                 placeholder="Enter your username"
               />
             </div>
-            
+
             <div className="space-y-2">
               <label htmlFor="password" className="text-sm font-medium">Password</label>
               <Input
@@ -1462,7 +1567,7 @@ const MainMenu = ({ onStartGame, onOpenWorldEditor }) => {
                 placeholder="Enter your password"
               />
             </div>
-            
+
             {authMode === 'register' && (
               <div className="space-y-2">
                 <label htmlFor="confirmPassword" className="text-sm font-medium">Confirm Password</label>
@@ -1476,7 +1581,7 @@ const MainMenu = ({ onStartGame, onOpenWorldEditor }) => {
               </div>
             )}
           </div>
-          
+
           <DialogFooter className="flex flex-col sm:flex-row gap-2">
             <Button
               variant="outline"
@@ -1485,8 +1590,8 @@ const MainMenu = ({ onStartGame, onOpenWorldEditor }) => {
             >
               {authMode === 'login' ? 'Create Account' : 'Back to Login'}
             </Button>
-            
-            <Button 
+
+            <Button
               onClick={authMode === 'login' ? handleLogin : handleRegister}
               className="sm:order-2"
             >
@@ -1495,7 +1600,7 @@ const MainMenu = ({ onStartGame, onOpenWorldEditor }) => {
           </DialogFooter>
         </DialogContent>
       </Dialog>
-      
+
       {/* Profile Dialog */}
       <Dialog open={showProfileDialog} onOpenChange={(open) => {
         setShowProfileDialog(open);
@@ -1505,7 +1610,7 @@ const MainMenu = ({ onStartGame, onOpenWorldEditor }) => {
           <DialogHeader>
             <DialogTitle>User Profile</DialogTitle>
           </DialogHeader>
-          
+
           <div className="py-4">
             <div className="flex items-center gap-4 mb-6">
               <div className="w-16 h-16 rounded-full bg-gray-800 flex items-center justify-center text-white text-2xl font-bold">
@@ -1518,7 +1623,7 @@ const MainMenu = ({ onStartGame, onOpenWorldEditor }) => {
                 <p className="text-sm text-gray-500">Member since {new Date(currentUser?.createdAt || Date.now()).toLocaleDateString()}</p>
               </div>
             </div>
-            
+
             {currentUser?.status === "suspended" && (
               <div className="mb-4 p-3 bg-red-100 dark:bg-red-900/20 border border-red-300 dark:border-red-700 rounded-md flex items-start">
                 <AlertTriangle className="h-5 w-5 text-red-600 dark:text-red-400 mr-2 flex-shrink-0 mt-0.5" />
@@ -1528,18 +1633,18 @@ const MainMenu = ({ onStartGame, onOpenWorldEditor }) => {
                 </div>
               </div>
             )}
-            
+
             <div className="space-y-4 border-t pt-4">
               <h4 className="font-medium flex items-center gap-2">
                 <Key className="h-4 w-4" /> Change Password
               </h4>
-              
+
               {authError && (
                 <div className="text-sm text-red-500 p-2 bg-red-50 dark:bg-red-900/20 rounded-md">
                   {authError}
                 </div>
               )}
-              
+
               <div className="space-y-2">
                 <label htmlFor="currentPassword" className="text-sm font-medium">Current Password</label>
                 <Input
@@ -1550,7 +1655,7 @@ const MainMenu = ({ onStartGame, onOpenWorldEditor }) => {
                   placeholder="Enter current password"
                 />
               </div>
-              
+
               <div className="space-y-2">
                 <label htmlFor="newPassword" className="text-sm font-medium">New Password</label>
                 <Input
@@ -1561,13 +1666,13 @@ const MainMenu = ({ onStartGame, onOpenWorldEditor }) => {
                   placeholder="Enter new password"
                 />
               </div>
-              
+
               <Button onClick={handleChangePassword} className="w-full">
                 Update Password
               </Button>
             </div>
           </div>
-          
+
           <DialogFooter>
             <Button variant="destructive" onClick={handleLogout} className="w-full">
               <LogOut className="mr-2 h-4 w-4" /> Logout
@@ -1585,17 +1690,17 @@ const MainMenu = ({ onStartGame, onOpenWorldEditor }) => {
               Publish your world to share it with other players.
             </DialogDescription>
           </DialogHeader>
-          
+
           <div className="py-4">
             {publishError && (
               <div className="mb-4 p-3 bg-red-100 dark:bg-red-900/20 border border-red-300 dark:border-red-700 rounded-md text-sm text-red-800 dark:text-red-300">
                 {publishError}
               </div>
             )}
-            
+
             <div className="space-y-4">
               <h3 className="text-sm font-medium">Select Publish Option</h3>
-              
+
               <RadioGroup value={selectedWorldToOverride} onValueChange={setSelectedWorldToOverride}>
                 {/* Publish as new option */}
                 <div className="flex items-start space-x-2 p-2 rounded-md hover:bg-gray-100 dark:hover:bg-gray-800">
@@ -1604,27 +1709,27 @@ const MainMenu = ({ onStartGame, onOpenWorldEditor }) => {
                     <Label htmlFor="publish-new">Publish as new world</Label>
                   </div>
                 </div>
-                
+
                 {/* Existing worlds */}
                 {userWorlds.length > 0 && (
                   <>
                     <div className="mt-4 mb-2">
                       <h4 className="text-sm font-medium">Or update existing world:</h4>
                     </div>
-                    
+
                     {userWorlds.map(world => {
                       // Get the ID (server uses _id)
                       const worldId = world._id || world.id;
-                      
+
                       // Create a unique ID for the radio item
                       const radioId = `world-${worldId}`;
-                      
+
                       // Extract the first 5 characters of the ID for display
                       const shortId = worldId ? worldId.substring(0, 5) : '';
-                      
+
                       // Get download count
                       const downloads = world.downloads || 0;
-                      
+
                       return (
                         <div key={worldId} className="flex items-start space-x-2 p-2 rounded-md hover:bg-gray-100 dark:hover:bg-gray-800">
                           <RadioGroupItem value={worldId} id={radioId} />
@@ -1641,14 +1746,14 @@ const MainMenu = ({ onStartGame, onOpenWorldEditor }) => {
               </RadioGroup>
             </div>
           </div>
-          
+
           <DialogFooter className="flex flex-col sm:flex-row gap-2">
             <Button variant="outline" onClick={() => setShowPublishModal(false)} disabled={isPublishing}>
               Cancel
             </Button>
-            
-            <Button 
-              onClick={selectedWorldToOverride === 'new' ? handlePublishAsNew : handleOverrideWorld} 
+
+            <Button
+              onClick={selectedWorldToOverride === 'new' ? handlePublishAsNew : handleOverrideWorld}
               disabled={isPublishing}
             >
               {isPublishing ? 'Publishing...' : 'Publish'}
@@ -1718,11 +1823,11 @@ const MainMenu = ({ onStartGame, onOpenWorldEditor }) => {
                 </div>
               </div>
             </div>
-            
+
             {/* Authors / Tags include-filters + Hidden popup */}
             <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
               <div className="flex items-center gap-2">
-                <span className="text-sm font-medium text-gray-500 shrink-0">Authors:</span>
+                <Button variant="outline" size="sm" className="shrink-0 pointer-events-none" tabIndex={-1}>Authors:</Button>
                 <TokenAutocomplete values={authorFilter} onChange={setAuthorFilter} options={allAuthors} placeholder="author…" />
               </div>
 
@@ -1742,11 +1847,11 @@ const MainMenu = ({ onStartGame, onOpenWorldEditor }) => {
               <Popover>
                 <PopoverTrigger asChild>
                   <Button variant="outline" size="sm" className="shrink-0">
-                    Hidden{hiddenWorldIds.length + hiddenTags.length > 0 ? ` (${hiddenWorldIds.length + hiddenTags.length})` : ''}
+                    Hidden{hiddenWorldIds.length + hiddenTags.length + hiddenAuthors.length > 0 ? ` (${hiddenWorldIds.length + hiddenTags.length + hiddenAuthors.length})` : ''}
                   </Button>
                 </PopoverTrigger>
-                <PopoverContent align="end" className="w-72 space-y-2">
-                  {hiddenWorldIds.length === 0 && hiddenTags.length === 0 ? (
+                <PopoverContent align="start" side="bottom" className="w-72 space-y-2">
+                  {hiddenWorldIds.length === 0 && hiddenTags.length === 0 && hiddenAuthors.length === 0 ? (
                     <p className="text-sm text-muted-foreground">Nothing hidden.</p>
                   ) : (
                     <>
@@ -1755,6 +1860,12 @@ const MainMenu = ({ onStartGame, onOpenWorldEditor }) => {
                           <span key={`w-${id}`} className="inline-flex items-center gap-1 rounded-full bg-secondary px-2 py-0.5 text-xs text-secondary-foreground">
                             {hiddenWorldName(id)}
                             <button onClick={() => unhideWorld(id)} className="hover:text-destructive" aria-label="Unhide world"><X className="h-3 w-3" /></button>
+                          </span>
+                        ))}
+                        {hiddenAuthors.map((name) => (
+                          <span key={`a-${name}`} className="inline-flex items-center gap-1 rounded-full bg-amber-100 dark:bg-amber-900 px-2 py-0.5 text-xs text-amber-800 dark:text-amber-300">
+                            By {name}
+                            <button onClick={() => unhideAuthor(name)} className="hover:text-destructive" aria-label="Unhide author"><X className="h-3 w-3" /></button>
                           </span>
                         ))}
                         {hiddenTags.map((tag) => (
@@ -1797,18 +1908,18 @@ const MainMenu = ({ onStartGame, onOpenWorldEditor }) => {
                 pagedRemoteWorlds.map((world) => {
                   // Get the world ID (server uses _id)
                   const worldId = world._id || world.id;
-                  
+
                   // Check if the world is owned by the current user
-                  const isOwnedByUser = isAuthenticated && 
-                    world.author && 
-                    currentUser && 
-                    (world.author.id === currentUser.id || 
+                  const isOwnedByUser = isAuthenticated &&
+                    world.author &&
+                    currentUser &&
+                    (world.author.id === currentUser.id ||
                      world.author.username === currentUser.username);
-                  
+
                   return (
                     <div
                       key={worldId}
-                      className="relative rounded-lg overflow-hidden border border-gray-200 dark:border-gray-700 cursor-pointer"
+                      className="relative rounded-lg border border-gray-200 dark:border-gray-700 cursor-pointer bg-background"
                       onClick={() => handleViewRemoteWorldDetails(world)}
                     >
                       <button
@@ -1818,7 +1929,7 @@ const MainMenu = ({ onStartGame, onOpenWorldEditor }) => {
                       >
                         <EyeOff className="h-4 w-4" />
                       </button>
-                      <div className="h-32 bg-gray-100 dark:bg-gray-800">
+                      <div className="h-32 bg-gray-100 dark:bg-gray-800 rounded-t-lg overflow-hidden">
                         {world.thumbnail_file ? (
                           <CachedThumbnail
                             file={world.thumbnail_file}
@@ -1839,37 +1950,37 @@ const MainMenu = ({ onStartGame, onOpenWorldEditor }) => {
                           </div>
                         )}
                       </div>
-                      
+
                       <div className="p-4">
                         <h3 className="font-semibold text-lg mb-1">{world.name}</h3>
                         <p className="text-sm text-gray-600 dark:text-gray-400 mb-2 line-clamp-2">
                           {world.description || "No description available."}
                         </p>
-                        
-                        <div className="flex items-center text-xs text-gray-500 mb-2">
-                          <span>By {world.author?.username || "Unknown"}</span>
-                          <span className="mx-2">•</span>
-                          <span>{world.downloads || 0} downloads</span>
+
+                        <div className="text-xs text-gray-500 mb-1">
+                          <span
+                            onClick={(e) => { e.stopPropagation(); if (world.author?.username) hideRemoteAuthor(world.author.username); }}
+                            title={world.author?.username ? `Hide all worlds by ${world.author.username}` : undefined}
+                            className={world.author?.username ? "cursor-pointer hover:line-through" : ""}
+                          >
+                            By {world.author?.username || "Unknown"}
+                          </span>
                         </div>
-                        
+
+                        <div className="flex items-center justify-between text-xs text-gray-500 mb-2">
+                          <span className="flex items-center gap-1" title="Downloads">
+                            <Download className="h-3 w-3" /> {world.downloads || 0}
+                          </span>
+                          <span className="flex items-center gap-1" title="Comments">
+                            <MessageSquare className="h-3 w-3" /> {world.comment_count || 0}
+                          </span>
+                        </div>
+
                         {/* Tags */}
-                        <div className="flex flex-wrap gap-1 mb-2">
-                          {world.tags && world.tags.length > 0 ? (
-                            world.tags.map((tag, index) => (
-                              <span
-                                key={index}
-                                onClick={(e) => { e.stopPropagation(); hideRemoteTag(tag); }}
-                                title={`Hide all worlds tagged "${tag}"`}
-                                className="px-1.5 py-0.5 bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-300 text-xs rounded-full cursor-pointer hover:line-through"
-                              >
-                                {tag}
-                              </span>
-                            ))
-                          ) : (
-                            <span className="text-gray-400 text-xs italic">No tags</span>
-                          )}
+                        <div className="mb-2">
+                          <CardTags tags={world.tags || []} onHide={hideRemoteTag} />
                         </div>
-                        
+
                         <div className="flex justify-between items-center">
                           <Button
                             size="sm"
@@ -1878,7 +1989,7 @@ const MainMenu = ({ onStartGame, onOpenWorldEditor }) => {
                           >
                             <DoorOpen className="mr-1 h-3 w-3" /> Download
                           </Button>
-                          
+
                           {(isOwnedByUser || currentUser?.accountType === "admin") && (
                             <button
                               className="p-1 text-red-500 hover:text-red-700"
@@ -1897,7 +2008,7 @@ const MainMenu = ({ onStartGame, onOpenWorldEditor }) => {
                 })
               )}
             </div>
-            
+
           </div>
 
           {/* Frozen footer: pagination */}
@@ -1926,14 +2037,14 @@ const MainMenu = ({ onStartGame, onOpenWorldEditor }) => {
           </div>
         </DialogContent>
       </Dialog>
-      
+
       {/* Remote World Details Modal */}
       <Dialog open={showRemoteWorldDetailsModal} onOpenChange={setShowRemoteWorldDetailsModal}>
         <DialogContent className="sm:max-w-[1200px] h-[85vh] flex flex-col">
           <DialogHeader className="shrink-0">
             <DialogTitle>{selectedRemoteWorld?.name || 'World Details'}</DialogTitle>
           </DialogHeader>
-          
+
           {selectedRemoteWorld && (
             <div className="mt-4 flex-1 min-h-0 flex flex-col md:flex-row gap-6 overflow-y-auto md:overflow-hidden">
               {/* Left column: metadata */}
@@ -2088,7 +2199,7 @@ const MainMenu = ({ onStartGame, onOpenWorldEditor }) => {
           )}
         </DialogContent>
       </Dialog>
-      
+
       {/* Full-size pan/zoom image viewer for the selected world */}
       <ImageZoomViewer
         open={imageViewerOpen}
@@ -2109,7 +2220,7 @@ const MainMenu = ({ onStartGame, onOpenWorldEditor }) => {
         description="Are you sure you want to delete this published world? This will remove it from the server and it will no longer be available to other users. This action cannot be undone."
         onConfirm={() => handleRemoteWorldDelete(remoteWorldToDelete)}
       />
-      
+
       {/* Manage Users Dialog */}
       <Dialog open={showManageUsersDialog} onOpenChange={setShowManageUsersDialog}>
         <DialogContent className="sm:max-w-[800px] h-[85vh] overflow-y-auto flex flex-col items-start">
@@ -2119,7 +2230,7 @@ const MainMenu = ({ onStartGame, onOpenWorldEditor }) => {
               View and manage user accounts.
             </DialogDescription>
           </DialogHeader>
-          
+
           <div className="py-4 w-full">
             {/* Search controls */}
             <div className="flex flex-col sm:flex-row gap-4 mb-6">
@@ -2138,9 +2249,9 @@ const MainMenu = ({ onStartGame, onOpenWorldEditor }) => {
                   }}
                 />
               </div>
-              
-              <Button 
-                variant="outline" 
+
+              <Button
+                variant="outline"
                 size="sm"
                 onClick={() => {
                   setUserCurrentPage(1);
@@ -2150,7 +2261,7 @@ const MainMenu = ({ onStartGame, onOpenWorldEditor }) => {
                 Search
               </Button>
             </div>
-            
+
             {/* Users table */}
             <div className="w-full overflow-hidden border rounded-lg">
               <table className="w-full divide-y divide-gray-200 dark:divide-gray-700">
@@ -2204,7 +2315,7 @@ const MainMenu = ({ onStartGame, onOpenWorldEditor }) => {
                     users.map((user) => {
                       // Get the user ID (server uses _id)
                       const userId = user._id || user.id;
-                      
+
                       // Determine status badge color
                       let statusBadgeClass = "bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-300";
                       if (user.status === "suspended") {
@@ -2212,7 +2323,7 @@ const MainMenu = ({ onStartGame, onOpenWorldEditor }) => {
                       } else if (user.status === "pending") {
                         statusBadgeClass = "bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-300";
                       }
-                      
+
                       return (
                         <tr key={userId}>
                           <td className="px-6 py-4 whitespace-nowrap">
@@ -2238,20 +2349,20 @@ const MainMenu = ({ onStartGame, onOpenWorldEditor }) => {
                           <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
                             <div className="flex gap-2">
                               {user.status !== "normal" && (
-                                <Button 
-                                  size="sm" 
-                                  variant="outline" 
+                                <Button
+                                  size="sm"
+                                  variant="outline"
                                   className="text-green-600 hover:text-green-800 dark:text-green-400 dark:hover:text-green-300"
                                   onClick={() => handleUserStatusChange(userId, "normal")}
                                 >
                                   Activate
                                 </Button>
                               )}
-                              
+
                               {user.status !== "suspended" && (
-                                <Button 
-                                  size="sm" 
-                                  variant="outline" 
+                                <Button
+                                  size="sm"
+                                  variant="outline"
                                   className="text-red-600 hover:text-red-800 dark:text-red-400 dark:hover:text-red-300"
                                   onClick={() => handleUserStatusChange(userId, "suspended")}
                                 >
@@ -2267,7 +2378,7 @@ const MainMenu = ({ onStartGame, onOpenWorldEditor }) => {
                 </tbody>
               </table>
             </div>
-            
+
             {/* Pagination */}
             {!isLoadingUsers && users.length > 0 && (
               <div className="flex justify-center gap-2 mt-6">
@@ -2282,11 +2393,11 @@ const MainMenu = ({ onStartGame, onOpenWorldEditor }) => {
                 >
                   Previous
                 </Button>
-                
+
                 <span className="px-4 py-2 text-sm">
                   Page {userCurrentPage} of {userTotalPages}
                 </span>
-                
+
                 <Button
                   variant="outline"
                   size="sm"
@@ -2305,9 +2416,9 @@ const MainMenu = ({ onStartGame, onOpenWorldEditor }) => {
       </Dialog>
 
       {/* GitHub floating button */}
-      <a 
-        href="https://github.com/FieryLionite/formamorph" 
-        target="_blank" 
+      <a
+        href="https://github.com/FieryLionite/formamorph"
+        target="_blank"
         rel="noopener noreferrer"
         className="fixed bottom-4 right-4 p-3 bg-gray-800 text-white rounded-full shadow-lg hover:bg-gray-700 transition-colors"
         aria-label="GitHub Repository"
