@@ -192,12 +192,23 @@ const WorldOverviewManager = () => {
           className="w-[350px] h-[262.5px] relative bg-gray-100 rounded-md cursor-pointer hover:bg-gray-200 transition-colors mx-auto"
         >
           {worldOverview.thumbnail ? (
-            <img
-              ref={thumbnailRef}
-              src={worldOverview.thumbnail}
-              alt="World thumbnail"
-              className="absolute inset-0 w-full h-full object-cover rounded-md"
-            />
+            <>
+              <img
+                ref={thumbnailRef}
+                src={worldOverview.thumbnail}
+                alt="World thumbnail"
+                className="absolute inset-0 w-full h-full object-cover rounded-md"
+              />
+              <button
+                type="button"
+                onClick={(e) => { e.stopPropagation(); updateWorldOverview({ thumbnail: '' }); }}
+                className="absolute top-1 right-1 rounded-full bg-black/60 p-1 text-white hover:bg-black/80"
+                title="Remove image"
+                aria-label="Remove image"
+              >
+                <X className="h-4 w-4" />
+              </button>
+            </>
           ) : (
             <div className="absolute inset-0 flex items-center justify-center text-gray-500">
               Click to upload image

@@ -236,6 +236,18 @@ export const MiddlePanel = ({
     setFullMessageHistory
   } = useGameplay();
 
+  // Game text of the page currently being viewed, so the Edit button is page-aware
+  // (rather than always editing the most recent text).
+  const currentAssistantMessage = displayedMessages.find(m => m.role === 'assistant');
+  let currentPageText = gameplayText;
+  if (currentAssistantMessage) {
+    try {
+      currentPageText = JSON.parse(currentAssistantMessage.content).game_text ?? currentAssistantMessage.content;
+    } catch {
+      currentPageText = currentAssistantMessage.content;
+    }
+  }
+
   const renderPaginationItems = () => {
     const items = [];
     for (let i = 1; i <= totalPages; i++) {
@@ -377,9 +389,10 @@ export const MiddlePanel = ({
           <EditTextModal
             isOpen={isEditMode}
             onOpenChange={setIsEditMode}
-            text={gameplayText}
+            text={currentPageText}
             onSave={(text) => {
-              setGameplayText(text);
+              // Only the most recent page drives the live gameplay text (used by TTS, etc.).
+              if (currentPage === totalPages) setGameplayText(text);
               // Update the message in history for the current page
               const messageIndex = (currentPage - 1) * 2 + 1; // +1 for assistant message
               setFullMessageHistory(prev => {

@@ -1,7 +1,7 @@
 import { useCallback, useState, type ChangeEvent } from 'react';
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Upload, Box as LucideBox, Music } from "lucide-react";
+import { Upload, Box as LucideBox, Music, X } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import ModelViewer from '../views/ModelViewer';
@@ -58,7 +58,18 @@ export const ImageUpload = ({ onChange, id, value }: {
       <Label htmlFor={`image-upload-${id}`} className="cursor-pointer">
         <div className="flex items-center justify-center border-2 border-dashed border-gray-300 rounded-md p-4">
           {value ? (
-            <img src={value} alt="Uploaded" className="max-w-full max-h-32 object-contain" />
+            <div className="relative">
+              <img src={value} alt="Uploaded" className="max-w-full max-h-32 object-contain" />
+              <button
+                type="button"
+                onClick={(e) => { e.preventDefault(); e.stopPropagation(); onChange(""); }}
+                className="absolute top-1 right-1 rounded-full bg-black/60 p-1 text-white hover:bg-black/80"
+                title="Remove image"
+                aria-label="Remove image"
+              >
+                <X className="h-4 w-4" />
+              </button>
+            </div>
           ) : (
             <>
               <Upload className="mr-2" />

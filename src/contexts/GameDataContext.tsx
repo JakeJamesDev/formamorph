@@ -1,4 +1,4 @@
-import { createContext, useContext, useState, useCallback, useEffect, type ReactNode } from 'react';
+import { createContext, useContext, useState, useCallback, useMemo, useEffect, type ReactNode } from 'react';
 import WorldStorageService from '../services/WorldStorageService';
 import type {
   WorldMetadata,
@@ -11,6 +11,19 @@ import type {
   DictionaryEntry,
   World,
 } from '@/types';
+
+// Stable serialization of the full world definition, used for dirty detection.
+function serializeWorld(
+  overview: WorldOverview,
+  stats: Stat[],
+  locations: GameLocation[],
+  entities: Entity[],
+  traits: Trait[],
+  statUpdates: StatUpdate[],
+  dictionary: DictionaryEntry[],
+) {
+  return JSON.stringify({ worldOverview: overview, stats, locations, entities, traits, statUpdates, dictionary });
+}
 
 function useProvideGameData() {
   const [worldMetadata, setWorldMetadata] = useState<WorldMetadata[]>([]);
@@ -32,6 +45,8 @@ function useProvideGameData() {
   const [statUpdates, setStatUpdates] = useState<StatUpdate[]>([]);
   const [dictionary, setDictionary] = useState<DictionaryEntry[]>([]);
   const [worldId, setWorldId] = useState<string | null>(null);
+  // Serialized last-saved world; compared against current data to flag pending edits.
+  const [savedSnapshot, setSavedSnapshot] = useState<string>('');
 
   const addStat = useCallback((newStat: Omit<Stat, 'descriptors'>) => {
     const defaultDescriptors = [
@@ -157,7 +172,7 @@ function useProvideGameData() {
 
     // Handle world overview with validation
     const overview = worldData.worldOverview || defaultOverview;
-    updateWorldOverview({
+    const normalizedOverview: WorldOverview = {
       name: overview.name || defaultOverview.name,
       description: overview.description || defaultOverview.description,
       author: overview.author || defaultOverview.author,
@@ -167,21 +182,55 @@ function useProvideGameData() {
       use3DModel: typeof overview.use3DModel === 'boolean' ? overview.use3DModel : defaultOverview.use3DModel,
       tags: Array.isArray(overview.tags) ? overview.tags : defaultOverview.tags,
       customPlayerVRM: overview.customPlayerVRM || defaultOverview.customPlayerVRM
-    });
+    };
+    updateWorldOverview(normalizedOverview);
 
     // Load other data with array validation
-    console.log("setworldId", worldData.id)
-    console.log(Object.keys(worldData))
+    const nextStats = Array.isArray(worldData.stats) ? worldData.stats : [];
+    const nextLocations = Array.isArray(worldData.locations) ? worldData.locations : [];
+    const nextEntities = Array.isArray(worldData.entities) ? worldData.entities : [];
+    const nextTraits = Array.isArray(worldData.traits) ? worldData.traits : [];
+    const nextStatUpdates = Array.isArray(worldData.statUpdates) ? worldData.statUpdates : [];
+    const nextDictionary = Array.isArray(worldData.dictionary) ? worldData.dictionary : [];
     setWorldId(worldData.id);
-    setStats(Array.isArray(worldData.stats) ? worldData.stats : []);
-    setLocations(Array.isArray(worldData.locations) ? worldData.locations : []);
-    setEntities(Array.isArray(worldData.entities) ? worldData.entities : []);
-    setTraits(Array.isArray(worldData.traits) ? worldData.traits : []);
-    setStatUpdates(Array.isArray(worldData.statUpdates) ? worldData.statUpdates : []);
-    setDictionary(Array.isArray(worldData.dictionary) ? worldData.dictionary : []);
+    setStats(nextStats);
+    setLocations(nextLocations);
+    setEntities(nextEntities);
+    setTraits(nextTraits);
+    setStatUpdates(nextStatUpdates);
+    setDictionary(nextDictionary);
+
+    // Baseline for dirty detection: a freshly loaded world has no pending changes.
+    setSavedSnapshot(serializeWorld(
+      normalizedOverview, nextStats, nextLocations, nextEntities, nextTraits, nextStatUpdates, nextDictionary,
+    ));
 
     return isDefault;
   }, [updateWorldOverview, setStats, setLocations, setEntities, setTraits, setStatUpdates]);
+
+  const isWorldDirty = useMemo(
+    () => serializeWorld(worldOverview, stats, locations, entities, traits, statUpdates, dictionary) !== savedSnapshot,
+    [worldOverview, stats, locations, entities, traits, statUpdates, dictionary, savedSnapshot],
+  );
+
+  // Persist the current world and re-baseline so isWorldDirty clears. Returns success.
+  const saveWorld = useCallback(async (): Promise<boolean> => {
+    try {
+      await WorldStorageService.storeWorld({
+        id: worldId,
+        name: worldOverview.name,
+        description: worldOverview.description,
+        author: worldOverview.author,
+        thumbnail: worldOverview.thumbnail,
+        data: { worldOverview, stats, locations, entities, traits, statUpdates, dictionary },
+      });
+      setSavedSnapshot(serializeWorld(worldOverview, stats, locations, entities, traits, statUpdates, dictionary));
+      return true;
+    } catch (error) {
+      console.error('Error saving world:', error);
+      return false;
+    }
+  }, [worldId, worldOverview, stats, locations, entities, traits, statUpdates, dictionary]);
 
   useEffect(() => {
     WorldStorageService.initialize();
@@ -224,7 +273,9 @@ function useProvideGameData() {
     setStatUpdates,
     setDictionary,
     loadWorldData,
-    worldId, setWorldId
+    worldId, setWorldId,
+    isWorldDirty,
+    saveWorld
   };
 
   return value;
