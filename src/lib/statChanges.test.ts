@@ -3,6 +3,8 @@ import {
   normalizeStatChanges,
   applyAiStatChanges,
   applyTraitStatChanges,
+  parseStatUpdates,
+  applyAiMaxChanges,
 } from './statChanges';
 import type { PlayerStat } from '@/types';
 
@@ -123,5 +125,61 @@ describe('applyTraitStatChanges', () => {
     );
     expect(stats[0].value).toBe(50);
     expect(changedIds.size).toBe(0);
+  });
+});
+
+describe('parseStatUpdates', () => {
+  it('splits value changes from MAX changes and lowercases/sums keys', () => {
+    const { values, maxes } = parseStatUpdates('Health: 5\nhealth: -2\nStamina: 10 MAX');
+    expect(values).toEqual({ health: 3 });
+    expect(maxes).toEqual({ stamina: 10 });
+  });
+
+  it('detects MAX as a whole word anywhere, not as a substring', () => {
+    const { values, maxes } = parseStatUpdates('Mana: MAX 7\nGrit: 4 (almost maxed)');
+    expect(maxes).toEqual({ mana: 7 });
+    // "maxed" must NOT be treated as a MAX change
+    expect(values).toEqual({ grit: 4 });
+  });
+
+  it('rounds decimals and ignores lines without a colon or number', () => {
+    const { values } = parseStatUpdates('Health: 2.5\njust some prose\nMana:\nLuck: +3');
+    expect(values).toEqual({ health: 3, luck: 3 });
+  });
+
+  it('returns empty maps for empty input', () => {
+    expect(parseStatUpdates('')).toEqual({ values: {}, maxes: {} });
+  });
+});
+
+describe('applyAiMaxChanges', () => {
+  it('raises the max without changing the current value', () => {
+    const out = applyAiMaxChanges([stat({ value: 50, max: 100 })], { health: 20 });
+    expect(out[0].max).toBe(120);
+    expect(out[0].value).toBe(50);
+  });
+
+  it('re-clamps the value down when the max drops below it', () => {
+    const out = applyAiMaxChanges([stat({ value: 100, max: 100 })], { health: -40 });
+    expect(out[0].max).toBe(60);
+    expect(out[0].value).toBe(60);
+  });
+
+  it('floors the new max at the stat min', () => {
+    const out = applyAiMaxChanges([stat({ value: 50, min: 0, max: 100 })], { health: -999 });
+    expect(out[0].max).toBe(0);
+    expect(out[0].value).toBe(0);
+  });
+
+  it('respects noIncreaseMax and noDecreaseMax', () => {
+    const up = applyAiMaxChanges([stat({ max: 100, noIncreaseMax: true })], { health: 10 });
+    expect(up[0].max).toBe(100);
+    const down = applyAiMaxChanges([stat({ max: 100, noDecreaseMax: true })], { health: -10 });
+    expect(down[0].max).toBe(100);
+  });
+
+  it('matches stat names case-insensitively and ignores unlisted stats', () => {
+    const out = applyAiMaxChanges([stat({ name: 'Mana', max: 30 })], { mana: 5 });
+    expect(out[0].max).toBe(35);
   });
 });
