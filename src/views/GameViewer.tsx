@@ -19,6 +19,7 @@ import { LocationModal } from "../components/modals/LocationModal";
 import { SettingsModal } from "../components/modals/SettingsModal";
 import { MenuModal } from "../components/modals/MenuModal";
 import WorldEditor from "./WorldEditor";
+import { UnsavedChangesDialog } from "../components/UnsavedChangesDialog";
 import { estimateHistoryChars } from "../lib/memoryUtils";
 import { getActivatedDictionary, buildDictionaryContext, parseKeywords } from "../lib/dictionaryUtils";
 import { highlightSegments } from "../lib/highlightUtils";
@@ -56,6 +57,8 @@ const GameViewer = ({
     dictionary,
     updateStat,
     worldOverview,
+    isWorldDirty,
+    saveWorld,
   } = useGameData();
 
   const {
@@ -197,6 +200,7 @@ const GameViewer = ({
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const [isEditingWorld, setIsEditingWorld] = useState(false);
+  const [showEditorExitPrompt, setShowEditorExitPrompt] = useState(false);
   const [lastPromptChars, setLastPromptChars] = useState(0);
   const [suggestedLocation, setSuggestedLocation] = useState(null);
   // AI progress feedback: which request is running, its streamed output estimate (null = indeterminate), and
@@ -1618,11 +1622,25 @@ ${playerNotes || "No notes available"}
       />
 
       {/* Edit-world popup: non-fullscreen; keeps GameViewer + live session mounted */}
-      <Dialog open={isEditingWorld} onOpenChange={setIsEditingWorld}>
+      <Dialog
+        open={isEditingWorld}
+        onOpenChange={(open) => {
+          if (open) { setIsEditingWorld(true); return; }
+          // Guard close (X / Esc / overlay): prompt if there are pending edits.
+          if (isWorldDirty) setShowEditorExitPrompt(true);
+          else setIsEditingWorld(false);
+        }}
+      >
         <DialogContent className="max-w-[95vw] w-[95vw] h-[90vh] p-0 overflow-hidden">
           <WorldEditor embedded onClose={() => setIsEditingWorld(false)} />
         </DialogContent>
       </Dialog>
+      <UnsavedChangesDialog
+        open={showEditorExitPrompt}
+        onOpenChange={setShowEditorExitPrompt}
+        onSave={async () => { await saveWorld(); setShowEditorExitPrompt(false); setIsEditingWorld(false); }}
+        onExit={() => { setShowEditorExitPrompt(false); setIsEditingWorld(false); }}
+      />
 
       {/* Debug: full AI context sent during the last turn */}
       <Dialog open={isDebugOpen} onOpenChange={setIsDebugOpen}>

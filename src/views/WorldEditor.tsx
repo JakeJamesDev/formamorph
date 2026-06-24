@@ -37,8 +37,7 @@ import {
   restrictToVerticalAxis,
   restrictToFirstScrollableAncestor,
 } from '@dnd-kit/modifiers';
-import { ConfirmDialog } from "@/components/ConfirmDialog";
-import WorldStorageService from '../services/WorldStorageService';
+import { UnsavedChangesDialog } from "@/components/UnsavedChangesDialog";
 import type { Stat, Entity, GameLocation, Trait, StatUpdate, DictionaryEntry } from '@/types';
 
 /** The fields a reorderable list row needs (every editor item has these). */
@@ -109,12 +108,13 @@ const WorldEditor = ({ onClose, embedded = false }: {
     addStat, addLocation, addEntity, addTrait, addStatUpdate, addDictionaryEntry,
     removeStat, removeLocation, removeEntity, removeTrait, removeStatUpdate, removeDictionaryEntry,
     setStats, setLocations, setEntities, setTraits, setStatUpdates, setDictionary,
-    worldId
+    isWorldDirty, saveWorld: saveWorldCtx
   } = useGameData();
 
   const [activeTab, setActiveTab] = useState("overview");
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedItemId, setSelectedItemId] = useState<string | null>(null);
+  const [showExitPrompt, setShowExitPrompt] = useState(false);
 
   const downloadWorld = () => {
     const worldData = { worldOverview, stats, locations, entities, traits, statUpdates, dictionary };
@@ -132,22 +132,13 @@ const WorldEditor = ({ onClose, embedded = false }: {
   };
 
   const saveWorld = async () => {
-    console.log("worldId: ", worldId)
-    const worldData = { worldOverview, stats, locations, entities, traits, statUpdates, dictionary };
-    try {
-      await WorldStorageService.storeWorld({
-        id: worldId,
-        name: worldOverview.name,
-        description: worldOverview.description,
-        author: worldOverview.author,
-        thumbnail: worldOverview.thumbnail,
-        data: worldData
-      });
+    const ok = await saveWorldCtx();
+    if (ok) {
       toast.dark('World saved successfully!');
-    } catch (error) {
-      console.error('Error saving world:', error);
+    } else {
       toast.dark('Error saving world. Please try again.', { type: 'error' });
     }
+    return ok;
   };
 
   const loadWorld = (e: ChangeEvent<HTMLInputElement>) => {
@@ -352,15 +343,13 @@ const WorldEditor = ({ onClose, embedded = false }: {
               <CardHeader className="space-y-0 pb-2">
                 <div className="flex items-center space-x-4">
                   {!embedded && (
-                    <ConfirmDialog
-                      title="Return to Main Menu?"
-                      description="Any unsaved changes will be lost. Please save your progress using the Save or Download button below before returning to the main menu if you want to keep your changes."
-                      onConfirm={onClose}
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      onClick={() => (isWorldDirty ? setShowExitPrompt(true) : onClose())}
                     >
-                      <Button variant="ghost" size="icon">
-                        <ArrowLeft className="h-4 w-4" />
-                      </Button>
-                    </ConfirmDialog>
+                      <ArrowLeft className="h-4 w-4" />
+                    </Button>
                   )}
                   <CardTitle>World Editor</CardTitle>
                 </div>
@@ -423,7 +412,7 @@ const WorldEditor = ({ onClose, embedded = false }: {
                   <Download className="h-4 w-4 mr-2" />
                   Download
                 </Button>
-                <Button size="sm" onClick={saveWorld}>
+                <Button size="sm" onClick={saveWorld} disabled={!isWorldDirty}>
                   <Save className="h-4 w-4 mr-2" />
                   Save
                 </Button>
@@ -473,6 +462,12 @@ const WorldEditor = ({ onClose, embedded = false }: {
           </Panel>
         </PanelGroup>
       </div>
+      <UnsavedChangesDialog
+        open={showExitPrompt}
+        onOpenChange={setShowExitPrompt}
+        onSave={async () => { await saveWorld(); onClose(); }}
+        onExit={onClose}
+      />
     </div>
   );
 };
