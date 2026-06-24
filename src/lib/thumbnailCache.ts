@@ -18,9 +18,11 @@ export interface ThumbRecord {
 }
 
 // Normalize the server's mixed timestamp formats ("…T…Z" and "YYYY-MM-DD HH:MM:SS") to epoch ms.
+// A number is already epoch ms and passes through unchanged.
 export const toEpoch = (s: string | number | null | undefined): number => {
   if (s == null) return 0;
-  const ms = Date.parse(typeof s === 'string' ? s.replace(' ', 'T') : String(s));
+  if (typeof s === 'number') return Number.isNaN(s) ? 0 : s;
+  const ms = Date.parse(s.replace(' ', 'T'));
   return Number.isNaN(ms) ? 0 : ms;
 };
 
