@@ -45,6 +45,53 @@ export function applyAiStatChanges(
 }
 
 /**
+ * Parse a raw AI stat-updates response into normalized deltas: `values` are changes to
+ * current value, `maxes` are changes to the stat's maximum (lines containing a whole-word
+ * "MAX"). Keys are lowercased and repeats are summed; numbers are rounded to integers.
+ */
+export function parseStatUpdates(text: string): {
+  values: Record<string, number>;
+  maxes: Record<string, number>;
+} {
+  const values: Record<string, number> = {};
+  const maxes: Record<string, number> = {};
+  (text || '').split('\n').forEach((line) => {
+    const sep = line.indexOf(':');
+    if (sep === -1) return;
+    const key = line.slice(0, sep).trim().toLowerCase();
+    if (!key) return;
+    const rest = line.slice(sep + 1);
+    const match = rest.match(/[+-]?\d+(?:\.\d+)?/);
+    if (!match) return;
+    const value = Math.round(parseFloat(match[0]));
+    if (Number.isNaN(value)) return;
+    const bucket = /\bmax\b/i.test(rest) ? maxes : values;
+    bucket[key] = (bucket[key] || 0) + value;
+  });
+  return { values, maxes };
+}
+
+/**
+ * Apply normalized max-cap deltas to stats. Honors the noIncreaseMax/noDecreaseMax flags,
+ * floors the new max at the stat's min, and re-clamps the current value into the new
+ * [min, max] range so lowering a cap can't leave the value stranded above it. Pure.
+ */
+export function applyAiMaxChanges(
+  stats: PlayerStat[],
+  maxChanges: Record<string, number>,
+): PlayerStat[] {
+  return stats.map((stat) => {
+    const delta = maxChanges[stat.name.toLowerCase()];
+    if (typeof delta !== 'number' || delta === 0) return stat;
+    const allowed = (delta > 0 && !stat.noIncreaseMax) || (delta < 0 && !stat.noDecreaseMax);
+    if (!allowed) return stat;
+    const newMax = Math.max(stat.min, stat.max + delta);
+    const newValue = Math.max(stat.min, Math.min(newMax, stat.value));
+    return { ...stat, max: newMax, value: newValue };
+  });
+}
+
+/**
  * Apply trait-driven changes (min/max/regen/starting) to stats. Two passes: the
  * first adjusts bounds/regen and collects value adjustments (e.g. raising a floor
  * pulls the value up to it); the second applies 'starting' deltas plus those

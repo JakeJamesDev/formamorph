@@ -31,7 +31,8 @@ import WorldEditor from "./WorldEditor";
 import { UnsavedChangesDialog } from "../components/UnsavedChangesDialog";
 import { estimateHistoryChars } from "../lib/memoryUtils";
 import { parseGameText } from "../lib/aiResponse";
-import { normalizeStatChanges, applyAiStatChanges, applyTraitStatChanges } from "../lib/statChanges";
+import { normalizeStatChanges, applyAiStatChanges, applyTraitStatChanges, parseStatUpdates, applyAiMaxChanges } from "../lib/statChanges";
+import { matchLocationResponse } from "../lib/locationMatch";
 import { getActivatedDictionary, buildDictionaryContext, parseKeywords } from "../lib/dictionaryUtils";
 import { highlightSegments } from "../lib/highlightUtils";
 import { useIsMobile } from "../lib/useIsMobile";
@@ -662,15 +663,13 @@ ${playerNotes || "No notes available"}
           "locationChange",
         );
 
-        const suggested = (locationResponse || "").trim();
-        if (suggested && suggested.toUpperCase() !== "NONE") {
-          const lower = suggested.toLowerCase();
-          // Exact name match first, then a lenient "name appears in response" match
-          const target =
-            locations.find((loc) => loc.name.toLowerCase() === lower) ||
-            locations.find(
-              (loc) => loc.name && lower.includes(loc.name.toLowerCase()),
-            );
+        // Exact name match, else the longest available name appearing as a whole word.
+        const matchedName = matchLocationResponse(
+          locationResponse,
+          locations.map((loc) => loc.name),
+        );
+        if (matchedName) {
+          const target = locations.find((loc) => loc.name === matchedName);
           if (target && target.id !== currentLocation?.id) {
             setSuggestedLocation(target);
           }
@@ -691,47 +690,15 @@ ${playerNotes || "No notes available"}
       const newEntities = extractEntities(gameTextResponse);
       setVisibleEntities(newEntities);
 
-      // Parse stat updates (key: value pairs)
-      const statChanges = [];
+      // Parse stat updates into current-value deltas and max-cap deltas (see lib/statChanges).
+      let statChanges = [];
       if (statUpdatesPrompt !== "DISABLED" && statUpdatesResponse) {
-        statUpdatesResponse.split("\n").forEach((line) => {
-          const [key, valueWithComment] = line.split(":").map((s) => s.trim());
-          if (key && valueWithComment) {
-            // Extract the first signed number from the value part
-            const match = valueWithComment.match(/[+-]?\d+/);
-            if (match) {
-              const value = parseInt(match[0]);
-              if (!isNaN(value)) {
-                // Check if 'MAX' appears after the number
-                const isMaxUpdate = valueWithComment
-                  .slice(match.index + match[0].length)
-                  .toUpperCase()
-                  .includes("MAX");
-                // Update the stat's current value
-                if (isMaxUpdate) {
-                  setPlayerStats((prevStats) =>
-                    prevStats.map((stat) => {
-                      if (stat.name.toLowerCase() === key.toLowerCase()) {
-                        // A falsy check on the stat values since old saves will have this as undefined
-                        // default behavior is the ai is allowed to change all stats
-                        const shouldUpdate =
-                          (value > 0 && !stat.noIncreaseMax) ||
-                          (value < 0 && !stat.noDecreaseMax);
-
-                        if (shouldUpdate) {
-                          return { ...stat, max: stat.max + value };
-                        }
-                      }
-                      return stat;
-                    }),
-                  );
-                } else {
-                  statChanges.push({ [key]: value });
-                }
-              }
-            }
-          }
-        });
+        const { values, maxes } = parseStatUpdates(statUpdatesResponse);
+        statChanges = Object.entries(values).map(([k, v]) => ({ [k]: v }));
+        if (Object.keys(maxes).length > 0) {
+          // Max changes re-clamp the current value into the new range (lib handles the guards).
+          setPlayerStats((prevStats) => applyAiMaxChanges(prevStats, maxes));
+        }
       }
       console.log("stat updates response", statUpdatesResponse);
 
