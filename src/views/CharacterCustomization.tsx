@@ -239,7 +239,7 @@ const CharacterCustomization = ({ onCharacterCustomized }: {
             </Select>
             <div className="flex items-center gap-3">
               <Label htmlFor="model-upload" className="cursor-pointer text-sm text-primary underline">
-                Upload .vrm
+                Add .vrm
               </Label>
               <Input id="model-upload" type="file" accept=".vrm,.glb" onChange={handleModelUpload} className="hidden" />
               {libraryModels.some((m) => m.id === selectedModelId) && (

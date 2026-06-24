@@ -4,7 +4,7 @@ import { Popover, PopoverTrigger, PopoverContent } from "@/components/ui/popover
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { Menu, Save, Download, Upload, Trash2, Loader2 } from "lucide-react";
+import { Menu, Save, Download, Import, Trash2, Loader2 } from "lucide-react";
 import { ConfirmDialog } from '../ConfirmDialog';
 import { saveToDB, getAllSaves, deleteFromDB, loadFromDB } from './dbUtils';
 import { downloadSaveFile, terminateWorker as terminateDownloadWorker } from '../../lib/saveDownloadWorkerUtils';
@@ -251,8 +251,8 @@ export const MenuModal = ({ onSettingsClick, onSave, onLoad, worldOverview, onEx
                     className="w-full flex items-center justify-center gap-2"
                     onClick={() => document.getElementById('save-upload').click()}
                   >
-                    <Upload className="h-4 w-4" />
-                    <span>Upload</span>
+                    <Import className="h-4 w-4" />
+                    <span>Import</span>
                   </Button>
                 </div>
               </div>
