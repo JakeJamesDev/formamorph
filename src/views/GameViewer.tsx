@@ -134,7 +134,7 @@ const GameViewer = ({
       if (!text || !entities) return [];
 
       // Create a Set to store unique entities
-      const foundEntities = new Set();
+      const foundEntities = new Set<string>();
       const lowerText = text.toLowerCase();
 
       // For each entity, check if its name appears in the text
@@ -304,7 +304,7 @@ const GameViewer = ({
       setGameTime((prevTime) => prevTime + hours);
 
       // Track regen changes
-      const regenChanges = {};
+      const regenChanges: Record<string, number> = {};
 
       setPlayerStats((prevStats) =>
         prevStats.map((stat) => {
@@ -535,7 +535,7 @@ ${playerNotes || "No notes available"}
     }
 
     // Get trimmed history before adding new action
-    const trimmedHistory = getTrimmedMessageHistory(action);
+    const trimmedHistory = getTrimmedMessageHistory();
 
     try {
       setChoices([]);
@@ -569,7 +569,7 @@ ${playerNotes || "No notes available"}
       }
 
       // Make choices and stat updates requests concurrently since they both only depend on game text
-      let choicesResponse = [];
+      let choicesResponse = "";
       let statUpdatesResponse = "";
 
       // Only prepare and make choices request if not disabled
@@ -768,7 +768,7 @@ ${playerNotes || "No notes available"}
         const updatePromises = statUpdates.map((statUpdate) =>
           makeAIRequest(statUpdate.prompt, [
             ...(statUpdate.messageHistory || []),
-            { role: "user", content: `gametext: ${aiResponse.game_text}` },
+            { role: "user", content: `gametext: ${gameTextResponse}` },
           ]).then((updateResponse) => {
             try {
               const parsedUpdateResponse = safeJsonParse(updateResponse);
@@ -921,7 +921,7 @@ ${playerNotes || "No notes available"}
             processStatCode(currentStats)
               .then((updatedStats) => {
                 if (updatedStats !== currentStats) {
-                  setPlayerStats(updatedStats);
+                  setPlayerStats(updatedStats as typeof currentStats);
                 }
               })
               .catch((error) => {
@@ -1009,7 +1009,7 @@ ${playerNotes || "No notes available"}
       });
 
       if (!response.ok) {
-        const error = new Error("HTTP error");
+        const error = new Error("HTTP error") as Error & { response?: Response };
         error.response = response;
         throw error;
       }
@@ -1229,7 +1229,7 @@ ${playerNotes || "No notes available"}
 
   useEffect(() => {
     setPlayerStats(
-      stats.map((stat) => ({ ...stat, value: stat.value || stat.min || 0 })),
+      stats.map((stat) => ({ ...stat, value: (stat.value as number) || stat.min || 0 })),
     );
   }, [stats]);
 
@@ -1430,7 +1430,6 @@ ${playerNotes || "No notes available"}
   const rightPanel = (
     <RightPanel
       onLocationClick={() => setIsLocationModalOpen(true)}
-      onExitToMenu={onExitToMenu}
       language={language}
       setLanguage={setLanguage}
     />
@@ -1546,8 +1545,8 @@ ${playerNotes || "No notes available"}
           setIsMenuOpen(false);
           setIsSettingsOpen(true);
         }}
-        onSave={saveGame}
-        onLoad={loadGame}
+        onSave={(name) => saveGame(name, worldOverview.name)}
+        onLoad={(name) => loadGame(name, locations)}
         worldOverview={worldOverview}
         onExitToMenu={onExitToMenu}
       />
