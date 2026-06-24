@@ -1,8 +1,8 @@
 import type { Stat, Trait } from './world';
 import type { ChatMessage } from './ai';
 
-/** A stat during gameplay — same shape as a definition Stat, with a live `value`. */
-export type PlayerStat = Stat;
+/** A stat during gameplay — a definition Stat whose live `value` is always a number. */
+export type PlayerStat = Omit<Stat, 'value'> & { value: number };
 
 /** A choice is a single plaintext action line. */
 export type Choice = string;

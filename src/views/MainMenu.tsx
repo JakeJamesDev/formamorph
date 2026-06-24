@@ -3,7 +3,6 @@ import { useGameData } from '../contexts/GameDataContext';
 import { toast, ToastContainer  } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
 import { Button } from "@/components/ui/button";
-import { ScrollArea } from "@/components/ui/scroll-area";
 import {ConfirmDialog} from "@/components/ConfirmDialog";
 import {RadioGroup,RadioGroupItem } from"@/components/ui/radio-group";
 import {Label} from "@/components/ui/label"
@@ -22,6 +21,7 @@ import CharacterCustomization, { defaultCharacterData } from './CharacterCustomi
 import TraitSelectionModal from './TraitSelectionModal';
 import WorldStorageService from '../services/WorldStorageService';
 import AuthService from '../services/AuthService';
+import type { World } from '@/types';
 
 const defaultWorlds = [
   { id: 'slime', defaultName: 'Slime' },
@@ -33,7 +33,7 @@ const defaultWorlds = [
 ];
 
 const MainMenu = ({ onStartGame, onOpenWorldEditor }) => {
-  const { traits, stats, loadWorldData, worldData } = useGameData();
+  const { traits, stats, loadWorldData } = useGameData();
   const [selectedWorld, setSelectedWorld] = useState(null);
   const [showWorldModal, setShowWorldModal] = useState(false);
   const [showMobileWorldEditorWarning, setShowMobileWorldEditorWarning] = useState(false);
@@ -201,7 +201,7 @@ const MainMenu = ({ onStartGame, onOpenWorldEditor }) => {
       const selectedWorld = worlds.find(w => w.id === worldId);
       
       if (worldData && selectedWorld) {
-        loadWorldData(worldData, true);
+        loadWorldData(worldData as World, true);
         setSelectedWorld({
           ...selectedWorld,
           data: worldData
@@ -219,7 +219,7 @@ const MainMenu = ({ onStartGame, onOpenWorldEditor }) => {
       const reader = new FileReader();
       reader.onload = async (e) => {
         try {
-          const parsedWorldData = JSON.parse(e.target.result);
+          const parsedWorldData = JSON.parse(e.target.result as string);
           const worldId = `uploaded-${Date.now()}`;
 
           parsedWorldData.id = worldId;
@@ -273,7 +273,7 @@ const MainMenu = ({ onStartGame, onOpenWorldEditor }) => {
       }
 
       // Get the current world data
-      const worldToDuplicate = selectedWorld.data || worldData;
+      const worldToDuplicate = selectedWorld.data;
       
       // Generate a unique ID for the duplicated world
       const worldId = `duplicate-${Date.now()}`;
@@ -331,7 +331,8 @@ const MainMenu = ({ onStartGame, onOpenWorldEditor }) => {
           use3DModel: false,
           bgm: null,
           systemPrompt: '',
-          author: ''
+          author: '',
+          tags: []
         },
         stats: [],
         traits: [],
@@ -499,7 +500,7 @@ const MainMenu = ({ onStartGame, onOpenWorldEditor }) => {
     
     try {
       // Get the current world data
-      const worldToPublish = selectedWorld.data || worldData;
+      const worldToPublish = selectedWorld.data;
       
       // Ensure tags are included in the world data
       if (!worldToPublish.worldOverview.tags) {
@@ -539,7 +540,7 @@ const MainMenu = ({ onStartGame, onOpenWorldEditor }) => {
     
     try {
       // Get the current world data
-      const worldToPublish = selectedWorld.data || worldData;
+      const worldToPublish = selectedWorld.data;
       
       // Ensure tags are included in the world data
       if (!worldToPublish.worldOverview.tags) {
@@ -1033,7 +1034,7 @@ const MainMenu = ({ onStartGame, onOpenWorldEditor }) => {
                     className="w-1/3 bg-gradient-to-r from-amber-100 to-yellow-100 hover:from-amber-200 hover:to-yellow-200 text-black font-bold rounded-l-none"
                     onClick={() => {
                       // For uploaded worlds, use the worldData from context
-                      const currentWorldData = selectedWorld.data || worldData;
+                      const currentWorldData = selectedWorld.data;
                       onStartGame(selectedTraits, currentWorldData.worldOverview?.use3DModel ? defaultCharacterData : null, true);
                     }}
                   >
@@ -1079,7 +1080,7 @@ const MainMenu = ({ onStartGame, onOpenWorldEditor }) => {
         open={!!worldToDelete}
         onOpenChange={(open) => !open && setWorldToDelete(null)}
         title="Delete World"
-        message="Are you sure you want to delete this world? This action cannot be undone."
+        description="Are you sure you want to delete this world? This action cannot be undone."
         onConfirm={async () => {
           try {
             await WorldStorageService.deleteWorld(worldToDelete);
@@ -1157,7 +1158,7 @@ const MainMenu = ({ onStartGame, onOpenWorldEditor }) => {
           onConfirm={() => {
             setShowTraitSelection(false);
             // For uploaded worlds, use the worldData from context
-            const currentWorldData = selectedWorld.data || worldData;
+            const currentWorldData = selectedWorld.data;
             if (currentWorldData.worldOverview?.use3DModel) {
               setShowCharacterCustomization(true);
             } else {
@@ -1712,7 +1713,7 @@ const MainMenu = ({ onStartGame, onOpenWorldEditor }) => {
         open={!!remoteWorldToDelete}
         onOpenChange={(open) => !open && setRemoteWorldToDelete(null)}
         title="Delete Published World"
-        message="Are you sure you want to delete this published world? This will remove it from the server and it will no longer be available to other users. This action cannot be undone."
+        description="Are you sure you want to delete this published world? This will remove it from the server and it will no longer be available to other users. This action cannot be undone."
         onConfirm={() => handleRemoteWorldDelete(remoteWorldToDelete)}
       />
       
@@ -1802,7 +1803,7 @@ const MainMenu = ({ onStartGame, onOpenWorldEditor }) => {
                     ))
                   ) : users.length === 0 ? (
                     <tr>
-                      <td colSpan="5" className="px-6 py-4 text-center text-gray-500">
+                      <td colSpan={5} className="px-6 py-4 text-center text-gray-500">
                         No users found.
                       </td>
                     </tr>
