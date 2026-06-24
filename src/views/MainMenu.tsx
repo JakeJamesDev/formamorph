@@ -16,9 +16,26 @@ import {
   DialogDescription,
 } from "@/components/ui/dialog";
 import { Skeleton } from "@/components/ui/skeleton";
+import { ScrollArea } from "@/components/ui/scroll-area";
 import { Input } from "@/components/ui/input";
 import CharacterCustomization, { defaultCharacterData } from './CharacterCustomization';
 import { SettingsModal } from '../components/modals/SettingsModal';
+import {
+  DndContext,
+  closestCenter,
+  PointerSensor,
+  useSensor,
+  useSensors,
+  type DragEndEvent,
+} from '@dnd-kit/core';
+import {
+  SortableContext,
+  useSortable,
+  arrayMove,
+  rectSortingStrategy,
+} from '@dnd-kit/sortable';
+import { CSS } from '@dnd-kit/utilities';
+import { restrictToFirstScrollableAncestor } from '@dnd-kit/modifiers';
 import TraitSelectionModal from './TraitSelectionModal';
 import WorldStorageService from '../services/WorldStorageService';
 import AuthService from '../services/AuthService';
@@ -29,6 +46,66 @@ const defaultWorlds = [
   { id: 'valentines', defaultName: 'Valentines Survival' },
   { id: 'drone', defaultName: 'Reincarnated Drone' }
 ];
+
+// User-defined world ordering is a UI preference, persisted as an ordered list of ids.
+const WORLD_ORDER_KEY = 'FORMAMORPH_worldOrder';
+const loadWorldOrder = (): string[] => {
+  try { return JSON.parse(localStorage.getItem(WORLD_ORDER_KEY) || '[]'); }
+  catch { return []; }
+};
+// Sort by saved order; ids not in the saved order keep their relative order at the end.
+const applyWorldOrder = <T extends { id: string }>(list: T[], order: string[]): T[] => {
+  const rank = (id: string) => { const i = order.indexOf(id); return i === -1 ? Infinity : i; };
+  return [...list].sort((a, b) => rank(a.id) - rank(b.id));
+};
+
+// A draggable world tile. The whole card is the drag handle; a small move distance is
+// required to start a drag so a plain click still selects the world.
+function SortableWorldCard({ world, onSelect, onDelete }: {
+  world: { id: string; name: string; thumbnail?: string };
+  onSelect: (id: string) => void;
+  onDelete: (id: string) => void;
+}) {
+  const { attributes, listeners, setNodeRef, transform, transition, isDragging } =
+    useSortable({ id: world.id });
+  const style = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+    opacity: isDragging ? 0.5 : 1,
+    zIndex: isDragging ? 1 : undefined,
+  };
+  return (
+    <div
+      ref={setNodeRef}
+      style={style}
+      {...attributes}
+      {...listeners}
+      className="relative cursor-pointer rounded-lg overflow-hidden hover:opacity-90 transition-opacity touch-none"
+      onClick={() => onSelect(world.id)}
+    >
+      <img
+        src={world.thumbnail}
+        alt={world.name}
+        className="w-full h-48 object-cover select-none pointer-events-none"
+      />
+      <div className="absolute bottom-0 left-0 right-0 bg-black bg-opacity-50 p-2">
+        <h3 className="text-white font-semibold">{world.name}</h3>
+        <button
+          className="absolute top-2 right-2 p-1 text-red-500 hover:text-red-700"
+          onPointerDown={(e) => e.stopPropagation()}
+          onClick={(e) => {
+            e.stopPropagation();
+            onDelete(world.id);
+          }}
+        >
+          <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+            <path fillRule="evenodd" d="M9 2a1 1 0 00-.894.553L7.382 4H4a1 1 0 000 2v10a2 2 0 002 2h8a2 2 0 002-2V6a1 1 0 100-2h-3.382l-.724-1.447A1 1 0 0011 2H9zM7 8a1 1 0 012 0v6a1 1 0 11-2 0V8zm5-1a1 1 0 00-1 1v6a1 1 0 102 0V8a1 1 0 00-1-1z" clipRule="evenodd" />
+          </svg>
+        </button>
+      </div>
+    </div>
+  );
+}
 
 const MainMenu = ({ onStartGame, onOpenWorldEditor }) => {
   const { traits, stats, loadWorldData } = useGameData();
@@ -159,11 +236,12 @@ const MainMenu = ({ onStartGame, onOpenWorldEditor }) => {
         }
         const worldMetadata = await WorldStorageService.getWorldMetadata();
         
-        setWorlds(worldMetadata.map(world => ({
+        const mapped = worldMetadata.map(world => ({
           ...world,
           isLoading: false,
           defaultName: defaultWorlds.find(dw => dw.id === world.id)?.defaultName || world.name
-        })));
+        }));
+        setWorlds(applyWorldOrder(mapped, loadWorldOrder()));
         
       } catch (error) {
         console.error('Error initializing worlds:', error);
@@ -852,6 +930,24 @@ const MainMenu = ({ onStartGame, onOpenWorldEditor }) => {
     return 'U';
   };
 
+  const worldSensors = useSensors(
+    useSensor(PointerSensor, { activationConstraint: { distance: 8 } }),
+  );
+
+  // Reorder the worlds grid and persist the new id order.
+  const handleWorldDragEnd = (event: DragEndEvent) => {
+    const { active, over } = event;
+    if (!over || active.id === over.id) return;
+    setWorlds((prev) => {
+      const oldIndex = prev.findIndex((w) => w.id === active.id);
+      const newIndex = prev.findIndex((w) => w.id === over.id);
+      if (oldIndex === -1 || newIndex === -1) return prev;
+      const next = arrayMove(prev, oldIndex, newIndex);
+      localStorage.setItem(WORLD_ORDER_KEY, JSON.stringify(next.map((w) => w.id)));
+      return next;
+    });
+  };
+
   if (showCharacterCustomization) {
     return (
       <CharacterCustomization
@@ -864,7 +960,7 @@ const MainMenu = ({ onStartGame, onOpenWorldEditor }) => {
   }
 
   return (
-    <div className="container mx-auto px-4 py-6 relative">
+    <div className="container mx-auto px-4 py-6 relative flex flex-col h-screen overflow-hidden">
       <ToastContainer theme="dark" />
       
       {/* Top-right controls: settings + user avatar */}
@@ -893,7 +989,7 @@ const MainMenu = ({ onStartGame, onOpenWorldEditor }) => {
 
       <SettingsModal isOpen={showSettings} onOpenChange={setShowSettings} />
       {/* Action buttons */}
-      <div className="flex justify-center mb-6 gap-4">
+      <div className="flex justify-center mb-6 gap-4 shrink-0 flex-wrap">
         <Button
           className="bg-gradient-to-r from-indigo-200 to-blue-200 hover:from-indigo-300 hover:to-blue-300 text-black font-bold"
           onClick={() => setShowDiscoverDialog(true)}
@@ -944,48 +1040,48 @@ const MainMenu = ({ onStartGame, onOpenWorldEditor }) => {
         className="hidden"
       />
       
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-        {isLoadingWorlds ? (
-          Array(6).fill(0).map((_, index) => (
-            <div key={index} className="w-full h-48">
-              <Skeleton className="w-full h-full" />
-              <div className="absolute bottom-0 left-0 right-0 bg-black bg-opacity-50 p-2">
-                <Skeleton className="h-6 w-24" />
-              </div>
-            </div>
-          ))
-        ) : (
-          <>
-            {worlds.map((world) => (
-              <div
-                key={world.id}
-                className="relative cursor-pointer rounded-lg overflow-hidden hover:opacity-90 transition-opacity"
-                onClick={() => handleWorldSelection(world.id)}
-              >
-                <img
-                  src={world.thumbnail}
-                  alt={world.name}
-                  className="w-full h-48 object-cover select-none"
-                />
+      {/* Bounded scroll viewport (Radix ScrollArea Root is overflow-hidden) so drag-reorder
+          auto-scroll stays inside this frame instead of growing the page in either axis. */}
+      <ScrollArea className="flex-1 min-h-0">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+          {isLoadingWorlds ? (
+            Array(6).fill(0).map((_, index) => (
+              <div key={index} className="w-full h-48">
+                <Skeleton className="w-full h-full" />
                 <div className="absolute bottom-0 left-0 right-0 bg-black bg-opacity-50 p-2">
-                  <h3 className="text-white font-semibold">{world.name}</h3>
-                  <button 
-                    className="absolute top-2 right-2 p-1 text-red-500 hover:text-red-700"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      setWorldToDelete(world.id);
-                    }}
-                  >
-                    <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
-                      <path fillRule="evenodd" d="M9 2a1 1 0 00-.894.553L7.382 4H4a1 1 0 000 2v10a2 2 0 002 2h8a2 2 0 002-2V6a1 1 0 100-2h-3.382l-.724-1.447A1 1 0 0011 2H9zM7 8a1 1 0 012 0v6a1 1 0 11-2 0V8zm5-1a1 1 0 00-1 1v6a1 1 0 102 0V8a1 1 0 00-1-1z" clipRule="evenodd" />
-                    </svg>
-                  </button>
+                  <Skeleton className="h-6 w-24" />
                 </div>
               </div>
-            ))}
-          </>
-        )}
-      </div>
+            ))
+          ) : (
+            <DndContext
+              sensors={worldSensors}
+              collisionDetection={closestCenter}
+              onDragEnd={handleWorldDragEnd}
+              // Clamp the drag to the ScrollArea viewport and never auto-scroll the page/window,
+              // so dragging a tile past an edge scrolls this finite frame rather than growing the page.
+              modifiers={[restrictToFirstScrollableAncestor]}
+              autoScroll={{
+                canScroll: (el) =>
+                  el !== document.scrollingElement &&
+                  el !== document.body &&
+                  el !== document.documentElement,
+              }}
+            >
+              <SortableContext items={worlds.map((w) => w.id)} strategy={rectSortingStrategy}>
+                {worlds.map((world) => (
+                  <SortableWorldCard
+                    key={world.id}
+                    world={world}
+                    onSelect={handleWorldSelection}
+                    onDelete={setWorldToDelete}
+                  />
+                ))}
+              </SortableContext>
+            </DndContext>
+          )}
+        </div>
+      </ScrollArea>
 
       <Dialog open={showWorldModal} onOpenChange={setShowWorldModal}>
         <DialogContent className="sm:max-w-[500px] h-[85vh] overflow-y-auto">
