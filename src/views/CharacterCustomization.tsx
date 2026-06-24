@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef, type ChangeEvent } from 'react';
-import { Undo2 } from "lucide-react";
+import { Undo2, Loader2 } from "lucide-react";
 import { Slider } from "@/components/ui/slider"
 import { Label } from "@/components/ui/label"
 import { Input } from "@/components/ui/input"
@@ -176,6 +176,9 @@ const CharacterCustomization = ({ onCharacterCustomized }: {
     { label: 'Body Weight', value: bodyWeight, setValue: setBodyWeight, morph: 'Fat' },
   ].filter(f => caps?.bodyMorphs.includes(f.morph));
   const visibleHairStyles = caps?.hairStyles ?? [];
+  // A library model is still loading its blob URL — show a loader instead of transiently mounting the default
+  // model (which would otherwise report default capabilities and leave the UI stuck on them after a few swaps).
+  const resolvingModel = selectedModelId !== 'default' && selectedModelId !== 'world' && !resolvedModelUrl;
 
   return (
     <div className="flex h-screen">
@@ -185,7 +188,10 @@ const CharacterCustomization = ({ onCharacterCustomized }: {
         </CardHeader>
         <CardContent className="flex flex-col items-center justify-center h-full">
           {/* Adjust the VRMViewer container */}
-          <div className="w-full h-full" style={{ aspectRatio: '3/4' }}>
+          <div className="w-full h-full flex items-center justify-center" style={{ aspectRatio: '3/4' }}>
+            {resolvingModel ? (
+              <Loader2 className="animate-spin" size={32} />
+            ) : (
             <VRMViewer
               key={resolvedModelUrl ?? 'default'}
               ref={vrmViewerRef}
@@ -203,6 +209,7 @@ const CharacterCustomization = ({ onCharacterCustomized }: {
               extraColors={extraColors}
               onCapabilities={setCaps}
             />
+            )}
           </div>
         </CardContent>
       </Card>
