@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef, useEffect, useMemo } from 'react';
 import { useGameData } from '../contexts/GameDataContext';
 import { toast, ToastContainer  } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
@@ -6,7 +6,21 @@ import { Button } from "@/components/ui/button";
 import {ConfirmDialog} from "@/components/ConfirmDialog";
 import {RadioGroup,RadioGroupItem } from"@/components/ui/radio-group";
 import {Label} from "@/components/ui/label"
-import {FilePlus2, DoorOpen, Pencil, Github, AlertTriangle, Code, User, LogIn, LogOut, Key, Upload, Import, Search, Globe, EyeOff, RotateCcw, Settings } from "lucide-react";
+import {FilePlus2, DoorOpen, Pencil, Github, AlertTriangle, Code, User, LogIn, LogOut, Key, Upload, Import, Search, Globe, EyeOff, RotateCcw, Settings, ArrowDownWideNarrow, ArrowUpNarrowWide, ArrowLeft, Check, X } from "lucide-react";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import {
+  Pagination,
+  PaginationContent,
+  PaginationEllipsis,
+  PaginationItem,
+  PaginationLink,
+  PaginationNext,
+  PaginationPrevious,
+} from "@/components/ui/pagination";
+import { Textarea } from "@/components/ui/textarea";
+import { CachedThumbnail } from "@/lib/useCachedThumbnail";
+import { toEpoch } from "@/lib/thumbnailCache";
+import { getCatalog, replaceCatalog } from "@/lib/worldCatalog";
 import {
   Dialog,
   DialogContent,
@@ -46,6 +60,15 @@ const defaultWorlds = [
   { id: 'valentines', defaultName: 'Valentines Survival' },
   { id: 'drone', defaultName: 'Reincarnated Drone' }
 ];
+
+// Normalize a tag for hide-matching: lowercase, strip non-standard symbols (keep letters,
+// numbers, spaces, hyphens), collapse whitespace, and trim. Returns '' for junk-only input.
+const sanitizeTag = (tag: string): string =>
+  String(tag ?? '')
+    .toLowerCase()
+    .replace(/[^a-z0-9\s-]/g, '')
+    .replace(/\s+/g, ' ')
+    .trim();
 
 // User-defined world ordering is a UI preference, persisted as an ordered list of ids.
 const WORLD_ORDER_KEY = 'FORMAMORPH_worldOrder';
@@ -151,20 +174,35 @@ const MainMenu = ({ onStartGame, onOpenWorldEditor }) => {
   const [searchQuery, setSearchQuery] = useState('');
   
   const [searchByAuthor, setSearchByAuthor] = useState(false);
+  const [sortField, setSortField] = useState('updated_at'); // updated_at | created_at | downloads
+  const [sortOrder, setSortOrder] = useState('desc'); // asc | desc
   const [currentPage, setCurrentPage] = useState(1);
-  const [totalPages, setTotalPages] = useState(1);
+  const [isSyncingCatalog, setIsSyncingCatalog] = useState(false);
   const [remoteWorldToDelete, setRemoteWorldToDelete] = useState(null);
   const [selectedRemoteWorld, setSelectedRemoteWorld] = useState(null);
   const [showRemoteWorldDetailsModal, setShowRemoteWorldDetailsModal] = useState(false);
+  const [downloadedIds, setDownloadedIds] = useState(() => new Set<string>());
+
+  // Comments for the world detail modal
+  const [comments, setComments] = useState([]);
+  const [commentsTotal, setCommentsTotal] = useState(0);
+  const [commentsPage, setCommentsPage] = useState(1);
+  const [commentsHasMore, setCommentsHasMore] = useState(false);
+  const [commentsLoading, setCommentsLoading] = useState(false);
+  const [commentText, setCommentText] = useState('');
+  const [postingComment, setPostingComment] = useState(false);
 
   // Discover hide preferences (client-side, persisted in localStorage)
   const [hiddenWorldIds, setHiddenWorldIds] = useState(() => {
     try { return JSON.parse(localStorage.getItem('FORMAMORPH_hiddenWorldIds') || '[]'); }
     catch { return []; }
   });
-  const [hiddenTags, setHiddenTags] = useState(() => {
-    try { return JSON.parse(localStorage.getItem('FORMAMORPH_hiddenTags') || '[]'); }
-    catch { return []; }
+  const [hiddenTags, setHiddenTags] = useState<string[]>(() => {
+    try {
+      const raw = JSON.parse(localStorage.getItem('FORMAMORPH_hiddenTags') || '[]');
+      // Sanitize + dedupe on load so legacy entries match current tags.
+      return Array.from(new Set((Array.isArray(raw) ? raw : []).map(sanitizeTag).filter(Boolean)));
+    } catch { return []; }
   });
 
   // Manage users dialog states
@@ -651,64 +689,44 @@ const MainMenu = ({ onStartGame, onOpenWorldEditor }) => {
   }, [showPublishModal, isAuthenticated]);
   
   // Debounced search query
-  const [debouncedSearchQuery, setDebouncedSearchQuery] = useState('');
-  
-  // Debounce search query
-  useEffect(() => {
-    const timer = setTimeout(() => {
-      setDebouncedSearchQuery(searchQuery);
-    }, 500); // 500ms debounce delay
-    
-    return () => clearTimeout(timer);
-  }, [searchQuery]);
-  
-  // Fetch remote worlds when discover dialog is opened or search/filter changes
+  // Load the world catalog when Discover opens: render the cached copy instantly, then refresh
+  // the whole catalog from the server in the background (one request) and re-cache it.
   useEffect(() => {
     if (showDiscoverDialog) {
-      fetchRemoteWorlds();
+      loadCatalog();
     }
-  }, [showDiscoverDialog, debouncedSearchQuery, searchByAuthor, currentPage]);
-  
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [showDiscoverDialog]);
+
   // Fetch users when manage users dialog is opened or search/page changes
   useEffect(() => {
     if (showManageUsersDialog) {
       fetchUsers();
     }
   }, [showManageUsersDialog, userCurrentPage]);
-  
-  // Fetch remote worlds from the server
-  const fetchRemoteWorlds = async () => {
-    if (!showDiscoverDialog) return;
-    
-    setIsLoadingRemoteWorlds(true);
-    
+
+  const loadCatalog = async (force = false) => {
     try {
-      const result = await WorldStorageService.fetchRemoteWorlds(
-        currentPage, 
-        10, // limit
-        debouncedSearchQuery,
-        false, // No longer using showOwnedOnly
-        searchByAuthor
-      );
-      
-      if (result.success) {
-        setRemoteWorlds(result.data);
-        
-        // Calculate total pages
-        const total = result.total || 0;
-        const pages = Math.ceil(total / 10);
-        setTotalPages(pages > 0 ? pages : 1);
+      const cached = await getCatalog();
+      if (cached.length && !force) {
+        setRemoteWorlds(cached);
       } else {
-        console.error('Error fetching remote worlds:', result.error);
+        setIsLoadingRemoteWorlds(true);
+      }
+      setIsSyncingCatalog(true);
+      // One request returns the entire catalog; replace the cache wholesale (also drops removed worlds).
+      const result = await WorldStorageService.fetchRemoteWorlds(1, 1000, '', false, false);
+      if (result.success && Array.isArray(result.data)) {
+        setRemoteWorlds(result.data);
+        await replaceCatalog(result.data);
+      } else if (!cached.length) {
         toast.error(result.error || 'Failed to fetch worlds');
-        setRemoteWorlds([]);
       }
     } catch (error) {
-      console.error('Error in fetchRemoteWorlds:', error);
-      toast.error('Failed to connect to server');
-      setRemoteWorlds([]);
+      console.error('Error loading world catalog:', error);
     } finally {
       setIsLoadingRemoteWorlds(false);
+      setIsSyncingCatalog(false);
     }
   };
   
@@ -724,20 +742,77 @@ const MainMenu = ({ onStartGame, onOpenWorldEditor }) => {
     setHiddenWorldIds((prev) => (prev.includes(worldId) ? prev : [...prev, worldId]));
   };
   const hideRemoteTag = (tag) => {
-    setHiddenTags((prev) => (prev.includes(tag) ? prev : [...prev, tag]));
+    const t = sanitizeTag(tag);
+    if (!t) return;
+    setHiddenTags((prev) => (prev.includes(t) ? prev : [...prev, t]));
   };
   const resetHiddenWorlds = () => {
     setHiddenWorldIds([]);
     setHiddenTags([]);
   };
+  const unhideWorld = (id) => setHiddenWorldIds((prev) => prev.filter((w) => w !== id));
+  const unhideTag = (tag) => setHiddenTags((prev) => prev.filter((t) => t !== tag));
+  // Resolve a hidden world id to its name from the catalog (falls back to a short id).
+  const hiddenWorldName = (id: string) =>
+    remoteWorlds.find((w) => (w._id || w.id) === id)?.name || `${id.slice(0, 8)}…`;
 
-  // Worlds left after applying hide-by-id and hide-by-tag filters
-  const visibleRemoteWorlds = remoteWorlds.filter((world) => {
-    const id = world._id || world.id;
-    if (hiddenWorldIds.includes(id)) return false;
-    if ((world.tags || []).some((t) => hiddenTags.includes(t))) return false;
-    return true;
-  });
+  // Client-side browse pipeline over the cached catalog: hide filters → text search → sort.
+  const PAGE_SIZE = 12;
+  const filteredRemoteWorlds = useMemo(() => {
+    const q = searchQuery.trim().toLowerCase();
+    const list = remoteWorlds.filter((world) => {
+      const id = world._id || world.id;
+      if (hiddenWorldIds.includes(id)) return false;
+      if ((world.tags || []).some((t) => hiddenTags.includes(sanitizeTag(t)))) return false;
+      if (q) {
+        const hay = searchByAuthor
+          ? (world.author?.username || '')
+          : `${world.name || ''} ${world.description || ''}`;
+        if (!hay.toLowerCase().includes(q)) return false;
+      }
+      return true;
+    });
+    const dir = sortOrder === 'asc' ? 1 : -1;
+    return [...list].sort((a, b) => {
+      const av = sortField === 'downloads' ? (a.downloads || 0) : toEpoch(a[sortField]);
+      const bv = sortField === 'downloads' ? (b.downloads || 0) : toEpoch(b[sortField]);
+      return (av - bv) * dir;
+    });
+  }, [remoteWorlds, searchQuery, searchByAuthor, hiddenWorldIds, hiddenTags, sortField, sortOrder]);
+
+  const totalPages = Math.max(1, Math.ceil(filteredRemoteWorlds.length / PAGE_SIZE));
+  const pagedRemoteWorlds = filteredRemoteWorlds.slice((currentPage - 1) * PAGE_SIZE, currentPage * PAGE_SIZE);
+
+  // Reset to page 1 when the result set changes; clamp if hiding shrinks it below the current page.
+  useEffect(() => { setCurrentPage(1); }, [searchQuery, searchByAuthor, sortField, sortOrder]);
+  useEffect(() => { if (currentPage > totalPages) setCurrentPage(totalPages); }, [currentPage, totalPages]);
+
+  // Numbered page links with first/last anchors + ellipsis (matches the in-game transcript pager).
+  const renderDiscoverPaginationItems = () => {
+    const items = [];
+    for (let i = 1; i <= totalPages; i++) {
+      if (i === 1 || i === totalPages || (i >= currentPage - 1 && i <= currentPage + 1)) {
+        items.push(
+          <PaginationItem key={i}>
+            <PaginationLink
+              href="#"
+              onClick={(e) => { e.preventDefault(); setCurrentPage(i); }}
+              isActive={currentPage === i}
+            >
+              {i}
+            </PaginationLink>
+          </PaginationItem>,
+        );
+      } else if (i === currentPage - 2 || i === currentPage + 2) {
+        items.push(
+          <PaginationItem key={i}>
+            <PaginationEllipsis />
+          </PaginationItem>,
+        );
+      }
+    }
+    return items;
+  };
 
   // Fetch users from the server
   const fetchUsers = async () => {
@@ -901,12 +976,55 @@ const MainMenu = ({ onStartGame, onOpenWorldEditor }) => {
       }]);
       
       toast.success('World downloaded successfully');
-      setShowDiscoverDialog(false);
+      // Keep the browser open; mark this world as downloaded for button feedback.
+      setDownloadedIds((prev) => new Set(prev).add(world._id || world.id));
     } catch (error) {
       console.error('Error downloading world:', error);
       toast.error(error.message || 'Failed to download world');
     }
   };
+
+  // Load comments for the world detail modal (page 1 resets, higher pages append).
+  const loadComments = async (worldId: string, page = 1) => {
+    setCommentsLoading(true);
+    try {
+      const res = await WorldStorageService.fetchComments(worldId, page, 20);
+      setCommentsTotal(res.total);
+      setCommentsHasMore(!!res.pagination?.next);
+      setCommentsPage(page);
+      setComments((prev) => (page === 1 ? res.data : [...prev, ...res.data]));
+    } finally {
+      setCommentsLoading(false);
+    }
+  };
+
+  const handlePostComment = async () => {
+    if (!selectedRemoteWorld || !commentText.trim()) return;
+    setPostingComment(true);
+    try {
+      const created = await WorldStorageService.postComment(
+        selectedRemoteWorld._id || selectedRemoteWorld.id,
+        commentText.trim(),
+      );
+      setComments((prev) => [created, ...prev]);
+      setCommentsTotal((n) => n + 1);
+      setCommentText('');
+    } catch (error) {
+      toast.error(error.message || 'Failed to post comment');
+    } finally {
+      setPostingComment(false);
+    }
+  };
+
+  // Fetch comments whenever the detail modal opens for a world.
+  useEffect(() => {
+    if (showRemoteWorldDetailsModal && selectedRemoteWorld) {
+      setComments([]);
+      setCommentText('');
+      loadComments(selectedRemoteWorld._id || selectedRemoteWorld.id, 1);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [showRemoteWorldDetailsModal, selectedRemoteWorld?._id, selectedRemoteWorld?.id]);
   
   // Get user initial for the avatar button
   const getUserInitial = () => {
@@ -1513,18 +1631,18 @@ const MainMenu = ({ onStartGame, onOpenWorldEditor }) => {
 
       {/* Discover Dialog */}
       <Dialog open={showDiscoverDialog} onOpenChange={setShowDiscoverDialog}>
-        <DialogContent className="max-w-[95vw] sm:max-w-[95vw] h-[85vh] overflow-y-auto flex flex-col items-start">
-          <DialogHeader>
-            <DialogTitle>Discover Worlds</DialogTitle>
-            <DialogDescription>
-              Browse and download worlds created by the community.
-            </DialogDescription>
-          </DialogHeader>
-          
-          <div className="py-4">
-            {/* Search and filter controls */}
-            <div className="flex flex-col sm:flex-row gap-4 mb-6">
-              <div className="relative flex-grow">
+        <DialogContent
+          hideClose
+          className="max-w-none w-screen h-screen sm:max-w-none left-0 top-0 translate-x-0 translate-y-0 rounded-none sm:rounded-none p-0 gap-0 flex flex-col data-[state=open]:!slide-in-from-top-0 data-[state=open]:!slide-in-from-left-0 data-[state=closed]:!slide-out-to-top-0 data-[state=closed]:!slide-out-to-left-0"
+        >
+          {/* Frozen header: back button + title + search/filter controls on one row */}
+          <div className="shrink-0 border-b px-6 py-4 space-y-4">
+            <div className="flex flex-wrap items-center gap-2 sm:gap-4">
+              <Button variant="ghost" size="icon" className="shrink-0" onClick={() => setShowDiscoverDialog(false)} aria-label="Back">
+                <ArrowLeft className="h-5 w-5" />
+              </Button>
+              <DialogTitle className="whitespace-nowrap mr-2">Discover Worlds</DialogTitle>
+              <div className="relative flex-grow min-w-[200px]">
                 <Search className="absolute left-2 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
                 <Input
                   placeholder="Search worlds..."
@@ -1533,8 +1651,8 @@ const MainMenu = ({ onStartGame, onOpenWorldEditor }) => {
                   onChange={(e) => setSearchQuery(e.target.value)}
                 />
               </div>
-              
-              <div className="flex flex-col sm:flex-row gap-2">
+
+              <div className="flex flex-wrap items-center gap-2">
                 <div className="flex items-center gap-2">
                   <input
                     type="checkbox"
@@ -1550,24 +1668,76 @@ const MainMenu = ({ onStartGame, onOpenWorldEditor }) => {
                     Search by author
                   </label>
                 </div>
+
+                {/* Sort controls */}
+                <div className="flex items-center gap-1">
+                  <Select
+                    value={sortField}
+                    onValueChange={(v) => { setSortField(v); setCurrentPage(1); }}
+                  >
+                    <SelectTrigger className="w-[160px] h-9">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="updated_at">Last Updated</SelectItem>
+                      <SelectItem value="created_at">Creation Date</SelectItem>
+                      <SelectItem value="downloads">Downloads</SelectItem>
+                    </SelectContent>
+                  </Select>
+                  <Button
+                    variant="outline"
+                    size="icon"
+                    className="h-9 w-9 shrink-0"
+                    title={sortOrder === 'desc' ? 'Descending' : 'Ascending'}
+                    onClick={() => { setSortOrder((o) => (o === 'desc' ? 'asc' : 'desc')); setCurrentPage(1); }}
+                  >
+                    {sortOrder === 'desc' ? <ArrowDownWideNarrow className="h-4 w-4" /> : <ArrowUpNarrowWide className="h-4 w-4" />}
+                  </Button>
+                  <Button
+                    variant="outline"
+                    size="icon"
+                    className="h-9 w-9 shrink-0"
+                    title="Refresh catalog"
+                    disabled={isSyncingCatalog}
+                    onClick={() => loadCatalog(true)}
+                  >
+                    <RotateCcw className={`h-4 w-4 ${isSyncingCatalog ? 'animate-spin' : ''}`} />
+                  </Button>
+                </div>
               </div>
             </div>
             
-            {/* Hidden worlds control */}
+            {/* Hidden worlds/tags — removable chips */}
             {(hiddenWorldIds.length > 0 || hiddenTags.length > 0) && (
-              <div className="flex items-center justify-between text-xs text-gray-500 mb-4">
-                <span>
-                  Hidden: {hiddenWorldIds.length} world(s)
-                  {hiddenTags.length > 0 && `, tags: ${hiddenTags.join(', ')}`}
-                </span>
-                <Button variant="ghost" size="sm" onClick={resetHiddenWorlds}>
-                  <RotateCcw className="h-3 w-3 mr-1" /> Reset hidden
+              <div className="flex flex-wrap items-center gap-2 text-xs">
+                <span className="text-gray-500">Hidden:</span>
+                {hiddenWorldIds.map((id) => (
+                  <span key={`w-${id}`} className="inline-flex items-center gap-1 rounded-full bg-secondary px-2 py-0.5 text-secondary-foreground">
+                    {hiddenWorldName(id)}
+                    <button onClick={() => unhideWorld(id)} className="hover:text-destructive" aria-label="Unhide world" title="Unhide">
+                      <X className="h-3 w-3" />
+                    </button>
+                  </span>
+                ))}
+                {hiddenTags.map((tag) => (
+                  <span key={`t-${tag}`} className="inline-flex items-center gap-1 rounded-full bg-blue-100 dark:bg-blue-900 px-2 py-0.5 text-blue-800 dark:text-blue-300">
+                    #{tag}
+                    <button onClick={() => unhideTag(tag)} className="hover:text-destructive" aria-label="Unhide tag" title="Unhide">
+                      <X className="h-3 w-3" />
+                    </button>
+                  </span>
+                ))}
+                <Button variant="ghost" size="sm" className="h-6 px-2" onClick={resetHiddenWorlds}>
+                  <RotateCcw className="h-3 w-3 mr-1" /> Reset all
                 </Button>
               </div>
             )}
+          </div>
 
+          {/* Scrollable results */}
+          <div className="flex-1 min-h-0 overflow-y-auto px-6 py-4">
             {/* World grid */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4 mb-6">
+            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4">
               {isLoadingRemoteWorlds ? (
                 Array(4).fill(0).map((_, index) => (
                   <div key={index} className="w-full h-48">
@@ -1577,14 +1747,14 @@ const MainMenu = ({ onStartGame, onOpenWorldEditor }) => {
                     </div>
                   </div>
                 ))
-              ) : visibleRemoteWorlds.length === 0 ? (
+              ) : filteredRemoteWorlds.length === 0 ? (
                 <div className="col-span-2 text-center py-12 text-gray-500">
-                  {searchQuery ? 
-                    "No worlds found matching your criteria." : 
+                  {searchQuery ?
+                    "No worlds found matching your criteria." :
                     "No worlds available. Be the first to publish one!"}
                 </div>
               ) : (
-                visibleRemoteWorlds.map((world) => {
+                pagedRemoteWorlds.map((world) => {
                   // Get the world ID (server uses _id)
                   const worldId = world._id || world.id;
                   
@@ -1610,8 +1780,10 @@ const MainMenu = ({ onStartGame, onOpenWorldEditor }) => {
                       </button>
                       <div className="h-32 bg-gray-100 dark:bg-gray-800">
                         {world.thumbnail_file ? (
-                          <img
-                            src={`${WorldStorageService.API_URL}/thumbnails/${world.thumbnail_file}`}
+                          <CachedThumbnail
+                            file={world.thumbnail_file}
+                            url={`${WorldStorageService.API_URL}/thumbnails/${world.thumbnail_file}`}
+                            updatedAt={world.updated_at}
                             alt={world.name}
                             className="w-full h-full object-cover"
                           />
@@ -1686,31 +1858,30 @@ const MainMenu = ({ onStartGame, onOpenWorldEditor }) => {
               )}
             </div>
             
-            {/* Pagination */}
-            {!isLoadingRemoteWorlds && remoteWorlds.length > 0 && (
-              <div className="flex justify-center gap-2">
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
-                  disabled={currentPage <= 1}
-                >
-                  Previous
-                </Button>
-                
-                <span className="px-4 py-2 text-sm">
-                  Page {currentPage} of {totalPages}
-                </span>
-                
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => setCurrentPage(prev => Math.min(prev + 1, totalPages))}
-                  disabled={currentPage >= totalPages}
-                >
-                  Next
-                </Button>
-              </div>
+          </div>
+
+          {/* Frozen footer: pagination */}
+          <div className="shrink-0 border-t px-6 py-3">
+            {!isLoadingRemoteWorlds && filteredRemoteWorlds.length > 0 && (
+              <Pagination>
+                <PaginationContent>
+                  <PaginationItem>
+                    <PaginationPrevious
+                      href="#"
+                      onClick={(e) => { e.preventDefault(); if (currentPage > 1) setCurrentPage(currentPage - 1); }}
+                      className={currentPage === 1 ? "pointer-events-none opacity-50" : ""}
+                    />
+                  </PaginationItem>
+                  {renderDiscoverPaginationItems()}
+                  <PaginationItem>
+                    <PaginationNext
+                      href="#"
+                      onClick={(e) => { e.preventDefault(); if (currentPage < totalPages) setCurrentPage(currentPage + 1); }}
+                      className={currentPage === totalPages ? "pointer-events-none opacity-50" : ""}
+                    />
+                  </PaginationItem>
+                </PaginationContent>
+              </Pagination>
             )}
           </div>
         </DialogContent>
@@ -1718,95 +1889,155 @@ const MainMenu = ({ onStartGame, onOpenWorldEditor }) => {
       
       {/* Remote World Details Modal */}
       <Dialog open={showRemoteWorldDetailsModal} onOpenChange={setShowRemoteWorldDetailsModal}>
-        <DialogContent className="sm:max-w-[600px] h-[85vh] overflow-y-auto">
-          <DialogHeader>
+        <DialogContent className="sm:max-w-[1200px] h-[85vh] flex flex-col">
+          <DialogHeader className="shrink-0">
             <DialogTitle>{selectedRemoteWorld?.name || 'World Details'}</DialogTitle>
           </DialogHeader>
           
           {selectedRemoteWorld && (
-            <div className="mt-4 space-y-6">
-              {/* World Thumbnail */}
-              <div className="relative w-full pt-[56.25%] rounded-lg overflow-hidden">
-                {selectedRemoteWorld.thumbnail_file ? (
-                  <img
-                    src={`${WorldStorageService.API_URL}/thumbnails/${selectedRemoteWorld.thumbnail_file}`}
-                    alt={selectedRemoteWorld.name}
-                    className="absolute top-0 left-0 w-full h-full object-cover"
-                  />
-                ) : selectedRemoteWorld.thumbnail ? (
-                  <img
-                    src={selectedRemoteWorld.thumbnail}
-                    alt={selectedRemoteWorld.name}
-                    className="absolute top-0 left-0 w-full h-full object-cover"
-                  />
-                ) : (
-                  <div className="absolute top-0 left-0 w-full h-full flex items-center justify-center bg-gray-100 dark:bg-gray-800 text-gray-400">
-                    <Globe className="h-16 w-16" />
-                  </div>
-                )}
-              </div>
-              
-              {/* World Info */}
-              <div className="space-y-4">
-                <div>
-                  <h3 className="text-lg font-semibold">Description</h3>
-                  <p className="text-gray-600 dark:text-gray-400 mt-1">
-                    {selectedRemoteWorld.description || "No description available."}
-                  </p>
+            <div className="mt-4 flex-1 min-h-0 flex flex-col md:flex-row gap-6 overflow-y-auto md:overflow-hidden">
+              {/* Left column: metadata */}
+              <div className="md:w-1/2 md:min-h-0 md:overflow-y-auto md:pr-1 space-y-6">
+                {/* World Thumbnail */}
+                <div className="relative w-full pt-[56.25%] rounded-lg overflow-hidden">
+                  {selectedRemoteWorld.thumbnail_file ? (
+                    <CachedThumbnail
+                      file={selectedRemoteWorld.thumbnail_file}
+                      url={`${WorldStorageService.API_URL}/thumbnails/${selectedRemoteWorld.thumbnail_file}`}
+                      updatedAt={selectedRemoteWorld.updated_at}
+                      alt={selectedRemoteWorld.name}
+                      className="absolute top-0 left-0 w-full h-full object-cover"
+                    />
+                  ) : selectedRemoteWorld.thumbnail ? (
+                    <img
+                      src={selectedRemoteWorld.thumbnail}
+                      alt={selectedRemoteWorld.name}
+                      className="absolute top-0 left-0 w-full h-full object-cover"
+                    />
+                  ) : (
+                    <div className="absolute top-0 left-0 w-full h-full flex items-center justify-center bg-gray-100 dark:bg-gray-800 text-gray-400">
+                      <Globe className="h-16 w-16" />
+                    </div>
+                  )}
                 </div>
-                
-                <div className="grid grid-cols-2 gap-4">
+
+                <div className="space-y-4">
                   <div>
-                    <h3 className="text-sm font-semibold text-gray-500">Author</h3>
-                    <p>{selectedRemoteWorld.author?.username || "Unknown"}</p>
+                    <h3 className="text-lg font-semibold">Description</h3>
+                    <p className="text-gray-600 dark:text-gray-400 mt-1">
+                      {selectedRemoteWorld.description || "No description available."}
+                    </p>
                   </div>
-                  
+
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <h3 className="text-sm font-semibold text-gray-500">Author</h3>
+                      <p>{selectedRemoteWorld.author?.username || "Unknown"}</p>
+                    </div>
+
+                    <div>
+                      <h3 className="text-sm font-semibold text-gray-500">Downloads</h3>
+                      <p>{selectedRemoteWorld.downloads || 0}</p>
+                    </div>
+
+                    <div>
+                      <h3 className="text-sm font-semibold text-gray-500">Created</h3>
+                      <p>{selectedRemoteWorld.created_at ? new Date(selectedRemoteWorld.created_at).toLocaleDateString() : "Unknown"}</p>
+                    </div>
+
+                    <div>
+                      <h3 className="text-sm font-semibold text-gray-500">Updated</h3>
+                      <p>{selectedRemoteWorld.updated_at ? new Date(selectedRemoteWorld.updated_at).toLocaleDateString() : "Unknown"}</p>
+                    </div>
+                  </div>
+
+                  {/* Tags */}
                   <div>
-                    <h3 className="text-sm font-semibold text-gray-500">Downloads</h3>
-                    <p>{selectedRemoteWorld.downloads || 0}</p>
+                    <h3 className="text-sm font-semibold text-gray-500">Tags</h3>
+                    <div className="flex flex-wrap gap-2 mt-1">
+                      {selectedRemoteWorld.tags && selectedRemoteWorld.tags.length > 0 ? (
+                        selectedRemoteWorld.tags.map((tag, index) => (
+                          <span
+                            key={index}
+                            className="px-2 py-1 bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-300 text-xs rounded-full"
+                          >
+                            {tag}
+                          </span>
+                        ))
+                      ) : (
+                        <span className="text-gray-500 text-sm">No tags</span>
+                      )}
+                    </div>
                   </div>
-                  
-                  <div>
-                    <h3 className="text-sm font-semibold text-gray-500">Created</h3>
-                    <p>{selectedRemoteWorld.created_at ? new Date(selectedRemoteWorld.created_at).toLocaleDateString() : "Unknown"}</p>
-                  </div>
-                  
-                  <div>
-                    <h3 className="text-sm font-semibold text-gray-500">Updated</h3>
-                    <p>{selectedRemoteWorld.updated_at ? new Date(selectedRemoteWorld.updated_at).toLocaleDateString() : "Unknown"}</p>
-                  </div>
-                </div>
-                
-                {/* Tags */}
-                <div>
-                  <h3 className="text-sm font-semibold text-gray-500">Tags</h3>
-                  <div className="flex flex-wrap gap-2 mt-1">
-                    {selectedRemoteWorld.tags && selectedRemoteWorld.tags.length > 0 ? (
-                      selectedRemoteWorld.tags.map((tag, index) => (
-                        <span 
-                          key={index} 
-                          className="px-2 py-1 bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-300 text-xs rounded-full"
+
+                  {/* Action Buttons */}
+                  <div className="pt-4">
+                    {(() => {
+                      const isDownloaded = downloadedIds.has(selectedRemoteWorld._id || selectedRemoteWorld.id);
+                      return (
+                        <Button
+                          className="w-full bg-gradient-to-r from-sky-200 to-cyan-200 hover:from-sky-300 hover:to-cyan-300 text-black font-bold"
+                          onClick={() => handleDownloadWorld(selectedRemoteWorld)}
                         >
-                          {tag}
-                        </span>
-                      ))
-                    ) : (
-                      <span className="text-gray-500 text-sm">No tags</span>
-                    )}
+                          {isDownloaded
+                            ? <><Check className="mr-2 h-4 w-4" /> Downloaded — Download again</>
+                            : <><DoorOpen className="mr-2 h-4 w-4" /> Download World</>}
+                        </Button>
+                      );
+                    })()}
                   </div>
                 </div>
-                
-                {/* Action Buttons */}
-                <div className="pt-4">
-                  <Button
-                    className="w-full bg-gradient-to-r from-sky-200 to-cyan-200 hover:from-sky-300 hover:to-cyan-300 text-black font-bold"
-                    onClick={() => {
-                      handleDownloadWorld(selectedRemoteWorld);
-                      setShowRemoteWorldDetailsModal(false);
-                    }}
-                  >
-                    <DoorOpen className="mr-2 h-4 w-4" /> Download World
-                  </Button>
+              </div>
+
+              {/* Right column: comments */}
+              <div className="md:w-1/2 md:min-h-0 md:overflow-y-auto border-t pt-4 md:border-t-0 md:pt-0 md:border-l md:pl-6 space-y-3">
+                <h3 className="text-sm font-semibold text-gray-500">Comments ({commentsTotal})</h3>
+
+                {isAuthenticated ? (
+                  <div className="space-y-2">
+                    <Textarea
+                      placeholder="Leave a comment..."
+                      value={commentText}
+                      onChange={(e) => setCommentText(e.target.value)}
+                      className="min-h-[60px]"
+                    />
+                    <Button
+                      size="sm"
+                      disabled={postingComment || !commentText.trim()}
+                      onClick={handlePostComment}
+                    >
+                      {postingComment ? 'Posting...' : 'Post Comment'}
+                    </Button>
+                  </div>
+                ) : (
+                  <p className="text-sm text-gray-500">Log in to leave a comment.</p>
+                )}
+
+                <div className="space-y-3">
+                  {comments.map((c) => (
+                    <div key={c.id} className="text-sm border-b border-border/50 pb-2 last:border-0">
+                      <div className="flex items-center justify-between gap-2">
+                        <span className="font-medium">{c.author?.username || 'Unknown'}</span>
+                        <span className="text-xs text-gray-500">
+                          {c.created_at ? new Date(c.created_at).toLocaleString() : ''}
+                        </span>
+                      </div>
+                      <p className="text-gray-600 dark:text-gray-400 whitespace-pre-wrap mt-1">{c.content}</p>
+                    </div>
+                  ))}
+                  {comments.length === 0 && !commentsLoading && (
+                    <p className="text-sm text-gray-500">No comments yet.</p>
+                  )}
+                  {commentsHasMore && (
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      disabled={commentsLoading}
+                      onClick={() => loadComments(selectedRemoteWorld._id || selectedRemoteWorld.id, commentsPage + 1)}
+                    >
+                      {commentsLoading ? 'Loading...' : 'Load more'}
+                    </Button>
+                  )}
                 </div>
               </div>
             </div>
