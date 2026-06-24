@@ -3,7 +3,7 @@ import { useGameData } from '../contexts/GameDataContext';
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { ImageUpload, SoundUpload, ModelUpload } from '../lib/UtilityComponents';
+import { ImageUpload, ModelUpload } from '../lib/UtilityComponents';
 import type { Entity } from '@/types';
 
 const EntityManager = ({ entity }: { entity: Entity }) => {

@@ -22,7 +22,6 @@ function useProvideGameplay() {
   const [gameTime, setGameTime] = useState(0);
   const [currentLocation, setCurrentLocation] = useState<GameLocation | null>(null);
   const [playerStats, setPlayerStats] = useState<PlayerStat[]>([]);
-  const [isProcessingStatCode, setIsProcessingStatCode] = useState(false);
   const [playerTraits, setPlayerTraits] = useState<Trait[]>([]);
   const [recentStatChanges, setRecentStatChanges] = useState<Record<string, number>>({});
   const [activeTab, setActiveTab] = useState("stats");
@@ -344,6 +343,7 @@ type GameplayContextValue = ReturnType<typeof useProvideGameplay>;
 
 const GameplayContext = createContext<GameplayContextValue | null>(null);
 
+// eslint-disable-next-line react-refresh/only-export-components
 export const useGameplay = () => {
   const context = useContext(GameplayContext);
   if (!context) {

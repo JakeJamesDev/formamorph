@@ -15,6 +15,7 @@ interface UploadedMedia {
   data: string;
 }
 
+// eslint-disable-next-line react-refresh/only-export-components
 export const getModelType = (fileName: string) => {
   const extension = fileName.split('.').pop().toLowerCase();
   switch (extension) {
