@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect, useMemo } from 'react';
+﻿import React, { useState, useRef, useEffect, useMemo } from 'react';
 import { useGameData } from '../contexts/GameDataContext';
 import { toast, ToastContainer  } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
@@ -20,6 +20,8 @@ import {
 import { Textarea } from "@/components/ui/textarea";
 import { CachedThumbnail } from "@/lib/useCachedThumbnail";
 import { ImageZoomViewer } from "@/components/ImageZoomViewer";
+import { TokenAutocomplete } from "@/components/TokenAutocomplete";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { toEpoch } from "@/lib/thumbnailCache";
 import { getCatalog, replaceCatalog } from "@/lib/worldCatalog";
 import {
@@ -62,13 +64,15 @@ const defaultWorlds = [
   { id: 'drone', defaultName: 'Reincarnated Drone' }
 ];
 
-// Normalize a tag for hide-matching: lowercase, strip non-standard symbols (keep letters,
-// numbers, spaces, hyphens), collapse whitespace, and trim. Returns '' for junk-only input.
+// Normalize a tag so formatting variants collapse to one value for matching:
+// fold accents (NFKD + strip combining marks), lowercase, treat any run of non-alphanumerics
+// (spaces, hyphens, underscores, punctuation) as a single space, then trim. '' for junk-only input.
 const sanitizeTag = (tag: string): string =>
   String(tag ?? '')
+    .normalize('NFKD')
+    .replace(/[\u0300-\u036f]/g, '')
     .toLowerCase()
-    .replace(/[^a-z0-9\s-]/g, '')
-    .replace(/\s+/g, ' ')
+    .replace(/[^a-z0-9]+/g, ' ')
     .trim();
 
 // User-defined world ordering is a UI preference, persisted as an ordered list of ids.
@@ -174,7 +178,9 @@ const MainMenu = ({ onStartGame, onOpenWorldEditor }) => {
   const [isLoadingRemoteWorlds, setIsLoadingRemoteWorlds] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   
-  const [searchByAuthor, setSearchByAuthor] = useState(false);
+  const [authorFilter, setAuthorFilter] = useState<string[]>([]);
+  const [tagFilter, setTagFilter] = useState<string[]>([]);
+  const [tagMode, setTagMode] = useState<'any' | 'all'>('any');
   const [sortField, setSortField] = useState('updated_at'); // updated_at | created_at | downloads
   const [sortOrder, setSortOrder] = useState('desc'); // asc | desc
   const [currentPage, setCurrentPage] = useState(1);
@@ -758,19 +764,39 @@ const MainMenu = ({ onStartGame, onOpenWorldEditor }) => {
   const hiddenWorldName = (id: string) =>
     remoteWorlds.find((w) => (w._id || w.id) === id)?.name || `${id.slice(0, 8)}…`;
 
-  // Client-side browse pipeline over the cached catalog: hide filters → text search → sort.
+  // Unique authors/tags from the cached catalog, used for the filter autocomplete.
+  const allAuthors = useMemo(() => {
+    const set = new Set<string>();
+    remoteWorlds.forEach((w) => { if (w.author?.username) set.add(w.author.username); });
+    return Array.from(set).sort((a, b) => a.localeCompare(b));
+  }, [remoteWorlds]);
+  const allTags = useMemo(() => {
+    const seen = new Set<string>();
+    const out: string[] = [];
+    // Normalize tags so casing/spacing/punctuation variants collapse into one suggestion.
+    remoteWorlds.forEach((w) => (w.tags || []).forEach((t) => {
+      const s = sanitizeTag(t);
+      if (s && !seen.has(s)) { seen.add(s); out.push(s); }
+    }));
+    return out.sort((a, b) => a.localeCompare(b));
+  }, [remoteWorlds]);
+
+  // Client-side browse pipeline: hide filters → text search → author/tag include filters → sort.
   const PAGE_SIZE = 12;
   const filteredRemoteWorlds = useMemo(() => {
     const q = searchQuery.trim().toLowerCase();
+    const authors = authorFilter.map((a) => a.toLowerCase());
+    const tags = tagFilter.map((t) => sanitizeTag(t)).filter(Boolean);
     const list = remoteWorlds.filter((world) => {
       const id = world._id || world.id;
       if (hiddenWorldIds.includes(id)) return false;
       if ((world.tags || []).some((t) => hiddenTags.includes(sanitizeTag(t)))) return false;
-      if (q) {
-        const hay = searchByAuthor
-          ? (world.author?.username || '')
-          : `${world.name || ''} ${world.description || ''}`;
-        if (!hay.toLowerCase().includes(q)) return false;
+      if (q && !`${world.name || ''} ${world.description || ''}`.toLowerCase().includes(q)) return false;
+      if (authors.length && !authors.includes((world.author?.username || '').toLowerCase())) return false;
+      if (tags.length) {
+        const worldTags = new Set((world.tags || []).map((t) => sanitizeTag(t)).filter(Boolean));
+        const ok = tagMode === 'all' ? tags.every((t) => worldTags.has(t)) : tags.some((t) => worldTags.has(t));
+        if (!ok) return false;
       }
       return true;
     });
@@ -780,13 +806,13 @@ const MainMenu = ({ onStartGame, onOpenWorldEditor }) => {
       const bv = sortField === 'downloads' ? (b.downloads || 0) : toEpoch(b[sortField]);
       return (av - bv) * dir;
     });
-  }, [remoteWorlds, searchQuery, searchByAuthor, hiddenWorldIds, hiddenTags, sortField, sortOrder]);
+  }, [remoteWorlds, searchQuery, authorFilter, tagFilter, tagMode, hiddenWorldIds, hiddenTags, sortField, sortOrder]);
 
   const totalPages = Math.max(1, Math.ceil(filteredRemoteWorlds.length / PAGE_SIZE));
   const pagedRemoteWorlds = filteredRemoteWorlds.slice((currentPage - 1) * PAGE_SIZE, currentPage * PAGE_SIZE);
 
   // Reset to page 1 when the result set changes; clamp if hiding shrinks it below the current page.
-  useEffect(() => { setCurrentPage(1); }, [searchQuery, searchByAuthor, sortField, sortOrder]);
+  useEffect(() => { setCurrentPage(1); }, [searchQuery, authorFilter, tagFilter, tagMode, sortField, sortOrder]);
   useEffect(() => { if (currentPage > totalPages) setCurrentPage(totalPages); }, [currentPage, totalPages]);
 
   // Numbered page links with first/last anchors + ellipsis (matches the in-game transcript pager).
@@ -1655,22 +1681,6 @@ const MainMenu = ({ onStartGame, onOpenWorldEditor }) => {
               </div>
 
               <div className="flex flex-wrap items-center gap-2">
-                <div className="flex items-center gap-2">
-                  <input
-                    type="checkbox"
-                    id="search-by-author"
-                    checked={searchByAuthor}
-                    onChange={(e) => {
-                      setSearchByAuthor(e.target.checked);
-                      setCurrentPage(1);
-                    }}
-                    className="h-4 w-4 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500"
-                  />
-                  <label htmlFor="search-by-author" className="text-sm font-medium text-gray-700 dark:text-gray-300">
-                    Search by author
-                  </label>
-                </div>
-
                 {/* Sort controls */}
                 <div className="flex items-center gap-1">
                   <Select
@@ -1709,31 +1719,59 @@ const MainMenu = ({ onStartGame, onOpenWorldEditor }) => {
               </div>
             </div>
             
-            {/* Hidden worlds/tags — removable chips */}
-            {(hiddenWorldIds.length > 0 || hiddenTags.length > 0) && (
-              <div className="flex flex-wrap items-center gap-2 text-xs">
-                <span className="text-gray-500">Hidden:</span>
-                {hiddenWorldIds.map((id) => (
-                  <span key={`w-${id}`} className="inline-flex items-center gap-1 rounded-full bg-secondary px-2 py-0.5 text-secondary-foreground">
-                    {hiddenWorldName(id)}
-                    <button onClick={() => unhideWorld(id)} className="hover:text-destructive" aria-label="Unhide world" title="Unhide">
-                      <X className="h-3 w-3" />
-                    </button>
-                  </span>
-                ))}
-                {hiddenTags.map((tag) => (
-                  <span key={`t-${tag}`} className="inline-flex items-center gap-1 rounded-full bg-blue-100 dark:bg-blue-900 px-2 py-0.5 text-blue-800 dark:text-blue-300">
-                    #{tag}
-                    <button onClick={() => unhideTag(tag)} className="hover:text-destructive" aria-label="Unhide tag" title="Unhide">
-                      <X className="h-3 w-3" />
-                    </button>
-                  </span>
-                ))}
-                <Button variant="ghost" size="sm" className="h-6 px-2" onClick={resetHiddenWorlds}>
-                  <RotateCcw className="h-3 w-3 mr-1" /> Reset all
-                </Button>
+            {/* Authors / Tags include-filters + Hidden popup */}
+            <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
+              <div className="flex items-center gap-2">
+                <span className="text-sm font-medium text-gray-500 shrink-0">Authors:</span>
+                <TokenAutocomplete values={authorFilter} onChange={setAuthorFilter} options={allAuthors} placeholder="author…" />
               </div>
-            )}
+
+              <div className="flex items-center gap-2">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="shrink-0 w-[92px]"
+                  onClick={() => setTagMode((m) => (m === 'any' ? 'all' : 'any'))}
+                  title="Toggle match: Any vs All"
+                >
+                  {tagMode === 'any' ? 'Any' : 'All'} Tags:
+                </Button>
+                <TokenAutocomplete values={tagFilter} onChange={setTagFilter} options={allTags} placeholder="tag…" />
+              </div>
+
+              <Popover>
+                <PopoverTrigger asChild>
+                  <Button variant="outline" size="sm" className="shrink-0">
+                    Hidden{hiddenWorldIds.length + hiddenTags.length > 0 ? ` (${hiddenWorldIds.length + hiddenTags.length})` : ''}
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent align="end" className="w-72 space-y-2">
+                  {hiddenWorldIds.length === 0 && hiddenTags.length === 0 ? (
+                    <p className="text-sm text-muted-foreground">Nothing hidden.</p>
+                  ) : (
+                    <>
+                      <div className="flex flex-wrap gap-1">
+                        {hiddenWorldIds.map((id) => (
+                          <span key={`w-${id}`} className="inline-flex items-center gap-1 rounded-full bg-secondary px-2 py-0.5 text-xs text-secondary-foreground">
+                            {hiddenWorldName(id)}
+                            <button onClick={() => unhideWorld(id)} className="hover:text-destructive" aria-label="Unhide world"><X className="h-3 w-3" /></button>
+                          </span>
+                        ))}
+                        {hiddenTags.map((tag) => (
+                          <span key={`t-${tag}`} className="inline-flex items-center gap-1 rounded-full bg-blue-100 dark:bg-blue-900 px-2 py-0.5 text-xs text-blue-800 dark:text-blue-300">
+                            #{tag}
+                            <button onClick={() => unhideTag(tag)} className="hover:text-destructive" aria-label="Unhide tag"><X className="h-3 w-3" /></button>
+                          </span>
+                        ))}
+                      </div>
+                      <Button variant="ghost" size="sm" className="h-7 px-2 text-xs" onClick={resetHiddenWorlds}>
+                        <RotateCcw className="h-3 w-3 mr-1" /> Reset all
+                      </Button>
+                    </>
+                  )}
+                </PopoverContent>
+              </Popover>
+            </div>
           </div>
 
           {/* Scrollable results */}
