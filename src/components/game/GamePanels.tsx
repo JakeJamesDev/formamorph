@@ -330,7 +330,7 @@ export const MiddlePanel = ({
                 return (
                   <React.Fragment key={`audio-${index}`}>
                     <div>
-                      {ttsAudio && <AudioPlayer key={ttsAudio.audio.length} audio={ttsAudio} />}
+                      {ttsAudio && <AudioPlayer key={ttsAudio.audio.length} audio={ttsAudio} autoPlay />}
                     </div>
                     <div className={`mb-2 ${message.role === 'user' ? 'text-yellow-500' : ''}`}>
                       <strong>{message.role === 'user' ? 'You:' : 'Event:'}</strong>

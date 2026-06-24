@@ -7,6 +7,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Button } from "@/components/ui/button";
 import { X } from "lucide-react";
 import { toast } from 'react-toastify';
+import AudioPlayer from '../components/game/AudioPlayer';
 
 const WorldOverviewManager = () => {
   const { worldOverview, updateWorldOverview } = useGameData();
@@ -245,7 +246,7 @@ const WorldOverviewManager = () => {
         </div>
         {worldOverview.bgm && (
           <div className="mt-2">
-            <audio controls src={worldOverview.bgm} className="w-full" />
+            <AudioPlayer src={worldOverview.bgm} className="w-full" />
           </div>
         )}
       </div>

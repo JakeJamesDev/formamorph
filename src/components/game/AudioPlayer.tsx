@@ -3,6 +3,7 @@ import { Play, Pause, Volume2, Volume1, VolumeX } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Slider } from "@/components/ui/slider";
 import { useSettings } from "@/contexts/SettingsContext";
+import { cn } from "@/lib/utils";
 import type { TTSAudio } from "@/types";
 
 function fmtTime(s: number): string {
@@ -12,9 +13,15 @@ function fmtTime(s: number): string {
   return `${m}:${sec.toString().padStart(2, "0")}`;
 }
 
-// Compact, on-theme player for generated TTS audio — replaces the native <audio controls>
-// so it matches the app's Button/Slider styling and lines up with the icon buttons.
-export default function AudioPlayer({ audio }: { audio: TTSAudio }) {
+// Compact, on-theme player replacing the native <audio controls> so it matches the app's
+// Button/Slider styling. Pass either `audio` (a generated TTS WAV buffer) or `src` (a URL /
+// data URL, e.g. uploaded background music). `autoPlay` starts playback on mount.
+export default function AudioPlayer({ audio, src, autoPlay = false, className }: {
+  audio?: TTSAudio;
+  src?: string;
+  autoPlay?: boolean;
+  className?: string;
+}) {
   const audioRef = useRef<HTMLAudioElement>(null);
   const [isPlaying, setIsPlaying] = useState(false);
   const [currentTime, setCurrentTime] = useState(0);
@@ -37,16 +44,18 @@ export default function AudioPlayer({ audio }: { audio: TTSAudio }) {
   };
   const VolumeIcon = ttsVolume === 0 ? VolumeX : ttsVolume < 0.5 ? Volume1 : Volume2;
 
-  const url = useMemo(
-    () => URL.createObjectURL(new Blob([audio.audio as BlobPart], { type: "audio/wav" })),
-    [audio.audio]
+  // Build a blob URL only for the in-memory TTS buffer; a provided `src` is used as-is.
+  const objectUrl = useMemo(
+    () => (audio ? URL.createObjectURL(new Blob([audio.audio as BlobPart], { type: "audio/wav" })) : null),
+    [audio]
   );
-  useEffect(() => () => URL.revokeObjectURL(url), [url]);
+  useEffect(() => () => { if (objectUrl) URL.revokeObjectURL(objectUrl); }, [objectUrl]);
+  const url = objectUrl ?? src ?? "";
 
-  // Auto-play when a new clip arrives (browsers may block; that's fine).
+  // Auto-play on mount/new clip when requested (browsers may block; that's fine).
   useEffect(() => {
-    audioRef.current?.play().catch((e) => console.log("Auto-play prevented:", e));
-  }, [url]);
+    if (autoPlay) audioRef.current?.play().catch((e) => console.log("Auto-play prevented:", e));
+  }, [url, autoPlay]);
 
   const toggle = () => {
     const el = audioRef.current;
@@ -62,7 +71,7 @@ export default function AudioPlayer({ audio }: { audio: TTSAudio }) {
   };
 
   return (
-    <div className="flex h-10 items-center gap-2 w-2/3">
+    <div className={cn("flex h-10 items-center gap-2 w-2/3", className)}>
       <audio
         ref={audioRef}
         src={url}
