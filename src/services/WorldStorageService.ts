@@ -246,12 +246,13 @@ class WorldStorageService {
     });
   }
 
-  // Fetch worlds from the server with optional filtering
-  async fetchRemoteWorlds(page = 1, limit = 10, search = '', ownedOnly = false, searchByAuthor = false) {
+  // Fetch worlds from the server with optional filtering/sorting
+  async fetchRemoteWorlds(page = 1, limit = 10, search = '', ownedOnly = false, searchByAuthor = false, sort = '', order = 'desc') {
     try {
       let url = `${this.API_URL}/worlds?page=${page}&limit=${limit}`;
       if (search) url += `&search=${encodeURIComponent(search)}`;
       if (searchByAuthor) url += `&searchByAuthor=true`;
+      if (sort) url += `&sort=${encodeURIComponent(sort)}&order=${encodeURIComponent(order)}`;
 
       const headers = {};
       if (AuthService.isAuthenticated()) {
@@ -285,6 +286,52 @@ class WorldStorageService {
       console.error('Error fetching remote worlds:', error);
       return { success: false, error: error.message, data: [] };
     }
+  }
+
+  // Fetch the comments for a published world (paginated).
+  async fetchComments(worldId: string, page = 1, limit = 20) {
+    try {
+      const headers = {};
+      if (AuthService.isAuthenticated()) {
+        headers['Authorization'] = `Bearer ${AuthService.token}`;
+      }
+      const response = await fetch(
+        `${this.API_URL}/worlds/${worldId}/comments?page=${page}&limit=${limit}`,
+        { headers },
+      );
+      if (!response.ok) throw new Error('Failed to fetch comments');
+      const responseData = await response.json();
+      return {
+        success: true,
+        data: responseData.data || [],
+        pagination: responseData.pagination,
+        total: responseData.total || 0,
+      };
+    } catch (error) {
+      console.error('Error fetching comments:', error);
+      return { success: false, error: error.message, data: [], total: 0, pagination: {} };
+    }
+  }
+
+  // Post a comment on a published world (requires authentication).
+  async postComment(worldId: string, content: string) {
+    if (!AuthService.isAuthenticated()) {
+      throw new Error('You must be logged in to comment');
+    }
+    const response = await fetch(`${this.API_URL}/worlds/${worldId}/comments`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${AuthService.token}`,
+      },
+      body: JSON.stringify({ content }),
+    });
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({}));
+      throw new Error(errorData.message || 'Failed to post comment');
+    }
+    const responseData = await response.json();
+    return responseData.data || responseData;
   }
 
   // Get worlds published by the current user
