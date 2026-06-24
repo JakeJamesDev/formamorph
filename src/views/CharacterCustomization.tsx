@@ -250,10 +250,10 @@ const CharacterCustomization = ({ onCharacterCustomized }: {
             </div>
           </div>
 
-        {(visibleHairStyles.length > 0 || caps?.hairLength) && (
+        {(visibleHairStyles.length > 1 || caps?.hairLength) && (
           <div className="space-y-4">
             <h3 className="text-lg font-semibold">Hair</h3>
-            {visibleHairStyles.length > 0 && (
+            {visibleHairStyles.length > 1 && (
               <Select onValueChange={handleHairStyleChange} value={currentHairStyle}>
                 <SelectTrigger>
                   <SelectValue placeholder="Select a hair style" />

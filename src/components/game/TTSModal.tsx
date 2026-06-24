@@ -100,6 +100,22 @@ export default function TTSModal({ isOpen, onOpenChange, gameText = "Hello World
   const { vramHelperUrl } = useSettings();
   const vramStats = useVramStats(vramHelperUrl, { enabled: isOpen });
   const [freeBeforeLoad, setFreeBeforeLoad] = useState<number | null>(null);
+  const [isUnloading, setIsUnloading] = useState(false);
+
+  // Release the ONNX sessions (frees the WebGPU/VRAM allocation) and return to the load screen.
+  const unloadModel = async () => {
+    if (!tts) return;
+    try {
+      setIsUnloading(true);
+      await tts.model.dispose();
+    } catch (error) {
+      console.error("Failed to unload TTS model:", error);
+    } finally {
+      setTTS(null);
+      setFreeBeforeLoad(null);
+      setIsUnloading(false);
+    }
+  };
 
   // Min free VRAM across GPUs while the helper is online; null otherwise.
   const minFreeMB =
@@ -153,7 +169,7 @@ export default function TTSModal({ isOpen, onOpenChange, gameText = "Hello World
 
   return (
     <Dialog open={isOpen} onOpenChange={onOpenChange}>
-      <DialogContent>
+      <DialogContent className="sm:max-w-[640px]">
         <DialogHeader>
           <DialogTitle>Text to Speech</DialogTitle>
           <DialogDescription>
@@ -218,9 +234,17 @@ export default function TTSModal({ isOpen, onOpenChange, gameText = "Hello World
                   setIsPlaying(false);
                 }
               }}
-              disabled={isPlaying}
+              disabled={isPlaying || isUnloading}
             >
               {isPlaying ? "Generating..." : "Start"}
+            </Button>
+            <Button
+              variant="outline"
+              className="w-full"
+              onClick={unloadModel}
+              disabled={isPlaying || isUnloading}
+            >
+              {isUnloading ? "Unloading..." : "Unload Model"}
             </Button>
           </div>
         ) : null}
@@ -234,7 +258,7 @@ export default function TTSModal({ isOpen, onOpenChange, gameText = "Hello World
                 </div>
               )}
               {lowVram && (
-                <div className="text-sm text-red-500">
+                <div className="text-sm text-red-500 whitespace-nowrap">
                   Low VRAM: ~{KOKORO_VRAM_ESTIMATE_MB} MB needed, only {minFreeMB} MB free — loading may fail or fall back to CPU.
                 </div>
               )}
