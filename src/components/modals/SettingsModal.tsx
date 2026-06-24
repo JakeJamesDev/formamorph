@@ -62,7 +62,7 @@ export const SettingsModal = ({ isOpen, onOpenChange, onSave }: {
 
   return (
     <Dialog open={isOpen} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[800px] max-h-[80vh] overflow-y-auto">
+      <DialogContent className="sm:max-w-[800px] top-16 translate-y-0 max-h-[80vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>Settings</DialogTitle>
         </DialogHeader>
