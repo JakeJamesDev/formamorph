@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import {ConfirmDialog} from "@/components/ConfirmDialog";
 import {RadioGroup,RadioGroupItem } from"@/components/ui/radio-group";
 import {Label} from "@/components/ui/label"
-import {FilePlus2, DoorOpen, Pencil, Github, AlertTriangle, Code, User, LogIn, LogOut, Key, Upload, Search, Globe, EyeOff, RotateCcw, Settings } from "lucide-react";
+import {FilePlus2, DoorOpen, Pencil, Github, AlertTriangle, Code, User, LogIn, LogOut, Key, Upload, Import, Search, Globe, EyeOff, RotateCcw, Settings } from "lucide-react";
 import {
   Dialog,
   DialogContent,
@@ -1008,7 +1008,7 @@ const MainMenu = ({ onStartGame, onOpenWorldEditor }) => {
     className="bg-gradient-to-r from-green-200 to-emerald-200 hover:from-green-300 hover:to-emerald-300 text-black font-bold"
     onClick={() => fileInputRef.current?.click()}
   >
-    <Upload className="mr-2 h-4 w-4" /> Upload World
+    <Import className="mr-2 h-4 w-4" /> Import World
   </Button>
   
   <Button

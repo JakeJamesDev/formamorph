@@ -1,7 +1,7 @@
 import { useCallback, useState, type ChangeEvent } from 'react';
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Upload, Box as LucideBox, Music, X } from "lucide-react";
+import { ImagePlus, Box as LucideBox, Music, X } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import ModelViewer from '../views/ModelViewer';
@@ -73,8 +73,8 @@ export const ImageUpload = ({ onChange, id, value }: {
             </div>
           ) : (
             <>
-              <Upload className="mr-2" />
-              <span>Upload Image</span>
+              <ImagePlus className="mr-2" />
+              <span>Add Image</span>
             </>
           )}
         </div>
@@ -124,7 +124,7 @@ export const SoundUpload = ({ onChange, id, value }: {
           ) : (
             <>
               <Music className="mr-2" />
-              <span>Upload Sound</span>
+              <span>Add Sound</span>
             </>
           )}
         </div>
@@ -186,7 +186,7 @@ export const ModelUpload = ({ model, onModelChange, uniqueId }: {
           <Label htmlFor={`model-upload-${uniqueId}`} className="cursor-pointer">
             <div className="flex items-center justify-center border-2 border-dashed border-gray-300 rounded-md p-4">
               <LucideBox className="mr-2" />
-              <span>Upload 3D Model</span>
+              <span>Add 3D Model</span>
             </div>
           </Label>
         </div>

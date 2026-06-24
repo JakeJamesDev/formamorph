@@ -233,7 +233,7 @@ const WorldOverviewManager = () => {
             onClick={handleBGMClick}
             className="flex-1"
           >
-            {worldOverview.bgm ? "Change BGM" : "Upload BGM"}
+            {worldOverview.bgm ? "Change BGM" : "Add BGM"}
           </Button>
           {worldOverview.bgm && (
             <Button
@@ -266,7 +266,7 @@ const WorldOverviewManager = () => {
             onClick={handleVRMClick}
             className="flex-1"
           >
-            {worldOverview.customPlayerVRM ? "Change Player VRM" : "Upload Player VRM"}
+            {worldOverview.customPlayerVRM ? "Change Player VRM" : "Add Player VRM"}
           </Button>
           {worldOverview.customPlayerVRM && (
             <Button
