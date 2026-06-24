@@ -1,7 +1,7 @@
 import React, { useEffect, useRef } from 'react';
 import { useGameplay } from '@/contexts/GameplayContext';
 import { useSettings } from '@/contexts/SettingsContext';
-import { useGameData } from '@/contexts/GameDataContext';
+import { usePlayerModelUrl } from '@/lib/usePlayerModelUrl';
 import { useIsMobile } from '@/lib/useIsMobile';
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -43,7 +43,7 @@ export const LeftPanel = ({ entities, onEntityClick }: {
     playerNotes,
     setPlayerNotes
   } = useGameplay();
-  const { worldOverview } = useGameData();
+  const playerModelUrl = usePlayerModelUrl(characterData?.playerModelId);
   const isMobile = useIsMobile();
   const [showModel, setShowModel] = React.useState(true);
   const [leftTab, setLeftTab] = React.useState(isMobile ? "model" : "notes");
@@ -68,6 +68,7 @@ export const LeftPanel = ({ entities, onEntityClick }: {
           <Loader2 className="animate-spin" size={32} />
         ) : (
           <VRMViewer
+            key={playerModelUrl ?? 'default'}
             bellySize={characterData.bellySize + (characterData.bellySize || 0) + stomachPercent}
             bodyWeight={characterData.bodyWeight + (characterData.bodyWeight || 0) + fatnessPercent}
             breastSize={characterData.breastsSize + (characterData.breastsSize || 0) + breastsizePercent}
@@ -78,7 +79,7 @@ export const LeftPanel = ({ entities, onEntityClick }: {
             currentHairStyle={characterData.currentHairStyle}
             hairLength={characterData.hairLength}
             bodyShape={characterData.bodyShape}
-            modelUrl={worldOverview?.customPlayerVRM?.data || undefined}
+            modelUrl={playerModelUrl}
           />
         )}
       </div>
