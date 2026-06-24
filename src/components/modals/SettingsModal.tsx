@@ -1,11 +1,12 @@
-import { useSettings } from '@/contexts/SettingsContext';
+import { useSettings, type ThinkingMode } from '@/contexts/SettingsContext';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { ConfirmDialog } from '../ConfirmDialog';
-import { defaultSystemPrompt, defaultChoicesPrompt, defaultStatUpdatesPrompt, defaultLocationChangePrompt } from '../game/GamePrompts';
+import { defaultSystemPrompt, defaultChoicesPrompt, defaultStatUpdatesPrompt, defaultLocationChangePrompt, defaultThinkingPrompt } from '../game/GamePrompts';
 import VramReadout from '../game/VramReadout';
 import { useVramStats } from '@/lib/useVramStats';
 
@@ -36,6 +37,10 @@ export const SettingsModal = ({ isOpen, onOpenChange }: {
     setStatUpdatesPrompt,
     locationChangePromptText,
     setLocationChangePromptText,
+    thinkingMode,
+    setThinkingMode,
+    thinkingPrompt,
+    setThinkingPrompt,
     shortform,
     setShortform,
     autoscroll,
@@ -57,6 +62,7 @@ export const SettingsModal = ({ isOpen, onOpenChange }: {
     setChoicesPrompt(defaultChoicesPrompt);
     setStatUpdatesPrompt(defaultStatUpdatesPrompt);
     setLocationChangePromptText(defaultLocationChangePrompt);
+    setThinkingPrompt(defaultThinkingPrompt);
   };
 
   return (
@@ -122,6 +128,36 @@ export const SettingsModal = ({ isOpen, onOpenChange }: {
                   onChange={(e) => setAutoscroll(e.target.checked)}
                   className="col-span-3"
                 />
+              </div>
+              <div className="grid grid-cols-1 sm:grid-cols-4 items-start gap-4">
+                <label className="text-left sm:text-right pt-1">Thinking</label>
+                <RadioGroup
+                  value={thinkingMode}
+                  onValueChange={(v) => setThinkingMode(v as ThinkingMode)}
+                  className="col-span-3 gap-3"
+                >
+                  <div className="flex items-start gap-2">
+                    <RadioGroupItem value="off" id="thinking-off" className="mt-1" />
+                    <label htmlFor="thinking-off" className="cursor-pointer">
+                      <div className="text-sm font-medium">Off</div>
+                      <div className="text-xs text-muted-foreground">Fastest. The model responds immediately, with no planning step.</div>
+                    </label>
+                  </div>
+                  <div className="flex items-start gap-2">
+                    <RadioGroupItem value="precall" id="thinking-precall" className="mt-1" />
+                    <label htmlFor="thinking-precall" className="cursor-pointer">
+                      <div className="text-sm font-medium">Separate planning pass (recommended)</div>
+                      <div className="text-xs text-muted-foreground">A short, hidden plan is generated first, then used to write the narration. Most reliable for small models; adds one request per turn.</div>
+                    </label>
+                  </div>
+                  <div className="flex items-start gap-2">
+                    <RadioGroupItem value="inline" id="thinking-inline" className="mt-1" />
+                    <label htmlFor="thinking-inline" className="cursor-pointer">
+                      <div className="text-sm font-medium">Inline (same response)</div>
+                      <div className="text-xs text-muted-foreground">The model reasons privately before narrating, in one request. One fewer round-trip.</div>
+                    </label>
+                  </div>
+                </RadioGroup>
               </div>
             </div>
           </TabsContent>
@@ -209,6 +245,20 @@ export const SettingsModal = ({ isOpen, onOpenChange }: {
                   rows={6}
                 />
               </div>
+              {thinkingMode === 'precall' && (
+                <div className="grid grid-cols-1 sm:grid-cols-4 items-center gap-4">
+                  <label htmlFor="thinkingPrompt" className="text-left sm:text-right">
+                    Thinking Prompt
+                  </label>
+                  <Textarea
+                    id="thinkingPrompt"
+                    value={thinkingPrompt}
+                    onChange={(e) => setThinkingPrompt(e.target.value)}
+                    className="col-span-3"
+                    rows={6}
+                  />
+                </div>
+              )}
               <div className="grid grid-cols-1 sm:grid-cols-4 items-center gap-4">
                 <label htmlFor="choicesPrompt" className="text-left sm:text-right">
                   Choices Prompt

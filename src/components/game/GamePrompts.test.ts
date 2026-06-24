@@ -4,6 +4,7 @@ import {
   defaultChoicesPrompt,
   defaultStatUpdatesPrompt,
   defaultLocationChangePrompt,
+  defaultThinkingPrompt,
 } from './GamePrompts';
 
 const occurrences = (haystack: string, needle: string) => haystack.split(needle).length - 1;
@@ -51,6 +52,16 @@ describe('default prompts keep the placeholder contract', () => {
       '<WORLD DESCRIPTION>',
       '<LOCATION JSON DATA>',
       '<LOCATION LIST>',
+    ]);
+  });
+
+  it('thinking (pre-call) prompt has its tokens once each', () => {
+    expectTokensOnce(defaultThinkingPrompt, [
+      '<WORLD DESCRIPTION>',
+      '<STATS DESCRIPTION>',
+      '<TRAITS DESCRIPTION>',
+      '<LOCATION JSON DATA>',
+      '<NOTES>',
     ]);
   });
 });

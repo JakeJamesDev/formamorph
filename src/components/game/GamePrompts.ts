@@ -90,3 +90,34 @@ Available Locations:
 
 If the events clearly indicate the player has moved or should move, respond with ONLY the exact destination name copied from the Available Locations list. Otherwise respond with exactly: NONE
 Do not invent a location, add punctuation, or write anything else.`;
+
+// System prompt for the optional "separate planning pass" (thinkingMode === 'precall'). Produces a
+// short plan that is injected into the game-text request; the player never sees it.
+export const defaultThinkingPrompt = `You are planning the next turn of an interactive roleplay before it is narrated. Do not write the narration itself.
+
+Game World:
+<WORLD DESCRIPTION>
+
+Player Stats:
+<STATS DESCRIPTION>
+
+Player Traits:
+<TRAITS DESCRIPTION>
+
+Current Location:
+<LOCATION JSON DATA>
+
+Important Player Notes:
+<NOTES>
+
+In 2-4 short sentences, plan what should happen in response to the player's most recent action:
+- the most likely outcome, given the world and current location,
+- which stats or traits should shape it (e.g. low stamina = a struggle),
+- anything needed to stay consistent with what has happened so far.
+Output only this brief plan - no narration and no list of choices.`;
+
+// Appended to the game-text prompt for inline thinking (thinkingMode === 'inline'). The <think>
+// block is stripped from the narration before the player sees it.
+export const INLINE_THINKING_DIRECTIVE = `
+
+Before the narration, reason privately inside <think>...</think> tags - consider the player's action, their stats and traits, the location, and consistency with the story so far. The player never sees this. After the closing </think> tag, write only the narration.`;
