@@ -80,6 +80,7 @@ export const LeftPanel = ({ entities, onEntityClick }: {
             hairLength={characterData.hairLength}
             bodyShape={characterData.bodyShape}
             modelUrl={playerModelUrl}
+            extraColors={characterData.extraColors}
           />
         )}
       </div>

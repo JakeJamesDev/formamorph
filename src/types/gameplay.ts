@@ -35,9 +35,12 @@ export interface CharacterData {
   bellySize: number;
   breastsSize: number;
   bodyWeight: number;
-  hairColor: string;
-  eyeColor: string;
-  skinColor: string;
+  /** Colors are present only if the player actually changed them; otherwise the model keeps its own. */
+  hairColor?: string;
+  eyeColor?: string;
+  skinColor?: string;
+  /** Colors for extra materials (clothing, accessories, …), keyed by material name. */
+  extraColors?: Record<string, string>;
   currentHairStyle: string;
   hairLength: number;
   hairTypes?: Record<string, HairTypeDef>;
