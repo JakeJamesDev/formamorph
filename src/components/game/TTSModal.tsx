@@ -1,5 +1,5 @@
 import { KokoroTTS, type GenerateOptions } from "kokoro-js";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback, forwardRef, useImperativeHandle } from "react";
 import { Button } from "@/components/ui/button";
 import {
   Select,
@@ -85,12 +85,19 @@ function createWAV(audioData: Float32Array, sampleRate: number) {
   return wavBuffer;
 }
 
-export default function TTSModal({ isOpen, onOpenChange, gameText = "Hello World", onTTSGenerated }: {
+export interface TTSModalHandle {
+  // Regenerate audio using the already-loaded model/voice. Pass `text` to override the
+  // current game text. Returns false if no model is loaded yet (caller can open the modal).
+  regenerate: (text?: string) => Promise<boolean>;
+}
+
+const TTSModal = forwardRef<TTSModalHandle, {
   isOpen: boolean;
   onOpenChange: (open: boolean) => void;
   gameText?: string;
   onTTSGenerated: (audioData: TTSAudio) => void;
-}) {
+  onLoadedChange?: (loaded: boolean) => void;
+}>(function TTSModal({ isOpen, onOpenChange, gameText = "Hello World", onTTSGenerated, onLoadedChange }, ref) {
   const [isLoading, setIsLoading] = useState(false);
   const [tts, setTTS] = useState<KokoroTTS | null>(null);
   const [voices, setVoices] = useState<string[]>([]);
@@ -131,6 +138,33 @@ export default function TTSModal({ isOpen, onOpenChange, gameText = "Hello World
     tts && freeBeforeLoad != null && minFreeMB != null && freeBeforeLoad - minFreeMB > 0
       ? freeBeforeLoad - minFreeMB
       : null;
+
+  // Generate audio for `text` with the loaded model/voice; returns false if not ready.
+  const generateAudio = useCallback(async (text: string): Promise<boolean> => {
+    if (!tts || !selectedVoice) return false;
+    try {
+      setIsPlaying(true);
+      const result = await tts.generate(text, { voice: selectedVoice as GenerateOptions['voice'] });
+      const audioArray = new Float32Array(result.audio);
+      const wavData = createWAV(audioArray, result.sampling_rate);
+      onTTSGenerated({ audio: wavData, samplingRate: result.sampling_rate });
+      return true;
+    } catch (error) {
+      console.error("Failed to generate or play audio:", error);
+      return false;
+    } finally {
+      setIsPlaying(false);
+    }
+  }, [tts, selectedVoice, onTTSGenerated]);
+
+  useImperativeHandle(ref, () => ({
+    regenerate: (text?: string) => generateAudio(text ?? gameText),
+  }), [generateAudio, gameText]);
+
+  // Report load/unload so the parent can gate the regenerate button and auto-generation.
+  useEffect(() => {
+    onLoadedChange?.(!!tts);
+  }, [tts, onLoadedChange]);
 
   useEffect(() => {
     // Check for WebGPU support
@@ -207,32 +241,8 @@ export default function TTSModal({ isOpen, onOpenChange, gameText = "Hello World
             <Button
             className='w-full'
               onClick={async () => {
-                try {
-                  setIsPlaying(true);
-                  const result = await tts.generate(gameText, {
-                    voice: selectedVoice as GenerateOptions['voice'],
-                  });
-
-                  // Create a Float32Array from the audio data
-                  const audioArray = new Float32Array(result.audio);
-
-                  // Create a WAV file with the correct format
-                  const wavData = createWAV(audioArray, result.sampling_rate);
-
-                  // Create audio data object with WAV buffer
-                  const audioData = {
-                    audio: wavData,
-                    samplingRate: result.sampling_rate
-                  };
-
-                  // Call the callback with the WAV audio data
-                  onTTSGenerated(audioData);
-                  setIsPlaying(false);
-                  onOpenChange(false);
-                } catch (error) {
-                  console.error("Failed to generate or play audio:", error);
-                  setIsPlaying(false);
-                }
+                const ok = await generateAudio(gameText);
+                if (ok) onOpenChange(false);
               }}
               disabled={isPlaying || isUnloading}
             >
@@ -288,4 +298,6 @@ export default function TTSModal({ isOpen, onOpenChange, gameText = "Hello World
       </DialogContent>
     </Dialog>
   );
-}
+});
+
+export default TTSModal;

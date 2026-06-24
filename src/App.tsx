@@ -30,28 +30,28 @@ function App() {
 
   return (
     <ThemeProvider defaultTheme="dark" storageKey="vite-ui-theme">
-      <GameDataProvider>
-        {currentView === 'mainMenu' && (
-          <MainMenu
-            onStartGame={handleStartGame}
-            onOpenWorldEditor={handleOpenWorldEditor}
-          />
-        )}
-        {currentView === 'gameViewer' && (
-          <GameplayProvider>
-          <SettingsProvider>
-            <GameViewer
-              initialTraits={selectedTraits}
-              initialCharacterData={initialCharacterData}
-              onExitToMenu={handleExitToMenu}
+      <SettingsProvider>
+        <GameDataProvider>
+          {currentView === 'mainMenu' && (
+            <MainMenu
+              onStartGame={handleStartGame}
+              onOpenWorldEditor={handleOpenWorldEditor}
             />
-          </SettingsProvider>
-          </GameplayProvider>
-        )}
-        {currentView === 'worldEditor' && (
-          <WorldEditor onClose={() => setCurrentView('mainMenu')} />
-        )}
-      </GameDataProvider>
+          )}
+          {currentView === 'gameViewer' && (
+            <GameplayProvider>
+              <GameViewer
+                initialTraits={selectedTraits}
+                initialCharacterData={initialCharacterData}
+                onExitToMenu={handleExitToMenu}
+              />
+            </GameplayProvider>
+          )}
+          {currentView === 'worldEditor' && (
+            <WorldEditor onClose={() => setCurrentView('mainMenu')} />
+          )}
+        </GameDataProvider>
+      </SettingsProvider>
     </ThemeProvider>
   );
 }

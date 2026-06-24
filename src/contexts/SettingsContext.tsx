@@ -75,6 +75,11 @@ function useProvideSettings() {
     return saved ? saved : 'http://localhost:5179';
   });
 
+  const [ttsVolume, setTtsVolume] = useState<number>(() => {
+    const saved = localStorage.getItem(`${APP_ID}_ttsVolume`);
+    return saved !== null ? parseFloat(saved) : 1;
+  });
+
   // Save settings to localStorage whenever they change
   useEffect(() => {
     localStorage.setItem('bgmEnabled', JSON.stringify(bgmEnabled));
@@ -132,6 +137,10 @@ function useProvideSettings() {
     localStorage.setItem(`${APP_ID}_vramHelperUrl`, vramHelperUrl);
   }, [vramHelperUrl]);
 
+  useEffect(() => {
+    localStorage.setItem(`${APP_ID}_ttsVolume`, ttsVolume.toString());
+  }, [ttsVolume]);
+
   const value = {
     bgmEnabled,
     setBgmEnabled,
@@ -160,7 +169,9 @@ function useProvideSettings() {
     locationChangePromptText,
     setLocationChangePromptText,
     vramHelperUrl,
-    setVramHelperUrl
+    setVramHelperUrl,
+    ttsVolume,
+    setTtsVolume
   };
 
   return value;

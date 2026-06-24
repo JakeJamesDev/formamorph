@@ -13,7 +13,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { ToastContainer, toast } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
-import TTSModal from "../components/game/TTSModal";
+import TTSModal, { type TTSModalHandle } from "../components/game/TTSModal";
 import { EntityModal } from "../components/modals/EntityModal";
 import { LocationModal } from "../components/modals/LocationModal";
 import { SettingsModal } from "../components/modals/SettingsModal";
@@ -170,6 +170,26 @@ const GameViewer = ({
     [entities],
   );
   const [isTTSModalOpen, setIsTTSModalOpen] = useState(false);
+  const [ttsLoaded, setTtsLoaded] = useState(false);
+  const [ttsGenerating, setTtsGenerating] = useState(false);
+  const ttsModalRef = useRef<TTSModalHandle>(null);
+
+  // Generate TTS for `text` (or the current game text) with the busy flag set, so both the
+  // manual refresh button and auto-narration show the same spinner.
+  const generateTTS = async (text?: string): Promise<boolean> => {
+    setTtsGenerating(true);
+    try {
+      return (await ttsModalRef.current?.regenerate(text)) ?? false;
+    } finally {
+      setTtsGenerating(false);
+    }
+  };
+
+  // Refresh button: regenerate for the current text; if no model is loaded, open the modal.
+  const handleRegenerateTTS = async () => {
+    const ok = await generateTTS();
+    if (!ok) setIsTTSModalOpen(true);
+  };
   const [error, setError] = useState(null);
   const [selectedEntity, setSelectedEntity] = useState(null);
   const [isEntityModalOpen, setIsEntityModalOpen] = useState(false);
@@ -575,6 +595,11 @@ ${playerNotes || "No notes available"}
         // Clean up any partial state updates
         setIsWaitingForAI(false);
         return; // Exit the function early
+      }
+
+      // Auto-narrate the new game text if a TTS model is loaded (fire-and-forget).
+      if (ttsLoaded) {
+        generateTTS(gameTextResponse);
       }
 
       // Make choices and stat updates requests concurrently since they both only depend on game text
@@ -1459,6 +1484,9 @@ ${playerNotes || "No notes available"}
       abortGeneration={abortGeneration}
       disabled={isWaitingForAI && !choicesReady}
       onTTSClick={() => setIsTTSModalOpen(true)}
+      onRegenerateTTS={handleRegenerateTTS}
+      ttsLoaded={ttsLoaded}
+      ttsGenerating={ttsGenerating}
       memoryBar={memoryBar}
       progressBar={progressBar}
       locationSuggestion={locationSuggestion}
@@ -1846,10 +1874,12 @@ ${playerNotes || "No notes available"}
       />
 
       <TTSModal
+        ref={ttsModalRef}
         isOpen={isTTSModalOpen}
         onOpenChange={setIsTTSModalOpen}
         gameText={gameplayText}
         onTTSGenerated={setTTSAudio}
+        onLoadedChange={setTtsLoaded}
       />
 
       <SettingsModal
