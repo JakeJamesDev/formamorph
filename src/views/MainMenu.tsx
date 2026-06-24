@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import {ConfirmDialog} from "@/components/ConfirmDialog";
 import {RadioGroup,RadioGroupItem } from"@/components/ui/radio-group";
 import {Label} from "@/components/ui/label"
-import {FilePlus2, DoorOpen, Pencil, Github, AlertTriangle, Code, User, LogIn, LogOut, Key, Upload, Search, Globe, EyeOff, RotateCcw } from "lucide-react";
+import {FilePlus2, DoorOpen, Pencil, Github, AlertTriangle, Code, User, LogIn, LogOut, Key, Upload, Search, Globe, EyeOff, RotateCcw, Settings } from "lucide-react";
 import {
   Dialog,
   DialogContent,
@@ -18,6 +18,7 @@ import {
 import { Skeleton } from "@/components/ui/skeleton";
 import { Input } from "@/components/ui/input";
 import CharacterCustomization, { defaultCharacterData } from './CharacterCustomization';
+import { SettingsModal } from '../components/modals/SettingsModal';
 import TraitSelectionModal from './TraitSelectionModal';
 import WorldStorageService from '../services/WorldStorageService';
 import AuthService from '../services/AuthService';
@@ -39,6 +40,7 @@ const MainMenu = ({ onStartGame, onOpenWorldEditor }) => {
   const [showTraitSelection, setShowTraitSelection] = useState(false);
   const [selectedTraits, setSelectedTraits] = useState([]);
   const [showCodeModal, setShowCodeModal] = useState(false);
+  const [showSettings, setShowSettings] = useState(false);
   const fileInputRef = useRef(null);
   const [worlds, setWorlds] = useState([]);
   const [isLoadingWorlds, setIsLoadingWorlds] = useState(true);
@@ -865,20 +867,31 @@ const MainMenu = ({ onStartGame, onOpenWorldEditor }) => {
     <div className="container mx-auto px-4 py-6 relative">
       <ToastContainer theme="dark" />
       
-      {/* User Avatar Button */}
-      <button
-        className="fixed top-4 right-4 p-3 bg-gray-800 text-white rounded-full shadow-lg hover:bg-gray-700 transition-colors z-10"
-        onClick={() => isAuthenticated ? setShowProfileDialog(true) : setShowAuthDialog(true)}
-        aria-label={isAuthenticated ? "User Profile" : "Login"}
-      >
-        {isAuthenticated ? (
-          <div className="w-6 h-6 flex items-center justify-center font-semibold">
-            {getUserInitial()}
-          </div>
-        ) : (
-          <LogIn className="h-6 w-6" />
-        )}
-      </button>
+      {/* Top-right controls: settings + user avatar */}
+      <div className="fixed top-4 right-4 z-10 flex items-center gap-2">
+        <button
+          className="p-3 bg-gray-800 text-white rounded-full shadow-lg hover:bg-gray-700 transition-colors"
+          onClick={() => setShowSettings(true)}
+          aria-label="Settings"
+        >
+          <Settings className="h-6 w-6" />
+        </button>
+        <button
+          className="p-3 bg-gray-800 text-white rounded-full shadow-lg hover:bg-gray-700 transition-colors"
+          onClick={() => isAuthenticated ? setShowProfileDialog(true) : setShowAuthDialog(true)}
+          aria-label={isAuthenticated ? "User Profile" : "Login"}
+        >
+          {isAuthenticated ? (
+            <div className="w-6 h-6 flex items-center justify-center font-semibold">
+              {getUserInitial()}
+            </div>
+          ) : (
+            <LogIn className="h-6 w-6" />
+          )}
+        </button>
+      </div>
+
+      <SettingsModal isOpen={showSettings} onOpenChange={setShowSettings} />
       {/* Action buttons */}
       <div className="flex justify-center mb-6 gap-4">
         <Button

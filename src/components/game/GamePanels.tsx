@@ -21,6 +21,7 @@ import {
   PaginationPrevious,
 } from "@/components/ui/pagination";
 import VRMViewer from '@/views/VRMViewer';
+import AudioPlayer from './AudioPlayer';
 import { ConfirmDialog } from '../ConfirmDialog';
 import { EditTextModal } from '../modals/EditTextModal';
 import type { Entity } from '@/types';
@@ -193,6 +194,9 @@ export const MiddlePanel = ({
   abortGeneration,
   disabled,
   onTTSClick,
+  onRegenerateTTS,
+  ttsLoaded,
+  ttsGenerating,
   memoryBar,
   progressBar,
   locationSuggestion
@@ -207,6 +211,9 @@ export const MiddlePanel = ({
   abortGeneration: () => void;
   disabled: boolean;
   onTTSClick: () => void;
+  onRegenerateTTS: () => Promise<void> | void;
+  ttsLoaded: boolean;
+  ttsGenerating: boolean;
   memoryBar: React.ReactNode;
   progressBar: React.ReactNode;
   locationSuggestion: React.ReactNode;
@@ -263,13 +270,6 @@ export const MiddlePanel = ({
   };
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
-  const audioRef = useRef<HTMLAudioElement>(null);
-
-  useEffect(() => {
-    if (audioRef.current) {
-      audioRef.current.play().catch(e => console.log("Auto-play prevented:", e));
-    }
-  }, [ttsAudio]);
 
   useEffect(() => {
     //TEMP DISABLE AUTO SCROLL
@@ -286,6 +286,17 @@ export const MiddlePanel = ({
 
           <ScrollArea className={`flex-grow border border-border p-2 mb-1 bg-muted/80 min-h-0 ${isFlashing ? 'flash-animation' : ''} relative`}>
             <div className="absolute top-2 right-2 z-10 flex gap-2">
+              {ttsLoaded && (
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  onClick={() => onRegenerateTTS()}
+                  disabled={ttsGenerating}
+                  title="Regenerate audio for current text"
+                >
+                  {ttsGenerating ? <Loader2 className="h-4 w-4 animate-spin" /> : <RefreshCw className="h-4 w-4" />}
+                </Button>
+              )}
               <Button
                 variant="ghost"
                 size="icon"
@@ -307,18 +318,8 @@ export const MiddlePanel = ({
                 return (
                   <React.Fragment key={`audio-${index}`}>
                     <div>
-            {ttsAudio && (
-              <audio
-                ref={audioRef}
-                key={ttsAudio.audio.length}
-                controls
-                className="w-2/3"
-              >
-                <source src={URL.createObjectURL(new Blob([ttsAudio.audio as BlobPart], { type: 'audio/wav' }))} type="audio/wav" />
-                Your browser does not support the audio element.
-              </audio>
-            )}
-          </div>
+                      {ttsAudio && <AudioPlayer key={ttsAudio.audio.length} audio={ttsAudio} />}
+                    </div>
                     <div className={`mb-2 ${message.role === 'user' ? 'text-yellow-500' : ''}`}>
                       <strong>{message.role === 'user' ? 'You:' : 'Event:'}</strong>
                       {message.role === 'user' ? (
