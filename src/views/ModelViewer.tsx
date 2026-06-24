@@ -25,7 +25,8 @@ const ModelViewer = ({ model, modelType }: ModelViewerProps) => {
     renderer.setSize(400, 400);
     renderer.setClearColor(0x000000, 0); // Set clear color to transparent
 
-    mountRef.current?.appendChild(renderer.domElement);
+    const mount = mountRef.current;
+    mount?.appendChild(renderer.domElement);
 
     const controls = new OrbitControls(camera, renderer.domElement);
     controls.enableDamping = true;
@@ -104,8 +105,8 @@ const ModelViewer = ({ model, modelType }: ModelViewerProps) => {
 
     return () => {
       cancelAnimationFrame(animationFrameId);
-      if (mountRef.current) {
-        mountRef.current.removeChild(renderer.domElement);
+      if (mount) {
+        mount.removeChild(renderer.domElement);
       }
       URL.revokeObjectURL(objectURL);
       renderer.dispose();

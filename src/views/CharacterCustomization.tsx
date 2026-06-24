@@ -373,6 +373,7 @@ const CharacterCustomization = ({ onCharacterCustomized }: {
   );
 };
 
+// eslint-disable-next-line react-refresh/only-export-components
 export const defaultCharacterData = {
   bodyShape: {
     pear: 0,

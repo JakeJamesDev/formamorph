@@ -357,6 +357,8 @@ const MainMenu = ({ onStartGame, onOpenWorldEditor }) => {
     };
 
     checkAuth();
+    // Run once on mount; `username` is only a login-form fallback, not a re-run trigger.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   // Initialize default worlds and load metadata
@@ -783,6 +785,8 @@ const MainMenu = ({ onStartGame, onOpenWorldEditor }) => {
     if (showPublishModal) {
       fetchUserWorlds();
     }
+    // Fetch only when the publish modal opens or auth changes — not on fetchUserWorlds identity.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [showPublishModal, isAuthenticated]);
 
   // Debounced search query
@@ -792,7 +796,6 @@ const MainMenu = ({ onStartGame, onOpenWorldEditor }) => {
     if (showDiscoverDialog) {
       loadCatalog();
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [showDiscoverDialog]);
 
   // Fetch users when manage users dialog is opened or search/page changes
@@ -800,6 +803,8 @@ const MainMenu = ({ onStartGame, onOpenWorldEditor }) => {
     if (showManageUsersDialog) {
       fetchUsers();
     }
+    // Fetch only when the dialog opens or the page changes — not on fetchUsers identity.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [showManageUsersDialog, userCurrentPage]);
 
   const loadCatalog = async (force = false) => {

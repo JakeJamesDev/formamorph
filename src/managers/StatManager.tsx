@@ -431,9 +431,9 @@ const StatManager = ({ stat }: { stat: Stat }) => {
 
           <CollapsibleContent className="space-y-2 mt-2">
             <p className="text-sm text-muted-foreground">
-              Write JavaScript code to dynamically calculate this stat's value
+              Write JavaScript code to dynamically calculate this stat&apos;s value
               based on other stats. The code should return a number. You have
-              access to the 'stats' array containing all stats.
+              access to the &apos;stats&apos; array containing all stats.
             </p>
 
             <Textarea
@@ -488,7 +488,7 @@ return (health + strength) / 2;"
 
             <p className="text-xs text-muted-foreground">
               Note: When code is provided, it will override the manual value
-              setting. Leave empty to use the manual value. AI can't modify
+              setting. Leave empty to use the manual value. AI can&apos;t modify
               stats with code (but it can see the stat value and desc).
             </p>
           </CollapsibleContent>

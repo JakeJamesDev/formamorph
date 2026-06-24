@@ -285,6 +285,7 @@ type GameDataContextValue = ReturnType<typeof useProvideGameData>;
 
 const GameDataContext = createContext<GameDataContextValue | null>(null);
 
+// eslint-disable-next-line react-refresh/only-export-components
 export const useGameData = () => {
   const context = useContext(GameDataContext);
   if (!context) {

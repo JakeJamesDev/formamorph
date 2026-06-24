@@ -9,10 +9,9 @@ import { defaultSystemPrompt, defaultChoicesPrompt, defaultStatUpdatesPrompt, de
 import VramReadout from '../game/VramReadout';
 import { useVramStats } from '@/lib/useVramStats';
 
-export const SettingsModal = ({ isOpen, onOpenChange, onSave }: {
+export const SettingsModal = ({ isOpen, onOpenChange }: {
   isOpen: boolean;
   onOpenChange: (open: boolean) => void;
-  onSave?: () => void;
 }) => {
   const {
     bgmEnabled,
@@ -222,7 +221,7 @@ export const SettingsModal = ({ isOpen, onOpenChange, onSave }: {
                     className="w-full"
                     rows={4}
                   />
-                  <p className="text-xs text-gray-500 mt-1">Write 'DISABLED' to disable</p>
+                  <p className="text-xs text-gray-500 mt-1">Write &apos;DISABLED&apos; to disable</p>
                 </div>
               </div>
               <div className="grid grid-cols-1 sm:grid-cols-4 items-center gap-4">
@@ -237,7 +236,7 @@ export const SettingsModal = ({ isOpen, onOpenChange, onSave }: {
                   className="w-full"
                   rows={6}
                 />
-                <p className="text-xs text-gray-500 mt-1">Write 'DISABLED' to disable</p>
+                <p className="text-xs text-gray-500 mt-1">Write &apos;DISABLED&apos; to disable</p>
               </div>
             </div>
               <div className="grid grid-cols-1 sm:grid-cols-4 items-center gap-4">

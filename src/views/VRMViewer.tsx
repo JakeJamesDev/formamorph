@@ -133,37 +133,6 @@ const VRMViewer = forwardRef<VRMViewerHandle, VRMViewerProps>(({
 
   const [ready, setReady] = useState(false);
 
-  const cylinderRef = useRef(null);
-
-  const attachCylinderToHand = (vrm) => {
-    if (!vrm || !vrm.humanoid) return;
-
-    // Create a cylinder geometry
-    const geometry = new THREE.CylinderGeometry(0.08, 0.08, 0.8, 32);
-    const material = new THREE.MeshStandardMaterial({ color: 0x00ff00 });
-    const cylinder = new THREE.Mesh(geometry, material);
-
-    // Get the right hand bone
-    const rightHandBone = vrm.humanoid.getNormalizedBoneNode('hips');
-
-    if (rightHandBone) {
-      // Adjust the cylinder's position and rotation relative to the hand
-      cylinder.position.set(0, 0.05, 0); // Adjust these values as needed
-      cylinder.rotation.set(Math.PI / 2, 0, 0); // Adjust rotation as needed
-
-      // Add the cylinder to the hand bone
-      rightHandBone.add(cylinder);
-
-      // Store the cylinder reference
-      cylinderRef.current = cylinder;
-
-      console.log('Cylinder attached to right hand');
-    } else {
-      console.error('Right hand bone not found');
-    }
-  };
-
-
   const findMesh= (meshName, gltf) =>{
     return gltf.scene.children.find(child => child.name === meshName);
   }
@@ -405,12 +374,13 @@ const VRMViewer = forwardRef<VRMViewerHandle, VRMViewerProps>(({
 
    useEffect(() => {
     if (!mountRef.current) return;
+    const mount = mountRef.current;
     // Set up scene
     const scene = new THREE.Scene();
     const camera = new THREE.PerspectiveCamera(30.0, 1, 0.1, 20.0);
     const renderer = new THREE.WebGLRenderer();
     renderer.setClearColor(0x000000, 0);
-    mountRef.current.appendChild(renderer.domElement);
+    mount.appendChild(renderer.domElement);
 
     // Set up lights
     const light = new THREE.DirectionalLight(0xffffff, Math.PI);
@@ -670,10 +640,10 @@ const VRMViewer = forwardRef<VRMViewerHandle, VRMViewerProps>(({
       }
 
       // Safely remove renderer from DOM
-      if (mountRef.current && rendererRef.current) {
+      if (mount && rendererRef.current) {
         const rendererDomElement = rendererRef.current.domElement;
-        if (mountRef.current.contains(rendererDomElement)) {
-          mountRef.current.removeChild(rendererDomElement);
+        if (mount.contains(rendererDomElement)) {
+          mount.removeChild(rendererDomElement);
         }
       }
 
@@ -685,9 +655,16 @@ const VRMViewer = forwardRef<VRMViewerHandle, VRMViewerProps>(({
       mixerRef.current = null;
       gltfRef.current = null;
     };
+    // Build the scene/model once on mount; the listed values are applied by the dedicated effects
+    // below, so re-running full setup would needlessly rebuild the renderer.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
 
+  // Each effect re-applies one morph/color value when it (or `ready`) changes. The morph/color
+  // helpers are recreated every render, so they're intentionally excluded from the dep arrays —
+  // listing them would re-run on every render. The ready-timeout effect seeds all values once.
+  /* eslint-disable react-hooks/exhaustive-deps */
   useEffect(() => {
     if (gltfRef.current && ready) {
       setMorphTarget('Body', 'Belly', bellySize, gltfRef.current);
@@ -744,7 +721,6 @@ const VRMViewer = forwardRef<VRMViewerHandle, VRMViewerProps>(({
     Object.entries(next).forEach(([name, hex]) => { if (hex) tintTarget(name, hex); });
     Object.keys(extrasAppliedRef.current).forEach((name) => { if (!(name in next)) resetTarget(name); });
     extrasAppliedRef.current = next;
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- tint/reset helpers intentionally omitted (would re-run every render).
   }, [extraColors, ready]);
 
   useEffect(() => {
@@ -766,6 +742,7 @@ const VRMViewer = forwardRef<VRMViewerHandle, VRMViewerProps>(({
         updateHairStyle(gltfRef.current);
     }, 500)
   }, [ready]);
+  /* eslint-enable react-hooks/exhaustive-deps */
 
   return (
     <div style={{ position: 'relative', width: '100%', height: '100%' }}>

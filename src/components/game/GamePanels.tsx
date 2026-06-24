@@ -358,8 +358,7 @@ export const MiddlePanel = ({
                 </div>
               );
             })}
-            {true && (
-              <div className="mt-4 flex flex-col gap-2">
+            <div className="mt-4 flex flex-col gap-2">
                 {choices && choices.length > 0 && choices.map((choice, index) => {
                   const isSelected = choice === playerInput;
                   return (
@@ -382,8 +381,7 @@ export const MiddlePanel = ({
                     </Button>
                   );
                 })}
-              </div>
-            )}
+            </div>
             <div ref={messagesEndRef} />
           </ScrollArea>
           <EditTextModal

@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useCallback, useRef } from "react";
 import { useGameData } from "../contexts/GameDataContext";
 import { useSettings, DEFAULT_ENDPOINT } from "@/contexts/SettingsContext";
-import { useGameplay, GameplayProvider } from "@/contexts/GameplayContext";
+import { useGameplay } from "@/contexts/GameplayContext";
 import { processStatCode } from "@/contexts/GameplayContextUtils";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -38,7 +38,6 @@ import {
   MiddlePanel,
   RightPanel,
 } from "../components/game/GamePanels";
-import { getModelType } from "../lib/UtilityComponents";
 import { ConfirmDialog } from "../components/ConfirmDialog";
 import json5 from "json5";
 
@@ -62,7 +61,6 @@ const GameViewer = ({
     locations,
     entities,
     traits,
-    statUpdates,
     dictionary,
     updateStat,
     worldOverview,
@@ -90,7 +88,6 @@ const GameViewer = ({
   const {
     characterData,
     setCharacterData,
-    visibleEntities,
     setVisibleEntities,
     currentLocation,
     setCurrentLocation,
@@ -101,14 +98,11 @@ const GameViewer = ({
     setRecentStatChanges,
     addLogEntry,
     logEntries,
-    setLogEntries,
-    gameTime,
     setGameTime,
     logsEndRef,
     gameplayText,
     setGameplayText,
     setTTSAudio,
-    choices,
     setChoices,
     isGameStarted,
     setIsGameStarted,
@@ -118,16 +112,13 @@ const GameViewer = ({
     setIsWaitingForAI,
     fullMessageHistory,
     setFullMessageHistory,
-    displayedMessages,
     setDisplayedMessages,
     currentPage,
     setCurrentPage,
     gameStates,
     setGameStates,
     setStomachPercent,
-    fatnessPercent,
     setFatnessPercent,
-    breastsizePercent,
     setBreastsizePercent,
     playerNotes,
     setPlayerNotes,
@@ -148,7 +139,6 @@ const GameViewer = ({
 
       // Create a Set to store unique entities
       const foundEntities = new Set<string>();
-      const lowerText = text.toLowerCase();
 
       // For each entity, check if its name appears in the text
       entities.forEach((entity) => {
@@ -202,7 +192,6 @@ const GameViewer = ({
     const ok = await generateTTS();
     if (!ok) setIsTTSModalOpen(true);
   };
-  const [error, setError] = useState(null);
   const [selectedEntity, setSelectedEntity] = useState(null);
   const [isEntityModalOpen, setIsEntityModalOpen] = useState(false);
   const [ambientSound, setAmbientSound] = useState(null);
@@ -246,7 +235,7 @@ const GameViewer = ({
           : stat,
       ),
     );
-  }, []);
+  }, [setPlayerStats]);
   const messagesPerPage = 2; // One AI message + one user message
 
   const handleRollback = () => {
@@ -270,7 +259,7 @@ const GameViewer = ({
   };
   const addMessageToHistory = useCallback((role, content) => {
     setFullMessageHistory((prev) => [...prev, { role, content }]);
-  }, []);
+  }, [setFullMessageHistory]);
 
   const getTrimmedMessageHistory = useCallback(() => {
     let trimmedHistory = [];
@@ -292,7 +281,7 @@ const GameViewer = ({
           role: "assistant",
           content: parsed.game_text,
         };
-      } catch (error) {
+      } catch {
         continue; // Skip if parsing fails
       }
 
@@ -310,17 +299,6 @@ const GameViewer = ({
 
     return trimmedHistory;
   }, [fullMessageHistory, aiMessageLimit]);
-
-  const testMessage = [
-    {
-      role: "user",
-      content: "Write a sample response with correct formatting.",
-    },
-    {
-      role: "assistant",
-      content: `{"game_text":"A single paragraph of game events.","choices":["run away", "come closer"],"visible_entity":["creature name"],"stat_changes":[{"Health":-1}],"hour_passed": 2}`,
-    },
-  ];
 
   // Function to calculate percentage of a stat
   const calculateFIXEDStatPercentage = (stat) => {
@@ -340,7 +318,7 @@ const GameViewer = ({
       if (breastsize)
         setBreastsizePercent(calculateFIXEDStatPercentage(breastsize));
     }
-  }, [playerStats, characterData]);
+  }, [playerStats, characterData, setStomachPercent, setFatnessPercent, setBreastsizePercent]);
 
   const handleTimePassed = useCallback(
     (hours) => {
@@ -408,20 +386,8 @@ const GameViewer = ({
       //   }
       // }, 0);
     },
-    [getStatByName, setStatByName, addLogEntry, playerStats],
+    [getStatByName, setStatByName, addLogEntry, setGameTime, setPlayerStats, setRecentStatChanges],
   );
-
-  function safeJsonParse(input) {
-    try {
-      // Attempt to parse with json5, which is more lenient
-      return json5.parse(input);
-    } catch (json5Error) {
-      debugLog("Failed to parse input with JSON5", json5Error, true);
-      debugLog("Problematic input", input, true);
-      addLogEntry("Failed to parse AI response, retrying...");
-      throw new Error("Unable to parse input");
-    }
-  }
 
   const getEndpointUrl = () => {
     // Apply load balancing for default endpoint
@@ -438,10 +404,6 @@ const GameViewer = ({
     }
 
     return requestEndpoint;
-  };
-
-  const handleSettingsSave = () => {
-    setIsSettingsOpen(false);
   };
 
   const generateTraitDescriptions = useCallback(() => {
@@ -819,34 +781,6 @@ ${playerNotes || "No notes available"}
       // Default 1 hour passed per action
       handleTimePassed(1);
 
-      // Process additional stat updates
-      //Currently disabled
-      if (false) {
-        const updatePromises = statUpdates.map((statUpdate) =>
-          makeAIRequest(statUpdate.prompt, [
-            ...(statUpdate.messageHistory || []),
-            { role: "user", content: `gametext: ${gameTextResponse}` },
-          ]).then((updateResponse) => {
-            try {
-              const parsedUpdateResponse = safeJsonParse(updateResponse);
-              applyStatChanges(parsedUpdateResponse, statUpdate.stats);
-            } catch (error) {
-              console.error("Error parsing stat update response:", error);
-              toast.error("Failed to update game stats");
-            }
-          }),
-        );
-
-        // Wait for all updates to finish, but don't block on their results
-        Promise.all(updatePromises)
-          .then(() => {
-            debugLog("Stat updates processed", "All updates completed", false);
-          })
-          .catch((error) => {
-            debugLog("Error during stat update processing", error, true);
-          });
-      }
-
       // Only set game as started after successful START GAME action
       if (action === "START GAME") {
         setIsGameStarted(true);
@@ -860,13 +794,8 @@ ${playerNotes || "No notes available"}
 
       let errorMessage = "Failed to complete action. Please try again.";
 
-      // Check if it's a network error (request dropped)
-      if (!error.response && endpointUrl === DEFAULT_ENDPOINT && false) {
-        //DISABLED FOR NOW
-        setShowPotatoPCDialog(true);
-      }
       // Handle specific error codes
-      else if (error.response) {
+      if (error.response) {
         if (error.response.status === 404) {
           errorMessage =
             "Request failed (404) Invalid endpoint URL or model name. Please check your settings.";
@@ -900,12 +829,12 @@ ${playerNotes || "No notes available"}
     const startIndex = (currentPage - 1) * messagesPerPage;
     const endIndex = startIndex + messagesPerPage;
     setDisplayedMessages(fullMessageHistory.slice(startIndex, endIndex));
-  }, [fullMessageHistory, currentPage, gameplayText]); // Add gameplayText as dependency
+  }, [fullMessageHistory, currentPage, gameplayText, setDisplayedMessages]);
 
   useEffect(() => {
     // Move to the last page whenever we receive new AI game text
     setCurrentPage(Math.ceil(fullMessageHistory.length / messagesPerPage));
-  }, [fullMessageHistory.length, messagesPerPage]);
+  }, [fullMessageHistory.length, messagesPerPage, setCurrentPage]);
 
   const handlePageChange = (page) => {
     setCurrentPage(page);
@@ -995,7 +924,7 @@ ${playerNotes || "No notes available"}
         }
       }, 0);
     },
-    [],
+    [setPlayerStats, setRecentStatChanges],
   );
 
   // Function to abort ongoing AI generation
@@ -1269,7 +1198,7 @@ ${playerNotes || "No notes available"}
         return updatedStats;
       });
     },
-    [updateStat],
+    [updateStat, setPlayerStats],
   );
 
   const applyTrait = useCallback(
@@ -1278,7 +1207,7 @@ ${playerNotes || "No notes available"}
       setPlayerTraits((prevTraits) => [...prevTraits, trait]);
       addLogEntry(`Applied trait: ${trait.name}`);
     },
-    [handleStatChanges, addLogEntry],
+    [handleStatChanges, addLogEntry, setPlayerTraits],
   );
 
   const changeLocation = useCallback(
@@ -1298,7 +1227,7 @@ ${playerNotes || "No notes available"}
     setPlayerStats(
       stats.map((stat) => ({ ...stat, value: (stat.value as number) || stat.min || 0 })),
     );
-  }, [stats]);
+  }, [stats, setPlayerStats]);
 
   const isInitialized = useRef(false);
 
@@ -1331,13 +1260,13 @@ ${playerNotes || "No notes available"}
     addLogEntry,
   ]);
 
-  const scrollToBottom = () => {
+  const scrollToBottom = useCallback(() => {
     logsEndRef.current?.scrollIntoView({ behavior: "smooth" });
-  };
+  }, [logsEndRef]);
 
   useEffect(() => {
     scrollToBottom();
-  }, [logEntries]);
+  }, [logEntries, scrollToBottom]);
 
   // Handle BGM playback
   useEffect(() => {
@@ -1368,7 +1297,7 @@ ${playerNotes || "No notes available"}
       try {
         const parsed = json5.parse(cleanContent);
         return parsed.game_text || "No game text available";
-      } catch (json5Error) {
+      } catch {
         // If JSON5 fails, try standard JSON
         const parsed = JSON.parse(cleanContent);
         return parsed.game_text || "No game text available";
@@ -1972,7 +1901,6 @@ ${playerNotes || "No notes available"}
       <SettingsModal
         isOpen={isSettingsOpen}
         onOpenChange={setIsSettingsOpen}
-        onSave={handleSettingsSave}
       />
     </div>
   );

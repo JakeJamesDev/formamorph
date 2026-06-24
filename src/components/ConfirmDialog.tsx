@@ -12,7 +12,6 @@ import {
 } from "./ui/alert-dialog"
 
 export function ConfirmDialog({
-  triggerText = "Open Dialog",
   title = "Are you sure?",
   description = "This action cannot be undone.",
   onConfirm,
@@ -21,7 +20,6 @@ export function ConfirmDialog({
   open,
   onOpenChange,
 }: {
-  triggerText?: string
   title?: ReactNode
   description?: ReactNode
   onConfirm?: () => void
