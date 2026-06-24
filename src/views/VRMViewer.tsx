@@ -1,4 +1,4 @@
-import React, { useRef, useEffect, useState } from 'react';
+import React, { useRef, useEffect, useState, forwardRef, useImperativeHandle } from 'react';
 import * as THREE from 'three';
 import { Loader2 } from "lucide-react";
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
@@ -17,22 +17,32 @@ export interface VRMCapabilities {
   hairLength: boolean;
   /** Representative current colors sampled from the model's textures, to seed the color pickers. */
   colors: { hair?: string; skin?: string; eye?: string };
+  /** Names of other colorable materials (clothing, accessories, …) the player may tint. */
+  extras: string[];
+}
+
+/** Imperative handle for on-demand color sampling (used to lazily seed the "extras" picker). */
+export interface VRMViewerHandle {
+  /** Calculated current color of a target ('hair'|'skin'|'eye' or a material name); null if unavailable. */
+  calcColor: (target: string) => string | null;
 }
 
 interface VRMViewerProps {
   bellySize: number;
   breastSize: number;
   bodyWeight: number;
-  hairColor: string;
-  eyeColor: string;
-  skinColor: string;
+  hairColor?: string;
+  eyeColor?: string;
+  skinColor?: string;
   hairTypes?: Record<string, HairTypeDef>;
   currentHairStyle: string;
   hairLength: number;
   bodyShape: BodyShape;
   modelUrl?: string;
   animationFiles?: string[];
-  /** Called once the model loads, reporting which customization morphs it supports. */
+  /** Colors to apply to extra (non-channel) materials, keyed by material name. */
+  extraColors?: Record<string, string>;
+  /** Called once the model loads, reporting which customization morphs/colorables it supports. */
   onCapabilities?: (caps: VRMCapabilities) => void;
 }
 
@@ -92,21 +102,21 @@ const mixamoVRMRigMap = {
   mixamorigRightToeBase: 'rightToes',
 };
 
-const VRMViewer = ({
+const VRMViewer = forwardRef<VRMViewerHandle, VRMViewerProps>(({
   bellySize,
   breastSize,
   bodyWeight,
   hairColor,
   eyeColor,
   skinColor,
-  hairTypes,
   currentHairStyle,
   hairLength,
   bodyShape,
   modelUrl = './readheadedit.vrm',
   animationFiles = ['./idle.fbx', './bashful.fbx', './idle_dwarf.fbx'],
+  extraColors,
   onCapabilities
-}: VRMViewerProps) => {
+}, ref) => {
   const mountRef = useRef(null);
   const sceneRef = useRef(null);
   const cameraRef = useRef(null);
@@ -119,6 +129,7 @@ const VRMViewer = ({
   const animationsRef = useRef({});
   const currentAnimationRef = useRef(null);
   const animationIndexRef = useRef(0);
+  const extrasAppliedRef = useRef({});
 
   const [ready, setReady] = useState(false);
 
@@ -165,42 +176,10 @@ const VRMViewer = ({
     return child.morphTargetDictionary || null;
   };
 
-  // --- Texture colorize: keep a texture's baked light/shadow detail but shift it to a target hue/saturation. ---
+  // --- Color customization: tint skin/hair/eye materials to match the pickers, on the GPU (no per-pixel work). ---
   const hexToRgb = (hex) => [parseInt(hex.slice(1, 3), 16), parseInt(hex.slice(3, 5), 16), parseInt(hex.slice(5, 7), 16)];
 
-  const rgbToHsl = (r, g, b) => {
-    r /= 255; g /= 255; b /= 255;
-    const max = Math.max(r, g, b), min = Math.min(r, g, b);
-    const l = (max + min) / 2;
-    let h = 0, s = 0;
-    const d = max - min;
-    if (d) {
-      s = l > 0.5 ? d / (2 - max - min) : d / (max + min);
-      if (max === r) h = (g - b) / d + (g < b ? 6 : 0);
-      else if (max === g) h = (b - r) / d + 2;
-      else h = (r - g) / d + 4;
-      h /= 6;
-    }
-    return [h, s, l];
-  };
-
-  const hue2rgb = (p, q, t) => {
-    if (t < 0) t += 1;
-    if (t > 1) t -= 1;
-    if (t < 1 / 6) return p + (q - p) * 6 * t;
-    if (t < 1 / 2) return q;
-    if (t < 2 / 3) return p + (q - p) * (2 / 3 - t) * 6;
-    return p;
-  };
-
-  const hslToRgb = (h, s, l) => {
-    if (s === 0) return [l * 255, l * 255, l * 255];
-    const q = l < 0.5 ? l * (1 + s) : l + s - l * s;
-    const p = 2 * l - q;
-    return [hue2rgb(p, q, h + 1 / 3) * 255, hue2rgb(p, q, h) * 255, hue2rgb(p, q, h - 1 / 3) * 255];
-  };
-
-  // Capture (and cache) a material's original base-color pixels so re-coloring never compounds.
+  // Capture (and cache) a material's base-color texture pixels once, for averaging.
   const getOriginalImageData = (material) => {
     if (material.userData.__origImageData !== undefined) return material.userData.__origImageData;
     const img = material.map?.image;
@@ -218,58 +197,76 @@ const VRMViewer = ({
     return result;
   };
 
-  // Recolor a material's texture to `hex`, preserving its per-pixel lightness (so shading/detail survives).
-  const colorizeMaterial = (material, hex) => {
+  // Average opaque pixels of a material's texture → normalized [r,g,b] (0..1), cached. Null if it has no texture.
+  const getAvgRGB = (material) => {
+    if (material.userData.__avgRGB !== undefined) return material.userData.__avgRGB;
     const src = getOriginalImageData(material);
-    if (!src) return;
-    const [tr, tg, tb] = hexToRgb(hex);
-    const [th, ts] = rgbToHsl(tr, tg, tb);
-    const d = src.data;
-    const out = new Uint8ClampedArray(d.length);
-    for (let i = 0; i < d.length; i += 4) {
-      const mx = Math.max(d[i], d[i + 1], d[i + 2]);
-      const mn = Math.min(d[i], d[i + 1], d[i + 2]);
-      const [nr, ng, nb] = hslToRgb(th, ts, (mx + mn) / 2 / 255);
-      out[i] = nr; out[i + 1] = ng; out[i + 2] = nb; out[i + 3] = d[i + 3];
+    let avg = null;
+    if (src) {
+      const d = src.data;
+      let r = 0, g = 0, b = 0, n = 0;
+      for (let i = 0; i < d.length; i += 4) {
+        if (d[i + 3] < 10) continue;
+        r += d[i]; g += d[i + 1]; b += d[i + 2]; n++;
+      }
+      if (n) avg = [r / n / 255, g / n / 255, b / n / 255];
     }
-    const canvas = document.createElement('canvas');
-    canvas.width = src.width; canvas.height = src.height;
-    canvas.getContext('2d').putImageData(new ImageData(out, src.width, src.height), 0, 0);
-    const tex = new THREE.CanvasTexture(canvas);
-    const orig = material.map;
-    if (orig) {
-      tex.flipY = orig.flipY; tex.colorSpace = orig.colorSpace;
-      tex.wrapS = orig.wrapS; tex.wrapT = orig.wrapT;
-      tex.repeat.copy(orig.repeat); tex.offset.copy(orig.offset);
+    material.userData.__avgRGB = avg;
+    return avg;
+  };
+
+  // A representative current color for a material (to seed a picker): texture average, else the color factor.
+  const averageColor = (material) => {
+    const avg = getAvgRGB(material);
+    const rgb = avg ?? (material.color?.isColor ? [material.color.r, material.color.g, material.color.b] : null);
+    if (!rgb) return null;
+    return '#' + rgb.map(x => Math.round(Math.max(0, Math.min(1, x)) * 255).toString(16).padStart(2, '0')).join('');
+  };
+
+  // GPU tint (no per-pixel work). Textured material: scale the color factor so the texture's average shifts to
+  // `hex` (result ≈ texture × target/avg → matches the picker; target==avg is identity). Factor-only material
+  // (no texture, e.g. some Blender exports): set the color factor to `hex` directly.
+  const tintByAverage = (material, hex) => {
+    // Remember the untinted colors once, so a revert can restore them exactly.
+    if (material.userData.__origColor === undefined)
+      material.userData.__origColor = material.color?.isColor ? material.color.clone() : null;
+    if (material.userData.__origShade === undefined)
+      material.userData.__origShade = material.shadeColorFactor?.isColor ? material.shadeColorFactor.clone() : null;
+    const [tr, tg, tb] = hexToRgb(hex).map(v => v / 255);
+    const avg = getAvgRGB(material);
+    let r = tr, g = tg, b = tb;
+    if (avg) {
+      const f = (t, a) => Math.max(0, Math.min(4, t / Math.max(a, 0.01)));
+      r = f(tr, avg[0]); g = f(tg, avg[1]); b = f(tb, avg[2]);
     }
-    tex.needsUpdate = true;
-    material.map = tex;
-    if (material.uniforms?.map) material.uniforms.map.value = tex;
+    if (material.color?.isColor) material.color.setRGB(r, g, b);
+    if (material.shadeColorFactor?.isColor) material.shadeColorFactor.setRGB(r, g, b);
     material.needsUpdate = true;
   };
 
-  // Average opaque pixels of a material's original texture → a representative hex color (used to seed sliders).
-  const averageColor = (material) => {
-    const src = getOriginalImageData(material);
-    if (!src) return null;
-    const d = src.data;
-    let r = 0, g = 0, b = 0, n = 0;
-    for (let i = 0; i < d.length; i += 4) {
-      if (d[i + 3] < 10) continue;
-      r += d[i]; g += d[i + 1]; b += d[i + 2]; n++;
+  // Whether a material belongs to a customization channel — by material name OR mesh name, so it works across
+  // VRoid (materials like *_SKIN/*_HAIR/EyeIris) and other rigs (meshes named Body/Hair/...). Clothing is excluded
+  // from skin so garments sharing the Body mesh aren't recolored.
+  const clothWords = ['cloth', 'top', 'bottom', 'shoe', 'skirt', 'pant', 'shirt', 'dress', 'jacket', 'sock', 'glove', 'sleeve', 'coat', 'bra', 'accessor'];
+  const channelMatch = (channel, matName, meshName) => {
+    const m = (matName || '').toLowerCase();
+    const mesh = (meshName || '').toLowerCase();
+    if (channel === 'hair') return m.includes('hair') || mesh.includes('hair');
+    if (channel === 'eye') return m.includes('iris') || (m.includes('eye') && !/white|highlight|lash|line|brow/.test(m));
+    if (channel === 'skin') {
+      if (m.includes('hair') || m.includes('eye') || m.includes('iris') || clothWords.some(w => m.includes(w))) return false;
+      return m.includes('skin') || mesh.includes('body') || mesh.includes('skin');
     }
-    if (!n) return null;
-    return '#' + [r, g, b].map(x => Math.round(x / n).toString(16).padStart(2, '0')).join('');
+    return false;
   };
 
-  // Run a callback on every material in the current VRM whose name contains `keyword` (case-insensitive).
-  // Targets VRoid/MToon's separately-named materials (e.g. *_SKIN, EyeIris) regardless of mesh layout.
-  const forEachMaterialNamed = (keyword, fn) => {
+  // Run `fn` on every material in the current VRM that belongs to `channel`.
+  const forEachChannelMaterial = (channel, fn) => {
     vrmRef.current?.scene.traverse((obj) => {
       if (!obj.isMesh) return;
       const mats = Array.isArray(obj.material) ? obj.material : [obj.material];
       mats.forEach((m) => {
-        if (m && m.name && m.name.toLowerCase().includes(keyword)) fn(m);
+        if (m && channelMatch(channel, m.name, obj.name)) fn(m);
       });
     });
   };
@@ -304,36 +301,76 @@ const VRMViewer = ({
     }
   };
 
-  const updateHairStyle = (gltf) => {
-    if (hairTypes && currentHairStyle) {
-      Object.keys(hairTypes).forEach(style => {
-        const hairMesh = findMesh(hairTypes[style].shapekey, gltf);
-        if (hairMesh) {
-          hairMesh.visible = style === currentHairStyle;
-        }
-      });
+  // Hair "styles" are the model's distinct hair meshes — top-level scene nodes named like *hair*.
+  // Scanning only direct children (not a full traverse) keeps actual hair meshes (Hair, Hair.001) while
+  // ignoring VRM spring-bone joints (e.g. J_Sec_Hair*) that live deep under the armature.
+  const getHairMeshes = (gltf) =>
+    gltf.scene.children.filter(c => c.name && c.name.toLowerCase().includes('hair'));
 
-      // Update hair length if applicable
-      const currentStyle = hairTypes[currentHairStyle];
-      if (currentStyle && currentStyle.canChangeLength) {
-        const currentHairMesh = findMesh(currentStyle.shapekey, gltf);
-        if (currentHairMesh) {
-          setMorphTarget(currentStyle.shapekey, 'LENGTH', hairLength, gltf);
-        }
-      }
+  // Set a LENGTH morph directly on a hair object (works even when it isn't a direct scene child).
+  const applyHairLength = (obj, value) => {
+    const child = obj.children[0] || obj;
+    const dict = child.morphTargetDictionary;
+    if (dict && 'LENGTH' in dict && child.morphTargetInfluences) {
+      child.morphTargetInfluences[dict['LENGTH']] = value;
     }
   };
 
-  const setHairColor = (color) => {
-    if (color) forEachMaterialNamed('hair', (m) => colorizeMaterial(m, color));
+  const updateHairStyle = (gltf) => {
+    const hairMeshes = getHairMeshes(gltf);
+    // Multiple hair meshes = selectable styles; show only the chosen one. If the selection matches none
+    // (e.g. skipped customization or a model swap), show the first so the avatar is never left bald.
+    if (hairMeshes.length > 1) {
+      const matches = hairMeshes.some(c => c.name === currentHairStyle);
+      hairMeshes.forEach((c, i) => { c.visible = matches ? c.name === currentHairStyle : i === 0; });
+    }
+    // Apply hair length to the active hair mesh (or the only one) if it exposes a LENGTH morph.
+    const active = hairMeshes.find(c => c.name === currentHairStyle) || hairMeshes[0];
+    if (active) applyHairLength(active, hairLength);
   };
 
-  const setEyeColor = (color) => {
-    if (color) forEachMaterialNamed('iris', (m) => colorizeMaterial(m, color));
+  // Apply `fn` to a target's materials: a channel keyword ('hair'|'skin'|'eye') or an exact extra-material name.
+  const forEachTargetMaterial = (target, fn) => {
+    if (target === 'hair' || target === 'skin' || target === 'eye') return forEachChannelMaterial(target, fn);
+    vrmRef.current?.scene.traverse((obj) => {
+      if (!obj.isMesh) return;
+      const mats = Array.isArray(obj.material) ? obj.material : [obj.material];
+      mats.forEach((m) => { if (m && m.name === target) fn(m); });
+    });
   };
 
-  const setSkinColor = (color) => {
-    if (color) forEachMaterialNamed('skin', (m) => colorizeMaterial(m, color));
+  const tintTarget = (target, hex) => forEachTargetMaterial(target, (m) => tintByAverage(m, hex));
+
+  // Restore a target's materials to their untinted colors (the "no color" / revert state).
+  const resetTarget = (target) => forEachTargetMaterial(target, (m) => {
+    if (m.userData.__origColor) m.color.copy(m.userData.__origColor);
+    if (m.userData.__origShade) m.shadeColorFactor.copy(m.userData.__origShade);
+    m.needsUpdate = true;
+  });
+
+  // Calculated representative color of a target (its first material's average) — for seeding a picker.
+  const calcColor = (target) => {
+    let c = null;
+    forEachTargetMaterial(target, (m) => { if (!c) c = averageColor(m); });
+    return c;
+  };
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- calcColor reads live refs; a stable handle is fine.
+  useImperativeHandle(ref, () => ({ calcColor }), []);
+
+  // Extra colorable materials = anything that isn't a primary channel or a face/eye detail (clothing, etc.).
+  const getColorableExtras = (gltf) => {
+    const names = new Set<string>();
+    gltf.scene.traverse((obj) => {
+      if (!obj.isMesh) return;
+      const mats = Array.isArray(obj.material) ? obj.material : [obj.material];
+      mats.forEach((m) => {
+        if (!m || !m.name) return;
+        if (channelMatch('hair', m.name, obj.name) || channelMatch('skin', m.name, obj.name) || channelMatch('eye', m.name, obj.name)) return;
+        if (/face|mouth|brow|lash|eyeline|eyewhite|highlight|tooth|teeth|tongue|eye/.test(m.name.toLowerCase())) return;
+        names.add(m.name);
+      });
+    });
+    return [...names];
   };
 
     // Handle window resize
@@ -439,19 +476,20 @@ const VRMViewer = ({
         if (onCapabilities) {
           const bodyDict = getMorphDict('Body', gltf) || {};
           const bodyMorphs = ['Belly', 'Breasts', 'Fat', 'B_Pear', 'B_HourGlass', 'B_Apple'].filter(n => n in bodyDict);
-          const styles = hairTypes ? Object.keys(hairTypes).filter(s => !!findMesh(hairTypes[s].shapekey, gltf)) : [];
-          const hairLengthSupported = styles.some(s => {
-            const d = getMorphDict(hairTypes[s].shapekey, gltf);
-            return hairTypes[s].canChangeLength && !!d && 'LENGTH' in d;
+          const hairMeshes = getHairMeshes(gltf);
+          const styles = hairMeshes.map(c => c.name);
+          const hairLengthSupported = hairMeshes.some(c => {
+            const child = c.children[0] || c;
+            return child.morphTargetDictionary && 'LENGTH' in child.morphTargetDictionary;
           });
           // Sample each part's current color from its texture so the pickers start at the model's real colors.
-          const sampleColor = (keyword) => {
+          const sampleColor = (channel) => {
             let c = null;
-            forEachMaterialNamed(keyword, (m) => { if (!c) c = averageColor(m); });
+            forEachChannelMaterial(channel, (m) => { if (!c) c = averageColor(m); });
             return c;
           };
-          const colors = { hair: sampleColor('hair'), skin: sampleColor('skin'), eye: sampleColor('iris') };
-          onCapabilities({ bodyMorphs, hairStyles: styles, hairLength: hairLengthSupported, colors });
+          const colors = { hair: sampleColor('hair'), skin: sampleColor('skin'), eye: sampleColor('eye') };
+          onCapabilities({ bodyMorphs, hairStyles: styles, hairLength: hairLengthSupported, colors, extras: getColorableExtras(gltf) });
         }
 
         setReady(true);
@@ -683,23 +721,28 @@ const VRMViewer = ({
     }
   }, [bodyShape.apple]);
 
+  // Apply a channel color, or revert it to the model's own when unset (untouched / reverted).
   useEffect(() => {
-    if (vrmRef.current && ready) {
-      setHairColor(hairColor);
-    }
-  }, [hairColor]);
+    if (ready) { if (hairColor) tintTarget('hair', hairColor); else resetTarget('hair'); }
+  }, [hairColor, ready]);
 
   useEffect(() => {
-    if (vrmRef.current && ready) {
-      setEyeColor(eyeColor);
-    }
-  }, [eyeColor]);
+    if (ready) { if (eyeColor) tintTarget('eye', eyeColor); else resetTarget('eye'); }
+  }, [eyeColor, ready]);
 
   useEffect(() => {
-    if (vrmRef.current && ready) {
-      setSkinColor(skinColor);
-    }
-  }, [skinColor]);
+    if (ready) { if (skinColor) tintTarget('skin', skinColor); else resetTarget('skin'); }
+  }, [skinColor, ready]);
+
+  // Apply / revert extra-material colors (clothing, accessories, …).
+  useEffect(() => {
+    if (!ready) return;
+    const next = extraColors || {};
+    Object.entries(next).forEach(([name, hex]) => { if (hex) tintTarget(name, hex); });
+    Object.keys(extrasAppliedRef.current).forEach((name) => { if (!(name in next)) resetTarget(name); });
+    extrasAppliedRef.current = next;
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- tint/reset helpers intentionally omitted (would re-run every render).
+  }, [extraColors, ready]);
 
   useEffect(() => {
     if (gltfRef.current && ready) {
@@ -715,10 +758,8 @@ const VRMViewer = ({
         setMorphTarget('Body', 'B_Pear', bodyShape.pear, gltfRef.current);
         setMorphTarget('Body', 'B_HourGlass', bodyShape.hourglass, gltfRef.current);
         setMorphTarget('Body', 'B_Apple', bodyShape.apple, gltfRef.current);
-        setHairColor(hairColor);
-        setEyeColor(eyeColor);
-        setSkinColor(skinColor);
-        console.log('ready',bellySize,breastSize,bodyWeight)
+        // Colors are applied by the dedicated [color, ready] effects below — applying them here too
+        // re-ran with stale (pre-seed) values and clobbered the seeded colors.
         updateHairStyle(gltfRef.current);
     }, 500)
   }, [ready]);
@@ -741,6 +782,8 @@ const VRMViewer = ({
       )}
     </div>
   );
-};
+});
+
+VRMViewer.displayName = 'VRMViewer';
 
 export default VRMViewer;
