@@ -1,9 +1,10 @@
 import React from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Popover, PopoverTrigger, PopoverContent } from "@/components/ui/popover";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { Save, Download, Upload, Trash2, Loader2 } from "lucide-react";
+import { Menu, Save, Download, Upload, Trash2, Loader2 } from "lucide-react";
 import { ConfirmDialog } from '../ConfirmDialog';
 import { saveToDB, getAllSaves, deleteFromDB, loadFromDB } from './dbUtils';
 import { downloadSaveFile, terminateWorker as terminateDownloadWorker } from '../../lib/saveDownloadWorkerUtils';
@@ -27,17 +28,17 @@ interface SaveListItem {
   worldName: string | null;
 }
 
-export const MenuModal = ({ isOpen, onOpenChange, onSettingsClick, onSave, onLoad, worldOverview, onExitToMenu }: {
-  isOpen: boolean;
-  onOpenChange: (open: boolean) => void;
+export const MenuModal = ({ onSettingsClick, onSave, onLoad, worldOverview, onExitToMenu }: {
   onSettingsClick: () => void;
   onSave: (saveName: string) => Promise<unknown> | void;
   onLoad: (saveName: string) => Promise<unknown> | void;
   worldOverview?: WorldOverview;
   onExitToMenu: () => void;
 }) => {
+  const [menuOpen, setMenuOpen] = React.useState(false);
   const [showSaveDialog, setShowSaveDialog] = React.useState(false);
   const [showLoadDialog, setShowLoadDialog] = React.useState(false);
+  const [showExitConfirm, setShowExitConfirm] = React.useState(false);
   const [saveName, setSaveName] = React.useState('');
   const [saveList, setSaveList] = React.useState<SaveListItem[]>([]);
   const [isLoading, setIsLoading] = React.useState(false);
@@ -123,93 +124,93 @@ export const MenuModal = ({ isOpen, onOpenChange, onSettingsClick, onSave, onLoa
   };
 
   return (
-    <Dialog open={isOpen} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[425px] max-h-[90vh] flex flex-col">
-        <DialogHeader className="flex-shrink-0">
-          <DialogTitle>Menu</DialogTitle>
-        </DialogHeader>
-        <div className="flex-1 overflow-y-auto py-4">
-          {!showSaveDialog && !showLoadDialog && (
-            <div className="space-y-4 px-4">
-              <Button
-                variant="outline"
-                onClick={() => setShowSaveDialog(true)}
-                className="w-full"
-              >
-                Save Game
-              </Button>
-              <Button
-                variant="outline"
-                onClick={() => setShowLoadDialog(true)}
-                className="w-full"
-              >
-                Load Game
-              </Button>
-              <Button
-                variant="outline"
-                onClick={onSettingsClick}
-                className="w-full"
-              >
-                Settings
-              </Button>
-              <ConfirmDialog
-                title="Exit to Main Menu"
-                description="Are you sure you want to exit to the main menu? Any unsaved progress will be lost."
-                onConfirm={() => {
-                  onExitToMenu();
-                  onOpenChange(false);
-                }}
-              >
-                <Button variant="outline" className="w-full">
-                  Exit to Main Menu
-                </Button>
-              </ConfirmDialog>
-            </div>
-          )}
+    <>
+      <Popover open={menuOpen} onOpenChange={setMenuOpen}>
+        <PopoverTrigger asChild>
+          <Button
+            className="flex items-center justify-center rounded-full w-10 h-10 p-0"
+            title="Menu"
+          >
+            <Menu className="h-5 w-5" />
+          </Button>
+        </PopoverTrigger>
+        <PopoverContent align="end" className="w-48 p-1">
+          <div className="flex flex-col">
+            <Button
+              variant="ghost"
+              className="w-full justify-start"
+              onClick={() => { setMenuOpen(false); setShowSaveDialog(true); }}
+            >
+              Save Game
+            </Button>
+            <Button
+              variant="ghost"
+              className="w-full justify-start"
+              onClick={() => { setMenuOpen(false); setShowLoadDialog(true); }}
+            >
+              Load Game
+            </Button>
+            <Button
+              variant="ghost"
+              className="w-full justify-start"
+              onClick={() => { setMenuOpen(false); onSettingsClick(); }}
+            >
+              Settings
+            </Button>
+            <Button
+              variant="ghost"
+              className="w-full justify-start"
+              onClick={() => { setMenuOpen(false); setShowExitConfirm(true); }}
+            >
+              Exit to Main Menu
+            </Button>
+          </div>
+        </PopoverContent>
+      </Popover>
 
-          {showSaveDialog && (
-            <div className="space-y-4 px-4">
-              <h3 className="font-semibold">Save Game</h3>
-              <div className="flex gap-2">
-                <Input
-                  placeholder="Enter save name"
-                  value={saveName}
-                  onChange={(e) => setSaveName(e.target.value)}
-                  onKeyDown={(e) => {
-                    if (e.key === 'Enter') handleSave();
-                  }}
-                />
-                <Button
-                  onClick={handleSave}
-                  className="flex items-center justify-center gap-2"
-                >
-                  <Save className="h-4 w-4" />
-                  <span>Save</span>
-                </Button>
-              </div>
-              <Button
-                variant="outline"
-                onClick={() => {
-                  setShowSaveDialog(false);
-                  setSaveName('');
-                }}
-              >
-                Back
-              </Button>
-            </div>
-          )}
+      <ConfirmDialog
+        open={showExitConfirm}
+        onOpenChange={setShowExitConfirm}
+        title="Exit to Main Menu"
+        description="Are you sure you want to exit to the main menu? Any unsaved progress will be lost."
+        onConfirm={onExitToMenu}
+      />
 
-          {showLoadDialog && (
-            <div className="flex flex-col h-full">
-              <h3 className="font-semibold mb-4 flex-shrink-0">Load Game</h3>
+      {/* Save Game popup */}
+      <Dialog open={showSaveDialog} onOpenChange={(open) => { setShowSaveDialog(open); if (!open) setSaveName(''); }}>
+        <DialogContent className="sm:max-w-[425px]">
+          <DialogHeader>
+            <DialogTitle>Save Game</DialogTitle>
+          </DialogHeader>
+          <div className="flex gap-2 py-4">
+            <Input
+              placeholder="Enter save name"
+              value={saveName}
+              onChange={(e) => setSaveName(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') handleSave();
+              }}
+            />
+            <Button
+              onClick={handleSave}
+              className="flex items-center justify-center gap-2"
+            >
+              <Save className="h-4 w-4" />
+              <span>Save</span>
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Load Game popup */}
+      <Dialog open={showLoadDialog} onOpenChange={setShowLoadDialog}>
+        <DialogContent className="sm:max-w-[425px] max-h-[90vh] flex flex-col">
+          <DialogHeader className="flex-shrink-0">
+            <DialogTitle>Load Game</DialogTitle>
+          </DialogHeader>
+          <div className="flex flex-col min-h-0 flex-1 py-4">
               <div className="flex-shrink-0 mb-4">
-                <div className="grid grid-cols-2 gap-2">
-                  <Button
-                    variant="outline"
-                    onClick={() => setShowLoadDialog(false)}
-                  >
-                    Back
-                  </Button>
+                <div className="grid grid-cols-1 gap-2">
                   <input
                     type="file"
                     id="save-upload"
@@ -274,7 +275,6 @@ export const MenuModal = ({ isOpen, onOpenChange, onSettingsClick, onSave, onLoa
 
                             await onLoad(save.name);
                             setShowLoadDialog(false);
-                            onOpenChange(false);
                           } catch (error) {
                             console.error('Error loading game:', error);
                           } finally {
@@ -372,9 +372,8 @@ export const MenuModal = ({ isOpen, onOpenChange, onSettingsClick, onSave, onLoa
                 </ScrollArea>
               </div>
             </div>
-          )}
-        </div>
-      </DialogContent>
-    </Dialog>
+          </DialogContent>
+        </Dialog>
+    </>
   );
 };

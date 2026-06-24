@@ -7,7 +7,16 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Collapsible, CollapsibleTrigger, CollapsibleContent } from "@/components/ui/collapsible";
-import { Menu, Music, SquarePen, Database, Bug, ChevronDown, ChevronRight, ChevronsDownUp, ChevronsUpDown, Search } from "lucide-react";
+import {
+  Pagination,
+  PaginationContent,
+  PaginationEllipsis,
+  PaginationItem,
+  PaginationLink,
+  PaginationNext,
+  PaginationPrevious,
+} from "@/components/ui/pagination";
+import { Music, SquarePen, Database, ScrollText, ChevronDown, ChevronRight, ChevronsDownUp, ChevronsUpDown, Search } from "lucide-react";
 import IndeterminateProgress from "../components/ui/indeterminate-progress";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
@@ -197,7 +206,6 @@ const GameViewer = ({
   const [selectedEntity, setSelectedEntity] = useState(null);
   const [isEntityModalOpen, setIsEntityModalOpen] = useState(false);
   const [ambientSound, setAmbientSound] = useState(null);
-  const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const [isEditingWorld, setIsEditingWorld] = useState(false);
   const [showEditorExitPrompt, setShowEditorExitPrompt] = useState(false);
@@ -208,10 +216,16 @@ const GameViewer = ({
   const [aiRequestType, setAiRequestType] = useState(null);
   const [choicesReady, setChoicesReady] = useState(false);
   const [isDebugOpen, setIsDebugOpen] = useState(false);
-  const [debugRequests, setDebugRequests] = useState([]);
+  // One entry per game turn, each holding the AI requests captured that turn (newest last).
+  const [debugTurns, setDebugTurns] = useState([]);
+  const [debugPage, setDebugPage] = useState(1); // 1-based page = turn index
   const [disabledHighlights, setDisabledHighlights] = useState({});
   const [debugSearch, setDebugSearch] = useState("");
   const [collapsedDebug, setCollapsedDebug] = useState({});
+  // Jump to the newest turn whenever one is captured.
+  useEffect(() => {
+    if (debugTurns.length > 0) setDebugPage(debugTurns.length);
+  }, [debugTurns.length]);
   const isMobile = useIsMobile();
   const [mobilePanel, setMobilePanel] = useState("game");
   const [showPotatoPCDialog, setShowPotatoPCDialog] = useState(false);
@@ -573,7 +587,8 @@ ${playerNotes || "No notes available"}
       setChoices([]);
       setChoicesReady(false);
       setSuggestedLocation(null);
-      setDebugRequests([]);
+      // Start a new turn in the AI-context history (cap to the last 50 turns).
+      setDebugTurns((prev) => [...prev, { action, requests: [] }].slice(-50));
 
       // Create message array for game text request
       const gameTextMessages = [
@@ -1029,14 +1044,20 @@ ${playerNotes || "No notes available"}
       // Surface which request is currently running.
       setAiRequestType(requestType);
 
-      // Capture the exact payload for the debug viewer
-      setDebugRequests((prev) => [
-        ...prev,
-        {
-          type: requestType,
-          messages: [{ role: "system", content: systemPrompt }, ...messages],
-        },
-      ]);
+      // Capture the exact payload into the current turn for the AI-context viewer
+      setDebugTurns((prev) => {
+        if (!prev.length) return prev;
+        const next = prev.slice();
+        const last = next[next.length - 1];
+        next[next.length - 1] = {
+          ...last,
+          requests: [
+            ...last.requests,
+            { type: requestType, messages: [{ role: "system", content: systemPrompt }, ...messages] },
+          ],
+        };
+        return next;
+      });
 
       const response = await fetch(getEndpointUrl(), {
         method: "POST",
@@ -1552,7 +1573,7 @@ ${playerNotes || "No notes available"}
         </>
       )}
 
-      {/* BGM + Debug buttons */}
+      {/* BGM + AI-context buttons */}
       <div className="absolute top-16 left-2 md:top-2 flex gap-2">
         <Button
           onClick={() => setBgmEnabled(!bgmEnabled)}
@@ -1565,9 +1586,9 @@ ${playerNotes || "No notes available"}
         <Button
           onClick={() => setIsDebugOpen(true)}
           className="flex items-center justify-center rounded-full w-10 h-10 p-0"
-          title="Show the full AI context from the last turn"
+          title="Show the full AI context sent each turn"
         >
-          <Bug className="h-5 w-5" />
+          <ScrollText className="h-5 w-5" />
         </Button>
       </div>
 
@@ -1580,12 +1601,13 @@ ${playerNotes || "No notes available"}
         >
           <SquarePen className="h-5 w-5" />
         </Button>
-        <Button
-          onClick={() => setIsMenuOpen(true)}
-          className="flex items-center justify-center rounded-full w-10 h-10 p-0"
-        >
-          <Menu className="h-5 w-5" />
-        </Button>
+        <MenuModal
+          onSettingsClick={() => setIsSettingsOpen(true)}
+          onSave={(name) => saveGame(name, worldOverview.name)}
+          onLoad={(name) => loadGame(name, locations)}
+          worldOverview={worldOverview}
+          onExitToMenu={onExitToMenu}
+        />
       </div>
 
       {/* Modals */}
@@ -1608,18 +1630,6 @@ ${playerNotes || "No notes available"}
         changeLocation={changeLocation}
       />
 
-      <MenuModal
-        isOpen={isMenuOpen}
-        onOpenChange={setIsMenuOpen}
-        onSettingsClick={() => {
-          setIsMenuOpen(false);
-          setIsSettingsOpen(true);
-        }}
-        onSave={(name) => saveGame(name, worldOverview.name)}
-        onLoad={(name) => loadGame(name, locations)}
-        worldOverview={worldOverview}
-        onExitToMenu={onExitToMenu}
-      />
 
       {/* Edit-world popup: non-fullscreen; keeps GameViewer + live session mounted */}
       <Dialog
@@ -1642,7 +1652,7 @@ ${playerNotes || "No notes available"}
         onExit={() => { setShowEditorExitPrompt(false); setIsEditingWorld(false); }}
       />
 
-      {/* Debug: full AI context sent during the last turn */}
+      {/* Full AI context sent each turn, paginated by turn */}
       <Dialog open={isDebugOpen} onOpenChange={setIsDebugOpen}>
         <DialogContent className="max-w-[90vw] w-[90vw] h-[85vh] flex flex-col overflow-hidden">
           {(() => {
@@ -1731,21 +1741,51 @@ ${playerNotes || "No notes available"}
                   <span key={k}>{seg.text}</span>
                 ),
               );
+            // Page = turn; show the requests captured for the currently selected turn.
+            const totalDebugPages = debugTurns.length;
+            const pageIndex = Math.min(Math.max(debugPage, 1), Math.max(totalDebugPages, 1)) - 1;
+            const currentTurn = debugTurns[pageIndex];
+            const currentRequests = currentTurn?.requests ?? [];
             const allCollapsed =
-              debugRequests.length > 0 && debugRequests.every((_, i) => collapsedDebug[i]);
+              currentRequests.length > 0 && currentRequests.every((_, i) => collapsedDebug[i]);
             const toggleAll = () => {
               if (allCollapsed) {
                 setCollapsedDebug({});
               } else {
                 const next = {};
-                debugRequests.forEach((_, i) => { next[i] = true; });
+                currentRequests.forEach((_, i) => { next[i] = true; });
                 setCollapsedDebug(next);
               }
+            };
+            const renderDebugPaginationItems = () => {
+              const items = [];
+              for (let i = 1; i <= totalDebugPages; i++) {
+                if (i === 1 || i === totalDebugPages || (i >= debugPage - 1 && i <= debugPage + 1)) {
+                  items.push(
+                    <PaginationItem key={i}>
+                      <PaginationLink
+                        href="#"
+                        onClick={(e) => { e.preventDefault(); setDebugPage(i); }}
+                        isActive={debugPage === i}
+                      >
+                        {i}
+                      </PaginationLink>
+                    </PaginationItem>,
+                  );
+                } else if (i === debugPage - 2 || i === debugPage + 2) {
+                  items.push(
+                    <PaginationItem key={i}>
+                      <PaginationEllipsis />
+                    </PaginationItem>,
+                  );
+                }
+              }
+              return items;
             };
             return (
               <>
                 <DialogHeader className="flex-shrink-0">
-                  <DialogTitle>Last AI context (debug)</DialogTitle>
+                  <DialogTitle>AI context</DialogTitle>
                 </DialogHeader>
                 {dictionary.length > 0 && (
                   <div className="flex flex-wrap items-center gap-2 flex-shrink-0 text-xs">
@@ -1797,7 +1837,7 @@ ${playerNotes || "No notes available"}
                     variant="outline"
                     size="sm"
                     onClick={toggleAll}
-                    disabled={searchActive || debugRequests.length === 0}
+                    disabled={searchActive || currentRequests.length === 0}
                     className="h-8 flex-shrink-0 gap-1"
                     title={searchActive ? "Disabled while searching" : undefined}
                   >
@@ -1809,15 +1849,21 @@ ${playerNotes || "No notes available"}
                     {allCollapsed ? "Expand all" : "Collapse all"}
                   </Button>
                 </div>
+                {currentTurn && (
+                  <div className="flex-shrink-0 text-xs text-muted-foreground truncate">
+                    Turn {pageIndex + 1} of {totalDebugPages}
+                    {currentTurn.action ? ` — "${currentTurn.action}"` : ""}
+                  </div>
+                )}
                 <div className="flex-grow min-h-0">
                   <ScrollArea className="h-full">
                     <div className="space-y-4 text-xs">
-                      {debugRequests.length === 0 ? (
+                      {totalDebugPages === 0 ? (
                         <p className="text-muted-foreground">
-                          No request captured yet. Take an action first, then reopen this.
+                          No AI context captured yet. Take an action first, then reopen this.
                         </p>
                       ) : (
-                        debugRequests.map((req, i) => {
+                        currentRequests.map((req, i) => {
                           const msgSegs = req.messages.map((m) => ({
                             role: m.role,
                             segs: buildSegments(m.content),
@@ -1867,6 +1913,29 @@ ${playerNotes || "No notes available"}
                     </div>
                   </ScrollArea>
                 </div>
+                {totalDebugPages > 1 && (
+                  <div className="flex-shrink-0 flex justify-center pt-2">
+                    <Pagination>
+                      <PaginationContent>
+                        <PaginationItem>
+                          <PaginationPrevious
+                            href="#"
+                            onClick={(e) => { e.preventDefault(); if (debugPage > 1) setDebugPage(debugPage - 1); }}
+                            className={debugPage === 1 ? "pointer-events-none opacity-50" : ""}
+                          />
+                        </PaginationItem>
+                        {renderDebugPaginationItems()}
+                        <PaginationItem>
+                          <PaginationNext
+                            href="#"
+                            onClick={(e) => { e.preventDefault(); if (debugPage < totalDebugPages) setDebugPage(debugPage + 1); }}
+                            className={debugPage === totalDebugPages ? "pointer-events-none opacity-50" : ""}
+                          />
+                        </PaginationItem>
+                      </PaginationContent>
+                    </Pagination>
+                  </div>
+                )}
               </>
             );
           })()}
