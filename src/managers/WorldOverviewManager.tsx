@@ -178,6 +178,39 @@ const WorldOverviewManager = () => {
         />
         <Label htmlFor="use3DModel">Enable 3D Character Model (also allow the player to customize it)</Label>
       </div>
+      {worldOverview.use3DModel && (
+        <div className="space-y-2">
+          <Label htmlFor="customVRM">Custom Player Model (VRM)</Label>
+          <input
+            ref={vrmInputRef}
+            id="customVRM"
+            type="file"
+            accept=".vrm,.glb"
+            onChange={handleVRMChange}
+            className="hidden"
+          />
+          <div className="flex gap-2">
+            <Button
+              variant="outline"
+              onClick={handleVRMClick}
+              className="flex-1"
+            >
+              {worldOverview.customPlayerVRM ? "Change Player VRM" : "Add Player VRM"}
+            </Button>
+            {worldOverview.customPlayerVRM && (
+              <Button
+                variant="destructive"
+                onClick={() => updateWorldOverview({ customPlayerVRM: null })}
+              >
+                Remove
+              </Button>
+            )}
+          </div>
+          <p className="text-xs text-muted-foreground">
+            Overrides the default 3D player model.
+          </p>
+        </div>
+      )}
       <div className="space-y-2">
         <Label htmlFor="thumbnail">Thumbnail Image</Label>
         <input
@@ -249,37 +282,6 @@ const WorldOverviewManager = () => {
             <AudioPlayer src={worldOverview.bgm} className="w-full" />
           </div>
         )}
-      </div>
-      <div className="space-y-2">
-        <Label htmlFor="customVRM">Custom Player Model (VRM)</Label>
-        <input
-          ref={vrmInputRef}
-          id="customVRM"
-          type="file"
-          accept=".vrm,.glb"
-          onChange={handleVRMChange}
-          className="hidden"
-        />
-        <div className="flex gap-2">
-          <Button
-            variant="outline"
-            onClick={handleVRMClick}
-            className="flex-1"
-          >
-            {worldOverview.customPlayerVRM ? "Change Player VRM" : "Add Player VRM"}
-          </Button>
-          {worldOverview.customPlayerVRM && (
-            <Button
-              variant="destructive"
-              onClick={() => updateWorldOverview({ customPlayerVRM: null })}
-            >
-              Remove
-            </Button>
-          )}
-        </div>
-        <p className="text-xs text-muted-foreground">
-          Overrides the default 3D player model. Requires 3D model enabled.
-        </p>
       </div>
       <div className="space-y-2">
         <Label htmlFor="worldTags">Tags</Label>
