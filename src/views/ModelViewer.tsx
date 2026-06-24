@@ -1,11 +1,17 @@
 import React, { useRef, useEffect } from 'react';
 import * as THREE from 'three';
-import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader';
-import { FBXLoader } from 'three/examples/jsm/loaders/FBXLoader';
-import { OBJLoader } from 'three/examples/jsm/loaders/OBJLoader';
-import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls';
+import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
+import { FBXLoader } from 'three/examples/jsm/loaders/FBXLoader.js';
+import { OBJLoader } from 'three/examples/jsm/loaders/OBJLoader.js';
+import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
+import type { MediaAsset } from '@/types';
 
-const ModelViewer = ({ model, modelType }) => {
+interface ModelViewerProps {
+  model: Partial<MediaAsset>;
+  modelType: string;
+}
+
+const ModelViewer = ({ model, modelType }: ModelViewerProps) => {
   const mountRef = useRef(null);
 
   useEffect(() => {

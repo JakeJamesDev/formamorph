@@ -18,7 +18,7 @@ let workerInstance: Worker | null = null;
  */
 const getWorker = (): Worker => {
   if (!workerInstance) {
-    workerInstance = new Worker(new URL('./saveDownloadWorker.js', import.meta.url));
+    workerInstance = new Worker(new URL('./saveDownloadWorker.ts', import.meta.url));
 
     // Set up the message handler
     workerInstance.addEventListener('message', (event) => {

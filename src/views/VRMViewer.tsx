@@ -1,10 +1,26 @@
 import React, { useRef, useEffect, useState } from 'react';
 import * as THREE from 'three';
 import { Loader2 } from "lucide-react";
-import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader';
+import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
 import { VRMLoaderPlugin, VRMUtils } from '@pixiv/three-vrm';
-import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls';
-import { FBXLoader } from 'three/examples/jsm/loaders/FBXLoader';
+import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
+import { FBXLoader } from 'three/examples/jsm/loaders/FBXLoader.js';
+import type { BodyShape, HairTypeDef } from '@/types';
+
+interface VRMViewerProps {
+  bellySize: number;
+  breastSize: number;
+  bodyWeight: number;
+  hairColor: string;
+  eyeColor: string;
+  skinColor: string;
+  hairTypes?: Record<string, HairTypeDef>;
+  currentHairStyle: string;
+  hairLength: number;
+  bodyShape: BodyShape;
+  modelUrl?: string;
+  animationFiles?: string[];
+}
 
 // Mixamo VRM Rig Mapping
 const mixamoVRMRigMap = {
@@ -75,7 +91,7 @@ const VRMViewer = ({
   bodyShape,
   modelUrl = './readheadedit.vrm',
   animationFiles = ['./idle.fbx', './bashful.fbx', './idle_dwarf.fbx']
-}) => {
+}: VRMViewerProps) => {
   const mountRef = useRef(null);
   const sceneRef = useRef(null);
   const cameraRef = useRef(null);
