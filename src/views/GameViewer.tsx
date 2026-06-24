@@ -8,6 +8,7 @@ import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Collapsible, CollapsibleTrigger, CollapsibleContent } from "@/components/ui/collapsible";
 import { Menu, Music, SquarePen, Database, Bug, ChevronDown, ChevronRight, ChevronsDownUp, ChevronsUpDown, Search } from "lucide-react";
+import IndeterminateProgress from "../components/ui/indeterminate-progress";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { ToastContainer, toast } from "react-toastify";
@@ -178,6 +179,10 @@ const GameViewer = ({
   const [isEditingWorld, setIsEditingWorld] = useState(false);
   const [lastPromptChars, setLastPromptChars] = useState(0);
   const [suggestedLocation, setSuggestedLocation] = useState(null);
+  // AI progress feedback: which request is running, its streamed output estimate (null = indeterminate), and
+  // whether the player may already type their next action (choices done, background requests still finishing).
+  const [aiRequestType, setAiRequestType] = useState(null);
+  const [choicesReady, setChoicesReady] = useState(false);
   const [isDebugOpen, setIsDebugOpen] = useState(false);
   const [debugRequests, setDebugRequests] = useState([]);
   const [disabledHighlights, setDisabledHighlights] = useState({});
@@ -538,7 +543,11 @@ ${playerNotes || "No notes available"}
     const trimmedHistory = getTrimmedMessageHistory();
 
     try {
+      // Clear the box now (the action is captured in `action`), so anything the player types
+      // after choices unlock the box isn't wiped when the turn finishes.
+      setPlayerInput("");
       setChoices([]);
+      setChoicesReady(false);
       setSuggestedLocation(null);
       setDebugRequests([]);
 
@@ -597,6 +606,10 @@ ${playerNotes || "No notes available"}
           "choices",
         );
       }
+
+      // Choices (the interactive part of the turn) are ready — let the player start composing their next
+      // action while stat-updates / location requests finish in the background.
+      setChoicesReady(true);
 
       // Only prepare and make stat updates request if not disabled
       if (statUpdatesPrompt !== "DISABLED") {
@@ -790,8 +803,6 @@ ${playerNotes || "No notes available"}
           });
       }
 
-      setPlayerInput("");
-
       // Only set game as started after successful START GAME action
       if (action === "START GAME") {
         setIsGameStarted(true);
@@ -837,6 +848,7 @@ ${playerNotes || "No notes available"}
       addLogEntry(errorMessage);
     } finally {
       setIsWaitingForAI(false);
+      setAiRequestType(null);
     }
   };
 
@@ -951,6 +963,8 @@ ${playerNotes || "No notes available"}
 
       // Reset waiting state
       setIsWaitingForAI(false);
+      setAiRequestType(null);
+      setChoicesReady(false);
 
       // Reset any partial UI updates
       setChoices([]);
@@ -982,6 +996,9 @@ ${playerNotes || "No notes available"}
       // Create a new AbortController for this request
       abortControllerRef.current = new AbortController();
       const signal = abortControllerRef.current.signal;
+
+      // Surface which request is currently running.
+      setAiRequestType(requestType);
 
       // Capture the exact payload for the debug viewer
       setDebugRequests((prev) => [
@@ -1324,8 +1341,28 @@ ${playerNotes || "No notes available"}
     }
   };
 
-  // Memory usage bar (rendered at the top of the center panel). Database icon + full-width
-  // bar (green <50% / yellow >=50% / red >=90%); click the icon for the usage breakdown.
+  // Status line shown above the input while a turn is being generated, naming the current AI
+  // request (Game Text / Choices / Stat Updates / Location) so the player knows what's processing.
+  const progressBar = isWaitingForAI ? (() => {
+    const labels = {
+      gametext: "Game Text",
+      choices: "Choices",
+      statUpdates: "Stat Updates",
+      locationChange: "Location",
+    };
+    const label = labels[aiRequestType] || "Response";
+    return (
+      <div className="flex items-center gap-2 mb-1">
+        <span className="text-xs text-muted-foreground whitespace-nowrap">
+          Generating {label}…
+        </span>
+        <div className="flex-grow">
+          <IndeterminateProgress />
+        </div>
+      </div>
+    );
+  })() : null;
+
   const memoryBar = (() => {
     const limit = aiMessageLimit || 1;
     const promptChars = lastPromptChars;
@@ -1420,9 +1457,10 @@ ${playerNotes || "No notes available"}
       handleKeyPress={handleKeyPress}
       handleRollback={handleRollback}
       abortGeneration={abortGeneration}
-      disabled={isWaitingForAI}
+      disabled={isWaitingForAI && !choicesReady}
       onTTSClick={() => setIsTTSModalOpen(true)}
       memoryBar={memoryBar}
+      progressBar={progressBar}
       locationSuggestion={locationSuggestion}
     />
   );

@@ -8,7 +8,8 @@
     "build": "vite build",
     "lint": "eslint .",
     "typecheck": "tsc --noEmit",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "vram-helper": "node scripts/vram-helper.mjs"
   },
   "dependencies": {
     "@dnd-kit/core": "^6.3.1",
