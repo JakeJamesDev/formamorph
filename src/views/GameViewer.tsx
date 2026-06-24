@@ -30,6 +30,8 @@ import { MenuModal } from "../components/modals/MenuModal";
 import WorldEditor from "./WorldEditor";
 import { UnsavedChangesDialog } from "../components/UnsavedChangesDialog";
 import { estimateHistoryChars } from "../lib/memoryUtils";
+import { parseGameText } from "../lib/aiResponse";
+import { normalizeStatChanges, applyAiStatChanges, applyTraitStatChanges } from "../lib/statChanges";
 import { getActivatedDictionary, buildDictionaryContext, parseKeywords } from "../lib/dictionaryUtils";
 import { highlightSegments } from "../lib/highlightUtils";
 import { useIsMobile } from "../lib/useIsMobile";
@@ -845,15 +847,8 @@ ${playerNotes || "No notes available"}
   // Update the applyStatChanges function to handle specific stat updates
   const applyStatChanges = useCallback(
     async (changes, affectedStats = null) => {
-      // Merge all changes objects into a single normalized object
-      const normalizedChanges = changes.reduce((acc, changeObj) => {
-        // For each object in the changes array
-        Object.entries(changeObj).forEach(([key, value]) => {
-          // Convert key to lowercase and add to accumulator
-          acc[key.toLowerCase()] = (acc[key.toLowerCase()] || 0) + value;
-        });
-        return acc;
-      }, {});
+      // Merge the AI's change objects into one normalized (name→delta) map.
+      const normalizedChanges = normalizeStatChanges(changes);
 
       // Update recent stat changes
       setRecentStatChanges(normalizedChanges);
@@ -863,38 +858,10 @@ ${playerNotes || "No notes available"}
         setRecentStatChanges({});
       }, 10000);
 
-      // First update stats with direct changes
-      // These are only the changes made by the AI, not regen or script
-      setPlayerStats((prevStats) => {
-        const updatedStats = prevStats.map((stat) => {
-          if (affectedStats === null || affectedStats.includes(stat.name)) {
-            const change =
-              typeof normalizedChanges[stat.name.toLowerCase()] === "number"
-                ? normalizedChanges[stat.name.toLowerCase()]
-                : 0;
-
-            // A falsy check on the stat values since old saves will have this as undefined
-            // default behavior is the ai is allowed to change all stats
-            const shouldUpdate =
-              (change > 0 && !stat.noIncrease) ||
-              (change < 0 && !stat.noDecrease);
-
-            if (shouldUpdate) {
-              const newValue = Math.max(
-                stat.min,
-                Math.min(stat.max, stat.value + change),
-              );
-
-              return { ...stat, value: newValue };
-            }
-          }
-
-          // Return the stat unchanged if condition not met
-          return stat;
-        });
-
-        return updatedStats;
-      });
+      // First update stats with the AI's direct changes (not regen or script).
+      setPlayerStats((prevStats) =>
+        applyAiStatChanges(prevStats, normalizedChanges, affectedStats),
+      );
 
       // Then process any code-based stats
       // We need to wait for the state update to complete, so we use setTimeout
@@ -1119,83 +1086,12 @@ ${playerNotes || "No notes available"}
   const handleStatChanges = useCallback(
     (statChanges) => {
       setPlayerStats((prevStats) => {
-        const updatedStats = [...prevStats];
-
-        // First pass: Process all max/min changes and collect value adjustments
-        const valueAdjustments = new Map(); // Map of statId to value adjustment
-
-        statChanges.forEach((change) => {
-          const statIndex = updatedStats.findIndex(
-            (stat) => stat.id === change.statId,
-          );
-          if (statIndex !== -1) {
-            const stat = updatedStats[statIndex];
-
-            if (change.type === "min") {
-              const newMin = Math.max(stat.min, stat.min + change.value);
-              stat.min = newMin;
-              // If new min is higher than current value, we need to increase value
-              if (newMin > stat.value) {
-                valueAdjustments.set(
-                  stat.id,
-                  (valueAdjustments.get(stat.id) || 0) + (newMin - stat.value),
-                );
-              }
-            } else if (change.type === "max") {
-              const oldMax = stat.max;
-              const newMax = stat.max + change.value;
-              stat.max = newMax;
-              // When max increases, increase value by the same amount
-              if (newMax > oldMax && stat.value == oldMax) {
-                valueAdjustments.set(
-                  stat.id,
-                  (valueAdjustments.get(stat.id) || 0) + (newMax - oldMax),
-                );
-              }
-              // If new max is lower than current value, we need to decrease value
-              else if (newMax < stat.value) {
-                valueAdjustments.set(
-                  stat.id,
-                  (valueAdjustments.get(stat.id) || 0) + (newMax - stat.value),
-                );
-              }
-            } else if (change.type === "regen") {
-              // Update the regen rate
-              stat.regen = (stat.regen || 0) + change.value;
-            }
-          }
+        const { stats, changedIds } = applyTraitStatChanges(prevStats, statChanges);
+        // Persist each changed stat back to the world definition.
+        stats.forEach((stat) => {
+          if (changedIds.has(stat.id)) updateStat(stat);
         });
-
-        // Second pass: Apply starting changes and collected adjustments
-        statChanges.forEach((change) => {
-          const statIndex = updatedStats.findIndex(
-            (stat) => stat.id === change.statId,
-          );
-          if (statIndex !== -1) {
-            const stat = updatedStats[statIndex];
-
-            if (change.type === "starting") {
-              // Apply direct value changes
-              stat.value = Math.max(
-                stat.min,
-                Math.min(stat.max, stat.value + change.value),
-              );
-            }
-
-            // Apply any collected adjustments
-            const adjustment = valueAdjustments.get(stat.id) || 0;
-            if (adjustment !== 0) {
-              stat.value = Math.max(
-                stat.min,
-                Math.min(stat.max, stat.value + adjustment),
-              );
-            }
-
-            updateStat(stat);
-          }
-        });
-
-        return updatedStats;
+        return stats;
       });
     },
     [updateStat, setPlayerStats],
@@ -1288,37 +1184,8 @@ ${playerNotes || "No notes available"}
     }
   }, [ambientSound]);
 
-  const parseAssistantMessage = (content) => {
-    try {
-      // Clean up the content before parsing
-      const cleanContent = content.trim();
-
-      // Try parsing with JSON5 first (more lenient)
-      try {
-        const parsed = json5.parse(cleanContent);
-        return parsed.game_text || "No game text available";
-      } catch {
-        // If JSON5 fails, try standard JSON
-        const parsed = JSON.parse(cleanContent);
-        return parsed.game_text || "No game text available";
-      }
-    } catch (error) {
-      debugLog("Error parsing assistant message", error, true);
-      debugLog("Problematic content", content, true);
-
-      // Try to extract game_text using regex as a fallback
-      try {
-        const gameTextMatch = content.match(/"game_text"\s*:\s*"([^"]+)"/);
-        if (gameTextMatch && gameTextMatch[1]) {
-          return gameTextMatch[1];
-        }
-      } catch (regexError) {
-        debugLog("Regex extraction failed", regexError, true);
-      }
-
-      return `Error parsing message. Please check console for details.`;
-    }
-  };
+  // Extract the displayed game_text from an assistant message (see lib/aiResponse).
+  const parseAssistantMessage = parseGameText;
 
   // Status line shown above the input while a turn is being generated, naming the current AI
   // request (Game Text / Choices / Stat Updates / Location) so the player knows what's processing.

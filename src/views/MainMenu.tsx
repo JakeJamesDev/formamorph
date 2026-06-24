@@ -23,6 +23,7 @@ import { ImageZoomViewer } from "@/components/ImageZoomViewer";
 import { TokenAutocomplete } from "@/components/TokenAutocomplete";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { toEpoch } from "@/lib/thumbnailCache";
+import { sanitizeTag } from "@/lib/tagUtils";
 import { getCatalog, replaceCatalog } from "@/lib/worldCatalog";
 import {
   Dialog,
@@ -63,19 +64,6 @@ const defaultWorlds = [
   { id: 'valentines', defaultName: 'Valentines Survival' },
   { id: 'drone', defaultName: 'Reincarnated Drone' }
 ];
-
-// Normalize a tag so formatting variants collapse to one value for matching:
-// fold accents (NFKD + strip combining marks), lowercase, treat any run of non-alphanumerics
-// as a single space -- except '/', which is kept (often used as "this/that"; spacing around it is
-// normalized so "a / b" == "a/b"), then trim. '' for junk-only input.
-const sanitizeTag = (tag: string): string =>
-  String(tag ?? '')
-    .normalize('NFKD')
-    .replace(/[\u0300-\u036f]/g, '')
-    .toLowerCase()
-    .replace(/[^a-z0-9/]+/g, ' ')
-    .replace(/\s*\/+\s*/g, '/')
-    .trim();
 
 // User-defined world ordering is a UI preference, persisted as an ordered list of ids.
 const WORLD_ORDER_KEY = 'FORMAMORPH_worldOrder';
