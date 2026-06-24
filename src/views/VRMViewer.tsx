@@ -266,7 +266,7 @@ const VRMViewer = forwardRef<VRMViewerHandle, VRMViewerProps>(({
       if (!obj.isMesh) return;
       const mats = Array.isArray(obj.material) ? obj.material : [obj.material];
       mats.forEach((m) => {
-        if (m && channelMatch(channel, m.name, obj.name)) fn(m);
+        if (m && !m.isOutline && channelMatch(channel, m.name, obj.name)) fn(m);
       });
     });
   };
@@ -335,7 +335,7 @@ const VRMViewer = forwardRef<VRMViewerHandle, VRMViewerProps>(({
     vrmRef.current?.scene.traverse((obj) => {
       if (!obj.isMesh) return;
       const mats = Array.isArray(obj.material) ? obj.material : [obj.material];
-      mats.forEach((m) => { if (m && m.name === target) fn(m); });
+      mats.forEach((m) => { if (m && !m.isOutline && m.name === target) fn(m); });
     });
   };
 
@@ -364,7 +364,7 @@ const VRMViewer = forwardRef<VRMViewerHandle, VRMViewerProps>(({
       if (!obj.isMesh) return;
       const mats = Array.isArray(obj.material) ? obj.material : [obj.material];
       mats.forEach((m) => {
-        if (!m || !m.name) return;
+        if (!m || !m.name || m.isOutline) return;
         if (channelMatch('hair', m.name, obj.name) || channelMatch('skin', m.name, obj.name) || channelMatch('eye', m.name, obj.name)) return;
         if (/face|mouth|brow|lash|eyeline|eyewhite|highlight|tooth|teeth|tongue|eye/.test(m.name.toLowerCase())) return;
         names.add(m.name);
@@ -664,6 +664,9 @@ const VRMViewer = forwardRef<VRMViewerHandle, VRMViewerProps>(({
 
       if (rendererRef.current) {
         rendererRef.current.dispose();
+        // Release the WebGL context immediately; otherwise rapid model swaps pile up contexts until the
+        // browser drops the oldest and rendering/loads silently break.
+        rendererRef.current.forceContextLoss?.();
       }
 
       // Safely remove renderer from DOM
