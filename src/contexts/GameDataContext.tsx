@@ -33,7 +33,7 @@ function useProvideGameData() {
   const [dictionary, setDictionary] = useState<DictionaryEntry[]>([]);
   const [worldId, setWorldId] = useState<string | null>(null);
 
-  const addStat = useCallback((newStat: Stat) => {
+  const addStat = useCallback((newStat: Omit<Stat, 'descriptors'>) => {
     const defaultDescriptors = [
       { id: Date.now(), threshold: 30, description: `${newStat.name} is low` },
       { id: Date.now() + 1, threshold: 60, description: `${newStat.name} is medium` },
