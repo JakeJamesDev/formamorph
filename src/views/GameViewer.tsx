@@ -1056,7 +1056,21 @@ ${playerNotes || "No notes available"}
         }
       }
 
-      return content.trim();
+      const finalContent = content.trim();
+      // Record the raw output on this turn's matching request so the AI-context viewer can show it.
+      setDebugTurns((prev) => {
+        if (!prev.length) return prev;
+        const next = prev.slice();
+        const last = { ...next[next.length - 1] };
+        last.requests = last.requests.map((r) =>
+          r.type === requestType && r.response === undefined
+            ? { ...r, response: finalContent }
+            : r,
+        );
+        next[next.length - 1] = last;
+        return next;
+      });
+      return finalContent;
     } catch (error) {
       // Check if this is an abort error (user canceled the request)
       if (error.name === "AbortError") {
@@ -1542,14 +1556,20 @@ ${playerNotes || "No notes available"}
             const pageIndex = Math.min(Math.max(debugPage, 1), Math.max(totalDebugPages, 1)) - 1;
             const currentTurn = debugTurns[pageIndex];
             const currentRequests = currentTurn?.requests ?? [];
+            // Collapse keys: one per request, plus one per captured raw output ("out-<i>").
+            const collapseKeys = [];
+            currentRequests.forEach((req, i) => {
+              collapseKeys.push(i);
+              if (typeof req.response === "string") collapseKeys.push(`out-${i}`);
+            });
             const allCollapsed =
-              currentRequests.length > 0 && currentRequests.every((_, i) => collapsedDebug[i]);
+              collapseKeys.length > 0 && collapseKeys.every((k) => collapsedDebug[k]);
             const toggleAll = () => {
               if (allCollapsed) {
                 setCollapsedDebug({});
               } else {
                 const next = {};
-                currentRequests.forEach((_, i) => { next[i] = true; });
+                collapseKeys.forEach((k) => { next[k] = true; });
                 setCollapsedDebug(next);
               }
             };
@@ -1664,45 +1684,82 @@ ${playerNotes || "No notes available"}
                             role: m.role,
                             segs: buildSegments(m.content),
                           }));
-                          if (searchActive && !msgSegs.some((ms) => ms.segs.length > 0)) {
-                            return null;
-                          }
-                          const open = searchActive ? true : !collapsedDebug[i];
+                          const hasReqMatch = msgSegs.some((ms) => ms.segs.length > 0);
+                          // Raw, unmodified AI output for this request (captured in makeAIRequest).
+                          const outSegs =
+                            typeof req.response === "string" ? buildSegments(req.response) : null;
+                          const hasOutMatch = outSegs !== null && outSegs.length > 0;
+                          // While searching, drop the whole block only if neither the request nor its output matches.
+                          if (searchActive && !hasReqMatch && !hasOutMatch) return null;
+                          const reqOpen = searchActive ? true : !collapsedDebug[i];
+                          const outOpen = searchActive ? true : !collapsedDebug[`out-${i}`];
                           return (
-                            <Collapsible
-                              key={i}
-                              open={open}
-                              onOpenChange={(o) =>
-                                setCollapsedDebug((prev) => ({ ...prev, [i]: !o }))
-                              }
-                              className="border border-border rounded-md"
-                            >
-                              <CollapsibleTrigger asChild>
-                                <button className="flex w-full items-center justify-between gap-2 p-2 text-left font-semibold">
-                                  <span>Request {i + 1}: {req.type}</span>
-                                  {open ? (
-                                    <ChevronDown className="h-4 w-4 flex-shrink-0" />
-                                  ) : (
-                                    <ChevronRight className="h-4 w-4 flex-shrink-0" />
-                                  )}
-                                </button>
-                              </CollapsibleTrigger>
-                              <CollapsibleContent className="p-2 pt-0">
-                                {msgSegs.map((ms, j) => {
-                                  if (searchActive && ms.segs.length === 0) return null;
-                                  return (
-                                    <div key={j} className="mb-2">
-                                      <div className="font-medium text-muted-foreground uppercase">
-                                        {ms.role}
-                                      </div>
-                                      <pre className="whitespace-pre-wrap break-words bg-muted/50 p-2 rounded">
-                                        {renderSegs(ms.segs)}
-                                      </pre>
-                                    </div>
-                                  );
-                                })}
-                              </CollapsibleContent>
-                            </Collapsible>
+                            <React.Fragment key={i}>
+                              {(!searchActive || hasReqMatch) && (
+                                <Collapsible
+                                  open={reqOpen}
+                                  onOpenChange={(o) =>
+                                    setCollapsedDebug((prev) => ({ ...prev, [i]: !o }))
+                                  }
+                                  className="border border-border rounded-md"
+                                >
+                                  <CollapsibleTrigger asChild>
+                                    <button className="flex w-full items-center justify-between gap-2 p-2 text-left font-semibold">
+                                      <span>Request {i + 1}: {req.type}</span>
+                                      {reqOpen ? (
+                                        <ChevronDown className="h-4 w-4 flex-shrink-0" />
+                                      ) : (
+                                        <ChevronRight className="h-4 w-4 flex-shrink-0" />
+                                      )}
+                                    </button>
+                                  </CollapsibleTrigger>
+                                  <CollapsibleContent className="p-2 pt-0">
+                                    {msgSegs.map((ms, j) => {
+                                      if (searchActive && ms.segs.length === 0) return null;
+                                      return (
+                                        <div key={j} className="mb-2">
+                                          <div className="font-medium text-muted-foreground uppercase">
+                                            {ms.role}
+                                          </div>
+                                          <pre className="whitespace-pre-wrap break-words bg-muted/50 p-2 rounded">
+                                            {renderSegs(ms.segs)}
+                                          </pre>
+                                        </div>
+                                      );
+                                    })}
+                                  </CollapsibleContent>
+                                </Collapsible>
+                              )}
+                              {outSegs !== null && (!searchActive || hasOutMatch) && (
+                                <Collapsible
+                                  open={outOpen}
+                                  onOpenChange={(o) =>
+                                    setCollapsedDebug((prev) => ({ ...prev, [`out-${i}`]: !o }))
+                                  }
+                                  className="border border-border rounded-md"
+                                >
+                                  <CollapsibleTrigger asChild>
+                                    <button className="flex w-full items-center justify-between gap-2 p-2 text-left font-semibold">
+                                      <span>Raw Output {i + 1}: {req.type}</span>
+                                      {outOpen ? (
+                                        <ChevronDown className="h-4 w-4 flex-shrink-0" />
+                                      ) : (
+                                        <ChevronRight className="h-4 w-4 flex-shrink-0" />
+                                      )}
+                                    </button>
+                                  </CollapsibleTrigger>
+                                  <CollapsibleContent className="p-2 pt-0">
+                                    <pre className="whitespace-pre-wrap break-words bg-muted/50 p-2 rounded">
+                                      {req.response ? (
+                                        renderSegs(outSegs)
+                                      ) : (
+                                        <span className="text-muted-foreground">(empty output)</span>
+                                      )}
+                                    </pre>
+                                  </CollapsibleContent>
+                                </Collapsible>
+                              )}
+                            </React.Fragment>
                           );
                         })
                       )}
