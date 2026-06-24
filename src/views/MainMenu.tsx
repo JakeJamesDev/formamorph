@@ -19,6 +19,7 @@ import {
 } from "@/components/ui/pagination";
 import { Textarea } from "@/components/ui/textarea";
 import { CachedThumbnail } from "@/lib/useCachedThumbnail";
+import { ImageZoomViewer } from "@/components/ImageZoomViewer";
 import { toEpoch } from "@/lib/thumbnailCache";
 import { getCatalog, replaceCatalog } from "@/lib/worldCatalog";
 import {
@@ -181,6 +182,7 @@ const MainMenu = ({ onStartGame, onOpenWorldEditor }) => {
   const [remoteWorldToDelete, setRemoteWorldToDelete] = useState(null);
   const [selectedRemoteWorld, setSelectedRemoteWorld] = useState(null);
   const [showRemoteWorldDetailsModal, setShowRemoteWorldDetailsModal] = useState(false);
+  const [imageViewerOpen, setImageViewerOpen] = useState(false);
   const [downloadedIds, setDownloadedIds] = useState(() => new Set<string>());
 
   // Comments for the world detail modal
@@ -1898,8 +1900,12 @@ const MainMenu = ({ onStartGame, onOpenWorldEditor }) => {
             <div className="mt-4 flex-1 min-h-0 flex flex-col md:flex-row gap-6 overflow-y-auto md:overflow-hidden">
               {/* Left column: metadata */}
               <div className="md:w-1/2 md:min-h-0 md:overflow-y-auto md:pr-1 space-y-6">
-                {/* World Thumbnail */}
-                <div className="relative w-full pt-[56.25%] rounded-lg overflow-hidden">
+                {/* World Thumbnail — click to open the pan/zoom viewer */}
+                <div
+                  className="relative w-full pt-[56.25%] rounded-lg overflow-hidden cursor-zoom-in"
+                  onClick={() => { if (selectedRemoteWorld.thumbnail_file || selectedRemoteWorld.thumbnail) setImageViewerOpen(true); }}
+                  title="Click to enlarge"
+                >
                   {selectedRemoteWorld.thumbnail_file ? (
                     <CachedThumbnail
                       file={selectedRemoteWorld.thumbnail_file}
@@ -2045,6 +2051,18 @@ const MainMenu = ({ onStartGame, onOpenWorldEditor }) => {
         </DialogContent>
       </Dialog>
       
+      {/* Full-size pan/zoom image viewer for the selected world */}
+      <ImageZoomViewer
+        open={imageViewerOpen}
+        onOpenChange={setImageViewerOpen}
+        alt={selectedRemoteWorld?.name || 'World image'}
+        src={
+          selectedRemoteWorld?.thumbnail_file
+            ? `${WorldStorageService.API_URL}/thumbnails/${selectedRemoteWorld.thumbnail_file}`
+            : (selectedRemoteWorld?.thumbnail || '')
+        }
+      />
+
       {/* Confirm Delete Remote World Dialog */}
       <ConfirmDialog
         open={!!remoteWorldToDelete}

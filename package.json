@@ -46,6 +46,7 @@
     "react-dom": "^18.3.1",
     "react-resizable-panels": "^2.1.0",
     "react-toastify": "^11.0.3",
+    "react-zoom-pan-pinch": "^4.0.3",
     "tailwind-merge": "^2.4.0",
     "tailwindcss-animate": "^1.0.7",
     "three": "^0.181.0"
