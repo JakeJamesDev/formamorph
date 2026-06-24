@@ -7,6 +7,18 @@ import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
 import { FBXLoader } from 'three/examples/jsm/loaders/FBXLoader.js';
 import type { BodyShape, HairTypeDef } from '@/types';
 
+/** Which optional customization morphs the loaded VRM actually exposes, so the UI can hide unsupported sliders. */
+export interface VRMCapabilities {
+  /** Body-shape/feature morphs present on the `Body` mesh (e.g. 'Belly', 'Breasts', 'Fat', 'B_Pear', …). */
+  bodyMorphs: string[];
+  /** Hair-style keys (from `hairTypes`) whose shapekey mesh exists in the model. */
+  hairStyles: string[];
+  /** True if a supported hair style also exposes the `LENGTH` morph. */
+  hairLength: boolean;
+  /** Representative current colors sampled from the model's textures, to seed the color pickers. */
+  colors: { hair?: string; skin?: string; eye?: string };
+}
+
 interface VRMViewerProps {
   bellySize: number;
   breastSize: number;
@@ -20,6 +32,8 @@ interface VRMViewerProps {
   bodyShape: BodyShape;
   modelUrl?: string;
   animationFiles?: string[];
+  /** Called once the model loads, reporting which customization morphs it supports. */
+  onCapabilities?: (caps: VRMCapabilities) => void;
 }
 
 // Mixamo VRM Rig Mapping
@@ -90,7 +104,8 @@ const VRMViewer = ({
   hairLength,
   bodyShape,
   modelUrl = './readheadedit.vrm',
-  animationFiles = ['./idle.fbx', './bashful.fbx', './idle_dwarf.fbx']
+  animationFiles = ['./idle.fbx', './bashful.fbx', './idle_dwarf.fbx'],
+  onCapabilities
 }: VRMViewerProps) => {
   const mountRef = useRef(null);
   const sceneRef = useRef(null);
@@ -138,14 +153,126 @@ const VRMViewer = ({
   };
 
 
-  // Define default colors
-  const defaultHairColor = '#7d0909';
-  const defaultSkinColor = '#fcdec7';
-  const defaultEyeColor = '#86ff70';
-
   const findMesh= (meshName, gltf) =>{
     return gltf.scene.children.find(child => child.name === meshName);
   }
+
+  // The morph-target dictionary for a named mesh (matches setMorphTarget's lookup), or null if absent.
+  const getMorphDict = (meshName, gltf) => {
+    const mesh = findMesh(meshName, gltf);
+    if (!mesh) return null;
+    const child = mesh.children[0] || mesh;
+    return child.morphTargetDictionary || null;
+  };
+
+  // --- Texture colorize: keep a texture's baked light/shadow detail but shift it to a target hue/saturation. ---
+  const hexToRgb = (hex) => [parseInt(hex.slice(1, 3), 16), parseInt(hex.slice(3, 5), 16), parseInt(hex.slice(5, 7), 16)];
+
+  const rgbToHsl = (r, g, b) => {
+    r /= 255; g /= 255; b /= 255;
+    const max = Math.max(r, g, b), min = Math.min(r, g, b);
+    const l = (max + min) / 2;
+    let h = 0, s = 0;
+    const d = max - min;
+    if (d) {
+      s = l > 0.5 ? d / (2 - max - min) : d / (max + min);
+      if (max === r) h = (g - b) / d + (g < b ? 6 : 0);
+      else if (max === g) h = (b - r) / d + 2;
+      else h = (r - g) / d + 4;
+      h /= 6;
+    }
+    return [h, s, l];
+  };
+
+  const hue2rgb = (p, q, t) => {
+    if (t < 0) t += 1;
+    if (t > 1) t -= 1;
+    if (t < 1 / 6) return p + (q - p) * 6 * t;
+    if (t < 1 / 2) return q;
+    if (t < 2 / 3) return p + (q - p) * (2 / 3 - t) * 6;
+    return p;
+  };
+
+  const hslToRgb = (h, s, l) => {
+    if (s === 0) return [l * 255, l * 255, l * 255];
+    const q = l < 0.5 ? l * (1 + s) : l + s - l * s;
+    const p = 2 * l - q;
+    return [hue2rgb(p, q, h + 1 / 3) * 255, hue2rgb(p, q, h) * 255, hue2rgb(p, q, h - 1 / 3) * 255];
+  };
+
+  // Capture (and cache) a material's original base-color pixels so re-coloring never compounds.
+  const getOriginalImageData = (material) => {
+    if (material.userData.__origImageData !== undefined) return material.userData.__origImageData;
+    const img = material.map?.image;
+    let result = null;
+    if (img && img.width && img.height) {
+      const canvas = document.createElement('canvas');
+      canvas.width = img.width; canvas.height = img.height;
+      const ctx = canvas.getContext('2d');
+      try {
+        ctx.drawImage(img, 0, 0);
+        result = ctx.getImageData(0, 0, img.width, img.height);
+      } catch { result = null; }
+    }
+    material.userData.__origImageData = result;
+    return result;
+  };
+
+  // Recolor a material's texture to `hex`, preserving its per-pixel lightness (so shading/detail survives).
+  const colorizeMaterial = (material, hex) => {
+    const src = getOriginalImageData(material);
+    if (!src) return;
+    const [tr, tg, tb] = hexToRgb(hex);
+    const [th, ts] = rgbToHsl(tr, tg, tb);
+    const d = src.data;
+    const out = new Uint8ClampedArray(d.length);
+    for (let i = 0; i < d.length; i += 4) {
+      const mx = Math.max(d[i], d[i + 1], d[i + 2]);
+      const mn = Math.min(d[i], d[i + 1], d[i + 2]);
+      const [nr, ng, nb] = hslToRgb(th, ts, (mx + mn) / 2 / 255);
+      out[i] = nr; out[i + 1] = ng; out[i + 2] = nb; out[i + 3] = d[i + 3];
+    }
+    const canvas = document.createElement('canvas');
+    canvas.width = src.width; canvas.height = src.height;
+    canvas.getContext('2d').putImageData(new ImageData(out, src.width, src.height), 0, 0);
+    const tex = new THREE.CanvasTexture(canvas);
+    const orig = material.map;
+    if (orig) {
+      tex.flipY = orig.flipY; tex.colorSpace = orig.colorSpace;
+      tex.wrapS = orig.wrapS; tex.wrapT = orig.wrapT;
+      tex.repeat.copy(orig.repeat); tex.offset.copy(orig.offset);
+    }
+    tex.needsUpdate = true;
+    material.map = tex;
+    if (material.uniforms?.map) material.uniforms.map.value = tex;
+    material.needsUpdate = true;
+  };
+
+  // Average opaque pixels of a material's original texture → a representative hex color (used to seed sliders).
+  const averageColor = (material) => {
+    const src = getOriginalImageData(material);
+    if (!src) return null;
+    const d = src.data;
+    let r = 0, g = 0, b = 0, n = 0;
+    for (let i = 0; i < d.length; i += 4) {
+      if (d[i + 3] < 10) continue;
+      r += d[i]; g += d[i + 1]; b += d[i + 2]; n++;
+    }
+    if (!n) return null;
+    return '#' + [r, g, b].map(x => Math.round(x / n).toString(16).padStart(2, '0')).join('');
+  };
+
+  // Run a callback on every material in the current VRM whose name contains `keyword` (case-insensitive).
+  // Targets VRoid/MToon's separately-named materials (e.g. *_SKIN, EyeIris) regardless of mesh layout.
+  const forEachMaterialNamed = (keyword, fn) => {
+    vrmRef.current?.scene.traverse((obj) => {
+      if (!obj.isMesh) return;
+      const mats = Array.isArray(obj.material) ? obj.material : [obj.material];
+      mats.forEach((m) => {
+        if (m && m.name && m.name.toLowerCase().includes(keyword)) fn(m);
+      });
+    });
+  };
 
   
   const setMorphTarget = (meshName, morphTargetName, value, gltf) => {
@@ -198,166 +325,16 @@ const VRMViewer = ({
   };
 
   const setHairColor = (color) => {
-    if (!(color !== defaultHairColor && vrmRef.current && vrmRef.current.scene))
-      return;
-
-    if (vrmRef.current && vrmRef.current.scene) {
-      vrmRef.current.scene.traverse((object) => {
-        if (object.isMesh && object.name.toLowerCase().includes('hair')) {
-          if (object.material) {
-            // Convert hex color to RGB
-            const r = parseInt(color.slice(1, 3), 16) / 255;
-            const g = parseInt(color.slice(3, 5), 16) / 255;
-            const b = parseInt(color.slice(5, 7), 16) / 255;
-
-            // Create a new texture with the desired color
-            const size = 256;
-            const data = new Uint8Array(4 * size * size);
-
-            for (let i = 0; i < size * size; i++) {
-              const stride = i * 4;
-              data[stride] = r * 255;
-              data[stride + 1] = g * 255;
-              data[stride + 2] = b * 255;
-              data[stride + 3] = 255; // Full opacity
-            }
-
-            const texture = new THREE.DataTexture(data, size, size, THREE.RGBAFormat);
-            texture.needsUpdate = true;
-
-            // Replace the existing texture(s) with the new one
-            if (object.material.map) {
-              object.material.map = texture;
-            }
-            if (object.material.emissiveMap) {
-              object.material.emissiveMap = texture;
-            }
-
-            // Update relevant uniforms if it's a ShaderMaterial
-            if (object.material.type === 'ShaderMaterial' && object.material.uniforms) {
-              if (object.material.uniforms.map) {
-                object.material.uniforms.map.value = texture;
-              }
-              if (object.material.uniforms.diffuseMap) {
-                object.material.uniforms.diffuseMap.value = texture;
-              }
-            }
-
-            // Force material update
-            object.material.needsUpdate = true;
-          }
-        }
-      });
-    }
+    if (color) forEachMaterialNamed('hair', (m) => colorizeMaterial(m, color));
   };
 
   const setEyeColor = (color) => {
-    if (!(color !== defaultEyeColor && vrmRef.current && vrmRef.current.scene))
-      return;
-    if (vrmRef.current && vrmRef.current.scene) {
-        const object = findMesh('Face', gltfRef.current);
-        console.log("FACE:", object)
-        if (object) {
-          const eyeMesh = object.children[1]; // Get the second child of the Face mesh
-          if (eyeMesh && eyeMesh.material) {
-            // Convert hex color to RGB
-            const r = parseInt(color.slice(1, 3), 16) / 255;
-            const g = parseInt(color.slice(3, 5), 16) / 255;
-            const b = parseInt(color.slice(5, 7), 16) / 255;
-
-            // Set the material color
-            eyeMesh.material.color.setRGB(r, g, b);
-
-            // If it's a ShaderMaterial, update relevant uniforms
-            if (eyeMesh.material.type === 'ShaderMaterial' && eyeMesh.material.uniforms) {
-              if (eyeMesh.material.uniforms.diffuse) {
-                eyeMesh.material.uniforms.diffuse.value.setRGB(r, g, b);
-              }
-              if (eyeMesh.material.uniforms.litFactor) {
-                eyeMesh.material.uniforms.litFactor.value.setRGB(r, g, b);
-              }
-            }
-
-            // Force material update
-            eyeMesh.material.needsUpdate = true;
-          }
-        }
-    }
+    if (color) forEachMaterialNamed('iris', (m) => colorizeMaterial(m, color));
   };
 
-  const setSkinObject = (object, color, childIdx = 0) => {
-    const bodyMesh = object.children[childIdx];
-          if (bodyMesh && bodyMesh.material && bodyMesh.material.length > 0) {
-            const skinMaterial = bodyMesh.material[0];
-            console.log(skinMaterial)
-            // Convert hex color to RGB
-            const r = parseInt(color.slice(1, 3), 16) / 255;
-            const g = parseInt(color.slice(3, 5), 16) / 255;
-            const b = parseInt(color.slice(5, 7), 16) / 255;
-
-            // Create a new texture with the desired color
-            const size = 256;
-            const data = new Uint8Array(4 * size * size);
-
-            for (let i = 0; i < size * size; i++) {
-              const stride = i * 4;
-              data[stride] = r * 255;
-              data[stride + 1] = g * 255;
-              data[stride + 2] = b * 255;
-              data[stride + 3] = 255; // Full opacity
-            }
-
-            const texture = new THREE.DataTexture(data, size, size, THREE.RGBAFormat);
-            texture.needsUpdate = true;
-
-            // Replace the existing texture(s) with the new one
-            if (skinMaterial.map) {
-              skinMaterial.map = texture;
-            }
-            if (skinMaterial.emissiveMap) {
-              skinMaterial.emissiveMap = texture;
-            }
-
-            // Calculate 20% lighter color
-            let factor = 0.7;
-            let lightenedColor = new THREE.Color(
-              Math.min(r * factor, 255),
-              Math.min(g * factor, 255),
-              Math.min(b * factor, 255)
-            );
-            skinMaterial.shadeColorFactor = lightenedColor;
-            if (skinMaterial.type === 'ShaderMaterial' && skinMaterial.uniforms) {
-              if (skinMaterial.uniforms.map) {
-                skinMaterial.uniforms.map.value = texture;
-              }
-              if (skinMaterial.uniforms.diffuseMap) {
-                skinMaterial.uniforms.diffuseMap.value = texture;
-              }
-              if (skinMaterial.uniforms.diffuse) {
-                skinMaterial.uniforms.diffuse.value.setRGB(r, g, b);
-              }
-              if (skinMaterial.uniforms.litFactor) {
-                skinMaterial.uniforms.litFactor.value.setRGB(r, g, b);
-              }
-            }
-
-            // Force material update
-            skinMaterial.needsUpdate = true;
-          }
-  }
-
   const setSkinColor = (color) => {
-    if (!(color !== defaultSkinColor && vrmRef.current && vrmRef.current.scene) )
-      return;
-    if (vrmRef.current && vrmRef.current.scene) {
-      const body = findMesh('Body',gltfRef.current);
-      const face = findMesh('Face',gltfRef.current)
-        setSkinObject(body, color);
-        setSkinObject(face, color,3);
-        //setSkinObject(face, color,2);
-        //setSkinObject(face, color,1);
-        }
-    };
+    if (color) forEachMaterialNamed('skin', (m) => colorizeMaterial(m, color));
+  };
 
     // Handle window resize
     const handleResize = () => {
@@ -457,6 +434,26 @@ const VRMViewer = ({
         //attachCylinderToHand(vrm);
 
         updateHairStyle(gltf);
+
+        // Report which customization morphs this model exposes so the UI hides unsupported sliders.
+        if (onCapabilities) {
+          const bodyDict = getMorphDict('Body', gltf) || {};
+          const bodyMorphs = ['Belly', 'Breasts', 'Fat', 'B_Pear', 'B_HourGlass', 'B_Apple'].filter(n => n in bodyDict);
+          const styles = hairTypes ? Object.keys(hairTypes).filter(s => !!findMesh(hairTypes[s].shapekey, gltf)) : [];
+          const hairLengthSupported = styles.some(s => {
+            const d = getMorphDict(hairTypes[s].shapekey, gltf);
+            return hairTypes[s].canChangeLength && !!d && 'LENGTH' in d;
+          });
+          // Sample each part's current color from its texture so the pickers start at the model's real colors.
+          const sampleColor = (keyword) => {
+            let c = null;
+            forEachMaterialNamed(keyword, (m) => { if (!c) c = averageColor(m); });
+            return c;
+          };
+          const colors = { hair: sampleColor('hair'), skin: sampleColor('skin'), eye: sampleColor('iris') };
+          onCapabilities({ bodyMorphs, hairStyles: styles, hairLength: hairLengthSupported, colors });
+        }
+
         setReady(true);
         // Load Mixamo animation after VRM is loaded
         //loadMixamoAnimation('./idle_tired.fbx');
@@ -499,6 +496,9 @@ const VRMViewer = ({
         const vrmHipsHeight = Math.abs(vrmHipsY - vrmRootY);
         const hipsPositionScale = vrmHipsHeight / motionHipsHeight;
 
+        // VRM 0.0 faces -Z while Mixamo / VRM 1.0 face +Z, so mirror the X/Z axes for 0.0 models.
+        const isVRM0 = vrmRef.current.meta?.metaVersion === '0';
+
         clip.tracks.forEach((track) => {
           const trackSplitted = track.name.split('.');
           const mixamoRigName = trackSplitted[0];
@@ -523,10 +523,10 @@ const VRMViewer = ({
                     _quatA
                       .premultiply(parentRestWorldRotation)
                       .multiply(restRotationInverse);
-                    return _quatA.x;
+                    return isVRM0 ? -_quatA.x : _quatA.x;
                   }
                   if (i % 4 === 1) return _quatA.y;
-                  if (i % 4 === 2) return _quatA.z;
+                  if (i % 4 === 2) return isVRM0 ? -_quatA.z : _quatA.z;
                   if (i % 4 === 3) return _quatA.w;
                 })
               );
@@ -535,7 +535,7 @@ const VRMViewer = ({
               const newTrack = new THREE.VectorKeyframeTrack(
                 `${vrmNodeName}.${propertyName}`,
                 track.times,
-                track.values.map((v, i) => v * hipsPositionScale)
+                track.values.map((v, i) => (isVRM0 && i % 3 !== 1 ? -v : v) * hipsPositionScale)
               );
               tracks.push(newTrack);
             }

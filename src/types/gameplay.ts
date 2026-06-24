@@ -41,6 +41,21 @@ export interface CharacterData {
   currentHairStyle: string;
   hairLength: number;
   hairTypes?: Record<string, HairTypeDef>;
+  /**
+   * Which VRM the player picked: a local model-library id, `'default'` (bundled model),
+   * or unset/`'world'` (the world's `customPlayerVRM`, else the bundled default).
+   */
+  playerModelId?: string;
+}
+
+/** A player-uploaded VRM stored in the local model library (IndexedDB), keyed by `id`. */
+export interface PlayerModel {
+  id: string;
+  name: string;
+  type: string;
+  blob: Blob;
+  size: number;
+  addedAt: string;
 }
 
 /** One saved snapshot of a play session (see GameplayContext.saveCurrentGameState). */

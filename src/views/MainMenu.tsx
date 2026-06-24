@@ -24,10 +24,7 @@ import AuthService from '../services/AuthService';
 import type { World } from '@/types';
 
 const defaultWorlds = [
-  { id: 'slime', defaultName: 'Slime' },
-  { id: 'sugarscape', defaultName: 'Sugarscape' },
-  { id: 'veilwood', defaultName: 'Veilwood' },
-  { id: 'rampage', defaultName: 'Rampage' },
+  { id: 'rampage', defaultName: 'Giantess Rampage' },
   { id: 'valentines', defaultName: 'Valentines Survival' },
   { id: 'drone', defaultName: 'Reincarnated Drone' }
 ];
