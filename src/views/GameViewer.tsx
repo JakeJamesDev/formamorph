@@ -30,7 +30,8 @@ import { MenuModal } from "../components/modals/MenuModal";
 import WorldEditor from "./WorldEditor";
 import { UnsavedChangesDialog } from "../components/UnsavedChangesDialog";
 import { estimateHistoryChars } from "../lib/memoryUtils";
-import { parseGameText } from "../lib/aiResponse";
+import { parseGameText, stripReasoning, stripReasoningLive } from "../lib/aiResponse";
+import { INLINE_THINKING_DIRECTIVE } from "../components/game/GamePrompts";
 import { normalizeStatChanges, applyAiStatChanges, applyTraitStatChanges, parseStatUpdates, applyAiMaxChanges } from "../lib/statChanges";
 import { matchLocationResponse } from "../lib/locationMatch";
 import { getActivatedDictionary, buildDictionaryContext, parseKeywords } from "../lib/dictionaryUtils";
@@ -86,6 +87,8 @@ const GameViewer = ({
     choicesPrompt,
     statUpdatesPrompt,
     locationChangePromptText,
+    thinkingMode,
+    thinkingPrompt,
   } = useSettings();
 
   const {
@@ -564,6 +567,34 @@ ${playerNotes || "No notes available"}
       // Add user message to history after getting trimmed history
       addMessageToHistory("user", action);
 
+      // Optional thinking step (runs exactly once). 'precall': a hidden planning request whose
+      // short output is injected below. 'inline': append a <think> directive to the game-text
+      // request (the reasoning is stripped before the player sees it).
+      if (thinkingMode === "precall") {
+        const thinkPrompt = thinkingPrompt
+          .replace("<WORLD DESCRIPTION>", worldOverview.systemPrompt || "")
+          .replace("<STATS DESCRIPTION>", statDescriptions)
+          .replace("<TRAITS DESCRIPTION>", generateTraitDescriptions())
+          .replace("<LOCATION JSON DATA>", locationDataString)
+          .replace("<NOTES>", playerNotes || "No notes available");
+        // Frame the planning task as a single instruction. Reusing the narration message history
+        // (turns of action -> story) primes the model to just continue the story instead of planning.
+        const lastStory =
+          [...trimmedHistory].reverse().find((m) => m.role === "assistant")?.content || "";
+        const thinkMessages = [
+          {
+            role: "user",
+            content: `${lastStory ? `What just happened:\n${lastStory}\n\n` : ""}The player's next action: ${action}\n\nWrite the brief plan now. Do not narrate.`,
+          },
+        ];
+        const plan = await makeAIRequest(thinkPrompt, thinkMessages, "thinking", 256);
+        if (plan) {
+          updatedPrompt += `\n\nPlanning notes (use these to shape the narration; do not repeat them):\n${plan}`;
+        }
+      } else if (thinkingMode === "inline") {
+        updatedPrompt += INLINE_THINKING_DIRECTIVE;
+      }
+
       // Track the assembled system-prompt size for the memory-usage breakdown
       setLastPromptChars(updatedPrompt.length);
 
@@ -898,6 +929,7 @@ ${playerNotes || "No notes available"}
     systemPrompt,
     messages,
     requestType = "gametext",
+    maxTokensOverride = null,
   ) => {
     try {
       // Create a new AbortController for this request
@@ -931,9 +963,10 @@ ${playerNotes || "No notes available"}
         body: JSON.stringify({
           model: modelName,
           messages: [{ role: "system", content: systemPrompt }, ...messages],
-          max_tokens: maxTokens,
+          max_tokens: maxTokensOverride ?? maxTokens,
           stream: true,
-          ...(requestType === "gametext" && shortform && { stop: ["\n"] }),
+          // Single-paragraph stop, but not in inline-thinking mode — the <think> block needs newlines.
+          ...(requestType === "gametext" && shortform && thinkingMode !== "inline" && { stop: ["\n"] }),
         }),
         signal, // Add the abort signal to the fetch request
       });
@@ -967,11 +1000,13 @@ ${playerNotes || "No notes available"}
 
               // Handle different request types
               if (requestType === "gametext") {
+                // Hide any (possibly in-progress) reasoning block from the live narration.
+                const display = stripReasoningLive(content);
                 // Update both gameplay text and message history in real-time
-                setGameplayText(content);
+                setGameplayText(display);
 
                 // Update visible entities based on streaming content
-                const newEntities = extractEntities(content);
+                const newEntities = extractEntities(display);
                 setVisibleEntities(newEntities);
 
                 // Update the latest assistant message in history if it exists
@@ -984,7 +1019,7 @@ ${playerNotes || "No notes available"}
                     updatedHistory[updatedHistory.length - 1] = {
                       role: "assistant",
                       content: JSON.stringify({
-                        game_text: content,
+                        game_text: display,
                         choices: [],
                         stat_changes: [],
                       }),
@@ -997,7 +1032,7 @@ ${playerNotes || "No notes available"}
                     {
                       role: "assistant",
                       content: JSON.stringify({
-                        game_text: content,
+                        game_text: display,
                         choices: [],
                         stat_changes: [],
                       }),
@@ -1006,7 +1041,7 @@ ${playerNotes || "No notes available"}
                 });
               } else if (requestType === "choices") {
                 // Update choices in real-time, ensuring we handle partial content correctly
-                const choicesList = content
+                const choicesList = stripReasoningLive(content)
                   .split("\n")
                   .map((line) => line.trim())
                   .filter((line) => line.length > 0)
@@ -1023,7 +1058,10 @@ ${playerNotes || "No notes available"}
         }
       }
 
-      const finalContent = content.trim();
+      // Show the raw output (including any <think> block) in the AI-context viewer, but return the
+      // cleaned text so reasoning never reaches the narration, TTS, choices/stats/location, or history.
+      const rawContent = content.trim();
+      const finalContent = stripReasoning(content).trim();
       // Record the raw output on this turn's matching request so the AI-context viewer can show it.
       setDebugTurns((prev) => {
         if (!prev.length) return prev;
@@ -1031,7 +1069,7 @@ ${playerNotes || "No notes available"}
         const last = { ...next[next.length - 1] };
         last.requests = last.requests.map((r) =>
           r.type === requestType && r.response === undefined
-            ? { ...r, response: finalContent }
+            ? { ...r, response: rawContent }
             : r,
         );
         next[next.length - 1] = last;
@@ -1172,6 +1210,7 @@ ${playerNotes || "No notes available"}
   // request (Game Text / Choices / Stat Updates / Location) so the player knows what's processing.
   const progressBar = isWaitingForAI ? (() => {
     const labels = {
+      thinking: "Plan",
       gametext: "Game Text",
       choices: "Choices",
       statUpdates: "Stat Updates",

@@ -1,5 +1,7 @@
 import { createContext, useContext, useState, useEffect, type ReactNode } from 'react';
-import { defaultSystemPrompt, defaultChoicesPrompt, defaultStatUpdatesPrompt, defaultLocationChangePrompt } from '../components/game/GamePrompts';
+import { defaultSystemPrompt, defaultChoicesPrompt, defaultStatUpdatesPrompt, defaultLocationChangePrompt, defaultThinkingPrompt } from '../components/game/GamePrompts';
+
+export type ThinkingMode = 'off' | 'precall' | 'inline';
 
 const APP_ID = 'FORMAMORPH';
 export const DEFAULT_ENDPOINT = 'https://mistral.lyonade.net/v1/chat/completions';
@@ -70,6 +72,16 @@ function useProvideSettings() {
     return saved ? saved : defaultLocationChangePrompt;
   });
 
+  const [thinkingMode, setThinkingMode] = useState<ThinkingMode>(() => {
+    const saved = localStorage.getItem(`${APP_ID}_thinkingMode`);
+    return saved === 'precall' || saved === 'inline' ? saved : 'off';
+  });
+
+  const [thinkingPrompt, setThinkingPrompt] = useState<string>(() => {
+    const saved = localStorage.getItem(`${APP_ID}_thinkingPrompt`);
+    return saved ? saved : defaultThinkingPrompt;
+  });
+
   const [vramHelperUrl, setVramHelperUrl] = useState<string>(() => {
     const saved = localStorage.getItem(`${APP_ID}_vramHelperUrl`);
     return saved ? saved : 'http://localhost:5179';
@@ -134,6 +146,14 @@ function useProvideSettings() {
   }, [locationChangePromptText]);
 
   useEffect(() => {
+    localStorage.setItem(`${APP_ID}_thinkingMode`, thinkingMode);
+  }, [thinkingMode]);
+
+  useEffect(() => {
+    localStorage.setItem(`${APP_ID}_thinkingPrompt`, thinkingPrompt);
+  }, [thinkingPrompt]);
+
+  useEffect(() => {
     localStorage.setItem(`${APP_ID}_vramHelperUrl`, vramHelperUrl);
   }, [vramHelperUrl]);
 
@@ -168,6 +188,10 @@ function useProvideSettings() {
     setStatUpdatesPrompt,
     locationChangePromptText,
     setLocationChangePromptText,
+    thinkingMode,
+    setThinkingMode,
+    thinkingPrompt,
+    setThinkingPrompt,
     vramHelperUrl,
     setVramHelperUrl,
     ttsVolume,
