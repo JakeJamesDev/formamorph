@@ -19,6 +19,12 @@ describe('toEpoch', () => {
   it('returns 0 for an unparseable string', () => {
     expect(toEpoch('not a date')).toBe(0);
   });
+
+  it('passes a numeric epoch through unchanged', () => {
+    expect(toEpoch(1700000000000)).toBe(1700000000000);
+    expect(toEpoch(0)).toBe(0);
+    expect(toEpoch(NaN)).toBe(0);
+  });
 });
 
 describe('thumbnail store (IndexedDB)', () => {
