@@ -1,18 +1,25 @@
-import React from 'react';
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Checkbox } from "@/components/ui/checkbox";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import type { Trait, Stat } from "@/types";
 
-const TraitSelectionModal = ({ 
+const TraitSelectionModal = ({
   traits,
   stats,
   selectedTraits,
   onTraitSelect,
   onClose,
   onConfirm
+}: {
+  traits: Trait[];
+  stats: Stat[];
+  selectedTraits: string[];
+  onTraitSelect: (traitId: string) => void;
+  onClose: () => void;
+  onConfirm: () => void;
 }) => {
-  const getStatName = (statId) => {
+  const getStatName = (statId: string) => {
     const stat = stats.find(s => s.id === statId);
     return stat ? stat.name : statId;
   };
@@ -47,14 +54,14 @@ const TraitSelectionModal = ({
           ))}
         </ScrollArea>
         <div className="flex gap-2">
-          <Button 
+          <Button
             onClick={onClose}
             variant="outline"
             className="flex-1"
           >
             Close
           </Button>
-          <Button 
+          <Button
             onClick={onConfirm}
             className="flex-1"
           >

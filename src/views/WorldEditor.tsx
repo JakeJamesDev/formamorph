@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import { useState, useMemo, type ChangeEvent } from 'react';
 import { useGameData } from '@/contexts/GameDataContext';
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -23,6 +23,7 @@ import {
   KeyboardSensor,
   useSensor,
   useSensors,
+  type DragEndEvent,
 } from '@dnd-kit/core';
 import {
   SortableContext,
@@ -38,10 +39,22 @@ import {
 } from '@dnd-kit/modifiers';
 import { ConfirmDialog } from "@/components/ConfirmDialog";
 import WorldStorageService from '../services/WorldStorageService';
+import type { Stat, Entity, GameLocation, Trait, StatUpdate, DictionaryEntry } from '@/types';
+
+/** The fields a reorderable list row needs (every editor item has these). */
+interface ListItem {
+  id: string;
+  name: string;
+}
 
 // A single reorderable entry row. The grip is the drag handle (handle-only drag),
 // so clicking the row body still selects it.
-function SortableRow({ item, selected, onSelect, onRemove }) {
+function SortableRow({ item, selected, onSelect, onRemove }: {
+  item: ListItem;
+  selected: boolean;
+  onSelect: (id: string) => void;
+  onRemove: (id: string) => void;
+}) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } =
     useSortable({ id: item.id });
   const style = {
@@ -85,20 +98,23 @@ function SortableRow({ item, selected, onSelect, onRemove }) {
   );
 }
 
-const WorldEditor = ({ onClose, embedded = false }) => {
-  const { 
+const WorldEditor = ({ onClose, embedded = false }: {
+  onClose: () => void;
+  embedded?: boolean;
+}) => {
+  const {
     worldOverview,
     loadWorldData,
     stats, locations, entities, traits, statUpdates, dictionary,
     addStat, addLocation, addEntity, addTrait, addStatUpdate, addDictionaryEntry,
     removeStat, removeLocation, removeEntity, removeTrait, removeStatUpdate, removeDictionaryEntry,
     setStats, setLocations, setEntities, setTraits, setStatUpdates, setDictionary,
-    updateWorldOverview, worldId
+    worldId
   } = useGameData();
 
   const [activeTab, setActiveTab] = useState("overview");
   const [searchTerm, setSearchTerm] = useState('');
-  const [selectedItemId, setSelectedItemId] = useState(null);
+  const [selectedItemId, setSelectedItemId] = useState<string | null>(null);
 
   const downloadWorld = () => {
     const worldData = { worldOverview, stats, locations, entities, traits, statUpdates, dictionary };
@@ -134,13 +150,13 @@ const WorldEditor = ({ onClose, embedded = false }) => {
     }
   };
 
-  const loadWorld = (e) => {
+  const loadWorld = (e: ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files[0];
     if (file) {
       const reader = new FileReader();
       reader.onload = (e) => {
         try {
-          const loadedWorld = JSON.parse(e.target.result);
+          const loadedWorld = JSON.parse(e.target.result as string);
           loadWorldData(loadedWorld, false);
         } catch (error) {
           console.error('Error parsing JSON:', error);
@@ -155,7 +171,7 @@ const WorldEditor = ({ onClose, embedded = false }) => {
     if (searchTerm.trim()) {
       const newId = Date.now().toString();
       const newName = searchTerm.trim();
-      
+
       if (activeTab === "stats") {
         addStat({
           id: newId,
@@ -219,10 +235,10 @@ const WorldEditor = ({ onClose, embedded = false }) => {
   };
 
   const filteredItems = useMemo(() => {
-    const itemsToFilter = 
-      activeTab === "stats" ? stats : 
-      activeTab === "entities" ? entities : 
-      activeTab === "locations" ? locations : 
+    const itemsToFilter =
+      activeTab === "stats" ? stats :
+      activeTab === "entities" ? entities :
+      activeTab === "locations" ? locations :
       activeTab === "traits" ? traits :
       activeTab === "statUpdates" ? statUpdates :
       activeTab === "dictionary" ? dictionary : [];
@@ -250,7 +266,7 @@ const WorldEditor = ({ onClose, embedded = false }) => {
   );
 
   // Reorder the active tab's full array (filter-safe: located by id).
-  const handleRowDragEnd = (event) => {
+  const handleRowDragEnd = (event: DragEndEvent) => {
     const { active, over } = event;
     if (!over || active.id === over.id) return;
     const config = tabConfig[activeTab];
@@ -261,7 +277,7 @@ const WorldEditor = ({ onClose, embedded = false }) => {
     config.setItems(arrayMove(config.items, oldIndex, newIndex));
   };
 
-  const removeItem = (id) => {
+  const removeItem = (id: string) => {
     if (activeTab === "stats") {
       removeStat(id);
     } else if (activeTab === "entities") {
@@ -278,7 +294,7 @@ const WorldEditor = ({ onClose, embedded = false }) => {
     setSelectedItemId(null);
   };
 
-  const renderItemList = (items) => (
+  const renderItemList = (items: ListItem[]) => (
     <DndContext
       sensors={sensors}
       collisionDetection={closestCenter}
@@ -364,7 +380,7 @@ const WorldEditor = ({ onClose, embedded = false }) => {
                     </div>
                   </div>
                 )}
-                
+
                   <Tabs value={activeTab} onValueChange={setActiveTab} className="flex-grow flex flex-col min-h-0">
                       <TabsList className="flex-shrink-0">
                         <TabsTrigger value="overview">Overview</TabsTrigger>
@@ -433,22 +449,22 @@ const WorldEditor = ({ onClose, embedded = false }) => {
                 <ScrollArea className="h-full">
                   <div className="p-6">
                     {activeTab === "stats" && selectedItem && (
-                      <StatManager key={selectedItem.id} stat={selectedItem} />
+                      <StatManager key={selectedItem.id} stat={selectedItem as Stat} />
                     )}
                     {activeTab === "entities" && selectedItem && (
-                      <EntityManager key={selectedItem.id} entity={selectedItem} />
+                      <EntityManager key={selectedItem.id} entity={selectedItem as Entity} />
                     )}
                     {activeTab === "locations" && selectedItem && (
-                      <LocationManager key={selectedItem.id} location={selectedItem} />
+                      <LocationManager key={selectedItem.id} location={selectedItem as GameLocation} />
                     )}
                     {activeTab === "traits" && selectedItem && (
-                      <TraitManager key={selectedItem.id} trait={selectedItem} />
+                      <TraitManager key={selectedItem.id} trait={selectedItem as Trait} />
                     )}
                     {activeTab === "dictionary" && selectedItem && (
-                      <DictionaryManager key={selectedItem.id} entry={selectedItem} />
+                      <DictionaryManager key={selectedItem.id} entry={selectedItem as DictionaryEntry} />
                     )}
                     {activeTab === "statUpdates" && selectedItem && (
-                      <StatUpdatesManager key={selectedItem.id} statUpdate={selectedItem} />
+                      <StatUpdatesManager key={selectedItem.id} statUpdate={selectedItem as StatUpdate} />
                     )}
                   </div>
                 </ScrollArea>

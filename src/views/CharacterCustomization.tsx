@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import { useState } from 'react';
 import { Slider } from "@/components/ui/slider"
 import { Label } from "@/components/ui/label"
 import { Input } from "@/components/ui/input"
@@ -7,22 +7,25 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Button } from "@/components/ui/button"
 import VRMViewer from './VRMViewer';
 import { useGameData } from '../contexts/GameDataContext';
+import type { CharacterData } from '@/types';
 
-const CharacterCustomization = ({onCharacterCustomized }) => {
+const CharacterCustomization = ({ onCharacterCustomized }: {
+  onCharacterCustomized: (data: CharacterData) => void;
+}) => {
   const { worldOverview } = useGameData();
   const [bodyShape, setBodyShape] = useState({
     pear: 0,
     apple: 0,
     hourglass: 0
   });
-  const [bellySize, setBellySize] = useState(0);
+  const [bellySize] = useState(0);
   const [breastsSize, setBreastsSize] = useState(0);
   const [bodyWeight, setBodyWeight] = useState(0);
   const [hairColor, setHairColor] = useState('#7d0909');
   const [eyeColor, setEyeColor] = useState('#86ff70');
   const [skinColor, setSkinColor] = useState('#fcdec7');
- 
-  const [hairTypes, setHairTypes] = useState({
+
+  const [hairTypes] = useState({
     ponytail: {
       shapekey: 'Hair',
       canChangeLength: true
@@ -47,30 +50,18 @@ const CharacterCustomization = ({onCharacterCustomized }) => {
       currentHairStyle,
       hairLength
     };
-    onCharacterCustomized({...characterData, hairTypes:hairTypes});
+    onCharacterCustomized({ ...characterData, hairTypes: hairTypes });
   };
 
-  const handleBodyShapeChange = (shape, value) => {
+  const handleBodyShapeChange = (shape: string, value: number[]) => {
     setBodyShape(prev => ({ ...prev, [shape]: value[0] }));
   };
 
-  const handleHairStyleChange = (value) => {
+  const handleHairStyleChange = (value: string) => {
     setCurrentHairStyle(value);
     if (!hairTypes[value].canChangeLength) {
       setHairLength(0);
     }
-  };
-
-  const customizationProps = {
-    bodyShape,
-    bellySize,
-    breastsSize,
-    bodyWeight,
-    hairColor,
-    eyeColor,
-    skinColor,
-    currentHairStyle,
-    hairLength
   };
 
   return (
@@ -82,15 +73,15 @@ const CharacterCustomization = ({onCharacterCustomized }) => {
         <CardContent className="flex flex-col items-center justify-center h-full">
           {/* Adjust the VRMViewer container */}
           <div className="w-full h-full" style={{ aspectRatio: '3/4' }}>
-            <VRMViewer 
-              bellySize={bellySize} 
-              breastSize={breastsSize} 
-              bodyWeight={bodyWeight} 
-              hairColor={hairColor} 
-              eyeColor={eyeColor} 
+            <VRMViewer
+              bellySize={bellySize}
+              breastSize={breastsSize}
+              bodyWeight={bodyWeight}
+              hairColor={hairColor}
+              eyeColor={eyeColor}
               skinColor={skinColor}
-              hairTypes={hairTypes} 
-              currentHairStyle={currentHairStyle} 
+              hairTypes={hairTypes}
+              currentHairStyle={currentHairStyle}
               hairLength={hairLength}
               bodyShape={bodyShape}
               modelUrl={worldOverview?.customPlayerVRM?.data || undefined}
@@ -137,7 +128,7 @@ const CharacterCustomization = ({onCharacterCustomized }) => {
               </div>
             )}
           </div>
-          
+
           <div className="space-y-4">
             <h3 className="text-lg font-semibold">Body Shape</h3>
             {Object.entries(bodyShape).map(([shape, value]) => (
@@ -156,8 +147,7 @@ const CharacterCustomization = ({onCharacterCustomized }) => {
             ))}
           </div>
 
-      
-          
+
 
           <div className="space-y-4">
             <h3 className="text-lg font-semibold">Initial Body Features</h3>
@@ -201,7 +191,7 @@ const CharacterCustomization = ({onCharacterCustomized }) => {
                 <span className="text-sm text-muted-foreground">{value}</span>
               </div>
             ))}
-          
+
           </div>
         </CardContent>
       </Card>
