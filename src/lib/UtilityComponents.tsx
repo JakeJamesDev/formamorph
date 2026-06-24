@@ -5,6 +5,7 @@ import { Upload, Box as LucideBox, Music, X } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import ModelViewer from '../views/ModelViewer';
+import AudioPlayer from '../components/game/AudioPlayer';
 
 /** An uploaded media file, base64-encoded as a data URL. */
 interface UploadedMedia {
@@ -116,8 +117,8 @@ export const SoundUpload = ({ onChange, id, value }: {
       <Label htmlFor={`sound-upload-${id}`} className="cursor-pointer">
         <div className="flex items-center justify-center border-2 border-dashed border-gray-300 rounded-md p-4">
           {value ? (
-            <div className="w-full">
-              <audio src={value.data} controls className="w-full" />
+            <div className="w-full" onClick={(e) => e.preventDefault()}>
+              <AudioPlayer src={value.data} className="w-full" />
               <p className="text-sm text-gray-500 mt-2">{value.name}</p>
             </div>
           ) : (

@@ -3,6 +3,7 @@ import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { getModelType } from '../../lib/UtilityComponents';
 import ModelViewer from '../../views/ModelViewer';
+import AudioPlayer from '../game/AudioPlayer';
 import type { Entity } from "@/types";
 
 export const EntityModal = ({ entity, isOpen, onOpenChange }: {
@@ -25,10 +26,7 @@ export const EntityModal = ({ entity, isOpen, onOpenChange }: {
             )}
             <p>{entity.inGameDescription}</p>
             {entity.sound && (
-              <audio controls>
-                <source src={entity.sound.data} type={entity.sound.type} />
-                Your browser does not support the audio element.
-              </audio>
+              <AudioPlayer src={entity.sound.data} className="w-full" />
             )}
             {entity.model && (
               <Dialog>
