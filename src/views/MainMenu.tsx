@@ -1919,7 +1919,7 @@ const MainMenu = ({ onStartGame, onOpenWorldEditor }) => {
                   return (
                     <div
                       key={worldId}
-                      className="relative rounded-lg border border-gray-200 dark:border-gray-700 cursor-pointer bg-background"
+                      className="relative flex flex-col rounded-lg border border-gray-200 dark:border-gray-700 cursor-pointer bg-background"
                       onClick={() => handleViewRemoteWorldDetails(world)}
                     >
                       <button
@@ -1951,7 +1951,7 @@ const MainMenu = ({ onStartGame, onOpenWorldEditor }) => {
                         )}
                       </div>
 
-                      <div className="p-4">
+                      <div className="p-4 flex flex-col flex-grow">
                         <h3 className="font-semibold text-lg mb-1">{world.name}</h3>
                         <p className="text-sm text-gray-600 dark:text-gray-400 mb-2 line-clamp-2">
                           {world.description || "No description available."}
@@ -1981,7 +1981,7 @@ const MainMenu = ({ onStartGame, onOpenWorldEditor }) => {
                           <CardTags tags={world.tags || []} onHide={hideRemoteTag} />
                         </div>
 
-                        <div className="flex justify-between items-center">
+                        <div className="relative mt-auto pt-1 flex items-center justify-center">
                           <Button
                             size="sm"
                             onClick={() => handleDownloadWorld(world)}
@@ -1992,7 +1992,7 @@ const MainMenu = ({ onStartGame, onOpenWorldEditor }) => {
 
                           {(isOwnedByUser || currentUser?.accountType === "admin") && (
                             <button
-                              className="p-1 text-red-500 hover:text-red-700"
+                              className="absolute right-0 top-1/2 -translate-y-1/2 p-1 text-red-500 hover:text-red-700"
                               onClick={() => setRemoteWorldToDelete(worldId)}
                               aria-label="Delete world"
                             >
