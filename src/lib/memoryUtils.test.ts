@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { estimateHistoryChars } from './memoryUtils';
+import { estimateHistoryChars, estimateTokens } from './memoryUtils';
 import type { ChatMessage } from '@/types';
 
 describe('estimateHistoryChars', () => {
@@ -38,5 +38,18 @@ describe('estimateHistoryChars', () => {
       { role: 'assistant', content: JSON.stringify({ game_text: 'abc' }) },
     ];
     expect(estimateHistoryChars(history)).toBe(8);
+  });
+});
+
+describe('estimateTokens', () => {
+  it('approximates ~4 characters per token, rounding up', () => {
+    expect(estimateTokens(0)).toBe(0);
+    expect(estimateTokens(4)).toBe(1);
+    expect(estimateTokens(5)).toBe(2);
+    expect(estimateTokens(10512)).toBe(2628);
+  });
+
+  it('clamps negative counts to zero', () => {
+    expect(estimateTokens(-10)).toBe(0);
   });
 });

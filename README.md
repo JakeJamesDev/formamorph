@@ -56,7 +56,7 @@ All configuration is **optional** — the app ships with working defaults, and t
 | `VITE_DEFAULT_ENDPOINT` | Full chat-completions URL (the app appends no path) |
 | `VITE_DEFAULT_API_TOKEN` | API token for that endpoint |
 | `VITE_DEFAULT_MODEL_NAME` | Default model name |
-| `VITE_DEFAULT_AI_MESSAGE_LIMIT` | Context/memory budget for message history |
+| `VITE_DEFAULT_CONTEXT_WINDOW` | Model context window in tokens (auto-detected from the endpoint when possible) |
 | `VITE_DEFAULT_MAX_TOKENS` | Max tokens per AI response |
 | `VITE_API_URL_DEV` | Workshop backend URL (worlds / auth) |
 

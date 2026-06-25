@@ -1,10 +1,9 @@
 import type { ChatMessage } from '@/types';
 
 /**
- * Approximate the "memory" (character) cost of a chat history, matching what
- * getTrimmedMessageHistory actually sends: assistant messages count only their
- * `game_text`, not the choices/stat_changes JSON wrapper. The Max Memory setting
- * (aiMessageLimit) is measured in these same characters.
+ * Approximate the character cost of a chat history, matching what getTrimmedMessageHistory
+ * actually sends: assistant messages count only their `game_text`, not the choices/stat_changes
+ * JSON wrapper. Pair with `estimateTokens` to gauge the history's token cost.
  */
 export function estimateHistoryChars(history: ChatMessage[]): number {
   let total = 0;
@@ -22,4 +21,9 @@ export function estimateHistoryChars(history: ChatMessage[]): number {
     }
   }
   return total;
+}
+
+/** Rough token estimate from a character count (~4 chars/token). For display gauges only. */
+export function estimateTokens(chars: number): number {
+  return Math.ceil(Math.max(0, chars) / 4);
 }

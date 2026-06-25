@@ -30,7 +30,7 @@ import { MenuModal } from "../components/modals/MenuModal";
 import WorldEditor from "./WorldEditor";
 import type { CharacterData, ChatMessage, ChatRole, PlayerStat, AIRequestType, StatChange, Trait, GameLocation, MediaAsset } from "@/types";
 import { UnsavedChangesDialog } from "../components/UnsavedChangesDialog";
-import { estimateHistoryChars } from "../lib/memoryUtils";
+import { estimateHistoryChars, estimateTokens } from "../lib/memoryUtils";
 import { parseGameText, stripReasoning, stripReasoningLive } from "../lib/aiResponse";
 import { INLINE_THINKING_DIRECTIVE } from "../components/game/GamePrompts";
 import { lengthGuidance, trimToLastSentence } from "../lib/outputLength";
@@ -106,7 +106,7 @@ const GameViewer = ({
     activeApiToken: apiToken,
     activeModelName: modelName,
     activeMaxTokens: maxTokens,
-    activeAiMessageLimit: aiMessageLimit,
+    contextWindow,
     systemPrompt,
     choicesPrompt,
     statUpdatesPrompt,
@@ -343,9 +343,14 @@ const GameViewer = ({
     setFullMessageHistory((prev) => [...prev, { role, content }]);
   }, [setFullMessageHistory]);
 
-  const getTrimmedMessageHistory = useCallback(() => {
+  const getTrimmedMessageHistory = useCallback((promptTokens = 0) => {
     let trimmedHistory: ChatMessage[] = [];
-    let currentLength = 0;
+    let usedTokens = 0;
+
+    // History gets whatever's left of the context window after the system prompt and reserved output,
+    // minus a small safety margin (token estimates can under-count the real tokenizer).
+    const margin = Math.max(256, Math.round(contextWindow * 0.05));
+    const historyBudget = Math.max(0, contextWindow - promptTokens - maxTokens - margin);
 
     // Start from most recent messages and work backwards
     for (let i = fullMessageHistory.length - 1; i >= 1; i -= 2) {
@@ -367,20 +372,19 @@ const GameViewer = ({
         continue; // Skip if parsing fails
       }
 
-      const messagePair = JSON.stringify([userMessage, assistantGameText]);
-      const pairLength = messagePair.length;
+      const pairTokens = estimateTokens(JSON.stringify([userMessage, assistantGameText]).length);
 
-      // Check if adding this pair would exceed the limit
-      if (currentLength + pairLength <= aiMessageLimit) {
+      // Check if adding this pair would exceed the history budget
+      if (usedTokens + pairTokens <= historyBudget) {
         trimmedHistory = [userMessage, assistantGameText, ...trimmedHistory];
-        currentLength += pairLength;
+        usedTokens += pairTokens;
       } else {
         break;
       }
     }
 
     return trimmedHistory;
-  }, [fullMessageHistory, aiMessageLimit]);
+  }, [fullMessageHistory, contextWindow, maxTokens]);
 
   // Function to calculate percentage of a stat
   const calculateFIXEDStatPercentage = (stat: PlayerStat) => {
@@ -615,8 +619,8 @@ ${playerNotes || "No notes available"}
       updatedPrompt += `\n\n${dictionaryContext}`;
     }
 
-    // Get trimmed history before adding new action
-    const trimmedHistory = getTrimmedMessageHistory();
+    // Get trimmed history before adding new action (history fills the window left by the prompt)
+    const trimmedHistory = getTrimmedMessageHistory(estimateTokens(updatedPrompt.length));
 
     try {
       // Clear the box now (the action is captured in `action`), so anything the player types
@@ -1315,23 +1319,26 @@ ${playerNotes || "No notes available"}
   })() : null;
 
   const memoryBar = (() => {
-    const limit = aiMessageLimit || 1;
-    const promptChars = lastPromptChars;
-    const historyChars = estimateHistoryChars(fullMessageHistory);
-    const outputChars = maxTokens;
-    const promptPct = (promptChars / limit) * 100;
-    const historyPct = (historyChars / limit) * 100;
-    const outputPct = (outputChars / limit) * 100;
-    const usedPct = promptPct + historyPct + outputPct;
-    const availablePct = Math.max(0, 100 - usedPct);
+    // Token breakdown of the model's context window: prompt + history + reserved output vs the window.
+    const windowTokens = contextWindow || 1;
+    const promptTokens = estimateTokens(lastPromptChars);
+    const trimmed = getTrimmedMessageHistory(promptTokens);
+    const historyTokens = estimateTokens(estimateHistoryChars(trimmed)); // what's actually sent
+    const outputTokens = maxTokens;
+    const usedTokens = promptTokens + historyTokens + outputTokens;
+    const pct = (n: number) => (n / windowTokens) * 100;
+    const usedPct = pct(usedTokens);
+    const availableTokens = Math.max(0, windowTokens - usedTokens);
     const fillPct = Math.min(100, usedPct);
     const barColor =
       usedPct >= 90
         ? "bg-red-500"
-        : usedPct >= 50
+        : usedPct >= 70
           ? "bg-yellow-500"
           : "bg-green-500";
-    const trimmed = getTrimmedMessageHistory();
+    const row = (label: string, tokens: number) => (
+      <div className="flex justify-between"><span>{label}:</span><span>{tokens.toLocaleString()} tok ({pct(tokens).toFixed(0)}%)</span></div>
+    );
     return (
       <div className="flex items-center gap-2 mb-1">
         <Popover>
@@ -1343,13 +1350,13 @@ ${playerNotes || "No notes available"}
               <Database className="h-4 w-4" />
             </button>
           </PopoverTrigger>
-          <PopoverContent align="start" className="w-56 text-xs space-y-1">
-            <div className="font-semibold">Memory Usage Breakdown:</div>
-            <div className="flex justify-between"><span>Prompt:</span><span>{promptPct.toFixed(1)}%</span></div>
-            <div className="flex justify-between"><span>History:</span><span>{historyPct.toFixed(1)}%</span></div>
-            <div className="flex justify-between"><span>Output Tokens:</span><span>{outputPct.toFixed(1)}%</span></div>
+          <PopoverContent align="start" className="w-64 text-xs space-y-1">
+            <div className="font-semibold">Context window: {windowTokens.toLocaleString()} tok</div>
+            {row("Prompt", promptTokens)}
+            {row("History", historyTokens)}
+            {row("Reserved output", outputTokens)}
+            <div className="flex justify-between font-medium"><span>Available:</span><span>{availableTokens.toLocaleString()} tok ({Math.max(0, 100 - usedPct).toFixed(0)}%)</span></div>
             <div className="flex justify-between"><span>Messages kept:</span><span>{trimmed.length} / {fullMessageHistory.length}</span></div>
-            <div className="flex justify-between font-medium"><span>Available:</span><span>{availablePct.toFixed(1)}%</span></div>
           </PopoverContent>
         </Popover>
         <div className="flex-grow h-2 rounded-full bg-muted/70 overflow-hidden">
