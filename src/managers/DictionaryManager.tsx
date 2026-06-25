@@ -88,7 +88,7 @@ function KeywordChips({ keywords, onChange }: { keywords: string[]; onChange: (k
         .map((p) => p.trim())
         .filter((p) => p && !keywords.includes(p));
       if (toAdd.length) onChange([...keywords, ...toAdd]);
-      setInputValue(last);
+      setInputValue(last ?? '');
     } else {
       setInputValue(v);
     }

@@ -19,7 +19,7 @@ export const processStatCode = async (stats: Stat[]) => {
     .map(async (stat) => {
       try {
         // Execute the code with all stats as context
-        const result = await executeStatCode(stat.code, updatedStats, stat);
+        const result = await executeStatCode(stat.code!, updatedStats, stat);
 
         if (result.error) {
           console.error(`Error executing code for stat ${stat.name}:`, result.error);

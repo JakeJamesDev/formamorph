@@ -5,7 +5,26 @@ import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
 import { VRMLoaderPlugin, VRMUtils } from '@pixiv/three-vrm';
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
 import { FBXLoader } from 'three/examples/jsm/loaders/FBXLoader.js';
+import type { GLTF } from 'three/examples/jsm/loaders/GLTFLoader.js';
+import type { VRM, VRMHumanBoneName } from '@pixiv/three-vrm';
 import type { BodyShape, HairTypeDef } from '@/types';
+
+// VRM/MToon material: the base three Material plus the standard/MToon fields the color code touches.
+type VrmMaterial = THREE.Material & {
+  color?: THREE.Color;
+  map?: THREE.Texture | null;
+  shadeColorFactor?: THREE.Color;
+  isOutline?: boolean;
+};
+
+// A scene object viewed as a (possibly morph-target) mesh — three's Mesh fields, optional on Object3D.
+type MorphMesh = THREE.Object3D & {
+  isMesh?: boolean;
+  material?: VrmMaterial | VrmMaterial[];
+  geometry?: THREE.BufferGeometry;
+  morphTargetDictionary?: Record<string, number>;
+  morphTargetInfluences?: number[];
+};
 
 /** Which optional customization morphs the loaded VRM actually exposes, so the UI can hide unsupported sliders. */
 export interface VRMCapabilities {
@@ -47,7 +66,7 @@ interface VRMViewerProps {
 }
 
 // Mixamo VRM Rig Mapping
-const mixamoVRMRigMap = {
+const mixamoVRMRigMap: Record<string, string> = {
   mixamorigHips: 'hips',
   mixamorigSpine: 'spine',
   mixamorigSpine1: 'chest',
@@ -117,60 +136,62 @@ const VRMViewer = forwardRef<VRMViewerHandle, VRMViewerProps>(({
   extraColors,
   onCapabilities
 }, ref) => {
-  const mountRef = useRef(null);
-  const sceneRef = useRef(null);
-  const cameraRef = useRef(null);
-  const rendererRef = useRef(null);
-  const controlsRef = useRef(null);
-  const vrmRef = useRef(null);
-  const mixerRef = useRef(null);
-  const gltfRef = useRef(null);
-  
-  const animationsRef = useRef({});
-  const currentAnimationRef = useRef(null);
+  const mountRef = useRef<HTMLDivElement | null>(null);
+  const sceneRef = useRef<THREE.Scene | null>(null);
+  const cameraRef = useRef<THREE.PerspectiveCamera | null>(null);
+  const rendererRef = useRef<THREE.WebGLRenderer | null>(null);
+  const controlsRef = useRef<OrbitControls | null>(null);
+  const vrmRef = useRef<VRM | null>(null);
+  const mixerRef = useRef<THREE.AnimationMixer | null>(null);
+  const gltfRef = useRef<GLTF | null>(null);
+
+  const animationsRef = useRef<Record<string, THREE.AnimationClip>>({});
+  const currentAnimationRef = useRef<THREE.AnimationAction | null>(null);
   const animationIndexRef = useRef(0);
-  const extrasAppliedRef = useRef({});
+  const extrasAppliedRef = useRef<Record<string, string>>({});
 
   const [ready, setReady] = useState(false);
 
-  const findMesh= (meshName, gltf) =>{
-    return gltf.scene.children.find(child => child.name === meshName);
-  }
+  const findMesh = (meshName: string, gltf: GLTF) => {
+    return gltf.scene.children.find((child) => child.name === meshName);
+  };
 
   // The morph-target dictionary for a named mesh (matches setMorphTarget's lookup), or null if absent.
-  const getMorphDict = (meshName, gltf) => {
+  const getMorphDict = (meshName: string, gltf: GLTF) => {
     const mesh = findMesh(meshName, gltf);
     if (!mesh) return null;
-    const child = mesh.children[0] || mesh;
+    const child = (mesh.children[0] || mesh) as MorphMesh;
     return child.morphTargetDictionary || null;
   };
 
   // --- Color customization: tint skin/hair/eye materials to match the pickers, on the GPU (no per-pixel work). ---
-  const hexToRgb = (hex) => [parseInt(hex.slice(1, 3), 16), parseInt(hex.slice(3, 5), 16), parseInt(hex.slice(5, 7), 16)];
+  const hexToRgb = (hex: string) => [parseInt(hex.slice(1, 3), 16), parseInt(hex.slice(3, 5), 16), parseInt(hex.slice(5, 7), 16)];
 
   // Capture (and cache) a material's base-color texture pixels once, for averaging.
-  const getOriginalImageData = (material) => {
+  const getOriginalImageData = (material: VrmMaterial): ImageData | null => {
     if (material.userData.__origImageData !== undefined) return material.userData.__origImageData;
-    const img = material.map?.image;
-    let result = null;
+    const img = material.map?.image as HTMLImageElement | undefined;
+    let result: ImageData | null = null;
     if (img && img.width && img.height) {
       const canvas = document.createElement('canvas');
       canvas.width = img.width; canvas.height = img.height;
       const ctx = canvas.getContext('2d');
-      try {
-        ctx.drawImage(img, 0, 0);
-        result = ctx.getImageData(0, 0, img.width, img.height);
-      } catch { result = null; }
+      if (ctx) {
+        try {
+          ctx.drawImage(img, 0, 0);
+          result = ctx.getImageData(0, 0, img.width, img.height);
+        } catch { result = null; }
+      }
     }
     material.userData.__origImageData = result;
     return result;
   };
 
   // Average opaque pixels of a material's texture → normalized [r,g,b] (0..1), cached. Null if it has no texture.
-  const getAvgRGB = (material) => {
+  const getAvgRGB = (material: VrmMaterial): number[] | null => {
     if (material.userData.__avgRGB !== undefined) return material.userData.__avgRGB;
     const src = getOriginalImageData(material);
-    let avg = null;
+    let avg: number[] | null = null;
     if (src) {
       const d = src.data;
       let r = 0, g = 0, b = 0, n = 0;
@@ -185,7 +206,7 @@ const VRMViewer = forwardRef<VRMViewerHandle, VRMViewerProps>(({
   };
 
   // A representative current color for a material (to seed a picker): texture average, else the color factor.
-  const averageColor = (material) => {
+  const averageColor = (material: VrmMaterial) => {
     const avg = getAvgRGB(material);
     const rgb = avg ?? (material.color?.isColor ? [material.color.r, material.color.g, material.color.b] : null);
     if (!rgb) return null;
@@ -195,7 +216,7 @@ const VRMViewer = forwardRef<VRMViewerHandle, VRMViewerProps>(({
   // GPU tint (no per-pixel work). Textured material: scale the color factor so the texture's average shifts to
   // `hex` (result ≈ texture × target/avg → matches the picker; target==avg is identity). Factor-only material
   // (no texture, e.g. some Blender exports): set the color factor to `hex` directly.
-  const tintByAverage = (material, hex) => {
+  const tintByAverage = (material: VrmMaterial, hex: string) => {
     // Remember the untinted colors once, so a revert can restore them exactly.
     if (material.userData.__origColor === undefined)
       material.userData.__origColor = material.color?.isColor ? material.color.clone() : null;
@@ -205,7 +226,7 @@ const VRMViewer = forwardRef<VRMViewerHandle, VRMViewerProps>(({
     const avg = getAvgRGB(material);
     let r = tr, g = tg, b = tb;
     if (avg) {
-      const f = (t, a) => Math.max(0, Math.min(4, t / Math.max(a, 0.01)));
+      const f = (t: number, a: number) => Math.max(0, Math.min(4, t / Math.max(a, 0.01)));
       r = f(tr, avg[0]); g = f(tg, avg[1]); b = f(tb, avg[2]);
     }
     if (material.color?.isColor) material.color.setRGB(r, g, b);
@@ -217,7 +238,7 @@ const VRMViewer = forwardRef<VRMViewerHandle, VRMViewerProps>(({
   // VRoid (materials like *_SKIN/*_HAIR/EyeIris) and other rigs (meshes named Body/Hair/...). Clothing is excluded
   // from skin so garments sharing the Body mesh aren't recolored.
   const clothWords = ['cloth', 'top', 'bottom', 'shoe', 'skirt', 'pant', 'shirt', 'dress', 'jacket', 'sock', 'glove', 'sleeve', 'coat', 'bra', 'accessor'];
-  const channelMatch = (channel, matName, meshName) => {
+  const channelMatch = (channel: string, matName: string, meshName: string) => {
     const m = (matName || '').toLowerCase();
     const mesh = (meshName || '').toLowerCase();
     if (channel === 'hair') return m.includes('hair') || mesh.includes('hair');
@@ -230,36 +251,29 @@ const VRMViewer = forwardRef<VRMViewerHandle, VRMViewerProps>(({
   };
 
   // Run `fn` on every material in the current VRM that belongs to `channel`.
-  const forEachChannelMaterial = (channel, fn) => {
+  const forEachChannelMaterial = (channel: string, fn: (m: VrmMaterial) => void) => {
     vrmRef.current?.scene.traverse((obj) => {
-      if (!obj.isMesh) return;
-      const mats = Array.isArray(obj.material) ? obj.material : [obj.material];
+      const mesh = obj as MorphMesh;
+      if (!mesh.isMesh || !mesh.material) return;
+      const mats = Array.isArray(mesh.material) ? mesh.material : [mesh.material];
       mats.forEach((m) => {
-        if (m && !m.isOutline && channelMatch(channel, m.name, obj.name)) fn(m);
+        if (m && !m.isOutline && channelMatch(channel, m.name, mesh.name)) fn(m);
       });
     });
   };
 
   
-  const setMorphTarget = (meshName, morphTargetName, value, gltf) => {
+  const setMorphTarget = (meshName: string, morphTargetName: string, value: number, gltf: GLTF) => {
     if (!gltf.scene)
       return;
-    
-      // const dict = {
-      //   "Belly":0,
-      //   "Breasts":1,
-      //   "Weight":2
-      // }
 
-    let mesh = gltf.scene.children.find(child => child.name === meshName);
+    let mesh = gltf.scene.children.find((child) => child.name === meshName);
     if (!mesh)
         mesh = findMesh(meshName, gltf);
-    let child = mesh.children[0];
-    if (!child)
-      child = mesh;
-    //console.log(mesh)
-    if (mesh && child.morphTargetDictionary) {
-      const morphTargetIndex = child.morphTargetDictionary[morphTargetName];//dict[morphTargetName];
+    if (!mesh) return;
+    const child = (mesh.children[0] || mesh) as MorphMesh;
+    if (child.morphTargetDictionary && child.morphTargetInfluences) {
+      const morphTargetIndex = child.morphTargetDictionary[morphTargetName];
       if (morphTargetIndex !== undefined) {
         child.morphTargetInfluences[morphTargetIndex] = value;
       } else {
@@ -273,19 +287,19 @@ const VRMViewer = forwardRef<VRMViewerHandle, VRMViewerProps>(({
   // Hair "styles" are the model's distinct hair meshes — top-level scene nodes named like *hair*.
   // Scanning only direct children (not a full traverse) keeps actual hair meshes (Hair, Hair.001) while
   // ignoring VRM spring-bone joints (e.g. J_Sec_Hair*) that live deep under the armature.
-  const getHairMeshes = (gltf) =>
-    gltf.scene.children.filter(c => c.name && c.name.toLowerCase().includes('hair'));
+  const getHairMeshes = (gltf: GLTF) =>
+    gltf.scene.children.filter((c) => c.name && c.name.toLowerCase().includes('hair'));
 
   // Set a LENGTH morph directly on a hair object (works even when it isn't a direct scene child).
-  const applyHairLength = (obj, value) => {
-    const child = obj.children[0] || obj;
+  const applyHairLength = (obj: THREE.Object3D, value: number) => {
+    const child = (obj.children[0] || obj) as MorphMesh;
     const dict = child.morphTargetDictionary;
     if (dict && 'LENGTH' in dict && child.morphTargetInfluences) {
       child.morphTargetInfluences[dict['LENGTH']] = value;
     }
   };
 
-  const updateHairStyle = (gltf) => {
+  const updateHairStyle = (gltf: GLTF) => {
     const hairMeshes = getHairMeshes(gltf);
     // Multiple hair meshes = selectable styles; show only the chosen one. If the selection matches none
     // (e.g. skipped customization or a model swap), show the first so the avatar is never left bald.
@@ -299,27 +313,28 @@ const VRMViewer = forwardRef<VRMViewerHandle, VRMViewerProps>(({
   };
 
   // Apply `fn` to a target's materials: a channel keyword ('hair'|'skin'|'eye') or an exact extra-material name.
-  const forEachTargetMaterial = (target, fn) => {
+  const forEachTargetMaterial = (target: string, fn: (m: VrmMaterial) => void) => {
     if (target === 'hair' || target === 'skin' || target === 'eye') return forEachChannelMaterial(target, fn);
     vrmRef.current?.scene.traverse((obj) => {
-      if (!obj.isMesh) return;
-      const mats = Array.isArray(obj.material) ? obj.material : [obj.material];
+      const mesh = obj as MorphMesh;
+      if (!mesh.isMesh || !mesh.material) return;
+      const mats = Array.isArray(mesh.material) ? mesh.material : [mesh.material];
       mats.forEach((m) => { if (m && !m.isOutline && m.name === target) fn(m); });
     });
   };
 
-  const tintTarget = (target, hex) => forEachTargetMaterial(target, (m) => tintByAverage(m, hex));
+  const tintTarget = (target: string, hex: string) => forEachTargetMaterial(target, (m) => tintByAverage(m, hex));
 
   // Restore a target's materials to their untinted colors (the "no color" / revert state).
-  const resetTarget = (target) => forEachTargetMaterial(target, (m) => {
-    if (m.userData.__origColor) m.color.copy(m.userData.__origColor);
-    if (m.userData.__origShade) m.shadeColorFactor.copy(m.userData.__origShade);
+  const resetTarget = (target: string) => forEachTargetMaterial(target, (m) => {
+    if (m.userData.__origColor) m.color?.copy(m.userData.__origColor);
+    if (m.userData.__origShade) m.shadeColorFactor?.copy(m.userData.__origShade);
     m.needsUpdate = true;
   });
 
   // Calculated representative color of a target (its first material's average) — for seeding a picker.
-  const calcColor = (target) => {
-    let c = null;
+  const calcColor = (target: string) => {
+    let c: string | null = null;
     forEachTargetMaterial(target, (m) => { if (!c) c = averageColor(m); });
     return c;
   };
@@ -327,11 +342,12 @@ const VRMViewer = forwardRef<VRMViewerHandle, VRMViewerProps>(({
   useImperativeHandle(ref, () => ({ calcColor }), []);
 
   // Extra colorable materials = anything that isn't a primary channel or a face/eye detail (clothing, etc.).
-  const getColorableExtras = (gltf) => {
+  const getColorableExtras = (gltf: GLTF) => {
     const names = new Set<string>();
     gltf.scene.traverse((obj) => {
-      if (!obj.isMesh) return;
-      const mats = Array.isArray(obj.material) ? obj.material : [obj.material];
+      const mesh = obj as MorphMesh;
+      if (!mesh.isMesh || !mesh.material) return;
+      const mats = Array.isArray(mesh.material) ? mesh.material : [mesh.material];
       mats.forEach((m) => {
         if (!m || !m.name || m.isOutline) return;
         if (channelMatch('hair', m.name, obj.name) || channelMatch('skin', m.name, obj.name) || channelMatch('eye', m.name, obj.name)) return;
@@ -359,11 +375,11 @@ const VRMViewer = forwardRef<VRMViewerHandle, VRMViewerProps>(({
       if (aspectRatio < 1) {
         // Portrait orientation
         cameraRef.current.position.set(0.0, 1.2, 3.0); // Closer view, slightly higher
-        controlsRef.current.target.set(0.0, 1.0, 0.0); // Look at upper body
+        controlsRef.current?.target.set(0.0, 1.0, 0.0); // Look at upper body
       } else {
         // Landscape orientation
         cameraRef.current.position.set(0.0, 1.0, 5.0);
-        controlsRef.current.target.set(0.0, 1.0, 0.0);
+        controlsRef.current?.target.set(0.0, 1.0, 0.0);
       }
       
       if (controlsRef.current) {
@@ -417,8 +433,8 @@ const VRMViewer = forwardRef<VRMViewerHandle, VRMViewerProps>(({
     loader.load(
       modelUrl,
       (gltf) => {
-        const vrm = gltf.userData.vrm;
-        
+        const vrm: VRM = gltf.userData.vrm;
+
         scene.add(vrm.scene);
         vrmRef.current = vrm;
         gltfRef.current = gltf;
@@ -448,17 +464,17 @@ const VRMViewer = forwardRef<VRMViewerHandle, VRMViewerProps>(({
           const bodyMorphs = ['Belly', 'Breasts', 'Fat', 'B_Pear', 'B_HourGlass', 'B_Apple'].filter(n => n in bodyDict);
           const hairMeshes = getHairMeshes(gltf);
           const styles = hairMeshes.map(c => c.name);
-          const hairLengthSupported = hairMeshes.some(c => {
-            const child = c.children[0] || c;
+          const hairLengthSupported = hairMeshes.some((c) => {
+            const child = (c.children[0] || c) as MorphMesh;
             return child.morphTargetDictionary && 'LENGTH' in child.morphTargetDictionary;
           });
           // Sample each part's current color from its texture so the pickers start at the model's real colors.
-          const sampleColor = (channel) => {
-            let c = null;
+          const sampleColor = (channel: string) => {
+            let c: string | null = null;
             forEachChannelMaterial(channel, (m) => { if (!c) c = averageColor(m); });
             return c;
           };
-          const colors = { hair: sampleColor('hair'), skin: sampleColor('skin'), eye: sampleColor('eye') };
+          const colors = { hair: sampleColor('hair') ?? undefined, skin: sampleColor('skin') ?? undefined, eye: sampleColor('eye') ?? undefined };
           onCapabilities({ bodyMorphs, hairStyles: styles, hairLength: hairLengthSupported, colors, extras: getColorableExtras(gltf) });
         }
 
@@ -477,8 +493,8 @@ const VRMViewer = forwardRef<VRMViewerHandle, VRMViewerProps>(({
     
 
     // Load Mixamo animation
-    const loadMixamoAnimation = (animationPath) => {
-      const animationName = animationPath.split('/').pop().split('.')[0]; // Extract name from filename
+    const loadMixamoAnimation = (animationPath: string) => {
+      const animationName = (animationPath.split('/').pop() ?? '').split('.')[0]; // Extract name from filename
       const loader = new FBXLoader();
       loader.load(animationPath, (asset) => {
         const clip = THREE.AnimationClip.findByName(asset.animations, 'mixamo.com');
@@ -490,7 +506,7 @@ const VRMViewer = forwardRef<VRMViewerHandle, VRMViewerProps>(({
 
         
 
-        const tracks = [];
+        const tracks: THREE.KeyframeTrack[] = [];
 
         const restRotationInverse = new THREE.Quaternion();
         const parentRestWorldRotation = new THREE.Quaternion();
@@ -498,8 +514,8 @@ const VRMViewer = forwardRef<VRMViewerHandle, VRMViewerProps>(({
         const _vec3 = new THREE.Vector3();
 
         // Adjust with reference to hips height
-        const motionHipsHeight = asset.getObjectByName('mixamorigHips').position.y;
-        const vrmHipsY = vrmRef.current.humanoid?.getNormalizedBoneNode('hips').getWorldPosition(_vec3).y;
+        const motionHipsHeight = asset.getObjectByName('mixamorigHips')!.position.y;
+        const vrmHipsY = vrmRef.current.humanoid?.getNormalizedBoneNode('hips' as VRMHumanBoneName)?.getWorldPosition(_vec3).y ?? 0;
         const vrmRootY = vrmRef.current.scene.getWorldPosition(_vec3).y;
         const vrmHipsHeight = Math.abs(vrmHipsY - vrmRootY);
         const hipsPositionScale = vrmHipsHeight / motionHipsHeight;
@@ -511,21 +527,21 @@ const VRMViewer = forwardRef<VRMViewerHandle, VRMViewerProps>(({
           const trackSplitted = track.name.split('.');
           const mixamoRigName = trackSplitted[0];
           const vrmBoneName = mixamoVRMRigMap[mixamoRigName];
-          const vrmNodeName = vrmRef.current.humanoid?.getNormalizedBoneNode(vrmBoneName)?.name;
+          const vrmNodeName = vrmRef.current?.humanoid?.getNormalizedBoneNode(vrmBoneName as VRMHumanBoneName)?.name;
           const mixamoRigNode = asset.getObjectByName(mixamoRigName);
 
-          if (vrmNodeName != null) {
+          if (vrmNodeName != null && mixamoRigNode) {
             const propertyName = trackSplitted[1];
 
             mixamoRigNode.getWorldQuaternion(restRotationInverse).invert();
-            mixamoRigNode.parent.getWorldQuaternion(parentRestWorldRotation);
+            mixamoRigNode.parent?.getWorldQuaternion(parentRestWorldRotation);
 
             if (track instanceof THREE.QuaternionKeyframeTrack) {
               // Retarget rotation
               const newTrack = new THREE.QuaternionKeyframeTrack(
                 `${vrmNodeName}.${propertyName}`,
                 track.times,
-                track.values.map((v, i) => {
+                track.values.map((v: number, i: number) => {
                   if (i % 4 === 0) {
                     _quatA.fromArray(track.values, i);
                     _quatA
@@ -535,7 +551,7 @@ const VRMViewer = forwardRef<VRMViewerHandle, VRMViewerProps>(({
                   }
                   if (i % 4 === 1) return _quatA.y;
                   if (i % 4 === 2) return isVRM0 ? -_quatA.z : _quatA.z;
-                  if (i % 4 === 3) return _quatA.w;
+                  return _quatA.w;
                 })
               );
               tracks.push(newTrack);
@@ -543,7 +559,7 @@ const VRMViewer = forwardRef<VRMViewerHandle, VRMViewerProps>(({
               const newTrack = new THREE.VectorKeyframeTrack(
                 `${vrmNodeName}.${propertyName}`,
                 track.times,
-                track.values.map((v, i) => (isVRM0 && i % 3 !== 1 ? -v : v) * hipsPositionScale)
+                track.values.map((v: number, i: number) => (isVRM0 && i % 3 !== 1 ? -v : v) * hipsPositionScale)
               );
               tracks.push(newTrack);
             }
@@ -575,8 +591,8 @@ const VRMViewer = forwardRef<VRMViewerHandle, VRMViewerProps>(({
           currentAnimationRef.current.fadeOut(0.5);
         }
   
-        const animationName = animationFiles[animationIndexRef.current].split('/').pop().split('.')[0];
-        const nextAction = mixerRef.current.clipAction(animationsRef.current[animationName]);
+        const animationName = (animationFiles[animationIndexRef.current].split('/').pop() ?? '').split('.')[0];
+        const nextAction = mixerRef.current!.clipAction(animationsRef.current[animationName]);
         nextAction.reset().fadeIn(0.5).play();
         currentAnimationRef.current = nextAction;
   
@@ -619,14 +635,15 @@ const VRMViewer = forwardRef<VRMViewerHandle, VRMViewerProps>(({
       // Safe cleanup of THREE.js resources
       if (sceneRef.current) {
         sceneRef.current.traverse((object) => {
-          if (object.geometry) {
-            object.geometry.dispose();
+          const mesh = object as MorphMesh;
+          if (mesh.geometry) {
+            mesh.geometry.dispose();
           }
-          if (object.material) {
-            if (Array.isArray(object.material)) {
-              object.material.forEach(material => material.dispose());
+          if (mesh.material) {
+            if (Array.isArray(mesh.material)) {
+              mesh.material.forEach((material) => material.dispose());
             } else {
-              object.material.dispose();
+              mesh.material.dispose();
             }
           }
         });
@@ -731,6 +748,7 @@ const VRMViewer = forwardRef<VRMViewerHandle, VRMViewerProps>(({
 
   useEffect(() => {
     setTimeout(()=>{
+        if (!gltfRef.current) return;
         setMorphTarget('Body', 'Belly', bellySize, gltfRef.current);
         setMorphTarget('Body', 'Breasts', breastSize, gltfRef.current);
         setMorphTarget('Body', 'Fat', bodyWeight, gltfRef.current);

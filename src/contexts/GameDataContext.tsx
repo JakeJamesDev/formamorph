@@ -131,7 +131,7 @@ function useProvideGameData() {
   }, []);
 
   const addDictionaryEntry = useCallback((newEntry: DictionaryEntry) => {
-    setDictionary(prev => [...prev, { name: '', key: '', value: '', ...newEntry }]);
+    setDictionary(prev => [...prev, newEntry]);
   }, []);
 
   const updateDictionaryEntry = useCallback((updatedEntry: DictionaryEntry) => {
@@ -217,11 +217,11 @@ function useProvideGameData() {
   const saveWorld = useCallback(async (): Promise<boolean> => {
     try {
       await WorldStorageService.storeWorld({
-        id: worldId,
+        id: worldId ?? '',
         name: worldOverview.name,
         description: worldOverview.description,
         author: worldOverview.author,
-        thumbnail: worldOverview.thumbnail,
+        thumbnail: worldOverview.thumbnail ?? undefined,
         data: { worldOverview, stats, locations, entities, traits, statUpdates, dictionary },
       });
       setSavedSnapshot(serializeWorld(worldOverview, stats, locations, entities, traits, statUpdates, dictionary));

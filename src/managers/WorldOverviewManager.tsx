@@ -24,7 +24,7 @@ const WorldOverviewManager = () => {
   }, [worldOverview.thumbnail]);
 
   const handleThumbnailChange = (e: ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files[0];
+    const file = e.target.files?.[0];
     if (file) {
       // Check file type
       if (!file.type.startsWith('image/')) {
@@ -36,7 +36,7 @@ const WorldOverviewManager = () => {
 
       reader.onload = (e) => {
         try {
-          const base64String = e.target.result as string;
+          const base64String = e.target?.result as string;
           // Store the base64 string in the world overview
           updateWorldOverview({ thumbnail: base64String });
         } catch (error) {
@@ -59,7 +59,7 @@ const WorldOverviewManager = () => {
   };
 
   const handleBGMChange = (e: ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files[0];
+    const file = e.target.files?.[0];
     if (file) {
       // Check file type
       if (!file.type.startsWith('audio/')) {
@@ -71,7 +71,7 @@ const WorldOverviewManager = () => {
 
       reader.onload = (e) => {
         try {
-          const base64String = e.target.result as string;
+          const base64String = e.target?.result as string;
           updateWorldOverview({ bgm: base64String });
         } catch (error) {
           console.error('Error processing audio:', error);
@@ -93,13 +93,13 @@ const WorldOverviewManager = () => {
   };
 
   const handleVRMChange = (e: ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files[0];
+    const file = e.target.files?.[0];
     if (file) {
       const reader = new FileReader();
       reader.onload = (e) => {
         try {
           updateWorldOverview({
-            customPlayerVRM: { data: e.target.result as string, type: file.type || 'model/vrm' },
+            customPlayerVRM: { data: e.target?.result as string, type: file.type || 'model/vrm' },
           });
         } catch (error) {
           console.error('Error processing VRM:', error);

@@ -64,7 +64,7 @@ class WorldStorageService {
   async getWorldMetadata(): Promise<WorldMetadata[]> {
     await this.ensureInitialized();
     return new Promise((resolve, reject) => {
-      const transaction = this.db.transaction([this.storeName], 'readonly');
+      const transaction = this.db!.transaction([this.storeName], 'readonly');
       const store = transaction.objectStore(this.storeName);
       const request = store.getAll();
 
@@ -102,7 +102,7 @@ class WorldStorageService {
 
     return new Promise((resolve, reject) => {
       try {
-        const transaction = this.db.transaction([this.storeName], 'readonly');
+        const transaction = this.db!.transaction([this.storeName], 'readonly');
         const store = transaction.objectStore(this.storeName);
 
         // Validate the store exists
@@ -148,7 +148,7 @@ class WorldStorageService {
         };
       } catch (error) {
         console.error('Transaction setup error:', error);
-        reject(`Failed to set up database transaction: ${error.message}`);
+        reject(`Failed to set up database transaction: ${(error as Error).message}`);
       }
     });
   }
@@ -169,7 +169,7 @@ class WorldStorageService {
     }
 
     return new Promise<void>((resolve, reject) => {
-      const transaction = this.db.transaction([this.storeName], 'readwrite');
+      const transaction = this.db!.transaction([this.storeName], 'readwrite');
       const store = transaction.objectStore(this.storeName);
       const request = store.put({
         id: world.id,
@@ -246,7 +246,7 @@ class WorldStorageService {
     }
 
     return new Promise<void>((resolve, reject) => {
-      const transaction = this.db.transaction([this.storeName], 'readwrite');
+      const transaction = this.db!.transaction([this.storeName], 'readwrite');
       const store = transaction.objectStore(this.storeName);
       const request = store.delete(worldId);
 

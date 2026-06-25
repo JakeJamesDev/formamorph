@@ -17,7 +17,7 @@ interface UploadedMedia {
 
 // eslint-disable-next-line react-refresh/only-export-components
 export const getModelType = (fileName: string) => {
-  const extension = fileName.split('.').pop().toLowerCase();
+  const extension = fileName.split('.').pop()?.toLowerCase() ?? '';
   switch (extension) {
     case 'glb':
     case 'gltf':
@@ -37,7 +37,7 @@ export const ImageUpload = ({ onChange, id, value }: {
   value?: string | null;
 }) => {
   const handleImageChange = useCallback((e: ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files[0];
+    const file = e.target.files?.[0];
     if (file) {
       const reader = new FileReader();
       reader.onloadend = () => {
@@ -90,7 +90,7 @@ export const SoundUpload = ({ onChange, id, value }: {
   value?: { name?: string; data?: string } | null;
 }) => {
   const handleSoundChange = useCallback((e: ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files[0];
+    const file = e.target.files?.[0];
     if (file) {
       const reader = new FileReader();
       reader.onloadend = () => {
@@ -142,7 +142,7 @@ export const ModelUpload = ({ model, onModelChange, uniqueId }: {
   const [isModelViewerOpen, setIsModelViewerOpen] = useState(false);
 
   const handleModelChange = (e: ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files[0];
+    const file = e.target.files?.[0];
     if (file) {
       const reader = new FileReader();
       reader.onloadend = () => {
@@ -171,7 +171,7 @@ export const ModelUpload = ({ model, onModelChange, uniqueId }: {
               <DialogHeader>
                 <DialogTitle>3D Model Viewer</DialogTitle>
               </DialogHeader>
-              <ModelViewer model={model} modelType={getModelType(model.name)} />
+              <ModelViewer model={model} modelType={getModelType(model.name ?? '')} />
             </DialogContent>
           </Dialog>
         </div>

@@ -60,9 +60,9 @@ export const MenuModal = ({ onSettingsClick, onSave, onLoad, worldOverview, onEx
           const localStorageSaves = [];
           for (let i = 0; i < localStorage.length; i++) {
             const key = localStorage.key(i);
-            if (key.startsWith('FORMAMORPH_save_')) {
+            if (key && key.startsWith('FORMAMORPH_save_')) {
               try {
-                const data = JSON.parse(localStorage.getItem(key));
+                const data = JSON.parse(localStorage.getItem(key) || 'null');
                 const saveName = key.replace('FORMAMORPH_save_', '');
                 await saveToDB(saveName, data);
                 localStorageSaves.push(key);
@@ -78,13 +78,13 @@ export const MenuModal = ({ onSettingsClick, onSave, onLoad, worldOverview, onEx
           setSaveList(saves.map(save => {
             // Handle both old and new save formats
             const isNewFormat = save.version === 2 && save.currentState;
-            const state = isNewFormat ? save.currentState : save;
+            const state: GameState | RawSave = isNewFormat && save.currentState ? save.currentState : save;
 
             return {
               name: save.name,
-              timestamp: new Date(state.timestamp).toLocaleString(),
-              gameTime: state.gameTime,
-              worldName: state.worldName
+              timestamp: state.timestamp ? new Date(state.timestamp).toLocaleString() : '',
+              gameTime: state.gameTime ?? 0,
+              worldName: state.worldName ?? null
             };
           }).sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime()));
         } catch (error) {
@@ -218,7 +218,7 @@ export const MenuModal = ({ onSettingsClick, onSave, onLoad, worldOverview, onEx
                     accept=".json"
                     onChange={async (e) => {
                     try {
-                      const file = e.target.files[0];
+                      const file = e.target.files?.[0];
                       if (!file) return;
 
                       const text = await file.text();
@@ -230,13 +230,13 @@ export const MenuModal = ({ onSettingsClick, onSave, onLoad, worldOverview, onEx
                       setSaveList(saves.map(save => {
                         // Handle both old and new save formats
                         const isNewFormat = save.version === 2 && save.currentState;
-                        const state = isNewFormat ? save.currentState : save;
+                        const state: GameState | RawSave = isNewFormat && save.currentState ? save.currentState : save;
 
                         return {
                           name: save.name,
-                          timestamp: new Date(state.timestamp).toLocaleString(),
-                          gameTime: state.gameTime,
-                          worldName: state.worldName
+                          timestamp: state.timestamp ? new Date(state.timestamp).toLocaleString() : '',
+                          gameTime: state.gameTime ?? 0,
+                          worldName: state.worldName ?? null
                         };
                       }).sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime()));
 
@@ -249,7 +249,7 @@ export const MenuModal = ({ onSettingsClick, onSave, onLoad, worldOverview, onEx
                   <Button
                     variant="outline"
                     className="w-full flex items-center justify-center gap-2"
-                    onClick={() => document.getElementById('save-upload').click()}
+                    onClick={() => document.getElementById('save-upload')?.click()}
                   >
                     <Import className="h-4 w-4" />
                     <span>Import</span>

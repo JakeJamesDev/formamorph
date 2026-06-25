@@ -42,7 +42,7 @@ class AuthService {
       const data = await response.json();
 
       this.token = data.token;
-      localStorage.setItem(this.tokenKey, this.token);
+      localStorage.setItem(this.tokenKey, data.token);
 
       // If the login response includes user data, store it
       if (data.user) {
@@ -95,7 +95,7 @@ class AuthService {
       const data = await response.json();
 
       this.token = data.token;
-      localStorage.setItem(this.tokenKey, this.token);
+      localStorage.setItem(this.tokenKey, data.token);
 
       // If the registration response includes user data, store it
       if (data.user) {

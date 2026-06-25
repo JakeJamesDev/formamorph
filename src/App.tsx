@@ -14,7 +14,7 @@ function App() {
   const [selectedTraits, setSelectedTraits] = useState<string[]>([]);
   const [initialCharacterData, setInitialCharacterData] = useState<CharacterData | null>(null);
 
-  const handleStartGame = (traits: string[], customCharacterData: CharacterData) => {
+  const handleStartGame = (traits: string[], customCharacterData: CharacterData | null) => {
     setSelectedTraits(traits);
     setInitialCharacterData(customCharacterData);
     setCurrentView('gameViewer');
