@@ -1,12 +1,12 @@
 import { createContext, useContext, useState, useEffect, useRef, type ReactNode } from 'react';
 import { defaultSystemPrompt, defaultChoicesPrompt, defaultStatUpdatesPrompt, defaultLocationChangePrompt, defaultThinkingPrompt } from '../components/game/GamePrompts';
+import { DEFAULT_ENDPOINT, DEFAULT_API_TOKEN, DEFAULT_MODEL_NAME, DEFAULT_MAX_TOKENS, DEFAULT_AI_MESSAGE_LIMIT } from './settingsDefaults';
 import type { ParagraphLimit } from '../lib/outputLength';
 
 export type ThinkingMode = 'off' | 'precall' | 'inline';
 export type { ParagraphLimit };
 
 const APP_ID = 'FORMAMORPH';
-export const DEFAULT_ENDPOINT = 'https://mistral.lyonade.net/v1/chat/completions';
 
 // Converts a setting to/from its stored string form. Reusable codecs cover the common shapes.
 interface Codec<T> {
@@ -51,11 +51,35 @@ function useProvideSettings() {
   }, [paragraphLimit]);
 
   const [autoscroll, setAutoscroll] = usePersistentState<boolean>(`${APP_ID}_autoscroll`, false, boolCodec);
-  const [endpointUrl, setEndpointUrl] = usePersistentState<string>(`${APP_ID}_endpointUrl`, import.meta.env.VITE_DEFAULT_ENDPOINT || DEFAULT_ENDPOINT, stringCodec);
-  const [apiToken, setApiToken] = usePersistentState<string>(`${APP_ID}_apiToken`, import.meta.env.VITE_DEFAULT_API_TOKEN || '', stringCodec);
-  const [modelName, setModelName] = usePersistentState<string>(`${APP_ID}_modelName`, import.meta.env.VITE_DEFAULT_MODEL_NAME || 'shuyuej/Mistral-Nemo-Instruct-2407-GPTQ', stringCodec);
-  const [maxTokens, setMaxTokens] = usePersistentState<number>(`${APP_ID}_maxTokens`, parseInt(import.meta.env.VITE_DEFAULT_MAX_TOKENS) || 1024, intCodec);
-  const [aiMessageLimit, setAiMessageLimit] = usePersistentState<number>(`${APP_ID}_aiMessageLimit`, parseInt(import.meta.env.VITE_DEFAULT_AI_MESSAGE_LIMIT) || 3900, intCodec);
+  const [endpointUrl, setEndpointUrl] = usePersistentState<string>(`${APP_ID}_endpointUrl`, DEFAULT_ENDPOINT, stringCodec);
+  const [apiToken, setApiToken] = usePersistentState<string>(`${APP_ID}_apiToken`, DEFAULT_API_TOKEN, stringCodec);
+  const [modelName, setModelName] = usePersistentState<string>(`${APP_ID}_modelName`, DEFAULT_MODEL_NAME, stringCodec);
+  const [maxTokens, setMaxTokens] = usePersistentState<number>(`${APP_ID}_maxTokens`, DEFAULT_MAX_TOKENS, intCodec);
+  const [aiMessageLimit, setAiMessageLimit] = usePersistentState<number>(`${APP_ID}_aiMessageLimit`, DEFAULT_AI_MESSAGE_LIMIT, intCodec);
+
+  // Gates the five endpoint fields. Fresh installs default off (use built-in defaults above); existing users
+  // with any non-default stored value default on, so a saved/working config isn't silently dropped.
+  const [useCustomEndpoint, setUseCustomEndpoint] = useState<boolean>(() => {
+    const saved = localStorage.getItem(`${APP_ID}_useCustomEndpoint`);
+    if (saved !== null) return JSON.parse(saved);
+    return (
+      (localStorage.getItem(`${APP_ID}_endpointUrl`) ?? DEFAULT_ENDPOINT) !== DEFAULT_ENDPOINT ||
+      (localStorage.getItem(`${APP_ID}_apiToken`) ?? DEFAULT_API_TOKEN) !== DEFAULT_API_TOKEN ||
+      (localStorage.getItem(`${APP_ID}_modelName`) ?? DEFAULT_MODEL_NAME) !== DEFAULT_MODEL_NAME ||
+      (localStorage.getItem(`${APP_ID}_maxTokens`) ?? String(DEFAULT_MAX_TOKENS)) !== String(DEFAULT_MAX_TOKENS) ||
+      (localStorage.getItem(`${APP_ID}_aiMessageLimit`) ?? String(DEFAULT_AI_MESSAGE_LIMIT)) !== String(DEFAULT_AI_MESSAGE_LIMIT)
+    );
+  });
+  useEffect(() => {
+    localStorage.setItem(`${APP_ID}_useCustomEndpoint`, JSON.stringify(useCustomEndpoint));
+  }, [useCustomEndpoint]);
+
+  // What the app actually sends with: the user's values when custom is on, the built-in defaults otherwise.
+  const activeEndpointUrl = useCustomEndpoint ? endpointUrl : DEFAULT_ENDPOINT;
+  const activeApiToken = useCustomEndpoint ? apiToken : DEFAULT_API_TOKEN;
+  const activeModelName = useCustomEndpoint ? modelName : DEFAULT_MODEL_NAME;
+  const activeMaxTokens = useCustomEndpoint ? maxTokens : DEFAULT_MAX_TOKENS;
+  const activeAiMessageLimit = useCustomEndpoint ? aiMessageLimit : DEFAULT_AI_MESSAGE_LIMIT;
   const [systemPrompt, setSystemPrompt] = usePersistentState<string>(`${APP_ID}_narrationPrompt2`, defaultSystemPrompt, stringCodec);
   const [choicesPrompt, setChoicesPrompt] = usePersistentState<string>(`${APP_ID}_choicesPrompt2`, defaultChoicesPrompt, stringCodec);
   const [statUpdatesPrompt, setStatUpdatesPrompt] = usePersistentState<string>(`${APP_ID}_statUpdatesPrompt2`, defaultStatUpdatesPrompt, stringCodec);
@@ -87,6 +111,13 @@ function useProvideSettings() {
     setMaxTokens,
     aiMessageLimit,
     setAiMessageLimit,
+    useCustomEndpoint,
+    setUseCustomEndpoint,
+    activeEndpointUrl,
+    activeApiToken,
+    activeModelName,
+    activeMaxTokens,
+    activeAiMessageLimit,
     systemPrompt,
     setSystemPrompt,
     choicesPrompt,

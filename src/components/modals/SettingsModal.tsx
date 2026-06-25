@@ -1,4 +1,5 @@
 import { useSettings, type ThinkingMode, type ParagraphLimit } from '@/contexts/SettingsContext';
+import { DEFAULT_ENDPOINT, DEFAULT_API_TOKEN, DEFAULT_MODEL_NAME, DEFAULT_MAX_TOKENS, DEFAULT_AI_MESSAGE_LIMIT } from '@/contexts/settingsDefaults';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -29,6 +30,8 @@ export const SettingsModal = ({ isOpen, onOpenChange }: {
     setAiMessageLimit,
     maxTokens,
     setMaxTokens,
+    useCustomEndpoint,
+    setUseCustomEndpoint,
     systemPrompt,
     setSystemPrompt,
     choicesPrompt,
@@ -50,11 +53,11 @@ export const SettingsModal = ({ isOpen, onOpenChange }: {
   } = useSettings();
   const vramStats = useVramStats(vramHelperUrl, { enabled: isOpen });
   const handleResetEndpointSettings = () => {
-    setEndpointUrl('https://mistral.lyonade.net/v1/chat/completions');
-    setModelName('shuyuej/Mistral-Nemo-Instruct-2407-GPTQ');
-    setApiToken('');
-    setAiMessageLimit(2000);
-    setMaxTokens(1024);
+    setEndpointUrl(DEFAULT_ENDPOINT);
+    setModelName(DEFAULT_MODEL_NAME);
+    setApiToken(DEFAULT_API_TOKEN);
+    setAiMessageLimit(DEFAULT_AI_MESSAGE_LIMIT);
+    setMaxTokens(DEFAULT_MAX_TOKENS);
   };
 
   const handleResetPrompts = () => {
@@ -165,14 +168,14 @@ export const SettingsModal = ({ isOpen, onOpenChange }: {
                     <RadioGroupItem value="precall" id="thinking-precall" className="mt-1" />
                     <label htmlFor="thinking-precall" className="cursor-pointer">
                       <div className="text-sm font-medium">Separate planning pass (recommended)</div>
-                      <div className="text-xs text-muted-foreground">A short, hidden plan is generated first, then used to write the narration. Most reliable for small models; adds one request per turn.</div>
+                      <div className="text-xs text-muted-foreground">A separate request is sent to plan narration before writing it. Most reliable for small models.</div>
                     </label>
                   </div>
                   <div className="flex items-start gap-2">
                     <RadioGroupItem value="inline" id="thinking-inline" className="mt-1" />
                     <label htmlFor="thinking-inline" className="cursor-pointer">
-                      <div className="text-sm font-medium">Inline (same response)</div>
-                      <div className="text-xs text-muted-foreground">The model reasons privately before narrating, in one request. One fewer round-trip.</div>
+                      <div className="text-sm font-medium">Inline</div>
+                      <div className="text-xs text-muted-foreground">The model reasons privately before narrating, in the same request. One fewer round-trip.</div>
                     </label>
                   </div>
                 </RadioGroup>
@@ -183,13 +186,26 @@ export const SettingsModal = ({ isOpen, onOpenChange }: {
           <TabsContent value="endpoint" className="py-4 px-2">
             <div className="grid gap-4">
               <div className="grid grid-cols-[1fr_3fr] items-center gap-4">
+                <label htmlFor="useCustomEndpoint" className="text-right">
+                  Use Custom Endpoint
+                </label>
+                <input
+                  id="useCustomEndpoint"
+                  type="checkbox"
+                  checked={useCustomEndpoint}
+                  onChange={(e) => setUseCustomEndpoint(e.target.checked)}
+                />
+              </div>
+              <div className="grid grid-cols-[1fr_3fr] items-center gap-4">
                 <label htmlFor="endpointUrl" className="text-right">
                   Endpoint URL
                 </label>
                 <Input
                   id="endpointUrl"
-                  value={endpointUrl}
+                  value={useCustomEndpoint ? endpointUrl : DEFAULT_ENDPOINT}
                   onChange={(e) => setEndpointUrl(e.target.value)}
+                  readOnly={!useCustomEndpoint}
+                  className={useCustomEndpoint ? undefined : 'opacity-60 cursor-not-allowed'}
                 />
               </div>
               <div className="grid grid-cols-[1fr_3fr] items-center gap-4">
@@ -199,8 +215,10 @@ export const SettingsModal = ({ isOpen, onOpenChange }: {
                 <Input
                   id="apiToken"
                   type="password"
-                  value={apiToken}
+                  value={useCustomEndpoint ? apiToken : DEFAULT_API_TOKEN}
                   onChange={(e) => setApiToken(e.target.value)}
+                  readOnly={!useCustomEndpoint}
+                  className={useCustomEndpoint ? undefined : 'opacity-60 cursor-not-allowed'}
                 />
               </div>
               <div className="grid grid-cols-[1fr_3fr] items-center gap-4">
@@ -209,8 +227,10 @@ export const SettingsModal = ({ isOpen, onOpenChange }: {
                 </label>
                 <Input
                   id="modelName"
-                  value={modelName}
+                  value={useCustomEndpoint ? modelName : DEFAULT_MODEL_NAME}
                   onChange={(e) => setModelName(e.target.value)}
+                  readOnly={!useCustomEndpoint}
+                  className={useCustomEndpoint ? undefined : 'opacity-60 cursor-not-allowed'}
                 />
               </div>
               <div className="grid grid-cols-[1fr_3fr] items-center gap-4">
@@ -220,8 +240,10 @@ export const SettingsModal = ({ isOpen, onOpenChange }: {
                 <Input
                   id="aiMessageLimit"
                   type="number"
-                  value={aiMessageLimit}
+                  value={useCustomEndpoint ? aiMessageLimit : DEFAULT_AI_MESSAGE_LIMIT}
                   onChange={(e) => setAiMessageLimit(Number(e.target.value))}
+                  readOnly={!useCustomEndpoint}
+                  className={useCustomEndpoint ? undefined : 'opacity-60 cursor-not-allowed'}
                 />
               </div>
               <div className="grid grid-cols-[1fr_3fr] items-center gap-4">
@@ -231,8 +253,10 @@ export const SettingsModal = ({ isOpen, onOpenChange }: {
                 <Input
                   id="maxTokens"
                   type="number"
-                  value={maxTokens}
+                  value={useCustomEndpoint ? maxTokens : DEFAULT_MAX_TOKENS}
                   onChange={(e) => setMaxTokens(Number(e.target.value))}
+                  readOnly={!useCustomEndpoint}
+                  className={useCustomEndpoint ? undefined : 'opacity-60 cursor-not-allowed'}
                 />
               </div>
               <div className="flex justify-end">
@@ -241,7 +265,7 @@ export const SettingsModal = ({ isOpen, onOpenChange }: {
                   description="Are you sure you want to reset the endpoint URL, model name, API token, and limits to their default values?"
                   onConfirm={handleResetEndpointSettings}
                 >
-                  <Button variant="outline" className="flex items-center gap-2">
+                  <Button variant="outline" className="flex items-center gap-2" disabled={!useCustomEndpoint}>
                     Reset AI Endpoint
                   </Button>
                 </ConfirmDialog>

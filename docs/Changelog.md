@@ -66,6 +66,7 @@ Everything below is relative to the point this fork diverged from upstream.
 #### ➕ Added
 
 - **👤 User-facing**
+  - **Use Custom Endpoint** toggle in Settings → Endpoint — off uses the built-in default endpoint (fields read-only); on lets you enter and edit your own. Custom values are preserved when toggling off and back on.
   - Drag-to-reorder for worlds in the main menu.
   - Additional avatar color options.
   - Unified, consistently styled scroll areas across the app.
