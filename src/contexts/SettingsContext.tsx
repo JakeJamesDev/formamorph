@@ -1,7 +1,10 @@
-import { createContext, useContext, useState, useEffect, useRef, type ReactNode } from 'react';
+import { createContext, useContext, useState, useEffect, useRef, useCallback, type ReactNode } from 'react';
 import { defaultSystemPrompt, defaultChoicesPrompt, defaultStatUpdatesPrompt, defaultLocationChangePrompt, defaultThinkingPrompt } from '../components/game/GamePrompts';
-import { DEFAULT_ENDPOINT, DEFAULT_API_TOKEN, DEFAULT_MODEL_NAME, DEFAULT_MAX_TOKENS, DEFAULT_AI_MESSAGE_LIMIT } from './settingsDefaults';
+import { DEFAULT_ENDPOINT, DEFAULT_API_TOKEN, DEFAULT_MODEL_NAME, DEFAULT_MAX_TOKENS, DEFAULT_CONTEXT_WINDOW } from './settingsDefaults';
+import { fetchContextLength } from '../lib/contextLength';
 import type { ParagraphLimit } from '../lib/outputLength';
+
+export type DetectStatus = 'idle' | 'detecting' | 'success' | 'error';
 
 export type ThinkingMode = 'off' | 'precall' | 'inline';
 export type { ParagraphLimit };
@@ -17,6 +20,10 @@ const stringCodec: Codec<string> = { parse: (r) => r, serialize: (v) => v };
 const boolCodec: Codec<boolean> = { parse: (r) => JSON.parse(r), serialize: (v) => JSON.stringify(v) };
 const intCodec: Codec<number> = { parse: (r) => parseInt(r), serialize: (v) => String(v) };
 const floatCodec: Codec<number> = { parse: (r) => parseFloat(r), serialize: (v) => String(v) };
+const nullableIntCodec: Codec<number | null> = {
+  parse: (r) => (r === '' ? null : parseInt(r)),
+  serialize: (v) => (v == null ? '' : String(v)),
+};
 
 /** useState mirrored to a localStorage `key`: seeds from the stored value (or `defaultValue` when
  *  absent) and writes back on every change. `codec` maps the value to/from its stored string. */
@@ -57,9 +64,8 @@ function useProvideSettings() {
   const [apiToken, setApiToken] = usePersistentState<string>(`${APP_ID}_apiToken`, DEFAULT_API_TOKEN, stringCodec);
   const [modelName, setModelName] = usePersistentState<string>(`${APP_ID}_modelName`, DEFAULT_MODEL_NAME, stringCodec);
   const [maxTokens, setMaxTokens] = usePersistentState<number>(`${APP_ID}_maxTokens`, DEFAULT_MAX_TOKENS, intCodec);
-  const [aiMessageLimit, setAiMessageLimit] = usePersistentState<number>(`${APP_ID}_aiMessageLimit`, DEFAULT_AI_MESSAGE_LIMIT, intCodec);
 
-  // Gates the five endpoint fields. Fresh installs default off (use built-in defaults above); existing users
+  // Gates the custom endpoint fields. Fresh installs default off (use built-in defaults above); existing users
   // with any non-default stored value default on, so a saved/working config isn't silently dropped.
   const [useCustomEndpoint, setUseCustomEndpoint] = useState<boolean>(() => {
     const saved = localStorage.getItem(`${APP_ID}_useCustomEndpoint`);
@@ -68,8 +74,7 @@ function useProvideSettings() {
       (localStorage.getItem(`${APP_ID}_endpointUrl`) ?? DEFAULT_ENDPOINT) !== DEFAULT_ENDPOINT ||
       (localStorage.getItem(`${APP_ID}_apiToken`) ?? DEFAULT_API_TOKEN) !== DEFAULT_API_TOKEN ||
       (localStorage.getItem(`${APP_ID}_modelName`) ?? DEFAULT_MODEL_NAME) !== DEFAULT_MODEL_NAME ||
-      (localStorage.getItem(`${APP_ID}_maxTokens`) ?? String(DEFAULT_MAX_TOKENS)) !== String(DEFAULT_MAX_TOKENS) ||
-      (localStorage.getItem(`${APP_ID}_aiMessageLimit`) ?? String(DEFAULT_AI_MESSAGE_LIMIT)) !== String(DEFAULT_AI_MESSAGE_LIMIT)
+      (localStorage.getItem(`${APP_ID}_maxTokens`) ?? String(DEFAULT_MAX_TOKENS)) !== String(DEFAULT_MAX_TOKENS)
     );
   });
   useEffect(() => {
@@ -81,7 +86,36 @@ function useProvideSettings() {
   const activeApiToken = useCustomEndpoint ? apiToken : DEFAULT_API_TOKEN;
   const activeModelName = useCustomEndpoint ? modelName : DEFAULT_MODEL_NAME;
   const activeMaxTokens = useCustomEndpoint ? maxTokens : DEFAULT_MAX_TOKENS;
-  const activeAiMessageLimit = useCustomEndpoint ? aiMessageLimit : DEFAULT_AI_MESSAGE_LIMIT;
+
+  // Context window (tokens): auto-detected from the active endpoint, with an optional manual override.
+  const [detectedContextWindow, setDetectedContextWindow] = usePersistentState<number | null>(`${APP_ID}_detectedContextWindow`, null, nullableIntCodec);
+  const [contextWindowOverride, setContextWindowOverride] = usePersistentState<number | null>(`${APP_ID}_contextWindowOverride`, null, nullableIntCodec);
+  const [detectStatus, setDetectStatus] = useState<DetectStatus>('idle');
+  // Like the other endpoint fields, the context window is the built-in default while the custom
+  // endpoint is off; the user's override / auto-detection only apply when custom is on.
+  const contextWindow = useCustomEndpoint
+    ? (contextWindowOverride ?? detectedContextWindow ?? DEFAULT_CONTEXT_WINDOW)
+    : DEFAULT_CONTEXT_WINDOW;
+
+  const detectContextWindow = useCallback(async (force = false) => {
+    setDetectStatus('detecting');
+    const detected = await fetchContextLength(activeEndpointUrl, activeApiToken, activeModelName);
+    if (detected !== null) {
+      setDetectedContextWindow(detected);
+      if (force) setContextWindowOverride(null); // snap the field back to the detected value
+      setDetectStatus('success');
+    } else {
+      setDetectStatus(force ? 'error' : 'idle'); // auto-attempts fail quietly
+    }
+  }, [activeEndpointUrl, activeApiToken, activeModelName, setDetectedContextWindow, setContextWindowOverride]);
+
+  // Auto-detect on connect (custom endpoint only); debounced so editing the URL doesn't fire per keystroke.
+  useEffect(() => {
+    if (!useCustomEndpoint) return;
+    const id = setTimeout(() => { void detectContextWindow(false); }, 1000);
+    return () => clearTimeout(id);
+  }, [useCustomEndpoint, detectContextWindow]);
+
   const [systemPrompt, setSystemPrompt] = usePersistentState<string>(`${APP_ID}_narrationPrompt2`, defaultSystemPrompt, stringCodec);
   const [choicesPrompt, setChoicesPrompt] = usePersistentState<string>(`${APP_ID}_choicesPrompt2`, defaultChoicesPrompt, stringCodec);
   const [statUpdatesPrompt, setStatUpdatesPrompt] = usePersistentState<string>(`${APP_ID}_statUpdatesPrompt2`, defaultStatUpdatesPrompt, stringCodec);
@@ -113,15 +147,18 @@ function useProvideSettings() {
     setModelName,
     maxTokens,
     setMaxTokens,
-    aiMessageLimit,
-    setAiMessageLimit,
     useCustomEndpoint,
     setUseCustomEndpoint,
     activeEndpointUrl,
     activeApiToken,
     activeModelName,
     activeMaxTokens,
-    activeAiMessageLimit,
+    contextWindow,
+    contextWindowOverride,
+    setContextWindowOverride,
+    detectedContextWindow,
+    detectStatus,
+    detectContextWindow,
     systemPrompt,
     setSystemPrompt,
     choicesPrompt,

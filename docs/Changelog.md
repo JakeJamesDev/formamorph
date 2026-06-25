@@ -22,6 +22,7 @@ Everything below is relative to the point this fork diverged from upstream.
   - **Redesigned world browser ("Discover")** — card-grid layout, tag & author chip search/filtering, and world-preview image zoom.
   - **AI output controls** — automatic paragraph limits and length-based truncation, an optional "thinking / planning" step before the reply, and a smoothed character-by-character reveal of streamed text.
   - **Markdown narration** — the AI can format story text with bold/italic, bullet & numbered lists, tables (e.g. inventory), headings, blockquotes, and code; it renders live as the text streams in.
+  - **Token-based Context Window**, auto-detected from your endpoint (LM Studio, OpenRouter, …) with a Detect button and manual override — conversation history now fills the model's real context instead of a fixed character cap, and an over-limit warning flags a value set above the detected maximum.
   - **Portrait / mobile layout** — a single-panel responsive mode alongside the three-panel desktop view.
   - **Lore Dictionary** — a keyword-triggered world-info editor; matching keywords inject lore into the AI prompt.
   - **Full per-turn AI context viewer** — see exactly what's sent to the AI on each turn, plus the raw response before sanitation — useful both for debugging and for authoring/tuning worlds.
@@ -87,6 +88,7 @@ Everything below is relative to the point this fork diverged from upstream.
 
 - **👤 User-facing**
   - Mislabeled UI text and icons corrected.
+  - The memory meter is now an accurate **token** gauge of the model's context window — prompt + (actually-sent) history + reserved output as a % of the window — fixing the old bar that mixed characters and tokens and counted the full untrimmed log.
 - **⚙️ Backend / invisible**
   - Entity IDs now use `crypto.randomUUID()` instead of timestamp-based IDs, avoiding collisions.
   - Lint cleanups across the converted codebase.

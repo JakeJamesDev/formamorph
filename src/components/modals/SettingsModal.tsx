@@ -1,5 +1,5 @@
 import { useSettings, type ThinkingMode, type ParagraphLimit } from '@/contexts/SettingsContext';
-import { DEFAULT_ENDPOINT, DEFAULT_API_TOKEN, DEFAULT_MODEL_NAME, DEFAULT_MAX_TOKENS, DEFAULT_AI_MESSAGE_LIMIT } from '@/contexts/settingsDefaults';
+import { DEFAULT_ENDPOINT, DEFAULT_API_TOKEN, DEFAULT_MODEL_NAME, DEFAULT_MAX_TOKENS } from '@/contexts/settingsDefaults';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -26,10 +26,14 @@ export const SettingsModal = ({ isOpen, onOpenChange }: {
     setApiToken,
     modelName,
     setModelName,
-    aiMessageLimit,
-    setAiMessageLimit,
     maxTokens,
     setMaxTokens,
+    contextWindow,
+    contextWindowOverride,
+    setContextWindowOverride,
+    detectedContextWindow,
+    detectStatus,
+    detectContextWindow,
     useCustomEndpoint,
     setUseCustomEndpoint,
     systemPrompt,
@@ -58,9 +62,25 @@ export const SettingsModal = ({ isOpen, onOpenChange }: {
     setEndpointUrl(DEFAULT_ENDPOINT);
     setModelName(DEFAULT_MODEL_NAME);
     setApiToken(DEFAULT_API_TOKEN);
-    setAiMessageLimit(DEFAULT_AI_MESSAGE_LIMIT);
+    setContextWindowOverride(null);
     setMaxTokens(DEFAULT_MAX_TOKENS);
   };
+
+  // Single status line under the Context Window field: red for over-limit or a failed manual detect,
+  // gray for detecting / detected / the idle helper.
+  const contextOverLimit =
+    contextWindowOverride != null && detectedContextWindow != null && contextWindowOverride > detectedContextWindow;
+  const contextStatus = !useCustomEndpoint
+    ? { red: false, text: 'Using the default endpoint — enable Use Custom Endpoint to set or detect the context window.' }
+    : contextOverLimit
+    ? { red: true, text: `Above the detected limit (${detectedContextWindow?.toLocaleString()} tok) — the server may truncate requests.` }
+    : detectStatus === 'error'
+      ? { red: true, text: "Couldn't detect context length from this endpoint." }
+      : detectStatus === 'detecting'
+        ? { red: false, text: 'Detecting context length…' }
+        : detectStatus === 'success'
+          ? { red: false, text: `Detected ${(detectedContextWindow ?? contextWindow).toLocaleString()} tok from the endpoint.` }
+          : { red: false, text: 'Auto-detected from your endpoint; lower it if the model feels constantly full.' };
 
   const handleResetPrompts = () => {
     setSystemPrompt(defaultSystemPrompt);
@@ -253,17 +273,32 @@ export const SettingsModal = ({ isOpen, onOpenChange }: {
                 />
               </div>
               <div className="grid grid-cols-[1fr_3fr] items-center gap-4">
-                <label htmlFor="aiMessageLimit" className="text-right">
-                  Max Memory (characters)
+                <label htmlFor="contextWindow" className="text-right">
+                  Context Window (tokens)
                 </label>
-                <Input
-                  id="aiMessageLimit"
-                  type="number"
-                  value={useCustomEndpoint ? aiMessageLimit : DEFAULT_AI_MESSAGE_LIMIT}
-                  onChange={(e) => setAiMessageLimit(Number(e.target.value))}
-                  readOnly={!useCustomEndpoint}
-                  className={useCustomEndpoint ? undefined : 'opacity-60 cursor-not-allowed'}
-                />
+                <div className="flex items-center gap-2">
+                  <Input
+                    id="contextWindow"
+                    type="number"
+                    className={useCustomEndpoint ? 'flex-grow' : 'flex-grow opacity-60 cursor-not-allowed'}
+                    value={contextWindow}
+                    onChange={(e) => setContextWindowOverride(e.target.value === '' ? null : Number(e.target.value))}
+                    readOnly={!useCustomEndpoint}
+                  />
+                  <Button
+                    variant="outline"
+                    onClick={() => detectContextWindow(true)}
+                    disabled={!useCustomEndpoint || detectStatus === 'detecting'}
+                  >
+                    Detect
+                  </Button>
+                </div>
+              </div>
+              <div className="grid grid-cols-[1fr_3fr] gap-4">
+                <div />
+                <div className={contextStatus.red ? 'text-xs text-red-500' : 'text-xs text-muted-foreground'}>
+                  {contextStatus.text}
+                </div>
               </div>
               <div className="grid grid-cols-[1fr_3fr] items-center gap-4">
                 <label htmlFor="maxTokens" className="text-right">

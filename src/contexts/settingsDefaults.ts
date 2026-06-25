@@ -4,4 +4,6 @@ export const DEFAULT_ENDPOINT = import.meta.env.VITE_DEFAULT_ENDPOINT || 'https:
 export const DEFAULT_API_TOKEN = import.meta.env.VITE_DEFAULT_API_TOKEN || '';
 export const DEFAULT_MODEL_NAME = import.meta.env.VITE_DEFAULT_MODEL_NAME || 'default';
 export const DEFAULT_MAX_TOKENS = parseInt(import.meta.env.VITE_DEFAULT_MAX_TOKENS) || 1024;
-export const DEFAULT_AI_MESSAGE_LIMIT = parseInt(import.meta.env.VITE_DEFAULT_AI_MESSAGE_LIMIT) || 10512;
+// 10750 matches the default endpoint's reported max_model_len (api.lyonade.net), so the locked
+// value while "Use Custom Endpoint" is off reflects that endpoint's real limit.
+export const DEFAULT_CONTEXT_WINDOW = parseInt(import.meta.env.VITE_DEFAULT_CONTEXT_WINDOW) || 10750;
