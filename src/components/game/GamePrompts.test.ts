@@ -23,6 +23,7 @@ describe('default prompts keep the placeholder contract', () => {
       '<TRAITS DESCRIPTION>',
       '<LOCATION JSON DATA>',
       '<NOTES>',
+      '<LENGTH GUIDANCE>',
     ]);
     // GameViewer's <NOTES>-absent fallback locates this exact label.
     expect(defaultSystemPrompt).toContain('Current Location:');

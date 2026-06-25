@@ -1,4 +1,4 @@
-import { useSettings, type ThinkingMode } from '@/contexts/SettingsContext';
+import { useSettings, type ThinkingMode, type ParagraphLimit } from '@/contexts/SettingsContext';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -41,8 +41,8 @@ export const SettingsModal = ({ isOpen, onOpenChange }: {
     setThinkingMode,
     thinkingPrompt,
     setThinkingPrompt,
-    shortform,
-    setShortform,
+    paragraphLimit,
+    setParagraphLimit,
     autoscroll,
     setAutoscroll,
     vramHelperUrl,
@@ -105,17 +105,35 @@ export const SettingsModal = ({ isOpen, onOpenChange }: {
                   className="col-span-3"
                 />
               </div>
-              <div className="grid grid-cols-1 sm:grid-cols-4 items-center gap-4">
-                <label htmlFor="shortform" className="text-left sm:text-right">
-                  Single-Paragraph Event
-                </label>
-                <input
-                    id="shortform"
-                    type="checkbox"
-                    checked={shortform}
-                    onChange={(e) => setShortform(e.target.checked)}
-                    className="col-span-3"
-                  />
+              <div className="grid grid-cols-1 sm:grid-cols-4 items-start gap-4">
+                <label className="text-left sm:text-right pt-1">Output Length</label>
+                <RadioGroup
+                  value={paragraphLimit}
+                  onValueChange={(v) => setParagraphLimit(v as ParagraphLimit)}
+                  className="col-span-3 gap-3"
+                >
+                  <div className="flex items-start gap-2">
+                    <RadioGroupItem value="none" id="length-none" className="mt-1" />
+                    <label htmlFor="length-none" className="cursor-pointer">
+                      <div className="text-sm font-medium">None</div>
+                      <div className="text-xs text-muted-foreground">No paragraph limit. The model writes until it finishes or hits the token cap.</div>
+                    </label>
+                  </div>
+                  <div className="flex items-start gap-2">
+                    <RadioGroupItem value="single" id="length-single" className="mt-1" />
+                    <label htmlFor="length-single" className="cursor-pointer">
+                      <div className="text-sm font-medium">Single paragraph</div>
+                      <div className="text-xs text-muted-foreground">One paragraph per turn (stops at the first line break).</div>
+                    </label>
+                  </div>
+                  <div className="flex items-start gap-2">
+                    <RadioGroupItem value="auto" id="length-auto" className="mt-1" />
+                    <label htmlFor="length-auto" className="cursor-pointer">
+                      <div className="text-sm font-medium">Auto (recommended)</div>
+                      <div className="text-xs text-muted-foreground">Scales the paragraph count to your Max Output Tokens so responses fit the budget and end cleanly.</div>
+                    </label>
+                  </div>
+                </RadioGroup>
               </div>
               <div className="grid grid-cols-1 sm:grid-cols-4 items-center gap-4">
                 <label htmlFor="autoscroll" className="text-left sm:text-right">
