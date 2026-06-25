@@ -88,7 +88,8 @@ export interface GameState {
 export interface SaveObject {
   currentState: GameState;
   stateHistory: GameState[];
-  version: number;
+  /** Legacy envelopes used the numeric `2` (≙ v1.2); current saves stamp the `APP_VERSION` string. */
+  version: string | number;
 }
 
 /** v1.2.0: client-side discover hide preferences (persisted in localStorage). */

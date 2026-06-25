@@ -1,0 +1,54 @@
+import { describe, it, expect } from 'vitest';
+import { APP_VERSION, migrateWorld, isSaveEnvelope } from './version';
+
+// Loose view of a migrated world for assertions (avoids `any`).
+type MigratedWorld = { version?: string; customPlayerVRM?: unknown; worldOverview: { customPlayerVRM?: unknown } };
+
+describe('APP_VERSION', () => {
+  it('is a non-empty version string (injected from package.json)', () => {
+    expect(typeof APP_VERSION).toBe('string');
+    expect(APP_VERSION.length).toBeGreaterThan(0);
+  });
+});
+
+describe('migrateWorld', () => {
+  const vrmUrl = 'data:application/octet-stream;base64,Z2xURgIAAAD45iEB';
+
+  it('moves a v1.2 root customPlayerVRM string into worldOverview and stamps the version', () => {
+    const legacy = { worldOverview: { name: 'W' }, customPlayerVRM: vrmUrl, stats: [] };
+    const out = migrateWorld(legacy) as unknown as MigratedWorld;
+    expect(out.version).toBe(APP_VERSION);
+    expect(out.customPlayerVRM).toBeUndefined(); // stray root key removed
+    expect(out.worldOverview.customPlayerVRM).toEqual({ data: vrmUrl, type: 'model/vrm' });
+  });
+
+  it('treats an unversioned world without a VRM as legacy and stamps it (VRM null)', () => {
+    const out = migrateWorld({ worldOverview: { name: 'W' } }) as unknown as MigratedWorld;
+    expect(out.version).toBe(APP_VERSION);
+    expect(out.worldOverview.customPlayerVRM).toBeNull();
+  });
+
+  it('passes through a world already at the current version', () => {
+    const current = { version: APP_VERSION, worldOverview: { name: 'W', customPlayerVRM: { data: vrmUrl, type: 'model/vrm' } } };
+    expect(migrateWorld(current)).toEqual(current);
+  });
+
+  it('is idempotent', () => {
+    const legacy = { worldOverview: { name: 'W' }, customPlayerVRM: vrmUrl };
+    const once = migrateWorld(legacy);
+    expect(migrateWorld(once)).toEqual(once);
+  });
+});
+
+describe('isSaveEnvelope', () => {
+  it('recognizes the flat envelope (legacy v2 or current)', () => {
+    expect(isSaveEnvelope({ currentState: {}, stateHistory: [], version: 2 })).toBe(true);
+    expect(isSaveEnvelope({ currentState: {}, stateHistory: [], version: APP_VERSION })).toBe(true);
+  });
+
+  it('rejects deep-nested legacy and non-objects', () => {
+    expect(isSaveEnvelope({ gameStates: [] })).toBe(false);
+    expect(isSaveEnvelope(null)).toBe(false);
+    expect(isSaveEnvelope('x')).toBe(false);
+  });
+});

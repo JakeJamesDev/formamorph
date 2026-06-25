@@ -131,6 +131,8 @@ export interface WorldOverview {
 
 export interface World {
   id: string;
+  /** App/world format version stamped on save/export (see lib/version `APP_VERSION`). Absent ⇒ legacy. */
+  version?: string;
   worldOverview: WorldOverview;
   stats: Stat[];
   locations: GameLocation[];

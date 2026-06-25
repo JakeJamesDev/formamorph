@@ -1,5 +1,6 @@
 import AuthService from './AuthService';
 import { openDatabase } from '@/lib/idb';
+import { migrateWorld } from '@/lib/version';
 import type { WorldMetadata } from '@/types';
 
 // A locally-stored world record (metadata + nested world `data`). Inner fields stay loose since
@@ -11,6 +12,7 @@ export interface StoredWorldRecord {
   author?: string;
   thumbnail?: string;
   data: {
+    version?: string; // stamped on save/export (see lib/version)
     worldOverview: unknown;
     stats: unknown[];
     locations: unknown[];
@@ -226,7 +228,8 @@ class WorldStorageService {
                 statUpdates: worldData.statUpdates || []
               }
             };
-            return this.storeWorld(fullWorld);
+            // Safety pass: defaults are stamped in-file, so this is normally a no-op.
+            return this.storeWorld({ ...fullWorld, data: migrateWorld(fullWorld.data) });
           } catch (error) {
             console.error(`Error loading world ${world.id}:`, error);
             return Promise.resolve(); // Skip this world but continue with others
