@@ -1,181 +1,221 @@
-# World Data Format Documentation
+# 📐 World Data Format
 
-This document details the format of world data and world preview information used in Exotic Dangerous for displaying worlds in the main menu and managing world data.
+This is the reference for a FormaMorph **world** — the `.json` you export from the editor, import in the main menu, or ship as a built-in. If you author worlds by hand or tooling, this page describes every field the app reads.
 
-## Overview
+> 💡 You rarely need to write this by hand — the in-app **World Editor** produces and consumes this format for you. This page is for understanding imports/exports and for external tooling.
 
-Exotic Dangerous uses a structured JSON format to define worlds, which includes various components such as world overview information, stats, locations, entities, traits, and stat updates. This document provides a comprehensive reference for understanding and creating compatible world data files.
+---
 
-## World Storage
+## 🗂️ How worlds are stored
 
-Worlds are stored in the browser's IndexedDB with the following structure:
+Worlds live in the browser's **IndexedDB**:
 
-- **Database Name**: `worldsDB`
-- **Store Name**: `worlds`
-- **Key Path**: `id`
+| | |
+|---|---|
+| **Database** | `worldsDB` |
+| **Store** | `worlds` |
+| **Key path** | `id` |
 
-## World Metadata Structure
+A world is exported/imported as a single JSON object. The main-menu grid reads a lightweight **preview** (`id`, `name`, `description`, `author`, `thumbnail`, `tags`) without loading the full payload.
 
-World metadata is used for displaying world previews in the main menu. Each world has the following metadata properties:
+## 🔖 Versioning
 
-| Property | Type | Description |
-|----------|------|-------------|
+Every world saved or exported by FormaMorph 2.0+ carries a top-level `version` string (e.g. `"2.0.0"`). On import, worlds that don't match the current version are run through a **migration** that upgrades them to the current shape — so anything reaching the editor is already compatible.
+
+| Field | Type | Notes |
+|---|---|---|
+| `version` | String | App/world format version. **Absent ⇒ treated as legacy (pre-2.0)** and migrated on import. |
+
+> ⚠️ Older (v1.x) worlds stored the custom player model at the top level as `customPlayerVRM`. Migration moves it into `worldOverview.customPlayerVRM` and stamps the current version. You don't need to do this yourself — import handles it.
+
+---
+
+## 🧱 Top-level structure
+
+| Field | Type | Description |
+|---|---|---|
 | `id` | String | Unique identifier for the world |
-| `name` | String | Display name of the world |
-| `description` | String | Brief description of the world |
-| `author` | String | Creator of the world |
-| `thumbnail` | String | Base64-encoded image data for the world thumbnail |
-| `createdAt` | String | ISO timestamp of when the world was created |
-| `lastAccessed` | String | ISO timestamp of when the world was last accessed |
+| `version` | String | Format version (see above) |
+| `worldOverview` | Object | General world info & presentation |
+| `stats` | Array | Game mechanics tracked during play |
+| `locations` | Array | Places the player can visit |
+| `entities` | Array | Characters/objects the player can interact with |
+| `traits` | Array | Selectable characteristics that modify stats |
+| `statUpdates` | Array | Rules the AI uses to change stats during play |
+| `dictionary` | Array | Lore keywords injected into the AI prompt on match |
 
-## Complete World Data Structure
+### 🌍 `worldOverview`
 
-A complete world data object contains the following top-level properties:
+| Field | Type | Description |
+|---|---|---|
+| `name` | String | Display name |
+| `description` | String | Detailed description |
+| `author` | String | Creator |
+| `thumbnail` | String \| null | Data-URL image for the menu card |
+| `bgm` | String \| null | Data-URL audio for background music |
+| `systemPrompt` | String | Extra context handed to the AI |
+| `use3DModel` | Boolean | Whether the world uses a 3D VRM avatar |
+| `tags` | String[] | Tags shown/searchable in the world browser |
+| `customPlayerVRM` | [MediaAsset](#-media-fields) \| null | Optional per-world custom player `.vrm` |
 
-| Property | Type | Description |
-|----------|------|-------------|
-| `id` | String | Unique identifier for the world |
-| `worldOverview` | Object | General information about the world |
-| `stats` | Array | Collection of stats that define the game mechanics |
-| `locations` | Array | Places the player can visit in the world |
-| `entities` | Array | Characters or objects the player can interact with |
-| `traits` | Array | Special characteristics the player can select |
-| `statUpdates` | Array | Rules for how stats change over time or based on conditions |
+### 📊 `stats`
 
-### World Overview Structure
+Each stat is a tracked mechanic. Two kinds exist, set by `type`:
 
-The `worldOverview` object contains general information about the world:
+| Field | Type | Description |
+|---|---|---|
+| `id` | String | Unique identifier |
+| `name` | String | Display name (referenced by stat code, by name) |
+| `type` | `"number"` \| `"list"` | Numeric gauge, or a list of items |
+| `description` | String | What the stat represents |
+| `min` / `max` | Number | Value bounds (numeric stats) |
+| `starting` | Number | Initial value at game start |
+| `value` | Number \| [StatListItem](#stat-list-items)[] | Live value — a number for `number` stats, items for `list` stats |
+| `regen` | Number | Amount regenerated per time unit |
+| `descriptors` | Array | Threshold-based descriptions (below) |
+| `code` | String | Optional JS deriving this stat from others — see the **[Stat Code Guide](StatCodeGuide)** |
+| `noIncrease` / `noDecrease` | Boolean | Stop the AI from raising/lowering the current value |
+| `noIncreaseMax` / `noDecreaseMax` | Boolean | Stop the AI from raising/lowering the max |
 
-| Property | Type | Description |
-|----------|------|-------------|
-| `name` | String | Display name of the world |
-| `description` | String | Detailed description of the world |
-| `author` | String | Creator of the world |
-| `thumbnail` | String | Base64-encoded image data for the world thumbnail |
-| `bgm` | String | Base64-encoded audio data for background music |
-| `systemPrompt` | String | Additional context provided to the AI about the world |
-| `use3DModel` | Boolean | Whether the world supports 3D character models |
+#### Stat descriptors
 
-### Stats Structure
+`descriptors` map value thresholds to flavor text the AI sees:
 
-Each stat in the `stats` array defines a game mechanic that can be tracked:
+| Field | Type | Description |
+|---|---|---|
+| `id` | String \| Number | Unique identifier |
+| `threshold` | Number | Value at/under which this descriptor applies |
+| `description` | String | Text for the stat at this level |
 
-| Property | Type | Description |
-|----------|------|-------------|
-| `id` | String | Unique identifier for the stat |
-| `name` | String | Display name of the stat |
-| `description` | String | Description of what the stat represents |
-| `min` | Number | Minimum possible value |
-| `max` | Number | Maximum possible value |
-| `starting` | Number | Initial value when game starts |
-| `regen` | Number | How much the stat regenerates per time unit |
-| `descriptors` | Array | Thresholds and descriptions for different stat levels |
-| `code` | String | Optional custom code for special stat behavior |
+#### Stat list items
 
-#### Stat Descriptors
+For `type: "list"` stats, `value` is an array of:
 
-Each descriptor in the `descriptors` array defines how to describe the stat at different levels:
+| Field | Type | Description |
+|---|---|---|
+| `id` | String \| Number | Unique identifier |
+| `name` | String | Item name |
+| `description` | String | Item description |
+| `number` | Number | Quantity/weight of this item |
 
-| Property | Type | Description |
-|----------|------|-------------|
-| `id` | String/Number | Unique identifier for the descriptor |
-| `threshold` | Number | The value at which this descriptor applies |
-| `description` | String | Text description for when the stat is at this level |
+### 🎭 `traits`
 
-### Traits Structure
+Selectable characteristics that adjust stats at character creation.
 
-Each trait in the `traits` array defines a characteristic that can modify stats:
+| Field | Type | Description |
+|---|---|---|
+| `id` | String | Unique identifier |
+| `name` | String | Display name |
+| `description` | String | What the trait does |
+| `statChanges` | [StatChange](#stat-changes)[] | How it modifies stats |
 
-| Property | Type | Description |
-|----------|------|-------------|
-| `id` | String | Unique identifier for the trait |
-| `name` | String | Display name of the trait |
-| `description` | String | Description of what the trait does |
-| `statChanges` | Array | How this trait affects different stats |
+#### Stat changes
 
-#### Stat Changes
+| Field | Type | Description |
+|---|---|---|
+| `statId` | String | Target stat's `id` |
+| `value` | Number | Amount applied |
+| `type` | `"min"` \| `"max"` \| `"starting"` \| `"regen"` | Which facet of the stat the trait modifies |
 
-Each stat change in the `statChanges` array defines how a trait modifies a stat:
+### 🗺️ `locations`
 
-| Property | Type | Description |
-|----------|------|-------------|
-| `statId` | String | ID of the stat being modified |
-| `value` | Number | Amount by which the stat is modified |
-| `type` | String | Type of modification: "min", "max", "starting", or "regen" |
+| Field | Type | Description |
+|---|---|---|
+| `id` | String | Unique identifier |
+| `name` | String | Display name |
+| `inGameDescription` | String | Short text shown in play |
+| `detailedDescription` | String | Longer context for the AI |
+| `description` | String | Legacy fallback when `inGameDescription` is absent |
+| `backgroundImage` | String | Data-URL background image |
+| `ambientSound` | [MediaAsset](#-media-fields) | Looping ambient audio |
+| `entities` | String[] | `id`s of entities present here |
+| `connections` | String[] | Names of connected locations (shown in the location panel) |
+| `isStarting` | Boolean | A candidate start location — one is chosen at random on a new game |
 
-### Locations Structure
+### 👥 `entities`
 
-Each location in the `locations` array defines a place the player can visit:
+Characters or objects in the world.
 
-| Property | Type | Description |
-|----------|------|-------------|
-| `id` | String | Unique identifier for the location |
-| `name` | String | Display name of the location |
-| `description` | String | Description of the location |
-| `image` | String | Base64-encoded image data for the location |
+| Field | Type | Description |
+|---|---|---|
+| `id` | String | Unique identifier |
+| `name` | String | Display name |
+| `type` | String | Optional category label |
+| `inGameDescription` | String | Short text shown in play |
+| `detailedDescription` | String | Longer context for the AI |
+| `image` | String | Data-URL portrait |
+| `sound` | [MediaAsset](#-media-fields) | Associated sound |
+| `model` | [MediaAsset](#-media-fields) | Associated 3D model |
 
-### Entities Structure
+### 🔄 `statUpdates`
 
-Each entity in the `entities` array defines a character or object the player can interact with:
+Rules the AI evaluates during play to change stats.
 
-| Property | Type | Description |
-|----------|------|-------------|
-| `id` | String | Unique identifier for the entity |
-| `name` | String | Display name of the entity |
-| `description` | String | Description of the entity |
-| `image` | String | Base64-encoded image data for the entity |
+| Field | Type | Description |
+|---|---|---|
+| `id` | String | Unique identifier |
+| `name` | String | Display name of the rule |
+| `prompt` | String | Prompt sent to the AI to evaluate this update |
+| `stats` | String[] | Names of the stats this update may change |
+| `messageHistory` | Array | Message records for this update |
 
-### Stat Updates Structure
+### 📖 `dictionary`
 
-Each stat update in the `statUpdates` array defines a rule for how stats change:
+Lore entries injected into the AI prompt when a keyword appears in play (a lightweight world-info / lorebook).
 
-| Property | Type | Description |
-|----------|------|-------------|
-| `id` | String | Unique identifier for the stat update |
-| `name` | String | Display name of the stat update rule |
-| `description` | String | Description of when/how the update occurs |
-| `statChanges` | Array | Which stats are affected and by how much |
-| `messageHistory` | Array | Record of messages related to this update |
+| Field | Type | Description |
+|---|---|---|
+| `id` | String | Unique identifier |
+| `name` | String | Display label (mirrors `key`) |
+| `key` | String | Comma-separated trigger keywords |
+| `value` | String | Content injected when a keyword matches |
 
-## Example World Data Structure
+---
+
+## 🎞️ Media fields
+
+Images (`thumbnail`, `bgm`, location `backgroundImage`, entity `image`) are stored as **base64 data-URL strings**, e.g. `data:image/png;base64,...`.
+
+Uploaded audio/model assets (`customPlayerVRM`, location `ambientSound`, entity `sound`/`model`) are a **`MediaAsset`** object that pairs the data with its MIME type:
+
+```json
+{ "data": "data:model/vrm;base64,...", "type": "model/vrm" }
+```
+
+---
+
+## 🧪 Example world
+
+A trimmed example showing the shape (media payloads abbreviated):
 
 ```json
 {
   "id": "example-world",
+  "version": "2.0.0",
   "worldOverview": {
     "name": "Example World",
-    "description": "A sample world to demonstrate the data format",
+    "description": "A sample world demonstrating the data format",
     "author": "Documentation Team",
     "thumbnail": "data:image/png;base64,...",
     "bgm": "data:audio/mp3;base64,...",
-    "systemPrompt": "This is a fantasy world with magic and adventure.",
-    "use3DModel": true
+    "systemPrompt": "A fantasy world of magic and adventure.",
+    "use3DModel": true,
+    "tags": ["fantasy", "adventure"],
+    "customPlayerVRM": { "data": "data:model/vrm;base64,...", "type": "model/vrm" }
   },
   "stats": [
     {
       "id": "health",
       "name": "Health",
+      "type": "number",
       "description": "Your physical wellbeing",
       "min": 0,
       "max": 100,
       "starting": 100,
       "regen": 1,
       "descriptors": [
-        {
-          "id": "health-low",
-          "threshold": 30,
-          "description": "You are severely injured"
-        },
-        {
-          "id": "health-med",
-          "threshold": 70,
-          "description": "You have some injuries"
-        },
-        {
-          "id": "health-high",
-          "threshold": 100,
-          "description": "You are in perfect health"
-        }
+        { "id": "hp-low", "threshold": 30, "description": "You are severely injured" },
+        { "id": "hp-high", "threshold": 100, "description": "You are in perfect health" }
       ],
       "code": ""
     }
@@ -184,272 +224,45 @@ Each stat update in the `statUpdates` array defines a rule for how stats change:
     {
       "id": "strong",
       "name": "Strong",
-      "description": "You have above-average physical strength",
-      "statChanges": [
-        {
-          "statId": "strength",
-          "value": 20,
-          "type": "starting"
-        }
-      ]
+      "description": "Above-average physical strength",
+      "statChanges": [{ "statId": "strength", "value": 20, "type": "starting" }]
     }
   ],
   "locations": [
     {
       "id": "town",
       "name": "Town Square",
-      "description": "The central gathering place",
-      "image": "data:image/png;base64,..."
+      "inGameDescription": "The central gathering place",
+      "backgroundImage": "data:image/png;base64,...",
+      "entities": ["shopkeeper"],
+      "connections": ["Market", "Tavern"],
+      "isStarting": true
     }
   ],
   "entities": [
     {
       "id": "shopkeeper",
       "name": "Friendly Shopkeeper",
-      "description": "Sells various goods",
-      "image": "data:image/png;base64,..."
+      "type": "npc",
+      "inGameDescription": "Sells various goods"
     }
   ],
   "statUpdates": [
     {
       "id": "hunger-decay",
       "name": "Hunger Over Time",
-      "description": "Your hunger increases gradually",
-      "statChanges": [
-        {
-          "statId": "hunger",
-          "value": 5,
-          "interval": "hour"
-        }
-      ],
+      "prompt": "Increase hunger gradually as time passes.",
+      "stats": ["Hunger"],
       "messageHistory": []
     }
-  ]
-}# World Data Format Documentation
-
-This document details the format of world data and world preview information used in Exotic Dangerous for displaying worlds in the main menu and managing world data.
-
-## Overview
-
-Exotic Dangerous uses a structured JSON format to define worlds, which includes various components such as world overview information, stats, locations, entities, traits, and stat updates. This document provides a comprehensive reference for understanding and creating compatible world data files.
-
-## World Storage
-
-Worlds are stored in the browser's IndexedDB with the following structure:
-
-- **Database Name**: `worldsDB`
-- **Store Name**: `worlds`
-- **Key Path**: `id`
-
-## World Metadata Structure
-
-World metadata is used for displaying world previews in the main menu. Each world has the following metadata properties:
-
-| Property | Type | Description |
-|----------|------|-------------|
-| `id` | String | Unique identifier for the world |
-| `name` | String | Display name of the world |
-| `description` | String | Brief description of the world |
-| `author` | String | Creator of the world |
-| `thumbnail` | String | Base64-encoded image data for the world thumbnail |
-| `createdAt` | String | ISO timestamp of when the world was created |
-| `lastAccessed` | String | ISO timestamp of when the world was last accessed |
-
-## Complete World Data Structure
-
-A complete world data object contains the following top-level properties:
-
-| Property | Type | Description |
-|----------|------|-------------|
-| `id` | String | Unique identifier for the world |
-| `worldOverview` | Object | General information about the world |
-| `stats` | Array | Collection of stats that define the game mechanics |
-| `locations` | Array | Places the player can visit in the world |
-| `entities` | Array | Characters or objects the player can interact with |
-| `traits` | Array | Special characteristics the player can select |
-| `statUpdates` | Array | Rules for how stats change over time or based on conditions |
-
-### World Overview Structure
-
-The `worldOverview` object contains general information about the world:
-
-| Property | Type | Description |
-|----------|------|-------------|
-| `name` | String | Display name of the world |
-| `description` | String | Detailed description of the world |
-| `author` | String | Creator of the world |
-| `thumbnail` | String | Base64-encoded image data for the world thumbnail |
-| `bgm` | String | Base64-encoded audio data for background music |
-| `systemPrompt` | String | Additional context provided to the AI about the world |
-| `use3DModel` | Boolean | Whether the world supports 3D character models |
-
-### Stats Structure
-
-Each stat in the `stats` array defines a game mechanic that can be tracked:
-
-| Property | Type | Description |
-|----------|------|-------------|
-| `id` | String | Unique identifier for the stat |
-| `name` | String | Display name of the stat |
-| `description` | String | Description of what the stat represents |
-| `min` | Number | Minimum possible value |
-| `max` | Number | Maximum possible value |
-| `starting` | Number | Initial value when game starts |
-| `regen` | Number | How much the stat regenerates per time unit |
-| `descriptors` | Array | Thresholds and descriptions for different stat levels |
-| `code` | String | Optional custom code for special stat behavior |
-
-#### Stat Descriptors
-
-Each descriptor in the `descriptors` array defines how to describe the stat at different levels:
-
-| Property | Type | Description |
-|----------|------|-------------|
-| `id` | String/Number | Unique identifier for the descriptor |
-| `threshold` | Number | The value at which this descriptor applies |
-| `description` | String | Text description for when the stat is at this level |
-
-### Traits Structure
-
-Each trait in the `traits` array defines a characteristic that can modify stats:
-
-| Property | Type | Description |
-|----------|------|-------------|
-| `id` | String | Unique identifier for the trait |
-| `name` | String | Display name of the trait |
-| `description` | String | Description of what the trait does |
-| `statChanges` | Array | How this trait affects different stats |
-
-#### Stat Changes
-
-Each stat change in the `statChanges` array defines how a trait modifies a stat:
-
-| Property | Type | Description |
-|----------|------|-------------|
-| `statId` | String | ID of the stat being modified |
-| `value` | Number | Amount by which the stat is modified |
-| `type` | String | Type of modification: "min", "max", "starting", or "regen" |
-
-### Locations Structure
-
-Each location in the `locations` array defines a place the player can visit:
-
-| Property | Type | Description |
-|----------|------|-------------|
-| `id` | String | Unique identifier for the location |
-| `name` | String | Display name of the location |
-| `description` | String | Description of the location |
-| `image` | String | Base64-encoded image data for the location |
-
-### Entities Structure
-
-Each entity in the `entities` array defines a character or object the player can interact with:
-
-| Property | Type | Description |
-|----------|------|-------------|
-| `id` | String | Unique identifier for the entity |
-| `name` | String | Display name of the entity |
-| `description` | String | Description of the entity |
-| `image` | String | Base64-encoded image data for the entity |
-
-### Stat Updates Structure
-
-Each stat update in the `statUpdates` array defines a rule for how stats change:
-
-| Property | Type | Description |
-|----------|------|-------------|
-| `id` | String | Unique identifier for the stat update |
-| `name` | String | Display name of the stat update rule |
-| `description` | String | Description of when/how the update occurs |
-| `statChanges` | Array | Which stats are affected and by how much |
-| `messageHistory` | Array | Record of messages related to this update |
-
-## Example World Data Structure
-
-```json
-{
-  "id": "example-world",
-  "worldOverview": {
-    "name": "Example World",
-    "description": "A sample world to demonstrate the data format",
-    "author": "Documentation Team",
-    "thumbnail": "data:image/png;base64,...",
-    "bgm": "data:audio/mp3;base64,...",
-    "systemPrompt": "This is a fantasy world with magic and adventure.",
-    "use3DModel": true
-  },
-  "stats": [
-    {
-      "id": "health",
-      "name": "Health",
-      "description": "Your physical wellbeing",
-      "min": 0,
-      "max": 100,
-      "starting": 100,
-      "regen": 1,
-      "descriptors": [
-        {
-          "id": "health-low",
-          "threshold": 30,
-          "description": "You are severely injured"
-        },
-        {
-          "id": "health-med",
-          "threshold": 70,
-          "description": "You have some injuries"
-        },
-        {
-          "id": "health-high",
-          "threshold": 100,
-          "description": "You are in perfect health"
-        }
-      ],
-      "code": ""
-    }
   ],
-  "traits": [
+  "dictionary": [
     {
-      "id": "strong",
-      "name": "Strong",
-      "description": "You have above-average physical strength",
-      "statChanges": [
-        {
-          "statId": "strength",
-          "value": 20,
-          "type": "starting"
-        }
-      ]
-    }
-  ],
-  "locations": [
-    {
-      "id": "town",
-      "name": "Town Square",
-      "description": "The central gathering place",
-      "image": "data:image/png;base64,..."
-    }
-  ],
-  "entities": [
-    {
-      "id": "shopkeeper",
-      "name": "Friendly Shopkeeper",
-      "description": "Sells various goods",
-      "image": "data:image/png;base64,..."
-    }
-  ],
-  "statUpdates": [
-    {
-      "id": "hunger-decay",
-      "name": "Hunger Over Time",
-      "description": "Your hunger increases gradually",
-      "statChanges": [
-        {
-          "statId": "hunger",
-          "value": 5,
-          "interval": "hour"
-        }
-      ],
-      "messageHistory": []
+      "id": "lore-1",
+      "name": "ancient war, the war",
+      "key": "ancient war, the war",
+      "value": "A centuries-old conflict that shaped the kingdom."
     }
   ]
 }
+```

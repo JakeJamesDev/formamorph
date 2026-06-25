@@ -1,0 +1,60 @@
+name: Publish Wiki
+
+# Mirrors docs/*.md to the repository's GitHub wiki whenever they change on main.
+# docs/ is the source of truth; the wiki is generated output. Page names map 1:1
+# from filenames (WorldFormat.md -> "WorldFormat", Home.md -> the landing page,
+# _Sidebar.md -> the nav sidebar).
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'docs/**'
+      - '.github/workflows/publish-wiki.yml'
+  workflow_dispatch: # allow a manual re-sync from the Actions tab
+
+# Let an in-flight publish finish before the next one starts (don't cancel a push).
+concurrency:
+  group: publish-wiki
+  cancel-in-progress: false
+
+permissions:
+  contents: write # GITHUB_TOKEN needs write to push to <repo>.wiki.git
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Sync docs/ to the GitHub wiki
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          REPO: ${{ github.repository }}
+          SHA: ${{ github.sha }}
+        run: |
+          set -euo pipefail
+
+          # The wiki is a sibling git repo at <repo>.wiki.git. It must already have
+          # at least one page (create one once in the repo's Wiki tab) to be cloneable.
+          git clone --depth 1 "https://x-access-token:${GH_TOKEN}@github.com/${REPO}.wiki.git" wiki
+
+          # Replace the wiki's top-level pages with the current docs/. Any manually
+          # created wiki page not backed by a docs/ file is removed, so keep wiki
+          # content in docs/.
+          find wiki -maxdepth 1 -type f -name '*.md' -delete
+          cp docs/*.md wiki/
+
+          cd wiki
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add -A
+
+          if git diff --cached --quiet; then
+            echo 'Wiki already up to date; nothing to publish.'
+            exit 0
+          fi
+
+          git commit -m "docs: sync from ${REPO}@${SHA}"
+          git push
