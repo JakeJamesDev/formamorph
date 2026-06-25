@@ -1,6 +1,6 @@
 # 📝 Changelog
 
-All notable changes to FormaMorph. This fork's first line is **2.0.0** — a full TypeScript rebuild of the upstream JavaScript app ([FieryLionite's FormaMorph](https://fierylion.itch.io/formamorph), ~v1.2) — with feature parity as the baseline plus new features on top.
+All notable changes to Formamorph. This fork's first line is **2.0.0** — a full TypeScript rebuild of the upstream JavaScript app ([FieryLionite's Formamorph](https://fierylion.itch.io/formamorph), ~v1.2) — with feature parity as the baseline plus new features on top.
 
 > 🚧 **2.0.0 is in development and not yet released.** Entries accumulate here as work lands. When the version number is bumped, that marks 2.0.0 going live; until then this is a living list.
 

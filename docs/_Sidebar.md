@@ -1,4 +1,4 @@
-### 🧬 FormaMorph
+### 🧬 Formamorph
 
 - [🏠 Home](Home)
 
