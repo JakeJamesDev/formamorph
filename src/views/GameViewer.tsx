@@ -32,7 +32,7 @@ import type { CharacterData, ChatMessage, ChatRole, PlayerStat, AIRequestType, S
 import { UnsavedChangesDialog } from "../components/UnsavedChangesDialog";
 import { estimateHistoryChars, estimateTokens } from "../lib/memoryUtils";
 import { parseGameText, stripReasoning, stripReasoningLive } from "../lib/aiResponse";
-import { INLINE_THINKING_DIRECTIVE } from "../components/game/GamePrompts";
+import { INLINE_THINKING_DIRECTIVE, markdownGuidance } from "../components/game/GamePrompts";
 import { lengthGuidance, trimToLastSentence } from "../lib/outputLength";
 import { useSmoothedReveal } from "../lib/useSmoothedReveal";
 import { parseSlashCommand } from "../lib/slashCommands";
@@ -101,6 +101,7 @@ const GameViewer = ({
     setLanguage,
     paragraphLimit,
     hideStatNumbers,
+    markdownOutput,
     // Active endpoint settings: the user's values when "Use Custom Endpoint" is on, built-in defaults otherwise.
     activeEndpointUrl: endpointUrl,
     activeApiToken: apiToken,
@@ -164,6 +165,7 @@ const GameViewer = ({
 
   // Slash-command preview (e.g. `/markdown test`): drives `reveal` with local text, off the AI path.
   const [commandPreview, setCommandPreview] = useState(false);
+  const [revealBuffer, setRevealBuffer] = useState(''); // full streamed text behind the reveal, for look-ahead rendering
   const commandTimer = useRef<ReturnType<typeof setInterval> | null>(null);
 
   const stopCommandPreview = useCallback(() => {
@@ -180,9 +182,13 @@ const GameViewer = ({
     if (commandTimer.current !== null) clearInterval(commandTimer.current);
     setCommandPreview(true);
     reveal.reset();
+    setRevealBuffer(MARKDOWN_SAMPLE); // full sample = maximum look-ahead for the preview
     let shown = 0;
+    // Slow pacing (~33 chars/sec) so the markdown auto-close can be eyeballed delimiter-by-delimiter.
+    const CHARS_PER_TICK = 2;
+    const TICK_MS = 60;
     commandTimer.current = setInterval(() => {
-      shown = Math.min(MARKDOWN_SAMPLE.length, shown + 24);
+      shown = Math.min(MARKDOWN_SAMPLE.length, shown + CHARS_PER_TICK);
       if (shown >= MARKDOWN_SAMPLE.length) {
         if (commandTimer.current !== null) clearInterval(commandTimer.current);
         commandTimer.current = null;
@@ -190,7 +196,7 @@ const GameViewer = ({
         return;
       }
       reveal.push(MARKDOWN_SAMPLE.slice(0, shown));
-    }, 40);
+    }, TICK_MS);
   }, [reveal]);
 
   // Dispatch a parsed slash command; returns true if it was handled (caller then skips the AI).
@@ -575,7 +581,8 @@ const GameViewer = ({
       .replace("<LOCATION JSON DATA>", locationDataString)
       .replace("<STATS DESCRIPTION>", statDescriptionsNarrative)
       .replace("<TRAITS DESCRIPTION>", generateTraitDescriptions())
-      .replace("<LENGTH GUIDANCE>", lengthGuidance(paragraphLimit, maxTokens));
+      .replace("<LENGTH GUIDANCE>", lengthGuidance(paragraphLimit, maxTokens))
+      .replace("<MARKDOWN GUIDANCE>", markdownGuidance(markdownOutput));
 
     // Add player notes to the system prompt
     if (updatedPrompt.includes("<NOTES>")) {
@@ -1048,7 +1055,7 @@ ${playerNotes || "No notes available"}
       let content = "";
       let finishReason = null;
       // Start a fresh smoothed reveal for this turn's narration.
-      if (requestType === "gametext") reveal.reset();
+      if (requestType === "gametext") { reveal.reset(); setRevealBuffer(""); }
 
       // Handle one complete SSE line. Lines are buffered across reads (below) so a `data:` payload
       // split across network chunks is never JSON.parsed half-formed.
@@ -1070,6 +1077,7 @@ ${playerNotes || "No notes available"}
             // display reads as continuous typing and the late truncation trim stays off-screen.
             const display = stripReasoningLive(content);
             reveal.push(display);
+            setRevealBuffer(display); // look-ahead buffer for streaming markdown render
 
             // Update visible entities based on streaming content
             const newEntities = extractEntities(display);
@@ -1145,6 +1153,7 @@ ${playerNotes || "No notes available"}
         if (finishReason === "length") finalContent = trimToLastSentence(finalContent);
         // Hand the authoritative final text to the smoothed reveal to play out cleanly.
         reveal.finish(finalContent);
+        setRevealBuffer(finalContent);
       }
       // Record the raw output on this turn's matching request so the AI-context viewer can show it.
       setDebugTurns((prev) => {
@@ -1163,7 +1172,7 @@ ${playerNotes || "No notes available"}
     } catch (error) {
       // Check if this is an abort error (user canceled the request)
       if ((error as Error).name === "AbortError") {
-        if (requestType === "gametext") reveal.reset();
+        if (requestType === "gametext") { reveal.reset(); setRevealBuffer(""); }
         // Return empty content for aborted requests instead of throwing
         return "";
       }
@@ -1425,6 +1434,7 @@ ${playerNotes || "No notes available"}
       locationSuggestion={locationSuggestion}
       commandPreview={commandPreview}
       onDismissCommandPreview={stopCommandPreview}
+      revealBuffer={revealBuffer}
     />
   );
 

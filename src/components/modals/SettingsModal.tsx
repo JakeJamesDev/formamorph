@@ -54,6 +54,8 @@ export const SettingsModal = ({ isOpen, onOpenChange }: {
     setAutoscroll,
     hideStatNumbers,
     setHideStatNumbers,
+    markdownOutput,
+    setMarkdownOutput,
     vramHelperUrl,
     setVramHelperUrl
   } = useSettings();
@@ -186,6 +188,23 @@ export const SettingsModal = ({ isOpen, onOpenChange }: {
                   />
                   <span className="text-xs text-muted-foreground">
                     The narrator, planner, and choices see stat descriptors (e.g. &quot;severely injured&quot;) instead of raw numbers, for immersion. Falls back to the number when a stat has no descriptor.
+                  </span>
+                </div>
+              </div>
+              <div className="grid grid-cols-1 sm:grid-cols-4 items-start gap-4">
+                <label htmlFor="markdownOutput" className="text-left sm:text-right pt-1">
+                  Markdown Formatting
+                </label>
+                <div className="col-span-3 flex items-start gap-2">
+                  <input
+                    id="markdownOutput"
+                    type="checkbox"
+                    checked={markdownOutput}
+                    onChange={(e) => setMarkdownOutput(e.target.checked)}
+                    className="mt-1"
+                  />
+                  <span className="text-xs text-muted-foreground">
+                    Let the AI format narration with bold/italics, lists, and tables. Works best with Output Length not set to a single paragraph.
                   </span>
                 </div>
               </div>
