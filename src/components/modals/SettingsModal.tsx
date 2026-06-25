@@ -48,6 +48,8 @@ export const SettingsModal = ({ isOpen, onOpenChange }: {
     setParagraphLimit,
     autoscroll,
     setAutoscroll,
+    hideStatNumbers,
+    setHideStatNumbers,
     vramHelperUrl,
     setVramHelperUrl
   } = useSettings();
@@ -149,6 +151,23 @@ export const SettingsModal = ({ isOpen, onOpenChange }: {
                   onChange={(e) => setAutoscroll(e.target.checked)}
                   className="col-span-3"
                 />
+              </div>
+              <div className="grid grid-cols-1 sm:grid-cols-4 items-start gap-4">
+                <label htmlFor="hideStatNumbers" className="text-left sm:text-right pt-1">
+                  Hide Stat Numbers
+                </label>
+                <div className="col-span-3 flex items-start gap-2">
+                  <input
+                    id="hideStatNumbers"
+                    type="checkbox"
+                    checked={hideStatNumbers}
+                    onChange={(e) => setHideStatNumbers(e.target.checked)}
+                    className="mt-1"
+                  />
+                  <span className="text-xs text-muted-foreground">
+                    The narrator, planner, and choices see stat descriptors (e.g. &quot;severely injured&quot;) instead of raw numbers, for immersion. Falls back to the number when a stat has no descriptor.
+                  </span>
+                </div>
               </div>
               <div className="grid grid-cols-1 sm:grid-cols-4 items-start gap-4">
                 <label className="text-left sm:text-right pt-1">Thinking</label>

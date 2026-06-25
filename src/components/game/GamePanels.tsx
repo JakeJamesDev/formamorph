@@ -3,10 +3,12 @@ import { useGameplay } from '@/contexts/GameplayContext';
 import { useSettings } from '@/contexts/SettingsContext';
 import { usePlayerModelUrl } from '@/lib/usePlayerModelUrl';
 import { useIsMobile } from '@/lib/useIsMobile';
+import { autoCloseMarkdown } from '@/lib/autoCloseMarkdown';
+import { GameText } from './GameText';
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Send, RefreshCw, Pencil, Languages, Loader2, Headphones, Square, ChevronUp, ChevronDown } from "lucide-react";
+import { Send, RefreshCw, Pencil, Languages, Loader2, Headphones, Square, ChevronUp, ChevronDown, X } from "lucide-react";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Progress } from "@/components/ui/progress";
 import { Slider } from "@/components/ui/slider";
@@ -199,9 +201,11 @@ export const MiddlePanel = ({
   ttsGenerating,
   memoryBar,
   progressBar,
-  locationSuggestion
+  locationSuggestion,
+  commandPreview,
+  onDismissCommandPreview
 }: {
-  parseAssistantMessage: (content: string) => React.ReactNode;
+  parseAssistantMessage: (content: string) => string;
   totalPages: number;
   handlePageChange: (page: number) => void;
   sendGameAction: (action: string) => void;
@@ -217,6 +221,8 @@ export const MiddlePanel = ({
   memoryBar: React.ReactNode;
   progressBar: React.ReactNode;
   locationSuggestion: React.ReactNode;
+  commandPreview: boolean;
+  onDismissCommandPreview: () => void;
 }) => {
   const {
     displayedMessages,
@@ -324,6 +330,17 @@ export const MiddlePanel = ({
                 <Pencil className="h-4 w-4" />
               </Button>
             </div>
+            {commandPreview && (
+              <div className="mb-3 p-2 border border-dashed border-primary/50 rounded relative">
+                <div className="flex items-center justify-between mb-1">
+                  <span className="text-xs text-muted-foreground">Markdown preview (/markdown test)</span>
+                  <Button variant="ghost" size="icon" className="h-6 w-6" onClick={onDismissCommandPreview} title="Dismiss preview">
+                    <X className="h-4 w-4" />
+                  </Button>
+                </div>
+                <GameText text={autoCloseMarkdown(gameplayText)} />
+              </div>
+            )}
             {displayedMessages.map((message, index) => {
               const isLatestMessage = index === displayedMessages.length - 1;
               if (index === 0 && ttsAudio) {
@@ -337,9 +354,7 @@ export const MiddlePanel = ({
                       {message.role === 'user' ? (
                         <pre className="whitespace-pre-wrap">{message.content}</pre>
                       ) : (
-                        <pre className="whitespace-pre-wrap">
-                          {isLatestMessage && isWaitingForAI ? gameplayText : parseAssistantMessage(message.content)}
-                        </pre>
+                        <GameText text={isLatestMessage && isWaitingForAI ? autoCloseMarkdown(gameplayText) : parseAssistantMessage(message.content)} />
                       )}
                     </div>
                   </React.Fragment>
@@ -351,9 +366,7 @@ export const MiddlePanel = ({
                   {message.role === 'user' ? (
                     <pre className="whitespace-pre-wrap">{message.content}</pre>
                   ) : (
-                    <pre className="whitespace-pre-wrap">
-                      {isLatestMessage && isWaitingForAI ? gameplayText : parseAssistantMessage(message.content)}
-                    </pre>
+                    <GameText text={isLatestMessage && isWaitingForAI ? autoCloseMarkdown(gameplayText) : parseAssistantMessage(message.content)} />
                   )}
                 </div>
               );
