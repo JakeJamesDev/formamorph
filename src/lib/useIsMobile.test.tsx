@@ -11,7 +11,7 @@ function mockMatchMedia(initial: boolean) {
       return matches;
     },
     media: '',
-    onchange: null,
+    onchange: null as MediaQueryList['onchange'],
     addEventListener: (_type: string, cb: () => void) => {
       listeners.add(cb);
     },

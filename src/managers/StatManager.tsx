@@ -18,7 +18,7 @@ import {
   CollapsibleContent,
 } from "@/components/ui/collapsible";
 import { executeStatCode } from "@/lib/statCodeExecutor";
-import type { Stat, StatDescriptor, StatListItem } from "@/types";
+import type { Stat, StatDescriptor, StatListItem, StatType } from "@/types";
 
 /** The stat being edited — a loose, partial Stat while fields are filled in. */
 type EditingStat = Partial<Stat>;
@@ -70,7 +70,7 @@ const StatManager = ({ stat }: { stat: Stat }) => {
     }
   };
 
-  const handleTypeChange = (value) => {
+  const handleTypeChange = (value: StatType) => {
     const updatedStat = { ...editingStat, type: value };
     if (value === "list") {
       updatedStat.value = updatedStat.value || [];
@@ -95,7 +95,7 @@ const StatManager = ({ stat }: { stat: Stat }) => {
     if (newDescriptor.threshold && newDescriptor.description) {
       const updatedDescriptors = [
         ...(editingStat.descriptors || []),
-        { ...newDescriptor, id: Date.now() },
+        { ...newDescriptor, id: crypto.randomUUID() },
       ];
       handleChange("descriptors", updatedDescriptors);
       setNewDescriptor({ threshold: "", description: "" });
@@ -113,7 +113,7 @@ const StatManager = ({ stat }: { stat: Stat }) => {
     if (newListItem.name && editingStat.type === "list") {
       const updatedValue = [
         ...((editingStat.value as StatListItem[]) || []),
-        { ...newListItem, id: Date.now() },
+        { ...newListItem, id: crypto.randomUUID() },
       ];
       handleChange("value", updatedValue);
       setNewListItem({ name: "", description: "", number: 0 });

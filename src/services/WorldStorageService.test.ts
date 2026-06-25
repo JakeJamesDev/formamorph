@@ -1,7 +1,7 @@
 // Must load before importing the service: its singleton constructor opens IndexedDB.
 import 'fake-indexeddb/auto';
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
-import WorldStorageService from './WorldStorageService';
+import WorldStorageService, { type StoredWorldRecord } from './WorldStorageService';
 import AuthService from './AuthService';
 
 const res = (body: unknown, ok = true, status = 200): Response =>
@@ -94,7 +94,7 @@ describe('publishWorld', () => {
 });
 
 describe('local world storage (IndexedDB)', () => {
-  const validWorld = {
+  const validWorld: StoredWorldRecord = {
     id: 'rt-1',
     name: 'Round Trip',
     description: 'd',
@@ -111,7 +111,10 @@ describe('local world storage (IndexedDB)', () => {
   };
 
   it('rejects worlds missing required fields', async () => {
-    await expect(WorldStorageService.storeWorld({ id: 'x', name: 'X' })).rejects.toThrow(/missing required/);
+    // Intentionally invalid (missing data) to exercise the runtime validation path.
+    await expect(
+      WorldStorageService.storeWorld({ id: 'x', name: 'X' } as unknown as StoredWorldRecord),
+    ).rejects.toThrow(/missing required/);
   });
 
   it('stores, reads back, lists, and deletes a world', async () => {

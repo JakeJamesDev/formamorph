@@ -1,3 +1,6 @@
+// Output-length mode: 'none' = unbounded, 'single' = one paragraph, 'auto' = scale to maxTokens.
+export type ParagraphLimit = 'none' | 'single' | 'auto';
+
 // Rough average tokens in one short narration paragraph (English), with headroom so the model
 // tends to finish before the hard max_tokens cap. Heuristic constants — tune as needed.
 const AVG_TOKENS_PER_PARAGRAPH = 90;
@@ -10,7 +13,7 @@ export function paragraphsForTokens(maxTokens: number): number {
 }
 
 /** The length directive injected into the game-text prompt for the chosen mode. */
-export function lengthGuidance(mode: string, maxTokens: number): string {
+export function lengthGuidance(mode: ParagraphLimit, maxTokens: number): string {
   if (mode === 'single') return 'Write a single paragraph.';
   if (mode === 'auto') {
     const n = paragraphsForTokens(maxTokens);
@@ -30,17 +33,6 @@ function lastSentenceEndIndex(text: string): number {
     end = m.index + m[0].length;
   }
   return end;
-}
-
-/**
- * Text up to the last complete sentence; the full text when no sentence has completed yet (so the
- * forming first sentence still streams). The target the smoothed reveal plays toward — it keeps the
- * live tail from ever showing an incomplete trailing sentence.
- */
-export function bufferToSentence(text: string): string {
-  const s = text || '';
-  const end = lastSentenceEndIndex(s);
-  return end === -1 ? s : s.slice(0, end);
 }
 
 /** Final value on truncation: trimmed text up to the last complete sentence (whole text if none). */

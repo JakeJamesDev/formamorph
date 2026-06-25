@@ -260,12 +260,15 @@ const WorldEditor = ({ onClose, embedded = false }: {
   const handleRowDragEnd = (event: DragEndEvent) => {
     const { active, over } = event;
     if (!over || active.id === over.id) return;
-    const config = tabConfig[activeTab];
+    const config = tabConfig[activeTab as keyof typeof tabConfig];
     if (!config) return;
-    const oldIndex = config.items.findIndex((it) => it.id === active.id);
-    const newIndex = config.items.findIndex((it) => it.id === over.id);
+    // The per-tab item/setter types correlate but TS can't track that across the union; all items
+    // share `id` and each setter accepts its own reordered array, so treat them uniformly here.
+    const items = config.items as { id: string }[];
+    const oldIndex = items.findIndex((it) => it.id === active.id);
+    const newIndex = items.findIndex((it) => it.id === over.id);
     if (oldIndex === -1 || newIndex === -1) return;
-    config.setItems(arrayMove(config.items, oldIndex, newIndex));
+    (config.setItems as (next: { id: string }[]) => void)(arrayMove(items, oldIndex, newIndex));
   };
 
   const removeItem = (id: string) => {

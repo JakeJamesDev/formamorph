@@ -24,8 +24,8 @@ export interface ChatCompletionChunk {
   }>;
 }
 
-/** Kinds of AI request the game makes (locationChange is v1.2.0). */
-export type AIRequestType = 'gametext' | 'choices' | 'statUpdates' | 'locationChange';
+/** Kinds of AI request the game makes (thinking is the optional planning pass; locationChange is v1.2.0). */
+export type AIRequestType = 'thinking' | 'gametext' | 'choices' | 'statUpdates' | 'locationChange';
 
 /** Structured payload the game stores per turn (mirrors the JSON the app round-trips). */
 export interface AITurnResult {

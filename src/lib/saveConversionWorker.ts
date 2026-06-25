@@ -3,8 +3,11 @@
  * This prevents the main thread from freezing when converting large save files
  */
 
+// A possibly-nested legacy game-state node; fields beyond `gameStates` vary, so they stay loose.
+type NestedState = { gameStates?: NestedState[] } & Record<string, unknown>;
+
 // Helper function to extract a flattened array of game states from a nested structure
-function flattenNestedGameStates(nestedState, result = []) {
+function flattenNestedGameStates(nestedState: NestedState | null | undefined, result: NestedState[] = []) {
   if (!nestedState || !nestedState.gameStates || !Array.isArray(nestedState.gameStates)) {
     return result;
   }

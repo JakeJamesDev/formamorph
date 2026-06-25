@@ -50,9 +50,9 @@ function useProvideGameData() {
 
   const addStat = useCallback((newStat: Omit<Stat, 'descriptors'>) => {
     const defaultDescriptors = [
-      { id: Date.now(), threshold: 30, description: `${newStat.name} is low` },
-      { id: Date.now() + 1, threshold: 60, description: `${newStat.name} is medium` },
-      { id: Date.now() + 2, threshold: 100, description: `${newStat.name} is high` },
+      { id: crypto.randomUUID(), threshold: 30, description: `${newStat.name} is low` },
+      { id: crypto.randomUUID(), threshold: 60, description: `${newStat.name} is medium` },
+      { id: crypto.randomUUID(), threshold: 100, description: `${newStat.name} is high` },
     ];
     const statWithDescriptors = { ...newStat, descriptors: defaultDescriptors };
     setStats(prevStats => [...prevStats, statWithDescriptors]);
