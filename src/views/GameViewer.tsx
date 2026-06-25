@@ -39,6 +39,7 @@ import { parseSlashCommand } from "../lib/slashCommands";
 import { MARKDOWN_SAMPLE } from "../lib/markdownSample";
 import { normalizeStatChanges, applyAiStatChanges, applyTraitStatChanges, parseStatUpdates, applyAiMaxChanges } from "../lib/statChanges";
 import { matchLocationResponse } from "../lib/locationMatch";
+import { rollbackState, regenerateState, canRegenerate, lastTurnAction, markRegeneratedTurn, markPrunedTurns } from "../lib/turnHistory";
 import { getActivatedDictionary, buildDictionaryContext, parseKeywords } from "../lib/dictionaryUtils";
 import { highlightSegments, type HighlightRule, type HighlightSegment } from "../lib/highlightUtils";
 import { useIsMobile } from "../lib/useIsMobile";
@@ -327,26 +328,17 @@ const GameViewer = ({
   const messagesPerPage = 2; // One AI message + one user message
 
   const handleRollback = () => {
-    if (currentPage < totalPages) {
-      const targetState = gameStates[currentPage - 1];
-      if (targetState) {
-        // Use existing loadGameState function to restore state
-        const success = loadGameState(targetState, locations);
-        if (success) {
-          // We no longer need to remove states after current page
-          // This allows for potential "redo" functionality in the future
-          addLogEntry("Rolled back to previous game state");
-
-          // Mark the AI-context entries for the turns this rollback discarded (those after the page we
-          // rolled back to). Indices align with turns in the common case (no prior re-generate).
-          setDebugTurns((prev) => prev.map((t, i) => (i >= currentPage ? { ...t, pruned: true } : t)));
-
-          // Ensure notes are loaded from the target state
-          if (targetState.playerNotes !== undefined) {
-            setPlayerNotes(targetState.playerNotes);
-          }
-        }
-      }
+    if (currentPage >= totalPages) return;
+    const targetState = rollbackState(gameStates, currentPage);
+    if (!targetState) return;
+    const success = loadGameState(targetState, locations);
+    if (!success) return;
+    addLogEntry("Rolled back to previous game state");
+    // Mark the AI-context entries for the turns this rollback discarded (those after the page we
+    // rolled back to). States after the current page are kept, allowing future "redo" functionality.
+    setDebugTurns((prev) => markPrunedTurns(prev, currentPage));
+    if (targetState.playerNotes !== undefined) {
+      setPlayerNotes(targetState.playerNotes);
     }
   };
 
@@ -355,22 +347,21 @@ const GameViewer = ({
   // deferred via `regenerateNonce` below — sendGameAction reads game state from its render's closure,
   // so it must run after loadGameState has committed, not synchronously alongside it.
   const pendingRegenerateRef = useRef<string | null>(null);
+  // Snapshot of the pre-game state (before the opening turn), so page 1 can also be re-generated —
+  // gameStates only holds post-turn snapshots, so the first turn has no predecessor there. Captured in
+  // sendGameAction on the first turn.
+  const initialStateRef = useRef<ReturnType<typeof saveCurrentGameState> | null>(null);
   const [regenerateNonce, setRegenerateNonce] = useState(0);
 
   const handleRegenerate = () => {
-    if (currentPage !== totalPages || currentPage < 2) return; // current page only, and a prior turn must exist
-    const previousState = gameStates[currentPage - 2];
-    const lastUser = fullMessageHistory[fullMessageHistory.length - 2];
-    if (!previousState || !lastUser || lastUser.role !== "user") return;
+    if (!canRegenerate(currentPage, totalPages)) return;
+    const previousState = regenerateState(gameStates, initialStateRef.current, currentPage);
+    const action = lastTurnAction(fullMessageHistory);
+    if (!previousState || action === null) return;
     loadGameState(previousState, locations);
     // Mark the current turn's AI-context entry as superseded; sendGameAction appends a fresh one.
-    setDebugTurns((prev) => {
-      if (!prev.length) return prev;
-      const next = [...prev];
-      next[next.length - 1] = { ...next[next.length - 1], regenerated: true };
-      return next;
-    });
-    pendingRegenerateRef.current = lastUser.content;
+    setDebugTurns((prev) => markRegeneratedTurn(prev));
+    pendingRegenerateRef.current = action;
     setRegenerateNonce((n) => n + 1);
   };
 
@@ -540,6 +531,8 @@ const GameViewer = ({
   const sendGameAction = async (action: string) => {
     if (!isGameStarted && action !== "START GAME") return;
     stopCommandPreview(); // a real turn supersedes any command preview
+    // On the opening turn, snapshot the pre-game state so page 1 can be re-generated later.
+    if (fullMessageHistory.length === 0) initialStateRef.current = saveCurrentGameState();
 
     const sanitizeLocationData = (location: (GameLocation & { entity?: string[] }) | null) => {
       if (!location) return "";

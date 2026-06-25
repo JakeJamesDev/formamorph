@@ -506,7 +506,7 @@ export const MiddlePanel = ({
                       Rollback
                     </Button>
                   </ConfirmDialog>
-                ) : currentPage > 1 ? (
+                ) : totalPages > 0 ? (
                   <Button
                     variant="outline"
                     className="text-xs gap-1 w-32"
