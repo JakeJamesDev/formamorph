@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback, useRef } from "react";
 import { useGameData } from "../contexts/GameDataContext";
-import { useSettings, DEFAULT_ENDPOINT } from "@/contexts/SettingsContext";
+import { useSettings } from "@/contexts/SettingsContext";
 import { useGameplay } from "@/contexts/GameplayContext";
 import { processStatCode } from "@/contexts/GameplayContextUtils";
 import { Button } from "@/components/ui/button";
@@ -98,11 +98,12 @@ const GameViewer = ({
     language,
     setLanguage,
     paragraphLimit,
-    endpointUrl,
-    apiToken,
-    modelName,
-    maxTokens,
-    aiMessageLimit,
+    // Active endpoint settings: the user's values when "Use Custom Endpoint" is on, built-in defaults otherwise.
+    activeEndpointUrl: endpointUrl,
+    activeApiToken: apiToken,
+    activeModelName: modelName,
+    activeMaxTokens: maxTokens,
+    activeAiMessageLimit: aiMessageLimit,
     systemPrompt,
     choicesPrompt,
     statUpdatesPrompt,
@@ -419,22 +420,7 @@ const GameViewer = ({
     [getStatByName, setStatByName, addLogEntry, setGameTime, setPlayerStats, setRecentStatChanges],
   );
 
-  const getEndpointUrl = () => {
-    // Apply load balancing for default endpoint
-    let requestEndpoint = endpointUrl;
-    if (endpointUrl === DEFAULT_ENDPOINT) {
-      const rand = Math.random();
-      if (rand < 0.25) {
-        requestEndpoint = endpointUrl.replace("mistral", "mistral3");
-      } else if (rand < 0.5) {
-        requestEndpoint = endpointUrl.replace("mistral", "mistral4");
-      } else {
-        requestEndpoint = endpointUrl.replace("mistral", "mistral5");
-      }
-    }
-
-    return requestEndpoint;
-  };
+  const getEndpointUrl = () => endpointUrl;
 
   const generateTraitDescriptions = useCallback(() => {
     if (!playerTraits.length) {
