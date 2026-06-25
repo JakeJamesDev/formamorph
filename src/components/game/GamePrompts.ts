@@ -17,7 +17,7 @@ Important Player Notes:
 
 Guidelines:
 - Write in second person, present tense ("You ...").
-- Be concise: 1-3 short paragraphs of vivid prose.
+- Be concise and vivid. <LENGTH GUIDANCE>
 - Stay consistent with the world, the player's stats and traits, the current location, and what has happened so far; let low or high stats color the outcome.
 - Advance the scene. Do not decide the player's next action for them and do not list choices.
 - Output only the narration - no headings, labels, bullet lists, quotation wrappers, or mention of being an AI.`;

@@ -2,6 +2,7 @@ import { createContext, useContext, useState, useEffect, type ReactNode } from '
 import { defaultSystemPrompt, defaultChoicesPrompt, defaultStatUpdatesPrompt, defaultLocationChangePrompt, defaultThinkingPrompt } from '../components/game/GamePrompts';
 
 export type ThinkingMode = 'off' | 'precall' | 'inline';
+export type ParagraphLimit = 'none' | 'single' | 'auto';
 
 const APP_ID = 'FORMAMORPH';
 export const DEFAULT_ENDPOINT = 'https://mistral.lyonade.net/v1/chat/completions';
@@ -17,9 +18,13 @@ function useProvideSettings() {
     return savedLanguage || 'English';
   });
 
-  const [shortform, setShortform] = useState<boolean>(() => {
-    const saved = localStorage.getItem(`${APP_ID}_shortform`);
-    return saved ? JSON.parse(saved) : true;
+  const [paragraphLimit, setParagraphLimit] = useState<ParagraphLimit>(() => {
+    const saved = localStorage.getItem(`${APP_ID}_paragraphLimit`);
+    if (saved === 'none' || saved === 'single' || saved === 'auto') return saved;
+    // Migrate from the legacy shortform boolean (true = single paragraph, false = unbounded).
+    const legacy = localStorage.getItem(`${APP_ID}_shortform`);
+    if (legacy !== null) return JSON.parse(legacy) ? 'single' : 'none';
+    return 'auto'; // new-user default
   });
 
   const [autoscroll, setAutoscroll] = useState<boolean>(() => {
@@ -102,8 +107,8 @@ function useProvideSettings() {
   }, [language]);
 
   useEffect(() => {
-    localStorage.setItem(`${APP_ID}_shortform`, JSON.stringify(shortform));
-  }, [shortform]);
+    localStorage.setItem(`${APP_ID}_paragraphLimit`, paragraphLimit);
+  }, [paragraphLimit]);
 
   useEffect(() => {
     localStorage.setItem(`${APP_ID}_autoscroll`, JSON.stringify(autoscroll));
@@ -166,8 +171,8 @@ function useProvideSettings() {
     setBgmEnabled,
     language,
     setLanguage,
-    shortform,
-    setShortform,
+    paragraphLimit,
+    setParagraphLimit,
     autoscroll,
     setAutoscroll,
     endpointUrl,

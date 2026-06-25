@@ -32,6 +32,8 @@ import { UnsavedChangesDialog } from "../components/UnsavedChangesDialog";
 import { estimateHistoryChars } from "../lib/memoryUtils";
 import { parseGameText, stripReasoning, stripReasoningLive } from "../lib/aiResponse";
 import { INLINE_THINKING_DIRECTIVE } from "../components/game/GamePrompts";
+import { lengthGuidance, trimToLastSentence } from "../lib/outputLength";
+import { useSmoothedReveal } from "../lib/useSmoothedReveal";
 import { normalizeStatChanges, applyAiStatChanges, applyTraitStatChanges, parseStatUpdates, applyAiMaxChanges } from "../lib/statChanges";
 import { matchLocationResponse } from "../lib/locationMatch";
 import { getActivatedDictionary, buildDictionaryContext, parseKeywords } from "../lib/dictionaryUtils";
@@ -77,7 +79,7 @@ const GameViewer = ({
     setBgmEnabled,
     language,
     setLanguage,
-    shortform,
+    paragraphLimit,
     endpointUrl,
     apiToken,
     modelName,
@@ -133,6 +135,10 @@ const GameViewer = ({
     saveCurrentGameState,
     loadGameState,
   } = useGameplay();
+
+  // Smoothly plays streamed narration into gameplayText so it reads as continuous typing and the
+  // truncation trim happens off-screen (see lib/useSmoothedReveal).
+  const reveal = useSmoothedReveal(setGameplayText);
 
   useEffect(() => {
     setCharacterData(initialCharacterData);
@@ -501,7 +507,8 @@ const GameViewer = ({
       .replace("<WORLD DESCRIPTION>", worldOverview.systemPrompt || "")
       .replace("<LOCATION JSON DATA>", locationDataString)
       .replace("<STATS DESCRIPTION>", statDescriptions)
-      .replace("<TRAITS DESCRIPTION>", generateTraitDescriptions());
+      .replace("<TRAITS DESCRIPTION>", generateTraitDescriptions())
+      .replace("<LENGTH GUIDANCE>", lengthGuidance(paragraphLimit, maxTokens));
 
     // Add player notes to the system prompt
     if (updatedPrompt.includes("<NOTES>")) {
@@ -966,7 +973,7 @@ ${playerNotes || "No notes available"}
           max_tokens: maxTokensOverride ?? maxTokens,
           stream: true,
           // Single-paragraph stop, but not in inline-thinking mode — the <think> block needs newlines.
-          ...(requestType === "gametext" && shortform && thinkingMode !== "inline" && { stop: ["\n"] }),
+          ...(requestType === "gametext" && paragraphLimit === "single" && thinkingMode !== "inline" && { stop: ["\n"] }),
         }),
         signal, // Add the abort signal to the fetch request
       });
@@ -979,6 +986,9 @@ ${playerNotes || "No notes available"}
 
       const reader = response.body.getReader();
       let content = "";
+      let finishReason = null;
+      // Start a fresh smoothed reveal for this turn's narration.
+      if (requestType === "gametext") reveal.reset();
 
       while (true) {
         const { done, value } = await reader.read();
@@ -997,13 +1007,16 @@ ${playerNotes || "No notes available"}
               const parsed = JSON.parse(data);
               const delta = parsed.choices[0]?.delta?.content || "";
               content += delta;
+              if (parsed.choices[0]?.finish_reason) {
+                finishReason = parsed.choices[0].finish_reason;
+              }
 
               // Handle different request types
               if (requestType === "gametext") {
-                // Hide any (possibly in-progress) reasoning block from the live narration.
+                // Feed the full (reasoning-stripped) content; the smoothed reveal trails it so the
+                // display reads as continuous typing and the late truncation trim stays off-screen.
                 const display = stripReasoningLive(content);
-                // Update both gameplay text and message history in real-time
-                setGameplayText(display);
+                reveal.push(display);
 
                 // Update visible entities based on streaming content
                 const newEntities = extractEntities(display);
@@ -1061,7 +1074,13 @@ ${playerNotes || "No notes available"}
       // Show the raw output (including any <think> block) in the AI-context viewer, but return the
       // cleaned text so reasoning never reaches the narration, TTS, choices/stats/location, or history.
       const rawContent = content.trim();
-      const finalContent = stripReasoning(content).trim();
+      let finalContent = stripReasoning(content).trim();
+      // On a mid-sentence truncation (hit the token cap), trim back to the last complete sentence.
+      if (requestType === "gametext") {
+        if (finishReason === "length") finalContent = trimToLastSentence(finalContent);
+        // Hand the authoritative final text to the smoothed reveal to play out cleanly.
+        reveal.finish(finalContent);
+      }
       // Record the raw output on this turn's matching request so the AI-context viewer can show it.
       setDebugTurns((prev) => {
         if (!prev.length) return prev;
@@ -1080,6 +1099,7 @@ ${playerNotes || "No notes available"}
       // Check if this is an abort error (user canceled the request)
       if (error.name === "AbortError") {
         console.log("Request was aborted by user");
+        if (requestType === "gametext") reveal.reset();
         // Return empty content for aborted requests instead of throwing
         return "";
       }
