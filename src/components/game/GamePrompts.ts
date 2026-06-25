@@ -19,8 +19,27 @@ Guidelines:
 - Write in second person, present tense ("You ...").
 - Be concise and vivid. <LENGTH GUIDANCE>
 - Stay consistent with the world, the player's stats and traits, the current location, and what has happened so far; let low or high stats color the outcome.
-- Advance the scene. Do not decide the player's next action for them and do not list choices.
-- Output only the narration - no headings, labels, bullet lists, quotation wrappers, or mention of being an AI.`;
+- Advance the scene. Do not decide or list the player's next actions - a separate step offers the choices.
+- Output only the narration - no labels, quotation wrappers, or mention of being an AI.
+
+<MARKDOWN GUIDANCE>`;
+
+const MARKDOWN_OFF = 'Write plain prose - no headings, lists, or tables.';
+
+const MARKDOWN_ON = `Formatting (Markdown):
+- Write immersive prose. When the player checks inventory or stats, or you present structured data, use a Markdown table; when several distinct things are present at once (exits, objects, people), use a bulleted list.
+- Every response must use emphasis:
+  - Bold exactly one thing: the single most important noun in this moment (a threat, a key object, a name), written as **like this**.
+  - Italicize at least one inner thought, sound, or stressed word, written as *like this*.
+
+Emphasis examples:
+- Your boot sinks into cold muck. *Something* watches from the reeds, and your grip tightens on the **spear**.
+- *Not again*, you think. The **gate** groans shut behind you, and far off, *a bell tolls*.`;
+
+/** The Markdown formatting directive injected into the game-text prompt (replaces <MARKDOWN GUIDANCE>). */
+export function markdownGuidance(enabled: boolean): string {
+  return enabled ? MARKDOWN_ON : MARKDOWN_OFF;
+}
 
 export const defaultChoicesPrompt = `Given the following information:
 

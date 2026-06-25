@@ -68,6 +68,7 @@ Everything below is relative to the point this fork diverged from upstream.
 #### ➕ Added
 
 - **👤 User-facing**
+  - **Markdown formatting** toggle (Settings → Gameplay, default off) — when on, the narration prompt asks the AI to format with bold/italics, lists, and tables (e.g. inventory) using a floor-based rule (one bold + at least one italic per turn) that small models follow reliably; off keeps plain prose. (Reset Prompts to pick it up if you've customized the system prompt.)
   - **Hide stat numbers from the narrator** (Settings → Gameplay, default on) — the narration, planning, and choices requests receive stat *descriptors* (e.g. "severely injured") instead of raw values, so the model writes to how a stat *feels* rather than fixating on the number. Stat-updates still get the numbers; falls back to the number when a stat has no descriptor.
   - **Slash commands** in the action box (input starting with `/`) that bypass the AI; the first, `/markdown test`, types a rich sample through the real narration renderer to preview markdown formatting.
   - **Use Custom Endpoint** toggle in Settings → Endpoint — off uses the built-in default endpoint (fields read-only); on lets you enter and edit your own. Custom values are preserved when toggling off and back on.

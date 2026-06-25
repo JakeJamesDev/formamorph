@@ -3,7 +3,7 @@ import { useGameplay } from '@/contexts/GameplayContext';
 import { useSettings } from '@/contexts/SettingsContext';
 import { usePlayerModelUrl } from '@/lib/usePlayerModelUrl';
 import { useIsMobile } from '@/lib/useIsMobile';
-import { autoCloseMarkdown } from '@/lib/autoCloseMarkdown';
+import { streamingMarkdown } from '@/lib/autoCloseMarkdown';
 import { GameText } from './GameText';
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -203,7 +203,8 @@ export const MiddlePanel = ({
   progressBar,
   locationSuggestion,
   commandPreview,
-  onDismissCommandPreview
+  onDismissCommandPreview,
+  revealBuffer
 }: {
   parseAssistantMessage: (content: string) => string;
   totalPages: number;
@@ -223,6 +224,7 @@ export const MiddlePanel = ({
   locationSuggestion: React.ReactNode;
   commandPreview: boolean;
   onDismissCommandPreview: () => void;
+  revealBuffer: string;
 }) => {
   const {
     displayedMessages,
@@ -338,7 +340,7 @@ export const MiddlePanel = ({
                     <X className="h-4 w-4" />
                   </Button>
                 </div>
-                <GameText text={autoCloseMarkdown(gameplayText)} />
+                <GameText text={streamingMarkdown(gameplayText, revealBuffer)} />
               </div>
             )}
             {displayedMessages.map((message, index) => {
@@ -354,7 +356,7 @@ export const MiddlePanel = ({
                       {message.role === 'user' ? (
                         <pre className="whitespace-pre-wrap">{message.content}</pre>
                       ) : (
-                        <GameText text={isLatestMessage && isWaitingForAI ? autoCloseMarkdown(gameplayText) : parseAssistantMessage(message.content)} />
+                        <GameText text={isLatestMessage && isWaitingForAI ? streamingMarkdown(gameplayText, revealBuffer) : parseAssistantMessage(message.content)} />
                       )}
                     </div>
                   </React.Fragment>
@@ -366,7 +368,7 @@ export const MiddlePanel = ({
                   {message.role === 'user' ? (
                     <pre className="whitespace-pre-wrap">{message.content}</pre>
                   ) : (
-                    <GameText text={isLatestMessage && isWaitingForAI ? autoCloseMarkdown(gameplayText) : parseAssistantMessage(message.content)} />
+                    <GameText text={isLatestMessage && isWaitingForAI ? streamingMarkdown(gameplayText, revealBuffer) : parseAssistantMessage(message.content)} />
                   )}
                 </div>
               );

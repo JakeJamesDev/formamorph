@@ -60,6 +60,8 @@ function useProvideSettings() {
   const [autoscroll, setAutoscroll] = usePersistentState<boolean>(`${APP_ID}_autoscroll`, false, boolCodec);
   // Narrator (and planning/choices) sees stat descriptors instead of raw numbers, for immersion.
   const [hideStatNumbers, setHideStatNumbers] = usePersistentState<boolean>(`${APP_ID}_hideStatNumbers`, true, boolCodec);
+  // Let the AI format narration with Markdown (seeds the <MARKDOWN GUIDANCE> token in the game-text prompt).
+  const [markdownOutput, setMarkdownOutput] = usePersistentState<boolean>(`${APP_ID}_markdownOutput`, false, boolCodec);
   const [endpointUrl, setEndpointUrl] = usePersistentState<string>(`${APP_ID}_endpointUrl`, DEFAULT_ENDPOINT, stringCodec);
   const [apiToken, setApiToken] = usePersistentState<string>(`${APP_ID}_apiToken`, DEFAULT_API_TOKEN, stringCodec);
   const [modelName, setModelName] = usePersistentState<string>(`${APP_ID}_modelName`, DEFAULT_MODEL_NAME, stringCodec);
@@ -139,6 +141,8 @@ function useProvideSettings() {
     setAutoscroll,
     hideStatNumbers,
     setHideStatNumbers,
+    markdownOutput,
+    setMarkdownOutput,
     endpointUrl,
     setEndpointUrl,
     apiToken,
