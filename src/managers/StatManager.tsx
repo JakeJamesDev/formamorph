@@ -456,7 +456,7 @@ return (health + strength) / 2;"
 
                   try {
                     const result = await executeStatCode(
-                      editingStat.code,
+                      editingStat.code ?? '',
                       stats,
                       editingStat as Stat,
                     );
@@ -466,7 +466,7 @@ return (health + strength) / 2;"
                       setCodeResult(result.value);
                     }
                   } catch (error) {
-                    setCodeError(error.message);
+                    setCodeError((error as Error).message);
                   } finally {
                     setIsTestingCode(false);
                   }

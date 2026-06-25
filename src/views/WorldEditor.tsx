@@ -142,12 +142,12 @@ const WorldEditor = ({ onClose, embedded = false }: {
   };
 
   const loadWorld = (e: ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files[0];
+    const file = e.target.files?.[0];
     if (file) {
       const reader = new FileReader();
       reader.onload = (e) => {
         try {
-          const loadedWorld = JSON.parse(e.target.result as string);
+          const loadedWorld = JSON.parse(e.target?.result as string);
           loadWorldData(loadedWorld, false);
         } catch (error) {
           console.error('Error parsing JSON:', error);
@@ -181,9 +181,6 @@ const WorldEditor = ({ onClose, embedded = false }: {
           inGameDescription: '',
           detailedDescription: '',
           type: '',
-          image: null,
-          sound: null,
-          model: null
         });
       } else if (activeTab === "locations") {
         addLocation({
@@ -191,8 +188,6 @@ const WorldEditor = ({ onClose, embedded = false }: {
           name: newName,
           inGameDescription: '',
           detailedDescription: '',
-          backgroundImage: null,
-          ambientSound: null,
           entities: []
         });
       } else if (activeTab === "traits") {

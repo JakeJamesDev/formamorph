@@ -28,7 +28,7 @@ import { LocationModal } from "../components/modals/LocationModal";
 import { SettingsModal } from "../components/modals/SettingsModal";
 import { MenuModal } from "../components/modals/MenuModal";
 import WorldEditor from "./WorldEditor";
-import type { CharacterData, ChatMessage, ChatRole, PlayerStat, AIRequestType, StatChange, Trait, GameLocation } from "@/types";
+import type { CharacterData, ChatMessage, ChatRole, PlayerStat, AIRequestType, StatChange, Trait, GameLocation, MediaAsset } from "@/types";
 import { UnsavedChangesDialog } from "../components/UnsavedChangesDialog";
 import { estimateHistoryChars } from "../lib/memoryUtils";
 import { parseGameText, stripReasoning, stripReasoningLive } from "../lib/aiResponse";
@@ -79,7 +79,7 @@ const GameViewer = ({
   onExitToMenu,
 }: GameViewerProps) => {
   // AbortController reference for canceling AI requests
-  const abortControllerRef = useRef(null);
+  const abortControllerRef = useRef<AbortController | null>(null);
   const {
     stats,
     locations,
@@ -222,17 +222,17 @@ const GameViewer = ({
     const ok = await generateTTS();
     if (!ok) setIsTTSModalOpen(true);
   };
-  const [selectedEntity, setSelectedEntity] = useState(null);
+  const [selectedEntity, setSelectedEntity] = useState<string | null>(null);
   const [isEntityModalOpen, setIsEntityModalOpen] = useState(false);
-  const [ambientSound, setAmbientSound] = useState(null);
+  const [ambientSound, setAmbientSound] = useState<MediaAsset | null>(null);
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const [isEditingWorld, setIsEditingWorld] = useState(false);
   const [showEditorExitPrompt, setShowEditorExitPrompt] = useState(false);
   const [lastPromptChars, setLastPromptChars] = useState(0);
-  const [suggestedLocation, setSuggestedLocation] = useState(null);
+  const [suggestedLocation, setSuggestedLocation] = useState<GameLocation | null>(null);
   // AI progress feedback: which request is running, its streamed output estimate (null = indeterminate), and
   // whether the player may already type their next action (choices done, background requests still finishing).
-  const [aiRequestType, setAiRequestType] = useState(null);
+  const [aiRequestType, setAiRequestType] = useState<AIRequestType | null>(null);
   const [choicesReady, setChoicesReady] = useState(false);
   const [isDebugOpen, setIsDebugOpen] = useState(false);
   // One entry per game turn, each holding the AI requests captured that turn (newest last).
@@ -461,7 +461,7 @@ const GameViewer = ({
   const sendGameAction = async (action: string) => {
     if (!isGameStarted && action !== "START GAME") return;
 
-    const sanitizeLocationData = (location) => {
+    const sanitizeLocationData = (location: (GameLocation & { entity?: string[] }) | null) => {
       if (!location) return "";
 
       const {
@@ -810,6 +810,7 @@ ${playerNotes || "No notes available"}
         setIsGameStarted(true);
       }
     } catch (error) {
+      const err = error as { response?: { status?: number }; message?: string };
       // Reset game started state if START GAME action fails
       if (action === "START GAME") {
         setIsGameStarted(false);
@@ -819,17 +820,17 @@ ${playerNotes || "No notes available"}
       let errorMessage = "Failed to complete action. Please try again.";
 
       // Handle specific error codes
-      if (error.response) {
-        if (error.response.status === 404) {
+      if (err.response) {
+        if (err.response.status === 404) {
           errorMessage =
             "Request failed (404) Invalid endpoint URL or model name. Please check your settings.";
-        } else if (error.response.status === 400) {
+        } else if (err.response.status === 400) {
           errorMessage =
             "Request failed (400). Either model name is wrong or memory limit exceeded model limit.";
         }
       }
       // Handle JSON parse errors
-      else if (error.message === "Unable to parse input") {
+      else if (err.message === "Unable to parse input") {
         errorMessage =
           "The AI model was unable to produce the correct JSON format. Try a different model.";
       }
@@ -946,8 +947,9 @@ ${playerNotes || "No notes available"}
   ) => {
     try {
       // Create a new AbortController for this request
-      abortControllerRef.current = new AbortController();
-      const signal = abortControllerRef.current.signal;
+      const controller = new AbortController();
+      abortControllerRef.current = controller;
+      const signal = controller.signal;
 
       // Surface which request is currently running.
       setAiRequestType(requestType);
@@ -1111,7 +1113,7 @@ ${playerNotes || "No notes available"}
       return finalContent;
     } catch (error) {
       // Check if this is an abort error (user canceled the request)
-      if (error.name === "AbortError") {
+      if ((error as Error).name === "AbortError") {
         if (requestType === "gametext") reveal.reset();
         // Return empty content for aborted requests instead of throwing
         return "";
@@ -1249,7 +1251,7 @@ ${playerNotes || "No notes available"}
       statUpdates: "Stat Updates",
       locationChange: "Location",
     };
-    const label = labels[aiRequestType as keyof typeof labels] || "Response";
+    const label = aiRequestType ? labels[aiRequestType] : "Response";
     return (
       <div className="flex items-center gap-2 mb-1">
         <span className="text-xs text-muted-foreground whitespace-nowrap">
@@ -1466,7 +1468,7 @@ ${playerNotes || "No notes available"}
             f.name.length >= selectedEntity.length
               ? f.name.substring(0, selectedEntity.length) === selectedEntity
               : selectedEntity.substring(0, f.name.length) === f.name,
-          )}
+          ) ?? null}
           isOpen={isEntityModalOpen}
           onOpenChange={setIsEntityModalOpen}
         />

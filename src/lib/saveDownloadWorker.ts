@@ -44,8 +44,8 @@ self.addEventListener('message', (event) => {
       type: 'error',
       id: event.data.id,
       error: {
-        message: error.message,
-        stack: error.stack
+        message: (error as Error).message,
+        stack: (error as Error).stack
       }
     });
   }

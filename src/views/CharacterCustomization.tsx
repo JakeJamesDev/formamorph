@@ -351,7 +351,7 @@ const CharacterCustomization = ({ onCharacterCustomized }: {
                     <SelectValue placeholder="Select an Option" />
                   </SelectTrigger>
                   <SelectContent>
-                    {caps.extras.map((name) => (
+                    {caps?.extras.map((name) => (
                       <SelectItem key={name} value={name}>{cleanLabel(name)}</SelectItem>
                     ))}
                   </SelectContent>

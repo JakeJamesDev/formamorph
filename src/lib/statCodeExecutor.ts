@@ -98,7 +98,7 @@ export const executeStatCode = async (
     // Provide more detailed error information
     return {
       value: null,
-      error: `Error: ${error.message}\nStack: ${error.stack || 'No stack trace available'}`
+      error: `Error: ${(error as Error).message}\nStack: ${(error as Error).stack || 'No stack trace available'}`
     };
   }
 };

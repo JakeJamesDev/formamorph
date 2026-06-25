@@ -12,10 +12,10 @@ interface ModelViewerProps {
 }
 
 const ModelViewer = ({ model, modelType }: ModelViewerProps) => {
-  const mountRef = useRef(null);
+  const mountRef = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
-    if (!model) return;
+    if (!model || !model.data) return;
 
     const scene = new THREE.Scene();
     scene.background = null; // Ensure the scene background is transparent

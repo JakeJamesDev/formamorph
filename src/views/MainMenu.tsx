@@ -89,7 +89,7 @@ const applyWorldOrder = <T extends { id: string }>(list: T[], order: string[]): 
 // A draggable world tile. The whole card is the drag handle; a small move distance is
 // required to start a drag so a plain click still selects the world.
 function SortableWorldCard({ world, onSelect, onDelete }: {
-  world: { id: string; name: string; thumbnail?: string };
+  world: WorldRecord;
   onSelect: (id: string) => void;
   onDelete: (id: string) => void;
 }) {
@@ -217,22 +217,22 @@ function CardTags({ tags, onHide }: { tags: string[]; onHide: (tag: string) => v
 
 const MainMenu = ({ onStartGame, onOpenWorldEditor }: MainMenuProps) => {
   const { traits, stats, loadWorldData } = useGameData();
-  const [selectedWorld, setSelectedWorld] = useState(null);
+  const [selectedWorld, setSelectedWorld] = useState<WorldRecord | null>(null);
   const [showWorldModal, setShowWorldModal] = useState(false);
   const [showMobileWorldEditorWarning, setShowMobileWorldEditorWarning] = useState(false);
-  const [worldToDelete, setWorldToDelete] = useState(null);
+  const [worldToDelete, setWorldToDelete] = useState<string | null>(null);
   const [showCharacterCustomization, setShowCharacterCustomization] = useState(false);
   const [showTraitSelection, setShowTraitSelection] = useState(false);
   const [selectedTraits, setSelectedTraits] = useState<string[]>([]);
   const [showCodeModal, setShowCodeModal] = useState(false);
   const [showSettings, setShowSettings] = useState(false);
-  const fileInputRef = useRef(null);
-  const [worlds, setWorlds] = useState([]);
+  const fileInputRef = useRef<HTMLInputElement | null>(null);
+  const [worlds, setWorlds] = useState<WorldRecord[]>([]);
   const [isLoadingWorlds, setIsLoadingWorlds] = useState(true);
 
   // Authentication states
   const [isAuthenticated, setIsAuthenticated] = useState(false);
-  const [currentUser, setCurrentUser] = useState(null);
+  const [currentUser, setCurrentUser] = useState<WorldRecord | null>(null);
   const [showAuthDialog, setShowAuthDialog] = useState(false);
   const [showProfileDialog, setShowProfileDialog] = useState(false);
   const [authMode, setAuthMode] = useState('login'); // 'login' or 'register'
@@ -247,8 +247,8 @@ const MainMenu = ({ onStartGame, onOpenWorldEditor }: MainMenuProps) => {
 
   // Publish modal states
   const [showPublishModal, setShowPublishModal] = useState(false);
-  const [userWorlds, setUserWorlds] = useState([]);
-  const [selectedWorldToOverride, setSelectedWorldToOverride] = useState(null);
+  const [userWorlds, setUserWorlds] = useState<WorldRecord[]>([]);
+  const [selectedWorldToOverride, setSelectedWorldToOverride] = useState<string | null>(null);
   const [isPublishing, setIsPublishing] = useState(false);
   const [publishError, setPublishError] = useState('');
 
@@ -265,14 +265,14 @@ const MainMenu = ({ onStartGame, onOpenWorldEditor }: MainMenuProps) => {
   const [sortOrder, setSortOrder] = useState('desc'); // asc | desc
   const [currentPage, setCurrentPage] = useState(1);
   const [isSyncingCatalog, setIsSyncingCatalog] = useState(false);
-  const [remoteWorldToDelete, setRemoteWorldToDelete] = useState(null);
-  const [selectedRemoteWorld, setSelectedRemoteWorld] = useState(null);
+  const [remoteWorldToDelete, setRemoteWorldToDelete] = useState<string | null>(null);
+  const [selectedRemoteWorld, setSelectedRemoteWorld] = useState<WorldRecord | null>(null);
   const [showRemoteWorldDetailsModal, setShowRemoteWorldDetailsModal] = useState(false);
   const [imageViewerOpen, setImageViewerOpen] = useState(false);
   const [downloadedIds, setDownloadedIds] = useState(() => new Set<string>());
 
   // Comments for the world detail modal
-  const [comments, setComments] = useState([]);
+  const [comments, setComments] = useState<WorldRecord[]>([]);
   const [commentsTotal, setCommentsTotal] = useState(0);
   const [commentsPage, setCommentsPage] = useState(1);
   const [commentsHasMore, setCommentsHasMore] = useState(false);
@@ -301,7 +301,7 @@ const MainMenu = ({ onStartGame, onOpenWorldEditor }: MainMenuProps) => {
 
   // Manage users dialog states
   const [showManageUsersDialog, setShowManageUsersDialog] = useState(false);
-  const [users, setUsers] = useState([]);
+  const [users, setUsers] = useState<WorldRecord[]>([]);
   const [isLoadingUsers, setIsLoadingUsers] = useState(false);
   const [userSearchQuery, setUserSearchQuery] = useState('');
   const [userCurrentPage, setUserCurrentPage] = useState(1);
@@ -419,12 +419,12 @@ const MainMenu = ({ onStartGame, onOpenWorldEditor }: MainMenuProps) => {
   };
 
   const handleFileUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
-    const file = event.target.files[0];
+    const file = event.target.files?.[0];
     if (file) {
       const reader = new FileReader();
       reader.onload = async (e) => {
         try {
-          const parsedWorldData = JSON.parse(e.target.result as string);
+          const parsedWorldData = JSON.parse(e.target?.result as string);
           const worldId = `uploaded-${Date.now()}`;
 
           parsedWorldData.id = worldId;
@@ -478,7 +478,7 @@ const MainMenu = ({ onStartGame, onOpenWorldEditor }: MainMenuProps) => {
       }
 
       // Get the current world data
-      const worldToDuplicate = selectedWorld.data;
+      const worldToDuplicate = selectedWorld!.data;
 
       // Generate a unique ID for the duplicated world
       const worldId = `duplicate-${Date.now()}`;
@@ -598,7 +598,7 @@ const MainMenu = ({ onStartGame, onOpenWorldEditor }: MainMenuProps) => {
       resetAuthForms();
       toast.success('Logged in successfully');
     } catch (error) {
-      setAuthError(error.message || 'Login failed');
+      setAuthError((error as Error).message || 'Login failed');
     }
   };
 
@@ -640,7 +640,7 @@ const MainMenu = ({ onStartGame, onOpenWorldEditor }: MainMenuProps) => {
       resetAuthForms();
       toast.success('Registered successfully');
     } catch (error) {
-      setAuthError(error.message || 'Registration failed');
+      setAuthError((error as Error).message || 'Registration failed');
     }
   };
 
@@ -659,7 +659,7 @@ const MainMenu = ({ onStartGame, onOpenWorldEditor }: MainMenuProps) => {
       resetAuthForms();
       toast.success('Password changed successfully');
     } catch (error) {
-      setAuthError(error.message || 'Failed to change password');
+      setAuthError((error as Error).message || 'Failed to change password');
     }
   };
 
@@ -705,7 +705,7 @@ const MainMenu = ({ onStartGame, onOpenWorldEditor }: MainMenuProps) => {
 
     try {
       // Get the current world data
-      const worldToPublish = selectedWorld.data;
+      const worldToPublish = selectedWorld!.data;
 
       // Ensure tags are included in the world data
       if (!worldToPublish.worldOverview.tags) {
@@ -723,7 +723,7 @@ const MainMenu = ({ onStartGame, onOpenWorldEditor }: MainMenuProps) => {
       setShowPublishModal(false);
       toast.success('World published successfully!');
     } catch (error) {
-      setPublishError(error.message || 'Failed to publish world');
+      setPublishError((error as Error).message || 'Failed to publish world');
     } finally {
       setIsPublishing(false);
     }
@@ -743,7 +743,7 @@ const MainMenu = ({ onStartGame, onOpenWorldEditor }: MainMenuProps) => {
 
     try {
       // Get the current world data
-      const worldToPublish = selectedWorld.data;
+      const worldToPublish = selectedWorld!.data;
 
       // Ensure tags are included in the world data
       if (!worldToPublish.worldOverview.tags) {
@@ -761,7 +761,7 @@ const MainMenu = ({ onStartGame, onOpenWorldEditor }: MainMenuProps) => {
       setShowPublishModal(false);
       toast.success('World updated successfully!');
     } catch (error) {
-      setPublishError(error.message || 'Failed to update world');
+      setPublishError((error as Error).message || 'Failed to update world');
     } finally {
       setIsPublishing(false);
     }
@@ -974,7 +974,7 @@ const MainMenu = ({ onStartGame, onOpenWorldEditor }: MainMenuProps) => {
       }
     } catch (error) {
       console.error('Error in fetchUsers:', error);
-      toast.error(error.message || 'Failed to connect to server');
+      toast.error((error as Error).message || 'Failed to connect to server');
       setUsers([]);
     } finally {
       setIsLoadingUsers(false);
@@ -1009,7 +1009,7 @@ const MainMenu = ({ onStartGame, onOpenWorldEditor }: MainMenuProps) => {
       toast.success(`User ${newStatus === "normal" ? "activated" : "suspended"} successfully`);
     } catch (error) {
       console.error('Error updating user status:', error);
-      toast.error(error.message || `Failed to ${newStatus === "normal" ? "activate" : "suspend"} user`);
+      toast.error((error as Error).message || `Failed to ${newStatus === "normal" ? "activate" : "suspend"} user`);
     }
   };
 
@@ -1035,7 +1035,7 @@ const MainMenu = ({ onStartGame, onOpenWorldEditor }: MainMenuProps) => {
       toast.success('World deleted successfully');
     } catch (error) {
       console.error('Error deleting remote world:', error);
-      toast.error(error.message || 'Failed to delete world');
+      toast.error((error as Error).message || 'Failed to delete world');
     }
   };
 
@@ -1105,7 +1105,7 @@ const MainMenu = ({ onStartGame, onOpenWorldEditor }: MainMenuProps) => {
       setDownloadedIds((prev) => new Set(prev).add(world._id || world.id));
     } catch (error) {
       console.error('Error downloading world:', error);
-      toast.error(error.message || 'Failed to download world');
+      toast.error((error as Error).message || 'Failed to download world');
     }
   };
 
@@ -1135,7 +1135,7 @@ const MainMenu = ({ onStartGame, onOpenWorldEditor }: MainMenuProps) => {
       setCommentsTotal((n) => n + 1);
       setCommentText('');
     } catch (error) {
-      toast.error(error.message || 'Failed to post comment');
+      toast.error((error as Error).message || 'Failed to post comment');
     } finally {
       setPostingComment(false);
     }
@@ -1157,7 +1157,7 @@ const MainMenu = ({ onStartGame, onOpenWorldEditor }: MainMenuProps) => {
 
     // Handle different possible user object structures
     if (typeof currentUser === 'string') {
-      return currentUser.charAt(0).toUpperCase();
+      return (currentUser as string).charAt(0).toUpperCase();
     }
 
     if (currentUser.username) {
@@ -1382,7 +1382,7 @@ const MainMenu = ({ onStartGame, onOpenWorldEditor }: MainMenuProps) => {
                     className="w-1/3 bg-gradient-to-r from-amber-100 to-yellow-100 hover:from-amber-200 hover:to-yellow-200 text-black font-bold rounded-l-none"
                     onClick={() => {
                       // For uploaded worlds, use the worldData from context
-                      const currentWorldData = selectedWorld.data;
+                      const currentWorldData = selectedWorld!.data;
                       onStartGame(selectedTraits, currentWorldData.worldOverview?.use3DModel ? defaultCharacterData : null, true);
                     }}
                   >
@@ -1431,7 +1431,7 @@ const MainMenu = ({ onStartGame, onOpenWorldEditor }: MainMenuProps) => {
         description="Are you sure you want to delete this world? This action cannot be undone."
         onConfirm={async () => {
           try {
-            await WorldStorageService.deleteWorld(worldToDelete);
+            await WorldStorageService.deleteWorld(worldToDelete!);
             setWorlds(prev => prev.filter(w => w.id !== worldToDelete));
             setWorldToDelete(null);
           } catch (error) {
@@ -1506,7 +1506,7 @@ const MainMenu = ({ onStartGame, onOpenWorldEditor }: MainMenuProps) => {
           onConfirm={() => {
             setShowTraitSelection(false);
             // For uploaded worlds, use the worldData from context
-            const currentWorldData = selectedWorld.data;
+            const currentWorldData = selectedWorld!.data;
             if (currentWorldData.worldOverview?.use3DModel) {
               setShowCharacterCustomization(true);
             } else {
@@ -1692,7 +1692,7 @@ const MainMenu = ({ onStartGame, onOpenWorldEditor }: MainMenuProps) => {
             <div className="space-y-4">
               <h3 className="text-sm font-medium">Select Publish Option</h3>
 
-              <RadioGroup value={selectedWorldToOverride} onValueChange={setSelectedWorldToOverride}>
+              <RadioGroup value={selectedWorldToOverride ?? undefined} onValueChange={setSelectedWorldToOverride}>
                 {/* Publish as new option */}
                 <div className="flex items-start space-x-2 p-2 rounded-md hover:bg-gray-100 dark:hover:bg-gray-800">
                   <RadioGroupItem value="new" id="publish-new" />
@@ -2209,7 +2209,7 @@ const MainMenu = ({ onStartGame, onOpenWorldEditor }: MainMenuProps) => {
         onOpenChange={(open) => !open && setRemoteWorldToDelete(null)}
         title="Delete Published World"
         description="Are you sure you want to delete this published world? This will remove it from the server and it will no longer be available to other users. This action cannot be undone."
-        onConfirm={() => handleRemoteWorldDelete(remoteWorldToDelete)}
+        onConfirm={() => handleRemoteWorldDelete(remoteWorldToDelete!)}
       />
 
       {/* Manage Users Dialog */}
