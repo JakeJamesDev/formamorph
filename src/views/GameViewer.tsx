@@ -73,6 +73,8 @@ interface DebugRequest {
 interface DebugTurn {
   action: string;
   requests: DebugRequest[];
+  regenerated?: boolean; // this turn was superseded by a re-generate of the same action
+  pruned?: boolean; // this turn was discarded by a rollback to an earlier page
 }
 
 const GameViewer = ({
@@ -165,7 +167,6 @@ const GameViewer = ({
 
   // Slash-command preview (e.g. `/markdown test`): drives `reveal` with local text, off the AI path.
   const [commandPreview, setCommandPreview] = useState(false);
-  const [revealBuffer, setRevealBuffer] = useState(''); // full streamed text behind the reveal, for look-ahead rendering
   const commandTimer = useRef<ReturnType<typeof setInterval> | null>(null);
 
   const stopCommandPreview = useCallback(() => {
@@ -176,13 +177,12 @@ const GameViewer = ({
     setCommandPreview(false);
   }, []);
 
-  // Type a sample through the real narration path (reveal → autoCloseMarkdown → GameText), simulating
-  // token arrival so the markdown renderer can be eyeballed without invoking the AI.
+  // Type a sample through the real narration path (reveal → GameText), simulating token arrival so the
+  // markdown renderer can be eyeballed without invoking the AI.
   const runMarkdownTest = useCallback(() => {
     if (commandTimer.current !== null) clearInterval(commandTimer.current);
     setCommandPreview(true);
     reveal.reset();
-    setRevealBuffer(MARKDOWN_SAMPLE); // full sample = maximum look-ahead for the preview
     let shown = 0;
     // Slow pacing (~33 chars/sec) so the markdown auto-close can be eyeballed delimiter-by-delimiter.
     const CHARS_PER_TICK = 2;
@@ -337,6 +337,10 @@ const GameViewer = ({
           // This allows for potential "redo" functionality in the future
           addLogEntry("Rolled back to previous game state");
 
+          // Mark the AI-context entries for the turns this rollback discarded (those after the page we
+          // rolled back to). Indices align with turns in the common case (no prior re-generate).
+          setDebugTurns((prev) => prev.map((t, i) => (i >= currentPage ? { ...t, pruned: true } : t)));
+
           // Ensure notes are loaded from the target state
           if (targetState.playerNotes !== undefined) {
             setPlayerNotes(targetState.playerNotes);
@@ -345,6 +349,31 @@ const GameViewer = ({
       }
     }
   };
+
+  // Re-generate the current turn: restore the snapshot from *before* it (which also rewinds the
+  // message history past it), then re-send the same player action for a fresh response. The re-send is
+  // deferred via `regenerateNonce` below — sendGameAction reads game state from its render's closure,
+  // so it must run after loadGameState has committed, not synchronously alongside it.
+  const pendingRegenerateRef = useRef<string | null>(null);
+  const [regenerateNonce, setRegenerateNonce] = useState(0);
+
+  const handleRegenerate = () => {
+    if (currentPage !== totalPages || currentPage < 2) return; // current page only, and a prior turn must exist
+    const previousState = gameStates[currentPage - 2];
+    const lastUser = fullMessageHistory[fullMessageHistory.length - 2];
+    if (!previousState || !lastUser || lastUser.role !== "user") return;
+    loadGameState(previousState, locations);
+    // Mark the current turn's AI-context entry as superseded; sendGameAction appends a fresh one.
+    setDebugTurns((prev) => {
+      if (!prev.length) return prev;
+      const next = [...prev];
+      next[next.length - 1] = { ...next[next.length - 1], regenerated: true };
+      return next;
+    });
+    pendingRegenerateRef.current = lastUser.content;
+    setRegenerateNonce((n) => n + 1);
+  };
+
   const addMessageToHistory = useCallback((role: ChatRole, content: string) => {
     setFullMessageHistory((prev) => [...prev, { role, content }]);
   }, [setFullMessageHistory]);
@@ -917,6 +946,16 @@ ${playerNotes || "No notes available"}
     setCurrentPage(Math.ceil(fullMessageHistory.length / messagesPerPage));
   }, [fullMessageHistory.length, messagesPerPage, setCurrentPage]);
 
+  // Fires the re-send half of a re-generate, once the restored pre-turn state has committed.
+  useEffect(() => {
+    if (regenerateNonce === 0) return;
+    const action = pendingRegenerateRef.current;
+    pendingRegenerateRef.current = null;
+    if (action !== null) sendGameAction(action);
+    // sendGameAction is deliberately not a dependency — we want this render's (post-restore) closure.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [regenerateNonce]);
+
   const handlePageChange = (page: number) => {
     setCurrentPage(page);
   };
@@ -1055,7 +1094,7 @@ ${playerNotes || "No notes available"}
       let content = "";
       let finishReason = null;
       // Start a fresh smoothed reveal for this turn's narration.
-      if (requestType === "gametext") { reveal.reset(); setRevealBuffer(""); }
+      if (requestType === "gametext") { reveal.reset(); }
 
       // Handle one complete SSE line. Lines are buffered across reads (below) so a `data:` payload
       // split across network chunks is never JSON.parsed half-formed.
@@ -1077,7 +1116,6 @@ ${playerNotes || "No notes available"}
             // display reads as continuous typing and the late truncation trim stays off-screen.
             const display = stripReasoningLive(content);
             reveal.push(display);
-            setRevealBuffer(display); // look-ahead buffer for streaming markdown render
 
             // Update visible entities based on streaming content
             const newEntities = extractEntities(display);
@@ -1153,7 +1191,6 @@ ${playerNotes || "No notes available"}
         if (finishReason === "length") finalContent = trimToLastSentence(finalContent);
         // Hand the authoritative final text to the smoothed reveal to play out cleanly.
         reveal.finish(finalContent);
-        setRevealBuffer(finalContent);
       }
       // Record the raw output on this turn's matching request so the AI-context viewer can show it.
       setDebugTurns((prev) => {
@@ -1172,7 +1209,7 @@ ${playerNotes || "No notes available"}
     } catch (error) {
       // Check if this is an abort error (user canceled the request)
       if ((error as Error).name === "AbortError") {
-        if (requestType === "gametext") { reveal.reset(); setRevealBuffer(""); }
+        if (requestType === "gametext") { reveal.reset(); }
         // Return empty content for aborted requests instead of throwing
         return "";
       }
@@ -1423,6 +1460,7 @@ ${playerNotes || "No notes available"}
       handleSendAction={handleSendAction}
       handleKeyPress={handleKeyPress}
       handleRollback={handleRollback}
+      handleRegenerate={handleRegenerate}
       abortGeneration={abortGeneration}
       disabled={isWaitingForAI && !choicesReady}
       onTTSClick={() => setIsTTSModalOpen(true)}
@@ -1434,7 +1472,6 @@ ${playerNotes || "No notes available"}
       locationSuggestion={locationSuggestion}
       commandPreview={commandPreview}
       onDismissCommandPreview={stopCommandPreview}
-      revealBuffer={revealBuffer}
     />
   );
 
@@ -1777,8 +1814,15 @@ ${playerNotes || "No notes available"}
                 </div>
                 {currentTurn && (
                   <div className="flex-shrink-0 text-xs text-muted-foreground truncate">
-                    Turn {pageIndex + 1} of {totalDebugPages}
-                    {currentTurn.action ? ` — "${currentTurn.action}"` : ""}
+                    <span className={currentTurn.regenerated || currentTurn.pruned ? "line-through" : ""}>
+                      Turn {pageIndex + 1} of {totalDebugPages}
+                      {currentTurn.action ? ` — "${currentTurn.action}"` : ""}
+                    </span>
+                    {currentTurn.regenerated ? (
+                      <span className="ml-2 font-medium text-amber-500">Re-generated</span>
+                    ) : currentTurn.pruned ? (
+                      <span className="ml-2 font-medium text-amber-500">Pruned</span>
+                    ) : null}
                   </div>
                 )}
                 <div className="flex-grow min-h-0">

@@ -3,7 +3,6 @@ import { useGameplay } from '@/contexts/GameplayContext';
 import { useSettings } from '@/contexts/SettingsContext';
 import { usePlayerModelUrl } from '@/lib/usePlayerModelUrl';
 import { useIsMobile } from '@/lib/useIsMobile';
-import { streamingMarkdown } from '@/lib/autoCloseMarkdown';
 import { GameText } from './GameText';
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -193,6 +192,7 @@ export const MiddlePanel = ({
   handleSendAction,
   handleKeyPress,
   handleRollback,
+  handleRegenerate,
   abortGeneration,
   disabled,
   onTTSClick,
@@ -203,8 +203,7 @@ export const MiddlePanel = ({
   progressBar,
   locationSuggestion,
   commandPreview,
-  onDismissCommandPreview,
-  revealBuffer
+  onDismissCommandPreview
 }: {
   parseAssistantMessage: (content: string) => string;
   totalPages: number;
@@ -213,6 +212,7 @@ export const MiddlePanel = ({
   handleSendAction: () => void;
   handleKeyPress: (e: React.KeyboardEvent<HTMLInputElement>) => void;
   handleRollback: () => void;
+  handleRegenerate: () => void;
   abortGeneration: () => void;
   disabled: boolean;
   onTTSClick: () => void;
@@ -224,7 +224,6 @@ export const MiddlePanel = ({
   locationSuggestion: React.ReactNode;
   commandPreview: boolean;
   onDismissCommandPreview: () => void;
-  revealBuffer: string;
 }) => {
   const {
     displayedMessages,
@@ -302,9 +301,9 @@ export const MiddlePanel = ({
     <Card className="w-full flex-grow md:mx-0.5 md:max-w-[48%] min-h-0 flex flex-col bg-background/60 border-border overflow-hidden">
       <CardContent className="flex-grow flex flex-col overflow-hidden p-4 sm:p-1">
         {memoryBar}
-        <div className="flex flex-col flex-grow overflow-hidden">
-
-          <ScrollArea className={`flex-grow border border-border p-2 mb-1 bg-muted/80 min-h-0 ${isFlashing ? 'flash-animation' : ''} relative`}>
+        {/* gap-2 gives every row below (message area, pager, Start Game, input) consistent spacing. */}
+        <div className="flex flex-col flex-grow overflow-hidden gap-2">
+          <ScrollArea className={`flex-grow border border-border p-2 bg-muted/80 min-h-0 ${isFlashing ? 'flash-animation' : ''} relative`}>
             <div className="absolute top-2 right-2 z-10 flex gap-2">
               {ttsLoaded && (
                 <Button
@@ -340,7 +339,7 @@ export const MiddlePanel = ({
                     <X className="h-4 w-4" />
                   </Button>
                 </div>
-                <GameText text={streamingMarkdown(gameplayText, revealBuffer)} />
+                <GameText text={gameplayText} />
               </div>
             )}
             {displayedMessages.map((message, index) => {
@@ -356,7 +355,7 @@ export const MiddlePanel = ({
                       {message.role === 'user' ? (
                         <pre className="whitespace-pre-wrap">{message.content}</pre>
                       ) : (
-                        <GameText text={isLatestMessage && isWaitingForAI ? streamingMarkdown(gameplayText, revealBuffer) : parseAssistantMessage(message.content)} />
+                        <GameText text={isLatestMessage && isWaitingForAI ? gameplayText : parseAssistantMessage(message.content)} />
                       )}
                     </div>
                   </React.Fragment>
@@ -368,7 +367,7 @@ export const MiddlePanel = ({
                   {message.role === 'user' ? (
                     <pre className="whitespace-pre-wrap">{message.content}</pre>
                   ) : (
-                    <GameText text={isLatestMessage && isWaitingForAI ? streamingMarkdown(gameplayText, revealBuffer) : parseAssistantMessage(message.content)} />
+                    <GameText text={isLatestMessage && isWaitingForAI ? gameplayText : parseAssistantMessage(message.content)} />
                   )}
                 </div>
               );
@@ -468,49 +467,58 @@ export const MiddlePanel = ({
           />
           <div className="relative flex flex-col items-center gap-2">
             {locationSuggestion}
-            <Pagination>
-              <PaginationContent>
-                <PaginationItem>
-                  <PaginationPrevious
-                    href="#"
-                    onClick={(e) => {
-                      e.preventDefault();
-                      if (currentPage > 1) handlePageChange(currentPage - 1);
-                    }}
-                    className={totalPages === 0 || currentPage === 1 ? "pointer-events-none opacity-50" : ""}
-                  />
-                </PaginationItem>
-                {renderPaginationItems()}
-                <PaginationItem>
-                  <PaginationNext
-                    href="#"
-                    onClick={(e) => {
-                      e.preventDefault();
-                      if (currentPage < totalPages) handlePageChange(currentPage + 1);
-                    }}
-                    className={totalPages === 0 || currentPage === totalPages ? "pointer-events-none opacity-50" : ""}
-                  />
-                </PaginationItem>
-                {currentPage < totalPages && (
+            <div className="relative flex w-full items-center justify-center">
+              <Pagination>
+                <PaginationContent>
                   <PaginationItem>
-                    <ConfirmDialog
-                      title="Confirm Rollback"
-                      description="Are you sure you want to rollback to the previous state? This action cannot be undone."
-                      onConfirm={handleRollback}
-                    >
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        className="text-xs gap-1"
-                      >
-                        <RefreshCw className="h-3 w-3" />
-                        Rollback
-                      </Button>
-                    </ConfirmDialog>
+                    <PaginationPrevious
+                      href="#"
+                      onClick={(e) => {
+                        e.preventDefault();
+                        if (currentPage > 1) handlePageChange(currentPage - 1);
+                      }}
+                      className={totalPages === 0 || currentPage === 1 ? "pointer-events-none opacity-50" : ""}
+                    />
                   </PaginationItem>
-                )}
-              </PaginationContent>
-            </Pagination>
+                  {renderPaginationItems()}
+                  <PaginationItem>
+                    <PaginationNext
+                      href="#"
+                      onClick={(e) => {
+                        e.preventDefault();
+                        if (currentPage < totalPages) handlePageChange(currentPage + 1);
+                      }}
+                      className={totalPages === 0 || currentPage === totalPages ? "pointer-events-none opacity-50" : ""}
+                    />
+                  </PaginationItem>
+                </PaginationContent>
+              </Pagination>
+              {/* Right-aligned action: rollback when viewing a past page, re-generate on the current one. */}
+              <div className="absolute right-0">
+                {currentPage < totalPages ? (
+                  <ConfirmDialog
+                    title="Confirm Rollback"
+                    description="Are you sure you want to rollback to the previous state? This action cannot be undone."
+                    onConfirm={handleRollback}
+                  >
+                    <Button variant="outline" className="text-xs gap-1 w-32">
+                      <RefreshCw className="h-3 w-3" />
+                      Rollback
+                    </Button>
+                  </ConfirmDialog>
+                ) : currentPage > 1 ? (
+                  <Button
+                    variant="outline"
+                    className="text-xs gap-1 w-32"
+                    onClick={handleRegenerate}
+                    disabled={disabled}
+                  >
+                    <RefreshCw className="h-3 w-3" />
+                    Re-generate
+                  </Button>
+                ) : null}
+              </div>
+            </div>
           </div>
           {!isGameStarted && (
             <div className="flex flex-nowrap">
