@@ -1,6 +1,6 @@
 # 📐 World Data Format
 
-This is the reference for a FormaMorph **world** — the `.json` you export from the editor, import in the main menu, or ship as a built-in. If you author worlds by hand or tooling, this page describes every field the app reads.
+This is the reference for a Formamorph **world** — the `.json` you export from the editor, import in the main menu, or ship as a built-in. If you author worlds by hand or tooling, this page describes every field the app reads.
 
 > 💡 You rarely need to write this by hand — the in-app **World Editor** produces and consumes this format for you. This page is for understanding imports/exports and for external tooling.
 
@@ -20,7 +20,7 @@ A world is exported/imported as a single JSON object. The main-menu grid reads a
 
 ## 🔖 Versioning
 
-Every world saved or exported by FormaMorph 2.0+ carries a top-level `version` string (e.g. `"2.0.0"`). On import, worlds that don't match the current version are run through a **migration** that upgrades them to the current shape — so anything reaching the editor is already compatible.
+Every world saved or exported by Formamorph 2.0+ carries a top-level `version` string (e.g. `"2.0.0"`). On import, worlds that don't match the current version are run through a **migration** that upgrades them to the current shape — so anything reaching the editor is already compatible.
 
 | Field | Type | Notes |
 |---|---|---|

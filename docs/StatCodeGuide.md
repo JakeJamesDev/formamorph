@@ -1,6 +1,6 @@
 # 🧮 Stat Code Guide
 
-This guide explains FormaMorph's **dynamic stat calculation** — attach a small JavaScript snippet to a stat to derive its value from other stats. In a world file this snippet is a stat's `code` field; see the [World Format](WorldFormat) for where it lives.
+This guide explains Formamorph's **dynamic stat calculation** — attach a small JavaScript snippet to a stat to derive its value from other stats. In a world file this snippet is a stat's `code` field; see the [World Format](WorldFormat) for where it lives.
 
 ## Overview
 
