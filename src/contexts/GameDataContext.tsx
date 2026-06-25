@@ -1,5 +1,6 @@
 import { createContext, useContext, useState, useCallback, useMemo, useEffect, type ReactNode } from 'react';
 import WorldStorageService from '../services/WorldStorageService';
+import { normalizeCustomVRM } from '@/lib/worldImport';
 import type {
   WorldMetadata,
   WorldOverview,
@@ -172,6 +173,9 @@ function useProvideGameData() {
 
     // Handle world overview with validation
     const overview = worldData.worldOverview || defaultOverview;
+    // v1.2/v1.3 stored the custom VRM as a top-level `customPlayerVRM` data-URL string; ours lives in
+    // worldOverview as { data, type }. Accept either location/shape and normalize to our MediaAsset.
+    const rawVRM = overview.customPlayerVRM ?? (worldData as { customPlayerVRM?: unknown }).customPlayerVRM;
     const normalizedOverview: WorldOverview = {
       name: overview.name || defaultOverview.name,
       description: overview.description || defaultOverview.description,
@@ -181,7 +185,7 @@ function useProvideGameData() {
       systemPrompt: overview.systemPrompt || defaultOverview.systemPrompt,
       use3DModel: typeof overview.use3DModel === 'boolean' ? overview.use3DModel : defaultOverview.use3DModel,
       tags: Array.isArray(overview.tags) ? overview.tags : defaultOverview.tags,
-      customPlayerVRM: overview.customPlayerVRM || defaultOverview.customPlayerVRM
+      customPlayerVRM: normalizeCustomVRM(rawVRM)
     };
     updateWorldOverview(normalizedOverview);
 

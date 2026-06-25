@@ -264,23 +264,26 @@ const VRMViewer = forwardRef<VRMViewerHandle, VRMViewerProps>(({
 
   
   const setMorphTarget = (meshName: string, morphTargetName: string, value: number, gltf: GLTF) => {
-    if (!gltf.scene)
-      return;
+    if (!gltf.scene) return;
 
-    let mesh = gltf.scene.children.find((child) => child.name === meshName);
-    if (!mesh)
-        mesh = findMesh(meshName, gltf);
-    if (!mesh) return;
-    const child = (mesh.children[0] || mesh) as MorphMesh;
-    if (child.morphTargetDictionary && child.morphTargetInfluences) {
-      const morphTargetIndex = child.morphTargetDictionary[morphTargetName];
-      if (morphTargetIndex !== undefined) {
-        child.morphTargetInfluences[morphTargetIndex] = value;
-      } else {
-        console.warn(`Morph target "${morphTargetName}" not found in mesh "${meshName}".`);
+    const node = gltf.scene.children.find((child) => child.name === meshName) ?? findMesh(meshName, gltf);
+    if (!node) return;
+
+    // A multi-material mesh (body skin + each clothing piece) is split by GLTFLoader into one
+    // primitive per material, each a sibling mesh carrying the same body morphs. Apply the influence
+    // to every primitive that exposes the morph so clothing scales with the body (matches v1.2);
+    // setting only the first primitive moved the body alone and clipped the clothes.
+    let applied = false;
+    node.traverse((obj) => {
+      const mesh = obj as MorphMesh;
+      const index = mesh.morphTargetDictionary?.[morphTargetName];
+      if (index !== undefined && mesh.morphTargetInfluences) {
+        mesh.morphTargetInfluences[index] = value;
+        applied = true;
       }
-    } else {
-      console.warn(`Mesh "${meshName}" not found or does not have morph targets.`);
+    });
+    if (!applied) {
+      console.warn(`Morph target "${morphTargetName}" not found under mesh "${meshName}".`);
     }
   };
 
