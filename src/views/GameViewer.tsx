@@ -35,6 +35,8 @@ import { parseGameText, stripReasoning, stripReasoningLive } from "../lib/aiResp
 import { INLINE_THINKING_DIRECTIVE } from "../components/game/GamePrompts";
 import { lengthGuidance, trimToLastSentence } from "../lib/outputLength";
 import { useSmoothedReveal } from "../lib/useSmoothedReveal";
+import { parseSlashCommand } from "../lib/slashCommands";
+import { MARKDOWN_SAMPLE } from "../lib/markdownSample";
 import { normalizeStatChanges, applyAiStatChanges, applyTraitStatChanges, parseStatUpdates, applyAiMaxChanges } from "../lib/statChanges";
 import { matchLocationResponse } from "../lib/locationMatch";
 import { getActivatedDictionary, buildDictionaryContext, parseKeywords } from "../lib/dictionaryUtils";
@@ -98,6 +100,7 @@ const GameViewer = ({
     language,
     setLanguage,
     paragraphLimit,
+    hideStatNumbers,
     // Active endpoint settings: the user's values when "Use Custom Endpoint" is on, built-in defaults otherwise.
     activeEndpointUrl: endpointUrl,
     activeApiToken: apiToken,
@@ -158,6 +161,54 @@ const GameViewer = ({
   // Smoothly plays streamed narration into gameplayText so it reads as continuous typing and the
   // truncation trim happens off-screen (see lib/useSmoothedReveal).
   const reveal = useSmoothedReveal(setGameplayText);
+
+  // Slash-command preview (e.g. `/markdown test`): drives `reveal` with local text, off the AI path.
+  const [commandPreview, setCommandPreview] = useState(false);
+  const commandTimer = useRef<ReturnType<typeof setInterval> | null>(null);
+
+  const stopCommandPreview = useCallback(() => {
+    if (commandTimer.current !== null) {
+      clearInterval(commandTimer.current);
+      commandTimer.current = null;
+    }
+    setCommandPreview(false);
+  }, []);
+
+  // Type a sample through the real narration path (reveal → autoCloseMarkdown → GameText), simulating
+  // token arrival so the markdown renderer can be eyeballed without invoking the AI.
+  const runMarkdownTest = useCallback(() => {
+    if (commandTimer.current !== null) clearInterval(commandTimer.current);
+    setCommandPreview(true);
+    reveal.reset();
+    let shown = 0;
+    commandTimer.current = setInterval(() => {
+      shown = Math.min(MARKDOWN_SAMPLE.length, shown + 24);
+      if (shown >= MARKDOWN_SAMPLE.length) {
+        if (commandTimer.current !== null) clearInterval(commandTimer.current);
+        commandTimer.current = null;
+        reveal.finish(MARKDOWN_SAMPLE);
+        return;
+      }
+      reveal.push(MARKDOWN_SAMPLE.slice(0, shown));
+    }, 40);
+  }, [reveal]);
+
+  // Dispatch a parsed slash command; returns true if it was handled (caller then skips the AI).
+  const runSlashCommand = useCallback((input: string): boolean => {
+    const parsed = parseSlashCommand(input);
+    if (!parsed) return false;
+    if (parsed.command === "markdown" && parsed.args[0] === "test") {
+      runMarkdownTest();
+      return true;
+    }
+    toast.info(`Unknown command: /${parsed.command}`);
+    return true;
+  }, [runMarkdownTest]);
+
+  // Clear any running command preview when this view unmounts.
+  useEffect(() => () => {
+    if (commandTimer.current !== null) clearInterval(commandTimer.current);
+  }, []);
 
   useEffect(() => {
     setCharacterData(initialCharacterData);
@@ -431,7 +482,7 @@ const GameViewer = ({
       .join("\n");
   }, [playerTraits]);
 
-  const generateStatDescriptions = useCallback(() => {
+  const generateStatDescriptions = useCallback((includeValues = true) => {
     return playerStats
       .map((stat) => {
         const percentage =
@@ -439,6 +490,9 @@ const GameViewer = ({
         const descriptor = stat.descriptors.find(
           (d) => percentage <= d.threshold,
         );
+        // Value-free (narration) form: descriptor only, falling back to the number when a stat
+        // has no descriptor so the narrator isn't left blind.
+        if (!includeValues && descriptor) return `${stat.name}: ${descriptor.description}`;
         return `${stat.name}: ${stat.value}/${stat.max} (${descriptor ? descriptor.description : "Unknown"})`;
       })
       .join("\n");
@@ -446,6 +500,7 @@ const GameViewer = ({
 
   const sendGameAction = async (action: string) => {
     if (!isGameStarted && action !== "START GAME") return;
+    stopCommandPreview(); // a real turn supersedes any command preview
 
     const sanitizeLocationData = (location: (GameLocation & { entity?: string[] }) | null) => {
       if (!location) return "";
@@ -505,12 +560,16 @@ const GameViewer = ({
 
     const locationDataString = sanitizeLocationData(currentLocation);
 
-    const statDescriptions = generateStatDescriptions();
+    const statDescriptions = generateStatDescriptions(); // with numbers — used by stat-updates
+    // Narration, planning, and choices use descriptor-only stats when enabled (immersion).
+    const statDescriptionsNarrative = hideStatNumbers
+      ? generateStatDescriptions(false)
+      : statDescriptions;
 
     let updatedPrompt = systemPrompt
       .replace("<WORLD DESCRIPTION>", worldOverview.systemPrompt || "")
       .replace("<LOCATION JSON DATA>", locationDataString)
-      .replace("<STATS DESCRIPTION>", statDescriptions)
+      .replace("<STATS DESCRIPTION>", statDescriptionsNarrative)
       .replace("<TRAITS DESCRIPTION>", generateTraitDescriptions())
       .replace("<LENGTH GUIDANCE>", lengthGuidance(paragraphLimit, maxTokens));
 
@@ -584,7 +643,7 @@ ${playerNotes || "No notes available"}
       if (thinkingMode === "precall") {
         const thinkPrompt = thinkingPrompt
           .replace("<WORLD DESCRIPTION>", worldOverview.systemPrompt || "")
-          .replace("<STATS DESCRIPTION>", statDescriptions)
+          .replace("<STATS DESCRIPTION>", statDescriptionsNarrative)
           .replace("<TRAITS DESCRIPTION>", generateTraitDescriptions())
           .replace("<LOCATION JSON DATA>", locationDataString)
           .replace("<NOTES>", playerNotes || "No notes available");
@@ -636,7 +695,7 @@ ${playerNotes || "No notes available"}
       if (choicesPrompt !== "DISABLED") {
         let updatedChoicesPrompt = choicesPrompt
           .replace("<WORLD DESCRIPTION>", worldOverview.systemPrompt || "")
-          .replace("<STATS DESCRIPTION>", statDescriptions)
+          .replace("<STATS DESCRIPTION>", statDescriptionsNarrative)
           .replace("<LOCATION JSON DATA>", locationDataString)
           .replace("<TRAITS DESCRIPTION>", generateTraitDescriptions());
 
@@ -1112,9 +1171,14 @@ ${playerNotes || "No notes available"}
   };
 
   const handleSendAction = () => {
-    if (playerInput.trim() && !isWaitingForAI) {
-      sendGameAction(playerInput.trim());
+    const input = playerInput.trim();
+    if (!input || isWaitingForAI) return;
+    if (input.startsWith("/")) {
+      runSlashCommand(input);
+      setPlayerInput("");
+      return;
     }
+    sendGameAction(input);
   };
 
   const handleKeyPress = (e: React.KeyboardEvent) => {
@@ -1352,6 +1416,8 @@ ${playerNotes || "No notes available"}
       memoryBar={memoryBar}
       progressBar={progressBar}
       locationSuggestion={locationSuggestion}
+      commandPreview={commandPreview}
+      onDismissCommandPreview={stopCommandPreview}
     />
   );
 

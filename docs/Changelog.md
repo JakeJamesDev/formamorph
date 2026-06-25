@@ -21,6 +21,7 @@ Everything below is relative to the point this fork diverged from upstream.
   - **In-app media player** — a fully themed audio widget for TTS narration, with auto-generated TTS when the model is loaded and a one-click unload of the TTS model to free VRAM.
   - **Redesigned world browser ("Discover")** — card-grid layout, tag & author chip search/filtering, and world-preview image zoom.
   - **AI output controls** — automatic paragraph limits and length-based truncation, an optional "thinking / planning" step before the reply, and a smoothed character-by-character reveal of streamed text.
+  - **Markdown narration** — the AI can format story text with bold/italic, bullet & numbered lists, tables (e.g. inventory), headings, blockquotes, and code; it renders live as the text streams in.
   - **Portrait / mobile layout** — a single-panel responsive mode alongside the three-panel desktop view.
   - **Lore Dictionary** — a keyword-triggered world-info editor; matching keywords inject lore into the AI prompt.
   - **Full per-turn AI context viewer** — see exactly what's sent to the AI on each turn, plus the raw response before sanitation — useful both for debugging and for authoring/tuning worlds.
@@ -66,6 +67,8 @@ Everything below is relative to the point this fork diverged from upstream.
 #### ➕ Added
 
 - **👤 User-facing**
+  - **Hide stat numbers from the narrator** (Settings → Gameplay, default on) — the narration, planning, and choices requests receive stat *descriptors* (e.g. "severely injured") instead of raw values, so the model writes to how a stat *feels* rather than fixating on the number. Stat-updates still get the numbers; falls back to the number when a stat has no descriptor.
+  - **Slash commands** in the action box (input starting with `/`) that bypass the AI; the first, `/markdown test`, types a rich sample through the real narration renderer to preview markdown formatting.
   - **Use Custom Endpoint** toggle in Settings → Endpoint — off uses the built-in default endpoint (fields read-only); on lets you enter and edit your own. Custom values are preserved when toggling off and back on.
   - Drag-to-reorder for worlds in the main menu.
   - Additional avatar color options.
