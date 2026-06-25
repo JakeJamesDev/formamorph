@@ -2,6 +2,7 @@ import { createContext, useContext, useState, useRef, useCallback, useEffect, ty
 import { saveToDB, loadFromDB } from '../components/modals/dbUtils';
 import { toast } from 'react-toastify';
 import { convertSaveFile, terminateWorker } from '../lib/saveConversionWorkerUtils';
+import { APP_VERSION, isSaveEnvelope } from '../lib/version';
 import type {
   CharacterData,
   LogEntry,
@@ -155,7 +156,7 @@ function useProvideGameplay() {
       const saveObject = {
         currentState: gameState,
         stateHistory: gameStates,
-        version: 2 // Add version for migration handling
+        version: APP_VERSION // stamp the current app version (legacy envelopes used numeric 2 ≙ v1.2)
       };
 
       await saveToDB(saveName, saveObject);
@@ -179,8 +180,8 @@ function useProvideGameplay() {
         return false;
       }
 
-      // Check if this is a new format save (version 2)
-      if (savedData.version === 2 && savedData.currentState && savedData.stateHistory) {
+      // Flat envelope (legacy numeric `2` or current APP_VERSION) — detected by shape, not version.
+      if (isSaveEnvelope(savedData)) {
         // Load the current state
         const success = loadGameState(savedData.currentState, locations);
         if (success) {

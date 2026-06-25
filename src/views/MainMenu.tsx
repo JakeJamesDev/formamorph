@@ -58,6 +58,7 @@ import TraitSelectionModal from './TraitSelectionModal';
 import WorldStorageService from '../services/WorldStorageService';
 import AuthService from '../services/AuthService';
 import type { World, Stat, CharacterData } from '@/types';
+import { migrateWorld, APP_VERSION } from '@/lib/version';
 
 // Loose shape for server/catalog world payloads, whose fields vary by endpoint and save version.
 // eslint-disable-next-line @typescript-eslint/no-explicit-any -- intentional dynamic-JSON bag (pending a precise interface)
@@ -424,7 +425,8 @@ const MainMenu = ({ onStartGame, onOpenWorldEditor }: MainMenuProps) => {
       const reader = new FileReader();
       reader.onload = async (e) => {
         try {
-          const parsedWorldData = JSON.parse(e.target?.result as string);
+          // Sanitize at the import boundary: migrate any legacy/v1.2 shape to the current version.
+          const parsedWorldData = migrateWorld(JSON.parse(e.target?.result as string));
           const worldId = `uploaded-${Date.now()}`;
 
           parsedWorldData.id = worldId;
@@ -433,7 +435,7 @@ const MainMenu = ({ onStartGame, onOpenWorldEditor }: MainMenuProps) => {
             id: worldId,
             name: parsedWorldData.worldOverview?.name || 'Uploaded World',
             description: parsedWorldData.worldOverview?.description || 'Custom uploaded world',
-            thumbnail: parsedWorldData.worldOverview?.thumbnail,
+            thumbnail: parsedWorldData.worldOverview?.thumbnail ?? undefined,
             data: parsedWorldData
           });
 
@@ -1087,7 +1089,8 @@ const MainMenu = ({ onStartGame, onOpenWorldEditor }: MainMenuProps) => {
         description: world.description || 'Downloaded from server',
         thumbnail: thumbnailUrl,
         author: world.author?.username || '',
-        data: worldData.data.contentData
+        // Sanitize at the download boundary so the stored copy is already current.
+        data: migrateWorld(worldData.data.contentData)
       });
 
       // Add the world to the local list
@@ -1204,6 +1207,11 @@ const MainMenu = ({ onStartGame, onOpenWorldEditor }: MainMenuProps) => {
   return (
     <div className="container mx-auto px-4 py-6 relative flex flex-col h-screen overflow-hidden">
       <ToastContainer theme="dark" />
+
+      {/* App version (derived from package.json) */}
+      <span className="fixed bottom-2 left-2 z-10 text-xs text-muted-foreground/60 select-none pointer-events-none">
+        v{APP_VERSION}
+      </span>
 
       {/* Top-right controls: settings + user avatar */}
       <div className="fixed top-4 right-4 z-10 flex items-center gap-2">

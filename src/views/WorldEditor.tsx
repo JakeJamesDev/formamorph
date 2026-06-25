@@ -38,6 +38,7 @@ import {
   restrictToFirstScrollableAncestor,
 } from '@dnd-kit/modifiers';
 import { UnsavedChangesDialog } from "@/components/UnsavedChangesDialog";
+import { APP_VERSION } from '@/lib/version';
 import type { Stat, Entity, GameLocation, Trait, StatUpdate, DictionaryEntry } from '@/types';
 
 /** The fields a reorderable list row needs (every editor item has these). */
@@ -117,7 +118,7 @@ const WorldEditor = ({ onClose, embedded = false }: {
   const [showExitPrompt, setShowExitPrompt] = useState(false);
 
   const downloadWorld = () => {
-    const worldData = { worldOverview, stats, locations, entities, traits, statUpdates, dictionary };
+    const worldData = { version: APP_VERSION, worldOverview, stats, locations, entities, traits, statUpdates, dictionary };
     const jsonData = JSON.stringify(worldData, null, 2);
     const blob = new Blob([jsonData], { type: 'application/json' });
     const href = URL.createObjectURL(blob);
