@@ -1,6 +1,6 @@
-# Dynamic Stat Calculation Guide
+# 🧮 Stat Code Guide
 
-This guide explains how to use the dynamic stat calculation feature to create complex relationships between stats in your game world.
+This guide explains FormaMorph's **dynamic stat calculation** — attach a small JavaScript snippet to a stat to derive its value from other stats. In a world file this snippet is a stat's `code` field; see the [World Format](WorldFormat) for where it lives.
 
 ## Overview
 
@@ -43,18 +43,18 @@ The `?.` operator safely accesses the value property (returns undefined if the s
 
 ### Stat Properties
 
-Each stat in the `stats` array has the following properties:
+Each stat in the `stats` array exposes the following properties:
 
 - `id`: Unique identifier
-- `name`: Display name of the stat
-- `type`: Type of stat ('number' or 'list')
+- `name`: Display name of the stat (this is what you match on)
+- `type`: Type of stat (`'number'` or `'list'`)
 - `description`: Text description
 - `min`: Minimum value
 - `max`: Maximum value
 - `value`: Current value
 - `regen`: Regeneration rate
-- `code`: The code string (you don't typically need to access this)
-- `descriptors`: Array of threshold-based descriptions
+
+> ℹ️ Only these fields are passed into the sandbox. A stat's own `code` and `descriptors` are **not** available from inside a snippet.
 
 ### Examples
 
