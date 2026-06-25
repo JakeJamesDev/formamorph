@@ -68,10 +68,9 @@ const ModelViewer = ({ model, modelType }: ModelViewerProps) => {
 
     const objectURL = URL.createObjectURL(blob);
 
-    loader.load(objectURL, (object) => {
-      if (modelType === 'glb' || modelType === 'gltf') {
-        object = object.scene;
-      }
+    loader.load(objectURL, (loaded) => {
+      // GLTFLoader yields a { scene } wrapper; FBX/OBJ loaders yield the Object3D directly.
+      const object = 'scene' in loaded ? loaded.scene : loaded;
       scene.add(object);
 
       const box = new THREE.Box3().setFromObject(object);
@@ -94,7 +93,7 @@ const ModelViewer = ({ model, modelType }: ModelViewerProps) => {
       console.error('Error loading model:', error);
     });
 
-    let animationFrameId;
+    let animationFrameId: number;
     const animate = () => {
       animationFrameId = requestAnimationFrame(animate);
       controls.update();

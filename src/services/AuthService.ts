@@ -40,7 +40,6 @@ class AuthService {
       }
 
       const data = await response.json();
-      console.log('Login response data:', data);
 
       this.token = data.token;
       localStorage.setItem(this.tokenKey, this.token);
@@ -94,7 +93,6 @@ class AuthService {
       }
 
       const data = await response.json();
-      console.log('Registration response data:', data);
 
       this.token = data.token;
       localStorage.setItem(this.tokenKey, this.token);
@@ -141,7 +139,6 @@ class AuthService {
       }
 
       const userData = await response.json();
-      console.log('User profile data:', userData);
 
       // Handle different possible response structures
       let userObject = userData;

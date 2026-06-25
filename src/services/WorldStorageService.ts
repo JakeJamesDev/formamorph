@@ -1,5 +1,37 @@
 import AuthService from './AuthService';
+import { openDatabase } from '@/lib/idb';
 import type { WorldMetadata } from '@/types';
+
+// A locally-stored world record (metadata + nested world `data`). Inner fields stay loose since
+// they round-trip through IndexedDB/JSON and aren't read field-by-field here.
+export interface StoredWorldRecord {
+  id: string;
+  name: string;
+  description?: string;
+  author?: string;
+  thumbnail?: string;
+  data: {
+    worldOverview: unknown;
+    stats: unknown[];
+    locations: unknown[];
+    entities: unknown[];
+    traits: unknown[];
+    statUpdates: unknown[];
+    dictionary?: unknown[]; // v1.2.0
+  };
+}
+
+// A built-in world to seed on first run; its JSON is imported by `id`.
+interface DefaultWorldSeed {
+  id: string;
+  defaultName: string;
+}
+
+// The world payload sent to the server when publishing.
+interface PublishableWorld {
+  worldOverview: { name?: string; description?: string; thumbnail?: string } & Record<string, unknown>;
+  [key: string]: unknown;
+}
 
 class WorldStorageService {
   dbName: string;
@@ -20,26 +52,7 @@ class WorldStorageService {
 
   async initialize() {
     if (this.db) return; // Already initialized
-
-    return new Promise<void>((resolve, reject) => {
-      const request = indexedDB.open(this.dbName, 1);
-
-      request.onupgradeneeded = (event) => {
-        const db = (event.target as IDBOpenDBRequest).result;
-        if (!db.objectStoreNames.contains(this.storeName)) {
-          db.createObjectStore(this.storeName, { keyPath: 'id' });
-        }
-      };
-
-      request.onsuccess = (event) => {
-        this.db = (event.target as IDBOpenDBRequest).result;
-        resolve();
-      };
-
-      request.onerror = (event) => {
-        reject(`IndexedDB error: ${(event.target as IDBOpenDBRequest).error}`);
-      };
-    });
+    this.db = await openDatabase(this.dbName, 1, [{ name: this.storeName, keyPath: 'id' }]);
   }
 
   async ensureInitialized() {
@@ -74,8 +87,6 @@ class WorldStorageService {
 
   async getWorldData(worldId: string) {
     await this.ensureInitialized();
-
-    console.log("WorldID: ", worldId);
 
     // Validate worldId
     if (!worldId) {
@@ -142,7 +153,7 @@ class WorldStorageService {
     });
   }
 
-  async storeWorld(world) {
+  async storeWorld(world: StoredWorldRecord) {
     await this.ensureInitialized();
 
     //Generate unique ID always
@@ -156,8 +167,6 @@ class WorldStorageService {
         !world.data.traits || !world.data.statUpdates) {
       throw new Error('Invalid world data: missing required fields');
     }
-
-    console.log(world.id);
 
     return new Promise<void>((resolve, reject) => {
       const transaction = this.db.transaction([this.storeName], 'readwrite');
@@ -178,7 +187,7 @@ class WorldStorageService {
     });
   }
 
-  async loadDefaultWorlds(defaultWorlds) {
+  async loadDefaultWorlds(defaultWorlds: DefaultWorldSeed[]) {
     try {
       const existingWorlds = await this.getWorldMetadata();
       const worldsToLoad = defaultWorlds.filter(
@@ -254,7 +263,7 @@ class WorldStorageService {
       if (searchByAuthor) url += `&searchByAuthor=true`;
       if (sort) url += `&sort=${encodeURIComponent(sort)}&order=${encodeURIComponent(order)}`;
 
-      const headers = {};
+      const headers: Record<string, string> = {};
       if (AuthService.isAuthenticated()) {
         headers['Authorization'] = `Bearer ${AuthService.token}`;
       }
@@ -274,7 +283,6 @@ class WorldStorageService {
       }
 
       const responseData = await response.json();
-      console.log('Remote worlds response:', responseData);
 
       return {
         success: true,
@@ -284,14 +292,14 @@ class WorldStorageService {
       };
     } catch (error) {
       console.error('Error fetching remote worlds:', error);
-      return { success: false, error: error.message, data: [] };
+      return { success: false, error: (error as Error).message, data: [] as unknown[] };
     }
   }
 
   // Fetch the comments for a published world (paginated).
   async fetchComments(worldId: string, page = 1, limit = 20) {
     try {
-      const headers = {};
+      const headers: Record<string, string> = {};
       if (AuthService.isAuthenticated()) {
         headers['Authorization'] = `Bearer ${AuthService.token}`;
       }
@@ -309,7 +317,7 @@ class WorldStorageService {
       };
     } catch (error) {
       console.error('Error fetching comments:', error);
-      return { success: false, error: error.message, data: [], total: 0, pagination: {} };
+      return { success: false, error: (error as Error).message, data: [] as unknown[], total: 0, pagination: {} };
     }
   }
 
@@ -350,7 +358,6 @@ class WorldStorageService {
       }
 
       const responseData = await response.json();
-      console.log('User worlds response:', responseData);
 
       // Return just the data array, not the entire response object
       return responseData.data || [];
@@ -361,7 +368,7 @@ class WorldStorageService {
   }
 
   // Publish a world to the server
-  async publishWorld(worldData, worldId: string | null = null) {
+  async publishWorld(worldData: PublishableWorld, worldId: string | null = null) {
     if (!AuthService.isAuthenticated()) {
       throw new Error('You must be logged in to publish worlds');
     }

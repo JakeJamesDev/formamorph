@@ -5,6 +5,8 @@
  * (~600 records × ~700 B) and the server returns all of it in one `?limit=1000` request, so we
  * refresh by replacing the whole set (which also reconciles new/updated/removed worlds + counts).
  */
+import { openDatabase, promisifyRequest } from './idb';
+
 const DB_NAME = 'FORMAMORPH_CATALOG_DB';
 const STORE_NAME = 'worlds';
 const DB_VERSION = 1;
@@ -15,17 +17,9 @@ export type CatalogWorld = Record<string, unknown> & { id: string };
 let dbPromise: Promise<IDBDatabase> | null = null;
 const openDB = (): Promise<IDBDatabase> => {
   if (!dbPromise) {
-    dbPromise = new Promise((resolve, reject) => {
-      const request = indexedDB.open(DB_NAME, DB_VERSION);
-      request.onupgradeneeded = (event) => {
-        const db = (event.target as IDBOpenDBRequest).result;
-        if (!db.objectStoreNames.contains(STORE_NAME)) {
-          db.createObjectStore(STORE_NAME, { keyPath: 'id' });
-        }
-      };
-      request.onsuccess = () => resolve(request.result);
-      request.onerror = () => { dbPromise = null; reject(request.error); };
-    });
+    dbPromise = openDatabase(DB_NAME, DB_VERSION, [{ name: STORE_NAME, keyPath: 'id' }]).catch(
+      (err) => { dbPromise = null; throw err; }, // let a later call retry the open
+    );
   }
   return dbPromise;
 };
@@ -33,11 +27,10 @@ const openDB = (): Promise<IDBDatabase> => {
 /** All cached worlds (empty array if nothing cached yet). */
 export const getCatalog = async (): Promise<CatalogWorld[]> => {
   const db = await openDB();
-  return new Promise((resolve, reject) => {
-    const request = db.transaction([STORE_NAME], 'readonly').objectStore(STORE_NAME).getAll();
-    request.onsuccess = () => resolve((request.result as CatalogWorld[]) ?? []);
-    request.onerror = () => reject(request.error);
-  });
+  const records = await promisifyRequest<CatalogWorld[]>(
+    db.transaction([STORE_NAME], 'readonly').objectStore(STORE_NAME).getAll(),
+  );
+  return records ?? [];
 };
 
 /** Replace the entire cached catalog with a fresh server snapshot. */

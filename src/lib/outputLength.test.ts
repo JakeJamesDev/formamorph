@@ -2,7 +2,6 @@ import { describe, it, expect } from 'vitest';
 import {
   paragraphsForTokens,
   lengthGuidance,
-  bufferToSentence,
   trimToLastSentence,
 } from './outputLength';
 
@@ -34,24 +33,6 @@ describe('lengthGuidance', () => {
 
   it('collapses auto to a single paragraph when the budget only allows one', () => {
     expect(lengthGuidance('auto', 40)).toBe('Write a single paragraph.');
-  });
-});
-
-describe('bufferToSentence', () => {
-  it('returns the full text while the first sentence is still forming', () => {
-    expect(bufferToSentence('You walk down the')).toBe('You walk down the');
-  });
-
-  it('holds back an in-progress trailing sentence', () => {
-    expect(bufferToSentence('You arrive. The door is')).toBe('You arrive.');
-  });
-
-  it('returns everything once the last sentence is complete', () => {
-    expect(bufferToSentence('You arrive. The door opens.')).toBe('You arrive. The door opens.');
-  });
-
-  it('handles ! and ? and trailing quotes', () => {
-    expect(bufferToSentence('"Run!" she yells. He hesi')).toBe('"Run!" she yells.');
   });
 });
 

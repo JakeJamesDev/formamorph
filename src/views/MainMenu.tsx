@@ -57,7 +57,16 @@ import { restrictToFirstScrollableAncestor } from '@dnd-kit/modifiers';
 import TraitSelectionModal from './TraitSelectionModal';
 import WorldStorageService from '../services/WorldStorageService';
 import AuthService from '../services/AuthService';
-import type { World } from '@/types';
+import type { World, Stat, CharacterData } from '@/types';
+
+// Loose shape for server/catalog world payloads, whose fields vary by endpoint and save version.
+// eslint-disable-next-line @typescript-eslint/no-explicit-any -- intentional dynamic-JSON bag (pending a precise interface)
+type WorldRecord = Record<string, any>;
+
+interface MainMenuProps {
+  onStartGame: (traits: string[], characterData: CharacterData | null, isNewGame?: boolean) => void;
+  onOpenWorldEditor: () => void;
+}
 
 const defaultWorlds = [
   { id: 'rampage', defaultName: 'Giantess Rampage' },
@@ -206,7 +215,7 @@ function CardTags({ tags, onHide }: { tags: string[]; onHide: (tag: string) => v
   );
 }
 
-const MainMenu = ({ onStartGame, onOpenWorldEditor }) => {
+const MainMenu = ({ onStartGame, onOpenWorldEditor }: MainMenuProps) => {
   const { traits, stats, loadWorldData } = useGameData();
   const [selectedWorld, setSelectedWorld] = useState(null);
   const [showWorldModal, setShowWorldModal] = useState(false);
@@ -214,7 +223,7 @@ const MainMenu = ({ onStartGame, onOpenWorldEditor }) => {
   const [worldToDelete, setWorldToDelete] = useState(null);
   const [showCharacterCustomization, setShowCharacterCustomization] = useState(false);
   const [showTraitSelection, setShowTraitSelection] = useState(false);
-  const [selectedTraits, setSelectedTraits] = useState([]);
+  const [selectedTraits, setSelectedTraits] = useState<string[]>([]);
   const [showCodeModal, setShowCodeModal] = useState(false);
   const [showSettings, setShowSettings] = useState(false);
   const fileInputRef = useRef(null);
@@ -245,7 +254,7 @@ const MainMenu = ({ onStartGame, onOpenWorldEditor }) => {
 
   // Discover dialog states
   const [showDiscoverDialog, setShowDiscoverDialog] = useState(false);
-  const [remoteWorlds, setRemoteWorlds] = useState([]);
+  const [remoteWorlds, setRemoteWorlds] = useState<WorldRecord[]>([]);
   const [isLoadingRemoteWorlds, setIsLoadingRemoteWorlds] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
 
@@ -272,7 +281,7 @@ const MainMenu = ({ onStartGame, onOpenWorldEditor }) => {
   const [postingComment, setPostingComment] = useState(false);
 
   // Discover hide preferences (client-side, persisted in localStorage)
-  const [hiddenWorldIds, setHiddenWorldIds] = useState(() => {
+  const [hiddenWorldIds, setHiddenWorldIds] = useState<string[]>(() => {
     try { return JSON.parse(localStorage.getItem('FORMAMORPH_hiddenWorldIds') || '[]'); }
     catch { return []; }
   });
@@ -302,12 +311,10 @@ const MainMenu = ({ onStartGame, onOpenWorldEditor }) => {
   useEffect(() => {
     const checkAuth = async () => {
       const isLoggedIn = AuthService.isAuthenticated();
-      console.log('Is logged in:', isLoggedIn);
       setIsAuthenticated(isLoggedIn);
 
       if (isLoggedIn) {
         const user = AuthService.getCurrentUser();
-        console.log('Current user from AuthService:', user);
 
         // If we have a user object but no username, create one with the username from the login form
         if (user && !user.username && username) {
@@ -319,7 +326,6 @@ const MainMenu = ({ onStartGame, onOpenWorldEditor }) => {
         // Refresh user profile
         try {
           const refreshedUser = await AuthService.fetchUserProfile();
-          console.log('Refreshed user profile:', refreshedUser);
 
           if (refreshedUser) {
             // Ensure we have a username
@@ -336,10 +342,7 @@ const MainMenu = ({ onStartGame, onOpenWorldEditor }) => {
         } catch (error) {
           console.error('Error refreshing user profile:', error);
 
-          // If we failed to refresh but have a user with username, keep using it
-          if (user && user.username) {
-            console.log('Using existing user data:', user);
-          }
+          // If we failed to refresh but have a user with username, keep using it (no action needed).
         }
       }
     };
@@ -379,17 +382,17 @@ const MainMenu = ({ onStartGame, onOpenWorldEditor }) => {
   }, []);
 
   // Check if any stat has code
-  const hasStatWithCode = (statsArray) => {
+  const hasStatWithCode = (statsArray: Stat[]) => {
     return statsArray.some(stat => stat.code && stat.code.trim() !== '');
   };
 
   // Get all stats with code
-  const getStatsWithCode = (statsArray) => {
+  const getStatsWithCode = (statsArray: Stat[]) => {
     return statsArray.filter(stat => stat.code && stat.code.trim() !== '');
   };
 
   // Generate concatenated code from all stats with code
-  const generateConcatenatedCode = (statsArray) => {
+  const generateConcatenatedCode = (statsArray: Stat[]) => {
     const statsWithCode = getStatsWithCode(statsArray);
 
     return statsWithCode.map(stat => (
@@ -397,7 +400,7 @@ const MainMenu = ({ onStartGame, onOpenWorldEditor }) => {
     )).join('\n\n----\n\n');
   };
 
-  const handleWorldSelection = async (worldId) => {
+  const handleWorldSelection = async (worldId: string) => {
     try {
       const worldData = await WorldStorageService.getWorldData(worldId);
       const selectedWorld = worlds.find(w => w.id === worldId);
@@ -415,7 +418,7 @@ const MainMenu = ({ onStartGame, onOpenWorldEditor }) => {
     }
   };
 
-  const handleFileUpload = async (event) => {
+  const handleFileUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files[0];
     if (file) {
       const reader = new FileReader();
@@ -459,7 +462,7 @@ const MainMenu = ({ onStartGame, onOpenWorldEditor }) => {
     }
   };
 
-  const handleTraitSelection = (traitId) => {
+  const handleTraitSelection = (traitId: string) => {
     setSelectedTraits(prev =>
       prev.includes(traitId)
         ? prev.filter(id => id !== traitId)
@@ -524,7 +527,7 @@ const MainMenu = ({ onStartGame, onOpenWorldEditor }) => {
       const worldId = `new-${Date.now()}`;
 
       // Create a basic blank world structure
-      const blankWorld = {
+      const blankWorld: World = {
         id: worldId,
         worldOverview: {
           name: 'New World',
@@ -710,12 +713,10 @@ const MainMenu = ({ onStartGame, onOpenWorldEditor }) => {
       }
 
       // Publish the world
-      const publishedWorld = await WorldStorageService.publishWorld(worldToPublish);
-      console.log('Published world:', publishedWorld);
+      await WorldStorageService.publishWorld(worldToPublish);
 
       // Update the user worlds list directly
       const updatedWorlds = await WorldStorageService.getUserWorlds();
-      console.log('Updated user worlds after publish:', updatedWorlds);
       setUserWorlds(updatedWorlds);
 
       // Close the modal and show success message
@@ -750,12 +751,10 @@ const MainMenu = ({ onStartGame, onOpenWorldEditor }) => {
       }
 
       // Update the existing world
-      const updatedWorld = await WorldStorageService.publishWorld(worldToPublish, selectedWorldToOverride);
-      console.log('Updated world:', updatedWorld);
+      await WorldStorageService.publishWorld(worldToPublish, selectedWorldToOverride);
 
       // Update the user worlds list directly
       const updatedWorlds = await WorldStorageService.getUserWorlds();
-      console.log('Updated user worlds after override:', updatedWorlds);
       setUserWorlds(updatedWorlds);
 
       // Close the modal and show success message
@@ -831,15 +830,15 @@ const MainMenu = ({ onStartGame, onOpenWorldEditor }) => {
     localStorage.setItem('FORMAMORPH_hiddenAuthors', JSON.stringify(hiddenAuthors));
   }, [hiddenAuthors]);
 
-  const hideRemoteWorld = (worldId) => {
+  const hideRemoteWorld = (worldId: string) => {
     setHiddenWorldIds((prev) => (prev.includes(worldId) ? prev : [...prev, worldId]));
   };
-  const hideRemoteTag = (tag) => {
+  const hideRemoteTag = (tag: string) => {
     const t = sanitizeTag(tag);
     if (!t) return;
     setHiddenTags((prev) => (prev.includes(t) ? prev : [...prev, t]));
   };
-  const hideRemoteAuthor = (name) => {
+  const hideRemoteAuthor = (name: string) => {
     const n = String(name || '').trim();
     if (!n) return;
     setHiddenAuthors((prev) => (prev.some((a) => a.toLowerCase() === n.toLowerCase()) ? prev : [...prev, n]));
@@ -849,9 +848,9 @@ const MainMenu = ({ onStartGame, onOpenWorldEditor }) => {
     setHiddenTags([]);
     setHiddenAuthors([]);
   };
-  const unhideWorld = (id) => setHiddenWorldIds((prev) => prev.filter((w) => w !== id));
-  const unhideTag = (tag) => setHiddenTags((prev) => prev.filter((t) => t !== tag));
-  const unhideAuthor = (name) => setHiddenAuthors((prev) => prev.filter((a) => a !== name));
+  const unhideWorld = (id: string) => setHiddenWorldIds((prev) => prev.filter((w) => w !== id));
+  const unhideTag = (tag: string) => setHiddenTags((prev) => prev.filter((t) => t !== tag));
+  const unhideAuthor = (name: string) => setHiddenAuthors((prev) => prev.filter((a) => a !== name));
   // Resolve a hidden world id to its name from the catalog (falls back to a short id).
   const hiddenWorldName = (id: string) =>
     remoteWorlds.find((w) => (w._id || w.id) === id)?.name || `${id.slice(0, 8)}…`;
@@ -871,7 +870,7 @@ const MainMenu = ({ onStartGame, onOpenWorldEditor }) => {
     const seen = new Set<string>();
     const out: string[] = [];
     // Normalize tags so casing/spacing/punctuation variants collapse into one suggestion.
-    remoteWorlds.forEach((w) => (w.tags || []).forEach((t) => {
+    remoteWorlds.forEach((w) => (w.tags || []).forEach((t: string) => {
       const s = sanitizeTag(t);
       if (s && !seen.has(s) && !hidden.has(s)) { seen.add(s); out.push(s); }
     }));
@@ -887,12 +886,12 @@ const MainMenu = ({ onStartGame, onOpenWorldEditor }) => {
     const list = remoteWorlds.filter((world) => {
       const id = world._id || world.id;
       if (hiddenWorldIds.includes(id)) return false;
-      if ((world.tags || []).some((t) => hiddenTags.includes(sanitizeTag(t)))) return false;
+      if ((world.tags || []).some((t: string) => hiddenTags.includes(sanitizeTag(t)))) return false;
       if (hiddenAuthors.some((a) => a.toLowerCase() === (world.author?.username || '').toLowerCase())) return false;
       if (q && !`${world.name || ''} ${world.description || ''}`.toLowerCase().includes(q)) return false;
       if (authors.length && !authors.includes((world.author?.username || '').toLowerCase())) return false;
       if (tags.length) {
-        const worldTags = new Set((world.tags || []).map((t) => sanitizeTag(t)).filter(Boolean));
+        const worldTags = new Set((world.tags || []).map((t: string) => sanitizeTag(t)).filter(Boolean));
         const ok = tagMode === 'all' ? tags.every((t) => worldTags.has(t)) : tags.some((t) => worldTags.has(t));
         if (!ok) return false;
       }
@@ -983,7 +982,7 @@ const MainMenu = ({ onStartGame, onOpenWorldEditor }) => {
   };
 
   // Handle user status change
-  const handleUserStatusChange = async (userId, newStatus) => {
+  const handleUserStatusChange = async (userId: string, newStatus: string) => {
     try {
       // Call API to update user status - use the same endpoint for both actions
       const endpoint = `${WorldStorageService.API_URL}/users/${userId}/status`;
@@ -1015,7 +1014,7 @@ const MainMenu = ({ onStartGame, onOpenWorldEditor }) => {
   };
 
   // Handle remote world deletion
-  const handleRemoteWorldDelete = async (worldId) => {
+  const handleRemoteWorldDelete = async (worldId: string) => {
     try {
       // Call API to delete the world
       const response = await fetch(`${WorldStorageService.API_URL}/worlds/${worldId}`, {
@@ -1041,13 +1040,13 @@ const MainMenu = ({ onStartGame, onOpenWorldEditor }) => {
   };
 
   // Handle viewing remote world details
-  const handleViewRemoteWorldDetails = (world) => {
+  const handleViewRemoteWorldDetails = (world: WorldRecord) => {
     setSelectedRemoteWorld(world);
     setShowRemoteWorldDetailsModal(true);
   };
 
   // Handle downloading a remote world
-  const handleDownloadWorld = async (world) => {
+  const handleDownloadWorld = async (world: WorldRecord) => {
     try {
       // Get the world ID
       const worldId = world._id || world.id;
@@ -1169,8 +1168,7 @@ const MainMenu = ({ onStartGame, onOpenWorldEditor }) => {
       return currentUser.name.charAt(0).toUpperCase();
     }
 
-    // If we can't find a username property, log the object and return a default
-    console.log('Could not find username in user object:', currentUser);
+    // No recognizable username property — fall back to a default initial.
     return 'U';
   };
 
@@ -2104,7 +2102,7 @@ const MainMenu = ({ onStartGame, onOpenWorldEditor }) => {
                     <h3 className="text-sm font-semibold text-gray-500">Tags</h3>
                     <div className="flex flex-wrap gap-2 mt-1">
                       {selectedRemoteWorld.tags && selectedRemoteWorld.tags.length > 0 ? (
-                        selectedRemoteWorld.tags.map((tag, index) => (
+                        selectedRemoteWorld.tags.map((tag: string, index: number) => (
                           <span
                             key={index}
                             className="px-2 py-1 bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-300 text-xs rounded-full"

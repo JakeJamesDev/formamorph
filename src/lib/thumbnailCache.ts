@@ -5,6 +5,8 @@
  * same-filename re-upload still invalidates. Complements (and outlives) the browser's 24h
  * HTTP cache on these images.
  */
+import { openDatabase, promisifyRequest } from './idb';
+
 const DB_NAME = 'FORMAMORPH_THUMBS_DB';
 const STORE_NAME = 'thumbnails';
 const DB_VERSION = 1;
@@ -30,38 +32,25 @@ export const toEpoch = (s: string | number | null | undefined): number => {
 let dbPromise: Promise<IDBDatabase> | null = null;
 const openDB = (): Promise<IDBDatabase> => {
   if (!dbPromise) {
-    dbPromise = new Promise((resolve, reject) => {
-      const request = indexedDB.open(DB_NAME, DB_VERSION);
-      request.onupgradeneeded = (event) => {
-        const db = (event.target as IDBOpenDBRequest).result;
-        if (!db.objectStoreNames.contains(STORE_NAME)) {
-          db.createObjectStore(STORE_NAME, { keyPath: 'file' });
-        }
-      };
-      request.onsuccess = () => resolve(request.result);
-      request.onerror = () => { dbPromise = null; reject(request.error); };
-    });
+    dbPromise = openDatabase(DB_NAME, DB_VERSION, [{ name: STORE_NAME, keyPath: 'file' }]).catch(
+      (err) => { dbPromise = null; throw err; }, // let a later call retry the open
+    );
   }
   return dbPromise;
 };
 
 export const getThumb = async (file: string): Promise<ThumbRecord | null> => {
   const db = await openDB();
-  return new Promise((resolve, reject) => {
-    const request = db.transaction([STORE_NAME], 'readonly').objectStore(STORE_NAME).get(file);
-    request.onsuccess = () => resolve((request.result as ThumbRecord) ?? null);
-    request.onerror = () => reject(request.error);
-  });
+  const record = await promisifyRequest<ThumbRecord>(
+    db.transaction([STORE_NAME], 'readonly').objectStore(STORE_NAME).get(file),
+  );
+  return record ?? null;
 };
 
 export const putThumb = async (file: string, blob: Blob, updatedAt: number): Promise<void> => {
   const db = await openDB();
-  await new Promise<void>((resolve, reject) => {
-    const record: ThumbRecord = { file, blob, updatedAt, cachedAt: Date.now() };
-    const request = db.transaction([STORE_NAME], 'readwrite').objectStore(STORE_NAME).put(record);
-    request.onsuccess = () => resolve();
-    request.onerror = () => reject(request.error);
-  });
+  const record: ThumbRecord = { file, blob, updatedAt, cachedAt: Date.now() };
+  await promisifyRequest(db.transaction([STORE_NAME], 'readwrite').objectStore(STORE_NAME).put(record));
   // Bound disk use: drop the oldest entries beyond the cap (best-effort).
   pruneThumbs().catch(() => {});
 };

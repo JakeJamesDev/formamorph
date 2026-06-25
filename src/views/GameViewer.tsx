@@ -28,6 +28,7 @@ import { LocationModal } from "../components/modals/LocationModal";
 import { SettingsModal } from "../components/modals/SettingsModal";
 import { MenuModal } from "../components/modals/MenuModal";
 import WorldEditor from "./WorldEditor";
+import type { CharacterData, ChatMessage, ChatRole, PlayerStat, AIRequestType, StatChange, Trait, GameLocation } from "@/types";
 import { UnsavedChangesDialog } from "../components/UnsavedChangesDialog";
 import { estimateHistoryChars } from "../lib/memoryUtils";
 import { parseGameText, stripReasoning, stripReasoningLive } from "../lib/aiResponse";
@@ -37,7 +38,7 @@ import { useSmoothedReveal } from "../lib/useSmoothedReveal";
 import { normalizeStatChanges, applyAiStatChanges, applyTraitStatChanges, parseStatUpdates, applyAiMaxChanges } from "../lib/statChanges";
 import { matchLocationResponse } from "../lib/locationMatch";
 import { getActivatedDictionary, buildDictionaryContext, parseKeywords } from "../lib/dictionaryUtils";
-import { highlightSegments } from "../lib/highlightUtils";
+import { highlightSegments, type HighlightRule, type HighlightSegment } from "../lib/highlightUtils";
 import { useIsMobile } from "../lib/useIsMobile";
 import {
   LeftPanel,
@@ -48,18 +49,35 @@ import { ConfirmDialog } from "../components/ConfirmDialog";
 import json5 from "json5";
 
 // Debug utility function - only logs on error
-const debugLog = (message, data, isError = false) => {
+const debugLog = (message: string, data: unknown, isError = false) => {
   return; //DISABLED
   if (isError) {
     console.error(`[DEBUG] ${message}:`, data);
   }
 };
 
+interface GameViewerProps {
+  initialTraits?: string[];
+  initialCharacterData: CharacterData | null;
+  onExitToMenu: () => void;
+}
+
+// One AI sub-request captured per turn for the AI-context viewer (its sent messages + raw response).
+interface DebugRequest {
+  type: string;
+  messages: ChatMessage[];
+  response?: string;
+}
+interface DebugTurn {
+  action: string;
+  requests: DebugRequest[];
+}
+
 const GameViewer = ({
   initialTraits = [],
   initialCharacterData,
   onExitToMenu,
-}) => {
+}: GameViewerProps) => {
   // AbortController reference for canceling AI requests
   const abortControllerRef = useRef(null);
   const {
@@ -146,7 +164,7 @@ const GameViewer = ({
 
   // Function to extract entity names from text
   const extractEntities = useCallback(
-    (text) => {
+    (text: string) => {
       if (!text || !entities) return [];
 
       // Create a Set to store unique entities
@@ -218,11 +236,11 @@ const GameViewer = ({
   const [choicesReady, setChoicesReady] = useState(false);
   const [isDebugOpen, setIsDebugOpen] = useState(false);
   // One entry per game turn, each holding the AI requests captured that turn (newest last).
-  const [debugTurns, setDebugTurns] = useState([]);
+  const [debugTurns, setDebugTurns] = useState<DebugTurn[]>([]);
   const [debugPage, setDebugPage] = useState(1); // 1-based page = turn index
-  const [disabledHighlights, setDisabledHighlights] = useState({});
+  const [disabledHighlights, setDisabledHighlights] = useState<Record<string, boolean>>({});
   const [debugSearch, setDebugSearch] = useState("");
-  const [collapsedDebug, setCollapsedDebug] = useState({});
+  const [collapsedDebug, setCollapsedDebug] = useState<Record<string | number, boolean>>({});
   // Jump to the newest turn whenever one is captured.
   useEffect(() => {
     if (debugTurns.length > 0) setDebugPage(debugTurns.length);
@@ -233,13 +251,13 @@ const GameViewer = ({
   const [isLocationModalOpen, setIsLocationModalOpen] = useState(false);
 
   const getStatByName = useCallback(
-    (name) => {
+    (name: string) => {
       return playerStats.find((stat) => stat.name === name);
     },
     [playerStats],
   );
 
-  const setStatByName = useCallback((name, value) => {
+  const setStatByName = useCallback((name: string, value: number) => {
     setPlayerStats((prevStats) =>
       prevStats.map((stat) =>
         stat.name === name
@@ -269,12 +287,12 @@ const GameViewer = ({
       }
     }
   };
-  const addMessageToHistory = useCallback((role, content) => {
+  const addMessageToHistory = useCallback((role: ChatRole, content: string) => {
     setFullMessageHistory((prev) => [...prev, { role, content }]);
   }, [setFullMessageHistory]);
 
   const getTrimmedMessageHistory = useCallback(() => {
-    let trimmedHistory = [];
+    let trimmedHistory: ChatMessage[] = [];
     let currentLength = 0;
 
     // Start from most recent messages and work backwards
@@ -286,7 +304,7 @@ const GameViewer = ({
       if (!assistantMessage || !userMessage) continue;
 
       // Parse assistant message to get only game_text
-      let assistantGameText;
+      let assistantGameText: ChatMessage;
       try {
         const parsed = json5.parse(assistantMessage.content);
         assistantGameText = {
@@ -313,7 +331,7 @@ const GameViewer = ({
   }, [fullMessageHistory, aiMessageLimit]);
 
   // Function to calculate percentage of a stat
-  const calculateFIXEDStatPercentage = (stat) => {
+  const calculateFIXEDStatPercentage = (stat: PlayerStat) => {
     //return ((stat.value - stat.min) / (stat.max - stat.min));
     return stat.value / 100;
   };
@@ -333,7 +351,7 @@ const GameViewer = ({
   }, [playerStats, characterData, setStomachPercent, setFatnessPercent, setBreastsizePercent]);
 
   const handleTimePassed = useCallback(
-    (hours) => {
+    (hours: number) => {
       setGameTime((prevTime) => prevTime + hours);
 
       // Track regen changes
@@ -440,7 +458,7 @@ const GameViewer = ({
       .join("\n");
   }, [playerStats]);
 
-  const sendGameAction = async (action) => {
+  const sendGameAction = async (action: string) => {
     if (!isGameStarted && action !== "START GAME") return;
 
     const sanitizeLocationData = (location) => {
@@ -472,7 +490,7 @@ const GameViewer = ({
       const entityList = locationEntities || entity || [];
       if (entityList.length > 0) {
         output += "entities:\n";
-        entityList.forEach((entityId) => {
+        entityList.forEach((entityId: string) => {
           const entityItem = entities.find((f) => f.id === entityId);
           if (entityItem) {
             const {
@@ -566,7 +584,7 @@ ${playerNotes || "No notes available"}
       setDebugTurns((prev) => [...prev, { action, requests: [] }].slice(-50));
 
       // Create message array for game text request
-      const gameTextMessages = [
+      const gameTextMessages: ChatMessage[] = [
         ...trimmedHistory,
         { role: "user", content: `Player action: ${action}` },
       ];
@@ -588,7 +606,7 @@ ${playerNotes || "No notes available"}
         // (turns of action -> story) primes the model to just continue the story instead of planning.
         const lastStory =
           [...trimmedHistory].reverse().find((m) => m.role === "assistant")?.content || "";
-        const thinkMessages = [
+        const thinkMessages: ChatMessage[] = [
           {
             role: "user",
             content: `${lastStory ? `What just happened:\n${lastStory}\n\n` : ""}The player's next action: ${action}\n\nWrite the brief plan now. Do not narrate.`,
@@ -729,7 +747,7 @@ ${playerNotes || "No notes available"}
       setVisibleEntities(newEntities);
 
       // Parse stat updates into current-value deltas and max-cap deltas (see lib/statChanges).
-      let statChanges = [];
+      let statChanges: Record<string, number>[] = [];
       if (statUpdatesPrompt !== "DISABLED" && statUpdatesResponse) {
         const { values, maxes } = parseStatUpdates(statUpdatesResponse);
         statChanges = Object.entries(values).map(([k, v]) => ({ [k]: v }));
@@ -738,7 +756,6 @@ ${playerNotes || "No notes available"}
           setPlayerStats((prevStats) => applyAiMaxChanges(prevStats, maxes));
         }
       }
-      console.log("stat updates response", statUpdatesResponse);
 
       // Update final assistant message with complete data
       setFullMessageHistory((prev) => {
@@ -843,58 +860,47 @@ ${playerNotes || "No notes available"}
     setCurrentPage(Math.ceil(fullMessageHistory.length / messagesPerPage));
   }, [fullMessageHistory.length, messagesPerPage, setCurrentPage]);
 
-  const handlePageChange = (page) => {
+  const handlePageChange = (page: number) => {
     setCurrentPage(page);
   };
 
   const totalPages = Math.ceil(fullMessageHistory.length / messagesPerPage);
 
+  // Latest committed stats, so off-render derivations (below) don't rely on a stale closure.
+  const playerStatsRef = useRef(playerStats);
+  playerStatsRef.current = playerStats;
+  // Pending "clear recent changes" timer, tracked so a new turn or unmount can cancel it.
+  const recentStatTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  useEffect(
+    () => () => {
+      if (recentStatTimerRef.current) clearTimeout(recentStatTimerRef.current);
+    },
+    [],
+  );
+
   // Update the applyStatChanges function to handle specific stat updates
   const applyStatChanges = useCallback(
-    async (changes, affectedStats = null) => {
+    async (changes: Record<string, number>[], affectedStats: string[] | null = null) => {
       // Merge the AI's change objects into one normalized (name→delta) map.
       const normalizedChanges = normalizeStatChanges(changes);
 
-      // Update recent stat changes
+      // Surface the changes, then clear the highlight after 10s. Cancel any prior timer first so a
+      // stale clear can't wipe a newer turn's changes.
       setRecentStatChanges(normalizedChanges);
+      if (recentStatTimerRef.current) clearTimeout(recentStatTimerRef.current);
+      recentStatTimerRef.current = setTimeout(() => setRecentStatChanges({}), 10000);
 
-      // Clear stat changes after 10 seconds
-      setTimeout(() => {
-        setRecentStatChanges({});
-      }, 10000);
-
-      // First update stats with the AI's direct changes (not regen or script).
-      setPlayerStats((prevStats) =>
-        applyAiStatChanges(prevStats, normalizedChanges, affectedStats),
-      );
-
-      // Then process any code-based stats
-      // We need to wait for the state update to complete, so we use setTimeout
-      setTimeout(async () => {
-        try {
-          // Get the latest playerStats from state instead of using closure value
-          setPlayerStats((currentStats) => {
-            // Process the current stats asynchronously
-            processStatCode(currentStats)
-              .then((updatedStats) => {
-                if (updatedStats !== currentStats) {
-                  setPlayerStats(updatedStats as typeof currentStats);
-                }
-              })
-              .catch((error) => {
-                console.error(
-                  "Error processing stat code after changes:",
-                  error,
-                );
-              });
-
-            // Return the current stats unchanged for this update
-            return currentStats;
-          });
-        } catch (error) {
-          console.error("Error processing stat code after changes:", error);
-        }
-      }, 0);
+      // Apply the AI's direct changes, then derive any code-based stats from that result. Both run
+      // outside the state updater (updaters must stay pure), reading the latest stats via the ref.
+      const directApplied = applyAiStatChanges(playerStatsRef.current, normalizedChanges, affectedStats);
+      setPlayerStats(directApplied);
+      try {
+        // processStatCode is typed over Stat[]; playerStats is the narrower PlayerStat[] (value: number).
+        const coded = await processStatCode(directApplied);
+        if (coded !== directApplied) setPlayerStats(coded as typeof playerStats);
+      } catch (error) {
+        console.error("Error processing stat code after changes:", error);
+      }
     },
     [setPlayerStats, setRecentStatChanges],
   );
@@ -933,10 +939,10 @@ ${playerNotes || "No notes available"}
   };
 
   const makeAIRequest = async (
-    systemPrompt,
-    messages,
-    requestType = "gametext",
-    maxTokensOverride = null,
+    systemPrompt: string,
+    messages: ChatMessage[],
+    requestType: AIRequestType = "gametext",
+    maxTokensOverride: number | null = null,
   ) => {
     try {
       // Create a new AbortController for this request
@@ -984,92 +990,100 @@ ${playerNotes || "No notes available"}
         throw error;
       }
 
+      if (!response.body) throw new Error("Response has no body to stream");
       const reader = response.body.getReader();
+      const decoder = new TextDecoder();
+      let buffer = "";
       let content = "";
       let finishReason = null;
       // Start a fresh smoothed reveal for this turn's narration.
       if (requestType === "gametext") reveal.reset();
 
+      // Handle one complete SSE line. Lines are buffered across reads (below) so a `data:` payload
+      // split across network chunks is never JSON.parsed half-formed.
+      const processLine = (sseLine: string) => {
+        if (!sseLine.startsWith("data: ")) return;
+        const data = sseLine.slice(6);
+        if (data === "[DONE]") return;
+        try {
+          const parsed = JSON.parse(data);
+          const delta = parsed.choices[0]?.delta?.content || "";
+          content += delta;
+          if (parsed.choices[0]?.finish_reason) {
+            finishReason = parsed.choices[0].finish_reason;
+          }
+
+          // Handle different request types
+          if (requestType === "gametext") {
+            // Feed the full (reasoning-stripped) content; the smoothed reveal trails it so the
+            // display reads as continuous typing and the late truncation trim stays off-screen.
+            const display = stripReasoningLive(content);
+            reveal.push(display);
+
+            // Update visible entities based on streaming content
+            const newEntities = extractEntities(display);
+            setVisibleEntities(newEntities);
+
+            // Update the latest assistant message in history if it exists
+            setFullMessageHistory((prev) => {
+              if (
+                prev.length > 0 &&
+                prev[prev.length - 1].role === "assistant"
+              ) {
+                const updatedHistory = [...prev];
+                updatedHistory[updatedHistory.length - 1] = {
+                  role: "assistant",
+                  content: JSON.stringify({
+                    game_text: display,
+                    choices: [],
+                    stat_changes: [],
+                  }),
+                };
+                return updatedHistory;
+              }
+              // If no assistant message exists yet, add one
+              return [
+                ...prev,
+                {
+                  role: "assistant",
+                  content: JSON.stringify({
+                    game_text: display,
+                    choices: [],
+                    stat_changes: [],
+                  }),
+                },
+              ];
+            });
+          } else if (requestType === "choices") {
+            // Update choices in real-time, ensuring we handle partial content correctly
+            const choicesList = stripReasoningLive(content)
+              .split("\n")
+              .map((line) => line.trim())
+              .filter((line) => line.length > 0)
+              .slice(0, 6);
+            if (choicesList.length > 0) {
+              setChoices(choicesList);
+            }
+          }
+          // For statUpdates type, we do nothing during streaming
+        } catch (e) {
+          console.error("Error parsing streaming response:", e);
+        }
+      };
+
       while (true) {
         const { done, value } = await reader.read();
         if (done) break;
-
-        // Convert the chunk to text
-        const chunk = new TextDecoder().decode(value);
-        const lines = chunk.split("\n");
-
-        for (const line of lines) {
-          if (line.startsWith("data: ")) {
-            const data = line.slice(6);
-            if (data === "[DONE]") continue;
-
-            try {
-              const parsed = JSON.parse(data);
-              const delta = parsed.choices[0]?.delta?.content || "";
-              content += delta;
-              if (parsed.choices[0]?.finish_reason) {
-                finishReason = parsed.choices[0].finish_reason;
-              }
-
-              // Handle different request types
-              if (requestType === "gametext") {
-                // Feed the full (reasoning-stripped) content; the smoothed reveal trails it so the
-                // display reads as continuous typing and the late truncation trim stays off-screen.
-                const display = stripReasoningLive(content);
-                reveal.push(display);
-
-                // Update visible entities based on streaming content
-                const newEntities = extractEntities(display);
-                setVisibleEntities(newEntities);
-
-                // Update the latest assistant message in history if it exists
-                setFullMessageHistory((prev) => {
-                  if (
-                    prev.length > 0 &&
-                    prev[prev.length - 1].role === "assistant"
-                  ) {
-                    const updatedHistory = [...prev];
-                    updatedHistory[updatedHistory.length - 1] = {
-                      role: "assistant",
-                      content: JSON.stringify({
-                        game_text: display,
-                        choices: [],
-                        stat_changes: [],
-                      }),
-                    };
-                    return updatedHistory;
-                  }
-                  // If no assistant message exists yet, add one
-                  return [
-                    ...prev,
-                    {
-                      role: "assistant",
-                      content: JSON.stringify({
-                        game_text: display,
-                        choices: [],
-                        stat_changes: [],
-                      }),
-                    },
-                  ];
-                });
-              } else if (requestType === "choices") {
-                // Update choices in real-time, ensuring we handle partial content correctly
-                const choicesList = stripReasoningLive(content)
-                  .split("\n")
-                  .map((line) => line.trim())
-                  .filter((line) => line.length > 0)
-                  .slice(0, 6);
-                if (choicesList.length > 0) {
-                  setChoices(choicesList);
-                }
-              }
-              // For statUpdates type, we do nothing during streaming
-            } catch (e) {
-              console.error("Error parsing streaming response:", e);
-            }
-          }
-        }
+        // Accumulate decoded text and dispatch only complete lines; the trailing partial line (and
+        // any partial multi-byte char, via { stream: true }) is carried into the next read.
+        buffer += decoder.decode(value, { stream: true });
+        const lines = buffer.split(/\r?\n/);
+        buffer = lines.pop() ?? "";
+        for (const line of lines) processLine(line);
       }
+      // Flush the decoder and process a final line that arrived without a trailing newline.
+      buffer += decoder.decode();
+      if (buffer.trim()) processLine(buffer.trim());
 
       // Show the raw output (including any <think> block) in the AI-context viewer, but return the
       // cleaned text so reasoning never reaches the narration, TTS, choices/stats/location, or history.
@@ -1098,7 +1112,6 @@ ${playerNotes || "No notes available"}
     } catch (error) {
       // Check if this is an abort error (user canceled the request)
       if (error.name === "AbortError") {
-        console.log("Request was aborted by user");
         if (requestType === "gametext") reveal.reset();
         // Return empty content for aborted requests instead of throwing
         return "";
@@ -1116,14 +1129,14 @@ ${playerNotes || "No notes available"}
     }
   };
 
-  const handleKeyPress = (e) => {
+  const handleKeyPress = (e: React.KeyboardEvent) => {
     if (e.key === "Enter" && !isWaitingForAI) {
       handleSendAction();
     }
   };
 
   const handleStatChanges = useCallback(
-    (statChanges) => {
+    (statChanges: StatChange[]) => {
       setPlayerStats((prevStats) => {
         const { stats, changedIds } = applyTraitStatChanges(prevStats, statChanges);
         // Persist each changed stat back to the world definition.
@@ -1137,7 +1150,7 @@ ${playerNotes || "No notes available"}
   );
 
   const applyTrait = useCallback(
-    (trait) => {
+    (trait: Trait) => {
       handleStatChanges(trait.statChanges);
       setPlayerTraits((prevTraits) => [...prevTraits, trait]);
       addLogEntry(`Applied trait: ${trait.name}`);
@@ -1146,7 +1159,7 @@ ${playerNotes || "No notes available"}
   );
 
   const changeLocation = useCallback(
-    (newLocation) => {
+    (newLocation: GameLocation) => {
       setCurrentLocation(newLocation);
 
       if (newLocation.ambientSound) {
@@ -1236,7 +1249,7 @@ ${playerNotes || "No notes available"}
       statUpdates: "Stat Updates",
       locationChange: "Location",
     };
-    const label = labels[aiRequestType] || "Response";
+    const label = labels[aiRequestType as keyof typeof labels] || "Response";
     return (
       <div className="flex items-center gap-2 mb-1">
         <span className="text-xs text-muted-foreground whitespace-nowrap">
@@ -1496,12 +1509,12 @@ ${playerNotes || "No notes available"}
               "#fde68a", "#bbf7d0", "#bfdbfe", "#fbcfe8",
               "#ddd6fe", "#fed7aa", "#a5f3fc", "#fecaca",
             ];
-            const colorMap = {};
+            const colorMap: Record<string, string> = {};
             // Trigger keywords highlight in the narrative/history (showing why an entry
             // activated); inside the injected "Relevant Information:" block only the entry
             // name declaration ("Name:") highlights — not keyword occurrences in the value.
-            const triggerRules = [];
-            const declarationRules = [];
+            const triggerRules: HighlightRule[] = [];
+            const declarationRules: HighlightRule[] = [];
             dictionary.forEach((entry, i) => {
               const color = palette[i % palette.length];
               colorMap[entry.id] = color;
@@ -1512,8 +1525,8 @@ ${playerNotes || "No notes available"}
             const RELEVANT_MARKER = "Relevant Information:";
             // Highlight only a "Name:" at the start of a line — the declaration prepended by
             // buildDictionaryContext — not a "Name:" that recurs inside the entry's value text.
-            const highlightDeclarations = (block) => {
-              const segments = [];
+            const highlightDeclarations = (block: string) => {
+              const segments: HighlightSegment[] = [];
               block.split("\n").forEach((line, li) => {
                 if (li > 0) segments.push({ text: "\n" });
                 const rule = declarationRules
@@ -1531,7 +1544,7 @@ ${playerNotes || "No notes available"}
             const searchTerms = debugSearch.trim().toLowerCase().split(/\s+/).filter(Boolean);
             const searchActive = searchTerms.length > 0;
             // Keep only lines matching any search term; collapse each run of dropped lines into "...".
-            const filterLines = (text) => {
+            const filterLines = (text: string) => {
               const out = [];
               let pendingGap = false;
               let shownAny = false;
@@ -1549,7 +1562,7 @@ ${playerNotes || "No notes available"}
               return shownAny ? out.join("\n") : "";
             };
             // Section-aware highlight (+ optional search filter); returns [] when search hides everything.
-            const buildSegments = (text) => {
+            const buildSegments = (text: string) => {
               const idx = text.indexOf(RELEVANT_MARKER);
               let body = idx === -1 ? text : text.slice(0, idx);
               let block = idx === -1 ? "" : text.slice(idx);
@@ -1557,13 +1570,13 @@ ${playerNotes || "No notes available"}
                 body = filterLines(body);
                 block = filterLines(block);
               }
-              const segs = [];
+              const segs: HighlightSegment[] = [];
               if (body) segs.push(...highlightSegments(body, triggerRules));
               if (searchActive && body && block) segs.push({ text: "\n" });
               if (block) segs.push(...highlightDeclarations(block));
               return segs;
             };
-            const renderSegs = (segs) =>
+            const renderSegs = (segs: HighlightSegment[]) =>
               segs.map((seg, k) =>
                 seg.color ? (
                   <mark
@@ -1583,7 +1596,7 @@ ${playerNotes || "No notes available"}
             const currentTurn = debugTurns[pageIndex];
             const currentRequests = currentTurn?.requests ?? [];
             // Collapse keys: one per request, plus one per captured raw output ("out-<i>").
-            const collapseKeys = [];
+            const collapseKeys: (string | number)[] = [];
             currentRequests.forEach((req, i) => {
               collapseKeys.push(i);
               if (typeof req.response === "string") collapseKeys.push(`out-${i}`);
@@ -1594,7 +1607,7 @@ ${playerNotes || "No notes available"}
               if (allCollapsed) {
                 setCollapsedDebug({});
               } else {
-                const next = {};
+                const next: Record<string | number, boolean> = {};
                 collapseKeys.forEach((k) => { next[k] = true; });
                 setCollapsedDebug(next);
               }

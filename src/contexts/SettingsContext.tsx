@@ -1,170 +1,72 @@
-import { createContext, useContext, useState, useEffect, type ReactNode } from 'react';
+import { createContext, useContext, useState, useEffect, useRef, type ReactNode } from 'react';
 import { defaultSystemPrompt, defaultChoicesPrompt, defaultStatUpdatesPrompt, defaultLocationChangePrompt, defaultThinkingPrompt } from '../components/game/GamePrompts';
+import type { ParagraphLimit } from '../lib/outputLength';
 
 export type ThinkingMode = 'off' | 'precall' | 'inline';
-export type ParagraphLimit = 'none' | 'single' | 'auto';
+export type { ParagraphLimit };
 
 const APP_ID = 'FORMAMORPH';
 export const DEFAULT_ENDPOINT = 'https://mistral.lyonade.net/v1/chat/completions';
 
+// Converts a setting to/from its stored string form. Reusable codecs cover the common shapes.
+interface Codec<T> {
+  parse: (raw: string) => T;
+  serialize: (value: T) => string;
+}
+const stringCodec: Codec<string> = { parse: (r) => r, serialize: (v) => v };
+const boolCodec: Codec<boolean> = { parse: (r) => JSON.parse(r), serialize: (v) => JSON.stringify(v) };
+const intCodec: Codec<number> = { parse: (r) => parseInt(r), serialize: (v) => String(v) };
+const floatCodec: Codec<number> = { parse: (r) => parseFloat(r), serialize: (v) => String(v) };
+
+/** useState mirrored to a localStorage `key`: seeds from the stored value (or `defaultValue` when
+ *  absent) and writes back on every change. `codec` maps the value to/from its stored string. */
+function usePersistentState<T>(key: string, defaultValue: T, codec: Codec<T>) {
+  const [value, setValue] = useState<T>(() => {
+    const raw = localStorage.getItem(key);
+    return raw === null ? defaultValue : codec.parse(raw);
+  });
+  const codecRef = useRef(codec); // avoid re-running the write effect on inline-codec identity changes
+  codecRef.current = codec;
+  useEffect(() => {
+    localStorage.setItem(key, codecRef.current.serialize(value));
+  }, [key, value]);
+  return [value, setValue] as const;
+}
+
 function useProvideSettings() {
-  const [bgmEnabled, setBgmEnabled] = useState<boolean>(() => {
-    const savedBgm = localStorage.getItem('bgmEnabled');
-    return savedBgm ? JSON.parse(savedBgm) : true;
-  });
+  const [bgmEnabled, setBgmEnabled] = usePersistentState<boolean>('bgmEnabled', true, boolCodec);
+  const [language, setLanguage] = usePersistentState<string>('language', 'English', stringCodec);
 
-  const [language, setLanguage] = useState<string>(() => {
-    const savedLanguage = localStorage.getItem('language');
-    return savedLanguage || 'English';
-  });
-
+  // Custom: validates the stored value and migrates the legacy shortform boolean (true→single,
+  // false→none); new users default to auto. The two-key migration doesn't fit usePersistentState.
   const [paragraphLimit, setParagraphLimit] = useState<ParagraphLimit>(() => {
     const saved = localStorage.getItem(`${APP_ID}_paragraphLimit`);
     if (saved === 'none' || saved === 'single' || saved === 'auto') return saved;
-    // Migrate from the legacy shortform boolean (true = single paragraph, false = unbounded).
     const legacy = localStorage.getItem(`${APP_ID}_shortform`);
     if (legacy !== null) return JSON.parse(legacy) ? 'single' : 'none';
-    return 'auto'; // new-user default
+    return 'auto';
   });
-
-  const [autoscroll, setAutoscroll] = useState<boolean>(() => {
-    const saved = localStorage.getItem(`${APP_ID}_autoscroll`);
-    return saved ? JSON.parse(saved) : false;
-  });
-
-  const [endpointUrl, setEndpointUrl] = useState<string>(() => {
-    const saved = localStorage.getItem(`${APP_ID}_endpointUrl`);
-    return saved ? saved : (import.meta.env.VITE_DEFAULT_ENDPOINT || DEFAULT_ENDPOINT);
-  });
-
-  const [apiToken, setApiToken] = useState<string>(() => {
-    const saved = localStorage.getItem(`${APP_ID}_apiToken`);
-    return saved ? saved : (import.meta.env.VITE_DEFAULT_API_TOKEN || '');
-  });
-
-  const [modelName, setModelName] = useState<string>(() => {
-    const saved = localStorage.getItem(`${APP_ID}_modelName`);
-    return saved ? saved : (import.meta.env.VITE_DEFAULT_MODEL_NAME || 'shuyuej/Mistral-Nemo-Instruct-2407-GPTQ');
-  });
-
-  const [maxTokens, setMaxTokens] = useState<number>(() => {
-    const saved = localStorage.getItem(`${APP_ID}_maxTokens`);
-    return saved ? parseInt(saved) : (parseInt(import.meta.env.VITE_DEFAULT_MAX_TOKENS) || 1024);
-  });
-
-  const [aiMessageLimit, setAiMessageLimit] = useState<number>(() => {
-    const saved = localStorage.getItem(`${APP_ID}_aiMessageLimit`);
-    return saved ? parseInt(saved) : (parseInt(import.meta.env.VITE_DEFAULT_AI_MESSAGE_LIMIT) || 3900);
-  });
-
-  const [systemPrompt, setSystemPrompt] = useState<string>(() => {
-    const saved = localStorage.getItem(`${APP_ID}_narrationPrompt2`);
-    return saved ? saved : defaultSystemPrompt;
-  });
-
-  const [choicesPrompt, setChoicesPrompt] = useState<string>(() => {
-    const saved = localStorage.getItem(`${APP_ID}_choicesPrompt2`);
-    return saved ? saved : defaultChoicesPrompt;
-  });
-
-  const [statUpdatesPrompt, setStatUpdatesPrompt] = useState<string>(() => {
-    const saved = localStorage.getItem(`${APP_ID}_statUpdatesPrompt2`);
-    return saved ? saved : defaultStatUpdatesPrompt;
-  });
-
-  const [locationChangePromptText, setLocationChangePromptText] = useState<string>(() => {
-    const saved = localStorage.getItem(`${APP_ID}_locationChangePrompt`);
-    return saved ? saved : defaultLocationChangePrompt;
-  });
-
-  const [thinkingMode, setThinkingMode] = useState<ThinkingMode>(() => {
-    const saved = localStorage.getItem(`${APP_ID}_thinkingMode`);
-    return saved === 'precall' || saved === 'inline' ? saved : 'off';
-  });
-
-  const [thinkingPrompt, setThinkingPrompt] = useState<string>(() => {
-    const saved = localStorage.getItem(`${APP_ID}_thinkingPrompt`);
-    return saved ? saved : defaultThinkingPrompt;
-  });
-
-  const [vramHelperUrl, setVramHelperUrl] = useState<string>(() => {
-    const saved = localStorage.getItem(`${APP_ID}_vramHelperUrl`);
-    return saved ? saved : 'http://localhost:5179';
-  });
-
-  const [ttsVolume, setTtsVolume] = useState<number>(() => {
-    const saved = localStorage.getItem(`${APP_ID}_ttsVolume`);
-    return saved !== null ? parseFloat(saved) : 1;
-  });
-
-  // Save settings to localStorage whenever they change
-  useEffect(() => {
-    localStorage.setItem('bgmEnabled', JSON.stringify(bgmEnabled));
-  }, [bgmEnabled]);
-
-  useEffect(() => {
-    localStorage.setItem('language', language);
-  }, [language]);
-
   useEffect(() => {
     localStorage.setItem(`${APP_ID}_paragraphLimit`, paragraphLimit);
   }, [paragraphLimit]);
 
-  useEffect(() => {
-    localStorage.setItem(`${APP_ID}_autoscroll`, JSON.stringify(autoscroll));
-  }, [autoscroll]);
-
-  useEffect(() => {
-    localStorage.setItem(`${APP_ID}_endpointUrl`, endpointUrl);
-  }, [endpointUrl]);
-
-  useEffect(() => {
-    localStorage.setItem(`${APP_ID}_apiToken`, apiToken);
-  }, [apiToken]);
-
-  useEffect(() => {
-    localStorage.setItem(`${APP_ID}_modelName`, modelName);
-  }, [modelName]);
-
-  useEffect(() => {
-    localStorage.setItem(`${APP_ID}_maxTokens`, maxTokens.toString());
-  }, [maxTokens]);
-
-  useEffect(() => {
-    localStorage.setItem(`${APP_ID}_aiMessageLimit`, aiMessageLimit.toString());
-  }, [aiMessageLimit]);
-
-  useEffect(() => {
-    localStorage.setItem(`${APP_ID}_narrationPrompt2`, systemPrompt);
-  }, [systemPrompt]);
-
-  useEffect(() => {
-    localStorage.setItem(`${APP_ID}_choicesPrompt2`, choicesPrompt);
-  }, [choicesPrompt]);
-
-  useEffect(() => {
-    localStorage.setItem(`${APP_ID}_statUpdatesPrompt2`, statUpdatesPrompt);
-  }, [statUpdatesPrompt]);
-
-  useEffect(() => {
-    localStorage.setItem(`${APP_ID}_locationChangePrompt`, locationChangePromptText);
-  }, [locationChangePromptText]);
-
-  useEffect(() => {
-    localStorage.setItem(`${APP_ID}_thinkingMode`, thinkingMode);
-  }, [thinkingMode]);
-
-  useEffect(() => {
-    localStorage.setItem(`${APP_ID}_thinkingPrompt`, thinkingPrompt);
-  }, [thinkingPrompt]);
-
-  useEffect(() => {
-    localStorage.setItem(`${APP_ID}_vramHelperUrl`, vramHelperUrl);
-  }, [vramHelperUrl]);
-
-  useEffect(() => {
-    localStorage.setItem(`${APP_ID}_ttsVolume`, ttsVolume.toString());
-  }, [ttsVolume]);
+  const [autoscroll, setAutoscroll] = usePersistentState<boolean>(`${APP_ID}_autoscroll`, false, boolCodec);
+  const [endpointUrl, setEndpointUrl] = usePersistentState<string>(`${APP_ID}_endpointUrl`, import.meta.env.VITE_DEFAULT_ENDPOINT || DEFAULT_ENDPOINT, stringCodec);
+  const [apiToken, setApiToken] = usePersistentState<string>(`${APP_ID}_apiToken`, import.meta.env.VITE_DEFAULT_API_TOKEN || '', stringCodec);
+  const [modelName, setModelName] = usePersistentState<string>(`${APP_ID}_modelName`, import.meta.env.VITE_DEFAULT_MODEL_NAME || 'shuyuej/Mistral-Nemo-Instruct-2407-GPTQ', stringCodec);
+  const [maxTokens, setMaxTokens] = usePersistentState<number>(`${APP_ID}_maxTokens`, parseInt(import.meta.env.VITE_DEFAULT_MAX_TOKENS) || 1024, intCodec);
+  const [aiMessageLimit, setAiMessageLimit] = usePersistentState<number>(`${APP_ID}_aiMessageLimit`, parseInt(import.meta.env.VITE_DEFAULT_AI_MESSAGE_LIMIT) || 3900, intCodec);
+  const [systemPrompt, setSystemPrompt] = usePersistentState<string>(`${APP_ID}_narrationPrompt2`, defaultSystemPrompt, stringCodec);
+  const [choicesPrompt, setChoicesPrompt] = usePersistentState<string>(`${APP_ID}_choicesPrompt2`, defaultChoicesPrompt, stringCodec);
+  const [statUpdatesPrompt, setStatUpdatesPrompt] = usePersistentState<string>(`${APP_ID}_statUpdatesPrompt2`, defaultStatUpdatesPrompt, stringCodec);
+  const [locationChangePromptText, setLocationChangePromptText] = usePersistentState<string>(`${APP_ID}_locationChangePrompt`, defaultLocationChangePrompt, stringCodec);
+  const [thinkingMode, setThinkingMode] = usePersistentState<ThinkingMode>(`${APP_ID}_thinkingMode`, 'off', {
+    parse: (r) => (r === 'precall' || r === 'inline' ? r : 'off'),
+    serialize: (v) => v,
+  });
+  const [thinkingPrompt, setThinkingPrompt] = usePersistentState<string>(`${APP_ID}_thinkingPrompt`, defaultThinkingPrompt, stringCodec);
+  const [vramHelperUrl, setVramHelperUrl] = usePersistentState<string>(`${APP_ID}_vramHelperUrl`, 'http://localhost:5179', stringCodec);
+  const [ttsVolume, setTtsVolume] = usePersistentState<number>(`${APP_ID}_ttsVolume`, 1, floatCodec);
 
   const value = {
     bgmEnabled,

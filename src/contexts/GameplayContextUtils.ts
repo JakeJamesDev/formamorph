@@ -17,8 +17,6 @@ export const processStatCode = async (stats: Stat[]) => {
   const codePromises = updatedStats
     .filter(stat => stat.code && stat.code.trim() !== '')
     .map(async (stat) => {
-      console.log("STAT CODE: ")
-      console.log(stat.code);
       try {
         // Execute the code with all stats as context
         const result = await executeStatCode(stat.code, updatedStats, stat);
