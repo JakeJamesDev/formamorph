@@ -4,6 +4,8 @@ import { toast, ToastContainer  } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Progress } from "@/components/ui/progress";
+import IndeterminateProgress from "@/components/ui/indeterminate-progress";
 import {ConfirmDialog} from "@/components/ConfirmDialog";
 import {RadioGroup,RadioGroupItem } from"@/components/ui/radio-group";
 import {Label} from "@/components/ui/label"
@@ -395,6 +397,8 @@ const MainMenu = ({ onStartGame, onOpenWorldEditor }: MainMenuProps) => {
     setImageViewerOpen(true);
   };
   const [downloadedIds, setDownloadedIds] = useState(() => new Set<string>());
+  // In-flight downloads keyed by remote world id → fraction 0..1, or -1 when total size is unknown.
+  const [downloadProgress, setDownloadProgress] = useState<Record<string, number>>({});
 
   // Comments for the world detail modal
   const [comments, setComments] = useState<WorldRecord[]>([]);
@@ -495,6 +499,10 @@ const MainMenu = ({ onStartGame, onOpenWorldEditor }: MainMenuProps) => {
           defaultName: defaultWorlds.find(dw => dw.id === world.id)?.defaultName || world.name
         }));
         setWorlds(applyWorldOrder(mapped, loadWorldOrder()));
+
+        // Seed the "Downloaded" badges from any local worlds that recorded a Discover source.
+        const sourceIds = worldMetadata.map(w => w.sourceId).filter((id): id is string => !!id);
+        if (sourceIds.length > 0) setDownloadedIds(new Set(sourceIds));
 
       } catch (error) {
         console.error('Error initializing worlds:', error);
@@ -1186,10 +1194,11 @@ const MainMenu = ({ onStartGame, onOpenWorldEditor }: MainMenuProps) => {
 
   // Handle downloading a remote world
   const handleDownloadWorld = async (world: WorldRecord) => {
+    // Get the world ID
+    const worldId = world._id || world.id;
+    // Mark this world as in-flight (indeterminate until we know the size) so the card swaps to a bar.
+    setDownloadProgress((p) => ({ ...p, [worldId]: -1 }));
     try {
-      // Get the world ID
-      const worldId = world._id || world.id;
-
       // Fetch the world content
       const response = await fetch(`${WorldStorageService.API_URL}/worlds/${worldId}/content`, {
         headers: AuthService.isAuthenticated() ? {
@@ -1202,11 +1211,36 @@ const MainMenu = ({ onStartGame, onOpenWorldEditor }: MainMenuProps) => {
         throw new Error(errorData.message || 'Failed to download world');
       }
 
-      const worldData = await response.json();
+      // Stream the (often large) response body so we can report download progress. Falls back to a
+      // plain json() read when streaming isn't available. Content-Length may be absent/compressed,
+      // so we clamp the fraction and treat a missing total as indeterminate (-1).
+      const total = Number(response.headers.get('Content-Length')) || 0;
+      const reader = response.body?.getReader();
+      let worldData: { success?: boolean; data?: { contentData?: unknown } };
+      if (reader) {
+        const decoder = new TextDecoder();
+        let text = '';
+        let received = 0;
+        for (;;) {
+          const { done, value } = await reader.read();
+          if (done) break;
+          received += value.length;
+          text += decoder.decode(value, { stream: true });
+          setDownloadProgress((p) => ({ ...p, [worldId]: total ? Math.min(received / total, 1) : -1 }));
+        }
+        text += decoder.decode();
+        worldData = JSON.parse(text);
+      } else {
+        worldData = await response.json();
+      }
 
       if (!worldData.success || !worldData.data) {
         throw new Error('Invalid world data received');
       }
+
+      // Capture into a const so narrowing survives the awaits below (property narrowing would reset).
+      const contentData = worldData.data.contentData;
+      const migrated = migrateWorld(contentData);
 
       // Generate a unique ID for the downloaded world
       const localWorldId = `downloaded-${Date.now()}`;
@@ -1226,8 +1260,10 @@ const MainMenu = ({ onStartGame, onOpenWorldEditor }: MainMenuProps) => {
         description: world.description || 'Downloaded from server',
         thumbnail: thumbnailUrl,
         author: world.author?.username || '',
+        // Link back to the Discover entry so the "Downloaded" state survives reloads.
+        sourceId: worldId,
         // Sanitize at the download boundary so the stored copy is already current.
-        data: migrateWorld(worldData.data.contentData)
+        data: migrated
       });
 
       // Add the world to the local list
@@ -1237,16 +1273,19 @@ const MainMenu = ({ onStartGame, onOpenWorldEditor }: MainMenuProps) => {
         description: world.description || 'Downloaded from server',
         thumbnail: thumbnailUrl,
         author: world.author?.username || '',
-        tags: worldData.data.contentData?.worldOverview?.tags || [],
+        tags: migrated.worldOverview?.tags || [],
         isLoading: false
       }]);
 
       toast.success('World downloaded successfully');
       // Keep the browser open; mark this world as downloaded for button feedback.
-      setDownloadedIds((prev) => new Set(prev).add(world._id || world.id));
+      setDownloadedIds((prev) => new Set(prev).add(worldId));
     } catch (error) {
       console.error('Error downloading world:', error);
       toast.error((error as Error).message || 'Failed to download world');
+    } finally {
+      // Clear the in-flight bar whether it succeeded or failed.
+      setDownloadProgress((p) => { const next = { ...p }; delete next[worldId]; return next; });
     }
   };
 
@@ -2094,15 +2133,29 @@ const MainMenu = ({ onStartGame, onOpenWorldEditor }: MainMenuProps) => {
                       </button>
 
                       <div className="relative h-32 bg-gray-100 dark:bg-gray-800 rounded-t-lg overflow-hidden">
-                        {/* Download — centered on the thumbnail, fades in on hover; same color as the hide button, 2x size. */}
-                        <button
-                          onClick={(e) => { e.stopPropagation(); handleDownloadWorld(world); }}
-                          className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 z-10 p-2 rounded bg-black/50 text-white hover:bg-black/70 opacity-0 pointer-events-none transition-opacity group-hover:opacity-100 group-hover:pointer-events-auto"
-                          title="Download this world"
-                          aria-label="Download this world"
-                        >
-                          <Download className="h-8 w-8" />
-                        </button>
+                        {downloadProgress[worldId] !== undefined ? (
+                          // Downloading: swap the button for a centered status bar. -1 ⇒ size unknown.
+                          <div
+                            className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 z-10 w-3/4"
+                            onClick={(e) => e.stopPropagation()}
+                          >
+                            {downloadProgress[worldId] < 0 ? (
+                              <IndeterminateProgress />
+                            ) : (
+                              <Progress value={downloadProgress[worldId] * 100} className="h-2" />
+                            )}
+                          </div>
+                        ) : (
+                          /* Download — centered on the thumbnail, fades in on hover; same color as the hide button, 2x size. */
+                          <button
+                            onClick={(e) => { e.stopPropagation(); handleDownloadWorld(world); }}
+                            className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 z-10 p-2 rounded bg-black/50 text-white hover:bg-black/70 opacity-0 pointer-events-none transition-opacity group-hover:opacity-100 group-hover:pointer-events-auto"
+                            title="Download this world"
+                            aria-label="Download this world"
+                          >
+                            <Download className="h-8 w-8" />
+                          </button>
+                        )}
                         {world.thumbnail_file ? (
                           <CachedThumbnail
                             file={world.thumbnail_file}

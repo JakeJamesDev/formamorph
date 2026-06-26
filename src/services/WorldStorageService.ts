@@ -11,6 +11,9 @@ export interface StoredWorldRecord {
   description?: string;
   author?: string;
   thumbnail?: string;
+  /** Server `_id` of the Discover world this was downloaded from, if any. Local-only wrapper field:
+   *  never part of `data`, so it isn't published or exported with the world content. */
+  sourceId?: string;
   data: {
     version?: string; // stamped on save/export (see lib/version)
     worldOverview: unknown;
@@ -77,7 +80,8 @@ class WorldStorageService {
           description: world.description,
           author: world.author || '',
           thumbnail: world.thumbnail,
-          tags: world.data?.worldOverview?.tags || []
+          tags: world.data?.worldOverview?.tags || [],
+          sourceId: world.sourceId
         }));
         resolve(worlds);
       };
@@ -180,6 +184,9 @@ class WorldStorageService {
         description: world.description || '',
         author: world.author || '',
         thumbnail: world.thumbnail || '',
+        // Only the download path supplies sourceId; any other save (e.g. an editor save) omits it,
+        // so overwriting here drops the link — manual edits make the local copy "dirty" vs its source.
+        sourceId: world.sourceId,
         data: world.data,
         createdAt: new Date().toISOString(),
         lastAccessed: new Date().toISOString()
