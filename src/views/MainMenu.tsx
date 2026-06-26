@@ -10,7 +10,7 @@ import {ConfirmDialog} from "@/components/ConfirmDialog";
 import {RadioGroup,RadioGroupItem } from"@/components/ui/radio-group";
 import {Label} from "@/components/ui/label"
 import { Checkbox } from "@/components/ui/checkbox";
-import {FilePlus2, DoorOpen, Pencil, Github, AlertTriangle, Code, User, LogIn, LogOut, Key, Upload, Import, Search, Globe, EyeOff, RotateCcw, Settings, ArrowDownWideNarrow, ArrowUpNarrowWide, ArrowLeft, X, Download, MessageSquare, LayoutGrid, GalleryThumbnails, RefreshCw, CircleArrowUp } from "lucide-react";
+import {FilePlus2, DoorOpen, Pencil, Github, AlertTriangle, Code, User, LogIn, LogOut, Key, Upload, Import, Search, Globe, EyeOff, RotateCcw, Settings, ArrowDownWideNarrow, ArrowUpNarrowWide, ArrowLeft, X, Download, MessageSquare, LayoutGrid, GalleryThumbnails, RefreshCw, CircleArrowUp, Columns2, RectangleVertical } from "lucide-react";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import {
   Pagination,
@@ -86,6 +86,25 @@ const defaultWorlds = [
 // User-defined world ordering is a UI preference, persisted as an ordered list of ids.
 const WORLD_ORDER_KEY = 'FORMAMORPH_worldOrder';
 const LAYOUT_MODE_KEY = 'FORMAMORPH_layoutMode';
+// Persisted per-modal preference to force the single-column (portrait) layout at any width.
+const WORLD_MODAL_COLLAPSED_KEY = 'FORMAMORPH_worldModalCollapsed';
+const DISCOVER_MODAL_COLLAPSED_KEY = 'FORMAMORPH_discoverModalCollapsed';
+
+// Shared two-column layout classes for the detail modals; `collapsed` forces the single-column
+// (portrait) layout regardless of viewport width.
+function splitColumnClasses(collapsed: boolean) {
+  return {
+    wrapper: collapsed
+      ? "flex-1 min-h-0 flex flex-col gap-6 overflow-y-auto"
+      : "flex-1 min-h-0 flex flex-col md:flex-row gap-6 overflow-y-auto md:overflow-hidden",
+    left: collapsed
+      ? ""
+      : "md:w-1/2 md:min-h-0 md:overflow-y-auto md:pr-1",
+    right: collapsed
+      ? "border-t pt-4"
+      : "md:w-1/2 md:min-h-0 md:overflow-y-auto border-t pt-4 md:border-t-0 md:pt-0 md:border-l md:pl-6",
+  };
+}
 const loadWorldOrder = (): string[] => {
   try { return JSON.parse(localStorage.getItem(WORLD_ORDER_KEY) || '[]'); }
   catch { return []; }
@@ -283,45 +302,68 @@ function CardTags({ tags, onHide }: { tags: string[]; onHide?: (tag: string) => 
 
 /** The single-column world-details layout shared by the local-world modal and the Discover details
  *  modal (where it's the left column). Order: thumbnail → actions → description → meta → tags. */
-function WorldDetailsColumn({ thumbnail, actions, description, tags, meta }: {
+function WorldDetailsColumn({ thumbnail, actions, description, tags, meta, split = false, collapsed = false }: {
   thumbnail: React.ReactNode;
   actions: React.ReactNode;
   description?: string;
   tags?: string[];
   meta?: React.ReactNode;
+  // When set, thumbnail + actions sit in a left column and description/meta/tags in a right column.
+  split?: boolean;
+  // When set (with split), force the single-column layout regardless of viewport width.
+  collapsed?: boolean;
 }) {
+  const info = (
+    <div className="space-y-4">
+      <div>
+        <h3 className="text-lg font-semibold">Description</h3>
+        <div className="text-gray-600 dark:text-gray-400 mt-1">
+          <GameText text={description || "No description available."} />
+        </div>
+      </div>
+      {meta}
+      {tags && (
+        <div>
+          <h3 className="text-sm font-semibold text-gray-500">Tags</h3>
+          <div className="flex flex-wrap gap-2 mt-1">
+            {tags.length > 0 ? (
+              tags.map((tag, index) => (
+                <span
+                  key={index}
+                  className={cn(CHIP_BASE, "bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-300")}
+                >
+                  {tag}
+                </span>
+              ))
+            ) : (
+              <span className="text-gray-500 text-sm">No tags</span>
+            )}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+
+  if (split) {
+    const cols = splitColumnClasses(collapsed);
+    return (
+      <div className={cols.wrapper}>
+        <div className={cn(cols.left, "space-y-6")}>
+          {thumbnail}
+          {actions}
+        </div>
+        <div className={cols.right}>
+          {info}
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-6">
       {thumbnail}
       {actions}
-      <div className="space-y-4">
-        <div>
-          <h3 className="text-lg font-semibold">Description</h3>
-          <div className="text-gray-600 dark:text-gray-400 mt-1">
-            <GameText text={description || "No description available."} />
-          </div>
-        </div>
-        {meta}
-        {tags && (
-          <div>
-            <h3 className="text-sm font-semibold text-gray-500">Tags</h3>
-            <div className="flex flex-wrap gap-2 mt-1">
-              {tags.length > 0 ? (
-                tags.map((tag, index) => (
-                  <span
-                    key={index}
-                    className={cn(CHIP_BASE, "bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-300")}
-                  >
-                    {tag}
-                  </span>
-                ))
-              ) : (
-                <span className="text-gray-500 text-sm">No tags</span>
-              )}
-            </div>
-          </div>
-        )}
-      </div>
+      {info}
     </div>
   );
 }
@@ -337,6 +379,27 @@ const MainMenu = ({ onStartGame, onOpenWorldEditor }: MainMenuProps) => {
   const changeLayoutMode = (mode: 'grid' | 'detailed') => {
     setLayoutMode(mode);
     localStorage.setItem(LAYOUT_MODE_KEY, mode);
+  };
+  // Per-modal "collapse to single column" preference, persisted across sessions.
+  const [worldModalCollapsed, setWorldModalCollapsed] = useState(
+    () => localStorage.getItem(WORLD_MODAL_COLLAPSED_KEY) === 'true',
+  );
+  const toggleWorldModalCollapsed = () => {
+    setWorldModalCollapsed((prev) => {
+      const next = !prev;
+      localStorage.setItem(WORLD_MODAL_COLLAPSED_KEY, String(next));
+      return next;
+    });
+  };
+  const [discoverModalCollapsed, setDiscoverModalCollapsed] = useState(
+    () => localStorage.getItem(DISCOVER_MODAL_COLLAPSED_KEY) === 'true',
+  );
+  const toggleDiscoverModalCollapsed = () => {
+    setDiscoverModalCollapsed((prev) => {
+      const next = !prev;
+      localStorage.setItem(DISCOVER_MODAL_COLLAPSED_KEY, String(next));
+      return next;
+    });
   };
   const [showWorldModal, setShowWorldModal] = useState(false);
   const [showMobileWorldEditorWarning, setShowMobileWorldEditorWarning] = useState(false);
@@ -1650,14 +1713,26 @@ const MainMenu = ({ onStartGame, onOpenWorldEditor }: MainMenuProps) => {
       </ScrollArea>
 
       <Dialog open={showWorldModal} onOpenChange={setShowWorldModal}>
-        <DialogContent className="w-[33vw] max-w-[33vw] h-[85vh] overflow-y-auto overflow-x-hidden">
-          <DialogHeader>
-            <DialogTitle>{selectedWorld?.name}</DialogTitle>
+        <DialogContent className={cn("h-[85vh] flex flex-col overflow-x-hidden", worldModalCollapsed ? "sm:max-w-[600px]" : "sm:max-w-[1200px]")}>
+          <DialogHeader className="shrink-0">
+            <DialogTitle className="flex items-center gap-2">
+              <span className="truncate">{selectedWorld?.name}</span>
+              <Button
+                variant="ghost"
+                size="icon"
+                className="ml-auto mr-8 shrink-0 hidden md:inline-flex"
+                onClick={toggleWorldModalCollapsed}
+                title={worldModalCollapsed ? "Expand to two columns" : "Collapse to single column"}
+                aria-label={worldModalCollapsed ? "Expand to two columns" : "Collapse to single column"}
+              >
+                {worldModalCollapsed ? <Columns2 className="h-4 w-4" /> : <RectangleVertical className="h-4 w-4" />}
+              </Button>
+            </DialogTitle>
           </DialogHeader>
 
-          <div className="mt-4">
+          <div className="mt-4 flex-1 min-h-0 flex flex-col">
             {hasStatWithCode(stats) && (
-              <div className="mb-4 p-3 bg-amber-100 dark:bg-amber-900 border border-amber-300 dark:border-amber-700 rounded-md flex items-start">
+              <div className="mb-4 shrink-0 p-3 bg-amber-100 dark:bg-amber-900 border border-amber-300 dark:border-amber-700 rounded-md flex items-start">
                 <AlertTriangle className="h-5 w-5 text-amber-600 dark:text-amber-400 mr-2 flex-shrink-0 mt-0.5" />
                 <div className="text-sm text-amber-800 dark:text-amber-300 flex-grow">
                   <p className="font-medium">Warning</p>
@@ -1678,6 +1753,8 @@ const MainMenu = ({ onStartGame, onOpenWorldEditor }: MainMenuProps) => {
               </div>
             )}
             <WorldDetailsColumn
+              split
+              collapsed={worldModalCollapsed}
               description={selectedWorld?.description || ""}
               tags={selectedWorld?.data?.worldOverview?.tags}
               meta={
@@ -2407,15 +2484,27 @@ const MainMenu = ({ onStartGame, onOpenWorldEditor }: MainMenuProps) => {
 
       {/* Remote World Details Modal */}
       <Dialog open={showRemoteWorldDetailsModal} onOpenChange={setShowRemoteWorldDetailsModal}>
-        <DialogContent className="sm:max-w-[1200px] h-[85vh] flex flex-col">
+        <DialogContent className={cn("h-[85vh] flex flex-col", discoverModalCollapsed ? "sm:max-w-[600px]" : "sm:max-w-[1200px]")}>
           <DialogHeader className="shrink-0">
-            <DialogTitle>{selectedRemoteWorld?.name || 'World Details'}</DialogTitle>
+            <DialogTitle className="flex items-center gap-2">
+              <span className="truncate">{selectedRemoteWorld?.name || 'World Details'}</span>
+              <Button
+                variant="ghost"
+                size="icon"
+                className="ml-auto mr-8 shrink-0 hidden md:inline-flex"
+                onClick={toggleDiscoverModalCollapsed}
+                title={discoverModalCollapsed ? "Expand to two columns" : "Collapse to single column"}
+                aria-label={discoverModalCollapsed ? "Expand to two columns" : "Collapse to single column"}
+              >
+                {discoverModalCollapsed ? <Columns2 className="h-4 w-4" /> : <RectangleVertical className="h-4 w-4" />}
+              </Button>
+            </DialogTitle>
           </DialogHeader>
 
           {selectedRemoteWorld && (
-            <div className="mt-4 flex-1 min-h-0 flex flex-col md:flex-row gap-6 overflow-y-auto md:overflow-hidden">
+            <div className={cn("mt-4", splitColumnClasses(discoverModalCollapsed).wrapper)}>
               {/* Left column: metadata */}
-              <div className="md:w-1/2 md:min-h-0 md:overflow-y-auto md:pr-1">
+              <div className={splitColumnClasses(discoverModalCollapsed).left}>
                 <WorldDetailsColumn
                   description={selectedRemoteWorld.description || ""}
                   tags={selectedRemoteWorld.tags}
@@ -2501,7 +2590,7 @@ const MainMenu = ({ onStartGame, onOpenWorldEditor }: MainMenuProps) => {
               </div>
 
               {/* Right column: comments */}
-              <div className="md:w-1/2 md:min-h-0 md:overflow-y-auto border-t pt-4 md:border-t-0 md:pt-0 md:border-l md:pl-6 space-y-3">
+              <div className={cn(splitColumnClasses(discoverModalCollapsed).right, "space-y-3")}>
                 <h3 className="text-sm font-semibold text-gray-500">Comments ({commentsTotal})</h3>
 
                 {isAuthenticated ? (
