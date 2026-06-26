@@ -195,16 +195,20 @@ const CharacterCustomization = ({ onCharacterCustomized }: {
             <VRMViewer
               key={resolvedModelUrl ?? 'default'}
               ref={vrmViewerRef}
-              bellySize={bellySize}
-              breastSize={breastsSize}
-              bodyWeight={bodyWeight}
+              bodyMorphValues={{
+                Belly: bellySize,
+                Breasts: breastsSize,
+                Fat: bodyWeight,
+                B_Pear: bodyShape.pear,
+                B_HourGlass: bodyShape.hourglass,
+                B_Apple: bodyShape.apple,
+              }}
               hairColor={colorTouched.hair ? hairColor : undefined}
               eyeColor={colorTouched.eye ? eyeColor : undefined}
               skinColor={colorTouched.skin ? skinColor : undefined}
               hairTypes={hairTypes}
               currentHairStyle={currentHairStyle}
               hairLength={hairLength}
-              bodyShape={bodyShape}
               modelUrl={resolvedModelUrl}
               extraColors={extraColors}
               onCapabilities={setCaps}

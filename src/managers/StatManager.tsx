@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { useGameData } from "@/contexts/GameDataContext";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -18,6 +18,9 @@ import {
   CollapsibleContent,
 } from "@/components/ui/collapsible";
 import { executeStatCode } from "@/lib/statCodeExecutor";
+import { MultiSelect } from "@/components/ui/multi-select";
+import { useBodyMorphNames } from "@/lib/useBodyMorphNames";
+import { boundMorphNamesExcluding } from "@/lib/bodyMorphs";
 import type { Stat, StatDescriptor, StatListItem, StatType } from "@/types";
 
 /** The stat being edited — a loose, partial Stat while fields are filled in. */
@@ -39,6 +42,14 @@ const StatManager = ({ stat }: { stat: Stat }) => {
   const [codeResult, setCodeResult] = useState<number | null>(null);
   const [codeError, setCodeError] = useState<string | null>(null);
   const [isTestingCode, setIsTestingCode] = useState(false);
+
+  // Body sliders available to this stat: the model's morph names minus those already owned by another
+  // stat (each slider binds to a single stat).
+  const { names: bodyMorphNames } = useBodyMorphNames();
+  const morphOptions = useMemo(() => {
+    const taken = boundMorphNamesExcluding(stats, stat.id);
+    return bodyMorphNames.filter((n) => !taken.has(n)).map((n) => ({ label: n, value: n }));
+  }, [bodyMorphNames, stats, stat.id]);
 
   useEffect(() => {
     const initialStat: EditingStat = stat ? { ...stat } : {};
@@ -206,6 +217,21 @@ const StatManager = ({ stat }: { stat: Stat }) => {
                 onChange={(e) => handleChange("regen", Number(e.target.value))}
               />
             </div>
+          </div>
+          <div>
+            <Label>Body Sliders</Label>
+            <p className="py-2 text-sm text-muted-foreground">
+              Bind body morph sliders to this stat — its value (min→max) drives each slider.
+            </p>
+            <MultiSelect
+              key={stat.id}
+              options={morphOptions}
+              defaultValue={editingStat.morphBindings ?? []}
+              onValueChange={(v) => handleChange("morphBindings", v)}
+              placeholder="Select body sliders"
+              hideSelectAll
+              maxCount={6}
+            />
           </div>
           <div>
             <h3 className="text-xl font-semibold">Prevent AI Changes</h3>

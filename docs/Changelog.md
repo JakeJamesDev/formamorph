@@ -26,6 +26,7 @@ Everything below is relative to the point this fork diverged from upstream.
   - **Portrait / mobile layout** — a single-panel responsive mode alongside the three-panel desktop view.
   - **Lore Dictionary** — a keyword-triggered world-info editor; matching keywords inject lore into the AI prompt.
   - **Full per-turn AI context viewer** — see exactly what's sent to the AI on each turn, plus the raw response before sanitation — useful both for debugging and for authoring/tuning worlds.
+  - **Stat-driven body sliders** — in the world editor, bind any stat to one or more of the model's body morph sliders; the stat's value (min→max) drives the morph live in-game. Legacy weight/breasts/stomach stats are auto-bound on import, so existing worlds keep working.
 - **🛠️ Developer tooling**
   - **Automated test suite** built from scratch (Vitest + Testing Library) covering the new libraries, services, and components, plus a coverage script (`npm run coverage`).
   - **GitHub Actions CI** — typecheck, lint, and tests run on every push and pull request.

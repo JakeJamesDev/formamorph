@@ -28,7 +28,7 @@ import { LocationModal } from "../components/modals/LocationModal";
 import { SettingsModal } from "../components/modals/SettingsModal";
 import { MenuModal } from "../components/modals/MenuModal";
 import WorldEditor from "./WorldEditor";
-import type { CharacterData, ChatMessage, ChatRole, PlayerStat, AIRequestType, StatChange, Trait, GameLocation, MediaAsset } from "@/types";
+import type { CharacterData, ChatMessage, ChatRole, AIRequestType, StatChange, Trait, GameLocation, MediaAsset } from "@/types";
 import { UnsavedChangesDialog } from "../components/UnsavedChangesDialog";
 import { estimateHistoryChars, estimateTokens } from "../lib/memoryUtils";
 import { parseGameText, stripReasoning, stripReasoningLive } from "../lib/aiResponse";
@@ -41,6 +41,7 @@ import { normalizeStatChanges, applyAiStatChanges, applyTraitStatChanges, parseS
 import { matchLocationResponse } from "../lib/locationMatch";
 import { rollbackState, regenerateState, canRegenerate, lastTurnAction, markRegeneratedTurn, markPrunedTurns, snapshotPageIndex, placeSnapshot } from "../lib/turnHistory";
 import { useDeferredSnapshot } from "../lib/useDeferredSnapshot";
+import { statMorphMap } from "../lib/bodyMorphs";
 import { getActivatedDictionary, buildDictionaryContext, parseKeywords } from "../lib/dictionaryUtils";
 import { highlightSegments, type HighlightRule, type HighlightSegment } from "../lib/highlightUtils";
 import { useIsMobile } from "../lib/useIsMobile";
@@ -121,7 +122,6 @@ const GameViewer = ({
   } = useSettings();
 
   const {
-    characterData,
     setCharacterData,
     setVisibleEntities,
     currentLocation,
@@ -152,9 +152,7 @@ const GameViewer = ({
     setCurrentPage,
     gameStates,
     setGameStates,
-    setStomachPercent,
-    setFatnessPercent,
-    setBreastsizePercent,
+    setBodyMorphValues,
     playerNotes,
     setPlayerNotes,
     saveGame,
@@ -425,25 +423,10 @@ const GameViewer = ({
     return trimmedHistory;
   }, [fullMessageHistory, contextWindow, maxTokens]);
 
-  // Function to calculate percentage of a stat
-  const calculateFIXEDStatPercentage = (stat: PlayerStat) => {
-    //return ((stat.value - stat.min) / (stat.max - stat.min));
-    return stat.value / 100;
-  };
-
+  // Drive body morphs from stats: each stat's bound sliders track its value (min→max → 0→1 influence).
   useEffect(() => {
-    if (characterData) {
-      const stomach = playerStats.find((stat) => stat.name === "Stomach");
-      const fatness = playerStats.find((stat) => stat.name === "Fatness");
-      const breastsize = playerStats.find((stat) => stat.name === "Breastsize");
-
-      //these stats CAN exceed 100%
-      if (stomach) setStomachPercent(calculateFIXEDStatPercentage(stomach));
-      if (fatness) setFatnessPercent(calculateFIXEDStatPercentage(fatness));
-      if (breastsize)
-        setBreastsizePercent(calculateFIXEDStatPercentage(breastsize));
-    }
-  }, [playerStats, characterData, setStomachPercent, setFatnessPercent, setBreastsizePercent]);
+    setBodyMorphValues(statMorphMap(playerStats));
+  }, [playerStats, setBodyMorphValues]);
 
   const handleTimePassed = useCallback(
     (hours: number) => {

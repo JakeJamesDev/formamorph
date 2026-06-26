@@ -2,6 +2,7 @@ import React, { useEffect, useRef } from 'react';
 import { useGameplay } from '@/contexts/GameplayContext';
 import { useSettings } from '@/contexts/SettingsContext';
 import { usePlayerModelUrl } from '@/lib/usePlayerModelUrl';
+import { mergeBodyMorphs } from '@/lib/bodyMorphs';
 import { useIsMobile } from '@/lib/useIsMobile';
 import { GameText } from './GameText';
 import { Card, CardContent } from "@/components/ui/card";
@@ -35,9 +36,7 @@ export const LeftPanel = ({ entities, onEntityClick }: {
   const { systemPrompt } = useSettings();
   const {
     characterData,
-    stomachPercent,
-    fatnessPercent,
-    breastsizePercent,
+    bodyMorphValues,
     visibleEntities,
     logEntries,
     logsEndRef,
@@ -70,16 +69,23 @@ export const LeftPanel = ({ entities, onEntityClick }: {
         ) : (
           <VRMViewer
             key={playerModelUrl ?? 'default'}
-            bellySize={characterData.bellySize + (characterData.bellySize || 0) + stomachPercent}
-            bodyWeight={characterData.bodyWeight + (characterData.bodyWeight || 0) + fatnessPercent}
-            breastSize={characterData.breastsSize + (characterData.breastsSize || 0) + breastsizePercent}
+            bodyMorphValues={mergeBodyMorphs(
+              {
+                Belly: characterData.bellySize + (characterData.bellySize || 0),
+                Fat: characterData.bodyWeight + (characterData.bodyWeight || 0),
+                Breasts: characterData.breastsSize + (characterData.breastsSize || 0),
+                B_Pear: characterData.bodyShape.pear,
+                B_HourGlass: characterData.bodyShape.hourglass,
+                B_Apple: characterData.bodyShape.apple,
+              },
+              bodyMorphValues,
+            )}
             hairColor={characterData.hairColor}
             eyeColor={characterData.eyeColor}
             skinColor={characterData.skinColor}
             hairTypes={characterData.hairTypes}
             currentHairStyle={characterData.currentHairStyle}
             hairLength={characterData.hairLength}
-            bodyShape={characterData.bodyShape}
             modelUrl={playerModelUrl}
             extraColors={characterData.extraColors}
           />

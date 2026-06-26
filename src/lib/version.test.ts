@@ -2,7 +2,12 @@ import { describe, it, expect } from 'vitest';
 import { APP_VERSION, migrateWorld, isSaveEnvelope } from './version';
 
 // Loose view of a migrated world for assertions (avoids `any`).
-type MigratedWorld = { version?: string; customPlayerVRM?: unknown; worldOverview: { customPlayerVRM?: unknown } };
+type MigratedWorld = {
+  version?: string;
+  customPlayerVRM?: unknown;
+  worldOverview: { customPlayerVRM?: unknown };
+  stats?: { name: string; morphBindings?: string[] }[];
+};
 
 describe('APP_VERSION', () => {
   it('is a non-empty version string (injected from package.json)', () => {
@@ -37,6 +42,29 @@ describe('migrateWorld', () => {
     const legacy = { worldOverview: { name: 'W' }, customPlayerVRM: vrmUrl };
     const once = migrateWorld(legacy);
     expect(migrateWorld(once)).toEqual(once);
+  });
+
+  it('auto-binds legacy body stats (Stomach/Fatness/Breastsize) to their morphs', () => {
+    const legacy = {
+      worldOverview: { name: 'W' },
+      stats: [
+        { name: 'Stomach' },
+        { name: 'Fatness' },
+        { name: 'Breastsize' },
+        { name: 'Health' },
+      ],
+    };
+    const out = migrateWorld(legacy) as unknown as MigratedWorld;
+    expect(out.stats?.map((s) => s.morphBindings)).toEqual([['Belly'], ['Fat'], ['Breasts'], undefined]);
+  });
+
+  it('leaves a body stat that already carries morphBindings untouched', () => {
+    const legacy = {
+      worldOverview: { name: 'W' },
+      stats: [{ name: 'Stomach', morphBindings: ['B_Pear'] }],
+    };
+    const out = migrateWorld(legacy) as unknown as MigratedWorld;
+    expect(out.stats?.[0].morphBindings).toEqual(['B_Pear']);
   });
 });
 
