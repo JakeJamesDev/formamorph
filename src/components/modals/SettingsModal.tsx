@@ -4,6 +4,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
+import { Checkbox } from "@/components/ui/checkbox";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { ConfirmDialog } from '../ConfirmDialog';
@@ -94,19 +95,19 @@ export const SettingsModal = ({ isOpen, onOpenChange }: {
 
   return (
     <Dialog open={isOpen} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[800px] top-16 translate-y-0 max-h-[80vh] overflow-y-auto">
-        <DialogHeader>
+      <DialogContent className="sm:max-w-[800px] h-[90vh] flex flex-col overflow-hidden">
+        <DialogHeader className="flex-shrink-0">
           <DialogTitle>Settings</DialogTitle>
         </DialogHeader>
-        <Tabs defaultValue="gameplay" className="w-full">
-          <TabsList className="grid w-full grid-cols-4">
+        <Tabs defaultValue="gameplay" className="w-full flex flex-col flex-1 min-h-0">
+          <TabsList className="grid w-full grid-cols-4 flex-shrink-0">
             <TabsTrigger value="gameplay">Gameplay</TabsTrigger>
             <TabsTrigger value="endpoint">Endpoint</TabsTrigger>
             <TabsTrigger value="prompts">System Prompts</TabsTrigger>
             <TabsTrigger value="hardware">Hardware</TabsTrigger>
           </TabsList>
 
-          <TabsContent value="gameplay" className="py-4 px-2">
+          <TabsContent value="gameplay" className="py-4 px-2 flex-1 min-h-0 overflow-y-auto">
             <div className="grid gap-4">
               <div className="grid grid-cols-1 sm:grid-cols-4 items-center gap-4">
                 <label htmlFor="language" className="text-left sm:text-right">
@@ -124,13 +125,13 @@ export const SettingsModal = ({ isOpen, onOpenChange }: {
                 <label htmlFor="bgmEnabled" className="text-left sm:text-right">
                   Background Music
                 </label>
-                <input
-                  id="bgmEnabled"
-                  type="checkbox"
-                  checked={bgmEnabled}
-                  onChange={(e) => setBgmEnabled(e.target.checked)}
-                  className="col-span-3"
-                />
+                <div className="col-span-3 flex items-center">
+                  <Checkbox
+                    id="bgmEnabled"
+                    checked={bgmEnabled}
+                    onCheckedChange={(c) => setBgmEnabled(c === true)}
+                  />
+                </div>
               </div>
               <div className="grid grid-cols-1 sm:grid-cols-4 items-start gap-4">
                 <label className="text-left sm:text-right pt-1">Output Length</label>
@@ -166,25 +167,24 @@ export const SettingsModal = ({ isOpen, onOpenChange }: {
                 <label htmlFor="autoscroll" className="text-left sm:text-right">
                   Auto-scroll Messages
                 </label>
-                <input
-                  id="autoscroll"
-                  type="checkbox"
-                  checked={autoscroll}
-                  onChange={(e) => setAutoscroll(e.target.checked)}
-                  className="col-span-3"
-                />
+                <div className="col-span-3 flex items-center">
+                  <Checkbox
+                    id="autoscroll"
+                    checked={autoscroll}
+                    onCheckedChange={(c) => setAutoscroll(c === true)}
+                  />
+                </div>
               </div>
               <div className="grid grid-cols-1 sm:grid-cols-4 items-start gap-4">
                 <label htmlFor="hideStatNumbers" className="text-left sm:text-right pt-1">
                   Hide Stat Numbers
                 </label>
                 <div className="col-span-3 flex items-start gap-2">
-                  <input
+                  <Checkbox
                     id="hideStatNumbers"
-                    type="checkbox"
                     checked={hideStatNumbers}
-                    onChange={(e) => setHideStatNumbers(e.target.checked)}
-                    className="mt-1"
+                    onCheckedChange={(c) => setHideStatNumbers(c === true)}
+                    className="mt-0.5"
                   />
                   <span className="text-xs text-muted-foreground">
                     The narrator, planner, and choices see stat descriptors (e.g. &quot;severely injured&quot;) instead of raw numbers, for immersion. Falls back to the number when a stat has no descriptor.
@@ -196,12 +196,11 @@ export const SettingsModal = ({ isOpen, onOpenChange }: {
                   Markdown Formatting
                 </label>
                 <div className="col-span-3 flex items-start gap-2">
-                  <input
+                  <Checkbox
                     id="markdownOutput"
-                    type="checkbox"
                     checked={markdownOutput}
-                    onChange={(e) => setMarkdownOutput(e.target.checked)}
-                    className="mt-1"
+                    onCheckedChange={(c) => setMarkdownOutput(c === true)}
+                    className="mt-0.5"
                   />
                   <span className="text-xs text-muted-foreground">
                     Let the AI format narration with bold/italics, lists, and tables. Works best with Output Length not set to a single paragraph.
@@ -241,18 +240,19 @@ export const SettingsModal = ({ isOpen, onOpenChange }: {
             </div>
           </TabsContent>
 
-          <TabsContent value="endpoint" className="py-4 px-2">
+          <TabsContent value="endpoint" className="py-4 px-2 flex-1 min-h-0 overflow-y-auto">
             <div className="grid gap-4">
               <div className="grid grid-cols-[1fr_3fr] items-center gap-4">
                 <label htmlFor="useCustomEndpoint" className="text-right">
                   Use Custom Endpoint
                 </label>
-                <input
-                  id="useCustomEndpoint"
-                  type="checkbox"
-                  checked={useCustomEndpoint}
-                  onChange={(e) => setUseCustomEndpoint(e.target.checked)}
-                />
+                <div className="flex items-center">
+                  <Checkbox
+                    id="useCustomEndpoint"
+                    checked={useCustomEndpoint}
+                    onCheckedChange={(c) => setUseCustomEndpoint(c === true)}
+                  />
+                </div>
               </div>
               <div className="grid grid-cols-[1fr_3fr] items-center gap-4">
                 <label htmlFor="endpointUrl" className="text-right">
@@ -346,7 +346,7 @@ export const SettingsModal = ({ isOpen, onOpenChange }: {
             </div>
           </TabsContent>
 
-          <TabsContent value="prompts" className="py-4 px-2">
+          <TabsContent value="prompts" className="py-4 px-2 flex-1 min-h-0 overflow-y-auto">
             <div className="grid gap-4">
               <div className="grid grid-cols-1 sm:grid-cols-4 items-center gap-4">
                 <label htmlFor="systemPrompt" className="text-left sm:text-right">
@@ -433,7 +433,7 @@ export const SettingsModal = ({ isOpen, onOpenChange }: {
             </div>
           </TabsContent>
 
-          <TabsContent value="hardware" className="py-4 px-2">
+          <TabsContent value="hardware" className="py-4 px-2 flex-1 min-h-0 overflow-y-auto">
             <div className="grid gap-4">
               <div className="grid grid-cols-[1fr_3fr] items-center gap-4">
                 <label htmlFor="vramHelperUrl" className="text-right">

@@ -4,6 +4,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
+import { Checkbox } from "@/components/ui/checkbox";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Plus, X } from "lucide-react";
 import type { StatUpdate, ChatMessage } from '@/types';
@@ -72,13 +73,12 @@ const StatUpdatesManager = ({ statUpdate }: { statUpdate: StatUpdate }) => {
         <ScrollArea className="h-40 border rounded-md p-2">
           {stats.map(stat => (
             <div key={stat.id} className="flex items-center space-x-2">
-              <input
-                type="checkbox"
+              <Checkbox
                 id={`stat-${stat.id}`}
                 checked={editingStatUpdate.stats.includes(stat.name)}
-                onChange={() => handleStatToggle(stat.name)}
+                onCheckedChange={() => handleStatToggle(stat.name)}
               />
-              <label htmlFor={`stat-${stat.id}`}>{stat.name}</label>
+              <label htmlFor={`stat-${stat.id}`} className="cursor-pointer">{stat.name}</label>
             </div>
           ))}
         </ScrollArea>

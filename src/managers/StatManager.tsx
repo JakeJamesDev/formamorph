@@ -4,6 +4,7 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
+import { Checkbox } from "@/components/ui/checkbox";
 import { Trash2, Plus, ChevronDown, ChevronUp, Code } from "lucide-react";
 import {
   Select,
@@ -237,46 +238,34 @@ const StatManager = ({ stat }: { stat: Stat }) => {
             <h3 className="text-xl font-semibold">Prevent AI Changes</h3>
             <p className="py-2"> Stop the AI from changing this stat </p>
             <div className="grid grid-cols-2 gap-2">
-              <label className="flex items-center space-x-2">
-                <input
-                  type="checkbox"
-                  className="form-checkbox"
-                  checked={editingStat.noIncrease}
-                  onChange={(e) => handleChange("noIncrease", e.target.checked)}
+              <label className="flex items-center space-x-2 cursor-pointer">
+                <Checkbox
+                  checked={!!editingStat.noIncrease}
+                  onCheckedChange={(c) => handleChange("noIncrease", c === true)}
                 />
                 <span>Don&apos;t increase</span>
               </label>
 
-              <label className="flex items-center space-x-2">
-                <input
-                  type="checkbox"
-                  className="form-checkbox"
-                  checked={editingStat.noIncreaseMax}
-                  onChange={(e) =>
-                    handleChange("noIncreaseMax", e.target.checked)
-                  }
+              <label className="flex items-center space-x-2 cursor-pointer">
+                <Checkbox
+                  checked={!!editingStat.noIncreaseMax}
+                  onCheckedChange={(c) => handleChange("noIncreaseMax", c === true)}
                 />
                 <span>Don&apos;t increase max</span>
               </label>
 
-              <label className="flex items-center space-x-2">
-                <input
-                  type="checkbox"
-                  className="form-checkbox"
-                  checked={editingStat.noDecrease}
-                  onChange={(e) => handleChange("noDecrease", e.target.checked)}
+              <label className="flex items-center space-x-2 cursor-pointer">
+                <Checkbox
+                  checked={!!editingStat.noDecrease}
+                  onCheckedChange={(c) => handleChange("noDecrease", c === true)}
                 />
                 <span>Don&apos;t decrease</span>
               </label>
 
-              <label className="flex items-center space-x-2">
-                <input
-                  type="checkbox"
-                  className="form-checkbox"
-                  checked={editingStat.noDecreaseMax}
-                  onChange={(e) =>
-                    handleChange("noDecreaseMax", e.target.checked)
-                  }
+              <label className="flex items-center space-x-2 cursor-pointer">
+                <Checkbox
+                  checked={!!editingStat.noDecreaseMax}
+                  onCheckedChange={(c) => handleChange("noDecreaseMax", c === true)}
                 />
                 <span>Don&apos;t decrease Max</span>
               </label>
