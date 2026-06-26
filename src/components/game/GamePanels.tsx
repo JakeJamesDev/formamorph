@@ -46,6 +46,8 @@ export const LeftPanel = ({ entities, onEntityClick }: {
   const playerModelUrl = usePlayerModelUrl(characterData?.playerModelId);
   const isMobile = useIsMobile();
   const [showModel, setShowModel] = React.useState(true);
+  // Landscape model viewer view: the player VRM vs. a (currently blank) Entities view.
+  const [modelTab, setModelTab] = React.useState("player");
   const [leftTab, setLeftTab] = React.useState(isMobile ? "model" : "notes");
   const [showVRMViewer, setShowVRMViewer] = React.useState(false);
 
@@ -100,17 +102,24 @@ export const LeftPanel = ({ entities, onEntityClick }: {
       {/* Landscape: model on top with a show/hide toggle in the upper right */}
       {!isMobile && characterData && (
         <div className="mb-2">
-          <div className="flex justify-end">
+          <div className="relative flex items-center justify-center">
+            <Tabs value={modelTab} onValueChange={setModelTab}>
+              <TabsList className="flex justify-center">
+                <TabsTrigger value="player">Player</TabsTrigger>
+                <TabsTrigger value="entities">Entities</TabsTrigger>
+              </TabsList>
+            </Tabs>
             <Button
               variant="ghost"
               size="icon"
+              className="absolute right-0"
               onClick={() => setShowModel((s) => !s)}
               title={showModel ? "Hide model" : "Show model"}
             >
               {showModel ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
             </Button>
           </div>
-          {showModel && modelViewer}
+          {showModel && (modelTab === "player" ? modelViewer : null)}
         </div>
       )}
 
