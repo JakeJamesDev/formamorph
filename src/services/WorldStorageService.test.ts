@@ -129,4 +129,27 @@ describe('local world storage (IndexedDB)', () => {
     await WorldStorageService.deleteWorld('rt-1');
     await expect(WorldStorageService.getWorldData('rt-1')).rejects.toBe('World not found');
   });
+
+  it('keeps sourceId/downloadedAt/sourceUpdatedAt sticky across a save that omits them', async () => {
+    await WorldStorageService.storeWorld({
+      ...validWorld,
+      id: 'sticky-1',
+      sourceId: 'server-abc',
+      dirty: false,
+      downloadedAt: '2026-01-01T00:00:00.000Z',
+      sourceUpdatedAt: '2026-01-01T00:00:00.000Z',
+    });
+
+    // Simulate an editor save: same id, no source fields, just flips dirty.
+    await WorldStorageService.storeWorld({ ...validWorld, id: 'sticky-1', dirty: true });
+
+    const meta = await WorldStorageService.getWorldMetadata();
+    const stored = meta.find((m) => m.id === 'sticky-1');
+    expect(stored?.sourceId).toBe('server-abc');
+    expect(stored?.dirty).toBe(true);
+    expect(stored?.downloadedAt).toBe('2026-01-01T00:00:00.000Z');
+    expect(stored?.sourceUpdatedAt).toBe('2026-01-01T00:00:00.000Z');
+
+    await WorldStorageService.deleteWorld('sticky-1');
+  });
 });

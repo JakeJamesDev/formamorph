@@ -9,7 +9,8 @@ import IndeterminateProgress from "@/components/ui/indeterminate-progress";
 import {ConfirmDialog} from "@/components/ConfirmDialog";
 import {RadioGroup,RadioGroupItem } from"@/components/ui/radio-group";
 import {Label} from "@/components/ui/label"
-import {FilePlus2, DoorOpen, Pencil, Github, AlertTriangle, Code, User, LogIn, LogOut, Key, Upload, Import, Search, Globe, EyeOff, RotateCcw, Settings, ArrowDownWideNarrow, ArrowUpNarrowWide, ArrowLeft, Check, X, Download, MessageSquare, LayoutGrid, GalleryThumbnails } from "lucide-react";
+import { Checkbox } from "@/components/ui/checkbox";
+import {FilePlus2, DoorOpen, Pencil, Github, AlertTriangle, Code, User, LogIn, LogOut, Key, Upload, Import, Search, Globe, EyeOff, RotateCcw, Settings, ArrowDownWideNarrow, ArrowUpNarrowWide, ArrowLeft, X, Download, MessageSquare, LayoutGrid, GalleryThumbnails, RefreshCw, CircleArrowUp } from "lucide-react";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import {
   Pagination,
@@ -65,6 +66,7 @@ import WorldStorageService from '../services/WorldStorageService';
 import AuthService from '../services/AuthService';
 import type { World, Stat, CharacterData } from '@/types';
 import { migrateWorld, APP_VERSION } from '@/lib/version';
+import { getDownloadState, type DownloadState } from '@/lib/downloadState';
 
 // Loose shape for server/catalog world payloads, whose fields vary by endpoint and save version.
 // eslint-disable-next-line @typescript-eslint/no-explicit-any -- intentional dynamic-JSON bag (pending a precise interface)
@@ -381,6 +383,7 @@ const MainMenu = ({ onStartGame, onOpenWorldEditor }: MainMenuProps) => {
   const [tagMode, setTagMode] = useState<'any' | 'all'>('any');
   const [sortField, setSortField] = useState('updated_at'); // updated_at | created_at | downloads
   const [sortOrder, setSortOrder] = useState('desc'); // asc | desc
+  const [sortUpdatesFirst, setSortUpdatesFirst] = useState(true); // float worlds with an update to the front
   const [currentPage, setCurrentPage] = useState(1);
   // Discover page size: 3 full rows of whatever the responsive grid currently fits, or 10 in portrait.
   const [pageSize, setPageSize] = useState(12);
@@ -396,9 +399,13 @@ const MainMenu = ({ onStartGame, onOpenWorldEditor }: MainMenuProps) => {
     setViewerImage({ src, alt: alt || 'World image' });
     setImageViewerOpen(true);
   };
-  const [downloadedIds, setDownloadedIds] = useState(() => new Set<string>());
   // In-flight downloads keyed by remote world id → fraction 0..1, or -1 when total size is unknown.
   const [downloadProgress, setDownloadProgress] = useState<Record<string, number>>({});
+  // Contextual refresh/update flow for an already-downloaded world. The decision dialog (copy vs
+  // overwrite) opens first; if several local copies match, the selection dialog picks which to overwrite.
+  const [contextualAction, setContextualAction] = useState<{ world: WorldRecord; mode: DownloadState } | null>(null);
+  const [overwriteSelectedId, setOverwriteSelectedId] = useState<string | null>(null);
+  const [showOverwriteSelect, setShowOverwriteSelect] = useState(false);
 
   // Comments for the world detail modal
   const [comments, setComments] = useState<WorldRecord[]>([]);
@@ -499,10 +506,6 @@ const MainMenu = ({ onStartGame, onOpenWorldEditor }: MainMenuProps) => {
           defaultName: defaultWorlds.find(dw => dw.id === world.id)?.defaultName || world.name
         }));
         setWorlds(applyWorldOrder(mapped, loadWorldOrder()));
-
-        // Seed the "Downloaded" badges from any local worlds that recorded a Discover source.
-        const sourceIds = worldMetadata.map(w => w.sourceId).filter((id): id is string => !!id);
-        if (sourceIds.length > 0) setDownloadedIds(new Set(sourceIds));
 
       } catch (error) {
         console.error('Error initializing worlds:', error);
@@ -1008,7 +1011,28 @@ const MainMenu = ({ onStartGame, onOpenWorldEditor }: MainMenuProps) => {
     [remoteWorlds, hiddenTags],
   );
 
+  // Local copies grouped by the Discover entry they were downloaded from (sourceId). Drives the
+  // contextual download button: none/refresh/update per server world, plus the overwrite picker.
+  const localCopiesBySource = useMemo(() => {
+    const map = new Map<string, WorldRecord[]>();
+    for (const w of worlds) {
+      if (!w.sourceId) continue;
+      const list = map.get(w.sourceId) ?? [];
+      list.push(w);
+      map.set(w.sourceId, list);
+    }
+    return map;
+  }, [worlds]);
+
+  const copiesForWorld = (world: WorldRecord): WorldRecord[] =>
+    localCopiesBySource.get(world._id || world.id) ?? [];
+
+  const downloadStateForWorld = (world: WorldRecord): DownloadState =>
+    getDownloadState(world.updated_at, copiesForWorld(world));
+
   // Client-side browse pipeline: hide filters → text search → author/tag include filters → sort.
+  // With "updates first" on, worlds with an available update are floated to the front, each group
+  // then ordered by the chosen sort field/direction.
   const filteredRemoteWorlds = useMemo(() => {
     const q = searchQuery.trim().toLowerCase();
     const authors = authorFilter.map((a) => a.toLowerCase());
@@ -1029,14 +1053,49 @@ const MainMenu = ({ onStartGame, onOpenWorldEditor }: MainMenuProps) => {
     });
     const dir = sortOrder === 'asc' ? 1 : -1;
     return [...list].sort((a, b) => {
+      if (sortUpdatesFirst) {
+        const au = getDownloadState(a.updated_at, localCopiesBySource.get(a._id || a.id) ?? []) === 'update' ? 1 : 0;
+        const bu = getDownloadState(b.updated_at, localCopiesBySource.get(b._id || b.id) ?? []) === 'update' ? 1 : 0;
+        if (au !== bu) return bu - au; // updates first, regardless of sort direction
+      }
       const av = sortField === 'downloads' ? (a.downloads || 0) : toEpoch(a[sortField]);
       const bv = sortField === 'downloads' ? (b.downloads || 0) : toEpoch(b[sortField]);
       return (av - bv) * dir;
     });
-  }, [remoteWorlds, searchQuery, authorFilter, tagFilter, tagMode, hiddenWorldIds, hiddenTags, hiddenAuthors, sortField, sortOrder]);
+  }, [remoteWorlds, searchQuery, authorFilter, tagFilter, tagMode, hiddenWorldIds, hiddenTags, hiddenAuthors, sortField, sortOrder, sortUpdatesFirst, localCopiesBySource]);
 
   const totalPages = Math.max(1, Math.ceil(filteredRemoteWorlds.length / pageSize));
   const pagedRemoteWorlds = filteredRemoteWorlds.slice((currentPage - 1) * pageSize, currentPage * pageSize);
+
+  // Contextual button click: new worlds download immediately; already-downloaded ones open the
+  // refresh/update decision dialog (copy vs overwrite).
+  const handleContextualDownload = (world: WorldRecord, state: DownloadState) => {
+    if (state === 'none') { handleDownloadWorld(world); return; }
+    setContextualAction({ world, mode: state });
+  };
+
+  // "Overwrite an existing copy": overwrite directly when there's a single match, else pick which one.
+  const handleChooseOverwrite = () => {
+    if (!contextualAction) return;
+    const copies = copiesForWorld(contextualAction.world);
+    if (copies.length <= 1) {
+      if (copies[0]) overwriteWorld(contextualAction.world, copies[0].id);
+      setContextualAction(null);
+      return;
+    }
+    setOverwriteSelectedId(copies[0]?.id ?? null);
+    setShowOverwriteSelect(true);
+  };
+
+  // Confirm the chosen copy in the selection dialog.
+  const handleConfirmOverwrite = () => {
+    if (contextualAction && overwriteSelectedId) {
+      overwriteWorld(contextualAction.world, overwriteSelectedId);
+    }
+    setShowOverwriteSelect(false);
+    setContextualAction(null);
+    setOverwriteSelectedId(null);
+  };
 
   // Page size = 3 rows of however many columns the grid renders at the current viewport (matching the
   // Tailwind sm/md/lg/xl breakpoints on the grid class), except a flat 10 in portrait orientation.
@@ -1192,99 +1251,164 @@ const MainMenu = ({ onStartGame, onOpenWorldEditor }: MainMenuProps) => {
     setShowRemoteWorldDetailsModal(true);
   };
 
-  // Handle downloading a remote world
+  // Fetch + stream + migrate a remote world's content, reporting streaming progress on
+  // downloadProgress[worldId]. Shared by the new-copy download and the in-place overwrite paths.
+  const fetchWorldContent = async (
+    world: WorldRecord,
+    worldId: string,
+  ): Promise<{ migrated: World; thumbnailUrl: string }> => {
+    const response = await fetch(`${WorldStorageService.API_URL}/worlds/${worldId}/content`, {
+      headers: AuthService.isAuthenticated() ? {
+        'Authorization': `Bearer ${AuthService.token}`
+      } : {}
+    });
+
+    if (!response.ok) {
+      const errorData = await response.json();
+      throw new Error(errorData.message || 'Failed to download world');
+    }
+
+    // Stream the (often large) response body so we can report download progress. Falls back to a
+    // plain json() read when streaming isn't available. Content-Length may be absent/compressed,
+    // so we clamp the fraction and treat a missing total as indeterminate (-1).
+    const total = Number(response.headers.get('Content-Length')) || 0;
+    const reader = response.body?.getReader();
+    let worldData: { success?: boolean; data?: { contentData?: unknown } };
+    if (reader) {
+      const decoder = new TextDecoder();
+      let text = '';
+      let received = 0;
+      for (;;) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        received += value.length;
+        text += decoder.decode(value, { stream: true });
+        setDownloadProgress((p) => ({ ...p, [worldId]: total ? Math.min(received / total, 1) : -1 }));
+      }
+      text += decoder.decode();
+      worldData = JSON.parse(text);
+    } else {
+      worldData = await response.json();
+    }
+
+    if (!worldData.success || !worldData.data) {
+      throw new Error('Invalid world data received');
+    }
+
+    // Capture into a const so narrowing survives the awaits below (property narrowing would reset).
+    const contentData = worldData.data.contentData;
+    const migrated = migrateWorld(contentData);
+
+    let thumbnailUrl = '';
+    if (world.thumbnail_file) {
+      thumbnailUrl = `${WorldStorageService.API_URL}/thumbnails/${world.thumbnail_file}`;
+    } else if (world.thumbnail) {
+      thumbnailUrl = world.thumbnail;
+    }
+
+    return { migrated, thumbnailUrl };
+  };
+
+  // Download a remote world as a new local entry.
   const handleDownloadWorld = async (world: WorldRecord) => {
-    // Get the world ID
     const worldId = world._id || world.id;
     // Mark this world as in-flight (indeterminate until we know the size) so the card swaps to a bar.
     setDownloadProgress((p) => ({ ...p, [worldId]: -1 }));
     try {
-      // Fetch the world content
-      const response = await fetch(`${WorldStorageService.API_URL}/worlds/${worldId}/content`, {
-        headers: AuthService.isAuthenticated() ? {
-          'Authorization': `Bearer ${AuthService.token}`
-        } : {}
-      });
+      const { migrated, thumbnailUrl } = await fetchWorldContent(world, worldId);
 
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.message || 'Failed to download world');
-      }
-
-      // Stream the (often large) response body so we can report download progress. Falls back to a
-      // plain json() read when streaming isn't available. Content-Length may be absent/compressed,
-      // so we clamp the fraction and treat a missing total as indeterminate (-1).
-      const total = Number(response.headers.get('Content-Length')) || 0;
-      const reader = response.body?.getReader();
-      let worldData: { success?: boolean; data?: { contentData?: unknown } };
-      if (reader) {
-        const decoder = new TextDecoder();
-        let text = '';
-        let received = 0;
-        for (;;) {
-          const { done, value } = await reader.read();
-          if (done) break;
-          received += value.length;
-          text += decoder.decode(value, { stream: true });
-          setDownloadProgress((p) => ({ ...p, [worldId]: total ? Math.min(received / total, 1) : -1 }));
-        }
-        text += decoder.decode();
-        worldData = JSON.parse(text);
-      } else {
-        worldData = await response.json();
-      }
-
-      if (!worldData.success || !worldData.data) {
-        throw new Error('Invalid world data received');
-      }
-
-      // Capture into a const so narrowing survives the awaits below (property narrowing would reset).
-      const contentData = worldData.data.contentData;
-      const migrated = migrateWorld(contentData);
-
-      // Generate a unique ID for the downloaded world
       const localWorldId = `downloaded-${Date.now()}`;
+      const name = world.name || 'Downloaded World';
+      const description = world.description || 'Downloaded from server';
+      const author = world.author?.username || '';
+      const now = new Date().toISOString();
 
-      // Determine the thumbnail URL
-      let thumbnailUrl = '';
-      if (world.thumbnail_file) {
-        thumbnailUrl = `${WorldStorageService.API_URL}/thumbnails/${world.thumbnail_file}`;
-      } else if (world.thumbnail) {
-        thumbnailUrl = world.thumbnail;
-      }
-
-      // Store the world locally
       await WorldStorageService.storeWorld({
         id: localWorldId,
-        name: world.name || 'Downloaded World',
-        description: world.description || 'Downloaded from server',
+        name,
+        description,
         thumbnail: thumbnailUrl,
-        author: world.author?.username || '',
-        // Link back to the Discover entry so the "Downloaded" state survives reloads.
+        author,
+        // Link back to the Discover entry so the "Downloaded" state survives reloads. Record the
+        // source version we hold (server updated_at) and when, for refresh/update detection.
         sourceId: worldId,
+        dirty: false,
+        downloadedAt: now,
+        sourceUpdatedAt: world.updated_at,
         // Sanitize at the download boundary so the stored copy is already current.
         data: migrated
       });
 
-      // Add the world to the local list
       setWorlds(prev => [...prev, {
         id: localWorldId,
-        name: world.name || 'Downloaded World',
-        description: world.description || 'Downloaded from server',
+        name,
+        description,
         thumbnail: thumbnailUrl,
-        author: world.author?.username || '',
+        author,
         tags: migrated.worldOverview?.tags || [],
+        sourceId: worldId,
+        dirty: false,
+        downloadedAt: now,
+        sourceUpdatedAt: world.updated_at,
+        lastAccessed: now,
         isLoading: false
       }]);
 
-      toast.success('World downloaded successfully');
-      // Keep the browser open; mark this world as downloaded for button feedback.
-      setDownloadedIds((prev) => new Set(prev).add(worldId));
+      toast.success(`"${name}" downloaded successfully`);
     } catch (error) {
       console.error('Error downloading world:', error);
       toast.error((error as Error).message || 'Failed to download world');
     } finally {
       // Clear the in-flight bar whether it succeeded or failed.
+      setDownloadProgress((p) => { const next = { ...p }; delete next[worldId]; return next; });
+    }
+  };
+
+  // Overwrite an existing local copy in place with the current server content (refresh or update).
+  const overwriteWorld = async (world: WorldRecord, localId: string) => {
+    const worldId = world._id || world.id;
+    setDownloadProgress((p) => ({ ...p, [worldId]: -1 }));
+    try {
+      const { migrated, thumbnailUrl } = await fetchWorldContent(world, worldId);
+
+      const name = world.name || 'Downloaded World';
+      const description = world.description || 'Downloaded from server';
+      const author = world.author?.username || '';
+      const now = new Date().toISOString();
+
+      // Same local id ⇒ storeWorld overwrites the record in place; flags/stamps reset to a clean copy.
+      await WorldStorageService.storeWorld({
+        id: localId,
+        name,
+        description,
+        thumbnail: thumbnailUrl,
+        author,
+        sourceId: worldId,
+        dirty: false,
+        downloadedAt: now,
+        sourceUpdatedAt: world.updated_at,
+        data: migrated
+      });
+
+      setWorlds(prev => prev.map(w => w.id === localId ? {
+        ...w,
+        name,
+        description,
+        thumbnail: thumbnailUrl,
+        author,
+        tags: migrated.worldOverview?.tags || [],
+        sourceId: worldId,
+        dirty: false,
+        downloadedAt: now,
+        sourceUpdatedAt: world.updated_at,
+        lastAccessed: now,
+      } : w));
+
+      toast.success(`"${name}" updated successfully`);
+    } catch (error) {
+      console.error('Error updating world:', error);
+      toast.error((error as Error).message || 'Failed to update world');
+    } finally {
       setDownloadProgress((p) => { const next = { ...p }; delete next[worldId]; return next; });
     }
   };
@@ -2084,6 +2208,15 @@ const MainMenu = ({ onStartGame, onOpenWorldEditor }: MainMenuProps) => {
                   )}
                 </PopoverContent>
               </Popover>
+
+              {/* Float worlds with an available update to the front (on by default). */}
+              <label className="ml-auto flex items-center gap-2 shrink-0 cursor-pointer text-sm select-none">
+                <Checkbox
+                  checked={sortUpdatesFirst}
+                  onCheckedChange={(c) => { setSortUpdatesFirst(c === true); setCurrentPage(1); }}
+                />
+                Updates first
+              </label>
             </div>
           </div>
 
@@ -2111,6 +2244,9 @@ const MainMenu = ({ onStartGame, onOpenWorldEditor }: MainMenuProps) => {
                   // Get the world ID (server uses _id)
                   const worldId = world._id || world.id;
 
+                  // Contextual button state: not-downloaded / current (refresh) / newer-on-server (update).
+                  const dlState = downloadStateForWorld(world);
+
                   // Check if the world is owned by the current user
                   const isOwnedByUser = isAuthenticated &&
                     world.author &&
@@ -2121,7 +2257,13 @@ const MainMenu = ({ onStartGame, onOpenWorldEditor }: MainMenuProps) => {
                   return (
                     <div
                       key={worldId}
-                      className="group relative flex flex-col rounded-lg border border-gray-200 dark:border-gray-700 cursor-pointer bg-background"
+                      className={cn(
+                        "group relative flex flex-col rounded-lg border cursor-pointer",
+                        // Highlight worlds with an available update with a brighter sky tint + ring.
+                        dlState === 'update'
+                          ? "border-sky-300 dark:border-sky-700 bg-sky-50 dark:bg-sky-950/40 ring-1 ring-sky-300 dark:ring-sky-700"
+                          : "border-gray-200 dark:border-gray-700 bg-background",
+                      )}
                       onClick={() => handleViewRemoteWorldDetails(world)}
                     >
                       <button
@@ -2146,14 +2288,21 @@ const MainMenu = ({ onStartGame, onOpenWorldEditor }: MainMenuProps) => {
                             )}
                           </div>
                         ) : (
-                          /* Download — centered on the thumbnail, fades in on hover; same color as the hide button, 2x size. */
+                          /* Contextual download — centered on the thumbnail, fades in on hover; same color as the hide
+                             button, 2x size. Icon reflects whether the world is new, current (refresh), or has an update. */
                           <button
-                            onClick={(e) => { e.stopPropagation(); handleDownloadWorld(world); }}
+                            onClick={(e) => { e.stopPropagation(); handleContextualDownload(world, dlState); }}
                             className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 z-10 p-2 rounded bg-black/50 text-white hover:bg-black/70 opacity-0 pointer-events-none transition-opacity group-hover:opacity-100 group-hover:pointer-events-auto"
-                            title="Download this world"
-                            aria-label="Download this world"
+                            title={dlState === 'update' ? "Update available — download the newer version" : dlState === 'refresh' ? "Re-download this world" : "Download this world"}
+                            aria-label={dlState === 'update' ? "Update available" : dlState === 'refresh' ? "Re-download this world" : "Download this world"}
                           >
-                            <Download className="h-8 w-8" />
+                            {dlState === 'update' ? (
+                              <CircleArrowUp className="h-8 w-8" />
+                            ) : dlState === 'refresh' ? (
+                              <RefreshCw className="h-8 w-8" />
+                            ) : (
+                              <Download className="h-8 w-8" />
+                            )}
                           </button>
                         )}
                         {world.thumbnail_file ? (
@@ -2304,15 +2453,24 @@ const MainMenu = ({ onStartGame, onOpenWorldEditor }: MainMenuProps) => {
                     </div>
                   }
                   actions={(() => {
-                    const isDownloaded = downloadedIds.has(selectedRemoteWorld._id || selectedRemoteWorld.id);
+                    // Mirror the contextual card button (none/refresh/update) as a text label.
+                    const dlState = downloadStateForWorld(selectedRemoteWorld);
+                    const progress = downloadProgress[selectedRemoteWorld._id || selectedRemoteWorld.id];
+                    // While downloading, swap the button for a status bar (-1 ⇒ size unknown).
+                    if (progress !== undefined) {
+                      return progress < 0
+                        ? <IndeterminateProgress />
+                        : <Progress value={progress * 100} className="h-2" />;
+                    }
+                    const label = dlState === 'update' ? 'Update Available'
+                      : dlState === 'refresh' ? 'Re-download World'
+                      : 'Download World';
                     return (
                       <Button
                         className="w-full bg-gradient-to-r from-sky-200 to-cyan-200 hover:from-sky-300 hover:to-cyan-300 text-black font-bold"
-                        onClick={() => handleDownloadWorld(selectedRemoteWorld)}
+                        onClick={() => handleContextualDownload(selectedRemoteWorld, dlState)}
                       >
-                        {isDownloaded
-                          ? <><Check className="mr-2 h-4 w-4" /> Downloaded — Download again</>
-                          : <><DoorOpen className="mr-2 h-4 w-4" /> Download World</>}
+                        {label}
                       </Button>
                     );
                   })()}
@@ -2405,6 +2563,86 @@ const MainMenu = ({ onStartGame, onOpenWorldEditor }: MainMenuProps) => {
         alt={viewerImage.alt}
         src={viewerImage.src}
       />
+
+      {/* Refresh/Update decision: download a separate copy vs overwrite an existing local copy */}
+      <Dialog
+        open={!!contextualAction && !showOverwriteSelect}
+        onOpenChange={(open) => { if (!open) setContextualAction(null); }}
+      >
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>{contextualAction?.mode === 'update' ? 'Update available' : 'Re-download world'}</DialogTitle>
+            <DialogDescription>
+              {contextualAction?.mode === 'update'
+                ? 'A newer version of this world is available. Update an existing copy in place, or download the new version as a separate copy.'
+                : 'You already have this world. Download another copy, or overwrite an existing copy with a fresh download.'}
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter className="flex flex-col sm:flex-row gap-2">
+            <Button variant="outline" onClick={() => setContextualAction(null)}>Cancel</Button>
+            <Button
+              variant="secondary"
+              onClick={() => { if (contextualAction) handleDownloadWorld(contextualAction.world); setContextualAction(null); }}
+            >
+              Download a copy
+            </Button>
+            <Button onClick={handleChooseOverwrite}>
+              {contextualAction?.mode === 'update' ? 'Update an existing copy' : 'Overwrite an existing copy'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Pick which local copy to overwrite/update when several match the same Discover entry */}
+      <Dialog
+        open={showOverwriteSelect}
+        onOpenChange={(open) => { if (!open) { setShowOverwriteSelect(false); setContextualAction(null); setOverwriteSelectedId(null); } }}
+      >
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>{contextualAction?.mode === 'update' ? 'Choose a copy to update' : 'Choose a copy to overwrite'}</DialogTitle>
+            <DialogDescription>
+              You have several local copies of this world. Pick which one to replace with the fresh download — edited copies lose their local changes.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="py-2">
+            <RadioGroup value={overwriteSelectedId ?? undefined} onValueChange={setOverwriteSelectedId}>
+              {(contextualAction ? copiesForWorld(contextualAction.world) : []).map((copy) => {
+                const radioId = `overwrite-${copy.id}`;
+                const edited = copy.lastAccessed ? new Date(copy.lastAccessed).toLocaleString() : 'Unknown';
+                // In the update flow only, flag copies that already hold the current source version
+                // (not out of date vs the server). Irrelevant when re-downloading a current world.
+                const upToDate = contextualAction?.mode === 'update'
+                  && getDownloadState(contextualAction.world.updated_at, [copy]) === 'refresh';
+                return (
+                  <div key={copy.id} className="flex items-start space-x-2 p-2 rounded-md hover:bg-gray-100 dark:hover:bg-gray-800">
+                    <RadioGroupItem value={copy.id} id={radioId} />
+                    <Label htmlFor={radioId} className="flex-1 grid gap-1 cursor-pointer font-normal">
+                      <span className="font-medium">
+                        {copy.name}
+                        {upToDate && <span className="ml-2 font-normal text-green-600 dark:text-green-400">• up to date</span>}
+                        {copy.dirty && <span className="ml-2 font-normal text-amber-600 dark:text-amber-400">• edited</span>}
+                      </span>
+                      <span className="text-xs text-gray-500">Last edited: {edited}</span>
+                    </Label>
+                  </div>
+                );
+              })}
+            </RadioGroup>
+          </div>
+          <DialogFooter className="flex flex-col sm:flex-row gap-2">
+            <Button
+              variant="outline"
+              onClick={() => { setShowOverwriteSelect(false); setContextualAction(null); setOverwriteSelectedId(null); }}
+            >
+              Cancel
+            </Button>
+            <Button onClick={handleConfirmOverwrite} disabled={!overwriteSelectedId}>
+              {contextualAction?.mode === 'update' ? 'Update' : 'Overwrite'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       {/* Confirm Delete Remote World Dialog */}
       <ConfirmDialog
