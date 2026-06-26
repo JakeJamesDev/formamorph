@@ -10,3 +10,26 @@ export const sanitizeTag = (tag: string): string =>
     .replace(/[^a-z0-9/]+/g, ' ')
     .replace(/\s*\/+\s*/g, '/')
     .trim();
+
+/**
+ * Unique, sanitized tags across the given worlds' tag lists, sorted alphabetically; optionally
+ * excluding already-sanitized `hidden` tags. Casing/spacing/punctuation variants collapse into one
+ * entry. Shared by the Discover filter and the world-editor tag autocomplete.
+ */
+export const collectSanitizedTags = (
+  tagLists: Iterable<readonly string[] | undefined>,
+  hidden?: ReadonlySet<string>,
+): string[] => {
+  const seen = new Set<string>();
+  const out: string[] = [];
+  for (const list of tagLists) {
+    for (const t of list ?? []) {
+      const s = sanitizeTag(t);
+      if (s && !seen.has(s) && !hidden?.has(s)) {
+        seen.add(s);
+        out.push(s);
+      }
+    }
+  }
+  return out.sort((a, b) => a.localeCompare(b));
+};

@@ -11,48 +11,14 @@ import {
 } from '@dnd-kit/core';
 import {
   SortableContext,
-  useSortable,
   arrayMove,
   horizontalListSortingStrategy,
   sortableKeyboardCoordinates,
 } from '@dnd-kit/sortable';
-import { CSS } from '@dnd-kit/utilities';
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { X } from "lucide-react";
+import { SortableChip, splitChipInput } from "@/components/Chip";
 import type { DictionaryEntry } from '@/types';
-
-function SortableChip({ kw, onRemove }: { kw: string; onRemove: (kw: string) => void }) {
-  const { attributes, listeners, setNodeRef, transform, transition, isDragging } =
-    useSortable({ id: kw });
-  const style = {
-    transform: CSS.Transform.toString(transform),
-    transition,
-    opacity: isDragging ? 0.5 : 1,
-    zIndex: isDragging ? 1 : undefined,
-  };
-  return (
-    <span
-      ref={setNodeRef}
-      style={style}
-      {...attributes}
-      {...listeners}
-      className="flex items-center gap-1 rounded-full bg-secondary text-secondary-foreground px-2 py-0.5 text-sm cursor-grab touch-none select-none"
-    >
-      {kw}
-      <span
-        role="button"
-        tabIndex={0}
-        onPointerDown={(e) => e.stopPropagation()}
-        onClick={() => onRemove(kw)}
-        className="cursor-pointer hover:text-destructive"
-        aria-label={`Remove ${kw}`}
-      >
-        <X className="h-3 w-3" />
-      </span>
-    </span>
-  );
-}
 
 function KeywordChips({ keywords, onChange }: { keywords: string[]; onChange: (keywords: string[]) => void }) {
   const [inputValue, setInputValue] = useState('');
@@ -79,19 +45,11 @@ function KeywordChips({ keywords, onChange }: { keywords: string[]; onChange: (k
   };
 
   const handleChange = (e: ChangeEvent<HTMLInputElement>) => {
-    const v = e.target.value;
-    // Handle pasted text that contains commas (keydown only catches typed commas)
-    if (v.includes(',')) {
-      const parts = v.split(',');
-      const last = parts.pop();
-      const toAdd = parts
-        .map((p) => p.trim())
-        .filter((p) => p && !keywords.includes(p));
-      if (toAdd.length) onChange([...keywords, ...toAdd]);
-      setInputValue(last ?? '');
-    } else {
-      setInputValue(v);
-    }
+    // Handle pasted/typed text containing commas (keydown also catches a single typed comma).
+    const { complete, remainder } = splitChipInput(e.target.value);
+    const toAdd = complete.filter((p) => !keywords.includes(p));
+    if (toAdd.length) onChange([...keywords, ...toAdd]);
+    setInputValue(remainder);
   };
 
   const handleDragEnd = (event: DragEndEvent) => {
@@ -115,7 +73,7 @@ function KeywordChips({ keywords, onChange }: { keywords: string[]; onChange: (k
           {keywords.map((kw) => (
             <SortableChip
               key={kw}
-              kw={kw}
+              id={kw}
               onRemove={(k) => onChange(keywords.filter((x) => x !== k))}
             />
           ))}
