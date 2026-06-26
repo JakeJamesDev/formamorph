@@ -3,10 +3,11 @@ import { useGameData } from '../contexts/GameDataContext';
 import { toast, ToastContainer  } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
 import { Button } from "@/components/ui/button";
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {ConfirmDialog} from "@/components/ConfirmDialog";
 import {RadioGroup,RadioGroupItem } from"@/components/ui/radio-group";
 import {Label} from "@/components/ui/label"
-import {FilePlus2, DoorOpen, Pencil, Github, AlertTriangle, Code, User, LogIn, LogOut, Key, Upload, Import, Search, Globe, EyeOff, RotateCcw, Settings, ArrowDownWideNarrow, ArrowUpNarrowWide, ArrowLeft, Check, X, Download, MessageSquare } from "lucide-react";
+import {FilePlus2, DoorOpen, Pencil, Github, AlertTriangle, Code, User, LogIn, LogOut, Key, Upload, Import, Search, Globe, EyeOff, RotateCcw, Settings, ArrowDownWideNarrow, ArrowUpNarrowWide, ArrowLeft, Check, X, Download, MessageSquare, LayoutGrid, GalleryThumbnails } from "lucide-react";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import {
   Pagination,
@@ -80,6 +81,7 @@ const defaultWorlds = [
 
 // User-defined world ordering is a UI preference, persisted as an ordered list of ids.
 const WORLD_ORDER_KEY = 'FORMAMORPH_worldOrder';
+const LAYOUT_MODE_KEY = 'FORMAMORPH_layoutMode';
 const loadWorldOrder = (): string[] => {
   try { return JSON.parse(localStorage.getItem(WORLD_ORDER_KEY) || '[]'); }
   catch { return []; }
@@ -92,10 +94,18 @@ const applyWorldOrder = <T extends { id: string }>(list: T[], order: string[]): 
 
 // A draggable world tile. The whole card is the drag handle; a small move distance is
 // required to start a drag so a plain click still selects the world.
-function SortableWorldCard({ world, onSelect, onDelete }: {
+// Trash icon shared by both card layouts' delete button.
+const DeleteIcon = () => (
+  <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+    <path fillRule="evenodd" d="M9 2a1 1 0 00-.894.553L7.382 4H4a1 1 0 000 2v10a2 2 0 002 2h8a2 2 0 002-2V6a1 1 0 100-2h-3.382l-.724-1.447A1 1 0 0011 2H9zM7 8a1 1 0 012 0v6a1 1 0 11-2 0V8zm5-1a1 1 0 00-1 1v6a1 1 0 102 0V8a1 1 0 00-1-1z" clipRule="evenodd" />
+  </svg>
+);
+
+function SortableWorldCard({ world, onSelect, onDelete, layout }: {
   world: WorldRecord;
   onSelect: (id: string) => void;
   onDelete: (id: string) => void;
+  layout: 'grid' | 'detailed';
 }) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } =
     useSortable({ id: world.id });
@@ -105,6 +115,55 @@ function SortableWorldCard({ world, onSelect, onDelete }: {
     opacity: isDragging ? 0.5 : 1,
     zIndex: isDragging ? 1 : undefined,
   };
+  const handleDelete = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    onDelete(world.id);
+  };
+
+  // Detailed layout mirrors the Discover-menu card renderer (thumbnail on top, info beneath).
+  if (layout === 'detailed') {
+    return (
+      <div
+        ref={setNodeRef}
+        style={style}
+        {...attributes}
+        {...listeners}
+        className="relative flex flex-col rounded-lg border border-gray-200 dark:border-gray-700 cursor-pointer bg-background touch-none"
+        onClick={() => onSelect(world.id)}
+      >
+        <div className="h-32 bg-gray-100 dark:bg-gray-800 rounded-t-lg overflow-hidden">
+          {world.thumbnail ? (
+            <img src={world.thumbnail} alt={world.name} className="w-full h-full object-cover select-none pointer-events-none" />
+          ) : (
+            <div className="w-full h-full flex items-center justify-center text-gray-400">
+              <Globe className="h-12 w-12" />
+            </div>
+          )}
+        </div>
+
+        <div className="p-4 flex flex-col flex-grow">
+          <h3 className="font-semibold text-lg mb-1">{world.name}</h3>
+          <div className="text-sm text-gray-600 dark:text-gray-400 mb-2 max-h-20 overflow-hidden">
+            <GameText text={world.description || "No description available."} />
+          </div>
+          <div className="text-xs text-gray-500 mb-2">By {world.author || "Unknown"}</div>
+          <div className="mt-auto" onClick={(e) => e.stopPropagation()}>
+            <CardTags tags={world.tags || []} />
+          </div>
+        </div>
+
+        <button
+          className="absolute top-1 right-1 z-10 p-1 rounded bg-black/50 text-red-400 hover:text-red-600"
+          onPointerDown={(e) => e.stopPropagation()}
+          onClick={handleDelete}
+          aria-label="Delete world"
+        >
+          <DeleteIcon />
+        </button>
+      </div>
+    );
+  }
+
   return (
     <div
       ref={setNodeRef}
@@ -124,14 +183,9 @@ function SortableWorldCard({ world, onSelect, onDelete }: {
         <button
           className="absolute top-2 right-2 p-1 text-red-500 hover:text-red-700"
           onPointerDown={(e) => e.stopPropagation()}
-          onClick={(e) => {
-            e.stopPropagation();
-            onDelete(world.id);
-          }}
+          onClick={handleDelete}
         >
-          <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
-            <path fillRule="evenodd" d="M9 2a1 1 0 00-.894.553L7.382 4H4a1 1 0 000 2v10a2 2 0 002 2h8a2 2 0 002-2V6a1 1 0 100-2h-3.382l-.724-1.447A1 1 0 0011 2H9zM7 8a1 1 0 012 0v6a1 1 0 11-2 0V8zm5-1a1 1 0 00-1 1v6a1 1 0 102 0V8a1 1 0 00-1-1z" clipRule="evenodd" />
-          </svg>
+          <DeleteIcon />
         </button>
       </div>
     </div>
@@ -142,7 +196,7 @@ function SortableWorldCard({ world, onSelect, onDelete }: {
 // "(Show More)" link at the end (chips that don't fit are hidden — the link never overlaps one).
 // Hovering reveals the full set as an elevated overlay that floats over the layout (no reflow);
 // the mouse leaving collapses it. Clicking a chip hides that tag.
-function CardTags({ tags, onHide }: { tags: string[]; onHide: (tag: string) => void }) {
+function CardTags({ tags, onHide }: { tags: string[]; onHide?: (tag: string) => void }) {
   const ref = useRef<HTMLDivElement>(null);
   const [count, setCount] = useState(tags.length); // visible chips before the link
   const [open, setOpen] = useState(false);
@@ -178,9 +232,13 @@ function CardTags({ tags, onHide }: { tags: string[]; onHide: (tag: string) => v
   const chip = (tag: string, i: number) => (
     <span
       key={i}
-      onClick={(e) => { e.stopPropagation(); onHide(tag); }}
-      title={`Hide all worlds tagged "${tag}"`}
-      className={cn(CHIP_BASE, "bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-300 cursor-pointer hover:line-through")}
+      onClick={onHide ? (e) => { e.stopPropagation(); onHide(tag); } : undefined}
+      title={onHide ? `Hide all worlds tagged "${tag}"` : undefined}
+      className={cn(
+        CHIP_BASE,
+        "bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-300",
+        onHide && "cursor-pointer hover:line-through",
+      )}
     >
       {tag}
     </span>
@@ -267,6 +325,15 @@ function WorldDetailsColumn({ thumbnail, actions, description, tags, meta }: {
 const MainMenu = ({ onStartGame, onOpenWorldEditor }: MainMenuProps) => {
   const { traits, stats, loadWorldData } = useGameData();
   const [selectedWorld, setSelectedWorld] = useState<WorldRecord | null>(null);
+  // Local-world grid layout: "grid" (default compact cards) or "detailed" (Discover-style card + info
+  // beneath). Persisted across sessions in localStorage.
+  const [layoutMode, setLayoutMode] = useState<'grid' | 'detailed'>(
+    () => (localStorage.getItem(LAYOUT_MODE_KEY) === 'detailed' ? 'detailed' : 'grid'),
+  );
+  const changeLayoutMode = (mode: 'grid' | 'detailed') => {
+    setLayoutMode(mode);
+    localStorage.setItem(LAYOUT_MODE_KEY, mode);
+  };
   const [showWorldModal, setShowWorldModal] = useState(false);
   const [showMobileWorldEditorWarning, setShowMobileWorldEditorWarning] = useState(false);
   const [worldToDelete, setWorldToDelete] = useState<string | null>(null);
@@ -313,6 +380,8 @@ const MainMenu = ({ onStartGame, onOpenWorldEditor }: MainMenuProps) => {
   const [sortField, setSortField] = useState('updated_at'); // updated_at | created_at | downloads
   const [sortOrder, setSortOrder] = useState('desc'); // asc | desc
   const [currentPage, setCurrentPage] = useState(1);
+  // Discover page size: 3 full rows of whatever the responsive grid currently fits, or 10 in portrait.
+  const [pageSize, setPageSize] = useState(12);
   const [isSyncingCatalog, setIsSyncingCatalog] = useState(false);
   const [remoteWorldToDelete, setRemoteWorldToDelete] = useState<string | null>(null);
   const [selectedRemoteWorld, setSelectedRemoteWorld] = useState<WorldRecord | null>(null);
@@ -499,6 +568,7 @@ const MainMenu = ({ onStartGame, onOpenWorldEditor }: MainMenuProps) => {
             name: parsedWorldData.worldOverview?.name || 'Uploaded World',
             description: parsedWorldData.worldOverview?.description || 'Custom uploaded world',
             thumbnail: parsedWorldData.worldOverview?.thumbnail,
+            tags: parsedWorldData.worldOverview?.tags || [],
             isLoading: false
           }]);
 
@@ -565,6 +635,7 @@ const MainMenu = ({ onStartGame, onOpenWorldEditor }: MainMenuProps) => {
         name: duplicatedWorld.worldOverview.name,
         description: duplicatedWorld.worldOverview.description || 'Duplicated world',
         thumbnail: duplicatedWorld.worldOverview.thumbnail,
+        tags: duplicatedWorld.worldOverview.tags || [],
         isLoading: false
       }]);
 
@@ -618,6 +689,7 @@ const MainMenu = ({ onStartGame, onOpenWorldEditor }: MainMenuProps) => {
         name: 'New World',
         description: 'A blank world ready for editing',
         thumbnail: 'https://via.placeholder.com/400x300/2a2a2a/ffffff?text=New+World',
+        tags: [],
         isLoading: false
       }]);
 
@@ -929,7 +1001,6 @@ const MainMenu = ({ onStartGame, onOpenWorldEditor }: MainMenuProps) => {
   );
 
   // Client-side browse pipeline: hide filters → text search → author/tag include filters → sort.
-  const PAGE_SIZE = 12;
   const filteredRemoteWorlds = useMemo(() => {
     const q = searchQuery.trim().toLowerCase();
     const authors = authorFilter.map((a) => a.toLowerCase());
@@ -956,8 +1027,25 @@ const MainMenu = ({ onStartGame, onOpenWorldEditor }: MainMenuProps) => {
     });
   }, [remoteWorlds, searchQuery, authorFilter, tagFilter, tagMode, hiddenWorldIds, hiddenTags, hiddenAuthors, sortField, sortOrder]);
 
-  const totalPages = Math.max(1, Math.ceil(filteredRemoteWorlds.length / PAGE_SIZE));
-  const pagedRemoteWorlds = filteredRemoteWorlds.slice((currentPage - 1) * PAGE_SIZE, currentPage * PAGE_SIZE);
+  const totalPages = Math.max(1, Math.ceil(filteredRemoteWorlds.length / pageSize));
+  const pagedRemoteWorlds = filteredRemoteWorlds.slice((currentPage - 1) * pageSize, currentPage * pageSize);
+
+  // Page size = 3 rows of however many columns the grid renders at the current viewport (matching the
+  // Tailwind sm/md/lg/xl breakpoints on the grid class), except a flat 10 in portrait orientation.
+  useEffect(() => {
+    if (!showDiscoverDialog) return;
+    const portraitMq = window.matchMedia('(orientation: portrait)');
+    const recompute = () => {
+      if (portraitMq.matches) { setPageSize(10); return; }
+      const w = window.innerWidth;
+      const cols = w >= 1280 ? 5 : w >= 1024 ? 4 : w >= 768 ? 3 : w >= 640 ? 2 : 1;
+      setPageSize(cols * 3);
+    };
+    recompute();
+    window.addEventListener('resize', recompute);
+    portraitMq.addEventListener('change', recompute);
+    return () => { window.removeEventListener('resize', recompute); portraitMq.removeEventListener('change', recompute); };
+  }, [showDiscoverDialog]);
 
   // Reset to page 1 when the result set changes; clamp if hiding shrinks it below the current page.
   useEffect(() => { setCurrentPage(1); }, [searchQuery, authorFilter, tagFilter, tagMode, sortField, sortOrder]);
@@ -1149,6 +1237,7 @@ const MainMenu = ({ onStartGame, onOpenWorldEditor }: MainMenuProps) => {
         description: world.description || 'Downloaded from server',
         thumbnail: thumbnailUrl,
         author: world.author?.username || '',
+        tags: worldData.data.contentData?.worldOverview?.tags || [],
         isLoading: false
       }]);
 
@@ -1262,6 +1351,20 @@ const MainMenu = ({ onStartGame, onOpenWorldEditor }: MainMenuProps) => {
         v{APP_VERSION}
       </span>
 
+      {/* Top-left controls: local-world layout selector (styled like the settings tabs) */}
+      <div className="fixed top-4 left-4 z-10">
+        <Tabs value={layoutMode} onValueChange={(v) => changeLayoutMode(v as 'grid' | 'detailed')}>
+          <TabsList>
+            <TabsTrigger value="grid" aria-label="Grid view" title="Grid view">
+              <LayoutGrid className="h-5 w-5" />
+            </TabsTrigger>
+            <TabsTrigger value="detailed" aria-label="Detailed view" title="Detailed view">
+              <GalleryThumbnails className="h-5 w-5" />
+            </TabsTrigger>
+          </TabsList>
+        </Tabs>
+      </div>
+
       {/* Top-right controls: settings + user avatar */}
       <div className="fixed top-4 right-4 z-10 flex items-center gap-2">
         <button
@@ -1342,7 +1445,7 @@ const MainMenu = ({ onStartGame, onOpenWorldEditor }: MainMenuProps) => {
       {/* Bounded scroll viewport (Radix ScrollArea Root is overflow-hidden) so drag-reorder
           auto-scroll stays inside this frame instead of growing the page in either axis. */}
       <ScrollArea className="flex-1 min-h-0">
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+        <div className={`grid grid-cols-1 sm:grid-cols-2 gap-4 ${layoutMode === 'detailed' ? 'lg:grid-cols-4' : 'lg:grid-cols-3'}`}>
           {isLoadingWorlds ? (
             Array(6).fill(0).map((_, index) => (
               <div key={index} className="w-full h-48">
@@ -1372,6 +1475,7 @@ const MainMenu = ({ onStartGame, onOpenWorldEditor }: MainMenuProps) => {
                   <SortableWorldCard
                     key={world.id}
                     world={world}
+                    layout={layoutMode}
                     onSelect={handleWorldSelection}
                     onDelete={setWorldToDelete}
                   />
@@ -1978,7 +2082,7 @@ const MainMenu = ({ onStartGame, onOpenWorldEditor }: MainMenuProps) => {
                   return (
                     <div
                       key={worldId}
-                      className="relative flex flex-col rounded-lg border border-gray-200 dark:border-gray-700 cursor-pointer bg-background"
+                      className="group relative flex flex-col rounded-lg border border-gray-200 dark:border-gray-700 cursor-pointer bg-background"
                       onClick={() => handleViewRemoteWorldDetails(world)}
                     >
                       <button
@@ -1988,7 +2092,17 @@ const MainMenu = ({ onStartGame, onOpenWorldEditor }: MainMenuProps) => {
                       >
                         <EyeOff className="h-4 w-4" />
                       </button>
-                      <div className="h-32 bg-gray-100 dark:bg-gray-800 rounded-t-lg overflow-hidden">
+
+                      <div className="relative h-32 bg-gray-100 dark:bg-gray-800 rounded-t-lg overflow-hidden">
+                        {/* Download — centered on the thumbnail, fades in on hover; same color as the hide button, 2x size. */}
+                        <button
+                          onClick={(e) => { e.stopPropagation(); handleDownloadWorld(world); }}
+                          className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 z-10 p-2 rounded bg-black/50 text-white hover:bg-black/70 opacity-0 pointer-events-none transition-opacity group-hover:opacity-100 group-hover:pointer-events-auto"
+                          title="Download this world"
+                          aria-label="Download this world"
+                        >
+                          <Download className="h-8 w-8" />
+                        </button>
                         {world.thumbnail_file ? (
                           <CachedThumbnail
                             file={world.thumbnail_file}
@@ -2040,27 +2154,19 @@ const MainMenu = ({ onStartGame, onOpenWorldEditor }: MainMenuProps) => {
                           <CardTags tags={world.tags || []} onHide={hideRemoteTag} />
                         </div>
 
-                        <div className="relative mt-auto pt-1 flex items-center justify-center">
-                          <Button
-                            size="sm"
-                            onClick={() => handleDownloadWorld(world)}
-                            className="bg-gradient-to-r from-sky-200 to-cyan-200 hover:from-sky-300 hover:to-cyan-300 text-black"
-                          >
-                            <DoorOpen className="mr-1 h-3 w-3" /> Download
-                          </Button>
-
-                          {(isOwnedByUser || currentUser?.accountType === "admin") && (
+                        {(isOwnedByUser || currentUser?.accountType === "admin") && (
+                          <div className="mt-auto pt-1 flex justify-end">
                             <button
-                              className="absolute right-0 top-1/2 -translate-y-1/2 p-1 text-red-500 hover:text-red-700"
-                              onClick={() => setRemoteWorldToDelete(worldId)}
+                              className="p-1 text-red-500 hover:text-red-700"
+                              onClick={(e) => { e.stopPropagation(); setRemoteWorldToDelete(worldId); }}
                               aria-label="Delete world"
                             >
                               <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
                                 <path fillRule="evenodd" d="M9 2a1 1 0 00-.894.553L7.382 4H4a1 1 0 000 2v10a2 2 0 002 2h8a2 2 0 002-2V6a1 1 0 100-2h-3.382l-.724-1.447A1 1 0 0011 2H9zM7 8a1 1 0 012 0v6a1 1 0 11-2 0V8zm5-1a1 1 0 00-1 1v6a1 1 0 102 0V8a1 1 0 00-1-1z" clipRule="evenodd" />
                               </svg>
                             </button>
-                          )}
-                        </div>
+                          </div>
+                        )}
                       </div>
                     </div>
                   );

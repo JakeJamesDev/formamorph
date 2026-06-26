@@ -76,7 +76,8 @@ class WorldStorageService {
           name: world.name,
           description: world.description,
           author: world.author || '',
-          thumbnail: world.thumbnail
+          thumbnail: world.thumbnail,
+          tags: world.data?.worldOverview?.tags || []
         }));
         resolve(worlds);
       };
