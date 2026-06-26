@@ -23,6 +23,7 @@ import {
   PaginationPrevious,
 } from "@/components/ui/pagination";
 import VRMViewer from '@/views/VRMViewer';
+import { ImageZoomViewer } from '@/components/ImageZoomViewer';
 import AudioPlayer from './AudioPlayer';
 import { ConfirmDialog } from '../ConfirmDialog';
 import { EditTextModal } from '../modals/EditTextModal';
@@ -44,12 +45,41 @@ export const LeftPanel = ({ entities, onEntityClick }: {
     setPlayerNotes
   } = useGameplay();
   const playerModelUrl = usePlayerModelUrl(characterData?.playerModelId);
+  // First detected (visible) entity that has an image — shown in the model section's Entities view.
+  const firstEntityImage = visibleEntities
+    .map((id) => entities.find((f) =>
+      f.name.toLowerCase().includes(id.toLowerCase()) ||
+      id.toLowerCase().includes(f.name.toLowerCase()),
+    ))
+    .find((e) => e?.image)?.image;
   const isMobile = useIsMobile();
   const [showModel, setShowModel] = React.useState(true);
-  // Landscape model viewer view: the player VRM vs. a (currently blank) Entities view.
+  // Landscape model viewer view: the player VRM vs. the detected-entity image view.
   const [modelTab, setModelTab] = React.useState("player");
+  const [entityZoomOpen, setEntityZoomOpen] = React.useState(false);
+  // Entity image picked from the list; falls back to the first detected entity's image.
+  const [selectedEntityImage, setSelectedEntityImage] = React.useState<string | undefined>(undefined);
   const [leftTab, setLeftTab] = React.useState(isMobile ? "model" : "notes");
   const [showVRMViewer, setShowVRMViewer] = React.useState(false);
+
+  const entityViewImage = selectedEntityImage ?? firstEntityImage;
+
+  // Clicking an entity swaps the in-section image when the viewer is open; otherwise it opens the
+  // entity popup (collapsed, on mobile, the entity has no image, or it's already the shown entity).
+  const handleEntityListClick = (entityId: string) => {
+    const match = entities.find((f) =>
+      f.name.toLowerCase().includes(entityId.toLowerCase()) ||
+      entityId.toLowerCase().includes(f.name.toLowerCase()),
+    );
+    const entitiesViewActive = !characterData || modelTab === "entities";
+    const alreadyShown = entitiesViewActive && !!match?.image && match.image === entityViewImage;
+    if (!isMobile && showModel && match?.image && !alreadyShown) {
+      setSelectedEntityImage(match.image);
+      setModelTab("entities");
+    } else {
+      onEntityClick(entityId);
+    }
+  };
 
   // In landscape the model lives on top, not in a tab; leave the "model" tab.
   React.useEffect(() => {
@@ -100,15 +130,18 @@ export const LeftPanel = ({ entities, onEntityClick }: {
   <Card className="w-full md:w-1/4 md:mr-1 grow md:grow-0 min-h-0 flex flex-col bg-background/60 border-border overflow-hidden">
     <CardContent className="flex-grow flex flex-col overflow-hidden p-4 sm:p-1">
       {/* Landscape: model on top with a show/hide toggle in the upper right */}
-      {!isMobile && characterData && (
+      {!isMobile && (
         <div className="mb-2">
-          <div className="relative flex items-center justify-center">
-            <Tabs value={modelTab} onValueChange={setModelTab}>
-              <TabsList className="flex justify-center">
-                <TabsTrigger value="player">Player</TabsTrigger>
-                <TabsTrigger value="entities">Entities</TabsTrigger>
-              </TabsList>
-            </Tabs>
+          <div className="relative flex items-center justify-center min-h-10">
+            {/* Only worlds with a player model offer the Player/Entities swap. */}
+            {characterData && (
+              <Tabs value={modelTab} onValueChange={setModelTab}>
+                <TabsList className="flex justify-center">
+                  <TabsTrigger value="player">Player</TabsTrigger>
+                  <TabsTrigger value="entities">Entities</TabsTrigger>
+                </TabsList>
+              </Tabs>
+            )}
             <Button
               variant="ghost"
               size="icon"
@@ -119,7 +152,30 @@ export const LeftPanel = ({ entities, onEntityClick }: {
               {showModel ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
             </Button>
           </div>
-          {showModel && (modelTab === "player" ? modelViewer : null)}
+          {showModel && (
+            // No model ⇒ always the Entities view (there's no Player to swap to).
+            characterData && modelTab === "player"
+              ? modelViewer
+              : entityViewImage && (
+                  <div className="w-full relative" style={{ paddingTop: '120%' }}>
+                    <div className="absolute top-0 left-0 w-full h-full flex items-center justify-center">
+                      <img
+                        src={entityViewImage}
+                        alt=""
+                        className="max-w-full max-h-full object-contain cursor-zoom-in"
+                        title="Click to enlarge"
+                        onClick={() => setEntityZoomOpen(true)}
+                      />
+                      <ImageZoomViewer
+                        src={entityViewImage}
+                        alt=""
+                        open={entityZoomOpen}
+                        onOpenChange={setEntityZoomOpen}
+                      />
+                    </div>
+                  </div>
+                )
+          )}
         </div>
       )}
 
@@ -151,7 +207,7 @@ export const LeftPanel = ({ entities, onEntityClick }: {
                       className={`mb-1 flex justify-between items-center p-2 ${
                         isDisabled ? 'opacity-50 cursor-not-allowed' : 'hover:bg-muted cursor-pointer'
                       }`}
-                      onClick={() => onEntityClick(entityId)}
+                      onClick={() => handleEntityListClick(entityId)}
                     >
                       <span>{entityItem ? entityItem.name : entityId}</span>
                     </div>

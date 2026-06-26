@@ -17,7 +17,7 @@ import {
   PaginationNext,
   PaginationPrevious,
 } from "@/components/ui/pagination";
-import { Music, SquarePen, Database, ScrollText, ChevronDown, ChevronRight, ChevronsDownUp, ChevronsUpDown, Search } from "lucide-react";
+import { Music, SquarePen, Database, ScrollText, ChevronDown, ChevronRight, ChevronsDownUp, ChevronsUpDown, Search, Eye, EyeOff } from "lucide-react";
 import IndeterminateProgress from "../components/ui/indeterminate-progress";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
@@ -287,6 +287,7 @@ const GameViewer = ({
   const [ambientSound, setAmbientSound] = useState<MediaAsset | null>(null);
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const [isEditingWorld, setIsEditingWorld] = useState(false);
+  const [uiHidden, setUiHidden] = useState(false); // hide all panels/buttons to reveal the background image
   const [showEditorExitPrompt, setShowEditorExitPrompt] = useState(false);
   const [lastPromptChars, setLastPromptChars] = useState(0);
   const [suggestedLocation, setSuggestedLocation] = useState<GameLocation | null>(null);
@@ -1515,7 +1516,7 @@ ${playerNotes || "No notes available"}
     >
       <ToastContainer theme="dark" />
 
-      {isMobile && (
+      {isMobile && !uiHidden && (
         <div className="flex shrink-0 gap-1 mb-1">
           {[
             { key: "character", label: "Character" },
@@ -1537,7 +1538,7 @@ ${playerNotes || "No notes available"}
         </div>
       )}
 
-      {isMobile ? (
+      {!uiHidden && (isMobile ? (
         <div className="flex-grow min-h-0 flex flex-col">
           {mobilePanel === "character" && leftPanel}
           {mobilePanel === "game" && middlePanel}
@@ -1549,9 +1550,22 @@ ${playerNotes || "No notes available"}
           {middlePanel}
           {rightPanel}
         </>
-      )}
+      ))}
+
+      {/* Hide-UI toggle: reveals the background image. While the UI is hidden the button
+          fades out completely until hovered, so it doesn't obscure the background. */}
+      <Button
+        onClick={() => setUiHidden((h) => !h)}
+        title={uiHidden ? "Show UI" : "Hide UI"}
+        className={`absolute bottom-2 left-2 z-30 flex items-center justify-center rounded-full w-10 h-10 p-0 transition-opacity ${
+          uiHidden ? "opacity-0 hover:opacity-100" : "opacity-100"
+        }`}
+      >
+        {uiHidden ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}
+      </Button>
 
       {/* BGM + AI-context buttons */}
+      {!uiHidden && (
       <div className="absolute top-16 left-2 md:top-2 flex gap-2">
         <Button
           onClick={() => setBgmEnabled(!bgmEnabled)}
@@ -1569,8 +1583,10 @@ ${playerNotes || "No notes available"}
           <ScrollText className="h-5 w-5" />
         </Button>
       </div>
+      )}
 
       {/* Edit-world + Menu buttons */}
+      {!uiHidden && (
       <div className="absolute top-16 right-2 md:top-2 flex gap-2">
         <Button
           onClick={() => setIsEditingWorld(true)}
@@ -1587,6 +1603,7 @@ ${playerNotes || "No notes available"}
           onExitToMenu={onExitToMenu}
         />
       </div>
+      )}
 
       {/* Modals */}
       {selectedEntity && (
