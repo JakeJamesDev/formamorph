@@ -17,10 +17,15 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import IndeterminateProgress from "@/components/ui/indeterminate-progress";
+import { Progress } from "@/components/ui/progress";
 import VramReadout from "./VramReadout";
 import { useVramStats } from "@/lib/useVramStats";
 import { useSettings } from "@/contexts/SettingsContext";
+import { splitForTTS } from "@/lib/ttsChunks";
 import type { TTSAudio } from "@/types";
+
+/** Reports generation progress as `done` of `total` sentence-chunks. */
+export type TTSProgress = { done: number; total: number };
 
 // Kokoro-82M at fp32 ≈ 331 MB of weights; WebGPU runtime buffers push the live footprint
 // higher, so this is a conservative estimate used only for the pre-load low-VRAM warning.
@@ -87,8 +92,9 @@ function createWAV(audioData: Float32Array, sampleRate: number) {
 
 export interface TTSModalHandle {
   // Regenerate audio using the already-loaded model/voice. Pass `text` to override the
-  // current game text. Returns false if no model is loaded yet (caller can open the modal).
-  regenerate: (text?: string) => Promise<boolean>;
+  // current game text, and `onProgress` to track per-chunk generation. Returns false if no
+  // model is loaded yet (caller can open the modal).
+  regenerate: (text?: string, onProgress?: (progress: TTSProgress) => void) => Promise<boolean>;
 }
 
 const TTSModal = forwardRef<TTSModalHandle, {
@@ -108,6 +114,7 @@ const TTSModal = forwardRef<TTSModalHandle, {
   const vramStats = useVramStats(vramHelperUrl, { enabled: isOpen });
   const [freeBeforeLoad, setFreeBeforeLoad] = useState<number | null>(null);
   const [isUnloading, setIsUnloading] = useState(false);
+  const [genProgress, setGenProgress] = useState<TTSProgress | null>(null);
 
   // Release the ONNX sessions (frees the WebGPU/VRAM allocation) and return to the load screen.
   const unloadModel = async () => {
@@ -140,14 +147,35 @@ const TTSModal = forwardRef<TTSModalHandle, {
       : null;
 
   // Generate audio for `text` with the loaded model/voice; returns false if not ready.
-  const generateAudio = useCallback(async (text: string): Promise<boolean> => {
+  // Kokoro truncates each generate() past ~510 tokens, so the text is split into sentence-chunks
+  // and generated one at a time (reporting progress), then concatenated into a single WAV.
+  const generateAudio = useCallback(async (
+    text: string,
+    onProgress?: (progress: TTSProgress) => void,
+  ): Promise<boolean> => {
     if (!tts || !selectedVoice) return false;
     try {
       setIsPlaying(true);
-      const result = await tts.generate(text, { voice: selectedVoice as GenerateOptions['voice'] });
-      const audioArray = new Float32Array(result.audio);
-      const wavData = createWAV(audioArray, result.sampling_rate);
-      onTTSGenerated({ audio: wavData, samplingRate: result.sampling_rate });
+      const chunks = splitForTTS(text);
+      const total = chunks.length;
+      if (total === 0) return false;
+
+      const parts: Float32Array[] = [];
+      let samplingRate = 24000;
+      for (let i = 0; i < total; i++) {
+        onProgress?.({ done: i, total });
+        const result = await tts.generate(chunks[i], { voice: selectedVoice as GenerateOptions['voice'] });
+        parts.push(new Float32Array(result.audio));
+        samplingRate = result.sampling_rate;
+      }
+      onProgress?.({ done: total, total });
+
+      const merged = new Float32Array(parts.reduce((sum, p) => sum + p.length, 0));
+      let offset = 0;
+      for (const p of parts) { merged.set(p, offset); offset += p.length; }
+
+      const wavData = createWAV(merged, samplingRate);
+      onTTSGenerated({ audio: wavData, samplingRate });
       return true;
     } catch (error) {
       console.error("Failed to generate or play audio:", error);
@@ -158,7 +186,8 @@ const TTSModal = forwardRef<TTSModalHandle, {
   }, [tts, selectedVoice, onTTSGenerated]);
 
   useImperativeHandle(ref, () => ({
-    regenerate: (text?: string) => generateAudio(text ?? gameText),
+    regenerate: (text?: string, onProgress?: (progress: TTSProgress) => void) =>
+      generateAudio(text ?? gameText, onProgress),
   }), [generateAudio, gameText]);
 
   // Report load/unload so the parent can gate the regenerate button and auto-generation.
@@ -241,13 +270,23 @@ const TTSModal = forwardRef<TTSModalHandle, {
             <Button
             className='w-full'
               onClick={async () => {
-                const ok = await generateAudio(gameText);
+                setGenProgress({ done: 0, total: 1 });
+                const ok = await generateAudio(gameText, setGenProgress);
+                setGenProgress(null);
                 if (ok) onOpenChange(false);
               }}
               disabled={isPlaying || isUnloading}
             >
               {isPlaying ? "Generating..." : "Start"}
             </Button>
+            {isPlaying && genProgress && (
+              <div className="space-y-1">
+                <Progress value={(genProgress.done / genProgress.total) * 100} className="h-2" />
+                <p className="text-xs text-muted-foreground text-center">
+                  Generating sentence {Math.min(genProgress.done + 1, genProgress.total)} of {genProgress.total}…
+                </p>
+              </div>
+            )}
             <Button
               variant="outline"
               className="w-full"

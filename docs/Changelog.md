@@ -90,6 +90,7 @@ Everything below is relative to the point this fork diverged from upstream.
   - **Entity popup** — viewing an entity now supports the same pan/zoom image view as world thumbnails, sizes the image to most of the popup with its description below, and shows a muted "No description provided." when there's no text.
   - **AI-context "current context only" filter** — the per-turn context viewer can hide re-generated, rolled-back, and aborted turns so you see only what the AI currently sees (on by default).
   - **Per-prompt System Prompt editor** — Settings → Prompts has a tab per prompt type (Game Text, Thinking, Choices, Stat Updates, Location Change), and Reset affects only the selected prompt.
+  - **Full-length TTS narration with progress** — narration is split into sentence chunks so audio is no longer cut off at ~26 s (Kokoro's per-call token cap); a determinate progress bar (sentence X of N) shows in the game view and the TTS dialog while it generates.
 - **⚙️ Backend / invisible**
   - Shared hooks and helpers: a `createWorkerClient` worker factory, a single IndexedDB open/promisify helper (`idb`), `usePersistentState`, `useIsMobile`, and a cached-thumbnail hook.
   - The Discover world-browser was split out of `MainMenu` into its own `DiscoverWorlds` view, with shared world-card/detail presentation helpers (`WorldDetails`).

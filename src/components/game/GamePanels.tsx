@@ -25,6 +25,7 @@ import {
 import VRMViewer from '@/views/VRMViewer';
 import { ImageZoomViewer } from '@/components/ImageZoomViewer';
 import AudioPlayer from './AudioPlayer';
+import type { TTSProgress } from './TTSModal';
 import { ConfirmDialog } from '../ConfirmDialog';
 import { EditTextModal } from '../modals/EditTextModal';
 import type { Entity } from '@/types';
@@ -270,6 +271,7 @@ export const MiddlePanel = ({
   onRegenerateTTS,
   ttsLoaded,
   ttsGenerating,
+  ttsProgress,
   memoryBar,
   progressBar,
   locationSuggestion,
@@ -290,6 +292,7 @@ export const MiddlePanel = ({
   onRegenerateTTS: () => Promise<void> | void;
   ttsLoaded: boolean;
   ttsGenerating: boolean;
+  ttsProgress: TTSProgress | null;
   memoryBar: React.ReactNode;
   progressBar: React.ReactNode;
   locationSuggestion: React.ReactNode;
@@ -372,6 +375,15 @@ export const MiddlePanel = ({
     <Card className="w-full flex-grow md:mx-0.5 md:max-w-[48%] min-h-0 flex flex-col bg-background/60 border-border overflow-hidden">
       <CardContent className="flex-grow flex flex-col overflow-hidden p-4 sm:p-1">
         {memoryBar}
+        {/* Determinate TTS progress while narration audio generates (auto or manual regen). */}
+        {ttsGenerating && ttsProgress && (
+          <div className="flex items-center gap-2 px-1 pb-1">
+            <Progress value={(ttsProgress.done / ttsProgress.total) * 100} className="h-1.5 flex-1" />
+            <span className="text-xs text-muted-foreground whitespace-nowrap">
+              Narrating {Math.min(ttsProgress.done + 1, ttsProgress.total)}/{ttsProgress.total}
+            </span>
+          </div>
+        )}
         {/* gap-2 gives every row below (message area, pager, Start Game, input) consistent spacing. */}
         <div className="flex flex-col flex-grow overflow-hidden gap-2">
           <ScrollArea className={`flex-grow border border-border p-2 bg-muted/80 min-h-0 ${isFlashing ? 'flash-animation' : ''} relative`}>
