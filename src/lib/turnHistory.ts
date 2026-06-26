@@ -25,6 +25,22 @@ export function regenerateState<S>(
   return currentPage >= 2 ? (gameStates[currentPage - 2] ?? null) : initialState;
 }
 
+/** The gameStates slot a post-turn snapshot belongs in, derived from the snapshot's *own* message-history
+ *  length (two messages per turn). Indexing off the snapshot — not a closure variable that goes stale
+ *  inside the async turn flow — keeps the slot aligned with the turn it represents. */
+export function snapshotPageIndex(historyLength: number, messagesPerPage: number): number {
+  return Math.ceil(historyLength / messagesPerPage) - 1;
+}
+
+/** Store `snapshot` at `pageIndex`: overwrite an existing slot (re-generate / kept-abort re-save) or
+ *  append the next turn. Returns a new array; never mutates the input. */
+export function placeSnapshot<S>(states: readonly S[], pageIndex: number, snapshot: S): S[] {
+  const next = [...states];
+  if (pageIndex < next.length) next[pageIndex] = snapshot;
+  else next.push(snapshot);
+  return next;
+}
+
 /** Whether the current page can be re-generated: you're on the latest page and at least one turn exists. */
 export function canRegenerate(currentPage: number, totalPages: number): boolean {
   return totalPages > 0 && currentPage === totalPages;
