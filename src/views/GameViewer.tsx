@@ -109,6 +109,7 @@ const GameViewer = ({
     paragraphLimit,
     hideStatNumbers,
     markdownOutput,
+    streamNarrationAudio,
     // Active endpoint settings: the user's values when "Use Custom Endpoint" is on, built-in defaults otherwise.
     activeEndpointUrl: endpointUrl,
     activeApiToken: apiToken,
@@ -266,6 +267,7 @@ const GameViewer = ({
   const [ttsGenerating, setTtsGenerating] = useState(false);
   const [ttsProgress, setTtsProgress] = useState<TTSProgress | null>(null);
   const ttsModalRef = useRef<TTSModalHandle>(null);
+  const ttsSentenceCursorRef = useRef(0); // count of complete sentences already sent to streaming TTS
 
   // Generate TTS for `text` (or the current game text) with the busy flag set, so both the
   // manual refresh button and auto-narration show the same spinner + chunk progress.
@@ -729,8 +731,9 @@ ${playerNotes || "No notes available"}
       // If the user stopped, or the request came back empty, bail (the `finally` resets waiting state).
       if (signal.aborted || !gameTextResponse) return;
 
-      // Auto-narrate the new game text if a TTS model is loaded (fire-and-forget).
-      if (ttsLoaded) {
+      // Auto-narrate the new game text if a TTS model is loaded (fire-and-forget). When streaming is
+      // on, narration was already synthesized sentence-by-sentence during the request above.
+      if (ttsLoaded && !streamNarrationAudio) {
         generateTTS(gameTextResponse);
       }
 
@@ -1114,6 +1117,9 @@ ${playerNotes || "No notes available"}
       let finishReason = null;
       // Start a fresh smoothed reveal for this turn's narration.
       if (requestType === "gametext") { reveal.reset(); }
+      // Opt-in streaming TTS: synthesize narration sentence-by-sentence as it arrives (needs a model).
+      const ttsStreaming = streamNarrationAudio && ttsLoaded && requestType === "gametext";
+      if (ttsStreaming) { ttsModalRef.current?.streamStart(); ttsSentenceCursorRef.current = 0; }
 
       // Handle one complete SSE line. Lines are buffered across reads (below) so a `data:` payload
       // split across network chunks is never JSON.parsed half-formed.
@@ -1135,6 +1141,16 @@ ${playerNotes || "No notes available"}
             // display reads as continuous typing and the late truncation trim stays off-screen.
             const display = stripReasoningLive(content);
             reveal.push(display);
+
+            // Feed newly-completed sentences to streaming TTS, holding back the last (in-progress) one.
+            if (ttsStreaming) {
+              const segments = display.split(/(?<=[.!?…])\s+/);
+              const completeCount = segments.length - 1;
+              for (let i = ttsSentenceCursorRef.current; i < completeCount; i++) {
+                ttsModalRef.current?.streamSentence(segments[i]);
+              }
+              if (completeCount > ttsSentenceCursorRef.current) ttsSentenceCursorRef.current = completeCount;
+            }
 
             // Update visible entities based on streaming content
             const newEntities = extractEntities(display);
@@ -1201,6 +1217,7 @@ ${playerNotes || "No notes available"}
       // Aborted mid-stream: drop everything received this turn and don't commit it.
       if (signal?.aborted) {
         if (requestType === "gametext") reveal.reset();
+        if (ttsStreaming) ttsModalRef.current?.streamCancel();
         return "";
       }
       // Flush the decoder and process a final line that arrived without a trailing newline.
@@ -1216,6 +1233,14 @@ ${playerNotes || "No notes available"}
         if (finishReason === "length") finalContent = trimToLastSentence(finalContent);
         // Hand the authoritative final text to the smoothed reveal to play out cleanly.
         reveal.finish(finalContent);
+        // Flush any sentence(s) still unsent (incl. a final one with no trailing terminator), then end.
+        if (ttsStreaming) {
+          const segments = finalContent.split(/(?<=[.!?…])\s+/);
+          for (let i = ttsSentenceCursorRef.current; i < segments.length; i++) {
+            ttsModalRef.current?.streamSentence(segments[i]);
+          }
+          ttsModalRef.current?.streamEnd();
+        }
       }
       // Record the raw output on this turn's matching request so the AI-context viewer can show it.
       setDebugTurns((prev) => {
@@ -1235,6 +1260,7 @@ ${playerNotes || "No notes available"}
       // Check if this is an abort error (user canceled the request)
       if ((error as Error).name === "AbortError") {
         if (requestType === "gametext") { reveal.reset(); }
+        if (streamNarrationAudio && ttsLoaded && requestType === "gametext") ttsModalRef.current?.streamCancel();
         // Return empty content for aborted requests instead of throwing
         return "";
       }

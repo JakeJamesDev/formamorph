@@ -1,5 +1,5 @@
 import { KokoroTTS, type GenerateOptions } from "kokoro-js";
-import { useState, useEffect, useCallback, forwardRef, useImperativeHandle } from "react";
+import { useState, useEffect, useRef, useCallback, forwardRef, useImperativeHandle } from "react";
 import { Button } from "@/components/ui/button";
 import {
   Select,
@@ -96,6 +96,12 @@ export interface TTSModalHandle {
   // current game text, and `onProgress` to track per-chunk generation. Returns false if no
   // model is loaded yet (caller can open the modal).
   regenerate: (text?: string, onProgress?: (progress: TTSProgress) => void) => Promise<boolean>;
+  // Streaming narration: begin a session, feed sentences as the story streams (synthesized in
+  // order, one at a time), then end (flush + finalize) or cancel (discard).
+  streamStart: () => void;
+  streamSentence: (text: string) => void;
+  streamEnd: () => void;
+  streamCancel: () => void;
 }
 
 const TTSModal = forwardRef<TTSModalHandle, {
@@ -117,6 +123,17 @@ const TTSModal = forwardRef<TTSModalHandle, {
   const [freeBeforeLoad, setFreeBeforeLoad] = useState<number | null>(null);
   const [isUnloading, setIsUnloading] = useState(false);
   const [genProgress, setGenProgress] = useState<TTSProgress | null>(null);
+
+  // Streaming-narration queue: sentences are synthesized one at a time, in order, as the story
+  // streams. Refs (not state) so the caller can push without re-rendering; ttsRef/voiceRef keep the
+  // sequential drainer reading the current model/voice without stale closures.
+  const streamQueueRef = useRef<string[]>([]);
+  const streamDrainingRef = useRef(false);
+  const streamEndedRef = useRef(false);
+  const ttsRef = useRef(tts);
+  const voiceRef = useRef(selectedVoice);
+  useEffect(() => { ttsRef.current = tts; }, [tts]);
+  useEffect(() => { voiceRef.current = selectedVoice; }, [selectedVoice]);
 
   // Release the ONNX sessions (frees the WebGPU/VRAM allocation) and return to the load screen.
   const unloadModel = async () => {
@@ -172,8 +189,9 @@ const TTSModal = forwardRef<TTSModalHandle, {
         const data = new Float32Array(result.audio);
         parts.push(data);
         samplingRate = result.sampling_rate;
-        ttsPlayback.enqueue(data, samplingRate);
+        ttsPlayback.append(data, samplingRate);
       }
+      ttsPlayback.finalize();
       onProgress?.({ done: total, total });
 
       const merged = new Float32Array(parts.reduce((sum, p) => sum + p.length, 0));
@@ -191,10 +209,65 @@ const TTSModal = forwardRef<TTSModalHandle, {
     }
   }, [tts, selectedVoice, onTTSGenerated, ttsPlayback]);
 
+  // Synthesize queued sentences sequentially, appending each to the playback engine; finalize once
+  // the stream has ended and the queue is drained.
+  const drainStream = useCallback(async () => {
+    if (streamDrainingRef.current) return;
+    streamDrainingRef.current = true;
+    try {
+      while (streamQueueRef.current.length > 0) {
+        const text = streamQueueRef.current.shift()!;
+        const model = ttsRef.current;
+        const voice = voiceRef.current;
+        if (!model || !voice) continue;
+        try {
+          const result = await model.generate(text, { voice: voice as GenerateOptions['voice'] });
+          ttsPlayback.append(new Float32Array(result.audio), result.sampling_rate);
+        } catch (error) {
+          console.error("Failed to synthesize narration sentence:", error);
+        }
+      }
+    } finally {
+      streamDrainingRef.current = false;
+    }
+    if (streamEndedRef.current && streamQueueRef.current.length === 0) {
+      ttsPlayback.finalize();
+    }
+  }, [ttsPlayback]);
+
+  const streamStart = useCallback(() => {
+    streamQueueRef.current = [];
+    streamEndedRef.current = false;
+    streamDrainingRef.current = false;
+    ttsPlayback.reset();
+  }, [ttsPlayback]);
+
+  const streamSentence = useCallback((text: string) => {
+    const trimmed = text.trim();
+    if (!trimmed) return;
+    streamQueueRef.current.push(trimmed);
+    drainStream();
+  }, [drainStream]);
+
+  const streamEnd = useCallback(() => {
+    streamEndedRef.current = true;
+    drainStream();
+  }, [drainStream]);
+
+  const streamCancel = useCallback(() => {
+    streamQueueRef.current = [];
+    streamEndedRef.current = false;
+    ttsPlayback.reset();
+  }, [ttsPlayback]);
+
   useImperativeHandle(ref, () => ({
     regenerate: (text?: string, onProgress?: (progress: TTSProgress) => void) =>
       generateAudio(text ?? gameText, onProgress),
-  }), [generateAudio, gameText]);
+    streamStart,
+    streamSentence,
+    streamEnd,
+    streamCancel,
+  }), [generateAudio, gameText, streamStart, streamSentence, streamEnd, streamCancel]);
 
   // Report load/unload so the parent can gate the regenerate button and auto-generation.
   useEffect(() => {
