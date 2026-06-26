@@ -21,6 +21,7 @@ import { Progress } from "@/components/ui/progress";
 import VramReadout from "./VramReadout";
 import { useVramStats } from "@/lib/useVramStats";
 import { useSettings } from "@/contexts/SettingsContext";
+import { useGameplay } from "@/contexts/GameplayContext";
 import { splitForTTS } from "@/lib/ttsChunks";
 import type { TTSAudio } from "@/types";
 
@@ -111,6 +112,7 @@ const TTSModal = forwardRef<TTSModalHandle, {
   const [isPlaying, setIsPlaying] = useState(false);
   const [webGPUSupported, setWebGPUSupported] = useState(false);
   const { vramHelperUrl } = useSettings();
+  const { ttsPlayback } = useGameplay();
   const vramStats = useVramStats(vramHelperUrl, { enabled: isOpen });
   const [freeBeforeLoad, setFreeBeforeLoad] = useState<number | null>(null);
   const [isUnloading, setIsUnloading] = useState(false);
@@ -160,13 +162,17 @@ const TTSModal = forwardRef<TTSModalHandle, {
       const total = chunks.length;
       if (total === 0) return false;
 
+      // Start a fresh playback session; each chunk plays the moment it's ready (gapless).
+      ttsPlayback.reset();
       const parts: Float32Array[] = [];
       let samplingRate = 24000;
       for (let i = 0; i < total; i++) {
         onProgress?.({ done: i, total });
         const result = await tts.generate(chunks[i], { voice: selectedVoice as GenerateOptions['voice'] });
-        parts.push(new Float32Array(result.audio));
+        const data = new Float32Array(result.audio);
+        parts.push(data);
         samplingRate = result.sampling_rate;
+        ttsPlayback.enqueue(data, samplingRate);
       }
       onProgress?.({ done: total, total });
 
@@ -183,7 +189,7 @@ const TTSModal = forwardRef<TTSModalHandle, {
     } finally {
       setIsPlaying(false);
     }
-  }, [tts, selectedVoice, onTTSGenerated]);
+  }, [tts, selectedVoice, onTTSGenerated, ttsPlayback]);
 
   useImperativeHandle(ref, () => ({
     regenerate: (text?: string, onProgress?: (progress: TTSProgress) => void) =>

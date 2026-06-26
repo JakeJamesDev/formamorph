@@ -8,7 +8,7 @@ import { GameText } from './GameText';
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Send, RefreshCw, Pencil, Languages, Loader2, Headphones, Square, ChevronUp, ChevronDown, X } from "lucide-react";
+import { Send, RefreshCw, Pencil, Languages, Loader2, Headphones, Square, ChevronUp, ChevronDown, X, Play, Pause } from "lucide-react";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Progress } from "@/components/ui/progress";
 import { Slider } from "@/components/ui/slider";
@@ -314,6 +314,7 @@ export const MiddlePanel = ({
     isEditMode,
     setIsEditMode,
     ttsAudio,
+    ttsPlayback,
     setFullMessageHistory
   } = useGameplay();
 
@@ -375,13 +376,42 @@ export const MiddlePanel = ({
     <Card className="w-full flex-grow md:mx-0.5 md:max-w-[48%] min-h-0 flex flex-col bg-background/60 border-border overflow-hidden">
       <CardContent className="flex-grow flex flex-col overflow-hidden p-4 sm:p-1">
         {memoryBar}
-        {/* Determinate TTS progress while narration audio generates (auto or manual regen). */}
-        {ttsGenerating && ttsProgress && (
+        {/* TTS row: live play/pause + stop while progressive playback runs, plus the determinate
+            generation progress bar; "Playing narration…" when the tail plays past generation. */}
+        {(ttsGenerating || ttsPlayback.isPlaying) && (
           <div className="flex items-center gap-2 px-1 pb-1">
-            <Progress value={(ttsProgress.done / ttsProgress.total) * 100} className="h-1.5 flex-1" />
-            <span className="text-xs text-muted-foreground whitespace-nowrap">
-              Narrating {Math.min(ttsProgress.done + 1, ttsProgress.total)}/{ttsProgress.total}
-            </span>
+            {ttsPlayback.isPlaying && (
+              <>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="h-6 w-6 shrink-0"
+                  onClick={() => (ttsPlayback.isPaused ? ttsPlayback.resume() : ttsPlayback.pause())}
+                  title={ttsPlayback.isPaused ? "Resume" : "Pause"}
+                >
+                  {ttsPlayback.isPaused ? <Play className="h-3.5 w-3.5" /> : <Pause className="h-3.5 w-3.5" />}
+                </Button>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="h-6 w-6 shrink-0"
+                  onClick={() => ttsPlayback.stop()}
+                  title="Stop narration"
+                >
+                  <Square className="h-3.5 w-3.5" />
+                </Button>
+              </>
+            )}
+            {ttsGenerating && ttsProgress ? (
+              <>
+                <Progress value={(ttsProgress.done / ttsProgress.total) * 100} className="h-1.5 flex-1" />
+                <span className="text-xs text-muted-foreground whitespace-nowrap">
+                  Narrating {Math.min(ttsProgress.done + 1, ttsProgress.total)}/{ttsProgress.total}
+                </span>
+              </>
+            ) : (
+              <span className="text-xs text-muted-foreground">Playing narration…</span>
+            )}
           </div>
         )}
         {/* gap-2 gives every row below (message area, pager, Start Game, input) consistent spacing. */}
@@ -431,7 +461,11 @@ export const MiddlePanel = ({
                 return (
                   <React.Fragment key={`audio-${index}`}>
                     <div>
-                      {ttsAudio && <AudioPlayer key={ttsAudio.audio.length} audio={ttsAudio} autoPlay />}
+                      {/* No autoPlay: progressive playback already played it live; this is for replay/scrub.
+                          Hidden while live playback runs to avoid a duplicate transport. */}
+                      {ttsAudio && !ttsPlayback.isPlaying && (
+                        <AudioPlayer key={ttsAudio.audio.length} audio={ttsAudio} />
+                      )}
                     </div>
                     <div className={`mb-2 ${message.role === 'user' ? 'text-yellow-500' : ''}`}>
                       <strong>{message.role === 'user' ? 'You:' : 'Event:'}</strong>

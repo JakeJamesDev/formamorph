@@ -2,6 +2,7 @@ import { createContext, useContext, useState, useRef, useCallback, useEffect, ty
 import { saveToDB, loadFromDB } from '../components/modals/dbUtils';
 import { toast } from 'react-toastify';
 import { convertSaveFile, terminateWorker } from '../lib/saveConversionWorkerUtils';
+import { useTtsPlayback } from '../lib/useTtsPlayback';
 import { APP_VERSION, isSaveEnvelope } from '../lib/version';
 import type {
   CharacterData,
@@ -41,6 +42,9 @@ function useProvideGameplay() {
   const [currentPage, setCurrentPage] = useState(1);
   const [gameStates, setGameStates] = useState<GameState[]>([]);
   const [playerNotes, setPlayerNotes] = useState('');
+
+  // Web Audio engine for progressive (gapless) TTS playback as sentences generate.
+  const ttsPlayback = useTtsPlayback();
 
   const logsEndRef = useRef<HTMLDivElement>(null);
 
@@ -308,6 +312,7 @@ function useProvideGameplay() {
     setIsEditMode,
     ttsAudio,
     setTTSAudio,
+    ttsPlayback,
     choices,
     setChoices,
     isGameStarted,
