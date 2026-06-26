@@ -156,4 +156,6 @@ export interface WorldMetadata {
   createdAt?: string;
   lastAccessed?: string;
   tags?: string[];
+  /** Server `_id` of the Discover world this local copy was downloaded from, if any. */
+  sourceId?: string;
 }
