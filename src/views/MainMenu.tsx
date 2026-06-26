@@ -219,6 +219,51 @@ function CardTags({ tags, onHide }: { tags: string[]; onHide: (tag: string) => v
   );
 }
 
+/** The single-column world-details layout shared by the local-world modal and the Discover details
+ *  modal (where it's the left column). Order: thumbnail → actions → description → meta → tags. */
+function WorldDetailsColumn({ thumbnail, actions, description, tags, meta }: {
+  thumbnail: React.ReactNode;
+  actions: React.ReactNode;
+  description?: string;
+  tags?: string[];
+  meta?: React.ReactNode;
+}) {
+  return (
+    <div className="space-y-6">
+      {thumbnail}
+      {actions}
+      <div className="space-y-4">
+        <div>
+          <h3 className="text-lg font-semibold">Description</h3>
+          <div className="text-gray-600 dark:text-gray-400 mt-1">
+            <GameText text={description || "No description available."} />
+          </div>
+        </div>
+        {meta}
+        {tags && (
+          <div>
+            <h3 className="text-sm font-semibold text-gray-500">Tags</h3>
+            <div className="flex flex-wrap gap-2 mt-1">
+              {tags.length > 0 ? (
+                tags.map((tag, index) => (
+                  <span
+                    key={index}
+                    className={cn(CHIP_BASE, "bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-300")}
+                  >
+                    {tag}
+                  </span>
+                ))
+              ) : (
+                <span className="text-gray-500 text-sm">No tags</span>
+              )}
+            </div>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
 const MainMenu = ({ onStartGame, onOpenWorldEditor }: MainMenuProps) => {
   const { traits, stats, loadWorldData } = useGameData();
   const [selectedWorld, setSelectedWorld] = useState<WorldRecord | null>(null);
@@ -273,6 +318,13 @@ const MainMenu = ({ onStartGame, onOpenWorldEditor }: MainMenuProps) => {
   const [selectedRemoteWorld, setSelectedRemoteWorld] = useState<WorldRecord | null>(null);
   const [showRemoteWorldDetailsModal, setShowRemoteWorldDetailsModal] = useState(false);
   const [imageViewerOpen, setImageViewerOpen] = useState(false);
+  // Source for the shared pan/zoom viewer, set by whichever modal's thumbnail was clicked.
+  const [viewerImage, setViewerImage] = useState<{ src: string; alt: string }>({ src: '', alt: '' });
+  const openImageViewer = (src: string | undefined, alt: string | undefined) => {
+    if (!src) return;
+    setViewerImage({ src, alt: alt || 'World image' });
+    setImageViewerOpen(true);
+  };
   const [downloadedIds, setDownloadedIds] = useState(() => new Set<string>());
 
   // Comments for the world detail modal
@@ -1331,7 +1383,7 @@ const MainMenu = ({ onStartGame, onOpenWorldEditor }: MainMenuProps) => {
       </ScrollArea>
 
       <Dialog open={showWorldModal} onOpenChange={setShowWorldModal}>
-        <DialogContent className="sm:max-w-[500px] h-[85vh] overflow-y-auto">
+        <DialogContent className="w-[33vw] max-w-[33vw] h-[85vh] overflow-y-auto overflow-x-hidden">
           <DialogHeader>
             <DialogTitle>{selectedWorld?.name}</DialogTitle>
           </DialogHeader>
@@ -1358,73 +1410,84 @@ const MainMenu = ({ onStartGame, onOpenWorldEditor }: MainMenuProps) => {
                 </Button>
               </div>
             )}
-            <div className="space-y-4">
-              <div className="hidden sm:block relative w-full pt-[56.25%]">
-                <img
-                  src={selectedWorld?.thumbnail}
-                  alt={selectedWorld?.name}
-                  className="absolute top-0 left-0 w-full h-full object-cover rounded-lg"
-                />
-              </div>
-
-              <div className="text-sm text-gray-600 dark:text-gray-400">
-                <GameText text={selectedWorld?.description || ""} />
-              </div>
-
-              <div className="space-y-2">
-                <div className="flex">
-                  <Button
-                    className="w-2/3 bg-gradient-to-r from-sky-200 to-cyan-200 hover:from-sky-300 hover:to-cyan-300 text-black font-bold rounded-r-none"
-                    onClick={() => {
-                      setShowWorldModal(false);
-                      setShowTraitSelection(true);
-                    }}
-                  >
-                    <DoorOpen className="mr-2 h-4 w-4" /> Enter World
-                  </Button>
-
-                  <Button
-                    className="w-1/3 bg-gradient-to-r from-amber-100 to-yellow-100 hover:from-amber-200 hover:to-yellow-200 text-black font-bold rounded-l-none"
-                    onClick={() => {
-                      // For uploaded worlds, use the worldData from context
-                      const currentWorldData = selectedWorld!.data;
-                      onStartGame(selectedTraits, currentWorldData.worldOverview?.use3DModel ? defaultCharacterData : null, true);
-                    }}
-                  >
-                    Skip Customize
-                  </Button>
+            <WorldDetailsColumn
+              description={selectedWorld?.description || ""}
+              tags={selectedWorld?.data?.worldOverview?.tags}
+              meta={
+                <div>
+                  <h3 className="text-sm font-semibold text-gray-500">Author</h3>
+                  <p>{selectedWorld?.data?.worldOverview?.author || "Unknown"}</p>
                 </div>
-
-                <Button
-                  className="w-full bg-gradient-to-r from-orange-100 to-orange-200 hover:from-orange-200 hover:to-orange-300 text-black font-bold"
-                  onClick={() => {
-                    if (window.innerWidth < 1024) {
-                      setShowMobileWorldEditorWarning(true);
-                    } else {
-                      onOpenWorldEditor();
-                    }
-                  }}
+              }
+              thumbnail={
+                <div
+                  className="hidden sm:block relative w-full pt-[56.25%] cursor-zoom-in"
+                  onClick={() => openImageViewer(selectedWorld?.thumbnail, selectedWorld?.name)}
+                  title="Click to enlarge"
                 >
-                  <Pencil className="mr-2 h-4 w-4" /> Edit World
-                </Button>
+                  <img
+                    src={selectedWorld?.thumbnail}
+                    alt={selectedWorld?.name}
+                    className="absolute top-0 left-0 w-full h-full object-cover rounded-lg"
+                  />
+                </div>
+              }
+              actions={
+                <div className="space-y-2">
+                  <div className="flex">
+                    <Button
+                      className="w-2/3 bg-gradient-to-r from-sky-200 to-cyan-200 hover:from-sky-300 hover:to-cyan-300 text-black font-bold rounded-r-none"
+                      onClick={() => {
+                        setShowWorldModal(false);
+                        setShowTraitSelection(true);
+                      }}
+                    >
+                      <DoorOpen className="mr-2 h-4 w-4" /> Enter World
+                    </Button>
 
-                <Button
-                  className="w-full bg-gradient-to-r from-purple-100 to-purple-200 hover:from-purple-200 hover:to-purple-300 text-black font-bold"
-                  onClick={() => handleDuplicateWorld()}
-                >
-                  <FilePlus2 className="mr-2 h-4 w-4" /> Duplicate World
-                </Button>
+                    <Button
+                      className="w-1/3 bg-gradient-to-r from-amber-100 to-yellow-100 hover:from-amber-200 hover:to-yellow-200 text-black font-bold rounded-l-none"
+                      onClick={() => {
+                        // For uploaded worlds, use the worldData from context
+                        const currentWorldData = selectedWorld!.data;
+                        onStartGame(selectedTraits, currentWorldData.worldOverview?.use3DModel ? defaultCharacterData : null, true);
+                      }}
+                    >
+                      Skip Customize
+                    </Button>
+                  </div>
 
-                {isAuthenticated && (
                   <Button
-                    className="w-full bg-gradient-to-r from-red-100 to-red-200 hover:from-purple-200 hover:to-indigo-300 text-black font-bold"
-                    onClick={() => setShowPublishModal(true)}
+                    className="w-full bg-gradient-to-r from-orange-100 to-orange-200 hover:from-orange-200 hover:to-orange-300 text-black font-bold"
+                    onClick={() => {
+                      if (window.innerWidth < 1024) {
+                        setShowMobileWorldEditorWarning(true);
+                      } else {
+                        onOpenWorldEditor();
+                      }
+                    }}
                   >
-                    <Upload className="mr-2 h-4 w-4" /> Publish World
+                    <Pencil className="mr-2 h-4 w-4" /> Edit World
                   </Button>
-                )}
-              </div>
-            </div>
+
+                  <Button
+                    className="w-full bg-gradient-to-r from-purple-100 to-purple-200 hover:from-purple-200 hover:to-purple-300 text-black font-bold"
+                    onClick={() => handleDuplicateWorld()}
+                  >
+                    <FilePlus2 className="mr-2 h-4 w-4" /> Duplicate World
+                  </Button>
+
+                  {isAuthenticated && (
+                    <Button
+                      className="w-full bg-gradient-to-r from-red-100 to-red-200 hover:from-purple-200 hover:to-indigo-300 text-black font-bold"
+                      onClick={() => setShowPublishModal(true)}
+                    >
+                      <Upload className="mr-2 h-4 w-4" /> Publish World
+                    </Button>
+                  )}
+                </div>
+              }
+            />
           </div>
         </DialogContent>
       </Dialog>
@@ -2044,100 +2107,80 @@ const MainMenu = ({ onStartGame, onOpenWorldEditor }: MainMenuProps) => {
           {selectedRemoteWorld && (
             <div className="mt-4 flex-1 min-h-0 flex flex-col md:flex-row gap-6 overflow-y-auto md:overflow-hidden">
               {/* Left column: metadata */}
-              <div className="md:w-1/2 md:min-h-0 md:overflow-y-auto md:pr-1 space-y-6">
-                {/* World Thumbnail — click to open the pan/zoom viewer */}
-                <div
-                  className="relative w-full pt-[56.25%] rounded-lg overflow-hidden cursor-zoom-in"
-                  onClick={() => { if (selectedRemoteWorld.thumbnail_file || selectedRemoteWorld.thumbnail) setImageViewerOpen(true); }}
-                  title="Click to enlarge"
-                >
-                  {selectedRemoteWorld.thumbnail_file ? (
-                    <CachedThumbnail
-                      file={selectedRemoteWorld.thumbnail_file}
-                      url={`${WorldStorageService.API_URL}/thumbnails/${selectedRemoteWorld.thumbnail_file}`}
-                      updatedAt={selectedRemoteWorld.updated_at}
-                      alt={selectedRemoteWorld.name}
-                      className="absolute top-0 left-0 w-full h-full object-cover"
-                    />
-                  ) : selectedRemoteWorld.thumbnail ? (
-                    <img
-                      src={selectedRemoteWorld.thumbnail}
-                      alt={selectedRemoteWorld.name}
-                      className="absolute top-0 left-0 w-full h-full object-cover"
-                    />
-                  ) : (
-                    <div className="absolute top-0 left-0 w-full h-full flex items-center justify-center bg-gray-100 dark:bg-gray-800 text-gray-400">
-                      <Globe className="h-16 w-16" />
-                    </div>
-                  )}
-                </div>
-
-                <div className="space-y-4">
-                  <div>
-                    <h3 className="text-lg font-semibold">Description</h3>
-                    <div className="text-gray-600 dark:text-gray-400 mt-1">
-                      <GameText text={selectedRemoteWorld.description || "No description available."} />
-                    </div>
-                  </div>
-
-                  <div className="grid grid-cols-2 gap-4">
-                    <div>
-                      <h3 className="text-sm font-semibold text-gray-500">Author</h3>
-                      <p>{selectedRemoteWorld.author?.username || "Unknown"}</p>
-                    </div>
-
-                    <div>
-                      <h3 className="text-sm font-semibold text-gray-500">Downloads</h3>
-                      <p>{selectedRemoteWorld.downloads || 0}</p>
-                    </div>
-
-                    <div>
-                      <h3 className="text-sm font-semibold text-gray-500">Created</h3>
-                      <p>{selectedRemoteWorld.created_at ? new Date(selectedRemoteWorld.created_at).toLocaleDateString() : "Unknown"}</p>
-                    </div>
-
-                    <div>
-                      <h3 className="text-sm font-semibold text-gray-500">Updated</h3>
-                      <p>{selectedRemoteWorld.updated_at ? new Date(selectedRemoteWorld.updated_at).toLocaleDateString() : "Unknown"}</p>
-                    </div>
-                  </div>
-
-                  {/* Tags */}
-                  <div>
-                    <h3 className="text-sm font-semibold text-gray-500">Tags</h3>
-                    <div className="flex flex-wrap gap-2 mt-1">
-                      {selectedRemoteWorld.tags && selectedRemoteWorld.tags.length > 0 ? (
-                        selectedRemoteWorld.tags.map((tag: string, index: number) => (
-                          <span
-                            key={index}
-                            className={cn(CHIP_BASE, "bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-300")}
-                          >
-                            {tag}
-                          </span>
-                        ))
+              <div className="md:w-1/2 md:min-h-0 md:overflow-y-auto md:pr-1">
+                <WorldDetailsColumn
+                  description={selectedRemoteWorld.description || ""}
+                  tags={selectedRemoteWorld.tags}
+                  thumbnail={
+                    /* World Thumbnail — click to open the pan/zoom viewer */
+                    <div
+                      className="relative w-full pt-[56.25%] rounded-lg overflow-hidden cursor-zoom-in"
+                      onClick={() => openImageViewer(
+                        selectedRemoteWorld.thumbnail_file
+                          ? `${WorldStorageService.API_URL}/thumbnails/${selectedRemoteWorld.thumbnail_file}`
+                          : selectedRemoteWorld.thumbnail,
+                        selectedRemoteWorld.name,
+                      )}
+                      title="Click to enlarge"
+                    >
+                      {selectedRemoteWorld.thumbnail_file ? (
+                        <CachedThumbnail
+                          file={selectedRemoteWorld.thumbnail_file}
+                          url={`${WorldStorageService.API_URL}/thumbnails/${selectedRemoteWorld.thumbnail_file}`}
+                          updatedAt={selectedRemoteWorld.updated_at}
+                          alt={selectedRemoteWorld.name}
+                          className="absolute top-0 left-0 w-full h-full object-cover"
+                        />
+                      ) : selectedRemoteWorld.thumbnail ? (
+                        <img
+                          src={selectedRemoteWorld.thumbnail}
+                          alt={selectedRemoteWorld.name}
+                          className="absolute top-0 left-0 w-full h-full object-cover"
+                        />
                       ) : (
-                        <span className="text-gray-500 text-sm">No tags</span>
+                        <div className="absolute top-0 left-0 w-full h-full flex items-center justify-center bg-gray-100 dark:bg-gray-800 text-gray-400">
+                          <Globe className="h-16 w-16" />
+                        </div>
                       )}
                     </div>
-                  </div>
+                  }
+                  actions={(() => {
+                    const isDownloaded = downloadedIds.has(selectedRemoteWorld._id || selectedRemoteWorld.id);
+                    return (
+                      <Button
+                        className="w-full bg-gradient-to-r from-sky-200 to-cyan-200 hover:from-sky-300 hover:to-cyan-300 text-black font-bold"
+                        onClick={() => handleDownloadWorld(selectedRemoteWorld)}
+                      >
+                        {isDownloaded
+                          ? <><Check className="mr-2 h-4 w-4" /> Downloaded — Download again</>
+                          : <><DoorOpen className="mr-2 h-4 w-4" /> Download World</>}
+                      </Button>
+                    );
+                  })()}
+                  meta={
+                    <div className="grid grid-cols-2 gap-4">
+                      <div>
+                        <h3 className="text-sm font-semibold text-gray-500">Author</h3>
+                        <p>{selectedRemoteWorld.author?.username || "Unknown"}</p>
+                      </div>
 
-                  {/* Action Buttons */}
-                  <div className="pt-4">
-                    {(() => {
-                      const isDownloaded = downloadedIds.has(selectedRemoteWorld._id || selectedRemoteWorld.id);
-                      return (
-                        <Button
-                          className="w-full bg-gradient-to-r from-sky-200 to-cyan-200 hover:from-sky-300 hover:to-cyan-300 text-black font-bold"
-                          onClick={() => handleDownloadWorld(selectedRemoteWorld)}
-                        >
-                          {isDownloaded
-                            ? <><Check className="mr-2 h-4 w-4" /> Downloaded — Download again</>
-                            : <><DoorOpen className="mr-2 h-4 w-4" /> Download World</>}
-                        </Button>
-                      );
-                    })()}
-                  </div>
-                </div>
+                      <div>
+                        <h3 className="text-sm font-semibold text-gray-500">Downloads</h3>
+                        <p>{selectedRemoteWorld.downloads || 0}</p>
+                      </div>
+
+                      <div>
+                        <h3 className="text-sm font-semibold text-gray-500">Created</h3>
+                        <p>{selectedRemoteWorld.created_at ? new Date(selectedRemoteWorld.created_at).toLocaleDateString() : "Unknown"}</p>
+                      </div>
+
+                      <div>
+                        <h3 className="text-sm font-semibold text-gray-500">Updated</h3>
+                        <p>{selectedRemoteWorld.updated_at ? new Date(selectedRemoteWorld.updated_at).toLocaleDateString() : "Unknown"}</p>
+                      </div>
+                    </div>
+                  }
+                />
               </div>
 
               {/* Right column: comments */}
@@ -2200,12 +2243,8 @@ const MainMenu = ({ onStartGame, onOpenWorldEditor }: MainMenuProps) => {
       <ImageZoomViewer
         open={imageViewerOpen}
         onOpenChange={setImageViewerOpen}
-        alt={selectedRemoteWorld?.name || 'World image'}
-        src={
-          selectedRemoteWorld?.thumbnail_file
-            ? `${WorldStorageService.API_URL}/thumbnails/${selectedRemoteWorld.thumbnail_file}`
-            : (selectedRemoteWorld?.thumbnail || '')
-        }
+        alt={viewerImage.alt}
+        src={viewerImage.src}
       />
 
       {/* Confirm Delete Remote World Dialog */}
