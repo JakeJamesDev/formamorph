@@ -10,7 +10,7 @@ import 'streamdown/styles.css';
  */
 export const GameText = memo(function GameText({ text }: { text: string }) {
   return (
-    <div className="break-words">
+    <div className="[overflow-wrap:anywhere]">
       <Streamdown remarkPlugins={[remarkGfm, remarkBreaks]} controls={false}>
         {text}
       </Streamdown>
