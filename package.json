@@ -3,6 +3,7 @@
   "private": true,
   "version": "2.0.0",
   "type": "module",
+  "main": "electron/main.cjs",
   "engines": {
     "node": ">=20.19"
   },
@@ -15,6 +16,8 @@
     "test:watch": "vitest",
     "coverage": "vitest run --coverage",
     "preview": "vite preview",
+    "desktop:dev": "vite build && electron .",
+    "desktop:build": "vite build && electron-builder --win portable",
     "vram-helper": "node scripts/vram-helper.mjs"
   },
   "dependencies": {
@@ -74,6 +77,8 @@
     "@vitejs/plugin-react": "^4.3.1",
     "@vitest/coverage-v8": "^3.2.6",
     "autoprefixer": "^10.4.20",
+    "electron": "^42.5.0",
+    "electron-builder": "^26.15.3",
     "eslint": "^9.8.0",
     "eslint-plugin-react": "^7.35.0",
     "eslint-plugin-react-hooks": "^5.1.0-rc.0",
