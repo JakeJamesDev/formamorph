@@ -26,6 +26,7 @@ import { toEpoch } from "@/lib/thumbnailCache";
 import { sanitizeTag, collectSanitizedTags } from "@/lib/tagUtils";
 import { cn } from "@/lib/utils";
 import { CHIP_BASE } from "@/components/Chip";
+import { GameText } from "@/components/game/GameText";
 import { getCatalog, replaceCatalog } from "@/lib/worldCatalog";
 import {
   Dialog,
@@ -1948,9 +1949,9 @@ const MainMenu = ({ onStartGame, onOpenWorldEditor }: MainMenuProps) => {
 
                       <div className="p-4 flex flex-col flex-grow">
                         <h3 className="font-semibold text-lg mb-1">{world.name}</h3>
-                        <p className="text-sm text-gray-600 dark:text-gray-400 mb-2 line-clamp-2">
-                          {world.description || "No description available."}
-                        </p>
+                        <div className="text-sm text-gray-600 dark:text-gray-400 mb-2 max-h-10 overflow-hidden">
+                          <GameText text={world.description || "No description available."} />
+                        </div>
 
                         <div className="text-xs text-gray-500 mb-1">
                           <span
@@ -2074,9 +2075,9 @@ const MainMenu = ({ onStartGame, onOpenWorldEditor }: MainMenuProps) => {
                 <div className="space-y-4">
                   <div>
                     <h3 className="text-lg font-semibold">Description</h3>
-                    <p className="text-gray-600 dark:text-gray-400 mt-1">
-                      {selectedRemoteWorld.description || "No description available."}
-                    </p>
+                    <div className="text-gray-600 dark:text-gray-400 mt-1">
+                      <GameText text={selectedRemoteWorld.description || "No description available."} />
+                    </div>
                   </div>
 
                   <div className="grid grid-cols-2 gap-4">
