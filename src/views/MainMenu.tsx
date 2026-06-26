@@ -195,8 +195,8 @@ function CardTags({ tags, onHide }: { tags: string[]; onHide: (tag: string) => v
       onMouseEnter={() => { if (truncated) setOpen(true); }}
       onMouseLeave={() => setOpen(false)}
     >
-      {/* ~4 rows (chip ≈ 20px + 4px gap) */}
-      <div ref={ref} className="flex flex-wrap gap-1 max-h-[92px] overflow-hidden">
+      {/* ~2 rows (chip ≈ 22px + 4px gap) */}
+      <div ref={ref} className="flex flex-wrap gap-1 max-h-[48px] overflow-hidden">
         {tags.slice(0, count).map(chip)}
         {truncated && (
           <span className="self-center whitespace-nowrap px-1 text-xs font-medium text-primary">
@@ -1367,9 +1367,9 @@ const MainMenu = ({ onStartGame, onOpenWorldEditor }: MainMenuProps) => {
                 />
               </div>
 
-              <p className="text-sm text-gray-600 dark:text-gray-400">
-                {selectedWorld?.description}
-              </p>
+              <div className="text-sm text-gray-600 dark:text-gray-400">
+                <GameText text={selectedWorld?.description || ""} />
+              </div>
 
               <div className="space-y-2">
                 <div className="flex">
@@ -1949,7 +1949,7 @@ const MainMenu = ({ onStartGame, onOpenWorldEditor }: MainMenuProps) => {
 
                       <div className="p-4 flex flex-col flex-grow">
                         <h3 className="font-semibold text-lg mb-1">{world.name}</h3>
-                        <div className="text-sm text-gray-600 dark:text-gray-400 mb-2 max-h-10 overflow-hidden">
+                        <div className="text-sm text-gray-600 dark:text-gray-400 mb-2 max-h-20 overflow-hidden">
                           <GameText text={world.description || "No description available."} />
                         </div>
 
