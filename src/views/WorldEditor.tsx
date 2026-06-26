@@ -15,6 +15,7 @@ import LocationManager from '../managers/LocationManager';
 import TraitManager from '../managers/TraitManager';
 import StatUpdatesManager from '../managers/StatUpdatesManager';
 import WorldOverviewManager from '../managers/WorldOverviewManager';
+import WorldDetailsManager from '../managers/WorldDetailsManager';
 import DictionaryManager from '../managers/DictionaryManager';
 import {
   DndContext,
@@ -338,7 +339,8 @@ const WorldEditor = ({ onClose, embedded = false }: {
       <div className="flex-grow flex overflow-hidden">
         <PanelGroup direction="horizontal">
           <Panel defaultSize={50} minSize={30}>
-            <Card className="h-full flex flex-col m-4">
+            <div className="h-full p-4">
+            <Card className="h-full flex flex-col">
               <CardHeader className="space-y-0 pb-2">
                 <div className="flex items-center space-x-4">
                   {!embedded && (
@@ -429,13 +431,18 @@ const WorldEditor = ({ onClose, embedded = false }: {
                 />
               </div>
             </Card>
+            </div>
           </Panel>
           <PanelResizeHandle className="w-1 bg-secondary cursor-col-resize" />
           <Panel minSize={30}>
-            <Card className="h-full m-4">
+            <div className="h-full p-4">
+            <Card className="h-full">
               <CardContent className="h-full p-0">
                 <ScrollArea className="h-full">
                   <div className="p-6">
+                    {activeTab === "overview" && (
+                      <WorldDetailsManager />
+                    )}
                     {activeTab === "stats" && selectedItem && (
                       <StatManager key={selectedItem.id} stat={selectedItem as Stat} />
                     )}
@@ -458,6 +465,7 @@ const WorldEditor = ({ onClose, embedded = false }: {
                 </ScrollArea>
               </CardContent>
             </Card>
+            </div>
           </Panel>
         </PanelGroup>
       </div>

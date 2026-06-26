@@ -23,7 +23,9 @@ import { ImageZoomViewer } from "@/components/ImageZoomViewer";
 import { TokenAutocomplete } from "@/components/TokenAutocomplete";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { toEpoch } from "@/lib/thumbnailCache";
-import { sanitizeTag } from "@/lib/tagUtils";
+import { sanitizeTag, collectSanitizedTags } from "@/lib/tagUtils";
+import { cn } from "@/lib/utils";
+import { CHIP_BASE } from "@/components/Chip";
 import { getCatalog, replaceCatalog } from "@/lib/worldCatalog";
 import {
   Dialog,
@@ -177,7 +179,7 @@ function CardTags({ tags, onHide }: { tags: string[]; onHide: (tag: string) => v
       key={i}
       onClick={(e) => { e.stopPropagation(); onHide(tag); }}
       title={`Hide all worlds tagged "${tag}"`}
-      className="px-1.5 py-0.5 bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-300 text-xs rounded-full cursor-pointer hover:line-through"
+      className={cn(CHIP_BASE, "bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-300 cursor-pointer hover:line-through")}
     >
       {tag}
     </span>
@@ -867,17 +869,11 @@ const MainMenu = ({ onStartGame, onOpenWorldEditor }: MainMenuProps) => {
     });
     return Array.from(set).sort((a, b) => a.localeCompare(b));
   }, [remoteWorlds, hiddenAuthors]);
-  const allTags = useMemo(() => {
-    const hidden = new Set(hiddenTags); // hiddenTags are already sanitized
-    const seen = new Set<string>();
-    const out: string[] = [];
-    // Normalize tags so casing/spacing/punctuation variants collapse into one suggestion.
-    remoteWorlds.forEach((w) => (w.tags || []).forEach((t: string) => {
-      const s = sanitizeTag(t);
-      if (s && !seen.has(s) && !hidden.has(s)) { seen.add(s); out.push(s); }
-    }));
-    return out.sort((a, b) => a.localeCompare(b));
-  }, [remoteWorlds, hiddenTags]);
+  // hiddenTags are already sanitized; collectSanitizedTags normalizes the rest.
+  const allTags = useMemo(
+    () => collectSanitizedTags(remoteWorlds.map((w) => w.tags), new Set(hiddenTags)),
+    [remoteWorlds, hiddenTags],
+  );
 
   // Client-side browse pipeline: hide filters → text search → author/tag include filters → sort.
   const PAGE_SIZE = 12;
@@ -1856,19 +1852,19 @@ const MainMenu = ({ onStartGame, onOpenWorldEditor }: MainMenuProps) => {
                     <>
                       <div className="flex flex-wrap gap-1">
                         {hiddenWorldIds.map((id) => (
-                          <span key={`w-${id}`} className="inline-flex items-center gap-1 rounded-full bg-secondary px-2 py-0.5 text-xs text-secondary-foreground">
+                          <span key={`w-${id}`} className={cn(CHIP_BASE, "bg-secondary text-secondary-foreground")}>
                             {hiddenWorldName(id)}
                             <button onClick={() => unhideWorld(id)} className="hover:text-destructive" aria-label="Unhide world"><X className="h-3 w-3" /></button>
                           </span>
                         ))}
                         {hiddenAuthors.map((name) => (
-                          <span key={`a-${name}`} className="inline-flex items-center gap-1 rounded-full bg-amber-100 dark:bg-amber-900 px-2 py-0.5 text-xs text-amber-800 dark:text-amber-300">
+                          <span key={`a-${name}`} className={cn(CHIP_BASE, "bg-amber-100 dark:bg-amber-900 text-amber-800 dark:text-amber-300")}>
                             By {name}
                             <button onClick={() => unhideAuthor(name)} className="hover:text-destructive" aria-label="Unhide author"><X className="h-3 w-3" /></button>
                           </span>
                         ))}
                         {hiddenTags.map((tag) => (
-                          <span key={`t-${tag}`} className="inline-flex items-center gap-1 rounded-full bg-blue-100 dark:bg-blue-900 px-2 py-0.5 text-xs text-blue-800 dark:text-blue-300">
+                          <span key={`t-${tag}`} className={cn(CHIP_BASE, "bg-blue-100 dark:bg-blue-900 text-blue-800 dark:text-blue-300")}>
                             #{tag}
                             <button onClick={() => unhideTag(tag)} className="hover:text-destructive" aria-label="Unhide tag"><X className="h-3 w-3" /></button>
                           </span>
@@ -2113,7 +2109,7 @@ const MainMenu = ({ onStartGame, onOpenWorldEditor }: MainMenuProps) => {
                         selectedRemoteWorld.tags.map((tag: string, index: number) => (
                           <span
                             key={index}
-                            className="px-2 py-1 bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-300 text-xs rounded-full"
+                            className={cn(CHIP_BASE, "bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-300")}
                           >
                             {tag}
                           </span>

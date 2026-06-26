@@ -1,8 +1,7 @@
-import { useRef, useEffect, useState, type ChangeEvent, type KeyboardEvent } from 'react';
+import { useRef, useEffect, type ChangeEvent } from 'react';
 import { useGameData } from '@/contexts/GameDataContext';
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
-import { Textarea } from "@/components/ui/textarea";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Button } from "@/components/ui/button";
 import { X } from "lucide-react";
@@ -15,7 +14,6 @@ const WorldOverviewManager = () => {
   const bgmInputRef = useRef<HTMLInputElement>(null);
   const thumbnailRef = useRef<HTMLImageElement>(null);
   const vrmInputRef = useRef<HTMLInputElement>(null);
-  const [tagInput, setTagInput] = useState('');
 
   useEffect(() => {
     if (worldOverview.thumbnail && thumbnailRef.current) {
@@ -117,29 +115,6 @@ const WorldOverviewManager = () => {
     vrmInputRef.current?.click();
   };
 
-  const handleAddTag = () => {
-    if (tagInput.trim()) {
-      const newTags = [...(worldOverview.tags || [])];
-      if (!newTags.includes(tagInput.trim())) {
-        newTags.push(tagInput.trim());
-        updateWorldOverview({ tags: newTags });
-      }
-      setTagInput('');
-    }
-  };
-
-  const handleRemoveTag = (tagToRemove: string) => {
-    const newTags = (worldOverview.tags || []).filter(tag => tag !== tagToRemove);
-    updateWorldOverview({ tags: newTags });
-  };
-
-  const handleTagKeyDown = (e: KeyboardEvent<HTMLInputElement>) => {
-    if (e.key === 'Enter') {
-      e.preventDefault();
-      handleAddTag();
-    }
-  };
-
   return (
     <div className="space-y-6">
       <div className="space-y-2">
@@ -158,16 +133,6 @@ const WorldOverviewManager = () => {
           value={worldOverview.author}
           onChange={(e) => updateWorldOverview({ author: e.target.value })}
           placeholder="Enter author name..."
-        />
-      </div>
-      <div className="space-y-2">
-        <Label htmlFor="worldDescription">World Description</Label>
-        <Textarea
-          id="worldDescription"
-          value={worldOverview.description}
-          onChange={(e) => updateWorldOverview({ description: e.target.value })}
-          placeholder="Enter world description..."
-          className="min-h-[100px]"
         />
       </div>
       <div className="flex items-center space-x-2">
@@ -283,49 +248,6 @@ const WorldOverviewManager = () => {
           </div>
         )}
       </div>
-      <div className="space-y-2">
-        <Label htmlFor="worldTags">Tags</Label>
-        <div className="flex gap-2">
-          <Input
-            id="worldTags"
-            value={tagInput}
-            onChange={(e) => setTagInput(e.target.value)}
-            onKeyDown={handleTagKeyDown}
-            placeholder="Add tags (press Enter to add)..."
-          />
-          <Button onClick={handleAddTag} type="button">Add</Button>
-        </div>
-        <div className="flex flex-wrap gap-2 mt-2">
-          {(worldOverview.tags || []).map((tag, index) => (
-            <div
-              key={index}
-              className="bg-secondary text-secondary-foreground px-3 py-1 rounded-full flex items-center gap-1"
-            >
-              <span>{tag}</span>
-              <Button
-                variant="ghost"
-                size="icon"
-                className="h-4 w-4 rounded-full"
-                onClick={() => handleRemoveTag(tag)}
-              >
-                <X className="h-3 w-3" />
-              </Button>
-            </div>
-          ))}
-        </div>
-      </div>
-
-      <div className="space-y-2">
-        <Label htmlFor="systemPrompt">System Prompt Addition</Label>
-        <Textarea
-          id="systemPrompt"
-          value={worldOverview.systemPrompt}
-          onChange={(e) => updateWorldOverview({ systemPrompt: e.target.value })}
-          placeholder="Enter an overview of your world that the AI should know, and rules it should follow..."
-          className="min-h-[150px]"
-        />
-      </div>
-
     </div>
   );
 };
