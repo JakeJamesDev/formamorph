@@ -152,7 +152,6 @@ export interface WorldMetadata {
   description: string;
   author: string;
   thumbnail: Base64Data;
-  /** Omitted by the metadata-list query; present on full stored records. */
   createdAt?: string;
   lastAccessed?: string;
   tags?: string[];
@@ -160,6 +159,8 @@ export interface WorldMetadata {
   sourceId?: string;
   /** True if a downloaded world has been edited locally and so diverges from its source. */
   dirty?: boolean;
+  /** Wall-clock time of the most recent editor save; unset until the world is first edited. */
+  editedAt?: string;
   /** Wall-clock time this copy was (re)downloaded. */
   downloadedAt?: string;
   /** The server world's `updated_at` captured at download — the source version this copy holds. */

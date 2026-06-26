@@ -226,8 +226,10 @@ function useProvideGameData() {
         description: worldOverview.description,
         author: worldOverview.author,
         thumbnail: worldOverview.thumbnail ?? undefined,
-        // A save means the local copy was edited; flag it dirty (sourceId is preserved by storeWorld).
+        // A save means the local copy was edited; flag it dirty and stamp the edit time (sourceId and
+        // other sticky fields are preserved by storeWorld).
         dirty: true,
+        editedAt: new Date().toISOString(),
         data: { version: APP_VERSION, worldOverview, stats, locations, entities, traits, statUpdates, dictionary },
       });
       setSavedSnapshot(serializeWorld(worldOverview, stats, locations, entities, traits, statUpdates, dictionary));
