@@ -1,10 +1,11 @@
-import React, { useState, useEffect, useCallback, useRef } from "react";
+import React, { useState, useEffect, useCallback, useRef, useMemo } from "react";
 import { useGameData } from "../contexts/GameDataContext";
 import { useSettings } from "@/contexts/SettingsContext";
 import { useGameplay } from "@/contexts/GameplayContext";
 import { processStatCode } from "@/contexts/GameplayContextUtils";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Checkbox } from "@/components/ui/checkbox";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Collapsible, CollapsibleTrigger, CollapsibleContent } from "@/components/ui/collapsible";
 import {
@@ -78,6 +79,7 @@ interface DebugTurn {
   requests: DebugRequest[];
   regenerated?: boolean; // this turn was superseded by a re-generate of the same action
   pruned?: boolean; // this turn was discarded by a rollback to an earlier page
+  aborted?: boolean; // this turn was stopped before any narration landed (its user message was dropped)
 }
 
 const GameViewer = ({
@@ -295,14 +297,23 @@ const GameViewer = ({
   const [isDebugOpen, setIsDebugOpen] = useState(false);
   // One entry per game turn, each holding the AI requests captured that turn (newest last).
   const [debugTurns, setDebugTurns] = useState<DebugTurn[]>([]);
-  const [debugPage, setDebugPage] = useState(1); // 1-based page = turn index
+  const [debugPage, setDebugPage] = useState(1); // 1-based page = index into visibleDebugTurns
   const [disabledHighlights, setDisabledHighlights] = useState<Record<string, boolean>>({});
   const [debugSearch, setDebugSearch] = useState("");
   const [collapsedDebug, setCollapsedDebug] = useState<Record<string | number, boolean>>({});
-  // Jump to the newest turn whenever one is captured.
+  // When on (default), the viewer hides turns that aren't part of the live context — re-generated,
+  // rolled-back (pruned), and aborted ones — leaving only the pages the AI currently sees.
+  const [debugCurrentContextOnly, setDebugCurrentContextOnly] = useState(true);
+  const visibleDebugTurns = useMemo(
+    () => debugCurrentContextOnly
+      ? debugTurns.filter((t) => !t.regenerated && !t.pruned && !t.aborted)
+      : debugTurns,
+    [debugTurns, debugCurrentContextOnly],
+  );
+  // Jump to the newest visible turn whenever the set changes (a turn is captured, or the filter toggles).
   useEffect(() => {
-    if (debugTurns.length > 0) setDebugPage(debugTurns.length);
-  }, [debugTurns.length]);
+    if (visibleDebugTurns.length > 0) setDebugPage(visibleDebugTurns.length);
+  }, [visibleDebugTurns.length]);
   const isMobile = useIsMobile();
   const [mobilePanel, setMobilePanel] = useState("game");
   const [showPotatoPCDialog, setShowPotatoPCDialog] = useState(false);
@@ -1016,6 +1027,13 @@ ${playerNotes || "No notes available"}
       // Nothing came back — drop the lone, unpaired user message (it would corrupt history pairing) and
       // restore the previous turn's choices, which were cleared when this turn started.
       setFullMessageHistory((prev) => prev.slice(0, -1));
+      // This turn never made it into the context; flag it so the AI-context viewer can hide it.
+      setDebugTurns((prev) => {
+        if (!prev.length) return prev;
+        const next = prev.slice();
+        next[next.length - 1] = { ...next[next.length - 1], aborted: true };
+        return next;
+      });
       const previous = fullMessageHistory[fullMessageHistory.length - 2];
       let restored: string[] = [];
       if (previous?.role === "assistant") {
@@ -1701,10 +1719,10 @@ ${playerNotes || "No notes available"}
                   <span key={k}>{seg.text}</span>
                 ),
               );
-            // Page = turn; show the requests captured for the currently selected turn.
-            const totalDebugPages = debugTurns.length;
+            // Page = turn; show the requests captured for the currently selected (visible) turn.
+            const totalDebugPages = visibleDebugTurns.length;
             const pageIndex = Math.min(Math.max(debugPage, 1), Math.max(totalDebugPages, 1)) - 1;
-            const currentTurn = debugTurns[pageIndex];
+            const currentTurn = visibleDebugTurns[pageIndex];
             const currentRequests = currentTurn?.requests ?? [];
             // Collapse keys: one per request, plus one per captured raw output ("out-<i>").
             const collapseKeys: (string | number)[] = [];
@@ -1814,6 +1832,13 @@ ${playerNotes || "No notes available"}
                     )}
                     {allCollapsed ? "Expand all" : "Collapse all"}
                   </Button>
+                  <label className="flex flex-shrink-0 items-center gap-1.5 text-xs text-muted-foreground cursor-pointer select-none">
+                    <Checkbox
+                      checked={debugCurrentContextOnly}
+                      onCheckedChange={(checked) => setDebugCurrentContextOnly(checked === true)}
+                    />
+                    Current context only
+                  </label>
                 </div>
                 {currentTurn && (
                   <div className="flex-shrink-0 text-xs text-muted-foreground truncate">
@@ -1833,7 +1858,9 @@ ${playerNotes || "No notes available"}
                     <div className="space-y-4 text-xs">
                       {totalDebugPages === 0 ? (
                         <p className="text-muted-foreground">
-                          No AI context captured yet. Take an action first, then reopen this.
+                          {debugCurrentContextOnly && debugTurns.length > 0
+                            ? "Only re-generated, rolled-back, or aborted turns exist. Uncheck “Current context only” to see them."
+                            : "No AI context captured yet. Take an action first, then reopen this."}
                         </p>
                       ) : (
                         currentRequests.map((req, i) => {
