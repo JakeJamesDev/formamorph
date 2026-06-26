@@ -7,7 +7,8 @@ import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
 import { FBXLoader } from 'three/examples/jsm/loaders/FBXLoader.js';
 import type { GLTF } from 'three/examples/jsm/loaders/GLTFLoader.js';
 import type { VRM, VRMHumanBoneName } from '@pixiv/three-vrm';
-import type { BodyShape, HairTypeDef } from '@/types';
+import type { HairTypeDef } from '@/types';
+import { DEFAULT_MODEL_URL } from '@/lib/defaultModel';
 
 // VRM/MToon material: the base three Material plus the standard/MToon fields the color code touches.
 type VrmMaterial = THREE.Material & {
@@ -47,16 +48,15 @@ export interface VRMViewerHandle {
 }
 
 interface VRMViewerProps {
-  bellySize: number;
-  breastSize: number;
-  bodyWeight: number;
+  /** Body-mesh morph influences keyed by morph name (Belly/Breasts/Fat/B_Pear/…). Composed by the
+   *  caller from customization choices and stat-driven values; applied to every Body primitive. */
+  bodyMorphValues?: Record<string, number>;
   hairColor?: string;
   eyeColor?: string;
   skinColor?: string;
   hairTypes?: Record<string, HairTypeDef>;
   currentHairStyle: string;
   hairLength: number;
-  bodyShape: BodyShape;
   modelUrl?: string;
   animationFiles?: string[];
   /** Colors to apply to extra (non-channel) materials, keyed by material name. */
@@ -122,16 +122,13 @@ const mixamoVRMRigMap: Record<string, string> = {
 };
 
 const VRMViewer = forwardRef<VRMViewerHandle, VRMViewerProps>(({
-  bellySize,
-  breastSize,
-  bodyWeight,
+  bodyMorphValues,
   hairColor,
   eyeColor,
   skinColor,
   currentHairStyle,
   hairLength,
-  bodyShape,
-  modelUrl = './readheadedit.vrm',
+  modelUrl = DEFAULT_MODEL_URL,
   animationFiles = ['./idle.fbx', './bashful.fbx', './idle_dwarf.fbx'],
   extraColors,
   onCapabilities
@@ -149,6 +146,7 @@ const VRMViewer = forwardRef<VRMViewerHandle, VRMViewerProps>(({
   const currentAnimationRef = useRef<THREE.AnimationAction | null>(null);
   const animationIndexRef = useRef(0);
   const extrasAppliedRef = useRef<Record<string, string>>({});
+  const bodyMorphsAppliedRef = useRef<Record<string, number>>({});
 
   const [ready, setReady] = useState(false);
 
@@ -285,6 +283,17 @@ const VRMViewer = forwardRef<VRMViewerHandle, VRMViewerProps>(({
     if (!applied) {
       console.warn(`Morph target "${morphTargetName}" not found under mesh "${meshName}".`);
     }
+  };
+
+  // Apply the whole body-morph map to the Body mesh, zeroing morphs that were applied last time but
+  // are no longer present (so unbinding a slider relaxes it rather than freezing its last value).
+  const applyBodyMorphs = (gltf: GLTF) => {
+    const next = bodyMorphValues ?? {};
+    for (const [name, value] of Object.entries(next)) setMorphTarget('Body', name, value, gltf);
+    Object.keys(bodyMorphsAppliedRef.current).forEach((name) => {
+      if (!(name in next)) setMorphTarget('Body', name, 0, gltf);
+    });
+    bodyMorphsAppliedRef.current = next;
   };
 
   // Hair "styles" are the model's distinct hair meshes — top-level scene nodes named like *hair*.
@@ -453,9 +462,7 @@ const VRMViewer = forwardRef<VRMViewerHandle, VRMViewerProps>(({
         console.log('VRM model loaded:', vrm);
 
         // Initial morph target setup
-        setMorphTarget('Body', 'Belly', bellySize, gltf);
-        setMorphTarget('Body', 'Breasts', breastSize, gltf);
-        setMorphTarget('Body', 'Fat', bodyWeight, gltf);
+        applyBodyMorphs(gltf);
 
         //attachCylinderToHand(vrm);
 
@@ -464,7 +471,7 @@ const VRMViewer = forwardRef<VRMViewerHandle, VRMViewerProps>(({
         // Report which customization morphs this model exposes so the UI hides unsupported sliders.
         if (onCapabilities) {
           const bodyDict = getMorphDict('Body', gltf) || {};
-          const bodyMorphs = ['Belly', 'Breasts', 'Fat', 'B_Pear', 'B_HourGlass', 'B_Apple'].filter(n => n in bodyDict);
+          const bodyMorphs = Object.keys(bodyDict);
           const hairMeshes = getHairMeshes(gltf);
           const styles = hairMeshes.map(c => c.name);
           const hairLengthSupported = hairMeshes.some((c) => {
@@ -685,41 +692,12 @@ const VRMViewer = forwardRef<VRMViewerHandle, VRMViewerProps>(({
   // helpers are recreated every render, so they're intentionally excluded from the dep arrays —
   // listing them would re-run on every render. The ready-timeout effect seeds all values once.
   /* eslint-disable react-hooks/exhaustive-deps */
+  // Re-apply the whole body-morph map whenever it changes (covers customization + stat-driven values).
   useEffect(() => {
     if (gltfRef.current && ready) {
-      setMorphTarget('Body', 'Belly', bellySize, gltfRef.current);
+      applyBodyMorphs(gltfRef.current);
     }
-  }, [bellySize]);
-
-  useEffect(() => {
-    if (gltfRef.current && ready) {
-      setMorphTarget('Body', 'Breasts', breastSize, gltfRef.current);
-    }
-  }, [breastSize]);
-
-  useEffect(() => {
-    if (gltfRef.current && ready) {
-      setMorphTarget('Body', 'Fat', bodyWeight, gltfRef.current);
-    }
-  }, [bodyWeight]);
-
-  useEffect(() => {
-    if (gltfRef.current && ready) {
-      setMorphTarget('Body', 'B_Pear', bodyShape.pear, gltfRef.current);
-    }
-  }, [bodyShape.pear]);
-
-  useEffect(() => {
-    if (gltfRef.current && ready) {
-      setMorphTarget('Body', 'B_HourGlass', bodyShape.hourglass, gltfRef.current);
-    }
-  }, [bodyShape.hourglass]);
-
-  useEffect(() => {
-    if (gltfRef.current && ready) {
-      setMorphTarget('Body', 'B_Apple', bodyShape.apple, gltfRef.current);
-    }
-  }, [bodyShape.apple]);
+  }, [bodyMorphValues]);
 
   // Apply a channel color, or revert it to the model's own when unset (untouched / reverted).
   useEffect(() => {
@@ -752,12 +730,7 @@ const VRMViewer = forwardRef<VRMViewerHandle, VRMViewerProps>(({
   useEffect(() => {
     setTimeout(()=>{
         if (!gltfRef.current) return;
-        setMorphTarget('Body', 'Belly', bellySize, gltfRef.current);
-        setMorphTarget('Body', 'Breasts', breastSize, gltfRef.current);
-        setMorphTarget('Body', 'Fat', bodyWeight, gltfRef.current);
-        setMorphTarget('Body', 'B_Pear', bodyShape.pear, gltfRef.current);
-        setMorphTarget('Body', 'B_HourGlass', bodyShape.hourglass, gltfRef.current);
-        setMorphTarget('Body', 'B_Apple', bodyShape.apple, gltfRef.current);
+        applyBodyMorphs(gltfRef.current);
         // Colors are applied by the dedicated [color, ready] effects below — applying them here too
         // re-ran with stale (pre-seed) values and clobbered the seeded colors.
         updateHairStyle(gltfRef.current);

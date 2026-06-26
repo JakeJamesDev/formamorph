@@ -40,6 +40,8 @@ export interface Stat {
   descriptors: StatDescriptor[];
   /** Optional JS executed to derive this stat's value from others. */
   code?: string;
+  /** Body-mesh morph target names this stat drives; stat [min,max] maps linearly to influence [0,1]. */
+  morphBindings?: string[];
   /** Editor flags that stop the AI from changing this stat in a given direction. */
   noIncrease?: boolean;
   noIncreaseMax?: boolean;

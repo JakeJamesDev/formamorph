@@ -26,9 +26,8 @@ function useProvideGameplay() {
   const [playerTraits, setPlayerTraits] = useState<Trait[]>([]);
   const [recentStatChanges, setRecentStatChanges] = useState<Record<string, number>>({});
   const [activeTab, setActiveTab] = useState("stats");
-  const [stomachPercent, setStomachPercent] = useState(0);
-  const [fatnessPercent, setFatnessPercent] = useState(0);
-  const [breastsizePercent, setBreastsizePercent] = useState(0);
+  // Stat-driven body morph influences, keyed by morph name (built from stats' morphBindings).
+  const [bodyMorphValues, setBodyMorphValues] = useState<Record<string, number>>({});
   const [gameplayText, setGameplayText] = useState("");
   const [isFlashing, setIsFlashing] = useState(false);
   const [isEditMode, setIsEditMode] = useState(false);
@@ -280,12 +279,8 @@ function useProvideGameplay() {
   const value = {
     characterData,
     setCharacterData,
-    stomachPercent,
-    setStomachPercent,
-    fatnessPercent,
-    setFatnessPercent,
-    breastsizePercent,
-    setBreastsizePercent,
+    bodyMorphValues,
+    setBodyMorphValues,
     visibleEntities,
     setVisibleEntities,
     logEntries,
