@@ -39,7 +39,8 @@ import { parseSlashCommand } from "../lib/slashCommands";
 import { MARKDOWN_SAMPLE } from "../lib/markdownSample";
 import { normalizeStatChanges, applyAiStatChanges, applyTraitStatChanges, parseStatUpdates, applyAiMaxChanges } from "../lib/statChanges";
 import { matchLocationResponse } from "../lib/locationMatch";
-import { rollbackState, regenerateState, canRegenerate, lastTurnAction, markRegeneratedTurn, markPrunedTurns } from "../lib/turnHistory";
+import { rollbackState, regenerateState, canRegenerate, lastTurnAction, markRegeneratedTurn, markPrunedTurns, snapshotPageIndex, placeSnapshot } from "../lib/turnHistory";
+import { useDeferredSnapshot } from "../lib/useDeferredSnapshot";
 import { getActivatedDictionary, buildDictionaryContext, parseKeywords } from "../lib/dictionaryUtils";
 import { highlightSegments, type HighlightRule, type HighlightSegment } from "../lib/highlightUtils";
 import { useIsMobile } from "../lib/useIsMobile";
@@ -351,6 +352,18 @@ const GameViewer = ({
   // gameStates only holds post-turn snapshots, so the first turn has no predecessor there. Captured in
   // sendGameAction on the first turn.
   const initialStateRef = useRef<ReturnType<typeof saveCurrentGameState> | null>(null);
+  // A completed turn dispatches several state updates together (finalized message, applied stat changes,
+  // advanced time). Saving the snapshot synchronously alongside them captures a stale, half-applied state
+  // — and inside the async turn flow the closure's length is stale too, which misaligns gameStates. So we
+  // defer the snapshot to the next commit (after the batch lands) and index it by its own history length.
+  const { arm: armTurnSnapshot } = useDeferredSnapshot(
+    fullMessageHistory,
+    saveCurrentGameState,
+    (snapshot) => {
+      const pageIndex = snapshotPageIndex(snapshot.fullMessageHistory?.length ?? 0, messagesPerPage);
+      setGameStates((prev) => placeSnapshot(prev, pageIndex, snapshot));
+    },
+  );
   const [regenerateNonce, setRegenerateNonce] = useState(0);
 
   const handleRegenerate = () => {
@@ -651,6 +664,11 @@ ${playerNotes || "No notes available"}
     // Get trimmed history before adding new action (history fills the window left by the prompt)
     const trimmedHistory = getTrimmedMessageHistory(estimateTokens(updatedPrompt.length));
 
+    // One AbortController for the whole turn, so Stop aborts every sub-request — not just the active one.
+    const controller = new AbortController();
+    abortControllerRef.current = controller;
+    const { signal } = controller;
+
     try {
       // Clear the box now (the action is captured in `action`), so anything the player types
       // after choices unlock the box isn't wiped when the turn finishes.
@@ -690,7 +708,7 @@ ${playerNotes || "No notes available"}
             content: `${lastStory ? `What just happened:\n${lastStory}\n\n` : ""}The player's next action: ${action}\n\nWrite the brief plan now. Do not narrate.`,
           },
         ];
-        const plan = await makeAIRequest(thinkPrompt, thinkMessages, "thinking", 256);
+        const plan = await makeAIRequest(thinkPrompt, thinkMessages, "thinking", 256, signal);
         if (plan) {
           updatedPrompt += `\n\nPlanning notes (use these to shape the narration; do not repeat them):\n${plan}`;
         }
@@ -706,14 +724,12 @@ ${playerNotes || "No notes available"}
         updatedPrompt,
         gameTextMessages,
         "gametext",
+        null,
+        signal,
       );
 
-      // If the request was aborted, exit early without throwing an error
-      if (!gameTextResponse) {
-        // Clean up any partial state updates
-        setIsWaitingForAI(false);
-        return; // Exit the function early
-      }
+      // If the user stopped, or the request came back empty, bail (the `finally` resets waiting state).
+      if (signal.aborted || !gameTextResponse) return;
 
       // Auto-narrate the new game text if a TTS model is loaded (fire-and-forget).
       if (ttsLoaded) {
@@ -747,9 +763,12 @@ ${playerNotes || "No notes available"}
           updatedChoicesPrompt,
           [{ role: "user", content: `Game text: ${gameTextResponse}` }],
           "choices",
+          null,
+          signal,
         );
       }
 
+      if (signal.aborted) return; // stopped during the choices request
       // Choices (the interactive part of the turn) are ready — let the player start composing their next
       // action while stat-updates / location requests finish in the background.
       setChoicesReady(true);
@@ -780,9 +799,12 @@ ${playerNotes || "No notes available"}
           ),
           [{ role: "user", content: `Game events: ${gameTextResponse}` }],
           "statUpdates",
+          null,
+          signal,
         );
       }
 
+      if (signal.aborted) return; // stopped during the stat-updates request
       // Ask the AI whether the player should move to a different location (v1.2.0)
       if (locationChangePromptText && locationChangePromptText !== "DISABLED") {
         const locationList = locations.map((loc) => loc.name).join("\n");
@@ -795,6 +817,8 @@ ${playerNotes || "No notes available"}
           updatedLocationPrompt,
           [{ role: "user", content: `Game events: ${gameTextResponse}` }],
           "locationChange",
+          null,
+          signal,
         );
 
         // Exact name match, else the longest available name appearing as a whole word.
@@ -810,6 +834,7 @@ ${playerNotes || "No notes available"}
         }
       }
 
+      if (signal.aborted) return; // stopped during the location-change request
       // Parse choices (line-separated), hard-capped to 6 to stop the AI over-producing
       const choicesList =
         choicesPrompt === "DISABLED"
@@ -854,24 +879,6 @@ ${playerNotes || "No notes available"}
         return updatedHistory;
       });
 
-      // Save game state after successful action
-      const newState = saveCurrentGameState();
-      setGameStates((prevStates) => {
-        const newStates = [...prevStates];
-        // Store state at the current page index
-        const pageIndex =
-          Math.ceil(fullMessageHistory.length / messagesPerPage) - 1;
-
-        // Check if we already have a state at this index
-        if (pageIndex < newStates.length) {
-          newStates[pageIndex] = newState;
-        } else {
-          // Add the new state to the array
-          newStates.push(newState);
-        }
-        return newStates;
-      });
-
       //setGameplayText(aiResponse.game_text);
       //setChoices(aiResponse.choices || []);
 
@@ -882,6 +889,10 @@ ${playerNotes || "No notes available"}
 
       // Default 1 hour passed per action
       handleTimePassed(1);
+
+      // Snapshot this turn once the updates above commit (deferred so the snapshot captures the finalized
+      // message, applied stat changes, and advanced time rather than a stale mid-batch read).
+      armTurnSnapshot();
 
       // Only set game as started after successful START GAME action
       if (action === "START GAME") {
@@ -925,6 +936,8 @@ ${playerNotes || "No notes available"}
     } finally {
       setIsWaitingForAI(false);
       setAiRequestType(null);
+      // Release the turn's controller (unless a newer turn already replaced it).
+      if (abortControllerRef.current === controller) abortControllerRef.current = null;
     }
   };
 
@@ -996,35 +1009,44 @@ ${playerNotes || "No notes available"}
 
   // Function to abort ongoing AI generation
   const abortGeneration = () => {
-    if (abortControllerRef.current) {
-      // Abort the fetch request
-      abortControllerRef.current.abort();
-      abortControllerRef.current = null;
+    if (!abortControllerRef.current) return;
+    abortControllerRef.current.abort();
+    abortControllerRef.current = null;
 
-      // Reset waiting state
-      setIsWaitingForAI(false);
-      setAiRequestType(null);
-      setChoicesReady(false);
+    setIsWaitingForAI(false);
+    setAiRequestType(null);
+    setChoicesReady(false);
 
-      // Reset any partial UI updates
-      setChoices([]);
-
-      // Drop the aborted turn (partial assistant + its user action) so history stays paired.
-      // A leftover unpaired user message corrupts getTrimmedMessageHistory's pair-walking.
-      setFullMessageHistory((prev) => {
-        let next = [...prev];
-        if (next.length > 0 && next[next.length - 1].role === "assistant") {
-          next = next.slice(0, -1);
+    const last = fullMessageHistory[fullMessageHistory.length - 1];
+    if (last?.role === "assistant") {
+      // Narration came through — keep this turn so the player can stop here and edit it manually. A kept
+      // narration means the game is underway (covers aborting the opening turn). Save a snapshot so
+      // gameStates stays aligned with history (rollback / re-generate key off the page count).
+      setIsGameStarted(true);
+      // Event-handler context: saveCurrentGameState reads the latest committed state, and the kept
+      // narration already landed during streaming — so a synchronous snapshot here is fresh. Index it by
+      // its own history length to keep gameStates aligned (same rule as the normal post-turn save).
+      const snapshot = { ...saveCurrentGameState(), isGameStarted: true };
+      const pageIndex = snapshotPageIndex(snapshot.fullMessageHistory?.length ?? 0, messagesPerPage);
+      setGameStates((prev) => placeSnapshot(prev, pageIndex, snapshot));
+    } else if (last?.role === "user") {
+      // Nothing came back — drop the lone, unpaired user message (it would corrupt history pairing) and
+      // restore the previous turn's choices, which were cleared when this turn started.
+      setFullMessageHistory((prev) => prev.slice(0, -1));
+      const previous = fullMessageHistory[fullMessageHistory.length - 2];
+      let restored: string[] = [];
+      if (previous?.role === "assistant") {
+        try {
+          const parsed = JSON.parse(previous.content);
+          if (Array.isArray(parsed.choices)) restored = parsed.choices;
+        } catch {
+          restored = [];
         }
-        if (next.length > 0 && next[next.length - 1].role === "user") {
-          next = next.slice(0, -1);
-        }
-        return next;
-      });
-
-      // Add log entry
-      addLogEntry("AI generation aborted");
+      }
+      setChoices(restored);
     }
+
+    addLogEntry("AI generation aborted");
   };
 
   const makeAIRequest = async (
@@ -1032,13 +1054,9 @@ ${playerNotes || "No notes available"}
     messages: ChatMessage[],
     requestType: AIRequestType = "gametext",
     maxTokensOverride: number | null = null,
+    signal?: AbortSignal,
   ) => {
     try {
-      // Create a new AbortController for this request
-      const controller = new AbortController();
-      abortControllerRef.current = controller;
-      const signal = controller.signal;
-
       // Surface which request is currently running.
       setAiRequestType(requestType);
 
@@ -1082,6 +1100,9 @@ ${playerNotes || "No notes available"}
 
       if (!response.body) throw new Error("Response has no body to stream");
       const reader = response.body.getReader();
+      // Unblock a pending read the instant the turn is aborted, so we stop consuming immediately even if
+      // the server keeps streaming after we disconnect. `once` lets it clean itself up.
+      signal?.addEventListener("abort", () => { reader.cancel().catch(() => {}); }, { once: true });
       const decoder = new TextDecoder();
       let buffer = "";
       let content = "";
@@ -1162,6 +1183,7 @@ ${playerNotes || "No notes available"}
       };
 
       while (true) {
+        if (signal?.aborted) break; // user pressed Stop — quit consuming, even with chunks still buffered
         const { done, value } = await reader.read();
         if (done) break;
         // Accumulate decoded text and dispatch only complete lines; the trailing partial line (and
@@ -1170,6 +1192,11 @@ ${playerNotes || "No notes available"}
         const lines = buffer.split(/\r?\n/);
         buffer = lines.pop() ?? "";
         for (const line of lines) processLine(line);
+      }
+      // Aborted mid-stream: drop everything received this turn and don't commit it.
+      if (signal?.aborted) {
+        if (requestType === "gametext") reveal.reset();
+        return "";
       }
       // Flush the decoder and process a final line that arrived without a trailing newline.
       buffer += decoder.decode();

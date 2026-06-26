@@ -6,6 +6,8 @@ import {
   lastTurnAction,
   markRegeneratedTurn,
   markPrunedTurns,
+  snapshotPageIndex,
+  placeSnapshot,
 } from './turnHistory';
 
 // Stand-in for the AI-context DebugTurn — carries the flags plus an identifying field.
@@ -95,5 +97,50 @@ describe('markPrunedTurns', () => {
     const turns: Turn[] = [{ action: '1' }, { action: '2' }];
     markPrunedTurns(turns, 1);
     expect(turns.every((t) => !('pruned' in t))).toBe(true);
+  });
+});
+
+describe('snapshotPageIndex', () => {
+  it('maps a turn (two messages each) to its zero-based slot', () => {
+    expect(snapshotPageIndex(2, 2)).toBe(0); // after turn 1
+    expect(snapshotPageIndex(4, 2)).toBe(1); // after turn 2
+    expect(snapshotPageIndex(6, 2)).toBe(2); // after turn 3
+  });
+});
+
+describe('placeSnapshot', () => {
+  it('appends when the slot is past the end and overwrites when it exists', () => {
+    expect(placeSnapshot(['a'], 1, 'b')).toEqual(['a', 'b']); // next turn → append
+    expect(placeSnapshot(['a', 'b'], 1, 'B')).toEqual(['a', 'B']); // re-save → overwrite
+  });
+  it('does not mutate the input', () => {
+    const states = ['a'];
+    placeSnapshot(states, 1, 'b');
+    expect(states).toEqual(['a']);
+  });
+});
+
+// Regression: the abort-then-rollback bug. Indexing each snapshot by its own history length must keep
+// gameStates dense — including the turn kept after an abort — so rollback maps page → state correctly.
+// (The bug indexed off a stale closure length, producing a sparse [2,6] where rollback no-op'd.)
+describe('per-turn snapshot stack stays aligned', () => {
+  const messagesPerPage = 2;
+  // Replays normal turn 1, normal turn 2, then an aborted-but-kept turn 3 — each saving by its own length.
+  const save = (states: number[], historyLength: number) =>
+    placeSnapshot(states, snapshotPageIndex(historyLength, messagesPerPage), historyLength);
+
+  it('builds a dense [2,4,6] across two turns plus a kept abort', () => {
+    let states: number[] = [];
+    states = save(states, 2); // turn 1
+    states = save(states, 4); // turn 2
+    states = save(states, 6); // turn 3 aborted, narration kept
+    expect(states).toEqual([2, 4, 6]);
+  });
+
+  it('rolls a paged-back turn to the correct earlier state (not a no-op)', () => {
+    const states = [2, 4, 6];
+    // On page 2 of 3, rollback restores gameStates[currentPage - 1] = the turn-2 state (4), not the
+    // current turn-3 state (6). A sparse array would have returned 6 and silently done nothing.
+    expect(rollbackState(states, 2)).toBe(4);
   });
 });
