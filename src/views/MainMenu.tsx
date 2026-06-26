@@ -300,6 +300,19 @@ function CardTags({ tags, onHide }: { tags: string[]; onHide?: (tag: string) => 
   );
 }
 
+/** Renders a timestamp as a normal date with the hour:minute:second darkened like other secondary text.
+ *  Falls back to a dash when there's no value. */
+function DateTimeText({ value }: { value?: string }) {
+  if (!value) return <>-</>;
+  const d = new Date(value);
+  return (
+    <>
+      {d.toLocaleDateString()}{' '}
+      <span className="text-muted-foreground/60">{d.toLocaleTimeString()}</span>
+    </>
+  );
+}
+
 /** The single-column world-details layout shared by the local-world modal and the Discover details
  *  modal (where it's the left column). Order: thumbnail → actions → description → meta → tags. */
 function WorldDetailsColumn({ thumbnail, actions, description, tags, meta, split = false, collapsed = false }: {
@@ -626,6 +639,7 @@ const MainMenu = ({ onStartGame, onOpenWorldEditor }: MainMenuProps) => {
           // Sanitize at the import boundary: migrate any legacy/v1.2 shape to the current version.
           const parsedWorldData = migrateWorld(JSON.parse(e.target?.result as string));
           const worldId = `uploaded-${Date.now()}`;
+          const now = new Date().toISOString();
 
           parsedWorldData.id = worldId;
 
@@ -643,6 +657,8 @@ const MainMenu = ({ onStartGame, onOpenWorldEditor }: MainMenuProps) => {
             description: parsedWorldData.worldOverview?.description || 'Custom uploaded world',
             thumbnail: parsedWorldData.worldOverview?.thumbnail,
             tags: parsedWorldData.worldOverview?.tags || [],
+            createdAt: now,
+            lastAccessed: now,
             isLoading: false
           }]);
 
@@ -652,6 +668,8 @@ const MainMenu = ({ onStartGame, onOpenWorldEditor }: MainMenuProps) => {
             name: parsedWorldData.worldOverview?.name || 'Uploaded World',
             description: parsedWorldData.worldOverview?.description || 'Custom uploaded world',
             thumbnail: parsedWorldData.worldOverview?.thumbnail,
+            createdAt: now,
+            lastAccessed: now,
             data: parsedWorldData
           });
           setShowWorldModal(true);
@@ -1674,7 +1692,7 @@ const MainMenu = ({ onStartGame, onOpenWorldEditor }: MainMenuProps) => {
         <div className={`grid grid-cols-1 sm:grid-cols-2 gap-4 ${layoutMode === 'detailed' ? 'lg:grid-cols-4' : 'lg:grid-cols-3'}`}>
           {isLoadingWorlds ? (
             Array(6).fill(0).map((_, index) => (
-              <div key={index} className="w-full h-48">
+              <div key={index} className="relative w-full h-48 rounded-lg overflow-hidden">
                 <Skeleton className="w-full h-full" />
                 <div className="absolute bottom-0 left-0 right-0 bg-black bg-opacity-50 p-2">
                   <Skeleton className="h-6 w-24" />
@@ -1758,9 +1776,32 @@ const MainMenu = ({ onStartGame, onOpenWorldEditor }: MainMenuProps) => {
               description={selectedWorld?.description || ""}
               tags={selectedWorld?.data?.worldOverview?.tags}
               meta={
-                <div>
-                  <h3 className="text-sm font-semibold text-gray-500">Author</h3>
-                  <p>{selectedWorld?.data?.worldOverview?.author || "Unknown"}</p>
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="col-span-2">
+                    <h3 className="text-sm font-semibold text-gray-500">Author</h3>
+                    <p>{selectedWorld?.data?.worldOverview?.author || "Unknown"}</p>
+                  </div>
+
+                  {/* Origin date, dynamic by how the world arrived: downloaded > imported > created.
+                      Default worlds were none of these, so they show a dash. */}
+                  {(() => {
+                    const id: string = selectedWorld?.id ?? '';
+                    const isDefault = defaultWorlds.some(dw => dw.id === id);
+                    const isImported = id.startsWith('uploaded-');
+                    const label = selectedWorld?.downloadedAt ? "Downloaded" : isImported ? "Imported" : "Created";
+                    const value = isDefault ? undefined : (selectedWorld?.downloadedAt ?? selectedWorld?.createdAt);
+                    return (
+                      <div>
+                        <h3 className="text-sm font-semibold text-gray-500">{label}</h3>
+                        <p><DateTimeText value={value} /></p>
+                      </div>
+                    );
+                  })()}
+
+                  <div>
+                    <h3 className="text-sm font-semibold text-gray-500">Edited</h3>
+                    <p><DateTimeText value={selectedWorld?.editedAt} /></p>
+                  </div>
                 </div>
               }
               thumbnail={
@@ -2303,7 +2344,7 @@ const MainMenu = ({ onStartGame, onOpenWorldEditor }: MainMenuProps) => {
             <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4">
               {isLoadingRemoteWorlds ? (
                 Array(4).fill(0).map((_, index) => (
-                  <div key={index} className="w-full h-48">
+                  <div key={index} className="relative w-full h-48 rounded-lg overflow-hidden">
                     <Skeleton className="w-full h-full" />
                     <div className="absolute bottom-0 left-0 right-0 bg-black bg-opacity-50 p-2">
                       <Skeleton className="h-6 w-24" />
@@ -2577,12 +2618,12 @@ const MainMenu = ({ onStartGame, onOpenWorldEditor }: MainMenuProps) => {
 
                       <div>
                         <h3 className="text-sm font-semibold text-gray-500">Created</h3>
-                        <p>{selectedRemoteWorld.created_at ? new Date(selectedRemoteWorld.created_at).toLocaleDateString() : "Unknown"}</p>
+                        <p>{selectedRemoteWorld.created_at ? <DateTimeText value={selectedRemoteWorld.created_at} /> : "Unknown"}</p>
                       </div>
 
                       <div>
                         <h3 className="text-sm font-semibold text-gray-500">Updated</h3>
-                        <p>{selectedRemoteWorld.updated_at ? new Date(selectedRemoteWorld.updated_at).toLocaleDateString() : "Unknown"}</p>
+                        <p>{selectedRemoteWorld.updated_at ? <DateTimeText value={selectedRemoteWorld.updated_at} /> : "Unknown"}</p>
                       </div>
                     </div>
                   }

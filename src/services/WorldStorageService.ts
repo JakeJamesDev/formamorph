@@ -18,6 +18,9 @@ export interface StoredWorldRecord {
   /** Whether this download has been edited locally and so diverges from its source (git-dirty model).
    *  Set true on an editor save, reset false on (re)download. Local-only, like `sourceId`. */
   dirty?: boolean;
+  /** Wall-clock time of the user's most recent editor save. Unset until the first edit, so a never-edited
+   *  world has no edited date. Sticky across non-edit stores; local-only. */
+  editedAt?: string;
   /** Wall-clock time this copy was (re)downloaded. Sticky across edits; local-only. */
   downloadedAt?: string;
   /** The server world's `updated_at` captured at (re)download — i.e. the source version we hold.
@@ -92,8 +95,10 @@ class WorldStorageService {
           tags: world.data?.worldOverview?.tags || [],
           sourceId: world.sourceId,
           dirty: world.dirty,
+          editedAt: world.editedAt,
           downloadedAt: world.downloadedAt,
           sourceUpdatedAt: world.sourceUpdatedAt,
+          createdAt: world.createdAt,
           lastAccessed: world.lastAccessed
         }));
         resolve(worlds);
@@ -204,10 +209,12 @@ class WorldStorageService {
           thumbnail: world.thumbnail || '',
           sourceId: world.sourceId ?? existing?.sourceId,
           dirty: world.dirty ?? existing?.dirty ?? false,
+          editedAt: world.editedAt ?? existing?.editedAt,
           downloadedAt: world.downloadedAt ?? existing?.downloadedAt,
           sourceUpdatedAt: world.sourceUpdatedAt ?? existing?.sourceUpdatedAt,
           data: world.data,
-          createdAt: new Date().toISOString(),
+          // createdAt is sticky: stamped once on first store, preserved across later saves.
+          createdAt: existing?.createdAt ?? new Date().toISOString(),
           lastAccessed: new Date().toISOString()
         });
         putRequest.onsuccess = () => resolve();
