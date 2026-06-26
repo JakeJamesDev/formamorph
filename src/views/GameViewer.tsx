@@ -23,7 +23,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { ToastContainer, toast } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
-import TTSModal, { type TTSModalHandle } from "../components/game/TTSModal";
+import TTSModal, { type TTSModalHandle, type TTSProgress } from "../components/game/TTSModal";
 import { EntityModal } from "../components/modals/EntityModal";
 import { LocationModal } from "../components/modals/LocationModal";
 import { SettingsModal } from "../components/modals/SettingsModal";
@@ -264,16 +264,19 @@ const GameViewer = ({
   const [isTTSModalOpen, setIsTTSModalOpen] = useState(false);
   const [ttsLoaded, setTtsLoaded] = useState(false);
   const [ttsGenerating, setTtsGenerating] = useState(false);
+  const [ttsProgress, setTtsProgress] = useState<TTSProgress | null>(null);
   const ttsModalRef = useRef<TTSModalHandle>(null);
 
   // Generate TTS for `text` (or the current game text) with the busy flag set, so both the
-  // manual refresh button and auto-narration show the same spinner.
+  // manual refresh button and auto-narration show the same spinner + chunk progress.
   const generateTTS = async (text?: string): Promise<boolean> => {
     setTtsGenerating(true);
+    setTtsProgress({ done: 0, total: 1 });
     try {
-      return (await ttsModalRef.current?.regenerate(text)) ?? false;
+      return (await ttsModalRef.current?.regenerate(text, setTtsProgress)) ?? false;
     } finally {
       setTtsGenerating(false);
+      setTtsProgress(null);
     }
   };
 
@@ -1489,6 +1492,7 @@ ${playerNotes || "No notes available"}
       onRegenerateTTS={handleRegenerateTTS}
       ttsLoaded={ttsLoaded}
       ttsGenerating={ttsGenerating}
+      ttsProgress={ttsProgress}
       memoryBar={memoryBar}
       progressBar={progressBar}
       locationSuggestion={locationSuggestion}
