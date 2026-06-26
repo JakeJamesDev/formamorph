@@ -12,8 +12,17 @@ export interface StoredWorldRecord {
   author?: string;
   thumbnail?: string;
   /** Server `_id` of the Discover world this was downloaded from, if any. Local-only wrapper field:
-   *  never part of `data`, so it isn't published or exported with the world content. */
+   *  never part of `data`, so it isn't published or exported with the world content. Sticky: it
+   *  survives edits (storeWorld preserves it) so the download link persists; only delete removes it. */
   sourceId?: string;
+  /** Whether this download has been edited locally and so diverges from its source (git-dirty model).
+   *  Set true on an editor save, reset false on (re)download. Local-only, like `sourceId`. */
+  dirty?: boolean;
+  /** Wall-clock time this copy was (re)downloaded. Sticky across edits; local-only. */
+  downloadedAt?: string;
+  /** The server world's `updated_at` captured at (re)download — i.e. the source version we hold.
+   *  Compared against the server's live `updated_at` to detect refresh vs update. Sticky; local-only. */
+  sourceUpdatedAt?: string;
   data: {
     version?: string; // stamped on save/export (see lib/version)
     worldOverview: unknown;
@@ -81,7 +90,11 @@ class WorldStorageService {
           author: world.author || '',
           thumbnail: world.thumbnail,
           tags: world.data?.worldOverview?.tags || [],
-          sourceId: world.sourceId
+          sourceId: world.sourceId,
+          dirty: world.dirty,
+          downloadedAt: world.downloadedAt,
+          sourceUpdatedAt: world.sourceUpdatedAt,
+          lastAccessed: world.lastAccessed
         }));
         resolve(worlds);
       };
@@ -178,22 +191,29 @@ class WorldStorageService {
     return new Promise<void>((resolve, reject) => {
       const transaction = this.db!.transaction([this.storeName], 'readwrite');
       const store = transaction.objectStore(this.storeName);
-      const request = store.put({
-        id: world.id,
-        name: world.name,
-        description: world.description || '',
-        author: world.author || '',
-        thumbnail: world.thumbnail || '',
-        // Only the download path supplies sourceId; any other save (e.g. an editor save) omits it,
-        // so overwriting here drops the link — manual edits make the local copy "dirty" vs its source.
-        sourceId: world.sourceId,
-        data: world.data,
-        createdAt: new Date().toISOString(),
-        lastAccessed: new Date().toISOString()
-      });
-
-      request.onsuccess = () => resolve();
-      request.onerror = () => reject('Failed to store world');
+      // Read-merge so the download link survives saves: sourceId is sticky (inherited unless the
+      // caller supplies one), and dirty defaults to the existing/false unless the caller sets it.
+      const getRequest = store.get(world.id);
+      getRequest.onsuccess = () => {
+        const existing = getRequest.result;
+        const putRequest = store.put({
+          id: world.id,
+          name: world.name,
+          description: world.description || '',
+          author: world.author || '',
+          thumbnail: world.thumbnail || '',
+          sourceId: world.sourceId ?? existing?.sourceId,
+          dirty: world.dirty ?? existing?.dirty ?? false,
+          downloadedAt: world.downloadedAt ?? existing?.downloadedAt,
+          sourceUpdatedAt: world.sourceUpdatedAt ?? existing?.sourceUpdatedAt,
+          data: world.data,
+          createdAt: new Date().toISOString(),
+          lastAccessed: new Date().toISOString()
+        });
+        putRequest.onsuccess = () => resolve();
+        putRequest.onerror = () => reject('Failed to store world');
+      };
+      getRequest.onerror = () => reject('Failed to store world');
     });
   }
 

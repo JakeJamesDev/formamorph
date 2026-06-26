@@ -158,4 +158,10 @@ export interface WorldMetadata {
   tags?: string[];
   /** Server `_id` of the Discover world this local copy was downloaded from, if any. */
   sourceId?: string;
+  /** True if a downloaded world has been edited locally and so diverges from its source. */
+  dirty?: boolean;
+  /** Wall-clock time this copy was (re)downloaded. */
+  downloadedAt?: string;
+  /** The server world's `updated_at` captured at download — the source version this copy holds. */
+  sourceUpdatedAt?: string;
 }

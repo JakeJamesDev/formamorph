@@ -226,6 +226,8 @@ function useProvideGameData() {
         description: worldOverview.description,
         author: worldOverview.author,
         thumbnail: worldOverview.thumbnail ?? undefined,
+        // A save means the local copy was edited; flag it dirty (sourceId is preserved by storeWorld).
+        dirty: true,
         data: { version: APP_VERSION, worldOverview, stats, locations, entities, traits, statUpdates, dictionary },
       });
       setSavedSnapshot(serializeWorld(worldOverview, stats, locations, entities, traits, statUpdates, dictionary));
