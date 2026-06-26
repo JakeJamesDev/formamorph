@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import { useSettings, type ThinkingMode, type ParagraphLimit } from '@/contexts/SettingsContext';
 import { DEFAULT_ENDPOINT, DEFAULT_API_TOKEN, DEFAULT_MODEL_NAME, DEFAULT_MAX_TOKENS } from '@/contexts/settingsDefaults';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
@@ -85,13 +86,16 @@ export const SettingsModal = ({ isOpen, onOpenChange }: {
           ? { red: false, text: `Detected ${(detectedContextWindow ?? contextWindow).toLocaleString()} tok from the endpoint.` }
           : { red: false, text: 'Auto-detected from your endpoint; lower it if the model feels constantly full.' };
 
-  const handleResetPrompts = () => {
-    setSystemPrompt(defaultSystemPrompt);
-    setChoicesPrompt(defaultChoicesPrompt);
-    setStatUpdatesPrompt(defaultStatUpdatesPrompt);
-    setLocationChangePromptText(defaultLocationChangePrompt);
-    setThinkingPrompt(defaultThinkingPrompt);
+  // The selected prompt sub-tab, so the Reset button can target just that prompt.
+  const [promptTab, setPromptTab] = useState('gametext');
+  const promptResets: Record<string, { label: string; reset: () => void }> = {
+    gametext: { label: 'Game Text', reset: () => setSystemPrompt(defaultSystemPrompt) },
+    thinking: { label: 'Thinking', reset: () => setThinkingPrompt(defaultThinkingPrompt) },
+    choices: { label: 'Choices', reset: () => setChoicesPrompt(defaultChoicesPrompt) },
+    statupdates: { label: 'Stat Updates', reset: () => setStatUpdatesPrompt(defaultStatUpdatesPrompt) },
+    location: { label: 'Location Change', reset: () => setLocationChangePromptText(defaultLocationChangePrompt) },
   };
+  const selectedPrompt = promptResets[promptTab] ?? promptResets.gametext;
 
   return (
     <Dialog open={isOpen} onOpenChange={onOpenChange}>
@@ -346,90 +350,78 @@ export const SettingsModal = ({ isOpen, onOpenChange }: {
             </div>
           </TabsContent>
 
-          <TabsContent value="prompts" className="py-4 px-2 flex-1 min-h-0 overflow-y-auto">
-            <div className="grid gap-4">
-              <div className="grid grid-cols-1 sm:grid-cols-4 items-center gap-4">
-                <label htmlFor="systemPrompt" className="text-left sm:text-right">
-                  Game Text Prompt
-                </label>
+          <TabsContent value="prompts" className="pt-4 px-2 pb-4 flex-1 min-h-0 data-[state=active]:flex flex-col gap-4">
+            {/* Nested, frozen tab bar — one prompt per tab; only the selected prompt shows. */}
+            <Tabs value={promptTab} onValueChange={setPromptTab} className="w-full flex flex-col flex-1 min-h-0">
+              <TabsList className="flex flex-wrap h-auto justify-center gap-1 flex-shrink-0">
+                <TabsTrigger value="gametext">Game Text</TabsTrigger>
+                {thinkingMode === 'precall' && <TabsTrigger value="thinking">Thinking</TabsTrigger>}
+                <TabsTrigger value="choices">Choices</TabsTrigger>
+                <TabsTrigger value="statupdates">Stat Updates</TabsTrigger>
+                <TabsTrigger value="location">Location Change</TabsTrigger>
+              </TabsList>
+
+              <TabsContent value="gametext" className="mt-4 flex-1 min-h-0 data-[state=active]:flex flex-col">
                 <Textarea
                   id="systemPrompt"
                   value={systemPrompt}
                   onChange={(e) => setSystemPrompt(e.target.value)}
-                  className="col-span-3"
-                  rows={6}
+                  className="w-full flex-1 min-h-0 resize-none"
                 />
-              </div>
+              </TabsContent>
+
               {thinkingMode === 'precall' && (
-                <div className="grid grid-cols-1 sm:grid-cols-4 items-center gap-4">
-                  <label htmlFor="thinkingPrompt" className="text-left sm:text-right">
-                    Thinking Prompt
-                  </label>
+                <TabsContent value="thinking" className="mt-4 flex-1 min-h-0 data-[state=active]:flex flex-col">
                   <Textarea
                     id="thinkingPrompt"
                     value={thinkingPrompt}
                     onChange={(e) => setThinkingPrompt(e.target.value)}
-                    className="col-span-3"
-                    rows={6}
+                    className="w-full flex-1 min-h-0 resize-none"
                   />
-                </div>
+                </TabsContent>
               )}
-              <div className="grid grid-cols-1 sm:grid-cols-4 items-center gap-4">
-                <label htmlFor="choicesPrompt" className="text-left sm:text-right">
-                  Choices Prompt
-                </label>
-                <div className="col-span-3">
-                  <Textarea
-                    id="choicesPrompt"
-                    value={choicesPrompt}
-                    onChange={(e) => setChoicesPrompt(e.target.value)}
-                    className="w-full"
-                    rows={4}
-                  />
-                  <p className="text-xs text-gray-500 mt-1">Write &apos;DISABLED&apos; to disable</p>
-                </div>
-              </div>
-              <div className="grid grid-cols-1 sm:grid-cols-4 items-center gap-4">
-              <label htmlFor="statUpdatesPrompt" className="text-left sm:text-right">
-                Stat Updates Prompt
-              </label>
-              <div className="col-span-3">
+
+              <TabsContent value="choices" className="mt-4 flex-1 min-h-0 data-[state=active]:flex flex-col gap-1">
+                <Textarea
+                  id="choicesPrompt"
+                  value={choicesPrompt}
+                  onChange={(e) => setChoicesPrompt(e.target.value)}
+                  className="w-full flex-1 min-h-0 resize-none"
+                />
+                <p className="text-xs text-gray-500 flex-shrink-0">Write &apos;DISABLED&apos; to disable</p>
+              </TabsContent>
+
+              <TabsContent value="statupdates" className="mt-4 flex-1 min-h-0 data-[state=active]:flex flex-col gap-1">
                 <Textarea
                   id="statUpdatesPrompt"
                   value={statUpdatesPrompt}
                   onChange={(e) => setStatUpdatesPrompt(e.target.value)}
-                  className="w-full"
-                  rows={6}
+                  className="w-full flex-1 min-h-0 resize-none"
                 />
-                <p className="text-xs text-gray-500 mt-1">Write &apos;DISABLED&apos; to disable</p>
-              </div>
-            </div>
-              <div className="grid grid-cols-1 sm:grid-cols-4 items-center gap-4">
-                <label htmlFor="locationChangePrompt" className="text-left sm:text-right">
-                  Location Change Prompt
-                </label>
-                <div className="col-span-3">
-                  <Textarea
-                    id="locationChangePrompt"
-                    value={locationChangePromptText}
-                    onChange={(e) => setLocationChangePromptText(e.target.value)}
-                    className="w-full"
-                    rows={6}
-                  />
-                  <p className="text-xs text-gray-500 mt-1">Lets the AI move the player between locations. Write DISABLED to turn off.</p>
-                </div>
-              </div>
-              <div className="flex justify-end">
-                <ConfirmDialog
-                  title="Reset AI Prompts"
-                  description="Are you sure you want to reset all AI prompts to their default values?"
-                  onConfirm={handleResetPrompts}
-                >
-                  <Button variant="outline" className="flex items-center gap-2">
-                    Reset AI Prompts
-                  </Button>
-                </ConfirmDialog>
-              </div>
+                <p className="text-xs text-gray-500 flex-shrink-0">Write &apos;DISABLED&apos; to disable</p>
+              </TabsContent>
+
+              <TabsContent value="location" className="mt-4 flex-1 min-h-0 data-[state=active]:flex flex-col gap-1">
+                <Textarea
+                  id="locationChangePrompt"
+                  value={locationChangePromptText}
+                  onChange={(e) => setLocationChangePromptText(e.target.value)}
+                  className="w-full flex-1 min-h-0 resize-none"
+                />
+                <p className="text-xs text-gray-500 flex-shrink-0">Lets the AI move the player between locations. Write DISABLED to turn off.</p>
+              </TabsContent>
+            </Tabs>
+
+            <div className="flex justify-end flex-shrink-0">
+              <ConfirmDialog
+                title={`Reset ${selectedPrompt.label} Prompt`}
+                description={`Are you sure you want to reset the ${selectedPrompt.label} prompt to its default value?`}
+                onConfirm={selectedPrompt.reset}
+              >
+                <Button variant="outline" className="flex items-center gap-2">
+                  Reset {selectedPrompt.label} Prompt
+                </Button>
+              </ConfirmDialog>
             </div>
           </TabsContent>
 
