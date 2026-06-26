@@ -22,6 +22,7 @@ Formamorph runs entirely in the browser and talks to any **OpenAI-compatible** c
 - 🔊 **Audio** — in-browser text-to-speech (Kokoro), plus per-location ambient sound and background music
 - 💾 **Saves** — multiple save slots with state rollback, stored locally in IndexedDB
 - 📱 **Responsive** — three-panel desktop layout and a single-panel portrait/mobile mode
+- 🖥️ **Runs in-browser or as a standalone Windows app** — package a portable `.exe` with `npm run desktop:build` (see [Desktop build](#-desktop-build-windows))
 - 🏷️ **Discover & publish** — tag worlds and share them via an optional workshop backend (community content is **unmoderated** — see the [disclaimer](#disclaimer))
 
 ---
@@ -46,6 +47,29 @@ Then open the app, head to **Settings**, and point it at your AI endpoint (or pr
 | `npm run preview` | Preview the production build locally |
 | `npm run lint` | Run ESLint |
 | `npm run typecheck` | Type-check with `tsc` (no emit) |
+| `npm run desktop:dev` | Build, then launch the app in a desktop window (Electron) |
+| `npm run desktop:build` | Package a standalone **Windows `.exe`** to `release/` |
+
+## 🖥️ Desktop build (Windows)
+
+Formamorph can run as a standalone Windows `.exe` — no browser needed. A thin [Electron](https://www.electronjs.org/) shell (`electron/`) loads the normal web build and bundles its own Chromium, so WebGPU TTS, 3D rendering, and IndexedDB saves all work exactly as in-browser.
+
+```bash
+npm run desktop:build
+```
+
+This produces a **portable** single-file executable at `release/Formamorph-<version>.exe` (the `release/` folder is gitignored). Double-click it to run — no install step. For a quick dev run in a desktop window without packaging, use `npm run desktop:dev`.
+
+> [!WARNING]
+> **`EPERM: … rename 'release\win-unpacked.tmp'` on Windows?**
+> This happens when **Windows Search** indexes the folder you're building in (the `Documents` tree is indexed by default). The indexer opens handles on the freshly-extracted Electron files right as the packager renames them.
+>
+> **Fix (one-time):** Control Panel → **Indexing Options** → **Modify** → uncheck this repo (or its `release/` folder). Excluding your whole `Documents\GitHub` is reasonable — source repos shouldn't be indexed anyway.
+>
+> **Or** build to a location outside the indexed tree:
+> ```bash
+> npx electron-builder --win portable -c.directories.output=D:/builds/formamorph
+> ```
 
 ## ⚙️ Configuration
 

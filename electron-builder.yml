@@ -1,0 +1,12 @@
+appId: dev.jakejames.formamorph
+productName: Formamorph
+directories:
+  output: release
+files:
+  - dist/**/*
+  - electron/**/*
+win:
+  target:
+    - portable
+portable:
+  artifactName: Formamorph-${version}.exe
