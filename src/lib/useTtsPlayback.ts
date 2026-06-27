@@ -185,6 +185,7 @@ export function useTtsPlayback(): TtsPlayback {
     if (paused) {
       pausedPosRef.current = t;
       setPosition(t);
+      setEnded(false); // so a later play resumes from here, not the start
     } else {
       playFrom(t);
     }

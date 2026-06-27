@@ -1,5 +1,21 @@
 import { describe, it, expect } from 'vitest';
-import { splitForTTS } from './ttsChunks';
+import { splitForTTS, splitSentenceSegments } from './ttsChunks';
+
+describe('splitSentenceSegments', () => {
+  it('splits on terminator + whitespace and keeps terminators', () => {
+    expect(splitSentenceSegments('One. Two! Three?')).toEqual(['One.', 'Two!', 'Three?']);
+  });
+
+  it('leaves a trailing in-progress sentence as the last segment', () => {
+    const segs = splitSentenceSegments('Done. In progres');
+    expect(segs).toEqual(['Done.', 'In progres']);
+    expect(segs.slice(0, -1)).toEqual(['Done.']); // "complete" sentences for streaming
+  });
+
+  it('returns a single segment when there is no boundary yet', () => {
+    expect(splitSentenceSegments('No boundary here')).toEqual(['No boundary here']);
+  });
+});
 
 describe('splitForTTS', () => {
   it('returns nothing for empty or whitespace-only text', () => {

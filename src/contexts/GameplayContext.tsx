@@ -14,7 +14,6 @@ import type {
   GameState,
   SaveObject,
   Choice,
-  TTSAudio,
 } from '@/types';
 
 function useProvideGameplay() {
@@ -32,7 +31,6 @@ function useProvideGameplay() {
   const [gameplayText, setGameplayText] = useState("");
   const [isFlashing, setIsFlashing] = useState(false);
   const [isEditMode, setIsEditMode] = useState(false);
-  const [ttsAudio, setTTSAudio] = useState<TTSAudio | null>(null);
   const [choices, setChoices] = useState<Choice[]>([]);
   const [isGameStarted, setIsGameStarted] = useState(false);
   const [playerInput, setPlayerInput] = useState('');
@@ -310,8 +308,6 @@ function useProvideGameplay() {
     setIsFlashing,
     isEditMode,
     setIsEditMode,
-    ttsAudio,
-    setTTSAudio,
     ttsPlayback,
     choices,
     setChoices,

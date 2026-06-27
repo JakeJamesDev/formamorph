@@ -1,10 +1,9 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Play, Pause, Volume2, Volume1, VolumeX } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Slider } from "@/components/ui/slider";
 import { useSettings } from "@/contexts/SettingsContext";
 import { cn } from "@/lib/utils";
-import type { TTSAudio } from "@/types";
 
 function fmtTime(s: number): string {
   if (!Number.isFinite(s)) return "0:00";
@@ -14,10 +13,9 @@ function fmtTime(s: number): string {
 }
 
 // Compact, on-theme player replacing the native <audio controls> so it matches the app's
-// Button/Slider styling. Pass either `audio` (a generated TTS WAV buffer) or `src` (a URL /
-// data URL, e.g. uploaded background music). `autoPlay` starts playback on mount.
-export default function AudioPlayer({ audio, src, autoPlay = false, className }: {
-  audio?: TTSAudio;
+// Button/Slider styling. `src` is a URL / data URL (e.g. uploaded background music or entity
+// sound). `autoPlay` starts playback on mount.
+export default function AudioPlayer({ src, autoPlay = false, className }: {
   src?: string;
   autoPlay?: boolean;
   className?: string;
@@ -44,13 +42,7 @@ export default function AudioPlayer({ audio, src, autoPlay = false, className }:
   };
   const VolumeIcon = ttsVolume === 0 ? VolumeX : ttsVolume < 0.5 ? Volume1 : Volume2;
 
-  // Build a blob URL only for the in-memory TTS buffer; a provided `src` is used as-is.
-  const objectUrl = useMemo(
-    () => (audio ? URL.createObjectURL(new Blob([audio.audio as BlobPart], { type: "audio/wav" })) : null),
-    [audio]
-  );
-  useEffect(() => () => { if (objectUrl) URL.revokeObjectURL(objectUrl); }, [objectUrl]);
-  const url = objectUrl ?? src ?? "";
+  const url = src ?? "";
 
   // Auto-play on mount/new clip when requested (browsers may block; that's fine).
   useEffect(() => {

@@ -24,12 +24,6 @@ export interface HairTypeDef {
   canChangeLength: boolean;
 }
 
-/** Generated TTS clip handed from the TTS modal to the gameplay view (WAV bytes). */
-export interface TTSAudio {
-  audio: Uint8Array;
-  samplingRate: number;
-}
-
 export interface CharacterData {
   bodyShape: BodyShape;
   bellySize: number;

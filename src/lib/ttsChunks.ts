@@ -2,6 +2,12 @@
 // narration must be split into chunks that each stay under the budget. maxChars is a conservative
 // character proxy for that token budget (narration sentences sit well under it).
 
+/** Split text at sentence boundaries (terminator + whitespace). The last segment may be an
+ *  in-progress sentence with no trailing terminator — useful when feeding streaming text. */
+export function splitSentenceSegments(text: string): string[] {
+  return text.split(/(?<=[.!?…])\s+/);
+}
+
 /** Split `text` into sentence-packed chunks, each at most `maxChars` long. */
 export function splitForTTS(text: string, maxChars = 400): string[] {
   const normalized = text.replace(/\s+/g, ' ').trim();
