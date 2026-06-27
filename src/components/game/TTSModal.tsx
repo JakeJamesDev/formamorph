@@ -23,73 +23,12 @@ import { useVramStats } from "@/lib/useVramStats";
 import { useSettings } from "@/contexts/SettingsContext";
 import { useGameplay } from "@/contexts/GameplayContext";
 import { splitForTTS } from "@/lib/ttsChunks";
-import type { TTSAudio } from "@/types";
-
 /** Reports generation progress as `done` of `total` sentence-chunks. */
 export type TTSProgress = { done: number; total: number };
 
 // Kokoro-82M at fp32 ≈ 331 MB of weights; WebGPU runtime buffers push the live footprint
 // higher, so this is a conservative estimate used only for the pre-load low-VRAM warning.
 const KOKORO_VRAM_ESTIMATE_MB = 400;
-
-// Function to create a WAV file from audio data
-function createWAV(audioData: Float32Array, sampleRate: number) {
-  const numChannels = 1; // Mono audio
-  const bitsPerSample = 16;
-  const bytesPerSample = bitsPerSample / 8;
-
-  // Convert Float32Array to Int16Array
-  const samples = new Int16Array(audioData.length);
-  for (let i = 0; i < audioData.length; i++) {
-    const s = Math.max(-1, Math.min(1, audioData[i]));
-    samples[i] = s < 0 ? s * 0x8000 : s * 0x7FFF;
-  }
-
-  // Create the WAV header
-  const headerLength = 44;
-  const dataLength = samples.length * bytesPerSample;
-  const fileLength = headerLength + dataLength;
-  const header = new ArrayBuffer(headerLength);
-  const view = new DataView(header);
-
-  // RIFF chunk descriptor
-  view.setUint8(0, 'R'.charCodeAt(0));
-  view.setUint8(1, 'I'.charCodeAt(0));
-  view.setUint8(2, 'F'.charCodeAt(0));
-  view.setUint8(3, 'F'.charCodeAt(0));
-  view.setUint32(4, fileLength - 8, true);
-  view.setUint8(8, 'W'.charCodeAt(0));
-  view.setUint8(9, 'A'.charCodeAt(0));
-  view.setUint8(10, 'V'.charCodeAt(0));
-  view.setUint8(11, 'E'.charCodeAt(0));
-
-  // fmt sub-chunk
-  view.setUint8(12, 'f'.charCodeAt(0));
-  view.setUint8(13, 'm'.charCodeAt(0));
-  view.setUint8(14, 't'.charCodeAt(0));
-  view.setUint8(15, ' '.charCodeAt(0));
-  view.setUint32(16, 16, true); // fmt chunk size
-  view.setUint16(20, 1, true); // audio format (PCM)
-  view.setUint16(22, numChannels, true);
-  view.setUint32(24, sampleRate, true);
-  view.setUint32(28, sampleRate * numChannels * bytesPerSample, true); // byte rate
-  view.setUint16(32, numChannels * bytesPerSample, true); // block align
-  view.setUint16(34, bitsPerSample, true);
-
-  // data sub-chunk
-  view.setUint8(36, 'd'.charCodeAt(0));
-  view.setUint8(37, 'a'.charCodeAt(0));
-  view.setUint8(38, 't'.charCodeAt(0));
-  view.setUint8(39, 'a'.charCodeAt(0));
-  view.setUint32(40, dataLength, true);
-
-  // Combine header and audio data
-  const wavBuffer = new Uint8Array(fileLength);
-  wavBuffer.set(new Uint8Array(header));
-  wavBuffer.set(new Uint8Array(samples.buffer), headerLength);
-
-  return wavBuffer;
-}
 
 export interface TTSModalHandle {
   // Regenerate audio using the already-loaded model/voice. Pass `text` to override the
@@ -108,9 +47,8 @@ const TTSModal = forwardRef<TTSModalHandle, {
   isOpen: boolean;
   onOpenChange: (open: boolean) => void;
   gameText?: string;
-  onTTSGenerated: (audioData: TTSAudio) => void;
   onLoadedChange?: (loaded: boolean) => void;
-}>(function TTSModal({ isOpen, onOpenChange, gameText = "Hello World", onTTSGenerated, onLoadedChange }, ref) {
+}>(function TTSModal({ isOpen, onOpenChange, gameText = "Hello World", onLoadedChange }, ref) {
   const [isLoading, setIsLoading] = useState(false);
   const [tts, setTTS] = useState<KokoroTTS | null>(null);
   const [voices, setVoices] = useState<string[]>([]);
@@ -167,7 +105,7 @@ const TTSModal = forwardRef<TTSModalHandle, {
 
   // Generate audio for `text` with the loaded model/voice; returns false if not ready.
   // Kokoro truncates each generate() past ~510 tokens, so the text is split into sentence-chunks
-  // and generated one at a time (reporting progress), then concatenated into a single WAV.
+  // and generated one at a time (reporting progress), each fed to the playback engine as it's ready.
   const generateAudio = useCallback(async (
     text: string,
     onProgress?: (progress: TTSProgress) => void,
@@ -181,25 +119,13 @@ const TTSModal = forwardRef<TTSModalHandle, {
 
       // Start a fresh playback session; each chunk plays the moment it's ready (gapless).
       ttsPlayback.reset();
-      const parts: Float32Array[] = [];
-      let samplingRate = 24000;
       for (let i = 0; i < total; i++) {
         onProgress?.({ done: i, total });
         const result = await tts.generate(chunks[i], { voice: selectedVoice as GenerateOptions['voice'] });
-        const data = new Float32Array(result.audio);
-        parts.push(data);
-        samplingRate = result.sampling_rate;
-        ttsPlayback.append(data, samplingRate);
+        ttsPlayback.append(new Float32Array(result.audio), result.sampling_rate);
       }
       ttsPlayback.finalize();
       onProgress?.({ done: total, total });
-
-      const merged = new Float32Array(parts.reduce((sum, p) => sum + p.length, 0));
-      let offset = 0;
-      for (const p of parts) { merged.set(p, offset); offset += p.length; }
-
-      const wavData = createWAV(merged, samplingRate);
-      onTTSGenerated({ audio: wavData, samplingRate });
       return true;
     } catch (error) {
       console.error("Failed to generate or play audio:", error);
@@ -207,7 +133,7 @@ const TTSModal = forwardRef<TTSModalHandle, {
     } finally {
       setIsPlaying(false);
     }
-  }, [tts, selectedVoice, onTTSGenerated, ttsPlayback]);
+  }, [tts, selectedVoice, ttsPlayback]);
 
   // Synthesize queued sentences sequentially, appending each to the playback engine; finalize once
   // the stream has ended and the queue is drained.

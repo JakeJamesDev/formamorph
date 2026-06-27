@@ -35,6 +35,7 @@ import { estimateHistoryChars, estimateTokens } from "../lib/memoryUtils";
 import { parseGameText, stripReasoning, stripReasoningLive } from "../lib/aiResponse";
 import { INLINE_THINKING_DIRECTIVE, markdownGuidance } from "../components/game/GamePrompts";
 import { lengthGuidance, trimToLastSentence } from "../lib/outputLength";
+import { splitSentenceSegments } from "../lib/ttsChunks";
 import { useSmoothedReveal } from "../lib/useSmoothedReveal";
 import { parseSlashCommand } from "../lib/slashCommands";
 import { MARKDOWN_SAMPLE } from "../lib/markdownSample";
@@ -140,7 +141,6 @@ const GameViewer = ({
     logsEndRef,
     gameplayText,
     setGameplayText,
-    setTTSAudio,
     setChoices,
     isGameStarted,
     setIsGameStarted,
@@ -1144,7 +1144,7 @@ ${playerNotes || "No notes available"}
 
             // Feed newly-completed sentences to streaming TTS, holding back the last (in-progress) one.
             if (ttsStreaming) {
-              const segments = display.split(/(?<=[.!?…])\s+/);
+              const segments = splitSentenceSegments(display);
               const completeCount = segments.length - 1;
               for (let i = ttsSentenceCursorRef.current; i < completeCount; i++) {
                 ttsModalRef.current?.streamSentence(segments[i]);
@@ -1235,7 +1235,7 @@ ${playerNotes || "No notes available"}
         reveal.finish(finalContent);
         // Flush any sentence(s) still unsent (incl. a final one with no trailing terminator), then end.
         if (ttsStreaming) {
-          const segments = finalContent.split(/(?<=[.!?…])\s+/);
+          const segments = splitSentenceSegments(finalContent);
           for (let i = ttsSentenceCursorRef.current; i < segments.length; i++) {
             ttsModalRef.current?.streamSentence(segments[i]);
           }
@@ -2049,7 +2049,6 @@ ${playerNotes || "No notes available"}
         isOpen={isTTSModalOpen}
         onOpenChange={setIsTTSModalOpen}
         gameText={gameplayText}
-        onTTSGenerated={setTTSAudio}
         onLoadedChange={setTtsLoaded}
       />
 
