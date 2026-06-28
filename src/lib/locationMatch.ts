@@ -3,7 +3,7 @@
  * string ends) — so "cave" matches "the cave." but not "caves". Both args are lowercased
  * by the caller.
  */
-function containsWord(haystack: string, needle: string): boolean {
+export function containsWord(haystack: string, needle: string): boolean {
   if (!needle) return false;
   for (let from = 0; ; ) {
     const idx = haystack.indexOf(needle, from);

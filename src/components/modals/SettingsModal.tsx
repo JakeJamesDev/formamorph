@@ -56,6 +56,8 @@ export const SettingsModal = ({ isOpen, onOpenChange }: {
     setMemoryDigests,
     showSilentRequests,
     setShowSilentRequests,
+    useDigestsInContext,
+    setUseDigestsInContext,
     paragraphLimit,
     setParagraphLimit,
     autoscroll,
@@ -268,6 +270,24 @@ export const SettingsModal = ({ isOpen, onOpenChange }: {
                   </span>
                 </div>
               </div>
+              {memoryDigests && (
+                <div className="grid grid-cols-1 sm:grid-cols-4 items-start gap-4">
+                  <label htmlFor="useDigestsInContext" className="text-left sm:text-right pt-1">
+                    Use Digests in Context
+                  </label>
+                  <div className="col-span-3 flex items-start gap-2">
+                    <Checkbox
+                      id="useDigestsInContext"
+                      checked={useDigestsInContext}
+                      onCheckedChange={(c) => setUseDigestsInContext(c === true)}
+                      className="mt-0.5"
+                    />
+                    <span className="text-xs text-muted-foreground">
+                      Actually feed digests to the model: keep recent turns verbatim, fold older turns into a &ldquo;story so far&rdquo; recap, and pull a relevant past turn back to full detail when your action references it. Off by default — it changes what each request sends. Without this, Memory Digests only generates and shows summaries.
+                    </span>
+                  </div>
+                </div>
+              )}
               <div className="grid grid-cols-1 sm:grid-cols-4 items-start gap-4">
                 <label className="text-left sm:text-right pt-1">Thinking</label>
                 <RadioGroup

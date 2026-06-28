@@ -37,6 +37,7 @@ import { INLINE_THINKING_DIRECTIVE, markdownGuidance } from "../components/game/
 import { lengthGuidance, trimToLastSentence } from "../lib/outputLength";
 import { splitSentenceSegments } from "../lib/ttsChunks";
 import { selectDueDigests, applyDigest, parseTurnContent } from "../lib/turnDigest";
+import { parseTurns, buildVerbatimHistory, buildBandedHistory, extractKeywords, type BandCounts } from "../lib/turnBanding";
 import { useSmoothedReveal } from "../lib/useSmoothedReveal";
 import { parseSlashCommand } from "../lib/slashCommands";
 import { MARKDOWN_SAMPLE } from "../lib/markdownSample";
@@ -54,7 +55,6 @@ import {
   RightPanel,
 } from "../components/game/GamePanels";
 import { ConfirmDialog } from "../components/ConfirmDialog";
-import json5 from "json5";
 
 // Debug utility function - only logs on error
 const debugLog = (message: string, data: unknown, isError = false) => {
@@ -88,6 +88,10 @@ interface DebugTurn {
 // Each completed turn is digested as soon as it commits (same-turn), so a summary is always ready for
 // the next turn's context assembly. Small cap on each digest request — fact lines are short.
 const DIGEST_MAX_TOKENS = 200;
+// Recent turn-pairs always kept full when banding is on (the immediate situation is never compressed).
+const DIGEST_VERBATIM_FLOOR = 3;
+// Cap on older turns rehydrated to full text per turn — rehydration is a targeted aid, not bulk restore.
+const DIGEST_MAX_REHYDRATIONS = 3;
 
 const GameViewer = ({
   initialTraits = [],
@@ -132,6 +136,7 @@ const GameViewer = ({
     memoryDigests,
     summaryPrompt,
     showSilentRequests,
+    useDigestsInContext,
   } = useSettings();
 
   const {
@@ -409,48 +414,34 @@ const GameViewer = ({
     setFullMessageHistory((prev) => [...prev, { role, content }]);
   }, [setFullMessageHistory]);
 
-  const getTrimmedMessageHistory = useCallback((promptTokens = 0) => {
-    let trimmedHistory: ChatMessage[] = [];
-    let usedTokens = 0;
+  // Assemble the history sent to the model. Banding (memoryDigests + useDigestsInContext) keeps a recent
+  // verbatim floor, folds older turns into a "story so far" digest band, and rehydrates a few older turns
+  // the action lexically touches; otherwise the legacy verbatim-newest-first trim. Keywords come from the
+  // player's `action` only — seeding from full narration over-matches and rehydrates everything. The
+  // meter passes no action, so it shows the steady-state band cost with no rehydration.
+  const lastBandCountsRef = useRef<BandCounts | null>(null);
 
-    // History gets whatever's left of the context window after the system prompt and reserved output,
-    // minus a small safety margin (token estimates can under-count the real tokenizer).
-    const margin = Math.max(256, Math.round(contextWindow * 0.05));
-    const historyBudget = Math.max(0, contextWindow - promptTokens - maxTokens - margin);
-
-    // Start from most recent messages and work backwards
-    for (let i = fullMessageHistory.length - 1; i >= 1; i -= 2) {
-      const assistantMessage = fullMessageHistory[i];
-      const userMessage = fullMessageHistory[i - 1];
-
-      // Skip if either message is missing
-      if (!assistantMessage || !userMessage) continue;
-
-      // Parse assistant message to get only game_text
-      let assistantGameText: ChatMessage;
-      try {
-        const parsed = json5.parse(assistantMessage.content);
-        assistantGameText = {
-          role: "assistant",
-          content: parsed.game_text,
-        };
-      } catch {
-        continue; // Skip if parsing fails
-      }
-
-      const pairTokens = estimateTokens(JSON.stringify([userMessage, assistantGameText]).length);
-
-      // Check if adding this pair would exceed the history budget
-      if (usedTokens + pairTokens <= historyBudget) {
-        trimmedHistory = [userMessage, assistantGameText, ...trimmedHistory];
-        usedTokens += pairTokens;
-      } else {
-        break;
-      }
+  const getTrimmedMessageHistory = useCallback((promptTokens = 0, action = "") => {
+    const turns = parseTurns(fullMessageHistory);
+    if (memoryDigests && useDigestsInContext) {
+      const keywords = extractKeywords(action, dictionary);
+      const rehydrateCap = Math.round(Math.max(0, contextWindow - promptTokens - maxTokens) * 0.25);
+      const { messages, counts } = buildBandedHistory({
+        turns,
+        contextWindow,
+        promptTokens,
+        maxTokens,
+        verbatimFloor: DIGEST_VERBATIM_FLOOR,
+        keywords,
+        rehydrateCap,
+        maxRehydrations: DIGEST_MAX_REHYDRATIONS,
+      });
+      lastBandCountsRef.current = counts;
+      return messages;
     }
-
-    return trimmedHistory;
-  }, [fullMessageHistory, contextWindow, maxTokens]);
+    lastBandCountsRef.current = null;
+    return buildVerbatimHistory(turns, contextWindow, promptTokens, maxTokens);
+  }, [fullMessageHistory, contextWindow, maxTokens, memoryDigests, useDigestsInContext, dictionary]);
 
   // Drive body morphs from stats: each stat's bound sliders track its value (min→max → 0→1 influence).
   useEffect(() => {
@@ -673,8 +664,9 @@ ${playerNotes || "No notes available"}
       updatedPrompt += `\n\n${dictionaryContext}`;
     }
 
-    // Get trimmed history before adding new action (history fills the window left by the prompt)
-    const trimmedHistory = getTrimmedMessageHistory(estimateTokens(updatedPrompt.length));
+    // Get trimmed history before adding new action (history fills the window left by the prompt).
+    // Pass the action so banding can rehydrate older turns it references.
+    const trimmedHistory = getTrimmedMessageHistory(estimateTokens(updatedPrompt.length), action);
 
     // One AbortController for the whole turn, so Stop aborts every sub-request — not just the active one.
     const controller = new AbortController();
@@ -716,10 +708,16 @@ ${playerNotes || "No notes available"}
         // (turns of action -> story) primes the model to just continue the story instead of planning.
         const lastStory =
           [...trimmedHistory].reverse().find((m) => m.role === "assistant")?.content || "";
+        // When banding is on, give the planner the digest band too (recent verbatim + digests, never
+        // digests-only) so its plan can't desync from facts the recap carries.
+        const digestBand =
+          trimmedHistory[0]?.role === "assistant" && trimmedHistory[0].content.startsWith("Story so far")
+            ? trimmedHistory[0].content
+            : "";
         const thinkMessages: ChatMessage[] = [
           {
             role: "user",
-            content: `${lastStory ? `What just happened:\n${lastStory}\n\n` : ""}The player's next action: ${action}\n\nWrite the brief plan now. Do not narrate.`,
+            content: `${digestBand ? `${digestBand}\n\n` : ""}${lastStory ? `What just happened:\n${lastStory}\n\n` : ""}The player's next action: ${action}\n\nWrite the brief plan now. Do not narrate.`,
           },
         ];
         const plan = await makeAIRequest(thinkPrompt, thinkMessages, "thinking", 256, signal);
@@ -1519,6 +1517,7 @@ ${playerNotes || "No notes available"}
     const windowTokens = contextWindow || 1;
     const promptTokens = estimateTokens(lastPromptChars);
     const trimmed = getTrimmedMessageHistory(promptTokens);
+    const bandCounts = lastBandCountsRef.current; // set by the call above when banding is active
     const historyTokens = estimateTokens(estimateHistoryChars(trimmed)); // what's actually sent
     const outputTokens = maxTokens;
     const usedTokens = promptTokens + historyTokens + outputTokens;
@@ -1550,9 +1549,29 @@ ${playerNotes || "No notes available"}
             <div className="font-semibold">Context window: {windowTokens.toLocaleString()} tok</div>
             {row("Prompt", promptTokens)}
             {row("History", historyTokens)}
+            {bandCounts && (
+              <div className="pl-3 text-muted-foreground space-y-0.5">
+                {row("Digest band", bandCounts.bandTokens)}
+                {row("Rehydrated", bandCounts.rehydratedTokens)}
+              </div>
+            )}
             {row("Reserved output", outputTokens)}
             <div className="flex justify-between font-medium"><span>Available:</span><span>{availableTokens.toLocaleString()} tok ({Math.max(0, 100 - usedPct).toFixed(0)}%)</span></div>
-            <div className="flex justify-between"><span>Messages kept:</span><span>{trimmed.length} / {fullMessageHistory.length}</span></div>
+            {bandCounts ? (
+              // Banding keeps every turn — verbatim or folded into the digest band — so frame it as
+              // "full vs digested", not "kept vs lost". Dropped only shows if a turn truly fell off.
+              <div className="flex justify-between">
+                <span>Turns:</span>
+                <span>
+                  {bandCounts.turnsTotal} ({bandCounts.turnsVerbatim} full, {bandCounts.turnsBanded} summarized
+                  {bandCounts.turnsTotal - bandCounts.turnsVerbatim - bandCounts.turnsBanded > 0
+                    ? `, ${bandCounts.turnsTotal - bandCounts.turnsVerbatim - bandCounts.turnsBanded} dropped`
+                    : ""})
+                </span>
+              </div>
+            ) : (
+              <div className="flex justify-between"><span>Turns kept:</span><span>{Math.floor(trimmed.length / 2)} / {Math.floor(fullMessageHistory.length / 2)}</span></div>
+            )}
           </PopoverContent>
         </Popover>
         <div className="flex-grow h-2 rounded-full bg-muted/70 overflow-hidden">
