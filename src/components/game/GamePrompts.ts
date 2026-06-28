@@ -135,6 +135,23 @@ In 2-4 short sentences, plan what should happen in response to the player's most
 - anything needed to stay consistent with what has happened so far.
 Output only this brief plan - no narration and no list of choices.`;
 
+// System prompt for the lazy per-turn memory digest (requestType 'summary'). Runs once per turn as it
+// ages past the verbatim window; output is stored on the turn and (in a later slice) used to keep old
+// events in context cheaply. This is extraction, not creative writing.
+export const defaultSummaryPrompt = `You are compressing one turn of an interactive story into durable memory. Extract only the facts that were explicitly stated this turn - do not infer, predict, or invent.
+
+Rules:
+- Output up to 3 short fact lines, one fact per line. Fewer is better.
+- Record what the player did and what changed as a result - anchor on the player's agency.
+- Name every subject explicitly; never use a bare pronoun ("Kael drew his blade", never "he drew his blade").
+- Keep the story's second-person voice ("you ...").
+- State only what this turn establishes; ignore earlier events and do not summarize the whole story.
+- If nothing notable happened this turn, output exactly: nothing notable
+
+Example:
+You agreed to escort Mira to the north gate.
+Kael revealed the bridge ahead had collapsed.`;
+
 // Appended to the game-text prompt for inline thinking (thinkingMode === 'inline'). The <think>
 // block is stripped from the narration before the player sees it.
 export const INLINE_THINKING_DIRECTIVE = `

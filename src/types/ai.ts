@@ -24,14 +24,24 @@ export interface ChatCompletionChunk {
   }>;
 }
 
-/** Kinds of AI request the game makes (thinking is the optional planning pass; locationChange is v1.2.0). */
-export type AIRequestType = 'thinking' | 'gametext' | 'choices' | 'statUpdates' | 'locationChange';
+/**
+ * Kinds of AI request the game makes (thinking is the optional planning pass; locationChange is
+ * v1.2.0; summary is the lazy per-turn memory digest).
+ */
+export type AIRequestType = 'thinking' | 'gametext' | 'choices' | 'statUpdates' | 'locationChange' | 'summary';
 
-/** Structured payload the game stores per turn (mirrors the JSON the app round-trips). */
+/**
+ * Structured payload the game stores per turn (mirrors the JSON the app round-trips).
+ * `turnId`/`summary` are additive memory-digest fields — absent on pre-digest saves.
+ */
 export interface AITurnResult {
   game_text: string;
   choices: string[];
   stat_changes: Array<Record<string, number>>;
+  /** Stable per-turn id (`crypto.randomUUID()`); powers the digest async-apply guard. */
+  turnId?: string;
+  /** Lazily-generated memory digest (typed fact lines) for this turn. */
+  summary?: string;
 }
 
 export interface AuthUser {
