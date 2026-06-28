@@ -1,5 +1,5 @@
 import { createContext, useContext, useState, useEffect, useRef, useCallback, type ReactNode } from 'react';
-import { defaultSystemPrompt, defaultChoicesPrompt, defaultStatUpdatesPrompt, defaultLocationChangePrompt, defaultThinkingPrompt } from '../components/game/GamePrompts';
+import { defaultSystemPrompt, defaultChoicesPrompt, defaultStatUpdatesPrompt, defaultLocationChangePrompt, defaultThinkingPrompt, defaultSummaryPrompt } from '../components/game/GamePrompts';
 import { DEFAULT_ENDPOINT, DEFAULT_API_TOKEN, DEFAULT_MODEL_NAME, DEFAULT_MAX_TOKENS, DEFAULT_CONTEXT_WINDOW } from './settingsDefaults';
 import { fetchContextLength } from '../lib/contextLength';
 import type { ParagraphLimit } from '../lib/outputLength';
@@ -65,6 +65,12 @@ function useProvideSettings() {
   // Synthesize narration audio sentence-by-sentence as the story streams (vs. after the full text).
   // Default off: streaming TTS competes with the LLM for the GPU when both run on one machine.
   const [streamNarrationAudio, setStreamNarrationAudio] = usePersistentState<boolean>(`${APP_ID}_streamNarrationAudio`, false, boolCodec);
+  // Generate a lazy per-turn memory digest as turns age out of the verbatim window.
+  // Default off: another async request that competes with the LLM for the GPU on a single machine.
+  const [memoryDigests, setMemoryDigests] = usePersistentState<boolean>(`${APP_ID}_memoryDigests`, false, boolCodec);
+  // Reveal "silent" requests (e.g. the memory digest) in the status bar and AI-context viewer.
+  // Default off: silent requests do their work without cluttering the UI; this is an inspection toggle.
+  const [showSilentRequests, setShowSilentRequests] = usePersistentState<boolean>(`${APP_ID}_showSilentRequests`, false, boolCodec);
   const [endpointUrl, setEndpointUrl] = usePersistentState<string>(`${APP_ID}_endpointUrl`, DEFAULT_ENDPOINT, stringCodec);
   const [apiToken, setApiToken] = usePersistentState<string>(`${APP_ID}_apiToken`, DEFAULT_API_TOKEN, stringCodec);
   const [modelName, setModelName] = usePersistentState<string>(`${APP_ID}_modelName`, DEFAULT_MODEL_NAME, stringCodec);
@@ -130,6 +136,7 @@ function useProvideSettings() {
     serialize: (v) => v,
   });
   const [thinkingPrompt, setThinkingPrompt] = usePersistentState<string>(`${APP_ID}_thinkingPrompt`, defaultThinkingPrompt, stringCodec);
+  const [summaryPrompt, setSummaryPrompt] = usePersistentState<string>(`${APP_ID}_summaryPrompt`, defaultSummaryPrompt, stringCodec);
   const [vramHelperUrl, setVramHelperUrl] = usePersistentState<string>(`${APP_ID}_vramHelperUrl`, 'http://localhost:5179', stringCodec);
   const [ttsVolume, setTtsVolume] = usePersistentState<number>(`${APP_ID}_ttsVolume`, 1, floatCodec);
 
@@ -148,6 +155,10 @@ function useProvideSettings() {
     setMarkdownOutput,
     streamNarrationAudio,
     setStreamNarrationAudio,
+    memoryDigests,
+    setMemoryDigests,
+    showSilentRequests,
+    setShowSilentRequests,
     endpointUrl,
     setEndpointUrl,
     apiToken,
@@ -180,6 +191,8 @@ function useProvideSettings() {
     setThinkingMode,
     thinkingPrompt,
     setThinkingPrompt,
+    summaryPrompt,
+    setSummaryPrompt,
     vramHelperUrl,
     setVramHelperUrl,
     ttsVolume,

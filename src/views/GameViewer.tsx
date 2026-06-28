@@ -36,6 +36,7 @@ import { parseGameText, stripReasoning, stripReasoningLive } from "../lib/aiResp
 import { INLINE_THINKING_DIRECTIVE, markdownGuidance } from "../components/game/GamePrompts";
 import { lengthGuidance, trimToLastSentence } from "../lib/outputLength";
 import { splitSentenceSegments } from "../lib/ttsChunks";
+import { selectDueDigests, applyDigest, parseTurnContent } from "../lib/turnDigest";
 import { useSmoothedReveal } from "../lib/useSmoothedReveal";
 import { parseSlashCommand } from "../lib/slashCommands";
 import { MARKDOWN_SAMPLE } from "../lib/markdownSample";
@@ -78,10 +79,15 @@ interface DebugRequest {
 interface DebugTurn {
   action: string;
   requests: DebugRequest[];
+  turnId?: string; // ties this turn to its assistant message, so the viewer can show its memory digest
   regenerated?: boolean; // this turn was superseded by a re-generate of the same action
   pruned?: boolean; // this turn was discarded by a rollback to an earlier page
   aborted?: boolean; // this turn was stopped before any narration landed (its user message was dropped)
 }
+
+// Each completed turn is digested as soon as it commits (same-turn), so a summary is always ready for
+// the next turn's context assembly. Small cap on each digest request — fact lines are short.
+const DIGEST_MAX_TOKENS = 200;
 
 const GameViewer = ({
   initialTraits = [],
@@ -123,6 +129,9 @@ const GameViewer = ({
     locationChangePromptText,
     thinkingMode,
     thinkingPrompt,
+    memoryDigests,
+    summaryPrompt,
+    showSilentRequests,
   } = useSettings();
 
   const {
@@ -268,6 +277,9 @@ const GameViewer = ({
   const [ttsProgress, setTtsProgress] = useState<TTSProgress | null>(null);
   const ttsModalRef = useRef<TTSModalHandle>(null);
   const ttsSentenceCursorRef = useRef(0); // count of complete sentences already sent to streaming TTS
+  const currentTurnIdRef = useRef(""); // stable id for the in-progress turn, stamped into its assistant JSON
+  const digestDrainingRef = useRef(false); // a memory digest is in flight (serializes the drainer)
+  const [digestActive, setDigestActive] = useState(false); // drives the status-bar indicator for a running digest
 
   // Generate TTS for `text` (or the current game text) with the busy flag set, so both the
   // manual refresh button and auto-narration show the same spinner + chunk progress.
@@ -676,8 +688,10 @@ ${playerNotes || "No notes available"}
       setChoices([]);
       setChoicesReady(false);
       setSuggestedLocation(null);
+      // Stamp a stable id for this turn, written into its assistant JSON (powers the digest apply-guard).
+      currentTurnIdRef.current = crypto.randomUUID();
       // Start a new turn in the AI-context history (cap to the last 50 turns).
-      setDebugTurns((prev) => [...prev, { action, requests: [] }].slice(-50));
+      setDebugTurns((prev) => [...prev, { action, requests: [], turnId: currentTurnIdRef.current }].slice(-50));
 
       // Create message array for game text request
       const gameTextMessages: ChatMessage[] = [
@@ -874,6 +888,7 @@ ${playerNotes || "No notes available"}
               game_text: gameTextResponse,
               choices: choicesList,
               stat_changes: statChanges,
+              turnId: currentTurnIdRef.current,
             }),
           };
         }
@@ -1063,25 +1078,39 @@ ${playerNotes || "No notes available"}
     requestType: AIRequestType = "gametext",
     maxTokensOverride: number | null = null,
     signal?: AbortSignal,
+    // Silent requests (the memory digest) run without UI noise: no "Generating…" label, and they
+    // surface in the status bar / AI-context viewer only when the "Show Silent Requests" setting is on.
+    // When captured, they attach to the turn named by `attachTurnId` (the turn the digest summarizes —
+    // usually the one just committed, or an older turn when backfilling), so the viewer shows the
+    // request under the right turn rather than whatever turn happens to be current.
+    silent = false,
+    attachTurnId?: string,
   ) => {
-    try {
-      // Surface which request is currently running.
-      setAiRequestType(requestType);
+    // Silent requests are only captured into the AI-context viewer when the inspection toggle is on.
+    const captureSilent = silent && showSilentRequests && attachTurnId !== undefined;
+    // Append a captured request payload onto the matching debug turn (the current turn for foreground
+    // requests, or the `attachTurnId` turn for a silent digest). No-op if that turn isn't found.
+    const captureRequest = () => setDebugTurns((prev) => {
+      if (!prev.length) return prev;
+      const idx = silent ? prev.findIndex((t) => t.turnId === attachTurnId) : prev.length - 1;
+      if (idx === -1) return prev;
+      const next = prev.slice();
+      next[idx] = {
+        ...next[idx],
+        requests: [
+          ...next[idx].requests,
+          { type: requestType, messages: [{ role: "system", content: systemPrompt }, ...messages] },
+        ],
+      };
+      return next;
+    });
 
-      // Capture the exact payload into the current turn for the AI-context viewer
-      setDebugTurns((prev) => {
-        if (!prev.length) return prev;
-        const next = prev.slice();
-        const last = next[next.length - 1];
-        next[next.length - 1] = {
-          ...last,
-          requests: [
-            ...last.requests,
-            { type: requestType, messages: [{ role: "system", content: systemPrompt }, ...messages] },
-          ],
-        };
-        return next;
-      });
+    try {
+      // Surface which request is currently running (silent requests use the digest status indicator instead).
+      if (!silent) setAiRequestType(requestType);
+
+      // Capture the exact payload into the AI-context viewer.
+      if (!silent || captureSilent) captureRequest();
 
       const response = await fetch(getEndpointUrl(), {
         method: "POST",
@@ -1169,6 +1198,7 @@ ${playerNotes || "No notes available"}
                     game_text: display,
                     choices: [],
                     stat_changes: [],
+                    turnId: currentTurnIdRef.current,
                   }),
                 };
                 return updatedHistory;
@@ -1182,6 +1212,7 @@ ${playerNotes || "No notes available"}
                     game_text: display,
                     choices: [],
                     stat_changes: [],
+                    turnId: currentTurnIdRef.current,
                   }),
                 },
               ];
@@ -1242,17 +1273,20 @@ ${playerNotes || "No notes available"}
           ttsModalRef.current?.streamEnd();
         }
       }
-      // Record the raw output on this turn's matching request so the AI-context viewer can show it.
-      setDebugTurns((prev) => {
+      // Record the raw output on this turn's matching request so the AI-context viewer can show it
+      // (silent digests record onto the turn they summarize, mirroring captureRequest above).
+      if (!silent || captureSilent) setDebugTurns((prev) => {
         if (!prev.length) return prev;
+        const idx = silent ? prev.findIndex((t) => t.turnId === attachTurnId) : prev.length - 1;
+        if (idx === -1) return prev;
         const next = prev.slice();
-        const last = { ...next[next.length - 1] };
-        last.requests = last.requests.map((r) =>
+        const turn = { ...next[idx] };
+        turn.requests = turn.requests.map((r) =>
           r.type === requestType && r.response === undefined
             ? { ...r, response: rawContent }
             : r,
         );
-        next[next.length - 1] = last;
+        next[idx] = turn;
         return next;
       });
       return finalContent;
@@ -1266,10 +1300,57 @@ ${playerNotes || "No notes available"}
       }
 
       console.error("Error in makeAIRequest:", error);
+      // A failed silent request (the digest) is non-fatal — let the drainer swallow it without a toast.
+      if (silent) throw error;
       toast.error("Failed to process AI request");
       throw error;
     }
   };
+
+  // Hold the latest makeAIRequest so the digest drainer always calls a fresh closure without
+  // re-running its effect every render (makeAIRequest is rebuilt each render by design).
+  const makeAIRequestRef = useRef(makeAIRequest);
+  makeAIRequestRef.current = makeAIRequest;
+
+  // Memory-digest drainer: summarize each completed turn silently (serialized, one at a time) and
+  // patch the digest back onto that turn. Only runs while idle (just after a turn commits) so it never
+  // contends with the active turn's requests. Patching the history re-runs this effect, which picks up
+  // the next due turn until none remain (also backfills older turns when first enabled mid-game).
+  useEffect(() => {
+    if (!memoryDigests || isWaitingForAI || digestDrainingRef.current) return;
+    const due = selectDueDigests(fullMessageHistory);
+    if (due.length === 0) return;
+    // Oldest due turn first — it's closest to leaving the context window (matters when backfilling).
+    const turnId = due[due.length - 1];
+    const dueTurn = fullMessageHistory
+      .map((m) => (m.role === "assistant" ? parseTurnContent(m.content) : null))
+      .find((c) => c?.turnId === turnId);
+    const gameText = dueTurn?.game_text ?? "";
+    if (!gameText.trim()) return;
+
+    digestDrainingRef.current = true;
+    setDigestActive(true);
+    (async () => {
+      try {
+        const digest = await makeAIRequestRef.current(
+          summaryPrompt,
+          [{ role: "user", content: `Game text: ${gameText}` }],
+          "summary",
+          DIGEST_MAX_TOKENS,
+          undefined,
+          true, // silent: no "Generating…" label; surfaces only when "Show Silent Requests" is on
+          turnId, // attach the request to the turn it summarizes in the AI-context viewer
+        );
+        const trimmed = (digest ?? "").trim();
+        if (trimmed) setFullMessageHistory((prev) => applyDigest(prev, turnId, trimmed) ?? prev);
+      } catch {
+        // Non-fatal: the turn stays due and is retried on a later idle tick.
+      } finally {
+        digestDrainingRef.current = false;
+        setDigestActive(false);
+      }
+    })();
+  }, [memoryDigests, isWaitingForAI, fullMessageHistory, summaryPrompt, setFullMessageHistory]);
 
   const handleSendAction = () => {
     const input = playerInput.trim();
@@ -1394,26 +1475,44 @@ ${playerNotes || "No notes available"}
 
   // Status line shown above the input while a turn is being generated, naming the current AI
   // request (Game Text / Choices / Stat Updates / Location) so the player knows what's processing.
-  const progressBar = isWaitingForAI ? (() => {
-    const labels = {
-      thinking: "Plan",
-      gametext: "Game Text",
-      choices: "Choices",
-      statUpdates: "Stat Updates",
-      locationChange: "Location",
-    };
-    const label = aiRequestType ? labels[aiRequestType] : "Response";
-    return (
-      <div className="flex items-center gap-2 mb-1">
-        <span className="text-xs text-muted-foreground whitespace-nowrap">
-          Generating {label}…
-        </span>
-        <div className="flex-grow">
-          <IndeterminateProgress />
+  const progressBar = (() => {
+    // The active turn's request takes the status row; a silent memory digest (which runs between turns)
+    // shows here too when no turn is in flight, but only when "Show Silent Requests" is enabled.
+    if (isWaitingForAI) {
+      const labels = {
+        thinking: "Plan",
+        gametext: "Game Text",
+        choices: "Choices",
+        statUpdates: "Stat Updates",
+        locationChange: "Location",
+        summary: "Memory",
+      };
+      const label = aiRequestType ? labels[aiRequestType] : "Response";
+      return (
+        <div className="flex items-center gap-2 mb-1">
+          <span className="text-xs text-muted-foreground whitespace-nowrap">
+            Generating {label}…
+          </span>
+          <div className="flex-grow">
+            <IndeterminateProgress />
+          </div>
         </div>
-      </div>
-    );
-  })() : null;
+      );
+    }
+    if (digestActive && showSilentRequests) {
+      return (
+        <div className="flex items-center gap-2 mb-1">
+          <span className="text-xs text-muted-foreground whitespace-nowrap">
+            Summarizing turn…
+          </span>
+          <div className="flex-grow">
+            <IndeterminateProgress />
+          </div>
+        </div>
+      );
+    }
+    return null;
+  })();
 
   const memoryBar = (() => {
     // Token breakdown of the model's context window: prompt + history + reserved output vs the window.
@@ -1771,6 +1870,12 @@ ${playerNotes || "No notes available"}
             const pageIndex = Math.min(Math.max(debugPage, 1), Math.max(totalDebugPages, 1)) - 1;
             const currentTurn = visibleDebugTurns[pageIndex];
             const currentRequests = currentTurn?.requests ?? [];
+            // The memory digest for this turn (stored on its assistant message), if one has been generated.
+            const currentSummary = currentTurn?.turnId
+              ? fullMessageHistory
+                  .map((m) => (m.role === "assistant" ? parseTurnContent(m.content) : null))
+                  .find((c) => c?.turnId === currentTurn.turnId)?.summary
+              : undefined;
             // Collapse keys: one per request, plus one per captured raw output ("out-<i>").
             const collapseKeys: (string | number)[] = [];
             currentRequests.forEach((req, i) => {
@@ -1898,6 +2003,12 @@ ${playerNotes || "No notes available"}
                     ) : currentTurn.pruned ? (
                       <span className="ml-2 font-medium text-amber-500">Pruned</span>
                     ) : null}
+                  </div>
+                )}
+                {showSilentRequests && currentSummary && (
+                  <div className="flex-shrink-0 rounded-md border border-border bg-muted/40 p-2 text-xs">
+                    <div className="mb-1 font-semibold text-muted-foreground">Memory digest</div>
+                    <pre className="whitespace-pre-wrap break-words">{currentSummary}</pre>
                   </div>
                 )}
                 <div className="flex-grow min-h-0">

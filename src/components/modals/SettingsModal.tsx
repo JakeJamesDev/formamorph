@@ -9,7 +9,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { ConfirmDialog } from '../ConfirmDialog';
-import { defaultSystemPrompt, defaultChoicesPrompt, defaultStatUpdatesPrompt, defaultLocationChangePrompt, defaultThinkingPrompt } from '../game/GamePrompts';
+import { defaultSystemPrompt, defaultChoicesPrompt, defaultStatUpdatesPrompt, defaultLocationChangePrompt, defaultThinkingPrompt, defaultSummaryPrompt } from '../game/GamePrompts';
 import VramReadout from '../game/VramReadout';
 import { useVramStats } from '@/lib/useVramStats';
 
@@ -50,6 +50,12 @@ export const SettingsModal = ({ isOpen, onOpenChange }: {
     setThinkingMode,
     thinkingPrompt,
     setThinkingPrompt,
+    summaryPrompt,
+    setSummaryPrompt,
+    memoryDigests,
+    setMemoryDigests,
+    showSilentRequests,
+    setShowSilentRequests,
     paragraphLimit,
     setParagraphLimit,
     autoscroll,
@@ -96,6 +102,7 @@ export const SettingsModal = ({ isOpen, onOpenChange }: {
     choices: { label: 'Choices', reset: () => setChoicesPrompt(defaultChoicesPrompt) },
     statupdates: { label: 'Stat Updates', reset: () => setStatUpdatesPrompt(defaultStatUpdatesPrompt) },
     location: { label: 'Location Change', reset: () => setLocationChangePromptText(defaultLocationChangePrompt) },
+    summary: { label: 'Summary', reset: () => setSummaryPrompt(defaultSummaryPrompt) },
   };
   const selectedPrompt = promptResets[promptTab] ?? promptResets.gametext;
 
@@ -226,6 +233,38 @@ export const SettingsModal = ({ isOpen, onOpenChange }: {
                   />
                   <span className="text-xs text-muted-foreground">
                     Start text-to-speech as soon as each sentence finishes streaming, instead of after the whole story. Lower audio latency, but TTS runs alongside the model — may compete for the GPU if your LLM runs on the same machine. Requires a loaded TTS model.
+                  </span>
+                </div>
+              </div>
+              <div className="grid grid-cols-1 sm:grid-cols-4 items-start gap-4">
+                <label htmlFor="memoryDigests" className="text-left sm:text-right pt-1">
+                  Memory Digests
+                </label>
+                <div className="col-span-3 flex items-start gap-2">
+                  <Checkbox
+                    id="memoryDigests"
+                    checked={memoryDigests}
+                    onCheckedChange={(c) => setMemoryDigests(c === true)}
+                    className="mt-0.5"
+                  />
+                  <span className="text-xs text-muted-foreground">
+                    Summarize older turns into short fact lines as they age out of recent history, so long stories stay coherent without bloating each request. Runs an extra request per turn — may compete for the GPU if your LLM runs on the same machine. Edit the digest prompt under System Prompts → Summary.
+                  </span>
+                </div>
+              </div>
+              <div className="grid grid-cols-1 sm:grid-cols-4 items-start gap-4">
+                <label htmlFor="showSilentRequests" className="text-left sm:text-right pt-1">
+                  Show Silent Requests
+                </label>
+                <div className="col-span-3 flex items-start gap-2">
+                  <Checkbox
+                    id="showSilentRequests"
+                    checked={showSilentRequests}
+                    onCheckedChange={(c) => setShowSilentRequests(c === true)}
+                    className="mt-0.5"
+                  />
+                  <span className="text-xs text-muted-foreground">
+                    Reveal silent requests that normally run quietly (currently the memory digest) — they appear in the status bar while running and as a request entry in the AI context viewer. Off by default; an inspection aid for authoring and debugging.
                   </span>
                 </div>
               </div>
@@ -377,6 +416,7 @@ export const SettingsModal = ({ isOpen, onOpenChange }: {
                 <TabsTrigger value="choices">Choices</TabsTrigger>
                 <TabsTrigger value="statupdates">Stat Updates</TabsTrigger>
                 <TabsTrigger value="location">Location Change</TabsTrigger>
+                {memoryDigests && <TabsTrigger value="summary">Summary</TabsTrigger>}
               </TabsList>
 
               <TabsContent value="gametext" className="mt-4 flex-1 min-h-0 data-[state=active]:flex flex-col">
@@ -428,6 +468,18 @@ export const SettingsModal = ({ isOpen, onOpenChange }: {
                 />
                 <p className="text-xs text-gray-500 flex-shrink-0">Lets the AI move the player between locations. Write DISABLED to turn off.</p>
               </TabsContent>
+
+              {memoryDigests && (
+                <TabsContent value="summary" className="mt-4 flex-1 min-h-0 data-[state=active]:flex flex-col gap-1">
+                  <Textarea
+                    id="summaryPrompt"
+                    value={summaryPrompt}
+                    onChange={(e) => setSummaryPrompt(e.target.value)}
+                    className="w-full flex-1 min-h-0 resize-none"
+                  />
+                  <p className="text-xs text-gray-500 flex-shrink-0">Compresses each turn into fact lines for long-story memory. Only used when Memory Digests is on.</p>
+                </TabsContent>
+              )}
             </Tabs>
 
             <div className="flex justify-end flex-shrink-0">

@@ -95,6 +95,7 @@ Everything below is relative to the point this fork diverged from upstream.
 - **⚙️ Backend / invisible**
   - Shared hooks and helpers: a `createWorkerClient` worker factory, a single IndexedDB open/promisify helper (`idb`), `usePersistentState`, `useIsMobile`, and a cached-thumbnail hook.
   - The Discover world-browser was split out of `MainMenu` into its own `DiscoverWorlds` view, with shared world-card/detail presentation helpers (`WorldDetails`).
+  - **Per-turn memory digests (foundation)** — each turn now carries a stable `turnId` and a lazily-generated, persisted `summary` of typed fact lines, produced by a silent request as soon as each turn completes (opt-in via Settings → Gameplay → Memory Digests; prompt editable under System Prompts → Summary). With "Show Silent Requests" on, each digest is inspectable per turn in the AI-context viewer. Nothing consumes them yet — this is groundwork for keeping long stories coherent without bloating each request.
 
 #### ➖ Removed
 
