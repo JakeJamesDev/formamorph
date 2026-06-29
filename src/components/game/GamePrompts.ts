@@ -114,7 +114,7 @@ Characters and things that may appear here:
 <ENTITIES>
 
 Available Locations:
-<LOCATION LIST>
+<LOCATION|list>
 
 If the events clearly indicate the player has moved or should move, respond with ONLY the exact destination name copied from the Available Locations list. Otherwise respond with exactly: NONE
 Do not invent a location, add punctuation, or write anything else.`;

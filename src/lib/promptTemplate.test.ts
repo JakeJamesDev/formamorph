@@ -70,20 +70,32 @@ describe('parse ∘ serialize round-trip', () => {
   });
 });
 
-describe('summary variant', () => {
-  it('parses base and summary tokens as distinct variables', () => {
-    expect(parsePromptTemplate('<LOCATION> / <LOCATION|summary>')).toEqual([
+describe('token variants', () => {
+  it('parses base, summary, and list tokens as distinct variables', () => {
+    expect(parsePromptTemplate('<LOCATION> / <LOCATION|summary> / <LOCATION|list>')).toEqual([
       { type: 'variable', token: '<LOCATION>' },
       { type: 'text', value: ' / ' },
       { type: 'variable', token: '<LOCATION|summary>' },
+      { type: 'text', value: ' / ' },
+      { type: 'variable', token: '<LOCATION|list>' },
     ]);
   });
 
-  it('substitutes base and summary tokens independently', () => {
-    const out = renderPromptTemplate('<LOCATION> | <LOCATION|summary>', {
+  it('substitutes each variant independently', () => {
+    const out = renderPromptTemplate('<LOCATION> | <LOCATION|summary> | <LOCATION|list>', {
       '<LOCATION>': 'full',
       '<LOCATION|summary>': 'short',
+      '<LOCATION|list>': 'a\nb',
     });
-    expect(out).toBe('full | short');
+    expect(out).toBe('full | short | a\nb');
+  });
+
+  it('round-trips a list-variant token', () => {
+    const src = 'Available:\n<LOCATION|list>\nend';
+    expect(serializeSegments(parsePromptTemplate(src))).toBe(src);
+  });
+
+  it('does not treat an unknown variant as a chip', () => {
+    expect(parsePromptTemplate('<LOCATION|bogus>')).toEqual([{ type: 'text', value: '<LOCATION|bogus>' }]);
   });
 });

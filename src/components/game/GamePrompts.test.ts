@@ -55,7 +55,7 @@ describe('default prompts carry the expected variable chips', () => {
       '<WORLD DESCRIPTION>',
       '<LOCATION>',
       '<ENTITIES>',
-      '<LOCATION LIST>',
+      '<LOCATION|list>',
     ]);
   });
 

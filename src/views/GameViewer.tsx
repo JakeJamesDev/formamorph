@@ -563,7 +563,7 @@ const GameViewer = ({
     "<NOTES>": playerNotes || "No notes available",
     "<LENGTH GUIDANCE>": lengthGuidance(paragraphLimit, maxTokens),
     "<MARKDOWN GUIDANCE>": markdownGuidance(markdownOutput),
-    "<LOCATION LIST>": locations.map((loc) => loc.name).join("\n"),
+    "<LOCATION|list>": locations.map((loc) => loc.name).join("\n"),
   }), [
     worldOverview, hideStatNumbers, generateStatDescriptions, generateTraitDescriptions,
     currentLocation, entities, playerNotes, paragraphLimit, maxTokens, markdownOutput, locations,
@@ -583,6 +583,8 @@ const GameViewer = ({
     // location so the model doesn't read the whole cast as all-present.
     const entityDataString = buildEntityContext(currentLocation, entities);
     const entitySummaryString = buildEntityContext(currentLocation, entities, { preferSummary: true });
+    // The Location chip's "List" mode: a newline list of every location name (usable in any prompt).
+    const locationListString = locations.map((loc) => loc.name).join("\n");
 
     const statDescriptions = generateStatDescriptions(); // with numbers — used by stat-updates
     // Narration, planning, and choices use descriptor-only stats when enabled (immersion).
@@ -594,6 +596,7 @@ const GameViewer = ({
       "<WORLD DESCRIPTION>": worldOverview.systemPrompt || "",
       "<LOCATION>": locationDataString,
       "<LOCATION|summary>": locationSummaryString,
+      "<LOCATION|list>": locationListString,
       "<ENTITIES>": entityDataString,
       "<ENTITIES|summary>": entitySummaryString,
       "<STATS DESCRIPTION>": statDescriptionsNarrative,
@@ -681,6 +684,7 @@ ${playerNotes || "No notes available"}
           "<LOCATION|summary>": locationSummaryString,
           "<ENTITIES>": entityDataString,
           "<ENTITIES|summary>": entitySummaryString,
+          "<LOCATION|list>": locationListString,
           "<NOTES>": playerNotes || "No notes available",
         });
         // Frame the planning task as a single instruction. Reusing the narration message history
@@ -754,6 +758,7 @@ ${playerNotes || "No notes available"}
           "<LOCATION|summary>": locationSummaryString,
           "<ENTITIES>": entityDataString,
           "<ENTITIES|summary>": entitySummaryString,
+          "<LOCATION|list>": locationListString,
           "<TRAITS DESCRIPTION>": generateTraitDescriptions(),
           "<NOTES>": playerNotes || "No notes available",
         });
@@ -781,6 +786,7 @@ ${playerNotes || "No notes available"}
           "<WORLD DESCRIPTION>": worldOverview.systemPrompt || "",
           "<LOCATION>": locationDataString,
           "<LOCATION|summary>": locationSummaryString,
+          "<LOCATION|list>": locationListString,
           "<STATS DESCRIPTION>": statDescriptions,
           "<TRAITS DESCRIPTION>": generateTraitDescriptions(),
           "<NOTES>": playerNotes || "No notes available",
@@ -801,14 +807,13 @@ ${playerNotes || "No notes available"}
       if (signal.aborted) return; // stopped during the stat-updates request
       // Ask the AI whether the player should move to a different location (v1.2.0)
       if (locationChangeEnabled && locationChangePromptText) {
-        const locationList = locations.map((loc) => loc.name).join("\n");
         const updatedLocationPrompt = renderPromptTemplate(locationChangePromptText, {
           "<WORLD DESCRIPTION>": worldOverview.systemPrompt || "",
           "<LOCATION>": locationDataString,
           "<LOCATION|summary>": locationSummaryString,
+          "<LOCATION|list>": locationListString,
           "<ENTITIES>": entityDataString,
           "<ENTITIES|summary>": entitySummaryString,
-          "<LOCATION LIST>": locationList,
         });
 
         const locationResponse = await makeAIRequest(
