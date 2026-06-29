@@ -7,18 +7,16 @@ import {
   defaultThinkingPrompt,
   markdownGuidance,
 } from './GamePrompts';
+import { parsePromptTemplate } from '@/lib/promptTemplate';
 
-const occurrences = (haystack: string, needle: string) => haystack.split(needle).length - 1;
+// The chips a prompt contains, in order. Substitution is now replaceAll, so a token may legitimately
+// repeat; we assert the exact sequence the default ships with.
+const tokensIn = (prompt: string): string[] =>
+  parsePromptTemplate(prompt).flatMap((s) => (s.type === 'variable' ? [s.token] : []));
 
-// Each placeholder must appear exactly once: GameViewer substitutes them with a literal
-// String.replace(), which only swaps the first occurrence.
-const expectTokensOnce = (prompt: string, tokens: string[]) => {
-  for (const t of tokens) expect(occurrences(prompt, t)).toBe(1);
-};
-
-describe('default prompts keep the placeholder contract', () => {
-  it('game-text prompt has its tokens (once each) and the Current Location label', () => {
-    expectTokensOnce(defaultSystemPrompt, [
+describe('default prompts carry the expected variable chips', () => {
+  it('game-text prompt', () => {
+    expect(tokensIn(defaultSystemPrompt)).toEqual([
       '<WORLD DESCRIPTION>',
       '<STATS DESCRIPTION>',
       '<TRAITS DESCRIPTION>',
@@ -31,8 +29,8 @@ describe('default prompts keep the placeholder contract', () => {
     expect(defaultSystemPrompt).toContain('Current Location:');
   });
 
-  it('choices prompt has its tokens once each', () => {
-    expectTokensOnce(defaultChoicesPrompt, [
+  it('choices prompt', () => {
+    expect(tokensIn(defaultChoicesPrompt)).toEqual([
       '<WORLD DESCRIPTION>',
       '<STATS DESCRIPTION>',
       '<TRAITS DESCRIPTION>',
@@ -41,8 +39,8 @@ describe('default prompts keep the placeholder contract', () => {
     ]);
   });
 
-  it('stat-updates prompt has its tokens once each', () => {
-    expectTokensOnce(defaultStatUpdatesPrompt, [
+  it('stat-updates prompt', () => {
+    expect(tokensIn(defaultStatUpdatesPrompt)).toEqual([
       '<WORLD DESCRIPTION>',
       '<STATS DESCRIPTION>',
       '<TRAITS DESCRIPTION>',
@@ -50,16 +48,16 @@ describe('default prompts keep the placeholder contract', () => {
     ]);
   });
 
-  it('location-change prompt has its tokens once each', () => {
-    expectTokensOnce(defaultLocationChangePrompt, [
+  it('location-change prompt', () => {
+    expect(tokensIn(defaultLocationChangePrompt)).toEqual([
       '<WORLD DESCRIPTION>',
       '<LOCATION JSON DATA>',
       '<LOCATION LIST>',
     ]);
   });
 
-  it('thinking (pre-call) prompt has its tokens once each', () => {
-    expectTokensOnce(defaultThinkingPrompt, [
+  it('thinking (pre-call) prompt', () => {
+    expect(tokensIn(defaultThinkingPrompt)).toEqual([
       '<WORLD DESCRIPTION>',
       '<STATS DESCRIPTION>',
       '<TRAITS DESCRIPTION>',
