@@ -10,7 +10,10 @@ Traits:
 <TRAITS DESCRIPTION>
 
 Current Location:
-<LOCATION JSON DATA>
+<LOCATION>
+
+Characters and things that may appear here:
+<ENTITIES>
 
 Important Player Notes:
 <NOTES>
@@ -56,7 +59,10 @@ Player Notes:
 <NOTES>
 
 Current Location:
-<LOCATION JSON DATA|summary>
+<LOCATION|summary>
+
+Characters and things that may appear here:
+<ENTITIES|summary>
 
 Suggest 3-5 distinct actions the player could take next, given their stats, traits, and location.
 Rules:
@@ -102,7 +108,10 @@ Game World:
 <WORLD DESCRIPTION>
 
 Current Location:
-<LOCATION JSON DATA>
+<LOCATION>
+
+Characters and things that may appear here:
+<ENTITIES>
 
 Available Locations:
 <LOCATION LIST>
@@ -124,7 +133,10 @@ Traits:
 <TRAITS DESCRIPTION>
 
 Current Location:
-<LOCATION JSON DATA|summary>
+<LOCATION|summary>
+
+Characters and things that may appear here:
+<ENTITIES|summary>
 
 Important Player Notes:
 <NOTES>
