@@ -1920,9 +1920,11 @@ ${playerNotes || "No notes available"}
                   .map((m) => (m.role === "assistant" ? parseTurnContent(m.content) : null))
                   .find((c) => c?.turnId === currentTurn.turnId)?.summary
               : undefined;
-            // Collapse keys: one per request, plus one per captured raw output ("out-<i>").
+            // Collapse keys: one per request group ("group-<i>"), one per request body, plus one per
+            // captured raw output ("out-<i>"). Collapse/expand all toggles every level.
             const collapseKeys: (string | number)[] = [];
             currentRequests.forEach((req, i) => {
+              collapseKeys.push(`group-${i}`);
               collapseKeys.push(i);
               if (typeof req.response === "string") collapseKeys.push(`out-${i}`);
             });
@@ -2077,75 +2079,95 @@ ${playerNotes || "No notes available"}
                           const hasOutMatch = outSegs !== null && outSegs.length > 0;
                           // While searching, drop the whole block only if neither the request nor its output matches.
                           if (searchActive && !hasReqMatch && !hasOutMatch) return null;
+                          const groupOpen = searchActive ? true : !collapsedDebug[`group-${i}`];
                           const reqOpen = searchActive ? true : !collapsedDebug[i];
                           const outOpen = searchActive ? true : !collapsedDebug[`out-${i}`];
                           return (
-                            <React.Fragment key={i}>
-                              {(!searchActive || hasReqMatch) && (
-                                <Collapsible
-                                  open={reqOpen}
-                                  onOpenChange={(o) =>
-                                    setCollapsedDebug((prev) => ({ ...prev, [i]: !o }))
-                                  }
-                                  className="border border-border rounded-md"
-                                >
-                                  <CollapsibleTrigger asChild>
-                                    <button className="flex w-full items-center justify-between gap-2 p-2 text-left font-semibold">
-                                      <span>Request {i + 1}: {req.type}</span>
-                                      {reqOpen ? (
-                                        <ChevronDown className="h-4 w-4 flex-shrink-0" />
-                                      ) : (
-                                        <ChevronRight className="h-4 w-4 flex-shrink-0" />
-                                      )}
-                                    </button>
-                                  </CollapsibleTrigger>
-                                  <CollapsibleContent className="p-2 pt-0">
-                                    {msgSegs.map((ms, j) => {
-                                      if (searchActive && ms.segs.length === 0) return null;
-                                      return (
-                                        <div key={j} className="mb-2">
-                                          <div className="font-medium text-muted-foreground uppercase">
-                                            {ms.role}
+                            <Collapsible
+                              key={i}
+                              open={groupOpen}
+                              onOpenChange={(o) =>
+                                setCollapsedDebug((prev) => ({ ...prev, [`group-${i}`]: !o }))
+                              }
+                              className="border border-border rounded-md"
+                            >
+                              <CollapsibleTrigger asChild>
+                                <button className="flex w-full items-center justify-between gap-2 p-2 text-left font-semibold">
+                                  <span>Request {i + 1}: {req.type}</span>
+                                  {groupOpen ? (
+                                    <ChevronDown className="h-4 w-4 flex-shrink-0" />
+                                  ) : (
+                                    <ChevronRight className="h-4 w-4 flex-shrink-0" />
+                                  )}
+                                </button>
+                              </CollapsibleTrigger>
+                              <CollapsibleContent className="space-y-2 p-2 pt-0">
+                                {(!searchActive || hasReqMatch) && (
+                                  <Collapsible
+                                    open={reqOpen}
+                                    onOpenChange={(o) =>
+                                      setCollapsedDebug((prev) => ({ ...prev, [i]: !o }))
+                                    }
+                                    className="border border-border rounded-md"
+                                  >
+                                    <CollapsibleTrigger asChild>
+                                      <button className="flex w-full items-center justify-between gap-2 p-2 text-left font-semibold">
+                                        <span>Prompt</span>
+                                        {reqOpen ? (
+                                          <ChevronDown className="h-4 w-4 flex-shrink-0" />
+                                        ) : (
+                                          <ChevronRight className="h-4 w-4 flex-shrink-0" />
+                                        )}
+                                      </button>
+                                    </CollapsibleTrigger>
+                                    <CollapsibleContent className="p-2 pt-0">
+                                      {msgSegs.map((ms, j) => {
+                                        if (searchActive && ms.segs.length === 0) return null;
+                                        return (
+                                          <div key={j} className="mb-2">
+                                            <div className="font-medium text-muted-foreground uppercase">
+                                              {ms.role}
+                                            </div>
+                                            <pre className="whitespace-pre-wrap break-words bg-muted/50 p-2 rounded">
+                                              {renderSegs(ms.segs)}
+                                            </pre>
                                           </div>
-                                          <pre className="whitespace-pre-wrap break-words bg-muted/50 p-2 rounded">
-                                            {renderSegs(ms.segs)}
-                                          </pre>
-                                        </div>
-                                      );
-                                    })}
-                                  </CollapsibleContent>
-                                </Collapsible>
-                              )}
-                              {outSegs !== null && (!searchActive || hasOutMatch) && (
-                                <Collapsible
-                                  open={outOpen}
-                                  onOpenChange={(o) =>
-                                    setCollapsedDebug((prev) => ({ ...prev, [`out-${i}`]: !o }))
-                                  }
-                                  className="border border-border rounded-md"
-                                >
-                                  <CollapsibleTrigger asChild>
-                                    <button className="flex w-full items-center justify-between gap-2 p-2 text-left font-semibold">
-                                      <span>Raw Output {i + 1}: {req.type}</span>
-                                      {outOpen ? (
-                                        <ChevronDown className="h-4 w-4 flex-shrink-0" />
-                                      ) : (
-                                        <ChevronRight className="h-4 w-4 flex-shrink-0" />
-                                      )}
-                                    </button>
-                                  </CollapsibleTrigger>
-                                  <CollapsibleContent className="p-2 pt-0">
-                                    <pre className="whitespace-pre-wrap break-words bg-muted/50 p-2 rounded">
-                                      {req.response ? (
-                                        renderSegs(outSegs)
-                                      ) : (
-                                        <span className="text-muted-foreground">(empty output)</span>
-                                      )}
-                                    </pre>
-                                  </CollapsibleContent>
-                                </Collapsible>
-                              )}
-                            </React.Fragment>
+                                        );
+                                      })}
+                                    </CollapsibleContent>
+                                  </Collapsible>
+                                )}
+                                {outSegs !== null && (!searchActive || hasOutMatch) && (
+                                  <Collapsible
+                                    open={outOpen}
+                                    onOpenChange={(o) =>
+                                      setCollapsedDebug((prev) => ({ ...prev, [`out-${i}`]: !o }))
+                                    }
+                                    className="border border-border rounded-md"
+                                  >
+                                    <CollapsibleTrigger asChild>
+                                      <button className="flex w-full items-center justify-between gap-2 p-2 text-left font-semibold">
+                                        <span>Raw Output</span>
+                                        {outOpen ? (
+                                          <ChevronDown className="h-4 w-4 flex-shrink-0" />
+                                        ) : (
+                                          <ChevronRight className="h-4 w-4 flex-shrink-0" />
+                                        )}
+                                      </button>
+                                    </CollapsibleTrigger>
+                                    <CollapsibleContent className="p-2 pt-0">
+                                      <pre className="whitespace-pre-wrap break-words bg-muted/50 p-2 rounded">
+                                        {req.response ? (
+                                          renderSegs(outSegs)
+                                        ) : (
+                                          <span className="text-muted-foreground">(empty output)</span>
+                                        )}
+                                      </pre>
+                                    </CollapsibleContent>
+                                  </Collapsible>
+                                )}
+                              </CollapsibleContent>
+                            </Collapsible>
                           );
                         })
                       )}
