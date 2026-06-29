@@ -4,6 +4,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Checkbox } from "@/components/ui/checkbox";
+import { MultiSelect } from "@/components/ui/multi-select";
 import { ImageUpload, SoundUpload } from '../lib/UtilityComponents';
 import type { GameLocation } from '@/types';
 
@@ -57,6 +58,17 @@ const LocationManager = ({ location }: { location: GameLocation }) => {
         />
       </div>
       <div className="space-y-2">
+        <Label>Entities</Label>
+        <MultiSelect
+          key={editingLocation.id}
+          options={entities.map((e) => ({ label: e.name, value: e.id }))}
+          defaultValue={editingLocation.entities ?? []}
+          onValueChange={(v) => handleChange('entities', v)}
+          placeholder="Select entities"
+          hideSelectAll
+        />
+      </div>
+      <div className="space-y-2">
         <Label>Background Image</Label>
         <ImageUpload
           onChange={(file) => handleChange('backgroundImage', file)}
@@ -71,26 +83,6 @@ const LocationManager = ({ location }: { location: GameLocation }) => {
           id={`location-sound-${editingLocation.id}`}
           value={editingLocation.ambientSound}
         />
-      </div>
-      <div className="space-y-2">
-        <Label>Entity</Label>
-        <div className="space-y-2">
-          {entities.map(entity => (
-            <div key={entity.id} className="flex items-center space-x-2">
-              <Checkbox
-                id={`entity-${entity.id}`}
-                checked={(editingLocation.entities || []).includes(entity.id)}
-                onCheckedChange={(checked) => {
-                  const updatedEntities = checked
-                    ? [...(editingLocation.entities || []), entity.id]
-                    : (editingLocation.entities || []).filter(id => id !== entity.id);
-                  handleChange('entities', updatedEntities);
-                }}
-              />
-              <Label htmlFor={`entity-${entity.id}`}>{entity.name}</Label>
-            </div>
-          ))}
-        </div>
       </div>
     </div>
   );
