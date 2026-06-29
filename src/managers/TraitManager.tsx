@@ -85,7 +85,8 @@ const TraitManager = ({ trait }: { trait: Trait }) => {
         <span className="text-xs text-muted-foreground">(pre-checked in the trait-selection screen)</span>
       </label>
       <div className="space-y-2">
-        <Label>Stat Changes</Label>
+        {/* block so the Add button below always wraps to its own line, even with no rows yet */}
+        <Label className="block">Stat Changes</Label>
         {editingTrait.statChanges.map((statChange, index) => (
           <div key={index} className="flex space-x-2">
             <Select
