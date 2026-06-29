@@ -5,7 +5,7 @@ import { Input } from "@/components/ui/input";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { Download, Plus, X, ArrowLeft, Save, GripVertical, FolderPlus, FilePlus } from "lucide-react";
+import { Download, Plus, X, ArrowLeft, Save, GripVertical, FolderPlus, FilePlus, Copy } from "lucide-react";
 import { Panel, PanelGroup, PanelResizeHandle } from 'react-resizable-panels';
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { ToastContainer, toast } from 'react-toastify';
@@ -16,6 +16,7 @@ import LocationManager from '../managers/LocationManager';
 import TraitManager from '../managers/TraitManager';
 import GroupManager from '../managers/GroupManager';
 import TraitTree from '../managers/TraitTree';
+import { duplicateTraitNode } from '@/lib/traitTree';
 import StatUpdatesManager from '../managers/StatUpdatesManager';
 import WorldOverviewManager from '../managers/WorldOverviewManager';
 import WorldDetailsManager from '../managers/WorldDetailsManager';
@@ -53,11 +54,12 @@ interface ListItem {
 
 // A single reorderable entry row. The grip is the drag handle (handle-only drag),
 // so clicking the row body still selects it.
-function SortableRow({ item, selected, onSelect, onRemove }: {
+function SortableRow({ item, selected, onSelect, onRemove, onDuplicate }: {
   item: ListItem;
   selected: boolean;
   onSelect: (id: string) => void;
   onRemove: (id: string) => void;
+  onDuplicate: (id: string) => void;
 }) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } =
     useSortable({ id: item.id });
@@ -92,9 +94,22 @@ function SortableRow({ item, selected, onSelect, onRemove }: {
         size="icon"
         onClick={(e) => {
           e.stopPropagation();
+          onDuplicate(item.id);
+        }}
+        className={selected ? 'text-primary-foreground' : 'text-muted-foreground'}
+        title="Duplicate"
+      >
+        <Copy className="h-4 w-4" />
+      </Button>
+      <Button
+        variant="ghost"
+        size="icon"
+        onClick={(e) => {
+          e.stopPropagation();
           onRemove(item.id);
         }}
         className={selected ? 'text-primary-foreground' : 'text-muted-foreground'}
+        title="Delete"
       >
         <X className="h-4 w-4" />
       </Button>
@@ -113,7 +128,7 @@ const WorldEditor = ({ onClose, embedded = false }: {
     addStat, addLocation, addEntity, addTrait, addStatUpdate, addDictionaryEntry,
     addTraitGroup,
     removeStat, removeLocation, removeEntity, removeTrait, removeStatUpdate, removeDictionaryEntry,
-    setStats, setLocations, setEntities, setTraits, setStatUpdates, setDictionary,
+    setStats, setLocations, setEntities, setTraits, setTraitGroups, setStatUpdates, setDictionary,
     isWorldDirty, saveWorld: saveWorldCtx
   } = useGameData();
 
@@ -305,6 +320,28 @@ const WorldEditor = ({ onClose, embedded = false }: {
     (config.setItems as (next: { id: string }[]) => void)(arrayMove(items, oldIndex, newIndex));
   };
 
+  // Deep-copy an item and place the copy right after the original. Traits/groups keep their exact
+  // group/nesting (handled by duplicateTraitNode); the other tabs are flat arrays.
+  const duplicateItem = (id: string) => {
+    if (activeTab === "traits") {
+      const res = duplicateTraitNode(traitGroups, traits, id);
+      setTraitGroups(res.groups);
+      setTraits(res.traits);
+      setSelectedItemId(res.newId);
+      return;
+    }
+    const config = tabConfig[activeTab as keyof typeof tabConfig];
+    if (!config) return;
+    const items = config.items as { id: string; name: string }[];
+    const index = items.findIndex((it) => it.id === id);
+    if (index === -1) return;
+    const copy = { ...structuredClone(items[index]), id: crypto.randomUUID() };
+    copy.name = `${copy.name} (Copy)`;
+    const next = [...items.slice(0, index + 1), copy, ...items.slice(index + 1)];
+    (config.setItems as (next: { id: string }[]) => void)(next);
+    setSelectedItemId(copy.id);
+  };
+
   const removeItem = (id: string) => {
     if (activeTab === "stats") {
       removeStat(id);
@@ -350,6 +387,7 @@ const WorldEditor = ({ onClose, embedded = false }: {
               selected={selectedItemId === item.id}
               onSelect={setSelectedItemId}
               onRemove={removeItem}
+              onDuplicate={duplicateItem}
             />
           ))}
         </div>

@@ -1,7 +1,7 @@
 import { useMemo, useState } from 'react';
 import { useGameData } from '@/contexts/GameDataContext';
 import { Button } from '@/components/ui/button';
-import { X, GripVertical, Folder, ChevronRight, ChevronDown } from 'lucide-react';
+import { X, GripVertical, Folder, ChevronRight, ChevronDown, Copy } from 'lucide-react';
 import {
   DndContext, pointerWithin, PointerSensor, KeyboardSensor, useSensor, useSensors,
   DragOverlay, type DragStartEvent, type DragMoveEvent, type DragOverEvent, type DragEndEvent,
@@ -13,7 +13,7 @@ import { CSS } from '@dnd-kit/utilities';
 import { restrictToVerticalAxis } from '@dnd-kit/modifiers';
 import {
   buildTraitTree, flattenTraitTree, removeChildrenOf, getTraitDropProjection, applyTraitDrop,
-  type FlatTraitNode,
+  duplicateTraitNode, type FlatTraitNode,
 } from '@/lib/traitTree';
 
 const INDENT = 24; // px per nesting level — also the horizontal drag distance to change depth
@@ -25,6 +25,7 @@ interface RowCtx {
   toggleCollapse: (id: string) => void;
   removeTrait: (id: string) => void;
   removeGroup: (id: string) => void;
+  duplicate: (id: string) => void;
 }
 
 /** One flat row (trait or group header) with a depth-based left indent. */
@@ -74,14 +75,26 @@ function TreeRow({
         {isGroup ? node.group?.name : node.trait?.name}
       </span>
       {!overlay && (
-        <Button
-          variant="ghost"
-          size="icon"
-          className={selected ? 'text-primary-foreground' : 'text-muted-foreground'}
-          onClick={(e) => { e.stopPropagation(); if (isGroup) ctx.removeGroup(node.id); else ctx.removeTrait(node.id); }}
-        >
-          <X className="h-4 w-4" />
-        </Button>
+        <>
+          <Button
+            variant="ghost"
+            size="icon"
+            className={selected ? 'text-primary-foreground' : 'text-muted-foreground'}
+            onClick={(e) => { e.stopPropagation(); ctx.duplicate(node.id); }}
+            title="Duplicate"
+          >
+            <Copy className="h-4 w-4" />
+          </Button>
+          <Button
+            variant="ghost"
+            size="icon"
+            className={selected ? 'text-primary-foreground' : 'text-muted-foreground'}
+            onClick={(e) => { e.stopPropagation(); if (isGroup) ctx.removeGroup(node.id); else ctx.removeTrait(node.id); }}
+            title="Delete"
+          >
+            <X className="h-4 w-4" />
+          </Button>
+        </>
       )}
     </div>
   );
@@ -141,6 +154,12 @@ const TraitTree = ({ selectedId, onSelect }: { selectedId: string | null; onSele
     }),
     removeTrait,
     removeGroup: removeTraitGroup,
+    duplicate: (id) => {
+      const res = duplicateTraitNode(traitGroups, traits, id);
+      setTraitGroups(res.groups);
+      setTraits(res.traits);
+      onSelect(res.newId);
+    },
   };
 
   if (!traits.length && !traitGroups.length) {

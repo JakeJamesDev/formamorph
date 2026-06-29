@@ -77,6 +77,77 @@ export function buildTraitContext(selectedIds: Iterable<string>, traits: Trait[]
   return lines.join('\n');
 }
 
+/**
+ * Deep-duplicate a trait or a whole group subtree, inserting the copy immediately after the original
+ * within the same parent/group. Groups bring all nested subgroups + traits, each with a fresh id and
+ * remapped parent links; only the top copied item's name gets a " (Copy)" suffix. Sibling `order`s of
+ * the affected parent are renormalized so the copy reliably follows the original. Never mutates inputs;
+ * a missing id is a no-op (returns the same arrays + the id unchanged).
+ */
+export function duplicateTraitNode(
+  groups: TraitGroup[], traits: Trait[], id: string,
+): { groups: TraitGroup[]; traits: Trait[]; newId: string } {
+  const isGroup = groups.some((g) => g.id === id);
+  const isTrait = traits.some((t) => t.id === id);
+  if (!isGroup && !isTrait) return { groups, traits, newId: id };
+
+  // Subtree membership: the group + all descendant groups, and every trait inside any of them.
+  const subtreeGroupIds = new Set<string>();
+  if (isGroup) {
+    const collect = (gid: string) => {
+      subtreeGroupIds.add(gid);
+      groups.filter((g) => (g.parentId ?? null) === gid).forEach((c) => collect(c.id));
+    };
+    collect(id);
+  }
+  const subtreeTraitIds = isGroup
+    ? traits.filter((t) => t.groupId && subtreeGroupIds.has(t.groupId)).map((t) => t.id)
+    : [id];
+
+  const idMap = new Map<string, string>();
+  subtreeGroupIds.forEach((gid) => idMap.set(gid, crypto.randomUUID()));
+  subtreeTraitIds.forEach((tid) => idMap.set(tid, crypto.randomUUID()));
+  const newId = idMap.get(id)!;
+  const rootParent = isGroup
+    ? groups.find((g) => g.id === id)!.parentId ?? null
+    : traits.find((t) => t.id === id)!.groupId ?? null;
+
+  const clonedGroups: TraitGroup[] = [...subtreeGroupIds].map((gid) => {
+    const copy = structuredClone(groups.find((g) => g.id === gid)!);
+    copy.id = idMap.get(gid)!;
+    copy.parentId = gid === id ? rootParent : idMap.get(copy.parentId!)!; // root keeps parent; rest remap
+    return copy;
+  });
+  const clonedTraits: Trait[] = subtreeTraitIds.map((tid) => {
+    const copy = structuredClone(traits.find((t) => t.id === tid)!);
+    copy.id = idMap.get(tid)!;
+    copy.groupId = isGroup ? idMap.get(copy.groupId!)! : rootParent;
+    return copy;
+  });
+
+  const root = isGroup
+    ? clonedGroups.find((g) => g.id === newId)!
+    : clonedTraits.find((t) => t.id === newId)!;
+  root.name = `${root.name} (Copy)`;
+
+  // Don't mutate inputs: shallow-copy existing rows, append the clones.
+  const g2 = groups.map((g) => ({ ...g })).concat(clonedGroups);
+  const t2 = traits.map((t) => ({ ...t })).concat(clonedTraits);
+
+  // Place the copy right after the original among its siblings, then renormalize that parent's order
+  // (handles worlds whose items have no explicit `order`, where array index would misplace the copy).
+  const seq = childrenOf(groups, traits, rootParent).map((n) => n.id);
+  seq.splice(seq.indexOf(id) + 1, 0, newId);
+  seq.forEach((sid, i) => {
+    const g = g2.find((x) => x.id === sid);
+    if (g) { g.order = i; return; }
+    const t = t2.find((x) => x.id === sid);
+    if (t) t.order = i;
+  });
+
+  return { groups: g2, traits: t2, newId };
+}
+
 // ---- Sortable-tree drag projection (editor Traits tab) ------------------------------------------
 // Ports the dnd-kit "sortable tree" recipe: a single flat list where the horizontal pointer offset
 // during a drag decides the drop depth (and thus the parent). Traits are leaves, so a row may only
