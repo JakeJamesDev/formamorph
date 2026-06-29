@@ -7,13 +7,16 @@ export type PromptSegment =
 
 const escapeRegExp = (s: string) => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 
-// One alternation matching any known token. Longest-first so no token can mask another (none are
-// prefixes today, but it keeps the match deterministic if that ever changes).
+// One alternation matching any known base token, with an optional `|summary` variant before the `>`.
+// Bases are sorted longest-first so none can mask another (none are prefixes today, but it keeps the
+// match deterministic if that ever changes).
 const TOKEN_RE = new RegExp(
-  ALL_PROMPT_VARIABLES.map((v) => v.token)
-    .sort((a, b) => b.length - a.length)
-    .map(escapeRegExp)
-    .join('|'),
+  '(?:' +
+    ALL_PROMPT_VARIABLES.map((v) => v.token.slice(0, -1)) // drop trailing '>'
+      .sort((a, b) => b.length - a.length)
+      .map(escapeRegExp)
+      .join('|') +
+    ')(?:\\|summary)?>',
   'g',
 );
 

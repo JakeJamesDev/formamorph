@@ -56,7 +56,7 @@ Player Notes:
 <NOTES>
 
 Current Location:
-<LOCATION JSON DATA>
+<LOCATION JSON DATA|summary>
 
 Suggest 3-5 distinct actions the player could take next, given their stats, traits, and location.
 Rules:
@@ -124,7 +124,7 @@ Traits:
 <TRAITS DESCRIPTION>
 
 Current Location:
-<LOCATION JSON DATA>
+<LOCATION JSON DATA|summary>
 
 Important Player Notes:
 <NOTES>

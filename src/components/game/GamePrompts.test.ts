@@ -35,7 +35,7 @@ describe('default prompts carry the expected variable chips', () => {
       '<STATS DESCRIPTION>',
       '<TRAITS DESCRIPTION>',
       '<NOTES>',
-      '<LOCATION JSON DATA>',
+      '<LOCATION JSON DATA|summary>',
     ]);
   });
 
@@ -61,7 +61,7 @@ describe('default prompts carry the expected variable chips', () => {
       '<WORLD DESCRIPTION>',
       '<STATS DESCRIPTION>',
       '<TRAITS DESCRIPTION>',
-      '<LOCATION JSON DATA>',
+      '<LOCATION JSON DATA|summary>',
       '<NOTES>',
     ]);
   });
