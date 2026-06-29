@@ -54,7 +54,7 @@ interface MainMenuProps {
 }
 
 const defaultWorlds = [
-  { id: 'rampage', defaultName: 'Giantess Rampage' },
+  { id: 'rampage', defaultName: 'City Rampage' },
   { id: 'valentines', defaultName: 'Valentines Survival' },
   { id: 'drone', defaultName: 'Reincarnated Drone' }
 ];

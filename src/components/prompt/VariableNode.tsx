@@ -8,9 +8,11 @@ import {
 import { useLexicalComposerContext } from '@lexical/react/LexicalComposerContext';
 import { Chip } from '@/components/Chip';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { cn } from '@/lib/utils';
 import {
-  labelForToken, colorForToken, variableForToken, baseToken, isSummaryToken, summaryToken,
+  labelForToken, colorForToken, variableForToken, baseToken, tokenVariant, withVariant,
+  variantLabelForToken,
 } from '@/lib/promptVariables';
 
 /** Shared slot the dragged chip's node key is parked in on dragstart, so the editor's drop handler
@@ -19,27 +21,27 @@ export const PromptDragContext = createContext<{ current: string | null }>({ cur
 
 export type SerializedVariableNode = Spread<{ token: string }, SerializedLexicalNode>;
 
+const FULL = 'full'; // Tabs value sentinel for the default variant (null id)
+
 /** The interactive chip a `VariableNode` renders: label + remove (×), draggable to reposition, and a
- *  single-click pop-out. For summary-capable variables the pop-out toggles the chip between the full
- *  description and a short summary (`<…|summary>`); others show a placeholder. */
+ *  single-click pop-out. Variables with `variants` show a segmented control to switch the chip's mode
+ *  (e.g. Location → Full | Summary | List); others show a placeholder. */
 function VariableChip({ nodeKey, token }: { nodeKey: NodeKey; token: string }) {
   const [editor] = useLexicalComposerContext();
   const dragKey = useContext(PromptDragContext);
   const [open, setOpen] = useState(false);
   const variable = variableForToken(token);
-  const summary = isSummaryToken(token);
+  const variantId = tokenVariant(token);
   const color = colorForToken(token);
   // Reflect the mode in the chip text so it's readable at a glance, not only in the pop-out.
-  const label = summary ? `${labelForToken(token)} (summary)` : labelForToken(token);
+  const variantLabel = variantLabelForToken(token);
+  const label = variantLabel ? `${labelForToken(token)} (${variantLabel})` : labelForToken(token);
 
   const remove = () => editor.update(() => { $getNodeByKey(nodeKey)?.remove(); });
 
-  const setSummary = (wantSummary: boolean) => editor.update(() => {
+  const setVariant = (id: string | null) => editor.update(() => {
     const node = $getNodeByKey(nodeKey);
-    if ($isVariableNode(node)) {
-      const base = baseToken(node.getToken());
-      node.setToken(wantSummary ? summaryToken(base) : base);
-    }
+    if ($isVariableNode(node)) node.setToken(withVariant(baseToken(node.getToken()), id));
   });
 
   const handleDragStart = (e: DragEvent) => {
@@ -47,6 +49,8 @@ function VariableChip({ nodeKey, token }: { nodeKey: NodeKey; token: string }) {
     e.dataTransfer.effectAllowed = 'move';
     e.dataTransfer.setData('text/plain', token); // some browsers won't start a drag without payload
   };
+
+  const variants = variable?.variants ?? [];
 
   return (
     <Popover open={open} onOpenChange={setOpen}>
@@ -60,30 +64,34 @@ function VariableChip({ nodeKey, token }: { nodeKey: NodeKey; token: string }) {
           />
         </span>
       </PopoverTrigger>
-      <PopoverContent className="w-56" align="start">
-        {variable?.hasSummary ? (
+      <PopoverContent className="w-64" align="start">
+        {variants.length ? (
           <div className="space-y-2">
-            <p className="text-xs font-medium">{labelForToken(token)} detail</p>
-            <div className="grid grid-cols-2 gap-1">
-              {([['Description', false], ['Summary', true]] as const).map(([text, want]) => (
-                <button
-                  key={text}
-                  type="button"
-                  onClick={() => setSummary(want)}
+            <p className="text-xs font-medium">{labelForToken(token)} mode</p>
+            <Tabs
+              value={variantId ?? FULL}
+              onValueChange={(v) => setVariant(v === FULL ? null : v)}
+            >
+              <TabsList className="grid w-full" style={{ gridTemplateColumns: `repeat(${variants.length}, minmax(0, 1fr))` }}>
+                {variants.map((vr) => (
+                  <TabsTrigger key={vr.id ?? FULL} value={vr.id ?? FULL}>{vr.label}</TabsTrigger>
+                ))}
+              </TabsList>
+            </Tabs>
+            {/* Help lines stacked in one cell so the pop-out doesn't reflow when switching modes. */}
+            <div className="grid">
+              {variants.map((vr) => (
+                <p
+                  key={vr.id ?? FULL}
                   className={cn(
-                    'rounded border px-2 py-1 text-xs transition-colors',
-                    summary === want
-                      ? 'bg-primary text-primary-foreground border-primary'
-                      : 'bg-background hover:bg-secondary',
+                    'col-start-1 row-start-1 text-[11px] text-muted-foreground',
+                    (vr.id ?? FULL) !== (variantId ?? FULL) && 'invisible',
                   )}
                 >
-                  {text}
-                </button>
+                  {vr.help}
+                </p>
               ))}
             </div>
-            <p className="text-[11px] text-muted-foreground">
-              Summary sends the short AI summary for each item, falling back to the full description where none is set.
-            </p>
           </div>
         ) : (
           <p className="text-xs text-muted-foreground">No options for this variable.</p>

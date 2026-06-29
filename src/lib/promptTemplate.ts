@@ -1,4 +1,4 @@
-import { ALL_PROMPT_VARIABLES } from './promptVariables';
+import { ALL_PROMPT_VARIABLES, ALL_VARIANT_IDS } from './promptVariables';
 
 /** A prompt template parsed into an ordered run of literal text and variable tokens. */
 export type PromptSegment =
@@ -7,16 +7,17 @@ export type PromptSegment =
 
 const escapeRegExp = (s: string) => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 
-// One alternation matching any known base token, with an optional `|summary` variant before the `>`.
-// Bases are sorted longest-first so a shorter token can't mask a longer one (e.g. `<LOCATION` vs
-// `<LOCATION LIST`).
+// One alternation matching any known base token, with an optional `|variant` (e.g. `summary`, `list`)
+// before the `>`. Bases are sorted longest-first so a shorter token can't mask a longer one.
 const TOKEN_RE = new RegExp(
   '(?:' +
     ALL_PROMPT_VARIABLES.map((v) => v.token.slice(0, -1)) // drop trailing '>'
       .sort((a, b) => b.length - a.length)
       .map(escapeRegExp)
       .join('|') +
-    ')(?:\\|summary)?>',
+    ')(?:\\|(?:' +
+    ALL_VARIANT_IDS.map(escapeRegExp).join('|') +
+    '))?>',
   'g',
 );
 
