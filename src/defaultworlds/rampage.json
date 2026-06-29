@@ -166,7 +166,6 @@
     {
       "id": "armored_hide",
       "name": "Armored Hide",
-      "description": "Your skin is incredibly tough, shrugging off military fire — but all that bulk slows you down.",
       "statChanges": [
         {
           "statId": "health",
@@ -178,12 +177,12 @@
           "value": -10,
           "type": "max"
         }
-      ]
+      ],
+      "playerDescription": "Your skin is incredibly tough, shrugging off military fire — but all that bulk slows you down."
     },
     {
       "id": "unrelenting",
       "name": "Unrelenting",
-      "description": "You attack tirelessly and never let up, though you push your body hard to do it.",
       "statChanges": [
         {
           "statId": "stamina",
@@ -195,12 +194,12 @@
           "value": -10,
           "type": "max"
         }
-      ]
+      ],
+      "playerDescription": "You attack tirelessly and never let up, though you push your body hard to do it."
     },
     {
       "id": "short_fuse",
       "name": "Short Fuse",
-      "description": "Your fury builds fast and runs hot, so you reach full rampage sooner.",
       "statChanges": [
         {
           "statId": "rampage",
@@ -212,7 +211,8 @@
           "value": -5,
           "type": "max"
         }
-      ]
+      ],
+      "playerDescription": "Your fury builds fast and runs hot, so you reach full rampage sooner."
     }
   ],
   "statUpdates": []

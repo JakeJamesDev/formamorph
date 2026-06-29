@@ -4,7 +4,8 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Download, Plus, X, ArrowLeft, Save, GripVertical } from "lucide-react";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Download, Plus, X, ArrowLeft, Save, GripVertical, FolderPlus, FilePlus } from "lucide-react";
 import { Panel, PanelGroup, PanelResizeHandle } from 'react-resizable-panels';
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { ToastContainer, toast } from 'react-toastify';
@@ -13,6 +14,8 @@ import StatManager from '../managers/StatManager';
 import EntityManager from '../managers/EntityManager';
 import LocationManager from '../managers/LocationManager';
 import TraitManager from '../managers/TraitManager';
+import GroupManager from '../managers/GroupManager';
+import TraitTree from '../managers/TraitTree';
 import StatUpdatesManager from '../managers/StatUpdatesManager';
 import WorldOverviewManager from '../managers/WorldOverviewManager';
 import WorldDetailsManager from '../managers/WorldDetailsManager';
@@ -40,7 +43,7 @@ import {
 } from '@dnd-kit/modifiers';
 import { UnsavedChangesDialog } from "@/components/UnsavedChangesDialog";
 import { APP_VERSION } from '@/lib/version';
-import type { Stat, Entity, GameLocation, Trait, StatUpdate, DictionaryEntry } from '@/types';
+import type { Stat, Entity, GameLocation, StatUpdate, DictionaryEntry } from '@/types';
 
 /** The fields a reorderable list row needs (every editor item has these). */
 interface ListItem {
@@ -72,6 +75,17 @@ function SortableRow({ item, selected, onSelect, onRemove }: {
       className={`p-2 cursor-pointer rounded-md transition-colors flex justify-between items-center
         ${selected ? 'bg-primary text-primary-foreground' : 'hover:bg-secondary'}`}
     >
+      <span
+        {...attributes}
+        {...listeners}
+        onClick={(e) => e.stopPropagation()}
+        className={`cursor-grab touch-none px-1 ${
+          selected ? 'text-primary-foreground' : 'text-muted-foreground'
+        }`}
+        title="Drag to reorder"
+      >
+        <GripVertical className="h-4 w-4" />
+      </span>
       <span className="flex-grow">{item.name}</span>
       <Button
         variant="ghost"
@@ -84,17 +98,6 @@ function SortableRow({ item, selected, onSelect, onRemove }: {
       >
         <X className="h-4 w-4" />
       </Button>
-      <span
-        {...attributes}
-        {...listeners}
-        onClick={(e) => e.stopPropagation()}
-        className={`cursor-grab touch-none px-1 ${
-          selected ? 'text-primary-foreground' : 'text-muted-foreground'
-        }`}
-        title="Drag to reorder"
-      >
-        <GripVertical className="h-4 w-4" />
-      </span>
     </div>
   );
 }
@@ -106,8 +109,9 @@ const WorldEditor = ({ onClose, embedded = false }: {
   const {
     worldOverview,
     loadWorldData,
-    stats, locations, entities, traits, statUpdates, dictionary,
+    stats, locations, entities, traits, traitGroups, statUpdates, dictionary,
     addStat, addLocation, addEntity, addTrait, addStatUpdate, addDictionaryEntry,
+    addTraitGroup,
     removeStat, removeLocation, removeEntity, removeTrait, removeStatUpdate, removeDictionaryEntry,
     setStats, setLocations, setEntities, setTraits, setStatUpdates, setDictionary,
     isWorldDirty, saveWorld: saveWorldCtx
@@ -119,7 +123,7 @@ const WorldEditor = ({ onClose, embedded = false }: {
   const [showExitPrompt, setShowExitPrompt] = useState(false);
 
   const downloadWorld = () => {
-    const worldData = { version: APP_VERSION, worldOverview, stats, locations, entities, traits, statUpdates, dictionary };
+    const worldData = { version: APP_VERSION, worldOverview, stats, locations, entities, traits, traitGroups, statUpdates, dictionary };
     const jsonData = JSON.stringify(worldData, null, 2);
     const blob = new Blob([jsonData], { type: 'application/json' });
     const href = URL.createObjectURL(blob);
@@ -194,13 +198,6 @@ const WorldEditor = ({ onClose, embedded = false }: {
           aiSummary: '',
           entities: []
         });
-      } else if (activeTab === "traits") {
-        addTrait({
-          id: newId,
-          name: newName,
-          description: '',
-          statChanges: []
-        });
       } else if (activeTab === "statUpdates") {
         addStatUpdate({
           id: newId,
@@ -224,6 +221,41 @@ const WorldEditor = ({ onClose, embedded = false }: {
     }
   };
 
+  // New traits/groups append at the root; the author drags them into folders. Order = root sibling count.
+  const rootSiblingCount = () =>
+    traits.filter(t => (t.groupId ?? null) === null).length +
+    traitGroups.filter(g => (g.parentId ?? null) === null).length;
+
+  const handleAddTrait = () => {
+    const id = crypto.randomUUID();
+    addTrait({
+      id,
+      name: searchTerm.trim() || 'New Trait',
+      playerDescription: '',
+      aiDescription: '',
+      statChanges: [],
+      groupId: null,
+      isDefault: false,
+      order: rootSiblingCount(),
+    });
+    setSearchTerm('');
+    setSelectedItemId(id);
+  };
+
+  const handleAddGroup = () => {
+    const id = crypto.randomUUID();
+    addTraitGroup({
+      id,
+      name: searchTerm.trim() || 'New Group',
+      playerDescription: '',
+      aiDescription: '',
+      parentId: null,
+      order: rootSiblingCount(),
+    });
+    setSearchTerm('');
+    setSelectedItemId(id);
+  };
+
   const filteredItems = useMemo(() => {
     const itemsToFilter =
       activeTab === "stats" ? stats :
@@ -239,6 +271,9 @@ const WorldEditor = ({ onClose, embedded = false }: {
   }, [activeTab, stats, entities, locations, traits, statUpdates, dictionary, searchTerm]);
 
   const selectedItem = filteredItems.find(item => item.id === selectedItemId);
+  // Traits tab can select either a trait or a group (the right panel branches on which).
+  const selectedTrait = traits.find(t => t.id === selectedItemId);
+  const selectedGroup = traitGroups.find(g => g.id === selectedItemId);
 
   // Per-tab data + setter so list behavior (selection, drag-reorder) is uniform across tabs.
   const tabConfig = {
@@ -370,9 +405,35 @@ const WorldEditor = ({ onClose, embedded = false }: {
                       </TabsList>
                     {activeTab !== "overview" && (
                       <div className="flex space-x-2 flex-shrink-0 mt-4">
-                        <Button onClick={addItem} size="icon">
-                          <Plus className="h-4 w-4" />
-                        </Button>
+                        {activeTab === "traits" ? (
+                          <Popover>
+                            <PopoverTrigger asChild>
+                              <Button size="icon">
+                                <Plus className="h-4 w-4" />
+                              </Button>
+                            </PopoverTrigger>
+                            <PopoverContent side="bottom" align="start" className="w-44 p-1">
+                              <button
+                                type="button"
+                                className="flex w-full items-center gap-2 rounded-sm px-2 py-1.5 text-sm hover:bg-accent"
+                                onClick={handleAddGroup}
+                              >
+                                <FolderPlus className="h-4 w-4" /> Add Group
+                              </button>
+                              <button
+                                type="button"
+                                className="flex w-full items-center gap-2 rounded-sm px-2 py-1.5 text-sm hover:bg-accent"
+                                onClick={handleAddTrait}
+                              >
+                                <FilePlus className="h-4 w-4" /> Add Trait
+                              </button>
+                            </PopoverContent>
+                          </Popover>
+                        ) : (
+                          <Button onClick={addItem} size="icon">
+                            <Plus className="h-4 w-4" />
+                          </Button>
+                        )}
                         <Input
                           placeholder={`Search or add new ${activeTab}`}
                           value={searchTerm}
@@ -395,7 +456,9 @@ const WorldEditor = ({ onClose, embedded = false }: {
                           {renderItemList(filteredItems)}
                         </TabsContent>
                         <TabsContent value="traits">
-                          {renderItemList(filteredItems)}
+                          {searchTerm.trim()
+                            ? renderItemList(filteredItems)
+                            : <TraitTree selectedId={selectedItemId} onSelect={setSelectedItemId} />}
                         </TabsContent>
                         <TabsContent value="dictionary">
                           {renderItemList(filteredItems)}
@@ -451,8 +514,11 @@ const WorldEditor = ({ onClose, embedded = false }: {
                     {activeTab === "locations" && selectedItem && (
                       <LocationManager key={selectedItem.id} location={selectedItem as GameLocation} />
                     )}
-                    {activeTab === "traits" && selectedItem && (
-                      <TraitManager key={selectedItem.id} trait={selectedItem as Trait} />
+                    {activeTab === "traits" && selectedGroup && (
+                      <GroupManager key={selectedGroup.id} group={selectedGroup} />
+                    )}
+                    {activeTab === "traits" && !selectedGroup && selectedTrait && (
+                      <TraitManager key={selectedTrait.id} trait={selectedTrait} />
                     )}
                     {activeTab === "dictionary" && selectedItem && (
                       <DictionaryManager key={selectedItem.id} entry={selectedItem as DictionaryEntry} />

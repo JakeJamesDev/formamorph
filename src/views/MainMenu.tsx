@@ -176,7 +176,7 @@ function SortableWorldCard({ world, onSelect, onDelete, layout }: {
 }
 
 const MainMenu = ({ onStartGame, onOpenWorldEditor }: MainMenuProps) => {
-  const { traits, stats, loadWorldData } = useGameData();
+  const { traits, traitGroups, stats, loadWorldData } = useGameData();
   const [selectedWorld, setSelectedWorld] = useState<WorldRecord | null>(null);
   // Local-world grid layout: "grid" (default compact cards) or "detailed" (Discover-style card + info
   // beneath). Persisted across sessions in localStorage.
@@ -423,6 +423,17 @@ const MainMenu = ({ onStartGame, onOpenWorldEditor }: MainMenuProps) => {
     );
   };
 
+  // Leave the trait-selection step and start the world (custom-character step first for 3D worlds).
+  const proceedFromTraits = (traitIds: string[]) => {
+    setShowTraitSelection(false);
+    const currentWorldData = selectedWorld!.data;
+    if (currentWorldData.worldOverview?.use3DModel) {
+      setShowCharacterCustomization(true);
+    } else {
+      onStartGame(traitIds, null, true);
+    }
+  };
+
   const handleDuplicateWorld = async () => {
     try {
       if (!selectedWorld) {
@@ -495,6 +506,11 @@ const MainMenu = ({ onStartGame, onOpenWorldEditor }: MainMenuProps) => {
         },
         stats: [],
         traits: [],
+        // Seed the two default trait groups so authors start with World/Player folders.
+        traitGroups: [
+          { id: crypto.randomUUID(), name: 'World', parentId: null, order: 0 },
+          { id: crypto.randomUUID(), name: 'Player', parentId: null, order: 1 },
+        ],
         locations: [],
         entities: [],
         statUpdates: [] // This field is required by WorldStorageService
@@ -1101,8 +1117,16 @@ const MainMenu = ({ onStartGame, onOpenWorldEditor }: MainMenuProps) => {
                     <Button
                       className="w-2/3 bg-gradient-to-r from-sky-200 to-cyan-200 hover:from-sky-300 hover:to-cyan-300 text-black font-bold rounded-r-none"
                       onClick={() => {
+                        // Pre-check "Enabled by Default" traits for the selection screen.
+                        const defaults = traits.filter((t) => t.isDefault).map((t) => t.id);
+                        setSelectedTraits(defaults);
                         setShowWorldModal(false);
-                        setShowTraitSelection(true);
+                        // No traits to choose — skip the selection menu entirely.
+                        if (traits.length === 0) {
+                          proceedFromTraits(defaults);
+                        } else {
+                          setShowTraitSelection(true);
+                        }
                       }}
                     >
                       <DoorOpen className="mr-2 h-4 w-4" /> Enter World
@@ -1227,23 +1251,15 @@ const MainMenu = ({ onStartGame, onOpenWorldEditor }: MainMenuProps) => {
       {showTraitSelection && (
         <TraitSelectionModal
           traits={traits}
+          traitGroups={traitGroups}
           stats={stats}
           selectedTraits={selectedTraits}
           onTraitSelect={handleTraitSelection}
-          onClose={() => {
+          onAbort={() => {
             setShowTraitSelection(false);
             setSelectedTraits([]);
           }}
-          onConfirm={() => {
-            setShowTraitSelection(false);
-            // For uploaded worlds, use the worldData from context
-            const currentWorldData = selectedWorld!.data;
-            if (currentWorldData.worldOverview?.use3DModel) {
-              setShowCharacterCustomization(true);
-            } else {
-              onStartGame(selectedTraits, null, true);
-            }
-          }}
+          onConfirm={() => proceedFromTraits(selectedTraits)}
         />
       )}
 

@@ -6,7 +6,7 @@ Game World:
 Player Stats:
 <STATS DESCRIPTION>
 
-Player Traits:
+Traits:
 <TRAITS DESCRIPTION>
 
 Current Location:
@@ -49,7 +49,7 @@ Game World:
 Player Stats:
 <STATS DESCRIPTION>
 
-Player Traits:
+Traits:
 <TRAITS DESCRIPTION>
 
 Player Notes:
@@ -78,7 +78,7 @@ Game World:
 Player Stats:
 <STATS DESCRIPTION>
 
-Player Traits:
+Traits:
 <TRAITS DESCRIPTION>
 
 Player Notes:
@@ -120,7 +120,7 @@ Game World:
 Player Stats:
 <STATS DESCRIPTION>
 
-Player Traits:
+Traits:
 <TRAITS DESCRIPTION>
 
 Current Location:
