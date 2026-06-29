@@ -139,7 +139,7 @@ Licensed under the **[PolyForm Noncommercial License 1.0.0](LICENSE)** © 2025�
 
 You're free to **use, modify, and share** Formamorph for any **noncommercial** purpose (personal use, hobby projects, research, and use by nonprofits/educational/government bodies all count). **Commercial use requires a separate license** — reach out if you need one.
 
-This project is a fork of the original **[FieryLionite/formamorph](https://github.com/FieryLionite/formamorph)**, which is MIT-licensed. Portions derived from that work remain under MIT; that notice is preserved in **[LICENSE.upstream-MIT](LICENSE.upstream-MIT)**. Bundled third-party software and assets are credited in **[THIRD-PARTY-NOTICES.md](THIRD-PARTY-NOTICES.md)**.
+This project is a fork of the original **[FieryLionite/formamorph](https://github.com/FieryLionite/formamorph)**, which is MIT-licensed. Portions derived from that work remain under MIT; that notice is preserved in **[legal/LICENSE-upstream-MIT.txt](legal/LICENSE-upstream-MIT.txt)**. Bundled third-party software and assets are credited in **[THIRD-PARTY-NOTICES.md](THIRD-PARTY-NOTICES.md)**.
 
 > ℹ️ "Noncommercial source-available," not OSI "open source" — the difference is the commercial-use restriction.
 
