@@ -3,18 +3,22 @@ import { useGameData } from '@/contexts/GameDataContext';
 import { Button } from '@/components/ui/button';
 import { X, GripVertical, Folder, ChevronRight, ChevronDown } from 'lucide-react';
 import {
-  DndContext, closestCenter, PointerSensor, KeyboardSensor, useSensor, useSensors, useDroppable,
-  type DragEndEvent,
+  DndContext, pointerWithin, PointerSensor, KeyboardSensor, useSensor, useSensors,
+  DragOverlay, type DragStartEvent, type DragMoveEvent, type DragOverEvent, type DragEndEvent,
 } from '@dnd-kit/core';
 import {
   SortableContext, useSortable, sortableKeyboardCoordinates, verticalListSortingStrategy,
 } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
 import { restrictToFirstScrollableAncestor } from '@dnd-kit/modifiers';
-import { buildTraitTree, moveNode, type TraitTreeNode } from '@/lib/traitTree';
+import {
+  buildTraitTree, flattenTraitTree, removeChildrenOf, getTraitDropProjection, applyTraitDrop,
+  type FlatTraitNode,
+} from '@/lib/traitTree';
 
-/** Shared row context, passed down the recursion to avoid re-creating components each render. */
-interface TreeCtx {
+const INDENT = 24; // px per nesting level — also the horizontal drag distance to change depth
+
+interface RowCtx {
   selectedId: string | null;
   onSelect: (id: string) => void;
   collapsed: Set<string>;
@@ -23,64 +27,26 @@ interface TreeCtx {
   removeGroup: (id: string) => void;
 }
 
-/** A droppable list of sibling nodes (the root, or a group's direct children). */
-function Container({ parentId, nodes, ctx }: { parentId: string | null; nodes: TraitTreeNode[]; ctx: TreeCtx }) {
-  const { setNodeRef } = useDroppable({ id: `container:${parentId ?? 'root'}` });
-  return (
-    <div ref={setNodeRef} className="min-h-[8px]">
-      <SortableContext items={nodes.map((n) => n.id)} strategy={verticalListSortingStrategy}>
-        {nodes.map((node) => <TreeRow key={node.id} node={node} ctx={ctx} />)}
-      </SortableContext>
-    </div>
-  );
-}
-
-/** A single trait row, or a group folder header plus its (recursive) children container. */
-function TreeRow({ node, ctx }: { node: TraitTreeNode; ctx: TreeCtx }) {
+/** One flat row (trait or group header) with a depth-based left indent. */
+function TreeRow({
+  node, depth, ctx, overlay = false,
+}: { node: FlatTraitNode; depth: number; ctx: RowCtx; overlay?: boolean }) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: node.id });
   const style = {
     transform: CSS.Transform.toString(transform),
     transition,
-    opacity: isDragging ? 0.5 : 1,
-    zIndex: isDragging ? 1 : undefined,
+    paddingLeft: depth * INDENT,
+    opacity: isDragging && !overlay ? 0.4 : 1,
   };
   const selected = ctx.selectedId === node.id;
   const rowClass = `p-2 cursor-pointer rounded-md transition-colors flex items-center gap-1
-    ${selected ? 'bg-primary text-primary-foreground' : 'hover:bg-secondary'}`;
+    ${overlay ? 'bg-secondary shadow-lg' : selected ? 'bg-primary text-primary-foreground' : 'hover:bg-secondary'}`;
+  const isGroup = node.kind === 'group';
+  const isCollapsed = isGroup && ctx.collapsed.has(node.id);
 
-  const grip = (
-    <span
-      {...attributes}
-      {...listeners}
-      onClick={(e) => e.stopPropagation()}
-      className={`cursor-grab touch-none px-1 ${selected ? 'text-primary-foreground' : 'text-muted-foreground'}`}
-      title="Drag to reorder"
-    >
-      <GripVertical className="h-4 w-4" />
-    </span>
-  );
-
-  if (node.kind === 'trait') {
-    return (
-      <div ref={setNodeRef} style={style} onClick={() => ctx.onSelect(node.id)} className={rowClass}>
-        {grip}
-        <span className="flex-grow">{node.trait.name}</span>
-        <Button
-          variant="ghost"
-          size="icon"
-          className={selected ? 'text-primary-foreground' : 'text-muted-foreground'}
-          onClick={(e) => { e.stopPropagation(); ctx.removeTrait(node.id); }}
-        >
-          <X className="h-4 w-4" />
-        </Button>
-      </div>
-    );
-  }
-
-  const isCollapsed = ctx.collapsed.has(node.id);
   return (
-    <div>
-      <div ref={setNodeRef} style={style} onClick={() => ctx.onSelect(node.id)} className={rowClass}>
+    <div ref={setNodeRef} style={style} onClick={() => ctx.onSelect(node.id)} className={rowClass}>
+      {isGroup ? (
         <button
           type="button"
           onClick={(e) => { e.stopPropagation(); ctx.toggleCollapse(node.id); }}
@@ -89,69 +55,78 @@ function TreeRow({ node, ctx }: { node: TraitTreeNode; ctx: TreeCtx }) {
         >
           {isCollapsed ? <ChevronRight className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
         </button>
-        {grip}
-        <Folder className="h-4 w-4 shrink-0" />
-        <span className="flex-grow font-medium">{node.group.name}</span>
+      ) : null}
+      <span
+        {...attributes}
+        {...listeners}
+        onClick={(e) => e.stopPropagation()}
+        className={`cursor-grab touch-none px-1 ${selected && !overlay ? 'text-primary-foreground' : 'text-muted-foreground'}`}
+        title="Drag to reorder or nest"
+      >
+        <GripVertical className="h-4 w-4" />
+      </span>
+      {isGroup ? <Folder className="h-4 w-4 shrink-0" /> : null}
+      <span className={`flex-grow ${isGroup ? 'font-medium' : ''}`}>
+        {isGroup ? node.group?.name : node.trait?.name}
+      </span>
+      {!overlay && (
         <Button
           variant="ghost"
           size="icon"
           className={selected ? 'text-primary-foreground' : 'text-muted-foreground'}
-          onClick={(e) => { e.stopPropagation(); ctx.removeGroup(node.id); }}
+          onClick={(e) => { e.stopPropagation(); if (isGroup) ctx.removeGroup(node.id); else ctx.removeTrait(node.id); }}
         >
           <X className="h-4 w-4" />
         </Button>
-      </div>
-      {!isCollapsed && (
-        <div className="ml-4 border-l border-border pl-2">
-          <Container parentId={node.id} nodes={node.children} ctx={ctx} />
-        </div>
       )}
     </div>
   );
 }
 
-/** The Traits tab's folder tree: nestable groups + traits, drag to reorder/regroup. */
+/** The Traits tab's folder tree: a flat sortable list where horizontal drag sets nesting depth. */
 const TraitTree = ({ selectedId, onSelect }: { selectedId: string | null; onSelect: (id: string) => void }) => {
   const { traits, traitGroups, setTraits, setTraitGroups, removeTrait, removeTraitGroup } = useGameData();
   const [collapsed, setCollapsed] = useState<Set<string>>(new Set());
+  const [activeId, setActiveId] = useState<string | null>(null);
+  const [overId, setOverId] = useState<string | null>(null);
+  const [offsetLeft, setOffsetLeft] = useState(0);
 
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 5 } }),
     useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates }),
   );
 
-  const tree = useMemo(() => buildTraitTree(traitGroups, traits), [traitGroups, traits]);
+  // Visible rows: full tree minus collapsed groups' children and (while dragging) the dragged subtree.
+  const visible = useMemo(() => {
+    const full = flattenTraitTree(buildTraitTree(traitGroups, traits));
+    return removeChildrenOf(full, activeId ? [...collapsed, activeId] : collapsed);
+  }, [traitGroups, traits, collapsed, activeId]);
 
-  const parentOf = (id: string): string | null => {
-    const g = traitGroups.find((x) => x.id === id);
-    if (g) return g.parentId ?? null;
-    return traits.find((x) => x.id === id)?.groupId ?? null;
+  const projected = activeId && overId
+    ? getTraitDropProjection(visible, activeId, overId, offsetLeft, INDENT)
+    : null;
+  const activeNode = activeId ? visible.find((n) => n.id === activeId) ?? null : null;
+
+  const reset = () => { setActiveId(null); setOverId(null); setOffsetLeft(0); };
+
+  const handleDragStart = ({ active }: DragStartEvent) => {
+    setActiveId(String(active.id));
+    setOverId(String(active.id));
   };
-
-  const handleDragEnd = (event: DragEndEvent) => {
-    const { active, over } = event;
-    if (!over) return;
-    const activeId = String(active.id);
-    const overId = String(over.id);
-    if (activeId === overId) return;
-
-    let newParentId: string | null;
-    let beforeId: string | null;
-    if (overId.startsWith('container:')) {
-      const raw = overId.slice('container:'.length);
-      newParentId = raw === 'root' ? null : raw;
-      beforeId = null;
-    } else {
-      newParentId = parentOf(overId);
-      beforeId = overId;
+  const handleDragMove = ({ delta }: DragMoveEvent) => setOffsetLeft(delta.x);
+  const handleDragOver = ({ over }: DragOverEvent) => setOverId(over ? String(over.id) : null);
+  const handleDragEnd = ({ active, over }: DragEndEvent) => {
+    if (over) {
+      const next = applyTraitDrop(
+        traitGroups, traits, collapsed, String(active.id), String(over.id), offsetLeft, INDENT,
+      );
+      if (next.groups !== traitGroups) setTraitGroups(next.groups);
+      if (next.traits !== traits) setTraits(next.traits);
     }
-
-    const next = moveNode(traitGroups, traits, activeId, newParentId, beforeId);
-    if (next.groups !== traitGroups) setTraitGroups(next.groups);
-    if (next.traits !== traits) setTraits(next.traits);
+    reset();
   };
 
-  const ctx: TreeCtx = {
+  const ctx: RowCtx = {
     selectedId,
     onSelect,
     collapsed,
@@ -171,11 +146,27 @@ const TraitTree = ({ selectedId, onSelect }: { selectedId: string | null; onSele
   return (
     <DndContext
       sensors={sensors}
-      collisionDetection={closestCenter}
+      collisionDetection={pointerWithin}
+      onDragStart={handleDragStart}
+      onDragMove={handleDragMove}
+      onDragOver={handleDragOver}
       onDragEnd={handleDragEnd}
+      onDragCancel={reset}
       modifiers={[restrictToFirstScrollableAncestor]}
     >
-      <Container parentId={null} nodes={tree} ctx={ctx} />
+      <SortableContext items={visible.map((n) => n.id)} strategy={verticalListSortingStrategy}>
+        {visible.map((node) => (
+          <TreeRow
+            key={node.id}
+            node={node}
+            depth={node.id === activeId && projected ? projected.depth : node.depth}
+            ctx={ctx}
+          />
+        ))}
+      </SortableContext>
+      <DragOverlay>
+        {activeNode ? <TreeRow node={activeNode} depth={0} ctx={ctx} overlay /> : null}
+      </DragOverlay>
     </DndContext>
   );
 };

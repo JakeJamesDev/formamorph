@@ -1,5 +1,8 @@
 import { describe, it, expect } from 'vitest';
-import { buildTraitTree, isDescendantGroup, flattenGroups, moveNode, buildTraitContext } from './traitTree';
+import {
+  buildTraitTree, isDescendantGroup, buildTraitContext,
+  flattenTraitTree, removeChildrenOf, getTraitDropProjection, applyTraitDrop,
+} from './traitTree';
 import type { Trait, TraitGroup } from '@/types';
 
 const group = (id: string, parentId: string | null, order: number): TraitGroup =>
@@ -43,40 +46,60 @@ describe('isDescendantGroup', () => {
   });
 });
 
-describe('flattenGroups', () => {
-  it('yields every group depth-first', () => {
-    const groups = [group('world', null, 0), group('clans', 'world', 0), group('player', null, 1)];
-    const tree = buildTraitTree(groups, []);
-    expect(flattenGroups(tree).map((g) => g.id)).toEqual(['world', 'clans', 'player']);
+describe('flattenTraitTree', () => {
+  it('tags each node with parent and depth, depth-first', () => {
+    const groups = [group('world', null, 0)];
+    const traits = [trait('a', 'world', 0), trait('b', null, 1)];
+    const flat = flattenTraitTree(buildTraitTree(groups, traits));
+    expect(flat.map((n) => [n.id, n.depth, n.parentId])).toEqual([
+      ['world', 0, null],
+      ['a', 1, 'world'],
+      ['b', 0, null],
+    ]);
   });
 });
 
-describe('moveNode', () => {
-  it('moves a trait into a group and reindexes siblings', () => {
-    const groups = [group('world', null, 0)];
-    const traits = [trait('a', null, 0), trait('b', null, 1)];
-    const out = moveNode(groups, traits, 'a', 'world', null);
-    expect(out.traits.find((t) => t.id === 'a')?.groupId).toBe('world');
-    // 'a' is the sole child of 'world' → order 0
-    expect(out.traits.find((t) => t.id === 'a')?.order).toBe(0);
+describe('removeChildrenOf', () => {
+  it('drops the descendants of a collapsed group', () => {
+    const flat = flattenTraitTree(buildTraitTree([group('world', null, 0)], [trait('a', 'world', 0)]));
+    expect(removeChildrenOf(flat, ['world']).map((n) => n.id)).toEqual(['world']);
+  });
+});
+
+describe('getTraitDropProjection', () => {
+  it('nests under the group directly above the drop slot when dragged right', () => {
+    const groups = [group('world', null, 0), group('player', null, 1)];
+    const traits = [trait('t', null, 2)];
+    const flat = flattenTraitTree(buildTraitTree(groups, traits));
+    const proj = getTraitDropProjection(flat, 't', 'player', 30, 24); // +1 depth
+    expect(proj).toEqual({ depth: 1, parentId: 'world' });
   });
 
-  it('reorders within a parent by inserting before a sibling', () => {
-    const traits = [trait('a', null, 0), trait('b', null, 1), trait('c', null, 2)];
-    const out = moveNode([], traits, 'c', null, 'a'); // move c before a
-    const ordered = [...out.traits].sort((x, y) => (x.order ?? 0) - (y.order ?? 0)).map((t) => t.id);
-    expect(ordered).toEqual(['c', 'a', 'b']);
+  it('pulls back to the root (parent null) when dragged left', () => {
+    const flat = flattenTraitTree(buildTraitTree([group('world', null, 0)], [trait('a', 'world', 0)]));
+    const proj = getTraitDropProjection(flat, 'a', 'world', -30, 24);
+    expect(proj).toEqual({ depth: 0, parentId: null });
+  });
+});
+
+describe('applyTraitDrop', () => {
+  it('re-parents and reindexes from a rightward drag', () => {
+    const groups = [group('world', null, 0), group('player', null, 1)];
+    const traits = [trait('t', null, 2)];
+    const out = applyTraitDrop(groups, traits, [], 't', 'player', 30, 24);
+    expect(out.traits.find((x) => x.id === 't')?.groupId).toBe('world');
+    expect(out.traits.find((x) => x.id === 't')?.order).toBe(0);
+    expect(out.groups.find((g) => g.id === 'player')?.order).toBe(1);
   });
 
-  it('nests a group under another group', () => {
-    const groups = [group('world', null, 0), group('clans', null, 1)];
-    const out = moveNode(groups, [], 'clans', 'world', null);
-    expect(out.groups.find((g) => g.id === 'clans')?.parentId).toBe('world');
+  it('pulls a trait out of its group to the root', () => {
+    const out = applyTraitDrop([group('world', null, 0)], [trait('a', 'world', 0)], [], 'a', 'world', -30, 24);
+    expect(out.traits.find((x) => x.id === 'a')?.groupId).toBeNull();
   });
 
-  it('refuses to move a group into its own descendant', () => {
+  it('refuses to nest a group into its own descendant', () => {
     const groups = [group('world', null, 0), group('clans', 'world', 0)];
-    const out = moveNode(groups, [], 'world', 'clans', null);
+    const out = applyTraitDrop(groups, [], [], 'world', 'clans', 30, 24);
     expect(out.groups).toBe(groups); // unchanged reference = no-op
   });
 });
