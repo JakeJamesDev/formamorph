@@ -45,6 +45,16 @@ function renameItemDescriptions(items: unknown): unknown {
   );
 }
 
+/** Rename a trait's single legacy `description` to `playerDescription` (idempotent, prefers existing). */
+function renameTraitDescriptions(items: unknown): unknown {
+  if (!Array.isArray(items)) return items;
+  return items.map((it) => {
+    if (!it || typeof it !== 'object' || !('description' in it)) return it;
+    const { description, ...rest } = it as Record<string, unknown>;
+    return { ...rest, playerDescription: rest.playerDescription ?? description };
+  });
+}
+
 export function migrateWorld(raw: unknown): World {
   const world = { ...(raw as Record<string, unknown>) };
   if (world.version === APP_VERSION) return world as unknown as World;
@@ -61,6 +71,9 @@ export function migrateWorld(raw: unknown): World {
   // v1.2 used `inGameDescription`/`detailedDescription`; rename to the audience-based keys.
   if (Array.isArray(world.entities)) world.entities = renameItemDescriptions(world.entities);
   if (Array.isArray(world.locations)) world.locations = renameItemDescriptions(world.locations);
+
+  // v1.2 traits had a single `description` (player-facing); rename to `playerDescription`.
+  if (Array.isArray(world.traits)) world.traits = renameTraitDescriptions(world.traits);
 
   world.version = APP_VERSION;
   return world as unknown as World;

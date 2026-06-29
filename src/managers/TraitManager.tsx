@@ -2,7 +2,9 @@ import { useState, useEffect } from 'react';
 import { useGameData } from '@/contexts/GameDataContext';
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
+import { Checkbox } from "@/components/ui/checkbox";
 import { Trash2 } from "lucide-react";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import type { Trait, StatChange } from '@/types';
@@ -61,12 +63,27 @@ const TraitManager = ({ trait }: { trait: Trait }) => {
         />
       </div>
       <div className="space-y-2">
-        <Label>Description</Label>
-        <Input
-          value={editingTrait.description || ''}
-          onChange={(e) => handleChange('description', e.target.value)}
+        <Label>Player-Facing Description</Label>
+        <Textarea
+          value={editingTrait.playerDescription || ''}
+          onChange={(e) => handleChange('playerDescription', e.target.value)}
         />
       </div>
+      <div className="space-y-2">
+        <Label>AI-Facing Description</Label>
+        <Textarea
+          value={editingTrait.aiDescription || ''}
+          onChange={(e) => handleChange('aiDescription', e.target.value)}
+        />
+      </div>
+      <label className="flex items-center gap-2 cursor-pointer">
+        <Checkbox
+          checked={!!editingTrait.isDefault}
+          onCheckedChange={(c) => handleChange('isDefault', c === true)}
+        />
+        <span>Enabled by Default</span>
+        <span className="text-xs text-muted-foreground">(pre-checked in the trait-selection screen)</span>
+      </label>
       <div className="space-y-2">
         <Label>Stat Changes</Label>
         {editingTrait.statChanges.map((statChange, index) => (

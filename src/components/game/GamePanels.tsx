@@ -741,7 +741,7 @@ export const RightPanel = ({ onLocationClick, language, setLanguage }: {
             {playerTraits.length > 0 ? (
               playerTraits.map((trait, index) => (
                 <div key={index} className="mb-1">
-                  <span>{trait.name}: {trait.description}</span>
+                  <span>{trait.name}{trait.playerDescription ? `: ${trait.playerDescription}` : ''}</span>
                 </div>
               ))
             ) : (

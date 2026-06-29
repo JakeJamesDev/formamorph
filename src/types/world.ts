@@ -59,11 +59,34 @@ export interface StatChange {
   interval?: string;
 }
 
+/** A folder grouping traits in the editor and the selection screen; nestable via `parentId`. */
+export interface TraitGroup {
+  id: string;
+  name: string;
+  /** Shown to the player in the trait-selection screen. */
+  playerDescription?: string;
+  /** Sent to the AI as a header above this group's selected traits. */
+  aiDescription?: string;
+  /** null = top-level; otherwise the parent group's id. */
+  parentId: string | null;
+  /** Sibling order among items sharing the same parent. */
+  order?: number;
+}
+
 export interface Trait {
   id: string;
   name: string;
-  description: string;
+  /** Shown to the player in the trait-selection screen. */
+  playerDescription?: string;
+  /** Sent to the AI when this trait is selected. */
+  aiDescription?: string;
   statChanges: StatChange[];
+  /** Group this trait belongs to; null/absent = ungrouped. */
+  groupId?: string | null;
+  /** Pre-checked in the selection screen. */
+  isDefault?: boolean;
+  /** Sibling order among items sharing the same parent/group. */
+  order?: number;
 }
 
 export interface Entity {
@@ -148,6 +171,8 @@ export interface World {
   locations: GameLocation[];
   entities: Entity[];
   traits: Trait[];
+  /** Folders organizing traits in the editor and selection screen. */
+  traitGroups?: TraitGroup[];
   statUpdates: StatUpdate[];
   /** v1.2.0 */
   dictionary?: DictionaryEntry[];

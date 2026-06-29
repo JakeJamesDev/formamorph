@@ -85,6 +85,15 @@ describe('migrateWorld', () => {
     expect(out.locations?.[0]).toEqual({ playerDescription: 'lp', aiDescription: 'la' });
   });
 
+  it("renames a trait's legacy description to playerDescription", () => {
+    const out = migrateWorld({
+      worldOverview: { name: 'W' },
+      traits: [{ id: 't', name: 'Brave', description: 'Fearless.', statChanges: [] }],
+    }) as unknown as { traits?: { playerDescription?: string; description?: string }[] };
+    expect(out.traits?.[0]).toMatchObject({ playerDescription: 'Fearless.' });
+    expect(out.traits?.[0].description).toBeUndefined();
+  });
+
   it('prefers an existing new key and drops the legacy one', () => {
     const out = migrateWorld({
       worldOverview: { name: 'W' },

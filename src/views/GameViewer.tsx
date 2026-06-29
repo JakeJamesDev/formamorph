@@ -37,6 +37,7 @@ import { INLINE_THINKING_DIRECTIVE, markdownGuidance } from "../components/game/
 import { lengthGuidance, trimToLastSentence } from "../lib/outputLength";
 import { splitSentenceSegments } from "../lib/ttsChunks";
 import { selectDueDigests, applyDigest, parseTurnContent } from "../lib/turnDigest";
+import { buildTraitContext } from "../lib/traitTree";
 import { parseTurns, buildVerbatimHistory, buildBandedHistory, extractKeywords, type BandCounts } from "../lib/turnBanding";
 import { useSmoothedReveal } from "../lib/useSmoothedReveal";
 import { parseSlashCommand } from "../lib/slashCommands";
@@ -103,6 +104,7 @@ const GameViewer = ({
     locations,
     entities,
     traits,
+    traitGroups,
     dictionary,
     updateStat,
     worldOverview,
@@ -526,12 +528,9 @@ const GameViewer = ({
     if (!playerTraits.length) {
       return "<NO TRAITS AVAILABLE>";
     }
-    return playerTraits
-      .map((trait) =>
-        trait.description?.trim() ? `${trait.name}: ${trait.description}` : trait.name,
-      )
-      .join("\n");
-  }, [playerTraits]);
+    // Group-aware: each selected trait's group emits its AI header above its traits (blank → omitted).
+    return buildTraitContext(playerTraits.map((t) => t.id), playerTraits, traitGroups);
+  }, [playerTraits, traitGroups]);
 
   const generateStatDescriptions = useCallback((includeValues = true) => {
     return playerStats

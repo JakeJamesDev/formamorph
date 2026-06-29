@@ -8,6 +8,7 @@ import type {
   GameLocation,
   Entity,
   Trait,
+  TraitGroup,
   StatUpdate,
   DictionaryEntry,
   World,
@@ -20,10 +21,11 @@ function serializeWorld(
   locations: GameLocation[],
   entities: Entity[],
   traits: Trait[],
+  traitGroups: TraitGroup[],
   statUpdates: StatUpdate[],
   dictionary: DictionaryEntry[],
 ) {
-  return JSON.stringify({ worldOverview: overview, stats, locations, entities, traits, statUpdates, dictionary });
+  return JSON.stringify({ worldOverview: overview, stats, locations, entities, traits, traitGroups, statUpdates, dictionary });
 }
 
 function useProvideGameData() {
@@ -43,6 +45,7 @@ function useProvideGameData() {
   const [locations, setLocations] = useState<GameLocation[]>([]);
   const [entities, setEntities] = useState<Entity[]>([]);
   const [traits, setTraits] = useState<Trait[]>([]);
+  const [traitGroups, setTraitGroups] = useState<TraitGroup[]>([]);
   const [statUpdates, setStatUpdates] = useState<StatUpdate[]>([]);
   const [dictionary, setDictionary] = useState<DictionaryEntry[]>([]);
   const [worldId, setWorldId] = useState<string | null>(null);
@@ -110,6 +113,31 @@ function useProvideGameData() {
   const removeTrait = useCallback((traitId: string) => {
     setTraits(prevTraits => prevTraits.filter(trait => trait.id !== traitId));
   }, []);
+
+  const addTraitGroup = useCallback((newGroup: TraitGroup) => {
+    setTraitGroups(prev => [...prev, newGroup]);
+  }, []);
+
+  const updateTraitGroup = useCallback((updatedGroup: TraitGroup) => {
+    setTraitGroups(prev => prev.map(group =>
+      group.id === updatedGroup.id ? updatedGroup : group
+    ));
+  }, []);
+
+  // Removing a group reparents its direct children (subgroups + traits) to the group's own parent,
+  // rather than orphaning them under a deleted id.
+  const removeTraitGroup = useCallback((groupId: string) => {
+    setTraitGroups(prev => {
+      const parentId = prev.find(g => g.id === groupId)?.parentId ?? null;
+      return prev
+        .filter(g => g.id !== groupId)
+        .map(g => (g.parentId === groupId ? { ...g, parentId } : g));
+    });
+    setTraits(prev => {
+      const parentId = traitGroups.find(g => g.id === groupId)?.parentId ?? null;
+      return prev.map(t => (t.groupId === groupId ? { ...t, groupId: parentId } : t));
+    });
+  }, [traitGroups]);
 
   const addStatUpdate = useCallback((newStatUpdate: StatUpdate) => {
     setStatUpdates(prevStatUpdates => [...prevStatUpdates, {
@@ -194,6 +222,7 @@ function useProvideGameData() {
     const nextLocations = Array.isArray(worldData.locations) ? worldData.locations : [];
     const nextEntities = Array.isArray(worldData.entities) ? worldData.entities : [];
     const nextTraits = Array.isArray(worldData.traits) ? worldData.traits : [];
+    const nextTraitGroups = Array.isArray(worldData.traitGroups) ? worldData.traitGroups : [];
     const nextStatUpdates = Array.isArray(worldData.statUpdates) ? worldData.statUpdates : [];
     const nextDictionary = Array.isArray(worldData.dictionary) ? worldData.dictionary : [];
     setWorldId(worldData.id);
@@ -201,20 +230,21 @@ function useProvideGameData() {
     setLocations(nextLocations);
     setEntities(nextEntities);
     setTraits(nextTraits);
+    setTraitGroups(nextTraitGroups);
     setStatUpdates(nextStatUpdates);
     setDictionary(nextDictionary);
 
     // Baseline for dirty detection: a freshly loaded world has no pending changes.
     setSavedSnapshot(serializeWorld(
-      normalizedOverview, nextStats, nextLocations, nextEntities, nextTraits, nextStatUpdates, nextDictionary,
+      normalizedOverview, nextStats, nextLocations, nextEntities, nextTraits, nextTraitGroups, nextStatUpdates, nextDictionary,
     ));
 
     return isDefault;
   }, [updateWorldOverview, setStats, setLocations, setEntities, setTraits, setStatUpdates]);
 
   const isWorldDirty = useMemo(
-    () => serializeWorld(worldOverview, stats, locations, entities, traits, statUpdates, dictionary) !== savedSnapshot,
-    [worldOverview, stats, locations, entities, traits, statUpdates, dictionary, savedSnapshot],
+    () => serializeWorld(worldOverview, stats, locations, entities, traits, traitGroups, statUpdates, dictionary) !== savedSnapshot,
+    [worldOverview, stats, locations, entities, traits, traitGroups, statUpdates, dictionary, savedSnapshot],
   );
 
   // Persist the current world and re-baseline so isWorldDirty clears. Returns success.
@@ -230,15 +260,15 @@ function useProvideGameData() {
         // other sticky fields are preserved by storeWorld).
         dirty: true,
         editedAt: new Date().toISOString(),
-        data: { version: APP_VERSION, worldOverview, stats, locations, entities, traits, statUpdates, dictionary },
+        data: { version: APP_VERSION, worldOverview, stats, locations, entities, traits, traitGroups, statUpdates, dictionary },
       });
-      setSavedSnapshot(serializeWorld(worldOverview, stats, locations, entities, traits, statUpdates, dictionary));
+      setSavedSnapshot(serializeWorld(worldOverview, stats, locations, entities, traits, traitGroups, statUpdates, dictionary));
       return true;
     } catch (error) {
       console.error('Error saving world:', error);
       return false;
     }
-  }, [worldId, worldOverview, stats, locations, entities, traits, statUpdates, dictionary]);
+  }, [worldId, worldOverview, stats, locations, entities, traits, traitGroups, statUpdates, dictionary]);
 
   useEffect(() => {
     WorldStorageService.initialize();
@@ -254,6 +284,7 @@ function useProvideGameData() {
     locations,
     entities,
     traits,
+    traitGroups,
     statUpdates,
     dictionary,
     addStat,
@@ -268,6 +299,9 @@ function useProvideGameData() {
     addTrait,
     updateTrait,
     removeTrait,
+    addTraitGroup,
+    updateTraitGroup,
+    removeTraitGroup,
     addStatUpdate,
     updateStatUpdate,
     removeStatUpdate,
@@ -278,6 +312,7 @@ function useProvideGameData() {
     setLocations,
     setEntities,
     setTraits,
+    setTraitGroups,
     setStatUpdates,
     setDictionary,
     loadWorldData,
