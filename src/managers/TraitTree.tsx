@@ -10,7 +10,7 @@ import {
   SortableContext, useSortable, sortableKeyboardCoordinates, verticalListSortingStrategy,
 } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
-import { restrictToFirstScrollableAncestor } from '@dnd-kit/modifiers';
+import { restrictToVerticalAxis } from '@dnd-kit/modifiers';
 import {
   buildTraitTree, flattenTraitTree, removeChildrenOf, getTraitDropProjection, applyTraitDrop,
   type FlatTraitNode,
@@ -32,8 +32,12 @@ function TreeRow({
   node, depth, ctx, overlay = false,
 }: { node: FlatTraitNode; depth: number; ctx: RowCtx; overlay?: boolean }) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: node.id });
+  // The dragged row's indent is shown via paddingLeft (projected depth), so pin its x-translate to 0 —
+  // it slides vertically only, matching the overlay. Sibling rows keep their full transform (the
+  // reorder shift animation). The DragOverlay is the element that actually follows the cursor.
+  const rowTransform = isDragging && !overlay && transform ? { ...transform, x: 0 } : transform;
   const style = {
-    transform: CSS.Transform.toString(transform),
+    transform: CSS.Transform.toString(rowTransform),
     transition,
     paddingLeft: depth * INDENT,
     opacity: isDragging && !overlay ? 0.4 : 1,
@@ -152,7 +156,6 @@ const TraitTree = ({ selectedId, onSelect }: { selectedId: string | null; onSele
       onDragOver={handleDragOver}
       onDragEnd={handleDragEnd}
       onDragCancel={reset}
-      modifiers={[restrictToFirstScrollableAncestor]}
     >
       <SortableContext items={visible.map((n) => n.id)} strategy={verticalListSortingStrategy}>
         {visible.map((node) => (
@@ -164,8 +167,13 @@ const TraitTree = ({ selectedId, onSelect }: { selectedId: string | null; onSele
           />
         ))}
       </SortableContext>
-      <DragOverlay>
-        {activeNode ? <TreeRow node={activeNode} depth={0} ctx={ctx} overlay /> : null}
+      {/* Overlay moves vertically only (x pinned) and sits at the projected depth, so its indent
+          snaps in INDENT steps to where it will drop instead of drifting freely. DndContext stays
+          modifier-free so the pointer's delta.x still drives depth detection. */}
+      <DragOverlay modifiers={[restrictToVerticalAxis]}>
+        {activeNode ? (
+          <TreeRow node={activeNode} depth={projected ? projected.depth : activeNode.depth} ctx={ctx} overlay />
+        ) : null}
       </DragOverlay>
     </DndContext>
   );

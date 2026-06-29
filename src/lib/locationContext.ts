@@ -39,9 +39,10 @@ export function buildLocationContext(
     output += `description: ${locationDescription}\n`;
   }
 
-  // Add other location properties, skipping blanks so empty fields don't confuse smaller models
+  // Add other location properties, skipping `name` (emitted above) and blanks so empty fields
+  // don't confuse smaller models. Mirrors the entity loop below.
   Object.entries(otherProps).forEach(([key, value]) => {
-    if (value === undefined || value === null) return;
+    if (value === undefined || value === null || key === "name") return;
     if (typeof value === "string" && value.trim() === "") return;
     output += `${key}: ${value}\n`;
   });

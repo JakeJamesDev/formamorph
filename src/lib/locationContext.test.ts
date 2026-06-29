@@ -55,9 +55,8 @@ describe("buildLocationContext", () => {
   it("skips a blank description and omits the entities block when there are none", () => {
     const loc: GameLocation & { entity?: string[] } = { id: "loc2", name: "Empty Field" };
     const out = buildLocationContext(loc, []);
-    // `name` is intentionally not destructured out, so it also prints via the remaining-props loop
-    // (pre-existing behavior preserved by the extraction). No `description:` line, no `entities:` block.
-    expect(out).toBe("name: Empty Field\nname: Empty Field\n");
+    // `name` prints exactly once (no double-print), no `description:` line, no `entities:` block.
+    expect(out).toBe("name: Empty Field\n");
     expect(out).not.toContain("description:");
     expect(out).not.toContain("entities:");
   });
