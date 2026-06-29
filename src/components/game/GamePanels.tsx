@@ -758,7 +758,7 @@ export const RightPanel = ({ onLocationClick, language, setLanguage }: {
               {currentLocation && (
                 <div className="space-y-2">
                   <p className="font-semibold">Description:</p>
-                  <p className="text-sm">{currentLocation.inGameDescription || currentLocation.description}</p>
+                  <p className="text-sm">{currentLocation.playerDescription || currentLocation.description}</p>
                   {currentLocation.connections && currentLocation.connections.length > 0 && (
                     <>
                       <p className="font-semibold mt-4">Connected Locations:</p>

@@ -70,8 +70,12 @@ export interface Entity {
   id: string;
   name: string;
   type?: string;
-  inGameDescription?: string;
-  detailedDescription?: string;
+  /** Shown to the player in-game. */
+  playerDescription?: string;
+  /** Full description sent to the AI. */
+  aiDescription?: string;
+  /** Short description sent to the AI where the full one is too long. */
+  aiSummary?: string;
   image?: Base64Data;
   sound?: MediaAsset;
   model?: MediaAsset;
@@ -81,9 +85,13 @@ export interface Entity {
 export interface GameLocation {
   id: string;
   name: string;
-  inGameDescription?: string;
-  detailedDescription?: string;
-  /** Legacy alias some views fall back to when `inGameDescription` is absent. */
+  /** Shown to the player in-game. */
+  playerDescription?: string;
+  /** Full description sent to the AI. */
+  aiDescription?: string;
+  /** Short description sent to the AI where the full one is too long. */
+  aiSummary?: string;
+  /** Legacy alias some views fall back to when `playerDescription` is absent. */
   description?: string;
   backgroundImage?: Base64Data;
   ambientSound?: MediaAsset;

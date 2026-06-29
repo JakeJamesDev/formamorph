@@ -123,9 +123,10 @@ Selectable characteristics that adjust stats at character creation.
 |---|---|---|
 | `id` | String | Unique identifier |
 | `name` | String | Display name |
-| `inGameDescription` | String | Short text shown in play |
-| `detailedDescription` | String | Longer context for the AI |
-| `description` | String | Legacy fallback when `inGameDescription` is absent |
+| `playerDescription` | String | Shown to the player in-game |
+| `aiDescription` | String | Full description sent to the AI |
+| `aiSummary` | String | Short description sent to the AI where the full one is too long |
+| `description` | String | Legacy fallback when `playerDescription` is absent |
 | `backgroundImage` | String | Data-URL background image |
 | `ambientSound` | [MediaAsset](#-media-fields) | Looping ambient audio |
 | `entities` | String[] | `id`s of entities present here |
@@ -141,8 +142,9 @@ Characters or objects in the world.
 | `id` | String | Unique identifier |
 | `name` | String | Display name |
 | `type` | String | Optional category label |
-| `inGameDescription` | String | Short text shown in play |
-| `detailedDescription` | String | Longer context for the AI |
+| `playerDescription` | String | Shown to the player in-game |
+| `aiDescription` | String | Full description sent to the AI |
+| `aiSummary` | String | Short description sent to the AI where the full one is too long |
 | `image` | String | Data-URL portrait |
 | `sound` | [MediaAsset](#-media-fields) | Associated sound |
 | `model` | [MediaAsset](#-media-fields) | Associated 3D model |
@@ -232,7 +234,7 @@ A trimmed example showing the shape (media payloads abbreviated):
     {
       "id": "town",
       "name": "Town Square",
-      "inGameDescription": "The central gathering place",
+      "playerDescription": "The central gathering place",
       "backgroundImage": "data:image/png;base64,...",
       "entities": ["shopkeeper"],
       "connections": ["Market", "Tavern"],
@@ -244,7 +246,7 @@ A trimmed example showing the shape (media payloads abbreviated):
       "id": "shopkeeper",
       "name": "Friendly Shopkeeper",
       "type": "npc",
-      "inGameDescription": "Sells various goods"
+      "playerDescription": "Sells various goods"
     }
   ],
   "statUpdates": [
