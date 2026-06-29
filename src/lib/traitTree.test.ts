@@ -2,6 +2,7 @@ import { describe, it, expect } from 'vitest';
 import {
   buildTraitTree, isDescendantGroup, buildTraitContext,
   flattenTraitTree, removeChildrenOf, getTraitDropProjection, applyTraitDrop,
+  duplicateTraitNode,
 } from './traitTree';
 import type { Trait, TraitGroup } from '@/types';
 
@@ -43,6 +44,59 @@ describe('isDescendantGroup', () => {
   });
   it('returns false for unrelated groups', () => {
     expect(isDescendantGroup(groups, 'player', 'clans')).toBe(false);
+  });
+});
+
+describe('duplicateTraitNode', () => {
+  it('copies a trait in place, right after the original in the same group', () => {
+    const groups = [group('world', null, 0)];
+    const traits = [trait('a', 'world', 0), trait('b', 'world', 1)];
+    const { groups: g2, traits: t2, newId } = duplicateTraitNode(groups, traits, 'a');
+    const order = flattenTraitTree(buildTraitTree(g2, t2)).map((n) => n.id);
+    expect(order).toEqual(['world', 'a', newId, 'b']);
+    const copy = t2.find((t) => t.id === newId)!;
+    expect(copy.groupId).toBe('world');
+    expect(copy.name).toBe('a (Copy)');
+  });
+
+  it('places the copy after the original even when items have no explicit order (legacy)', () => {
+    const traits: Trait[] = [
+      { id: 'a', name: 'a', statChanges: [] },
+      { id: 'b', name: 'b', statChanges: [] },
+    ];
+    const { groups: g2, traits: t2, newId } = duplicateTraitNode([], traits, 'a');
+    expect(flattenTraitTree(buildTraitTree(g2, t2)).map((n) => n.id)).toEqual(['a', newId, 'b']);
+  });
+
+  it('deep-copies a group subtree with fresh ids and remapped parents', () => {
+    const groups = [group('world', null, 0), group('clans', 'world', 0)];
+    const traits = [trait('storm', 'clans', 0), trait('loner', null, 1)];
+    const { groups: g2, traits: t2, newId } = duplicateTraitNode(groups, traits, 'world');
+
+    // Original tree intact + a sibling copy of `world` after it at root.
+    const tree = buildTraitTree(g2, t2);
+    expect(tree.map((n) => n.id)).toEqual(['world', newId, 'loner']);
+
+    // The copied subgroup + trait are brand-new ids nested under the copied root, not the originals.
+    const copyRoot = tree.find((n) => n.id === newId);
+    const copySub = copyRoot?.kind === 'group' ? copyRoot.children[0] : null;
+    expect(copySub && copySub.id).not.toBe('clans');
+    expect(copySub?.kind === 'group' && copySub.children[0].id).not.toBe('storm');
+    expect(g2.find((g) => g.id === newId)!.name).toBe('world (Copy)');
+    // No id collisions: every group/trait id is unique.
+    const ids = [...g2.map((g) => g.id), ...t2.map((t) => t.id)];
+    expect(new Set(ids).size).toBe(ids.length);
+  });
+
+  it('does not mutate the input arrays and no-ops on an unknown id', () => {
+    const groups = [group('world', null, 0)];
+    const traits = [trait('a', 'world', 0)];
+    const res = duplicateTraitNode(groups, traits, 'missing');
+    expect(res.groups).toBe(groups);
+    expect(res.traits).toBe(traits);
+    duplicateTraitNode(groups, traits, 'a');
+    expect(traits).toHaveLength(1); // original untouched
+    expect(groups).toHaveLength(1);
   });
 });
 
