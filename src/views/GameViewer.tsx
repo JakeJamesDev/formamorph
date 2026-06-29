@@ -527,7 +527,9 @@ const GameViewer = ({
       return "<NO TRAITS AVAILABLE>";
     }
     return playerTraits
-      .map((trait) => `${trait.name}: ${trait.description}`)
+      .map((trait) =>
+        trait.description?.trim() ? `${trait.name}: ${trait.description}` : trait.name,
+      )
       .join("\n");
   }, [playerTraits]);
 
@@ -562,20 +564,23 @@ const GameViewer = ({
         id,
         inGameDescription,
         detailedDescription,
+        isStarting, // editor-only new-game seeding flag; irrelevant to the AI
         entity,
         entities: locationEntities,
         ...otherProps
       } = location;
 
-      // Start with name and description
+      // Start with name and description (skip a blank description so it doesn't print "undefined")
       let output = `name: ${location.name}\n`;
-      output += `description: ${detailedDescription}\n`;
+      if (detailedDescription && detailedDescription.trim() !== "") {
+        output += `description: ${detailedDescription}\n`;
+      }
 
-      // Add other location properties (excluding special ones we handled)
+      // Add other location properties, skipping blanks so empty fields don't confuse smaller models
       Object.entries(otherProps).forEach(([key, value]) => {
-        if (value !== undefined && value !== null) {
-          output += `${key}: ${value}\n`;
-        }
+        if (value === undefined || value === null) return;
+        if (typeof value === "string" && value.trim() === "") return;
+        output += `${key}: ${value}\n`;
       });
 
       // Add entities last
@@ -595,12 +600,15 @@ const GameViewer = ({
               ...entityProps
             } = entityItem;
             output += `  - name: ${entityItem.name}\n`;
-            output += `    description: ${detailedDescription}\n`;
-            // Add other entity properties
+            if (detailedDescription && detailedDescription.trim() !== "") {
+              output += `    description: ${detailedDescription}\n`;
+            }
+            // Add other entity properties, skipping blanks (e.g. an unset type) so empty
+            // fields don't pad the prompt and confuse smaller models.
             Object.entries(entityProps).forEach(([key, value]) => {
-              if (value !== undefined && value !== null && key !== "name") {
-                output += `    ${key}: ${value}\n`;
-              }
+              if (value === undefined || value === null || key === "name") return;
+              if (typeof value === "string" && value.trim() === "") return;
+              output += `    ${key}: ${value}\n`;
             });
           }
         });
