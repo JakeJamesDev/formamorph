@@ -356,21 +356,6 @@ const WorldEditor = ({ onClose, embedded = false }: {
                 </div>
               </CardHeader>
               <CardContent className="flex-grow flex flex-col overflow-hidden pt-6">
-                {activeTab !== "overview" && (
-                  <div className="mb-4 space-y-2 flex-shrink-0">
-                    <div className="flex space-x-2">
-                      <Button onClick={addItem} size="icon">
-                        <Plus className="h-4 w-4" />
-                      </Button>
-                      <Input
-                        placeholder={`Search or add new ${activeTab}`}
-                        value={searchTerm}
-                        onChange={(e) => setSearchTerm(e.target.value)}
-                      />
-                    </div>
-                  </div>
-                )}
-
                   <Tabs value={activeTab} onValueChange={setActiveTab} className="flex-grow flex flex-col min-h-0">
                       <TabsList className="flex-shrink-0">
                         <TabsTrigger value="overview">Overview</TabsTrigger>
@@ -381,6 +366,18 @@ const WorldEditor = ({ onClose, embedded = false }: {
                         <TabsTrigger value="dictionary">Dictionary</TabsTrigger>
                         {/*<TabsTrigger value="statUpdates">Updates</TabsTrigger>*/}
                       </TabsList>
+                    {activeTab !== "overview" && (
+                      <div className="flex space-x-2 flex-shrink-0 mt-4">
+                        <Button onClick={addItem} size="icon">
+                          <Plus className="h-4 w-4" />
+                        </Button>
+                        <Input
+                          placeholder={`Search or add new ${activeTab}`}
+                          value={searchTerm}
+                          onChange={(e) => setSearchTerm(e.target.value)}
+                        />
+                      </div>
+                    )}
                     <div className="flex-grow min-h-0 mt-4">
                       <ScrollArea className="h-full">
                         <TabsContent value="overview">

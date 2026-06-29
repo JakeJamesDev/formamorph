@@ -88,8 +88,6 @@ interface DebugTurn {
 // Each completed turn is digested as soon as it commits (same-turn), so a summary is always ready for
 // the next turn's context assembly. Small cap on each digest request — fact lines are short.
 const DIGEST_MAX_TOKENS = 200;
-// Recent turn-pairs always kept full when banding is on (the immediate situation is never compressed).
-const DIGEST_VERBATIM_FLOOR = 3;
 // Cap on older turns rehydrated to full text per turn — rehydration is a targeted aid, not bulk restore.
 const DIGEST_MAX_REHYDRATIONS = 3;
 
@@ -131,6 +129,11 @@ const GameViewer = ({
     choicesPrompt,
     statUpdatesPrompt,
     locationChangePromptText,
+    choicesEnabled,
+    statUpdatesEnabled,
+    locationChangeEnabled,
+    gametextVerbatimTurns,
+    thinkingVerbatimTurns,
     thinkingMode,
     thinkingPrompt,
     memoryDigests,
@@ -431,7 +434,7 @@ const GameViewer = ({
         contextWindow,
         promptTokens,
         maxTokens,
-        verbatimFloor: DIGEST_VERBATIM_FLOOR,
+        verbatimFloor: gametextVerbatimTurns,
         keywords,
         rehydrateCap,
         maxRehydrations: DIGEST_MAX_REHYDRATIONS,
@@ -441,7 +444,7 @@ const GameViewer = ({
     }
     lastBandCountsRef.current = null;
     return buildVerbatimHistory(turns, contextWindow, promptTokens, maxTokens);
-  }, [fullMessageHistory, contextWindow, maxTokens, memoryDigests, useDigestsInContext, dictionary]);
+  }, [fullMessageHistory, contextWindow, maxTokens, memoryDigests, useDigestsInContext, dictionary, gametextVerbatimTurns]);
 
   // Drive body morphs from stats: each stat's bound sliders track its value (min→max → 0→1 influence).
   useEffect(() => {
@@ -706,14 +709,27 @@ ${playerNotes || "No notes available"}
           .replace("<NOTES>", playerNotes || "No notes available");
         // Frame the planning task as a single instruction. Reusing the narration message history
         // (turns of action -> story) primes the model to just continue the story instead of planning.
-        const lastStory =
-          [...trimmedHistory].reverse().find((m) => m.role === "assistant")?.content || "";
-        // When banding is on, give the planner the digest band too (recent verbatim + digests, never
-        // digests-only) so its plan can't desync from facts the recap carries.
-        const digestBand =
-          trimmedHistory[0]?.role === "assistant" && trimmedHistory[0].content.startsWith("Story so far")
-            ? trimmedHistory[0].content
-            : "";
+        const isBand = (m?: ChatMessage) => m?.role === "assistant" && m.content.startsWith("Story so far");
+        let lastStory =
+          [...trimmedHistory].reverse().find((m) => m.role === "assistant" && !isBand(m))?.content || "";
+        // Planning needs the least context: the immediate turn verbatim, everything older summarized.
+        // When banding is on, rebuild with a floor of 1 (no rehydration) so prior turns are all digests.
+        let digestBand = "";
+        if (memoryDigests && useDigestsInContext) {
+          const plannerMsgs = buildBandedHistory({
+            turns: parseTurns(fullMessageHistory),
+            contextWindow,
+            promptTokens: estimateTokens(thinkPrompt.length),
+            maxTokens: 256,
+            verbatimFloor: thinkingVerbatimTurns,
+            keywords: [],
+            rehydrateCap: 0,
+            maxRehydrations: 0,
+          }).messages;
+          digestBand = isBand(plannerMsgs[0]) ? plannerMsgs[0].content : "";
+          lastStory =
+            [...plannerMsgs].reverse().find((m) => m.role === "assistant" && !isBand(m))?.content || lastStory;
+        }
         const thinkMessages: ChatMessage[] = [
           {
             role: "user",
@@ -753,8 +769,8 @@ ${playerNotes || "No notes available"}
       let choicesResponse = "";
       let statUpdatesResponse = "";
 
-      // Only prepare and make choices request if not disabled
-      if (choicesPrompt !== "DISABLED") {
+      // Only prepare and make choices request if enabled
+      if (choicesEnabled) {
         let updatedChoicesPrompt = choicesPrompt
           .replace("<WORLD DESCRIPTION>", worldOverview.systemPrompt || "")
           .replace("<STATS DESCRIPTION>", statDescriptionsNarrative)
@@ -786,8 +802,8 @@ ${playerNotes || "No notes available"}
       // action while stat-updates / location requests finish in the background.
       setChoicesReady(true);
 
-      // Only prepare and make stat updates request if not disabled
-      if (statUpdatesPrompt !== "DISABLED") {
+      // Only prepare and make stat updates request if enabled
+      if (statUpdatesEnabled) {
         let updatedStatUpdatesPrompt = statUpdatesPrompt
           .replace("<WORLD DESCRIPTION>", worldOverview.systemPrompt || "")
           .replace("<LOCATION JSON DATA>", locationDataString)
@@ -819,7 +835,7 @@ ${playerNotes || "No notes available"}
 
       if (signal.aborted) return; // stopped during the stat-updates request
       // Ask the AI whether the player should move to a different location (v1.2.0)
-      if (locationChangePromptText && locationChangePromptText !== "DISABLED") {
+      if (locationChangeEnabled && locationChangePromptText) {
         const locationList = locations.map((loc) => loc.name).join("\n");
         const updatedLocationPrompt = locationChangePromptText
           .replace("<WORLD DESCRIPTION>", worldOverview.systemPrompt || "")
@@ -850,7 +866,7 @@ ${playerNotes || "No notes available"}
       if (signal.aborted) return; // stopped during the location-change request
       // Parse choices (line-separated), hard-capped to 6 to stop the AI over-producing
       const choicesList =
-        choicesPrompt === "DISABLED"
+        !choicesEnabled
           ? []
           : choicesResponse
               .split("\n")
@@ -864,7 +880,7 @@ ${playerNotes || "No notes available"}
 
       // Parse stat updates into current-value deltas and max-cap deltas (see lib/statChanges).
       let statChanges: Record<string, number>[] = [];
-      if (statUpdatesPrompt !== "DISABLED" && statUpdatesResponse) {
+      if (statUpdatesEnabled && statUpdatesResponse) {
         const { values, maxes } = parseStatUpdates(statUpdatesResponse);
         statChanges = Object.entries(values).map(([k, v]) => ({ [k]: v }));
         if (Object.keys(maxes).length > 0) {
@@ -1551,7 +1567,7 @@ ${playerNotes || "No notes available"}
             {row("History", historyTokens)}
             {bandCounts && (
               <div className="pl-3 text-muted-foreground space-y-0.5">
-                {row("Digest band", bandCounts.bandTokens)}
+                {row("Summary band", bandCounts.bandTokens)}
                 {row("Rehydrated", bandCounts.rehydratedTokens)}
               </div>
             )}
@@ -2026,7 +2042,7 @@ ${playerNotes || "No notes available"}
                 )}
                 {showSilentRequests && currentSummary && (
                   <div className="flex-shrink-0 rounded-md border border-border bg-muted/40 p-2 text-xs">
-                    <div className="mb-1 font-semibold text-muted-foreground">Memory digest</div>
+                    <div className="mb-1 font-semibold text-muted-foreground">Memory summary</div>
                     <pre className="whitespace-pre-wrap break-words">{currentSummary}</pre>
                   </div>
                 )}

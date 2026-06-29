@@ -25,6 +25,22 @@ const nullableIntCodec: Codec<number | null> = {
   serialize: (v) => (v == null ? '' : String(v)),
 };
 
+/** One-time migration of the legacy "type DISABLED into the prompt body" hack to per-prompt Enabled
+ *  flags. A prompt whose stored body is exactly "DISABLED" is turned off and its body reset to default. */
+function migrateDisabledPrompts() {
+  const pairs: [string, string][] = [
+    [`${APP_ID}_choicesPrompt2`, `${APP_ID}_choicesEnabled`],
+    [`${APP_ID}_statUpdatesPrompt2`, `${APP_ID}_statUpdatesEnabled`],
+    [`${APP_ID}_locationChangePrompt`, `${APP_ID}_locationChangeEnabled`],
+  ];
+  for (const [promptKey, flagKey] of pairs) {
+    if (localStorage.getItem(flagKey) === null && localStorage.getItem(promptKey) === 'DISABLED') {
+      localStorage.setItem(flagKey, 'false');
+      localStorage.removeItem(promptKey); // re-seeds to the default body, no longer the sentinel
+    }
+  }
+}
+
 /** useState mirrored to a localStorage `key`: seeds from the stored value (or `defaultValue` when
  *  absent) and writes back on every change. `codec` maps the value to/from its stored string. */
 function usePersistentState<T>(key: string, defaultValue: T, codec: Codec<T>) {
@@ -41,6 +57,12 @@ function usePersistentState<T>(key: string, defaultValue: T, codec: Codec<T>) {
 }
 
 function useProvideSettings() {
+  const migrated = useRef(false);
+  if (!migrated.current) {
+    migrateDisabledPrompts(); // runs before the prompt/flag state below seeds from localStorage
+    migrated.current = true;
+  }
+
   const [bgmEnabled, setBgmEnabled] = usePersistentState<boolean>('bgmEnabled', true, boolCodec);
   const [language, setLanguage] = usePersistentState<string>('language', 'English', stringCodec);
 
@@ -140,6 +162,18 @@ function useProvideSettings() {
   });
   const [thinkingPrompt, setThinkingPrompt] = usePersistentState<string>(`${APP_ID}_thinkingPrompt`, defaultThinkingPrompt, stringCodec);
   const [summaryPrompt, setSummaryPrompt] = usePersistentState<string>(`${APP_ID}_summaryPrompt`, defaultSummaryPrompt, stringCodec);
+  // Whether each optional per-turn request is sent (replaces the legacy "type DISABLED" body hack).
+  const [choicesEnabled, setChoicesEnabled] = usePersistentState<boolean>(`${APP_ID}_choicesEnabled`, true, boolCodec);
+  const [statUpdatesEnabled, setStatUpdatesEnabled] = usePersistentState<boolean>(`${APP_ID}_statUpdatesEnabled`, true, boolCodec);
+  const [locationChangeEnabled, setLocationChangeEnabled] = usePersistentState<boolean>(`${APP_ID}_locationChangeEnabled`, true, boolCodec);
+  // How many recent turns each prompt receives verbatim (the digest-banding floor). Only Game Text and
+  // Thinking consume history today; the rest are stored for when those prompts gain history.
+  const [gametextVerbatimTurns, setGametextVerbatimTurns] = usePersistentState<number>(`${APP_ID}_gametextVerbatimTurns`, 3, intCodec);
+  const [thinkingVerbatimTurns, setThinkingVerbatimTurns] = usePersistentState<number>(`${APP_ID}_thinkingVerbatimTurns`, 1, intCodec);
+  const [choicesVerbatimTurns, setChoicesVerbatimTurns] = usePersistentState<number>(`${APP_ID}_choicesVerbatimTurns`, 3, intCodec);
+  const [statUpdatesVerbatimTurns, setStatUpdatesVerbatimTurns] = usePersistentState<number>(`${APP_ID}_statUpdatesVerbatimTurns`, 3, intCodec);
+  const [locationChangeVerbatimTurns, setLocationChangeVerbatimTurns] = usePersistentState<number>(`${APP_ID}_locationChangeVerbatimTurns`, 3, intCodec);
+  const [summaryVerbatimTurns, setSummaryVerbatimTurns] = usePersistentState<number>(`${APP_ID}_summaryVerbatimTurns`, 3, intCodec);
   const [vramHelperUrl, setVramHelperUrl] = usePersistentState<string>(`${APP_ID}_vramHelperUrl`, 'http://localhost:5179', stringCodec);
   const [ttsVolume, setTtsVolume] = usePersistentState<number>(`${APP_ID}_ttsVolume`, 1, floatCodec);
 
@@ -192,6 +226,24 @@ function useProvideSettings() {
     setStatUpdatesPrompt,
     locationChangePromptText,
     setLocationChangePromptText,
+    choicesEnabled,
+    setChoicesEnabled,
+    statUpdatesEnabled,
+    setStatUpdatesEnabled,
+    locationChangeEnabled,
+    setLocationChangeEnabled,
+    gametextVerbatimTurns,
+    setGametextVerbatimTurns,
+    thinkingVerbatimTurns,
+    setThinkingVerbatimTurns,
+    choicesVerbatimTurns,
+    setChoicesVerbatimTurns,
+    statUpdatesVerbatimTurns,
+    setStatUpdatesVerbatimTurns,
+    locationChangeVerbatimTurns,
+    setLocationChangeVerbatimTurns,
+    summaryVerbatimTurns,
+    setSummaryVerbatimTurns,
     thinkingMode,
     setThinkingMode,
     thinkingPrompt,
