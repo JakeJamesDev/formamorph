@@ -723,7 +723,7 @@ ${playerNotes || "No notes available"}
         let updatedChoicesPrompt = choicesPrompt
           .replace("<WORLD DESCRIPTION>", worldOverview.systemPrompt || "")
           .replace("<STATS DESCRIPTION>", statDescriptionsNarrative)
-          .replace("<LOCATION JSON DATA>", locationDataString)
+          .replace("<LOCATION JSON DATA>", locationSummaryString)
           .replace("<TRAITS DESCRIPTION>", generateTraitDescriptions());
 
         // Add player notes to the choices prompt
@@ -739,7 +739,7 @@ ${playerNotes || "No notes available"}
 
         choicesResponse = await makeAIRequest(
           updatedChoicesPrompt,
-          [{ role: "user", content: `Game text: ${gameTextResponse}` }],
+          [{ role: "user", content: `Player action: ${action}\n\nGame text: ${gameTextResponse}` }],
           "choices",
           null,
           signal,
