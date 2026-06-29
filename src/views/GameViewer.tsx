@@ -38,6 +38,7 @@ import { lengthGuidance, trimToLastSentence } from "../lib/outputLength";
 import { splitSentenceSegments } from "../lib/ttsChunks";
 import { selectDueDigests, applyDigest, parseTurnContent } from "../lib/turnDigest";
 import { buildTraitContext } from "../lib/traitTree";
+import { buildLocationContext } from "../lib/locationContext";
 import { parseTurns, buildVerbatimHistory, buildBandedHistory, extractKeywords, type BandCounts } from "../lib/turnBanding";
 import { useSmoothedReveal } from "../lib/useSmoothedReveal";
 import { parseSlashCommand } from "../lib/slashCommands";
@@ -554,71 +555,10 @@ const GameViewer = ({
     // On the opening turn, snapshot the pre-game state so page 1 can be re-generated later.
     if (fullMessageHistory.length === 0) initialStateRef.current = saveCurrentGameState();
 
-    const sanitizeLocationData = (location: (GameLocation & { entity?: string[] }) | null) => {
-      if (!location) return "";
-
-      const {
-        backgroundImage,
-        ambientSound,
-        id,
-        playerDescription,
-        aiDescription,
-        aiSummary, // not consumed yet; kept out of the dumped data
-        isStarting, // editor-only new-game seeding flag; irrelevant to the AI
-        entity,
-        entities: locationEntities,
-        ...otherProps
-      } = location;
-
-      // Start with name and description (skip a blank description so it doesn't print "undefined")
-      let output = `name: ${location.name}\n`;
-      if (aiDescription && aiDescription.trim() !== "") {
-        output += `description: ${aiDescription}\n`;
-      }
-
-      // Add other location properties, skipping blanks so empty fields don't confuse smaller models
-      Object.entries(otherProps).forEach(([key, value]) => {
-        if (value === undefined || value === null) return;
-        if (typeof value === "string" && value.trim() === "") return;
-        output += `${key}: ${value}\n`;
-      });
-
-      // Add entities last
-      const entityList = locationEntities || entity || [];
-      if (entityList.length > 0) {
-        output += "entities:\n";
-        entityList.forEach((entityId: string) => {
-          const entityItem = entities.find((f) => f.id === entityId);
-          if (entityItem) {
-            const {
-              id,
-              image,
-              sound,
-              model,
-              playerDescription,
-              aiDescription,
-              aiSummary, // not consumed yet; kept out of the dumped data
-              ...entityProps
-            } = entityItem;
-            output += `  - name: ${entityItem.name}\n`;
-            if (aiDescription && aiDescription.trim() !== "") {
-              output += `    description: ${aiDescription}\n`;
-            }
-            // Add other entity properties, skipping blanks (e.g. an unset type) so empty
-            // fields don't pad the prompt and confuse smaller models.
-            Object.entries(entityProps).forEach(([key, value]) => {
-              if (value === undefined || value === null || key === "name") return;
-              if (typeof value === "string" && value.trim() === "") return;
-              output += `    ${key}: ${value}\n`;
-            });
-          }
-        });
-      }
-
-      return output;
-    };
-
-    const locationDataString = sanitizeLocationData(currentLocation);
+    const locationDataString = buildLocationContext(currentLocation, entities);
+    // Planning runs on the lightest context: prefer each location/entity's short aiSummary
+    // (falling back to the full aiDescription where none is authored).
+    const locationSummaryString = buildLocationContext(currentLocation, entities, { preferSummary: true });
 
     const statDescriptions = generateStatDescriptions(); // with numbers — used by stat-updates
     // Narration, planning, and choices use descriptor-only stats when enabled (immersion).
@@ -714,7 +654,7 @@ ${playerNotes || "No notes available"}
           .replace("<WORLD DESCRIPTION>", worldOverview.systemPrompt || "")
           .replace("<STATS DESCRIPTION>", statDescriptionsNarrative)
           .replace("<TRAITS DESCRIPTION>", generateTraitDescriptions())
-          .replace("<LOCATION JSON DATA>", locationDataString)
+          .replace("<LOCATION JSON DATA>", locationSummaryString)
           .replace("<NOTES>", playerNotes || "No notes available");
         // Frame the planning task as a single instruction. Reusing the narration message history
         // (turns of action -> story) primes the model to just continue the story instead of planning.
