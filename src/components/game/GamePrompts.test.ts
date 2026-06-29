@@ -20,7 +20,8 @@ describe('default prompts carry the expected variable chips', () => {
       '<WORLD DESCRIPTION>',
       '<STATS DESCRIPTION>',
       '<TRAITS DESCRIPTION>',
-      '<LOCATION JSON DATA>',
+      '<LOCATION>',
+      '<ENTITIES>',
       '<NOTES>',
       '<LENGTH GUIDANCE>',
       '<MARKDOWN GUIDANCE>',
@@ -35,7 +36,8 @@ describe('default prompts carry the expected variable chips', () => {
       '<STATS DESCRIPTION>',
       '<TRAITS DESCRIPTION>',
       '<NOTES>',
-      '<LOCATION JSON DATA|summary>',
+      '<LOCATION|summary>',
+      '<ENTITIES|summary>',
     ]);
   });
 
@@ -51,7 +53,8 @@ describe('default prompts carry the expected variable chips', () => {
   it('location-change prompt', () => {
     expect(tokensIn(defaultLocationChangePrompt)).toEqual([
       '<WORLD DESCRIPTION>',
-      '<LOCATION JSON DATA>',
+      '<LOCATION>',
+      '<ENTITIES>',
       '<LOCATION LIST>',
     ]);
   });
@@ -61,7 +64,8 @@ describe('default prompts carry the expected variable chips', () => {
       '<WORLD DESCRIPTION>',
       '<STATS DESCRIPTION>',
       '<TRAITS DESCRIPTION>',
-      '<LOCATION JSON DATA|summary>',
+      '<LOCATION|summary>',
+      '<ENTITIES|summary>',
       '<NOTES>',
     ]);
   });

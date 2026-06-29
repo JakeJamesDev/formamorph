@@ -15,38 +15,39 @@ export interface PromptVariable {
 /** Every prompt editor maps to one of these kinds (mirrors the Settings → System Prompts sub-tabs). */
 export type PromptKind = 'gametext' | 'thinking' | 'choices' | 'statupdates' | 'location' | 'summary';
 
-/** Suffix marking the summary variant of a token: `<LOCATION JSON DATA|summary>`. */
+/** Suffix marking the summary variant of a token: `<LOCATION|summary>`. */
 export const SUMMARY_SUFFIX = '|summary';
 
 // Each variable gets a fixed palette slot so its color is stable everywhere (chip + preview, every prompt).
 const WORLD: PromptVariable = { token: '<WORLD DESCRIPTION>', label: 'World', color: HIGHLIGHT_PALETTE[0], hasSummary: false };
 const STATS: PromptVariable = { token: '<STATS DESCRIPTION>', label: 'Stats', color: HIGHLIGHT_PALETTE[1], hasSummary: false };
 const TRAITS: PromptVariable = { token: '<TRAITS DESCRIPTION>', label: 'Traits', color: HIGHLIGHT_PALETTE[2], hasSummary: false };
-const LOCATION: PromptVariable = { token: '<LOCATION JSON DATA>', label: 'Location', color: HIGHLIGHT_PALETTE[3], hasSummary: true };
+const LOCATION: PromptVariable = { token: '<LOCATION>', label: 'Location', color: HIGHLIGHT_PALETTE[3], hasSummary: true };
 const NOTES: PromptVariable = { token: '<NOTES>', label: 'Notes', color: HIGHLIGHT_PALETTE[4], hasSummary: false };
 const LENGTH: PromptVariable = { token: '<LENGTH GUIDANCE>', label: 'Length Guidance', color: HIGHLIGHT_PALETTE[5], hasSummary: false };
 const MARKDOWN: PromptVariable = { token: '<MARKDOWN GUIDANCE>', label: 'Markdown Guidance', color: HIGHLIGHT_PALETTE[6], hasSummary: false };
 const LOCATION_LIST: PromptVariable = { token: '<LOCATION LIST>', label: 'Location List', color: HIGHLIGHT_PALETTE[7], hasSummary: false };
+const ENTITIES: PromptVariable = { token: '<ENTITIES>', label: 'Entities', color: HIGHLIGHT_PALETTE[8], hasSummary: true };
 
 /** All known variables — used by the parser to recognize any token regardless of which prompt it's in. */
 export const ALL_PROMPT_VARIABLES: PromptVariable[] = [
-  WORLD, STATS, TRAITS, LOCATION, NOTES, LENGTH, MARKDOWN, LOCATION_LIST,
+  WORLD, STATS, TRAITS, LOCATION, ENTITIES, NOTES, LENGTH, MARKDOWN, LOCATION_LIST,
 ];
 
 /** Which variables each prompt's toolbar offers (matches what GameViewer actually substitutes per
  *  request type). The summary prompt takes no variables. */
 export const PROMPT_KIND_VARIABLES: Record<PromptKind, PromptVariable[]> = {
-  gametext: [WORLD, STATS, TRAITS, LOCATION, NOTES, LENGTH, MARKDOWN],
-  thinking: [WORLD, STATS, TRAITS, LOCATION, NOTES],
-  choices: [WORLD, STATS, TRAITS, NOTES, LOCATION],
+  gametext: [WORLD, STATS, TRAITS, LOCATION, ENTITIES, NOTES, LENGTH, MARKDOWN],
+  thinking: [WORLD, STATS, TRAITS, LOCATION, ENTITIES, NOTES],
+  choices: [WORLD, STATS, TRAITS, NOTES, LOCATION, ENTITIES],
   statupdates: [WORLD, STATS, TRAITS, NOTES],
-  location: [WORLD, LOCATION, LOCATION_LIST],
+  location: [WORLD, LOCATION, ENTITIES, LOCATION_LIST],
   summary: [],
 };
 
 const VAR_BY_BASE = new Map(ALL_PROMPT_VARIABLES.map((v) => [v.token, v]));
 
-/** The base token (`<…>`) of a possibly-variant token, e.g. `<LOCATION JSON DATA|summary>` → `<LOCATION JSON DATA>`. */
+/** The base token (`<…>`) of a possibly-variant token, e.g. `<LOCATION|summary>` → `<LOCATION>`. */
 export function baseToken(token: string): string {
   return isSummaryToken(token) ? token.slice(0, -(SUMMARY_SUFFIX.length + 1)) + '>' : token;
 }
@@ -56,7 +57,7 @@ export function isSummaryToken(token: string): boolean {
   return token.endsWith(`${SUMMARY_SUFFIX}>`);
 }
 
-/** The summary variant of a base token: `<LOCATION JSON DATA>` → `<LOCATION JSON DATA|summary>`. */
+/** The summary variant of a base token: `<LOCATION>` → `<LOCATION|summary>`. */
 export function summaryToken(base: string): string {
   return `${base.slice(0, -1)}${SUMMARY_SUFFIX}>`;
 }

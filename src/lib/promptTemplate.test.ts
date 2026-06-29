@@ -65,24 +65,24 @@ describe('parse ∘ serialize round-trip', () => {
   });
 
   it('round-trips a summary-variant token', () => {
-    const src = 'Loc: <LOCATION JSON DATA|summary> done';
+    const src = 'Loc: <LOCATION|summary> done';
     expect(serializeSegments(parsePromptTemplate(src))).toBe(src);
   });
 });
 
 describe('summary variant', () => {
   it('parses base and summary tokens as distinct variables', () => {
-    expect(parsePromptTemplate('<LOCATION JSON DATA> / <LOCATION JSON DATA|summary>')).toEqual([
-      { type: 'variable', token: '<LOCATION JSON DATA>' },
+    expect(parsePromptTemplate('<LOCATION> / <LOCATION|summary>')).toEqual([
+      { type: 'variable', token: '<LOCATION>' },
       { type: 'text', value: ' / ' },
-      { type: 'variable', token: '<LOCATION JSON DATA|summary>' },
+      { type: 'variable', token: '<LOCATION|summary>' },
     ]);
   });
 
   it('substitutes base and summary tokens independently', () => {
-    const out = renderPromptTemplate('<LOCATION JSON DATA> | <LOCATION JSON DATA|summary>', {
-      '<LOCATION JSON DATA>': 'full',
-      '<LOCATION JSON DATA|summary>': 'short',
+    const out = renderPromptTemplate('<LOCATION> | <LOCATION|summary>', {
+      '<LOCATION>': 'full',
+      '<LOCATION|summary>': 'short',
     });
     expect(out).toBe('full | short');
   });

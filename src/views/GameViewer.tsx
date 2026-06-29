@@ -38,7 +38,7 @@ import { lengthGuidance, trimToLastSentence } from "../lib/outputLength";
 import { splitSentenceSegments } from "../lib/ttsChunks";
 import { selectDueDigests, applyDigest, parseTurnContent } from "../lib/turnDigest";
 import { buildTraitContext } from "../lib/traitTree";
-import { buildLocationContext } from "../lib/locationContext";
+import { buildLocationContext, buildEntityContext } from "../lib/locationContext";
 import { renderPromptTemplate } from "../lib/promptTemplate";
 import { parseTurns, buildVerbatimHistory, buildBandedHistory, extractKeywords, type BandCounts } from "../lib/turnBanding";
 import { useSmoothedReveal } from "../lib/useSmoothedReveal";
@@ -556,8 +556,10 @@ const GameViewer = ({
     "<WORLD DESCRIPTION>": worldOverview.systemPrompt || "",
     "<STATS DESCRIPTION>": generateStatDescriptions(!hideStatNumbers),
     "<TRAITS DESCRIPTION>": generateTraitDescriptions(),
-    "<LOCATION JSON DATA>": buildLocationContext(currentLocation, entities),
-    "<LOCATION JSON DATA|summary>": buildLocationContext(currentLocation, entities, { preferSummary: true }),
+    "<LOCATION>": buildLocationContext(currentLocation),
+    "<LOCATION|summary>": buildLocationContext(currentLocation, { preferSummary: true }),
+    "<ENTITIES>": buildEntityContext(currentLocation, entities),
+    "<ENTITIES|summary>": buildEntityContext(currentLocation, entities, { preferSummary: true }),
     "<NOTES>": playerNotes || "No notes available",
     "<LENGTH GUIDANCE>": lengthGuidance(paragraphLimit, maxTokens),
     "<MARKDOWN GUIDANCE>": markdownGuidance(markdownOutput),
@@ -573,10 +575,14 @@ const GameViewer = ({
     // On the opening turn, snapshot the pre-game state so page 1 can be re-generated later.
     if (fullMessageHistory.length === 0) initialStateRef.current = saveCurrentGameState();
 
-    const locationDataString = buildLocationContext(currentLocation, entities);
+    const locationDataString = buildLocationContext(currentLocation);
     // Planning runs on the lightest context: prefer each location/entity's short aiSummary
     // (falling back to the full aiDescription where none is authored).
-    const locationSummaryString = buildLocationContext(currentLocation, entities, { preferSummary: true });
+    const locationSummaryString = buildLocationContext(currentLocation, { preferSummary: true });
+    // Entities are their own section now (a roster of who/what could appear), kept separate from the
+    // location so the model doesn't read the whole cast as all-present.
+    const entityDataString = buildEntityContext(currentLocation, entities);
+    const entitySummaryString = buildEntityContext(currentLocation, entities, { preferSummary: true });
 
     const statDescriptions = generateStatDescriptions(); // with numbers — used by stat-updates
     // Narration, planning, and choices use descriptor-only stats when enabled (immersion).
@@ -586,8 +592,10 @@ const GameViewer = ({
 
     let updatedPrompt = renderPromptTemplate(systemPrompt, {
       "<WORLD DESCRIPTION>": worldOverview.systemPrompt || "",
-      "<LOCATION JSON DATA>": locationDataString,
-      "<LOCATION JSON DATA|summary>": locationSummaryString,
+      "<LOCATION>": locationDataString,
+      "<LOCATION|summary>": locationSummaryString,
+      "<ENTITIES>": entityDataString,
+      "<ENTITIES|summary>": entitySummaryString,
       "<STATS DESCRIPTION>": statDescriptionsNarrative,
       "<TRAITS DESCRIPTION>": generateTraitDescriptions(),
       "<LENGTH GUIDANCE>": lengthGuidance(paragraphLimit, maxTokens),
@@ -622,6 +630,7 @@ ${playerNotes || "No notes available"}
     // excluded so its terms don't fire every turn.
     const activatedEntries = getActivatedDictionary(dictionary, [
       locationDataString,
+      entityDataString,
       action,
       ...fullMessageHistory.map((m) => m.content),
     ]);
@@ -668,8 +677,10 @@ ${playerNotes || "No notes available"}
           "<WORLD DESCRIPTION>": worldOverview.systemPrompt || "",
           "<STATS DESCRIPTION>": statDescriptionsNarrative,
           "<TRAITS DESCRIPTION>": generateTraitDescriptions(),
-          "<LOCATION JSON DATA>": locationDataString,
-          "<LOCATION JSON DATA|summary>": locationSummaryString,
+          "<LOCATION>": locationDataString,
+          "<LOCATION|summary>": locationSummaryString,
+          "<ENTITIES>": entityDataString,
+          "<ENTITIES|summary>": entitySummaryString,
           "<NOTES>": playerNotes || "No notes available",
         });
         // Frame the planning task as a single instruction. Reusing the narration message history
@@ -739,8 +750,10 @@ ${playerNotes || "No notes available"}
         let updatedChoicesPrompt = renderPromptTemplate(choicesPrompt, {
           "<WORLD DESCRIPTION>": worldOverview.systemPrompt || "",
           "<STATS DESCRIPTION>": statDescriptionsNarrative,
-          "<LOCATION JSON DATA>": locationDataString,
-          "<LOCATION JSON DATA|summary>": locationSummaryString,
+          "<LOCATION>": locationDataString,
+          "<LOCATION|summary>": locationSummaryString,
+          "<ENTITIES>": entityDataString,
+          "<ENTITIES|summary>": entitySummaryString,
           "<TRAITS DESCRIPTION>": generateTraitDescriptions(),
           "<NOTES>": playerNotes || "No notes available",
         });
@@ -766,8 +779,8 @@ ${playerNotes || "No notes available"}
       if (statUpdatesEnabled) {
         let updatedStatUpdatesPrompt = renderPromptTemplate(statUpdatesPrompt, {
           "<WORLD DESCRIPTION>": worldOverview.systemPrompt || "",
-          "<LOCATION JSON DATA>": locationDataString,
-          "<LOCATION JSON DATA|summary>": locationSummaryString,
+          "<LOCATION>": locationDataString,
+          "<LOCATION|summary>": locationSummaryString,
           "<STATS DESCRIPTION>": statDescriptions,
           "<TRAITS DESCRIPTION>": generateTraitDescriptions(),
           "<NOTES>": playerNotes || "No notes available",
@@ -791,8 +804,10 @@ ${playerNotes || "No notes available"}
         const locationList = locations.map((loc) => loc.name).join("\n");
         const updatedLocationPrompt = renderPromptTemplate(locationChangePromptText, {
           "<WORLD DESCRIPTION>": worldOverview.systemPrompt || "",
-          "<LOCATION JSON DATA>": locationDataString,
-          "<LOCATION JSON DATA|summary>": locationSummaryString,
+          "<LOCATION>": locationDataString,
+          "<LOCATION|summary>": locationSummaryString,
+          "<ENTITIES>": entityDataString,
+          "<ENTITIES|summary>": entitySummaryString,
           "<LOCATION LIST>": locationList,
         });
 
