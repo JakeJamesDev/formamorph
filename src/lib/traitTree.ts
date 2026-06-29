@@ -43,74 +43,6 @@ export function isDescendantGroup(groups: TraitGroup[], ancestorId: string, cand
   return false;
 }
 
-interface Sibling { id: string; kind: 'group' | 'trait' }
-
-/** Ordered direct children (ids + kind) of a parent, by `order` with array-index fallback. */
-function orderedSiblings(groups: TraitGroup[], traits: Trait[], parentId: string | null): Sibling[] {
-  const entries: { id: string; kind: 'group' | 'trait'; sort: number }[] = [];
-  groups.forEach((g, i) => {
-    if ((g.parentId ?? null) === parentId) entries.push({ id: g.id, kind: 'group', sort: g.order ?? i });
-  });
-  traits.forEach((t, i) => {
-    if ((t.groupId ?? null) === parentId) entries.push({ id: t.id, kind: 'trait', sort: t.order ?? i });
-  });
-  return entries.sort((a, b) => a.sort - b.sort).map(({ id, kind }) => ({ id, kind }));
-}
-
-/** Write sequential `order` (0..n) onto the given sibling list, mutating the passed arrays. */
-function applyOrder(groups: TraitGroup[], traits: Trait[], sibs: Sibling[]) {
-  sibs.forEach((s, i) => {
-    if (s.kind === 'group') {
-      const g = groups.find((x) => x.id === s.id);
-      if (g) g.order = i;
-    } else {
-      const t = traits.find((x) => x.id === s.id);
-      if (t) t.order = i;
-    }
-  });
-}
-
-/**
- * Move a trait or group under `newParentId`, inserted before `beforeId` (or appended when null), and
- * reindex the affected sibling lists. Illegal moves (a group into itself or a descendant) are no-ops.
- * Returns new arrays; never mutates the inputs.
- */
-export function moveNode(
-  groups: TraitGroup[], traits: Trait[], activeId: string,
-  newParentId: string | null, beforeId: string | null,
-): { groups: TraitGroup[]; traits: Trait[] } {
-  const isGroup = groups.some((g) => g.id === activeId);
-  if (isGroup && (activeId === newParentId || (newParentId !== null && isDescendantGroup(groups, activeId, newParentId)))) {
-    return { groups, traits };
-  }
-  const g2 = groups.map((g) => ({ ...g }));
-  const t2 = traits.map((t) => ({ ...t }));
-
-  const oldParent = isGroup
-    ? (g2.find((g) => g.id === activeId)?.parentId ?? null)
-    : (t2.find((t) => t.id === activeId)?.groupId ?? null);
-
-  if (isGroup) {
-    const a = g2.find((g) => g.id === activeId);
-    if (a) a.parentId = newParentId;
-  } else {
-    const a = t2.find((t) => t.id === activeId);
-    if (a) a.groupId = newParentId;
-  }
-
-  const dest = orderedSiblings(g2, t2, newParentId).filter((s) => s.id !== activeId);
-  const activeSib: Sibling = { id: activeId, kind: isGroup ? 'group' : 'trait' };
-  const idx = beforeId ? dest.findIndex((s) => s.id === beforeId) : -1;
-  if (idx === -1) dest.push(activeSib);
-  else dest.splice(idx, 0, activeSib);
-  applyOrder(g2, t2, dest);
-
-  if ((oldParent ?? null) !== (newParentId ?? null)) {
-    applyOrder(g2, t2, orderedSiblings(g2, t2, oldParent));
-  }
-  return { groups: g2, traits: t2 };
-}
-
 /**
  * Build the trait block sent to the AI: ungrouped selected traits first (bare lines), then each group
  * (depth-first) that has ≥1 selected trait, emitting `Group:` + its AI description (if non-blank) above
@@ -145,17 +77,136 @@ export function buildTraitContext(selectedIds: Iterable<string>, traits: Trait[]
   return lines.join('\n');
 }
 
-/** Walk the tree depth-first, yielding every group node (used to order selection-screen tabs). */
-export function flattenGroups(tree: TraitTreeNode[]): TraitGroup[] {
-  const out: TraitGroup[] = [];
-  const visit = (nodes: TraitTreeNode[]) => {
+// ---- Sortable-tree drag projection (editor Traits tab) ------------------------------------------
+// Ports the dnd-kit "sortable tree" recipe: a single flat list where the horizontal pointer offset
+// during a drag decides the drop depth (and thus the parent). Traits are leaves, so a row may only
+// nest under a group.
+
+export interface FlatTraitNode {
+  id: string;
+  kind: 'group' | 'trait';
+  parentId: string | null;
+  depth: number;
+  group?: TraitGroup;
+  trait?: Trait;
+}
+
+/** Depth-first flatten of the tree, tagging each node with its parent and indentation depth. */
+export function flattenTraitTree(tree: TraitTreeNode[]): FlatTraitNode[] {
+  const out: FlatTraitNode[] = [];
+  const walk = (nodes: TraitTreeNode[], parentId: string | null, depth: number) => {
     for (const node of nodes) {
       if (node.kind === 'group') {
-        out.push(node.group);
-        visit(node.children);
+        out.push({ id: node.id, kind: 'group', parentId, depth, group: node.group });
+        walk(node.children, node.id, depth + 1);
+      } else {
+        out.push({ id: node.id, kind: 'trait', parentId, depth, trait: node.trait });
       }
     }
   };
-  visit(tree);
+  walk(tree, null, 0);
   return out;
+}
+
+/** Drop every node that descends from any id in `ids` (collapsed groups, the dragged subtree). */
+export function removeChildrenOf(items: FlatTraitNode[], ids: Iterable<string>): FlatTraitNode[] {
+  const exclude = new Set(ids);
+  const out: FlatTraitNode[] = [];
+  for (const item of items) {
+    if (item.parentId !== null && exclude.has(item.parentId)) {
+      if (item.kind === 'group') exclude.add(item.id);
+      continue;
+    }
+    out.push(item);
+  }
+  return out;
+}
+
+function arrayMove<T>(arr: T[], from: number, to: number): T[] {
+  const copy = arr.slice();
+  const [item] = copy.splice(from, 1);
+  copy.splice(to, 0, item);
+  return copy;
+}
+
+const clamp = (n: number, min: number, max: number) => Math.min(Math.max(n, min), max);
+
+/** Projected drop {depth, parentId} for the active row, given the pointer's horizontal drag offset. */
+export function getTraitDropProjection(
+  items: FlatTraitNode[], activeId: string, overId: string,
+  dragOffset: number, indentationWidth: number,
+): { depth: number; parentId: string | null } {
+  const overIndex = items.findIndex((i) => i.id === overId);
+  const activeIndex = items.findIndex((i) => i.id === activeId);
+  if (overIndex === -1 || activeIndex === -1) return { depth: 0, parentId: null };
+
+  const activeItem = items[activeIndex];
+  const newItems = arrayMove(items, activeIndex, overIndex);
+  const prev = newItems[overIndex - 1];
+  const next = newItems[overIndex + 1];
+
+  const dragDepth = Math.round(dragOffset / indentationWidth);
+  const projectedDepth = activeItem.depth + dragDepth;
+  // A trait can't be a parent, so you can only descend a level past a group.
+  const maxDepth = prev ? prev.depth + (prev.kind === 'group' ? 1 : 0) : 0;
+  const minDepth = next ? next.depth : 0;
+  const depth = clamp(projectedDepth, minDepth, maxDepth);
+
+  const parentId = (() => {
+    if (depth === 0 || !prev) return null;
+    if (depth === prev.depth) return prev.parentId;
+    if (depth > prev.depth) return prev.id; // prev is a group (maxDepth cap guarantees it)
+    return newItems.slice(0, overIndex).reverse().find((i) => i.depth === depth)?.parentId ?? null;
+  })();
+
+  return { depth, parentId };
+}
+
+/**
+ * Resolve a drag into new groups/traits arrays. Projects the drop parent from `dragOffset` (using the
+ * visible list, minus the dragged subtree), then re-parents and reindexes order across the full tree.
+ * Illegal moves (a group into itself or a descendant) and unfound ids are no-ops. Never mutates inputs.
+ */
+export function applyTraitDrop(
+  groups: TraitGroup[], traits: Trait[], collapsedIds: Iterable<string>,
+  activeId: string, overId: string, dragOffset: number, indentationWidth: number,
+): { groups: TraitGroup[]; traits: Trait[] } {
+  const full = flattenTraitTree(buildTraitTree(groups, traits));
+  const visible = removeChildrenOf(full, [...collapsedIds, activeId]);
+  // The drop target must be a visible row; dropping onto the dragged subtree (or a hidden row) is a no-op.
+  if (!visible.some((i) => i.id === overId) || !visible.some((i) => i.id === activeId)) {
+    return { groups, traits };
+  }
+  const { parentId } = getTraitDropProjection(visible, activeId, overId, dragOffset, indentationWidth);
+
+  const isGroup = groups.some((g) => g.id === activeId);
+  if (isGroup && parentId !== null && isDescendantGroup(groups, activeId, parentId)) {
+    return { groups, traits };
+  }
+
+  const activeIndex = full.findIndex((i) => i.id === activeId);
+  const overIndex = full.findIndex((i) => i.id === overId);
+  if (activeIndex === -1 || overIndex === -1) return { groups, traits };
+
+  const reParented = full.map((i) => (i.id === activeId ? { ...i, parentId } : i));
+  const sorted = arrayMove(reParented, activeIndex, overIndex);
+
+  const g2 = groups.map((g) => ({ ...g }));
+  const t2 = traits.map((t) => ({ ...t }));
+  const byGroup = new Map(g2.map((g) => [g.id, g]));
+  const byTrait = new Map(t2.map((t) => [t.id, t]));
+  const orderByParent = new Map<string, number>();
+  for (const item of sorted) {
+    const key = item.parentId ?? '\0root';
+    const order = orderByParent.get(key) ?? 0;
+    orderByParent.set(key, order + 1);
+    if (item.kind === 'group') {
+      const g = byGroup.get(item.id);
+      if (g) { g.parentId = item.parentId; g.order = order; }
+    } else {
+      const t = byTrait.get(item.id);
+      if (t) { t.groupId = item.parentId; t.order = order; }
+    }
+  }
+  return { groups: g2, traits: t2 };
 }
