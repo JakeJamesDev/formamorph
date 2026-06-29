@@ -39,6 +39,7 @@ import { splitSentenceSegments } from "../lib/ttsChunks";
 import { selectDueDigests, applyDigest, parseTurnContent } from "../lib/turnDigest";
 import { buildTraitContext } from "../lib/traitTree";
 import { buildLocationContext } from "../lib/locationContext";
+import { renderPromptTemplate } from "../lib/promptTemplate";
 import { parseTurns, buildVerbatimHistory, buildBandedHistory, extractKeywords, type BandCounts } from "../lib/turnBanding";
 import { useSmoothedReveal } from "../lib/useSmoothedReveal";
 import { parseSlashCommand } from "../lib/slashCommands";
@@ -49,7 +50,7 @@ import { rollbackState, regenerateState, canRegenerate, lastTurnAction, markRege
 import { useDeferredSnapshot } from "../lib/useDeferredSnapshot";
 import { statMorphMap } from "../lib/bodyMorphs";
 import { getActivatedDictionary, buildDictionaryContext, parseKeywords } from "../lib/dictionaryUtils";
-import { highlightSegments, type HighlightRule, type HighlightSegment } from "../lib/highlightUtils";
+import { highlightSegments, HIGHLIGHT_PALETTE, type HighlightRule, type HighlightSegment } from "../lib/highlightUtils";
 import { useIsMobile } from "../lib/useIsMobile";
 import {
   LeftPanel,
@@ -549,6 +550,22 @@ const GameViewer = ({
       .join("\n");
   }, [playerStats]);
 
+  // Live variable values for the Settings prompt-editor Preview tab (full-description variant, like the
+  // game-text request). Only meaningful in-game, which is the only place this modal receives them.
+  const promptPreviewValues = useMemo<Record<string, string>>(() => ({
+    "<WORLD DESCRIPTION>": worldOverview.systemPrompt || "",
+    "<STATS DESCRIPTION>": generateStatDescriptions(!hideStatNumbers),
+    "<TRAITS DESCRIPTION>": generateTraitDescriptions(),
+    "<LOCATION JSON DATA>": buildLocationContext(currentLocation, entities),
+    "<NOTES>": playerNotes || "No notes available",
+    "<LENGTH GUIDANCE>": lengthGuidance(paragraphLimit, maxTokens),
+    "<MARKDOWN GUIDANCE>": markdownGuidance(markdownOutput),
+    "<LOCATION LIST>": locations.map((loc) => loc.name).join("\n"),
+  }), [
+    worldOverview, hideStatNumbers, generateStatDescriptions, generateTraitDescriptions,
+    currentLocation, entities, playerNotes, paragraphLimit, maxTokens, markdownOutput, locations,
+  ]);
+
   const sendGameAction = async (action: string) => {
     if (!isGameStarted && action !== "START GAME") return;
     stopCommandPreview(); // a real turn supersedes any command preview
@@ -566,28 +583,23 @@ const GameViewer = ({
       ? generateStatDescriptions(false)
       : statDescriptions;
 
-    let updatedPrompt = systemPrompt
-      .replace("<WORLD DESCRIPTION>", worldOverview.systemPrompt || "")
-      .replace("<LOCATION JSON DATA>", locationDataString)
-      .replace("<STATS DESCRIPTION>", statDescriptionsNarrative)
-      .replace("<TRAITS DESCRIPTION>", generateTraitDescriptions())
-      .replace("<LENGTH GUIDANCE>", lengthGuidance(paragraphLimit, maxTokens))
-      .replace("<MARKDOWN GUIDANCE>", markdownGuidance(markdownOutput));
+    let updatedPrompt = renderPromptTemplate(systemPrompt, {
+      "<WORLD DESCRIPTION>": worldOverview.systemPrompt || "",
+      "<LOCATION JSON DATA>": locationDataString,
+      "<STATS DESCRIPTION>": statDescriptionsNarrative,
+      "<TRAITS DESCRIPTION>": generateTraitDescriptions(),
+      "<LENGTH GUIDANCE>": lengthGuidance(paragraphLimit, maxTokens),
+      "<MARKDOWN GUIDANCE>": markdownGuidance(markdownOutput),
+      "<NOTES>": playerNotes || "No notes available",
+    });
 
-    // Add player notes to the system prompt
-    if (updatedPrompt.includes("<NOTES>")) {
-      updatedPrompt = updatedPrompt.replace(
-        "<NOTES>",
-        playerNotes || "No notes available",
-      );
-    } else {
-      // If <NOTES> placeholder doesn't exist, add notes section before the location data
+    // If the prompt has no <NOTES> chip, fall back to a notes section before the location data.
+    if (!systemPrompt.includes("<NOTES>")) {
       const notesSection = `
 Player Notes:
 ${playerNotes || "No notes available"}
 
 `;
-      // Insert notes before Current Location section
       const locationIndex = updatedPrompt.indexOf("Current Location:");
       if (locationIndex !== -1) {
         updatedPrompt =
@@ -650,12 +662,13 @@ ${playerNotes || "No notes available"}
       // short output is injected below. 'inline': append a <think> directive to the game-text
       // request (the reasoning is stripped before the player sees it).
       if (thinkingMode === "precall") {
-        const thinkPrompt = thinkingPrompt
-          .replace("<WORLD DESCRIPTION>", worldOverview.systemPrompt || "")
-          .replace("<STATS DESCRIPTION>", statDescriptionsNarrative)
-          .replace("<TRAITS DESCRIPTION>", generateTraitDescriptions())
-          .replace("<LOCATION JSON DATA>", locationSummaryString)
-          .replace("<NOTES>", playerNotes || "No notes available");
+        const thinkPrompt = renderPromptTemplate(thinkingPrompt, {
+          "<WORLD DESCRIPTION>": worldOverview.systemPrompt || "",
+          "<STATS DESCRIPTION>": statDescriptionsNarrative,
+          "<TRAITS DESCRIPTION>": generateTraitDescriptions(),
+          "<LOCATION JSON DATA>": locationSummaryString,
+          "<NOTES>": playerNotes || "No notes available",
+        });
         // Frame the planning task as a single instruction. Reusing the narration message history
         // (turns of action -> story) primes the model to just continue the story instead of planning.
         const isBand = (m?: ChatMessage) => m?.role === "assistant" && m.content.startsWith("Story so far");
@@ -720,19 +733,13 @@ ${playerNotes || "No notes available"}
 
       // Only prepare and make choices request if enabled
       if (choicesEnabled) {
-        let updatedChoicesPrompt = choicesPrompt
-          .replace("<WORLD DESCRIPTION>", worldOverview.systemPrompt || "")
-          .replace("<STATS DESCRIPTION>", statDescriptionsNarrative)
-          .replace("<LOCATION JSON DATA>", locationSummaryString)
-          .replace("<TRAITS DESCRIPTION>", generateTraitDescriptions());
-
-        // Add player notes to the choices prompt
-        if (updatedChoicesPrompt.includes("<NOTES>")) {
-          updatedChoicesPrompt = updatedChoicesPrompt.replace(
-            "<NOTES>",
-            playerNotes || "No notes available",
-          );
-        }
+        let updatedChoicesPrompt = renderPromptTemplate(choicesPrompt, {
+          "<WORLD DESCRIPTION>": worldOverview.systemPrompt || "",
+          "<STATS DESCRIPTION>": statDescriptionsNarrative,
+          "<LOCATION JSON DATA>": locationSummaryString,
+          "<TRAITS DESCRIPTION>": generateTraitDescriptions(),
+          "<NOTES>": playerNotes || "No notes available",
+        });
 
         if (language.toLowerCase() != "english")
           updatedChoicesPrompt += `\n Choice language: ` + language;
@@ -753,28 +760,19 @@ ${playerNotes || "No notes available"}
 
       // Only prepare and make stat updates request if enabled
       if (statUpdatesEnabled) {
-        let updatedStatUpdatesPrompt = statUpdatesPrompt
-          .replace("<WORLD DESCRIPTION>", worldOverview.systemPrompt || "")
-          .replace("<LOCATION JSON DATA>", locationDataString)
-          .replace("<STATS DESCRIPTION>", statDescriptions)
-          .replace("<TRAITS DESCRIPTION>", generateTraitDescriptions());
-
-        // Add player notes to the stat updates prompt
-        if (updatedStatUpdatesPrompt.includes("<NOTES>")) {
-          updatedStatUpdatesPrompt = updatedStatUpdatesPrompt.replace(
-            "<NOTES>",
-            playerNotes || "No notes available",
-          );
-        }
+        let updatedStatUpdatesPrompt = renderPromptTemplate(statUpdatesPrompt, {
+          "<WORLD DESCRIPTION>": worldOverview.systemPrompt || "",
+          "<LOCATION JSON DATA>": locationDataString,
+          "<STATS DESCRIPTION>": statDescriptions,
+          "<TRAITS DESCRIPTION>": generateTraitDescriptions(),
+          "<NOTES>": playerNotes || "No notes available",
+        });
 
         if (language.toLowerCase() != "english")
           updatedStatUpdatesPrompt += "\n Please write in english";
 
         statUpdatesResponse = await makeAIRequest(
-          updatedStatUpdatesPrompt.replace(
-            "<STATS DESCRIPTION>",
-            statDescriptions,
-          ),
+          updatedStatUpdatesPrompt,
           [{ role: "user", content: `Game events: ${gameTextResponse}` }],
           "statUpdates",
           null,
@@ -786,10 +784,11 @@ ${playerNotes || "No notes available"}
       // Ask the AI whether the player should move to a different location (v1.2.0)
       if (locationChangeEnabled && locationChangePromptText) {
         const locationList = locations.map((loc) => loc.name).join("\n");
-        const updatedLocationPrompt = locationChangePromptText
-          .replace("<WORLD DESCRIPTION>", worldOverview.systemPrompt || "")
-          .replace("<LOCATION JSON DATA>", locationDataString)
-          .replace("<LOCATION LIST>", locationList);
+        const updatedLocationPrompt = renderPromptTemplate(locationChangePromptText, {
+          "<WORLD DESCRIPTION>": worldOverview.systemPrompt || "",
+          "<LOCATION JSON DATA>": locationDataString,
+          "<LOCATION LIST>": locationList,
+        });
 
         const locationResponse = await makeAIRequest(
           updatedLocationPrompt,
@@ -1764,10 +1763,7 @@ ${playerNotes || "No notes available"}
       <Dialog open={isDebugOpen} onOpenChange={setIsDebugOpen}>
         <DialogContent className="max-w-[90vw] w-[90vw] h-[85vh] flex flex-col overflow-hidden">
           {(() => {
-            const palette = [
-              "#fde68a", "#bbf7d0", "#bfdbfe", "#fbcfe8",
-              "#ddd6fe", "#fed7aa", "#a5f3fc", "#fecaca",
-            ];
+            const palette = HIGHLIGHT_PALETTE;
             const colorMap: Record<string, string> = {};
             // Trigger keywords highlight in the narrative/history (showing why an entry
             // activated); inside the injected "Relevant Information:" block only the entry
@@ -2172,6 +2168,7 @@ ${playerNotes || "No notes available"}
       <SettingsModal
         isOpen={isSettingsOpen}
         onOpenChange={setIsSettingsOpen}
+        previewValues={promptPreviewValues}
       />
     </div>
   );

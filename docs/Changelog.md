@@ -29,6 +29,7 @@ Everything below is relative to the point this fork diverged from upstream.
   - **Lore Dictionary** — a keyword-triggered world-info editor; matching keywords inject lore into the AI prompt.
   - **Full per-turn AI context viewer** — see exactly what's sent to the AI on each turn, plus the raw response before sanitation — useful both for debugging and for authoring/tuning worlds. Each request is its own collapsible section with the prompt and raw output nested inside, and **Collapse/Expand all** folds every level at once.
   - **Stat-driven body sliders** — in the world editor, bind any stat to one or more of the model's body morph sliders; the stat's value (min→max) drives the morph live in-game. Legacy weight/breasts/stomach stats are auto-bound on import, so existing worlds keep working.
+  - **Prompt variables are now chips** — the AI prompt editors (Settings → System Prompts) no longer use raw `<…>` placeholder text. A toolbar inserts each variable as a chip you can drag to reposition, remove with ×, or use more than once. During a game, an **Edit / Preview** toggle shows each chip swapped for its live value, so you can see the real assembled prompt.
 - **🛠️ Developer tooling**
   - **Automated test suite** built from scratch (Vitest + Testing Library) covering the new libraries, services, and components, plus a coverage script (`npm run coverage`).
   - **GitHub Actions CI** — typecheck, lint, and tests run on every push and pull request.

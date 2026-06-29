@@ -4,9 +4,10 @@ import { DEFAULT_ENDPOINT, DEFAULT_API_TOKEN, DEFAULT_MODEL_NAME, DEFAULT_MAX_TO
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Textarea } from "@/components/ui/textarea";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import PromptField from '../prompt/PromptField';
+import { PROMPT_KIND_VARIABLES } from '@/lib/promptVariables';
 import { ConfirmDialog } from '../ConfirmDialog';
 import { defaultSystemPrompt, defaultChoicesPrompt, defaultStatUpdatesPrompt, defaultLocationChangePrompt, defaultThinkingPrompt, defaultSummaryPrompt } from '../game/GamePrompts';
 import VramReadout from '../game/VramReadout';
@@ -42,9 +43,11 @@ function VerbatimTurnsField({ id, value, onChange }: { id: string; value: number
   );
 }
 
-export const SettingsModal = ({ isOpen, onOpenChange }: {
+export const SettingsModal = ({ isOpen, onOpenChange, previewValues }: {
   isOpen: boolean;
   onOpenChange: (open: boolean) => void;
+  /** Live variable values for the prompt-editor Preview tab. Supplied only in-game; absent → no Preview. */
+  previewValues?: Record<string, string>;
 }) => {
   const {
     bgmEnabled,
@@ -537,54 +540,54 @@ export const SettingsModal = ({ isOpen, onOpenChange }: {
               </TabsList>
 
               <TabsContent value="gametext" className="mt-4 flex-1 min-h-0 data-[state=active]:flex flex-col">
-                <Textarea
-                  id="systemPrompt"
+                <PromptField
                   value={systemPrompt}
-                  onChange={(e) => setSystemPrompt(e.target.value)}
-                  className="w-full flex-1 min-h-0 resize-none"
+                  onChange={setSystemPrompt}
+                  variables={PROMPT_KIND_VARIABLES.gametext}
+                  previewValues={previewValues}
                 />
               </TabsContent>
 
               {thinkingMode === 'precall' && (
                 <TabsContent value="thinking" className="mt-4 flex-1 min-h-0 data-[state=active]:flex flex-col">
-                  <Textarea
-                    id="thinkingPrompt"
+                  <PromptField
                     value={thinkingPrompt}
-                    onChange={(e) => setThinkingPrompt(e.target.value)}
-                    className="w-full flex-1 min-h-0 resize-none"
+                    onChange={setThinkingPrompt}
+                    variables={PROMPT_KIND_VARIABLES.thinking}
+                    previewValues={previewValues}
                   />
                 </TabsContent>
               )}
 
               {choicesEnabled && (
                 <TabsContent value="choices" className="mt-4 flex-1 min-h-0 data-[state=active]:flex flex-col">
-                  <Textarea
-                    id="choicesPrompt"
+                  <PromptField
                     value={choicesPrompt}
-                    onChange={(e) => setChoicesPrompt(e.target.value)}
-                    className="w-full flex-1 min-h-0 resize-none"
+                    onChange={setChoicesPrompt}
+                    variables={PROMPT_KIND_VARIABLES.choices}
+                    previewValues={previewValues}
                   />
                 </TabsContent>
               )}
 
               {statUpdatesEnabled && (
                 <TabsContent value="statupdates" className="mt-4 flex-1 min-h-0 data-[state=active]:flex flex-col">
-                  <Textarea
-                    id="statUpdatesPrompt"
+                  <PromptField
                     value={statUpdatesPrompt}
-                    onChange={(e) => setStatUpdatesPrompt(e.target.value)}
-                    className="w-full flex-1 min-h-0 resize-none"
+                    onChange={setStatUpdatesPrompt}
+                    variables={PROMPT_KIND_VARIABLES.statupdates}
+                    previewValues={previewValues}
                   />
                 </TabsContent>
               )}
 
               {locationChangeEnabled && (
                 <TabsContent value="location" className="mt-4 flex-1 min-h-0 data-[state=active]:flex flex-col gap-1">
-                  <Textarea
-                    id="locationChangePrompt"
+                  <PromptField
                     value={locationChangePromptText}
-                    onChange={(e) => setLocationChangePromptText(e.target.value)}
-                    className="w-full flex-1 min-h-0 resize-none"
+                    onChange={setLocationChangePromptText}
+                    variables={PROMPT_KIND_VARIABLES.location}
+                    previewValues={previewValues}
                   />
                   <p className="text-xs text-gray-500 flex-shrink-0">Lets the AI move the player between locations.</p>
                 </TabsContent>
@@ -592,11 +595,11 @@ export const SettingsModal = ({ isOpen, onOpenChange }: {
 
               {memoryDigests && (
                 <TabsContent value="summary" className="mt-4 flex-1 min-h-0 data-[state=active]:flex flex-col gap-1">
-                  <Textarea
-                    id="summaryPrompt"
+                  <PromptField
                     value={summaryPrompt}
-                    onChange={(e) => setSummaryPrompt(e.target.value)}
-                    className="w-full flex-1 min-h-0 resize-none"
+                    onChange={setSummaryPrompt}
+                    variables={PROMPT_KIND_VARIABLES.summary}
+                    previewValues={previewValues}
                   />
                   <p className="text-xs text-gray-500 flex-shrink-0">Compresses each turn into fact lines for long-story memory. Only used when Memory Summaries is on.</p>
                 </TabsContent>
