@@ -557,6 +557,7 @@ const GameViewer = ({
     "<STATS DESCRIPTION>": generateStatDescriptions(!hideStatNumbers),
     "<TRAITS DESCRIPTION>": generateTraitDescriptions(),
     "<LOCATION JSON DATA>": buildLocationContext(currentLocation, entities),
+    "<LOCATION JSON DATA|summary>": buildLocationContext(currentLocation, entities, { preferSummary: true }),
     "<NOTES>": playerNotes || "No notes available",
     "<LENGTH GUIDANCE>": lengthGuidance(paragraphLimit, maxTokens),
     "<MARKDOWN GUIDANCE>": markdownGuidance(markdownOutput),
@@ -586,6 +587,7 @@ const GameViewer = ({
     let updatedPrompt = renderPromptTemplate(systemPrompt, {
       "<WORLD DESCRIPTION>": worldOverview.systemPrompt || "",
       "<LOCATION JSON DATA>": locationDataString,
+      "<LOCATION JSON DATA|summary>": locationSummaryString,
       "<STATS DESCRIPTION>": statDescriptionsNarrative,
       "<TRAITS DESCRIPTION>": generateTraitDescriptions(),
       "<LENGTH GUIDANCE>": lengthGuidance(paragraphLimit, maxTokens),
@@ -666,7 +668,8 @@ ${playerNotes || "No notes available"}
           "<WORLD DESCRIPTION>": worldOverview.systemPrompt || "",
           "<STATS DESCRIPTION>": statDescriptionsNarrative,
           "<TRAITS DESCRIPTION>": generateTraitDescriptions(),
-          "<LOCATION JSON DATA>": locationSummaryString,
+          "<LOCATION JSON DATA>": locationDataString,
+          "<LOCATION JSON DATA|summary>": locationSummaryString,
           "<NOTES>": playerNotes || "No notes available",
         });
         // Frame the planning task as a single instruction. Reusing the narration message history
@@ -736,7 +739,8 @@ ${playerNotes || "No notes available"}
         let updatedChoicesPrompt = renderPromptTemplate(choicesPrompt, {
           "<WORLD DESCRIPTION>": worldOverview.systemPrompt || "",
           "<STATS DESCRIPTION>": statDescriptionsNarrative,
-          "<LOCATION JSON DATA>": locationSummaryString,
+          "<LOCATION JSON DATA>": locationDataString,
+          "<LOCATION JSON DATA|summary>": locationSummaryString,
           "<TRAITS DESCRIPTION>": generateTraitDescriptions(),
           "<NOTES>": playerNotes || "No notes available",
         });
@@ -763,6 +767,7 @@ ${playerNotes || "No notes available"}
         let updatedStatUpdatesPrompt = renderPromptTemplate(statUpdatesPrompt, {
           "<WORLD DESCRIPTION>": worldOverview.systemPrompt || "",
           "<LOCATION JSON DATA>": locationDataString,
+          "<LOCATION JSON DATA|summary>": locationSummaryString,
           "<STATS DESCRIPTION>": statDescriptions,
           "<TRAITS DESCRIPTION>": generateTraitDescriptions(),
           "<NOTES>": playerNotes || "No notes available",
@@ -787,6 +792,7 @@ ${playerNotes || "No notes available"}
         const updatedLocationPrompt = renderPromptTemplate(locationChangePromptText, {
           "<WORLD DESCRIPTION>": worldOverview.systemPrompt || "",
           "<LOCATION JSON DATA>": locationDataString,
+          "<LOCATION JSON DATA|summary>": locationSummaryString,
           "<LOCATION LIST>": locationList,
         });
 
