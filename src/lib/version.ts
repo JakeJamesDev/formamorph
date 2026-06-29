@@ -19,6 +19,32 @@ export const LEGACY_VERSION = '1.2';
  * `loadWorldData`. Add further `2.0 → 2.x` steps here when the shape changes (a version bump is the
  * user's call — see the export-shape-versioning note).
  */
+/** Audience-based description rename: old key → new key (entities and locations). */
+const DESCRIPTION_KEY_RENAMES: Record<string, string> = {
+  inGameDescription: 'playerDescription',
+  detailedDescription: 'aiDescription',
+};
+
+/** Rename legacy description keys on one item; idempotent, prefers an already-present new key. */
+function renameDescriptionKeys(item: Record<string, unknown>): Record<string, unknown> {
+  const next = { ...item };
+  for (const [oldKey, newKey] of Object.entries(DESCRIPTION_KEY_RENAMES)) {
+    if (oldKey in next) {
+      if (next[newKey] === undefined) next[newKey] = next[oldKey];
+      delete next[oldKey];
+    }
+  }
+  return next;
+}
+
+/** Apply the description rename across an entities/locations array (leaves non-arrays untouched). */
+function renameItemDescriptions(items: unknown): unknown {
+  if (!Array.isArray(items)) return items;
+  return items.map((it) =>
+    it && typeof it === 'object' ? renameDescriptionKeys(it as Record<string, unknown>) : it,
+  );
+}
+
 export function migrateWorld(raw: unknown): World {
   const world = { ...(raw as Record<string, unknown>) };
   if (world.version === APP_VERSION) return world as unknown as World;
@@ -31,6 +57,10 @@ export function migrateWorld(raw: unknown): World {
   if (Array.isArray(world.stats)) {
     world.stats = autoBindLegacyBodyStats(world.stats as Stat[]);
   }
+
+  // v1.2 used `inGameDescription`/`detailedDescription`; rename to the audience-based keys.
+  if (Array.isArray(world.entities)) world.entities = renameItemDescriptions(world.entities);
+  if (Array.isArray(world.locations)) world.locations = renameItemDescriptions(world.locations);
 
   world.version = APP_VERSION;
   return world as unknown as World;

@@ -180,16 +180,18 @@ const WorldEditor = ({ onClose, embedded = false }: {
         addEntity({
           id: newId,
           name: newName,
-          inGameDescription: '',
-          detailedDescription: '',
+          playerDescription: '',
+          aiDescription: '',
+          aiSummary: '',
           type: '',
         });
       } else if (activeTab === "locations") {
         addLocation({
           id: newId,
           name: newName,
-          inGameDescription: '',
-          detailedDescription: '',
+          playerDescription: '',
+          aiDescription: '',
+          aiSummary: '',
           entities: []
         });
       } else if (activeTab === "traits") {

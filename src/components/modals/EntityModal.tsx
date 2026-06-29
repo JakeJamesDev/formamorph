@@ -46,8 +46,8 @@ export const EntityModal = ({ entity, isOpen, onOpenChange }: {
               and still scroll from the top when long. */}
           <div className="flex-1 min-h-0 overflow-y-auto flex flex-col">
             <div className="my-auto flex flex-col gap-4 pr-3">
-              {entity.inGameDescription?.trim() ? (
-                <p>{entity.inGameDescription}</p>
+              {entity.playerDescription?.trim() ? (
+                <p>{entity.playerDescription}</p>
               ) : (
                 <p className="italic text-muted-foreground">No description provided.</p>
               )}

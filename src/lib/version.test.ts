@@ -2,11 +2,19 @@ import { describe, it, expect } from 'vitest';
 import { APP_VERSION, migrateWorld, isSaveEnvelope } from './version';
 
 // Loose view of a migrated world for assertions (avoids `any`).
+type DescItem = {
+  playerDescription?: string;
+  aiDescription?: string;
+  inGameDescription?: string;
+  detailedDescription?: string;
+};
 type MigratedWorld = {
   version?: string;
   customPlayerVRM?: unknown;
   worldOverview: { customPlayerVRM?: unknown };
   stats?: { name: string; morphBindings?: string[] }[];
+  entities?: DescItem[];
+  locations?: DescItem[];
 };
 
 describe('APP_VERSION', () => {
@@ -65,6 +73,24 @@ describe('migrateWorld', () => {
     };
     const out = migrateWorld(legacy) as unknown as MigratedWorld;
     expect(out.stats?.[0].morphBindings).toEqual(['B_Pear']);
+  });
+
+  it('renames legacy description keys on entities and locations', () => {
+    const out = migrateWorld({
+      worldOverview: { name: 'W' },
+      entities: [{ inGameDescription: 'p', detailedDescription: 'a' }],
+      locations: [{ inGameDescription: 'lp', detailedDescription: 'la' }],
+    }) as unknown as MigratedWorld;
+    expect(out.entities?.[0]).toEqual({ playerDescription: 'p', aiDescription: 'a' });
+    expect(out.locations?.[0]).toEqual({ playerDescription: 'lp', aiDescription: 'la' });
+  });
+
+  it('prefers an existing new key and drops the legacy one', () => {
+    const out = migrateWorld({
+      worldOverview: { name: 'W' },
+      entities: [{ inGameDescription: 'old', playerDescription: 'new' }],
+    }) as unknown as MigratedWorld;
+    expect(out.entities?.[0]).toEqual({ playerDescription: 'new' });
   });
 });
 

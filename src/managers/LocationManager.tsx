@@ -5,6 +5,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Checkbox } from "@/components/ui/checkbox";
 import { MultiSelect } from "@/components/ui/multi-select";
+import GenerateSummaryButton from "@/components/GenerateSummaryButton";
 import { ImageUpload, SoundUpload } from '../lib/UtilityComponents';
 import type { GameLocation } from '@/types';
 
@@ -44,18 +45,35 @@ const LocationManager = ({ location }: { location: GameLocation }) => {
         </Label>
       </div>
       <div className="space-y-2">
-        <Label>In-Game Description</Label>
+        <Label>Player-Facing Description</Label>
         <Textarea
-          value={editingLocation.inGameDescription || ''}
-          onChange={(e) => handleChange('inGameDescription', e.target.value)}
+          value={editingLocation.playerDescription || ''}
+          onChange={(e) => handleChange('playerDescription', e.target.value)}
         />
       </div>
       <div className="space-y-2">
-        <Label>Detailed Description (for AI)</Label>
+        <Label>AI-Facing Description</Label>
         <Textarea
-          value={editingLocation.detailedDescription || ''}
-          onChange={(e) => handleChange('detailedDescription', e.target.value)}
+          value={editingLocation.aiDescription || ''}
+          onChange={(e) => handleChange('aiDescription', e.target.value)}
         />
+      </div>
+      <div className="space-y-2">
+        <div className="flex items-center justify-between">
+          <Label>AI-Facing Summary</Label>
+          <GenerateSummaryButton
+            source={editingLocation.aiDescription}
+            current={editingLocation.aiSummary}
+            onGenerated={(s) => handleChange('aiSummary', s)}
+          />
+        </div>
+        <Textarea
+          value={editingLocation.aiSummary || ''}
+          onChange={(e) => handleChange('aiSummary', e.target.value)}
+        />
+        <p className="text-sm text-muted-foreground">
+          A one-line version used where the full description is too long — keep it brief.
+        </p>
       </div>
       <div className="space-y-2">
         <Label>Entities</Label>

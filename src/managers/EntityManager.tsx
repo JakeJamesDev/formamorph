@@ -4,6 +4,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { MultiSelect } from "@/components/ui/multi-select";
+import GenerateSummaryButton from "@/components/GenerateSummaryButton";
 import { ImageUpload, ModelUpload } from '../lib/UtilityComponents';
 import type { Entity } from '@/types';
 
@@ -53,18 +54,35 @@ const EntityManager = ({ entity }: { entity: Entity }) => {
         />
       </div>
       <div className="space-y-2">
-        <Label>In-Game Description</Label>
+        <Label>Player-Facing Description</Label>
         <Textarea
-          value={editingEntity.inGameDescription || ''}
-          onChange={(e) => handleChange('inGameDescription', e.target.value)}
+          value={editingEntity.playerDescription || ''}
+          onChange={(e) => handleChange('playerDescription', e.target.value)}
         />
       </div>
       <div className="space-y-2">
-        <Label>Detailed Description (for AI)</Label>
+        <Label>AI-Facing Description</Label>
         <Textarea
-          value={editingEntity.detailedDescription || ''}
-          onChange={(e) => handleChange('detailedDescription', e.target.value)}
+          value={editingEntity.aiDescription || ''}
+          onChange={(e) => handleChange('aiDescription', e.target.value)}
         />
+      </div>
+      <div className="space-y-2">
+        <div className="flex items-center justify-between">
+          <Label>AI-Facing Summary</Label>
+          <GenerateSummaryButton
+            source={editingEntity.aiDescription}
+            current={editingEntity.aiSummary}
+            onGenerated={(s) => handleChange('aiSummary', s)}
+          />
+        </div>
+        <Textarea
+          value={editingEntity.aiSummary || ''}
+          onChange={(e) => handleChange('aiSummary', e.target.value)}
+        />
+        <p className="text-sm text-muted-foreground">
+          A one-line version used where the full description is too long — keep it brief.
+        </p>
       </div>
       <div className="space-y-2">
         <Label>Type</Label>

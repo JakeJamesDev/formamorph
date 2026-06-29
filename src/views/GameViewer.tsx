@@ -562,8 +562,9 @@ const GameViewer = ({
         backgroundImage,
         ambientSound,
         id,
-        inGameDescription,
-        detailedDescription,
+        playerDescription,
+        aiDescription,
+        aiSummary, // not consumed yet; kept out of the dumped data
         isStarting, // editor-only new-game seeding flag; irrelevant to the AI
         entity,
         entities: locationEntities,
@@ -572,8 +573,8 @@ const GameViewer = ({
 
       // Start with name and description (skip a blank description so it doesn't print "undefined")
       let output = `name: ${location.name}\n`;
-      if (detailedDescription && detailedDescription.trim() !== "") {
-        output += `description: ${detailedDescription}\n`;
+      if (aiDescription && aiDescription.trim() !== "") {
+        output += `description: ${aiDescription}\n`;
       }
 
       // Add other location properties, skipping blanks so empty fields don't confuse smaller models
@@ -595,13 +596,14 @@ const GameViewer = ({
               image,
               sound,
               model,
-              inGameDescription,
-              detailedDescription,
+              playerDescription,
+              aiDescription,
+              aiSummary, // not consumed yet; kept out of the dumped data
               ...entityProps
             } = entityItem;
             output += `  - name: ${entityItem.name}\n`;
-            if (detailedDescription && detailedDescription.trim() !== "") {
-              output += `    description: ${detailedDescription}\n`;
+            if (aiDescription && aiDescription.trim() !== "") {
+              output += `    description: ${aiDescription}\n`;
             }
             // Add other entity properties, skipping blanks (e.g. an unset type) so empty
             // fields don't pad the prompt and confuse smaller models.
