@@ -107,30 +107,43 @@ const TraitSelectionModal = ({
       <CardContent className="p-3 sm:p-6 h-full flex flex-col">
         <h2 className="text-lg sm:text-xl font-semibold mb-3">Select Starting Traits</h2>
 
-        {/* Tab rows — one per nesting level, styled like the editor/settings tabs. */}
+        {/* Tab rows — one per nesting level, styled like the editor/settings tabs. The active group's
+            player description sits under its own row; the row reserves the height of its tallest
+            description (stacked, the inactive ones kept `invisible`) so switching tabs never reflows. */}
         <div className="space-y-1 mb-3 flex-shrink-0">
-          {rows.map((row, i) => (
-            <Tabs
-              key={i}
-              value={row.active || undefined}
-              onValueChange={goToValue}
-            >
-              <TabsList className="h-auto flex-wrap justify-start">
-                {((row.parentId === null && hasUngrouped) ||
-                  (row.parentId !== null && directTraits(row.parentId).length > 0)) && (
-                  <TabsTrigger value={generalValue(row.parentId)}>General</TabsTrigger>
+          {rows.map((row, i) => {
+            const describedGroups = visibleChildren(row.parentId).filter((g) => g.playerDescription?.trim());
+            return (
+              <div key={i}>
+                <Tabs value={row.active || undefined} onValueChange={goToValue}>
+                  <TabsList className="h-auto flex-wrap justify-start">
+                    {((row.parentId === null && hasUngrouped) ||
+                      (row.parentId !== null && directTraits(row.parentId).length > 0)) && (
+                      <TabsTrigger value={generalValue(row.parentId)}>General</TabsTrigger>
+                    )}
+                    {visibleChildren(row.parentId).map((g) => (
+                      <TabsTrigger key={g.id} value={g.id}>{g.name}</TabsTrigger>
+                    ))}
+                  </TabsList>
+                </Tabs>
+                {describedGroups.length > 0 && (
+                  <div className="grid mt-1">
+                    {describedGroups.map((g) => (
+                      <p
+                        key={g.id}
+                        className={`col-start-1 row-start-1 text-sm text-muted-foreground ${
+                          g.id === row.active ? '' : 'invisible'
+                        }`}
+                      >
+                        {g.playerDescription}
+                      </p>
+                    ))}
+                  </div>
                 )}
-                {visibleChildren(row.parentId).map((g) => (
-                  <TabsTrigger key={g.id} value={g.id}>{g.name}</TabsTrigger>
-                ))}
-              </TabsList>
-            </Tabs>
-          ))}
+              </div>
+            );
+          })}
         </div>
-
-        {current.group?.playerDescription?.trim() && (
-          <p className="text-sm text-muted-foreground mb-2 flex-shrink-0">{current.group.playerDescription}</p>
-        )}
 
         <ScrollArea className="flex-1 mb-4">
           {sectionTraits.length === 0 ? (

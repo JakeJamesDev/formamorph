@@ -152,6 +152,31 @@ describe('TraitSelectionModal', () => {
     expect(screen.getByText('WorldTrait')).toBeInTheDocument();
   });
 
+  it("shows the active group's player description and keeps the others as reserved (invisible) space", async () => {
+    const user = userEvent.setup();
+    const described: TraitGroup[] = [
+      { id: 'world', name: 'World', parentId: null, order: 0, playerDescription: 'Your homeland.' },
+      { id: 'player', name: 'Player', parentId: null, order: 1, playerDescription: 'About you.' },
+    ];
+    render(
+      <TraitSelectionModal
+        traits={traits}
+        traitGroups={described}
+        stats={[]}
+        selectedTraits={[]}
+        onTraitSelect={() => {}}
+        onConfirm={() => {}}
+        onAbort={() => {}}
+      />,
+    );
+    // Both descriptions are in the DOM (height reserved); on open General is active so neither is shown.
+    expect(screen.getByText('Your homeland.').className).toContain('invisible');
+    expect(screen.getByText('About you.').className).toContain('invisible');
+    await user.click(screen.getByRole('tab', { name: 'World' }));
+    expect(screen.getByText('Your homeland.').className).not.toContain('invisible');
+    expect(screen.getByText('About you.').className).toContain('invisible');
+  });
+
   it('Skip confirms and Abort aborts', () => {
     const onConfirm = vi.fn();
     const onAbort = vi.fn();
