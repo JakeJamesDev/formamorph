@@ -368,6 +368,22 @@ export const SettingsModal = ({ isOpen, onOpenChange, previewValues }: {
                 </div>
               </div>
               <div className="grid grid-cols-1 sm:grid-cols-4 items-start gap-4">
+                <label htmlFor="memoryDigests" className="text-left sm:text-right leading-4">
+                  Memory Summaries
+                </label>
+                <div className="col-span-3 flex items-start gap-2">
+                  <Checkbox
+                    id="memoryDigests"
+                    checked={memoryDigests}
+                    onCheckedChange={(c) => setMemoryDigests(c === true)}
+                    className="shrink-0"
+                  />
+                  <span className="text-xs text-muted-foreground">
+                    Keeps long stories coherent without bloating each request: older turns fold into a &ldquo;story so far&rdquo; recap while recent ones stay verbatim. Runs an extra request per turn. Edit the prompt under System Prompts → Summary.
+                  </span>
+                </div>
+              </div>
+              <div className="grid grid-cols-1 sm:grid-cols-4 items-start gap-4">
                 <label htmlFor="showSilentRequests" className="text-left sm:text-right leading-4">
                   Show Silent Requests
                 </label>
@@ -380,22 +396,6 @@ export const SettingsModal = ({ isOpen, onOpenChange, previewValues }: {
                   />
                   <span className="text-xs text-muted-foreground">
                     Reveal silent requests that normally run quietly (currently the memory summary) — they appear in the status bar while running and as a request entry in the AI context viewer. Off by default; an inspection aid for authoring and debugging.
-                  </span>
-                </div>
-              </div>
-              <div className="grid grid-cols-1 sm:grid-cols-4 items-start gap-4">
-                <label htmlFor="memoryDigests" className="text-left sm:text-right leading-4">
-                  Memory Summaries
-                </label>
-                <div className="col-span-3 flex items-start gap-2">
-                  <Checkbox
-                    id="memoryDigests"
-                    checked={memoryDigests}
-                    onCheckedChange={(c) => setMemoryDigests(c === true)}
-                    className="shrink-0"
-                  />
-                  <span className="text-xs text-muted-foreground">
-                    Summarize older turns into short fact lines as they age out of recent history, then feed them to the model: recent turns stay verbatim, older turns fold into a &ldquo;story so far&rdquo; recap, and a relevant past turn is pulled back to full detail when your action references it. Keeps long stories coherent without bloating each request. Runs an extra request per turn — may compete for the GPU if your LLM runs on the same machine. Edit the summary prompt under System Prompts → Summary.
                   </span>
                 </div>
               </div>

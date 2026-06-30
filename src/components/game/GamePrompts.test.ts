@@ -77,6 +77,7 @@ describe('default prompts carry the expected variable chips', () => {
   it('staged director prompt', () => {
     expect(tokensIn(defaultDirectorPrompt)).toEqual([
       '<WORLD DESCRIPTION>',
+      '<TRAITS DESCRIPTION>',
       '<LOCATION|summary>',
       '<ENTITIES|summary>',
       '<NOTES>',
@@ -86,6 +87,7 @@ describe('default prompts carry the expected variable chips', () => {
   it('staged character prompt', () => {
     expect(tokensIn(defaultCharacterPrompt)).toEqual([
       '<WORLD DESCRIPTION>',
+      '<TRAITS DESCRIPTION>',
       '<LOCATION|summary>',
     ]);
   });

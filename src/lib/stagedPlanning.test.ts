@@ -41,6 +41,19 @@ describe('parseDirectorCast', () => {
     expect(parseDirectorCast(raw).cast).toEqual([{ name: 'Mira' }]);
   });
 
+  it('drops "no one present" sentinels like None / N/A', () => {
+    const raw = ['Cast:', '- None - this location is empty except for you.'].join('\n');
+    expect(parseDirectorCast(raw).cast).toEqual([]);
+  });
+
+  it('treats an inline "Cast: none" as an empty cast without polluting the continuation', () => {
+    const raw = ['Continuation: A quiet road stretches ahead.', 'Cast: none'].join('\n');
+    expect(parseDirectorCast(raw)).toEqual({
+      continuation: 'A quiet road stretches ahead.',
+      cast: [],
+    });
+  });
+
   it('returns an empty cast and whole-text continuation when there are no bullets', () => {
     expect(parseDirectorCast('Nothing much happens.')).toEqual({
       continuation: 'Nothing much happens.',
