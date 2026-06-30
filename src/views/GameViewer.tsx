@@ -54,6 +54,7 @@ import { buildTraitContext } from "../lib/traitTree";
 import { buildLocationContext, buildEntityContext } from "../lib/locationContext";
 import { renderPromptTemplate } from "../lib/promptTemplate";
 import { parseTurns, buildVerbatimHistory, buildBandedHistory, extractKeywords, type BandCounts } from "../lib/turnBanding";
+import { findEntityNames, matchNames, matchNamesLoose } from "../lib/entityMatch";
 import { useSmoothedReveal } from "../lib/useSmoothedReveal";
 import { parseSlashCommand } from "../lib/slashCommands";
 import { MARKDOWN_SAMPLE } from "../lib/markdownSample";
@@ -106,6 +107,24 @@ interface DebugTurn {
 const DIGEST_MAX_TOKENS = 200;
 // Cap on older turns rehydrated to full text per turn — rehydration is a targeted aid, not bulk restore.
 const DIGEST_MAX_REHYDRATIONS = 3;
+// How many recent turns count as "currently in the scene" for the choices entity filter (this turn plus
+// the prior CHOICES_PRESENCE_TURNS-1), so a character named earlier but only implied now isn't dropped.
+const CHOICES_PRESENCE_TURNS = 3;
+
+// Participant names stored on the most recent `turns` assistant turns that carry participation data
+// (turns predating the feature / the current placeholder have no `entities` field and are skipped).
+const recentParticipants = (history: ChatMessage[], turns: number): string[] => {
+  const names: string[] = [];
+  let seen = 0;
+  for (let i = history.length - 1; i >= 0 && seen < turns; i--) {
+    if (history[i].role !== "assistant") continue;
+    const parsed = parseTurnContent(history[i].content);
+    if (!parsed || parsed.entities === undefined) continue;
+    names.push(...parsed.entities);
+    seen += 1;
+  }
+  return names;
+};
 
 const GameViewer = ({
   initialTraits = [],
@@ -256,51 +275,13 @@ const GameViewer = ({
     setCharacterData(initialCharacterData);
   }, [initialCharacterData, setCharacterData]);
 
-  // Function to extract entity names from text
-  const extractEntities = useCallback(
-    (text: string) => {
-      if (!text || !entities) return [];
-
-      // Create a Set to store unique entities
-      const foundEntities = new Set<string>();
-
-      // For each entity, check if its name appears in the text
-      entities.forEach((entity) => {
-        // Get base name (singular form)
-        const baseName = entity.name.toLowerCase();
-
-        // Create regex that matches the entity name, ignoring case and potential plural 's'
-        const regex = new RegExp(`\\b${baseName}(?:s)?\\b`, "i");
-
-        if (regex.test(text)) {
-          foundEntities.add(entity.name);
-        } else {
-          // If no exact match, try loose word matching for multi-word entity names
-          const words = baseName.split(" ");
-          if (words.length > 1) {
-            // Check if all words from the entity name appear in the text
-            const allWordsPresent = words.every((word) =>
-              // Check for word with optional 's' at the end
-              new RegExp(`\\b${word}(?:s)?\\b`, "i").test(text),
-            );
-
-            if (allWordsPresent) {
-              foundEntities.add(entity.name);
-            }
-          }
-        }
-      });
-
-      return Array.from(foundEntities);
-    },
-    [entities],
-  );
   const [isTTSModalOpen, setIsTTSModalOpen] = useState(false);
   const [ttsLoaded, setTtsLoaded] = useState(false);
   const [ttsGenerating, setTtsGenerating] = useState(false);
   const [ttsProgress, setTtsProgress] = useState<TTSProgress | null>(null);
   const ttsModalRef = useRef<TTSModalHandle>(null);
   const ttsSentenceCursorRef = useRef(0); // count of complete sentences already sent to streaming TTS
+  const entitySentenceCursorRef = useRef(0); // count of complete sentences already parsed for the entity tab
   const currentTurnIdRef = useRef(""); // stable id for the in-progress turn, stamped into its assistant JSON
   const digestDrainingRef = useRef(false); // a memory digest is in flight (serializes the drainer)
   const [digestActive, setDigestActive] = useState(false); // drives the status-bar indicator for a running digest
@@ -688,6 +669,11 @@ ${playerNotes || "No notes available"}
       // (captured in turnPlan and attached to the final user turn below); 'inline' appends a <think>
       // directive to the game-text request (the reasoning is stripped before the player sees it).
       let turnPlan = "";
+      // Staged-only candidates the narration confirms later: ad-hoc = director-invented (no entity
+      // record, strict match); director = defined entities the director cast (loose match, since the
+      // director already vouched they're present — "the tank" can confirm a "Battle Tank").
+      const adHocCandidates: string[] = [];
+      const directorCandidates: string[] = [];
       if (thinkingMode === "precall") {
         const thinkPrompt = renderPromptTemplate(thinkingPrompt, {
           "<WORLD DESCRIPTION>": worldOverview.systemPrompt || "",
@@ -765,6 +751,14 @@ ${playerNotes || "No notes available"}
         const presentIds = currentLocation?.entities || [];
         const presentEntities = entities.filter((e) => presentIds.includes(e.id));
         const { chosen, overflow } = matchCastToEntities(cast, presentEntities, 3);
+        // Split the cast into defined entities (director vouched → loose narration match) and ad-hoc
+        // names (no record → strict match). Both are confirmed against the narration after game text.
+        const definedByLower = new Map(entities.map((e) => [e.name.trim().toLowerCase(), e.name]));
+        for (const member of cast) {
+          const canonical = definedByLower.get(member.name.trim().toLowerCase());
+          if (canonical) directorCandidates.push(canonical);
+          else adHocCandidates.push(member.name);
+        }
 
         // 2) One motivation pass per chosen character (sequential — see makeAIRequest capture note).
         const intents: { name: string; text: string }[] = [];
@@ -813,6 +807,30 @@ ${playerNotes || "No notes available"}
       // If the user stopped, or the request came back empty, bail (the `finally` resets waiting state).
       if (signal.aborted || !gameTextResponse) return;
 
+      // Who took part this turn: defined entities named in the narration, plus any staged ad-hoc
+      // characters the narration confirms (planning only suggests; the narration is the gate). Drives the
+      // entity tab, the choices filter, and stored participation.
+      const turnParticipants = [
+        ...new Set([
+          ...findEntityNames(gameTextResponse, entities),
+          ...matchNamesLoose(gameTextResponse, directorCandidates),
+          ...matchNames(gameTextResponse, adHocCandidates),
+        ]),
+      ];
+      // Apply the authoritative set now (narration is done) — incl. staged ad-hoc, and without waiting on
+      // the trailing choices/stats/location requests. The streaming pass below kept it live per-sentence.
+      setVisibleEntities(turnParticipants);
+      // Choices should only see who's in the scene now — this turn's participants plus those from the
+      // prior turns in the rolling window — scoped to entities that exist at the location. Empty → the
+      // choices request gets no entity section (can't spoil/act for anyone not present).
+      const presentNames = new Set([
+        ...turnParticipants,
+        ...recentParticipants(fullMessageHistory, CHOICES_PRESENCE_TURNS - 1),
+      ]);
+      const sceneEntities = entities.filter((e) => presentNames.has(e.name));
+      const sceneEntityData = buildEntityContext(currentLocation, sceneEntities);
+      const sceneEntitySummary = buildEntityContext(currentLocation, sceneEntities, { preferSummary: true });
+
       // Auto-narrate the new game text if a TTS model is loaded (fire-and-forget). When streaming is
       // on, narration was already synthesized sentence-by-sentence during the request above.
       if (ttsLoaded && !streamNarrationAudio) {
@@ -830,8 +848,9 @@ ${playerNotes || "No notes available"}
           "<STATS DESCRIPTION>": statDescriptionsNarrative,
           "<LOCATION>": locationDataString,
           "<LOCATION|summary>": locationSummaryString,
-          "<ENTITIES>": entityDataString,
-          "<ENTITIES|summary>": entitySummaryString,
+          // Choices see only who is actually in the scene, not the whole location roster.
+          "<ENTITIES>": sceneEntityData,
+          "<ENTITIES|summary>": sceneEntitySummary,
           "<LOCATION|list>": locationListString,
           "<TRAITS DESCRIPTION>": generateTraitDescriptions(),
           "<NOTES>": playerNotes || "No notes available",
@@ -922,10 +941,6 @@ ${playerNotes || "No notes available"}
               .slice(0, 6);
       setChoices(choicesList);
 
-      // Update visible entities based on game text
-      const newEntities = extractEntities(gameTextResponse);
-      setVisibleEntities(newEntities);
-
       // Parse stat updates into current-value deltas and max-cap deltas (see lib/statChanges).
       let statChanges: Record<string, number>[] = [];
       if (statUpdatesEnabled && statUpdatesResponse) {
@@ -951,6 +966,7 @@ ${playerNotes || "No notes available"}
               choices: choicesList,
               stat_changes: statChanges,
               turnId: currentTurnIdRef.current,
+              entities: turnParticipants,
             }),
           };
         }
@@ -1207,7 +1223,7 @@ ${playerNotes || "No notes available"}
       let content = "";
       let finishReason = null;
       // Start a fresh smoothed reveal for this turn's narration.
-      if (requestType === "gametext") { reveal.reset(); }
+      if (requestType === "gametext") { reveal.reset(); entitySentenceCursorRef.current = 0; }
       // Opt-in streaming TTS: synthesize narration sentence-by-sentence as it arrives (needs a model).
       const ttsStreaming = streamNarrationAudio && ttsLoaded && requestType === "gametext";
       if (ttsStreaming) { ttsModalRef.current?.streamStart(); ttsSentenceCursorRef.current = 0; }
@@ -1243,9 +1259,13 @@ ${playerNotes || "No notes available"}
               if (completeCount > ttsSentenceCursorRef.current) ttsSentenceCursorRef.current = completeCount;
             }
 
-            // Update visible entities based on streaming content
-            const newEntities = extractEntities(display);
-            setVisibleEntities(newEntities);
+            // Progressively fill the entity tab as each sentence completes (defined entities only; the
+            // authoritative union, incl. staged ad-hoc, is applied once the narration finishes).
+            const completeSentences = splitSentenceSegments(display).length - 1;
+            if (completeSentences > entitySentenceCursorRef.current) {
+              entitySentenceCursorRef.current = completeSentences;
+              setVisibleEntities(findEntityNames(display, entities));
+            }
 
             // Update the latest assistant message in history if it exists
             setFullMessageHistory((prev) => {
