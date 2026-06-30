@@ -1,6 +1,8 @@
 import React, { useEffect, useRef } from 'react';
 import { useGameplay } from '@/contexts/GameplayContext';
+import { useGameData } from '@/contexts/GameDataContext';
 import { useSettings } from '@/contexts/SettingsContext';
+import { findEntityNames } from '@/lib/entityMatch';
 import { usePlayerModelUrl } from '@/lib/usePlayerModelUrl';
 import { mergeBodyMorphs } from '@/lib/bodyMorphs';
 import { useIsMobile } from '@/lib/useIsMobile';
@@ -72,6 +74,8 @@ export const LeftPanel = ({ entities, onEntityClick }: {
       f.name.toLowerCase().includes(entityId.toLowerCase()) ||
       entityId.toLowerCase().includes(f.name.toLowerCase()),
     );
+    if (!match) return; // un-named (ad-hoc) participant — nothing to show
+
     const entitiesViewActive = !characterData || modelTab === "entities";
     const alreadyShown = entitiesViewActive && !!match?.image && match.image === entityViewImage;
     if (!isMobile && showModel && match?.image && !alreadyShown) {
@@ -299,6 +303,7 @@ export const MiddlePanel = ({
   commandPreview: boolean;
   onDismissCommandPreview: () => void;
 }) => {
+  const { entities } = useGameData();
   const {
     displayedMessages,
     setDisplayedMessages,
@@ -503,7 +508,9 @@ export const MiddlePanel = ({
                         role: 'assistant',
                         content: JSON.stringify({
                           ...content,
-                          game_text: text
+                          game_text: text,
+                          // Re-derive participants from the edited text so they don't go stale.
+                          entities: findEntityNames(text, entities)
                         })
                       };
                     } catch {
@@ -513,7 +520,8 @@ export const MiddlePanel = ({
                         content: JSON.stringify({
                           game_text: text,
                           choices: choices,
-                          stat_changes: []
+                          stat_changes: [],
+                          entities: findEntityNames(text, entities)
                         })
                       };
                     }

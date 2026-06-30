@@ -52,6 +52,9 @@ export interface AITurnResult {
   turnId?: string;
   /** Lazily-generated memory digest (typed fact lines) for this turn. */
   summary?: string;
+  /** Names of the entities that took part in this turn (from the narration parse, plus staged ad-hoc
+   *  characters confirmed by the narration). Drives the choices filter and participation rehydration. */
+  entities?: string[];
 }
 
 export interface AuthUser {
