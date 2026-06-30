@@ -6,7 +6,7 @@ import type { ParagraphLimit } from '../lib/outputLength';
 
 export type DetectStatus = 'idle' | 'detecting' | 'success' | 'error';
 
-export type ThinkingMode = 'off' | 'precall' | 'inline';
+export type ThinkingMode = 'off' | 'precall' | 'inline' | 'staged';
 export type { ParagraphLimit };
 
 const APP_ID = 'FORMAMORPH';
@@ -87,15 +87,13 @@ function useProvideSettings() {
   // Synthesize narration audio sentence-by-sentence as the story streams (vs. after the full text).
   // Default off: streaming TTS competes with the LLM for the GPU when both run on one machine.
   const [streamNarrationAudio, setStreamNarrationAudio] = usePersistentState<boolean>(`${APP_ID}_streamNarrationAudio`, false, boolCodec);
-  // Generate a lazy per-turn memory digest as turns age out of the verbatim window.
-  // Default off: another async request that competes with the LLM for the GPU on a single machine.
+  // The single summaries toggle: generate a lazy per-turn memory digest as turns age out of the
+  // verbatim window AND feed those digests into context (recent-verbatim floor + a "story so far" band
+  // + lexical rehydration). Default off: extra async request + it changes what's sent to the model.
   const [memoryDigests, setMemoryDigests] = usePersistentState<boolean>(`${APP_ID}_memoryDigests`, false, boolCodec);
   // Reveal "silent" requests (e.g. the memory digest) in the status bar and AI-context viewer.
   // Default off: silent requests do their work without cluttering the UI; this is an inspection toggle.
   const [showSilentRequests, setShowSilentRequests] = usePersistentState<boolean>(`${APP_ID}_showSilentRequests`, false, boolCodec);
-  // Feed digests into context: recent-verbatim floor + a "story so far" digest band + rehydrated
-  // relevant turns (needs memoryDigests on). Default off: it changes what's sent to the model.
-  const [useDigestsInContext, setUseDigestsInContext] = usePersistentState<boolean>(`${APP_ID}_useDigestsInContext`, false, boolCodec);
   const [endpointUrl, setEndpointUrl] = usePersistentState<string>(`${APP_ID}_endpointUrl`, DEFAULT_ENDPOINT, stringCodec);
   const [apiToken, setApiToken] = usePersistentState<string>(`${APP_ID}_apiToken`, DEFAULT_API_TOKEN, stringCodec);
   const [modelName, setModelName] = usePersistentState<string>(`${APP_ID}_modelName`, DEFAULT_MODEL_NAME, stringCodec);
@@ -157,7 +155,7 @@ function useProvideSettings() {
   const [statUpdatesPrompt, setStatUpdatesPrompt] = usePersistentState<string>(`${APP_ID}_statUpdatesPrompt2`, defaultStatUpdatesPrompt, stringCodec);
   const [locationChangePromptText, setLocationChangePromptText] = usePersistentState<string>(`${APP_ID}_locationChangePrompt`, defaultLocationChangePrompt, stringCodec);
   const [thinkingMode, setThinkingMode] = usePersistentState<ThinkingMode>(`${APP_ID}_thinkingMode`, 'off', {
-    parse: (r) => (r === 'precall' || r === 'inline' ? r : 'off'),
+    parse: (r) => (r === 'precall' || r === 'inline' || r === 'staged' ? r : 'off'),
     serialize: (v) => v,
   });
   const [thinkingPrompt, setThinkingPrompt] = usePersistentState<string>(`${APP_ID}_thinkingPrompt`, defaultThinkingPrompt, stringCodec);
@@ -196,8 +194,6 @@ function useProvideSettings() {
     setMemoryDigests,
     showSilentRequests,
     setShowSilentRequests,
-    useDigestsInContext,
-    setUseDigestsInContext,
     endpointUrl,
     setEndpointUrl,
     apiToken,

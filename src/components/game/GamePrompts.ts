@@ -23,6 +23,7 @@ Guidelines:
 - Be concise and vivid. <LENGTH GUIDANCE>
 - Stay consistent with the world, the player's stats and traits, the current location, and what has happened so far; let low or high stats color the outcome.
 - Advance the scene. Do not decide or list the player's next actions - a separate step offers the choices.
+- Don't report or tabulate the player's stats or their changes unless asked - a separate step handles them.
 - Output only the narration - no labels, quotation wrappers, or mention of being an AI.
 
 <MARKDOWN GUIDANCE>`;
@@ -169,3 +170,78 @@ Kael revealed the bridge ahead had collapsed.`;
 export const INLINE_THINKING_DIRECTIVE = `
 
 Before the narration, reason privately inside <think>...</think> tags - consider the player's action, their stats and traits, the location, and consistency with the story so far. The player never sees this. After the closing </think> tag, write only the narration.`;
+
+// A planning result (the precall plan or the staged storyboard) is attached to the *final user turn*
+// of the game-text request — adjacent to where the model starts writing — rather than appended to the
+// system prompt. This keeps the plan salient (recency) and leaves the authored system prompt untouched.
+export function planDirective(plan: string): string {
+  return `\n\nPlan for this turn (decided in advance - narrate these events as vivid prose; follow it, and do not restate it as a list or headings):\n${plan}`;
+}
+
+// The "staged" thinking pipeline (thinkingMode === 'staged') runs three fixed planning passes before
+// game-text: the director picks the cast + continuation, each character states its motivation, and the
+// storyboarder consolidates them into the plan injected into the narration request. v1 ships these as
+// fixed constants (no per-prompt editor yet); they still use the chip tokens and renderPromptTemplate.
+
+// Pass 1: pick who is in the scene and what is carrying over. Output is parsed into a cast list.
+export const defaultDirectorPrompt = `You are the director of an interactive roleplay. Before the scene is written, decide who is involved and what is carrying over from the moment before. Do not write the narration.
+
+Game World:
+<WORLD DESCRIPTION>
+
+Current Location:
+<LOCATION|summary>
+
+Characters and things that may appear here:
+<ENTITIES|summary>
+
+Important Player Notes:
+<NOTES>
+
+Respond in exactly this format:
+Continuation: <one or two sentences on what is carrying over into this moment>
+Cast:
+- <name> - <why they are involved>
+
+Rules:
+- Never include the player character - the player decides their own actions. The cast is who the player encounters.
+- List only the characters actually present or arriving this turn, most important first.
+- Prefer the characters listed above by their exact name. You may add one unlisted character (e.g. "a fleeing officer") when the scene clearly calls for it.
+- Keep the cast small, usually one to three. Output only the Continuation and Cast lines, nothing else.`;
+
+// Pass 2: run once per selected character. Identity, continuation, and action arrive in the user message.
+export const defaultCharacterPrompt = `You are playing one character in an interactive roleplay. Decide what this single character wants and intends to do this turn. Do not narrate the outcome and do not speak or act for anyone else.
+
+Game World:
+<WORLD DESCRIPTION>
+
+Current Location:
+<LOCATION|summary>
+
+The character you are playing, the scene so far, and the player's action are given below. In 2-3 sentences, state this character's motivation and the specific action they intend to take this turn. Stay consistent with who they are and what just happened. Output only those sentences.`;
+
+// Pass 3: the merge stage. It is the only stage that sees the recap, the director's continuation, and
+// every character's (independently-formed, mutually-blind) intent, so it reconciles them into a terse
+// beat sheet. That beat sheet becomes this turn's plan, attached to the game-text request's user turn.
+export const defaultStoryboardPrompt = `You are the storyboarder for an interactive roleplay. You are the only stage that sees everything - what just happened, the director's continuation, and what each character independently intends - so your job is to reconcile them into one coherent plan for this turn. The characters decided their actions blind to each other, so resolve any overlaps or conflicts, order the actions sensibly, and keep everything consistent with what just happened. Do not write the narration.
+
+Game World:
+<WORLD DESCRIPTION>
+
+Player Stats:
+<STATS DESCRIPTION>
+
+Traits:
+<TRAITS DESCRIPTION>
+
+Current Location:
+<LOCATION|summary>
+
+Important Player Notes:
+<NOTES>
+
+Using everything below, output the plan as 3-5 short beats, one per line:
+- Start each beat with "- " and write it as a terse imperative of who does what - not prose.
+- No description, sensory detail, dialogue, or narration voice - structure only.
+- Let the player's stats or traits tip outcomes where relevant.
+Output only the beats - nothing else.`;

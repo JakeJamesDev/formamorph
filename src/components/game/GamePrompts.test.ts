@@ -5,7 +5,11 @@ import {
   defaultStatUpdatesPrompt,
   defaultLocationChangePrompt,
   defaultThinkingPrompt,
+  defaultDirectorPrompt,
+  defaultCharacterPrompt,
+  defaultStoryboardPrompt,
   markdownGuidance,
+  planDirective,
 } from './GamePrompts';
 import { parsePromptTemplate } from '@/lib/promptTemplate';
 
@@ -68,6 +72,40 @@ describe('default prompts carry the expected variable chips', () => {
       '<ENTITIES|summary>',
       '<NOTES>',
     ]);
+  });
+
+  it('staged director prompt', () => {
+    expect(tokensIn(defaultDirectorPrompt)).toEqual([
+      '<WORLD DESCRIPTION>',
+      '<LOCATION|summary>',
+      '<ENTITIES|summary>',
+      '<NOTES>',
+    ]);
+  });
+
+  it('staged character prompt', () => {
+    expect(tokensIn(defaultCharacterPrompt)).toEqual([
+      '<WORLD DESCRIPTION>',
+      '<LOCATION|summary>',
+    ]);
+  });
+
+  it('staged storyboard prompt', () => {
+    expect(tokensIn(defaultStoryboardPrompt)).toEqual([
+      '<WORLD DESCRIPTION>',
+      '<STATS DESCRIPTION>',
+      '<TRAITS DESCRIPTION>',
+      '<LOCATION|summary>',
+      '<NOTES>',
+    ]);
+  });
+});
+
+describe('planDirective', () => {
+  it('wraps the plan as a follow-it directive carrying the plan text', () => {
+    const out = planDirective('Mira flees north.');
+    expect(out).toContain('Mira flees north.');
+    expect(out.toLowerCase()).toContain('follow it');
   });
 });
 

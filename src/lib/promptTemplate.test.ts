@@ -3,6 +3,7 @@ import { parsePromptTemplate, serializeSegments, renderPromptTemplate } from './
 import {
   defaultSystemPrompt, defaultChoicesPrompt, defaultStatUpdatesPrompt,
   defaultLocationChangePrompt, defaultThinkingPrompt, defaultSummaryPrompt,
+  defaultDirectorPrompt, defaultCharacterPrompt, defaultStoryboardPrompt,
 } from '@/components/game/GamePrompts';
 
 describe('renderPromptTemplate', () => {
@@ -54,6 +55,9 @@ describe('parse ∘ serialize round-trip', () => {
     ['locationChange', defaultLocationChangePrompt],
     ['thinking', defaultThinkingPrompt],
     ['summary', defaultSummaryPrompt],
+    ['director', defaultDirectorPrompt],
+    ['character', defaultCharacterPrompt],
+    ['storyboard', defaultStoryboardPrompt],
   ];
   it.each(prompts)('is byte-identical for the %s default prompt', (_name, prompt) => {
     expect(serializeSegments(parsePromptTemplate(prompt))).toBe(prompt);
