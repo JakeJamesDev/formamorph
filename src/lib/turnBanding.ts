@@ -27,6 +27,7 @@ export interface BandTurn {
   userMsg: ChatMessage;
   gameText: string;
   summary?: string;
+  entities?: string[]; // participants recorded on this turn (drives entity-based rehydration)
 }
 
 export interface BandCounts {
@@ -86,6 +87,7 @@ export function parseTurns(history: ChatMessage[]): BandTurn[] {
       userMsg,
       gameText: parsed.game_text ?? '',
       summary: parsed.summary,
+      entities: parsed.entities,
     });
   }
   return turns;
@@ -133,20 +135,29 @@ export function scoreTurnDigest(turn: BandTurn, keywords: string[]): number {
   return keywords.reduce((n, kw) => (containsWord(hay, kw) ? n + 1 : n), 0);
 }
 
-/** Choose which candidate turns to rehydrate: those whose digest overlaps the keywords, best score
- *  first then most recent, accumulating full-turn cost up to `tokenCap` and at most `maxCount` turns.
- *  Rehydration is a small, targeted augmentation — the count cap keeps a noisy keyword set from pulling
- *  the whole history back verbatim. Returns their turnIds. */
+/** How many of the action's entities took part in this turn (intersection of `actionEntities` with the
+ *  turn's stored participants). 0 = the turn doesn't involve any character the action references. */
+export function scoreTurnEntities(turn: BandTurn, actionEntities: string[]): number {
+  if (!turn.entities || turn.entities.length === 0 || actionEntities.length === 0) return 0;
+  const have = new Set(turn.entities.map((e) => e.toLowerCase()));
+  return actionEntities.reduce((n, e) => (have.has(e.toLowerCase()) ? n + 1 : n), 0);
+}
+
+/** Choose which candidate turns to rehydrate. A turn qualifies if it shares an entity with the action
+ *  (participation) OR its digest overlaps the keywords; ordered entity-hit first, then keyword score, then
+ *  recency. Accumulates full-turn cost up to `tokenCap` and at most `maxCount` turns. Returns their
+ *  turnIds. */
 export function selectRehydrations(
   candidates: BandTurn[],
   keywords: string[],
+  actionEntities: string[],
   tokenCap: number,
   maxCount = Infinity,
 ): Set<string> {
   const scored = candidates
-    .map((t) => ({ t, score: scoreTurnDigest(t, keywords) }))
-    .filter((s) => s.score > 0)
-    .sort((a, b) => b.score - a.score || b.t.index - a.t.index);
+    .map((t) => ({ t, score: scoreTurnDigest(t, keywords), eScore: scoreTurnEntities(t, actionEntities) }))
+    .filter((s) => s.score > 0 || s.eScore > 0)
+    .sort((a, b) => b.eScore - a.eScore || b.score - a.score || b.t.index - a.t.index);
   const chosen = new Set<string>();
   let used = 0;
   for (const { t } of scored) {
@@ -170,10 +181,11 @@ export function buildBandedHistory(args: {
   maxTokens: number;
   verbatimFloor: number;
   keywords: string[];
+  actionEntities: string[];
   rehydrateCap: number;
   maxRehydrations?: number;
 }): BandResult {
-  const { turns, contextWindow, promptTokens, maxTokens, verbatimFloor, keywords, rehydrateCap, maxRehydrations = Infinity } = args;
+  const { turns, contextWindow, promptTokens, maxTokens, verbatimFloor, keywords, actionEntities, rehydrateCap, maxRehydrations = Infinity } = args;
   const margin = Math.max(256, Math.round(contextWindow * 0.05));
   const budget = Math.max(0, contextWindow - promptTokens - maxTokens - margin);
 
@@ -200,7 +212,7 @@ export function buildBandedHistory(args: {
 
   // 3. Rehydration (best-effort) — pull relevant band turns back to full text within leftover budget.
   const rehydrateBudget = Math.min(rehydrateCap, Math.max(0, remaining - bandTokens));
-  const chosen = selectRehydrations(bandTurns, keywords, rehydrateBudget, maxRehydrations);
+  const chosen = selectRehydrations(bandTurns, keywords, actionEntities, rehydrateBudget, maxRehydrations);
   const rehydratedTurns = bandTurns.filter((t) => t.turnId && chosen.has(t.turnId));
   let rehydratedTokens = 0;
   for (const t of rehydratedTurns) rehydratedTokens += pairTokenCost(t);
