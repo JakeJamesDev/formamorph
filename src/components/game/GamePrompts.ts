@@ -189,6 +189,9 @@ export const defaultDirectorPrompt = `You are the director of an interactive rol
 Game World:
 <WORLD DESCRIPTION>
 
+Traits:
+<TRAITS DESCRIPTION>
+
 Current Location:
 <LOCATION|summary>
 
@@ -206,7 +209,8 @@ Cast:
 Rules:
 - Never include the player character - the player decides their own actions. The cast is who the player encounters.
 - List only the characters actually present or arriving this turn, most important first.
-- Prefer the characters listed above by their exact name. You may add one unlisted character (e.g. "a fleeing officer") when the scene clearly calls for it.
+- Prefer the characters listed above by their exact name where they fit, but you are free to invent new characters of your own when the scene calls for them - you are not limited to the author's cast.
+- If the scene is genuinely empty, write "Cast: none" with no bullets.
 - Keep the cast small, usually one to three. Output only the Continuation and Cast lines, nothing else.`;
 
 // Pass 2: run once per selected character. Identity, continuation, and action arrive in the user message.
@@ -214,6 +218,9 @@ export const defaultCharacterPrompt = `You are playing one character in an inter
 
 Game World:
 <WORLD DESCRIPTION>
+
+Traits:
+<TRAITS DESCRIPTION>
 
 Current Location:
 <LOCATION|summary>

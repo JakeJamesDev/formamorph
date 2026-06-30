@@ -47,6 +47,16 @@ export function isPlayerCharacterName(name: string): boolean {
   return PLAYER_ALIASES.has(name.trim().toLowerCase());
 }
 
+// Sentinels a model emits to say "no one is here" — they are not characters and must not become a pass.
+const EMPTY_CAST_NAMES = new Set([
+  "none", "n/a", "na", "no one", "noone", "nobody", "no characters", "no character", "empty", "nothing",
+]);
+
+/** True when a director cast name is a "nobody is present" sentinel rather than an actual character. */
+export function isEmptyCastName(name: string): boolean {
+  return EMPTY_CAST_NAMES.has(name.trim().toLowerCase());
+}
+
 /**
  * Parse the director's free-text output into a continuation note and cast list. Expects the format:
  *   Continuation: <text>
@@ -70,8 +80,8 @@ export function parseDirectorCast(raw: string): ParsedDirector {
     if (bullet) {
       const name = castName(bullet[1]);
       const key = name.toLowerCase();
-      // Drop the player character: they are never directed, even if the model lists them.
-      if (name && !isPlayerCharacterName(name) && !seen.has(key)) {
+      // Drop the player character and "no one present" sentinels — neither is a directable character.
+      if (name && !isPlayerCharacterName(name) && !isEmptyCastName(name) && !seen.has(key)) {
         seen.add(key);
         cast.push({ name });
       }
@@ -85,8 +95,9 @@ export function parseDirectorCast(raw: string): ParsedDirector {
       continue;
     }
 
-    // A "Cast:" header (or similar) carries no continuation text.
-    if (/^cast\s*:?\s*$/i.test(trimmed)) continue;
+    // A "Cast:" header line carries no continuation text. Anything trailing it (e.g. an inline
+    // "none" sentinel) is not continuation prose, so skip the whole line either way.
+    if (/^cast\b\s*:?/i.test(trimmed)) continue;
 
     // Any other prose line is continuation, but only before an explicit Continuation marker has
     // claimed it (so a stray trailing line doesn't append to an explicit note).
