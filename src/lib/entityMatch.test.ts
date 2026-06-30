@@ -74,4 +74,10 @@ describe('findEntityNames', () => {
     const entities = [ent('Mira'), ent('Reyes'), ent('Aldous')];
     expect(findEntityNames('Mira nods as Reyes enters.', entities)).toEqual(['Mira', 'Reyes']);
   });
+
+  it('with requireCapital:false, matches a lowercase single-word name (player actions)', () => {
+    const entities = [ent('Mira')];
+    expect(findEntityNames('talk to mira', entities)).toEqual([]); // default guard
+    expect(findEntityNames('talk to mira', entities, { requireCapital: false })).toEqual(['Mira']);
+  });
 });

@@ -24,8 +24,17 @@ function occursCapitalized(text: string, name: string): boolean {
   return false;
 }
 
-/** The subset of `names` that `text` contains, deduped and returned in first-seen order. */
-export function matchNames(text: string, names: string[]): string[] {
+/**
+ * The subset of `names` that `text` contains, deduped and returned in first-seen order. The capital guard
+ * on single-word names suits proper-cased narration; pass `requireCapital: false` for lowercase sources
+ * (e.g. player actions) so a single-word name matches case-insensitively.
+ */
+export function matchNames(
+  text: string,
+  names: string[],
+  opts: { requireCapital?: boolean } = {},
+): string[] {
+  const { requireCapital = true } = opts;
   if (!text) return [];
   const found = new Set<string>();
   for (const name of names) {
@@ -33,7 +42,10 @@ export function matchNames(text: string, names: string[]): string[] {
     if (!trimmed || found.has(name)) continue;
     const words = trimmed.toLowerCase().split(/\s+/);
     if (words.length === 1) {
-      if (occursCapitalized(text, trimmed)) found.add(name);
+      const matched = requireCapital
+        ? occursCapitalized(text, trimmed)
+        : new RegExp(`\\b${escapeRegExp(trimmed)}(?:s)?\\b`, 'i').test(text);
+      if (matched) found.add(name);
       continue;
     }
     const exact = new RegExp(`\\b${escapeRegExp(trimmed)}(?:s)?\\b`, 'i');
@@ -44,8 +56,8 @@ export function matchNames(text: string, names: string[]): string[] {
 }
 
 /** The names of the defined entities that appear in `text` (a thin wrapper over `matchNames`). */
-export function findEntityNames(text: string, entities: Entity[]): string[] {
-  return matchNames(text, entities.map((e) => e.name));
+export function findEntityNames(text: string, entities: Entity[], opts?: { requireCapital?: boolean }): string[] {
+  return matchNames(text, entities.map((e) => e.name), opts);
 }
 
 // Short/function words dropped before loose matching so a name like "The Wolf" can't match on "the".

@@ -322,6 +322,9 @@ const GameViewer = ({
   const [debugTurns, setDebugTurns] = useState<DebugTurn[]>([]);
   const [debugPage, setDebugPage] = useState(1); // 1-based page = index into visibleDebugTurns
   const [disabledHighlights, setDisabledHighlights] = useState<Record<string, boolean>>({});
+  // AI-context highlight mode: dictionary entries vs the per-turn rehydration ("hydration") signal.
+  const [debugHighlightMode, setDebugHighlightMode] = useState<"dictionary" | "hydrations">("dictionary");
+  const [disabledHydrations, setDisabledHydrations] = useState<Record<string, boolean>>({});
   const [debugSearch, setDebugSearch] = useState("");
   const [collapsedDebug, setCollapsedDebug] = useState<Record<string | number, boolean>>({});
   // When on (default), the viewer hides turns that aren't part of the live context — re-generated,
@@ -425,6 +428,8 @@ const GameViewer = ({
     const turns = parseTurns(fullMessageHistory);
     if (memoryDigests) {
       const keywords = extractKeywords(action, dictionary);
+      // Entities the action references (case-insensitive — actions are lowercase) drive participation rehydration.
+      const actionEntities = findEntityNames(action, entities, { requireCapital: false });
       const rehydrateCap = Math.round(Math.max(0, contextWindow - promptTokens - maxTokens) * 0.25);
       const { messages, counts } = buildBandedHistory({
         turns,
@@ -433,6 +438,7 @@ const GameViewer = ({
         maxTokens,
         verbatimFloor: gametextVerbatimTurns,
         keywords,
+        actionEntities,
         rehydrateCap,
         maxRehydrations: DIGEST_MAX_REHYDRATIONS,
       });
@@ -441,7 +447,7 @@ const GameViewer = ({
     }
     lastBandCountsRef.current = null;
     return buildVerbatimHistory(turns, contextWindow, promptTokens, maxTokens);
-  }, [fullMessageHistory, contextWindow, maxTokens, memoryDigests, dictionary, gametextVerbatimTurns]);
+  }, [fullMessageHistory, contextWindow, maxTokens, memoryDigests, dictionary, entities, gametextVerbatimTurns]);
 
   // Drive body morphs from stats: each stat's bound sliders track its value (min→max → 0→1 influence).
   useEffect(() => {
@@ -702,6 +708,7 @@ ${playerNotes || "No notes available"}
             maxTokens: 256,
             verbatimFloor: thinkingVerbatimTurns,
             keywords: [],
+            actionEntities: [],
             rehydrateCap: 0,
             maxRehydrations: 0,
           }).messages;
@@ -1954,6 +1961,13 @@ ${playerNotes || "No notes available"}
               if (block) segs.push(...highlightDeclarations(block));
               return segs;
             };
+            // Hydration highlighter: no section/declaration logic — just mark the (active) hydration terms,
+            // honoring the search filter and returning [] when search hides everything.
+            const buildHydrationSegments = (text: string, rules: HighlightRule[]): HighlightSegment[] => {
+              const t = searchActive ? filterLines(text) : text;
+              if (searchActive && !t) return [];
+              return highlightSegments(t, rules);
+            };
             const renderSegs = (segs: HighlightSegment[]) =>
               segs.map((seg, k) =>
                 seg.color ? (
@@ -1973,6 +1987,34 @@ ${playerNotes || "No notes available"}
             const pageIndex = Math.min(Math.max(debugPage, 1), Math.max(totalDebugPages, 1)) - 1;
             const currentTurn = visibleDebugTurns[pageIndex];
             const currentRequests = currentTurn?.requests ?? [];
+            // The hydration signal for this turn: the action's keywords (matched vs summaries) + the action's
+            // entities (matched vs participation) — exactly what selectRehydrations sees. Deduped, colored.
+            const hydrationTerms: string[] = [];
+            const hydrationColorMap: Record<string, string> = {};
+            {
+              const seen = new Set<string>();
+              const action = currentTurn?.action || "";
+              const raw = [
+                ...extractKeywords(action, dictionary),
+                ...findEntityNames(action, entities, { requireCapital: false }),
+              ];
+              for (const term of raw) {
+                const key = term.toLowerCase();
+                if (term && !seen.has(key)) {
+                  seen.add(key);
+                  hydrationColorMap[key] = palette[hydrationTerms.length % palette.length];
+                  hydrationTerms.push(term);
+                }
+              }
+            }
+            const activeHydrationRules: HighlightRule[] = hydrationTerms
+              .filter((term) => !disabledHydrations[term])
+              .map((term) => ({ term, color: hydrationColorMap[term.toLowerCase()] }));
+            // Per-block segmenter honoring the mode: hydrations highlight only inside the gametext request.
+            const segmentsFor = (text: string, reqType: string): HighlightSegment[] =>
+              debugHighlightMode === "hydrations"
+                ? buildHydrationSegments(text, reqType === "gametext" ? activeHydrationRules : [])
+                : buildSegments(text);
             // The memory digest for this turn (stored on its assistant message), if one has been generated.
             const currentSummary = currentTurn?.turnId
               ? fullMessageHistory
@@ -2028,42 +2070,72 @@ ${playerNotes || "No notes available"}
                 <DialogHeader className="flex-shrink-0">
                   <DialogTitle>AI context</DialogTitle>
                 </DialogHeader>
-                {dictionary.length > 0 && (
-                  <div className="flex flex-wrap items-center gap-2 flex-shrink-0 text-xs">
-                    <span className="text-muted-foreground">Dictionary:</span>
-                    {dictionary.map((entry) => {
-                      const disabled = disabledHighlights[entry.id];
+                <div className="flex flex-wrap items-center gap-2 flex-shrink-0 text-xs">
+                  {/* Highlight-mode toggle: dictionary entries vs the per-turn rehydration signal. */}
+                  <div className="inline-flex flex-shrink-0 overflow-hidden rounded border border-border">
+                    {(["dictionary", "hydrations"] as const).map((m) => (
+                      <button
+                        key={m}
+                        onClick={() => setDebugHighlightMode(m)}
+                        className={`px-2 py-0.5 ${
+                          debugHighlightMode === m ? "bg-muted font-medium" : "text-muted-foreground"
+                        }`}
+                      >
+                        {m === "dictionary" ? "Dictionary" : "Hydrations"}
+                      </button>
+                    ))}
+                  </div>
+                  {debugHighlightMode === "dictionary" ? (
+                    dictionary.length > 0 ? (
+                      dictionary.map((entry) => {
+                        const disabled = disabledHighlights[entry.id];
+                        return (
+                          <button
+                            key={entry.id}
+                            onClick={() =>
+                              setDisabledHighlights((prev) => ({ ...prev, [entry.id]: !prev[entry.id] }))
+                            }
+                            className="rounded border px-1.5 py-0.5"
+                            style={
+                              disabled
+                                ? { borderColor: colorMap[entry.id], opacity: 0.5 }
+                                : { backgroundColor: colorMap[entry.id], borderColor: colorMap[entry.id], color: "#000" }
+                            }
+                            title={disabled ? "Click to enable highlight" : "Click to disable highlight"}
+                          >
+                            {entry.name || parseKeywords(entry)[0] || "unnamed"}
+                          </button>
+                        );
+                      })
+                    ) : (
+                      <span className="text-muted-foreground">No dictionary entries.</span>
+                    )
+                  ) : hydrationTerms.length > 0 ? (
+                    hydrationTerms.map((term) => {
+                      const disabled = disabledHydrations[term];
+                      const color = hydrationColorMap[term.toLowerCase()];
                       return (
                         <button
-                          key={entry.id}
+                          key={term}
                           onClick={() =>
-                            setDisabledHighlights((prev) => ({
-                              ...prev,
-                              [entry.id]: !prev[entry.id],
-                            }))
+                            setDisabledHydrations((prev) => ({ ...prev, [term]: !prev[term] }))
                           }
                           className="rounded border px-1.5 py-0.5"
                           style={
                             disabled
-                              ? { borderColor: colorMap[entry.id], opacity: 0.5 }
-                              : {
-                                  backgroundColor: colorMap[entry.id],
-                                  borderColor: colorMap[entry.id],
-                                  color: "#000",
-                                }
+                              ? { borderColor: color, opacity: 0.5 }
+                              : { backgroundColor: color, borderColor: color, color: "#000" }
                           }
-                          title={
-                            disabled
-                              ? "Click to enable highlight"
-                              : "Click to disable highlight"
-                          }
+                          title={disabled ? "Click to enable highlight" : "Click to disable highlight"}
                         >
-                          {entry.name || parseKeywords(entry)[0] || "unnamed"}
+                          {term}
                         </button>
                       );
-                    })}
-                  </div>
-                )}
+                    })
+                  ) : (
+                    <span className="text-muted-foreground">No hydration terms for this turn.</span>
+                  )}
+                </div>
                 <div className="flex items-center gap-2 flex-shrink-0">
                   <div className="relative flex-grow">
                     <Search className="pointer-events-none absolute left-2 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
@@ -2129,12 +2201,12 @@ ${playerNotes || "No notes available"}
                         currentRequests.map((req, i) => {
                           const msgSegs = req.messages.map((m) => ({
                             role: m.role,
-                            segs: buildSegments(m.content),
+                            segs: segmentsFor(m.content, req.type),
                           }));
                           const hasReqMatch = msgSegs.some((ms) => ms.segs.length > 0);
                           // Raw, unmodified AI output for this request (captured in makeAIRequest).
                           const outSegs =
-                            typeof req.response === "string" ? buildSegments(req.response) : null;
+                            typeof req.response === "string" ? segmentsFor(req.response, req.type) : null;
                           const hasOutMatch = outSegs !== null && outSegs.length > 0;
                           // While searching, drop the whole block only if neither the request nor its output matches.
                           if (searchActive && !hasReqMatch && !hasOutMatch) return null;

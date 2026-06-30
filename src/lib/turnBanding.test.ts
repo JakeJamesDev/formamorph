@@ -113,19 +113,19 @@ describe('selectRehydrations', () => {
       bandTurn(3, { summary: 'The vault again.' }), // score 1
       bandTurn(5, { summary: 'Nothing relevant.' }), // score 0 → excluded
     ];
-    const chosen = selectRehydrations(candidates, ['mira', 'vault'], WIDE);
+    const chosen = selectRehydrations(candidates, ['mira', 'vault'], [], WIDE);
     expect([...chosen]).toEqual(['t1', 't3']);
     expect(chosen.has('t5')).toBe(false);
   });
 
   it('skips turns without a turnId', () => {
     const candidates = [bandTurn(1, { turnId: undefined, summary: 'Mira.' })];
-    expect(selectRehydrations(candidates, ['mira'], WIDE).size).toBe(0);
+    expect(selectRehydrations(candidates, ['mira'], [], WIDE).size).toBe(0);
   });
 
   it('respects the token cap', () => {
     const candidates = [bandTurn(1, { summary: 'Mira.' })];
-    expect(selectRehydrations(candidates, ['mira'], 0).size).toBe(0);
+    expect(selectRehydrations(candidates, ['mira'], [], 0).size).toBe(0);
   });
 
   it('respects the count cap, keeping the best-scoring turns', () => {
@@ -134,13 +134,31 @@ describe('selectRehydrations', () => {
       bandTurn(3, { summary: 'Mira vault.' }), // score 2
       bandTurn(5, { summary: 'Mira.' }), // score 1
     ];
-    const chosen = selectRehydrations(candidates, ['mira', 'vault', 'gold'], WIDE, 1);
+    const chosen = selectRehydrations(candidates, ['mira', 'vault', 'gold'], [], WIDE, 1);
     expect([...chosen]).toEqual(['t1']); // only the top scorer
+  });
+
+  it('rehydrates on entity participation even when the digest shares no words', () => {
+    const candidates = [
+      bandTurn(1, { summary: 'A quiet stroll.', entities: ['Mira'] }), // word score 0, entity hit
+      bandTurn(3, { summary: 'Nothing relevant.' }), // no match
+    ];
+    const chosen = selectRehydrations(candidates, ['vault'], ['Mira'], WIDE);
+    expect([...chosen]).toEqual(['t1']);
+  });
+
+  it('orders an entity-participation hit ahead of a word-only hit', () => {
+    const candidates = [
+      bandTurn(1, { summary: 'vault vault vault.' }), // high word score, no entity
+      bandTurn(3, { summary: 'A stroll.', entities: ['Mira'] }), // entity hit
+    ];
+    const chosen = selectRehydrations(candidates, ['vault'], ['mira'], WIDE, 1);
+    expect([...chosen]).toEqual(['t3']); // entity hit wins the single slot
   });
 });
 
 describe('buildBandedHistory', () => {
-  const base = { contextWindow: WIDE, promptTokens: 0, maxTokens: 0, verbatimFloor: 2, rehydrateCap: WIDE };
+  const base = { contextWindow: WIDE, promptTokens: 0, maxTokens: 0, verbatimFloor: 2, rehydrateCap: WIDE, actionEntities: [] as string[] };
 
   it('keeps the recent floor verbatim and bands older turns, with no overlap', () => {
     const turns = parseTurns([
