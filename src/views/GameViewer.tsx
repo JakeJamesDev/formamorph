@@ -33,7 +33,20 @@ import type { CharacterData, ChatMessage, ChatRole, AIRequestType, StatChange, T
 import { UnsavedChangesDialog } from "../components/UnsavedChangesDialog";
 import { estimateHistoryChars, estimateTokens } from "../lib/memoryUtils";
 import { parseGameText, stripReasoning, stripReasoningLive } from "../lib/aiResponse";
-import { INLINE_THINKING_DIRECTIVE, markdownGuidance } from "../components/game/GamePrompts";
+import {
+  INLINE_THINKING_DIRECTIVE,
+  markdownGuidance,
+  planDirective,
+  defaultDirectorPrompt,
+  defaultCharacterPrompt,
+  defaultStoryboardPrompt,
+} from "../components/game/GamePrompts";
+import {
+  parseDirectorCast,
+  matchCastToEntities,
+  buildCharacterUserMessage,
+  buildStoryboardUserMessage,
+} from "../lib/stagedPlanning";
 import { lengthGuidance, trimToLastSentence } from "../lib/outputLength";
 import { splitSentenceSegments } from "../lib/ttsChunks";
 import { selectDueDigests, applyDigest, parseTurnContent } from "../lib/turnDigest";
@@ -143,7 +156,6 @@ const GameViewer = ({
     memoryDigests,
     summaryPrompt,
     showSilentRequests,
-    useDigestsInContext,
   } = useSettings();
 
   const {
@@ -421,7 +433,7 @@ const GameViewer = ({
     setFullMessageHistory((prev) => [...prev, { role, content }]);
   }, [setFullMessageHistory]);
 
-  // Assemble the history sent to the model. Banding (memoryDigests + useDigestsInContext) keeps a recent
+  // Assemble the history sent to the model. Banding (memoryDigests) keeps a recent
   // verbatim floor, folds older turns into a "story so far" digest band, and rehydrates a few older turns
   // the action lexically touches; otherwise the legacy verbatim-newest-first trim. Keywords come from the
   // player's `action` only — seeding from full narration over-matches and rehydrates everything. The
@@ -430,7 +442,7 @@ const GameViewer = ({
 
   const getTrimmedMessageHistory = useCallback((promptTokens = 0, action = "") => {
     const turns = parseTurns(fullMessageHistory);
-    if (memoryDigests && useDigestsInContext) {
+    if (memoryDigests) {
       const keywords = extractKeywords(action, dictionary);
       const rehydrateCap = Math.round(Math.max(0, contextWindow - promptTokens - maxTokens) * 0.25);
       const { messages, counts } = buildBandedHistory({
@@ -448,7 +460,7 @@ const GameViewer = ({
     }
     lastBandCountsRef.current = null;
     return buildVerbatimHistory(turns, contextWindow, promptTokens, maxTokens);
-  }, [fullMessageHistory, contextWindow, maxTokens, memoryDigests, useDigestsInContext, dictionary, gametextVerbatimTurns]);
+  }, [fullMessageHistory, contextWindow, maxTokens, memoryDigests, dictionary, gametextVerbatimTurns]);
 
   // Drive body morphs from stats: each stat's bound sliders track its value (min→max → 0→1 influence).
   useEffect(() => {
@@ -672,9 +684,10 @@ ${playerNotes || "No notes available"}
       // Add user message to history after getting trimmed history
       addMessageToHistory("user", action);
 
-      // Optional thinking step (runs exactly once). 'precall': a hidden planning request whose
-      // short output is injected below. 'inline': append a <think> directive to the game-text
-      // request (the reasoning is stripped before the player sees it).
+      // Optional thinking step (runs exactly once). 'precall' and 'staged' produce a hidden plan
+      // (captured in turnPlan and attached to the final user turn below); 'inline' appends a <think>
+      // directive to the game-text request (the reasoning is stripped before the player sees it).
+      let turnPlan = "";
       if (thinkingMode === "precall") {
         const thinkPrompt = renderPromptTemplate(thinkingPrompt, {
           "<WORLD DESCRIPTION>": worldOverview.systemPrompt || "",
@@ -695,7 +708,7 @@ ${playerNotes || "No notes available"}
         // Planning needs the least context: the immediate turn verbatim, everything older summarized.
         // When banding is on, rebuild with a floor of 1 (no rehydration) so prior turns are all digests.
         let digestBand = "";
-        if (memoryDigests && useDigestsInContext) {
+        if (memoryDigests) {
           const plannerMsgs = buildBandedHistory({
             turns: parseTurns(fullMessageHistory),
             contextWindow,
@@ -717,11 +730,72 @@ ${playerNotes || "No notes available"}
           },
         ];
         const plan = await makeAIRequest(thinkPrompt, thinkMessages, "thinking", 256, signal);
-        if (plan) {
-          updatedPrompt += `\n\nPlanning notes (use these to shape the narration; do not repeat them):\n${plan}`;
-        }
+        if (plan) turnPlan = plan;
       } else if (thinkingMode === "inline") {
         updatedPrompt += INLINE_THINKING_DIRECTIVE;
+      } else if (thinkingMode === "staged") {
+        // Staged planning: director (cast + continuation) -> one motivation pass per character
+        // (sequential, capped at 3) -> storyboarder. The storyboard is injected like the precall plan.
+        const stageValues = {
+          "<WORLD DESCRIPTION>": worldOverview.systemPrompt || "",
+          "<STATS DESCRIPTION>": statDescriptionsNarrative,
+          "<TRAITS DESCRIPTION>": generateTraitDescriptions(),
+          "<LOCATION>": locationDataString,
+          "<LOCATION|summary>": locationSummaryString,
+          "<LOCATION|list>": locationListString,
+          "<ENTITIES>": entityDataString,
+          "<ENTITIES|summary>": entitySummaryString,
+          "<NOTES>": playerNotes || "No notes available",
+        };
+        const isBand = (m?: ChatMessage) => m?.role === "assistant" && m.content.startsWith("Story so far");
+        const lastStory =
+          [...trimmedHistory].reverse().find((m) => m.role === "assistant" && !isBand(m))?.content || "";
+        const recap = lastStory ? `What just happened:\n${lastStory}\n\n` : "";
+
+        // 1) Director: who is in the scene and what carries over.
+        const directorOut = await makeAIRequest(
+          renderPromptTemplate(defaultDirectorPrompt, stageValues),
+          [{ role: "user", content: `${recap}The player's next action: ${action}\n\nList the cast and continuation now.` }],
+          "director",
+          160,
+          signal,
+        );
+        if (signal.aborted) return;
+        const { continuation, cast } = parseDirectorCast(directorOut || "");
+        const presentIds = currentLocation?.entities || [];
+        const presentEntities = entities.filter((e) => presentIds.includes(e.id));
+        const { chosen, overflow } = matchCastToEntities(cast, presentEntities, 3);
+
+        // 2) One motivation pass per chosen character (sequential — see makeAIRequest capture note).
+        const intents: { name: string; text: string }[] = [];
+        for (const member of chosen) {
+          const text = await makeAIRequest(
+            renderPromptTemplate(defaultCharacterPrompt, stageValues),
+            [{ role: "user", content: buildCharacterUserMessage({ character: member, continuation, action }) }],
+            "character",
+            128,
+            signal,
+          );
+          if (signal.aborted) return;
+          if (text) intents.push({ name: member.name, text });
+        }
+
+        // 3) Storyboarder: consolidate the cast + intentions into this turn's plan.
+        const plan = await makeAIRequest(
+          renderPromptTemplate(defaultStoryboardPrompt, stageValues),
+          [{ role: "user", content: buildStoryboardUserMessage({ recap: lastStory, continuation, intents, overflow, action }) }],
+          "storyboard",
+          150,
+          signal,
+        );
+        if (signal.aborted) return;
+        if (plan) turnPlan = plan;
+      }
+
+      // Attach the plan to the final user turn (adjacent to where the model writes) instead of the
+      // system prompt — keeps it salient and leaves the authored system prompt untouched.
+      if (turnPlan) {
+        gameTextMessages[gameTextMessages.length - 1].content += planDirective(turnPlan);
       }
 
       // Track the assembled system-prompt size for the memory-usage breakdown
@@ -1469,6 +1543,9 @@ ${playerNotes || "No notes available"}
     if (isWaitingForAI) {
       const labels = {
         thinking: "Plan",
+        director: "Cast",
+        character: "Motivation",
+        storyboard: "Storyboard",
         gametext: "Game Text",
         choices: "Choices",
         statUpdates: "Stat Updates",

@@ -21,8 +21,9 @@ const OUTPUT_LENGTH_OPTIONS: { value: ParagraphLimit; label: string; help: strin
 ];
 const THINKING_OPTIONS: { value: ThinkingMode; label: string; help: string }[] = [
   { value: 'off', label: 'Off', help: 'Fastest. The model responds immediately, with no planning step.' },
-  { value: 'precall', label: 'Planning', help: 'Recommended. A separate request is sent to plan narration before writing it. Most reliable for small models.' },
   { value: 'inline', label: 'Inline', help: 'The model reasons privately before narrating, in the same request. One fewer round-trip.' },
+  { value: 'precall', label: 'Planning', help: 'Recommended. A separate request is sent to plan narration before writing it. Most reliable for small models.' },
+  { value: 'staged', label: 'Staged', help: 'Highest quality, slowest. A director picks the cast, each character plans its motivation, and a storyboarder writes the plan — several extra requests per turn.' },
 ];
 
 /** Per-prompt control: how many recent turns this prompt receives verbatim (the rest are digested). */
@@ -106,8 +107,6 @@ export const SettingsModal = ({ isOpen, onOpenChange, previewValues }: {
     setMemoryDigests,
     showSilentRequests,
     setShowSilentRequests,
-    useDigestsInContext,
-    setUseDigestsInContext,
     paragraphLimit,
     setParagraphLimit,
     autoscroll,
@@ -349,7 +348,7 @@ export const SettingsModal = ({ isOpen, onOpenChange, previewValues }: {
                 <label className="text-left sm:text-right pt-2">Thinking</label>
                 <div className="col-span-3">
                   <Tabs value={thinkingMode} onValueChange={(v) => setThinkingMode(v as ThinkingMode)}>
-                    <TabsList className="grid w-full grid-cols-3">
+                    <TabsList className="grid w-full grid-cols-2 sm:grid-cols-4">
                       {THINKING_OPTIONS.map((o) => (
                         <TabsTrigger key={o.value} value={o.value}>{o.label}</TabsTrigger>
                       ))}
@@ -396,28 +395,10 @@ export const SettingsModal = ({ isOpen, onOpenChange, previewValues }: {
                     className="shrink-0"
                   />
                   <span className="text-xs text-muted-foreground">
-                    Summarize older turns into short fact lines as they age out of recent history, so long stories stay coherent without bloating each request. Runs an extra request per turn — may compete for the GPU if your LLM runs on the same machine. Edit the summary prompt under System Prompts → Summary.
+                    Summarize older turns into short fact lines as they age out of recent history, then feed them to the model: recent turns stay verbatim, older turns fold into a &ldquo;story so far&rdquo; recap, and a relevant past turn is pulled back to full detail when your action references it. Keeps long stories coherent without bloating each request. Runs an extra request per turn — may compete for the GPU if your LLM runs on the same machine. Edit the summary prompt under System Prompts → Summary.
                   </span>
                 </div>
               </div>
-              {memoryDigests && (
-                <div className="grid grid-cols-1 sm:grid-cols-4 items-start gap-4">
-                  <label htmlFor="useDigestsInContext" className="text-left sm:text-right leading-4">
-                    Use Summaries in Context
-                  </label>
-                  <div className="col-span-3 flex items-start gap-2">
-                    <Checkbox
-                      id="useDigestsInContext"
-                      checked={useDigestsInContext}
-                      onCheckedChange={(c) => setUseDigestsInContext(c === true)}
-                      className="shrink-0"
-                    />
-                    <span className="text-xs text-muted-foreground">
-                      Actually feed summaries to the model: keep recent turns verbatim, fold older turns into a &ldquo;story so far&rdquo; recap, and pull a relevant past turn back to full detail when your action references it. Off by default — it changes what each request sends. Without this, Memory Summaries are only generated and shown, not sent to the model.
-                    </span>
-                  </div>
-                </div>
-              )}
             </div>
           </TabsContent>
 
@@ -607,7 +588,7 @@ export const SettingsModal = ({ isOpen, onOpenChange, previewValues }: {
             </Tabs>
 
             <div className="flex flex-wrap justify-between items-center gap-2 flex-shrink-0">
-              {memoryDigests && useDigestsInContext ? (
+              {memoryDigests ? (
                 <VerbatimTurnsField id="promptVerbatim" value={activeVerbatim.value} onChange={activeVerbatim.set} />
               ) : (
                 <span />

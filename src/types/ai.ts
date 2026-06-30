@@ -25,10 +25,20 @@ export interface ChatCompletionChunk {
 }
 
 /**
- * Kinds of AI request the game makes (thinking is the optional planning pass; locationChange is
- * v1.2.0; summary is the lazy per-turn memory digest).
+ * Kinds of AI request the game makes (thinking is the optional planning pass; director/character/
+ * storyboard are the staged planning pipeline; locationChange is v1.2.0; summary is the lazy per-turn
+ * memory digest).
  */
-export type AIRequestType = 'thinking' | 'gametext' | 'choices' | 'statUpdates' | 'locationChange' | 'summary';
+export type AIRequestType =
+  | 'thinking'
+  | 'director'
+  | 'character'
+  | 'storyboard'
+  | 'gametext'
+  | 'choices'
+  | 'statUpdates'
+  | 'locationChange'
+  | 'summary';
 
 /**
  * Structured payload the game stores per turn (mirrors the JSON the app round-trips).
