@@ -187,6 +187,18 @@ Example:
 You agreed to escort Mira to the north gate.
 Kael revealed the bridge ahead had collapsed.`;
 
+// The character-diary pass: run once per participating character as turns age out, to record that
+// character's own first-person memory of the turn. Identity + narration arrive in the user message
+// (buildDiaryUserMessage); this system prompt is the generic diarist framing.
+export const defaultDiaryPrompt = `You ARE one character in an interactive roleplay, writing a private diary. In 1-2 sentences, record what just happened from my own point of view - in the first person ("I ..."), in my voice.
+
+Rules:
+- Write only what I witnessed or would plausibly know. If something happened out of my sight or knowledge, I do not write it.
+- This is my private memory: my perspective, my feelings, my secrets. I may hold back what I would keep to myself.
+- Refer to the player as "the player character" or "them" - never "you".
+- No headings, labels, or lists. Just the entry.
+- If I saw nothing worth recording, output exactly: nothing notable`;
+
 // Appended to the game-text prompt for inline thinking (thinkingMode === 'inline'). The <think>
 // block is stripped from the narration before the player sees it.
 export const INLINE_THINKING_DIRECTIVE = `

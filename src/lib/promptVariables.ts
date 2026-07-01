@@ -21,7 +21,7 @@ export interface PromptVariable {
 }
 
 /** Every prompt editor maps to one of these kinds (mirrors the Settings → System Prompts sub-tabs). */
-export type PromptKind = 'narration' | 'thinking' | 'choices' | 'statupdates' | 'location' | 'summary';
+export type PromptKind = 'narration' | 'thinking' | 'choices' | 'statupdates' | 'location' | 'summary' | 'diary';
 
 const SUMMARY_VARIANT: PromptVariant = {
   id: 'summary',
@@ -69,6 +69,8 @@ export const PROMPT_KIND_VARIABLES: Record<PromptKind, PromptVariable[]> = {
   statupdates: [WORLD, STATS, TRAITS, NOTES],
   location: [WORLD, LOCATION, ENTITIES],
   summary: [],
+  // The diary system prompt is static framing; its identity + narration arrive in a code-built user message.
+  diary: [],
 };
 
 /** Variables offered by the aux requests' editable user-message templates (the per-turn runtime values

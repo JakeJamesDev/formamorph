@@ -3,6 +3,7 @@ import {
   parseDirectorCast,
   matchCastToEntities,
   buildCharacterUserMessage,
+  buildDiaryUserMessage,
   buildStoryboardUserMessage,
   buildStagedPlan,
 } from './stagedPlanning';
@@ -184,6 +185,25 @@ describe('user-message builders', () => {
     });
     expect(msg).toContain('Introduced by the director');
     expect(msg).not.toContain('Current stance:');
+  });
+
+  it('builds a diary message with the entity blurb and narration for a defined character', () => {
+    const msg = buildDiaryUserMessage({
+      name: 'Mira',
+      entity: ent('1', 'Mira', { aiSummary: 'A wary scout.' }),
+      narration: 'The gate groans open.',
+    });
+    expect(msg).toContain('You are Mira.');
+    expect(msg).toContain('Who you are: A wary scout.');
+    expect(msg).toContain('The gate groans open.');
+    expect(msg).toContain("Write Mira's first-person diary entry");
+  });
+
+  it('builds a diary message with name only for an ad-hoc character', () => {
+    const msg = buildDiaryUserMessage({ name: 'A looter', narration: 'Coins scatter.' });
+    expect(msg).toContain('You are A looter.');
+    expect(msg).not.toContain('Who you are:');
+    expect(msg).toContain('Coins scatter.');
   });
 
   it('lists the recap, scene, intents, and overflow names in the storyboard message', () => {
