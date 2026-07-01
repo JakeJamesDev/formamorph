@@ -146,7 +146,9 @@ In 2-4 short sentences, plan what should happen in response to the player's most
 - the most likely outcome, given the world and current location,
 - which stats or traits should shape it (e.g. low stamina = a struggle),
 - anything needed to stay consistent with what has happened so far.
-Output only this brief plan - no narration and no list of choices.`;
+Then, if any characters are present, list each with a positional snapshot, one per line:
+- <name> - <where they are and what they are physically doing right now>
+Output only this brief plan and the character lines - no narration and no list of choices.`;
 
 // System prompt for the lazy per-turn memory digest (requestType 'summary'). Runs once per turn as it
 // ages past the verbatim window; output is stored on the turn and (in a later slice) used to keep old
@@ -175,7 +177,7 @@ Before the narration, reason privately inside <think>...</think> tags - consider
 // of the game-text request — adjacent to where the model starts writing — rather than appended to the
 // system prompt. This keeps the plan salient (recency) and leaves the authored system prompt untouched.
 export function planDirective(plan: string): string {
-  return `\n\nPlan for this turn (decided in advance - narrate these events as vivid prose; follow it, and do not restate it as a list or headings):\n${plan}`;
+  return `\n\nPlan for this turn - structured notes decided in advance. Narrate them as flowing prose: follow the plan, but do not echo these labels, lists, or headings in your narration.\n${plan}`;
 }
 
 // The "staged" thinking pipeline (thinkingMode === 'staged') runs three fixed planning passes before
@@ -184,7 +186,7 @@ export function planDirective(plan: string): string {
 // fixed constants (no per-prompt editor yet); they still use the chip tokens and renderPromptTemplate.
 
 // Pass 1: pick who is in the scene and what is carrying over. Output is parsed into a cast list.
-export const defaultDirectorPrompt = `You are the director of an interactive roleplay. Before the scene is written, decide who is involved and what is carrying over from the moment before. Do not write the narration.
+export const defaultDirectorPrompt = `You are the director of an interactive roleplay. Before the scene is written, set the stage: describe where we are and who is here. Do not write the narration.
 
 Game World:
 <WORLD DESCRIPTION>
@@ -202,16 +204,19 @@ Important Player Notes:
 <NOTES>
 
 Respond in exactly this format:
-Continuation: <one or two sentences on what is carrying over into this moment>
+Scene: <up to three sentences on where we are and what is visible right now>
 Cast:
-- <name> - <why they are involved>
+- Player Character - <where the player character is and what it is physically doing right now>
+- <name> - <where they are and what they are physically doing right now>
 
 Rules:
-- Never include the player character - the player decides their own actions. The cast is who the player encounters.
-- List only the characters actually present or arriving this turn, most important first.
+- Keep the Scene concrete and visible - what the player would see on entering - and three sentences at most.
+- Refer to the player in the third person as "the player character" - never "you" or "your" (write "the player character's massive form", not "your massive form").
+- Always begin the Cast with the player as the first bullet: "- Player Character - <placement>". Give only their position and what they are physically doing - never an action they choose, since the player decides their own actions.
+- Then list anyone the player encounters, most important first. If the player encounters no one, the Player Character bullet is the whole cast - do not write "Cast: none".
+- For each cast member give a positional snapshot: where they stand relative to the space and to each other, and what they are physically doing right now - not their mood or motives. This gives the narration spatial footing for physical interactions; it is a hint, not a guarantee.
 - Prefer the characters listed above by their exact name where they fit, but you are free to invent new characters of your own when the scene calls for them - you are not limited to the author's cast.
-- If the scene is genuinely empty, write "Cast: none" with no bullets.
-- Keep the cast small, usually one to three. Output only the Continuation and Cast lines, nothing else.`;
+- Keep the cast small, usually one to three besides the player. Output exactly one Scene line and one Cast list - never repeat them, and write nothing else.`;
 
 // Pass 2: run once per selected character. Identity, continuation, and action arrive in the user message.
 export const defaultCharacterPrompt = `You are playing one character in an interactive roleplay. Decide what this single character wants and intends to do this turn. Do not narrate the outcome and do not speak or act for anyone else.
@@ -227,10 +232,10 @@ Current Location:
 
 The character you are playing, the scene so far, and the player's action are given below. In 2-3 sentences, state this character's motivation and the specific action they intend to take this turn. Stay consistent with who they are and what just happened. Output only those sentences.`;
 
-// Pass 3: the merge stage. It is the only stage that sees the recap, the director's continuation, and
-// every character's (independently-formed, mutually-blind) intent, so it reconciles them into a terse
-// beat sheet. That beat sheet becomes this turn's plan, attached to the game-text request's user turn.
-export const defaultStoryboardPrompt = `You are the storyboarder for an interactive roleplay. You are the only stage that sees everything - what just happened, the director's continuation, and what each character independently intends - so your job is to reconcile them into one coherent plan for this turn. The characters decided their actions blind to each other, so resolve any overlaps or conflicts, order the actions sensibly, and keep everything consistent with what just happened. Do not write the narration.
+// Pass 3: the merge stage. It is the only stage that sees the recap, the director's scene, and every
+// character's (independently-formed, mutually-blind) intent, so it reconciles them into a terse beat
+// sheet. That beat sheet becomes this turn's plan, attached to the game-text request's user turn.
+export const defaultStoryboardPrompt = `You are the storyboarder for an interactive roleplay. You are the only stage that sees everything - what just happened, the director's scene, and what each character independently intends - so your job is to reconcile them into one coherent plan for this turn. The characters decided their actions blind to each other, so resolve any overlaps or conflicts, order the actions sensibly, and keep everything consistent with what just happened. Do not write the narration.
 
 Game World:
 <WORLD DESCRIPTION>
@@ -249,6 +254,7 @@ Important Player Notes:
 
 Using everything below, output the plan as 3-5 short beats, one per line:
 - Start each beat with "- " and write it as a terse imperative of who does what - not prose.
+- Beats are what the world and the cast do in reaction to the player's action - never decide the player character's own deliberate actions or choices, since the player chooses those.
 - No description, sensory detail, dialogue, or narration voice - structure only.
 - Let the player's stats or traits tip outcomes where relevant.
 Output only the beats - nothing else.`;

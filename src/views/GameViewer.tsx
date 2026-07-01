@@ -17,7 +17,7 @@ import {
   PaginationNext,
   PaginationPrevious,
 } from "@/components/ui/pagination";
-import { Music, SquarePen, Database, ScrollText, ChevronDown, ChevronRight, ChevronsDownUp, ChevronsUpDown, Search, Eye, EyeOff } from "lucide-react";
+import { Music, SquarePen, Database, ScrollText, ChevronDown, ChevronRight, ChevronsDownUp, ChevronsUpDown, Search, Eye, EyeOff, Download } from "lucide-react";
 import IndeterminateProgress from "../components/ui/indeterminate-progress";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
@@ -46,6 +46,7 @@ import {
   matchCastToEntities,
   buildCharacterUserMessage,
   buildStoryboardUserMessage,
+  buildStagedPlan,
 } from "../lib/stagedPlanning";
 import { lengthGuidance, trimToLastSentence } from "../lib/outputLength";
 import { splitSentenceSegments } from "../lib/ttsChunks";
@@ -376,6 +377,21 @@ const GameViewer = ({
     if (targetState.playerNotes !== undefined) {
       setPlayerNotes(targetState.playerNotes);
     }
+  };
+
+  // Export the full AI-context turn history (exactly the structure the debug viewer renders) as JSON,
+  // so it can be handed off for inspection. Mirrors the blob-download pattern in WorldEditor.
+  const handleExportDebugContext = () => {
+    const blob = new Blob([JSON.stringify(debugTurns, null, 2)], { type: "application/json" });
+    const href = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = href;
+    const slug = (worldOverview?.name || "world").replace(/[^a-z0-9]+/gi, "-").toLowerCase();
+    link.download = `ai-context-${slug}.json`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(href);
   };
 
   // Re-generate the current turn: restore the snapshot from *before* it (which also rewinds the
@@ -748,49 +764,59 @@ ${playerNotes || "No notes available"}
         // 1) Director: who is in the scene and what carries over.
         const directorOut = await makeAIRequest(
           renderPromptTemplate(defaultDirectorPrompt, stageValues),
-          [{ role: "user", content: `${recap}The player's next action: ${action}\n\nList the cast and continuation now.` }],
+          [{ role: "user", content: `${recap}The player's next action: ${action}\n\nDescribe the scene and list the cast now.` }],
           "director",
           160,
           signal,
         );
         if (signal.aborted) return;
-        const { continuation, cast } = parseDirectorCast(directorOut || "");
-        const presentIds = currentLocation?.entities || [];
-        const presentEntities = entities.filter((e) => presentIds.includes(e.id));
-        const { chosen, overflow } = matchCastToEntities(cast, presentEntities, 3);
+        const { scene, cast } = parseDirectorCast(directorOut || "");
+        // The player may be listed for scene grounding but is never directed or matched as a participant.
+        const npcCast = cast.filter((c) => !c.isPlayer);
         // Split the cast into defined entities (director vouched → loose narration match) and ad-hoc
         // names (no record → strict match). Both are confirmed against the narration after game text.
         const definedByLower = new Map(entities.map((e) => [e.name.trim().toLowerCase(), e.name]));
-        for (const member of cast) {
+        for (const member of npcCast) {
           const canonical = definedByLower.get(member.name.trim().toLowerCase());
           if (canonical) directorCandidates.push(canonical);
           else adHocCandidates.push(member.name);
         }
 
-        // 2) One motivation pass per chosen character (sequential — see makeAIRequest capture note).
-        const intents: { name: string; text: string }[] = [];
-        for (const member of chosen) {
-          const text = await makeAIRequest(
-            renderPromptTemplate(defaultCharacterPrompt, stageValues),
-            [{ role: "user", content: buildCharacterUserMessage({ character: member, continuation, action }) }],
-            "character",
-            128,
+        if (npcCast.length === 0) {
+          // No one to reconcile — the character + storyboard passes have nothing to merge and only invent
+          // filler, so skip them. The plan is just the director's scene + the player's placement.
+          turnPlan = buildStagedPlan({ scene, stances: cast, beats: "" });
+        } else {
+          const presentIds = currentLocation?.entities || [];
+          const presentEntities = entities.filter((e) => presentIds.includes(e.id));
+          const { chosen, overflow } = matchCastToEntities(npcCast, presentEntities, 3);
+
+          // 2) One motivation pass per chosen character (sequential — see makeAIRequest capture note).
+          const intents: { name: string; text: string }[] = [];
+          for (const member of chosen) {
+            const text = await makeAIRequest(
+              renderPromptTemplate(defaultCharacterPrompt, stageValues),
+              [{ role: "user", content: buildCharacterUserMessage({ character: member, scene, action }) }],
+              "character",
+              128,
+              signal,
+            );
+            if (signal.aborted) return;
+            if (text) intents.push({ name: member.name, text });
+          }
+
+          // 3) Storyboarder: consolidate the cast + intentions into this turn's plan.
+          const plan = await makeAIRequest(
+            renderPromptTemplate(defaultStoryboardPrompt, stageValues),
+            [{ role: "user", content: buildStoryboardUserMessage({ recap: lastStory, scene, intents, overflow, action }) }],
+            "storyboard",
+            150,
             signal,
           );
           if (signal.aborted) return;
-          if (text) intents.push({ name: member.name, text });
+          // Ground the narration in the director's scene + cast stances alongside the storyboard beats.
+          turnPlan = buildStagedPlan({ scene, stances: cast, beats: plan || "" });
         }
-
-        // 3) Storyboarder: consolidate the cast + intentions into this turn's plan.
-        const plan = await makeAIRequest(
-          renderPromptTemplate(defaultStoryboardPrompt, stageValues),
-          [{ role: "user", content: buildStoryboardUserMessage({ recap: lastStory, continuation, intents, overflow, action }) }],
-          "storyboard",
-          150,
-          signal,
-        );
-        if (signal.aborted) return;
-        if (plan) turnPlan = plan;
       }
 
       // Attach the plan to the final user turn (adjacent to where the model writes) instead of the
@@ -868,7 +894,13 @@ ${playerNotes || "No notes available"}
 
         choicesResponse = await makeAIRequest(
           updatedChoicesPrompt,
-          [{ role: "user", content: `Player action: ${action}\n\nGame text: ${gameTextResponse}` }],
+          [
+            {
+              role: "user",
+              // Trailing cue so the last thing the model reads is the task, not story to continue.
+              content: `Player action: ${action}\n\nGame text: ${gameTextResponse}\n\nList only the next actions now - one short phrase per line. No story, no prose.`,
+            },
+          ],
           "choices",
           null,
           signal,
@@ -880,8 +912,9 @@ ${playerNotes || "No notes available"}
       // action while stat-updates / location requests finish in the background.
       setChoicesReady(true);
 
-      // Only prepare and make stat updates request if enabled
-      if (statUpdatesEnabled) {
+      // Only prepare and make stat updates request if enabled and the world actually defines stats
+      // (otherwise the model hallucinates stat names that match nothing).
+      if (statUpdatesEnabled && playerStats.length > 0) {
         let updatedStatUpdatesPrompt = renderPromptTemplate(statUpdatesPrompt, {
           "<WORLD DESCRIPTION>": worldOverview.systemPrompt || "",
           "<LOCATION>": locationDataString,
@@ -897,7 +930,12 @@ ${playerNotes || "No notes available"}
 
         statUpdatesResponse = await makeAIRequest(
           updatedStatUpdatesPrompt,
-          [{ role: "user", content: `Game events: ${gameTextResponse}` }],
+          [
+            {
+              role: "user",
+              content: `Game events: ${gameTextResponse}\n\nOutput only the stat-change lines now (StatName: number), or nothing. No story, no prose.`,
+            },
+          ],
           "statUpdates",
           null,
           signal,
@@ -918,7 +956,12 @@ ${playerNotes || "No notes available"}
 
         const locationResponse = await makeAIRequest(
           updatedLocationPrompt,
-          [{ role: "user", content: `Game events: ${gameTextResponse}` }],
+          [
+            {
+              role: "user",
+              content: `Game events: ${gameTextResponse}\n\nReply now with only a location name from the list, or NONE. No story, no prose.`,
+            },
+          ],
           "locationChange",
           null,
           signal,
@@ -2068,7 +2111,20 @@ ${playerNotes || "No notes available"}
             return (
               <>
                 <DialogHeader className="flex-shrink-0">
-                  <DialogTitle>AI context</DialogTitle>
+                  <div className="flex items-center justify-between gap-2 pr-8">
+                    <DialogTitle>AI context</DialogTitle>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="gap-1.5"
+                      onClick={handleExportDebugContext}
+                      disabled={debugTurns.length === 0}
+                      title="Download the full turn history as JSON"
+                    >
+                      <Download className="h-4 w-4" />
+                      Export
+                    </Button>
+                  </div>
                 </DialogHeader>
                 <div className="flex flex-wrap items-center gap-2 flex-shrink-0 text-xs">
                   {/* Highlight-mode toggle: dictionary entries vs the per-turn rehydration signal. */}
