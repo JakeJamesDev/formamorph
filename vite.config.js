@@ -18,6 +18,11 @@ export default defineConfig({
       '@': path.resolve(__dirname, './src'),
     },
   },
+  optimizeDeps: {
+    // Dev-mode pre-bundling rewrites these into .vite/deps, breaking their import.meta.url-relative
+    // .wasm lookup (the QuickJS engine file). Serving them unbundled keeps the wasm path resolvable.
+    exclude: ['quickjs-emscripten', '@jitl/quickjs-wasmfile-release-sync'],
+  },
   test: {
     environment: 'jsdom',
     setupFiles: ['./src/test/setup.ts'],
