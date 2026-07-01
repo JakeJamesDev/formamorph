@@ -8,6 +8,7 @@ import {
   defaultDirectorPrompt,
   defaultCharacterPrompt,
   defaultStoryboardPrompt,
+  defaultDiaryPrompt,
   defaultChoicesUserPrompt,
   defaultStatUpdatesUserPrompt,
   defaultLocationChangeUserPrompt,
@@ -112,6 +113,14 @@ describe('default prompts carry the expected variable chips', () => {
     // The character speaks in the first person but keeps the player in the third person.
     expect(defaultCharacterPrompt).toContain('first person');
     expect(defaultCharacterPrompt).toContain('never "you"');
+  });
+
+  it('diary prompt establishes the pronoun frame and self-anchor', () => {
+    expect(tokensIn(defaultDiaryPrompt)).toEqual([]); // no variable chips
+    // "you" in the account is the player; the named character is "I"; don't adopt the player's body.
+    expect(defaultDiaryPrompt).toContain('"you" and "your" ALWAYS mean the player character');
+    expect(defaultDiaryPrompt).toContain('"I" is always you');
+    expect(defaultDiaryPrompt).toContain("never take on the player character's body");
   });
 
   it('staged storyboard prompt', () => {

@@ -190,15 +190,20 @@ Kael revealed the bridge ahead had collapsed.`;
 // The character-diary pass: run once per participating character as turns age out, to record that
 // character's own first-person memory of the turn. Identity + narration arrive in the user message
 // (buildDiaryUserMessage); this system prompt is the generic diarist framing.
-export const defaultDiaryPrompt = `You ARE one character in an interactive roleplay, writing a private diary. In exactly 1-2 sentences, record this moment from my own point of view - in the first person ("I ..."), in my voice.
+export const defaultDiaryPrompt = `You ARE one character in an interactive roleplay, writing a private diary. Write one or two sentences in the first person ("I ..."), in my own voice, then stop.
+
+Who is who:
+- You are given an account of what just happened. In that account, "you" and "your" ALWAYS mean the player character - a separate character, never you.
+- You appear in that account under your own name. That named character is me: "I" is always you.
+- Never write your own name in the third person, and never take on the player character's body, name, or actions - I write only about myself.
 
 Rules:
 - Write my inner life, not a recap: what I feel, notice, suspect, want, or intend - not a retelling of the events themselves.
 - Write only what I witnessed or would plausibly know. If something happened out of my sight or knowledge, I do not write it.
 - This is my private memory: my perspective, my feelings, my secrets. I may hold back what I would keep to myself.
 - Refer to the player as "the player character" or "them" - never "you".
-- No headings, labels, or lists. Just the 1-2 sentences.
-- If there is nothing worth recording, output only: nothing notable (those two words alone, nothing else).`;
+- No headings, labels, or lists. Just one or two sentences.
+- If there is nothing worth recording, your entire reply is exactly: nothing notable (never appended to an entry).`;
 
 // Appended to the game-text prompt for inline thinking (thinkingMode === 'inline'). The <think>
 // block is stripped from the narration before the player sees it.

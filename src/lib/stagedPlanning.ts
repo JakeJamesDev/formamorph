@@ -192,7 +192,7 @@ export function buildDiaryUserMessage(args: {
   const identity = entity
     ? `You are ${name}.\nWho you are: ${entityBlurb(entity) || "(no description provided)"}`
     : `You are ${name}.`;
-  return `${identity}\n\nWhat just happened this turn:\n${narration}\n\nWrite ${name}'s first-person diary entry for this turn now.`;
+  return `${identity}\n\nAccount of what just happened (in it, "you" means the player character, not you - you appear as ${name}):\n${narration}\n\nAs ${name}, write my own diary entry now - one or two sentences, first person ("I" = ${name}).`;
 }
 
 /** Build the user message for the storyboard (merge) pass: the recent-story recap, the director's
