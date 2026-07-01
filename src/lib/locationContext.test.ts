@@ -1,5 +1,6 @@
 import { describe, it, expect } from "vitest";
 import { buildLocationContext, buildEntityContext } from "./locationContext";
+import { NONE_PLACEHOLDER } from "./promptFallbacks";
 import type { Entity, GameLocation } from "@/types";
 
 const guard: Entity = {
@@ -19,8 +20,8 @@ const location: GameLocation & { entity?: string[] } = {
 };
 
 describe("buildLocationContext", () => {
-  it("returns empty string for a null location", () => {
-    expect(buildLocationContext(null)).toBe("");
+  it("returns the placeholder for a null location", () => {
+    expect(buildLocationContext(null)).toBe(NONE_PLACEHOLDER);
   });
 
   it("uses full aiDescription by default", () => {
@@ -52,9 +53,9 @@ describe("buildLocationContext", () => {
 });
 
 describe("buildEntityContext", () => {
-  it("returns empty string for a null location or no entities", () => {
-    expect(buildEntityContext(null, [guard])).toBe("");
-    expect(buildEntityContext({ id: "loc2", name: "Empty Field" }, [guard])).toBe("");
+  it("returns the placeholder for a null location or no entities", () => {
+    expect(buildEntityContext(null, [guard])).toBe(NONE_PLACEHOLDER);
+    expect(buildEntityContext({ id: "loc2", name: "Empty Field" }, [guard])).toBe(NONE_PLACEHOLDER);
   });
 
   it("emits a top-level roster with full aiDescription by default", () => {
@@ -78,8 +79,8 @@ describe("buildEntityContext", () => {
     expect(out).toContain("  description: A shrewd traveling merchant.");
   });
 
-  it("skips ids that don't resolve to a known entity", () => {
+  it("returns the placeholder when no ids resolve to a known entity", () => {
     const loc: GameLocation & { entity?: string[] } = { ...location, entities: ["missing"] };
-    expect(buildEntityContext(loc, [guard])).toBe("");
+    expect(buildEntityContext(loc, [guard])).toBe(NONE_PLACEHOLDER);
   });
 });

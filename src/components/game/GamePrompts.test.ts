@@ -36,6 +36,9 @@ describe('default prompts carry the expected variable chips', () => {
     ]);
     // GameViewer's <NOTES>-absent fallback locates this exact label.
     expect(defaultSystemPrompt).toContain('Current Location:');
+    // Positive contract: the narrator writes only story prose; a separate step handles choices.
+    expect(defaultSystemPrompt).toContain("a separate step presents the player's choices");
+    expect(defaultSystemPrompt).toContain('[Player\'s turn]');
   });
 
   it('choices prompt', () => {
@@ -95,6 +98,9 @@ describe('default prompts carry the expected variable chips', () => {
     // The player is always the first cast bullet, and the block must not repeat.
     expect(defaultDirectorPrompt).toContain('- Player Character -');
     expect(defaultDirectorPrompt).toContain('exactly one Scene line and one Cast list');
+    // The cast is living/acting beings only — scenery/objects stay in the Scene.
+    expect(defaultDirectorPrompt).toContain('only living, acting beings');
+    expect(defaultDirectorPrompt).toContain('Never list places, structures, objects, or scenery');
   });
 
   it('staged character prompt', () => {
