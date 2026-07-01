@@ -7,11 +7,10 @@ import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {ConfirmDialog} from "@/components/ConfirmDialog";
 import {RadioGroup,RadioGroupItem } from"@/components/ui/radio-group";
 import {Label} from "@/components/ui/label"
-import {FilePlus2, DoorOpen, Pencil, Github, AlertTriangle, Code, User, LogIn, LogOut, Key, Upload, Import, Search, Globe, Settings, LayoutGrid, GalleryThumbnails, Columns2, RectangleVertical, Trash2 } from "lucide-react";
+import {FilePlus2, DoorOpen, Pencil, Github, AlertTriangle, Code, User, LogIn, LogOut, Key, Upload, Import, Globe, Settings, LayoutGrid, GalleryThumbnails, Columns2, RectangleVertical } from "lucide-react";
 import { ImageZoomViewer } from "@/components/ImageZoomViewer";
 import { cn } from "@/lib/utils";
 import { usePersistentState, boolCodec } from "@/lib/usePersistentState";
-import { MarkdownRenderer } from "@/components/game/MarkdownRenderer";
 import {
   Dialog,
   DialogContent,
@@ -35,11 +34,9 @@ import {
 } from '@dnd-kit/core';
 import {
   SortableContext,
-  useSortable,
   arrayMove,
   rectSortingStrategy,
 } from '@dnd-kit/sortable';
-import { CSS } from '@dnd-kit/utilities';
 import { restrictToFirstScrollableAncestor } from '@dnd-kit/modifiers';
 import TraitSelectionModal from './TraitSelectionModal';
 import WorldStorageService from '../services/WorldStorageService';
@@ -47,7 +44,9 @@ import AuthService from '../services/AuthService';
 import type { World, Stat, CharacterData } from '@/types';
 import { migrateWorld, APP_VERSION } from '@/lib/version';
 import DiscoverWorlds from './DiscoverWorlds';
-import { WorldDetailsColumn, DateTimeText, CardTags, type WorldRecord } from "@/components/WorldDetails";
+import { WorldDetailsColumn, DateTimeText, type WorldRecord } from "@/components/WorldDetails";
+import SortableWorldCard from "@/components/SortableWorldCard";
+import { ManageUsersDialog } from "@/components/menu/ManageUsersDialog";
 
 interface MainMenuProps {
   onStartGame: (traits: string[], characterData: CharacterData | null, isNewGame?: boolean) => void;
@@ -76,98 +75,6 @@ const applyWorldOrder = <T extends { id: string }>(list: T[], order: string[]): 
   return [...list].sort((a, b) => rank(a.id) - rank(b.id));
 };
 
-// A draggable world tile. The whole card is the drag handle; a small move distance is
-// required to start a drag so a plain click still selects the world.
-function SortableWorldCard({ world, onSelect, onDelete, layout }: {
-  world: WorldRecord;
-  onSelect: (id: string) => void;
-  onDelete: (id: string) => void;
-  layout: 'grid' | 'detailed';
-}) {
-  const { attributes, listeners, setNodeRef, transform, transition, isDragging } =
-    useSortable({ id: world.id });
-  const style = {
-    transform: CSS.Transform.toString(transform),
-    transition,
-    opacity: isDragging ? 0.5 : 1,
-    zIndex: isDragging ? 1 : undefined,
-  };
-  const handleDelete = (e: React.MouseEvent) => {
-    e.stopPropagation();
-    onDelete(world.id);
-  };
-
-  // Detailed layout mirrors the Discover-menu card renderer (thumbnail on top, info beneath).
-  if (layout === 'detailed') {
-    return (
-      <div
-        ref={setNodeRef}
-        style={style}
-        {...attributes}
-        {...listeners}
-        className="relative flex flex-col rounded-lg border border-gray-200 dark:border-gray-700 cursor-pointer bg-background touch-none"
-        onClick={() => onSelect(world.id)}
-      >
-        <div className="h-32 bg-gray-100 dark:bg-gray-800 rounded-t-lg overflow-hidden">
-          {world.thumbnail ? (
-            <img src={world.thumbnail} alt={world.name} className="w-full h-full object-cover select-none pointer-events-none" />
-          ) : (
-            <div className="w-full h-full flex items-center justify-center text-gray-400">
-              <Globe className="h-12 w-12" />
-            </div>
-          )}
-        </div>
-
-        <div className="p-4 flex flex-col flex-grow">
-          <h3 className="font-semibold text-lg mb-1">{world.name}</h3>
-          <div className="text-sm text-gray-600 dark:text-gray-400 mb-2 max-h-20 overflow-hidden">
-            <MarkdownRenderer text={world.description || "No description available."} />
-          </div>
-          <div className="text-xs text-gray-500 mb-2">By {world.author || "Unknown"}</div>
-          <div className="mt-auto" onClick={(e) => e.stopPropagation()}>
-            <CardTags tags={world.tags || []} />
-          </div>
-        </div>
-
-        <button
-          className="absolute top-1 right-1 z-10 p-1 rounded bg-black/50 text-red-400 hover:text-red-600"
-          onPointerDown={(e) => e.stopPropagation()}
-          onClick={handleDelete}
-          aria-label="Delete world"
-        >
-          <Trash2 className="h-5 w-5" />
-        </button>
-      </div>
-    );
-  }
-
-  return (
-    <div
-      ref={setNodeRef}
-      style={style}
-      {...attributes}
-      {...listeners}
-      className="relative cursor-pointer rounded-lg overflow-hidden hover:opacity-90 transition-opacity touch-none"
-      onClick={() => onSelect(world.id)}
-    >
-      <img
-        src={world.thumbnail}
-        alt={world.name}
-        className="w-full h-48 object-cover select-none pointer-events-none"
-      />
-      <div className="absolute bottom-0 left-0 right-0 bg-black bg-opacity-50 p-2">
-        <h3 className="text-white font-semibold">{world.name}</h3>
-        <button
-          className="absolute top-2 right-2 p-1 text-red-500 hover:text-red-700"
-          onPointerDown={(e) => e.stopPropagation()}
-          onClick={handleDelete}
-        >
-          <Trash2 className="h-5 w-5" />
-        </button>
-      </div>
-    </div>
-  );
-}
 
 const MainMenu = ({ onStartGame, onOpenWorldEditor }: MainMenuProps) => {
   const { traits, traitGroups, stats, loadWorldData } = useGameData();
@@ -230,13 +137,8 @@ const MainMenu = ({ onStartGame, onOpenWorldEditor }: MainMenuProps) => {
     setImageViewerOpen(true);
   };
 
-  // Manage users dialog states
+  // Admin "Manage Users" dialog: open state here; its list/paging/fetch live in the dialog component.
   const [showManageUsersDialog, setShowManageUsersDialog] = useState(false);
-  const [users, setUsers] = useState<WorldRecord[]>([]);
-  const [isLoadingUsers, setIsLoadingUsers] = useState(false);
-  const [userSearchQuery, setUserSearchQuery] = useState('');
-  const [userCurrentPage, setUserCurrentPage] = useState(1);
-  const [userTotalPages, setUserTotalPages] = useState(1);
 
   // Check authentication status on component mount
   useEffect(() => {
@@ -733,89 +635,6 @@ const MainMenu = ({ onStartGame, onOpenWorldEditor }: MainMenuProps) => {
     // Fetch only when the publish modal opens or auth changes — not on fetchUserWorlds identity.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [showPublishModal, isAuthenticated]);
-
-  // Fetch users when manage users dialog is opened or search/page changes
-  useEffect(() => {
-    if (showManageUsersDialog) {
-      fetchUsers();
-    }
-    // Fetch only when the dialog opens or the page changes — not on fetchUsers identity.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [showManageUsersDialog, userCurrentPage]);
-
-  // Fetch users from the server
-  const fetchUsers = async () => {
-    if (!showManageUsersDialog) return;
-
-    setIsLoadingUsers(true);
-
-    try {
-      // Fetch users from the API
-      const response = await fetch(`${WorldStorageService.API_URL}/users?page=${userCurrentPage}&limit=10&search=${userSearchQuery}`, {
-        headers: {
-          'Authorization': `Bearer ${AuthService.token}`
-        }
-      });
-
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.message || 'Failed to fetch users');
-      }
-
-      const result = await response.json();
-
-      if (result.success) {
-        setUsers(result.data);
-
-        // Calculate total pages
-        const total = result.total || 0;
-        const pages = Math.ceil(total / 10);
-        setUserTotalPages(pages > 0 ? pages : 1);
-      } else {
-        console.error('Error fetching users:', result.error);
-        toast.error(result.error || 'Failed to fetch users');
-        setUsers([]);
-      }
-    } catch (error) {
-      console.error('Error in fetchUsers:', error);
-      toast.error((error as Error).message || 'Failed to connect to server');
-      setUsers([]);
-    } finally {
-      setIsLoadingUsers(false);
-    }
-  };
-
-  // Handle user status change
-  const handleUserStatusChange = async (userId: string, newStatus: string) => {
-    try {
-      // Call API to update user status - use the same endpoint for both actions
-      const endpoint = `${WorldStorageService.API_URL}/users/${userId}/status`;
-
-      const response = await fetch(endpoint, {
-        method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${AuthService.token}`
-        },
-        body: JSON.stringify({ status: newStatus })
-      });
-
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.message || `Failed to ${newStatus === "normal" ? "activate" : "suspend"} user`);
-      }
-
-      // Update the user in the list
-      setUsers(prev => prev.map(user =>
-        user._id === userId ? { ...user, status: newStatus } : user
-      ));
-
-      toast.success(`User ${newStatus === "normal" ? "activated" : "suspended"} successfully`);
-    } catch (error) {
-      console.error('Error updating user status:', error);
-      toast.error((error as Error).message || `Failed to ${newStatus === "normal" ? "activate" : "suspend"} user`);
-    }
-  };
 
   // Get user initial for the avatar button
   const getUserInitial = () => {
@@ -1506,199 +1325,8 @@ const MainMenu = ({ onStartGame, onOpenWorldEditor }: MainMenuProps) => {
         src={viewerImage.src}
       />
 
-      {/* Manage Users Dialog */}
-      <Dialog open={showManageUsersDialog} onOpenChange={setShowManageUsersDialog}>
-        <DialogContent className="sm:max-w-[800px] h-[85vh] overflow-y-auto flex flex-col items-start">
-          <DialogHeader>
-            <DialogTitle>Manage Users</DialogTitle>
-            <DialogDescription>
-              View and manage user accounts.
-            </DialogDescription>
-          </DialogHeader>
-
-          <div className="py-4 w-full">
-            {/* Search controls */}
-            <div className="flex flex-col sm:flex-row gap-4 mb-6">
-              <div className="relative flex-grow">
-                <Search className="absolute left-2 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
-                <Input
-                  placeholder="Search users..."
-                  className="pl-8"
-                  value={userSearchQuery}
-                  onChange={(e) => setUserSearchQuery(e.target.value)}
-                  onKeyDown={(e) => {
-                    if (e.key === 'Enter') {
-                      setUserCurrentPage(1);
-                      fetchUsers();
-                    }
-                  }}
-                />
-              </div>
-
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => {
-                  setUserCurrentPage(1);
-                  fetchUsers();
-                }}
-              >
-                Search
-              </Button>
-            </div>
-
-            {/* Users table */}
-            <div className="w-full overflow-hidden border rounded-lg">
-              <table className="w-full divide-y divide-gray-200 dark:divide-gray-700">
-                <thead className="bg-gray-50 dark:bg-gray-800">
-                  <tr>
-                    <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
-                      Username
-                    </th>
-                    <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
-                      Email
-                    </th>
-                    <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
-                      Account Type
-                    </th>
-                    <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
-                      Status
-                    </th>
-                    <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
-                      Actions
-                    </th>
-                  </tr>
-                </thead>
-                <tbody className="bg-white dark:bg-gray-900 divide-y divide-gray-200 dark:divide-gray-700">
-                  {isLoadingUsers ? (
-                    Array(5).fill(0).map((_, index) => (
-                      <tr key={index}>
-                        <td className="px-6 py-4 whitespace-nowrap">
-                          <Skeleton className="h-4 w-24" />
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap">
-                          <Skeleton className="h-4 w-32" />
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap">
-                          <Skeleton className="h-4 w-16" />
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap">
-                          <Skeleton className="h-4 w-20" />
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap">
-                          <Skeleton className="h-8 w-20" />
-                        </td>
-                      </tr>
-                    ))
-                  ) : users.length === 0 ? (
-                    <tr>
-                      <td colSpan={5} className="px-6 py-4 text-center text-gray-500">
-                        No users found.
-                      </td>
-                    </tr>
-                  ) : (
-                    users.map((user) => {
-                      // Get the user ID (server uses _id)
-                      const userId = user._id || user.id;
-
-                      // Determine status badge color
-                      let statusBadgeClass = "bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-300";
-                      if (user.status === "suspended") {
-                        statusBadgeClass = "bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-300";
-                      } else if (user.status === "pending") {
-                        statusBadgeClass = "bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-300";
-                      }
-
-                      return (
-                        <tr key={userId}>
-                          <td className="px-6 py-4 whitespace-nowrap">
-                            <div className="text-sm font-medium text-gray-900 dark:text-gray-100">
-                              {user.username}
-                            </div>
-                          </td>
-                          <td className="px-6 py-4 whitespace-nowrap">
-                            <div className="text-sm text-gray-500 dark:text-gray-400">
-                              {user.email || "N/A"}
-                            </div>
-                          </td>
-                          <td className="px-6 py-4 whitespace-nowrap">
-                            <div className="text-sm text-gray-500 dark:text-gray-400">
-                              {user.accountType || "user"}
-                            </div>
-                          </td>
-                          <td className="px-6 py-4 whitespace-nowrap">
-                            <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${statusBadgeClass}`}>
-                              {user.status || "active"}
-                            </span>
-                          </td>
-                          <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                            <div className="flex gap-2">
-                              {user.status !== "normal" && (
-                                <Button
-                                  size="sm"
-                                  variant="outline"
-                                  className="text-green-600 hover:text-green-800 dark:text-green-400 dark:hover:text-green-300"
-                                  onClick={() => handleUserStatusChange(userId, "normal")}
-                                >
-                                  Activate
-                                </Button>
-                              )}
-
-                              {user.status !== "suspended" && (
-                                <Button
-                                  size="sm"
-                                  variant="outline"
-                                  className="text-red-600 hover:text-red-800 dark:text-red-400 dark:hover:text-red-300"
-                                  onClick={() => handleUserStatusChange(userId, "suspended")}
-                                >
-                                  Suspend
-                                </Button>
-                              )}
-                            </div>
-                          </td>
-                        </tr>
-                      );
-                    })
-                  )}
-                </tbody>
-              </table>
-            </div>
-
-            {/* Pagination */}
-            {!isLoadingUsers && users.length > 0 && (
-              <div className="flex justify-center gap-2 mt-6">
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => {
-                    const newPage = Math.max(userCurrentPage - 1, 1);
-                    setUserCurrentPage(newPage);
-                  }}
-                  disabled={userCurrentPage <= 1}
-                >
-                  Previous
-                </Button>
-
-                <span className="px-4 py-2 text-sm">
-                  Page {userCurrentPage} of {userTotalPages}
-                </span>
-
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => {
-                    const newPage = Math.min(userCurrentPage + 1, userTotalPages);
-                    setUserCurrentPage(newPage);
-                  }}
-                  disabled={userCurrentPage >= userTotalPages}
-                >
-                  Next
-                </Button>
-              </div>
-            )}
-          </div>
-        </DialogContent>
-      </Dialog>
+      {/* Manage Users Dialog — list/paging/fetch live in the component */}
+      <ManageUsersDialog open={showManageUsersDialog} onOpenChange={setShowManageUsersDialog} />
 
       {/* GitHub floating button */}
       <a
