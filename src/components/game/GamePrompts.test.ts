@@ -8,6 +8,10 @@ import {
   defaultDirectorPrompt,
   defaultCharacterPrompt,
   defaultStoryboardPrompt,
+  defaultChoicesUserPrompt,
+  defaultStatUpdatesUserPrompt,
+  defaultLocationChangeUserPrompt,
+  defaultSummaryUserPrompt,
   markdownGuidance,
   planDirective,
 } from './GamePrompts';
@@ -113,6 +117,19 @@ describe('default prompts carry the expected variable chips', () => {
     expect(defaultStoryboardPrompt).not.toContain('continuation');
     expect(defaultStoryboardPrompt).toContain("director's scene");
     expect(defaultStoryboardPrompt).toContain("never decide the player character's own deliberate actions");
+  });
+});
+
+describe('aux user-message templates carry the runtime value-tokens', () => {
+  it('choices user template has the action + game text tokens', () => {
+    expect(tokensIn(defaultChoicesUserPrompt)).toEqual(['<PLAYER ACTION>', '<GAME TEXT>']);
+  });
+  it('stat-updates and location user templates carry the game text token', () => {
+    expect(tokensIn(defaultStatUpdatesUserPrompt)).toEqual(['<GAME TEXT>']);
+    expect(tokensIn(defaultLocationChangeUserPrompt)).toEqual(['<GAME TEXT>']);
+  });
+  it('summary user template is just the game text token', () => {
+    expect(tokensIn(defaultSummaryUserPrompt)).toEqual(['<GAME TEXT>']);
   });
 });
 

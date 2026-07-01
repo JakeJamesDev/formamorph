@@ -50,9 +50,14 @@ const LENGTH: PromptVariable = { token: '<LENGTH GUIDANCE>', label: 'Length Guid
 const MARKDOWN: PromptVariable = { token: '<MARKDOWN GUIDANCE>', label: 'Markdown Guidance', color: HIGHLIGHT_PALETTE[6] };
 const ENTITIES: PromptVariable = { token: '<ENTITIES>', label: 'Entities', color: HIGHLIGHT_PALETTE[8], variants: ENTITY_VARIANTS };
 
+// Runtime value-tokens for the aux requests' user-message templates (the player's action + the turn's
+// game text), distinct from the world/context tokens above.
+const PLAYER_ACTION: PromptVariable = { token: '<PLAYER ACTION>', label: 'Player Action', color: HIGHLIGHT_PALETTE[9] };
+const GAME_TEXT: PromptVariable = { token: '<GAME TEXT>', label: 'Game Text', color: HIGHLIGHT_PALETTE[10] };
+
 /** All known variables — used by the parser to recognize any token regardless of which prompt it's in. */
 export const ALL_PROMPT_VARIABLES: PromptVariable[] = [
-  WORLD, STATS, TRAITS, LOCATION, ENTITIES, NOTES, LENGTH, MARKDOWN,
+  WORLD, STATS, TRAITS, LOCATION, ENTITIES, NOTES, LENGTH, MARKDOWN, PLAYER_ACTION, GAME_TEXT,
 ];
 
 /** Which variables each prompt's toolbar offers (matches what GameViewer actually substitutes per
@@ -64,6 +69,15 @@ export const PROMPT_KIND_VARIABLES: Record<PromptKind, PromptVariable[]> = {
   statupdates: [WORLD, STATS, TRAITS, NOTES],
   location: [WORLD, LOCATION, ENTITIES],
   summary: [],
+};
+
+/** Variables offered by the aux requests' editable user-message templates (the per-turn runtime values
+ *  the code substitutes). Only the four aux kinds have a user template. */
+export const PROMPT_KIND_USER_VARIABLES: Partial<Record<PromptKind, PromptVariable[]>> = {
+  choices: [PLAYER_ACTION, GAME_TEXT],
+  statupdates: [PLAYER_ACTION, GAME_TEXT],
+  location: [PLAYER_ACTION, GAME_TEXT],
+  summary: [GAME_TEXT],
 };
 
 const VAR_BY_BASE = new Map(ALL_PROMPT_VARIABLES.map((v) => [v.token, v]));
