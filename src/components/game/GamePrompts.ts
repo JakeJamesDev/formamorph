@@ -45,6 +45,25 @@ export function markdownGuidance(enabled: boolean): string {
   return enabled ? MARKDOWN_ON : MARKDOWN_OFF;
 }
 
+// The editable user-message templates for the aux requests. These carry the framing labels and the terse
+// task cue (anchored last, so a small model doesn't just continue the story) that used to be hardcoded in
+// GameViewer. Runtime values are the <PLAYER ACTION> and <GAME TEXT> tokens, substituted per turn.
+export const defaultChoicesUserPrompt = `Player action: <PLAYER ACTION>
+
+Game text: <GAME TEXT>
+
+List only the next actions now - one short phrase per line. No story, no prose.`;
+
+export const defaultStatUpdatesUserPrompt = `Game events: <GAME TEXT>
+
+Output only the stat-change lines now (StatName: number), or nothing. No story, no prose.`;
+
+export const defaultLocationChangeUserPrompt = `Game events: <GAME TEXT>
+
+Reply now with only a location name from the list, or NONE. No story, no prose.`;
+
+export const defaultSummaryUserPrompt = `Game text: <GAME TEXT>`;
+
 export const defaultChoicesPrompt = `Given the following information:
 
 Game World:

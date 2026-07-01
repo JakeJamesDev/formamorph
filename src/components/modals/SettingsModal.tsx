@@ -7,9 +7,9 @@ import { Input } from "@/components/ui/input";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import PromptField from '../prompt/PromptField';
-import { PROMPT_KIND_VARIABLES } from '@/lib/promptVariables';
+import { PROMPT_KIND_VARIABLES, PROMPT_KIND_USER_VARIABLES } from '@/lib/promptVariables';
 import { ConfirmDialog } from '../ConfirmDialog';
-import { defaultSystemPrompt, defaultChoicesPrompt, defaultStatUpdatesPrompt, defaultLocationChangePrompt, defaultThinkingPrompt, defaultSummaryPrompt } from '../game/GamePrompts';
+import { defaultSystemPrompt, defaultChoicesPrompt, defaultStatUpdatesPrompt, defaultLocationChangePrompt, defaultThinkingPrompt, defaultSummaryPrompt, defaultChoicesUserPrompt, defaultStatUpdatesUserPrompt, defaultLocationChangeUserPrompt, defaultSummaryUserPrompt } from '../game/GamePrompts';
 import VramReadout from '../game/VramReadout';
 import { useVramStats } from '@/lib/useVramStats';
 
@@ -103,6 +103,14 @@ export const SettingsModal = ({ isOpen, onOpenChange, previewValues }: {
     setThinkingPrompt,
     summaryPrompt,
     setSummaryPrompt,
+    choicesUserPrompt,
+    setChoicesUserPrompt,
+    statUpdatesUserPrompt,
+    setStatUpdatesUserPrompt,
+    locationChangeUserPrompt,
+    setLocationChangeUserPrompt,
+    summaryUserPrompt,
+    setSummaryUserPrompt,
     memoryDigests,
     setMemoryDigests,
     showSilentRequests,
@@ -168,6 +176,23 @@ export const SettingsModal = ({ isOpen, onOpenChange, previewValues }: {
   };
   const activePromptTab = promptAvailable[promptTab] ? promptTab : 'gametext';
   const selectedPrompt = promptResets[activePromptTab] ?? promptResets.gametext;
+
+  // The four aux prompts also have an editable user-message template. A System | User toggle swaps the
+  // editor between the two; only these tabs offer it. `promptView` resets to System on every tab change.
+  const [promptView, setPromptView] = useState<'system' | 'user'>('system');
+  const selectPromptTab = (t: string) => { setPromptTab(t); setPromptView('system'); };
+  const userPrompts: Record<string, { value: string; set: (s: string) => void; reset: () => void; variables: typeof PROMPT_KIND_VARIABLES.choices }> = {
+    choices: { value: choicesUserPrompt, set: setChoicesUserPrompt, reset: () => setChoicesUserPrompt(defaultChoicesUserPrompt), variables: PROMPT_KIND_USER_VARIABLES.choices ?? [] },
+    statupdates: { value: statUpdatesUserPrompt, set: setStatUpdatesUserPrompt, reset: () => setStatUpdatesUserPrompt(defaultStatUpdatesUserPrompt), variables: PROMPT_KIND_USER_VARIABLES.statupdates ?? [] },
+    location: { value: locationChangeUserPrompt, set: setLocationChangeUserPrompt, reset: () => setLocationChangeUserPrompt(defaultLocationChangeUserPrompt), variables: PROMPT_KIND_USER_VARIABLES.location ?? [] },
+    summary: { value: summaryUserPrompt, set: setSummaryUserPrompt, reset: () => setSummaryUserPrompt(defaultSummaryUserPrompt), variables: PROMPT_KIND_USER_VARIABLES.summary ?? [] },
+  };
+  const activeUserPrompt = userPrompts[activePromptTab];
+  const showingUser = promptView === 'user' && !!activeUserPrompt;
+  // The Reset button targets whichever template is on screen (system prompt, or its user-message template).
+  const resetTarget = showingUser && activeUserPrompt
+    ? { label: `${selectedPrompt.label} User Message`, reset: activeUserPrompt.reset }
+    : selectedPrompt;
 
   // Verbatim-turns control for the active prompt, shown once in the footer (like Reset).
   const promptVerbatim: Record<string, { value: number; set: (n: number) => void }> = {
@@ -510,7 +535,7 @@ export const SettingsModal = ({ isOpen, onOpenChange, previewValues }: {
 
           <TabsContent value="prompts" className="pt-4 px-2 pb-4 flex-1 min-h-0 data-[state=active]:flex flex-col gap-4">
             {/* Nested tab bar — one prompt per tab; only the selected prompt shows. */}
-            <Tabs value={activePromptTab} onValueChange={setPromptTab} className="w-full flex flex-col flex-1 min-h-0">
+            <Tabs value={activePromptTab} onValueChange={selectPromptTab} className="w-full flex flex-col flex-1 min-h-0">
               <TabsList className="flex flex-wrap h-auto justify-center gap-1 flex-shrink-0">
                 <TabsTrigger value="gametext">Game Text</TabsTrigger>
                 {thinkingMode === 'precall' && <TabsTrigger value="thinking">Thinking</TabsTrigger>}
@@ -519,6 +544,23 @@ export const SettingsModal = ({ isOpen, onOpenChange, previewValues }: {
                 {locationChangeEnabled && <TabsTrigger value="location">Location Change</TabsTrigger>}
                 {memoryDigests && <TabsTrigger value="summary">Summary</TabsTrigger>}
               </TabsList>
+
+              {/* System vs. user-message template toggle — only the aux prompts have a user template. */}
+              {activeUserPrompt && (
+                <div className="flex justify-center mt-3 flex-shrink-0">
+                  <div className="inline-flex overflow-hidden rounded border border-border text-xs">
+                    {(['system', 'user'] as const).map((v) => (
+                      <button
+                        key={v}
+                        onClick={() => setPromptView(v)}
+                        className={`px-3 py-1 ${promptView === v ? 'bg-muted font-medium' : 'text-muted-foreground'}`}
+                      >
+                        {v === 'system' ? 'System' : 'User Message'}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
 
               <TabsContent value="gametext" className="mt-4 flex-1 min-h-0 data-[state=active]:flex flex-col">
                 <PromptField
@@ -543,9 +585,9 @@ export const SettingsModal = ({ isOpen, onOpenChange, previewValues }: {
               {choicesEnabled && (
                 <TabsContent value="choices" className="mt-4 flex-1 min-h-0 data-[state=active]:flex flex-col">
                   <PromptField
-                    value={choicesPrompt}
-                    onChange={setChoicesPrompt}
-                    variables={PROMPT_KIND_VARIABLES.choices}
+                    value={showingUser ? choicesUserPrompt : choicesPrompt}
+                    onChange={showingUser ? setChoicesUserPrompt : setChoicesPrompt}
+                    variables={showingUser ? (PROMPT_KIND_USER_VARIABLES.choices ?? []) : PROMPT_KIND_VARIABLES.choices}
                     previewValues={previewValues}
                   />
                 </TabsContent>
@@ -554,9 +596,9 @@ export const SettingsModal = ({ isOpen, onOpenChange, previewValues }: {
               {statUpdatesEnabled && (
                 <TabsContent value="statupdates" className="mt-4 flex-1 min-h-0 data-[state=active]:flex flex-col">
                   <PromptField
-                    value={statUpdatesPrompt}
-                    onChange={setStatUpdatesPrompt}
-                    variables={PROMPT_KIND_VARIABLES.statupdates}
+                    value={showingUser ? statUpdatesUserPrompt : statUpdatesPrompt}
+                    onChange={showingUser ? setStatUpdatesUserPrompt : setStatUpdatesPrompt}
+                    variables={showingUser ? (PROMPT_KIND_USER_VARIABLES.statupdates ?? []) : PROMPT_KIND_VARIABLES.statupdates}
                     previewValues={previewValues}
                   />
                 </TabsContent>
@@ -565,9 +607,9 @@ export const SettingsModal = ({ isOpen, onOpenChange, previewValues }: {
               {locationChangeEnabled && (
                 <TabsContent value="location" className="mt-4 flex-1 min-h-0 data-[state=active]:flex flex-col gap-1">
                   <PromptField
-                    value={locationChangePromptText}
-                    onChange={setLocationChangePromptText}
-                    variables={PROMPT_KIND_VARIABLES.location}
+                    value={showingUser ? locationChangeUserPrompt : locationChangePromptText}
+                    onChange={showingUser ? setLocationChangeUserPrompt : setLocationChangePromptText}
+                    variables={showingUser ? (PROMPT_KIND_USER_VARIABLES.location ?? []) : PROMPT_KIND_VARIABLES.location}
                     previewValues={previewValues}
                   />
                   <p className="text-xs text-gray-500 flex-shrink-0">Lets the AI move the player between locations.</p>
@@ -577,9 +619,9 @@ export const SettingsModal = ({ isOpen, onOpenChange, previewValues }: {
               {memoryDigests && (
                 <TabsContent value="summary" className="mt-4 flex-1 min-h-0 data-[state=active]:flex flex-col gap-1">
                   <PromptField
-                    value={summaryPrompt}
-                    onChange={setSummaryPrompt}
-                    variables={PROMPT_KIND_VARIABLES.summary}
+                    value={showingUser ? summaryUserPrompt : summaryPrompt}
+                    onChange={showingUser ? setSummaryUserPrompt : setSummaryPrompt}
+                    variables={showingUser ? (PROMPT_KIND_USER_VARIABLES.summary ?? []) : PROMPT_KIND_VARIABLES.summary}
                     previewValues={previewValues}
                   />
                   <p className="text-xs text-gray-500 flex-shrink-0">Compresses each turn into fact lines for long-story memory. Only used when Memory Summaries is on.</p>
@@ -594,12 +636,12 @@ export const SettingsModal = ({ isOpen, onOpenChange, previewValues }: {
                 <span />
               )}
               <ConfirmDialog
-                title={`Reset ${selectedPrompt.label} Prompt`}
-                description={`Are you sure you want to reset the ${selectedPrompt.label} prompt to its default value?`}
-                onConfirm={selectedPrompt.reset}
+                title={`Reset ${resetTarget.label} Prompt`}
+                description={`Are you sure you want to reset the ${resetTarget.label} prompt to its default value?`}
+                onConfirm={resetTarget.reset}
               >
                 <Button variant="outline" className="flex items-center gap-2">
-                  Reset {selectedPrompt.label} Prompt
+                  Reset {resetTarget.label} Prompt
                 </Button>
               </ConfirmDialog>
             </div>

@@ -1,5 +1,5 @@
 import { createContext, useContext, useState, useEffect, useRef, useCallback, type ReactNode } from 'react';
-import { defaultSystemPrompt, defaultChoicesPrompt, defaultStatUpdatesPrompt, defaultLocationChangePrompt, defaultThinkingPrompt, defaultSummaryPrompt } from '../components/game/GamePrompts';
+import { defaultSystemPrompt, defaultChoicesPrompt, defaultStatUpdatesPrompt, defaultLocationChangePrompt, defaultThinkingPrompt, defaultSummaryPrompt, defaultChoicesUserPrompt, defaultStatUpdatesUserPrompt, defaultLocationChangeUserPrompt, defaultSummaryUserPrompt } from '../components/game/GamePrompts';
 import { DEFAULT_ENDPOINT, DEFAULT_API_TOKEN, DEFAULT_MODEL_NAME, DEFAULT_MAX_TOKENS, DEFAULT_CONTEXT_WINDOW } from './settingsDefaults';
 import { fetchContextLength } from '../lib/contextLength';
 import type { ParagraphLimit } from '../lib/outputLength';
@@ -160,6 +160,12 @@ function useProvideSettings() {
   });
   const [thinkingPrompt, setThinkingPrompt] = usePersistentState<string>(`${APP_ID}_thinkingPrompt`, defaultThinkingPrompt, stringCodec);
   const [summaryPrompt, setSummaryPrompt] = usePersistentState<string>(`${APP_ID}_summaryPrompt`, defaultSummaryPrompt, stringCodec);
+  // Editable user-message templates for the aux requests (framing + task cue), rendered with the
+  // <PLAYER ACTION>/<GAME TEXT> runtime tokens. Previously these were hardcoded in GameViewer.
+  const [choicesUserPrompt, setChoicesUserPrompt] = usePersistentState<string>(`${APP_ID}_choicesUserPrompt`, defaultChoicesUserPrompt, stringCodec);
+  const [statUpdatesUserPrompt, setStatUpdatesUserPrompt] = usePersistentState<string>(`${APP_ID}_statUpdatesUserPrompt`, defaultStatUpdatesUserPrompt, stringCodec);
+  const [locationChangeUserPrompt, setLocationChangeUserPrompt] = usePersistentState<string>(`${APP_ID}_locationChangeUserPrompt`, defaultLocationChangeUserPrompt, stringCodec);
+  const [summaryUserPrompt, setSummaryUserPrompt] = usePersistentState<string>(`${APP_ID}_summaryUserPrompt`, defaultSummaryUserPrompt, stringCodec);
   // Whether each optional per-turn request is sent (replaces the legacy "type DISABLED" body hack).
   const [choicesEnabled, setChoicesEnabled] = usePersistentState<boolean>(`${APP_ID}_choicesEnabled`, true, boolCodec);
   const [statUpdatesEnabled, setStatUpdatesEnabled] = usePersistentState<boolean>(`${APP_ID}_statUpdatesEnabled`, true, boolCodec);
@@ -246,6 +252,14 @@ function useProvideSettings() {
     setThinkingPrompt,
     summaryPrompt,
     setSummaryPrompt,
+    choicesUserPrompt,
+    setChoicesUserPrompt,
+    statUpdatesUserPrompt,
+    setStatUpdatesUserPrompt,
+    locationChangeUserPrompt,
+    setLocationChangeUserPrompt,
+    summaryUserPrompt,
+    setSummaryUserPrompt,
     vramHelperUrl,
     setVramHelperUrl,
     ttsVolume,

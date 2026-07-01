@@ -175,6 +175,10 @@ const GameViewer = ({
     thinkingPrompt,
     memoryDigests,
     summaryPrompt,
+    choicesUserPrompt,
+    statUpdatesUserPrompt,
+    locationChangeUserPrompt,
+    summaryUserPrompt,
     showSilentRequests,
   } = useSettings();
 
@@ -283,6 +287,7 @@ const GameViewer = ({
   const ttsModalRef = useRef<TTSModalHandle>(null);
   const ttsSentenceCursorRef = useRef(0); // count of complete sentences already sent to streaming TTS
   const entitySentenceCursorRef = useRef(0); // count of complete sentences already parsed for the entity tab
+  const assistantAddedRef = useRef(false); // whether this turn's in-progress assistant message is in history yet
   const currentTurnIdRef = useRef(""); // stable id for the in-progress turn, stamped into its assistant JSON
   const digestDrainingRef = useRef(false); // a memory digest is in flight (serializes the drainer)
   const [digestActive, setDigestActive] = useState(false); // drives the status-bar indicator for a running digest
@@ -579,6 +584,9 @@ const GameViewer = ({
     "<LENGTH GUIDANCE>": lengthGuidance(paragraphLimit, maxTokens),
     "<MARKDOWN GUIDANCE>": markdownGuidance(markdownOutput),
     "<LOCATION|list>": locations.map((loc) => loc.name).join("\n"),
+    // Illustrative placeholders for the aux user-message templates (real values are per-turn at runtime).
+    "<PLAYER ACTION>": "the player's latest action",
+    "<GAME TEXT>": "the most recent narration",
   }), [
     worldOverview, hideStatNumbers, generateStatDescriptions, generateTraitDescriptions,
     currentLocation, entities, playerNotes, paragraphLimit, maxTokens, markdownOutput, locations,
@@ -897,8 +905,10 @@ ${playerNotes || "No notes available"}
           [
             {
               role: "user",
-              // Trailing cue so the last thing the model reads is the task, not story to continue.
-              content: `Player action: ${action}\n\nGame text: ${gameTextResponse}\n\nList only the next actions now - one short phrase per line. No story, no prose.`,
+              content: renderPromptTemplate(choicesUserPrompt, {
+                "<PLAYER ACTION>": action,
+                "<GAME TEXT>": gameTextResponse,
+              }),
             },
           ],
           "choices",
@@ -933,7 +943,10 @@ ${playerNotes || "No notes available"}
           [
             {
               role: "user",
-              content: `Game events: ${gameTextResponse}\n\nOutput only the stat-change lines now (StatName: number), or nothing. No story, no prose.`,
+              content: renderPromptTemplate(statUpdatesUserPrompt, {
+                "<PLAYER ACTION>": action,
+                "<GAME TEXT>": gameTextResponse,
+              }),
             },
           ],
           "statUpdates",
@@ -959,7 +972,10 @@ ${playerNotes || "No notes available"}
           [
             {
               role: "user",
-              content: `Game events: ${gameTextResponse}\n\nReply now with only a location name from the list, or NONE. No story, no prose.`,
+              content: renderPromptTemplate(locationChangeUserPrompt, {
+                "<PLAYER ACTION>": action,
+                "<GAME TEXT>": gameTextResponse,
+              }),
             },
           ],
           "locationChange",
@@ -1273,7 +1289,7 @@ ${playerNotes || "No notes available"}
       let content = "";
       let finishReason = null;
       // Start a fresh smoothed reveal for this turn's narration.
-      if (requestType === "gametext") { reveal.reset(); entitySentenceCursorRef.current = 0; }
+      if (requestType === "gametext") { reveal.reset(); entitySentenceCursorRef.current = 0; assistantAddedRef.current = false; }
       // Opt-in streaming TTS: synthesize narration sentence-by-sentence as it arrives (needs a model).
       const ttsStreaming = streamNarrationAudio && ttsLoaded && requestType === "gametext";
       if (ttsStreaming) { ttsModalRef.current?.streamStart(); ttsSentenceCursorRef.current = 0; }
@@ -1312,43 +1328,39 @@ ${playerNotes || "No notes available"}
             // Progressively fill the entity tab as each sentence completes (defined entities only; the
             // authoritative union, incl. staged ad-hoc, is applied once the narration finishes).
             const completeSentences = splitSentenceSegments(display).length - 1;
-            if (completeSentences > entitySentenceCursorRef.current) {
+            const newSentence = completeSentences > entitySentenceCursorRef.current;
+            if (newSentence) {
               entitySentenceCursorRef.current = completeSentences;
               setVisibleEntities(findEntityNames(display, entities));
             }
 
-            // Update the latest assistant message in history if it exists
-            setFullMessageHistory((prev) => {
-              if (
-                prev.length > 0 &&
-                prev[prev.length - 1].role === "assistant"
-              ) {
-                const updatedHistory = [...prev];
-                updatedHistory[updatedHistory.length - 1] = {
-                  role: "assistant",
-                  content: JSON.stringify({
-                    game_text: display,
-                    choices: [],
-                    stat_changes: [],
-                    turnId: currentTurnIdRef.current,
-                  }),
-                };
-                return updatedHistory;
-              }
-              // If no assistant message exists yet, add one
-              return [
-                ...prev,
-                {
-                  role: "assistant",
-                  content: JSON.stringify({
-                    game_text: display,
-                    choices: [],
-                    stat_changes: [],
-                    turnId: currentTurnIdRef.current,
-                  }),
-                },
-              ];
-            });
+            // Persist the in-progress assistant message: add it once (as soon as narration content
+            // arrives — so an abort before any text still drops the lone user turn), then refresh it only
+            // on sentence boundaries. Writing it every token re-renders the whole app and copies the
+            // history array per token, which compounds as history grows and starves the streaming reveal.
+            // The visible narration comes from the smoothed reveal (gameplayText), not this message, and
+            // the final text is committed once the turn finishes.
+            const shouldPersist = assistantAddedRef.current ? newSentence : display.length > 0;
+            if (shouldPersist) {
+              assistantAddedRef.current = true;
+              const message = {
+                role: "assistant" as const,
+                content: JSON.stringify({
+                  game_text: display,
+                  choices: [],
+                  stat_changes: [],
+                  turnId: currentTurnIdRef.current,
+                }),
+              };
+              setFullMessageHistory((prev) => {
+                if (prev.length > 0 && prev[prev.length - 1].role === "assistant") {
+                  const updatedHistory = [...prev];
+                  updatedHistory[updatedHistory.length - 1] = message;
+                  return updatedHistory;
+                }
+                return [...prev, message];
+              });
+            }
           } else if (requestType === "choices") {
             // Update choices in real-time, ensuring we handle partial content correctly
             const choicesList = stripReasoningLive(content)
@@ -1466,7 +1478,7 @@ ${playerNotes || "No notes available"}
       try {
         const digest = await makeAIRequestRef.current(
           summaryPrompt,
-          [{ role: "user", content: `Game text: ${gameText}` }],
+          [{ role: "user", content: renderPromptTemplate(summaryUserPrompt, { "<GAME TEXT>": gameText }) }],
           "summary",
           DIGEST_MAX_TOKENS,
           undefined,
@@ -1482,7 +1494,7 @@ ${playerNotes || "No notes available"}
         setDigestActive(false);
       }
     })();
-  }, [memoryDigests, isWaitingForAI, fullMessageHistory, summaryPrompt, setFullMessageHistory]);
+  }, [memoryDigests, isWaitingForAI, fullMessageHistory, summaryPrompt, summaryUserPrompt, setFullMessageHistory]);
 
   const handleSendAction = () => {
     const input = playerInput.trim();

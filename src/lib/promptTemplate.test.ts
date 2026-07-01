@@ -27,6 +27,16 @@ describe('renderPromptTemplate', () => {
   it('ignores unknown angle-bracket text', () => {
     expect(renderPromptTemplate('<NOT A VAR>', { '<NOT A VAR>': 'x' })).toBe('<NOT A VAR>');
   });
+
+  it('substitutes the aux user-message value-tokens, and leaves them intact without a value', () => {
+    expect(
+      renderPromptTemplate('Player action: <PLAYER ACTION>\nGame text: <GAME TEXT>', {
+        '<PLAYER ACTION>': 'wave',
+        '<GAME TEXT>': 'You wave.',
+      }),
+    ).toBe('Player action: wave\nGame text: You wave.');
+    expect(renderPromptTemplate('a <GAME TEXT> b', {})).toBe('a <GAME TEXT> b');
+  });
 });
 
 describe('parsePromptTemplate', () => {
@@ -75,6 +85,14 @@ describe('parse ∘ serialize round-trip', () => {
 });
 
 describe('token variants', () => {
+  it('recognizes the multi-word value-tokens as chips', () => {
+    expect(parsePromptTemplate('<PLAYER ACTION> then <GAME TEXT>')).toEqual([
+      { type: 'variable', token: '<PLAYER ACTION>' },
+      { type: 'text', value: ' then ' },
+      { type: 'variable', token: '<GAME TEXT>' },
+    ]);
+  });
+
   it('parses base, summary, and list tokens as distinct variables', () => {
     expect(parsePromptTemplate('<LOCATION> / <LOCATION|summary> / <LOCATION|list>')).toEqual([
       { type: 'variable', token: '<LOCATION>' },
