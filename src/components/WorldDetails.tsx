@@ -107,19 +107,26 @@ export function WorldDetailsColumn({ thumbnail, actions, description, tags, meta
   );
 }
 
+// Upper bound on chips the fit loop starts from. The loop shrinks the count by one per synchronous
+// re-render until the chips fit; React aborts at 50 nested synchronous updates. Two rows can never show
+// this many chips, so starting here caps the iterations well under that limit with no visible change
+// (over-tagged worlds still shrink to the same fitting count, then reveal the rest via "Show More").
+const MAX_MEASURED_CHIPS = 40;
+
 // Tag chips for a world card. Collapsed view shows as many chips as fit in ~4 rows with an inline
 // "(Show More)" link at the end (chips that don't fit are hidden — the link never overlaps one).
 // Hovering reveals the full set as an elevated overlay that floats over the layout (no reflow);
 // the mouse leaving collapses it. Clicking a chip hides that tag.
 export function CardTags({ tags, onHide }: { tags: string[]; onHide?: (tag: string) => void }) {
   const ref = useRef<HTMLDivElement>(null);
-  const [count, setCount] = useState(tags.length); // visible chips before the link
+  const measuredFrom = Math.min(tags.length, MAX_MEASURED_CHIPS);
+  const [count, setCount] = useState(measuredFrom); // visible chips before the link
   const [open, setOpen] = useState(false);
   const lastWidth = useRef(0);
   const truncated = count < tags.length;
 
   // Re-measure from scratch when the tag set changes.
-  useLayoutEffect(() => { setCount(tags.length); }, [tags]);
+  useLayoutEffect(() => { setCount(measuredFrom); }, [tags, measuredFrom]);
 
   // Re-measure when the available width changes (but not as our own height shrinks during fitting).
   useEffect(() => {
@@ -127,11 +134,11 @@ export function CardTags({ tags, onHide }: { tags: string[]; onHide?: (tag: stri
     if (!el) return;
     const ro = new ResizeObserver((entries) => {
       const w = entries[0].contentRect.width;
-      if (w !== lastWidth.current) { lastWidth.current = w; setCount(tags.length); }
+      if (w !== lastWidth.current) { lastWidth.current = w; setCount(measuredFrom); }
     });
     ro.observe(el);
     return () => ro.disconnect();
-  }, [tags]);
+  }, [tags, measuredFrom]);
 
   // Shrink the visible chip count until the chips (+ inline link) fit within the 4-row clamp.
   // Re-runs after each setCount (and on reset) until it fits — a converging loop.
