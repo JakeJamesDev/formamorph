@@ -18,6 +18,7 @@ import {
 } from "@/components/ui/dialog";
 import IndeterminateProgress from "@/components/ui/indeterminate-progress";
 import { Progress } from "@/components/ui/progress";
+import { Slider } from "@/components/ui/slider";
 import VramReadout from "./VramReadout";
 import { useVramStats } from "@/lib/useVramStats";
 import { useSettings } from "@/contexts/SettingsContext";
@@ -55,7 +56,7 @@ const TTSModal = forwardRef<TTSModalHandle, {
   const [selectedVoice, setSelectedVoice] = useState("");
   const [isPlaying, setIsPlaying] = useState(false);
   const [webGPUSupported, setWebGPUSupported] = useState(false);
-  const { vramHelperUrl } = useSettings();
+  const { vramHelperUrl, ttsSpeed, setTtsSpeed } = useSettings();
   const { ttsPlayback } = useGameplay();
   const vramStats = useVramStats(vramHelperUrl, { enabled: isOpen });
   const [freeBeforeLoad, setFreeBeforeLoad] = useState<number | null>(null);
@@ -70,8 +71,10 @@ const TTSModal = forwardRef<TTSModalHandle, {
   const streamEndedRef = useRef(false);
   const ttsRef = useRef(tts);
   const voiceRef = useRef(selectedVoice);
+  const speedRef = useRef(ttsSpeed);
   useEffect(() => { ttsRef.current = tts; }, [tts]);
   useEffect(() => { voiceRef.current = selectedVoice; }, [selectedVoice]);
+  useEffect(() => { speedRef.current = ttsSpeed; }, [ttsSpeed]);
 
   // Release the ONNX sessions (frees the WebGPU/VRAM allocation) and return to the load screen.
   const unloadModel = async () => {
@@ -106,8 +109,8 @@ const TTSModal = forwardRef<TTSModalHandle, {
   // The single point all TTS text passes through on its way to the engine. Strip Markdown here so Kokoro
   // speaks the words, not the syntax (e.g. a stray "*" read aloud as "asterisk").
   const synthesizeSpeech = useCallback(
-    (model: KokoroTTS, text: string, voice: string) =>
-      model.generate(stripMarkdownForSpeech(text), { voice: voice as GenerateOptions['voice'] }),
+    (model: KokoroTTS, text: string, voice: string, speed: number) =>
+      model.generate(stripMarkdownForSpeech(text), { voice: voice as GenerateOptions['voice'], speed }),
     [],
   );
 
@@ -130,7 +133,7 @@ const TTSModal = forwardRef<TTSModalHandle, {
       ttsPlayback.reset();
       for (let i = 0; i < total; i++) {
         onProgress?.({ done: i, total });
-        const result = await synthesizeSpeech(tts, chunks[i], selectedVoice);
+        const result = await synthesizeSpeech(tts, chunks[i], selectedVoice, ttsSpeed);
         ttsPlayback.append(new Float32Array(result.audio), result.sampling_rate);
       }
       ttsPlayback.finalize();
@@ -142,7 +145,7 @@ const TTSModal = forwardRef<TTSModalHandle, {
     } finally {
       setIsPlaying(false);
     }
-  }, [tts, selectedVoice, ttsPlayback, synthesizeSpeech]);
+  }, [tts, selectedVoice, ttsSpeed, ttsPlayback, synthesizeSpeech]);
 
   // Synthesize queued sentences sequentially, appending each to the playback engine; finalize once
   // the stream has ended and the queue is drained.
@@ -156,7 +159,7 @@ const TTSModal = forwardRef<TTSModalHandle, {
         const voice = voiceRef.current;
         if (!model || !voice) continue;
         try {
-          const result = await synthesizeSpeech(model, text, voice);
+          const result = await synthesizeSpeech(model, text, voice, speedRef.current);
           ttsPlayback.append(new Float32Array(result.audio), result.sampling_rate);
         } catch (error) {
           console.error("Failed to synthesize narration sentence:", error);
@@ -280,6 +283,22 @@ const TTSModal = forwardRef<TTSModalHandle, {
                   ))}
                 </SelectContent>
               </Select>
+            </div>
+            <div className="flex flex-col gap-2">
+              <label className="text-sm font-medium flex items-center justify-between">
+                <span>Speed</span>
+                <span className="text-muted-foreground tabular-nums">{ttsSpeed.toFixed(1)}×</span>
+              </label>
+              <Slider
+                value={[ttsSpeed]}
+                min={0.5}
+                max={2}
+                step={0.1}
+                onValueChange={(v) => setTtsSpeed(v[0])}
+              />
+              <p className="text-xs text-muted-foreground">
+                Applies to newly generated audio — use the regenerate button (↻) to re-speak the current text.
+              </p>
             </div>
             <Button
             className='w-full'
