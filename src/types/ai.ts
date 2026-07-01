@@ -34,7 +34,7 @@ export type AIRequestType =
   | 'director'
   | 'character'
   | 'storyboard'
-  | 'gametext'
+  | 'narration'
   | 'choices'
   | 'statUpdates'
   | 'locationChange'
@@ -45,7 +45,7 @@ export type AIRequestType =
  * `turnId`/`summary` are additive memory-digest fields — absent on pre-digest saves.
  */
 export interface AITurnResult {
-  game_text: string;
+  narration: string;
   choices: string[];
   stat_changes: Array<Record<string, number>>;
   /** Stable per-turn id (`crypto.randomUUID()`); powers the digest async-apply guard. */

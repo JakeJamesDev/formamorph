@@ -30,12 +30,12 @@ describe('renderPromptTemplate', () => {
 
   it('substitutes the aux user-message value-tokens, and leaves them intact without a value', () => {
     expect(
-      renderPromptTemplate('Player action: <PLAYER ACTION>\nGame text: <GAME TEXT>', {
+      renderPromptTemplate('Player action: <PLAYER ACTION>\nNarration: <NARRATION>', {
         '<PLAYER ACTION>': 'wave',
-        '<GAME TEXT>': 'You wave.',
+        '<NARRATION>': 'You wave.',
       }),
-    ).toBe('Player action: wave\nGame text: You wave.');
-    expect(renderPromptTemplate('a <GAME TEXT> b', {})).toBe('a <GAME TEXT> b');
+    ).toBe('Player action: wave\nNarration: You wave.');
+    expect(renderPromptTemplate('a <NARRATION> b', {})).toBe('a <NARRATION> b');
   });
 });
 
@@ -59,7 +59,7 @@ describe('parsePromptTemplate', () => {
 
 describe('parse ∘ serialize round-trip', () => {
   const prompts: [string, string][] = [
-    ['gametext', defaultSystemPrompt],
+    ['narration', defaultSystemPrompt],
     ['choices', defaultChoicesPrompt],
     ['statUpdates', defaultStatUpdatesPrompt],
     ['locationChange', defaultLocationChangePrompt],
@@ -86,10 +86,10 @@ describe('parse ∘ serialize round-trip', () => {
 
 describe('token variants', () => {
   it('recognizes the multi-word value-tokens as chips', () => {
-    expect(parsePromptTemplate('<PLAYER ACTION> then <GAME TEXT>')).toEqual([
+    expect(parsePromptTemplate('<PLAYER ACTION> then <NARRATION>')).toEqual([
       { type: 'variable', token: '<PLAYER ACTION>' },
       { type: 'text', value: ' then ' },
-      { type: 'variable', token: '<GAME TEXT>' },
+      { type: 'variable', token: '<NARRATION>' },
     ]);
   });
 

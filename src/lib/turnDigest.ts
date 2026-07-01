@@ -13,10 +13,17 @@ import type { AITurnResult, ChatMessage } from '@/types';
  * This slice only *generates and stores* digests. Nothing consumes them yet (see Slice 2: banding).
  */
 
-/** Parse an assistant turn's JSON content, or `null` if it doesn't parse. */
+/** Parse an assistant turn's JSON content, or `null` if it doesn't parse. Legacy v1.2 / pre-release 2.0
+ *  saves stored the narration under `game_text`; normalize that to `narration` on read (non-destructive
+ *  — the field just moves), so every consumer can rely on `narration`. */
 export function parseTurnContent(content: string): AITurnResult | null {
   try {
-    return json5.parse(content) as AITurnResult;
+    const parsed = json5.parse(content) as AITurnResult & { game_text?: string };
+    if (parsed && parsed.narration === undefined && typeof parsed.game_text === 'string') {
+      parsed.narration = parsed.game_text;
+      delete parsed.game_text;
+    }
+    return parsed;
   } catch {
     return null;
   }

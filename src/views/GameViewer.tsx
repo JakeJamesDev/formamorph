@@ -32,7 +32,7 @@ import WorldEditor from "./WorldEditor";
 import type { CharacterData, ChatMessage, ChatRole, AIRequestType, StatChange, Trait, GameLocation, MediaAsset } from "@/types";
 import { UnsavedChangesDialog } from "../components/UnsavedChangesDialog";
 import { estimateHistoryChars, estimateTokens } from "../lib/memoryUtils";
-import { parseGameText, stripReasoning, stripReasoningLive } from "../lib/aiResponse";
+import { parseNarration, stripReasoning, stripReasoningLive } from "../lib/aiResponse";
 import {
   INLINE_THINKING_DIRECTIVE,
   markdownGuidance,
@@ -169,7 +169,7 @@ const GameViewer = ({
     choicesEnabled,
     statUpdatesEnabled,
     locationChangeEnabled,
-    gametextVerbatimTurns,
+    narrationVerbatimTurns,
     thinkingVerbatimTurns,
     thinkingMode,
     thinkingPrompt,
@@ -237,7 +237,7 @@ const GameViewer = ({
     setCommandPreview(false);
   }, []);
 
-  // Type a sample through the real narration path (reveal → GameText), simulating token arrival so the
+  // Type a sample through the real narration path (reveal → MarkdownRenderer), simulating token arrival so the
   // markdown renderer can be eyeballed without invoking the AI.
   const runMarkdownTest = useCallback(() => {
     if (commandTimer.current !== null) clearInterval(commandTimer.current);
@@ -457,7 +457,7 @@ const GameViewer = ({
         contextWindow,
         promptTokens,
         maxTokens,
-        verbatimFloor: gametextVerbatimTurns,
+        verbatimFloor: narrationVerbatimTurns,
         keywords,
         actionEntities,
         rehydrateCap,
@@ -468,7 +468,7 @@ const GameViewer = ({
     }
     lastBandCountsRef.current = null;
     return buildVerbatimHistory(turns, contextWindow, promptTokens, maxTokens);
-  }, [fullMessageHistory, contextWindow, maxTokens, memoryDigests, dictionary, entities, gametextVerbatimTurns]);
+  }, [fullMessageHistory, contextWindow, maxTokens, memoryDigests, dictionary, entities, narrationVerbatimTurns]);
 
   // Drive body morphs from stats: each stat's bound sliders track its value (min→max → 0→1 influence).
   useEffect(() => {
@@ -586,7 +586,7 @@ const GameViewer = ({
     "<LOCATION|list>": locations.map((loc) => loc.name).join("\n"),
     // Illustrative placeholders for the aux user-message templates (real values are per-turn at runtime).
     "<PLAYER ACTION>": "the player's latest action",
-    "<GAME TEXT>": "the most recent narration",
+    "<NARRATION>": "the most recent narration",
   }), [
     worldOverview, hideStatNumbers, generateStatDescriptions, generateTraitDescriptions,
     currentLocation, entities, playerNotes, paragraphLimit, maxTokens, markdownOutput, locations,
@@ -687,7 +687,7 @@ ${playerNotes || "No notes available"}
       setDebugTurns((prev) => [...prev, { action, requests: [], turnId: currentTurnIdRef.current }].slice(-50));
 
       // Create message array for game text request
-      const gameTextMessages: ChatMessage[] = [
+      const narrationMessages: ChatMessage[] = [
         ...trimmedHistory,
         { role: "user", content: `Player action: ${action}` },
       ];
@@ -830,32 +830,32 @@ ${playerNotes || "No notes available"}
       // Attach the plan to the final user turn (adjacent to where the model writes) instead of the
       // system prompt — keeps it salient and leaves the authored system prompt untouched.
       if (turnPlan) {
-        gameTextMessages[gameTextMessages.length - 1].content += planDirective(turnPlan);
+        narrationMessages[narrationMessages.length - 1].content += planDirective(turnPlan);
       }
 
       // Track the assembled system-prompt size for the memory-usage breakdown
       setLastPromptChars(updatedPrompt.length);
 
       // Get game text first since choices and stat updates depend on it
-      const gameTextResponse = await makeAIRequest(
+      const narrationResponse = await makeAIRequest(
         updatedPrompt,
-        gameTextMessages,
-        "gametext",
+        narrationMessages,
+        "narration",
         null,
         signal,
       );
 
       // If the user stopped, or the request came back empty, bail (the `finally` resets waiting state).
-      if (signal.aborted || !gameTextResponse) return;
+      if (signal.aborted || !narrationResponse) return;
 
       // Who took part this turn: defined entities named in the narration, plus any staged ad-hoc
       // characters the narration confirms (planning only suggests; the narration is the gate). Drives the
       // entity tab, the choices filter, and stored participation.
       const turnParticipants = [
         ...new Set([
-          ...findEntityNames(gameTextResponse, entities),
-          ...matchNamesLoose(gameTextResponse, directorCandidates),
-          ...matchNames(gameTextResponse, adHocCandidates),
+          ...findEntityNames(narrationResponse, entities),
+          ...matchNamesLoose(narrationResponse, directorCandidates),
+          ...matchNames(narrationResponse, adHocCandidates),
         ]),
       ];
       // Apply the authoritative set now (narration is done) — incl. staged ad-hoc, and without waiting on
@@ -875,7 +875,7 @@ ${playerNotes || "No notes available"}
       // Auto-narrate the new game text if a TTS model is loaded (fire-and-forget). When streaming is
       // on, narration was already synthesized sentence-by-sentence during the request above.
       if (ttsLoaded && !streamNarrationAudio) {
-        generateTTS(gameTextResponse);
+        generateTTS(narrationResponse);
       }
 
       // Make choices and stat updates requests concurrently since they both only depend on game text
@@ -907,7 +907,7 @@ ${playerNotes || "No notes available"}
               role: "user",
               content: renderPromptTemplate(choicesUserPrompt, {
                 "<PLAYER ACTION>": action,
-                "<GAME TEXT>": gameTextResponse,
+                "<NARRATION>": narrationResponse,
               }),
             },
           ],
@@ -945,7 +945,7 @@ ${playerNotes || "No notes available"}
               role: "user",
               content: renderPromptTemplate(statUpdatesUserPrompt, {
                 "<PLAYER ACTION>": action,
-                "<GAME TEXT>": gameTextResponse,
+                "<NARRATION>": narrationResponse,
               }),
             },
           ],
@@ -974,7 +974,7 @@ ${playerNotes || "No notes available"}
               role: "user",
               content: renderPromptTemplate(locationChangeUserPrompt, {
                 "<PLAYER ACTION>": action,
-                "<GAME TEXT>": gameTextResponse,
+                "<NARRATION>": narrationResponse,
               }),
             },
           ],
@@ -1028,7 +1028,7 @@ ${playerNotes || "No notes available"}
           updatedHistory[updatedHistory.length - 1] = {
             role: "assistant",
             content: JSON.stringify({
-              game_text: gameTextResponse,
+              narration: narrationResponse,
               choices: choicesList,
               stat_changes: statChanges,
               turnId: currentTurnIdRef.current,
@@ -1039,7 +1039,7 @@ ${playerNotes || "No notes available"}
         return updatedHistory;
       });
 
-      //setGameplayText(aiResponse.game_text);
+      //setGameplayText(aiResponse.narration);
       //setChoices(aiResponse.choices || []);
 
       // Apply stat changes
@@ -1219,7 +1219,7 @@ ${playerNotes || "No notes available"}
   const makeAIRequest = async (
     systemPrompt: string,
     messages: ChatMessage[],
-    requestType: AIRequestType = "gametext",
+    requestType: AIRequestType = "narration",
     maxTokensOverride: number | null = null,
     signal?: AbortSignal,
     // Silent requests (the memory digest) run without UI noise: no "Generating…" label, and they
@@ -1268,7 +1268,7 @@ ${playerNotes || "No notes available"}
           max_tokens: maxTokensOverride ?? maxTokens,
           stream: true,
           // Single-paragraph stop, but not in inline-thinking mode — the <think> block needs newlines.
-          ...(requestType === "gametext" && paragraphLimit === "single" && thinkingMode !== "inline" && { stop: ["\n"] }),
+          ...(requestType === "narration" && paragraphLimit === "single" && thinkingMode !== "inline" && { stop: ["\n"] }),
         }),
         signal, // Add the abort signal to the fetch request
       });
@@ -1289,9 +1289,9 @@ ${playerNotes || "No notes available"}
       let content = "";
       let finishReason = null;
       // Start a fresh smoothed reveal for this turn's narration.
-      if (requestType === "gametext") { reveal.reset(); entitySentenceCursorRef.current = 0; assistantAddedRef.current = false; }
+      if (requestType === "narration") { reveal.reset(); entitySentenceCursorRef.current = 0; assistantAddedRef.current = false; }
       // Opt-in streaming TTS: synthesize narration sentence-by-sentence as it arrives (needs a model).
-      const ttsStreaming = streamNarrationAudio && ttsLoaded && requestType === "gametext";
+      const ttsStreaming = streamNarrationAudio && ttsLoaded && requestType === "narration";
       if (ttsStreaming) { ttsModalRef.current?.streamStart(); ttsSentenceCursorRef.current = 0; }
 
       // Handle one complete SSE line. Lines are buffered across reads (below) so a `data:` payload
@@ -1309,7 +1309,7 @@ ${playerNotes || "No notes available"}
           }
 
           // Handle different request types
-          if (requestType === "gametext") {
+          if (requestType === "narration") {
             // Feed the full (reasoning-stripped) content; the smoothed reveal trails it so the
             // display reads as continuous typing and the late truncation trim stays off-screen.
             const display = stripReasoningLive(content);
@@ -1346,7 +1346,7 @@ ${playerNotes || "No notes available"}
               const message = {
                 role: "assistant" as const,
                 content: JSON.stringify({
-                  game_text: display,
+                  narration: display,
                   choices: [],
                   stat_changes: [],
                   turnId: currentTurnIdRef.current,
@@ -1391,7 +1391,7 @@ ${playerNotes || "No notes available"}
       }
       // Aborted mid-stream: drop everything received this turn and don't commit it.
       if (signal?.aborted) {
-        if (requestType === "gametext") reveal.reset();
+        if (requestType === "narration") reveal.reset();
         if (ttsStreaming) ttsModalRef.current?.streamCancel();
         return "";
       }
@@ -1404,7 +1404,7 @@ ${playerNotes || "No notes available"}
       const rawContent = content.trim();
       let finalContent = stripReasoning(content).trim();
       // On a mid-sentence truncation (hit the token cap), trim back to the last complete sentence.
-      if (requestType === "gametext") {
+      if (requestType === "narration") {
         if (finishReason === "length") finalContent = trimToLastSentence(finalContent);
         // Hand the authoritative final text to the smoothed reveal to play out cleanly.
         reveal.finish(finalContent);
@@ -1437,8 +1437,8 @@ ${playerNotes || "No notes available"}
     } catch (error) {
       // Check if this is an abort error (user canceled the request)
       if ((error as Error).name === "AbortError") {
-        if (requestType === "gametext") { reveal.reset(); }
-        if (streamNarrationAudio && ttsLoaded && requestType === "gametext") ttsModalRef.current?.streamCancel();
+        if (requestType === "narration") { reveal.reset(); }
+        if (streamNarrationAudio && ttsLoaded && requestType === "narration") ttsModalRef.current?.streamCancel();
         // Return empty content for aborted requests instead of throwing
         return "";
       }
@@ -1469,8 +1469,8 @@ ${playerNotes || "No notes available"}
     const dueTurn = fullMessageHistory
       .map((m) => (m.role === "assistant" ? parseTurnContent(m.content) : null))
       .find((c) => c?.turnId === turnId);
-    const gameText = dueTurn?.game_text ?? "";
-    if (!gameText.trim()) return;
+    const narrationText = dueTurn?.narration ?? "";
+    if (!narrationText.trim()) return;
 
     digestDrainingRef.current = true;
     setDigestActive(true);
@@ -1478,7 +1478,7 @@ ${playerNotes || "No notes available"}
       try {
         const digest = await makeAIRequestRef.current(
           summaryPrompt,
-          [{ role: "user", content: renderPromptTemplate(summaryUserPrompt, { "<GAME TEXT>": gameText }) }],
+          [{ role: "user", content: renderPromptTemplate(summaryUserPrompt, { "<NARRATION>": narrationText }) }],
           "summary",
           DIGEST_MAX_TOKENS,
           undefined,
@@ -1614,11 +1614,11 @@ ${playerNotes || "No notes available"}
     }
   }, [ambientSound]);
 
-  // Extract the displayed game_text from an assistant message (see lib/aiResponse).
-  const parseAssistantMessage = parseGameText;
+  // Extract the displayed narration from an assistant message (see lib/aiResponse).
+  const parseAssistantMessage = parseNarration;
 
   // Status line shown above the input while a turn is being generated, naming the current AI
-  // request (Game Text / Choices / Stat Updates / Location) so the player knows what's processing.
+  // request (Narration / Choices / Stat Updates / Location) so the player knows what's processing.
   const progressBar = (() => {
     // The active turn's request takes the status row; a silent memory digest (which runs between turns)
     // shows here too when no turn is in flight, but only when "Show Silent Requests" is enabled.
@@ -1628,7 +1628,7 @@ ${playerNotes || "No notes available"}
         director: "Cast",
         character: "Motivation",
         storyboard: "Storyboard",
-        gametext: "Game Text",
+        narration: "Narration",
         choices: "Choices",
         statUpdates: "Stat Updates",
         locationChange: "Location",
@@ -2065,10 +2065,10 @@ ${playerNotes || "No notes available"}
             const activeHydrationRules: HighlightRule[] = hydrationTerms
               .filter((term) => !disabledHydrations[term])
               .map((term) => ({ term, color: hydrationColorMap[term.toLowerCase()] }));
-            // Per-block segmenter honoring the mode: hydrations highlight only inside the gametext request.
+            // Per-block segmenter honoring the mode: hydrations highlight only inside the narration request.
             const segmentsFor = (text: string, reqType: string): HighlightSegment[] =>
               debugHighlightMode === "hydrations"
-                ? buildHydrationSegments(text, reqType === "gametext" ? activeHydrationRules : [])
+                ? buildHydrationSegments(text, reqType === "narration" ? activeHydrationRules : [])
                 : buildSegments(text);
             // The memory digest for this turn (stored on its assistant message), if one has been generated.
             const currentSummary = currentTurn?.turnId
@@ -2424,7 +2424,7 @@ ${playerNotes || "No notes available"}
         ref={ttsModalRef}
         isOpen={isTTSModalOpen}
         onOpenChange={setIsTTSModalOpen}
-        gameText={gameplayText}
+        narration={gameplayText}
         onLoadedChange={setTtsLoaded}
       />
 

@@ -3,7 +3,7 @@
 import React, { useState, useRef, useEffect, useLayoutEffect } from 'react';
 import { cn } from "@/lib/utils";
 import { CHIP_BASE } from "@/components/Chip";
-import { GameText } from "@/components/game/GameText";
+import { MarkdownRenderer } from "@/components/game/MarkdownRenderer";
 
 // Loose shape for server/catalog world payloads, whose fields vary by endpoint and save version.
 // Shared by the main menu and the Discover browser.
@@ -57,7 +57,7 @@ export function WorldDetailsColumn({ thumbnail, actions, description, tags, meta
       <div>
         <h3 className="text-lg font-semibold">Description</h3>
         <div className="text-gray-600 dark:text-gray-400 mt-1">
-          <GameText text={description || "No description available."} />
+          <MarkdownRenderer text={description || "No description available."} />
         </div>
       </div>
       {meta}

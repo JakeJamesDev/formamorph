@@ -46,9 +46,9 @@ export interface TTSModalHandle {
 const TTSModal = forwardRef<TTSModalHandle, {
   isOpen: boolean;
   onOpenChange: (open: boolean) => void;
-  gameText?: string;
+  narration?: string;
   onLoadedChange?: (loaded: boolean) => void;
-}>(function TTSModal({ isOpen, onOpenChange, gameText = "Hello World", onLoadedChange }, ref) {
+}>(function TTSModal({ isOpen, onOpenChange, narration = "Hello World", onLoadedChange }, ref) {
   const [isLoading, setIsLoading] = useState(false);
   const [tts, setTTS] = useState<KokoroTTS | null>(null);
   const [voices, setVoices] = useState<string[]>([]);
@@ -188,12 +188,12 @@ const TTSModal = forwardRef<TTSModalHandle, {
 
   useImperativeHandle(ref, () => ({
     regenerate: (text?: string, onProgress?: (progress: TTSProgress) => void) =>
-      generateAudio(text ?? gameText, onProgress),
+      generateAudio(text ?? narration, onProgress),
     streamStart,
     streamSentence,
     streamEnd,
     streamCancel,
-  }), [generateAudio, gameText, streamStart, streamSentence, streamEnd, streamCancel]);
+  }), [generateAudio, narration, streamStart, streamSentence, streamEnd, streamCancel]);
 
   // Report load/unload so the parent can gate the regenerate button and auto-generation.
   useEffect(() => {
@@ -276,7 +276,7 @@ const TTSModal = forwardRef<TTSModalHandle, {
             className='w-full'
               onClick={async () => {
                 setGenProgress({ done: 0, total: 1 });
-                const ok = await generateAudio(gameText, setGenProgress);
+                const ok = await generateAudio(narration, setGenProgress);
                 setGenProgress(null);
                 if (ok) onOpenChange(false);
               }}

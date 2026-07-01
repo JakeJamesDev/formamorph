@@ -1,6 +1,6 @@
 /**
  * A rich GitHub-flavored Markdown document used by the `/markdown test` command to preview the
- * narration renderer (GameText) on every element it maps. In-world flavored so it reads naturally.
+ * narration renderer (MarkdownRenderer) on every element it maps. In-world flavored so it reads naturally.
  */
 export const MARKDOWN_SAMPLE = `## The Drowned Archive
 

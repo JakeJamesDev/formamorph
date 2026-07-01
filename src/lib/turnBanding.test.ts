@@ -12,9 +12,9 @@ import {
 
 const user = (content: string): ChatMessage => ({ role: 'user', content });
 
-const assistant = (turn: Partial<AITurnResult> & { game_text?: string }): ChatMessage => ({
+const assistant = (turn: Partial<AITurnResult> & { narration?: string }): ChatMessage => ({
   role: 'assistant',
-  content: JSON.stringify({ game_text: '', choices: [], stat_changes: [], ...turn }),
+  content: JSON.stringify({ narration: '', choices: [], stat_changes: [], ...turn }),
 });
 
 /** A user→assistant pair, the unit the flat history is built from. */
@@ -33,10 +33,10 @@ const bandTurn = (index: number, over: Partial<BandTurn> = {}): BandTurn => ({
 const WIDE = 1_000_000; // a context window large enough that nothing is trimmed
 
 describe('parseTurns', () => {
-  it('parses each pair, capturing turnId/summary/game_text', () => {
+  it('parses each pair, capturing turnId/summary/narration', () => {
     const history = [
-      ...pair('a1', { turnId: 't1', game_text: 'g1', summary: 's1' }),
-      ...pair('a2', { turnId: 't2', game_text: 'g2' }),
+      ...pair('a1', { turnId: 't1', narration: 'g1', summary: 's1' }),
+      ...pair('a2', { turnId: 't2', narration: 'g2' }),
     ];
     const turns = parseTurns(history);
     expect(turns).toHaveLength(2);
@@ -53,8 +53,8 @@ describe('parseTurns', () => {
 describe('buildVerbatimHistory', () => {
   it('returns every turn chronologically when the budget is ample', () => {
     const turns = parseTurns([
-      ...pair('a1', { turnId: 't1', game_text: 'g1' }),
-      ...pair('a2', { turnId: 't2', game_text: 'g2' }),
+      ...pair('a1', { turnId: 't1', narration: 'g1' }),
+      ...pair('a2', { turnId: 't2', narration: 'g2' }),
     ]);
     const out = buildVerbatimHistory(turns, WIDE, 0, 0);
     expect(out.map((m) => m.content)).toEqual(['a1', 'g1', 'a2', 'g2']);
@@ -62,9 +62,9 @@ describe('buildVerbatimHistory', () => {
 
   it('keeps the newest turns and drops older ones past the budget', () => {
     const turns = parseTurns([
-      ...pair('a1', { turnId: 't1', game_text: 'x'.repeat(40000) }), // huge, will not fit
-      ...pair('a2', { turnId: 't2', game_text: 'g2' }),
-      ...pair('a3', { turnId: 't3', game_text: 'g3' }),
+      ...pair('a1', { turnId: 't1', narration: 'x'.repeat(40000) }), // huge, will not fit
+      ...pair('a2', { turnId: 't2', narration: 'g2' }),
+      ...pair('a3', { turnId: 't3', narration: 'g3' }),
     ]);
     const out = buildVerbatimHistory(turns, 5120, 0, 0);
     expect(out.map((m) => m.content)).toEqual(['a2', 'g2', 'a3', 'g3']);
@@ -162,10 +162,10 @@ describe('buildBandedHistory', () => {
 
   it('keeps the recent floor verbatim and bands older turns, with no overlap', () => {
     const turns = parseTurns([
-      ...pair('a1', { turnId: 't1', game_text: 'g1', summary: 's1' }),
-      ...pair('a2', { turnId: 't2', game_text: 'g2', summary: 's2' }),
-      ...pair('a3', { turnId: 't3', game_text: 'g3', summary: 's3' }),
-      ...pair('a4', { turnId: 't4', game_text: 'g4', summary: 's4' }),
+      ...pair('a1', { turnId: 't1', narration: 'g1', summary: 's1' }),
+      ...pair('a2', { turnId: 't2', narration: 'g2', summary: 's2' }),
+      ...pair('a3', { turnId: 't3', narration: 'g3', summary: 's3' }),
+      ...pair('a4', { turnId: 't4', narration: 'g4', summary: 's4' }),
     ]);
     const { messages } = buildBandedHistory({ ...base, turns, keywords: [] });
     // Band leads, covering the two older turns only, as an assistant (narrator) message.
@@ -181,10 +181,10 @@ describe('buildBandedHistory', () => {
 
   it('drops older turns that have no digest', () => {
     const turns = parseTurns([
-      ...pair('a1', { turnId: 't1', game_text: 'g1' }), // no summary
-      ...pair('a2', { turnId: 't2', game_text: 'g2', summary: 's2' }),
-      ...pair('a3', { turnId: 't3', game_text: 'g3', summary: 's3' }),
-      ...pair('a4', { turnId: 't4', game_text: 'g4', summary: 's4' }),
+      ...pair('a1', { turnId: 't1', narration: 'g1' }), // no summary
+      ...pair('a2', { turnId: 't2', narration: 'g2', summary: 's2' }),
+      ...pair('a3', { turnId: 't3', narration: 'g3', summary: 's3' }),
+      ...pair('a4', { turnId: 't4', narration: 'g4', summary: 's4' }),
     ]);
     const { messages } = buildBandedHistory({ ...base, turns, keywords: [] });
     expect(messages[0].content).toContain('s2');
@@ -193,10 +193,10 @@ describe('buildBandedHistory', () => {
 
   it('rehydrates a relevant older turn to full text and removes it from the band', () => {
     const turns = parseTurns([
-      ...pair('a1', { turnId: 't1', game_text: 'the vault scene', summary: 'You opened the vault.' }),
-      ...pair('a2', { turnId: 't2', game_text: 'g2', summary: 'A quiet walk.' }),
-      ...pair('a3', { turnId: 't3', game_text: 'g3', summary: 's3' }),
-      ...pair('a4', { turnId: 't4', game_text: 'g4', summary: 's4' }),
+      ...pair('a1', { turnId: 't1', narration: 'the vault scene', summary: 'You opened the vault.' }),
+      ...pair('a2', { turnId: 't2', narration: 'g2', summary: 'A quiet walk.' }),
+      ...pair('a3', { turnId: 't3', narration: 'g3', summary: 's3' }),
+      ...pair('a4', { turnId: 't4', narration: 'g4', summary: 's4' }),
     ]);
     const { messages, counts } = buildBandedHistory({ ...base, turns, keywords: ['vault'] });
     // t1 comes back verbatim, ahead of the floor, and its digest is no longer in the band.
@@ -208,11 +208,11 @@ describe('buildBandedHistory', () => {
 
   it('caps how many older turns rehydrate so the band is not cannibalized', () => {
     const turns = parseTurns([
-      ...pair('a1', { turnId: 't1', game_text: 'g1', summary: 'Mira vault gold.' }),
-      ...pair('a2', { turnId: 't2', game_text: 'g2', summary: 'Mira vault.' }),
-      ...pair('a3', { turnId: 't3', game_text: 'g3', summary: 'Mira.' }),
-      ...pair('a4', { turnId: 't4', game_text: 'g4', summary: 's4' }),
-      ...pair('a5', { turnId: 't5', game_text: 'g5', summary: 's5' }),
+      ...pair('a1', { turnId: 't1', narration: 'g1', summary: 'Mira vault gold.' }),
+      ...pair('a2', { turnId: 't2', narration: 'g2', summary: 'Mira vault.' }),
+      ...pair('a3', { turnId: 't3', narration: 'g3', summary: 'Mira.' }),
+      ...pair('a4', { turnId: 't4', narration: 'g4', summary: 's4' }),
+      ...pair('a5', { turnId: 't5', narration: 'g5', summary: 's5' }),
     ]);
     // Floor (base) is 2 → t4,t5 verbatim; candidates t1,t2,t3 all match, but only 1 may rehydrate.
     const { messages, counts } = buildBandedHistory({
@@ -229,8 +229,8 @@ describe('buildBandedHistory', () => {
 
   it('treats everything as verbatim for a short game (no older turns)', () => {
     const turns = parseTurns([
-      ...pair('a1', { turnId: 't1', game_text: 'g1', summary: 's1' }),
-      ...pair('a2', { turnId: 't2', game_text: 'g2', summary: 's2' }),
+      ...pair('a1', { turnId: 't1', narration: 'g1', summary: 's1' }),
+      ...pair('a2', { turnId: 't2', narration: 'g2', summary: 's2' }),
     ]);
     const { messages } = buildBandedHistory({ ...base, turns, keywords: [] });
     expect(messages.some((m) => m.content.includes('Story so far'))).toBe(false);
@@ -239,10 +239,10 @@ describe('buildBandedHistory', () => {
 
   it('trims the oldest band lines when the budget is tight', () => {
     const turns = parseTurns([
-      ...pair('a1', { turnId: 't1', game_text: 'g1', summary: 'OLDEST ' + 'x'.repeat(2000) }),
-      ...pair('a2', { turnId: 't2', game_text: 'g2', summary: 'NEWERBAND' }),
-      ...pair('a3', { turnId: 't3', game_text: 'g3', summary: 's3' }),
-      ...pair('a4', { turnId: 't4', game_text: 'g4', summary: 's4' }),
+      ...pair('a1', { turnId: 't1', narration: 'g1', summary: 'OLDEST ' + 'x'.repeat(2000) }),
+      ...pair('a2', { turnId: 't2', narration: 'g2', summary: 'NEWERBAND' }),
+      ...pair('a3', { turnId: 't3', narration: 'g3', summary: 's3' }),
+      ...pair('a4', { turnId: 't4', narration: 'g4', summary: 's4' }),
     ]);
     // Small window: floor (t3,t4) fits, but the band can't hold the huge oldest line.
     const { messages } = buildBandedHistory({ ...base, contextWindow: 600, turns, keywords: [] });

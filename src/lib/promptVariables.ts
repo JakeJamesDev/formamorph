@@ -21,7 +21,7 @@ export interface PromptVariable {
 }
 
 /** Every prompt editor maps to one of these kinds (mirrors the Settings → System Prompts sub-tabs). */
-export type PromptKind = 'gametext' | 'thinking' | 'choices' | 'statupdates' | 'location' | 'summary';
+export type PromptKind = 'narration' | 'thinking' | 'choices' | 'statupdates' | 'location' | 'summary';
 
 const SUMMARY_VARIANT: PromptVariant = {
   id: 'summary',
@@ -53,17 +53,17 @@ const ENTITIES: PromptVariable = { token: '<ENTITIES>', label: 'Entities', color
 // Runtime value-tokens for the aux requests' user-message templates (the player's action + the turn's
 // game text), distinct from the world/context tokens above.
 const PLAYER_ACTION: PromptVariable = { token: '<PLAYER ACTION>', label: 'Player Action', color: HIGHLIGHT_PALETTE[9] };
-const GAME_TEXT: PromptVariable = { token: '<GAME TEXT>', label: 'Game Text', color: HIGHLIGHT_PALETTE[10] };
+const NARRATION: PromptVariable = { token: '<NARRATION>', label: 'Narration', color: HIGHLIGHT_PALETTE[10] };
 
 /** All known variables — used by the parser to recognize any token regardless of which prompt it's in. */
 export const ALL_PROMPT_VARIABLES: PromptVariable[] = [
-  WORLD, STATS, TRAITS, LOCATION, ENTITIES, NOTES, LENGTH, MARKDOWN, PLAYER_ACTION, GAME_TEXT,
+  WORLD, STATS, TRAITS, LOCATION, ENTITIES, NOTES, LENGTH, MARKDOWN, PLAYER_ACTION, NARRATION,
 ];
 
 /** Which variables each prompt's toolbar offers (matches what GameViewer actually substitutes per
  *  request type). The summary prompt takes no variables. */
 export const PROMPT_KIND_VARIABLES: Record<PromptKind, PromptVariable[]> = {
-  gametext: [WORLD, STATS, TRAITS, LOCATION, ENTITIES, NOTES, LENGTH, MARKDOWN],
+  narration: [WORLD, STATS, TRAITS, LOCATION, ENTITIES, NOTES, LENGTH, MARKDOWN],
   thinking: [WORLD, STATS, TRAITS, LOCATION, ENTITIES, NOTES],
   choices: [WORLD, STATS, TRAITS, NOTES, LOCATION, ENTITIES],
   statupdates: [WORLD, STATS, TRAITS, NOTES],
@@ -74,10 +74,10 @@ export const PROMPT_KIND_VARIABLES: Record<PromptKind, PromptVariable[]> = {
 /** Variables offered by the aux requests' editable user-message templates (the per-turn runtime values
  *  the code substitutes). Only the four aux kinds have a user template. */
 export const PROMPT_KIND_USER_VARIABLES: Partial<Record<PromptKind, PromptVariable[]>> = {
-  choices: [PLAYER_ACTION, GAME_TEXT],
-  statupdates: [PLAYER_ACTION, GAME_TEXT],
-  location: [PLAYER_ACTION, GAME_TEXT],
-  summary: [GAME_TEXT],
+  choices: [PLAYER_ACTION, NARRATION],
+  statupdates: [PLAYER_ACTION, NARRATION],
+  location: [PLAYER_ACTION, NARRATION],
+  summary: [NARRATION],
 };
 
 const VAR_BY_BASE = new Map(ALL_PROMPT_VARIABLES.map((v) => [v.token, v]));

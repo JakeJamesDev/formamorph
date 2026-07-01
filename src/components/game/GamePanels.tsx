@@ -6,7 +6,7 @@ import { findEntityNames } from '@/lib/entityMatch';
 import { usePlayerModelUrl } from '@/lib/usePlayerModelUrl';
 import { mergeBodyMorphs } from '@/lib/bodyMorphs';
 import { useIsMobile } from '@/lib/useIsMobile';
-import { GameText } from './GameText';
+import { MarkdownRenderer } from './MarkdownRenderer';
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -328,7 +328,9 @@ export const MiddlePanel = ({
   let currentPageText = gameplayText;
   if (currentAssistantMessage) {
     try {
-      currentPageText = JSON.parse(currentAssistantMessage.content).game_text ?? currentAssistantMessage.content;
+      // Read the current `narration` field, falling back to legacy `game_text` (pre-rename saves).
+      const parsed = JSON.parse(currentAssistantMessage.content);
+      currentPageText = parsed.narration ?? parsed.game_text ?? currentAssistantMessage.content;
     } catch {
       currentPageText = currentAssistantMessage.content;
     }
@@ -428,7 +430,7 @@ export const MiddlePanel = ({
                     <X className="h-4 w-4" />
                   </Button>
                 </div>
-                <GameText text={gameplayText} />
+                <MarkdownRenderer text={gameplayText} />
               </div>
             )}
             {displayedMessages.map((message, index) => {
@@ -445,7 +447,7 @@ export const MiddlePanel = ({
                       {message.role === 'user' ? (
                         <pre className="whitespace-pre-wrap">{message.content}</pre>
                       ) : (
-                        <GameText text={isLatestMessage && isWaitingForAI ? gameplayText : parseAssistantMessage(message.content)} />
+                        <MarkdownRenderer text={isLatestMessage && isWaitingForAI ? gameplayText : parseAssistantMessage(message.content)} />
                       )}
                     </div>
                   </React.Fragment>
@@ -457,7 +459,7 @@ export const MiddlePanel = ({
                   {message.role === 'user' ? (
                     <pre className="whitespace-pre-wrap">{message.content}</pre>
                   ) : (
-                    <GameText text={isLatestMessage && isWaitingForAI ? gameplayText : parseAssistantMessage(message.content)} />
+                    <MarkdownRenderer text={isLatestMessage && isWaitingForAI ? gameplayText : parseAssistantMessage(message.content)} />
                   )}
                 </div>
               );
@@ -508,7 +510,7 @@ export const MiddlePanel = ({
                         role: 'assistant',
                         content: JSON.stringify({
                           ...content,
-                          game_text: text,
+                          narration: text,
                           // Re-derive participants from the edited text so they don't go stale.
                           entities: findEntityNames(text, entities)
                         })
@@ -518,7 +520,7 @@ export const MiddlePanel = ({
                       updatedHistory[messageIndex] = {
                         role: 'assistant',
                         content: JSON.stringify({
-                          game_text: text,
+                          narration: text,
                           choices: choices,
                           stat_changes: [],
                           entities: findEntityNames(text, entities)
@@ -540,14 +542,14 @@ export const MiddlePanel = ({
                       role: 'assistant',
                       content: JSON.stringify({
                         ...content,
-                        game_text: text
+                        narration: text
                       })
                     };
                   } catch {
                     updatedMessages[assistantMessageIndex] = {
                       role: 'assistant',
                       content: JSON.stringify({
-                        game_text: text,
+                        narration: text,
                         choices: choices,
                         stat_changes: []
                       })

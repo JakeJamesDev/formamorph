@@ -50,19 +50,19 @@ export function markdownGuidance(enabled: boolean): string {
 // GameViewer. Runtime values are the <PLAYER ACTION> and <GAME TEXT> tokens, substituted per turn.
 export const defaultChoicesUserPrompt = `Player action: <PLAYER ACTION>
 
-Game text: <GAME TEXT>
+Narration: <NARRATION>
 
 List only the next actions now - one short phrase per line. No story, no prose.`;
 
-export const defaultStatUpdatesUserPrompt = `Game events: <GAME TEXT>
+export const defaultStatUpdatesUserPrompt = `Narration: <NARRATION>
 
 Output only the stat-change lines now (StatName: number), or nothing. No story, no prose.`;
 
-export const defaultLocationChangeUserPrompt = `Game events: <GAME TEXT>
+export const defaultLocationChangeUserPrompt = `Narration: <NARRATION>
 
 Reply now with only a location name from the list, or NONE. No story, no prose.`;
 
-export const defaultSummaryUserPrompt = `Game text: <GAME TEXT>`;
+export const defaultSummaryUserPrompt = `Narration: <NARRATION>`;
 
 export const defaultChoicesPrompt = `Given the following information:
 

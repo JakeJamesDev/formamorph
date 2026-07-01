@@ -2,7 +2,7 @@ import type { ChatMessage } from '@/types';
 
 /**
  * Approximate the character cost of a chat history, matching what getTrimmedMessageHistory
- * actually sends: assistant messages count only their `game_text`, not the choices/stat_changes
+ * actually sends: assistant messages count only their narration, not the choices/stat_changes
  * JSON wrapper. Pair with `estimateTokens` to gauge the history's token cost.
  */
 export function estimateHistoryChars(history: ChatMessage[]): number {
@@ -12,7 +12,7 @@ export function estimateHistoryChars(history: ChatMessage[]): number {
     if (msg.role === 'assistant') {
       try {
         const parsed = JSON.parse(msg.content);
-        total += (parsed.game_text || '').length;
+        total += (parsed.narration ?? parsed.game_text ?? '').length;
       } catch {
         total += msg.content.length;
       }

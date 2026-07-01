@@ -29,7 +29,7 @@ import { toEpoch } from "@/lib/thumbnailCache";
 import { sanitizeTag, collectSanitizedTags } from "@/lib/tagUtils";
 import { cn } from "@/lib/utils";
 import { CHIP_BASE } from "@/components/Chip";
-import { GameText } from "@/components/game/GameText";
+import { MarkdownRenderer } from "@/components/game/MarkdownRenderer";
 import { getCatalog, replaceCatalog } from "@/lib/worldCatalog";
 import {
   Dialog,
@@ -826,7 +826,7 @@ const DiscoverWorlds = ({ open, onOpenChange, worlds, setWorlds, isAuthenticated
                       <div className="p-4 flex flex-col flex-grow">
                         <h3 className="font-semibold text-lg mb-1">{world.name}</h3>
                         <div className="text-sm text-gray-600 dark:text-gray-400 mb-2 max-h-20 overflow-hidden">
-                          <GameText text={world.description || "No description available."} />
+                          <MarkdownRenderer text={world.description || "No description available."} />
                         </div>
 
                         <div className="text-xs text-gray-500 mb-1">
