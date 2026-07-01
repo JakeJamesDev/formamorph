@@ -110,7 +110,7 @@ interface DebugTurn {
 const DIGEST_MAX_TOKENS = 200;
 
 // Per-character diary entries are short, first-person, 1-2 sentences — a small cap keeps them terse.
-const DIARY_MAX_TOKENS = 150;
+const DIARY_MAX_TOKENS = 80;
 // Cap on older turns rehydrated to full text per turn — rehydration is a targeted aid, not bulk restore.
 const DIGEST_MAX_REHYDRATIONS = 3;
 // How many recent turns count as "currently in the scene" for the choices entity filter (this turn plus
@@ -728,14 +728,15 @@ ${playerNotes || NONE_PLACEHOLDER}
         });
         // Frame the planning task as a single instruction. Reusing the narration message history
         // (turns of action -> story) primes the model to just continue the story instead of planning.
-        const isBand = (m?: ChatMessage) => m?.role === "assistant" && m.content.startsWith("Story so far");
+        // The banded recap rides a user message now (not assistant), so the last assistant message is
+        // always the real last narration.
         let lastStory =
-          [...trimmedHistory].reverse().find((m) => m.role === "assistant" && !isBand(m))?.content || "";
+          [...trimmedHistory].reverse().find((m) => m.role === "assistant")?.content || "";
         // Planning needs the least context: the immediate turn verbatim, everything older summarized.
         // When banding is on, rebuild with a floor of 1 (no rehydration) so prior turns are all digests.
         let digestBand = "";
         if (memoryDigests) {
-          const plannerMsgs = buildBandedHistory({
+          const planner = buildBandedHistory({
             turns: parseTurns(fullMessageHistory),
             contextWindow,
             promptTokens: estimateTokens(thinkPrompt.length),
@@ -745,10 +746,10 @@ ${playerNotes || NONE_PLACEHOLDER}
             actionEntities: [],
             rehydrateCap: 0,
             maxRehydrations: 0,
-          }).messages;
-          digestBand = isBand(plannerMsgs[0]) ? plannerMsgs[0].content : "";
+          });
+          digestBand = planner.recap;
           lastStory =
-            [...plannerMsgs].reverse().find((m) => m.role === "assistant" && !isBand(m))?.content || lastStory;
+            [...planner.messages].reverse().find((m) => m.role === "assistant")?.content || lastStory;
         }
         const thinkMessages: ChatMessage[] = [
           {
@@ -774,9 +775,9 @@ ${playerNotes || NONE_PLACEHOLDER}
           "<ENTITIES|summary>": entitySummaryString,
           "<NOTES>": playerNotes || NONE_PLACEHOLDER,
         };
-        const isBand = (m?: ChatMessage) => m?.role === "assistant" && m.content.startsWith("Story so far");
+        // The banded recap rides a user message now, so the last assistant message is the real last narration.
         const lastStory =
-          [...trimmedHistory].reverse().find((m) => m.role === "assistant" && !isBand(m))?.content || "";
+          [...trimmedHistory].reverse().find((m) => m.role === "assistant")?.content || "";
         const recap = lastStory ? `What just happened:\n${lastStory}\n\n` : "";
 
         // 1) Director: who is in the scene and what carries over.

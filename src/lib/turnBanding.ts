@@ -9,8 +9,9 @@ import { containsWord } from './locationMatch';
  *
  * Layers (each turn appears in exactly one):
  *   1. Recent **verbatim floor** — the last K turns, always full (guaranteed first).
- *   2. **Digest band** — a single "Story so far" recap of older turns' summaries (guaranteed next,
- *      oldest lines trimmed if it overflows).
+ *   2. **Digest band** — a single "Earlier events" recap of older turns' summaries, folded into the first
+ *      upcoming user turn as context (guaranteed next; oldest lines trimmed if it overflows). It rides a
+ *      user message, not a standalone assistant one, so small models don't copy it as their own output.
  *   3. **Rehydration** — older turns the current action lexically touches, restored to full text
  *      (best-effort, from whatever budget is left).
  *   4. Drop — older turns with no digest, or beyond budget.
@@ -41,6 +42,9 @@ export interface BandCounts {
 
 export interface BandResult {
   messages: ChatMessage[];
+  /** The recap text alone (empty when no band), for consumers that want just the summarized-older
+   *  context; in `messages` it is folded into the first upcoming user turn. */
+  recap: string;
   counts: BandCounts;
 }
 
@@ -221,17 +225,29 @@ export function buildBandedHistory(args: {
   const bandText = buildBandText(bandTurns);
   bandTokens = estimateTokens(bandText.length);
 
-  // Assemble: recap block, then verbatim turns (rehydrated-older + floor-recent) in chronological order.
+  // Assemble: verbatim turns (rehydrated-older + floor-recent) in chronological order, with the recap of
+  // older turns folded into the first upcoming user turn as context. It is NOT a standalone assistant
+  // message: small models copy the last assistant turn's shape and echo the recap's headings instead of
+  // narrating. Folding it into a user turn keeps strict user/assistant alternation (valid on any
+  // OpenAI-compatible endpoint) and reads as provided context, not the model's own prior output.
   const verbatim = [...rehydratedTurns, ...floorTaken].sort((a, b) => a.index - b.index);
   const messages: ChatMessage[] = [];
-  // The recap is the narrator's own prior summary, so it reads as an assistant message, not player input.
-  if (bandText) messages.push({ role: 'assistant', content: `Story so far (earlier events):\n${bandText}` });
-  for (const t of verbatim) {
-    messages.push(t.userMsg, { role: 'assistant', content: t.gameText });
+  const recap = bandText ? `Earlier events (context):\n${bandText}` : '';
+  if (verbatim.length > 0) {
+    verbatim.forEach((t, i) => {
+      const content = i === 0 && recap ? `${recap}\n\n${t.userMsg.content}` : t.userMsg.content;
+      messages.push({ ...t.userMsg, content }, { role: 'assistant', content: t.gameText });
+    });
+  } else if (recap) {
+    // No verbatim turns to attach to — emit the recap as a lone user context message.
+    messages.push({ role: 'user', content: recap });
   }
 
   return {
     messages,
+    // The recap text on its own (empty when there is no band), for consumers (the precall planner) that
+    // want just the summarized-older context without digging it back out of the folded user message.
+    recap,
     counts: {
       floorTokens,
       rehydratedTokens,

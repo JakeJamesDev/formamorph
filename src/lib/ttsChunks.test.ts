@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { splitForTTS, splitSentenceSegments } from './ttsChunks';
+import { splitForTTS, splitSentenceSegments, stripMarkdownForSpeech } from './ttsChunks';
 
 describe('splitSentenceSegments', () => {
   it('splits on terminator + whitespace and keeps terminators', () => {
@@ -14,6 +14,34 @@ describe('splitSentenceSegments', () => {
 
   it('returns a single segment when there is no boundary yet', () => {
     expect(splitSentenceSegments('No boundary here')).toEqual(['No boundary here']);
+  });
+});
+
+describe('stripMarkdownForSpeech', () => {
+  it('drops emphasis markers but keeps the words', () => {
+    expect(stripMarkdownForSpeech('**This is text I read**')).toBe('This is text I read');
+    expect(stripMarkdownForSpeech('a *spear* and _fear_ and ~~gone~~')).toBe('a spear and fear and gone');
+  });
+
+  it('removes an unpaired or stray marker', () => {
+    expect(stripMarkdownForSpeech('lonely * marker')).toBe('lonely marker');
+  });
+
+  it('unwraps links and images to their text', () => {
+    expect(stripMarkdownForSpeech('see [the gate](http://x) now')).toBe('see the gate now');
+    expect(stripMarkdownForSpeech('![a cat](cat.png)')).toBe('a cat');
+  });
+
+  it('strips inline code and line-start syntax', () => {
+    expect(stripMarkdownForSpeech('run `code` now')).toBe('run code now');
+    expect(stripMarkdownForSpeech('# Heading')).toBe('Heading');
+    expect(stripMarkdownForSpeech('> a quote')).toBe('a quote');
+    expect(stripMarkdownForSpeech('- item one\n- item two')).toBe('item one\nitem two');
+    expect(stripMarkdownForSpeech('1. first\n2. second')).toBe('first\nsecond');
+  });
+
+  it('leaves plain prose untouched', () => {
+    expect(stripMarkdownForSpeech('You grip the spear tightly.')).toBe('You grip the spear tightly.');
   });
 });
 
