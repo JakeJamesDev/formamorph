@@ -1,4 +1,5 @@
 import type { PlayerStat, StatChange } from '@/types';
+import { clamp } from './utils';
 
 /**
  * Merge an array of AI stat-change objects (each a name→delta map) into one map
@@ -36,7 +37,7 @@ export function applyAiStatChanges(
       const shouldUpdate =
         (change > 0 && !stat.noIncrease) || (change < 0 && !stat.noDecrease);
       if (shouldUpdate) {
-        const newValue = Math.max(stat.min, Math.min(stat.max, stat.value + change));
+        const newValue = clamp(stat.value + change, stat.min, stat.max);
         return { ...stat, value: newValue };
       }
     }
@@ -86,7 +87,7 @@ export function applyAiMaxChanges(
     const allowed = (delta > 0 && !stat.noIncreaseMax) || (delta < 0 && !stat.noDecreaseMax);
     if (!allowed) return stat;
     const newMax = Math.max(stat.min, stat.max + delta);
-    const newValue = Math.max(stat.min, Math.min(newMax, stat.value));
+    const newValue = clamp(stat.value, stat.min, newMax);
     return { ...stat, max: newMax, value: newValue };
   });
 }
@@ -137,11 +138,11 @@ export function applyTraitStatChanges(
     if (!stat) return;
 
     if (change.type === 'starting') {
-      stat.value = Math.max(stat.min, Math.min(stat.max, stat.value + change.value));
+      stat.value = clamp(stat.value + change.value, stat.min, stat.max);
     }
     const adjustment = valueAdjustments.get(stat.id) || 0;
     if (adjustment !== 0) {
-      stat.value = Math.max(stat.min, Math.min(stat.max, stat.value + adjustment));
+      stat.value = clamp(stat.value + adjustment, stat.min, stat.max);
     }
     changedIds.add(stat.id);
   });

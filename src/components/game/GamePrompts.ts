@@ -23,6 +23,7 @@ Guidelines:
 - Be concise and vivid. <LENGTH GUIDANCE>
 - Stay consistent with the world, the player's stats and traits, the current location, and what has happened so far; let low or high stats color the outcome.
 - Advance the scene, then stop: your reply is complete once the events have been told, ending on a concrete image, action, or line of dialogue.
+- The names in your notes are what you know, not what the player knows: introduce anyone the player hasn't met by description - what they look like, their role, what they are doing - and let a name reach the page only once the player would have learned it in the story.
 - Don't report or tabulate the player's stats or their changes unless asked - a separate step handles them.
 
 Output only the story prose - the events themselves, with no labels, no mention of being an AI, and nothing after the scene ends. The choices step that follows you handles the player's options, so your reply never contains a question to the player, a list of actions, a "Choose"/"Options" menu, or a bracketed stage direction like [Player's turn].
@@ -252,9 +253,9 @@ Rules:
 - Refer to the player in the third person as "the player character" - never "you" or "your" (write "the player character's massive form", not "your massive form").
 - Always begin the Cast with the player as the first bullet: "- Player Character - <placement>". Give only their position and what they are physically doing - never an action they choose, since the player decides their own actions.
 - Then list anyone the player encounters, most important first. If the player encounters no one, the Player Character bullet is the whole cast - do not write "Cast: none".
-- Besides the Player Character, the Cast is only living, acting beings the player could interact with - people, creatures, animate threats. Never list places, structures, objects, or scenery (a path, a bridge, a door, the weather); those belong in the Scene. Every other cast member must be able to act or speak this turn.
+- Besides the Player Character, cast only individual beings that can choose to act or speak this turn - a person, creature, or animate threat with a mind of its own. Everything that merely exists in the space - places, structures, objects, crowds, scenery - stays in the Scene, however vivid, magical, or alive-seeming; a thing that only glows, looms, or sits there is not a character, and a place or crowd is not one being. When a settlement or group is present, cast the specific individuals who act this turn, or no one.
 - For each cast member give a positional snapshot: where they stand relative to the space and to each other, and what they are physically doing right now - not their mood or motives. This gives the narration spatial footing for physical interactions; it is a hint, not a guarantee.
-- Prefer the characters listed above by their exact name where they fit, but you are free to invent new characters of your own when the scene calls for them - you are not limited to the author's cast.
+- Prefer the characters listed above by their exact name where they fit; you may also invent a new character when a being that passes the test above enters the scene. Give each such character a specific individual identity with a concrete name it can be called by again next turn - a bare species or generic label on its own (a creature, a figure) is a description, not a character. Naming is only for individuals that can act; never name a place, object, or scenery to make it a character.
 - Keep the cast small, usually one to three besides the player. Output exactly one Scene line and one Cast list - never repeat them, and write nothing else.`;
 
 // Pass 2: run once per selected character. Identity, continuation, and action arrive in the user message.

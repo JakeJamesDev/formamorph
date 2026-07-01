@@ -9,7 +9,7 @@ import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
 import {
   Search, Globe, EyeOff, RotateCcw, ArrowDownWideNarrow, ArrowUpNarrowWide, ArrowLeft, X,
-  Download, MessageSquare, RefreshCw, CircleArrowUp, Columns2, RectangleVertical,
+  Download, MessageSquare, RefreshCw, CircleArrowUp, Columns2, RectangleVertical, Trash2,
 } from "lucide-react";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import {
@@ -28,6 +28,7 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { toEpoch } from "@/lib/thumbnailCache";
 import { sanitizeTag, collectSanitizedTags } from "@/lib/tagUtils";
 import { cn } from "@/lib/utils";
+import { usePersistentState, boolCodec } from "@/lib/usePersistentState";
 import { CHIP_BASE } from "@/components/Chip";
 import { MarkdownRenderer } from "@/components/game/MarkdownRenderer";
 import { getCatalog, replaceCatalog } from "@/lib/worldCatalog";
@@ -90,16 +91,10 @@ const DiscoverWorlds = ({ open, onOpenChange, worlds, setWorlds, isAuthenticated
   const [overwriteSelectedId, setOverwriteSelectedId] = useState<string | null>(null);
   const [showOverwriteSelect, setShowOverwriteSelect] = useState(false);
 
-  const [discoverModalCollapsed, setDiscoverModalCollapsed] = useState(
-    () => localStorage.getItem(DISCOVER_MODAL_COLLAPSED_KEY) === 'true',
+  const [discoverModalCollapsed, setDiscoverModalCollapsed] = usePersistentState(
+    DISCOVER_MODAL_COLLAPSED_KEY, false, boolCodec,
   );
-  const toggleDiscoverModalCollapsed = () => {
-    setDiscoverModalCollapsed((prev) => {
-      const next = !prev;
-      localStorage.setItem(DISCOVER_MODAL_COLLAPSED_KEY, String(next));
-      return next;
-    });
-  };
+  const toggleDiscoverModalCollapsed = () => setDiscoverModalCollapsed((prev) => !prev);
 
   // Comments for the world detail modal
   const [comments, setComments] = useState<WorldRecord[]>([]);
@@ -860,9 +855,7 @@ const DiscoverWorlds = ({ open, onOpenChange, worlds, setWorlds, isAuthenticated
                               onClick={(e) => { e.stopPropagation(); setRemoteWorldToDelete(worldId); }}
                               aria-label="Delete world"
                             >
-                              <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
-                                <path fillRule="evenodd" d="M9 2a1 1 0 00-.894.553L7.382 4H4a1 1 0 000 2v10a2 2 0 002 2h8a2 2 0 002-2V6a1 1 0 100-2h-3.382l-.724-1.447A1 1 0 0011 2H9zM7 8a1 1 0 012 0v6a1 1 0 11-2 0V8zm5-1a1 1 0 00-1 1v6a1 1 0 102 0V8a1 1 0 00-1-1z" clipRule="evenodd" />
-                              </svg>
+                              <Trash2 className="h-5 w-5" />
                             </button>
                           </div>
                         )}

@@ -1,11 +1,10 @@
 import { ALL_PROMPT_VARIABLES, ALL_VARIANT_IDS } from './promptVariables';
+import { escapeRegExp } from './utils';
 
 /** A prompt template parsed into an ordered run of literal text and variable tokens. */
 export type PromptSegment =
   | { type: 'text'; value: string }
   | { type: 'variable'; token: string };
-
-const escapeRegExp = (s: string) => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 
 // One alternation matching any known base token, with an optional `|variant` (e.g. `summary`, `list`)
 // before the `>`. Bases are sorted longest-first so a shorter token can't mask a longer one.

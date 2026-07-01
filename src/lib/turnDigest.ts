@@ -115,7 +115,8 @@ export function collectCharacterDiary(history: ChatMessage[], name: string, max:
     const text = match?.[1]?.trim();
     if (text && text.toLowerCase() !== 'nothing notable') entries.push(text);
   }
-  return max >= 0 ? entries.slice(-max) : entries;
+  // `slice(-0)` is `slice(0)` — it would return the whole array — so guard max === 0 explicitly.
+  return max > 0 ? entries.slice(-max) : max < 0 ? entries : [];
 }
 
 /**

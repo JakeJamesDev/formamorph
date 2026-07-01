@@ -1,4 +1,7 @@
-import type { Entity } from "@/types";
+import type { Entity, ChatMessage, AIRequestType } from "@/types";
+import { renderPromptTemplate } from "./promptTemplate";
+import { collectCharacterDiary } from "./turnDigest";
+import { defaultDirectorPrompt, defaultCharacterPrompt, defaultStoryboardPrompt } from "@/components/game/GamePrompts";
 
 /** One entry in the director's cast: a name plus their placement/action, if the director gave one.
  *  `isPlayer` marks the player character — listed for scene grounding, never given a motivation pass. */
@@ -239,4 +242,101 @@ export function buildStagedPlan(args: {
   }
   if (beats.trim()) parts.push(`What happens:\n${beats.trim()}`);
   return parts.join("\n\n");
+}
+
+/** The AI-request callback the staged pipeline drives (a subset of GameViewer's makeAIRequest). */
+export type StagedRequestFn = (
+  systemPrompt: string,
+  messages: ChatMessage[],
+  requestType: AIRequestType,
+  maxTokens: number | null,
+  signal?: AbortSignal,
+) => Promise<string>;
+
+export interface StagedPlanningResult {
+  /** The assembled plan to inject into the narration ("" when the run was aborted). */
+  turnPlan: string;
+  /** Defined entities the director cast (loose narration match). */
+  directorCandidates: string[];
+  /** Ad-hoc names the director invented (strict narration match). */
+  adHocCandidates: string[];
+}
+
+/**
+ * Run the staged planning pipeline for one turn: director (scene + cast) → one motivation pass per
+ * chosen character (sequential, capped) → storyboarder. Returns the plan plus the cast names to
+ * confirm against the narration afterward. On abort it returns early with an empty plan; the caller
+ * should re-check `signal.aborted` and bail. `request` is GameViewer's makeAIRequest, injected so this
+ * stays pure/testable.
+ */
+export async function runStagedPlanning(ctx: {
+  action: string;
+  stageValues: Record<string, string>;
+  lastStory: string;
+  entities: Entity[];
+  presentEntityIds: string[];
+  characterDiaries: boolean;
+  fullMessageHistory: ChatMessage[];
+  diaryMemoryEntries: number;
+  caps: { director: number; character: number; storyboard: number };
+  request: StagedRequestFn;
+  signal: AbortSignal;
+}): Promise<StagedPlanningResult> {
+  const {
+    action, stageValues, lastStory, entities, presentEntityIds, characterDiaries,
+    fullMessageHistory, diaryMemoryEntries, caps, request, signal,
+  } = ctx;
+  const directorCandidates: string[] = [];
+  const adHocCandidates: string[] = [];
+  const recap = lastStory ? `What just happened:\n${lastStory}\n\n` : "";
+
+  // 1) Director: who is in the scene and what carries over.
+  const directorOut = await request(
+    renderPromptTemplate(defaultDirectorPrompt, stageValues),
+    [{ role: "user", content: `${recap}The player's next action: ${action}\n\nDescribe the scene and list the cast now.` }],
+    "director", caps.director, signal,
+  );
+  if (signal.aborted) return { turnPlan: "", directorCandidates, adHocCandidates };
+  const { scene, cast } = parseDirectorCast(directorOut || "");
+  // The player may be listed for scene grounding but is never directed or matched as a participant.
+  const npcCast = cast.filter((c) => !c.isPlayer);
+  // Split the cast into defined entities (director vouched → loose match) and ad-hoc names (strict match).
+  const definedByLower = new Map(entities.map((e) => [e.name.trim().toLowerCase(), e.name]));
+  for (const member of npcCast) {
+    const canonical = definedByLower.get(member.name.trim().toLowerCase());
+    if (canonical) directorCandidates.push(canonical);
+    else adHocCandidates.push(member.name);
+  }
+
+  if (npcCast.length === 0) {
+    // No one to reconcile — skip the character + storyboard passes (they'd only invent filler).
+    return { turnPlan: buildStagedPlan({ scene, stances: cast, beats: "" }), directorCandidates, adHocCandidates };
+  }
+
+  const presentEntities = entities.filter((e) => presentEntityIds.includes(e.id));
+  const { chosen, overflow } = matchCastToEntities(npcCast, presentEntities, 3);
+
+  // 2) One motivation pass per chosen character (sequential — makeAIRequest captures per call).
+  const intents: { name: string; text: string }[] = [];
+  for (const member of chosen) {
+    // Feed the character its own recent diary as private memory (Slice B) — only when enabled.
+    const diary = characterDiaries ? collectCharacterDiary(fullMessageHistory, member.name, diaryMemoryEntries) : [];
+    const text = await request(
+      renderPromptTemplate(defaultCharacterPrompt, stageValues),
+      [{ role: "user", content: buildCharacterUserMessage({ character: member, scene, action, diary }) }],
+      "character", caps.character, signal,
+    );
+    if (signal.aborted) return { turnPlan: "", directorCandidates, adHocCandidates };
+    if (text) intents.push({ name: member.name, text });
+  }
+
+  // 3) Storyboarder: consolidate the cast + intentions into this turn's plan.
+  const plan = await request(
+    renderPromptTemplate(defaultStoryboardPrompt, stageValues),
+    [{ role: "user", content: buildStoryboardUserMessage({ recap: lastStory, scene, intents, overflow, action }) }],
+    "storyboard", caps.storyboard, signal,
+  );
+  if (signal.aborted) return { turnPlan: "", directorCandidates, adHocCandidates };
+  // Ground the narration in the director's scene + cast stances alongside the storyboard beats.
+  return { turnPlan: buildStagedPlan({ scene, stances: cast, beats: plan || "" }), directorCandidates, adHocCandidates };
 }

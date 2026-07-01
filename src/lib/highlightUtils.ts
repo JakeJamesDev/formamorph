@@ -1,3 +1,5 @@
+import { escapeRegExp } from "./utils";
+
 /** Shared pastel palette for color-coding in the AI context viewer and the prompt-variable chips, so
  *  the same accent means the same thing across both. Black text reads well on every entry. */
 export const HIGHLIGHT_PALETTE = [
@@ -16,9 +18,6 @@ export interface HighlightSegment {
   color?: string;
 }
 
-function escapeRegExp(s: string): string {
-  return s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-}
 
 /**
  * Split `text` into segments, marking spans that match any rule's term with that rule's color

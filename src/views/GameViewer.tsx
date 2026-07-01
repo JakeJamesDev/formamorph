@@ -37,21 +37,14 @@ import {
   INLINE_THINKING_DIRECTIVE,
   markdownGuidance,
   planDirective,
-  defaultDirectorPrompt,
-  defaultCharacterPrompt,
-  defaultStoryboardPrompt,
 } from "../components/game/GamePrompts";
 import {
-  parseDirectorCast,
-  matchCastToEntities,
-  buildCharacterUserMessage,
   buildDiaryUserMessage,
-  buildStoryboardUserMessage,
-  buildStagedPlan,
+  runStagedPlanning,
 } from "../lib/stagedPlanning";
 import { lengthGuidance, trimToLastSentence } from "../lib/outputLength";
 import { splitSentenceSegments } from "../lib/ttsChunks";
-import { selectDueDigests, applyDigest, parseTurnContent, selectDueDiaries, pendingDiaryNames, applyDiary, collectCharacterDiary } from "../lib/turnDigest";
+import { selectDueDigests, applyDigest, parseTurnContent, selectDueDiaries, pendingDiaryNames, applyDiary } from "../lib/turnDigest";
 import { buildTraitContext } from "../lib/traitTree";
 import { buildLocationContext, buildEntityContext } from "../lib/locationContext";
 import { NONE_PLACEHOLDER } from "../lib/promptFallbacks";
@@ -75,14 +68,6 @@ import {
   RightPanel,
 } from "../components/game/GamePanels";
 import { ConfirmDialog } from "../components/ConfirmDialog";
-
-// Debug utility function - only logs on error
-const debugLog = (message: string, data: unknown, isError = false) => {
-  return; //DISABLED
-  if (isError) {
-    console.error(`[DEBUG] ${message}:`, data);
-  }
-};
 
 interface GameViewerProps {
   initialTraits?: string[];
@@ -114,6 +99,12 @@ const DIARY_MAX_TOKENS = 80;
 
 // How many of a character's own recent diary entries to feed into its motivation pass (its memory).
 const DIARY_MEMORY_ENTRIES = 5;
+
+// Output caps for the staged planning passes. Sized for the verbose small tier (Rocinante 12B) so cast
+// lists and intents complete rather than truncate mid-word — a cut cast member is lost from the whole turn.
+const DIRECTOR_MAX_TOKENS = 320;
+const CHARACTER_MAX_TOKENS = 256;
+const STORYBOARD_MAX_TOKENS = 300;
 // Cap on older turns rehydrated to full text per turn — rehydration is a targeted aid, not bulk restore.
 const DIGEST_MAX_REHYDRATIONS = 3;
 // How many recent turns count as "currently in the scene" for the choices entity filter (this turn plus
@@ -781,68 +772,23 @@ ${playerNotes || NONE_PLACEHOLDER}
         // The banded recap rides a user message now, so the last assistant message is the real last narration.
         const lastStory =
           [...trimmedHistory].reverse().find((m) => m.role === "assistant")?.content || "";
-        const recap = lastStory ? `What just happened:\n${lastStory}\n\n` : "";
-
-        // 1) Director: who is in the scene and what carries over.
-        const directorOut = await makeAIRequest(
-          renderPromptTemplate(defaultDirectorPrompt, stageValues),
-          [{ role: "user", content: `${recap}The player's next action: ${action}\n\nDescribe the scene and list the cast now.` }],
-          "director",
-          160,
+        const staged = await runStagedPlanning({
+          action,
+          stageValues,
+          lastStory,
+          entities,
+          presentEntityIds: currentLocation?.entities || [],
+          characterDiaries,
+          fullMessageHistory,
+          diaryMemoryEntries: DIARY_MEMORY_ENTRIES,
+          caps: { director: DIRECTOR_MAX_TOKENS, character: CHARACTER_MAX_TOKENS, storyboard: STORYBOARD_MAX_TOKENS },
+          request: makeAIRequest,
           signal,
-        );
+        });
         if (signal.aborted) return;
-        const { scene, cast } = parseDirectorCast(directorOut || "");
-        // The player may be listed for scene grounding but is never directed or matched as a participant.
-        const npcCast = cast.filter((c) => !c.isPlayer);
-        // Split the cast into defined entities (director vouched → loose narration match) and ad-hoc
-        // names (no record → strict match). Both are confirmed against the narration after game text.
-        const definedByLower = new Map(entities.map((e) => [e.name.trim().toLowerCase(), e.name]));
-        for (const member of npcCast) {
-          const canonical = definedByLower.get(member.name.trim().toLowerCase());
-          if (canonical) directorCandidates.push(canonical);
-          else adHocCandidates.push(member.name);
-        }
-
-        if (npcCast.length === 0) {
-          // No one to reconcile — the character + storyboard passes have nothing to merge and only invent
-          // filler, so skip them. The plan is just the director's scene + the player's placement.
-          turnPlan = buildStagedPlan({ scene, stances: cast, beats: "" });
-        } else {
-          const presentIds = currentLocation?.entities || [];
-          const presentEntities = entities.filter((e) => presentIds.includes(e.id));
-          const { chosen, overflow } = matchCastToEntities(npcCast, presentEntities, 3);
-
-          // 2) One motivation pass per chosen character (sequential — see makeAIRequest capture note).
-          const intents: { name: string; text: string }[] = [];
-          for (const member of chosen) {
-            // Feed the character its own recent diary as private memory (Slice B) — only when enabled.
-            const diary = characterDiaries
-              ? collectCharacterDiary(fullMessageHistory, member.name, DIARY_MEMORY_ENTRIES)
-              : [];
-            const text = await makeAIRequest(
-              renderPromptTemplate(defaultCharacterPrompt, stageValues),
-              [{ role: "user", content: buildCharacterUserMessage({ character: member, scene, action, diary }) }],
-              "character",
-              128,
-              signal,
-            );
-            if (signal.aborted) return;
-            if (text) intents.push({ name: member.name, text });
-          }
-
-          // 3) Storyboarder: consolidate the cast + intentions into this turn's plan.
-          const plan = await makeAIRequest(
-            renderPromptTemplate(defaultStoryboardPrompt, stageValues),
-            [{ role: "user", content: buildStoryboardUserMessage({ recap: lastStory, scene, intents, overflow, action }) }],
-            "storyboard",
-            150,
-            signal,
-          );
-          if (signal.aborted) return;
-          // Ground the narration in the director's scene + cast stances alongside the storyboard beats.
-          turnPlan = buildStagedPlan({ scene, stances: cast, beats: plan || "" });
-        }
+        turnPlan = staged.turnPlan;
+        directorCandidates.push(...staged.directorCandidates);
+        adHocCandidates.push(...staged.adHocCandidates);
       }
 
       // Attach the plan to the final user turn (adjacent to where the model writes) instead of the
@@ -1082,7 +1028,6 @@ ${playerNotes || NONE_PLACEHOLDER}
       if (action === "START GAME") {
         setIsGameStarted(false);
       }
-      debugLog("Error in sendGameAction", error, true);
 
       let errorMessage = "Failed to complete action. Please try again.";
 
@@ -1332,10 +1277,11 @@ ${playerNotes || NONE_PLACEHOLDER}
             // display reads as continuous typing and the late truncation trim stays off-screen.
             const display = stripReasoningLive(content);
             reveal.push(display);
+            // Split once per token; both streaming TTS and the entity tab read the same segments.
+            const segments = splitSentenceSegments(display);
 
             // Feed newly-completed sentences to streaming TTS, holding back the last (in-progress) one.
             if (ttsStreaming) {
-              const segments = splitSentenceSegments(display);
               const completeCount = segments.length - 1;
               for (let i = ttsSentenceCursorRef.current; i < completeCount; i++) {
                 ttsModalRef.current?.streamSentence(segments[i]);
@@ -1345,7 +1291,7 @@ ${playerNotes || NONE_PLACEHOLDER}
 
             // Progressively fill the entity tab as each sentence completes (defined entities only; the
             // authoritative union, incl. staged ad-hoc, is applied once the narration finishes).
-            const completeSentences = splitSentenceSegments(display).length - 1;
+            const completeSentences = segments.length - 1;
             const newSentence = completeSentences > entitySentenceCursorRef.current;
             if (newSentence) {
               entitySentenceCursorRef.current = completeSentences;

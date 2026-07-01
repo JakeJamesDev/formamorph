@@ -2,6 +2,7 @@ import { createContext, useContext, useState, useEffect, useRef, useCallback, ty
 import { defaultSystemPrompt, defaultChoicesPrompt, defaultStatUpdatesPrompt, defaultLocationChangePrompt, defaultThinkingPrompt, defaultSummaryPrompt, defaultChoicesUserPrompt, defaultStatUpdatesUserPrompt, defaultLocationChangeUserPrompt, defaultSummaryUserPrompt, defaultDiaryPrompt } from '../components/game/GamePrompts';
 import { DEFAULT_ENDPOINT, DEFAULT_API_TOKEN, DEFAULT_MODEL_NAME, DEFAULT_MAX_TOKENS, DEFAULT_CONTEXT_WINDOW } from './settingsDefaults';
 import { fetchContextLength } from '../lib/contextLength';
+import { usePersistentState, stringCodec, boolCodec, intCodec, floatCodec, nullableIntCodec } from '../lib/usePersistentState';
 import type { ParagraphLimit } from '../lib/outputLength';
 
 export type DetectStatus = 'idle' | 'detecting' | 'success' | 'error';
@@ -10,20 +11,6 @@ export type ThinkingMode = 'off' | 'precall' | 'inline' | 'staged';
 export type { ParagraphLimit };
 
 const APP_ID = 'FORMAMORPH';
-
-// Converts a setting to/from its stored string form. Reusable codecs cover the common shapes.
-interface Codec<T> {
-  parse: (raw: string) => T;
-  serialize: (value: T) => string;
-}
-const stringCodec: Codec<string> = { parse: (r) => r, serialize: (v) => v };
-const boolCodec: Codec<boolean> = { parse: (r) => JSON.parse(r), serialize: (v) => JSON.stringify(v) };
-const intCodec: Codec<number> = { parse: (r) => parseInt(r), serialize: (v) => String(v) };
-const floatCodec: Codec<number> = { parse: (r) => parseFloat(r), serialize: (v) => String(v) };
-const nullableIntCodec: Codec<number | null> = {
-  parse: (r) => (r === '' ? null : parseInt(r)),
-  serialize: (v) => (v == null ? '' : String(v)),
-};
 
 /** One-time migration of the legacy "type DISABLED into the prompt body" hack to per-prompt Enabled
  *  flags. A prompt whose stored body is exactly "DISABLED" is turned off and its body reset to default. */
@@ -39,21 +26,6 @@ function migrateDisabledPrompts() {
       localStorage.removeItem(promptKey); // re-seeds to the default body, no longer the sentinel
     }
   }
-}
-
-/** useState mirrored to a localStorage `key`: seeds from the stored value (or `defaultValue` when
- *  absent) and writes back on every change. `codec` maps the value to/from its stored string. */
-function usePersistentState<T>(key: string, defaultValue: T, codec: Codec<T>) {
-  const [value, setValue] = useState<T>(() => {
-    const raw = localStorage.getItem(key);
-    return raw === null ? defaultValue : codec.parse(raw);
-  });
-  const codecRef = useRef(codec); // avoid re-running the write effect on inline-codec identity changes
-  codecRef.current = codec;
-  useEffect(() => {
-    localStorage.setItem(key, codecRef.current.serialize(value));
-  }, [key, value]);
-  return [value, setValue] as const;
 }
 
 function useProvideSettings() {

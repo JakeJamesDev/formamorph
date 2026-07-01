@@ -7,9 +7,10 @@ import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {ConfirmDialog} from "@/components/ConfirmDialog";
 import {RadioGroup,RadioGroupItem } from"@/components/ui/radio-group";
 import {Label} from "@/components/ui/label"
-import {FilePlus2, DoorOpen, Pencil, Github, AlertTriangle, Code, User, LogIn, LogOut, Key, Upload, Import, Search, Globe, Settings, LayoutGrid, GalleryThumbnails, Columns2, RectangleVertical } from "lucide-react";
+import {FilePlus2, DoorOpen, Pencil, Github, AlertTriangle, Code, User, LogIn, LogOut, Key, Upload, Import, Search, Globe, Settings, LayoutGrid, GalleryThumbnails, Columns2, RectangleVertical, Trash2 } from "lucide-react";
 import { ImageZoomViewer } from "@/components/ImageZoomViewer";
 import { cn } from "@/lib/utils";
+import { usePersistentState, boolCodec } from "@/lib/usePersistentState";
 import { MarkdownRenderer } from "@/components/game/MarkdownRenderer";
 import {
   Dialog,
@@ -77,13 +78,6 @@ const applyWorldOrder = <T extends { id: string }>(list: T[], order: string[]): 
 
 // A draggable world tile. The whole card is the drag handle; a small move distance is
 // required to start a drag so a plain click still selects the world.
-// Trash icon shared by both card layouts' delete button.
-const DeleteIcon = () => (
-  <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
-    <path fillRule="evenodd" d="M9 2a1 1 0 00-.894.553L7.382 4H4a1 1 0 000 2v10a2 2 0 002 2h8a2 2 0 002-2V6a1 1 0 100-2h-3.382l-.724-1.447A1 1 0 0011 2H9zM7 8a1 1 0 012 0v6a1 1 0 11-2 0V8zm5-1a1 1 0 00-1 1v6a1 1 0 102 0V8a1 1 0 00-1-1z" clipRule="evenodd" />
-  </svg>
-);
-
 function SortableWorldCard({ world, onSelect, onDelete, layout }: {
   world: WorldRecord;
   onSelect: (id: string) => void;
@@ -141,7 +135,7 @@ function SortableWorldCard({ world, onSelect, onDelete, layout }: {
           onClick={handleDelete}
           aria-label="Delete world"
         >
-          <DeleteIcon />
+          <Trash2 className="h-5 w-5" />
         </button>
       </div>
     );
@@ -168,7 +162,7 @@ function SortableWorldCard({ world, onSelect, onDelete, layout }: {
           onPointerDown={(e) => e.stopPropagation()}
           onClick={handleDelete}
         >
-          <DeleteIcon />
+          <Trash2 className="h-5 w-5" />
         </button>
       </div>
     </div>
@@ -180,24 +174,15 @@ const MainMenu = ({ onStartGame, onOpenWorldEditor }: MainMenuProps) => {
   const [selectedWorld, setSelectedWorld] = useState<WorldRecord | null>(null);
   // Local-world grid layout: "grid" (default compact cards) or "detailed" (Discover-style card + info
   // beneath). Persisted across sessions in localStorage.
-  const [layoutMode, setLayoutMode] = useState<'grid' | 'detailed'>(
-    () => (localStorage.getItem(LAYOUT_MODE_KEY) === 'detailed' ? 'detailed' : 'grid'),
+  const [layoutMode, setLayoutMode] = usePersistentState<'grid' | 'detailed'>(
+    LAYOUT_MODE_KEY, 'grid',
+    { parse: (r) => (r === 'detailed' ? 'detailed' : 'grid'), serialize: (v) => v },
   );
-  const changeLayoutMode = (mode: 'grid' | 'detailed') => {
-    setLayoutMode(mode);
-    localStorage.setItem(LAYOUT_MODE_KEY, mode);
-  };
   // Per-modal "collapse to single column" preference, persisted across sessions.
-  const [worldModalCollapsed, setWorldModalCollapsed] = useState(
-    () => localStorage.getItem(WORLD_MODAL_COLLAPSED_KEY) === 'true',
+  const [worldModalCollapsed, setWorldModalCollapsed] = usePersistentState(
+    WORLD_MODAL_COLLAPSED_KEY, false, boolCodec,
   );
-  const toggleWorldModalCollapsed = () => {
-    setWorldModalCollapsed((prev) => {
-      const next = !prev;
-      localStorage.setItem(WORLD_MODAL_COLLAPSED_KEY, String(next));
-      return next;
-    });
-  };
+  const toggleWorldModalCollapsed = () => setWorldModalCollapsed((prev) => !prev);
   const [showWorldModal, setShowWorldModal] = useState(false);
   const [showMobileWorldEditorWarning, setShowMobileWorldEditorWarning] = useState(false);
   const [worldToDelete, setWorldToDelete] = useState<string | null>(null);
@@ -305,8 +290,10 @@ const MainMenu = ({ onStartGame, onOpenWorldEditor }: MainMenuProps) => {
         await WorldStorageService.initialize();
         const existingWorlds = await WorldStorageService.getWorldMetadata();
         if (existingWorlds.length === 0) {
-          await WorldStorageService.loadDefaultWorlds(defaultWorlds);
-          toast.success("Loaded default worlds");
+          const failed = await WorldStorageService.loadDefaultWorlds(defaultWorlds);
+          if (failed.length === 0) toast.success("Loaded default worlds");
+          else if (failed.length < defaultWorlds.length) toast.error(`Some default worlds failed to load: ${failed.join(", ")}`);
+          else toast.error("Failed to load default worlds");
         }
         const worldMetadata = await WorldStorageService.getWorldMetadata();
 
@@ -891,7 +878,7 @@ const MainMenu = ({ onStartGame, onOpenWorldEditor }: MainMenuProps) => {
 
       {/* Top-left controls: local-world layout selector (styled like the settings tabs) */}
       <div className="fixed top-4 left-4 z-10">
-        <Tabs value={layoutMode} onValueChange={(v) => changeLayoutMode(v as 'grid' | 'detailed')}>
+        <Tabs value={layoutMode} onValueChange={(v) => setLayoutMode(v as 'grid' | 'detailed')}>
           <TabsList>
             <TabsTrigger value="grid" aria-label="Grid view" title="Grid view">
               <LayoutGrid className="h-5 w-5" />
