@@ -97,7 +97,7 @@ Hide
 Forage for food
 Rest to recover stamina`;
 
-export const defaultStatUpdatesPrompt = `Given the game context, the player's current stats, and the latest game events, decide which stats change.
+export const defaultStatUpdatesPrompt = `You are the stat tracker for an interactive roleplay. Your entire output is stat-change lines - nothing else.
 
 Game World:
 <WORLD DESCRIPTION>
@@ -115,15 +115,15 @@ Rules:
 - Output one change per line as "StatName: number". Use the exact stat names listed above as keys.
 - The number is the amount to add (negative subtracts); keep each between -20 and 20.
 - To change a stat's maximum instead of its current value, append MAX (e.g. "Health: 10 MAX" raises max Health by 10).
-- Only include stats that actually change this turn. If nothing changes, output nothing.
-- Output only these lines - no other text.
+- Only include stats that actually change this turn. If nothing changes, output nothing at all.
+- Begin your reply with the first stat line (or nothing) - never a preamble, heading, or explanation.
 
 Example:
 Hunger: -10
 Stamina: -5
 Health: 10 MAX`;
 
-export const defaultLocationChangePrompt = `Based on the latest game events, decide whether the player should move to a different location.
+export const defaultLocationChangePrompt = `You are the location router for an interactive roleplay. Your entire output is a single location name or the word NONE - nothing else.
 
 Game World:
 <WORLD DESCRIPTION>
@@ -137,8 +137,8 @@ Characters and things that may appear here:
 Available Locations:
 <LOCATION|list>
 
-If the events clearly indicate the player has moved or should move, respond with ONLY the exact destination name copied from the Available Locations list. Otherwise respond with exactly: NONE
-Do not invent a location, add punctuation, or write anything else.`;
+If the events clearly indicate the player has moved or should move, output ONLY the exact destination name copied from the Available Locations list. Otherwise output exactly: NONE
+Begin your reply with the name or NONE - never a preamble, reasoning, punctuation, or any other text. Do not invent a location.`;
 
 // System prompt for the optional "separate planning pass" (thinkingMode === 'precall'). Produces a
 // short plan that is injected into the game-text request; the player never sees it.
@@ -190,14 +190,15 @@ Kael revealed the bridge ahead had collapsed.`;
 // The character-diary pass: run once per participating character as turns age out, to record that
 // character's own first-person memory of the turn. Identity + narration arrive in the user message
 // (buildDiaryUserMessage); this system prompt is the generic diarist framing.
-export const defaultDiaryPrompt = `You ARE one character in an interactive roleplay, writing a private diary. In 1-2 sentences, record what just happened from my own point of view - in the first person ("I ..."), in my voice.
+export const defaultDiaryPrompt = `You ARE one character in an interactive roleplay, writing a private diary. In exactly 1-2 sentences, record this moment from my own point of view - in the first person ("I ..."), in my voice.
 
 Rules:
+- Write my inner life, not a recap: what I feel, notice, suspect, want, or intend - not a retelling of the events themselves.
 - Write only what I witnessed or would plausibly know. If something happened out of my sight or knowledge, I do not write it.
 - This is my private memory: my perspective, my feelings, my secrets. I may hold back what I would keep to myself.
 - Refer to the player as "the player character" or "them" - never "you".
-- No headings, labels, or lists. Just the entry.
-- If I saw nothing worth recording, output exactly: nothing notable`;
+- No headings, labels, or lists. Just the 1-2 sentences.
+- If there is nothing worth recording, output only: nothing notable (those two words alone, nothing else).`;
 
 // Appended to the game-text prompt for inline thinking (thinkingMode === 'inline'). The <think>
 // block is stripped from the narration before the player sees it.

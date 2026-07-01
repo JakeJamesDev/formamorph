@@ -22,7 +22,7 @@ import VramReadout from "./VramReadout";
 import { useVramStats } from "@/lib/useVramStats";
 import { useSettings } from "@/contexts/SettingsContext";
 import { useGameplay } from "@/contexts/GameplayContext";
-import { splitForTTS } from "@/lib/ttsChunks";
+import { splitForTTS, stripMarkdownForSpeech } from "@/lib/ttsChunks";
 /** Reports generation progress as `done` of `total` sentence-chunks. */
 export type TTSProgress = { done: number; total: number };
 
@@ -103,6 +103,14 @@ const TTSModal = forwardRef<TTSModalHandle, {
       ? freeBeforeLoad - minFreeMB
       : null;
 
+  // The single point all TTS text passes through on its way to the engine. Strip Markdown here so Kokoro
+  // speaks the words, not the syntax (e.g. a stray "*" read aloud as "asterisk").
+  const synthesizeSpeech = useCallback(
+    (model: KokoroTTS, text: string, voice: string) =>
+      model.generate(stripMarkdownForSpeech(text), { voice: voice as GenerateOptions['voice'] }),
+    [],
+  );
+
   // Generate audio for `text` with the loaded model/voice; returns false if not ready.
   // Kokoro truncates each generate() past ~510 tokens, so the text is split into sentence-chunks
   // and generated one at a time (reporting progress), each fed to the playback engine as it's ready.
@@ -121,7 +129,7 @@ const TTSModal = forwardRef<TTSModalHandle, {
       ttsPlayback.reset();
       for (let i = 0; i < total; i++) {
         onProgress?.({ done: i, total });
-        const result = await tts.generate(chunks[i], { voice: selectedVoice as GenerateOptions['voice'] });
+        const result = await synthesizeSpeech(tts, chunks[i], selectedVoice);
         ttsPlayback.append(new Float32Array(result.audio), result.sampling_rate);
       }
       ttsPlayback.finalize();
@@ -133,7 +141,7 @@ const TTSModal = forwardRef<TTSModalHandle, {
     } finally {
       setIsPlaying(false);
     }
-  }, [tts, selectedVoice, ttsPlayback]);
+  }, [tts, selectedVoice, ttsPlayback, synthesizeSpeech]);
 
   // Synthesize queued sentences sequentially, appending each to the playback engine; finalize once
   // the stream has ended and the queue is drained.
@@ -147,7 +155,7 @@ const TTSModal = forwardRef<TTSModalHandle, {
         const voice = voiceRef.current;
         if (!model || !voice) continue;
         try {
-          const result = await model.generate(text, { voice: voice as GenerateOptions['voice'] });
+          const result = await synthesizeSpeech(model, text, voice);
           ttsPlayback.append(new Float32Array(result.audio), result.sampling_rate);
         } catch (error) {
           console.error("Failed to synthesize narration sentence:", error);
@@ -159,7 +167,7 @@ const TTSModal = forwardRef<TTSModalHandle, {
     if (streamEndedRef.current && streamQueueRef.current.length === 0) {
       ttsPlayback.finalize();
     }
-  }, [ttsPlayback]);
+  }, [ttsPlayback, synthesizeSpeech]);
 
   const streamStart = useCallback(() => {
     streamQueueRef.current = [];
