@@ -45,12 +45,13 @@ import {
   parseDirectorCast,
   matchCastToEntities,
   buildCharacterUserMessage,
+  buildDiaryUserMessage,
   buildStoryboardUserMessage,
   buildStagedPlan,
 } from "../lib/stagedPlanning";
 import { lengthGuidance, trimToLastSentence } from "../lib/outputLength";
 import { splitSentenceSegments } from "../lib/ttsChunks";
-import { selectDueDigests, applyDigest, parseTurnContent } from "../lib/turnDigest";
+import { selectDueDigests, applyDigest, parseTurnContent, selectDueDiaries, pendingDiaryNames, applyDiary } from "../lib/turnDigest";
 import { buildTraitContext } from "../lib/traitTree";
 import { buildLocationContext, buildEntityContext } from "../lib/locationContext";
 import { NONE_PLACEHOLDER } from "../lib/promptFallbacks";
@@ -107,6 +108,9 @@ interface DebugTurn {
 // Each completed turn is digested as soon as it commits (same-turn), so a summary is always ready for
 // the next turn's context assembly. Small cap on each digest request — fact lines are short.
 const DIGEST_MAX_TOKENS = 200;
+
+// Per-character diary entries are short, first-person, 1-2 sentences — a small cap keeps them terse.
+const DIARY_MAX_TOKENS = 150;
 // Cap on older turns rehydrated to full text per turn — rehydration is a targeted aid, not bulk restore.
 const DIGEST_MAX_REHYDRATIONS = 3;
 // How many recent turns count as "currently in the scene" for the choices entity filter (this turn plus
@@ -176,6 +180,8 @@ const GameViewer = ({
     thinkingPrompt,
     memoryDigests,
     summaryPrompt,
+    characterDiaries,
+    diaryPrompt,
     choicesUserPrompt,
     statUpdatesUserPrompt,
     locationChangeUserPrompt,
@@ -292,6 +298,8 @@ const GameViewer = ({
   const currentTurnIdRef = useRef(""); // stable id for the in-progress turn, stamped into its assistant JSON
   const digestDrainingRef = useRef(false); // a memory digest is in flight (serializes the drainer)
   const [digestActive, setDigestActive] = useState(false); // drives the status-bar indicator for a running digest
+  const diaryDrainingRef = useRef(false); // a character diary entry is in flight (serializes the drainer)
+  const [diaryActive, setDiaryActive] = useState(false); // drives the status-bar indicator for a running diary pass
 
   // Generate TTS for `text` (or the current game text) with the busy flag set, so both the
   // manual refresh button and auto-narration show the same spinner + chunk progress.
@@ -1498,6 +1506,50 @@ ${playerNotes || NONE_PLACEHOLDER}
     })();
   }, [memoryDigests, isWaitingForAI, fullMessageHistory, summaryPrompt, summaryUserPrompt, setFullMessageHistory]);
 
+  // Character-diary drainer (write side): for each completed turn with participants, silently write a
+  // first-person diary entry per participant as an idle-time job, patched back onto that turn's `diaries`
+  // map. Mirrors the digest drainer, and serializes against it (only one silent job runs at a time) so a
+  // local endpoint isn't hit twice. Runs one participant per tick; patching re-runs the effect until the
+  // due turn is fully covered, then the next due turn. Nothing consumes the entries yet (Slice A).
+  useEffect(() => {
+    if (!characterDiaries || isWaitingForAI || digestActive || digestDrainingRef.current || diaryDrainingRef.current) return;
+    const due = selectDueDiaries(fullMessageHistory);
+    if (due.length === 0) return;
+    // Oldest due turn first — closest to leaving the context window.
+    const turnId = due[due.length - 1];
+    const dueTurn = fullMessageHistory
+      .map((m) => (m.role === "assistant" ? parseTurnContent(m.content) : null))
+      .find((c) => c?.turnId === turnId);
+    const narrationText = dueTurn?.narration ?? "";
+    const name = pendingDiaryNames(fullMessageHistory, turnId)[0];
+    if (!narrationText.trim() || !name) return;
+    const entity = entities.find((e) => e.name.trim().toLowerCase() === name.trim().toLowerCase());
+
+    diaryDrainingRef.current = true;
+    setDiaryActive(true);
+    (async () => {
+      try {
+        const entry = await makeAIRequestRef.current(
+          diaryPrompt,
+          [{ role: "user", content: buildDiaryUserMessage({ name, entity, narration: narrationText }) }],
+          "diary",
+          DIARY_MAX_TOKENS,
+          undefined,
+          true, // silent: surfaces only when "Show Silent Requests" is on
+          turnId, // attach the request to the turn it records in the AI-context viewer
+        );
+        const trimmed = (entry ?? "").trim();
+        // Store even an empty result (as "") so the participant isn't retried forever on a blank reply.
+        setFullMessageHistory((prev) => applyDiary(prev, turnId, name, trimmed) ?? prev);
+      } catch {
+        // Non-fatal: the participant stays due and is retried on a later idle tick.
+      } finally {
+        diaryDrainingRef.current = false;
+        setDiaryActive(false);
+      }
+    })();
+  }, [characterDiaries, isWaitingForAI, digestActive, fullMessageHistory, entities, diaryPrompt, setFullMessageHistory]);
+
   const handleSendAction = () => {
     const input = playerInput.trim();
     if (!input || isWaitingForAI) return;
@@ -1635,6 +1687,7 @@ ${playerNotes || NONE_PLACEHOLDER}
         statUpdates: "Stat Updates",
         locationChange: "Location",
         summary: "Memory",
+        diary: "Diary",
       };
       const label = aiRequestType ? labels[aiRequestType] : "Response";
       return (
@@ -1660,16 +1713,40 @@ ${playerNotes || NONE_PLACEHOLDER}
         </div>
       );
     }
+    if (diaryActive && showSilentRequests) {
+      return (
+        <div className="flex items-center gap-2 mb-1">
+          <span className="text-xs text-muted-foreground whitespace-nowrap">
+            Writing diary…
+          </span>
+          <div className="flex-grow">
+            <IndeterminateProgress />
+          </div>
+        </div>
+      );
+    }
     return null;
   })();
+
+  // The context meter's history math is O(turns) (parseTurns + banding), so memoize it: the streaming
+  // reveal re-renders this component ~60×/sec (setGameplayText per frame), and recomputing per frame
+  // starves the reveal at high turn counts. This recomputes only when the history/settings that feed
+  // getTrimmedMessageHistory change (a few times per turn), not on every reveal frame.
+  const memoryStats = useMemo(() => {
+    const promptTokens = estimateTokens(lastPromptChars);
+    const trimmed = getTrimmedMessageHistory(promptTokens);
+    return {
+      promptTokens,
+      trimmed,
+      bandCounts: lastBandCountsRef.current, // set as a side effect of the call above
+      historyTokens: estimateTokens(estimateHistoryChars(trimmed)),
+    };
+  }, [getTrimmedMessageHistory, lastPromptChars]);
 
   const memoryBar = (() => {
     // Token breakdown of the model's context window: prompt + history + reserved output vs the window.
     const windowTokens = contextWindow || 1;
-    const promptTokens = estimateTokens(lastPromptChars);
-    const trimmed = getTrimmedMessageHistory(promptTokens);
-    const bandCounts = lastBandCountsRef.current; // set by the call above when banding is active
-    const historyTokens = estimateTokens(estimateHistoryChars(trimmed)); // what's actually sent
+    const { promptTokens, trimmed, bandCounts, historyTokens } = memoryStats;
     const outputTokens = maxTokens;
     const usedTokens = promptTokens + historyTokens + outputTokens;
     const pct = (n: number) => (n / windowTokens) * 100;

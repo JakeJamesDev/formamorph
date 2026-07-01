@@ -1,5 +1,5 @@
 import { createContext, useContext, useState, useEffect, useRef, useCallback, type ReactNode } from 'react';
-import { defaultSystemPrompt, defaultChoicesPrompt, defaultStatUpdatesPrompt, defaultLocationChangePrompt, defaultThinkingPrompt, defaultSummaryPrompt, defaultChoicesUserPrompt, defaultStatUpdatesUserPrompt, defaultLocationChangeUserPrompt, defaultSummaryUserPrompt } from '../components/game/GamePrompts';
+import { defaultSystemPrompt, defaultChoicesPrompt, defaultStatUpdatesPrompt, defaultLocationChangePrompt, defaultThinkingPrompt, defaultSummaryPrompt, defaultChoicesUserPrompt, defaultStatUpdatesUserPrompt, defaultLocationChangeUserPrompt, defaultSummaryUserPrompt, defaultDiaryPrompt } from '../components/game/GamePrompts';
 import { DEFAULT_ENDPOINT, DEFAULT_API_TOKEN, DEFAULT_MODEL_NAME, DEFAULT_MAX_TOKENS, DEFAULT_CONTEXT_WINDOW } from './settingsDefaults';
 import { fetchContextLength } from '../lib/contextLength';
 import type { ParagraphLimit } from '../lib/outputLength';
@@ -91,6 +91,10 @@ function useProvideSettings() {
   // verbatim window AND feed those digests into context (recent-verbatim floor + a "story so far" band
   // + lexical rehydration). Default off: extra async request + it changes what's sent to the model.
   const [memoryDigests, setMemoryDigests] = usePersistentState<boolean>(`${APP_ID}_memoryDigests`, false, boolCodec);
+  // Lazily write a per-character first-person diary entry for each turn's participants as turns age out.
+  // Write-side only for now (entries are stored + inspectable, not yet fed back into the character pass).
+  // Default off: extra async requests (one per participant) that matter mostly on a local endpoint.
+  const [characterDiaries, setCharacterDiaries] = usePersistentState<boolean>(`${APP_ID}_characterDiaries`, false, boolCodec);
   // Reveal "silent" requests (e.g. the memory digest) in the status bar and AI-context viewer.
   // Default off: silent requests do their work without cluttering the UI; this is an inspection toggle.
   const [showSilentRequests, setShowSilentRequests] = usePersistentState<boolean>(`${APP_ID}_showSilentRequests`, false, boolCodec);
@@ -160,6 +164,7 @@ function useProvideSettings() {
   });
   const [thinkingPrompt, setThinkingPrompt] = usePersistentState<string>(`${APP_ID}_thinkingPrompt`, defaultThinkingPrompt, stringCodec);
   const [summaryPrompt, setSummaryPrompt] = usePersistentState<string>(`${APP_ID}_summaryPrompt`, defaultSummaryPrompt, stringCodec);
+  const [diaryPrompt, setDiaryPrompt] = usePersistentState<string>(`${APP_ID}_diaryPrompt`, defaultDiaryPrompt, stringCodec);
   // Editable user-message templates for the aux requests (framing + task cue), rendered with the
   // <PLAYER ACTION>/<GAME TEXT> runtime tokens. Previously these were hardcoded in GameViewer.
   const [choicesUserPrompt, setChoicesUserPrompt] = usePersistentState<string>(`${APP_ID}_choicesUserPrompt`, defaultChoicesUserPrompt, stringCodec);
@@ -198,6 +203,8 @@ function useProvideSettings() {
     setStreamNarrationAudio,
     memoryDigests,
     setMemoryDigests,
+    characterDiaries,
+    setCharacterDiaries,
     showSilentRequests,
     setShowSilentRequests,
     endpointUrl,
@@ -252,6 +259,8 @@ function useProvideSettings() {
     setThinkingPrompt,
     summaryPrompt,
     setSummaryPrompt,
+    diaryPrompt,
+    setDiaryPrompt,
     choicesUserPrompt,
     setChoicesUserPrompt,
     statUpdatesUserPrompt,

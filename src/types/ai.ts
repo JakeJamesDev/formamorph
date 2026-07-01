@@ -38,7 +38,8 @@ export type AIRequestType =
   | 'choices'
   | 'statUpdates'
   | 'locationChange'
-  | 'summary';
+  | 'summary'
+  | 'diary';
 
 /**
  * Structured payload the game stores per turn (mirrors the JSON the app round-trips).
@@ -55,6 +56,10 @@ export interface AITurnResult {
   /** Names of the entities that took part in this turn (from the narration parse, plus staged ad-hoc
    *  characters confirmed by the narration). Drives the choices filter and participation rehydration. */
   entities?: string[];
+  /** Lazily-generated per-character diary: character name → that character's first-person entry about
+   *  this turn. Written for each participant as turns age out; a character's full diary is these across
+   *  turns. Absent on pre-diary saves. */
+  diaries?: Record<string, string>;
 }
 
 export interface AuthUser {

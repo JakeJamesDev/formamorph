@@ -181,6 +181,20 @@ export function buildCharacterUserMessage(args: {
   return `${identity}${stanceLine}${sceneLine}\n\nThe player's latest action: ${action}\n\nAs ${character.name}, state in the first person ("I ...") what you want and what you intend to do this turn.`;
 }
 
+/** Build the user message for one character's diary pass: their identity plus the turn narration to
+ *  record from their point of view. `entity` is the matched defined entity (undefined for ad-hoc). */
+export function buildDiaryUserMessage(args: {
+  name: string;
+  entity?: Entity;
+  narration: string;
+}): string {
+  const { name, entity, narration } = args;
+  const identity = entity
+    ? `You are ${name}.\nWho you are: ${entityBlurb(entity) || "(no description provided)"}`
+    : `You are ${name}.`;
+  return `${identity}\n\nWhat just happened this turn:\n${narration}\n\nWrite ${name}'s first-person diary entry for this turn now.`;
+}
+
 /** Build the user message for the storyboard (merge) pass: the recent-story recap, the director's
  *  scene staging, the per-character intents, and any overflow names beyond the cap. */
 export function buildStoryboardUserMessage(args: {

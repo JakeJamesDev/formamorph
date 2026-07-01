@@ -70,3 +70,54 @@ export function applyDigest(history: ChatMessage[], turnId: string, summary: str
   });
   return found ? next : null;
 }
+
+/**
+ * Pick the `turnId`s of assistant turns due for a character diary entry: those with a stable id and at
+ * least one participant (`entities`) that has no diary entry yet. Turns with no participants are skipped
+ * (no one to write). Returns ids most-recent-first; the drainer decides which end to process.
+ */
+export function selectDueDiaries(history: ChatMessage[]): string[] {
+  const due: string[] = [];
+  for (let i = history.length - 1; i >= 0; i--) {
+    if (history[i].role !== 'assistant') continue;
+    const parsed = parseTurnContent(history[i].content);
+    if (!parsed?.turnId || !parsed.entities?.length) continue;
+    if (parsed.entities.some((name) => parsed.diaries?.[name] === undefined)) due.push(parsed.turnId);
+  }
+  return due;
+}
+
+/** The participant names on a turn still missing a diary entry (empty if the turn is fully covered). */
+export function pendingDiaryNames(history: ChatMessage[], turnId: string): string[] {
+  for (const message of history) {
+    if (message.role !== 'assistant') continue;
+    const parsed = parseTurnContent(message.content);
+    if (parsed?.turnId === turnId) {
+      return (parsed.entities ?? []).filter((name) => parsed.diaries?.[name] === undefined);
+    }
+  }
+  return [];
+}
+
+/**
+ * Patch one character's diary `text` onto the matching turn (merging into its `diaries` map), returning
+ * the new history. Returns `null` if no turn matches (rolled back / regenerated while in flight — the
+ * apply-guard). Other turns and other characters' entries are left untouched.
+ */
+export function applyDiary(
+  history: ChatMessage[],
+  turnId: string,
+  name: string,
+  text: string,
+): ChatMessage[] | null {
+  let found = false;
+  const next = history.map((message) => {
+    if (message.role !== 'assistant') return message;
+    const parsed = parseTurnContent(message.content);
+    if (!parsed || parsed.turnId !== turnId) return message;
+    found = true;
+    const diaries = { ...(parsed.diaries ?? {}), [name]: text };
+    return { ...message, content: serializeTurnContent({ ...parsed, diaries }) };
+  });
+  return found ? next : null;
+}

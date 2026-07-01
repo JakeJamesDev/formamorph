@@ -9,7 +9,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import PromptField from '../prompt/PromptField';
 import { PROMPT_KIND_VARIABLES, PROMPT_KIND_USER_VARIABLES } from '@/lib/promptVariables';
 import { ConfirmDialog } from '../ConfirmDialog';
-import { defaultSystemPrompt, defaultChoicesPrompt, defaultStatUpdatesPrompt, defaultLocationChangePrompt, defaultThinkingPrompt, defaultSummaryPrompt, defaultChoicesUserPrompt, defaultStatUpdatesUserPrompt, defaultLocationChangeUserPrompt, defaultSummaryUserPrompt } from '../game/GamePrompts';
+import { defaultSystemPrompt, defaultChoicesPrompt, defaultStatUpdatesPrompt, defaultLocationChangePrompt, defaultThinkingPrompt, defaultSummaryPrompt, defaultChoicesUserPrompt, defaultStatUpdatesUserPrompt, defaultLocationChangeUserPrompt, defaultSummaryUserPrompt, defaultDiaryPrompt } from '../game/GamePrompts';
 import VramReadout from '../game/VramReadout';
 import { useVramStats } from '@/lib/useVramStats';
 
@@ -103,6 +103,8 @@ export const SettingsModal = ({ isOpen, onOpenChange, previewValues }: {
     setThinkingPrompt,
     summaryPrompt,
     setSummaryPrompt,
+    diaryPrompt,
+    setDiaryPrompt,
     choicesUserPrompt,
     setChoicesUserPrompt,
     statUpdatesUserPrompt,
@@ -113,6 +115,8 @@ export const SettingsModal = ({ isOpen, onOpenChange, previewValues }: {
     setSummaryUserPrompt,
     memoryDigests,
     setMemoryDigests,
+    characterDiaries,
+    setCharacterDiaries,
     showSilentRequests,
     setShowSilentRequests,
     paragraphLimit,
@@ -162,6 +166,7 @@ export const SettingsModal = ({ isOpen, onOpenChange, previewValues }: {
     statupdates: { label: 'Stat Updates', reset: () => setStatUpdatesPrompt(defaultStatUpdatesPrompt) },
     location: { label: 'Location Change', reset: () => setLocationChangePromptText(defaultLocationChangePrompt) },
     summary: { label: 'Summary', reset: () => setSummaryPrompt(defaultSummaryPrompt) },
+    diary: { label: 'Diary', reset: () => setDiaryPrompt(defaultDiaryPrompt) },
   };
   // Each prompt tab only exists while its prompt is enabled (toggled in Generation → System Prompts, or
   // its governing setting for Thinking/Summary). If the open tab is no longer available (disabled since,
@@ -173,6 +178,7 @@ export const SettingsModal = ({ isOpen, onOpenChange, previewValues }: {
     statupdates: statUpdatesEnabled,
     location: locationChangeEnabled,
     summary: memoryDigests,
+    diary: characterDiaries,
   };
   const activePromptTab = promptAvailable[promptTab] ? promptTab : 'narration';
   const selectedPrompt = promptResets[activePromptTab] ?? promptResets.narration;
@@ -409,6 +415,22 @@ export const SettingsModal = ({ isOpen, onOpenChange, previewValues }: {
                 </div>
               </div>
               <div className="grid grid-cols-1 sm:grid-cols-4 items-start gap-4">
+                <label htmlFor="characterDiaries" className="text-left sm:text-right leading-4">
+                  Character Diaries
+                </label>
+                <div className="col-span-3 flex items-start gap-2">
+                  <Checkbox
+                    id="characterDiaries"
+                    checked={characterDiaries}
+                    onCheckedChange={(c) => setCharacterDiaries(c === true)}
+                    className="shrink-0"
+                  />
+                  <span className="text-xs text-muted-foreground">
+                    Each character present in a turn quietly records a first-person diary entry about it, as turns age out. Runs an extra request per participant. View them via Show Silent Requests in the AI context viewer, and edit the prompt under System Prompts → Diary. (Not yet fed back into the story.)
+                  </span>
+                </div>
+              </div>
+              <div className="grid grid-cols-1 sm:grid-cols-4 items-start gap-4">
                 <label htmlFor="showSilentRequests" className="text-left sm:text-right leading-4">
                   Show Silent Requests
                 </label>
@@ -543,6 +565,7 @@ export const SettingsModal = ({ isOpen, onOpenChange, previewValues }: {
                 {statUpdatesEnabled && <TabsTrigger value="statupdates">Stat Updates</TabsTrigger>}
                 {locationChangeEnabled && <TabsTrigger value="location">Location Change</TabsTrigger>}
                 {memoryDigests && <TabsTrigger value="summary">Summary</TabsTrigger>}
+                {characterDiaries && <TabsTrigger value="diary">Diary</TabsTrigger>}
               </TabsList>
 
               {/* System vs. user-message template toggle — only the aux prompts have a user template. */}
@@ -627,10 +650,22 @@ export const SettingsModal = ({ isOpen, onOpenChange, previewValues }: {
                   <p className="text-xs text-gray-500 flex-shrink-0">Compresses each turn into fact lines for long-story memory. Only used when Memory Summaries is on.</p>
                 </TabsContent>
               )}
+
+              {characterDiaries && (
+                <TabsContent value="diary" className="mt-4 flex-1 min-h-0 data-[state=active]:flex flex-col gap-1">
+                  <PromptField
+                    value={diaryPrompt}
+                    onChange={setDiaryPrompt}
+                    variables={PROMPT_KIND_VARIABLES.diary}
+                    previewValues={previewValues}
+                  />
+                  <p className="text-xs text-gray-500 flex-shrink-0">Each participating character records a first-person diary entry per turn. Only used when Character Diaries is on.</p>
+                </TabsContent>
+              )}
             </Tabs>
 
             <div className="flex flex-wrap justify-between items-center gap-2 flex-shrink-0">
-              {memoryDigests ? (
+              {memoryDigests && activePromptTab !== 'diary' ? (
                 <VerbatimTurnsField id="promptVerbatim" value={activeVerbatim.value} onChange={activeVerbatim.set} />
               ) : (
                 <span />
