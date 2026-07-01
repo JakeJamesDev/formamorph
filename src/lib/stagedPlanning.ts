@@ -170,15 +170,19 @@ export function buildCharacterUserMessage(args: {
   character: ChosenCharacter;
   scene: string;
   action: string;
+  diary?: string[];
 }): string {
-  const { character, scene, action } = args;
+  const { character, scene, action, diary } = args;
   const identity = character.entity
     ? `You are ${character.name}.\nWho you are: ${entityBlurb(character.entity) || "(no description provided)"}`
     : `You are ${character.name}.\n(Introduced by the director and not a predefined character — portray yourself as a fitting minor presence.)`;
 
+  const diaryBlock = diary && diary.length
+    ? `\n\nMy diary so far (my own private memories, oldest first — stay consistent with them):\n${diary.map((d) => `- ${d}`).join("\n")}`
+    : "";
   const stanceLine = character.stance ? `\nCurrent stance: ${character.stance}` : "";
   const sceneLine = scene ? `\n\nScene: ${scene}` : "";
-  return `${identity}${stanceLine}${sceneLine}\n\nThe player's latest action: ${action}\n\nAs ${character.name}, state in the first person ("I ...") what you want and what you intend to do this turn.`;
+  return `${identity}${diaryBlock}${stanceLine}${sceneLine}\n\nThe player's latest action: ${action}\n\nAs ${character.name}, state in the first person ("I ...") what you want and what you intend to do this turn.`;
 }
 
 /** Build the user message for one character's diary pass: their identity plus the turn narration to

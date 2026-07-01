@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import type { AITurnResult, ChatMessage } from '@/types';
-import { parseTurnContent, serializeTurnContent, selectDueDigests, applyDigest, selectDueDiaries, pendingDiaryNames, applyDiary } from './turnDigest';
+import { parseTurnContent, serializeTurnContent, selectDueDigests, applyDigest, selectDueDiaries, pendingDiaryNames, applyDiary, collectCharacterDiary } from './turnDigest';
 
 const user = (content: string): ChatMessage => ({ role: 'user', content });
 
@@ -177,5 +177,40 @@ describe('applyDiary', () => {
   it('returns null when the turnId is gone', () => {
     const history = [...pair('a1', { turnId: 't1', entities: ['Mira'] })];
     expect(applyDiary(history, 'stale', 'Mira', 'orphan')).toBeNull();
+  });
+});
+
+describe('collectCharacterDiary', () => {
+  it('collects one character\'s entries oldest-first, capped to the last max', () => {
+    const history = [
+      ...pair('a1', { turnId: 't1', diaries: { Mira: 'I waved.', Kael: 'I watched.' } }),
+      ...pair('a2', { turnId: 't2', diaries: { Mira: 'I fled.' } }),
+      ...pair('a3', { turnId: 't3', diaries: { Mira: 'I hid.' } }),
+    ];
+    expect(collectCharacterDiary(history, 'Mira', 5)).toEqual(['I waved.', 'I fled.', 'I hid.']);
+    expect(collectCharacterDiary(history, 'Mira', 2)).toEqual(['I fled.', 'I hid.']); // last 2
+    expect(collectCharacterDiary(history, 'Kael', 5)).toEqual(['I watched.']);
+  });
+
+  it('matches the name case-insensitively and skips turns without an entry', () => {
+    const history = [
+      ...pair('a1', { turnId: 't1', diaries: { Mira: 'I waved.' } }),
+      ...pair('a2', { turnId: 't2' }), // no diaries at all
+      ...pair('a3', { turnId: 't3', diaries: { Kael: 'I watched.' } }), // different character
+    ];
+    expect(collectCharacterDiary(history, 'mira', 5)).toEqual(['I waved.']);
+  });
+
+  it('skips a "nothing notable" entry (it carries no memory)', () => {
+    const history = [
+      ...pair('a1', { turnId: 't1', diaries: { Mira: 'nothing notable' } }),
+      ...pair('a2', { turnId: 't2', diaries: { Mira: 'I fled.' } }),
+    ];
+    expect(collectCharacterDiary(history, 'Mira', 5)).toEqual(['I fled.']);
+  });
+
+  it('returns empty when the character has no entries', () => {
+    const history = [...pair('a1', { turnId: 't1', diaries: { Kael: 'I watched.' } })];
+    expect(collectCharacterDiary(history, 'Mira', 5)).toEqual([]);
   });
 });
