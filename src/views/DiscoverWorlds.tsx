@@ -25,7 +25,7 @@ import { sanitizeTag, collectSanitizedTags } from "@/lib/tagUtils";
 import { cn } from "@/lib/utils";
 import { usePersistentState, boolCodec } from "@/lib/usePersistentState";
 import { CHIP_BASE } from "@/components/Chip";
-import { getCatalog, replaceCatalog } from "@/lib/worldCatalog";
+import { useCatalogSync } from "@/lib/useCatalogSync";
 import {
   Dialog,
   DialogContent,
@@ -62,8 +62,8 @@ interface DiscoverWorldsProps {
 // The Discover "world browser": browse/search/filter/sort the published catalog, view world details
 // and comments, and download/refresh/update copies to the local library.
 const DiscoverWorlds = ({ open, onOpenChange, worlds, setWorlds, isAuthenticated, currentUser, openImageViewer }: DiscoverWorldsProps) => {
-  const [remoteWorlds, setRemoteWorlds] = useState<WorldRecord[]>([]);
-  const [isLoadingRemoteWorlds, setIsLoadingRemoteWorlds] = useState(false);
+  // Catalog fetch/cache/sync (loads on open, refreshes in the background).
+  const { remoteWorlds, setRemoteWorlds, isLoadingRemoteWorlds, isSyncingCatalog, loadCatalog } = useCatalogSync(open);
   const [searchQuery, setSearchQuery] = useState('');
 
   const [authorFilter, setAuthorFilter] = useState<string[]>([]);
@@ -75,7 +75,6 @@ const DiscoverWorlds = ({ open, onOpenChange, worlds, setWorlds, isAuthenticated
   const [currentPage, setCurrentPage] = useState(1);
   // Discover page size: 3 full rows of whatever the responsive grid currently fits, or 10 in portrait.
   const [pageSize, setPageSize] = useState(12);
-  const [isSyncingCatalog, setIsSyncingCatalog] = useState(false);
   const [remoteWorldToDelete, setRemoteWorldToDelete] = useState<string | null>(null);
   const [selectedRemoteWorld, setSelectedRemoteWorld] = useState<WorldRecord | null>(null);
   const [showRemoteWorldDetailsModal, setShowRemoteWorldDetailsModal] = useState(false);
@@ -110,39 +109,6 @@ const DiscoverWorlds = ({ open, onOpenChange, worlds, setWorlds, isAuthenticated
       return Array.from(new Set((Array.isArray(raw) ? raw : []).filter(Boolean)));
     } catch { return []; }
   });
-
-  // Load the world catalog when Discover opens: render the cached copy instantly, then refresh
-  // the whole catalog from the server in the background (one request) and re-cache it.
-  useEffect(() => {
-    if (open) {
-      loadCatalog();
-    }
-  }, [open]);
-
-  const loadCatalog = async (force = false) => {
-    try {
-      const cached = await getCatalog();
-      if (cached.length && !force) {
-        setRemoteWorlds(cached);
-      } else {
-        setIsLoadingRemoteWorlds(true);
-      }
-      setIsSyncingCatalog(true);
-      // One request returns the entire catalog; replace the cache wholesale (also drops removed worlds).
-      const result = await WorldStorageService.fetchRemoteWorlds(1, 1000, '', false, false);
-      if (result.success && Array.isArray(result.data)) {
-        setRemoteWorlds(result.data);
-        await replaceCatalog(result.data);
-      } else if (!cached.length) {
-        toast.error(result.error || 'Failed to fetch worlds');
-      }
-    } catch (error) {
-      console.error('Error loading world catalog:', error);
-    } finally {
-      setIsLoadingRemoteWorlds(false);
-      setIsSyncingCatalog(false);
-    }
-  };
 
   // Persist discover hide preferences
   useEffect(() => {
