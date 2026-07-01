@@ -10,7 +10,7 @@ import { MarkdownRenderer } from './MarkdownRenderer';
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Send, RefreshCw, Pencil, Languages, Loader2, Headphones, Square, ChevronUp, ChevronDown, X } from "lucide-react";
+import { Send, RefreshCw, Pencil, Languages, Loader2, Headphones, Square, ChevronUp, ChevronDown, X, Download } from "lucide-react";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Progress } from "@/components/ui/progress";
 import { Slider } from "@/components/ui/slider";
@@ -272,6 +272,7 @@ export const MiddlePanel = ({
   abortGeneration,
   disabled,
   onTTSClick,
+  onExportStory,
   onRegenerateTTS,
   ttsLoaded,
   ttsGenerating,
@@ -293,6 +294,7 @@ export const MiddlePanel = ({
   abortGeneration: () => void;
   disabled: boolean;
   onTTSClick: () => void;
+  onExportStory: () => void;
   onRegenerateTTS: () => Promise<void> | void;
   ttsLoaded: boolean;
   ttsGenerating: boolean;
@@ -413,6 +415,14 @@ export const MiddlePanel = ({
                 onClick={onTTSClick}
               >
                 <Headphones className="h-4 w-4" />
+              </Button>
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={onExportStory}
+                title="Export story"
+              >
+                <Download className="h-4 w-4" />
               </Button>
               <Button
                 variant="ghost"

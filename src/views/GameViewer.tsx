@@ -4,6 +4,16 @@ import { useSettings } from "@/contexts/SettingsContext";
 import { useGameplay } from "@/contexts/GameplayContext";
 import { processStatCode } from "@/contexts/GameplayContextUtils";
 import { Button } from "@/components/ui/button";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { Input } from "@/components/ui/input";
 import { Checkbox } from "@/components/ui/checkbox";
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -385,6 +395,30 @@ const GameViewer = ({
     if (targetState.playerNotes !== undefined) {
       setPlayerNotes(targetState.playerNotes);
     }
+  };
+
+  // Export the whole playthrough's narration as a plain-text or Markdown file (user picks the format
+  // via the export dialog). Same sanitized text either way — format only sets the extension + MIME.
+  // Mirrors the blob-download pattern below.
+  const [isExportModalOpen, setIsExportModalOpen] = useState(false);
+  const exportStory = (format: 'txt' | 'md') => {
+    const story = fullMessageHistory
+      .filter((m) => m.role === 'assistant')
+      .map((m) => stripReasoning(parseNarration(m.content)).trim())
+      .filter((text) => text && text !== 'No narration available')
+      .join('\n\n');
+    const type = format === 'md' ? 'text/markdown' : 'text/plain';
+    const blob = new Blob([story], { type });
+    const href = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = href;
+    const slug = (worldOverview?.name || "world").replace(/[^a-z0-9]+/gi, "-").toLowerCase();
+    link.download = `story-${slug}.${format}`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(href);
+    setIsExportModalOpen(false);
   };
 
   // Export the full AI-context turn history (exactly the structure the debug viewer renders) as JSON,
@@ -1815,6 +1849,7 @@ ${playerNotes || NONE_PLACEHOLDER}
       abortGeneration={abortGeneration}
       disabled={isWaitingForAI && !choicesReady}
       onTTSClick={() => setIsTTSModalOpen(true)}
+      onExportStory={() => setIsExportModalOpen(true)}
       onRegenerateTTS={handleRegenerateTTS}
       ttsLoaded={ttsLoaded}
       ttsGenerating={ttsGenerating}
@@ -2466,6 +2501,23 @@ ${playerNotes || NONE_PLACEHOLDER}
         onOpenChange={setIsSettingsOpen}
         previewValues={promptPreviewValues}
       />
+
+      <AlertDialog open={isExportModalOpen} onOpenChange={setIsExportModalOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Export story</AlertDialogTitle>
+            <AlertDialogDescription>
+              Download every turn&apos;s narration as a single file. Markdown keeps the formatting
+              (<strong>bold</strong>, headings, lists); plain text is unformatted.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={() => exportStory('txt')}>Plain text (.txt)</AlertDialogAction>
+            <AlertDialogAction onClick={() => exportStory('md')}>Markdown (.md)</AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 };
