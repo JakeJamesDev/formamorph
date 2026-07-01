@@ -15,7 +15,12 @@ class AuthService {
     this.tokenKey = 'authToken';
     this.userKey = 'currentUser';
     this.token = localStorage.getItem(this.tokenKey);
-    this.currentUser = JSON.parse(localStorage.getItem(this.userKey) || 'null');
+    // Guard against a corrupted value: an unguarded JSON.parse here would throw during construction.
+    try {
+      this.currentUser = JSON.parse(localStorage.getItem(this.userKey) || 'null');
+    } catch {
+      this.currentUser = null;
+    }
   }
 
   isAuthenticated() {

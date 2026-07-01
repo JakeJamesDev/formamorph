@@ -1,4 +1,5 @@
 import type { Entity } from '@/types';
+import { escapeRegExp } from './utils';
 
 /**
  * Detect which of a set of names appear in a block of text — the canonical "who is in this narration"
@@ -12,11 +13,14 @@ import type { Entity } from '@/types';
  * - A trailing plural `s` is tolerated; blank names are skipped.
  */
 
-const escapeRegExp = (s: string): string => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+// A word-boundary match for `word`, tolerating a trailing plural `s`. Default case-insensitive; pass
+// 'gi' for iteration via exec().
+const makeWordRegex = (word: string, flags = 'i'): RegExp =>
+  new RegExp(`\\b${escapeRegExp(word)}(?:s)?\\b`, flags);
 
 /** True if `name` appears in `text` with an uppercase first letter (a proper-noun occurrence). */
 function occursCapitalized(text: string, name: string): boolean {
-  const re = new RegExp(`\\b${escapeRegExp(name)}(?:s)?\\b`, 'gi');
+  const re = makeWordRegex(name, 'gi');
   let m: RegExpExecArray | null;
   while ((m = re.exec(text)) !== null) {
     if (/[A-Z]/.test(m[0].charAt(0))) return true;
@@ -44,12 +48,12 @@ export function matchNames(
     if (words.length === 1) {
       const matched = requireCapital
         ? occursCapitalized(text, trimmed)
-        : new RegExp(`\\b${escapeRegExp(trimmed)}(?:s)?\\b`, 'i').test(text);
+        : makeWordRegex(trimmed).test(text);
       if (matched) found.add(name);
       continue;
     }
-    const exact = new RegExp(`\\b${escapeRegExp(trimmed)}(?:s)?\\b`, 'i');
-    const allWordsPresent = words.every((w) => new RegExp(`\\b${escapeRegExp(w)}(?:s)?\\b`, 'i').test(text));
+    const exact = makeWordRegex(trimmed);
+    const allWordsPresent = words.every((w) => makeWordRegex(w).test(text));
     if (exact.test(text) || allWordsPresent) found.add(name);
   }
   return [...found];
@@ -79,7 +83,7 @@ export function matchNamesLoose(text: string, names: string[]): string[] {
     const trimmed = name?.trim();
     if (!trimmed || found.has(name)) continue;
     const words = significantWords(trimmed);
-    if (words.some((w) => new RegExp(`\\b${escapeRegExp(w)}(?:s)?\\b`, 'i').test(text))) found.add(name);
+    if (words.some((w) => makeWordRegex(w).test(text))) found.add(name);
   }
   return [...found];
 }

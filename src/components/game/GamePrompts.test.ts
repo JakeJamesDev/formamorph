@@ -40,6 +40,11 @@ describe('default prompts carry the expected variable chips', () => {
     // Positive contract: the narrator writes only story prose; a separate step handles choices.
     expect(defaultSystemPrompt).toContain("a separate step presents the player's choices");
     expect(defaultSystemPrompt).toContain('[Player\'s turn]');
+    // Name-discipline: plan names are the narrator's private knowledge; introduce by description,
+    // let a name reach the page only once the player would have learned it.
+    expect(defaultSystemPrompt).toContain('what you know, not what the player knows');
+    expect(defaultSystemPrompt).toContain("hasn't met by description");
+    expect(defaultSystemPrompt).toContain('once the player would have learned it');
   });
 
   it('choices prompt', () => {
@@ -99,9 +104,14 @@ describe('default prompts carry the expected variable chips', () => {
     // The player is always the first cast bullet, and the block must not repeat.
     expect(defaultDirectorPrompt).toContain('- Player Character -');
     expect(defaultDirectorPrompt).toContain('exactly one Scene line and one Cast list');
-    // The cast is living/acting beings only — scenery/objects stay in the Scene.
-    expect(defaultDirectorPrompt).toContain('only living, acting beings');
-    expect(defaultDirectorPrompt).toContain('Never list places, structures, objects, or scenery');
+    // Agency is the cast gate: only individual beings that can act/speak; scenery, crowds, and places
+    // (however alive-seeming) stay in the Scene, never the Cast.
+    expect(defaultDirectorPrompt).toContain('cast only individual beings that can choose to act or speak this turn');
+    expect(defaultDirectorPrompt).toContain('a place or crowd is not one being');
+    // Invented characters need a concrete, reusable name — but naming never promotes scenery. No seeded names.
+    expect(defaultDirectorPrompt).toContain('a concrete name it can be called by again next turn');
+    expect(defaultDirectorPrompt).toContain('is a description, not a character');
+    expect(defaultDirectorPrompt).toContain('never name a place, object, or scenery');
   });
 
   it('staged character prompt', () => {

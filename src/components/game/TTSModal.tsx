@@ -121,7 +121,8 @@ const TTSModal = forwardRef<TTSModalHandle, {
     if (!tts || !selectedVoice) return false;
     try {
       setIsPlaying(true);
-      const chunks = splitForTTS(text);
+      // Strip before chunking so the chunk budget is measured on the spoken words, not Markdown syntax.
+      const chunks = splitForTTS(stripMarkdownForSpeech(text));
       const total = chunks.length;
       if (total === 0) return false;
 

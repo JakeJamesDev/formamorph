@@ -1,5 +1,5 @@
 import AuthService from './AuthService';
-import { openDatabase } from '@/lib/idb';
+import { openDatabase, promisifyRequest } from '@/lib/idb';
 import { migrateWorld } from '@/lib/version';
 import type { WorldMetadata } from '@/types';
 
@@ -81,34 +81,24 @@ class WorldStorageService {
 
   async getWorldMetadata(): Promise<WorldMetadata[]> {
     await this.ensureInitialized();
-    return new Promise((resolve, reject) => {
-      const transaction = this.db!.transaction([this.storeName], 'readonly');
-      const store = transaction.objectStore(this.storeName);
-      const request = store.getAll();
-
-      request.onsuccess = () => {
-        const worlds = request.result.map(world => ({
-          id: world.id,
-          name: world.name,
-          description: world.description,
-          author: world.author || '',
-          thumbnail: world.thumbnail,
-          tags: world.data?.worldOverview?.tags || [],
-          sourceId: world.sourceId,
-          dirty: world.dirty,
-          editedAt: world.editedAt,
-          downloadedAt: world.downloadedAt,
-          sourceUpdatedAt: world.sourceUpdatedAt,
-          createdAt: world.createdAt,
-          lastAccessed: world.lastAccessed
-        }));
-        resolve(worlds);
-      };
-
-      request.onerror = () => {
-        reject('Failed to get world metadata');
-      };
-    });
+    const transaction = this.db!.transaction([this.storeName], 'readonly');
+    const store = transaction.objectStore(this.storeName);
+    const worlds = await promisifyRequest(store.getAll());
+    return worlds.map(world => ({
+      id: world.id,
+      name: world.name,
+      description: world.description,
+      author: world.author || '',
+      thumbnail: world.thumbnail,
+      tags: world.data?.worldOverview?.tags || [],
+      sourceId: world.sourceId,
+      dirty: world.dirty,
+      editedAt: world.editedAt,
+      downloadedAt: world.downloadedAt,
+      sourceUpdatedAt: world.sourceUpdatedAt,
+      createdAt: world.createdAt,
+      lastAccessed: world.lastAccessed
+    }));
   }
 
   async getWorldData(worldId: string) {
@@ -225,16 +215,16 @@ class WorldStorageService {
     });
   }
 
-  async loadDefaultWorlds(defaultWorlds: DefaultWorldSeed[]) {
-    try {
-      const existingWorlds = await this.getWorldMetadata();
-      const worldsToLoad = defaultWorlds.filter(
-        world => !existingWorlds.some(existing => existing.id === world.id)
-      );
+  /** Seed missing default worlds. Returns the ids that failed to load ([] = all succeeded). */
+  async loadDefaultWorlds(defaultWorlds: DefaultWorldSeed[]): Promise<string[]> {
+    const existingWorlds = await this.getWorldMetadata();
+    const worldsToLoad = defaultWorlds.filter(
+      world => !existingWorlds.some(existing => existing.id === world.id)
+    );
 
-      await Promise.all(
-        worldsToLoad.map(async world => {
-          try {
+    const results = await Promise.all(
+      worldsToLoad.map(async world => {
+        try {
             // Import the world JSON file
             const module = await import(`../defaultworlds/${world.id}.json`);
             const worldData = module.default;
@@ -266,16 +256,15 @@ class WorldStorageService {
               }
             };
             // Safety pass: defaults are stamped in-file, so this is normally a no-op.
-            return this.storeWorld({ ...fullWorld, data: migrateWorld(fullWorld.data) });
+            await this.storeWorld({ ...fullWorld, data: migrateWorld(fullWorld.data) });
+            return null;
           } catch (error) {
             console.error(`Error loading world ${world.id}:`, error);
-            return Promise.resolve(); // Skip this world but continue with others
+            return world.id; // Skip this world but continue with others; report it as failed.
           }
         })
       );
-    } catch (error) {
-      console.error('Error loading default worlds:', error);
-    }
+    return results.filter((id): id is string => id !== null);
   }
 
   async deleteWorld(worldId: string) {
@@ -285,14 +274,9 @@ class WorldStorageService {
       throw new Error('World ID is required');
     }
 
-    return new Promise<void>((resolve, reject) => {
-      const transaction = this.db!.transaction([this.storeName], 'readwrite');
-      const store = transaction.objectStore(this.storeName);
-      const request = store.delete(worldId);
-
-      request.onsuccess = () => resolve();
-      request.onerror = () => reject('Failed to delete world');
-    });
+    const transaction = this.db!.transaction([this.storeName], 'readwrite');
+    const store = transaction.objectStore(this.storeName);
+    await promisifyRequest(store.delete(worldId));
   }
 
   // Fetch worlds from the server with optional filtering/sorting

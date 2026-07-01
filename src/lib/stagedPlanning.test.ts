@@ -6,6 +6,8 @@ import {
   buildDiaryUserMessage,
   buildStoryboardUserMessage,
   buildStagedPlan,
+  runStagedPlanning,
+  type StagedRequestFn,
 } from './stagedPlanning';
 import type { Entity } from '@/types';
 
@@ -267,5 +269,67 @@ describe('buildStagedPlan', () => {
   it('omits blank sections', () => {
     expect(buildStagedPlan({ scene: '', stances: [], beats: '- do a thing' })).toBe('What happens:\n- do a thing');
     expect(buildStagedPlan({ scene: 'Just a scene.', stances: [], beats: '' })).toBe('Scene: Just a scene.');
+  });
+});
+
+describe('runStagedPlanning', () => {
+  const baseCtx = {
+    action: 'look around',
+    stageValues: {},
+    lastStory: 'It was quiet.',
+    entities: [] as Entity[],
+    presentEntityIds: [] as string[],
+    characterDiaries: false,
+    fullMessageHistory: [],
+    diaryMemoryEntries: 5,
+    caps: { director: 100, character: 100, storyboard: 100 },
+  };
+
+  it('runs director -> character -> storyboard and assembles the plan', async () => {
+    const calls: string[] = [];
+    const request: StagedRequestFn = async (_s, _m, type) => {
+      calls.push(type);
+      if (type === 'director') return 'Scene: A dim cave.\nCast:\n- Player Character - standing\n- Goblin - snarling';
+      if (type === 'character') return 'I lunge at the intruder.';
+      if (type === 'storyboard') return 'The goblin lunges.';
+      return '';
+    };
+    const res = await runStagedPlanning({ ...baseCtx, request, signal: new AbortController().signal });
+    expect(calls).toEqual(['director', 'character', 'storyboard']);
+    expect(res.adHocCandidates).toEqual(['Goblin']);
+    expect(res.directorCandidates).toEqual([]);
+    expect(res.turnPlan).toContain('Scene: A dim cave.');
+    expect(res.turnPlan).toContain('The goblin lunges.');
+  });
+
+  it('routes a cast name that matches a present entity to directorCandidates', async () => {
+    const entities: Entity[] = [{ id: 'e1', name: 'Goblin' }];
+    const request: StagedRequestFn = async (_s, _m, type) =>
+      type === 'director' ? 'Scene: A cave.\nCast:\n- Goblin - snarling' : type === 'storyboard' ? 'It snarls.' : 'I snarl.';
+    const res = await runStagedPlanning({ ...baseCtx, entities, presentEntityIds: ['e1'], request, signal: new AbortController().signal });
+    expect(res.directorCandidates).toEqual(['Goblin']);
+    expect(res.adHocCandidates).toEqual([]);
+  });
+
+  it('skips the character/storyboard passes when only the player is cast', async () => {
+    const calls: string[] = [];
+    const request: StagedRequestFn = async (_s, _m, type) => {
+      calls.push(type);
+      return type === 'director' ? 'Scene: An empty road.\nCast:\n- Player Character - walking' : '';
+    };
+    const res = await runStagedPlanning({ ...baseCtx, request, signal: new AbortController().signal });
+    expect(calls).toEqual(['director']);
+    expect(res.turnPlan).toContain('Scene: An empty road.');
+    expect(res.adHocCandidates).toEqual([]);
+  });
+
+  it('bails with an empty plan when aborted after the director', async () => {
+    const controller = new AbortController();
+    const request: StagedRequestFn = async (_s, _m, type) => {
+      if (type === 'director') { controller.abort(); return 'Scene: X.\nCast:\n- Goblin - snarl'; }
+      return '';
+    };
+    const res = await runStagedPlanning({ ...baseCtx, request, signal: controller.signal });
+    expect(res.turnPlan).toBe('');
   });
 });

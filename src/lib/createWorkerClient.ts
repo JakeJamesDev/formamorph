@@ -49,11 +49,13 @@ export function createWorkerClient(createWorker: () => Worker) {
       }
     });
 
-  /** Terminate the worker and drop any in-flight requests (e.g. on teardown). */
+  /** Terminate the worker and reject any in-flight requests (e.g. on teardown). */
   const terminate = () => {
     if (workerInstance) {
       workerInstance.terminate();
       workerInstance = null;
+      // Settle awaiters instead of leaking them: a cleared promise would otherwise hang forever.
+      pendingRequests.forEach((req) => req.reject(new Error('Worker terminated before response')));
       pendingRequests.clear();
     }
   };
