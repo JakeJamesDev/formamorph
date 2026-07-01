@@ -1,3 +1,7 @@
+/**
+ * @vitest-environment node
+ * (No DOM needed; node keeps the QuickJS WASM engine loading through its filesystem path.)
+ */
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { executeStatCode } from './statCodeExecutor';
 import type { Stat } from '@/types';
@@ -55,5 +59,30 @@ describe('executeStatCode', () => {
       makeStat({ max: 100 }),
     );
     expect(res.value).toBe(14);
+  });
+
+  it('runs in an isolated VM with no host globals (fetch/window/localStorage)', async () => {
+    const res = await executeStatCode(
+      `return (typeof fetch === 'undefined'
+        && typeof window === 'undefined'
+        && typeof localStorage === 'undefined'
+        && typeof XMLHttpRequest === 'undefined') ? 1 : 0;`,
+      [],
+      makeStat({}),
+    );
+    expect(res).toEqual({ value: 1, error: null });
+  });
+
+  it('kills a runaway loop via the interrupt handler instead of hanging', async () => {
+    const res = await executeStatCode('while (true) {}', [], makeStat({}));
+    expect(res.value).toBeNull();
+    expect(res.error).toMatch(/timed out/i);
+  }, 15_000);
+
+  it('provides a console.log shim inside the VM', async () => {
+    const log = vi.spyOn(console, 'log').mockImplementation(() => {});
+    const res = await executeStatCode('console.log("hello", 5); return 1;', [], makeStat({}));
+    expect(res).toEqual({ value: 1, error: null });
+    expect(log).toHaveBeenCalledWith('hello', 5);
   });
 });

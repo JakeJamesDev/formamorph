@@ -1,4 +1,18 @@
 import type { Stat } from '@/types';
+import { getQuickJS, shouldInterruptAfterDeadline, type QuickJSWASMModule } from 'quickjs-emscripten';
+import { clamp } from './utils';
+
+// Stat `code` ships inside world definitions, and worlds are downloaded from Discover — treat it as
+// untrusted. It runs in an isolated QuickJS (WASM) VM: no page globals (window/fetch/localStorage),
+// only the marshalled stat data below. A runtime interrupt enforces the timeout (kills `while(true)`),
+// and memory/stack caps bound allocation.
+const EXECUTION_TIMEOUT_MS = 1000;
+const MEMORY_LIMIT_BYTES = 16 * 1024 * 1024;
+const MAX_STACK_BYTES = 512 * 1024;
+
+// The WASM engine loads once and is shared; each execution gets a fresh disposable runtime/context.
+let quickJSPromise: Promise<QuickJSWASMModule> | null = null;
+const loadQuickJS = () => (quickJSPromise ??= getQuickJS());
 
 /**
  * Executes JavaScript code to calculate a stat value based on other stats
@@ -18,24 +32,9 @@ export const executeStatCode = async (
   }
 
   try {
-    //console.log('Executing code...');
+    const QuickJS = await loadQuickJS();
 
-    // Capture console.log output
-    let consoleOutput = '';
-    const originalConsoleLog = console.log;
-    console.log = (...args) => {
-      args.forEach(arg => {
-        consoleOutput += String(arg) + ' ';
-      });
-      consoleOutput += '\n';
-      originalConsoleLog.apply(console, args);
-    };
-
-    // Set a timeout for execution (prevent infinite loops)
-    const timeoutMs = 1000; // 1 second timeout
-    const startTime = Date.now();
-
-    // Prepare the stats data to be passed to the function
+    // Only whitelisted plain data crosses into the VM (never `code`/`descriptors`).
     const statsData = stats.map(stat => ({
       id: String(stat.id),
       name: stat.name || '',
@@ -47,51 +46,68 @@ export const executeStatCode = async (
       regen: stat.regen || 0
     }));
 
-    // Wrap the code in a function that returns a value
-    const functionBody = `
-      try {
-        const result = (function() {
-          ${code}
-        })();
+    const runtime = QuickJS.newRuntime();
+    runtime.setInterruptHandler(shouldInterruptAfterDeadline(Date.now() + EXECUTION_TIMEOUT_MS));
+    runtime.setMemoryLimit(MEMORY_LIMIT_BYTES);
+    runtime.setMaxStackSize(MAX_STACK_BYTES);
+    const vm = runtime.newContext();
 
-        // Ensure the result is a number
-        if (typeof result !== 'number') {
-          throw new Error('Code must return a number');
+    try {
+      // console.log shim: QuickJS has no console; collect output and forward it to the host console.
+      let consoleOutput = '';
+      const logFn = vm.newFunction('log', (...args) => {
+        const parts = args.map((a) => vm.dump(a));
+        consoleOutput += parts.map(String).join(' ') + '\n';
+        console.log(...parts);
+      });
+      const consoleObj = vm.newObject();
+      vm.setProp(consoleObj, 'log', logFn);
+      vm.setProp(vm.global, 'console', consoleObj);
+      logFn.dispose();
+      consoleObj.dispose();
+
+      // The stat data rides in as JSON literals (JSON is valid JS expression syntax), so no host
+      // references ever enter the VM. The user code runs as a function body so `return` works.
+      const program = [
+        `const stats = ${JSON.stringify(statsData)};`,
+        `const currentStatId = ${JSON.stringify(String(currentStat.id))};`,
+        `(function() {`,
+        code,
+        `})();`,
+      ].join('\n');
+
+      const result = vm.evalCode(program);
+
+      if (result.error) {
+        const dumped = vm.dump(result.error) as { name?: string; message?: string; stack?: string } | string;
+        result.error.dispose();
+        const err = typeof dumped === 'object' && dumped !== null ? dumped : { message: String(dumped) };
+        // The interrupt handler surfaces as an "interrupted" InternalError — report it as the timeout.
+        if (/interrupted/i.test(err.message || '')) {
+          return { value: null, error: 'Execution timed out' };
         }
-
-        // Ensure the result is within the stat's min/max range
-        const min = ${currentStat.min || 0};
-        const max = ${currentStat.max || 100};
-        return Math.min(Math.max(result, min), max);
-      } catch (error) {
-        throw error;
+        return {
+          value: null,
+          error: `Error: ${err.message}\nStack: ${err.stack || 'No stack trace available'}`
+        };
       }
-    `;
 
-    // Create a function from the code string
-    const executeFunction = new Function('stats', 'currentStatId', functionBody);
+      const raw = vm.dump(result.value);
+      result.value.dispose();
 
-    // Execute the function with the stats data
-    const result = executeFunction(statsData, String(currentStat.id));
-    //console.log('Code executed');
+      if (consoleOutput.trim()) {
+        console.log('Console output:', consoleOutput);
+      }
 
-    // Check for timeout
-    if (Date.now() - startTime > timeoutMs) {
-      console.log('Execution timed out');
-      // Restore original console.log
-      console.log = originalConsoleLog;
-      return { value: null, error: 'Execution timed out' };
+      // Ensure the result is a number, clamped to the stat's min/max range.
+      if (typeof raw !== 'number') {
+        return { value: null, error: 'Error: Code must return a number\nStack: No stack trace available' };
+      }
+      return { value: clamp(raw, currentStat.min || 0, currentStat.max || 100), error: null };
+    } finally {
+      vm.dispose();
+      runtime.dispose();
     }
-
-    // Restore original console.log
-    console.log = originalConsoleLog;
-
-    // Include any console output in the result
-    if (consoleOutput.trim()) {
-      console.log('Console output:', consoleOutput);
-    }
-
-    return { value: result, error: null };
   } catch (error) {
     console.error('Error in executeStatCode:', error);
 
