@@ -169,10 +169,11 @@ describe('user-message builders', () => {
       scene: 'Dust settles.',
       action: 'wave',
     });
-    expect(msg).toContain('Who they are: A wary scout.');
+    expect(msg).toContain('You are Mira.');
+    expect(msg).toContain('Who you are: A wary scout.');
     expect(msg).toContain('Current stance: crouched behind a crate');
     expect(msg).toContain('Scene: Dust settles.');
-    expect(msg).toContain("State Mira's motivation");
+    expect(msg).toContain('As Mira, state in the first person');
   });
 
   it('flags an ad-hoc character as director-introduced and omits an absent stance', () => {

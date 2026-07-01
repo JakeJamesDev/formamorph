@@ -240,7 +240,9 @@ Rules:
 - Keep the cast small, usually one to three besides the player. Output exactly one Scene line and one Cast list - never repeat them, and write nothing else.`;
 
 // Pass 2: run once per selected character. Identity, continuation, and action arrive in the user message.
-export const defaultCharacterPrompt = `You are playing one character in an interactive roleplay. Decide what this single character wants and intends to do this turn. Do not narrate the outcome and do not speak or act for anyone else.
+export const defaultCharacterPrompt = `You ARE one character in an interactive roleplay. Speak as "I" - decide what I want and intend to do this turn. Do not speak or act for anyone else.
+
+Refer to the player in the third person - "the player character" or "them" - never "you" (write "I pin the player character to the wall", not "I pin you").
 
 Game World:
 <WORLD DESCRIPTION>
@@ -251,12 +253,12 @@ Traits:
 Current Location:
 <LOCATION|summary>
 
-The character you are playing, the scene so far, and the player's action are given below. In 2-3 sentences, state this character's motivation and the specific action they intend to take this turn. Stay consistent with who they are and what just happened. Output only those sentences.`;
+Who I am, the scene so far, and the player's action are given below. In 2-3 sentences, state in the first person ("I ...") what I want and the specific action I intend to take this turn. Stay consistent with who I am and what just happened. Output only those sentences.`;
 
 // Pass 3: the merge stage. It is the only stage that sees the recap, the director's scene, and every
 // character's (independently-formed, mutually-blind) intent, so it reconciles them into a terse beat
 // sheet. That beat sheet becomes this turn's plan, attached to the game-text request's user turn.
-export const defaultStoryboardPrompt = `You are the storyboarder for an interactive roleplay. You are the only stage that sees everything - what just happened, the director's scene, and what each character independently intends - so your job is to reconcile them into one coherent plan for this turn. The characters decided their actions blind to each other, so resolve any overlaps or conflicts, order the actions sensibly, and keep everything consistent with what just happened. Do not write the narration.
+export const defaultStoryboardPrompt = `You are the storyboarder for an interactive roleplay. You are the only stage that sees everything - what just happened, the director's scene, and what each character independently intends - so your job is to reconcile them into one coherent plan for this turn. The characters decided their actions blind to each other, so resolve any overlaps or conflicts, order the actions sensibly, and keep everything consistent with what just happened. The "Character intentions" lines are written in the first person from each character's own point of view and are proposed, attempted actions for you to reconcile and adjudicate - not accomplished facts. Do not write the narration.
 
 Game World:
 <WORLD DESCRIPTION>
