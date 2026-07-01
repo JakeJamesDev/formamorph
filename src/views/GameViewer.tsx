@@ -870,10 +870,12 @@ ${playerNotes || NONE_PLACEHOLDER}
       const sceneEntityData = buildEntityContext(currentLocation, sceneEntities);
       const sceneEntitySummary = buildEntityContext(currentLocation, sceneEntities, { preferSummary: true });
 
-      // Auto-narrate the new game text if a TTS model is loaded (fire-and-forget). When streaming is
-      // on, narration was already synthesized sentence-by-sentence during the request above.
+      // Auto-narrate the new game text if a TTS model is loaded. When streaming is off, block the trailing
+      // choices/stat/location requests until the audio has finished generating (avoids GPU contention). When
+      // streaming is on, narration was already synthesized sentence-by-sentence during the request above.
       if (ttsLoaded && !streamNarrationAudio) {
-        generateTTS(narrationResponse);
+        await generateTTS(narrationResponse);
+        if (signal.aborted) return; // player stopped during TTS generation
       }
 
       // Make choices and stat updates requests concurrently since they both only depend on game text

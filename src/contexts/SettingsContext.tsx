@@ -157,6 +157,7 @@ function useProvideSettings() {
   const [summaryVerbatimTurns, setSummaryVerbatimTurns] = usePersistentState<number>(`${APP_ID}_summaryVerbatimTurns`, 3, intCodec);
   const [vramHelperUrl, setVramHelperUrl] = usePersistentState<string>(`${APP_ID}_vramHelperUrl`, 'http://localhost:5179', stringCodec);
   const [ttsVolume, setTtsVolume] = usePersistentState<number>(`${APP_ID}_ttsVolume`, 1, floatCodec);
+  const [ttsSpeed, setTtsSpeed] = usePersistentState<number>(`${APP_ID}_ttsSpeed`, 1, floatCodec);
 
   const value = {
     bgmEnabled,
@@ -244,7 +245,9 @@ function useProvideSettings() {
     vramHelperUrl,
     setVramHelperUrl,
     ttsVolume,
-    setTtsVolume
+    setTtsVolume,
+    ttsSpeed,
+    setTtsSpeed
   };
 
   return value;

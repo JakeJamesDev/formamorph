@@ -324,6 +324,9 @@ export const MiddlePanel = ({
     setFullMessageHistory
   } = useGameplay();
 
+  // Whether TTS has produced playable audio for the current text (drives the frozen top row).
+  const hasAudio = ttsPlayback.duration > 0;
+
   // Game text of the page currently being viewed, so the Edit button is page-aware
   // (rather than always editing the most recent text).
   const currentAssistantMessage = displayedMessages.find(m => m.role === 'assistant');
@@ -396,8 +399,11 @@ export const MiddlePanel = ({
         )}
         {/* gap-2 gives every row below (message area, pager, Start Game, input) consistent spacing. */}
         <div className="flex flex-col flex-grow overflow-hidden gap-2">
-          <ScrollArea className={`flex-grow border border-border p-2 bg-muted/80 min-h-0 ${isFlashing ? 'flash-animation' : ''} relative`}>
-            <div className="absolute top-2 right-2 z-10 flex gap-2">
+          {/* Once audio exists, the seek bar is frozen above the scroll area (rather than scrolling with the
+              narration) and carries the audio-specific buttons on its row. */}
+          {hasAudio && (
+            <div className="flex items-center gap-2 shrink-0">
+              <TtsPlaybackBar className="w-auto flex-grow" />
               {ttsLoaded && (
                 <Button
                   variant="ghost"
@@ -416,6 +422,30 @@ export const MiddlePanel = ({
               >
                 <Headphones className="h-4 w-4" />
               </Button>
+            </div>
+          )}
+          <ScrollArea className={`flex-grow border border-border p-2 bg-muted/80 min-h-0 ${isFlashing ? 'flash-animation' : ''} relative`}>
+            <div className="absolute top-2 right-2 z-10 flex gap-2">
+              {!hasAudio && ttsLoaded && (
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  onClick={() => onRegenerateTTS()}
+                  disabled={ttsGenerating}
+                  title="Regenerate audio for current text"
+                >
+                  {ttsGenerating ? <Loader2 className="h-4 w-4 animate-spin" /> : <RefreshCw className="h-4 w-4" />}
+                </Button>
+              )}
+              {!hasAudio && (
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  onClick={onTTSClick}
+                >
+                  <Headphones className="h-4 w-4" />
+                </Button>
+              )}
               <Button
                 variant="ghost"
                 size="icon"
@@ -445,24 +475,6 @@ export const MiddlePanel = ({
             )}
             {displayedMessages.map((message, index) => {
               const isLatestMessage = index === displayedMessages.length - 1;
-              if (index === 0 && ttsPlayback.duration > 0) {
-                return (
-                  <React.Fragment key={`audio-${index}`}>
-                    <div>
-                      {/* The Web Audio engine drives both progressive playback and this seek bar. */}
-                      <TtsPlaybackBar />
-                    </div>
-                    <div className={`mb-2 ${message.role === 'user' ? 'text-yellow-500' : ''}`}>
-                      <strong>{message.role === 'user' ? 'You:' : 'Event:'}</strong>
-                      {message.role === 'user' ? (
-                        <pre className="whitespace-pre-wrap">{message.content}</pre>
-                      ) : (
-                        <MarkdownRenderer text={isLatestMessage && isWaitingForAI ? gameplayText : parseAssistantMessage(message.content)} />
-                      )}
-                    </div>
-                  </React.Fragment>
-                );
-              }
               return (
                 <div key={index} className={`mb-2 ${message.role === 'user' ? 'text-yellow-500' : ''}`}>
                   <strong>{message.role === 'user' ? 'You:' : 'Event:'}</strong>
