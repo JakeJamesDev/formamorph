@@ -5,7 +5,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import {
   Bold, Italic, Heading1, Heading2, List, ListOrdered, Link2, Quote, Code, Undo2, Redo2,
 } from 'lucide-react';
-import { GameText } from '@/components/game/GameText';
+import { MarkdownRenderer } from '@/components/game/MarkdownRenderer';
 import { applyMarkdownAction, type MarkdownAction } from '@/lib/markdownToolbar';
 import {
   initHistory, commitHistory, undoHistory, redoHistory, canUndo, canRedo, type HistoryState,
@@ -219,7 +219,7 @@ const MarkdownField = ({ value, onChange, placeholder, className }: {
           className="min-h-[100px] resize-y overflow-auto rounded-md border border-input bg-background px-3 py-2 text-sm"
         >
           {text.trim()
-            ? <GameText text={text} />
+            ? <MarkdownRenderer text={text} />
             : <span className="text-muted-foreground">Nothing to preview.</span>}
         </div>
       </TabsContent>

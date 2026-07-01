@@ -6,7 +6,7 @@ const user = (content: string): ChatMessage => ({ role: 'user', content });
 
 const assistant = (turn: Partial<AITurnResult> & { game_text?: string }): ChatMessage => ({
   role: 'assistant',
-  content: JSON.stringify({ game_text: '', choices: [], stat_changes: [], ...turn }),
+  content: JSON.stringify({ narration: '', choices: [], stat_changes: [], ...turn }),
 });
 
 /** A user→assistant pair, the unit `fullMessageHistory` is built from. */
@@ -15,7 +15,7 @@ const pair = (action: string, turn: Partial<AITurnResult>): ChatMessage[] => [us
 describe('parseTurnContent / serializeTurnContent', () => {
   it('round-trips the extended turn shape including turnId and summary', () => {
     const turn: AITurnResult = {
-      game_text: 'You open the door.',
+      narration: 'You open the door.',
       choices: ['Go in', 'Leave'],
       stat_changes: [{ courage: 1 }],
       turnId: 'abc-123',
@@ -26,10 +26,17 @@ describe('parseTurnContent / serializeTurnContent', () => {
   });
 
   it('parses legacy content without turnId/summary', () => {
-    const parsed = parseTurnContent(JSON.stringify({ game_text: 'hi', choices: [], stat_changes: [] }));
-    expect(parsed?.game_text).toBe('hi');
+    const parsed = parseTurnContent(JSON.stringify({ narration: 'hi', choices: [], stat_changes: [] }));
+    expect(parsed?.narration).toBe('hi');
     expect(parsed?.turnId).toBeUndefined();
     expect(parsed?.summary).toBeUndefined();
+  });
+
+  // Backward compat: legacy v1.2 / pre-release 2.0 saves stored the narration under `game_text`.
+  it('normalizes a legacy game_text field to narration on read', () => {
+    const parsed = parseTurnContent(JSON.stringify({ game_text: 'hi', choices: [], stat_changes: [] }));
+    expect(parsed?.narration).toBe('hi');
+    expect((parsed as { game_text?: string }).game_text).toBeUndefined();
   });
 
   it('returns null on unparseable content', () => {

@@ -4,8 +4,8 @@ import { render, screen, fireEvent } from '@testing-library/react';
 import MarkdownField from './MarkdownField';
 
 // Keep Streamdown out of jsdom — the preview tab isn't exercised here.
-vi.mock('@/components/game/GameText', () => ({
-  GameText: ({ text }: { text: string }) => <div>{text}</div>,
+vi.mock('@/components/game/MarkdownRenderer', () => ({
+  MarkdownRenderer: ({ text }: { text: string }) => <div>{text}</div>,
 }));
 
 // Controlled wrapper, mirroring how WorldDetailsManager drives the field.

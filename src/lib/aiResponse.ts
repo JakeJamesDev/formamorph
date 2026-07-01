@@ -1,20 +1,23 @@
 import json5 from 'json5';
 
 /**
- * Extract the player-facing `game_text` from a raw AI assistant message.
+ * Extract the player-facing narration from a raw AI assistant message.
  * Tries lenient JSON5, then strict JSON, then a regex fallback; returns a safe
- * placeholder string if none parse. Pure — no logging or other side effects.
+ * placeholder string if none parse. Reads the current `narration` field and falls back to the legacy
+ * `game_text` (v1.2 / pre-release 2.0 saves). Pure — no logging or other side effects.
  */
-export function parseGameText(content: string): string {
+export function parseNarration(content: string): string {
+  const pick = (obj: { narration?: string; game_text?: string }): string =>
+    obj.narration ?? obj.game_text ?? 'No narration available';
   try {
     const clean = (content || '').trim();
     try {
-      return json5.parse(clean).game_text || 'No game text available';
+      return pick(json5.parse(clean));
     } catch {
-      return JSON.parse(clean).game_text || 'No game text available';
+      return pick(JSON.parse(clean));
     }
   } catch {
-    const match = (content || '').match(/"game_text"\s*:\s*"([^"]+)"/);
+    const match = (content || '').match(/"(?:narration|game_text)"\s*:\s*"([^"]+)"/);
     if (match && match[1]) return match[1];
     return 'Error parsing message. Please check console for details.';
   }

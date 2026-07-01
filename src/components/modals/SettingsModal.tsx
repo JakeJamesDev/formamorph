@@ -85,8 +85,8 @@ export const SettingsModal = ({ isOpen, onOpenChange, previewValues }: {
     setStatUpdatesEnabled,
     locationChangeEnabled,
     setLocationChangeEnabled,
-    gametextVerbatimTurns,
-    setGametextVerbatimTurns,
+    narrationVerbatimTurns,
+    setNarrationVerbatimTurns,
     thinkingVerbatimTurns,
     setThinkingVerbatimTurns,
     choicesVerbatimTurns,
@@ -154,9 +154,9 @@ export const SettingsModal = ({ isOpen, onOpenChange, previewValues }: {
           : { red: false, text: 'Auto-detected from your endpoint; lower it if the model feels constantly full.' };
 
   // The selected prompt sub-tab, so the Reset button can target just that prompt.
-  const [promptTab, setPromptTab] = useState('gametext');
+  const [promptTab, setPromptTab] = useState('narration');
   const promptResets: Record<string, { label: string; reset: () => void }> = {
-    gametext: { label: 'Game Text', reset: () => setSystemPrompt(defaultSystemPrompt) },
+    narration: { label: 'Narration', reset: () => setSystemPrompt(defaultSystemPrompt) },
     thinking: { label: 'Thinking', reset: () => setThinkingPrompt(defaultThinkingPrompt) },
     choices: { label: 'Choices', reset: () => setChoicesPrompt(defaultChoicesPrompt) },
     statupdates: { label: 'Stat Updates', reset: () => setStatUpdatesPrompt(defaultStatUpdatesPrompt) },
@@ -165,17 +165,17 @@ export const SettingsModal = ({ isOpen, onOpenChange, previewValues }: {
   };
   // Each prompt tab only exists while its prompt is enabled (toggled in Generation → System Prompts, or
   // its governing setting for Thinking/Summary). If the open tab is no longer available (disabled since,
-  // or on reopen), fall back to Game Text so the panel isn't blank.
+  // or on reopen), fall back to Narration so the panel isn't blank.
   const promptAvailable: Record<string, boolean> = {
-    gametext: true,
+    narration: true,
     thinking: thinkingMode === 'precall',
     choices: choicesEnabled,
     statupdates: statUpdatesEnabled,
     location: locationChangeEnabled,
     summary: memoryDigests,
   };
-  const activePromptTab = promptAvailable[promptTab] ? promptTab : 'gametext';
-  const selectedPrompt = promptResets[activePromptTab] ?? promptResets.gametext;
+  const activePromptTab = promptAvailable[promptTab] ? promptTab : 'narration';
+  const selectedPrompt = promptResets[activePromptTab] ?? promptResets.narration;
 
   // The four aux prompts also have an editable user-message template. A System | User toggle swaps the
   // editor between the two; only these tabs offer it. `promptView` resets to System on every tab change.
@@ -196,14 +196,14 @@ export const SettingsModal = ({ isOpen, onOpenChange, previewValues }: {
 
   // Verbatim-turns control for the active prompt, shown once in the footer (like Reset).
   const promptVerbatim: Record<string, { value: number; set: (n: number) => void }> = {
-    gametext: { value: gametextVerbatimTurns, set: setGametextVerbatimTurns },
+    narration: { value: narrationVerbatimTurns, set: setNarrationVerbatimTurns },
     thinking: { value: thinkingVerbatimTurns, set: setThinkingVerbatimTurns },
     choices: { value: choicesVerbatimTurns, set: setChoicesVerbatimTurns },
     statupdates: { value: statUpdatesVerbatimTurns, set: setStatUpdatesVerbatimTurns },
     location: { value: locationChangeVerbatimTurns, set: setLocationChangeVerbatimTurns },
     summary: { value: summaryVerbatimTurns, set: setSummaryVerbatimTurns },
   };
-  const activeVerbatim = promptVerbatim[activePromptTab] ?? promptVerbatim.gametext;
+  const activeVerbatim = promptVerbatim[activePromptTab] ?? promptVerbatim.narration;
 
   return (
     <Dialog open={isOpen} onOpenChange={onOpenChange}>
@@ -537,7 +537,7 @@ export const SettingsModal = ({ isOpen, onOpenChange, previewValues }: {
             {/* Nested tab bar — one prompt per tab; only the selected prompt shows. */}
             <Tabs value={activePromptTab} onValueChange={selectPromptTab} className="w-full flex flex-col flex-1 min-h-0">
               <TabsList className="flex flex-wrap h-auto justify-center gap-1 flex-shrink-0">
-                <TabsTrigger value="gametext">Game Text</TabsTrigger>
+                <TabsTrigger value="narration">Narration</TabsTrigger>
                 {thinkingMode === 'precall' && <TabsTrigger value="thinking">Thinking</TabsTrigger>}
                 {choicesEnabled && <TabsTrigger value="choices">Choices</TabsTrigger>}
                 {statUpdatesEnabled && <TabsTrigger value="statupdates">Stat Updates</TabsTrigger>}
@@ -562,11 +562,11 @@ export const SettingsModal = ({ isOpen, onOpenChange, previewValues }: {
                 </div>
               )}
 
-              <TabsContent value="gametext" className="mt-4 flex-1 min-h-0 data-[state=active]:flex flex-col">
+              <TabsContent value="narration" className="mt-4 flex-1 min-h-0 data-[state=active]:flex flex-col">
                 <PromptField
                   value={systemPrompt}
                   onChange={setSystemPrompt}
-                  variables={PROMPT_KIND_VARIABLES.gametext}
+                  variables={PROMPT_KIND_VARIABLES.narration}
                   previewValues={previewValues}
                 />
               </TabsContent>

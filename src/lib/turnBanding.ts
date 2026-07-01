@@ -55,7 +55,7 @@ const STOPWORDS = new Set([
   'player', 'action',
 ]);
 
-/** The token cost of restoring a turn to full verbatim (user message + assistant game_text), measured
+/** The token cost of restoring a turn to full verbatim (user message + assistant narration), measured
  *  the same way the legacy trimmer measured a pair so budgets stay consistent. */
 function pairTokenCost(turn: BandTurn): number {
   const assistant: ChatMessage = { role: 'assistant', content: turn.gameText };
@@ -85,7 +85,7 @@ export function parseTurns(history: ChatMessage[]): BandTurn[] {
       index: i,
       turnId: parsed.turnId,
       userMsg,
-      gameText: parsed.game_text ?? '',
+      gameText: parsed.narration ?? '',
       summary: parsed.summary,
       entities: parsed.entities,
     });

@@ -170,9 +170,9 @@ function useProvideSettings() {
   const [choicesEnabled, setChoicesEnabled] = usePersistentState<boolean>(`${APP_ID}_choicesEnabled`, true, boolCodec);
   const [statUpdatesEnabled, setStatUpdatesEnabled] = usePersistentState<boolean>(`${APP_ID}_statUpdatesEnabled`, true, boolCodec);
   const [locationChangeEnabled, setLocationChangeEnabled] = usePersistentState<boolean>(`${APP_ID}_locationChangeEnabled`, true, boolCodec);
-  // How many recent turns each prompt receives verbatim (the digest-banding floor). Only Game Text and
+  // How many recent turns each prompt receives verbatim (the digest-banding floor). Only Narration and
   // Thinking consume history today; the rest are stored for when those prompts gain history.
-  const [gametextVerbatimTurns, setGametextVerbatimTurns] = usePersistentState<number>(`${APP_ID}_gametextVerbatimTurns`, 3, intCodec);
+  const [narrationVerbatimTurns, setNarrationVerbatimTurns] = usePersistentState<number>(`${APP_ID}_narrationVerbatimTurns`, 3, intCodec);
   const [thinkingVerbatimTurns, setThinkingVerbatimTurns] = usePersistentState<number>(`${APP_ID}_thinkingVerbatimTurns`, 1, intCodec);
   const [choicesVerbatimTurns, setChoicesVerbatimTurns] = usePersistentState<number>(`${APP_ID}_choicesVerbatimTurns`, 3, intCodec);
   const [statUpdatesVerbatimTurns, setStatUpdatesVerbatimTurns] = usePersistentState<number>(`${APP_ID}_statUpdatesVerbatimTurns`, 3, intCodec);
@@ -234,8 +234,8 @@ function useProvideSettings() {
     setStatUpdatesEnabled,
     locationChangeEnabled,
     setLocationChangeEnabled,
-    gametextVerbatimTurns,
-    setGametextVerbatimTurns,
+    narrationVerbatimTurns,
+    setNarrationVerbatimTurns,
     thinkingVerbatimTurns,
     setThinkingVerbatimTurns,
     choicesVerbatimTurns,
