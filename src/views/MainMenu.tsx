@@ -5,9 +5,7 @@ import 'react-toastify/dist/ReactToastify.css';
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {ConfirmDialog} from "@/components/ConfirmDialog";
-import {RadioGroup,RadioGroupItem } from"@/components/ui/radio-group";
-import {Label} from "@/components/ui/label"
-import {FilePlus2, DoorOpen, Pencil, Github, AlertTriangle, Code, User, LogIn, LogOut, Key, Upload, Import, Globe, Settings, LayoutGrid, GalleryThumbnails, Columns2, RectangleVertical } from "lucide-react";
+import {FilePlus2, DoorOpen, Pencil, Github, AlertTriangle, Code, User, LogIn, LogOut, Upload, Import, Globe, Settings, LayoutGrid, GalleryThumbnails, Columns2, RectangleVertical } from "lucide-react";
 import { ImageZoomViewer } from "@/components/ImageZoomViewer";
 import { cn } from "@/lib/utils";
 import { usePersistentState, boolCodec } from "@/lib/usePersistentState";
@@ -16,12 +14,9 @@ import {
   DialogContent,
   DialogHeader,
   DialogTitle,
-  DialogFooter,
-  DialogDescription,
 } from "@/components/ui/dialog";
 import { Skeleton } from "@/components/ui/skeleton";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { Input } from "@/components/ui/input";
 import CharacterCustomization, { defaultCharacterData } from './CharacterCustomization';
 import { SettingsModal } from '../components/modals/SettingsModal';
 import {
@@ -47,6 +42,8 @@ import DiscoverWorlds from './DiscoverWorlds';
 import { WorldDetailsColumn, DateTimeText, type WorldRecord } from "@/components/WorldDetails";
 import SortableWorldCard from "@/components/SortableWorldCard";
 import { ManageUsersDialog } from "@/components/menu/ManageUsersDialog";
+import { AuthModals } from "@/components/menu/AuthModals";
+import { PublishModal } from "@/components/menu/PublishModal";
 
 interface MainMenuProps {
   onStartGame: (traits: string[], characterData: CharacterData | null, isNewGame?: boolean) => void;
@@ -102,27 +99,14 @@ const MainMenu = ({ onStartGame, onOpenWorldEditor }: MainMenuProps) => {
   const [worlds, setWorlds] = useState<WorldRecord[]>([]);
   const [isLoadingWorlds, setIsLoadingWorlds] = useState(true);
 
-  // Authentication states
+  // Shared auth identity (header, publish gating, Discover). The login/profile forms live in AuthModals.
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [currentUser, setCurrentUser] = useState<WorldRecord | null>(null);
   const [showAuthDialog, setShowAuthDialog] = useState(false);
   const [showProfileDialog, setShowProfileDialog] = useState(false);
-  const [authMode, setAuthMode] = useState('login'); // 'login' or 'register'
-  const [authError, setAuthError] = useState('');
 
-  // Auth form states
-  const [username, setUsername] = useState('');
-  const [password, setPassword] = useState('');
-  const [confirmPassword, setConfirmPassword] = useState('');
-  const [currentPassword, setCurrentPassword] = useState('');
-  const [newPassword, setNewPassword] = useState('');
-
-  // Publish modal states
+  // Publish modal open state; the publish form/handlers live in the PublishModal component.
   const [showPublishModal, setShowPublishModal] = useState(false);
-  const [userWorlds, setUserWorlds] = useState<WorldRecord[]>([]);
-  const [selectedWorldToOverride, setSelectedWorldToOverride] = useState<string | null>(null);
-  const [isPublishing, setIsPublishing] = useState(false);
-  const [publishError, setPublishError] = useState('');
 
   // Discover dialog open state (the browser itself lives in <DiscoverWorlds>).
   const [showDiscoverDialog, setShowDiscoverDialog] = useState(false);
@@ -148,12 +132,6 @@ const MainMenu = ({ onStartGame, onOpenWorldEditor }: MainMenuProps) => {
 
       if (isLoggedIn) {
         const user = AuthService.getCurrentUser();
-
-        // If we have a user object but no username, create one with the username from the login form
-        if (user && !user.username && username) {
-          user.username = username;
-        }
-
         setCurrentUser(user);
 
         // Refresh user profile
@@ -181,8 +159,6 @@ const MainMenu = ({ onStartGame, onOpenWorldEditor }: MainMenuProps) => {
     };
 
     checkAuth();
-    // Run once on mount; `username` is only a login-form fallback, not a re-run trigger.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   // Initialize default worlds and load metadata
@@ -441,88 +417,6 @@ const MainMenu = ({ onStartGame, onOpenWorldEditor }: MainMenuProps) => {
     }
   };
 
-  // Handle login
-  const handleLogin = async () => {
-    setAuthError('');
-
-    if (!username || !password) {
-      setAuthError('Username and password are required');
-      return;
-    }
-
-    try {
-      await AuthService.login(username, password);
-      setIsAuthenticated(true);
-      setCurrentUser(AuthService.getCurrentUser());
-      setShowAuthDialog(false);
-      resetAuthForms();
-      toast.success('Logged in successfully');
-    } catch (error) {
-      setAuthError((error as Error).message || 'Login failed');
-    }
-  };
-
-  // Handle registration
-  const handleRegister = async () => {
-    setAuthError('');
-
-    // Validate username and password according to server requirements
-    if (!username) {
-      setAuthError('Username is required');
-      return;
-    }
-
-    if (username.length < 3 || username.length > 20) {
-      setAuthError('Username must be between 3 and 20 characters');
-      return;
-    }
-
-    if (!password) {
-      setAuthError('Password is required');
-      return;
-    }
-
-    if (password.length < 6) {
-      setAuthError('Password must be at least 6 characters long');
-      return;
-    }
-
-    if (password !== confirmPassword) {
-      setAuthError('Passwords do not match');
-      return;
-    }
-
-    try {
-      await AuthService.register(username, password);
-      setIsAuthenticated(true);
-      setCurrentUser(AuthService.getCurrentUser());
-      setShowAuthDialog(false);
-      resetAuthForms();
-      toast.success('Registered successfully');
-    } catch (error) {
-      setAuthError((error as Error).message || 'Registration failed');
-    }
-  };
-
-  // Handle password change
-  const handleChangePassword = async () => {
-    setAuthError('');
-
-    if (!currentPassword || !newPassword) {
-      setAuthError('Both current and new passwords are required');
-      return;
-    }
-
-    try {
-      await AuthService.changePassword(currentPassword, newPassword);
-      setShowProfileDialog(false);
-      resetAuthForms();
-      toast.success('Password changed successfully');
-    } catch (error) {
-      setAuthError((error as Error).message || 'Failed to change password');
-    }
-  };
-
   // Handle logout
   const handleLogout = () => {
     AuthService.logout();
@@ -531,110 +425,6 @@ const MainMenu = ({ onStartGame, onOpenWorldEditor }: MainMenuProps) => {
     setShowProfileDialog(false);
     toast.success('Logged out successfully');
   };
-
-  // Reset auth forms
-  const resetAuthForms = () => {
-    setUsername('');
-    setPassword('');
-    setConfirmPassword('');
-    setCurrentPassword('');
-    setNewPassword('');
-    setAuthError('');
-  };
-
-  // Fetch user's published worlds
-  const fetchUserWorlds = async () => {
-    if (!isAuthenticated) return;
-
-    try {
-      const worlds = await WorldStorageService.getUserWorlds();
-      setUserWorlds(worlds);
-
-      // Set default selection to "publish as new"
-      setSelectedWorldToOverride('new');
-    } catch (error) {
-      console.error('Error fetching user worlds:', error);
-      setPublishError('Failed to load your published worlds');
-    }
-  };
-
-  // Handle publishing as a new world
-  const handlePublishAsNew = async () => {
-    setPublishError('');
-    setIsPublishing(true);
-
-    try {
-      // Get the current world data
-      const worldToPublish = selectedWorld!.data;
-
-      // Ensure tags are included in the world data
-      if (!worldToPublish.worldOverview.tags) {
-        worldToPublish.worldOverview.tags = [];
-      }
-
-      // Publish the world
-      await WorldStorageService.publishWorld(worldToPublish);
-
-      // Update the user worlds list directly
-      const updatedWorlds = await WorldStorageService.getUserWorlds();
-      setUserWorlds(updatedWorlds);
-
-      // Close the modal and show success message
-      setShowPublishModal(false);
-      toast.success('World published successfully!');
-    } catch (error) {
-      setPublishError((error as Error).message || 'Failed to publish world');
-    } finally {
-      setIsPublishing(false);
-    }
-  };
-
-  // Handle overriding an existing world
-  const handleOverrideWorld = async () => {
-    if (!selectedWorldToOverride) return;
-
-    // If "new" is selected, call handlePublishAsNew instead
-    if (selectedWorldToOverride === 'new') {
-      return handlePublishAsNew();
-    }
-
-    setPublishError('');
-    setIsPublishing(true);
-
-    try {
-      // Get the current world data
-      const worldToPublish = selectedWorld!.data;
-
-      // Ensure tags are included in the world data
-      if (!worldToPublish.worldOverview.tags) {
-        worldToPublish.worldOverview.tags = [];
-      }
-
-      // Update the existing world
-      await WorldStorageService.publishWorld(worldToPublish, selectedWorldToOverride);
-
-      // Update the user worlds list directly
-      const updatedWorlds = await WorldStorageService.getUserWorlds();
-      setUserWorlds(updatedWorlds);
-
-      // Close the modal and show success message
-      setShowPublishModal(false);
-      toast.success('World updated successfully!');
-    } catch (error) {
-      setPublishError((error as Error).message || 'Failed to update world');
-    } finally {
-      setIsPublishing(false);
-    }
-  };
-
-  // Load user worlds when publish modal is opened
-  useEffect(() => {
-    if (showPublishModal) {
-      fetchUserWorlds();
-    }
-    // Fetch only when the publish modal opens or auth changes — not on fetchUserWorlds identity.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [showPublishModal, isAuthenticated]);
 
   // Get user initial for the avatar button
   const getUserInitial = () => {
@@ -1069,242 +859,25 @@ const MainMenu = ({ onStartGame, onOpenWorldEditor }: MainMenuProps) => {
         />
       )}
 
-      {/* Auth Dialog */}
-      <Dialog open={showAuthDialog} onOpenChange={(open) => {
-        setShowAuthDialog(open);
-        if (!open) resetAuthForms();
-      }}>
-        <DialogContent className="sm:max-w-[425px]">
-          <DialogHeader>
-            <DialogTitle>{authMode === 'login' ? 'Login' : 'Register'}</DialogTitle>
-            <DialogDescription>
-              {authMode === 'login'
-                ? 'Enter your credentials to access your account.'
-                : 'Create a new account to save and share your worlds.'}
-            </DialogDescription>
-          </DialogHeader>
+      {/* Auth + Profile dialogs (login/register + change password/logout) */}
+      <AuthModals
+        showAuthDialog={showAuthDialog}
+        setShowAuthDialog={setShowAuthDialog}
+        showProfileDialog={showProfileDialog}
+        setShowProfileDialog={setShowProfileDialog}
+        currentUser={currentUser}
+        userInitial={getUserInitial()}
+        onAuthenticated={() => { setIsAuthenticated(true); setCurrentUser(AuthService.getCurrentUser()); }}
+        onLogout={handleLogout}
+      />
 
-          <div className="space-y-4 py-4">
-            {authError && (
-              <div className="text-sm text-red-500 p-2 bg-red-50 dark:bg-red-900/20 rounded-md">
-                {authError}
-              </div>
-            )}
-
-            <div className="space-y-2">
-              <label htmlFor="username" className="text-sm font-medium">Username</label>
-              <Input
-                id="username"
-                value={username}
-                onChange={(e) => setUsername(e.target.value)}
-                placeholder="Enter your username"
-              />
-            </div>
-
-            <div className="space-y-2">
-              <label htmlFor="password" className="text-sm font-medium">Password</label>
-              <Input
-                id="password"
-                type="password"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                placeholder="Enter your password"
-              />
-            </div>
-
-            {authMode === 'register' && (
-              <div className="space-y-2">
-                <label htmlFor="confirmPassword" className="text-sm font-medium">Confirm Password</label>
-                <Input
-                  id="confirmPassword"
-                  type="password"
-                  value={confirmPassword}
-                  onChange={(e) => setConfirmPassword(e.target.value)}
-                  placeholder="Confirm your password"
-                />
-              </div>
-            )}
-          </div>
-
-          <DialogFooter className="flex flex-col sm:flex-row gap-2">
-            <Button
-              variant="outline"
-              onClick={() => setAuthMode(authMode === 'login' ? 'register' : 'login')}
-              className="sm:order-1"
-            >
-              {authMode === 'login' ? 'Create Account' : 'Back to Login'}
-            </Button>
-
-            <Button
-              onClick={authMode === 'login' ? handleLogin : handleRegister}
-              className="sm:order-2"
-            >
-              {authMode === 'login' ? 'Login' : 'Register'}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-
-      {/* Profile Dialog */}
-      <Dialog open={showProfileDialog} onOpenChange={(open) => {
-        setShowProfileDialog(open);
-        if (!open) resetAuthForms();
-      }}>
-        <DialogContent className="sm:max-w-[425px]">
-          <DialogHeader>
-            <DialogTitle>User Profile</DialogTitle>
-          </DialogHeader>
-
-          <div className="py-4">
-            <div className="flex items-center gap-4 mb-6">
-              <div className="w-16 h-16 rounded-full bg-gray-800 flex items-center justify-center text-white text-2xl font-bold">
-                {getUserInitial()}
-              </div>
-              <div>
-                <h3 className="text-lg font-semibold">
-                  {currentUser?.username || 'User'}
-                </h3>
-                <p className="text-sm text-gray-500">Member since {new Date(currentUser?.createdAt || Date.now()).toLocaleDateString()}</p>
-              </div>
-            </div>
-
-            {currentUser?.status === "suspended" && (
-              <div className="mb-4 p-3 bg-red-100 dark:bg-red-900/20 border border-red-300 dark:border-red-700 rounded-md flex items-start">
-                <AlertTriangle className="h-5 w-5 text-red-600 dark:text-red-400 mr-2 flex-shrink-0 mt-0.5" />
-                <div className="text-sm text-red-800 dark:text-red-300">
-                  <p className="font-medium">Account Suspended</p>
-                  <p>Your account has been suspended. Please contact an administrator for assistance.</p>
-                </div>
-              </div>
-            )}
-
-            <div className="space-y-4 border-t pt-4">
-              <h4 className="font-medium flex items-center gap-2">
-                <Key className="h-4 w-4" /> Change Password
-              </h4>
-
-              {authError && (
-                <div className="text-sm text-red-500 p-2 bg-red-50 dark:bg-red-900/20 rounded-md">
-                  {authError}
-                </div>
-              )}
-
-              <div className="space-y-2">
-                <label htmlFor="currentPassword" className="text-sm font-medium">Current Password</label>
-                <Input
-                  id="currentPassword"
-                  type="password"
-                  value={currentPassword}
-                  onChange={(e) => setCurrentPassword(e.target.value)}
-                  placeholder="Enter current password"
-                />
-              </div>
-
-              <div className="space-y-2">
-                <label htmlFor="newPassword" className="text-sm font-medium">New Password</label>
-                <Input
-                  id="newPassword"
-                  type="password"
-                  value={newPassword}
-                  onChange={(e) => setNewPassword(e.target.value)}
-                  placeholder="Enter new password"
-                />
-              </div>
-
-              <Button onClick={handleChangePassword} className="w-full">
-                Update Password
-              </Button>
-            </div>
-          </div>
-
-          <DialogFooter>
-            <Button variant="destructive" onClick={handleLogout} className="w-full">
-              <LogOut className="mr-2 h-4 w-4" /> Logout
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-
-      {/* Publish Modal */}
-      <Dialog open={showPublishModal} onOpenChange={setShowPublishModal}>
-        <DialogContent className="sm:max-w-[500px]">
-          <DialogHeader>
-            <DialogTitle>Publish World</DialogTitle>
-            <DialogDescription>
-              Publish your world to share it with other players.
-            </DialogDescription>
-          </DialogHeader>
-
-          <div className="py-4">
-            {publishError && (
-              <div className="mb-4 p-3 bg-red-100 dark:bg-red-900/20 border border-red-300 dark:border-red-700 rounded-md text-sm text-red-800 dark:text-red-300">
-                {publishError}
-              </div>
-            )}
-
-            <div className="space-y-4">
-              <h3 className="text-sm font-medium">Select Publish Option</h3>
-
-              <RadioGroup value={selectedWorldToOverride ?? undefined} onValueChange={setSelectedWorldToOverride}>
-                {/* Publish as new option */}
-                <div className="flex items-start space-x-2 p-2 rounded-md hover:bg-gray-100 dark:hover:bg-gray-800">
-                  <RadioGroupItem value="new" id="publish-new" />
-                  <div className="grid gap-1">
-                    <Label htmlFor="publish-new">Publish as new world</Label>
-                  </div>
-                </div>
-
-                {/* Existing worlds */}
-                {userWorlds.length > 0 && (
-                  <>
-                    <div className="mt-4 mb-2">
-                      <h4 className="text-sm font-medium">Or update existing world:</h4>
-                    </div>
-
-                    {userWorlds.map(world => {
-                      // Get the ID (server uses _id)
-                      const worldId = world._id || world.id;
-
-                      // Create a unique ID for the radio item
-                      const radioId = `world-${worldId}`;
-
-                      // Extract the first 5 characters of the ID for display
-                      const shortId = worldId ? worldId.substring(0, 5) : '';
-
-                      // Get download count
-                      const downloads = world.downloads || 0;
-
-                      return (
-                        <div key={worldId} className="flex items-start space-x-2 p-2 rounded-md hover:bg-gray-100 dark:hover:bg-gray-800">
-                          <RadioGroupItem value={worldId} id={radioId} />
-                          <div className="grid gap-1">
-                            <Label htmlFor={radioId}>
-                              {world.name} ({shortId}, {downloads} downloads)
-                            </Label>
-                          </div>
-                        </div>
-                      );
-                    })}
-                  </>
-                )}
-              </RadioGroup>
-            </div>
-          </div>
-
-          <DialogFooter className="flex flex-col sm:flex-row gap-2">
-            <Button variant="outline" onClick={() => setShowPublishModal(false)} disabled={isPublishing}>
-              Cancel
-            </Button>
-
-            <Button
-              onClick={selectedWorldToOverride === 'new' ? handlePublishAsNew : handleOverrideWorld}
-              disabled={isPublishing}
-            >
-              {isPublishing ? 'Publishing...' : 'Publish'}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+      {/* Publish Modal — form/handlers live in the component */}
+      <PublishModal
+        open={showPublishModal}
+        onOpenChange={setShowPublishModal}
+        isAuthenticated={isAuthenticated}
+        selectedWorld={selectedWorld}
+      />
 
       {/* World browser — see DiscoverWorlds.tsx */}
       <DiscoverWorlds
