@@ -1,15 +1,12 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { toast } from 'react-toastify';
 import { Button } from "@/components/ui/button";
-import { Progress } from "@/components/ui/progress";
-import IndeterminateProgress from "@/components/ui/indeterminate-progress";
 import { ConfirmDialog } from "@/components/ConfirmDialog";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
 import {
-  Search, Globe, EyeOff, RotateCcw, ArrowDownWideNarrow, ArrowUpNarrowWide, ArrowLeft, X,
-  Download, MessageSquare, RefreshCw, CircleArrowUp, Columns2, RectangleVertical, Trash2,
+  Search, RotateCcw, ArrowDownWideNarrow, ArrowUpNarrowWide, ArrowLeft, X,
 } from "lucide-react";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import {
@@ -21,8 +18,6 @@ import {
   PaginationNext,
   PaginationPrevious,
 } from "@/components/ui/pagination";
-import { Textarea } from "@/components/ui/textarea";
-import { CachedThumbnail } from "@/lib/useCachedThumbnail";
 import { TokenAutocomplete } from "@/components/TokenAutocomplete";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { toEpoch } from "@/lib/thumbnailCache";
@@ -30,7 +25,6 @@ import { sanitizeTag, collectSanitizedTags } from "@/lib/tagUtils";
 import { cn } from "@/lib/utils";
 import { usePersistentState, boolCodec } from "@/lib/usePersistentState";
 import { CHIP_BASE } from "@/components/Chip";
-import { MarkdownRenderer } from "@/components/game/MarkdownRenderer";
 import { getCatalog, replaceCatalog } from "@/lib/worldCatalog";
 import {
   Dialog,
@@ -47,7 +41,9 @@ import AuthService from '../services/AuthService';
 import type { World } from '@/types';
 import { migrateWorld } from '@/lib/version';
 import { getDownloadState, type DownloadState } from '@/lib/downloadState';
-import { WorldDetailsColumn, DateTimeText, CardTags, splitColumnClasses, type WorldRecord } from "@/components/WorldDetails";
+import { type WorldRecord } from "@/components/WorldDetails";
+import { RemoteWorldDetailsModal } from "@/components/discover/RemoteWorldDetailsModal";
+import { RemoteWorldCard } from "@/components/discover/RemoteWorldCard";
 
 // Persisted preference to force the single-column (portrait) layout of the details modal at any width.
 const DISCOVER_MODAL_COLLAPSED_KEY = 'FORMAMORPH_discoverModalCollapsed';
@@ -95,15 +91,6 @@ const DiscoverWorlds = ({ open, onOpenChange, worlds, setWorlds, isAuthenticated
     DISCOVER_MODAL_COLLAPSED_KEY, false, boolCodec,
   );
   const toggleDiscoverModalCollapsed = () => setDiscoverModalCollapsed((prev) => !prev);
-
-  // Comments for the world detail modal
-  const [comments, setComments] = useState<WorldRecord[]>([]);
-  const [commentsTotal, setCommentsTotal] = useState(0);
-  const [commentsPage, setCommentsPage] = useState(1);
-  const [commentsHasMore, setCommentsHasMore] = useState(false);
-  const [commentsLoading, setCommentsLoading] = useState(false);
-  const [commentText, setCommentText] = useState('');
-  const [postingComment, setPostingComment] = useState(false);
 
   // Discover hide preferences (client-side, persisted in localStorage)
   const [hiddenWorldIds, setHiddenWorldIds] = useState<string[]>(() => {
@@ -536,47 +523,6 @@ const DiscoverWorlds = ({ open, onOpenChange, worlds, setWorlds, isAuthenticated
     }
   };
 
-  // Load comments for the world detail modal (page 1 resets, higher pages append).
-  const loadComments = async (worldId: string, page = 1) => {
-    setCommentsLoading(true);
-    try {
-      const res = await WorldStorageService.fetchComments(worldId, page, 20);
-      setCommentsTotal(res.total);
-      setCommentsHasMore(!!res.pagination?.next);
-      setCommentsPage(page);
-      setComments((prev) => (page === 1 ? res.data : [...prev, ...res.data]));
-    } finally {
-      setCommentsLoading(false);
-    }
-  };
-
-  const handlePostComment = async () => {
-    if (!selectedRemoteWorld || !commentText.trim()) return;
-    setPostingComment(true);
-    try {
-      const created = await WorldStorageService.postComment(
-        selectedRemoteWorld._id || selectedRemoteWorld.id,
-        commentText.trim(),
-      );
-      setComments((prev) => [created, ...prev]);
-      setCommentsTotal((n) => n + 1);
-      setCommentText('');
-    } catch (error) {
-      toast.error((error as Error).message || 'Failed to post comment');
-    } finally {
-      setPostingComment(false);
-    }
-  };
-
-  // Fetch comments whenever the detail modal opens for a world.
-  useEffect(() => {
-    if (showRemoteWorldDetailsModal && selectedRemoteWorld) {
-      setComments([]);
-      setCommentText('');
-      loadComments(selectedRemoteWorld._id || selectedRemoteWorld.id, 1);
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [showRemoteWorldDetailsModal, selectedRemoteWorld?._id, selectedRemoteWorld?.id]);
 
   return (
     <>
@@ -733,134 +679,22 @@ const DiscoverWorlds = ({ open, onOpenChange, worlds, setWorlds, isAuthenticated
                 </div>
               ) : (
                 pagedRemoteWorlds.map((world) => {
-                  // Get the world ID (server uses _id)
                   const worldId = world._id || world.id;
-
-                  // Contextual button state: not-downloaded / current (refresh) / newer-on-server (update).
-                  const dlState = downloadStateForWorld(world);
-
-                  // Check if the world is owned by the current user
-                  const isOwnedByUser = isAuthenticated &&
-                    world.author &&
-                    currentUser &&
-                    (world.author.id === currentUser.id ||
-                     world.author.username === currentUser.username);
-
                   return (
-                    <div
+                    <RemoteWorldCard
                       key={worldId}
-                      className={cn(
-                        "group relative flex flex-col rounded-lg border cursor-pointer",
-                        // Highlight worlds with an available update with a brighter sky tint + ring.
-                        dlState === 'update'
-                          ? "border-sky-300 dark:border-sky-700 bg-sky-50 dark:bg-sky-950/40 ring-1 ring-sky-300 dark:ring-sky-700"
-                          : "border-gray-200 dark:border-gray-700 bg-background",
-                      )}
-                      onClick={() => handleViewRemoteWorldDetails(world)}
-                    >
-                      <button
-                        onClick={(e) => { e.stopPropagation(); hideRemoteWorld(worldId); }}
-                        className="absolute top-1 right-1 z-10 p-1 rounded bg-black/50 text-white hover:bg-black/70"
-                        title="Hide this world"
-                      >
-                        <EyeOff className="h-4 w-4" />
-                      </button>
-
-                      <div className="relative h-32 bg-gray-100 dark:bg-gray-800 rounded-t-lg overflow-hidden">
-                        {downloadProgress[worldId] !== undefined ? (
-                          // Downloading: swap the button for a centered status bar. -1 ⇒ size unknown.
-                          <div
-                            className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 z-10 w-3/4"
-                            onClick={(e) => e.stopPropagation()}
-                          >
-                            {downloadProgress[worldId] < 0 ? (
-                              <IndeterminateProgress />
-                            ) : (
-                              <Progress value={downloadProgress[worldId] * 100} className="h-2" />
-                            )}
-                          </div>
-                        ) : (
-                          /* Contextual download — centered on the thumbnail, fades in on hover; same color as the hide
-                             button, 2x size. Icon reflects whether the world is new, current (refresh), or has an update. */
-                          <button
-                            onClick={(e) => { e.stopPropagation(); handleContextualDownload(world, dlState); }}
-                            className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 z-10 p-2 rounded bg-black/50 text-white hover:bg-black/70 opacity-0 pointer-events-none transition-opacity group-hover:opacity-100 group-hover:pointer-events-auto"
-                            title={dlState === 'update' ? "Update available — download the newer version" : dlState === 'refresh' ? "Re-download this world" : "Download this world"}
-                            aria-label={dlState === 'update' ? "Update available" : dlState === 'refresh' ? "Re-download this world" : "Download this world"}
-                          >
-                            {dlState === 'update' ? (
-                              <CircleArrowUp className="h-8 w-8" />
-                            ) : dlState === 'refresh' ? (
-                              <RefreshCw className="h-8 w-8" />
-                            ) : (
-                              <Download className="h-8 w-8" />
-                            )}
-                          </button>
-                        )}
-                        {world.thumbnail_file ? (
-                          <CachedThumbnail
-                            file={world.thumbnail_file}
-                            url={`${WorldStorageService.API_URL}/thumbnails/${world.thumbnail_file}`}
-                            updatedAt={world.updated_at}
-                            alt={world.name}
-                            className="w-full h-full object-cover"
-                          />
-                        ) : world.thumbnail ? (
-                          <img
-                            src={world.thumbnail}
-                            alt={world.name}
-                            className="w-full h-full object-cover"
-                          />
-                        ) : (
-                          <div className="w-full h-full flex items-center justify-center text-gray-400">
-                            <Globe className="h-12 w-12" />
-                          </div>
-                        )}
-                      </div>
-
-                      <div className="p-4 flex flex-col flex-grow">
-                        <h3 className="font-semibold text-lg mb-1">{world.name}</h3>
-                        <div className="text-sm text-gray-600 dark:text-gray-400 mb-2 max-h-20 overflow-hidden">
-                          <MarkdownRenderer text={world.description || "No description available."} />
-                        </div>
-
-                        <div className="text-xs text-gray-500 mb-1">
-                          <span
-                            onClick={(e) => { e.stopPropagation(); if (world.author?.username) hideRemoteAuthor(world.author.username); }}
-                            title={world.author?.username ? `Hide all worlds by ${world.author.username}` : undefined}
-                            className={world.author?.username ? "cursor-pointer hover:line-through" : ""}
-                          >
-                            By {world.author?.username || "Unknown"}
-                          </span>
-                        </div>
-
-                        <div className="flex items-center justify-between text-xs text-gray-500 mb-2">
-                          <span className="flex items-center gap-1" title="Downloads">
-                            <Download className="h-3 w-3" /> {world.downloads || 0}
-                          </span>
-                          <span className="flex items-center gap-1" title="Comments">
-                            <MessageSquare className="h-3 w-3" /> {world.comment_count || 0}
-                          </span>
-                        </div>
-
-                        {/* Tags */}
-                        <div className="mb-2">
-                          <CardTags tags={world.tags || []} onHide={hideRemoteTag} />
-                        </div>
-
-                        {(isOwnedByUser || currentUser?.accountType === "admin") && (
-                          <div className="mt-auto pt-1 flex justify-end">
-                            <button
-                              className="p-1 text-red-500 hover:text-red-700"
-                              onClick={(e) => { e.stopPropagation(); setRemoteWorldToDelete(worldId); }}
-                              aria-label="Delete world"
-                            >
-                              <Trash2 className="h-5 w-5" />
-                            </button>
-                          </div>
-                        )}
-                      </div>
-                    </div>
+                      world={world}
+                      downloadState={downloadStateForWorld(world)}
+                      downloadProgress={downloadProgress[worldId]}
+                      isAuthenticated={isAuthenticated}
+                      currentUser={currentUser}
+                      onView={handleViewRemoteWorldDetails}
+                      onHideWorld={hideRemoteWorld}
+                      onHideAuthor={hideRemoteAuthor}
+                      onHideTag={hideRemoteTag}
+                      onContextualDownload={handleContextualDownload}
+                      onDelete={setRemoteWorldToDelete}
+                    />
                   );
                 })
               )}
@@ -895,168 +729,19 @@ const DiscoverWorlds = ({ open, onOpenChange, worlds, setWorlds, isAuthenticated
         </DialogContent>
       </Dialog>
 
-      {/* Remote World Details Modal */}
-      <Dialog open={showRemoteWorldDetailsModal} onOpenChange={setShowRemoteWorldDetailsModal}>
-        <DialogContent className={cn("h-[85vh] flex flex-col", discoverModalCollapsed ? "sm:max-w-[600px]" : "sm:max-w-[1200px]")}>
-          <DialogHeader className="shrink-0">
-            <DialogTitle className="flex items-center gap-2">
-              <span className="truncate">{selectedRemoteWorld?.name || 'World Details'}</span>
-              <Button
-                variant="ghost"
-                size="icon"
-                className="ml-auto mr-8 shrink-0 hidden md:inline-flex"
-                onClick={toggleDiscoverModalCollapsed}
-                title={discoverModalCollapsed ? "Expand to two columns" : "Collapse to single column"}
-                aria-label={discoverModalCollapsed ? "Expand to two columns" : "Collapse to single column"}
-              >
-                {discoverModalCollapsed ? <Columns2 className="h-4 w-4" /> : <RectangleVertical className="h-4 w-4" />}
-              </Button>
-            </DialogTitle>
-          </DialogHeader>
-
-          {selectedRemoteWorld && (
-            <div className={cn("mt-4", splitColumnClasses(discoverModalCollapsed).wrapper)}>
-              {/* Left column: metadata */}
-              <div className={splitColumnClasses(discoverModalCollapsed).left}>
-                <WorldDetailsColumn
-                  description={selectedRemoteWorld.description || ""}
-                  tags={selectedRemoteWorld.tags}
-                  thumbnail={
-                    /* World Thumbnail — click to open the pan/zoom viewer */
-                    <div
-                      className="relative w-full pt-[56.25%] rounded-lg overflow-hidden cursor-zoom-in"
-                      onClick={() => openImageViewer(
-                        selectedRemoteWorld.thumbnail_file
-                          ? `${WorldStorageService.API_URL}/thumbnails/${selectedRemoteWorld.thumbnail_file}`
-                          : selectedRemoteWorld.thumbnail,
-                        selectedRemoteWorld.name,
-                      )}
-                      title="Click to enlarge"
-                    >
-                      {selectedRemoteWorld.thumbnail_file ? (
-                        <CachedThumbnail
-                          file={selectedRemoteWorld.thumbnail_file}
-                          url={`${WorldStorageService.API_URL}/thumbnails/${selectedRemoteWorld.thumbnail_file}`}
-                          updatedAt={selectedRemoteWorld.updated_at}
-                          alt={selectedRemoteWorld.name}
-                          className="absolute top-0 left-0 w-full h-full object-cover"
-                        />
-                      ) : selectedRemoteWorld.thumbnail ? (
-                        <img
-                          src={selectedRemoteWorld.thumbnail}
-                          alt={selectedRemoteWorld.name}
-                          className="absolute top-0 left-0 w-full h-full object-cover"
-                        />
-                      ) : (
-                        <div className="absolute top-0 left-0 w-full h-full flex items-center justify-center bg-gray-100 dark:bg-gray-800 text-gray-400">
-                          <Globe className="h-16 w-16" />
-                        </div>
-                      )}
-                    </div>
-                  }
-                  actions={(() => {
-                    // Mirror the contextual card button (none/refresh/update) as a text label.
-                    const dlState = downloadStateForWorld(selectedRemoteWorld);
-                    const progress = downloadProgress[selectedRemoteWorld._id || selectedRemoteWorld.id];
-                    // While downloading, swap the button for a status bar (-1 ⇒ size unknown).
-                    if (progress !== undefined) {
-                      return progress < 0
-                        ? <IndeterminateProgress />
-                        : <Progress value={progress * 100} className="h-2" />;
-                    }
-                    const label = dlState === 'update' ? 'Update Available'
-                      : dlState === 'refresh' ? 'Re-download World'
-                      : 'Download World';
-                    return (
-                      <Button
-                        className="w-full bg-gradient-to-r from-sky-200 to-cyan-200 hover:from-sky-300 hover:to-cyan-300 text-black font-bold"
-                        onClick={() => handleContextualDownload(selectedRemoteWorld, dlState)}
-                      >
-                        {label}
-                      </Button>
-                    );
-                  })()}
-                  meta={
-                    <div className="grid grid-cols-2 gap-4">
-                      <div>
-                        <h3 className="text-sm font-semibold text-gray-500">Author</h3>
-                        <p>{selectedRemoteWorld.author?.username || "Unknown"}</p>
-                      </div>
-
-                      <div>
-                        <h3 className="text-sm font-semibold text-gray-500">Downloads</h3>
-                        <p>{selectedRemoteWorld.downloads || 0}</p>
-                      </div>
-
-                      <div>
-                        <h3 className="text-sm font-semibold text-gray-500">Created</h3>
-                        <p>{selectedRemoteWorld.created_at ? <DateTimeText value={selectedRemoteWorld.created_at} /> : "Unknown"}</p>
-                      </div>
-
-                      <div>
-                        <h3 className="text-sm font-semibold text-gray-500">Updated</h3>
-                        <p>{selectedRemoteWorld.updated_at ? <DateTimeText value={selectedRemoteWorld.updated_at} /> : "Unknown"}</p>
-                      </div>
-                    </div>
-                  }
-                />
-              </div>
-
-              {/* Right column: comments */}
-              <div className={cn(splitColumnClasses(discoverModalCollapsed).right, "space-y-3")}>
-                <h3 className="text-sm font-semibold text-gray-500">Comments ({commentsTotal})</h3>
-
-                {isAuthenticated ? (
-                  <div className="space-y-2">
-                    <Textarea
-                      placeholder="Leave a comment..."
-                      value={commentText}
-                      onChange={(e) => setCommentText(e.target.value)}
-                      className="min-h-[60px]"
-                    />
-                    <Button
-                      size="sm"
-                      disabled={postingComment || !commentText.trim()}
-                      onClick={handlePostComment}
-                    >
-                      {postingComment ? 'Posting...' : 'Post Comment'}
-                    </Button>
-                  </div>
-                ) : (
-                  <p className="text-sm text-gray-500">Log in to leave a comment.</p>
-                )}
-
-                <div className="space-y-3">
-                  {comments.map((c) => (
-                    <div key={c.id} className="text-sm border-b border-border/50 pb-2 last:border-0">
-                      <div className="flex items-center justify-between gap-2">
-                        <span className="font-medium">{c.author?.username || 'Unknown'}</span>
-                        <span className="text-xs text-gray-500">
-                          {c.created_at ? new Date(c.created_at).toLocaleString() : ''}
-                        </span>
-                      </div>
-                      <p className="text-gray-600 dark:text-gray-400 whitespace-pre-wrap mt-1">{c.content}</p>
-                    </div>
-                  ))}
-                  {comments.length === 0 && !commentsLoading && (
-                    <p className="text-sm text-gray-500">No comments yet.</p>
-                  )}
-                  {commentsHasMore && (
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      disabled={commentsLoading}
-                      onClick={() => loadComments(selectedRemoteWorld._id || selectedRemoteWorld.id, commentsPage + 1)}
-                    >
-                      {commentsLoading ? 'Loading...' : 'Load more'}
-                    </Button>
-                  )}
-                </div>
-              </div>
-            </div>
-          )}
-        </DialogContent>
-      </Dialog>
+      {/* Remote World Details Modal — details + comments live in the component */}
+      <RemoteWorldDetailsModal
+        open={showRemoteWorldDetailsModal}
+        onOpenChange={setShowRemoteWorldDetailsModal}
+        world={selectedRemoteWorld}
+        collapsed={discoverModalCollapsed}
+        onToggleCollapsed={toggleDiscoverModalCollapsed}
+        isAuthenticated={isAuthenticated}
+        openImageViewer={openImageViewer}
+        downloadStateForWorld={downloadStateForWorld}
+        downloadProgress={downloadProgress}
+        onContextualDownload={handleContextualDownload}
+      />
 
       {/* Refresh/Update decision: download a separate copy vs overwrite an existing local copy */}
       <Dialog
