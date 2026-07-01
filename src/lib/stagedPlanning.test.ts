@@ -187,6 +187,31 @@ describe('user-message builders', () => {
     expect(msg).not.toContain('Current stance:');
   });
 
+  it('injects the character\'s own diary as a memory block (oldest first)', () => {
+    const msg = buildCharacterUserMessage({
+      character: { name: 'Mira', entity: ent('1', 'Mira') },
+      scene: 'Dust settles.',
+      action: 'wave',
+      diary: ['I distrusted the stranger.', 'I softened toward them.'],
+    });
+    expect(msg).toContain('My diary so far');
+    expect(msg).toContain('- I distrusted the stranger.');
+    expect(msg).toContain('- I softened toward them.');
+    // Memory precedes the scene, and the first-person cue still closes the message.
+    expect(msg.indexOf('My diary so far')).toBeLessThan(msg.indexOf('Scene: Dust settles.'));
+    expect(msg).toContain('As Mira, state in the first person');
+  });
+
+  it('omits the diary block when there are no entries', () => {
+    const msg = buildCharacterUserMessage({
+      character: { name: 'Mira', entity: ent('1', 'Mira') },
+      scene: 'Dust settles.',
+      action: 'wave',
+      diary: [],
+    });
+    expect(msg).not.toContain('My diary so far');
+  });
+
   it('builds a diary message with the entity blurb and narration for a defined character', () => {
     const msg = buildDiaryUserMessage({
       name: 'Mira',

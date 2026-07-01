@@ -100,6 +100,25 @@ export function pendingDiaryNames(history: ChatMessage[], turnId: string): strin
 }
 
 /**
+ * A character's own diary entries across the history, chronological (oldest first), capped to the last
+ * `max`. Key match is case-insensitive (a director cast name may differ in case from the entity name).
+ * `nothing notable` entries carry no memory and are skipped.
+ */
+export function collectCharacterDiary(history: ChatMessage[], name: string, max: number): string[] {
+  const key = name.trim().toLowerCase();
+  const entries: string[] = [];
+  for (const message of history) {
+    if (message.role !== 'assistant') continue;
+    const parsed = parseTurnContent(message.content);
+    if (!parsed?.diaries) continue;
+    const match = Object.entries(parsed.diaries).find(([k]) => k.trim().toLowerCase() === key);
+    const text = match?.[1]?.trim();
+    if (text && text.toLowerCase() !== 'nothing notable') entries.push(text);
+  }
+  return max >= 0 ? entries.slice(-max) : entries;
+}
+
+/**
  * Patch one character's diary `text` onto the matching turn (merging into its `diaries` map), returning
  * the new history. Returns `null` if no turn matches (rolled back / regenerated while in flight — the
  * apply-guard). Other turns and other characters' entries are left untouched.

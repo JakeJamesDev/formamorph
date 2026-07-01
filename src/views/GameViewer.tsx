@@ -51,7 +51,7 @@ import {
 } from "../lib/stagedPlanning";
 import { lengthGuidance, trimToLastSentence } from "../lib/outputLength";
 import { splitSentenceSegments } from "../lib/ttsChunks";
-import { selectDueDigests, applyDigest, parseTurnContent, selectDueDiaries, pendingDiaryNames, applyDiary } from "../lib/turnDigest";
+import { selectDueDigests, applyDigest, parseTurnContent, selectDueDiaries, pendingDiaryNames, applyDiary, collectCharacterDiary } from "../lib/turnDigest";
 import { buildTraitContext } from "../lib/traitTree";
 import { buildLocationContext, buildEntityContext } from "../lib/locationContext";
 import { NONE_PLACEHOLDER } from "../lib/promptFallbacks";
@@ -111,6 +111,9 @@ const DIGEST_MAX_TOKENS = 200;
 
 // Per-character diary entries are short, first-person, 1-2 sentences — a small cap keeps them terse.
 const DIARY_MAX_TOKENS = 80;
+
+// How many of a character's own recent diary entries to feed into its motivation pass (its memory).
+const DIARY_MEMORY_ENTRIES = 5;
 // Cap on older turns rehydrated to full text per turn — rehydration is a targeted aid, not bulk restore.
 const DIGEST_MAX_REHYDRATIONS = 3;
 // How many recent turns count as "currently in the scene" for the choices entity filter (this turn plus
@@ -813,9 +816,13 @@ ${playerNotes || NONE_PLACEHOLDER}
           // 2) One motivation pass per chosen character (sequential — see makeAIRequest capture note).
           const intents: { name: string; text: string }[] = [];
           for (const member of chosen) {
+            // Feed the character its own recent diary as private memory (Slice B) — only when enabled.
+            const diary = characterDiaries
+              ? collectCharacterDiary(fullMessageHistory, member.name, DIARY_MEMORY_ENTRIES)
+              : [];
             const text = await makeAIRequest(
               renderPromptTemplate(defaultCharacterPrompt, stageValues),
-              [{ role: "user", content: buildCharacterUserMessage({ character: member, scene, action }) }],
+              [{ role: "user", content: buildCharacterUserMessage({ character: member, scene, action, diary }) }],
               "character",
               128,
               signal,
