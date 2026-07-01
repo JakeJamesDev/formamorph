@@ -196,7 +196,9 @@ describe('user-message builders', () => {
     expect(msg).toContain('You are Mira.');
     expect(msg).toContain('Who you are: A wary scout.');
     expect(msg).toContain('The gate groans open.');
-    expect(msg).toContain("Write Mira's first-person diary entry");
+    // Establishes the pronoun frame and the first-person identity cue.
+    expect(msg).toContain('"you" means the player character, not you');
+    expect(msg).toContain('As Mira, write my own diary entry');
   });
 
   it('builds a diary message with name only for an ad-hoc character', () => {
