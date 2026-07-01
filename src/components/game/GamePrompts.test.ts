@@ -72,6 +72,8 @@ describe('default prompts carry the expected variable chips', () => {
       '<ENTITIES|summary>',
       '<NOTES>',
     ]);
+    // Basic planning surfaces each present character's placement.
+    expect(defaultThinkingPrompt).toContain('physically doing right now');
   });
 
   it('staged director prompt', () => {
@@ -82,6 +84,13 @@ describe('default prompts carry the expected variable chips', () => {
       '<ENTITIES|summary>',
       '<NOTES>',
     ]);
+    // The director stages the scene, refers to the player in third person, and gives each a placement.
+    expect(defaultDirectorPrompt).toContain('Scene:');
+    expect(defaultDirectorPrompt).toContain('third person');
+    expect(defaultDirectorPrompt).toContain('physically doing right now');
+    // The player is always the first cast bullet, and the block must not repeat.
+    expect(defaultDirectorPrompt).toContain('- Player Character -');
+    expect(defaultDirectorPrompt).toContain('exactly one Scene line and one Cast list');
   });
 
   it('staged character prompt', () => {
@@ -100,6 +109,10 @@ describe('default prompts carry the expected variable chips', () => {
       '<LOCATION|summary>',
       '<NOTES>',
     ]);
+    // Uses the current "scene" wording (not the old "continuation") and forbids scripting the player.
+    expect(defaultStoryboardPrompt).not.toContain('continuation');
+    expect(defaultStoryboardPrompt).toContain("director's scene");
+    expect(defaultStoryboardPrompt).toContain("never decide the player character's own deliberate actions");
   });
 });
 
@@ -107,7 +120,8 @@ describe('planDirective', () => {
   it('wraps the plan as a follow-it directive carrying the plan text', () => {
     const out = planDirective('Mira flees north.');
     expect(out).toContain('Mira flees north.');
-    expect(out.toLowerCase()).toContain('follow it');
+    expect(out.toLowerCase()).toContain('follow the plan');
+    expect(out.toLowerCase()).toContain('flowing prose');
   });
 });
 

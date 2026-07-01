@@ -1,19 +1,23 @@
 import type { Entity } from "@/types";
 
-/** One entry in the director's cast — just a name; matching to an author entity happens later. */
+/** One entry in the director's cast: a name plus their placement/action, if the director gave one.
+ *  `isPlayer` marks the player character — listed for scene grounding, never given a motivation pass. */
 export interface DirectorCastMember {
   name: string;
+  stance?: string;
+  isPlayer?: boolean;
 }
 
-/** The director's parsed output: a short continuation note and an ordered, de-duplicated cast. */
+/** The director's parsed output: the scene staging and an ordered, de-duplicated cast. */
 export interface ParsedDirector {
-  continuation: string;
+  scene: string;
   cast: DirectorCastMember[];
 }
 
 /** A cast member after entity matching: `entity` is set when the name matches a present author entity. */
 export interface ChosenCharacter {
   name: string;
+  stance?: string;
   entity?: Entity;
 }
 
@@ -25,14 +29,26 @@ export interface CastSelection {
 
 const BULLET_RE = /^\s*[-*•]\s+(.+)$/;
 
-/** Strip a bullet body down to the character name: drop a "— why involved" / ": reason" clause,
- *  surrounding markdown bold, and quotes. Hyphenated names survive (only spaced dashes split). */
+// The separator between a cast bullet's name and its stance clause: a spaced dash or "name: stance".
+const CAST_SEP_RE = /\s+[—–-]\s+|:\s/;
+
+/** Strip a bullet body down to the character name: drop a " — stance" / ": stance" clause, then trim any
+ *  surrounding markup/punctuation (**bold**, "quotes", a trailing "."). Internal punctuation survives, so
+ *  hyphenated / dotted names (Jean-Luc, Dr. Strange, R2-D2) are kept intact. */
 function castName(body: string): string {
   let s = body.trim();
-  // cut at the first " — " / " - " / ": " separator that introduces the reason clause
-  const sep = s.search(/\s+[—–-]\s+|:\s/);
+  const sep = s.search(CAST_SEP_RE);
   if (sep !== -1) s = s.slice(0, sep);
-  return s.replace(/^\*+|\*+$/g, "").replace(/^["']+|["']+$/g, "").trim();
+  return s.replace(/^[^\p{L}\p{N}]+|[^\p{L}\p{N}]+$/gu, "");
+}
+
+/** The stance/action clause after the name separator, cleaned of markdown/quotes; undefined if none. */
+function castStance(body: string): string | undefined {
+  const s = body.trim();
+  const m = s.match(CAST_SEP_RE);
+  if (!m || m.index === undefined) return undefined;
+  const rest = s.slice(m.index + m[0].length).replace(/^\*+|\*+$/g, "").replace(/^["']+|["']+$/g, "").trim();
+  return rest || undefined;
 }
 
 // Generic ways a model refers to the player character (narrated in second person, no proper name).
@@ -42,7 +58,7 @@ const PLAYER_ALIASES = new Set([
 ]);
 
 /** True when a director cast name refers to the player character. The player is never directed — their
- *  actions come from real input — so such an entry is dropped before the motivation pass. */
+ *  actions come from real input — so such an entry is flagged and skipped before the motivation pass. */
 export function isPlayerCharacterName(name: string): boolean {
   return PLAYER_ALIASES.has(name.trim().toLowerCase());
 }
@@ -58,19 +74,39 @@ export function isEmptyCastName(name: string): boolean {
 }
 
 /**
- * Parse the director's free-text output into a continuation note and cast list. Expects the format:
- *   Continuation: <text>
+ * Parse the director's free-text output into a scene note and cast list. Expects the format:
+ *   Scene: <text>
  *   Cast:
- *   - <name> — <reason>
- * but tolerates a missing header: bullet lines are always the cast, and the first non-bullet,
- * non-header line becomes the continuation. Cast names are de-duplicated case-insensitively in order.
+ *   - <name> — <stance>
+ * but tolerates the model breaking after `Scene:` (text on following lines) and a missing header:
+ * everything before the cast section is scene prose, bullets are always the cast, and once the cast
+ * section starts (a `Cast:` header or the first bullet) nothing more is treated as scene. Cast names
+ * are de-duplicated case-insensitively in order.
  */
 export function parseDirectorCast(raw: string): ParsedDirector {
   const lines = raw.split("\n");
   const cast: DirectorCastMember[] = [];
   const seen = new Set<string>();
-  const continuationParts: string[] = [];
-  let explicitContinuation = false;
+  const sceneParts: string[] = [];
+  let inCast = false; // once true (Cast: header or a bullet), later lines are no longer scene prose
+
+  // Add one cast member from a bullet body or an inline "Cast: <name> - <stance>". The player is
+  // normalized to "Player Character" and flagged (never given a motivation pass); "no one present"
+  // sentinels are dropped, and names are de-duplicated case-insensitively in order.
+  const addCastMember = (body: string) => {
+    const name = castName(body);
+    if (!name || isEmptyCastName(name)) return;
+    const isPlayer = isPlayerCharacterName(name);
+    const displayName = isPlayer ? "Player Character" : name;
+    const key = displayName.toLowerCase();
+    if (seen.has(key)) return;
+    seen.add(key);
+    cast.push({
+      name: displayName,
+      stance: castStance(body),
+      ...(isPlayer ? { isPlayer: true } : {}),
+    });
+  };
 
   for (const line of lines) {
     const trimmed = line.trim();
@@ -78,33 +114,34 @@ export function parseDirectorCast(raw: string): ParsedDirector {
 
     const bullet = trimmed.match(BULLET_RE);
     if (bullet) {
-      const name = castName(bullet[1]);
-      const key = name.toLowerCase();
-      // Drop the player character and "no one present" sentinels — neither is a directable character.
-      if (name && !isPlayerCharacterName(name) && !isEmptyCastName(name) && !seen.has(key)) {
-        seen.add(key);
-        cast.push({ name });
-      }
+      inCast = true;
+      addCastMember(bullet[1]);
       continue;
     }
 
-    const contMatch = trimmed.match(/^continuation\s*:\s*(.*)$/i);
-    if (contMatch) {
-      explicitContinuation = true;
-      if (contMatch[1].trim()) continuationParts.push(contMatch[1].trim());
+    // A "Cast:" header opens the cast section. Trailing text on it is a member inlined by the model
+    // (e.g. "Cast: Player Character - Resting"); a bare "none" trailing text drops via addCastMember.
+    const castHeader = trimmed.match(/^cast\b\s*:?\s*(.*)$/i);
+    if (castHeader) {
+      inCast = true;
+      if (castHeader[1].trim()) addCastMember(castHeader[1]);
       continue;
     }
 
-    // A "Cast:" header line carries no continuation text. Anything trailing it (e.g. an inline
-    // "none" sentinel) is not continuation prose, so skip the whole line either way.
-    if (/^cast\b\s*:?/i.test(trimmed)) continue;
+    // A "Scene:" label carries its text inline or on the following lines — capture the inline remainder
+    // (the later lines fall through to the fallback below), but only before the cast section begins so a
+    // stray second "Scene:" after the cast can't pollute or merge into the scene.
+    const sceneMatch = trimmed.match(/^scene\s*:\s*(.*)$/i);
+    if (sceneMatch) {
+      if (!inCast && sceneMatch[1].trim()) sceneParts.push(sceneMatch[1].trim());
+      continue;
+    }
 
-    // Any other prose line is continuation, but only before an explicit Continuation marker has
-    // claimed it (so a stray trailing line doesn't append to an explicit note).
-    if (!explicitContinuation) continuationParts.push(trimmed);
+    // Any other prose line is scene staging, until the cast section begins.
+    if (!inCast) sceneParts.push(trimmed);
   }
 
-  return { continuation: continuationParts.join(" ").trim(), cast };
+  return { scene: sceneParts.join(" ").trim(), cast };
 }
 
 /**
@@ -119,6 +156,7 @@ export function matchCastToEntities(
   const byName = new Map(entities.map((e) => [e.name.trim().toLowerCase(), e]));
   const all: ChosenCharacter[] = cast.map((c) => ({
     name: c.name,
+    stance: c.stance,
     entity: byName.get(c.name.trim().toLowerCase()),
   }));
   return { chosen: all.slice(0, cap), overflow: all.slice(cap).map((c) => c.name) };
@@ -130,36 +168,57 @@ const entityBlurb = (entity: Entity): string =>
 /** Build the user message for one character's motivation pass (entity vs. ad-hoc identity line). */
 export function buildCharacterUserMessage(args: {
   character: ChosenCharacter;
-  continuation: string;
+  scene: string;
   action: string;
 }): string {
-  const { character, continuation, action } = args;
+  const { character, scene, action } = args;
   const identity = character.entity
     ? `Character: ${character.name}\nWho they are: ${entityBlurb(character.entity) || "(no description provided)"}`
     : `Character: ${character.name}\n(Introduced by the director and not a predefined character — portray them as a fitting minor presence.)`;
 
-  const scene = continuation ? `\n\nScene so far: ${continuation}` : "";
-  return `${identity}${scene}\n\nThe player's latest action: ${action}\n\nState ${character.name}'s motivation and what they intend to do this turn.`;
+  const stanceLine = character.stance ? `\nCurrent stance: ${character.stance}` : "";
+  const sceneLine = scene ? `\n\nScene: ${scene}` : "";
+  return `${identity}${stanceLine}${sceneLine}\n\nThe player's latest action: ${action}\n\nState ${character.name}'s motivation and what they intend to do this turn.`;
 }
 
 /** Build the user message for the storyboard (merge) pass: the recent-story recap, the director's
- *  continuation, the per-character intents, and any overflow names beyond the cap. */
+ *  scene staging, the per-character intents, and any overflow names beyond the cap. */
 export function buildStoryboardUserMessage(args: {
   recap: string;
-  continuation: string;
+  scene: string;
   intents: { name: string; text: string }[];
   overflow: string[];
   action: string;
 }): string {
-  const { recap, continuation, intents, overflow, action } = args;
+  const { recap, scene, intents, overflow, action } = args;
   const parts: string[] = [];
   if (recap) parts.push(`What just happened:\n${recap}`);
-  if (continuation) parts.push(`Scene continuation: ${continuation}`);
+  if (scene) parts.push(`Scene: ${scene}`);
   if (intents.length) {
     parts.push(`Character intentions:\n${intents.map((i) => `- ${i.name}: ${i.text}`).join("\n")}`);
   }
   if (overflow.length) parts.push(`Also present: ${overflow.join(", ")}`);
   parts.push(`The player's latest action: ${action}`);
   parts.push("Reconcile these into the turn plan now.");
+  return parts.join("\n\n");
+}
+
+/** Assemble the staged plan injected into the narration: the director's scene staging + the cast's
+ *  current stances (grounding) ahead of the storyboard beats. Blank sections are omitted. */
+export function buildStagedPlan(args: {
+  scene: string;
+  stances: DirectorCastMember[];
+  beats: string;
+}): string {
+  const { scene, stances, beats } = args;
+  const parts: string[] = [];
+  if (scene.trim()) parts.push(`Scene: ${scene.trim()}`);
+  const present = stances.filter((c) => c.name.trim());
+  if (present.length) {
+    parts.push(
+      `Present entities:\n${present.map((c) => (c.stance ? `- ${c.name} - ${c.stance}` : `- ${c.name}`)).join("\n")}`,
+    );
+  }
+  if (beats.trim()) parts.push(`What happens:\n${beats.trim()}`);
   return parts.join("\n\n");
 }
