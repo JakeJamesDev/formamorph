@@ -1,4 +1,5 @@
 import type { Entity, GameLocation } from "@/types";
+import { NONE_PLACEHOLDER } from "./promptFallbacks";
 
 type LocationWithEntities = (GameLocation & { entity?: string[] }) | null;
 
@@ -17,7 +18,7 @@ export function buildLocationContext(
   location: LocationWithEntities,
   opts: { preferSummary?: boolean } = {},
 ): string {
-  if (!location) return "";
+  if (!location) return NONE_PLACEHOLDER;
 
   const { preferSummary = false } = opts;
   const {
@@ -62,11 +63,11 @@ export function buildEntityContext(
   entities: Entity[],
   opts: { preferSummary?: boolean } = {},
 ): string {
-  if (!location) return "";
+  if (!location) return NONE_PLACEHOLDER;
 
   const { preferSummary = false } = opts;
   const entityList = location.entities || location.entity || [];
-  if (entityList.length === 0) return "";
+  if (entityList.length === 0) return NONE_PLACEHOLDER;
 
   let output = "";
   entityList.forEach((entityId: string) => {
@@ -96,5 +97,6 @@ export function buildEntityContext(
     });
   });
 
-  return output;
+  // All listed ids failed to resolve to a real entity → treat as empty.
+  return output || NONE_PLACEHOLDER;
 }

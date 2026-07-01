@@ -53,6 +53,7 @@ import { splitSentenceSegments } from "../lib/ttsChunks";
 import { selectDueDigests, applyDigest, parseTurnContent } from "../lib/turnDigest";
 import { buildTraitContext } from "../lib/traitTree";
 import { buildLocationContext, buildEntityContext } from "../lib/locationContext";
+import { NONE_PLACEHOLDER } from "../lib/promptFallbacks";
 import { renderPromptTemplate } from "../lib/promptTemplate";
 import { parseTurns, buildVerbatimHistory, buildBandedHistory, extractKeywords, type BandCounts } from "../lib/turnBanding";
 import { findEntityNames, matchNames, matchNamesLoose } from "../lib/entityMatch";
@@ -548,13 +549,14 @@ const GameViewer = ({
 
   const generateTraitDescriptions = useCallback(() => {
     if (!playerTraits.length) {
-      return "<NO TRAITS AVAILABLE>";
+      return NONE_PLACEHOLDER;
     }
     // Group-aware: each selected trait's group emits its AI header above its traits (blank → omitted).
     return buildTraitContext(playerTraits.map((t) => t.id), playerTraits, traitGroups);
   }, [playerTraits, traitGroups]);
 
   const generateStatDescriptions = useCallback((includeValues = true) => {
+    if (!playerStats.length) return NONE_PLACEHOLDER;
     return playerStats
       .map((stat) => {
         const percentage =
@@ -580,10 +582,10 @@ const GameViewer = ({
     "<LOCATION|summary>": buildLocationContext(currentLocation, { preferSummary: true }),
     "<ENTITIES>": buildEntityContext(currentLocation, entities),
     "<ENTITIES|summary>": buildEntityContext(currentLocation, entities, { preferSummary: true }),
-    "<NOTES>": playerNotes || "No notes available",
+    "<NOTES>": playerNotes || NONE_PLACEHOLDER,
     "<LENGTH GUIDANCE>": lengthGuidance(paragraphLimit, maxTokens),
     "<MARKDOWN GUIDANCE>": markdownGuidance(markdownOutput),
-    "<LOCATION|list>": locations.map((loc) => loc.name).join("\n"),
+    "<LOCATION|list>": locations.map((loc) => loc.name).join("\n") || NONE_PLACEHOLDER,
     // Illustrative placeholders for the aux user-message templates (real values are per-turn at runtime).
     "<PLAYER ACTION>": "the player's latest action",
     "<NARRATION>": "the most recent narration",
@@ -607,7 +609,7 @@ const GameViewer = ({
     const entityDataString = buildEntityContext(currentLocation, entities);
     const entitySummaryString = buildEntityContext(currentLocation, entities, { preferSummary: true });
     // The Location chip's "List" mode: a newline list of every location name (usable in any prompt).
-    const locationListString = locations.map((loc) => loc.name).join("\n");
+    const locationListString = locations.map((loc) => loc.name).join("\n") || NONE_PLACEHOLDER;
 
     const statDescriptions = generateStatDescriptions(); // with numbers — used by stat-updates
     // Narration, planning, and choices use descriptor-only stats when enabled (immersion).
@@ -626,14 +628,14 @@ const GameViewer = ({
       "<TRAITS DESCRIPTION>": generateTraitDescriptions(),
       "<LENGTH GUIDANCE>": lengthGuidance(paragraphLimit, maxTokens),
       "<MARKDOWN GUIDANCE>": markdownGuidance(markdownOutput),
-      "<NOTES>": playerNotes || "No notes available",
+      "<NOTES>": playerNotes || NONE_PLACEHOLDER,
     });
 
     // If the prompt has no <NOTES> chip, fall back to a notes section before the location data.
     if (!systemPrompt.includes("<NOTES>")) {
       const notesSection = `
 Player Notes:
-${playerNotes || "No notes available"}
+${playerNotes || NONE_PLACEHOLDER}
 
 `;
       const locationIndex = updatedPrompt.indexOf("Current Location:");
@@ -714,7 +716,7 @@ ${playerNotes || "No notes available"}
           "<ENTITIES>": entityDataString,
           "<ENTITIES|summary>": entitySummaryString,
           "<LOCATION|list>": locationListString,
-          "<NOTES>": playerNotes || "No notes available",
+          "<NOTES>": playerNotes || NONE_PLACEHOLDER,
         });
         // Frame the planning task as a single instruction. Reusing the narration message history
         // (turns of action -> story) primes the model to just continue the story instead of planning.
@@ -762,7 +764,7 @@ ${playerNotes || "No notes available"}
           "<LOCATION|list>": locationListString,
           "<ENTITIES>": entityDataString,
           "<ENTITIES|summary>": entitySummaryString,
-          "<NOTES>": playerNotes || "No notes available",
+          "<NOTES>": playerNotes || NONE_PLACEHOLDER,
         };
         const isBand = (m?: ChatMessage) => m?.role === "assistant" && m.content.startsWith("Story so far");
         const lastStory =
@@ -894,7 +896,7 @@ ${playerNotes || "No notes available"}
           "<ENTITIES|summary>": sceneEntitySummary,
           "<LOCATION|list>": locationListString,
           "<TRAITS DESCRIPTION>": generateTraitDescriptions(),
-          "<NOTES>": playerNotes || "No notes available",
+          "<NOTES>": playerNotes || NONE_PLACEHOLDER,
         });
 
         if (language.toLowerCase() != "english")
@@ -932,7 +934,7 @@ ${playerNotes || "No notes available"}
           "<LOCATION|list>": locationListString,
           "<STATS DESCRIPTION>": statDescriptions,
           "<TRAITS DESCRIPTION>": generateTraitDescriptions(),
-          "<NOTES>": playerNotes || "No notes available",
+          "<NOTES>": playerNotes || NONE_PLACEHOLDER,
         });
 
         if (language.toLowerCase() != "english")
