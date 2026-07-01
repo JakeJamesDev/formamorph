@@ -109,6 +109,9 @@ describe('default prompts carry the expected variable chips', () => {
       '<TRAITS DESCRIPTION>',
       '<LOCATION|summary>',
     ]);
+    // The character speaks in the first person but keeps the player in the third person.
+    expect(defaultCharacterPrompt).toContain('first person');
+    expect(defaultCharacterPrompt).toContain('never "you"');
   });
 
   it('staged storyboard prompt', () => {

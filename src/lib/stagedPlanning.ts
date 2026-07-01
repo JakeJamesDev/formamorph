@@ -173,12 +173,12 @@ export function buildCharacterUserMessage(args: {
 }): string {
   const { character, scene, action } = args;
   const identity = character.entity
-    ? `Character: ${character.name}\nWho they are: ${entityBlurb(character.entity) || "(no description provided)"}`
-    : `Character: ${character.name}\n(Introduced by the director and not a predefined character — portray them as a fitting minor presence.)`;
+    ? `You are ${character.name}.\nWho you are: ${entityBlurb(character.entity) || "(no description provided)"}`
+    : `You are ${character.name}.\n(Introduced by the director and not a predefined character — portray yourself as a fitting minor presence.)`;
 
   const stanceLine = character.stance ? `\nCurrent stance: ${character.stance}` : "";
   const sceneLine = scene ? `\n\nScene: ${scene}` : "";
-  return `${identity}${stanceLine}${sceneLine}\n\nThe player's latest action: ${action}\n\nState ${character.name}'s motivation and what they intend to do this turn.`;
+  return `${identity}${stanceLine}${sceneLine}\n\nThe player's latest action: ${action}\n\nAs ${character.name}, state in the first person ("I ...") what you want and what you intend to do this turn.`;
 }
 
 /** Build the user message for the storyboard (merge) pass: the recent-story recap, the director's
