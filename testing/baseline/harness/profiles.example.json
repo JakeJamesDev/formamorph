@@ -1,0 +1,60 @@
+{
+  "_comment": "Copy this to profiles.json (git-excluded) and fill in your local endpoint + model ids. endpointUrl/apiToken/modelName point at your local OpenAI-compatible server (koboldcpp, LM Studio, tabbyAPI, ...). Each profile's `settings` are seeded into localStorage before the app boots; `script` is the fixed action list.",
+  "endpointUrl": "http://localhost:5001/v1/chat/completions",
+  "apiToken": "",
+  "settleMs": 4000,
+  "models": [
+    { "label": "rocinante-12b", "modelName": "REPLACE_WITH_YOUR_SERVER_MODEL_ID" },
+    { "label": "cydonia-24b", "modelName": "REPLACE_WITH_YOUR_SERVER_MODEL_ID" }
+  ],
+  "profiles": [
+    {
+      "name": "A",
+      "settings": {
+        "thinkingMode": "off",
+        "markdownOutput": false,
+        "choicesEnabled": false,
+        "statUpdatesEnabled": false,
+        "locationChangeEnabled": false,
+        "memoryDigests": false,
+        "characterDiaries": false,
+        "showSilentRequests": false,
+        "paragraphLimit": "auto",
+        "language": "English"
+      },
+      "script": [
+        "START GAME",
+        "I read the notices nailed to the leaning post.",
+        "I ask the ferryman to take me across before dark.",
+        "I tie my usual tollow-knot in the mooring rope while I wait.",
+        "I heave my pack onto the ferry and grip the tar-black rope.",
+        "I glance at the eel-smoker and ask if she's crossing too.",
+        "I tell them both my name is Wren."
+      ]
+    },
+    {
+      "name": "B",
+      "settings": {
+        "thinkingMode": "staged",
+        "markdownOutput": true,
+        "choicesEnabled": true,
+        "statUpdatesEnabled": true,
+        "locationChangeEnabled": true,
+        "memoryDigests": false,
+        "characterDiaries": false,
+        "showSilentRequests": true,
+        "paragraphLimit": "auto",
+        "language": "English"
+      },
+      "script": [
+        "START GAME",
+        "I read the notices nailed to the leaning post.",
+        "I ask the ferryman to take me across before dark.",
+        "I tie my usual tollow-knot in the mooring rope while I wait.",
+        "I heave my pack onto the ferry and grip the tar-black rope.",
+        "I pull hand over hand across the gloamwater to the far bank.",
+        "I raise my empty hands and tell the watchman I'm only a mapmaker."
+      ]
+    }
+  ]
+}

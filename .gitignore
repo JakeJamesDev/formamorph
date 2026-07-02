@@ -28,3 +28,7 @@ desktop.ini
 *.njsproj
 *.sln
 *.sw?
+
+# Baseline test harness: local run outputs + machine-specific config
+testing/baseline/runs/
+testing/baseline/harness/profiles.json

@@ -62,6 +62,7 @@ import { buildTraitContext } from "../lib/traitTree";
 import { buildLocationContext, buildEntityContext } from "../lib/locationContext";
 import { NONE_PLACEHOLDER } from "../lib/promptFallbacks";
 import { renderPromptTemplate } from "../lib/promptTemplate";
+import { useBaselineTestHook } from "../lib/baselineTestHook";
 import { parseTurns, buildVerbatimHistory, buildBandedHistory, extractKeywords, type BandCounts } from "../lib/turnBanding";
 import { findEntityNames, matchNames, matchNamesLoose, sameCharacterName } from "../lib/entityMatch";
 import { parseChoices } from "../lib/choices";
@@ -1461,6 +1462,13 @@ ${playerNotes || NONE_PLACEHOLDER}
   // re-running its effect every render (makeAIRequest is rebuilt each render by design).
   const makeAIRequestRef = useRef(makeAIRequest);
   makeAIRequestRef.current = makeAIRequest;
+
+  // DEV-only: expose window.__baseline for the fork-local test harness (no-op in production builds).
+  const debugTurnsRef = useRef(debugTurns);
+  debugTurnsRef.current = debugTurns;
+  const sendGameActionRef = useRef(sendGameAction);
+  sendGameActionRef.current = sendGameAction;
+  useBaselineTestHook(debugTurnsRef, sendGameActionRef);
 
   // Memory-digest drainer: summarize each completed turn silently (serialized, one at a time) and
   // patch the digest back onto that turn. Only runs while idle (just after a turn commits) so it never
