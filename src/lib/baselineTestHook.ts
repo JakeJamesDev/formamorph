@@ -22,7 +22,13 @@ export function useBaselineTestHook(
     w.__baseline = {
       getDebugTurns: () => debugTurnsRef.current,
       runScript: async (actions: string[]) => {
-        for (const a of actions) await sendGameActionRef.current(a);
+        for (const a of actions) {
+          await sendGameActionRef.current(a);
+          // Yield a macrotask so React flushes pending state (esp. isGameStarted after START GAME) and
+          // sendGameActionRef.current refreshes to the latest closure before the next action — otherwise
+          // the guard `if (!isGameStarted && action !== "START GAME") return` silently drops turns 2+.
+          await new Promise((r) => setTimeout(r, 500));
+        }
       },
     };
     return () => {
