@@ -14,11 +14,13 @@ import type {
   GameState,
   SaveObject,
   Choice,
+  DiscoveredEntity,
 } from '@/types';
 
 function useProvideGameplay() {
   const [characterData, setCharacterData] = useState<CharacterData | null>(null);
   const [visibleEntities, setVisibleEntities] = useState<string[]>([]);
+  const [discoveredEntities, setDiscoveredEntities] = useState<DiscoveredEntity[]>([]);
   const [logEntries, setLogEntries] = useState<LogEntry[]>([]);
   const [gameTime, setGameTime] = useState(0);
   const [currentLocation, setCurrentLocation] = useState<GameLocation | null>(null);
@@ -78,6 +80,7 @@ function useProvideGameplay() {
       playerStats,
       playerTraits,
       visibleEntities,
+      discoveredEntities,
       logEntries,
       gameplayText,
       locationId: currentLocation?.id,
@@ -94,7 +97,7 @@ function useProvideGameplay() {
       // Add a version flag for backward compatibility
       stateVersion: 2
     };
-  }, [playerStats, playerTraits, visibleEntities, logEntries, gameplayText, currentLocation,
+  }, [playerStats, playerTraits, visibleEntities, discoveredEntities, logEntries, gameplayText, currentLocation,
       gameTime, fullMessageHistory, characterData, choices, isGameStarted, playerNotes, currentPage]);
 
   const loadGameState = useCallback((gameState: GameState, locations: GameLocation[]) => {
@@ -103,6 +106,7 @@ function useProvideGameplay() {
       setPlayerStats(gameState.playerStats);
       setPlayerTraits(gameState.playerTraits);
       setVisibleEntities(gameState.visibleEntities);
+      setDiscoveredEntities(gameState.discoveredEntities ?? []);
       setLogEntries(gameState.logEntries);
       setGameplayText(gameState.gameplayText);
       setGameTime(gameState.gameTime);
@@ -285,6 +289,8 @@ function useProvideGameplay() {
     setBodyMorphValues,
     visibleEntities,
     setVisibleEntities,
+    discoveredEntities,
+    setDiscoveredEntities,
     logEntries,
     setLogEntries,
     addLogEntry,

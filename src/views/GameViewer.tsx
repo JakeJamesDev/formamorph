@@ -47,11 +47,13 @@ import {
   INLINE_THINKING_DIRECTIVE,
   markdownGuidance,
   planDirective,
+  defaultDiscoverEntityPrompt,
 } from "../components/game/GamePrompts";
 import {
   buildDiaryUserMessage,
   runStagedPlanning,
 } from "../lib/stagedPlanning";
+import { selectDueDiscovery, materializeDiscoveredEntity, mergeDiscoveredIntoLocation, cleanDiscoveredDescription, DISCOVER_NAME_LABEL, DISCOVER_PASSAGE_LABEL } from "../lib/runtimeCharacters";
 import { lengthGuidance, trimToLastSentence } from "../lib/outputLength";
 import { splitSentenceSegments } from "../lib/ttsChunks";
 import { selectDueDigests, applyDigest, parseTurnContent, selectDueDiaries, pendingDiaryNames, applyDiary } from "../lib/turnDigest";
@@ -60,7 +62,8 @@ import { buildLocationContext, buildEntityContext } from "../lib/locationContext
 import { NONE_PLACEHOLDER } from "../lib/promptFallbacks";
 import { renderPromptTemplate } from "../lib/promptTemplate";
 import { parseTurns, buildVerbatimHistory, buildBandedHistory, extractKeywords, type BandCounts } from "../lib/turnBanding";
-import { findEntityNames, matchNames, matchNamesLoose } from "../lib/entityMatch";
+import { findEntityNames, matchNames, matchNamesLoose, sameCharacterName } from "../lib/entityMatch";
+import { parseChoices } from "../lib/choices";
 import { useSmoothedReveal } from "../lib/useSmoothedReveal";
 import { parseSlashCommand } from "../lib/slashCommands";
 import { MARKDOWN_SAMPLE } from "../lib/markdownSample";
@@ -106,6 +109,10 @@ const DIGEST_MAX_TOKENS = 200;
 
 // Per-character diary entries are short, first-person, 1-2 sentences — a small cap keeps them terse.
 const DIARY_MAX_TOKENS = 80;
+
+// A discovered character's reference description runs ~2 short paragraphs; the response is trimmed to
+// the last full sentence, so this cap just needs headroom to avoid a mid-word cut.
+const DISCOVER_MAX_TOKENS = 200;
 
 // How many of a character's own recent diary entries to feed into its motivation pass (its memory).
 const DIARY_MEMORY_ENTRIES = 5;
@@ -230,7 +237,22 @@ const GameViewer = ({
     loadGame,
     saveCurrentGameState,
     loadGameState,
+    discoveredEntities,
+    setDiscoveredEntities,
   } = useGameplay();
+
+  // Runtime characters (Slice 2): director-invented characters promoted to persisted entities this
+  // playthrough behave like authored ones — union them into the AI-pipeline roster, and inject those
+  // anchored to a location into that location's roster so the location-scoped context includes them.
+  const allEntities = useMemo(
+    () => [...entities, ...discoveredEntities.map((d) => d.entity)],
+    [entities, discoveredEntities],
+  );
+  const withDiscovered = useCallback(
+    (loc: GameLocation | null | undefined): GameLocation | null =>
+      mergeDiscoveredIntoLocation(loc ?? undefined, discoveredEntities) ?? null,
+    [discoveredEntities],
+  );
 
   // Smoothly plays streamed narration into gameplayText so it reads as continuous typing and the
   // truncation trim happens off-screen (see lib/useSmoothedReveal).
@@ -304,6 +326,8 @@ const GameViewer = ({
   const [digestActive, setDigestActive] = useState(false); // drives the status-bar indicator for a running digest
   const diaryDrainingRef = useRef(false); // a character diary entry is in flight (serializes the drainer)
   const [diaryActive, setDiaryActive] = useState(false); // drives the status-bar indicator for a running diary pass
+  const discoverDrainingRef = useRef(false); // a runtime-character describe request is in flight (serializes the drainer)
+  const [discoverActive, setDiscoverActive] = useState(false); // drives the status-bar indicator for a running discovery pass
 
   // Generate TTS for `text` (or the current game text) with the busy flag set, so both the
   // manual refresh button and auto-narration show the same spinner + chunk progress.
@@ -487,7 +511,7 @@ const GameViewer = ({
     if (memoryDigests) {
       const keywords = extractKeywords(action, dictionary);
       // Entities the action references (case-insensitive — actions are lowercase) drive participation rehydration.
-      const actionEntities = findEntityNames(action, entities, { requireCapital: false });
+      const actionEntities = findEntityNames(action, allEntities, { requireCapital: false });
       const rehydrateCap = Math.round(Math.max(0, contextWindow - promptTokens - maxTokens) * 0.25);
       const { messages, counts } = buildBandedHistory({
         turns,
@@ -505,7 +529,7 @@ const GameViewer = ({
     }
     lastBandCountsRef.current = null;
     return buildVerbatimHistory(turns, contextWindow, promptTokens, maxTokens);
-  }, [fullMessageHistory, contextWindow, maxTokens, memoryDigests, dictionary, entities, narrationVerbatimTurns]);
+  }, [fullMessageHistory, contextWindow, maxTokens, memoryDigests, dictionary, allEntities, narrationVerbatimTurns]);
 
   // Drive body morphs from stats: each stat's bound sliders track its value (min→max → 0→1 influence).
   useEffect(() => {
@@ -616,8 +640,8 @@ const GameViewer = ({
     "<TRAITS DESCRIPTION>": generateTraitDescriptions(),
     "<LOCATION>": buildLocationContext(currentLocation),
     "<LOCATION|summary>": buildLocationContext(currentLocation, { preferSummary: true }),
-    "<ENTITIES>": buildEntityContext(currentLocation, entities),
-    "<ENTITIES|summary>": buildEntityContext(currentLocation, entities, { preferSummary: true }),
+    "<ENTITIES>": buildEntityContext(withDiscovered(currentLocation), allEntities),
+    "<ENTITIES|summary>": buildEntityContext(withDiscovered(currentLocation), allEntities, { preferSummary: true }),
     "<NOTES>": playerNotes || NONE_PLACEHOLDER,
     "<LENGTH GUIDANCE>": lengthGuidance(paragraphLimit, maxTokens),
     "<MARKDOWN GUIDANCE>": markdownGuidance(markdownOutput),
@@ -627,7 +651,7 @@ const GameViewer = ({
     "<NARRATION>": "the most recent narration",
   }), [
     worldOverview, hideStatNumbers, generateStatDescriptions, generateTraitDescriptions,
-    currentLocation, entities, playerNotes, paragraphLimit, maxTokens, markdownOutput, locations,
+    currentLocation, allEntities, withDiscovered, playerNotes, paragraphLimit, maxTokens, markdownOutput, locations,
   ]);
 
   const sendGameAction = async (action: string) => {
@@ -642,8 +666,8 @@ const GameViewer = ({
     const locationSummaryString = buildLocationContext(currentLocation, { preferSummary: true });
     // Entities are their own section now (a roster of who/what could appear), kept separate from the
     // location so the model doesn't read the whole cast as all-present.
-    const entityDataString = buildEntityContext(currentLocation, entities);
-    const entitySummaryString = buildEntityContext(currentLocation, entities, { preferSummary: true });
+    const entityDataString = buildEntityContext(withDiscovered(currentLocation), allEntities);
+    const entitySummaryString = buildEntityContext(withDiscovered(currentLocation), allEntities, { preferSummary: true });
     // The Location chip's "List" mode: a newline list of every location name (usable in any prompt).
     const locationListString = locations.map((loc) => loc.name).join("\n") || NONE_PLACEHOLDER;
 
@@ -810,8 +834,9 @@ ${playerNotes || NONE_PLACEHOLDER}
           action,
           stageValues,
           lastStory,
-          entities,
-          presentEntityIds: currentLocation?.entities || [],
+          entities: allEntities,
+          presentEntityIds: withDiscovered(currentLocation)?.entities || [],
+          playerNames: playerTraits.map((t) => t.name),
           characterDiaries,
           fullMessageHistory,
           diaryMemoryEntries: DIARY_MEMORY_ENTRIES,
@@ -851,7 +876,7 @@ ${playerNotes || NONE_PLACEHOLDER}
       // entity tab, the choices filter, and stored participation.
       const turnParticipants = [
         ...new Set([
-          ...findEntityNames(narrationResponse, entities),
+          ...findEntityNames(narrationResponse, allEntities),
           ...matchNamesLoose(narrationResponse, directorCandidates),
           ...matchNames(narrationResponse, adHocCandidates),
         ]),
@@ -866,9 +891,9 @@ ${playerNotes || NONE_PLACEHOLDER}
         ...turnParticipants,
         ...recentParticipants(fullMessageHistory, CHOICES_PRESENCE_TURNS - 1),
       ]);
-      const sceneEntities = entities.filter((e) => presentNames.has(e.name));
-      const sceneEntityData = buildEntityContext(currentLocation, sceneEntities);
-      const sceneEntitySummary = buildEntityContext(currentLocation, sceneEntities, { preferSummary: true });
+      const sceneEntities = allEntities.filter((e) => presentNames.has(e.name));
+      const sceneEntityData = buildEntityContext(withDiscovered(currentLocation), sceneEntities);
+      const sceneEntitySummary = buildEntityContext(withDiscovered(currentLocation), sceneEntities, { preferSummary: true });
 
       // Auto-narrate the new game text if a TTS model is loaded. When streaming is off, block the trailing
       // choices/stat/location requests until the audio has finished generating (avoids GPU contention). When
@@ -998,13 +1023,7 @@ ${playerNotes || NONE_PLACEHOLDER}
 
       if (signal.aborted) return; // stopped during the location-change request
       // Parse choices (line-separated), hard-capped to 6 to stop the AI over-producing
-      const choicesList =
-        !choicesEnabled
-          ? []
-          : choicesResponse
-              .split("\n")
-              .filter((choice) => choice.trim())
-              .slice(0, 6);
+      const choicesList = !choicesEnabled ? [] : parseChoices(choicesResponse);
       setChoices(choicesList);
 
       // Parse stat updates into current-value deltas and max-cap deltas (see lib/statChanges).
@@ -1033,6 +1052,7 @@ ${playerNotes || NONE_PLACEHOLDER}
               stat_changes: statChanges,
               turnId: currentTurnIdRef.current,
               entities: turnParticipants,
+              locationId: currentLocation?.id,
             }),
           };
         }
@@ -1331,7 +1351,7 @@ ${playerNotes || NONE_PLACEHOLDER}
             const newSentence = completeSentences > entitySentenceCursorRef.current;
             if (newSentence) {
               entitySentenceCursorRef.current = completeSentences;
-              setVisibleEntities(findEntityNames(display, entities));
+              setVisibleEntities(findEntityNames(display, allEntities));
             }
 
             // Persist the in-progress assistant message: add it once (as soon as narration content
@@ -1363,11 +1383,7 @@ ${playerNotes || NONE_PLACEHOLDER}
             }
           } else if (requestType === "choices") {
             // Update choices in real-time, ensuring we handle partial content correctly
-            const choicesList = stripReasoningLive(content)
-              .split("\n")
-              .map((line) => line.trim())
-              .filter((line) => line.length > 0)
-              .slice(0, 6);
+            const choicesList = parseChoices(stripReasoningLive(content));
             if (choicesList.length > 0) {
               setChoices(choicesList);
             }
@@ -1502,7 +1518,7 @@ ${playerNotes || NONE_PLACEHOLDER}
   // local endpoint isn't hit twice. Runs one participant per tick; patching re-runs the effect until the
   // due turn is fully covered, then the next due turn. Nothing consumes the entries yet (Slice A).
   useEffect(() => {
-    if (!characterDiaries || isWaitingForAI || digestActive || digestDrainingRef.current || diaryDrainingRef.current) return;
+    if (!characterDiaries || isWaitingForAI || digestActive || discoverActive || digestDrainingRef.current || diaryDrainingRef.current || discoverDrainingRef.current) return;
     const due = selectDueDiaries(fullMessageHistory);
     if (due.length === 0) return;
     // Oldest due turn first — closest to leaving the context window.
@@ -1513,7 +1529,7 @@ ${playerNotes || NONE_PLACEHOLDER}
     const narrationText = dueTurn?.narration ?? "";
     const name = pendingDiaryNames(fullMessageHistory, turnId)[0];
     if (!narrationText.trim() || !name) return;
-    const entity = entities.find((e) => e.name.trim().toLowerCase() === name.trim().toLowerCase());
+    const entity = allEntities.find((e) => e.name.trim().toLowerCase() === name.trim().toLowerCase());
 
     diaryDrainingRef.current = true;
     setDiaryActive(true);
@@ -1538,7 +1554,51 @@ ${playerNotes || NONE_PLACEHOLDER}
         setDiaryActive(false);
       }
     })();
-  }, [characterDiaries, isWaitingForAI, digestActive, fullMessageHistory, entities, diaryPrompt, setFullMessageHistory]);
+  }, [characterDiaries, isWaitingForAI, digestActive, discoverActive, fullMessageHistory, allEntities, diaryPrompt, setFullMessageHistory]);
+
+  // Runtime characters (Slice 2): promote a director-invented, narration-confirmed character into a
+  // persisted entity. Idle-gated and serialized like the diary drainer (shares the Character Diaries
+  // toggle); runs before the diary pass so a new character is described first. A confirmed participant
+  // whose name matches no known entity is silently described (3rd-person, from the turn's narration) and
+  // materialized into `discoveredEntities`, after which it flows through the authored-entity path.
+  useEffect(() => {
+    if (!characterDiaries || isWaitingForAI || digestActive || diaryActive || digestDrainingRef.current || diaryDrainingRef.current || discoverDrainingRef.current) return;
+    const knownNames = allEntities.map((e) => e.name);
+    const due = selectDueDiscovery(fullMessageHistory, knownNames);
+    if (!due) return;
+    const locationId = due.locationId ?? currentLocation?.id;
+
+    discoverDrainingRef.current = true;
+    setDiscoverActive(true);
+    (async () => {
+      try {
+        const description = await makeAIRequestRef.current(
+          defaultDiscoverEntityPrompt,
+          [{ role: "user", content: `${DISCOVER_NAME_LABEL} ${due.name}\n\n${DISCOVER_PASSAGE_LABEL}\n${due.narration}` }],
+          "discoverEntity",
+          DISCOVER_MAX_TOKENS,
+          undefined,
+          true, // silent: surfaces only when "Show Silent Requests" is on
+          due.turnId, // attach the request to the turn that introduced the character
+        );
+        // Small models parrot the prompt labels and get token-capped mid-word — sanitize before storing.
+        const cleaned = cleanDiscoveredDescription(description ?? "", due.name);
+        if (!cleaned) return; // no usable description — leave it due, retry on a later idle tick
+        const entity = materializeDiscoveredEntity(due.name, cleaned);
+        setDiscoveredEntities((prev) =>
+          // Guard against a double-add if the effect re-ran before state committed (variant-aware).
+          prev.some((d) => sameCharacterName(d.entity.name, due.name))
+            ? prev
+            : [...prev, { entity, locationId, sourceTurnId: due.turnId }],
+        );
+      } catch {
+        // Non-fatal: the character stays due and is retried on a later idle tick.
+      } finally {
+        discoverDrainingRef.current = false;
+        setDiscoverActive(false);
+      }
+    })();
+  }, [characterDiaries, isWaitingForAI, digestActive, diaryActive, fullMessageHistory, allEntities, currentLocation, setDiscoveredEntities]);
 
   const handleSendAction = () => {
     const input = playerInput.trim();
@@ -1678,6 +1738,7 @@ ${playerNotes || NONE_PLACEHOLDER}
         locationChange: "Location",
         summary: "Memory",
         diary: "Diary",
+        discoverEntity: "Character",
       };
       const label = aiRequestType ? labels[aiRequestType] : "Response";
       return (
@@ -2121,7 +2182,7 @@ ${playerNotes || NONE_PLACEHOLDER}
               const action = currentTurn?.action || "";
               const raw = [
                 ...extractKeywords(action, dictionary),
-                ...findEntityNames(action, entities, { requireCapital: false }),
+                ...findEntityNames(action, allEntities, { requireCapital: false }),
               ];
               for (const term of raw) {
                 const key = term.toLowerCase();

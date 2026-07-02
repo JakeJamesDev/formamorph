@@ -1,5 +1,15 @@
-import type { Stat, Trait } from './world';
+import type { Stat, Trait, Entity } from './world';
 import type { ChatMessage } from './ai';
+
+/** A director-invented character promoted to a persisted, per-playthrough entity (runtime characters,
+ *  Slice 2). Save-only: it rolls back with the turn and is never written to the world export. */
+export interface DiscoveredEntity {
+  entity: Entity;
+  /** The location where the character appeared, so it joins that location's roster. */
+  locationId?: string;
+  /** The turn that first materialized it, for description generation / provenance. */
+  sourceTurnId: string;
+}
 
 /** A stat during gameplay — a definition Stat whose live `value` is always a number. */
 export type PlayerStat = Omit<Stat, 'value'> & { value: number };
@@ -61,6 +71,8 @@ export interface GameState {
   playerTraits: Trait[];
   /** Names of entities currently visible (matched against the world's entity list by name). */
   visibleEntities: string[];
+  /** Director-invented characters promoted to persisted entities this playthrough (runtime characters). */
+  discoveredEntities?: DiscoveredEntity[];
   logEntries: LogEntry[];
   gameplayText: string;
   locationId?: string;

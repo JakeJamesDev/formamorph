@@ -173,10 +173,10 @@ describe('user-message builders', () => {
       action: 'wave',
     });
     expect(msg).toContain('You are Mira.');
-    expect(msg).toContain('Who you are: A wary scout.');
-    expect(msg).toContain('Current stance: crouched behind a crate');
-    expect(msg).toContain('Scene: Dust settles.');
-    expect(msg).toContain('As Mira, state in the first person');
+    expect(msg).toContain('My background (who I am in general, not this exact moment): A wary scout.');
+    expect(msg).toContain('Where I am now: crouched behind a crate');
+    expect(msg).toContain('Scene right now: Dust settles.');
+    expect(msg).toContain('As Mira, react to what just happened');
   });
 
   it('flags an ad-hoc character as director-introduced and omits an absent stance', () => {
@@ -186,7 +186,28 @@ describe('user-message builders', () => {
       action: 'wave',
     });
     expect(msg).toContain('Introduced by the director');
-    expect(msg).not.toContain('Current stance:');
+    expect(msg).not.toContain('Where I am now:');
+  });
+
+  it('includes the recap of what just happened (before the scene) with the pronoun frame, and omits it when empty', () => {
+    const withRecap = buildCharacterUserMessage({
+      character: { name: 'Mira', entity: ent('1', 'Mira'), stance: 'by the door' },
+      scene: 'Dust settles.',
+      action: 'wave',
+      recap: 'You kicked the door in.',
+    });
+    expect(withRecap).toContain('What just happened (here "you" / "your" means the player character, not me):');
+    expect(withRecap).toContain('You kicked the door in.');
+    // Recap precedes the current scene so the character reacts to how things developed.
+    expect(withRecap.indexOf('What just happened')).toBeLessThan(withRecap.indexOf('Scene right now: Dust settles.'));
+
+    const noRecap = buildCharacterUserMessage({
+      character: { name: 'Mira', entity: ent('1', 'Mira') },
+      scene: 'Dust settles.',
+      action: 'wave',
+      recap: '   ',
+    });
+    expect(noRecap).not.toContain('What just happened');
   });
 
   it('injects the character\'s own diary as a memory block (oldest first)', () => {
@@ -200,8 +221,8 @@ describe('user-message builders', () => {
     expect(msg).toContain('- I distrusted the stranger.');
     expect(msg).toContain('- I softened toward them.');
     // Memory precedes the scene, and the first-person cue still closes the message.
-    expect(msg.indexOf('My diary so far')).toBeLessThan(msg.indexOf('Scene: Dust settles.'));
-    expect(msg).toContain('As Mira, state in the first person');
+    expect(msg.indexOf('My diary so far')).toBeLessThan(msg.indexOf('Scene right now: Dust settles.'));
+    expect(msg).toContain('As Mira, react to what just happened');
   });
 
   it('omits the diary block when there are no entries', () => {
@@ -279,6 +300,7 @@ describe('runStagedPlanning', () => {
     lastStory: 'It was quiet.',
     entities: [] as Entity[],
     presentEntityIds: [] as string[],
+    playerNames: [] as string[],
     characterDiaries: false,
     fullMessageHistory: [],
     diaryMemoryEntries: 5,
@@ -320,6 +342,32 @@ describe('runStagedPlanning', () => {
     const res = await runStagedPlanning({ ...baseCtx, request, signal: new AbortController().signal });
     expect(calls).toEqual(['director']);
     expect(res.turnPlan).toContain('Scene: An empty road.');
+    expect(res.adHocCandidates).toEqual([]);
+  });
+
+  it('treats a director-named player as the player (no character pass), while an NPC still gets one', async () => {
+    const calls: string[] = [];
+    const request: StagedRequestFn = async (_s, _m, type) => {
+      calls.push(type);
+      if (type === 'director') return 'Scene: A kitchen.\nCast:\n- Jessica Foster - lingering\n- Alice - watching';
+      if (type === 'character') return 'I step closer.';
+      if (type === 'storyboard') return 'Alice steps closer.';
+      return '';
+    };
+    const res = await runStagedPlanning({ ...baseCtx, playerNames: ['Jessica Foster'], request, signal: new AbortController().signal });
+    // Only Alice gets a motivation pass; the named player is filtered out.
+    expect(calls).toEqual(['director', 'character', 'storyboard']);
+    expect(res.adHocCandidates).toEqual(['Alice']);
+    // The player still grounds the scene stances.
+    expect(res.turnPlan).toContain('Jessica Foster');
+  });
+
+  it('keeps a present entity as an NPC even if its name matches a player-name candidate (guard)', async () => {
+    const entities: Entity[] = [{ id: 'e1', name: 'Guard' }];
+    const request: StagedRequestFn = async (_s, _m, type) =>
+      type === 'director' ? 'Scene: A gate.\nCast:\n- Guard - blocking' : type === 'storyboard' ? 'It blocks.' : 'I block.';
+    const res = await runStagedPlanning({ ...baseCtx, entities, presentEntityIds: ['e1'], playerNames: ['Guard'], request, signal: new AbortController().signal });
+    expect(res.directorCandidates).toEqual(['Guard']);
     expect(res.adHocCandidates).toEqual([]);
   });
 

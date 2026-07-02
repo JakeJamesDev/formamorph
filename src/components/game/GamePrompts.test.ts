@@ -56,6 +56,12 @@ describe('default prompts carry the expected variable chips', () => {
       '<LOCATION|summary>',
       '<ENTITIES|summary>',
     ]);
+    // First-person, single-sentence options — not the old terse-phrase-with-examples shape,
+    // and without the literal `"I ..."` token that small models echo as a prefix.
+    expect(defaultChoicesPrompt).toContain('single first-person sentence');
+    expect(defaultChoicesPrompt).not.toContain('"I ..."');
+    expect(defaultChoicesPrompt).not.toContain('1-6 words');
+    expect(defaultChoicesPrompt).not.toContain('Forage for food');
   });
 
   it('stat-updates prompt', () => {
@@ -149,8 +155,8 @@ describe('default prompts carry the expected variable chips', () => {
 });
 
 describe('aux user-message templates carry the runtime value-tokens', () => {
-  it('choices user template has the action + narration tokens', () => {
-    expect(tokensIn(defaultChoicesUserPrompt)).toEqual(['<PLAYER ACTION>', '<NARRATION>']);
+  it('choices user template has only the narration token (last-action line was cut)', () => {
+    expect(tokensIn(defaultChoicesUserPrompt)).toEqual(['<NARRATION>']);
   });
   it('stat-updates and location user templates carry the narration token', () => {
     expect(tokensIn(defaultStatUpdatesUserPrompt)).toEqual(['<NARRATION>']);

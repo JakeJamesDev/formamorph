@@ -1,6 +1,7 @@
 import type { Entity, ChatMessage, AIRequestType } from "@/types";
 import { renderPromptTemplate } from "./promptTemplate";
 import { collectCharacterDiary } from "./turnDigest";
+import { sameCharacterName } from "./entityMatch";
 import { defaultDirectorPrompt, defaultCharacterPrompt, defaultStoryboardPrompt } from "@/components/game/GamePrompts";
 
 /** One entry in the director's cast: a name plus their placement/action, if the director gave one.
@@ -174,18 +175,24 @@ export function buildCharacterUserMessage(args: {
   scene: string;
   action: string;
   diary?: string[];
+  recap?: string;
 }): string {
-  const { character, scene, action, diary } = args;
+  const { character, scene, action, diary, recap } = args;
+  // The blurb is a general baseline, not this turn's pose — framed so a static description doesn't
+  // re-anchor the character to its opening stance every turn (the recap/scene carry the live situation).
   const identity = character.entity
-    ? `You are ${character.name}.\nWho you are: ${entityBlurb(character.entity) || "(no description provided)"}`
+    ? `You are ${character.name}.\nMy background (who I am in general, not this exact moment): ${entityBlurb(character.entity) || "(no description provided)"}`
     : `You are ${character.name}.\n(Introduced by the director and not a predefined character — portray yourself as a fitting minor presence.)`;
 
   const diaryBlock = diary && diary.length
     ? `\n\nMy diary so far (my own private memories, oldest first — stay consistent with them):\n${diary.map((d) => `- ${d}`).join("\n")}`
     : "";
-  const stanceLine = character.stance ? `\nCurrent stance: ${character.stance}` : "";
-  const sceneLine = scene ? `\n\nScene: ${scene}` : "";
-  return `${identity}${diaryBlock}${stanceLine}${sceneLine}\n\nThe player's latest action: ${action}\n\nAs ${character.name}, state in the first person ("I ...") what you want and what you intend to do this turn.`;
+  const recapBlock = recap && recap.trim()
+    ? `\n\nWhat just happened (here "you" / "your" means the player character, not me):\n${recap.trim()}`
+    : "";
+  const stanceLine = character.stance ? `\n\nWhere I am now: ${character.stance}` : "";
+  const sceneLine = scene ? `\n\nScene right now: ${scene}` : "";
+  return `${identity}${diaryBlock}${recapBlock}${stanceLine}${sceneLine}\n\nThe player's latest action (their own words — any "I" / "me" / "my" here is the player character, not me): ${action}\n\nAs ${character.name}, react to what just happened and where things stand now: in the first person, state what I want and the specific action I take this turn — building on the moment and pressing toward my goal, not restating my last move.`;
 }
 
 /** Build the user message for one character's diary pass: their identity plus the turn narration to
@@ -275,6 +282,8 @@ export async function runStagedPlanning(ctx: {
   lastStory: string;
   entities: Entity[];
   presentEntityIds: string[];
+  /** Selected trait names — used to recognize the player when the director names them instead of labeling. */
+  playerNames: string[];
   characterDiaries: boolean;
   fullMessageHistory: ChatMessage[];
   diaryMemoryEntries: number;
@@ -283,7 +292,7 @@ export async function runStagedPlanning(ctx: {
   signal: AbortSignal;
 }): Promise<StagedPlanningResult> {
   const {
-    action, stageValues, lastStory, entities, presentEntityIds, characterDiaries,
+    action, stageValues, lastStory, entities, presentEntityIds, playerNames, characterDiaries,
     fullMessageHistory, diaryMemoryEntries, caps, request, signal,
   } = ctx;
   const directorCandidates: string[] = [];
@@ -298,10 +307,18 @@ export async function runStagedPlanning(ctx: {
   );
   if (signal.aborted) return { turnPlan: "", directorCandidates, adHocCandidates };
   const { scene, cast } = parseDirectorCast(directorOut || "");
-  // The player may be listed for scene grounding but is never directed or matched as a participant.
-  const npcCast = cast.filter((c) => !c.isPlayer);
-  // Split the cast into defined entities (director vouched → loose match) and ad-hoc names (strict match).
   const definedByLower = new Map(entities.map((e) => [e.name.trim().toLowerCase(), e.name]));
+  // The director sometimes names the player instead of using the "Player Character" label; flag those by
+  // matching the selected trait names, but never a name that resolves to a world entity (that's an NPC).
+  const isKnownEntity = (n: string) => definedByLower.has(n.trim().toLowerCase());
+  const flaggedCast = cast.map((c) =>
+    c.isPlayer || isKnownEntity(c.name) ? c
+      : playerNames.some((pn) => sameCharacterName(pn, c.name)) ? { ...c, isPlayer: true }
+      : c,
+  );
+  // The player may be listed for scene grounding but is never directed or matched as a participant.
+  const npcCast = flaggedCast.filter((c) => !c.isPlayer);
+  // Split the cast into defined entities (director vouched → loose match) and ad-hoc names (strict match).
   for (const member of npcCast) {
     const canonical = definedByLower.get(member.name.trim().toLowerCase());
     if (canonical) directorCandidates.push(canonical);
@@ -310,7 +327,7 @@ export async function runStagedPlanning(ctx: {
 
   if (npcCast.length === 0) {
     // No one to reconcile — skip the character + storyboard passes (they'd only invent filler).
-    return { turnPlan: buildStagedPlan({ scene, stances: cast, beats: "" }), directorCandidates, adHocCandidates };
+    return { turnPlan: buildStagedPlan({ scene, stances: flaggedCast, beats: "" }), directorCandidates, adHocCandidates };
   }
 
   const presentEntities = entities.filter((e) => presentEntityIds.includes(e.id));
@@ -323,7 +340,7 @@ export async function runStagedPlanning(ctx: {
     const diary = characterDiaries ? collectCharacterDiary(fullMessageHistory, member.name, diaryMemoryEntries) : [];
     const text = await request(
       renderPromptTemplate(defaultCharacterPrompt, stageValues),
-      [{ role: "user", content: buildCharacterUserMessage({ character: member, scene, action, diary }) }],
+      [{ role: "user", content: buildCharacterUserMessage({ character: member, scene, action, diary, recap: lastStory }) }],
       "character", caps.character, signal,
     );
     if (signal.aborted) return { turnPlan: "", directorCandidates, adHocCandidates };
@@ -338,5 +355,5 @@ export async function runStagedPlanning(ctx: {
   );
   if (signal.aborted) return { turnPlan: "", directorCandidates, adHocCandidates };
   // Ground the narration in the director's scene + cast stances alongside the storyboard beats.
-  return { turnPlan: buildStagedPlan({ scene, stances: cast, beats: plan || "" }), directorCandidates, adHocCandidates };
+  return { turnPlan: buildStagedPlan({ scene, stances: flaggedCast, beats: plan || "" }), directorCandidates, adHocCandidates };
 }
