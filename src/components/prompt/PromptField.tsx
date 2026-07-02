@@ -98,6 +98,13 @@ function ValueSyncPlugin({ value, onChange }: { value: string; onChange: (v: str
   return null;
 }
 
+/** Reflects `readOnly` into the editor's editability (initialConfig only applies it at mount). */
+function EditablePlugin({ readOnly }: { readOnly: boolean }) {
+  const [editor] = useLexicalComposerContext();
+  useEffect(() => editor.setEditable(!readOnly), [editor, readOnly]);
+  return null;
+}
+
 /** Toolbar of colored variable chips. Interactive (Edit tab): clicking inserts a fresh chip at the
  *  caret. Non-interactive (Preview tab): the same chips persist as a color key — which also keeps the
  *  row from reflowing when the tab switches. */
@@ -228,12 +235,13 @@ function PreviewPane({ value, previewValues }: {
  * chip for its live value. The composer wraps both tabs so the Insert toolbar persists across them —
  * interactive in Edit, a static color key in Preview. Storage stays the same token-string.
  */
-const PromptField = ({ value, onChange, variables, previewValues, className }: {
+const PromptField = ({ value, onChange, variables, previewValues, className, readOnly = false }: {
   value: string;
   onChange: (v: string) => void;
   variables: PromptVariable[];
   previewValues?: Record<string, string>;
   className?: string;
+  readOnly?: boolean;
 }) => {
   const dragKey = useRef<string | null>(null);
   const [tab, setTab] = useState('edit');
@@ -243,6 +251,7 @@ const PromptField = ({ value, onChange, variables, previewValues, className }: {
       namespace: 'PromptField',
       nodes: [VariableNode],
       onError: (error: Error) => { throw error; },
+      editable: !readOnly,
       editorState: () => buildEditorState(value),
     }),
     // eslint-disable-next-line react-hooks/exhaustive-deps -- intentional: only the mount-time value seeds the editor
@@ -267,7 +276,7 @@ const PromptField = ({ value, onChange, variables, previewValues, className }: {
     <LexicalComposer initialConfig={initialConfig}>
       <PromptDragContext.Provider value={dragKey}>
         <div className={cn('flex flex-col flex-1 min-h-0 gap-2', className)}>
-          <VariableToolbar variables={variables} interactive={!previewValues || tab === 'edit'} />
+          <VariableToolbar variables={variables} interactive={!readOnly && (!previewValues || tab === 'edit')} />
           {previewValues ? (
             <Tabs value={tab} onValueChange={setTab} className="flex flex-col flex-1 min-h-0">
               <TabsList className="grid w-full grid-cols-2 flex-shrink-0">
@@ -287,6 +296,7 @@ const PromptField = ({ value, onChange, variables, previewValues, className }: {
         </div>
         <HistoryPlugin />
         <ValueSyncPlugin value={value} onChange={onChange} />
+        <EditablePlugin readOnly={readOnly} />
         <ChipDragPlugin dragKey={dragKey} />
       </PromptDragContext.Provider>
     </LexicalComposer>

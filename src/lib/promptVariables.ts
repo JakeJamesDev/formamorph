@@ -21,7 +21,7 @@ export interface PromptVariable {
 }
 
 /** Every prompt editor maps to one of these kinds (mirrors the Settings → System Prompts sub-tabs). */
-export type PromptKind = 'narration' | 'thinking' | 'choices' | 'statupdates' | 'location' | 'summary' | 'diary';
+export type PromptKind = 'narration' | 'thinking' | 'choices' | 'statupdates' | 'location' | 'summary' | 'diary' | 'director' | 'character' | 'storyboard';
 
 const SUMMARY_VARIANT: PromptVariant = {
   id: 'summary',
@@ -40,15 +40,23 @@ const ENTITY_VARIANTS: PromptVariant[] = [
   SUMMARY_VARIANT,
 ];
 
+const STATS_VARIANTS: PromptVariant[] = [
+  { id: null, label: 'Full', help: 'Numbers and descriptor, e.g. "Health: 10/100 (Critical)".' },
+  { id: 'descriptions', label: 'Words', help: 'Descriptor only, e.g. "Health: Critical".' },
+  { id: 'numbers', label: 'Values', help: 'Numbers only, e.g. "Health: 10/100".' },
+];
+
 // Each variable gets a fixed palette slot so its color is stable everywhere (chip + preview, every prompt).
 const WORLD: PromptVariable = { token: '<WORLD DESCRIPTION>', label: 'World', color: HIGHLIGHT_PALETTE[0] };
-const STATS: PromptVariable = { token: '<STATS DESCRIPTION>', label: 'Stats', color: HIGHLIGHT_PALETTE[1] };
+const STATS: PromptVariable = { token: '<STATS DESCRIPTION>', label: 'Stats', color: HIGHLIGHT_PALETTE[1], variants: STATS_VARIANTS };
 const TRAITS: PromptVariable = { token: '<TRAITS DESCRIPTION>', label: 'Traits', color: HIGHLIGHT_PALETTE[2] };
 const LOCATION: PromptVariable = { token: '<LOCATION>', label: 'Location', color: HIGHLIGHT_PALETTE[3], variants: LOCATION_VARIANTS };
 const NOTES: PromptVariable = { token: '<NOTES>', label: 'Notes', color: HIGHLIGHT_PALETTE[4] };
 const LENGTH: PromptVariable = { token: '<LENGTH GUIDANCE>', label: 'Length Guidance', color: HIGHLIGHT_PALETTE[5] };
 const MARKDOWN: PromptVariable = { token: '<MARKDOWN GUIDANCE>', label: 'Markdown Guidance', color: HIGHLIGHT_PALETTE[6] };
 const ENTITIES: PromptVariable = { token: '<ENTITIES>', label: 'Entities', color: HIGHLIGHT_PALETTE[8], variants: ENTITY_VARIANTS };
+// Runtime value-token for the staged character pass — the name of the character whose motivation is being written.
+const CHARACTER: PromptVariable = { token: '<CHARACTER NAME>', label: 'Character', color: HIGHLIGHT_PALETTE[7] };
 
 // Runtime value-tokens for the aux requests' user-message templates (the player's action + the turn's
 // game text), distinct from the world/context tokens above.
@@ -57,20 +65,25 @@ const NARRATION: PromptVariable = { token: '<NARRATION>', label: 'Narration', co
 
 /** All known variables — used by the parser to recognize any token regardless of which prompt it's in. */
 export const ALL_PROMPT_VARIABLES: PromptVariable[] = [
-  WORLD, STATS, TRAITS, LOCATION, ENTITIES, NOTES, LENGTH, MARKDOWN, PLAYER_ACTION, NARRATION,
+  WORLD, STATS, TRAITS, LOCATION, ENTITIES, NOTES, LENGTH, MARKDOWN, PLAYER_ACTION, NARRATION, CHARACTER,
 ];
 
-/** Which variables each prompt's toolbar offers (matches what GameViewer actually substitutes per
- *  request type). The summary prompt takes no variables. */
+/** The six context chips every system prompt can reference; GameViewer substitutes them uniformly. */
+const CONTEXT_VARS: PromptVariable[] = [WORLD, STATS, TRAITS, LOCATION, ENTITIES, NOTES];
+
+/** Which variables each prompt's toolbar offers. Every kind gets the shared context chips (even when its
+ *  default text doesn't use them); some add their own extras (narration's length/markdown, character's name). */
 export const PROMPT_KIND_VARIABLES: Record<PromptKind, PromptVariable[]> = {
-  narration: [WORLD, STATS, TRAITS, LOCATION, ENTITIES, NOTES, LENGTH, MARKDOWN],
-  thinking: [WORLD, STATS, TRAITS, LOCATION, ENTITIES, NOTES],
-  choices: [WORLD, STATS, TRAITS, NOTES, LOCATION, ENTITIES],
-  statupdates: [WORLD, STATS, TRAITS, NOTES],
-  location: [WORLD, LOCATION, ENTITIES],
-  summary: [],
-  // The diary system prompt is static framing; its identity + narration arrive in a code-built user message.
-  diary: [],
+  narration: [...CONTEXT_VARS, LENGTH, MARKDOWN],
+  thinking: [...CONTEXT_VARS],
+  choices: [...CONTEXT_VARS],
+  statupdates: [...CONTEXT_VARS],
+  location: [...CONTEXT_VARS],
+  summary: [...CONTEXT_VARS],
+  diary: [...CONTEXT_VARS],
+  director: [...CONTEXT_VARS],
+  character: [CHARACTER, ...CONTEXT_VARS],
+  storyboard: [...CONTEXT_VARS],
 };
 
 /** Variables offered by the aux requests' editable user-message templates (the per-turn runtime values
@@ -80,6 +93,7 @@ export const PROMPT_KIND_USER_VARIABLES: Partial<Record<PromptKind, PromptVariab
   statupdates: [PLAYER_ACTION, NARRATION],
   location: [PLAYER_ACTION, NARRATION],
   summary: [NARRATION],
+  director: [PLAYER_ACTION, NARRATION],
 };
 
 const VAR_BY_BASE = new Map(ALL_PROMPT_VARIABLES.map((v) => [v.token, v]));

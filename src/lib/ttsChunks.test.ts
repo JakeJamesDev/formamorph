@@ -15,6 +15,13 @@ describe('splitSentenceSegments', () => {
   it('returns a single segment when there is no boundary yet', () => {
     expect(splitSentenceSegments('No boundary here')).toEqual(['No boundary here']);
   });
+
+  it('splits after a closing quote following the terminator', () => {
+    expect(splitSentenceSegments('"...as any."\n\nHis eyes gleam.')).toEqual([
+      '"...as any."',
+      'His eyes gleam.',
+    ]);
+  });
 });
 
 describe('stripMarkdownForSpeech', () => {

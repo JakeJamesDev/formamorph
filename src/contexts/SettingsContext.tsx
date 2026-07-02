@@ -1,8 +1,13 @@
-import { createContext, useContext, useState, useEffect, useRef, useCallback, type ReactNode } from 'react';
-import { defaultSystemPrompt, defaultChoicesPrompt, defaultStatUpdatesPrompt, defaultLocationChangePrompt, defaultThinkingPrompt, defaultSummaryPrompt, defaultChoicesUserPrompt, defaultStatUpdatesUserPrompt, defaultLocationChangeUserPrompt, defaultSummaryUserPrompt, defaultDiaryPrompt } from '../components/game/GamePrompts';
+import { createContext, useContext, useState, useEffect, useRef, useCallback, useMemo, type ReactNode } from 'react';
+import { defaultSystemPrompt, defaultChoicesPrompt, defaultStatUpdatesPrompt, defaultLocationChangePrompt, defaultThinkingPrompt, defaultSummaryPrompt, defaultChoicesUserPrompt, defaultStatUpdatesUserPrompt, defaultLocationChangeUserPrompt, defaultSummaryUserPrompt, defaultDiaryPrompt, defaultDirectorPrompt, defaultDirectorUserPrompt, defaultCharacterPrompt, defaultStoryboardPrompt } from '../components/game/GamePrompts';
 import { DEFAULT_ENDPOINT, DEFAULT_API_TOKEN, DEFAULT_MODEL_NAME, DEFAULT_MAX_TOKENS, DEFAULT_CONTEXT_WINDOW } from './settingsDefaults';
 import { fetchContextLength } from '../lib/contextLength';
 import { usePersistentState, stringCodec, boolCodec, intCodec, floatCodec, nullableIntCodec } from '../lib/usePersistentState';
+import {
+  emptyStore, presetStoreCodec, activeValues, isDefaultActive,
+  setActive as setActivePreset, addPreset as addPresetOp, renamePreset as renamePresetOp, deletePreset as deletePresetOp, resetPreset as resetPresetOp, updateValue,
+  type PromptPresetStore, type PromptValues,
+} from '../lib/promptPresets';
 import type { ParagraphLimit } from '../lib/outputLength';
 
 export type DetectStatus = 'idle' | 'detecting' | 'success' | 'error';
@@ -11,6 +16,25 @@ export type ThinkingMode = 'off' | 'precall' | 'inline' | 'staged';
 export type { ParagraphLimit };
 
 const APP_ID = 'FORMAMORPH';
+
+/** The built-in "Default" preset's values — the shipped prompt text, read-only. */
+const PROMPT_TEXT_DEFAULTS: PromptValues = {
+  systemPrompt: defaultSystemPrompt,
+  choicesPrompt: defaultChoicesPrompt,
+  statUpdatesPrompt: defaultStatUpdatesPrompt,
+  locationChangePromptText: defaultLocationChangePrompt,
+  thinkingPrompt: defaultThinkingPrompt,
+  summaryPrompt: defaultSummaryPrompt,
+  diaryPrompt: defaultDiaryPrompt,
+  directorPrompt: defaultDirectorPrompt,
+  directorUserPrompt: defaultDirectorUserPrompt,
+  characterPrompt: defaultCharacterPrompt,
+  storyboardPrompt: defaultStoryboardPrompt,
+  choicesUserPrompt: defaultChoicesUserPrompt,
+  statUpdatesUserPrompt: defaultStatUpdatesUserPrompt,
+  locationChangeUserPrompt: defaultLocationChangeUserPrompt,
+  summaryUserPrompt: defaultSummaryUserPrompt,
+};
 
 /** One-time migration of the legacy "type DISABLED into the prompt body" hack to per-prompt Enabled
  *  flags. A prompt whose stored body is exactly "DISABLED" is turned off and its body reset to default. */
@@ -52,8 +76,6 @@ function useProvideSettings() {
   }, [paragraphLimit]);
 
   const [autoscroll, setAutoscroll] = usePersistentState<boolean>(`${APP_ID}_autoscroll`, false, boolCodec);
-  // Narrator (and planning/choices) sees stat descriptors instead of raw numbers, for immersion.
-  const [hideStatNumbers, setHideStatNumbers] = usePersistentState<boolean>(`${APP_ID}_hideStatNumbers`, true, boolCodec);
   // Let the AI format narration with Markdown (seeds the <MARKDOWN GUIDANCE> token in the game-text prompt).
   const [markdownOutput, setMarkdownOutput] = usePersistentState<boolean>(`${APP_ID}_markdownOutput`, false, boolCodec);
   // Synthesize narration audio sentence-by-sentence as the story streams (vs. after the full text).
@@ -126,23 +148,48 @@ function useProvideSettings() {
     return () => clearTimeout(id);
   }, [useCustomEndpoint, detectContextWindow]);
 
-  const [systemPrompt, setSystemPrompt] = usePersistentState<string>(`${APP_ID}_narrationPrompt2`, defaultSystemPrompt, stringCodec);
-  const [choicesPrompt, setChoicesPrompt] = usePersistentState<string>(`${APP_ID}_choicesPrompt2`, defaultChoicesPrompt, stringCodec);
-  const [statUpdatesPrompt, setStatUpdatesPrompt] = usePersistentState<string>(`${APP_ID}_statUpdatesPrompt2`, defaultStatUpdatesPrompt, stringCodec);
-  const [locationChangePromptText, setLocationChangePromptText] = usePersistentState<string>(`${APP_ID}_locationChangePrompt`, defaultLocationChangePrompt, stringCodec);
   const [thinkingMode, setThinkingMode] = usePersistentState<ThinkingMode>(`${APP_ID}_thinkingMode`, 'off', {
     parse: (r) => (r === 'precall' || r === 'inline' || r === 'staged' ? r : 'off'),
     serialize: (v) => v,
   });
-  const [thinkingPrompt, setThinkingPrompt] = usePersistentState<string>(`${APP_ID}_thinkingPrompt`, defaultThinkingPrompt, stringCodec);
-  const [summaryPrompt, setSummaryPrompt] = usePersistentState<string>(`${APP_ID}_summaryPrompt`, defaultSummaryPrompt, stringCodec);
-  const [diaryPrompt, setDiaryPrompt] = usePersistentState<string>(`${APP_ID}_diaryPrompt`, defaultDiaryPrompt, stringCodec);
-  // Editable user-message templates for the aux requests (framing + task cue), rendered with the
-  // <PLAYER ACTION>/<GAME TEXT> runtime tokens. Previously these were hardcoded in GameViewer.
-  const [choicesUserPrompt, setChoicesUserPrompt] = usePersistentState<string>(`${APP_ID}_choicesUserPrompt`, defaultChoicesUserPrompt, stringCodec);
-  const [statUpdatesUserPrompt, setStatUpdatesUserPrompt] = usePersistentState<string>(`${APP_ID}_statUpdatesUserPrompt`, defaultStatUpdatesUserPrompt, stringCodec);
-  const [locationChangeUserPrompt, setLocationChangeUserPrompt] = usePersistentState<string>(`${APP_ID}_locationChangeUserPrompt`, defaultLocationChangeUserPrompt, stringCodec);
-  const [summaryUserPrompt, setSummaryUserPrompt] = usePersistentState<string>(`${APP_ID}_summaryUserPrompt`, defaultSummaryUserPrompt, stringCodec);
+  // The 15 editable prompt strings live in named presets (one localStorage key). Each keeps its original
+  // context field + setter name; values derive from the active preset (Default = read-only shipped text),
+  // and setters patch the active preset (a no-op under Default). See src/lib/promptPresets.ts.
+  const [presetStore, setPresetStore] = usePersistentState<PromptPresetStore>(`${APP_ID}_promptPresets`, emptyStore, presetStoreCodec);
+  const promptValues = useMemo(() => activeValues(presetStore, PROMPT_TEXT_DEFAULTS), [presetStore]);
+  const {
+    systemPrompt, choicesPrompt, statUpdatesPrompt, locationChangePromptText, thinkingPrompt, summaryPrompt,
+    diaryPrompt, directorPrompt, directorUserPrompt, characterPrompt, storyboardPrompt,
+    choicesUserPrompt, statUpdatesUserPrompt, locationChangeUserPrompt, summaryUserPrompt,
+  } = promptValues;
+  const setSystemPrompt = (v: string) => setPresetStore((s) => updateValue(s, 'systemPrompt', v));
+  const setChoicesPrompt = (v: string) => setPresetStore((s) => updateValue(s, 'choicesPrompt', v));
+  const setStatUpdatesPrompt = (v: string) => setPresetStore((s) => updateValue(s, 'statUpdatesPrompt', v));
+  const setLocationChangePromptText = (v: string) => setPresetStore((s) => updateValue(s, 'locationChangePromptText', v));
+  const setThinkingPrompt = (v: string) => setPresetStore((s) => updateValue(s, 'thinkingPrompt', v));
+  const setSummaryPrompt = (v: string) => setPresetStore((s) => updateValue(s, 'summaryPrompt', v));
+  const setDiaryPrompt = (v: string) => setPresetStore((s) => updateValue(s, 'diaryPrompt', v));
+  const setDirectorPrompt = (v: string) => setPresetStore((s) => updateValue(s, 'directorPrompt', v));
+  const setDirectorUserPrompt = (v: string) => setPresetStore((s) => updateValue(s, 'directorUserPrompt', v));
+  const setCharacterPrompt = (v: string) => setPresetStore((s) => updateValue(s, 'characterPrompt', v));
+  const setStoryboardPrompt = (v: string) => setPresetStore((s) => updateValue(s, 'storyboardPrompt', v));
+  const setChoicesUserPrompt = (v: string) => setPresetStore((s) => updateValue(s, 'choicesUserPrompt', v));
+  const setStatUpdatesUserPrompt = (v: string) => setPresetStore((s) => updateValue(s, 'statUpdatesUserPrompt', v));
+  const setLocationChangeUserPrompt = (v: string) => setPresetStore((s) => updateValue(s, 'locationChangeUserPrompt', v));
+  const setSummaryUserPrompt = (v: string) => setPresetStore((s) => updateValue(s, 'summaryUserPrompt', v));
+  // Preset management (Settings → System Prompts selector).
+  const activePresetId = presetStore.activeId;
+  const activePresetIsDefault = isDefaultActive(presetStore);
+  const promptPresets = presetStore.presets.map((p) => ({ id: p.id, name: p.name }));
+  const selectPreset = (id: string) => setPresetStore((s) => setActivePreset(s, id));
+  const addPreset = (name: string) => {
+    const id = crypto.randomUUID();
+    setPresetStore((s) => addPresetOp(s, id, name, activeValues(s, PROMPT_TEXT_DEFAULTS)));
+    return id;
+  };
+  const renamePreset = (id: string, name: string) => setPresetStore((s) => renamePresetOp(s, id, name));
+  const deletePreset = (id: string) => setPresetStore((s) => deletePresetOp(s, id));
+  const resetPreset = (id: string) => setPresetStore((s) => resetPresetOp(s, id, PROMPT_TEXT_DEFAULTS));
   // Whether each optional per-turn request is sent (replaces the legacy "type DISABLED" body hack).
   const [choicesEnabled, setChoicesEnabled] = usePersistentState<boolean>(`${APP_ID}_choicesEnabled`, true, boolCodec);
   const [statUpdatesEnabled, setStatUpdatesEnabled] = usePersistentState<boolean>(`${APP_ID}_statUpdatesEnabled`, true, boolCodec);
@@ -169,8 +216,6 @@ function useProvideSettings() {
     setParagraphLimit,
     autoscroll,
     setAutoscroll,
-    hideStatNumbers,
-    setHideStatNumbers,
     markdownOutput,
     setMarkdownOutput,
     streamNarrationAudio,
@@ -235,6 +280,14 @@ function useProvideSettings() {
     setSummaryPrompt,
     diaryPrompt,
     setDiaryPrompt,
+    directorPrompt,
+    setDirectorPrompt,
+    directorUserPrompt,
+    setDirectorUserPrompt,
+    characterPrompt,
+    setCharacterPrompt,
+    storyboardPrompt,
+    setStoryboardPrompt,
     choicesUserPrompt,
     setChoicesUserPrompt,
     statUpdatesUserPrompt,
@@ -243,6 +296,14 @@ function useProvideSettings() {
     setLocationChangeUserPrompt,
     summaryUserPrompt,
     setSummaryUserPrompt,
+    promptPresets,
+    activePresetId,
+    activePresetIsDefault,
+    selectPreset,
+    addPreset,
+    renamePreset,
+    deletePreset,
+    resetPreset,
     vramHelperUrl,
     setVramHelperUrl,
     ttsVolume,

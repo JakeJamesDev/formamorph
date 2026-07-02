@@ -10,6 +10,7 @@ import {
   defaultStoryboardPrompt,
   defaultDiaryPrompt,
   defaultChoicesUserPrompt,
+  defaultDirectorUserPrompt,
   defaultStatUpdatesUserPrompt,
   defaultLocationChangeUserPrompt,
   defaultSummaryUserPrompt,
@@ -27,7 +28,7 @@ describe('default prompts carry the expected variable chips', () => {
   it('game-text prompt', () => {
     expect(tokensIn(defaultSystemPrompt)).toEqual([
       '<WORLD DESCRIPTION>',
-      '<STATS DESCRIPTION>',
+      '<STATS DESCRIPTION|descriptions>',
       '<TRAITS DESCRIPTION>',
       '<LOCATION>',
       '<ENTITIES>',
@@ -50,7 +51,7 @@ describe('default prompts carry the expected variable chips', () => {
   it('choices prompt', () => {
     expect(tokensIn(defaultChoicesPrompt)).toEqual([
       '<WORLD DESCRIPTION>',
-      '<STATS DESCRIPTION>',
+      '<STATS DESCRIPTION|descriptions>',
       '<TRAITS DESCRIPTION>',
       '<NOTES>',
       '<LOCATION|summary>',
@@ -85,7 +86,7 @@ describe('default prompts carry the expected variable chips', () => {
   it('thinking (pre-call) prompt', () => {
     expect(tokensIn(defaultThinkingPrompt)).toEqual([
       '<WORLD DESCRIPTION>',
-      '<STATS DESCRIPTION>',
+      '<STATS DESCRIPTION|descriptions>',
       '<TRAITS DESCRIPTION>',
       '<LOCATION|summary>',
       '<ENTITIES|summary>',
@@ -122,6 +123,7 @@ describe('default prompts carry the expected variable chips', () => {
 
   it('staged character prompt', () => {
     expect(tokensIn(defaultCharacterPrompt)).toEqual([
+      '<CHARACTER NAME>',
       '<WORLD DESCRIPTION>',
       '<TRAITS DESCRIPTION>',
       '<LOCATION|summary>',
@@ -129,6 +131,8 @@ describe('default prompts carry the expected variable chips', () => {
     // The character speaks in the first person but keeps the player in the third person.
     expect(defaultCharacterPrompt).toContain('first person');
     expect(defaultCharacterPrompt).toContain('never "you"');
+    // Speech is reported as intent — the narrator writes the actual dialogue.
+    expect(defaultCharacterPrompt).toContain('not quoted words');
   });
 
   it('diary prompt establishes the pronoun frame and self-anchor', () => {
@@ -142,7 +146,7 @@ describe('default prompts carry the expected variable chips', () => {
   it('staged storyboard prompt', () => {
     expect(tokensIn(defaultStoryboardPrompt)).toEqual([
       '<WORLD DESCRIPTION>',
-      '<STATS DESCRIPTION>',
+      '<STATS DESCRIPTION|descriptions>',
       '<TRAITS DESCRIPTION>',
       '<LOCATION|summary>',
       '<NOTES>',
@@ -151,12 +155,17 @@ describe('default prompts carry the expected variable chips', () => {
     expect(defaultStoryboardPrompt).not.toContain('continuation');
     expect(defaultStoryboardPrompt).toContain("director's scene");
     expect(defaultStoryboardPrompt).toContain("never decide the player character's own deliberate actions");
+    // Dialogue is the narrator's job — the storyboard names intent, never quotes speech.
+    expect(defaultStoryboardPrompt).toContain('never quote dialogue');
   });
 });
 
 describe('aux user-message templates carry the runtime value-tokens', () => {
   it('choices user template has only the narration token (last-action line was cut)', () => {
     expect(tokensIn(defaultChoicesUserPrompt)).toEqual(['<NARRATION>']);
+  });
+  it('director user template carries the narration + player-action tokens', () => {
+    expect(tokensIn(defaultDirectorUserPrompt)).toEqual(['<NARRATION>', '<PLAYER ACTION>']);
   });
   it('stat-updates and location user templates carry the narration token', () => {
     expect(tokensIn(defaultStatUpdatesUserPrompt)).toEqual(['<NARRATION>']);

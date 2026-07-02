@@ -169,7 +169,6 @@ const GameViewer = ({
     language,
     setLanguage,
     paragraphLimit,
-    hideStatNumbers,
     markdownOutput,
     streamNarrationAudio,
     // Active endpoint settings: the user's values when "Use Custom Endpoint" is on, built-in defaults otherwise.
@@ -193,6 +192,10 @@ const GameViewer = ({
     summaryPrompt,
     characterDiaries,
     diaryPrompt,
+    directorPrompt,
+    directorUserPrompt,
+    characterPrompt,
+    storyboardPrompt,
     choicesUserPrompt,
     statUpdatesUserPrompt,
     locationChangeUserPrompt,
@@ -615,7 +618,9 @@ const GameViewer = ({
     return buildTraitContext(playerTraits.map((t) => t.id), playerTraits, traitGroups);
   }, [playerTraits, traitGroups]);
 
-  const generateStatDescriptions = useCallback((includeValues = true) => {
+  // The Stats chip's three modes: 'full' (values + descriptor), 'numbers' (values only), 'descriptions'
+  // (descriptor only, falling back to the number when a stat has none so a prompt isn't left blind).
+  const generateStatDescriptions = useCallback((mode: 'full' | 'numbers' | 'descriptions' = 'full') => {
     if (!playerStats.length) return NONE_PLACEHOLDER;
     return playerStats
       .map((stat) => {
@@ -624,35 +629,43 @@ const GameViewer = ({
         const descriptor = stat.descriptors.find(
           (d) => percentage <= d.threshold,
         );
-        // Value-free (narration) form: descriptor only, falling back to the number when a stat
-        // has no descriptor so the narrator isn't left blind.
-        if (!includeValues && descriptor) return `${stat.name}: ${descriptor.description}`;
+        if (mode === 'descriptions' && descriptor) return `${stat.name}: ${descriptor.description}`;
+        if (mode === 'numbers') return `${stat.name}: ${stat.value}/${stat.max}`;
         return `${stat.name}: ${stat.value}/${stat.max} (${descriptor ? descriptor.description : "Unknown"})`;
       })
       .join("\n");
   }, [playerStats]);
 
-  // Live variable values for the Settings prompt-editor Preview tab (full-description variant, like the
-  // game-text request). Only meaningful in-game, which is the only place this modal receives them.
-  const promptPreviewValues = useMemo<Record<string, string>>(() => ({
+  // The six shared context chips every system prompt can reference, resolved from current state. Each
+  // request spreads these as its base, then layers on its own tokens (length/markdown, scene entities, etc.).
+  const buildContextValues = useCallback((): Record<string, string> => ({
     "<WORLD DESCRIPTION>": worldOverview.systemPrompt || "",
-    "<STATS DESCRIPTION>": generateStatDescriptions(!hideStatNumbers),
+    "<STATS DESCRIPTION>": generateStatDescriptions('full'),
+    "<STATS DESCRIPTION|numbers>": generateStatDescriptions('numbers'),
+    "<STATS DESCRIPTION|descriptions>": generateStatDescriptions('descriptions'),
     "<TRAITS DESCRIPTION>": generateTraitDescriptions(),
     "<LOCATION>": buildLocationContext(currentLocation),
     "<LOCATION|summary>": buildLocationContext(currentLocation, { preferSummary: true }),
+    "<LOCATION|list>": locations.map((loc) => loc.name).join("\n") || NONE_PLACEHOLDER,
     "<ENTITIES>": buildEntityContext(withDiscovered(currentLocation), allEntities),
     "<ENTITIES|summary>": buildEntityContext(withDiscovered(currentLocation), allEntities, { preferSummary: true }),
     "<NOTES>": playerNotes || NONE_PLACEHOLDER,
+  }), [
+    worldOverview, generateStatDescriptions, generateTraitDescriptions,
+    currentLocation, locations, withDiscovered, allEntities, playerNotes,
+  ]);
+
+  // Live variable values for the Settings prompt-editor Preview tab (full-description variant, like the
+  // game-text request). Only meaningful in-game, which is the only place this modal receives them.
+  const promptPreviewValues = useMemo<Record<string, string>>(() => ({
+    ...buildContextValues(),
     "<LENGTH GUIDANCE>": lengthGuidance(paragraphLimit, maxTokens),
     "<MARKDOWN GUIDANCE>": markdownGuidance(markdownOutput),
-    "<LOCATION|list>": locations.map((loc) => loc.name).join("\n") || NONE_PLACEHOLDER,
     // Illustrative placeholders for the aux user-message templates (real values are per-turn at runtime).
     "<PLAYER ACTION>": "the player's latest action",
     "<NARRATION>": "the most recent narration",
-  }), [
-    worldOverview, hideStatNumbers, generateStatDescriptions, generateTraitDescriptions,
-    currentLocation, allEntities, withDiscovered, playerNotes, paragraphLimit, maxTokens, markdownOutput, locations,
-  ]);
+    "<CHARACTER NAME>": "the speaking character",
+  }), [buildContextValues, paragraphLimit, maxTokens, markdownOutput]);
 
   const sendGameAction = async (action: string) => {
     if (!isGameStarted && action !== "START GAME") return;
@@ -660,35 +673,14 @@ const GameViewer = ({
     // On the opening turn, snapshot the pre-game state so page 1 can be re-generated later.
     if (fullMessageHistory.length === 0) initialStateRef.current = saveCurrentGameState();
 
-    const locationDataString = buildLocationContext(currentLocation);
-    // Planning runs on the lightest context: prefer each location/entity's short aiSummary
-    // (falling back to the full aiDescription where none is authored).
-    const locationSummaryString = buildLocationContext(currentLocation, { preferSummary: true });
-    // Entities are their own section now (a roster of who/what could appear), kept separate from the
-    // location so the model doesn't read the whole cast as all-present.
-    const entityDataString = buildEntityContext(withDiscovered(currentLocation), allEntities);
-    const entitySummaryString = buildEntityContext(withDiscovered(currentLocation), allEntities, { preferSummary: true });
-    // The Location chip's "List" mode: a newline list of every location name (usable in any prompt).
-    const locationListString = locations.map((loc) => loc.name).join("\n") || NONE_PLACEHOLDER;
-
-    const statDescriptions = generateStatDescriptions(); // with numbers — used by stat-updates
-    // Narration, planning, and choices use descriptor-only stats when enabled (immersion).
-    const statDescriptionsNarrative = hideStatNumbers
-      ? generateStatDescriptions(false)
-      : statDescriptions;
+    // The shared context base (incl. all three Stats-chip variants); every system-prompt render below
+    // spreads it and adds its own tokens.
+    const ctx = buildContextValues();
 
     let updatedPrompt = renderPromptTemplate(systemPrompt, {
-      "<WORLD DESCRIPTION>": worldOverview.systemPrompt || "",
-      "<LOCATION>": locationDataString,
-      "<LOCATION|summary>": locationSummaryString,
-      "<LOCATION|list>": locationListString,
-      "<ENTITIES>": entityDataString,
-      "<ENTITIES|summary>": entitySummaryString,
-      "<STATS DESCRIPTION>": statDescriptionsNarrative,
-      "<TRAITS DESCRIPTION>": generateTraitDescriptions(),
+      ...ctx,
       "<LENGTH GUIDANCE>": lengthGuidance(paragraphLimit, maxTokens),
       "<MARKDOWN GUIDANCE>": markdownGuidance(markdownOutput),
-      "<NOTES>": playerNotes || NONE_PLACEHOLDER,
     });
 
     // If the prompt has no <NOTES> chip, fall back to a notes section before the location data.
@@ -717,8 +709,8 @@ ${playerNotes || NONE_PLACEHOLDER}
     // rather than a turn late. The always-present world description is intentionally
     // excluded so its terms don't fire every turn.
     const activatedEntries = getActivatedDictionary(dictionary, [
-      locationDataString,
-      entityDataString,
+      ctx["<LOCATION>"],
+      ctx["<ENTITIES>"],
       action,
       ...fullMessageHistory.map((m) => m.content),
     ]);
@@ -767,17 +759,7 @@ ${playerNotes || NONE_PLACEHOLDER}
       const adHocCandidates: string[] = [];
       const directorCandidates: string[] = [];
       if (thinkingMode === "precall") {
-        const thinkPrompt = renderPromptTemplate(thinkingPrompt, {
-          "<WORLD DESCRIPTION>": worldOverview.systemPrompt || "",
-          "<STATS DESCRIPTION>": statDescriptionsNarrative,
-          "<TRAITS DESCRIPTION>": generateTraitDescriptions(),
-          "<LOCATION>": locationDataString,
-          "<LOCATION|summary>": locationSummaryString,
-          "<ENTITIES>": entityDataString,
-          "<ENTITIES|summary>": entitySummaryString,
-          "<LOCATION|list>": locationListString,
-          "<NOTES>": playerNotes || NONE_PLACEHOLDER,
-        });
+        const thinkPrompt = renderPromptTemplate(thinkingPrompt, ctx);
         // Frame the planning task as a single instruction. Reusing the narration message history
         // (turns of action -> story) primes the model to just continue the story instead of planning.
         // The banded recap rides a user message now (not assistant), so the last assistant message is
@@ -816,17 +798,7 @@ ${playerNotes || NONE_PLACEHOLDER}
       } else if (thinkingMode === "staged") {
         // Staged planning: director (cast + continuation) -> one motivation pass per character
         // (sequential, capped at 3) -> storyboarder. The storyboard is injected like the precall plan.
-        const stageValues = {
-          "<WORLD DESCRIPTION>": worldOverview.systemPrompt || "",
-          "<STATS DESCRIPTION>": statDescriptionsNarrative,
-          "<TRAITS DESCRIPTION>": generateTraitDescriptions(),
-          "<LOCATION>": locationDataString,
-          "<LOCATION|summary>": locationSummaryString,
-          "<LOCATION|list>": locationListString,
-          "<ENTITIES>": entityDataString,
-          "<ENTITIES|summary>": entitySummaryString,
-          "<NOTES>": playerNotes || NONE_PLACEHOLDER,
-        };
+        const stageValues = ctx;
         // The banded recap rides a user message now, so the last assistant message is the real last narration.
         const lastStory =
           [...trimmedHistory].reverse().find((m) => m.role === "assistant")?.content || "";
@@ -841,6 +813,10 @@ ${playerNotes || NONE_PLACEHOLDER}
           fullMessageHistory,
           diaryMemoryEntries: DIARY_MEMORY_ENTRIES,
           caps: { director: DIRECTOR_MAX_TOKENS, character: CHARACTER_MAX_TOKENS, storyboard: STORYBOARD_MAX_TOKENS },
+          directorPrompt,
+          directorUserPrompt,
+          characterPrompt,
+          storyboardPrompt,
           request: makeAIRequest,
           signal,
         });
@@ -910,16 +886,10 @@ ${playerNotes || NONE_PLACEHOLDER}
       // Only prepare and make choices request if enabled
       if (choicesEnabled) {
         let updatedChoicesPrompt = renderPromptTemplate(choicesPrompt, {
-          "<WORLD DESCRIPTION>": worldOverview.systemPrompt || "",
-          "<STATS DESCRIPTION>": statDescriptionsNarrative,
-          "<LOCATION>": locationDataString,
-          "<LOCATION|summary>": locationSummaryString,
+          ...ctx,
           // Choices see only who is actually in the scene, not the whole location roster.
           "<ENTITIES>": sceneEntityData,
           "<ENTITIES|summary>": sceneEntitySummary,
-          "<LOCATION|list>": locationListString,
-          "<TRAITS DESCRIPTION>": generateTraitDescriptions(),
-          "<NOTES>": playerNotes || NONE_PLACEHOLDER,
         });
 
         if (language.toLowerCase() != "english")
@@ -950,15 +920,7 @@ ${playerNotes || NONE_PLACEHOLDER}
       // Only prepare and make stat updates request if enabled and the world actually defines stats
       // (otherwise the model hallucinates stat names that match nothing).
       if (statUpdatesEnabled && playerStats.length > 0) {
-        let updatedStatUpdatesPrompt = renderPromptTemplate(statUpdatesPrompt, {
-          "<WORLD DESCRIPTION>": worldOverview.systemPrompt || "",
-          "<LOCATION>": locationDataString,
-          "<LOCATION|summary>": locationSummaryString,
-          "<LOCATION|list>": locationListString,
-          "<STATS DESCRIPTION>": statDescriptions,
-          "<TRAITS DESCRIPTION>": generateTraitDescriptions(),
-          "<NOTES>": playerNotes || NONE_PLACEHOLDER,
-        });
+        let updatedStatUpdatesPrompt = renderPromptTemplate(statUpdatesPrompt, ctx);
 
         if (language.toLowerCase() != "english")
           updatedStatUpdatesPrompt += "\n Please write in english";
@@ -983,14 +945,7 @@ ${playerNotes || NONE_PLACEHOLDER}
       if (signal.aborted) return; // stopped during the stat-updates request
       // Ask the AI whether the player should move to a different location (v1.2.0)
       if (locationChangeEnabled && locationChangePromptText) {
-        const updatedLocationPrompt = renderPromptTemplate(locationChangePromptText, {
-          "<WORLD DESCRIPTION>": worldOverview.systemPrompt || "",
-          "<LOCATION>": locationDataString,
-          "<LOCATION|summary>": locationSummaryString,
-          "<LOCATION|list>": locationListString,
-          "<ENTITIES>": entityDataString,
-          "<ENTITIES|summary>": entitySummaryString,
-        });
+        const updatedLocationPrompt = renderPromptTemplate(locationChangePromptText, ctx);
 
         const locationResponse = await makeAIRequest(
           updatedLocationPrompt,
@@ -1493,7 +1448,7 @@ ${playerNotes || NONE_PLACEHOLDER}
     (async () => {
       try {
         const digest = await makeAIRequestRef.current(
-          summaryPrompt,
+          renderPromptTemplate(summaryPrompt, buildContextValues()),
           [{ role: "user", content: renderPromptTemplate(summaryUserPrompt, { "<NARRATION>": narrationText }) }],
           "summary",
           DIGEST_MAX_TOKENS,
@@ -1510,7 +1465,7 @@ ${playerNotes || NONE_PLACEHOLDER}
         setDigestActive(false);
       }
     })();
-  }, [memoryDigests, isWaitingForAI, fullMessageHistory, summaryPrompt, summaryUserPrompt, setFullMessageHistory]);
+  }, [memoryDigests, isWaitingForAI, fullMessageHistory, summaryPrompt, summaryUserPrompt, buildContextValues, setFullMessageHistory]);
 
   // Character-diary drainer (write side): for each completed turn with participants, silently write a
   // first-person diary entry per participant as an idle-time job, patched back onto that turn's `diaries`
@@ -1536,7 +1491,7 @@ ${playerNotes || NONE_PLACEHOLDER}
     (async () => {
       try {
         const entry = await makeAIRequestRef.current(
-          diaryPrompt,
+          renderPromptTemplate(diaryPrompt, buildContextValues()),
           [{ role: "user", content: buildDiaryUserMessage({ name, entity, narration: narrationText }) }],
           "diary",
           DIARY_MAX_TOKENS,
@@ -1554,7 +1509,7 @@ ${playerNotes || NONE_PLACEHOLDER}
         setDiaryActive(false);
       }
     })();
-  }, [characterDiaries, isWaitingForAI, digestActive, discoverActive, fullMessageHistory, allEntities, diaryPrompt, setFullMessageHistory]);
+  }, [characterDiaries, isWaitingForAI, digestActive, discoverActive, fullMessageHistory, allEntities, diaryPrompt, buildContextValues, setFullMessageHistory]);
 
   // Runtime characters (Slice 2): promote a director-invented, narration-confirmed character into a
   // persisted entity. Idle-gated and serialized like the diary drainer (shares the Character Diaries

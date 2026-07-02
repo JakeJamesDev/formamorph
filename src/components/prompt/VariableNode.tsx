@@ -1,6 +1,6 @@
 /* eslint-disable react-refresh/only-export-components -- this module intentionally co-locates the
    Lexical VariableNode class with its $create/$is helpers and the shared drag context; they're one unit. */
-import { createContext, useContext, useState, type ReactNode, type DragEvent } from 'react';
+import { createContext, useContext, useState, useEffect, type ReactNode, type DragEvent } from 'react';
 import {
   DecoratorNode, $getNodeByKey,
   type LexicalNode, type NodeKey, type SerializedLexicalNode, type Spread,
@@ -30,6 +30,10 @@ function VariableChip({ nodeKey, token }: { nodeKey: NodeKey; token: string }) {
   const [editor] = useLexicalComposerContext();
   const dragKey = useContext(PromptDragContext);
   const [open, setOpen] = useState(false);
+  // A read-only editor (e.g. the Default preset) may still show the pop-out to view the chip's mode, but
+  // can't change or remove it. Track editability so switching presets re-renders the chip accordingly.
+  const [editable, setEditable] = useState(editor.isEditable());
+  useEffect(() => editor.registerEditableListener(setEditable), [editor]);
   const variable = variableForToken(token);
   const variantId = tokenVariant(token);
   const color = colorForToken(token);
@@ -39,10 +43,13 @@ function VariableChip({ nodeKey, token }: { nodeKey: NodeKey; token: string }) {
 
   const remove = () => editor.update(() => { $getNodeByKey(nodeKey)?.remove(); });
 
-  const setVariant = (id: string | null) => editor.update(() => {
-    const node = $getNodeByKey(nodeKey);
-    if ($isVariableNode(node)) node.setToken(withVariant(baseToken(node.getToken()), id));
-  });
+  const setVariant = (id: string | null) => {
+    if (!editable) return;
+    editor.update(() => {
+      const node = $getNodeByKey(nodeKey);
+      if ($isVariableNode(node)) node.setToken(withVariant(baseToken(node.getToken()), id));
+    });
+  };
 
   const handleDragStart = (e: DragEvent) => {
     dragKey.current = nodeKey;
@@ -55,11 +62,11 @@ function VariableChip({ nodeKey, token }: { nodeKey: NodeKey; token: string }) {
   return (
     <Popover open={open} onOpenChange={setOpen}>
       <PopoverTrigger asChild>
-        <span draggable onDragStart={handleDragStart} className="inline-block align-baseline">
+        <span draggable={editable} onDragStart={editable ? handleDragStart : undefined} className="inline-block align-baseline">
           <Chip
             label={label}
-            onRemove={remove}
-            grabbable
+            onRemove={editable ? remove : undefined}
+            grabbable={editable}
             style={color ? { backgroundColor: color, color: '#000' } : undefined}
           />
         </span>
@@ -74,7 +81,7 @@ function VariableChip({ nodeKey, token }: { nodeKey: NodeKey; token: string }) {
             >
               <TabsList className="grid w-full" style={{ gridTemplateColumns: `repeat(${variants.length}, minmax(0, 1fr))` }}>
                 {variants.map((vr) => (
-                  <TabsTrigger key={vr.id ?? FULL} value={vr.id ?? FULL}>{vr.label}</TabsTrigger>
+                  <TabsTrigger key={vr.id ?? FULL} value={vr.id ?? FULL} disabled={!editable}>{vr.label}</TabsTrigger>
                 ))}
               </TabsList>
             </Tabs>

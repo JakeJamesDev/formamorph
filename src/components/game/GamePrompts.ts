@@ -4,7 +4,7 @@ Game World:
 <WORLD DESCRIPTION>
 
 Player Stats:
-<STATS DESCRIPTION>
+<STATS DESCRIPTION|descriptions>
 
 Traits:
 <TRAITS DESCRIPTION>
@@ -71,7 +71,7 @@ Game World:
 <WORLD DESCRIPTION>
 
 Player Stats:
-<STATS DESCRIPTION>
+<STATS DESCRIPTION|descriptions>
 
 Traits:
 <TRAITS DESCRIPTION>
@@ -147,7 +147,7 @@ Game World:
 <WORLD DESCRIPTION>
 
 Player Stats:
-<STATS DESCRIPTION>
+<STATS DESCRIPTION|descriptions>
 
 Traits:
 <TRAITS DESCRIPTION>
@@ -229,10 +229,10 @@ export function planDirective(plan: string): string {
   return `\n\nPlan for this turn - structured notes decided in advance. Narrate them as flowing prose: follow the plan, but do not echo these labels, lists, or headings in your narration.\n${plan}`;
 }
 
-// The "staged" thinking pipeline (thinkingMode === 'staged') runs three fixed planning passes before
+// The "staged" thinking pipeline (thinkingMode === 'staged') runs three planning passes before
 // game-text: the director picks the cast + continuation, each character states its motivation, and the
-// storyboarder consolidates them into the plan injected into the narration request. v1 ships these as
-// fixed constants (no per-prompt editor yet); they still use the chip tokens and renderPromptTemplate.
+// storyboarder consolidates them into the plan injected into the narration request. These ship as the
+// defaults for the editable Director/Character/Storyboard prompts (Settings → System Prompts).
 
 // Pass 1: pick who is in the scene and what is carrying over. Output is parsed into a cast list.
 export const defaultDirectorPrompt = `You are the director of an interactive roleplay. Before the scene is written, set the stage: describe where we are and who is here. Do not write the narration.
@@ -268,8 +268,16 @@ Rules:
 - Prefer the characters listed above by their exact name where they fit; you may also invent a new character when a being that passes the test above enters the scene. Give each such character a specific individual identity with a concrete name it can be called by again next turn - a bare species or generic label on its own (a creature, a figure) is a description, not a character. Naming is only for individuals that can act; never name a place, object, or scenery to make it a character.
 - Keep the cast small, usually one to three besides the player. Output exactly one Scene line and one Cast list - never repeat them, and write nothing else.`;
 
+// The director's per-turn user message: the recent narration recap plus the player's action.
+export const defaultDirectorUserPrompt = `What just happened:
+<NARRATION>
+
+The player's next action: <PLAYER ACTION>
+
+Describe the scene and list the cast now.`;
+
 // Pass 2: run once per selected character. Identity, continuation, and action arrive in the user message.
-export const defaultCharacterPrompt = `You ARE one character in an interactive roleplay. Speak as "I" - decide what I want and intend to do this turn. Do not speak or act for anyone else.
+export const defaultCharacterPrompt = `You ARE <CHARACTER NAME>, one character in an interactive roleplay. Write in the first person as "I" - decide what I want and intend to do this turn. Never act or speak for anyone else.
 
 Refer to the player in the third person - "the player character" or "them" - never "you" (write "I pin the player character to the wall", not "I pin you").
 
@@ -282,7 +290,7 @@ Traits:
 Current Location:
 <LOCATION|summary>
 
-My background, my recent memories, what just happened, the scene now, and the player's action are given below. My background is who I am in general - the recap and the scene show where things actually stand now, so I act from the present moment. In 2-3 sentences, state in the first person what I want and the specific action I take this turn: true to my character, but moving the moment forward - I build on what just happened and press toward my goal rather than restating my last stance. Output only those sentences.`;
+My background is who I am in general; the recap and scene below are where things stand now, so I act from the present moment. In 2-3 sentences, say in the first person what I want and what I do this turn - true to my character, moving the scene forward rather than repeating my last move. Any speech is intent, not quoted words; the narrator writes the dialogue. Output only those sentences.`;
 
 // Pass 3: the merge stage. It is the only stage that sees the recap, the director's scene, and every
 // character's (independently-formed, mutually-blind) intent, so it reconciles them into a terse beat
@@ -293,7 +301,7 @@ Game World:
 <WORLD DESCRIPTION>
 
 Player Stats:
-<STATS DESCRIPTION>
+<STATS DESCRIPTION|descriptions>
 
 Traits:
 <TRAITS DESCRIPTION>
@@ -307,6 +315,6 @@ Important Player Notes:
 Using everything below, output the plan as 3-5 short beats, one per line:
 - Start each beat with "- " and write it as a terse imperative of who does what - not prose.
 - Beats are what the world and the cast do in reaction to the player's action - never decide the player character's own deliberate actions or choices, since the player chooses those.
-- No description, sensory detail, dialogue, or narration voice - structure only.
+- Structure only: no description, sensory detail, or narration voice, and never quote dialogue - name what each character conveys, not their words. The narrator turns intent into spoken lines.
 - Let the player's stats or traits tip outcomes where relevant.
 Output only the beats - nothing else.`;
