@@ -31,6 +31,28 @@ const modelFilter = argVal("--model");
 // localStorage serialization: strings stored raw (stringCodec), everything else JSON (bool/int codecs).
 const serialize = (v) => (typeof v === "string" ? v : JSON.stringify(v));
 
+// Warm up a model before the scripted turns: on a single GPU, requesting a model that isn't loaded triggers a
+// load (evicting the previous one), and the request that triggers it comes back truncated. A throwaway 1-token
+// call absorbs that load so the first real turn hits a fully-loaded model.
+async function warmUp(cfg, model) {
+  const headers = { "Content-Type": "application/json" };
+  if (cfg.apiToken) headers.Authorization = `Bearer ${cfg.apiToken}`;
+  try {
+    await fetch(cfg.endpointUrl, {
+      method: "POST",
+      headers,
+      body: JSON.stringify({
+        model: model.modelName,
+        messages: [{ role: "user", content: "ping" }],
+        max_tokens: 1,
+        stream: false,
+      }),
+    });
+  } catch {
+    /* a real failure will surface during the run */
+  }
+}
+
 function buildSeed(cfg, model, profile) {
   const seed = {
     FORMAMORPH_useCustomEndpoint: "true",
@@ -89,6 +111,11 @@ async function runOne(browser, cfg, model, profile) {
   if (!(await page.evaluate(() => Boolean(window.__baseline)))) {
     throw new Error(`${label}: window.__baseline never registered (did the game screen mount?)`);
   }
+
+  // Warm up (load) this model before the real turns — critical on a single GPU where switching models evicts
+  // the previous one and the load-triggering request comes back truncated.
+  console.log(`  warming up ${model.modelName}…`);
+  await warmUp(cfg, model);
 
   // Drive the fixed script; runScript awaits each turn's synchronous requests.
   console.log(`  running ${profile.script.length} actions…`);
