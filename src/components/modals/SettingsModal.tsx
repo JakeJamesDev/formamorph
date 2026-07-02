@@ -6,10 +6,13 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem, SelectSeparator } from "@/components/ui/select";
 import PromptField from '../prompt/PromptField';
 import { PROMPT_KIND_VARIABLES, PROMPT_KIND_USER_VARIABLES } from '@/lib/promptVariables';
 import { ConfirmDialog } from '../ConfirmDialog';
-import { defaultSystemPrompt, defaultChoicesPrompt, defaultStatUpdatesPrompt, defaultLocationChangePrompt, defaultThinkingPrompt, defaultSummaryPrompt, defaultChoicesUserPrompt, defaultStatUpdatesUserPrompt, defaultLocationChangeUserPrompt, defaultSummaryUserPrompt, defaultDiaryPrompt } from '../game/GamePrompts';
+import { PresetNameDialog } from './PresetNameDialog';
+import { DEFAULT_PRESET_ID } from '@/lib/promptPresets';
+import { defaultSystemPrompt, defaultChoicesPrompt, defaultStatUpdatesPrompt, defaultLocationChangePrompt, defaultThinkingPrompt, defaultSummaryPrompt, defaultChoicesUserPrompt, defaultStatUpdatesUserPrompt, defaultLocationChangeUserPrompt, defaultSummaryUserPrompt, defaultDiaryPrompt, defaultDirectorPrompt, defaultDirectorUserPrompt, defaultCharacterPrompt, defaultStoryboardPrompt } from '../game/GamePrompts';
 import VramReadout from '../game/VramReadout';
 import { useVramStats } from '@/lib/useVramStats';
 
@@ -105,6 +108,14 @@ export const SettingsModal = ({ isOpen, onOpenChange, previewValues }: {
     setSummaryPrompt,
     diaryPrompt,
     setDiaryPrompt,
+    directorPrompt,
+    setDirectorPrompt,
+    directorUserPrompt,
+    setDirectorUserPrompt,
+    characterPrompt,
+    setCharacterPrompt,
+    storyboardPrompt,
+    setStoryboardPrompt,
     choicesUserPrompt,
     setChoicesUserPrompt,
     statUpdatesUserPrompt,
@@ -113,6 +124,14 @@ export const SettingsModal = ({ isOpen, onOpenChange, previewValues }: {
     setLocationChangeUserPrompt,
     summaryUserPrompt,
     setSummaryUserPrompt,
+    promptPresets,
+    activePresetId,
+    activePresetIsDefault,
+    selectPreset,
+    addPreset,
+    renamePreset,
+    deletePreset,
+    resetPreset,
     memoryDigests,
     setMemoryDigests,
     characterDiaries,
@@ -123,8 +142,6 @@ export const SettingsModal = ({ isOpen, onOpenChange, previewValues }: {
     setParagraphLimit,
     autoscroll,
     setAutoscroll,
-    hideStatNumbers,
-    setHideStatNumbers,
     markdownOutput,
     setMarkdownOutput,
     vramHelperUrl,
@@ -155,6 +172,19 @@ export const SettingsModal = ({ isOpen, onOpenChange, previewValues }: {
           ? { red: false, text: `Detected ${(detectedContextWindow ?? contextWindow).toLocaleString()} tok from the endpoint.` }
           : { red: false, text: 'Auto-detected from your endpoint; lower it if the model feels constantly full.' };
 
+  // Preset name dialog (Add / Rename); the "Add New Preset…" select option opens it in add mode.
+  const [presetDialog, setPresetDialog] = useState<{ mode: 'add' | 'rename' } | null>(null);
+  const ADD_PRESET_SENTINEL = '__add_preset__';
+  const activePresetName = promptPresets.find((p) => p.id === activePresetId)?.name ?? '';
+  const handlePresetSelect = (v: string) => {
+    if (v === ADD_PRESET_SENTINEL) setPresetDialog({ mode: 'add' });
+    else selectPreset(v);
+  };
+  const handlePresetNameSubmit = (name: string) => {
+    if (presetDialog?.mode === 'add') addPreset(name);
+    else if (presetDialog?.mode === 'rename') renamePreset(activePresetId, name);
+  };
+
   // The selected prompt sub-tab, so the Reset button can target just that prompt.
   const [promptTab, setPromptTab] = useState('narration');
   const promptResets: Record<string, { label: string; reset: () => void }> = {
@@ -165,6 +195,9 @@ export const SettingsModal = ({ isOpen, onOpenChange, previewValues }: {
     location: { label: 'Location Change', reset: () => setLocationChangePromptText(defaultLocationChangePrompt) },
     summary: { label: 'Summary', reset: () => setSummaryPrompt(defaultSummaryPrompt) },
     diary: { label: 'Diary', reset: () => setDiaryPrompt(defaultDiaryPrompt) },
+    director: { label: 'Director', reset: () => setDirectorPrompt(defaultDirectorPrompt) },
+    character: { label: 'Character', reset: () => setCharacterPrompt(defaultCharacterPrompt) },
+    storyboard: { label: 'Storyboard', reset: () => setStoryboardPrompt(defaultStoryboardPrompt) },
   };
   // Each prompt tab only exists while its prompt is enabled (toggled in Generation → System Prompts, or
   // its governing setting for Thinking/Summary). If the open tab is no longer available (disabled since,
@@ -177,6 +210,9 @@ export const SettingsModal = ({ isOpen, onOpenChange, previewValues }: {
     location: locationChangeEnabled,
     summary: memoryDigests,
     diary: characterDiaries,
+    director: thinkingMode === 'staged',
+    character: thinkingMode === 'staged',
+    storyboard: thinkingMode === 'staged',
   };
   const activePromptTab = promptAvailable[promptTab] ? promptTab : 'narration';
   const selectedPrompt = promptResets[activePromptTab] ?? promptResets.narration;
@@ -190,13 +226,15 @@ export const SettingsModal = ({ isOpen, onOpenChange, previewValues }: {
     statupdates: { value: statUpdatesUserPrompt, set: setStatUpdatesUserPrompt, reset: () => setStatUpdatesUserPrompt(defaultStatUpdatesUserPrompt), variables: PROMPT_KIND_USER_VARIABLES.statupdates ?? [] },
     location: { value: locationChangeUserPrompt, set: setLocationChangeUserPrompt, reset: () => setLocationChangeUserPrompt(defaultLocationChangeUserPrompt), variables: PROMPT_KIND_USER_VARIABLES.location ?? [] },
     summary: { value: summaryUserPrompt, set: setSummaryUserPrompt, reset: () => setSummaryUserPrompt(defaultSummaryUserPrompt), variables: PROMPT_KIND_USER_VARIABLES.summary ?? [] },
+    director: { value: directorUserPrompt, set: setDirectorUserPrompt, reset: () => setDirectorUserPrompt(defaultDirectorUserPrompt), variables: PROMPT_KIND_USER_VARIABLES.director ?? [] },
   };
   const activeUserPrompt = userPrompts[activePromptTab];
   const showingUser = promptView === 'user' && !!activeUserPrompt;
-  // The Reset button targets whichever template is on screen (system prompt, or its user-message template).
+  // The Reset button targets whichever template is on screen. `label` is the full noun ("Narration Prompt"
+  // or just "Message" for the user-message template), so the button reads "Reset <label>".
   const resetTarget = showingUser && activeUserPrompt
-    ? { label: `${selectedPrompt.label} User Message`, reset: activeUserPrompt.reset }
-    : selectedPrompt;
+    ? { label: `${selectedPrompt.label} Message`, reset: activeUserPrompt.reset }
+    : { label: `${selectedPrompt.label} Prompt`, reset: selectedPrompt.reset };
 
   // Verbatim-turns control for the active prompt, shown once in the footer (like Reset).
   const promptVerbatim: Record<string, { value: number; set: (n: number) => void }> = {
@@ -339,22 +377,6 @@ export const SettingsModal = ({ isOpen, onOpenChange, previewValues }: {
                     />
                     Location Change
                   </label>
-                </div>
-              </div>
-              <div className="grid grid-cols-1 sm:grid-cols-4 items-start gap-4">
-                <label htmlFor="hideStatNumbers" className="text-left sm:text-right leading-4">
-                  Hide Stat Numbers
-                </label>
-                <div className="col-span-3 flex items-start gap-2">
-                  <Checkbox
-                    id="hideStatNumbers"
-                    checked={hideStatNumbers}
-                    onCheckedChange={(c) => setHideStatNumbers(c === true)}
-                    className="shrink-0"
-                  />
-                  <span className="text-xs text-muted-foreground">
-                    The narrator, planner, and choices see stat descriptors (e.g. &quot;severely injured&quot;) instead of raw numbers, for immersion. Falls back to the number when a stat has no descriptor.
-                  </span>
                 </div>
               </div>
               <div className="grid grid-cols-1 sm:grid-cols-4 items-start gap-4">
@@ -538,6 +560,44 @@ export const SettingsModal = ({ isOpen, onOpenChange, previewValues }: {
           </TabsContent>
 
           <TabsContent value="prompts" className="pt-4 px-2 pb-4 flex-1 min-h-0 data-[state=active]:flex flex-col gap-4">
+            {/* Preset selector: the whole prompt set switches together. Default is built-in and read-only. */}
+            <div className="flex items-center gap-2 flex-shrink-0">
+              <span className="text-sm text-muted-foreground">Preset</span>
+              {!activePresetIsDefault && (
+                <ConfirmDialog
+                  title="Delete Preset"
+                  description={`Delete the "${activePresetName}" preset? This can't be undone.`}
+                  onConfirm={() => deletePreset(activePresetId)}
+                >
+                  <Button variant="outline" size="sm">Delete</Button>
+                </ConfirmDialog>
+              )}
+              <Select value={activePresetId} onValueChange={handlePresetSelect}>
+                <SelectTrigger className="flex-1 min-w-0">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value={DEFAULT_PRESET_ID}>Default</SelectItem>
+                  {promptPresets.map((p) => (
+                    <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>
+                  ))}
+                  <SelectSeparator />
+                  <SelectItem value={ADD_PRESET_SENTINEL}>Add New Preset…</SelectItem>
+                </SelectContent>
+              </Select>
+              {!activePresetIsDefault && (
+                <Button variant="outline" size="sm" onClick={() => setPresetDialog({ mode: 'rename' })}>Rename</Button>
+              )}
+              {!activePresetIsDefault && (
+                <ConfirmDialog
+                  title="Reset Preset"
+                  description={`Reset every prompt in the "${activePresetName}" preset to its default value? This can't be undone.`}
+                  onConfirm={() => resetPreset(activePresetId)}
+                >
+                  <Button variant="outline" size="sm">Reset</Button>
+                </ConfirmDialog>
+              )}
+            </div>
             {/* Nested tab bar — one prompt per tab; only the selected prompt shows. */}
             <Tabs value={activePromptTab} onValueChange={selectPromptTab} className="w-full flex flex-col flex-1 min-h-0">
               <TabsList className="flex flex-wrap h-auto justify-center gap-1 flex-shrink-0">
@@ -548,23 +608,24 @@ export const SettingsModal = ({ isOpen, onOpenChange, previewValues }: {
                 {locationChangeEnabled && <TabsTrigger value="location">Location Change</TabsTrigger>}
                 {memoryDigests && <TabsTrigger value="summary">Summary</TabsTrigger>}
                 {characterDiaries && <TabsTrigger value="diary">Diary</TabsTrigger>}
+                {thinkingMode === 'staged' && <TabsTrigger value="director">Director</TabsTrigger>}
+                {thinkingMode === 'staged' && <TabsTrigger value="character">Character</TabsTrigger>}
+                {thinkingMode === 'staged' && <TabsTrigger value="storyboard">Storyboard</TabsTrigger>}
               </TabsList>
 
-              {/* System vs. user-message template toggle — only the aux prompts have a user template. */}
+              {/* System prompt vs. user-message template — a tab bar like the row above (kept at text-xs).
+                  Only the aux prompts have a user template. */}
               {activeUserPrompt && (
-                <div className="flex justify-center mt-3 flex-shrink-0">
-                  <div className="inline-flex overflow-hidden rounded border border-border text-xs">
-                    {(['system', 'user'] as const).map((v) => (
-                      <button
-                        key={v}
-                        onClick={() => setPromptView(v)}
-                        className={`px-3 py-1 ${promptView === v ? 'bg-muted font-medium' : 'text-muted-foreground'}`}
-                      >
-                        {v === 'system' ? 'System' : 'User Message'}
-                      </button>
-                    ))}
-                  </div>
-                </div>
+                <Tabs
+                  value={promptView}
+                  onValueChange={(v) => setPromptView(v as 'system' | 'user')}
+                  className="flex justify-center mt-3 flex-shrink-0"
+                >
+                  <TabsList className="h-auto">
+                    <TabsTrigger value="system" className="text-xs">System Prompt</TabsTrigger>
+                    <TabsTrigger value="user" className="text-xs">User Message</TabsTrigger>
+                  </TabsList>
+                </Tabs>
               )}
 
               <TabsContent value="narration" className="mt-4 flex-1 min-h-0 data-[state=active]:flex flex-col">
@@ -573,6 +634,7 @@ export const SettingsModal = ({ isOpen, onOpenChange, previewValues }: {
                   onChange={setSystemPrompt}
                   variables={PROMPT_KIND_VARIABLES.narration}
                   previewValues={previewValues}
+                  readOnly={activePresetIsDefault}
                 />
               </TabsContent>
 
@@ -583,6 +645,7 @@ export const SettingsModal = ({ isOpen, onOpenChange, previewValues }: {
                     onChange={setThinkingPrompt}
                     variables={PROMPT_KIND_VARIABLES.thinking}
                     previewValues={previewValues}
+                    readOnly={activePresetIsDefault}
                   />
                 </TabsContent>
               )}
@@ -594,6 +657,7 @@ export const SettingsModal = ({ isOpen, onOpenChange, previewValues }: {
                     onChange={showingUser ? setChoicesUserPrompt : setChoicesPrompt}
                     variables={showingUser ? (PROMPT_KIND_USER_VARIABLES.choices ?? []) : PROMPT_KIND_VARIABLES.choices}
                     previewValues={previewValues}
+                    readOnly={activePresetIsDefault}
                   />
                 </TabsContent>
               )}
@@ -605,6 +669,7 @@ export const SettingsModal = ({ isOpen, onOpenChange, previewValues }: {
                     onChange={showingUser ? setStatUpdatesUserPrompt : setStatUpdatesPrompt}
                     variables={showingUser ? (PROMPT_KIND_USER_VARIABLES.statupdates ?? []) : PROMPT_KIND_VARIABLES.statupdates}
                     previewValues={previewValues}
+                    readOnly={activePresetIsDefault}
                   />
                 </TabsContent>
               )}
@@ -616,6 +681,7 @@ export const SettingsModal = ({ isOpen, onOpenChange, previewValues }: {
                     onChange={showingUser ? setLocationChangeUserPrompt : setLocationChangePromptText}
                     variables={showingUser ? (PROMPT_KIND_USER_VARIABLES.location ?? []) : PROMPT_KIND_VARIABLES.location}
                     previewValues={previewValues}
+                    readOnly={activePresetIsDefault}
                   />
                   <p className="text-xs text-gray-500 flex-shrink-0">Lets the AI move the player between locations.</p>
                 </TabsContent>
@@ -628,6 +694,7 @@ export const SettingsModal = ({ isOpen, onOpenChange, previewValues }: {
                     onChange={showingUser ? setSummaryUserPrompt : setSummaryPrompt}
                     variables={showingUser ? (PROMPT_KIND_USER_VARIABLES.summary ?? []) : PROMPT_KIND_VARIABLES.summary}
                     previewValues={previewValues}
+                    readOnly={activePresetIsDefault}
                   />
                   <p className="text-xs text-gray-500 flex-shrink-0">Compresses each turn into fact lines for long-story memory. Only used when Memory Summaries is on.</p>
                 </TabsContent>
@@ -640,28 +707,79 @@ export const SettingsModal = ({ isOpen, onOpenChange, previewValues }: {
                     onChange={setDiaryPrompt}
                     variables={PROMPT_KIND_VARIABLES.diary}
                     previewValues={previewValues}
+                    readOnly={activePresetIsDefault}
                   />
                   <p className="text-xs text-gray-500 flex-shrink-0">Each participating character records a first-person diary entry per turn. Only used when Character Diaries is on.</p>
+                </TabsContent>
+              )}
+
+              {thinkingMode === 'staged' && (
+                <TabsContent value="director" className="mt-4 flex-1 min-h-0 data-[state=active]:flex flex-col gap-1">
+                  <PromptField
+                    value={showingUser ? directorUserPrompt : directorPrompt}
+                    onChange={showingUser ? setDirectorUserPrompt : setDirectorPrompt}
+                    variables={showingUser ? (PROMPT_KIND_USER_VARIABLES.director ?? []) : PROMPT_KIND_VARIABLES.director}
+                    previewValues={previewValues}
+                    readOnly={activePresetIsDefault}
+                  />
+                  <p className="text-xs text-gray-500 flex-shrink-0">Stages each turn: picks the cast and scene. Only used when Thinking is set to Staged.</p>
+                </TabsContent>
+              )}
+
+              {thinkingMode === 'staged' && (
+                <TabsContent value="character" className="mt-4 flex-1 min-h-0 data-[state=active]:flex flex-col gap-1">
+                  <PromptField
+                    value={characterPrompt}
+                    onChange={setCharacterPrompt}
+                    variables={PROMPT_KIND_VARIABLES.character}
+                    previewValues={previewValues}
+                    readOnly={activePresetIsDefault}
+                  />
+                  <p className="text-xs text-gray-500 flex-shrink-0">Each cast member states its own motivation in the first person. Only used when Thinking is set to Staged.</p>
+                </TabsContent>
+              )}
+
+              {thinkingMode === 'staged' && (
+                <TabsContent value="storyboard" className="mt-4 flex-1 min-h-0 data-[state=active]:flex flex-col gap-1">
+                  <PromptField
+                    value={storyboardPrompt}
+                    onChange={setStoryboardPrompt}
+                    variables={PROMPT_KIND_VARIABLES.storyboard}
+                    previewValues={previewValues}
+                    readOnly={activePresetIsDefault}
+                  />
+                  <p className="text-xs text-gray-500 flex-shrink-0">Reconciles the cast&apos;s intentions into the turn&apos;s beat plan. Only used when Thinking is set to Staged.</p>
                 </TabsContent>
               )}
             </Tabs>
 
             <div className="flex flex-wrap justify-between items-center gap-2 flex-shrink-0">
-              {memoryDigests && activePromptTab !== 'diary' ? (
+              {memoryDigests && !['diary', 'director', 'character', 'storyboard'].includes(activePromptTab) ? (
                 <VerbatimTurnsField id="promptVerbatim" value={activeVerbatim.value} onChange={activeVerbatim.set} />
               ) : (
                 <span />
               )}
-              <ConfirmDialog
-                title={`Reset ${resetTarget.label} Prompt`}
-                description={`Are you sure you want to reset the ${resetTarget.label} prompt to its default value?`}
-                onConfirm={resetTarget.reset}
-              >
-                <Button variant="outline" className="flex items-center gap-2">
-                  Reset {resetTarget.label} Prompt
-                </Button>
-              </ConfirmDialog>
+              {!activePresetIsDefault ? (
+                <ConfirmDialog
+                  title={`Reset ${resetTarget.label}`}
+                  description={`Are you sure you want to reset the ${resetTarget.label} to its default value?`}
+                  onConfirm={resetTarget.reset}
+                >
+                  <Button variant="outline" className="flex items-center gap-2">
+                    Reset {resetTarget.label}
+                  </Button>
+                </ConfirmDialog>
+              ) : (
+                <span />
+              )}
             </div>
+            <PresetNameDialog
+              open={presetDialog !== null}
+              mode={presetDialog?.mode ?? 'add'}
+              initialName={presetDialog?.mode === 'rename' ? activePresetName : ''}
+              onOpenChange={(o) => { if (!o) setPresetDialog(null); }}
+              onSubmit={handlePresetNameSubmit}
+            />
           </TabsContent>
 
           <TabsContent value="hardware" className="py-4 px-2 flex-1 min-h-0 overflow-y-auto">

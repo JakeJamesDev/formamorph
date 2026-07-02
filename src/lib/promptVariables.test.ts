@@ -2,6 +2,7 @@ import { describe, it, expect } from 'vitest';
 import {
   baseToken, tokenVariant, withVariant, variantLabelForToken,
   variableForToken, labelForToken, colorForToken,
+  PROMPT_KIND_VARIABLES,
 } from './promptVariables';
 
 describe('variant token helpers', () => {
@@ -46,4 +47,14 @@ describe('variable lookup by token (base or variant)', () => {
     expect(variableForToken('<NOTES>')?.variants).toBeUndefined();
     expect(variableForToken('<UNKNOWN>')).toBeUndefined();
   });
+});
+
+describe('every prompt kind offers the six shared context chips', () => {
+  const CONTEXT = ['<WORLD DESCRIPTION>', '<STATS DESCRIPTION>', '<TRAITS DESCRIPTION>', '<LOCATION>', '<ENTITIES>', '<NOTES>'];
+  for (const [kind, vars] of Object.entries(PROMPT_KIND_VARIABLES)) {
+    it(kind, () => {
+      const tokens = vars.map((v) => v.token);
+      for (const t of CONTEXT) expect(tokens).toContain(t);
+    });
+  }
 });

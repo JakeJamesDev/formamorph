@@ -9,6 +9,12 @@ import {
   runStagedPlanning,
   type StagedRequestFn,
 } from './stagedPlanning';
+import {
+  defaultDirectorPrompt,
+  defaultDirectorUserPrompt,
+  defaultCharacterPrompt,
+  defaultStoryboardPrompt,
+} from '@/components/game/GamePrompts';
 import type { Entity } from '@/types';
 
 const ent = (id: string, name: string, extra: Partial<Entity> = {}): Entity => ({ id, name, ...extra });
@@ -176,7 +182,7 @@ describe('user-message builders', () => {
     expect(msg).toContain('My background (who I am in general, not this exact moment): A wary scout.');
     expect(msg).toContain('Where I am now: crouched behind a crate');
     expect(msg).toContain('Scene right now: Dust settles.');
-    expect(msg).toContain('As Mira, react to what just happened');
+    expect(msg).toContain('As Mira, from where I stand in this scene');
   });
 
   it('flags an ad-hoc character as director-introduced and omits an absent stance', () => {
@@ -222,7 +228,7 @@ describe('user-message builders', () => {
     expect(msg).toContain('- I softened toward them.');
     // Memory precedes the scene, and the first-person cue still closes the message.
     expect(msg.indexOf('My diary so far')).toBeLessThan(msg.indexOf('Scene right now: Dust settles.'));
-    expect(msg).toContain('As Mira, react to what just happened');
+    expect(msg).toContain('As Mira, from where I stand in this scene');
   });
 
   it('omits the diary block when there are no entries', () => {
@@ -305,6 +311,10 @@ describe('runStagedPlanning', () => {
     fullMessageHistory: [],
     diaryMemoryEntries: 5,
     caps: { director: 100, character: 100, storyboard: 100 },
+    directorPrompt: defaultDirectorPrompt,
+    directorUserPrompt: defaultDirectorUserPrompt,
+    characterPrompt: defaultCharacterPrompt,
+    storyboardPrompt: defaultStoryboardPrompt,
   };
 
   it('runs director -> character -> storyboard and assembles the plan', async () => {

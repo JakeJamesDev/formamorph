@@ -4,8 +4,9 @@
 
 import { escapeRegExp } from '@/lib/utils';
 
-/** Sentence boundary: whitespace following a terminator. Matches the TTS chunker's segmentation. */
-const SENTENCE_BOUNDARY = /(?<=[.!?…])\s+/g;
+/** Sentence boundary: whitespace following a terminator (plus any closing quotes/brackets). Matches
+ *  the TTS chunker's segmentation. */
+const SENTENCE_BOUNDARY = /(?<=[.!?…]["'”’»)\]]*)\s+/g;
 
 /** Minimal chunk shape the playhead→sentence lookup needs. */
 export interface HighlightChunk { start: number; sentenceIndex: number }

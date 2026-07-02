@@ -2,7 +2,7 @@ import type { Entity, ChatMessage, AIRequestType } from "@/types";
 import { renderPromptTemplate } from "./promptTemplate";
 import { collectCharacterDiary } from "./turnDigest";
 import { sameCharacterName } from "./entityMatch";
-import { defaultDirectorPrompt, defaultCharacterPrompt, defaultStoryboardPrompt } from "@/components/game/GamePrompts";
+import { NONE_PLACEHOLDER } from "./promptFallbacks";
 
 /** One entry in the director's cast: a name plus their placement/action, if the director gave one.
  *  `isPlayer` marks the player character — listed for scene grounding, never given a motivation pass. */
@@ -192,7 +192,7 @@ export function buildCharacterUserMessage(args: {
     : "";
   const stanceLine = character.stance ? `\n\nWhere I am now: ${character.stance}` : "";
   const sceneLine = scene ? `\n\nScene right now: ${scene}` : "";
-  return `${identity}${diaryBlock}${recapBlock}${stanceLine}${sceneLine}\n\nThe player's latest action (their own words — any "I" / "me" / "my" here is the player character, not me): ${action}\n\nAs ${character.name}, react to what just happened and where things stand now: in the first person, state what I want and the specific action I take this turn — building on the moment and pressing toward my goal, not restating my last move.`;
+  return `${identity}${diaryBlock}${recapBlock}${stanceLine}${sceneLine}\n\nThe player's latest action (their own words — any "I" / "me" / "my" here is the player character, not me): ${action}\n\nAs ${character.name}, from where I stand in this scene, state in the first person what I want and what I do now.`;
 }
 
 /** Build the user message for one character's diary pass: their identity plus the turn narration to
@@ -288,21 +288,26 @@ export async function runStagedPlanning(ctx: {
   fullMessageHistory: ChatMessage[];
   diaryMemoryEntries: number;
   caps: { director: number; character: number; storyboard: number };
+  /** The (user-editable) staged-stage prompts, seeded from the defaults in GamePrompts. */
+  directorPrompt: string;
+  directorUserPrompt: string;
+  characterPrompt: string;
+  storyboardPrompt: string;
   request: StagedRequestFn;
   signal: AbortSignal;
 }): Promise<StagedPlanningResult> {
   const {
     action, stageValues, lastStory, entities, presentEntityIds, playerNames, characterDiaries,
-    fullMessageHistory, diaryMemoryEntries, caps, request, signal,
+    fullMessageHistory, diaryMemoryEntries, caps,
+    directorPrompt, directorUserPrompt, characterPrompt, storyboardPrompt, request, signal,
   } = ctx;
   const directorCandidates: string[] = [];
   const adHocCandidates: string[] = [];
-  const recap = lastStory ? `What just happened:\n${lastStory}\n\n` : "";
 
   // 1) Director: who is in the scene and what carries over.
   const directorOut = await request(
-    renderPromptTemplate(defaultDirectorPrompt, stageValues),
-    [{ role: "user", content: `${recap}The player's next action: ${action}\n\nDescribe the scene and list the cast now.` }],
+    renderPromptTemplate(directorPrompt, stageValues),
+    [{ role: "user", content: renderPromptTemplate(directorUserPrompt, { "<NARRATION>": lastStory || NONE_PLACEHOLDER, "<PLAYER ACTION>": action }) }],
     "director", caps.director, signal,
   );
   if (signal.aborted) return { turnPlan: "", directorCandidates, adHocCandidates };
@@ -339,7 +344,7 @@ export async function runStagedPlanning(ctx: {
     // Feed the character its own recent diary as private memory (Slice B) — only when enabled.
     const diary = characterDiaries ? collectCharacterDiary(fullMessageHistory, member.name, diaryMemoryEntries) : [];
     const text = await request(
-      renderPromptTemplate(defaultCharacterPrompt, stageValues),
+      renderPromptTemplate(characterPrompt, { ...stageValues, "<CHARACTER NAME>": member.name }),
       [{ role: "user", content: buildCharacterUserMessage({ character: member, scene, action, diary, recap: lastStory }) }],
       "character", caps.character, signal,
     );
@@ -349,7 +354,7 @@ export async function runStagedPlanning(ctx: {
 
   // 3) Storyboarder: consolidate the cast + intentions into this turn's plan.
   const plan = await request(
-    renderPromptTemplate(defaultStoryboardPrompt, stageValues),
+    renderPromptTemplate(storyboardPrompt, stageValues),
     [{ role: "user", content: buildStoryboardUserMessage({ recap: lastStory, scene, intents, overflow, action }) }],
     "storyboard", caps.storyboard, signal,
   );

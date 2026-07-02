@@ -19,10 +19,11 @@ export function splitChipInput(value: string): { complete: string[]; remainder: 
   return { complete: parts.map((p) => p.trim()).filter(Boolean), remainder };
 }
 
-/** A removable rounded-square chip. Neutral by default; pass `className` for a semantic color. */
+/** A removable rounded-square chip. Neutral by default; pass `className` for a semantic color.
+ *  Omit `onRemove` to render a non-removable chip (e.g. inside a read-only prompt editor). */
 export function Chip({ label, onRemove, className, innerRef, style, dragProps, grabbable }: {
   label: string;
-  onRemove: (label: string) => void;
+  onRemove?: (label: string) => void;
   className?: string;
   innerRef?: (node: HTMLElement | null) => void;
   style?: CSSProperties;
@@ -42,15 +43,17 @@ export function Chip({ label, onRemove, className, innerRef, style, dragProps, g
       )}
     >
       {label}
-      <button
-        type="button"
-        onPointerDown={(e) => e.stopPropagation()}
-        onClick={() => onRemove(label)}
-        className="hover:text-destructive"
-        aria-label={`Remove ${label}`}
-      >
-        <X className="h-3 w-3" />
-      </button>
+      {onRemove && (
+        <button
+          type="button"
+          onPointerDown={(e) => e.stopPropagation()}
+          onClick={() => onRemove(label)}
+          className="hover:text-destructive"
+          aria-label={`Remove ${label}`}
+        >
+          <X className="h-3 w-3" />
+        </button>
+      )}
     </span>
   );
 }
