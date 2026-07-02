@@ -28,16 +28,17 @@ describe('default prompts carry the expected variable chips', () => {
   it('game-text prompt', () => {
     expect(tokensIn(defaultSystemPrompt)).toEqual([
       '<WORLD DESCRIPTION>',
-      '<STATS DESCRIPTION|descriptions>',
-      '<TRAITS DESCRIPTION>',
+      '<STATS DESCRIPTION|descriptions.markdown>',
+      '<TRAITS DESCRIPTION|markdown>',
       '<LOCATION>',
       '<ENTITIES>',
       '<NOTES>',
       '<LENGTH GUIDANCE>',
       '<MARKDOWN GUIDANCE>',
     ]);
-    // GameViewer's <NOTES>-absent fallback locates this exact label.
-    expect(defaultSystemPrompt).toContain('Current Location:');
+    // Canonical headers are markdown; the labels style downcasts them, and GameViewer's <NOTES>-absent
+    // fallback locates the location header in either style.
+    expect(defaultSystemPrompt).toContain('## Current Location');
     // Positive contract: the narrator writes only story prose; a separate step handles choices.
     expect(defaultSystemPrompt).toContain("a separate step presents the player's choices");
     expect(defaultSystemPrompt).toContain('[Player\'s turn]');
@@ -51,8 +52,8 @@ describe('default prompts carry the expected variable chips', () => {
   it('choices prompt', () => {
     expect(tokensIn(defaultChoicesPrompt)).toEqual([
       '<WORLD DESCRIPTION>',
-      '<STATS DESCRIPTION|descriptions>',
-      '<TRAITS DESCRIPTION>',
+      '<STATS DESCRIPTION|descriptions.markdown>',
+      '<TRAITS DESCRIPTION|markdown>',
       '<NOTES>',
       '<LOCATION|summary>',
       '<ENTITIES|summary>',
@@ -68,8 +69,8 @@ describe('default prompts carry the expected variable chips', () => {
   it('stat-updates prompt', () => {
     expect(tokensIn(defaultStatUpdatesPrompt)).toEqual([
       '<WORLD DESCRIPTION>',
-      '<STATS DESCRIPTION>',
-      '<TRAITS DESCRIPTION>',
+      '<STATS DESCRIPTION|markdown>',
+      '<TRAITS DESCRIPTION|markdown>',
       '<NOTES>',
     ]);
   });
@@ -86,8 +87,8 @@ describe('default prompts carry the expected variable chips', () => {
   it('thinking (pre-call) prompt', () => {
     expect(tokensIn(defaultThinkingPrompt)).toEqual([
       '<WORLD DESCRIPTION>',
-      '<STATS DESCRIPTION|descriptions>',
-      '<TRAITS DESCRIPTION>',
+      '<STATS DESCRIPTION|descriptions.markdown>',
+      '<TRAITS DESCRIPTION|markdown>',
       '<LOCATION|summary>',
       '<ENTITIES|summary>',
       '<NOTES>',
@@ -99,7 +100,7 @@ describe('default prompts carry the expected variable chips', () => {
   it('staged director prompt', () => {
     expect(tokensIn(defaultDirectorPrompt)).toEqual([
       '<WORLD DESCRIPTION>',
-      '<TRAITS DESCRIPTION>',
+      '<TRAITS DESCRIPTION|markdown>',
       '<LOCATION|summary>',
       '<ENTITIES|summary>',
       '<NOTES>',
@@ -125,7 +126,7 @@ describe('default prompts carry the expected variable chips', () => {
     expect(tokensIn(defaultCharacterPrompt)).toEqual([
       '<CHARACTER NAME>',
       '<WORLD DESCRIPTION>',
-      '<TRAITS DESCRIPTION>',
+      '<TRAITS DESCRIPTION|markdown>',
       '<LOCATION|summary>',
     ]);
     // The character speaks in the first person but keeps the player in the third person.
@@ -146,8 +147,8 @@ describe('default prompts carry the expected variable chips', () => {
   it('staged storyboard prompt', () => {
     expect(tokensIn(defaultStoryboardPrompt)).toEqual([
       '<WORLD DESCRIPTION>',
-      '<STATS DESCRIPTION|descriptions>',
-      '<TRAITS DESCRIPTION>',
+      '<STATS DESCRIPTION|descriptions.markdown>',
+      '<TRAITS DESCRIPTION|markdown>',
       '<LOCATION|summary>',
       '<NOTES>',
     ]);
@@ -177,11 +178,13 @@ describe('aux user-message templates carry the runtime value-tokens', () => {
 });
 
 describe('planDirective', () => {
-  it('wraps the plan as a follow-it directive carrying the plan text', () => {
+  it('wraps the plan as narrator stage-directions carrying the plan text', () => {
     const out = planDirective('Mira flees north.');
     expect(out).toContain('Mira flees north.');
-    expect(out.toLowerCase()).toContain('follow the plan');
-    expect(out.toLowerCase()).toContain('flowing prose');
+    // Framed as directions to the narrator, distinct from the player's own words.
+    expect(out.toLowerCase()).toContain('narrator');
+    expect(out.toLowerCase()).toContain('not words the player spoke');
+    expect(out.toLowerCase()).toContain('flowing second-person prose');
   });
 });
 

@@ -12,7 +12,7 @@ import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { cn } from '@/lib/utils';
 import {
   labelForToken, colorForToken, variableForToken, baseToken, tokenVariant, withVariant,
-  variantLabelForToken,
+  variantLabelForToken, variableAxes, decodeVariant, encodeVariant,
 } from '@/lib/promptVariables';
 
 /** Shared slot the dragged chip's node key is parked in on dragstart, so the editor's drop handler
@@ -35,19 +35,25 @@ function VariableChip({ nodeKey, token }: { nodeKey: NodeKey; token: string }) {
   const [editable, setEditable] = useState(editor.isEditable());
   useEffect(() => editor.registerEditableListener(setEditable), [editor]);
   const variable = variableForToken(token);
-  const variantId = tokenVariant(token);
   const color = colorForToken(token);
   // Reflect the mode in the chip text so it's readable at a glance, not only in the pop-out.
   const variantLabel = variantLabelForToken(token);
   const label = variantLabel ? `${labelForToken(token)} (${variantLabel})` : labelForToken(token);
 
+  const axes = variable ? variableAxes(variable) : [];
+  const selection = variable ? decodeVariant(variable, tokenVariant(token)) : {};
+
   const remove = () => editor.update(() => { $getNodeByKey(nodeKey)?.remove(); });
 
-  const setVariant = (id: string | null) => {
-    if (!editable) return;
+  // Change one axis, recomputing the combined variant id from the node's live token.
+  const setAxis = (axisId: string, optionId: string | null) => {
+    if (!editable || !variable) return;
     editor.update(() => {
       const node = $getNodeByKey(nodeKey);
-      if ($isVariableNode(node)) node.setToken(withVariant(baseToken(node.getToken()), id));
+      if (!$isVariableNode(node)) return;
+      const base = baseToken(node.getToken());
+      const next = { ...decodeVariant(variable, tokenVariant(node.getToken())), [axisId]: optionId };
+      node.setToken(withVariant(base, encodeVariant(variable, next)));
     });
   };
 
@@ -56,8 +62,6 @@ function VariableChip({ nodeKey, token }: { nodeKey: NodeKey; token: string }) {
     e.dataTransfer.effectAllowed = 'move';
     e.dataTransfer.setData('text/plain', token); // some browsers won't start a drag without payload
   };
-
-  const variants = variable?.variants ?? [];
 
   return (
     <Popover open={open} onOpenChange={setOpen}>
@@ -72,33 +76,38 @@ function VariableChip({ nodeKey, token }: { nodeKey: NodeKey; token: string }) {
         </span>
       </PopoverTrigger>
       <PopoverContent className="w-64" align="start">
-        {variants.length ? (
-          <div className="space-y-2">
-            <p className="text-xs font-medium">{labelForToken(token)} mode</p>
-            <Tabs
-              value={variantId ?? FULL}
-              onValueChange={(v) => setVariant(v === FULL ? null : v)}
-            >
-              <TabsList className="grid w-full" style={{ gridTemplateColumns: `repeat(${variants.length}, minmax(0, 1fr))` }}>
-                {variants.map((vr) => (
-                  <TabsTrigger key={vr.id ?? FULL} value={vr.id ?? FULL} disabled={!editable}>{vr.label}</TabsTrigger>
-                ))}
-              </TabsList>
-            </Tabs>
-            {/* Help lines stacked in one cell so the pop-out doesn't reflow when switching modes. */}
-            <div className="grid">
-              {variants.map((vr) => (
-                <p
-                  key={vr.id ?? FULL}
-                  className={cn(
-                    'col-start-1 row-start-1 text-[11px] text-muted-foreground',
-                    (vr.id ?? FULL) !== (variantId ?? FULL) && 'invisible',
-                  )}
-                >
-                  {vr.help}
-                </p>
-              ))}
-            </div>
+        {axes.length ? (
+          <div className="space-y-3">
+            {axes.map((axis) => {
+              const active = selection[axis.id] ?? FULL;
+              return (
+                <div key={axis.id} className="space-y-2">
+                  {/* One heading per axis (its own label when multi-axis, else the chip name). */}
+                  <p className="text-xs font-medium">{axes.length > 1 ? axis.label : `${labelForToken(token)} mode`}</p>
+                  <Tabs value={active} onValueChange={(v) => setAxis(axis.id, v === FULL ? null : v)}>
+                    <TabsList className="grid w-full" style={{ gridTemplateColumns: `repeat(${axis.options.length}, minmax(0, 1fr))` }}>
+                      {axis.options.map((opt) => (
+                        <TabsTrigger key={opt.id ?? FULL} value={opt.id ?? FULL} disabled={!editable}>{opt.label}</TabsTrigger>
+                      ))}
+                    </TabsList>
+                  </Tabs>
+                  {/* Help lines stacked in one cell so the pop-out doesn't reflow when switching modes. */}
+                  <div className="grid">
+                    {axis.options.map((opt) => (
+                      <p
+                        key={opt.id ?? FULL}
+                        className={cn(
+                          'col-start-1 row-start-1 text-[11px] text-muted-foreground',
+                          (opt.id ?? FULL) !== active && 'invisible',
+                        )}
+                      >
+                        {opt.help}
+                      </p>
+                    ))}
+                  </div>
+                </div>
+              );
+            })}
           </div>
         ) : (
           <p className="text-xs text-muted-foreground">No options for this variable.</p>

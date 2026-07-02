@@ -44,31 +44,51 @@ export function isDescendantGroup(groups: TraitGroup[], ancestorId: string, cand
 }
 
 /**
- * Build the trait block sent to the AI: ungrouped selected traits first (bare lines), then each group
- * (depth-first) that has ≥1 selected trait, emitting `Group:` + its AI description (if non-blank) above
- * its selected traits. A trait's blank AI description falls back to just its name. Empty → ''.
+ * Build the trait block sent to the AI: ungrouped selected traits first, then each group (depth-first) that
+ * has ≥1 selected trait, emitting the group name + its AI description (if non-blank) above its selected
+ * traits. A trait's blank AI description falls back to just its name. Empty → ''.
+ *
+ * `format` controls the shape (mirrors the Default/Simple presets): `'simple'` is plain labels + indentation
+ * (`World:` / `Name: desc`); `'markdown'` is nested bold bullets (`- **World:** desc` / `- **Name:** desc`)
+ * a small model parses more cleanly. The tree walk + selection are identical; only line shaping differs.
  */
-export function buildTraitContext(selectedIds: Iterable<string>, traits: Trait[], groups: TraitGroup[]): string {
+export function buildTraitContext(
+  selectedIds: Iterable<string>,
+  traits: Trait[],
+  groups: TraitGroup[],
+  format: 'simple' | 'markdown' = 'simple',
+): string {
+  const md = format === 'markdown';
   const sel = new Set(selectedIds);
-  const traitLine = (t: Trait) =>
-    t.aiDescription?.trim() ? `${t.name}: ${t.aiDescription.trim()}` : t.name;
+  const traitLine = (t: Trait) => {
+    const name = md ? `**${t.name}:**` : `${t.name}:`;
+    const bare = md ? `**${t.name}**` : t.name;
+    return t.aiDescription?.trim() ? `${name} ${t.aiDescription.trim()}` : bare;
+  };
   const selectedIn = (groupId: string | null) =>
     traits
       .filter((t) => (t.groupId ?? null) === groupId && sel.has(t.id))
       .sort((a, b) => (a.order ?? 0) - (b.order ?? 0));
 
   const lines: string[] = [];
-  for (const t of selectedIn(null)) lines.push(traitLine(t));
+  for (const t of selectedIn(null)) lines.push(md ? `- ${traitLine(t)}` : traitLine(t));
 
   const walk = (nodes: TraitTreeNode[], depth: number) => {
     for (const node of nodes) {
       if (node.kind !== 'group') continue;
       const groupTraits = selectedIn(node.id);
       const indent = '  '.repeat(depth);
+      const desc = node.group.aiDescription?.trim();
       if (groupTraits.length) {
-        lines.push(`${indent}${node.group.name}:`);
-        if (node.group.aiDescription?.trim()) lines.push(`${indent}  ${node.group.aiDescription.trim()}`);
-        for (const t of groupTraits) lines.push(`${indent}  - ${traitLine(t)}`);
+        if (md) {
+          // Bold group name as a bullet, description inlined after it.
+          lines.push(`${indent}- **${node.group.name}:**${desc ? ` ${desc}` : ''}`);
+          for (const t of groupTraits) lines.push(`${indent}  - ${traitLine(t)}`);
+        } else {
+          lines.push(`${indent}${node.group.name}:`);
+          if (desc) lines.push(`${indent}  ${desc}`);
+          for (const t of groupTraits) lines.push(`${indent}  ${traitLine(t)}`);
+        }
       }
       walk(node.children, depth + 1);
     }

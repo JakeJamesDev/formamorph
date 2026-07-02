@@ -83,6 +83,20 @@ describe('parse ∘ serialize round-trip', () => {
     const src = 'Loc: <LOCATION|summary> done';
     expect(serializeSegments(parsePromptTemplate(src))).toBe(src);
   });
+
+  it('parses a multi-axis (dotted) variant token without the prefix masking it', () => {
+    const src = 'Stats: <STATS DESCRIPTION|descriptions.markdown> end';
+    expect(parsePromptTemplate(src)).toEqual([
+      { type: 'text', value: 'Stats: ' },
+      { type: 'variable', token: '<STATS DESCRIPTION|descriptions.markdown>' },
+      { type: 'text', value: ' end' },
+    ]);
+    expect(serializeSegments(parsePromptTemplate(src))).toBe(src);
+    // The bare markdown-format and the plain content forms also round-trip.
+    for (const t of ['<STATS DESCRIPTION|markdown>', '<STATS DESCRIPTION|numbers.markdown>', '<STATS DESCRIPTION>']) {
+      expect(serializeSegments(parsePromptTemplate(`x ${t} y`))).toBe(`x ${t} y`);
+    }
+  });
 });
 
 describe('token variants', () => {

@@ -2,6 +2,7 @@ import { describe, it, expect } from 'vitest';
 import {
   baseToken, tokenVariant, withVariant, variantLabelForToken,
   variableForToken, labelForToken, colorForToken,
+  variableAxes, decodeVariant, encodeVariant, ALL_VARIANT_IDS,
   PROMPT_KIND_VARIABLES,
 } from './promptVariables';
 
@@ -46,6 +47,55 @@ describe('variable lookup by token (base or variant)', () => {
   it('marks variables without variants', () => {
     expect(variableForToken('<NOTES>')?.variants).toBeUndefined();
     expect(variableForToken('<UNKNOWN>')).toBeUndefined();
+  });
+});
+
+describe('multi-axis variants (Stats: content × format)', () => {
+  const STATS = variableForToken('<STATS DESCRIPTION>')!;
+
+  it('exposes both axes', () => {
+    expect(variableAxes(STATS).map((a) => a.id)).toEqual(['content', 'format']);
+  });
+
+  it('normalizes a single-axis variable into one axis', () => {
+    const LOC = variableForToken('<LOCATION>')!;
+    expect(variableAxes(LOC)).toHaveLength(1);
+    expect(variableAxes(LOC)[0].options).toHaveLength(3);
+  });
+
+  it('decodes a combined id into a per-axis selection (order-independent)', () => {
+    expect(decodeVariant(STATS, 'descriptions.markdown')).toEqual({ content: 'descriptions', format: 'markdown' });
+    expect(decodeVariant(STATS, 'markdown')).toEqual({ content: null, format: 'markdown' });
+    expect(decodeVariant(STATS, 'numbers')).toEqual({ content: 'numbers', format: null });
+    expect(decodeVariant(STATS, null)).toEqual({ content: null, format: null });
+  });
+
+  it('encodes a selection back to the combined id (null when all default)', () => {
+    expect(encodeVariant(STATS, { content: 'descriptions', format: 'markdown' })).toBe('descriptions.markdown');
+    expect(encodeVariant(STATS, { content: null, format: 'markdown' })).toBe('markdown');
+    expect(encodeVariant(STATS, { content: 'numbers', format: null })).toBe('numbers');
+    expect(encodeVariant(STATS, { content: null, format: null })).toBeNull();
+  });
+
+  it('lists every combined id, longest-first so a compound is not masked by its prefix', () => {
+    for (const id of ['descriptions', 'numbers', 'markdown', 'descriptions.markdown', 'numbers.markdown', 'summary', 'list']) {
+      expect(ALL_VARIANT_IDS).toContain(id);
+    }
+    expect(ALL_VARIANT_IDS.indexOf('descriptions.markdown')).toBeLessThan(ALL_VARIANT_IDS.indexOf('descriptions'));
+  });
+
+  it('composes the chip label from the non-default axis selections', () => {
+    expect(variantLabelForToken('<STATS DESCRIPTION|descriptions.markdown>')).toBe('Words, Default');
+    expect(variantLabelForToken('<STATS DESCRIPTION|markdown>')).toBe('Default');
+    expect(variantLabelForToken('<STATS DESCRIPTION|descriptions>')).toBe('Words');
+    expect(variantLabelForToken('<STATS DESCRIPTION>')).toBeNull();
+  });
+
+  it('gives Traits a single format axis (shared with Stats)', () => {
+    const TRAITS = variableForToken('<TRAITS DESCRIPTION>')!;
+    expect(variableAxes(TRAITS).map((a) => a.id)).toEqual(['format']);
+    expect(variantLabelForToken('<TRAITS DESCRIPTION|markdown>')).toBe('Default');
+    expect(variantLabelForToken('<TRAITS DESCRIPTION>')).toBeNull();
   });
 });
 

@@ -1,11 +1,22 @@
 import { HIGHLIGHT_PALETTE } from './highlightUtils';
 
 /** An optional alternate form a variable's chip can be switched to via its pop-out. `id: null` is the
- *  default (full) form with no token suffix; a non-null id encodes as `<TOKEN|id>` (e.g. `|summary`). */
+ *  default form with no token suffix; a non-null id contributes to the token suffix (e.g. `|summary`). */
 export interface PromptVariant {
   id: string | null;
   label: string;
   help?: string;
+}
+
+/** One independent dimension of a variable's variants (e.g. Stats has a `content` axis and a `format`
+ *  axis). Each axis renders as its own segmented control in the pop-out. A variable with a single axis can
+ *  just use `variants`; multi-axis variables use `axes`. The token suffix is the non-null option ids of
+ *  every axis joined by `.` in axis order (e.g. content `descriptions` + format `markdown` →
+ *  `<STATS DESCRIPTION|descriptions.markdown>`). Option ids must be unique across a variable's axes. */
+export interface PromptVariantAxis {
+  id: string;
+  label: string;
+  options: PromptVariant[]; // first entry (id:null) is the default
 }
 
 /** Registry of the angle-bracket variables that prompt templates can embed. The base `token`
@@ -17,7 +28,8 @@ export interface PromptVariable {
   token: string; // exact base token, e.g. '<WORLD DESCRIPTION>'
   label: string; // friendly chip label, e.g. 'World'
   color: string; // chip/preview accent, from HIGHLIGHT_PALETTE
-  variants?: PromptVariant[]; // pop-out modes; first entry is the default/full form
+  variants?: PromptVariant[]; // single-axis pop-out modes; first entry is the default/full form
+  axes?: PromptVariantAxis[]; // multi-axis pop-out (takes precedence over `variants`)
 }
 
 /** Every prompt editor maps to one of these kinds (mirrors the Settings → System Prompts sub-tabs). */
@@ -40,16 +52,32 @@ const ENTITY_VARIANTS: PromptVariant[] = [
   SUMMARY_VARIANT,
 ];
 
-const STATS_VARIANTS: PromptVariant[] = [
-  { id: null, label: 'Full', help: 'Numbers and descriptor, e.g. "Health: 10/100 (Critical)".' },
-  { id: 'descriptions', label: 'Words', help: 'Descriptor only, e.g. "Health: Critical".' },
-  { id: 'numbers', label: 'Values', help: 'Numbers only, e.g. "Health: 10/100".' },
-];
+// Shared "how the block is shaped" axis (mirrors the Default/Simple presets): Simple = plain text; Default =
+// markdown. The labels-style preset strips this axis back to plain (see sectionStyle `stripChipFormat`).
+const FORMAT_AXIS: PromptVariantAxis = {
+  id: 'format',
+  label: 'Format',
+  options: [
+    { id: null, label: 'Simple', help: 'Plain lines — no bullets or bold.' },
+    { id: 'markdown', label: 'Default', help: 'Markdown: bullets with bold names.' },
+  ],
+};
+
+// Stats has two independent axes: what data each line carries (content) and how the block is shaped (format).
+const STATS_CONTENT_AXIS: PromptVariantAxis = {
+  id: 'content',
+  label: 'Content',
+  options: [
+    { id: null, label: 'Full', help: 'Numbers and descriptor, e.g. "Health: 10/100 (Critical)".' },
+    { id: 'descriptions', label: 'Words', help: 'Descriptor only, e.g. "Health: Critical".' },
+    { id: 'numbers', label: 'Values', help: 'Numbers only, e.g. "Health: 10/100".' },
+  ],
+};
 
 // Each variable gets a fixed palette slot so its color is stable everywhere (chip + preview, every prompt).
 const WORLD: PromptVariable = { token: '<WORLD DESCRIPTION>', label: 'World', color: HIGHLIGHT_PALETTE[0] };
-const STATS: PromptVariable = { token: '<STATS DESCRIPTION>', label: 'Stats', color: HIGHLIGHT_PALETTE[1], variants: STATS_VARIANTS };
-const TRAITS: PromptVariable = { token: '<TRAITS DESCRIPTION>', label: 'Traits', color: HIGHLIGHT_PALETTE[2] };
+const STATS: PromptVariable = { token: '<STATS DESCRIPTION>', label: 'Stats', color: HIGHLIGHT_PALETTE[1], axes: [STATS_CONTENT_AXIS, FORMAT_AXIS] };
+const TRAITS: PromptVariable = { token: '<TRAITS DESCRIPTION>', label: 'Traits', color: HIGHLIGHT_PALETTE[2], axes: [FORMAT_AXIS] };
 const LOCATION: PromptVariable = { token: '<LOCATION>', label: 'Location', color: HIGHLIGHT_PALETTE[3], variants: LOCATION_VARIANTS };
 const NOTES: PromptVariable = { token: '<NOTES>', label: 'Notes', color: HIGHLIGHT_PALETTE[4] };
 const LENGTH: PromptVariable = { token: '<LENGTH GUIDANCE>', label: 'Length Guidance', color: HIGHLIGHT_PALETTE[5] };
@@ -98,10 +126,52 @@ export const PROMPT_KIND_USER_VARIABLES: Partial<Record<PromptKind, PromptVariab
 
 const VAR_BY_BASE = new Map(ALL_PROMPT_VARIABLES.map((v) => [v.token, v]));
 
-/** Every non-null variant id any variable supports — drives the parser's token regex. */
+/** A variable's variant axes, normalizing a single-axis `variants` list into one unnamed axis. */
+export function variableAxes(variable: PromptVariable): PromptVariantAxis[] {
+  if (variable.axes) return variable.axes;
+  if (variable.variants) return [{ id: 'variant', label: '', options: variable.variants }];
+  return [];
+}
+
+/** All non-null combined variant ids a variable can produce (cross-product of its axes' options, each
+ *  axis contributing its id or nothing), joined by `.` in axis order. Excludes the all-default (empty). */
+function variableVariantIds(variable: PromptVariable): string[] {
+  let combos: string[][] = [[]];
+  for (const axis of variableAxes(variable)) {
+    combos = combos.flatMap((c) => axis.options.map((o) => (o.id ? [...c, o.id] : c)));
+  }
+  return [...new Set(combos.filter((c) => c.length > 0).map((c) => c.join('.')))];
+}
+
+/** Split a token's combined id into a per-axis selection (`{ content: 'descriptions', format: 'markdown' }`),
+ *  each axis defaulting to null. Parts are matched to axes by id, so order in the token doesn't matter. */
+export function decodeVariant(variable: PromptVariable, id: string | null): Record<string, string | null> {
+  const axes = variableAxes(variable);
+  const selection: Record<string, string | null> = {};
+  for (const axis of axes) selection[axis.id] = null;
+  if (id) {
+    for (const part of id.split('.')) {
+      const axis = axes.find((a) => a.options.some((o) => o.id === part));
+      if (axis) selection[axis.id] = part;
+    }
+  }
+  return selection;
+}
+
+/** Inverse of `decodeVariant`: the combined id for a per-axis selection (non-null ids joined by `.` in
+ *  axis order), or null when every axis is at its default. */
+export function encodeVariant(variable: PromptVariable, selection: Record<string, string | null>): string | null {
+  const ids = variableAxes(variable)
+    .map((axis) => selection[axis.id])
+    .filter((v): v is string => v != null);
+  return ids.length ? ids.join('.') : null;
+}
+
+/** Every non-null variant id any variable supports (incl. multi-axis combos) — drives the parser's token
+ *  regex. Longest-first so a compound id (`descriptions.markdown`) isn't masked by a prefix (`descriptions`). */
 export const ALL_VARIANT_IDS: string[] = [
-  ...new Set(ALL_PROMPT_VARIABLES.flatMap((v) => v.variants ?? []).flatMap((vr) => (vr.id ? [vr.id] : []))),
-];
+  ...new Set(ALL_PROMPT_VARIABLES.flatMap(variableVariantIds)),
+].sort((a, b) => b.length - a.length);
 
 /** The base token (`<…>`) of a possibly-variant token, e.g. `<LOCATION|summary>` → `<LOCATION>`. */
 export function baseToken(token: string): string {
@@ -130,11 +200,20 @@ export function labelForToken(token: string): string {
   return variableForToken(token)?.label ?? baseToken(token).replace(/^<|>$/g, '');
 }
 
-/** The label of a token's active variant (`<LOCATION|list>` → `'List'`), or null for the default/full form. */
+/** The label(s) of a token's active, non-default variant selections, joined by ', ' (`<LOCATION|list>` →
+ *  `'List'`, `<STATS DESCRIPTION|descriptions.markdown>` → `'Words, Default'`), or null when all axes are
+ *  at their default. */
 export function variantLabelForToken(token: string): string | null {
-  const id = tokenVariant(token);
-  if (!id) return null;
-  return variableForToken(token)?.variants?.find((vr) => vr.id === id)?.label ?? id;
+  const variable = variableForToken(token);
+  if (!variable) return null;
+  const selection = decodeVariant(variable, tokenVariant(token));
+  const labels = variableAxes(variable)
+    .flatMap((axis) => {
+      const chosen = selection[axis.id];
+      const opt = chosen != null ? axis.options.find((o) => o.id === chosen) : undefined;
+      return opt ? [opt.label] : [];
+    });
+  return labels.length ? labels.join(', ') : null;
 }
 
 /** The accent color for a token, or undefined for an unknown token. */

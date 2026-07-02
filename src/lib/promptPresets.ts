@@ -23,11 +23,17 @@ export const PROMPT_TEXT_KEYS = [
 export type PromptTextKey = (typeof PROMPT_TEXT_KEYS)[number];
 export type PromptValues = Record<PromptTextKey, string>;
 
-/** A named, user-managed set of prompt text. `default` is virtual (the shipped defaults) and never stored. */
+/** The section-header formatting a preset renders in: `markdown` (`## Foo`) or `labels` (`FOO:`). The
+ *  bodies are shared; only the header decoration differs (see src/lib/sectionStyle.ts). */
+export type SectionStyle = 'markdown' | 'labels';
+
+/** A named set of prompt text. Built-ins are virtual (derived from the shipped canonical, never stored);
+ *  a user preset stores a full value snapshot plus the section style it was authored in. */
 export interface PromptPreset {
   id: string;
   name: string;
   values: PromptValues;
+  style?: SectionStyle; // absent on legacy presets → treated as 'markdown'
 }
 
 export interface PromptPresetStore {
@@ -35,7 +41,15 @@ export interface PromptPresetStore {
   presets: PromptPreset[];
 }
 
-/** The built-in preset id — its values come from the shipped defaults and can't be edited/renamed/deleted. */
+/** The read-only built-in presets — same content, different section style. Order = dropdown order. */
+export const BUILTIN_PRESETS: { id: string; name: string; style: SectionStyle }[] = [
+  { id: 'default', name: 'Default', style: 'markdown' },
+  { id: 'simple', name: 'Simple', style: 'labels' },
+];
+
+const BUILTIN_IDS = new Set(BUILTIN_PRESETS.map((b) => b.id));
+
+/** The initial/default built-in id (also the sole preset id before styles existed — kept for back-compat). */
 export const DEFAULT_PRESET_ID = 'default';
 
 export const emptyStore: PromptPresetStore = { activeId: DEFAULT_PRESET_ID, presets: [] };
@@ -54,31 +68,45 @@ export const presetStoreCodec: Codec<PromptPresetStore> = {
   serialize: (v) => JSON.stringify(v),
 };
 
-export function isDefaultActive(store: PromptPresetStore): boolean {
-  return store.activeId === DEFAULT_PRESET_ID || !store.presets.some((p) => p.id === store.activeId);
+/** A built-in preset is active when the id is one of the built-ins, or when it's a ghost id (no matching
+ *  user preset) — the same defensive fallback the single-Default logic used. Built-ins are read-only. */
+export function isBuiltInActive(store: PromptPresetStore): boolean {
+  return BUILTIN_IDS.has(store.activeId) || !store.presets.some((p) => p.id === store.activeId);
 }
 
-/** The active preset's values, layered over `defaults` so a preset missing a (future) key falls back cleanly. */
-export function activeValues(store: PromptPresetStore, defaults: PromptValues): PromptValues {
-  if (isDefaultActive(store)) return defaults;
+/** The section style the active preset renders in (built-in's style, a user preset's stored style, or
+ *  'markdown' for a ghost/legacy preset). */
+export function activeStyle(store: PromptPresetStore): SectionStyle {
+  const builtin = BUILTIN_PRESETS.find((b) => b.id === store.activeId);
+  if (builtin) return builtin.style;
   const preset = store.presets.find((p) => p.id === store.activeId);
-  return preset ? { ...defaults, ...preset.values } : defaults;
+  return preset?.style ?? 'markdown';
+}
+
+/** The active preset's values. A built-in (or ghost id) resolves from `builtinValues` by id; a user preset
+ *  returns its stored snapshot, layered over the default built-in so a preset missing a future key falls
+ *  back cleanly. */
+export function activeValues(store: PromptPresetStore, builtinValues: Record<string, PromptValues>): PromptValues {
+  const base = builtinValues[DEFAULT_PRESET_ID];
+  if (isBuiltInActive(store)) return builtinValues[store.activeId] ?? base;
+  const preset = store.presets.find((p) => p.id === store.activeId);
+  return preset ? { ...base, ...preset.values } : base;
 }
 
 export function setActive(store: PromptPresetStore, id: string): PromptPresetStore {
   return { ...store, activeId: id };
 }
 
-/** Add a preset (a copy of `values`) and select it. */
-export function addPreset(store: PromptPresetStore, id: string, name: string, values: PromptValues): PromptPresetStore {
-  return { activeId: id, presets: [...store.presets, { id, name, values: { ...values } }] };
+/** Add a preset (a copy of `values` in `style`) and select it. */
+export function addPreset(store: PromptPresetStore, id: string, name: string, values: PromptValues, style: SectionStyle): PromptPresetStore {
+  return { activeId: id, presets: [...store.presets, { id, name, values: { ...values }, style }] };
 }
 
 export function renamePreset(store: PromptPresetStore, id: string, name: string): PromptPresetStore {
   return { ...store, presets: store.presets.map((p) => (p.id === id ? { ...p, name } : p)) };
 }
 
-/** Remove a preset; if it was active, fall back to Default. */
+/** Remove a preset; if it was active, fall back to the default built-in. */
 export function deletePreset(store: PromptPresetStore, id: string): PromptPresetStore {
   return {
     activeId: store.activeId === id ? DEFAULT_PRESET_ID : store.activeId,
@@ -86,17 +114,17 @@ export function deletePreset(store: PromptPresetStore, id: string): PromptPreset
   };
 }
 
-/** Reset a preset's whole value-set back to the shipped defaults. */
-export function resetPreset(store: PromptPresetStore, id: string, defaults: PromptValues): PromptPresetStore {
+/** Reset a preset's whole value-set back to `values` (the caller supplies them in the preset's own style). */
+export function resetPreset(store: PromptPresetStore, id: string, values: PromptValues): PromptPresetStore {
   return {
     ...store,
-    presets: store.presets.map((p) => (p.id === id ? { ...p, values: { ...defaults } } : p)),
+    presets: store.presets.map((p) => (p.id === id ? { ...p, values: { ...values } } : p)),
   };
 }
 
-/** Patch one value on the active preset. No-op when Default is active (it's read-only). */
+/** Patch one value on the active preset. No-op when a built-in is active (they're read-only). */
 export function updateValue(store: PromptPresetStore, key: PromptTextKey, value: string): PromptPresetStore {
-  if (isDefaultActive(store)) return store;
+  if (isBuiltInActive(store)) return store;
   return {
     ...store,
     presets: store.presets.map((p) => (p.id === store.activeId ? { ...p, values: { ...p.values, [key]: value } } : p)),

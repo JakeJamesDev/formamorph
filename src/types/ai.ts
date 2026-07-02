@@ -52,7 +52,7 @@ export interface AITurnResult {
   stat_changes: Array<Record<string, number>>;
   /** Stable per-turn id (`crypto.randomUUID()`); powers the digest async-apply guard. */
   turnId?: string;
-  /** Lazily-generated memory digest (typed fact lines) for this turn. */
+  /** Lazily-generated memory digest (a short condensed retelling) for this turn. */
   summary?: string;
   /** Names of the entities that took part in this turn (from the narration parse, plus staged ad-hoc
    *  characters confirmed by the narration). Drives the choices filter and participation rehydration. */
