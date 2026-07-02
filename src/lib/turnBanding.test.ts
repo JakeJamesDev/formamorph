@@ -160,7 +160,7 @@ describe('selectRehydrations', () => {
 describe('buildBandedHistory', () => {
   const base = { contextWindow: WIDE, promptTokens: 0, maxTokens: 0, verbatimFloor: 2, rehydrateCap: WIDE, actionEntities: [] as string[] };
 
-  it('keeps the recent floor verbatim and bands older turns, with no overlap', () => {
+  it('keeps the recent floor verbatim and bands older turns as condensed pairs', () => {
     const turns = parseTurns([
       ...pair('a1', { turnId: 't1', narration: 'g1', summary: 's1' }),
       ...pair('a2', { turnId: 't2', narration: 'g2', summary: 's2' }),
@@ -168,21 +168,18 @@ describe('buildBandedHistory', () => {
       ...pair('a4', { turnId: 't4', narration: 'g4', summary: 's4' }),
     ]);
     const { messages, recap } = buildBandedHistory({ ...base, turns, keywords: [] });
-    // The recap is also returned on its own for the planner, and folded into the first upcoming user turn
-    // (context, not a standalone assistant message), so roles stay strictly alternating.
+    // Banded turns (t1,t2) ride as their real action + the summary as the assistant reply; the recent
+    // floor (t3,t4) stays full. One continuous, strictly-alternating back-and-forth.
+    expect(messages.map((m) => m.role)).toEqual([
+      'user', 'assistant', 'user', 'assistant', 'user', 'assistant', 'user', 'assistant',
+    ]);
+    expect(messages.map((m) => m.content)).toEqual(['a1', 's1', 'a2', 's2', 'a3', 'g3', 'a4', 'g4']);
+    // The "Earlier events" label lives only in the planner recap, never in the narration history.
+    expect(messages.some((m) => m.content.includes('Earlier events'))).toBe(false);
     expect(recap).toContain('Earlier events');
     expect(recap).toContain('s1');
-    expect(recap).not.toContain('a3'); // the returned recap is just the band, not the folded user action
-    expect(messages[0].role).toBe('user');
-    expect(messages[0].content).toContain('Earlier events');
-    expect(messages[0].content).toContain('s1');
-    expect(messages[0].content).toContain('s2');
-    expect(messages[0].content).not.toContain('s3');
-    expect(messages[0].content).not.toContain('s4');
-    expect(messages[0].content).toContain('a3'); // folded onto the first floor turn's user message
-    expect(messages.map((m) => m.role)).toEqual(['user', 'assistant', 'user', 'assistant']);
-    // Floor turns follow verbatim, chronological (a3 rides the recap message above).
-    expect(messages.slice(1).map((m) => m.content)).toEqual(['g3', 'a4', 'g4']);
+    expect(recap).toContain('s2');
+    expect(recap).not.toContain('s3'); // floor turns aren't in the band recap
   });
 
   it('drops older turns that have no digest', () => {
@@ -193,8 +190,9 @@ describe('buildBandedHistory', () => {
       ...pair('a4', { turnId: 't4', narration: 'g4', summary: 's4' }),
     ]);
     const { messages } = buildBandedHistory({ ...base, turns, keywords: [] });
-    expect(messages[0].content).toContain('s2');
-    expect(messages[0].content).not.toContain('g1'); // dropped, not banded
+    // t1 has no summary → dropped entirely; t2 bands, t3/t4 stay full.
+    expect(messages.map((m) => m.content)).toEqual(['a2', 's2', 'a3', 'g3', 'a4', 'g4']);
+    expect(messages.some((m) => m.content === 'g1' || m.content === 'a1')).toBe(false);
   });
 
   it('rehydrates a relevant older turn to full text and removes it from the band', () => {
@@ -204,11 +202,12 @@ describe('buildBandedHistory', () => {
       ...pair('a3', { turnId: 't3', narration: 'g3', summary: 's3' }),
       ...pair('a4', { turnId: 't4', narration: 'g4', summary: 's4' }),
     ]);
-    const { messages, counts } = buildBandedHistory({ ...base, turns, keywords: ['vault'] });
-    // t1 comes back verbatim, ahead of the floor, and its digest is no longer in the band.
+    const { messages, recap, counts } = buildBandedHistory({ ...base, turns, keywords: ['vault'] });
+    // t1 comes back verbatim (full narration, not its summary), ahead of the banded t2 and the floor.
     expect(messages.some((m) => m.content === 'the vault scene')).toBe(true);
-    const band = messages.find((m) => m.content.includes('Earlier events'));
-    expect(band?.content).not.toContain('You opened the vault.');
+    expect(messages.some((m) => m.content === 'You opened the vault.')).toBe(false);
+    expect(recap).not.toContain('You opened the vault.'); // no longer in the band
+    expect(recap).toContain('A quiet walk.'); // t2 still banded
     expect(counts.rehydratedTokens).toBeGreaterThan(0);
   });
 
@@ -221,7 +220,7 @@ describe('buildBandedHistory', () => {
       ...pair('a5', { turnId: 't5', narration: 'g5', summary: 's5' }),
     ]);
     // Floor (base) is 2 → t4,t5 verbatim; candidates t1,t2,t3 all match, but only 1 may rehydrate.
-    const { messages, counts } = buildBandedHistory({
+    const { recap, counts } = buildBandedHistory({
       ...base,
       turns,
       keywords: ['mira', 'vault', 'gold'],
@@ -229,8 +228,7 @@ describe('buildBandedHistory', () => {
     });
     expect(counts.rehydratedTokens).toBeGreaterThan(0); // t1 (top score) rehydrated
     expect(counts.turnsBanded).toBe(2); // t2,t3 stay in the band — not cannibalized
-    const band = messages.find((m) => m.content.includes('Earlier events'));
-    expect(band).toBeDefined();
+    expect(recap).toContain('Mira vault.'); // t2 still banded
   });
 
   it('treats everything as verbatim for a short game (no older turns)', () => {
@@ -244,17 +242,18 @@ describe('buildBandedHistory', () => {
     expect(messages.map((m) => m.content)).toEqual(['a1', 'g1', 'a2', 'g2']);
   });
 
-  it('trims the oldest band lines when the budget is tight', () => {
+  it('trims the oldest band turns when the budget is tight', () => {
     const turns = parseTurns([
       ...pair('a1', { turnId: 't1', narration: 'g1', summary: 'OLDEST ' + 'x'.repeat(2000) }),
       ...pair('a2', { turnId: 't2', narration: 'g2', summary: 'NEWERBAND' }),
       ...pair('a3', { turnId: 't3', narration: 'g3', summary: 's3' }),
       ...pair('a4', { turnId: 't4', narration: 'g4', summary: 's4' }),
     ]);
-    // Small window: floor (t3,t4) fits, but the band can't hold the huge oldest line.
-    const { messages } = buildBandedHistory({ ...base, contextWindow: 600, turns, keywords: [] });
-    const band = messages.find((m) => m.content.includes('Earlier events'));
-    expect(band?.content).not.toContain('OLDEST');
-    expect(band?.content).toContain('NEWERBAND');
+    // Small window: floor (t3,t4) fits, but the band can't hold the huge oldest turn — it's dropped.
+    const { messages, recap } = buildBandedHistory({ ...base, contextWindow: 600, turns, keywords: [] });
+    expect(recap).not.toContain('OLDEST');
+    expect(recap).toContain('NEWERBAND');
+    expect(messages.some((m) => m.content === 'NEWERBAND')).toBe(true); // t2 rides as a condensed pair
+    expect(messages.some((m) => m.content.includes('OLDEST'))).toBe(false);
   });
 });

@@ -4,7 +4,7 @@ import type { AITurnResult, ChatMessage } from '@/types';
 /**
  * Pure helpers for the per-turn memory digest (the "summary step").
  *
- * A digest is a cheap, persisted set of typed fact lines stored *inside* the assistant turn it
+ * A digest is a cheap, persisted condensed retelling stored *inside* the assistant turn it
  * summarizes (`AITurnResult.summary`), addressed by a stable `turnId`. Generation is lazy and async
  * (a turn is digested once it ages past the verbatim window); these functions are the deterministic,
  * unit-testable core — selection of which turns are due, and the apply-guard that patches a digest

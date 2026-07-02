@@ -4,10 +4,11 @@ import { DEFAULT_ENDPOINT, DEFAULT_API_TOKEN, DEFAULT_MODEL_NAME, DEFAULT_MAX_TO
 import { fetchContextLength } from '../lib/contextLength';
 import { usePersistentState, stringCodec, boolCodec, intCodec, floatCodec, nullableIntCodec } from '../lib/usePersistentState';
 import {
-  emptyStore, presetStoreCodec, activeValues, isDefaultActive,
+  emptyStore, presetStoreCodec, activeValues, isBuiltInActive, activeStyle, BUILTIN_PRESETS,
   setActive as setActivePreset, addPreset as addPresetOp, renamePreset as renamePresetOp, deletePreset as deletePresetOp, resetPreset as resetPresetOp, updateValue,
   type PromptPresetStore, type PromptValues,
 } from '../lib/promptPresets';
+import { buildStyledValues } from '../lib/sectionStyle';
 import type { ParagraphLimit } from '../lib/outputLength';
 
 export type DetectStatus = 'idle' | 'detecting' | 'success' | 'error';
@@ -17,7 +18,7 @@ export type { ParagraphLimit };
 
 const APP_ID = 'FORMAMORPH';
 
-/** The built-in "Default" preset's values — the shipped prompt text, read-only. */
+/** The canonical shipped prompt text — authored in markdown headers; the built-in styles derive from it. */
 const PROMPT_TEXT_DEFAULTS: PromptValues = {
   systemPrompt: defaultSystemPrompt,
   choicesPrompt: defaultChoicesPrompt,
@@ -35,6 +36,12 @@ const PROMPT_TEXT_DEFAULTS: PromptValues = {
   locationChangeUserPrompt: defaultLocationChangeUserPrompt,
   summaryUserPrompt: defaultSummaryUserPrompt,
 };
+
+/** Each read-only built-in preset's values, its section style applied to the canonical text (markdown =
+ *  identity). Keyed by preset id for O(1) resolution of the active built-in. */
+const BUILTIN_VALUES: Record<string, PromptValues> = Object.fromEntries(
+  BUILTIN_PRESETS.map((b) => [b.id, buildStyledValues(PROMPT_TEXT_DEFAULTS, b.style)]),
+);
 
 /** One-time migration of the legacy "type DISABLED into the prompt body" hack to per-prompt Enabled
  *  flags. A prompt whose stored body is exactly "DISABLED" is turned off and its body reset to default. */
@@ -156,7 +163,7 @@ function useProvideSettings() {
   // context field + setter name; values derive from the active preset (Default = read-only shipped text),
   // and setters patch the active preset (a no-op under Default). See src/lib/promptPresets.ts.
   const [presetStore, setPresetStore] = usePersistentState<PromptPresetStore>(`${APP_ID}_promptPresets`, emptyStore, presetStoreCodec);
-  const promptValues = useMemo(() => activeValues(presetStore, PROMPT_TEXT_DEFAULTS), [presetStore]);
+  const promptValues = useMemo(() => activeValues(presetStore, BUILTIN_VALUES), [presetStore]);
   const {
     systemPrompt, choicesPrompt, statUpdatesPrompt, locationChangePromptText, thinkingPrompt, summaryPrompt,
     diaryPrompt, directorPrompt, directorUserPrompt, characterPrompt, storyboardPrompt,
@@ -179,17 +186,22 @@ function useProvideSettings() {
   const setSummaryUserPrompt = (v: string) => setPresetStore((s) => updateValue(s, 'summaryUserPrompt', v));
   // Preset management (Settings → System Prompts selector).
   const activePresetId = presetStore.activeId;
-  const activePresetIsDefault = isDefaultActive(presetStore);
+  const activePresetIsBuiltIn = isBuiltInActive(presetStore);
+  const activeSectionStyle = activeStyle(presetStore);
+  const builtinPresets = BUILTIN_PRESETS.map(({ id, name }) => ({ id, name }));
   const promptPresets = presetStore.presets.map((p) => ({ id: p.id, name: p.name }));
   const selectPreset = (id: string) => setPresetStore((s) => setActivePreset(s, id));
   const addPreset = (name: string) => {
     const id = crypto.randomUUID();
-    setPresetStore((s) => addPresetOp(s, id, name, activeValues(s, PROMPT_TEXT_DEFAULTS)));
+    setPresetStore((s) => addPresetOp(s, id, name, activeValues(s, BUILTIN_VALUES), activeStyle(s)));
     return id;
   };
   const renamePreset = (id: string, name: string) => setPresetStore((s) => renamePresetOp(s, id, name));
   const deletePreset = (id: string) => setPresetStore((s) => deletePresetOp(s, id));
-  const resetPreset = (id: string) => setPresetStore((s) => resetPresetOp(s, id, PROMPT_TEXT_DEFAULTS));
+  const resetPreset = (id: string) => setPresetStore((s) => {
+    const style = s.presets.find((p) => p.id === id)?.style ?? 'markdown';
+    return resetPresetOp(s, id, buildStyledValues(PROMPT_TEXT_DEFAULTS, style));
+  });
   // Whether each optional per-turn request is sent (replaces the legacy "type DISABLED" body hack).
   const [choicesEnabled, setChoicesEnabled] = usePersistentState<boolean>(`${APP_ID}_choicesEnabled`, true, boolCodec);
   const [statUpdatesEnabled, setStatUpdatesEnabled] = usePersistentState<boolean>(`${APP_ID}_statUpdatesEnabled`, true, boolCodec);
@@ -297,8 +309,10 @@ function useProvideSettings() {
     summaryUserPrompt,
     setSummaryUserPrompt,
     promptPresets,
+    builtinPresets,
     activePresetId,
-    activePresetIsDefault,
+    activePresetIsBuiltIn,
+    activeSectionStyle,
     selectPreset,
     addPreset,
     renamePreset,

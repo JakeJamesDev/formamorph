@@ -34,5 +34,5 @@ export function buildDictionaryContext(entries: DictionaryEntry[]): string {
       return label ? `${label}: ${e.value}` : e.value;
     });
   if (lines.length === 0) return '';
-  return `Relevant Information:\n${lines.join('\n')}`;
+  return `## Relevant Information\n${lines.join('\n')}`;
 }

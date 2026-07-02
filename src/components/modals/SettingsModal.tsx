@@ -11,7 +11,6 @@ import PromptField from '../prompt/PromptField';
 import { PROMPT_KIND_VARIABLES, PROMPT_KIND_USER_VARIABLES } from '@/lib/promptVariables';
 import { ConfirmDialog } from '../ConfirmDialog';
 import { PresetNameDialog } from './PresetNameDialog';
-import { DEFAULT_PRESET_ID } from '@/lib/promptPresets';
 import { defaultSystemPrompt, defaultChoicesPrompt, defaultStatUpdatesPrompt, defaultLocationChangePrompt, defaultThinkingPrompt, defaultSummaryPrompt, defaultChoicesUserPrompt, defaultStatUpdatesUserPrompt, defaultLocationChangeUserPrompt, defaultSummaryUserPrompt, defaultDiaryPrompt, defaultDirectorPrompt, defaultDirectorUserPrompt, defaultCharacterPrompt, defaultStoryboardPrompt } from '../game/GamePrompts';
 import VramReadout from '../game/VramReadout';
 import { useVramStats } from '@/lib/useVramStats';
@@ -125,8 +124,9 @@ export const SettingsModal = ({ isOpen, onOpenChange, previewValues }: {
     summaryUserPrompt,
     setSummaryUserPrompt,
     promptPresets,
+    builtinPresets,
     activePresetId,
-    activePresetIsDefault,
+    activePresetIsBuiltIn,
     selectPreset,
     addPreset,
     renamePreset,
@@ -175,7 +175,7 @@ export const SettingsModal = ({ isOpen, onOpenChange, previewValues }: {
   // Preset name dialog (Add / Rename); the "Add New Preset…" select option opens it in add mode.
   const [presetDialog, setPresetDialog] = useState<{ mode: 'add' | 'rename' } | null>(null);
   const ADD_PRESET_SENTINEL = '__add_preset__';
-  const activePresetName = promptPresets.find((p) => p.id === activePresetId)?.name ?? '';
+  const activePresetName = [...builtinPresets, ...promptPresets].find((p) => p.id === activePresetId)?.name ?? '';
   const handlePresetSelect = (v: string) => {
     if (v === ADD_PRESET_SENTINEL) setPresetDialog({ mode: 'add' });
     else selectPreset(v);
@@ -560,10 +560,11 @@ export const SettingsModal = ({ isOpen, onOpenChange, previewValues }: {
           </TabsContent>
 
           <TabsContent value="prompts" className="pt-4 px-2 pb-4 flex-1 min-h-0 data-[state=active]:flex flex-col gap-4">
-            {/* Preset selector: the whole prompt set switches together. Default is built-in and read-only. */}
+            {/* Preset selector: the whole prompt set switches together. Built-in presets (Default, Simple)
+                are read-only and differ only in section-header style. */}
             <div className="flex items-center gap-2 flex-shrink-0">
               <span className="text-sm text-muted-foreground">Preset</span>
-              {!activePresetIsDefault && (
+              {!activePresetIsBuiltIn && (
                 <ConfirmDialog
                   title="Delete Preset"
                   description={`Delete the "${activePresetName}" preset? This can't be undone.`}
@@ -577,7 +578,9 @@ export const SettingsModal = ({ isOpen, onOpenChange, previewValues }: {
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value={DEFAULT_PRESET_ID}>Default</SelectItem>
+                  {builtinPresets.map((p) => (
+                    <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>
+                  ))}
                   {promptPresets.map((p) => (
                     <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>
                   ))}
@@ -585,10 +588,10 @@ export const SettingsModal = ({ isOpen, onOpenChange, previewValues }: {
                   <SelectItem value={ADD_PRESET_SENTINEL}>Add New Preset…</SelectItem>
                 </SelectContent>
               </Select>
-              {!activePresetIsDefault && (
+              {!activePresetIsBuiltIn && (
                 <Button variant="outline" size="sm" onClick={() => setPresetDialog({ mode: 'rename' })}>Rename</Button>
               )}
-              {!activePresetIsDefault && (
+              {!activePresetIsBuiltIn && (
                 <ConfirmDialog
                   title="Reset Preset"
                   description={`Reset every prompt in the "${activePresetName}" preset to its default value? This can't be undone.`}
@@ -634,7 +637,7 @@ export const SettingsModal = ({ isOpen, onOpenChange, previewValues }: {
                   onChange={setSystemPrompt}
                   variables={PROMPT_KIND_VARIABLES.narration}
                   previewValues={previewValues}
-                  readOnly={activePresetIsDefault}
+                  readOnly={activePresetIsBuiltIn}
                 />
               </TabsContent>
 
@@ -645,7 +648,7 @@ export const SettingsModal = ({ isOpen, onOpenChange, previewValues }: {
                     onChange={setThinkingPrompt}
                     variables={PROMPT_KIND_VARIABLES.thinking}
                     previewValues={previewValues}
-                    readOnly={activePresetIsDefault}
+                    readOnly={activePresetIsBuiltIn}
                   />
                 </TabsContent>
               )}
@@ -657,7 +660,7 @@ export const SettingsModal = ({ isOpen, onOpenChange, previewValues }: {
                     onChange={showingUser ? setChoicesUserPrompt : setChoicesPrompt}
                     variables={showingUser ? (PROMPT_KIND_USER_VARIABLES.choices ?? []) : PROMPT_KIND_VARIABLES.choices}
                     previewValues={previewValues}
-                    readOnly={activePresetIsDefault}
+                    readOnly={activePresetIsBuiltIn}
                   />
                 </TabsContent>
               )}
@@ -669,7 +672,7 @@ export const SettingsModal = ({ isOpen, onOpenChange, previewValues }: {
                     onChange={showingUser ? setStatUpdatesUserPrompt : setStatUpdatesPrompt}
                     variables={showingUser ? (PROMPT_KIND_USER_VARIABLES.statupdates ?? []) : PROMPT_KIND_VARIABLES.statupdates}
                     previewValues={previewValues}
-                    readOnly={activePresetIsDefault}
+                    readOnly={activePresetIsBuiltIn}
                   />
                 </TabsContent>
               )}
@@ -681,7 +684,7 @@ export const SettingsModal = ({ isOpen, onOpenChange, previewValues }: {
                     onChange={showingUser ? setLocationChangeUserPrompt : setLocationChangePromptText}
                     variables={showingUser ? (PROMPT_KIND_USER_VARIABLES.location ?? []) : PROMPT_KIND_VARIABLES.location}
                     previewValues={previewValues}
-                    readOnly={activePresetIsDefault}
+                    readOnly={activePresetIsBuiltIn}
                   />
                   <p className="text-xs text-gray-500 flex-shrink-0">Lets the AI move the player between locations.</p>
                 </TabsContent>
@@ -694,9 +697,9 @@ export const SettingsModal = ({ isOpen, onOpenChange, previewValues }: {
                     onChange={showingUser ? setSummaryUserPrompt : setSummaryPrompt}
                     variables={showingUser ? (PROMPT_KIND_USER_VARIABLES.summary ?? []) : PROMPT_KIND_VARIABLES.summary}
                     previewValues={previewValues}
-                    readOnly={activePresetIsDefault}
+                    readOnly={activePresetIsBuiltIn}
                   />
-                  <p className="text-xs text-gray-500 flex-shrink-0">Compresses each turn into fact lines for long-story memory. Only used when Memory Summaries is on.</p>
+                  <p className="text-xs text-gray-500 flex-shrink-0">Condenses each turn into a short retelling for long-story memory. Only used when Memory Summaries is on.</p>
                 </TabsContent>
               )}
 
@@ -707,7 +710,7 @@ export const SettingsModal = ({ isOpen, onOpenChange, previewValues }: {
                     onChange={setDiaryPrompt}
                     variables={PROMPT_KIND_VARIABLES.diary}
                     previewValues={previewValues}
-                    readOnly={activePresetIsDefault}
+                    readOnly={activePresetIsBuiltIn}
                   />
                   <p className="text-xs text-gray-500 flex-shrink-0">Each participating character records a first-person diary entry per turn. Only used when Character Diaries is on.</p>
                 </TabsContent>
@@ -720,7 +723,7 @@ export const SettingsModal = ({ isOpen, onOpenChange, previewValues }: {
                     onChange={showingUser ? setDirectorUserPrompt : setDirectorPrompt}
                     variables={showingUser ? (PROMPT_KIND_USER_VARIABLES.director ?? []) : PROMPT_KIND_VARIABLES.director}
                     previewValues={previewValues}
-                    readOnly={activePresetIsDefault}
+                    readOnly={activePresetIsBuiltIn}
                   />
                   <p className="text-xs text-gray-500 flex-shrink-0">Stages each turn: picks the cast and scene. Only used when Thinking is set to Staged.</p>
                 </TabsContent>
@@ -733,7 +736,7 @@ export const SettingsModal = ({ isOpen, onOpenChange, previewValues }: {
                     onChange={setCharacterPrompt}
                     variables={PROMPT_KIND_VARIABLES.character}
                     previewValues={previewValues}
-                    readOnly={activePresetIsDefault}
+                    readOnly={activePresetIsBuiltIn}
                   />
                   <p className="text-xs text-gray-500 flex-shrink-0">Each cast member states its own motivation in the first person. Only used when Thinking is set to Staged.</p>
                 </TabsContent>
@@ -746,7 +749,7 @@ export const SettingsModal = ({ isOpen, onOpenChange, previewValues }: {
                     onChange={setStoryboardPrompt}
                     variables={PROMPT_KIND_VARIABLES.storyboard}
                     previewValues={previewValues}
-                    readOnly={activePresetIsDefault}
+                    readOnly={activePresetIsBuiltIn}
                   />
                   <p className="text-xs text-gray-500 flex-shrink-0">Reconciles the cast&apos;s intentions into the turn&apos;s beat plan. Only used when Thinking is set to Staged.</p>
                 </TabsContent>
@@ -759,7 +762,7 @@ export const SettingsModal = ({ isOpen, onOpenChange, previewValues }: {
               ) : (
                 <span />
               )}
-              {!activePresetIsDefault ? (
+              {!activePresetIsBuiltIn ? (
                 <ConfirmDialog
                   title={`Reset ${resetTarget.label}`}
                   description={`Are you sure you want to reset the ${resetTarget.label} to its default value?`}

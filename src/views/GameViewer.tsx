@@ -73,6 +73,7 @@ import { rollbackState, regenerateState, canRegenerate, lastTurnAction, markRege
 import { useDeferredSnapshot } from "../lib/useDeferredSnapshot";
 import { statMorphMap } from "../lib/bodyMorphs";
 import { getActivatedDictionary, buildDictionaryContext, parseKeywords } from "../lib/dictionaryUtils";
+import { restyle } from "../lib/sectionStyle";
 import { highlightSegments, HIGHLIGHT_PALETTE, type HighlightRule, type HighlightSegment } from "../lib/highlightUtils";
 import { useIsMobile } from "../lib/useIsMobile";
 import {
@@ -104,7 +105,7 @@ interface DebugTurn {
 }
 
 // Each completed turn is digested as soon as it commits (same-turn), so a summary is always ready for
-// the next turn's context assembly. Small cap on each digest request — fact lines are short.
+// the next turn's context assembly. Small cap on each digest request — a condensed retelling is short.
 const DIGEST_MAX_TOKENS = 200;
 
 // Per-character diary entries are short, first-person, 1-2 sentences — a small cap keeps them terse.
@@ -201,6 +202,7 @@ const GameViewer = ({
     locationChangeUserPrompt,
     summaryUserPrompt,
     showSilentRequests,
+    activeSectionStyle,
   } = useSettings();
 
   const {
@@ -610,17 +612,21 @@ const GameViewer = ({
 
   const getEndpointUrl = () => endpointUrl;
 
-  const generateTraitDescriptions = useCallback(() => {
+  const generateTraitDescriptions = useCallback((format: 'simple' | 'markdown' = 'simple') => {
     if (!playerTraits.length) {
       return NONE_PLACEHOLDER;
     }
     // Group-aware: each selected trait's group emits its AI header above its traits (blank → omitted).
-    return buildTraitContext(playerTraits.map((t) => t.id), playerTraits, traitGroups);
+    return buildTraitContext(playerTraits.map((t) => t.id), playerTraits, traitGroups, format);
   }, [playerTraits, traitGroups]);
 
-  // The Stats chip's three modes: 'full' (values + descriptor), 'numbers' (values only), 'descriptions'
-  // (descriptor only, falling back to the number when a stat has none so a prompt isn't left blind).
-  const generateStatDescriptions = useCallback((mode: 'full' | 'numbers' | 'descriptions' = 'full') => {
+  // The Stats chip has two axes. Content: 'full' (values + descriptor), 'numbers' (values only),
+  // 'descriptions' (descriptor only, falling back to the number so a prompt isn't left blind). Format:
+  // 'simple' (plain "Name: body" lines) or 'markdown' ("- **Name:** body" bullets, clearer for small models).
+  const generateStatDescriptions = useCallback((
+    content: 'full' | 'numbers' | 'descriptions' = 'full',
+    format: 'simple' | 'markdown' = 'simple',
+  ) => {
     if (!playerStats.length) return NONE_PLACEHOLDER;
     return playerStats
       .map((stat) => {
@@ -629,9 +635,11 @@ const GameViewer = ({
         const descriptor = stat.descriptors.find(
           (d) => percentage <= d.threshold,
         );
-        if (mode === 'descriptions' && descriptor) return `${stat.name}: ${descriptor.description}`;
-        if (mode === 'numbers') return `${stat.name}: ${stat.value}/${stat.max}`;
-        return `${stat.name}: ${stat.value}/${stat.max} (${descriptor ? descriptor.description : "Unknown"})`;
+        const body =
+          content === 'descriptions' && descriptor ? descriptor.description
+          : content === 'numbers' ? `${stat.value}/${stat.max}`
+          : `${stat.value}/${stat.max} (${descriptor ? descriptor.description : "Unknown"})`;
+        return format === 'markdown' ? `- **${stat.name}:** ${body}` : `${stat.name}: ${body}`;
       })
       .join("\n");
   }, [playerStats]);
@@ -640,10 +648,14 @@ const GameViewer = ({
   // request spreads these as its base, then layers on its own tokens (length/markdown, scene entities, etc.).
   const buildContextValues = useCallback((): Record<string, string> => ({
     "<WORLD DESCRIPTION>": worldOverview.systemPrompt || "",
-    "<STATS DESCRIPTION>": generateStatDescriptions('full'),
-    "<STATS DESCRIPTION|numbers>": generateStatDescriptions('numbers'),
-    "<STATS DESCRIPTION|descriptions>": generateStatDescriptions('descriptions'),
-    "<TRAITS DESCRIPTION>": generateTraitDescriptions(),
+    "<STATS DESCRIPTION>": generateStatDescriptions('full', 'simple'),
+    "<STATS DESCRIPTION|numbers>": generateStatDescriptions('numbers', 'simple'),
+    "<STATS DESCRIPTION|descriptions>": generateStatDescriptions('descriptions', 'simple'),
+    "<STATS DESCRIPTION|markdown>": generateStatDescriptions('full', 'markdown'),
+    "<STATS DESCRIPTION|numbers.markdown>": generateStatDescriptions('numbers', 'markdown'),
+    "<STATS DESCRIPTION|descriptions.markdown>": generateStatDescriptions('descriptions', 'markdown'),
+    "<TRAITS DESCRIPTION>": generateTraitDescriptions('simple'),
+    "<TRAITS DESCRIPTION|markdown>": generateTraitDescriptions('markdown'),
     "<LOCATION>": buildLocationContext(currentLocation),
     "<LOCATION|summary>": buildLocationContext(currentLocation, { preferSummary: true }),
     "<LOCATION|list>": locations.map((loc) => loc.name).join("\n") || NONE_PLACEHOLDER,
@@ -660,12 +672,12 @@ const GameViewer = ({
   const promptPreviewValues = useMemo<Record<string, string>>(() => ({
     ...buildContextValues(),
     "<LENGTH GUIDANCE>": lengthGuidance(paragraphLimit, maxTokens),
-    "<MARKDOWN GUIDANCE>": markdownGuidance(markdownOutput),
+    "<MARKDOWN GUIDANCE>": restyle(markdownGuidance(markdownOutput), activeSectionStyle),
     // Illustrative placeholders for the aux user-message templates (real values are per-turn at runtime).
     "<PLAYER ACTION>": "the player's latest action",
     "<NARRATION>": "the most recent narration",
     "<CHARACTER NAME>": "the speaking character",
-  }), [buildContextValues, paragraphLimit, maxTokens, markdownOutput]);
+  }), [buildContextValues, paragraphLimit, maxTokens, markdownOutput, activeSectionStyle]);
 
   const sendGameAction = async (action: string) => {
     if (!isGameStarted && action !== "START GAME") return;
@@ -677,20 +689,23 @@ const GameViewer = ({
     // spreads it and adds its own tokens.
     const ctx = buildContextValues();
 
+    // Code-generated blocks (markdown guidance, notes fallback, dictionary) are authored in markdown, so
+    // restyle them to the active preset's section style to match the authored prompt's headers.
     let updatedPrompt = renderPromptTemplate(systemPrompt, {
       ...ctx,
       "<LENGTH GUIDANCE>": lengthGuidance(paragraphLimit, maxTokens),
-      "<MARKDOWN GUIDANCE>": markdownGuidance(markdownOutput),
+      "<MARKDOWN GUIDANCE>": restyle(markdownGuidance(markdownOutput), activeSectionStyle),
     });
 
     // If the prompt has no <NOTES> chip, fall back to a notes section before the location data.
     if (!systemPrompt.includes("<NOTES>")) {
-      const notesSection = `
-Player Notes:
+      const notesSection = restyle(`
+## Player Notes
 ${playerNotes || NONE_PLACEHOLDER}
 
-`;
-      const locationIndex = updatedPrompt.indexOf("Current Location:");
+`, activeSectionStyle);
+      // Locate the location header in whichever style the active prompt uses.
+      const locationIndex = updatedPrompt.search(/^#{0,6}[ \t]*Current Location:?/mi);
       if (locationIndex !== -1) {
         updatedPrompt =
           updatedPrompt.slice(0, locationIndex) +
@@ -716,7 +731,7 @@ ${playerNotes || NONE_PLACEHOLDER}
     ]);
     const dictionaryContext = buildDictionaryContext(activatedEntries);
     if (dictionaryContext) {
-      updatedPrompt += `\n\n${dictionaryContext}`;
+      updatedPrompt += `\n\n${restyle(dictionaryContext, activeSectionStyle)}`;
     }
 
     // Get trimmed history before adding new action (history fills the window left by the prompt).
@@ -762,8 +777,8 @@ ${playerNotes || NONE_PLACEHOLDER}
         const thinkPrompt = renderPromptTemplate(thinkingPrompt, ctx);
         // Frame the planning task as a single instruction. Reusing the narration message history
         // (turns of action -> story) primes the model to just continue the story instead of planning.
-        // The banded recap rides a user message now (not assistant), so the last assistant message is
-        // always the real last narration.
+        // Banded turns ride as condensed pairs; the last assistant message is the recent floor turn's
+        // real narration, so pull it straight from history.
         let lastStory =
           [...trimmedHistory].reverse().find((m) => m.role === "assistant")?.content || "";
         // Planning needs the least context: the immediate turn verbatim, everything older summarized.
@@ -799,7 +814,7 @@ ${playerNotes || NONE_PLACEHOLDER}
         // Staged planning: director (cast + continuation) -> one motivation pass per character
         // (sequential, capped at 3) -> storyboarder. The storyboard is injected like the precall plan.
         const stageValues = ctx;
-        // The banded recap rides a user message now, so the last assistant message is the real last narration.
+        // Banded turns ride as condensed pairs, so the last assistant message is the real last narration.
         const lastStory =
           [...trimmedHistory].reverse().find((m) => m.role === "assistant")?.content || "";
         const staged = await runStagedPlanning({
@@ -827,7 +842,8 @@ ${playerNotes || NONE_PLACEHOLDER}
       }
 
       // Attach the plan to the final user turn (adjacent to where the model writes) instead of the
-      // system prompt — keeps it salient and leaves the authored system prompt untouched.
+      // system prompt — keeps it salient and leaves the authored system prompt untouched. It rides as
+      // narrator stage-directions (see planDirective), kept distinct from the player's action above it.
       if (turnPlan) {
         narrationMessages[narrationMessages.length - 1].content += planDirective(turnPlan);
       }
@@ -2048,7 +2064,8 @@ ${playerNotes || NONE_PLACEHOLDER}
               parseKeywords(entry).forEach((term) => triggerRules.push({ term, color }));
               if (entry.name) declarationRules.push({ term: `${entry.name}:`, color });
             });
-            const RELEVANT_MARKER = "Relevant Information:";
+            // The dictionary block header, in either section style (## Relevant Information / RELEVANT INFORMATION:).
+            const RELEVANT_MARKER = /^#{0,6}[ \t]*Relevant Information:?/im;
             // Highlight only a "Name:" at the start of a line — the declaration prepended by
             // buildDictionaryContext — not a "Name:" that recurs inside the entry's value text.
             const highlightDeclarations = (block: string) => {
@@ -2089,7 +2106,7 @@ ${playerNotes || NONE_PLACEHOLDER}
             };
             // Section-aware highlight (+ optional search filter); returns [] when search hides everything.
             const buildSegments = (text: string) => {
-              const idx = text.indexOf(RELEVANT_MARKER);
+              const idx = text.search(RELEVANT_MARKER);
               let body = idx === -1 ? text : text.slice(0, idx);
               let block = idx === -1 ? "" : text.slice(idx);
               if (searchActive) {

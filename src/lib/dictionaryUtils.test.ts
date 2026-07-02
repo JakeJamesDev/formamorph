@@ -55,7 +55,7 @@ describe('buildDictionaryContext', () => {
     const named = entry({ name: 'Dragon', key: 'dragon', value: 'Big.' });
     const keyed = entry({ name: '', key: 'castle', value: 'Stone.' });
     expect(buildDictionaryContext([named, keyed])).toBe(
-      'Relevant Information:\nDragon: Big.\ncastle: Stone.',
+      '## Relevant Information\nDragon: Big.\ncastle: Stone.',
     );
   });
 

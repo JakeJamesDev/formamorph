@@ -7,17 +7,19 @@ import { containsWord } from './locationMatch';
 /**
  * Pure core of Slice 2 memory banding: turns the flat chat history into a budgeted, layered history.
  *
- * Layers (each turn appears in exactly one):
- *   1. Recent **verbatim floor** — the last K turns, always full (guaranteed first).
- *   2. **Digest band** — a single "Earlier events" recap of older turns' summaries, folded into the first
- *      upcoming user turn as context (guaranteed next; oldest lines trimmed if it overflows). It rides a
- *      user message, not a standalone assistant one, so small models don't copy it as their own output.
- *   3. **Rehydration** — older turns the current action lexically touches, restored to full text
+ * The result is one continuous back-and-forth — user action → assistant story — that's full where it
+ * matters and condensed where it doesn't. Every turn appears as its own user/assistant pair:
+ *   1. Recent **verbatim floor** — the last K turns, always full (guaranteed).
+ *   2. **Rehydration** — older turns the current action lexically touches, restored to full text
  *      (best-effort, from whatever budget is left).
- *   4. Drop — older turns with no digest, or beyond budget.
+ *   3. **Digest band** — remaining older turns, condensed: the real user action paired with the turn's
+ *      short narration summary as the assistant reply (oldest turns dropped if the band overflows).
+ *   4. Drop — older turns with no summary, or beyond budget.
  *
- * The digest is only a pointer: when an old turn matters again it's rehydrated from its real text, so a
- * hallucinated summary is never load-bearing. Kept React-free so the index/budget math is unit-testable.
+ * A banded turn's assistant reply is condensed narration in the same voice as a full turn, so a model that
+ * copies the last assistant shape just keeps narrating — the copy is the goal, not a hazard. The summary is
+ * still only a pointer: when an old turn matters again it's rehydrated from its real text, so a hallucinated
+ * summary is never load-bearing. Kept React-free so the index/budget math is unit-testable.
  */
 
 /** A parsed user→assistant turn from the flat history. `index` is the assistant message's position
@@ -42,8 +44,9 @@ export interface BandCounts {
 
 export interface BandResult {
   messages: ChatMessage[];
-  /** The recap text alone (empty when no band), for consumers that want just the summarized-older
-   *  context; in `messages` it is folded into the first upcoming user turn. */
+  /** The summarized-older turns as a labeled recap block (empty when no band), for consumers that want just
+   *  that context. It is NOT part of `messages` — there the banded turns ride as condensed user/assistant
+   *  pairs; this is a separate string only the precall planner uses. */
   recap: string;
   counts: BandCounts;
 }
@@ -63,6 +66,13 @@ const STOPWORDS = new Set([
  *  the same way the legacy trimmer measured a pair so budgets stay consistent. */
 function pairTokenCost(turn: BandTurn): number {
   const assistant: ChatMessage = { role: 'assistant', content: turn.gameText };
+  return estimateTokens(JSON.stringify([turn.userMsg, assistant]).length);
+}
+
+/** The token cost of a banded turn: its real user action paired with the short summary as the assistant
+ *  reply (the condensed form that actually rides in the history). */
+function bandedPairCost(turn: BandTurn): number {
+  const assistant: ChatMessage = { role: 'assistant', content: (turn.summary || '').trim() };
   return estimateTokens(JSON.stringify([turn.userMsg, assistant]).length);
 }
 
@@ -206,12 +216,14 @@ export function buildBandedHistory(args: {
   const candidates = turns.slice(0, turns.length - floorTaken.length);
   const remaining = budget - floorTokens;
 
-  // 2. Digest band (guaranteed) — older turns carrying a summary, oldest lines trimmed to fit.
+  // 2. Digest band (guaranteed) — older turns carrying a summary, oldest turns dropped to fit. Sized by
+  // the condensed pair cost (real action + summary reply), since each banded turn rides as its own pair.
   let bandTurns = candidates.filter((t) => t.summary && t.summary.trim());
-  let bandTokens = estimateTokens(buildBandText(bandTurns).length);
+  const bandCost = (ts: BandTurn[]) => ts.reduce((n, t) => n + bandedPairCost(t), 0);
+  let bandTokens = bandCost(bandTurns);
   while (bandTokens > remaining && bandTurns.length > 0) {
     bandTurns = bandTurns.slice(1); // drop the oldest
-    bandTokens = estimateTokens(buildBandText(bandTurns).length);
+    bandTokens = bandCost(bandTurns);
   }
 
   // 3. Rehydration (best-effort) — pull relevant band turns back to full text within leftover budget.
@@ -220,39 +232,37 @@ export function buildBandedHistory(args: {
   const rehydratedTurns = bandTurns.filter((t) => t.turnId && chosen.has(t.turnId));
   let rehydratedTokens = 0;
   for (const t of rehydratedTurns) rehydratedTokens += pairTokenCost(t);
-  // Rehydrated turns leave the band so they aren't duplicated.
+  // Rehydrated turns leave the band so they aren't duplicated (they're now full, not condensed).
   bandTurns = bandTurns.filter((t) => !(t.turnId && chosen.has(t.turnId)));
-  const bandText = buildBandText(bandTurns);
-  bandTokens = estimateTokens(bandText.length);
+  bandTokens = bandCost(bandTurns);
 
-  // Assemble: verbatim turns (rehydrated-older + floor-recent) in chronological order, with the recap of
-  // older turns folded into the first upcoming user turn as context. It is NOT a standalone assistant
-  // message: small models copy the last assistant turn's shape and echo the recap's headings instead of
-  // narrating. Folding it into a user turn keeps strict user/assistant alternation (valid on any
-  // OpenAI-compatible endpoint) and reads as provided context, not the model's own prior output.
-  const verbatim = [...rehydratedTurns, ...floorTaken].sort((a, b) => a.index - b.index);
+  // Assemble one chronological back-and-forth: every turn is its own user/assistant pair. Full turns
+  // (rehydrated + recent floor) carry their real narration; banded turns carry the same real user action
+  // paired with the turn's short summary as the assistant reply. Because a banded reply is condensed
+  // narration in the story's own voice, a small model copying the last assistant shape just keeps
+  // narrating — no headings to echo — while strict user/assistant alternation stays valid on any endpoint.
+  const kind = new Map<BandTurn, string>();
+  for (const t of rehydratedTurns) kind.set(t, t.gameText);
+  for (const t of floorTaken) kind.set(t, t.gameText);
+  for (const t of bandTurns) kind.set(t, (t.summary || '').trim());
+  const ordered = [...rehydratedTurns, ...floorTaken, ...bandTurns].sort((a, b) => a.index - b.index);
   const messages: ChatMessage[] = [];
-  const recap = bandText ? `Earlier events (context):\n${bandText}` : '';
-  if (verbatim.length > 0) {
-    verbatim.forEach((t, i) => {
-      const content = i === 0 && recap ? `${recap}\n\n${t.userMsg.content}` : t.userMsg.content;
-      messages.push({ ...t.userMsg, content }, { role: 'assistant', content: t.gameText });
-    });
-  } else if (recap) {
-    // No verbatim turns to attach to — emit the recap as a lone user context message.
-    messages.push({ role: 'user', content: recap });
+  for (const t of ordered) {
+    messages.push({ ...t.userMsg }, { role: 'assistant', content: kind.get(t) ?? '' });
   }
 
+  const bandText = buildBandText(bandTurns);
   return {
     messages,
-    // The recap text on its own (empty when there is no band), for consumers (the precall planner) that
-    // want just the summarized-older context without digging it back out of the folded user message.
-    recap,
+    // The summarized-older turns as a labeled block (empty when there is no band), for consumers (the
+    // precall planner) that want just that recap as context without walking the message pairs. This label
+    // rides only the planner's own user message — it never appears in the narration history above.
+    recap: bandText ? `Earlier events:\n${bandText}` : '',
     counts: {
       floorTokens,
       rehydratedTokens,
       bandTokens,
-      turnsVerbatim: verbatim.length,
+      turnsVerbatim: rehydratedTurns.length + floorTaken.length,
       turnsBanded: bandTurns.length,
       turnsTotal: turns.length,
     },

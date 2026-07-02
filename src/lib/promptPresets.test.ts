@@ -4,7 +4,8 @@ import {
   DEFAULT_PRESET_ID,
   emptyStore,
   presetStoreCodec,
-  isDefaultActive,
+  isBuiltInActive,
+  activeStyle,
   activeValues,
   setActive,
   addPreset,
@@ -16,19 +17,24 @@ import {
   type PromptPresetStore,
 } from './promptPresets';
 
-// A minimal full value-set built from the key list, so tests don't hardcode 15 fields.
+// Minimal full value-sets built from the key list, so tests don't hardcode 15 fields.
 const defaults: PromptValues = Object.fromEntries(
   PROMPT_TEXT_KEYS.map((k) => [k, `default:${k}`]),
 ) as PromptValues;
+const simpleValues: PromptValues = Object.fromEntries(
+  PROMPT_TEXT_KEYS.map((k) => [k, `simple:${k}`]),
+) as PromptValues;
+// The built-in id → values map the context supplies to activeValues (`default` = markdown, `simple` = labels).
+const builtinValues: Record<string, PromptValues> = { default: defaults, simple: simpleValues };
 
-const storeWith = (preset: { id: string; name: string; values?: Partial<PromptValues> }): PromptPresetStore => ({
+const storeWith = (preset: { id: string; name: string; values?: Partial<PromptValues>; style?: 'markdown' | 'labels' }): PromptPresetStore => ({
   activeId: preset.id,
-  presets: [{ id: preset.id, name: preset.name, values: { ...defaults, ...preset.values } }],
+  presets: [{ id: preset.id, name: preset.name, values: { ...defaults, ...preset.values }, style: preset.style }],
 });
 
 describe('presetStoreCodec', () => {
   it('round-trips a store', () => {
-    const store = addPreset(emptyStore, 'p1', 'Mine', defaults);
+    const store = addPreset(emptyStore, 'p1', 'Mine', defaults, 'markdown');
     expect(presetStoreCodec.parse(presetStoreCodec.serialize(store))).toEqual(store);
   });
 
@@ -39,34 +45,50 @@ describe('presetStoreCodec', () => {
   });
 });
 
-describe('activeValues / isDefaultActive', () => {
-  it('returns the shipped defaults when Default is active', () => {
-    expect(isDefaultActive(emptyStore)).toBe(true);
-    expect(activeValues(emptyStore, defaults)).toEqual(defaults);
+describe('activeValues / isBuiltInActive', () => {
+  it('returns the default built-in values when Default is active', () => {
+    expect(isBuiltInActive(emptyStore)).toBe(true);
+    expect(activeValues(emptyStore, builtinValues)).toEqual(defaults);
   });
 
-  it('treats an activeId with no matching preset as Default', () => {
-    expect(isDefaultActive({ activeId: 'ghost', presets: [] })).toBe(true);
+  it('resolves a non-default built-in to its own values by id', () => {
+    const store: PromptPresetStore = { activeId: 'simple', presets: [] };
+    expect(isBuiltInActive(store)).toBe(true);
+    expect(activeValues(store, builtinValues)).toEqual(simpleValues);
   });
 
-  it('layers a preset over defaults so a missing key falls back', () => {
+  it('treats an activeId with no matching preset as a built-in (Default base)', () => {
+    const ghost: PromptPresetStore = { activeId: 'ghost', presets: [] };
+    expect(isBuiltInActive(ghost)).toBe(true);
+    expect(activeValues(ghost, builtinValues)).toEqual(defaults);
+  });
+
+  it('layers a user preset over the default built-in so a missing key falls back', () => {
     const store = storeWith({ id: 'p1', name: 'Mine', values: { systemPrompt: 'custom narration' } });
-    // Simulate a preset that lacks a key entirely.
     delete (store.presets[0].values as Partial<PromptValues>).choicesPrompt;
-    const v = activeValues(store, defaults);
+    const v = activeValues(store, builtinValues);
     expect(v.systemPrompt).toBe('custom narration');
     expect(v.choicesPrompt).toBe('default:choicesPrompt');
   });
 });
 
+describe('activeStyle', () => {
+  it('is the built-in\'s style, a user preset\'s stored style, or markdown by default', () => {
+    expect(activeStyle(emptyStore)).toBe('markdown'); // Default built-in
+    expect(activeStyle({ activeId: 'simple', presets: [] })).toBe('labels'); // Simple built-in
+    expect(activeStyle(storeWith({ id: 'p1', name: 'Mine', style: 'labels' }))).toBe('labels');
+    expect(activeStyle(storeWith({ id: 'p2', name: 'Legacy' }))).toBe('markdown'); // no stored style
+  });
+});
+
 describe('addPreset', () => {
-  it('appends a copy of the given values and selects it', () => {
-    const store = addPreset(emptyStore, 'p1', 'Mine', defaults);
+  it('appends a copy of the given values + style and selects it', () => {
+    const store = addPreset(emptyStore, 'p1', 'Mine', simpleValues, 'labels');
     expect(store.activeId).toBe('p1');
     expect(store.presets).toHaveLength(1);
-    // Copy, not reference.
-    expect(store.presets[0].values).not.toBe(defaults);
-    expect(store.presets[0].values).toEqual(defaults);
+    expect(store.presets[0].style).toBe('labels');
+    expect(store.presets[0].values).not.toBe(simpleValues); // copy, not reference
+    expect(store.presets[0].values).toEqual(simpleValues);
   });
 });
 
@@ -78,7 +100,7 @@ describe('renamePreset', () => {
 });
 
 describe('deletePreset', () => {
-  it('removes the preset and falls back to Default when it was active', () => {
+  it('removes the preset and falls back to the default built-in when it was active', () => {
     const store = deletePreset(storeWith({ id: 'p1', name: 'Mine' }), 'p1');
     expect(store.presets).toHaveLength(0);
     expect(store.activeId).toBe(DEFAULT_PRESET_ID);
@@ -99,11 +121,13 @@ describe('deletePreset', () => {
 });
 
 describe('updateValue', () => {
-  it('is a no-op while Default is active', () => {
-    expect(updateValue(emptyStore, 'systemPrompt', 'x')).toBe(emptyStore);
+  it('is a no-op while any built-in is active', () => {
+    expect(updateValue(emptyStore, 'systemPrompt', 'x')).toBe(emptyStore); // Default
+    const simpleActive: PromptPresetStore = { activeId: 'simple', presets: [{ id: 'p1', name: 'Mine', values: defaults }] };
+    expect(updateValue(simpleActive, 'systemPrompt', 'x')).toBe(simpleActive); // Simple
   });
 
-  it('patches only the active preset', () => {
+  it('patches only the active user preset', () => {
     const store = updateValue(storeWith({ id: 'p1', name: 'Mine' }), 'choicesPrompt', 'edited');
     expect(store.presets[0].values.choicesPrompt).toBe('edited');
     expect(store.presets[0].values.systemPrompt).toBe('default:systemPrompt');
@@ -111,12 +135,11 @@ describe('updateValue', () => {
 });
 
 describe('resetPreset', () => {
-  it('restores a preset\'s whole value-set to the defaults', () => {
-    const edited = updateValue(storeWith({ id: 'p1', name: 'Mine' }), 'systemPrompt', 'changed');
-    const store = resetPreset(edited, 'p1', defaults);
-    expect(store.presets[0].values).toEqual(defaults);
-    // Fresh copy, not the shared defaults reference.
-    expect(store.presets[0].values).not.toBe(defaults);
+  it('restores a preset\'s whole value-set to the supplied values', () => {
+    const edited = updateValue(storeWith({ id: 'p1', name: 'Mine', style: 'labels' }), 'systemPrompt', 'changed');
+    const store = resetPreset(edited, 'p1', simpleValues);
+    expect(store.presets[0].values).toEqual(simpleValues);
+    expect(store.presets[0].values).not.toBe(simpleValues); // fresh copy
   });
 });
 

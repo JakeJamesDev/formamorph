@@ -169,22 +169,34 @@ describe('buildTraitContext', () => {
     { id: 'loner', name: 'Loner', statChanges: [], groupId: null, order: 0 },
   ];
 
-  it('emits group headers, AI descriptions, and ungrouped traits', () => {
+  it('simple: plain labels + indentation, ungrouped first (no bullets or bold)', () => {
     const withDesc = [{ ...groups[0], aiDescription: 'Born of the storm clans.' }, groups[1]];
     const out = buildTraitContext(['storm', 'quick', 'loner'], traits, withDesc);
     expect(out).toBe(
       'Loner\n' +
       'World:\n' +
       '  Born of the storm clans.\n' +
-      '  - Stormtouched: lightning resistance\n' +
+      '  Stormtouched: lightning resistance\n' +
       'Player:\n' +
-      '  - Quick: +2 reflexes',
+      '  Quick: +2 reflexes',
+    );
+  });
+
+  it('markdown: nested bold bullets, group description inlined after the group name', () => {
+    const withDesc = [{ ...groups[0], aiDescription: 'Born of the storm clans.' }, groups[1]];
+    const out = buildTraitContext(['storm', 'quick', 'loner'], traits, withDesc, 'markdown');
+    expect(out).toBe(
+      '- **Loner**\n' +
+      '- **World:** Born of the storm clans.\n' +
+      '  - **Stormtouched:** lightning resistance\n' +
+      '- **Player:**\n' +
+      '  - **Quick:** +2 reflexes',
     );
   });
 
   it('omits a blank group AI description and groups with no selected trait', () => {
     const out = buildTraitContext(['quick'], traits, groups);
-    expect(out).toBe('Player:\n  - Quick: +2 reflexes');
+    expect(out).toBe('Player:\n  Quick: +2 reflexes');
   });
 
   it('returns an empty string when nothing is selected', () => {
