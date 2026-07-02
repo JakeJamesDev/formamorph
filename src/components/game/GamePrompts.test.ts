@@ -15,6 +15,7 @@ import {
   defaultStatUpdatesUserPrompt,
   defaultLocationChangeUserPrompt,
   defaultSummaryUserPrompt,
+  OPENING_SCENE_CUE,
   markdownGuidance,
   planDirective,
 } from './GamePrompts';
@@ -45,6 +46,10 @@ describe('default prompts carry the expected variable chips', () => {
     expect(defaultSystemPrompt).toContain('## Current Location');
     // Positive contract: the narrator writes only story prose; a separate step handles choices.
     expect(defaultSystemPrompt).toContain("a separate step presents the player's choices");
+    // Stat coloring is a standalone directive plus a co-located lead-in on the stats block (Run A1/A2: both
+    // model tiers ignored the old buried clause). Positive contract, no example values.
+    expect(defaultSystemPrompt).toContain('shape how each action turns out');
+    expect(defaultSystemPrompt).toContain('low stats cost, high stats come easy');
     expect(defaultSystemPrompt).toContain('[Player\'s turn]');
     // Name-discipline: plan names are the narrator's private knowledge; introduce by description,
     // let a name reach the page only once the player would have learned it.
@@ -188,6 +193,18 @@ describe('aux user-message templates carry the runtime value-tokens', () => {
   it('summary system prompt carries no proper-noun example (small models copy them verbatim)', () => {
     for (const name of ['Mira', 'Kael', 'north gate']) expect(defaultSummaryPrompt).not.toContain(name);
     expect(defaultSummaryPrompt).not.toContain('## Example');
+  });
+});
+
+describe('OPENING_SCENE_CUE', () => {
+  it('anchors the opening-scene task and restates the anti-question rule', () => {
+    // Replaces the bare "START GAME" sentinel so the opening turn has a real instruction in the recency slot.
+    expect(OPENING_SCENE_CUE).toContain('opening scene');
+    expect(OPENING_SCENE_CUE).toContain('Do not ask the player');
+  });
+  it('carries no copy-magnet question the model would echo', () => {
+    expect(OPENING_SCENE_CUE).not.toContain('What do you want');
+    expect(OPENING_SCENE_CUE).not.toContain('?');
   });
 });
 

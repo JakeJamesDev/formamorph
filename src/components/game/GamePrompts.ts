@@ -3,7 +3,8 @@ export const defaultSystemPrompt = `You are the narrator stage of an interactive
 ## Guidelines
 - Write in second person, present tense ("You ...").
 - Be concise and vivid. <LENGTH GUIDANCE>
-- Stay consistent with the world, stats, traits, location, and the story so far; let low or high stats color the outcome.
+- Stay consistent with the world, traits, location, and the story so far.
+- Let the player's current stats shape how each action turns out: a low stat shows in the effort it costs, a high one shows as ease or assurance - worked into the events, not stated.
 - Advance the scene, then stop: your reply is complete once the events have been told, ending on a concrete image, action, or line of dialogue.
 - The names in your notes are what you know, not what the player knows: introduce anyone the player hasn't met by description - what they look like, their role, what they are doing - and let a name reach the page only once the player would have learned it in the story.
 - Don't report or tabulate the player's stats or their changes - a separate step handles them.
@@ -14,6 +15,7 @@ export const defaultSystemPrompt = `You are the narrator stage of an interactive
 <WORLD DESCRIPTION>
 
 ## Player Stats
+These shape how each action goes - low stats cost, high stats come easy.
 <STATS DESCRIPTION|descriptions.markdown>
 
 ## Traits
@@ -47,6 +49,11 @@ export function markdownGuidance(enabled: boolean): string {
 // The editable user-message templates for the aux requests. These carry the framing labels and the terse
 // task cue (anchored last, so a small model doesn't just continue the story) that used to be hardcoded in
 // GameViewer. Runtime values are the <PLAYER ACTION> and <GAME TEXT> tokens, substituted per turn.
+// The opening turn has no prior narration to imitate, so the bare "START GAME" sentinel lets the model fall
+// back on generic-assistant habits (e.g. closing with "What do you want to do?"). This anchored cue replaces
+// that sentinel as the opening narration's user message — a real instruction in the high-recency slot.
+export const OPENING_SCENE_CUE = `Begin the story: write the opening scene now. Establish where the player character is and what is happening around them, then stop on a concrete image, action, or line of dialogue. Do not ask the player what to do or list options - a separate step handles that.`;
+
 export const defaultChoicesUserPrompt = `What just happened (here "you" means me, the player character):
 <NARRATION>
 

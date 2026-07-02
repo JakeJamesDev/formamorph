@@ -48,6 +48,7 @@ import {
   markdownGuidance,
   planDirective,
   defaultDiscoverEntityPrompt,
+  OPENING_SCENE_CUE,
 } from "../components/game/GamePrompts";
 import {
   buildDiaryUserMessage,
@@ -770,7 +771,7 @@ ${playerNotes || NONE_PLACEHOLDER}
       // Create message array for game text request
       const narrationMessages: ChatMessage[] = [
         ...trimmedHistory,
-        { role: "user", content: `Player action: ${action}` },
+        { role: "user", content: action === "START GAME" ? OPENING_SCENE_CUE : `Player action: ${action}` },
       ];
 
       // Add user message to history after getting trimmed history
