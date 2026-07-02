@@ -158,6 +158,7 @@ function useProvideSettings() {
   const [vramHelperUrl, setVramHelperUrl] = usePersistentState<string>(`${APP_ID}_vramHelperUrl`, 'http://localhost:5179', stringCodec);
   const [ttsVolume, setTtsVolume] = usePersistentState<number>(`${APP_ID}_ttsVolume`, 1, floatCodec);
   const [ttsSpeed, setTtsSpeed] = usePersistentState<number>(`${APP_ID}_ttsSpeed`, 1, floatCodec);
+  const [ttsHighlight, setTtsHighlight] = usePersistentState<boolean>(`${APP_ID}_ttsHighlight`, true, boolCodec);
 
   const value = {
     bgmEnabled,
@@ -247,7 +248,9 @@ function useProvideSettings() {
     ttsVolume,
     setTtsVolume,
     ttsSpeed,
-    setTtsSpeed
+    setTtsSpeed,
+    ttsHighlight,
+    setTtsHighlight
   };
 
   return value;

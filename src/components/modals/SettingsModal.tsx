@@ -127,8 +127,6 @@ export const SettingsModal = ({ isOpen, onOpenChange, previewValues }: {
     setHideStatNumbers,
     markdownOutput,
     setMarkdownOutput,
-    streamNarrationAudio,
-    setStreamNarrationAudio,
     vramHelperUrl,
     setVramHelperUrl
   } = useSettings();
@@ -262,22 +260,6 @@ export const SettingsModal = ({ isOpen, onOpenChange, previewValues }: {
                     checked={bgmEnabled}
                     onCheckedChange={(c) => setBgmEnabled(c === true)}
                   />
-                </div>
-              </div>
-              <div className="grid grid-cols-1 sm:grid-cols-4 items-start gap-4">
-                <label htmlFor="streamNarrationAudio" className="text-left sm:text-right leading-4">
-                  Stream Narration Audio
-                </label>
-                <div className="col-span-3 flex items-start gap-2">
-                  <Checkbox
-                    id="streamNarrationAudio"
-                    checked={streamNarrationAudio}
-                    onCheckedChange={(c) => setStreamNarrationAudio(c === true)}
-                    className="shrink-0"
-                  />
-                  <span className="text-xs text-muted-foreground">
-                    Start text-to-speech as soon as each sentence finishes streaming, instead of after the whole story. Lower audio latency, but TTS runs alongside the model — may compete for the GPU if your LLM runs on the same machine. Requires a loaded TTS model.
-                  </span>
                 </div>
               </div>
               <div className="grid grid-cols-1 sm:grid-cols-4 items-start gap-4">

@@ -2,6 +2,7 @@ import React, { useEffect, useRef } from 'react';
 import { useGameplay } from '@/contexts/GameplayContext';
 import { useGameData } from '@/contexts/GameDataContext';
 import { useSettings } from '@/contexts/SettingsContext';
+import { useSentenceHighlight } from '@/lib/useSentenceHighlight';
 import { findEntityNames } from '@/lib/entityMatch';
 import { usePlayerModelUrl } from '@/lib/usePlayerModelUrl';
 import { mergeBodyMorphs } from '@/lib/bodyMorphs';
@@ -323,9 +324,18 @@ export const MiddlePanel = ({
     ttsPlayback,
     setFullMessageHistory
   } = useGameplay();
+  const { ttsHighlight } = useSettings();
 
   // Whether TTS has produced playable audio for the current text (drives the frozen top row).
   const hasAudio = ttsPlayback.duration > 0;
+
+  // Karaoke highlighter: paint the spoken sentence in the current page's narration as audio plays.
+  const narrationRef = useRef<HTMLDivElement>(null);
+  useSentenceHighlight(narrationRef, {
+    activeSentenceIndex: ttsPlayback.activeSentenceIndex,
+    sentenceTexts: ttsPlayback.sentenceTexts,
+    enabled: ttsHighlight,
+  });
 
   // Game text of the page currently being viewed, so the Edit button is page-aware
   // (rather than always editing the most recent text).
@@ -481,7 +491,9 @@ export const MiddlePanel = ({
                   {message.role === 'user' ? (
                     <pre className="whitespace-pre-wrap">{message.content}</pre>
                   ) : (
-                    <MarkdownRenderer text={isLatestMessage && isWaitingForAI ? gameplayText : parseAssistantMessage(message.content)} />
+                    <div ref={narrationRef}>
+                      <MarkdownRenderer text={isLatestMessage && isWaitingForAI ? gameplayText : parseAssistantMessage(message.content)} />
+                    </div>
                   )}
                 </div>
               );
