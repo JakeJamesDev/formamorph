@@ -1,11 +1,15 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { useSettings } from '@/contexts/SettingsContext';
+import { positionToSentenceIndex } from '@/lib/ttsHighlight';
+
+/** Which sentence a chunk belongs to (chunks may be many-to-one for an over-long sentence). */
+export interface ChunkMeta { sentenceIndex: number; text?: string }
 
 export interface TtsPlayback {
   /** Stop playback and begin a fresh session (clears the clip). */
   reset: () => void;
   /** Append a generated sentence; plays immediately (gapless) and grows the clip's duration. */
-  append: (data: Float32Array, sampleRate: number) => void;
+  append: (data: Float32Array, sampleRate: number, meta: ChunkMeta) => void;
   /** Mark generation complete so reaching the end is treated as "ended" (not an underrun wait). */
   finalize: () => void;
   /** Play/pause toggle; replays from the start when called after the clip ended. */
@@ -16,9 +20,13 @@ export interface TtsPlayback {
   duration: number;
   paused: boolean;
   ended: boolean;
+  /** Sentence at the current playhead (−1 when no audio), for the karaoke highlighter. */
+  activeSentenceIndex: number;
+  /** Spoken (markdown-stripped) text per sentence index — the needles the highlighter matches. */
+  sentenceTexts: string[];
 }
 
-interface Chunk { data: Float32Array; sampleRate: number; start: number; duration: number }
+interface Chunk { data: Float32Array; sampleRate: number; start: number; duration: number; sentenceIndex: number }
 
 // Single Web Audio engine that both plays progressive TTS (sentences scheduled gaplessly as they
 // generate) AND backs the seek-bar widget — so there's no hand-off between a streaming player and a
@@ -43,6 +51,8 @@ export function useTtsPlayback(): TtsPlayback {
   const [duration, setDuration] = useState(0);
   const [paused, setPaused] = useState(true);
   const [ended, setEnded] = useState(false);
+  const [activeSentenceIndex, setActiveSentenceIndex] = useState(-1);
+  const [sentenceTexts, setSentenceTexts] = useState<string[]>([]);
 
   const ensure = useCallback((): { ctx: AudioContext; gain: GainNode } | null => {
     if (!ctxRef.current) {
@@ -130,18 +140,32 @@ export function useTtsPlayback(): TtsPlayback {
     setPosition(0);
     setPaused(true);
     setEnded(false);
+    setActiveSentenceIndex(-1);
+    setSentenceTexts([]);
   }, [stopSources]);
 
-  const append = useCallback((data: Float32Array, sampleRate: number) => {
+  const append = useCallback((data: Float32Array, sampleRate: number, meta: ChunkMeta) => {
     const nodes = ensure();
     if (!nodes) return;
     const { ctx, gain } = nodes;
     const start = totalRef.current;
     const dur = data.length / sampleRate;
-    const chunk: Chunk = { data, sampleRate, start, duration: dur };
+    const chunk: Chunk = { data, sampleRate, start, duration: dur, sentenceIndex: meta.sentenceIndex };
     chunksRef.current.push(chunk);
     totalRef.current = start + dur;
     setDuration(totalRef.current);
+
+    // Record the spoken sentence text (needle for the highlighter); over-long sentences append
+    // multiple audio chunks under one index — they carry the same text, so this is idempotent.
+    if (meta.text != null) {
+      const text = meta.text;
+      setSentenceTexts((prev) => {
+        if (prev[meta.sentenceIndex] === text) return prev;
+        const next = prev.slice();
+        next[meta.sentenceIndex] = text;
+        return next;
+      });
+    }
 
     if (userPausedRef.current) return; // honor an explicit pause; the chunk waits in the buffer
 
@@ -200,6 +224,13 @@ export function useTtsPlayback(): TtsPlayback {
     return () => cancelAnimationFrame(raf);
   }, [paused, duration, currentPos]);
 
+  // Derive the sentence under the playhead from `position` (updated per frame while playing, and on
+  // seek while paused). setState no-ops when unchanged, so this only re-renders on a sentence change.
+  useEffect(() => {
+    const idx = positionToSentenceIndex(chunksRef.current, position);
+    setActiveSentenceIndex((prev) => (prev === idx ? prev : idx));
+  }, [position, duration]);
+
   // Keep the master gain in sync with the persisted TTS volume.
   useEffect(() => {
     volumeRef.current = ttsVolume;
@@ -209,5 +240,5 @@ export function useTtsPlayback(): TtsPlayback {
   // Release the AudioContext on unmount.
   useEffect(() => () => { ctxRef.current?.close().catch(() => {}); }, []);
 
-  return { reset, append, finalize, togglePlay, seek, position, duration, paused, ended };
+  return { reset, append, finalize, togglePlay, seek, position, duration, paused, ended, activeSentenceIndex, sentenceTexts };
 }

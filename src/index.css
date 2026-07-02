@@ -89,3 +89,9 @@
     @apply bg-background text-foreground;
   }
 }
+
+/* Karaoke TTS highlighter: soft accent tint on the sentence being narrated (CSS Custom Highlight API). */
+::highlight(tts-active) {
+  background-color: hsl(var(--primary) / 0.25);
+  color: inherit;
+}
