@@ -1,0 +1,165 @@
+{
+  "id": "baseline-sedge-landing",
+  "version": "2.0.0",
+  "worldOverview": {
+    "name": "Sedge Landing (Baseline)",
+    "description": "A fork-local SFW diagnostic world for prompt testing. Every fact is unique and unambiguous, so bad output pins to the model or the prompt, never the world.",
+    "author": "Baseline harness",
+    "thumbnail": null,
+    "bgm": null,
+    "systemPrompt": "A quiet, grounded folk tale along the Ashen River, a slow northern waterway crossed only by rope ferry. The tone is hushed and observational - small human moments, no grand adventure. Two facts hold everywhere here: iron rusts to a pale blue, never orange; and no one speaks their own name aloud until they trust you.",
+    "use3DModel": false,
+    "tags": ["baseline", "diagnostic"],
+    "customPlayerVRM": null
+  },
+  "stats": [
+    {
+      "id": "stat-vigor",
+      "name": "Vigor",
+      "type": "number",
+      "description": "Physical energy and stamina.",
+      "min": 0,
+      "max": 100,
+      "starting": 23,
+      "value": 23,
+      "regen": 0,
+      "descriptors": [
+        { "id": "vigor-drained", "threshold": 20, "description": "Drained" },
+        { "id": "vigor-winded", "threshold": 60, "description": "Winded" },
+        { "id": "vigor-fresh", "threshold": 100, "description": "Fresh" }
+      ]
+    },
+    {
+      "id": "stat-resolve",
+      "name": "Resolve",
+      "type": "number",
+      "description": "Composure and steadiness of nerve.",
+      "min": 0,
+      "max": 100,
+      "starting": 95,
+      "value": 95,
+      "regen": 0,
+      "descriptors": [
+        { "id": "resolve-rattled", "threshold": 30, "description": "Rattled" },
+        { "id": "resolve-steady", "threshold": 70, "description": "Steady" },
+        { "id": "resolve-unshakable", "threshold": 100, "description": "Unshakable" }
+      ]
+    }
+  ],
+  "locations": [
+    {
+      "id": "loc-sedge",
+      "name": "Sedge Landing",
+      "playerDescription": "A rickety dock on the north bank, where the rope ferry is moored.",
+      "aiDescription": "A rickety wooden dock on the north bank of the Ashen River. The water here runs milk-pale and dead silent - locals call this stretch the gloamwater. A single lantern hangs from a leaning post where notices are nailed; a rope ferry is moored at the dock, its far end lost in mist.",
+      "aiSummary": "A north-bank dock over the silent gloamwater; a rope ferry moored in mist.",
+      "entities": ["ent-bram", "ent-odette", "ent-ferry"],
+      "connections": ["Far Bank"],
+      "isStarting": true
+    },
+    {
+      "id": "loc-farbank",
+      "name": "Far Bank",
+      "playerDescription": "The south bank, with a half-sunk mill wheel and a watchman's shelter.",
+      "aiDescription": "The south bank, reached only by the rope ferry. A half-sunk mill wheel turns slow against the current, its iron fittings gone pale blue with rust. A watchman's shelter of tarred canvas stands above the waterline.",
+      "aiSummary": "The south bank: a half-sunk mill wheel and a watchman's canvas shelter.",
+      "entities": ["ent-tomas"],
+      "connections": ["Sedge Landing"],
+      "isStarting": false
+    }
+  ],
+  "entities": [
+    {
+      "id": "ent-bram",
+      "name": "Bram",
+      "type": "Person",
+      "playerDescription": "The ferryman.",
+      "aiDescription": "Bram is the ferryman: a broad, weathered man with only one arm - the right; his left sleeve is pinned up - and a brass ring through his left ear. He speaks in short dry sentences and never crosses the river after dark. He has not told the player his name.",
+      "aiSummary": "The one-armed ferryman who won't cross after dark.",
+      "image": null,
+      "sound": null,
+      "model": null
+    },
+    {
+      "id": "ent-odette",
+      "name": "Odette",
+      "type": "Person",
+      "playerDescription": "A woman smoking eels by the firepit.",
+      "aiDescription": "A small, quick woman smoking river-eels over a firepit at the landing, waiting to cross. She has a burn scar across her right cheek and a green glass bead braided into her hair. She distrusts strangers and counts everything twice. She has not given her name.",
+      "aiSummary": "The scarred eel-smoker waiting to cross; distrusts strangers.",
+      "image": null,
+      "sound": null,
+      "model": null
+    },
+    {
+      "id": "ent-ferry",
+      "name": "Rope Ferry",
+      "type": "Object",
+      "playerDescription": "A flat raft pulled along a rope.",
+      "aiDescription": "A flat wooden raft pulled along a single tar-black rope strung across the gloamwater. It carries two people at most and lists badly to the left; crossing means both hands on the rope.",
+      "aiSummary": "A two-person rope raft that lists to the left.",
+      "image": null,
+      "sound": null,
+      "model": null
+    },
+    {
+      "id": "ent-tomas",
+      "name": "Tomas",
+      "type": "Person",
+      "playerDescription": "The far-bank watchman.",
+      "aiDescription": "Tomas is the far-bank watchman: a lean old man wrapped in a tarred canvas cloak, blind in one eye - a milky left eye - and leaning on a fishing spear. He challenges everyone who lands and gives his name to no one until they state their business.",
+      "aiSummary": "The one-eyed far-bank watchman with a fishing spear.",
+      "image": null,
+      "sound": null,
+      "model": null
+    }
+  ],
+  "traits": [
+    {
+      "id": "trait-wren",
+      "name": "Wren the Mapmaker",
+      "playerDescription": "You are Wren, a traveling mapmaker.",
+      "aiDescription": "The player character is Wren, a traveling mapmaker with close-cropped silver hair and ink-stained hands, missing the last two fingers of the left hand. Wren is soft-spoken and observant, cannot swim, and habitually ties a small \"tollow-knot\" in any loose rope for luck.",
+      "statChanges": [],
+      "isDefault": true,
+      "order": 0
+    },
+    {
+      "id": "trait-footsore",
+      "name": "Footsore",
+      "playerDescription": "You are footsore from days on the road.",
+      "aiDescription": "Wren is footsore and travel-worn, slow to rise and quick to tire.",
+      "statChanges": [
+        { "statId": "stat-vigor", "value": -15, "type": "starting" }
+      ],
+      "groupId": "grp-condition",
+      "isDefault": true,
+      "order": 0
+    }
+  ],
+  "traitGroups": [
+    {
+      "id": "grp-condition",
+      "name": "Condition",
+      "playerDescription": "",
+      "aiDescription": "",
+      "parentId": null,
+      "order": 0
+    }
+  ],
+  "statUpdates": [],
+  "dictionary": [
+    {
+      "id": "dict-gloamwater",
+      "name": "gloamwater",
+      "key": "gloamwater, gloam",
+      "value": "Gloamwater: a stretch of river gone silent and milk-pale where the current stalls. Sound does not carry over it and fish avoid it; folk say names spoken over gloamwater are forgotten by morning."
+    },
+    {
+      "id": "dict-tollow",
+      "name": "tollow-knot",
+      "key": "tollow-knot, tollow",
+      "value": "A tollow-knot is a small three-loop charm knot river folk tie for safe passage; an untied or reversed tollow-knot is read as a bad omen."
+    }
+  ]
+}
