@@ -38,6 +38,14 @@ describe("buildLocationContext", () => {
     expect(out).not.toContain("portcullis raised");
   });
 
+  it("markdown format emits a bold-key bullet per field", () => {
+    const out = buildLocationContext(location, { format: "markdown" });
+    expect(out).toContain("- **name:** North Gate");
+    expect(out).toContain("- **description:** A towering stone gate, portcullis raised, banners snapping in the wind.");
+    // Not the plain form.
+    expect(out).not.toContain("name: North Gate\n");
+  });
+
   it("no longer emits the entities sub-block (entities are their own section)", () => {
     const out = buildLocationContext(location);
     expect(out).not.toContain("entities:");
@@ -58,12 +66,20 @@ describe("buildEntityContext", () => {
     expect(buildEntityContext({ id: "loc2", name: "Empty Field" }, [guard])).toBe(NONE_PLACEHOLDER);
   });
 
-  it("emits a top-level roster with full aiDescription by default", () => {
+  it("emits a top-level roster (name as subject, indented fields) with full aiDescription by default", () => {
     const out = buildEntityContext(location, [guard]);
-    expect(out).toContain("- name: Guard");
+    expect(out).toContain("Guard\n");
     expect(out).toContain("  description: A burly guard in full plate, scarred from old wars.");
     expect(out).toContain("  type: npc");
+    expect(out).not.toContain("- name:"); // no field-label bullet in the simple form
     expect(out).not.toContain("aiSummary");
+  });
+
+  it("markdown format leads each entity with a bold-name bullet and nested bold-key fields", () => {
+    const out = buildEntityContext(location, [guard], { format: "markdown" });
+    expect(out).toContain("- **Guard**");
+    expect(out).toContain("  - **description:** A burly guard in full plate, scarred from old wars.");
+    expect(out).toContain("  - **type:** npc");
   });
 
   it("prefers aiSummary for entities when preferSummary is set", () => {

@@ -13,14 +13,19 @@ const pickDescription = (preferSummary: boolean, summary?: string, description?:
  *
  * `preferSummary` makes the location emit its short `aiSummary` (falling back to the full
  * `aiDescription` when no summary is authored) — used by the lightweight precall planning request.
+ *
+ * `format` mirrors the Default/Simple presets: `'simple'` is plain `key: value` lines; `'markdown'` is a
+ * bold-key bullet per field (`- **key:** value`) a small model sections more cleanly.
  */
 export function buildLocationContext(
   location: LocationWithEntities,
-  opts: { preferSummary?: boolean } = {},
+  opts: { preferSummary?: boolean; format?: "simple" | "markdown" } = {},
 ): string {
   if (!location) return NONE_PLACEHOLDER;
 
-  const { preferSummary = false } = opts;
+  const { preferSummary = false, format = "simple" } = opts;
+  const field = (key: string, value: string | number | boolean) =>
+    format === "markdown" ? `- **${key}:** ${value}\n` : `${key}: ${value}\n`;
   const {
     backgroundImage,
     ambientSound,
@@ -35,10 +40,10 @@ export function buildLocationContext(
   } = location;
 
   // Start with name and description (skip a blank description so it doesn't print "undefined")
-  let output = `name: ${location.name}\n`;
+  let output = field("name", location.name);
   const locationDescription = pickDescription(preferSummary, aiSummary, aiDescription);
   if (locationDescription && locationDescription.trim() !== "") {
-    output += `description: ${locationDescription}\n`;
+    output += field("description", locationDescription);
   }
 
   // Add other location properties, skipping `name` (emitted above) and blanks so empty fields
@@ -46,7 +51,7 @@ export function buildLocationContext(
   Object.entries(otherProps).forEach(([key, value]) => {
     if (value === undefined || value === null || key === "name") return;
     if (typeof value === "string" && value.trim() === "") return;
-    output += `${key}: ${value}\n`;
+    output += field(key, value as string | number | boolean);
   });
 
   return output;
@@ -57,15 +62,23 @@ export function buildLocationContext(
  * `<ENTITIES>` — a top-level list, separate from the location so the model reads the cast as
  * "characters/things that could appear here" rather than all-present-and-involved. Returns "" when the
  * location is null or has no entities. `preferSummary` mirrors `buildLocationContext`.
+ *
+ * `format` mirrors the Default/Simple presets: `'simple'` leads each entity with its bare name and plain
+ * `key: value` fields indented under it; `'markdown'` makes the name a bold subject bullet with nested
+ * bold-key field bullets (`- **Name**` / `  - **key:** value`).
  */
 export function buildEntityContext(
   location: LocationWithEntities,
   entities: Entity[],
-  opts: { preferSummary?: boolean } = {},
+  opts: { preferSummary?: boolean; format?: "simple" | "markdown" } = {},
 ): string {
   if (!location) return NONE_PLACEHOLDER;
 
-  const { preferSummary = false } = opts;
+  const { preferSummary = false, format = "simple" } = opts;
+  const md = format === "markdown";
+  const head = (name: string) => (md ? `- **${name}**\n` : `${name}\n`);
+  const field = (key: string, value: string | number | boolean) =>
+    md ? `  - **${key}:** ${value}\n` : `  ${key}: ${value}\n`;
   const entityList = location.entities || location.entity || [];
   if (entityList.length === 0) return NONE_PLACEHOLDER;
 
@@ -83,17 +96,17 @@ export function buildEntityContext(
       aiSummary,
       ...entityProps
     } = entityItem;
-    output += `- name: ${entityItem.name}\n`;
+    output += head(entityItem.name);
     const entityDescription = pickDescription(preferSummary, aiSummary, aiDescription);
     if (entityDescription && entityDescription.trim() !== "") {
-      output += `  description: ${entityDescription}\n`;
+      output += field("description", entityDescription);
     }
     // Add other entity properties, skipping blanks (e.g. an unset type) so empty fields don't pad
     // the prompt and confuse smaller models.
     Object.entries(entityProps).forEach(([key, value]) => {
       if (value === undefined || value === null || key === "name") return;
       if (typeof value === "string" && value.trim() === "") return;
-      output += `  ${key}: ${value}\n`;
+      output += field(key, value as string | number | boolean);
     });
   });
 

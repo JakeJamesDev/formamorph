@@ -59,11 +59,19 @@ describe('buildDictionaryContext', () => {
     );
   });
 
+  it('omits the heading with includeHeading: false (the <DICTIONARY> chip body)', () => {
+    const named = entry({ name: 'Dragon', key: 'dragon', value: 'Big.' });
+    const keyed = entry({ name: '', key: 'castle', value: 'Stone.' });
+    expect(buildDictionaryContext([named, keyed], false)).toBe('Dragon: Big.\ncastle: Stone.');
+  });
+
   it('skips entries with no value', () => {
     expect(buildDictionaryContext([entry({ name: 'Empty', key: 'x', value: '' })])).toBe('');
+    expect(buildDictionaryContext([entry({ name: 'Empty', key: 'x', value: '' })], false)).toBe('');
   });
 
   it('returns "" for no entries', () => {
     expect(buildDictionaryContext([])).toBe('');
+    expect(buildDictionaryContext([], false)).toBe('');
   });
 });

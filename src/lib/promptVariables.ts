@@ -41,16 +41,24 @@ const SUMMARY_VARIANT: PromptVariant = {
   help: 'Sends the short AI summary, falling back to the full description where none is set.',
 };
 
-const LOCATION_VARIANTS: PromptVariant[] = [
-  { id: null, label: 'Full', help: 'The current location in full detail.' },
-  SUMMARY_VARIANT,
-  { id: 'list', label: 'List', help: 'A plain newline list of every location name.' },
-];
+const LOCATION_CONTENT_AXIS: PromptVariantAxis = {
+  id: 'content',
+  label: 'Content',
+  options: [
+    { id: null, label: 'Full', help: 'The current location in full detail.' },
+    SUMMARY_VARIANT,
+    { id: 'list', label: 'List', help: 'A newline list of every location name.' },
+  ],
+};
 
-const ENTITY_VARIANTS: PromptVariant[] = [
-  { id: null, label: 'Full', help: 'Each available character or thing in full.' },
-  SUMMARY_VARIANT,
-];
+const ENTITY_CONTENT_AXIS: PromptVariantAxis = {
+  id: 'content',
+  label: 'Content',
+  options: [
+    { id: null, label: 'Full', help: 'Each available character or thing in full.' },
+    SUMMARY_VARIANT,
+  ],
+};
 
 // Shared "how the block is shaped" axis (mirrors the Default/Simple presets): Simple = plain text; Default =
 // markdown. The labels-style preset strips this axis back to plain (see sectionStyle `stripChipFormat`).
@@ -59,7 +67,7 @@ const FORMAT_AXIS: PromptVariantAxis = {
   label: 'Format',
   options: [
     { id: null, label: 'Simple', help: 'Plain lines — no bullets or bold.' },
-    { id: 'markdown', label: 'Default', help: 'Markdown: bullets with bold names.' },
+    { id: 'markdown', label: 'Markdown', help: 'Markdown: bullets with bold names.' },
   ],
 };
 
@@ -78,11 +86,13 @@ const STATS_CONTENT_AXIS: PromptVariantAxis = {
 const WORLD: PromptVariable = { token: '<WORLD DESCRIPTION>', label: 'World', color: HIGHLIGHT_PALETTE[0] };
 const STATS: PromptVariable = { token: '<STATS DESCRIPTION>', label: 'Stats', color: HIGHLIGHT_PALETTE[1], axes: [STATS_CONTENT_AXIS, FORMAT_AXIS] };
 const TRAITS: PromptVariable = { token: '<TRAITS DESCRIPTION>', label: 'Traits', color: HIGHLIGHT_PALETTE[2], axes: [FORMAT_AXIS] };
-const LOCATION: PromptVariable = { token: '<LOCATION>', label: 'Location', color: HIGHLIGHT_PALETTE[3], variants: LOCATION_VARIANTS };
+const LOCATION: PromptVariable = { token: '<LOCATION>', label: 'Location', color: HIGHLIGHT_PALETTE[3], axes: [LOCATION_CONTENT_AXIS, FORMAT_AXIS] };
 const NOTES: PromptVariable = { token: '<NOTES>', label: 'Notes', color: HIGHLIGHT_PALETTE[4] };
 const LENGTH: PromptVariable = { token: '<LENGTH GUIDANCE>', label: 'Length Guidance', color: HIGHLIGHT_PALETTE[5] };
 const MARKDOWN: PromptVariable = { token: '<MARKDOWN GUIDANCE>', label: 'Markdown Guidance', color: HIGHLIGHT_PALETTE[6] };
-const ENTITIES: PromptVariable = { token: '<ENTITIES>', label: 'Entities', color: HIGHLIGHT_PALETTE[8], variants: ENTITY_VARIANTS };
+const ENTITIES: PromptVariable = { token: '<ENTITIES>', label: 'Entities', color: HIGHLIGHT_PALETTE[8], axes: [ENTITY_CONTENT_AXIS, FORMAT_AXIS] };
+// The activated-dictionary lore for the turn — supplied by GameViewer per turn (narration prompt only).
+const DICTIONARY: PromptVariable = { token: '<DICTIONARY>', label: 'Dictionary', color: HIGHLIGHT_PALETTE[11] };
 // Runtime value-token for the staged character pass — the name of the character whose motivation is being written.
 const CHARACTER: PromptVariable = { token: '<CHARACTER NAME>', label: 'Character', color: HIGHLIGHT_PALETTE[7] };
 
@@ -93,7 +103,7 @@ const NARRATION: PromptVariable = { token: '<NARRATION>', label: 'Narration', co
 
 /** All known variables — used by the parser to recognize any token regardless of which prompt it's in. */
 export const ALL_PROMPT_VARIABLES: PromptVariable[] = [
-  WORLD, STATS, TRAITS, LOCATION, ENTITIES, NOTES, LENGTH, MARKDOWN, PLAYER_ACTION, NARRATION, CHARACTER,
+  WORLD, STATS, TRAITS, LOCATION, ENTITIES, NOTES, DICTIONARY, LENGTH, MARKDOWN, PLAYER_ACTION, NARRATION, CHARACTER,
 ];
 
 /** The six context chips every system prompt can reference; GameViewer substitutes them uniformly. */
@@ -102,7 +112,7 @@ const CONTEXT_VARS: PromptVariable[] = [WORLD, STATS, TRAITS, LOCATION, ENTITIES
 /** Which variables each prompt's toolbar offers. Every kind gets the shared context chips (even when its
  *  default text doesn't use them); some add their own extras (narration's length/markdown, character's name). */
 export const PROMPT_KIND_VARIABLES: Record<PromptKind, PromptVariable[]> = {
-  narration: [...CONTEXT_VARS, LENGTH, MARKDOWN],
+  narration: [...CONTEXT_VARS, DICTIONARY, LENGTH, MARKDOWN],
   thinking: [...CONTEXT_VARS],
   choices: [...CONTEXT_VARS],
   statupdates: [...CONTEXT_VARS],
@@ -120,7 +130,7 @@ export const PROMPT_KIND_USER_VARIABLES: Partial<Record<PromptKind, PromptVariab
   choices: [PLAYER_ACTION, NARRATION],
   statupdates: [PLAYER_ACTION, NARRATION],
   location: [PLAYER_ACTION, NARRATION],
-  summary: [NARRATION],
+  summary: [PLAYER_ACTION, NARRATION],
   director: [PLAYER_ACTION, NARRATION],
 };
 

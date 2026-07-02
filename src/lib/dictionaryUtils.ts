@@ -24,8 +24,10 @@ export function getActivatedDictionary(
   );
 }
 
-/** The text block injected into the AI prompt for the activated entries (empty if none). */
-export function buildDictionaryContext(entries: DictionaryEntry[]): string {
+/** The text block for the activated entries (empty if none). With `includeHeading` (the default) it carries
+ *  its own `## Relevant Information` heading, for the absent-`<DICTIONARY>`-chip fallback append; with
+ *  `includeHeading: false` it returns just the body lines, so the prompt template can own the heading. */
+export function buildDictionaryContext(entries: DictionaryEntry[], includeHeading = true): string {
   if (!entries || entries.length === 0) return '';
   const lines = entries
     .filter((e) => e.value)
@@ -34,5 +36,6 @@ export function buildDictionaryContext(entries: DictionaryEntry[]): string {
       return label ? `${label}: ${e.value}` : e.value;
     });
   if (lines.length === 0) return '';
-  return `## Relevant Information\n${lines.join('\n')}`;
+  const body = lines.join('\n');
+  return includeHeading ? `## Relevant Information\n${body}` : body;
 }
