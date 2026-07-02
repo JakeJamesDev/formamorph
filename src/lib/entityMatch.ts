@@ -71,6 +71,27 @@ const significantWords = (name: string): string[] =>
   name.toLowerCase().split(/\s+/).filter((w) => w.length >= 3 && !LOOSE_STOPWORDS.has(w));
 
 /**
+ * Whether two names likely refer to the same character — conservative, for de-duping discovered
+ * runtime characters. True when the names are equal, or one's significant-word set is a non-empty
+ * SUBSET of the other's (so "Aldric" ⊆ "Sergeant Aldric" merge, but "Woman with Knife" and "Merchant
+ * with Rusty Blade" do not, nor "Man with Knife" vs "Woman with Knife"). Subset (not any-overlap) keeps
+ * it from over-merging on a shared generic noun. Cannot link pure renames with no shared token
+ * ("Woman with Knife" → "Mira"); that needs semantic tracking, out of scope here.
+ */
+export function sameCharacterName(a: string, b: string): boolean {
+  const an = a?.trim().toLowerCase();
+  const bn = b?.trim().toLowerCase();
+  if (!an || !bn) return false;
+  if (an === bn) return true;
+  const aw = new Set(significantWords(a));
+  const bw = new Set(significantWords(b));
+  if (aw.size === 0 || bw.size === 0) return false;
+  const [small, large] = aw.size <= bw.size ? [aw, bw] : [bw, aw];
+  for (const w of small) if (!large.has(w)) return false;
+  return true;
+}
+
+/**
  * Looser counterpart to `matchNames`: a name counts when **any** of its significant words appears
  * (case-insensitive, plural-tolerant, no capital guard). Intended only for names already vouched for by
  * another source — e.g. defined entities the staged director cast — so "the tank rolls" still confirms a

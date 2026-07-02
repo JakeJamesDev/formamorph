@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { matchNames, findEntityNames, matchNamesLoose } from './entityMatch';
+import { matchNames, findEntityNames, matchNamesLoose, sameCharacterName } from './entityMatch';
 import type { Entity } from '@/types';
 
 const ent = (name: string): Entity => ({ id: name, name });
@@ -79,5 +79,31 @@ describe('findEntityNames', () => {
     const entities = [ent('Mira')];
     expect(findEntityNames('talk to mira', entities)).toEqual([]); // default guard
     expect(findEntityNames('talk to mira', entities, { requireCapital: false })).toEqual(['Mira']);
+  });
+});
+
+describe('sameCharacterName (conservative de-dupe)', () => {
+  it('is true for equal names (case/space-insensitive)', () => {
+    expect(sameCharacterName('Mira', ' mira ')).toBe(true);
+  });
+
+  it('merges a name that is a subset of another (title/prefix variants)', () => {
+    expect(sameCharacterName('Aldric', 'Sergeant Aldric')).toBe(true);
+    expect(sameCharacterName('Sergeant Aldric', 'Aldric')).toBe(true);
+    expect(sameCharacterName('Skitter-Demon', 'Lead Skitter-Demon')).toBe(true);
+  });
+
+  it('does not merge names with differing head words or no overlap', () => {
+    expect(sameCharacterName('Man with Knife', 'Woman with Knife')).toBe(false);
+    expect(sameCharacterName('Town Guard', 'Sergeant Aldric')).toBe(false);
+    expect(sameCharacterName('Woman with Knife', 'Merchant with Rusty Blade')).toBe(false);
+  });
+
+  it('does not merge a pure rename with no shared token (known limitation)', () => {
+    expect(sameCharacterName('Woman with Knife', 'Mira')).toBe(false);
+  });
+
+  it('is false when a name has no significant words to compare', () => {
+    expect(sameCharacterName('', 'Mira')).toBe(false);
   });
 });

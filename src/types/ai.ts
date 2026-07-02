@@ -39,7 +39,8 @@ export type AIRequestType =
   | 'statUpdates'
   | 'locationChange'
   | 'summary'
-  | 'diary';
+  | 'diary'
+  | 'discoverEntity';
 
 /**
  * Structured payload the game stores per turn (mirrors the JSON the app round-trips).
@@ -60,6 +61,8 @@ export interface AITurnResult {
    *  this turn. Written for each participant as turns age out; a character's full diary is these across
    *  turns. Absent on pre-diary saves. */
   diaries?: Record<string, string>;
+  /** The location this turn took place at, so a runtime-discovered character joins the right roster. */
+  locationId?: string;
 }
 
 export interface AuthUser {

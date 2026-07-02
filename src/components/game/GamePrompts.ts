@@ -50,11 +50,10 @@ export function markdownGuidance(enabled: boolean): string {
 // The editable user-message templates for the aux requests. These carry the framing labels and the terse
 // task cue (anchored last, so a small model doesn't just continue the story) that used to be hardcoded in
 // GameViewer. Runtime values are the <PLAYER ACTION> and <GAME TEXT> tokens, substituted per turn.
-export const defaultChoicesUserPrompt = `Player action: <PLAYER ACTION>
+export const defaultChoicesUserPrompt = `What just happened (here "you" means me, the player character):
+<NARRATION>
 
-Narration: <NARRATION>
-
-List only the next actions now - one short phrase per line. No story, no prose.`;
+Now write my options - one per line, each a single action I take.`;
 
 export const defaultStatUpdatesUserPrompt = `Narration: <NARRATION>
 
@@ -86,17 +85,16 @@ Current Location:
 Characters and things that may appear here:
 <ENTITIES|summary>
 
-Suggest 3-5 distinct actions the player could take next, given their stats, traits, and location.
-Rules:
-- One action per line, nothing else.
-- Each action is a short active-voice phrase (about 1-6 words).
-- Do not begin a line with a number, bullet, dash, or quotation mark, and add no explanations - just the action text.
+The player character is "I": every option is written in the player's own first-person voice.
 
-Example:
-Run
-Hide
-Forage for food
-Rest to recover stamina`;
+Suggest 3 to 5 distinct things I could do next - each a genuinely different way to respond to what is happening right now, engaging with the people, threats, and openings actually present in the scene, and fitting who I am (my stats, traits, and situation). Not generic filler.
+
+Rules:
+- Give at least 3 options, one per line.
+- The reply starts immediately with the first option - no lead-in sentence, no "here are my options" or "I could:" line before or between them.
+- Each option is a single first-person sentence - a specific, concrete action I take, vivid but never more than one sentence.
+- Make the options meaningfully different from one another.
+- Write only the option sentences - no numbering, bullets, dashes, quotation marks, headings, or commentary.`;
 
 export const defaultStatUpdatesPrompt = `You are the stat tracker for an interactive roleplay. Your entire output is stat-change lines - nothing else.
 
@@ -191,7 +189,7 @@ Kael revealed the bridge ahead had collapsed.`;
 // The character-diary pass: run once per participating character as turns age out, to record that
 // character's own first-person memory of the turn. Identity + narration arrive in the user message
 // (buildDiaryUserMessage); this system prompt is the generic diarist framing.
-export const defaultDiaryPrompt = `You ARE one character in an interactive roleplay, writing a private diary. Write one or two sentences in the first person ("I ..."), in my own voice, then stop.
+export const defaultDiaryPrompt = `You ARE one character in an interactive roleplay, writing a private diary. Write one or two sentences in the first person, in my own voice, then stop.
 
 Who is who:
 - You are given an account of what just happened. In that account, "you" and "your" ALWAYS mean the player character - a separate character, never you.
@@ -205,6 +203,18 @@ Rules:
 - Refer to the player as "the player character" or "them" - never "you".
 - No headings, labels, or lists. Just one or two sentences.
 - If there is nothing worth recording, your entire reply is exactly: nothing notable (never appended to an entry).`;
+
+// The runtime-character "discover" pass (requestType 'discoverEntity'): run once, silently, when the
+// narration introduces a character the world never defined, to mint a durable third-person description
+// so that character keeps a stable identity on later turns. The name + narration arrive in the user
+// message; this is extraction from what was shown, not invention.
+export const defaultDiscoverEntityPrompt = `You are writing a lasting reference note for a character who just appeared in an interactive story, so the storyteller can portray them consistently on later turns. You are given the character's name and the passage they appeared in.
+
+Write two or three sentences describing who this character is - their enduring appearance, manner, role, and disposition - drawn from what the passage shows or clearly implies. Capture the lasting character rather than the single moment: their standing traits, not the exact pose or action they happen to be caught in this turn.
+
+Keep it strictly third person, referring to this character by name and to everyone else - including whoever they are reacting to - only as "them" or by role. The words "you" and "your" never appear. Invent nothing the passage does not support.
+
+Output only the description - no name heading, label, or preamble.`;
 
 // Appended to the game-text prompt for inline thinking (thinkingMode === 'inline'). The <think>
 // block is stripped from the narration before the player sees it.
@@ -272,7 +282,7 @@ Traits:
 Current Location:
 <LOCATION|summary>
 
-Who I am, the scene so far, and the player's action are given below. In 2-3 sentences, state in the first person ("I ...") what I want and the specific action I intend to take this turn. Stay consistent with who I am and what just happened. Output only those sentences.`;
+My background, my recent memories, what just happened, the scene now, and the player's action are given below. My background is who I am in general - the recap and the scene show where things actually stand now, so I act from the present moment. In 2-3 sentences, state in the first person what I want and the specific action I take this turn: true to my character, but moving the moment forward - I build on what just happened and press toward my goal rather than restating my last stance. Output only those sentences.`;
 
 // Pass 3: the merge stage. It is the only stage that sees the recap, the director's scene, and every
 // character's (independently-formed, mutually-blind) intent, so it reconciles them into a terse beat
