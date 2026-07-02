@@ -5,7 +5,7 @@ import { escapeRegExp } from "./utils";
 export const HIGHLIGHT_PALETTE = [
   "#fde68a", "#bbf7d0", "#bfdbfe", "#fbcfe8",
   "#ddd6fe", "#fed7aa", "#a5f3fc", "#fecaca",
-  "#d9f99d", "#99f6e4", "#fecdd3",
+  "#d9f99d", "#99f6e4", "#fecdd3", "#e9d5ff",
 ];
 
 export interface HighlightRule {

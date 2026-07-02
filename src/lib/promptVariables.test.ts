@@ -4,6 +4,7 @@ import {
   variableForToken, labelForToken, colorForToken,
   variableAxes, decodeVariant, encodeVariant, ALL_VARIANT_IDS,
   PROMPT_KIND_VARIABLES,
+  type PromptVariable,
 } from './promptVariables';
 
 describe('variant token helpers', () => {
@@ -30,7 +31,8 @@ describe('variant token helpers', () => {
 describe('variable lookup by token (base or variant)', () => {
   it('resolves any variant token to its base variable', () => {
     expect(variableForToken('<LOCATION|list>')?.label).toBe('Location');
-    expect(variableForToken('<LOCATION|summary>')?.variants?.length).toBe(3);
+    const loc = variableForToken('<LOCATION|summary>')!;
+    expect(variableAxes(loc).find((a) => a.id === 'content')?.options).toHaveLength(3);
   });
 
   it('exposes the variant label for the chip (null for the full form)', () => {
@@ -57,10 +59,14 @@ describe('multi-axis variants (Stats: content × format)', () => {
     expect(variableAxes(STATS).map((a) => a.id)).toEqual(['content', 'format']);
   });
 
-  it('normalizes a single-axis variable into one axis', () => {
-    const LOC = variableForToken('<LOCATION>')!;
-    expect(variableAxes(LOC)).toHaveLength(1);
-    expect(variableAxes(LOC)[0].options).toHaveLength(3);
+  it('normalizes a single-axis (variants-based) variable into one axis', () => {
+    // No registry variable still uses the `variants` shorthand, but the normalization path is supported.
+    const single: PromptVariable = {
+      token: '<X>', label: 'X', color: '#000',
+      variants: [{ id: null, label: 'A' }, { id: 'b', label: 'B' }],
+    };
+    expect(variableAxes(single)).toHaveLength(1);
+    expect(variableAxes(single)[0].options).toHaveLength(2);
   });
 
   it('decodes a combined id into a per-axis selection (order-independent)', () => {
@@ -85,8 +91,8 @@ describe('multi-axis variants (Stats: content × format)', () => {
   });
 
   it('composes the chip label from the non-default axis selections', () => {
-    expect(variantLabelForToken('<STATS DESCRIPTION|descriptions.markdown>')).toBe('Words, Default');
-    expect(variantLabelForToken('<STATS DESCRIPTION|markdown>')).toBe('Default');
+    expect(variantLabelForToken('<STATS DESCRIPTION|descriptions.markdown>')).toBe('Words, Markdown');
+    expect(variantLabelForToken('<STATS DESCRIPTION|markdown>')).toBe('Markdown');
     expect(variantLabelForToken('<STATS DESCRIPTION|descriptions>')).toBe('Words');
     expect(variantLabelForToken('<STATS DESCRIPTION>')).toBeNull();
   });
@@ -94,8 +100,23 @@ describe('multi-axis variants (Stats: content × format)', () => {
   it('gives Traits a single format axis (shared with Stats)', () => {
     const TRAITS = variableForToken('<TRAITS DESCRIPTION>')!;
     expect(variableAxes(TRAITS).map((a) => a.id)).toEqual(['format']);
-    expect(variantLabelForToken('<TRAITS DESCRIPTION|markdown>')).toBe('Default');
+    expect(variantLabelForToken('<TRAITS DESCRIPTION|markdown>')).toBe('Markdown');
     expect(variantLabelForToken('<TRAITS DESCRIPTION>')).toBeNull();
+  });
+
+  it('gives Location a content axis (Full/Summary/List) plus the format axis', () => {
+    const LOC = variableForToken('<LOCATION>')!;
+    expect(variableAxes(LOC).map((a) => a.id)).toEqual(['content', 'format']);
+    expect(variantLabelForToken('<LOCATION|summary.markdown>')).toBe('Summary, Markdown');
+    expect(variantLabelForToken('<LOCATION|list.markdown>')).toBe('List, Markdown');
+    expect(variantLabelForToken('<LOCATION|summary>')).toBe('Summary');
+  });
+
+  it('gives Entities a content axis (Full/Summary) plus the format axis', () => {
+    const ENT = variableForToken('<ENTITIES>')!;
+    expect(variableAxes(ENT).map((a) => a.id)).toEqual(['content', 'format']);
+    expect(variantLabelForToken('<ENTITIES|summary.markdown>')).toBe('Summary, Markdown');
+    expect(variantLabelForToken('<ENTITIES|markdown>')).toBe('Markdown');
   });
 });
 
@@ -107,4 +128,13 @@ describe('every prompt kind offers the six shared context chips', () => {
       for (const t of CONTEXT) expect(tokens).toContain(t);
     });
   }
+});
+
+describe('the Dictionary chip is narration-scoped', () => {
+  it('offers <DICTIONARY> on the narration toolbar only, labeled Dictionary', () => {
+    expect(PROMPT_KIND_VARIABLES.narration.map((v) => v.token)).toContain('<DICTIONARY>');
+    expect(labelForToken('<DICTIONARY>')).toBe('Dictionary');
+    // Not a shared context chip — absent from the other kinds' toolbars.
+    expect(PROMPT_KIND_VARIABLES.choices.map((v) => v.token)).not.toContain('<DICTIONARY>');
+  });
 });

@@ -9,6 +9,7 @@ import {
   defaultCharacterPrompt,
   defaultStoryboardPrompt,
   defaultDiaryPrompt,
+  defaultSummaryPrompt,
   defaultChoicesUserPrompt,
   defaultDirectorUserPrompt,
   defaultStatUpdatesUserPrompt,
@@ -26,15 +27,18 @@ const tokensIn = (prompt: string): string[] =>
 
 describe('default prompts carry the expected variable chips', () => {
   it('game-text prompt', () => {
+    // Recency order: framing/guidance up top (primacy), static background in the middle, live scene +
+    // dictionary last (recency), then the hard output contract as the final paragraph.
     expect(tokensIn(defaultSystemPrompt)).toEqual([
+      '<LENGTH GUIDANCE>',
+      '<MARKDOWN GUIDANCE>',
       '<WORLD DESCRIPTION>',
       '<STATS DESCRIPTION|descriptions.markdown>',
       '<TRAITS DESCRIPTION|markdown>',
-      '<LOCATION>',
-      '<ENTITIES>',
       '<NOTES>',
-      '<LENGTH GUIDANCE>',
-      '<MARKDOWN GUIDANCE>',
+      '<LOCATION|markdown>',
+      '<ENTITIES|markdown>',
+      '<DICTIONARY>',
     ]);
     // Canonical headers are markdown; the labels style downcasts them, and GameViewer's <NOTES>-absent
     // fallback locates the location header in either style.
@@ -47,6 +51,11 @@ describe('default prompts carry the expected variable chips', () => {
     expect(defaultSystemPrompt).toContain('what you know, not what the player knows');
     expect(defaultSystemPrompt).toContain("hasn't met by description");
     expect(defaultSystemPrompt).toContain('once the player would have learned it');
+    // Recency: the live scene + dictionary sit late, and the hard output contract is the final block.
+    expect(defaultSystemPrompt.indexOf('## Relevant Information'))
+      .toBeLessThan(defaultSystemPrompt.indexOf('Output only the story prose'));
+    expect(defaultSystemPrompt.indexOf('## Current Location'))
+      .toBeGreaterThan(defaultSystemPrompt.indexOf('## Game World'));
   });
 
   it('choices prompt', () => {
@@ -55,8 +64,8 @@ describe('default prompts carry the expected variable chips', () => {
       '<STATS DESCRIPTION|descriptions.markdown>',
       '<TRAITS DESCRIPTION|markdown>',
       '<NOTES>',
-      '<LOCATION|summary>',
-      '<ENTITIES|summary>',
+      '<LOCATION|summary.markdown>',
+      '<ENTITIES|summary.markdown>',
     ]);
     // First-person, single-sentence options — not the old terse-phrase-with-examples shape,
     // and without the literal `"I ..."` token that small models echo as a prefix.
@@ -78,9 +87,9 @@ describe('default prompts carry the expected variable chips', () => {
   it('location-change prompt', () => {
     expect(tokensIn(defaultLocationChangePrompt)).toEqual([
       '<WORLD DESCRIPTION>',
-      '<LOCATION>',
-      '<ENTITIES>',
-      '<LOCATION|list>',
+      '<LOCATION|markdown>',
+      '<ENTITIES|markdown>',
+      '<LOCATION|list.markdown>',
     ]);
   });
 
@@ -89,8 +98,8 @@ describe('default prompts carry the expected variable chips', () => {
       '<WORLD DESCRIPTION>',
       '<STATS DESCRIPTION|descriptions.markdown>',
       '<TRAITS DESCRIPTION|markdown>',
-      '<LOCATION|summary>',
-      '<ENTITIES|summary>',
+      '<LOCATION|summary.markdown>',
+      '<ENTITIES|summary.markdown>',
       '<NOTES>',
     ]);
     // Basic planning surfaces each present character's placement.
@@ -101,8 +110,8 @@ describe('default prompts carry the expected variable chips', () => {
     expect(tokensIn(defaultDirectorPrompt)).toEqual([
       '<WORLD DESCRIPTION>',
       '<TRAITS DESCRIPTION|markdown>',
-      '<LOCATION|summary>',
-      '<ENTITIES|summary>',
+      '<LOCATION|summary.markdown>',
+      '<ENTITIES|summary.markdown>',
       '<NOTES>',
     ]);
     // The director stages the scene, refers to the player in third person, and gives each a placement.
@@ -127,7 +136,7 @@ describe('default prompts carry the expected variable chips', () => {
       '<CHARACTER NAME>',
       '<WORLD DESCRIPTION>',
       '<TRAITS DESCRIPTION|markdown>',
-      '<LOCATION|summary>',
+      '<LOCATION|summary.markdown>',
     ]);
     // The character speaks in the first person but keeps the player in the third person.
     expect(defaultCharacterPrompt).toContain('first person');
@@ -149,7 +158,7 @@ describe('default prompts carry the expected variable chips', () => {
       '<WORLD DESCRIPTION>',
       '<STATS DESCRIPTION|descriptions.markdown>',
       '<TRAITS DESCRIPTION|markdown>',
-      '<LOCATION|summary>',
+      '<LOCATION|summary.markdown>',
       '<NOTES>',
     ]);
     // Uses the current "scene" wording (not the old "continuation") and forbids scripting the player.
@@ -172,8 +181,13 @@ describe('aux user-message templates carry the runtime value-tokens', () => {
     expect(tokensIn(defaultStatUpdatesUserPrompt)).toEqual(['<NARRATION>']);
     expect(tokensIn(defaultLocationChangeUserPrompt)).toEqual(['<NARRATION>']);
   });
-  it('summary user template is just the narration token', () => {
-    expect(tokensIn(defaultSummaryUserPrompt)).toEqual(['<NARRATION>']);
+  it('summary user template carries the player-action + narration tokens, cue anchored last', () => {
+    expect(tokensIn(defaultSummaryUserPrompt)).toEqual(['<PLAYER ACTION>', '<NARRATION>']);
+    expect(defaultSummaryUserPrompt).toContain('Now retell this turn');
+  });
+  it('summary system prompt carries no proper-noun example (small models copy them verbatim)', () => {
+    for (const name of ['Mira', 'Kael', 'north gate']) expect(defaultSummaryPrompt).not.toContain(name);
+    expect(defaultSummaryPrompt).not.toContain('## Example');
   });
 });
 
@@ -189,11 +203,15 @@ describe('planDirective', () => {
 });
 
 describe('markdownGuidance', () => {
-  it('returns the floor-based formatting block when enabled', () => {
+  it('returns a lean, prose-first emphasis note when enabled', () => {
     const on = markdownGuidance(true);
-    expect(on).toContain('Bold exactly one');
-    expect(on).toContain('Markdown table');
-    expect(on).toContain('Italicize at least one');
+    expect(on).toContain('flowing prose');
+    expect(on).toContain('never a list, menu, or table');
+    expect(on).toContain('emphasis');
+    // No copy-verbatim examples, no rigid quota, no stat-table rule (which contradicted the Guidelines).
+    expect(on).not.toContain('Markdown table');
+    expect(on).not.toContain('Bold exactly one');
+    expect(on).not.toContain('boot sinks');
   });
 
   it('returns a plain-prose directive when disabled', () => {

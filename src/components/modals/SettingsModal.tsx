@@ -414,7 +414,7 @@ export const SettingsModal = ({ isOpen, onOpenChange, previewValues }: {
                     className="shrink-0"
                   />
                   <span className="text-xs text-muted-foreground">
-                    Keeps long stories coherent without bloating each request: older turns fold into a &ldquo;story so far&rdquo; recap while recent ones stay verbatim. Runs an extra request per turn. Edit the prompt under System Prompts → Summary.
+                    Keeps long stories coherent without bloating each request: older turns are retold in condensed form — the same back-and-forth, just shorter — while recent ones stay word-for-word. Runs an extra request per turn. Edit the prompt under System Prompts → Summary.
                   </span>
                 </div>
               </div>
@@ -430,7 +430,7 @@ export const SettingsModal = ({ isOpen, onOpenChange, previewValues }: {
                     className="shrink-0"
                   />
                   <span className="text-xs text-muted-foreground">
-                    Each character present in a turn quietly records a first-person diary entry about it, as turns age out. Runs an extra request per participant. View them via Show Silent Requests in the AI context viewer, and edit the prompt under System Prompts → Diary. (Not yet fed back into the story.)
+                    Each character present in a turn quietly records a first-person diary entry about it, as turns age out. Its own recent entries feed back into that character&apos;s motivation during Staged thinking. Runs an extra request per participant. View them via Show Silent Requests in the AI context viewer, and edit the prompt under System Prompts → Diary.
                   </span>
                 </div>
               </div>
@@ -446,7 +446,7 @@ export const SettingsModal = ({ isOpen, onOpenChange, previewValues }: {
                     className="shrink-0"
                   />
                   <span className="text-xs text-muted-foreground">
-                    Reveal silent requests that normally run quietly (currently the memory summary) — they appear in the status bar while running and as a request entry in the AI context viewer. Off by default; an inspection aid for authoring and debugging.
+                    Reveal silent requests that normally run quietly (memory summaries, character diaries, and new-character notes) — they appear in the status bar while running and as a request entry in the AI context viewer. Off by default; an inspection aid for authoring and debugging.
                   </span>
                 </div>
               </div>

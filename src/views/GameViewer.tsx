@@ -659,8 +659,13 @@ const GameViewer = ({
     "<LOCATION>": buildLocationContext(currentLocation),
     "<LOCATION|summary>": buildLocationContext(currentLocation, { preferSummary: true }),
     "<LOCATION|list>": locations.map((loc) => loc.name).join("\n") || NONE_PLACEHOLDER,
+    "<LOCATION|markdown>": buildLocationContext(currentLocation, { format: "markdown" }),
+    "<LOCATION|summary.markdown>": buildLocationContext(currentLocation, { preferSummary: true, format: "markdown" }),
+    "<LOCATION|list.markdown>": locations.map((loc) => `- ${loc.name}`).join("\n") || NONE_PLACEHOLDER,
     "<ENTITIES>": buildEntityContext(withDiscovered(currentLocation), allEntities),
     "<ENTITIES|summary>": buildEntityContext(withDiscovered(currentLocation), allEntities, { preferSummary: true }),
+    "<ENTITIES|markdown>": buildEntityContext(withDiscovered(currentLocation), allEntities, { format: "markdown" }),
+    "<ENTITIES|summary.markdown>": buildEntityContext(withDiscovered(currentLocation), allEntities, { preferSummary: true, format: "markdown" }),
     "<NOTES>": playerNotes || NONE_PLACEHOLDER,
   }), [
     worldOverview, generateStatDescriptions, generateTraitDescriptions,
@@ -673,6 +678,7 @@ const GameViewer = ({
     ...buildContextValues(),
     "<LENGTH GUIDANCE>": lengthGuidance(paragraphLimit, maxTokens),
     "<MARKDOWN GUIDANCE>": restyle(markdownGuidance(markdownOutput), activeSectionStyle),
+    "<DICTIONARY>": "lore whose keywords are active this turn (or N/A)",
     // Illustrative placeholders for the aux user-message templates (real values are per-turn at runtime).
     "<PLAYER ACTION>": "the player's latest action",
     "<NARRATION>": "the most recent narration",
@@ -689,12 +695,25 @@ const GameViewer = ({
     // spreads it and adds its own tokens.
     const ctx = buildContextValues();
 
+    // Dictionary entries whose keywords appear in the current location context (location + entities present),
+    // the action, or the message history. Scanning the location context activates lore proactively the same
+    // turn a term enters play, rather than a turn late. The always-present world description is intentionally
+    // excluded so its terms don't fire every turn. Feeds the <DICTIONARY> chip (body only; the prompt's
+    // "## Relevant Information" heading is authored), falling back to a code append when the chip is absent.
+    const activatedEntries = getActivatedDictionary(dictionary, [
+      ctx["<LOCATION>"],
+      ctx["<ENTITIES>"],
+      action,
+      ...fullMessageHistory.map((m) => m.content),
+    ]);
+
     // Code-generated blocks (markdown guidance, notes fallback, dictionary) are authored in markdown, so
     // restyle them to the active preset's section style to match the authored prompt's headers.
     let updatedPrompt = renderPromptTemplate(systemPrompt, {
       ...ctx,
       "<LENGTH GUIDANCE>": lengthGuidance(paragraphLimit, maxTokens),
       "<MARKDOWN GUIDANCE>": restyle(markdownGuidance(markdownOutput), activeSectionStyle),
+      "<DICTIONARY>": buildDictionaryContext(activatedEntries, false) || NONE_PLACEHOLDER,
     });
 
     // If the prompt has no <NOTES> chip, fall back to a notes section before the location data.
@@ -718,20 +737,13 @@ ${playerNotes || NONE_PLACEHOLDER}
     if (language.toLowerCase() != "english")
       updatedPrompt += `\n Narration language: ` + language;
 
-    // Inject dictionary entries whose keywords appear in the current location context
-    // (location + entities present), the action, or the message history. Scanning the
-    // location context activates lore proactively the same turn a term enters play,
-    // rather than a turn late. The always-present world description is intentionally
-    // excluded so its terms don't fire every turn.
-    const activatedEntries = getActivatedDictionary(dictionary, [
-      ctx["<LOCATION>"],
-      ctx["<ENTITIES>"],
-      action,
-      ...fullMessageHistory.map((m) => m.content),
-    ]);
-    const dictionaryContext = buildDictionaryContext(activatedEntries);
-    if (dictionaryContext) {
-      updatedPrompt += `\n\n${restyle(dictionaryContext, activeSectionStyle)}`;
+    // Backward-compat: a prompt customized before the <DICTIONARY> chip existed still gets its lore, appended
+    // (with heading) as it was before. Prompts that carry the chip render it inline above (skip the append).
+    if (!systemPrompt.includes("<DICTIONARY>")) {
+      const dictionaryContext = buildDictionaryContext(activatedEntries);
+      if (dictionaryContext) {
+        updatedPrompt += `\n\n${restyle(dictionaryContext, activeSectionStyle)}`;
+      }
     }
 
     // Get trimmed history before adding new action (history fills the window left by the prompt).
@@ -884,8 +896,11 @@ ${playerNotes || NONE_PLACEHOLDER}
         ...recentParticipants(fullMessageHistory, CHOICES_PRESENCE_TURNS - 1),
       ]);
       const sceneEntities = allEntities.filter((e) => presentNames.has(e.name));
-      const sceneEntityData = buildEntityContext(withDiscovered(currentLocation), sceneEntities);
-      const sceneEntitySummary = buildEntityContext(withDiscovered(currentLocation), sceneEntities, { preferSummary: true });
+      const sceneLoc = withDiscovered(currentLocation);
+      const sceneEntityData = buildEntityContext(sceneLoc, sceneEntities);
+      const sceneEntitySummary = buildEntityContext(sceneLoc, sceneEntities, { preferSummary: true });
+      const sceneEntityDataMd = buildEntityContext(sceneLoc, sceneEntities, { format: "markdown" });
+      const sceneEntitySummaryMd = buildEntityContext(sceneLoc, sceneEntities, { preferSummary: true, format: "markdown" });
 
       // Auto-narrate the new game text if a TTS model is loaded. When streaming is off, block the trailing
       // choices/stat/location requests until the audio has finished generating (avoids GPU contention). When
@@ -903,9 +918,12 @@ ${playerNotes || NONE_PLACEHOLDER}
       if (choicesEnabled) {
         let updatedChoicesPrompt = renderPromptTemplate(choicesPrompt, {
           ...ctx,
-          // Choices see only who is actually in the scene, not the whole location roster.
+          // Choices see only who is actually in the scene, not the whole location roster — override every
+          // entity form so whichever the (editable) choices prompt uses gets the scene roster, not all present.
           "<ENTITIES>": sceneEntityData,
           "<ENTITIES|summary>": sceneEntitySummary,
+          "<ENTITIES|markdown>": sceneEntityDataMd,
+          "<ENTITIES|summary.markdown>": sceneEntitySummaryMd,
         });
 
         if (language.toLowerCase() != "english")
@@ -1453,11 +1471,13 @@ ${playerNotes || NONE_PLACEHOLDER}
     if (due.length === 0) return;
     // Oldest due turn first — it's closest to leaving the context window (matters when backfilling).
     const turnId = due[due.length - 1];
-    const dueTurn = fullMessageHistory
-      .map((m) => (m.role === "assistant" ? parseTurnContent(m.content) : null))
-      .find((c) => c?.turnId === turnId);
-    const narrationText = dueTurn?.narration ?? "";
+    const idx = fullMessageHistory.findIndex(
+      (m) => m.role === "assistant" && parseTurnContent(m.content)?.turnId === turnId,
+    );
+    const narrationText = idx >= 0 ? parseTurnContent(fullMessageHistory[idx].content)?.narration ?? "" : "";
     if (!narrationText.trim()) return;
+    // The digest runs on an aged-out turn, so its action is the paired user message (as parseTurns pairs them).
+    const playerAction = idx > 0 && fullMessageHistory[idx - 1].role === "user" ? fullMessageHistory[idx - 1].content : "";
 
     digestDrainingRef.current = true;
     setDigestActive(true);
@@ -1465,7 +1485,7 @@ ${playerNotes || NONE_PLACEHOLDER}
       try {
         const digest = await makeAIRequestRef.current(
           renderPromptTemplate(summaryPrompt, buildContextValues()),
-          [{ role: "user", content: renderPromptTemplate(summaryUserPrompt, { "<NARRATION>": narrationText }) }],
+          [{ role: "user", content: renderPromptTemplate(summaryUserPrompt, { "<PLAYER ACTION>": playerAction, "<NARRATION>": narrationText }) }],
           "summary",
           DIGEST_MAX_TOKENS,
           undefined,
