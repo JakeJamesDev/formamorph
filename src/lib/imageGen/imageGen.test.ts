@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, afterEach } from 'vitest';
-import { buildA1111Body, parseA1111Response, a1111Provider } from './a1111';
+import { buildA1111Body, parseA1111Response, parseProgress, a1111Provider } from './a1111';
 import { nearestOpenAISize, parseOpenAIResponse } from './openai';
 import { generateImage } from './index';
 import type { ImageGenParams } from './types';
@@ -43,6 +43,17 @@ describe('buildA1111Body', () => {
   it('coerces a non-finite seed to -1 (random)', () => {
     expect(buildA1111Body({ ...params, seed: NaN }).seed).toBe(-1);
   });
+
+  it('omits alwayson_scripts unless ADetailer is enabled', () => {
+    expect(buildA1111Body(params).alwayson_scripts).toBeUndefined();
+    expect(buildA1111Body({ ...params, adetailer: false }).alwayson_scripts).toBeUndefined();
+  });
+
+  it('adds the ADetailer alwayson_scripts block when enabled', () => {
+    const body = buildA1111Body({ ...params, adetailer: true });
+    expect(body.alwayson_scripts?.ADetailer.args[0]).toBe(true);
+    expect(body.alwayson_scripts?.ADetailer.args[2]).toHaveProperty('ad_model');
+  });
 });
 
 describe('parseA1111Response', () => {
@@ -58,6 +69,25 @@ describe('parseA1111Response', () => {
   it('throws when no image is present', () => {
     expect(() => parseA1111Response({ images: [] })).toThrow();
     expect(() => parseA1111Response({})).toThrow();
+  });
+});
+
+describe('parseProgress', () => {
+  it('passes through progress and clamps out-of-range values', () => {
+    expect(parseProgress({ progress: 0.42 }).progress).toBe(0.42);
+    expect(parseProgress({ progress: 1.5 }).progress).toBe(1);
+    expect(parseProgress({ progress: -0.2 }).progress).toBe(0);
+    expect(parseProgress({}).progress).toBe(0);
+  });
+
+  it('turns a bare current_image into a PNG data-URL, passes through a prefixed one', () => {
+    expect(parseProgress({ progress: 0.5, current_image: 'QUJD' }).preview).toBe('data:image/png;base64,QUJD');
+    expect(parseProgress({ progress: 0.5, current_image: 'data:image/png;base64,QUJD' }).preview).toBe('data:image/png;base64,QUJD');
+  });
+
+  it('leaves preview undefined when there is no current_image', () => {
+    expect(parseProgress({ progress: 0.5, current_image: null }).preview).toBeUndefined();
+    expect(parseProgress({ progress: 0.5 }).preview).toBeUndefined();
   });
 });
 

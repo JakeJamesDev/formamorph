@@ -1,6 +1,6 @@
 // Automatic1111 / Forge txt2img provider. The user launches the WebUI with
 // `--api --cors-allow-origins=<origin>`; we POST to `${endpointUrl}/sdapi/v1/txt2img`.
-import type { ImageGenOpts, ImageGenParams, ImageProvider } from './types';
+import type { ImageGenOpts, ImageGenParams, ImageProgress, ImageProvider } from './types';
 
 interface A1111Body {
   prompt: string;
@@ -15,6 +15,7 @@ interface A1111Body {
   n_iter: number;
   send_images: boolean;
   override_settings?: { sd_model_checkpoint: string };
+  alwayson_scripts?: { ADetailer: { args: [boolean, boolean, { ad_model: string }] } };
 }
 
 interface A1111Response {
@@ -37,6 +38,8 @@ export function buildA1111Body(params: ImageGenParams): A1111Body {
     send_images: true,
   };
   if (params.model) body.override_settings = { sd_model_checkpoint: params.model };
+  // ADetailer runs a second face/hand inpainting pass. Requires the extension on the server.
+  if (params.adetailer) body.alwayson_scripts = { ADetailer: { args: [true, false, { ad_model: 'face_yolov8n.pt' }] } };
   return body;
 }
 
@@ -48,19 +51,61 @@ export function parseA1111Response(json: unknown): string {
   return first.startsWith('data:') ? first : `data:image/png;base64,${first}`;
 }
 
+interface A1111Progress {
+  progress?: number;
+  current_image?: string | null;
+}
+
+/** Map an A1111 /progress response to our shape: clamp progress, turn the live frame into a data-URL. */
+export function parseProgress(json: unknown): ImageProgress {
+  const p = json as A1111Progress;
+  const progress = Math.min(1, Math.max(0, typeof p?.progress === 'number' ? p.progress : 0));
+  const img = p?.current_image;
+  const preview = img ? (img.startsWith('data:') ? img : `data:image/png;base64,${img}`) : undefined;
+  return { progress, preview };
+}
+
 /** Strip a trailing slash so `${base}/sdapi/...` doesn't double up. */
 const trimUrl = (u: string) => u.replace(/\/+$/, '');
 
+const POLL_INTERVAL_MS = 700;
+
+/** Best-effort progress polling for A1111. Recursive setTimeout so polls never overlap; stops on abort or
+ *  when `.stop()` is called; swallows all errors (progress is non-critical). */
+function startProgressPoller(base: string, opts: ImageGenOpts): { stop: () => void } {
+  let stopped = false;
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  const headers: Record<string, string> = opts.apiToken ? { Authorization: `Basic ${opts.apiToken}` } : {};
+  const tick = async () => {
+    if (stopped || opts.signal?.aborted) return;
+    try {
+      const res = await fetch(`${base}/sdapi/v1/progress?skip_current_image=false`, { headers, signal: opts.signal });
+      if (res.ok && !stopped) opts.onProgress?.(parseProgress(await res.json()));
+    } catch {
+      // ignore — progress is best-effort
+    }
+    if (!stopped && !opts.signal?.aborted) timer = setTimeout(tick, POLL_INTERVAL_MS);
+  };
+  timer = setTimeout(tick, POLL_INTERVAL_MS);
+  return { stop: () => { stopped = true; if (timer) clearTimeout(timer); } };
+}
+
 export const a1111Provider: ImageProvider = async (params: ImageGenParams, opts: ImageGenOpts) => {
-  const res = await fetch(`${trimUrl(opts.endpointUrl)}/sdapi/v1/txt2img`, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      ...(opts.apiToken ? { Authorization: `Basic ${opts.apiToken}` } : {}),
-    },
-    body: JSON.stringify(buildA1111Body(params)),
-    signal: opts.signal,
-  });
-  if (!res.ok) throw new Error(`HTTP ${res.status}`);
-  return parseA1111Response(await res.json());
+  const base = trimUrl(opts.endpointUrl);
+  const poller = opts.onProgress ? startProgressPoller(base, opts) : undefined;
+  try {
+    const res = await fetch(`${base}/sdapi/v1/txt2img`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        ...(opts.apiToken ? { Authorization: `Basic ${opts.apiToken}` } : {}),
+      },
+      body: JSON.stringify(buildA1111Body(params)),
+      signal: opts.signal,
+    });
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    return parseA1111Response(await res.json());
+  } finally {
+    poller?.stop();
+  }
 };

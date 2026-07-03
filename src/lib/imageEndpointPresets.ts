@@ -4,7 +4,7 @@ import {
   DEFAULT_IMAGE_PROVIDER, DEFAULT_IMAGE_ENDPOINT, DEFAULT_IMAGE_API_TOKEN, DEFAULT_IMAGE_MODEL,
   DEFAULT_IMAGE_POSITIVE, DEFAULT_IMAGE_NEGATIVE, DEFAULT_IMAGE_PORTRAIT_WIDTH, DEFAULT_IMAGE_PORTRAIT_HEIGHT,
   DEFAULT_IMAGE_LANDSCAPE_WIDTH, DEFAULT_IMAGE_LANDSCAPE_HEIGHT, DEFAULT_IMAGE_STEPS, DEFAULT_IMAGE_CFG,
-  DEFAULT_IMAGE_SAMPLER,
+  DEFAULT_IMAGE_SAMPLER, DEFAULT_IMAGE_ADETAILER,
 } from '../contexts/settingsDefaults';
 
 /** The full Image Gen → Endpoint field set a preset captures (everything except the Tag Prompt sub-tab). */
@@ -22,6 +22,7 @@ export interface ImageEndpointValues {
   steps: number;
   cfg: number;
   sampler: string;
+  adetailer: boolean;
 }
 
 export type ImageEndpointValueKey = keyof ImageEndpointValues;
@@ -52,6 +53,7 @@ export const DEFAULT_IMAGE_ENDPOINT_VALUES: ImageEndpointValues = {
   steps: DEFAULT_IMAGE_STEPS,
   cfg: DEFAULT_IMAGE_CFG,
   sampler: DEFAULT_IMAGE_SAMPLER,
+  adetailer: DEFAULT_IMAGE_ADETAILER,
 };
 
 export const DEFAULT_IMAGE_PRESET_ID = 'default';
