@@ -19,6 +19,8 @@
     "preview": "vite preview",
     "desktop:dev": "vite build && electron .",
     "desktop:build": "vite build && electron-builder --win portable",
+    "desktop:build:linux": "vite build && electron-builder --linux AppImage",
+    "desktop:build:mac": "vite build && electron-builder --mac dmg",
     "vram-helper": "node scripts/vram-helper.mjs",
     "baseline": "node testing/baseline/harness/run.mjs"
   },
