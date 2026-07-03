@@ -81,6 +81,20 @@ export function useDiscoverFilters(
     setHiddenTags([]);
     setHiddenAuthors([]);
   };
+  // Whole-array setters for the Hidden popover's tag/author autocomplete boxes (TokenAutocomplete
+  // hands back the full array and allows free text, so normalize the same way the single-add helpers do).
+  const setHiddenTagsList = (tags: string[]) =>
+    setHiddenTags(Array.from(new Set(tags.map(sanitizeTag).filter(Boolean))));
+  const setHiddenAuthorsList = (names: string[]) => {
+    const seen = new Set<string>();
+    const out: string[] = [];
+    for (const raw of names) {
+      const n = String(raw || '').trim();
+      const key = n.toLowerCase();
+      if (n && !seen.has(key)) { seen.add(key); out.push(n); }
+    }
+    setHiddenAuthors(out);
+  };
   const unhideWorld = (id: string) => setHiddenWorldIds((prev) => prev.filter((w) => w !== id));
   const unhideTag = (tag: string) => setHiddenTags((prev) => prev.filter((t) => t !== tag));
   const unhideAuthor = (name: string) => setHiddenAuthors((prev) => prev.filter((a) => a !== name));
@@ -171,6 +185,7 @@ export function useDiscoverFilters(
     currentPage, setCurrentPage,
     hiddenWorldIds, hiddenTags, hiddenAuthors,
     hideRemoteWorld, hideRemoteTag, hideRemoteAuthor,
+    setHiddenTagsList, setHiddenAuthorsList,
     resetHiddenWorlds, unhideWorld, unhideTag, unhideAuthor, hiddenWorldName,
     allAuthors, allTags,
     filteredRemoteWorlds, totalPages, pagedRemoteWorlds,
