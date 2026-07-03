@@ -5,7 +5,7 @@ import 'react-toastify/dist/ReactToastify.css';
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {ConfirmDialog} from "@/components/ConfirmDialog";
-import {FilePlus2, DoorOpen, Pencil, Github, AlertTriangle, Code, User, LogIn, LogOut, Upload, Import, Globe, Settings, LayoutGrid, GalleryThumbnails, Columns2, RectangleVertical } from "lucide-react";
+import {FilePlus2, DoorOpen, Pencil, Github, AlertTriangle, Code, User, LogIn, LogOut, Import, Globe, Settings, LayoutGrid, GalleryThumbnails, Columns2, RectangleVertical } from "lucide-react";
 import { ImageZoomViewer } from "@/components/ImageZoomViewer";
 import { cn } from "@/lib/utils";
 import { usePersistentState, boolCodec } from "@/lib/usePersistentState";
@@ -778,6 +778,9 @@ const MainMenu = ({ onStartGame, onOpenWorldEditor }: MainMenuProps) => {
                     <FilePlus2 className="mr-2 h-4 w-4" /> Duplicate World
                   </Button>
 
+                  {/* Publishing disabled for the 2.0.0 alpha — not an official release yet, so we don't want
+                      testers contaminating the live workshop server. Re-enable this button (and the `Upload`
+                      import) when 2.0.0 ships.
                   {isAuthenticated && (
                     <Button
                       className="w-full bg-gradient-to-r from-red-100 to-red-200 hover:from-purple-200 hover:to-indigo-300 text-black font-bold"
@@ -785,7 +788,7 @@ const MainMenu = ({ onStartGame, onOpenWorldEditor }: MainMenuProps) => {
                     >
                       <Upload className="mr-2 h-4 w-4" /> Publish World
                     </Button>
-                  )}
+                  )} */}
                 </div>
               }
             />

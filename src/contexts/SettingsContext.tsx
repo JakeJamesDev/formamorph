@@ -155,7 +155,7 @@ function useProvideSettings() {
     return () => clearTimeout(id);
   }, [useCustomEndpoint, detectContextWindow]);
 
-  const [thinkingMode, setThinkingMode] = usePersistentState<ThinkingMode>(`${APP_ID}_thinkingMode`, 'precall', {
+  const [thinkingMode, setThinkingMode] = usePersistentState<ThinkingMode>(`${APP_ID}_thinkingMode`, 'off', {
     parse: (r) => (r === 'precall' || r === 'inline' || r === 'staged' ? r : 'off'),
     serialize: (v) => v,
   });
