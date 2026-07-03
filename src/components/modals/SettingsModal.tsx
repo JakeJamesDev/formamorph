@@ -8,12 +8,14 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem, SelectSeparator } from "@/components/ui/select";
 import PromptField from '../prompt/PromptField';
-import { PROMPT_KIND_VARIABLES, PROMPT_KIND_USER_VARIABLES } from '@/lib/promptVariables';
+import { PROMPT_KIND_VARIABLES, PROMPT_KIND_USER_VARIABLES, SUBJECT } from '@/lib/promptVariables';
 import { ConfirmDialog } from '../ConfirmDialog';
 import { PresetNameDialog } from './PresetNameDialog';
 import { defaultSystemPrompt, defaultChoicesPrompt, defaultStatUpdatesPrompt, defaultLocationChangePrompt, defaultThinkingPrompt, defaultSummaryPrompt, defaultChoicesUserPrompt, defaultStatUpdatesUserPrompt, defaultLocationChangeUserPrompt, defaultSummaryUserPrompt, defaultDiaryPrompt, defaultDirectorPrompt, defaultDirectorUserPrompt, defaultCharacterPrompt, defaultStoryboardPrompt } from '../game/GamePrompts';
 import VramReadout from '../game/VramReadout';
 import { useVramStats } from '@/lib/useVramStats';
+import { isDesktop } from '@/lib/imageGen/desktop';
+import { DEFAULT_TAG_PROMPT, SUBJECT_GUIDANCE } from '@/lib/imagePrompt';
 
 // Segmented-control options: a short tab label plus the helper text shown below the selected one.
 const OUTPUT_LENGTH_OPTIONS: { value: ParagraphLimit; label: string; help: string }[] = [
@@ -144,9 +146,34 @@ export const SettingsModal = ({ isOpen, onOpenChange, previewValues }: {
     setAutoscroll,
     markdownOutput,
     setMarkdownOutput,
+    imageProvider,
+    setImageProvider,
+    imageEndpoint,
+    setImageEndpoint,
+    imageApiToken,
+    setImageApiToken,
+    imageModel,
+    setImageModel,
+    imagePositivePrompt,
+    setImagePositivePrompt,
+    imageNegativePrompt,
+    setImageNegativePrompt,
+    imageWidth,
+    setImageWidth,
+    imageHeight,
+    setImageHeight,
+    imageSteps,
+    setImageSteps,
+    imageCfg,
+    setImageCfg,
+    imageSampler,
+    setImageSampler,
+    imageTagPrompt,
+    setImageTagPrompt,
     vramHelperUrl,
     setVramHelperUrl
   } = useSettings();
+  const desktop = isDesktop();
   const vramStats = useVramStats(vramHelperUrl, { enabled: isOpen });
   const handleResetEndpointSettings = () => {
     setEndpointUrl(DEFAULT_ENDPOINT);
@@ -254,10 +281,11 @@ export const SettingsModal = ({ isOpen, onOpenChange, previewValues }: {
           <DialogTitle>Settings</DialogTitle>
         </DialogHeader>
         <Tabs defaultValue="presentation" className="w-full flex flex-col flex-1 min-h-0">
-          <TabsList className="grid w-full grid-cols-5 flex-shrink-0">
+          <TabsList className="grid w-full grid-cols-6 flex-shrink-0">
             <TabsTrigger value="presentation">Presentation</TabsTrigger>
             <TabsTrigger value="generation">Generation</TabsTrigger>
             <TabsTrigger value="endpoint">Endpoint</TabsTrigger>
+            <TabsTrigger value="image">Image Gen</TabsTrigger>
             <TabsTrigger value="prompts">System Prompts</TabsTrigger>
             <TabsTrigger value="hardware">Hardware</TabsTrigger>
           </TabsList>
@@ -557,6 +585,101 @@ export const SettingsModal = ({ isOpen, onOpenChange, previewValues }: {
                 </ConfirmDialog>
               </div>
             </div>
+          </TabsContent>
+
+          <TabsContent value="image" className="py-4 px-2 flex-1 min-h-0 data-[state=active]:flex flex-col">
+            <Tabs defaultValue="img-endpoint" className="flex flex-col flex-1 min-h-0">
+              <TabsList className="grid w-full grid-cols-2 flex-shrink-0">
+                <TabsTrigger value="img-endpoint">Endpoint</TabsTrigger>
+                <TabsTrigger value="img-tagprompt">Tag Prompt</TabsTrigger>
+              </TabsList>
+              <TabsContent value="img-endpoint" className="pt-4 flex-1 min-h-0 overflow-y-auto">
+            <div className="grid gap-4">
+              <div className="grid grid-cols-[1fr_3fr] items-center gap-4">
+                <label htmlFor="imageProvider" className="text-right">Provider</label>
+                <Select value={imageProvider} onValueChange={(v) => setImageProvider(v as typeof imageProvider)}>
+                  <SelectTrigger id="imageProvider">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="a1111">Automatic1111 / Forge (local)</SelectItem>
+                    <SelectItem value="openai" disabled={!desktop}>
+                      OpenAI-compatible (cloud){desktop ? '' : ' — desktop app only'}
+                    </SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="grid grid-cols-[1fr_3fr] gap-4">
+                <div />
+                <p className="text-xs text-muted-foreground">
+                  {imageProvider === 'a1111'
+                    ? 'Launch the WebUI with --api --cors-allow-origins=<this app’s origin> so the browser can reach it.'
+                    : 'Cloud image APIs are proxied through the Formamorph desktop app (they can’t be called from a browser). Your key stays on your machine.'}
+                </p>
+              </div>
+              <div className="grid grid-cols-[1fr_3fr] items-center gap-4">
+                <label htmlFor="imageEndpoint" className="text-right">Endpoint URL</label>
+                <Input id="imageEndpoint" value={imageEndpoint} onChange={(e) => setImageEndpoint(e.target.value)} placeholder="http://127.0.0.1:7860" />
+              </div>
+              <div className="grid grid-cols-[1fr_3fr] items-center gap-4">
+                <label htmlFor="imageApiToken" className="text-right">API Token</label>
+                <Input id="imageApiToken" type="password" value={imageApiToken} onChange={(e) => setImageApiToken(e.target.value)} />
+              </div>
+              <div className="grid grid-cols-[1fr_3fr] items-center gap-4">
+                <label htmlFor="imageModel" className="text-right">Model</label>
+                <Input id="imageModel" value={imageModel} onChange={(e) => setImageModel(e.target.value)} placeholder="(server default)" />
+              </div>
+              <div className="grid grid-cols-[1fr_3fr] items-start gap-4">
+                <label htmlFor="imagePositivePrompt" className="text-right pt-2">Prompt Prefix</label>
+                <div className="grid gap-1.5">
+                  <Input id="imagePositivePrompt" value={imagePositivePrompt} onChange={(e) => setImagePositivePrompt(e.target.value)} placeholder="e.g. masterpiece, best quality" />
+                  <p className="text-xs text-muted-foreground">Prepended to every generated prompt (quality/style tags). Leave blank for none.</p>
+                </div>
+              </div>
+              <div className="grid grid-cols-[1fr_3fr] items-start gap-4">
+                <label htmlFor="imageNegativePrompt" className="text-right pt-2">Negative Prompt</label>
+                <Input id="imageNegativePrompt" value={imageNegativePrompt} onChange={(e) => setImageNegativePrompt(e.target.value)} />
+              </div>
+              <div className="grid grid-cols-[1fr_3fr] items-center gap-4">
+                <label className="text-right">Size (W × H)</label>
+                <div className="flex items-center gap-2">
+                  <Input aria-label="Width" type="number" min={64} step={64} value={imageWidth} onChange={(e) => setImageWidth(Number(e.target.value))} className="w-28" />
+                  <span className="text-muted-foreground">×</span>
+                  <Input aria-label="Height" type="number" min={64} step={64} value={imageHeight} onChange={(e) => setImageHeight(Number(e.target.value))} className="w-28" />
+                </div>
+              </div>
+              <div className="grid grid-cols-[1fr_3fr] items-center gap-4">
+                <label className="text-right">Steps / CFG</label>
+                <div className="flex items-center gap-2">
+                  <Input aria-label="Steps" type="number" min={1} value={imageSteps} onChange={(e) => setImageSteps(Number(e.target.value))} className="w-28" />
+                  <Input aria-label="CFG scale" type="number" min={0} step={0.5} value={imageCfg} onChange={(e) => setImageCfg(Number(e.target.value))} className="w-28" />
+                </div>
+              </div>
+              <div className="grid grid-cols-[1fr_3fr] items-center gap-4">
+                <label htmlFor="imageSampler" className="text-right">Sampler</label>
+                <Input id="imageSampler" value={imageSampler} onChange={(e) => setImageSampler(e.target.value)} placeholder="Euler a" />
+              </div>
+            </div>
+              </TabsContent>
+              <TabsContent value="img-tagprompt" className="pt-4 flex-1 min-h-0 data-[state=active]:flex flex-col gap-2">
+                <p className="text-xs text-muted-foreground flex-shrink-0">
+                  The prompt sent to your text model to turn a subject’s description into booru tags. The
+                  <span className="mx-1 font-medium">Subject</span>chip expands per kind — character: “{SUBJECT_GUIDANCE.character}”; location: “{SUBJECT_GUIDANCE.location}”; world: “{SUBJECT_GUIDANCE.world}”.
+                </p>
+                <PromptField value={imageTagPrompt} onChange={setImageTagPrompt} variables={[SUBJECT]} />
+                <div className="flex justify-end flex-shrink-0">
+                  <ConfirmDialog
+                    title="Reset Tag Prompt"
+                    description="Reset the image tag prompt to its default? Your edits will be lost."
+                    onConfirm={() => setImageTagPrompt(DEFAULT_TAG_PROMPT)}
+                  >
+                    <Button variant="outline" size="sm" disabled={imageTagPrompt === DEFAULT_TAG_PROMPT}>
+                      Reset to default
+                    </Button>
+                  </ConfirmDialog>
+                </div>
+              </TabsContent>
+            </Tabs>
           </TabsContent>
 
           <TabsContent value="prompts" className="pt-4 px-2 pb-4 flex-1 min-h-0 data-[state=active]:flex flex-col gap-4">

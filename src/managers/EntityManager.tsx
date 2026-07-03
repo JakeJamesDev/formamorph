@@ -7,6 +7,7 @@ import { MultiSelect } from "@/components/ui/multi-select";
 import GenerateSummaryButton from "@/components/GenerateSummaryButton";
 import { ImageUpload, ModelUpload } from '../lib/UtilityComponents';
 import { IMAGE_CAPS } from '../lib/imageOptim';
+import { GenerateImageButton } from '../components/GenerateImageButton';
 import type { Entity } from '@/types';
 
 const EntityManager = ({ entity }: { entity: Entity }) => {
@@ -111,6 +112,11 @@ const EntityManager = ({ entity }: { entity: Entity }) => {
           id={`entity-image-${editingEntity.id}`}
           value={editingEntity.image}
           cap={IMAGE_CAPS.entity}
+        />
+        <GenerateImageButton
+          subject={{ name: editingEntity.name || '', description: editingEntity.aiDescription || editingEntity.playerDescription || '', kind: 'character' }}
+          cap={IMAGE_CAPS.entity}
+          onChange={(file) => handleChange('image', file)}
         />
       </div>
       {/* <div className="space-y-2">

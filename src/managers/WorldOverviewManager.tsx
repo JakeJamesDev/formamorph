@@ -8,6 +8,7 @@ import { toast } from 'react-toastify';
 import AudioPlayer from '../components/game/AudioPlayer';
 import { ImageUpload } from '../lib/UtilityComponents';
 import { IMAGE_CAPS } from '../lib/imageOptim';
+import { GenerateImageButton } from '../components/GenerateImageButton';
 
 const WorldOverviewManager = () => {
   const { worldOverview, updateWorldOverview } = useGameData();
@@ -144,6 +145,13 @@ const WorldOverviewManager = () => {
           objectFit="cover"
           previewClassName="w-[350px] h-[262.5px] relative bg-gray-100 rounded-md cursor-pointer hover:bg-gray-200 transition-colors mx-auto"
         />
+        <div className="flex justify-center">
+          <GenerateImageButton
+            subject={{ name: worldOverview.name || '', description: worldOverview.description || worldOverview.systemPrompt || '', kind: 'world' }}
+            cap={IMAGE_CAPS.thumbnail}
+            onChange={(v) => updateWorldOverview({ thumbnail: v })}
+          />
+        </div>
       </div>
       <div className="space-y-2">
         <Label htmlFor="bgm">Background Music</Label>

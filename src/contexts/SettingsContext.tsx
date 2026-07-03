@@ -1,6 +1,8 @@
 import { createContext, useContext, useState, useEffect, useRef, useCallback, useMemo, type ReactNode } from 'react';
 import { defaultSystemPrompt, defaultChoicesPrompt, defaultStatUpdatesPrompt, defaultLocationChangePrompt, defaultThinkingPrompt, defaultSummaryPrompt, defaultChoicesUserPrompt, defaultStatUpdatesUserPrompt, defaultLocationChangeUserPrompt, defaultSummaryUserPrompt, defaultDiaryPrompt, defaultDirectorPrompt, defaultDirectorUserPrompt, defaultCharacterPrompt, defaultStoryboardPrompt } from '../components/game/GamePrompts';
-import { DEFAULT_ENDPOINT, DEFAULT_API_TOKEN, DEFAULT_MODEL_NAME, DEFAULT_MAX_TOKENS, DEFAULT_CONTEXT_WINDOW } from './settingsDefaults';
+import { DEFAULT_ENDPOINT, DEFAULT_API_TOKEN, DEFAULT_MODEL_NAME, DEFAULT_MAX_TOKENS, DEFAULT_CONTEXT_WINDOW, DEFAULT_IMAGE_PROVIDER, DEFAULT_IMAGE_ENDPOINT, DEFAULT_IMAGE_API_TOKEN, DEFAULT_IMAGE_MODEL, DEFAULT_IMAGE_POSITIVE, DEFAULT_IMAGE_NEGATIVE, DEFAULT_IMAGE_WIDTH, DEFAULT_IMAGE_HEIGHT, DEFAULT_IMAGE_STEPS, DEFAULT_IMAGE_CFG, DEFAULT_IMAGE_SAMPLER } from './settingsDefaults';
+import type { ImageProviderId } from '../lib/imageGen';
+import { DEFAULT_TAG_PROMPT } from '../lib/imagePrompt';
 import { fetchContextLength } from '../lib/contextLength';
 import { usePersistentState, stringCodec, boolCodec, intCodec, floatCodec, nullableIntCodec } from '../lib/usePersistentState';
 import {
@@ -214,6 +216,25 @@ function useProvideSettings() {
   const [statUpdatesVerbatimTurns, setStatUpdatesVerbatimTurns] = usePersistentState<number>(`${APP_ID}_statUpdatesVerbatimTurns`, 3, intCodec);
   const [locationChangeVerbatimTurns, setLocationChangeVerbatimTurns] = usePersistentState<number>(`${APP_ID}_locationChangeVerbatimTurns`, 3, intCodec);
   const [summaryVerbatimTurns, setSummaryVerbatimTurns] = usePersistentState<number>(`${APP_ID}_summaryVerbatimTurns`, 3, intCodec);
+  // Image generation config (Settings → Image Generation). No shared hosted server, so these are always
+  // the user's own values (a local A1111/Forge, or a cloud provider proxied by the desktop build).
+  const [imageProvider, setImageProvider] = usePersistentState<ImageProviderId>(`${APP_ID}_imageProvider`, DEFAULT_IMAGE_PROVIDER as ImageProviderId, {
+    parse: (r) => (r === 'a1111' || r === 'openai' ? r : DEFAULT_IMAGE_PROVIDER as ImageProviderId),
+    serialize: (v) => v,
+  });
+  const [imageEndpoint, setImageEndpoint] = usePersistentState<string>(`${APP_ID}_imageEndpoint`, DEFAULT_IMAGE_ENDPOINT, stringCodec);
+  const [imageApiToken, setImageApiToken] = usePersistentState<string>(`${APP_ID}_imageApiToken`, DEFAULT_IMAGE_API_TOKEN, stringCodec);
+  const [imageModel, setImageModel] = usePersistentState<string>(`${APP_ID}_imageModel`, DEFAULT_IMAGE_MODEL, stringCodec);
+  const [imagePositivePrompt, setImagePositivePrompt] = usePersistentState<string>(`${APP_ID}_imagePositivePrompt`, DEFAULT_IMAGE_POSITIVE, stringCodec);
+  const [imageNegativePrompt, setImageNegativePrompt] = usePersistentState<string>(`${APP_ID}_imageNegativePrompt`, DEFAULT_IMAGE_NEGATIVE, stringCodec);
+  const [imageWidth, setImageWidth] = usePersistentState<number>(`${APP_ID}_imageWidth`, DEFAULT_IMAGE_WIDTH, intCodec);
+  const [imageHeight, setImageHeight] = usePersistentState<number>(`${APP_ID}_imageHeight`, DEFAULT_IMAGE_HEIGHT, intCodec);
+  const [imageSteps, setImageSteps] = usePersistentState<number>(`${APP_ID}_imageSteps`, DEFAULT_IMAGE_STEPS, intCodec);
+  const [imageCfg, setImageCfg] = usePersistentState<number>(`${APP_ID}_imageCfg`, DEFAULT_IMAGE_CFG, floatCodec);
+  const [imageSampler, setImageSampler] = usePersistentState<string>(`${APP_ID}_imageSampler`, DEFAULT_IMAGE_SAMPLER, stringCodec);
+  // User-editable prompt that turns a subject's description into booru tags (Settings → Image Gen → Tag Prompt).
+  const [imageTagPrompt, setImageTagPrompt] = usePersistentState<string>(`${APP_ID}_imageTagPrompt`, DEFAULT_TAG_PROMPT, stringCodec);
+
   const [vramHelperUrl, setVramHelperUrl] = usePersistentState<string>(`${APP_ID}_vramHelperUrl`, 'http://localhost:5179', stringCodec);
   const [ttsVolume, setTtsVolume] = usePersistentState<number>(`${APP_ID}_ttsVolume`, 1, floatCodec);
   const [ttsSpeed, setTtsSpeed] = usePersistentState<number>(`${APP_ID}_ttsSpeed`, 1, floatCodec);
@@ -318,6 +339,30 @@ function useProvideSettings() {
     renamePreset,
     deletePreset,
     resetPreset,
+    imageProvider,
+    setImageProvider,
+    imageEndpoint,
+    setImageEndpoint,
+    imageApiToken,
+    setImageApiToken,
+    imageModel,
+    setImageModel,
+    imagePositivePrompt,
+    setImagePositivePrompt,
+    imageNegativePrompt,
+    setImageNegativePrompt,
+    imageWidth,
+    setImageWidth,
+    imageHeight,
+    setImageHeight,
+    imageSteps,
+    setImageSteps,
+    imageCfg,
+    setImageCfg,
+    imageSampler,
+    setImageSampler,
+    imageTagPrompt,
+    setImageTagPrompt,
     vramHelperUrl,
     setVramHelperUrl,
     ttsVolume,
