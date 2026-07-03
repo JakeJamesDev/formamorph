@@ -18,8 +18,12 @@ export const DEFAULT_IMAGE_MODEL = import.meta.env.VITE_DEFAULT_IMAGE_MODEL || '
 // model-family specific (SDXL vs Pony vs Flux want different things) — the user fills this in.
 export const DEFAULT_IMAGE_POSITIVE = import.meta.env.VITE_DEFAULT_IMAGE_POSITIVE || '';
 export const DEFAULT_IMAGE_NEGATIVE = import.meta.env.VITE_DEFAULT_IMAGE_NEGATIVE || 'lowres, bad anatomy, worst quality, low quality, watermark, text';
-export const DEFAULT_IMAGE_WIDTH = parseInt(import.meta.env.VITE_DEFAULT_IMAGE_WIDTH) || 1024;
-export const DEFAULT_IMAGE_HEIGHT = parseInt(import.meta.env.VITE_DEFAULT_IMAGE_HEIGHT) || 1024;
+// Portrait dims are used for character/entity images; landscape for location backgrounds and the world
+// thumbnail. Defaults are the standard SDXL portrait/landscape buckets.
+export const DEFAULT_IMAGE_PORTRAIT_WIDTH = parseInt(import.meta.env.VITE_DEFAULT_IMAGE_PORTRAIT_WIDTH) || 832;
+export const DEFAULT_IMAGE_PORTRAIT_HEIGHT = parseInt(import.meta.env.VITE_DEFAULT_IMAGE_PORTRAIT_HEIGHT) || 1216;
+export const DEFAULT_IMAGE_LANDSCAPE_WIDTH = parseInt(import.meta.env.VITE_DEFAULT_IMAGE_LANDSCAPE_WIDTH) || 1216;
+export const DEFAULT_IMAGE_LANDSCAPE_HEIGHT = parseInt(import.meta.env.VITE_DEFAULT_IMAGE_LANDSCAPE_HEIGHT) || 832;
 export const DEFAULT_IMAGE_STEPS = parseInt(import.meta.env.VITE_DEFAULT_IMAGE_STEPS) || 25;
 export const DEFAULT_IMAGE_CFG = parseFloat(import.meta.env.VITE_DEFAULT_IMAGE_CFG) || 7;
 export const DEFAULT_IMAGE_SAMPLER = import.meta.env.VITE_DEFAULT_IMAGE_SAMPLER || 'Euler a';
