@@ -5,9 +5,12 @@ directories:
 files:
   - dist/**/*
   - electron/**/*
+# Single icon source shared with the web favicon (public/icon.png, 512x512). electron-builder converts
+# it to .ico (Windows) and .icns (macOS) at build time and uses the PNG directly on Linux.
 win:
   target:
     - portable
+  icon: public/icon.png
 portable:
   artifactName: Formamorph-${version}.exe
 linux:
@@ -16,8 +19,10 @@ linux:
   category: Game
   artifactName: Formamorph-${version}.AppImage
   maintainer: Jake James <bennybroseph@gmail.com>
+  icon: public/icon.png
 mac:
   target:
     - dmg
   category: public.app-category.games
   artifactName: Formamorph-${version}.dmg
+  icon: public/icon.png

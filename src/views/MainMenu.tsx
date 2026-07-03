@@ -938,7 +938,7 @@ const MainMenu = ({ onStartGame, onOpenWorldEditor }: MainMenuProps) => {
 
       {/* GitHub floating button */}
       <a
-        href="https://github.com/FieryLionite/formamorph"
+        href="https://github.com/JakeJamesDev/formamorph"
         target="_blank"
         rel="noopener noreferrer"
         className="fixed bottom-4 right-4 p-3 bg-gray-800 text-white rounded-full shadow-lg hover:bg-gray-700 transition-colors"
