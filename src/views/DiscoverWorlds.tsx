@@ -25,6 +25,7 @@ import { usePersistentState, boolCodec } from "@/lib/usePersistentState";
 import { CHIP_BASE } from "@/components/Chip";
 import { useCatalogSync } from "@/lib/useCatalogSync";
 import { useDownloadCoordinator } from "@/lib/useDownloadCoordinator";
+import { useDownscalePrompt } from "@/lib/useDownscalePrompt";
 import { useDiscoverFilters } from "@/lib/useDiscoverFilters";
 import {
   Dialog,
@@ -65,13 +66,15 @@ const DiscoverWorlds = ({ open, onOpenChange, worlds, setWorlds, isAuthenticated
   const [remoteWorldToDelete, setRemoteWorldToDelete] = useState<string | null>(null);
   const [selectedRemoteWorld, setSelectedRemoteWorld] = useState<WorldRecord | null>(null);
   const [showRemoteWorldDetailsModal, setShowRemoteWorldDetailsModal] = useState(false);
+  // Offer to downscale oversized images right after a world is downloaded/overwritten.
+  const { promptWorld, dialog: downscaleDialog } = useDownscalePrompt();
   // Download flow: per-world progress, the copy-vs-overwrite decision state, and the fetch/store handlers.
   const {
     downloadProgress, contextualAction, setContextualAction,
     overwriteSelectedId, setOverwriteSelectedId, showOverwriteSelect, setShowOverwriteSelect,
     localCopiesBySource, copiesForWorld, downloadStateForWorld,
     handleContextualDownload, handleChooseOverwrite, handleConfirmOverwrite, handleDownloadWorld,
-  } = useDownloadCoordinator(worlds, setWorlds);
+  } = useDownloadCoordinator(worlds, setWorlds, (_id, data) => promptWorld(data));
 
   const [discoverModalCollapsed, setDiscoverModalCollapsed] = usePersistentState(
     DISCOVER_MODAL_COLLAPSED_KEY, false, boolCodec,
@@ -149,6 +152,7 @@ const DiscoverWorlds = ({ open, onOpenChange, worlds, setWorlds, isAuthenticated
 
   return (
     <>
+      {downscaleDialog}
       {/* Discover Dialog */}
       <Dialog open={open} onOpenChange={onOpenChange}>
         <DialogContent

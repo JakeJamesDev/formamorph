@@ -61,7 +61,7 @@ Now write my options - one per line, each a single action I take.`;
 
 export const defaultStatUpdatesUserPrompt = `Narration: <NARRATION>
 
-Output only the stat-change lines now (StatName: number), or nothing. No story, no prose.`;
+Output only the stat-change lines now - each a stat name, a colon, and a whole-number change (not a value). Or nothing. No prose.`;
 
 export const defaultLocationChangeUserPrompt = `Narration: <NARRATION>
 
@@ -111,7 +111,8 @@ export const defaultStatUpdatesPrompt = `You are the stat tracker for an interac
 <WORLD DESCRIPTION>
 
 ## Player Stats
-<STATS DESCRIPTION|markdown>
+Current readings, so you know each stat's level - output only the CHANGE this turn, never a stat's value.
+<STATS DESCRIPTION|numbers.markdown>
 
 ## Traits
 <TRAITS DESCRIPTION|markdown>
@@ -120,16 +121,11 @@ export const defaultStatUpdatesPrompt = `You are the stat tracker for an interac
 <NOTES>
 
 ## Rules
-- Output one change per line as "StatName: number". Use the exact stat names listed above as keys.
-- The number is the amount to add (negative subtracts); keep each between -20 and 20.
-- To change a stat's maximum instead of its current value, append MAX (e.g. "Health: 10 MAX" raises max Health by 10).
+- One line per changed stat: its exact name from the list above, a colon, then a single whole number - how much it changes this turn (negative lowers it). Keep each between -20 and 20.
+- Write only the change amount - never the current value, a running total, or a descriptor word.
+- To change a stat's maximum instead of its current value, add MAX after the number.
 - Only include stats that actually change this turn. If nothing changes, output nothing at all.
-- Begin your reply with the first stat line (or nothing) - never a preamble, heading, or explanation.
-
-## Example
-Hunger: -10
-Stamina: -5
-Health: 10 MAX`;
+- Begin your reply with the first stat line (or nothing) - never a preamble, heading, or explanation.`;
 
 export const defaultLocationChangePrompt = `You are the location router for an interactive roleplay. Your entire output is a single location name or the word NONE - nothing else.
 

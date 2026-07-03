@@ -59,11 +59,16 @@ export function parseStatUpdates(text: string): {
   (text || '').split('\n').forEach((line) => {
     const sep = line.indexOf(':');
     if (sep === -1) return;
-    const key = line.slice(0, sep).trim().toLowerCase();
+    // Strip leading bullet/emphasis and trailing emphasis a model may copy from the bulleted stat list
+    // ("- **Vigor:**", "**Resolve:**") so the name still matches; markdown decoration never changes the stat.
+    const key = line.slice(0, sep).replace(/^[\s*_-]+/, '').replace(/[\s*_]+$/, '').toLowerCase();
     if (!key) return;
     const rest = line.slice(sep + 1);
     const match = rest.match(/[+-]?\d+(?:\.\d+)?/);
     if (!match) return;
+    // A number immediately followed by '/' is a display echo (e.g. "25/100"), never a delta — skip the line so
+    // a weak model's format drift can't be mis-applied as a change.
+    if (/^\s*\//.test(rest.slice((match.index ?? 0) + match[0].length))) return;
     const value = Math.round(parseFloat(match[0]));
     if (Number.isNaN(value)) return;
     const bucket = /\bmax\b/i.test(rest) ? maxes : values;

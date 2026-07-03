@@ -84,7 +84,7 @@ function useProvideSettings() {
 
   const [autoscroll, setAutoscroll] = usePersistentState<boolean>(`${APP_ID}_autoscroll`, false, boolCodec);
   // Let the AI format narration with Markdown (seeds the <MARKDOWN GUIDANCE> token in the game-text prompt).
-  const [markdownOutput, setMarkdownOutput] = usePersistentState<boolean>(`${APP_ID}_markdownOutput`, false, boolCodec);
+  const [markdownOutput, setMarkdownOutput] = usePersistentState<boolean>(`${APP_ID}_markdownOutput`, true, boolCodec);
   // Synthesize narration audio sentence-by-sentence as the story streams (vs. after the full text).
   // Default off: streaming TTS competes with the LLM for the GPU when both run on one machine.
   const [streamNarrationAudio, setStreamNarrationAudio] = usePersistentState<boolean>(`${APP_ID}_streamNarrationAudio`, false, boolCodec);
@@ -155,7 +155,7 @@ function useProvideSettings() {
     return () => clearTimeout(id);
   }, [useCustomEndpoint, detectContextWindow]);
 
-  const [thinkingMode, setThinkingMode] = usePersistentState<ThinkingMode>(`${APP_ID}_thinkingMode`, 'off', {
+  const [thinkingMode, setThinkingMode] = usePersistentState<ThinkingMode>(`${APP_ID}_thinkingMode`, 'precall', {
     parse: (r) => (r === 'precall' || r === 'inline' || r === 'staged' ? r : 'off'),
     serialize: (v) => v,
   });
@@ -205,7 +205,7 @@ function useProvideSettings() {
   // Whether each optional per-turn request is sent (replaces the legacy "type DISABLED" body hack).
   const [choicesEnabled, setChoicesEnabled] = usePersistentState<boolean>(`${APP_ID}_choicesEnabled`, true, boolCodec);
   const [statUpdatesEnabled, setStatUpdatesEnabled] = usePersistentState<boolean>(`${APP_ID}_statUpdatesEnabled`, true, boolCodec);
-  const [locationChangeEnabled, setLocationChangeEnabled] = usePersistentState<boolean>(`${APP_ID}_locationChangeEnabled`, true, boolCodec);
+  const [locationChangeEnabled, setLocationChangeEnabled] = usePersistentState<boolean>(`${APP_ID}_locationChangeEnabled`, false, boolCodec);
   // How many recent turns each prompt receives verbatim (the digest-banding floor). Only Narration and
   // Thinking consume history today; the rest are stored for when those prompts gain history.
   const [narrationVerbatimTurns, setNarrationVerbatimTurns] = usePersistentState<number>(`${APP_ID}_narrationVerbatimTurns`, 3, intCodec);
