@@ -20,7 +20,7 @@ A world is exported/imported as a single JSON object. The main-menu grid reads a
 
 ## 🔖 Versioning
 
-Every world saved or exported by Formamorph 2.0+ carries a top-level `version` string (e.g. `"2.0.0"`). On import, worlds that don't match the current version are run through a **migration** that upgrades them to the current shape — so anything reaching the editor is already compatible.
+Every world saved or exported by Formamorph 2.0+ carries a top-level `version` string (e.g. `"2.0.1"`). On import, worlds that don't match the current version are run through a **migration** that upgrades them to the current shape — so anything reaching the editor is already compatible.
 
 | Field | Type | Notes |
 |---|---|---|
@@ -193,7 +193,7 @@ A trimmed example showing the shape (media payloads abbreviated):
 ```json
 {
   "id": "example-world",
-  "version": "2.0.0",
+  "version": "2.0.1",
   "worldOverview": {
     "name": "Example World",
     "description": "A sample world demonstrating the data format",

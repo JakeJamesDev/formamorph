@@ -1,6 +1,6 @@
 {
   "id": "baseline-sedge-landing",
-  "version": "2.0.0",
+  "version": "2.0.1",
   "worldOverview": {
     "name": "Sedge Landing (Baseline)",
     "description": "A fork-local SFW diagnostic world for prompt testing. Every fact is unique and unambiguous, so bad output pins to the model or the prompt, never the world.",

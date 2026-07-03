@@ -778,9 +778,9 @@ const MainMenu = ({ onStartGame, onOpenWorldEditor }: MainMenuProps) => {
                     <FilePlus2 className="mr-2 h-4 w-4" /> Duplicate World
                   </Button>
 
-                  {/* Publishing disabled for the 2.0.0 alpha — not an official release yet, so we don't want
+                  {/* Publishing disabled for the 2.0.1 alpha — not an official release yet, so we don't want
                       testers contaminating the live workshop server. Re-enable this button (and the `Upload`
-                      import) when 2.0.0 ships.
+                      import) when the release goes official.
                   {isAuthenticated && (
                     <Button
                       className="w-full bg-gradient-to-r from-red-100 to-red-200 hover:from-purple-200 hover:to-indigo-300 text-black font-bold"
