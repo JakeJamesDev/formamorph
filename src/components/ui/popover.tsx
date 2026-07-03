@@ -9,9 +9,11 @@ const PopoverTrigger = PopoverPrimitive.Trigger
 
 const PopoverContent = React.forwardRef<
   React.ElementRef<typeof PopoverPrimitive.Content>,
-  React.ComponentPropsWithoutRef<typeof PopoverPrimitive.Content>
->(({ className, align = "center", sideOffset = 4, ...props }, ref) => (
-  <PopoverPrimitive.Portal>
+  // `portal={false}` renders inline instead of portaling to <body> — needed inside a modal Dialog,
+  // whose react-remove-scroll lock swallows wheel scroll on anything portaled outside its subtree.
+  React.ComponentPropsWithoutRef<typeof PopoverPrimitive.Content> & { portal?: boolean }
+>(({ className, align = "center", sideOffset = 4, portal = true, ...props }, ref) => {
+  const content = (
     <PopoverPrimitive.Content
       ref={ref}
       align={align}
@@ -21,8 +23,9 @@ const PopoverContent = React.forwardRef<
         className
       )}
       {...props} />
-  </PopoverPrimitive.Portal>
-))
+  );
+  return portal ? <PopoverPrimitive.Portal>{content}</PopoverPrimitive.Portal> : content;
+})
 PopoverContent.displayName = PopoverPrimitive.Content.displayName
 
 export { Popover, PopoverTrigger, PopoverContent }

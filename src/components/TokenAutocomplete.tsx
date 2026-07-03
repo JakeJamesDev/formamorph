@@ -135,7 +135,12 @@ export function TokenAutocomplete({ values, onChange, options, placeholder, open
         />
       </div>
       {open && suggestions.length > 0 && (
-        <div className="absolute z-50 mt-1 w-full min-w-[180px] max-h-56 overflow-y-auto rounded-md border bg-popover p-1 text-popover-foreground shadow-md">
+        <div
+          // Keep focus on the input when the mousedown lands on the list itself (its scrollbar/padding)
+          // rather than a suggestion, so dragging the scrollbar doesn't blur-close the dropdown.
+          onMouseDown={(e) => { if (e.target === e.currentTarget) e.preventDefault(); }}
+          className="absolute z-50 mt-1 w-full min-w-[180px] max-h-56 overflow-y-auto rounded-md border bg-popover p-1 text-popover-foreground shadow-md"
+        >
           {suggestions.map((s, i) => (
             <button
               type="button"

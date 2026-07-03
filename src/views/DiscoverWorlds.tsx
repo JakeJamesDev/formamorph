@@ -88,7 +88,8 @@ const DiscoverWorlds = ({ open, onOpenChange, worlds, setWorlds, isAuthenticated
     sortUpdatesFirst, setSortUpdatesFirst, currentPage, setCurrentPage,
     hiddenWorldIds, hiddenTags, hiddenAuthors,
     hideRemoteWorld, hideRemoteTag, hideRemoteAuthor,
-    resetHiddenWorlds, unhideWorld, unhideTag, unhideAuthor, hiddenWorldName,
+    setHiddenTagsList, setHiddenAuthorsList,
+    resetHiddenWorlds, unhideWorld, hiddenWorldName,
     allAuthors, allTags, filteredRemoteWorlds, totalPages, pagedRemoteWorlds,
   } = useDiscoverFilters(remoteWorlds, localCopiesBySource, open);
 
@@ -241,11 +242,19 @@ const DiscoverWorlds = ({ open, onOpenChange, worlds, setWorlds, isAuthenticated
                     Hidden{hiddenWorldIds.length + hiddenTags.length + hiddenAuthors.length > 0 ? ` (${hiddenWorldIds.length + hiddenTags.length + hiddenAuthors.length})` : ''}
                   </Button>
                 </PopoverTrigger>
-                <PopoverContent align="start" side="bottom" className="w-72 space-y-2">
-                  {hiddenWorldIds.length === 0 && hiddenTags.length === 0 && hiddenAuthors.length === 0 ? (
-                    <p className="text-sm text-muted-foreground">Nothing hidden.</p>
-                  ) : (
-                    <>
+                <PopoverContent portal={false} align="start" side="bottom" className="w-80 space-y-3">
+                  {/* Type to hide tags/authors (autocompletes over the catalog); chips are the hidden items. */}
+                  <div className="space-y-1">
+                    <span className="text-xs font-medium text-muted-foreground">Tags</span>
+                    <TokenAutocomplete values={hiddenTags} onChange={setHiddenTagsList} options={allTags} placeholder="tag…" openOnFocus />
+                  </div>
+                  <div className="space-y-1">
+                    <span className="text-xs font-medium text-muted-foreground">Authors</span>
+                    <TokenAutocomplete values={hiddenAuthors} onChange={setHiddenAuthorsList} options={allAuthors} placeholder="author…" openOnFocus />
+                  </div>
+                  {hiddenWorldIds.length > 0 && (
+                    <div className="space-y-1">
+                      <span className="text-xs font-medium text-muted-foreground">Worlds</span>
                       <div className="flex flex-wrap gap-1">
                         {hiddenWorldIds.map((id) => (
                           <span key={`w-${id}`} className={cn(CHIP_BASE, "bg-secondary text-secondary-foreground")}>
@@ -253,23 +262,13 @@ const DiscoverWorlds = ({ open, onOpenChange, worlds, setWorlds, isAuthenticated
                             <button onClick={() => unhideWorld(id)} className="hover:text-destructive" aria-label="Unhide world"><X className="h-3 w-3" /></button>
                           </span>
                         ))}
-                        {hiddenAuthors.map((name) => (
-                          <span key={`a-${name}`} className={cn(CHIP_BASE, "bg-amber-100 dark:bg-amber-900 text-amber-800 dark:text-amber-300")}>
-                            By {name}
-                            <button onClick={() => unhideAuthor(name)} className="hover:text-destructive" aria-label="Unhide author"><X className="h-3 w-3" /></button>
-                          </span>
-                        ))}
-                        {hiddenTags.map((tag) => (
-                          <span key={`t-${tag}`} className={cn(CHIP_BASE, "bg-blue-100 dark:bg-blue-900 text-blue-800 dark:text-blue-300")}>
-                            #{tag}
-                            <button onClick={() => unhideTag(tag)} className="hover:text-destructive" aria-label="Unhide tag"><X className="h-3 w-3" /></button>
-                          </span>
-                        ))}
                       </div>
-                      <Button variant="ghost" size="sm" className="h-7 px-2 text-xs" onClick={resetHiddenWorlds}>
-                        <RotateCcw className="h-3 w-3 mr-1" /> Reset all
-                      </Button>
-                    </>
+                    </div>
+                  )}
+                  {hiddenWorldIds.length + hiddenTags.length + hiddenAuthors.length > 0 && (
+                    <Button variant="ghost" size="sm" className="h-7 px-2 text-xs" onClick={resetHiddenWorlds}>
+                      <RotateCcw className="h-3 w-3 mr-1" /> Reset all
+                    </Button>
                   )}
                 </PopoverContent>
               </Popover>
