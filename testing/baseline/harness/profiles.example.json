@@ -55,6 +55,29 @@
         "I pull hand over hand across the gloamwater to the far bank.",
         "I raise my empty hands and tell the watchman I'm only a mapmaker."
       ]
+    },
+    {
+      "name": "C",
+      "settings": {
+        "thinkingMode": "off",
+        "markdownOutput": false,
+        "choicesEnabled": true,
+        "statUpdatesEnabled": false,
+        "locationChangeEnabled": true,
+        "memoryDigests": false,
+        "characterDiaries": false,
+        "showSilentRequests": true,
+        "paragraphLimit": "auto",
+        "language": "English"
+      },
+      "script": [
+        "START GAME",
+        "I climb the path up from the landing to the common green.",
+        "I stop by the well and look toward the low blue-doored cottage, wondering who keeps it.",
+        "I call across the green toward the cottage, asking whoever is inside to come out and speak with me.",
+        "I ask her whether the ferry still runs after dark.",
+        "I leave her at the well and walk over to the eelhouse to look at the eel-racks."
+      ]
     }
   ]
 }

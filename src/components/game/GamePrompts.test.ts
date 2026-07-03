@@ -38,12 +38,24 @@ describe('default prompts carry the expected variable chips', () => {
       '<TRAITS DESCRIPTION|markdown>',
       '<NOTES>',
       '<LOCATION|markdown>',
+      '<SUBLOCATIONS|summary.markdown>',
+      '<REACHABLE LOCATIONS|summary.markdown>',
       '<ENTITIES|markdown>',
+      '<SUBLOCATION ENTITIES|markdown>',
+      '<REACHABLE ENTITIES|summary.markdown>',
       '<DICTIONARY>',
     ]);
     // Canonical headers are markdown; the labels style downcasts them, and GameViewer's <NOTES>-absent
     // fallback locates the location header in either style.
     expect(defaultSystemPrompt).toContain('## Current Location');
+    // Sub-location sections sit below their non-nested counterparts; the entities heading is reworded to
+    // pair with the sub-location one.
+    expect(defaultSystemPrompt).toContain('## Sublocations');
+    expect(defaultSystemPrompt).toContain('## Reachable Locations');
+    expect(defaultSystemPrompt).toContain('## Characters and things that may appear in this location');
+    expect(defaultSystemPrompt).toContain('## Characters and things that may appear in a sub-location');
+    expect(defaultSystemPrompt).toContain('## Characters and things that may appear in a reachable location');
+    expect(defaultSystemPrompt).not.toContain('may appear here');
     // Positive contract: the narrator writes only story prose; a separate step handles choices.
     expect(defaultSystemPrompt).toContain("a separate step presents the player's choices");
     // Stat coloring is a standalone directive plus a co-located lead-in on the stats block (Run A1/A2: both
@@ -70,7 +82,11 @@ describe('default prompts carry the expected variable chips', () => {
       '<TRAITS DESCRIPTION|markdown>',
       '<NOTES>',
       '<LOCATION|summary.markdown>',
+      '<SUBLOCATIONS|summary.markdown>',
+      '<REACHABLE LOCATIONS|summary.markdown>',
       '<ENTITIES|summary.markdown>',
+      '<SUBLOCATION ENTITIES|summary.markdown>',
+      '<REACHABLE ENTITIES|summary.markdown>',
     ]);
     // First-person, single-sentence options — not the old terse-phrase-with-examples shape,
     // and without the literal `"I ..."` token that small models echo as a prefix.
@@ -98,7 +114,11 @@ describe('default prompts carry the expected variable chips', () => {
     expect(tokensIn(defaultLocationChangePrompt)).toEqual([
       '<WORLD DESCRIPTION>',
       '<LOCATION|markdown>',
+      '<SUBLOCATIONS|summary.markdown>',
+      '<REACHABLE LOCATIONS|summary.markdown>',
       '<ENTITIES|markdown>',
+      '<SUBLOCATION ENTITIES|markdown>',
+      '<REACHABLE ENTITIES|summary.markdown>',
       '<LOCATION|list.markdown>',
     ]);
   });
@@ -109,7 +129,11 @@ describe('default prompts carry the expected variable chips', () => {
       '<STATS DESCRIPTION|descriptions.markdown>',
       '<TRAITS DESCRIPTION|markdown>',
       '<LOCATION|summary.markdown>',
+      '<SUBLOCATIONS|summary.markdown>',
+      '<REACHABLE LOCATIONS|summary.markdown>',
       '<ENTITIES|summary.markdown>',
+      '<SUBLOCATION ENTITIES|summary.markdown>',
+      '<REACHABLE ENTITIES|summary.markdown>',
       '<NOTES>',
     ]);
     // Basic planning surfaces each present character's placement.
@@ -121,7 +145,11 @@ describe('default prompts carry the expected variable chips', () => {
       '<WORLD DESCRIPTION>',
       '<TRAITS DESCRIPTION|markdown>',
       '<LOCATION|summary.markdown>',
+      '<SUBLOCATIONS|summary.markdown>',
+      '<REACHABLE LOCATIONS|summary.markdown>',
       '<ENTITIES|summary.markdown>',
+      '<SUBLOCATION ENTITIES|summary.markdown>',
+      '<REACHABLE ENTITIES|summary.markdown>',
       '<NOTES>',
     ]);
     // The director stages the scene, refers to the player in third person, and gives each a placement.
@@ -147,6 +175,8 @@ describe('default prompts carry the expected variable chips', () => {
       '<WORLD DESCRIPTION>',
       '<TRAITS DESCRIPTION|markdown>',
       '<LOCATION|summary.markdown>',
+      '<SUBLOCATIONS|summary.markdown>',
+      '<REACHABLE LOCATIONS|summary.markdown>',
     ]);
     // The character speaks in the first person but keeps the player in the third person.
     expect(defaultCharacterPrompt).toContain('first person');
@@ -169,6 +199,8 @@ describe('default prompts carry the expected variable chips', () => {
       '<STATS DESCRIPTION|descriptions.markdown>',
       '<TRAITS DESCRIPTION|markdown>',
       '<LOCATION|summary.markdown>',
+      '<SUBLOCATIONS|summary.markdown>',
+      '<REACHABLE LOCATIONS|summary.markdown>',
       '<NOTES>',
     ]);
     // Uses the current "scene" wording (not the old "continuation") and forbids scripting the player.

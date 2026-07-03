@@ -54,12 +54,12 @@ import {
   buildDiaryUserMessage,
   runStagedPlanning,
 } from "../lib/stagedPlanning";
-import { selectDueDiscovery, materializeDiscoveredEntity, mergeDiscoveredIntoLocation, cleanDiscoveredDescription, DISCOVER_NAME_LABEL, DISCOVER_PASSAGE_LABEL } from "../lib/runtimeCharacters";
+import { selectDueDiscovery, materializeDiscoveredEntity, mergeDiscoveredIntoLocation, cleanDiscoveredDescription, selectReachableVisitors, DISCOVER_NAME_LABEL, DISCOVER_PASSAGE_LABEL } from "../lib/runtimeCharacters";
 import { lengthGuidance, trimToLastSentence } from "../lib/outputLength";
 import { splitSentenceSegments } from "../lib/ttsChunks";
 import { selectDueDigests, applyDigest, parseTurnContent, selectDueDiaries, pendingDiaryNames, applyDiary } from "../lib/turnDigest";
 import { buildTraitContext } from "../lib/traitTree";
-import { buildLocationContext, buildEntityContext } from "../lib/locationContext";
+import { buildLocationContext, buildEntityContext, buildSublocationsContext, buildSublocationEntitiesContext, buildReachableLocationsContext, buildReachableEntitiesContext } from "../lib/locationContext";
 import { NONE_PLACEHOLDER } from "../lib/promptFallbacks";
 import { renderPromptTemplate } from "../lib/promptTemplate";
 import { useBaselineTestHook } from "../lib/baselineTestHook";
@@ -648,7 +648,11 @@ const GameViewer = ({
 
   // The six shared context chips every system prompt can reference, resolved from current state. Each
   // request spreads these as its base, then layers on its own tokens (length/markdown, scene entities, etc.).
-  const buildContextValues = useCallback((): Record<string, string> => ({
+  const buildContextValues = useCallback((): Record<string, string> => {
+    // Who's present at the current location (authored + any discovered/visiting), used to keep the
+    // reachable-entities roster from re-listing someone who has already come over.
+    const presentIds = withDiscovered(currentLocation)?.entities ?? [];
+    return {
     "<WORLD DESCRIPTION>": worldOverview.systemPrompt || "",
     "<STATS DESCRIPTION>": generateStatDescriptions('full', 'simple'),
     "<STATS DESCRIPTION|numbers>": generateStatDescriptions('numbers', 'simple'),
@@ -668,8 +672,26 @@ const GameViewer = ({
     "<ENTITIES|summary>": buildEntityContext(withDiscovered(currentLocation), allEntities, { preferSummary: true }),
     "<ENTITIES|markdown>": buildEntityContext(withDiscovered(currentLocation), allEntities, { format: "markdown" }),
     "<ENTITIES|summary.markdown>": buildEntityContext(withDiscovered(currentLocation), allEntities, { preferSummary: true, format: "markdown" }),
+    "<SUBLOCATIONS>": buildSublocationsContext(currentLocation, locations),
+    "<SUBLOCATIONS|summary>": buildSublocationsContext(currentLocation, locations, { preferSummary: true }),
+    "<SUBLOCATIONS|markdown>": buildSublocationsContext(currentLocation, locations, { format: "markdown" }),
+    "<SUBLOCATIONS|summary.markdown>": buildSublocationsContext(currentLocation, locations, { preferSummary: true, format: "markdown" }),
+    "<SUBLOCATION ENTITIES>": buildSublocationEntitiesContext(currentLocation, locations, allEntities),
+    "<SUBLOCATION ENTITIES|summary>": buildSublocationEntitiesContext(currentLocation, locations, allEntities, { preferSummary: true }),
+    "<SUBLOCATION ENTITIES|markdown>": buildSublocationEntitiesContext(currentLocation, locations, allEntities, { format: "markdown" }),
+    "<SUBLOCATION ENTITIES|summary.markdown>": buildSublocationEntitiesContext(currentLocation, locations, allEntities, { preferSummary: true, format: "markdown" }),
+    "<REACHABLE LOCATIONS>": buildReachableLocationsContext(currentLocation, locations),
+    "<REACHABLE LOCATIONS|summary>": buildReachableLocationsContext(currentLocation, locations, { preferSummary: true }),
+    "<REACHABLE LOCATIONS|markdown>": buildReachableLocationsContext(currentLocation, locations, { format: "markdown" }),
+    "<REACHABLE LOCATIONS|summary.markdown>": buildReachableLocationsContext(currentLocation, locations, { preferSummary: true, format: "markdown" }),
+    // excludeIds = who's already present here (incl. any visitor), so they don't double-list as reachable.
+    "<REACHABLE ENTITIES>": buildReachableEntitiesContext(currentLocation, locations, allEntities, { excludeIds: presentIds }),
+    "<REACHABLE ENTITIES|summary>": buildReachableEntitiesContext(currentLocation, locations, allEntities, { preferSummary: true, excludeIds: presentIds }),
+    "<REACHABLE ENTITIES|markdown>": buildReachableEntitiesContext(currentLocation, locations, allEntities, { format: "markdown", excludeIds: presentIds }),
+    "<REACHABLE ENTITIES|summary.markdown>": buildReachableEntitiesContext(currentLocation, locations, allEntities, { preferSummary: true, format: "markdown", excludeIds: presentIds }),
     "<NOTES>": playerNotes || NONE_PLACEHOLDER,
-  }), [
+    };
+  }, [
     worldOverview, generateStatDescriptions, generateTraitDescriptions,
     currentLocation, locations, withDiscovered, allEntities, playerNotes,
   ]);
@@ -890,6 +912,27 @@ ${playerNotes || NONE_PLACEHOLDER}
       // Apply the authoritative set now (narration is done) — incl. staged ad-hoc, and without waiting on
       // the trailing choices/stats/location requests. The streaming pass below kept it live per-sentence.
       setVisibleEntities(turnParticipants);
+      // Bring-them-over: an authored character living in a reachable sibling that the narration named joins
+      // the current location as a visitor — anchored via the discovered-entity path, so it persists and
+      // rolls back with the turn. Affects the next turn's context (this turn's ctx already ran).
+      if (currentLocation) {
+        const visitors = selectReachableVisitors(
+          turnParticipants, currentLocation, locations, entities,
+          withDiscovered(currentLocation)?.entities ?? [],
+        );
+        if (visitors.length) {
+          const locId = currentLocation.id;
+          const turnId = currentTurnIdRef.current;
+          setDiscoveredEntities((prev) => {
+            const additions = visitors.filter(
+              (v) => !prev.some((d) => d.locationId === locId && sameCharacterName(d.entity.name, v.name)),
+            );
+            return additions.length
+              ? [...prev, ...additions.map((entity) => ({ entity, locationId: locId, sourceTurnId: turnId }))]
+              : prev;
+          });
+        }
+      }
       // Choices should only see who's in the scene now — this turn's participants plus those from the
       // prior turns in the rolling window — scoped to entities that exist at the location. Empty → the
       // choices request gets no entity section (can't spoil/act for anyone not present).

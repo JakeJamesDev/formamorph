@@ -16,6 +16,8 @@ import LocationManager from '../managers/LocationManager';
 import TraitManager from '../managers/TraitManager';
 import GroupManager from '../managers/GroupManager';
 import TraitTree from '../managers/TraitTree';
+import LocationTree from '../managers/LocationTree';
+import { removeLocationPromotingChildren } from '@/lib/locationTree';
 import { duplicateTraitNode } from '@/lib/traitTree';
 import StatUpdatesManager from '../managers/StatUpdatesManager';
 import WorldOverviewManager from '../managers/WorldOverviewManager';
@@ -128,7 +130,7 @@ const WorldEditor = ({ onClose, embedded = false }: {
     stats, locations, entities, traits, traitGroups, statUpdates, dictionary,
     addStat, addLocation, addEntity, addTrait, addStatUpdate, addDictionaryEntry,
     addTraitGroup,
-    removeStat, removeLocation, removeEntity, removeTrait, removeStatUpdate, removeDictionaryEntry,
+    removeStat, removeEntity, removeTrait, removeStatUpdate, removeDictionaryEntry,
     setStats, setLocations, setEntities, setTraits, setTraitGroups, setStatUpdates, setDictionary,
     isWorldDirty, saveWorld: saveWorldCtx
   } = useGameData();
@@ -375,7 +377,8 @@ const WorldEditor = ({ onClose, embedded = false }: {
     } else if (activeTab === "entities") {
       removeEntity(id);
     } else if (activeTab === "locations") {
-      removeLocation(id);
+      // Deleting a location promotes its sub-locations up to the deleted node's parent (nothing lost).
+      setLocations(removeLocationPromotingChildren(locations, id));
     } else if (activeTab === "traits") {
       removeTrait(id);
     } else if (activeTab === "statUpdates") {
@@ -518,7 +521,9 @@ const WorldEditor = ({ onClose, embedded = false }: {
                           {renderItemList(filteredItems)}
                         </TabsContent>
                         <TabsContent value="locations">
-                          {renderItemList(filteredItems)}
+                          {searchTerm.trim()
+                            ? renderItemList(filteredItems)
+                            : <LocationTree selectedId={selectedItemId} onSelect={setSelectedItemId} />}
                         </TabsContent>
                         <TabsContent value="traits">
                           {searchTerm.trim()

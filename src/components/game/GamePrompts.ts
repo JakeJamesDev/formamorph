@@ -27,8 +27,20 @@ These shape how each action goes - low stats cost, high stats come easy.
 ## Current Location
 <LOCATION|markdown>
 
-## Characters and things that may appear here
+## Sublocations
+<SUBLOCATIONS|summary.markdown>
+
+## Reachable Locations
+<REACHABLE LOCATIONS|summary.markdown>
+
+## Characters and things that may appear in this location
 <ENTITIES|markdown>
+
+## Characters and things that may appear in a sub-location
+<SUBLOCATION ENTITIES|markdown>
+
+## Characters and things that may appear in a reachable location
+<REACHABLE ENTITIES|summary.markdown>
 
 ## Relevant Information
 <DICTIONARY>
@@ -91,8 +103,20 @@ export const defaultChoicesPrompt = `Given the following information:
 ## Current Location
 <LOCATION|summary.markdown>
 
-## Characters and things that may appear here
+## Sublocations
+<SUBLOCATIONS|summary.markdown>
+
+## Reachable Locations
+<REACHABLE LOCATIONS|summary.markdown>
+
+## Characters and things that may appear in this location
 <ENTITIES|summary.markdown>
+
+## Characters and things that may appear in a sub-location
+<SUBLOCATION ENTITIES|summary.markdown>
+
+## Characters and things that may appear in a reachable location
+<REACHABLE ENTITIES|summary.markdown>
 
 The player character is "I": every option is written in the player's own first-person voice.
 
@@ -135,8 +159,20 @@ export const defaultLocationChangePrompt = `You are the location router for an i
 ## Current Location
 <LOCATION|markdown>
 
-## Characters and things that may appear here
+## Sublocations
+<SUBLOCATIONS|summary.markdown>
+
+## Reachable Locations
+<REACHABLE LOCATIONS|summary.markdown>
+
+## Characters and things that may appear in this location
 <ENTITIES|markdown>
+
+## Characters and things that may appear in a sub-location
+<SUBLOCATION ENTITIES|markdown>
+
+## Characters and things that may appear in a reachable location
+<REACHABLE ENTITIES|summary.markdown>
 
 ## Available Locations
 <LOCATION|list.markdown>
@@ -160,8 +196,20 @@ export const defaultThinkingPrompt = `You are planning the next turn of an inter
 ## Current Location
 <LOCATION|summary.markdown>
 
-## Characters and things that may appear here
+## Sublocations
+<SUBLOCATIONS|summary.markdown>
+
+## Reachable Locations
+<REACHABLE LOCATIONS|summary.markdown>
+
+## Characters and things that may appear in this location
 <ENTITIES|summary.markdown>
+
+## Characters and things that may appear in a sub-location
+<SUBLOCATION ENTITIES|summary.markdown>
+
+## Characters and things that may appear in a reachable location
+<REACHABLE ENTITIES|summary.markdown>
 
 ## Important Player Notes
 <NOTES>
@@ -249,8 +297,20 @@ export const defaultDirectorPrompt = `You are the director of an interactive rol
 ## Current Location
 <LOCATION|summary.markdown>
 
-## Characters and things that may appear here
+## Sublocations
+<SUBLOCATIONS|summary.markdown>
+
+## Reachable Locations
+<REACHABLE LOCATIONS|summary.markdown>
+
+## Characters and things that may appear in this location
 <ENTITIES|summary.markdown>
+
+## Characters and things that may appear in a sub-location
+<SUBLOCATION ENTITIES|summary.markdown>
+
+## Characters and things that may appear in a reachable location
+<REACHABLE ENTITIES|summary.markdown>
 
 ## Important Player Notes
 <NOTES>
@@ -293,6 +353,12 @@ Refer to the player in the third person - "the player character" or "them" - nev
 ## Current Location
 <LOCATION|summary.markdown>
 
+## Sublocations
+<SUBLOCATIONS|summary.markdown>
+
+## Reachable Locations
+<REACHABLE LOCATIONS|summary.markdown>
+
 My background is who I am in general; the recap and scene below are where things stand now, so I act from the present moment. In 2-3 sentences, say in the first person what I want and what I do this turn - true to my character, moving the scene forward rather than repeating my last move. Any speech is intent, not quoted words; the narrator writes the dialogue. Output only those sentences.`;
 
 // Pass 3: the merge stage. It is the only stage that sees the recap, the director's scene, and every
@@ -311,6 +377,12 @@ export const defaultStoryboardPrompt = `You are the storyboarder for an interact
 
 ## Current Location
 <LOCATION|summary.markdown>
+
+## Sublocations
+<SUBLOCATIONS|summary.markdown>
+
+## Reachable Locations
+<REACHABLE LOCATIONS|summary.markdown>
 
 ## Important Player Notes
 <NOTES>
