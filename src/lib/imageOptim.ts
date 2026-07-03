@@ -14,8 +14,9 @@ export const IMAGE_CAPS = {
 } as const satisfies Record<string, ImageCap>;
 
 const QUALITY = 0.82;
-// Rough display-only factor: WebP re-encode typically lands near half the source bytes.
-const REENCODE_FACTOR = 0.5;
+// Rough display-only factors: lossy WebP lands near half the source; lossless keeps most of it.
+const LOSSY_FACTOR = 0.5;
+const LOSSLESS_FACTOR = 0.85;
 
 // Lazy WASM animated-WebP encoder — only fetched when an animated GIF is actually encoded.
 let webpPromise: Promise<typeof import('wasm-webp')> | null = null;
@@ -97,7 +98,7 @@ export async function isOversized(url: string, cap: ImageCap): Promise<boolean> 
   }
 }
 
-function dataUrlMime(url: string): string {
+export function dataUrlMime(url: string): string {
   return /^data:([^;,]+)/.exec(url)?.[1] ?? '';
 }
 
@@ -125,7 +126,7 @@ export async function isAnimatedImage(url: string): Promise<boolean> {
 }
 
 // Decode an animated image's frames, scale each to fit `maxDim`, and re-encode as animated WebP (animation preserved).
-async function encodeAnimatedImage(url: string, maxDim: number): Promise<string | null> {
+async function encodeAnimatedImage(url: string, maxDim: number, lossless: boolean): Promise<string | null> {
   const Ctor = getImageDecoder();
   if (!Ctor) return null;
   const dec = new Ctor({ data: await dataUrlToBuffer(url), type: dataUrlMime(url) });
@@ -150,7 +151,7 @@ async function encodeAnimatedImage(url: string, maxDim: number): Promise<string 
     frames.push({
       data: new Uint8Array(ctx.getImageData(0, 0, w, h).data),
       duration: Math.max(1, Math.round(durationUs / 1000)),
-      config: { lossless: 0, quality },
+      config: { lossless: lossless ? 1 : 0, quality },
     });
   }
   dec.close();
@@ -165,10 +166,10 @@ async function encodeAnimatedImage(url: string, maxDim: number): Promise<string 
  * Animated GIFs/WebP re-encode to animated WebP (animation preserved); static images go through canvas. Never grows the
  * image and never throws: on any failure the original is returned.
  */
-export async function encodeImageDataUrl(url: string, maxDim: number): Promise<string> {
+export async function encodeImageDataUrl(url: string, maxDim: number, lossless = false): Promise<string> {
   try {
     if (await isAnimatedImage(url)) {
-      const anim = await encodeAnimatedImage(url, maxDim);
+      const anim = await encodeAnimatedImage(url, maxDim, lossless);
       return anim && anim.length < url.length ? anim : url;
     }
     const blob = await (await fetch(url)).blob();
@@ -181,29 +182,41 @@ export async function encodeImageDataUrl(url: string, maxDim: number): Promise<s
     if (!ctx) return url;
     ctx.drawImage(bitmap, 0, 0, w, h);
     bitmap.close();
-    const out = canvas.toDataURL(supportsWebp() ? 'image/webp' : 'image/jpeg', QUALITY);
-    // Guard against re-encode growing a small/optimized image.
+    // Lossless (Optimize): true VP8L via the WASM encoder — canvas WebP is lossy-only. Falls back to the
+    // lossy canvas encode if the WASM encode fails. Lossy (Downscale): the fast native canvas path.
+    let out: string | null = null;
+    if (lossless && supportsWebp()) {
+      try {
+        const rgba = new Uint8Array(ctx.getImageData(0, 0, w, h).data);
+        const bytes = await (await loadWebp()).encode(rgba, w, h, true, { lossless: 1, quality: 100 });
+        if (bytes) out = bytesToDataUrl(bytes, 'image/webp');
+      } catch {
+        out = null; // fall through to the canvas encode below
+      }
+    }
+    if (!out) out = canvas.toDataURL(supportsWebp() ? 'image/webp' : 'image/jpeg', QUALITY);
+    // Guard against re-encode growing a small/optimized image (e.g. lossless of an already-compressed source).
     return out && out.length < url.length ? out : url;
   } catch {
     return url;
   }
 }
 
-/** Convert to WebP at the original resolution (no downscale). */
-export const reencodeImageDataUrl = (url: string): Promise<string> => encodeImageDataUrl(url, Infinity);
+/** Convert to lossless WebP at the original resolution (no downscale) — quality-preserving. */
+export const reencodeImageDataUrl = (url: string): Promise<string> => encodeImageDataUrl(url, Infinity, true);
 
-/** Downscale to the cap and re-encode to WebP. */
+/** Downscale to the cap and re-encode to (lossy) WebP. */
 export const optimizeImageDataUrl = (url: string, cap: ImageCap): Promise<string> =>
-  encodeImageDataUrl(url, cap.maxDim);
+  encodeImageDataUrl(url, cap.maxDim, false);
 
 /** Rough display-only estimate of the encoded size for each option (real size is only known after encoding). */
 export function estimateEncodedBytes(
   bytes: number, w: number, h: number, mode: 'reencode' | 'downscale', cap: ImageCap,
 ): number {
-  const base = bytes * REENCODE_FACTOR;
-  if (mode === 'reencode') return Math.round(base);
+  // Optimize is lossless (keeps most bytes); Downscale is lossy and area-scaled to the cap.
+  if (mode === 'reencode') return Math.round(bytes * LOSSLESS_FACTOR);
   const fit = fitWithin(w, h, cap.maxDim);
-  return Math.round(base * (fit.w * fit.h) / (w * h));
+  return Math.round(bytes * LOSSY_FACTOR * (fit.w * fit.h) / (w * h));
 }
 
 /** One oversized image found in a world, tagged with which field it came from. */
@@ -213,6 +226,7 @@ export interface OversizedImage {
   w: number;
   h: number;
   bytes: number;
+  mime: string;
 }
 
 type ImageSlot = { url: string; cap: ImageCap; path: string };
@@ -238,7 +252,7 @@ export async function scanWorldImages(world: World): Promise<{ items: OversizedI
     try {
       const { w, h, bytes } = await measureDataUrl(slot.url);
       if (Math.max(w, h) > slot.cap.maxDim || bytes > slot.cap.maxBytes) {
-        items.push({ path: slot.path, cap: slot.cap, w, h, bytes });
+        items.push({ path: slot.path, cap: slot.cap, w, h, bytes, mime: dataUrlMime(slot.url) });
       }
     } catch {
       /* skip unreadable */
