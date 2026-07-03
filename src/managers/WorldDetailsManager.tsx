@@ -6,6 +6,7 @@ import { RefreshCw } from "lucide-react";
 import { TokenAutocomplete } from "@/components/TokenAutocomplete";
 import MarkdownField from "@/components/MarkdownField";
 import { useCatalogTags } from "@/lib/useCatalogTags";
+import { COMMUNITY_ENABLED } from "@/lib/featureFlags";
 
 /** The AI-facing world content fields (description, tags, system prompt), shown in the editor's right
  *  column on the Overview tab. Identity/media fields live in WorldOverviewManager (left column). */
@@ -37,16 +38,18 @@ const WorldDetailsManager = () => {
               placeholder="Add tags..."
             />
           </div>
-          <Button
-            variant="outline"
-            size="icon"
-            onClick={refreshTags}
-            disabled={refreshing}
-            title="Refresh tag suggestions"
-            aria-label="Refresh tag suggestions"
-          >
-            <RefreshCw className={`h-4 w-4 ${refreshing ? "animate-spin" : ""}`} />
-          </Button>
+          {COMMUNITY_ENABLED && (
+            <Button
+              variant="outline"
+              size="icon"
+              onClick={refreshTags}
+              disabled={refreshing}
+              title="Refresh tag suggestions"
+              aria-label="Refresh tag suggestions"
+            >
+              <RefreshCw className={`h-4 w-4 ${refreshing ? "animate-spin" : ""}`} />
+            </Button>
+          )}
         </div>
       </div>
 

@@ -1,0 +1,47 @@
+name: Deploy Pages
+
+# Hosted browser build on GitHub Pages, deployed on every push to main. Built with
+# VITE_ENABLE_COMMUNITY=false so the community-server features (Discover, login/auth, publish) are
+# disabled — no user-uploaded content is discoverable and the site never contacts the worlds server.
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+# Let a newer deploy supersede an in-flight one, but don't cancel a running deploy mid-publish.
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
+        with:
+          node-version-file: '.nvmrc'
+          cache: npm
+      - run: npm ci
+      - run: npm run build
+        env:
+          VITE_ENABLE_COMMUNITY: 'false'
+      - uses: actions/configure-pages@v5
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: dist
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v4

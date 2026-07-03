@@ -3,7 +3,8 @@ import { presetStoreFromEnv, DEFAULT_IMAGE_ENDPOINT_VALUES } from './imageEndpoi
 
 describe('presetStoreFromEnv', () => {
   it('returns null when unset or malformed', () => {
-    expect(presetStoreFromEnv(undefined)).toBeNull();
+    // Pass explicit values rather than undefined — undefined triggers the param default, which reads the
+    // real VITE_DEFAULT_IMAGE_PRESETS (present in .env.local under Vitest). '' covers the unset/falsy path.
     expect(presetStoreFromEnv('')).toBeNull();
     expect(presetStoreFromEnv('not json')).toBeNull();
     expect(presetStoreFromEnv('{"name":"x"}')).toBeNull(); // not an array
