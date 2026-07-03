@@ -1,7 +1,7 @@
 // Electron main process: thin desktop shell around the built web app (dist/).
 // Loads the SPA from a privileged custom scheme so module workers, WASM, WebGPU,
 // and fetch behave like a normal web origin (raw file:// gives a null origin and breaks them).
-const { app, BrowserWindow, protocol, net } = require('electron');
+const { app, BrowserWindow, protocol, net, ipcMain } = require('electron');
 const path = require('node:path');
 const { pathToFileURL } = require('node:url');
 
@@ -28,6 +28,13 @@ function createWindow() {
   if (devURL) win.loadURL(devURL);
   else win.loadURL('app://local/index.html');
 }
+
+// Desktop-only network bridge: renderer → main HTTP fetch that isn't bound by browser CORS. Used by
+// cloud image providers (OpenAI-style) whose APIs can't be reached directly from the web build.
+ipcMain.handle('net-fetch', async (_event, { url, method = 'GET', headers = {}, body }) => {
+  const res = await net.fetch(url, { method, headers, body });
+  return { ok: res.ok, status: res.status, body: await res.text() };
+});
 
 app.whenReady().then(() => {
   // Map app://local/<path> → dist/<path>, defaulting to index.html. Files are kept inside DIST.
