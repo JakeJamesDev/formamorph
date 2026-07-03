@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import { getCatalog, replaceCatalog } from './worldCatalog';
 import { collectSanitizedTags } from './tagUtils';
+import { COMMUNITY_ENABLED } from './featureFlags';
 import WorldStorageService from '@/services/WorldStorageService';
 
 /**
@@ -13,6 +14,7 @@ export function useCatalogTags(): { tags: string[]; refresh: () => Promise<void>
   const [refreshing, setRefreshing] = useState(false);
 
   const refresh = useCallback(async () => {
+    if (!COMMUNITY_ENABLED) return; // hosted build: never sync tags from the remote server
     setRefreshing(true);
     try {
       const result = await WorldStorageService.fetchRemoteWorlds(1, 1000, '', false, false);

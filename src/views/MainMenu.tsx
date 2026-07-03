@@ -45,6 +45,7 @@ import SortableWorldCard from "@/components/SortableWorldCard";
 import { ManageUsersDialog } from "@/components/menu/ManageUsersDialog";
 import { AuthModals } from "@/components/menu/AuthModals";
 import { PublishModal } from "@/components/menu/PublishModal";
+import { COMMUNITY_ENABLED } from "@/lib/featureFlags";
 
 interface MainMenuProps {
   onStartGame: (traits: string[], characterData: CharacterData | null, isNewGame?: boolean) => void;
@@ -126,8 +127,10 @@ const MainMenu = ({ onStartGame, onOpenWorldEditor }: MainMenuProps) => {
   // Admin "Manage Users" dialog: open state here; its list/paging/fetch live in the dialog component.
   const [showManageUsersDialog, setShowManageUsersDialog] = useState(false);
 
-  // Check authentication status on component mount
+  // Check authentication status on component mount (skipped when community features are disabled — the
+  // hosted build never contacts the auth server).
   useEffect(() => {
+    if (!COMMUNITY_ENABLED) return;
     const checkAuth = async () => {
       const isLoggedIn = AuthService.isAuthenticated();
       setIsAuthenticated(isLoggedIn);
@@ -526,30 +529,34 @@ const MainMenu = ({ onStartGame, onOpenWorldEditor }: MainMenuProps) => {
         >
           <Settings className="h-6 w-6" />
         </button>
-        <button
-          className="p-3 bg-gray-800 text-white rounded-full shadow-lg hover:bg-gray-700 transition-colors"
-          onClick={() => isAuthenticated ? setShowProfileDialog(true) : setShowAuthDialog(true)}
-          aria-label={isAuthenticated ? "User Profile" : "Login"}
-        >
-          {isAuthenticated ? (
-            <div className="w-6 h-6 flex items-center justify-center font-semibold">
-              {getUserInitial()}
-            </div>
-          ) : (
-            <LogIn className="h-6 w-6" />
-          )}
-        </button>
+        {COMMUNITY_ENABLED && (
+          <button
+            className="p-3 bg-gray-800 text-white rounded-full shadow-lg hover:bg-gray-700 transition-colors"
+            onClick={() => isAuthenticated ? setShowProfileDialog(true) : setShowAuthDialog(true)}
+            aria-label={isAuthenticated ? "User Profile" : "Login"}
+          >
+            {isAuthenticated ? (
+              <div className="w-6 h-6 flex items-center justify-center font-semibold">
+                {getUserInitial()}
+              </div>
+            ) : (
+              <LogIn className="h-6 w-6" />
+            )}
+          </button>
+        )}
       </div>
 
       <SettingsModal isOpen={showSettings} onOpenChange={setShowSettings} />
       {/* Action buttons */}
       <div className="flex justify-center mb-6 gap-4 shrink-0 flex-wrap">
-        <Button
-          className="bg-gradient-to-r from-indigo-200 to-blue-200 hover:from-indigo-300 hover:to-blue-300 text-black font-bold"
-          onClick={() => setShowDiscoverDialog(true)}
-        >
-          <Globe className="mr-2 h-4 w-4" /> Discover Worlds
-        </Button>
+        {COMMUNITY_ENABLED && (
+          <Button
+            className="bg-gradient-to-r from-indigo-200 to-blue-200 hover:from-indigo-300 hover:to-blue-300 text-black font-bold"
+            onClick={() => setShowDiscoverDialog(true)}
+          >
+            <Globe className="mr-2 h-4 w-4" /> Discover Worlds
+          </Button>
+        )}
 
         <Button
           className="bg-gradient-to-r from-amber-200 to-yellow-200 hover:from-amber-300 hover:to-yellow-300 text-black font-bold"
@@ -565,6 +572,7 @@ const MainMenu = ({ onStartGame, onOpenWorldEditor }: MainMenuProps) => {
     <Import className="mr-2 h-4 w-4" /> Import World
   </Button>
 
+  {COMMUNITY_ENABLED && (
   <Button
     className="bg-gradient-to-r from-purple-200 to-pink-200 hover:from-purple-300 hover:to-pink-300 text-black font-bold"
     onClick={() => isAuthenticated ? handleLogout() : setShowAuthDialog(true)}
@@ -575,6 +583,7 @@ const MainMenu = ({ onStartGame, onOpenWorldEditor }: MainMenuProps) => {
       <><LogIn className="mr-2 h-4 w-4" /> Login</>
     )}
   </Button>
+  )}
 
   {isAuthenticated && currentUser?.accountType === "admin" && (
           <Button
@@ -880,36 +889,41 @@ const MainMenu = ({ onStartGame, onOpenWorldEditor }: MainMenuProps) => {
         />
       )}
 
-      {/* Auth + Profile dialogs (login/register + change password/logout) */}
-      <AuthModals
-        showAuthDialog={showAuthDialog}
-        setShowAuthDialog={setShowAuthDialog}
-        showProfileDialog={showProfileDialog}
-        setShowProfileDialog={setShowProfileDialog}
-        currentUser={currentUser}
-        userInitial={getUserInitial()}
-        onAuthenticated={() => { setIsAuthenticated(true); setCurrentUser(AuthService.getCurrentUser()); }}
-        onLogout={handleLogout}
-      />
+      {/* Community-server dialogs (auth, publish, world browser) — omitted entirely in the hosted build. */}
+      {COMMUNITY_ENABLED && (
+        <>
+          {/* Auth + Profile dialogs (login/register + change password/logout) */}
+          <AuthModals
+            showAuthDialog={showAuthDialog}
+            setShowAuthDialog={setShowAuthDialog}
+            showProfileDialog={showProfileDialog}
+            setShowProfileDialog={setShowProfileDialog}
+            currentUser={currentUser}
+            userInitial={getUserInitial()}
+            onAuthenticated={() => { setIsAuthenticated(true); setCurrentUser(AuthService.getCurrentUser()); }}
+            onLogout={handleLogout}
+          />
 
-      {/* Publish Modal — form/handlers live in the component */}
-      <PublishModal
-        open={showPublishModal}
-        onOpenChange={setShowPublishModal}
-        isAuthenticated={isAuthenticated}
-        selectedWorld={selectedWorld}
-      />
+          {/* Publish Modal — form/handlers live in the component */}
+          <PublishModal
+            open={showPublishModal}
+            onOpenChange={setShowPublishModal}
+            isAuthenticated={isAuthenticated}
+            selectedWorld={selectedWorld}
+          />
 
-      {/* World browser — see DiscoverWorlds.tsx */}
-      <DiscoverWorlds
-        open={showDiscoverDialog}
-        onOpenChange={setShowDiscoverDialog}
-        worlds={worlds}
-        setWorlds={setWorlds}
-        isAuthenticated={isAuthenticated}
-        currentUser={currentUser}
-        openImageViewer={openImageViewer}
-      />
+          {/* World browser — see DiscoverWorlds.tsx */}
+          <DiscoverWorlds
+            open={showDiscoverDialog}
+            onOpenChange={setShowDiscoverDialog}
+            worlds={worlds}
+            setWorlds={setWorlds}
+            isAuthenticated={isAuthenticated}
+            currentUser={currentUser}
+            openImageViewer={openImageViewer}
+          />
+        </>
+      )}
 
       {/* Full-size pan/zoom image viewer for the selected world */}
       <ImageZoomViewer

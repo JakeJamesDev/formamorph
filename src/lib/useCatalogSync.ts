@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { toast } from "react-toastify";
 import WorldStorageService from "@/services/WorldStorageService";
 import { getCatalog, replaceCatalog } from "@/lib/worldCatalog";
+import { COMMUNITY_ENABLED } from "@/lib/featureFlags";
 import { type WorldRecord } from "@/components/WorldDetails";
 
 /**
@@ -40,9 +41,9 @@ export function useCatalogSync(open: boolean) {
     }
   };
 
-  // Load the world catalog when Discover opens.
+  // Load the world catalog when Discover opens (never in the hosted build — no remote server).
   useEffect(() => {
-    if (open) {
+    if (open && COMMUNITY_ENABLED) {
       loadCatalog();
     }
   }, [open]);
