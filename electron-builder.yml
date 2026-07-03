@@ -10,3 +10,14 @@ win:
     - portable
 portable:
   artifactName: Formamorph-${version}.exe
+linux:
+  target:
+    - AppImage
+  category: Game
+  artifactName: Formamorph-${version}.AppImage
+  maintainer: Jake James <bennybroseph@gmail.com>
+mac:
+  target:
+    - dmg
+  category: public.app-category.games
+  artifactName: Formamorph-${version}.dmg
