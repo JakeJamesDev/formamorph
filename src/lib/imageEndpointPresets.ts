@@ -63,6 +63,57 @@ export function makeDefaultStore(values: ImageEndpointValues = DEFAULT_IMAGE_END
   return { activeId: DEFAULT_IMAGE_PRESET_ID, presets: [{ id: DEFAULT_IMAGE_PRESET_ID, name: 'Default', values: { ...values } }] };
 }
 
+/** Layer a raw JSON entry over the built-in defaults, coercing each field by type (unknown keys ignored). */
+function coerceValues(rec: Record<string, unknown>): ImageEndpointValues {
+  const d = DEFAULT_IMAGE_ENDPOINT_VALUES;
+  const str = (k: string, dflt: string) => (typeof rec[k] === 'string' ? (rec[k] as string) : dflt);
+  const num = (k: string, dflt: number) => (typeof rec[k] === 'number' && Number.isFinite(rec[k]) ? (rec[k] as number) : dflt);
+  return {
+    provider: rec.provider === 'openai' ? 'openai' : rec.provider === 'a1111' ? 'a1111' : d.provider,
+    endpoint: str('endpoint', d.endpoint),
+    apiToken: str('apiToken', d.apiToken),
+    model: str('model', d.model),
+    positivePrompt: str('positivePrompt', d.positivePrompt),
+    negativePrompt: str('negativePrompt', d.negativePrompt),
+    portraitWidth: num('portraitWidth', d.portraitWidth),
+    portraitHeight: num('portraitHeight', d.portraitHeight),
+    landscapeWidth: num('landscapeWidth', d.landscapeWidth),
+    landscapeHeight: num('landscapeHeight', d.landscapeHeight),
+    steps: num('steps', d.steps),
+    cfg: num('cfg', d.cfg),
+    sampler: str('sampler', d.sampler),
+    adetailer: typeof rec.adetailer === 'boolean' ? rec.adetailer : d.adetailer,
+  };
+}
+
+/**
+ * Build a store from the VITE_DEFAULT_IMAGE_PRESETS env var — a JSON array of `{ name, ...partial values }`
+ * entries, each layered over the built-in defaults (so a preset need only list what differs). Returns null
+ * when the var is unset or malformed, letting the caller fall back to a single "Default" preset.
+ */
+export function presetStoreFromEnv(
+  raw: string | undefined = import.meta.env.VITE_DEFAULT_IMAGE_PRESETS,
+): ImageEndpointPresetStore | null {
+  if (!raw) return null;
+  let parsed: unknown;
+  try {
+    parsed = JSON.parse(raw);
+  } catch {
+    return null;
+  }
+  if (!Array.isArray(parsed)) return null;
+  const presets: ImageEndpointPreset[] = [];
+  for (const item of parsed) {
+    if (!item || typeof item !== 'object') continue;
+    const rec = item as Record<string, unknown>;
+    const name = typeof rec.name === 'string' ? rec.name.trim() : '';
+    if (!name) continue;
+    presets.push({ id: crypto.randomUUID(), name, values: coerceValues(rec) });
+  }
+  if (presets.length === 0) return null;
+  return { activeId: presets[0].id, presets };
+}
+
 /** localStorage codec; any malformed/empty value falls back to a fresh Default-only store. */
 export const imageEndpointPresetCodec: Codec<ImageEndpointPresetStore> = {
   parse: (raw) => {
