@@ -2,13 +2,51 @@
 
 All notable changes to Formamorph. This fork's first line is **2.0.0** — a full TypeScript rebuild of the upstream JavaScript app ([FieryLionite's Formamorph](https://fierylion.itch.io/formamorph), ~v1.2) — with feature parity as the baseline plus new features on top.
 
-> 🚧 **2.0.0 is in development and not yet released.** Entries accumulate here as work lands. When the version number is bumped, that marks 2.0.0 going live; until then this is a living list.
+> ✅ **2.0.0 is released** (collapsed below). **2.0.1 is the current living line** — entries accumulate here as work lands; when its version is bumped, that marks it going live.
 
 Each release groups changes as **Major** / **Minor**, then **Added** / **Removed** / **Fixed**, and within those by audience: 👤 user-facing · 🛠️ developer tooling · ⚙️ backend / invisible.
 
 ---
 
-## 🚧 2.0.0 — In development
+## 🚧 2.0.1 — In development
+
+### Major Changes
+
+#### ➕ Added
+
+- **👤 User-facing**
+  - **AI image generation** — generate images for entities, locations, and world thumbnails right in the World Editor. A **Generate with AI** button drafts an SD-style prompt from the subject's description (via your text model), lets you tweak it, and renders through your configured image provider. Providers: a **local A1111 / Forge** server, and — in the **desktop app** — an **OpenAI-compatible cloud** image API (proxied through Electron to sidestep browser CORS). Prompts are LLM-refined into stripped **danbooru / booru tags** via an editable **Tag Prompt** (with a `<SUBJECT>` chip, Settings → Image Gen), plus a **positive-prompt prefix** for quality/style tags. Characters render at **portrait** dimensions, locations & thumbnails at **landscape**. Settings live in named, editable **endpoint presets** (a "Default" plus your own), switchable in Settings and from the generate popup. For A1111: an **ADetailer** face/hand-fix toggle and a live **progress bar + in-progress preview** while it renders.
+- **🛠️ Developer tooling**
+  - **Linux & macOS desktop builds** — electron-builder now targets **AppImage** (Linux) and **dmg** (macOS) beside the Windows portable exe (`desktop:build:linux` / `desktop:build:mac`). A **release workflow** builds all three from one `v*` tag (a Windows / Linux / macOS matrix) and attaches them to the GitHub Release.
+  - **Hosted browser build on GitHub Pages** — deploys on every push to `main`, with the community-server features (**Discover, login, publish**) disabled in that build (`VITE_ENABLE_COMMUNITY=false`) so nothing unmoderated is surfaced by default. Play it at **[jakejamesdev.github.io/formamorph](https://jakejamesdev.github.io/formamorph/)**.
+
+#### 🐛 Fixed
+
+- **🛠️ Developer tooling**
+  - Tagged desktop builds no longer fail on the Linux/macOS runners — electron-builder no longer tries to self-publish (missing `GH_TOKEN`); the workflow's own publish step handles the upload.
+
+### Minor Changes
+
+#### ➕ Added
+
+- **👤 User-facing**
+  - **Consent-based image optimization** — before an oversized image is re-encoded (on import, on generate "Use image", or via the editor's **Optimize Images**), a prompt offers **Optimize** (convert to **lossless** WebP at the same resolution — no visible quality loss) or **Downscale** (shrink to fit), with a clear **Keep original** to do nothing. Already-WebP images skip the redundant Optimize option.
+  - The world-browser **Hidden** popover now uses editable tag / author autocomplete boxes, matching the search filters.
+- **🛠️ Developer tooling**
+  - **Env-seeded image defaults** — the whole Image Gen setup (provider, endpoint, dimensions, ADetailer, and multiple named presets via `VITE_DEFAULT_IMAGE_PRESETS`) can be seeded from `.env.local`.
+  - **Unified app icon** — one source icon (`public/icon.png`) is now both the browser-tab favicon and the desktop app icon (electron-builder converts it per-platform), replacing the default Vite / Electron icons.
+  - The main-menu GitHub button and the README / wiki now link to this fork's repo and the live web build.
+
+#### 🐛 Fixed
+
+- **👤 User-facing**
+  - The world-browser autocomplete dropdowns no longer close when you click their scrollbar, and the Hidden popover's dropdown now scrolls with the mouse wheel.
+  - Image Gen polish: the booru tag prompt no longer emits PascalCase / underscored tags the model can't use; the Settings → System Prompts tab is no longer pushed out of place by the Image Gen tab; and generated / imported images are no longer silently optimized without asking first.
+
+---
+
+<details>
+<summary><strong>✅ 2.0.0 — Released</strong> — full TypeScript rebuild + feature parity (click to expand)</summary>
 
 Everything below is relative to the point this fork diverged from upstream.
 
@@ -133,3 +171,5 @@ Everything below is relative to the point this fork diverged from upstream.
   - **Cleaner AI prompts** — blank or unset author fields (an empty entity `type`, a missing description, etc.) are no longer padded into the location/entity/trait data sent to the model, and the editor-only starting-location flag is dropped from it. Empty fields previously leaked as blank lines or the literal text `undefined`, which could confuse smaller models.
   - **Stat code runs in a real sandbox** — world-authored stat formulas (which ride inside downloaded worlds) now execute in an isolated **QuickJS WebAssembly VM** instead of `new Function`, so they can no longer reach the page (`fetch`, `localStorage`, the DOM) — closing an untrusted-code hole. A runtime interrupt enforces the 1-second timeout, so a `while(true)` loop is actually killed instead of hanging the tab (the old after-the-fact check never fired), with memory and stack caps on top. Only whitelisted stat data crosses into the VM; the numeric result is read back and clamped exactly as before. The engine is lazily loaded on first use, so it doesn't affect page load.
   - Lint cleanups across the converted codebase.
+
+</details>
