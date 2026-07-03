@@ -172,6 +172,8 @@ export const SettingsModal = ({ isOpen, onOpenChange, previewValues }: {
     setImageCfg,
     imageSampler,
     setImageSampler,
+    imageAdetailer,
+    setImageAdetailer,
     imageEndpointPresets,
     activeImageEndpointPresetId,
     activeImageEndpointPresetName,
@@ -727,6 +729,22 @@ export const SettingsModal = ({ isOpen, onOpenChange, previewValues }: {
                 <label htmlFor="imageSampler" className="text-right">Sampler</label>
                 <Input id="imageSampler" value={imageSampler} onChange={(e) => setImageSampler(e.target.value)} placeholder="Euler a" />
               </div>
+              {imageProvider === 'a1111' && (
+                <div className="grid grid-cols-[1fr_3fr] items-start gap-4">
+                  <label htmlFor="imageAdetailer" className="text-right pt-0.5">ADetailer</label>
+                  <div className="flex items-start gap-2">
+                    <Checkbox
+                      id="imageAdetailer"
+                      checked={imageAdetailer}
+                      onCheckedChange={(c) => setImageAdetailer(c === true)}
+                      className="shrink-0 mt-0.5"
+                    />
+                    <span className="text-xs text-muted-foreground">
+                      Run a second pass to auto-fix faces/hands. Requires the ADetailer extension installed on your A1111/Forge server.
+                    </span>
+                  </div>
+                </div>
+              )}
             </div>
             </div>
               </TabsContent>
