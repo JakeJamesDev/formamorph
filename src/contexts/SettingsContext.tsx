@@ -3,7 +3,7 @@ import { defaultSystemPrompt, defaultChoicesPrompt, defaultStatUpdatesPrompt, de
 import { DEFAULT_ENDPOINT, DEFAULT_API_TOKEN, DEFAULT_MODEL_NAME, DEFAULT_MAX_TOKENS, DEFAULT_CONTEXT_WINDOW } from './settingsDefaults';
 import { DEFAULT_TAG_PROMPT } from '../lib/imagePrompt';
 import {
-  imageEndpointPresetCodec, makeDefaultStore as makeImageStore, DEFAULT_IMAGE_ENDPOINT_VALUES,
+  imageEndpointPresetCodec, makeDefaultStore as makeImageStore, presetStoreFromEnv, DEFAULT_IMAGE_ENDPOINT_VALUES,
   activeValues as imageEndpointActiveValues, setActive as imageSetActive, addPreset as imageAddPreset,
   renamePreset as imageRenamePreset, deletePreset as imageDeletePreset, resetPreset as imageResetPreset,
   updateValue as imageUpdateValue,
@@ -27,14 +27,15 @@ export type { ParagraphLimit };
 const APP_ID = 'FORMAMORPH';
 
 /** Build the initial image-endpoint preset store, migrating a pre-preset config from the legacy
- *  individual `FORMAMORPH_image*` keys into the seeded Default preset when present. */
+ *  individual `FORMAMORPH_image*` keys into the seeded Default preset when present. With no legacy
+ *  config, VITE_DEFAULT_IMAGE_PRESETS (if set) seeds named presets; otherwise a single "Default". */
 function seedImagePresetStore(): ImageEndpointPresetStore {
   const get = (k: string) => localStorage.getItem(`${APP_ID}_${k}`);
   const legacyKeys = [
     'imageProvider', 'imageEndpoint', 'imageApiToken', 'imageModel', 'imagePositivePrompt', 'imageNegativePrompt',
     'imagePortraitWidth', 'imagePortraitHeight', 'imageLandscapeWidth', 'imageLandscapeHeight', 'imageSteps', 'imageCfg', 'imageSampler',
   ];
-  if (!legacyKeys.some((k) => get(k) !== null)) return makeImageStore();
+  if (!legacyKeys.some((k) => get(k) !== null)) return presetStoreFromEnv() ?? makeImageStore();
   const d = DEFAULT_IMAGE_ENDPOINT_VALUES;
   const str = (k: string, dflt: string) => get(k) ?? dflt;
   const int = (k: string, dflt: number) => { const r = get(k); return r === null ? dflt : parseInt(r); };
