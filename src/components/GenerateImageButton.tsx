@@ -24,8 +24,13 @@ export function GenerateImageButton({ subject, cap, onChange }: {
   const {
     activeEndpointUrl, activeApiToken, activeModelName,
     imageProvider, imageEndpoint, imageApiToken, imageModel, imageTagPrompt,
-    imagePositivePrompt, imageNegativePrompt, imageWidth, imageHeight, imageSteps, imageCfg, imageSampler,
+    imagePositivePrompt, imageNegativePrompt, imageSteps, imageCfg, imageSampler,
+    imagePortraitWidth, imagePortraitHeight, imageLandscapeWidth, imageLandscapeHeight,
   } = useSettings();
+  // Characters get portrait dimensions; locations and the world thumbnail get landscape.
+  const [genWidth, genHeight] = subject.kind === 'character'
+    ? [imagePortraitWidth, imagePortraitHeight]
+    : [imageLandscapeWidth, imageLandscapeHeight];
 
   const [open, setOpen] = useState(false);
   const [prompt, setPrompt] = useState('');
@@ -76,7 +81,7 @@ export function GenerateImageButton({ subject, cap, onChange }: {
         imageProvider,
         {
           prompt: fullPrompt, negativePrompt: negative,
-          width: imageWidth, height: imageHeight, steps: imageSteps, cfg: imageCfg,
+          width: genWidth, height: genHeight, steps: imageSteps, cfg: imageCfg,
           sampler: imageSampler, seed: -1, model: imageModel,
         },
         { endpointUrl: imageEndpoint, apiToken: imageApiToken, signal: controller.signal },

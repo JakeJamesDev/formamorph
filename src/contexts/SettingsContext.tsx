@@ -1,8 +1,14 @@
 import { createContext, useContext, useState, useEffect, useRef, useCallback, useMemo, type ReactNode } from 'react';
 import { defaultSystemPrompt, defaultChoicesPrompt, defaultStatUpdatesPrompt, defaultLocationChangePrompt, defaultThinkingPrompt, defaultSummaryPrompt, defaultChoicesUserPrompt, defaultStatUpdatesUserPrompt, defaultLocationChangeUserPrompt, defaultSummaryUserPrompt, defaultDiaryPrompt, defaultDirectorPrompt, defaultDirectorUserPrompt, defaultCharacterPrompt, defaultStoryboardPrompt } from '../components/game/GamePrompts';
-import { DEFAULT_ENDPOINT, DEFAULT_API_TOKEN, DEFAULT_MODEL_NAME, DEFAULT_MAX_TOKENS, DEFAULT_CONTEXT_WINDOW, DEFAULT_IMAGE_PROVIDER, DEFAULT_IMAGE_ENDPOINT, DEFAULT_IMAGE_API_TOKEN, DEFAULT_IMAGE_MODEL, DEFAULT_IMAGE_POSITIVE, DEFAULT_IMAGE_NEGATIVE, DEFAULT_IMAGE_WIDTH, DEFAULT_IMAGE_HEIGHT, DEFAULT_IMAGE_STEPS, DEFAULT_IMAGE_CFG, DEFAULT_IMAGE_SAMPLER } from './settingsDefaults';
-import type { ImageProviderId } from '../lib/imageGen';
+import { DEFAULT_ENDPOINT, DEFAULT_API_TOKEN, DEFAULT_MODEL_NAME, DEFAULT_MAX_TOKENS, DEFAULT_CONTEXT_WINDOW } from './settingsDefaults';
 import { DEFAULT_TAG_PROMPT } from '../lib/imagePrompt';
+import {
+  imageEndpointPresetCodec, makeDefaultStore as makeImageStore, DEFAULT_IMAGE_ENDPOINT_VALUES,
+  activeValues as imageEndpointActiveValues, setActive as imageSetActive, addPreset as imageAddPreset,
+  renamePreset as imageRenamePreset, deletePreset as imageDeletePreset, resetPreset as imageResetPreset,
+  updateValue as imageUpdateValue,
+  type ImageEndpointPresetStore, type ImageEndpointValues, type ImageEndpointValueKey,
+} from '../lib/imageEndpointPresets';
 import { fetchContextLength } from '../lib/contextLength';
 import { usePersistentState, stringCodec, boolCodec, intCodec, floatCodec, nullableIntCodec } from '../lib/usePersistentState';
 import {
@@ -19,6 +25,36 @@ export type ThinkingMode = 'off' | 'precall' | 'inline' | 'staged';
 export type { ParagraphLimit };
 
 const APP_ID = 'FORMAMORPH';
+
+/** Build the initial image-endpoint preset store, migrating a pre-preset config from the legacy
+ *  individual `FORMAMORPH_image*` keys into the seeded Default preset when present. */
+function seedImagePresetStore(): ImageEndpointPresetStore {
+  const get = (k: string) => localStorage.getItem(`${APP_ID}_${k}`);
+  const legacyKeys = [
+    'imageProvider', 'imageEndpoint', 'imageApiToken', 'imageModel', 'imagePositivePrompt', 'imageNegativePrompt',
+    'imagePortraitWidth', 'imagePortraitHeight', 'imageLandscapeWidth', 'imageLandscapeHeight', 'imageSteps', 'imageCfg', 'imageSampler',
+  ];
+  if (!legacyKeys.some((k) => get(k) !== null)) return makeImageStore();
+  const d = DEFAULT_IMAGE_ENDPOINT_VALUES;
+  const str = (k: string, dflt: string) => get(k) ?? dflt;
+  const int = (k: string, dflt: number) => { const r = get(k); return r === null ? dflt : parseInt(r); };
+  const flt = (k: string, dflt: number) => { const r = get(k); return r === null ? dflt : parseFloat(r); };
+  return makeImageStore({
+    provider: get('imageProvider') === 'openai' ? 'openai' : 'a1111',
+    endpoint: str('imageEndpoint', d.endpoint),
+    apiToken: str('imageApiToken', d.apiToken),
+    model: str('imageModel', d.model),
+    positivePrompt: str('imagePositivePrompt', d.positivePrompt),
+    negativePrompt: str('imageNegativePrompt', d.negativePrompt),
+    portraitWidth: int('imagePortraitWidth', d.portraitWidth),
+    portraitHeight: int('imagePortraitHeight', d.portraitHeight),
+    landscapeWidth: int('imageLandscapeWidth', d.landscapeWidth),
+    landscapeHeight: int('imageLandscapeHeight', d.landscapeHeight),
+    steps: int('imageSteps', d.steps),
+    cfg: flt('imageCfg', d.cfg),
+    sampler: str('imageSampler', d.sampler),
+  });
+}
 
 /** The canonical shipped prompt text — authored in markdown headers; the built-in styles derive from it. */
 const PROMPT_TEXT_DEFAULTS: PromptValues = {
@@ -216,22 +252,51 @@ function useProvideSettings() {
   const [statUpdatesVerbatimTurns, setStatUpdatesVerbatimTurns] = usePersistentState<number>(`${APP_ID}_statUpdatesVerbatimTurns`, 3, intCodec);
   const [locationChangeVerbatimTurns, setLocationChangeVerbatimTurns] = usePersistentState<number>(`${APP_ID}_locationChangeVerbatimTurns`, 3, intCodec);
   const [summaryVerbatimTurns, setSummaryVerbatimTurns] = usePersistentState<number>(`${APP_ID}_summaryVerbatimTurns`, 3, intCodec);
-  // Image generation config (Settings → Image Generation). No shared hosted server, so these are always
-  // the user's own values (a local A1111/Forge, or a cloud provider proxied by the desktop build).
-  const [imageProvider, setImageProvider] = usePersistentState<ImageProviderId>(`${APP_ID}_imageProvider`, DEFAULT_IMAGE_PROVIDER as ImageProviderId, {
-    parse: (r) => (r === 'a1111' || r === 'openai' ? r : DEFAULT_IMAGE_PROVIDER as ImageProviderId),
-    serialize: (v) => v,
-  });
-  const [imageEndpoint, setImageEndpoint] = usePersistentState<string>(`${APP_ID}_imageEndpoint`, DEFAULT_IMAGE_ENDPOINT, stringCodec);
-  const [imageApiToken, setImageApiToken] = usePersistentState<string>(`${APP_ID}_imageApiToken`, DEFAULT_IMAGE_API_TOKEN, stringCodec);
-  const [imageModel, setImageModel] = usePersistentState<string>(`${APP_ID}_imageModel`, DEFAULT_IMAGE_MODEL, stringCodec);
-  const [imagePositivePrompt, setImagePositivePrompt] = usePersistentState<string>(`${APP_ID}_imagePositivePrompt`, DEFAULT_IMAGE_POSITIVE, stringCodec);
-  const [imageNegativePrompt, setImageNegativePrompt] = usePersistentState<string>(`${APP_ID}_imageNegativePrompt`, DEFAULT_IMAGE_NEGATIVE, stringCodec);
-  const [imageWidth, setImageWidth] = usePersistentState<number>(`${APP_ID}_imageWidth`, DEFAULT_IMAGE_WIDTH, intCodec);
-  const [imageHeight, setImageHeight] = usePersistentState<number>(`${APP_ID}_imageHeight`, DEFAULT_IMAGE_HEIGHT, intCodec);
-  const [imageSteps, setImageSteps] = usePersistentState<number>(`${APP_ID}_imageSteps`, DEFAULT_IMAGE_STEPS, intCodec);
-  const [imageCfg, setImageCfg] = usePersistentState<number>(`${APP_ID}_imageCfg`, DEFAULT_IMAGE_CFG, floatCodec);
-  const [imageSampler, setImageSampler] = usePersistentState<string>(`${APP_ID}_imageSampler`, DEFAULT_IMAGE_SAMPLER, stringCodec);
+  // Image generation config (Settings → Image Gen → Endpoint). Lives in named, freely-editable presets so
+  // the user can keep several image-server configs. The active preset's values back the fields below; the
+  // public getter/setter names are unchanged so consumers (GenerateImageButton) don't care about presets.
+  const initialImageStore = useRef<ImageEndpointPresetStore | null>(null);
+  if (!initialImageStore.current) initialImageStore.current = seedImagePresetStore();
+  const [imagePresetStore, setImagePresetStore] = usePersistentState<ImageEndpointPresetStore>(
+    `${APP_ID}_imageEndpointPresets`, initialImageStore.current, imageEndpointPresetCodec,
+  );
+  const imageValues = useMemo(() => imageEndpointActiveValues(imagePresetStore), [imagePresetStore]);
+  const patchImage = <K extends ImageEndpointValueKey>(key: K) => (value: ImageEndpointValues[K]) =>
+    setImagePresetStore((s) => imageUpdateValue(s, key, value));
+  const {
+    provider: imageProvider, endpoint: imageEndpoint, apiToken: imageApiToken, model: imageModel,
+    positivePrompt: imagePositivePrompt, negativePrompt: imageNegativePrompt,
+    portraitWidth: imagePortraitWidth, portraitHeight: imagePortraitHeight,
+    landscapeWidth: imageLandscapeWidth, landscapeHeight: imageLandscapeHeight,
+    steps: imageSteps, cfg: imageCfg, sampler: imageSampler,
+  } = imageValues;
+  const setImageProvider = patchImage('provider');
+  const setImageEndpoint = patchImage('endpoint');
+  const setImageApiToken = patchImage('apiToken');
+  const setImageModel = patchImage('model');
+  const setImagePositivePrompt = patchImage('positivePrompt');
+  const setImageNegativePrompt = patchImage('negativePrompt');
+  const setImagePortraitWidth = patchImage('portraitWidth');
+  const setImagePortraitHeight = patchImage('portraitHeight');
+  const setImageLandscapeWidth = patchImage('landscapeWidth');
+  const setImageLandscapeHeight = patchImage('landscapeHeight');
+  const setImageSteps = patchImage('steps');
+  const setImageCfg = patchImage('cfg');
+  const setImageSampler = patchImage('sampler');
+  // Preset management (Settings → Image Gen → Endpoint selector). Every preset is editable, including Default.
+  const imageEndpointPresets = imagePresetStore.presets.map((p) => ({ id: p.id, name: p.name }));
+  const activeImageEndpointPresetId = imagePresetStore.activeId;
+  const activeImageEndpointPresetName =
+    imagePresetStore.presets.find((p) => p.id === imagePresetStore.activeId)?.name ?? 'Default';
+  const selectImageEndpointPreset = (id: string) => setImagePresetStore((s) => imageSetActive(s, id));
+  const addImageEndpointPreset = (name: string) => {
+    const id = crypto.randomUUID();
+    setImagePresetStore((s) => imageAddPreset(s, id, name, imageEndpointActiveValues(s)));
+    return id;
+  };
+  const renameImageEndpointPreset = (id: string, name: string) => setImagePresetStore((s) => imageRenamePreset(s, id, name));
+  const deleteImageEndpointPreset = (id: string) => setImagePresetStore((s) => imageDeletePreset(s, id));
+  const resetImageEndpointPreset = (id: string) => setImagePresetStore((s) => imageResetPreset(s, id));
   // User-editable prompt that turns a subject's description into booru tags (Settings → Image Gen → Tag Prompt).
   const [imageTagPrompt, setImageTagPrompt] = usePersistentState<string>(`${APP_ID}_imageTagPrompt`, DEFAULT_TAG_PROMPT, stringCodec);
 
@@ -351,16 +416,28 @@ function useProvideSettings() {
     setImagePositivePrompt,
     imageNegativePrompt,
     setImageNegativePrompt,
-    imageWidth,
-    setImageWidth,
-    imageHeight,
-    setImageHeight,
+    imagePortraitWidth,
+    setImagePortraitWidth,
+    imagePortraitHeight,
+    setImagePortraitHeight,
+    imageLandscapeWidth,
+    setImageLandscapeWidth,
+    imageLandscapeHeight,
+    setImageLandscapeHeight,
     imageSteps,
     setImageSteps,
     imageCfg,
     setImageCfg,
     imageSampler,
     setImageSampler,
+    imageEndpointPresets,
+    activeImageEndpointPresetId,
+    activeImageEndpointPresetName,
+    selectImageEndpointPreset,
+    addImageEndpointPreset,
+    renameImageEndpointPreset,
+    deleteImageEndpointPreset,
+    resetImageEndpointPreset,
     imageTagPrompt,
     setImageTagPrompt,
     vramHelperUrl,

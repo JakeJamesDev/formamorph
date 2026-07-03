@@ -158,16 +158,28 @@ export const SettingsModal = ({ isOpen, onOpenChange, previewValues }: {
     setImagePositivePrompt,
     imageNegativePrompt,
     setImageNegativePrompt,
-    imageWidth,
-    setImageWidth,
-    imageHeight,
-    setImageHeight,
+    imagePortraitWidth,
+    setImagePortraitWidth,
+    imagePortraitHeight,
+    setImagePortraitHeight,
+    imageLandscapeWidth,
+    setImageLandscapeWidth,
+    imageLandscapeHeight,
+    setImageLandscapeHeight,
     imageSteps,
     setImageSteps,
     imageCfg,
     setImageCfg,
     imageSampler,
     setImageSampler,
+    imageEndpointPresets,
+    activeImageEndpointPresetId,
+    activeImageEndpointPresetName,
+    selectImageEndpointPreset,
+    addImageEndpointPreset,
+    renameImageEndpointPreset,
+    deleteImageEndpointPreset,
+    resetImageEndpointPreset,
     imageTagPrompt,
     setImageTagPrompt,
     vramHelperUrl,
@@ -210,6 +222,18 @@ export const SettingsModal = ({ isOpen, onOpenChange, previewValues }: {
   const handlePresetNameSubmit = (name: string) => {
     if (presetDialog?.mode === 'add') addPreset(name);
     else if (presetDialog?.mode === 'rename') renamePreset(activePresetId, name);
+  };
+
+  // Image Gen → Endpoint preset name dialog (mirrors the prompt preset one; all presets editable).
+  const [imagePresetDialog, setImagePresetDialog] = useState<{ mode: 'add' | 'rename' } | null>(null);
+  const IMG_ADD_PRESET_SENTINEL = '__add_image_preset__';
+  const handleImagePresetSelect = (v: string) => {
+    if (v === IMG_ADD_PRESET_SENTINEL) setImagePresetDialog({ mode: 'add' });
+    else selectImageEndpointPreset(v);
+  };
+  const handleImagePresetNameSubmit = (name: string) => {
+    if (imagePresetDialog?.mode === 'add') addImageEndpointPreset(name);
+    else if (imagePresetDialog?.mode === 'rename') renameImageEndpointPreset(activeImageEndpointPresetId, name);
   };
 
   // The selected prompt sub-tab, so the Reset button can target just that prompt.
@@ -593,7 +617,41 @@ export const SettingsModal = ({ isOpen, onOpenChange, previewValues }: {
                 <TabsTrigger value="img-endpoint">Endpoint</TabsTrigger>
                 <TabsTrigger value="img-tagprompt">Tag Prompt</TabsTrigger>
               </TabsList>
-              <TabsContent value="img-endpoint" className="pt-4 flex-1 min-h-0 overflow-y-auto">
+              <TabsContent value="img-endpoint" className="pt-4 flex-1 min-h-0 data-[state=active]:flex flex-col gap-3">
+            {/* Preset selector: swaps the whole endpoint field set. Every preset (incl. Default) is editable. */}
+            <div className="flex items-center gap-2 flex-shrink-0">
+              <span className="text-sm text-muted-foreground">Preset</span>
+              <Select value={activeImageEndpointPresetId} onValueChange={handleImagePresetSelect}>
+                <SelectTrigger className="flex-1 min-w-0">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {imageEndpointPresets.map((p) => (
+                    <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>
+                  ))}
+                  <SelectSeparator />
+                  <SelectItem value={IMG_ADD_PRESET_SENTINEL}>Add New Preset…</SelectItem>
+                </SelectContent>
+              </Select>
+              <Button variant="outline" size="sm" onClick={() => setImagePresetDialog({ mode: 'rename' })}>Rename</Button>
+              <ConfirmDialog
+                title="Reset Preset"
+                description={`Reset the "${activeImageEndpointPresetName}" preset to its default values? This can't be undone.`}
+                onConfirm={() => resetImageEndpointPreset(activeImageEndpointPresetId)}
+              >
+                <Button variant="outline" size="sm">Reset</Button>
+              </ConfirmDialog>
+              {imageEndpointPresets.length > 1 && (
+                <ConfirmDialog
+                  title="Delete Preset"
+                  description={`Delete the "${activeImageEndpointPresetName}" preset? This can't be undone.`}
+                  onConfirm={() => deleteImageEndpointPreset(activeImageEndpointPresetId)}
+                >
+                  <Button variant="outline" size="sm">Delete</Button>
+                </ConfirmDialog>
+              )}
+            </div>
+            <div className="flex-1 min-h-0 overflow-y-auto">
             <div className="grid gap-4">
               <div className="grid grid-cols-[1fr_3fr] items-center gap-4">
                 <label htmlFor="imageProvider" className="text-right">Provider</label>
@@ -641,11 +699,21 @@ export const SettingsModal = ({ isOpen, onOpenChange, previewValues }: {
                 <Input id="imageNegativePrompt" value={imageNegativePrompt} onChange={(e) => setImageNegativePrompt(e.target.value)} />
               </div>
               <div className="grid grid-cols-[1fr_3fr] items-center gap-4">
-                <label className="text-right">Size (W × H)</label>
+                <label className="text-right">Portrait (W × H)</label>
                 <div className="flex items-center gap-2">
-                  <Input aria-label="Width" type="number" min={64} step={64} value={imageWidth} onChange={(e) => setImageWidth(Number(e.target.value))} className="w-28" />
+                  <Input aria-label="Portrait width" type="number" min={64} step={64} value={imagePortraitWidth} onChange={(e) => setImagePortraitWidth(Number(e.target.value))} className="w-28" />
                   <span className="text-muted-foreground">×</span>
-                  <Input aria-label="Height" type="number" min={64} step={64} value={imageHeight} onChange={(e) => setImageHeight(Number(e.target.value))} className="w-28" />
+                  <Input aria-label="Portrait height" type="number" min={64} step={64} value={imagePortraitHeight} onChange={(e) => setImagePortraitHeight(Number(e.target.value))} className="w-28" />
+                  <span className="text-xs text-muted-foreground">entity portraits</span>
+                </div>
+              </div>
+              <div className="grid grid-cols-[1fr_3fr] items-center gap-4">
+                <label className="text-right">Landscape (W × H)</label>
+                <div className="flex items-center gap-2">
+                  <Input aria-label="Landscape width" type="number" min={64} step={64} value={imageLandscapeWidth} onChange={(e) => setImageLandscapeWidth(Number(e.target.value))} className="w-28" />
+                  <span className="text-muted-foreground">×</span>
+                  <Input aria-label="Landscape height" type="number" min={64} step={64} value={imageLandscapeHeight} onChange={(e) => setImageLandscapeHeight(Number(e.target.value))} className="w-28" />
+                  <span className="text-xs text-muted-foreground">locations &amp; thumbnail</span>
                 </div>
               </div>
               <div className="grid grid-cols-[1fr_3fr] items-center gap-4">
@@ -659,6 +727,7 @@ export const SettingsModal = ({ isOpen, onOpenChange, previewValues }: {
                 <label htmlFor="imageSampler" className="text-right">Sampler</label>
                 <Input id="imageSampler" value={imageSampler} onChange={(e) => setImageSampler(e.target.value)} placeholder="Euler a" />
               </div>
+            </div>
             </div>
               </TabsContent>
               <TabsContent value="img-tagprompt" className="pt-4 flex-1 min-h-0 data-[state=active]:flex flex-col gap-2">
@@ -680,6 +749,13 @@ export const SettingsModal = ({ isOpen, onOpenChange, previewValues }: {
                 </div>
               </TabsContent>
             </Tabs>
+            <PresetNameDialog
+              open={imagePresetDialog !== null}
+              mode={imagePresetDialog?.mode ?? 'add'}
+              initialName={imagePresetDialog?.mode === 'rename' ? activeImageEndpointPresetName : ''}
+              onOpenChange={(o) => { if (!o) setImagePresetDialog(null); }}
+              onSubmit={handleImagePresetNameSubmit}
+            />
           </TabsContent>
 
           <TabsContent value="prompts" className="pt-4 px-2 pb-4 flex-1 min-h-0 data-[state=active]:flex flex-col gap-4">
