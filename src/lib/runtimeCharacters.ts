@@ -86,3 +86,30 @@ export function mergeDiscoveredIntoLocation<T extends GameLocation>(
   if (here.length === 0) return location;
   return { ...location, entities: [...(location.entities ?? []), ...here] };
 }
+
+/**
+ * "Bring-them-over": the authored entities that should join the current location as visitors this turn —
+ * those living in a **reachable sibling** (a location sharing the current one's non-null parent) that the
+ * narration named as participants and that aren't already present. The caller anchors each as a
+ * `DiscoveredEntity` at the current location so it flows through the existing present-entity path. Pure.
+ * (Matches invented-character discovery's "named in the narration ⇒ in scene" semantics.)
+ */
+export function selectReachableVisitors(
+  participants: string[],
+  current: GameLocation | null | undefined,
+  locations: GameLocation[],
+  authoredEntities: Entity[],
+  presentIds: string[],
+): Entity[] {
+  const parent = current?.parentId ?? null;
+  if (!current || parent === null) return [];
+  const reachableIds = new Set(
+    locations
+      .filter((l) => l.id !== current.id && (l.parentId ?? null) === parent)
+      .flatMap((l) => l.entities ?? []),
+  );
+  const present = new Set(presentIds);
+  return authoredEntities.filter(
+    (e) => reachableIds.has(e.id) && !present.has(e.id) && participants.some((p) => sameCharacterName(p, e.name)),
+  );
+}

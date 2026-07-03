@@ -60,6 +60,42 @@ const ENTITY_CONTENT_AXIS: PromptVariantAxis = {
   ],
 };
 
+const SUBLOCATION_CONTENT_AXIS: PromptVariantAxis = {
+  id: 'content',
+  label: 'Content',
+  options: [
+    { id: null, label: 'Full', help: 'Each direct sub-location in full detail.' },
+    SUMMARY_VARIANT,
+  ],
+};
+
+const SUBLOCATION_ENTITY_CONTENT_AXIS: PromptVariantAxis = {
+  id: 'content',
+  label: 'Content',
+  options: [
+    { id: null, label: 'Full', help: 'Each character or thing in a sub-location, in full.' },
+    SUMMARY_VARIANT,
+  ],
+};
+
+const REACHABLE_LOCATION_CONTENT_AXIS: PromptVariantAxis = {
+  id: 'content',
+  label: 'Content',
+  options: [
+    { id: null, label: 'Full', help: 'Each reachable sibling location in full detail.' },
+    SUMMARY_VARIANT,
+  ],
+};
+
+const REACHABLE_ENTITY_CONTENT_AXIS: PromptVariantAxis = {
+  id: 'content',
+  label: 'Content',
+  options: [
+    { id: null, label: 'Full', help: 'Each character or thing in a reachable location, in full.' },
+    SUMMARY_VARIANT,
+  ],
+};
+
 // Shared "how the block is shaped" axis (mirrors the Default/Simple presets): Simple = plain text; Default =
 // markdown. The labels-style preset strips this axis back to plain (see sectionStyle `stripChipFormat`).
 const FORMAT_AXIS: PromptVariantAxis = {
@@ -91,6 +127,12 @@ const NOTES: PromptVariable = { token: '<NOTES>', label: 'Notes', color: HIGHLIG
 const LENGTH: PromptVariable = { token: '<LENGTH GUIDANCE>', label: 'Length Guidance', color: HIGHLIGHT_PALETTE[5] };
 const MARKDOWN: PromptVariable = { token: '<MARKDOWN GUIDANCE>', label: 'Markdown Guidance', color: HIGHLIGHT_PALETTE[6] };
 const ENTITIES: PromptVariable = { token: '<ENTITIES>', label: 'Entities', color: HIGHLIGHT_PALETTE[8], axes: [ENTITY_CONTENT_AXIS, FORMAT_AXIS] };
+// Direct sub-locations of the current location (each child's summary) and the characters/things in them.
+const SUBLOCATIONS: PromptVariable = { token: '<SUBLOCATIONS>', label: 'Sublocations', color: HIGHLIGHT_PALETTE[13], axes: [SUBLOCATION_CONTENT_AXIS, FORMAT_AXIS] };
+const SUBLOCATION_ENTITIES: PromptVariable = { token: '<SUBLOCATION ENTITIES>', label: 'Sub-loc Entities', color: HIGHLIGHT_PALETTE[14], axes: [SUBLOCATION_ENTITY_CONTENT_AXIS, FORMAT_AXIS] };
+// Sibling locations under the same parent (reachable from here) and the characters/things in them.
+const REACHABLE_LOCATIONS: PromptVariable = { token: '<REACHABLE LOCATIONS>', label: 'Reachable Locations', color: HIGHLIGHT_PALETTE[15], axes: [REACHABLE_LOCATION_CONTENT_AXIS, FORMAT_AXIS] };
+const REACHABLE_ENTITIES: PromptVariable = { token: '<REACHABLE ENTITIES>', label: 'Reachable Entities', color: HIGHLIGHT_PALETTE[16], axes: [REACHABLE_ENTITY_CONTENT_AXIS, FORMAT_AXIS] };
 // The activated-dictionary lore for the turn — supplied by GameViewer per turn (narration prompt only).
 const DICTIONARY: PromptVariable = { token: '<DICTIONARY>', label: 'Dictionary', color: HIGHLIGHT_PALETTE[11] };
 // Runtime value-token for the staged character pass — the name of the character whose motivation is being written.
@@ -106,11 +148,11 @@ export const SUBJECT: PromptVariable = { token: '<SUBJECT>', label: 'Subject', c
 
 /** All known variables — used by the parser to recognize any token regardless of which prompt it's in. */
 export const ALL_PROMPT_VARIABLES: PromptVariable[] = [
-  WORLD, STATS, TRAITS, LOCATION, ENTITIES, NOTES, DICTIONARY, LENGTH, MARKDOWN, PLAYER_ACTION, NARRATION, CHARACTER, SUBJECT,
+  WORLD, STATS, TRAITS, LOCATION, ENTITIES, SUBLOCATIONS, SUBLOCATION_ENTITIES, REACHABLE_LOCATIONS, REACHABLE_ENTITIES, NOTES, DICTIONARY, LENGTH, MARKDOWN, PLAYER_ACTION, NARRATION, CHARACTER, SUBJECT,
 ];
 
-/** The six context chips every system prompt can reference; GameViewer substitutes them uniformly. */
-const CONTEXT_VARS: PromptVariable[] = [WORLD, STATS, TRAITS, LOCATION, ENTITIES, NOTES];
+/** The context chips every system prompt can reference; GameViewer substitutes them uniformly. */
+const CONTEXT_VARS: PromptVariable[] = [WORLD, STATS, TRAITS, LOCATION, SUBLOCATIONS, REACHABLE_LOCATIONS, ENTITIES, SUBLOCATION_ENTITIES, REACHABLE_ENTITIES, NOTES];
 
 /** Which variables each prompt's toolbar offers. Every kind gets the shared context chips (even when its
  *  default text doesn't use them); some add their own extras (narration's length/markdown, character's name). */

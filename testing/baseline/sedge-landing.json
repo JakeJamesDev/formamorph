@@ -54,7 +54,7 @@
       "aiDescription": "A rickety wooden dock on the north bank of the Ashen River. The water here runs milk-pale and dead silent - locals call this stretch the gloamwater. A single lantern hangs from a leaning post where notices are nailed; a rope ferry is moored at the dock, its far end lost in mist.",
       "aiSummary": "A north-bank dock over the silent gloamwater; a rope ferry moored in mist.",
       "entities": ["ent-bram", "ent-odette", "ent-ferry"],
-      "connections": ["Far Bank"],
+      "connections": ["Far Bank", "The Common Green"],
       "isStarting": true
     },
     {
@@ -66,6 +66,45 @@
       "entities": ["ent-tomas"],
       "connections": ["Sedge Landing"],
       "isStarting": false
+    },
+    {
+      "id": "loc-hamlet",
+      "name": "Sedge Hamlet",
+      "playerDescription": "The little north-bank village up the path from the landing.",
+      "aiDescription": "The huddle of turf-roofed houses on the north bank, a short climb up from the landing. A grouping for the green, the cottage, and the eelhouse - one is never standing 'in the hamlet' as such, only in one of its places.",
+      "aiSummary": "The north-bank village above the landing.",
+      "entities": [],
+      "connections": []
+    },
+    {
+      "id": "loc-green",
+      "name": "The Common Green",
+      "playerDescription": "The hamlet's green, with a stone well at its center.",
+      "aiDescription": "A trodden common green ringed by turf-roofed houses. At its center stands a stone well with a blue-glazed rim; the well-rope is always coiled left-handed, widdershins, and folk re-coil it that way without thinking. Paths lead down to the landing, across to the ferryman's cottage, and to the eelhouse.",
+      "aiSummary": "The hamlet green with a blue-rimmed well whose rope is coiled widdershins.",
+      "entities": [],
+      "connections": ["Sedge Landing", "Ferryman's Cottage", "The Eelhouse"],
+      "parentId": "loc-hamlet"
+    },
+    {
+      "id": "loc-cottage",
+      "name": "Ferryman's Cottage",
+      "playerDescription": "Bram's low turf-roofed cottage at the green's edge.",
+      "aiDescription": "The ferryman's own cottage: a low house with a turf roof and a door painted the same pale blue as rusted iron. A three-legged cat named Sixpence sleeps on the windowsill and answers to no one. The ferryman's sister keeps the place while he works the rope.",
+      "aiSummary": "The ferryman's turf-roofed cottage; a three-legged cat named Sixpence on the sill.",
+      "entities": ["ent-wick"],
+      "connections": ["The Common Green"],
+      "parentId": "loc-hamlet"
+    },
+    {
+      "id": "loc-eelhouse",
+      "name": "The Eelhouse",
+      "playerDescription": "A smoke-blackened hut where river-eels are cured.",
+      "aiDescription": "A smoke-blackened hut hung with racks of curing river-eels. The door is chalked with a running tally of the catch that is wiped clean and restarted at every new moon. No one tends it just now.",
+      "aiSummary": "A smoke-blackened eel-curing hut; its door-tally resets each new moon.",
+      "entities": [],
+      "connections": ["The Common Green"],
+      "parentId": "loc-hamlet"
     }
   ],
   "entities": [
@@ -109,6 +148,17 @@
       "playerDescription": "The far-bank watchman.",
       "aiDescription": "Tomas is the far-bank watchman: a lean old man wrapped in a tarred canvas cloak, blind in one eye - a milky left eye - and leaning on a fishing spear. He challenges everyone who lands and gives his name to no one until they state their business.",
       "aiSummary": "The one-eyed far-bank watchman with a fishing spear.",
+      "image": null,
+      "sound": null,
+      "model": null
+    },
+    {
+      "id": "ent-wick",
+      "name": "Wick",
+      "type": "Person",
+      "playerDescription": "The ferryman's sister, who keeps the cottage.",
+      "aiDescription": "Wick is the ferryman's sister, who keeps the cottage while he works the rope. She is tall and stooped, with a silver eyetooth that shows when she hums - she hums almost constantly and speaks rarely, and never to a stranger. She has not given the player her name.",
+      "aiSummary": "The ferryman's sister who keeps the cottage; silver-toothed, always humming, wary of strangers.",
       "image": null,
       "sound": null,
       "model": null

@@ -4,13 +4,40 @@ import {
   materializeDiscoveredEntity,
   mergeDiscoveredIntoLocation,
   cleanDiscoveredDescription,
+  selectReachableVisitors,
 } from './runtimeCharacters';
-import type { ChatMessage, DiscoveredEntity, GameLocation } from '@/types';
+import type { ChatMessage, DiscoveredEntity, Entity, GameLocation } from '@/types';
 
 /** Build an assistant turn message with the given fields. */
 function turn(fields: { turnId?: string; narration?: string; entities?: string[]; locationId?: string }): ChatMessage {
   return { role: 'assistant', content: JSON.stringify({ narration: 'n', choices: [], stat_changes: [], ...fields }) };
 }
+
+describe('selectReachableVisitors', () => {
+  // town > { houseA (current), Sarah's House (Sarah) } ; a top-level location has no reachable siblings.
+  const houseA: GameLocation = { id: 'a', name: 'House A', parentId: 'town', entities: ['alice'] };
+  const sarahs: GameLocation = { id: 'b', name: "Sarah's House", parentId: 'town', entities: ['sarah'] };
+  const locs = [houseA, sarahs];
+  const alice: Entity = { id: 'alice', name: 'Alice' };
+  const sarah: Entity = { id: 'sarah', name: 'Sarah' };
+  const authored = [alice, sarah];
+
+  it('pulls in a reachable-sibling authored entity named this turn and not present', () => {
+    expect(selectReachableVisitors(['Sarah'], houseA, locs, authored, ['alice'])).toEqual([sarah]);
+  });
+
+  it('excludes those already present, not reachable, not authored, or not named', () => {
+    expect(selectReachableVisitors(['Sarah'], houseA, locs, authored, ['alice', 'sarah'])).toEqual([]); // already present
+    expect(selectReachableVisitors(['Alice'], houseA, locs, authored, ['alice'])).toEqual([]); // Alice is present here, not a sibling
+    expect(selectReachableVisitors(['Goblin'], houseA, locs, authored, ['alice'])).toEqual([]); // unauthored / unnamed
+    expect(selectReachableVisitors([], houseA, locs, authored, ['alice'])).toEqual([]); // nobody named
+  });
+
+  it('returns nothing for a top-level location (no reachable siblings)', () => {
+    const top: GameLocation = { id: 'top', name: 'Overworld', entities: [] };
+    expect(selectReachableVisitors(['Sarah'], top, [...locs, top], authored, [])).toEqual([]);
+  });
+});
 
 describe('selectDueDiscovery', () => {
   const known = ['Alice']; // one authored entity

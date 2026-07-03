@@ -34,6 +34,7 @@ export function buildLocationContext(
     aiDescription,
     aiSummary,
     isStarting, // editor-only new-game seeding flag; irrelevant to the AI
+    parentId, // editor-only sub-location nesting; not part of the AI feed
     entity, // entity ids — emitted by buildEntityContext, not here
     entities, // entity ids — emitted by buildEntityContext, not here
     ...otherProps
@@ -112,4 +113,103 @@ export function buildEntityContext(
 
   // All listed ids failed to resolve to a real entity → treat as empty.
   return output || NONE_PLACEHOLDER;
+}
+
+/**
+ * Serialize the current location's **direct** sub-locations for the `<SUBLOCATIONS>` chip — one line per
+ * child (`name: <summary>` / `- **name:** <summary>`), the summary chosen like the other builders. Returns
+ * the `N/A` placeholder when the location is null or has no children. Nesting is revealed a level at a time:
+ * only immediate children, not the whole descendant subtree.
+ */
+export function buildSublocationsContext(
+  current: LocationWithEntities,
+  locations: GameLocation[],
+  opts: { preferSummary?: boolean; format?: "simple" | "markdown" } = {},
+): string {
+  if (!current) return NONE_PLACEHOLDER;
+  const kids = locations.filter((l) => (l.parentId ?? null) === current.id);
+  if (kids.length === 0) return NONE_PLACEHOLDER;
+
+  const { preferSummary = false, format = "simple" } = opts;
+  const md = format === "markdown";
+  let output = "";
+  for (const kid of kids) {
+    const desc = pickDescription(preferSummary, kid.aiSummary, kid.aiDescription);
+    const hasDesc = !!desc && desc.trim() !== "";
+    if (md) output += hasDesc ? `- **${kid.name}:** ${desc}\n` : `- **${kid.name}**\n`;
+    else output += hasDesc ? `${kid.name}: ${desc}\n` : `${kid.name}\n`;
+  }
+  return output;
+}
+
+/**
+ * Serialize the characters/things located in the current location's direct sub-locations for the
+ * `<SUBLOCATION ENTITIES>` chip. Gathers + dedupes the children's entity ids and delegates to
+ * `buildEntityContext` (a synthetic location holding those ids), so the roster shaping matches the main
+ * entities section. Returns the `N/A` placeholder when there are no children or no entities among them.
+ */
+export function buildSublocationEntitiesContext(
+  current: LocationWithEntities,
+  locations: GameLocation[],
+  entities: Entity[],
+  opts: { preferSummary?: boolean; format?: "simple" | "markdown" } = {},
+): string {
+  if (!current) return NONE_PLACEHOLDER;
+  const kids = locations.filter((l) => (l.parentId ?? null) === current.id);
+  const ids = [...new Set(kids.flatMap((k) => k.entities ?? []))];
+  if (ids.length === 0) return NONE_PLACEHOLDER;
+  return buildEntityContext({ id: current.id, name: current.name, entities: ids }, entities, opts);
+}
+
+/** The current location's reachable **siblings** — other children of the same non-null parent. */
+function reachableSiblings(current: GameLocation, locations: GameLocation[]): GameLocation[] {
+  const parent = current.parentId ?? null;
+  if (parent === null) return []; // top-level → no containing region → nothing reachable
+  return locations.filter((l) => l.id !== current.id && (l.parentId ?? null) === parent);
+}
+
+/**
+ * Serialize the sibling locations reachable from the current one (same parent) for the
+ * `<REACHABLE LOCATIONS>` chip — one line per sibling (`name: <summary>` / `- **name:** <summary>`).
+ * Returns `N/A` when the location is top-level (no parent) or has no siblings.
+ */
+export function buildReachableLocationsContext(
+  current: LocationWithEntities,
+  locations: GameLocation[],
+  opts: { preferSummary?: boolean; format?: "simple" | "markdown" } = {},
+): string {
+  if (!current) return NONE_PLACEHOLDER;
+  const sibs = reachableSiblings(current, locations);
+  if (sibs.length === 0) return NONE_PLACEHOLDER;
+
+  const { preferSummary = false, format = "simple" } = opts;
+  const md = format === "markdown";
+  let output = "";
+  for (const sib of sibs) {
+    const desc = pickDescription(preferSummary, sib.aiSummary, sib.aiDescription);
+    const hasDesc = !!desc && desc.trim() !== "";
+    if (md) output += hasDesc ? `- **${sib.name}:** ${desc}\n` : `- **${sib.name}**\n`;
+    else output += hasDesc ? `${sib.name}: ${desc}\n` : `${sib.name}\n`;
+  }
+  return output;
+}
+
+/**
+ * Serialize the characters/things in the current location's reachable siblings for the
+ * `<REACHABLE ENTITIES>` chip. Gathers + dedupes the siblings' entity ids (minus `excludeIds`, e.g. those
+ * already present at the current location after a visit) and delegates to `buildEntityContext`.
+ * Returns `N/A` when there are no siblings or no remaining entities.
+ */
+export function buildReachableEntitiesContext(
+  current: LocationWithEntities,
+  locations: GameLocation[],
+  entities: Entity[],
+  opts: { preferSummary?: boolean; format?: "simple" | "markdown"; excludeIds?: string[] } = {},
+): string {
+  if (!current) return NONE_PLACEHOLDER;
+  const sibs = reachableSiblings(current, locations);
+  const exclude = new Set(opts.excludeIds ?? []);
+  const ids = [...new Set(sibs.flatMap((s) => s.entities ?? []))].filter((id) => !exclude.has(id));
+  if (ids.length === 0) return NONE_PLACEHOLDER;
+  return buildEntityContext({ id: current.id, name: current.name, entities: ids }, entities, opts);
 }
