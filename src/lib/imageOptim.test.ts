@@ -2,6 +2,7 @@ import { describe, it, expect } from 'vitest';
 import {
   fitWithin,
   dataUrlBytes,
+  dataUrlMime,
   downscaleWorldImages,
   estimateEncodedBytes,
   IMAGE_CAPS,
@@ -28,6 +29,16 @@ describe('dataUrlBytes', () => {
     // "AAAA" → 3 bytes, no padding; "AAA=" → 2 bytes.
     expect(dataUrlBytes('data:image/png;base64,AAAA')).toBe(3);
     expect(dataUrlBytes('data:image/png;base64,AAA=')).toBe(2);
+  });
+});
+
+describe('dataUrlMime', () => {
+  it('extracts the MIME type from a data-URL (used to skip Optimize for already-WebP images)', () => {
+    expect(dataUrlMime('data:image/webp;base64,AAAA')).toBe('image/webp');
+    expect(dataUrlMime('data:image/png;base64,AAAA')).toBe('image/png');
+  });
+  it('returns empty string for a non-data-URL', () => {
+    expect(dataUrlMime('BIG-thumb')).toBe('');
   });
 });
 
@@ -85,8 +96,8 @@ describe('downscaleWorldImages', () => {
 });
 
 describe('estimateEncodedBytes', () => {
-  it('reencode roughly halves the source and ignores the cap', () => {
-    expect(estimateEncodedBytes(1_000_000, 800, 600, 'reencode', IMAGE_CAPS.thumbnail)).toBe(500_000);
+  it('reencode (lossless) keeps most of the source and ignores the cap', () => {
+    expect(estimateEncodedBytes(1_000_000, 800, 600, 'reencode', IMAGE_CAPS.thumbnail)).toBe(850_000);
   });
   it('downscale is smaller than reencode when dimensions exceed the cap', () => {
     const bytes = 1_000_000;
@@ -94,10 +105,10 @@ describe('estimateEncodedBytes', () => {
     const down = estimateEncodedBytes(bytes, 4000, 3000, 'downscale', IMAGE_CAPS.thumbnail);
     expect(down).toBeLessThan(re);
   });
-  it('downscale equals reencode when already within the cap', () => {
+  it('within the cap, downscale (lossy) is smaller than reencode (lossless)', () => {
     const bytes = 300_000;
     const cap = IMAGE_CAPS.background;
     expect(estimateEncodedBytes(bytes, 100, 100, 'downscale', cap))
-      .toBe(estimateEncodedBytes(bytes, 100, 100, 'reencode', cap));
+      .toBeLessThan(estimateEncodedBytes(bytes, 100, 100, 'reencode', cap));
   });
 });

@@ -11,6 +11,7 @@ import {
 } from '@/components/ui/alert-dialog';
 import type { World } from '@/types';
 import {
+  dataUrlMime,
   downscaleWorldImages,
   estimateEncodedBytes,
   formatBytes,
@@ -32,6 +33,7 @@ interface PendingPrompt {
   description: ReactNode;
   actions: PromptAction[];
   cancel: () => void;
+  cancelLabel?: string; // the "do nothing and continue" button; defaults to 'Cancel'
 }
 
 /**
@@ -54,6 +56,8 @@ export function useDownscalePrompt() {
         return url;
       }
       if (!(Math.max(info.w, info.h) > cap.maxDim || info.bytes > cap.maxBytes)) return url;
+      // Already-WebP images gain nothing from Optimize (lossless WebP→WebP no-ops); only offer Downscale.
+      const alreadyWebp = dataUrlMime(url) === 'image/webp';
       const opt = estimateEncodedBytes(info.bytes, info.w, info.h, 'reencode', cap);
       const down = estimateEncodedBytes(info.bytes, info.w, info.h, 'downscale', cap);
       return new Promise<string>((resolve) => {
@@ -64,17 +68,21 @@ export function useDownscalePrompt() {
           resolve(v);
           close();
         };
+        const optimizeSentence = alreadyWebp
+          ? ''
+          : `Optimize converts it to lossless WebP at the same resolution (~${formatBytes(opt)}, no quality loss). `;
         setPending({
           title: 'Large image',
           description:
             `This image is ${formatBytes(info.bytes)} (${info.w}×${info.h}). ` +
-            `Optimize converts it to WebP at the same resolution (~${formatBytes(opt)}). ` +
-            `Downscale also shrinks it to fit (~${formatBytes(down)}). Animated GIFs keep their animation.`,
+            optimizeSentence +
+            `Downscale ${alreadyWebp ? 'shrinks it to fit' : 'also shrinks it to fit'} (~${formatBytes(down)}). Animated GIFs keep their animation.`,
           actions: [
-            { label: 'Optimize', run: () => void reencodeImageDataUrl(url).then(finish) },
+            ...(alreadyWebp ? [] : [{ label: 'Optimize', run: () => void reencodeImageDataUrl(url).then(finish) }]),
             { label: 'Downscale', run: () => void optimizeImageDataUrl(url, cap).then(finish) },
           ],
           cancel: () => finish(url),
+          cancelLabel: 'Keep original',
         });
       });
     },
@@ -85,7 +93,12 @@ export function useDownscalePrompt() {
     async (world: World): Promise<World | null> => {
       const { items, totalBytes } = await scanWorldImages(world);
       if (items.length === 0) return null;
-      const optTotal = items.reduce((s, i) => s + estimateEncodedBytes(i.bytes, i.w, i.h, 'reencode', i.cap), 0);
+      // Optimize only helps non-WebP images; already-WebP ones re-encode to themselves (unchanged size).
+      const canOptimize = items.some((i) => i.mime !== 'image/webp');
+      const optTotal = items.reduce(
+        (s, i) => s + (i.mime === 'image/webp' ? i.bytes : estimateEncodedBytes(i.bytes, i.w, i.h, 'reencode', i.cap)),
+        0,
+      );
       const downTotal = items.reduce((s, i) => s + estimateEncodedBytes(i.bytes, i.w, i.h, 'downscale', i.cap), 0);
       const n = items.length;
       return new Promise<World | null>((resolve) => {
@@ -96,17 +109,21 @@ export function useDownscalePrompt() {
           resolve(v);
           close();
         };
+        const optimizeSentence = canOptimize
+          ? `Optimize converts them to lossless WebP (~${formatBytes(optTotal)}, no quality loss). `
+          : '';
         setPending({
           title: 'Optimize world images?',
           description:
             `This world has ${n} image${n > 1 ? 's' : ''} larger than recommended (${formatBytes(totalBytes)} total). ` +
-            `Optimize converts them to WebP (~${formatBytes(optTotal)}). ` +
-            `Downscale also shrinks them (~${formatBytes(downTotal)}). Animated GIFs keep their animation.`,
+            optimizeSentence +
+            `Downscale ${canOptimize ? 'also shrinks them' : 'shrinks them'} (~${formatBytes(downTotal)}). Animated GIFs keep their animation.`,
           actions: [
-            { label: 'Optimize', run: () => void downscaleWorldImages(world, REENCODE_DEPS).then(finish) },
+            ...(canOptimize ? [{ label: 'Optimize', run: () => void downscaleWorldImages(world, REENCODE_DEPS).then(finish) }] : []),
             { label: 'Downscale', run: () => void downscaleWorldImages(world).then(finish) },
           ],
           cancel: () => finish(null),
+          cancelLabel: 'Keep as-is',
         });
       });
     },
@@ -133,7 +150,7 @@ export function useDownscalePrompt() {
           <AlertDialogDescription>{pending?.description}</AlertDialogDescription>
         </AlertDialogHeader>
         <AlertDialogFooter>
-          <AlertDialogCancel onClick={() => pending?.cancel()}>Cancel</AlertDialogCancel>
+          <AlertDialogCancel onClick={() => pending?.cancel()}>{pending?.cancelLabel ?? 'Cancel'}</AlertDialogCancel>
           {pending?.actions.map((a) => (
             <AlertDialogAction
               key={a.label}
