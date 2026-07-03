@@ -150,6 +150,23 @@ describe('parseStatUpdates', () => {
   it('returns empty maps for empty input', () => {
     expect(parseStatUpdates('')).toEqual({ values: {}, maxes: {} });
   });
+
+  it('skips display-format echoes (a number followed by "/") instead of mis-applying them', () => {
+    // A weak model sometimes echoes the shown value "25/100 (Winded)"; that must not apply as +25.
+    expect(parseStatUpdates('Vigor: 25/100 (Winded)')).toEqual({ values: {}, maxes: {} });
+    // But real deltas and MAX changes (no fraction) still parse.
+    const { values, maxes } = parseStatUpdates('Vigor: -15\nResolve: +2\nHealth: 10 MAX');
+    expect(values).toEqual({ vigor: -15, resolve: 2 });
+    expect(maxes).toEqual({ health: 10 });
+  });
+
+  it('strips leading/trailing markdown a model copies from the bulleted stat list', () => {
+    // Decorated names ("- **Vigor:**", "**Resolve:**") should match; decoration never changes the stat.
+    const { values } = parseStatUpdates('- **Vigor:** 5\n**Resolve:** -3\n- Luck: 2');
+    expect(values).toEqual({ vigor: 5, resolve: -3, luck: 2 });
+    // Decoration + a fraction echo is still dropped (guard runs after the key resolves).
+    expect(parseStatUpdates('- **Vigor:** 5/100')).toEqual({ values: {}, maxes: {} });
+  });
 });
 
 describe('applyAiMaxChanges', () => {

@@ -8,9 +8,11 @@ import { escapeRegExp } from './utils';
  * Matching rules (per name):
  * - **Single-word** name: counts only when it occurs with an **initial capital** (proper-noun use), so a
  *   name that is also a common word (Hope, Will, Rose, Crow) doesn't match ordinary lowercase prose.
- * - **Multi-word** name: an exact contiguous match, or (loose) every word present somewhere — both
- *   case-insensitive, since the multi-word shape is already specific.
- * - A trailing plural `s` is tolerated; blank names are skipped.
+ * - **Multi-word** name: an exact contiguous match, or every word present somewhere, or (partial) any
+ *   significant word used as a proper noun — so "Emily" marks "Emily Foster" present. The capital guard
+ *   keeps lowercase common-word usage from matching.
+ * - A trailing plural `s` is tolerated; blank names are skipped. A sub-3-char word (e.g. surname "Wu") is
+ *   below the significance floor, so a bare "Wu" won't match "Ling Wu" — the exact/all-words pass still does.
  */
 
 // A word-boundary match for `word`, tolerating a trailing plural `s`. Default case-insensitive; pass
@@ -54,7 +56,12 @@ export function matchNames(
     }
     const exact = makeWordRegex(trimmed);
     const allWordsPresent = words.every((w) => makeWordRegex(w).test(text));
-    if (exact.test(text) || allWordsPresent) found.add(name);
+    // Partial reference: a significant word used as a proper noun (e.g. "Emily" for "Emily Foster").
+    const sig = significantWords(trimmed);
+    const partial = requireCapital
+      ? sig.some((w) => occursCapitalized(text, w))
+      : sig.some((w) => makeWordRegex(w).test(text));
+    if (exact.test(text) || allWordsPresent || partial) found.add(name);
   }
   return [...found];
 }

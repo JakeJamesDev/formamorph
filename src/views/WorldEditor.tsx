@@ -5,7 +5,7 @@ import { Input } from "@/components/ui/input";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { Download, Plus, X, ArrowLeft, Save, GripVertical, FolderPlus, FilePlus, Copy } from "lucide-react";
+import { Download, Plus, X, ArrowLeft, Save, GripVertical, FolderPlus, FilePlus, Copy, ImageDown } from "lucide-react";
 import { Panel, PanelGroup, PanelResizeHandle } from 'react-resizable-panels';
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { ToastContainer, toast } from 'react-toastify';
@@ -44,7 +44,8 @@ import {
 } from '@dnd-kit/modifiers';
 import { UnsavedChangesDialog } from "@/components/UnsavedChangesDialog";
 import { APP_VERSION } from '@/lib/version';
-import type { Stat, Entity, GameLocation, StatUpdate, DictionaryEntry } from '@/types';
+import type { Stat, Entity, GameLocation, StatUpdate, DictionaryEntry, World } from '@/types';
+import { useDownscalePrompt } from '@/lib/useDownscalePrompt';
 
 /** The fields a reorderable list row needs (every editor item has these). */
 interface ListItem {
@@ -122,7 +123,7 @@ const WorldEditor = ({ onClose, embedded = false }: {
   embedded?: boolean;
 }) => {
   const {
-    worldOverview,
+    worldOverview, updateWorldOverview, worldId,
     loadWorldData,
     stats, locations, entities, traits, traitGroups, statUpdates, dictionary,
     addStat, addLocation, addEntity, addTrait, addStatUpdate, addDictionaryEntry,
@@ -131,14 +132,40 @@ const WorldEditor = ({ onClose, embedded = false }: {
     setStats, setLocations, setEntities, setTraits, setTraitGroups, setStatUpdates, setDictionary,
     isWorldDirty, saveWorld: saveWorldCtx
   } = useGameData();
+  const { promptWorld, dialog: downscaleDialog } = useDownscalePrompt();
+
+  // Assemble the editor's live world for an image scan/downscale (id/version unused by the scan).
+  const buildCurrentWorld = (): World => ({
+    id: worldId ?? '', version: APP_VERSION,
+    worldOverview, stats, locations, entities, traits, traitGroups, statUpdates, dictionary,
+  });
+  // Apply a downscaled world back to the editor's state (marks dirty for the user to Save).
+  const applyDownscaled = (w: World) => {
+    updateWorldOverview({ thumbnail: w.worldOverview.thumbnail });
+    setEntities(w.entities);
+    setLocations(w.locations);
+  };
+  const optimizeImages = async () => {
+    const w = await promptWorld(buildCurrentWorld());
+    if (w) applyDownscaled(w);
+  };
 
   const [activeTab, setActiveTab] = useState("overview");
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedItemId, setSelectedItemId] = useState<string | null>(null);
   const [showExitPrompt, setShowExitPrompt] = useState(false);
 
-  const downloadWorld = () => {
-    const worldData = { version: APP_VERSION, worldOverview, stats, locations, entities, traits, traitGroups, statUpdates, dictionary };
+  const downloadWorld = async () => {
+    // Offer to downscale oversized images BEFORE writing the file so the download itself is the smaller size.
+    // This affects only the exported file — the editor state and the stored world are left untouched.
+    const current = buildCurrentWorld();
+    const downscaled = await promptWorld(current);
+    const w = downscaled ?? current;
+    const worldData = {
+      version: APP_VERSION,
+      worldOverview: w.worldOverview, stats: w.stats, locations: w.locations, entities: w.entities,
+      traits: w.traits, traitGroups: w.traitGroups, statUpdates: w.statUpdates, dictionary: w.dictionary,
+    };
     const jsonData = JSON.stringify(worldData, null, 2);
     const blob = new Blob([jsonData], { type: 'application/json' });
     const href = URL.createObjectURL(blob);
@@ -509,14 +536,21 @@ const WorldEditor = ({ onClose, embedded = false }: {
                   </Tabs>
               </CardContent>
               <div className="p-4 border-t flex justify-between">
+                {downscaleDialog}
                 <Button variant="outline" size="sm" onClick={downloadWorld}>
                   <Download className="h-4 w-4 mr-2" />
                   Download
                 </Button>
-                <Button size="sm" onClick={saveWorld} disabled={!isWorldDirty}>
-                  <Save className="h-4 w-4 mr-2" />
-                  Save
-                </Button>
+                <div className="flex gap-2">
+                  <Button variant="outline" size="sm" onClick={optimizeImages} title="Downscale oversized images to conserve file size">
+                    <ImageDown className="h-4 w-4 mr-2" />
+                    Optimize Images
+                  </Button>
+                  <Button size="sm" onClick={saveWorld} disabled={!isWorldDirty}>
+                    <Save className="h-4 w-4 mr-2" />
+                    Save
+                  </Button>
+                </div>
                 {/* Disabled due to new format
                 <Button variant="outline" size="sm" onClick={() => document.getElementById('load-world').click()}>
                   <Upload className="h-4 w-4 mr-2" />

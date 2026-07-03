@@ -7,6 +7,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { MultiSelect } from "@/components/ui/multi-select";
 import GenerateSummaryButton from "@/components/GenerateSummaryButton";
 import { ImageUpload, SoundUpload } from '../lib/UtilityComponents';
+import { IMAGE_CAPS } from '../lib/imageOptim';
 import type { GameLocation } from '@/types';
 
 const LocationManager = ({ location }: { location: GameLocation }) => {
@@ -92,6 +93,7 @@ const LocationManager = ({ location }: { location: GameLocation }) => {
           onChange={(file) => handleChange('backgroundImage', file)}
           id={`location-image-${editingLocation.id}`}
           value={editingLocation.backgroundImage}
+          cap={IMAGE_CAPS.background}
         />
       </div>
       <div className="space-y-2">

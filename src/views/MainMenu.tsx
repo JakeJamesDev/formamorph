@@ -38,6 +38,7 @@ import WorldStorageService from '../services/WorldStorageService';
 import AuthService from '../services/AuthService';
 import type { World, Stat, CharacterData } from '@/types';
 import { migrateWorld, APP_VERSION } from '@/lib/version';
+import { useDownscalePrompt } from '@/lib/useDownscalePrompt';
 import DiscoverWorlds from './DiscoverWorlds';
 import { WorldDetailsColumn, DateTimeText, type WorldRecord } from "@/components/WorldDetails";
 import SortableWorldCard from "@/components/SortableWorldCard";
@@ -75,6 +76,7 @@ const applyWorldOrder = <T extends { id: string }>(list: T[], order: string[]): 
 
 const MainMenu = ({ onStartGame, onOpenWorldEditor }: MainMenuProps) => {
   const { traits, traitGroups, stats, loadWorldData } = useGameData();
+  const { promptWorld, dialog: downscaleDialog } = useDownscalePrompt();
   const [selectedWorld, setSelectedWorld] = useState<WorldRecord | null>(null);
   // Local-world grid layout: "grid" (default compact cards) or "detailed" (Discover-style card + info
   // beneath). Persisted across sessions in localStorage.
@@ -250,26 +252,41 @@ const MainMenu = ({ onStartGame, onOpenWorldEditor }: MainMenuProps) => {
             data: parsedWorldData
           });
 
+          // Offer to downscale oversized images; if accepted, re-store in place and use the smaller world below.
+          let finalData = parsedWorldData;
+          const downscaled = await promptWorld(parsedWorldData);
+          if (downscaled) {
+            downscaled.id = worldId;
+            finalData = downscaled;
+            await WorldStorageService.storeWorld({
+              id: worldId,
+              name: finalData.worldOverview?.name || 'Uploaded World',
+              description: finalData.worldOverview?.description || 'Custom uploaded world',
+              thumbnail: finalData.worldOverview?.thumbnail ?? undefined,
+              data: finalData
+            });
+          }
+
           setWorlds(prev => [...prev, {
             id: worldId,
-            name: parsedWorldData.worldOverview?.name || 'Uploaded World',
-            description: parsedWorldData.worldOverview?.description || 'Custom uploaded world',
-            thumbnail: parsedWorldData.worldOverview?.thumbnail,
-            tags: parsedWorldData.worldOverview?.tags || [],
+            name: finalData.worldOverview?.name || 'Uploaded World',
+            description: finalData.worldOverview?.description || 'Custom uploaded world',
+            thumbnail: finalData.worldOverview?.thumbnail,
+            tags: finalData.worldOverview?.tags || [],
             createdAt: now,
             lastAccessed: now,
             isLoading: false
           }]);
 
-          loadWorldData(parsedWorldData, true);
+          loadWorldData(finalData, true);
           setSelectedWorld({
             id: worldId,
-            name: parsedWorldData.worldOverview?.name || 'Uploaded World',
-            description: parsedWorldData.worldOverview?.description || 'Custom uploaded world',
-            thumbnail: parsedWorldData.worldOverview?.thumbnail,
+            name: finalData.worldOverview?.name || 'Uploaded World',
+            description: finalData.worldOverview?.description || 'Custom uploaded world',
+            thumbnail: finalData.worldOverview?.thumbnail,
             createdAt: now,
             lastAccessed: now,
-            data: parsedWorldData
+            data: finalData
           });
           setShowWorldModal(true);
         } catch (error) {
@@ -478,6 +495,7 @@ const MainMenu = ({ onStartGame, onOpenWorldEditor }: MainMenuProps) => {
 
   return (
     <div className="container mx-auto px-4 py-6 relative flex flex-col h-screen overflow-hidden">
+      {downscaleDialog}
       <ToastContainer theme="dark" />
 
       {/* App version (derived from package.json) */}

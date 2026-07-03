@@ -1,4 +1,4 @@
-import { useCallback, useState, type ChangeEvent } from 'react';
+import { useCallback, useState, type ChangeEvent, type MouseEvent } from 'react';
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { ImagePlus, Box as LucideBox, Music, X } from "lucide-react";
@@ -6,6 +6,9 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { Button } from "@/components/ui/button";
 import ModelViewer from '../views/ModelViewer';
 import AudioPlayer from '../components/game/AudioPlayer';
+import { useDownscalePrompt } from './useDownscalePrompt';
+import { ImageZoomViewer } from '../components/ImageZoomViewer';
+import type { ImageCap } from './imageOptim';
 
 /** An uploaded media file, base64-encoded as a data URL. */
 interface UploadedMedia {
@@ -31,25 +34,49 @@ export const getModelType = (fileName: string) => {
   }
 };
 
-export const ImageUpload = ({ onChange, id, value }: {
+export const ImageUpload = ({ onChange, id, value, cap, previewClassName, objectFit = 'contain' }: {
   onChange: (value: string) => void;
   id: string | number;
   value?: string | null;
+  cap?: ImageCap;
+  // Optional fixed-size preview box (e.g. the 4:3 thumbnail crop). When set, replaces the default dashed box.
+  previewClassName?: string;
+  objectFit?: 'contain' | 'cover';
 }) => {
+  const { promptImage, dialog } = useDownscalePrompt();
+  const [zoomOpen, setZoomOpen] = useState(false);
   const handleImageChange = useCallback((e: ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
       const reader = new FileReader();
-      reader.onloadend = () => {
+      reader.onloadend = async () => {
         const base64String = reader.result as string;
-        onChange(base64String);
+        // Offer to downscale before storing when the image exceeds its budget (no-op if within cap or no cap).
+        onChange(cap ? await promptImage(base64String, cap) : base64String);
       };
       reader.readAsDataURL(file);
     }
-  }, [onChange]);
+  }, [onChange, cap, promptImage]);
+
+  const removeButton = (
+    <button
+      type="button"
+      onClick={(e) => { e.preventDefault(); e.stopPropagation(); onChange(""); }}
+      className="absolute top-1 right-1 rounded-full bg-black/60 p-1 text-white hover:bg-black/80"
+      title="Remove image"
+      aria-label="Remove image"
+    >
+      <X className="h-4 w-4" />
+    </button>
+  );
+
+  // Clicking an uploaded image opens the shared pan/zoom viewer instead of re-triggering the file picker.
+  const openZoom = (e: MouseEvent) => { e.preventDefault(); e.stopPropagation(); setZoomOpen(true); };
 
   return (
     <div>
+      {dialog}
+      {value && <ImageZoomViewer src={value} alt="" open={zoomOpen} onOpenChange={setZoomOpen} />}
       <Input
         type="file"
         accept="image/*"
@@ -58,27 +85,39 @@ export const ImageUpload = ({ onChange, id, value }: {
         id={`image-upload-${id}`}
       />
       <Label htmlFor={`image-upload-${id}`} className="cursor-pointer">
-        <div className="flex items-center justify-center border-2 border-dashed border-gray-300 rounded-md p-4">
-          {value ? (
-            <div className="relative">
-              <img src={value} alt="Uploaded" className="max-w-full max-h-32 object-contain" />
-              <button
-                type="button"
-                onClick={(e) => { e.preventDefault(); e.stopPropagation(); onChange(""); }}
-                className="absolute top-1 right-1 rounded-full bg-black/60 p-1 text-white hover:bg-black/80"
-                title="Remove image"
-                aria-label="Remove image"
-              >
-                <X className="h-4 w-4" />
-              </button>
-            </div>
-          ) : (
-            <>
-              <ImagePlus className="mr-2" />
-              <span>Add Image</span>
-            </>
-          )}
-        </div>
+        {previewClassName ? (
+          <div className={previewClassName}>
+            {value ? (
+              <>
+                <img
+                  src={value}
+                  alt="Uploaded"
+                  onClick={openZoom}
+                  className={`absolute inset-0 w-full h-full rounded-md ${objectFit === 'cover' ? 'object-cover' : 'object-contain'}`}
+                />
+                {removeButton}
+              </>
+            ) : (
+              <div className="absolute inset-0 flex items-center justify-center text-gray-500">
+                Click to upload image
+              </div>
+            )}
+          </div>
+        ) : (
+          <div className="flex items-center justify-center border-2 border-dashed border-gray-300 rounded-md p-4">
+            {value ? (
+              <div className="relative">
+                <img src={value} alt="Uploaded" onClick={openZoom} className="max-w-full max-h-32 object-contain" />
+                {removeButton}
+              </div>
+            ) : (
+              <>
+                <ImagePlus className="mr-2" />
+                <span>Add Image</span>
+              </>
+            )}
+          </div>
+        )}
       </Label>
     </div>
   );

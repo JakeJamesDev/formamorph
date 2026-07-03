@@ -16,6 +16,9 @@ import type { World } from "@/types";
 export function useDownloadCoordinator(
   worlds: WorldRecord[],
   setWorlds: Dispatch<SetStateAction<WorldRecord[]>>,
+  // Optional post-store hook (e.g. offer to downscale oversized images). Returns a replacement world to
+  // re-store in place, or null to leave the stored copy as-is.
+  onStored?: (id: string, data: World) => Promise<World | null>,
 ) {
   // In-flight downloads keyed by remote world id → fraction 0..1, or -1 when total size is unknown.
   const [downloadProgress, setDownloadProgress] = useState<Record<string, number>>({});
@@ -131,13 +134,26 @@ export function useDownloadCoordinator(
         data: migrated
       });
 
+      // Offer to downscale oversized images; if accepted, overwrite the just-stored copy in place.
+      let finalData = migrated;
+      if (onStored) {
+        const w = await onStored(localWorldId, migrated);
+        if (w) {
+          finalData = w;
+          await WorldStorageService.storeWorld({
+            id: localWorldId, name, description, thumbnail: thumbnailUrl, author,
+            sourceId: worldId, dirty: false, downloadedAt: now, sourceUpdatedAt: world.updated_at, data: finalData,
+          });
+        }
+      }
+
       setWorlds(prev => [...prev, {
         id: localWorldId,
         name,
         description,
         thumbnail: thumbnailUrl,
         author,
-        tags: migrated.worldOverview?.tags || [],
+        tags: finalData.worldOverview?.tags || [],
         sourceId: worldId,
         dirty: false,
         downloadedAt: now,
@@ -182,13 +198,25 @@ export function useDownloadCoordinator(
         data: migrated
       });
 
+      let finalData = migrated;
+      if (onStored) {
+        const w = await onStored(localId, migrated);
+        if (w) {
+          finalData = w;
+          await WorldStorageService.storeWorld({
+            id: localId, name, description, thumbnail: thumbnailUrl, author,
+            sourceId: worldId, dirty: false, downloadedAt: now, sourceUpdatedAt: world.updated_at, data: finalData,
+          });
+        }
+      }
+
       setWorlds(prev => prev.map(w => w.id === localId ? {
         ...w,
         name,
         description,
         thumbnail: thumbnailUrl,
         author,
-        tags: migrated.worldOverview?.tags || [],
+        tags: finalData.worldOverview?.tags || [],
         sourceId: worldId,
         dirty: false,
         downloadedAt: now,

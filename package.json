@@ -65,7 +65,8 @@
     "streamdown": "^2.5.0",
     "tailwind-merge": "^2.4.0",
     "tailwindcss-animate": "^1.0.7",
-    "three": "^0.181.0"
+    "three": "^0.181.0",
+    "wasm-webp": "^0.1.0"
   },
   "devDependencies": {
     "@eslint/js": "^9.8.0",

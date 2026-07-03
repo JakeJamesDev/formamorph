@@ -6,6 +6,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { MultiSelect } from "@/components/ui/multi-select";
 import GenerateSummaryButton from "@/components/GenerateSummaryButton";
 import { ImageUpload, ModelUpload } from '../lib/UtilityComponents';
+import { IMAGE_CAPS } from '../lib/imageOptim';
 import type { Entity } from '@/types';
 
 const EntityManager = ({ entity }: { entity: Entity }) => {
@@ -109,6 +110,7 @@ const EntityManager = ({ entity }: { entity: Entity }) => {
           onChange={(file) => handleChange('image', file)}
           id={`entity-image-${editingEntity.id}`}
           value={editingEntity.image}
+          cap={IMAGE_CAPS.entity}
         />
       </div>
       {/* <div className="space-y-2">

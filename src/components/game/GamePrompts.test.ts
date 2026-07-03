@@ -81,12 +81,17 @@ describe('default prompts carry the expected variable chips', () => {
   });
 
   it('stat-updates prompt', () => {
+    // Stats render numbers-only (no descriptor) so the tracker can't echo "8/100 (Drained)" into its deltas.
     expect(tokensIn(defaultStatUpdatesPrompt)).toEqual([
       '<WORLD DESCRIPTION>',
-      '<STATS DESCRIPTION|markdown>',
+      '<STATS DESCRIPTION|numbers.markdown>',
       '<TRAITS DESCRIPTION|markdown>',
       '<NOTES>',
     ]);
+    // Co-located cue + no copy-magnet example (small models copy example stat values verbatim).
+    expect(defaultStatUpdatesPrompt).toContain("never a stat's value");
+    expect(defaultStatUpdatesPrompt).not.toContain('## Example');
+    expect(defaultStatUpdatesPrompt).not.toContain('Hunger');
   });
 
   it('location-change prompt', () => {

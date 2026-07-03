@@ -30,6 +30,18 @@ describe('matchNames — multi-word names (no capital guard)', () => {
   it('excludes a candidate when a word is missing (the AND pass)', () => {
     expect(matchNames('the officer flees', ['a fleeing officer'])).toEqual([]);
   });
+
+  it('matches on a capitalized first name alone (partial proper-noun reference)', () => {
+    expect(matchNames('Emily waves from the porch.', ['Emily Foster'])).toEqual(['Emily Foster']);
+  });
+
+  it('matches on a capitalized last name alone', () => {
+    expect(matchNames('Foster nodded.', ['Emily Foster'])).toEqual(['Emily Foster']);
+  });
+
+  it('does not match a lowercase partial (capital guard holds)', () => {
+    expect(matchNames('someone fosters false hope', ['Emily Foster'])).toEqual([]);
+  });
 });
 
 describe('matchNames — hygiene', () => {
@@ -79,6 +91,10 @@ describe('findEntityNames', () => {
     const entities = [ent('Mira')];
     expect(findEntityNames('talk to mira', entities)).toEqual([]); // default guard
     expect(findEntityNames('talk to mira', entities, { requireCapital: false })).toEqual(['Mira']);
+  });
+
+  it('populates a multi-word entity from a first-name-only reference', () => {
+    expect(findEntityNames('Emily smiles.', [ent('Emily Foster')])).toEqual(['Emily Foster']);
   });
 });
 
