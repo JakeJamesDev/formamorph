@@ -108,27 +108,27 @@ describe('token variants', () => {
     ]);
   });
 
-  it('parses base, summary, and list tokens as distinct variables', () => {
-    expect(parsePromptTemplate('<LOCATION> / <LOCATION|summary> / <LOCATION|list>')).toEqual([
+  it('parses base, summary, and scoped tokens as distinct variables', () => {
+    expect(parsePromptTemplate('<LOCATION> / <LOCATION|summary> / <LOCATION|reachable>')).toEqual([
       { type: 'variable', token: '<LOCATION>' },
       { type: 'text', value: ' / ' },
       { type: 'variable', token: '<LOCATION|summary>' },
       { type: 'text', value: ' / ' },
-      { type: 'variable', token: '<LOCATION|list>' },
+      { type: 'variable', token: '<LOCATION|reachable>' },
     ]);
   });
 
   it('substitutes each variant independently', () => {
-    const out = renderPromptTemplate('<LOCATION> | <LOCATION|summary> | <LOCATION|list>', {
+    const out = renderPromptTemplate('<LOCATION> | <LOCATION|summary> | <LOCATION|reachable>', {
       '<LOCATION>': 'full',
       '<LOCATION|summary>': 'short',
-      '<LOCATION|list>': 'a\nb',
+      '<LOCATION|reachable>': 'a\nb',
     });
     expect(out).toBe('full | short | a\nb');
   });
 
-  it('round-trips a list-variant token', () => {
-    const src = 'Available:\n<LOCATION|list>\nend';
+  it('round-trips a scoped-variant token', () => {
+    const src = 'Reachable:\n<LOCATION|reachable>\nend';
     expect(serializeSegments(parsePromptTemplate(src))).toBe(src);
   });
 

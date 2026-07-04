@@ -116,7 +116,7 @@ export function buildEntityContext(
 }
 
 /**
- * Serialize the current location's **direct** sub-locations for the `<SUBLOCATIONS>` chip — one line per
+ * Serialize the current location's **direct** sub-locations for the `<LOCATION|sublocations>` chip — one line per
  * child (`name: <summary>` / `- **name:** <summary>`), the summary chosen like the other builders. Returns
  * the `N/A` placeholder when the location is null or has no children. Nesting is revealed a level at a time:
  * only immediate children, not the whole descendant subtree.
@@ -142,21 +142,29 @@ export function buildSublocationsContext(
   return output;
 }
 
+/** The deduped entity ids across the current location's direct sub-locations. */
+export function sublocationEntityIds(current: LocationWithEntities, locations: GameLocation[]): string[] {
+  if (!current) return [];
+  const kids = locations.filter((l) => (l.parentId ?? null) === current.id);
+  return [...new Set(kids.flatMap((k) => k.entities ?? []))];
+}
+
 /**
  * Serialize the characters/things located in the current location's direct sub-locations for the
- * `<SUBLOCATION ENTITIES>` chip. Gathers + dedupes the children's entity ids and delegates to
+ * `<ENTITIES|sublocations>` chip. Gathers + dedupes the children's entity ids and delegates to
  * `buildEntityContext` (a synthetic location holding those ids), so the roster shaping matches the main
- * entities section. Returns the `N/A` placeholder when there are no children or no entities among them.
+ * entities section. `excludeIds` drops anyone already shown in a higher-precedence roster (present here) so a
+ * character never double-lists across scopes. Returns the `N/A` placeholder when nothing remains.
  */
 export function buildSublocationEntitiesContext(
   current: LocationWithEntities,
   locations: GameLocation[],
   entities: Entity[],
-  opts: { preferSummary?: boolean; format?: "simple" | "markdown" } = {},
+  opts: { preferSummary?: boolean; format?: "simple" | "markdown"; excludeIds?: string[] } = {},
 ): string {
   if (!current) return NONE_PLACEHOLDER;
-  const kids = locations.filter((l) => (l.parentId ?? null) === current.id);
-  const ids = [...new Set(kids.flatMap((k) => k.entities ?? []))];
+  const exclude = new Set(opts.excludeIds ?? []);
+  const ids = sublocationEntityIds(current, locations).filter((id) => !exclude.has(id));
   if (ids.length === 0) return NONE_PLACEHOLDER;
   return buildEntityContext({ id: current.id, name: current.name, entities: ids }, entities, opts);
 }
@@ -184,7 +192,7 @@ export function navigableDestinations(
 }
 
 /**
- * Serialize the current location's navigable destinations for the `<DESTINATIONS>` chip — one line per
+ * Serialize the current location's navigable destinations for the `<LOCATION|destinations>` chip — one line per
  * place (`name: <summary>` / `- **name:** <summary>`), the summary chosen like the other builders.
  * Returns `N/A` when the location is null or nothing is reachable.
  */
@@ -218,7 +226,7 @@ function reachableSiblings(current: GameLocation, locations: GameLocation[]): Ga
 
 /**
  * Serialize the sibling locations reachable from the current one (same parent) for the
- * `<REACHABLE LOCATIONS>` chip — one line per sibling (`name: <summary>` / `- **name:** <summary>`).
+ * `<LOCATION|reachable>` chip — one line per sibling (`name: <summary>` / `- **name:** <summary>`).
  * Returns `N/A` when the location is top-level (no parent) or has no siblings.
  */
 export function buildReachableLocationsContext(
@@ -244,8 +252,8 @@ export function buildReachableLocationsContext(
 
 /**
  * Serialize the characters/things in the current location's reachable siblings for the
- * `<REACHABLE ENTITIES>` chip. Gathers + dedupes the siblings' entity ids (minus `excludeIds`, e.g. those
- * already present at the current location after a visit) and delegates to `buildEntityContext`.
+ * `<ENTITIES|reachable>` chip. Gathers + dedupes the siblings' entity ids (minus `excludeIds` — anyone shown
+ * in a higher-precedence roster, i.e. present here or in a sub-location) and delegates to `buildEntityContext`.
  * Returns `N/A` when there are no siblings or no remaining entities.
  */
 export function buildReachableEntitiesContext(

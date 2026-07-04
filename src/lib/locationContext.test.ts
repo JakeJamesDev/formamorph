@@ -2,7 +2,7 @@ import { describe, it, expect } from "vitest";
 import {
   buildLocationContext, buildEntityContext, buildSublocationsContext, buildSublocationEntitiesContext,
   buildReachableLocationsContext, buildReachableEntitiesContext,
-  navigableDestinations, buildDestinationsContext,
+  navigableDestinations, buildDestinationsContext, sublocationEntityIds,
 } from "./locationContext";
 import { NONE_PLACEHOLDER } from "./promptFallbacks";
 import type { Entity, GameLocation } from "@/types";
@@ -104,6 +104,16 @@ describe("buildSublocationsContext / buildSublocationEntitiesContext", () => {
     // Cellar's own child (Sub-cellar) has no entities → N/A.
     expect(buildSublocationEntitiesContext(cellar, locs, [rat])).toBe(NONE_PLACEHOLDER);
     expect(buildSublocationEntitiesContext(null, locs, [rat])).toBe(NONE_PLACEHOLDER);
+  });
+
+  it("sublocation entities: excludeIds drops anyone shown in a higher-precedence roster (present here)", () => {
+    expect(buildSublocationEntitiesContext(keep, locs, [rat], { excludeIds: ["g1"] })).toBe(NONE_PLACEHOLDER);
+  });
+
+  it("sublocationEntityIds: deduped union across direct children only", () => {
+    expect(sublocationEntityIds(keep, locs)).toEqual(["g1"]);
+    expect(sublocationEntityIds(tower, locs)).toEqual([]);
+    expect(sublocationEntityIds(null, locs)).toEqual([]);
   });
 });
 

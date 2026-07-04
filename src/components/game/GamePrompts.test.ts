@@ -38,11 +38,11 @@ describe('default prompts carry the expected variable chips', () => {
       '<TRAITS DESCRIPTION|markdown>',
       '<NOTES>',
       '<LOCATION|markdown>',
-      '<SUBLOCATIONS|summary.markdown>',
-      '<REACHABLE LOCATIONS|summary.markdown>',
+      '<LOCATION|sublocations.summary.markdown>',
+      '<LOCATION|reachable.summary.markdown>',
       '<ENTITIES|markdown>',
-      '<SUBLOCATION ENTITIES|markdown>',
-      '<REACHABLE ENTITIES|summary.markdown>',
+      '<ENTITIES|sublocations.markdown>',
+      '<ENTITIES|reachable.summary.markdown>',
       '<DICTIONARY>',
     ]);
     // Canonical headers are markdown; the labels style downcasts them, and GameViewer's <NOTES>-absent
@@ -82,11 +82,11 @@ describe('default prompts carry the expected variable chips', () => {
       '<TRAITS DESCRIPTION|markdown>',
       '<NOTES>',
       '<LOCATION|summary.markdown>',
-      '<SUBLOCATIONS|summary.markdown>',
-      '<REACHABLE LOCATIONS|summary.markdown>',
+      '<LOCATION|sublocations.summary.markdown>',
+      '<LOCATION|reachable.summary.markdown>',
       '<ENTITIES|summary.markdown>',
-      '<SUBLOCATION ENTITIES|summary.markdown>',
-      '<REACHABLE ENTITIES|summary.markdown>',
+      '<ENTITIES|sublocations.summary.markdown>',
+      '<ENTITIES|reachable.summary.markdown>',
     ]);
     // First-person, single-sentence options — not the old terse-phrase-with-examples shape,
     // and without the literal `"I ..."` token that small models echo as a prefix.
@@ -113,7 +113,7 @@ describe('default prompts carry the expected variable chips', () => {
   it('location-change prompt', () => {
     expect(tokensIn(defaultLocationChangePrompt)).toEqual([
       '<LOCATION|summary.markdown>',
-      '<DESTINATIONS|summary.markdown>',
+      '<LOCATION|destinations.summary.markdown>',
     ]);
   });
 
@@ -123,11 +123,11 @@ describe('default prompts carry the expected variable chips', () => {
       '<STATS DESCRIPTION|descriptions.markdown>',
       '<TRAITS DESCRIPTION|markdown>',
       '<LOCATION|summary.markdown>',
-      '<SUBLOCATIONS|summary.markdown>',
-      '<REACHABLE LOCATIONS|summary.markdown>',
+      '<LOCATION|sublocations.summary.markdown>',
+      '<LOCATION|reachable.summary.markdown>',
       '<ENTITIES|summary.markdown>',
-      '<SUBLOCATION ENTITIES|summary.markdown>',
-      '<REACHABLE ENTITIES|summary.markdown>',
+      '<ENTITIES|sublocations.summary.markdown>',
+      '<ENTITIES|reachable.summary.markdown>',
       '<NOTES>',
     ]);
     // Basic planning surfaces each present character's placement.
@@ -139,11 +139,11 @@ describe('default prompts carry the expected variable chips', () => {
       '<WORLD DESCRIPTION>',
       '<TRAITS DESCRIPTION|markdown>',
       '<LOCATION|summary.markdown>',
-      '<SUBLOCATIONS|summary.markdown>',
-      '<REACHABLE LOCATIONS|summary.markdown>',
+      '<LOCATION|sublocations.summary.markdown>',
+      '<LOCATION|reachable.summary.markdown>',
       '<ENTITIES|summary.markdown>',
-      '<SUBLOCATION ENTITIES|summary.markdown>',
-      '<REACHABLE ENTITIES|summary.markdown>',
+      '<ENTITIES|sublocations.summary.markdown>',
+      '<ENTITIES|reachable.summary.markdown>',
       '<NOTES>',
     ]);
     // The director stages the scene, refers to the player in third person, and gives each a placement.
@@ -169,8 +169,8 @@ describe('default prompts carry the expected variable chips', () => {
       '<WORLD DESCRIPTION>',
       '<TRAITS DESCRIPTION|markdown>',
       '<LOCATION|summary.markdown>',
-      '<SUBLOCATIONS|summary.markdown>',
-      '<REACHABLE LOCATIONS|summary.markdown>',
+      '<LOCATION|sublocations.summary.markdown>',
+      '<LOCATION|reachable.summary.markdown>',
     ]);
     // The character speaks in the first person but keeps the player in the third person.
     expect(defaultCharacterPrompt).toContain('first person');
@@ -193,8 +193,8 @@ describe('default prompts carry the expected variable chips', () => {
       '<STATS DESCRIPTION|descriptions.markdown>',
       '<TRAITS DESCRIPTION|markdown>',
       '<LOCATION|summary.markdown>',
-      '<SUBLOCATIONS|summary.markdown>',
-      '<REACHABLE LOCATIONS|summary.markdown>',
+      '<LOCATION|sublocations.summary.markdown>',
+      '<LOCATION|reachable.summary.markdown>',
       '<NOTES>',
     ]);
     // Uses the current "scene" wording (not the old "continuation") and forbids scripting the player.

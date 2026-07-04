@@ -11,18 +11,18 @@ describe('variant token helpers', () => {
   it('extracts the variant id (or null for the default form)', () => {
     expect(tokenVariant('<LOCATION>')).toBeNull();
     expect(tokenVariant('<LOCATION|summary>')).toBe('summary');
-    expect(tokenVariant('<LOCATION|list>')).toBe('list');
+    expect(tokenVariant('<LOCATION|sublocations>')).toBe('sublocations');
     expect(tokenVariant('<NOTES>')).toBeNull();
   });
 
   it('strips any variant back to the base token', () => {
     expect(baseToken('<LOCATION|summary>')).toBe('<LOCATION>');
-    expect(baseToken('<LOCATION|list>')).toBe('<LOCATION>');
+    expect(baseToken('<LOCATION|reachable.summary>')).toBe('<LOCATION>');
     expect(baseToken('<LOCATION>')).toBe('<LOCATION>');
   });
 
   it('re-applies a variant (null leaves the base unchanged)', () => {
-    expect(withVariant('<LOCATION>', 'list')).toBe('<LOCATION|list>');
+    expect(withVariant('<LOCATION>', 'reachable')).toBe('<LOCATION|reachable>');
     expect(withVariant('<LOCATION>', 'summary')).toBe('<LOCATION|summary>');
     expect(withVariant('<LOCATION>', null)).toBe('<LOCATION>');
   });
@@ -30,20 +30,20 @@ describe('variant token helpers', () => {
 
 describe('variable lookup by token (base or variant)', () => {
   it('resolves any variant token to its base variable', () => {
-    expect(variableForToken('<LOCATION|list>')?.label).toBe('Location');
+    expect(variableForToken('<LOCATION|reachable>')?.label).toBe('Location');
     const loc = variableForToken('<LOCATION|summary>')!;
-    expect(variableAxes(loc).find((a) => a.id === 'content')?.options).toHaveLength(3);
+    expect(variableAxes(loc).find((a) => a.id === 'content')?.options).toHaveLength(2);
   });
 
   it('exposes the variant label for the chip (null for the full form)', () => {
-    expect(variantLabelForToken('<LOCATION|list>')).toBe('List');
+    expect(variantLabelForToken('<LOCATION|sublocations>')).toBe('Sub-locations');
     expect(variantLabelForToken('<LOCATION|summary>')).toBe('Summary');
     expect(variantLabelForToken('<LOCATION>')).toBeNull();
   });
 
   it('shares label/color across all forms', () => {
-    expect(labelForToken('<LOCATION|list>')).toBe('Location');
-    expect(colorForToken('<LOCATION|list>')).toBe(colorForToken('<LOCATION>'));
+    expect(labelForToken('<LOCATION|reachable>')).toBe('Location');
+    expect(colorForToken('<LOCATION|reachable>')).toBe(colorForToken('<LOCATION>'));
   });
 
   it('marks variables without variants', () => {
@@ -84,7 +84,7 @@ describe('multi-axis variants (Stats: content × format)', () => {
   });
 
   it('lists every combined id, longest-first so a compound is not masked by its prefix', () => {
-    for (const id of ['descriptions', 'numbers', 'markdown', 'descriptions.markdown', 'numbers.markdown', 'summary', 'list']) {
+    for (const id of ['descriptions', 'numbers', 'markdown', 'descriptions.markdown', 'numbers.markdown', 'summary', 'sublocations', 'reachable.summary.markdown']) {
       expect(ALL_VARIANT_IDS).toContain(id);
     }
     expect(ALL_VARIANT_IDS.indexOf('descriptions.markdown')).toBeLessThan(ALL_VARIANT_IDS.indexOf('descriptions'));
@@ -104,18 +104,18 @@ describe('multi-axis variants (Stats: content × format)', () => {
     expect(variantLabelForToken('<TRAITS DESCRIPTION>')).toBeNull();
   });
 
-  it('gives Location a content axis (Full/Summary/List) plus the format axis', () => {
+  it('gives Location a scope axis (Current/Sub-locations/Reachable/Destinations) plus content and format', () => {
     const LOC = variableForToken('<LOCATION>')!;
-    expect(variableAxes(LOC).map((a) => a.id)).toEqual(['content', 'format']);
+    expect(variableAxes(LOC).map((a) => a.id)).toEqual(['scope', 'content', 'format']);
     expect(variantLabelForToken('<LOCATION|summary.markdown>')).toBe('Summary, Markdown');
-    expect(variantLabelForToken('<LOCATION|list.markdown>')).toBe('List, Markdown');
-    expect(variantLabelForToken('<LOCATION|summary>')).toBe('Summary');
+    expect(variantLabelForToken('<LOCATION|reachable.summary.markdown>')).toBe('Reachable, Summary, Markdown');
+    expect(variantLabelForToken('<LOCATION|destinations>')).toBe('Destinations');
   });
 
-  it('gives Entities a content axis (Full/Summary) plus the format axis', () => {
+  it('gives Entities a scope axis (Here/Sub-locations/Reachable) plus content and format', () => {
     const ENT = variableForToken('<ENTITIES>')!;
-    expect(variableAxes(ENT).map((a) => a.id)).toEqual(['content', 'format']);
-    expect(variantLabelForToken('<ENTITIES|summary.markdown>')).toBe('Summary, Markdown');
+    expect(variableAxes(ENT).map((a) => a.id)).toEqual(['scope', 'content', 'format']);
+    expect(variantLabelForToken('<ENTITIES|reachable.summary.markdown>')).toBe('Reachable, Summary, Markdown');
     expect(variantLabelForToken('<ENTITIES|markdown>')).toBe('Markdown');
   });
 });

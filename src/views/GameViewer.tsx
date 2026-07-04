@@ -59,7 +59,7 @@ import { lengthGuidance, trimToLastSentence } from "../lib/outputLength";
 import { splitSentenceSegments } from "../lib/ttsChunks";
 import { selectDueDigests, applyDigest, parseTurnContent, selectDueDiaries, pendingDiaryNames, applyDiary } from "../lib/turnDigest";
 import { buildTraitContext } from "../lib/traitTree";
-import { buildLocationContext, buildEntityContext, buildSublocationsContext, buildSublocationEntitiesContext, buildReachableLocationsContext, buildReachableEntitiesContext, buildDestinationsContext, navigableDestinations } from "../lib/locationContext";
+import { buildLocationContext, buildEntityContext, buildSublocationsContext, buildSublocationEntitiesContext, buildReachableLocationsContext, buildReachableEntitiesContext, buildDestinationsContext, navigableDestinations, sublocationEntityIds } from "../lib/locationContext";
 import { NONE_PLACEHOLDER } from "../lib/promptFallbacks";
 import { renderPromptTemplate } from "../lib/promptTemplate";
 import { useBaselineTestHook } from "../lib/baselineTestHook";
@@ -653,50 +653,57 @@ const GameViewer = ({
     // Who's present at the current location (authored + any discovered/visiting), used to keep the
     // reachable-entities roster from re-listing someone who has already come over.
     const presentIds = withDiscovered(currentLocation)?.entities ?? [];
-    return {
-    "<WORLD DESCRIPTION>": worldOverview.systemPrompt || "",
-    "<STATS DESCRIPTION>": generateStatDescriptions('full', 'simple'),
-    "<STATS DESCRIPTION|numbers>": generateStatDescriptions('numbers', 'simple'),
-    "<STATS DESCRIPTION|descriptions>": generateStatDescriptions('descriptions', 'simple'),
-    "<STATS DESCRIPTION|markdown>": generateStatDescriptions('full', 'markdown'),
-    "<STATS DESCRIPTION|numbers.markdown>": generateStatDescriptions('numbers', 'markdown'),
-    "<STATS DESCRIPTION|descriptions.markdown>": generateStatDescriptions('descriptions', 'markdown'),
-    "<TRAITS DESCRIPTION>": generateTraitDescriptions('simple'),
-    "<TRAITS DESCRIPTION|markdown>": generateTraitDescriptions('markdown'),
-    "<LOCATION>": buildLocationContext(currentLocation),
-    "<LOCATION|summary>": buildLocationContext(currentLocation, { preferSummary: true }),
-    "<LOCATION|list>": locations.map((loc) => loc.name).join("\n") || NONE_PLACEHOLDER,
-    "<LOCATION|markdown>": buildLocationContext(currentLocation, { format: "markdown" }),
-    "<LOCATION|summary.markdown>": buildLocationContext(currentLocation, { preferSummary: true, format: "markdown" }),
-    "<LOCATION|list.markdown>": locations.map((loc) => `- ${loc.name}`).join("\n") || NONE_PLACEHOLDER,
-    "<ENTITIES>": buildEntityContext(withDiscovered(currentLocation), allEntities),
-    "<ENTITIES|summary>": buildEntityContext(withDiscovered(currentLocation), allEntities, { preferSummary: true }),
-    "<ENTITIES|markdown>": buildEntityContext(withDiscovered(currentLocation), allEntities, { format: "markdown" }),
-    "<ENTITIES|summary.markdown>": buildEntityContext(withDiscovered(currentLocation), allEntities, { preferSummary: true, format: "markdown" }),
-    "<SUBLOCATIONS>": buildSublocationsContext(currentLocation, locations),
-    "<SUBLOCATIONS|summary>": buildSublocationsContext(currentLocation, locations, { preferSummary: true }),
-    "<SUBLOCATIONS|markdown>": buildSublocationsContext(currentLocation, locations, { format: "markdown" }),
-    "<SUBLOCATIONS|summary.markdown>": buildSublocationsContext(currentLocation, locations, { preferSummary: true, format: "markdown" }),
-    "<SUBLOCATION ENTITIES>": buildSublocationEntitiesContext(currentLocation, locations, allEntities),
-    "<SUBLOCATION ENTITIES|summary>": buildSublocationEntitiesContext(currentLocation, locations, allEntities, { preferSummary: true }),
-    "<SUBLOCATION ENTITIES|markdown>": buildSublocationEntitiesContext(currentLocation, locations, allEntities, { format: "markdown" }),
-    "<SUBLOCATION ENTITIES|summary.markdown>": buildSublocationEntitiesContext(currentLocation, locations, allEntities, { preferSummary: true, format: "markdown" }),
-    "<REACHABLE LOCATIONS>": buildReachableLocationsContext(currentLocation, locations),
-    "<REACHABLE LOCATIONS|summary>": buildReachableLocationsContext(currentLocation, locations, { preferSummary: true }),
-    "<REACHABLE LOCATIONS|markdown>": buildReachableLocationsContext(currentLocation, locations, { format: "markdown" }),
-    "<REACHABLE LOCATIONS|summary.markdown>": buildReachableLocationsContext(currentLocation, locations, { preferSummary: true, format: "markdown" }),
-    // excludeIds = who's already present here (incl. any visitor), so they don't double-list as reachable.
-    "<REACHABLE ENTITIES>": buildReachableEntitiesContext(currentLocation, locations, allEntities, { excludeIds: presentIds }),
-    "<REACHABLE ENTITIES|summary>": buildReachableEntitiesContext(currentLocation, locations, allEntities, { preferSummary: true, excludeIds: presentIds }),
-    "<REACHABLE ENTITIES|markdown>": buildReachableEntitiesContext(currentLocation, locations, allEntities, { format: "markdown", excludeIds: presentIds }),
-    "<REACHABLE ENTITIES|summary.markdown>": buildReachableEntitiesContext(currentLocation, locations, allEntities, { preferSummary: true, format: "markdown", excludeIds: presentIds }),
-    // The local navigable graph (connections + sub-locations + reachable siblings) — the location router's candidate set.
-    "<DESTINATIONS>": buildDestinationsContext(currentLocation, locations),
-    "<DESTINATIONS|summary>": buildDestinationsContext(currentLocation, locations, { preferSummary: true }),
-    "<DESTINATIONS|markdown>": buildDestinationsContext(currentLocation, locations, { format: "markdown" }),
-    "<DESTINATIONS|summary.markdown>": buildDestinationsContext(currentLocation, locations, { preferSummary: true, format: "markdown" }),
-    "<NOTES>": playerNotes || NONE_PLACEHOLDER,
+    const here = withDiscovered(currentLocation);
+    type CtxOpts = { preferSummary?: boolean; format?: "simple" | "markdown" };
+
+    // Entity roster precedence: here > sub-location > reachable. A character shows only in the highest scope
+    // it belongs to — sub-location drops anyone present here; reachable drops present + sub-location ids.
+    const subEntityIds = sublocationEntityIds(currentLocation, locations);
+    const reachableExclude = [...presentIds, ...subEntityIds];
+
+    // The <LOCATION> and <ENTITIES> chips each carry a `scope` axis; each scope maps to its builder.
+    const locationScopes: Record<string, (opts: CtxOpts) => string> = {
+      "": (opts) => buildLocationContext(currentLocation, opts),
+      sublocations: (opts) => buildSublocationsContext(currentLocation, locations, opts),
+      reachable: (opts) => buildReachableLocationsContext(currentLocation, locations, opts),
+      destinations: (opts) => buildDestinationsContext(currentLocation, locations, opts),
     };
+    const entityScopes: Record<string, (opts: CtxOpts) => string> = {
+      "": (opts) => buildEntityContext(here, allEntities, opts),
+      sublocations: (opts) => buildSublocationEntitiesContext(currentLocation, locations, allEntities, { ...opts, excludeIds: presentIds }),
+      reachable: (opts) => buildReachableEntitiesContext(currentLocation, locations, allEntities, { ...opts, excludeIds: reachableExclude }),
+    };
+
+    const values: Record<string, string> = {
+      "<WORLD DESCRIPTION>": worldOverview.systemPrompt || "",
+      "<STATS DESCRIPTION>": generateStatDescriptions('full', 'simple'),
+      "<STATS DESCRIPTION|numbers>": generateStatDescriptions('numbers', 'simple'),
+      "<STATS DESCRIPTION|descriptions>": generateStatDescriptions('descriptions', 'simple'),
+      "<STATS DESCRIPTION|markdown>": generateStatDescriptions('full', 'markdown'),
+      "<STATS DESCRIPTION|numbers.markdown>": generateStatDescriptions('numbers', 'markdown'),
+      "<STATS DESCRIPTION|descriptions.markdown>": generateStatDescriptions('descriptions', 'markdown'),
+      "<TRAITS DESCRIPTION>": generateTraitDescriptions('simple'),
+      "<TRAITS DESCRIPTION|markdown>": generateTraitDescriptions('markdown'),
+      "<NOTES>": playerNotes || NONE_PLACEHOLDER,
+    };
+
+    // Generate every scope × content (full/summary) × format (simple/markdown) variant token. The id order
+    // (scope.content.format) mirrors the chip's axis order, so tokens match what encodeVariant produces.
+    const addScoped = (base: string, scopes: Record<string, (opts: CtxOpts) => string>) => {
+      for (const [scope, build] of Object.entries(scopes)) {
+        for (const preferSummary of [false, true]) {
+          for (const markdown of [false, true]) {
+            const id = [scope, preferSummary ? "summary" : "", markdown ? "markdown" : ""].filter(Boolean).join(".");
+            const token = id ? `${base.slice(0, -1)}|${id}>` : base;
+            values[token] = build({ preferSummary, format: markdown ? "markdown" : "simple" });
+          }
+        }
+      }
+    };
+    addScoped("<LOCATION>", locationScopes);
+    addScoped("<ENTITIES>", entityScopes);
+
+    return values;
   }, [
     worldOverview, generateStatDescriptions, generateTraitDescriptions,
     currentLocation, locations, withDiscovered, allEntities, playerNotes,
