@@ -29,6 +29,7 @@ export function GenerateImageButton({ subject, cap, onChange }: {
     imageProvider, imageEndpoint, imageApiToken, imageModel, imageTagPrompt,
     imagePositivePrompt, imageNegativePrompt, imageSteps, imageCfg, imageSampler,
     imagePortraitWidth, imagePortraitHeight, imageLandscapeWidth, imageLandscapeHeight, imageAdetailer,
+    imageWorkflow,
     imageEndpointPresets, activeImageEndpointPresetId, selectImageEndpointPreset,
   } = useSettings();
   // Characters get portrait dimensions; locations and the world thumbnail get landscape.
@@ -104,7 +105,7 @@ export function GenerateImageButton({ subject, cap, onChange }: {
           sampler: imageSampler, seed: -1, model: imageModel, adetailer: imageAdetailer,
         },
         {
-          endpointUrl: imageEndpoint, apiToken: imageApiToken, signal: controller.signal,
+          endpointUrl: imageEndpoint, apiToken: imageApiToken, workflow: imageWorkflow, signal: controller.signal,
           onProgress: (p) => {
             if (abortRef.current !== controller) return;
             setProgress(p.progress);
