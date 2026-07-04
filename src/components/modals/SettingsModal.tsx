@@ -18,7 +18,7 @@ import { isDesktop } from '@/lib/imageGen/desktop';
 import { DEFAULT_TAG_PROMPT, SUBJECT_GUIDANCE } from '@/lib/imagePrompt';
 
 // Segmented-control options: a short tab label plus the helper text shown below the selected one.
-const OUTPUT_LENGTH_OPTIONS: { value: ParagraphLimit; label: string; help: string }[] = [
+const PARAGRAPH_LIMIT_OPTIONS: { value: ParagraphLimit; label: string; help: string }[] = [
   { value: 'none', label: 'None', help: 'No paragraph limit. The model writes until it finishes or hits the token cap.' },
   { value: 'single', label: 'Single', help: 'One paragraph per turn (stops at the first line break).' },
   { value: 'auto', label: 'Auto', help: 'Recommended. Scales the paragraph count to your Max Output Tokens so responses fit the budget and end cleanly.' },
@@ -357,11 +357,11 @@ export const SettingsModal = ({ isOpen, onOpenChange, previewValues }: {
                 </div>
               </div>
               <div className="grid grid-cols-1 sm:grid-cols-4 items-start gap-4">
-                <label className="text-left sm:text-right pt-2">Output Length</label>
+                <label className="text-left sm:text-right pt-2">Paragraph Limit</label>
                 <div className="col-span-3">
                   <Tabs value={paragraphLimit} onValueChange={(v) => setParagraphLimit(v as ParagraphLimit)}>
                     <TabsList className="grid w-full grid-cols-3">
-                      {OUTPUT_LENGTH_OPTIONS.map((o) => (
+                      {PARAGRAPH_LIMIT_OPTIONS.map((o) => (
                         <TabsTrigger key={o.value} value={o.value}>{o.label}</TabsTrigger>
                       ))}
                     </TabsList>
@@ -369,7 +369,7 @@ export const SettingsModal = ({ isOpen, onOpenChange, previewValues }: {
                   {/* All option texts stacked in one grid cell so the block is always as tall as the
                       longest — switching options shows the active one without reflowing the layout. */}
                   <div className="grid mt-2">
-                    {OUTPUT_LENGTH_OPTIONS.map((o) => (
+                    {PARAGRAPH_LIMIT_OPTIONS.map((o) => (
                       <p
                         key={o.value}
                         className={`col-start-1 row-start-1 text-xs text-muted-foreground${o.value === paragraphLimit ? '' : ' invisible'}`}
@@ -392,7 +392,7 @@ export const SettingsModal = ({ isOpen, onOpenChange, previewValues }: {
                     className="shrink-0"
                   />
                   <span className="text-xs text-muted-foreground">
-                    Let the AI format narration with bold/italics, lists, and tables. Works best with Output Length not set to a single paragraph.
+                    Let the AI format narration with bold/italics, lists, and tables. Works best with Paragraph Limit not set to Single.
                   </span>
                 </div>
               </div>
@@ -465,7 +465,7 @@ export const SettingsModal = ({ isOpen, onOpenChange, previewValues }: {
                       ))}
                     </TabsList>
                   </Tabs>
-                  {/* Stacked like Output Length so switching thinking modes doesn't reflow the layout. */}
+                  {/* Stacked like Paragraph Limit so switching thinking modes doesn't reflow the layout. */}
                   <div className="grid mt-2">
                     {THINKING_OPTIONS.map((o) => (
                       <p

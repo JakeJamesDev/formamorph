@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import {
   $getRoot, $getNodeByKey, $getSelection, $isRangeSelection, $createRangeSelection, $setSelection,
   $insertNodes, $createParagraphNode, $createTextNode, $createLineBreakNode,
@@ -204,14 +204,60 @@ const EDITOR_CLASS =
   'h-full min-h-[160px] w-full overflow-auto rounded-md border border-input bg-background px-3 py-2 ' +
   'text-sm outline-none whitespace-pre-wrap';
 
+// --- edit <-> preview scroll sync ---
+// The two panes have very different heights (a chip is one short token; its expanded value can be many
+// lines), so a whole-document fraction maps poorly. Instead we anchor on the variable elements both panes
+// share in the same order — Lexical chips (`data-lexical-decorator`) in Edit, expanded `<mark>`s in
+// Preview — and record the viewport center as a position *between two chips*, which we then reproduce in
+// the other pane. Non-uniform expansion above/below the reading spot no longer skews the result.
+
+/** A captured scroll position: interpolated between shared anchors `seg`..`seg+1`, or a whole-document
+ *  fraction when the pane has no chips to align on. */
+type ScrollAnchor = { seg: number; t: number } | { frac: number };
+
+const anchorSelector = (tab: string) => (tab === 'edit' ? '[data-lexical-decorator]' : 'mark');
+
+/** Anchor element tops (px from content top), bracketed by the content's own top (0) and bottom
+ *  (scrollHeight) — giving `chips + 1` gaps to interpolate within. */
+function anchorPositions(el: HTMLElement, tab: string): number[] {
+  const contentTop = el.getBoundingClientRect().top - el.scrollTop;
+  const tops = Array.from(el.querySelectorAll<HTMLElement>(anchorSelector(tab)))
+    .map((a) => a.getBoundingClientRect().top - contentTop);
+  return [0, ...tops, el.scrollHeight];
+}
+
+function captureAnchor(el: HTMLElement | null, tab: string): ScrollAnchor | null {
+  if (!el || el.scrollHeight <= el.clientHeight) return null;
+  const center = el.scrollTop + el.clientHeight / 2;
+  const pos = anchorPositions(el, tab);
+  if (pos.length <= 2) return { frac: center / el.scrollHeight }; // no chips → whole-document fraction
+  let seg = 0;
+  while (seg < pos.length - 2 && center >= pos[seg + 1]) seg++;
+  return { seg, t: (center - pos[seg]) / (pos[seg + 1] - pos[seg] || 1) };
+}
+
+function applyAnchor(el: HTMLElement | null, tab: string, anchor: ScrollAnchor): void {
+  if (!el) return;
+  let center: number;
+  if ('frac' in anchor) center = anchor.frac * el.scrollHeight;
+  else {
+    const pos = anchorPositions(el, tab);
+    const seg = Math.min(anchor.seg, pos.length - 2); // guard against a differing anchor count
+    center = pos[seg] + anchor.t * (pos[seg + 1] - pos[seg]);
+  }
+  el.scrollTop = Math.max(0, Math.min(el.scrollHeight - el.clientHeight, center - el.clientHeight / 2));
+}
+
 /** The substituted prompt, with each variable's value lightly tinted its accent color (matching the
  *  chip and the Insert key) so it's obvious which text came from which variable. */
-function PreviewPane({ value, previewValues }: {
+function PreviewPane({ value, previewValues, scrollRef, onScroll }: {
   value: string;
   previewValues: Record<string, string>;
+  scrollRef?: React.Ref<HTMLDivElement>;
+  onScroll?: React.UIEventHandler<HTMLDivElement>;
 }) {
   return (
-    <div className="h-full min-h-[160px] overflow-auto rounded-md border border-input bg-muted/40 px-3 py-2 text-sm whitespace-pre-wrap">
+    <div ref={scrollRef} onScroll={onScroll} className="h-full min-h-[160px] overflow-auto rounded-md border border-input bg-muted/40 px-3 py-2 text-sm whitespace-pre-wrap">
       {parsePromptTemplate(value).map((seg, i) => {
         if (seg.type === 'text') return <span key={i}>{seg.value}</span>;
         const color = colorForToken(seg.token);
@@ -245,6 +291,51 @@ const PromptField = ({ value, onChange, variables, previewValues, className, rea
 }) => {
   const dragKey = useRef<string | null>(null);
   const [tab, setTab] = useState('edit');
+  // Scroll containers for each tab (only one is mounted at a time). ContentEditable forwards its ref to
+  // the editable <div>, which is the Edit-mode scroller (overflow-auto via EDITOR_CLASS).
+  const editScrollRef = useRef<HTMLDivElement | null>(null);
+  const previewScrollRef = useRef<HTMLDivElement | null>(null);
+  // The canonical scroll position, held as a height-independent anchor we own — so it maps between the two
+  // panes and, crucially, toggling re-applies this exact value instead of re-reading the browser's rounded
+  // scrollTop. That removes the round-trip that caused peek-drift; only genuine user scrolling refreshes it.
+  const proxyAnchor = useRef<ScrollAnchor | null>(null);
+  // True while we're programmatically scrolling, so our own scroll events don't clobber the proxy.
+  const applying = useRef(false);
+
+  // A real user scroll on the visible pane refreshes the proxy from that pane (currentTarget is the
+  // scroller). Our own apply-driven scrolls are gated out via `applying`.
+  const handleScroll = (e: React.UIEvent<HTMLDivElement>) => {
+    if (applying.current) return;
+    proxyAnchor.current = captureAnchor(e.currentTarget, tab);
+  };
+
+  useLayoutEffect(() => {
+    const anchor = proxyAnchor.current;
+    if (!anchor) return;
+    // Edit's chips are Lexical decorators whose content portals in a frame or two after mount, growing the
+    // pane. Re-apply the proxy each frame until scrollHeight settles so the final apply measures the
+    // finished layout; suppress our own scroll events throughout so the proxy stays exact.
+    applying.current = true;
+    let raf = 0;
+    let prevHeight = -1;
+    let tries = 0;
+    const run = () => {
+      const el = tab === 'edit' ? editScrollRef.current : previewScrollRef.current;
+      if (!el) { applying.current = false; return; }
+      applyAnchor(el, tab, anchor);
+      if (el.scrollHeight !== prevHeight && tries < 10) {
+        prevHeight = el.scrollHeight;
+        tries++;
+        raf = requestAnimationFrame(run);
+      } else {
+        // Re-enable capture one frame later, once the final programmatic scroll event has flushed
+        // (scroll events fire before the next rAF, so it's already been gated out by then).
+        raf = requestAnimationFrame(() => { applying.current = false; });
+      }
+    };
+    raf = requestAnimationFrame(run);
+    return () => { cancelAnimationFrame(raf); applying.current = false; };
+  }, [tab]);
   // Capture `value` at mount; live edits flow through ValueSyncPlugin, external resets through it too.
   const initialConfig = useMemo(
     () => ({
@@ -261,7 +352,7 @@ const PromptField = ({ value, onChange, variables, previewValues, className, rea
   const editorSurface = (
     <div className="relative flex-1 min-h-0">
       <PlainTextPlugin
-        contentEditable={<ContentEditable className={EDITOR_CLASS} />}
+        contentEditable={<ContentEditable ref={editScrollRef} onScroll={handleScroll} className={EDITOR_CLASS} />}
         placeholder={
           <div className="pointer-events-none absolute left-3 top-2 text-sm text-muted-foreground">
             Empty prompt
@@ -287,7 +378,7 @@ const PromptField = ({ value, onChange, variables, previewValues, className, rea
                 {editorSurface}
               </TabsContent>
               <TabsContent value="preview" className="mt-2 flex-1 min-h-0 data-[state=active]:flex flex-col">
-                <PreviewPane value={value} previewValues={previewValues} />
+                <PreviewPane value={value} previewValues={previewValues} scrollRef={previewScrollRef} onScroll={handleScroll} />
               </TabsContent>
             </Tabs>
           ) : (
