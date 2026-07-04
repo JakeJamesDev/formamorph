@@ -83,11 +83,13 @@ describe('multi-axis variants (Stats: content × format)', () => {
     expect(encodeVariant(STATS, { content: null, format: null })).toBeNull();
   });
 
-  it('lists every combined id, longest-first so a compound is not masked by its prefix', () => {
+  it('lists every combined id, and a compound is not masked by its prefix', () => {
     for (const id of ['descriptions', 'numbers', 'markdown', 'descriptions.markdown', 'numbers.markdown', 'summary', 'sublocations', 'reachable.summary.markdown']) {
       expect(ALL_VARIANT_IDS).toContain(id);
     }
-    expect(ALL_VARIANT_IDS.indexOf('descriptions.markdown')).toBeLessThan(ALL_VARIANT_IDS.indexOf('descriptions'));
+    // The real contract behind the longest-first ordering: a compound id decodes to BOTH axes rather than
+    // being truncated to its bare prefix (e.g. 'descriptions.markdown' isn't collapsed to 'descriptions').
+    expect(decodeVariant(STATS, 'descriptions.markdown')).toEqual({ content: 'descriptions', format: 'markdown' });
   });
 
   it('composes the chip label from the non-default axis selections', () => {
