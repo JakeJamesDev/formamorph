@@ -531,10 +531,21 @@ const MainMenu = ({ onStartGame, onOpenWorldEditor }: MainMenuProps) => {
         v{APP_VERSION}
       </span>
 
-      {/* Copyright */}
-      <span className="fixed bottom-2 left-1/2 -translate-x-1/2 z-10 text-xs text-muted-foreground/60 select-none pointer-events-none whitespace-nowrap">
-        © 2026 Jake James
-      </span>
+      {/* Copyright + origin credit (original is MIT — see THIRD-PARTY-NOTICES / legal/) */}
+      <div className="fixed bottom-2 left-1/2 -translate-x-1/2 z-10 text-center text-xs text-muted-foreground/60 select-none pointer-events-none whitespace-nowrap leading-tight">
+        <div>© 2026 Jake James</div>
+        <div>
+          Based on{' '}
+          <a
+            href="https://github.com/FieryLionite/formamorph"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="pointer-events-auto hover:underline"
+          >
+            Formamorph by FieryLionite
+          </a>
+        </div>
+      </div>
 
       {/* Top-left controls: local-world layout selector (styled like the settings tabs) */}
       <div className="fixed top-4 left-4 z-10">

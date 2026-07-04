@@ -5,7 +5,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Checkbox } from "@/components/ui/checkbox";
 import { MultiSelect } from "@/components/ui/multi-select";
-import GenerateSummaryButton from "@/components/GenerateSummaryButton";
+import AiFieldToolbar from "@/components/AiFieldToolbar";
 import { ImageUpload, SoundUpload } from '../lib/UtilityComponents';
 import { IMAGE_CAPS } from '../lib/imageOptim';
 import { GenerateImageButton } from '../components/GenerateImageButton';
@@ -63,10 +63,11 @@ const LocationManager = ({ location }: { location: GameLocation }) => {
       <div className="space-y-2">
         <div className="flex items-center justify-between">
           <Label>AI-Facing Summary</Label>
-          <GenerateSummaryButton
+          <AiFieldToolbar
+            mode="summary"
             source={editingLocation.aiDescription}
-            current={editingLocation.aiSummary}
-            onGenerated={(s) => handleChange('aiSummary', s)}
+            value={editingLocation.aiSummary}
+            onChange={(s) => handleChange('aiSummary', s)}
           />
         </div>
         <Textarea
@@ -96,10 +97,28 @@ const LocationManager = ({ location }: { location: GameLocation }) => {
           value={editingLocation.backgroundImage}
           cap={IMAGE_CAPS.background}
         />
+        <div className="flex items-center justify-between">
+          <Label>Image Tags</Label>
+          <AiFieldToolbar
+            mode="tags"
+            name={editingLocation.name}
+            kind="location"
+            source={editingLocation.aiDescription || editingLocation.playerDescription}
+            value={editingLocation.imageTags}
+            onChange={(t) => handleChange('imageTags', t)}
+          />
+        </div>
+        <Textarea
+          value={editingLocation.imageTags || ''}
+          onChange={(e) => handleChange('imageTags', e.target.value)}
+          placeholder="booru tags, comma separated"
+        />
         <GenerateImageButton
           subject={{ name: editingLocation.name || '', description: editingLocation.aiDescription || editingLocation.playerDescription || '', kind: 'location' }}
           cap={IMAGE_CAPS.background}
           onChange={(file) => handleChange('backgroundImage', file)}
+          tags={editingLocation.imageTags ?? ''}
+          onTagsChange={(t) => handleChange('imageTags', t)}
         />
       </div>
       <div className="space-y-2">
