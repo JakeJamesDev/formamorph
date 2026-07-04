@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useSettings, type ThinkingMode, type ParagraphLimit } from '@/contexts/SettingsContext';
 import { DEFAULT_ENDPOINT, DEFAULT_API_TOKEN, DEFAULT_MODEL_NAME, DEFAULT_MAX_TOKENS } from '@/contexts/settingsDefaults';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
@@ -16,6 +16,8 @@ import { defaultSystemPrompt, defaultChoicesPrompt, defaultStatUpdatesPrompt, de
 import VramReadout from '../game/VramReadout';
 import { useVramStats } from '@/lib/useVramStats';
 import { isDesktop } from '@/lib/imageGen/desktop';
+import { fetchComfyMeta, type ComfyMeta } from '@/lib/imageGen/comfyui';
+import { TokenAutocomplete } from '@/components/TokenAutocomplete';
 import { DEFAULT_TAG_PROMPT, SUBJECT_GUIDANCE } from '@/lib/imagePrompt';
 
 // Segmented-control options: a short tab label plus the helper text shown below the selected one.
@@ -234,6 +236,24 @@ export const SettingsModal = ({ isOpen, onOpenChange, previewValues }: {
   // Image Gen → Endpoint preset name dialog (mirrors the prompt preset one; all presets editable).
   const [imagePresetDialog, setImagePresetDialog] = useState<{ mode: 'add' | 'rename' } | null>(null);
   const IMG_ADD_PRESET_SENTINEL = '__add_image_preset__';
+
+  // ComfyUI checkpoint/sampler lists that back the Model/Sampler autocompletes. Auto-fetched from
+  // /object_info whenever ComfyUI is the active provider (debounced on endpoint edits); fails silently
+  // when the server isn't up (it's fast and optional — free text still works).
+  const [comfyMeta, setComfyMeta] = useState<ComfyMeta | null>(null);
+  useEffect(() => {
+    if (imageProvider !== 'comfyui') return;
+    let cancelled = false;
+    const t = setTimeout(async () => {
+      try {
+        const meta = await fetchComfyMeta(imageEndpoint, imageApiToken);
+        if (!cancelled) setComfyMeta(meta);
+      } catch {
+        // silent: ComfyUI not running / unreachable — the fields fall back to free text
+      }
+    }, 300);
+    return () => { cancelled = true; clearTimeout(t); };
+  }, [imageProvider, imageEndpoint, imageApiToken]);
   const handleImagePresetSelect = (v: string) => {
     if (v === IMG_ADD_PRESET_SENTINEL) setImagePresetDialog({ mode: 'add' });
     else selectImageEndpointPreset(v);
@@ -715,7 +735,18 @@ export const SettingsModal = ({ isOpen, onOpenChange, previewValues }: {
               </div>
               <div className="grid grid-cols-[1fr_3fr] items-center gap-4">
                 <label htmlFor="imageModel" className="text-right">Model</label>
-                <Input id="imageModel" value={imageModel} onChange={(e) => setImageModel(e.target.value)} placeholder="(server default)" />
+                {imageProvider === 'comfyui' ? (
+                  <TokenAutocomplete
+                    single
+                    openOnFocus
+                    values={imageModel ? [imageModel] : []}
+                    onChange={(v) => setImageModel(v[0] ?? '')}
+                    options={comfyMeta?.checkpoints ?? []}
+                    placeholder="(server default)"
+                  />
+                ) : (
+                  <Input id="imageModel" value={imageModel} onChange={(e) => setImageModel(e.target.value)} placeholder="(server default)" />
+                )}
               </div>
               <div className="grid grid-cols-[1fr_3fr] items-start gap-4">
                 <label htmlFor="imagePositivePrompt" className="text-right pt-2">Prompt Prefix</label>
@@ -755,7 +786,18 @@ export const SettingsModal = ({ isOpen, onOpenChange, previewValues }: {
               </div>
               <div className="grid grid-cols-[1fr_3fr] items-center gap-4">
                 <label htmlFor="imageSampler" className="text-right">Sampler</label>
-                <Input id="imageSampler" value={imageSampler} onChange={(e) => setImageSampler(e.target.value)} placeholder="Euler a" />
+                {imageProvider === 'comfyui' ? (
+                  <TokenAutocomplete
+                    single
+                    openOnFocus
+                    values={imageSampler ? [imageSampler] : []}
+                    onChange={(v) => setImageSampler(v[0] ?? '')}
+                    options={comfyMeta?.samplers ?? []}
+                    placeholder="euler"
+                  />
+                ) : (
+                  <Input id="imageSampler" value={imageSampler} onChange={(e) => setImageSampler(e.target.value)} placeholder="Euler a" />
+                )}
               </div>
               {imageProvider === 'a1111' && (
                 <div className="grid grid-cols-[1fr_3fr] items-start gap-4">

@@ -156,6 +156,38 @@ export function decodePreviewFrame(buf: ArrayBuffer): string | undefined {
 /** Strip a trailing slash so `${base}/prompt` doesn't double up. */
 const trimUrl = (u: string) => u.replace(/\/+$/, '');
 
+export interface ComfyMeta {
+  checkpoints: string[];
+  samplers: string[];
+  schedulers: string[];
+}
+
+/** Read a node input's enum list from an /object_info payload: `info[node].input.required[field][0]`. */
+function extractEnum(info: unknown, node: string, field: string): string[] {
+  const required = (info as Record<string, { input?: { required?: Record<string, unknown> } }>)?.[node]?.input?.required;
+  const spec = required?.[field];
+  const list = Array.isArray(spec) ? spec[0] : undefined;
+  return Array.isArray(list) ? list.filter((v): v is string => typeof v === 'string') : [];
+}
+
+/** Fetch the installed checkpoint / sampler / scheduler lists from ComfyUI's /object_info (per-node so the
+ *  payload stays small). Requires --enable-cors-header, same as generation. */
+export async function fetchComfyMeta(endpointUrl: string, apiToken?: string): Promise<ComfyMeta> {
+  const base = trimUrl(endpointUrl);
+  const headers = apiToken ? { Authorization: `Bearer ${apiToken}` } : undefined;
+  const get = async (node: string): Promise<unknown> => {
+    const res = await fetch(`${base}/object_info/${node}`, { headers });
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    return res.json();
+  };
+  const [ckpt, ks] = await Promise.all([get('CheckpointLoaderSimple'), get('KSampler')]);
+  return {
+    checkpoints: extractEnum(ckpt, 'CheckpointLoaderSimple', 'ckpt_name'),
+    samplers: extractEnum(ks, 'KSampler', 'sampler_name'),
+    schedulers: extractEnum(ks, 'KSampler', 'scheduler'),
+  };
+}
+
 const POLL_INTERVAL_MS = 700;
 const WS_SETTLE_MS = 3000; // if the WS never opens/signals, fall back to /history polling after this
 

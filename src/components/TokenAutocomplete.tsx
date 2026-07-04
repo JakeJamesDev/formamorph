@@ -24,14 +24,17 @@ const SUGGESTION_LIMIT = 50;
  * in `options` is allowed. Suggestions are added on mousedown so the click registers before blur.
  * - `openOnFocus`: show all available options the moment the field is focused (before typing).
  * - `reorderable`: chips can be dragged to reorder (the X still removes; click vs. drag is distance-gated).
+ * - `single`: scalar combobox mode — no chips; the input edits one value (`values[0]`, free text allowed),
+ *   selecting a suggestion replaces it. A committed value shows the full option list again so you can switch.
  */
-export function TokenAutocomplete({ values, onChange, options, placeholder, openOnFocus = false, reorderable = false }: {
+export function TokenAutocomplete({ values, onChange, options, placeholder, openOnFocus = false, reorderable = false, single = false }: {
   values: string[];
   onChange: (values: string[]) => void;
   options: string[];
   placeholder?: string;
   openOnFocus?: boolean;
   reorderable?: boolean;
+  single?: boolean;
 }) {
   const [text, setText] = useState("");
   const [open, setOpen] = useState(false);
@@ -42,14 +45,20 @@ export function TokenAutocomplete({ values, onChange, options, placeholder, open
     useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates }),
   );
 
+  // In single mode the input reflects the one committed value; in multi mode it's the transient chip buffer.
+  const query = single ? (values[0] ?? "") : text;
+
   const suggestions = useMemo(() => {
-    const q = text.trim().toLowerCase();
-    const selected = new Set(values.map((v) => v.toLowerCase()));
+    const q = query.trim().toLowerCase();
+    const selected = single ? new Set<string>() : new Set(values.map((v) => v.toLowerCase()));
     const available = options.filter((o) => !selected.has(o.toLowerCase()));
+    const all = () => available.slice().sort((a, b) => a.localeCompare(b)).slice(0, SUGGESTION_LIMIT);
     if (!q) {
       // Empty field: only surface options when opening on focus is requested.
-      return openOnFocus ? available.slice().sort((a, b) => a.localeCompare(b)).slice(0, SUGGESTION_LIMIT) : [];
+      return openOnFocus ? all() : [];
     }
+    // A committed single value (exactly one option) shows the full list so you can switch selections.
+    if (single && available.some((o) => o.toLowerCase() === q)) return all();
     return available
       .filter((o) => o.toLowerCase().includes(q))
       .sort((a, b) => {
@@ -58,7 +67,7 @@ export function TokenAutocomplete({ values, onChange, options, placeholder, open
         return aw - bw || a.localeCompare(b);
       })
       .slice(0, openOnFocus ? SUGGESTION_LIMIT : 8);
-  }, [text, options, values, openOnFocus]);
+  }, [query, options, values, openOnFocus, single]);
 
   /** Append values that aren't already present (case-insensitive); returns whether anything changed. */
   const addMany = (toAdd: string[]) => {
@@ -77,6 +86,22 @@ export function TokenAutocomplete({ values, onChange, options, placeholder, open
     setOpen(false);
   };
   const remove = (val: string) => onChange(values.filter((x) => x !== val));
+
+  // Single mode: commit replaces the value (empty ⇒ []); typing writes through immediately (free text).
+  const commit = (val: string) => {
+    if (single) {
+      onChange(val ? [val] : []);
+      setActive(0);
+      setOpen(false);
+    } else {
+      add(val);
+    }
+  };
+  const handleSingleInput = (raw: string) => {
+    onChange(raw ? [raw] : []);
+    setOpen(true);
+    setActive(0);
+  };
 
   // Split commas out of typed/pasted input: complete segments become chips, the remainder stays typed.
   const handleInput = (raw: string) => {
@@ -99,7 +124,7 @@ export function TokenAutocomplete({ values, onChange, options, placeholder, open
   const onKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
     if (e.key === "Enter") {
       e.preventDefault();
-      add(open && suggestions[active] ? suggestions[active] : text);
+      commit(open && suggestions[active] ? suggestions[active] : query);
     } else if (e.key === "ArrowDown") {
       e.preventDefault();
       setOpen(true);
@@ -107,7 +132,7 @@ export function TokenAutocomplete({ values, onChange, options, placeholder, open
     } else if (e.key === "ArrowUp") {
       e.preventDefault();
       setActive((a) => Math.max(a - 1, 0));
-    } else if (e.key === "Backspace" && !text && values.length) {
+    } else if (e.key === "Backspace" && !single && !text && values.length) {
       remove(values[values.length - 1]);
     } else if (e.key === "Escape") {
       setOpen(false);
@@ -116,22 +141,24 @@ export function TokenAutocomplete({ values, onChange, options, placeholder, open
 
   return (
     <div className="relative">
-      <div className="flex flex-wrap items-center gap-1 rounded-md border border-input bg-background px-2 py-1 min-w-[180px]">
-        {reorderable ? (
+      {/* Single mode matches the shadcn Input (h-10 px-3 text-sm) so it lines up with sibling fields;
+          multi mode stays compact (px-2 py-1, text-xs) for chips. */}
+      <div className={`flex flex-wrap items-center gap-1 rounded-md border border-input bg-background min-w-[180px] ${single ? "px-3 h-10" : "px-2 py-1"}`}>
+        {!single && (reorderable ? (
           <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
             <SortableContext items={values} strategy={rectSortingStrategy}>
               {values.map((v) => <SortableChip key={v} id={v} onRemove={remove} />)}
             </SortableContext>
           </DndContext>
-        ) : values.map((v) => <Chip key={v} label={v} onRemove={remove} />)}
+        ) : values.map((v) => <Chip key={v} label={v} onRemove={remove} />))}
         <input
-          value={text}
-          onChange={(e) => handleInput(e.target.value)}
+          value={single ? query : text}
+          onChange={(e) => (single ? handleSingleInput(e.target.value) : handleInput(e.target.value))}
           onKeyDown={onKeyDown}
           onFocus={() => setOpen(true)}
           onBlur={() => setTimeout(() => setOpen(false), 100)}
-          placeholder={values.length ? "" : placeholder}
-          className="flex-1 min-w-[80px] bg-transparent outline-none text-xs py-0.5"
+          placeholder={single ? placeholder : (values.length ? "" : placeholder)}
+          className={`flex-1 min-w-[80px] bg-transparent outline-none ${single ? "text-sm" : "text-xs py-0.5"}`}
         />
       </div>
       {open && suggestions.length > 0 && (
@@ -145,7 +172,7 @@ export function TokenAutocomplete({ values, onChange, options, placeholder, open
             <button
               type="button"
               key={s}
-              onMouseDown={(e) => { e.preventDefault(); add(s); }}
+              onMouseDown={(e) => { e.preventDefault(); commit(s); }}
               onMouseEnter={() => setActive(i)}
               className={`flex w-full items-center rounded-sm px-2 py-1.5 text-sm text-left ${i === active ? "bg-accent text-accent-foreground" : ""}`}
             >
