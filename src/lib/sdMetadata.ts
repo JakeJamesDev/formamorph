@@ -68,6 +68,60 @@ function positiveFromJson(value: string): string | null {
   return null;
 }
 
+// --- ComfyUI: the `prompt` chunk is the API node graph { id: { class_type, inputs } }. There's no flat
+// prompt field, so walk from a node's `positive` conditioning link back to the CLIPTextEncode `text`.
+
+interface ComfyNode { class_type?: string; inputs?: Record<string, unknown> }
+type ComfyGraph = Record<string, ComfyNode>;
+/** A link input references another node's output: [nodeId, outputIndex]. */
+const isLink = (v: unknown): v is [string | number, number] =>
+  Array.isArray(v) && v.length === 2 && (typeof v[0] === 'string' || typeof v[0] === 'number');
+
+/** Follow links backward from a node to the first text string (CLIPTextEncode/SDXL/efficiency loader). */
+function resolveComfyText(graph: ComfyGraph, id: string, visited: Set<string>, depth: number): string | null {
+  if (depth > 8 || visited.has(id)) return null;
+  visited.add(id);
+  const inputs = graph[id]?.inputs;
+  if (!inputs) return null;
+  for (const key of ['text', 'text_g', 'positive']) {
+    const v = inputs[key];
+    if (typeof v === 'string' && v.trim()) return v.trim();
+  }
+  for (const v of Object.values(inputs)) {
+    if (isLink(v)) {
+      const found = resolveComfyText(graph, String(v[0]), visited, depth + 1);
+      if (found) return found;
+    }
+  }
+  return null;
+}
+
+/** If `value` is a ComfyUI API graph, resolve the positive prompt, else null. */
+function positiveFromComfy(value: string): string | null {
+  let parsed: unknown;
+  try { parsed = JSON.parse(value); } catch { return null; }
+  if (!parsed || typeof parsed !== 'object') return null;
+  const graph = parsed as ComfyGraph;
+  const nodes = Object.values(graph);
+  if (!nodes.some((n) => n && typeof n === 'object' && typeof n.class_type === 'string')) return null;
+
+  // Start from any node whose `positive` conditioning is a link (KSampler/SamplerCustom/CFGGuider…).
+  for (const [nid, node] of Object.entries(graph)) {
+    const pos = node?.inputs?.positive;
+    if (isLink(pos)) {
+      const text = resolveComfyText(graph, String(pos[0]), new Set([nid]), 0);
+      if (text) return text;
+    }
+  }
+  // Fallback: an unambiguous single CLIPTextEncode.
+  const encoders = Object.keys(graph).filter((id) => graph[id]?.class_type === 'CLIPTextEncode');
+  if (encoders.length === 1) {
+    const t = graph[encoders[0]]?.inputs?.text;
+    if (typeof t === 'string' && t.trim()) return t.trim();
+  }
+  return null;
+}
+
 /** The positive prompt embedded in a PNG by the generating tool, or null when none is found. */
 export function extractSdPrompt(bytes: Uint8Array): string | null {
   const chunks = readPngTextChunks(bytes);
@@ -78,6 +132,16 @@ export function extractSdPrompt(bytes: Uint8Array): string | null {
   }
   for (const value of chunks.values()) {
     const p = positiveFromJson(value);
+    if (p) return p;
+  }
+  // ComfyUI stores its prompt as a node graph — prefer the `prompt` chunk, else scan for any graph.
+  const comfy = chunks.get('prompt');
+  if (comfy) {
+    const p = positiveFromComfy(comfy);
+    if (p) return p;
+  }
+  for (const value of chunks.values()) {
+    const p = positiveFromComfy(value);
     if (p) return p;
   }
   return null;
