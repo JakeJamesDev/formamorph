@@ -105,8 +105,17 @@ const LENGTH: PromptVariable = { token: '<LENGTH GUIDANCE>', label: 'Length Guid
 const MARKDOWN: PromptVariable = { token: '<MARKDOWN GUIDANCE>', label: 'Markdown Guidance', color: HIGHLIGHT_PALETTE[6] };
 // Entities are one chip whose `scope` axis picks here / sub-locations / reachable siblings.
 const ENTITIES: PromptVariable = { token: '<ENTITIES>', label: 'Entities', color: HIGHLIGHT_PALETTE[8], axes: [ENTITY_SCOPE_AXIS, CONTENT_AXIS, FORMAT_AXIS] };
-// The activated-dictionary lore for the turn — supplied by GameViewer per turn (narration prompt only).
-const DICTIONARY: PromptVariable = { token: '<DICTIONARY>', label: 'Dictionary', color: HIGHLIGHT_PALETTE[11] };
+// The activated-dictionary lore for the turn — supplied by GameViewer per turn (narration prompt only). The
+// `before` variant renders the early "## Background Lore" block; the default renders the late "## Foreground Lore".
+const DICTIONARY: PromptVariable = {
+  token: '<DICTIONARY>',
+  label: 'Dictionary',
+  color: HIGHLIGHT_PALETTE[11],
+  variants: [
+    { id: null, label: 'Foreground', help: 'Keyword-triggered lore placed late for high recency — the "## Foreground Lore" block.' },
+    { id: 'before', label: 'Background', help: 'Lore placed early with the world setup — the "## Background Lore" block.' },
+  ],
+};
 // Runtime value-token for the staged character pass — the name of the character whose motivation is being written.
 const CHARACTER: PromptVariable = { token: '<CHARACTER NAME>', label: 'Character', color: HIGHLIGHT_PALETTE[7] };
 

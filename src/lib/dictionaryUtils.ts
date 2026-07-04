@@ -1,32 +1,91 @@
 import type { DictionaryEntry } from '@/types';
 
-/** Split an entry's comma-separated `key` into trimmed, non-empty keywords. */
+const MAX_RECURSION_PASSES = 3;
+
+function splitKeys(raw: string | undefined): string[] {
+  return (raw || '').split(',').map((k) => k.trim()).filter(Boolean);
+}
+
+/** An entry's primary trigger keywords (its comma-separated `key`, trimmed, empties dropped). */
 export function parseKeywords(entry: DictionaryEntry): string[] {
-  return (entry.key || '')
-    .split(',')
-    .map((k) => k.trim())
-    .filter(Boolean);
+  return splitKeys(entry.key);
+}
+
+/** Whether any of `keys` occurs in `haystack`, honoring the entry's `useRegex` / `caseSensitive` options. */
+function anyKeyMatches(keys: string[], haystack: string, entry: DictionaryEntry): boolean {
+  if (keys.length === 0 || !haystack) return false;
+  if (entry.useRegex) {
+    return keys.some((k) => {
+      try { return new RegExp(k, entry.caseSensitive ? '' : 'i').test(haystack); }
+      catch { return false; } // a malformed pattern never matches rather than throwing
+    });
+  }
+  const hay = entry.caseSensitive ? haystack : haystack.toLowerCase();
+  return keys.some((k) => hay.includes(entry.caseSensitive ? k : k.toLowerCase()));
+}
+
+/** Whether an entry fires against `haystack`: a primary hit, plus a secondary hit when `secondaryKeys` is set. */
+function triggered(entry: DictionaryEntry, haystack: string): boolean {
+  if (!anyKeyMatches(parseKeywords(entry), haystack, entry)) return false;
+  const secondary = splitKeys(entry.secondaryKeys);
+  return secondary.length === 0 || anyKeyMatches(secondary, haystack, entry);
+}
+
+/** Options for `getActivatedDictionary`. */
+export interface ActivationOptions {
+  /** Recent message contents oldest→newest; scanned per entry up to its `scanDepth` (all of it when unset). */
+  history?: string[];
 }
 
 /**
- * Dictionary entries whose any keyword appears in the provided texts (case-insensitive).
- * v1.2.0 scans the full message history, not just the current event text.
+ * The dictionary/lorebook entries active this turn. An enabled entry activates when it is `constant` or its
+ * keywords fire against the scanned text — the current scene (`sceneTexts`, always scanned) plus the last
+ * `scanDepth` messages of `opts.history` (all of it when `scanDepth` is unset; none when it is 0). Entries
+ * flagged `recursive` may then be activated by the already-active entries' content, bounded to a few passes.
+ * Returns the active entries in declaration order; ordering within a rendered block is `buildDictionaryContext`'s job.
  */
 export function getActivatedDictionary(
   dictionary: DictionaryEntry[],
-  texts: string[],
+  sceneTexts: string[],
+  opts: ActivationOptions = {},
 ): DictionaryEntry[] {
   if (!dictionary || dictionary.length === 0) return [];
-  const haystack = texts.filter(Boolean).join('\n').toLowerCase();
-  if (!haystack) return [];
-  return dictionary.filter((entry) =>
-    parseKeywords(entry).some((kw) => haystack.includes(kw.toLowerCase())),
-  );
+  const live = dictionary.filter((e) => e.enabled !== false);
+  const sceneHay = sceneTexts.filter(Boolean).join('\n');
+  const history = (opts.history ?? []).filter(Boolean);
+
+  const active = new Set<DictionaryEntry>();
+  const pending: DictionaryEntry[] = [];
+  for (const entry of live) {
+    if (entry.constant) { active.add(entry); continue; }
+    const depth = entry.scanDepth;
+    const hist = depth == null ? history : depth <= 0 ? [] : history.slice(-depth);
+    const hay = hist.length ? `${sceneHay}\n${hist.join('\n')}` : sceneHay;
+    if (triggered(entry, hay)) active.add(entry);
+    else pending.push(entry);
+  }
+
+  // Recursive pass: `recursive` entries can fire against the content already activated, capped to avoid loops.
+  const recursive = pending.filter((e) => e.recursive);
+  if (recursive.length && active.size) {
+    for (let pass = 0; pass < MAX_RECURSION_PASSES; pass++) {
+      const activeText = [...active].map((e) => e.value).filter(Boolean).join('\n');
+      let added = false;
+      for (const entry of recursive) {
+        if (!active.has(entry) && triggered(entry, activeText)) { active.add(entry); added = true; }
+      }
+      if (!added) break;
+    }
+  }
+
+  return live.filter((e) => active.has(e));
 }
 
-/** The text block for the activated entries (empty if none). With `includeHeading` (the default) it carries
- *  its own `## Relevant Information` heading, for the absent-`<DICTIONARY>`-chip fallback append; with
- *  `includeHeading: false` it returns just the body lines, so the prompt template can own the heading. */
+/**
+ * Text block for the given entries (empty if none), rendered in the order given — the `dictionary` array order
+ * within each position block. With `includeHeading` (the default) it carries its own `## Foreground Lore`
+ * heading, used only for the no-chip fallback append; `false` returns the body so the prompt template owns it.
+ */
 export function buildDictionaryContext(entries: DictionaryEntry[], includeHeading = true): string {
   if (!entries || entries.length === 0) return '';
   const lines = entries
@@ -37,5 +96,5 @@ export function buildDictionaryContext(entries: DictionaryEntry[], includeHeadin
     });
   if (lines.length === 0) return '';
   const body = lines.join('\n');
-  return includeHeading ? `## Relevant Information\n${body}` : body;
+  return includeHeading ? `## Foreground Lore\n${body}` : body;
 }

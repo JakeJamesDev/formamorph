@@ -150,16 +150,38 @@ export interface StatUpdate {
 }
 
 /**
- * Dictionary entry — matches the v1.2.0 save format:
- * `key` is a comma-separated list of trigger keywords; `value` is the content injected
- * into the AI prompt when a keyword appears in play. `name` mirrors `key` (used for the
- * list display, as in v1.2).
+ * Dictionary / lorebook entry. `key` is a comma-separated list of trigger keywords; `value` is the content
+ * injected into the AI prompt when a keyword is in scope; `name` mirrors `key` for the list display (as in
+ * v1.2). Every field below `value` is an optional lorebook control — all absent ⇒ the original v1.2 behavior
+ * (a plain keyword→value entry rendered in the single late block), so already-shipped worlds are unaffected.
  */
 export interface DictionaryEntry {
   id: string;
   name: string;
   key: string;
   value: string;
+  /** `false` disables the entry entirely (never injected); absent/`true` = active. */
+  enabled?: boolean;
+  /** Always inject, regardless of keyword matches. */
+  constant?: boolean;
+  /** Comma-separated secondary keywords; when set, a primary keyword AND a secondary keyword must both be in scope. */
+  secondaryKeys?: string;
+  /** Treat the keywords as regular expressions instead of plain substrings. */
+  useRegex?: boolean;
+  /** Match keywords case-sensitively (default: case-insensitive). */
+  caseSensitive?: boolean;
+  /** May be activated recursively by other activated entries' content. */
+  recursive?: boolean;
+  /** Which block the entry renders in: `before` ("Background Lore", early) or `after` ("Foreground Lore", late — default). Order within a block is the `dictionary` array order. */
+  position?: 'before' | 'after';
+  /** Cap the history lookback to the last N messages (the current scene is always scanned); absent = all history. */
+  scanDepth?: number;
+  /** Imported lorebook drop-priority when over budget — stored for round-trip (higher = kept). */
+  priority?: number;
+  /** Imported lorebook token budget — stored for round-trip. */
+  tokenBudget?: number;
+  /** Unmapped imported lorebook fields, preserved for lossless re-export. */
+  extensions?: Record<string, unknown>;
 }
 
 /** World-level metadata and global settings (system prompt, media, 3D toggle) shared across all saves. */

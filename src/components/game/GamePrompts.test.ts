@@ -33,6 +33,7 @@ describe('default prompts carry the expected variable chips', () => {
       '<LENGTH GUIDANCE>',
       '<MARKDOWN GUIDANCE>',
       '<WORLD DESCRIPTION>',
+      '<DICTIONARY|before>',
       '<STATS DESCRIPTION|descriptions.markdown>',
       '<TRAITS DESCRIPTION|markdown>',
       '<NOTES>',
