@@ -39,7 +39,7 @@ import { LocationModal } from "../components/modals/LocationModal";
 import { SettingsModal } from "../components/modals/SettingsModal";
 import { MenuModal } from "../components/modals/MenuModal";
 import WorldEditor from "./WorldEditor";
-import type { CharacterData, ChatMessage, ChatRole, AIRequestType, StatChange, Trait, GameLocation, MediaAsset } from "@/types";
+import type { CharacterData, ChatMessage, ChatRole, AIRequestType, AITurnResult, StatChange, Trait, GameLocation, MediaAsset } from "@/types";
 import { UnsavedChangesDialog } from "../components/UnsavedChangesDialog";
 import { estimateHistoryChars, estimateTokens } from "../lib/memoryUtils";
 import { parseNarration, stripReasoning, stripReasoningLive } from "../lib/aiResponse";
@@ -501,6 +501,109 @@ const GameViewer = ({
     setDebugTurns((prev) => markRegeneratedTurn(prev));
     pendingRegenerateRef.current = action;
     setRegenerateNonce((n) => n + 1);
+  };
+
+  // Read the committed latest turn + its originating action, or null when a partial re-generate can't run
+  // (busy, not on the latest page, or the turn can't be parsed).
+  const partialRegenTarget = () => {
+    if (isWaitingForAI || !canRegenerate(currentPage, totalPages)) return null;
+    const last = fullMessageHistory[fullMessageHistory.length - 1];
+    if (!last || last.role !== "assistant") return null;
+    const prev = parseTurnContent(last.content);
+    const action = lastTurnAction(fullMessageHistory);
+    if (!prev || action === null) return null;
+    return { prev, action };
+  };
+
+  // Replace one slice of the latest assistant turn's JSON, preserving every other field.
+  const patchLatestTurn = (patch: Partial<AITurnResult>) => {
+    setFullMessageHistory((history) => {
+      const updated = [...history];
+      const i = updated.length - 1;
+      const cur = i >= 0 && updated[i].role === "assistant" ? parseTurnContent(updated[i].content) : null;
+      if (cur) updated[i] = { role: "assistant", content: JSON.stringify({ ...cur, ...patch }) };
+      return updated;
+    });
+  };
+
+  // Shared busy/abort wrapper for a partial re-generate (one aux request against the existing narration).
+  const runPartialRegen = async (run: (signal: AbortSignal) => Promise<void>) => {
+    const controller = new AbortController();
+    abortControllerRef.current = controller;
+    setIsWaitingForAI(true);
+    try {
+      await run(controller.signal);
+    } catch (error) {
+      addLogEntry((error as Error).message);
+    } finally {
+      setIsWaitingForAI(false);
+      setAiRequestType(null);
+      if (abortControllerRef.current === controller) abortControllerRef.current = null;
+    }
+  };
+
+  // Re-roll only the choices for the latest turn, keeping its narration and stats.
+  const handleRegenerateChoices = () => {
+    const target = partialRegenTarget();
+    if (!target || !choicesEnabled) return;
+    const { prev, action } = target;
+    void runPartialRegen(async (signal) => {
+      const ctx = buildContextValues();
+      const presentNames = new Set([
+        ...(prev.entities ?? []),
+        ...recentParticipants(fullMessageHistory, CHOICES_PRESENCE_TURNS - 1),
+      ]);
+      const sceneEntities = allEntities.filter((e) => presentNames.has(e.name));
+      const sceneLoc = withDiscovered(currentLocation);
+      let systemPrompt = renderPromptTemplate(choicesPrompt, {
+        ...ctx,
+        "<ENTITIES>": buildEntityContext(sceneLoc, sceneEntities),
+        "<ENTITIES|summary>": buildEntityContext(sceneLoc, sceneEntities, { preferSummary: true }),
+        "<ENTITIES|markdown>": buildEntityContext(sceneLoc, sceneEntities, { format: "markdown" }),
+        "<ENTITIES|summary.markdown>": buildEntityContext(sceneLoc, sceneEntities, { preferSummary: true, format: "markdown" }),
+      });
+      if (language.toLowerCase() != "english") systemPrompt += `\n Choice language: ` + language;
+      const response = await makeAIRequest(
+        systemPrompt,
+        [{ role: "user", content: renderPromptTemplate(choicesUserPrompt, { "<PLAYER ACTION>": action, "<NARRATION>": prev.narration ?? "" }) }],
+        "choices",
+        null,
+        signal,
+      );
+      if (signal.aborted) return;
+      const choices = parseChoices(response);
+      setChoices(choices);
+      patchLatestTurn({ choices });
+      armTurnSnapshot();
+    });
+  };
+
+  // Re-roll only the stat changes for the latest turn. Deltas are applied onto the pre-turn baseline
+  // (not the current, already-changed stats), so repeated re-rolls don't stack.
+  const handleRegenerateStats = () => {
+    const target = partialRegenTarget();
+    if (!target || !statUpdatesEnabled || playerStats.length === 0) return;
+    const baseline = regenerateState(gameStates, initialStateRef.current, currentPage)?.playerStats;
+    if (!baseline) return;
+    const { prev, action } = target;
+    void runPartialRegen(async (signal) => {
+      let systemPrompt = renderPromptTemplate(statUpdatesPrompt, buildContextValues());
+      if (language.toLowerCase() != "english") systemPrompt += "\n Please write in english";
+      const response = await makeAIRequest(
+        systemPrompt,
+        [{ role: "user", content: renderPromptTemplate(statUpdatesUserPrompt, { "<PLAYER ACTION>": action, "<NARRATION>": prev.narration ?? "" }) }],
+        "statUpdates",
+        null,
+        signal,
+      );
+      if (signal.aborted) return;
+      const { values, maxes } = parseStatUpdates(response);
+      const statChanges = Object.entries(values).map(([k, v]) => ({ [k]: v }));
+      // Max-cap deltas first (may re-clamp), then value deltas onto that baseline via applyStatChanges.
+      await applyStatChanges(statChanges, null, applyAiMaxChanges(baseline, maxes));
+      patchLatestTurn({ stat_changes: statChanges });
+      armTurnSnapshot();
+    });
   };
 
   const addMessageToHistory = useCallback((role: ChatRole, content: string) => {
@@ -1214,7 +1317,9 @@ ${playerNotes || NONE_PLACEHOLDER}
 
   // Update the applyStatChanges function to handle specific stat updates
   const applyStatChanges = useCallback(
-    async (changes: Record<string, number>[], affectedStats: string[] | null = null) => {
+    // `base` overrides the starting stats (defaults to the live ref) — a stat re-generation applies the
+    // fresh deltas onto the pre-turn baseline so repeated re-rolls don't stack on already-applied changes.
+    async (changes: Record<string, number>[], affectedStats: string[] | null = null, base: typeof playerStats | null = null) => {
       // Merge the AI's change objects into one normalized (name→delta) map.
       const normalizedChanges = normalizeStatChanges(changes);
 
@@ -1226,7 +1331,7 @@ ${playerNotes || NONE_PLACEHOLDER}
 
       // Apply the AI's direct changes, then derive any code-based stats from that result. Both run
       // outside the state updater (updaters must stay pure), reading the latest stats via the ref.
-      const directApplied = applyAiStatChanges(playerStatsRef.current, normalizedChanges, affectedStats);
+      const directApplied = applyAiStatChanges(base ?? playerStatsRef.current, normalizedChanges, affectedStats);
       setPlayerStats(directApplied);
       try {
         // processStatCode is typed over Stat[]; playerStats is the narrower PlayerStat[] (value: number).
@@ -1971,6 +2076,8 @@ ${playerNotes || NONE_PLACEHOLDER}
       handleKeyPress={handleKeyPress}
       handleRollback={handleRollback}
       handleRegenerate={handleRegenerate}
+      handleRegenerateChoices={handleRegenerateChoices}
+      handleRegenerateStats={handleRegenerateStats}
       abortGeneration={abortGeneration}
       disabled={isWaitingForAI && !choicesReady}
       onTTSClick={() => setIsTTSModalOpen(true)}
