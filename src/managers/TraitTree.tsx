@@ -4,13 +4,12 @@ import { Button } from '@/components/ui/button';
 import { X, GripVertical, Folder, ChevronRight, ChevronDown, Copy } from 'lucide-react';
 import {
   DndContext, pointerWithin, PointerSensor, KeyboardSensor, useSensor, useSensors,
-  DragOverlay, type DragStartEvent, type DragMoveEvent, type DragOverEvent, type DragEndEvent,
+  type DragStartEvent, type DragMoveEvent, type DragOverEvent, type DragEndEvent,
 } from '@dnd-kit/core';
 import {
   SortableContext, useSortable, sortableKeyboardCoordinates, verticalListSortingStrategy,
 } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
-import { restrictToVerticalAxis } from '@dnd-kit/modifiers';
 import {
   buildTraitTree, flattenTraitTree, removeChildrenOf, getTraitDropProjection, applyTraitDrop,
   duplicateTraitNode, type FlatTraitNode,
@@ -29,28 +28,26 @@ interface RowCtx {
 }
 
 /** One flat row (trait or group header) with a depth-based left indent. */
-function TreeRow({
-  node, depth, ctx, overlay = false,
-}: { node: FlatTraitNode; depth: number; ctx: RowCtx; overlay?: boolean }) {
+function TreeRow({ node, depth, ctx }: { node: FlatTraitNode; depth: number; ctx: RowCtx }) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: node.id });
-  // The dragged row's indent is shown via paddingLeft (projected depth), so pin its x-translate to 0 —
-  // it slides vertically only, matching the overlay. Sibling rows keep their full transform (the
-  // reorder shift animation). The DragOverlay is the element that actually follows the cursor.
-  const rowTransform = isDragging && !overlay && transform ? { ...transform, x: 0 } : transform;
+  // The dragged row's indent is shown via paddingLeft (projected depth), so pin its x-translate to 0 — it
+  // slides vertically only while the pointer's horizontal delta drives depth. Sibling rows keep their full
+  // transform (the reorder shift animation).
+  const rowTransform = isDragging && transform ? { ...transform, x: 0 } : transform;
   const style = {
     transform: CSS.Transform.toString(rowTransform),
     transition,
     paddingLeft: depth * INDENT,
-    opacity: isDragging && !overlay ? 0.4 : 1,
+    opacity: isDragging ? 0.5 : 1,
   };
   const selected = ctx.selectedId === node.id;
   const rowClass = `p-2 cursor-pointer rounded-md transition-colors flex items-center gap-1
-    ${overlay ? 'bg-secondary shadow-lg' : selected ? 'bg-primary text-primary-foreground' : 'hover:bg-secondary'}`;
+    ${selected ? 'bg-primary text-primary-foreground' : 'hover:bg-secondary'}`;
   const isGroup = node.kind === 'group';
   const isCollapsed = isGroup && ctx.collapsed.has(node.id);
 
   return (
-    <div ref={setNodeRef} style={style} onClick={() => ctx.onSelect(node.id)} className={rowClass}>
+    <div ref={setNodeRef} style={style} onClick={(e) => { e.stopPropagation(); ctx.onSelect(node.id); }} className={rowClass}>
       {isGroup ? (
         <button
           type="button"
@@ -65,7 +62,7 @@ function TreeRow({
         {...attributes}
         {...listeners}
         onClick={(e) => e.stopPropagation()}
-        className={`cursor-grab touch-none px-1 ${selected && !overlay ? 'text-primary-foreground' : 'text-muted-foreground'}`}
+        className={`cursor-grab touch-none px-1 ${selected ? 'text-primary-foreground' : 'text-muted-foreground'}`}
         title="Drag to reorder or nest"
       >
         <GripVertical className="h-4 w-4" />
@@ -74,28 +71,24 @@ function TreeRow({
       <span className={`flex-grow ${isGroup ? 'font-medium' : ''}`}>
         {isGroup ? node.group?.name : node.trait?.name}
       </span>
-      {!overlay && (
-        <>
-          <Button
-            variant="ghost"
-            size="icon"
-            className={selected ? 'text-primary-foreground' : 'text-muted-foreground'}
-            onClick={(e) => { e.stopPropagation(); ctx.duplicate(node.id); }}
-            title="Duplicate"
-          >
-            <Copy className="h-4 w-4" />
-          </Button>
-          <Button
-            variant="ghost"
-            size="icon"
-            className={selected ? 'text-primary-foreground' : 'text-muted-foreground'}
-            onClick={(e) => { e.stopPropagation(); if (isGroup) ctx.removeGroup(node.id); else ctx.removeTrait(node.id); }}
-            title="Delete"
-          >
-            <X className="h-4 w-4" />
-          </Button>
-        </>
-      )}
+      <Button
+        variant="ghost"
+        size="icon"
+        className={selected ? 'text-primary-foreground' : 'text-muted-foreground'}
+        onClick={(e) => { e.stopPropagation(); ctx.duplicate(node.id); }}
+        title="Duplicate"
+      >
+        <Copy className="h-4 w-4" />
+      </Button>
+      <Button
+        variant="ghost"
+        size="icon"
+        className={selected ? 'text-primary-foreground' : 'text-muted-foreground'}
+        onClick={(e) => { e.stopPropagation(); if (isGroup) ctx.removeGroup(node.id); else ctx.removeTrait(node.id); }}
+        title="Delete"
+      >
+        <X className="h-4 w-4" />
+      </Button>
     </div>
   );
 }
@@ -122,7 +115,6 @@ const TraitTree = ({ selectedId, onSelect }: { selectedId: string | null; onSele
   const projected = activeId && overId
     ? getTraitDropProjection(visible, activeId, overId, offsetLeft, INDENT)
     : null;
-  const activeNode = activeId ? visible.find((n) => n.id === activeId) ?? null : null;
 
   const reset = () => { setActiveId(null); setOverId(null); setOffsetLeft(0); };
 
@@ -186,14 +178,6 @@ const TraitTree = ({ selectedId, onSelect }: { selectedId: string | null; onSele
           />
         ))}
       </SortableContext>
-      {/* Overlay moves vertically only (x pinned) and sits at the projected depth, so its indent
-          snaps in INDENT steps to where it will drop instead of drifting freely. DndContext stays
-          modifier-free so the pointer's delta.x still drives depth detection. */}
-      <DragOverlay modifiers={[restrictToVerticalAxis]}>
-        {activeNode ? (
-          <TreeRow node={activeNode} depth={projected ? projected.depth : activeNode.depth} ctx={ctx} overlay />
-        ) : null}
-      </DragOverlay>
     </DndContext>
   );
 };

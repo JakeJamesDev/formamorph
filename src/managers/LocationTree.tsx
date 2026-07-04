@@ -4,13 +4,12 @@ import { Button } from '@/components/ui/button';
 import { X, GripVertical, ChevronRight, ChevronDown, Copy } from 'lucide-react';
 import {
   DndContext, pointerWithin, PointerSensor, KeyboardSensor, useSensor, useSensors,
-  DragOverlay, type DragStartEvent, type DragMoveEvent, type DragOverEvent, type DragEndEvent,
+  type DragStartEvent, type DragMoveEvent, type DragOverEvent, type DragEndEvent,
 } from '@dnd-kit/core';
 import {
   SortableContext, useSortable, sortableKeyboardCoordinates, verticalListSortingStrategy,
 } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
-import { restrictToVerticalAxis } from '@dnd-kit/modifiers';
 import {
   buildLocationTree, flattenLocationTree, removeCollapsedChildren, getLocationDropProjection,
   applyLocationDrop, removeLocationPromotingChildren, type FlatLocationNode,
@@ -29,27 +28,25 @@ interface RowCtx {
 }
 
 /** One flat location row with a depth-based left indent; the chevron shows only when it has children. */
-function TreeRow({
-  node, depth, ctx, overlay = false,
-}: { node: FlatLocationNode; depth: number; ctx: RowCtx; overlay?: boolean }) {
+function TreeRow({ node, depth, ctx }: { node: FlatLocationNode; depth: number; ctx: RowCtx }) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: node.id });
-  // Pin the dragged row's x-translate to 0 — its indent is shown via paddingLeft (projected depth); the
-  // DragOverlay is what follows the cursor.
-  const rowTransform = isDragging && !overlay && transform ? { ...transform, x: 0 } : transform;
+  // Pin the dragged row's x-translate to 0 — it slides vertically only while the pointer's horizontal delta
+  // drives depth; its indent is shown via paddingLeft (projected depth).
+  const rowTransform = isDragging && transform ? { ...transform, x: 0 } : transform;
   const style = {
     transform: CSS.Transform.toString(rowTransform),
     transition,
     paddingLeft: depth * INDENT,
-    opacity: isDragging && !overlay ? 0.4 : 1,
+    opacity: isDragging ? 0.5 : 1,
   };
   const selected = ctx.selectedId === node.id;
   const rowClass = `p-2 cursor-pointer rounded-md transition-colors flex items-center gap-1
-    ${overlay ? 'bg-secondary shadow-lg' : selected ? 'bg-primary text-primary-foreground' : 'hover:bg-secondary'}`;
+    ${selected ? 'bg-primary text-primary-foreground' : 'hover:bg-secondary'}`;
   const hasChildren = ctx.hasChildren(node.id);
   const isCollapsed = ctx.collapsed.has(node.id);
 
   return (
-    <div ref={setNodeRef} style={style} onClick={() => ctx.onSelect(node.id)} className={rowClass}>
+    <div ref={setNodeRef} style={style} onClick={(e) => { e.stopPropagation(); ctx.onSelect(node.id); }} className={rowClass}>
       {hasChildren ? (
         <button
           type="button"
@@ -66,34 +63,30 @@ function TreeRow({
         {...attributes}
         {...listeners}
         onClick={(e) => e.stopPropagation()}
-        className={`cursor-grab touch-none px-1 ${selected && !overlay ? 'text-primary-foreground' : 'text-muted-foreground'}`}
+        className={`cursor-grab touch-none px-1 ${selected ? 'text-primary-foreground' : 'text-muted-foreground'}`}
         title="Drag to reorder or nest"
       >
         <GripVertical className="h-4 w-4" />
       </span>
       <span className="flex-grow">{node.location.name}</span>
-      {!overlay && (
-        <>
-          <Button
-            variant="ghost"
-            size="icon"
-            className={selected ? 'text-primary-foreground' : 'text-muted-foreground'}
-            onClick={(e) => { e.stopPropagation(); ctx.duplicate(node.id); }}
-            title="Duplicate"
-          >
-            <Copy className="h-4 w-4" />
-          </Button>
-          <Button
-            variant="ghost"
-            size="icon"
-            className={selected ? 'text-primary-foreground' : 'text-muted-foreground'}
-            onClick={(e) => { e.stopPropagation(); ctx.remove(node.id); }}
-            title="Delete"
-          >
-            <X className="h-4 w-4" />
-          </Button>
-        </>
-      )}
+      <Button
+        variant="ghost"
+        size="icon"
+        className={selected ? 'text-primary-foreground' : 'text-muted-foreground'}
+        onClick={(e) => { e.stopPropagation(); ctx.duplicate(node.id); }}
+        title="Duplicate"
+      >
+        <Copy className="h-4 w-4" />
+      </Button>
+      <Button
+        variant="ghost"
+        size="icon"
+        className={selected ? 'text-primary-foreground' : 'text-muted-foreground'}
+        onClick={(e) => { e.stopPropagation(); ctx.remove(node.id); }}
+        title="Delete"
+      >
+        <X className="h-4 w-4" />
+      </Button>
     </div>
   );
 }
@@ -127,7 +120,6 @@ const LocationTree = ({ selectedId, onSelect }: { selectedId: string | null; onS
   const projected = activeId && overId
     ? getLocationDropProjection(visible, activeId, overId, offsetLeft, INDENT)
     : null;
-  const activeNode = activeId ? visible.find((n) => n.id === activeId) ?? null : null;
 
   const reset = () => { setActiveId(null); setOverId(null); setOffsetLeft(0); };
 
@@ -190,13 +182,6 @@ const LocationTree = ({ selectedId, onSelect }: { selectedId: string | null; onS
           />
         ))}
       </SortableContext>
-      {/* Overlay moves vertically only (x pinned) at the projected depth; DndContext stays modifier-free
-          so the pointer's delta.x still drives depth detection. */}
-      <DragOverlay modifiers={[restrictToVerticalAxis]}>
-        {activeNode ? (
-          <TreeRow node={activeNode} depth={projected ? projected.depth : activeNode.depth} ctx={ctx} overlay />
-        ) : null}
-      </DragOverlay>
     </DndContext>
   );
 };

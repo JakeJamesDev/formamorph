@@ -8,6 +8,7 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { Download, Plus, X, ArrowLeft, Save, GripVertical, FolderPlus, FilePlus, Copy, ImageDown } from "lucide-react";
 import { Panel, PanelGroup, PanelResizeHandle } from 'react-resizable-panels';
 import { ScrollArea } from "@/components/ui/scroll-area";
+import { Checkbox } from "@/components/ui/checkbox";
 import { ToastContainer, toast } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
 import StatManager from '../managers/StatManager';
@@ -30,6 +31,7 @@ import {
   KeyboardSensor,
   useSensor,
   useSensors,
+  useDroppable,
   type DragEndEvent,
 } from '@dnd-kit/core';
 import {
@@ -57,26 +59,29 @@ interface ListItem {
 
 // A single reorderable entry row. The grip is the drag handle (handle-only drag),
 // so clicking the row body still selects it.
-function SortableRow({ item, selected, onSelect, onRemove, onDuplicate }: {
+function SortableRow({ item, selected, onSelect, onRemove, onDuplicate, enabled, onToggleEnabled }: {
   item: ListItem;
   selected: boolean;
   onSelect: (id: string) => void;
   onRemove: (id: string) => void;
   onDuplicate: (id: string) => void;
+  enabled?: boolean;
+  onToggleEnabled?: (id: string, enabled: boolean) => void;
 }) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } =
     useSortable({ id: item.id });
+  const faded = !!onToggleEnabled && enabled === false;
   const style = {
     transform: CSS.Transform.toString(transform),
     transition,
-    opacity: isDragging ? 0.5 : 1,
+    opacity: isDragging || faded ? 0.5 : 1,
     zIndex: isDragging ? 1 : undefined,
   };
   return (
     <div
       ref={setNodeRef}
       style={style}
-      onClick={() => onSelect(item.id)}
+      onClick={(e) => { e.stopPropagation(); onSelect(item.id); }}
       className={`p-2 cursor-pointer rounded-md transition-colors flex justify-between items-center
         ${selected ? 'bg-primary text-primary-foreground' : 'hover:bg-secondary'}`}
     >
@@ -91,6 +96,15 @@ function SortableRow({ item, selected, onSelect, onRemove, onDuplicate }: {
       >
         <GripVertical className="h-4 w-4" />
       </span>
+      {onToggleEnabled && (
+        <Checkbox
+          checked={enabled !== false}
+          onCheckedChange={(v) => onToggleEnabled(item.id, v === true)}
+          onClick={(e) => e.stopPropagation()}
+          className="mx-1 shrink-0"
+          title={enabled === false ? 'Disabled — click to enable' : 'Enabled — click to disable'}
+        />
+      )}
       <span className="flex-grow">{item.name}</span>
       <Button
         variant="ghost"
@@ -120,6 +134,53 @@ function SortableRow({ item, selected, onSelect, onRemove, onDuplicate }: {
   );
 }
 
+/** One of the two fixed dictionary groups (Background / Foreground). A droppable, so an empty group still
+ *  accepts a dropped entry; its rows are sortable within it. */
+function DictGroup({ title, groupId, items, selectedItemId, activeGroup, onSelect, onRemove, onDuplicate, onToggleEnabled }: {
+  title: string;
+  groupId: 'before' | 'after';
+  items: DictionaryEntry[];
+  selectedItemId: string | null;
+  activeGroup: 'before' | 'after' | null;
+  onSelect: (id: string) => void;
+  onRemove: (id: string) => void;
+  onDuplicate: (id: string) => void;
+  onToggleEnabled: (id: string, enabled: boolean) => void;
+}) {
+  const { setNodeRef, isOver } = useDroppable({ id: `dictgroup:${groupId}` });
+  // Only cue a cross-group drop — not a same-group reorder that happens to hover the container center.
+  const showDropCue = isOver && activeGroup !== null && activeGroup !== groupId;
+  return (
+    <div>
+      <h3 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground mb-1">{title}</h3>
+      <SortableContext items={items.map((i) => i.id)} strategy={verticalListSortingStrategy}>
+        <div
+          ref={setNodeRef}
+          className={`flex flex-col gap-2 rounded-md border border-dashed p-1 min-h-[3rem] transition-colors ${
+            showDropCue ? 'border-primary bg-secondary/40' : 'border-border/50'
+          }`}
+        >
+          {items.map((item) => (
+            <SortableRow
+              key={item.id}
+              item={item}
+              selected={selectedItemId === item.id}
+              onSelect={onSelect}
+              onRemove={onRemove}
+              onDuplicate={onDuplicate}
+              enabled={item.enabled}
+              onToggleEnabled={onToggleEnabled}
+            />
+          ))}
+          {items.length === 0 && (
+            <p className="px-2 py-1 text-xs text-muted-foreground">Drag entries here.</p>
+          )}
+        </div>
+      </SortableContext>
+    </div>
+  );
+}
+
 const WorldEditor = ({ onClose, embedded = false }: {
   onClose: () => void;
   embedded?: boolean;
@@ -130,7 +191,7 @@ const WorldEditor = ({ onClose, embedded = false }: {
     stats, locations, entities, traits, traitGroups, statUpdates, dictionary,
     addStat, addLocation, addEntity, addTrait, addStatUpdate, addDictionaryEntry,
     addTraitGroup,
-    removeStat, removeEntity, removeTrait, removeStatUpdate, removeDictionaryEntry,
+    removeStat, removeEntity, removeTrait, removeStatUpdate, removeDictionaryEntry, updateDictionaryEntry,
     setStats, setLocations, setEntities, setTraits, setTraitGroups, setStatUpdates, setDictionary,
     isWorldDirty, saveWorld: saveWorldCtx
   } = useGameData();
@@ -155,6 +216,7 @@ const WorldEditor = ({ onClose, embedded = false }: {
   const [activeTab, setActiveTab] = useState("overview");
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedItemId, setSelectedItemId] = useState<string | null>(null);
+  const [dictActiveId, setDictActiveId] = useState<string | null>(null);
   const [showExitPrompt, setShowExitPrompt] = useState(false);
 
   const downloadWorld = async () => {
@@ -425,6 +487,81 @@ const WorldEditor = ({ onClose, embedded = false }: {
     </DndContext>
   );
 
+  const toggleDictEnabled = (id: string, enabled: boolean) => {
+    const e = dictionary.find((d) => d.id === id);
+    if (e) updateDictionaryEntry({ ...e, enabled });
+  };
+
+  // Dictionary drag: entries live in two fixed groups (Background = position 'before', Foreground = 'after').
+  // A drop sets the entry's group (position) and, via its list index, its order — the array is rebuilt as
+  // [Background…, Foreground…] so each block injects in list order.
+  const handleDictDragEnd = (event: DragEndEvent) => {
+    const { active, over } = event;
+    if (!over) return;
+    const activeId = String(active.id);
+    const overId = String(over.id);
+    const activeEntry = dictionary.find((d) => d.id === activeId);
+    if (!activeEntry) return;
+
+    const groupOf = (d: DictionaryEntry): 'before' | 'after' => (d.position === 'before' ? 'before' : 'after');
+    let targetGroup: 'before' | 'after';
+    let overEntry: DictionaryEntry | undefined;
+    if (overId.startsWith('dictgroup:')) {
+      targetGroup = overId === 'dictgroup:before' ? 'before' : 'after';
+    } else {
+      overEntry = dictionary.find((d) => d.id === overId);
+      if (!overEntry) return;
+      targetGroup = groupOf(overEntry);
+    }
+    if (activeId === overId && groupOf(activeEntry) === targetGroup) return;
+
+    const before = dictionary.filter((d) => groupOf(d) === 'before' && d.id !== activeId);
+    const after = dictionary.filter((d) => groupOf(d) === 'after' && d.id !== activeId);
+    const moved: DictionaryEntry = { ...activeEntry, position: targetGroup };
+    const targetArr = targetGroup === 'before' ? before : after;
+    const insertAt = overEntry ? Math.max(0, targetArr.findIndex((d) => d.id === overEntry!.id)) : targetArr.length;
+    targetArr.splice(insertAt, 0, moved);
+    setDictionary([...before, ...after]);
+  };
+
+  const renderDictionaryGroups = (items: DictionaryEntry[]) => {
+    const activeEntry = dictActiveId ? items.find((e) => e.id === dictActiveId) : undefined;
+    const activeGroup: 'before' | 'after' | null = activeEntry
+      ? (activeEntry.position === 'before' ? 'before' : 'after')
+      : null;
+    return (
+      <DndContext
+        sensors={sensors}
+        collisionDetection={closestCenter}
+        onDragStart={(e) => setDictActiveId(String(e.active.id))}
+        onDragEnd={(e) => { handleDictDragEnd(e); setDictActiveId(null); }}
+        onDragCancel={() => setDictActiveId(null)}
+        modifiers={[restrictToVerticalAxis, restrictToFirstScrollableAncestor]}
+        autoScroll={{
+          canScroll: (el) =>
+            el !== document.scrollingElement && el !== document.body && el !== document.documentElement,
+        }}
+      >
+        <div className="flex flex-col gap-4">
+          {(['before', 'after'] as const).map((groupId) => (
+            <DictGroup
+              key={groupId}
+              title={groupId === 'before' ? 'Background' : 'Foreground'}
+              groupId={groupId}
+              items={items.filter((e) => (groupId === 'before' ? e.position === 'before' : e.position !== 'before'))}
+              selectedItemId={selectedItemId}
+              activeGroup={activeGroup}
+              onSelect={setSelectedItemId}
+              onRemove={removeItem}
+              onDuplicate={duplicateItem}
+              onToggleEnabled={toggleDictEnabled}
+            />
+          ))}
+        </div>
+      </DndContext>
+    );
+  };
+
   return (
     <div className={`${embedded ? "h-full" : "h-screen"} flex flex-col overflow-hidden`}>
       {!embedded && (
@@ -509,7 +646,7 @@ const WorldEditor = ({ onClose, embedded = false }: {
                         />
                       </div>
                     )}
-                    <div className="flex-grow min-h-0 mt-4">
+                    <div className="flex-grow min-h-0 mt-4" onClick={() => setSelectedItemId(null)}>
                       <ScrollArea className="h-full">
                         <TabsContent value="overview">
                           <WorldOverviewManager />
@@ -531,7 +668,7 @@ const WorldEditor = ({ onClose, embedded = false }: {
                             : <TraitTree selectedId={selectedItemId} onSelect={setSelectedItemId} />}
                         </TabsContent>
                         <TabsContent value="dictionary">
-                          {renderItemList(filteredItems)}
+                          {renderDictionaryGroups(filteredItems as DictionaryEntry[])}
                         </TabsContent>
                         <TabsContent value="statUpdates">
                           {renderItemList(filteredItems)}

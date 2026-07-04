@@ -830,7 +830,8 @@ const GameViewer = ({
     ...buildContextValues(),
     "<LENGTH GUIDANCE>": lengthGuidance(paragraphLimit, maxTokens),
     "<MARKDOWN GUIDANCE>": restyle(markdownGuidance(markdownOutput), activeSectionStyle),
-    "<DICTIONARY>": "lore whose keywords are active this turn (or N/A)",
+    "<DICTIONARY>": "keyword-triggered lore active this turn (or N/A)",
+    "<DICTIONARY|before>": "background lore active this turn (or N/A)",
     // Illustrative placeholders for the aux user-message templates (real values are per-turn at runtime).
     "<PLAYER ACTION>": "the player's latest action",
     "<NARRATION>": "the most recent narration",
@@ -847,17 +848,21 @@ const GameViewer = ({
     // spreads it and adds its own tokens.
     const ctx = buildContextValues();
 
-    // Dictionary entries whose keywords appear in the current location context (location + entities present),
-    // the action, or the message history. Scanning the location context activates lore proactively the same
-    // turn a term enters play, rather than a turn late. The always-present world description is intentionally
-    // excluded so its terms don't fire every turn. Feeds the <DICTIONARY> chip (body only; the prompt's
-    // "## Relevant Information" heading is authored), falling back to a code append when the chip is absent.
-    const activatedEntries = getActivatedDictionary(dictionary, [
-      ctx["<LOCATION>"],
-      ctx["<ENTITIES>"],
-      action,
-      ...fullMessageHistory.map((m) => m.content),
-    ]);
+    // Dictionary/lorebook entries active this turn. The current scene (location + entities present + action) is
+    // always scanned; message history is scanned per entry up to its `scanDepth` (all of it when unset). The
+    // always-present world description is intentionally excluded so its terms don't fire every turn.
+    const activatedEntries = getActivatedDictionary(
+      dictionary,
+      [ctx["<LOCATION>"], ctx["<ENTITIES>"], action],
+      { history: fullMessageHistory.map((m) => m.content) },
+    );
+    // Split by position into the two lorebook blocks. When the active prompt has no "before" chip, those entries
+    // fall back into the single "after" block so no lore is lost; a prompt with no dictionary chip at all gets a
+    // code append below (as before the chips existed).
+    const hasBeforeChip = systemPrompt.includes("<DICTIONARY|before>");
+    const hasAfterChip = systemPrompt.includes("<DICTIONARY>");
+    const beforeEntries = hasBeforeChip ? activatedEntries.filter((e) => e.position === "before") : [];
+    const afterEntries = activatedEntries.filter((e) => !beforeEntries.includes(e));
 
     // Code-generated blocks (markdown guidance, notes fallback, dictionary) are authored in markdown, so
     // restyle them to the active preset's section style to match the authored prompt's headers.
@@ -865,7 +870,8 @@ const GameViewer = ({
       ...ctx,
       "<LENGTH GUIDANCE>": lengthGuidance(paragraphLimit, maxTokens),
       "<MARKDOWN GUIDANCE>": restyle(markdownGuidance(markdownOutput), activeSectionStyle),
-      "<DICTIONARY>": buildDictionaryContext(activatedEntries, false) || NONE_PLACEHOLDER,
+      "<DICTIONARY>": buildDictionaryContext(afterEntries, false) || NONE_PLACEHOLDER,
+      "<DICTIONARY|before>": buildDictionaryContext(beforeEntries, false) || NONE_PLACEHOLDER,
     });
 
     // If the prompt has no <NOTES> chip, fall back to a notes section before the location data.
@@ -889,10 +895,10 @@ ${playerNotes || NONE_PLACEHOLDER}
     if (language.toLowerCase() != "english")
       updatedPrompt += `\n Narration language: ` + language;
 
-    // Backward-compat: a prompt customized before the <DICTIONARY> chip existed still gets its lore, appended
-    // (with heading) as it was before. Prompts that carry the chip render it inline above (skip the append).
-    if (!systemPrompt.includes("<DICTIONARY>")) {
-      const dictionaryContext = buildDictionaryContext(activatedEntries);
+    // Backward-compat: a prompt with no "after" dictionary chip still gets its lore appended (with heading), as
+    // it was before the chip existed. (A missing "before" chip already routed those entries into `afterEntries`.)
+    if (!hasAfterChip) {
+      const dictionaryContext = buildDictionaryContext(afterEntries);
       if (dictionaryContext) {
         updatedPrompt += `\n\n${restyle(dictionaryContext, activeSectionStyle)}`;
       }
@@ -2272,7 +2278,7 @@ ${playerNotes || NONE_PLACEHOLDER}
             const palette = HIGHLIGHT_PALETTE;
             const colorMap: Record<string, string> = {};
             // Trigger keywords highlight in the narrative/history (showing why an entry
-            // activated); inside the injected "Relevant Information:" block only the entry
+            // activated); inside the injected "Foreground Lore:" block only the entry
             // name declaration ("Name:") highlights — not keyword occurrences in the value.
             const triggerRules: HighlightRule[] = [];
             const declarationRules: HighlightRule[] = [];
@@ -2283,8 +2289,8 @@ ${playerNotes || NONE_PLACEHOLDER}
               parseKeywords(entry).forEach((term) => triggerRules.push({ term, color }));
               if (entry.name) declarationRules.push({ term: `${entry.name}:`, color });
             });
-            // The dictionary block header, in either section style (## Relevant Information / RELEVANT INFORMATION:).
-            const RELEVANT_MARKER = /^#{0,6}[ \t]*Relevant Information:?/im;
+            // The late dictionary block header, in either section style (## Foreground Lore / FOREGROUND LORE:).
+            const RELEVANT_MARKER = /^#{0,6}[ \t]*Foreground Lore:?/im;
             // Highlight only a "Name:" at the start of a line — the declaration prepended by
             // buildDictionaryContext — not a "Name:" that recurs inside the entry's value text.
             const highlightDeclarations = (block: string) => {

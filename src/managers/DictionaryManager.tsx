@@ -17,6 +17,8 @@ import {
 } from '@dnd-kit/sortable';
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+import { Input } from "@/components/ui/input";
+import { Checkbox } from "@/components/ui/checkbox";
 import { splitChipInput, replaceChipValue } from "@/components/Chip";
 import { EditableChip } from "@/components/EditableChip";
 import type { DictionaryEntry } from '@/types';
@@ -99,6 +101,16 @@ function KeywordChips({ keywords, onChange }: { keywords: string[]; onChange: (k
   );
 }
 
+/** A compact labeled checkbox for the lorebook options grid. */
+function CheckRow({ label, checked, onChange }: { label: string; checked: boolean; onChange: (v: boolean) => void }) {
+  return (
+    <label className="flex items-center gap-2 text-sm">
+      <Checkbox checked={checked} onCheckedChange={(v) => onChange(v === true)} />
+      {label}
+    </label>
+  );
+}
+
 const DictionaryManager = ({ entry }: { entry: DictionaryEntry }) => {
   const { updateDictionaryEntry } = useGameData();
   const [editingEntry, setEditingEntry] = useState<DictionaryEntry>(entry);
@@ -121,6 +133,12 @@ const DictionaryManager = ({ entry }: { entry: DictionaryEntry }) => {
     updateDictionaryEntry(updated);
   };
 
+  // Store a numeric field, clearing it (undefined) when the input is blank or not a number.
+  const handleNumber = (field: 'scanDepth', raw: string) => {
+    const n = raw === '' ? undefined : Number(raw);
+    handleChange(field, n != null && Number.isFinite(n) ? n : undefined);
+  };
+
   if (!editingEntry) return null;
 
   const keywords = (editingEntry.key || '')
@@ -137,6 +155,23 @@ const DictionaryManager = ({ entry }: { entry: DictionaryEntry }) => {
           Type a keyword and press comma or Enter to add it. Double-click to edit, drag to reorder, click the × to remove.
           The value below is injected into the AI prompt only when one of these appears in play.
         </p>
+      </div>
+      <div className="space-y-2">
+        <Label>Options</Label>
+        <div className="flex flex-wrap gap-x-4 gap-y-2">
+          <CheckRow label="Always inject" checked={!!editingEntry.constant} onChange={(v) => handleChange('constant', v)} />
+          <CheckRow label="Regex" checked={!!editingEntry.useRegex} onChange={(v) => handleChange('useRegex', v)} />
+          <CheckRow label="Case-sensitive" checked={!!editingEntry.caseSensitive} onChange={(v) => handleChange('caseSensitive', v)} />
+          <CheckRow label="Recursive" checked={!!editingEntry.recursive} onChange={(v) => handleChange('recursive', v)} />
+        </div>
+        <div className="space-y-1">
+          <Label className="text-xs text-muted-foreground">Scan depth (messages)</Label>
+          <Input type="number" min={0} value={editingEntry.scanDepth ?? ''} onChange={(e) => handleNumber('scanDepth', e.target.value)} placeholder="all history" />
+        </div>
+        <div className="space-y-1">
+          <Label className="text-xs text-muted-foreground">Secondary Keywords (comma-separated; one must also appear to activate)</Label>
+          <Input value={editingEntry.secondaryKeys ?? ''} onChange={(e) => handleChange('secondaryKeys', e.target.value)} placeholder="e.g. red, crimson" />
+        </div>
       </div>
       <div className="space-y-2">
         <Label>Value (injected on keyword match)</Label>
