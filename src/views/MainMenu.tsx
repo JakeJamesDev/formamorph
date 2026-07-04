@@ -97,7 +97,7 @@ const MainMenu = ({ onStartGame, onOpenWorldEditor }: MainMenuProps) => {
     WORLD_MODAL_COLLAPSED_KEY, false, boolCodec,
   );
   // Which content library the menu shows. Only "worlds" is populated for now; the rest swap to an empty view.
-  const [cardType, setCardType] = useState<'worlds' | 'characters' | 'dictionaries'>('worlds');
+  const [cardType, setCardType] = useState<'worlds' | 'entities' | 'dictionaries'>('worlds');
   const toggleWorldModalCollapsed = () => setWorldModalCollapsed((prev) => !prev);
   const [showWorldModal, setShowWorldModal] = useState(false);
   const [showMobileWorldEditorWarning, setShowMobileWorldEditorWarning] = useState(false);
@@ -514,7 +514,7 @@ const MainMenu = ({ onStartGame, onOpenWorldEditor }: MainMenuProps) => {
   };
 
   // The singular noun for the selected card type — drives the contextual New/Import button labels.
-  const cardNoun = cardType === 'worlds' ? 'World' : cardType === 'characters' ? 'Character' : 'Dictionary';
+  const cardNoun = cardType === 'worlds' ? 'World' : cardType === 'entities' ? 'Entity' : 'Dictionary';
 
   // The menu's action buttons, shared between the full landscape row and the portrait hamburger popover.
   // New/Import are contextual to the selected card type; only Worlds is wired up so far.
@@ -613,9 +613,9 @@ const MainMenu = ({ onStartGame, onOpenWorldEditor }: MainMenuProps) => {
               <Earth className="h-5 w-5 hidden portrait:block" />
               <span className="portrait:hidden">Worlds</span>
             </TabsTrigger>
-            <TabsTrigger value="characters" aria-label="Characters" title="Characters">
+            <TabsTrigger value="entities" aria-label="Entities" title="Entities">
               <User className="h-5 w-5 hidden portrait:block" />
-              <span className="portrait:hidden">Characters</span>
+              <span className="portrait:hidden">Entities</span>
             </TabsTrigger>
             <TabsTrigger value="dictionaries" aria-label="Dictionaries" title="Dictionaries">
               <BookOpen className="h-5 w-5 hidden portrait:block" />
@@ -693,7 +693,7 @@ const MainMenu = ({ onStartGame, onOpenWorldEditor }: MainMenuProps) => {
       {/* Only the Worlds library is populated for now; Characters/Dictionaries swap to an empty view. */}
       {cardType !== 'worlds' ? (
         <div className="flex-1 min-h-0 flex items-center justify-center text-sm text-muted-foreground select-none">
-          {cardType === 'characters' ? 'Characters — coming soon' : 'Dictionaries — coming soon'}
+          {cardType === 'entities' ? 'Entities — coming soon' : 'Dictionaries — coming soon'}
         </div>
       ) : (
       /* Bounded scroll viewport (Radix ScrollArea Root is overflow-hidden) so drag-reorder
