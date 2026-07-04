@@ -11,7 +11,9 @@ export const DEFAULT_CONTEXT_WINDOW = parseInt(import.meta.env.VITE_DEFAULT_CONT
 // Image generation defaults. There's no shared hosted image server, so these describe a local
 // A1111/Forge instance the user runs. Neutral fallbacks keep the built exe generic.
 export const DEFAULT_IMAGE_PROVIDER = import.meta.env.VITE_DEFAULT_IMAGE_PROVIDER || 'a1111';
-export const DEFAULT_IMAGE_ENDPOINT = import.meta.env.VITE_DEFAULT_IMAGE_ENDPOINT || 'http://127.0.0.1:7860';
+// Blank by default: a blank endpoint falls back to the selected provider's default at call time
+// (see resolveImageEndpoint / DEFAULT_ENDPOINT_BY_PROVIDER in lib/imageGen).
+export const DEFAULT_IMAGE_ENDPOINT = import.meta.env.VITE_DEFAULT_IMAGE_ENDPOINT || '';
 export const DEFAULT_IMAGE_API_TOKEN = import.meta.env.VITE_DEFAULT_IMAGE_API_TOKEN || '';
 export const DEFAULT_IMAGE_MODEL = import.meta.env.VITE_DEFAULT_IMAGE_MODEL || '';
 // Prepended to every generated prompt (e.g. quality tags). Neutral by default since good tags are
