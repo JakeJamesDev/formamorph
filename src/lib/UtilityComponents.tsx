@@ -9,6 +9,7 @@ import AudioPlayer from '../components/game/AudioPlayer';
 import { useDownscalePrompt } from './useDownscalePrompt';
 import { ImageZoomViewer } from '../components/ImageZoomViewer';
 import type { ImageCap } from './imageOptim';
+import { readSdPromptFromFile } from './sdMetadata';
 
 /** An uploaded media file, base64-encoded as a data URL. */
 interface UploadedMedia {
@@ -34,7 +35,7 @@ export const getModelType = (fileName: string) => {
   }
 };
 
-export const ImageUpload = ({ onChange, id, value, cap, previewClassName, objectFit = 'contain' }: {
+export const ImageUpload = ({ onChange, id, value, cap, previewClassName, objectFit = 'contain', onPromptExtracted }: {
   onChange: (value: string) => void;
   id: string | number;
   value?: string | null;
@@ -42,12 +43,17 @@ export const ImageUpload = ({ onChange, id, value, cap, previewClassName, object
   // Optional fixed-size preview box (e.g. the 4:3 thumbnail crop). When set, replaces the default dashed box.
   previewClassName?: string;
   objectFit?: 'contain' | 'cover';
+  // Called with the embedded SD positive prompt when an A1111/Forge PNG is uploaded (before optimization
+  // strips the metadata). Lets callers offer to reuse it (e.g. as Image Tags).
+  onPromptExtracted?: (positivePrompt: string) => void;
 }) => {
   const { promptImage, dialog } = useDownscalePrompt();
   const [zoomOpen, setZoomOpen] = useState(false);
   const handleImageChange = useCallback((e: ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
+      // Parse the raw file for an embedded SD prompt before the FileReader/optimize path re-encodes it.
+      if (onPromptExtracted) void readSdPromptFromFile(file).then((p) => { if (p) onPromptExtracted(p); });
       const reader = new FileReader();
       reader.onloadend = async () => {
         const base64String = reader.result as string;
@@ -56,7 +62,7 @@ export const ImageUpload = ({ onChange, id, value, cap, previewClassName, object
       };
       reader.readAsDataURL(file);
     }
-  }, [onChange, cap, promptImage]);
+  }, [onChange, cap, promptImage, onPromptExtracted]);
 
   const removeButton = (
     <button
