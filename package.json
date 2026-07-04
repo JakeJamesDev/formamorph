@@ -22,6 +22,7 @@
     "desktop:build:linux": "vite build && electron-builder --linux AppImage --publish never",
     "desktop:build:mac": "vite build && electron-builder --mac dmg --publish never",
     "vram-helper": "node scripts/vram-helper.mjs",
+    "gen-tags": "node scripts/genDanbooruTags.mjs",
     "baseline": "node testing/baseline/harness/run.mjs"
   },
   "dependencies": {
