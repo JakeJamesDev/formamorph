@@ -63,6 +63,15 @@ const WorldDetailsManager = () => {
           className="min-h-[150px]"
         />
       </div>
+
+      <div className="space-y-2">
+        <Label>Readme</Label>
+        <MarkdownField
+          value={worldOverview.readme ?? ''}
+          onChange={(readme) => updateWorldOverview({ readme })}
+          placeholder="Shown to the player when they enter the world. Supports markdown."
+        />
+      </div>
     </div>
   );
 };

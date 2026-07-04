@@ -34,6 +34,8 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { ToastContainer, toast } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
 import TTSModal, { type TTSModalHandle, type TTSProgress } from "../components/game/TTSModal";
+import ReadmeModal from "../components/game/ReadmeModal";
+import { useReadmeVisibility } from "@/lib/useReadmeVisibility";
 import { EntityModal } from "../components/modals/EntityModal";
 import { LocationModal } from "../components/modals/LocationModal";
 import { SettingsModal } from "../components/modals/SettingsModal";
@@ -165,9 +167,16 @@ const GameViewer = ({
     dictionary,
     updateStat,
     worldOverview,
+    worldId,
     isWorldDirty,
     saveWorld,
   } = useGameData();
+
+  // World README popup — shown once on entry (new game or save load) when the world has README text and
+  // its per-world "show readme" flag is on. The flag is shared with the main-menu "Show Readme" toggle.
+  const { showReadme, setShowReadme } = useReadmeVisibility();
+  const readmeText = worldOverview?.readme?.trim() ?? "";
+  const [showReadmeModal, setShowReadmeModal] = useState(() => !!readmeText && showReadme(worldId));
 
   const {
     bgmEnabled,
@@ -2205,6 +2214,16 @@ ${playerNotes || NONE_PLACEHOLDER}
       )}
 
       {/* Modals */}
+      {readmeText && (
+        <ReadmeModal
+          readme={readmeText}
+          open={showReadmeModal}
+          onOpenChange={setShowReadmeModal}
+          show={showReadme(worldId)}
+          onShowChange={(s) => setShowReadme(worldId, s)}
+        />
+      )}
+
       {selectedEntity && (
         <EntityModal
           entity={entities.find((f) =>
