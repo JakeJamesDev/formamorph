@@ -5,7 +5,7 @@ import { Input } from "@/components/ui/input";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { Download, Plus, X, ArrowLeft, Save, GripVertical, FolderPlus, FilePlus, Copy, ImageDown } from "lucide-react";
+import { Download, Plus, X, ArrowLeft, Save, GripVertical, FolderPlus, FilePlus, Copy, ImageDown, Import } from "lucide-react";
 import { Panel, PanelGroup, PanelResizeHandle } from 'react-resizable-panels';
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -381,6 +381,18 @@ const WorldEditor = ({ onClose, embedded = false }: {
   const selectedTrait = traits.find(t => t.id === selectedItemId);
   const selectedGroup = traitGroups.find(g => g.id === selectedItemId);
 
+  // Contextual footer actions. Download shows on Overview/Entities/Dictionary; only "Download World"
+  // is wired up (entity/dictionary export is a stub). Import shows on Entities (when one is selected)
+  // and Dictionary, and does nothing yet.
+  const downloadContext =
+    activeTab === 'overview' ? { label: 'Download World', disabled: false, onClick: () => { downloadWorld(); } }
+    : activeTab === 'entities' ? { label: `Download ${selectedItem?.name ?? 'Entity'}`, disabled: !selectedItem, onClick: () => {} }
+    : activeTab === 'dictionary' ? { label: 'Download Dictionary', disabled: false, onClick: () => {} }
+    : null;
+  const showImport = activeTab === 'entities' || activeTab === 'dictionary';
+  const importDisabled = activeTab === 'entities' && !selectedItem;
+  const importLabel = activeTab === 'entities' ? `Import ${selectedItem?.name ?? 'Entity'}` : 'Import Dictionary';
+
   // Per-tab data + setter so list behavior (selection, drag-reorder) is uniform across tabs.
   const tabConfig = {
     stats: { items: stats, setItems: setStats },
@@ -679,10 +691,20 @@ const WorldEditor = ({ onClose, embedded = false }: {
               </CardContent>
               <div className="p-4 border-t flex justify-between">
                 {downscaleDialog}
-                <Button variant="outline" size="sm" onClick={downloadWorld}>
-                  <Download className="h-4 w-4 mr-2" />
-                  Download
-                </Button>
+                <div className="flex gap-2">
+                  {downloadContext && (
+                    <Button variant="outline" size="sm" onClick={downloadContext.onClick} disabled={downloadContext.disabled}>
+                      <Download className="h-4 w-4 mr-2 shrink-0" />
+                      <span className="truncate max-w-[14rem]">{downloadContext.label}</span>
+                    </Button>
+                  )}
+                  {showImport && (
+                    <Button variant="outline" size="sm" onClick={() => {}} disabled={importDisabled}>
+                      <Import className="h-4 w-4 mr-2 shrink-0" />
+                      <span className="truncate max-w-[14rem]">{importLabel}</span>
+                    </Button>
+                  )}
+                </div>
                 <div className="flex gap-2">
                   <Button variant="outline" size="sm" onClick={optimizeImages} title="Downscale oversized images to conserve file size">
                     <ImageDown className="h-4 w-4 mr-2" />
