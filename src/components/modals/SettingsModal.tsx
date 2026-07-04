@@ -89,6 +89,8 @@ export const SettingsModal = ({ isOpen, onOpenChange, previewValues }: {
     setStatUpdatesEnabled,
     locationChangeEnabled,
     setLocationChangeEnabled,
+    locationAutoApply,
+    setLocationAutoApply,
     narrationVerbatimTurns,
     setNarrationVerbatimTurns,
     thinkingVerbatimTurns,
@@ -431,6 +433,17 @@ export const SettingsModal = ({ isOpen, onOpenChange, previewValues }: {
                     />
                     Location Change
                   </label>
+                  {locationChangeEnabled && (
+                    <label htmlFor="locationAutoApply" className="flex items-center gap-2 text-sm cursor-pointer">
+                      <Checkbox
+                        id="locationAutoApply"
+                        checked={locationAutoApply}
+                        onCheckedChange={(c) => setLocationAutoApply(c === true)}
+                        className="shrink-0"
+                      />
+                      Auto-apply
+                    </label>
+                  )}
                 </div>
               </div>
               <div className="grid grid-cols-1 sm:grid-cols-4 items-start gap-4">

@@ -28,6 +28,7 @@ can only get right by actually reading the context. So any bad output pins to th
 | `## Traits` | the Wren identity line, then a **Condition** group header + Footsore line |
 | `## Current Location` | Sedge Landing, incl. a `connections: Far Bank, The Common Green` line and the gloamwater text |
 | `## Sublocations` / `## Reachable Locations` | both **`N/A`** — Sedge Landing is top-level with no children or siblings |
+| `## Where The Player Can Go` (Profile C only; the location-router request's context) | `Far Bank`, `The Common Green` — Sedge Landing's scoped destination set, **not** the full world list |
 | `## Characters and things that may appear in this location` | Bram, Odette, Rope Ferry (each with a `type:` line) — **not** Wren, **not** Tomas |
 | `## Relevant Information` | **gloamwater** only (tollow-knot must NOT appear yet) |
 
@@ -61,18 +62,39 @@ Profile B is where `aiSummary`, `connections`, the staged director/character pas
 exercised. After 6b the current location should flip to **Far Bank** and the roster should surface **Tomas**.
 
 ### Profile C — sub-location reachability (variant)
-Thinking **off** · markdown **off** · choices / **location-change** on · stats / summaries / diaries **off**.
+Thinking **off** · markdown **off** · choices / **location-change** on · **location auto-apply** on · stats /
+summaries / diaries **off**. Auto-apply matters: moves land **without** the "Move to X?" click, so the scripted
+run actually walks into the hamlet (the harness can't confirm a dialog).
 Exercises the nested **Sedge Hamlet** region: Wren climbs up from the landing, notices the ferryman's sister
-in her cottage *across* the green (a reachable sibling, not present), invites her out, speaks with her, then
-crosses to the eelhouse.
+in her cottage *across* the green (a reachable sibling, not present), invites her out, **earns her trust so she
+gives her name** — which is what unlocks the bring-them-over join — then crosses to the eelhouse.
 
-1. `START GAME` — at Sedge Landing (reachable = `N/A`).
-2. `I climb the path up from the landing to the common green.` — moves to **The Common Green**; from here the
-   reachable roster appears (siblings **Ferryman's Cottage** + **The Eelhouse** under Sedge Hamlet).
-3. `I stop by the well and look toward the low blue-doored cottage, wondering who keeps it.`
-4. `I call across the green toward the cottage, asking whoever is inside to come out and speak with me.`
-5. `I ask her whether the ferry still runs after dark.`
-6. `I leave her at the well and walk over to the eelhouse to look at the eel-racks.`
+> ⚠️ **The join is name-gated by design.** `selectReachableVisitors` only pulls Wick into the scene once the
+> narration *names* her — and name discipline forbids naming her until she trusts Wren. So the script spends a
+> turn (4) introducing Wren and a turn (5) earning her name; only then can she join. Before that she's correctly
+> *reachable-but-offstage*. If a faithful model keeps withholding her name past turn 5, C4/C6 simply stay
+> unexercised that run — a model call, not a bug.
+
+> ⚠️ **Auto-apply cascades.** A wrong router call now *physically moves* Wren, so a false teleport on a
+> look/invite turn corrupts every probe after it. Grade **turn by turn** and note the *first* divergence
+> rather than the whole run pass/fail.
+
+> ⚠️ **The router reads the ACTION, not the narration.** The `locationChange` request's user message is just
+> the player's action line — so the script's action phrasings *are* the router's entire input. The moves (T2,
+> T7) use deliberately non-standard verbs ("make my way into", "wander over to"), and T3/T4/T6 name a live
+> destination while not moving there — the router must still get every call right.
+
+**Per-turn ledger** — grade each turn's router decision and the resulting Current Location in the *next* turn's AI-context:
+
+| Turn | Action | Router should output | Current Location after | Roster state |
+|---|---|---|---|---|
+| 1 | `START GAME` | `NONE` | Sedge Landing | reachable `N/A` (top-level) |
+| 2 | `I heave my pack up and make my way up the winding path into the common green.` | **The Common Green** → auto-move *(varied verb)* | The Common Green | reachable = Ferryman's Cottage + The Eelhouse; **Wick** in reachable roster |
+| 3 | `I set my pack down by the well and study the low blue-doored cottage across the way…` | `NONE` *(names cottage, only observing)* | The Common Green | Wick still reachable/offstage, unnamed |
+| 4 | `I cup my hands, call toward the cottage naming myself as Wren the mapmaker, and ask whoever keeps it to step out…` | `NONE` *(invite; player doesn't move)* | The Common Green | Wick may emerge as *"the ferryman's sister"*, unnamed → not yet joined |
+| 5 | `I draw water from the well and offer it to her… gently ask what name she'd have me call her by.` | `NONE` | The Common Green | trust earned → she gives **"Wick"** → named in narration → **join fires** |
+| 6 | `I ask her whether the path down to the eelhouse floods at high water…` | `NONE` **← false-positive trap (names "the eelhouse")** | The Common Green | Wick **present** (may-appear-here), **dropped** from reachable |
+| 7 | `I take my leave of her and wander over to the eelhouse to look the eel-racks over.` | **The Eelhouse** → auto-move *(varied verb)* | The Eelhouse | Wick **left at the green**; reachable = The Common Green + Ferryman's Cottage |
 
 ---
 
@@ -100,16 +122,18 @@ Grade each probe **pass / partial / fail** per turn, per model. The last column 
 | 16 | **Location grounding + connections (B)** | narration honors Far Bank facts; Far Bank ⇄ Sedge Landing exits respected | Model |
 
 ### Profile C — reachability probes
-Grade at the Common Green (turn 2 on). These test the sub-location/reachability feature specifically.
+Grade at the Common Green (turn 2 on), against the per-turn ledger above. These test the sub-location/reachability feature specifically.
 
 | # | Probe | What correct looks like | A failure implicates |
 |---|-------|-------------------------|----------------------|
-| C1 | **Reachable awareness** | at the green, AI-context `## Reachable Locations` lists **Ferryman's Cottage** + **The Eelhouse**; the reachable-location roster shows **Wick** (summary). Narration treats her as *in the cottage*, not present | Engine (nesting) / Model |
-| C2 | **No false teleport** | before the invite (turn 3), Wick is **not** written standing on the green — she's offstage in the cottage | Model / Prompt |
-| C3 | **Name discipline (reachable)** | "the ferryman's sister" / "the one in the cottage", **not** "Wick", until trust — even though the reachable roster carries her authored name | Prompt / Model |
-| C4 | **Invite → join** | after turn 4, the next turn's AI-context lists Wick under `## Characters and things that may appear in this location` (present) and **drops** her from the reachable roster; narration has her come out | Engine (visitor) / Model |
+| C0 | **Scoped auto-move** | the router outputs a name **only** on turns 2 & 7 (real moves) and `NONE` on 1, 3–6; each move auto-applies so the *next* turn's `## Current Location` advances per the ledger | Prompt (router scope) / Engine (auto-apply) / Model |
+| C7 | **Named-not-moved & varied verbs** | router reads the **action** only: T6 outputs `NONE` even though "the eelhouse" is named (talk-about ≠ move); T2 & T7 still fire despite non-standard verbs ("make my way into", "wander over to"). Expect this to be **consistent across both runs** — the action input is fixed | Prompt (router) / Model |
+| C1 | **Reachable awareness** | at the green, AI-context `## Reachable Locations` lists **Ferryman's Cottage** + **The Eelhouse**; the reachable-entity roster shows **Wick** (summary). Narration treats her as *in the cottage*, not present | Engine (nesting) / Model |
+| C2 | **No false teleport** | on the look/invite/talk turns (3–6) the router returns `NONE` — Wick is never written standing on the green before she's invited out, and Wren never auto-moves into the cottage | Model / Prompt (router scope) |
+| C3 | **Name discipline (until trust)** | "the ferryman's sister" / "the one in the cottage", **not** "Wick", through turns 3–4 — even though the reachable roster carries her authored name. Naming her is only allowed once trust is earned (turn 5) | Prompt / Model |
+| C4 | **Trust → join** | once she's named (turn 5's trust beat), the **next** turn's AI-context lists Wick under `## Characters and things that may appear in this location` (present) and **drops** her from the reachable roster; narration has her out on the green | Engine (visitor) / Model |
 | C5 | **Shibboleth fidelity** | Wick: **silver eyetooth**, constant **humming**. Cottage: **blue door**, three-legged cat **Sixpence**. Green: well-rope coiled **widdershins**. Eelhouse: door-tally resets at **new moon** | Model (ignored context) |
-| C6 | **Visit-anchoring** | after turn 6 (move to the eelhouse) Wick is **left at the green** — not present at the eelhouse; the reachable roster becomes green + cottage | Engine (visit anchor) / Model |
+| C6 | **Visit-anchoring** | after the turn-7 auto-move to the eelhouse, Wick is **left at the green** — not present at the eelhouse; the reachable roster becomes green + cottage | Engine (visit anchor) / Model |
 
 ### The zero-overlap check (probe 5, at a glance)
 Each character owns a **unique** pair of marks — if any bleeds onto another, the model isn't reading the roster:
@@ -127,8 +151,13 @@ Each character owns a **unique** pair of marks — if any bleeds onto another, t
 ## Notes
 - The default prompts now carry **Sublocations**, **Reachable Locations**, and two matching entity sections.
   All profiles' dumps show them; for the flat Sedge Landing / Far Bank parts they render **`N/A`** (only
-  Profile C's hamlet populates them). Profile B's location-change `Available Locations` list now also includes
-  the hamlet places (Sedge Hamlet, The Common Green, Ferryman's Cottage, The Eelhouse) — expected.
+  Profile C's hamlet populates them).
+- The **location-change router** is now scoped: instead of a flat *Available Locations* list of every place,
+  it feeds only **Where The Player Can Go** = the current location's connections + sub-locations + reachable siblings
+  (the `<DESTINATIONS>` chip), and its reply is matched against *only* that set. From Sedge Landing that's
+  `Far Bank, The Common Green`; from The Common Green it's `Sedge Landing, Ferryman's Cottage, The Eelhouse`.
+  With **auto-apply** on (Profile C), an in-scope move is applied immediately and logged; with it off, the
+  "Move to X?" confirmation is shown as before.
 - `<NOTES>` (player notes) starts empty → renders `N/A`. That's expected; it's a clean path, not a fault.
 - A `list`-type stat is deliberately **absent** — it currently renders broken in the prompt (a separate,
   tracked engine bug). Don't add one to this world.

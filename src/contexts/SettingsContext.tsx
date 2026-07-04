@@ -246,6 +246,8 @@ function useProvideSettings() {
   const [choicesEnabled, setChoicesEnabled] = usePersistentState<boolean>(`${APP_ID}_choicesEnabled`, true, boolCodec);
   const [statUpdatesEnabled, setStatUpdatesEnabled] = usePersistentState<boolean>(`${APP_ID}_statUpdatesEnabled`, true, boolCodec);
   const [locationChangeEnabled, setLocationChangeEnabled] = usePersistentState<boolean>(`${APP_ID}_locationChangeEnabled`, false, boolCodec);
+  // When on, a detected in-scope move is applied immediately instead of prompting a "Move to X?" confirmation.
+  const [locationAutoApply, setLocationAutoApply] = usePersistentState<boolean>(`${APP_ID}_locationAutoApply`, false, boolCodec);
   // How many recent turns each prompt receives verbatim (the digest-banding floor). Only Narration and
   // Thinking consume history today; the rest are stored for when those prompts gain history.
   const [narrationVerbatimTurns, setNarrationVerbatimTurns] = usePersistentState<number>(`${APP_ID}_narrationVerbatimTurns`, 3, intCodec);
@@ -361,6 +363,8 @@ function useProvideSettings() {
     setStatUpdatesEnabled,
     locationChangeEnabled,
     setLocationChangeEnabled,
+    locationAutoApply,
+    setLocationAutoApply,
     narrationVerbatimTurns,
     setNarrationVerbatimTurns,
     thinkingVerbatimTurns,

@@ -59,7 +59,7 @@ import { lengthGuidance, trimToLastSentence } from "../lib/outputLength";
 import { splitSentenceSegments } from "../lib/ttsChunks";
 import { selectDueDigests, applyDigest, parseTurnContent, selectDueDiaries, pendingDiaryNames, applyDiary } from "../lib/turnDigest";
 import { buildTraitContext } from "../lib/traitTree";
-import { buildLocationContext, buildEntityContext, buildSublocationsContext, buildSublocationEntitiesContext, buildReachableLocationsContext, buildReachableEntitiesContext } from "../lib/locationContext";
+import { buildLocationContext, buildEntityContext, buildSublocationsContext, buildSublocationEntitiesContext, buildReachableLocationsContext, buildReachableEntitiesContext, buildDestinationsContext, navigableDestinations } from "../lib/locationContext";
 import { NONE_PLACEHOLDER } from "../lib/promptFallbacks";
 import { renderPromptTemplate } from "../lib/promptTemplate";
 import { useBaselineTestHook } from "../lib/baselineTestHook";
@@ -187,6 +187,7 @@ const GameViewer = ({
     choicesEnabled,
     statUpdatesEnabled,
     locationChangeEnabled,
+    locationAutoApply,
     narrationVerbatimTurns,
     thinkingVerbatimTurns,
     thinkingMode,
@@ -689,6 +690,11 @@ const GameViewer = ({
     "<REACHABLE ENTITIES|summary>": buildReachableEntitiesContext(currentLocation, locations, allEntities, { preferSummary: true, excludeIds: presentIds }),
     "<REACHABLE ENTITIES|markdown>": buildReachableEntitiesContext(currentLocation, locations, allEntities, { format: "markdown", excludeIds: presentIds }),
     "<REACHABLE ENTITIES|summary.markdown>": buildReachableEntitiesContext(currentLocation, locations, allEntities, { preferSummary: true, format: "markdown", excludeIds: presentIds }),
+    // The local navigable graph (connections + sub-locations + reachable siblings) — the location router's candidate set.
+    "<DESTINATIONS>": buildDestinationsContext(currentLocation, locations),
+    "<DESTINATIONS|summary>": buildDestinationsContext(currentLocation, locations, { preferSummary: true }),
+    "<DESTINATIONS|markdown>": buildDestinationsContext(currentLocation, locations, { format: "markdown" }),
+    "<DESTINATIONS|summary.markdown>": buildDestinationsContext(currentLocation, locations, { preferSummary: true, format: "markdown" }),
     "<NOTES>": playerNotes || NONE_PLACEHOLDER,
     };
   }, [
@@ -1042,15 +1048,21 @@ ${playerNotes || NONE_PLACEHOLDER}
           signal,
         );
 
-        // Exact name match, else the longest available name appearing as a whole word.
+        // Scope the router to the local navigable graph: match only against places reachable from here.
+        const destinations = navigableDestinations(currentLocation, locations);
         const matchedName = matchLocationResponse(
           locationResponse,
-          locations.map((loc) => loc.name),
+          destinations.map((loc) => loc.name),
         );
         if (matchedName) {
-          const target = locations.find((loc) => loc.name === matchedName);
+          const target = destinations.find((loc) => loc.name === matchedName);
           if (target && target.id !== currentLocation?.id) {
-            setSuggestedLocation(target);
+            if (locationAutoApply) {
+              changeLocation(target);
+              addLogEntry(`Moved to location: ${target.name}`);
+            } else {
+              setSuggestedLocation(target);
+            }
           }
         }
       }

@@ -2,6 +2,7 @@ import { describe, it, expect } from "vitest";
 import {
   buildLocationContext, buildEntityContext, buildSublocationsContext, buildSublocationEntitiesContext,
   buildReachableLocationsContext, buildReachableEntitiesContext,
+  navigableDestinations, buildDestinationsContext,
 } from "./locationContext";
 import { NONE_PLACEHOLDER } from "./promptFallbacks";
 import type { Entity, GameLocation } from "@/types";
@@ -132,6 +133,40 @@ describe("buildReachableLocationsContext / buildReachableEntitiesContext", () =>
     expect(out).toContain("A friendly neighbor.");
     expect(buildReachableEntitiesContext(houseA, locs, [sarah], { excludeIds: ["sarah"] })).toBe(NONE_PLACEHOLDER);
     expect(buildReachableEntitiesContext(top, locs, [sarah])).toBe(NONE_PLACEHOLDER);
+  });
+});
+
+describe("navigableDestinations / buildDestinationsContext", () => {
+  // hamlet > { green, cottage, eelhouse } ; green connects to a top-level Landing + its siblings.
+  const green: GameLocation = { id: "green", name: "Green", parentId: "hamlet", connections: ["Landing", "Cottage"] };
+  const cottage: GameLocation = { id: "cottage", name: "Cottage", parentId: "hamlet", aiSummary: "A blue-doored cottage." };
+  const eelhouse: GameLocation = { id: "eel", name: "Eelhouse", parentId: "hamlet" };
+  const landing: GameLocation = { id: "landing", name: "Landing", connections: ["Green"] }; // top-level
+  const locs = [green, cottage, eelhouse, landing];
+
+  it("unions connections + sub-locations + reachable siblings, deduped, excluding self", () => {
+    const names = navigableDestinations(green, locs).map((l) => l.name).sort();
+    // Cottage is both a connection AND a reachable sibling → appears once; Eelhouse is a sibling; Landing is a connection.
+    expect(names).toEqual(["Cottage", "Eelhouse", "Landing"]);
+  });
+
+  it("skips dangling connection names and never includes the current location", () => {
+    const withDangling: GameLocation = { ...green, connections: ["Nowhere", "Green"] };
+    const names = navigableDestinations(withDangling, [withDangling, cottage, eelhouse]).map((l) => l.name).sort();
+    expect(names).toEqual(["Cottage", "Eelhouse"]); // "Nowhere" unresolved, "Green" is self
+  });
+
+  it("a top-level location still surfaces its connections as destinations", () => {
+    expect(navigableDestinations(landing, locs).map((l) => l.name)).toEqual(["Green"]);
+  });
+
+  it("buildDestinationsContext renders name: summary lines and N/A when nothing is reachable", () => {
+    const out = buildDestinationsContext(green, locs, { preferSummary: true });
+    expect(out).toContain("Cottage: A blue-doored cottage.");
+    expect(out).toContain("Eelhouse");
+    const isolated: GameLocation = { id: "iso", name: "Void" };
+    expect(buildDestinationsContext(isolated, [isolated])).toBe(NONE_PLACEHOLDER);
+    expect(buildDestinationsContext(null, locs)).toBe(NONE_PLACEHOLDER);
   });
 });
 

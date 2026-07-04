@@ -112,14 +112,8 @@ describe('default prompts carry the expected variable chips', () => {
 
   it('location-change prompt', () => {
     expect(tokensIn(defaultLocationChangePrompt)).toEqual([
-      '<WORLD DESCRIPTION>',
-      '<LOCATION|markdown>',
-      '<SUBLOCATIONS|summary.markdown>',
-      '<REACHABLE LOCATIONS|summary.markdown>',
-      '<ENTITIES|markdown>',
-      '<SUBLOCATION ENTITIES|markdown>',
-      '<REACHABLE ENTITIES|summary.markdown>',
-      '<LOCATION|list.markdown>',
+      '<LOCATION|summary.markdown>',
+      '<DESTINATIONS|summary.markdown>',
     ]);
   });
 
@@ -219,9 +213,11 @@ describe('aux user-message templates carry the runtime value-tokens', () => {
   it('director user template carries the narration + player-action tokens', () => {
     expect(tokensIn(defaultDirectorUserPrompt)).toEqual(['<NARRATION>', '<PLAYER ACTION>']);
   });
-  it('stat-updates and location user templates carry the narration token', () => {
+  it('stat-updates user template carries the narration token', () => {
     expect(tokensIn(defaultStatUpdatesUserPrompt)).toEqual(['<NARRATION>']);
-    expect(tokensIn(defaultLocationChangeUserPrompt)).toEqual(['<NARRATION>']);
+  });
+  it('location user template carries only the player-action token (reads the action, not the narration)', () => {
+    expect(tokensIn(defaultLocationChangeUserPrompt)).toEqual(['<PLAYER ACTION>']);
   });
   it('summary user template carries the player-action + narration tokens, cue anchored last', () => {
     expect(tokensIn(defaultSummaryUserPrompt)).toEqual(['<PLAYER ACTION>', '<NARRATION>']);

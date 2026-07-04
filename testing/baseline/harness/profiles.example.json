@@ -64,6 +64,7 @@
         "choicesEnabled": true,
         "statUpdatesEnabled": false,
         "locationChangeEnabled": true,
+        "locationAutoApply": true,
         "memoryDigests": false,
         "characterDiaries": false,
         "showSilentRequests": true,
@@ -72,11 +73,12 @@
       },
       "script": [
         "START GAME",
-        "I climb the path up from the landing to the common green.",
-        "I stop by the well and look toward the low blue-doored cottage, wondering who keeps it.",
-        "I call across the green toward the cottage, asking whoever is inside to come out and speak with me.",
-        "I ask her whether the ferry still runs after dark.",
-        "I leave her at the well and walk over to the eelhouse to look at the eel-racks."
+        "I heave my pack up and make my way up the winding path into the common green.",
+        "I set my pack down by the well and study the low blue-doored cottage across the way, wondering who keeps it.",
+        "I cup my hands, call toward the cottage naming myself as Wren the mapmaker, and ask whoever keeps it to step out and speak with me.",
+        "I draw water from the well and offer it to her, and weary from the road myself, gently ask what name she'd have me call her by.",
+        "I ask her whether the path down to the eelhouse floods at high water, and how the eels are running.",
+        "I take my leave of her and wander over to the eelhouse to look the eel-racks over."
       ]
     }
   ]
