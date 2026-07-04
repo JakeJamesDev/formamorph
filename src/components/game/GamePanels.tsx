@@ -677,7 +677,7 @@ export const MiddlePanel = ({
                                 className="justify-start text-xs h-8"
                                 onClick={() => { setRegenMenuOpen(false); handleRegenerateStats(); }}
                               >
-                                Regenerate Stats
+                                Re-generate Stats
                               </Button>
                             )}
                             {canRegenChoices && (
@@ -686,7 +686,7 @@ export const MiddlePanel = ({
                                 className="justify-start text-xs h-8"
                                 onClick={() => { setRegenMenuOpen(false); handleRegenerateChoices(); }}
                               >
-                                Regenerate Choices
+                                Re-generate Choices
                               </Button>
                             )}
                           </div>
