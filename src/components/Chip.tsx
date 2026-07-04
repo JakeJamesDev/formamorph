@@ -19,6 +19,20 @@ export function splitChipInput(value: string): { complete: string[]; remainder: 
   return { complete: parts.map((p) => p.trim()).filter(Boolean), remainder };
 }
 
+/** Replace `old` with a trimmed `next` in a chip list (drop `old` if `next` is empty), then dedupe
+ *  case-insensitively keeping first occurrence. Shared by editable chip inputs. */
+export function replaceChipValue(list: string[], old: string, next: string): string[] {
+  const v = next.trim();
+  const mapped = v ? list.map((x) => (x === old ? v : x)) : list.filter((x) => x !== old);
+  const seen = new Set<string>();
+  const out: string[] = [];
+  for (const x of mapped) {
+    const l = x.toLowerCase();
+    if (!seen.has(l)) { seen.add(l); out.push(x); }
+  }
+  return out;
+}
+
 /** A removable rounded-square chip. Neutral by default; pass `className` for a semantic color.
  *  Omit `onRemove` to render a non-removable chip (e.g. inside a read-only prompt editor). */
 export function Chip({ label, onRemove, className, innerRef, style, dragProps, grabbable }: {
