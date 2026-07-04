@@ -75,7 +75,7 @@ function VariableChip({ nodeKey, token }: { nodeKey: NodeKey; token: string }) {
           />
         </span>
       </PopoverTrigger>
-      <PopoverContent className="w-64" align="start">
+      <PopoverContent className={axes.some((a) => a.options.length >= 4) ? 'w-96' : 'w-64'} align="start">
         {axes.length ? (
           <div className="space-y-3">
             {axes.map((axis) => {
@@ -87,7 +87,7 @@ function VariableChip({ nodeKey, token }: { nodeKey: NodeKey; token: string }) {
                   <Tabs value={active} onValueChange={(v) => setAxis(axis.id, v === FULL ? null : v)}>
                     <TabsList className="grid w-full" style={{ gridTemplateColumns: `repeat(${axis.options.length}, minmax(0, 1fr))` }}>
                       {axis.options.map((opt) => (
-                        <TabsTrigger key={opt.id ?? FULL} value={opt.id ?? FULL} disabled={!editable}>{opt.label}</TabsTrigger>
+                        <TabsTrigger key={opt.id ?? FULL} value={opt.id ?? FULL} disabled={!editable} className="text-xs px-1.5">{opt.label}</TabsTrigger>
                       ))}
                     </TabsList>
                   </Tabs>

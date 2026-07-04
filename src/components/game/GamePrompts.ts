@@ -28,19 +28,19 @@ These shape how each action goes - low stats cost, high stats come easy.
 <LOCATION|markdown>
 
 ## Sublocations
-<SUBLOCATIONS|summary.markdown>
+<LOCATION|sublocations.summary.markdown>
 
 ## Reachable Locations
-<REACHABLE LOCATIONS|summary.markdown>
+<LOCATION|reachable.summary.markdown>
 
 ## Characters and things that may appear in this location
 <ENTITIES|markdown>
 
 ## Characters and things that may appear in a sub-location
-<SUBLOCATION ENTITIES|markdown>
+<ENTITIES|sublocations.markdown>
 
 ## Characters and things that may appear in a reachable location
-<REACHABLE ENTITIES|summary.markdown>
+<ENTITIES|reachable.summary.markdown>
 
 ## Relevant Information
 <DICTIONARY>
@@ -104,19 +104,19 @@ export const defaultChoicesPrompt = `Given the following information:
 <LOCATION|summary.markdown>
 
 ## Sublocations
-<SUBLOCATIONS|summary.markdown>
+<LOCATION|sublocations.summary.markdown>
 
 ## Reachable Locations
-<REACHABLE LOCATIONS|summary.markdown>
+<LOCATION|reachable.summary.markdown>
 
 ## Characters and things that may appear in this location
 <ENTITIES|summary.markdown>
 
 ## Characters and things that may appear in a sub-location
-<SUBLOCATION ENTITIES|summary.markdown>
+<ENTITIES|sublocations.summary.markdown>
 
 ## Characters and things that may appear in a reachable location
-<REACHABLE ENTITIES|summary.markdown>
+<ENTITIES|reachable.summary.markdown>
 
 The player character is "I": every option is written in the player's own first-person voice.
 
@@ -157,7 +157,7 @@ export const defaultLocationChangePrompt = `You are the location router for an i
 <LOCATION|summary.markdown>
 
 ## Where The Player Can Go
-<DESTINATIONS|summary.markdown>
+<LOCATION|destinations.summary.markdown>
 
 Output a destination's exact name from the list above only if the player character's action is going to, entering, heading for, or travelling to that place. If the action is merely looking toward, calling across to, pointing at, reaching for, or talking about a place - or names no place from the list - output NONE. Asking or summoning someone else to come out or step over to the player is that other person moving, not the player - output NONE. Reply with only the name or NONE, nothing else.`;
 
@@ -178,19 +178,19 @@ export const defaultThinkingPrompt = `You are planning the next turn of an inter
 <LOCATION|summary.markdown>
 
 ## Sublocations
-<SUBLOCATIONS|summary.markdown>
+<LOCATION|sublocations.summary.markdown>
 
 ## Reachable Locations
-<REACHABLE LOCATIONS|summary.markdown>
+<LOCATION|reachable.summary.markdown>
 
 ## Characters and things that may appear in this location
 <ENTITIES|summary.markdown>
 
 ## Characters and things that may appear in a sub-location
-<SUBLOCATION ENTITIES|summary.markdown>
+<ENTITIES|sublocations.summary.markdown>
 
 ## Characters and things that may appear in a reachable location
-<REACHABLE ENTITIES|summary.markdown>
+<ENTITIES|reachable.summary.markdown>
 
 ## Important Player Notes
 <NOTES>
@@ -279,19 +279,19 @@ export const defaultDirectorPrompt = `You are the director of an interactive rol
 <LOCATION|summary.markdown>
 
 ## Sublocations
-<SUBLOCATIONS|summary.markdown>
+<LOCATION|sublocations.summary.markdown>
 
 ## Reachable Locations
-<REACHABLE LOCATIONS|summary.markdown>
+<LOCATION|reachable.summary.markdown>
 
 ## Characters and things that may appear in this location
 <ENTITIES|summary.markdown>
 
 ## Characters and things that may appear in a sub-location
-<SUBLOCATION ENTITIES|summary.markdown>
+<ENTITIES|sublocations.summary.markdown>
 
 ## Characters and things that may appear in a reachable location
-<REACHABLE ENTITIES|summary.markdown>
+<ENTITIES|reachable.summary.markdown>
 
 ## Important Player Notes
 <NOTES>
@@ -335,10 +335,10 @@ Refer to the player in the third person - "the player character" or "them" - nev
 <LOCATION|summary.markdown>
 
 ## Sublocations
-<SUBLOCATIONS|summary.markdown>
+<LOCATION|sublocations.summary.markdown>
 
 ## Reachable Locations
-<REACHABLE LOCATIONS|summary.markdown>
+<LOCATION|reachable.summary.markdown>
 
 My background is who I am in general; the recap and scene below are where things stand now, so I act from the present moment. In 2-3 sentences, say in the first person what I want and what I do this turn - true to my character, moving the scene forward rather than repeating my last move. Any speech is intent, not quoted words; the narrator writes the dialogue. Output only those sentences.`;
 
@@ -360,10 +360,10 @@ export const defaultStoryboardPrompt = `You are the storyboarder for an interact
 <LOCATION|summary.markdown>
 
 ## Sublocations
-<SUBLOCATIONS|summary.markdown>
+<LOCATION|sublocations.summary.markdown>
 
 ## Reachable Locations
-<REACHABLE LOCATIONS|summary.markdown>
+<LOCATION|reachable.summary.markdown>
 
 ## Important Player Notes
 <NOTES>

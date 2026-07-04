@@ -154,7 +154,7 @@ Each character owns a **unique** pair of marks — if any bleeds onto another, t
   Profile C's hamlet populates them).
 - The **location-change router** is now scoped: instead of a flat *Available Locations* list of every place,
   it feeds only **Where The Player Can Go** = the current location's connections + sub-locations + reachable siblings
-  (the `<DESTINATIONS>` chip), and its reply is matched against *only* that set. From Sedge Landing that's
+  (the `<LOCATION|destinations>` chip), and its reply is matched against *only* that set. From Sedge Landing that's
   `Far Bank, The Common Green`; from The Common Green it's `Sedge Landing, Ferryman's Cottage, The Eelhouse`.
   With **auto-apply** on (Profile C), an in-scope move is applied immediately and logged; with it off, the
   "Move to X?" confirmation is shown as before.

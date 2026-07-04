@@ -433,7 +433,13 @@ export const SettingsModal = ({ isOpen, onOpenChange, previewValues }: {
                     />
                     Location Change
                   </label>
-                  {locationChangeEnabled && (
+                </div>
+              </div>
+              {/* Auto-apply detected location changes — its own row, only shown while Location Change is on. */}
+              {locationChangeEnabled && (
+                <div className="grid grid-cols-1 sm:grid-cols-4 items-start gap-4">
+                  <label htmlFor="locationAutoApply" className="text-left sm:text-right leading-4 pt-0.5">Location Moves</label>
+                  <div className="col-span-3">
                     <label htmlFor="locationAutoApply" className="flex items-center gap-2 text-sm cursor-pointer">
                       <Checkbox
                         id="locationAutoApply"
@@ -441,11 +447,14 @@ export const SettingsModal = ({ isOpen, onOpenChange, previewValues }: {
                         onCheckedChange={(c) => setLocationAutoApply(c === true)}
                         className="shrink-0"
                       />
-                      Auto-apply
+                      Apply location changes automatically
                     </label>
-                  )}
+                    <p className="text-xs text-muted-foreground mt-1">
+                      Move the player as soon as the AI detects a change, skipping the “Move to…?” confirmation.
+                    </p>
+                  </div>
                 </div>
-              </div>
+              )}
               <div className="grid grid-cols-1 sm:grid-cols-4 items-start gap-4">
                 <label className="text-left sm:text-right pt-2">Thinking</label>
                 <div className="col-span-3">
