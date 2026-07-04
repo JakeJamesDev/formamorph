@@ -1,5 +1,6 @@
 import type { Codec } from './usePersistentState';
 import type { ImageProviderId } from './imageGen';
+import { DEFAULT_COMFY_WORKFLOW } from './imageGen/comfyui';
 import {
   DEFAULT_IMAGE_PROVIDER, DEFAULT_IMAGE_ENDPOINT, DEFAULT_IMAGE_API_TOKEN, DEFAULT_IMAGE_MODEL,
   DEFAULT_IMAGE_POSITIVE, DEFAULT_IMAGE_NEGATIVE, DEFAULT_IMAGE_PORTRAIT_WIDTH, DEFAULT_IMAGE_PORTRAIT_HEIGHT,
@@ -23,6 +24,8 @@ export interface ImageEndpointValues {
   cfg: number;
   sampler: string;
   adetailer: boolean;
+  /** ComfyUI only: the API-format workflow template with %tokens%. */
+  workflow: string;
 }
 
 export type ImageEndpointValueKey = keyof ImageEndpointValues;
@@ -54,6 +57,7 @@ export const DEFAULT_IMAGE_ENDPOINT_VALUES: ImageEndpointValues = {
   cfg: DEFAULT_IMAGE_CFG,
   sampler: DEFAULT_IMAGE_SAMPLER,
   adetailer: DEFAULT_IMAGE_ADETAILER,
+  workflow: DEFAULT_COMFY_WORKFLOW,
 };
 
 export const DEFAULT_IMAGE_PRESET_ID = 'default';
@@ -69,7 +73,11 @@ function coerceValues(rec: Record<string, unknown>): ImageEndpointValues {
   const str = (k: string, dflt: string) => (typeof rec[k] === 'string' ? (rec[k] as string) : dflt);
   const num = (k: string, dflt: number) => (typeof rec[k] === 'number' && Number.isFinite(rec[k]) ? (rec[k] as number) : dflt);
   return {
-    provider: rec.provider === 'openai' ? 'openai' : rec.provider === 'a1111' ? 'a1111' : d.provider,
+    provider:
+      rec.provider === 'openai' ? 'openai'
+      : rec.provider === 'comfyui' ? 'comfyui'
+      : rec.provider === 'a1111' ? 'a1111'
+      : d.provider,
     endpoint: str('endpoint', d.endpoint),
     apiToken: str('apiToken', d.apiToken),
     model: str('model', d.model),
@@ -83,6 +91,7 @@ function coerceValues(rec: Record<string, unknown>): ImageEndpointValues {
     cfg: num('cfg', d.cfg),
     sampler: str('sampler', d.sampler),
     adetailer: typeof rec.adetailer === 'boolean' ? rec.adetailer : d.adetailer,
+    workflow: str('workflow', d.workflow),
   };
 }
 

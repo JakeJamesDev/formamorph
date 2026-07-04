@@ -55,6 +55,7 @@ function seedImagePresetStore(): ImageEndpointPresetStore {
     cfg: flt('imageCfg', d.cfg),
     sampler: str('imageSampler', d.sampler),
     adetailer: d.adetailer,
+    workflow: d.workflow,
   });
 }
 
@@ -273,6 +274,7 @@ function useProvideSettings() {
     portraitWidth: imagePortraitWidth, portraitHeight: imagePortraitHeight,
     landscapeWidth: imageLandscapeWidth, landscapeHeight: imageLandscapeHeight,
     steps: imageSteps, cfg: imageCfg, sampler: imageSampler, adetailer: imageAdetailer,
+    workflow: imageWorkflow,
   } = imageValues;
   const setImageProvider = patchImage('provider');
   const setImageEndpoint = patchImage('endpoint');
@@ -288,6 +290,7 @@ function useProvideSettings() {
   const setImageCfg = patchImage('cfg');
   const setImageSampler = patchImage('sampler');
   const setImageAdetailer = patchImage('adetailer');
+  const setImageWorkflow = patchImage('workflow');
   // Preset management (Settings → Image Gen → Endpoint selector). Every preset is editable, including Default.
   const imageEndpointPresets = imagePresetStore.presets.map((p) => ({ id: p.id, name: p.name }));
   const activeImageEndpointPresetId = imagePresetStore.activeId;
@@ -439,6 +442,8 @@ function useProvideSettings() {
     setImageSampler,
     imageAdetailer,
     setImageAdetailer,
+    imageWorkflow,
+    setImageWorkflow,
     imageEndpointPresets,
     activeImageEndpointPresetId,
     activeImageEndpointPresetName,

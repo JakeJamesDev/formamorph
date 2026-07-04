@@ -40,7 +40,7 @@ async function dataUrlToBuffer(url: string): Promise<ArrayBuffer> {
   return (await fetch(url)).arrayBuffer();
 }
 
-function bytesToDataUrl(bytes: Uint8Array, mime: string): string {
+export function bytesToDataUrl(bytes: Uint8Array, mime: string): string {
   let binary = '';
   const chunk = 0x8000; // chunk the fromCharCode spread so a large buffer doesn't blow the arg limit
   for (let i = 0; i < bytes.length; i += chunk) {

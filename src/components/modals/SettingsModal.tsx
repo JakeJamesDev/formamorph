@@ -4,6 +4,7 @@ import { DEFAULT_ENDPOINT, DEFAULT_API_TOKEN, DEFAULT_MODEL_NAME, DEFAULT_MAX_TO
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem, SelectSeparator } from "@/components/ui/select";
@@ -176,6 +177,8 @@ export const SettingsModal = ({ isOpen, onOpenChange, previewValues }: {
     setImageSampler,
     imageAdetailer,
     setImageAdetailer,
+    imageWorkflow,
+    setImageWorkflow,
     imageEndpointPresets,
     activeImageEndpointPresetId,
     activeImageEndpointPresetName,
@@ -685,6 +688,7 @@ export const SettingsModal = ({ isOpen, onOpenChange, previewValues }: {
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="a1111">Automatic1111 / Forge (local)</SelectItem>
+                    <SelectItem value="comfyui">ComfyUI (local)</SelectItem>
                     <SelectItem value="openai" disabled={!desktop}>
                       OpenAI-compatible (cloud){desktop ? '' : ' — desktop app only'}
                     </SelectItem>
@@ -696,6 +700,8 @@ export const SettingsModal = ({ isOpen, onOpenChange, previewValues }: {
                 <p className="text-xs text-muted-foreground">
                   {imageProvider === 'a1111'
                     ? 'Launch the WebUI with --api --cors-allow-origins=<this app’s origin> so the browser can reach it.'
+                    : imageProvider === 'comfyui'
+                    ? 'Launch ComfyUI with --enable-cors-header (append it to your run_*.bat) so the browser can reach it. Default port 8188; add TLS (--tls-keyfile/--tls-certfile) to use it from the hosted https site. The workflow below is filled via %tokens%.'
                     : 'Cloud image APIs are proxied through the Formamorph desktop app (they can’t be called from a browser). Your key stays on your machine.'}
                 </p>
               </div>
@@ -764,6 +770,27 @@ export const SettingsModal = ({ isOpen, onOpenChange, previewValues }: {
                     <span className="text-xs text-muted-foreground">
                       Run a second pass to auto-fix faces/hands. Requires the ADetailer extension installed on your A1111/Forge server.
                     </span>
+                  </div>
+                </div>
+              )}
+              {imageProvider === 'comfyui' && (
+                <div className="grid grid-cols-[1fr_3fr] items-start gap-4">
+                  <label htmlFor="imageWorkflow" className="text-right pt-2">Workflow (API format)</label>
+                  <div className="grid gap-1.5">
+                    <Textarea
+                      id="imageWorkflow"
+                      value={imageWorkflow}
+                      onChange={(e) => setImageWorkflow(e.target.value)}
+                      spellCheck={false}
+                      className="min-h-[200px] font-mono text-xs"
+                    />
+                    <p className="text-xs text-muted-foreground">
+                      Paste ComfyUI’s <em>Save (API Format)</em> export, keeping these tokens where values go:
+                      {' '}<code>%prompt%</code> <code>%negative%</code> <code>%ckpt%</code> <code>%width%</code>{' '}
+                      <code>%height%</code> <code>%steps%</code> <code>%cfg%</code> <code>%seed%</code> <code>%sampler%</code>.
+                      The Model field is the checkpoint (<code>%ckpt%</code>); the Sampler accepts a ComfyUI name (e.g. <code>euler</code>) or a common A1111 name (auto-mapped).
+                      Reset the preset to restore the default graph.
+                    </p>
                   </div>
                 </div>
               )}
