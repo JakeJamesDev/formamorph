@@ -30,6 +30,7 @@ Each release groups changes as **Major** / **Minor**, then **Added** / **Removed
 #### ➕ Added
 
 - **👤 User-facing**
+  - **World README** — authors can add a markdown **Readme** (in the World Editor, below System Prompt Addition, using the same editor as the World Description) that greets the player in a popup when they enter the world. Dismiss it with the **X**, click-outside, or **Esc**. A per-world **Show Readme** toggle lives in the main-menu world popup and is mirrored by a **Don't Show This Again** checkbox in the popup itself — the two stay in sync (one setting, on by default).
   - **Consent-based image optimization** — before an oversized image is re-encoded (on import, on generate "Use image", or via the editor's **Optimize Images**), a prompt offers **Optimize** (convert to **lossless** WebP at the same resolution — no visible quality loss) or **Downscale** (shrink to fit), with a clear **Keep original** to do nothing. Already-WebP images skip the redundant Optimize option.
   - The world-browser **Hidden** popover now uses editable tag / author autocomplete boxes, matching the search filters.
 - **🛠️ Developer tooling**

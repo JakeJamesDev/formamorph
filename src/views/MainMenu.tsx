@@ -48,6 +48,8 @@ import { ManageUsersDialog } from "@/components/menu/ManageUsersDialog";
 import { AuthModals } from "@/components/menu/AuthModals";
 import { PublishModal } from "@/components/menu/PublishModal";
 import { COMMUNITY_ENABLED } from "@/lib/featureFlags";
+import { Checkbox } from "@/components/ui/checkbox";
+import { useReadmeVisibility } from "@/lib/useReadmeVisibility";
 
 interface MainMenuProps {
   onStartGame: (traits: string[], characterData: CharacterData | null, isNewGame?: boolean, startingLocationId?: string | null) => void;
@@ -79,6 +81,7 @@ const applyWorldOrder = <T extends { id: string }>(list: T[], order: string[]): 
 
 const MainMenu = ({ onStartGame, onOpenWorldEditor }: MainMenuProps) => {
   const { traits, traitGroups, stats, locations, loadWorldData } = useGameData();
+  const { showReadme, setShowReadme } = useReadmeVisibility();
   const { promptWorld, dialog: downscaleDialog } = useDownscalePrompt();
   const [selectedWorld, setSelectedWorld] = useState<WorldRecord | null>(null);
   // Local-world grid layout: "grid" (default compact cards) or "detailed" (Discover-style card + info
@@ -807,6 +810,18 @@ const MainMenu = ({ onStartGame, onOpenWorldEditor }: MainMenuProps) => {
                   >
                     <FilePlus2 className="mr-2 h-4 w-4" /> Duplicate World
                   </Button>
+
+                  {/* Per-world README toggle — same flag the in-game "Don't Show This Again" writes (inverse). */}
+                  {selectedWorld?.data?.worldOverview?.readme?.trim() && (
+                    <div className="flex items-center gap-2 pt-1">
+                      <Checkbox
+                        id="show-readme"
+                        checked={showReadme(selectedWorld.id)}
+                        onCheckedChange={(c) => setShowReadme(selectedWorld.id, c === true)}
+                      />
+                      <label htmlFor="show-readme" className="text-sm cursor-pointer">Show Readme on entry</label>
+                    </div>
+                  )}
 
                   {/* Publishing disabled for the 2.0.1 alpha — not an official release yet, so we don't want
                       testers contaminating the live workshop server. Re-enable this button (and the `Upload`

@@ -163,6 +163,8 @@ export interface WorldOverview {
   tags: string[];
   /** v1.2.0: optional per-world custom player VRM model. */
   customPlayerVRM?: MediaAsset | null;
+  /** Optional markdown shown to the player on entering the world (per-world "Show Readme" toggle). */
+  readme?: string;
 }
 
 export interface World {
