@@ -17,6 +17,7 @@ import VramReadout from '../game/VramReadout';
 import { useVramStats } from '@/lib/useVramStats';
 import { isDesktop } from '@/lib/imageGen/desktop';
 import { fetchComfyMeta, DEFAULT_COMFY_WORKFLOW, type ComfyMeta } from '@/lib/imageGen/comfyui';
+import { DEFAULT_ENDPOINT_BY_PROVIDER, resolveImageEndpoint } from '@/lib/imageGen';
 import { TokenAutocomplete } from '@/components/TokenAutocomplete';
 import ImageSetupGuide from './ImageSetupGuide';
 import ComfyWorkflowGuide from './ComfyWorkflowGuide';
@@ -250,7 +251,7 @@ export const SettingsModal = ({ isOpen, onOpenChange, previewValues }: {
     let cancelled = false;
     const t = setTimeout(async () => {
       try {
-        const meta = await fetchComfyMeta(imageEndpoint, imageApiToken);
+        const meta = await fetchComfyMeta(resolveImageEndpoint(imageProvider, imageEndpoint), imageApiToken);
         if (!cancelled) setComfyMeta(meta);
       } catch {
         // silent: ComfyUI not running / unreachable — the fields fall back to free text
@@ -728,7 +729,12 @@ export const SettingsModal = ({ isOpen, onOpenChange, previewValues }: {
               </div>
               <div className="grid grid-cols-[1fr_3fr] items-center gap-4">
                 <label htmlFor="imageEndpoint" className="text-right">Endpoint URL</label>
-                <Input id="imageEndpoint" value={imageEndpoint} onChange={(e) => setImageEndpoint(e.target.value)} placeholder="http://127.0.0.1:7860" />
+                <Input
+                  id="imageEndpoint"
+                  value={imageEndpoint}
+                  onChange={(e) => setImageEndpoint(e.target.value)}
+                  placeholder={DEFAULT_ENDPOINT_BY_PROVIDER[imageProvider] || 'https://api.openai.com'}
+                />
               </div>
               <div className="grid grid-cols-[1fr_3fr] items-center gap-4">
                 <label htmlFor="imageApiToken" className="text-right">API Token</label>

@@ -1,7 +1,7 @@
 import { describe, it, expect, vi, afterEach } from 'vitest';
 import { buildA1111Body, parseA1111Response, parseProgress, a1111Provider } from './a1111';
 import { nearestOpenAISize, parseOpenAIResponse } from './openai';
-import { generateImage } from './index';
+import { generateImage, resolveImageEndpoint } from './index';
 import type { ImageGenParams } from './types';
 
 const params: ImageGenParams = {
@@ -139,5 +139,17 @@ describe('generateImage dispatcher', () => {
 
   it('rejects a cloud provider with a desktop-only message when unavailable', async () => {
     await expect(generateImage('openai', params, { endpointUrl: 'http://x', apiToken: '' })).rejects.toThrow(/desktop app/);
+  });
+});
+
+describe('resolveImageEndpoint', () => {
+  it('falls back to the provider default when the endpoint is blank', () => {
+    expect(resolveImageEndpoint('a1111', '')).toBe('http://127.0.0.1:7860');
+    expect(resolveImageEndpoint('comfyui', '   ')).toBe('http://127.0.0.1:8188');
+    expect(resolveImageEndpoint('openai', '')).toBe(''); // cloud has no local default
+  });
+
+  it('uses the entered endpoint when provided', () => {
+    expect(resolveImageEndpoint('comfyui', 'http://192.168.0.5:8188')).toBe('http://192.168.0.5:8188');
   });
 });

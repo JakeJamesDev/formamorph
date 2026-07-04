@@ -10,7 +10,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogD
 import { ImageZoomViewer } from '@/components/ImageZoomViewer';
 import { useSettings } from '@/contexts/SettingsContext';
 import { buildImagePrompt, type ImageSubjectKind } from '@/lib/imagePrompt';
-import { generateImage } from '@/lib/imageGen';
+import { generateImage, resolveImageEndpoint } from '@/lib/imageGen';
 import { type ImageCap } from '@/lib/imageOptim';
 import { useDownscalePrompt } from '@/lib/useDownscalePrompt';
 
@@ -105,7 +105,7 @@ export function GenerateImageButton({ subject, cap, onChange }: {
           sampler: imageSampler, seed: -1, model: imageModel, adetailer: imageAdetailer,
         },
         {
-          endpointUrl: imageEndpoint, apiToken: imageApiToken, workflow: imageWorkflow, signal: controller.signal,
+          endpointUrl: resolveImageEndpoint(imageProvider, imageEndpoint), apiToken: imageApiToken, workflow: imageWorkflow, signal: controller.signal,
           onProgress: (p) => {
             if (abortRef.current !== controller) return;
             setProgress(p.progress);
