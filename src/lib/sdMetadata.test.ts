@@ -48,8 +48,31 @@ describe('extractSdPrompt', () => {
     expect(extractSdPrompt(pngText('Comment', JSON.stringify({ prompt: 'a knight', uc: 'bad quality' })))).toBe('a knight');
   });
 
-  it('ComfyUI graph object under "prompt" is not mistaken for a prompt string', () => {
-    const graph = JSON.stringify({ '3': { class_type: 'KSampler' }, '6': { class_type: 'CLIPTextEncode' } });
+  it('ComfyUI: follows the sampler positive link to CLIPTextEncode (not the negative)', () => {
+    const graph = JSON.stringify({
+      '3': { class_type: 'KSampler', inputs: { positive: ['6', 0], negative: ['7', 0] } },
+      '6': { class_type: 'CLIPTextEncode', inputs: { text: '1girl, red hair', clip: ['4', 1] } },
+      '7': { class_type: 'CLIPTextEncode', inputs: { text: 'lowres, blurry', clip: ['4', 1] } },
+    });
+    expect(extractSdPrompt(pngText('prompt', graph))).toBe('1girl, red hair');
+  });
+
+  it('ComfyUI: resolves SDXL text_g and walks through a pass-through node', () => {
+    const graph = JSON.stringify({
+      '3': { class_type: 'CFGGuider', inputs: { positive: ['5', 0], negative: ['9', 0] } },
+      '5': { class_type: 'ControlNetApply', inputs: { conditioning: ['6', 0] } }, // pass-through
+      '6': { class_type: 'CLIPTextEncodeSDXL', inputs: { text_g: 'a knight, castle', text_l: 'detailed' } },
+    });
+    expect(extractSdPrompt(pngText('prompt', graph))).toBe('a knight, castle');
+  });
+
+  it('ComfyUI: falls back to a lone CLIPTextEncode when no positive link exists', () => {
+    const graph = JSON.stringify({ '6': { class_type: 'CLIPTextEncode', inputs: { text: 'a fox' } } });
+    expect(extractSdPrompt(pngText('prompt', graph))).toBe('a fox');
+  });
+
+  it('ComfyUI: no resolvable positive → null (never guesses)', () => {
+    const graph = JSON.stringify({ '3': { class_type: 'KSampler', inputs: { seed: 1, steps: 20 } } });
     expect(extractSdPrompt(pngText('prompt', graph))).toBeNull();
   });
 
