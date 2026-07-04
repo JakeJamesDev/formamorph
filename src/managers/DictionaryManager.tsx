@@ -17,7 +17,8 @@ import {
 } from '@dnd-kit/sortable';
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { SortableChip, splitChipInput } from "@/components/Chip";
+import { splitChipInput, replaceChipValue } from "@/components/Chip";
+import { EditableChip } from "@/components/EditableChip";
 import type { DictionaryEntry } from '@/types';
 
 function KeywordChips({ keywords, onChange }: { keywords: string[]; onChange: (keywords: string[]) => void }) {
@@ -71,10 +72,12 @@ function KeywordChips({ keywords, onChange }: { keywords: string[]; onChange: (k
       >
         <SortableContext items={keywords} strategy={horizontalListSortingStrategy}>
           {keywords.map((kw) => (
-            <SortableChip
+            <EditableChip
               key={kw}
-              id={kw}
+              value={kw}
+              sortable
               onRemove={(k) => onChange(keywords.filter((x) => x !== k))}
+              onCommit={(next) => onChange(replaceChipValue(keywords, kw, next))}
             />
           ))}
         </SortableContext>
@@ -131,7 +134,7 @@ const DictionaryManager = ({ entry }: { entry: DictionaryEntry }) => {
         <Label>Trigger Keywords (Key)</Label>
         <KeywordChips keywords={keywords} onChange={handleKeyChange} />
         <p className="text-xs text-muted-foreground">
-          Type a keyword and press comma or Enter to add it. Drag to reorder, click the × to remove.
+          Type a keyword and press comma or Enter to add it. Double-click to edit, drag to reorder, click the × to remove.
           The value below is injected into the AI prompt only when one of these appears in play.
         </p>
       </div>

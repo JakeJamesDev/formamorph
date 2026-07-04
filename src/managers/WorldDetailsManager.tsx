@@ -1,18 +1,15 @@
 import { useGameData } from '@/contexts/GameDataContext';
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { Button } from "@/components/ui/button";
-import { RefreshCw } from "lucide-react";
 import { TokenAutocomplete } from "@/components/TokenAutocomplete";
 import MarkdownField from "@/components/MarkdownField";
-import { useCatalogTags } from "@/lib/useCatalogTags";
-import { COMMUNITY_ENABLED } from "@/lib/featureFlags";
+import { useDanbooruTags } from "@/lib/useDanbooruTags";
 
 /** The AI-facing world content fields (description, tags, system prompt), shown in the editor's right
  *  column on the Overview tab. Identity/media fields live in WorldOverviewManager (left column). */
 const WorldDetailsManager = () => {
   const { worldOverview, updateWorldOverview } = useGameData();
-  const { tags: tagOptions, refresh: refreshTags, refreshing } = useCatalogTags();
+  const tagOptions = useDanbooruTags();
 
   return (
     <div className="space-y-6">
@@ -27,30 +24,15 @@ const WorldDetailsManager = () => {
 
       <div className="space-y-2">
         <Label>Tags</Label>
-        <div className="flex items-center gap-2">
-          <div className="flex-1">
-            <TokenAutocomplete
-              values={worldOverview.tags || []}
-              onChange={(tags) => updateWorldOverview({ tags })}
-              options={tagOptions}
-              openOnFocus
-              reorderable
-              placeholder="Add tags..."
-            />
-          </div>
-          {COMMUNITY_ENABLED && (
-            <Button
-              variant="outline"
-              size="icon"
-              onClick={refreshTags}
-              disabled={refreshing}
-              title="Refresh tag suggestions"
-              aria-label="Refresh tag suggestions"
-            >
-              <RefreshCw className={`h-4 w-4 ${refreshing ? "animate-spin" : ""}`} />
-            </Button>
-          )}
-        </div>
+        <TokenAutocomplete
+          values={worldOverview.tags || []}
+          onChange={(tags) => updateWorldOverview({ tags })}
+          options={tagOptions}
+          preserveOrder
+          reorderable
+          editable
+          placeholder="Add tags..."
+        />
       </div>
 
       <div className="space-y-2">

@@ -14,7 +14,10 @@ import {
   rectSortingStrategy,
   sortableKeyboardCoordinates,
 } from "@dnd-kit/sortable";
-import { Chip, SortableChip, splitChipInput } from "./Chip";
+import { Chip, SortableChip, splitChipInput, replaceChipValue } from "./Chip";
+import { EditableChip } from "./EditableChip";
+import { SuggestionList } from "./SuggestionList";
+import { rankTagSuggestions } from "@/lib/tagSuggest";
 
 const SUGGESTION_LIMIT = 50;
 
@@ -26,8 +29,12 @@ const SUGGESTION_LIMIT = 50;
  * - `reorderable`: chips can be dragged to reorder (the X still removes; click vs. drag is distance-gated).
  * - `single`: scalar combobox mode — no chips; the input edits one value (`values[0]`, free text allowed),
  *   selecting a suggestion replaces it. A committed value shows the full option list again so you can switch.
+ * - `preserveOrder`: rank filtered suggestions by the `options` array order (e.g. tag popularity) instead of
+ *   alphabetically — for ranked lists like the Danbooru tags.
+ * - `editable`: double-click a chip to edit it in place (with autocomplete when `options` are present). Multi
+ *   mode only.
  */
-export function TokenAutocomplete({ values, onChange, options, placeholder, openOnFocus = false, reorderable = false, single = false }: {
+export function TokenAutocomplete({ values, onChange, options, placeholder, openOnFocus = false, reorderable = false, single = false, preserveOrder = false, editable = false }: {
   values: string[];
   onChange: (values: string[]) => void;
   options: string[];
@@ -35,6 +42,8 @@ export function TokenAutocomplete({ values, onChange, options, placeholder, open
   openOnFocus?: boolean;
   reorderable?: boolean;
   single?: boolean;
+  preserveOrder?: boolean;
+  editable?: boolean;
 }) {
   const [text, setText] = useState("");
   const [open, setOpen] = useState(false);
@@ -59,6 +68,8 @@ export function TokenAutocomplete({ values, onChange, options, placeholder, open
     }
     // A committed single value (exactly one option) shows the full list so you can switch selections.
     if (single && available.some((o) => o.toLowerCase() === q)) return all();
+    const limit = openOnFocus ? SUGGESTION_LIMIT : 8;
+    if (preserveOrder) return rankTagSuggestions(available, q, limit); // keep options (popularity) order
     return available
       .filter((o) => o.toLowerCase().includes(q))
       .sort((a, b) => {
@@ -66,8 +77,8 @@ export function TokenAutocomplete({ values, onChange, options, placeholder, open
         const bw = b.toLowerCase().startsWith(q) ? 0 : 1;
         return aw - bw || a.localeCompare(b);
       })
-      .slice(0, openOnFocus ? SUGGESTION_LIMIT : 8);
-  }, [query, options, values, openOnFocus, single]);
+      .slice(0, limit);
+  }, [query, options, values, openOnFocus, single, preserveOrder]);
 
   /** Append values that aren't already present (case-insensitive); returns whether anything changed. */
   const addMany = (toAdd: string[]) => {
@@ -86,6 +97,18 @@ export function TokenAutocomplete({ values, onChange, options, placeholder, open
     setOpen(false);
   };
   const remove = (val: string) => onChange(values.filter((x) => x !== val));
+
+  // Editable-chip helpers: replace a chip's value in place (dedup), and suggest tags for editing one chip
+  // (its own value excluded so a suggestion doesn't just re-pick it, other chips excluded to avoid dupes).
+  const replaceValue = (old: string, next: string) => onChange(replaceChipValue(values, old, next));
+  const editSuggestions = (excluded: string) => (q: string) => {
+    if (!options.length) return [];
+    const others = new Set(values.filter((v) => v !== excluded).map((v) => v.toLowerCase()));
+    return rankTagSuggestions(options.filter((o) => !others.has(o.toLowerCase())), q, 8);
+  };
+  const renderChip = (v: string) => (editable
+    ? <EditableChip key={v} value={v} sortable={reorderable} onRemove={remove} onCommit={(next) => replaceValue(v, next)} getSuggestions={options.length ? editSuggestions(v) : undefined} />
+    : reorderable ? <SortableChip key={v} id={v} onRemove={remove} /> : <Chip key={v} label={v} onRemove={remove} />);
 
   // Single mode: commit replaces the value (empty ⇒ []); typing writes through immediately (free text).
   const commit = (val: string) => {
@@ -147,10 +170,10 @@ export function TokenAutocomplete({ values, onChange, options, placeholder, open
         {!single && (reorderable ? (
           <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
             <SortableContext items={values} strategy={rectSortingStrategy}>
-              {values.map((v) => <SortableChip key={v} id={v} onRemove={remove} />)}
+              {values.map(renderChip)}
             </SortableContext>
           </DndContext>
-        ) : values.map((v) => <Chip key={v} label={v} onRemove={remove} />))}
+        ) : values.map(renderChip))}
         <input
           value={single ? query : text}
           onChange={(e) => (single ? handleSingleInput(e.target.value) : handleInput(e.target.value))}
@@ -162,24 +185,7 @@ export function TokenAutocomplete({ values, onChange, options, placeholder, open
         />
       </div>
       {open && suggestions.length > 0 && (
-        <div
-          // Keep focus on the input when the mousedown lands on the list itself (its scrollbar/padding)
-          // rather than a suggestion, so dragging the scrollbar doesn't blur-close the dropdown.
-          onMouseDown={(e) => { if (e.target === e.currentTarget) e.preventDefault(); }}
-          className="absolute z-50 mt-1 w-full min-w-[180px] max-h-56 overflow-y-auto rounded-md border bg-popover p-1 text-popover-foreground shadow-md"
-        >
-          {suggestions.map((s, i) => (
-            <button
-              type="button"
-              key={s}
-              onMouseDown={(e) => { e.preventDefault(); commit(s); }}
-              onMouseEnter={() => setActive(i)}
-              className={`flex w-full items-center rounded-sm px-2 py-1.5 text-sm text-left ${i === active ? "bg-accent text-accent-foreground" : ""}`}
-            >
-              {s}
-            </button>
-          ))}
-        </div>
+        <SuggestionList items={suggestions} active={active} onPick={commit} onHover={setActive} className="w-full min-w-[180px]" />
       )}
     </div>
   );

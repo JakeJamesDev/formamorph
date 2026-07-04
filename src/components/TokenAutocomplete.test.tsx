@@ -108,6 +108,50 @@ describe('TokenAutocomplete', () => {
     expect(screen.queryByRole('button', { name: 'Castle' })).not.toBeInTheDocument(); // already selected
   });
 
+  it('ranks suggestions by input (popularity) order with preserveOrder, alphabetically without', async () => {
+    const user = userEvent.setup();
+    const ranked = ['blue', 'black', 'blonde']; // popularity order, deliberately non-alphabetical
+    const names = () => screen.getAllByRole('button').map((b) => b.textContent);
+
+    const { unmount } = render(
+      <TokenAutocomplete values={[]} onChange={() => {}} options={ranked} preserveOrder placeholder="tag…" />,
+    );
+    await user.type(screen.getByRole('textbox'), 'bl');
+    expect(names()).toEqual(['blue', 'black', 'blonde']); // input order kept
+    unmount();
+
+    render(<TokenAutocomplete values={[]} onChange={() => {}} options={ranked} placeholder="tag…" />);
+    await user.type(screen.getByRole('textbox'), 'bl');
+    expect(names()).toEqual(['black', 'blonde', 'blue']); // default: alphabetical
+  });
+
+  it('edits a chip in place on double-click when editable (order kept)', async () => {
+    const user = userEvent.setup();
+    const onChange = vi.fn();
+    render(
+      <TokenAutocomplete values={['blue', 'red']} onChange={onChange} options={[]} reorderable editable placeholder="tag…" />,
+    );
+    await user.dblClick(screen.getByText('blue'));
+    const input = screen.getByLabelText('Edit blue');
+    await user.clear(input);
+    await user.type(input, 'green{Enter}');
+    expect(onChange).toHaveBeenCalledWith(['green', 'red']); // replaced in place
+  });
+
+  it('offers autocomplete while editing an editable chip', async () => {
+    const user = userEvent.setup();
+    const onChange = vi.fn();
+    render(
+      <TokenAutocomplete values={['blue']} onChange={onChange} options={['blonde hair', 'blue eyes']} reorderable editable preserveOrder placeholder="tag…" />,
+    );
+    await user.dblClick(screen.getByText('blue'));
+    const input = screen.getByLabelText('Edit blue');
+    await user.clear(input);
+    await user.type(input, 'blo');
+    await user.click(screen.getByText('blonde hair'));
+    expect(onChange).toHaveBeenCalledWith(['blonde hair']);
+  });
+
   describe('single mode', () => {
     it('shows the value in the input (no chip) and replaces it when a suggestion is picked', async () => {
       const user = userEvent.setup();

@@ -1,6 +1,8 @@
 import { useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { Textarea } from '@/components/ui/textarea';
-import { loadDanbooruTags } from '@/lib/danbooruTags';
+import { SuggestionList } from '@/components/SuggestionList';
+import { useDanbooruTags } from '@/lib/useDanbooruTags';
+import { rankTagSuggestions } from '@/lib/tagSuggest';
 
 const SUGGESTION_LIMIT = 10;
 const MIN_QUERY = 1; // require at least one typed character before suggesting (an empty tag shows nothing)
@@ -32,8 +34,8 @@ export function TagAutocomplete({ value, onChange, placeholder, id, rows }: {
 }) {
   const textareaRef = useRef<HTMLTextAreaElement | null>(null);
   const pendingSelectionRef = useRef<{ start: number; end: number } | null>(null);
-  const loadedRef = useRef(false);
-  const [options, setOptions] = useState<string[]>([]);
+  const [everFocused, setEverFocused] = useState(false); // defer the fetch until the field is first used
+  const options = useDanbooruTags(everFocused);
   const [caret, setCaret] = useState(0);
   const [open, setOpen] = useState(false);
   const [active, setActive] = useState(0);
@@ -42,15 +44,7 @@ export function TagAutocomplete({ value, onChange, placeholder, id, rows }: {
     if (!options.length) return [];
     const q = activeToken(value, caret).token.trim().toLowerCase();
     if (q.length < MIN_QUERY) return []; // empty token ⇒ nothing until a character is typed
-    const starts: string[] = [];
-    const contains: string[] = [];
-    for (const o of options) {
-      const lo = o.toLowerCase();
-      if (lo.startsWith(q)) starts.push(o);
-      else if (lo.includes(q)) contains.push(o);
-      if (starts.length >= SUGGESTION_LIMIT) break; // enough prefix hits; skip the rest
-    }
-    return [...starts, ...contains].slice(0, SUGGESTION_LIMIT); // both already in popularity order
+    return rankTagSuggestions(options, q, SUGGESTION_LIMIT);
   }, [options, value, caret]);
 
   // Restore the caret after a programmatic insert (the value is controlled, so set it post-render).
@@ -62,12 +56,6 @@ export function TagAutocomplete({ value, onChange, placeholder, id, rows }: {
     node.focus();
     node.setSelectionRange(pending.start, pending.end);
   });
-
-  const focusLoad = () => {
-    if (loadedRef.current) return;
-    loadedRef.current = true;
-    loadDanbooruTags().then(setOptions).catch(() => { /* offline/SFW build: no suggestions */ });
-  };
 
   const select = (tag: string) => {
     const node = textareaRef.current;
@@ -112,27 +100,12 @@ export function TagAutocomplete({ value, onChange, placeholder, id, rows }: {
         placeholder={placeholder}
         onChange={(e) => { onChange(e.target.value); setCaret(e.target.selectionStart ?? 0); setActive(0); setOpen(true); }}
         onSelect={(e) => setCaret((e.target as HTMLTextAreaElement).selectionStart ?? 0)}
-        onFocus={() => { focusLoad(); setOpen(true); }}
+        onFocus={() => { setEverFocused(true); setOpen(true); }}
         onBlur={() => setTimeout(() => setOpen(false), 100)}
         onKeyDown={onKeyDown}
       />
       {open && suggestions.length > 0 && (
-        <div
-          onMouseDown={(e) => { if (e.target === e.currentTarget) e.preventDefault(); }}
-          className="absolute z-50 mt-1 w-full max-h-56 overflow-y-auto rounded-md border bg-popover p-1 text-popover-foreground shadow-md"
-        >
-          {suggestions.map((s, i) => (
-            <button
-              type="button"
-              key={s}
-              onMouseDown={(e) => { e.preventDefault(); select(s); }}
-              onMouseEnter={() => setActive(i)}
-              className={`flex w-full items-center rounded-sm px-2 py-1.5 text-sm text-left ${i === active ? 'bg-accent text-accent-foreground' : ''}`}
-            >
-              {s}
-            </button>
-          ))}
-        </div>
+        <SuggestionList items={suggestions} active={active} onPick={select} onHover={setActive} className="w-full" />
       )}
     </div>
   );
