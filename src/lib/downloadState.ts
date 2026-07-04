@@ -1,4 +1,4 @@
-/** Contextual state of a Discover world's download button, derived by comparing the server's live
+/** Contextual state of a community world's download button, derived by comparing the server's live
  *  `updated_at` against the source version(s) of the local copies the user already holds. */
 export type DownloadState = 'none' | 'refresh' | 'update';
 

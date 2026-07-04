@@ -14,7 +14,7 @@ export const sanitizeTag = (tag: string): string =>
 /**
  * Unique, sanitized tags across the given worlds' tag lists, sorted alphabetically; optionally
  * excluding already-sanitized `hidden` tags. Casing/spacing/punctuation variants collapse into one
- * entry. Shared by the Discover filter and the world-editor tag autocomplete.
+ * entry. Shared by the community browser filter and the world-editor tag autocomplete.
  */
 export const collectSanitizedTags = (
   tagLists: Iterable<readonly string[] | undefined>,

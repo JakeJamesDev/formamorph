@@ -227,7 +227,7 @@ export interface WorldMetadata {
   createdAt?: string;
   lastAccessed?: string;
   tags?: string[];
-  /** Server `_id` of the Discover world this local copy was downloaded from, if any. */
+  /** Server `_id` of the community world this local copy was downloaded from, if any. */
   sourceId?: string;
   /** True if a downloaded world has been edited locally and so diverges from its source. */
   dirty?: boolean;

@@ -6,7 +6,7 @@ const STORAGE_KEY = "FORMAMORPH_readmeHiddenWorlds";
  * Per-world "show README on entry" flag, defaulting to true. Backs both checkboxes that control it —
  * the main-menu "Show Readme" (writes the flag directly) and the in-game "Don't Show This Again" (writes
  * its inverse) — off a single stored value so they stay in sync. Only the hidden world ids are persisted
- * (absent ⇒ shown), mirroring the Discover `hiddenWorldIds` pattern.
+ * (absent ⇒ shown), mirroring the community browser `hiddenWorldIds` pattern.
  */
 export function useReadmeVisibility() {
   const [hidden, setHidden] = useState<string[]>(() => {

@@ -6,7 +6,7 @@ import { COMMUNITY_ENABLED } from "@/lib/featureFlags";
 import { type WorldRecord } from "@/components/WorldDetails";
 
 /**
- * Owns the Discover catalog: the cached list of published worlds plus its loading/syncing flags.
+ * Owns the community catalog: the cached list of published worlds plus its loading/syncing flags.
  * On `open` it renders the cached copy instantly, then refreshes the whole catalog from the server in
  * the background (one request) and re-caches it. `setRemoteWorlds` is exposed so callers can drop a
  * world locally (e.g. after deleting it on the server) without a full re-sync.
@@ -41,7 +41,7 @@ export function useCatalogSync(open: boolean) {
     }
   };
 
-  // Load the world catalog when Discover opens (never in the hosted build — no remote server).
+  // Load the world catalog when the community browser opens (never in the hosted build — no remote server).
   useEffect(() => {
     if (open && COMMUNITY_ENABLED) {
       loadCatalog();

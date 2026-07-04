@@ -11,7 +11,7 @@ export interface StoredWorldRecord {
   description?: string;
   author?: string;
   thumbnail?: string;
-  /** Server `_id` of the Discover world this was downloaded from, if any. Local-only wrapper field:
+  /** Server `_id` of the community world this was downloaded from, if any. Local-only wrapper field:
    *  never part of `data`, so it isn't published or exported with the world content. Sticky: it
    *  survives edits (storeWorld preserves it) so the download link persists; only delete removes it. */
   sourceId?: string;
@@ -51,7 +51,7 @@ interface PublishableWorld {
   [key: string]: unknown;
 }
 
-/** Singleton owning local world persistence (IndexedDB `worldsDB`/`worlds`) and Discover server calls
+/** Singleton owning local world persistence (IndexedDB `worldsDB`/`worlds`) and community server calls
  *  (fetch/publish/comments). Default-exported as one shared instance; the constructor kicks off DB init. */
 class WorldStorageService {
   dbName: string;
@@ -177,7 +177,7 @@ class WorldStorageService {
   }
 
   /** Upsert a world by `id`, read-merging sticky local-only fields (`sourceId`, `dirty`, `createdAt`, etc.)
-   *  so the Discover download link and creation stamp survive edits; throws on missing required fields. */
+   *  so the community download link and creation stamp survive edits; throws on missing required fields. */
   async storeWorld(world: StoredWorldRecord) {
     await this.ensureInitialized();
 
@@ -289,7 +289,7 @@ class WorldStorageService {
     await promisifyRequest(store.delete(worldId));
   }
 
-  /** Fetch a page of Discover worlds with optional search/sort; `ownedOnly` switches to the caller's own
+  /** Fetch a page of community worlds with optional search/sort; `ownedOnly` switches to the caller's own
    *  worlds and requires auth. Never throws — errors resolve to `{success:false, error, data:[]}`. */
   async fetchRemoteWorlds(page = 1, limit = 10, search = '', ownedOnly = false, searchByAuthor = false, sort = '', order = 'desc') {
     try {
@@ -403,7 +403,7 @@ class WorldStorageService {
     }
   }
 
-  /** Publish a world to Discover: `PUT` updates when `worldId` is given, else `POST` creates. Requires
+  /** Publish a world to the community server: `PUT` updates when `worldId` is given, else `POST` creates. Requires
    *  auth; rethrows on failure. */
   async publishWorld(worldData: PublishableWorld, worldId: string | null = null) {
     if (!AuthService.isAuthenticated()) {
