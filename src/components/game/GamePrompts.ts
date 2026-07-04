@@ -75,9 +75,9 @@ export const defaultStatUpdatesUserPrompt = `Narration: <NARRATION>
 
 Output only the stat-change lines now - each a stat name, a colon, and a whole-number change (not a value). Or nothing. No prose.`;
 
-export const defaultLocationChangeUserPrompt = `Narration: <NARRATION>
+export const defaultLocationChangeUserPrompt = `The player character's action this turn ("I" = the player character): <PLAYER ACTION>
 
-Reply now with only a location name from the list, or NONE. No story, no prose.`;
+Reply with only a destination name from the list, or NONE.`;
 
 export const defaultSummaryUserPrompt = `The player's action this turn: <PLAYER ACTION>
 
@@ -151,34 +151,15 @@ Current readings, so you know each stat's level - output only the CHANGE this tu
 - Only include stats that actually change this turn. If nothing changes, output nothing at all.
 - Begin your reply with the first stat line (or nothing) - never a preamble, heading, or explanation.`;
 
-export const defaultLocationChangePrompt = `You are the location router for an interactive roleplay. Your entire output is a single location name or the word NONE - nothing else.
-
-## Game World
-<WORLD DESCRIPTION>
+export const defaultLocationChangePrompt = `You are the location router for an interactive roleplay - from the player character's stated action alone, you decide whether they are moving to a new place. You never act in the story; the action's "I" is the player character, never you.
 
 ## Current Location
-<LOCATION|markdown>
+<LOCATION|summary.markdown>
 
-## Sublocations
-<SUBLOCATIONS|summary.markdown>
+## Where The Player Can Go
+<DESTINATIONS|summary.markdown>
 
-## Reachable Locations
-<REACHABLE LOCATIONS|summary.markdown>
-
-## Characters and things that may appear in this location
-<ENTITIES|markdown>
-
-## Characters and things that may appear in a sub-location
-<SUBLOCATION ENTITIES|markdown>
-
-## Characters and things that may appear in a reachable location
-<REACHABLE ENTITIES|summary.markdown>
-
-## Available Locations
-<LOCATION|list.markdown>
-
-If the events clearly indicate the player has moved or should move, output ONLY the exact destination name copied from the Available Locations list. Otherwise output exactly: NONE
-Begin your reply with the name or NONE - never a preamble, reasoning, punctuation, or any other text. Do not invent a location.`;
+Output a destination's exact name from the list above only if the player character's action is going to, entering, heading for, or travelling to that place. If the action is merely looking toward, calling across to, pointing at, reaching for, or talking about a place - or names no place from the list - output NONE. Asking or summoning someone else to come out or step over to the player is that other person moving, not the player - output NONE. Reply with only the name or NONE, nothing else.`;
 
 // System prompt for the optional "separate planning pass" (thinkingMode === 'precall'). Produces a
 // short plan that is injected into the game-text request; the player never sees it.

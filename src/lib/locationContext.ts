@@ -161,6 +161,54 @@ export function buildSublocationEntitiesContext(
   return buildEntityContext({ id: current.id, name: current.name, entities: ids }, entities, opts);
 }
 
+/**
+ * The places the player can move to from the current location — the **local navigable graph**: the union of
+ * its authored `connections` (resolved by name), its direct sub-locations, and its reachable siblings.
+ * Deduped by id, current excluded, dangling connection names skipped. This is the location router's whole
+ * world: the only candidates fed to the model and the only names its reply is matched against.
+ */
+export function navigableDestinations(
+  current: LocationWithEntities,
+  locations: GameLocation[],
+): GameLocation[] {
+  if (!current) return [];
+  const byLowerName = new Map(locations.map((l) => [l.name.toLowerCase(), l]));
+  const out = new Map<string, GameLocation>();
+  const add = (loc?: GameLocation) => {
+    if (loc && loc.id !== current.id) out.set(loc.id, loc);
+  };
+  for (const name of current.connections ?? []) add(byLowerName.get(name.toLowerCase().trim()));
+  for (const child of locations.filter((l) => (l.parentId ?? null) === current.id)) add(child);
+  for (const sib of reachableSiblings(current as GameLocation, locations)) add(sib);
+  return [...out.values()];
+}
+
+/**
+ * Serialize the current location's navigable destinations for the `<DESTINATIONS>` chip — one line per
+ * place (`name: <summary>` / `- **name:** <summary>`), the summary chosen like the other builders.
+ * Returns `N/A` when the location is null or nothing is reachable.
+ */
+export function buildDestinationsContext(
+  current: LocationWithEntities,
+  locations: GameLocation[],
+  opts: { preferSummary?: boolean; format?: "simple" | "markdown" } = {},
+): string {
+  if (!current) return NONE_PLACEHOLDER;
+  const dests = navigableDestinations(current, locations);
+  if (dests.length === 0) return NONE_PLACEHOLDER;
+
+  const { preferSummary = false, format = "simple" } = opts;
+  const md = format === "markdown";
+  let output = "";
+  for (const dest of dests) {
+    const desc = pickDescription(preferSummary, dest.aiSummary, dest.aiDescription);
+    const hasDesc = !!desc && desc.trim() !== "";
+    if (md) output += hasDesc ? `- **${dest.name}:** ${desc}\n` : `- **${dest.name}**\n`;
+    else output += hasDesc ? `${dest.name}: ${desc}\n` : `${dest.name}\n`;
+  }
+  return output;
+}
+
 /** The current location's reachable **siblings** — other children of the same non-null parent. */
 function reachableSiblings(current: GameLocation, locations: GameLocation[]): GameLocation[] {
   const parent = current.parentId ?? null;

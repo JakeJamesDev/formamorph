@@ -7,7 +7,7 @@ export const HIGHLIGHT_PALETTE = [
   "#ddd6fe", "#fed7aa", "#a5f3fc", "#fecaca",
   "#d9f99d", "#99f6e4", "#fecdd3", "#e9d5ff",
   "#c7d2fe", "#f9a8d4", "#93c5fd",
-  "#fdba74", "#5eead4",
+  "#fdba74", "#5eead4", "#f0abfc",
 ];
 
 export interface HighlightRule {

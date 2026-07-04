@@ -96,6 +96,15 @@ const REACHABLE_ENTITY_CONTENT_AXIS: PromptVariantAxis = {
   ],
 };
 
+const DESTINATION_CONTENT_AXIS: PromptVariantAxis = {
+  id: 'content',
+  label: 'Content',
+  options: [
+    { id: null, label: 'Full', help: 'Each reachable destination in full detail.' },
+    SUMMARY_VARIANT,
+  ],
+};
+
 // Shared "how the block is shaped" axis (mirrors the Default/Simple presets): Simple = plain text; Default =
 // markdown. The labels-style preset strips this axis back to plain (see sectionStyle `stripChipFormat`).
 const FORMAT_AXIS: PromptVariantAxis = {
@@ -133,6 +142,8 @@ const SUBLOCATION_ENTITIES: PromptVariable = { token: '<SUBLOCATION ENTITIES>', 
 // Sibling locations under the same parent (reachable from here) and the characters/things in them.
 const REACHABLE_LOCATIONS: PromptVariable = { token: '<REACHABLE LOCATIONS>', label: 'Reachable Locations', color: HIGHLIGHT_PALETTE[15], axes: [REACHABLE_LOCATION_CONTENT_AXIS, FORMAT_AXIS] };
 const REACHABLE_ENTITIES: PromptVariable = { token: '<REACHABLE ENTITIES>', label: 'Reachable Entities', color: HIGHLIGHT_PALETTE[16], axes: [REACHABLE_ENTITY_CONTENT_AXIS, FORMAT_AXIS] };
+// The places reachable from here (connections + sub-locations + reachable siblings) — the location router's candidate set.
+const DESTINATIONS: PromptVariable = { token: '<DESTINATIONS>', label: 'Destinations', color: HIGHLIGHT_PALETTE[17], axes: [DESTINATION_CONTENT_AXIS, FORMAT_AXIS] };
 // The activated-dictionary lore for the turn — supplied by GameViewer per turn (narration prompt only).
 const DICTIONARY: PromptVariable = { token: '<DICTIONARY>', label: 'Dictionary', color: HIGHLIGHT_PALETTE[11] };
 // Runtime value-token for the staged character pass — the name of the character whose motivation is being written.
@@ -148,11 +159,11 @@ export const SUBJECT: PromptVariable = { token: '<SUBJECT>', label: 'Subject', c
 
 /** All known variables — used by the parser to recognize any token regardless of which prompt it's in. */
 export const ALL_PROMPT_VARIABLES: PromptVariable[] = [
-  WORLD, STATS, TRAITS, LOCATION, ENTITIES, SUBLOCATIONS, SUBLOCATION_ENTITIES, REACHABLE_LOCATIONS, REACHABLE_ENTITIES, NOTES, DICTIONARY, LENGTH, MARKDOWN, PLAYER_ACTION, NARRATION, CHARACTER, SUBJECT,
+  WORLD, STATS, TRAITS, LOCATION, ENTITIES, SUBLOCATIONS, SUBLOCATION_ENTITIES, REACHABLE_LOCATIONS, REACHABLE_ENTITIES, DESTINATIONS, NOTES, DICTIONARY, LENGTH, MARKDOWN, PLAYER_ACTION, NARRATION, CHARACTER, SUBJECT,
 ];
 
 /** The context chips every system prompt can reference; GameViewer substitutes them uniformly. */
-const CONTEXT_VARS: PromptVariable[] = [WORLD, STATS, TRAITS, LOCATION, SUBLOCATIONS, REACHABLE_LOCATIONS, ENTITIES, SUBLOCATION_ENTITIES, REACHABLE_ENTITIES, NOTES];
+const CONTEXT_VARS: PromptVariable[] = [WORLD, STATS, TRAITS, LOCATION, SUBLOCATIONS, REACHABLE_LOCATIONS, ENTITIES, SUBLOCATION_ENTITIES, REACHABLE_ENTITIES, DESTINATIONS, NOTES];
 
 /** Which variables each prompt's toolbar offers. Every kind gets the shared context chips (even when its
  *  default text doesn't use them); some add their own extras (narration's length/markdown, character's name). */
