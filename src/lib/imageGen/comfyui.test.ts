@@ -1,4 +1,4 @@
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, vi, afterEach } from 'vitest';
 import {
   DEFAULT_COMFY_WORKFLOW,
   buildComfyGraph,
@@ -6,6 +6,7 @@ import {
   viewUrl,
   decodePreviewFrame,
   toComfySampler,
+  fetchComfyMeta,
 } from './comfyui';
 import type { ImageGenParams } from './types';
 
@@ -102,5 +103,33 @@ describe('decodePreviewFrame', () => {
     new DataView(buf).setUint32(0, 3); // TEXT event
     expect(decodePreviewFrame(buf)).toBeUndefined();
     expect(decodePreviewFrame(new ArrayBuffer(4))).toBeUndefined();
+  });
+});
+
+describe('fetchComfyMeta', () => {
+  afterEach(() => vi.unstubAllGlobals());
+
+  it('parses checkpoint/sampler/scheduler enums from /object_info', async () => {
+    const responses: Record<string, unknown> = {
+      CheckpointLoaderSimple: {
+        CheckpointLoaderSimple: { input: { required: { ckpt_name: [['a.safetensors', 'b.safetensors'], {}] } } },
+      },
+      KSampler: {
+        KSampler: { input: { required: { sampler_name: [['euler', 'euler_ancestral'], {}], scheduler: [['normal', 'karras'], {}] } } },
+      },
+    };
+    vi.stubGlobal('fetch', vi.fn(async (url: string) => {
+      const node = url.split('/object_info/')[1];
+      return { ok: true, json: async () => responses[node] } as Response;
+    }));
+    const meta = await fetchComfyMeta('http://127.0.0.1:8188/');
+    expect(meta.checkpoints).toEqual(['a.safetensors', 'b.safetensors']);
+    expect(meta.samplers).toEqual(['euler', 'euler_ancestral']);
+    expect(meta.schedulers).toEqual(['normal', 'karras']);
+  });
+
+  it('throws when the server responds with an error', async () => {
+    vi.stubGlobal('fetch', vi.fn(async () => ({ ok: false, status: 403 } as Response)));
+    await expect(fetchComfyMeta('http://127.0.0.1:8188')).rejects.toThrow(/403/);
   });
 });

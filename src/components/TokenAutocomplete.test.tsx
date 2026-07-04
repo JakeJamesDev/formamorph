@@ -107,4 +107,32 @@ describe('TokenAutocomplete', () => {
     expect(screen.getByRole('button', { name: 'Caverns' })).toBeInTheDocument();
     expect(screen.queryByRole('button', { name: 'Castle' })).not.toBeInTheDocument(); // already selected
   });
+
+  describe('single mode', () => {
+    it('shows the value in the input (no chip) and replaces it when a suggestion is picked', async () => {
+      const user = userEvent.setup();
+      const onChange = vi.fn();
+      render(<TokenAutocomplete single openOnFocus values={['Castle']} onChange={onChange} options={options} />);
+      // The value is the input text, not a removable chip.
+      expect(screen.getByRole('textbox')).toHaveValue('Castle');
+      expect(screen.queryByRole('button', { name: 'Remove Castle' })).not.toBeInTheDocument();
+      // A committed value opens the full list so you can switch; picking one replaces (not appends).
+      await user.click(screen.getByRole('textbox'));
+      await user.click(screen.getByRole('button', { name: 'Dragon' }));
+      expect(onChange).toHaveBeenCalledWith(['Dragon']);
+    });
+
+    it('passes free text straight through and clears to an empty array', async () => {
+      const user = userEvent.setup();
+      const onChange = vi.fn();
+      const { rerender } = render(
+        <TokenAutocomplete single values={[]} onChange={onChange} options={options} placeholder="euler" />,
+      );
+      await user.type(screen.getByRole('textbox'), 'z');
+      expect(onChange).toHaveBeenLastCalledWith(['z']);
+      rerender(<TokenAutocomplete single values={['z']} onChange={onChange} options={options} placeholder="euler" />);
+      await user.clear(screen.getByRole('textbox'));
+      expect(onChange).toHaveBeenLastCalledWith([]);
+    });
+  });
 });
