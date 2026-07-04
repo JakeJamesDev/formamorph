@@ -50,6 +50,7 @@ import { PublishModal } from "@/components/menu/PublishModal";
 import { COMMUNITY_ENABLED } from "@/lib/featureFlags";
 import { Checkbox } from "@/components/ui/checkbox";
 import { useReadmeVisibility } from "@/lib/useReadmeVisibility";
+import PatreonIcon from "@/components/PatreonIcon";
 
 interface MainMenuProps {
   onStartGame: (traits: string[], characterData: CharacterData | null, isNewGame?: boolean, startingLocationId?: string | null) => void;
@@ -530,6 +531,11 @@ const MainMenu = ({ onStartGame, onOpenWorldEditor }: MainMenuProps) => {
         v{APP_VERSION}
       </span>
 
+      {/* Copyright */}
+      <span className="fixed bottom-2 left-1/2 -translate-x-1/2 z-10 text-xs text-muted-foreground/60 select-none pointer-events-none whitespace-nowrap">
+        © 2026 Jake James
+      </span>
+
       {/* Top-left controls: local-world layout selector (styled like the settings tabs) */}
       <div className="fixed top-4 left-4 z-10">
         <Tabs value={layoutMode} onValueChange={(v) => setLayoutMode(v as 'grid' | 'detailed')}>
@@ -993,16 +999,27 @@ const MainMenu = ({ onStartGame, onOpenWorldEditor }: MainMenuProps) => {
       {/* Manage Users Dialog — list/paging/fetch live in the component */}
       <ManageUsersDialog open={showManageUsersDialog} onOpenChange={setShowManageUsersDialog} />
 
-      {/* GitHub floating button */}
-      <a
-        href="https://github.com/JakeJamesDev/formamorph"
-        target="_blank"
-        rel="noopener noreferrer"
-        className="fixed bottom-4 right-4 p-3 bg-gray-800 text-white rounded-full shadow-lg hover:bg-gray-700 transition-colors"
-        aria-label="GitHub Repository"
-      >
-        <Github className="h-6 w-6" />
-      </a>
+      {/* Floating social buttons */}
+      <div className="fixed bottom-4 right-4 flex items-center gap-3">
+        <a
+          href="https://www.patreon.com/JakeJamesNSFW"
+          target="_blank"
+          rel="noopener noreferrer"
+          className="p-3 bg-gray-800 text-white rounded-full shadow-lg hover:bg-gray-700 transition-colors"
+          aria-label="Patreon"
+        >
+          <PatreonIcon className="h-6 w-6" />
+        </a>
+        <a
+          href="https://github.com/JakeJamesDev/formamorph"
+          target="_blank"
+          rel="noopener noreferrer"
+          className="p-3 bg-gray-800 text-white rounded-full shadow-lg hover:bg-gray-700 transition-colors"
+          aria-label="GitHub Repository"
+        >
+          <Github className="h-6 w-6" />
+        </a>
+      </div>
     </div>
   );
 };

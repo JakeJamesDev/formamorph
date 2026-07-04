@@ -16,9 +16,10 @@ import { defaultSystemPrompt, defaultChoicesPrompt, defaultStatUpdatesPrompt, de
 import VramReadout from '../game/VramReadout';
 import { useVramStats } from '@/lib/useVramStats';
 import { isDesktop } from '@/lib/imageGen/desktop';
-import { fetchComfyMeta, type ComfyMeta } from '@/lib/imageGen/comfyui';
+import { fetchComfyMeta, DEFAULT_COMFY_WORKFLOW, type ComfyMeta } from '@/lib/imageGen/comfyui';
 import { TokenAutocomplete } from '@/components/TokenAutocomplete';
 import ImageSetupGuide from './ImageSetupGuide';
+import ComfyWorkflowGuide from './ComfyWorkflowGuide';
 import { DEFAULT_TAG_PROMPT, SUBJECT_GUIDANCE } from '@/lib/imagePrompt';
 
 // Segmented-control options: a short tab label plus the helper text shown below the selected one.
@@ -243,6 +244,7 @@ export const SettingsModal = ({ isOpen, onOpenChange, previewValues }: {
   // when the server isn't up (it's fast and optional — free text still works).
   const [comfyMeta, setComfyMeta] = useState<ComfyMeta | null>(null);
   const [showImageSetup, setShowImageSetup] = useState(false);
+  const [showComfyWorkflow, setShowComfyWorkflow] = useState(false);
   useEffect(() => {
     if (imageProvider !== 'comfyui') return;
     let cancelled = false;
@@ -724,16 +726,6 @@ export const SettingsModal = ({ isOpen, onOpenChange, previewValues }: {
                   <Button variant="outline" size="sm" onClick={() => setShowImageSetup(true)}>How to Set Up</Button>
                 </div>
               </div>
-              <div className="grid grid-cols-[1fr_3fr] gap-4">
-                <div />
-                <p className="text-xs text-muted-foreground">
-                  {imageProvider === 'a1111'
-                    ? 'Launch the WebUI with --api --cors-allow-origins=<this app’s origin> so the browser can reach it.'
-                    : imageProvider === 'comfyui'
-                    ? 'Launch ComfyUI with --enable-cors-header (append it to your run_*.bat) so the browser can reach it. Default port 8188; add TLS (--tls-keyfile/--tls-certfile) to use it from the hosted https site. The workflow below is filled via %tokens%.'
-                    : 'Cloud image APIs are proxied through the Formamorph desktop app (they can’t be called from a browser). Your key stays on your machine.'}
-                </p>
-              </div>
               <div className="grid grid-cols-[1fr_3fr] items-center gap-4">
                 <label htmlFor="imageEndpoint" className="text-right">Endpoint URL</label>
                 <Input id="imageEndpoint" value={imageEndpoint} onChange={(e) => setImageEndpoint(e.target.value)} placeholder="http://127.0.0.1:7860" />
@@ -835,12 +827,22 @@ export const SettingsModal = ({ isOpen, onOpenChange, previewValues }: {
                       spellCheck={false}
                       className="min-h-[200px] font-mono text-xs"
                     />
+                    <div className="flex gap-2 justify-between">
+                      <Button variant="outline" size="sm" onClick={() => setShowComfyWorkflow(true)}>How to get this</Button>
+                      <ConfirmDialog
+                        title="Reset Workflow"
+                        description="Reset the ComfyUI workflow to the default graph? Your custom workflow will be lost."
+                        onConfirm={() => setImageWorkflow(DEFAULT_COMFY_WORKFLOW)}
+                      >
+                        <Button variant="outline" size="sm" disabled={imageWorkflow === DEFAULT_COMFY_WORKFLOW}>
+                          Reset to default
+                        </Button>
+                      </ConfirmDialog>
+                    </div>
                     <p className="text-xs text-muted-foreground">
-                      Paste ComfyUI’s <em>Save (API Format)</em> export, keeping these tokens where values go:
+                      Tokens Formamorph fills in:
                       {' '}<code>%prompt%</code> <code>%negative%</code> <code>%ckpt%</code> <code>%width%</code>{' '}
                       <code>%height%</code> <code>%steps%</code> <code>%cfg%</code> <code>%seed%</code> <code>%sampler%</code>.
-                      The Model field is the checkpoint (<code>%ckpt%</code>); the Sampler accepts a ComfyUI name (e.g. <code>euler</code>) or a common A1111 name (auto-mapped).
-                      Reset the preset to restore the default graph.
                     </p>
                   </div>
                 </div>
@@ -1126,6 +1128,7 @@ export const SettingsModal = ({ isOpen, onOpenChange, previewValues }: {
       </DialogContent>
     </Dialog>
     <ImageSetupGuide provider={imageProvider} open={showImageSetup} onOpenChange={setShowImageSetup} />
+    <ComfyWorkflowGuide open={showComfyWorkflow} onOpenChange={setShowComfyWorkflow} />
     </>
   );
 };
