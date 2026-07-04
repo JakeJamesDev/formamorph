@@ -4,7 +4,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { MultiSelect } from "@/components/ui/multi-select";
-import GenerateSummaryButton from "@/components/GenerateSummaryButton";
+import AiFieldToolbar from "@/components/AiFieldToolbar";
 import { ImageUpload, ModelUpload } from '../lib/UtilityComponents';
 import { IMAGE_CAPS } from '../lib/imageOptim';
 import { GenerateImageButton } from '../components/GenerateImageButton';
@@ -72,10 +72,11 @@ const EntityManager = ({ entity }: { entity: Entity }) => {
       <div className="space-y-2">
         <div className="flex items-center justify-between">
           <Label>AI-Facing Summary</Label>
-          <GenerateSummaryButton
+          <AiFieldToolbar
+            mode="summary"
             source={editingEntity.aiDescription}
-            current={editingEntity.aiSummary}
-            onGenerated={(s) => handleChange('aiSummary', s)}
+            value={editingEntity.aiSummary}
+            onChange={(s) => handleChange('aiSummary', s)}
           />
         </div>
         <Textarea
@@ -113,10 +114,28 @@ const EntityManager = ({ entity }: { entity: Entity }) => {
           value={editingEntity.image}
           cap={IMAGE_CAPS.entity}
         />
+        <div className="flex items-center justify-between">
+          <Label>Image Tags</Label>
+          <AiFieldToolbar
+            mode="tags"
+            name={editingEntity.name}
+            kind="character"
+            source={editingEntity.aiDescription || editingEntity.playerDescription}
+            value={editingEntity.imageTags}
+            onChange={(t) => handleChange('imageTags', t)}
+          />
+        </div>
+        <Textarea
+          value={editingEntity.imageTags || ''}
+          onChange={(e) => handleChange('imageTags', e.target.value)}
+          placeholder="booru tags, comma separated"
+        />
         <GenerateImageButton
           subject={{ name: editingEntity.name || '', description: editingEntity.aiDescription || editingEntity.playerDescription || '', kind: 'character' }}
           cap={IMAGE_CAPS.entity}
           onChange={(file) => handleChange('image', file)}
+          tags={editingEntity.imageTags ?? ''}
+          onTagsChange={(t) => handleChange('imageTags', t)}
         />
       </div>
       {/* <div className="space-y-2">

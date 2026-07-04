@@ -137,7 +137,7 @@ src/
 
 ## 📄 License
 
-Licensed under the **[PolyForm Noncommercial License 1.0.0](LICENSE)** © 2025–2026 JakeJamesDev.
+Licensed under the **[PolyForm Noncommercial License 1.0.0](LICENSE)** © 2026 JakeJamesDev.
 
 You're free to **use, modify, and share** Formamorph for any **noncommercial** purpose (personal use, hobby projects, research, and use by nonprofits/educational/government bodies all count). **Commercial use requires a separate license** — reach out if you need one.
 

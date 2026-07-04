@@ -100,6 +100,8 @@ export interface Entity {
   /** Short description sent to the AI where the full one is too long. */
   aiSummary?: string;
   image?: Base64Data;
+  /** Booru tags used for AI image generation; editor-only, not sent to the narrative AI. */
+  imageTags?: string;
   sound?: MediaAsset;
   model?: MediaAsset;
 }
@@ -117,6 +119,8 @@ export interface GameLocation {
   /** Legacy alias some views fall back to when `playerDescription` is absent. */
   description?: string;
   backgroundImage?: Base64Data;
+  /** Booru tags used for AI image generation; editor-only, not sent to the narrative AI. */
+  imageTags?: string;
   ambientSound?: MediaAsset;
   /** Entity ids present at this location. */
   entities?: string[];
