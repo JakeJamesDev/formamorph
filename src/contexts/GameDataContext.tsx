@@ -328,6 +328,9 @@ type GameDataContextValue = ReturnType<typeof useProvideGameData>;
 
 const GameDataContext = createContext<GameDataContextValue | null>(null);
 
+/** Access the editor's world-definition store (overview, stats, locations, entities, traits, trait groups,
+ *  stat updates, dictionary) plus their CRUD callbacks, load/save, and the `isWorldDirty` flag. Throws
+ *  if called outside a `GameDataProvider`. */
 // eslint-disable-next-line react-refresh/only-export-components
 export const useGameData = () => {
   const context = useContext(GameDataContext);
@@ -337,6 +340,8 @@ export const useGameData = () => {
   return context;
 };
 
+/** Provides the world-editor data store (see `useGameData`); on mount it initializes storage and loads
+ *  the world-metadata list. */
 export const GameDataProvider = ({ children }: { children: ReactNode }) => {
   const value = useProvideGameData();
 

@@ -3,8 +3,8 @@ import { openDatabase, promisifyRequest } from '@/lib/idb';
 import { migrateWorld } from '@/lib/version';
 import type { WorldMetadata } from '@/types';
 
-// A locally-stored world record (metadata + nested world `data`). Inner fields stay loose since
-// they round-trip through IndexedDB/JSON and aren't read field-by-field here.
+/** A locally-stored world record (metadata + nested world `data`). Inner fields stay loose since
+ *  they round-trip through IndexedDB/JSON and aren't read field-by-field here. */
 export interface StoredWorldRecord {
   id: string;
   name: string;
@@ -51,6 +51,8 @@ interface PublishableWorld {
   [key: string]: unknown;
 }
 
+/** Singleton owning local world persistence (IndexedDB `worldsDB`/`worlds`) and Discover server calls
+ *  (fetch/publish/comments). Default-exported as one shared instance; the constructor kicks off DB init. */
 class WorldStorageService {
   dbName: string;
   storeName: string;
@@ -68,17 +70,20 @@ class WorldStorageService {
     this.initialize();
   }
 
+  /** Open the IndexedDB connection (idempotent — no-op once `db` is set). */
   async initialize() {
     if (this.db) return; // Already initialized
     this.db = await openDatabase(this.dbName, 1, [{ name: this.storeName, keyPath: 'id' }]);
   }
 
+  /** Lazily open the DB if not yet connected; awaited at the top of every store operation. */
   async ensureInitialized() {
     if (!this.db) {
       await this.initialize();
     }
   }
 
+  /** List all stored worlds as lightweight metadata (no nested `data`), for menu/library rendering. */
   async getWorldMetadata(): Promise<WorldMetadata[]> {
     await this.ensureInitialized();
     const transaction = this.db!.transaction([this.storeName], 'readonly');
@@ -101,6 +106,8 @@ class WorldStorageService {
     }));
   }
 
+  /** Load one world's full `data` (with `id` injected); rejects if missing, malformed, or lacking any
+   *  required section. */
   async getWorldData(worldId: string) {
     await this.ensureInitialized();
 
@@ -169,6 +176,8 @@ class WorldStorageService {
     });
   }
 
+  /** Upsert a world by `id`, read-merging sticky local-only fields (`sourceId`, `dirty`, `createdAt`, etc.)
+   *  so the Discover download link and creation stamp survive edits; throws on missing required fields. */
   async storeWorld(world: StoredWorldRecord) {
     await this.ensureInitialized();
 
@@ -267,6 +276,7 @@ class WorldStorageService {
     return results.filter((id): id is string => id !== null);
   }
 
+  /** Remove a world from IndexedDB by `id`; this is the only path that drops the sticky `sourceId` link. */
   async deleteWorld(worldId: string) {
     await this.ensureInitialized();
 
@@ -279,7 +289,8 @@ class WorldStorageService {
     await promisifyRequest(store.delete(worldId));
   }
 
-  // Fetch worlds from the server with optional filtering/sorting
+  /** Fetch a page of Discover worlds with optional search/sort; `ownedOnly` switches to the caller's own
+   *  worlds and requires auth. Never throws — errors resolve to `{success:false, error, data:[]}`. */
   async fetchRemoteWorlds(page = 1, limit = 10, search = '', ownedOnly = false, searchByAuthor = false, sort = '', order = 'desc') {
     try {
       let url = `${this.API_URL}/worlds?page=${page}&limit=${limit}`;
@@ -320,7 +331,8 @@ class WorldStorageService {
     }
   }
 
-  // Fetch the comments for a published world (paginated).
+  /** Fetch a page of comments for a published world; auth is optional. Never throws — errors resolve to
+   *  a `{success:false}` shape. */
   async fetchComments(worldId: string, page = 1, limit = 20) {
     try {
       const headers: Record<string, string> = {};
@@ -345,7 +357,7 @@ class WorldStorageService {
     }
   }
 
-  // Post a comment on a published world (requires authentication).
+  /** Post a comment on a published world; throws if unauthenticated or the request fails. */
   async postComment(worldId: string, content: string) {
     if (!AuthService.isAuthenticated()) {
       throw new Error('You must be logged in to comment');
@@ -366,7 +378,7 @@ class WorldStorageService {
     return responseData.data || responseData;
   }
 
-  // Get worlds published by the current user
+  /** Fetch the current user's published worlds; returns `[]` when unauthenticated or on error. */
   async getUserWorlds() {
     if (!AuthService.isAuthenticated()) return [];
 
@@ -391,7 +403,8 @@ class WorldStorageService {
     }
   }
 
-  // Publish a world to the server
+  /** Publish a world to Discover: `PUT` updates when `worldId` is given, else `POST` creates. Requires
+   *  auth; rethrows on failure. */
   async publishWorld(worldData: PublishableWorld, worldId: string | null = null) {
     if (!AuthService.isAuthenticated()) {
       throw new Error('You must be logged in to publish worlds');

@@ -1,7 +1,9 @@
 import type { WorldMetadata } from './world';
 
+/** Sender role of a chat message, matching the OpenAI chat-completion roles. */
 export type ChatRole = 'system' | 'user' | 'assistant';
 
+/** A single chat-completion message: who sent it and its text. */
 export interface ChatMessage {
   role: ChatRole;
   content: string;
@@ -65,11 +67,13 @@ export interface AITurnResult {
   locationId?: string;
 }
 
+/** An authenticated account as returned by the auth server; extra server fields pass through the index signature. */
 export interface AuthUser {
   username: string;
   [key: string]: unknown;
 }
 
+/** Auth server reply carrying the session `token` and, on success, the user. */
 export interface AuthResponse {
   token: string;
   user?: AuthUser;

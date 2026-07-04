@@ -260,6 +260,8 @@ export type StagedRequestFn = (
   signal?: AbortSignal,
 ) => Promise<string>;
 
+/** The output of one staged-planning run: the injectable plan plus the cast names to confirm against
+ *  the narration afterward. */
 export interface StagedPlanningResult {
   /** The assembled plan to inject into the narration ("" when the run was aborted). */
   turnPlan: string;

@@ -11,7 +11,8 @@ import {
 import { buttonVariants } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 
-// Three-choice prompt shown when leaving the world editor with pending changes.
+/** Three-choice prompt shown when leaving the world editor with pending changes: save & exit, exit
+ *  without saving (destructive), or cancel/keep editing. */
 export function UnsavedChangesDialog({
   open,
   onOpenChange,

@@ -5,8 +5,8 @@ import { cn } from "@/lib/utils";
 import { CHIP_BASE } from "@/components/Chip";
 import { MarkdownRenderer } from "@/components/game/MarkdownRenderer";
 
-// Loose shape for server/catalog world payloads, whose fields vary by endpoint and save version.
-// Shared by the main menu and the Discover browser.
+/** Loose shape for server/catalog world payloads, whose fields vary by endpoint and save version.
+ *  Shared by the main menu and the Discover browser; the one sanctioned dynamic-JSON bag. */
 // eslint-disable-next-line @typescript-eslint/no-explicit-any -- intentional dynamic-JSON bag (pending a precise interface)
 export type WorldRecord = Record<string, any>;
 
@@ -23,8 +23,8 @@ export function DateTimeText({ value }: { value?: string }) {
   );
 }
 
-// Shared two-column layout classes for the detail modals; `collapsed` forces the single-column
-// (portrait) layout regardless of viewport width.
+/** Shared `{wrapper,left,right}` Tailwind class strings for the two-column detail modals; `collapsed`
+ *  forces the single-column (portrait) layout regardless of viewport width. */
 export function splitColumnClasses(collapsed: boolean) {
   return {
     wrapper: collapsed
@@ -113,10 +113,12 @@ export function WorldDetailsColumn({ thumbnail, actions, description, tags, meta
 // (over-tagged worlds still shrink to the same fitting count, then reveal the rest via "Show More").
 const MAX_MEASURED_CHIPS = 40;
 
-// Tag chips for a world card. Collapsed view shows as many chips as fit in ~4 rows with an inline
-// "(Show More)" link at the end (chips that don't fit are hidden — the link never overlaps one).
-// Hovering reveals the full set as an elevated overlay that floats over the layout (no reflow);
-// the mouse leaving collapses it. Clicking a chip hides that tag.
+/**
+ * Tag chips for a world card. Collapsed view shows as many chips as fit in ~4 rows with an inline
+ * "(Show More)" link (overflow chips are hidden, never overlapped by the link); hovering reveals the
+ * full set as an elevated overlay that floats over the layout without reflow. `onHide` makes each chip
+ * clickable to hide that tag.
+ */
 export function CardTags({ tags, onHide }: { tags: string[]; onHide?: (tag: string) => void }) {
   const ref = useRef<HTMLDivElement>(null);
   const measuredFrom = Math.min(tags.length, MAX_MEASURED_CHIPS);

@@ -1,0 +1,13 @@
+{
+  "$schema": "https://typedoc.org/schema.json",
+  "entryPoints": ["src"],
+  "entryPointStrategy": "expand",
+  "exclude": ["**/*.test.ts", "**/*.test.tsx", "**/*.spec.ts", "**/*.spec.tsx"],
+  "out": "docs-api",
+  "readme": "none",
+  "skipErrorChecking": true,
+  "validation": {
+    "notExported": false,
+    "invalidLink": false
+  }
+}

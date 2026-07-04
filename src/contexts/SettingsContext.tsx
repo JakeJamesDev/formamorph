@@ -19,8 +19,11 @@ import {
 import { buildStyledValues } from '../lib/sectionStyle';
 import type { ParagraphLimit } from '../lib/outputLength';
 
+/** Lifecycle of the context-window auto-detect probe; `error` is set only on a forced (manual) attempt. */
 export type DetectStatus = 'idle' | 'detecting' | 'success' | 'error';
 
+/** Planning strategy run before game text: `off`, a single `precall` pass, `inline` reasoning, or the
+ *  multi-stage director/character/storyboarder `staged` pipeline. */
 export type ThinkingMode = 'off' | 'precall' | 'inline' | 'staged';
 export type { ParagraphLimit };
 
@@ -471,6 +474,9 @@ type SettingsContextValue = ReturnType<typeof useProvideSettings>;
 
 const SettingsContext = createContext<SettingsContextValue | null>(null);
 
+/** Access all user settings (persisted to localStorage) — endpoint/model/token config, prompt presets,
+ *  image-gen presets, TTS, memory/diary toggles, thinking mode — plus their setters and derived active
+ *  values. Throws if called outside a `SettingsProvider`. */
 // eslint-disable-next-line react-refresh/only-export-components
 export const useSettings = () => {
   const context = useContext(SettingsContext);
@@ -480,6 +486,8 @@ export const useSettings = () => {
   return context;
 };
 
+/** Provides all persisted user settings (see `useSettings`); runs one-time localStorage migrations and
+ *  seeds the prompt/image preset stores on first render. */
 export const SettingsProvider = ({ children }: { children: ReactNode }) => {
   const value = useProvideSettings();
 

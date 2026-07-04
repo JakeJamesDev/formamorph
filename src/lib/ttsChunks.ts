@@ -12,8 +12,8 @@ export function splitSentenceSegments(text: string): string[] {
 /**
  * Strip Markdown syntax so the TTS engine speaks the words, not the punctuation — Kokoro reads a stray
  * `*` as "asterisk". Keeps the readable text and drops the markers: emphasis (*, **, _, __, ~~), inline
- * code and fences (`), links/images ([text](url) → text), and line-start headings, blockquotes, and
- * list bullets. Not a full parser — just enough to keep narration clean for speech.
+ * code and fences (backticks), links/images (keeps the visible text, drops the target), and line-start
+ * headings, blockquotes, and list bullets. Not a full parser — just enough to keep narration clean for speech.
  */
 export function stripMarkdownForSpeech(text: string): string {
   return text

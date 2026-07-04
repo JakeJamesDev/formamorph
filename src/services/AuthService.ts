@@ -1,5 +1,7 @@
 import type { AuthUser } from '@/types';
 
+/** Singleton holding the auth token and current user, mirrored to `localStorage`. Default-exported as
+ *  one shared instance; the constructor rehydrates both from storage (tolerating a corrupt user blob). */
 class AuthService {
   API_URL: string;
   tokenKey: string;
@@ -23,6 +25,7 @@ class AuthService {
     }
   }
 
+  /** Whether a token is held (presence check only — does not validate it against the server). */
   isAuthenticated() {
     return !!this.token;
   }
@@ -31,6 +34,7 @@ class AuthService {
     return this.currentUser;
   }
 
+  /** Authenticate, persist the token, then adopt or fetch the user profile; rethrows on failure. */
   async login(username: string, password: string) {
     try {
       const response = await fetch(`${this.API_URL}/auth/login`, {
@@ -65,6 +69,8 @@ class AuthService {
     }
   }
 
+  /** Validate credentials client-side, register, persist the token, and resolve the user profile
+   *  (falling back to a bare `{username}` if the server returns none); rethrows on failure. */
   async register(username: string, password: string, email = '') {
     try {
       // Validate username and password according to server requirements
@@ -124,6 +130,8 @@ class AuthService {
     }
   }
 
+  /** Fetch and cache the profile for the held token; a `401` triggers `logout()` and returns `null`.
+   *  On other errors falls back to any stored/known user rather than clearing it. */
   async fetchUserProfile() {
     try {
       if (!this.token) return null;
@@ -175,6 +183,7 @@ class AuthService {
     }
   }
 
+  /** Change the password for the held token; throws if unauthenticated or the request fails. */
   async changePassword(currentPassword: string, newPassword: string) {
     try {
       if (!this.token) throw new Error('Not authenticated');
@@ -200,12 +209,13 @@ class AuthService {
     }
   }
 
-  // Validate email format
+  /** Loose format check for the optional registration email. */
   isValidEmail(email: string) {
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     return emailRegex.test(email);
   }
 
+  /** Clear the token and user from memory and `localStorage`; also invoked on a `401` from the server. */
   logout() {
     this.token = null;
     this.currentUser = null;

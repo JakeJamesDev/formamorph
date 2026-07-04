@@ -87,7 +87,7 @@ function arrayMove<T>(arr: T[], from: number, to: number): T[] {
 
 const clamp = (n: number, min: number, max: number) => Math.min(Math.max(n, min), max);
 
-/** Projected drop {depth, parentId} for the active row, given the pointer's horizontal drag offset. */
+/** Projected drop `{depth, parentId}` for the active row, given the pointer's horizontal drag offset. */
 export function getLocationDropProjection(
   items: FlatLocationNode[], activeId: string, overId: string,
   dragOffset: number, indentationWidth: number,

@@ -3,8 +3,8 @@
  * request with a unique id, and resolves/rejects the matching promise when the worker replies with
  * `{ type: 'success' | 'error', id, result?, error? }`.
  *
- * Pass a factory that constructs the worker (kept as a literal `new Worker(new URL('./x.ts',
- * import.meta.url))` at the call site so Vite can statically bundle it).
+ * Pass a factory that constructs the worker — kept as a literal
+ * `new Worker(new URL('./x.ts', import.meta.url))` at the call site so Vite can statically bundle it.
  */
 type PendingRequest = {
   resolve: (value: unknown) => void;

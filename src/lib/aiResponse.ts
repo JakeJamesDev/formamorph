@@ -43,7 +43,7 @@ export function stripReasoning(text: string): string {
 /**
  * Streaming-safe variant: strips complete blocks, then truncates at a trailing opening tag
  * whose closing tag has not arrived yet — so an in-progress reasoning block isn't shown while
- * it streams. (`\b` keeps "<thinker" from matching.)
+ * it streams. (`\b` keeps `<thinker` from matching.)
  */
 export function stripReasoningLive(text: string): string {
   const out = stripReasoning(text);

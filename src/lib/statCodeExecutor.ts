@@ -14,13 +14,9 @@ const MAX_STACK_BYTES = 512 * 1024;
 let quickJSPromise: Promise<QuickJSWASMModule> | null = null;
 const loadQuickJS = () => (quickJSPromise ??= getQuickJS());
 
-/**
- * Executes JavaScript code to calculate a stat value based on other stats
- * @param code - The JavaScript code to execute
- * @param stats - The array of all stats
- * @param currentStat - The current stat being calculated
- * @returns The calculated value or error
- */
+/** Run a stat's untrusted `code` in an isolated QuickJS (WASM) VM to compute `currentStat`'s value from
+ *  the other stats, clamped to its `[min, max]`. A ~1s interrupt timeout, memory, and stack caps bound it;
+ *  empty code yields `{value: null}` (keep the manual value), and any error/non-number surfaces in `error`. */
 export const executeStatCode = async (
   code: string,
   stats: Stat[],
