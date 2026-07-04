@@ -811,18 +811,6 @@ const MainMenu = ({ onStartGame, onOpenWorldEditor }: MainMenuProps) => {
                     <FilePlus2 className="mr-2 h-4 w-4" /> Duplicate World
                   </Button>
 
-                  {/* Per-world README toggle — same flag the in-game "Don't Show This Again" writes (inverse). */}
-                  {selectedWorld?.data?.worldOverview?.readme?.trim() && (
-                    <div className="flex items-center gap-2 pt-1">
-                      <Checkbox
-                        id="show-readme"
-                        checked={showReadme(selectedWorld.id)}
-                        onCheckedChange={(c) => setShowReadme(selectedWorld.id, c === true)}
-                      />
-                      <label htmlFor="show-readme" className="text-sm cursor-pointer">Show Readme on entry</label>
-                    </div>
-                  )}
-
                   {/* Publishing disabled for the 2.0.1 alpha — not an official release yet, so we don't want
                       testers contaminating the live workshop server. Re-enable this button (and the `Upload`
                       import) when the release goes official.
@@ -838,6 +826,19 @@ const MainMenu = ({ onStartGame, onOpenWorldEditor }: MainMenuProps) => {
               }
             />
           </div>
+
+          {/* Per-world README toggle, anchored bottom-left of the popup — same flag the in-game
+              "Don't Show This Again" writes (inverse). */}
+          {selectedWorld?.data?.worldOverview?.readme?.trim() && (
+            <div className="shrink-0 flex items-center gap-2 pt-2">
+              <Checkbox
+                id="show-readme"
+                checked={showReadme(selectedWorld.id)}
+                onCheckedChange={(c) => setShowReadme(selectedWorld.id, c === true)}
+              />
+              <label htmlFor="show-readme" className="text-sm cursor-pointer">Show Readme on entry</label>
+            </div>
+          )}
         </DialogContent>
       </Dialog>
 
