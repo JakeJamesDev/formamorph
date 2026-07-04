@@ -5,6 +5,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { MultiSelect } from "@/components/ui/multi-select";
 import AiFieldToolbar from "@/components/AiFieldToolbar";
+import { ConfirmDialog } from "@/components/ConfirmDialog";
 import { ImageUpload, ModelUpload } from '../lib/UtilityComponents';
 import { IMAGE_CAPS } from '../lib/imageOptim';
 import { GenerateImageButton } from '../components/GenerateImageButton';
@@ -13,6 +14,8 @@ import type { Entity } from '@/types';
 const EntityManager = ({ entity }: { entity: Entity }) => {
   const { updateEntity, locations, updateLocation } = useGameData();
   const [editingEntity, setEditingEntity] = useState<Entity>(entity);
+  // SD prompt pulled from an uploaded image, pending the user's OK to use it as Image Tags.
+  const [pendingPrompt, setPendingPrompt] = useState<string | null>(null);
 
   // Entity↔location link lives only on each location's `entities` array; derive the entity's
   // memberships and write changes back into the relevant locations.
@@ -113,6 +116,15 @@ const EntityManager = ({ entity }: { entity: Entity }) => {
           id={`entity-image-${editingEntity.id}`}
           value={editingEntity.image}
           cap={IMAGE_CAPS.entity}
+          onPromptExtracted={setPendingPrompt}
+        />
+        <ConfirmDialog
+          open={pendingPrompt !== null}
+          onOpenChange={(o) => { if (!o) setPendingPrompt(null); }}
+          title="Use the image's prompt?"
+          description="This image has an embedded AI prompt. Use it as the Image Tags? This replaces the current tags."
+          onConfirm={() => { if (pendingPrompt) handleChange('imageTags', pendingPrompt); }}
+          onCancel={() => setPendingPrompt(null)}
         />
         <div className="flex items-center justify-between">
           <Label>Image Tags</Label>

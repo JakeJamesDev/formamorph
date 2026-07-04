@@ -6,6 +6,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Checkbox } from "@/components/ui/checkbox";
 import { MultiSelect } from "@/components/ui/multi-select";
 import AiFieldToolbar from "@/components/AiFieldToolbar";
+import { ConfirmDialog } from "@/components/ConfirmDialog";
 import { ImageUpload, SoundUpload } from '../lib/UtilityComponents';
 import { IMAGE_CAPS } from '../lib/imageOptim';
 import { GenerateImageButton } from '../components/GenerateImageButton';
@@ -14,6 +15,8 @@ import type { GameLocation } from '@/types';
 const LocationManager = ({ location }: { location: GameLocation }) => {
   const { updateLocation, entities } = useGameData();
   const [editingLocation, setEditingLocation] = useState<GameLocation>(location);
+  // SD prompt pulled from an uploaded image, pending the user's OK to use it as Image Tags.
+  const [pendingPrompt, setPendingPrompt] = useState<string | null>(null);
 
   useEffect(() => {
     setEditingLocation(location);
@@ -96,6 +99,15 @@ const LocationManager = ({ location }: { location: GameLocation }) => {
           id={`location-image-${editingLocation.id}`}
           value={editingLocation.backgroundImage}
           cap={IMAGE_CAPS.background}
+          onPromptExtracted={setPendingPrompt}
+        />
+        <ConfirmDialog
+          open={pendingPrompt !== null}
+          onOpenChange={(o) => { if (!o) setPendingPrompt(null); }}
+          title="Use the image's prompt?"
+          description="This image has an embedded AI prompt. Use it as the Image Tags? This replaces the current tags."
+          onConfirm={() => { if (pendingPrompt) handleChange('imageTags', pendingPrompt); }}
+          onCancel={() => setPendingPrompt(null)}
         />
         <div className="flex items-center justify-between">
           <Label>Image Tags</Label>
