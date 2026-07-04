@@ -18,6 +18,7 @@ import { useVramStats } from '@/lib/useVramStats';
 import { isDesktop } from '@/lib/imageGen/desktop';
 import { fetchComfyMeta, type ComfyMeta } from '@/lib/imageGen/comfyui';
 import { TokenAutocomplete } from '@/components/TokenAutocomplete';
+import ImageSetupGuide from './ImageSetupGuide';
 import { DEFAULT_TAG_PROMPT, SUBJECT_GUIDANCE } from '@/lib/imagePrompt';
 
 // Segmented-control options: a short tab label plus the helper text shown below the selected one.
@@ -241,6 +242,7 @@ export const SettingsModal = ({ isOpen, onOpenChange, previewValues }: {
   // /object_info whenever ComfyUI is the active provider (debounced on endpoint edits); fails silently
   // when the server isn't up (it's fast and optional — free text still works).
   const [comfyMeta, setComfyMeta] = useState<ComfyMeta | null>(null);
+  const [showImageSetup, setShowImageSetup] = useState(false);
   useEffect(() => {
     if (imageProvider !== 'comfyui') return;
     let cancelled = false;
@@ -326,6 +328,7 @@ export const SettingsModal = ({ isOpen, onOpenChange, previewValues }: {
   const activeVerbatim = promptVerbatim[activePromptTab] ?? promptVerbatim.narration;
 
   return (
+    <>
     <Dialog open={isOpen} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-[800px] h-[90vh] flex flex-col overflow-hidden">
         <DialogHeader className="flex-shrink-0">
@@ -714,6 +717,12 @@ export const SettingsModal = ({ isOpen, onOpenChange, previewValues }: {
                     </SelectItem>
                   </SelectContent>
                 </Select>
+              </div>
+              <div className="grid grid-cols-[1fr_3fr] gap-4">
+                <div />
+                <div>
+                  <Button variant="outline" size="sm" onClick={() => setShowImageSetup(true)}>How to Set Up</Button>
+                </div>
               </div>
               <div className="grid grid-cols-[1fr_3fr] gap-4">
                 <div />
@@ -1116,5 +1125,7 @@ export const SettingsModal = ({ isOpen, onOpenChange, previewValues }: {
         </Tabs>
       </DialogContent>
     </Dialog>
+    <ImageSetupGuide provider={imageProvider} open={showImageSetup} onOpenChange={setShowImageSetup} />
+    </>
   );
 };
