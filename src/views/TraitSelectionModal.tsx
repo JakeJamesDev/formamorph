@@ -23,6 +23,7 @@ const TraitSelectionModal = ({
   onTraitSelect,
   onAbort,
   onConfirm,
+  confirmLabel = 'Start',
 }: {
   traits: Trait[];
   traitGroups: TraitGroup[];
@@ -31,6 +32,8 @@ const TraitSelectionModal = ({
   onTraitSelect: (traitId: string) => void;
   onAbort: () => void;
   onConfirm: () => void;
+  /** Label for the confirm button — names the next step in the flow (e.g. "Location", "Avatar", "Start"). */
+  confirmLabel?: string;
 }) => {
   const getStatName = (statId: string) => stats.find((s) => s.id === statId)?.name ?? statId;
 
@@ -181,8 +184,9 @@ const TraitSelectionModal = ({
 
         <div className="flex gap-2 flex-shrink-0">
           <Button onClick={onAbort} variant="destructive" className="flex-1">Abort</Button>
-          <Button onClick={onConfirm} variant="outline" className="flex-1">Skip</Button>
-          <Button onClick={next} className="flex-1">{isLast ? 'Start' : 'Next'}</Button>
+          {/* Advance-now (skip remaining sections). Hidden on the last section, where Next already advances. */}
+          {!isLast && <Button onClick={onConfirm} variant="outline" className="flex-1">{confirmLabel}</Button>}
+          <Button onClick={next} className="flex-1">{isLast ? confirmLabel : 'Next'}</Button>
         </div>
       </CardContent>
     </Card>

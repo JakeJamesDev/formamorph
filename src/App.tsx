@@ -13,10 +13,17 @@ function App() {
   const [currentView, setCurrentView] = useState<'mainMenu' | 'gameViewer' | 'worldEditor'>('mainMenu');
   const [selectedTraits, setSelectedTraits] = useState<string[]>([]);
   const [initialCharacterData, setInitialCharacterData] = useState<CharacterData | null>(null);
+  const [initialLocationId, setInitialLocationId] = useState<string | null>(null);
 
-  const handleStartGame = (traits: string[], customCharacterData: CharacterData | null) => {
+  const handleStartGame = (
+    traits: string[],
+    customCharacterData: CharacterData | null,
+    _isNewGame?: boolean,
+    startingLocationId?: string | null,
+  ) => {
     setSelectedTraits(traits);
     setInitialCharacterData(customCharacterData);
+    setInitialLocationId(startingLocationId ?? null);
     setCurrentView('gameViewer');
   };
 
@@ -43,6 +50,7 @@ function App() {
               <GameViewer
                 initialTraits={selectedTraits}
                 initialCharacterData={initialCharacterData}
+                initialLocationId={initialLocationId}
                 onExitToMenu={handleExitToMenu}
               />
             </GameplayProvider>

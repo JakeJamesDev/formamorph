@@ -60,6 +60,7 @@ import { splitSentenceSegments } from "../lib/ttsChunks";
 import { selectDueDigests, applyDigest, parseTurnContent, selectDueDiaries, pendingDiaryNames, applyDiary } from "../lib/turnDigest";
 import { buildTraitContext } from "../lib/traitTree";
 import { buildLocationContext, buildEntityContext, buildSublocationsContext, buildSublocationEntitiesContext, buildReachableLocationsContext, buildReachableEntitiesContext, buildDestinationsContext, navigableDestinations, sublocationEntityIds } from "../lib/locationContext";
+import { resolveStartingLocation } from "../lib/startingLocation";
 import { NONE_PLACEHOLDER } from "../lib/promptFallbacks";
 import { renderPromptTemplate } from "../lib/promptTemplate";
 import { useBaselineTestHook } from "../lib/baselineTestHook";
@@ -88,6 +89,7 @@ import { ConfirmDialog } from "../components/ConfirmDialog";
 interface GameViewerProps {
   initialTraits?: string[];
   initialCharacterData: CharacterData | null;
+  initialLocationId?: string | null;
   onExitToMenu: () => void;
 }
 
@@ -149,6 +151,7 @@ const recentParticipants = (history: ChatMessage[], turns: number): string[] => 
 const GameViewer = ({
   initialTraits = [],
   initialCharacterData,
+  initialLocationId = null,
   onExitToMenu,
 }: GameViewerProps) => {
   // AbortController reference for canceling AI requests
@@ -1839,17 +1842,16 @@ ${playerNotes || NONE_PLACEHOLDER}
         }
       });
 
-      // Prefer locations flagged as starting points; fall back to any location.
-      const startingLocations = locations.filter((loc) => loc.isStarting);
-      const pickFrom =
-        startingLocations.length > 0 ? startingLocations : locations;
-      const randomLocation =
-        pickFrom[Math.floor(Math.random() * pickFrom.length)];
-      changeLocation(randomLocation);
-      addLogEntry(`Starting in location: ${randomLocation.name}`);
+      // Use the player's chosen starting location, else a random starting point (fallback: any location).
+      const location = resolveStartingLocation(locations, initialLocationId);
+      if (location) {
+        changeLocation(location);
+        addLogEntry(`Starting in location: ${location.name}`);
+      }
     }
   }, [
     initialTraits,
+    initialLocationId,
     traits,
     locations,
     applyTrait,

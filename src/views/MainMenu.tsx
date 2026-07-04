@@ -34,6 +34,8 @@ import {
 } from '@dnd-kit/sortable';
 import { restrictToFirstScrollableAncestor } from '@dnd-kit/modifiers';
 import TraitSelectionModal from './TraitSelectionModal';
+import StartingLocationModal from './StartingLocationModal';
+import { startingLocations } from '@/lib/startingLocation';
 import WorldStorageService from '../services/WorldStorageService';
 import AuthService from '../services/AuthService';
 import type { World, Stat, CharacterData } from '@/types';
@@ -48,7 +50,7 @@ import { PublishModal } from "@/components/menu/PublishModal";
 import { COMMUNITY_ENABLED } from "@/lib/featureFlags";
 
 interface MainMenuProps {
-  onStartGame: (traits: string[], characterData: CharacterData | null, isNewGame?: boolean) => void;
+  onStartGame: (traits: string[], characterData: CharacterData | null, isNewGame?: boolean, startingLocationId?: string | null) => void;
   onOpenWorldEditor: () => void;
 }
 
@@ -76,7 +78,7 @@ const applyWorldOrder = <T extends { id: string }>(list: T[], order: string[]): 
 
 
 const MainMenu = ({ onStartGame, onOpenWorldEditor }: MainMenuProps) => {
-  const { traits, traitGroups, stats, loadWorldData } = useGameData();
+  const { traits, traitGroups, stats, locations, loadWorldData } = useGameData();
   const { promptWorld, dialog: downscaleDialog } = useDownscalePrompt();
   const [selectedWorld, setSelectedWorld] = useState<WorldRecord | null>(null);
   // Local-world grid layout: "grid" (default compact cards) or "detailed" (Discover-style card + info
@@ -95,7 +97,9 @@ const MainMenu = ({ onStartGame, onOpenWorldEditor }: MainMenuProps) => {
   const [worldToDelete, setWorldToDelete] = useState<string | null>(null);
   const [showCharacterCustomization, setShowCharacterCustomization] = useState(false);
   const [showTraitSelection, setShowTraitSelection] = useState(false);
+  const [showLocationSelection, setShowLocationSelection] = useState(false);
   const [selectedTraits, setSelectedTraits] = useState<string[]>([]);
+  const [selectedLocationId, setSelectedLocationId] = useState<string | null>(null);
   const [showCodeModal, setShowCodeModal] = useState(false);
   const [showSettings, setShowSettings] = useState(false);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
@@ -308,15 +312,32 @@ const MainMenu = ({ onStartGame, onOpenWorldEditor }: MainMenuProps) => {
     );
   };
 
-  // Leave the trait-selection step and start the world (custom-character step first for 3D worlds).
-  const proceedFromTraits = (traitIds: string[]) => {
-    setShowTraitSelection(false);
-    const currentWorldData = selectedWorld!.data;
-    if (currentWorldData.worldOverview?.use3DModel) {
+  // Start the world: the custom-character step first for 3D worlds, otherwise straight into the game.
+  const enterWorld = (traitIds: string[], locationId: string | null) => {
+    if (selectedWorld!.data.worldOverview?.use3DModel) {
       setShowCharacterCustomization(true);
     } else {
-      onStartGame(traitIds, null, true);
+      onStartGame(traitIds, null, true, locationId);
     }
+  };
+
+  // Leave the trait step. Offer a location choice when the world has more than one starting location;
+  // otherwise proceed straight through (Random, as before).
+  const proceedFromTraits = (traitIds: string[]) => {
+    setShowTraitSelection(false);
+    setSelectedLocationId(null);
+    if (startingLocations(locations).length > 1) {
+      setShowLocationSelection(true);
+    } else {
+      enterWorld(traitIds, null);
+    }
+  };
+
+  // Leave the location step with the player's choice (null = Random) and enter the world.
+  const proceedFromLocation = (locationId: string | null) => {
+    setShowLocationSelection(false);
+    setSelectedLocationId(locationId);
+    enterWorld(selectedTraits, locationId);
   };
 
   const handleDuplicateWorld = async () => {
@@ -490,7 +511,7 @@ const MainMenu = ({ onStartGame, onOpenWorldEditor }: MainMenuProps) => {
       <CharacterCustomization
         onCharacterCustomized={(customizedData) => {
           setShowCharacterCustomization(false);
-          onStartGame(selectedTraits, customizedData, true);
+          onStartGame(selectedTraits, customizedData, true, selectedLocationId);
         }}
       />
     );
@@ -886,6 +907,26 @@ const MainMenu = ({ onStartGame, onOpenWorldEditor }: MainMenuProps) => {
             setSelectedTraits([]);
           }}
           onConfirm={() => proceedFromTraits(selectedTraits)}
+          confirmLabel={
+            startingLocations(locations).length > 1
+              ? 'Location'
+              : selectedWorld?.data.worldOverview?.use3DModel
+                ? 'Avatar'
+                : 'Start'
+          }
+        />
+      )}
+
+      {showLocationSelection && (
+        <StartingLocationModal
+          locations={startingLocations(locations)}
+          onConfirm={proceedFromLocation}
+          onAbort={() => {
+            setShowLocationSelection(false);
+            setSelectedTraits([]);
+            setSelectedLocationId(null);
+          }}
+          confirmLabel={selectedWorld?.data.worldOverview?.use3DModel ? 'Avatar' : 'Start'}
         />
       )}
 

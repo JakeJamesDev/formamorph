@@ -177,11 +177,12 @@ describe('TraitSelectionModal', () => {
     expect(screen.getByText('About you.').className).toContain('invisible');
   });
 
-  it('Skip confirms and Abort aborts', () => {
+  it('Start (before the last section) confirms and Abort aborts', () => {
     const onConfirm = vi.fn();
     const onAbort = vi.fn();
     render(<Harness onConfirm={onConfirm} onAbort={onAbort} />);
-    fireEvent.click(screen.getByText('Skip'));
+    // On a non-final section the outline "Start" skips the rest and confirms immediately.
+    fireEvent.click(screen.getByText('Start'));
     expect(onConfirm).toHaveBeenCalledTimes(1);
     fireEvent.click(screen.getByText('Abort'));
     expect(onAbort).toHaveBeenCalledTimes(1);
