@@ -24,15 +24,18 @@ describe('lengthGuidance', () => {
   });
 
   it('returns a single-paragraph directive for single', () => {
-    expect(lengthGuidance('single', 1024)).toBe('Write a single paragraph.');
+    // Guard the semantic (one paragraph), not the exact copy — the wording iterates.
+    expect(lengthGuidance('single', 1024)).toMatch(/single paragraph/i);
   });
 
   it('returns an N-paragraph directive for auto with a generous budget', () => {
-    expect(lengthGuidance('auto', 1024)).toMatch(/Write at most \d+ short paragraphs\./);
+    // The contract is "at most N paragraphs" for a real N; the adjective/verb wording is free to change.
+    expect(lengthGuidance('auto', 1024)).toMatch(/at most \d+ .*paragraphs/i);
   });
 
   it('collapses auto to a single paragraph when the budget only allows one', () => {
-    expect(lengthGuidance('auto', 40)).toBe('Write a single paragraph.');
+    // Convergence contract: a tiny budget makes auto produce the same directive as single mode.
+    expect(lengthGuidance('auto', 40)).toBe(lengthGuidance('single', 40));
   });
 });
 

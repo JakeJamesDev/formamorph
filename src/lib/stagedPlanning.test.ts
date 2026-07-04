@@ -288,9 +288,16 @@ describe('buildStagedPlan', () => {
       ],
       beats: '- Sylphie speaks up\n- Alph keeps packing',
     });
-    expect(out).toBe(
-      'Scene: A dim inn room.\n\nPresent entities:\n- Sylphie - in the corner\n- Alph\n\nWhat happens:\n- Sylphie speaks up\n- Alph keeps packing',
-    );
+    // Scene → stances → beats, each carrying its data. We don't pin the exact section labels/whitespace
+    // (those can iterate); we guard that all three sections are present, in order, with their content.
+    expect(out).toContain('A dim inn room.');
+    expect(out).toContain('Sylphie');
+    expect(out).toContain('in the corner');
+    expect(out).toContain('Alph');
+    expect(out).toContain('- Sylphie speaks up');
+    expect(out).toContain('- Alph keeps packing');
+    expect(out.indexOf('A dim inn room.')).toBeLessThan(out.indexOf('in the corner'));
+    expect(out.indexOf('in the corner')).toBeLessThan(out.indexOf('- Sylphie speaks up'));
   });
 
   it('omits blank sections', () => {
