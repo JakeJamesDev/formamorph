@@ -31,6 +31,8 @@ jobs:
       - run: npm run build
         env:
           VITE_ENABLE_COMMUNITY: 'false'
+          # Demo ships no Danbooru tag data (SFW source is empty) until a vetted SFW list exists.
+          VITE_SFW_TAGS: 'true'
       - uses: actions/configure-pages@v5
       - uses: actions/upload-pages-artifact@v3
         with:

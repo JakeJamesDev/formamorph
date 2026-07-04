@@ -9,6 +9,7 @@ Formamorph bundles third-party open-source software and assets. This file lists 
 - **VRoid “AvatarSample_A”** (`public/readheadedit.vrm`) — © pixiv / VRoid Project. Distributed under its embedded VRM 1.0 license (<https://vrm.dev/licenses/1.0/>): commercial use and redistribution permitted; credit noted here though the model marks it unnecessary.
 - **Mixamo animations** (`public/*.fbx`) — © Adobe (Mixamo). Used under the Mixamo license terms (<https://www.mixamo.com>). Animations are incorporated into the application; the raw files are not offered as standalone downloadable assets.
 - **Original Formamorph** — portions © 2025 FieryLionite, MIT License (see `legal/LICENSE-upstream-MIT.txt`). This project is a fork.
+- **Danbooru tag list** (`src/data/danbooruTags.json`) — tag names and post counts sourced from the public Danbooru API (<https://danbooru.donmai.us>). Shipped as an authoring convenience for Image-Tags autocomplete; the tag strings are factual labels. Regenerate with `npm run gen-tags` (`scripts/genDanbooruTags.mjs`).
 - Other bundled images in the default worlds are author-created/AI-generated.
 
 ## Software license summary

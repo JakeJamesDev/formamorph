@@ -5,6 +5,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { MultiSelect } from "@/components/ui/multi-select";
 import AiFieldToolbar from "@/components/AiFieldToolbar";
+import { TagAutocomplete } from "@/components/TagAutocomplete";
 import { ConfirmDialog } from "@/components/ConfirmDialog";
 import { ImageUpload, ModelUpload } from '../lib/UtilityComponents';
 import { IMAGE_CAPS } from '../lib/imageOptim';
@@ -137,9 +138,9 @@ const EntityManager = ({ entity }: { entity: Entity }) => {
             onChange={(t) => handleChange('imageTags', t)}
           />
         </div>
-        <Textarea
+        <TagAutocomplete
           value={editingEntity.imageTags || ''}
-          onChange={(e) => handleChange('imageTags', e.target.value)}
+          onChange={(t) => handleChange('imageTags', t)}
           placeholder="booru tags, comma separated"
         />
         <GenerateImageButton

@@ -6,6 +6,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Checkbox } from "@/components/ui/checkbox";
 import { MultiSelect } from "@/components/ui/multi-select";
 import AiFieldToolbar from "@/components/AiFieldToolbar";
+import { TagAutocomplete } from "@/components/TagAutocomplete";
 import { ConfirmDialog } from "@/components/ConfirmDialog";
 import { ImageUpload, SoundUpload } from '../lib/UtilityComponents';
 import { IMAGE_CAPS } from '../lib/imageOptim';
@@ -120,9 +121,9 @@ const LocationManager = ({ location }: { location: GameLocation }) => {
             onChange={(t) => handleChange('imageTags', t)}
           />
         </div>
-        <Textarea
+        <TagAutocomplete
           value={editingLocation.imageTags || ''}
-          onChange={(e) => handleChange('imageTags', e.target.value)}
+          onChange={(t) => handleChange('imageTags', t)}
           placeholder="booru tags, comma separated"
         />
         <GenerateImageButton

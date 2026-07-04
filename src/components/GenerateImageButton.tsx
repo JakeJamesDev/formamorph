@@ -9,6 +9,7 @@ import { Progress } from '@/components/ui/progress';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from '@/components/ui/dialog';
 import { ImageZoomViewer } from '@/components/ImageZoomViewer';
 import AiFieldToolbar from '@/components/AiFieldToolbar';
+import { TagAutocomplete } from '@/components/TagAutocomplete';
 import { useSettings } from '@/contexts/SettingsContext';
 import { type ImageSubjectKind } from '@/lib/imagePrompt';
 import { generateImage, resolveImageEndpoint } from '@/lib/imageGen';
@@ -153,7 +154,7 @@ export function GenerateImageButton({ subject, cap, onChange, tags, onTagsChange
                 <Label htmlFor="gen-prompt">Prompt</Label>
                 <AiFieldToolbar mode="tags" name={subject.name} kind={subject.kind} source={subject.description} value={prompt} onChange={handlePrompt} />
               </div>
-              <Textarea id="gen-prompt" rows={3} value={prompt} onChange={(e) => handlePrompt(e.target.value)} placeholder="comma-separated visual tags…" />
+              <TagAutocomplete id="gen-prompt" rows={3} value={prompt} onChange={handlePrompt} placeholder="comma-separated visual tags…" />
             </div>
             <div className="grid gap-1.5">
               <Label htmlFor="gen-negative">Negative prompt</Label>
