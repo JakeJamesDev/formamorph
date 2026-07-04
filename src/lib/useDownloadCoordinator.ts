@@ -8,9 +8,9 @@ import { type WorldRecord } from "@/components/WorldDetails";
 import type { World } from "@/types";
 
 /**
- * Owns the "download a Discover world to the local library" flow: per-world progress, the contextual
+ * Owns the "download a community world to the local library" flow: per-world progress, the contextual
  * decision state (download a copy vs overwrite an existing one), and the fetch/store handlers. Reads the
- * local `worlds` to group copies by their source Discover entry (driving the none/refresh/update button
+ * local `worlds` to group copies by their source community catalog entry (driving the none/refresh/update button
  * state), and calls `setWorlds` to add/replace local copies.
  */
 export function useDownloadCoordinator(
@@ -27,7 +27,7 @@ export function useDownloadCoordinator(
   const [overwriteSelectedId, setOverwriteSelectedId] = useState<string | null>(null);
   const [showOverwriteSelect, setShowOverwriteSelect] = useState(false);
 
-  // Local copies grouped by the Discover entry they were downloaded from (sourceId). Drives the
+  // Local copies grouped by the community catalog entry they were downloaded from (sourceId). Drives the
   // contextual download button: none/refresh/update per server world, plus the overwrite picker.
   const localCopiesBySource = useMemo(() => {
     const map = new Map<string, WorldRecord[]>();
@@ -124,7 +124,7 @@ export function useDownloadCoordinator(
         description,
         thumbnail: thumbnailUrl,
         author,
-        // Link back to the Discover entry so the "Downloaded" state survives reloads. Record the
+        // Link back to the community catalog entry so the "Downloaded" state survives reloads. Record the
         // source version we hold (server updated_at) and when, for refresh/update detection.
         sourceId: worldId,
         dirty: false,

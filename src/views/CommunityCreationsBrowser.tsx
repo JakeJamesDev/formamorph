@@ -26,7 +26,7 @@ import { CHIP_BASE } from "@/components/Chip";
 import { useCatalogSync } from "@/lib/useCatalogSync";
 import { useDownloadCoordinator } from "@/lib/useDownloadCoordinator";
 import { useDownscalePrompt } from "@/lib/useDownscalePrompt";
-import { useDiscoverFilters } from "@/lib/useDiscoverFilters";
+import { useCommunityBrowserFilters } from "@/lib/useCommunityBrowserFilters";
 import {
   Dialog,
   DialogContent,
@@ -41,13 +41,14 @@ import WorldStorageService from '../services/WorldStorageService';
 import AuthService from '../services/AuthService';
 import { getDownloadState } from '@/lib/downloadState';
 import { type WorldRecord } from "@/components/WorldDetails";
-import { RemoteWorldDetailsModal } from "@/components/discover/RemoteWorldDetailsModal";
-import { RemoteWorldCard } from "@/components/discover/RemoteWorldCard";
+import { RemoteWorldDetailsModal } from "@/components/community/RemoteWorldDetailsModal";
+import { RemoteWorldCard } from "@/components/community/RemoteWorldCard";
 
 // Persisted preference to force the single-column (portrait) layout of the details modal at any width.
-const DISCOVER_MODAL_COLLAPSED_KEY = 'FORMAMORPH_discoverModalCollapsed';
+// Key string kept as-is so an existing user's saved preference survives the rename.
+const COMMUNITY_BROWSER_MODAL_COLLAPSED_KEY = 'FORMAMORPH_discoverModalCollapsed';
 
-interface DiscoverWorldsProps {
+interface CommunityCreationsBrowserProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   // Local world list (drives download-state) + setter (download/overwrite add or update local copies).
@@ -58,9 +59,9 @@ interface DiscoverWorldsProps {
   openImageViewer: (src: string | undefined, alt: string | undefined) => void;
 }
 
-// The Discover "world browser": browse/search/filter/sort the published catalog, view world details
+// The Community Creations browser: browse/search/filter/sort the published catalog, view world details
 // and comments, and download/refresh/update copies to the local library.
-const DiscoverWorlds = ({ open, onOpenChange, worlds, setWorlds, isAuthenticated, currentUser, openImageViewer }: DiscoverWorldsProps) => {
+const CommunityCreationsBrowser = ({ open, onOpenChange, worlds, setWorlds, isAuthenticated, currentUser, openImageViewer }: CommunityCreationsBrowserProps) => {
   // Catalog fetch/cache/sync (loads on open, refreshes in the background).
   const { remoteWorlds, setRemoteWorlds, isLoadingRemoteWorlds, isSyncingCatalog, loadCatalog } = useCatalogSync(open);
   const [remoteWorldToDelete, setRemoteWorldToDelete] = useState<string | null>(null);
@@ -76,10 +77,10 @@ const DiscoverWorlds = ({ open, onOpenChange, worlds, setWorlds, isAuthenticated
     handleContextualDownload, handleChooseOverwrite, handleConfirmOverwrite, handleDownloadWorld,
   } = useDownloadCoordinator(worlds, setWorlds, (_id, data) => promptWorld(data));
 
-  const [discoverModalCollapsed, setDiscoverModalCollapsed] = usePersistentState(
-    DISCOVER_MODAL_COLLAPSED_KEY, false, boolCodec,
+  const [communityBrowserModalCollapsed, setCommunityBrowserModalCollapsed] = usePersistentState(
+    COMMUNITY_BROWSER_MODAL_COLLAPSED_KEY, false, boolCodec,
   );
-  const toggleDiscoverModalCollapsed = () => setDiscoverModalCollapsed((prev) => !prev);
+  const toggleCommunityBrowserModalCollapsed = () => setCommunityBrowserModalCollapsed((prev) => !prev);
 
   // Browse pipeline: search/author/tag/sort filters, hide preferences, and responsive pagination.
   const {
@@ -91,10 +92,10 @@ const DiscoverWorlds = ({ open, onOpenChange, worlds, setWorlds, isAuthenticated
     setHiddenTagsList, setHiddenAuthorsList,
     resetHiddenWorlds, unhideWorld, hiddenWorldName,
     allAuthors, allTags, filteredRemoteWorlds, totalPages, pagedRemoteWorlds,
-  } = useDiscoverFilters(remoteWorlds, localCopiesBySource, open);
+  } = useCommunityBrowserFilters(remoteWorlds, localCopiesBySource, open);
 
   // Numbered page links with first/last anchors + ellipsis (matches the in-game transcript pager).
-  const renderDiscoverPaginationItems = () => {
+  const renderPaginationItems = () => {
     const items = [];
     for (let i = 1; i <= totalPages; i++) {
       if (i === 1 || i === totalPages || (i >= currentPage - 1 && i <= currentPage + 1)) {
@@ -154,7 +155,7 @@ const DiscoverWorlds = ({ open, onOpenChange, worlds, setWorlds, isAuthenticated
   return (
     <>
       {downscaleDialog}
-      {/* Discover Dialog */}
+      {/* Community Creations browser dialog */}
       <Dialog open={open} onOpenChange={onOpenChange}>
         <DialogContent
           hideClose
@@ -166,7 +167,7 @@ const DiscoverWorlds = ({ open, onOpenChange, worlds, setWorlds, isAuthenticated
               <Button variant="ghost" size="icon" className="shrink-0" onClick={() => onOpenChange(false)} aria-label="Back">
                 <ArrowLeft className="h-5 w-5" />
               </Button>
-              <DialogTitle className="whitespace-nowrap mr-2">Discover Worlds</DialogTitle>
+              <DialogTitle className="whitespace-nowrap mr-2">Community Creations</DialogTitle>
               <div className="relative flex-grow min-w-[200px]">
                 <Search className="absolute left-2 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
                 <Input
@@ -340,7 +341,7 @@ const DiscoverWorlds = ({ open, onOpenChange, worlds, setWorlds, isAuthenticated
                       className={currentPage === 1 ? "pointer-events-none opacity-50" : ""}
                     />
                   </PaginationItem>
-                  {renderDiscoverPaginationItems()}
+                  {renderPaginationItems()}
                   <PaginationItem>
                     <PaginationNext
                       href="#"
@@ -360,8 +361,8 @@ const DiscoverWorlds = ({ open, onOpenChange, worlds, setWorlds, isAuthenticated
         open={showRemoteWorldDetailsModal}
         onOpenChange={setShowRemoteWorldDetailsModal}
         world={selectedRemoteWorld}
-        collapsed={discoverModalCollapsed}
-        onToggleCollapsed={toggleDiscoverModalCollapsed}
+        collapsed={communityBrowserModalCollapsed}
+        onToggleCollapsed={toggleCommunityBrowserModalCollapsed}
         isAuthenticated={isAuthenticated}
         openImageViewer={openImageViewer}
         downloadStateForWorld={downloadStateForWorld}
@@ -398,7 +399,7 @@ const DiscoverWorlds = ({ open, onOpenChange, worlds, setWorlds, isAuthenticated
         </DialogContent>
       </Dialog>
 
-      {/* Pick which local copy to overwrite/update when several match the same Discover entry */}
+      {/* Pick which local copy to overwrite/update when several match the same community catalog entry */}
       <Dialog
         open={showOverwriteSelect}
         onOpenChange={(o) => { if (!o) { setShowOverwriteSelect(false); setContextualAction(null); setOverwriteSelectedId(null); } }}
@@ -461,4 +462,4 @@ const DiscoverWorlds = ({ open, onOpenChange, worlds, setWorlds, isAuthenticated
   );
 };
 
-export default DiscoverWorlds;
+export default CommunityCreationsBrowser;

@@ -6,7 +6,7 @@ import { MarkdownRenderer } from "@/components/game/MarkdownRenderer";
 import { CardTags, type WorldRecord } from "@/components/WorldDetails";
 
 /** A draggable local-world tile. The whole card is the drag handle; a small move distance is required to
- *  start a drag so a plain click still selects the world. `detailed` mirrors the Discover card layout. */
+ *  start a drag so a plain click still selects the world. `detailed` mirrors the community-browser card layout. */
 function SortableWorldCard({ world, onSelect, onDelete, layout }: {
   world: WorldRecord;
   onSelect: (id: string) => void;
@@ -26,7 +26,7 @@ function SortableWorldCard({ world, onSelect, onDelete, layout }: {
     onDelete(world.id);
   };
 
-  // Detailed layout mirrors the Discover-menu card renderer (thumbnail on top, info beneath).
+  // Detailed layout mirrors the community-browser card renderer (thumbnail on top, info beneath).
   if (layout === 'detailed') {
     return (
       <div

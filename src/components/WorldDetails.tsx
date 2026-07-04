@@ -6,7 +6,7 @@ import { CHIP_BASE } from "@/components/Chip";
 import { MarkdownRenderer } from "@/components/game/MarkdownRenderer";
 
 /** Loose shape for server/catalog world payloads, whose fields vary by endpoint and save version.
- *  Shared by the main menu and the Discover browser; the one sanctioned dynamic-JSON bag. */
+ *  Shared by the main menu and the Community Creations browser; the one sanctioned dynamic-JSON bag. */
 // eslint-disable-next-line @typescript-eslint/no-explicit-any -- intentional dynamic-JSON bag (pending a precise interface)
 export type WorldRecord = Record<string, any>;
 
@@ -39,7 +39,7 @@ export function splitColumnClasses(collapsed: boolean) {
   };
 }
 
-/** The single-column world-details layout shared by the local-world modal and the Discover details
+/** The single-column world-details layout shared by the local-world modal and the community details
  *  modal (where it's the left column). Order: thumbnail → actions → description → meta → tags. */
 export function WorldDetailsColumn({ thumbnail, actions, description, tags, meta, split = false, collapsed = false }: {
   thumbnail: React.ReactNode;

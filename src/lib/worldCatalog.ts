@@ -1,6 +1,6 @@
 /**
  * Local cache of the full workshop world catalog (light metadata only — no content, no base64
- * images), in its own IndexedDB database. Lets the Discover browser render, search, sort, and
+ * images), in its own IndexedDB database. Lets the community browser render, search, sort, and
  * paginate entirely client-side instead of a server round-trip per page. The catalog is small
  * (~600 records × ~700 B) and the server returns all of it in one `?limit=1000` request, so we
  * refresh by replacing the whole set (which also reconciles new/updated/removed worlds + counts).

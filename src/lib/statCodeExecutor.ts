@@ -2,7 +2,7 @@ import type { Stat } from '@/types';
 import { getQuickJS, shouldInterruptAfterDeadline, type QuickJSWASMModule } from 'quickjs-emscripten';
 import { clamp } from './utils';
 
-// Stat `code` ships inside world definitions, and worlds are downloaded from Discover — treat it as
+// Stat `code` ships inside world definitions, and worlds are downloaded from the community server — treat it as
 // untrusted. It runs in an isolated QuickJS (WASM) VM: no page globals (window/fetch/localStorage),
 // only the marshalled stat data below. A runtime interrupt enforces the timeout (kills `while(true)`),
 // and memory/stack caps bound allocation.

@@ -14,11 +14,11 @@ const gridColumns = (w: number): number =>
   w >= 1280 ? 5 : w >= 1024 ? 4 : w >= 768 ? 3 : w >= 640 ? 2 : 1;
 
 /**
- * The Discover browse pipeline: search/author/tag/sort filters, client-side hide preferences (persisted),
- * and pagination sized to the responsive grid. Derives the filtered/sorted/paged world list from the
- * catalog. `localCopiesBySource` (from the download coordinator) powers the "updates first" sort.
+ * The Community Creations browse pipeline: search/author/tag/sort filters, client-side hide preferences
+ * (persisted), and pagination sized to the responsive grid. Derives the filtered/sorted/paged world list
+ * from the catalog. `localCopiesBySource` (from the download coordinator) powers the "updates first" sort.
  */
-export function useDiscoverFilters(
+export function useCommunityBrowserFilters(
   remoteWorlds: WorldRecord[],
   localCopiesBySource: Map<string, WorldRecord[]>,
   open: boolean,
@@ -33,7 +33,7 @@ export function useDiscoverFilters(
   const [currentPage, setCurrentPage] = useState(1);
   const [pageSize, setPageSize] = useState(DEFAULT_PAGE_SIZE);
 
-  // Discover hide preferences (client-side, persisted in localStorage)
+  // Community-browser hide preferences (client-side, persisted in localStorage)
   const [hiddenWorldIds, setHiddenWorldIds] = useState<string[]>(() => {
     try { return JSON.parse(localStorage.getItem('FORMAMORPH_hiddenWorldIds') || '[]'); }
     catch { return []; }
@@ -52,7 +52,7 @@ export function useDiscoverFilters(
     } catch { return []; }
   });
 
-  // Persist discover hide preferences
+  // Persist community-browser hide preferences
   useEffect(() => {
     localStorage.setItem('FORMAMORPH_hiddenWorldIds', JSON.stringify(hiddenWorldIds));
   }, [hiddenWorldIds]);

@@ -102,7 +102,7 @@ export interface SaveObject {
   version: string | number;
 }
 
-/** v1.2.0: client-side discover hide preferences (persisted in localStorage). */
+/** v1.2.0: client-side community-browser hide preferences (persisted in localStorage). */
 export interface HiddenWorldsPrefs {
   worldIds: string[];
   tags: string[];

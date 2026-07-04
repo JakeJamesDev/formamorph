@@ -24,7 +24,7 @@ interface RemoteWorldCardProps {
   onDelete: (worldId: string) => void;
 }
 
-/** A single card in the Discover grid: thumbnail with a contextual download/hide overlay, plus title,
+/** A single card in the community browser grid: thumbnail with a contextual download/hide overlay, plus title,
  *  description, author, counts, tags, and (for owners/admins) a delete control. */
 export function RemoteWorldCard({
   world, downloadState: dlState, downloadProgress, isAuthenticated, currentUser,

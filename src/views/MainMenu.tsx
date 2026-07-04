@@ -5,7 +5,8 @@ import 'react-toastify/dist/ReactToastify.css';
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {ConfirmDialog} from "@/components/ConfirmDialog";
-import {FilePlus2, DoorOpen, Pencil, Github, AlertTriangle, Code, User, LogIn, LogOut, Import, Globe, Settings, LayoutGrid, GalleryThumbnails, Columns2, RectangleVertical } from "lucide-react";
+import {FilePlus2, DoorOpen, Pencil, Github, AlertTriangle, Code, User, LogIn, LogOut, Import, Globe, Settings, LayoutGrid, GalleryThumbnails, Columns2, RectangleVertical, Menu, Earth, BookOpen } from "lucide-react";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { ImageZoomViewer } from "@/components/ImageZoomViewer";
 import { cn } from "@/lib/utils";
 import { usePersistentState, boolCodec } from "@/lib/usePersistentState";
@@ -41,7 +42,7 @@ import AuthService from '../services/AuthService';
 import type { World, Stat, CharacterData } from '@/types';
 import { migrateWorld, APP_VERSION } from '@/lib/version';
 import { useDownscalePrompt } from '@/lib/useDownscalePrompt';
-import DiscoverWorlds from './DiscoverWorlds';
+import CommunityCreationsBrowser from './CommunityCreationsBrowser';
 import { WorldDetailsColumn, DateTimeText, type WorldRecord } from "@/components/WorldDetails";
 import SortableWorldCard from "@/components/SortableWorldCard";
 import { ManageUsersDialog } from "@/components/menu/ManageUsersDialog";
@@ -85,7 +86,7 @@ const MainMenu = ({ onStartGame, onOpenWorldEditor }: MainMenuProps) => {
   const { showReadme, setShowReadme } = useReadmeVisibility();
   const { promptWorld, dialog: downscaleDialog } = useDownscalePrompt();
   const [selectedWorld, setSelectedWorld] = useState<WorldRecord | null>(null);
-  // Local-world grid layout: "grid" (default compact cards) or "detailed" (Discover-style card + info
+  // Local-world grid layout: "grid" (default compact cards) or "detailed" (community-browser-style card + info
   // beneath). Persisted across sessions in localStorage.
   const [layoutMode, setLayoutMode] = usePersistentState<'grid' | 'detailed'>(
     LAYOUT_MODE_KEY, 'grid',
@@ -95,6 +96,8 @@ const MainMenu = ({ onStartGame, onOpenWorldEditor }: MainMenuProps) => {
   const [worldModalCollapsed, setWorldModalCollapsed] = usePersistentState(
     WORLD_MODAL_COLLAPSED_KEY, false, boolCodec,
   );
+  // Which content library the menu shows. Only "worlds" is populated for now; the rest swap to an empty view.
+  const [cardType, setCardType] = useState<'worlds' | 'characters' | 'dictionaries'>('worlds');
   const toggleWorldModalCollapsed = () => setWorldModalCollapsed((prev) => !prev);
   const [showWorldModal, setShowWorldModal] = useState(false);
   const [showMobileWorldEditorWarning, setShowMobileWorldEditorWarning] = useState(false);
@@ -110,7 +113,7 @@ const MainMenu = ({ onStartGame, onOpenWorldEditor }: MainMenuProps) => {
   const [worlds, setWorlds] = useState<WorldRecord[]>([]);
   const [isLoadingWorlds, setIsLoadingWorlds] = useState(true);
 
-  // Shared auth identity (header, publish gating, Discover). The login/profile forms live in AuthModals.
+  // Shared auth identity (header, publish gating, community browser). The login/profile forms live in AuthModals.
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [currentUser, setCurrentUser] = useState<WorldRecord | null>(null);
   const [showAuthDialog, setShowAuthDialog] = useState(false);
@@ -119,10 +122,10 @@ const MainMenu = ({ onStartGame, onOpenWorldEditor }: MainMenuProps) => {
   // Publish modal open state; the publish form/handlers live in the PublishModal component.
   const [showPublishModal, setShowPublishModal] = useState(false);
 
-  // Discover dialog open state (the browser itself lives in <DiscoverWorlds>).
-  const [showDiscoverDialog, setShowDiscoverDialog] = useState(false);
+  // Community Creations browser open state (the browser itself lives in <CommunityCreationsBrowser>).
+  const [showCommunityBrowser, setShowCommunityBrowser] = useState(false);
 
-  // Shared pan/zoom image viewer, opened by the local world modal and the Discover details modal.
+  // Shared pan/zoom image viewer, opened by the local world modal and the community details modal.
   const [imageViewerOpen, setImageViewerOpen] = useState(false);
   // Source for the shared pan/zoom viewer, set by whichever modal's thumbnail was clicked.
   const [viewerImage, setViewerImage] = useState<{ src: string; alt: string }>({ src: '', alt: '' });
@@ -510,6 +513,60 @@ const MainMenu = ({ onStartGame, onOpenWorldEditor }: MainMenuProps) => {
     });
   };
 
+  // The singular noun for the selected card type — drives the contextual New/Import button labels.
+  const cardNoun = cardType === 'worlds' ? 'World' : cardType === 'characters' ? 'Character' : 'Dictionary';
+
+  // The menu's action buttons, shared between the full landscape row and the portrait hamburger popover.
+  // New/Import are contextual to the selected card type; only Worlds is wired up so far.
+  const actionButtons = (
+    <>
+      {COMMUNITY_ENABLED && (
+        <Button
+          className="bg-gradient-to-r from-indigo-200 to-blue-200 hover:from-indigo-300 hover:to-blue-300 text-black font-bold"
+          onClick={() => setShowCommunityBrowser(true)}
+        >
+          <Globe className="mr-2 h-4 w-4" /> Community Creations
+        </Button>
+      )}
+
+      <Button
+        className="bg-gradient-to-r from-amber-200 to-yellow-200 hover:from-amber-300 hover:to-yellow-300 text-black font-bold"
+        onClick={() => { if (cardType === 'worlds') handleCreateNewWorld(); }}
+      >
+        <FilePlus2 className="mr-2 h-4 w-4" /> New {cardNoun}
+      </Button>
+
+      <Button
+        className="bg-gradient-to-r from-green-200 to-emerald-200 hover:from-green-300 hover:to-emerald-300 text-black font-bold"
+        onClick={() => { if (cardType === 'worlds') fileInputRef.current?.click(); }}
+      >
+        <Import className="mr-2 h-4 w-4" /> Import {cardNoun}
+      </Button>
+
+      {COMMUNITY_ENABLED && (
+        <Button
+          className="bg-gradient-to-r from-purple-200 to-pink-200 hover:from-purple-300 hover:to-pink-300 text-black font-bold"
+          onClick={() => isAuthenticated ? handleLogout() : setShowAuthDialog(true)}
+        >
+          {isAuthenticated ? (
+            <><LogOut className="mr-2 h-4 w-4" /> Sign Out</>
+          ) : (
+            <><LogIn className="mr-2 h-4 w-4" /> Login</>
+          )}
+        </Button>
+      )}
+
+      {isAuthenticated && currentUser?.accountType === "admin" && (
+        <Button
+          className="bg-gradient-to-r from-purple-200 to-pink-200 hover:from-purple-300 hover:to-pink-300 text-black font-bold"
+          onClick={() => setShowManageUsersDialog(true)}
+        >
+          <User className="mr-2 h-4 w-4" /> Manage Users
+        </Button>
+      )}
+    </>
+  );
+
   if (showCharacterCustomization) {
     return (
       <CharacterCustomization
@@ -547,8 +604,25 @@ const MainMenu = ({ onStartGame, onOpenWorldEditor }: MainMenuProps) => {
         </div>
       </div>
 
-      {/* Top-left controls: local-world layout selector (styled like the settings tabs) */}
-      <div className="fixed top-4 left-4 z-10">
+      {/* Top-left controls: card-type switcher + local-world layout selector (styled like the settings tabs) */}
+      <div className="fixed top-4 left-4 z-10 flex items-center gap-2">
+        {/* Card-type switcher: text labels in landscape, icon-only in portrait. */}
+        <Tabs value={cardType} onValueChange={(v) => setCardType(v as typeof cardType)}>
+          <TabsList>
+            <TabsTrigger value="worlds" aria-label="Worlds" title="Worlds">
+              <Earth className="h-5 w-5 hidden portrait:block" />
+              <span className="portrait:hidden">Worlds</span>
+            </TabsTrigger>
+            <TabsTrigger value="characters" aria-label="Characters" title="Characters">
+              <User className="h-5 w-5 hidden portrait:block" />
+              <span className="portrait:hidden">Characters</span>
+            </TabsTrigger>
+            <TabsTrigger value="dictionaries" aria-label="Dictionaries" title="Dictionaries">
+              <BookOpen className="h-5 w-5 hidden portrait:block" />
+              <span className="portrait:hidden">Dictionaries</span>
+            </TabsTrigger>
+          </TabsList>
+        </Tabs>
         <Tabs value={layoutMode} onValueChange={(v) => setLayoutMode(v as 'grid' | 'detailed')}>
           <TabsList>
             <TabsTrigger value="grid" aria-label="Grid view" title="Grid view">
@@ -588,52 +662,24 @@ const MainMenu = ({ onStartGame, onOpenWorldEditor }: MainMenuProps) => {
       </div>
 
       <SettingsModal isOpen={showSettings} onOpenChange={setShowSettings} />
-      {/* Action buttons */}
-      <div className="flex justify-center mb-6 gap-4 shrink-0 flex-wrap">
-        {COMMUNITY_ENABLED && (
-          <Button
-            className="bg-gradient-to-r from-indigo-200 to-blue-200 hover:from-indigo-300 hover:to-blue-300 text-black font-bold"
-            onClick={() => setShowDiscoverDialog(true)}
-          >
-            <Globe className="mr-2 h-4 w-4" /> Discover Worlds
-          </Button>
-        )}
-
-        <Button
-          className="bg-gradient-to-r from-amber-200 to-yellow-200 hover:from-amber-300 hover:to-yellow-300 text-black font-bold"
-          onClick={() => handleCreateNewWorld()}
-        >
-          <FilePlus2  className="mr-2 h-4 w-4" /> New World
-        </Button>
-
-  <Button
-    className="bg-gradient-to-r from-green-200 to-emerald-200 hover:from-green-300 hover:to-emerald-300 text-black font-bold"
-    onClick={() => fileInputRef.current?.click()}
-  >
-    <Import className="mr-2 h-4 w-4" /> Import World
-  </Button>
-
-  {COMMUNITY_ENABLED && (
-  <Button
-    className="bg-gradient-to-r from-purple-200 to-pink-200 hover:from-purple-300 hover:to-pink-300 text-black font-bold"
-    onClick={() => isAuthenticated ? handleLogout() : setShowAuthDialog(true)}
-  >
-    {isAuthenticated ? (
-      <><LogOut className="mr-2 h-4 w-4" /> Sign Out</>
-    ) : (
-      <><LogIn className="mr-2 h-4 w-4" /> Login</>
-    )}
-  </Button>
-  )}
-
-  {isAuthenticated && currentUser?.accountType === "admin" && (
-          <Button
-            className="bg-gradient-to-r from-purple-200 to-pink-200 hover:from-purple-300 hover:to-pink-300 text-black font-bold"
-            onClick={() => setShowManageUsersDialog(true)}
-          >
-            <User className="mr-2 h-4 w-4" /> Manage Users
-          </Button>
-        )}
+      {/* Action buttons — full row in landscape, collapsed into a hamburger popover in portrait */}
+      <div className="hidden landscape:flex justify-center mb-6 gap-4 shrink-0 flex-wrap">
+        {actionButtons}
+      </div>
+      <div className="portrait:flex hidden justify-center mb-6 shrink-0">
+        <Popover>
+          <PopoverTrigger asChild>
+            <Button
+              className="bg-gradient-to-r from-purple-200 to-pink-200 hover:from-purple-300 hover:to-pink-300 text-black font-bold"
+              aria-label="Menu"
+            >
+              <Menu className="h-5 w-5" />
+            </Button>
+          </PopoverTrigger>
+          <PopoverContent align="center" className="flex flex-col gap-2 w-56 [&>button]:w-full">
+            {actionButtons}
+          </PopoverContent>
+        </Popover>
       </div>
 
       <input
@@ -644,8 +690,14 @@ const MainMenu = ({ onStartGame, onOpenWorldEditor }: MainMenuProps) => {
         className="hidden"
       />
 
-      {/* Bounded scroll viewport (Radix ScrollArea Root is overflow-hidden) so drag-reorder
-          auto-scroll stays inside this frame instead of growing the page in either axis. */}
+      {/* Only the Worlds library is populated for now; Characters/Dictionaries swap to an empty view. */}
+      {cardType !== 'worlds' ? (
+        <div className="flex-1 min-h-0 flex items-center justify-center text-sm text-muted-foreground select-none">
+          {cardType === 'characters' ? 'Characters — coming soon' : 'Dictionaries — coming soon'}
+        </div>
+      ) : (
+      /* Bounded scroll viewport (Radix ScrollArea Root is overflow-hidden) so drag-reorder
+         auto-scroll stays inside this frame instead of growing the page in either axis. */
       <ScrollArea className="flex-1 min-h-0">
         <div className={`grid grid-cols-1 sm:grid-cols-2 gap-4 ${layoutMode === 'detailed' ? 'lg:grid-cols-4' : 'lg:grid-cols-3'}`}>
           {isLoadingWorlds ? (
@@ -687,6 +739,7 @@ const MainMenu = ({ onStartGame, onOpenWorldEditor }: MainMenuProps) => {
           )}
         </div>
       </ScrollArea>
+      )}
 
       <Dialog open={showWorldModal} onOpenChange={setShowWorldModal}>
         <DialogContent className={cn("h-[85vh] flex flex-col overflow-x-hidden", worldModalCollapsed ? "sm:max-w-[600px]" : "sm:max-w-[1200px]")}>
@@ -986,10 +1039,10 @@ const MainMenu = ({ onStartGame, onOpenWorldEditor }: MainMenuProps) => {
             selectedWorld={selectedWorld}
           />
 
-          {/* World browser — see DiscoverWorlds.tsx */}
-          <DiscoverWorlds
-            open={showDiscoverDialog}
-            onOpenChange={setShowDiscoverDialog}
+          {/* Community Creations browser — see CommunityCreationsBrowser.tsx */}
+          <CommunityCreationsBrowser
+            open={showCommunityBrowser}
+            onOpenChange={setShowCommunityBrowser}
             worlds={worlds}
             setWorlds={setWorlds}
             isAuthenticated={isAuthenticated}
