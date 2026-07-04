@@ -1,4 +1,4 @@
-import React, { useEffect, useRef } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { useGameplay } from '@/contexts/GameplayContext';
 import { useGameData } from '@/contexts/GameDataContext';
 import { useSettings } from '@/contexts/SettingsContext';
@@ -16,6 +16,7 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { Progress } from "@/components/ui/progress";
 import { Slider } from "@/components/ui/slider";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import {
   Pagination,
   PaginationContent,
@@ -270,6 +271,8 @@ export const MiddlePanel = ({
   handleKeyPress,
   handleRollback,
   handleRegenerate,
+  handleRegenerateChoices,
+  handleRegenerateStats,
   abortGeneration,
   disabled,
   onTTSClick,
@@ -292,6 +295,8 @@ export const MiddlePanel = ({
   handleKeyPress: (e: React.KeyboardEvent<HTMLInputElement>) => void;
   handleRollback: () => void;
   handleRegenerate: () => void;
+  handleRegenerateChoices: () => void;
+  handleRegenerateStats: () => void;
   abortGeneration: () => void;
   disabled: boolean;
   onTTSClick: () => void;
@@ -322,9 +327,14 @@ export const MiddlePanel = ({
     isEditMode,
     setIsEditMode,
     ttsPlayback,
-    setFullMessageHistory
+    setFullMessageHistory,
+    playerStats
   } = useGameplay();
-  const { ttsHighlight } = useSettings();
+  const { ttsHighlight, choicesEnabled, statUpdatesEnabled } = useSettings();
+  // Which partial re-generate options the flyout should offer (mirrors the aux-request gates).
+  const canRegenChoices = choicesEnabled;
+  const canRegenStats = statUpdatesEnabled && playerStats.length > 0;
+  const [regenMenuOpen, setRegenMenuOpen] = useState(false);
 
   // Whether TTS has produced playable audio for the current text (drives the frozen top row).
   const hasAudio = ttsPlayback.duration > 0;
@@ -630,21 +640,60 @@ export const MiddlePanel = ({
                     description="Are you sure you want to rollback to the previous state? This action cannot be undone."
                     onConfirm={handleRollback}
                   >
-                    <Button variant="outline" className="text-xs gap-1 w-32">
+                    <Button variant="outline" className="text-xs gap-1 w-32" disabled={isWaitingForAI}>
                       <RefreshCw className="h-3 w-3" />
                       Rollback
                     </Button>
                   </ConfirmDialog>
                 ) : totalPages > 0 ? (
-                  <Button
-                    variant="outline"
-                    className="text-xs gap-1 w-32"
-                    onClick={handleRegenerate}
-                    disabled={disabled}
-                  >
-                    <RefreshCw className="h-3 w-3" />
-                    Re-generate
-                  </Button>
+                  <div className="flex">
+                    {/* Left half: full re-generate, unchanged. Right caret opens the partial-regenerate flyout. */}
+                    <Button
+                      variant="outline"
+                      className={`text-xs gap-1 ${canRegenChoices || canRegenStats ? "rounded-r-none w-28" : "w-32"}`}
+                      onClick={handleRegenerate}
+                      disabled={isWaitingForAI}
+                    >
+                      <RefreshCw className="h-3 w-3" />
+                      Re-generate
+                    </Button>
+                    {(canRegenChoices || canRegenStats) && (
+                      <Popover open={regenMenuOpen} onOpenChange={setRegenMenuOpen}>
+                        <PopoverTrigger asChild>
+                          <Button
+                            variant="outline"
+                            className="rounded-l-none border-l-0 px-2"
+                            disabled={isWaitingForAI}
+                            aria-label="More re-generate options"
+                          >
+                            <ChevronUp className="h-3 w-3" />
+                          </Button>
+                        </PopoverTrigger>
+                        <PopoverContent side="top" align="end" className="w-48 p-1">
+                          <div className="flex flex-col">
+                            {canRegenStats && (
+                              <Button
+                                variant="ghost"
+                                className="justify-start text-xs h-8"
+                                onClick={() => { setRegenMenuOpen(false); handleRegenerateStats(); }}
+                              >
+                                Regenerate Stats
+                              </Button>
+                            )}
+                            {canRegenChoices && (
+                              <Button
+                                variant="ghost"
+                                className="justify-start text-xs h-8"
+                                onClick={() => { setRegenMenuOpen(false); handleRegenerateChoices(); }}
+                              >
+                                Regenerate Choices
+                              </Button>
+                            )}
+                          </div>
+                        </PopoverContent>
+                      </Popover>
+                    )}
+                  </div>
                 ) : null}
               </div>
             </div>
