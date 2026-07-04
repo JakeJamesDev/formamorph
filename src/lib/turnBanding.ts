@@ -33,6 +33,9 @@ export interface BandTurn {
   entities?: string[]; // participants recorded on this turn (drives entity-based rehydration)
 }
 
+/** Per-layer token spend and turn tallies for one banding run, for the debug/telemetry view.
+ *  `turnsVerbatim` counts rehydrated + recent-floor turns; the three layers plus dropped turns sum to
+ *  `turnsTotal`. */
 export interface BandCounts {
   floorTokens: number;
   rehydratedTokens: number;

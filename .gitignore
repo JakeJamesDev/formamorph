@@ -12,6 +12,7 @@ dist
 dist-ssr
 coverage
 release
+docs-api
 *.local
 
 pnpm-lock.yaml

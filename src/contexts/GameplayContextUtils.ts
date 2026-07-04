@@ -1,10 +1,9 @@
 import { executeStatCode } from '../lib/statCodeExecutor';
 import type { Stat } from '@/types';
 
-/**
- * Processes stats with dynamic code and updates their values.
- * Returns the updated stats array.
- */
+/** Re-evaluate every stat that has `code`, running each in the sandboxed executor with the full stats
+ *  array as context, and return a new array with recomputed values; stats without code pass through.
+ *  Pure with respect to the input (works on a copy); executor errors are logged and leave the stat unchanged. */
 export const processStatCode = async (stats: Stat[]) => {
   if (!stats || !Array.isArray(stats)) {
     return stats;

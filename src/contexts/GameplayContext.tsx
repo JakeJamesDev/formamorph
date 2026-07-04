@@ -74,6 +74,9 @@ function useProvideGameplay() {
 
   // Note: flattenNestedGameStates has been moved to a web worker to prevent UI freezing
 
+  /** Snapshot the live gameplay state into a single `GameState` (stamped `stateVersion: 2`), deliberately
+   *  omitting the `gameStates` history array and instead recording `previousStateIndex`; `worldName` is left
+   *  null for the caller (GameViewer) to fill at save time. */
   const saveCurrentGameState = useCallback((): GameState => {
     // Create a state object without the gameStates array
     return {
@@ -100,6 +103,9 @@ function useProvideGameplay() {
   }, [playerStats, playerTraits, visibleEntities, discoveredEntities, logEntries, gameplayText, currentLocation,
       gameTime, fullMessageHistory, characterData, choices, isGameStarted, playerNotes, currentPage]);
 
+  /** Restore a `GameState` into the live gameplay state, resolving `locationId` against `locations` and
+   *  recovering `playerNotes` from the newest nested state when the top-level field is absent (legacy saves).
+   *  Returns false and toasts on failure. */
   const loadGameState = useCallback((gameState: GameState, locations: GameLocation[]) => {
     try {
       // Restore all state
@@ -152,6 +158,8 @@ function useProvideGameplay() {
     }
   }, [addLogEntry]);
 
+  /** Persist the current turn to IndexedDB under `saveName` as a flat envelope (`currentState` +
+   *  `stateHistory` + `APP_VERSION`), stamping `worldName` onto the snapshot. Returns success. */
   const saveGame = useCallback(async (saveName: string, worldName: string) => {
     try {
       const gameState = saveCurrentGameState();
@@ -175,6 +183,9 @@ function useProvideGameplay() {
     }
   }, [saveCurrentGameState, gameStates, addLogEntry]);
 
+  /** Load a save by name from IndexedDB and restore it. A flat envelope (`isSaveEnvelope`, current or
+   *  legacy numeric version) loads directly; an older nested shape is flattened off-thread via the
+   *  `convertSaveFile` worker, with a best-effort raw load if conversion throws. Returns success. */
   const loadGame = useCallback(async (saveName: string, locations: GameLocation[]) => {
     try {
       // IndexedDB returns dynamically-shaped data; narrowed by the runtime checks below.
@@ -346,6 +357,9 @@ type GameplayContextValue = ReturnType<typeof useProvideGameplay>;
 
 const GameplayContext = createContext<GameplayContextValue | null>(null);
 
+/** Access the live playthrough state — character, stats, traits, log, location, message history, choices,
+ *  TTS playback, edit/wait flags — plus save/load and state-snapshot callbacks. Throws if called outside
+ *  a `GameplayProvider`. */
 // eslint-disable-next-line react-refresh/only-export-components
 export const useGameplay = () => {
   const context = useContext(GameplayContext);
@@ -355,6 +369,7 @@ export const useGameplay = () => {
   return context;
 };
 
+/** Provides the live gameplay state (see `useGameplay`); terminates the save-conversion worker on unmount. */
 export const GameplayProvider = ({ children }: { children: ReactNode }) => {
   const value = useProvideGameplay();
 

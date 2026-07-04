@@ -53,7 +53,7 @@ const MARKDOWN_ON = `## Formatting
 - Write immersive, flowing prose - never a list, menu, or table.
 - Reach for Markdown emphasis where it genuinely lands: **bold** the single most important noun of the moment (a threat, a key object, a revealed name) and *italicize* a sharp inner thought, sound, or stressed word - because the moment earns it, not to fill a quota.`;
 
-/** The Markdown formatting directive injected into the game-text prompt (replaces <MARKDOWN GUIDANCE>). */
+/** The Markdown formatting directive injected into the game-text prompt (replaces `<MARKDOWN GUIDANCE>`). */
 export function markdownGuidance(enabled: boolean): string {
   return enabled ? MARKDOWN_ON : MARKDOWN_OFF;
 }

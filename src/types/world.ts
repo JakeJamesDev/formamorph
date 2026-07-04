@@ -9,8 +9,10 @@ export interface MediaAsset {
   type: string;
 }
 
+/** A scalar `number` stat or a `list` stat whose value is an array of items. */
 export type StatType = 'number' | 'list';
 
+/** A text label surfaced to the AI once the stat's value crosses `threshold`. */
 export interface StatDescriptor {
   id: string | number;
   threshold: number;
@@ -25,6 +27,7 @@ export interface StatListItem {
   number: number;
 }
 
+/** A world-defined stat: its schema (type, range, descriptors) plus its live/starting value. */
 export interface Stat {
   id: string;
   name: string;
@@ -73,6 +76,7 @@ export interface TraitGroup {
   order?: number;
 }
 
+/** A selectable character trait that applies `statChanges` and adds AI context when chosen at game start. */
 export interface Trait {
   id: string;
   name: string;
@@ -89,6 +93,7 @@ export interface Trait {
   order?: number;
 }
 
+/** A character or object in the world, with separate player-facing and AI-facing descriptions plus optional media. */
 export interface Entity {
   id: string;
   name: string;
@@ -133,6 +138,7 @@ export interface GameLocation {
   parentId?: string | null;
 }
 
+/** A world-defined rule that periodically asks the AI to adjust a set of stats via its own prompt. */
 export interface StatUpdate {
   id: string;
   name: string;
@@ -156,6 +162,7 @@ export interface DictionaryEntry {
   value: string;
 }
 
+/** World-level metadata and global settings (system prompt, media, 3D toggle) shared across all saves. */
 export interface WorldOverview {
   name: string;
   description: string;
@@ -171,6 +178,7 @@ export interface WorldOverview {
   readme?: string;
 }
 
+/** A complete authored world: overview plus all stats, locations, entities, traits, and updates. */
 export interface World {
   id: string;
   /** App/world format version stamped on save/export (see lib/version `APP_VERSION`). Absent ⇒ legacy. */

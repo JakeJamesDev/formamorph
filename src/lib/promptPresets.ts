@@ -36,6 +36,7 @@ export interface PromptPreset {
   style?: SectionStyle; // absent on legacy presets → treated as 'markdown'
 }
 
+/** The persisted preset state: the currently selected preset plus every user-saved one (built-ins are virtual). */
 export interface PromptPresetStore {
   activeId: string;
   presets: PromptPreset[];
@@ -52,6 +53,7 @@ const BUILTIN_IDS = new Set(BUILTIN_PRESETS.map((b) => b.id));
 /** The initial/default built-in id (also the sole preset id before styles existed — kept for back-compat). */
 export const DEFAULT_PRESET_ID = 'default';
 
+/** The initial store: no user presets, Default built-in active. */
 export const emptyStore: PromptPresetStore = { activeId: DEFAULT_PRESET_ID, presets: [] };
 
 /** localStorage codec for the whole store; any malformed value falls back to the empty (Default-only) store. */
@@ -93,6 +95,7 @@ export function activeValues(store: PromptPresetStore, builtinValues: Record<str
   return preset ? { ...base, ...preset.values } : base;
 }
 
+/** Select a preset by id (no validation that it exists — a ghost id falls back to a built-in when read). */
 export function setActive(store: PromptPresetStore, id: string): PromptPresetStore {
   return { ...store, activeId: id };
 }
@@ -102,6 +105,7 @@ export function addPreset(store: PromptPresetStore, id: string, name: string, va
   return { activeId: id, presets: [...store.presets, { id, name, values: { ...values }, style }] };
 }
 
+/** Rename a user preset in place; leaves the active selection unchanged. */
 export function renamePreset(store: PromptPresetStore, id: string, name: string): PromptPresetStore {
   return { ...store, presets: store.presets.map((p) => (p.id === id ? { ...p, name } : p)) };
 }

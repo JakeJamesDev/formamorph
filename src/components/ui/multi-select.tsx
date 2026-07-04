@@ -223,7 +223,7 @@ interface MultiSelectProps
 	responsive?:
 		| boolean
 		| {
-				/** Configuration for mobile devices (< 640px) */
+				/** Configuration for mobile devices (below 640px) */
 				mobile?: {
 					maxCount?: number;
 					hideIcons?: boolean;
@@ -235,7 +235,7 @@ interface MultiSelectProps
 					hideIcons?: boolean;
 					compactMode?: boolean;
 				};
-				/** Configuration for desktop devices (> 1024px) */
+				/** Configuration for desktop devices (above 1024px) */
 				desktop?: {
 					maxCount?: number;
 					hideIcons?: boolean;

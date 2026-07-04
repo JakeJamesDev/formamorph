@@ -6,6 +6,8 @@
 /** Leading ordered/unordered list markers to peel off the front of a choice line. */
 const LEADING_MARKER = /^\s*(?:[-*•]|\d+[.)])\s+/;
 
+/** Split a raw choices response into one action per non-blank line, stripping only a leading list marker,
+ *  capped at `max`. Intentionally minimal so a custom prompt's authored choices survive intact. */
 export function parseChoices(raw: string, max = 6): string[] {
   return (raw || '')
     .split('\n')

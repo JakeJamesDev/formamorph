@@ -7,7 +7,7 @@ export type ImageSubjectKind = 'character' | 'location' | 'world';
 // `<ANGLE>` convention so it renders as a chip in PromptField (registered in promptVariables as SUBJECT).
 export const SUBJECT_TOKEN = '<SUBJECT>';
 
-/** Per-kind guidance substituted for {subject} in the tag prompt. */
+/** Per-kind guidance substituted for `{subject}` in the tag prompt. */
 export const SUBJECT_GUIDANCE: Record<ImageSubjectKind, string> = {
   character: 'a single character; include a subject-count tag (1girl, 1boy, or solo)',
   location: 'a scenery/background image; include the tag "no humans"',

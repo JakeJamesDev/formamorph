@@ -4,9 +4,10 @@ import react from 'eslint-plugin-react'
 import reactHooks from 'eslint-plugin-react-hooks'
 import reactRefresh from 'eslint-plugin-react-refresh'
 import tseslint from 'typescript-eslint'
+import tsdoc from 'eslint-plugin-tsdoc'
 
 export default tseslint.config(
-  { ignores: ['dist', 'coverage', 'release', 'electron'] },
+  { ignores: ['dist', 'coverage', 'release', 'electron', 'docs-api'] },
   {
     files: ['*.config.js'],
     languageOptions: {
@@ -46,11 +47,19 @@ export default tseslint.config(
   {
     files: ['**/*.{ts,tsx}'],
     extends: [...tseslint.configs.recommended],
+    plugins: { tsdoc },
     rules: {
       '@typescript-eslint/no-unused-vars': [
         'error',
         { ignoreRestSiblings: true, argsIgnorePattern: '^_', varsIgnorePattern: '^_' },
       ],
+      // Validate TSDoc microsyntax only — does not require docs, so prose-only blocks pass clean.
+      'tsdoc/syntax': 'warn',
     },
+  },
+  {
+    // Tests carry non-TSDoc block comments (e.g. the `@vitest-environment` pragma) — skip tsdoc there.
+    files: ['**/*.test.{ts,tsx}', '**/*.spec.{ts,tsx}'],
+    rules: { 'tsdoc/syntax': 'off' },
   },
 )

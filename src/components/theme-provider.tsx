@@ -9,6 +9,8 @@ interface ThemeProviderState {
 
 const ThemeProviderContext = createContext<ThemeProviderState | undefined>(undefined)
 
+/** Applies the selected theme to `<html>` (adds `light`/`dark`, resolving `"system"` via the
+ *  `prefers-color-scheme` media query) and persists the choice to `localStorage` under `storageKey`. */
 export function ThemeProvider({
   children,
   defaultTheme = "system",
@@ -55,6 +57,7 @@ export function ThemeProvider({
   )
 }
 
+/** Reads the current theme and setter from `ThemeProviderContext`; throws if used outside a `ThemeProvider`. */
 // eslint-disable-next-line react-refresh/only-export-components
 export const useTheme = () => {
   const context = useContext(ThemeProviderContext)

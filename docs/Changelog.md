@@ -42,6 +42,7 @@ Each release groups changes as **Major** / **Minor**, then **Added** / **Removed
   - **Env-seeded image defaults** — the whole Image Gen setup (provider, endpoint, dimensions, ADetailer, and multiple named presets via `VITE_DEFAULT_IMAGE_PRESETS`) can be seeded from `.env.local`.
   - **Unified app icon** — one source icon (`public/icon.png`) is now both the browser-tab favicon and the desktop app icon (electron-builder converts it per-platform), replacing the default Vite / Electron icons.
   - The main-menu GitHub button and the README / wiki now link to this fork's repo and the live web build.
+  - **API doc comments + tooling** — the high-value TypeScript surface (domain types, contexts, services, and the core `lib` modules) now carries prose **TSDoc** comments, so VS Code shows a plain-English summary on hover next to the types. The lint gate validates comment syntax (`eslint-plugin-tsdoc`), and `npm run docs` generates a browsable **TypeDoc** API reference into the gitignored `docs-api/`.
 
 #### 🐛 Fixed
 

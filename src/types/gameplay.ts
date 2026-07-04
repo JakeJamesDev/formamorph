@@ -17,23 +17,27 @@ export type PlayerStat = Omit<Stat, 'value'> & { value: number };
 /** A choice is a single plaintext action line. */
 export type Choice = string;
 
+/** One entry in the play log; `repeat` counts consecutive identical entries collapsed into one. */
 export interface LogEntry {
   text: string;
   gameTime: number;
   repeat: number;
 }
 
+/** Body-silhouette blend weights driving the corresponding VRM morphs. */
 export interface BodyShape {
   pear: number;
   apple: number;
   hourglass: number;
 }
 
+/** A VRM hair variant: its morph shapekey and whether length is adjustable. */
 export interface HairTypeDef {
   shapekey: string;
   canChangeLength: boolean;
 }
 
+/** The player character's appearance customization applied to the VRM model. */
 export interface CharacterData {
   bodyShape: BodyShape;
   bellySize: number;
