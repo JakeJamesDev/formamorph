@@ -344,7 +344,7 @@ export const MenuModal = ({ onSettingsClick, onSave, onLoad, worldOverview, onEx
                             {save.timestamp} - Game Time: {formatGameTime(save.gameTime)}
                           </div>
                           {save.worldName && save.worldName !== worldOverview?.name && (
-                            <div className="text-xs text-yellow-500">
+                            <div className="text-xs text-warning">
                               Warning: Different world ({save.worldName})
                             </div>
                           )}
@@ -358,7 +358,7 @@ export const MenuModal = ({ onSettingsClick, onSave, onLoad, worldOverview, onEx
                       <div className="text-sm">
                         {loadingMessage || 'Processing...'}
                       </div>
-                      <div className="text-xs text-amber-500 max-w-xs">
+                      <div className="text-xs text-warning max-w-xs">
                         {isDownloading
                           ? `Please wait while the save file "${downloadingSaveName}" is being prepared for download. For large save files, this may take a moment.`
                           : 'Please wait while the save file is being processed. For large save files, this may take a moment. Do not attempt to load another save until this process completes.'

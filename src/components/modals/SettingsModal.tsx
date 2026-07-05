@@ -695,7 +695,7 @@ export const SettingsModal = ({ isOpen, onOpenChange, previewValues }: {
               </div>
               <div className="grid grid-cols-[1fr_3fr] gap-4">
                 <div />
-                <div className={contextStatus.red ? 'text-xs text-red-500' : 'text-xs text-muted-foreground'}>
+                <div className={contextStatus.red ? 'text-xs text-destructive' : 'text-xs text-muted-foreground'}>
                   {contextStatus.text}
                 </div>
               </div>

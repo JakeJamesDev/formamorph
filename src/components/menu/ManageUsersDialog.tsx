@@ -208,11 +208,11 @@ export function ManageUsersDialog({ open, onOpenChange }: ManageUsersDialogProps
                     const userId = user._id || user.id;
 
                     // Determine status badge color
-                    let statusBadgeClass = "bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-300";
+                    let statusBadgeClass = "bg-success/10 text-success";
                     if (user.status === "suspended") {
-                      statusBadgeClass = "bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-300";
+                      statusBadgeClass = "bg-destructive/10 text-destructive";
                     } else if (user.status === "pending") {
-                      statusBadgeClass = "bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-300";
+                      statusBadgeClass = "bg-warning/10 text-warning";
                     }
 
                     return (
@@ -243,7 +243,7 @@ export function ManageUsersDialog({ open, onOpenChange }: ManageUsersDialogProps
                               <Button
                                 size="sm"
                                 variant="outline"
-                                className="text-green-600 hover:text-green-800 dark:text-green-400 dark:hover:text-green-300"
+                                className="text-success hover:text-success/80"
                                 onClick={() => handleUserStatusChange(userId, "normal")}
                               >
                                 Activate
@@ -254,7 +254,7 @@ export function ManageUsersDialog({ open, onOpenChange }: ManageUsersDialogProps
                               <Button
                                 size="sm"
                                 variant="outline"
-                                className="text-red-600 hover:text-red-800 dark:text-red-400 dark:hover:text-red-300"
+                                className="text-destructive hover:text-destructive/80"
                                 onClick={() => handleUserStatusChange(userId, "suspended")}
                               >
                                 Suspend

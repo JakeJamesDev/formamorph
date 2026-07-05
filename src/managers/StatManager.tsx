@@ -493,11 +493,11 @@ return (health + strength) / 2;"
               </Button>
 
               {codeResult !== null && (
-                <div className="text-green-500">Result: {codeResult}</div>
+                <div className="text-success">Result: {codeResult}</div>
               )}
 
               {codeError && (
-                <div className="text-red-500 text-sm">Error: {codeError}</div>
+                <div className="text-destructive text-sm">Error: {codeError}</div>
               )}
             </div>
 

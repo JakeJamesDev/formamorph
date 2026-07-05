@@ -2011,10 +2011,10 @@ ${playerNotes || NONE_PLACEHOLDER}
     const fillPct = Math.min(100, usedPct);
     const barColor =
       usedPct >= 90
-        ? "bg-red-500"
+        ? "bg-destructive"
         : usedPct >= 70
-          ? "bg-yellow-500"
-          : "bg-green-500";
+          ? "bg-warning"
+          : "bg-success";
     const row = (label: string, tokens: number) => (
       <div className="flex justify-between"><span>{label}:</span><span>{tokens.toLocaleString()} tok ({pct(tokens).toFixed(0)}%)</span></div>
     );
@@ -2593,9 +2593,9 @@ ${playerNotes || NONE_PLACEHOLDER}
                       {currentTurn.action ? ` — "${currentTurn.action}"` : ""}
                     </span>
                     {currentTurn.regenerated ? (
-                      <span className="ml-2 font-medium text-amber-500">Re-generated</span>
+                      <span className="ml-2 font-medium text-warning">Re-generated</span>
                     ) : currentTurn.pruned ? (
-                      <span className="ml-2 font-medium text-amber-500">Pruned</span>
+                      <span className="ml-2 font-medium text-warning">Pruned</span>
                     ) : null}
                   </div>
                 )}

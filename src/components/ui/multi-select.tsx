@@ -54,7 +54,7 @@ const multiSelectVariants = cva("m-1 transition-all duration-300 ease-in-out", {
 			secondary:
 				"border-foreground/10 bg-secondary text-secondary-foreground hover:bg-secondary/80",
 			destructive:
-				"border-transparent bg-destructive text-destructive-foreground hover:bg-destructive/80",
+				"border-transparent bg-destructive-fill text-destructive-foreground hover:bg-destructive-fill/80",
 			inverted: "inverted",
 		},
 		badgeAnimation: {

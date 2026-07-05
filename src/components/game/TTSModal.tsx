@@ -391,12 +391,12 @@ const TTSModal = forwardRef<TTSModalHandle, {
             <div className="space-y-4 w-full">
               <VramReadout stats={vramStats} compact />
               {!webGPUSupported && (
-                <div className="text-sm text-red-500">
+                <div className="text-sm text-destructive">
                   WebGPU is not supported in your browser. Please use a WebGPU-enabled browser like Chrome Canary or Edge Canary.
                 </div>
               )}
               {lowVram && (
-                <div className="text-sm text-red-500 whitespace-nowrap">
+                <div className="text-sm text-destructive whitespace-nowrap">
                   Low VRAM: ~{KOKORO_VRAM_ESTIMATE_MB} MB needed, only {minFreeMB} MB free — loading may fail or fall back to CPU.
                 </div>
               )}
