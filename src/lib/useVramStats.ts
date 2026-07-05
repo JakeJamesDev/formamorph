@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from "react";
+import { isDesktop, desktopVramStats } from "./imageGen/desktop";
 
 export interface VramGpu {
   index: number | null;
@@ -28,8 +29,16 @@ interface Options {
   intervalMs?: number;
 }
 
-// Polls the local nvidia-smi helper (see scripts/vram-helper.mjs) for live VRAM numbers.
-// Degrades gracefully: helper down → "offline", helper up but no NVIDIA GPU → "no-gpu".
+// The raw payload from either source (the desktop IPC bridge or the standalone HTTP helper).
+interface VramPayload {
+  error?: string;
+  gpus?: VramGpu[];
+  processes?: VramProcess[];
+}
+
+// Live VRAM numbers, from the desktop main process (nvidia-smi over IPC) when running in the desktop build,
+// otherwise the local HTTP helper (see scripts/vram-helper.mjs). Degrades gracefully: source down →
+// "offline", source up but no NVIDIA GPU → "no-gpu".
 export function useVramStats(helperUrl: string, { enabled = true, intervalMs = 2000 }: Options = {}): VramStats {
   const [stats, setStats] = useState<VramStats>({
     status: "connecting",
@@ -41,7 +50,9 @@ export function useVramStats(helperUrl: string, { enabled = true, intervalMs = 2
   helperUrlRef.current = helperUrl;
 
   useEffect(() => {
-    if (!enabled || !helperUrl) {
+    const desktop = isDesktop();
+    // Desktop reads via IPC (no URL needed); the web build needs a helper URL to poll.
+    if (!enabled || (!desktop && !helperUrl)) {
       setStats({ status: "offline", gpus: [], processes: [], lastUpdated: null });
       return;
     }
@@ -50,11 +61,20 @@ export function useVramStats(helperUrl: string, { enabled = true, intervalMs = 2
     setStats((s) => ({ ...s, status: "connecting" }));
 
     const poll = async () => {
-      const controller = new AbortController();
-      const timer = setTimeout(() => controller.abort(), 1500);
       try {
-        const res = await fetch(helperUrlRef.current, { signal: controller.signal });
-        const data = await res.json();
+        let data: VramPayload;
+        if (desktop) {
+          data = (await desktopVramStats()) as VramPayload;
+        } else {
+          const controller = new AbortController();
+          const timer = setTimeout(() => controller.abort(), 1500);
+          try {
+            const res = await fetch(helperUrlRef.current, { signal: controller.signal });
+            data = await res.json();
+          } finally {
+            clearTimeout(timer);
+          }
+        }
         if (cancelled) return;
         if (data?.error === "nvidia-smi-not-found" || !Array.isArray(data?.gpus) || data.gpus.length === 0) {
           setStats({ status: "no-gpu", gpus: [], processes: [], lastUpdated: Date.now() });
@@ -68,8 +88,6 @@ export function useVramStats(helperUrl: string, { enabled = true, intervalMs = 2
         }
       } catch {
         if (!cancelled) setStats({ status: "offline", gpus: [], processes: [], lastUpdated: null });
-      } finally {
-        clearTimeout(timer);
       }
     };
 

@@ -880,7 +880,7 @@ const MainMenu = ({ onStartGame, onOpenWorldEditor }: MainMenuProps) => {
       {/* Top-right controls: settings + user avatar */}
       <div className="fixed top-4 right-4 z-10 flex items-center gap-2">
         <button
-          className="p-3 bg-gray-800 text-white rounded-full shadow-lg hover:bg-gray-700 transition-colors"
+          className="p-3 bg-secondary text-secondary-foreground rounded-full shadow-lg hover:bg-secondary/80 transition-colors"
           onClick={() => setShowSettings(true)}
           aria-label="Settings"
         >
@@ -888,7 +888,7 @@ const MainMenu = ({ onStartGame, onOpenWorldEditor }: MainMenuProps) => {
         </button>
         {COMMUNITY_ENABLED && (
           <button
-            className="p-3 bg-gray-800 text-white rounded-full shadow-lg hover:bg-gray-700 transition-colors"
+            className="p-3 bg-secondary text-secondary-foreground rounded-full shadow-lg hover:bg-secondary/80 transition-colors"
             onClick={() => isAuthenticated ? setShowProfileDialog(true) : setShowAuthDialog(true)}
             aria-label={isAuthenticated ? "User Profile" : "Login"}
           >
@@ -1497,7 +1497,7 @@ const MainMenu = ({ onStartGame, onOpenWorldEditor }: MainMenuProps) => {
           href="https://www.patreon.com/JakeJamesNSFW"
           target="_blank"
           rel="noopener noreferrer"
-          className="p-3 bg-gray-800 text-white rounded-full shadow-lg hover:bg-gray-700 transition-colors"
+          className="p-3 bg-secondary text-secondary-foreground rounded-full shadow-lg hover:bg-secondary/80 transition-colors"
           aria-label="Patreon"
         >
           <PatreonIcon className="h-6 w-6" />
@@ -1506,7 +1506,7 @@ const MainMenu = ({ onStartGame, onOpenWorldEditor }: MainMenuProps) => {
           href="https://github.com/JakeJamesDev/formamorph"
           target="_blank"
           rel="noopener noreferrer"
-          className="p-3 bg-gray-800 text-white rounded-full shadow-lg hover:bg-gray-700 transition-colors"
+          className="p-3 bg-secondary text-secondary-foreground rounded-full shadow-lg hover:bg-secondary/80 transition-colors"
           aria-label="GitHub Repository"
         >
           <Github className="h-6 w-6" />
