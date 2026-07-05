@@ -10,6 +10,21 @@ Formamorph bundles third-party open-source software and assets. This file lists 
 - **Mixamo animations** (`public/*.fbx`) — © Adobe (Mixamo). Used under the Mixamo license terms (<https://www.mixamo.com>). Animations are incorporated into the application; the raw files are not offered as standalone downloadable assets.
 - **Original Formamorph** — portions © 2025 FieryLionite, MIT License (see `legal/LICENSE-upstream-MIT.txt`). This project is a fork.
 - **Danbooru tag list** (`src/data/danbooruTags.json`) — tag names and post counts sourced from the public Danbooru API (<https://danbooru.donmai.us>). Shipped as an authoring convenience for Image-Tags autocomplete; the tag strings are factual labels. Regenerate with `npm run gen-tags` (`scripts/genDanbooruTags.mjs`).
+- **Webfonts** (self-hosted via [Fontsource](https://fontsource.org), bundled as `.woff2` for the Font setting) — all permissive and embeddable in a commercial/closed distribution. Full license texts ship with each package under `node_modules/@fontsource*/LICENSE`:
+  - **Inter** — © The Inter Project Authors, SIL Open Font License 1.1
+  - **Roboto** — © Google, Apache License 2.0
+  - **Open Sans** — © The Open Sans Project Authors, SIL Open Font License 1.1
+  - **Lato** — © Łukasz Dziedzic, SIL Open Font License 1.1
+  - **Montserrat** — © The Montserrat Project Authors, SIL Open Font License 1.1
+  - **Source Sans 3** — © Adobe, SIL Open Font License 1.1
+  - **Poppins** — © The Poppins Project Authors, SIL Open Font License 1.1
+  - **JetBrains Mono** — © JetBrains s.r.o., SIL Open Font License 1.1 (monospace)
+  - **OpenDyslexic** — © Abbie Gonzalez, SIL Open Font License 1.1 (accessibility: dyslexia)
+  - **Atkinson Hyperlegible** — © Braille Institute of America, SIL Open Font License 1.1 (accessibility: low vision)
+  - **Lexend** — © The Lexend Project Authors, SIL Open Font License 1.1 (accessibility: reading fluency)
+  - **Andika** — © SIL International, SIL Open Font License 1.1 (accessibility: literacy)
+
+  OFL/Apache obligations met: fonts are embedded (never sold standalone), unmodified (no Reserved Font Name reuse), and attributed here. Bundle each package's `LICENSE` in the release notices.
 - Other bundled images in the default worlds are author-created/AI-generated.
 
 ## Standards & specifications
