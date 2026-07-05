@@ -23,7 +23,7 @@ import { splitChipInput, replaceChipValue } from "@/components/Chip";
 import { EditableChip } from "@/components/EditableChip";
 import type { DictionaryEntry } from '@/types';
 
-function KeywordChips({ keywords, onChange }: { keywords: string[]; onChange: (keywords: string[]) => void }) {
+function KeywordChips({ keywords, onChange, placeholder = 'e.g. dragon, wyrm, drake' }: { keywords: string[]; onChange: (keywords: string[]) => void; placeholder?: string }) {
   const [inputValue, setInputValue] = useState('');
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 5 } }),
@@ -94,7 +94,7 @@ function KeywordChips({ keywords, onChange }: { keywords: string[]; onChange: (k
             setInputValue('');
           }
         }}
-        placeholder={keywords.length === 0 ? 'e.g. dragon, wyrm, drake' : 'Add keyword...'}
+        placeholder={keywords.length === 0 ? placeholder : 'Add keyword...'}
         className="flex-grow min-w-[8rem] bg-transparent text-sm outline-none"
       />
     </div>
@@ -146,6 +146,13 @@ const DictionaryManager = ({ entry }: { entry: DictionaryEntry }) => {
     .map((k) => k.trim())
     .filter(Boolean);
 
+  // Secondary keywords share the trigger-keyword chip UI; stored as the same comma-separated string.
+  const secondaryKeywords = (editingEntry.secondaryKeys || '')
+    .split(',')
+    .map((k) => k.trim())
+    .filter(Boolean);
+  const handleSecondaryChange = (arr: string[]) => handleChange('secondaryKeys', arr.join(', '));
+
   return (
     <div className="space-y-4">
       <div className="space-y-2">
@@ -169,8 +176,8 @@ const DictionaryManager = ({ entry }: { entry: DictionaryEntry }) => {
           <Input type="number" min={0} value={editingEntry.scanDepth ?? ''} onChange={(e) => handleNumber('scanDepth', e.target.value)} placeholder="all history" />
         </div>
         <div className="space-y-1">
-          <Label className="text-xs text-muted-foreground">Secondary Keywords (comma-separated; one must also appear to activate)</Label>
-          <Input value={editingEntry.secondaryKeys ?? ''} onChange={(e) => handleChange('secondaryKeys', e.target.value)} placeholder="e.g. red, crimson" />
+          <Label className="text-xs text-muted-foreground">Secondary Keywords (one must also appear to activate)</Label>
+          <KeywordChips keywords={secondaryKeywords} onChange={handleSecondaryChange} placeholder="e.g. red, crimson" />
         </div>
       </div>
       <div className="space-y-2">
