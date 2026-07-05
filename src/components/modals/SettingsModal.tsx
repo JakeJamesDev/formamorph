@@ -1073,7 +1073,7 @@ export const SettingsModal = ({ isOpen, onOpenChange, previewValues }: {
                     previewValues={previewValues}
                     readOnly={activePresetIsBuiltIn}
                   />
-                  <p className="text-xs text-gray-500 flex-shrink-0">Lets the AI move the player between locations.</p>
+                  <p className="text-xs text-muted-foreground flex-shrink-0">Lets the AI move the player between locations.</p>
                 </TabsContent>
               )}
 
@@ -1086,7 +1086,7 @@ export const SettingsModal = ({ isOpen, onOpenChange, previewValues }: {
                     previewValues={previewValues}
                     readOnly={activePresetIsBuiltIn}
                   />
-                  <p className="text-xs text-gray-500 flex-shrink-0">Condenses each turn into a short retelling for long-story memory. Only used when Memory Summaries is on.</p>
+                  <p className="text-xs text-muted-foreground flex-shrink-0">Condenses each turn into a short retelling for long-story memory. Only used when Memory Summaries is on.</p>
                 </TabsContent>
               )}
 
@@ -1099,7 +1099,7 @@ export const SettingsModal = ({ isOpen, onOpenChange, previewValues }: {
                     previewValues={previewValues}
                     readOnly={activePresetIsBuiltIn}
                   />
-                  <p className="text-xs text-gray-500 flex-shrink-0">Each participating character records a first-person diary entry per turn. Only used when Character Diaries is on.</p>
+                  <p className="text-xs text-muted-foreground flex-shrink-0">Each participating character records a first-person diary entry per turn. Only used when Character Diaries is on.</p>
                 </TabsContent>
               )}
 
@@ -1112,7 +1112,7 @@ export const SettingsModal = ({ isOpen, onOpenChange, previewValues }: {
                     previewValues={previewValues}
                     readOnly={activePresetIsBuiltIn}
                   />
-                  <p className="text-xs text-gray-500 flex-shrink-0">Stages each turn: picks the cast and scene. Only used when Thinking is set to Staged.</p>
+                  <p className="text-xs text-muted-foreground flex-shrink-0">Stages each turn: picks the cast and scene. Only used when Thinking is set to Staged.</p>
                 </TabsContent>
               )}
 
@@ -1125,7 +1125,7 @@ export const SettingsModal = ({ isOpen, onOpenChange, previewValues }: {
                     previewValues={previewValues}
                     readOnly={activePresetIsBuiltIn}
                   />
-                  <p className="text-xs text-gray-500 flex-shrink-0">Each cast member states its own motivation in the first person. Only used when Thinking is set to Staged.</p>
+                  <p className="text-xs text-muted-foreground flex-shrink-0">Each cast member states its own motivation in the first person. Only used when Thinking is set to Staged.</p>
                 </TabsContent>
               )}
 
@@ -1138,7 +1138,7 @@ export const SettingsModal = ({ isOpen, onOpenChange, previewValues }: {
                     previewValues={previewValues}
                     readOnly={activePresetIsBuiltIn}
                   />
-                  <p className="text-xs text-gray-500 flex-shrink-0">Reconciles the cast&apos;s intentions into the turn&apos;s beat plan. Only used when Thinking is set to Staged.</p>
+                  <p className="text-xs text-muted-foreground flex-shrink-0">Reconciles the cast&apos;s intentions into the turn&apos;s beat plan. Only used when Thinking is set to Staged.</p>
                 </TabsContent>
               )}
             </Tabs>
@@ -1176,7 +1176,7 @@ export const SettingsModal = ({ isOpen, onOpenChange, previewValues }: {
           <TabsContent value="hardware" className="py-4 px-2 flex-1 min-h-0 overflow-y-auto">
             <div className="grid gap-4">
               {desktop ? (
-                <p className="text-xs text-gray-500">
+                <p className="text-xs text-muted-foreground">
                   The VRAM readout is built into the desktop app — no helper to run. Powers a live readout and
                   a low-VRAM warning before loading text-to-speech. Requires an NVIDIA GPU with
                   <code> nvidia-smi</code> available.
@@ -1193,7 +1193,7 @@ export const SettingsModal = ({ isOpen, onOpenChange, previewValues }: {
                       onChange={(e) => setVramHelperUrl(e.target.value)}
                     />
                   </div>
-                  <p className="text-xs text-gray-500">
+                  <p className="text-xs text-muted-foreground">
                     Run <code>npm run vram-helper</code> alongside the app for a live VRAM readout
                     and a low-VRAM warning before loading text-to-speech. Requires an NVIDIA GPU with
                     <code> nvidia-smi</code> on your PATH.

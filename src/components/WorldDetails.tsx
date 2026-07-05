@@ -56,14 +56,14 @@ export function WorldDetailsColumn({ thumbnail, actions, description, tags, meta
     <div className="space-y-4">
       <div>
         <h3 className="text-lg font-semibold">Description</h3>
-        <div className="text-gray-600 dark:text-gray-400 mt-1">
+        <div className="text-muted-foreground mt-1">
           <MarkdownRenderer text={description || "No description available."} />
         </div>
       </div>
       {meta}
       {tags && (
         <div>
-          <h3 className="text-sm font-semibold text-gray-500">Tags</h3>
+          <h3 className="text-sm font-semibold text-muted-foreground">Tags</h3>
           <div className="flex flex-wrap gap-2 mt-1">
             {tags.length > 0 ? (
               tags.map((tag, index) => (
@@ -75,7 +75,7 @@ export function WorldDetailsColumn({ thumbnail, actions, description, tags, meta
                 </span>
               ))
             ) : (
-              <span className="text-gray-500 text-sm">No tags</span>
+              <span className="text-muted-foreground text-sm">No tags</span>
             )}
           </div>
         </div>
@@ -150,7 +150,7 @@ export function CardTags({ tags, onHide }: { tags: string[]; onHide?: (tag: stri
   }, [count, tags]);
 
   if (!tags || tags.length === 0) {
-    return <span className="text-gray-400 text-xs italic">No tags</span>;
+    return <span className="text-muted-foreground text-xs italic">No tags</span>;
   }
 
   const chip = (tag: string, i: number) => (

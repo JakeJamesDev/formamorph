@@ -135,7 +135,7 @@ export function RemoteWorldDetailsModal({
                         className="absolute top-0 left-0 w-full h-full object-cover"
                       />
                     ) : (
-                      <div className="absolute top-0 left-0 w-full h-full flex items-center justify-center bg-gray-100 dark:bg-gray-800 text-gray-400">
+                      <div className="absolute top-0 left-0 w-full h-full flex items-center justify-center bg-muted text-muted-foreground">
                         <Globe className="h-16 w-16" />
                       </div>
                     )}
@@ -166,22 +166,22 @@ export function RemoteWorldDetailsModal({
                 meta={
                   <div className="grid grid-cols-2 gap-4">
                     <div>
-                      <h3 className="text-sm font-semibold text-gray-500">Author</h3>
+                      <h3 className="text-sm font-semibold text-muted-foreground">Author</h3>
                       <p>{world.author?.username || "Unknown"}</p>
                     </div>
 
                     <div>
-                      <h3 className="text-sm font-semibold text-gray-500">Downloads</h3>
+                      <h3 className="text-sm font-semibold text-muted-foreground">Downloads</h3>
                       <p>{world.downloads || 0}</p>
                     </div>
 
                     <div>
-                      <h3 className="text-sm font-semibold text-gray-500">Created</h3>
+                      <h3 className="text-sm font-semibold text-muted-foreground">Created</h3>
                       <p>{world.created_at ? <DateTimeText value={world.created_at} /> : "Unknown"}</p>
                     </div>
 
                     <div>
-                      <h3 className="text-sm font-semibold text-gray-500">Updated</h3>
+                      <h3 className="text-sm font-semibold text-muted-foreground">Updated</h3>
                       <p>{world.updated_at ? <DateTimeText value={world.updated_at} /> : "Unknown"}</p>
                     </div>
                   </div>
@@ -191,7 +191,7 @@ export function RemoteWorldDetailsModal({
 
             {/* Right column: comments */}
             <div className={cn(splitColumnClasses(collapsed).right, "space-y-3")}>
-              <h3 className="text-sm font-semibold text-gray-500">Comments ({commentsTotal})</h3>
+              <h3 className="text-sm font-semibold text-muted-foreground">Comments ({commentsTotal})</h3>
 
               {isAuthenticated ? (
                 <div className="space-y-2">
@@ -210,7 +210,7 @@ export function RemoteWorldDetailsModal({
                   </Button>
                 </div>
               ) : (
-                <p className="text-sm text-gray-500">Log in to leave a comment.</p>
+                <p className="text-sm text-muted-foreground">Log in to leave a comment.</p>
               )}
 
               <div className="space-y-3">
@@ -218,15 +218,15 @@ export function RemoteWorldDetailsModal({
                   <div key={c.id} className="text-sm border-b border-border/50 pb-2 last:border-0">
                     <div className="flex items-center justify-between gap-2">
                       <span className="font-medium">{c.author?.username || 'Unknown'}</span>
-                      <span className="text-xs text-gray-500">
+                      <span className="text-xs text-muted-foreground">
                         {c.created_at ? new Date(c.created_at).toLocaleString() : ''}
                       </span>
                     </div>
-                    <p className="text-gray-600 dark:text-gray-400 whitespace-pre-wrap mt-1">{c.content}</p>
+                    <p className="text-muted-foreground whitespace-pre-wrap mt-1">{c.content}</p>
                   </div>
                 ))}
                 {comments.length === 0 && !commentsLoading && (
-                  <p className="text-sm text-gray-500">No comments yet.</p>
+                  <p className="text-sm text-muted-foreground">No comments yet.</p>
                 )}
                 {commentsHasMore && (
                   <Button

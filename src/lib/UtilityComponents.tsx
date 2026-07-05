@@ -104,13 +104,13 @@ export const ImageUpload = ({ onChange, id, value, cap, previewClassName, object
                 {removeButton}
               </>
             ) : (
-              <div className="absolute inset-0 flex items-center justify-center text-gray-500">
+              <div className="absolute inset-0 flex items-center justify-center text-muted-foreground">
                 Click to upload image
               </div>
             )}
           </div>
         ) : (
-          <div className="flex items-center justify-center border-2 border-dashed border-gray-300 rounded-md p-4">
+          <div className="flex items-center justify-center border-2 border-dashed border-border rounded-md p-4">
             {value ? (
               <div className="relative">
                 <img src={value} alt="Uploaded" onClick={openZoom} className="max-w-full max-h-32 object-contain" />
@@ -161,11 +161,11 @@ export const SoundUpload = ({ onChange, id, value }: {
         id={`sound-upload-${id}`}
       />
       <Label htmlFor={`sound-upload-${id}`} className="cursor-pointer">
-        <div className="flex items-center justify-center border-2 border-dashed border-gray-300 rounded-md p-4">
+        <div className="flex items-center justify-center border-2 border-dashed border-border rounded-md p-4">
           {value ? (
             <div className="w-full" onClick={(e) => e.preventDefault()}>
               <AudioPlayer src={value.data} className="w-full" />
-              <p className="text-sm text-gray-500 mt-2">{value.name}</p>
+              <p className="text-sm text-muted-foreground mt-2">{value.name}</p>
             </div>
           ) : (
             <>
@@ -230,7 +230,7 @@ export const ModelUpload = ({ model, onModelChange, uniqueId }: {
             id={`model-upload-${uniqueId}`}
           />
           <Label htmlFor={`model-upload-${uniqueId}`} className="cursor-pointer">
-            <div className="flex items-center justify-center border-2 border-dashed border-gray-300 rounded-md p-4">
+            <div className="flex items-center justify-center border-2 border-dashed border-border rounded-md p-4">
               <LucideBox className="mr-2" />
               <span>Add 3D Model</span>
             </div>

@@ -146,7 +146,7 @@ export function PublishModal({ open, onOpenChange, isAuthenticated, selectedWorl
 
             <RadioGroup value={selectedWorldToOverride ?? undefined} onValueChange={setSelectedWorldToOverride}>
               {/* Publish as new option */}
-              <div className="flex items-start space-x-2 p-2 rounded-md hover:bg-gray-100 dark:hover:bg-gray-800">
+              <div className="flex items-start space-x-2 p-2 rounded-md hover:bg-accent">
                 <RadioGroupItem value="new" id="publish-new" />
                 <div className="grid gap-1">
                   <Label htmlFor="publish-new">Publish as new world</Label>
@@ -174,7 +174,7 @@ export function PublishModal({ open, onOpenChange, isAuthenticated, selectedWorl
                     const downloads = world.downloads || 0;
 
                     return (
-                      <div key={worldId} className="flex items-start space-x-2 p-2 rounded-md hover:bg-gray-100 dark:hover:bg-gray-800">
+                      <div key={worldId} className="flex items-start space-x-2 p-2 rounded-md hover:bg-accent">
                         <RadioGroupItem value={worldId} id={radioId} />
                         <div className="grid gap-1">
                           <Label htmlFor={radioId}>

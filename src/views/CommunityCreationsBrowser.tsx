@@ -169,7 +169,7 @@ const CommunityCreationsBrowser = ({ open, onOpenChange, worlds, setWorlds, isAu
               </Button>
               <DialogTitle className="whitespace-nowrap mr-2">Community Creations</DialogTitle>
               <div className="relative flex-grow min-w-[200px]">
-                <Search className="absolute left-2 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
+                <Search className="absolute left-2 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                 <Input
                   placeholder="Search worlds..."
                   className="pl-8"
@@ -299,7 +299,7 @@ const CommunityCreationsBrowser = ({ open, onOpenChange, worlds, setWorlds, isAu
                   </div>
                 ))
               ) : filteredRemoteWorlds.length === 0 ? (
-                <div className="col-span-2 text-center py-12 text-gray-500">
+                <div className="col-span-2 text-center py-12 text-muted-foreground">
                   {searchQuery ?
                     "No worlds found matching your criteria." :
                     "No worlds available. Be the first to publish one!"}
@@ -421,7 +421,7 @@ const CommunityCreationsBrowser = ({ open, onOpenChange, worlds, setWorlds, isAu
                 const upToDate = contextualAction?.mode === 'update'
                   && getDownloadState(contextualAction.world.updated_at, [copy]) === 'refresh';
                 return (
-                  <div key={copy.id} className="flex items-start space-x-2 p-2 rounded-md hover:bg-gray-100 dark:hover:bg-gray-800">
+                  <div key={copy.id} className="flex items-start space-x-2 p-2 rounded-md hover:bg-accent">
                     <RadioGroupItem value={copy.id} id={radioId} />
                     <Label htmlFor={radioId} className="flex-1 grid gap-1 cursor-pointer font-normal">
                       <span className="font-medium">
@@ -429,7 +429,7 @@ const CommunityCreationsBrowser = ({ open, onOpenChange, worlds, setWorlds, isAu
                         {upToDate && <span className="ml-2 font-normal text-green-600 dark:text-green-400">• up to date</span>}
                         {copy.dirty && <span className="ml-2 font-normal text-amber-600 dark:text-amber-400">• edited</span>}
                       </span>
-                      <span className="text-xs text-gray-500">Last edited: {edited}</span>
+                      <span className="text-xs text-muted-foreground">Last edited: {edited}</span>
                     </Label>
                   </div>
                 );

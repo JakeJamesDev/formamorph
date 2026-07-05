@@ -126,7 +126,7 @@ export function ManageUsersDialog({ open, onOpenChange }: ManageUsersDialogProps
           {/* Search controls */}
           <div className="flex flex-col sm:flex-row gap-4 mb-6">
             <div className="relative flex-grow">
-              <Search className="absolute left-2 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
+              <Search className="absolute left-2 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
               <Input
                 placeholder="Search users..."
                 className="pl-8"
@@ -155,27 +155,27 @@ export function ManageUsersDialog({ open, onOpenChange }: ManageUsersDialogProps
 
           {/* Users table */}
           <div className="w-full overflow-hidden border rounded-lg">
-            <table className="w-full divide-y divide-gray-200 dark:divide-gray-700">
-              <thead className="bg-gray-50 dark:bg-gray-800">
+            <table className="w-full divide-y divide-border">
+              <thead className="bg-muted">
                 <tr>
-                  <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                  <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">
                     Username
                   </th>
-                  <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                  <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">
                     Email
                   </th>
-                  <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                  <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">
                     Account Type
                   </th>
-                  <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                  <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">
                     Status
                   </th>
-                  <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                  <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">
                     Actions
                   </th>
                 </tr>
               </thead>
-              <tbody className="bg-white dark:bg-gray-900 divide-y divide-gray-200 dark:divide-gray-700">
+              <tbody className="bg-background divide-y divide-border">
                 {isLoadingUsers ? (
                   Array(5).fill(0).map((_, index) => (
                     <tr key={index}>
@@ -198,7 +198,7 @@ export function ManageUsersDialog({ open, onOpenChange }: ManageUsersDialogProps
                   ))
                 ) : users.length === 0 ? (
                   <tr>
-                    <td colSpan={5} className="px-6 py-4 text-center text-gray-500">
+                    <td colSpan={5} className="px-6 py-4 text-center text-muted-foreground">
                       No users found.
                     </td>
                   </tr>
@@ -218,17 +218,17 @@ export function ManageUsersDialog({ open, onOpenChange }: ManageUsersDialogProps
                     return (
                       <tr key={userId}>
                         <td className="px-6 py-4 whitespace-nowrap">
-                          <div className="text-sm font-medium text-gray-900 dark:text-gray-100">
+                          <div className="text-sm font-medium text-foreground">
                             {user.username}
                           </div>
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap">
-                          <div className="text-sm text-gray-500 dark:text-gray-400">
+                          <div className="text-sm text-muted-foreground">
                             {user.email || "N/A"}
                           </div>
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap">
-                          <div className="text-sm text-gray-500 dark:text-gray-400">
+                          <div className="text-sm text-muted-foreground">
                             {user.accountType || "user"}
                           </div>
                         </td>
