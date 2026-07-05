@@ -12,7 +12,7 @@ const isPng = (bytes: Uint8Array): boolean =>
   bytes.length >= 8 && PNG_SIGNATURE.every((b, i) => bytes[i] === b);
 
 /** All PNG text chunks as keyword→value (tEXt + uncompressed iTXt). Empty for non-PNG. */
-function readPngTextChunks(bytes: Uint8Array): Map<string, string> {
+export function readPngTextChunks(bytes: Uint8Array): Map<string, string> {
   const map = new Map<string, string>();
   if (!isPng(bytes)) return map;
   const view = new DataView(bytes.buffer, bytes.byteOffset, bytes.byteLength);

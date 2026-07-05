@@ -46,7 +46,7 @@ import AuthService from '../services/AuthService';
 import type { World, Stat, CharacterData, Dictionary, DictionaryMetadata, Entity, EntityMetadata } from '@/types';
 import { migrateWorld, APP_VERSION } from '@/lib/version';
 import { parseDictionaryImport } from '@/lib/dictionaryFile';
-import { importEntityCard } from '@/lib/entityFile';
+import { importCharacterFile } from '@/lib/entityFile';
 import { useDownscalePrompt } from '@/lib/useDownscalePrompt';
 import CommunityCreationsBrowser from './CommunityCreationsBrowser';
 import { WorldDetailsColumn, DateTimeText, type WorldRecord } from "@/components/WorldDetails";
@@ -76,6 +76,21 @@ const defaultWorlds = [
 const WORLD_ORDER_KEY = 'FORMAMORPH_worldOrder';
 const DICTIONARY_ORDER_KEY = 'FORMAMORPH_dictionaryOrder';
 const ENTITY_ORDER_KEY = 'FORMAMORPH_entityOrder';
+
+// Responsive column counts for the card grids. Tailwind only emits classes it sees literally, so map each
+// count to its class string; the counts themselves are the single source of truth (the entity grid derives
+// from the world grid by math, not a hard-coded number).
+const GRID_COL_CLASS: Record<'base' | 'sm' | 'lg', Record<number, string>> = {
+  base: { 1: 'grid-cols-1', 2: 'grid-cols-2' },
+  sm: { 2: 'sm:grid-cols-2', 4: 'sm:grid-cols-4' },
+  lg: { 3: 'lg:grid-cols-3', 4: 'lg:grid-cols-4', 6: 'lg:grid-cols-6' },
+};
+const gridColsClass = (base: number, sm: number, lg: number) =>
+  `${GRID_COL_CLASS.base[base]} ${GRID_COL_CLASS.sm[sm]} ${GRID_COL_CLASS.lg[lg]}`;
+// The landscape world grid's columns per breakpoint. Portrait character cards are ~half the width, so the
+// Entities grid fits twice as many (`× 2`).
+const WORLD_GRID_COLS = { base: 1, sm: 2, lg: 3 };
+const ENTITY_GRID_CLASS = gridColsClass(WORLD_GRID_COLS.base * 2, WORLD_GRID_COLS.sm * 2, WORLD_GRID_COLS.lg * 2);
 const LAYOUT_MODE_KEY = 'FORMAMORPH_layoutMode';
 // Persisted preference to force the local world modal's single-column (portrait) layout at any width.
 const WORLD_MODAL_COLLAPSED_KEY = 'FORMAMORPH_worldModalCollapsed';
@@ -136,11 +151,17 @@ const MainMenu = ({ onStartGame, onOpenWorldEditor }: MainMenuProps) => {
   const [isLoadingDictionaries, setIsLoadingDictionaries] = useState(true);
   const [dictionaryToDelete, setDictionaryToDelete] = useState<string | null>(null);
   const [editingDictionaryId, setEditingDictionaryId] = useState<string | null>(null);
+  // A blank dictionary being authored but not yet saved (New Dictionary → editor, persisted only on Save).
+  const [draftDictionary, setDraftDictionary] = useState<Dictionary | null>(null);
   // Local character library (metadata only) shown on the Entities tab.
   const [entities, setEntities] = useState<EntityMetadata[]>([]);
   const [isLoadingEntities, setIsLoadingEntities] = useState(true);
   const [entityToDelete, setEntityToDelete] = useState<string | null>(null);
   const [editingEntityId, setEditingEntityId] = useState<string | null>(null);
+  // A blank character being authored but not yet saved (New Entity → editor, persisted only on Save).
+  const [draftEntity, setDraftEntity] = useState<Entity | null>(null);
+  // A lorebook found inside a just-imported SillyTavern character, pending the user's OK to add it too.
+  const [pendingLorebook, setPendingLorebook] = useState<Dictionary | null>(null);
 
   // Shared auth identity (header, publish gating, community browser). The login/profile forms live in AuthModals.
   const [isAuthenticated, setIsAuthenticated] = useState(false);
@@ -396,18 +417,19 @@ const MainMenu = ({ onStartGame, onOpenWorldEditor }: MainMenuProps) => {
     event.target.value = ''; // allow re-importing the same file
   };
 
-  // Import a WebP character card into the local library: `importEntityCard` extracts the embedded JSON and
-  // uses the card's own pixels as the portrait, regenerating the entity id so re-imports never collide.
+  // Import a character image into the local library: our own WebP card, or a SillyTavern character PNG.
+  // The file's own pixels become the portrait; a lorebook found inside a ST card is offered separately.
   const importEntityFile = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (file) {
       (async () => {
         try {
-          const entity = await importEntityCard(file);
+          const { entity, book } = await importCharacterFile(file);
           const now = new Date().toISOString();
           await EntityStorageService.storeEntity({ id: entity.id, name: entity.name, createdAt: now, lastAccessed: now, data: entity });
           setEntities(prev => [...prev, { id: entity.id, name: entity.name, image: entity.image, createdAt: now, lastAccessed: now }]);
           toast.success(`Imported character "${entity.name}".`);
+          if (book) setPendingLorebook(book);
         } catch (err) {
           toast.error((err as Error).message);
         }
@@ -416,17 +438,28 @@ const MainMenu = ({ onStartGame, onOpenWorldEditor }: MainMenuProps) => {
     event.target.value = ''; // allow re-importing the same file
   };
 
-  // Create a blank library character and open the editor on it.
-  const handleCreateNewEntity = async () => {
-    const entity: Entity = { id: crypto.randomUUID(), name: 'New Character' };
+  // Save a just-imported character's lorebook into the dictionary library (the user opted in).
+  const importPendingLorebook = async () => {
+    if (!pendingLorebook) return;
+    const book = pendingLorebook;
     const now = new Date().toISOString();
     try {
-      await EntityStorageService.storeEntity({ id: entity.id, name: entity.name, createdAt: now, lastAccessed: now, data: entity });
-      setEntities(prev => [...prev, { id: entity.id, name: entity.name, image: entity.image, createdAt: now, lastAccessed: now }]);
-      setEditingEntityId(entity.id);
+      await DictionaryStorageService.storeDictionary({ id: book.id, name: book.name, createdAt: now, lastAccessed: now, data: book });
+      setDictionaries(prev => [...prev, { id: book.id, name: book.name, entryCount: book.entries.length, createdAt: now, lastAccessed: now }]);
+      toast.success(`Imported dictionary "${book.name}".`);
     } catch (err) {
       toast.error((err as Error).message);
     }
+  };
+
+  // Open the editor on a blank character DRAFT — nothing is stored until the user hits Save in the editor.
+  const handleCreateNewEntity = () => {
+    setDraftEntity({ id: crypto.randomUUID(), name: 'New Character' });
+  };
+
+  // Open the editor on a blank dictionary DRAFT — nothing is stored until the user hits Save in the editor.
+  const handleCreateNewDictionary = () => {
+    setDraftDictionary({ id: crypto.randomUUID(), name: 'New Dictionary', enabled: true, entries: [] });
   };
 
   const handleTraitSelection = (traitId: string) => {
@@ -570,26 +603,8 @@ const MainMenu = ({ onStartGame, onOpenWorldEditor }: MainMenuProps) => {
         dictionaries: [{ id: crypto.randomUUID(), name: 'Default', enabled: true, entries: [] }],
       };
 
-      // Store the world
-      await WorldStorageService.storeWorld({
-        id: worldId,
-        name: 'New World',
-        description: 'A blank world ready for editing',
-        thumbnail: 'https://via.placeholder.com/400x300/2a2a2a/ffffff?text=New+World',
-        data: blankWorld
-      });
-
-      // Add the world to the local list
-      setWorlds(prev => [...prev, {
-        id: worldId,
-        name: 'New World',
-        description: 'A blank world ready for editing',
-        thumbnail: 'https://via.placeholder.com/400x300/2a2a2a/ffffff?text=New+World',
-        tags: [],
-        isLoading: false
-      }]);
-
-      // Load the world data into context
+      // Load the blank world into context for editing; it is NOT persisted until the user hits Save World
+      // (so backing out without saving leaves no stray blank world behind).
       loadWorldData(blankWorld, true);
 
       // Open the world editor
@@ -599,7 +614,7 @@ const MainMenu = ({ onStartGame, onOpenWorldEditor }: MainMenuProps) => {
         onOpenWorldEditor();
       }
 
-      toast.success('New world created! You can now start editing.');
+      toast.success('New world ready — Save World to keep it.');
     } catch (error) {
       console.error('Error creating new world:', error);
       toast.error('Failed to create new world');
@@ -703,6 +718,7 @@ const MainMenu = ({ onStartGame, onOpenWorldEditor }: MainMenuProps) => {
         onClick={() => {
           if (cardType === 'worlds') handleCreateNewWorld();
           else if (cardType === 'entities') handleCreateNewEntity();
+          else if (cardType === 'dictionaries') handleCreateNewDictionary();
         }}
       >
         <FilePlus2 className="mr-2 h-4 w-4" /> New {cardNoun}
@@ -876,7 +892,7 @@ const MainMenu = ({ onStartGame, onOpenWorldEditor }: MainMenuProps) => {
         type="file"
         ref={entityImportRef}
         onChange={importEntityFile}
-        accept="image/webp,.webp"
+        accept="image/webp,image/png,.webp,.png"
         className="hidden"
       />
 
@@ -888,7 +904,7 @@ const MainMenu = ({ onStartGame, onOpenWorldEditor }: MainMenuProps) => {
               No characters yet — use&nbsp;<span className="font-semibold">New Entity</span>&nbsp;or&nbsp;<span className="font-semibold">Import Entity</span>&nbsp;to add one.
             </div>
           ) : (
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+            <div className={`grid ${ENTITY_GRID_CLASS} gap-4`}>
               <DndContext
                 sensors={worldSensors}
                 collisionDetection={closestCenter}
@@ -907,6 +923,7 @@ const MainMenu = ({ onStartGame, onOpenWorldEditor }: MainMenuProps) => {
                       key={entity.id}
                       world={{ id: entity.id, name: entity.name, thumbnail: entity.image }}
                       layout="grid"
+                      aspect="portrait"
                       onSelect={setEditingEntityId}
                       onDelete={setEntityToDelete}
                     />
@@ -920,7 +937,7 @@ const MainMenu = ({ onStartGame, onOpenWorldEditor }: MainMenuProps) => {
         <ScrollArea className="flex-1 min-h-0">
           {!isLoadingDictionaries && dictionaries.length === 0 ? (
             <div className="flex items-center justify-center py-16 px-4 text-center text-sm text-muted-foreground select-none">
-              No dictionaries yet — use&nbsp;<span className="font-semibold">Import Dictionary</span>&nbsp;to add one.
+              No dictionaries yet — use&nbsp;<span className="font-semibold">New Dictionary</span>&nbsp;or&nbsp;<span className="font-semibold">Import Dictionary</span>&nbsp;to add one.
             </div>
           ) : (
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
@@ -955,7 +972,7 @@ const MainMenu = ({ onStartGame, onOpenWorldEditor }: MainMenuProps) => {
       /* Bounded scroll viewport (Radix ScrollArea Root is overflow-hidden) so drag-reorder
          auto-scroll stays inside this frame instead of growing the page in either axis. */
       <ScrollArea className="flex-1 min-h-0">
-        <div className={`grid grid-cols-1 sm:grid-cols-2 gap-4 ${layoutMode === 'detailed' ? 'lg:grid-cols-4' : 'lg:grid-cols-3'}`}>
+        <div className={`grid ${gridColsClass(WORLD_GRID_COLS.base, WORLD_GRID_COLS.sm, layoutMode === 'detailed' ? 4 : WORLD_GRID_COLS.lg)} gap-4`}>
           {isLoadingWorlds ? (
             Array(6).fill(0).map((_, index) => (
               <div key={index} className="relative w-full h-48 rounded-lg overflow-hidden">
@@ -1202,7 +1219,8 @@ const MainMenu = ({ onStartGame, onOpenWorldEditor }: MainMenuProps) => {
 
       <DictionaryEditorModal
         dictionaryId={editingDictionaryId}
-        onClose={() => { setEditingDictionaryId(null); refreshDictionaries(); }}
+        draft={draftDictionary}
+        onClose={() => { setEditingDictionaryId(null); setDraftDictionary(null); refreshDictionaries(); }}
       />
 
       <ConfirmDialog
@@ -1223,7 +1241,19 @@ const MainMenu = ({ onStartGame, onOpenWorldEditor }: MainMenuProps) => {
 
       <EntityEditorModal
         entityId={editingEntityId}
-        onClose={() => { setEditingEntityId(null); refreshEntities(); }}
+        draft={draftEntity}
+        onClose={() => { setEditingEntityId(null); setDraftEntity(null); refreshEntities(); }}
+      />
+
+      <ConfirmDialog
+        open={!!pendingLorebook}
+        onOpenChange={(open) => !open && setPendingLorebook(null)}
+        title="Import character's lorebook?"
+        description={pendingLorebook
+          ? `This character includes a lorebook ("${pendingLorebook.name}", ${pendingLorebook.entries.length} ${pendingLorebook.entries.length === 1 ? 'entry' : 'entries'}). Add it to your dictionary library too?`
+          : ''}
+        onConfirm={importPendingLorebook}
+        onCancel={() => setPendingLorebook(null)}
       />
 
       <Dialog open={showCodeModal} onOpenChange={setShowCodeModal}>

@@ -6,12 +6,15 @@ import { MarkdownRenderer } from "@/components/game/MarkdownRenderer";
 import { CardTags, type WorldRecord } from "@/components/WorldDetails";
 
 /** A draggable local-world tile. The whole card is the drag handle; a small move distance is required to
- *  start a drag so a plain click still selects the world. `detailed` mirrors the community-browser card layout. */
-function SortableWorldCard({ world, onSelect, onDelete, layout }: {
+ *  start a drag so a plain click still selects the world. `detailed` mirrors the community-browser card layout.
+ *  `aspect='portrait'` gives the grid image a tall 2:3 frame (for character portraits) instead of the short
+ *  landscape default. */
+function SortableWorldCard({ world, onSelect, onDelete, layout, aspect = 'landscape' }: {
   world: WorldRecord;
   onSelect: (id: string) => void;
   onDelete: (id: string) => void;
   layout: 'grid' | 'detailed';
+  aspect?: 'landscape' | 'portrait';
 }) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } =
     useSortable({ id: world.id });
@@ -83,10 +86,10 @@ function SortableWorldCard({ world, onSelect, onDelete, layout }: {
         <img
           src={world.thumbnail}
           alt={world.name}
-          className="w-full h-48 object-cover select-none pointer-events-none"
+          className={`w-full ${aspect === 'portrait' ? 'aspect-[2/3]' : 'h-48'} object-cover select-none pointer-events-none`}
         />
       ) : (
-        <div className="w-full h-48 bg-muted" />
+        <div className={`w-full ${aspect === 'portrait' ? 'aspect-[2/3]' : 'h-48'} bg-muted`} />
       )}
       <div className="absolute bottom-0 left-0 right-0 bg-black bg-opacity-50 p-2">
         <h3 className="text-white font-semibold">{world.name}</h3>

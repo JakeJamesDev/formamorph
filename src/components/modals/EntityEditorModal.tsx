@@ -11,18 +11,22 @@ import EntityStorageService from '@/services/EntityStorageService';
 import type { Entity } from '@/types';
 
 /**
- * Edit a single library character in place, bound to ISOLATED state (never the world store). Open ⇔
- * `entityId !== null`; Download exports a `.webp` card; Save writes back to `EntityStorageService`.
+ * Edit a single library character in place, bound to ISOLATED state (never the world store). Opens on an
+ * existing `entityId` (loaded from storage) or a `draft` (a brand-new character not yet stored). Download
+ * exports a `.webp` card; Save writes to `EntityStorageService` — a draft isn't persisted until then.
  */
-const EntityEditorModal = ({ entityId, onClose }: { entityId: string | null; onClose: () => void }) => {
+const EntityEditorModal = ({ entityId, draft, onClose }: { entityId: string | null; draft?: Entity | null; onClose: () => void }) => {
   const [entity, setEntity] = useState<Entity | null>(null);
   const [showUnsaved, setShowUnsaved] = useState(false);
   const baselineRef = useRef('');
   const onCloseRef = useRef(onClose);
   onCloseRef.current = onClose;
 
-  // Load the character when opened; clear when closed.
+  const isOpen = entityId !== null || !!draft;
+
+  // Seed from the draft, or load the character from storage; clear when closed.
   useEffect(() => {
+    if (draft) { setEntity(draft); baselineRef.current = JSON.stringify(draft); return; }
     if (entityId === null) { setEntity(null); return; }
     let cancelled = false;
     EntityStorageService.getEntityData(entityId)
@@ -33,7 +37,7 @@ const EntityEditorModal = ({ entityId, onClose }: { entityId: string | null; onC
       })
       .catch(() => { if (!cancelled) { toast.error('Could not load character.'); onCloseRef.current(); } });
     return () => { cancelled = true; };
-  }, [entityId]);
+  }, [entityId, draft]);
 
   const dirty = entity != null && JSON.stringify(entity) !== baselineRef.current;
 
@@ -42,10 +46,11 @@ const EntityEditorModal = ({ entityId, onClose }: { entityId: string | null; onC
   };
 
   const handleSave = async () => {
-    if (entityId === null || !entity) return;
-    const normalized: Entity = { ...entity, id: entityId };
+    if (!entity) return;
+    const id = entityId ?? entity.id;
+    const normalized: Entity = { ...entity, id };
     try {
-      await EntityStorageService.storeEntity({ id: entityId, name: normalized.name, data: normalized });
+      await EntityStorageService.storeEntity({ id, name: normalized.name, data: normalized });
       setEntity(normalized);
       baselineRef.current = JSON.stringify(normalized);
       toast.dark('Character saved!');
@@ -75,7 +80,7 @@ const EntityEditorModal = ({ entityId, onClose }: { entityId: string | null; onC
 
   return (
     <>
-      <Dialog open={entityId !== null} onOpenChange={(open) => { if (!open) attemptClose(); }}>
+      <Dialog open={isOpen} onOpenChange={(open) => { if (!open) attemptClose(); }}>
         <DialogContent className="max-w-[800px] w-[95vw] h-[85vh] flex flex-col p-0 gap-0 overflow-hidden">
           <DialogHeader className="px-4 py-3 border-b shrink-0">
             <DialogTitle className="truncate">{entity?.name || 'Character'}</DialogTitle>
