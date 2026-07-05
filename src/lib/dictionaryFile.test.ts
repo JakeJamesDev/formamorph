@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { buildDictionaryFile, parseDictionaryFile, DICTIONARY_FILE_KIND } from './dictionaryFile';
+import { buildDictionaryFile, parseDictionaryFile, parseDictionaryImport, DICTIONARY_FILE_KIND } from './dictionaryFile';
 import { APP_VERSION } from './version';
 import type { Dictionary } from '@/types';
 
@@ -25,6 +25,11 @@ describe('buildDictionaryFile', () => {
   it('emits enabled only when the book is disabled', () => {
     expect('enabled' in buildDictionaryFile(book())).toBe(false);
     expect(buildDictionaryFile(book({ enabled: false })).enabled).toBe(false);
+  });
+
+  it('carries a description only when present, and round-trips it', () => {
+    expect('description' in buildDictionaryFile(book())).toBe(false);
+    expect(parseDictionaryFile(buildDictionaryFile(book({ description: 'notes' }))).description).toBe('notes');
   });
 });
 
@@ -63,5 +68,28 @@ describe('parseDictionaryFile', () => {
     const parsed = parseDictionaryFile({ formamorphKind: 'dictionary', version: '2.0.1' });
     expect(parsed.name).toBe('Imported Dictionary');
     expect(parsed.entries).toEqual([]);
+  });
+});
+
+describe('parseDictionaryImport', () => {
+  it('passes a native dictionary file through', () => {
+    const parsed = parseDictionaryImport(buildDictionaryFile(book()));
+    expect(parsed.name).toBe('Lore');
+    expect(parsed.entries).toHaveLength(2);
+  });
+
+  it('converts a foreign lorebook, titling it from the fallback name', () => {
+    const parsed = parseDictionaryImport({ entries: [{ keys: ['a'], content: 'x' }] }, 'From File');
+    expect(parsed.name).toBe('From File');
+    expect(parsed.entries).toHaveLength(1);
+  });
+
+  it('throws a targeted message for a world or save file', () => {
+    expect(() => parseDictionaryImport({ formamorphKind: 'world' })).toThrow(/Worlds tab/);
+    expect(() => parseDictionaryImport({ formamorphKind: 'save' })).toThrow(/save file/);
+  });
+
+  it('throws a generic message for anything unrecognized', () => {
+    expect(() => parseDictionaryImport({ foo: 'bar' })).toThrow(/Unrecognized/);
   });
 });

@@ -79,11 +79,15 @@ function SortableWorldCard({ world, onSelect, onDelete, layout }: {
       className="relative cursor-pointer rounded-lg overflow-hidden hover:opacity-90 transition-opacity touch-none"
       onClick={() => onSelect(world.id)}
     >
-      <img
-        src={world.thumbnail}
-        alt={world.name}
-        className="w-full h-48 object-cover select-none pointer-events-none"
-      />
+      {world.thumbnail ? (
+        <img
+          src={world.thumbnail}
+          alt={world.name}
+          className="w-full h-48 object-cover select-none pointer-events-none"
+        />
+      ) : (
+        <div className="w-full h-48 bg-muted" />
+      )}
       <div className="absolute bottom-0 left-0 right-0 bg-black bg-opacity-50 p-2">
         <h3 className="text-white font-semibold">{world.name}</h3>
         <button

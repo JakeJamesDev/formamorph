@@ -1,4 +1,4 @@
-import type { Stat, Trait, Entity } from './world';
+import type { Stat, Trait, Entity, Dictionary } from './world';
 import type { ChatMessage } from './ai';
 
 /** A director-invented character promoted to a persisted, per-playthrough entity (runtime characters,
@@ -100,6 +100,9 @@ export interface SaveObject {
   stateHistory: GameState[];
   /** Legacy envelopes used the numeric `2` (≙ v1.2); current saves stamp the `APP_VERSION` string. */
   version: string | number;
+  /** v2.x: the dictionary set chosen at world entry (reordered/toggled books, plus any added library
+   *  dictionaries). Absent on older saves → loaders keep the world's current dictionaries. */
+  dictionaries?: Dictionary[];
 }
 
 /** v1.2.0: client-side community-browser hide preferences (persisted in localStorage). */

@@ -22,24 +22,43 @@ export function parseKeywords(entry: DictionaryEntry): string[] {
   return splitKeys(entry.key);
 }
 
-/** Whether any of `keys` occurs in `haystack`, honoring the entry's `useRegex` / `caseSensitive` options. */
-function anyKeyMatches(keys: string[], haystack: string, entry: DictionaryEntry): boolean {
-  if (keys.length === 0 || !haystack) return false;
-  if (entry.useRegex) {
-    return keys.some((k) => {
-      try { return new RegExp(k, entry.caseSensitive ? '' : 'i').test(haystack); }
-      catch { return false; } // a malformed pattern never matches rather than throwing
-    });
-  }
-  const hay = entry.caseSensitive ? haystack : haystack.toLowerCase();
-  return keys.some((k) => hay.includes(entry.caseSensitive ? k : k.toLowerCase()));
+function escapeRegExp(s: string): string {
+  return s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 }
 
-/** Whether an entry fires against `haystack`: a primary hit, plus a secondary hit when `secondaryKeys` is set. */
+/** Whether one keyword occurs in `haystack`, honoring `useRegex` / `matchWholeWords` / `caseSensitive`. */
+function keyMatches(key: string, haystack: string, entry: DictionaryEntry): boolean {
+  if (!key || !haystack) return false;
+  const flags = entry.caseSensitive ? '' : 'i';
+  if (entry.useRegex) {
+    try { return new RegExp(key, flags).test(haystack); }
+    catch { return false; } // a malformed pattern never matches rather than throwing
+  }
+  if (entry.matchWholeWords) {
+    return new RegExp(`\\b${escapeRegExp(key)}\\b`, flags).test(haystack);
+  }
+  const hay = entry.caseSensitive ? haystack : haystack.toLowerCase();
+  return hay.includes(entry.caseSensitive ? key : key.toLowerCase());
+}
+
+/** Whether any of `keys` occurs in `haystack`. */
+function anyKeyMatches(keys: string[], haystack: string, entry: DictionaryEntry): boolean {
+  return keys.some((k) => keyMatches(k, haystack, entry));
+}
+
+/**
+ * Whether an entry fires against `haystack`: a primary hit, plus the secondary gate when `secondaryKeys` is
+ * set. Secondary matching is any/all (`secondaryAll`) and can be inverted (`secondaryExclude`) so the entry
+ * fires only when the secondaries are absent.
+ */
 function triggered(entry: DictionaryEntry, haystack: string): boolean {
   if (!anyKeyMatches(parseKeywords(entry), haystack, entry)) return false;
   const secondary = splitKeys(entry.secondaryKeys);
-  return secondary.length === 0 || anyKeyMatches(secondary, haystack, entry);
+  if (secondary.length === 0) return true;
+  const present = entry.secondaryAll
+    ? secondary.every((k) => keyMatches(k, haystack, entry))
+    : secondary.some((k) => keyMatches(k, haystack, entry));
+  return entry.secondaryExclude ? !present : present;
 }
 
 /** Options for `getActivatedDictionary`. */

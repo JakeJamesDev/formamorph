@@ -8,7 +8,7 @@ import { Menu, Save, Download, Import, Trash2, Loader2 } from "lucide-react";
 import { ConfirmDialog } from '../ConfirmDialog';
 import { saveToDB, getAllSaves, deleteFromDB, loadFromDB } from './dbUtils';
 import { downloadSaveFile, terminateWorker as terminateDownloadWorker } from '../../lib/saveDownloadWorkerUtils';
-import { APP_VERSION, isSaveEnvelope } from '../../lib/version';
+import { APP_VERSION, isSaveEnvelope, SAVE_FILE_KIND } from '../../lib/version';
 import type { WorldOverview, GameState } from "@/types";
 
 /** A stored save record as read back from IndexedDB (v2 envelope or a legacy flat state). */
@@ -304,8 +304,9 @@ export const MenuModal = ({ onSettingsClick, onSave, onLoad, worldOverview, onEx
                                 // Load the save data
                                 const fullSaveData = await loadFromDB(save.name);
 
-                                // Use web worker to process the save data
-                                const { dataUrl, fileName } = await downloadSaveFile(fullSaveData) as { dataUrl: string; fileName: string };
+                                // Use web worker to process the save data; stamp the (optional) file kind
+                                // on the export only — the stored save is untouched.
+                                const { dataUrl, fileName } = await downloadSaveFile({ formamorphKind: SAVE_FILE_KIND, ...(fullSaveData as object) }) as { dataUrl: string; fileName: string };
 
                                 // Create a download link
                                 const element = document.createElement('a');

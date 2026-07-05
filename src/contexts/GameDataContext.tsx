@@ -2,6 +2,7 @@ import { createContext, useContext, useState, useCallback, useMemo, useEffect, t
 import WorldStorageService from '../services/WorldStorageService';
 import { migrateWorld, APP_VERSION } from '@/lib/version';
 import { flattenEnabledBookEntries } from '@/lib/dictionaryUtils';
+import { useDictionaryStoreState, DictionaryStoreProvider } from '@/contexts/DictionaryStoreContext';
 import type {
   WorldMetadata,
   WorldOverview,
@@ -12,7 +13,6 @@ import type {
   TraitGroup,
   StatUpdate,
   Dictionary,
-  DictionaryEntry,
   World,
 } from '@/types';
 
@@ -52,7 +52,14 @@ function useProvideGameData() {
   const [traits, setTraits] = useState<Trait[]>([]);
   const [traitGroups, setTraitGroups] = useState<TraitGroup[]>([]);
   const [statUpdates, setStatUpdates] = useState<StatUpdate[]>([]);
-  const [dictionaries, setDictionaries] = useState<Dictionary[]>([]);
+  // The world's books live in a scoped dictionary store (shared, unchanged CRUD) so the same editing
+  // widgets can be reused elsewhere against an isolated store.
+  const dictStore = useDictionaryStoreState([]);
+  const {
+    dictionaries, setDictionaries,
+    addDictionary, updateDictionary, removeDictionary,
+    addDictionaryEntry, updateDictionaryEntry, removeDictionaryEntry,
+  } = dictStore;
   const [worldId, setWorldId] = useState<string | null>(null);
   // Serialized last-saved world; compared against current data to flag pending edits.
   const [savedSnapshot, setSavedSnapshot] = useState<string>('');
@@ -164,46 +171,6 @@ function useProvideGameData() {
     setStatUpdates(prevStatUpdates => prevStatUpdates.filter(statUpdate => statUpdate.id !== statUpdateId));
   }, []);
 
-  // Books (dictionaries). Injection consumes a derived flat entry list (below) so downstream readers are
-  // untouched; the editor drives these book-aware setters.
-  const addDictionary = useCallback((book: Dictionary) => {
-    setDictionaries(prev => [...prev, book]);
-  }, []);
-
-  const updateDictionary = useCallback((updated: Dictionary) => {
-    setDictionaries(prev => prev.map(book => (book.id === updated.id ? updated : book)));
-  }, []);
-
-  // Deleting the last book reseeds an empty "Default" so a world always has ≥1 book.
-  const removeDictionary = useCallback((bookId: string) => {
-    setDictionaries(prev => {
-      const next = prev.filter(book => book.id !== bookId);
-      return next.length ? next : [makeDefaultBook()];
-    });
-  }, []);
-
-  const addDictionaryEntry = useCallback((bookId: string, newEntry: DictionaryEntry) => {
-    setDictionaries(prev => prev.map(book =>
-      book.id === bookId ? { ...book, entries: [...book.entries, newEntry] } : book
-    ));
-  }, []);
-
-  // Entry ids are globally unique, so update/remove search across all books — DictionaryManager's
-  // update call needs no book context.
-  const updateDictionaryEntry = useCallback((updatedEntry: DictionaryEntry) => {
-    setDictionaries(prev => prev.map(book => ({
-      ...book,
-      entries: book.entries.map(entry => (entry.id === updatedEntry.id ? updatedEntry : entry)),
-    })));
-  }, []);
-
-  const removeDictionaryEntry = useCallback((entryId: string) => {
-    setDictionaries(prev => prev.map(book => ({
-      ...book,
-      entries: book.entries.filter(entry => entry.id !== entryId),
-    })));
-  }, []);
-
   // Flat, injection-ready entry list (book order, disabled books dropped). Consumed by GameViewer and
   // any other reader that expects the pre-books flat `dictionary`.
   const dictionary = useMemo(() => flattenEnabledBookEntries(dictionaries), [dictionaries]);
@@ -277,7 +244,7 @@ function useProvideGameData() {
     ));
 
     return isDefault;
-  }, [updateWorldOverview, setStats, setLocations, setEntities, setTraits, setStatUpdates]);
+  }, [updateWorldOverview, setStats, setLocations, setEntities, setTraits, setStatUpdates, setDictionaries]);
 
   const isWorldDirty = useMemo(
     () => serializeWorld(worldOverview, stats, locations, entities, traits, traitGroups, statUpdates, dictionaries) !== savedSnapshot,
@@ -359,7 +326,9 @@ function useProvideGameData() {
     loadWorldData,
     worldId, setWorldId,
     isWorldDirty,
-    saveWorld
+    saveWorld,
+    // The scoped dictionary store, forwarded so the provider can bind the editing widgets to the world's books.
+    dictStore,
   };
 
   return value;
@@ -388,7 +357,9 @@ export const GameDataProvider = ({ children }: { children: ReactNode }) => {
 
   return (
     <GameDataContext.Provider value={value}>
-      {children}
+      <DictionaryStoreProvider value={value.dictStore}>
+        {children}
+      </DictionaryStoreProvider>
     </GameDataContext.Provider>
   );
 };
