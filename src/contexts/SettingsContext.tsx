@@ -1,7 +1,6 @@
 import { createContext, useContext, useState, useEffect, useRef, useCallback, useMemo, type ReactNode } from 'react';
 import { defaultSystemPrompt, defaultChoicesPrompt, defaultStatUpdatesPrompt, defaultLocationChangePrompt, defaultThinkingPrompt, defaultSummaryPrompt, defaultChoicesUserPrompt, defaultStatUpdatesUserPrompt, defaultLocationChangeUserPrompt, defaultSummaryUserPrompt, defaultDiaryPrompt, defaultDirectorPrompt, defaultDirectorUserPrompt, defaultCharacterPrompt, defaultStoryboardPrompt } from '../components/game/GamePrompts';
-import { DEFAULT_ENDPOINT, DEFAULT_API_TOKEN, DEFAULT_MODEL_NAME, DEFAULT_MAX_TOKENS, DEFAULT_CONTEXT_WINDOW, DEFAULT_ACCENT_COLOR } from './settingsDefaults';
-import { hexToHslTriple, contrastForeground } from '../lib/color';
+import { DEFAULT_ENDPOINT, DEFAULT_API_TOKEN, DEFAULT_MODEL_NAME, DEFAULT_MAX_TOKENS, DEFAULT_CONTEXT_WINDOW, DEFAULT_THEME_COLOR, BASE_THEME_COLOR, THEME_COLORS, type ThemeColor } from './settingsDefaults';
 import { DEFAULT_TAG_PROMPT } from '../lib/imagePrompt';
 import {
   imageEndpointPresetCodec, makeDefaultStore as makeImageStore, presetStoreFromEnv, DEFAULT_IMAGE_ENDPOINT_VALUES,
@@ -61,6 +60,17 @@ function seedImagePresetStore(): ImageEndpointPresetStore {
     adetailer: d.adetailer,
     workflow: d.workflow,
   });
+}
+
+/** First-run default theme color. Honors an OS high-contrast request — but only while the user is still
+ *  following the OS for appearance (light/dark = "system", the theme provider's default): if they've
+ *  explicitly picked light or dark, they're customizing, so we don't force High Contrast on them. Applied
+ *  by usePersistentState only when no theme color is stored yet, so it never overrides a later choice. */
+function computeDefaultThemeColor(): ThemeColor {
+  const storedMode = localStorage.getItem('vite-ui-theme'); // theme provider's key; null ⇒ "system"
+  const followingSystem = storedMode === null || storedMode === 'system';
+  if (followingSystem && window.matchMedia('(prefers-contrast: more)').matches) return 'highcontrast';
+  return DEFAULT_THEME_COLOR;
 }
 
 /** The canonical shipped prompt text — authored in markdown headers; the built-in styles derive from it. */
@@ -314,21 +324,21 @@ function useProvideSettings() {
 
   const [vramHelperUrl, setVramHelperUrl] = usePersistentState<string>(`${APP_ID}_vramHelperUrl`, 'http://localhost:5179', stringCodec);
 
-  // Custom accent color. Applied as an inline `--primary` (+ contrasting `--primary-foreground`) on <html>,
-  // overriding both light and dark. At the library default we remove the override so each mode keeps its
-  // own tuned `--primary` from index.css (no visual change from before this setting existed).
-  const [accentColor, setAccentColor] = usePersistentState<string>(`${APP_ID}_accentColor`, DEFAULT_ACCENT_COLOR, stringCodec);
+  // Preset color theme. Sets a `data-theme` attribute on <html> that swaps a full token set (see the
+  // `[data-theme="…"]` blocks in index.css); the base `blue` theme lives in :root and needs no attribute.
+  // The default is computed once (below), then usePersistentState only uses it when nothing is stored —
+  // so it seeds a first-run default but never overrides a theme the user has picked.
+  const initialThemeColor = useRef<ThemeColor | null>(null);
+  if (initialThemeColor.current === null) initialThemeColor.current = computeDefaultThemeColor();
+  const [themeColor, setThemeColor] = usePersistentState<ThemeColor>(`${APP_ID}_themeColor`, initialThemeColor.current, {
+    parse: (r) => (THEME_COLORS.some((t) => t.value === r) ? (r as ThemeColor) : DEFAULT_THEME_COLOR),
+    serialize: (v) => v,
+  });
   useEffect(() => {
     const root = document.documentElement;
-    const triple = hexToHslTriple(accentColor);
-    if (!triple || accentColor.toLowerCase() === DEFAULT_ACCENT_COLOR.toLowerCase()) {
-      root.style.removeProperty('--primary');
-      root.style.removeProperty('--primary-foreground');
-    } else {
-      root.style.setProperty('--primary', triple);
-      root.style.setProperty('--primary-foreground', contrastForeground(accentColor));
-    }
-  }, [accentColor]);
+    if (themeColor === BASE_THEME_COLOR) root.removeAttribute('data-theme');
+    else root.setAttribute('data-theme', themeColor);
+  }, [themeColor]);
   const [ttsVolume, setTtsVolume] = usePersistentState<number>(`${APP_ID}_ttsVolume`, 1, floatCodec);
   const [ttsSpeed, setTtsSpeed] = usePersistentState<number>(`${APP_ID}_ttsSpeed`, 1, floatCodec);
   const [ttsHighlight, setTtsHighlight] = usePersistentState<boolean>(`${APP_ID}_ttsHighlight`, true, boolCodec);
@@ -336,8 +346,8 @@ function useProvideSettings() {
   const value = {
     bgmEnabled,
     setBgmEnabled,
-    accentColor,
-    setAccentColor,
+    themeColor,
+    setThemeColor,
     language,
     setLanguage,
     paragraphLimit,
