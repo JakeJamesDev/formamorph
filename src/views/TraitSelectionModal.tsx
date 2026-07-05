@@ -23,6 +23,7 @@ const TraitSelectionModal = ({
   onTraitSelect,
   onAbort,
   onConfirm,
+  onBack,
   confirmLabel = 'Start',
 }: {
   traits: Trait[];
@@ -32,6 +33,8 @@ const TraitSelectionModal = ({
   onTraitSelect: (traitId: string) => void;
   onAbort: () => void;
   onConfirm: () => void;
+  /** Step back in the enter-world flow. Undefined on the flow's first step (the Back button then fades). */
+  onBack?: () => void;
   /** Label for the confirm button — names the next step in the flow (e.g. "Location", "Avatar", "Start"). */
   confirmLabel?: string;
 }) => {
@@ -186,6 +189,8 @@ const TraitSelectionModal = ({
           <Button onClick={onAbort} variant="destructive" className="flex-1">Abort</Button>
           {/* Advance-now (skip remaining sections). Hidden on the last section, where Next already advances. */}
           {!isLast && <Button onClick={onConfirm} variant="outline" className="flex-1">{confirmLabel}</Button>}
+          {/* Back: pages within trait sections, else steps back in the flow; faded on the very first step. */}
+          <Button onClick={() => (index > 0 ? setIndex((i) => i - 1) : onBack?.())} variant="outline" className="flex-1" disabled={index === 0 && !onBack}>Back</Button>
           <Button onClick={next} className="flex-1">{isLast ? confirmLabel : 'Next'}</Button>
         </div>
       </CardContent>

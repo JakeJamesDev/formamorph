@@ -6,7 +6,7 @@ import { GameplayProvider } from './contexts/GameplayContext';
 import GameViewer from './views/GameViewer';
 import WorldEditor from './views/WorldEditor';
 import MainMenu from './views/MainMenu';
-import type { CharacterData, Dictionary } from '@/types';
+import type { CharacterData, Dictionary, Entity } from '@/types';
 
 
 function App() {
@@ -15,6 +15,7 @@ function App() {
   const [initialCharacterData, setInitialCharacterData] = useState<CharacterData | null>(null);
   const [initialLocationId, setInitialLocationId] = useState<string | null>(null);
   const [initialDictionaries, setInitialDictionaries] = useState<Dictionary[] | null>(null);
+  const [initialCharacters, setInitialCharacters] = useState<Entity[] | null>(null);
 
   const handleStartGame = (
     traits: string[],
@@ -22,11 +23,13 @@ function App() {
     _isNewGame?: boolean,
     startingLocationId?: string | null,
     dictionaries?: Dictionary[] | null,
+    characters?: Entity[] | null,
   ) => {
     setSelectedTraits(traits);
     setInitialCharacterData(customCharacterData);
     setInitialLocationId(startingLocationId ?? null);
     setInitialDictionaries(dictionaries ?? null);
+    setInitialCharacters(characters ?? null);
     setCurrentView('gameViewer');
   };
 
@@ -55,6 +58,7 @@ function App() {
                 initialCharacterData={initialCharacterData}
                 initialLocationId={initialLocationId}
                 initialDictionaries={initialDictionaries}
+                initialCharacters={initialCharacters}
                 onExitToMenu={handleExitToMenu}
               />
             </GameplayProvider>

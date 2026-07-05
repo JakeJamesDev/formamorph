@@ -37,8 +37,10 @@ import { restrictToFirstScrollableAncestor } from '@dnd-kit/modifiers';
 import TraitSelectionModal from './TraitSelectionModal';
 import StartingLocationModal from './StartingLocationModal';
 import DictionarySelectionModal from './DictionarySelectionModal';
+import CharacterSelectionModal from './CharacterSelectionModal';
 import { startingLocations } from '@/lib/startingLocation';
 import { shouldShowDictionaryStep } from '@/lib/dictionarySelection';
+import { shouldShowCharacterStep } from '@/lib/characterSelection';
 import WorldStorageService from '../services/WorldStorageService';
 import DictionaryStorageService from '../services/DictionaryStorageService';
 import EntityStorageService from '../services/EntityStorageService';
@@ -62,7 +64,7 @@ import { useReadmeVisibility } from "@/lib/useReadmeVisibility";
 import PatreonIcon from "@/components/PatreonIcon";
 
 interface MainMenuProps {
-  onStartGame: (traits: string[], characterData: CharacterData | null, isNewGame?: boolean, startingLocationId?: string | null, dictionaries?: Dictionary[] | null) => void;
+  onStartGame: (traits: string[], characterData: CharacterData | null, isNewGame?: boolean, startingLocationId?: string | null, dictionaries?: Dictionary[] | null, characters?: Entity[] | null) => void;
   onOpenWorldEditor: () => void;
 }
 
@@ -135,10 +137,13 @@ const MainMenu = ({ onStartGame, onOpenWorldEditor }: MainMenuProps) => {
   const [showTraitSelection, setShowTraitSelection] = useState(false);
   const [showLocationSelection, setShowLocationSelection] = useState(false);
   const [showDictionarySelection, setShowDictionarySelection] = useState(false);
+  const [showCharacterSelection, setShowCharacterSelection] = useState(false);
   const [selectedTraits, setSelectedTraits] = useState<string[]>([]);
   const [selectedLocationId, setSelectedLocationId] = useState<string | null>(null);
   // The dictionary set chosen at the entry step; null = step skipped (GameViewer falls back to authored books).
   const [selectedDictionaries, setSelectedDictionaries] = useState<Dictionary[] | null>(null);
+  // The library characters chosen at the entry step to place in the starting location; null = none/skipped.
+  const [selectedCharacters, setSelectedCharacters] = useState<Entity[] | null>(null);
   const [showCodeModal, setShowCodeModal] = useState(false);
   const [showSettings, setShowSettings] = useState(false);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
@@ -471,38 +476,51 @@ const MainMenu = ({ onStartGame, onOpenWorldEditor }: MainMenuProps) => {
   };
 
   // Start the world: the custom-character step first for 3D worlds, otherwise straight into the game. The
-  // chosen dictionary set (null = authored fallback) is stashed for the 3D path and passed directly otherwise.
-  const enterWorld = (traitIds: string[], locationId: string | null, dicts: Dictionary[] | null) => {
+  // chosen characters + dictionary set are stashed for the 3D path and passed directly otherwise.
+  const enterWorld = (traitIds: string[], locationId: string | null, chars: Entity[] | null, dicts: Dictionary[] | null) => {
+    setSelectedCharacters(chars);
     setSelectedDictionaries(dicts);
     if (selectedWorld!.data.worldOverview?.use3DModel) {
       setShowCharacterCustomization(true);
     } else {
-      onStartGame(traitIds, null, true, locationId, dicts);
+      onStartGame(traitIds, null, true, locationId, dicts, chars);
     }
   };
 
-  // Whether the dictionary step is worth showing for the selected world + current library.
+  // Whether each entry step is worth showing for the selected world + current library.
   const dictStepVisible = shouldShowDictionaryStep(worldBooks, dictionaries);
+  const charStepVisible = shouldShowCharacterStep(entities);
 
-  // After location, offer the dictionary step when there's a real choice; otherwise enter directly.
-  const proceedToDictOrEnter = (traitIds: string[], locationId: string | null) => {
+  // After location + characters, offer the dictionary step when there's a real choice; otherwise enter.
+  const proceedToDictOrEnter = (traitIds: string[], locationId: string | null, chars: Entity[] | null) => {
+    setSelectedCharacters(chars); // committed for the 3D path + proceedFromDictionaries
     if (dictStepVisible) {
       setShowDictionarySelection(true);
     } else {
-      enterWorld(traitIds, locationId, null);
+      enterWorld(traitIds, locationId, chars, null);
+    }
+  };
+
+  // After location, offer the character step when the library has characters; otherwise go to dictionaries.
+  const proceedToCharsOrDict = (traitIds: string[], locationId: string | null) => {
+    if (charStepVisible) {
+      setShowCharacterSelection(true);
+    } else {
+      proceedToDictOrEnter(traitIds, locationId, null);
     }
   };
 
   // Leave the trait step. Offer a location choice when the world has more than one starting location;
-  // otherwise fall through to the dictionary step (or straight into the world).
+  // otherwise fall through to the character/dictionary steps (or straight into the world).
   const proceedFromTraits = (traitIds: string[]) => {
     setShowTraitSelection(false);
     setSelectedLocationId(null);
     setSelectedDictionaries(null);
+    setSelectedCharacters(null);
     if (startingLocations(locations).length > 1) {
       setShowLocationSelection(true);
     } else {
-      proceedToDictOrEnter(traitIds, null);
+      proceedToCharsOrDict(traitIds, null);
     }
   };
 
@@ -510,13 +528,44 @@ const MainMenu = ({ onStartGame, onOpenWorldEditor }: MainMenuProps) => {
   const proceedFromLocation = (locationId: string | null) => {
     setShowLocationSelection(false);
     setSelectedLocationId(locationId);
-    proceedToDictOrEnter(selectedTraits, locationId);
+    proceedToCharsOrDict(selectedTraits, locationId);
   };
 
-  // Leave the dictionary step: carry the chosen set into the session (via enterWorld → onStartGame), then enter.
+  // Leave the character step: carry the chosen characters forward into the dictionary step (or the world).
+  const proceedFromCharacters = (chars: Entity[]) => {
+    setShowCharacterSelection(false);
+    proceedToDictOrEnter(selectedTraits, selectedLocationId, chars);
+  };
+
+  // Leave the dictionary step: carry the chosen sets into the session (via enterWorld → onStartGame), then enter.
   const proceedFromDictionaries = (finalDicts: Dictionary[]) => {
     setShowDictionarySelection(false);
-    enterWorld(selectedTraits, selectedLocationId, finalDicts);
+    enterWorld(selectedTraits, selectedLocationId, selectedCharacters, finalDicts);
+  };
+
+  // The enter-world steps actually shown for this world + library, in flow order — drives the Back button.
+  type EnterStep = 'traits' | 'location' | 'characters' | 'dictionaries' | 'avatar';
+  const enterFlowSteps = (): EnterStep[] => {
+    const steps: EnterStep[] = [];
+    if (traits.length > 0) steps.push('traits');
+    if (startingLocations(locations).length > 1) steps.push('location');
+    if (charStepVisible) steps.push('characters');
+    if (dictStepVisible) steps.push('dictionaries');
+    if (selectedWorld?.data.worldOverview?.use3DModel) steps.push('avatar');
+    return steps;
+  };
+  const showEnterStep = (step: EnterStep) => {
+    setShowTraitSelection(step === 'traits');
+    setShowLocationSelection(step === 'location');
+    setShowCharacterSelection(step === 'characters');
+    setShowDictionarySelection(step === 'dictionaries');
+    setShowCharacterCustomization(step === 'avatar');
+  };
+  // Back handler for a given step: goes to the previous shown step, or undefined on the first (button fades).
+  const backFrom = (step: EnterStep): (() => void) | undefined => {
+    const steps = enterFlowSteps();
+    const idx = steps.indexOf(step);
+    return idx > 0 ? () => showEnterStep(steps[idx - 1]) : undefined;
   };
 
   const handleDuplicateWorld = async () => {
@@ -764,8 +813,9 @@ const MainMenu = ({ onStartGame, onOpenWorldEditor }: MainMenuProps) => {
       <CharacterCustomization
         onCharacterCustomized={(customizedData) => {
           setShowCharacterCustomization(false);
-          onStartGame(selectedTraits, customizedData, true, selectedLocationId, selectedDictionaries);
+          onStartGame(selectedTraits, customizedData, true, selectedLocationId, selectedDictionaries, selectedCharacters);
         }}
+        onBack={backFrom('avatar')}
       />
     );
   }
@@ -1321,9 +1371,34 @@ const MainMenu = ({ onStartGame, onOpenWorldEditor }: MainMenuProps) => {
             setSelectedTraits([]);
           }}
           onConfirm={() => proceedFromTraits(selectedTraits)}
+          onBack={backFrom('traits')}
           confirmLabel={
             startingLocations(locations).length > 1
               ? 'Location'
+              : charStepVisible
+                ? 'Characters'
+                : dictStepVisible
+                  ? 'Dictionaries'
+                  : selectedWorld?.data.worldOverview?.use3DModel
+                    ? 'Avatar'
+                    : 'Start'
+          }
+        />
+      )}
+
+      {showLocationSelection && (
+        <StartingLocationModal
+          locations={startingLocations(locations)}
+          onConfirm={proceedFromLocation}
+          onBack={backFrom('location')}
+          onAbort={() => {
+            setShowLocationSelection(false);
+            setSelectedTraits([]);
+            setSelectedLocationId(null);
+          }}
+          confirmLabel={
+            charStepVisible
+              ? 'Characters'
               : dictStepVisible
                 ? 'Dictionaries'
                 : selectedWorld?.data.worldOverview?.use3DModel
@@ -1333,14 +1408,16 @@ const MainMenu = ({ onStartGame, onOpenWorldEditor }: MainMenuProps) => {
         />
       )}
 
-      {showLocationSelection && (
-        <StartingLocationModal
-          locations={startingLocations(locations)}
-          onConfirm={proceedFromLocation}
+      {showCharacterSelection && (
+        <CharacterSelectionModal
+          libraryMeta={entities}
+          onConfirm={proceedFromCharacters}
+          onBack={backFrom('characters')}
           onAbort={() => {
-            setShowLocationSelection(false);
+            setShowCharacterSelection(false);
             setSelectedTraits([]);
             setSelectedLocationId(null);
+            setSelectedCharacters(null);
           }}
           confirmLabel={
             dictStepVisible
@@ -1357,6 +1434,7 @@ const MainMenu = ({ onStartGame, onOpenWorldEditor }: MainMenuProps) => {
           worldBooks={worldBooks}
           libraryMeta={dictionaries}
           onConfirm={proceedFromDictionaries}
+          onBack={backFrom('dictionaries')}
           onAbort={() => {
             setShowDictionarySelection(false);
             setSelectedTraits([]);

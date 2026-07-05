@@ -33,8 +33,10 @@ const ColorRow = ({ label, value, onChange, onRevert }: {
   </div>
 );
 
-const CharacterCustomization = ({ onCharacterCustomized }: {
+const CharacterCustomization = ({ onCharacterCustomized, onBack }: {
   onCharacterCustomized: (data: CharacterData) => void;
+  /** Step back in the enter-world flow. Undefined on the flow's first step (the Back button then fades). */
+  onBack?: () => void;
 }) => {
   const { worldOverview } = useGameData();
   const [bodyShape, setBodyShape] = useState({
@@ -223,9 +225,12 @@ const CharacterCustomization = ({ onCharacterCustomized }: {
           <CardTitle>Character Customization</CardTitle>
         </CardHeader>
         <CardContent className="space-y-6">
-        <Button onClick={handleFinalize} className="w-full mt-4">
-            Finalize Character
-          </Button>
+        <div className="flex gap-2 mt-4">
+            <Button onClick={onBack} variant="outline" className="flex-1" disabled={!onBack}>Back</Button>
+            <Button onClick={handleFinalize} className="flex-1">
+              Finalize Character
+            </Button>
+          </div>
 
           <div className="space-y-2">
             <h3 className="text-lg font-semibold">Character Model</h3>
