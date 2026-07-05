@@ -1,7 +1,9 @@
 import type { Entity } from '@/types';
 import { APP_VERSION, WORLD_FILE_KIND, SAVE_FILE_KIND } from './version';
 import { DICTIONARY_FILE_KIND } from './dictionaryFile';
+import type { Dictionary } from '@/types';
 import { embedEntityCard, readEntityCard } from './entityCard';
+import { readTavernCard } from './tavernCard';
 import { IMAGE_CAPS, bytesToDataUrl, dataUrlMime, measureDataUrl, optimizeImageDataUrl } from './imageOptim';
 
 /** Discriminator identifying a standalone character card (vs. a world, save, or dictionary file). */
@@ -106,4 +108,35 @@ export async function importEntityCard(file: File): Promise<Entity> {
   const entity = parseEntityCardData(raw);
   entity.image = bytesToDataUrl(bytes, 'image/webp');
   return entity;
+}
+
+/**
+ * Import a character image file into an entity plus an optional lorebook. Handles both our own WebP cards
+ * (no lorebook) and SillyTavern character PNGs (`character_book` → a dictionary the caller can offer to save).
+ * In both cases the file's own pixels become the entity's portrait.
+ */
+export async function importCharacterFile(file: File): Promise<{ entity: Entity; book: Dictionary | null }> {
+  const bytes = new Uint8Array(await file.arrayBuffer());
+
+  const cardJson = readEntityCard(bytes);
+  if (cardJson) {
+    let raw: unknown;
+    try {
+      raw = JSON.parse(cardJson);
+    } catch {
+      throw new Error('This character card is corrupted.');
+    }
+    const entity = parseEntityCardData(raw);
+    entity.image = bytesToDataUrl(bytes, 'image/webp');
+    return { entity, book: null };
+  }
+
+  const tavern = readTavernCard(bytes);
+  if (tavern) {
+    // The PNG's pixels are the portrait; re-encode to WebP to match how entity images are stored.
+    tavern.entity.image = await optimizeImageDataUrl(bytesToDataUrl(bytes, 'image/png'), IMAGE_CAPS.entity);
+    return tavern;
+  }
+
+  throw new Error("This image isn't a Formamorph character card or a SillyTavern character.");
 }

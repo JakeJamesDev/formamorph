@@ -18,7 +18,7 @@ import type { Dictionary } from '@/types';
  * to an ISOLATED `DictionaryStore` (this one book) so editing never touches the app's world store. Open ⇔
  * `dictionaryId !== null`; saves back to `DictionaryStorageService`.
  */
-const DictionaryEditorModal = ({ dictionaryId, onClose }: { dictionaryId: string | null; onClose: () => void }) => {
+const DictionaryEditorModal = ({ dictionaryId, draft, onClose }: { dictionaryId: string | null; draft?: Dictionary | null; onClose: () => void }) => {
   const store = useDictionaryStoreState([]);
   const { dictionaries, setDictionaries } = store;
   const [book, setBook] = useState<Dictionary | null>(null);
@@ -28,34 +28,32 @@ const DictionaryEditorModal = ({ dictionaryId, onClose }: { dictionaryId: string
   const onCloseRef = useRef(onClose);
   onCloseRef.current = onClose;
 
-  // Load + seed the isolated store when opened; clear when closed.
+  const isOpen = dictionaryId !== null || !!draft;
+
+  // Seed the isolated store from the draft, or load a stored book; clear when closed.
   useEffect(() => {
+    const seed = (b: Dictionary) => { setDictionaries([b]); setBook(b); setSelectedId(b.id); baselineRef.current = JSON.stringify([b]); };
+    if (draft) { seed(draft); return; }
     if (dictionaryId === null) { setBook(null); return; }
     let cancelled = false;
     DictionaryStorageService.getDictionaryData(dictionaryId)
-      .then((b) => {
-        if (cancelled) return;
-        setDictionaries([b]);
-        setBook(b);
-        setSelectedId(b.id);
-        baselineRef.current = JSON.stringify([b]);
-      })
+      .then((b) => { if (!cancelled) seed(b); })
       .catch(() => { if (!cancelled) { toast.error('Could not load dictionary.'); onCloseRef.current(); } });
     return () => { cancelled = true; };
-  }, [dictionaryId, setDictionaries]);
+  }, [dictionaryId, draft, setDictionaries]);
 
   const dirty = book != null && JSON.stringify(dictionaries) !== baselineRef.current;
   const selectedBook = dictionaries.find((b) => b.id === selectedId);
   const selectedEntry = dictionaries.flatMap((b) => b.entries).find((e) => e.id === selectedId);
 
   const handleSave = async () => {
-    if (dictionaryId === null) return;
     const current = dictionaries[0];
     if (!current) return;
     // Normalize the book id back to the record id (a delete-reseed can change it) so the record isn't orphaned.
-    const normalized: Dictionary[] = dictionaries.map((b, i) => (i === 0 ? { ...b, id: dictionaryId } : b));
+    const recordId = dictionaryId ?? current.id;
+    const normalized: Dictionary[] = dictionaries.map((b, i) => (i === 0 ? { ...b, id: recordId } : b));
     try {
-      await DictionaryStorageService.storeDictionary({ id: dictionaryId, name: normalized[0].name, data: normalized[0] });
+      await DictionaryStorageService.storeDictionary({ id: recordId, name: normalized[0].name, data: normalized[0] });
       setDictionaries(normalized);
       baselineRef.current = JSON.stringify(normalized);
       toast.dark('Dictionary saved!');
@@ -82,7 +80,7 @@ const DictionaryEditorModal = ({ dictionaryId, onClose }: { dictionaryId: string
 
   return (
     <>
-      <Dialog open={dictionaryId !== null} onOpenChange={(open) => { if (!open) attemptClose(); }}>
+      <Dialog open={isOpen} onOpenChange={(open) => { if (!open) attemptClose(); }}>
         <DialogContent className="max-w-[1100px] w-[95vw] h-[85vh] flex flex-col p-0 gap-0 overflow-hidden">
           <DialogHeader className="px-4 py-3 border-b shrink-0">
             <DialogTitle className="truncate">{book?.name || 'Dictionary'}</DialogTitle>
