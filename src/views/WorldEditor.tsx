@@ -386,7 +386,7 @@ const WorldEditor = ({ onClose, embedded = false }: {
   // "Add" opens the add-from-library picker (characters on Entities, books on Dictionary).
   const showImport = activeTab === 'entities' || activeTab === 'dictionary';
   const importDisabled = false;
-  const importLabel = activeTab === 'entities' ? 'Add Character' : 'Add Dictionary';
+  const importLabel = activeTab === 'entities' ? 'Add Entity' : 'Add Dictionary';
 
   // Per-tab data + setter so list behavior (selection, drag-reorder) is uniform across tabs.
   const tabConfig = {

@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useSettings, type ThinkingMode, type ParagraphLimit } from '@/contexts/SettingsContext';
-import { DEFAULT_ENDPOINT, DEFAULT_API_TOKEN, DEFAULT_MODEL_NAME, DEFAULT_MAX_TOKENS } from '@/contexts/settingsDefaults';
+import { DEFAULT_ENDPOINT, DEFAULT_API_TOKEN, DEFAULT_MODEL_NAME, DEFAULT_MAX_TOKENS, DEFAULT_ACCENT_COLOR } from '@/contexts/settingsDefaults';
+import { useTheme } from '../theme-provider';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -24,6 +25,12 @@ import ComfyWorkflowGuide from './ComfyWorkflowGuide';
 import { DEFAULT_TAG_PROMPT, SUBJECT_GUIDANCE } from '@/lib/imagePrompt';
 
 // Segmented-control options: a short tab label plus the helper text shown below the selected one.
+const THEME_OPTIONS: { value: 'light' | 'dark' | 'system'; label: string; help: string }[] = [
+  { value: 'light', label: 'Light', help: 'Always use the light color scheme.' },
+  { value: 'dark', label: 'Dark', help: 'Always use the dark color scheme.' },
+  { value: 'system', label: 'System', help: 'Recommended. Follow your OS light/dark setting.' },
+];
+
 const PARAGRAPH_LIMIT_OPTIONS: { value: ParagraphLimit; label: string; help: string }[] = [
   { value: 'none', label: 'None', help: 'No paragraph limit. The model writes until it finishes or hits the token cap.' },
   { value: 'single', label: 'Single', help: 'One paragraph per turn (stops at the first line break).' },
@@ -195,10 +202,16 @@ export const SettingsModal = ({ isOpen, onOpenChange, previewValues }: {
     imageTagPrompt,
     setImageTagPrompt,
     vramHelperUrl,
-    setVramHelperUrl
+    setVramHelperUrl,
+    accentColor,
+    setAccentColor
   } = useSettings();
+  const { theme, setTheme } = useTheme();
   const desktop = isDesktop();
-  const vramStats = useVramStats(vramHelperUrl, { enabled: isOpen });
+  // The Hardware tab needs a VRAM source: the standalone helper (dev) or the desktop app's native readout.
+  // Hide it in the production web build, where neither is available.
+  const showHardwareTab = import.meta.env.DEV || desktop;
+  const vramStats = useVramStats(vramHelperUrl, { enabled: isOpen && showHardwareTab });
   const handleResetEndpointSettings = () => {
     setEndpointUrl(DEFAULT_ENDPOINT);
     setModelName(DEFAULT_MODEL_NAME);
@@ -338,17 +351,66 @@ export const SettingsModal = ({ isOpen, onOpenChange, previewValues }: {
           <DialogTitle>Settings</DialogTitle>
         </DialogHeader>
         <Tabs defaultValue="presentation" className="w-full flex flex-col flex-1 min-h-0">
-          <TabsList className="grid w-full grid-cols-6 flex-shrink-0">
+          <TabsList className={`grid w-full ${showHardwareTab ? 'grid-cols-6' : 'grid-cols-5'} flex-shrink-0`}>
             <TabsTrigger value="presentation">Presentation</TabsTrigger>
             <TabsTrigger value="generation">Generation</TabsTrigger>
             <TabsTrigger value="endpoint">Endpoint</TabsTrigger>
             <TabsTrigger value="image">Image Gen</TabsTrigger>
             <TabsTrigger value="prompts">System Prompts</TabsTrigger>
-            <TabsTrigger value="hardware">Hardware</TabsTrigger>
+            {showHardwareTab && <TabsTrigger value="hardware">Hardware</TabsTrigger>}
           </TabsList>
 
           <TabsContent value="presentation" className="py-4 px-2 flex-1 min-h-0 overflow-y-auto">
             <div className="grid gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-4 items-start gap-4">
+                <label className="text-left sm:text-right pt-2">Theme</label>
+                <div className="col-span-3">
+                  <Tabs value={theme} onValueChange={(v) => setTheme(v as 'light' | 'dark' | 'system')}>
+                    <TabsList className="grid w-full grid-cols-3">
+                      {THEME_OPTIONS.map((o) => (
+                        <TabsTrigger key={o.value} value={o.value}>{o.label}</TabsTrigger>
+                      ))}
+                    </TabsList>
+                  </Tabs>
+                  {/* Help texts stacked in one cell so switching options doesn't reflow the layout. */}
+                  <div className="grid mt-2">
+                    {THEME_OPTIONS.map((o) => (
+                      <p
+                        key={o.value}
+                        className={`col-start-1 row-start-1 text-xs text-muted-foreground${o.value === theme ? '' : ' invisible'}`}
+                      >
+                        {o.help}
+                      </p>
+                    ))}
+                  </div>
+                </div>
+              </div>
+              <div className="grid grid-cols-1 sm:grid-cols-4 items-center gap-4">
+                <label htmlFor="accentColor" className="text-left sm:text-right leading-4">
+                  Accent Color
+                </label>
+                <div className="col-span-3 flex items-center gap-3">
+                  <input
+                    id="accentColor"
+                    type="color"
+                    value={accentColor}
+                    onChange={(e) => setAccentColor(e.target.value)}
+                    className="h-9 w-14 shrink-0 cursor-pointer rounded border bg-transparent p-0.5"
+                    aria-label="Accent color"
+                  />
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setAccentColor(DEFAULT_ACCENT_COLOR)}
+                    disabled={accentColor.toLowerCase() === DEFAULT_ACCENT_COLOR.toLowerCase()}
+                  >
+                    Reset
+                  </Button>
+                  <span className="text-xs text-muted-foreground">
+                    Tints buttons and highlights, in both light and dark.
+                  </span>
+                </div>
+              </div>
               <div className="grid grid-cols-1 sm:grid-cols-4 items-center gap-4">
                 <label htmlFor="language" className="text-left sm:text-right leading-4">
                   Language
@@ -1110,26 +1172,38 @@ export const SettingsModal = ({ isOpen, onOpenChange, previewValues }: {
             />
           </TabsContent>
 
+          {showHardwareTab && (
           <TabsContent value="hardware" className="py-4 px-2 flex-1 min-h-0 overflow-y-auto">
             <div className="grid gap-4">
-              <div className="grid grid-cols-[1fr_3fr] items-center gap-4">
-                <label htmlFor="vramHelperUrl" className="text-right">
-                  VRAM Helper URL
-                </label>
-                <Input
-                  id="vramHelperUrl"
-                  value={vramHelperUrl}
-                  onChange={(e) => setVramHelperUrl(e.target.value)}
-                />
-              </div>
-              <p className="text-xs text-gray-500">
-                Run <code>npm run vram-helper</code> alongside the app for a live VRAM readout
-                and a low-VRAM warning before loading text-to-speech. Requires an NVIDIA GPU with
-                <code> nvidia-smi</code> on your PATH.
-              </p>
+              {desktop ? (
+                <p className="text-xs text-gray-500">
+                  The VRAM readout is built into the desktop app — no helper to run. Powers a live readout and
+                  a low-VRAM warning before loading text-to-speech. Requires an NVIDIA GPU with
+                  <code> nvidia-smi</code> available.
+                </p>
+              ) : (
+                <>
+                  <div className="grid grid-cols-[1fr_3fr] items-center gap-4">
+                    <label htmlFor="vramHelperUrl" className="text-right">
+                      VRAM Helper URL
+                    </label>
+                    <Input
+                      id="vramHelperUrl"
+                      value={vramHelperUrl}
+                      onChange={(e) => setVramHelperUrl(e.target.value)}
+                    />
+                  </div>
+                  <p className="text-xs text-gray-500">
+                    Run <code>npm run vram-helper</code> alongside the app for a live VRAM readout
+                    and a low-VRAM warning before loading text-to-speech. Requires an NVIDIA GPU with
+                    <code> nvidia-smi</code> on your PATH.
+                  </p>
+                </>
+              )}
               <VramReadout stats={vramStats} />
             </div>
           </TabsContent>
+          )}
         </Tabs>
       </DialogContent>
     </Dialog>

@@ -1,6 +1,7 @@
 import { createContext, useContext, useState, useEffect, useRef, useCallback, useMemo, type ReactNode } from 'react';
 import { defaultSystemPrompt, defaultChoicesPrompt, defaultStatUpdatesPrompt, defaultLocationChangePrompt, defaultThinkingPrompt, defaultSummaryPrompt, defaultChoicesUserPrompt, defaultStatUpdatesUserPrompt, defaultLocationChangeUserPrompt, defaultSummaryUserPrompt, defaultDiaryPrompt, defaultDirectorPrompt, defaultDirectorUserPrompt, defaultCharacterPrompt, defaultStoryboardPrompt } from '../components/game/GamePrompts';
-import { DEFAULT_ENDPOINT, DEFAULT_API_TOKEN, DEFAULT_MODEL_NAME, DEFAULT_MAX_TOKENS, DEFAULT_CONTEXT_WINDOW } from './settingsDefaults';
+import { DEFAULT_ENDPOINT, DEFAULT_API_TOKEN, DEFAULT_MODEL_NAME, DEFAULT_MAX_TOKENS, DEFAULT_CONTEXT_WINDOW, DEFAULT_ACCENT_COLOR } from './settingsDefaults';
+import { hexToHslTriple, contrastForeground } from '../lib/color';
 import { DEFAULT_TAG_PROMPT } from '../lib/imagePrompt';
 import {
   imageEndpointPresetCodec, makeDefaultStore as makeImageStore, presetStoreFromEnv, DEFAULT_IMAGE_ENDPOINT_VALUES,
@@ -312,6 +313,22 @@ function useProvideSettings() {
   const [imageTagPrompt, setImageTagPrompt] = usePersistentState<string>(`${APP_ID}_imageTagPrompt`, DEFAULT_TAG_PROMPT, stringCodec);
 
   const [vramHelperUrl, setVramHelperUrl] = usePersistentState<string>(`${APP_ID}_vramHelperUrl`, 'http://localhost:5179', stringCodec);
+
+  // Custom accent color. Applied as an inline `--primary` (+ contrasting `--primary-foreground`) on <html>,
+  // overriding both light and dark. At the library default we remove the override so each mode keeps its
+  // own tuned `--primary` from index.css (no visual change from before this setting existed).
+  const [accentColor, setAccentColor] = usePersistentState<string>(`${APP_ID}_accentColor`, DEFAULT_ACCENT_COLOR, stringCodec);
+  useEffect(() => {
+    const root = document.documentElement;
+    const triple = hexToHslTriple(accentColor);
+    if (!triple || accentColor.toLowerCase() === DEFAULT_ACCENT_COLOR.toLowerCase()) {
+      root.style.removeProperty('--primary');
+      root.style.removeProperty('--primary-foreground');
+    } else {
+      root.style.setProperty('--primary', triple);
+      root.style.setProperty('--primary-foreground', contrastForeground(accentColor));
+    }
+  }, [accentColor]);
   const [ttsVolume, setTtsVolume] = usePersistentState<number>(`${APP_ID}_ttsVolume`, 1, floatCodec);
   const [ttsSpeed, setTtsSpeed] = usePersistentState<number>(`${APP_ID}_ttsSpeed`, 1, floatCodec);
   const [ttsHighlight, setTtsHighlight] = usePersistentState<boolean>(`${APP_ID}_ttsHighlight`, true, boolCodec);
@@ -319,6 +336,8 @@ function useProvideSettings() {
   const value = {
     bgmEnabled,
     setBgmEnabled,
+    accentColor,
+    setAccentColor,
     language,
     setLanguage,
     paragraphLimit,

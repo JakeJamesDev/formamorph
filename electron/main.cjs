@@ -4,6 +4,7 @@
 const { app, BrowserWindow, protocol, net, ipcMain } = require('electron');
 const path = require('node:path');
 const { pathToFileURL } = require('node:url');
+const { collect: collectVram } = require('./vramCollect.cjs');
 
 const DIST = path.join(__dirname, '..', 'dist');
 
@@ -34,6 +35,16 @@ function createWindow() {
 ipcMain.handle('net-fetch', async (_event, { url, method = 'GET', headers = {}, body }) => {
   const res = await net.fetch(url, { method, headers, body });
   return { ok: res.ok, status: res.status, body: await res.text() };
+});
+
+// Desktop-native VRAM readout: run nvidia-smi in the main process so the Hardware tab works without a
+// separate helper. Mirrors the standalone helper's "no GPU" payload when nvidia-smi is missing/errors.
+ipcMain.handle('vram-stats', async () => {
+  try {
+    return await collectVram();
+  } catch {
+    return { error: 'nvidia-smi-not-found', gpus: [], processes: [] };
+  }
 });
 
 app.whenReady().then(() => {
