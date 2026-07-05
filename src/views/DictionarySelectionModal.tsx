@@ -83,12 +83,15 @@ const DictionarySelectionModal = ({
   libraryMeta,
   onConfirm,
   onAbort,
+  onBack,
   confirmLabel = 'Start',
 }: {
   worldBooks: Dictionary[];
   libraryMeta: DictionaryMetadata[];
   onConfirm: (finalDictionaries: Dictionary[]) => void;
   onAbort: () => void;
+  /** Step back in the enter-world flow. Undefined on the flow's first step (the Back button then fades). */
+  onBack?: () => void;
   /** Label for the confirm button — names the next step in the flow (e.g. "Avatar", "Start"). */
   confirmLabel?: string;
 }) => {
@@ -164,6 +167,7 @@ const DictionarySelectionModal = ({
 
         <div className="flex gap-2 flex-shrink-0">
           <Button onClick={onAbort} variant="destructive" className="flex-1" disabled={resolving}>Abort</Button>
+          <Button onClick={onBack} variant="outline" className="flex-1" disabled={!onBack || resolving}>Back</Button>
           <Button onClick={handleConfirm} className="flex-1" disabled={resolving}>
             {resolving ? 'Loading…' : confirmLabel}
           </Button>

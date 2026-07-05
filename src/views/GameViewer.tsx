@@ -41,7 +41,7 @@ import { LocationModal } from "../components/modals/LocationModal";
 import { SettingsModal } from "../components/modals/SettingsModal";
 import { MenuModal } from "../components/modals/MenuModal";
 import WorldEditor from "./WorldEditor";
-import type { CharacterData, ChatMessage, ChatRole, AIRequestType, AITurnResult, StatChange, Trait, GameLocation, MediaAsset, Dictionary } from "@/types";
+import type { CharacterData, ChatMessage, ChatRole, AIRequestType, AITurnResult, StatChange, Trait, GameLocation, MediaAsset, Dictionary, Entity } from "@/types";
 import { UnsavedChangesDialog } from "../components/UnsavedChangesDialog";
 import { estimateHistoryChars, estimateTokens } from "../lib/memoryUtils";
 import { parseNarration, stripReasoning, stripReasoningLive } from "../lib/aiResponse";
@@ -95,6 +95,9 @@ interface GameViewerProps {
   /** Per-playthrough dictionary set chosen at the entry step; null when the step was skipped (falls back
    *  to the world's authored books). */
   initialDictionaries?: Dictionary[] | null;
+  /** Library characters chosen at the entry step to place in the starting location this playthrough (runtime
+   *  only — seeded as `discoveredEntities`, never written to the authored world). */
+  initialCharacters?: Entity[] | null;
   onExitToMenu: () => void;
 }
 
@@ -158,6 +161,7 @@ const GameViewer = ({
   initialCharacterData,
   initialLocationId = null,
   initialDictionaries = null,
+  initialCharacters = null,
   onExitToMenu,
 }: GameViewerProps) => {
   // AbortController reference for canceling AI requests
@@ -1866,11 +1870,20 @@ ${playerNotes || NONE_PLACEHOLDER}
       // Seed the per-playthrough dictionary set: the entry-step selection, or the world's authored books
       // when the step was skipped. A loaded save overrides this later via loadGame.
       setRuntimeDictionaries(initialDictionaries ?? dictionaries);
+
+      // Seed the entry-step characters into the starting location as runtime-only entities (never written
+      // to the authored world). They flow through the existing discovered-entity path; loadGame overrides.
+      if (location && initialCharacters && initialCharacters.length > 0) {
+        setDiscoveredEntities(
+          initialCharacters.map((entity) => ({ entity, locationId: location.id, sourceTurnId: 'initial' })),
+        );
+      }
     }
   }, [
     initialTraits,
     initialLocationId,
     initialDictionaries,
+    initialCharacters,
     dictionaries,
     traits,
     locations,
@@ -1878,6 +1891,7 @@ ${playerNotes || NONE_PLACEHOLDER}
     changeLocation,
     addLogEntry,
     setRuntimeDictionaries,
+    setDiscoveredEntities,
   ]);
 
   const scrollToBottom = useCallback(() => {

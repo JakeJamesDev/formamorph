@@ -15,11 +15,14 @@ const StartingLocationModal = ({
   locations,
   onConfirm,
   onAbort,
+  onBack,
   confirmLabel = 'Start',
 }: {
   locations: GameLocation[];
   onConfirm: (locationId: string | null) => void;
   onAbort: () => void;
+  /** Step back in the enter-world flow. Undefined on the flow's first step (the Back button then fades). */
+  onBack?: () => void;
   /** Label for the confirm button — names the next step in the flow (e.g. "Avatar", "Start"). */
   confirmLabel?: string;
 }) => {
@@ -68,6 +71,7 @@ const StartingLocationModal = ({
 
         <div className="flex gap-2 flex-shrink-0">
           <Button onClick={onAbort} variant="destructive" className="flex-1">Abort</Button>
+          <Button onClick={onBack} variant="outline" className="flex-1" disabled={!onBack}>Back</Button>
           <Button onClick={() => onConfirm(selected === RANDOM ? null : selected)} className="flex-1">{confirmLabel}</Button>
         </div>
       </CardContent>
