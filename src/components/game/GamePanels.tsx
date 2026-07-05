@@ -11,6 +11,8 @@ import { MarkdownRenderer } from './MarkdownRenderer';
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { TokenAutocomplete } from "@/components/TokenAutocomplete";
+import { COMMON_LANGUAGES } from "@/lib/languages";
 import { Send, RefreshCw, Pencil, Languages, Loader2, Headphones, Square, ChevronUp, ChevronDown, X, Download } from "lucide-react";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Progress } from "@/components/ui/progress";
@@ -764,13 +766,17 @@ export const RightPanel = ({ onLocationClick, language, setLanguage }: {
       <CardContent className="flex flex-col h-full overflow-hidden p-4 sm:p-1">
       <div className="mb-4 sm:mb-1 flex-shrink-0 flex flex-col gap-2">
         <div className="flex items-center gap-2 pl-2">
-          <Languages className="h-6 w-6" />
-          <Input
-            value={language}
-            onChange={(e) => setLanguage(e.target.value)}
-            placeholder="Language..."
-            className="flex-grow"
-          />
+          <Languages className="h-6 w-6 shrink-0" />
+          <div className="flex-grow">
+            <TokenAutocomplete
+              single
+              openOnFocus
+              values={language ? [language] : []}
+              onChange={(vals) => setLanguage(vals[0] ?? '')}
+              options={COMMON_LANGUAGES}
+              placeholder="Language or style…"
+            />
+          </div>
         </div>
         <p className="text-center">{Math.floor(gameTime / 24)} days, {gameTime % 24} hours</p>
       </div>
