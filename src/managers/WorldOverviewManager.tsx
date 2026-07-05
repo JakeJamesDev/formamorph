@@ -143,7 +143,7 @@ const WorldOverviewManager = () => {
           onChange={(v) => updateWorldOverview({ thumbnail: v })}
           cap={IMAGE_CAPS.thumbnail}
           objectFit="cover"
-          previewClassName="w-[350px] h-[262.5px] relative bg-gray-100 rounded-md cursor-pointer hover:bg-gray-200 transition-colors mx-auto"
+          previewClassName="w-[350px] h-[262.5px] relative bg-muted rounded-md cursor-pointer hover:bg-muted/80 transition-colors mx-auto"
         />
         <div className="flex justify-center">
           <GenerateImageButton

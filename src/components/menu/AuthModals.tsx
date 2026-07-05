@@ -217,14 +217,14 @@ export function AuthModals({
 
           <div className="py-4">
             <div className="flex items-center gap-4 mb-6">
-              <div className="w-16 h-16 rounded-full bg-gray-800 flex items-center justify-center text-white text-2xl font-bold">
+              <div className="w-16 h-16 rounded-full bg-secondary flex items-center justify-center text-secondary-foreground text-2xl font-bold">
                 {userInitial}
               </div>
               <div>
                 <h3 className="text-lg font-semibold">
                   {currentUser?.username || 'User'}
                 </h3>
-                <p className="text-sm text-gray-500">Member since {new Date(currentUser?.createdAt || Date.now()).toLocaleDateString()}</p>
+                <p className="text-sm text-muted-foreground">Member since {new Date(currentUser?.createdAt || Date.now()).toLocaleDateString()}</p>
               </div>
             </div>
 

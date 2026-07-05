@@ -1,9 +1,9 @@
 import React from "react";
 import { useSortable } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
-import { Globe, Trash2 } from "lucide-react";
-import { MarkdownRenderer } from "@/components/game/MarkdownRenderer";
+import { Trash2 } from "lucide-react";
 import { CardTags, type WorldRecord } from "@/components/WorldDetails";
+import { WorldCardShell } from "@/components/WorldCardShell";
 
 /** A draggable local-world tile. The whole card is the drag handle; a small move distance is required to
  *  start a drag so a plain click still selects the world. `detailed` mirrors the community-browser card layout.
@@ -29,47 +29,37 @@ function SortableWorldCard({ world, onSelect, onDelete, layout, aspect = 'landsc
     onDelete(world.id);
   };
 
-  // Detailed layout mirrors the community-browser card renderer (thumbnail on top, info beneath).
+  // Detailed layout: the shared card shell (thumbnail on top, info beneath), draggable, with a delete corner.
   if (layout === 'detailed') {
     return (
-      <div
+      <WorldCardShell
         ref={setNodeRef}
         style={style}
         {...attributes}
         {...listeners}
-        className="relative flex flex-col rounded-lg border border-gray-200 dark:border-gray-700 cursor-pointer bg-background touch-none"
+        frameClassName="bg-background touch-none"
         onClick={() => onSelect(world.id)}
+        name={world.name}
+        description={world.description}
+        author={`By ${world.author || "Unknown"}`}
+        thumbnail={world.thumbnail
+          ? <img src={world.thumbnail} alt={world.name} className="w-full h-full object-cover select-none pointer-events-none" />
+          : undefined}
+        cornerAction={(
+          <button
+            className="absolute top-1 right-1 z-10 p-1 rounded bg-black/50 text-red-400 hover:text-red-600"
+            onPointerDown={(e) => e.stopPropagation()}
+            onClick={handleDelete}
+            aria-label="Delete world"
+          >
+            <Trash2 className="h-5 w-5" />
+          </button>
+        )}
       >
-        <div className="h-32 bg-gray-100 dark:bg-gray-800 rounded-t-lg overflow-hidden">
-          {world.thumbnail ? (
-            <img src={world.thumbnail} alt={world.name} className="w-full h-full object-cover select-none pointer-events-none" />
-          ) : (
-            <div className="w-full h-full flex items-center justify-center text-gray-400">
-              <Globe className="h-12 w-12" />
-            </div>
-          )}
+        <div className="mt-auto" onClick={(e) => e.stopPropagation()}>
+          <CardTags tags={world.tags || []} />
         </div>
-
-        <div className="p-4 flex flex-col flex-grow">
-          <h3 className="font-semibold text-lg mb-1">{world.name}</h3>
-          <div className="text-sm text-gray-600 dark:text-gray-400 mb-2 max-h-20 overflow-hidden">
-            <MarkdownRenderer text={world.description || "No description available."} />
-          </div>
-          <div className="text-xs text-gray-500 mb-2">By {world.author || "Unknown"}</div>
-          <div className="mt-auto" onClick={(e) => e.stopPropagation()}>
-            <CardTags tags={world.tags || []} />
-          </div>
-        </div>
-
-        <button
-          className="absolute top-1 right-1 z-10 p-1 rounded bg-black/50 text-red-400 hover:text-red-600"
-          onPointerDown={(e) => e.stopPropagation()}
-          onClick={handleDelete}
-          aria-label="Delete world"
-        >
-          <Trash2 className="h-5 w-5" />
-        </button>
-      </div>
+      </WorldCardShell>
     );
   }
 

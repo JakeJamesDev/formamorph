@@ -1112,7 +1112,7 @@ const MainMenu = ({ onStartGame, onOpenWorldEditor }: MainMenuProps) => {
               meta={
                 <div className="grid grid-cols-2 gap-4">
                   <div className="col-span-2">
-                    <h3 className="text-sm font-semibold text-gray-500">Author</h3>
+                    <h3 className="text-sm font-semibold text-muted-foreground">Author</h3>
                     <p>{selectedWorld?.data?.worldOverview?.author || "Unknown"}</p>
                   </div>
 
@@ -1126,14 +1126,14 @@ const MainMenu = ({ onStartGame, onOpenWorldEditor }: MainMenuProps) => {
                     const value = isDefault ? undefined : (selectedWorld?.downloadedAt ?? selectedWorld?.createdAt);
                     return (
                       <div>
-                        <h3 className="text-sm font-semibold text-gray-500">{label}</h3>
+                        <h3 className="text-sm font-semibold text-muted-foreground">{label}</h3>
                         <p><DateTimeText value={value} /></p>
                       </div>
                     );
                   })()}
 
                   <div>
-                    <h3 className="text-sm font-semibold text-gray-500">Edited</h3>
+                    <h3 className="text-sm font-semibold text-muted-foreground">Edited</h3>
                     <p><DateTimeText value={selectedWorld?.editedAt} /></p>
                   </div>
                 </div>
@@ -1313,11 +1313,11 @@ const MainMenu = ({ onStartGame, onOpenWorldEditor }: MainMenuProps) => {
           </DialogHeader>
 
           <div className="mt-4">
-            <p className="text-sm text-gray-600 dark:text-gray-400 mb-4">
+            <p className="text-sm text-muted-foreground mb-4">
               This world contains the following custom code in its stats:
             </p>
 
-            <div className="bg-gray-100 dark:bg-gray-800 p-4 rounded-md overflow-auto">
+            <div className="bg-muted p-4 rounded-md overflow-auto">
               <pre className="text-sm font-mono whitespace-pre-wrap">
                 {generateConcatenatedCode(stats)}
               </pre>
