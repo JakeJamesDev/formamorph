@@ -226,6 +226,8 @@ const GameViewer = ({
     summaryUserPrompt,
     showSilentRequests,
     activeSectionStyle,
+    locationBackground,
+    backgroundOverlay,
   } = useSettings();
 
   const {
@@ -2142,11 +2144,17 @@ ${playerNotes || NONE_PLACEHOLDER}
 
   return (
     <div
-      className={`flex ${isMobile ? "flex-col" : ""} h-screen p-4 text-sm md:text-base bg-cover bg-center overflow-hidden`}
+      className={`flex ${isMobile ? "flex-col" : ""} h-screen p-4 text-sm md:text-base bg-background bg-cover bg-center overflow-hidden`}
       style={{
-        backgroundImage: currentLocation
-          ? `url(${currentLocation.backgroundImage})`
-          : "url(./default-background.jpg)",
+        // A background-colored overlay composited over the image fades it toward the theme background.
+        // Dropped while the UI is hidden, so the eye toggle reveals the raw image.
+        backgroundImage: locationBackground
+          ? `${
+              !uiHidden && backgroundOverlay > 0
+                ? `linear-gradient(hsl(var(--background) / ${backgroundOverlay}), hsl(var(--background) / ${backgroundOverlay})), `
+                : ""
+            }${currentLocation ? `url(${currentLocation.backgroundImage})` : "url(./default-background.jpg)"}`
+          : undefined,
       }}
     >
       <ThemedToastContainer />

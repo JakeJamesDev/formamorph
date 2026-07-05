@@ -9,6 +9,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem, SelectSeparator } from "@/components/ui/select";
+import { Slider } from "@/components/ui/slider";
 import PromptField from '../prompt/PromptField';
 import { PROMPT_KIND_VARIABLES, PROMPT_KIND_USER_VARIABLES, SUBJECT } from '@/lib/promptVariables';
 import { ConfirmDialog } from '../ConfirmDialog';
@@ -159,6 +160,10 @@ export const SettingsModal = ({ isOpen, onOpenChange, previewValues }: {
     setParagraphLimit,
     autoscroll,
     setAutoscroll,
+    locationBackground,
+    setLocationBackground,
+    backgroundOverlay,
+    setBackgroundOverlay,
     markdownOutput,
     setMarkdownOutput,
     imageProvider,
@@ -441,6 +446,42 @@ export const SettingsModal = ({ isOpen, onOpenChange, previewValues }: {
                   />
                 </div>
               </div>
+              <div className="grid grid-cols-1 sm:grid-cols-4 items-center gap-4">
+                <label htmlFor="locationBackground" className="text-left sm:text-right leading-4">
+                  Location Background
+                </label>
+                <div className="col-span-3 flex items-center gap-3">
+                  <Checkbox
+                    id="locationBackground"
+                    checked={locationBackground}
+                    onCheckedChange={(c) => setLocationBackground(c === true)}
+                  />
+                  <span className="text-xs text-muted-foreground">
+                    Show the location image behind the game. Off uses a blank themed background.
+                  </span>
+                </div>
+              </div>
+              {locationBackground && (
+                <div className="grid grid-cols-1 sm:grid-cols-4 items-center gap-4">
+                  <label className="text-left sm:text-right leading-4">Background Fade</label>
+                  <div className="col-span-3 flex items-center gap-3">
+                    <Slider
+                      value={[backgroundOverlay]}
+                      min={0}
+                      max={1}
+                      step={0.05}
+                      onValueChange={(v) => setBackgroundOverlay(v[0])}
+                      className="max-w-[220px]"
+                    />
+                    <span className="text-xs text-muted-foreground tabular-nums w-9 shrink-0">
+                      {Math.round(backgroundOverlay * 100)}%
+                    </span>
+                  </div>
+                  <p className="text-xs text-muted-foreground sm:col-start-2 sm:col-span-3">
+                    Fades the location image toward the background color for readability. 0% shows the full image.
+                  </p>
+                </div>
+              )}
               <div className="grid grid-cols-1 sm:grid-cols-4 items-start gap-4">
                 <label className="text-left sm:text-right pt-2">Paragraph Limit</label>
                 <div className="col-span-3">

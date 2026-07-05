@@ -138,6 +138,11 @@ function useProvideSettings() {
   }, [paragraphLimit]);
 
   const [autoscroll, setAutoscroll] = usePersistentState<boolean>(`${APP_ID}_autoscroll`, false, boolCodec);
+  // Show the current location's image as the game background. Off = a blank, themed background color.
+  const [locationBackground, setLocationBackground] = usePersistentState<boolean>(`${APP_ID}_locationBackground`, true, boolCodec);
+  // Opacity (0–1) of a background-colored overlay drawn over the location image to fade it toward the
+  // theme background color. 0 = full image (no overlay). Only applies while locationBackground is on.
+  const [backgroundOverlay, setBackgroundOverlay] = usePersistentState<number>(`${APP_ID}_backgroundOverlay`, 0, floatCodec);
   // Let the AI format narration with Markdown (seeds the <MARKDOWN GUIDANCE> token in the game-text prompt).
   const [markdownOutput, setMarkdownOutput] = usePersistentState<boolean>(`${APP_ID}_markdownOutput`, true, boolCodec);
   // Synthesize narration audio sentence-by-sentence as the story streams (vs. after the full text).
@@ -354,6 +359,10 @@ function useProvideSettings() {
     setParagraphLimit,
     autoscroll,
     setAutoscroll,
+    locationBackground,
+    setLocationBackground,
+    backgroundOverlay,
+    setBackgroundOverlay,
     markdownOutput,
     setMarkdownOutput,
     streamNarrationAudio,
