@@ -271,3 +271,12 @@ export interface DictionaryMetadata {
   createdAt?: string;
   lastAccessed?: string;
 }
+
+/** Lightweight preview record used by the main-menu character-library grid; `image` is the card portrait. */
+export interface EntityMetadata {
+  id: string;
+  name: string;
+  image?: Base64Data;
+  createdAt?: string;
+  lastAccessed?: string;
+}

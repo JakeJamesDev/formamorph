@@ -1,22 +1,11 @@
 import { useState, useEffect, useMemo } from 'react';
 import { useGameData } from '../contexts/GameDataContext';
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Textarea } from "@/components/ui/textarea";
-import { MultiSelect } from "@/components/ui/multi-select";
-import AiFieldToolbar from "@/components/AiFieldToolbar";
-import { TagAutocomplete } from "@/components/TagAutocomplete";
-import { ConfirmDialog } from "@/components/ConfirmDialog";
-import { ImageUpload, ModelUpload } from '../lib/UtilityComponents';
-import { IMAGE_CAPS } from '../lib/imageOptim';
-import { GenerateImageButton } from '../components/GenerateImageButton';
+import EntityFields from './EntityFields';
 import type { Entity } from '@/types';
 
 const EntityManager = ({ entity }: { entity: Entity }) => {
   const { updateEntity, locations, updateLocation } = useGameData();
   const [editingEntity, setEditingEntity] = useState<Entity>(entity);
-  // SD prompt pulled from an uploaded image, pending the user's OK to use it as Image Tags.
-  const [pendingPrompt, setPendingPrompt] = useState<string | null>(null);
 
   // Entity↔location link lives only on each location's `entities` array; derive the entity's
   // memberships and write changes back into the relevant locations.
@@ -51,123 +40,13 @@ const EntityManager = ({ entity }: { entity: Entity }) => {
   if (!editingEntity) return null;
 
   return (
-    <div className="space-y-4">
-      <div className="space-y-2">
-        <Label>Name</Label>
-        <Input
-          value={editingEntity.name || ''}
-          onChange={(e) => handleChange('name', e.target.value)}
-        />
-      </div>
-      <div className="space-y-2">
-        <Label>Player-Facing Description</Label>
-        <Textarea
-          value={editingEntity.playerDescription || ''}
-          onChange={(e) => handleChange('playerDescription', e.target.value)}
-        />
-      </div>
-      <div className="space-y-2">
-        <Label>AI-Facing Description</Label>
-        <Textarea
-          value={editingEntity.aiDescription || ''}
-          onChange={(e) => handleChange('aiDescription', e.target.value)}
-        />
-      </div>
-      <div className="space-y-2">
-        <div className="flex items-center justify-between">
-          <Label>AI-Facing Summary</Label>
-          <AiFieldToolbar
-            mode="summary"
-            source={editingEntity.aiDescription}
-            value={editingEntity.aiSummary}
-            onChange={(s) => handleChange('aiSummary', s)}
-          />
-        </div>
-        <Textarea
-          value={editingEntity.aiSummary || ''}
-          onChange={(e) => handleChange('aiSummary', e.target.value)}
-        />
-        <p className="text-sm text-muted-foreground">
-          A one-line version used where the full description is too long — keep it brief.
-        </p>
-      </div>
-      <div className="space-y-2">
-        <Label>Type</Label>
-        <Input
-          value={editingEntity.type || ''}
-          onChange={(e) => handleChange('type', e.target.value)}
-          placeholder="Enter entity type"
-        />
-      </div>
-      <div className="space-y-2">
-        <Label>Locations</Label>
-        <MultiSelect
-          key={entity.id}
-          options={locations.map((l) => ({ label: l.name, value: l.id }))}
-          defaultValue={selectedLocationIds}
-          onValueChange={handleLocationsChange}
-          placeholder="Select locations"
-          hideSelectAll
-        />
-      </div>
-      <div className="space-y-2">
-        <Label>Image</Label>
-        <ImageUpload
-          onChange={(file) => handleChange('image', file)}
-          id={`entity-image-${editingEntity.id}`}
-          value={editingEntity.image}
-          cap={IMAGE_CAPS.entity}
-          onPromptExtracted={setPendingPrompt}
-        />
-        <ConfirmDialog
-          open={pendingPrompt !== null}
-          onOpenChange={(o) => { if (!o) setPendingPrompt(null); }}
-          title="Use the image's prompt?"
-          description="This image has an embedded AI prompt. Use it as the Image Tags? This replaces the current tags."
-          onConfirm={() => { if (pendingPrompt) handleChange('imageTags', pendingPrompt); }}
-          onCancel={() => setPendingPrompt(null)}
-        />
-        <div className="flex items-center justify-between">
-          <Label>Image Tags</Label>
-          <AiFieldToolbar
-            mode="tags"
-            name={editingEntity.name}
-            kind="character"
-            source={editingEntity.aiDescription || editingEntity.playerDescription}
-            value={editingEntity.imageTags}
-            onChange={(t) => handleChange('imageTags', t)}
-          />
-        </div>
-        <TagAutocomplete
-          value={editingEntity.imageTags || ''}
-          onChange={(t) => handleChange('imageTags', t)}
-          placeholder="booru tags, comma separated"
-        />
-        <GenerateImageButton
-          subject={{ name: editingEntity.name || '', description: editingEntity.aiDescription || editingEntity.playerDescription || '', kind: 'character' }}
-          cap={IMAGE_CAPS.entity}
-          onChange={(file) => handleChange('image', file)}
-          tags={editingEntity.imageTags ?? ''}
-          onTagsChange={(t) => handleChange('imageTags', t)}
-        />
-      </div>
-      {/* <div className="space-y-2">
-        <Label>Sound</Label>
-        <SoundUpload
-          onChange={(file) => handleChange('sound', file)}
-          id={`entity-sound-${editingEntity.id}`}
-          value={editingEntity.sound}
-        />
-      </div> */}
-      <div className="space-y-2">
-        <Label>3D Model</Label>
-        <ModelUpload
-          model={editingEntity.model}
-          onModelChange={(model) => handleChange('model', model)}
-          uniqueId={`entity-${editingEntity.id}`}
-        />
-      </div>
-    </div>
+    <EntityFields
+      value={editingEntity}
+      onChange={handleChange}
+      locationOptions={locations.map((l) => ({ label: l.name, value: l.id }))}
+      selectedLocationIds={selectedLocationIds}
+      onLocationsChange={handleLocationsChange}
+    />
   );
 };
 
