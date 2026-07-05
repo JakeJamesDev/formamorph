@@ -41,6 +41,7 @@ import WorldStorageService from '../services/WorldStorageService';
 import AuthService from '../services/AuthService';
 import type { World, Stat, CharacterData } from '@/types';
 import { migrateWorld, APP_VERSION } from '@/lib/version';
+import { parseDictionaryFile } from '@/lib/dictionaryFile';
 import { useDownscalePrompt } from '@/lib/useDownscalePrompt';
 import CommunityCreationsBrowser from './CommunityCreationsBrowser';
 import { WorldDetailsColumn, DateTimeText, type WorldRecord } from "@/components/WorldDetails";
@@ -110,6 +111,7 @@ const MainMenu = ({ onStartGame, onOpenWorldEditor }: MainMenuProps) => {
   const [showCodeModal, setShowCodeModal] = useState(false);
   const [showSettings, setShowSettings] = useState(false);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
+  const dictionaryImportRef = useRef<HTMLInputElement | null>(null);
   const [worlds, setWorlds] = useState<WorldRecord[]>([]);
   const [isLoadingWorlds, setIsLoadingWorlds] = useState(true);
 
@@ -311,6 +313,25 @@ const MainMenu = ({ onStartGame, onOpenWorldEditor }: MainMenuProps) => {
     }
   };
 
+  // Import a standalone dictionary `.json` from the Dictionaries tab. Parses + validates (rejecting world
+  // and save files via the discriminator). TODO: persist to the dictionary library once that slice exists.
+  const importDictionaryFile = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (file) {
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        try {
+          const book = parseDictionaryFile(JSON.parse(e.target?.result as string));
+          toast.success(`Imported dictionary "${book.name}".`);
+        } catch (err) {
+          toast.error((err as Error).message);
+        }
+      };
+      reader.readAsText(file);
+    }
+    event.target.value = ''; // allow re-importing the same file
+  };
+
   const handleTraitSelection = (traitId: string) => {
     setSelectedTraits(prev =>
       prev.includes(traitId)
@@ -426,7 +447,9 @@ const MainMenu = ({ onStartGame, onOpenWorldEditor }: MainMenuProps) => {
         ],
         locations: [],
         entities: [],
-        statUpdates: [] // This field is required by WorldStorageService
+        statUpdates: [], // This field is required by WorldStorageService
+        // Seed one "Default" book so new worlds start with a dictionary (Foreground by default).
+        dictionaries: [{ id: crypto.randomUUID(), name: 'Default', enabled: true, entries: [] }],
       };
 
       // Store the world
@@ -538,7 +561,10 @@ const MainMenu = ({ onStartGame, onOpenWorldEditor }: MainMenuProps) => {
 
       <Button
         className="bg-gradient-to-r from-green-200 to-emerald-200 hover:from-green-300 hover:to-emerald-300 text-black font-bold"
-        onClick={() => { if (cardType === 'worlds') fileInputRef.current?.click(); }}
+        onClick={() => {
+          if (cardType === 'worlds') fileInputRef.current?.click();
+          else if (cardType === 'dictionaries') dictionaryImportRef.current?.click();
+        }}
       >
         <Import className="mr-2 h-4 w-4" /> Import {cardNoun}
       </Button>
@@ -687,6 +713,13 @@ const MainMenu = ({ onStartGame, onOpenWorldEditor }: MainMenuProps) => {
         ref={fileInputRef}
         onChange={handleFileUpload}
         accept=".json"
+        className="hidden"
+      />
+      <input
+        type="file"
+        ref={dictionaryImportRef}
+        onChange={importDictionaryFile}
+        accept=".json,application/json"
         className="hidden"
       />
 

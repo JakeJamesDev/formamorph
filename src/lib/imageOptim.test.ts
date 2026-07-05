@@ -62,7 +62,7 @@ describe('downscaleWorldImages', () => {
     traits: [],
     traitGroups: [],
     statUpdates: [],
-    dictionary: [],
+    dictionaries: [],
   };
 
   const deps: DownscaleDeps = {

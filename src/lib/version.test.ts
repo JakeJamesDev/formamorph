@@ -15,6 +15,8 @@ type MigratedWorld = {
   stats?: { name: string; morphBindings?: string[] }[];
   entities?: DescItem[];
   locations?: DescItem[];
+  dictionary?: unknown[];
+  dictionaries?: { id: string; name: string; enabled?: boolean; entries: { id: string; position?: string }[] }[];
 };
 
 describe('APP_VERSION', () => {
@@ -41,8 +43,12 @@ describe('migrateWorld', () => {
     expect(out.worldOverview.customPlayerVRM).toBeNull();
   });
 
-  it('passes through a world already at the current version', () => {
-    const current = { version: APP_VERSION, worldOverview: { name: 'W', customPlayerVRM: { data: vrmUrl, type: 'model/vrm' } } };
+  it('passes through a world already at the current version (books preserved)', () => {
+    const current = {
+      version: APP_VERSION,
+      worldOverview: { name: 'W', customPlayerVRM: { data: vrmUrl, type: 'model/vrm' } },
+      dictionaries: [{ id: 'b1', name: 'Default', enabled: true, entries: [] }],
+    };
     expect(migrateWorld(current)).toEqual(current);
   });
 
@@ -100,6 +106,39 @@ describe('migrateWorld', () => {
       entities: [{ inGameDescription: 'old', playerDescription: 'new' }],
     }) as unknown as MigratedWorld;
     expect(out.entities?.[0]).toEqual({ playerDescription: 'new' });
+  });
+
+  it('folds a legacy flat dictionary into one "Default" book, positions preserved', () => {
+    const out = migrateWorld({
+      worldOverview: { name: 'W' },
+      dictionary: [
+        { id: 'a', name: 'x', key: 'x', value: 'v', position: 'before' },
+        { id: 'b', name: 'y', key: 'y', value: 'w' },
+      ],
+    }) as unknown as MigratedWorld;
+    expect(out.dictionary).toBeUndefined();
+    expect(out.dictionaries).toHaveLength(1);
+    expect(out.dictionaries?.[0]).toMatchObject({ name: 'Default', enabled: true });
+    expect(out.dictionaries?.[0].entries.map((e) => e.id)).toEqual(['a', 'b']);
+    expect(out.dictionaries?.[0].entries[0].position).toBe('before');
+  });
+
+  it('seeds one empty "Default" book when there is no dictionary at all', () => {
+    const out = migrateWorld({ worldOverview: { name: 'W' } }) as unknown as MigratedWorld;
+    expect(out.dictionaries).toHaveLength(1);
+    expect(out.dictionaries?.[0]).toMatchObject({ name: 'Default', enabled: true });
+    expect(out.dictionaries?.[0].entries).toEqual([]);
+  });
+
+  it('leaves an already-books world untouched and drops a stray flat dictionary', () => {
+    const out = migrateWorld({
+      version: APP_VERSION,
+      worldOverview: { name: 'W' },
+      dictionaries: [{ id: 'b1', name: 'Lore', enabled: true, entries: [] }],
+      dictionary: [{ id: 'z', name: 'z', key: 'z', value: 'zz' }],
+    }) as unknown as MigratedWorld;
+    expect(out.dictionary).toBeUndefined();
+    expect(out.dictionaries).toEqual([{ id: 'b1', name: 'Lore', enabled: true, entries: [] }]);
   });
 });
 

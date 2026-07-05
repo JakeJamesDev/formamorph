@@ -24,6 +24,9 @@ import StatUpdatesManager from '../managers/StatUpdatesManager';
 import WorldOverviewManager from '../managers/WorldOverviewManager';
 import WorldDetailsManager from '../managers/WorldDetailsManager';
 import DictionaryManager from '../managers/DictionaryManager';
+import DictionaryTree from '../managers/DictionaryTree';
+import DictionaryBookManager from '../managers/DictionaryBookManager';
+import { buildDictionaryFile } from '@/lib/dictionaryFile';
 import {
   DndContext,
   closestCenter,
@@ -31,7 +34,6 @@ import {
   KeyboardSensor,
   useSensor,
   useSensors,
-  useDroppable,
   type DragEndEvent,
 } from '@dnd-kit/core';
 import {
@@ -48,7 +50,7 @@ import {
 } from '@dnd-kit/modifiers';
 import { UnsavedChangesDialog } from "@/components/UnsavedChangesDialog";
 import { APP_VERSION } from '@/lib/version';
-import type { Stat, Entity, GameLocation, StatUpdate, DictionaryEntry, World } from '@/types';
+import type { Stat, Entity, GameLocation, StatUpdate, Dictionary, World } from '@/types';
 import { useDownscalePrompt } from '@/lib/useDownscalePrompt';
 
 /** The fields a reorderable list row needs (every editor item has these). */
@@ -134,53 +136,6 @@ function SortableRow({ item, selected, onSelect, onRemove, onDuplicate, enabled,
   );
 }
 
-/** One of the two fixed dictionary groups (Background / Foreground). A droppable, so an empty group still
- *  accepts a dropped entry; its rows are sortable within it. */
-function DictGroup({ title, groupId, items, selectedItemId, activeGroup, onSelect, onRemove, onDuplicate, onToggleEnabled }: {
-  title: string;
-  groupId: 'before' | 'after';
-  items: DictionaryEntry[];
-  selectedItemId: string | null;
-  activeGroup: 'before' | 'after' | null;
-  onSelect: (id: string) => void;
-  onRemove: (id: string) => void;
-  onDuplicate: (id: string) => void;
-  onToggleEnabled: (id: string, enabled: boolean) => void;
-}) {
-  const { setNodeRef, isOver } = useDroppable({ id: `dictgroup:${groupId}` });
-  // Only cue a cross-group drop — not a same-group reorder that happens to hover the container center.
-  const showDropCue = isOver && activeGroup !== null && activeGroup !== groupId;
-  return (
-    <div>
-      <h3 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground mb-1">{title}</h3>
-      <SortableContext items={items.map((i) => i.id)} strategy={verticalListSortingStrategy}>
-        <div
-          ref={setNodeRef}
-          className={`flex flex-col gap-2 rounded-md border border-dashed p-1 min-h-[3rem] transition-colors ${
-            showDropCue ? 'border-primary bg-secondary/40' : 'border-border/50'
-          }`}
-        >
-          {items.map((item) => (
-            <SortableRow
-              key={item.id}
-              item={item}
-              selected={selectedItemId === item.id}
-              onSelect={onSelect}
-              onRemove={onRemove}
-              onDuplicate={onDuplicate}
-              enabled={item.enabled}
-              onToggleEnabled={onToggleEnabled}
-            />
-          ))}
-          {items.length === 0 && (
-            <p className="px-2 py-1 text-xs text-muted-foreground">Drag entries here.</p>
-          )}
-        </div>
-      </SortableContext>
-    </div>
-  );
-}
-
 const WorldEditor = ({ onClose, embedded = false }: {
   onClose: () => void;
   embedded?: boolean;
@@ -188,11 +143,11 @@ const WorldEditor = ({ onClose, embedded = false }: {
   const {
     worldOverview, updateWorldOverview, worldId,
     loadWorldData,
-    stats, locations, entities, traits, traitGroups, statUpdates, dictionary,
-    addStat, addLocation, addEntity, addTrait, addStatUpdate, addDictionaryEntry,
+    stats, locations, entities, traits, traitGroups, statUpdates, dictionaries,
+    addStat, addLocation, addEntity, addTrait, addStatUpdate, addDictionary,
     addTraitGroup,
-    removeStat, removeEntity, removeTrait, removeStatUpdate, removeDictionaryEntry, updateDictionaryEntry,
-    setStats, setLocations, setEntities, setTraits, setTraitGroups, setStatUpdates, setDictionary,
+    removeStat, removeEntity, removeTrait, removeStatUpdate,
+    setStats, setLocations, setEntities, setTraits, setTraitGroups, setStatUpdates,
     isWorldDirty, saveWorld: saveWorldCtx
   } = useGameData();
   const { promptWorld, dialog: downscaleDialog } = useDownscalePrompt();
@@ -200,7 +155,7 @@ const WorldEditor = ({ onClose, embedded = false }: {
   // Assemble the editor's live world for an image scan/downscale (id/version unused by the scan).
   const buildCurrentWorld = (): World => ({
     id: worldId ?? '', version: APP_VERSION,
-    worldOverview, stats, locations, entities, traits, traitGroups, statUpdates, dictionary,
+    worldOverview, stats, locations, entities, traits, traitGroups, statUpdates, dictionaries,
   });
   // Apply a downscaled world back to the editor's state (marks dirty for the user to Save).
   const applyDownscaled = (w: World) => {
@@ -216,7 +171,6 @@ const WorldEditor = ({ onClose, embedded = false }: {
   const [activeTab, setActiveTab] = useState("overview");
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedItemId, setSelectedItemId] = useState<string | null>(null);
-  const [dictActiveId, setDictActiveId] = useState<string | null>(null);
   const [showExitPrompt, setShowExitPrompt] = useState(false);
 
   const downloadWorld = async () => {
@@ -228,7 +182,7 @@ const WorldEditor = ({ onClose, embedded = false }: {
     const worldData = {
       version: APP_VERSION,
       worldOverview: w.worldOverview, stats: w.stats, locations: w.locations, entities: w.entities,
-      traits: w.traits, traitGroups: w.traitGroups, statUpdates: w.statUpdates, dictionary: w.dictionary,
+      traits: w.traits, traitGroups: w.traitGroups, statUpdates: w.statUpdates, dictionaries: w.dictionaries,
     };
     const jsonData = JSON.stringify(worldData, null, 2);
     const blob = new Blob([jsonData], { type: 'application/json' });
@@ -237,6 +191,20 @@ const WorldEditor = ({ onClose, embedded = false }: {
 
     link.href = href;
     link.download = worldOverview.name || 'rpg_world.json';
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(href);
+  };
+
+  // Export one book to its own standalone `.json` (no image downscale — dictionaries are text only).
+  const downloadDictionary = (book: Dictionary) => {
+    const jsonData = JSON.stringify(buildDictionaryFile(book), null, 2);
+    const blob = new Blob([jsonData], { type: 'application/json' });
+    const href = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = href;
+    link.download = `${book.name || 'Dictionary'}.json`;
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
@@ -312,19 +280,19 @@ const WorldEditor = ({ onClose, embedded = false }: {
           stats: [],
           messageHistory: []
         });
-      } else if (activeTab === "dictionary") {
-        // v1.2 format: name mirrors key; value is the injected content.
-        addDictionaryEntry({
-          id: newId,
-          name: newName,
-          key: newName,
-          value: ''
-        });
       }
 
       setSearchTerm('');
       setSelectedItemId(newId);
     }
+  };
+
+  // The Dictionary tab's + adds a whole book (name from the search box); entries are added per-book in the tree.
+  const handleAddBook = () => {
+    const id = crypto.randomUUID();
+    addDictionary({ id, name: searchTerm.trim() || 'New Dictionary', enabled: true, entries: [] });
+    setSearchTerm('');
+    setSelectedItemId(id);
   };
 
   // New traits/groups append at the root; the author drags them into folders. Order = root sibling count.
@@ -368,18 +336,20 @@ const WorldEditor = ({ onClose, embedded = false }: {
       activeTab === "entities" ? entities :
       activeTab === "locations" ? locations :
       activeTab === "traits" ? traits :
-      activeTab === "statUpdates" ? statUpdates :
-      activeTab === "dictionary" ? dictionary : [];
+      activeTab === "statUpdates" ? statUpdates : [];
 
     return itemsToFilter.filter(item =>
       item.name.toLowerCase().includes(searchTerm.toLowerCase())
     );
-  }, [activeTab, stats, entities, locations, traits, statUpdates, dictionary, searchTerm]);
+  }, [activeTab, stats, entities, locations, traits, statUpdates, searchTerm]);
 
   const selectedItem = filteredItems.find(item => item.id === selectedItemId);
   // Traits tab can select either a trait or a group (the right panel branches on which).
   const selectedTrait = traits.find(t => t.id === selectedItemId);
   const selectedGroup = traitGroups.find(g => g.id === selectedItemId);
+  // Dictionary tab: selection is either a book or one of its entries (the right panel branches on which).
+  const selectedBook = dictionaries.find(b => b.id === selectedItemId);
+  const selectedEntry = dictionaries.flatMap(b => b.entries).find(e => e.id === selectedItemId);
 
   // Contextual footer actions. Download shows on Overview/Entities/Dictionary; only "Download World"
   // is wired up (entity/dictionary export is a stub). Import shows on Entities (when one is selected)
@@ -387,11 +357,13 @@ const WorldEditor = ({ onClose, embedded = false }: {
   const downloadContext =
     activeTab === 'overview' ? { label: 'Download World', disabled: false, onClick: () => { downloadWorld(); } }
     : activeTab === 'entities' ? { label: `Download ${selectedItem?.name ?? 'Entity'}`, disabled: !selectedItem, onClick: () => {} }
-    : activeTab === 'dictionary' ? { label: 'Download Dictionary', disabled: false, onClick: () => {} }
+    : activeTab === 'dictionary'
+      ? { label: `Download ${selectedBook?.name ?? 'Dictionary'}`, disabled: !selectedBook, onClick: () => { if (selectedBook) downloadDictionary(selectedBook); } }
     : null;
+  // "Add" is a placeholder for a future add-from-library flow (entities and dictionaries); no-op for now.
   const showImport = activeTab === 'entities' || activeTab === 'dictionary';
   const importDisabled = activeTab === 'entities' && !selectedItem;
-  const importLabel = activeTab === 'entities' ? `Import ${selectedItem?.name ?? 'Entity'}` : 'Import Dictionary';
+  const importLabel = activeTab === 'entities' ? `Add ${selectedItem?.name ?? 'Entity'}` : 'Add Dictionary';
 
   // Per-tab data + setter so list behavior (selection, drag-reorder) is uniform across tabs.
   const tabConfig = {
@@ -399,7 +371,6 @@ const WorldEditor = ({ onClose, embedded = false }: {
     entities: { items: entities, setItems: setEntities },
     locations: { items: locations, setItems: setLocations },
     traits: { items: traits, setItems: setTraits },
-    dictionary: { items: dictionary, setItems: setDictionary },
     statUpdates: { items: statUpdates, setItems: setStatUpdates },
   };
 
@@ -457,8 +428,6 @@ const WorldEditor = ({ onClose, embedded = false }: {
       removeTrait(id);
     } else if (activeTab === "statUpdates") {
       removeStatUpdate(id);
-    } else if (activeTab === "dictionary") {
-      removeDictionaryEntry(id);
     }
     setSelectedItemId(null);
   };
@@ -498,81 +467,6 @@ const WorldEditor = ({ onClose, embedded = false }: {
       </SortableContext>
     </DndContext>
   );
-
-  const toggleDictEnabled = (id: string, enabled: boolean) => {
-    const e = dictionary.find((d) => d.id === id);
-    if (e) updateDictionaryEntry({ ...e, enabled });
-  };
-
-  // Dictionary drag: entries live in two fixed groups (Background = position 'before', Foreground = 'after').
-  // A drop sets the entry's group (position) and, via its list index, its order — the array is rebuilt as
-  // [Background…, Foreground…] so each block injects in list order.
-  const handleDictDragEnd = (event: DragEndEvent) => {
-    const { active, over } = event;
-    if (!over) return;
-    const activeId = String(active.id);
-    const overId = String(over.id);
-    const activeEntry = dictionary.find((d) => d.id === activeId);
-    if (!activeEntry) return;
-
-    const groupOf = (d: DictionaryEntry): 'before' | 'after' => (d.position === 'before' ? 'before' : 'after');
-    let targetGroup: 'before' | 'after';
-    let overEntry: DictionaryEntry | undefined;
-    if (overId.startsWith('dictgroup:')) {
-      targetGroup = overId === 'dictgroup:before' ? 'before' : 'after';
-    } else {
-      overEntry = dictionary.find((d) => d.id === overId);
-      if (!overEntry) return;
-      targetGroup = groupOf(overEntry);
-    }
-    if (activeId === overId && groupOf(activeEntry) === targetGroup) return;
-
-    const before = dictionary.filter((d) => groupOf(d) === 'before' && d.id !== activeId);
-    const after = dictionary.filter((d) => groupOf(d) === 'after' && d.id !== activeId);
-    const moved: DictionaryEntry = { ...activeEntry, position: targetGroup };
-    const targetArr = targetGroup === 'before' ? before : after;
-    const insertAt = overEntry ? Math.max(0, targetArr.findIndex((d) => d.id === overEntry!.id)) : targetArr.length;
-    targetArr.splice(insertAt, 0, moved);
-    setDictionary([...before, ...after]);
-  };
-
-  const renderDictionaryGroups = (items: DictionaryEntry[]) => {
-    const activeEntry = dictActiveId ? items.find((e) => e.id === dictActiveId) : undefined;
-    const activeGroup: 'before' | 'after' | null = activeEntry
-      ? (activeEntry.position === 'before' ? 'before' : 'after')
-      : null;
-    return (
-      <DndContext
-        sensors={sensors}
-        collisionDetection={closestCenter}
-        onDragStart={(e) => setDictActiveId(String(e.active.id))}
-        onDragEnd={(e) => { handleDictDragEnd(e); setDictActiveId(null); }}
-        onDragCancel={() => setDictActiveId(null)}
-        modifiers={[restrictToVerticalAxis, restrictToFirstScrollableAncestor]}
-        autoScroll={{
-          canScroll: (el) =>
-            el !== document.scrollingElement && el !== document.body && el !== document.documentElement,
-        }}
-      >
-        <div className="flex flex-col gap-4">
-          {(['before', 'after'] as const).map((groupId) => (
-            <DictGroup
-              key={groupId}
-              title={groupId === 'before' ? 'Background' : 'Foreground'}
-              groupId={groupId}
-              items={items.filter((e) => (groupId === 'before' ? e.position === 'before' : e.position !== 'before'))}
-              selectedItemId={selectedItemId}
-              activeGroup={activeGroup}
-              onSelect={setSelectedItemId}
-              onRemove={removeItem}
-              onDuplicate={duplicateItem}
-              onToggleEnabled={toggleDictEnabled}
-            />
-          ))}
-        </div>
-      </DndContext>
-    );
-  };
 
   return (
     <div className={`${embedded ? "h-full" : "h-screen"} flex flex-col overflow-hidden`}>
@@ -647,12 +541,12 @@ const WorldEditor = ({ onClose, embedded = false }: {
                             </PopoverContent>
                           </Popover>
                         ) : (
-                          <Button onClick={addItem} size="icon">
+                          <Button onClick={activeTab === "dictionary" ? handleAddBook : addItem} size="icon">
                             <Plus className="h-4 w-4" />
                           </Button>
                         )}
                         <Input
-                          placeholder={`Search or add new ${activeTab}`}
+                          placeholder={activeTab === "dictionary" ? "Name a new dictionary" : `Search or add new ${activeTab}`}
                           value={searchTerm}
                           onChange={(e) => setSearchTerm(e.target.value)}
                         />
@@ -680,7 +574,7 @@ const WorldEditor = ({ onClose, embedded = false }: {
                             : <TraitTree selectedId={selectedItemId} onSelect={setSelectedItemId} />}
                         </TabsContent>
                         <TabsContent value="dictionary">
-                          {renderDictionaryGroups(filteredItems as DictionaryEntry[])}
+                          <DictionaryTree selectedId={selectedItemId} onSelect={setSelectedItemId} />
                         </TabsContent>
                         <TabsContent value="statUpdates">
                           {renderItemList(filteredItems)}
@@ -756,8 +650,11 @@ const WorldEditor = ({ onClose, embedded = false }: {
                     {activeTab === "traits" && !selectedGroup && selectedTrait && (
                       <TraitManager key={selectedTrait.id} trait={selectedTrait} />
                     )}
-                    {activeTab === "dictionary" && selectedItem && (
-                      <DictionaryManager key={selectedItem.id} entry={selectedItem as DictionaryEntry} />
+                    {activeTab === "dictionary" && selectedBook && (
+                      <DictionaryBookManager key={selectedBook.id} book={selectedBook} />
+                    )}
+                    {activeTab === "dictionary" && !selectedBook && selectedEntry && (
+                      <DictionaryManager key={selectedEntry.id} entry={selectedEntry} />
                     )}
                     {activeTab === "statUpdates" && selectedItem && (
                       <StatUpdatesManager key={selectedItem.id} statUpdate={selectedItem as StatUpdate} />

@@ -184,6 +184,19 @@ export interface DictionaryEntry {
   extensions?: Record<string, unknown>;
 }
 
+/**
+ * A "book": an ordered, individually-toggleable group of lorebook entries. A world holds several in
+ * order; book order sets injection order within each prompt block, and a disabled book contributes none
+ * of its entries (independent of each entry's own `enabled`). Entries keep their per-entry `position`.
+ */
+export interface Dictionary {
+  id: string;
+  name: string;
+  /** `false` mutes the whole book (all entries); absent/`true` = active. */
+  enabled?: boolean;
+  entries: DictionaryEntry[];
+}
+
 /** World-level metadata and global settings (system prompt, media, 3D toggle) shared across all saves. */
 export interface WorldOverview {
   name: string;
@@ -213,8 +226,9 @@ export interface World {
   /** Folders organizing traits in the editor and selection screen. */
   traitGroups?: TraitGroup[];
   statUpdates: StatUpdate[];
-  /** v1.2.0 */
-  dictionary?: DictionaryEntry[];
+  /** v2.x: ordered books of lorebook entries (replaces the flat `dictionary`; legacy worlds fold to one
+   *  "Default" book on load via `migrateWorld`). Guaranteed ≥1 book after that normalization. */
+  dictionaries: Dictionary[];
 }
 
 /** Lightweight preview record used by the main-menu world grid. */

@@ -35,7 +35,8 @@ export interface StoredWorldRecord {
     traits: unknown[];
     traitGroups?: unknown[];
     statUpdates: unknown[];
-    dictionary?: unknown[]; // v1.2.0
+    dictionary?: unknown[]; // legacy v1.2.0 flat form (read-only; folded to `dictionaries` on load)
+    dictionaries?: unknown[]; // v2.x books
   };
 }
 

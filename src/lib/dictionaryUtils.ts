@@ -1,6 +1,17 @@
-import type { DictionaryEntry } from '@/types';
+import type { Dictionary, DictionaryEntry } from '@/types';
 
 const MAX_RECURSION_PASSES = 3;
+
+/**
+ * Flatten enabled books into a single entry list — book order, then per-book entry order — dropping the
+ * entries of any book with `enabled === false`. The one bridge from the book model to the entry-based
+ * injection pipeline, so block order follows book order. Per-entry `enabled` is left untouched here;
+ * `getActivatedDictionary` still applies it.
+ */
+export function flattenEnabledBookEntries(dictionaries: Dictionary[] | undefined): DictionaryEntry[] {
+  if (!dictionaries) return [];
+  return dictionaries.flatMap((book) => (book.enabled === false ? [] : book.entries ?? []));
+}
 
 function splitKeys(raw: string | undefined): string[] {
   return (raw || '').split(',').map((k) => k.trim()).filter(Boolean);
