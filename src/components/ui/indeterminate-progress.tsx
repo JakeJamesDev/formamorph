@@ -9,11 +9,8 @@ const IndeterminateProgress = () => {
         className="absolute inset-0 overflow-hidden bg-secondary"
       >
         <div
-          className="absolute top-0 bottom-0 left-0 w-1/3"
-          style={{
-            backgroundColor: 'rgb(178, 216, 216)',
-            animation: 'indeterminate 1s infinite linear'
-          }}
+          className="absolute top-0 bottom-0 left-0 w-1/3 bg-primary"
+          style={{ animation: 'indeterminate 1s infinite linear' }}
         />
       </div>
       <style>
