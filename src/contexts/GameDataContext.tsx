@@ -1,7 +1,6 @@
 import { createContext, useContext, useState, useCallback, useMemo, useEffect, type ReactNode } from 'react';
 import WorldStorageService from '../services/WorldStorageService';
 import { migrateWorld, APP_VERSION } from '@/lib/version';
-import { flattenEnabledBookEntries } from '@/lib/dictionaryUtils';
 import { useDictionaryStoreState, DictionaryStoreProvider } from '@/contexts/DictionaryStoreContext';
 import type {
   WorldMetadata,
@@ -171,10 +170,6 @@ function useProvideGameData() {
     setStatUpdates(prevStatUpdates => prevStatUpdates.filter(statUpdate => statUpdate.id !== statUpdateId));
   }, []);
 
-  // Flat, injection-ready entry list (book order, disabled books dropped). Consumed by GameViewer and
-  // any other reader that expects the pre-books flat `dictionary`.
-  const dictionary = useMemo(() => flattenEnabledBookEntries(dictionaries), [dictionaries]);
-
   const updateWorldOverview = useCallback((updates: Partial<WorldOverview>) => {
     setWorldOverview(prev => ({ ...prev, ...updates }));
   }, []);
@@ -291,7 +286,6 @@ function useProvideGameData() {
     traitGroups,
     statUpdates,
     dictionaries,
-    dictionary,
     addStat,
     updateStat,
     removeStat,

@@ -59,7 +59,7 @@ import { useReadmeVisibility } from "@/lib/useReadmeVisibility";
 import PatreonIcon from "@/components/PatreonIcon";
 
 interface MainMenuProps {
-  onStartGame: (traits: string[], characterData: CharacterData | null, isNewGame?: boolean, startingLocationId?: string | null) => void;
+  onStartGame: (traits: string[], characterData: CharacterData | null, isNewGame?: boolean, startingLocationId?: string | null, dictionaries?: Dictionary[] | null) => void;
   onOpenWorldEditor: () => void;
 }
 
@@ -91,7 +91,7 @@ const applyWorldOrder = <T extends { id: string }>(list: T[], order: string[]): 
 const MainMenu = ({ onStartGame, onOpenWorldEditor }: MainMenuProps) => {
   const {
     traits, traitGroups, stats, locations, loadWorldData,
-    dictionaries: worldBooks, setDictionaries: setRuntimeDictionaries,
+    dictionaries: worldBooks,
   } = useGameData();
   const { showReadme, setShowReadme } = useReadmeVisibility();
   const { promptWorld, dialog: downscaleDialog } = useDownscalePrompt();
@@ -118,6 +118,8 @@ const MainMenu = ({ onStartGame, onOpenWorldEditor }: MainMenuProps) => {
   const [showDictionarySelection, setShowDictionarySelection] = useState(false);
   const [selectedTraits, setSelectedTraits] = useState<string[]>([]);
   const [selectedLocationId, setSelectedLocationId] = useState<string | null>(null);
+  // The dictionary set chosen at the entry step; null = step skipped (GameViewer falls back to authored books).
+  const [selectedDictionaries, setSelectedDictionaries] = useState<Dictionary[] | null>(null);
   const [showCodeModal, setShowCodeModal] = useState(false);
   const [showSettings, setShowSettings] = useState(false);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
@@ -377,12 +379,14 @@ const MainMenu = ({ onStartGame, onOpenWorldEditor }: MainMenuProps) => {
     );
   };
 
-  // Start the world: the custom-character step first for 3D worlds, otherwise straight into the game.
-  const enterWorld = (traitIds: string[], locationId: string | null) => {
+  // Start the world: the custom-character step first for 3D worlds, otherwise straight into the game. The
+  // chosen dictionary set (null = authored fallback) is stashed for the 3D path and passed directly otherwise.
+  const enterWorld = (traitIds: string[], locationId: string | null, dicts: Dictionary[] | null) => {
+    setSelectedDictionaries(dicts);
     if (selectedWorld!.data.worldOverview?.use3DModel) {
       setShowCharacterCustomization(true);
     } else {
-      onStartGame(traitIds, null, true, locationId);
+      onStartGame(traitIds, null, true, locationId, dicts);
     }
   };
 
@@ -394,7 +398,7 @@ const MainMenu = ({ onStartGame, onOpenWorldEditor }: MainMenuProps) => {
     if (dictStepVisible) {
       setShowDictionarySelection(true);
     } else {
-      enterWorld(traitIds, locationId);
+      enterWorld(traitIds, locationId, null);
     }
   };
 
@@ -403,6 +407,7 @@ const MainMenu = ({ onStartGame, onOpenWorldEditor }: MainMenuProps) => {
   const proceedFromTraits = (traitIds: string[]) => {
     setShowTraitSelection(false);
     setSelectedLocationId(null);
+    setSelectedDictionaries(null);
     if (startingLocations(locations).length > 1) {
       setShowLocationSelection(true);
     } else {
@@ -417,11 +422,10 @@ const MainMenu = ({ onStartGame, onOpenWorldEditor }: MainMenuProps) => {
     proceedToDictOrEnter(selectedTraits, locationId);
   };
 
-  // Leave the dictionary step: commit the chosen set as the session's runtime dictionaries, then enter.
+  // Leave the dictionary step: carry the chosen set into the session (via enterWorld → onStartGame), then enter.
   const proceedFromDictionaries = (finalDicts: Dictionary[]) => {
     setShowDictionarySelection(false);
-    setRuntimeDictionaries(finalDicts);
-    enterWorld(selectedTraits, selectedLocationId);
+    enterWorld(selectedTraits, selectedLocationId, finalDicts);
   };
 
   const handleDuplicateWorld = async () => {
@@ -668,7 +672,7 @@ const MainMenu = ({ onStartGame, onOpenWorldEditor }: MainMenuProps) => {
       <CharacterCustomization
         onCharacterCustomized={(customizedData) => {
           setShowCharacterCustomization(false);
-          onStartGame(selectedTraits, customizedData, true, selectedLocationId);
+          onStartGame(selectedTraits, customizedData, true, selectedLocationId, selectedDictionaries);
         }}
       />
     );
