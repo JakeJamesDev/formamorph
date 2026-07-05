@@ -41,7 +41,7 @@ import { LocationModal } from "../components/modals/LocationModal";
 import { SettingsModal } from "../components/modals/SettingsModal";
 import { MenuModal } from "../components/modals/MenuModal";
 import WorldEditor from "./WorldEditor";
-import type { CharacterData, ChatMessage, ChatRole, AIRequestType, AITurnResult, StatChange, Trait, GameLocation, MediaAsset } from "@/types";
+import type { CharacterData, ChatMessage, ChatRole, AIRequestType, AITurnResult, StatChange, Trait, GameLocation, MediaAsset, Dictionary } from "@/types";
 import { UnsavedChangesDialog } from "../components/UnsavedChangesDialog";
 import { estimateHistoryChars, estimateTokens } from "../lib/memoryUtils";
 import { parseNarration, stripReasoning, stripReasoningLive } from "../lib/aiResponse";
@@ -92,6 +92,9 @@ interface GameViewerProps {
   initialTraits?: string[];
   initialCharacterData: CharacterData | null;
   initialLocationId?: string | null;
+  /** Per-playthrough dictionary set chosen at the entry step; null when the step was skipped (falls back
+   *  to the world's authored books). */
+  initialDictionaries?: Dictionary[] | null;
   onExitToMenu: () => void;
 }
 
@@ -154,6 +157,7 @@ const GameViewer = ({
   initialTraits = [],
   initialCharacterData,
   initialLocationId = null,
+  initialDictionaries = null,
   onExitToMenu,
 }: GameViewerProps) => {
   // AbortController reference for canceling AI requests
@@ -164,10 +168,7 @@ const GameViewer = ({
     entities,
     traits,
     traitGroups,
-    dictionary,
     dictionaries,
-    setDictionaries,
-    updateStat,
     worldOverview,
     worldId,
     isWorldDirty,
@@ -261,6 +262,8 @@ const GameViewer = ({
     loadGameState,
     discoveredEntities,
     setDiscoveredEntities,
+    runtimeDictionary: dictionary,
+    setRuntimeDictionaries,
   } = useGameplay();
 
   // Runtime characters (Slice 2): director-invented characters promoted to persisted entities this
@@ -1806,16 +1809,10 @@ ${playerNotes || NONE_PLACEHOLDER}
 
   const handleStatChanges = useCallback(
     (statChanges: StatChange[]) => {
-      setPlayerStats((prevStats) => {
-        const { stats, changedIds } = applyTraitStatChanges(prevStats, statChanges);
-        // Persist each changed stat back to the world definition.
-        stats.forEach((stat) => {
-          if (changedIds.has(stat.id)) updateStat(stat);
-        });
-        return stats;
-      });
+      // Runtime-only: apply to playerStats. The authored world (GameData.stats) is never mutated by play.
+      setPlayerStats((prevStats) => applyTraitStatChanges(prevStats, statChanges).stats);
     },
-    [updateStat, setPlayerStats],
+    [setPlayerStats],
   );
 
   const applyTrait = useCallback(
@@ -1865,15 +1862,22 @@ ${playerNotes || NONE_PLACEHOLDER}
         changeLocation(location);
         addLogEntry(`Starting in location: ${location.name}`);
       }
+
+      // Seed the per-playthrough dictionary set: the entry-step selection, or the world's authored books
+      // when the step was skipped. A loaded save overrides this later via loadGame.
+      setRuntimeDictionaries(initialDictionaries ?? dictionaries);
     }
   }, [
     initialTraits,
     initialLocationId,
+    initialDictionaries,
+    dictionaries,
     traits,
     locations,
     applyTrait,
     changeLocation,
     addLogEntry,
+    setRuntimeDictionaries,
   ]);
 
   const scrollToBottom = useCallback(() => {
@@ -2213,8 +2217,8 @@ ${playerNotes || NONE_PLACEHOLDER}
         </Button>
         <MenuModal
           onSettingsClick={() => setIsSettingsOpen(true)}
-          onSave={(name) => saveGame(name, worldOverview.name, dictionaries)}
-          onLoad={(name) => loadGame(name, locations, setDictionaries)}
+          onSave={(name) => saveGame(name, worldOverview.name)}
+          onLoad={(name) => loadGame(name, locations)}
           worldOverview={worldOverview}
           onExitToMenu={onExitToMenu}
         />

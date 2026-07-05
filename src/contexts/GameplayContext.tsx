@@ -1,9 +1,10 @@
-import { createContext, useContext, useState, useRef, useCallback, useEffect, type ReactNode } from 'react';
+import { createContext, useContext, useState, useRef, useCallback, useEffect, useMemo, type ReactNode } from 'react';
 import { saveToDB, loadFromDB } from '../components/modals/dbUtils';
 import { toast } from 'react-toastify';
 import { convertSaveFile, terminateWorker } from '../lib/saveConversionWorkerUtils';
 import { useTtsPlayback } from '../lib/useTtsPlayback';
 import { APP_VERSION, isSaveEnvelope } from '../lib/version';
+import { flattenEnabledBookEntries } from '../lib/dictionaryUtils';
 import type {
   CharacterData,
   LogEntry,
@@ -27,6 +28,11 @@ function useProvideGameplay() {
   const [currentLocation, setCurrentLocation] = useState<GameLocation | null>(null);
   const [playerStats, setPlayerStats] = useState<PlayerStat[]>([]);
   const [playerTraits, setPlayerTraits] = useState<Trait[]>([]);
+  // Per-playthrough dictionary set chosen at world entry (or restored from a save). Runtime-only: the
+  // authored world's books live in GameDataContext and are never mutated by gameplay.
+  const [runtimeDictionaries, setRuntimeDictionaries] = useState<Dictionary[]>([]);
+  // Flattened enabled entries fed to the injection pipeline (mirrors GameData's old derived `dictionary`).
+  const runtimeDictionary = useMemo(() => flattenEnabledBookEntries(runtimeDictionaries), [runtimeDictionaries]);
   const [recentStatChanges, setRecentStatChanges] = useState<Record<string, number>>({});
   const [activeTab, setActiveTab] = useState("stats");
   // Stat-driven body morph influences, keyed by morph name (built from stats' morphBindings).
@@ -161,7 +167,7 @@ function useProvideGameplay() {
 
   /** Persist the current turn to IndexedDB under `saveName` as a flat envelope (`currentState` +
    *  `stateHistory` + `APP_VERSION`), stamping `worldName` onto the snapshot. Returns success. */
-  const saveGame = useCallback(async (saveName: string, worldName: string, dictionaries: Dictionary[]) => {
+  const saveGame = useCallback(async (saveName: string, worldName: string) => {
     try {
       const gameState = saveCurrentGameState();
       gameState.worldName = worldName;
@@ -171,7 +177,7 @@ function useProvideGameplay() {
         currentState: gameState,
         stateHistory: gameStates,
         version: APP_VERSION, // stamp the current app version (legacy envelopes used numeric 2 ≙ v1.2)
-        dictionaries, // the player's per-playthrough dictionary set, restored on load
+        dictionaries: runtimeDictionaries, // the player's per-playthrough dictionary set, restored on load
       };
 
       await saveToDB(saveName, saveObject);
@@ -183,16 +189,12 @@ function useProvideGameplay() {
       addLogEntry('Failed to save game');
       return false;
     }
-  }, [saveCurrentGameState, gameStates, addLogEntry]);
+  }, [saveCurrentGameState, gameStates, runtimeDictionaries, addLogEntry]);
 
   /** Load a save by name from IndexedDB and restore it. A flat envelope (`isSaveEnvelope`, current or
    *  legacy numeric version) loads directly; an older nested shape is flattened off-thread via the
    *  `convertSaveFile` worker, with a best-effort raw load if conversion throws. Returns success. */
-  const loadGame = useCallback(async (
-    saveName: string,
-    locations: GameLocation[],
-    onDictionaries?: (dictionaries: Dictionary[]) => void,
-  ) => {
+  const loadGame = useCallback(async (saveName: string, locations: GameLocation[]) => {
     try {
       // IndexedDB returns dynamically-shaped data; narrowed by the runtime checks below.
       const savedData = await loadFromDB(saveName) as SaveObject | null;
@@ -209,8 +211,8 @@ function useProvideGameplay() {
         if (success) {
           // Load the state history
           setGameStates(savedData.stateHistory);
-          // Restore the per-playthrough dictionary set; older saves lack it, so leave the world's books as-is.
-          if (onDictionaries && Array.isArray(savedData.dictionaries)) onDictionaries(savedData.dictionaries);
+          // Restore the per-playthrough dictionary set; older saves lack it, so keep the entry-seeded set.
+          if (Array.isArray(savedData.dictionaries)) setRuntimeDictionaries(savedData.dictionaries);
           addLogEntry(`Game loaded from "${saveName}"`);
         }
         return success;
@@ -322,6 +324,9 @@ function useProvideGameplay() {
     setPlayerStats,
     playerTraits,
     setPlayerTraits,
+    runtimeDictionaries,
+    setRuntimeDictionaries,
+    runtimeDictionary,
     recentStatChanges,
     setRecentStatChanges,
     activeTab,
