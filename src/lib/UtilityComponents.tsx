@@ -1,4 +1,5 @@
-import { useCallback, useState, type ChangeEvent, type MouseEvent } from 'react';
+import { useCallback, useState, type ChangeEvent, type MouseEvent, type ReactNode } from 'react';
+import { cn } from "@/lib/utils";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { ImagePlus, Box as LucideBox, Music, X } from "lucide-react";
@@ -35,6 +36,17 @@ export const getModelType = (fileName: string) => {
   }
 };
 
+/** The shared dashed "click to upload" frame for the media uploaders (image / sound / 3D model). Pass
+ *  `frameClassName` to give it a fixed size (e.g. the thumbnail crop); without it the box is compact and
+ *  auto-sized. The dashed look lives here so every uploader stays in sync. */
+const Dropzone = ({ htmlFor, frameClassName, children }: { htmlFor: string; frameClassName?: string; children: ReactNode }) => (
+  <Label htmlFor={htmlFor} className="cursor-pointer">
+    <div className={cn('border-2 border-dashed border-border rounded-md', frameClassName ?? 'flex items-center justify-center p-4')}>
+      {children}
+    </div>
+  </Label>
+);
+
 export const ImageUpload = ({ onChange, id, value, cap, previewClassName, objectFit = 'contain', onPromptExtracted }: {
   onChange: (value: string) => void;
   id: string | number;
@@ -68,7 +80,7 @@ export const ImageUpload = ({ onChange, id, value, cap, previewClassName, object
     <button
       type="button"
       onClick={(e) => { e.preventDefault(); e.stopPropagation(); onChange(""); }}
-      className="absolute top-1 right-1 rounded-full bg-black/60 p-1 text-white hover:bg-black/80"
+      className="absolute top-1 right-1 rounded-full bg-overlay/60 p-1 text-white hover:bg-overlay/80"
       title="Remove image"
       aria-label="Remove image"
     >
@@ -90,41 +102,37 @@ export const ImageUpload = ({ onChange, id, value, cap, previewClassName, object
         className="hidden"
         id={`image-upload-${id}`}
       />
-      <Label htmlFor={`image-upload-${id}`} className="cursor-pointer">
+      <Dropzone htmlFor={`image-upload-${id}`} frameClassName={previewClassName}>
         {previewClassName ? (
-          <div className={previewClassName}>
-            {value ? (
-              <>
-                <img
-                  src={value}
-                  alt="Uploaded"
-                  onClick={openZoom}
-                  className={`absolute inset-0 w-full h-full rounded-md ${objectFit === 'cover' ? 'object-cover' : 'object-contain'}`}
-                />
-                {removeButton}
-              </>
-            ) : (
-              <div className="absolute inset-0 flex items-center justify-center text-muted-foreground">
-                Click to upload image
-              </div>
-            )}
-          </div>
+          value ? (
+            <>
+              <img
+                src={value}
+                alt="Uploaded"
+                onClick={openZoom}
+                className={`absolute inset-0 w-full h-full rounded-md ${objectFit === 'cover' ? 'object-cover' : 'object-contain'}`}
+              />
+              {removeButton}
+            </>
+          ) : (
+            <div className="absolute inset-0 flex items-center justify-center text-muted-foreground">
+              Click to upload image
+            </div>
+          )
         ) : (
-          <div className="flex items-center justify-center border-2 border-dashed border-border rounded-md p-4">
-            {value ? (
-              <div className="relative">
-                <img src={value} alt="Uploaded" onClick={openZoom} className="max-w-full max-h-32 object-contain" />
-                {removeButton}
-              </div>
-            ) : (
-              <>
-                <ImagePlus className="mr-2" />
-                <span>Add Image</span>
-              </>
-            )}
-          </div>
+          value ? (
+            <div className="relative">
+              <img src={value} alt="Uploaded" onClick={openZoom} className="max-w-full max-h-32 object-contain" />
+              {removeButton}
+            </div>
+          ) : (
+            <>
+              <ImagePlus className="mr-2" />
+              <span>Add Image</span>
+            </>
+          )
         )}
-      </Label>
+      </Dropzone>
     </div>
   );
 };
@@ -160,21 +168,19 @@ export const SoundUpload = ({ onChange, id, value }: {
         className="hidden"
         id={`sound-upload-${id}`}
       />
-      <Label htmlFor={`sound-upload-${id}`} className="cursor-pointer">
-        <div className="flex items-center justify-center border-2 border-dashed border-border rounded-md p-4">
-          {value ? (
-            <div className="w-full" onClick={(e) => e.preventDefault()}>
-              <AudioPlayer src={value.data} className="w-full" />
-              <p className="text-sm text-muted-foreground mt-2">{value.name}</p>
-            </div>
-          ) : (
-            <>
-              <Music className="mr-2" />
-              <span>Add Sound</span>
-            </>
-          )}
-        </div>
-      </Label>
+      <Dropzone htmlFor={`sound-upload-${id}`}>
+        {value ? (
+          <div className="w-full" onClick={(e) => e.preventDefault()}>
+            <AudioPlayer src={value.data} className="w-full" />
+            <p className="text-sm text-muted-foreground mt-2">{value.name}</p>
+          </div>
+        ) : (
+          <>
+            <Music className="mr-2" />
+            <span>Add Sound</span>
+          </>
+        )}
+      </Dropzone>
     </div>
   );
 };
@@ -229,12 +235,10 @@ export const ModelUpload = ({ model, onModelChange, uniqueId }: {
             className="hidden"
             id={`model-upload-${uniqueId}`}
           />
-          <Label htmlFor={`model-upload-${uniqueId}`} className="cursor-pointer">
-            <div className="flex items-center justify-center border-2 border-dashed border-border rounded-md p-4">
-              <LucideBox className="mr-2" />
-              <span>Add 3D Model</span>
-            </div>
-          </Label>
+          <Dropzone htmlFor={`model-upload-${uniqueId}`}>
+            <LucideBox className="mr-2" />
+            <span>Add 3D Model</span>
+          </Dropzone>
         </div>
       )}
     </div>

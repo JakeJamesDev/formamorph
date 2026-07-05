@@ -1,6 +1,7 @@
 ﻿import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { useGameData } from '../contexts/GameDataContext';
-import { toast, ToastContainer  } from 'react-toastify';
+import { toast } from 'react-toastify';
+import { ThemedToastContainer } from '@/components/ThemedToastContainer';
 import 'react-toastify/dist/ReactToastify.css';
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -823,7 +824,7 @@ const MainMenu = ({ onStartGame, onOpenWorldEditor }: MainMenuProps) => {
   return (
     <div className="container mx-auto px-4 py-6 relative flex flex-col h-screen overflow-hidden">
       {downscaleDialog}
-      <ToastContainer theme="dark" />
+      <ThemedToastContainer />
 
       {/* App version (derived from package.json) */}
       <span className="fixed bottom-2 left-2 z-10 text-xs text-muted-foreground/60 select-none pointer-events-none">
@@ -1027,7 +1028,7 @@ const MainMenu = ({ onStartGame, onOpenWorldEditor }: MainMenuProps) => {
             Array(6).fill(0).map((_, index) => (
               <div key={index} className="relative w-full h-48 rounded-lg overflow-hidden">
                 <Skeleton className="w-full h-full" />
-                <div className="absolute bottom-0 left-0 right-0 bg-black bg-opacity-50 p-2">
+                <div className="absolute bottom-0 left-0 right-0 bg-overlay/50 p-2">
                   <Skeleton className="h-6 w-24" />
                 </div>
               </div>

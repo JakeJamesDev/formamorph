@@ -9,7 +9,8 @@ import { Download, Plus, X, ArrowLeft, Save, GripVertical, FolderPlus, FilePlus,
 import { Panel, PanelGroup, PanelResizeHandle } from 'react-resizable-panels';
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Checkbox } from "@/components/ui/checkbox";
-import { ToastContainer, toast } from 'react-toastify';
+import { toast } from 'react-toastify';
+import { ThemedToastContainer } from '@/components/ThemedToastContainer';
 import 'react-toastify/dist/ReactToastify.css';
 import StatManager from '../managers/StatManager';
 import EntityManager from '../managers/EntityManager';
@@ -230,16 +231,16 @@ const WorldEditor = ({ onClose, embedded = false }: {
       document.body.removeChild(link);
       URL.revokeObjectURL(href);
     } catch (error) {
-      toast.dark((error as Error).message, { type: 'error' });
+      toast.error((error as Error).message);
     }
   };
 
   const saveWorld = async () => {
     const ok = await saveWorldCtx();
     if (ok) {
-      toast.dark('World saved successfully!');
+      toast.success('World saved successfully!');
     } else {
-      toast.dark('Error saving world. Please try again.', { type: 'error' });
+      toast.error('Error saving world. Please try again.');
     }
     return ok;
   };
@@ -254,7 +255,7 @@ const WorldEditor = ({ onClose, embedded = false }: {
           loadWorldData(loadedWorld, false);
         } catch (error) {
           console.error('Error parsing JSON:', error);
-          toast.dark('Error loading world data. Please check the file format.', { type: 'error' });
+          toast.error('Error loading world data. Please check the file format.');
         }
       };
       reader.readAsText(file);
@@ -494,7 +495,7 @@ const WorldEditor = ({ onClose, embedded = false }: {
   return (
     <div className={`${embedded ? "h-full" : "h-screen"} flex flex-col overflow-hidden`}>
       {!embedded && (
-        <ToastContainer
+        <ThemedToastContainer
           position="top-right"
           autoClose={3000}
           hideProgressBar={false}
@@ -504,7 +505,6 @@ const WorldEditor = ({ onClose, embedded = false }: {
           pauseOnFocusLoss
           draggable
           pauseOnHover
-          theme="dark"
         />
       )}
       <div className="flex-grow flex overflow-hidden">

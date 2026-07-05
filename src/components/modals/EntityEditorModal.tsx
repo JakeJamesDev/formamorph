@@ -53,7 +53,7 @@ const EntityEditorModal = ({ entityId, draft, onClose }: { entityId: string | nu
       await EntityStorageService.storeEntity({ id, name: normalized.name, data: normalized });
       setEntity(normalized);
       baselineRef.current = JSON.stringify(normalized);
-      toast.dark('Character saved!');
+      toast.success('Character saved!');
     } catch {
       toast.error('Could not save character.');
     }

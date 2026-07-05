@@ -47,7 +47,7 @@ function SortableWorldCard({ world, onSelect, onDelete, layout, aspect = 'landsc
           : undefined}
         cornerAction={(
           <button
-            className="absolute top-1 right-1 z-10 p-1 rounded bg-black/50 text-red-400 hover:text-red-600"
+            className="absolute top-1 right-1 z-10 p-1 rounded bg-overlay/50 text-red-400 hover:text-red-600"
             onPointerDown={(e) => e.stopPropagation()}
             onClick={handleDelete}
             aria-label="Delete world"
@@ -81,7 +81,7 @@ function SortableWorldCard({ world, onSelect, onDelete, layout, aspect = 'landsc
       ) : (
         <div className={`w-full ${aspect === 'portrait' ? 'aspect-[2/3]' : 'h-48'} bg-muted`} />
       )}
-      <div className="absolute bottom-0 left-0 right-0 bg-black bg-opacity-50 p-2">
+      <div className="absolute bottom-0 left-0 right-0 bg-overlay/50 p-2">
         <h3 className="text-white font-semibold">{world.name}</h3>
         <button
           className="absolute top-2 right-2 p-1 text-red-500 hover:text-red-700"

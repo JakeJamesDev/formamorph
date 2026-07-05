@@ -31,7 +31,8 @@ import { Music, SquarePen, Database, ScrollText, ChevronDown, ChevronRight, Chev
 import IndeterminateProgress from "../components/ui/indeterminate-progress";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { ToastContainer, toast } from "react-toastify";
+import { toast } from "react-toastify";
+import { ThemedToastContainer } from "@/components/ThemedToastContainer";
 import "react-toastify/dist/ReactToastify.css";
 import TTSModal, { type TTSModalHandle, type TTSProgress } from "../components/game/TTSModal";
 import ReadmeModal from "../components/game/ReadmeModal";
@@ -2148,7 +2149,7 @@ ${playerNotes || NONE_PLACEHOLDER}
           : "url(./default-background.jpg)",
       }}
     >
-      <ToastContainer theme="dark" />
+      <ThemedToastContainer />
 
       {isMobile && !uiHidden && (
         <div className="flex shrink-0 gap-1 mb-1">
