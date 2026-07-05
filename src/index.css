@@ -5,6 +5,11 @@
 @layer base {
   :root {
     color-scheme: light; /* native controls (number-input spinners, etc.) follow the theme */
+    /* App font: the OS sans stack by default; the Font setting overrides this inline with a webfont. */
+    --app-font: ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+    /* Normalize apparent size across fonts by pinning x-height to a target (≈ the system UI font), so
+       switching fonts doesn't resize text. Inherited, so it applies app-wide. Ignored on old browsers. */
+    font-size-adjust: 0.52;
     --background: 0 0% 100%;
     --foreground: 222.2 84% 4.9%;
     --card: 0 0% 100%;
@@ -416,6 +421,17 @@
   body {
     @apply bg-background text-foreground;
   }
+}
+
+/* Narration reading pane (Settings → Accessibility). Scoped here so the rest of the app is untouched;
+   `--narration-font` unset ⇒ inherits the app font. Size is `em`-based off the inherited text size so
+   scale 1 is a true no-op (the pane inherits text-sm/md:text-base); line-height 1.5 matches the base. */
+.narration-text {
+  font-family: var(--narration-font, var(--app-font));
+  font-size: calc(1em * var(--narration-scale, 1));
+  line-height: var(--narration-line-height, 1.5);
+  /* Unset var ⇒ invalid ⇒ inherits the app-wide font-size-adjust; a specific narration font sets its own. */
+  font-size-adjust: var(--narration-fsa);
 }
 
 /* Karaoke TTS highlighter: soft accent tint on the sentence being narrated (CSS Custom Highlight API). */

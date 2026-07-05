@@ -50,3 +50,51 @@ export const THEME_COLORS: { value: ThemeColor; label: string }[] = [
   { value: 'monochrome', label: 'Monochrome' },
   { value: 'highcontrast', label: 'High Contrast' },
 ];
+
+// Fonts (Settings). One shared registry feeds two selectors: the global app Font (Presentation) and the
+// Narration Font (Accessibility). All are self-hosted webfonts (see src/fonts.ts); `stack` is the CSS
+// family, applied via a CSS variable with the OS stack appended as a glyph fallback (e.g. non-Latin text).
+export type FontValue =
+  | 'inter' | 'roboto' | 'opensans' | 'lato' | 'montserrat' | 'sourcesans' | 'poppins' | 'jetbrainsmono' // general
+  | 'opendyslexic' | 'atkinson' | 'lexend' | 'andika'; // accessibility
+// `fsa` overrides the app-wide font-size-adjust target for a font whose apparent size differs at the
+// shared x-height (e.g. monospace reads oversized, so it gets a lower target). Omitted = the default.
+export const FONT_LIST: { value: FontValue; label: string; stack: string; a11y?: boolean; fsa?: number }[] = [
+  { value: 'inter', label: 'Inter', stack: "'Inter Variable', 'Inter'" },
+  { value: 'roboto', label: 'Roboto', stack: "'Roboto'" },
+  { value: 'opensans', label: 'Open Sans', stack: "'Open Sans Variable', 'Open Sans'" },
+  { value: 'lato', label: 'Lato', stack: "'Lato'" },
+  { value: 'montserrat', label: 'Montserrat', stack: "'Montserrat Variable', 'Montserrat'" },
+  { value: 'sourcesans', label: 'Source Sans 3', stack: "'Source Sans 3 Variable', 'Source Sans 3'" },
+  { value: 'poppins', label: 'Poppins', stack: "'Poppins'" },
+  { value: 'jetbrainsmono', label: 'JetBrains Mono', stack: "'JetBrains Mono Variable', 'JetBrains Mono', monospace", fsa: 0.48 },
+  { value: 'opendyslexic', label: 'OpenDyslexic (dyslexia)', stack: "'OpenDyslexic'", a11y: true },
+  { value: 'atkinson', label: 'Atkinson Hyperlegible (low vision)', stack: "'Atkinson Hyperlegible'", a11y: true },
+  { value: 'lexend', label: 'Lexend (reading)', stack: "'Lexend Variable', 'Lexend'", a11y: true },
+  { value: 'andika', label: 'Andika (literacy)', stack: "'Andika'", a11y: true },
+];
+/** CSS family stack for a font value, or '' if unknown/sentinel. */
+export const fontStack = (value: string): string => FONT_LIST.find((f) => f.value === value)?.stack ?? '';
+
+// Normalize apparent size across fonts by pinning x-height to this target (≈ the system UI font).
+export const DEFAULT_FONT_SIZE_ADJUST = 0.52;
+/** The font-size-adjust target for a font value — its `fsa` override, else the default. */
+export const fontSizeAdjust = (value: string): number => FONT_LIST.find((f) => f.value === value)?.fsa ?? DEFAULT_FONT_SIZE_ADJUST;
+
+// The OS sans stack: both the `system` default (in index.css `:root`) and the fallback appended to a webfont.
+export const SYSTEM_FONT_STACK = "ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif";
+
+// Global app font: `system` = the OS stack (default, ships no font).
+export type FontChoice = 'system' | FontValue;
+export const DEFAULT_FONT: FontChoice = 'system';
+export const FONT_OPTIONS = [{ value: 'system', label: 'System (default)', stack: '' }, ...FONT_LIST];
+
+// Narration font: `global` = inherit the app font (default). Same registry otherwise.
+export type NarrationFont = 'global' | FontValue;
+export const DEFAULT_NARRATION_FONT: NarrationFont = 'global';
+export const NARRATION_FONT_OPTIONS = [{ value: 'global', label: 'Use Global', stack: '' }, ...FONT_LIST];
+
+// Narration reading controls (Accessibility). Scale multiplies the inherited story text size (1 = no
+// change); line-height 1.5 matches the base. Both apply only to the story reading pane.
+export const DEFAULT_NARRATION_SCALE = 1;
+export const DEFAULT_NARRATION_LINE_HEIGHT = 1.5;

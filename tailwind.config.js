@@ -17,6 +17,11 @@ module.exports = {
       },
     },
     extend: {
+      // The whole app follows the Font setting via --app-font (defined in index.css :root, overridden
+      // inline by the setting). Preflight applies fontFamily.sans to <html>, so this themes everything.
+      fontFamily: {
+        sans: ['var(--app-font)', 'sans-serif'],
+      },
       colors: {
         border: "hsl(var(--border))",
         input: "hsl(var(--input))",

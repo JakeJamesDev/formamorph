@@ -19,6 +19,7 @@ import {
 import IndeterminateProgress from "@/components/ui/indeterminate-progress";
 import { Progress } from "@/components/ui/progress";
 import { Slider } from "@/components/ui/slider";
+import { Input } from "@/components/ui/input";
 import { Checkbox } from "@/components/ui/checkbox";
 import VramReadout from "./VramReadout";
 import { useVramStats } from "@/lib/useVramStats";
@@ -63,6 +64,7 @@ const TTSModal = forwardRef<TTSModalHandle, {
   const [webGPUSupported, setWebGPUSupported] = useState(false);
   const {
     vramHelperUrl,
+    setVramHelperUrl,
     ttsSpeed,
     setTtsSpeed,
     streamNarrationAudio,
@@ -390,6 +392,19 @@ const TTSModal = forwardRef<TTSModalHandle, {
           <DialogFooter>
             <div className="space-y-4 w-full">
               <VramReadout stats={vramStats} compact />
+              {/* Dev-only: point the readout at the `npm run vram-helper` server. The desktop app reads VRAM
+                  natively and the web build has no source, so this only matters in dev. */}
+              {import.meta.env.DEV && (
+                <div className="flex items-center gap-2">
+                  <label htmlFor="vramHelperUrl" className="text-xs text-muted-foreground whitespace-nowrap">VRAM helper URL</label>
+                  <Input
+                    id="vramHelperUrl"
+                    value={vramHelperUrl}
+                    onChange={(e) => setVramHelperUrl(e.target.value)}
+                    className="h-8 text-xs"
+                  />
+                </div>
+              )}
               {!webGPUSupported && (
                 <div className="text-sm text-destructive">
                   WebGPU is not supported in your browser. Please use a WebGPU-enabled browser like Chrome Canary or Edge Canary.

@@ -446,7 +446,7 @@ export const MiddlePanel = ({
               </Button>
             </div>
           )}
-          <ScrollArea className={`flex-grow border border-border p-2 bg-muted/80 min-h-0 ${isFlashing ? 'flash-animation' : ''} relative`}>
+          <ScrollArea className={`narration-text flex-grow border border-border p-2 bg-muted/80 min-h-0 ${isFlashing ? 'flash-animation' : ''} relative`}>
             <div className="absolute top-2 right-2 z-10 flex gap-2">
               {!hasAudio && ttsLoaded && (
                 <Button
@@ -501,7 +501,7 @@ export const MiddlePanel = ({
                 <div key={index} className={`mb-2 ${message.role === 'user' ? 'text-warning' : ''}`}>
                   <strong>{message.role === 'user' ? 'You:' : 'Event:'}</strong>
                   {message.role === 'user' ? (
-                    <pre className="whitespace-pre-wrap">{message.content}</pre>
+                    <div className="whitespace-pre-wrap">{message.content}</div>
                   ) : (
                     <div ref={narrationRef}>
                       <MarkdownRenderer text={isLatestMessage && isWaitingForAI ? gameplayText : parseAssistantMessage(message.content)} />

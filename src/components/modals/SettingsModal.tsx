@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useSettings, type ThinkingMode, type ParagraphLimit } from '@/contexts/SettingsContext';
-import { DEFAULT_ENDPOINT, DEFAULT_API_TOKEN, DEFAULT_MODEL_NAME, DEFAULT_MAX_TOKENS, THEME_COLORS, type ThemeColor } from '@/contexts/settingsDefaults';
+import { DEFAULT_ENDPOINT, DEFAULT_API_TOKEN, DEFAULT_MODEL_NAME, DEFAULT_MAX_TOKENS, THEME_COLORS, FONT_OPTIONS, NARRATION_FONT_OPTIONS, DEFAULT_NARRATION_SCALE, DEFAULT_NARRATION_LINE_HEIGHT, type ThemeColor, type FontChoice, type NarrationFont } from '@/contexts/settingsDefaults';
 import { useTheme } from '../theme-provider';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
@@ -15,8 +15,6 @@ import { PROMPT_KIND_VARIABLES, PROMPT_KIND_USER_VARIABLES, SUBJECT } from '@/li
 import { ConfirmDialog } from '../ConfirmDialog';
 import { PresetNameDialog } from './PresetNameDialog';
 import { defaultSystemPrompt, defaultChoicesPrompt, defaultStatUpdatesPrompt, defaultLocationChangePrompt, defaultThinkingPrompt, defaultSummaryPrompt, defaultChoicesUserPrompt, defaultStatUpdatesUserPrompt, defaultLocationChangeUserPrompt, defaultSummaryUserPrompt, defaultDiaryPrompt, defaultDirectorPrompt, defaultDirectorUserPrompt, defaultCharacterPrompt, defaultStoryboardPrompt } from '../game/GamePrompts';
-import VramReadout from '../game/VramReadout';
-import { useVramStats } from '@/lib/useVramStats';
 import { isDesktop } from '@/lib/imageGen/desktop';
 import { fetchComfyMeta, DEFAULT_COMFY_WORKFLOW, type ComfyMeta } from '@/lib/imageGen/comfyui';
 import { DEFAULT_ENDPOINT_BY_PROVIDER, resolveImageEndpoint } from '@/lib/imageGen';
@@ -207,17 +205,19 @@ export const SettingsModal = ({ isOpen, onOpenChange, previewValues }: {
     resetImageEndpointPreset,
     imageTagPrompt,
     setImageTagPrompt,
-    vramHelperUrl,
-    setVramHelperUrl,
     themeColor,
-    setThemeColor
+    setThemeColor,
+    fontFamily,
+    setFontFamily,
+    narrationFont,
+    setNarrationFont,
+    narrationScale,
+    setNarrationScale,
+    narrationLineHeight,
+    setNarrationLineHeight
   } = useSettings();
   const { theme, setTheme } = useTheme();
   const desktop = isDesktop();
-  // The Hardware tab needs a VRAM source: the standalone helper (dev) or the desktop app's native readout.
-  // Hide it in the production web build, where neither is available.
-  const showHardwareTab = import.meta.env.DEV || desktop;
-  const vramStats = useVramStats(vramHelperUrl, { enabled: isOpen && showHardwareTab });
   const handleResetEndpointSettings = () => {
     setEndpointUrl(DEFAULT_ENDPOINT);
     setModelName(DEFAULT_MODEL_NAME);
@@ -357,13 +357,13 @@ export const SettingsModal = ({ isOpen, onOpenChange, previewValues }: {
           <DialogTitle>Settings</DialogTitle>
         </DialogHeader>
         <Tabs defaultValue="presentation" className="w-full flex flex-col flex-1 min-h-0">
-          <TabsList className={`grid w-full ${showHardwareTab ? 'grid-cols-6' : 'grid-cols-5'} flex-shrink-0`}>
+          <TabsList className="grid w-full grid-cols-6 flex-shrink-0">
             <TabsTrigger value="presentation">Presentation</TabsTrigger>
             <TabsTrigger value="generation">Generation</TabsTrigger>
             <TabsTrigger value="endpoint">Endpoint</TabsTrigger>
             <TabsTrigger value="image">Image Gen</TabsTrigger>
             <TabsTrigger value="prompts">System Prompts</TabsTrigger>
-            {showHardwareTab && <TabsTrigger value="hardware">Hardware</TabsTrigger>}
+            <TabsTrigger value="accessibility">Accessibility</TabsTrigger>
           </TabsList>
 
           <TabsContent value="presentation" className="py-4 px-2 flex-1 min-h-0 overflow-y-auto">
@@ -408,6 +408,28 @@ export const SettingsModal = ({ isOpen, onOpenChange, previewValues }: {
                   </Select>
                   <span className="text-xs text-muted-foreground">
                     Recolors the whole app; applies to both light and dark.
+                  </span>
+                </div>
+              </div>
+              <div className="grid grid-cols-1 sm:grid-cols-4 items-center gap-4">
+                <label htmlFor="fontFamily" className="text-left sm:text-right leading-4">
+                  Font
+                </label>
+                <div className="col-span-3 flex items-center gap-3">
+                  <Select value={fontFamily} onValueChange={(v) => setFontFamily(v as FontChoice)}>
+                    <SelectTrigger id="fontFamily" className="w-48">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {FONT_OPTIONS.map((o) => (
+                        <SelectItem key={o.value} value={o.value} style={{ fontFamily: o.stack || undefined }}>
+                          {o.label}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  <span className="text-xs text-muted-foreground">
+                    The typeface for the whole app.
                   </span>
                 </div>
               </div>
@@ -1214,38 +1236,77 @@ export const SettingsModal = ({ isOpen, onOpenChange, previewValues }: {
             />
           </TabsContent>
 
-          {showHardwareTab && (
-          <TabsContent value="hardware" className="py-4 px-2 flex-1 min-h-0 overflow-y-auto">
+          <TabsContent value="accessibility" className="py-4 px-2 flex-1 min-h-0 overflow-y-auto">
             <div className="grid gap-4">
-              {desktop ? (
-                <p className="text-xs text-muted-foreground">
-                  The VRAM readout is built into the desktop app — no helper to run. Powers a live readout and
-                  a low-VRAM warning before loading text-to-speech. Requires an NVIDIA GPU with
-                  <code> nvidia-smi</code> available.
-                </p>
-              ) : (
-                <>
-                  <div className="grid grid-cols-[1fr_3fr] items-center gap-4">
-                    <label htmlFor="vramHelperUrl" className="text-right">
-                      VRAM Helper URL
-                    </label>
-                    <Input
-                      id="vramHelperUrl"
-                      value={vramHelperUrl}
-                      onChange={(e) => setVramHelperUrl(e.target.value)}
-                    />
-                  </div>
-                  <p className="text-xs text-muted-foreground">
-                    Run <code>npm run vram-helper</code> alongside the app for a live VRAM readout
-                    and a low-VRAM warning before loading text-to-speech. Requires an NVIDIA GPU with
-                    <code> nvidia-smi</code> on your PATH.
+              <div className="grid grid-cols-1 sm:grid-cols-4 items-start gap-4">
+                <label htmlFor="narrationFont" className="text-left sm:text-right pt-2">
+                  Narration Font
+                </label>
+                <div className="col-span-3">
+                  <Select value={narrationFont} onValueChange={(v) => setNarrationFont(v as NarrationFont)}>
+                    <SelectTrigger id="narrationFont" className="w-56">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {NARRATION_FONT_OPTIONS.map((o) => (
+                        <SelectItem key={o.value} value={o.value} style={{ fontFamily: o.stack || undefined }}>
+                          {o.label}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  <p className="text-xs text-muted-foreground mt-1">
+                    A separate font for the story text. Includes fonts tuned for dyslexia, low vision, and reading. Defaults to the app font.
                   </p>
-                </>
-              )}
-              <VramReadout stats={vramStats} />
+                </div>
+              </div>
+              <div className="grid grid-cols-1 sm:grid-cols-4 items-center gap-4">
+                <label className="text-left sm:text-right leading-4">Narration Text Size</label>
+                <div className="col-span-3 flex items-center gap-3">
+                  <Slider
+                    value={[narrationScale]}
+                    min={0.85}
+                    max={1.6}
+                    step={0.05}
+                    onValueChange={(v) => setNarrationScale(v[0])}
+                    className="max-w-[220px]"
+                  />
+                  <span className="text-xs text-muted-foreground tabular-nums w-10 shrink-0">
+                    {Math.round(narrationScale * 100)}%
+                  </span>
+                </div>
+              </div>
+              <div className="grid grid-cols-1 sm:grid-cols-4 items-center gap-4">
+                <label className="text-left sm:text-right leading-4">Line Spacing</label>
+                <div className="col-span-3 flex items-center gap-3">
+                  <Slider
+                    value={[narrationLineHeight]}
+                    min={1.2}
+                    max={2.2}
+                    step={0.05}
+                    onValueChange={(v) => setNarrationLineHeight(v[0])}
+                    className="max-w-[220px]"
+                  />
+                  <span className="text-xs text-muted-foreground tabular-nums w-10 shrink-0">
+                    {narrationLineHeight.toFixed(2)}
+                  </span>
+                </div>
+              </div>
+              <div className="grid grid-cols-1 sm:grid-cols-4 gap-4">
+                <div className="hidden sm:block" />
+                <div className="col-span-3">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => { setNarrationScale(DEFAULT_NARRATION_SCALE); setNarrationLineHeight(DEFAULT_NARRATION_LINE_HEIGHT); }}
+                    disabled={narrationScale === DEFAULT_NARRATION_SCALE && narrationLineHeight === DEFAULT_NARRATION_LINE_HEIGHT}
+                  >
+                    Reset size &amp; spacing
+                  </Button>
+                </div>
+              </div>
             </div>
           </TabsContent>
-          )}
         </Tabs>
       </DialogContent>
     </Dialog>

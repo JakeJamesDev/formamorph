@@ -1,6 +1,6 @@
 import { createContext, useContext, useState, useEffect, useRef, useCallback, useMemo, type ReactNode } from 'react';
 import { defaultSystemPrompt, defaultChoicesPrompt, defaultStatUpdatesPrompt, defaultLocationChangePrompt, defaultThinkingPrompt, defaultSummaryPrompt, defaultChoicesUserPrompt, defaultStatUpdatesUserPrompt, defaultLocationChangeUserPrompt, defaultSummaryUserPrompt, defaultDiaryPrompt, defaultDirectorPrompt, defaultDirectorUserPrompt, defaultCharacterPrompt, defaultStoryboardPrompt } from '../components/game/GamePrompts';
-import { DEFAULT_ENDPOINT, DEFAULT_API_TOKEN, DEFAULT_MODEL_NAME, DEFAULT_MAX_TOKENS, DEFAULT_CONTEXT_WINDOW, DEFAULT_THEME_COLOR, BASE_THEME_COLOR, THEME_COLORS, type ThemeColor } from './settingsDefaults';
+import { DEFAULT_ENDPOINT, DEFAULT_API_TOKEN, DEFAULT_MODEL_NAME, DEFAULT_MAX_TOKENS, DEFAULT_CONTEXT_WINDOW, DEFAULT_THEME_COLOR, BASE_THEME_COLOR, THEME_COLORS, DEFAULT_FONT, FONT_OPTIONS, SYSTEM_FONT_STACK, DEFAULT_NARRATION_FONT, DEFAULT_NARRATION_SCALE, DEFAULT_NARRATION_LINE_HEIGHT, NARRATION_FONT_OPTIONS, fontStack, fontSizeAdjust, type ThemeColor, type FontChoice, type NarrationFont } from './settingsDefaults';
 import { DEFAULT_TAG_PROMPT } from '../lib/imagePrompt';
 import {
   imageEndpointPresetCodec, makeDefaultStore as makeImageStore, presetStoreFromEnv, DEFAULT_IMAGE_ENDPOINT_VALUES,
@@ -71,6 +71,14 @@ function computeDefaultThemeColor(): ThemeColor {
   const followingSystem = storedMode === null || storedMode === 'system';
   if (followingSystem && window.matchMedia('(prefers-contrast: more)').matches) return 'highcontrast';
   return DEFAULT_THEME_COLOR;
+}
+
+/** Preload a font stack's primary family so it swaps in already at its adjusted size (no natural-size
+ *  flash on first pick). Resolves regardless of success; a no-op where the Font Loading API is absent. */
+function preloadFont(stack: string): Promise<unknown> {
+  if (typeof document === 'undefined' || !('fonts' in document)) return Promise.resolve();
+  const family = stack.split(',')[0].trim(); // e.g. "'Inter Variable'"
+  return document.fonts.load(`1em ${family}`).catch(() => {});
 }
 
 /** The canonical shipped prompt text — authored in markdown headers; the built-in styles derive from it. */
@@ -344,6 +352,58 @@ function useProvideSettings() {
     if (themeColor === BASE_THEME_COLOR) root.removeAttribute('data-theme');
     else root.setAttribute('data-theme', themeColor);
   }, [themeColor]);
+
+  // App font. Sets the `--app-font` variable (consumed by index.css / Tailwind's font-sans); `system`
+  // removes the override so the :root default (OS sans stack) applies. A webfont appends that same stack
+  // as a glyph fallback so missing (e.g. non-Latin) characters still render.
+  const [fontFamily, setFontFamily] = usePersistentState<FontChoice>(`${APP_ID}_fontFamily`, DEFAULT_FONT, {
+    parse: (r) => (FONT_OPTIONS.some((f) => f.value === r) ? (r as FontChoice) : DEFAULT_FONT),
+    serialize: (v) => v,
+  });
+  useEffect(() => {
+    const root = document.documentElement;
+    const stack = FONT_OPTIONS.find((f) => f.value === fontFamily)?.stack;
+    let cancelled = false;
+    const apply = () => {
+      if (cancelled) return;
+      if (!stack) root.style.removeProperty('--app-font');
+      else root.style.setProperty('--app-font', `${stack}, ${SYSTEM_FONT_STACK}`);
+      // Per-font x-height target (e.g. monospace reads oversized at the shared default).
+      root.style.setProperty('font-size-adjust', String(fontSizeAdjust(fontFamily)));
+    };
+    // Preload the webfont first so it applies already-adjusted (avoids the natural-size flash on first pick).
+    if (stack) preloadFont(stack).then(apply);
+    else apply();
+    return () => { cancelled = true; };
+  }, [fontFamily]);
+
+  // Narration (Accessibility): a separate font for the story reading pane (`global` = inherit the app
+  // font) plus reading scale + line-height. Applied to `.narration-text` via CSS variables in index.css.
+  const [narrationFont, setNarrationFont] = usePersistentState<NarrationFont>(`${APP_ID}_narrationFont`, DEFAULT_NARRATION_FONT, {
+    parse: (r) => (NARRATION_FONT_OPTIONS.some((f) => f.value === r) ? (r as NarrationFont) : DEFAULT_NARRATION_FONT),
+    serialize: (v) => v,
+  });
+  const [narrationScale, setNarrationScale] = usePersistentState<number>(`${APP_ID}_narrationScale`, DEFAULT_NARRATION_SCALE, floatCodec);
+  const [narrationLineHeight, setNarrationLineHeight] = usePersistentState<number>(`${APP_ID}_narrationLineHeight`, DEFAULT_NARRATION_LINE_HEIGHT, floatCodec);
+  useEffect(() => {
+    const root = document.documentElement;
+    // Scale + line-height apply immediately (slider changes shouldn't wait on a font load).
+    root.style.setProperty('--narration-scale', String(narrationScale));
+    root.style.setProperty('--narration-line-height', String(narrationLineHeight));
+    const stack = fontStack(narrationFont); // '' for `global` ⇒ inherit --app-font
+    let cancelled = false;
+    const apply = () => {
+      if (cancelled) return;
+      if (!stack) root.style.removeProperty('--narration-font');
+      else root.style.setProperty('--narration-font', `${stack}, ${SYSTEM_FONT_STACK}`);
+      // `global` ⇒ inherit the app-wide target; a specific narration font uses its own (e.g. mono).
+      if (narrationFont === 'global') root.style.removeProperty('--narration-fsa');
+      else root.style.setProperty('--narration-fsa', String(fontSizeAdjust(narrationFont)));
+    };
+    if (stack) preloadFont(stack).then(apply);
+    else apply();
+    return () => { cancelled = true; };
+  }, [narrationFont, narrationScale, narrationLineHeight]);
   const [ttsVolume, setTtsVolume] = usePersistentState<number>(`${APP_ID}_ttsVolume`, 1, floatCodec);
   const [ttsSpeed, setTtsSpeed] = usePersistentState<number>(`${APP_ID}_ttsSpeed`, 1, floatCodec);
   const [ttsHighlight, setTtsHighlight] = usePersistentState<boolean>(`${APP_ID}_ttsHighlight`, true, boolCodec);
@@ -353,6 +413,14 @@ function useProvideSettings() {
     setBgmEnabled,
     themeColor,
     setThemeColor,
+    fontFamily,
+    setFontFamily,
+    narrationFont,
+    setNarrationFont,
+    narrationScale,
+    setNarrationScale,
+    narrationLineHeight,
+    setNarrationLineHeight,
     language,
     setLanguage,
     paragraphLimit,
