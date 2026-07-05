@@ -426,8 +426,8 @@ const CommunityCreationsBrowser = ({ open, onOpenChange, worlds, setWorlds, isAu
                     <Label htmlFor={radioId} className="flex-1 grid gap-1 cursor-pointer font-normal">
                       <span className="font-medium">
                         {copy.name}
-                        {upToDate && <span className="ml-2 font-normal text-green-600 dark:text-green-400">• up to date</span>}
-                        {copy.dirty && <span className="ml-2 font-normal text-amber-600 dark:text-amber-400">• edited</span>}
+                        {upToDate && <span className="ml-2 font-normal text-success">• up to date</span>}
+                        {copy.dirty && <span className="ml-2 font-normal text-warning">• edited</span>}
                       </span>
                       <span className="text-xs text-muted-foreground">Last edited: {edited}</span>
                     </Label>

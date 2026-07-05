@@ -1085,16 +1085,16 @@ const MainMenu = ({ onStartGame, onOpenWorldEditor }: MainMenuProps) => {
 
           <div className="mt-4 flex-1 min-h-0 flex flex-col">
             {hasStatWithCode(stats) && (
-              <div className="mb-4 shrink-0 p-3 bg-amber-100 dark:bg-amber-900 border border-amber-300 dark:border-amber-700 rounded-md flex items-start">
-                <AlertTriangle className="h-5 w-5 text-amber-600 dark:text-amber-400 mr-2 flex-shrink-0 mt-0.5" />
-                <div className="text-sm text-amber-800 dark:text-amber-300 flex-grow">
+              <div className="mb-4 shrink-0 p-3 bg-warning/10 border border-warning/30 rounded-md flex items-start">
+                <AlertTriangle className="h-5 w-5 text-warning mr-2 flex-shrink-0 mt-0.5" />
+                <div className="text-sm text-warning flex-grow">
                   <p className="font-medium">Warning</p>
                   <p>This world contains stats with custom code execution. Please ensure you trust the source of this world.</p>
                 </div>
                 <Button
                   variant="outline"
                   size="sm"
-                  className="ml-2 bg-amber-200 dark:bg-amber-800 border-amber-300 dark:border-amber-700 text-amber-800 dark:text-amber-300 hover:bg-amber-300 dark:hover:bg-amber-700"
+                  className="ml-2 bg-warning/20 border-warning/30 text-warning hover:bg-warning/30"
                   onClick={(e) => {
                     e.stopPropagation();
                     setShowCodeModal(true);

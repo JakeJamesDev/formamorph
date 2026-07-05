@@ -133,7 +133,7 @@ export function RemoteWorldCard({
       {(isOwnedByUser || currentUser?.accountType === "admin") && (
         <div className="mt-auto pt-1 flex justify-end">
           <button
-            className="p-1 text-red-500 hover:text-red-700"
+            className="p-1 text-destructive hover:text-destructive/80"
             onClick={(e) => { e.stopPropagation(); onDelete(worldId); }}
             aria-label="Delete world"
           >

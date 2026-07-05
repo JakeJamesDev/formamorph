@@ -230,7 +230,7 @@ export const LeftPanel = ({ entities, onEntityClick }: {
         <TabsContent value="notes" className="flex-grow overflow-hidden min-h-[100px]">
           <div className="h-full p-2 flex flex-col">
             {!systemPrompt.includes('<NOTES>') && (
-              <div className="mb-2 p-2 bg-yellow-500/20 border border-yellow-500 rounded  text-sm">
+              <div className="mb-2 p-2 bg-warning/20 border border-warning rounded  text-sm">
                 Warning: The current system prompt does not include the &lt;NOTES&gt; placeholder!
               </div>
             )}
@@ -496,7 +496,7 @@ export const MiddlePanel = ({
             {displayedMessages.map((message, index) => {
               const isLatestMessage = index === displayedMessages.length - 1;
               return (
-                <div key={index} className={`mb-2 ${message.role === 'user' ? 'text-yellow-500' : ''}`}>
+                <div key={index} className={`mb-2 ${message.role === 'user' ? 'text-warning' : ''}`}>
                   <strong>{message.role === 'user' ? 'You:' : 'Event:'}</strong>
                   {message.role === 'user' ? (
                     <pre className="whitespace-pre-wrap">{message.content}</pre>
@@ -791,7 +791,7 @@ export const RightPanel = ({ onLocationClick, language, setLanguage }: {
                   <span>{stat.name}</span>
                   <div className="flex items-center gap-2">
                     {recentStatChanges[stat.name.toLowerCase()] && (
-                      <span className={`text-sm ${recentStatChanges[stat.name.toLowerCase()] > 0 ? 'text-green-500' : 'text-red-500'}`}>
+                      <span className={`text-sm ${recentStatChanges[stat.name.toLowerCase()] > 0 ? 'text-success' : 'text-destructive'}`}>
                         {recentStatChanges[stat.name.toLowerCase()] > 0 ? '+' : ''}{recentStatChanges[stat.name.toLowerCase()]}
                       </span>
                     )}

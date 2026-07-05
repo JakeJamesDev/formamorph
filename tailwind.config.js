@@ -35,6 +35,9 @@ module.exports = {
           DEFAULT: "hsl(var(--destructive))",
           foreground: "hsl(var(--destructive-foreground))",
         },
+        // Deep red for solid destructive chips (button/badge fills) where white text sits on top; the
+        // bright --destructive is tuned for ink (text/icons/bars) instead. See index.css.
+        "destructive-fill": "hsl(var(--destructive-fill))",
         success: {
           DEFAULT: "hsl(var(--success))",
           foreground: "hsl(var(--success-foreground))",

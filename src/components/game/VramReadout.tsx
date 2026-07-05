@@ -27,7 +27,7 @@ export default function VramReadout({ stats, compact = false }: { stats: VramSta
         const usedPct =
           gpu.totalMB && gpu.usedMB != null ? (gpu.usedMB / gpu.totalMB) * 100 : 0;
         const barColor =
-          usedPct >= 90 ? "bg-red-500" : usedPct >= 50 ? "bg-yellow-500" : "bg-green-500";
+          usedPct >= 90 ? "bg-destructive" : usedPct >= 50 ? "bg-warning" : "bg-success";
         return (
           <div key={gpu.index ?? gpu.name} className="space-y-1">
             <div className="flex justify-between">

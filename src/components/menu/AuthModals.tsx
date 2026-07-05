@@ -146,7 +146,7 @@ export function AuthModals({
 
           <div className="space-y-4 py-4">
             {authError && (
-              <div className="text-sm text-red-500 p-2 bg-red-50 dark:bg-red-900/20 rounded-md">
+              <div className="text-sm text-destructive p-2 bg-destructive/10 rounded-md">
                 {authError}
               </div>
             )}
@@ -229,9 +229,9 @@ export function AuthModals({
             </div>
 
             {currentUser?.status === "suspended" && (
-              <div className="mb-4 p-3 bg-red-100 dark:bg-red-900/20 border border-red-300 dark:border-red-700 rounded-md flex items-start">
-                <AlertTriangle className="h-5 w-5 text-red-600 dark:text-red-400 mr-2 flex-shrink-0 mt-0.5" />
-                <div className="text-sm text-red-800 dark:text-red-300">
+              <div className="mb-4 p-3 bg-destructive/10 border border-destructive/30 rounded-md flex items-start">
+                <AlertTriangle className="h-5 w-5 text-destructive mr-2 flex-shrink-0 mt-0.5" />
+                <div className="text-sm text-destructive">
                   <p className="font-medium">Account Suspended</p>
                   <p>Your account has been suspended. Please contact an administrator for assistance.</p>
                 </div>
@@ -244,7 +244,7 @@ export function AuthModals({
               </h4>
 
               {authError && (
-                <div className="text-sm text-red-500 p-2 bg-red-50 dark:bg-red-900/20 rounded-md">
+                <div className="text-sm text-destructive p-2 bg-destructive/10 rounded-md">
                   {authError}
                 </div>
               )}

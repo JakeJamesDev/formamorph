@@ -136,7 +136,7 @@ export function PublishModal({ open, onOpenChange, isAuthenticated, selectedWorl
 
         <div className="py-4">
           {publishError && (
-            <div className="mb-4 p-3 bg-red-100 dark:bg-red-900/20 border border-red-300 dark:border-red-700 rounded-md text-sm text-red-800 dark:text-red-300">
+            <div className="mb-4 p-3 bg-destructive/10 border border-destructive/30 rounded-md text-sm text-destructive">
               {publishError}
             </div>
           )}

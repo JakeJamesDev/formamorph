@@ -21,6 +21,8 @@
     --accent-foreground: 222.2 47.4% 11.2%;
     --destructive: 0 84.2% 60.2%;
     --destructive-foreground: 210 40% 98%;
+    /* Deep fill for solid destructive chips (button/badge). In light mode it matches --destructive. */
+    --destructive-fill: 0 84.2% 60.2%;
     /* Semantic status colors — same style as --destructive, hue-shifted (green/amber/blue). */
     --success: 142 71% 40%;
     --success-foreground: 210 40% 98%;
@@ -57,8 +59,10 @@
     --muted-foreground: 215 20.2% 65.1%;
     --accent: 217.2 32.6% 17.5%;
     --accent-foreground: 210 40% 98%;
-    --destructive: 0 62.8% 30.6%;
+    --destructive: 0 72% 58%;
     --destructive-foreground: 210 40% 98%;
+    /* Deep fill so white button text stays readable; the bright --destructive above is for ink. */
+    --destructive-fill: 0 62.8% 30.6%;
     --success: 142 65% 45%;
     --success-foreground: 210 40% 98%;
     --warning: 45 93% 55%;
