@@ -93,6 +93,31 @@ describe('getActivatedDictionary — lorebook activation fields', () => {
     expect(getActivatedDictionary([red], ['a dragon appears'])).toEqual([]); // primary only
     expect(getActivatedDictionary([red], ['a red dragon appears'])).toEqual([red]); // both present
   });
+
+  it('matchWholeWords matches whole words only', () => {
+    const art = entry({ id: 'w', key: 'art', value: 'x', matchWholeWords: true });
+    expect(getActivatedDictionary([art], ['the art show'])).toEqual([art]);
+    expect(getActivatedDictionary([art], ['a cart'])).toEqual([]);
+    expect(getActivatedDictionary([art], ['start here'])).toEqual([]);
+  });
+
+  it('secondaryAll requires every secondary keyword', () => {
+    const e = entry({ id: 'sa', key: 'dragon', secondaryKeys: 'red, ancient', secondaryAll: true, value: 'x' });
+    expect(getActivatedDictionary([e], ['a red dragon'])).toEqual([]); // missing "ancient"
+    expect(getActivatedDictionary([e], ['an ancient red dragon'])).toEqual([e]);
+  });
+
+  it('secondaryExclude fires only when the secondaries are absent (NOT-ANY)', () => {
+    const e = entry({ id: 'sx', key: 'dragon', secondaryKeys: 'friendly', secondaryExclude: true, value: 'x' });
+    expect(getActivatedDictionary([e], ['a lone dragon'])).toEqual([e]);
+    expect(getActivatedDictionary([e], ['a friendly dragon'])).toEqual([]);
+  });
+
+  it('secondaryExclude + secondaryAll fires unless all secondaries appear (NOT-ALL)', () => {
+    const e = entry({ id: 'sxa', key: 'dragon', secondaryKeys: 'red, ancient', secondaryExclude: true, secondaryAll: true, value: 'x' });
+    expect(getActivatedDictionary([e], ['a red dragon'])).toEqual([e]); // not all present → fires
+    expect(getActivatedDictionary([e], ['an ancient red dragon'])).toEqual([]); // all present → excluded
+  });
 });
 
 describe('getActivatedDictionary — scanDepth over history', () => {

@@ -1,5 +1,5 @@
 import { useState, useEffect, type ChangeEvent, type KeyboardEvent } from 'react';
-import { useGameData } from '@/contexts/GameDataContext';
+import { useDictionaryStore } from '@/contexts/DictionaryStoreContext';
 import {
   DndContext,
   closestCenter,
@@ -112,7 +112,7 @@ function CheckRow({ label, checked, onChange }: { label: string; checked: boolea
 }
 
 const DictionaryManager = ({ entry }: { entry: DictionaryEntry }) => {
-  const { updateDictionaryEntry } = useGameData();
+  const { updateDictionaryEntry } = useDictionaryStore();
   const [editingEntry, setEditingEntry] = useState<DictionaryEntry>(entry);
 
   useEffect(() => {
@@ -153,6 +153,17 @@ const DictionaryManager = ({ entry }: { entry: DictionaryEntry }) => {
     .filter(Boolean);
   const handleSecondaryChange = (arr: string[]) => handleChange('secondaryKeys', arr.join(', '));
 
+  // Plain-English summary of the secondary-keyword gate for the four any/all × require/exclude modes.
+  const secondaryHint = secondaryKeywords.length === 0
+    ? 'Optional: also require (or exclude) these before activating.'
+    : editingEntry.secondaryExclude
+      ? (editingEntry.secondaryAll
+        ? 'Fires when a keyword appears and not all secondaries do.'
+        : 'Fires when a keyword appears and none of the secondaries do.')
+      : (editingEntry.secondaryAll
+        ? 'Fires when a keyword and all secondaries appear.'
+        : 'Fires when a keyword and at least one secondary appear.');
+
   return (
     <div className="space-y-4">
       <div className="space-y-2">
@@ -168,6 +179,7 @@ const DictionaryManager = ({ entry }: { entry: DictionaryEntry }) => {
         <div className="flex flex-wrap gap-x-4 gap-y-2">
           <CheckRow label="Always inject" checked={!!editingEntry.constant} onChange={(v) => handleChange('constant', v)} />
           <CheckRow label="Regex" checked={!!editingEntry.useRegex} onChange={(v) => handleChange('useRegex', v)} />
+          <CheckRow label="Whole words" checked={!!editingEntry.matchWholeWords} onChange={(v) => handleChange('matchWholeWords', v)} />
           <CheckRow label="Case-sensitive" checked={!!editingEntry.caseSensitive} onChange={(v) => handleChange('caseSensitive', v)} />
           <CheckRow label="Recursive" checked={!!editingEntry.recursive} onChange={(v) => handleChange('recursive', v)} />
         </div>
@@ -176,8 +188,13 @@ const DictionaryManager = ({ entry }: { entry: DictionaryEntry }) => {
           <Input type="number" min={0} value={editingEntry.scanDepth ?? ''} onChange={(e) => handleNumber('scanDepth', e.target.value)} placeholder="all history" />
         </div>
         <div className="space-y-1">
-          <Label className="text-xs text-muted-foreground">Secondary Keywords (one must also appear to activate)</Label>
+          <Label className="text-xs text-muted-foreground">Secondary Keywords</Label>
           <KeywordChips keywords={secondaryKeywords} onChange={handleSecondaryChange} placeholder="e.g. red, crimson" />
+          <div className="flex flex-wrap gap-x-4 gap-y-1 pt-1">
+            <CheckRow label="Require all" checked={!!editingEntry.secondaryAll} onChange={(v) => handleChange('secondaryAll', v)} />
+            <CheckRow label="Exclude (activate when absent)" checked={!!editingEntry.secondaryExclude} onChange={(v) => handleChange('secondaryExclude', v)} />
+          </div>
+          <p className="text-[0.7rem] text-muted-foreground">{secondaryHint}</p>
         </div>
       </div>
       <div className="space-y-2">

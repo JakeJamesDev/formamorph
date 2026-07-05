@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { useGameData } from '@/contexts/GameDataContext';
+import { useDictionaryStore } from '@/contexts/DictionaryStoreContext';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
 import { ConfirmDialog } from '@/components/ConfirmDialog';
@@ -219,7 +219,7 @@ function BookRow({ book, collapsed, collapsedZones, selectedId, onToggleCollapse
 /** The Dictionary tab's book tree: reorderable books, each with Background/Foreground zones; entries drag
  *  within a zone, between zones, and across books (one unified drag context). */
 const DictionaryTree = ({ selectedId, onSelect }: { selectedId: string | null; onSelect: (id: string) => void }) => {
-  const { dictionaries, setDictionaries, addDictionaryEntry, updateDictionary, removeDictionary, removeDictionaryEntry } = useGameData();
+  const { dictionaries, setDictionaries, addDictionaryEntry, updateDictionary, removeDictionary, removeDictionaryEntry } = useDictionaryStore();
   const [collapsed, setCollapsed] = useState<Set<string>>(new Set());
   const [collapsedZones, setCollapsedZones] = useState<Set<string>>(new Set());
   const [bookToDelete, setBookToDelete] = useState<string | null>(null);

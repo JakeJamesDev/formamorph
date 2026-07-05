@@ -27,6 +27,7 @@ import DictionaryManager from '../managers/DictionaryManager';
 import DictionaryTree from '../managers/DictionaryTree';
 import DictionaryBookManager from '../managers/DictionaryBookManager';
 import { buildDictionaryFile } from '@/lib/dictionaryFile';
+import AddDictionaryModal from '@/components/modals/AddDictionaryModal';
 import {
   DndContext,
   closestCenter,
@@ -49,7 +50,7 @@ import {
   restrictToFirstScrollableAncestor,
 } from '@dnd-kit/modifiers';
 import { UnsavedChangesDialog } from "@/components/UnsavedChangesDialog";
-import { APP_VERSION } from '@/lib/version';
+import { APP_VERSION, WORLD_FILE_KIND } from '@/lib/version';
 import type { Stat, Entity, GameLocation, StatUpdate, Dictionary, World } from '@/types';
 import { useDownscalePrompt } from '@/lib/useDownscalePrompt';
 
@@ -172,6 +173,7 @@ const WorldEditor = ({ onClose, embedded = false }: {
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedItemId, setSelectedItemId] = useState<string | null>(null);
   const [showExitPrompt, setShowExitPrompt] = useState(false);
+  const [showAddDictionary, setShowAddDictionary] = useState(false);
 
   const downloadWorld = async () => {
     // Offer to downscale oversized images BEFORE writing the file so the download itself is the smaller size.
@@ -180,6 +182,7 @@ const WorldEditor = ({ onClose, embedded = false }: {
     const downscaled = await promptWorld(current);
     const w = downscaled ?? current;
     const worldData = {
+      formamorphKind: WORLD_FILE_KIND,
       version: APP_VERSION,
       worldOverview: w.worldOverview, stats: w.stats, locations: w.locations, entities: w.entities,
       traits: w.traits, traitGroups: w.traitGroups, statUpdates: w.statUpdates, dictionaries: w.dictionaries,
@@ -593,7 +596,7 @@ const WorldEditor = ({ onClose, embedded = false }: {
                     </Button>
                   )}
                   {showImport && (
-                    <Button variant="outline" size="sm" onClick={() => {}} disabled={importDisabled}>
+                    <Button variant="outline" size="sm" onClick={() => { if (activeTab === "dictionary") setShowAddDictionary(true); }} disabled={importDisabled}>
                       {activeTab === "dictionary"
                         ? <BookPlus className="h-4 w-4 mr-2 shrink-0" />
                         : <UserPlus className="h-4 w-4 mr-2 shrink-0" />}
@@ -674,6 +677,11 @@ const WorldEditor = ({ onClose, embedded = false }: {
         onOpenChange={setShowExitPrompt}
         onSave={async () => { await saveWorld(); onClose(); }}
         onExit={onClose}
+      />
+      <AddDictionaryModal
+        open={showAddDictionary}
+        onOpenChange={setShowAddDictionary}
+        onAdd={(book) => { addDictionary(book); setSelectedItemId(book.id); }}
       />
     </div>
   );

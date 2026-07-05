@@ -1,4 +1,4 @@
-﻿import React, { useState, useRef, useEffect } from 'react';
+﻿import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { useGameData } from '../contexts/GameDataContext';
 import { toast, ToastContainer  } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
@@ -36,16 +36,20 @@ import {
 import { restrictToFirstScrollableAncestor } from '@dnd-kit/modifiers';
 import TraitSelectionModal from './TraitSelectionModal';
 import StartingLocationModal from './StartingLocationModal';
+import DictionarySelectionModal from './DictionarySelectionModal';
 import { startingLocations } from '@/lib/startingLocation';
+import { shouldShowDictionaryStep } from '@/lib/dictionarySelection';
 import WorldStorageService from '../services/WorldStorageService';
+import DictionaryStorageService from '../services/DictionaryStorageService';
 import AuthService from '../services/AuthService';
-import type { World, Stat, CharacterData } from '@/types';
+import type { World, Stat, CharacterData, Dictionary, DictionaryMetadata } from '@/types';
 import { migrateWorld, APP_VERSION } from '@/lib/version';
-import { parseDictionaryFile } from '@/lib/dictionaryFile';
+import { parseDictionaryImport } from '@/lib/dictionaryFile';
 import { useDownscalePrompt } from '@/lib/useDownscalePrompt';
 import CommunityCreationsBrowser from './CommunityCreationsBrowser';
 import { WorldDetailsColumn, DateTimeText, type WorldRecord } from "@/components/WorldDetails";
 import SortableWorldCard from "@/components/SortableWorldCard";
+import DictionaryEditorModal from "@/components/modals/DictionaryEditorModal";
 import { ManageUsersDialog } from "@/components/menu/ManageUsersDialog";
 import { AuthModals } from "@/components/menu/AuthModals";
 import { PublishModal } from "@/components/menu/PublishModal";
@@ -65,16 +69,18 @@ const defaultWorlds = [
   { id: 'drone', defaultName: 'Reincarnated Drone' }
 ];
 
-// User-defined world ordering is a UI preference, persisted as an ordered list of ids.
+// User-defined world/dictionary ordering is a UI preference, persisted as an ordered list of ids.
 const WORLD_ORDER_KEY = 'FORMAMORPH_worldOrder';
+const DICTIONARY_ORDER_KEY = 'FORMAMORPH_dictionaryOrder';
 const LAYOUT_MODE_KEY = 'FORMAMORPH_layoutMode';
 // Persisted preference to force the local world modal's single-column (portrait) layout at any width.
 const WORLD_MODAL_COLLAPSED_KEY = 'FORMAMORPH_worldModalCollapsed';
 
-const loadWorldOrder = (): string[] => {
-  try { return JSON.parse(localStorage.getItem(WORLD_ORDER_KEY) || '[]'); }
+const loadOrder = (key: string): string[] => {
+  try { return JSON.parse(localStorage.getItem(key) || '[]'); }
   catch { return []; }
 };
+const loadWorldOrder = (): string[] => loadOrder(WORLD_ORDER_KEY);
 // Sort by saved order; ids not in the saved order keep their relative order at the end.
 const applyWorldOrder = <T extends { id: string }>(list: T[], order: string[]): T[] => {
   const rank = (id: string) => { const i = order.indexOf(id); return i === -1 ? Infinity : i; };
@@ -83,7 +89,10 @@ const applyWorldOrder = <T extends { id: string }>(list: T[], order: string[]): 
 
 
 const MainMenu = ({ onStartGame, onOpenWorldEditor }: MainMenuProps) => {
-  const { traits, traitGroups, stats, locations, loadWorldData } = useGameData();
+  const {
+    traits, traitGroups, stats, locations, loadWorldData,
+    dictionaries: worldBooks, setDictionaries: setRuntimeDictionaries,
+  } = useGameData();
   const { showReadme, setShowReadme } = useReadmeVisibility();
   const { promptWorld, dialog: downscaleDialog } = useDownscalePrompt();
   const [selectedWorld, setSelectedWorld] = useState<WorldRecord | null>(null);
@@ -106,6 +115,7 @@ const MainMenu = ({ onStartGame, onOpenWorldEditor }: MainMenuProps) => {
   const [showCharacterCustomization, setShowCharacterCustomization] = useState(false);
   const [showTraitSelection, setShowTraitSelection] = useState(false);
   const [showLocationSelection, setShowLocationSelection] = useState(false);
+  const [showDictionarySelection, setShowDictionarySelection] = useState(false);
   const [selectedTraits, setSelectedTraits] = useState<string[]>([]);
   const [selectedLocationId, setSelectedLocationId] = useState<string | null>(null);
   const [showCodeModal, setShowCodeModal] = useState(false);
@@ -114,6 +124,11 @@ const MainMenu = ({ onStartGame, onOpenWorldEditor }: MainMenuProps) => {
   const dictionaryImportRef = useRef<HTMLInputElement | null>(null);
   const [worlds, setWorlds] = useState<WorldRecord[]>([]);
   const [isLoadingWorlds, setIsLoadingWorlds] = useState(true);
+  // Local dictionary library (metadata only) shown on the Dictionaries tab.
+  const [dictionaries, setDictionaries] = useState<DictionaryMetadata[]>([]);
+  const [isLoadingDictionaries, setIsLoadingDictionaries] = useState(true);
+  const [dictionaryToDelete, setDictionaryToDelete] = useState<string | null>(null);
+  const [editingDictionaryId, setEditingDictionaryId] = useState<string | null>(null);
 
   // Shared auth identity (header, publish gating, community browser). The login/profile forms live in AuthModals.
   const [isAuthenticated, setIsAuthenticated] = useState(false);
@@ -209,6 +224,22 @@ const MainMenu = ({ onStartGame, onOpenWorldEditor }: MainMenuProps) => {
 
     initializeWorlds();
   }, []);
+
+  // Load the local dictionary library metadata (no defaults to seed). Reused on mount and after the editor
+  // modal closes so the grid reflects renames/edits.
+  const refreshDictionaries = useCallback(async () => {
+    try {
+      await DictionaryStorageService.initialize();
+      const metadata = await DictionaryStorageService.getDictionaryMetadata();
+      setDictionaries(applyWorldOrder(metadata, loadOrder(DICTIONARY_ORDER_KEY)));
+    } catch (error) {
+      console.error('Error loading dictionaries:', error);
+    } finally {
+      setIsLoadingDictionaries(false);
+    }
+  }, []);
+
+  useEffect(() => { refreshDictionaries(); }, [refreshDictionaries]);
 
   // Check if any stat has code
   const hasStatWithCode = (statsArray: Stat[]) => {
@@ -313,15 +344,21 @@ const MainMenu = ({ onStartGame, onOpenWorldEditor }: MainMenuProps) => {
     }
   };
 
-  // Import a standalone dictionary `.json` from the Dictionaries tab. Parses + validates (rejecting world
-  // and save files via the discriminator). TODO: persist to the dictionary library once that slice exists.
+  // Import a standalone dictionary `.json` into the local library. Parses + validates (rejecting world and
+  // save files via the discriminator), then persists to IndexedDB and adds a card. `parseDictionaryFile`
+  // regenerates the book + entry ids, so re-imports never collide.
   const importDictionaryFile = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (file) {
       const reader = new FileReader();
-      reader.onload = (e) => {
+      reader.onload = async (e) => {
         try {
-          const book = parseDictionaryFile(JSON.parse(e.target?.result as string));
+          // Foreign lorebooks (ST / character cards) carry no internal name — fall back to the filename.
+          const fallbackName = file.name.replace(/\.[^.]+$/, '');
+          const book = parseDictionaryImport(JSON.parse(e.target?.result as string), fallbackName);
+          const now = new Date().toISOString();
+          await DictionaryStorageService.storeDictionary({ id: book.id, name: book.name, createdAt: now, lastAccessed: now, data: book });
+          setDictionaries(prev => [...prev, { id: book.id, name: book.name, entryCount: book.entries.length, createdAt: now, lastAccessed: now }]);
           toast.success(`Imported dictionary "${book.name}".`);
         } catch (err) {
           toast.error((err as Error).message);
@@ -349,23 +386,42 @@ const MainMenu = ({ onStartGame, onOpenWorldEditor }: MainMenuProps) => {
     }
   };
 
+  // Whether the dictionary step is worth showing for the selected world + current library.
+  const dictStepVisible = shouldShowDictionaryStep(worldBooks, dictionaries);
+
+  // After location, offer the dictionary step when there's a real choice; otherwise enter directly.
+  const proceedToDictOrEnter = (traitIds: string[], locationId: string | null) => {
+    if (dictStepVisible) {
+      setShowDictionarySelection(true);
+    } else {
+      enterWorld(traitIds, locationId);
+    }
+  };
+
   // Leave the trait step. Offer a location choice when the world has more than one starting location;
-  // otherwise proceed straight through (Random, as before).
+  // otherwise fall through to the dictionary step (or straight into the world).
   const proceedFromTraits = (traitIds: string[]) => {
     setShowTraitSelection(false);
     setSelectedLocationId(null);
     if (startingLocations(locations).length > 1) {
       setShowLocationSelection(true);
     } else {
-      enterWorld(traitIds, null);
+      proceedToDictOrEnter(traitIds, null);
     }
   };
 
-  // Leave the location step with the player's choice (null = Random) and enter the world.
+  // Leave the location step with the player's choice (null = Random) and continue the flow.
   const proceedFromLocation = (locationId: string | null) => {
     setShowLocationSelection(false);
     setSelectedLocationId(locationId);
-    enterWorld(selectedTraits, locationId);
+    proceedToDictOrEnter(selectedTraits, locationId);
+  };
+
+  // Leave the dictionary step: commit the chosen set as the session's runtime dictionaries, then enter.
+  const proceedFromDictionaries = (finalDicts: Dictionary[]) => {
+    setShowDictionarySelection(false);
+    setRuntimeDictionaries(finalDicts);
+    enterWorld(selectedTraits, selectedLocationId);
   };
 
   const handleDuplicateWorld = async () => {
@@ -532,6 +588,20 @@ const MainMenu = ({ onStartGame, onOpenWorldEditor }: MainMenuProps) => {
       if (oldIndex === -1 || newIndex === -1) return prev;
       const next = arrayMove(prev, oldIndex, newIndex);
       localStorage.setItem(WORLD_ORDER_KEY, JSON.stringify(next.map((w) => w.id)));
+      return next;
+    });
+  };
+
+  // Reorder the dictionary library grid and persist the new id order (mirrors the worlds grid).
+  const handleDictionaryDragEnd = (event: DragEndEvent) => {
+    const { active, over } = event;
+    if (!over || active.id === over.id) return;
+    setDictionaries((prev) => {
+      const oldIndex = prev.findIndex((d) => d.id === active.id);
+      const newIndex = prev.findIndex((d) => d.id === over.id);
+      if (oldIndex === -1 || newIndex === -1) return prev;
+      const next = arrayMove(prev, oldIndex, newIndex);
+      localStorage.setItem(DICTIONARY_ORDER_KEY, JSON.stringify(next.map((d) => d.id)));
       return next;
     });
   };
@@ -723,11 +793,46 @@ const MainMenu = ({ onStartGame, onOpenWorldEditor }: MainMenuProps) => {
         className="hidden"
       />
 
-      {/* Only the Worlds library is populated for now; Characters/Dictionaries swap to an empty view. */}
-      {cardType !== 'worlds' ? (
+      {/* Worlds and Dictionaries are card grids; Entities is still a placeholder. */}
+      {cardType === 'entities' ? (
         <div className="flex-1 min-h-0 flex items-center justify-center text-sm text-muted-foreground select-none">
-          {cardType === 'entities' ? 'Entities — coming soon' : 'Dictionaries — coming soon'}
+          Entities — coming soon
         </div>
+      ) : cardType === 'dictionaries' ? (
+        <ScrollArea className="flex-1 min-h-0">
+          {!isLoadingDictionaries && dictionaries.length === 0 ? (
+            <div className="flex items-center justify-center py-16 px-4 text-center text-sm text-muted-foreground select-none">
+              No dictionaries yet — use&nbsp;<span className="font-semibold">Import Dictionary</span>&nbsp;to add one.
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+              <DndContext
+                sensors={worldSensors}
+                collisionDetection={closestCenter}
+                onDragEnd={handleDictionaryDragEnd}
+                modifiers={[restrictToFirstScrollableAncestor]}
+                autoScroll={{
+                  canScroll: (el) =>
+                    el !== document.scrollingElement &&
+                    el !== document.body &&
+                    el !== document.documentElement,
+                }}
+              >
+                <SortableContext items={dictionaries.map((d) => d.id)} strategy={rectSortingStrategy}>
+                  {dictionaries.map((dictionary) => (
+                    <SortableWorldCard
+                      key={dictionary.id}
+                      world={dictionary}
+                      layout="grid"
+                      onSelect={setEditingDictionaryId}
+                      onDelete={setDictionaryToDelete}
+                    />
+                  ))}
+                </SortableContext>
+              </DndContext>
+            </div>
+          )}
+        </ScrollArea>
       ) : (
       /* Bounded scroll viewport (Radix ScrollArea Root is overflow-hidden) so drag-reorder
          auto-scroll stays inside this frame instead of growing the page in either axis. */
@@ -961,6 +1066,27 @@ const MainMenu = ({ onStartGame, onOpenWorldEditor }: MainMenuProps) => {
         }}
       />
 
+      <ConfirmDialog
+        open={!!dictionaryToDelete}
+        onOpenChange={(open) => !open && setDictionaryToDelete(null)}
+        title="Delete Dictionary"
+        description="Are you sure you want to delete this dictionary? This action cannot be undone."
+        onConfirm={async () => {
+          try {
+            await DictionaryStorageService.deleteDictionary(dictionaryToDelete!);
+            setDictionaries(prev => prev.filter(d => d.id !== dictionaryToDelete));
+            setDictionaryToDelete(null);
+          } catch (error) {
+            console.error('Error deleting dictionary:', error);
+          }
+        }}
+      />
+
+      <DictionaryEditorModal
+        dictionaryId={editingDictionaryId}
+        onClose={() => { setEditingDictionaryId(null); refreshDictionaries(); }}
+      />
+
       <Dialog open={showCodeModal} onOpenChange={setShowCodeModal}>
         <DialogContent className="sm:max-w-[500px] h-[85vh] overflow-y-auto">
           <DialogHeader>
@@ -1029,9 +1155,11 @@ const MainMenu = ({ onStartGame, onOpenWorldEditor }: MainMenuProps) => {
           confirmLabel={
             startingLocations(locations).length > 1
               ? 'Location'
-              : selectedWorld?.data.worldOverview?.use3DModel
-                ? 'Avatar'
-                : 'Start'
+              : dictStepVisible
+                ? 'Dictionaries'
+                : selectedWorld?.data.worldOverview?.use3DModel
+                  ? 'Avatar'
+                  : 'Start'
           }
         />
       )}
@@ -1042,6 +1170,26 @@ const MainMenu = ({ onStartGame, onOpenWorldEditor }: MainMenuProps) => {
           onConfirm={proceedFromLocation}
           onAbort={() => {
             setShowLocationSelection(false);
+            setSelectedTraits([]);
+            setSelectedLocationId(null);
+          }}
+          confirmLabel={
+            dictStepVisible
+              ? 'Dictionaries'
+              : selectedWorld?.data.worldOverview?.use3DModel
+                ? 'Avatar'
+                : 'Start'
+          }
+        />
+      )}
+
+      {showDictionarySelection && (
+        <DictionarySelectionModal
+          worldBooks={worldBooks}
+          libraryMeta={dictionaries}
+          onConfirm={proceedFromDictionaries}
+          onAbort={() => {
+            setShowDictionarySelection(false);
             setSelectedTraits([]);
             setSelectedLocationId(null);
           }}

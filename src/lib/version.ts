@@ -8,6 +8,12 @@ export const APP_VERSION = __APP_VERSION__;
 /** The era of pre-2.0 files: worlds had no `version`; saves used the numeric `version: 2`. */
 export const LEGACY_VERSION = '1.2';
 
+/** Optional self-identifying tag stamped on exported files. `dictionary` (see `dictionaryFile.ts`) is
+ *  load-bearing; `world`/`save` are additive labels — import still works without them (structural
+ *  detection stays authoritative), they just enable friendlier "wrong file" messages. */
+export const WORLD_FILE_KIND = 'world';
+export const SAVE_FILE_KIND = 'save';
+
 /** Audience-based description rename: old key → new key (entities and locations). */
 const DESCRIPTION_KEY_RENAMES: Record<string, string> = {
   inGameDescription: 'playerDescription',

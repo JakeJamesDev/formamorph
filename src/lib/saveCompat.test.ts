@@ -76,3 +76,23 @@ describe('v1.2 save-load compatibility', () => {
     expect(narration.startsWith('{')).toBe(false);
   });
 });
+
+describe('v2.x per-playthrough dictionaries field', () => {
+  // loadGame restores dictionaries only when the envelope carries the array — this mirrors that guard.
+  const shouldRestore = (save: Record<string, unknown>) => Array.isArray(save.dictionaries);
+
+  it('is still a save envelope with or without the dictionaries field', () => {
+    expect(isSaveEnvelope(v12Save)).toBe(true); // legacy, no field
+    expect(isSaveEnvelope({ ...v12Save, dictionaries: [{ id: 'b1', name: 'Lore', entries: [] }] })).toBe(true);
+  });
+
+  it('does not restore dictionaries for an old save that lacks the field', () => {
+    expect(shouldRestore(v12Save)).toBe(false);
+  });
+
+  it('restores the dictionaries when present', () => {
+    const save = { ...v12Save, dictionaries: [{ id: 'b1', name: 'Lore', entries: [] }] };
+    expect(shouldRestore(save)).toBe(true);
+    expect(save.dictionaries[0].name).toBe('Lore');
+  });
+});

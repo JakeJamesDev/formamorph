@@ -164,10 +164,18 @@ export interface DictionaryEntry {
   enabled?: boolean;
   /** Always inject, regardless of keyword matches. */
   constant?: boolean;
-  /** Comma-separated secondary keywords; when set, a primary keyword AND a secondary keyword must both be in scope. */
+  /** Comma-separated secondary keywords; when set, they gate activation alongside a primary hit (see
+   *  `secondaryAll`/`secondaryExclude`; default is "at least one secondary must also appear"). */
   secondaryKeys?: string;
+  /** Require ALL secondary keywords rather than any one of them. */
+  secondaryAll?: boolean;
+  /** Invert the secondary test: activate only when the secondary keywords are ABSENT (with `secondaryAll`,
+   *  when not all are present). Lets an entry fire *unless* certain words appear. */
+  secondaryExclude?: boolean;
   /** Treat the keywords as regular expressions instead of plain substrings. */
   useRegex?: boolean;
+  /** Match keywords as whole words (word boundaries) instead of substrings; ignored when `useRegex`. */
+  matchWholeWords?: boolean;
   /** Match keywords case-sensitively (default: case-insensitive). */
   caseSensitive?: boolean;
   /** May be activated recursively by other activated entries' content. */
@@ -192,6 +200,8 @@ export interface DictionaryEntry {
 export interface Dictionary {
   id: string;
   name: string;
+  /** Human-facing note about the book (not sent to the AI); round-trips imported lorebook descriptions. */
+  description?: string;
   /** `false` mutes the whole book (all entries); absent/`true` = active. */
   enabled?: boolean;
   entries: DictionaryEntry[];
@@ -251,4 +261,13 @@ export interface WorldMetadata {
   downloadedAt?: string;
   /** The server world's `updated_at` captured at download — the source version this copy holds. */
   sourceUpdatedAt?: string;
+}
+
+/** Lightweight preview record used by the main-menu dictionary-library grid (no entries). */
+export interface DictionaryMetadata {
+  id: string;
+  name: string;
+  entryCount?: number;
+  createdAt?: string;
+  lastAccessed?: string;
 }

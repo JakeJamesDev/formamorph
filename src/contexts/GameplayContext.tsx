@@ -15,6 +15,7 @@ import type {
   SaveObject,
   Choice,
   DiscoveredEntity,
+  Dictionary,
 } from '@/types';
 
 function useProvideGameplay() {
@@ -160,7 +161,7 @@ function useProvideGameplay() {
 
   /** Persist the current turn to IndexedDB under `saveName` as a flat envelope (`currentState` +
    *  `stateHistory` + `APP_VERSION`), stamping `worldName` onto the snapshot. Returns success. */
-  const saveGame = useCallback(async (saveName: string, worldName: string) => {
+  const saveGame = useCallback(async (saveName: string, worldName: string, dictionaries: Dictionary[]) => {
     try {
       const gameState = saveCurrentGameState();
       gameState.worldName = worldName;
@@ -169,7 +170,8 @@ function useProvideGameplay() {
       const saveObject = {
         currentState: gameState,
         stateHistory: gameStates,
-        version: APP_VERSION // stamp the current app version (legacy envelopes used numeric 2 ≙ v1.2)
+        version: APP_VERSION, // stamp the current app version (legacy envelopes used numeric 2 ≙ v1.2)
+        dictionaries, // the player's per-playthrough dictionary set, restored on load
       };
 
       await saveToDB(saveName, saveObject);
@@ -186,7 +188,11 @@ function useProvideGameplay() {
   /** Load a save by name from IndexedDB and restore it. A flat envelope (`isSaveEnvelope`, current or
    *  legacy numeric version) loads directly; an older nested shape is flattened off-thread via the
    *  `convertSaveFile` worker, with a best-effort raw load if conversion throws. Returns success. */
-  const loadGame = useCallback(async (saveName: string, locations: GameLocation[]) => {
+  const loadGame = useCallback(async (
+    saveName: string,
+    locations: GameLocation[],
+    onDictionaries?: (dictionaries: Dictionary[]) => void,
+  ) => {
     try {
       // IndexedDB returns dynamically-shaped data; narrowed by the runtime checks below.
       const savedData = await loadFromDB(saveName) as SaveObject | null;
@@ -203,6 +209,8 @@ function useProvideGameplay() {
         if (success) {
           // Load the state history
           setGameStates(savedData.stateHistory);
+          // Restore the per-playthrough dictionary set; older saves lack it, so leave the world's books as-is.
+          if (onDictionaries && Array.isArray(savedData.dictionaries)) onDictionaries(savedData.dictionaries);
           addLogEntry(`Game loaded from "${saveName}"`);
         }
         return success;

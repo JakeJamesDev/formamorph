@@ -165,6 +165,8 @@ const GameViewer = ({
     traits,
     traitGroups,
     dictionary,
+    dictionaries,
+    setDictionaries,
     updateStat,
     worldOverview,
     worldId,
@@ -2211,8 +2213,8 @@ ${playerNotes || NONE_PLACEHOLDER}
         </Button>
         <MenuModal
           onSettingsClick={() => setIsSettingsOpen(true)}
-          onSave={(name) => saveGame(name, worldOverview.name)}
-          onLoad={(name) => loadGame(name, locations)}
+          onSave={(name) => saveGame(name, worldOverview.name, dictionaries)}
+          onLoad={(name) => loadGame(name, locations, setDictionaries)}
           worldOverview={worldOverview}
           onExitToMenu={onExitToMenu}
         />
