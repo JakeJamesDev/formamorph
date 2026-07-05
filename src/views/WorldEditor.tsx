@@ -5,7 +5,7 @@ import { Input } from "@/components/ui/input";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { Download, Plus, X, ArrowLeft, Save, GripVertical, FolderPlus, FilePlus, Copy, ImageDown, Import } from "lucide-react";
+import { Download, Plus, X, ArrowLeft, Save, GripVertical, FolderPlus, FilePlus, Copy, ImageDown, BookPlus, UserPlus } from "lucide-react";
 import { Panel, PanelGroup, PanelResizeHandle } from 'react-resizable-panels';
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -594,7 +594,9 @@ const WorldEditor = ({ onClose, embedded = false }: {
                   )}
                   {showImport && (
                     <Button variant="outline" size="sm" onClick={() => {}} disabled={importDisabled}>
-                      <Import className="h-4 w-4 mr-2 shrink-0" />
+                      {activeTab === "dictionary"
+                        ? <BookPlus className="h-4 w-4 mr-2 shrink-0" />
+                        : <UserPlus className="h-4 w-4 mr-2 shrink-0" />}
                       <span className="truncate max-w-[14rem]">{importLabel}</span>
                     </Button>
                   )}
