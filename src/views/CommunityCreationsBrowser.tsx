@@ -293,7 +293,7 @@ const CommunityCreationsBrowser = ({ open, onOpenChange, worlds, setWorlds, isAu
                 Array(4).fill(0).map((_, index) => (
                   <div key={index} className="relative w-full h-48 rounded-lg overflow-hidden">
                     <Skeleton className="w-full h-full" />
-                    <div className="absolute bottom-0 left-0 right-0 bg-black bg-opacity-50 p-2">
+                    <div className="absolute bottom-0 left-0 right-0 bg-overlay/50 p-2">
                       <Skeleton className="h-6 w-24" />
                     </div>
                   </div>

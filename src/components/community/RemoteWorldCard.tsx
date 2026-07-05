@@ -42,11 +42,11 @@ export function RemoteWorldCard({
 
   return (
     <WorldCardShell
-      // Highlight worlds with an available update with a brighter sky tint + ring.
+      // Highlight worlds with an available update with the semantic info tint + ring.
       frameClassName={cn(
         "group",
         dlState === 'update'
-          ? "border-sky-300 dark:border-sky-700 bg-sky-50 dark:bg-sky-950/40 ring-1 ring-sky-300 dark:ring-sky-700"
+          ? "border-info bg-info/10 ring-1 ring-info"
           : "bg-background",
       )}
       onClick={() => onView(world)}
@@ -55,7 +55,7 @@ export function RemoteWorldCard({
       cornerAction={(
         <button
           onClick={(e) => { e.stopPropagation(); onHideWorld(worldId); }}
-          className="absolute top-1 right-1 z-10 p-1 rounded bg-black/50 text-white hover:bg-black/70"
+          className="absolute top-1 right-1 z-10 p-1 rounded bg-overlay/50 text-white hover:bg-overlay/70"
           title="Hide this world"
         >
           <EyeOff className="h-4 w-4" />
@@ -78,7 +78,7 @@ export function RemoteWorldCard({
            button, 2x size. Icon reflects whether the world is new, current (refresh), or has an update. */
         <button
           onClick={(e) => { e.stopPropagation(); onContextualDownload(world, dlState); }}
-          className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 z-10 p-2 rounded bg-black/50 text-white hover:bg-black/70 opacity-0 pointer-events-none transition-opacity group-hover:opacity-100 group-hover:pointer-events-auto"
+          className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 z-10 p-2 rounded bg-overlay/50 text-white hover:bg-overlay/70 opacity-0 pointer-events-none transition-opacity group-hover:opacity-100 group-hover:pointer-events-auto"
           title={dlState === 'update' ? "Update available — download the newer version" : dlState === 'refresh' ? "Re-download this world" : "Download this world"}
           aria-label={dlState === 'update' ? "Update available" : dlState === 'refresh' ? "Re-download this world" : "Download this world"}
         >

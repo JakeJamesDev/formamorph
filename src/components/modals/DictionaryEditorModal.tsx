@@ -56,7 +56,7 @@ const DictionaryEditorModal = ({ dictionaryId, draft, onClose }: { dictionaryId:
       await DictionaryStorageService.storeDictionary({ id: recordId, name: normalized[0].name, data: normalized[0] });
       setDictionaries(normalized);
       baselineRef.current = JSON.stringify(normalized);
-      toast.dark('Dictionary saved!');
+      toast.success('Dictionary saved!');
     } catch {
       toast.error('Could not save dictionary.');
     }

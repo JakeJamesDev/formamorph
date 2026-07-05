@@ -21,6 +21,15 @@
     --accent-foreground: 222.2 47.4% 11.2%;
     --destructive: 0 84.2% 60.2%;
     --destructive-foreground: 210 40% 98%;
+    /* Semantic status colors — same style as --destructive, hue-shifted (green/amber/blue). */
+    --success: 142 71% 40%;
+    --success-foreground: 210 40% 98%;
+    --warning: 45 93% 50%;
+    --warning-foreground: 38 92% 12%;
+    --info: 217 84% 56%;
+    --info-foreground: 210 40% 98%;
+    /* Theme-independent dark scrim for overlays on imagery + modal backdrops (light text must stay readable). */
+    --overlay: 0 0% 0%;
     --border: 214.3 31.8% 91.4%;
     --input: 214.3 31.8% 91.4%;
     --ring: 222.2 84% 4.9%;
@@ -50,6 +59,13 @@
     --accent-foreground: 210 40% 98%;
     --destructive: 0 62.8% 30.6%;
     --destructive-foreground: 210 40% 98%;
+    --success: 142 65% 45%;
+    --success-foreground: 210 40% 98%;
+    --warning: 45 93% 55%;
+    --warning-foreground: 38 92% 12%;
+    --info: 217 84% 60%;
+    --info-foreground: 210 40% 98%;
+    --overlay: 0 0% 0%;
     --border: 217.2 32.6% 17.5%;
     --input: 217.2 32.6% 17.5%;
     --ring: 212.7 26.8% 83.9%;

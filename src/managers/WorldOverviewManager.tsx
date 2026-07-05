@@ -20,7 +20,7 @@ const WorldOverviewManager = () => {
     if (file) {
       // Check file type
       if (!file.type.startsWith('audio/')) {
-        toast.dark('Please select an audio file', { type: 'error' });
+        toast.error('Please select an audio file');
         return;
       }
 
@@ -32,13 +32,13 @@ const WorldOverviewManager = () => {
           updateWorldOverview({ bgm: base64String });
         } catch (error) {
           console.error('Error processing audio:', error);
-          toast.dark('Error processing audio. Please try again.', { type: 'error' });
+          toast.error('Error processing audio. Please try again.');
         }
       };
 
       reader.onerror = () => {
         console.error('Error reading file');
-        toast.dark('Error reading file. Please try again.', { type: 'error' });
+        toast.error('Error reading file. Please try again.');
       };
 
       reader.readAsDataURL(file);
@@ -60,11 +60,11 @@ const WorldOverviewManager = () => {
           });
         } catch (error) {
           console.error('Error processing VRM:', error);
-          toast.dark('Error processing VRM. Please try again.', { type: 'error' });
+          toast.error('Error processing VRM. Please try again.');
         }
       };
       reader.onerror = () => {
-        toast.dark('Error reading file. Please try again.', { type: 'error' });
+        toast.error('Error reading file. Please try again.');
       };
       reader.readAsDataURL(file);
     }
@@ -143,7 +143,7 @@ const WorldOverviewManager = () => {
           onChange={(v) => updateWorldOverview({ thumbnail: v })}
           cap={IMAGE_CAPS.thumbnail}
           objectFit="cover"
-          previewClassName="w-[350px] h-[262.5px] relative bg-muted rounded-md cursor-pointer hover:bg-muted/80 transition-colors mx-auto"
+          previewClassName="w-full max-w-[400px] aspect-video relative rounded-md hover:border-muted-foreground transition-colors mx-auto"
         />
         <div className="flex justify-center">
           <GenerateImageButton

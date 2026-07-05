@@ -78,7 +78,7 @@ const AiFieldToolbar = ({ mode, source, value, onChange, name, kind }: {
       commit(commitHistory(historyRef.current, snap(result), false)); // a generation is a discrete step
     } catch (error) {
       if ((error as Error).name === 'AbortError') return;
-      toast.dark(`Failed to generate ${noun}.`, { type: 'error' });
+      toast.error(`Failed to generate ${noun}.`);
     } finally {
       setLoading(false);
     }

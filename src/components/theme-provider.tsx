@@ -1,9 +1,12 @@
 import { createContext, useContext, useEffect, useState, type ReactNode } from "react"
 
 type Theme = "dark" | "light" | "system"
+type ResolvedTheme = "dark" | "light"
 
 interface ThemeProviderState {
   theme: Theme
+  /** The effective theme actually applied to `<html>` — `system` resolved to `light`/`dark`. */
+  resolvedTheme: ResolvedTheme
   setTheme: (theme: Theme) => void
 }
 
@@ -23,27 +26,33 @@ export function ThemeProvider({
   const [theme, setTheme] = useState<Theme>(
     () => (localStorage.getItem(storageKey) as Theme) || defaultTheme
   )
+  const [resolvedTheme, setResolvedTheme] = useState<ResolvedTheme>(() =>
+    theme === "system" ? (window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light") : theme
+  )
 
   useEffect(() => {
     const root = window.document.documentElement
-
-    root.classList.remove("light", "dark")
-
-    if (theme === "system") {
-      const systemTheme = window.matchMedia("(prefers-color-scheme: dark)")
-        .matches
-        ? "dark"
-        : "light"
-
-      root.classList.add(systemTheme)
-      return
+    const apply = (resolved: ResolvedTheme) => {
+      root.classList.remove("light", "dark")
+      root.classList.add(resolved)
+      setResolvedTheme(resolved)
     }
 
-    root.classList.add(theme)
+    if (theme === "system") {
+      const mql = window.matchMedia("(prefers-color-scheme: dark)")
+      apply(mql.matches ? "dark" : "light")
+      // Follow the OS while in system mode so the app + toasts update live.
+      const onChange = (e: MediaQueryListEvent) => apply(e.matches ? "dark" : "light")
+      mql.addEventListener("change", onChange)
+      return () => mql.removeEventListener("change", onChange)
+    }
+
+    apply(theme)
   }, [theme])
 
   const value = {
     theme,
+    resolvedTheme,
     setTheme: (theme: Theme) => {
       localStorage.setItem(storageKey, theme)
       setTheme(theme)
