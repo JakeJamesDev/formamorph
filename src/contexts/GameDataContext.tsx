@@ -1,6 +1,7 @@
 import { createContext, useContext, useState, useCallback, useMemo, useEffect, type ReactNode } from 'react';
 import WorldStorageService from '../services/WorldStorageService';
 import { migrateWorld, APP_VERSION } from '@/lib/version';
+import { flattenEnabledBookEntries } from '@/lib/dictionaryUtils';
 import type {
   WorldMetadata,
   WorldOverview,
@@ -10,9 +11,13 @@ import type {
   Trait,
   TraitGroup,
   StatUpdate,
+  Dictionary,
   DictionaryEntry,
   World,
 } from '@/types';
+
+/** A fresh, empty "Default" book — the ≥1-book invariant's seed. */
+const makeDefaultBook = (): Dictionary => ({ id: crypto.randomUUID(), name: 'Default', enabled: true, entries: [] });
 
 // Stable serialization of the full world definition, used for dirty detection.
 function serializeWorld(
@@ -23,9 +28,9 @@ function serializeWorld(
   traits: Trait[],
   traitGroups: TraitGroup[],
   statUpdates: StatUpdate[],
-  dictionary: DictionaryEntry[],
+  dictionaries: Dictionary[],
 ) {
-  return JSON.stringify({ worldOverview: overview, stats, locations, entities, traits, traitGroups, statUpdates, dictionary });
+  return JSON.stringify({ worldOverview: overview, stats, locations, entities, traits, traitGroups, statUpdates, dictionaries });
 }
 
 function useProvideGameData() {
@@ -47,7 +52,7 @@ function useProvideGameData() {
   const [traits, setTraits] = useState<Trait[]>([]);
   const [traitGroups, setTraitGroups] = useState<TraitGroup[]>([]);
   const [statUpdates, setStatUpdates] = useState<StatUpdate[]>([]);
-  const [dictionary, setDictionary] = useState<DictionaryEntry[]>([]);
+  const [dictionaries, setDictionaries] = useState<Dictionary[]>([]);
   const [worldId, setWorldId] = useState<string | null>(null);
   // Serialized last-saved world; compared against current data to flag pending edits.
   const [savedSnapshot, setSavedSnapshot] = useState<string>('');
@@ -159,19 +164,49 @@ function useProvideGameData() {
     setStatUpdates(prevStatUpdates => prevStatUpdates.filter(statUpdate => statUpdate.id !== statUpdateId));
   }, []);
 
-  const addDictionaryEntry = useCallback((newEntry: DictionaryEntry) => {
-    setDictionary(prev => [...prev, newEntry]);
+  // Books (dictionaries). Injection consumes a derived flat entry list (below) so downstream readers are
+  // untouched; the editor drives these book-aware setters.
+  const addDictionary = useCallback((book: Dictionary) => {
+    setDictionaries(prev => [...prev, book]);
   }, []);
 
-  const updateDictionaryEntry = useCallback((updatedEntry: DictionaryEntry) => {
-    setDictionary(prev => prev.map(entry =>
-      entry.id === updatedEntry.id ? updatedEntry : entry
+  const updateDictionary = useCallback((updated: Dictionary) => {
+    setDictionaries(prev => prev.map(book => (book.id === updated.id ? updated : book)));
+  }, []);
+
+  // Deleting the last book reseeds an empty "Default" so a world always has ≥1 book.
+  const removeDictionary = useCallback((bookId: string) => {
+    setDictionaries(prev => {
+      const next = prev.filter(book => book.id !== bookId);
+      return next.length ? next : [makeDefaultBook()];
+    });
+  }, []);
+
+  const addDictionaryEntry = useCallback((bookId: string, newEntry: DictionaryEntry) => {
+    setDictionaries(prev => prev.map(book =>
+      book.id === bookId ? { ...book, entries: [...book.entries, newEntry] } : book
     ));
   }, []);
 
-  const removeDictionaryEntry = useCallback((entryId: string) => {
-    setDictionary(prev => prev.filter(entry => entry.id !== entryId));
+  // Entry ids are globally unique, so update/remove search across all books — DictionaryManager's
+  // update call needs no book context.
+  const updateDictionaryEntry = useCallback((updatedEntry: DictionaryEntry) => {
+    setDictionaries(prev => prev.map(book => ({
+      ...book,
+      entries: book.entries.map(entry => (entry.id === updatedEntry.id ? updatedEntry : entry)),
+    })));
   }, []);
+
+  const removeDictionaryEntry = useCallback((entryId: string) => {
+    setDictionaries(prev => prev.map(book => ({
+      ...book,
+      entries: book.entries.filter(entry => entry.id !== entryId),
+    })));
+  }, []);
+
+  // Flat, injection-ready entry list (book order, disabled books dropped). Consumed by GameViewer and
+  // any other reader that expects the pre-books flat `dictionary`.
+  const dictionary = useMemo(() => flattenEnabledBookEntries(dictionaries), [dictionaries]);
 
   const updateWorldOverview = useCallback((updates: Partial<WorldOverview>) => {
     setWorldOverview(prev => ({ ...prev, ...updates }));
@@ -224,7 +259,9 @@ function useProvideGameData() {
     const nextTraits = Array.isArray(worldData.traits) ? worldData.traits : [];
     const nextTraitGroups = Array.isArray(worldData.traitGroups) ? worldData.traitGroups : [];
     const nextStatUpdates = Array.isArray(worldData.statUpdates) ? worldData.statUpdates : [];
-    const nextDictionary = Array.isArray(worldData.dictionary) ? worldData.dictionary : [];
+    // migrateWorld guarantees ≥1 book; default defensively in case a raw World reaches here another way.
+    const nextDictionaries = Array.isArray(worldData.dictionaries) && worldData.dictionaries.length
+      ? worldData.dictionaries : [makeDefaultBook()];
     setWorldId(worldData.id);
     setStats(nextStats);
     setLocations(nextLocations);
@@ -232,19 +269,19 @@ function useProvideGameData() {
     setTraits(nextTraits);
     setTraitGroups(nextTraitGroups);
     setStatUpdates(nextStatUpdates);
-    setDictionary(nextDictionary);
+    setDictionaries(nextDictionaries);
 
     // Baseline for dirty detection: a freshly loaded world has no pending changes.
     setSavedSnapshot(serializeWorld(
-      normalizedOverview, nextStats, nextLocations, nextEntities, nextTraits, nextTraitGroups, nextStatUpdates, nextDictionary,
+      normalizedOverview, nextStats, nextLocations, nextEntities, nextTraits, nextTraitGroups, nextStatUpdates, nextDictionaries,
     ));
 
     return isDefault;
   }, [updateWorldOverview, setStats, setLocations, setEntities, setTraits, setStatUpdates]);
 
   const isWorldDirty = useMemo(
-    () => serializeWorld(worldOverview, stats, locations, entities, traits, traitGroups, statUpdates, dictionary) !== savedSnapshot,
-    [worldOverview, stats, locations, entities, traits, traitGroups, statUpdates, dictionary, savedSnapshot],
+    () => serializeWorld(worldOverview, stats, locations, entities, traits, traitGroups, statUpdates, dictionaries) !== savedSnapshot,
+    [worldOverview, stats, locations, entities, traits, traitGroups, statUpdates, dictionaries, savedSnapshot],
   );
 
   // Persist the current world and re-baseline so isWorldDirty clears. Returns success.
@@ -260,15 +297,15 @@ function useProvideGameData() {
         // other sticky fields are preserved by storeWorld).
         dirty: true,
         editedAt: new Date().toISOString(),
-        data: { version: APP_VERSION, worldOverview, stats, locations, entities, traits, traitGroups, statUpdates, dictionary },
+        data: { version: APP_VERSION, worldOverview, stats, locations, entities, traits, traitGroups, statUpdates, dictionaries },
       });
-      setSavedSnapshot(serializeWorld(worldOverview, stats, locations, entities, traits, traitGroups, statUpdates, dictionary));
+      setSavedSnapshot(serializeWorld(worldOverview, stats, locations, entities, traits, traitGroups, statUpdates, dictionaries));
       return true;
     } catch (error) {
       console.error('Error saving world:', error);
       return false;
     }
-  }, [worldId, worldOverview, stats, locations, entities, traits, traitGroups, statUpdates, dictionary]);
+  }, [worldId, worldOverview, stats, locations, entities, traits, traitGroups, statUpdates, dictionaries]);
 
   useEffect(() => {
     WorldStorageService.initialize();
@@ -286,6 +323,7 @@ function useProvideGameData() {
     traits,
     traitGroups,
     statUpdates,
+    dictionaries,
     dictionary,
     addStat,
     updateStat,
@@ -305,6 +343,9 @@ function useProvideGameData() {
     addStatUpdate,
     updateStatUpdate,
     removeStatUpdate,
+    addDictionary,
+    updateDictionary,
+    removeDictionary,
     addDictionaryEntry,
     updateDictionaryEntry,
     removeDictionaryEntry,
@@ -314,7 +355,7 @@ function useProvideGameData() {
     setTraits,
     setTraitGroups,
     setStatUpdates,
-    setDictionary,
+    setDictionaries,
     loadWorldData,
     worldId, setWorldId,
     isWorldDirty,

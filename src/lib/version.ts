@@ -45,15 +45,38 @@ function renameTraitDescriptions(items: unknown): unknown {
 }
 
 /**
- * Bring an imported world up to the current format and stamp it with `APP_VERSION`. Idempotent — a
- * world already at `APP_VERSION` is returned unchanged. Moves the legacy root `customPlayerVRM` bare
- * data-URL into `worldOverview.customPlayerVRM` as a `MediaAsset`, auto-binds legacy body stats to
- * body morphs, and renames v1.2 description keys on entities/locations/traits to the audience-based
- * keys. Remaining field defaults are left to `loadWorldData`. Add further 2.0 → 2.x steps here when the
- * shape changes — a version bump is the user's call (see the export-shape-versioning note).
+ * Fold the legacy flat `dictionary` into a single "Default" book (`dictionaries`). Idempotent: if
+ * `dictionaries` already exists it is kept (and any stray `dictionary` dropped); otherwise the old
+ * entries — positions preserved — become one enabled "Default" book. Always leaves at least one book.
+ * This shape change is deliberately NOT version-gated: shipped 2.x worlds carry `version === APP_VERSION`
+ * yet predate the book model, so the fold must also run on already-current worlds.
+ */
+function foldDictionaryIntoBooks(world: Record<string, unknown>): void {
+  if (Array.isArray(world.dictionaries)) {
+    delete world.dictionary; // drop a stray legacy key if both somehow present
+    if ((world.dictionaries as unknown[]).length === 0) {
+      world.dictionaries = [{ id: crypto.randomUUID(), name: 'Default', enabled: true, entries: [] }];
+    }
+    return;
+  }
+  const entries = Array.isArray(world.dictionary) ? world.dictionary : [];
+  world.dictionaries = [{ id: crypto.randomUUID(), name: 'Default', enabled: true, entries }];
+  delete world.dictionary;
+}
+
+/**
+ * Bring an imported world up to the current format and stamp it with `APP_VERSION`. The dictionary→books
+ * fold runs unconditionally (it isn't version-gated — see `foldDictionaryIntoBooks`); the rest is skipped
+ * for a world already at `APP_VERSION`. Moves the legacy root `customPlayerVRM` bare data-URL into
+ * `worldOverview.customPlayerVRM` as a `MediaAsset`, auto-binds legacy body stats to body morphs, and
+ * renames v1.2 description keys on entities/locations/traits to the audience-based keys. Remaining field
+ * defaults are left to `loadWorldData`. Add further 2.0 → 2.x steps here when the shape changes — a version
+ * bump is the user's call (see the export-shape-versioning note); shipped worlds are only reshaped through
+ * this load-time path, never autonomously re-persisted.
  */
 export function migrateWorld(raw: unknown): World {
   const world = { ...(raw as Record<string, unknown>) };
+  foldDictionaryIntoBooks(world);
   if (world.version === APP_VERSION) return world as unknown as World;
 
   const overview = { ...((world.worldOverview as Record<string, unknown>) ?? {}) };

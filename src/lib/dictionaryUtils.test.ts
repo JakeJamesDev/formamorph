@@ -3,14 +3,22 @@ import {
   parseKeywords,
   getActivatedDictionary,
   buildDictionaryContext,
+  flattenEnabledBookEntries,
 } from './dictionaryUtils';
-import type { DictionaryEntry } from '@/types';
+import type { Dictionary, DictionaryEntry } from '@/types';
 
 const entry = (over: Partial<DictionaryEntry>): DictionaryEntry => ({
   id: '1',
   name: '',
   key: '',
   value: '',
+  ...over,
+});
+
+const book = (over: Partial<Dictionary>): Dictionary => ({
+  id: 'b',
+  name: 'Book',
+  entries: [],
   ...over,
 });
 
@@ -152,5 +160,36 @@ describe('buildDictionaryContext', () => {
   it('returns "" for no entries', () => {
     expect(buildDictionaryContext([])).toBe('');
     expect(buildDictionaryContext([], false)).toBe('');
+  });
+});
+
+describe('flattenEnabledBookEntries', () => {
+  const a = entry({ id: 'a', value: 'a' });
+  const b = entry({ id: 'b', value: 'b' });
+  const c = entry({ id: 'c', value: 'c' });
+
+  it('concatenates books in order, entries in per-book order', () => {
+    const books = [book({ id: 'b1', entries: [a, b] }), book({ id: 'b2', entries: [c] })];
+    expect(flattenEnabledBookEntries(books).map((e) => e.id)).toEqual(['a', 'b', 'c']);
+  });
+
+  it('drops every entry of a disabled book, including entries with enabled unset', () => {
+    const books = [book({ id: 'b1', enabled: false, entries: [a] }), book({ id: 'b2', entries: [b] })];
+    expect(flattenEnabledBookEntries(books).map((e) => e.id)).toEqual(['b']);
+  });
+
+  it('includes books with enabled unset or true', () => {
+    const books = [book({ id: 'b1', entries: [a] }), book({ id: 'b2', enabled: true, entries: [b] })];
+    expect(flattenEnabledBookEntries(books).map((e) => e.id)).toEqual(['a', 'b']);
+  });
+
+  it('keeps a per-entry disabled entry (activation filters it, not the flatten)', () => {
+    const off = entry({ id: 'off', value: 'x', enabled: false });
+    expect(flattenEnabledBookEntries([book({ entries: [off] })])).toContainEqual(off);
+  });
+
+  it('returns [] for undefined or empty input', () => {
+    expect(flattenEnabledBookEntries(undefined)).toEqual([]);
+    expect(flattenEnabledBookEntries([])).toEqual([]);
   });
 });
