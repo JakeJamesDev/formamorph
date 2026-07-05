@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useSettings, type ThinkingMode, type ParagraphLimit } from '@/contexts/SettingsContext';
-import { DEFAULT_ENDPOINT, DEFAULT_API_TOKEN, DEFAULT_MODEL_NAME, DEFAULT_MAX_TOKENS, DEFAULT_ACCENT_COLOR } from '@/contexts/settingsDefaults';
+import { DEFAULT_ENDPOINT, DEFAULT_API_TOKEN, DEFAULT_MODEL_NAME, DEFAULT_MAX_TOKENS, THEME_COLORS, type ThemeColor } from '@/contexts/settingsDefaults';
 import { useTheme } from '../theme-provider';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
@@ -203,8 +203,8 @@ export const SettingsModal = ({ isOpen, onOpenChange, previewValues }: {
     setImageTagPrompt,
     vramHelperUrl,
     setVramHelperUrl,
-    accentColor,
-    setAccentColor
+    themeColor,
+    setThemeColor
   } = useSettings();
   const { theme, setTheme } = useTheme();
   const desktop = isDesktop();
@@ -386,28 +386,22 @@ export const SettingsModal = ({ isOpen, onOpenChange, previewValues }: {
                 </div>
               </div>
               <div className="grid grid-cols-1 sm:grid-cols-4 items-center gap-4">
-                <label htmlFor="accentColor" className="text-left sm:text-right leading-4">
-                  Accent Color
+                <label htmlFor="themeColor" className="text-left sm:text-right leading-4">
+                  Theme Color
                 </label>
                 <div className="col-span-3 flex items-center gap-3">
-                  <input
-                    id="accentColor"
-                    type="color"
-                    value={accentColor}
-                    onChange={(e) => setAccentColor(e.target.value)}
-                    className="h-9 w-14 shrink-0 cursor-pointer rounded border bg-transparent p-0.5"
-                    aria-label="Accent color"
-                  />
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => setAccentColor(DEFAULT_ACCENT_COLOR)}
-                    disabled={accentColor.toLowerCase() === DEFAULT_ACCENT_COLOR.toLowerCase()}
-                  >
-                    Reset
-                  </Button>
+                  <Select value={themeColor} onValueChange={(v) => setThemeColor(v as ThemeColor)}>
+                    <SelectTrigger id="themeColor" className="w-48">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {THEME_COLORS.map((o) => (
+                        <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
                   <span className="text-xs text-muted-foreground">
-                    Tints buttons and highlights, in both light and dark.
+                    Recolors the whole app; applies to both light and dark.
                   </span>
                 </div>
               </div>

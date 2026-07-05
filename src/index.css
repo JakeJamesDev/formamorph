@@ -79,6 +79,314 @@
     --chart-4: 280 65% 60%;
     --chart-5: 340 75% 55%;
   }
+
+  /* Purple theme (data-theme="purple") — derived from #461D7C = hsl(266 62% 30%). Every tinted token
+     keeps the default theme's lightness (so contrast is preserved) with its hue rotated to 266 and its
+     saturation scaled by role. Semantic status tokens (destructive/success/warning/info/overlay) and
+     charts are intentionally NOT overridden — they stay constant across themes. Scoped to .light/.dark
+     (both set by the theme provider) so neither mode's values leak into the other. */
+  .light[data-theme="purple"] {
+    --background: 266 40% 99%;
+    --foreground: 266 45% 8%;
+    --card: 266 40% 99%;
+    --card-foreground: 266 45% 8%;
+    --popover: 266 40% 99%;
+    --popover-foreground: 266 45% 8%;
+    --primary: 266 48% 78%;
+    --primary-foreground: 266 47% 16%;
+    --secondary: 266 30% 95%;
+    --secondary-foreground: 266 45% 16%;
+    --muted: 266 24% 95%;
+    --muted-foreground: 266 16% 45%;
+    --accent: 266 32% 93%;
+    --accent-foreground: 266 45% 16%;
+    --border: 266 26% 89%;
+    --input: 266 26% 89%;
+    --ring: 266 55% 55%;
+  }
+
+  .dark[data-theme="purple"] {
+    --background: 266 42% 6%;
+    --foreground: 266 20% 96%;
+    --card: 266 42% 6%;
+    --card-foreground: 266 20% 96%;
+    --popover: 266 42% 6%;
+    --popover-foreground: 266 20% 96%;
+    --primary: 266 45% 82%;
+    --primary-foreground: 266 47% 15%;
+    --secondary: 266 26% 20%;
+    --secondary-foreground: 266 20% 96%;
+    --muted: 266 22% 20%;
+    --muted-foreground: 266 18% 68%;
+    --accent: 266 28% 24%;
+    --accent-foreground: 266 20% 96%;
+    --border: 266 26% 24%;
+    --input: 266 26% 24%;
+    --ring: 266 45% 74%;
+  }
+
+  /* Graphite theme — achromatic cool-grey (hue 220, S≈3-12). Neutrals are near-desaturated; the primary is
+     monochrome high-contrast (near-black button in light, near-white in dark) rather than a hue, for a
+     minimal editorial look. Dark uses a soft charcoal background (not true black). */
+  .light[data-theme="graphite"] {
+    --background: 220 12% 97%;
+    --foreground: 220 15% 12%;
+    --card: 220 15% 99%;
+    --card-foreground: 220 15% 12%;
+    --popover: 220 15% 99%;
+    --popover-foreground: 220 15% 12%;
+    --primary: 220 14% 18%;
+    --primary-foreground: 220 10% 98%;
+    --secondary: 220 12% 93%;
+    --secondary-foreground: 220 15% 18%;
+    --muted: 220 10% 94%;
+    --muted-foreground: 220 8% 45%;
+    --accent: 220 12% 91%;
+    --accent-foreground: 220 15% 18%;
+    --border: 220 12% 88%;
+    --input: 220 12% 88%;
+    --ring: 220 10% 40%;
+  }
+
+  .dark[data-theme="graphite"] {
+    --background: 220 12% 10%;
+    --foreground: 220 10% 96%;
+    --card: 220 12% 13%;
+    --card-foreground: 220 10% 96%;
+    --popover: 220 12% 13%;
+    --popover-foreground: 220 10% 96%;
+    --primary: 220 10% 92%;
+    --primary-foreground: 220 15% 14%;
+    --secondary: 220 10% 20%;
+    --secondary-foreground: 220 10% 96%;
+    --muted: 220 8% 20%;
+    --muted-foreground: 220 8% 66%;
+    --accent: 220 10% 24%;
+    --accent-foreground: 220 10% 96%;
+    --border: 220 10% 24%;
+    --input: 220 10% 24%;
+    --ring: 220 10% 70%;
+  }
+
+  /* Rose theme — hue 340, kept clear of the constant destructive red (0°) by leaning pink. Same structure
+     as Purple: pastel primary, gently tinted neutrals, a rose focus ring. */
+  .light[data-theme="rose"] {
+    --background: 340 40% 99%;
+    --foreground: 340 30% 9%;
+    --card: 340 40% 99%;
+    --card-foreground: 340 30% 9%;
+    --popover: 340 40% 99%;
+    --popover-foreground: 340 30% 9%;
+    --primary: 340 55% 80%;
+    --primary-foreground: 340 40% 18%;
+    --secondary: 340 30% 96%;
+    --secondary-foreground: 340 40% 18%;
+    --muted: 340 22% 96%;
+    --muted-foreground: 340 12% 46%;
+    --accent: 340 32% 94%;
+    --accent-foreground: 340 40% 18%;
+    --border: 340 24% 90%;
+    --input: 340 24% 90%;
+    --ring: 340 65% 58%;
+  }
+
+  .dark[data-theme="rose"] {
+    --background: 340 30% 7%;
+    --foreground: 340 15% 96%;
+    --card: 340 30% 7%;
+    --card-foreground: 340 15% 96%;
+    --popover: 340 30% 7%;
+    --popover-foreground: 340 15% 96%;
+    --primary: 340 60% 82%;
+    --primary-foreground: 340 40% 16%;
+    --secondary: 340 22% 20%;
+    --secondary-foreground: 340 15% 96%;
+    --muted: 340 18% 20%;
+    --muted-foreground: 340 14% 68%;
+    --accent: 340 24% 24%;
+    --accent-foreground: 340 15% 96%;
+    --border: 340 22% 24%;
+    --input: 340 22% 24%;
+    --ring: 340 60% 72%;
+  }
+
+  /* Monochrome theme — pure neutral (S=0) with a monochrome primary, in both light and dark. Dark
+     reserves true black (#000) for the page canvas and communicates elevation by LIGHTNESS, not shadow:
+     each surface steps lighter (bg 0 → card 7 → popover 9 → muted 13 → accent 17), with a strongly
+     visible border doing the delineation shadows can't on black. Light is the pure-white mirror. */
+  .light[data-theme="monochrome"] {
+    --background: 0 0% 100%;
+    --foreground: 0 0% 9%;
+    --card: 0 0% 100%;
+    --card-foreground: 0 0% 9%;
+    --popover: 0 0% 100%;
+    --popover-foreground: 0 0% 9%;
+    --primary: 0 0% 12%;
+    --primary-foreground: 0 0% 98%;
+    --secondary: 0 0% 95%;
+    --secondary-foreground: 0 0% 12%;
+    --muted: 0 0% 95%;
+    --muted-foreground: 0 0% 40%;
+    --accent: 0 0% 92%;
+    --accent-foreground: 0 0% 12%;
+    --border: 0 0% 87%;
+    --input: 0 0% 87%;
+    --ring: 0 0% 45%;
+  }
+
+  .dark[data-theme="monochrome"] {
+    --background: 0 0% 0%;
+    --foreground: 0 0% 96%;
+    --card: 0 0% 7%;
+    --card-foreground: 0 0% 96%;
+    --popover: 0 0% 9%;
+    --popover-foreground: 0 0% 96%;
+    --primary: 0 0% 92%;
+    --primary-foreground: 0 0% 8%;
+    --secondary: 0 0% 13%;
+    --secondary-foreground: 0 0% 96%;
+    --muted: 0 0% 13%;
+    --muted-foreground: 0 0% 64%;
+    --accent: 0 0% 17%;
+    --accent-foreground: 0 0% 96%;
+    --border: 0 0% 22%;
+    --input: 0 0% 22%;
+    --ring: 0 0% 60%;
+  }
+
+  /* High Contrast theme — an accessibility mode targeting WCAG AAA, not an aesthetic. Text is pushed to
+     the extremes (white-on-black / black-on-white ≈ 21:1), every boundary gets a maximal border (pure
+     white / pure black) since low-vision users read outlines over fills, and "muted" text stays high
+     (not dimmed). Dark uses the iconic yellow accent for interactive elements + focus; light goes
+     monochrome-black because yellow fails contrast on white. */
+  .light[data-theme="highcontrast"] {
+    --background: 0 0% 100%;
+    --foreground: 0 0% 0%;
+    --card: 0 0% 100%;
+    --card-foreground: 0 0% 0%;
+    --popover: 0 0% 100%;
+    --popover-foreground: 0 0% 0%;
+    --primary: 0 0% 10%;
+    --primary-foreground: 0 0% 100%;
+    --secondary: 0 0% 82%;
+    --secondary-foreground: 0 0% 0%;
+    --muted: 0 0% 85%;
+    --muted-foreground: 0 0% 20%;
+    --accent: 0 0% 78%;
+    --accent-foreground: 0 0% 0%;
+    --border: 0 0% 0%;
+    --input: 0 0% 0%;
+    --ring: 0 0% 0%;
+  }
+
+  .dark[data-theme="highcontrast"] {
+    --background: 0 0% 0%;
+    --foreground: 0 0% 100%;
+    --card: 0 0% 0%;
+    --card-foreground: 0 0% 100%;
+    --popover: 0 0% 0%;
+    --popover-foreground: 0 0% 100%;
+    --primary: 55 100% 50%;
+    --primary-foreground: 0 0% 0%;
+    --secondary: 0 0% 22%;
+    --secondary-foreground: 0 0% 100%;
+    --muted: 0 0% 20%;
+    --muted-foreground: 0 0% 85%;
+    --accent: 0 0% 30%;
+    --accent-foreground: 0 0% 100%;
+    --border: 0 0% 100%;
+    --input: 0 0% 100%;
+    --ring: 55 100% 50%;
+  }
+
+  /* Forest theme — pine green (hue 158, nudged off the constant --success at 142° so a green button never
+     reads as a success badge). Restrained: neutrals barely tinted, primary a muted sage (deeper than the
+     other pastels so it reads "forest," not "mint"), with a rich pine focus ring. */
+  .light[data-theme="forest"] {
+    --background: 158 30% 98%;
+    --foreground: 158 25% 8%;
+    --card: 158 30% 98%;
+    --card-foreground: 158 25% 8%;
+    --popover: 158 30% 98%;
+    --popover-foreground: 158 25% 8%;
+    --primary: 158 42% 72%;
+    --primary-foreground: 158 40% 16%;
+    --secondary: 158 25% 94%;
+    --secondary-foreground: 158 40% 16%;
+    --muted: 158 18% 94%;
+    --muted-foreground: 158 12% 40%;
+    --accent: 158 26% 91%;
+    --accent-foreground: 158 40% 16%;
+    --border: 158 20% 86%;
+    --input: 158 20% 86%;
+    --ring: 158 50% 40%;
+  }
+
+  .dark[data-theme="forest"] {
+    --background: 158 28% 6%;
+    --foreground: 158 15% 96%;
+    --card: 158 28% 6%;
+    --card-foreground: 158 15% 96%;
+    --popover: 158 28% 6%;
+    --popover-foreground: 158 15% 96%;
+    --primary: 158 40% 78%;
+    --primary-foreground: 158 40% 14%;
+    --secondary: 158 20% 18%;
+    --secondary-foreground: 158 15% 96%;
+    --muted: 158 16% 18%;
+    --muted-foreground: 158 14% 66%;
+    --accent: 158 22% 22%;
+    --accent-foreground: 158 15% 96%;
+    --border: 158 20% 22%;
+    --input: 158 20% 22%;
+    --ring: 158 45% 58%;
+  }
+
+  /* Bubble Gum theme — vivid candy pink (hue 330, hot/magenta side of Rose's 340°). Deliberately louder
+     than Rose: much higher saturation on primary/accent/ring, while neutrals stay only faintly tinted so
+     light mode doesn't go garish. No status-color clash. */
+  .light[data-theme="bubblegum"] {
+    --background: 330 45% 99%;
+    --foreground: 330 30% 9%;
+    --card: 330 45% 99%;
+    --card-foreground: 330 30% 9%;
+    --popover: 330 45% 99%;
+    --popover-foreground: 330 30% 9%;
+    --primary: 330 85% 78%;
+    --primary-foreground: 330 50% 20%;
+    --secondary: 330 35% 96%;
+    --secondary-foreground: 330 50% 20%;
+    --muted: 330 25% 96%;
+    --muted-foreground: 330 15% 45%;
+    --accent: 330 40% 93%;
+    --accent-foreground: 330 50% 20%;
+    --border: 330 30% 89%;
+    --input: 330 30% 89%;
+    --ring: 330 90% 62%;
+  }
+
+  /* Dark: a HOT mid-toned pink (not a pale pastel — pastels wash out saturation and read like Rose) over
+     enriched pink neutrals, so the whole dark theme is candy, not just the button. Light block above is
+     unchanged. */
+  .dark[data-theme="bubblegum"] {
+    --background: 330 40% 8%;
+    --foreground: 330 25% 96%;
+    --card: 330 40% 8%;
+    --card-foreground: 330 25% 96%;
+    --popover: 330 40% 8%;
+    --popover-foreground: 330 25% 96%;
+    --primary: 330 92% 64%;
+    --primary-foreground: 330 55% 15%;
+    --secondary: 330 38% 22%;
+    --secondary-foreground: 330 25% 96%;
+    --muted: 330 34% 22%;
+    --muted-foreground: 330 24% 72%;
+    --accent: 330 44% 26%;
+    --accent-foreground: 330 25% 96%;
+    --border: 330 40% 28%;
+    --input: 330 40% 28%;
+    --ring: 330 92% 66%;
+  }
 }
 
 @layer base {

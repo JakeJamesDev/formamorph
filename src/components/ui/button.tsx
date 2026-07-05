@@ -5,7 +5,10 @@ import { cva, type VariantProps } from "class-variance-authority";
 import { cn } from "@/lib/utils"
 
 const buttonVariants = cva(
-  "inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50",
+  // `border border-transparent` in the base reserves a 1px border on every variant (no layout shift) that
+  // themes color via `--border`; it's faint in the color themes and maximal in High Contrast. Filled
+  // variants keep it transparent; secondary/ghost opt into `border-border` so they're outlined too.
+  "inline-flex items-center justify-center whitespace-nowrap rounded-md border border-transparent text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50",
   {
     variants: {
       variant: {
@@ -13,10 +16,10 @@ const buttonVariants = cva(
         destructive:
           "bg-destructive-fill text-destructive-foreground hover:bg-destructive-fill/90",
         outline:
-          "border border-input bg-background hover:bg-accent hover:text-accent-foreground",
+          "border-input bg-background hover:bg-accent hover:text-accent-foreground",
         secondary:
-          "bg-secondary text-secondary-foreground hover:bg-secondary/80",
-        ghost: "hover:bg-accent hover:text-accent-foreground",
+          "bg-secondary text-secondary-foreground border-border hover:bg-secondary/80",
+        ghost: "border-border hover:bg-accent hover:text-accent-foreground",
         link: "text-primary underline-offset-4 hover:underline",
       },
       size: {

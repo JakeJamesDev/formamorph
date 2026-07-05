@@ -32,6 +32,21 @@ export const DEFAULT_IMAGE_SAMPLER = import.meta.env.VITE_DEFAULT_IMAGE_SAMPLER 
 // A1111-only: run the ADetailer face/hand-fix pass (requires the extension installed on the server).
 export const DEFAULT_IMAGE_ADETAILER = import.meta.env.VITE_DEFAULT_IMAGE_ADETAILER === 'true';
 
-// The library's default accent (the `:root --primary` teal in index.css, as hex). While the setting equals
-// this, no inline override is applied, so light/dark keep their separately-tuned `--primary` values.
-export const DEFAULT_ACCENT_COLOR = '#a1dddd';
+// Preset color themes. Each (except the base) is a full set of token overrides in index.css keyed by a
+// `data-theme` attribute on <html>. Adding a theme = a new value here + a matching
+// `.light[data-theme="…"]` / `.dark[data-theme="…"]` block in index.css.
+export type ThemeColor = 'blue' | 'purple' | 'graphite' | 'rose' | 'bubblegum' | 'forest' | 'monochrome' | 'highcontrast';
+// The theme whose tokens live directly in :root/.dark; it applies with NO data-theme attribute.
+export const BASE_THEME_COLOR: ThemeColor = 'blue';
+// What a fresh install starts on (independent of the base above).
+export const DEFAULT_THEME_COLOR: ThemeColor = 'graphite';
+export const THEME_COLORS: { value: ThemeColor; label: string }[] = [
+  { value: 'graphite', label: 'Graphite (default)' },
+  { value: 'purple', label: 'Purple' },
+  { value: 'blue', label: 'Blue' },
+  { value: 'rose', label: 'Rose' },
+  { value: 'bubblegum', label: 'Bubble Gum' },
+  { value: 'forest', label: 'Forest' },
+  { value: 'monochrome', label: 'Monochrome' },
+  { value: 'highcontrast', label: 'High Contrast' },
+];
