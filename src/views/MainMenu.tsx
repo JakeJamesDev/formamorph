@@ -41,15 +41,18 @@ import { startingLocations } from '@/lib/startingLocation';
 import { shouldShowDictionaryStep } from '@/lib/dictionarySelection';
 import WorldStorageService from '../services/WorldStorageService';
 import DictionaryStorageService from '../services/DictionaryStorageService';
+import EntityStorageService from '../services/EntityStorageService';
 import AuthService from '../services/AuthService';
-import type { World, Stat, CharacterData, Dictionary, DictionaryMetadata } from '@/types';
+import type { World, Stat, CharacterData, Dictionary, DictionaryMetadata, Entity, EntityMetadata } from '@/types';
 import { migrateWorld, APP_VERSION } from '@/lib/version';
 import { parseDictionaryImport } from '@/lib/dictionaryFile';
+import { importEntityCard } from '@/lib/entityFile';
 import { useDownscalePrompt } from '@/lib/useDownscalePrompt';
 import CommunityCreationsBrowser from './CommunityCreationsBrowser';
 import { WorldDetailsColumn, DateTimeText, type WorldRecord } from "@/components/WorldDetails";
 import SortableWorldCard from "@/components/SortableWorldCard";
 import DictionaryEditorModal from "@/components/modals/DictionaryEditorModal";
+import EntityEditorModal from "@/components/modals/EntityEditorModal";
 import { ManageUsersDialog } from "@/components/menu/ManageUsersDialog";
 import { AuthModals } from "@/components/menu/AuthModals";
 import { PublishModal } from "@/components/menu/PublishModal";
@@ -72,6 +75,7 @@ const defaultWorlds = [
 // User-defined world/dictionary ordering is a UI preference, persisted as an ordered list of ids.
 const WORLD_ORDER_KEY = 'FORMAMORPH_worldOrder';
 const DICTIONARY_ORDER_KEY = 'FORMAMORPH_dictionaryOrder';
+const ENTITY_ORDER_KEY = 'FORMAMORPH_entityOrder';
 const LAYOUT_MODE_KEY = 'FORMAMORPH_layoutMode';
 // Persisted preference to force the local world modal's single-column (portrait) layout at any width.
 const WORLD_MODAL_COLLAPSED_KEY = 'FORMAMORPH_worldModalCollapsed';
@@ -124,6 +128,7 @@ const MainMenu = ({ onStartGame, onOpenWorldEditor }: MainMenuProps) => {
   const [showSettings, setShowSettings] = useState(false);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
   const dictionaryImportRef = useRef<HTMLInputElement | null>(null);
+  const entityImportRef = useRef<HTMLInputElement | null>(null);
   const [worlds, setWorlds] = useState<WorldRecord[]>([]);
   const [isLoadingWorlds, setIsLoadingWorlds] = useState(true);
   // Local dictionary library (metadata only) shown on the Dictionaries tab.
@@ -131,6 +136,11 @@ const MainMenu = ({ onStartGame, onOpenWorldEditor }: MainMenuProps) => {
   const [isLoadingDictionaries, setIsLoadingDictionaries] = useState(true);
   const [dictionaryToDelete, setDictionaryToDelete] = useState<string | null>(null);
   const [editingDictionaryId, setEditingDictionaryId] = useState<string | null>(null);
+  // Local character library (metadata only) shown on the Entities tab.
+  const [entities, setEntities] = useState<EntityMetadata[]>([]);
+  const [isLoadingEntities, setIsLoadingEntities] = useState(true);
+  const [entityToDelete, setEntityToDelete] = useState<string | null>(null);
+  const [editingEntityId, setEditingEntityId] = useState<string | null>(null);
 
   // Shared auth identity (header, publish gating, community browser). The login/profile forms live in AuthModals.
   const [isAuthenticated, setIsAuthenticated] = useState(false);
@@ -242,6 +252,21 @@ const MainMenu = ({ onStartGame, onOpenWorldEditor }: MainMenuProps) => {
   }, []);
 
   useEffect(() => { refreshDictionaries(); }, [refreshDictionaries]);
+
+  // Load the local character library metadata. Reused on mount and after the editor modal closes.
+  const refreshEntities = useCallback(async () => {
+    try {
+      await EntityStorageService.initialize();
+      const metadata = await EntityStorageService.getEntityMetadata();
+      setEntities(applyWorldOrder(metadata, loadOrder(ENTITY_ORDER_KEY)));
+    } catch (error) {
+      console.error('Error loading characters:', error);
+    } finally {
+      setIsLoadingEntities(false);
+    }
+  }, []);
+
+  useEffect(() => { refreshEntities(); }, [refreshEntities]);
 
   // Check if any stat has code
   const hasStatWithCode = (statsArray: Stat[]) => {
@@ -369,6 +394,39 @@ const MainMenu = ({ onStartGame, onOpenWorldEditor }: MainMenuProps) => {
       reader.readAsText(file);
     }
     event.target.value = ''; // allow re-importing the same file
+  };
+
+  // Import a WebP character card into the local library: `importEntityCard` extracts the embedded JSON and
+  // uses the card's own pixels as the portrait, regenerating the entity id so re-imports never collide.
+  const importEntityFile = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (file) {
+      (async () => {
+        try {
+          const entity = await importEntityCard(file);
+          const now = new Date().toISOString();
+          await EntityStorageService.storeEntity({ id: entity.id, name: entity.name, createdAt: now, lastAccessed: now, data: entity });
+          setEntities(prev => [...prev, { id: entity.id, name: entity.name, image: entity.image, createdAt: now, lastAccessed: now }]);
+          toast.success(`Imported character "${entity.name}".`);
+        } catch (err) {
+          toast.error((err as Error).message);
+        }
+      })();
+    }
+    event.target.value = ''; // allow re-importing the same file
+  };
+
+  // Create a blank library character and open the editor on it.
+  const handleCreateNewEntity = async () => {
+    const entity: Entity = { id: crypto.randomUUID(), name: 'New Character' };
+    const now = new Date().toISOString();
+    try {
+      await EntityStorageService.storeEntity({ id: entity.id, name: entity.name, createdAt: now, lastAccessed: now, data: entity });
+      setEntities(prev => [...prev, { id: entity.id, name: entity.name, image: entity.image, createdAt: now, lastAccessed: now }]);
+      setEditingEntityId(entity.id);
+    } catch (err) {
+      toast.error((err as Error).message);
+    }
   };
 
   const handleTraitSelection = (traitId: string) => {
@@ -610,6 +668,20 @@ const MainMenu = ({ onStartGame, onOpenWorldEditor }: MainMenuProps) => {
     });
   };
 
+  // Reorder the character library grid and persist the new id order (mirrors the worlds grid).
+  const handleEntityDragEnd = (event: DragEndEvent) => {
+    const { active, over } = event;
+    if (!over || active.id === over.id) return;
+    setEntities((prev) => {
+      const oldIndex = prev.findIndex((e) => e.id === active.id);
+      const newIndex = prev.findIndex((e) => e.id === over.id);
+      if (oldIndex === -1 || newIndex === -1) return prev;
+      const next = arrayMove(prev, oldIndex, newIndex);
+      localStorage.setItem(ENTITY_ORDER_KEY, JSON.stringify(next.map((e) => e.id)));
+      return next;
+    });
+  };
+
   // The singular noun for the selected card type — drives the contextual New/Import button labels.
   const cardNoun = cardType === 'worlds' ? 'World' : cardType === 'entities' ? 'Entity' : 'Dictionary';
 
@@ -628,7 +700,10 @@ const MainMenu = ({ onStartGame, onOpenWorldEditor }: MainMenuProps) => {
 
       <Button
         className="bg-gradient-to-r from-amber-200 to-yellow-200 hover:from-amber-300 hover:to-yellow-300 text-black font-bold"
-        onClick={() => { if (cardType === 'worlds') handleCreateNewWorld(); }}
+        onClick={() => {
+          if (cardType === 'worlds') handleCreateNewWorld();
+          else if (cardType === 'entities') handleCreateNewEntity();
+        }}
       >
         <FilePlus2 className="mr-2 h-4 w-4" /> New {cardNoun}
       </Button>
@@ -638,6 +713,7 @@ const MainMenu = ({ onStartGame, onOpenWorldEditor }: MainMenuProps) => {
         onClick={() => {
           if (cardType === 'worlds') fileInputRef.current?.click();
           else if (cardType === 'dictionaries') dictionaryImportRef.current?.click();
+          else if (cardType === 'entities') entityImportRef.current?.click();
         }}
       >
         <Import className="mr-2 h-4 w-4" /> Import {cardNoun}
@@ -796,12 +872,50 @@ const MainMenu = ({ onStartGame, onOpenWorldEditor }: MainMenuProps) => {
         accept=".json,application/json"
         className="hidden"
       />
+      <input
+        type="file"
+        ref={entityImportRef}
+        onChange={importEntityFile}
+        accept="image/webp,.webp"
+        className="hidden"
+      />
 
-      {/* Worlds and Dictionaries are card grids; Entities is still a placeholder. */}
+      {/* Worlds, Entities, and Dictionaries are card grids. */}
       {cardType === 'entities' ? (
-        <div className="flex-1 min-h-0 flex items-center justify-center text-sm text-muted-foreground select-none">
-          Entities — coming soon
-        </div>
+        <ScrollArea className="flex-1 min-h-0">
+          {!isLoadingEntities && entities.length === 0 ? (
+            <div className="flex items-center justify-center py-16 px-4 text-center text-sm text-muted-foreground select-none">
+              No characters yet — use&nbsp;<span className="font-semibold">New Entity</span>&nbsp;or&nbsp;<span className="font-semibold">Import Entity</span>&nbsp;to add one.
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+              <DndContext
+                sensors={worldSensors}
+                collisionDetection={closestCenter}
+                onDragEnd={handleEntityDragEnd}
+                modifiers={[restrictToFirstScrollableAncestor]}
+                autoScroll={{
+                  canScroll: (el) =>
+                    el !== document.scrollingElement &&
+                    el !== document.body &&
+                    el !== document.documentElement,
+                }}
+              >
+                <SortableContext items={entities.map((e) => e.id)} strategy={rectSortingStrategy}>
+                  {entities.map((entity) => (
+                    <SortableWorldCard
+                      key={entity.id}
+                      world={{ id: entity.id, name: entity.name, thumbnail: entity.image }}
+                      layout="grid"
+                      onSelect={setEditingEntityId}
+                      onDelete={setEntityToDelete}
+                    />
+                  ))}
+                </SortableContext>
+              </DndContext>
+            </div>
+          )}
+        </ScrollArea>
       ) : cardType === 'dictionaries' ? (
         <ScrollArea className="flex-1 min-h-0">
           {!isLoadingDictionaries && dictionaries.length === 0 ? (
@@ -1089,6 +1203,27 @@ const MainMenu = ({ onStartGame, onOpenWorldEditor }: MainMenuProps) => {
       <DictionaryEditorModal
         dictionaryId={editingDictionaryId}
         onClose={() => { setEditingDictionaryId(null); refreshDictionaries(); }}
+      />
+
+      <ConfirmDialog
+        open={!!entityToDelete}
+        onOpenChange={(open) => !open && setEntityToDelete(null)}
+        title="Delete Character"
+        description="Are you sure you want to delete this character? This action cannot be undone."
+        onConfirm={async () => {
+          try {
+            await EntityStorageService.deleteEntity(entityToDelete!);
+            setEntities(prev => prev.filter(e => e.id !== entityToDelete));
+            setEntityToDelete(null);
+          } catch (error) {
+            console.error('Error deleting character:', error);
+          }
+        }}
+      />
+
+      <EntityEditorModal
+        entityId={editingEntityId}
+        onClose={() => { setEditingEntityId(null); refreshEntities(); }}
       />
 
       <Dialog open={showCodeModal} onOpenChange={setShowCodeModal}>

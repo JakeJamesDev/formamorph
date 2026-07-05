@@ -28,6 +28,8 @@ import DictionaryTree from '../managers/DictionaryTree';
 import DictionaryBookManager from '../managers/DictionaryBookManager';
 import { buildDictionaryFile } from '@/lib/dictionaryFile';
 import AddDictionaryModal from '@/components/modals/AddDictionaryModal';
+import AddEntityModal from '@/components/modals/AddEntityModal';
+import { exportEntityCard } from '@/lib/entityFile';
 import {
   DndContext,
   closestCenter,
@@ -174,6 +176,7 @@ const WorldEditor = ({ onClose, embedded = false }: {
   const [selectedItemId, setSelectedItemId] = useState<string | null>(null);
   const [showExitPrompt, setShowExitPrompt] = useState(false);
   const [showAddDictionary, setShowAddDictionary] = useState(false);
+  const [showAddEntity, setShowAddEntity] = useState(false);
 
   const downloadWorld = async () => {
     // Offer to downscale oversized images BEFORE writing the file so the download itself is the smaller size.
@@ -212,6 +215,23 @@ const WorldEditor = ({ onClose, embedded = false }: {
     link.click();
     document.body.removeChild(link);
     URL.revokeObjectURL(href);
+  };
+
+  // Export one entity as a shareable WebP character card (its portrait carrying the text fields).
+  const downloadEntity = async (entity: Entity) => {
+    try {
+      const blob = await exportEntityCard(entity);
+      const href = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = href;
+      link.download = `${entity.name || 'Character'}.webp`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(href);
+    } catch (error) {
+      toast.dark((error as Error).message, { type: 'error' });
+    }
   };
 
   const saveWorld = async () => {
@@ -359,14 +379,14 @@ const WorldEditor = ({ onClose, embedded = false }: {
   // and Dictionary, and does nothing yet.
   const downloadContext =
     activeTab === 'overview' ? { label: 'Download World', disabled: false, onClick: () => { downloadWorld(); } }
-    : activeTab === 'entities' ? { label: `Download ${selectedItem?.name ?? 'Entity'}`, disabled: !selectedItem, onClick: () => {} }
+    : activeTab === 'entities' ? { label: `Download ${selectedItem?.name ?? 'Entity'}`, disabled: !selectedItem, onClick: () => { if (selectedItem) downloadEntity(selectedItem as Entity); } }
     : activeTab === 'dictionary'
       ? { label: `Download ${selectedBook?.name ?? 'Dictionary'}`, disabled: !selectedBook, onClick: () => { if (selectedBook) downloadDictionary(selectedBook); } }
     : null;
-  // "Add" is a placeholder for a future add-from-library flow (entities and dictionaries); no-op for now.
+  // "Add" opens the add-from-library picker (characters on Entities, books on Dictionary).
   const showImport = activeTab === 'entities' || activeTab === 'dictionary';
-  const importDisabled = activeTab === 'entities' && !selectedItem;
-  const importLabel = activeTab === 'entities' ? `Add ${selectedItem?.name ?? 'Entity'}` : 'Add Dictionary';
+  const importDisabled = false;
+  const importLabel = activeTab === 'entities' ? 'Add Character' : 'Add Dictionary';
 
   // Per-tab data + setter so list behavior (selection, drag-reorder) is uniform across tabs.
   const tabConfig = {
@@ -596,7 +616,7 @@ const WorldEditor = ({ onClose, embedded = false }: {
                     </Button>
                   )}
                   {showImport && (
-                    <Button variant="outline" size="sm" onClick={() => { if (activeTab === "dictionary") setShowAddDictionary(true); }} disabled={importDisabled}>
+                    <Button variant="outline" size="sm" onClick={() => { if (activeTab === "dictionary") setShowAddDictionary(true); else if (activeTab === "entities") setShowAddEntity(true); }} disabled={importDisabled}>
                       {activeTab === "dictionary"
                         ? <BookPlus className="h-4 w-4 mr-2 shrink-0" />
                         : <UserPlus className="h-4 w-4 mr-2 shrink-0" />}
@@ -682,6 +702,11 @@ const WorldEditor = ({ onClose, embedded = false }: {
         open={showAddDictionary}
         onOpenChange={setShowAddDictionary}
         onAdd={(book) => { addDictionary(book); setSelectedItemId(book.id); }}
+      />
+      <AddEntityModal
+        open={showAddEntity}
+        onOpenChange={setShowAddEntity}
+        onAdd={(entity) => { addEntity(entity); setSelectedItemId(entity.id); }}
       />
     </div>
   );
