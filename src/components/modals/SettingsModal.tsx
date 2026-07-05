@@ -21,6 +21,7 @@ import { isDesktop } from '@/lib/imageGen/desktop';
 import { fetchComfyMeta, DEFAULT_COMFY_WORKFLOW, type ComfyMeta } from '@/lib/imageGen/comfyui';
 import { DEFAULT_ENDPOINT_BY_PROVIDER, resolveImageEndpoint } from '@/lib/imageGen';
 import { TokenAutocomplete } from '@/components/TokenAutocomplete';
+import { COMMON_LANGUAGES } from '@/lib/languages';
 import ImageSetupGuide from './ImageSetupGuide';
 import ComfyWorkflowGuide from './ComfyWorkflowGuide';
 import { DEFAULT_TAG_PROMPT, SUBJECT_GUIDANCE } from '@/lib/imagePrompt';
@@ -411,16 +412,22 @@ export const SettingsModal = ({ isOpen, onOpenChange, previewValues }: {
                 </div>
               </div>
               <div className="grid grid-cols-1 sm:grid-cols-4 items-center gap-4">
-                <label htmlFor="language" className="text-left sm:text-right leading-4">
+                <label className="text-left sm:text-right leading-4">
                   Language
                 </label>
-                <Input
-                  id="language"
-                  value={language}
-                  onChange={(e) => setLanguage(e.target.value)}
-                  className="col-span-3"
-                  placeholder="Enter language"
-                />
+                <div className="col-span-3">
+                  <TokenAutocomplete
+                    single
+                    openOnFocus
+                    values={language ? [language] : []}
+                    onChange={(vals) => setLanguage(vals[0] ?? '')}
+                    options={COMMON_LANGUAGES}
+                    placeholder="Language or style…"
+                  />
+                  <p className="text-xs text-muted-foreground mt-1">
+                    The language the AI writes narration and choices in. Pick a suggestion or type your own — even a style, like formal English or pirate speak.
+                  </p>
+                </div>
               </div>
               <div className="grid grid-cols-1 sm:grid-cols-4 items-center gap-4">
                 <label htmlFor="autoscroll" className="text-left sm:text-right leading-4">
