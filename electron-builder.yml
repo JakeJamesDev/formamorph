@@ -5,6 +5,11 @@ directories:
 files:
   - dist/**/*
   - electron/**/*
+# node-llama-cpp ships native binaries (the llama.cpp engine + backend .node/.dll/.so/.dylib). They can't
+# run from inside the asar archive, so keep them (and node-llama-cpp itself) unpacked on disk.
+asarUnpack:
+  - '**/node_modules/node-llama-cpp/**'
+  - '**/node_modules/@node-llama-cpp/**'
 # Single icon source shared with the web favicon (public/icon.png, 512x512). electron-builder converts
 # it to .ico (Windows) and .icns (macOS) at build time and uses the PNG directly on Linux.
 win:
