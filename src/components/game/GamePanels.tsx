@@ -1,6 +1,7 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { useGameplay } from '@/contexts/GameplayContext';
 import { useGameplayText, setGameplayText } from '@/lib/gameplayTextStore';
+import { revealAnimName, revealVars } from '@/lib/narrationRevealConfig';
 import { useGameData } from '@/contexts/GameDataContext';
 import { useSettings } from '@/contexts/SettingsContext';
 import { useSentenceHighlight } from '@/lib/useSentenceHighlight';
@@ -332,7 +333,12 @@ export const MiddlePanel = ({
     playerStats
   } = useGameplay();
   const gameplayText = useGameplayText();
-  const { ttsHighlight, choicesEnabled, statUpdatesEnabled, narrationFadeReveal } = useSettings();
+  const { ttsHighlight, choicesEnabled, statUpdatesEnabled, revealAnimation, revealEasing, revealDirection, revealDistance, revealScale } = useSettings();
+  // Per-word reveal animation (none = smooth crawl, no fade). The keyframe name feeds Streamdown; the
+  // Move/Grow/Stretch amounts ride on the narration container as CSS vars + a data-reveal hook.
+  const revealActive = revealAnimation !== 'none';
+  const revealAnim = revealAnimName(revealAnimation) ?? undefined;
+  const revealStyle = revealVars(revealAnimation, revealDirection, revealDistance, revealScale) as React.CSSProperties;
   // Which partial re-generate options the flyout should offer (mirrors the aux-request gates).
   const canRegenChoices = choicesEnabled;
   const canRegenStats = statUpdatesEnabled && playerStats.length > 0;
@@ -492,7 +498,9 @@ export const MiddlePanel = ({
                     <X className="h-4 w-4" />
                   </Button>
                 </div>
-                <MarkdownRenderer text={gameplayText} animate={narrationFadeReveal} />
+                <div style={revealStyle}>
+                  <MarkdownRenderer text={gameplayText} animate={revealActive} animation={revealAnim} easing={revealEasing} />
+                </div>
               </div>
             )}
             {displayedMessages.map((message, index) => {
@@ -503,8 +511,8 @@ export const MiddlePanel = ({
                   {message.role === 'user' ? (
                     <div className="whitespace-pre-wrap">{message.content}</div>
                   ) : (
-                    <div ref={narrationRef}>
-                      <MarkdownRenderer text={isLatestMessage && isWaitingForAI ? gameplayText : parseAssistantMessage(message.content)} animate={isLatestMessage && isWaitingForAI && narrationFadeReveal} />
+                    <div ref={narrationRef} style={revealStyle}>
+                      <MarkdownRenderer text={isLatestMessage && isWaitingForAI ? gameplayText : parseAssistantMessage(message.content)} animate={isLatestMessage && isWaitingForAI && revealActive} animation={revealAnim} easing={revealEasing} />
                     </div>
                   )}
                 </div>

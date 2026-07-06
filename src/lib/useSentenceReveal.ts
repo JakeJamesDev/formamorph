@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef } from 'react';
-import { sentenceRevealMs } from './narrationRevealConfig';
+import { getRevealTiming } from './revealTimingStore';
 
 const countWords = (text: string): number => {
   const trimmed = text.trim();
@@ -43,10 +43,13 @@ export function useSentenceReveal(onText: (text: string) => void) {
     shownRef.current = next;
     onTextRef.current(next);
     busyRef.current = true;
+    // Wait exactly the sentence's rhythm span (its words × the current cadence) before the next, so
+    // its cascade continues seamlessly at the model's smoothed pace. Read at release time to match the
+    // fade the renderer applies to this same sentence.
     timerRef.current = setTimeout(() => {
       busyRef.current = false;
       pump();
-    }, sentenceRevealMs(addedWords));
+    }, addedWords * getRevealTiming().stagger);
   }, [settleDrain]);
 
   // Cumulative prefixes only grow, so a longer target is a genuinely new sentence to reveal.

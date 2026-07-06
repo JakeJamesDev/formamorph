@@ -4,6 +4,7 @@ import { DEFAULT_ENDPOINT, DEFAULT_API_TOKEN, DEFAULT_MODEL_NAME, DEFAULT_MAX_TO
 import { useTheme } from '../theme-provider';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
+import { RevealAnimationDemoButton } from "@/components/RevealAnimationDemo";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -159,8 +160,6 @@ export const SettingsModal = ({ isOpen, onOpenChange, previewValues }: {
     setParagraphLimit,
     autoscroll,
     setAutoscroll,
-    narrationFadeReveal,
-    setNarrationFadeReveal,
     locationBackground,
     setLocationBackground,
     backgroundOverlay,
@@ -466,16 +465,10 @@ export const SettingsModal = ({ isOpen, onOpenChange, previewValues }: {
                 </div>
               </div>
               <div className="grid grid-cols-1 sm:grid-cols-4 items-center gap-4">
-                <label htmlFor="narrationFadeReveal" className="text-left sm:text-right leading-4">
-                  Fade-in Narration
-                </label>
+                <span className="text-left sm:text-right leading-4">Narration Reveal</span>
                 <div className="col-span-3 flex items-center gap-2">
-                  <Checkbox
-                    id="narrationFadeReveal"
-                    checked={narrationFadeReveal}
-                    onCheckedChange={(c) => setNarrationFadeReveal(c === true)}
-                  />
-                  <span className="text-xs text-muted-foreground">Fade each sentence in as it streams. Off: sentences pop in instantly.</span>
+                  <RevealAnimationDemoButton />
+                  <span className="text-xs text-muted-foreground">How each sentence appears as it streams.</span>
                 </div>
               </div>
               <div className="grid grid-cols-1 sm:grid-cols-4 items-center gap-4">
