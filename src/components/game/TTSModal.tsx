@@ -1,5 +1,6 @@
 import { KokoroTTS, type GenerateOptions } from "kokoro-js";
 import { useState, useEffect, useRef, useCallback, forwardRef, useImperativeHandle } from "react";
+import { getGameplayText } from "@/lib/gameplayTextStore";
 import { Button } from "@/components/ui/button";
 import {
   Select,
@@ -53,9 +54,8 @@ export interface TTSModalHandle {
 const TTSModal = forwardRef<TTSModalHandle, {
   isOpen: boolean;
   onOpenChange: (open: boolean) => void;
-  narration?: string;
   onLoadedChange?: (loaded: boolean) => void;
-}>(function TTSModal({ isOpen, onOpenChange, narration = "Hello World", onLoadedChange }, ref) {
+}>(function TTSModal({ isOpen, onOpenChange, onLoadedChange }, ref) {
   const [isLoading, setIsLoading] = useState(false);
   const [tts, setTTS] = useState<KokoroTTS | null>(null);
   const [voices, setVoices] = useState<string[]>([]);
@@ -232,12 +232,12 @@ const TTSModal = forwardRef<TTSModalHandle, {
 
   useImperativeHandle(ref, () => ({
     regenerate: (text?: string, onProgress?: (progress: TTSProgress) => void) =>
-      generateAudio(text ?? narration, onProgress),
+      generateAudio(text ?? (getGameplayText() || "Hello World"), onProgress),
     streamStart,
     streamSentence,
     streamEnd,
     streamCancel,
-  }), [generateAudio, narration, streamStart, streamSentence, streamEnd, streamCancel]);
+  }), [generateAudio, streamStart, streamSentence, streamEnd, streamCancel]);
 
   // Report load/unload so the parent can gate the regenerate button and auto-generation.
   useEffect(() => {
@@ -362,7 +362,7 @@ const TTSModal = forwardRef<TTSModalHandle, {
             className='w-full'
               onClick={async () => {
                 setGenProgress({ done: 0, total: 1 });
-                const ok = await generateAudio(narration, setGenProgress);
+                const ok = await generateAudio(getGameplayText() || "Hello World", setGenProgress);
                 setGenProgress(null);
                 if (ok) onOpenChange(false);
               }}

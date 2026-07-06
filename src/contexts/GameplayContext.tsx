@@ -5,6 +5,7 @@ import { convertSaveFile, terminateWorker } from '../lib/saveConversionWorkerUti
 import { useTtsPlayback } from '../lib/useTtsPlayback';
 import { APP_VERSION, isSaveEnvelope } from '../lib/version';
 import { flattenEnabledBookEntries } from '../lib/dictionaryUtils';
+import { getGameplayText, setGameplayText } from '../lib/gameplayTextStore';
 import type {
   CharacterData,
   LogEntry,
@@ -37,7 +38,6 @@ function useProvideGameplay() {
   const [activeTab, setActiveTab] = useState("stats");
   // Stat-driven body morph influences, keyed by morph name (built from stats' morphBindings).
   const [bodyMorphValues, setBodyMorphValues] = useState<Record<string, number>>({});
-  const [gameplayText, setGameplayText] = useState("");
   const [isFlashing, setIsFlashing] = useState(false);
   const [isEditMode, setIsEditMode] = useState(false);
   const [choices, setChoices] = useState<Choice[]>([]);
@@ -92,7 +92,7 @@ function useProvideGameplay() {
       visibleEntities,
       discoveredEntities,
       logEntries,
-      gameplayText,
+      gameplayText: getGameplayText(),
       locationId: currentLocation?.id,
       gameTime,
       fullMessageHistory,
@@ -107,7 +107,7 @@ function useProvideGameplay() {
       // Add a version flag for backward compatibility
       stateVersion: 2
     };
-  }, [playerStats, playerTraits, visibleEntities, discoveredEntities, logEntries, gameplayText, currentLocation,
+  }, [playerStats, playerTraits, visibleEntities, discoveredEntities, logEntries, currentLocation,
       gameTime, fullMessageHistory, characterData, choices, isGameStarted, playerNotes, currentPage]);
 
   /** Restore a `GameState` into the live gameplay state, resolving `locationId` against `locations` and
@@ -332,8 +332,6 @@ function useProvideGameplay() {
     activeTab,
     setActiveTab,
     logsEndRef,
-    gameplayText,
-    setGameplayText,
     isFlashing,
     setIsFlashing,
     isEditMode,
