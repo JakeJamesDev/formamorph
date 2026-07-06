@@ -69,7 +69,7 @@ export function WorldDetailsColumn({ thumbnail, actions, description, tags, meta
               tags.map((tag, index) => (
                 <span
                   key={index}
-                  className={cn(CHIP_BASE, "bg-primary/10 text-primary")}
+                  className={cn(CHIP_BASE, "bg-accent text-accent-foreground")}
                 >
                   {tag}
                 </span>
@@ -160,7 +160,7 @@ export function CardTags({ tags, onHide }: { tags: string[]; onHide?: (tag: stri
       title={onHide ? `Hide all worlds tagged "${tag}"` : undefined}
       className={cn(
         CHIP_BASE,
-        "bg-primary/10 text-primary",
+        "bg-accent text-accent-foreground",
         onHide && "cursor-pointer hover:line-through",
       )}
     >
