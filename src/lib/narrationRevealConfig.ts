@@ -1,26 +1,24 @@
-// The reveal's per-word entrance animation is user-selectable (see RevealAnimationDemo). Each option
-// maps to a `sd-<anim>` keyframe (in index.css / shipped by Streamdown) built from opacity + transform
-// so it stays GPU-composited. `none` skips the animation entirely and uses the smooth character crawl.
-export type RevealAnimation = 'none' | 'fade' | 'move' | 'grow' | 'stretch' | 'blur' | 'slide';
+// The reveal's per-word entrance animation is a set of independent, stackable effects (see
+// RevealAnimationDemo): Fade (opacity), Move (translate), Scale (transform scale), Blur (filter).
+// They live on orthogonal CSS properties, so any combination composes into a single keyframe
+// (sd-reveal / sd-reveal-blur in index.css) driven by CSS vars — GPU-composited, no reflow. With no
+// effect enabled the reveal falls back to the smooth character crawl.
 export type RevealDirection = 'bottom' | 'top' | 'left' | 'right';
+export type RevealScaleMode = 'uniform' | 'axis';
 
-export interface RevealAnimOption {
-  key: RevealAnimation;
-  label: string;
-  anim: string | null; // Streamdown `animation` name (→ sd-<anim> keyframe); null = no per-word animation
-  amount: 'none' | 'distance' | 'scale';
-  directional?: boolean;
+/** All the reveal-animation settings, resolved into one object (see SettingsContext.revealSpec). */
+export interface RevealSpec {
+  fade: boolean;
+  move: boolean;
+  moveDirection: RevealDirection;
+  moveDistance: number; // em
+  scale: boolean;
+  scaleMode: RevealScaleMode; // uniform = grow, axis = stretch along one edge
+  scaleDirection: RevealDirection; // anchored edge for axis mode
+  scaleAmount: number; // start scale
+  blur: boolean;
+  blurAmount: number; // px
 }
-
-export const REVEAL_ANIMATIONS: RevealAnimOption[] = [
-  { key: 'none', label: 'None (smooth crawl)', anim: null, amount: 'none' },
-  { key: 'fade', label: 'Fade', anim: 'fadeIn', amount: 'none' },
-  { key: 'move', label: 'Move in', anim: 'moveIn', amount: 'distance', directional: true },
-  { key: 'grow', label: 'Grow', anim: 'growIn', amount: 'scale' },
-  { key: 'stretch', label: 'Stretch', anim: 'stretchIn', amount: 'scale', directional: true },
-  { key: 'blur', label: 'Blur', anim: 'blurIn', amount: 'none' },
-  { key: 'slide', label: 'Slide up', anim: 'slideUp', amount: 'none' },
-];
 
 export const REVEAL_EASINGS = [
   { label: 'Ease out', value: 'cubic-bezier(0.16, 1, 0.3, 1)' },
@@ -37,57 +35,67 @@ export const REVEAL_DIRECTIONS: { label: string; value: RevealDirection }[] = [
   { label: 'From right', value: 'right' },
 ];
 
-export const DEFAULT_REVEAL_ANIMATION: RevealAnimation = 'fade';
+export const REVEAL_SCALE_MODES: { label: string; value: RevealScaleMode }[] = [
+  { label: 'Uniform (grow)', value: 'uniform' },
+  { label: 'One axis (stretch)', value: 'axis' },
+];
+
 export const DEFAULT_REVEAL_EASING = REVEAL_EASINGS[0].value;
-export const DEFAULT_REVEAL_DIRECTION: RevealDirection = 'bottom';
-export const DEFAULT_REVEAL_DISTANCE = 0.5; // em, for Move
-export const DEFAULT_REVEAL_SCALE = 0.4; // start scale, for Grow / Stretch
-// Preview-only defaults (in game these come from the model's rate, see timingForWordRate).
+export const DEFAULT_REVEAL_FADE = true; // preserves the prior fade-on default
+export const DEFAULT_REVEAL_MOVE = false;
+export const DEFAULT_REVEAL_MOVE_DIRECTION: RevealDirection = 'bottom';
+export const DEFAULT_REVEAL_MOVE_DISTANCE = 0.5;
+export const DEFAULT_REVEAL_SCALE = false;
+export const DEFAULT_REVEAL_SCALE_MODE: RevealScaleMode = 'uniform';
+export const DEFAULT_REVEAL_SCALE_DIRECTION: RevealDirection = 'bottom';
+export const DEFAULT_REVEAL_SCALE_AMOUNT = 0.4;
+export const DEFAULT_REVEAL_BLUR = false;
+export const DEFAULT_REVEAL_BLUR_AMOUNT = 4;
+// Preview display fallback when a minimum is "unlimited" (0), so the preview is still visible.
 export const DEFAULT_PREVIEW_DURATION = 400;
 export const DEFAULT_PREVIEW_STAGGER = 40;
+// User minimums: the rate-derived reveal is floored to these so a fast model can't blow past a readable
+// pace. 0 = no floor (unlimited). Shown user-facing as "Unlimited".
+export const DEFAULT_REVEAL_MIN_DURATION = 0;
+export const DEFAULT_REVEAL_MIN_STAGGER = 0;
 
-export const revealOption = (key: string): RevealAnimOption =>
-  REVEAL_ANIMATIONS.find((a) => a.key === key) ?? REVEAL_ANIMATIONS[1];
+/** Any effect enabled ⇒ animate the reveal; none ⇒ fall back to the smooth crawl. */
+export const revealActive = (s: RevealSpec): boolean => s.fade || s.move || s.scale || s.blur;
 
-/** Streamdown `animation` name for a reveal key, or null for the no-animation (smooth crawl) mode. */
-export const revealAnimName = (key: string): string | null => revealOption(key).anim;
+/** The composed keyframe to use — the blur variant only when Blur is on, so words don't carry a
+ *  filter layer for nothing. */
+export const revealAnimName = (s: RevealSpec): string => (s.blur ? 'reveal-blur' : 'reveal');
 
-/** Start-offset CSS vars for sd-moveIn given a direction + distance (em). */
-export function moveVars(direction: RevealDirection, distanceEm: number): Record<string, string> {
+const moveOffset = (direction: RevealDirection, dist: number): [number, number] => {
   const map: Record<RevealDirection, [number, number]> = {
-    bottom: [0, distanceEm],
-    top: [0, -distanceEm],
-    left: [-distanceEm, 0],
-    right: [distanceEm, 0],
+    bottom: [0, dist], top: [0, -dist], left: [-dist, 0], right: [dist, 0],
   };
-  const [x, y] = map[direction];
-  return { '--rl-x': `${x}em`, '--rl-y': `${y}em` };
-}
+  return map[direction];
+};
 
-/** Start-scale + anchored-edge CSS vars for sd-stretchIn: scales along one axis, growing from the
- *  named edge (left/right → horizontal, top/bottom → vertical). */
-export function stretchVars(direction: RevealDirection, startScale: number): Record<string, string> {
-  const s = String(startScale);
-  const vertical = direction === 'top' || direction === 'bottom';
-  return {
-    '--rl-sx': vertical ? '1' : s,
-    '--rl-sy': vertical ? s : '1',
-    '--rl-origin': direction, // 'left' | 'right' | 'top' | 'bottom' are valid transform-origin keywords
-  };
-}
-
-/** Container CSS vars feeding the current reveal keyframe (Move offset / Stretch axis / Grow scale). */
-export function revealVars(
-  key: string,
-  direction: RevealDirection,
-  distanceEm: number,
-  startScale: number,
-): Record<string, string> {
-  const opt = revealOption(key);
-  if (opt.key === 'move') return moveVars(direction, distanceEm);
-  if (opt.key === 'stretch') return stretchVars(direction, startScale);
-  if (opt.amount === 'scale') return { '--rl-scale': String(startScale) }; // grow (uniform)
-  return {};
+/** Container CSS vars feeding the composed reveal keyframe. Each enabled effect contributes its vars;
+ *  unset vars sit at their identity (0 offset, scale 1, blur 0, opacity 1), so combinations compose. */
+export function revealVars(s: RevealSpec): Record<string, string> {
+  const vars: Record<string, string> = {};
+  if (s.fade) vars['--rl-o'] = '0';
+  if (s.move) {
+    const [x, y] = moveOffset(s.moveDirection, s.moveDistance);
+    vars['--rl-x'] = `${x}em`;
+    vars['--rl-y'] = `${y}em`;
+  }
+  if (s.scale) {
+    if (s.scaleMode === 'uniform') {
+      vars['--rl-sx'] = String(s.scaleAmount);
+      vars['--rl-sy'] = String(s.scaleAmount);
+    } else {
+      const vertical = s.scaleDirection === 'top' || s.scaleDirection === 'bottom';
+      vars['--rl-sx'] = vertical ? '1' : String(s.scaleAmount);
+      vars['--rl-sy'] = vertical ? String(s.scaleAmount) : '1';
+      vars['--rl-origin'] = s.scaleDirection; // valid transform-origin keyword
+    }
+  }
+  if (s.blur) vars['--rl-blur'] = `${s.blurAmount}px`;
+  return vars;
 }
 
 // Word-cadence bounds (ms per word). The reveal matches the model's average word rate within these,
@@ -111,4 +119,16 @@ const clamp = (n: number, lo: number, hi: number): number => Math.min(hi, Math.m
 export function timingForWordRate(wordsPerSec: number): { duration: number; stagger: number } {
   const stagger = clamp(1000 / wordsPerSec, STAGGER_MIN, STAGGER_MAX);
   return { stagger, duration: stagger * FADE_SPREAD };
+}
+
+/** Apply the user's minimum floors to a rate-derived timing (0 = no floor): stagger can't drop below
+ *  `minStagger`, and duration can't drop below `minDuration` (re-derived from the floored stagger so
+ *  the fade keeps a sensible spread). Lets a fast model be pinned to a readable minimum pace. */
+export function flooredTiming(
+  t: { duration: number; stagger: number },
+  minStagger: number,
+  minDuration: number,
+): { duration: number; stagger: number } {
+  const stagger = Math.max(t.stagger, minStagger);
+  return { stagger, duration: Math.max(stagger * FADE_SPREAD, minDuration) };
 }

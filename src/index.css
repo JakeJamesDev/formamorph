@@ -434,25 +434,23 @@
   font-size-adjust: var(--narration-fsa);
 }
 
-/* Candidate per-word entrance animations for the reveal (previewed in RevealAnimationDemo; fadeIn /
-   blurIn / slideUp ship with Streamdown). Each keeps to opacity + transform so it stays GPU-composited
-   with no reflow. Amounts are CSS vars so a preview (or a global setting) can tune them without new
-   keyframes. sd- prefix matches Streamdown's `animation` → `sd-<name>` convention. */
-@keyframes sd-moveIn {
-  from { opacity: 0; transform: translate(var(--rl-x, 0), var(--rl-y, 0.5em)); }
-  to   { opacity: 1; transform: translate(0, 0); }
+/* Composed per-word entrance animation for the reveal (built in RevealAnimationDemo). Fade, Move,
+   Scale and Blur are independent, stackable effects on orthogonal properties, so one keyframe covers
+   every combination: each effect contributes CSS vars (set on the narration container); unset vars sit
+   at their identity, so absent effects are no-ops. Opacity + transform stay GPU-composited; the -blur
+   variant adds the filter only when Blur is on, so words don't carry a filter layer for nothing.
+   sd- prefix matches Streamdown's `animation` → `sd-<name>` convention. */
+@keyframes sd-reveal {
+  from { opacity: var(--rl-o, 1); transform: translate(var(--rl-x, 0), var(--rl-y, 0)) scale(var(--rl-sx, 1), var(--rl-sy, 1)); }
+  to   { opacity: 1; transform: translate(0, 0) scale(1, 1); }
 }
-@keyframes sd-growIn {
-  from { opacity: 0; transform: scale(var(--rl-scale, 0.6)); }
-  to   { opacity: 1; transform: scale(1); }
+@keyframes sd-reveal-blur {
+  from { opacity: var(--rl-o, 1); transform: translate(var(--rl-x, 0), var(--rl-y, 0)) scale(var(--rl-sx, 1), var(--rl-sy, 1)); filter: blur(var(--rl-blur, 0)); }
+  to   { opacity: 1; transform: translate(0, 0) scale(1, 1); filter: blur(0); }
 }
-@keyframes sd-stretchIn {
-  from { opacity: 0; transform: scale(var(--rl-sx, 0.1), var(--rl-sy, 1)); }
-  to   { opacity: 1; transform: scale(1, 1); }
-}
-/* Streamdown animates each word in a bare inline <span>; transforms (move/grow/stretch) need a
-   transformable box, so promote the animated words to inline-block within narration. Stretch anchors
-   its growth to an edge via --rl-origin (set on the container); everything else uses center. */
+/* Streamdown animates each word in a bare inline <span>; transforms (move/scale) need a transformable
+   box, so promote the animated words to inline-block within narration. Axis-scale anchors its growth
+   to an edge via --rl-origin (set on the container); everything else uses center. */
 .narration-text [data-sd-animate] {
   display: inline-block;
   transform-origin: var(--rl-origin, center);

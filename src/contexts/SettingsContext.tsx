@@ -11,9 +11,13 @@ import {
 } from '../lib/imageEndpointPresets';
 import { fetchContextLength } from '../lib/contextLength';
 import { usePersistentState, stringCodec, boolCodec, intCodec, floatCodec, nullableIntCodec } from '../lib/usePersistentState';
+import { usePrefersReducedMotion } from '../lib/usePrefersReducedMotion';
 import {
-  REVEAL_ANIMATIONS, REVEAL_DIRECTIONS, DEFAULT_REVEAL_ANIMATION, DEFAULT_REVEAL_EASING, DEFAULT_REVEAL_DIRECTION,
-  DEFAULT_REVEAL_DISTANCE, DEFAULT_REVEAL_SCALE, type RevealAnimation, type RevealDirection,
+  REVEAL_DIRECTIONS, REVEAL_SCALE_MODES, DEFAULT_REVEAL_EASING,
+  DEFAULT_REVEAL_FADE, DEFAULT_REVEAL_MOVE, DEFAULT_REVEAL_MOVE_DIRECTION, DEFAULT_REVEAL_MOVE_DISTANCE,
+  DEFAULT_REVEAL_SCALE, DEFAULT_REVEAL_SCALE_MODE, DEFAULT_REVEAL_SCALE_DIRECTION, DEFAULT_REVEAL_SCALE_AMOUNT,
+  DEFAULT_REVEAL_BLUR, DEFAULT_REVEAL_BLUR_AMOUNT, DEFAULT_REVEAL_MIN_DURATION, DEFAULT_REVEAL_MIN_STAGGER,
+  type RevealDirection, type RevealScaleMode, type RevealSpec,
 } from '../lib/narrationRevealConfig';
 import {
   emptyStore, presetStoreCodec, activeValues, isBuiltInActive, activeStyle, BUILTIN_PRESETS,
@@ -149,20 +153,42 @@ function useProvideSettings() {
     localStorage.setItem(`${APP_ID}_paragraphLimit`, paragraphLimit);
   }, [paragraphLimit]);
 
-  const [autoscroll, setAutoscroll] = usePersistentState<boolean>(`${APP_ID}_autoscroll`, false, boolCodec);
-  // Per-word narration reveal style. `none` uses the smooth character crawl; any other value fades each
-  // sentence in with that entrance animation (paced so sentences don't overlap). See RevealAnimationDemo.
-  const [revealAnimation, setRevealAnimation] = usePersistentState<RevealAnimation>(`${APP_ID}_revealAnimation`, DEFAULT_REVEAL_ANIMATION, {
-    parse: (r) => (REVEAL_ANIMATIONS.some((a) => a.key === r) ? (r as RevealAnimation) : DEFAULT_REVEAL_ANIMATION),
-    serialize: (v) => v,
-  });
+  // Per-word narration reveal. Fade / Move / Scale / Blur are independent, stackable effects; when none
+  // is on the reveal falls back to the smooth character crawl. Each has its own options. See
+  // RevealAnimationDemo. Direction/mode use validating codecs so a stale value falls back cleanly.
+  const dirCodec = {
+    parse: (r: string): RevealDirection => (REVEAL_DIRECTIONS.some((d) => d.value === r) ? (r as RevealDirection) : 'bottom'),
+    serialize: (v: RevealDirection): string => v,
+  };
+  const scaleModeCodec = {
+    parse: (r: string): RevealScaleMode => (REVEAL_SCALE_MODES.some((m) => m.value === r) ? (r as RevealScaleMode) : 'uniform'),
+    serialize: (v: RevealScaleMode): string => v,
+  };
+  const [revealFade, setRevealFade] = usePersistentState<boolean>(`${APP_ID}_revealFade`, DEFAULT_REVEAL_FADE, boolCodec);
+  const [revealMove, setRevealMove] = usePersistentState<boolean>(`${APP_ID}_revealMove`, DEFAULT_REVEAL_MOVE, boolCodec);
+  const [revealMoveDirection, setRevealMoveDirection] = usePersistentState<RevealDirection>(`${APP_ID}_revealMoveDir`, DEFAULT_REVEAL_MOVE_DIRECTION, dirCodec);
+  const [revealMoveDistance, setRevealMoveDistance] = usePersistentState<number>(`${APP_ID}_revealMoveDist`, DEFAULT_REVEAL_MOVE_DISTANCE, floatCodec);
+  const [revealScale, setRevealScale] = usePersistentState<boolean>(`${APP_ID}_revealScaleOn`, DEFAULT_REVEAL_SCALE, boolCodec);
+  const [revealScaleMode, setRevealScaleMode] = usePersistentState<RevealScaleMode>(`${APP_ID}_revealScaleMode`, DEFAULT_REVEAL_SCALE_MODE, scaleModeCodec);
+  const [revealScaleDirection, setRevealScaleDirection] = usePersistentState<RevealDirection>(`${APP_ID}_revealScaleDir`, DEFAULT_REVEAL_SCALE_DIRECTION, dirCodec);
+  const [revealScaleAmount, setRevealScaleAmount] = usePersistentState<number>(`${APP_ID}_revealScaleAmt`, DEFAULT_REVEAL_SCALE_AMOUNT, floatCodec);
+  const [revealBlur, setRevealBlur] = usePersistentState<boolean>(`${APP_ID}_revealBlur`, DEFAULT_REVEAL_BLUR, boolCodec);
+  const [revealBlurAmount, setRevealBlurAmount] = usePersistentState<number>(`${APP_ID}_revealBlurAmt`, DEFAULT_REVEAL_BLUR_AMOUNT, floatCodec);
   const [revealEasing, setRevealEasing] = usePersistentState<string>(`${APP_ID}_revealEasing`, DEFAULT_REVEAL_EASING, stringCodec);
-  const [revealDirection, setRevealDirection] = usePersistentState<RevealDirection>(`${APP_ID}_revealDirection`, DEFAULT_REVEAL_DIRECTION, {
-    parse: (r) => (REVEAL_DIRECTIONS.some((d) => d.value === r) ? (r as RevealDirection) : DEFAULT_REVEAL_DIRECTION),
-    serialize: (v) => v,
-  });
-  const [revealDistance, setRevealDistance] = usePersistentState<number>(`${APP_ID}_revealDistance`, DEFAULT_REVEAL_DISTANCE, floatCodec);
-  const [revealScale, setRevealScale] = usePersistentState<number>(`${APP_ID}_revealScale`, DEFAULT_REVEAL_SCALE, floatCodec);
+  // Minimum reveal pace (ms): the rate-derived timing is floored to these so a fast model stays readable.
+  // 0 = no floor. Not part of revealSpec — they gate the timing, not the composed animation.
+  const [revealMinDuration, setRevealMinDuration] = usePersistentState<number>(`${APP_ID}_revealMinDuration`, DEFAULT_REVEAL_MIN_DURATION, intCodec);
+  const [revealMinStagger, setRevealMinStagger] = usePersistentState<number>(`${APP_ID}_revealMinStagger`, DEFAULT_REVEAL_MIN_STAGGER, intCodec);
+  // Respect the OS "reduce motion" setting: force the spatial-motion effects (Move, Scale) off at
+  // runtime so a motion-sensitive reader never gets sliding/zooming text. Fade and Blur (no spatial
+  // displacement) still apply. The saved toggles are untouched — they resume if the setting is cleared.
+  const prefersReducedMotion = usePrefersReducedMotion();
+  const revealSpec = useMemo<RevealSpec>(() => ({
+    fade: revealFade,
+    move: prefersReducedMotion ? false : revealMove, moveDirection: revealMoveDirection, moveDistance: revealMoveDistance,
+    scale: prefersReducedMotion ? false : revealScale, scaleMode: revealScaleMode, scaleDirection: revealScaleDirection, scaleAmount: revealScaleAmount,
+    blur: revealBlur, blurAmount: revealBlurAmount,
+  }), [prefersReducedMotion, revealFade, revealMove, revealMoveDirection, revealMoveDistance, revealScale, revealScaleMode, revealScaleDirection, revealScaleAmount, revealBlur, revealBlurAmount]);
   // Show the current location's image as the game background. Off = a blank, themed background color.
   const [locationBackground, setLocationBackground] = usePersistentState<boolean>(`${APP_ID}_locationBackground`, true, boolCodec);
   // Opacity (0–1) of a background-colored overlay drawn over the location image to fade it toward the
@@ -442,18 +468,34 @@ function useProvideSettings() {
     setLanguage,
     paragraphLimit,
     setParagraphLimit,
-    autoscroll,
-    setAutoscroll,
-    revealAnimation,
-    setRevealAnimation,
-    revealEasing,
-    setRevealEasing,
-    revealDirection,
-    setRevealDirection,
-    revealDistance,
-    setRevealDistance,
+    revealFade,
+    setRevealFade,
+    revealMove,
+    setRevealMove,
+    revealMoveDirection,
+    setRevealMoveDirection,
+    revealMoveDistance,
+    setRevealMoveDistance,
     revealScale,
     setRevealScale,
+    revealScaleMode,
+    setRevealScaleMode,
+    revealScaleDirection,
+    setRevealScaleDirection,
+    revealScaleAmount,
+    setRevealScaleAmount,
+    revealBlur,
+    setRevealBlur,
+    revealBlurAmount,
+    setRevealBlurAmount,
+    revealEasing,
+    setRevealEasing,
+    revealMinDuration,
+    setRevealMinDuration,
+    revealMinStagger,
+    setRevealMinStagger,
+    revealSpec,
+    prefersReducedMotion,
     locationBackground,
     setLocationBackground,
     backgroundOverlay,

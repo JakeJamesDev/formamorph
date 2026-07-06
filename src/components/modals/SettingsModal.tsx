@@ -158,8 +158,6 @@ export const SettingsModal = ({ isOpen, onOpenChange, previewValues }: {
     setShowSilentRequests,
     paragraphLimit,
     setParagraphLimit,
-    autoscroll,
-    setAutoscroll,
     locationBackground,
     setLocationBackground,
     backgroundOverlay,
@@ -363,7 +361,7 @@ export const SettingsModal = ({ isOpen, onOpenChange, previewValues }: {
             <TabsTrigger value="generation">Generation</TabsTrigger>
             <TabsTrigger value="endpoint">Endpoint</TabsTrigger>
             <TabsTrigger value="image">Image Gen</TabsTrigger>
-            <TabsTrigger value="prompts">System Prompts</TabsTrigger>
+            <TabsTrigger value="prompts">Prompts</TabsTrigger>
             <TabsTrigger value="accessibility">Accessibility</TabsTrigger>
           </TabsList>
 
@@ -450,18 +448,6 @@ export const SettingsModal = ({ isOpen, onOpenChange, previewValues }: {
                   <p className="text-xs text-muted-foreground mt-1">
                     The language the AI writes narration and choices in. Pick a suggestion or type your own — even a style, like formal English or pirate speak.
                   </p>
-                </div>
-              </div>
-              <div className="grid grid-cols-1 sm:grid-cols-4 items-center gap-4">
-                <label htmlFor="autoscroll" className="text-left sm:text-right leading-4">
-                  Auto-scroll Messages
-                </label>
-                <div className="col-span-3 flex items-center">
-                  <Checkbox
-                    id="autoscroll"
-                    checked={autoscroll}
-                    onCheckedChange={(c) => setAutoscroll(c === true)}
-                  />
                 </div>
               </div>
               <div className="grid grid-cols-1 sm:grid-cols-4 items-center gap-4">
@@ -784,7 +770,7 @@ export const SettingsModal = ({ isOpen, onOpenChange, previewValues }: {
                   className={useCustomEndpoint ? undefined : 'opacity-60 cursor-not-allowed'}
                 />
               </div>
-              <div className="flex justify-end">
+              <div className="flex justify-start">
                 <ConfirmDialog
                   title="Reset AI Endpoint"
                   description="Are you sure you want to reset the endpoint URL, model name, API token, and limits to their default values?"
@@ -808,6 +794,22 @@ export const SettingsModal = ({ isOpen, onOpenChange, previewValues }: {
             {/* Preset selector: swaps the whole endpoint field set. Every preset (incl. Default) is editable. */}
             <div className="flex items-center gap-2 flex-shrink-0">
               <span className="text-sm text-muted-foreground">Preset</span>
+              {imageEndpointPresets.length > 1 && (
+                <ConfirmDialog
+                  title="Delete Preset"
+                  description={`Delete the "${activeImageEndpointPresetName}" preset? This can't be undone.`}
+                  onConfirm={() => deleteImageEndpointPreset(activeImageEndpointPresetId)}
+                >
+                  <Button variant="outline" size="sm">Delete</Button>
+                </ConfirmDialog>
+              )}
+              <ConfirmDialog
+                title="Reset Preset"
+                description={`Reset the "${activeImageEndpointPresetName}" preset to its default values? This can't be undone.`}
+                onConfirm={() => resetImageEndpointPreset(activeImageEndpointPresetId)}
+              >
+                <Button variant="outline" size="sm">Reset</Button>
+              </ConfirmDialog>
               <Select value={activeImageEndpointPresetId} onValueChange={handleImagePresetSelect}>
                 <SelectTrigger className="flex-1 min-w-0">
                   <SelectValue />
@@ -821,22 +823,6 @@ export const SettingsModal = ({ isOpen, onOpenChange, previewValues }: {
                 </SelectContent>
               </Select>
               <Button variant="outline" size="sm" onClick={() => setImagePresetDialog({ mode: 'rename' })}>Rename</Button>
-              <ConfirmDialog
-                title="Reset Preset"
-                description={`Reset the "${activeImageEndpointPresetName}" preset to its default values? This can't be undone.`}
-                onConfirm={() => resetImageEndpointPreset(activeImageEndpointPresetId)}
-              >
-                <Button variant="outline" size="sm">Reset</Button>
-              </ConfirmDialog>
-              {imageEndpointPresets.length > 1 && (
-                <ConfirmDialog
-                  title="Delete Preset"
-                  description={`Delete the "${activeImageEndpointPresetName}" preset? This can't be undone.`}
-                  onConfirm={() => deleteImageEndpointPreset(activeImageEndpointPresetId)}
-                >
-                  <Button variant="outline" size="sm">Delete</Button>
-                </ConfirmDialog>
-              )}
             </div>
             <div className="flex-1 min-h-0 overflow-y-auto">
             <div className="grid gap-4">
@@ -968,7 +954,6 @@ export const SettingsModal = ({ isOpen, onOpenChange, previewValues }: {
                       className="min-h-[200px] font-mono text-xs"
                     />
                     <div className="flex gap-2 justify-between">
-                      <Button variant="outline" size="sm" onClick={() => setShowComfyWorkflow(true)}>How to get this</Button>
                       <ConfirmDialog
                         title="Reset Workflow"
                         description="Reset the ComfyUI workflow to the default graph? Your custom workflow will be lost."
@@ -978,6 +963,7 @@ export const SettingsModal = ({ isOpen, onOpenChange, previewValues }: {
                           Reset to default
                         </Button>
                       </ConfirmDialog>
+                      <Button variant="outline" size="sm" onClick={() => setShowComfyWorkflow(true)}>How to get this</Button>
                     </div>
                     <p className="text-xs text-muted-foreground">
                       Tokens Formamorph fills in:
@@ -996,7 +982,7 @@ export const SettingsModal = ({ isOpen, onOpenChange, previewValues }: {
                   <span className="mx-1 font-medium">Subject</span>chip expands per kind — character: “{SUBJECT_GUIDANCE.character}”; location: “{SUBJECT_GUIDANCE.location}”; world: “{SUBJECT_GUIDANCE.world}”.
                 </p>
                 <PromptField value={imageTagPrompt} onChange={setImageTagPrompt} variables={[SUBJECT]} />
-                <div className="flex justify-end flex-shrink-0">
+                <div className="flex justify-start flex-shrink-0">
                   <ConfirmDialog
                     title="Reset Tag Prompt"
                     description="Reset the image tag prompt to its default? Your edits will be lost."
@@ -1032,6 +1018,15 @@ export const SettingsModal = ({ isOpen, onOpenChange, previewValues }: {
                   <Button variant="outline" size="sm">Delete</Button>
                 </ConfirmDialog>
               )}
+              {!activePresetIsBuiltIn && (
+                <ConfirmDialog
+                  title="Reset Preset"
+                  description={`Reset every prompt in the "${activePresetName}" preset to its default value? This can't be undone.`}
+                  onConfirm={() => resetPreset(activePresetId)}
+                >
+                  <Button variant="outline" size="sm">Reset</Button>
+                </ConfirmDialog>
+              )}
               <Select value={activePresetId} onValueChange={handlePresetSelect}>
                 <SelectTrigger className="flex-1 min-w-0">
                   <SelectValue />
@@ -1049,15 +1044,6 @@ export const SettingsModal = ({ isOpen, onOpenChange, previewValues }: {
               </Select>
               {!activePresetIsBuiltIn && (
                 <Button variant="outline" size="sm" onClick={() => setPresetDialog({ mode: 'rename' })}>Rename</Button>
-              )}
-              {!activePresetIsBuiltIn && (
-                <ConfirmDialog
-                  title="Reset Preset"
-                  description={`Reset every prompt in the "${activePresetName}" preset to its default value? This can't be undone.`}
-                  onConfirm={() => resetPreset(activePresetId)}
-                >
-                  <Button variant="outline" size="sm">Reset</Button>
-                </ConfirmDialog>
               )}
             </div>
             {/* Nested tab bar — one prompt per tab; only the selected prompt shows. */}
@@ -1216,11 +1202,6 @@ export const SettingsModal = ({ isOpen, onOpenChange, previewValues }: {
             </Tabs>
 
             <div className="flex flex-wrap justify-between items-center gap-2 flex-shrink-0">
-              {memoryDigests && !['diary', 'director', 'character', 'storyboard'].includes(activePromptTab) ? (
-                <VerbatimTurnsField id="promptVerbatim" value={activeVerbatim.value} onChange={activeVerbatim.set} />
-              ) : (
-                <span />
-              )}
               {!activePresetIsBuiltIn ? (
                 <ConfirmDialog
                   title={`Reset ${resetTarget.label}`}
@@ -1231,6 +1212,11 @@ export const SettingsModal = ({ isOpen, onOpenChange, previewValues }: {
                     Reset {resetTarget.label}
                   </Button>
                 </ConfirmDialog>
+              ) : (
+                <span />
+              )}
+              {memoryDigests && !['diary', 'director', 'character', 'storyboard'].includes(activePromptTab) ? (
+                <VerbatimTurnsField id="promptVerbatim" value={activeVerbatim.value} onChange={activeVerbatim.set} />
               ) : (
                 <span />
               )}
@@ -1303,14 +1289,19 @@ export const SettingsModal = ({ isOpen, onOpenChange, previewValues }: {
               <div className="grid grid-cols-1 sm:grid-cols-4 gap-4">
                 <div className="hidden sm:block" />
                 <div className="col-span-3">
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => { setNarrationScale(DEFAULT_NARRATION_SCALE); setNarrationLineHeight(DEFAULT_NARRATION_LINE_HEIGHT); }}
-                    disabled={narrationScale === DEFAULT_NARRATION_SCALE && narrationLineHeight === DEFAULT_NARRATION_LINE_HEIGHT}
+                  <ConfirmDialog
+                    title="Reset size & spacing"
+                    description="Reset the narration text size and line spacing to their defaults?"
+                    onConfirm={() => { setNarrationScale(DEFAULT_NARRATION_SCALE); setNarrationLineHeight(DEFAULT_NARRATION_LINE_HEIGHT); }}
                   >
-                    Reset size &amp; spacing
-                  </Button>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      disabled={narrationScale === DEFAULT_NARRATION_SCALE && narrationLineHeight === DEFAULT_NARRATION_LINE_HEIGHT}
+                    >
+                      Reset size &amp; spacing
+                    </Button>
+                  </ConfirmDialog>
                 </div>
               </div>
             </div>
