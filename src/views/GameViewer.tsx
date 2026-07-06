@@ -798,29 +798,32 @@ const GameViewer = ({
 
   // The six shared context chips every system prompt can reference, resolved from current state. Each
   // request spreads these as its base, then layers on its own tokens (length/markdown, scene entities, etc.).
-  const buildContextValues = useCallback((): Record<string, string> => {
-    // Who's present at the current location (authored + any discovered/visiting), used to keep the
+  const buildContextValues = useCallback((locationOverride?: GameLocation | null): Record<string, string> => {
+    // The location this turn is scoped to — an override (e.g. a move auto-applied before the narration)
+    // or the live current location.
+    const loc = locationOverride ?? currentLocation;
+    // Who's present at the location (authored + any discovered/visiting), used to keep the
     // reachable-entities roster from re-listing someone who has already come over.
-    const presentIds = withDiscovered(currentLocation)?.entities ?? [];
-    const here = withDiscovered(currentLocation);
+    const presentIds = withDiscovered(loc)?.entities ?? [];
+    const here = withDiscovered(loc);
     type CtxOpts = { preferSummary?: boolean; format?: "simple" | "markdown" };
 
     // Entity roster precedence: here > sub-location > reachable. A character shows only in the highest scope
     // it belongs to — sub-location drops anyone present here; reachable drops present + sub-location ids.
-    const subEntityIds = sublocationEntityIds(currentLocation, locations);
+    const subEntityIds = sublocationEntityIds(loc, locations);
     const reachableExclude = [...presentIds, ...subEntityIds];
 
     // The <LOCATION> and <ENTITIES> chips each carry a `scope` axis; each scope maps to its builder.
     const locationScopes: Record<string, (opts: CtxOpts) => string> = {
-      "": (opts) => buildLocationContext(currentLocation, opts),
-      sublocations: (opts) => buildSublocationsContext(currentLocation, locations, opts),
-      reachable: (opts) => buildReachableLocationsContext(currentLocation, locations, opts),
-      destinations: (opts) => buildDestinationsContext(currentLocation, locations, opts),
+      "": (opts) => buildLocationContext(loc, opts),
+      sublocations: (opts) => buildSublocationsContext(loc, locations, opts),
+      reachable: (opts) => buildReachableLocationsContext(loc, locations, opts),
+      destinations: (opts) => buildDestinationsContext(loc, locations, opts),
     };
     const entityScopes: Record<string, (opts: CtxOpts) => string> = {
       "": (opts) => buildEntityContext(here, allEntities, opts),
-      sublocations: (opts) => buildSublocationEntitiesContext(currentLocation, locations, allEntities, { ...opts, excludeIds: presentIds }),
-      reachable: (opts) => buildReachableEntitiesContext(currentLocation, locations, allEntities, { ...opts, excludeIds: reachableExclude }),
+      sublocations: (opts) => buildSublocationEntitiesContext(loc, locations, allEntities, { ...opts, excludeIds: presentIds }),
+      reachable: (opts) => buildReachableEntitiesContext(loc, locations, allEntities, { ...opts, excludeIds: reachableExclude }),
     };
 
     const values: Record<string, string> = {
@@ -878,74 +881,11 @@ const GameViewer = ({
     // On the opening turn, snapshot the pre-game state so page 1 can be re-generated later.
     if (fullMessageHistory.length === 0) initialStateRef.current = saveCurrentGameState();
 
-    // The shared context base (incl. all three Stats-chip variants); every system-prompt render below
-    // spreads it and adds its own tokens.
-    const ctx = buildContextValues();
-
-    // Dictionary/lorebook entries active this turn. The current scene (location + entities present + action) is
-    // always scanned; message history is scanned per entry up to its `scanDepth` (all of it when unset). The
-    // always-present world description is intentionally excluded so its terms don't fire every turn.
-    const activatedEntries = getActivatedDictionary(
-      dictionary,
-      [ctx["<LOCATION>"], ctx["<ENTITIES>"], action],
-      { history: fullMessageHistory.map((m) => m.content) },
-    );
-    // Split by position into the two lorebook blocks. When the active prompt has no "before" chip, those entries
-    // fall back into the single "after" block so no lore is lost; a prompt with no dictionary chip at all gets a
-    // code append below (as before the chips existed).
-    const hasBeforeChip = systemPrompt.includes("<DICTIONARY|before>");
-    const hasAfterChip = systemPrompt.includes("<DICTIONARY>");
-    const beforeEntries = hasBeforeChip ? activatedEntries.filter((e) => e.position === "before") : [];
-    const afterEntries = activatedEntries.filter((e) => !beforeEntries.includes(e));
-
-    // Code-generated blocks (markdown guidance, notes fallback, dictionary) are authored in markdown, so
-    // restyle them to the active preset's section style to match the authored prompt's headers.
-    let updatedPrompt = renderPromptTemplate(systemPrompt, {
-      ...ctx,
-      "<LENGTH GUIDANCE>": lengthGuidance(paragraphLimit, maxTokens),
-      "<MARKDOWN GUIDANCE>": restyle(markdownGuidance(markdownOutput), activeSectionStyle),
-      "<DICTIONARY>": buildDictionaryContext(afterEntries, false) || NONE_PLACEHOLDER,
-      "<DICTIONARY|before>": buildDictionaryContext(beforeEntries, false) || NONE_PLACEHOLDER,
-    });
-
-    // If the prompt has no <NOTES> chip, fall back to a notes section before the location data.
-    if (!systemPrompt.includes("<NOTES>")) {
-      const notesSection = restyle(`
-## Player Notes
-${playerNotes || NONE_PLACEHOLDER}
-
-`, activeSectionStyle);
-      // Locate the location header in whichever style the active prompt uses.
-      const locationIndex = updatedPrompt.search(/^#{0,6}[ \t]*Current Location:?/mi);
-      if (locationIndex !== -1) {
-        updatedPrompt =
-          updatedPrompt.slice(0, locationIndex) +
-          notesSection +
-          updatedPrompt.slice(locationIndex);
-      }
-    }
-    setIsWaitingForAI(true);
-
-    if (language.toLowerCase() != "english")
-      updatedPrompt += `\n Narration language: ` + language;
-
-    // Backward-compat: a prompt with no "after" dictionary chip still gets its lore appended (with heading), as
-    // it was before the chip existed. (A missing "before" chip already routed those entries into `afterEntries`.)
-    if (!hasAfterChip) {
-      const dictionaryContext = buildDictionaryContext(afterEntries);
-      if (dictionaryContext) {
-        updatedPrompt += `\n\n${restyle(dictionaryContext, activeSectionStyle)}`;
-      }
-    }
-
-    // Get trimmed history before adding new action (history fills the window left by the prompt).
-    // Pass the action so banding can rehydrate older turns it references.
-    const trimmedHistory = getTrimmedMessageHistory(estimateTokens(updatedPrompt.length), action);
-
     // One AbortController for the whole turn, so Stop aborts every sub-request — not just the active one.
     const controller = new AbortController();
     abortControllerRef.current = controller;
     const { signal } = controller;
+    setIsWaitingForAI(true);
 
     try {
       // Clear the box now (the action is captured in `action`), so anything the player types
@@ -958,6 +898,90 @@ ${playerNotes || NONE_PLACEHOLDER}
       currentTurnIdRef.current = crypto.randomUUID();
       // Start a new turn in the AI-context history (cap to the last 50 turns).
       setDebugTurns((prev) => [...prev, { action, requests: [], turnId: currentTurnIdRef.current }].slice(-50));
+
+      // With auto-apply on, resolve the location change up front — from the action alone, before any
+      // context is built — so the whole turn (narration, lore, staged planning) runs in the new location.
+      // Fed only the action here (no narration exists yet); the trailing suggest request is skipped, and
+      // the move itself is applied once the narration commits (below), so an abort leaves it unchanged.
+      let turnLocation = currentLocation;
+      if (locationAutoApply && locationChangeEnabled && locationChangePromptText && currentLocation) {
+        const preMoveCtx = buildContextValues();
+        const locationResponse = await makeAIRequest(
+          renderPromptTemplate(locationChangePromptText, preMoveCtx),
+          [{ role: "user", content: renderPromptTemplate(locationChangeUserPrompt, { "<PLAYER ACTION>": action }) }],
+          "locationChange",
+          null,
+          signal,
+        );
+        if (signal.aborted) return;
+        const destinations = navigableDestinations(currentLocation, locations);
+        const matchedName = matchLocationResponse(locationResponse, destinations.map((loc) => loc.name));
+        const target = matchedName ? destinations.find((loc) => loc.name === matchedName) : undefined;
+        if (target && target.id !== currentLocation.id) turnLocation = target;
+      }
+
+      // The shared context base (incl. all three Stats-chip variants), scoped to this turn's location;
+      // every system-prompt render below spreads it and adds its own tokens.
+      const ctx = buildContextValues(turnLocation);
+
+      // Dictionary/lorebook entries active this turn. The current scene (location + entities present + action) is
+      // always scanned; message history is scanned per entry up to its `scanDepth` (all of it when unset). The
+      // always-present world description is intentionally excluded so its terms don't fire every turn.
+      const activatedEntries = getActivatedDictionary(
+        dictionary,
+        [ctx["<LOCATION>"], ctx["<ENTITIES>"], action],
+        { history: fullMessageHistory.map((m) => m.content) },
+      );
+      // Split by position into the two lorebook blocks. When the active prompt has no "before" chip, those entries
+      // fall back into the single "after" block so no lore is lost; a prompt with no dictionary chip at all gets a
+      // code append below (as before the chips existed).
+      const hasBeforeChip = systemPrompt.includes("<DICTIONARY|before>");
+      const hasAfterChip = systemPrompt.includes("<DICTIONARY>");
+      const beforeEntries = hasBeforeChip ? activatedEntries.filter((e) => e.position === "before") : [];
+      const afterEntries = activatedEntries.filter((e) => !beforeEntries.includes(e));
+
+      // Code-generated blocks (markdown guidance, notes fallback, dictionary) are authored in markdown, so
+      // restyle them to the active preset's section style to match the authored prompt's headers.
+      let updatedPrompt = renderPromptTemplate(systemPrompt, {
+        ...ctx,
+        "<LENGTH GUIDANCE>": lengthGuidance(paragraphLimit, maxTokens),
+        "<MARKDOWN GUIDANCE>": restyle(markdownGuidance(markdownOutput), activeSectionStyle),
+        "<DICTIONARY>": buildDictionaryContext(afterEntries, false) || NONE_PLACEHOLDER,
+        "<DICTIONARY|before>": buildDictionaryContext(beforeEntries, false) || NONE_PLACEHOLDER,
+      });
+
+      // If the prompt has no <NOTES> chip, fall back to a notes section before the location data.
+      if (!systemPrompt.includes("<NOTES>")) {
+        const notesSection = restyle(`
+## Player Notes
+${playerNotes || NONE_PLACEHOLDER}
+
+`, activeSectionStyle);
+        // Locate the location header in whichever style the active prompt uses.
+        const locationIndex = updatedPrompt.search(/^#{0,6}[ \t]*Current Location:?/mi);
+        if (locationIndex !== -1) {
+          updatedPrompt =
+            updatedPrompt.slice(0, locationIndex) +
+            notesSection +
+            updatedPrompt.slice(locationIndex);
+        }
+      }
+
+      if (language.toLowerCase() != "english")
+        updatedPrompt += `\n Narration language: ` + language;
+
+      // Backward-compat: a prompt with no "after" dictionary chip still gets its lore appended (with heading), as
+      // it was before the chip existed. (A missing "before" chip already routed those entries into `afterEntries`.)
+      if (!hasAfterChip) {
+        const dictionaryContext = buildDictionaryContext(afterEntries);
+        if (dictionaryContext) {
+          updatedPrompt += `\n\n${restyle(dictionaryContext, activeSectionStyle)}`;
+        }
+      }
+
+      // Get trimmed history before adding new action (history fills the window left by the prompt).
+      // Pass the action so banding can rehydrate older turns it references.
+      const trimmedHistory = getTrimmedMessageHistory(estimateTokens(updatedPrompt.length), action);
 
       // Create message array for game text request
       const narrationMessages: ChatMessage[] = [
@@ -1026,7 +1050,7 @@ ${playerNotes || NONE_PLACEHOLDER}
           stageValues,
           lastStory,
           entities: allEntities,
-          presentEntityIds: withDiscovered(currentLocation)?.entities || [],
+          presentEntityIds: withDiscovered(turnLocation)?.entities || [],
           playerNames: playerTraits.map((t) => t.name),
           characterDiaries,
           fullMessageHistory,
@@ -1067,6 +1091,13 @@ ${playerNotes || NONE_PLACEHOLDER}
       // If the user stopped, or the request came back empty, bail (the `finally` resets waiting state).
       if (signal.aborted || !narrationResponse) return;
 
+      // Commit the auto-resolved move now that the narration — already written for the new location —
+      // succeeded, so an aborted/empty turn leaves the location unchanged.
+      if (turnLocation && currentLocation && turnLocation.id !== currentLocation.id) {
+        changeLocation(turnLocation);
+        addLogEntry(`Moved to location: ${turnLocation.name}`);
+      }
+
       // Who took part this turn: defined entities named in the narration, plus any staged ad-hoc
       // characters the narration confirms (planning only suggests; the narration is the gate). Drives the
       // entity tab, the choices filter, and stored participation.
@@ -1083,13 +1114,13 @@ ${playerNotes || NONE_PLACEHOLDER}
       // Bring-them-over: an authored character living in a reachable sibling that the narration named joins
       // the current location as a visitor — anchored via the discovered-entity path, so it persists and
       // rolls back with the turn. Affects the next turn's context (this turn's ctx already ran).
-      if (currentLocation) {
+      if (turnLocation) {
         const visitors = selectReachableVisitors(
-          turnParticipants, currentLocation, locations, entities,
-          withDiscovered(currentLocation)?.entities ?? [],
+          turnParticipants, turnLocation, locations, entities,
+          withDiscovered(turnLocation)?.entities ?? [],
         );
         if (visitors.length) {
-          const locId = currentLocation.id;
+          const locId = turnLocation.id;
           const turnId = currentTurnIdRef.current;
           setDiscoveredEntities((prev) => {
             const additions = visitors.filter(
@@ -1109,7 +1140,7 @@ ${playerNotes || NONE_PLACEHOLDER}
         ...recentParticipants(fullMessageHistory, CHOICES_PRESENCE_TURNS - 1),
       ]);
       const sceneEntities = allEntities.filter((e) => presentNames.has(e.name));
-      const sceneLoc = withDiscovered(currentLocation);
+      const sceneLoc = withDiscovered(turnLocation);
       const sceneEntityData = buildEntityContext(sceneLoc, sceneEntities);
       const sceneEntitySummary = buildEntityContext(sceneLoc, sceneEntities, { preferSummary: true });
       const sceneEntityDataMd = buildEntityContext(sceneLoc, sceneEntities, { format: "markdown" });
@@ -1190,8 +1221,9 @@ ${playerNotes || NONE_PLACEHOLDER}
       }
 
       if (signal.aborted) return; // stopped during the stat-updates request
-      // Ask the AI whether the player should move to a different location (v1.2.0)
-      if (locationChangeEnabled && locationChangePromptText) {
+      // Suggest mode only — with auto-apply the move was resolved up front (before the narration). After
+      // the narration, ask whether the player should move (fed the action + narration) and offer it.
+      if (!locationAutoApply && locationChangeEnabled && locationChangePromptText) {
         const updatedLocationPrompt = renderPromptTemplate(locationChangePromptText, ctx);
 
         const locationResponse = await makeAIRequest(
@@ -1218,14 +1250,7 @@ ${playerNotes || NONE_PLACEHOLDER}
         );
         if (matchedName) {
           const target = destinations.find((loc) => loc.name === matchedName);
-          if (target && target.id !== currentLocation?.id) {
-            if (locationAutoApply) {
-              changeLocation(target);
-              addLogEntry(`Moved to location: ${target.name}`);
-            } else {
-              setSuggestedLocation(target);
-            }
-          }
+          if (target && target.id !== currentLocation?.id) setSuggestedLocation(target);
         }
       }
 
@@ -1266,7 +1291,7 @@ ${playerNotes || NONE_PLACEHOLDER}
               stat_changes: statChanges,
               turnId: currentTurnIdRef.current,
               entities: turnParticipants,
-              locationId: currentLocation?.id,
+              locationId: turnLocation?.id,
             }),
           };
         }
@@ -1765,9 +1790,10 @@ ${playerNotes || NONE_PLACEHOLDER}
   // first-person diary entry per participant as an idle-time job, patched back onto that turn's `diaries`
   // map. Mirrors the digest drainer, and serializes against it (only one silent job runs at a time) so a
   // local endpoint isn't hit twice. Runs one participant per tick; patching re-runs the effect until the
-  // due turn is fully covered, then the next due turn. Nothing consumes the entries yet (Slice A).
+  // due turn is fully covered, then the next due turn. Gated on Staged thinking — the entries are only
+  // read by the staged character pass, so writing them in any other mode would just waste requests.
   useEffect(() => {
-    if (!characterDiaries || isWaitingForAI || digestActive || discoverActive || digestDrainingRef.current || diaryDrainingRef.current || discoverDrainingRef.current) return;
+    if (!characterDiaries || thinkingMode !== "staged" || isWaitingForAI || digestActive || discoverActive || digestDrainingRef.current || diaryDrainingRef.current || discoverDrainingRef.current) return;
     const due = selectDueDiaries(fullMessageHistory);
     if (due.length === 0) return;
     // Oldest due turn first — closest to leaving the context window.
@@ -1803,7 +1829,7 @@ ${playerNotes || NONE_PLACEHOLDER}
         setDiaryActive(false);
       }
     })();
-  }, [characterDiaries, isWaitingForAI, digestActive, discoverActive, fullMessageHistory, allEntities, diaryPrompt, buildContextValues, setFullMessageHistory]);
+  }, [characterDiaries, thinkingMode, isWaitingForAI, digestActive, discoverActive, fullMessageHistory, allEntities, diaryPrompt, buildContextValues, setFullMessageHistory]);
 
   // Runtime characters (Slice 2): promote a director-invented, narration-confirmed character into a
   // persisted entity. Idle-gated and serialized like the diary drainer (shares the Character Diaries
