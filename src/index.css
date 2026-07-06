@@ -12,7 +12,9 @@
     font-size-adjust: 0.52;
     --background: 0 0% 100%;
     --foreground: 222.2 84% 4.9%;
-    --card: 0 0% 100%;
+    /* Card sits a step off --background so panels read as raised surfaces (lighter in dark, faintly
+       tinted in light where the page is already white). Per-theme values keep the theme's hue. */
+    --card: 210 40% 97%;
     --card-foreground: 222.2 84% 4.9%;
     --popover: 0 0% 100%;
     --popover-foreground: 222.2 84% 4.9%;
@@ -52,7 +54,7 @@
     color-scheme: dark;
     --background: 222.2 84% 4.9%;
     --foreground: 210 40% 98%;
-    --card: 222.2 84% 4.9%;
+    --card: 222 40% 9%;
     --card-foreground: 210 40% 98%;
     --popover: 222.2 84% 4.9%;
     --popover-foreground: 210 40% 98%;
@@ -93,7 +95,7 @@
   .light[data-theme="purple"] {
     --background: 266 40% 99%;
     --foreground: 266 45% 8%;
-    --card: 266 40% 99%;
+    --card: 266 30% 96%;
     --card-foreground: 266 45% 8%;
     --popover: 266 40% 99%;
     --popover-foreground: 266 45% 8%;
@@ -113,7 +115,7 @@
   .dark[data-theme="purple"] {
     --background: 266 42% 6%;
     --foreground: 266 20% 96%;
-    --card: 266 42% 6%;
+    --card: 266 35% 10%;
     --card-foreground: 266 20% 96%;
     --popover: 266 42% 6%;
     --popover-foreground: 266 20% 96%;
@@ -178,7 +180,7 @@
   .light[data-theme="rose"] {
     --background: 340 40% 99%;
     --foreground: 340 30% 9%;
-    --card: 340 40% 99%;
+    --card: 340 30% 96%;
     --card-foreground: 340 30% 9%;
     --popover: 340 40% 99%;
     --popover-foreground: 340 30% 9%;
@@ -198,7 +200,7 @@
   .dark[data-theme="rose"] {
     --background: 340 30% 7%;
     --foreground: 340 15% 96%;
-    --card: 340 30% 7%;
+    --card: 340 25% 11%;
     --card-foreground: 340 15% 96%;
     --popover: 340 30% 7%;
     --popover-foreground: 340 15% 96%;
@@ -222,7 +224,7 @@
   .light[data-theme="monochrome"] {
     --background: 0 0% 100%;
     --foreground: 0 0% 9%;
-    --card: 0 0% 100%;
+    --card: 0 0% 96%;
     --card-foreground: 0 0% 9%;
     --popover: 0 0% 100%;
     --popover-foreground: 0 0% 9%;
@@ -310,7 +312,7 @@
   .light[data-theme="forest"] {
     --background: 158 30% 98%;
     --foreground: 158 25% 8%;
-    --card: 158 30% 98%;
+    --card: 158 22% 95%;
     --card-foreground: 158 25% 8%;
     --popover: 158 30% 98%;
     --popover-foreground: 158 25% 8%;
@@ -330,7 +332,7 @@
   .dark[data-theme="forest"] {
     --background: 158 28% 6%;
     --foreground: 158 15% 96%;
-    --card: 158 28% 6%;
+    --card: 158 22% 10%;
     --card-foreground: 158 15% 96%;
     --popover: 158 28% 6%;
     --popover-foreground: 158 15% 96%;
@@ -353,7 +355,7 @@
   .light[data-theme="bubblegum"] {
     --background: 330 45% 99%;
     --foreground: 330 30% 9%;
-    --card: 330 45% 99%;
+    --card: 330 30% 96%;
     --card-foreground: 330 30% 9%;
     --popover: 330 45% 99%;
     --popover-foreground: 330 30% 9%;
@@ -376,7 +378,7 @@
   .dark[data-theme="bubblegum"] {
     --background: 330 40% 8%;
     --foreground: 330 25% 96%;
-    --card: 330 40% 8%;
+    --card: 330 34% 12%;
     --card-foreground: 330 25% 96%;
     --popover: 330 40% 8%;
     --popover-foreground: 330 25% 96%;

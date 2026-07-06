@@ -47,7 +47,7 @@ export function RemoteWorldCard({
         "group",
         dlState === 'update'
           ? "border-info bg-info/10 ring-1 ring-info"
-          : "bg-background",
+          : "bg-card",
       )}
       onClick={() => onView(world)}
       name={world.name}

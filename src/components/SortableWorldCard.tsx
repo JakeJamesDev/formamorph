@@ -37,7 +37,7 @@ function SortableWorldCard({ world, onSelect, onDelete, layout, aspect = 'landsc
         style={style}
         {...attributes}
         {...listeners}
-        frameClassName="bg-background touch-none"
+        frameClassName="bg-card touch-none"
         onClick={() => onSelect(world.id)}
         name={world.name}
         description={world.description}
