@@ -159,6 +159,8 @@ export const SettingsModal = ({ isOpen, onOpenChange, previewValues }: {
     setParagraphLimit,
     autoscroll,
     setAutoscroll,
+    narrationFadeReveal,
+    setNarrationFadeReveal,
     locationBackground,
     setLocationBackground,
     backgroundOverlay,
@@ -461,6 +463,19 @@ export const SettingsModal = ({ isOpen, onOpenChange, previewValues }: {
                     checked={autoscroll}
                     onCheckedChange={(c) => setAutoscroll(c === true)}
                   />
+                </div>
+              </div>
+              <div className="grid grid-cols-1 sm:grid-cols-4 items-center gap-4">
+                <label htmlFor="narrationFadeReveal" className="text-left sm:text-right leading-4">
+                  Fade-in Narration
+                </label>
+                <div className="col-span-3 flex items-center gap-2">
+                  <Checkbox
+                    id="narrationFadeReveal"
+                    checked={narrationFadeReveal}
+                    onCheckedChange={(c) => setNarrationFadeReveal(c === true)}
+                  />
+                  <span className="text-xs text-muted-foreground">Fade each sentence in as it streams. Off: sentences pop in instantly.</span>
                 </div>
               </div>
               <div className="grid grid-cols-1 sm:grid-cols-4 items-center gap-4">
