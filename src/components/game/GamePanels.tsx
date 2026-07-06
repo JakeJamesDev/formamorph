@@ -743,6 +743,47 @@ export const MiddlePanel = ({
   );
 };
 
+/**
+ * A stat bar with persistent +/- delta coloring. The primary fill always transitions to the true current
+ * value; a colored band (`bg-success` gain / `bg-destructive` loss) is painted over the previous→current
+ * region on top. On a change the band grows outward from the previous value (`stat-delta-grow`); at the
+ * start of the next action last turn's band drains back toward the current value (`stat-delta-drain`),
+ * leaving a clean bar. `delta` is the live held change; `drainDelta` is a change collapsing away.
+ */
+const StatBar = ({ value, min, max, delta, drainDelta }: {
+  value: number; min: number; max: number; delta: number; drainDelta: number;
+}) => {
+  // A live held delta takes precedence over a draining one (covers a fast turn that lands mid-drain).
+  const draining = delta === 0 && drainDelta !== 0;
+  const d = delta !== 0 ? delta : drainDelta;
+  const pct = (v: number) => Math.max(0, Math.min(100, ((v - min) / (max - min)) * 100));
+  const curPct = pct(value);
+  const prevPct = pct(value - d);
+  const basePct = Math.min(curPct, prevPct);
+  const hiPct = Math.max(curPct, prevPct);
+  const hasBand = d !== 0 && hiPct - basePct > 0.01;
+  return (
+    <div className="relative h-4 w-full overflow-hidden rounded-full bg-secondary">
+      <div
+        className="absolute inset-y-0 left-0 bg-primary"
+        style={{ width: `${curPct}%`, transition: 'width 500ms cubic-bezier(0.16, 1, 0.3, 1)' }}
+      />
+      {hasBand && (
+        <div
+          key={`${draining ? 'drain' : 'grow'}-${value}-${d}`}
+          className={`${draining ? 'stat-delta-drain' : 'stat-delta-grow'} absolute inset-y-0 ${d > 0 ? 'bg-success' : 'bg-destructive'}`}
+          style={{
+            left: `${basePct}%`,
+            width: `${hiPct - basePct}%`,
+            // Grow spreads out from the previous value; drain collapses back toward the current value.
+            transformOrigin: draining ? (d > 0 ? 'right' : 'left') : (d > 0 ? 'left' : 'right'),
+          }}
+        />
+      )}
+    </div>
+  );
+};
+
 export const RightPanel = ({ onLocationClick, language, setLanguage }: {
   onLocationClick: () => void;
   language: string;
@@ -756,7 +797,10 @@ export const RightPanel = ({ onLocationClick, language, setLanguage }: {
     playerStats,
     setPlayerStats,
     playerTraits,
-    recentStatChanges
+    recentStatChanges,
+    recentStatFading,
+    heldStatChanges,
+    drainingStatChanges
   } = useGameplay();
   const [isEditMode, setIsEditMode] = React.useState(false);
 
@@ -790,14 +834,18 @@ export const RightPanel = ({ onLocationClick, language, setLanguage }: {
           <ScrollArea className="h-[calc(100%-1rem)] relative">
             {playerStats.map((stat, index) => {
               const statValue = stat.value as number;
+              const change = recentStatChanges[stat.name.toLowerCase()] || 0;
               return (
               <div key={index} className="mb-2">
                 <div className="flex justify-between items-center">
                   <span>{stat.name}</span>
                   <div className="flex items-center gap-2">
-                    {recentStatChanges[stat.name.toLowerCase()] && (
-                      <span className={`text-sm ${recentStatChanges[stat.name.toLowerCase()] > 0 ? 'text-success' : 'text-destructive'}`}>
-                        {recentStatChanges[stat.name.toLowerCase()] > 0 ? '+' : ''}{recentStatChanges[stat.name.toLowerCase()]}
+                    {change !== 0 && (
+                      <span
+                        key={change}
+                        className={`${recentStatFading ? 'stat-delta-text-out' : 'stat-delta-text'} text-sm ${change > 0 ? 'text-success' : 'text-destructive'}`}
+                      >
+                        {change > 0 ? '+' : ''}{change}
                       </span>
                     )}
                     <span>{statValue} / {stat.max}</span>
@@ -817,7 +865,13 @@ export const RightPanel = ({ onLocationClick, language, setLanguage }: {
                     }}
                   />
                 ) : (
-                  <Progress value={(statValue - stat.min) / (stat.max - stat.min) * 100} />
+                  <StatBar
+                    value={statValue}
+                    min={stat.min}
+                    max={stat.max}
+                    delta={heldStatChanges[stat.name.toLowerCase()] || 0}
+                    drainDelta={drainingStatChanges[stat.name.toLowerCase()] || 0}
+                  />
                 )}
               </div>
               );

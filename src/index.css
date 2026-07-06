@@ -458,6 +458,44 @@
   transform-origin: var(--rl-origin, center);
 }
 
+/* Stat bar +/- delta band grows from the previous value toward the current one (origin set inline). */
+@keyframes stat-delta-grow {
+  from { transform: scaleX(0); }
+  to   { transform: scaleX(1); }
+}
+.stat-delta-grow {
+  animation: stat-delta-grow 500ms cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+/* At the start of the next action, last turn's band collapses back toward the current value (origin set
+   inline) then unmounts — clearing artifacts before the new turn's grow animation. */
+@keyframes stat-delta-drain {
+  from { transform: scaleX(1); }
+  to   { transform: scaleX(0); }
+}
+.stat-delta-drain {
+  animation: stat-delta-drain 500ms cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+/* Stat delta text (+3 / -2): quick fade/slide in, hold, quick fade out. Spans the 10s clear window so
+   the fade-out lands as the value is removed. */
+@keyframes stat-delta-text {
+  0%   { opacity: 0; transform: translateY(3px); }
+  4%   { opacity: 1; transform: translateY(0); }
+  95%  { opacity: 1; }
+  100% { opacity: 0; }
+}
+.stat-delta-text {
+  animation: stat-delta-text 10s ease-in-out both;
+}
+/* A new turn started before the text timed out — fade it out quickly instead. */
+@keyframes stat-delta-text-out {
+  from { opacity: 1; }
+  to   { opacity: 0; }
+}
+.stat-delta-text-out {
+  animation: stat-delta-text-out 300ms ease-in both;
+}
+
 /* Karaoke TTS highlighter: soft accent tint on the sentence being narrated (CSS Custom Highlight API). */
 ::highlight(tts-active) {
   background-color: hsl(var(--primary) / 0.25);
