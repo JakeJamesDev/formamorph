@@ -35,6 +35,15 @@ function useProvideGameplay() {
   // Flattened enabled entries fed to the injection pipeline (mirrors GameData's old derived `dictionary`).
   const runtimeDictionary = useMemo(() => flattenEnabledBookEntries(runtimeDictionaries), [runtimeDictionaries]);
   const [recentStatChanges, setRecentStatChanges] = useState<Record<string, number>>({});
+  // When true, the lingering delta text (+3/-2) fades out fast because a new turn started before its
+  // normal ~10s timeout. Reset when the next turn's changes land.
+  const [recentStatFading, setRecentStatFading] = useState(false);
+  // Like recentStatChanges but never auto-cleared: drives the persistent +/- bar coloring so the player
+  // keeps seeing how each stat moved last turn. Overwritten only when stats change again.
+  const [heldStatChanges, setHeldStatChanges] = useState<Record<string, number>>({});
+  // A snapshot of the held deltas being drained (collapse-animated away) at the start of a new action,
+  // so last turn's bars clear cleanly before this turn's grow animation. Cosmetic-only; cleared on a timer.
+  const [drainingStatChanges, setDrainingStatChanges] = useState<Record<string, number>>({});
   const [activeTab, setActiveTab] = useState("stats");
   // Stat-driven body morph influences, keyed by morph name (built from stats' morphBindings).
   const [bodyMorphValues, setBodyMorphValues] = useState<Record<string, number>>({});
@@ -329,6 +338,12 @@ function useProvideGameplay() {
     runtimeDictionary,
     recentStatChanges,
     setRecentStatChanges,
+    recentStatFading,
+    setRecentStatFading,
+    heldStatChanges,
+    setHeldStatChanges,
+    drainingStatChanges,
+    setDrainingStatChanges,
     activeTab,
     setActiveTab,
     logsEndRef,

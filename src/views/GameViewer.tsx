@@ -255,7 +255,12 @@ const GameViewer = ({
     setPlayerStats,
     playerTraits,
     setPlayerTraits,
+    recentStatChanges,
     setRecentStatChanges,
+    setRecentStatFading,
+    heldStatChanges,
+    setHeldStatChanges,
+    setDrainingStatChanges,
     addLogEntry,
     logEntries,
     setGameTime,
@@ -696,6 +701,9 @@ const GameViewer = ({
   const handleTimePassed = useCallback(
     (hours: number) => {
       setGameTime((prevTime) => prevTime + hours);
+      // New turn's changes are landing — make sure any pending text fade-out flag is cleared so this
+      // turn's delta text shows normally (covers a response that beat the submit-time fade timer).
+      setRecentStatFading(false);
 
       // Track regen changes
       const regenChanges: Record<string, number> = {};
@@ -722,14 +730,16 @@ const GameViewer = ({
         }),
       );
 
-      // Update recent stat changes with regen changes
-      setRecentStatChanges((prev) => {
+      // Update recent (fading text) and held (persistent bar) stat changes with regen changes.
+      const mergeRegen = (prev: Record<string, number>) => {
         const newChanges = { ...prev };
         Object.entries(regenChanges).forEach(([key, value]) => {
           newChanges[key] = (newChanges[key] || 0) + value;
         });
         return newChanges;
-      });
+      };
+      setRecentStatChanges(mergeRegen);
+      setHeldStatChanges(mergeRegen);
 
       const health = getStatByName("Health");
       const hunger = getStatByName("Hunger");
@@ -739,10 +749,12 @@ const GameViewer = ({
           setStatByName("Health", health.value - healthLoss);
           addLogEntry(`You're starving! Lost ${healthLoss} health.`);
           // Add health loss to recent changes
-          setRecentStatChanges((prev) => ({
+          const applyLoss = (prev: Record<string, number>) => ({
             ...prev,
             health: (prev.health || 0) - healthLoss,
-          }));
+          });
+          setRecentStatChanges(applyLoss);
+          setHeldStatChanges(applyLoss);
         }
       }
 
@@ -759,7 +771,7 @@ const GameViewer = ({
       //   }
       // }, 0);
     },
-    [getStatByName, setStatByName, addLogEntry, setGameTime, setPlayerStats, setRecentStatChanges],
+    [getStatByName, setStatByName, addLogEntry, setGameTime, setPlayerStats, setRecentStatChanges, setHeldStatChanges, setRecentStatFading],
   );
 
   const getEndpointUrl = () => endpointUrl;
@@ -888,6 +900,9 @@ const GameViewer = ({
     setIsWaitingForAI(true);
 
     try {
+      // Drain last turn's stat-bar colors and fade any lingering delta text now (they clear during the AI
+      // wait), so this turn's changes animate onto clean bars.
+      drainStatFeedback();
       // Clear the box now (the action is captured in `action`), so anything the player types
       // after choices unlock the box isn't wiped when the turn finishes.
       setPlayerInput("");
@@ -1301,6 +1316,9 @@ ${playerNotes || NONE_PLACEHOLDER}
       //setGameplayText(aiResponse.narration);
       //setChoices(aiResponse.choices || []);
 
+      // Reset the persistent bar deltas for this turn, then let stat changes + regen below re-fill them.
+      setHeldStatChanges({});
+
       // Apply stat changes
       if (statChanges.length > 0) {
         applyStatChanges(statChanges);
@@ -1391,12 +1409,36 @@ ${playerNotes || NONE_PLACEHOLDER}
   playerStatsRef.current = playerStats;
   // Pending "clear recent changes" timer, tracked so a new turn or unmount can cancel it.
   const recentStatTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const drainStatTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   useEffect(
     () => () => {
       if (recentStatTimerRef.current) clearTimeout(recentStatTimerRef.current);
+      if (drainStatTimerRef.current) clearTimeout(drainStatTimerRef.current);
     },
     [],
   );
+
+  // Clear last turn's stat feedback for a fresh turn. Bars: snapshot the held deltas so they collapse-
+  // animate away (matching .stat-delta-drain), clearing the live map immediately so this turn starts clean.
+  // Text: if any +/- delta text is still up, fade it out now instead of waiting out its ~10s timer. The
+  // text clear reuses recentStatTimerRef, so a fast response's applyStatChanges cancels it before it wipes
+  // the new turn's text.
+  const drainStatFeedback = useCallback(() => {
+    if (Object.keys(heldStatChanges).length > 0) {
+      setDrainingStatChanges(heldStatChanges);
+      setHeldStatChanges({});
+      if (drainStatTimerRef.current) clearTimeout(drainStatTimerRef.current);
+      drainStatTimerRef.current = setTimeout(() => setDrainingStatChanges({}), 550);
+    }
+    if (Object.keys(recentStatChanges).length > 0) {
+      setRecentStatFading(true);
+      if (recentStatTimerRef.current) clearTimeout(recentStatTimerRef.current);
+      recentStatTimerRef.current = setTimeout(() => {
+        setRecentStatChanges({});
+        setRecentStatFading(false);
+      }, 350);
+    }
+  }, [heldStatChanges, recentStatChanges, setHeldStatChanges, setDrainingStatChanges, setRecentStatChanges, setRecentStatFading]);
 
   // Update the applyStatChanges function to handle specific stat updates
   const applyStatChanges = useCallback(
@@ -1411,6 +1453,9 @@ ${playerNotes || NONE_PLACEHOLDER}
       setRecentStatChanges(normalizedChanges);
       if (recentStatTimerRef.current) clearTimeout(recentStatTimerRef.current);
       recentStatTimerRef.current = setTimeout(() => setRecentStatChanges({}), 10000);
+      // Held changes drive the persistent bar coloring (no fade). Merge this call's deltas over the
+      // per-turn reset done by the caller, so AI changes and regen combine into one turn delta.
+      setHeldStatChanges((prev) => ({ ...prev, ...normalizedChanges }));
 
       // Apply the AI's direct changes, then derive any code-based stats from that result. Both run
       // outside the state updater (updaters must stay pure), reading the latest stats via the ref.
@@ -1424,7 +1469,7 @@ ${playerNotes || NONE_PLACEHOLDER}
         console.error("Error processing stat code after changes:", error);
       }
     },
-    [setPlayerStats, setRecentStatChanges],
+    [setPlayerStats, setRecentStatChanges, setHeldStatChanges],
   );
 
   // Function to abort ongoing AI generation

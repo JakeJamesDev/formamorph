@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { useSettings, type ThinkingMode, type ParagraphLimit } from '@/contexts/SettingsContext';
 import { DEFAULT_ENDPOINT, DEFAULT_API_TOKEN, DEFAULT_MODEL_NAME, DEFAULT_MAX_TOKENS, THEME_COLORS, FONT_OPTIONS, NARRATION_FONT_OPTIONS, DEFAULT_NARRATION_SCALE, DEFAULT_NARRATION_LINE_HEIGHT, type ThemeColor, type FontChoice, type NarrationFont } from '@/contexts/settingsDefaults';
 import { useTheme } from '../theme-provider';
+import { ThemePreviewButton } from '@/components/ThemePreviewDialog';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { RevealAnimationDemoButton } from "@/components/RevealAnimationDemo";
@@ -405,6 +406,7 @@ export const SettingsModal = ({ isOpen, onOpenChange, previewValues }: {
                       ))}
                     </SelectContent>
                   </Select>
+                  <ThemePreviewButton />
                   <span className="text-xs text-muted-foreground">
                     Recolors the whole app; applies to both light and dark.
                   </span>
