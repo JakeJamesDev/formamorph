@@ -332,7 +332,7 @@ export const MiddlePanel = ({
     playerStats
   } = useGameplay();
   const gameplayText = useGameplayText();
-  const { ttsHighlight, choicesEnabled, statUpdatesEnabled } = useSettings();
+  const { ttsHighlight, choicesEnabled, statUpdatesEnabled, narrationFadeReveal } = useSettings();
   // Which partial re-generate options the flyout should offer (mirrors the aux-request gates).
   const canRegenChoices = choicesEnabled;
   const canRegenStats = statUpdatesEnabled && playerStats.length > 0;
@@ -492,7 +492,7 @@ export const MiddlePanel = ({
                     <X className="h-4 w-4" />
                   </Button>
                 </div>
-                <MarkdownRenderer text={gameplayText} />
+                <MarkdownRenderer text={gameplayText} animate={narrationFadeReveal} />
               </div>
             )}
             {displayedMessages.map((message, index) => {
@@ -504,7 +504,7 @@ export const MiddlePanel = ({
                     <div className="whitespace-pre-wrap">{message.content}</div>
                   ) : (
                     <div ref={narrationRef}>
-                      <MarkdownRenderer text={isLatestMessage && isWaitingForAI ? gameplayText : parseAssistantMessage(message.content)} />
+                      <MarkdownRenderer text={isLatestMessage && isWaitingForAI ? gameplayText : parseAssistantMessage(message.content)} animate={isLatestMessage && isWaitingForAI && narrationFadeReveal} />
                     </div>
                   )}
                 </div>

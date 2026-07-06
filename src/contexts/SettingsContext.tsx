@@ -146,6 +146,9 @@ function useProvideSettings() {
   }, [paragraphLimit]);
 
   const [autoscroll, setAutoscroll] = usePersistentState<boolean>(`${APP_ID}_autoscroll`, false, boolCodec);
+  // Fade each streamed sentence in (Streamdown's per-word fadeIn, paced so sentences don't overlap).
+  // Off = completed sentences pop in instantly (still buffered — no incomplete sentence ever shows).
+  const [narrationFadeReveal, setNarrationFadeReveal] = usePersistentState<boolean>(`${APP_ID}_narrationFadeReveal`, true, boolCodec);
   // Show the current location's image as the game background. Off = a blank, themed background color.
   const [locationBackground, setLocationBackground] = usePersistentState<boolean>(`${APP_ID}_locationBackground`, true, boolCodec);
   // Opacity (0–1) of a background-colored overlay drawn over the location image to fade it toward the
@@ -427,6 +430,8 @@ function useProvideSettings() {
     setParagraphLimit,
     autoscroll,
     setAutoscroll,
+    narrationFadeReveal,
+    setNarrationFadeReveal,
     locationBackground,
     setLocationBackground,
     backgroundOverlay,

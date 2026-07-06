@@ -70,8 +70,9 @@ import { useBaselineTestHook } from "../lib/baselineTestHook";
 import { parseTurns, buildVerbatimHistory, buildBandedHistory, extractKeywords, type BandCounts } from "../lib/turnBanding";
 import { findEntityNames, matchNames, matchNamesLoose, sameCharacterName } from "../lib/entityMatch";
 import { parseChoices } from "../lib/choices";
-import { useSmoothedReveal } from "../lib/useSmoothedReveal";
 import { setGameplayText } from "../lib/gameplayTextStore";
+import { useSentenceReveal } from "../lib/useSentenceReveal";
+import { useSmoothedReveal } from "../lib/useSmoothedReveal";
 import { parseSlashCommand } from "../lib/slashCommands";
 import { MARKDOWN_SAMPLE } from "../lib/markdownSample";
 import { normalizeStatChanges, applyAiStatChanges, applyTraitStatChanges, parseStatUpdates, applyAiMaxChanges } from "../lib/statChanges";
@@ -158,6 +159,15 @@ const recentParticipants = (history: ChatMessage[], turns: number): string[] => 
   return names;
 };
 
+/** The prefix of `text` up to the last complete sentence; '' until the first sentence finishes. The
+ *  in-progress trailing sentence is held back so Streamdown's fade reveals whole sentences (and a late
+ *  truncation trim of the unfinished tail never shows on screen). */
+const revealedSentences = (text: string): string => {
+  const segments = splitSentenceSegments(text);
+  if (segments.length <= 1) return '';
+  return text.slice(0, text.length - segments[segments.length - 1].length).replace(/\s+$/, '');
+};
+
 const GameViewer = ({
   initialTraits = [],
   initialCharacterData,
@@ -207,6 +217,7 @@ const GameViewer = ({
     locationChangePromptText,
     choicesEnabled,
     statUpdatesEnabled,
+    narrationFadeReveal,
     locationChangeEnabled,
     locationAutoApply,
     narrationVerbatimTurns,
@@ -285,11 +296,13 @@ const GameViewer = ({
     [discoveredEntities],
   );
 
-  // Smoothly plays streamed narration into gameplayText so it reads as continuous typing and the
-  // truncation trim happens off-screen (see lib/useSmoothedReveal).
-  const reveal = useSmoothedReveal(setGameplayText);
+  // Two narration reveal styles, chosen by the Fade-in Narration setting: `fadeReveal` releases whole
+  // sentences paced to Streamdown's per-word fade; `smoothReveal` is the classic character crawl that
+  // trails the stream at its arrival rate. Only the selected one is fed per turn.
+  const fadeReveal = useSentenceReveal(setGameplayText);
+  const smoothReveal = useSmoothedReveal(setGameplayText);
 
-  // Slash-command preview (e.g. `/markdown test`): drives `reveal` with local text, off the AI path.
+  // Slash-command preview (e.g. `/markdown test`): drives the narration reveal with local text, off the AI path.
   const [commandPreview, setCommandPreview] = useState(false);
   const commandTimer = useRef<ReturnType<typeof setInterval> | null>(null);
 
@@ -306,9 +319,10 @@ const GameViewer = ({
   const runMarkdownTest = useCallback(() => {
     if (commandTimer.current !== null) clearInterval(commandTimer.current);
     setCommandPreview(true);
-    reveal.reset();
+    fadeReveal.reset();
+    smoothReveal.reset();
     let shown = 0;
-    // Slow pacing (~33 chars/sec) so the markdown auto-close can be eyeballed delimiter-by-delimiter.
+    // Slow pacing (~33 chars/sec) so the reveal can be eyeballed.
     const CHARS_PER_TICK = 2;
     const TICK_MS = 60;
     commandTimer.current = setInterval(() => {
@@ -316,12 +330,14 @@ const GameViewer = ({
       if (shown >= MARKDOWN_SAMPLE.length) {
         if (commandTimer.current !== null) clearInterval(commandTimer.current);
         commandTimer.current = null;
-        reveal.finish(MARKDOWN_SAMPLE);
+        if (narrationFadeReveal) fadeReveal.finish(MARKDOWN_SAMPLE);
+        else smoothReveal.finish(MARKDOWN_SAMPLE);
         return;
       }
-      reveal.push(MARKDOWN_SAMPLE.slice(0, shown));
+      if (narrationFadeReveal) fadeReveal.push(revealedSentences(MARKDOWN_SAMPLE.slice(0, shown)));
+      else smoothReveal.push(MARKDOWN_SAMPLE.slice(0, shown));
     }, TICK_MS);
-  }, [reveal]);
+  }, [fadeReveal, smoothReveal, narrationFadeReveal]);
 
   // Dispatch a parsed slash command; returns true if it was handled (caller then skips the AI).
   const runSlashCommand = useCallback((input: string): boolean => {
@@ -1263,6 +1279,11 @@ ${playerNotes || NONE_PLACEHOLDER}
       if (action === "START GAME") {
         setIsGameStarted(true);
       }
+
+      // Fade path only: keep the turn "busy" until the paced reveal has played out its whole queue,
+      // otherwise the display would swap to the committed message and dump the buffered sentences at
+      // once. The smooth crawl trails the stream and self-catches-up, so it needs no such hold.
+      if (narrationFadeReveal) await fadeReveal.drained();
     } catch (error) {
       const err = error as { response?: { status?: number }; message?: string };
       // Reset game started state if START GAME action fails
@@ -1494,8 +1515,8 @@ ${playerNotes || NONE_PLACEHOLDER}
       let buffer = "";
       let content = "";
       let finishReason = null;
-      // Start a fresh smoothed reveal for this turn's narration.
-      if (requestType === "narration") { reveal.reset(); entitySentenceCursorRef.current = 0; assistantAddedRef.current = false; }
+      // Clear the narration for this turn's fresh reveal.
+      if (requestType === "narration") { fadeReveal.reset(); smoothReveal.reset(); entitySentenceCursorRef.current = 0; assistantAddedRef.current = false; }
       // Opt-in streaming TTS: synthesize narration sentence-by-sentence as it arrives (needs a model).
       const ttsStreaming = streamNarrationAudio && ttsLoaded && requestType === "narration";
       if (ttsStreaming) { ttsModalRef.current?.streamStart(); ttsSentenceCursorRef.current = 0; }
@@ -1516,12 +1537,21 @@ ${playerNotes || NONE_PLACEHOLDER}
 
           // Handle different request types
           if (requestType === "narration") {
-            // Feed the full (reasoning-stripped) content; the smoothed reveal trails it so the
-            // display reads as continuous typing and the late truncation trim stays off-screen.
             const display = stripReasoningLive(content);
-            reveal.push(display);
-            // Split once per token; both streaming TTS and the entity tab read the same segments.
+            // Split once per token; streaming TTS, the entity tab, and the reveal all read these.
             const segments = splitSentenceSegments(display);
+            if (narrationFadeReveal) {
+              // Fade path: reveal only complete sentences (hold the in-progress trailing one); the pacer
+              // releases each in turn, waiting for its fade before the next.
+              fadeReveal.push(
+                segments.length > 1
+                  ? display.slice(0, display.length - segments[segments.length - 1].length).replace(/\s+$/, '')
+                  : '',
+              );
+            } else {
+              // Classic path: trail the full stream, smoothing it out character-by-character.
+              smoothReveal.push(display);
+            }
 
             // Feed newly-completed sentences to streaming TTS, holding back the last (in-progress) one.
             if (ttsStreaming) {
@@ -1545,8 +1575,8 @@ ${playerNotes || NONE_PLACEHOLDER}
             // arrives — so an abort before any text still drops the lone user turn), then refresh it only
             // on sentence boundaries. Writing it every token re-renders the whole app and copies the
             // history array per token, which compounds as history grows and starves the streaming reveal.
-            // The visible narration comes from the smoothed reveal (gameplayText), not this message, and
-            // the final text is committed once the turn finishes.
+            // The visible narration comes from the sentence-buffered reveal (gameplayText), not this
+            // message, and the final text is committed once the turn finishes.
             const shouldPersist = assistantAddedRef.current ? newSentence : display.length > 0;
             if (shouldPersist) {
               assistantAddedRef.current = true;
@@ -1594,7 +1624,7 @@ ${playerNotes || NONE_PLACEHOLDER}
       }
       // Aborted mid-stream: drop everything received this turn and don't commit it.
       if (signal?.aborted) {
-        if (requestType === "narration") reveal.reset();
+        if (requestType === "narration") { fadeReveal.reset(); smoothReveal.reset(); }
         if (ttsStreaming) ttsModalRef.current?.streamCancel();
         return "";
       }
@@ -1609,8 +1639,9 @@ ${playerNotes || NONE_PLACEHOLDER}
       // On a mid-sentence truncation (hit the token cap), trim back to the last complete sentence.
       if (requestType === "narration") {
         if (finishReason === "length") finalContent = trimToLastSentence(finalContent);
-        // Hand the authoritative final text to the smoothed reveal to play out cleanly.
-        reveal.finish(finalContent);
+        // Hand the authoritative final text (incl. any held last sentence) to the active reveal.
+        if (narrationFadeReveal) fadeReveal.finish(finalContent);
+        else smoothReveal.finish(finalContent);
         // Flush any sentence(s) still unsent (incl. a final one with no trailing terminator), then end.
         if (ttsStreaming) {
           const segments = splitSentenceSegments(finalContent);
@@ -1640,7 +1671,7 @@ ${playerNotes || NONE_PLACEHOLDER}
     } catch (error) {
       // Check if this is an abort error (user canceled the request)
       if ((error as Error).name === "AbortError") {
-        if (requestType === "narration") { reveal.reset(); }
+        if (requestType === "narration") { fadeReveal.reset(); smoothReveal.reset(); }
         if (streamNarrationAudio && ttsLoaded && requestType === "narration") ttsModalRef.current?.streamCancel();
         // Return empty content for aborted requests instead of throwing
         return "";
@@ -1985,10 +2016,9 @@ ${playerNotes || NONE_PLACEHOLDER}
     return null;
   })();
 
-  // The context meter's history math is O(turns) (parseTurns + banding), so memoize it: the streaming
-  // reveal re-renders this component ~60×/sec (setGameplayText per frame), and recomputing per frame
-  // starves the reveal at high turn counts. This recomputes only when the history/settings that feed
-  // getTrimmedMessageHistory change (a few times per turn), not on every reveal frame.
+  // The context meter's history math is O(turns) (parseTurns + banding), so memoize it: this recomputes
+  // only when the history/settings that feed getTrimmedMessageHistory change (a few times per turn),
+  // not on every render.
   const memoryStats = useMemo(() => {
     const promptTokens = estimateTokens(lastPromptChars);
     const trimmed = getTrimmedMessageHistory(promptTokens);
