@@ -12,6 +12,10 @@ import {
 import { fetchContextLength } from '../lib/contextLength';
 import { usePersistentState, stringCodec, boolCodec, intCodec, floatCodec, nullableIntCodec } from '../lib/usePersistentState';
 import {
+  REVEAL_ANIMATIONS, REVEAL_DIRECTIONS, DEFAULT_REVEAL_ANIMATION, DEFAULT_REVEAL_EASING, DEFAULT_REVEAL_DIRECTION,
+  DEFAULT_REVEAL_DISTANCE, DEFAULT_REVEAL_SCALE, type RevealAnimation, type RevealDirection,
+} from '../lib/narrationRevealConfig';
+import {
   emptyStore, presetStoreCodec, activeValues, isBuiltInActive, activeStyle, BUILTIN_PRESETS,
   setActive as setActivePreset, addPreset as addPresetOp, renamePreset as renamePresetOp, deletePreset as deletePresetOp, resetPreset as resetPresetOp, updateValue,
   type PromptPresetStore, type PromptValues,
@@ -146,9 +150,19 @@ function useProvideSettings() {
   }, [paragraphLimit]);
 
   const [autoscroll, setAutoscroll] = usePersistentState<boolean>(`${APP_ID}_autoscroll`, false, boolCodec);
-  // Fade each streamed sentence in (Streamdown's per-word fadeIn, paced so sentences don't overlap).
-  // Off = completed sentences pop in instantly (still buffered — no incomplete sentence ever shows).
-  const [narrationFadeReveal, setNarrationFadeReveal] = usePersistentState<boolean>(`${APP_ID}_narrationFadeReveal`, true, boolCodec);
+  // Per-word narration reveal style. `none` uses the smooth character crawl; any other value fades each
+  // sentence in with that entrance animation (paced so sentences don't overlap). See RevealAnimationDemo.
+  const [revealAnimation, setRevealAnimation] = usePersistentState<RevealAnimation>(`${APP_ID}_revealAnimation`, DEFAULT_REVEAL_ANIMATION, {
+    parse: (r) => (REVEAL_ANIMATIONS.some((a) => a.key === r) ? (r as RevealAnimation) : DEFAULT_REVEAL_ANIMATION),
+    serialize: (v) => v,
+  });
+  const [revealEasing, setRevealEasing] = usePersistentState<string>(`${APP_ID}_revealEasing`, DEFAULT_REVEAL_EASING, stringCodec);
+  const [revealDirection, setRevealDirection] = usePersistentState<RevealDirection>(`${APP_ID}_revealDirection`, DEFAULT_REVEAL_DIRECTION, {
+    parse: (r) => (REVEAL_DIRECTIONS.some((d) => d.value === r) ? (r as RevealDirection) : DEFAULT_REVEAL_DIRECTION),
+    serialize: (v) => v,
+  });
+  const [revealDistance, setRevealDistance] = usePersistentState<number>(`${APP_ID}_revealDistance`, DEFAULT_REVEAL_DISTANCE, floatCodec);
+  const [revealScale, setRevealScale] = usePersistentState<number>(`${APP_ID}_revealScale`, DEFAULT_REVEAL_SCALE, floatCodec);
   // Show the current location's image as the game background. Off = a blank, themed background color.
   const [locationBackground, setLocationBackground] = usePersistentState<boolean>(`${APP_ID}_locationBackground`, true, boolCodec);
   // Opacity (0–1) of a background-colored overlay drawn over the location image to fade it toward the
@@ -430,8 +444,16 @@ function useProvideSettings() {
     setParagraphLimit,
     autoscroll,
     setAutoscroll,
-    narrationFadeReveal,
-    setNarrationFadeReveal,
+    revealAnimation,
+    setRevealAnimation,
+    revealEasing,
+    setRevealEasing,
+    revealDirection,
+    setRevealDirection,
+    revealDistance,
+    setRevealDistance,
+    revealScale,
+    setRevealScale,
     locationBackground,
     setLocationBackground,
     backgroundOverlay,

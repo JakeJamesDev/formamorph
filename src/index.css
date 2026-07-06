@@ -434,6 +434,30 @@
   font-size-adjust: var(--narration-fsa);
 }
 
+/* Candidate per-word entrance animations for the reveal (previewed in RevealAnimationDemo; fadeIn /
+   blurIn / slideUp ship with Streamdown). Each keeps to opacity + transform so it stays GPU-composited
+   with no reflow. Amounts are CSS vars so a preview (or a global setting) can tune them without new
+   keyframes. sd- prefix matches Streamdown's `animation` → `sd-<name>` convention. */
+@keyframes sd-moveIn {
+  from { opacity: 0; transform: translate(var(--rl-x, 0), var(--rl-y, 0.5em)); }
+  to   { opacity: 1; transform: translate(0, 0); }
+}
+@keyframes sd-growIn {
+  from { opacity: 0; transform: scale(var(--rl-scale, 0.6)); }
+  to   { opacity: 1; transform: scale(1); }
+}
+@keyframes sd-stretchIn {
+  from { opacity: 0; transform: scale(var(--rl-sx, 0.1), var(--rl-sy, 1)); }
+  to   { opacity: 1; transform: scale(1, 1); }
+}
+/* Streamdown animates each word in a bare inline <span>; transforms (move/grow/stretch) need a
+   transformable box, so promote the animated words to inline-block within narration. Stretch anchors
+   its growth to an edge via --rl-origin (set on the container); everything else uses center. */
+.narration-text [data-sd-animate] {
+  display: inline-block;
+  transform-origin: var(--rl-origin, center);
+}
+
 /* Karaoke TTS highlighter: soft accent tint on the sentence being narrated (CSS Custom Highlight API). */
 ::highlight(tts-active) {
   background-color: hsl(var(--primary) / 0.25);

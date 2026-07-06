@@ -73,6 +73,8 @@ import { parseChoices } from "../lib/choices";
 import { setGameplayText } from "../lib/gameplayTextStore";
 import { useSentenceReveal } from "../lib/useSentenceReveal";
 import { useSmoothedReveal } from "../lib/useSmoothedReveal";
+import { setRevealTiming, resetRevealTiming } from "../lib/revealTimingStore";
+import { timingForWordRate } from "../lib/narrationRevealConfig";
 import { parseSlashCommand } from "../lib/slashCommands";
 import { MARKDOWN_SAMPLE } from "../lib/markdownSample";
 import { normalizeStatChanges, applyAiStatChanges, applyTraitStatChanges, parseStatUpdates, applyAiMaxChanges } from "../lib/statChanges";
@@ -217,7 +219,7 @@ const GameViewer = ({
     locationChangePromptText,
     choicesEnabled,
     statUpdatesEnabled,
-    narrationFadeReveal,
+    revealAnimation,
     locationChangeEnabled,
     locationAutoApply,
     narrationVerbatimTurns,
@@ -301,6 +303,8 @@ const GameViewer = ({
   // trails the stream at its arrival rate. Only the selected one is fed per turn.
   const fadeReveal = useSentenceReveal(setGameplayText);
   const smoothReveal = useSmoothedReveal(setGameplayText);
+  // Which reveal drives narration: any animation ⇒ the paced fade path; `none` ⇒ the smooth crawl.
+  const fadeRevealActive = revealAnimation !== 'none';
 
   // Slash-command preview (e.g. `/markdown test`): drives the narration reveal with local text, off the AI path.
   const [commandPreview, setCommandPreview] = useState(false);
@@ -330,14 +334,14 @@ const GameViewer = ({
       if (shown >= MARKDOWN_SAMPLE.length) {
         if (commandTimer.current !== null) clearInterval(commandTimer.current);
         commandTimer.current = null;
-        if (narrationFadeReveal) fadeReveal.finish(MARKDOWN_SAMPLE);
+        if (fadeRevealActive) fadeReveal.finish(MARKDOWN_SAMPLE);
         else smoothReveal.finish(MARKDOWN_SAMPLE);
         return;
       }
-      if (narrationFadeReveal) fadeReveal.push(revealedSentences(MARKDOWN_SAMPLE.slice(0, shown)));
+      if (fadeRevealActive) fadeReveal.push(revealedSentences(MARKDOWN_SAMPLE.slice(0, shown)));
       else smoothReveal.push(MARKDOWN_SAMPLE.slice(0, shown));
     }, TICK_MS);
-  }, [fadeReveal, smoothReveal, narrationFadeReveal]);
+  }, [fadeReveal, smoothReveal, fadeRevealActive]);
 
   // Dispatch a parsed slash command; returns true if it was handled (caller then skips the AI).
   const runSlashCommand = useCallback((input: string): boolean => {
@@ -368,6 +372,7 @@ const GameViewer = ({
   const ttsSentenceCursorRef = useRef(0); // count of complete sentences already sent to streaming TTS
   const entitySentenceCursorRef = useRef(0); // count of complete sentences already parsed for the entity tab
   const assistantAddedRef = useRef(false); // whether this turn's in-progress assistant message is in history yet
+  const revealRateStartRef = useRef<number | null>(null); // timestamp of the first narration token, for the words/sec estimate
   const currentTurnIdRef = useRef(""); // stable id for the in-progress turn, stamped into its assistant JSON
   const digestDrainingRef = useRef(false); // a memory digest is in flight (serializes the drainer)
   const [digestActive, setDigestActive] = useState(false); // drives the status-bar indicator for a running digest
@@ -1223,6 +1228,12 @@ ${playerNotes || NONE_PLACEHOLDER}
       }
 
       if (signal.aborted) return; // stopped during the location-change request
+
+      // Fade path: let the paced reveal finish playing out before the turn's results appear, so choices
+      // and stat changes don't pop in over a still-fading narration. The smooth crawl self-catches-up,
+      // so it needs no hold. (The reveal has been running in parallel with the aux requests above.)
+      if (fadeRevealActive) await fadeReveal.drained();
+
       // Parse choices (line-separated), hard-capped to 6 to stop the AI over-producing
       const choicesList = !choicesEnabled ? [] : parseChoices(choicesResponse);
       setChoices(choicesList);
@@ -1279,11 +1290,6 @@ ${playerNotes || NONE_PLACEHOLDER}
       if (action === "START GAME") {
         setIsGameStarted(true);
       }
-
-      // Fade path only: keep the turn "busy" until the paced reveal has played out its whole queue,
-      // otherwise the display would swap to the committed message and dump the buffered sentences at
-      // once. The smooth crawl trails the stream and self-catches-up, so it needs no such hold.
-      if (narrationFadeReveal) await fadeReveal.drained();
     } catch (error) {
       const err = error as { response?: { status?: number }; message?: string };
       // Reset game started state if START GAME action fails
@@ -1516,7 +1522,7 @@ ${playerNotes || NONE_PLACEHOLDER}
       let content = "";
       let finishReason = null;
       // Clear the narration for this turn's fresh reveal.
-      if (requestType === "narration") { fadeReveal.reset(); smoothReveal.reset(); entitySentenceCursorRef.current = 0; assistantAddedRef.current = false; }
+      if (requestType === "narration") { fadeReveal.reset(); smoothReveal.reset(); resetRevealTiming(); revealRateStartRef.current = null; entitySentenceCursorRef.current = 0; assistantAddedRef.current = false; }
       // Opt-in streaming TTS: synthesize narration sentence-by-sentence as it arrives (needs a model).
       const ttsStreaming = streamNarrationAudio && ttsLoaded && requestType === "narration";
       if (ttsStreaming) { ttsModalRef.current?.streamStart(); ttsSentenceCursorRef.current = 0; }
@@ -1540,7 +1546,13 @@ ${playerNotes || NONE_PLACEHOLDER}
             const display = stripReasoningLive(content);
             // Split once per token; streaming TTS, the entity tab, and the reveal all read these.
             const segments = splitSentenceSegments(display);
-            if (narrationFadeReveal) {
+            if (fadeRevealActive) {
+              // Track the model's word rate (cumulative average from the first token — inherently smooth)
+              // and feed the fade timing from it, so the reveal cadence tracks generation speed.
+              if (revealRateStartRef.current === null) revealRateStartRef.current = performance.now();
+              const elapsedMs = performance.now() - revealRateStartRef.current;
+              const wordCount = display.trim() ? display.trim().split(/\s+/).length : 0;
+              if (elapsedMs >= 120 && wordCount >= 3) setRevealTiming(timingForWordRate(wordCount / (elapsedMs / 1000)));
               // Fade path: reveal only complete sentences (hold the in-progress trailing one); the pacer
               // releases each in turn, waiting for its fade before the next.
               fadeReveal.push(
@@ -1640,8 +1652,16 @@ ${playerNotes || NONE_PLACEHOLDER}
       if (requestType === "narration") {
         if (finishReason === "length") finalContent = trimToLastSentence(finalContent);
         // Hand the authoritative final text (incl. any held last sentence) to the active reveal.
-        if (narrationFadeReveal) fadeReveal.finish(finalContent);
-        else smoothReveal.finish(finalContent);
+        if (fadeRevealActive) {
+          // Pin the timing to the whole turn's rate before flushing, so the held tail (and any reveal
+          // still catching up) plays at the true speed even if the model burst too fast to sample mid-stream.
+          if (revealRateStartRef.current !== null) {
+            const elapsedMs = performance.now() - revealRateStartRef.current;
+            const wordCount = finalContent.trim() ? finalContent.trim().split(/\s+/).length : 0;
+            if (elapsedMs >= 60 && wordCount >= 3) setRevealTiming(timingForWordRate(wordCount / (elapsedMs / 1000)));
+          }
+          fadeReveal.finish(finalContent);
+        } else smoothReveal.finish(finalContent);
         // Flush any sentence(s) still unsent (incl. a final one with no trailing terminator), then end.
         if (ttsStreaming) {
           const segments = splitSentenceSegments(finalContent);
