@@ -1,5 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { useGameplay } from '@/contexts/GameplayContext';
+import { useGameplayText, setGameplayText } from '@/lib/gameplayTextStore';
 import { useGameData } from '@/contexts/GameDataContext';
 import { useSettings } from '@/contexts/SettingsContext';
 import { useSentenceHighlight } from '@/lib/useSentenceHighlight';
@@ -324,14 +325,13 @@ export const MiddlePanel = ({
     setPlayerInput,
     isWaitingForAI,
     isFlashing,
-    gameplayText,
-    setGameplayText,
     isEditMode,
     setIsEditMode,
     ttsPlayback,
     setFullMessageHistory,
     playerStats
   } = useGameplay();
+  const gameplayText = useGameplayText();
   const { ttsHighlight, choicesEnabled, statUpdatesEnabled } = useSettings();
   // Which partial re-generate options the flyout should offer (mirrors the aux-request gates).
   const canRegenChoices = choicesEnabled;

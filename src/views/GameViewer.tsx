@@ -71,6 +71,7 @@ import { parseTurns, buildVerbatimHistory, buildBandedHistory, extractKeywords, 
 import { findEntityNames, matchNames, matchNamesLoose, sameCharacterName } from "../lib/entityMatch";
 import { parseChoices } from "../lib/choices";
 import { useSmoothedReveal } from "../lib/useSmoothedReveal";
+import { setGameplayText } from "../lib/gameplayTextStore";
 import { parseSlashCommand } from "../lib/slashCommands";
 import { MARKDOWN_SAMPLE } from "../lib/markdownSample";
 import { normalizeStatChanges, applyAiStatChanges, applyTraitStatChanges, parseStatUpdates, applyAiMaxChanges } from "../lib/statChanges";
@@ -244,8 +245,6 @@ const GameViewer = ({
     logEntries,
     setGameTime,
     logsEndRef,
-    gameplayText,
-    setGameplayText,
     setChoices,
     isGameStarted,
     setIsGameStarted,
@@ -1310,7 +1309,7 @@ ${playerNotes || NONE_PLACEHOLDER}
     const startIndex = (currentPage - 1) * messagesPerPage;
     const endIndex = startIndex + messagesPerPage;
     setDisplayedMessages(fullMessageHistory.slice(startIndex, endIndex));
-  }, [fullMessageHistory, currentPage, gameplayText, setDisplayedMessages]);
+  }, [fullMessageHistory, currentPage, setDisplayedMessages]);
 
   useEffect(() => {
     // Move to the last page whenever we receive new AI game text
@@ -2781,7 +2780,6 @@ ${playerNotes || NONE_PLACEHOLDER}
         ref={ttsModalRef}
         isOpen={isTTSModalOpen}
         onOpenChange={setIsTTSModalOpen}
-        narration={gameplayText}
         onLoadedChange={setTtsLoaded}
       />
 
