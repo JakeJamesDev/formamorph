@@ -432,6 +432,13 @@ export const SettingsModal = ({ isOpen, onOpenChange, previewValues }: {
                   </span>
                 </div>
               </div>
+              <div className="grid grid-cols-1 sm:grid-cols-4 items-center gap-4">
+                <span className="text-left sm:text-right leading-4">Narration Reveal</span>
+                <div className="col-span-3 flex items-center gap-2">
+                  <RevealAnimationDemoButton />
+                  <span className="text-xs text-muted-foreground">How each sentence appears as it streams.</span>
+                </div>
+              </div>
               <div className="grid grid-cols-1 sm:grid-cols-4 items-start gap-4">
                 <label className="text-left sm:text-right pt-2">
                   AI Language
@@ -448,13 +455,6 @@ export const SettingsModal = ({ isOpen, onOpenChange, previewValues }: {
                   <p className="text-xs text-muted-foreground mt-1">
                     The language the AI writes narration and choices in. Pick a suggestion or type your own — even a style, like formal English or pirate speak.
                   </p>
-                </div>
-              </div>
-              <div className="grid grid-cols-1 sm:grid-cols-4 items-center gap-4">
-                <span className="text-left sm:text-right leading-4">Narration Reveal</span>
-                <div className="col-span-3 flex items-center gap-2">
-                  <RevealAnimationDemoButton />
-                  <span className="text-xs text-muted-foreground">How each sentence appears as it streams.</span>
                 </div>
               </div>
               <div className="grid grid-cols-1 sm:grid-cols-4 items-center gap-4">
@@ -587,20 +587,17 @@ export const SettingsModal = ({ isOpen, onOpenChange, previewValues }: {
               {/* Auto-apply detected location changes — its own row, only shown while Location Change is on. */}
               {locationChangeEnabled && (
                 <div className="grid grid-cols-1 sm:grid-cols-4 items-start gap-4">
-                  <label htmlFor="locationAutoApply" className="text-left sm:text-right leading-4 pt-0.5">Location Moves</label>
-                  <div className="col-span-3">
-                    <label htmlFor="locationAutoApply" className="flex items-center gap-2 text-sm cursor-pointer">
-                      <Checkbox
-                        id="locationAutoApply"
-                        checked={locationAutoApply}
-                        onCheckedChange={(c) => setLocationAutoApply(c === true)}
-                        className="shrink-0"
-                      />
-                      Apply location changes automatically
-                    </label>
-                    <p className="text-xs text-muted-foreground mt-1">
-                      Move the player as soon as the AI detects a change, skipping the “Move to…?” confirmation.
-                    </p>
+                  <label htmlFor="locationAutoApply" className="text-left sm:text-right leading-4">Move Automatically</label>
+                  <div className="col-span-3 flex items-start gap-2">
+                    <Checkbox
+                      id="locationAutoApply"
+                      checked={locationAutoApply}
+                      onCheckedChange={(c) => setLocationAutoApply(c === true)}
+                      className="shrink-0"
+                    />
+                    <span className="text-xs text-muted-foreground">
+                      Decides the move from your action before the scene is written, so it’s narrated in the new location — skipping the “Move to…?” confirmation.
+                    </span>
                   </div>
                 </div>
               )}
@@ -639,26 +636,29 @@ export const SettingsModal = ({ isOpen, onOpenChange, previewValues }: {
                     className="shrink-0"
                   />
                   <span className="text-xs text-muted-foreground">
-                    Keeps long stories coherent without bloating each request: older turns are retold in condensed form — the same back-and-forth, just shorter — while recent ones stay word-for-word. Runs an extra request per turn. Edit the prompt under System Prompts → Summary.
+                    Condenses older turns while keeping recent ones word-for-word, so long stories stay coherent without bloating each request. Runs an extra request per turn; edit its prompt under Prompts → Summary.
                   </span>
                 </div>
               </div>
-              <div className="grid grid-cols-1 sm:grid-cols-4 items-start gap-4">
-                <label htmlFor="characterDiaries" className="text-left sm:text-right leading-4">
-                  Character Diaries
-                </label>
-                <div className="col-span-3 flex items-start gap-2">
-                  <Checkbox
-                    id="characterDiaries"
-                    checked={characterDiaries}
-                    onCheckedChange={(c) => setCharacterDiaries(c === true)}
-                    className="shrink-0"
-                  />
-                  <span className="text-xs text-muted-foreground">
-                    Each character present in a turn quietly records a first-person diary entry about it, as turns age out. Its own recent entries feed back into that character&apos;s motivation during Staged thinking. Runs an extra request per participant. View them via Show Silent Requests in the AI context viewer, and edit the prompt under System Prompts → Diary.
-                  </span>
+              {/* Diaries are only read by the staged character pass, so the option only appears in that mode. */}
+              {thinkingMode === 'staged' && (
+                <div className="grid grid-cols-1 sm:grid-cols-4 items-start gap-4">
+                  <label htmlFor="characterDiaries" className="text-left sm:text-right leading-4">
+                    Character Diaries
+                  </label>
+                  <div className="col-span-3 flex items-start gap-2">
+                    <Checkbox
+                      id="characterDiaries"
+                      checked={characterDiaries}
+                      onCheckedChange={(c) => setCharacterDiaries(c === true)}
+                      className="shrink-0"
+                    />
+                    <span className="text-xs text-muted-foreground">
+                      Each character present in a turn records a first-person diary entry as turns age out, and its recent entries feed back into that character&apos;s motivation. Runs an extra request per participant; edit its prompt under Prompts → Diary.
+                    </span>
+                  </div>
                 </div>
-              </div>
+              )}
               <div className="grid grid-cols-1 sm:grid-cols-4 items-start gap-4">
                 <label htmlFor="showSilentRequests" className="text-left sm:text-right leading-4">
                   Show Silent Requests
@@ -671,7 +671,7 @@ export const SettingsModal = ({ isOpen, onOpenChange, previewValues }: {
                     className="shrink-0"
                   />
                   <span className="text-xs text-muted-foreground">
-                    Reveal silent requests that normally run quietly (memory summaries, character diaries, and new-character notes) — they appear in the status bar while running and as a request entry in the AI context viewer. Off by default; an inspection aid for authoring and debugging.
+                    Surfaces requests that normally run quietly — memory summaries, character diaries, and new-character notes — in the status bar and the AI context viewer. An inspection aid for authoring and debugging; off by default.
                   </span>
                 </div>
               </div>
