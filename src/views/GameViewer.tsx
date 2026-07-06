@@ -73,8 +73,8 @@ import { parseChoices } from "../lib/choices";
 import { setGameplayText } from "../lib/gameplayTextStore";
 import { useSentenceReveal } from "../lib/useSentenceReveal";
 import { useSmoothedReveal } from "../lib/useSmoothedReveal";
-import { setRevealTiming, resetRevealTiming } from "../lib/revealTimingStore";
-import { timingForWordRate } from "../lib/narrationRevealConfig";
+import { setRevealTiming } from "../lib/revealTimingStore";
+import { timingForWordRate, flooredTiming, revealActive, DEFAULT_STAGGER, DEFAULT_DURATION } from "../lib/narrationRevealConfig";
 import { parseSlashCommand } from "../lib/slashCommands";
 import { MARKDOWN_SAMPLE } from "../lib/markdownSample";
 import { normalizeStatChanges, applyAiStatChanges, applyTraitStatChanges, parseStatUpdates, applyAiMaxChanges } from "../lib/statChanges";
@@ -219,7 +219,9 @@ const GameViewer = ({
     locationChangePromptText,
     choicesEnabled,
     statUpdatesEnabled,
-    revealAnimation,
+    revealSpec,
+    revealMinDuration,
+    revealMinStagger,
     locationChangeEnabled,
     locationAutoApply,
     narrationVerbatimTurns,
@@ -303,8 +305,8 @@ const GameViewer = ({
   // trails the stream at its arrival rate. Only the selected one is fed per turn.
   const fadeReveal = useSentenceReveal(setGameplayText);
   const smoothReveal = useSmoothedReveal(setGameplayText);
-  // Which reveal drives narration: any animation ⇒ the paced fade path; `none` ⇒ the smooth crawl.
-  const fadeRevealActive = revealAnimation !== 'none';
+  // Which reveal drives narration: any effect enabled ⇒ the paced fade path; none ⇒ the smooth crawl.
+  const fadeRevealActive = revealActive(revealSpec);
 
   // Slash-command preview (e.g. `/markdown test`): drives the narration reveal with local text, off the AI path.
   const [commandPreview, setCommandPreview] = useState(false);
@@ -1522,7 +1524,7 @@ ${playerNotes || NONE_PLACEHOLDER}
       let content = "";
       let finishReason = null;
       // Clear the narration for this turn's fresh reveal.
-      if (requestType === "narration") { fadeReveal.reset(); smoothReveal.reset(); resetRevealTiming(); revealRateStartRef.current = null; entitySentenceCursorRef.current = 0; assistantAddedRef.current = false; }
+      if (requestType === "narration") { fadeReveal.reset(); smoothReveal.reset(); setRevealTiming(flooredTiming({ stagger: DEFAULT_STAGGER, duration: DEFAULT_DURATION }, revealMinStagger, revealMinDuration)); revealRateStartRef.current = null; entitySentenceCursorRef.current = 0; assistantAddedRef.current = false; }
       // Opt-in streaming TTS: synthesize narration sentence-by-sentence as it arrives (needs a model).
       const ttsStreaming = streamNarrationAudio && ttsLoaded && requestType === "narration";
       if (ttsStreaming) { ttsModalRef.current?.streamStart(); ttsSentenceCursorRef.current = 0; }
@@ -1552,7 +1554,7 @@ ${playerNotes || NONE_PLACEHOLDER}
               if (revealRateStartRef.current === null) revealRateStartRef.current = performance.now();
               const elapsedMs = performance.now() - revealRateStartRef.current;
               const wordCount = display.trim() ? display.trim().split(/\s+/).length : 0;
-              if (elapsedMs >= 120 && wordCount >= 3) setRevealTiming(timingForWordRate(wordCount / (elapsedMs / 1000)));
+              if (elapsedMs >= 120 && wordCount >= 3) setRevealTiming(flooredTiming(timingForWordRate(wordCount / (elapsedMs / 1000)), revealMinStagger, revealMinDuration));
               // Fade path: reveal only complete sentences (hold the in-progress trailing one); the pacer
               // releases each in turn, waiting for its fade before the next.
               fadeReveal.push(
@@ -1658,7 +1660,7 @@ ${playerNotes || NONE_PLACEHOLDER}
           if (revealRateStartRef.current !== null) {
             const elapsedMs = performance.now() - revealRateStartRef.current;
             const wordCount = finalContent.trim() ? finalContent.trim().split(/\s+/).length : 0;
-            if (elapsedMs >= 60 && wordCount >= 3) setRevealTiming(timingForWordRate(wordCount / (elapsedMs / 1000)));
+            if (elapsedMs >= 60 && wordCount >= 3) setRevealTiming(flooredTiming(timingForWordRate(wordCount / (elapsedMs / 1000)), revealMinStagger, revealMinDuration));
           }
           fadeReveal.finish(finalContent);
         } else smoothReveal.finish(finalContent);

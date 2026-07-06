@@ -1,7 +1,7 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useRef, useState } from 'react';
 import { useGameplay } from '@/contexts/GameplayContext';
 import { useGameplayText, setGameplayText } from '@/lib/gameplayTextStore';
-import { revealAnimName, revealVars } from '@/lib/narrationRevealConfig';
+import { revealActive, revealAnimName, revealVars } from '@/lib/narrationRevealConfig';
 import { useGameData } from '@/contexts/GameDataContext';
 import { useSettings } from '@/contexts/SettingsContext';
 import { useSentenceHighlight } from '@/lib/useSentenceHighlight';
@@ -333,12 +333,12 @@ export const MiddlePanel = ({
     playerStats
   } = useGameplay();
   const gameplayText = useGameplayText();
-  const { ttsHighlight, choicesEnabled, statUpdatesEnabled, revealAnimation, revealEasing, revealDirection, revealDistance, revealScale } = useSettings();
-  // Per-word reveal animation (none = smooth crawl, no fade). The keyframe name feeds Streamdown; the
-  // Move/Grow/Stretch amounts ride on the narration container as CSS vars + a data-reveal hook.
-  const revealActive = revealAnimation !== 'none';
-  const revealAnim = revealAnimName(revealAnimation) ?? undefined;
-  const revealStyle = revealVars(revealAnimation, revealDirection, revealDistance, revealScale) as React.CSSProperties;
+  const { ttsHighlight, choicesEnabled, statUpdatesEnabled, revealSpec, revealEasing } = useSettings();
+  // Per-word reveal: any enabled effect ⇒ animate (composed keyframe + CSS vars on the container);
+  // nothing enabled ⇒ smooth crawl. The keyframe name feeds Streamdown, the amounts ride as CSS vars.
+  const revealOn = revealActive(revealSpec);
+  const revealAnim = revealAnimName(revealSpec);
+  const revealStyle = revealVars(revealSpec) as React.CSSProperties;
   // Which partial re-generate options the flyout should offer (mirrors the aux-request gates).
   const canRegenChoices = choicesEnabled;
   const canRegenStats = statUpdatesEnabled && playerStats.length > 0;
@@ -402,14 +402,6 @@ export const MiddlePanel = ({
     return items;
   };
 
-  const messagesEndRef = useRef<HTMLDivElement>(null);
-
-  useEffect(() => {
-    //TEMP DISABLE AUTO SCROLL
-    // if (messagesEndRef.current) {
-    //   messagesEndRef.current.scrollIntoView({ behavior: 'smooth' });
-    // }
-  }, [displayedMessages, choices]);
 
   return (
     <Card className="w-full flex-grow md:mx-0.5 md:max-w-[48%] min-h-0 flex flex-col bg-background/60 border-border overflow-hidden">
@@ -499,7 +491,7 @@ export const MiddlePanel = ({
                   </Button>
                 </div>
                 <div style={revealStyle}>
-                  <MarkdownRenderer text={gameplayText} animate={revealActive} animation={revealAnim} easing={revealEasing} />
+                  <MarkdownRenderer text={gameplayText} animate={revealOn} animation={revealAnim} easing={revealEasing} />
                 </div>
               </div>
             )}
@@ -512,7 +504,7 @@ export const MiddlePanel = ({
                     <div className="whitespace-pre-wrap">{message.content}</div>
                   ) : (
                     <div ref={narrationRef} style={revealStyle}>
-                      <MarkdownRenderer text={isLatestMessage && isWaitingForAI ? gameplayText : parseAssistantMessage(message.content)} animate={isLatestMessage && isWaitingForAI && revealActive} animation={revealAnim} easing={revealEasing} />
+                      <MarkdownRenderer text={isLatestMessage && isWaitingForAI ? gameplayText : parseAssistantMessage(message.content)} animate={isLatestMessage && isWaitingForAI && revealOn} animation={revealAnim} easing={revealEasing} />
                     </div>
                   )}
                 </div>
@@ -542,7 +534,6 @@ export const MiddlePanel = ({
                   );
                 })}
             </div>
-            <div ref={messagesEndRef} />
           </ScrollArea>
           <EditTextModal
             isOpen={isEditMode}
