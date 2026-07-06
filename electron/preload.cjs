@@ -6,4 +6,10 @@ const { contextBridge, ipcRenderer } = require('electron');
 contextBridge.exposeInMainWorld('formamorphDesktop', {
   fetch: (req) => ipcRenderer.invoke('net-fetch', req),
   vramStats: () => ipcRenderer.invoke('vram-stats'),
+  // Local LLM engine: start/stop a GGUF served on a localhost OpenAI endpoint, and read its status.
+  llm: {
+    start: (opts) => ipcRenderer.invoke('llm-start', opts),
+    stop: () => ipcRenderer.invoke('llm-stop'),
+    status: () => ipcRenderer.invoke('llm-status'),
+  },
 });

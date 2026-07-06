@@ -5,6 +5,7 @@ const { app, BrowserWindow, protocol, net, ipcMain } = require('electron');
 const path = require('node:path');
 const { pathToFileURL } = require('node:url');
 const { collect: collectVram } = require('./vramCollect.cjs');
+const llmEngine = require('./llmEngine.cjs');
 
 const DIST = path.join(__dirname, '..', 'dist');
 
@@ -47,6 +48,12 @@ ipcMain.handle('vram-stats', async () => {
   }
 });
 
+// Desktop-only local LLM: load a GGUF and serve an OpenAI-compatible endpoint on localhost. The renderer
+// then points its normal OpenAI endpoint at it. Handlers return the engine's serializable state.
+ipcMain.handle('llm-start', (_event, opts) => llmEngine.start(opts));
+ipcMain.handle('llm-stop', () => llmEngine.stop());
+ipcMain.handle('llm-status', () => llmEngine.getState());
+
 app.whenReady().then(() => {
   // Map app://local/<path> → dist/<path>, defaulting to index.html. Files are kept inside DIST.
   protocol.handle('app', (request) => {
@@ -67,3 +74,6 @@ app.whenReady().then(() => {
 app.on('window-all-closed', () => {
   if (process.platform !== 'darwin') app.quit();
 });
+
+// Free the model + close the local server before the process exits.
+app.on('will-quit', () => { llmEngine.stop(); });
