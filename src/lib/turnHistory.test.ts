@@ -8,6 +8,7 @@ import {
   markPrunedTurns,
   snapshotPageIndex,
   placeSnapshot,
+  realignLegacyStateHistory,
 } from './turnHistory';
 
 // Stand-in for the AI-context DebugTurn — carries the flags plus an identifying field.
@@ -38,6 +39,27 @@ describe('regenerateState', () => {
   it('returns null when no snapshot is available', () => {
     expect(regenerateState([], null, 1)).toBeNull(); // page 1, never captured
     expect(regenerateState([], 'init', 2)).toBeNull(); // page 2, gameStates[0] missing
+  });
+});
+
+describe('realignLegacyStateHistory', () => {
+  it('prepends an empty opening slot so page → snapshot indexing matches', () => {
+    // A 3-turn v1.2 save stored 2 entries (opening dropped, rest shifted): index i = turn (i+2) snapshot.
+    const legacy = ['afterTurn2', 'afterTurn3'];
+    const aligned = realignLegacyStateHistory(legacy);
+    expect(aligned).toEqual([null, 'afterTurn2', 'afterTurn3']);
+    // Now rollbackState maps each page to the turn it names, and page 1 no-ops (unrecoverable opening).
+    expect(rollbackState(aligned, 1)).toBeNull();
+    expect(rollbackState(aligned, 2)).toBe('afterTurn2');
+    expect(rollbackState(aligned, 3)).toBe('afterTurn3');
+  });
+  it('handles a single-turn save (empty history → one empty slot)', () => {
+    expect(realignLegacyStateHistory([])).toEqual([null]);
+  });
+  it('does not mutate the input', () => {
+    const legacy = ['a', 'b'];
+    realignLegacyStateHistory(legacy);
+    expect(legacy).toEqual(['a', 'b']);
   });
 });
 

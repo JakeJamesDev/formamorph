@@ -25,6 +25,16 @@ export function regenerateState<S>(
   return currentPage >= 2 ? (gameStates[currentPage - 2] ?? null) : initialState;
 }
 
+/** Realign a v1.2 save's `stateHistory` to the current per-page indexing. Pre-2.x, a stale-closure
+ *  off-by-one dropped the opening turn's snapshot and shifted the rest, so a T-turn save stored `T - 1`
+ *  entries with index `i` holding the *turn (i+2)* snapshot. Prepending one empty slot restores the
+ *  `gameStates[page - 1]` mapping for turns 2…T; the opening turn's snapshot is unrecoverable (it was
+ *  never stored), so page 1 gets a `null` hole — rollback/re-generate there no-op rather than restore a
+ *  wrong state. Persisting the leading null keeps the array aligned across later re-saves. */
+export function realignLegacyStateHistory<S>(stateHistory: readonly S[]): (S | null)[] {
+  return [null, ...stateHistory];
+}
+
 /** The gameStates slot a post-turn snapshot belongs in, derived from the snapshot's *own* message-history
  *  length (two messages per turn). Indexing off the snapshot — not a closure variable that goes stale
  *  inside the async turn flow — keeps the slot aligned with the turn it represents. */
