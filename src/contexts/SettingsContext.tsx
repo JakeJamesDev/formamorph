@@ -1,6 +1,7 @@
 import { createContext, useContext, useState, useEffect, useRef, useCallback, useMemo, type ReactNode } from 'react';
 import { defaultSystemPrompt, defaultChoicesPrompt, defaultStatUpdatesPrompt, defaultLocationChangePrompt, defaultThinkingPrompt, defaultSummaryPrompt, defaultChoicesUserPrompt, defaultStatUpdatesUserPrompt, defaultLocationChangeUserPrompt, defaultSummaryUserPrompt, defaultDiaryPrompt, defaultDirectorPrompt, defaultDirectorUserPrompt, defaultCharacterPrompt, defaultStoryboardPrompt } from '../components/game/GamePrompts';
-import { DEFAULT_ENDPOINT, DEFAULT_API_TOKEN, DEFAULT_MODEL_NAME, DEFAULT_MAX_TOKENS, DEFAULT_CONTEXT_WINDOW, DEFAULT_THEME_COLOR, BASE_THEME_COLOR, THEME_COLORS, DEFAULT_FONT, FONT_OPTIONS, SYSTEM_FONT_STACK, DEFAULT_NARRATION_FONT, DEFAULT_NARRATION_SCALE, DEFAULT_NARRATION_LINE_HEIGHT, NARRATION_FONT_OPTIONS, fontStack, fontSizeAdjust, type ThemeColor, type FontChoice, type NarrationFont } from './settingsDefaults';
+import { DEFAULT_ENDPOINT, DEFAULT_API_TOKEN, DEFAULT_MODEL_NAME, DEFAULT_MAX_TOKENS, DEFAULT_CONTEXT_WINDOW, DEFAULT_LOCAL_CONTEXT_SIZE, DEFAULT_LOCAL_GPU_LAYERS, DEFAULT_LOCAL_FLASH_ATTENTION, DEFAULT_GEN_TEMPERATURE, DEFAULT_GEN_TOP_P, DEFAULT_GEN_REPETITION_PENALTY, DEFAULT_THEME_COLOR, BASE_THEME_COLOR, THEME_COLORS, DEFAULT_FONT, FONT_OPTIONS, SYSTEM_FONT_STACK, DEFAULT_NARRATION_FONT, DEFAULT_NARRATION_SCALE, DEFAULT_NARRATION_LINE_HEIGHT, NARRATION_FONT_OPTIONS, fontStack, fontSizeAdjust, type ThemeColor, type FontChoice, type NarrationFont } from './settingsDefaults';
+import { isDesktop } from '../lib/imageGen/desktop';
 import { DEFAULT_TAG_PROMPT } from '../lib/imagePrompt';
 import {
   imageEndpointPresetCodec, makeDefaultStore as makeImageStore, presetStoreFromEnv, DEFAULT_IMAGE_ENDPOINT_VALUES,
@@ -241,10 +242,29 @@ function useProvideSettings() {
   const [detectedContextWindow, setDetectedContextWindow] = usePersistentState<number | null>(`${APP_ID}_detectedContextWindow`, null, nullableIntCodec);
   const [contextWindowOverride, setContextWindowOverride] = usePersistentState<number | null>(`${APP_ID}_contextWindowOverride`, null, nullableIntCodec);
   const [detectStatus, setDetectStatus] = useState<DetectStatus>('idle');
-  // Like the other endpoint fields, the context window is the built-in default while the custom
-  // endpoint is off; the user's override / auto-detection only apply when custom is on.
+
+  // Desktop bundled-model runtime. Only meaningful when the local engine is active (desktop + no custom
+  // endpoint). localContextSize doubles as the engine KV-cache budget and the app's prompt window.
+  const [localContextSize, setLocalContextSize] = usePersistentState<number>(`${APP_ID}_localContextSize`, DEFAULT_LOCAL_CONTEXT_SIZE, intCodec);
+  const [localGpuLayers, setLocalGpuLayers] = usePersistentState<number>(`${APP_ID}_localGpuLayers`, DEFAULT_LOCAL_GPU_LAYERS, intCodec);
+  const [localFlashAttention, setLocalFlashAttention] = usePersistentState<boolean>(`${APP_ID}_localFlashAttention`, DEFAULT_LOCAL_FLASH_ATTENTION, boolCodec);
+  // Whether settings panels reveal their extra advanced rows (persisted; simple rows always show).
+  const [advancedMode, setAdvancedMode] = usePersistentState<boolean>(`${APP_ID}_advancedMode`, false, boolCodec);
+  // Append a `/no_think` directive to requests so reasoning models skip their scratchpad (faster).
+  const [disableThinking, setDisableThinking] = usePersistentState<boolean>(`${APP_ID}_disableThinking`, false, boolCodec);
+  const localModelActive = isDesktop() && !useCustomEndpoint;
+
+  // Generation sampling for the local model — sent while the local engine is active.
+  const [genTemperature, setGenTemperature] = usePersistentState<number>(`${APP_ID}_genTemperature`, DEFAULT_GEN_TEMPERATURE, floatCodec);
+  const [genTopP, setGenTopP] = usePersistentState<number>(`${APP_ID}_genTopP`, DEFAULT_GEN_TOP_P, floatCodec);
+  const [genRepetitionPenalty, setGenRepetitionPenalty] = usePersistentState<number>(`${APP_ID}_genRepetitionPenalty`, DEFAULT_GEN_REPETITION_PENALTY, floatCodec);
+
+  // Context window: a custom endpoint uses its detected/override value; the local engine uses the context
+  // size the user set (same number); otherwise the built-in default.
   const contextWindow = useCustomEndpoint
     ? (contextWindowOverride ?? detectedContextWindow ?? DEFAULT_CONTEXT_WINDOW)
+    : localModelActive
+    ? localContextSize
     : DEFAULT_CONTEXT_WINDOW;
 
   const detectContextWindow = useCallback(async (force = false) => {
@@ -530,6 +550,23 @@ function useProvideSettings() {
     detectedContextWindow,
     detectStatus,
     detectContextWindow,
+    localContextSize,
+    setLocalContextSize,
+    localGpuLayers,
+    setLocalGpuLayers,
+    localFlashAttention,
+    setLocalFlashAttention,
+    advancedMode,
+    setAdvancedMode,
+    disableThinking,
+    setDisableThinking,
+    localModelActive,
+    genTemperature,
+    setGenTemperature,
+    genTopP,
+    setGenTopP,
+    genRepetitionPenalty,
+    setGenRepetitionPenalty,
     systemPrompt,
     setSystemPrompt,
     choicesPrompt,

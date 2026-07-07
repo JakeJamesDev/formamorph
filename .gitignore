@@ -13,6 +13,8 @@ dist-ssr
 coverage
 release
 docs-api
+# Local GGUF models the desktop engine loads (dev drops them beside the project root).
+models
 *.local
 
 pnpm-lock.yaml
