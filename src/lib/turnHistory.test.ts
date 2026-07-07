@@ -43,22 +43,23 @@ describe('regenerateState', () => {
 });
 
 describe('realignLegacyStateHistory', () => {
-  it('prepends an empty opening slot so page → snapshot indexing matches', () => {
+  it('prepends a proxy opening slot so page → snapshot indexing matches', () => {
     // A 3-turn v1.2 save stored 2 entries (opening dropped, rest shifted): index i = turn (i+2) snapshot.
     const legacy = ['afterTurn2', 'afterTurn3'];
-    const aligned = realignLegacyStateHistory(legacy);
-    expect(aligned).toEqual([null, 'afterTurn2', 'afterTurn3']);
-    // Now rollbackState maps each page to the turn it names, and page 1 no-ops (unrecoverable opening).
-    expect(rollbackState(aligned, 1)).toBeNull();
+    const aligned = realignLegacyStateHistory(legacy, 'current');
+    // The unrecoverable opening snapshot is proxied by the oldest survivor (afterTurn2), not currentState.
+    expect(aligned).toEqual(['afterTurn2', 'afterTurn2', 'afterTurn3']);
+    // Rollback now maps every page to a real state; page 1 restores the proxy (one turn newer than ideal).
+    expect(rollbackState(aligned, 1)).toBe('afterTurn2');
     expect(rollbackState(aligned, 2)).toBe('afterTurn2');
     expect(rollbackState(aligned, 3)).toBe('afterTurn3');
   });
-  it('handles a single-turn save (empty history → one empty slot)', () => {
-    expect(realignLegacyStateHistory([])).toEqual([null]);
+  it('uses currentState as the proxy for an opening-only save (where it IS the after-turn-1 state)', () => {
+    expect(realignLegacyStateHistory([], 'current')).toEqual(['current']);
   });
   it('does not mutate the input', () => {
     const legacy = ['a', 'b'];
-    realignLegacyStateHistory(legacy);
+    realignLegacyStateHistory(legacy, 'current');
     expect(legacy).toEqual(['a', 'b']);
   });
 });

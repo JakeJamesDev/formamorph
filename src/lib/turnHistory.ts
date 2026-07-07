@@ -27,12 +27,14 @@ export function regenerateState<S>(
 
 /** Realign a v1.2 save's `stateHistory` to the current per-page indexing. Pre-2.x, a stale-closure
  *  off-by-one dropped the opening turn's snapshot and shifted the rest, so a T-turn save stored `T - 1`
- *  entries with index `i` holding the *turn (i+2)* snapshot. Prepending one empty slot restores the
- *  `gameStates[page - 1]` mapping for turns 2…T; the opening turn's snapshot is unrecoverable (it was
- *  never stored), so page 1 gets a `null` hole — rollback/re-generate there no-op rather than restore a
- *  wrong state. Persisting the leading null keeps the array aligned across later re-saves. */
-export function realignLegacyStateHistory<S>(stateHistory: readonly S[]): (S | null)[] {
-  return [null, ...stateHistory];
+ *  entries with index `i` holding the *turn (i+2)* snapshot. Prepending one slot restores the
+ *  `gameStates[page - 1]` mapping for turns 2…T. The true after-turn-1 state is unrecoverable (it was
+ *  never stored), so the prepended slot is a proxy: the oldest surviving snapshot (after turn 2), or
+ *  `currentState` for an opening-only save — where it *is* the after-turn-1 state. A real proxy (rather
+ *  than a hole) is what lets turn 1 roll back / re-generate at all; the only imperfection is that rolling
+ *  back to the very first turn of a multi-turn save restores the after-turn-2 state, one turn newer. */
+export function realignLegacyStateHistory<S>(stateHistory: readonly S[], currentState: S): S[] {
+  return [stateHistory[0] ?? currentState, ...stateHistory];
 }
 
 /** The gameStates slot a post-turn snapshot belongs in, derived from the snapshot's *own* message-history

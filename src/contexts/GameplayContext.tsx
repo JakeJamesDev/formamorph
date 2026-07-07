@@ -3,7 +3,7 @@ import { saveToDB, loadFromDB } from '../components/modals/dbUtils';
 import { toast } from 'react-toastify';
 import { convertSaveFile, terminateWorker } from '../lib/saveConversionWorkerUtils';
 import { useTtsPlayback } from '../lib/useTtsPlayback';
-import { APP_VERSION, isSaveEnvelope } from '../lib/version';
+import { APP_VERSION, isSaveEnvelope, migrateLegacySaveState } from '../lib/version';
 import { realignLegacyStateHistory } from '../lib/turnHistory';
 import { flattenEnabledBookEntries } from '../lib/dictionaryUtils';
 import { getGameplayText, setGameplayText } from '../lib/gameplayTextStore';
@@ -57,9 +57,7 @@ function useProvideGameplay() {
   const [fullMessageHistory, setFullMessageHistory] = useState<ChatMessage[]>([]);
   const [displayedMessages, setDisplayedMessages] = useState<ChatMessage[]>([]);
   const [currentPage, setCurrentPage] = useState(1);
-  // Holes only occur in a realigned v1.2 import (leading null for the unrecoverable opening turn); fresh
-  // 2.x play never pushes null. See realignLegacyStateHistory.
-  const [gameStates, setGameStates] = useState<(GameState | null)[]>([]);
+  const [gameStates, setGameStates] = useState<GameState[]>([]);
   const [playerNotes, setPlayerNotes] = useState('');
 
   // Web Audio engine for progressive (gapless) TTS playback as sentences generate.
@@ -218,13 +216,15 @@ function useProvideGameplay() {
 
       // Flat envelope (legacy numeric `2` or current APP_VERSION) — detected by shape, not version.
       if (isSaveEnvelope(savedData)) {
-        // Load the current state
-        const success = loadGameState(savedData.currentState, locations);
+        // A legacy v1.2 envelope (numeric `version`) needs load-time migration: rename the frozen trait
+        // descriptions on every snapshot (so traits reach the AI), then realign its off-by-one, one-slot-
+        // short state history. Current saves pass through untouched.
+        const isLegacySave = typeof savedData.version === 'number';
+        const currentState = isLegacySave ? migrateLegacySaveState(savedData.currentState) : savedData.currentState;
+        const success = loadGameState(currentState, locations);
         if (success) {
-          // Load the state history. A legacy v1.2 envelope (numeric `version`) stored it one slot short
-          // and shifted; realign so page → snapshot indexing matches (see realignLegacyStateHistory).
-          const stateHistory = typeof savedData.version === 'number'
-            ? realignLegacyStateHistory(savedData.stateHistory)
+          const stateHistory = isLegacySave
+            ? realignLegacyStateHistory(savedData.stateHistory.map(migrateLegacySaveState), currentState)
             : savedData.stateHistory;
           setGameStates(stateHistory);
           // Restore the per-playthrough dictionary set; older saves lack it, so keep the entry-seeded set.

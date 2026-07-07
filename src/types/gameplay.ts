@@ -97,9 +97,7 @@ export interface GameState {
 /** Versioned save-file envelope persisted to IndexedDB (version 2). */
 export interface SaveObject {
   currentState: GameState;
-  /** Per-page rollback snapshots. A realigned v1.2 import carries a leading `null` (its opening-turn
-   *  snapshot was never stored); fresh 2.x saves never contain holes. */
-  stateHistory: (GameState | null)[];
+  stateHistory: GameState[];
   /** Legacy envelopes used the numeric `2` (≙ v1.2); current saves stamp the `APP_VERSION` string. */
   version: string | number;
   /** v2.x: the dictionary set chosen at world entry (reordered/toggled books, plus any added library
