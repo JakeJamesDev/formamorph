@@ -1,8 +1,8 @@
 import { describe, it, expect } from 'vitest';
-import { isSaveEnvelope, migrateLegacySaveState } from './version';
+import { APP_VERSION, isSaveEnvelope, migrateLegacySaveState, migrateSave } from './version';
 import { parseNarration } from './aiResponse';
 import { realignLegacyStateHistory, rollbackState } from './turnHistory';
-import type { GameState } from '@/types';
+import type { GameState, SaveObject } from '@/types';
 
 // A compact but realistic v1.2 save envelope (top-level numeric `version: 2`, flat currentState + stateHistory,
 // a stat with a numeric-id descriptor, a legacy `game_text` assistant message, and NO discoveredEntities). Mirrors
@@ -121,6 +121,46 @@ describe('migrateLegacySaveState', () => {
       playerDescription: 'You are a male',
       aiDescription: 'You are a male',
     });
+  });
+
+  it('binds legacy body stats so a v1.2 save drives the VRM', () => {
+    const state = {
+      playerStats: [{ id: 's', name: 'Stomach', value: 5 }, { id: 'h', name: 'Health', value: 90 }],
+    } as unknown as GameState;
+    const out = migrateLegacySaveState(state);
+    expect(out.playerStats[0].morphBindings).toEqual(['Belly']);
+    expect(out.playerStats[1].morphBindings).toBeUndefined(); // non-body stat untouched
+  });
+});
+
+describe('migrateSave (shared import + load path)', () => {
+  const legacyEnvelope = {
+    name: 'Old',
+    version: 2,
+    currentState: {
+      playerTraits: [{ id: 't', name: 'Bat Pony', description: 'You are a Bat Pony', statChanges: [] }],
+      playerStats: [{ id: 's', name: 'Stomach', value: 5 }],
+      fullMessageHistory: [{ role: 'user', content: 'START GAME' }, { role: 'assistant', content: '{}' }],
+    },
+    stateHistory: [],
+  } as unknown as SaveObject;
+
+  it('migrates a legacy (numeric-version) envelope: traits, body-stat binding, realignment, stamp', () => {
+    const out = migrateSave(legacyEnvelope);
+    expect(out.version).toBe(APP_VERSION);
+    expect(out.currentState.playerTraits[0]).toMatchObject({
+      playerDescription: 'You are a Bat Pony',
+      aiDescription: 'You are a Bat Pony',
+    });
+    expect(out.currentState.playerStats[0].morphBindings).toEqual(['Belly']);
+    // opening-only save: empty history realigns to a single proxy slot (the migrated currentState).
+    expect(out.stateHistory).toHaveLength(1);
+    expect(out.stateHistory[0]).toBe(out.currentState);
+  });
+
+  it('leaves a current (string-version) save untouched', () => {
+    const current = { ...legacyEnvelope, version: APP_VERSION };
+    expect(migrateSave(current)).toBe(current);
   });
 });
 

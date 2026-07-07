@@ -8,7 +8,7 @@ import { Menu, Save, Download, Import, Trash2, Loader2 } from "lucide-react";
 import { ConfirmDialog } from '../ConfirmDialog';
 import { saveToDB, getAllSaves, deleteFromDB, loadFromDB } from './dbUtils';
 import { downloadSaveFile, terminateWorker as terminateDownloadWorker } from '../../lib/saveDownloadWorkerUtils';
-import { APP_VERSION, isSaveEnvelope, SAVE_FILE_KIND } from '../../lib/version';
+import { APP_VERSION, isSaveEnvelope, migrateSave, SAVE_FILE_KIND } from '../../lib/version';
 import type { WorldOverview, GameState } from "@/types";
 
 /** A stored save record as read back from IndexedDB (v2 envelope or a legacy flat state). */
@@ -224,8 +224,13 @@ export const MenuModal = ({ onSettingsClick, onSave, onLoad, worldOverview, onEx
 
                       const text = await file.text();
                       const save = JSON.parse(text);
-                      // Stamp proper envelopes with the current version on import (sanitation boundary).
-                      if (isSaveEnvelope(save)) save.version = APP_VERSION;
+                      // Migrate a legacy v1.2 envelope to the current shape on import (same migrateSave the
+                      // loader runs), then stamp clean — so the stored save is current and version detection
+                      // stays stamp-based. A current-shape save just gets its version stamp refreshed.
+                      if (isSaveEnvelope(save)) {
+                        const migrated = typeof save.version === 'number' ? migrateSave(save) : save;
+                        Object.assign(save, migrated, { version: APP_VERSION });
+                      }
 
                       await saveToDB(save.name, save);
 

@@ -1,6 +1,7 @@
-import type { World, SaveObject, Stat, GameState, Trait } from '@/types';
+import type { World, SaveObject, Stat, GameState, Trait, PlayerStat } from '@/types';
 import { normalizeCustomVRM } from './worldImport';
 import { autoBindLegacyBodyStats } from './bodyMorphs';
+import { realignLegacyStateHistory } from './turnHistory';
 
 /** Current app version, derived from package.json (see vite.config.js `define`). User-managed. */
 export const APP_VERSION = __APP_VERSION__;
@@ -120,17 +121,39 @@ export function isSaveEnvelope(raw: unknown): raw is SaveObject {
 }
 
 /**
- * Bring one v1.2 save snapshot's fields up to the current shape (load-time only — never re-persisted on
- * its own). A save stores its own frozen copy of the player's traits under `playerTraits`, still keyed by
- * the single legacy `description`; the trait context builder reads `aiDescription`, so without this the
- * traits reach the AI as bare names. Mirrors `migrateWorld`'s trait rename, applied to the save copy.
- * Idempotent (the rename prefers an existing new key), so re-running on an already-migrated snapshot is a
- * no-op. Other legacy quirks (`game_text` narration, absent `discoveredEntities`) are already normalized on
- * read (parseTurnContent / loadGameState's `?? []`), so they need no rewrite here.
+ * Bring one v1.2 save snapshot's frozen field copies up to the current shape. A save stores its own copies
+ * of the player's traits and stats: traits still keyed by the single legacy `description` (the trait
+ * context builder reads `aiDescription`, so without this they reach the AI as bare names), and body stats
+ * (Stomach/Fatness/Breastsize) with no `morphBindings` (so they don't drive the VRM). Mirrors the matching
+ * `migrateWorld` steps, applied to the save copies. Idempotent — the rename prefers an existing new key and
+ * the bind skips a stat that already carries `morphBindings`. Other legacy quirks (`game_text` narration,
+ * absent `discoveredEntities`) are already normalized on read (parseTurnContent / loadGameState's `?? []`).
  */
 export function migrateLegacySaveState(state: GameState): GameState {
-  if (!Array.isArray(state.playerTraits)) return state;
-  // renameTraitDescriptions returns loosened records; the shape matches Trait (new keys added, legacy
-  // `description` dropped), so cast back.
-  return { ...state, playerTraits: renameTraitDescriptions(state.playerTraits) as unknown as Trait[] };
+  const next = { ...state };
+  if (Array.isArray(next.playerTraits)) {
+    // renameTraitDescriptions returns loosened records; the shape matches Trait (new keys added, legacy
+    // `description` dropped), so cast back.
+    next.playerTraits = renameTraitDescriptions(next.playerTraits) as unknown as Trait[];
+  }
+  if (Array.isArray(next.playerStats)) {
+    // autoBindLegacyBodyStats preserves each stat's value, so the (narrower) PlayerStat shape is intact.
+    next.playerStats = autoBindLegacyBodyStats(next.playerStats) as unknown as PlayerStat[];
+  }
+  return next;
+}
+
+/**
+ * Migrate a whole v1.2 save envelope to the current shape and stamp it with `APP_VERSION` — the single path
+ * both the file-import boundary and the load path run, so they can't drift. Legacy is detected by the
+ * numeric `version` (v1.2 stamped `2`); a save already carrying a string version has the current shape and
+ * is returned untouched. Migrates the field copies on every snapshot (currentState + history), then
+ * realigns the off-by-one, one-slot-short state history. Pure — callers decide whether to persist the
+ * result (import) or just load it (load).
+ */
+export function migrateSave(save: SaveObject): SaveObject {
+  if (typeof save.version !== 'number') return save;
+  const currentState = migrateLegacySaveState(save.currentState);
+  const stateHistory = realignLegacyStateHistory(save.stateHistory.map(migrateLegacySaveState), currentState);
+  return { ...save, currentState, stateHistory, version: APP_VERSION };
 }
