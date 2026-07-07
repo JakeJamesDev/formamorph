@@ -1,4 +1,4 @@
-import type { World, SaveObject, Stat } from '@/types';
+import type { World, SaveObject, Stat, GameState, Trait } from '@/types';
 import { normalizeCustomVRM } from './worldImport';
 import { autoBindLegacyBodyStats } from './bodyMorphs';
 
@@ -117,4 +117,20 @@ export function migrateWorld(raw: unknown): World {
  */
 export function isSaveEnvelope(raw: unknown): raw is SaveObject {
   return !!raw && typeof raw === 'object' && 'currentState' in raw && 'stateHistory' in raw;
+}
+
+/**
+ * Bring one v1.2 save snapshot's fields up to the current shape (load-time only — never re-persisted on
+ * its own). A save stores its own frozen copy of the player's traits under `playerTraits`, still keyed by
+ * the single legacy `description`; the trait context builder reads `aiDescription`, so without this the
+ * traits reach the AI as bare names. Mirrors `migrateWorld`'s trait rename, applied to the save copy.
+ * Idempotent (the rename prefers an existing new key), so re-running on an already-migrated snapshot is a
+ * no-op. Other legacy quirks (`game_text` narration, absent `discoveredEntities`) are already normalized on
+ * read (parseTurnContent / loadGameState's `?? []`), so they need no rewrite here.
+ */
+export function migrateLegacySaveState(state: GameState): GameState {
+  if (!Array.isArray(state.playerTraits)) return state;
+  // renameTraitDescriptions returns loosened records; the shape matches Trait (new keys added, legacy
+  // `description` dropped), so cast back.
+  return { ...state, playerTraits: renameTraitDescriptions(state.playerTraits) as unknown as Trait[] };
 }
