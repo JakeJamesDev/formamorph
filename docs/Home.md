@@ -2,7 +2,7 @@
 
 > A browser-based, AI-driven text RPG framework — **play**, **create**, and **share** interactive worlds powered by your own LLM.
 
-Formamorph runs entirely in the browser and talks to any **OpenAI-compatible** chat-completions endpoint (local LM Studio / Ollama, OpenAI, etc.), so your games stay on your own machine and model. Pick a built-in world, import one, or build your own in the visual editor.
+Formamorph runs entirely in the browser and talks to any **OpenAI-compatible** chat-completions endpoint (local LM Studio / Ollama, OpenAI, etc.), so your games stay on your own machine and model — or, in the **desktop app**, download and run a model **fully locally** with no endpoint setup. Pick a built-in world, import one, or build your own in the visual editor.
 
 > 🌐 **Live demo:** [play Formamorph in your browser →](https://jakejamesdev.github.io/formamorph/) — instant, no install. *(18+ — see below.)*
 
