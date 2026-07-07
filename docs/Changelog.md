@@ -10,7 +10,15 @@ Each release groups changes as **Major** / **Minor**, then **Added** / **Removed
 
 ## 🚧 2.0.2 — In development
 
-_No changes yet — this is the next line, for work after 2.0.1._
+### Minor Changes
+
+#### 🐛 Fixed
+
+- **👤 User-facing**
+  - **The opening turn of an old (1.2) save can now be rolled back and re-generated.** The 2.0.1 import fix handled later turns but left the very first turn dead — rolling back to it did nothing and its **Re-generate** button was inert. The opening turn now restores and re-rolls, and a loaded save's traits are upgraded to the current format so their descriptions reach the AI again. (Its exact pre-turn snapshot was never stored, so a rolled-back opening lands one turn later, and re-generating it rebuilds a fresh start.) This also fixed re-generating the opening on *any* loaded save, not just 1.2 ones.
+  - **More consistent turn summaries** — the memory-digest "summary" prompt (which condenses each turn for long-game memory) was hardened so its retellings come out uniformly short (one or two sentences, single line), lead with what you did, and never quote dialogue verbatim or invent a character name the narration didn't give. Verified on both a small (12B) and large (24B) local model.
+- **🛠️ Developer tooling**
+  - The Sedge Landing baseline harness gained a `summary` profile (exercises the digest prompt) and per-profile `settleMs`, so a profile with async drainers can wait longer without slowing the others.
 
 ---
 
@@ -85,7 +93,7 @@ _No changes yet — this is the next line, for work after 2.0.1._
 - **👤 User-facing**
   - **New World / Entity / Dictionary no longer leave a blank behind.** Clicking **New** used to immediately save an empty entry, so backing out of the editor without saving left a stray "New World"/"New Character"/"New Dictionary" in your library. Now **New** opens the editor on an in-memory draft and nothing is stored until you **Save** — cancel and it's gone.
   - **Gameplay no longer edits your world.** Playing a world used to quietly drift its authored stat values (and, briefly, its dictionary order/toggles) into the saved world — so opening **Edit World** mid-run showed changed values and a "dirty" state you hadn't touched, and saving there baked playthrough state into the world. Now the world changes only when you edit it in the World Editor and Save; per-run state stays with the save file.
-  - **Re-generate & rollback work on imported v1.2 saves.** Old (1.2) saves stored their per-turn history one slot short and left each turn's traits keyed to the old format, so after loading one, rolling back or re-generating landed on the wrong turn and traits stopped reaching the AI. Loading a 1.2 save now realigns that history and upgrades the traits. (The very first turn's snapshot was never stored, so rolling back to it restores the state from one turn later — every other turn is exact.)
+  - **Re-generate & rollback work on imported v1.2 saves.** Old (1.2) saves stored their per-turn history one slot short, so after loading one, rolling back or re-generating landed on the wrong turn. Loading a 1.2 save now realigns that history. (The very first turn of a 1.2 save still can't be rolled back — its snapshot was never stored — but every later turn works.)
   - The world-browser autocomplete dropdowns no longer close when you click their scrollbar, and the Hidden popover's dropdown now scrolls with the mouse wheel.
   - Image Gen polish: the booru tag prompt no longer emits PascalCase / underscored tags the model can't use; the Settings → System Prompts tab is no longer pushed out of place by the Image Gen tab; and generated / imported images are no longer silently optimized without asking first.
   - **Toasts follow the theme** — pop-up notifications were hardcoded to the dark theme, so they stayed dark-on-light in the new Light / System modes; they now track the resolved light/dark theme, and their success / error / warning accents come from the app's color tokens.
