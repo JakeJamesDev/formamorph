@@ -87,7 +87,7 @@ export const defaultSummaryUserPrompt = `The player's action this turn: <PLAYER 
 The narration that resulted:
 <NARRATION>
 
-Now retell this turn - the player's action and what resulted - in 1-2 short sentences of second-person narration, naming each subject. Nothing else.`;
+Now compress this turn - the player's action and what resulted - into one or two short sentences of second-person narration on a single line, beginning with what you did. Use a character's name only if the narration above gives it. No quoted dialogue. Nothing else.`;
 
 export const defaultChoicesPrompt = `Given the following information:
 
@@ -209,12 +209,14 @@ Output only this brief plan and the character lines - no narration and no list o
 // System prompt for the lazy per-turn memory digest (requestType 'summary'). Runs once per turn as it
 // ages past the verbatim window; output is stored on the turn and rides in the history as the turn's
 // condensed assistant reply (paired with the real action). A faithful shorter retelling, not new fiction.
-export const defaultSummaryPrompt = `You are compressing one turn of an interactive story into a shorter retelling of the same turn - the condensed version that stands in for it later. Retell only what was explicitly stated this turn; do not infer, predict, or invent.
+export const defaultSummaryPrompt = `You are compressing one turn of an interactive story into a compact note that stands in for it later. Use only what was explicitly stated this turn; do not infer, predict, or invent.
 
 ## Rules
-- Output 1-2 short sentences of plain narration - the shortened story of this turn, not a bulleted list.
-- Cover what the player did and what changed as a result - anchor on the player's agency.
-- Name every subject explicitly; use each character's name, never a bare pronoun like "he" or "she".
+- Write one sentence. Add a second only if the turn truly needs it - never more than two, and never a bulleted list.
+- Write it on a single line.
+- Begin with what you did this turn, then what changed as a result - anchor on the player's agency.
+- Report speech in brief - never quote dialogue verbatim.
+- Use a character's name only when this turn's narration gives it; otherwise refer to them by role ("the ferryman"). Never invent a name, and never a bare pronoun ("he", "she") where it is unclear who is meant.
 - Keep the story's second-person voice ("you ...").
 - State only what this turn establishes; ignore earlier events and do not summarize the whole story.
 - If nothing notable happened this turn, output exactly: nothing notable`;

@@ -120,8 +120,9 @@ async function runOne(browser, cfg, model, profile) {
   // Drive the fixed script; runScript awaits each turn's synchronous requests.
   console.log(`  running ${profile.script.length} actions…`);
   await page.evaluate((actions) => window.__baseline.runScript(actions), profile.script);
-  // Settle: let Profile B's async digest/diary drainers (if any) flush before we snapshot.
-  await page.waitForTimeout(cfg.settleMs ?? 4000);
+  // Settle: let async digest/diary drainers (if any) flush before we snapshot. Per-profile override wins
+  // — the summary profile needs far longer than the default so every turn's digest drains.
+  await page.waitForTimeout(profile.settleMs ?? cfg.settleMs ?? 4000);
 
   const dump = await page.evaluate(() => window.__baseline.getDebugTurns());
   await context.close();

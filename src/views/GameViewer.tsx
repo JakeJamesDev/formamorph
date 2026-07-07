@@ -551,7 +551,13 @@ const GameViewer = ({
 
   const handleRegenerate = () => {
     if (!canRegenerate(currentPage, totalPages)) return;
-    const previousState = regenerateState(gameStates, initialStateRef.current, currentPage);
+    // Re-generating the opening turn (page 1) restores the pre-game state, not a gameStates entry. On a
+    // loaded save that snapshot was never captured (initialStateRef is only set during a live first turn),
+    // so reconstruct a pre-opening baseline from the current state with its history emptied — re-sending
+    // START GAME from there re-captures initialStateRef and regenerates the opening.
+    const previousState =
+      regenerateState(gameStates, initialStateRef.current, currentPage) ??
+      (currentPage === 1 ? { ...saveCurrentGameState(), fullMessageHistory: [] } : null);
     const action = lastTurnAction(fullMessageHistory);
     if (!previousState || action === null) return;
     loadGameState(previousState, locations);
