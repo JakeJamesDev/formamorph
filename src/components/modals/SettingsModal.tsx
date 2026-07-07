@@ -681,29 +681,31 @@ export const SettingsModal = ({ isOpen, onOpenChange, previewValues }: {
             </div>
           </TabsContent>
 
-          <TabsContent value="endpoint" className="py-4 px-2 flex-1 min-h-0 overflow-y-auto">
-            <div className="grid gap-4">
-              <div className="grid grid-cols-[1fr_3fr] items-center gap-4">
-                <label htmlFor="useCustomEndpoint" className="text-right">
-                  {desktop ? 'Use My Own Endpoint' : 'Use Custom Endpoint'}
-                </label>
-                <div className="flex items-center gap-3">
-                  <Checkbox
-                    id="useCustomEndpoint"
-                    checked={useCustomEndpoint}
-                    onCheckedChange={(c) => setUseCustomEndpoint(c === true)}
-                  />
-                  {desktop && !useCustomEndpoint && (
-                    <span className="text-xs text-muted-foreground">Off: run a model on this PC. On: point at your own API.</span>
-                  )}
-                </div>
+          <TabsContent value="endpoint" className="px-2 flex-1 min-h-0 data-[state=active]:flex flex-col">
+            {/* Toggle — a fixed header above the scrolling settings. */}
+            <div className="shrink-0 grid grid-cols-[1fr_3fr] items-center gap-4 py-4">
+              <label htmlFor="useCustomEndpoint" className="text-right">
+                {desktop ? 'Use My Own Endpoint' : 'Use Custom Endpoint'}
+              </label>
+              <div className="flex items-center gap-3">
+                <Checkbox
+                  id="useCustomEndpoint"
+                  checked={useCustomEndpoint}
+                  onCheckedChange={(c) => setUseCustomEndpoint(c === true)}
+                />
+                {desktop && !useCustomEndpoint && (
+                  <span className="text-xs text-muted-foreground">Off: run a model on this PC. On: point at your own API.</span>
+                )}
               </div>
+            </div>
 
-              {/* Desktop + local model: show model + runtime settings instead of endpoint fields. */}
-              {desktop && !useCustomEndpoint ? (
-                <LocalModelPanel />
-              ) : (
-              <>
+            {/* Desktop + local model: model + runtime settings (with their own pinned footer). Otherwise the
+                scrollable endpoint fields. */}
+            {desktop && !useCustomEndpoint ? (
+              <LocalModelPanel />
+            ) : (
+              <div className="flex-1 min-h-0 overflow-y-auto pb-4">
+                <div className="grid gap-4">
               <div className="grid grid-cols-[1fr_3fr] items-center gap-4">
                 <label htmlFor="endpointUrl" className="text-right">
                   Endpoint URL
@@ -793,9 +795,9 @@ export const SettingsModal = ({ isOpen, onOpenChange, previewValues }: {
                   </Button>
                 </ConfirmDialog>
               </div>
-              </>
-              )}
-            </div>
+                </div>
+              </div>
+            )}
           </TabsContent>
 
           <TabsContent value="image" className="py-4 px-2 flex-1 min-h-0 data-[state=active]:flex flex-col">

@@ -218,6 +218,8 @@ const GameViewer = ({
     genTemperature,
     genTopP,
     genRepetitionPenalty,
+    genTopK,
+    genMinP,
     systemPrompt,
     choicesPrompt,
     statUpdatesPrompt,
@@ -1585,6 +1587,8 @@ ${playerNotes || NONE_PLACEHOLDER}
           ...(localModelActive && {
             temperature: genTemperature,
             top_p: genTopP,
+            top_k: genTopK,
+            min_p: genMinP,
             repetition_penalty: genRepetitionPenalty,
           }),
           // Single-paragraph stop, but not in inline-thinking mode — the <think> block needs newlines.

@@ -30,6 +30,10 @@ export const DEFAULT_LOCAL_FLASH_ATTENTION = false;
 export const DEFAULT_GEN_TEMPERATURE = 0.7;
 export const DEFAULT_GEN_TOP_P = 0.9;
 export const DEFAULT_GEN_REPETITION_PENALTY = 1.1;
+// Match node-llama-cpp's own sampler defaults (topK 40, minP 0 = disabled) so exposing these changes
+// nothing until the user moves them. See LlamaContext._resolveSamplerConfig.
+export const DEFAULT_GEN_TOP_K = 40;
+export const DEFAULT_GEN_MIN_P = 0;
 
 // Image generation defaults. There's no shared hosted image server, so these describe a local
 // A1111/Forge instance the user runs. Neutral fallbacks keep the built exe generic.

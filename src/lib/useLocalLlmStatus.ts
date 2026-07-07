@@ -6,7 +6,7 @@ import {
   type LocalLlmState,
 } from '@/lib/imageGen/desktop';
 
-const STOPPED: LocalLlmState = { status: 'stopped', modelPath: null, modelId: null, port: null, error: null };
+const STOPPED: LocalLlmState = { status: 'stopped', modelPath: null, modelId: null, port: null, error: null, contextSize: null, gpuLayers: null, flashAttention: null };
 
 /**
  * Live status of the desktop local-LLM engine. Reads the current state once on mount, then updates from

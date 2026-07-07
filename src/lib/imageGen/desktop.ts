@@ -33,6 +33,13 @@ export interface LocalPartial {
   received: number;
 }
 
+/** An installed GGUF in the models folder (any source, not just our downloader). */
+export interface LocalInstalledModel {
+  fileName: string;
+  /** On-disk size in bytes. */
+  size: number;
+}
+
 /** Thrown message the downloader uses when a download is paused (user aborted). Not a real error. */
 export const DOWNLOAD_PAUSED = 'DOWNLOAD_PAUSED';
 
@@ -47,6 +54,11 @@ export interface LocalLlmState {
   port: number | null;
   /** Error message when status is 'error'. */
   error: string | null;
+  /** Options the loaded model was loaded with (null when no model is loaded) — lets the UI tell whether
+   *  pending settings differ from what's actually applied. */
+  contextSize: number | null;
+  gpuLayers: number | null;
+  flashAttention: boolean | null;
 }
 
 declare global {
@@ -66,6 +78,8 @@ declare global {
         onStatus: (cb: (state: LocalLlmState) => void) => () => void;
         /** Installed GGUF filenames in the models folder. */
         listModels: () => Promise<string[]>;
+        /** Installed GGUFs with their on-disk sizes. */
+        listInstalled: () => Promise<LocalInstalledModel[]>;
         /** Load an installed model by filename. */
         load: (fileName: string) => Promise<LocalLlmState>;
         /** Set engine load options (context size / GPU layers / flash attention); reloads if changed. */
@@ -139,6 +153,9 @@ export function subscribeLocalLlm(cb: (state: LocalLlmState) => void): () => voi
 
 /** Installed GGUF filenames in the models folder. */
 export const listLocalModels = (): Promise<string[]> => requireLlm().listModels();
+
+/** Installed GGUFs with their on-disk sizes (any source, not just our downloader). */
+export const listLocalInstalled = (): Promise<LocalInstalledModel[]> => requireLlm().listInstalled();
 
 /** Load an installed model by filename; resolves with the engine state. */
 export const loadLocalModel = (fileName: string): Promise<LocalLlmState> => requireLlm().load(fileName);
