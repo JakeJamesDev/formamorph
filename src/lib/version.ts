@@ -40,13 +40,18 @@ function renameItemDescriptions(items: unknown): unknown {
   );
 }
 
-/** Rename a trait's single legacy `description` to `playerDescription` (idempotent, prefers existing). */
+/** Copy a trait's single legacy `description` — which v1.2 showed to both player and AI — into both
+ *  `playerDescription` and `aiDescription` (idempotent, prefers an already-present new key). */
 function renameTraitDescriptions(items: unknown): unknown {
   if (!Array.isArray(items)) return items;
   return items.map((it) => {
     if (!it || typeof it !== 'object' || !('description' in it)) return it;
     const { description, ...rest } = it as Record<string, unknown>;
-    return { ...rest, playerDescription: rest.playerDescription ?? description };
+    return {
+      ...rest,
+      playerDescription: rest.playerDescription ?? description,
+      aiDescription: rest.aiDescription ?? description,
+    };
   });
 }
 
@@ -98,7 +103,7 @@ export function migrateWorld(raw: unknown): World {
   if (Array.isArray(world.entities)) world.entities = renameItemDescriptions(world.entities);
   if (Array.isArray(world.locations)) world.locations = renameItemDescriptions(world.locations);
 
-  // v1.2 traits had a single `description` (player-facing); rename to `playerDescription`.
+  // v1.2 traits had a single `description` read by both player and AI; copy it to both new keys.
   if (Array.isArray(world.traits)) world.traits = renameTraitDescriptions(world.traits);
 
   world.version = APP_VERSION;

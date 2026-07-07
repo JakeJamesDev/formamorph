@@ -91,12 +91,15 @@ describe('migrateWorld', () => {
     expect(out.locations?.[0]).toEqual({ playerDescription: 'lp', aiDescription: 'la' });
   });
 
-  it("renames a trait's legacy description to playerDescription", () => {
+  it("copies a trait's legacy description to both player and AI keys", () => {
     const out = migrateWorld({
       worldOverview: { name: 'W' },
       traits: [{ id: 't', name: 'Brave', description: 'Fearless.', statChanges: [] }],
-    }) as unknown as { traits?: { playerDescription?: string; description?: string }[] };
-    expect(out.traits?.[0]).toMatchObject({ playerDescription: 'Fearless.' });
+    }) as unknown as {
+      traits?: { playerDescription?: string; aiDescription?: string; description?: string }[];
+    };
+    // v1.2's single description was read by both player and AI, so both keys inherit it.
+    expect(out.traits?.[0]).toMatchObject({ playerDescription: 'Fearless.', aiDescription: 'Fearless.' });
     expect(out.traits?.[0].description).toBeUndefined();
   });
 
