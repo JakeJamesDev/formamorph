@@ -6,7 +6,7 @@ import 'react-toastify/dist/ReactToastify.css';
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {ConfirmDialog} from "@/components/ConfirmDialog";
-import {FilePlus2, DoorOpen, Pencil, Github, AlertTriangle, Code, User, LogIn, LogOut, Import, Globe, Settings, LayoutGrid, GalleryThumbnails, Columns2, RectangleVertical, Menu, Earth, BookOpen, Upload } from "lucide-react";
+import {FilePlus2, DoorOpen, Pencil, Github, AlertTriangle, Code, User, LogIn, Import, Globe, Settings, LayoutGrid, GalleryThumbnails, Columns2, RectangleVertical, Menu, Earth, BookOpen, Upload } from "lucide-react";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { ImageZoomViewer } from "@/components/ImageZoomViewer";
 import { cn } from "@/lib/utils";
@@ -785,19 +785,6 @@ const MainMenu = ({ onStartGame, onOpenWorldEditor }: MainMenuProps) => {
         <Import className="mr-2 h-4 w-4" /> Import {cardNoun}
       </Button>
 
-      {COMMUNITY_ENABLED && (
-        <Button
-          className="bg-gradient-to-r from-purple-200 to-pink-200 hover:from-purple-300 hover:to-pink-300 text-black font-bold"
-          onClick={() => isAuthenticated ? handleLogout() : setShowAuthDialog(true)}
-        >
-          {isAuthenticated ? (
-            <><LogOut className="mr-2 h-4 w-4" /> Sign Out</>
-          ) : (
-            <><LogIn className="mr-2 h-4 w-4" /> Login</>
-          )}
-        </Button>
-      )}
-
       {isAuthenticated && currentUser?.accountType === "admin" && (
         <Button
           className="bg-gradient-to-r from-purple-200 to-pink-200 hover:from-purple-300 hover:to-pink-300 text-black font-bold"
@@ -826,10 +813,27 @@ const MainMenu = ({ onStartGame, onOpenWorldEditor }: MainMenuProps) => {
       {downscaleDialog}
       <ThemedToastContainer />
 
-      {/* App version (derived from package.json) */}
-      <span className="fixed bottom-2 left-2 z-10 text-xs text-muted-foreground/60 select-none pointer-events-none">
-        v{APP_VERSION}
-      </span>
+      {/* Bottom-left: user profile circle + app version to its right (version derived from package.json) */}
+      <div className="fixed bottom-4 left-4 z-10 flex items-center gap-2">
+        {COMMUNITY_ENABLED && (
+          <button
+            className="p-3 bg-secondary text-secondary-foreground rounded-full shadow-lg hover:bg-secondary/80 transition-colors"
+            onClick={() => isAuthenticated ? setShowProfileDialog(true) : setShowAuthDialog(true)}
+            aria-label={isAuthenticated ? "User Profile" : "Login"}
+          >
+            {isAuthenticated ? (
+              <div className="w-6 h-6 flex items-center justify-center font-semibold">
+                {getUserInitial()}
+              </div>
+            ) : (
+              <LogIn className="h-6 w-6" />
+            )}
+          </button>
+        )}
+        <span className="text-xs text-muted-foreground/60 select-none pointer-events-none">
+          v{APP_VERSION}
+        </span>
+      </div>
 
       {/* Copyright + origin credit (original is MIT — see THIRD-PARTY-NOTICES / legal/) */}
       <div className="fixed bottom-2 left-1/2 -translate-x-1/2 z-10 text-center text-xs text-muted-foreground/60 select-none pointer-events-none whitespace-nowrap leading-tight">
@@ -847,7 +851,7 @@ const MainMenu = ({ onStartGame, onOpenWorldEditor }: MainMenuProps) => {
         </div>
       </div>
 
-      {/* Top-left controls: card-type switcher + local-world layout selector (styled like the settings tabs) */}
+      {/* Top-left control: card-type switcher (styled like the settings tabs) */}
       <div className="fixed top-4 left-4 z-10 flex items-center gap-2">
         {/* Card-type switcher: text labels in landscape, icon-only in portrait. */}
         <Tabs value={cardType} onValueChange={(v) => setCardType(v as typeof cardType)}>
@@ -866,6 +870,10 @@ const MainMenu = ({ onStartGame, onOpenWorldEditor }: MainMenuProps) => {
             </TabsTrigger>
           </TabsList>
         </Tabs>
+      </div>
+
+      {/* Top-right controls: grid/detailed view toggle + settings (cog stays right-most) */}
+      <div className="fixed top-4 right-4 z-10 flex items-center gap-2">
         <Tabs value={layoutMode} onValueChange={(v) => setLayoutMode(v as 'grid' | 'detailed')}>
           <TabsList>
             <TabsTrigger value="grid" aria-label="Grid view" title="Grid view">
@@ -876,10 +884,6 @@ const MainMenu = ({ onStartGame, onOpenWorldEditor }: MainMenuProps) => {
             </TabsTrigger>
           </TabsList>
         </Tabs>
-      </div>
-
-      {/* Top-right controls: settings + user avatar */}
-      <div className="fixed top-4 right-4 z-10 flex items-center gap-2">
         <button
           className="p-3 bg-secondary text-secondary-foreground rounded-full shadow-lg hover:bg-secondary/80 transition-colors"
           onClick={() => setShowSettings(true)}
@@ -887,21 +891,6 @@ const MainMenu = ({ onStartGame, onOpenWorldEditor }: MainMenuProps) => {
         >
           <Settings className="h-6 w-6" />
         </button>
-        {COMMUNITY_ENABLED && (
-          <button
-            className="p-3 bg-secondary text-secondary-foreground rounded-full shadow-lg hover:bg-secondary/80 transition-colors"
-            onClick={() => isAuthenticated ? setShowProfileDialog(true) : setShowAuthDialog(true)}
-            aria-label={isAuthenticated ? "User Profile" : "Login"}
-          >
-            {isAuthenticated ? (
-              <div className="w-6 h-6 flex items-center justify-center font-semibold">
-                {getUserInitial()}
-              </div>
-            ) : (
-              <LogIn className="h-6 w-6" />
-            )}
-          </button>
-        )}
       </div>
 
       <SettingsModal isOpen={showSettings} onOpenChange={setShowSettings} />
