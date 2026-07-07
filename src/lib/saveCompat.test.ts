@@ -1,6 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import { isSaveEnvelope } from './version';
 import { parseNarration } from './aiResponse';
+import { realignLegacyStateHistory, rollbackState } from './turnHistory';
 
 // A compact but realistic v1.2 save envelope (top-level numeric `version: 2`, flat currentState + stateHistory,
 // a stat with a numeric-id descriptor, a legacy `game_text` assistant message, and NO discoveredEntities). Mirrors
@@ -74,6 +75,27 @@ describe('v1.2 save-load compatibility', () => {
     const narration = parseNarration(assistant!.content);
     expect(narration).toBe('You awaken in Magiterra Nova.\n\n\tNearby Characters:\n\t\tNone');
     expect(narration.startsWith('{')).toBe(false);
+  });
+});
+
+describe('v1.2 stateHistory realignment', () => {
+  // Mirrors loadGame's guard: a numeric `version` marks a legacy save whose stateHistory is realigned.
+  const loadStateHistory = (save: { version: string | number; stateHistory: unknown[] }) =>
+    typeof save.version === 'number'
+      ? realignLegacyStateHistory(save.stateHistory)
+      : save.stateHistory;
+
+  it('realigns a legacy (numeric-version) save so rollback maps pages to the right turn', () => {
+    // 3-turn v1.2 save: opening snapshot dropped, rest shifted (index i = turn i+2 snapshot).
+    const legacy = { version: 2, stateHistory: ['afterTurn2', 'afterTurn3'] };
+    const aligned = loadStateHistory(legacy);
+    expect(aligned).toEqual([null, 'afterTurn2', 'afterTurn3']);
+    expect(rollbackState(aligned, 2)).toBe('afterTurn2'); // page 2 → turn-2 snapshot, not turn-3
+  });
+
+  it('leaves a current (string-version) save untouched — including an already-realigned import', () => {
+    const current = { version: '2.0.1', stateHistory: [null, 'afterTurn2', 'afterTurn3'] };
+    expect(loadStateHistory(current)).toBe(current.stateHistory); // no double-prepend on re-save
   });
 });
 
