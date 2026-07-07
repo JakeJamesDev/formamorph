@@ -37,7 +37,9 @@ function SortableWorldCard({ world, onSelect, onDelete, layout, aspect = 'landsc
         style={style}
         {...attributes}
         {...listeners}
-        frameClassName="bg-card touch-none"
+        // content-visibility:auto lets the browser skip layout/paint for off-screen cards; the auto
+        // intrinsic-size reserves space (remembered after first paint) so scrolling stays stable.
+        frameClassName="bg-card touch-none [content-visibility:auto] [contain-intrinsic-size:auto_360px]"
         onClick={() => onSelect(world.id)}
         name={world.name}
         description={world.description}
@@ -69,7 +71,9 @@ function SortableWorldCard({ world, onSelect, onDelete, layout, aspect = 'landsc
       style={style}
       {...attributes}
       {...listeners}
-      className="relative cursor-pointer rounded-lg overflow-hidden hover:opacity-90 transition-opacity touch-none"
+      // content-visibility:auto skips layout/paint for off-screen tiles; the auto intrinsic-size reserves
+      // their height (remembered after first paint) so the scroll frame doesn't jump.
+      className="relative cursor-pointer rounded-lg overflow-hidden hover:opacity-90 transition-opacity touch-none [content-visibility:auto] [contain-intrinsic-size:auto_240px]"
       onClick={() => onSelect(world.id)}
     >
       {world.thumbnail ? (
