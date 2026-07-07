@@ -3,6 +3,7 @@ import { ThemeProvider } from "./components/theme-provider";
 import { GameDataProvider } from './contexts/GameDataContext';
 import { SettingsProvider } from './contexts/SettingsContext';
 import { GameplayProvider } from './contexts/GameplayContext';
+import { LocalEngineManager } from './components/LocalEngineManager';
 import GameViewer from './views/GameViewer';
 import WorldEditor from './views/WorldEditor';
 import MainMenu from './views/MainMenu';
@@ -44,6 +45,7 @@ function App() {
   return (
     <ThemeProvider defaultTheme="system" storageKey="vite-ui-theme">
       <SettingsProvider>
+        <LocalEngineManager />
         <GameDataProvider>
           {currentView === 'mainMenu' && (
             <MainMenu

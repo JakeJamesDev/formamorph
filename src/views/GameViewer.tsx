@@ -213,6 +213,11 @@ const GameViewer = ({
     activeModelName: modelName,
     activeMaxTokens: maxTokens,
     contextWindow,
+    localModelActive,
+    disableThinking,
+    genTemperature,
+    genTopP,
+    genRepetitionPenalty,
     systemPrompt,
     choicesPrompt,
     statUpdatesPrompt,
@@ -1535,6 +1540,10 @@ ${playerNotes || NONE_PLACEHOLDER}
     silent = false,
     attachTurnId?: string,
   ) => {
+    // Disable a reasoning model's scratchpad when requested — the `/no_think` soft switch (Qwen-style),
+    // appended to the system prompt so it applies to every request type (and shows in the AI-context viewer).
+    if (disableThinking) systemPrompt = `${systemPrompt}\n\n/no_think`;
+
     // Silent requests are only captured into the AI-context viewer when the inspection toggle is on.
     const captureSilent = silent && showSilentRequests && attachTurnId !== undefined;
     // Append a captured request payload onto the matching debug turn (the current turn for foreground
@@ -1572,6 +1581,12 @@ ${playerNotes || NONE_PLACEHOLDER}
           messages: [{ role: "system", content: systemPrompt }, ...messages],
           max_tokens: maxTokensOverride ?? maxTokens,
           stream: true,
+          // Sampling: applied to the local model only (leaves a custom endpoint's own defaults untouched).
+          ...(localModelActive && {
+            temperature: genTemperature,
+            top_p: genTopP,
+            repetition_penalty: genRepetitionPenalty,
+          }),
           // Single-paragraph stop, but not in inline-thinking mode — the <think> block needs newlines.
           ...(requestType === "narration" && paragraphLimit === "single" && thinkingMode !== "inline" && { stop: ["\n"] }),
         }),
@@ -1615,16 +1630,24 @@ ${playerNotes || NONE_PLACEHOLDER}
 
           // Handle different request types
           if (requestType === "narration") {
-            const display = stripReasoningLive(content);
+            // Trim leading whitespace so the streamed text matches the final `.trim()`'d commit — after a
+            // reasoning model's <think> block is stripped it leaves leading blank lines, and that shift
+            // otherwise makes the reveal re-animate every paragraph at the end.
+            const display = stripReasoningLive(content).replace(/^\s+/, '');
             // Split once per token; streaming TTS, the entity tab, and the reveal all read these.
             const segments = splitSentenceSegments(display);
             if (fadeRevealActive) {
-              // Track the model's word rate (cumulative average from the first token — inherently smooth)
-              // and feed the fade timing from it, so the reveal cadence tracks generation speed.
-              if (revealRateStartRef.current === null) revealRateStartRef.current = performance.now();
-              const elapsedMs = performance.now() - revealRateStartRef.current;
-              const wordCount = display.trim() ? display.trim().split(/\s+/).length : 0;
-              if (elapsedMs >= 120 && wordCount >= 3) setRevealTiming(flooredTiming(timingForWordRate(wordCount / (elapsedMs / 1000)), revealMinStagger, revealMinDuration));
+              // Track the model's word rate from the first *visible* narration token (not the first token
+              // overall) — a reasoning model spends its opening tokens on a hidden <think> block, and
+              // anchoring there would divide the narration words by the whole thinking time and badly
+              // under-estimate the rate, so the reveal crawls and finishes after choices. Feed the fade
+              // timing from the rate so the cadence tracks generation speed.
+              if (revealRateStartRef.current === null && display.trim()) revealRateStartRef.current = performance.now();
+              if (revealRateStartRef.current !== null) {
+                const elapsedMs = performance.now() - revealRateStartRef.current;
+                const wordCount = display.trim() ? display.trim().split(/\s+/).length : 0;
+                if (elapsedMs >= 120 && wordCount >= 3) setRevealTiming(flooredTiming(timingForWordRate(wordCount / (elapsedMs / 1000)), revealMinStagger, revealMinDuration));
+              }
               // Fade path: reveal only complete sentences (hold the in-progress trailing one); the pacer
               // releases each in turn, waiting for its fade before the next.
               fadeReveal.push(

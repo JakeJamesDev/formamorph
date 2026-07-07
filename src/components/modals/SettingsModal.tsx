@@ -3,6 +3,7 @@ import { useSettings, type ThinkingMode, type ParagraphLimit } from '@/contexts/
 import { DEFAULT_ENDPOINT, DEFAULT_API_TOKEN, DEFAULT_MODEL_NAME, DEFAULT_MAX_TOKENS, THEME_COLORS, FONT_OPTIONS, NARRATION_FONT_OPTIONS, DEFAULT_NARRATION_SCALE, DEFAULT_NARRATION_LINE_HEIGHT, type ThemeColor, type FontChoice, type NarrationFont } from '@/contexts/settingsDefaults';
 import { useTheme } from '../theme-provider';
 import { ThemePreviewButton } from '@/components/ThemePreviewDialog';
+import { LocalModelPanel } from '@/components/modals/LocalModelPanel';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { RevealAnimationDemoButton } from "@/components/RevealAnimationDemo";
@@ -684,16 +685,25 @@ export const SettingsModal = ({ isOpen, onOpenChange, previewValues }: {
             <div className="grid gap-4">
               <div className="grid grid-cols-[1fr_3fr] items-center gap-4">
                 <label htmlFor="useCustomEndpoint" className="text-right">
-                  Use Custom Endpoint
+                  {desktop ? 'Use My Own Endpoint' : 'Use Custom Endpoint'}
                 </label>
-                <div className="flex items-center">
+                <div className="flex items-center gap-3">
                   <Checkbox
                     id="useCustomEndpoint"
                     checked={useCustomEndpoint}
                     onCheckedChange={(c) => setUseCustomEndpoint(c === true)}
                   />
+                  {desktop && !useCustomEndpoint && (
+                    <span className="text-xs text-muted-foreground">Off: run a model on this PC. On: point at your own API.</span>
+                  )}
                 </div>
               </div>
+
+              {/* Desktop + local model: show model + runtime settings instead of endpoint fields. */}
+              {desktop && !useCustomEndpoint ? (
+                <LocalModelPanel />
+              ) : (
+              <>
               <div className="grid grid-cols-[1fr_3fr] items-center gap-4">
                 <label htmlFor="endpointUrl" className="text-right">
                   Endpoint URL
@@ -783,6 +793,8 @@ export const SettingsModal = ({ isOpen, onOpenChange, previewValues }: {
                   </Button>
                 </ConfirmDialog>
               </div>
+              </>
+              )}
             </div>
           </TabsContent>
 

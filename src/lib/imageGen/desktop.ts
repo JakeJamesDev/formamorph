@@ -14,6 +14,28 @@ export interface DesktopFetchResponse {
   body: string;
 }
 
+/** Progress of an in-flight model download (see electron/modelDownload.cjs). */
+export interface LocalDownloadProgress {
+  fileName: string;
+  /** Bytes received so far. */
+  received: number;
+  /** Total bytes (0 if the server didn't send content-length). */
+  total: number;
+  /** True on the final event, once the file is renamed into place. */
+  done: boolean;
+}
+
+/** A paused/interrupted download waiting to be resumed (its `.part` on disk). */
+export interface LocalPartial {
+  /** The target GGUF filename (without the `.part` suffix). */
+  fileName: string;
+  /** Bytes already on disk. */
+  received: number;
+}
+
+/** Thrown message the downloader uses when a download is paused (user aborted). Not a real error. */
+export const DOWNLOAD_PAUSED = 'DOWNLOAD_PAUSED';
+
 /** Serializable status of the desktop local-LLM engine (see electron/llmEngine.cjs). */
 export interface LocalLlmState {
   status: 'stopped' | 'loading' | 'ready' | 'error';
@@ -38,6 +60,28 @@ declare global {
         start: (opts: { modelPath: string; port?: number }) => Promise<LocalLlmState>;
         stop: () => Promise<LocalLlmState>;
         status: () => Promise<LocalLlmState>;
+        /** Absolute path of the folder where local GGUF models live (and downloads land). */
+        modelsDir: () => Promise<string>;
+        /** Subscribe to status changes (auto-start, loading, ready, error); returns an unsubscribe fn. */
+        onStatus: (cb: (state: LocalLlmState) => void) => () => void;
+        /** Installed GGUF filenames in the models folder. */
+        listModels: () => Promise<string[]>;
+        /** Load an installed model by filename. */
+        load: (fileName: string) => Promise<LocalLlmState>;
+        /** Set engine load options (context size / GPU layers / flash attention); reloads if changed. */
+        setOptions: (opts: { contextSize: number; gpuLayers: number; flashAttention: boolean }) => Promise<LocalLlmState>;
+        /** Download a GGUF from Hugging Face, then load it; resolves with the saved path. */
+        download: (opts: { url: string; fileName: string }) => Promise<{ path: string }>;
+        /** Cancel (pause) the in-flight download; its partial is kept for a later resume. */
+        cancelDownload: () => Promise<boolean>;
+        /** Partial downloads waiting to be resumed. */
+        listPartials: () => Promise<LocalPartial[]>;
+        /** Discard a partial download. */
+        discardPartial: (fileName: string) => Promise<boolean>;
+        /** Delete an installed model by filename. */
+        deleteModel: (fileName: string) => Promise<boolean>;
+        /** Subscribe to download progress; returns an unsubscribe fn. */
+        onDownloadProgress: (cb: (progress: LocalDownloadProgress) => void) => () => void;
       };
     };
   }
@@ -83,6 +127,47 @@ export const stopLocalLlm = (): Promise<LocalLlmState> => requireLlm().stop();
 
 /** Current local LLM engine status. */
 export const localLlmStatus = (): Promise<LocalLlmState> => requireLlm().status();
+
+/** Folder where local GGUF models live (and where downloads will land). */
+export const localLlmModelsDir = (): Promise<string> => requireLlm().modelsDir();
+
+/** Subscribe to engine status changes; returns an unsubscribe fn (a no-op off desktop). */
+export function subscribeLocalLlm(cb: (state: LocalLlmState) => void): () => void {
+  const llm = typeof window !== 'undefined' ? window.formamorphDesktop?.llm : undefined;
+  return llm?.onStatus ? llm.onStatus(cb) : () => {};
+}
+
+/** Installed GGUF filenames in the models folder. */
+export const listLocalModels = (): Promise<string[]> => requireLlm().listModels();
+
+/** Load an installed model by filename; resolves with the engine state. */
+export const loadLocalModel = (fileName: string): Promise<LocalLlmState> => requireLlm().load(fileName);
+
+/** Set engine load options (context size / GPU layers / flash attention); reloads if they changed. */
+export const setLocalLlmOptions = (opts: { contextSize: number; gpuLayers: number; flashAttention: boolean }): Promise<LocalLlmState> =>
+  requireLlm().setOptions(opts);
+
+/** Download a GGUF from Hugging Face and load it; resolves with the saved path. */
+export const downloadLocalModel = (opts: { url: string; fileName: string }): Promise<{ path: string }> =>
+  requireLlm().download(opts);
+
+/** Cancel (pause) the in-flight model download; the partial is kept for a later resume. */
+export const cancelLocalDownload = (): Promise<boolean> => requireLlm().cancelDownload();
+
+/** Partial downloads waiting to be resumed (empty off desktop). */
+export const listLocalPartials = (): Promise<LocalPartial[]> => requireLlm().listPartials();
+
+/** Discard a partial download by its target filename. */
+export const discardLocalPartial = (fileName: string): Promise<boolean> => requireLlm().discardPartial(fileName);
+
+/** Delete an installed model by filename. */
+export const deleteLocalModel = (fileName: string): Promise<boolean> => requireLlm().deleteModel(fileName);
+
+/** Subscribe to download progress; returns an unsubscribe fn (a no-op off desktop). */
+export function subscribeLocalDownload(cb: (progress: LocalDownloadProgress) => void): () => void {
+  const llm = typeof window !== 'undefined' ? window.formamorphDesktop?.llm : undefined;
+  return llm?.onDownloadProgress ? llm.onDownloadProgress(cb) : () => {};
+}
 
 /** Full chat-completions URL for the running local model (the app uses the endpoint verbatim, like the
  *  default `…/v1/chat/completions`), or null when not ready. */

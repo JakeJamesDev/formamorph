@@ -1,16 +1,35 @@
 // Built-in endpoint defaults, used when "Use Custom Endpoint" is off. Each honors its VITE_DEFAULT_* override.
 // Kept out of SettingsContext so that file only exports components/hooks (react-refresh).
 import { isDesktop, DEFAULT_LOCAL_LLM_ENDPOINT } from '@/lib/imageGen/desktop';
-// A VITE_DEFAULT_ENDPOINT override wins everywhere; otherwise the desktop build defaults to the bundled
-// local LLM engine and the web build to the hosted endpoint.
-export const DEFAULT_ENDPOINT = import.meta.env.VITE_DEFAULT_ENDPOINT
-  || (isDesktop() ? DEFAULT_LOCAL_LLM_ENDPOINT : 'https://api.lyonade.net/v1/chat/completions');
+// Desktop always defaults to the bundled local engine — VITE_DEFAULT_ENDPOINT is a web/cloud default and
+// is deliberately ignored there (so a .env.local set for web testing doesn't leak into desktop builds).
+// The web build uses the override when set, else the hosted endpoint.
+export const DEFAULT_ENDPOINT = isDesktop()
+  ? DEFAULT_LOCAL_LLM_ENDPOINT
+  : (import.meta.env.VITE_DEFAULT_ENDPOINT || 'https://api.lyonade.net/v1/chat/completions');
 export const DEFAULT_API_TOKEN = import.meta.env.VITE_DEFAULT_API_TOKEN || '';
 export const DEFAULT_MODEL_NAME = import.meta.env.VITE_DEFAULT_MODEL_NAME || 'default';
 export const DEFAULT_MAX_TOKENS = parseInt(import.meta.env.VITE_DEFAULT_MAX_TOKENS) || 1024;
 // 10750 matches the default endpoint's reported max_model_len (api.lyonade.net), so the locked
 // value while "Use Custom Endpoint" is off reflects that endpoint's real limit.
 export const DEFAULT_CONTEXT_WINDOW = parseInt(import.meta.env.VITE_DEFAULT_CONTEXT_WINDOW) || 10750;
+
+// Desktop bundled-model runtime (used only when the local engine is active). Context size doubles as the
+// engine's KV-cache budget (VRAM) and the app's prompt window. GPU layers: null = auto-offload all that
+// fit, 0 = CPU-only, N = that many layers. Flash attention trades a little compatibility for less KV-cache
+// VRAM + speed. Defaults match engineOptions in electron/main.cjs so no needless reload on boot.
+export const DEFAULT_LOCAL_CONTEXT_SIZE = 8192;
+// GPU layers as a plain count: 0 = CPU-only, up to LOCAL_GPU_LAYERS_MAX = offload everything (llama.cpp
+// clamps to the model's real layer count). Default = full offload.
+export const LOCAL_GPU_LAYERS_MAX = 64;
+export const DEFAULT_LOCAL_GPU_LAYERS = LOCAL_GPU_LAYERS_MAX;
+export const DEFAULT_LOCAL_FLASH_ATTENTION = false;
+
+// Generation sampling for the local model (sent while the local engine is active). Concrete defaults so
+// the sliders always show a sensible value rather than a confusing blank.
+export const DEFAULT_GEN_TEMPERATURE = 0.7;
+export const DEFAULT_GEN_TOP_P = 0.9;
+export const DEFAULT_GEN_REPETITION_PENALTY = 1.1;
 
 // Image generation defaults. There's no shared hosted image server, so these describe a local
 // A1111/Forge instance the user runs. Neutral fallbacks keep the built exe generic.
