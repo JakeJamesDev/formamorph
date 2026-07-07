@@ -2,23 +2,33 @@
 
 All notable changes to Formamorph. This fork's first line is **2.0.0** — a full TypeScript rebuild of the upstream JavaScript app ([FieryLionite's Formamorph](https://fierylion.itch.io/formamorph), ~v1.2) — with feature parity as the baseline plus new features on top.
 
-> ✅ **2.0.0 is released** (collapsed below). **2.0.1 is the current living line** — entries accumulate here as work lands; when its version is bumped, that marks it going live.
+> ✅ **2.0.0 and 2.0.1 are released** (collapsed below). **2.0.2 is the current living line** — `package.json` tracks the version currently in development, and entries accumulate under it as work lands. Shipping a line means tagging `v<version>`, marking its section **Released**, and opening the next one.
 
 Each release groups changes as **Major** / **Minor**, then **Added** / **Removed** / **Fixed**, and within those by audience: 👤 user-facing · 🛠️ developer tooling · ⚙️ backend / invisible.
 
 ---
 
-## 🚧 2.0.1 — In development
+## 🚧 2.0.2 — In development
+
+_No changes yet — this is the next line, for work after 2.0.1._
+
+---
+
+<details>
+<summary><strong>✅ 2.0.1 — Released</strong> — local LLM engine, AI image generation, dictionaries & character cards, themes, and more (click to expand)</summary>
 
 ### Major Changes
 
 #### ➕ Added
 
 - **👤 User-facing**
+  - **Run a model locally — no endpoint needed (desktop)** — the **desktop app** can now run an LLM entirely on your own machine, so no LM Studio / Ollama / cloud API is required. A bundled engine (**node-llama-cpp**) loads a **GGUF** model and serves it on a local OpenAI-compatible endpoint the app targets by default; flip **Use My Own Endpoint** on to point at a custom/cloud API instead. A **model manager** (Settings → Endpoint → **Manage models…**) has two tabs: **Recommended** — a curated catalog of community roleplay models grouped by the **VRAM tier** they fit (**≤4 GB · ≤8 GB · ≤16 GB · No Limit**, auto-selected from your detected GPU), each downloadable straight from **Hugging Face** with a live progress bar and **pause / resume** (a paused download survives closing the app); and **Installed** — every GGUF in your models folder, reorderable, with one-click **Load / Unload** and a confirm-first **Delete**. Runtime controls sit in the Endpoint tab behind a **Simple / Advanced** toggle: **Context Size**, **GPU** (a simple on/off, or an exact layer count in Advanced), **Flash Attention**, and sampling — **Temperature**, **Max Output Tokens**, **Top-p**, **Top-K**, **Min-P**, **Repetition Penalty** — beside a live **GPU memory** readout and engine status. Models are saved **next to the app** (portable — not buried in AppData), and it's cross-platform (Windows / macOS / Linux).
   - **AI image generation** — generate images for entities, locations, and world thumbnails right in the World Editor. A **Generate with AI** button drafts an SD-style prompt from the subject's description (via your text model), lets you tweak it, and renders through your configured image provider. Providers: a **local A1111 / Forge** server, and — in the **desktop app** — an **OpenAI-compatible cloud** image API (proxied through Electron to sidestep browser CORS). Prompts are LLM-refined into stripped **danbooru / booru tags** via an editable **Tag Prompt** (with a `<SUBJECT>` chip, Settings → Image Gen), plus a **positive-prompt prefix** for quality/style tags. Characters render at **portrait** dimensions, locations & thumbnails at **landscape**. Settings live in named, editable **endpoint presets** (a "Default" plus your own), switchable in Settings and from the generate popup. For A1111: an **ADetailer** face/hand-fix toggle and a live **progress bar + in-progress preview** while it renders.
 - **🛠️ Developer tooling**
+  - **Local LLM engine** — `electron/llmEngine.cjs` dynamic-imports **node-llama-cpp** (ESM) from the CommonJS main process, loads a GGUF, and serves a minimal OpenAI-compatible chat-completions endpoint (streaming + non-streaming) on `127.0.0.1`. It reconstructs the model's *raw* output — re-wrapping reasoning `<think>` segments via `onResponseChunk` — so structured aux requests (choices / stats / location) don't come back empty on models that segment their scratchpad. The renderer drives it over an IPC bridge (`window.formamorphDesktop.llm`): start/stop/load, status pushes, installed-model + partial-download listing, engine options (context / GPU layers / flash attention) with reload-on-change, and a **Hugging-Face-only downloader** (`electron/modelDownload.cjs`) using `.part` temp files, HTTP **Range resume**, and cancel. The catalog + VRAM tiers live in `src/lib/localModels.ts` (filenames/sizes verified against the HF API; reasoning models deliberately excluded for now). All of it is gated on `isDesktop()` and tree-shaken from the web build.
   - **Linux & macOS desktop builds** — electron-builder now targets **AppImage** (Linux) and **dmg** (macOS) beside the Windows portable exe (`desktop:build:linux` / `desktop:build:mac`). A **release workflow** builds all three from one `v*` tag (a Windows / Linux / macOS matrix) and attaches them to the GitHub Release.
   - **Hosted browser build on GitHub Pages** — deploys on every push to `main`, with the community-server features (**Discover, login, publish**) disabled in that build (`VITE_ENABLE_COMMUNITY=false`) so nothing unmoderated is surfaced by default. Play it at **[jakejamesdev.github.io/formamorph](https://jakejamesdev.github.io/formamorph/)**.
+  - **Web build release artifact** — tagging a `v*` release also produces a `formamorph-web-<tag>.zip` (a full, community-enabled browser build) attached to the GitHub Release, ready to drop onto itch.io or your own host.
 
 #### 🐛 Fixed
 
@@ -48,6 +58,13 @@ Each release groups changes as **Major** / **Minor**, then **Added** / **Removed
   - **Choose dictionaries when you start a world** — a new step in the enter-world flow (after location, before avatar customization) lists the world's own dictionaries on top and your downloaded library below, each with a drag handle, an enable/disable checkbox, its description, and an *enabled/total* entry count. Reorder and toggle any of them — world-authored included — to set exactly which lore applies and in what order for this playthrough; enabling a library dictionary pulls in a fresh copy. Your choice is saved with the game, so reloading keeps it. The step is skipped when there's nothing to choose (a single-book world with an empty library).
   - **Character cards — share a character as an image** — a single character now exports to a shareable **WebP** whose picture *is* the character's portrait and whose text (name, descriptions, summary, type, image tags) rides along invisibly inside the image, the way other games do character cards. In the World Editor, **Download &lt;name&gt;** on a selected entity saves the card; drop that `.webp` back in via the new main-menu **Entities** tab and the character returns with its portrait and every field intact (the image itself becomes the portrait — no duplicate stored). The **Entities** tab is a local **library** of characters you **New**, **Import**, edit in a full editor, reorder, and delete — separate from any world; **Add Character** in the World Editor pulls copies of one or more of them into the world (multi-select), each an independent copy. A character with no picture still exports, using a generated placeholder. Importing a world, save, dictionary, or a plain non-card image shows a clear message.
   - **Import SillyTavern characters** — the Entities **Import** also reads **SillyTavern / Character-Card PNGs** (the `ccv3`/`chara` embedded-card format). It brings across the picture and the name plus description + personality + scenario (folded into the AI-facing description, with `{{char}}` → the character's name and `{{user}}` → "the player"); the chat-only fields (greeting, example dialogue, jailbreak prompts) are skipped as they have no place in a world character. If the card carries its own lorebook, you're asked whether to add it to your dictionary library too.
+  - **Sign in & publish from the desktop app** — the desktop build no longer blocks logging into the community server or publishing a world; that guard is gone now that v2 is the standard.
+  - **Selectable app font** — Settings → Presentation gains a **Font** picker that restyles the whole app's typeface.
+  - **Live theme preview** — a **Preview** popup (Settings → Presentation) shows every theme color token with a label and color picker, laid out across the real widgets the app uses — checkboxes, tabs, draggable tags, a multiselect, a reorderable list, circle buttons, a sample card — so you can eyeball a palette on actual UI before committing. It's a viewer; nothing is saved.
+  - **Cards stand out** — each theme now gives the **card** surface its own shade distinct from the page background, so world / entity / dictionary cards read as raised panels instead of blending in. Community & main-menu **tags** also recolor with the theme (they were stuck blue).
+  - **Animated stat changes** — in-game stat bars now *show* a change instead of only printing a number: a gain grows a **green** band and a loss a **red** band spanning the previous ↔ current value, the ±delta text fades in and out, and the colors drain away at the start of the next turn.
+  - **"Move Automatically"** — the auto-move setting (Settings → Generation) is renamed from *Location Moves* to **Move Automatically**, and now resolves the move **up front** so the narration is written already in the new place rather than describing a move that hasn't happened yet.
+  - **Narration reveal animation** — the streamed-text reveal is a configurable animation (fade / scale / blur / slide, its pace tracking how fast the model generates), tuned in Settings → Presentation with a live demo.
 - **🛠️ Developer tooling**
   - **Env-seeded image defaults** — the whole Image Gen setup (provider, endpoint, dimensions, ADetailer, and multiple named presets via `VITE_DEFAULT_IMAGE_PRESETS`) can be seeded from `.env.local`.
   - **Unified app icon** — one source icon (`public/icon.png`) is now both the browser-tab favicon and the desktop app icon (electron-builder converts it per-platform), replacing the default Vite / Electron icons.
@@ -71,6 +88,9 @@ Each release groups changes as **Major** / **Minor**, then **Added** / **Removed
   - The world-browser autocomplete dropdowns no longer close when you click their scrollbar, and the Hidden popover's dropdown now scrolls with the mouse wheel.
   - Image Gen polish: the booru tag prompt no longer emits PascalCase / underscored tags the model can't use; the Settings → System Prompts tab is no longer pushed out of place by the Image Gen tab; and generated / imported images are no longer silently optimized without asking first.
   - **Toasts follow the theme** — pop-up notifications were hardcoded to the dark theme, so they stayed dark-on-light in the new Light / System modes; they now track the resolved light/dark theme, and their success / error / warning accents come from the app's color tokens.
+  - **Streaming narration reveal fixes** — the character-by-character reveal no longer re-animates every paragraph at the end of a response, no longer stalls at the start, and its pacing now tracks the true generation rate (bugs that surfaced with reasoning models and the local engine). A stray **"0"** could also flash where a stat change of exactly zero was rendered — zero-changes now show nothing at all.
+
+</details>
 
 ---
 
