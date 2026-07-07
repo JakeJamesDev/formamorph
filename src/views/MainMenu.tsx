@@ -809,110 +809,82 @@ const MainMenu = ({ onStartGame, onOpenWorldEditor }: MainMenuProps) => {
   }
 
   return (
-    <div className="container mx-auto px-4 py-6 relative flex flex-col h-screen overflow-hidden">
+    <div className="pt-20 relative flex flex-col h-screen overflow-hidden">
       {downscaleDialog}
       <ThemedToastContainer />
 
-      {/* Bottom-left: user profile circle + app version to its right (version derived from package.json) */}
-      <div className="fixed bottom-4 left-4 z-10 flex items-center gap-2">
-        {COMMUNITY_ENABLED && (
+      {/* Top control bar: card-type switcher (left) + action buttons/hamburger (center) + view toggle &
+          settings (right). items-center keeps every control on the settings cog's centerline (the cog is
+          tallest). The side cells are equal flex-1 so the center section sits at true viewport-center when
+          there's room; it only shifts/wraps once the sides can't yield more space. */}
+      <div className="fixed top-4 left-4 right-4 z-10 flex items-center gap-2">
+        {/* Card-type switcher: text labels at >=1040px, icon-only below — collapsing it (not the action
+            buttons) reclaims the width so the centered buttons keep their labels longer. Portrait is always
+            below the threshold, so it stays icon-only as before. No min-w-0: the cell keeps its real width
+            so it never overflows onto the centered buttons — it pushes them. */}
+        <div className="flex-1 flex items-center justify-start">
+          <Tabs value={cardType} onValueChange={(v) => setCardType(v as typeof cardType)}>
+            <TabsList>
+              <TabsTrigger value="worlds" aria-label="Worlds" title="Worlds">
+                <Earth className="h-5 w-5 min-[1040px]:hidden" />
+                <span className="hidden min-[1040px]:inline">Worlds</span>
+              </TabsTrigger>
+              <TabsTrigger value="entities" aria-label="Entities" title="Entities">
+                <User className="h-5 w-5 min-[1040px]:hidden" />
+                <span className="hidden min-[1040px]:inline">Entities</span>
+              </TabsTrigger>
+              <TabsTrigger value="dictionaries" aria-label="Dictionaries" title="Dictionaries">
+                <BookOpen className="h-5 w-5 min-[1040px]:hidden" />
+                <span className="hidden min-[1040px]:inline">Dictionaries</span>
+              </TabsTrigger>
+            </TabsList>
+          </Tabs>
+        </div>
+
+        {/* Action buttons — full row in landscape, collapsed into a hamburger popover in portrait. Auto
+            width so it centers between the flex-1 side cells; wraps only as a last resort. */}
+        <div className="hidden landscape:flex items-center gap-4 flex-wrap justify-center">
+          {actionButtons}
+        </div>
+        <div className="portrait:flex hidden">
+          <Popover>
+            <PopoverTrigger asChild>
+              <Button
+                className="bg-gradient-to-r from-purple-200 to-pink-200 hover:from-purple-300 hover:to-pink-300 text-black font-bold"
+                aria-label="Menu"
+              >
+                <Menu className="h-5 w-5" />
+              </Button>
+            </PopoverTrigger>
+            <PopoverContent align="center" className="flex flex-col gap-2 w-56 [&>button]:w-full">
+              {actionButtons}
+            </PopoverContent>
+          </Popover>
+        </div>
+
+        {/* Grid/detailed view toggle + settings (cog stays right-most) */}
+        <div className="flex-1 flex items-center justify-end gap-2">
+          <Tabs value={layoutMode} onValueChange={(v) => setLayoutMode(v as 'grid' | 'detailed')}>
+            <TabsList>
+              <TabsTrigger value="grid" aria-label="Grid view" title="Grid view">
+                <LayoutGrid className="h-5 w-5" />
+              </TabsTrigger>
+              <TabsTrigger value="detailed" aria-label="Detailed view" title="Detailed view">
+                <GalleryThumbnails className="h-5 w-5" />
+              </TabsTrigger>
+            </TabsList>
+          </Tabs>
           <button
             className="p-3 bg-secondary text-secondary-foreground rounded-full shadow-lg hover:bg-secondary/80 transition-colors"
-            onClick={() => isAuthenticated ? setShowProfileDialog(true) : setShowAuthDialog(true)}
-            aria-label={isAuthenticated ? "User Profile" : "Login"}
+            onClick={() => setShowSettings(true)}
+            aria-label="Settings"
           >
-            {isAuthenticated ? (
-              <div className="w-6 h-6 flex items-center justify-center font-semibold">
-                {getUserInitial()}
-              </div>
-            ) : (
-              <LogIn className="h-6 w-6" />
-            )}
+            <Settings className="h-6 w-6" />
           </button>
-        )}
-        <span className="text-xs text-muted-foreground/60 select-none pointer-events-none">
-          v{APP_VERSION}
-        </span>
-      </div>
-
-      {/* Copyright + origin credit (original is MIT — see THIRD-PARTY-NOTICES / legal/) */}
-      <div className="fixed bottom-2 left-1/2 -translate-x-1/2 z-10 text-center text-xs text-muted-foreground/60 select-none pointer-events-none whitespace-nowrap leading-tight">
-        <div>© 2026 Jake James</div>
-        <div>
-          Based on{' '}
-          <a
-            href="https://github.com/FieryLionite/formamorph"
-            target="_blank"
-            rel="noopener noreferrer"
-            className="pointer-events-auto hover:underline"
-          >
-            Formamorph by FieryLionite
-          </a>
         </div>
       </div>
 
-      {/* Top-left control: card-type switcher (styled like the settings tabs) */}
-      <div className="fixed top-4 left-4 z-10 flex items-center gap-2">
-        {/* Card-type switcher: text labels in landscape, icon-only in portrait. */}
-        <Tabs value={cardType} onValueChange={(v) => setCardType(v as typeof cardType)}>
-          <TabsList>
-            <TabsTrigger value="worlds" aria-label="Worlds" title="Worlds">
-              <Earth className="h-5 w-5 hidden portrait:block" />
-              <span className="portrait:hidden">Worlds</span>
-            </TabsTrigger>
-            <TabsTrigger value="entities" aria-label="Entities" title="Entities">
-              <User className="h-5 w-5 hidden portrait:block" />
-              <span className="portrait:hidden">Entities</span>
-            </TabsTrigger>
-            <TabsTrigger value="dictionaries" aria-label="Dictionaries" title="Dictionaries">
-              <BookOpen className="h-5 w-5 hidden portrait:block" />
-              <span className="portrait:hidden">Dictionaries</span>
-            </TabsTrigger>
-          </TabsList>
-        </Tabs>
-      </div>
-
-      {/* Top-right controls: grid/detailed view toggle + settings (cog stays right-most) */}
-      <div className="fixed top-4 right-4 z-10 flex items-center gap-2">
-        <Tabs value={layoutMode} onValueChange={(v) => setLayoutMode(v as 'grid' | 'detailed')}>
-          <TabsList>
-            <TabsTrigger value="grid" aria-label="Grid view" title="Grid view">
-              <LayoutGrid className="h-5 w-5" />
-            </TabsTrigger>
-            <TabsTrigger value="detailed" aria-label="Detailed view" title="Detailed view">
-              <GalleryThumbnails className="h-5 w-5" />
-            </TabsTrigger>
-          </TabsList>
-        </Tabs>
-        <button
-          className="p-3 bg-secondary text-secondary-foreground rounded-full shadow-lg hover:bg-secondary/80 transition-colors"
-          onClick={() => setShowSettings(true)}
-          aria-label="Settings"
-        >
-          <Settings className="h-6 w-6" />
-        </button>
-      </div>
-
       <SettingsModal isOpen={showSettings} onOpenChange={setShowSettings} />
-      {/* Action buttons — full row in landscape, collapsed into a hamburger popover in portrait */}
-      <div className="hidden landscape:flex justify-center mb-6 gap-4 shrink-0 flex-wrap">
-        {actionButtons}
-      </div>
-      <div className="portrait:flex hidden justify-center mb-6 shrink-0">
-        <Popover>
-          <PopoverTrigger asChild>
-            <Button
-              className="bg-gradient-to-r from-purple-200 to-pink-200 hover:from-purple-300 hover:to-pink-300 text-black font-bold"
-              aria-label="Menu"
-            >
-              <Menu className="h-5 w-5" />
-            </Button>
-          </PopoverTrigger>
-          <PopoverContent align="center" className="flex flex-col gap-2 w-56 [&>button]:w-full">
-            {actionButtons}
-          </PopoverContent>
-        </Popover>
-      </div>
 
       <input
         type="file"
@@ -938,7 +910,7 @@ const MainMenu = ({ onStartGame, onOpenWorldEditor }: MainMenuProps) => {
 
       {/* Worlds, Entities, and Dictionaries are card grids. */}
       {cardType === 'entities' ? (
-        <ScrollArea className="flex-1 min-h-0">
+        <ScrollArea className="flex-1 min-h-0 container mx-auto px-4">
           {!isLoadingEntities && entities.length === 0 ? (
             <div className="flex items-center justify-center py-16 px-4 text-center text-sm text-muted-foreground select-none">
               No characters yet — use&nbsp;<span className="font-semibold">New Entity</span>&nbsp;or&nbsp;<span className="font-semibold">Import Entity</span>&nbsp;to add one.
@@ -974,7 +946,7 @@ const MainMenu = ({ onStartGame, onOpenWorldEditor }: MainMenuProps) => {
           )}
         </ScrollArea>
       ) : cardType === 'dictionaries' ? (
-        <ScrollArea className="flex-1 min-h-0">
+        <ScrollArea className="flex-1 min-h-0 container mx-auto px-4">
           {!isLoadingDictionaries && dictionaries.length === 0 ? (
             <div className="flex items-center justify-center py-16 px-4 text-center text-sm text-muted-foreground select-none">
               No dictionaries yet — use&nbsp;<span className="font-semibold">New Dictionary</span>&nbsp;or&nbsp;<span className="font-semibold">Import Dictionary</span>&nbsp;to add one.
@@ -1011,7 +983,7 @@ const MainMenu = ({ onStartGame, onOpenWorldEditor }: MainMenuProps) => {
       ) : (
       /* Bounded scroll viewport (Radix ScrollArea Root is overflow-hidden) so drag-reorder
          auto-scroll stays inside this frame instead of growing the page in either axis. */
-      <ScrollArea className="flex-1 min-h-0">
+      <ScrollArea className="flex-1 min-h-0 container mx-auto px-4">
         <div className={`grid ${gridColsClass(WORLD_GRID_COLS.base, WORLD_GRID_COLS.sm, layoutMode === 'detailed' ? 4 : WORLD_GRID_COLS.lg)} gap-4`}>
           {isLoadingWorlds ? (
             Array(6).fill(0).map((_, index) => (
@@ -1053,6 +1025,73 @@ const MainMenu = ({ onStartGame, onOpenWorldEditor }: MainMenuProps) => {
         </div>
       </ScrollArea>
       )}
+
+      {/* Real footer: profile + version (left), copyright (center), social links (right). In-flow and
+          shrink-0 so it caps the flex-1 scroll frame above — the card grid ends at the footer instead of
+          scrolling under floating buttons. Full-width (the root is no longer the max-width container — that
+          moved to the grid scroll areas), so the profile/social sit at the viewport edges. Equal flex-1
+          side cells keep the copyright truly centered. */}
+      <footer className="shrink-0 flex items-center gap-2 px-4 py-3">
+        {/* Left: user profile circle + app version (version derived from package.json) */}
+        <div className="flex-1 flex items-center justify-start gap-2">
+          {COMMUNITY_ENABLED && (
+            <button
+              className="p-3 bg-secondary text-secondary-foreground rounded-full shadow-lg hover:bg-secondary/80 transition-colors"
+              onClick={() => isAuthenticated ? setShowProfileDialog(true) : setShowAuthDialog(true)}
+              aria-label={isAuthenticated ? "User Profile" : "Login"}
+            >
+              {isAuthenticated ? (
+                <div className="w-6 h-6 flex items-center justify-center font-semibold">
+                  {getUserInitial()}
+                </div>
+              ) : (
+                <LogIn className="h-6 w-6" />
+              )}
+            </button>
+          )}
+          <span className="text-xs text-muted-foreground/60 select-none">
+            v{APP_VERSION}
+          </span>
+        </div>
+
+        {/* Center: copyright + origin credit (original is MIT — see THIRD-PARTY-NOTICES / legal/) */}
+        <div className="text-center text-xs text-muted-foreground/60 whitespace-nowrap leading-tight">
+          <div>© 2026 Jake James</div>
+          <div>
+            Based on{' '}
+            <a
+              href="https://github.com/FieryLionite/formamorph"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="hover:underline"
+            >
+              Formamorph by FieryLionite
+            </a>
+          </div>
+        </div>
+
+        {/* Right: social links */}
+        <div className="flex-1 flex items-center justify-end gap-3">
+          <a
+            href="https://www.patreon.com/JakeJamesNSFW"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="p-3 bg-secondary text-secondary-foreground rounded-full shadow-lg hover:bg-secondary/80 transition-colors"
+            aria-label="Patreon"
+          >
+            <PatreonIcon className="h-6 w-6" />
+          </a>
+          <a
+            href="https://github.com/JakeJamesDev/formamorph"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="p-3 bg-secondary text-secondary-foreground rounded-full shadow-lg hover:bg-secondary/80 transition-colors"
+            aria-label="GitHub Repository"
+          >
+            <Github className="h-6 w-6" />
+          </a>
+        </div>
+      </footer>
 
       <Dialog open={showWorldModal} onOpenChange={setShowWorldModal}>
         <DialogContent className={cn("h-[85vh] flex flex-col overflow-x-hidden", worldModalCollapsed ? "sm:max-w-[600px]" : "sm:max-w-[1200px]")}>
@@ -1477,28 +1516,6 @@ const MainMenu = ({ onStartGame, onOpenWorldEditor }: MainMenuProps) => {
 
       {/* Manage Users Dialog — list/paging/fetch live in the component */}
       <ManageUsersDialog open={showManageUsersDialog} onOpenChange={setShowManageUsersDialog} />
-
-      {/* Floating social buttons */}
-      <div className="fixed bottom-4 right-4 flex items-center gap-3">
-        <a
-          href="https://www.patreon.com/JakeJamesNSFW"
-          target="_blank"
-          rel="noopener noreferrer"
-          className="p-3 bg-secondary text-secondary-foreground rounded-full shadow-lg hover:bg-secondary/80 transition-colors"
-          aria-label="Patreon"
-        >
-          <PatreonIcon className="h-6 w-6" />
-        </a>
-        <a
-          href="https://github.com/JakeJamesDev/formamorph"
-          target="_blank"
-          rel="noopener noreferrer"
-          className="p-3 bg-secondary text-secondary-foreground rounded-full shadow-lg hover:bg-secondary/80 transition-colors"
-          aria-label="GitHub Repository"
-        >
-          <Github className="h-6 w-6" />
-        </a>
-      </div>
     </div>
   );
 };
