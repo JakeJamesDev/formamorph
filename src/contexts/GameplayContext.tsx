@@ -3,8 +3,7 @@ import { saveToDB, loadFromDB } from '../components/modals/dbUtils';
 import { toast } from 'react-toastify';
 import { convertSaveFile, terminateWorker } from '../lib/saveConversionWorkerUtils';
 import { useTtsPlayback } from '../lib/useTtsPlayback';
-import { APP_VERSION, isSaveEnvelope, migrateLegacySaveState } from '../lib/version';
-import { realignLegacyStateHistory } from '../lib/turnHistory';
+import { APP_VERSION, isSaveEnvelope, migrateSave } from '../lib/version';
 import { flattenEnabledBookEntries } from '../lib/dictionaryUtils';
 import { getGameplayText, setGameplayText } from '../lib/gameplayTextStore';
 import type {
@@ -216,19 +215,14 @@ function useProvideGameplay() {
 
       // Flat envelope (legacy numeric `2` or current APP_VERSION) — detected by shape, not version.
       if (isSaveEnvelope(savedData)) {
-        // A legacy v1.2 envelope (numeric `version`) needs load-time migration: rename the frozen trait
-        // descriptions on every snapshot (so traits reach the AI), then realign its off-by-one, one-slot-
-        // short state history. Current saves pass through untouched.
-        const isLegacySave = typeof savedData.version === 'number';
-        const currentState = isLegacySave ? migrateLegacySaveState(savedData.currentState) : savedData.currentState;
-        const success = loadGameState(currentState, locations);
+        // Migrate a legacy v1.2 envelope to the current shape (no-op for a save already stamped with
+        // APP_VERSION). Same migrateSave the import boundary runs, so both stay in lockstep.
+        const migrated = migrateSave(savedData);
+        const success = loadGameState(migrated.currentState, locations);
         if (success) {
-          const stateHistory = isLegacySave
-            ? realignLegacyStateHistory(savedData.stateHistory.map(migrateLegacySaveState), currentState)
-            : savedData.stateHistory;
-          setGameStates(stateHistory);
+          setGameStates(migrated.stateHistory);
           // Restore the per-playthrough dictionary set; older saves lack it, so keep the entry-seeded set.
-          if (Array.isArray(savedData.dictionaries)) setRuntimeDictionaries(savedData.dictionaries);
+          if (Array.isArray(migrated.dictionaries)) setRuntimeDictionaries(migrated.dictionaries);
           addLogEntry(`Game loaded from "${saveName}"`);
         }
         return success;
