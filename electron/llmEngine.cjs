@@ -10,7 +10,9 @@ const path = require('node:path');
 const DEFAULT_PORT = 8977;
 
 // Serializable status shared with the renderer (no live handles). status: stopped|loading|ready|error.
-let state = { status: 'stopped', modelPath: null, modelId: null, port: null, error: null };
+// contextSize/gpuLayers/flashAttention are the options the current model was loaded with (null when none),
+// so the renderer can tell whether pending settings differ from what's actually applied.
+let state = { status: 'stopped', modelPath: null, modelId: null, port: null, error: null, contextSize: null, gpuLayers: null, flashAttention: null };
 
 let server = null;
 let llama = null;
@@ -59,6 +61,8 @@ function promptOptions(body, onResponseChunk) {
   const opts = { onResponseChunk };
   if (typeof body.temperature === 'number') opts.temperature = body.temperature;
   if (typeof body.top_p === 'number') opts.topP = body.top_p;
+  if (typeof body.top_k === 'number') opts.topK = body.top_k;
+  if (typeof body.min_p === 'number') opts.minP = body.min_p;
   if (typeof body.max_tokens === 'number') opts.maxTokens = body.max_tokens;
   if (typeof body.repetition_penalty === 'number') opts.repeatPenalty = { penalty: body.repetition_penalty };
   const stop = body.stop == null ? [] : Array.isArray(body.stop) ? body.stop : [body.stop];
@@ -184,8 +188,15 @@ async function router(req, res) {
  */
 async function start({ modelPath, port = DEFAULT_PORT, contextSize, gpuLayers, flashAttention } = {}) {
   if (state.status === 'loading' || state.status === 'ready') return getState();
-  if (!modelPath) { setState({ status: 'error', modelPath: null, modelId: null, port, error: 'No modelPath provided.' }); return getState(); }
-  setState({ status: 'loading', modelPath, modelId: path.basename(modelPath), port, error: null });
+  // The options this model is (being) loaded with — surfaced in state so the renderer can compare against
+  // pending settings.
+  const applied = {
+    contextSize: typeof contextSize === 'number' ? contextSize : null,
+    gpuLayers: typeof gpuLayers === 'number' ? gpuLayers : null,
+    flashAttention: flashAttention === true,
+  };
+  if (!modelPath) { setState({ status: 'error', modelPath: null, modelId: null, port, error: 'No modelPath provided.', contextSize: null, gpuLayers: null, flashAttention: null }); return getState(); }
+  setState({ status: 'loading', modelPath, modelId: path.basename(modelPath), port, error: null, ...applied });
   try {
     const nlc = await import('node-llama-cpp');
     LlamaChatSession = nlc.LlamaChatSession;
@@ -209,10 +220,10 @@ async function start({ modelPath, port = DEFAULT_PORT, contextSize, gpuLayers, f
       server.once('error', reject);
       server.listen(port, '127.0.0.1', resolve);
     });
-    setState({ status: 'ready', modelPath, modelId: path.basename(modelPath), port, error: null });
+    setState({ status: 'ready', modelPath, modelId: path.basename(modelPath), port, error: null, ...applied });
   } catch (e) {
     await stop();
-    setState({ status: 'error', modelPath, modelId: null, port, error: String((e && e.message) || e) });
+    setState({ status: 'error', modelPath, modelId: null, port, error: String((e && e.message) || e), contextSize: null, gpuLayers: null, flashAttention: null });
   }
   return getState();
 }
@@ -231,7 +242,7 @@ async function stop() {
   try { if (context?.dispose) await context.dispose(); } catch { /* ignore */ }
   try { if (model?.dispose) await model.dispose(); } catch { /* ignore */ }
   server = null; sequence = null; context = null; model = null; llama = null; busy = false;
-  setState({ status: 'stopped', modelPath: null, modelId: null, port: null, error: null });
+  setState({ status: 'stopped', modelPath: null, modelId: null, port: null, error: null, contextSize: null, gpuLayers: null, flashAttention: null });
   return getState();
 }
 

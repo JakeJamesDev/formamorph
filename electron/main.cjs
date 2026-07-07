@@ -116,6 +116,24 @@ ipcMain.handle('llm-list-models', () => {
   }
 });
 
+// Installed GGUFs with their on-disk sizes, as [{ fileName, size }] — any GGUF in the folder, not just
+// ones from our downloader.
+ipcMain.handle('llm-list-installed', () => {
+  try {
+    const dir = modelsDir();
+    return fs.readdirSync(dir)
+      .filter((f) => f.toLowerCase().endsWith('.gguf'))
+      .map((f) => {
+        let size = 0;
+        try { size = fs.statSync(path.join(dir, f)).size; } catch { /* ignore */ }
+        return { fileName: f, size };
+      })
+      .sort((a, b) => a.fileName.localeCompare(b.fileName));
+  } catch {
+    return [];
+  }
+});
+
 // Download a catalog model from Hugging Face, then load it. Progress streams to the renderer.
 ipcMain.handle('llm-download', async (_event, { url, fileName }) => {
   const finalPath = await modelDownload.download({ url, fileName, destDir: modelsDir() }, (p) => {

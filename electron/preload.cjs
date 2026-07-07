@@ -20,6 +20,7 @@ contextBridge.exposeInMainWorld('formamorphDesktop', {
     },
     // Model management: list installed GGUFs, download a catalog model (with progress), cancel, delete.
     listModels: () => ipcRenderer.invoke('llm-list-models'),
+    listInstalled: () => ipcRenderer.invoke('llm-list-installed'),
     load: (fileName) => ipcRenderer.invoke('llm-load', fileName),
     setOptions: (opts) => ipcRenderer.invoke('llm-set-options', opts),
     download: (opts) => ipcRenderer.invoke('llm-download', opts),

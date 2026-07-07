@@ -1,6 +1,6 @@
 import { createContext, useContext, useState, useEffect, useRef, useCallback, useMemo, type ReactNode } from 'react';
 import { defaultSystemPrompt, defaultChoicesPrompt, defaultStatUpdatesPrompt, defaultLocationChangePrompt, defaultThinkingPrompt, defaultSummaryPrompt, defaultChoicesUserPrompt, defaultStatUpdatesUserPrompt, defaultLocationChangeUserPrompt, defaultSummaryUserPrompt, defaultDiaryPrompt, defaultDirectorPrompt, defaultDirectorUserPrompt, defaultCharacterPrompt, defaultStoryboardPrompt } from '../components/game/GamePrompts';
-import { DEFAULT_ENDPOINT, DEFAULT_API_TOKEN, DEFAULT_MODEL_NAME, DEFAULT_MAX_TOKENS, DEFAULT_CONTEXT_WINDOW, DEFAULT_LOCAL_CONTEXT_SIZE, DEFAULT_LOCAL_GPU_LAYERS, DEFAULT_LOCAL_FLASH_ATTENTION, DEFAULT_GEN_TEMPERATURE, DEFAULT_GEN_TOP_P, DEFAULT_GEN_REPETITION_PENALTY, DEFAULT_THEME_COLOR, BASE_THEME_COLOR, THEME_COLORS, DEFAULT_FONT, FONT_OPTIONS, SYSTEM_FONT_STACK, DEFAULT_NARRATION_FONT, DEFAULT_NARRATION_SCALE, DEFAULT_NARRATION_LINE_HEIGHT, NARRATION_FONT_OPTIONS, fontStack, fontSizeAdjust, type ThemeColor, type FontChoice, type NarrationFont } from './settingsDefaults';
+import { DEFAULT_ENDPOINT, DEFAULT_API_TOKEN, DEFAULT_MODEL_NAME, DEFAULT_MAX_TOKENS, DEFAULT_CONTEXT_WINDOW, DEFAULT_LOCAL_CONTEXT_SIZE, DEFAULT_LOCAL_GPU_LAYERS, DEFAULT_LOCAL_FLASH_ATTENTION, DEFAULT_GEN_TEMPERATURE, DEFAULT_GEN_TOP_P, DEFAULT_GEN_REPETITION_PENALTY, DEFAULT_GEN_TOP_K, DEFAULT_GEN_MIN_P, DEFAULT_THEME_COLOR, BASE_THEME_COLOR, THEME_COLORS, DEFAULT_FONT, FONT_OPTIONS, SYSTEM_FONT_STACK, DEFAULT_NARRATION_FONT, DEFAULT_NARRATION_SCALE, DEFAULT_NARRATION_LINE_HEIGHT, NARRATION_FONT_OPTIONS, fontStack, fontSizeAdjust, type ThemeColor, type FontChoice, type NarrationFont } from './settingsDefaults';
 import { isDesktop } from '../lib/imageGen/desktop';
 import { DEFAULT_TAG_PROMPT } from '../lib/imagePrompt';
 import {
@@ -236,7 +236,9 @@ function useProvideSettings() {
   const activeEndpointUrl = useCustomEndpoint ? endpointUrl : DEFAULT_ENDPOINT;
   const activeApiToken = useCustomEndpoint ? apiToken : DEFAULT_API_TOKEN;
   const activeModelName = useCustomEndpoint ? modelName : DEFAULT_MODEL_NAME;
-  const activeMaxTokens = useCustomEndpoint ? maxTokens : DEFAULT_MAX_TOKENS;
+  // Honor the user's cap on a custom endpoint AND on the desktop local engine (their own machine); only the
+  // shared default cloud endpoint forces the built-in default.
+  const activeMaxTokens = (useCustomEndpoint || isDesktop()) ? maxTokens : DEFAULT_MAX_TOKENS;
 
   // Context window (tokens): auto-detected from the active endpoint, with an optional manual override.
   const [detectedContextWindow, setDetectedContextWindow] = usePersistentState<number | null>(`${APP_ID}_detectedContextWindow`, null, nullableIntCodec);
@@ -258,6 +260,8 @@ function useProvideSettings() {
   const [genTemperature, setGenTemperature] = usePersistentState<number>(`${APP_ID}_genTemperature`, DEFAULT_GEN_TEMPERATURE, floatCodec);
   const [genTopP, setGenTopP] = usePersistentState<number>(`${APP_ID}_genTopP`, DEFAULT_GEN_TOP_P, floatCodec);
   const [genRepetitionPenalty, setGenRepetitionPenalty] = usePersistentState<number>(`${APP_ID}_genRepetitionPenalty`, DEFAULT_GEN_REPETITION_PENALTY, floatCodec);
+  const [genTopK, setGenTopK] = usePersistentState<number>(`${APP_ID}_genTopK`, DEFAULT_GEN_TOP_K, intCodec);
+  const [genMinP, setGenMinP] = usePersistentState<number>(`${APP_ID}_genMinP`, DEFAULT_GEN_MIN_P, floatCodec);
 
   // Context window: a custom endpoint uses its detected/override value; the local engine uses the context
   // size the user set (same number); otherwise the built-in default.
@@ -567,6 +571,10 @@ function useProvideSettings() {
     setGenTopP,
     genRepetitionPenalty,
     setGenRepetitionPenalty,
+    genTopK,
+    setGenTopK,
+    genMinP,
+    setGenMinP,
     systemPrompt,
     setSystemPrompt,
     choicesPrompt,
