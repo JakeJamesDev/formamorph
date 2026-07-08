@@ -2,13 +2,15 @@
 
 All notable changes to Formamorph. This fork's first line is **2.0.0** — a full TypeScript rebuild of the upstream JavaScript app ([FieryLionite's Formamorph](https://fierylion.itch.io/formamorph), ~v1.2) — with feature parity as the baseline plus new features on top.
 
-> ✅ **2.0.0 and 2.0.1 are released** (collapsed below). **2.0.2 is the current living line** — `package.json` tracks the version currently in development, and entries accumulate under it as work lands. Shipping a line means tagging `v<version>`, marking its section **Released**, and opening the next one.
+> ✅ **2.0.0 – 2.0.2 are released** (collapsed below). New work lands under **🚧 In Progress** — an unnumbered section, so changes accumulate without pinning a version. When a batch earns a release it gets a proper version bump (`package.json` **and** this heading), its section is marked **Released** and collapsed, and a fresh In Progress opens. `package.json` currently reads **2.0.3** as the working placeholder for the next release.
 
 Each release groups changes as **Major** / **Minor**, then **Added** / **Removed** / **Fixed**, and within those by audience: 👤 user-facing · 🛠️ developer tooling · ⚙️ backend / invisible.
 
 ---
 
-## 🚧 2.0.2 — In development
+## 🚧 In Progress
+
+_Unreleased — new work accumulates here until it earns a version bump._
 
 ### Minor Changes
 
@@ -23,18 +25,31 @@ Each release groups changes as **Major** / **Minor**, then **Added** / **Removed
 #### 🐛 Fixed
 
 - **👤 User-facing**
-  - **The opening turn of an old (1.2) save can now be rolled back and re-generated.** The 2.0.1 import fix handled later turns but left the very first turn dead — rolling back to it did nothing and its **Re-generate** button was inert. The opening turn now restores and re-rolls. (Its exact pre-turn snapshot was never stored, so a rolled-back opening lands one turn later, and re-generating it rebuilds a fresh start.) This also fixed re-generating the opening on *any* loaded save, not just 1.2 ones.
-  - **Importing an old (1.2) save now upgrades it properly.** Bringing in a 1.2 save *file* used to stamp it as current without actually converting it — so its traits reached the AI as bare names (descriptions dropped) and its body-shape stats (belly / weight / bust) stopped driving the character model. Old saves are now migrated the same way whether you **import** a file or **load** one already in your library, and the two paths run identical conversion so they can't drift. ⚠️ If you imported a 1.2 save *before* this fix, re-import the original file to upgrade it — a save that was already brought in stays in its old state.
-  - **More consistent turn summaries** — the memory-digest "summary" prompt (which condenses each turn for long-game memory) was hardened so its retellings come out uniformly short (one or two sentences, single line), lead with what you did, and never quote dialogue verbatim or invent a character name the narration didn't give. Verified on both a small (12B) and large (24B) local model.
   - **Re-generate no longer flashes the old narration.** Pressing Re-generate briefly animated the entire previous narration (every paragraph at once) before clearing and streaming the new text. The reveal now only animates while the new narration is actually streaming — during the setup/thinking phase it shows the settled text — so the flash is gone.
   - **Smoother narration reveal** — a cluster of long-standing glitches in the animated text reveal traced to several compounding causes, now all fixed. The core one: the sentence detector didn't understand markdown, so a sentence ending inside emphasis (`*screech.*`), a paragraph ending on an em-dash, or a bare `**Power: 88%**` line never counted as a boundary — whole paragraphs fused into one giant "sentence" that starved the reveal (stutter), then animated across the paragraph break in one burst. Sentence boundaries now recognize closing emphasis markers, and a blank line always ends a sentence (this also fixes streamed text-to-speech chunking at the same spots). On top of that: the reveal now lets each paragraph finish landing before the next begins, no longer has a speed floor faster than slow models can generate (the old cap forced stuttering on any model under ~11 words/s), and uses a tighter per-word fade so a sentence finishes fading within its own span instead of being cut off by the next one. Most importantly, the reveal no longer guesses at a tokens-per-second rate (which a server's initial burst of text could throw off for the whole turn) — it now **measures** the real time between sentences as they arrive and paces to that, keeping a small buffer so it never runs dry (stutter) or lags far behind (text still revealing long after the choices appear). It also remembers the measured speed between turns, so after the first turn it already knows roughly how fast your model is and starts at the right pace instead of ramping up from a cautious default.
-- **🛠️ Developer tooling**
-  - The Sedge Landing baseline harness gained a `summary` profile (exercises the digest prompt) and per-profile `settleMs`, so a profile with async drainers can wait longer without slowing the others.
 - **⚙️ Backend / invisible**
   - **Silent background requests no longer overlap.** With Memory Summaries and Character Diaries both on, a turn-summary request could fire while a diary or character-discovery request was already running, doubling up on a single-GPU local endpoint; the three background jobs now strictly take turns.
   - **Rollback snapshots no longer change after the fact.** Repeating log entries incremented a counter on an entry object shared with already-saved game-state snapshots, retroactively editing them; the increment now produces a fresh entry.
   - **Desktop IPC surface hardened** — the desktop app's internal fetch bridge now accepts only `http`/`https` URLs (it could previously be asked to read `file:` paths), and an unused bridge that could load a model from an arbitrary absolute path was removed (models load by filename from the models folder only).
   - **Duplication pass across the codebase** — extracted shared helpers for the five copy-pasted blob-download flows, the three location-list serializers, the image providers' HTTP plumbing, the main menu's three drag-reorder handlers, the editor managers' draft-editing pattern, the settings-form row layouts, and the Location/Trait drag-tree scaffold (~480 duplicated lines removed, no behavior change).
+
+---
+
+<details>
+<summary><strong>✅ 2.0.2 — Released</strong> — old-save rollback/import fixes + summary-prompt hardening (click to expand)</summary>
+
+### Minor Changes
+
+#### 🐛 Fixed
+
+- **👤 User-facing**
+  - **The opening turn of an old (1.2) save can now be rolled back and re-generated.** The 2.0.1 import fix handled later turns but left the very first turn dead — rolling back to it did nothing and its **Re-generate** button was inert. The opening turn now restores and re-rolls. (Its exact pre-turn snapshot was never stored, so a rolled-back opening lands one turn later, and re-generating it rebuilds a fresh start.) This also fixed re-generating the opening on *any* loaded save, not just 1.2 ones.
+  - **Importing an old (1.2) save now upgrades it properly.** Bringing in a 1.2 save *file* used to stamp it as current without actually converting it — so its traits reached the AI as bare names (descriptions dropped) and its body-shape stats (belly / weight / bust) stopped driving the character model. Old saves are now migrated the same way whether you **import** a file or **load** one already in your library, and the two paths run identical conversion so they can't drift. ⚠️ If you imported a 1.2 save *before* this fix, re-import the original file to upgrade it — a save that was already brought in stays in its old state.
+  - **More consistent turn summaries** — the memory-digest "summary" prompt (which condenses each turn for long-game memory) was hardened so its retellings come out uniformly short (one or two sentences, single line), lead with what you did, and never quote dialogue verbatim or invent a character name the narration didn't give. Verified on both a small (12B) and large (24B) local model.
+- **🛠️ Developer tooling**
+  - The Sedge Landing baseline harness gained a `summary` profile (exercises the digest prompt) and per-profile `settleMs`, so a profile with async drainers can wait longer without slowing the others.
+
+</details>
 
 ---
 

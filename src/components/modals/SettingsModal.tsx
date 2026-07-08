@@ -373,7 +373,7 @@ export const SettingsModal = ({ isOpen, onOpenChange, previewValues }: {
   const [promptTab, setPromptTab] = useState('narration');
   const promptResets: Record<string, { label: string; reset: () => void }> = {
     narration: { label: 'Narration', reset: () => setSystemPrompt(defaultSystemPrompt) },
-    thinking: { label: 'Thinking', reset: () => setThinkingPrompt(defaultThinkingPrompt) },
+    thinking: { label: 'Planning', reset: () => setThinkingPrompt(defaultThinkingPrompt) },
     choices: { label: 'Choices', reset: () => setChoicesPrompt(defaultChoicesPrompt) },
     statupdates: { label: 'Stat Updates', reset: () => setStatUpdatesPrompt(defaultStatUpdatesPrompt) },
     location: { label: 'Location Change', reset: () => setLocationChangePromptText(defaultLocationChangePrompt) },
@@ -1140,7 +1140,7 @@ export const SettingsModal = ({ isOpen, onOpenChange, previewValues }: {
             <Tabs value={activePromptTab} onValueChange={selectPromptTab} className="w-full flex flex-col flex-1 min-h-0">
               <TabsList className="flex flex-wrap h-auto justify-center gap-1 flex-shrink-0">
                 <TabsTrigger value="narration">Narration</TabsTrigger>
-                {thinkingMode === 'precall' && <TabsTrigger value="thinking">Thinking</TabsTrigger>}
+                {thinkingMode === 'precall' && <TabsTrigger value="thinking">Planning</TabsTrigger>}
                 {choicesEnabled && <TabsTrigger value="choices">Choices</TabsTrigger>}
                 {statUpdatesEnabled && <TabsTrigger value="statupdates">Stat Updates</TabsTrigger>}
                 {locationChangeEnabled && <TabsTrigger value="location">Location Change</TabsTrigger>}
