@@ -19,6 +19,8 @@ export interface DevRoute {
   view?: string;
   modal?: string;
   tab?: string;
+  /** Second-level tab within a tab (e.g. which prompt under Settings → Prompts). */
+  subtab?: string;
   /** Canned world+save to boot mid-game (see `devFixtures.ts`). */
   fixture?: string;
 }
@@ -31,10 +33,12 @@ function parseHash(hash: string): DevRoute | null {
   const view = params.get('view');
   const modal = params.get('modal');
   const tab = params.get('tab');
+  const subtab = params.get('subtab');
   const fixture = params.get('fixture');
   if (view) route.view = view;
   if (modal) route.modal = modal;
   if (tab) route.tab = tab;
+  if (subtab) route.subtab = subtab;
   if (fixture) route.fixture = fixture;
   return route;
 }
@@ -71,11 +75,12 @@ export function installDevRouter(): () => void {
   const w = window as unknown as { __fmDev?: unknown };
   w.__fmDev = {
     /** Jump to a screen/modal/tab in one call — sets the `#dev` hash the consumers react to. */
-    goto(view?: string, opts?: { modal?: string; tab?: string; fixture?: string }) {
+    goto(view?: string, opts?: { modal?: string; tab?: string; subtab?: string; fixture?: string }) {
       const params = new URLSearchParams();
       if (view) params.set('view', view);
       if (opts?.modal) params.set('modal', opts.modal);
       if (opts?.tab) params.set('tab', opts.tab);
+      if (opts?.subtab) params.set('subtab', opts.subtab);
       if (opts?.fixture) params.set('fixture', opts.fixture);
       const qs = params.toString();
       window.location.hash = qs ? `#dev?${qs}` : '#dev';

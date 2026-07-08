@@ -12,13 +12,19 @@
 export const DEV_VIEWS = ['mainMenu', 'gameViewer', 'worldEditor'] as const;
 export type DevView = (typeof DEV_VIEWS)[number];
 
-/** Coverage ledger: modal → the sub-tabs the router can target. Kept in lockstep with each surface's
- *  own exported tab list by `devRouter.test.ts`. Add a modal's tabs here when you wire that section. */
+/** Modals the router can open via `#dev?modal=…`. `settings` opens from MainMenu or GameViewer; the rest
+ *  are in-game (GameViewer). `localModel` is intentionally absent — it lives inside Settings→LocalModelPanel,
+ *  not as a standalone modal, so it's reached via `modal=settings` + its tab, not its own name. */
+export const DEV_MODALS = ['settings', 'entity', 'export', 'menu'] as const;
+export type DevModal = (typeof DEV_MODALS)[number];
+
+/** Coverage ledger: tabbed surface → the sub-tabs the router can target (via `tab=…`). Kept in lockstep
+ *  with each surface's own exported tab list by `devRouter.test.ts`. Add a surface's tabs here when wired. */
 export const DEV_MODAL_TABS = {
   settings: ['presentation', 'generation', 'endpoint', 'image', 'prompts', 'accessibility'],
+  worldEditor: ['overview', 'stats', 'entities', 'locations', 'traits', 'dictionary'],
 } as const;
 
-export type DevModal = keyof typeof DEV_MODAL_TABS;
-
-// Mid-game boot fixtures live in `devFixtures.ts` (`DEV_FIXTURES`); the router reaches them via
-// `#dev?view=gameViewer&fixture=…` / `window.__fmDev.bootFixture(name)`.
+// Settings → Prompts exposes a second level reached via `subtab=…` (narration/thinking/choices/…). Those
+// triggers render conditionally (thinking mode, enabled features), so they're not guarded as a fixed list.
+// Mid-game boot fixtures live in `devFixtures.ts` (`DEV_FIXTURES`); reached via `bootFixture(name)`.

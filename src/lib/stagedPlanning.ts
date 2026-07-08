@@ -1,15 +1,18 @@
-import type { Entity, ChatMessage, AIRequestType } from "@/types";
+import type { Entity, ChatMessage, AIRequestType, SceneEntity } from "@/types";
 import { renderPromptTemplate } from "./promptTemplate";
 import { collectCharacterDiary } from "./turnDigest";
-import { sameCharacterName } from "./entityMatch";
+import { sameCharacterName, matchNames, findEntityNames } from "./entityMatch";
 import { escapeRegExp } from "./utils";
 import { NONE_PLACEHOLDER } from "./promptFallbacks";
 
 /** One entry in the director's cast: a name plus their placement/action, if the director gave one.
- *  `isPlayer` marks the player character — listed for scene grounding, never given a motivation pass. */
+ *  `isPlayer` marks the player character — listed for scene grounding, never given a motivation pass.
+ *  `alias` is how the player currently knows a not-yet-named character (from the "Name (alias)" form),
+ *  captured so the scene list can show the alias without spoiling the real name. */
 export interface DirectorCastMember {
   name: string;
   stance?: string;
+  alias?: string;
   isPlayer?: boolean;
 }
 
@@ -37,14 +40,27 @@ const BULLET_RE = /^\s*[-*•]\s+(.+)$/;
 // The separator between a cast bullet's name and its stance clause: a spaced dash or "name: stance".
 const CAST_SEP_RE = /\s+[—–-]\s+|:\s/;
 
-/** Strip a bullet body down to the character name: drop a " — stance" / ": stance" clause, then trim any
- *  surrounding markup/punctuation (**bold**, "quotes", a trailing "."). Internal punctuation survives, so
- *  hyphenated / dotted names (Jean-Luc, Dr. Strange, R2-D2) are kept intact. */
-function castName(body: string): string {
-  let s = body.trim();
+/** Split a bullet's name field into the real name and, if present, the parenthetical alias — so
+ *  "Maela (the silver-haired woman)" yields real name "Maela" and alias "the silver-haired woman", while a
+ *  plain "Bram (ferryman)" role gloss yields "Bram" (alias "ferryman"). Surrounding markup/punctuation
+ *  (**bold**, "quotes", a trailing ".") is trimmed; internal punctuation survives, so hyphenated / dotted
+ *  names (Jean-Luc, Dr. Strange, R2-D2) stay intact. Used by both parseDirectorCast and the reveal sanitizer,
+ *  so the two agree on where a name ends. */
+function splitNameAlias(nameField: string): { real: string; alias?: string } {
+  const clean = (s: string) => s.trim().replace(/^[^\p{L}\p{N}]+|[^\p{L}\p{N}]+$/gu, "");
+  const m = nameField.match(/^(.*?)\s*\(([^)]+)\)\s*$/);
+  if (m) {
+    const alias = clean(m[2]);
+    return alias ? { real: clean(m[1]), alias } : { real: clean(m[1]) };
+  }
+  return { real: clean(nameField) };
+}
+
+/** The name field of a bullet body: everything before the " — stance" / ": stance" separator. */
+function castNameField(body: string): string {
+  const s = body.trim();
   const sep = s.search(CAST_SEP_RE);
-  if (sep !== -1) s = s.slice(0, sep);
-  return s.replace(/^[^\p{L}\p{N}]+|[^\p{L}\p{N}]+$/gu, "");
+  return sep !== -1 ? s.slice(0, sep) : s;
 }
 
 /** The stance/action clause after the name separator, cleaned of markdown/quotes; undefined if none. */
@@ -100,20 +116,23 @@ export function parseDirectorCast(raw: string): ParsedDirector {
   const sceneParts: string[] = [];
   let inCast = false; // once true (Cast: header or a bullet), later lines are no longer scene prose
 
-  // Add one cast member from a bullet body or an inline "Cast: <name> - <stance>". The player is
-  // normalized to "Player Character" and flagged (never given a motivation pass); "no one present"
-  // sentinels are dropped, and names are de-duplicated case-insensitively in order.
+  // Add one cast member from a bullet body or an inline "Cast: <name> - <stance>". The name field is split
+  // into the real name and any parenthetical alias ("Maela (the hooded woman)" → name "Maela", alias
+  // captured) so a name resolves to its entity even when the model appends a role/alias gloss. The player is
+  // normalized to "Player Character" and flagged (never given a motivation pass); "no one present" sentinels
+  // are dropped, and names are de-duplicated case-insensitively in order.
   const addCastMember = (body: string) => {
-    const name = castName(body);
-    if (!name || isEmptyCastName(name)) return;
-    const isPlayer = isPlayerCharacterName(name);
-    const displayName = isPlayer ? "Player Character" : name;
+    const { real, alias } = splitNameAlias(castNameField(body));
+    if (!real || isEmptyCastName(real)) return;
+    const isPlayer = isPlayerCharacterName(real);
+    const displayName = isPlayer ? "Player Character" : real;
     const key = displayName.toLowerCase();
     if (seen.has(key)) return;
     seen.add(key);
     cast.push({
       name: displayName,
       stance: castStance(body),
+      ...(alias && !isPlayer ? { alias } : {}),
       ...(isPlayer ? { isPlayer: true } : {}),
     });
   };
@@ -197,22 +216,47 @@ export function classifyCast(
   return { flaggedCast, npcCast, directorCandidates, adHocCandidates };
 }
 
+/**
+ * Build the live scene list (the Entities tab) for one turn. When a planner ran (`cast` is the turn's NPC
+ * cast, with any aliases), presence is the planner's call — mention in the narration alone does NOT add
+ * someone. Each present being resolves to its canonical entity name (so the portrait ties) or its ad-hoc
+ * name, carries its alias, and is marked `revealed` once the real name has appeared in the narration
+ * (`priorNarration` = all past turns, `narrationSoFar` = this turn so far, so reveal flips mid-stream).
+ * With no planner (`cast` is null — Off/Inline modes), fall back to the narration parse: a named entity is
+ * by definition already revealed.
+ */
+export function buildSceneList(args: {
+  cast: DirectorCastMember[] | null;
+  entities: Entity[];
+  narrationSoFar: string;
+  priorNarration: string;
+}): SceneEntity[] {
+  const { cast, entities, narrationSoFar, priorNarration } = args;
+  if (!cast) {
+    return findEntityNames(narrationSoFar, entities).map((name) => ({ name, revealed: true }));
+  }
+  const revealedIn = `${priorNarration}\n${narrationSoFar}`;
+  const definedByLower = new Map(entities.map((e) => [e.name.trim().toLowerCase(), e.name]));
+  const out: SceneEntity[] = [];
+  const seen = new Set<string>();
+  for (const member of cast) {
+    if (member.isPlayer) continue;
+    const name = definedByLower.get(member.name.trim().toLowerCase()) ?? member.name;
+    const key = name.toLowerCase();
+    if (seen.has(key)) continue;
+    seen.add(key);
+    out.push({
+      name,
+      ...(member.alias ? { alias: member.alias } : {}),
+      revealed: matchNames(revealedIn, [name]).length > 0,
+    });
+  }
+  return out;
+}
+
 // What the narrator is shown in place of a not-yet-revealed name the planner gave no alias for — keeps a
 // bare real name (the model ignoring the parenthetical alias rule) out of the narration's input.
 const REVEAL_FALLBACK = "someone the player has not yet identified";
-
-/** Pull the real name and, if present, the parenthetical alias out of a cast bullet's name field — so
- *  "Maela (the silver-haired woman)" yields the real name "Maela" and the alias "the silver-haired woman".
- *  The name field is the bullet body up to the stance separator; internal punctuation in the name survives. */
-function splitNameAlias(nameField: string): { real: string; alias?: string } {
-  const clean = (s: string) => s.trim().replace(/^[^\p{L}\p{N}]+|[^\p{L}\p{N}]+$/gu, "");
-  const m = nameField.match(/^(.*?)\s*\(([^)]+)\)\s*$/);
-  if (m) {
-    const alias = clean(m[2]);
-    return alias ? { real: clean(m[1]), alias } : { real: clean(m[1]) };
-  }
-  return { real: clean(nameField) };
-}
 
 /**
  * Keep not-yet-revealed character names out of the plan the narrator reads. For each cast bullet naming a
@@ -228,10 +272,7 @@ export function sanitizePlanForReveal(plan: string, isRevealed: (realName: strin
   for (const line of plan.split("\n")) {
     const bullet = line.trim().match(BULLET_RE);
     if (!bullet) continue; // bullets are always cast members (matches parseDirectorCast)
-    const body = bullet[1];
-    const sep = body.search(CAST_SEP_RE);
-    const nameField = sep !== -1 ? body.slice(0, sep) : body;
-    const { real, alias } = splitNameAlias(nameField);
+    const { real, alias } = splitNameAlias(castNameField(bullet[1]));
     if (!real || isPlayerCharacterName(real) || isEmptyCastName(real)) continue;
     const key = real.toLowerCase();
     if (seen.has(key)) continue;
@@ -371,6 +412,8 @@ export interface StagedPlanningResult {
   directorCandidates: string[];
   /** Ad-hoc names the director invented (strict narration match). */
   adHocCandidates: string[];
+  /** The turn's NPC cast (player excluded), with aliases — drives the live scene list via buildSceneList. */
+  cast: DirectorCastMember[];
 }
 
 /**
@@ -412,13 +455,13 @@ export async function runStagedPlanning(ctx: {
     [{ role: "user", content: renderPromptTemplate(directorUserPrompt, { "<NARRATION>": lastStory || NONE_PLACEHOLDER, "<PLAYER ACTION>": action }) }],
     "director", caps.director, signal,
   );
-  if (signal.aborted) return { turnPlan: "", directorCandidates: [], adHocCandidates: [] };
+  if (signal.aborted) return { turnPlan: "", directorCandidates: [], adHocCandidates: [], cast: [] };
   const { scene, cast } = parseDirectorCast(directorOut || "");
   const { flaggedCast, npcCast, directorCandidates, adHocCandidates } = classifyCast(cast, entities, playerNames);
 
   if (npcCast.length === 0) {
     // No one to reconcile — skip the character + storyboard passes (they'd only invent filler).
-    return { turnPlan: buildStagedPlan({ scene, stances: flaggedCast, beats: "" }), directorCandidates, adHocCandidates };
+    return { turnPlan: buildStagedPlan({ scene, stances: flaggedCast, beats: "" }), directorCandidates, adHocCandidates, cast: npcCast };
   }
 
   const presentEntities = entities.filter((e) => presentEntityIds.includes(e.id));
@@ -434,7 +477,7 @@ export async function runStagedPlanning(ctx: {
       [{ role: "user", content: buildCharacterUserMessage({ character: member, scene, action, diary, recap: lastStory }) }],
       "character", caps.character, signal,
     );
-    if (signal.aborted) return { turnPlan: "", directorCandidates, adHocCandidates };
+    if (signal.aborted) return { turnPlan: "", directorCandidates, adHocCandidates, cast: npcCast };
     if (text) intents.push({ name: member.name, text });
   }
 
@@ -444,7 +487,7 @@ export async function runStagedPlanning(ctx: {
     [{ role: "user", content: buildStoryboardUserMessage({ recap: lastStory, scene, intents, overflow, action }) }],
     "storyboard", caps.storyboard, signal,
   );
-  if (signal.aborted) return { turnPlan: "", directorCandidates, adHocCandidates };
+  if (signal.aborted) return { turnPlan: "", directorCandidates, adHocCandidates, cast: npcCast };
   // Ground the narration in the director's scene + cast stances alongside the storyboard beats.
-  return { turnPlan: buildStagedPlan({ scene, stances: flaggedCast, beats: plan || "" }), directorCandidates, adHocCandidates };
+  return { turnPlan: buildStagedPlan({ scene, stances: flaggedCast, beats: plan || "" }), directorCandidates, adHocCandidates, cast: npcCast };
 }

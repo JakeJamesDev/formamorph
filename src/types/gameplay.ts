@@ -14,6 +14,16 @@ export interface DiscoveredEntity {
 /** A stat during gameplay — a definition Stat whose live `value` is always a number. */
 export type PlayerStat = Omit<Stat, 'value'> & { value: number };
 
+/** One row of the live scene list (the Entities tab): who is physically present this turn. `name` is the
+ *  real entity name (resolves the portrait) or an ad-hoc/invented name. `alias` is how the player currently
+ *  knows a not-yet-named character; it is shown instead of `name` while `revealed` is false. `revealed`
+ *  flips true once the real name has appeared in the narration. */
+export interface SceneEntity {
+  name: string;
+  alias?: string;
+  revealed: boolean;
+}
+
 /** A choice is a single plaintext action line. */
 export type Choice = string;
 
@@ -73,8 +83,9 @@ export interface PlayerModel {
 export interface GameState {
   playerStats: PlayerStat[];
   playerTraits: Trait[];
-  /** Names of entities currently visible (matched against the world's entity list by name). */
-  visibleEntities: string[];
+  /** The live scene list — who is physically present this turn, with alias/reveal state for the tab. Legacy
+   *  saves stored a bare `string[]` of names; those are normalized to `{ name, revealed: true }` on load. */
+  visibleEntities: SceneEntity[];
   /** Director-invented characters promoted to persisted entities this playthrough (runtime characters). */
   discoveredEntities?: DiscoveredEntity[];
   logEntries: LogEntry[];

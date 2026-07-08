@@ -9,6 +9,7 @@ import { ConfirmDialog } from '../ConfirmDialog';
 import { saveToDB, getAllSaves, deleteFromDB, loadFromDB } from './dbUtils';
 import { downloadSaveFile, terminateWorker as terminateDownloadWorker } from '../../lib/saveDownloadWorkerUtils';
 import { APP_VERSION, isSaveEnvelope, migrateSave, SAVE_FILE_KIND } from '../../lib/version';
+import { useDevRoute } from '../../lib/devRouter';
 import type { WorldOverview, GameState } from "@/types";
 
 /** A stored save record as read back from IndexedDB (v2 envelope or a legacy flat state). */
@@ -39,6 +40,12 @@ export const MenuModal = ({ onSettingsClick, onSave, onLoad, worldOverview, onEx
   const [menuOpen, setMenuOpen] = React.useState(false);
   const [showSaveDialog, setShowSaveDialog] = React.useState(false);
   const [showLoadDialog, setShowLoadDialog] = React.useState(false);
+  // DEV dev-router: `#dev?modal=menu` opens the save/load dialog. Read the route directly (like the other
+  // consumers) so the whole thing tree-shakes from prod — a prop would leak its name into the bundle.
+  const devRoute = useDevRoute();
+  React.useEffect(() => {
+    if (import.meta.env.DEV && devRoute?.modal === 'menu') setShowLoadDialog(true);
+  }, [devRoute?.modal]);
   const [showExitConfirm, setShowExitConfirm] = React.useState(false);
   const [saveName, setSaveName] = React.useState('');
   const [saveList, setSaveList] = React.useState<SaveListItem[]>([]);

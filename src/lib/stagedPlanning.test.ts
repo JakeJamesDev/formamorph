@@ -3,6 +3,7 @@ import {
   parseDirectorCast,
   matchCastToEntities,
   classifyCast,
+  buildSceneList,
   isEmptyCastName,
   sanitizePlanForReveal,
   buildCharacterUserMessage,
@@ -151,6 +152,25 @@ describe('parseDirectorCast', () => {
       cast: [],
     });
   });
+
+  it('splits a "Name (alias)" bullet into a clean name plus a captured alias', () => {
+    const raw = [
+      'Cast:',
+      '- Maela (the hooded woman) - watching from the dock',
+      '- Bram (ferryman) - looping the rope',
+    ].join('\n');
+    expect(parseDirectorCast(raw).cast).toEqual([
+      { name: 'Maela', stance: 'watching from the dock', alias: 'the hooded woman' },
+      { name: 'Bram', stance: 'looping the rope', alias: 'ferryman' },
+    ]);
+  });
+
+  it('does not attach an alias to the player character', () => {
+    const raw = ['Cast:', '- Player Character (the mapmaker) - seated at the bar'].join('\n');
+    expect(parseDirectorCast(raw).cast).toEqual([
+      { name: 'Player Character', stance: 'seated at the bar', isPlayer: true },
+    ]);
+  });
 });
 
 describe('matchCastToEntities', () => {
@@ -241,6 +261,36 @@ describe('sanitizePlanForReveal', () => {
   it('never rewrites the player or empty-cast sentinels', () => {
     const plan = ['Cast:', '- Player Character - waiting', '- None'].join('\n');
     expect(sanitizePlanForReveal(plan, revealNone)).toBe(plan);
+  });
+});
+
+describe('buildSceneList', () => {
+  const entities = [ent('1', 'Maela'), ent('2', 'Bram')];
+
+  it('sources presence from the planner cast, canonicalizes names, carries aliases, and reveals by narration', () => {
+    const cast = [
+      { name: 'maela', alias: 'the hooded woman' },
+      { name: 'Bram' },
+      { name: 'Player Character', isPlayer: true },
+    ];
+    const list = buildSceneList({ cast, entities, narrationSoFar: 'Bram waves you over.', priorNarration: '' });
+    expect(list).toEqual([
+      { name: 'Maela', alias: 'the hooded woman', revealed: false },
+      { name: 'Bram', revealed: true },
+    ]);
+  });
+
+  it('reveals a name once it has appeared in prior narration', () => {
+    const list = buildSceneList({
+      cast: [{ name: 'Maela', alias: 'the hooded woman' }],
+      entities, narrationSoFar: '', priorNarration: 'Earlier, Maela gave her name.',
+    });
+    expect(list[0].revealed).toBe(true);
+  });
+
+  it('falls back to the narration parse when no planner ran (cast null); named = revealed', () => {
+    const list = buildSceneList({ cast: null, entities, narrationSoFar: 'Bram ties off the rope.', priorNarration: '' });
+    expect(list).toEqual([{ name: 'Bram', revealed: true }]);
   });
 });
 

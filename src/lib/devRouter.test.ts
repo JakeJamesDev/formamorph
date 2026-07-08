@@ -1,23 +1,26 @@
 import { describe, it, expect } from 'vitest';
-import { DEV_MODAL_TABS } from './devRoutes';
+import { DEV_MODAL_TABS, DEV_MODALS } from './devRoutes';
 import { DEV_FIXTURES } from './devFixtures';
 import { SETTINGS_TABS } from '@/components/modals/settingsTabs';
+import { WORLD_EDITOR_TABS } from '@/views/worldEditorTabs';
 import { isSaveEnvelope } from './version';
 import whiteRoomWorld from './devFixtures/whiteRoomWorld.json';
 import whiteRoomSave from './devFixtures/whiteRoomSave.json';
 
 // The parser is module-private; re-derive it here against the documented hash grammar so the encode
 // (window.__fmDev.goto) and decode stay pinned to the same shape.
-function parseHash(hash: string): { view?: string; modal?: string; tab?: string } | null {
+function parseHash(hash: string): { view?: string; modal?: string; tab?: string; subtab?: string } | null {
   if (!hash.startsWith('#dev')) return null;
   const params = new URLSearchParams(hash.slice('#dev'.length).replace(/^\?/, ''));
-  const route: { view?: string; modal?: string; tab?: string } = {};
+  const route: { view?: string; modal?: string; tab?: string; subtab?: string } = {};
   const view = params.get('view');
   const modal = params.get('modal');
   const tab = params.get('tab');
+  const subtab = params.get('subtab');
   if (view) route.view = view;
   if (modal) route.modal = modal;
   if (tab) route.tab = tab;
+  if (subtab) route.subtab = subtab;
   return route;
 }
 
@@ -39,6 +42,14 @@ describe('dev-router hash parsing', () => {
     expect(parseHash('#dev')).toEqual({});
     expect(parseHash('#dev?modal=settings')).toEqual({ modal: 'settings' });
   });
+
+  it('decodes a prompt sub-tab (subtab)', () => {
+    expect(parseHash('#dev?modal=settings&tab=prompts&subtab=thinking')).toEqual({
+      modal: 'settings',
+      tab: 'prompts',
+      subtab: 'thinking',
+    });
+  });
 });
 
 describe('dev-router coverage guard', () => {
@@ -46,6 +57,15 @@ describe('dev-router coverage guard', () => {
   // renamed there without updating the DEV_MODAL_TABS ledger, this fails — forcing conscious coverage.
   it('ledger lists exactly the Settings modal tabs the surface renders', () => {
     expect([...DEV_MODAL_TABS.settings]).toEqual(SETTINGS_TABS.map((t) => t.value));
+  });
+
+  it('ledger lists exactly the World Editor tabs the surface renders', () => {
+    expect([...DEV_MODAL_TABS.worldEditor]).toEqual(WORLD_EDITOR_TABS.map((t) => t.value));
+  });
+
+  it('registers the in-game modals the router opens', () => {
+    // localModel is deliberately excluded (it lives inside Settings, not as a standalone modal).
+    expect(DEV_MODALS).toEqual(['settings', 'entity', 'export', 'menu']);
   });
 });
 
