@@ -19,3 +19,6 @@ export const DEV_MODAL_TABS = {
 } as const;
 
 export type DevModal = keyof typeof DEV_MODAL_TABS;
+
+// Mid-game boot fixtures live in `devFixtures.ts` (`DEV_FIXTURES`); the router reaches them via
+// `#dev?view=gameViewer&fixture=…` / `window.__fmDev.bootFixture(name)`.

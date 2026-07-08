@@ -19,6 +19,8 @@ export interface DevRoute {
   view?: string;
   modal?: string;
   tab?: string;
+  /** Canned world+save to boot mid-game (see `devFixtures.ts`). */
+  fixture?: string;
 }
 
 /** Parse the current hash into a DevRoute, or null when it isn't a `#dev` hash. */
@@ -29,9 +31,11 @@ function parseHash(hash: string): DevRoute | null {
   const view = params.get('view');
   const modal = params.get('modal');
   const tab = params.get('tab');
+  const fixture = params.get('fixture');
   if (view) route.view = view;
   if (modal) route.modal = modal;
   if (tab) route.tab = tab;
+  if (fixture) route.fixture = fixture;
   return route;
 }
 
@@ -67,13 +71,18 @@ export function installDevRouter(): () => void {
   const w = window as unknown as { __fmDev?: unknown };
   w.__fmDev = {
     /** Jump to a screen/modal/tab in one call — sets the `#dev` hash the consumers react to. */
-    goto(view?: string, opts?: { modal?: string; tab?: string }) {
+    goto(view?: string, opts?: { modal?: string; tab?: string; fixture?: string }) {
       const params = new URLSearchParams();
       if (view) params.set('view', view);
       if (opts?.modal) params.set('modal', opts.modal);
       if (opts?.tab) params.set('tab', opts.tab);
+      if (opts?.fixture) params.set('fixture', opts.fixture);
       const qs = params.toString();
       window.location.hash = qs ? `#dev?${qs}` : '#dev';
+    },
+    /** Boot straight into a running game from a canned fixture (world+save). See `devFixtures.ts`. */
+    bootFixture(name: string) {
+      window.location.hash = `#dev?view=gameViewer&fixture=${encodeURIComponent(name)}`;
     },
     route: () => getDevRoute(),
     clear() {

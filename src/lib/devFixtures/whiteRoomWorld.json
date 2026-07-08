@@ -1,0 +1,49 @@
+{
+  "worldOverview": {
+    "name": "The White Room",
+    "description": "A blank world ready for editing",
+    "author": "",
+    "thumbnail": "https://via.placeholder.com/400x300/2a2a2a/ffffff?text=New+World",
+    "bgm": null,
+    "systemPrompt": "This is an empty white room for the user to test LLM prompts",
+    "use3DModel": false,
+    "tags": []
+  },
+  "stats": [],
+  "locations": [
+    {
+      "id": "1783535114538",
+      "name": "The White Room",
+      "inGameDescription": "",
+      "detailedDescription": "An empty white room for AI testing",
+      "backgroundImage": null,
+      "ambientSound": null,
+      "entities": [
+        "1783535099434"
+      ]
+    }
+  ],
+  "entities": [
+    {
+      "id": "1783535099434",
+      "name": "The User",
+      "inGameDescription": "",
+      "detailedDescription": "The user of the room",
+      "type": "",
+      "image": null,
+      "sound": null,
+      "model": null
+    }
+  ],
+  "traits": [
+    {
+      "id": "1783535133519",
+      "name": "The User",
+      "description": "You are The User",
+      "statChanges": []
+    }
+  ],
+  "statUpdates": [],
+  "dictionary": [],
+  "customPlayerVRM": null
+}
