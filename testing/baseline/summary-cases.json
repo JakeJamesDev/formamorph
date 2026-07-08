@@ -1,0 +1,54 @@
+{
+  "_note": "Fixed gold-case set for probing the turn-summary prompt's RULE COMPLIANCE (the mechanically checkable parts: single line, <=2 sentences, opens second-person 'you', no verbatim quotes, exact 'nothing notable' on an idle turn, and name discipline - don't invent a name or leak one the narration only gives as an unrevealed aside). Prose quality itself still needs eyeballing the raw output. Each case is an (action, narration) pair. `nothingNotable`=true means the only correct reply is exactly 'nothing notable'. `forbid`=names/words that must NOT appear (invented or unrevealed). Run via harness/summary-probe.mjs.",
+  "cases": [
+    {
+      "name": "normal-named",
+      "action": "I step up to the gate guard and ask who commands the watch tonight.",
+      "narration": "The guard straightens, spear butt thudding on the flagstones. \"That'd be Sergeant Vale,\" she says, nodding toward the tower. \"Up top, if you've business with her.\" She looks you over once, then waves you through the gate.",
+      "forbid": []
+    },
+    {
+      "name": "idle",
+      "action": "I stand at the parapet and let the night air settle over me.",
+      "narration": "The wind moves slow across the battlement, carrying the smell of rain that hasn't fallen yet. Below, the town lies quiet under its shutters. Nothing stirs but a single moth batting at the lantern glass, and the far-off creak of a shutter swinging loose.",
+      "nothingNotable": true,
+      "forbid": []
+    },
+    {
+      "name": "dialogue-heavy",
+      "action": "I press the innkeeper about the room upstairs that no one will rent.",
+      "narration": "\"That room's not for letting,\" he says flatly, wiping a tankard that's already dry. \"Last three who slept there left before dawn. Didn't ask for their coin back either.\" He leans in. \"You want my advice? Take the room by the stair and forget the other one exists.\" His knuckles whiten on the rag.",
+      "forbid": []
+    },
+    {
+      "name": "role-only",
+      "action": "I ask the hooded ferryman how much for a night crossing.",
+      "narration": "The ferryman doesn't turn from the water. His one good hand rests on the mooring rope, the other sleeve pinned flat and empty. \"Don't cross after dark,\" he says. \"Not for silver, not for gold.\" A brass ring glints in his ear as he finally looks at you, and says nothing more.",
+      "forbid": ["Bram", "Vale", "Maren"]
+    },
+    {
+      "name": "unrevealed-aside",
+      "action": "I offer to share my fire with the traveler shivering at the treeline.",
+      "narration": "The traveler edges closer, hands out to the flames. She is younger than you first thought, a green bead braided in her hair. \"Kind of you,\" she murmurs - though she does not give her name, and you sense you have not earned it yet. She warms her hands and watches you, saying little.",
+      "forbid": ["Maren", "Odette"]
+    },
+    {
+      "name": "multi-event",
+      "action": "I cut the mooring rope, shove the raft into the current, and haul the wounded boy aboard as the dogs reach the bank.",
+      "narration": "The rope parts under your knife and the raft lurches free just as the first hound skids down the mud. You grab the boy by the collar and drag him over the side, water sheeting off you both. The dogs bark themselves hoarse at the widening gap. The current takes you, spinning the raft slow toward the dark middle of the river, the far bank invisible in the mist.",
+      "forbid": []
+    },
+    {
+      "name": "passive-event",
+      "action": "I wait beneath the awning for the rain to ease.",
+      "narration": "As you shelter, a courier in a soaked red cloak splashes to a halt beside you and thrusts a folded paper into your hand without a word, then runs on into the downpour. The wax seal is broken. Your name is written on the outside in a hand you do not recognize.",
+      "forbid": []
+    },
+    {
+      "name": "third-person-bait",
+      "action": "I sign the ledger with my traveling name and slide it back across the counter.",
+      "narration": "The clerk spins the ledger, reads the entry, and taps the line twice with an inked finger. \"Mapmaker, then.\" He copies something into a second book you can't see. \"Room's paid through the week. Don't go into the east wing.\" He sets a heavy iron key on the counter between you.",
+      "forbid": []
+    }
+  ]
+}

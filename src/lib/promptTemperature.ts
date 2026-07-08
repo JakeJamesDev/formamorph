@@ -7,7 +7,7 @@ import type { Codec } from './usePersistentState';
 export const DETERMINISTIC_PROMPT_TEMPS: Partial<Record<AIRequestType, number>> = {
   statUpdates: 0.2,
   locationChange: 0.15,
-  summary: 0.3,
+  summary: 0, // greedy: verbatim-quote echo is the runner-up token, so any temp > 0 leaks it (measured cliff at 0).
 };
 
 export interface PromptTempSetting {
