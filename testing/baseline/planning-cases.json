@@ -1,6 +1,7 @@
 {
-  "_note": "Gold cases for the reframed precall planning prompt (continuity planner: Scene/Cast/Beats). Each supplies a previous narration + the player's next action + an entity roster, and asserts the continuity behaviors: carry the whole cast forward, drop who plainly leaves, keep an established object (not a substitute), open the Cast with the Player Character, and use the name(alias) spoiler form only for a not-yet-named character. `castPresent`/`castAbsent` are name substrings that must / must not appear as cast members; `keepWord`/`forbidWord` check object continuity across Cast+Beats; `aliasHidden`/`aliasRevealed` name a character whose cast line must / must not carry a parenthetical. Run via harness/planning-probe.mjs.",
+  "_note": "Gold cases for the reframed precall planning prompt (continuity planner: Scene/Cast/Beats). Each supplies a previous narration + the player's next action + an entity roster, and asserts the continuity behaviors: carry the whole cast forward, drop who plainly leaves, keep an established object (not a substitute), open the Cast with the Player Character, and use the name(alias) spoiler form only for a not-yet-named character. `castPresent`/`castAbsent` are name substrings that must / must not appear as cast members; `keepWord`/`forbidWord` check object continuity across Cast+Beats; `aliasHidden`/`aliasRevealed` name a character whose cast line must / must not carry a parenthetical. Run the plan-quality grade via harness/planning-probe.mjs. EXTRA fields consumed by the real-parser probe (harness/planning-parser-probe.test.ts, which runs the app's actual parseDirectorCast/classifyCast/sanitizePlanForReveal): `reachableEntities` (rendered under the reachable chip, must NOT be cast as present), `mentionedAbsent` (names referenced in prose but not bodily present, must NOT be cast), `revealed` (names already spoken in prevNarration - sanitize must keep them; present names absent from this list must be stripped from the sanitized plan), `expectDirector`/`expectAdHoc` (how each present NPC should classify).",
   "world": "A quiet river-crossing hamlet at dusk. Grounded folk tale, no magic.",
+  "playerName": "Wren",
   "playerTrait": "The player character is Wren, a travel-worn mapmaker with silver hair and ink-stained hands, soft-spoken and observant.",
   "location": "The Ferry Landing - a rickety dock where a rope ferry is moored; a lantern hangs from a leaning post.",
   "cases": [
@@ -14,7 +15,9 @@
       "prevNarration": "Bram leans on the ferry rope, Odette turns her eels over the firepit, and Tomas rests his spear against the post. The three of them fall quiet as you step onto the dock.",
       "action": "I ask Bram what the crossing costs tonight.",
       "castPresent": ["Bram", "Odette", "Tomas"],
-      "castAbsent": []
+      "castAbsent": [],
+      "expectDirector": ["Bram", "Odette", "Tomas"],
+      "revealed": ["Bram", "Odette", "Tomas"]
     },
     {
       "name": "drop-who-leaves",
@@ -25,7 +28,8 @@
       "prevNarration": "Bram ties off the ferry rope while Odette packs up her firepit, the last eels wrapped in cloth. \"Storm's coming,\" Bram mutters.",
       "action": "I leave the landing and walk up the causeway toward the village inn.",
       "castPresent": [],
-      "castAbsent": ["Bram", "Odette"]
+      "castAbsent": ["Bram", "Odette"],
+      "revealed": ["Bram", "Odette"]
     },
     {
       "name": "object-continuity",
@@ -37,7 +41,9 @@
       "castPresent": ["Tomas"],
       "castAbsent": [],
       "keepWord": "spear",
-      "forbidWord": ["shield", "sword"]
+      "forbidWord": ["shield", "sword"],
+      "expectDirector": ["Tomas"],
+      "revealed": ["Tomas"]
     },
     {
       "name": "unrevealed-name-alias",
@@ -48,7 +54,9 @@
       "action": "I walk over and ask her if she is waiting for the ferry too.",
       "castPresent": ["Maela"],
       "castAbsent": [],
-      "aliasHidden": "Maela"
+      "aliasHidden": "Maela",
+      "expectDirector": ["Maela"],
+      "revealed": []
     },
     {
       "name": "revealed-name-no-alias",
@@ -59,7 +67,9 @@
       "action": "I nod and ask Maela how far she is travelling.",
       "castPresent": ["Maela"],
       "castAbsent": [],
-      "aliasRevealed": "Maela"
+      "aliasRevealed": "Maela",
+      "expectDirector": ["Maela"],
+      "revealed": ["Maela"]
     },
     {
       "name": "new-character-enters",
@@ -70,7 +80,9 @@
       "prevNarration": "Bram works the ferry rope alone, the dock otherwise empty in the failing light.",
       "action": "I wave down the heavyset rider trotting in from the north road and ask his business.",
       "castPresent": ["Bram", "Garrick"],
-      "castAbsent": []
+      "castAbsent": [],
+      "expectDirector": ["Bram", "Garrick"],
+      "revealed": ["Bram"]
     },
     {
       "name": "solo-no-invention",
@@ -80,6 +92,38 @@
       "castPresent": [],
       "castAbsent": [],
       "soloExpected": true
+    },
+    {
+      "name": "mentioned-not-present",
+      "entities": [
+        { "name": "Bram", "description": "A one-armed ferryman with a brass ear-ring.", "type": "Person" }
+      ],
+      "reachableEntities": [
+        { "name": "King Luke", "description": "The player's estranged father, a stern monarch who rules from the capital far upriver.", "type": "Person" }
+      ],
+      "prevNarration": "Bram loops the ferry rope around the post and looks you over. \"Long way from anywhere, mapmaker.\"",
+      "action": "I tell Bram that my father, King Luke, would never approve of a crossing this late.",
+      "castPresent": ["Bram"],
+      "castAbsent": ["Luke"],
+      "mentionedAbsent": ["Luke", "King Luke"],
+      "expectDirector": ["Bram"],
+      "revealed": ["Bram"]
+    },
+    {
+      "name": "reachable-not-present",
+      "entities": [
+        { "name": "Odette", "description": "A wiry woman smoking eels, a green bead in her hair.", "type": "Person" }
+      ],
+      "reachableEntities": [
+        { "name": "Cael", "description": "A ferry-warden who keeps the far northern crossing, a day's walk upriver.", "type": "Person" }
+      ],
+      "prevNarration": "Odette hands you a strip of smoked eel and nods at the black water. \"Cael runs the north crossing, if this one's shut.\"",
+      "action": "I thank Odette and think about whether to seek out the northern crossing tomorrow.",
+      "castPresent": ["Odette"],
+      "castAbsent": ["Cael"],
+      "mentionedAbsent": ["Cael"],
+      "expectDirector": ["Odette"],
+      "revealed": ["Odette"]
     }
   ]
 }

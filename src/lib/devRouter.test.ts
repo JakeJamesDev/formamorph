@@ -1,6 +1,10 @@
 import { describe, it, expect } from 'vitest';
 import { DEV_MODAL_TABS } from './devRoutes';
+import { DEV_FIXTURES } from './devFixtures';
 import { SETTINGS_TABS } from '@/components/modals/settingsTabs';
+import { isSaveEnvelope } from './version';
+import whiteRoomWorld from './devFixtures/whiteRoomWorld.json';
+import whiteRoomSave from './devFixtures/whiteRoomSave.json';
 
 // The parser is module-private; re-derive it here against the documented hash grammar so the encode
 // (window.__fmDev.goto) and decode stay pinned to the same shape.
@@ -42,5 +46,22 @@ describe('dev-router coverage guard', () => {
   // renamed there without updating the DEV_MODAL_TABS ledger, this fails — forcing conscious coverage.
   it('ledger lists exactly the Settings modal tabs the surface renders', () => {
     expect([...DEV_MODAL_TABS.settings]).toEqual(SETTINGS_TABS.map((t) => t.value));
+  });
+});
+
+describe('mid-game boot fixtures', () => {
+  it('registers the white-room fixture', () => {
+    expect(DEV_FIXTURES).toContain('whiteRoom');
+  });
+
+  it('white-room world has a location to start in', () => {
+    expect(Array.isArray(whiteRoomWorld.locations) && whiteRoomWorld.locations.length).toBeTruthy();
+  });
+
+  it('white-room save is a loadable envelope whose current state matches the world location', () => {
+    expect(isSaveEnvelope(whiteRoomSave)).toBe(true);
+    // 3-turn fixture: history holds each page and current is the latest (what loadGame restores).
+    expect(whiteRoomSave.stateHistory).toHaveLength(3);
+    expect(whiteRoomSave.currentState.locationId).toBe(whiteRoomWorld.locations[0].id);
   });
 });

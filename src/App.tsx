@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { ThemeProvider } from "./components/theme-provider";
 import { useDevRoute, installDevRouter } from './lib/devRouter';
 import { type DevView } from './lib/devRoutes';
+import { DevFixtureLoader } from './components/DevFixtureLoader';
 import { GameDataProvider } from './contexts/GameDataContext';
 import { SettingsProvider } from './contexts/SettingsContext';
 import { GameplayProvider } from './contexts/GameplayContext';
@@ -57,6 +58,7 @@ function App() {
       <SettingsProvider>
         <LocalEngineManager />
         <GameDataProvider>
+          <DevFixtureLoader />
           {currentView === 'mainMenu' && (
             <MainMenu
               onStartGame={handleStartGame}

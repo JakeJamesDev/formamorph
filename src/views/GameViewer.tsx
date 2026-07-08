@@ -41,6 +41,8 @@ import { EntityModal } from "../components/modals/EntityModal";
 import { LocationModal } from "../components/modals/LocationModal";
 import { SettingsModal } from "../components/modals/SettingsModal";
 import { useDevRoute } from "../lib/devRouter";
+import { loadDevFixture } from "../lib/devFixtures";
+import { saveToDB } from "../components/modals/dbUtils";
 import { MenuModal } from "../components/modals/MenuModal";
 import WorldEditor from "./WorldEditor";
 import type { CharacterData, ChatMessage, ChatRole, AIRequestType, AITurnResult, StatChange, Trait, GameLocation, MediaAsset, Dictionary, Entity } from "@/types";
@@ -454,6 +456,24 @@ const GameViewer = ({
   useEffect(() => {
     if (import.meta.env.DEV && devRoute?.modal === 'settings') setIsSettingsOpen(true);
   }, [devRoute?.modal]);
+  // DEV dev-router: boot mid-game from a canned fixture. DevFixtureLoader has loaded the world (so
+  // `locations` are present); seed the save into IndexedDB and run the real loadGame to override the
+  // fresh-game init. Tree-shaken in prod.
+  const devFixtureLoadedRef = useRef(false);
+  useEffect(() => {
+    if (!import.meta.env.DEV) return;
+    const name = devRoute?.fixture;
+    if (!name || devFixtureLoadedRef.current || locations.length === 0) return;
+    devFixtureLoadedRef.current = true;
+    void (async () => {
+      const fx = await loadDevFixture(name);
+      if (!fx) return;
+      // saveToDB keys off the record's own `name` (spread wins), and the fixture JSON carries its original
+      // name — so align it to saveName, else loadGame looks under the wrong key.
+      await saveToDB(fx.saveName, { ...(fx.save as unknown as Record<string, unknown>), name: fx.saveName });
+      await loadGame(fx.saveName, locations);
+    })();
+  }, [devRoute?.fixture, locations, loadGame]);
   const [isEditingWorld, setIsEditingWorld] = useState(false);
   const [uiHidden, setUiHidden] = useState(false); // hide all panels/buttons to reveal the background image
   const [showEditorExitPrompt, setShowEditorExitPrompt] = useState(false);
