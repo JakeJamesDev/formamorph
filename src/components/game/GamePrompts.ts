@@ -76,7 +76,7 @@ Now write my options - one per line, each a single action I take.`;
 
 export const defaultStatUpdatesUserPrompt = `Narration: <NARRATION>
 
-Output only the stat-change lines now - each a stat name, a colon, and a whole-number change (not a value). Or nothing. No prose.`;
+List only the stats this narration actually moved - each a stat name, a colon, and one signed whole-number change (not a value, not a fraction, no slash). Nothing if nothing changed. No prose.`;
 
 export const defaultLocationChangeUserPrompt = `The player character's action this turn ("I" = the player character): <PLAYER ACTION>
 
@@ -132,14 +132,14 @@ Suggest 3 to 5 distinct things I could do next - each a genuinely different way 
 - Make the options meaningfully different from one another.
 - Write only the option sentences - no numbering, bullets, dashes, quotation marks, headings, or commentary.`;
 
-export const defaultStatUpdatesPrompt = `You are the stat tracker for an interactive roleplay. Your entire output is stat-change lines - nothing else.
+export const defaultStatUpdatesPrompt = `You are the stat tracker for an interactive roleplay. You read what happened this turn and record how it moved the player's stats. Your entire output is stat-change lines - nothing else.
 
 ## Game World
 <WORLD DESCRIPTION>
 
 ## Player Stats
-Current readings, so you know each stat's level - output only the CHANGE this turn, never a stat's value.
-<STATS DESCRIPTION|numbers.markdown>
+Current readings (shown as current-value/maximum) with what each stat means, so you know each stat's level, range, and purpose. Output only the CHANGE this turn, never a value and never that value/max format.
+<STATS DESCRIPTION|numbers.meaning.markdown>
 
 ## Traits
 <TRAITS DESCRIPTION|markdown>
@@ -147,12 +147,17 @@ Current readings, so you know each stat's level - output only the CHANGE this tu
 ## Player Notes
 <NOTES>
 
-## Rules
-- One line per changed stat: its exact name from the list above, a colon, then a single whole number - how much it changes this turn (negative lowers it). Keep each between -20 and 20.
-- Write only the change amount - never the current value, a running total, or a descriptor word.
+## What to change
+- The RIGHT stat in the RIGHT direction is what matters most. A rough amount on the stat the turn actually moved beats a precise amount on the wrong stat - and beats changing nothing when something clearly happened.
+- Change a stat only when the narration clearly moved it, and leave every untouched stat out. Never change a stat the turn didn't affect.
+- Don't under-report either: if the turn plainly taxed, restored, or shifted a stat, you must reflect it.
+- The amount is a rough judgment, not a calculation - no one knows the exact number. Pick a small whole number scaled loosely to the stat's range and how big the moment was, and commit to it. Never report the value because you're unsure of the change.
+
+## Format
+- One line per changed stat: its exact name from the list above (written plainly - never a + or - on the name), a colon, then one signed whole number. Nothing else on the line.
+- The change is ONE whole number - never a fraction, a slash, or a value-over-maximum; keep it between -20 and 20. Put the sign on the number (a leading minus lowers the stat).
 - To change a stat's maximum instead of its current value, add MAX after the number.
-- Only include stats that actually change this turn. If nothing changes, output nothing at all.
-- Begin your reply with the first stat line (or nothing) - never a preamble, heading, or explanation.`;
+- If nothing changed this turn, output nothing at all. Never write a preamble, heading, or explanation.`;
 
 export const defaultLocationChangePrompt = `You are the location router for an interactive roleplay - from the player character's stated action alone, you decide whether they are moving to a new place. You never act in the story; the action's "I" is the player character, never you.
 

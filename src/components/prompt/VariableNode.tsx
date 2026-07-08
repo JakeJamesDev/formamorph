@@ -9,6 +9,7 @@ import { useLexicalComposerContext } from '@lexical/react/LexicalComposerContext
 import { Chip } from '@/components/Chip';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Checkbox } from '@/components/ui/checkbox';
 import { cn } from '@/lib/utils';
 import {
   labelForToken, colorForToken, variableForToken, baseToken, tokenVariant, withVariant,
@@ -42,6 +43,8 @@ function VariableChip({ nodeKey, token }: { nodeKey: NodeKey; token: string }) {
 
   const axes = variable ? variableAxes(variable) : [];
   const selection = variable ? decodeVariant(variable, tokenVariant(token)) : {};
+  // How many toggle (checkbox) axes are on — used to lock the last one so at least one piece stays selected.
+  const toggleOnCount = axes.filter((a) => a.toggle && selection[a.id] != null).length;
 
   const remove = () => editor.update(() => { $getNodeByKey(nodeKey)?.remove(); });
 
@@ -79,6 +82,26 @@ function VariableChip({ nodeKey, token }: { nodeKey: NodeKey; token: string }) {
         {axes.length ? (
           <div className="space-y-3">
             {axes.map((axis) => {
+              // Toggle axes render as a checkbox; the last one on is locked so a stats block is never nameless.
+              if (axis.toggle) {
+                const isOn = selection[axis.id] != null;
+                const onId = axis.options.find((o) => o.id != null)?.id ?? null;
+                const locked = isOn && toggleOnCount === 1;
+                return (
+                  <label key={axis.id} className={cn('flex items-start gap-2', (!editable || locked) && 'cursor-default')}>
+                    <Checkbox
+                      checked={isOn}
+                      disabled={!editable || locked}
+                      onCheckedChange={() => setAxis(axis.id, isOn ? null : onId)}
+                      className="mt-0.5"
+                    />
+                    <span>
+                      <span className="text-xs font-medium">{axis.label}</span>
+                      {axis.help && <p className="text-[11px] text-muted-foreground">{axis.help}</p>}
+                    </span>
+                  </label>
+                );
+              }
               const active = selection[axis.id] ?? FULL;
               return (
                 <div key={axis.id} className="space-y-2">

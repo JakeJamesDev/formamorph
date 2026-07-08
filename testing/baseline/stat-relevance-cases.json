@@ -1,0 +1,62 @@
+{
+  "_note": "Fixed gold-case set for probing the stat-updates prompt's RELEVANCE (does it move the right stat, right direction, and leave irrelevant stats alone). Six self-descriptive stats spanning distinct axes; each case has an obvious correct answer. `expect` = stats that MUST change (with direction), `allow` = defensible secondaries that don't count as spurious, everything else is a trap. Run via harness/stat-relevance-probe.mjs.",
+  "world": "A cold marsh country of river crossings and eel-fishing hamlets. You play Wren, a traveling mapmaker surveying the waterways on foot, carrying your instruments and a thin purse.",
+  "stats": [
+    { "name": "Vigor", "min": 0, "max": 100, "value": 62, "description": "Physical stamina and energy - spent by hard exertion, restored by rest and food." },
+    { "name": "Health", "min": 0, "max": 100, "value": 88, "description": "Bodily condition - lowered by wounds and sickness, restored by healing and care." },
+    { "name": "Resolve", "min": 0, "max": 100, "value": 74, "description": "Willpower and morale - worn down by fear, loss, and despair, lifted by triumph and reassurance." },
+    { "name": "Warmth", "min": 0, "max": 100, "value": 55, "description": "How warm the body is - sapped by cold and wet, restored by fire, shelter, and dry clothes." },
+    { "name": "Coin", "min": 0, "max": 500, "value": 30, "description": "Money on hand - spent on goods and passage, gained by pay or found coin." },
+    { "name": "Standing", "min": 0, "max": 100, "value": 40, "description": "Reputation among the local folk - raised by kindness and competence shown them, lowered by offense or failure." }
+  ],
+  "cases": [
+    {
+      "name": "exertion",
+      "narration": "You haul yourself hand over hand up the steep, root-tangled path, your pack dragging at your shoulders. By the top your arms are shaking and your breath saws in your chest - but you are up, and unhurt.",
+      "expect": { "Vigor": "down" },
+      "allow": []
+    },
+    {
+      "name": "injury",
+      "narration": "A fishhook snags deep into your palm as you haul the net, tearing a ragged gash. You work it free and bind the wound with a strip of cloth, but it throbs with every heartbeat and blood wells through the wrapping.",
+      "expect": { "Health": "down" },
+      "allow": ["Vigor"]
+    },
+    {
+      "name": "spend-coin",
+      "narration": "You count six coppers into the ferryman's waiting palm. He grunts, pockets them without a word, and jerks his chin toward the waiting raft. The crossing is yours.",
+      "expect": { "Coin": "down" },
+      "allow": []
+    },
+    {
+      "name": "cold-wet",
+      "narration": "You wade the shallows waist-deep, and the wind off the open marsh knifes straight through your soaked clothes. Your teeth clatter, and by the far bank you can no longer feel your fingers.",
+      "expect": { "Warmth": "down" },
+      "allow": ["Vigor"]
+    },
+    {
+      "name": "social-win",
+      "narration": "You mend the old net-mender's torn seines without being asked, your fingers quick at the knots. Word travels the landing before you have finished; by dusk two more villagers greet you by name, and the eel-smoker sets aside her choicest fillet for you.",
+      "expect": { "Standing": "up" },
+      "allow": []
+    },
+    {
+      "name": "null-idle",
+      "narration": "You stand at the rail and watch the mist coil slowly over the black water, your mind on the long road behind you. Nothing stirs but the sluggish current and a heron stepping through the reeds.",
+      "expect": {},
+      "allow": []
+    },
+    {
+      "name": "morale-loss",
+      "narration": "The map you spent three weeks inking slips from the tube when the ferry lurches - the current takes it, unspooling the vellum into the dark before you can lunge for it. Three weeks of work, gone. You stare at the empty tube in your hands.",
+      "expect": { "Resolve": "down" },
+      "allow": []
+    },
+    {
+      "name": "rest-warm-food",
+      "narration": "You duck into the tavern's back room, peel off your soaked coat, and sink onto the bench by the roaring hearth. Heat seeps back into your bones, and a serving girl presses a bowl of hot eel stew into your hands. Slowly the shaking stops and strength trickles back.",
+      "expect": { "Warmth": "up", "Vigor": "up" },
+      "allow": ["Health"]
+    }
+  ]
+}

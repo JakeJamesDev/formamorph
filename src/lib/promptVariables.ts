@@ -17,6 +17,11 @@ export interface PromptVariantAxis {
   id: string;
   label: string;
   options: PromptVariant[]; // first entry (id:null) is the default
+  /** Render as an independent checkbox (on = its non-null option) rather than a single-select control. A
+   *  variable's toggle axes form one "at least one must stay on" group in the editor. */
+  toggle?: boolean;
+  /** Help shown beside a toggle axis's checkbox. */
+  help?: string;
 }
 
 /** Registry of the angle-bracket variables that prompt templates can embed. The base `token`
@@ -84,20 +89,25 @@ const FORMAT_AXIS: PromptVariantAxis = {
   ],
 };
 
-// Stats has two independent axes: what data each line carries (content) and how the block is shaped (format).
-const STATS_CONTENT_AXIS: PromptVariantAxis = {
-  id: 'content',
-  label: 'Content',
-  options: [
-    { id: null, label: 'Full', help: 'Numbers and descriptor, e.g. "Health: 10/100 (Critical)".' },
-    { id: 'descriptions', label: 'Words', help: 'Descriptor only, e.g. "Health: Critical".' },
-    { id: 'numbers', label: 'Values', help: 'Numbers only, e.g. "Health: 10/100".' },
-  ],
+// Stats content is three independent pieces (each a checkbox), plus the shared format axis. The stat's Name
+// is always present; at least one piece must stay on (enforced in the editor). The old single-select ids
+// `numbers` (Range) and `descriptions` (Descriptor) are kept, so existing tokens still render; `meaning` is new.
+const STAT_VALUES_AXIS: PromptVariantAxis = {
+  id: 'numbers', label: 'Range', toggle: true, help: 'e.g. "10/100".',
+  options: [{ id: null, label: 'Range' }, { id: 'numbers', label: 'Range' }],
+};
+const STAT_STATUS_AXIS: PromptVariantAxis = {
+  id: 'descriptions', label: 'Descriptor', toggle: true, help: 'e.g. "Critical".',
+  options: [{ id: null, label: 'Descriptor' }, { id: 'descriptions', label: 'Descriptor' }],
+};
+const STAT_MEANING_AXIS: PromptVariantAxis = {
+  id: 'meaning', label: 'Description', toggle: true, help: 'e.g. "Physical stamina."',
+  options: [{ id: null, label: 'Description' }, { id: 'meaning', label: 'Description' }],
 };
 
 // Each variable gets a fixed palette slot so its color is stable everywhere (chip + preview, every prompt).
 const WORLD: PromptVariable = { token: '<WORLD DESCRIPTION>', label: 'World', color: HIGHLIGHT_PALETTE[0] };
-const STATS: PromptVariable = { token: '<STATS DESCRIPTION>', label: 'Stats', color: HIGHLIGHT_PALETTE[1], axes: [STATS_CONTENT_AXIS, FORMAT_AXIS] };
+const STATS: PromptVariable = { token: '<STATS DESCRIPTION>', label: 'Stats', color: HIGHLIGHT_PALETTE[1], axes: [STAT_VALUES_AXIS, STAT_STATUS_AXIS, STAT_MEANING_AXIS, FORMAT_AXIS] };
 const TRAITS: PromptVariable = { token: '<TRAITS DESCRIPTION>', label: 'Traits', color: HIGHLIGHT_PALETTE[2], axes: [FORMAT_AXIS] };
 const LOCATION: PromptVariable = { token: '<LOCATION>', label: 'Location', color: HIGHLIGHT_PALETTE[3], axes: [LOCATION_SCOPE_AXIS, CONTENT_AXIS, FORMAT_AXIS] };
 const NOTES: PromptVariable = { token: '<NOTES>', label: 'Notes', color: HIGHLIGHT_PALETTE[4] };
@@ -171,7 +181,7 @@ export function variableAxes(variable: PromptVariable): PromptVariantAxis[] {
 
 /** All non-null combined variant ids a variable can produce (cross-product of its axes' options, each
  *  axis contributing its id or nothing), joined by `.` in axis order. Excludes the all-default (empty). */
-function variableVariantIds(variable: PromptVariable): string[] {
+export function variableVariantIds(variable: PromptVariable): string[] {
   let combos: string[][] = [[]];
   for (const axis of variableAxes(variable)) {
     combos = combos.flatMap((c) => axis.options.map((o) => (o.id ? [...c, o.id] : c)));

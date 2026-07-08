@@ -65,7 +65,7 @@ describe('default prompts carry the expected variable chips', () => {
   it('stat-updates prompt', () => {
     expect(tokensIn(defaultStatUpdatesPrompt)).toEqual([
       '<WORLD DESCRIPTION>',
-      '<STATS DESCRIPTION|numbers.markdown>',
+      '<STATS DESCRIPTION|numbers.meaning.markdown>',
       '<TRAITS DESCRIPTION|markdown>',
       '<NOTES>',
     ]);
