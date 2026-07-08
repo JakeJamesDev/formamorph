@@ -80,6 +80,7 @@ import { timingForWordRate, flooredTiming, revealActive, DEFAULT_STAGGER, DEFAUL
 import { parseSlashCommand } from "../lib/slashCommands";
 import { MARKDOWN_SAMPLE } from "../lib/markdownSample";
 import { normalizeStatChanges, applyAiStatChanges, applyTraitStatChanges, parseStatUpdates, applyAiMaxChanges } from "../lib/statChanges";
+import { resolvePromptTemperature } from "../lib/promptTemperature";
 import { matchLocationResponse } from "../lib/locationMatch";
 import { rollbackState, regenerateState, canRegenerate, lastTurnAction, markRegeneratedTurn, markPrunedTurns, snapshotPageIndex, placeSnapshot } from "../lib/turnHistory";
 import { useDeferredSnapshot } from "../lib/useDeferredSnapshot";
@@ -227,6 +228,7 @@ const GameViewer = ({
     genRepetitionPenalty,
     genTopK,
     genMinP,
+    promptTemps,
     systemPrompt,
     choicesPrompt,
     statUpdatesPrompt,
@@ -1568,6 +1570,8 @@ ${playerNotes || NONE_PLACEHOLDER}
       // Capture the exact payload into the AI-context viewer.
       if (!silent || captureSilent) captureRequest();
 
+      const resolvedTemperature = resolvePromptTemperature(requestType, promptTemps, genTemperature, localModelActive);
+
       const response = await fetch(getEndpointUrl(), {
         method: "POST",
         headers: {
@@ -1579,14 +1583,16 @@ ${playerNotes || NONE_PLACEHOLDER}
           messages: [{ role: "system", content: systemPrompt }, ...messages],
           max_tokens: maxTokensOverride ?? maxTokens,
           stream: true,
-          // Sampling: applied to the local model only (leaves a custom endpoint's own defaults untouched).
+          // Non-temperature samplers apply to the built-in engine only (a custom endpoint keeps its own).
           ...(localModelActive && {
-            temperature: genTemperature,
             top_p: genTopP,
             top_k: genTopK,
             min_p: genMinP,
             repetition_penalty: genRepetitionPenalty,
           }),
+          // Temperature is resolved per prompt: pinned/custom values go to every endpoint; non-pinned prompts
+          // send the global temp on the built-in engine but omit on a custom endpoint (undefined → no field).
+          ...(resolvedTemperature !== undefined && { temperature: resolvedTemperature }),
           // Single-paragraph stop, but not in inline-thinking mode — the <think> block needs newlines.
           ...(requestType === "narration" && paragraphLimit === "single" && thinkingMode !== "inline" && { stop: ["\n"] }),
         }),
