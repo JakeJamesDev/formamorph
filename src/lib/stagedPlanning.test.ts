@@ -2,6 +2,9 @@ import { describe, it, expect } from 'vitest';
 import {
   parseDirectorCast,
   matchCastToEntities,
+  classifyCast,
+  isEmptyCastName,
+  sanitizePlanForReveal,
   buildCharacterUserMessage,
   buildDiaryUserMessage,
   buildStoryboardUserMessage,
@@ -164,6 +167,80 @@ describe('matchCastToEntities', () => {
     const { chosen, overflow } = matchCastToEntities(cast, entities, 3);
     expect(chosen.map((c) => c.name)).toEqual(['A', 'B', 'C']);
     expect(overflow).toEqual(['D']);
+  });
+});
+
+describe('isEmptyCastName', () => {
+  it('catches single-word sentinels and "the scene is empty" phrasings', () => {
+    for (const n of ['none', 'None.', 'N/A', 'nobody', 'no characters', 'no other characters present',
+      'No other characters', 'no one else', 'No one else present', 'nobody else', 'no others', 'no NPCs present']) {
+      expect(isEmptyCastName(n)).toBe(true);
+    }
+  });
+
+  it('does not flag real names that merely start with "no"', () => {
+    for (const n of ['Noah', 'Nora', 'Norman', 'Nobu']) expect(isEmptyCastName(n)).toBe(false);
+  });
+});
+
+describe('classifyCast', () => {
+  const entities = [ent('1', 'Mira'), ent('2', 'Captain Vos')];
+
+  it('buckets defined entities vs ad-hoc names and flags the player by trait name', () => {
+    const cast = [
+      { name: 'Player Character', isPlayer: true },
+      { name: 'Aldric' }, // the player, named instead of labeled
+      { name: 'Mira' },
+      { name: 'A hooded looter' },
+    ];
+    const { npcCast, directorCandidates, adHocCandidates } = classifyCast(cast, entities, ['Aldric']);
+    expect(npcCast.map((c) => c.name)).toEqual(['Mira', 'A hooded looter']);
+    expect(directorCandidates).toEqual(['Mira']);
+    expect(adHocCandidates).toEqual(['A hooded looter']);
+  });
+
+  it('treats a name that resolves to an entity as an NPC even if it also matches a trait name', () => {
+    // "Mira" is both a selected trait name and a world entity — the entity wins (it's an NPC, not the player).
+    const { npcCast, directorCandidates } = classifyCast([{ name: 'Mira' }], entities, ['Mira']);
+    expect(npcCast).toHaveLength(1);
+    expect(directorCandidates).toEqual(['Mira']);
+  });
+});
+
+describe('sanitizePlanForReveal', () => {
+  const revealNone = () => false;
+  const revealAll = () => true;
+
+  it('swaps an unrevealed name for its parenthetical alias across Scene, Cast, and Beats', () => {
+    const plan = [
+      'Scene: Maela lingers by the door.',
+      'Cast:',
+      '- Player Character - seated at the bar',
+      '- Maela (the silver-haired woman) - watching the room',
+      'Beats: Maela steps closer and studies you.',
+    ].join('\n');
+    const out = sanitizePlanForReveal(plan, revealNone);
+    expect(out).not.toMatch(/Maela/);
+    expect(out).toContain('the silver-haired woman lingers by the door');
+    expect(out).toContain('- the silver-haired woman - watching the room');
+    expect(out).toContain('the silver-haired woman steps closer');
+  });
+
+  it('leaves a name untouched once it has been revealed in past narration', () => {
+    const plan = ['Cast:', '- Maela (the silver-haired woman) - watching'].join('\n');
+    expect(sanitizePlanForReveal(plan, revealAll)).toContain('Maela');
+  });
+
+  it('falls back to a neutral descriptor when the planner gave no alias', () => {
+    const plan = ['Cast:', '- Gareth - blocking the exit', 'Beats: Gareth draws a blade.'].join('\n');
+    const out = sanitizePlanForReveal(plan, revealNone);
+    expect(out).not.toMatch(/Gareth/);
+    expect(out).toContain('someone the player has not yet identified');
+  });
+
+  it('never rewrites the player or empty-cast sentinels', () => {
+    const plan = ['Cast:', '- Player Character - waiting', '- None'].join('\n');
+    expect(sanitizePlanForReveal(plan, revealNone)).toBe(plan);
   });
 });
 

@@ -1,5 +1,7 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { ThemeProvider } from "./components/theme-provider";
+import { useDevRoute, installDevRouter } from './lib/devRouter';
+import { type DevView } from './lib/devRoutes';
 import { GameDataProvider } from './contexts/GameDataContext';
 import { SettingsProvider } from './contexts/SettingsContext';
 import { GameplayProvider } from './contexts/GameplayContext';
@@ -11,7 +13,15 @@ import type { CharacterData, Dictionary, Entity } from '@/types';
 
 
 function App() {
-  const [currentView, setCurrentView] = useState<'mainMenu' | 'gameViewer' | 'worldEditor'>('mainMenu');
+  const [currentView, setCurrentView] = useState<DevView>('mainMenu');
+  const devRoute = useDevRoute();
+
+  // DEV dev-router: install `window.__fmDev` and let a `#dev?view=…` hash drive the top-level screen so
+  // preview verification can land in one call (see `devRouter.ts`). No-op / tree-shaken in production.
+  useEffect(() => installDevRouter(), []);
+  useEffect(() => {
+    if (import.meta.env.DEV && devRoute?.view) setCurrentView(devRoute.view as DevView);
+  }, [devRoute?.view]);
   const [selectedTraits, setSelectedTraits] = useState<string[]>([]);
   const [initialCharacterData, setInitialCharacterData] = useState<CharacterData | null>(null);
   const [initialLocationId, setInitialLocationId] = useState<string | null>(null);
