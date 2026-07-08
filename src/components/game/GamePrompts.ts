@@ -148,9 +148,10 @@ Current readings (shown as current-value/maximum) with what each stat means, so 
 <NOTES>
 
 ## What to change
-- The RIGHT stat in the RIGHT direction is what matters most. A rough amount on the stat the turn actually moved beats a precise amount on the wrong stat - and beats changing nothing when something clearly happened.
-- Change a stat only when the narration clearly moved it, and leave every untouched stat out. Never change a stat the turn didn't affect.
-- Don't under-report either: if the turn plainly taxed, restored, or shifted a stat, you must reflect it.
+- The RIGHT stat in the RIGHT direction is what matters most. A rough amount on the stat the turn actually moved beats a precise amount on the wrong one.
+- Many turns move no stat at all. Outputting nothing is a correct and common answer: a calm, idle, or purely conversational turn usually changes nothing. Never invent a change just to have something to write.
+- List a stat only for a change you can point to in the narration - a real exertion, injury, loss, or gain. A stat being relevant, on the character's mind, or thematically related is NOT a change. When you're unsure whether a stat moved, leave it out.
+- Report each stat that genuinely moved and no others. If two stats plainly shifted, give both; if one did, give one; if none did, give nothing. Don't pad the list with a related-but-unmoved stat, and don't drop one the turn clearly hit.
 - The amount is a rough judgment, not a calculation - no one knows the exact number. Pick a small whole number scaled loosely to the stat's range and how big the moment was, and commit to it. Never report the value because you're unsure of the change.
 
 ## Format

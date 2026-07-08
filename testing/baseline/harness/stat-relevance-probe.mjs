@@ -2,7 +2,7 @@
 // stat-updates prompt against a local model and grades each: did it move the expected stat(s) in the right
 // direction (hit), miss one, or touch a trap stat (spurious). Uses a synthetic 6-stat context because the
 // tracked Sedge world has only 2 stats — too thin to test relevance. Renders the stats block exactly as the
-// app's `<STATS DESCRIPTION|numbers.markdown>` token does (`- **Name:** value/max`).
+// app's `<STATS DESCRIPTION|numbers.meaning.markdown>` token does (`- **Name:** value/max - description`).
 //
 // Usage:  node stat-relevance-probe.mjs [--model rocinante] [--runs 2]
 
@@ -33,15 +33,15 @@ const grab = (name) => {
 const SYS = grab("defaultStatUpdatesPrompt");
 const USER = grab("defaultStatUpdatesUserPrompt");
 
-// EXPERIMENT: augment the app's `numbers.markdown` rendering (`- **Name:** value/max`) with each stat's
-// description, to test whether giving the model stat MEANINGS fixes relevance for non-obvious stats. The real
-// app does NOT currently inject descriptions; if this helps, that's the plumbing change to consider.
+// Renders the stats block exactly as the app's live `<STATS DESCRIPTION|numbers.meaning.markdown>` token now
+// does: `- **Name:** value/max - description`. Descriptions are now plumbed through the real context, so this
+// mirrors production rather than being an experimental augmentation.
 const statsBlock = stats
   .map((s) => `- **${s.name}:** ${s.value}/${s.max}${s.description ? ` - ${s.description}` : ""}`)
   .join("\n");
 const renderSys = () =>
   SYS.replaceAll("<WORLD DESCRIPTION>", world)
-    .replaceAll("<STATS DESCRIPTION|numbers.markdown>", statsBlock)
+    .replaceAll("<STATS DESCRIPTION|numbers.meaning.markdown>", statsBlock)
     .replaceAll("<TRAITS DESCRIPTION|markdown>", "None")
     .replaceAll("<NOTES>", "None");
 const renderUser = (narration) => USER.replaceAll("<NARRATION>", narration);
