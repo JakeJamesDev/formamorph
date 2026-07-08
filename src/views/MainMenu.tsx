@@ -870,7 +870,7 @@ const MainMenu = ({ onStartGame, onOpenWorldEditor }: MainMenuProps) => {
         </div>
       </div>
 
-      <SettingsModal isOpen={showSettings} onOpenChange={setShowSettings} initialTab={devRoute?.tab} />
+      <SettingsModal isOpen={showSettings} onOpenChange={setShowSettings} initialTab={devRoute?.tab} initialPromptTab={devRoute?.subtab} />
 
       <input
         type="file"

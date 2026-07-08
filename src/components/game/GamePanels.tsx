@@ -36,7 +36,7 @@ import TtsPlaybackBar from './TtsPlaybackBar';
 import type { TTSProgress } from './TTSModal';
 import { ConfirmDialog } from '../ConfirmDialog';
 import { EditTextModal } from '../modals/EditTextModal';
-import type { Entity } from '@/types';
+import type { Entity, SceneEntity } from '@/types';
 
 export const LeftPanel = ({ entities, onEntityClick }: {
   entities: Entity[];
@@ -54,11 +54,12 @@ export const LeftPanel = ({ entities, onEntityClick }: {
     setPlayerNotes
   } = useGameplay();
   const playerModelUrl = usePlayerModelUrl(characterData?.playerModelId);
-  // First detected (visible) entity that has an image — shown in the model section's Entities view.
+  // First present entity that has an image — shown in the model section's Entities view (the portrait shows
+  // whether or not the name is revealed yet).
   const firstEntityImage = visibleEntities
-    .map((id) => entities.find((f) =>
-      f.name.toLowerCase().includes(id.toLowerCase()) ||
-      id.toLowerCase().includes(f.name.toLowerCase()),
+    .map((se) => entities.find((f) =>
+      f.name.toLowerCase().includes(se.name.toLowerCase()) ||
+      se.name.toLowerCase().includes(f.name.toLowerCase()),
     ))
     .find((e) => e?.image)?.image;
   const isMobile = useIsMobile();
@@ -74,11 +75,13 @@ export const LeftPanel = ({ entities, onEntityClick }: {
   const entityViewImage = selectedEntityImage ?? firstEntityImage;
 
   // Clicking an entity swaps the in-section image when the viewer is open; otherwise it opens the
-  // entity popup (collapsed, on mobile, the entity has no image, or it's already the shown entity).
-  const handleEntityListClick = (entityId: string) => {
+  // entity popup (collapsed, on mobile, the entity has no image, or it's already the shown entity). A
+  // not-yet-revealed character can show its portrait but never opens the detail popup — that would spoil
+  // the name the scene is deliberately withholding.
+  const handleEntityListClick = (se: SceneEntity) => {
     const match = entities.find((f) =>
-      f.name.toLowerCase().includes(entityId.toLowerCase()) ||
-      entityId.toLowerCase().includes(f.name.toLowerCase()),
+      f.name.toLowerCase().includes(se.name.toLowerCase()) ||
+      se.name.toLowerCase().includes(f.name.toLowerCase()),
     );
     if (!match) return; // un-named (ad-hoc) participant — nothing to show
 
@@ -87,8 +90,8 @@ export const LeftPanel = ({ entities, onEntityClick }: {
     if (!isMobile && showModel && match?.image && !alreadyShown) {
       setSelectedEntityImage(match.image);
       setModelTab("entities");
-    } else {
-      onEntityClick(entityId);
+    } else if (se.revealed) {
+      onEntityClick(match.name);
     }
   };
 
@@ -206,11 +209,13 @@ export const LeftPanel = ({ entities, onEntityClick }: {
           <ScrollArea className="h-[calc(100%-1rem)]">
             <div className="p-2">
               {visibleEntities.length > 0 ? (
-                visibleEntities.map((entityId, index) => {
+                visibleEntities.map((se, index) => {
                   const entityItem = entities.find(f =>
-                    f.name.toLowerCase().includes(entityId.toLowerCase()) ||
-                    entityId.toLowerCase().includes(f.name.toLowerCase())
+                    f.name.toLowerCase().includes(se.name.toLowerCase()) ||
+                    se.name.toLowerCase().includes(f.name.toLowerCase())
                   );
+                  // Show the real name only once revealed; before that, how the player currently knows them.
+                  const label = se.revealed ? (entityItem?.name ?? se.name) : (se.alias ?? 'Unknown');
                   const isDisabled = !entityItem;
                   return (
                     <div
@@ -218,9 +223,9 @@ export const LeftPanel = ({ entities, onEntityClick }: {
                       className={`mb-1 flex justify-between items-center p-2 ${
                         isDisabled ? 'opacity-50 cursor-not-allowed' : 'hover:bg-muted cursor-pointer'
                       }`}
-                      onClick={() => handleEntityListClick(entityId)}
+                      onClick={() => handleEntityListClick(se)}
                     >
-                      <span>{entityItem ? entityItem.name : entityId}</span>
+                      <span>{label}</span>
                     </div>
                   );
                 })

@@ -18,11 +18,21 @@ import type {
   Choice,
   DiscoveredEntity,
   Dictionary,
+  SceneEntity,
 } from '@/types';
+
+/** Normalize a snapshot's `visibleEntities`: legacy saves stored a bare `string[]` of names; those become
+ *  `{ name, revealed: true }` (a name that was in the old list had, by construction, been shown already). */
+function normalizeVisibleEntities(raw: unknown): SceneEntity[] {
+  if (!Array.isArray(raw)) return [];
+  return raw.map((e) =>
+    typeof e === 'string' ? { name: e, revealed: true } : (e as SceneEntity),
+  );
+}
 
 function useProvideGameplay() {
   const [characterData, setCharacterData] = useState<CharacterData | null>(null);
-  const [visibleEntities, setVisibleEntities] = useState<string[]>([]);
+  const [visibleEntities, setVisibleEntities] = useState<SceneEntity[]>([]);
   const [discoveredEntities, setDiscoveredEntities] = useState<DiscoveredEntity[]>([]);
   const [logEntries, setLogEntries] = useState<LogEntry[]>([]);
   const [gameTime, setGameTime] = useState(0);
@@ -130,7 +140,7 @@ function useProvideGameplay() {
       // Restore all state
       setPlayerStats(gameState.playerStats);
       setPlayerTraits(gameState.playerTraits);
-      setVisibleEntities(gameState.visibleEntities);
+      setVisibleEntities(normalizeVisibleEntities(gameState.visibleEntities));
       setDiscoveredEntities(gameState.discoveredEntities ?? []);
       setLogEntries(gameState.logEntries);
       setGameplayText(gameState.gameplayText);

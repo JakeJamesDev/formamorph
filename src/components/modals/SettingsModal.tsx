@@ -140,13 +140,15 @@ function PromptOptionsPanel({ verbatim, samplers, disabled }: {
   );
 }
 
-export const SettingsModal = ({ isOpen, onOpenChange, previewValues, initialTab }: {
+export const SettingsModal = ({ isOpen, onOpenChange, previewValues, initialTab, initialPromptTab }: {
   isOpen: boolean;
   onOpenChange: (open: boolean) => void;
   /** Live variable values for the prompt-editor Preview tab. Supplied only in-game; absent → no Preview. */
   previewValues?: Record<string, string>;
   /** DEV dev-router: open on this top-level tab instead of the default (see `devRouter.ts`). */
   initialTab?: string;
+  /** DEV dev-router: which prompt under the Prompts tab to open (e.g. 'narration', 'thinking'). */
+  initialPromptTab?: string;
 }) => {
   const [activeTab, setActiveTab] = useState<string>(initialTab ?? SETTINGS_TABS[0].value);
   // Honor a later dev-router tab change while the modal stays open (a fresh __fmDev.goto).
@@ -376,7 +378,9 @@ export const SettingsModal = ({ isOpen, onOpenChange, previewValues, initialTab 
   };
 
   // The selected prompt sub-tab, so the Reset button can target just that prompt.
-  const [promptTab, setPromptTab] = useState('narration');
+  const [promptTab, setPromptTab] = useState(initialPromptTab ?? 'narration');
+  // DEV dev-router: honor a requested prompt sub-tab (a `subtab=…` in the hash).
+  useEffect(() => { if (initialPromptTab) setPromptTab(initialPromptTab); }, [initialPromptTab]);
   const promptResets: Record<string, { label: string; reset: () => void }> = {
     narration: { label: 'Narration', reset: () => setSystemPrompt(defaultSystemPrompt) },
     thinking: { label: 'Planning', reset: () => setThinkingPrompt(defaultThinkingPrompt) },

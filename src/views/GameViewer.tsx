@@ -62,6 +62,8 @@ import {
   parseDirectorCast,
   classifyCast,
   sanitizePlanForReveal,
+  buildSceneList,
+  type DirectorCastMember,
 } from "../lib/stagedPlanning";
 import { selectDueDiscovery, materializeDiscoveredEntity, mergeDiscoveredIntoLocation, cleanDiscoveredDescription, selectReachableVisitors, DISCOVER_NAME_LABEL, DISCOVER_PASSAGE_LABEL } from "../lib/runtimeCharacters";
 import { lengthGuidance, trimToLastSentence } from "../lib/outputLength";
@@ -420,6 +422,10 @@ const GameViewer = ({
   const ttsModalRef = useRef<TTSModalHandle>(null);
   const ttsSentenceCursorRef = useRef(0); // count of complete sentences already sent to streaming TTS
   const entitySentenceCursorRef = useRef(0); // count of complete sentences already parsed for the entity tab
+  // This turn's scene-list inputs, read by makeAIRequest's narration streaming (which lives at component
+  // scope, not inside the turn function): the planner cast (null in Off/Inline) and the prior-narration
+  // reveal corpus. Set just before the narration request each turn.
+  const sceneListCtxRef = useRef<{ cast: DirectorCastMember[] | null; prior: string }>({ cast: null, prior: "" });
   const assistantAddedRef = useRef(false); // whether this turn's in-progress assistant message is in history yet
   const currentTurnIdRef = useRef(""); // stable id for the in-progress turn, stamped into its assistant JSON
   const digestDrainingRef = useRef(false); // a memory digest is in flight (serializes the drainer)
@@ -451,11 +457,23 @@ const GameViewer = ({
   const [isEntityModalOpen, setIsEntityModalOpen] = useState(false);
   const [ambientSound, setAmbientSound] = useState<MediaAsset | null>(null);
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
-  // DEV dev-router: open Settings (on the requested tab) when the hash asks for it. Tree-shaken in prod.
+  // DEV dev-router: open an in-game modal when the hash asks for it (Menu routes via MenuModal's own
+  // devOpenLoad prop below). Tree-shaken in prod.
   const devRoute = useDevRoute();
   useEffect(() => {
-    if (import.meta.env.DEV && devRoute?.modal === 'settings') setIsSettingsOpen(true);
+    if (!import.meta.env.DEV) return;
+    switch (devRoute?.modal) {
+      case 'settings': setIsSettingsOpen(true); break;
+      case 'export': setIsExportModalOpen(true); break;
+    }
   }, [devRoute?.modal]);
+  // Entity modal is a per-entity detail view (needs a selected entity), so open the first one — and wait
+  // for `entities` to load (a fixture boot populates them asynchronously). Tree-shaken in prod.
+  useEffect(() => {
+    if (!import.meta.env.DEV || devRoute?.modal !== 'entity' || entities.length === 0) return;
+    setSelectedEntity(entities[0].name);
+    setIsEntityModalOpen(true);
+  }, [devRoute?.modal, entities]);
   // DEV dev-router: boot mid-game from a canned fixture. DevFixtureLoader has loaded the world (so
   // `locations` are present); seed the save into IndexedDB and run the real loadGame to override the
   // fresh-game init. Tree-shaken in prod.
@@ -1057,6 +1075,16 @@ ${playerNotes || NONE_PLACEHOLDER}
       // director already vouched they're present — "the tank" can confirm a "Battle Tank").
       const adHocCandidates: string[] = [];
       const directorCandidates: string[] = [];
+      // The turn's planner cast (present beings, with aliases) — the live scene list is sourced from this,
+      // not from narration name-matching, so a merely-mentioned character never appears. Null when no
+      // planner ran (Off/Inline), where the scene list falls back to the narration parse.
+      let sceneCast: DirectorCastMember[] | null = null;
+      // All past narration the player has read — the corpus for "has this name been revealed yet?" (drives
+      // both the plan sanitizer and each scene-list row's reveal state).
+      const priorNarration = fullMessageHistory
+        .filter((m) => m.role === "assistant")
+        .map((m) => parseNarration(m.content))
+        .join("\n");
       if (thinkingMode === "precall") {
         const thinkPrompt = renderPromptTemplate(thinkingPrompt, ctx);
         // Frame the planning task as a single instruction. Reusing the narration message history
@@ -1098,12 +1126,9 @@ ${playerNotes || NONE_PLACEHOLDER}
           const classified = classifyCast(cast, allEntities, playerTraits.map((t) => t.name));
           directorCandidates.push(...classified.directorCandidates);
           adHocCandidates.push(...classified.adHocCandidates);
+          sceneCast = classified.npcCast;
           // Keep a name the player has not yet heard out of the plan the narrator reads (code backstop for
           // the prompt's alias rule). A name is "revealed" once it appears in any past narration.
-          const priorNarration = fullMessageHistory
-            .filter((m) => m.role === "assistant")
-            .map((m) => parseNarration(m.content))
-            .join("\n");
           turnPlan = sanitizePlanForReveal(plan, (name) => matchNames(priorNarration, [name]).length > 0);
         }
       } else if (thinkingMode === "inline") {
@@ -1137,6 +1162,7 @@ ${playerNotes || NONE_PLACEHOLDER}
         turnPlan = staged.turnPlan;
         directorCandidates.push(...staged.directorCandidates);
         adHocCandidates.push(...staged.adHocCandidates);
+        sceneCast = staged.cast;
       }
 
       // Attach the plan to the final user turn (adjacent to where the model writes) instead of the
@@ -1148,6 +1174,10 @@ ${playerNotes || NONE_PLACEHOLDER}
 
       // Track the assembled system-prompt size for the memory-usage breakdown
       setLastPromptChars(updatedPrompt.length);
+
+      // Hand the streaming narration (inside makeAIRequest) this turn's scene-list inputs so it can keep the
+      // Entities tab live per sentence.
+      sceneListCtxRef.current = { cast: sceneCast, prior: priorNarration };
 
       // Get game text first since choices and stat updates depend on it
       const narrationResponse = await makeAIRequest(
@@ -1178,9 +1208,11 @@ ${playerNotes || NONE_PLACEHOLDER}
           ...matchNames(narrationResponse, adHocCandidates),
         ]),
       ];
-      // Apply the authoritative set now (narration is done) — incl. staged ad-hoc, and without waiting on
-      // the trailing choices/stats/location requests. The streaming pass below kept it live per-sentence.
-      setVisibleEntities(turnParticipants);
+      // Apply the authoritative scene list now (narration is done). Presence is the planner's cast (so a
+      // merely-mentioned character never shows); a name reveals once it has appeared in the narration. With
+      // no planner (Off/Inline) it falls back to the narration parse. Independent of turnParticipants above,
+      // which still feeds stored participation / choices / visitors from the narration.
+      setVisibleEntities(buildSceneList({ cast: sceneCast, entities: allEntities, narrationSoFar: narrationResponse, priorNarration }));
       // Bring-them-over: an authored character living in a reachable sibling that the narration named joins
       // the current location as a visitor — anchored via the discovered-entity path, so it persists and
       // rolls back with the turn. Affects the next turn's context (this turn's ctx already ran).
@@ -1719,13 +1751,15 @@ ${playerNotes || NONE_PLACEHOLDER}
               if (completeCount > ttsSentenceCursorRef.current) ttsSentenceCursorRef.current = completeCount;
             }
 
-            // Progressively fill the entity tab as each sentence completes (defined entities only; the
-            // authoritative union, incl. staged ad-hoc, is applied once the narration finishes).
+            // Keep the scene list live as each sentence completes: the planner cast is present from the
+            // start, and a name flips from its alias to the real name the moment the narration says it
+            // (with no planner, this falls back to the narration parse). Reapplied authoritatively at the end.
             const completeSentences = segments.length - 1;
             const newSentence = completeSentences > entitySentenceCursorRef.current;
             if (newSentence) {
               entitySentenceCursorRef.current = completeSentences;
-              setVisibleEntities(findEntityNames(display, allEntities));
+              const { cast: turnCast, prior } = sceneListCtxRef.current;
+              setVisibleEntities(buildSceneList({ cast: turnCast, entities: allEntities, narrationSoFar: display, priorNarration: prior }));
             }
 
             // Persist the in-progress assistant message: add it once (as soon as narration content
@@ -2977,6 +3011,7 @@ ${playerNotes || NONE_PLACEHOLDER}
         onOpenChange={setIsSettingsOpen}
         previewValues={promptPreviewValues}
         initialTab={devRoute?.tab}
+        initialPromptTab={devRoute?.subtab}
       />
 
       <AlertDialog open={isExportModalOpen} onOpenChange={setIsExportModalOpen}>

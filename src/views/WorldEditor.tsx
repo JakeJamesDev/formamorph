@@ -1,5 +1,7 @@
-import { useState, useMemo, type ChangeEvent } from 'react';
+import { useState, useEffect, useMemo, type ChangeEvent } from 'react';
 import { useGameData } from '@/contexts/GameDataContext';
+import { useDevRoute } from '@/lib/devRouter';
+import { WORLD_EDITOR_TABS } from './worldEditorTabs';
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
@@ -174,6 +176,11 @@ const WorldEditor = ({ onClose, embedded = false }: {
   };
 
   const [activeTab, setActiveTab] = useState("overview");
+  // DEV dev-router: jump to a specific editor tab via `#dev?view=worldEditor&tab=…`. Tree-shaken in prod.
+  const devRoute = useDevRoute();
+  useEffect(() => {
+    if (import.meta.env.DEV && devRoute?.tab) setActiveTab(devRoute.tab);
+  }, [devRoute?.tab]);
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedItemId, setSelectedItemId] = useState<string | null>(null);
   const [showExitPrompt, setShowExitPrompt] = useState(false);
@@ -505,12 +512,9 @@ const WorldEditor = ({ onClose, embedded = false }: {
               <CardContent className="flex-grow flex flex-col overflow-hidden pt-6">
                   <Tabs value={activeTab} onValueChange={setActiveTab} className="flex-grow flex flex-col min-h-0">
                       <TabsList className="flex-shrink-0">
-                        <TabsTrigger value="overview">Overview</TabsTrigger>
-                        <TabsTrigger value="stats">Stats</TabsTrigger>
-                        <TabsTrigger value="entities">Entities</TabsTrigger>
-                        <TabsTrigger value="locations">Locations</TabsTrigger>
-                        <TabsTrigger value="traits">Traits</TabsTrigger>
-                        <TabsTrigger value="dictionary">Dictionary</TabsTrigger>
+                        {WORLD_EDITOR_TABS.map((t) => (
+                          <TabsTrigger key={t.value} value={t.value}>{t.label}</TabsTrigger>
+                        ))}
                         {/*<TabsTrigger value="statUpdates">Updates</TabsTrigger>*/}
                       </TabsList>
                     {activeTab !== "overview" && (
