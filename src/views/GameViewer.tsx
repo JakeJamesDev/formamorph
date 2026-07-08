@@ -65,6 +65,8 @@ import { buildTraitContext } from "../lib/traitTree";
 import { buildLocationContext, buildEntityContext, buildSublocationsContext, buildSublocationEntitiesContext, buildReachableLocationsContext, buildReachableEntitiesContext, buildDestinationsContext, navigableDestinations, sublocationEntityIds } from "../lib/locationContext";
 import { resolveStartingLocation } from "../lib/startingLocation";
 import { NONE_PLACEHOLDER } from "../lib/promptFallbacks";
+import { buildStatContext } from "../lib/statContext";
+import { variableForToken, variableVariantIds, decodeVariant, tokenVariant, withVariant } from "../lib/promptVariables";
 import { renderPromptTemplate } from "../lib/promptTemplate";
 import { useBaselineTestHook } from "../lib/baselineTestHook";
 import { parseTurns, buildVerbatimHistory, buildBandedHistory, extractKeywords, type BandCounts } from "../lib/turnBanding";
@@ -124,6 +126,11 @@ interface DebugTurn {
 // Each completed turn is digested as soon as it commits (same-turn), so a summary is always ready for
 // the next turn's context assembly. Small cap on each digest request — a condensed retelling is short.
 const DIGEST_MAX_TOKENS = 200;
+
+// Every Stats chip token (base + all piece/format combos), so buildContextValues can render each. The pieces
+// (Values/Status/Meaning) are decoded per token and handed to buildStatContext; ids mirror encodeVariant.
+const STATS_VARIABLE = variableForToken('<STATS DESCRIPTION>')!;
+const STATS_TOKENS = ['<STATS DESCRIPTION>', ...variableVariantIds(STATS_VARIABLE).map((id) => withVariant('<STATS DESCRIPTION>', id))];
 
 // Per-character diary entries are short, first-person, 1-2 sentences — a small cap keeps them terse.
 const DIARY_MAX_TOKENS = 80;
@@ -797,29 +804,6 @@ const GameViewer = ({
     return buildTraitContext(playerTraits.map((t) => t.id), playerTraits, traitGroups, format);
   }, [playerTraits, traitGroups]);
 
-  // The Stats chip has two axes. Content: 'full' (values + descriptor), 'numbers' (values only),
-  // 'descriptions' (descriptor only, falling back to the number so a prompt isn't left blind). Format:
-  // 'simple' (plain "Name: body" lines) or 'markdown' ("- **Name:** body" bullets, clearer for small models).
-  const generateStatDescriptions = useCallback((
-    content: 'full' | 'numbers' | 'descriptions' = 'full',
-    format: 'simple' | 'markdown' = 'simple',
-  ) => {
-    if (!playerStats.length) return NONE_PLACEHOLDER;
-    return playerStats
-      .map((stat) => {
-        const percentage =
-          ((stat.value - stat.min) / (stat.max - stat.min)) * 100;
-        const descriptor = stat.descriptors.find(
-          (d) => percentage <= d.threshold,
-        );
-        const body =
-          content === 'descriptions' && descriptor ? descriptor.description
-          : content === 'numbers' ? `${stat.value}/${stat.max}`
-          : `${stat.value}/${stat.max} (${descriptor ? descriptor.description : "Unknown"})`;
-        return format === 'markdown' ? `- **${stat.name}:** ${body}` : `${stat.name}: ${body}`;
-      })
-      .join("\n");
-  }, [playerStats]);
 
   // The six shared context chips every system prompt can reference, resolved from current state. Each
   // request spreads these as its base, then layers on its own tokens (length/markdown, scene entities, etc.).
@@ -851,14 +835,20 @@ const GameViewer = ({
       reachable: (opts) => buildReachableEntitiesContext(loc, locations, allEntities, { ...opts, excludeIds: reachableExclude }),
     };
 
+    // Render each Stats token from its decoded pieces (Values/Status/Meaning) + format.
+    const statsValues = Object.fromEntries(
+      STATS_TOKENS.map((tok) => {
+        const sel = decodeVariant(STATS_VARIABLE, tokenVariant(tok));
+        return [tok, buildStatContext(
+          playerStats,
+          { values: sel.numbers != null, status: sel.descriptions != null, meaning: sel.meaning != null },
+          sel.format === 'markdown' ? 'markdown' : 'simple',
+        )];
+      }),
+    );
     const values: Record<string, string> = {
       "<WORLD DESCRIPTION>": worldOverview.systemPrompt || "",
-      "<STATS DESCRIPTION>": generateStatDescriptions('full', 'simple'),
-      "<STATS DESCRIPTION|numbers>": generateStatDescriptions('numbers', 'simple'),
-      "<STATS DESCRIPTION|descriptions>": generateStatDescriptions('descriptions', 'simple'),
-      "<STATS DESCRIPTION|markdown>": generateStatDescriptions('full', 'markdown'),
-      "<STATS DESCRIPTION|numbers.markdown>": generateStatDescriptions('numbers', 'markdown'),
-      "<STATS DESCRIPTION|descriptions.markdown>": generateStatDescriptions('descriptions', 'markdown'),
+      ...statsValues,
       "<TRAITS DESCRIPTION>": generateTraitDescriptions('simple'),
       "<TRAITS DESCRIPTION|markdown>": generateTraitDescriptions('markdown'),
       "<NOTES>": playerNotes || NONE_PLACEHOLDER,
@@ -882,7 +872,7 @@ const GameViewer = ({
 
     return values;
   }, [
-    worldOverview, generateStatDescriptions, generateTraitDescriptions,
+    worldOverview, playerStats, generateTraitDescriptions,
     currentLocation, locations, withDiscovered, allEntities, playerNotes,
   ]);
 

@@ -55,8 +55,8 @@ describe('variable lookup by token (base or variant)', () => {
 describe('multi-axis variants (Stats: content × format)', () => {
   const STATS = variableForToken('<STATS DESCRIPTION>')!;
 
-  it('exposes both axes', () => {
-    expect(variableAxes(STATS).map((a) => a.id)).toEqual(['content', 'format']);
+  it('exposes the three content-piece axes plus format', () => {
+    expect(variableAxes(STATS).map((a) => a.id)).toEqual(['numbers', 'descriptions', 'meaning', 'format']);
   });
 
   it('normalizes a single-axis (variants-based) variable into one axis', () => {
@@ -70,17 +70,17 @@ describe('multi-axis variants (Stats: content × format)', () => {
   });
 
   it('decodes a combined id into a per-axis selection (order-independent)', () => {
-    expect(decodeVariant(STATS, 'descriptions.markdown')).toEqual({ content: 'descriptions', format: 'markdown' });
-    expect(decodeVariant(STATS, 'markdown')).toEqual({ content: null, format: 'markdown' });
-    expect(decodeVariant(STATS, 'numbers')).toEqual({ content: 'numbers', format: null });
-    expect(decodeVariant(STATS, null)).toEqual({ content: null, format: null });
+    expect(decodeVariant(STATS, 'numbers.meaning.markdown')).toEqual({ numbers: 'numbers', descriptions: null, meaning: 'meaning', format: 'markdown' });
+    expect(decodeVariant(STATS, 'markdown')).toEqual({ numbers: null, descriptions: null, meaning: null, format: 'markdown' });
+    expect(decodeVariant(STATS, 'numbers')).toEqual({ numbers: 'numbers', descriptions: null, meaning: null, format: null });
+    expect(decodeVariant(STATS, null)).toEqual({ numbers: null, descriptions: null, meaning: null, format: null });
   });
 
   it('encodes a selection back to the combined id (null when all default)', () => {
-    expect(encodeVariant(STATS, { content: 'descriptions', format: 'markdown' })).toBe('descriptions.markdown');
-    expect(encodeVariant(STATS, { content: null, format: 'markdown' })).toBe('markdown');
-    expect(encodeVariant(STATS, { content: 'numbers', format: null })).toBe('numbers');
-    expect(encodeVariant(STATS, { content: null, format: null })).toBeNull();
+    expect(encodeVariant(STATS, { numbers: 'numbers', descriptions: null, meaning: 'meaning', format: 'markdown' })).toBe('numbers.meaning.markdown');
+    expect(encodeVariant(STATS, { numbers: null, descriptions: null, meaning: null, format: 'markdown' })).toBe('markdown');
+    expect(encodeVariant(STATS, { numbers: 'numbers', descriptions: null, meaning: null, format: null })).toBe('numbers');
+    expect(encodeVariant(STATS, { numbers: null, descriptions: null, meaning: null, format: null })).toBeNull();
   });
 
   it('lists every combined id, and a compound is not masked by its prefix', () => {
@@ -89,13 +89,13 @@ describe('multi-axis variants (Stats: content × format)', () => {
     }
     // The real contract behind the longest-first ordering: a compound id decodes to BOTH axes rather than
     // being truncated to its bare prefix (e.g. 'descriptions.markdown' isn't collapsed to 'descriptions').
-    expect(decodeVariant(STATS, 'descriptions.markdown')).toEqual({ content: 'descriptions', format: 'markdown' });
+    expect(decodeVariant(STATS, 'descriptions.markdown')).toEqual({ numbers: null, descriptions: 'descriptions', meaning: null, format: 'markdown' });
   });
 
   it('composes the chip label from the non-default axis selections', () => {
-    expect(variantLabelForToken('<STATS DESCRIPTION|descriptions.markdown>')).toBe('Words, Markdown');
+    expect(variantLabelForToken('<STATS DESCRIPTION|descriptions.markdown>')).toBe('Descriptor, Markdown');
     expect(variantLabelForToken('<STATS DESCRIPTION|markdown>')).toBe('Markdown');
-    expect(variantLabelForToken('<STATS DESCRIPTION|descriptions>')).toBe('Words');
+    expect(variantLabelForToken('<STATS DESCRIPTION|descriptions>')).toBe('Descriptor');
     expect(variantLabelForToken('<STATS DESCRIPTION>')).toBeNull();
   });
 
