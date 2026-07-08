@@ -1,6 +1,7 @@
 // Automatic1111 / Forge txt2img provider. The user launches the WebUI with
 // `--api --cors-allow-origins=<origin>`; we POST to `${endpointUrl}/sdapi/v1/txt2img`.
 import type { ImageGenOpts, ImageGenParams, ImageProgress, ImageProvider } from './types';
+import { trimUrl, authHeaders, toPngDataUrl, POLL_INTERVAL_MS } from './http';
 
 interface A1111Body {
   prompt: string;
@@ -48,7 +49,7 @@ export function parseA1111Response(json: unknown): string {
   const first = (json as A1111Response)?.images?.[0];
   if (typeof first !== 'string' || !first) throw new Error('No image in A1111 response');
   // A1111 returns bare base64; some builds already prefix a data-URL — accept both.
-  return first.startsWith('data:') ? first : `data:image/png;base64,${first}`;
+  return toPngDataUrl(first);
 }
 
 interface A1111Progress {
@@ -61,21 +62,16 @@ export function parseProgress(json: unknown): ImageProgress {
   const p = json as A1111Progress;
   const progress = Math.min(1, Math.max(0, typeof p?.progress === 'number' ? p.progress : 0));
   const img = p?.current_image;
-  const preview = img ? (img.startsWith('data:') ? img : `data:image/png;base64,${img}`) : undefined;
+  const preview = img ? toPngDataUrl(img) : undefined;
   return { progress, preview };
 }
-
-/** Strip a trailing slash so `${base}/sdapi/...` doesn't double up. */
-const trimUrl = (u: string) => u.replace(/\/+$/, '');
-
-const POLL_INTERVAL_MS = 700;
 
 /** Best-effort progress polling for A1111. Recursive setTimeout so polls never overlap; stops on abort or
  *  when `.stop()` is called; swallows all errors (progress is non-critical). */
 function startProgressPoller(base: string, opts: ImageGenOpts): { stop: () => void } {
   let stopped = false;
   let timer: ReturnType<typeof setTimeout> | undefined;
-  const headers: Record<string, string> = opts.apiToken ? { Authorization: `Basic ${opts.apiToken}` } : {};
+  const headers = authHeaders(opts.apiToken, 'Basic');
   const tick = async () => {
     if (stopped || opts.signal?.aborted) return;
     try {
@@ -96,10 +92,7 @@ export const a1111Provider: ImageProvider = async (params: ImageGenParams, opts:
   try {
     const res = await fetch(`${base}/sdapi/v1/txt2img`, {
       method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        ...(opts.apiToken ? { Authorization: `Basic ${opts.apiToken}` } : {}),
-      },
+      headers: { 'Content-Type': 'application/json', ...authHeaders(opts.apiToken, 'Basic') },
       body: JSON.stringify(buildA1111Body(params)),
       signal: opts.signal,
     });

@@ -2,6 +2,7 @@
 // exposure), so this always routes through the Electron desktop bridge (net-fetch in the main process).
 import type { ImageGenOpts, ImageGenParams, ImageProvider } from './types';
 import { desktopFetch } from './desktop';
+import { trimUrl, authHeaders } from './http';
 
 // OpenAI's Images API only accepts a fixed set of sizes; snap the requested dimensions to the nearest
 // by aspect ratio (square / portrait / landscape).
@@ -24,8 +25,6 @@ export function parseOpenAIResponse(json: unknown): string {
   throw new Error('No image in OpenAI response');
 }
 
-const trimUrl = (u: string) => u.replace(/\/+$/, '');
-
 export const openaiProvider: ImageProvider = async (params: ImageGenParams, opts: ImageGenOpts) => {
   const body = {
     model: params.model || 'gpt-image-1',
@@ -36,10 +35,7 @@ export const openaiProvider: ImageProvider = async (params: ImageGenParams, opts
   const res = await desktopFetch({
     url: `${trimUrl(opts.endpointUrl)}/v1/images/generations`,
     method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      ...(opts.apiToken ? { Authorization: `Bearer ${opts.apiToken}` } : {}),
-    },
+    headers: { 'Content-Type': 'application/json', ...authHeaders(opts.apiToken, 'Bearer') },
     body: JSON.stringify(body),
   });
   if (!res.ok) throw new Error(`HTTP ${res.status}`);

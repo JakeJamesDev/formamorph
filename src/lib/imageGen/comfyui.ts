@@ -4,6 +4,7 @@
 // WS, so this works in the web dev build and the desktop app (not the hosted https build — mixed content).
 import type { ImageGenOpts, ImageGenParams, ImageProvider } from './types';
 import { bytesToDataUrl } from '../imageOptim';
+import { trimUrl, authHeaders, POLL_INTERVAL_MS } from './http';
 
 /** The canonical ComfyUI txt2img API-format graph, with %tokens% for the values we inject. Users can edit
  *  this in Settings or paste their own "Save (API Format)" export as long as the tokens are present. */
@@ -153,9 +154,6 @@ export function decodePreviewFrame(buf: ArrayBuffer): string | undefined {
   return bytesToDataUrl(new Uint8Array(buf, 8), mime);
 }
 
-/** Strip a trailing slash so `${base}/prompt` doesn't double up. */
-const trimUrl = (u: string) => u.replace(/\/+$/, '');
-
 export interface ComfyMeta {
   checkpoints: string[];
   samplers: string[];
@@ -174,7 +172,7 @@ function extractEnum(info: unknown, node: string, field: string): string[] {
  *  payload stays small). Requires --enable-cors-header, same as generation. */
 export async function fetchComfyMeta(endpointUrl: string, apiToken?: string): Promise<ComfyMeta> {
   const base = trimUrl(endpointUrl);
-  const headers = apiToken ? { Authorization: `Bearer ${apiToken}` } : undefined;
+  const headers = authHeaders(apiToken, 'Bearer');
   const get = async (node: string): Promise<unknown> => {
     const res = await fetch(`${base}/object_info/${node}`, { headers });
     if (!res.ok) throw new Error(`HTTP ${res.status}`);
@@ -188,7 +186,6 @@ export async function fetchComfyMeta(endpointUrl: string, apiToken?: string): Pr
   };
 }
 
-const POLL_INTERVAL_MS = 700;
 const WS_SETTLE_MS = 3000; // if the WS never opens/signals, fall back to /history polling after this
 
 /** Live progress + preview over the ComfyUI WebSocket. Resolves when generation for `promptId` finishes
@@ -241,7 +238,7 @@ function watchComfyProgress(
 
 /** Poll /history until the prompt has an output image; the authoritative result fetch. */
 async function pollHistory(base: string, promptId: string, opts: ImageGenOpts): Promise<ComfyImageRef> {
-  const headers = opts.apiToken ? { Authorization: `Bearer ${opts.apiToken}` } : undefined;
+  const headers = authHeaders(opts.apiToken, 'Bearer');
   for (;;) {
     if (opts.signal?.aborted) throw new DOMException('Aborted', 'AbortError');
     const res = await fetch(`${base}/history/${promptId}`, { headers, signal: opts.signal });
@@ -260,7 +257,7 @@ export const comfyuiProvider: ImageProvider = async (params: ImageGenParams, opt
   const base = trimUrl(opts.endpointUrl);
   const clientId = crypto.randomUUID();
   const graph = buildComfyGraph((opts.workflow ?? '').trim() || DEFAULT_COMFY_WORKFLOW, params);
-  const authHeaders: Record<string, string> = opts.apiToken ? { Authorization: `Bearer ${opts.apiToken}` } : {};
+  const auth = authHeaders(opts.apiToken, 'Bearer');
 
   let promptId: string | null = null;
   const watcher = watchComfyProgress(base, clientId, () => promptId, opts);
@@ -268,7 +265,7 @@ export const comfyuiProvider: ImageProvider = async (params: ImageGenParams, opt
   try {
     const res = await fetch(`${base}/prompt`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json', ...authHeaders },
+      headers: { 'Content-Type': 'application/json', ...auth },
       body: JSON.stringify({ prompt: graph, client_id: clientId }),
       signal: opts.signal,
     });
@@ -292,7 +289,7 @@ export const comfyuiProvider: ImageProvider = async (params: ImageGenParams, opt
     ]);
 
     const img = await pollHistory(base, promptId, opts);
-    const view = await fetch(viewUrl(base, img), { headers: authHeaders, signal: opts.signal });
+    const view = await fetch(viewUrl(base, img), { headers: auth, signal: opts.signal });
     if (!view.ok) throw new Error(`Failed to fetch image: HTTP ${view.status}`);
     const bytes = new Uint8Array(await view.arrayBuffer());
     return bytesToDataUrl(bytes, view.headers.get('content-type') || 'image/png');
@@ -300,7 +297,7 @@ export const comfyuiProvider: ImageProvider = async (params: ImageGenParams, opt
     watcher.close();
     // Best-effort interrupt so an aborted run doesn't keep cooking on the server.
     if (opts.signal?.aborted && promptId) {
-      fetch(`${base}/interrupt`, { method: 'POST', headers: authHeaders }).catch(() => {});
+      fetch(`${base}/interrupt`, { method: 'POST', headers: auth }).catch(() => {});
     }
   }
 };

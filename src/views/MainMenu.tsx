@@ -705,47 +705,27 @@ const MainMenu = ({ onStartGame, onOpenWorldEditor }: MainMenuProps) => {
     useSensor(PointerSensor, { activationConstraint: { distance: 8 } }),
   );
 
-  // Reorder the worlds grid and persist the new id order.
-  const handleWorldDragEnd = (event: DragEndEvent) => {
+  // Reorder one library grid and persist the new id order — shared by the worlds, dictionary, and
+  // character grids, which differ only in their state setter and storage key. The loose `id` constraint
+  // is for WorldRecord (the sanctioned Record<string, any>), which can't satisfy `{ id: string }`.
+  const makeDragEndHandler = <T extends { id?: unknown }>(
+    setItems: React.Dispatch<React.SetStateAction<T[]>>,
+    orderKey: string,
+  ) => (event: DragEndEvent) => {
     const { active, over } = event;
     if (!over || active.id === over.id) return;
-    setWorlds((prev) => {
-      const oldIndex = prev.findIndex((w) => w.id === active.id);
-      const newIndex = prev.findIndex((w) => w.id === over.id);
+    setItems((prev) => {
+      const oldIndex = prev.findIndex((item) => item.id === active.id);
+      const newIndex = prev.findIndex((item) => item.id === over.id);
       if (oldIndex === -1 || newIndex === -1) return prev;
       const next = arrayMove(prev, oldIndex, newIndex);
-      localStorage.setItem(WORLD_ORDER_KEY, JSON.stringify(next.map((w) => w.id)));
+      localStorage.setItem(orderKey, JSON.stringify(next.map((item) => item.id)));
       return next;
     });
   };
-
-  // Reorder the dictionary library grid and persist the new id order (mirrors the worlds grid).
-  const handleDictionaryDragEnd = (event: DragEndEvent) => {
-    const { active, over } = event;
-    if (!over || active.id === over.id) return;
-    setDictionaries((prev) => {
-      const oldIndex = prev.findIndex((d) => d.id === active.id);
-      const newIndex = prev.findIndex((d) => d.id === over.id);
-      if (oldIndex === -1 || newIndex === -1) return prev;
-      const next = arrayMove(prev, oldIndex, newIndex);
-      localStorage.setItem(DICTIONARY_ORDER_KEY, JSON.stringify(next.map((d) => d.id)));
-      return next;
-    });
-  };
-
-  // Reorder the character library grid and persist the new id order (mirrors the worlds grid).
-  const handleEntityDragEnd = (event: DragEndEvent) => {
-    const { active, over } = event;
-    if (!over || active.id === over.id) return;
-    setEntities((prev) => {
-      const oldIndex = prev.findIndex((e) => e.id === active.id);
-      const newIndex = prev.findIndex((e) => e.id === over.id);
-      if (oldIndex === -1 || newIndex === -1) return prev;
-      const next = arrayMove(prev, oldIndex, newIndex);
-      localStorage.setItem(ENTITY_ORDER_KEY, JSON.stringify(next.map((e) => e.id)));
-      return next;
-    });
-  };
+  const handleWorldDragEnd = makeDragEndHandler(setWorlds, WORLD_ORDER_KEY);
+  const handleDictionaryDragEnd = makeDragEndHandler(setDictionaries, DICTIONARY_ORDER_KEY);
+  const handleEntityDragEnd = makeDragEndHandler(setEntities, ENTITY_ORDER_KEY);
 
   // The singular noun for the selected card type — drives the contextual New/Import button labels.
   const cardNoun = cardType === 'worlds' ? 'World' : cardType === 'entities' ? 'Entity' : 'Dictionary';

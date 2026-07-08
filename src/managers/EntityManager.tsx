@@ -1,11 +1,12 @@
-import { useState, useEffect, useMemo } from 'react';
+import { useMemo } from 'react';
 import { useGameData } from '../contexts/GameDataContext';
 import EntityFields from './EntityFields';
+import { useEditingDraft } from '@/lib/useEditingDraft';
 import type { Entity } from '@/types';
 
 const EntityManager = ({ entity }: { entity: Entity }) => {
   const { updateEntity, locations, updateLocation } = useGameData();
-  const [editingEntity, setEditingEntity] = useState<Entity>(entity);
+  const { draft: editingEntity, setField: handleChange } = useEditingDraft<Entity>(entity, updateEntity);
 
   // Entity↔location link lives only on each location's `entities` array; derive the entity's
   // memberships and write changes back into the relevant locations.
@@ -25,16 +26,6 @@ const EntityManager = ({ entity }: { entity: Entity }) => {
         : (loc.entities ?? []).filter((id) => id !== entity.id);
       updateLocation({ ...loc, entities: nextEntities });
     });
-  };
-
-  useEffect(() => {
-    setEditingEntity(entity);
-  }, [entity]);
-
-  const handleChange = (field: string, value: unknown) => {
-    const updatedEntity = { ...editingEntity, [field]: value } as Entity;
-    setEditingEntity(updatedEntity);
-    updateEntity(updatedEntity);
   };
 
   if (!editingEntity) return null;

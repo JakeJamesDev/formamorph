@@ -67,11 +67,10 @@ function useProvideGameplay() {
   const addLogEntry = useCallback((entry: string) => {
     setLogEntries(prevEntries => {
       if (prevEntries.length > 0 && prevEntries[prevEntries.length - 1].text === entry) {
-        // If the new entry matches the last entry, increment its repeat count
-        const updatedEntries = [...prevEntries];
-        const lastEntry = updatedEntries[updatedEntries.length - 1];
-        lastEntry.repeat = (lastEntry.repeat || 0) + 1;
-        return updatedEntries;
+        // If the new entry matches the last entry, increment its repeat count — as a NEW object, since
+        // saved GameState snapshots hold these entries by reference and must not change retroactively.
+        const lastEntry = prevEntries[prevEntries.length - 1];
+        return [...prevEntries.slice(0, -1), { ...lastEntry, repeat: (lastEntry.repeat || 0) + 1 }];
       } else {
         // Otherwise, add a new entry with game time
         return [...prevEntries, {

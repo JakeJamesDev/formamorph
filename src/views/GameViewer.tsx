@@ -81,6 +81,7 @@ import { parseSlashCommand } from "../lib/slashCommands";
 import { MARKDOWN_SAMPLE } from "../lib/markdownSample";
 import { normalizeStatChanges, applyAiStatChanges, applyTraitStatChanges, parseStatUpdates, applyAiMaxChanges } from "../lib/statChanges";
 import { resolvePromptTemperature } from "../lib/promptTemperature";
+import { downloadBlob } from "../lib/downloadBlob";
 import { matchLocationResponse } from "../lib/locationMatch";
 import { rollbackState, regenerateState, canRegenerate, lastTurnAction, markRegeneratedTurn, markPrunedTurns, snapshotPageIndex, placeSnapshot } from "../lib/turnHistory";
 import { useDeferredSnapshot } from "../lib/useDeferredSnapshot";
@@ -498,7 +499,6 @@ const GameViewer = ({
 
   // Export the whole playthrough's narration as a plain-text or Markdown file (user picks the format
   // via the export dialog). Same sanitized text either way — format only sets the extension + MIME.
-  // Mirrors the blob-download pattern below.
   const [isExportModalOpen, setIsExportModalOpen] = useState(false);
   const exportStory = (format: 'txt' | 'md') => {
     const story = fullMessageHistory
@@ -507,32 +507,17 @@ const GameViewer = ({
       .filter((text) => text && text !== 'No narration available')
       .join('\n\n');
     const type = format === 'md' ? 'text/markdown' : 'text/plain';
-    const blob = new Blob([story], { type });
-    const href = URL.createObjectURL(blob);
-    const link = document.createElement("a");
-    link.href = href;
     const slug = (worldOverview?.name || "world").replace(/[^a-z0-9]+/gi, "-").toLowerCase();
-    link.download = `story-${slug}.${format}`;
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-    URL.revokeObjectURL(href);
+    downloadBlob(new Blob([story], { type }), `story-${slug}.${format}`);
     setIsExportModalOpen(false);
   };
 
   // Export the full AI-context turn history (exactly the structure the debug viewer renders) as JSON,
-  // so it can be handed off for inspection. Mirrors the blob-download pattern in WorldEditor.
+  // so it can be handed off for inspection.
   const handleExportDebugContext = () => {
     const blob = new Blob([JSON.stringify(debugTurns, null, 2)], { type: "application/json" });
-    const href = URL.createObjectURL(blob);
-    const link = document.createElement("a");
-    link.href = href;
     const slug = (worldOverview?.name || "world").replace(/[^a-z0-9]+/gi, "-").toLowerCase();
-    link.download = `ai-context-${slug}.json`;
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-    URL.revokeObjectURL(href);
+    downloadBlob(blob, `ai-context-${slug}.json`);
   };
 
   // Re-generate the current turn: restore the snapshot from *before* it (which also rewinds the
@@ -1823,7 +1808,7 @@ ${playerNotes || NONE_PLACEHOLDER}
   // contends with the active turn's requests. Patching the history re-runs this effect, which picks up
   // the next due turn until none remain (also backfills older turns when first enabled mid-game).
   useEffect(() => {
-    if (!memoryDigests || isWaitingForAI || digestDrainingRef.current) return;
+    if (!memoryDigests || isWaitingForAI || diaryActive || discoverActive || digestDrainingRef.current || diaryDrainingRef.current || discoverDrainingRef.current) return;
     const due = selectDueDigests(fullMessageHistory);
     if (due.length === 0) return;
     // Oldest due turn first — it's closest to leaving the context window (matters when backfilling).
@@ -1858,7 +1843,7 @@ ${playerNotes || NONE_PLACEHOLDER}
         setDigestActive(false);
       }
     })();
-  }, [memoryDigests, isWaitingForAI, fullMessageHistory, summaryPrompt, summaryUserPrompt, buildContextValues, setFullMessageHistory]);
+  }, [memoryDigests, isWaitingForAI, diaryActive, discoverActive, fullMessageHistory, summaryPrompt, summaryUserPrompt, buildContextValues, setFullMessageHistory]);
 
   // Character-diary drainer (write side): for each completed turn with participants, silently write a
   // first-person diary entry per participant as an idle-time job, patched back onto that turn's `diaries`

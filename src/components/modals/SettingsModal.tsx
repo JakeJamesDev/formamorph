@@ -4,6 +4,7 @@ import { DEFAULT_ENDPOINT, DEFAULT_API_TOKEN, DEFAULT_MODEL_NAME, DEFAULT_MAX_TO
 import { useTheme } from '../theme-provider';
 import { ThemePreviewButton } from '@/components/ThemePreviewDialog';
 import { LocalModelPanel } from '@/components/modals/LocalModelPanel';
+import { Row, CheckRow } from '@/components/SettingsRows';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { RevealAnimationDemoButton } from "@/components/RevealAnimationDemo";
@@ -774,10 +775,7 @@ export const SettingsModal = ({ isOpen, onOpenChange, previewValues }: {
             ) : (
               <div className="flex-1 min-h-0 overflow-y-auto pb-4">
                 <div className="grid gap-4">
-              <div className="grid grid-cols-[1fr_3fr] items-center gap-4">
-                <label htmlFor="endpointUrl" className="text-right">
-                  Endpoint URL
-                </label>
+              <Row center label="Endpoint URL" htmlFor="endpointUrl">
                 <Input
                   id="endpointUrl"
                   value={useCustomEndpoint ? endpointUrl : DEFAULT_ENDPOINT}
@@ -785,11 +783,8 @@ export const SettingsModal = ({ isOpen, onOpenChange, previewValues }: {
                   readOnly={!useCustomEndpoint}
                   className={useCustomEndpoint ? undefined : 'opacity-60 cursor-not-allowed'}
                 />
-              </div>
-              <div className="grid grid-cols-[1fr_3fr] items-center gap-4">
-                <label htmlFor="apiToken" className="text-right">
-                  API Token
-                </label>
+              </Row>
+              <Row center label="API Token" htmlFor="apiToken">
                 <Input
                   id="apiToken"
                   type="password"
@@ -798,11 +793,8 @@ export const SettingsModal = ({ isOpen, onOpenChange, previewValues }: {
                   readOnly={!useCustomEndpoint}
                   className={useCustomEndpoint ? undefined : 'opacity-60 cursor-not-allowed'}
                 />
-              </div>
-              <div className="grid grid-cols-[1fr_3fr] items-center gap-4">
-                <label htmlFor="modelName" className="text-right">
-                  Model Name
-                </label>
+              </Row>
+              <Row center label="Model Name" htmlFor="modelName">
                 <Input
                   id="modelName"
                   value={useCustomEndpoint ? modelName : DEFAULT_MODEL_NAME}
@@ -810,11 +802,8 @@ export const SettingsModal = ({ isOpen, onOpenChange, previewValues }: {
                   readOnly={!useCustomEndpoint}
                   className={useCustomEndpoint ? undefined : 'opacity-60 cursor-not-allowed'}
                 />
-              </div>
-              <div className="grid grid-cols-[1fr_3fr] items-center gap-4">
-                <label htmlFor="contextWindow" className="text-right">
-                  Context Window (tokens)
-                </label>
+              </Row>
+              <Row center label="Context Window (tokens)" htmlFor="contextWindow">
                 <div className="flex items-start gap-2">
                   <Input
                     id="contextWindow"
@@ -832,17 +821,14 @@ export const SettingsModal = ({ isOpen, onOpenChange, previewValues }: {
                     Detect
                   </Button>
                 </div>
-              </div>
+              </Row>
               <div className="grid grid-cols-[1fr_3fr] gap-4">
                 <div />
                 <div className={contextStatus.red ? 'text-xs text-destructive' : 'text-xs text-muted-foreground'}>
                   {contextStatus.text}
                 </div>
               </div>
-              <div className="grid grid-cols-[1fr_3fr] items-center gap-4">
-                <label htmlFor="maxTokens" className="text-right">
-                  Max Output Tokens
-                </label>
+              <Row center label="Max Output Tokens" htmlFor="maxTokens">
                 <Input
                   id="maxTokens"
                   type="number"
@@ -851,7 +837,7 @@ export const SettingsModal = ({ isOpen, onOpenChange, previewValues }: {
                   readOnly={!useCustomEndpoint}
                   className={useCustomEndpoint ? undefined : 'opacity-60 cursor-not-allowed'}
                 />
-              </div>
+              </Row>
               <div className="flex justify-start">
                 <ConfirmDialog
                   title="Reset AI Endpoint"
@@ -910,8 +896,7 @@ export const SettingsModal = ({ isOpen, onOpenChange, previewValues }: {
             </div>
             <div className="flex-1 min-h-0 overflow-y-auto">
             <div className="grid gap-4">
-              <div className="grid grid-cols-[1fr_3fr] items-center gap-4">
-                <label htmlFor="imageProvider" className="text-right">Provider</label>
+              <Row center label="Provider" htmlFor="imageProvider">
                 <Select value={imageProvider} onValueChange={(v) => setImageProvider(v as typeof imageProvider)}>
                   <SelectTrigger id="imageProvider">
                     <SelectValue />
@@ -924,28 +909,25 @@ export const SettingsModal = ({ isOpen, onOpenChange, previewValues }: {
                     </SelectItem>
                   </SelectContent>
                 </Select>
-              </div>
+              </Row>
               <div className="grid grid-cols-[1fr_3fr] gap-4">
                 <div />
                 <div>
                   <Button variant="outline" size="sm" onClick={() => setShowImageSetup(true)}>How to Set Up</Button>
                 </div>
               </div>
-              <div className="grid grid-cols-[1fr_3fr] items-center gap-4">
-                <label htmlFor="imageEndpoint" className="text-right">Endpoint URL</label>
+              <Row center label="Endpoint URL" htmlFor="imageEndpoint">
                 <Input
                   id="imageEndpoint"
                   value={imageEndpoint}
                   onChange={(e) => setImageEndpoint(e.target.value)}
                   placeholder={DEFAULT_ENDPOINT_BY_PROVIDER[imageProvider] || 'https://api.openai.com'}
                 />
-              </div>
-              <div className="grid grid-cols-[1fr_3fr] items-center gap-4">
-                <label htmlFor="imageApiToken" className="text-right">API Token</label>
+              </Row>
+              <Row center label="API Token" htmlFor="imageApiToken">
                 <Input id="imageApiToken" type="password" value={imageApiToken} onChange={(e) => setImageApiToken(e.target.value)} />
-              </div>
-              <div className="grid grid-cols-[1fr_3fr] items-center gap-4">
-                <label htmlFor="imageModel" className="text-right">Model</label>
+              </Row>
+              <Row center label="Model" htmlFor="imageModel">
                 {imageProvider === 'comfyui' ? (
                   <TokenAutocomplete
                     single
@@ -958,45 +940,36 @@ export const SettingsModal = ({ isOpen, onOpenChange, previewValues }: {
                 ) : (
                   <Input id="imageModel" value={imageModel} onChange={(e) => setImageModel(e.target.value)} placeholder="(server default)" />
                 )}
-              </div>
-              <div className="grid grid-cols-[1fr_3fr] items-start gap-4">
-                <label htmlFor="imagePositivePrompt" className="text-right pt-2">Prompt Prefix</label>
-                <div className="grid gap-1.5">
-                  <Input id="imagePositivePrompt" value={imagePositivePrompt} onChange={(e) => setImagePositivePrompt(e.target.value)} placeholder="e.g. masterpiece, best quality" />
-                  <p className="text-xs text-muted-foreground">Prepended to every generated prompt (quality/style tags). Leave blank for none.</p>
-                </div>
-              </div>
-              <div className="grid grid-cols-[1fr_3fr] items-start gap-4">
-                <label htmlFor="imageNegativePrompt" className="text-right pt-2">Negative Prompt</label>
+              </Row>
+              <Row label="Prompt Prefix" htmlFor="imagePositivePrompt" hint="Prepended to every generated prompt (quality/style tags). Leave blank for none.">
+                <Input id="imagePositivePrompt" value={imagePositivePrompt} onChange={(e) => setImagePositivePrompt(e.target.value)} placeholder="e.g. masterpiece, best quality" />
+              </Row>
+              <Row label="Negative Prompt" htmlFor="imageNegativePrompt">
                 <Input id="imageNegativePrompt" value={imageNegativePrompt} onChange={(e) => setImageNegativePrompt(e.target.value)} />
-              </div>
-              <div className="grid grid-cols-[1fr_3fr] items-center gap-4">
-                <label className="text-right">Portrait (W × H)</label>
+              </Row>
+              <Row center label="Portrait (W × H)">
                 <div className="flex items-center gap-2">
                   <Input aria-label="Portrait width" type="number" min={64} step={64} value={imagePortraitWidth} onChange={(e) => setImagePortraitWidth(Number(e.target.value))} className="w-28" />
                   <span className="text-muted-foreground">×</span>
                   <Input aria-label="Portrait height" type="number" min={64} step={64} value={imagePortraitHeight} onChange={(e) => setImagePortraitHeight(Number(e.target.value))} className="w-28" />
                   <span className="text-xs text-muted-foreground">entity portraits</span>
                 </div>
-              </div>
-              <div className="grid grid-cols-[1fr_3fr] items-center gap-4">
-                <label className="text-right">Landscape (W × H)</label>
+              </Row>
+              <Row center label="Landscape (W × H)">
                 <div className="flex items-center gap-2">
                   <Input aria-label="Landscape width" type="number" min={64} step={64} value={imageLandscapeWidth} onChange={(e) => setImageLandscapeWidth(Number(e.target.value))} className="w-28" />
                   <span className="text-muted-foreground">×</span>
                   <Input aria-label="Landscape height" type="number" min={64} step={64} value={imageLandscapeHeight} onChange={(e) => setImageLandscapeHeight(Number(e.target.value))} className="w-28" />
                   <span className="text-xs text-muted-foreground">locations &amp; thumbnail</span>
                 </div>
-              </div>
-              <div className="grid grid-cols-[1fr_3fr] items-center gap-4">
-                <label className="text-right">Steps / CFG</label>
+              </Row>
+              <Row center label="Steps / CFG">
                 <div className="flex items-center gap-2">
                   <Input aria-label="Steps" type="number" min={1} value={imageSteps} onChange={(e) => setImageSteps(Number(e.target.value))} className="w-28" />
                   <Input aria-label="CFG scale" type="number" min={0} step={0.5} value={imageCfg} onChange={(e) => setImageCfg(Number(e.target.value))} className="w-28" />
                 </div>
-              </div>
-              <div className="grid grid-cols-[1fr_3fr] items-center gap-4">
-                <label htmlFor="imageSampler" className="text-right">Sampler</label>
+              </Row>
+              <Row center label="Sampler" htmlFor="imageSampler">
                 {imageProvider === 'comfyui' ? (
                   <TokenAutocomplete
                     single
@@ -1009,26 +982,18 @@ export const SettingsModal = ({ isOpen, onOpenChange, previewValues }: {
                 ) : (
                   <Input id="imageSampler" value={imageSampler} onChange={(e) => setImageSampler(e.target.value)} placeholder="Euler a" />
                 )}
-              </div>
+              </Row>
               {imageProvider === 'a1111' && (
-                <div className="grid grid-cols-[1fr_3fr] items-start gap-4">
-                  <label htmlFor="imageAdetailer" className="text-right pt-0.5">ADetailer</label>
-                  <div className="flex items-start gap-2">
-                    <Checkbox
-                      id="imageAdetailer"
-                      checked={imageAdetailer}
-                      onCheckedChange={(c) => setImageAdetailer(c === true)}
-                      className="shrink-0 mt-0.5"
-                    />
-                    <span className="text-xs text-muted-foreground">
-                      Run a second pass to auto-fix faces/hands. Requires the ADetailer extension installed on your A1111/Forge server.
-                    </span>
-                  </div>
-                </div>
+                <CheckRow
+                  label="ADetailer"
+                  htmlFor="imageAdetailer"
+                  checked={imageAdetailer}
+                  onChange={setImageAdetailer}
+                  hint="Run a second pass to auto-fix faces/hands. Requires the ADetailer extension installed on your A1111/Forge server."
+                />
               )}
               {imageProvider === 'comfyui' && (
-                <div className="grid grid-cols-[1fr_3fr] items-start gap-4">
-                  <label htmlFor="imageWorkflow" className="text-right pt-2">Workflow (API format)</label>
+                <Row label="Workflow (API format)" htmlFor="imageWorkflow">
                   <div className="grid gap-1.5">
                     <Textarea
                       id="imageWorkflow"
@@ -1055,7 +1020,7 @@ export const SettingsModal = ({ isOpen, onOpenChange, previewValues }: {
                       <code>%height%</code> <code>%steps%</code> <code>%cfg%</code> <code>%seed%</code> <code>%sampler%</code>.
                     </p>
                   </div>
-                </div>
+                </Row>
               )}
             </div>
             </div>

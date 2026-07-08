@@ -1,5 +1,6 @@
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo, useCallback } from "react";
 import { useGameData } from "@/contexts/GameDataContext";
+import { useEditingDraft } from "@/lib/useEditingDraft";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
@@ -27,9 +28,15 @@ import type { Stat, StatDescriptor, StatListItem, StatType } from "@/types";
 /** The stat being edited — a loose, partial Stat while fields are filled in. */
 type EditingStat = Partial<Stat>;
 
+/** Draft shape for an incoming stat: default a blank type/code so the editor controls stay bound. */
+const normalizeStat = (stat: EditingStat): EditingStat => ({
+  ...(stat ?? {}),
+  type: stat?.type || "number",
+  code: stat?.code || "",
+});
+
 const StatManager = ({ stat }: { stat: Stat }) => {
   const { updateStat, stats } = useGameData();
-  const [editingStat, setEditingStat] = useState<EditingStat>(stat);
   const [newDescriptor, setNewDescriptor] = useState<{ threshold: number | string; description: string }>({
     threshold: "",
     description: "",
@@ -44,6 +51,9 @@ const StatManager = ({ stat }: { stat: Stat }) => {
   const [codeError, setCodeError] = useState<string | null>(null);
   const [isTestingCode, setIsTestingCode] = useState(false);
 
+  const writeStat = useCallback((next: EditingStat) => updateStat(next as Stat), [updateStat]);
+  const { draft: editingStat, apply } = useEditingDraft<EditingStat>(stat, writeStat, normalizeStat);
+
   // Body sliders available to this stat: the model's morph names minus those already owned by another
   // stat (each slider binds to a single stat).
   const { names: bodyMorphNames } = useBodyMorphNames();
@@ -52,28 +62,14 @@ const StatManager = ({ stat }: { stat: Stat }) => {
     return bodyMorphNames.filter((n) => !taken.has(n)).map((n) => ({ label: n, value: n }));
   }, [bodyMorphNames, stats, stat.id]);
 
+  // Open the code section by default when the selected stat carries code (the draft sync itself is
+  // handled by useEditingDraft).
   useEffect(() => {
-    const initialStat: EditingStat = stat ? { ...stat } : {};
-    if (!initialStat.type) {
-      initialStat.type = "number";
-    }
-    if (!initialStat.code) {
-      initialStat.code = "";
-    }
-    setEditingStat(initialStat);
-
-    // Set code section to open by default if stat has code
-    if (initialStat.code && initialStat.code.trim() !== "") {
-      setCodeOpen(true);
-    }
+    if (stat?.code && stat.code.trim() !== "") setCodeOpen(true);
   }, [stat]);
 
   const handleChange = (field: string, value: unknown) => {
-    console.log(`Updated ${field} to ${String(value)}`);
-
-    const updatedStat = { ...editingStat, [field]: value } as EditingStat;
-    setEditingStat(updatedStat);
-    updateStat(updatedStat as Stat);
+    apply({ [field]: value } as EditingStat);
 
     // Reset code test results when code changes
     if (field === "code") {
@@ -83,15 +79,11 @@ const StatManager = ({ stat }: { stat: Stat }) => {
   };
 
   const handleTypeChange = (value: StatType) => {
-    const updatedStat = { ...editingStat, type: value };
-    if (value === "list") {
-      updatedStat.value = updatedStat.value || [];
-    } else {
-      updatedStat.value =
-        typeof updatedStat.value === "number" ? updatedStat.value : 0;
-    }
-    setEditingStat(updatedStat);
-    updateStat(updatedStat as Stat);
+    const nextValue =
+      value === "list"
+        ? editingStat.value || []
+        : typeof editingStat.value === "number" ? editingStat.value : 0;
+    apply({ type: value, value: nextValue });
   };
 
   const handleDescriptorChange = (index: number, field: string, value: string | number) => {

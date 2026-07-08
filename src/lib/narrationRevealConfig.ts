@@ -99,25 +99,36 @@ export function revealVars(s: RevealSpec): Record<string, string> {
 }
 
 // Word-cadence bounds (ms per word). The reveal matches the model's average word rate within these,
-// so it keeps pace with generation; below the floor the buffer + end-of-turn drain absorb the lag,
-// above the ceiling it just reveals as slowly as is still readable. The floor is low so a fast model
-// (which easily exceeds 40 words/s) isn't throttled into a reveal that drags on long after generation.
+// so it keeps pace with generation; below the floor the buffer + end-of-turn drain absorb the lag.
+// The floor is low so a fast model (which easily exceeds 40 words/s) isn't throttled into a reveal
+// that drags on long after generation. The ceiling is a sanity bound against absurd estimates only —
+// it MUST sit above any real model's cadence: whenever the ceiling is faster than the model, the
+// reveal outruns generation and stalls at every sentence boundary, guaranteed (the old 90ms ceiling
+// forced this stutter on every model slower than ~11 words/s). 300ms ≈ a 3.3 words/s floor.
 export const STAGGER_MIN = 8;
-export const STAGGER_MAX = 90;
+export const STAGGER_MAX = 300;
 // Per-word fade length as a multiple of the cadence — keeps a roughly constant number of words
-// mid-fade at any speed (fast streams fade quick-and-tight, slow ones linger). 10 ≈ the hand-tuned
-// 400ms fade at the 40ms default cadence.
-export const FADE_SPREAD = 10;
+// mid-fade at any speed (fast streams fade quick-and-tight, slow ones linger). Kept small on purpose:
+// Streamdown re-renders old words with duration 0 on every release, so any word still mid-fade at a
+// sentence boundary SNAPS to full opacity — the smaller the spread, the fewer words are ever mid-fade
+// when that happens (at 4, the fade is mostly done within the sentence's own rhythm span).
+export const FADE_SPREAD = 4;
 
 export const DEFAULT_STAGGER = 40;
 export const DEFAULT_DURATION = DEFAULT_STAGGER * FADE_SPREAD;
 
+// Pace margin: the reveal runs slightly slower than the measured word rate. A reveal matched to the
+// rate exactly makes the sentence queue a zero-drift random walk — it empties periodically no matter
+// how good the estimate is, stalling the cascade at sentence boundaries (the "stutter"). The margin
+// gives the queue positive drift so underruns become rare; the end-of-turn drain absorbs the trail.
+export const PACE_MARGIN = 1.15;
+
 const clamp = (n: number, lo: number, hi: number): number => Math.min(hi, Math.max(lo, n));
 
-/** Fade timing for a smoothed word rate (words/sec): cadence tracks the rate (clamped readable),
- *  fade length scales with the cadence. */
+/** Fade timing for a smoothed word rate (words/sec): cadence tracks the rate (clamped readable) with
+ *  a small slow-side margin (see PACE_MARGIN), fade length scales with the cadence. */
 export function timingForWordRate(wordsPerSec: number): { duration: number; stagger: number } {
-  const stagger = clamp(1000 / wordsPerSec, STAGGER_MIN, STAGGER_MAX);
+  const stagger = clamp((1000 / wordsPerSec) * PACE_MARGIN, STAGGER_MIN, STAGGER_MAX);
   return { stagger, duration: stagger * FADE_SPREAD };
 }
 

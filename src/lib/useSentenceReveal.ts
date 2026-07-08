@@ -8,17 +8,20 @@ const countWords = (text: string): number => {
 
 /**
  * Paced sentence reveal (the Fade-in Narration path). Feed it cumulative completed-sentence prefixes
- * with `push` as narration streams; it releases them into `onText` one at a time, waiting for each
- * sentence's fade to finish before the next — so Streamdown never animates one over another. `finish`
- * queues the final text (including the held last sentence), `reset` clears everything, and `drained`
- * resolves once the whole queue has played out, so the caller can hold the turn "busy" until the
- * reveal completes rather than dumping the backlog when the request ends.
+ * with `push` as narration streams; it releases them into `onText` one at a time, each after the
+ * previous one's rhythm span — so consecutive sentences continue one seamless cascade. A release that
+ * opens a new paragraph additionally waits out the previous fade's tail, so a paragraph fully lands
+ * before the next starts below it. `finish` queues the final text (including the held last sentence),
+ * `reset` clears everything, and `drained` resolves once the whole queue has played out, so the caller
+ * can hold the turn "busy" until the reveal completes rather than dumping the backlog when the
+ * request ends.
  */
 export function useSentenceReveal(onText: (text: string) => void) {
   const queueRef = useRef<string[]>([]);
   const shownRef = useRef('');
   const busyRef = useRef(false);
   const finishedRef = useRef(false);
+  const tailWaitedRef = useRef(false);
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const drainWaitersRef = useRef<Array<() => void>>([]);
   const onTextRef = useRef(onText);
@@ -34,11 +37,29 @@ export function useSentenceReveal(onText: (text: string) => void) {
 
   const pump = useCallback(() => {
     if (busyRef.current) return;
-    const next = queueRef.current.shift();
+    const next = queueRef.current[0];
     if (next === undefined) {
       settleDrain();
       return;
     }
+    // A release that opens a new paragraph first waits out the previous sentence's fade tail, so the
+    // old paragraph fully lands before text starts appearing below it. (Within a paragraph the tail
+    // overlap IS the seamless cascade; across a blank line it reads as two blocks animating at once.)
+    // The rhythm wait covers only when each word STARTS fading; the tail is the fade duration itself.
+    const startsParagraph =
+      shownRef.current !== '' &&
+      ((/^\s*/.exec(next.slice(shownRef.current.length))?.[0] ?? '').split('\n').length - 1) >= 2;
+    if (startsParagraph && !tailWaitedRef.current) {
+      tailWaitedRef.current = true;
+      busyRef.current = true;
+      timerRef.current = setTimeout(() => {
+        busyRef.current = false;
+        pump();
+      }, getRevealTiming().duration);
+      return;
+    }
+    tailWaitedRef.current = false;
+    queueRef.current.shift();
     const addedWords = countWords(next) - countWords(shownRef.current);
     shownRef.current = next;
     onTextRef.current(next);
@@ -84,6 +105,7 @@ export function useSentenceReveal(onText: (text: string) => void) {
     shownRef.current = '';
     busyRef.current = false;
     finishedRef.current = false;
+    tailWaitedRef.current = false;
     onTextRef.current('');
     // Don't leave a caller awaiting a reveal we just cleared.
     const waiters = drainWaitersRef.current;

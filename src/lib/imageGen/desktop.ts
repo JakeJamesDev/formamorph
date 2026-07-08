@@ -69,7 +69,6 @@ declare global {
       vramStats?: () => Promise<unknown>;
       /** Local LLM engine: load a GGUF served on a localhost OpenAI endpoint and read its status. */
       llm?: {
-        start: (opts: { modelPath: string; port?: number }) => Promise<LocalLlmState>;
         stop: () => Promise<LocalLlmState>;
         status: () => Promise<LocalLlmState>;
         /** Absolute path of the folder where local GGUF models live (and downloads land). */
@@ -131,10 +130,6 @@ const requireLlm = () => {
   if (!llm) throw new Error('The local LLM engine is only available in the Formamorph desktop app.');
   return llm;
 };
-
-/** Load a GGUF and start the local OpenAI server; resolves with the engine state (status 'ready' on success). */
-export const startLocalLlm = (opts: { modelPath: string; port?: number }): Promise<LocalLlmState> =>
-  requireLlm().start(opts);
 
 /** Stop the local LLM engine and free the model. */
 export const stopLocalLlm = (): Promise<LocalLlmState> => requireLlm().stop();
