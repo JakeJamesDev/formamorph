@@ -1,0 +1,85 @@
+{
+  "_note": "Gold cases for the reframed precall planning prompt (continuity planner: Scene/Cast/Beats). Each supplies a previous narration + the player's next action + an entity roster, and asserts the continuity behaviors: carry the whole cast forward, drop who plainly leaves, keep an established object (not a substitute), open the Cast with the Player Character, and use the name(alias) spoiler form only for a not-yet-named character. `castPresent`/`castAbsent` are name substrings that must / must not appear as cast members; `keepWord`/`forbidWord` check object continuity across Cast+Beats; `aliasHidden`/`aliasRevealed` name a character whose cast line must / must not carry a parenthetical. Run via harness/planning-probe.mjs.",
+  "world": "A quiet river-crossing hamlet at dusk. Grounded folk tale, no magic.",
+  "playerTrait": "The player character is Wren, a travel-worn mapmaker with silver hair and ink-stained hands, soft-spoken and observant.",
+  "location": "The Ferry Landing - a rickety dock where a rope ferry is moored; a lantern hangs from a leaning post.",
+  "cases": [
+    {
+      "name": "carry-forward-all",
+      "entities": [
+        { "name": "Bram", "description": "A one-armed ferryman with a brass ear-ring.", "type": "Person" },
+        { "name": "Odette", "description": "A wiry woman smoking eels, a green bead in her hair.", "type": "Person" },
+        { "name": "Tomas", "description": "A young spearman with a milky left eye.", "type": "Person" }
+      ],
+      "prevNarration": "Bram leans on the ferry rope, Odette turns her eels over the firepit, and Tomas rests his spear against the post. The three of them fall quiet as you step onto the dock.",
+      "action": "I ask Bram what the crossing costs tonight.",
+      "castPresent": ["Bram", "Odette", "Tomas"],
+      "castAbsent": []
+    },
+    {
+      "name": "drop-who-leaves",
+      "entities": [
+        { "name": "Bram", "description": "A one-armed ferryman with a brass ear-ring.", "type": "Person" },
+        { "name": "Odette", "description": "A wiry woman smoking eels, a green bead in her hair.", "type": "Person" }
+      ],
+      "prevNarration": "Bram ties off the ferry rope while Odette packs up her firepit, the last eels wrapped in cloth. \"Storm's coming,\" Bram mutters.",
+      "action": "I leave the landing and walk up the causeway toward the village inn.",
+      "castPresent": [],
+      "castAbsent": ["Bram", "Odette"]
+    },
+    {
+      "name": "object-continuity",
+      "entities": [
+        { "name": "Tomas", "description": "A young spearman guarding the dock.", "type": "Person" }
+      ],
+      "prevNarration": "Tomas levels his long ash spear at your chest, the iron point steady an inch from your coat. \"Far enough,\" he says.",
+      "action": "I lunge to the side and try to knock his weapon away.",
+      "castPresent": ["Tomas"],
+      "castAbsent": [],
+      "keepWord": "spear",
+      "forbidWord": ["shield", "sword"]
+    },
+    {
+      "name": "unrevealed-name-alias",
+      "entities": [
+        { "name": "Maela", "description": "A hooded woman with silver-streaked hair and a raven brooch. She has not told the player her name.", "type": "Person" }
+      ],
+      "prevNarration": "A hooded woman with silver-streaked hair watches you from the end of the dock, a raven brooch catching the lantern light. She says nothing.",
+      "action": "I walk over and ask her if she is waiting for the ferry too.",
+      "castPresent": ["Maela"],
+      "castAbsent": [],
+      "aliasHidden": "Maela"
+    },
+    {
+      "name": "revealed-name-no-alias",
+      "entities": [
+        { "name": "Maela", "description": "A hooded woman with silver-streaked hair and a raven brooch.", "type": "Person" }
+      ],
+      "prevNarration": "The hooded woman inclines her head. \"Maela,\" she says, giving her name at last. \"And you would be the mapmaker.\"",
+      "action": "I nod and ask Maela how far she is travelling.",
+      "castPresent": ["Maela"],
+      "castAbsent": [],
+      "aliasRevealed": "Maela"
+    },
+    {
+      "name": "new-character-enters",
+      "entities": [
+        { "name": "Bram", "description": "A one-armed ferryman with a brass ear-ring.", "type": "Person" },
+        { "name": "Garrick", "description": "A heavyset tax-collector who rides in from the north road.", "type": "Person" }
+      ],
+      "prevNarration": "Bram works the ferry rope alone, the dock otherwise empty in the failing light.",
+      "action": "I wave down the heavyset rider trotting in from the north road and ask his business.",
+      "castPresent": ["Bram", "Garrick"],
+      "castAbsent": []
+    },
+    {
+      "name": "solo-no-invention",
+      "entities": [],
+      "prevNarration": "The dock is empty. The rope ferry creaks against its mooring and mist coils over the black water.",
+      "action": "I sit on the edge of the dock and unroll my map to study the river's bends.",
+      "castPresent": [],
+      "castAbsent": [],
+      "soloExpected": true
+    }
+  ]
+}

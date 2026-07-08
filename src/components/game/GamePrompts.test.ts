@@ -79,9 +79,10 @@ describe('default prompts carry the expected variable chips', () => {
   });
 
   it('thinking (pre-call) prompt', () => {
+    // The reframed continuity planner (director+storyboarder fusion) drops the stats chip - the narrator,
+    // not the plan, owns outcome, so stats are noise here. Same context set as the staged director.
     expect(tokensIn(defaultThinkingPrompt)).toEqual([
       '<WORLD DESCRIPTION>',
-      '<STATS DESCRIPTION|descriptions.markdown>',
       '<TRAITS DESCRIPTION|markdown>',
       '<LOCATION|summary.markdown>',
       '<LOCATION|sublocations.summary.markdown>',

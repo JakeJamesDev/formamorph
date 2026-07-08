@@ -1051,7 +1051,7 @@ ${playerNotes || NONE_PLACEHOLDER}
         const thinkMessages: ChatMessage[] = [
           {
             role: "user",
-            content: `${digestBand ? `${digestBand}\n\n` : ""}${lastStory ? `What just happened:\n${lastStory}\n\n` : ""}The player's next action: ${action}\n\nWrite the brief plan now. Do not narrate.`,
+            content: `${digestBand ? `${digestBand}\n\n` : ""}${lastStory ? `What just happened:\n${lastStory}\n\n` : ""}The player's next action: ${action}\n\nSet the scene, list the cast, and lay out the beats now. Do not narrate.`,
           },
         ];
         const plan = await makeAIRequest(thinkPrompt, thinkMessages, "thinking", 256, signal);
