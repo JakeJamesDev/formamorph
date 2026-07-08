@@ -123,6 +123,15 @@ export const DEFAULT_DURATION = DEFAULT_STAGGER * FADE_SPREAD;
 // gives the queue positive drift so underruns become rare; the end-of-turn drain absorbs the trail.
 export const PACE_MARGIN = 1.15;
 
+// Queue-feedback gains (see useSentenceReveal + revealTimingStore.paceScale). The estimate above is
+// open-loop and can read several times too fast (the server's initial token burst inflates its
+// cumulative average for the whole turn), so the pacer closes the loop on what it can actually see:
+// run dry mid-stream → stretch the pace; two or more releases backed up → tighten back toward the
+// base. Converges to the true arrival rate within a few sentences, whatever the estimate says.
+export const PACE_FEEDBACK_UP = 1.25;
+export const PACE_FEEDBACK_DOWN = 0.85;
+export const PACE_SCALE_MAX = 6;
+
 const clamp = (n: number, lo: number, hi: number): number => Math.min(hi, Math.max(lo, n));
 
 /** Fade timing for a smoothed word rate (words/sec): cadence tracks the rate (clamped readable) with
