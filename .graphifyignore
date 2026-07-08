@@ -1,0 +1,16 @@
+# Trial: keep the graph code-only (fully local, no LLM key). Drop doc/image/data types
+# that would trigger a paid semantic pass. Remove these lines to include docs (needs an API key).
+*.md
+*.mdx
+*.qmd
+*.rst
+*.txt
+*.html
+*.yaml
+*.yml
+*.png
+*.jpg
+*.jpeg
+*.webp
+*.gif
+*.fbx

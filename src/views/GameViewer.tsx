@@ -75,10 +75,10 @@ import { parseChoices } from "../lib/choices";
 import { setGameplayText } from "../lib/gameplayTextStore";
 import { useSentenceReveal } from "../lib/useSentenceReveal";
 import { useSmoothedReveal } from "../lib/useSmoothedReveal";
-import { setRevealTiming } from "../lib/revealTimingStore";
-import { timingForWordRate, flooredTiming, revealActive, DEFAULT_STAGGER, DEFAULT_DURATION } from "../lib/narrationRevealConfig";
-import { parseSlashCommand } from "../lib/slashCommands";
+import { revealActive } from "../lib/narrationRevealConfig";
+import { REVEAL_TEST_NARRATION, REVEAL_TEST_PROFILES, DEFAULT_REVEAL_TEST_PROFILE } from "../lib/revealTestScripts";
 import { MARKDOWN_SAMPLE } from "../lib/markdownSample";
+import { parseSlashCommand } from "../lib/slashCommands";
 import { normalizeStatChanges, applyAiStatChanges, applyTraitStatChanges, parseStatUpdates, applyAiMaxChanges } from "../lib/statChanges";
 import { resolvePromptTemperature } from "../lib/promptTemperature";
 import { downloadBlob } from "../lib/downloadBlob";
@@ -325,7 +325,7 @@ const GameViewer = ({
   // Two narration reveal styles, chosen by the Fade-in Narration setting: `fadeReveal` releases whole
   // sentences paced to Streamdown's per-word fade; `smoothReveal` is the classic character crawl that
   // trails the stream at its arrival rate. Only the selected one is fed per turn.
-  const fadeReveal = useSentenceReveal(setGameplayText);
+  const fadeReveal = useSentenceReveal(setGameplayText, revealMinStagger, revealMinDuration);
   const smoothReveal = useSmoothedReveal(setGameplayText);
   // Which reveal drives narration: any effect enabled ⇒ the paced fade path; none ⇒ the smooth crawl.
   const fadeRevealActive = revealActive(revealSpec);
@@ -342,29 +342,46 @@ const GameViewer = ({
     setCommandPreview(false);
   }, []);
 
-  // Type a sample through the real narration path (reveal → MarkdownRenderer), simulating token arrival so the
-  // markdown renderer can be eyeballed without invoking the AI.
-  const runMarkdownTest = useCallback(() => {
-    if (commandTimer.current !== null) clearInterval(commandTimer.current);
+  // Replay a fixed narration through the REAL reveal path (pacer → renderer) at a scripted arrival
+  // timing, so the reveal can be eyeballed/recorded reproducibly without the AI. The profile (see
+  // revealTestScripts) picks the arrival pattern — default `burst` reproduces the LM Studio signature.
+  // The pacer measures arrival timing itself (via Date.now on each push), so replaying the schedule at
+  // real wall-clock times reproduces production pacing exactly, with no estimator to mirror here.
+  const runMarkdownTest = useCallback((profileName?: string) => {
+    if (commandTimer.current !== null) clearTimeout(commandTimer.current);
+    // `render` previews rich-markdown formatting (tables/code) at a steady pace; every other name is an
+    // arrival-timing profile that replays the prose narration to test the reveal pacer.
+    const isRender = profileName === 'render';
+    const profile = isRender ? REVEAL_TEST_PROFILES.steady : REVEAL_TEST_PROFILES[profileName ?? DEFAULT_REVEAL_TEST_PROFILE];
+    if (!profile) {
+      toast.info(`Unknown profile. Try: render, ${Object.keys(REVEAL_TEST_PROFILES).join(', ')}`);
+      return;
+    }
+    const text = isRender ? MARKDOWN_SAMPLE : REVEAL_TEST_NARRATION;
+    const schedule = profile.schedule(text.length);
     setCommandPreview(true);
     fadeReveal.reset();
     smoothReveal.reset();
-    let shown = 0;
-    // Slow pacing (~33 chars/sec) so the reveal can be eyeballed.
-    const CHARS_PER_TICK = 2;
-    const TICK_MS = 60;
-    commandTimer.current = setInterval(() => {
-      shown = Math.min(MARKDOWN_SAMPLE.length, shown + CHARS_PER_TICK);
-      if (shown >= MARKDOWN_SAMPLE.length) {
-        if (commandTimer.current !== null) clearInterval(commandTimer.current);
+
+    const startedAt = performance.now();
+    let i = 0;
+    const step = () => {
+      // Fire every arrival event that's due, then reschedule for the next.
+      while (i < schedule.length && performance.now() - startedAt >= schedule[i].atMs) {
+        const slice = text.slice(0, schedule[i].chars);
+        if (fadeRevealActive) fadeReveal.push(revealedSentences(slice));
+        else smoothReveal.push(slice);
+        i++;
+      }
+      if (i >= schedule.length) {
         commandTimer.current = null;
-        if (fadeRevealActive) fadeReveal.finish(MARKDOWN_SAMPLE);
-        else smoothReveal.finish(MARKDOWN_SAMPLE);
+        if (fadeRevealActive) fadeReveal.finish(text);
+        else smoothReveal.finish(text);
         return;
       }
-      if (fadeRevealActive) fadeReveal.push(revealedSentences(MARKDOWN_SAMPLE.slice(0, shown)));
-      else smoothReveal.push(MARKDOWN_SAMPLE.slice(0, shown));
-    }, TICK_MS);
+      commandTimer.current = setTimeout(step, Math.max(0, schedule[i].atMs - (performance.now() - startedAt)));
+    };
+    step();
   }, [fadeReveal, smoothReveal, fadeRevealActive]);
 
   // Dispatch a parsed slash command; returns true if it was handled (caller then skips the AI).
@@ -372,7 +389,8 @@ const GameViewer = ({
     const parsed = parseSlashCommand(input);
     if (!parsed) return false;
     if (parsed.command === "markdown" && parsed.args[0] === "test") {
-      runMarkdownTest();
+      // Optional profile: /markdown test [burst|steady|slow|fast|erratic]
+      runMarkdownTest(parsed.args[1]);
       return true;
     }
     toast.info(`Unknown command: /${parsed.command}`);
@@ -396,7 +414,6 @@ const GameViewer = ({
   const ttsSentenceCursorRef = useRef(0); // count of complete sentences already sent to streaming TTS
   const entitySentenceCursorRef = useRef(0); // count of complete sentences already parsed for the entity tab
   const assistantAddedRef = useRef(false); // whether this turn's in-progress assistant message is in history yet
-  const revealRateStartRef = useRef<number | null>(null); // timestamp of the first narration token, for the words/sec estimate
   const currentTurnIdRef = useRef(""); // stable id for the in-progress turn, stamped into its assistant JSON
   const digestDrainingRef = useRef(false); // a memory digest is in flight (serializes the drainer)
   const [digestActive, setDigestActive] = useState(false); // drives the status-bar indicator for a running digest
@@ -1599,8 +1616,8 @@ ${playerNotes || NONE_PLACEHOLDER}
       let buffer = "";
       let content = "";
       let finishReason = null;
-      // Clear the narration for this turn's fresh reveal.
-      if (requestType === "narration") { fadeReveal.reset(); smoothReveal.reset(); setRevealTiming(flooredTiming({ stagger: DEFAULT_STAGGER, duration: DEFAULT_DURATION }, revealMinStagger, revealMinDuration)); revealRateStartRef.current = null; entitySentenceCursorRef.current = 0; assistantAddedRef.current = false; }
+      // Clear the narration for this turn's fresh reveal (reset re-seeds the reveal's base timing).
+      if (requestType === "narration") { fadeReveal.reset(); smoothReveal.reset(); entitySentenceCursorRef.current = 0; assistantAddedRef.current = false; }
       // Opt-in streaming TTS: synthesize narration sentence-by-sentence as it arrives (needs a model).
       const ttsStreaming = streamNarrationAudio && ttsLoaded && requestType === "narration";
       if (ttsStreaming) { ttsModalRef.current?.streamStart(); ttsSentenceCursorRef.current = 0; }
@@ -1628,19 +1645,9 @@ ${playerNotes || NONE_PLACEHOLDER}
             // Split once per token; streaming TTS, the entity tab, and the reveal all read these.
             const segments = splitSentenceSegments(display);
             if (fadeRevealActive) {
-              // Track the model's word rate from the first *visible* narration token (not the first token
-              // overall) — a reasoning model spends its opening tokens on a hidden <think> block, and
-              // anchoring there would divide the narration words by the whole thinking time and badly
-              // under-estimate the rate, so the reveal crawls and finishes after choices. Feed the fade
-              // timing from the rate so the cadence tracks generation speed.
-              if (revealRateStartRef.current === null && display.trim()) revealRateStartRef.current = performance.now();
-              if (revealRateStartRef.current !== null) {
-                const elapsedMs = performance.now() - revealRateStartRef.current;
-                const wordCount = display.trim() ? display.trim().split(/\s+/).length : 0;
-                if (elapsedMs >= 120 && wordCount >= 3) setRevealTiming(flooredTiming(timingForWordRate(wordCount / (elapsedMs / 1000)), revealMinStagger, revealMinDuration));
-              }
-              // Fade path: reveal only complete sentences (hold the in-progress trailing one); the pacer
-              // releases each in turn, waiting for its fade before the next.
+              // Fade path: reveal only complete sentences (hold the in-progress trailing one). The pacer
+              // times each sentence's arrival and paces the cascade from that measured rate — no
+              // tokens/sec estimate needed here; a burst of sentences just fills its backlog buffer.
               fadeReveal.push(
                 segments.length > 1
                   ? display.slice(0, display.length - segments[segments.length - 1].length).replace(/\s+$/, '')
@@ -1737,17 +1744,10 @@ ${playerNotes || NONE_PLACEHOLDER}
       // On a mid-sentence truncation (hit the token cap), trim back to the last complete sentence.
       if (requestType === "narration") {
         if (finishReason === "length") finalContent = trimToLastSentence(finalContent);
-        // Hand the authoritative final text (incl. any held last sentence) to the active reveal.
-        if (fadeRevealActive) {
-          // Pin the timing to the whole turn's rate before flushing, so the held tail (and any reveal
-          // still catching up) plays at the true speed even if the model burst too fast to sample mid-stream.
-          if (revealRateStartRef.current !== null) {
-            const elapsedMs = performance.now() - revealRateStartRef.current;
-            const wordCount = finalContent.trim() ? finalContent.trim().split(/\s+/).length : 0;
-            if (elapsedMs >= 60 && wordCount >= 3) setRevealTiming(flooredTiming(timingForWordRate(wordCount / (elapsedMs / 1000)), revealMinStagger, revealMinDuration));
-          }
-          fadeReveal.finish(finalContent);
-        } else smoothReveal.finish(finalContent);
+        // Hand the authoritative final text (incl. any held last sentence) to the active reveal. The
+        // pacer drains any remaining backlog at its measured rate (capped to not dawdle on the tail).
+        if (fadeRevealActive) fadeReveal.finish(finalContent);
+        else smoothReveal.finish(finalContent);
         // Flush any sentence(s) still unsent (incl. a final one with no trailing terminator), then end.
         if (ttsStreaming) {
           const segments = splitSentenceSegments(finalContent);
