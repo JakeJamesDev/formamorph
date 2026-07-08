@@ -12,6 +12,13 @@ Each release groups changes as **Major** / **Minor**, then **Added** / **Removed
 
 ### Minor Changes
 
+#### ➕ Added
+
+- **👤 User-facing**
+  - **Per-prompt temperature** — each prompt's editor (Settings → System Prompts) gains an **Options** tab with a **Custom Temperature** control: tick it to override *that one prompt's* sampling temperature on a slider, or leave it off to use the smart default. The behind-the-scenes extraction/compression prompts — **Stat Updates**, **Location Change**, **Summary** — default to low, near-deterministic values so their bookkeeping stays consistent turn to turn, while the creative prompts (narration, choices, …) follow your endpoint's own temperature. Like the custom-endpoint fields, a value you dial in is kept (just unused) when you switch Custom back off, so it's never lost. The editor's **Verbatim turns** field moved onto this Options tab too.
+- **🛠️ Developer tooling**
+  - **Per-prompt temperature resolution** (`lib/promptTemperature.ts`) — resolves each request's temperature: the pinned deterministic prompts (`statUpdates` 0.2 · `locationChange` 0.15 · `summary` 0) always send their constant; every other prompt sends the global temperature on the built-in engine but **omits** the field on a custom endpoint, so LM Studio / Ollama apply the model's own configured value (see the verified endpoint-temperature behavior). The three pins were each set from measured probe sweeps against a 12B + 24B local model (`testing/baseline/harness/*-probe.mjs`), not guessed — stats bottom out at 0.2, location plateaus by 0.15, and summary needs true greedy (0) to stop the small model echoing dialogue verbatim. Overrides persist as one `promptTemps` localStorage record.
+
 #### 🐛 Fixed
 
 - **👤 User-facing**
