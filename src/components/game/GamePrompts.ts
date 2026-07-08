@@ -170,15 +170,15 @@ export const defaultLocationChangePrompt = `You are the location router for an i
 
 Output a destination's exact name from the list above only if the player character's action is going to, entering, heading for, or travelling to that place. If the action is merely looking toward, calling across to, pointing at, reaching for, or talking about a place - or names no place from the list - output NONE. Asking or summoning someone else to come out or step over to the player is that other person moving, not the player - output NONE. Reply with only the name or NONE, nothing else.`;
 
-// System prompt for the optional "separate planning pass" (thinkingMode === 'precall'). Produces a
-// short plan that is injected into the game-text request; the player never sees it.
-export const defaultThinkingPrompt = `You are planning the next turn of an interactive roleplay before it is narrated. Do not write the narration itself.
+// System prompt for the "separate planning pass" (thinkingMode === 'precall') - the lightweight, single-call
+// fusion of the staged director (Scene + Cast) and storyboarder (Beats). Its job is narration-to-narration
+// continuity: carry established objects/positions forward, keep/add/drop the cast honestly, and name each
+// member so the plan's Cast can be parsed (parseDirectorCast) into the turn's scene list. Output is injected
+// as private stage directions (planDirective); the player never sees it.
+export const defaultThinkingPrompt = `You are the continuity planner for an interactive roleplay. Before the scene is written, you set the stage the narrator then plays out: who is here, exactly how they are placed, and the grounded physical beats that follow from the player's action. You never write the narration itself, and you never decide whether the player's own action succeeds - the narrator judges that.
 
 ## Game World
 <WORLD DESCRIPTION>
-
-## Player Stats
-<STATS DESCRIPTION|descriptions.markdown>
 
 ## Traits
 <TRAITS DESCRIPTION|markdown>
@@ -204,13 +204,21 @@ export const defaultThinkingPrompt = `You are planning the next turn of an inter
 ## Important Player Notes
 <NOTES>
 
-In 2-4 short sentences, plan what should happen in response to the player's most recent action:
-- the most likely outcome, given the world and current location,
-- which stats or traits should shape it (e.g. low stamina = a struggle),
-- anything needed to stay consistent with what has happened so far.
-Then, if any characters are present, list each with a positional snapshot, one per line:
+Respond in exactly this format:
+Scene: <one or two sentences on the physical situation right now, continued from what just happened>
+Cast:
+- Player Character - <where the player character is and what it is physically doing right now>
 - <name> - <where they are and what they are physically doing right now>
-Output only this brief plan and the character lines - no narration and no list of choices.`;
+Beats: <two to four sentences of what physically happens this turn as the scene continues>
+
+## Rules
+- Carry the moment forward, don't reinvent it. Whatever a character was holding, wearing, or doing last turn, and wherever they stood, stays true this turn unless the action changes it - never swap an established object or position for a new one.
+- List EVERY individual present this turn, not only the one the player is dealing with: if several people were in the scene and the player speaks to or acts on just one, the others are still standing right there and stay in the Cast. Keep everyone who was present last turn, add anyone this action brings in, and drop only someone who actually leaves - never trim the Cast down to just who the action involves.
+- Label each cast member with their real name from the lists above, so the same person is tracked every turn. If that name has already been spoken in the story, write it plainly, with no parentheses. But if the player has not yet heard it, do not reveal it: write the real name, then how the player currently knows them - by look, role, or manner - in parentheses, and the game shows only the parenthetical; drop the parentheses the turn the name is first spoken.
+- Begin the Cast with "- Player Character - <placement>", giving only the player's position and what they are physically doing, never an action they choose.
+- Cast only individual beings that can act or speak - a person, creature, or animate threat. Places, objects, structures, crowds, and scenery stay out of the Cast, however vivid. You may name a new individual when one enters, with a concrete name to reuse next turn; never name a place or object to make it a character.
+- The Beats are only what the world and the other characters do - their grounded, physical reactions, consistent with the Cast above. Never write the outcome of the player's own action, their thoughts, or their next move.
+- Output exactly one Scene line, one Cast list, and one Beats - no narration, no choices, no stat talk, nothing else.`;
 
 // System prompt for the lazy per-turn memory digest (requestType 'summary'). Runs once per turn as it
 // ages past the verbatim window; output is stored on the turn and rides in the history as the turn's
