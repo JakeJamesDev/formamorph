@@ -16,7 +16,7 @@ import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem, SelectSe
 import { Slider } from "@/components/ui/slider";
 import PromptField from '../prompt/PromptField';
 import { PROMPT_KIND_VARIABLES, PROMPT_KIND_USER_VARIABLES, SUBJECT } from '@/lib/promptVariables';
-import { defaultPromptTemperature } from '@/lib/promptTemperature';
+import { defaultPromptSampler } from '@/lib/promptSamplers';
 import type { AIRequestType } from '@/types';
 import { ConfirmDialog } from '../ConfirmDialog';
 import { PresetNameDialog } from './PresetNameDialog';
@@ -50,7 +50,7 @@ const THINKING_OPTIONS: { value: ThinkingMode; label: string; help: string }[] =
 ];
 
 /** Per-prompt control: how many recent turns this prompt receives verbatim (the rest are digested). */
-function VerbatimTurnsField({ id, value, onChange }: { id: string; value: number; onChange: (n: number) => void }) {
+function VerbatimTurnsField({ id, value, onChange, disabled }: { id: string; value: number; onChange: (n: number) => void; disabled?: boolean }) {
   return (
     <div className="flex items-center gap-2 flex-shrink-0">
       <label htmlFor={id} className="text-sm">Verbatim turns</label>
@@ -59,6 +59,7 @@ function VerbatimTurnsField({ id, value, onChange }: { id: string; value: number
         type="number"
         min={0}
         value={value}
+        disabled={disabled}
         onChange={(e) => onChange(Math.max(0, Math.floor(Number(e.target.value)) || 0))}
         className="w-20"
       />
@@ -74,46 +75,66 @@ const TAB_TO_REQUEST: Record<string, AIRequestType> = {
   character: 'character', storyboard: 'storyboard',
 };
 
-/** The per-prompt Options sub-tab: the verbatim-turns control (only when digests are on and the prompt uses
- *  them) plus a Custom Temperature override. Off shows the kind's default (read-only) — or "Endpoint default"
- *  when the prompt omits temperature (a non-pinned prompt on a custom endpoint); on reveals the stored custom
- *  value, which persists across toggling and is sent to any endpoint. */
-function PromptOptionsPanel({ verbatim, custom, value, defaultValue, onCustomChange, onValueChange }: {
-  verbatim: { value: number; set: (n: number) => void } | null;
+/** One custom-sampler override row: a checkbox that enables the override, a slider, and a value readout that
+ *  shows "Endpoint default" while off when the sampler is omitted (a non-pinned prompt on a custom endpoint).
+ *  On reveals the stored custom value, which persists across toggling and is sent to any endpoint. */
+interface SamplerControlProps {
+  id: string;
+  label: string;
+  hint: string;
   custom: boolean;
   value: number;
-  /** The temperature shown when off, or undefined when the prompt omits temperature (endpoint decides). */
+  /** The value shown when off, or undefined when the prompt omits the sampler (endpoint decides). */
   defaultValue: number | undefined;
+  min: number;
+  max: number;
+  step: number;
+  /** When true the whole control is read-only (a built-in prompt preset) — checkbox and slider both locked. */
+  disabled?: boolean;
   onCustomChange: (custom: boolean) => void;
   onValueChange: (value: number) => void;
-}) {
+}
+function SamplerControl({ id, label, hint, custom, value, defaultValue, min, max, step, disabled, onCustomChange, onValueChange }: SamplerControlProps) {
   const omitsWhenOff = defaultValue === undefined;
   const shown = custom ? value : (defaultValue ?? value);
   return (
+    <div className="space-y-2">
+      <div className="flex items-center gap-2">
+        <Checkbox id={id} checked={custom} disabled={disabled} onCheckedChange={(c) => onCustomChange(c === true)} />
+        <label htmlFor={id} className="text-sm">{label}</label>
+        <span className="hidden sm:inline text-xs text-muted-foreground">{hint}</span>
+      </div>
+      <div className="flex items-center gap-3">
+        <Slider
+          className={`flex-grow${custom && !disabled ? '' : ' opacity-60'}`}
+          value={[shown]}
+          min={min}
+          max={max}
+          step={step}
+          disabled={disabled || !custom}
+          onValueChange={(v) => onValueChange(v[0])}
+        />
+        <span className="w-28 text-right text-sm tabular-nums">
+          {custom || !omitsWhenOff ? shown.toFixed(2) : <span className="text-muted-foreground not-italic">Endpoint default</span>}
+        </span>
+      </div>
+    </div>
+  );
+}
+
+/** The per-prompt Options sub-tab: the verbatim-turns control (only when digests are on and the prompt uses
+ *  them) plus one override row per tunable sampler (temperature, repetition penalty). `disabled` locks every
+ *  control when the active prompt preset is built-in (Default/Simple), matching the read-only prompt editor. */
+function PromptOptionsPanel({ verbatim, samplers, disabled }: {
+  verbatim: { value: number; set: (n: number) => void } | null;
+  samplers: SamplerControlProps[];
+  disabled: boolean;
+}) {
+  return (
     // px-3 keeps the slider thumb off the scroll frame's edges (the thumb overflows the track ends at 0/max).
     <div className="space-y-5 px-3 py-3">
-      {verbatim && <VerbatimTurnsField id="promptVerbatim" value={verbatim.value} onChange={verbatim.set} />}
-      <div className="space-y-2">
-        <div className="flex items-center gap-2">
-          <Checkbox id="customTemp" checked={custom} onCheckedChange={(c) => onCustomChange(c === true)} />
-          <label htmlFor="customTemp" className="text-sm">Custom Temperature</label>
-          <span className="hidden sm:inline text-xs text-muted-foreground">override this prompt&apos;s sampling temperature</span>
-        </div>
-        <div className="flex items-center gap-3">
-          <Slider
-            className={`flex-grow${custom ? '' : ' opacity-60'}`}
-            value={[shown]}
-            min={0}
-            max={2}
-            step={0.05}
-            disabled={!custom}
-            onValueChange={(v) => onValueChange(v[0])}
-          />
-          <span className="w-28 text-right text-sm tabular-nums">
-            {custom || !omitsWhenOff ? shown.toFixed(2) : <span className="text-muted-foreground not-italic">Endpoint default</span>}
-          </span>
-        </div>
-      </div>
+      {verbatim && <VerbatimTurnsField id="promptVerbatim" value={verbatim.value} onChange={verbatim.set} disabled={disabled} />}
+      {samplers.map((s) => <SamplerControl key={s.id} {...s} disabled={disabled} />)}
     </div>
   );
 }
@@ -211,10 +232,11 @@ export const SettingsModal = ({ isOpen, onOpenChange, previewValues }: {
     characterDiaries,
     setCharacterDiaries,
     genTemperature,
+    genRepetitionPenalty,
     localModelActive,
-    promptTemps,
-    setPromptTempCustom,
-    setPromptTempValue,
+    promptSamplers,
+    setPromptSamplerCustom,
+    setPromptSamplerValue,
     showSilentRequests,
     setShowSilentRequests,
     paragraphLimit,
@@ -412,12 +434,31 @@ export const SettingsModal = ({ isOpen, onOpenChange, previewValues }: {
   const activeVerbatimEntry = promptVerbatim[activePromptTab];
   const verbatimApplicable = memoryDigests && !!activeVerbatimEntry;
 
-  // Per-prompt temperature for the active tab. Off shows the kind's default (read-only); on shows the stored
-  // custom value (seeded to the default on first enable). `defaultTemp` is undefined when the prompt omits
-  // temperature (a non-pinned prompt on a custom endpoint) — the panel then shows "Endpoint default".
+  // Per-prompt samplers for the active tab. Off shows the kind's default (read-only); on shows the stored
+  // custom value (seeded to the default on first enable). A default of `undefined` means the prompt omits the
+  // sampler (a non-pinned prompt on a custom endpoint) — the panel then shows "Endpoint default".
   const activeKind = TAB_TO_REQUEST[activePromptTab] ?? 'narration';
-  const activeTemp = promptTemps[activeKind];
-  const defaultTemp = defaultPromptTemperature(activeKind, genTemperature, localModelActive);
+  const activeSamplers = promptSamplers[activeKind];
+  const samplerControls: SamplerControlProps[] = [
+    {
+      id: 'customTemp', label: 'Custom Temperature', hint: "override this prompt's sampling temperature",
+      min: 0, max: 2, step: 0.05,
+      custom: activeSamplers?.temperature?.custom ?? false,
+      value: activeSamplers?.temperature?.value ?? defaultPromptSampler(activeKind, 'temperature', genTemperature, localModelActive) ?? genTemperature,
+      defaultValue: defaultPromptSampler(activeKind, 'temperature', genTemperature, localModelActive),
+      onCustomChange: (c) => setPromptSamplerCustom(activeKind, 'temperature', c),
+      onValueChange: (v) => setPromptSamplerValue(activeKind, 'temperature', v),
+    },
+    {
+      id: 'customRepPen', label: 'Custom Repetition Penalty', hint: "override this prompt's repetition penalty",
+      min: 1, max: 1.5, step: 0.02,
+      custom: activeSamplers?.repetitionPenalty?.custom ?? false,
+      value: activeSamplers?.repetitionPenalty?.value ?? defaultPromptSampler(activeKind, 'repetitionPenalty', genRepetitionPenalty, localModelActive) ?? genRepetitionPenalty,
+      defaultValue: defaultPromptSampler(activeKind, 'repetitionPenalty', genRepetitionPenalty, localModelActive),
+      onCustomChange: (c) => setPromptSamplerCustom(activeKind, 'repetitionPenalty', c),
+      onValueChange: (v) => setPromptSamplerValue(activeKind, 'repetitionPenalty', v),
+    },
+  ];
 
   return (
     <>
@@ -1128,11 +1169,8 @@ export const SettingsModal = ({ isOpen, onOpenChange, previewValues }: {
                 <div className="mt-4 flex-1 min-h-0 overflow-y-auto">
                   <PromptOptionsPanel
                     verbatim={verbatimApplicable ? activeVerbatimEntry : null}
-                    custom={activeTemp?.custom ?? false}
-                    value={activeTemp?.value ?? defaultTemp ?? genTemperature}
-                    defaultValue={defaultTemp}
-                    onCustomChange={(c) => setPromptTempCustom(activeKind, c)}
-                    onValueChange={(v) => setPromptTempValue(activeKind, v)}
+                    samplers={samplerControls}
+                    disabled={activePresetIsBuiltIn}
                   />
                 </div>
               )}

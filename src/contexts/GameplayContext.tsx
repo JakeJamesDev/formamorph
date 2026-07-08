@@ -53,6 +53,10 @@ function useProvideGameplay() {
   const [isGameStarted, setIsGameStarted] = useState(false);
   const [playerInput, setPlayerInput] = useState('');
   const [isWaitingForAI, setIsWaitingForAI] = useState(false);
+  // True only while the narration is actively streaming into the reveal — distinct from isWaitingForAI,
+  // which is true across the whole turn (setup/thinking/aux). The reveal view keys on this so the stale
+  // last-turn text can't animate during setup (e.g. the re-generate flash).
+  const [isRevealingNarration, setIsRevealingNarration] = useState(false);
   const [fullMessageHistory, setFullMessageHistory] = useState<ChatMessage[]>([]);
   const [displayedMessages, setDisplayedMessages] = useState<ChatMessage[]>([]);
   const [currentPage, setCurrentPage] = useState(1);
@@ -360,6 +364,8 @@ function useProvideGameplay() {
     setPlayerInput,
     isWaitingForAI,
     setIsWaitingForAI,
+    isRevealingNarration,
+    setIsRevealingNarration,
     fullMessageHistory,
     setFullMessageHistory,
     displayedMessages,

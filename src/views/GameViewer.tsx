@@ -80,7 +80,7 @@ import { REVEAL_TEST_NARRATION, REVEAL_TEST_PROFILES, DEFAULT_REVEAL_TEST_PROFIL
 import { MARKDOWN_SAMPLE } from "../lib/markdownSample";
 import { parseSlashCommand } from "../lib/slashCommands";
 import { normalizeStatChanges, applyAiStatChanges, applyTraitStatChanges, parseStatUpdates, applyAiMaxChanges } from "../lib/statChanges";
-import { resolvePromptTemperature } from "../lib/promptTemperature";
+import { resolvePromptSampler } from "../lib/promptSamplers";
 import { downloadBlob } from "../lib/downloadBlob";
 import { matchLocationResponse } from "../lib/locationMatch";
 import { rollbackState, regenerateState, canRegenerate, lastTurnAction, markRegeneratedTurn, markPrunedTurns, snapshotPageIndex, placeSnapshot } from "../lib/turnHistory";
@@ -229,7 +229,7 @@ const GameViewer = ({
     genRepetitionPenalty,
     genTopK,
     genMinP,
-    promptTemps,
+    promptSamplers,
     systemPrompt,
     choicesPrompt,
     statUpdatesPrompt,
@@ -289,6 +289,7 @@ const GameViewer = ({
     setPlayerInput,
     isWaitingForAI,
     setIsWaitingForAI,
+    setIsRevealingNarration,
     fullMessageHistory,
     setFullMessageHistory,
     setDisplayedMessages,
@@ -905,6 +906,10 @@ const GameViewer = ({
     abortControllerRef.current = controller;
     const { signal } = controller;
     setIsWaitingForAI(true);
+    // Not revealing yet — the narration stream (below) flips this on. Until then the reveal view shows
+    // the committed narration, never the stale last-turn text (which would otherwise animate all at once
+    // during setup, most visibly on re-generate).
+    setIsRevealingNarration(false);
 
     try {
       // Drain last turn's stat-bar colors and fade any lingering delta text now (they clear during the AI
@@ -1378,6 +1383,7 @@ ${playerNotes || NONE_PLACEHOLDER}
       addLogEntry(errorMessage);
     } finally {
       setIsWaitingForAI(false);
+      setIsRevealingNarration(false);
       setAiRequestType(null);
       // Release the turn's controller (unless a newer turn already replaced it).
       if (abortControllerRef.current === controller) abortControllerRef.current = null;
@@ -1572,7 +1578,8 @@ ${playerNotes || NONE_PLACEHOLDER}
       // Capture the exact payload into the AI-context viewer.
       if (!silent || captureSilent) captureRequest();
 
-      const resolvedTemperature = resolvePromptTemperature(requestType, promptTemps, genTemperature, localModelActive);
+      const resolvedTemperature = resolvePromptSampler(requestType, "temperature", promptSamplers, genTemperature, localModelActive);
+      const resolvedRepPenalty = resolvePromptSampler(requestType, "repetitionPenalty", promptSamplers, genRepetitionPenalty, localModelActive);
 
       const response = await fetch(getEndpointUrl(), {
         method: "POST",
@@ -1585,16 +1592,17 @@ ${playerNotes || NONE_PLACEHOLDER}
           messages: [{ role: "system", content: systemPrompt }, ...messages],
           max_tokens: maxTokensOverride ?? maxTokens,
           stream: true,
-          // Non-temperature samplers apply to the built-in engine only (a custom endpoint keeps its own).
+          // top_p/top_k/min_p apply to the built-in engine only (a custom endpoint keeps its own).
           ...(localModelActive && {
             top_p: genTopP,
             top_k: genTopK,
             min_p: genMinP,
-            repetition_penalty: genRepetitionPenalty,
           }),
-          // Temperature is resolved per prompt: pinned/custom values go to every endpoint; non-pinned prompts
-          // send the global temp on the built-in engine but omit on a custom endpoint (undefined → no field).
+          // Temperature and repetition penalty are resolved per prompt: a pinned/custom value goes to every
+          // endpoint; an unpinned prompt sends the global value on the built-in engine but omits on a custom
+          // endpoint (undefined → no field, so the endpoint's own value applies).
           ...(resolvedTemperature !== undefined && { temperature: resolvedTemperature }),
+          ...(resolvedRepPenalty !== undefined && { repetition_penalty: resolvedRepPenalty }),
           // Single-paragraph stop, but not in inline-thinking mode — the <think> block needs newlines.
           ...(requestType === "narration" && paragraphLimit === "single" && thinkingMode !== "inline" && { stop: ["\n"] }),
         }),
@@ -1616,8 +1624,9 @@ ${playerNotes || NONE_PLACEHOLDER}
       let buffer = "";
       let content = "";
       let finishReason = null;
-      // Clear the narration for this turn's fresh reveal (reset re-seeds the reveal's base timing).
-      if (requestType === "narration") { fadeReveal.reset(); smoothReveal.reset(); entitySentenceCursorRef.current = 0; assistantAddedRef.current = false; }
+      // Clear the narration for this turn's fresh reveal (reset re-seeds the reveal's base timing) and
+      // mark the reveal live — from here the reveal view shows the streaming gameplayText, not committed.
+      if (requestType === "narration") { fadeReveal.reset(); smoothReveal.reset(); setIsRevealingNarration(true); entitySentenceCursorRef.current = 0; assistantAddedRef.current = false; }
       // Opt-in streaming TTS: synthesize narration sentence-by-sentence as it arrives (needs a model).
       const ttsStreaming = streamNarrationAudio && ttsLoaded && requestType === "narration";
       if (ttsStreaming) { ttsModalRef.current?.streamStart(); ttsSentenceCursorRef.current = 0; }

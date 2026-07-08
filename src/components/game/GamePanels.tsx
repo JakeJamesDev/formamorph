@@ -325,6 +325,7 @@ export const MiddlePanel = ({
     playerInput,
     setPlayerInput,
     isWaitingForAI,
+    isRevealingNarration,
     isFlashing,
     isEditMode,
     setIsEditMode,
@@ -504,7 +505,10 @@ export const MiddlePanel = ({
                     <div className="whitespace-pre-wrap">{message.content}</div>
                   ) : (
                     <div ref={narrationRef} style={revealStyle}>
-                      <MarkdownRenderer text={isLatestMessage && isWaitingForAI ? gameplayText : parseAssistantMessage(message.content)} animate={isLatestMessage && isWaitingForAI && revealOn} animation={revealAnim} easing={revealEasing} />
+                      {/* Show the live reveal only while THIS turn's narration is actually streaming;
+                          during setup/thinking (or after) show the committed text, so stale last-turn
+                          text can't animate all at once (the re-generate flash). */}
+                      <MarkdownRenderer text={isLatestMessage && isRevealingNarration ? gameplayText : parseAssistantMessage(message.content)} animate={isLatestMessage && isRevealingNarration && revealOn} animation={revealAnim} easing={revealEasing} />
                     </div>
                   )}
                 </div>
