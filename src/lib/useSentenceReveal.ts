@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef } from 'react';
-import { getRevealTiming } from './revealTimingStore';
+import { getRevealTiming, getRevealPaceScale, setRevealPaceScale } from './revealTimingStore';
+import { PACE_FEEDBACK_UP, PACE_FEEDBACK_DOWN, PACE_SCALE_MAX } from './narrationRevealConfig';
 
 const countWords = (text: string): number => {
   const trimmed = text.trim();
@@ -35,10 +36,16 @@ export function useSentenceReveal(onText: (text: string) => void) {
     }
   }, []);
 
-  const pump = useCallback(() => {
+  const pump = useCallback((fromTimer = false) => {
     if (busyRef.current) return;
     const next = queueRef.current[0];
     if (next === undefined) {
+      // Ran dry the instant a release's rhythm ended, mid-stream: the pace is outrunning arrival —
+      // stretch it before the next release. Only the timer path signals a real starve; push-driven
+      // pumps with nothing queued are just tokens arriving mid-sentence.
+      if (fromTimer && !finishedRef.current) {
+        setRevealPaceScale(Math.min(getRevealPaceScale() * PACE_FEEDBACK_UP, PACE_SCALE_MAX));
+      }
       settleDrain();
       return;
     }
@@ -60,6 +67,11 @@ export function useSentenceReveal(onText: (text: string) => void) {
     }
     tailWaitedRef.current = false;
     queueRef.current.shift();
+    // Two or more releases already waiting behind this one: we're falling behind arrival — tighten
+    // the pace back toward the base (never past it; the base carries the user's minimum floors).
+    if (queueRef.current.length >= 2) {
+      setRevealPaceScale(Math.max(getRevealPaceScale() * PACE_FEEDBACK_DOWN, 1));
+    }
     const addedWords = countWords(next) - countWords(shownRef.current);
     shownRef.current = next;
     onTextRef.current(next);
@@ -69,7 +81,7 @@ export function useSentenceReveal(onText: (text: string) => void) {
     // fade the renderer applies to this same sentence.
     timerRef.current = setTimeout(() => {
       busyRef.current = false;
-      pump();
+      pump(true);
     }, addedWords * getRevealTiming().stagger);
   }, [settleDrain]);
 
@@ -93,6 +105,9 @@ export function useSentenceReveal(onText: (text: string) => void) {
     (finalText: string) => {
       enqueue(finalText);
       finishedRef.current = true;
+      // Arrival is over, so feedback's job is done — the caller just pinned the base timing to the
+      // whole-turn true rate, and the remaining backlog should drain at that pace, not a stretched one.
+      setRevealPaceScale(1);
       pump();
     },
     [enqueue, pump],
@@ -106,6 +121,7 @@ export function useSentenceReveal(onText: (text: string) => void) {
     busyRef.current = false;
     finishedRef.current = false;
     tailWaitedRef.current = false;
+    setRevealPaceScale(1);
     onTextRef.current('');
     // Don't leave a caller awaiting a reveal we just cleared.
     const waiters = drainWaitersRef.current;
