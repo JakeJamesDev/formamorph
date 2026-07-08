@@ -26,6 +26,8 @@ import {
   type PromptPresetStore, type PromptValues,
 } from '../lib/promptPresets';
 import { buildStyledValues } from '../lib/sectionStyle';
+import { promptTempMapCodec, defaultPromptTemperature, type PromptTempMap } from '../lib/promptTemperature';
+import type { AIRequestType } from '../types';
 import type { ParagraphLimit } from '../lib/outputLength';
 
 /** Lifecycle of the context-window auto-detect probe; `error` is set only on a forced (manual) attempt. */
@@ -262,6 +264,18 @@ function useProvideSettings() {
   const [genRepetitionPenalty, setGenRepetitionPenalty] = usePersistentState<number>(`${APP_ID}_genRepetitionPenalty`, DEFAULT_GEN_REPETITION_PENALTY, floatCodec);
   const [genTopK, setGenTopK] = usePersistentState<number>(`${APP_ID}_genTopK`, DEFAULT_GEN_TOP_K, intCodec);
   const [genMinP, setGenMinP] = usePersistentState<number>(`${APP_ID}_genMinP`, DEFAULT_GEN_MIN_P, floatCodec);
+
+  // Per-prompt temperature overrides (local model only, like the global sampler). Off (default) → the kind's
+  // default temperature (low for deterministic prompts, the global temperature otherwise); on → the stored
+  // custom value, which is preserved across toggling so switching back to default never discards it.
+  const [promptTemps, setPromptTemps] = usePersistentState<PromptTempMap>(`${APP_ID}_promptTemps`, {}, promptTempMapCodec);
+  const setPromptTempCustom = useCallback((kind: AIRequestType, custom: boolean) => {
+    // Seed the custom value with the built-in default so it always starts as a real number, never undefined.
+    setPromptTemps((prev) => ({ ...prev, [kind]: { custom, value: prev[kind]?.value ?? defaultPromptTemperature(kind, genTemperature, true)! } }));
+  }, [genTemperature, setPromptTemps]);
+  const setPromptTempValue = useCallback((kind: AIRequestType, value: number) => {
+    setPromptTemps((prev) => ({ ...prev, [kind]: { custom: prev[kind]?.custom ?? true, value } }));
+  }, [setPromptTemps]);
 
   // Context window: a custom endpoint uses its detected/override value; the local engine uses the context
   // size the user set (same number); otherwise the built-in default.
@@ -575,6 +589,9 @@ function useProvideSettings() {
     setGenTopK,
     genMinP,
     setGenMinP,
+    promptTemps,
+    setPromptTempCustom,
+    setPromptTempValue,
     systemPrompt,
     setSystemPrompt,
     choicesPrompt,

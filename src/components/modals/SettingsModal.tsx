@@ -15,6 +15,8 @@ import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem, SelectSe
 import { Slider } from "@/components/ui/slider";
 import PromptField from '../prompt/PromptField';
 import { PROMPT_KIND_VARIABLES, PROMPT_KIND_USER_VARIABLES, SUBJECT } from '@/lib/promptVariables';
+import { defaultPromptTemperature } from '@/lib/promptTemperature';
+import type { AIRequestType } from '@/types';
 import { ConfirmDialog } from '../ConfirmDialog';
 import { PresetNameDialog } from './PresetNameDialog';
 import { defaultSystemPrompt, defaultChoicesPrompt, defaultStatUpdatesPrompt, defaultLocationChangePrompt, defaultThinkingPrompt, defaultSummaryPrompt, defaultChoicesUserPrompt, defaultStatUpdatesUserPrompt, defaultLocationChangeUserPrompt, defaultSummaryUserPrompt, defaultDiaryPrompt, defaultDirectorPrompt, defaultDirectorUserPrompt, defaultCharacterPrompt, defaultStoryboardPrompt } from '../game/GamePrompts';
@@ -60,6 +62,57 @@ function VerbatimTurnsField({ id, value, onChange }: { id: string; value: number
         className="w-20"
       />
       <span className="hidden sm:inline text-xs text-muted-foreground">recent turns kept in full before older ones are summarized</span>
+    </div>
+  );
+}
+
+// The prompt sub-tab keys map to their `AIRequestType` for per-prompt temperature lookup.
+const TAB_TO_REQUEST: Record<string, AIRequestType> = {
+  narration: 'narration', thinking: 'thinking', choices: 'choices', statupdates: 'statUpdates',
+  location: 'locationChange', summary: 'summary', diary: 'diary', director: 'director',
+  character: 'character', storyboard: 'storyboard',
+};
+
+/** The per-prompt Options sub-tab: the verbatim-turns control (only when digests are on and the prompt uses
+ *  them) plus a Custom Temperature override. Off shows the kind's default (read-only) — or "Endpoint default"
+ *  when the prompt omits temperature (a non-pinned prompt on a custom endpoint); on reveals the stored custom
+ *  value, which persists across toggling and is sent to any endpoint. */
+function PromptOptionsPanel({ verbatim, custom, value, defaultValue, onCustomChange, onValueChange }: {
+  verbatim: { value: number; set: (n: number) => void } | null;
+  custom: boolean;
+  value: number;
+  /** The temperature shown when off, or undefined when the prompt omits temperature (endpoint decides). */
+  defaultValue: number | undefined;
+  onCustomChange: (custom: boolean) => void;
+  onValueChange: (value: number) => void;
+}) {
+  const omitsWhenOff = defaultValue === undefined;
+  const shown = custom ? value : (defaultValue ?? value);
+  return (
+    // px-3 keeps the slider thumb off the scroll frame's edges (the thumb overflows the track ends at 0/max).
+    <div className="space-y-5 px-3 py-3">
+      {verbatim && <VerbatimTurnsField id="promptVerbatim" value={verbatim.value} onChange={verbatim.set} />}
+      <div className="space-y-2">
+        <div className="flex items-center gap-2">
+          <Checkbox id="customTemp" checked={custom} onCheckedChange={(c) => onCustomChange(c === true)} />
+          <label htmlFor="customTemp" className="text-sm">Custom Temperature</label>
+          <span className="hidden sm:inline text-xs text-muted-foreground">override this prompt&apos;s sampling temperature</span>
+        </div>
+        <div className="flex items-center gap-3">
+          <Slider
+            className={`flex-grow${custom ? '' : ' opacity-60'}`}
+            value={[shown]}
+            min={0}
+            max={2}
+            step={0.05}
+            disabled={!custom}
+            onValueChange={(v) => onValueChange(v[0])}
+          />
+          <span className="w-28 text-right text-sm tabular-nums">
+            {custom || !omitsWhenOff ? shown.toFixed(2) : <span className="text-muted-foreground not-italic">Endpoint default</span>}
+          </span>
+        </div>
+      </div>
     </div>
   );
 }
@@ -156,6 +209,11 @@ export const SettingsModal = ({ isOpen, onOpenChange, previewValues }: {
     setMemoryDigests,
     characterDiaries,
     setCharacterDiaries,
+    genTemperature,
+    localModelActive,
+    promptTemps,
+    setPromptTempCustom,
+    setPromptTempValue,
     showSilentRequests,
     setShowSilentRequests,
     paragraphLimit,
@@ -320,9 +378,10 @@ export const SettingsModal = ({ isOpen, onOpenChange, previewValues }: {
   const activePromptTab = promptAvailable[promptTab] ? promptTab : 'narration';
   const selectedPrompt = promptResets[activePromptTab] ?? promptResets.narration;
 
-  // The four aux prompts also have an editable user-message template. A System | User toggle swaps the
-  // editor between the two; only these tabs offer it. `promptView` resets to System on every tab change.
-  const [promptView, setPromptView] = useState<'system' | 'user'>('system');
+  // Each prompt has a System editor, an Options sub-tab, and — for the aux prompts — a User-message editor.
+  // A System | User | Options toggle swaps between them (User only where a user template exists). `promptView`
+  // resets to System on every tab change.
+  const [promptView, setPromptView] = useState<'system' | 'user' | 'options'>('system');
   const selectPromptTab = (t: string) => { setPromptTab(t); setPromptView('system'); };
   const userPrompts: Record<string, { value: string; set: (s: string) => void; reset: () => void; variables: typeof PROMPT_KIND_VARIABLES.choices }> = {
     choices: { value: choicesUserPrompt, set: setChoicesUserPrompt, reset: () => setChoicesUserPrompt(defaultChoicesUserPrompt), variables: PROMPT_KIND_USER_VARIABLES.choices ?? [] },
@@ -333,6 +392,7 @@ export const SettingsModal = ({ isOpen, onOpenChange, previewValues }: {
   };
   const activeUserPrompt = userPrompts[activePromptTab];
   const showingUser = promptView === 'user' && !!activeUserPrompt;
+  const showingOptions = promptView === 'options';
   // The Reset button targets whichever template is on screen. `label` is the full noun ("Narration Prompt"
   // or just "Message" for the user-message template), so the button reads "Reset <label>".
   const resetTarget = showingUser && activeUserPrompt
@@ -348,7 +408,15 @@ export const SettingsModal = ({ isOpen, onOpenChange, previewValues }: {
     location: { value: locationChangeVerbatimTurns, set: setLocationChangeVerbatimTurns },
     summary: { value: summaryVerbatimTurns, set: setSummaryVerbatimTurns },
   };
-  const activeVerbatim = promptVerbatim[activePromptTab] ?? promptVerbatim.narration;
+  const activeVerbatimEntry = promptVerbatim[activePromptTab];
+  const verbatimApplicable = memoryDigests && !!activeVerbatimEntry;
+
+  // Per-prompt temperature for the active tab. Off shows the kind's default (read-only); on shows the stored
+  // custom value (seeded to the default on first enable). `defaultTemp` is undefined when the prompt omits
+  // temperature (a non-pinned prompt on a custom endpoint) — the panel then shows "Endpoint default".
+  const activeKind = TAB_TO_REQUEST[activePromptTab] ?? 'narration';
+  const activeTemp = promptTemps[activeKind];
+  const defaultTemp = defaultPromptTemperature(activeKind, genTemperature, localModelActive);
 
   return (
     <>
@@ -1077,21 +1145,35 @@ export const SettingsModal = ({ isOpen, onOpenChange, previewValues }: {
                 {thinkingMode === 'staged' && <TabsTrigger value="storyboard">Storyboard</TabsTrigger>}
               </TabsList>
 
-              {/* System prompt vs. user-message template — a tab bar like the row above (kept at text-xs).
-                  Only the aux prompts have a user template. */}
-              {activeUserPrompt && (
-                <Tabs
-                  value={promptView}
-                  onValueChange={(v) => setPromptView(v as 'system' | 'user')}
-                  className="flex justify-center mt-3 flex-shrink-0"
-                >
-                  <TabsList className="h-auto">
-                    <TabsTrigger value="system" className="text-xs">System Prompt</TabsTrigger>
-                    <TabsTrigger value="user" className="text-xs">User Message</TabsTrigger>
-                  </TabsList>
-                </Tabs>
+              {/* System prompt · (aux only) user-message template · Options — a tab bar like the row above,
+                  kept at text-xs. User Message shows only when the prompt has a user template. */}
+              <Tabs
+                value={promptView}
+                onValueChange={(v) => setPromptView(v as 'system' | 'user' | 'options')}
+                className="flex justify-center mt-3 flex-shrink-0"
+              >
+                <TabsList className="h-auto">
+                  <TabsTrigger value="system" className="text-xs">System Prompt</TabsTrigger>
+                  {activeUserPrompt && <TabsTrigger value="user" className="text-xs">User Message</TabsTrigger>}
+                  <TabsTrigger value="options" className="text-xs">Options</TabsTrigger>
+                </TabsList>
+              </Tabs>
+
+              {showingOptions && (
+                <div className="mt-4 flex-1 min-h-0 overflow-y-auto">
+                  <PromptOptionsPanel
+                    verbatim={verbatimApplicable ? activeVerbatimEntry : null}
+                    custom={activeTemp?.custom ?? false}
+                    value={activeTemp?.value ?? defaultTemp ?? genTemperature}
+                    defaultValue={defaultTemp}
+                    onCustomChange={(c) => setPromptTempCustom(activeKind, c)}
+                    onValueChange={(v) => setPromptTempValue(activeKind, v)}
+                  />
+                </div>
               )}
 
+              {!showingOptions && (
+              <>
               <TabsContent value="narration" className="mt-4 flex-1 min-h-0 data-[state=active]:flex flex-col">
                 <PromptField
                   value={systemPrompt}
@@ -1215,10 +1297,13 @@ export const SettingsModal = ({ isOpen, onOpenChange, previewValues }: {
                   <p className="text-xs text-muted-foreground flex-shrink-0">Reconciles the cast&apos;s intentions into the turn&apos;s beat plan. Only used when Thinking is set to Staged.</p>
                 </TabsContent>
               )}
+              </>
+              )}
             </Tabs>
 
-            <div className="flex flex-wrap justify-between items-center gap-2 flex-shrink-0">
-              {!activePresetIsBuiltIn ? (
+            {/* Reset targets the on-screen template; hidden on the Options sub-tab, which edits no template. */}
+            <div className="flex flex-wrap justify-end items-center gap-2 flex-shrink-0">
+              {!activePresetIsBuiltIn && !showingOptions && (
                 <ConfirmDialog
                   title={`Reset ${resetTarget.label}`}
                   description={`Are you sure you want to reset the ${resetTarget.label} to its default value?`}
@@ -1228,13 +1313,6 @@ export const SettingsModal = ({ isOpen, onOpenChange, previewValues }: {
                     Reset {resetTarget.label}
                   </Button>
                 </ConfirmDialog>
-              ) : (
-                <span />
-              )}
-              {memoryDigests && !['diary', 'director', 'character', 'storyboard'].includes(activePromptTab) ? (
-                <VerbatimTurnsField id="promptVerbatim" value={activeVerbatim.value} onChange={activeVerbatim.set} />
-              ) : (
-                <span />
               )}
             </div>
             <PresetNameDialog
