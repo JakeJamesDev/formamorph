@@ -1,0 +1,28 @@
+{
+  "_note": "Fixed gold-case set for probing the location-router prompt. From the player's action ALONE (plus current location + reachable destinations) the model must output an exact destination name when the player is actually moving there, or NONE otherwise. The hard cases are the NONE traps the prompt calls out: looking toward / pointing at / calling across / talking about a place, and asking someone else to come over (that's the other person moving). `expect` is the exact required reply ('NONE' or a destination name). Run via harness/location-router-probe.mjs.",
+  "current": {
+    "name": "Sedgewater Landing",
+    "description": "A muddy river landing of moored punts and drying nets, where the causeway meets the black water."
+  },
+  "destinations": [
+    { "name": "Boat Docks", "description": "The long jetties downstream where the fishing punts tie up." },
+    { "name": "The Eel & Lantern", "description": "A low tavern above the landing, warm and loud after dark." },
+    { "name": "Fishmonger's Row", "description": "A line of stalls selling the morning's eel and pike." },
+    { "name": "North Causeway", "description": "The raised road leading out of the marsh to the north." },
+    { "name": "Old Chapel", "description": "A half-sunk stone chapel on the far bank, reached by the footbridge." }
+  ],
+  "cases": [
+    { "name": "go-clear", "narration": "I walk down to the Boat Docks and step onto the nearest jetty.", "expect": "Boat Docks" },
+    { "name": "enter", "narration": "I push open the door of the Eel & Lantern and step inside out of the cold.", "expect": "The Eel & Lantern" },
+    { "name": "head-for", "narration": "I shoulder my pack and set off up the North Causeway.", "expect": "North Causeway" },
+    { "name": "turn-and-walk", "narration": "I turn from the rail and make my way over to Fishmonger's Row.", "expect": "Fishmonger's Row" },
+    { "name": "cross-to", "narration": "I take the footbridge across to the Old Chapel to see who tends it.", "expect": "Old Chapel" },
+    { "name": "looking-toward", "narration": "I gaze across the water toward the Old Chapel, wondering who still lights its candles.", "expect": "NONE" },
+    { "name": "pointing-at", "narration": "I point at Fishmonger's Row and ask the boy beside me what they're selling today.", "expect": "NONE" },
+    { "name": "calling-across", "narration": "I cup my hands and shout across to the Boat Docks, hoping the ferryman hears me.", "expect": "NONE" },
+    { "name": "talking-about", "narration": "I ask the old fisherman whether the ale at the Eel & Lantern is worth the walk.", "expect": "NONE" },
+    { "name": "summon-other", "narration": "I wave the fishmonger over from Fishmonger's Row to haggle here where I stand.", "expect": "NONE" },
+    { "name": "reaching", "narration": "I reach toward the Old Chapel's bell rope in my mind's eye, then shake off the thought.", "expect": "NONE" },
+    { "name": "no-place", "narration": "I crouch at the waterline and rinse the river mud from my hands.", "expect": "NONE" }
+  ]
+}
