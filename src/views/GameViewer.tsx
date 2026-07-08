@@ -40,6 +40,7 @@ import { useReadmeVisibility } from "@/lib/useReadmeVisibility";
 import { EntityModal } from "../components/modals/EntityModal";
 import { LocationModal } from "../components/modals/LocationModal";
 import { SettingsModal } from "../components/modals/SettingsModal";
+import { useDevRoute } from "../lib/devRouter";
 import { MenuModal } from "../components/modals/MenuModal";
 import WorldEditor from "./WorldEditor";
 import type { CharacterData, ChatMessage, ChatRole, AIRequestType, AITurnResult, StatChange, Trait, GameLocation, MediaAsset, Dictionary, Entity } from "@/types";
@@ -56,6 +57,9 @@ import {
 import {
   buildDiaryUserMessage,
   runStagedPlanning,
+  parseDirectorCast,
+  classifyCast,
+  sanitizePlanForReveal,
 } from "../lib/stagedPlanning";
 import { selectDueDiscovery, materializeDiscoveredEntity, mergeDiscoveredIntoLocation, cleanDiscoveredDescription, selectReachableVisitors, DISCOVER_NAME_LABEL, DISCOVER_PASSAGE_LABEL } from "../lib/runtimeCharacters";
 import { lengthGuidance, trimToLastSentence } from "../lib/outputLength";
@@ -445,6 +449,11 @@ const GameViewer = ({
   const [isEntityModalOpen, setIsEntityModalOpen] = useState(false);
   const [ambientSound, setAmbientSound] = useState<MediaAsset | null>(null);
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
+  // DEV dev-router: open Settings (on the requested tab) when the hash asks for it. Tree-shaken in prod.
+  const devRoute = useDevRoute();
+  useEffect(() => {
+    if (import.meta.env.DEV && devRoute?.modal === 'settings') setIsSettingsOpen(true);
+  }, [devRoute?.modal]);
   const [isEditingWorld, setIsEditingWorld] = useState(false);
   const [uiHidden, setUiHidden] = useState(false); // hide all panels/buttons to reveal the background image
   const [showEditorExitPrompt, setShowEditorExitPrompt] = useState(false);
@@ -1062,7 +1071,21 @@ ${playerNotes || NONE_PLACEHOLDER}
           },
         ];
         const plan = await makeAIRequest(thinkPrompt, thinkMessages, "thinking", 256, signal);
-        if (plan) turnPlan = plan;
+        if (plan) {
+          // Parse the planner's cast so it drives participation exactly like the staged director does:
+          // defined entities confirm loosely, invented names strictly, both gated by the narration below.
+          const { cast } = parseDirectorCast(plan);
+          const classified = classifyCast(cast, allEntities, playerTraits.map((t) => t.name));
+          directorCandidates.push(...classified.directorCandidates);
+          adHocCandidates.push(...classified.adHocCandidates);
+          // Keep a name the player has not yet heard out of the plan the narrator reads (code backstop for
+          // the prompt's alias rule). A name is "revealed" once it appears in any past narration.
+          const priorNarration = fullMessageHistory
+            .filter((m) => m.role === "assistant")
+            .map((m) => parseNarration(m.content))
+            .join("\n");
+          turnPlan = sanitizePlanForReveal(plan, (name) => matchNames(priorNarration, [name]).length > 0);
+        }
       } else if (thinkingMode === "inline") {
         updatedPrompt += INLINE_THINKING_DIRECTIVE;
       } else if (thinkingMode === "staged") {
@@ -2933,6 +2956,7 @@ ${playerNotes || NONE_PLACEHOLDER}
         isOpen={isSettingsOpen}
         onOpenChange={setIsSettingsOpen}
         previewValues={promptPreviewValues}
+        initialTab={devRoute?.tab}
       />
 
       <AlertDialog open={isExportModalOpen} onOpenChange={setIsExportModalOpen}>

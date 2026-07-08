@@ -2,6 +2,7 @@ import type { Entity, ChatMessage, AIRequestType } from "@/types";
 import { renderPromptTemplate } from "./promptTemplate";
 import { collectCharacterDiary } from "./turnDigest";
 import { sameCharacterName } from "./entityMatch";
+import { escapeRegExp } from "./utils";
 import { NONE_PLACEHOLDER } from "./promptFallbacks";
 
 /** One entry in the director's cast: a name plus their placement/action, if the director gave one.
@@ -72,9 +73,14 @@ const EMPTY_CAST_NAMES = new Set([
   "none", "n/a", "na", "no one", "noone", "nobody", "no characters", "no character", "empty", "nothing",
 ]);
 
+// Multi-word "the scene is empty" declarations a model emits as a lone cast bullet, beyond the single-word
+// sentinels above: "no other characters present", "no one else", "nobody else here", "no NPCs present".
+const EMPTY_CAST_RE = /^no( one else| others?| other \w+| \w+ (?:present|here|remaining))\b|^nobody else\b/;
+
 /** True when a director cast name is a "nobody is present" sentinel rather than an actual character. */
 export function isEmptyCastName(name: string): boolean {
-  return EMPTY_CAST_NAMES.has(name.trim().toLowerCase());
+  const n = name.trim().toLowerCase().replace(/[.!]+$/, "");
+  return EMPTY_CAST_NAMES.has(n) || EMPTY_CAST_RE.test(n);
 }
 
 /**
@@ -146,6 +152,102 @@ export function parseDirectorCast(raw: string): ParsedDirector {
   }
 
   return { scene: sceneParts.join(" ").trim(), cast };
+}
+
+/** A parsed cast split by role: the player flagged, NPCs isolated, and NPC names bucketed by whether they
+ *  resolve to a defined author entity (loose narration match) or are ad-hoc/invented (strict match). */
+export interface ClassifiedCast {
+  /** The full cast with player entries flagged (`isPlayer`), matched by trait name as well as by label. */
+  flaggedCast: DirectorCastMember[];
+  /** The cast minus the player — the beings that get a motivation pass / count as participants. */
+  npcCast: DirectorCastMember[];
+  /** Canonical names of defined entities the cast named — confirmed against narration with a loose match. */
+  directorCandidates: string[];
+  /** Ad-hoc names the planner invented (no entity record) — confirmed against narration with a strict match. */
+  adHocCandidates: string[];
+}
+
+/**
+ * Classify a parsed cast against the world's entities and the player's names. Flags the player (the planner
+ * sometimes names them instead of using the "Player Character" label, so match selected trait names too, but
+ * never a name that resolves to a world entity — that's an NPC), drops them from the NPC set, and buckets the
+ * remaining names into defined-entity candidates (loose match) vs. ad-hoc candidates (strict match). Shared
+ * by the staged pipeline and the precall planner so both drive participation the same way.
+ */
+export function classifyCast(
+  cast: DirectorCastMember[],
+  entities: Entity[],
+  playerNames: string[],
+): ClassifiedCast {
+  const definedByLower = new Map(entities.map((e) => [e.name.trim().toLowerCase(), e.name]));
+  const isKnownEntity = (n: string) => definedByLower.has(n.trim().toLowerCase());
+  const flaggedCast = cast.map((c) =>
+    c.isPlayer || isKnownEntity(c.name) ? c
+      : playerNames.some((pn) => sameCharacterName(pn, c.name)) ? { ...c, isPlayer: true }
+      : c,
+  );
+  const npcCast = flaggedCast.filter((c) => !c.isPlayer);
+  const directorCandidates: string[] = [];
+  const adHocCandidates: string[] = [];
+  for (const member of npcCast) {
+    const canonical = definedByLower.get(member.name.trim().toLowerCase());
+    if (canonical) directorCandidates.push(canonical);
+    else adHocCandidates.push(member.name);
+  }
+  return { flaggedCast, npcCast, directorCandidates, adHocCandidates };
+}
+
+// What the narrator is shown in place of a not-yet-revealed name the planner gave no alias for — keeps a
+// bare real name (the model ignoring the parenthetical alias rule) out of the narration's input.
+const REVEAL_FALLBACK = "someone the player has not yet identified";
+
+/** Pull the real name and, if present, the parenthetical alias out of a cast bullet's name field — so
+ *  "Maela (the silver-haired woman)" yields the real name "Maela" and the alias "the silver-haired woman".
+ *  The name field is the bullet body up to the stance separator; internal punctuation in the name survives. */
+function splitNameAlias(nameField: string): { real: string; alias?: string } {
+  const clean = (s: string) => s.trim().replace(/^[^\p{L}\p{N}]+|[^\p{L}\p{N}]+$/gu, "");
+  const m = nameField.match(/^(.*?)\s*\(([^)]+)\)\s*$/);
+  if (m) {
+    const alias = clean(m[2]);
+    return alias ? { real: clean(m[1]), alias } : { real: clean(m[1]) };
+  }
+  return { real: clean(nameField) };
+}
+
+/**
+ * Keep not-yet-revealed character names out of the plan the narrator reads. For each cast bullet naming a
+ * character whose real name has NOT appeared in past narration (`isRevealed` is the caller's narration-corpus
+ * check), rewrite that name everywhere in the plan — Scene, Cast, and Beats — to the parenthetical alias the
+ * planner gave ("the silver-haired woman"), or a neutral fallback when it gave none. Revealed names, the
+ * player, and empty-cast sentinels are left untouched. This is the code-side backstop for the prompt's alias
+ * rule, which small/large models honor unevenly.
+ */
+export function sanitizePlanForReveal(plan: string, isRevealed: (realName: string) => boolean): string {
+  const renames: { real: string; to: string }[] = [];
+  const seen = new Set<string>();
+  for (const line of plan.split("\n")) {
+    const bullet = line.trim().match(BULLET_RE);
+    if (!bullet) continue; // bullets are always cast members (matches parseDirectorCast)
+    const body = bullet[1];
+    const sep = body.search(CAST_SEP_RE);
+    const nameField = sep !== -1 ? body.slice(0, sep) : body;
+    const { real, alias } = splitNameAlias(nameField);
+    if (!real || isPlayerCharacterName(real) || isEmptyCastName(real)) continue;
+    const key = real.toLowerCase();
+    if (seen.has(key)) continue;
+    seen.add(key);
+    if (isRevealed(real)) continue;
+    renames.push({ real, to: alias || REVEAL_FALLBACK });
+  }
+  let out = plan;
+  for (const { real, to } of renames) {
+    const esc = escapeRegExp(real);
+    // Drop the "Real (alias)" pairing first (so the cast bullet doesn't become "alias (alias)"), then any
+    // bare occurrence left in the Scene/Beats prose. Function replacement avoids `$&`-style pitfalls.
+    out = out.replace(new RegExp(`\\b${esc}\\b\\s*\\([^)]*\\)`, "gi"), () => to);
+    out = out.replace(new RegExp(`\\b${esc}\\b`, "gi"), () => to);
+  }
+  return out;
 }
 
 /**
@@ -303,8 +405,6 @@ export async function runStagedPlanning(ctx: {
     fullMessageHistory, diaryMemoryEntries, caps,
     directorPrompt, directorUserPrompt, characterPrompt, storyboardPrompt, request, signal,
   } = ctx;
-  const directorCandidates: string[] = [];
-  const adHocCandidates: string[] = [];
 
   // 1) Director: who is in the scene and what carries over.
   const directorOut = await request(
@@ -312,25 +412,9 @@ export async function runStagedPlanning(ctx: {
     [{ role: "user", content: renderPromptTemplate(directorUserPrompt, { "<NARRATION>": lastStory || NONE_PLACEHOLDER, "<PLAYER ACTION>": action }) }],
     "director", caps.director, signal,
   );
-  if (signal.aborted) return { turnPlan: "", directorCandidates, adHocCandidates };
+  if (signal.aborted) return { turnPlan: "", directorCandidates: [], adHocCandidates: [] };
   const { scene, cast } = parseDirectorCast(directorOut || "");
-  const definedByLower = new Map(entities.map((e) => [e.name.trim().toLowerCase(), e.name]));
-  // The director sometimes names the player instead of using the "Player Character" label; flag those by
-  // matching the selected trait names, but never a name that resolves to a world entity (that's an NPC).
-  const isKnownEntity = (n: string) => definedByLower.has(n.trim().toLowerCase());
-  const flaggedCast = cast.map((c) =>
-    c.isPlayer || isKnownEntity(c.name) ? c
-      : playerNames.some((pn) => sameCharacterName(pn, c.name)) ? { ...c, isPlayer: true }
-      : c,
-  );
-  // The player may be listed for scene grounding but is never directed or matched as a participant.
-  const npcCast = flaggedCast.filter((c) => !c.isPlayer);
-  // Split the cast into defined entities (director vouched → loose match) and ad-hoc names (strict match).
-  for (const member of npcCast) {
-    const canonical = definedByLower.get(member.name.trim().toLowerCase());
-    if (canonical) directorCandidates.push(canonical);
-    else adHocCandidates.push(member.name);
-  }
+  const { flaggedCast, npcCast, directorCandidates, adHocCandidates } = classifyCast(cast, entities, playerNames);
 
   if (npcCast.length === 0) {
     // No one to reconcile — skip the character + storyboard passes (they'd only invent filler).

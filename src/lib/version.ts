@@ -1,7 +1,7 @@
 import type { World, SaveObject, Stat, GameState, Trait, PlayerStat } from '@/types';
 import { normalizeCustomVRM } from './worldImport';
 import { autoBindLegacyBodyStats } from './bodyMorphs';
-import { realignLegacyStateHistory } from './turnHistory';
+import { appendCurrentToHistory } from './turnHistory';
 
 /** Current app version, derived from package.json (see vite.config.js `define`). User-managed. */
 export const APP_VERSION = __APP_VERSION__;
@@ -125,9 +125,11 @@ export function isSaveEnvelope(raw: unknown): raw is SaveObject {
  * of the player's traits and stats: traits still keyed by the single legacy `description` (the trait
  * context builder reads `aiDescription`, so without this they reach the AI as bare names), and body stats
  * (Stomach/Fatness/Breastsize) with no `morphBindings` (so they don't drive the VRM). Mirrors the matching
- * `migrateWorld` steps, applied to the save copies. Idempotent — the rename prefers an existing new key and
- * the bind skips a stat that already carries `morphBindings`. Other legacy quirks (`game_text` narration,
- * absent `discoveredEntities`) are already normalized on read (parseTurnContent / loadGameState's `?? []`).
+ * `migrateWorld` steps, applied to the save copies. Also stamps an empty `discoveredEntities` (a v2-only
+ * field absent in v1.2) so every persisted snapshot carries it, not just the one `loadGameState` defaults
+ * on read. Idempotent — the rename prefers an existing new key, the bind skips a stat that already carries
+ * `morphBindings`, and the stamp leaves an existing array untouched. (`game_text` narration is normalized
+ * separately on read by parseTurnContent.)
  */
 export function migrateLegacySaveState(state: GameState): GameState {
   const next = { ...state };
@@ -140,6 +142,7 @@ export function migrateLegacySaveState(state: GameState): GameState {
     // autoBindLegacyBodyStats preserves each stat's value, so the (narrower) PlayerStat shape is intact.
     next.playerStats = autoBindLegacyBodyStats(next.playerStats) as unknown as PlayerStat[];
   }
+  if (!Array.isArray(next.discoveredEntities)) next.discoveredEntities = [];
   return next;
 }
 
@@ -154,6 +157,6 @@ export function migrateLegacySaveState(state: GameState): GameState {
 export function migrateSave(save: SaveObject): SaveObject {
   if (typeof save.version !== 'number') return save;
   const currentState = migrateLegacySaveState(save.currentState);
-  const stateHistory = realignLegacyStateHistory(save.stateHistory.map(migrateLegacySaveState), currentState);
+  const stateHistory = appendCurrentToHistory(save.stateHistory.map(migrateLegacySaveState), currentState);
   return { ...save, currentState, stateHistory, version: APP_VERSION };
 }

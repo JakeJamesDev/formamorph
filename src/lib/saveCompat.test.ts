@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import { APP_VERSION, isSaveEnvelope, migrateLegacySaveState, migrateSave } from './version';
 import { parseNarration } from './aiResponse';
-import { realignLegacyStateHistory, rollbackState } from './turnHistory';
+import { appendCurrentToHistory, rollbackState } from './turnHistory';
 import type { GameState, SaveObject } from '@/types';
 
 // A compact but realistic v1.2 save envelope (top-level numeric `version: 2`, flat currentState + stateHistory,
@@ -80,21 +80,23 @@ describe('v1.2 save-load compatibility', () => {
 });
 
 describe('v1.2 stateHistory realignment', () => {
-  // Mirrors loadGame's guard: a numeric `version` marks a legacy save whose stateHistory is realigned.
+  // Mirrors loadGame's guard: a numeric `version` marks a legacy save whose stateHistory (prior pages
+  // only, current kept separate) gets currentState appended as its final page.
   const loadStateHistory = (save: { version: string | number; stateHistory: string[]; currentState: string }) =>
     typeof save.version === 'number'
-      ? realignLegacyStateHistory(save.stateHistory, save.currentState)
+      ? appendCurrentToHistory(save.stateHistory, save.currentState)
       : save.stateHistory;
 
-  it('realigns a legacy (numeric-version) save so rollback maps pages to the right turn', () => {
-    // 3-turn v1.2 save: opening snapshot dropped, rest shifted (index i = turn i+2 snapshot).
-    const legacy = { version: 2, currentState: 'afterTurn3', stateHistory: ['afterTurn2', 'afterTurn3'] };
+  it('appends currentState to a legacy (numeric-version) save so every page maps to its own turn', () => {
+    // Real 3-turn v1.2 shape: stateHistory holds the prior pages; currentState is the latest turn.
+    const legacy = { version: 2, currentState: 'afterTurn3', stateHistory: ['afterTurn1', 'afterTurn2'] };
     const aligned = loadStateHistory(legacy);
-    expect(aligned).toEqual(['afterTurn2', 'afterTurn2', 'afterTurn3']);
-    expect(rollbackState(aligned, 2)).toBe('afterTurn2'); // page 2 → turn-2 snapshot, not turn-3
+    expect(aligned).toEqual(['afterTurn1', 'afterTurn2', 'afterTurn3']);
+    expect(rollbackState(aligned, 2)).toBe('afterTurn2'); // page 2 → its own snapshot
+    expect(rollbackState(aligned, 3)).toBe('afterTurn3'); // page 3 (current) is present, not missing
   });
 
-  it('leaves a current (string-version) save untouched — no re-prepend on a re-saved import', () => {
+  it('leaves a current (string-version) save untouched — no re-append on a re-saved import', () => {
     const current = { version: '2.0.1', currentState: 'afterTurn3', stateHistory: ['afterTurn1', 'afterTurn2', 'afterTurn3'] };
     expect(loadStateHistory(current)).toBe(current.stateHistory);
   });
@@ -153,9 +155,30 @@ describe('migrateSave (shared import + load path)', () => {
       aiDescription: 'You are a Bat Pony',
     });
     expect(out.currentState.playerStats[0].morphBindings).toEqual(['Belly']);
-    // opening-only save: empty history realigns to a single proxy slot (the migrated currentState).
+    // v2-only field stamped onto every snapshot, not just defaulted on read.
+    expect(out.currentState.discoveredEntities).toEqual([]);
+    // opening-only save: empty history + appended current = a single page (the migrated currentState).
     expect(out.stateHistory).toHaveLength(1);
     expect(out.stateHistory[0]).toBe(out.currentState);
+  });
+
+  it('appends current and stamps discoveredEntities on a multi-turn envelope (the import regression)', () => {
+    // Real 3-turn v1.2 shape: stateHistory = prior pages only; the regression duplicated page 1 and
+    // dropped current. Migration must yield 3 distinct pages ending in currentState, each with the field.
+    const state = (t: number) => ({
+      playerTraits: [], playerStats: [],
+      fullMessageHistory: Array.from({ length: t * 2 }, (_, i) => ({ role: i % 2 ? 'assistant' : 'user', content: `${i}` })),
+    });
+    const multiTurn = {
+      name: 'ThreeTurns', version: 2,
+      currentState: state(3),
+      stateHistory: [state(1), state(2)],
+    } as unknown as SaveObject;
+    const out = migrateSave(multiTurn);
+    expect(out.stateHistory).toHaveLength(3);
+    expect(out.stateHistory[2]).toBe(out.currentState); // current is the final page, present not missing
+    expect(out.stateHistory[0]).not.toBe(out.stateHistory[1]); // no duplicated opening page
+    for (const snap of out.stateHistory) expect(snap.discoveredEntities).toEqual([]);
   });
 
   it('leaves a current (string-version) save untouched', () => {

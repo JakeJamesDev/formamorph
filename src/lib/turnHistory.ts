@@ -25,16 +25,14 @@ export function regenerateState<S>(
   return currentPage >= 2 ? (gameStates[currentPage - 2] ?? null) : initialState;
 }
 
-/** Realign a v1.2 save's `stateHistory` to the current per-page indexing. Pre-2.x, a stale-closure
- *  off-by-one dropped the opening turn's snapshot and shifted the rest, so a T-turn save stored `T - 1`
- *  entries with index `i` holding the *turn (i+2)* snapshot. Prepending one slot restores the
- *  `gameStates[page - 1]` mapping for turns 2…T. The true after-turn-1 state is unrecoverable (it was
- *  never stored), so the prepended slot is a proxy: the oldest surviving snapshot (after turn 2), or
- *  `currentState` for an opening-only save — where it *is* the after-turn-1 state. A real proxy (rather
- *  than a hole) is what lets turn 1 roll back / re-generate at all; the only imperfection is that rolling
- *  back to the very first turn of a multi-turn save restores the after-turn-2 state, one turn newer. */
-export function realignLegacyStateHistory<S>(stateHistory: readonly S[], currentState: S): S[] {
-  return [stateHistory[0] ?? currentState, ...stateHistory];
+/** Bring a v1.2 save's `stateHistory` to the current per-page shape. A v1.2 save stored `stateHistory`
+ *  as the *prior* pages only (one snapshot per completed turn) with the latest turn kept separately in
+ *  `currentState`; the current model keeps the latest turn's snapshot as the final `gameStates` entry too
+ *  (so `gameStates[page - 1]` resolves every page, current included). Appending `currentState` restores
+ *  that: a T-turn save's `T - 1` history entries plus the current one give T pages, index `i` = after-turn
+ *  `i+1`. Opening-only saves (empty history) collapse to `[currentState]` — the after-turn-1 state. */
+export function appendCurrentToHistory<S>(stateHistory: readonly S[], currentState: S): S[] {
+  return [...stateHistory, currentState];
 }
 
 /** The gameStates slot a post-turn snapshot belongs in, derived from the snapshot's *own* message-history

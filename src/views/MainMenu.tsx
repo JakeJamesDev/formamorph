@@ -1,5 +1,6 @@
 ﻿import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { useGameData } from '../contexts/GameDataContext';
+import { useDevRoute } from '../lib/devRouter';
 import { toast } from 'react-toastify';
 import { ThemedToastContainer } from '@/components/ThemedToastContainer';
 import 'react-toastify/dist/ReactToastify.css';
@@ -147,6 +148,11 @@ const MainMenu = ({ onStartGame, onOpenWorldEditor }: MainMenuProps) => {
   const [selectedCharacters, setSelectedCharacters] = useState<Entity[] | null>(null);
   const [showCodeModal, setShowCodeModal] = useState(false);
   const [showSettings, setShowSettings] = useState(false);
+  // DEV dev-router: open Settings (on the requested tab) when the hash asks for it. Tree-shaken in prod.
+  const devRoute = useDevRoute();
+  useEffect(() => {
+    if (import.meta.env.DEV && devRoute?.modal === 'settings') setShowSettings(true);
+  }, [devRoute?.modal]);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
   const dictionaryImportRef = useRef<HTMLInputElement | null>(null);
   const entityImportRef = useRef<HTMLInputElement | null>(null);
@@ -864,7 +870,7 @@ const MainMenu = ({ onStartGame, onOpenWorldEditor }: MainMenuProps) => {
         </div>
       </div>
 
-      <SettingsModal isOpen={showSettings} onOpenChange={setShowSettings} />
+      <SettingsModal isOpen={showSettings} onOpenChange={setShowSettings} initialTab={devRoute?.tab} />
 
       <input
         type="file"

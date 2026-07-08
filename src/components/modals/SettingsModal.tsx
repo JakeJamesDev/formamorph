@@ -4,6 +4,7 @@ import { DEFAULT_ENDPOINT, DEFAULT_API_TOKEN, DEFAULT_MODEL_NAME, DEFAULT_MAX_TO
 import { useTheme } from '../theme-provider';
 import { ThemePreviewButton } from '@/components/ThemePreviewDialog';
 import { LocalModelPanel } from '@/components/modals/LocalModelPanel';
+import { SETTINGS_TABS } from '@/components/modals/settingsTabs';
 import { Row, CheckRow } from '@/components/SettingsRows';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
@@ -139,12 +140,17 @@ function PromptOptionsPanel({ verbatim, samplers, disabled }: {
   );
 }
 
-export const SettingsModal = ({ isOpen, onOpenChange, previewValues }: {
+export const SettingsModal = ({ isOpen, onOpenChange, previewValues, initialTab }: {
   isOpen: boolean;
   onOpenChange: (open: boolean) => void;
   /** Live variable values for the prompt-editor Preview tab. Supplied only in-game; absent → no Preview. */
   previewValues?: Record<string, string>;
+  /** DEV dev-router: open on this top-level tab instead of the default (see `devRouter.ts`). */
+  initialTab?: string;
 }) => {
+  const [activeTab, setActiveTab] = useState<string>(initialTab ?? SETTINGS_TABS[0].value);
+  // Honor a later dev-router tab change while the modal stays open (a fresh __fmDev.goto).
+  useEffect(() => { if (initialTab) setActiveTab(initialTab); }, [initialTab]);
   const {
     bgmEnabled,
     setBgmEnabled,
@@ -467,14 +473,11 @@ export const SettingsModal = ({ isOpen, onOpenChange, previewValues }: {
         <DialogHeader className="flex-shrink-0">
           <DialogTitle>Settings</DialogTitle>
         </DialogHeader>
-        <Tabs defaultValue="presentation" className="w-full flex flex-col flex-1 min-h-0">
+        <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full flex flex-col flex-1 min-h-0">
           <TabsList className="grid w-full grid-cols-6 flex-shrink-0">
-            <TabsTrigger value="presentation">Presentation</TabsTrigger>
-            <TabsTrigger value="generation">Generation</TabsTrigger>
-            <TabsTrigger value="endpoint">Endpoint</TabsTrigger>
-            <TabsTrigger value="image">Image Gen</TabsTrigger>
-            <TabsTrigger value="prompts">Prompts</TabsTrigger>
-            <TabsTrigger value="accessibility">Accessibility</TabsTrigger>
+            {SETTINGS_TABS.map((t) => (
+              <TabsTrigger key={t.value} value={t.value}>{t.label}</TabsTrigger>
+            ))}
           </TabsList>
 
           <TabsContent value="presentation" className="py-4 px-2 flex-1 min-h-0 overflow-y-auto">
