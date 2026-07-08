@@ -17,6 +17,19 @@ const args = process.argv.slice(2);
 const argVal = (f) => { const i = args.indexOf(f); return i >= 0 ? args[i + 1] : null; };
 const modelFilter = argVal("--model");
 const runs = Number(argVal("--runs") || 1);
+const temp = Number(argVal("--temp") ?? 0.7); // match what the app now sends for stat updates (pinned 0.2)
+// Optional sampler overrides (else the endpoint's own roleplay preset applies). LM Studio's "Repeat Penalty"
+// maps to `repeat_penalty`. `--seed` pins sampling for exact-diff field-honoring checks.
+const reppen = argVal("--reppen");
+const minp = argVal("--minp");
+const topk = argVal("--topk");
+const seed = argVal("--seed");
+const extras = {
+  ...(reppen != null && { repeat_penalty: Number(reppen) }),
+  ...(minp != null && { min_p: Number(minp) }),
+  ...(topk != null && { top_k: Number(topk) }),
+  ...(seed != null && { seed: Number(seed) }),
+};
 
 const cfg = JSON.parse(await readFile(path.join(HARNESS_DIR, "profiles.json"), "utf8"));
 const model = cfg.models.find((m) => !modelFilter || m.label.includes(modelFilter)) ?? cfg.models[0];
@@ -77,7 +90,8 @@ async function call(narration) {
       model: model.modelName,
       messages: [{ role: "system", content: renderSys() }, { role: "user", content: renderUser(narration) }],
       max_tokens: 200,
-      temperature: 0.7,
+      temperature: temp,
+      ...extras,
       stream: false,
     }),
   });
@@ -87,7 +101,7 @@ async function call(narration) {
 
 const dir = (n) => (n > 0 ? "up" : n < 0 ? "down" : "flat");
 
-console.log(`Stat-relevance probe · ${model.label} · ${runs} run(s)/case\n`);
+console.log(`Stat-relevance probe · ${model.label} · temp ${temp}${Object.keys(extras).length ? " · " + JSON.stringify(extras) : ""} · ${runs} run(s)/case\n`);
 await call("warm up").catch(() => {});
 const agg = { hit: 0, miss: 0, spurious: 0, pass: 0, total: 0 };
 for (const c of cases) {
