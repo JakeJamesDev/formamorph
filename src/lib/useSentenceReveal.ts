@@ -1,6 +1,9 @@
 import { useCallback, useEffect, useRef } from 'react';
-import { getRevealTiming, getRevealPaceScale, setRevealPaceScale } from './revealTimingStore';
-import { PACE_FEEDBACK_UP, PACE_FEEDBACK_DOWN, PACE_SCALE_MAX } from './narrationRevealConfig';
+import { getRevealTiming, setRevealTiming } from './revealTimingStore';
+import {
+  flooredTiming, pacedStagger, FADE_SPREAD, DEFAULT_STAGGER, DEFAULT_DURATION,
+  ARRIVAL_MIN_GAP_MS, ARRIVAL_EMA_ALPHA,
+} from './narrationRevealConfig';
 
 const countWords = (text: string): number => {
   const trimmed = text.trim();
@@ -10,23 +13,36 @@ const countWords = (text: string): number => {
 /**
  * Paced sentence reveal (the Fade-in Narration path). Feed it cumulative completed-sentence prefixes
  * with `push` as narration streams; it releases them into `onText` one at a time, each after the
- * previous one's rhythm span — so consecutive sentences continue one seamless cascade. A release that
- * opens a new paragraph additionally waits out the previous fade's tail, so a paragraph fully lands
- * before the next starts below it. `finish` queues the final text (including the held last sentence),
- * `reset` clears everything, and `drained` resolves once the whole queue has played out, so the caller
- * can hold the turn "busy" until the reveal completes rather than dumping the backlog when the
- * request ends.
+ * previous one's rhythm span — so consecutive sentences (and paragraphs) continue one seamless cascade.
+ *
+ * Pacing is measured, not estimated: it times the wall-clock gap between sentence arrivals and reveals
+ * at that rate (`pacedStagger`), holding a small backlog buffer so it neither runs dry (stutter) nor
+ * lags far behind (trail). It writes the resulting cadence to the timing store each release so the
+ * renderer's word-fade matches. `minStagger`/`minDuration` are the user's readability floors. The
+ * measured rate carries across turns (`reset` keeps it), so only the first turn pays the slow-start ramp.
+ *
+ * `finish` queues the final text (including the held last sentence), `reset` clears everything, and
+ * `drained` resolves once the whole queue has played out, so the caller can hold the turn "busy" until
+ * the reveal completes rather than dumping the backlog when the request ends.
  */
-export function useSentenceReveal(onText: (text: string) => void) {
+export function useSentenceReveal(onText: (text: string) => void, minStagger = 0, minDuration = 0) {
   const queueRef = useRef<string[]>([]);
   const shownRef = useRef('');
   const busyRef = useRef(false);
   const finishedRef = useRef(false);
-  const tailWaitedRef = useRef(false);
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const drainWaitersRef = useRef<Array<() => void>>([]);
   const onTextRef = useRef(onText);
   onTextRef.current = onText;
+  const minStaggerRef = useRef(minStagger);
+  minStaggerRef.current = minStagger;
+  const minDurationRef = useRef(minDuration);
+  minDurationRef.current = minDuration;
+
+  // Measured arrival cadence: ms per word, smoothed across real (non-burst) arrival gaps.
+  const msPerWordRef = useRef(DEFAULT_STAGGER);
+  const lastArrivalAtRef = useRef<number | null>(null);
+  const lastArrivalWordsRef = useRef(0);
 
   const settleDrain = useCallback(() => {
     if (finishedRef.current && !busyRef.current && queueRef.current.length === 0) {
@@ -36,66 +52,60 @@ export function useSentenceReveal(onText: (text: string) => void) {
     }
   }, []);
 
-  const pump = useCallback((fromTimer = false) => {
+  const pump = useCallback(() => {
     if (busyRef.current) return;
     const next = queueRef.current[0];
     if (next === undefined) {
-      // Ran dry the instant a release's rhythm ended, mid-stream: the pace is outrunning arrival —
-      // stretch it before the next release. Only the timer path signals a real starve; push-driven
-      // pumps with nothing queued are just tokens arriving mid-sentence.
-      if (fromTimer && !finishedRef.current) {
-        setRevealPaceScale(Math.min(getRevealPaceScale() * PACE_FEEDBACK_UP, PACE_SCALE_MAX));
-      }
       settleDrain();
       return;
     }
-    // A release that opens a new paragraph first waits out the previous sentence's fade tail, so the
-    // old paragraph fully lands before text starts appearing below it. (Within a paragraph the tail
-    // overlap IS the seamless cascade; across a blank line it reads as two blocks animating at once.)
-    // The rhythm wait covers only when each word STARTS fading; the tail is the fade duration itself.
-    const startsParagraph =
-      shownRef.current !== '' &&
-      ((/^\s*/.exec(next.slice(shownRef.current.length))?.[0] ?? '').split('\n').length - 1) >= 2;
-    if (startsParagraph && !tailWaitedRef.current) {
-      tailWaitedRef.current = true;
-      busyRef.current = true;
-      timerRef.current = setTimeout(() => {
-        busyRef.current = false;
-        pump();
-      }, getRevealTiming().duration);
-      return;
-    }
-    tailWaitedRef.current = false;
+    // Set the cadence from the measured arrival rate and how much has piled up behind this release,
+    // then write it to the store so the renderer's word fade matches. Backlog = all arrived-but-unshown
+    // words (the deepest queued prefix minus what's shown), measured before we shift this one off.
+    const deepest = queueRef.current[queueRef.current.length - 1];
+    const backlogWords = countWords(deepest) - countWords(shownRef.current);
+    const stagger = pacedStagger(msPerWordRef.current, backlogWords, finishedRef.current);
+    setRevealTiming(flooredTiming({ stagger, duration: stagger * FADE_SPREAD }, minStaggerRef.current, minDurationRef.current));
+
     queueRef.current.shift();
-    // Two or more releases already waiting behind this one: we're falling behind arrival — tighten
-    // the pace back toward the base (never past it; the base carries the user's minimum floors).
-    if (queueRef.current.length >= 2) {
-      setRevealPaceScale(Math.max(getRevealPaceScale() * PACE_FEEDBACK_DOWN, 1));
-    }
     const addedWords = countWords(next) - countWords(shownRef.current);
     shownRef.current = next;
     onTextRef.current(next);
     busyRef.current = true;
-    // Wait exactly the sentence's rhythm span (its words × the current cadence) before the next, so
-    // its cascade continues seamlessly at the model's smoothed pace. Read at release time to match the
-    // fade the renderer applies to this same sentence.
+    // Wait this sentence's rhythm span (its words × the cadence just set) before the next.
     timerRef.current = setTimeout(() => {
       busyRef.current = false;
-      pump(true);
+      pump();
     }, addedWords * getRevealTiming().stagger);
   }, [settleDrain]);
 
-  // Cumulative prefixes only grow, so a longer target is a genuinely new sentence to reveal.
-  const enqueue = useCallback((target: string) => {
+  // Cumulative prefixes only grow, so a longer target is a genuinely new sentence to reveal. `measure`
+  // updates the arrival-rate estimate from the gap since the previous arrival (skipped for the final
+  // flush, and for arrivals closer than the burst threshold, which would read as infinitely fast).
+  const enqueue = useCallback((target: string, measure: boolean) => {
     const last = queueRef.current.length
       ? queueRef.current[queueRef.current.length - 1]
       : shownRef.current;
-    if (target.length > last.length) queueRef.current.push(target);
+    if (target.length <= last.length) return;
+    queueRef.current.push(target);
+    if (!measure) return;
+    const now = Date.now();
+    const words = countWords(target);
+    if (lastArrivalAtRef.current !== null) {
+      const dt = now - lastArrivalAtRef.current;
+      const dw = words - lastArrivalWordsRef.current;
+      if (dt >= ARRIVAL_MIN_GAP_MS && dw > 0) {
+        const sample = dt / dw; // ms per word, observed
+        msPerWordRef.current += ARRIVAL_EMA_ALPHA * (sample - msPerWordRef.current);
+      }
+    }
+    lastArrivalAtRef.current = now;
+    lastArrivalWordsRef.current = words;
   }, []);
 
   const push = useCallback(
     (cumulativePrefix: string) => {
-      enqueue(cumulativePrefix);
+      enqueue(cumulativePrefix, true);
       pump();
     },
     [enqueue, pump],
@@ -103,11 +113,8 @@ export function useSentenceReveal(onText: (text: string) => void) {
 
   const finish = useCallback(
     (finalText: string) => {
-      enqueue(finalText);
+      enqueue(finalText, false); // the end flush isn't a rate sample
       finishedRef.current = true;
-      // Arrival is over, so feedback's job is done — the caller just pinned the base timing to the
-      // whole-turn true rate, and the remaining backlog should drain at that pace, not a stretched one.
-      setRevealPaceScale(1);
       pump();
     },
     [enqueue, pump],
@@ -120,8 +127,13 @@ export function useSentenceReveal(onText: (text: string) => void) {
     shownRef.current = '';
     busyRef.current = false;
     finishedRef.current = false;
-    tailWaitedRef.current = false;
-    setRevealPaceScale(1);
+    // Deliberately NOT reset: msPerWordRef carries the last turn's converged arrival rate into this one.
+    // The model's speed is consistent turn to turn, so this is a far better seed than the fixed default —
+    // it skips the slow-start ramp (and its visible catch-up) on every turn after the first. Only the
+    // per-turn arrival tracking below is cleared, so the first arrival of the new turn measures no gap.
+    lastArrivalAtRef.current = null;
+    lastArrivalWordsRef.current = 0;
+    setRevealTiming(flooredTiming({ stagger: DEFAULT_STAGGER, duration: DEFAULT_DURATION }, minStaggerRef.current, minDurationRef.current));
     onTextRef.current('');
     // Don't leave a caller awaiting a reveal we just cleared.
     const waiters = drainWaitersRef.current;

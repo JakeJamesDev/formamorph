@@ -1,12 +1,8 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { renderHook, act } from '@testing-library/react';
 import { useSentenceReveal } from './useSentenceReveal';
-import { setRevealTiming, getRevealPaceScale, setRevealPaceScale } from './revealTimingStore';
-import { PACE_FEEDBACK_UP, PACE_FEEDBACK_DOWN } from './narrationRevealConfig';
-
-// Fixed timing so waits are assertable: rhythm span = words × 10ms, fade tail = 100ms.
-const STAGGER = 10;
-const DURATION = 100;
+import { getRevealTiming } from './revealTimingStore';
+import { DEFAULT_STAGGER, TARGET_BUFFER_WORDS, STAGGER_MIN, STAGGER_MAX } from './narrationRevealConfig';
 
 function setup() {
   const onText = vi.fn();
@@ -14,57 +10,74 @@ function setup() {
   return { onText, reveal: result.current };
 }
 
+// Build a cumulative prefix of `n` single-char words ("w w w …") for easy word counting.
+const words = (n: number) => Array.from({ length: n }, () => 'w').join(' ');
+
 describe('useSentenceReveal', () => {
-  beforeEach(() => {
-    vi.useFakeTimers();
-    setRevealTiming({ stagger: STAGGER, duration: DURATION });
-    setRevealPaceScale(1);
-  });
-  afterEach(() => {
-    vi.useRealTimers();
-  });
+  beforeEach(() => vi.useFakeTimers());
+  afterEach(() => vi.useRealTimers());
 
   it('releases queued sentences one rhythm span apart', () => {
     const { onText, reveal } = setup();
     act(() => {
-      reveal.push('One two three.'); // 3 words → 30ms rhythm span
+      reveal.push('One two three.'); // 3 words
       reveal.push('One two three. Four five.');
     });
-    // First sentence releases immediately; the second waits its predecessor's span.
     expect(onText).toHaveBeenLastCalledWith('One two three.');
-    act(() => vi.advanceTimersByTime(30));
+    // First sentence's rhythm span is 3 words × the current stagger; advance a generous amount.
+    act(() => vi.advanceTimersByTime(3 * STAGGER_MAX));
     expect(onText).toHaveBeenLastCalledWith('One two three. Four five.');
   });
 
-  it('adds the fade tail before a release that opens a new paragraph', () => {
+  it('flows a new paragraph in at the normal rhythm span (no extra handoff pause)', () => {
     const { onText, reveal } = setup();
     act(() => {
       reveal.push('First paragraph.');
       reveal.push('First paragraph.\n\nSecond paragraph.');
     });
     expect(onText).toHaveBeenLastCalledWith('First paragraph.');
-    // Rhythm span (2 words → 20ms) passes, but the paragraph handoff still holds the release…
-    act(() => vi.advanceTimersByTime(20));
-    expect(onText).toHaveBeenLastCalledWith('First paragraph.');
-    // …until the previous sentence's fade tail (duration) has also played out.
-    act(() => vi.advanceTimersByTime(DURATION));
+    // The paragraph release happens after just the first sentence's rhythm span — no added dead beat.
+    act(() => vi.advanceTimersByTime(2 * STAGGER_MAX));
     expect(onText).toHaveBeenLastCalledWith('First paragraph.\n\nSecond paragraph.');
   });
 
-  it('does not add the tail wait within a paragraph or on the first release', () => {
-    const { onText, reveal } = setup();
-    act(() => {
-      reveal.push('\n\nStarts with a break.'); // first release: no predecessor to wait for
-    });
-    expect(onText).toHaveBeenCalledWith('\n\nStarts with a break.');
-    act(() => {
-      reveal.push('\n\nStarts with a break. Same paragraph continues.');
-    });
-    act(() => vi.advanceTimersByTime(4 * STAGGER)); // rhythm span only
-    expect(onText).toHaveBeenLastCalledWith('\n\nStarts with a break. Same paragraph continues.');
+  it('paces from the MEASURED arrival gap, not a fixed default', () => {
+    // A real 500ms gap adding 5 words ⇒ ~100 ms/word measured, well above the 40ms default. The release
+    // that follows the second arrival sets its cadence from that measured rate, so stagger climbs.
+    const { reveal } = setup();
+    act(() => { reveal.push(words(5) + '.'); }); // first arrival releases immediately; no gap yet
+    act(() => vi.advanceTimersByTime(500)); // its rhythm span elapses; wall clock advances 500ms
+    act(() => { reveal.push(words(5) + '. ' + words(5) + '.'); }); // +5 words over 500ms → 100 ms/word
+    expect(getRevealTiming().stagger).toBeGreaterThan(DEFAULT_STAGGER);
   });
 
-  it('drains after finish, including a paragraph handoff', async () => {
+  it('a near-instant burst does NOT poison the rate (its zero gaps are ignored)', () => {
+    const { reveal } = setup();
+    // Several sentences arrive in the same tick (a burst): gaps are 0 < ARRIVAL_MIN_GAP_MS → ignored.
+    act(() => {
+      reveal.push(words(4) + '.');
+      reveal.push(words(4) + '. ' + words(4) + '.');
+      reveal.push(words(4) + '. ' + words(4) + '. ' + words(4) + '.');
+    });
+    // Rate untouched by the burst → stagger stays clamped to a readable value, never the 8ms floor.
+    act(() => vi.advanceTimersByTime(10 * STAGGER_MAX));
+    expect(getRevealTiming().stagger).toBeGreaterThan(STAGGER_MIN);
+  });
+
+  it('reveals faster when a big backlog has piled up (drains toward the target buffer)', () => {
+    const { reveal } = setup();
+    // First sentence releases immediately; a deep second one waits behind it (backlog ≫ target buffer).
+    act(() => {
+      reveal.push(words(3) + '.');
+      reveal.push(words(3) + '. ' + words(TARGET_BUFFER_WORDS * 4) + '.');
+    });
+    // Let the first sentence's rhythm span elapse so the deep one releases — its cadence is computed
+    // from the large backlog → correction < 1 → a faster (smaller) stagger than the default.
+    act(() => vi.advanceTimersByTime(3 * STAGGER_MAX));
+    expect(getRevealTiming().stagger).toBeLessThan(DEFAULT_STAGGER);
+  });
+
+  it('drains after finish, including across a paragraph break', async () => {
     const { reveal } = setup();
     let drained = false;
     act(() => {
@@ -79,56 +92,7 @@ describe('useSentenceReveal', () => {
     expect(drained).toBe(true);
   });
 
-  it('stretches the pace after running dry mid-stream (queue feedback up)', () => {
-    const { reveal } = setup();
-    act(() => {
-      reveal.push('One two three.'); // releases immediately; 30ms rhythm span
-    });
-    expect(getRevealPaceScale()).toBe(1);
-    // The rhythm timer fires with nothing queued and the stream unfinished → a real starve → stretch.
-    act(() => vi.advanceTimersByTime(30));
-    expect(getRevealPaceScale()).toBeCloseTo(PACE_FEEDBACK_UP);
-    // A push-driven pump on an empty queue (tokens mid-sentence) must NOT stretch again.
-    act(() => {
-      reveal.push(''); // no complete sentence yet
-    });
-    expect(getRevealPaceScale()).toBeCloseTo(PACE_FEEDBACK_UP);
-  });
-
-  it('tightens back toward base when releases back up (queue feedback down)', () => {
-    const { reveal } = setup();
-    act(() => setRevealPaceScale(2));
-    act(() => {
-      reveal.push('One.'); // releases immediately (1 word) — nothing behind it yet
-      reveal.push('One. Two.');
-      reveal.push('One. Two. Three.');
-      reveal.push('One. Two. Three. Four.'); // queue is now 3 deep behind the active release
-    });
-    // Next release (after the 1-word rhythm span at scale 2 → 20ms) sees ≥2 waiting → tighten.
-    act(() => vi.advanceTimersByTime(20));
-    expect(getRevealPaceScale()).toBeCloseTo(2 * PACE_FEEDBACK_DOWN);
-  });
-
-  it('never tightens below the base pace, and finish/reset restore scale 1', () => {
-    const { reveal } = setup();
-    act(() => setRevealPaceScale(1)); // already at base
-    act(() => {
-      reveal.push('One.');
-      reveal.push('One. Two.');
-      reveal.push('One. Two. Three.');
-      reveal.push('One. Two. Three. Four.');
-    });
-    act(() => vi.advanceTimersByTime(10)); // deep queue at scale 1 → clamped at 1
-    expect(getRevealPaceScale()).toBe(1);
-    act(() => setRevealPaceScale(3));
-    act(() => reveal.finish('One. Two. Three. Four.'));
-    expect(getRevealPaceScale()).toBe(1); // finish hands back to the pinned whole-turn rate
-    act(() => setRevealPaceScale(3));
-    act(() => reveal.reset());
-    expect(getRevealPaceScale()).toBe(1);
-  });
-
-  it('reset clears a pending paragraph handoff', () => {
+  it('reset clears the queue, any pending timer, and re-seeds the timing store to default', () => {
     const { onText, reveal } = setup();
     act(() => {
       reveal.push('One.');
@@ -136,8 +100,23 @@ describe('useSentenceReveal', () => {
       reveal.reset();
     });
     expect(onText).toHaveBeenLastCalledWith('');
+    expect(getRevealTiming().stagger).toBe(DEFAULT_STAGGER); // store re-seeded (the measured rate carries, but nothing is shown)
+    act(() => vi.advanceTimersByTime(10 * STAGGER_MAX));
+    expect(onText).toHaveBeenLastCalledWith(''); // nothing replays after reset
+  });
+
+  it('carries the measured rate across a reset (seeds the next turn from the last one)', () => {
+    const { reveal } = setup();
+    // Turn 1: a real 1000ms gap adding 5 words ⇒ ~200 ms/word measured (blended into ~96 by the EMA).
+    act(() => { reveal.push(words(5) + '.'); });
     act(() => vi.advanceTimersByTime(1000));
-    // Nothing replays after reset.
-    expect(onText).toHaveBeenLastCalledWith('');
+    act(() => { reveal.push(words(5) + '. ' + words(5) + '.'); }); // the measuring arrival
+    act(() => { reveal.finish(words(5) + '. ' + words(5) + '.'); });
+    act(() => vi.runAllTimers());
+    // Turn 2: a fresh reset then one sentence. Its cadence reflects the carried slow rate — far above
+    // what a default seed (40ms × the ≤2 backlog correction = 80ms) could ever produce.
+    act(() => { reveal.reset(); });
+    act(() => { reveal.push(words(15) + '.'); });
+    expect(getRevealTiming().stagger).toBeGreaterThan(DEFAULT_STAGGER * 2);
   });
 });

@@ -98,13 +98,8 @@ export function revealVars(s: RevealSpec): Record<string, string> {
   return vars;
 }
 
-// Word-cadence bounds (ms per word). The reveal matches the model's average word rate within these,
-// so it keeps pace with generation; below the floor the buffer + end-of-turn drain absorb the lag.
-// The floor is low so a fast model (which easily exceeds 40 words/s) isn't throttled into a reveal
-// that drags on long after generation. The ceiling is a sanity bound against absurd estimates only —
-// it MUST sit above any real model's cadence: whenever the ceiling is faster than the model, the
-// reveal outruns generation and stalls at every sentence boundary, guaranteed (the old 90ms ceiling
-// forced this stutter on every model slower than ~11 words/s). 300ms ≈ a 3.3 words/s floor.
+// Word-cadence bounds (ms per word), a readability clamp on the measured pace: a giant arrival gap
+// can't drag the reveal to a crawl, and a burst can't drive it below a legible speed. 300ms ≈ 3.3 w/s.
 export const STAGGER_MIN = 8;
 export const STAGGER_MAX = 300;
 // Per-word fade length as a multiple of the cadence — keeps a roughly constant number of words
@@ -117,33 +112,32 @@ export const FADE_SPREAD = 4;
 export const DEFAULT_STAGGER = 40;
 export const DEFAULT_DURATION = DEFAULT_STAGGER * FADE_SPREAD;
 
-// Pace margin: the reveal runs slightly slower than the measured word rate. A reveal matched to the
-// rate exactly makes the sentence queue a zero-drift random walk — it empties periodically no matter
-// how good the estimate is, stalling the cascade at sentence boundaries (the "stutter"). The margin
-// gives the queue positive drift so underruns become rare; the end-of-turn drain absorbs the trail.
-export const PACE_MARGIN = 1.15;
+// Arrival-measurement pacing (see useSentenceReveal). The reveal doesn't estimate tokens/sec — it
+// measures the wall-clock gap between sentence arrivals and reveals at that rate, holding a small
+// backlog buffer so it never runs dry (stutter) nor lags far behind (trail):
+//  - A rate sample is only trusted when its gap is real; sub-threshold gaps are the server's token
+//    burst (many sentences at once) and would read as infinitely fast, so they're ignored.
+export const ARRIVAL_MIN_GAP_MS = 30;
+//  - The measured ms/word is smoothed (EMA) so one jittery gap doesn't jerk the pace.
+export const ARRIVAL_EMA_ALPHA = 0.35;
+//  - The controller targets this backlog (words already arrived but not yet revealed). Above it the
+//    reveal speeds up to drain; below it, slows to let the buffer refill — converging on the target.
+//    It MUST exceed the longest sentence: the equilibrium backlog is this value, and lumpy sentence-
+//    sized arrivals swing it by ±(a sentence), so a target under one sentence lets the buffer hit zero
+//    between arrivals — a starve/stutter every sentence. ~2 sentences keeps it comfortably above empty.
+export const TARGET_BUFFER_WORDS = 30;
+//  - Once arrival is over there's no starving, so drain toward near-empty (this smaller target) rather
+//    than holding the big buffer — keeps the post-generation tail short.
+export const DRAIN_TARGET_WORDS = 4;
+//  - Bounds on that speed-up/slow-down so the controller stays gentle and never stalls or sprints.
+export const PACE_CORRECTION_MIN = 0.5;
+export const PACE_CORRECTION_MAX = 2;
 
-// Queue-feedback gains (see useSentenceReveal + revealTimingStore.paceScale). The estimate above is
-// open-loop and can read several times too fast (the server's initial token burst inflates its
-// cumulative average for the whole turn), so the pacer closes the loop on what it can actually see:
-// run dry mid-stream → stretch the pace; two or more releases backed up → tighten back toward the
-// base. Converges to the true arrival rate within a few sentences, whatever the estimate says.
-export const PACE_FEEDBACK_UP = 1.25;
-export const PACE_FEEDBACK_DOWN = 0.85;
-export const PACE_SCALE_MAX = 6;
+export const clamp = (n: number, lo: number, hi: number): number => Math.min(hi, Math.max(lo, n));
 
-const clamp = (n: number, lo: number, hi: number): number => Math.min(hi, Math.max(lo, n));
-
-/** Fade timing for a smoothed word rate (words/sec): cadence tracks the rate (clamped readable) with
- *  a small slow-side margin (see PACE_MARGIN), fade length scales with the cadence. */
-export function timingForWordRate(wordsPerSec: number): { duration: number; stagger: number } {
-  const stagger = clamp((1000 / wordsPerSec) * PACE_MARGIN, STAGGER_MIN, STAGGER_MAX);
-  return { stagger, duration: stagger * FADE_SPREAD };
-}
-
-/** Apply the user's minimum floors to a rate-derived timing (0 = no floor): stagger can't drop below
- *  `minStagger`, and duration can't drop below `minDuration` (re-derived from the floored stagger so
- *  the fade keeps a sensible spread). Lets a fast model be pinned to a readable minimum pace. */
+/** Apply the user's minimum floors to a timing (0 = no floor): stagger can't drop below `minStagger`,
+ *  and duration can't drop below `minDuration` (re-derived from the floored stagger so the fade keeps
+ *  a sensible spread). Lets a fast model be pinned to a readable minimum pace. */
 export function flooredTiming(
   t: { duration: number; stagger: number },
   minStagger: number,
@@ -151,4 +145,16 @@ export function flooredTiming(
 ): { duration: number; stagger: number } {
   const stagger = Math.max(t.stagger, minStagger);
   return { stagger, duration: Math.max(stagger * FADE_SPREAD, minDuration) };
+}
+
+/** The reveal cadence (ms/word) for the given measured arrival rate and current backlog: the measured
+ *  ms/word, nudged toward holding a target backlog — faster when the backlog is over target, slower when
+ *  under — then clamped to the readable bounds. While streaming, the target is `TARGET_BUFFER_WORDS` (a
+ *  cushion against starving). Once `drainingOnly` (arrival finished), it targets the much smaller
+ *  `DRAIN_TARGET_WORDS` and never slows below the measured rate, so the tail empties promptly. */
+export function pacedStagger(msPerWord: number, backlogWords: number, drainingOnly: boolean): number {
+  const target = drainingOnly ? DRAIN_TARGET_WORDS : TARGET_BUFFER_WORDS;
+  let correction = clamp(target / Math.max(backlogWords, 1), PACE_CORRECTION_MIN, PACE_CORRECTION_MAX);
+  if (drainingOnly) correction = Math.min(correction, 1);
+  return clamp(msPerWord * correction, STAGGER_MIN, STAGGER_MAX);
 }
