@@ -6,10 +6,10 @@ const { contextBridge, ipcRenderer } = require('electron');
 contextBridge.exposeInMainWorld('formamorphDesktop', {
   fetch: (req) => ipcRenderer.invoke('net-fetch', req),
   vramStats: () => ipcRenderer.invoke('vram-stats'),
-  // Local LLM engine: start/stop a GGUF served on a localhost OpenAI endpoint, read its status, learn
-  // where models live, and subscribe to status changes (auto-start, load progress, errors).
+  // Local LLM engine: stop/load a GGUF served on a localhost OpenAI endpoint, read its status, learn
+  // where models live, and subscribe to status changes (auto-start, load progress, errors). Loading is
+  // filename-only (`load`), confined to the models dir — no arbitrary-path start is exposed.
   llm: {
-    start: (opts) => ipcRenderer.invoke('llm-start', opts),
     stop: () => ipcRenderer.invoke('llm-stop'),
     status: () => ipcRenderer.invoke('llm-status'),
     modelsDir: () => ipcRenderer.invoke('llm-models-dir'),

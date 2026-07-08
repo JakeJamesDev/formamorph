@@ -1,5 +1,6 @@
-import { useState, useEffect, type ChangeEvent, type KeyboardEvent } from 'react';
+import { useState, type ChangeEvent, type KeyboardEvent } from 'react';
 import { useDictionaryStore } from '@/contexts/DictionaryStoreContext';
+import { useEditingDraft } from '@/lib/useEditingDraft';
 import {
   DndContext,
   closestCenter,
@@ -113,24 +114,12 @@ function CheckRow({ label, checked, onChange }: { label: string; checked: boolea
 
 const DictionaryManager = ({ entry }: { entry: DictionaryEntry }) => {
   const { updateDictionaryEntry } = useDictionaryStore();
-  const [editingEntry, setEditingEntry] = useState<DictionaryEntry>(entry);
-
-  useEffect(() => {
-    setEditingEntry(entry);
-  }, [entry]);
-
-  const handleChange = (field: string, value: unknown) => {
-    const updated = { ...editingEntry, [field]: value } as DictionaryEntry;
-    setEditingEntry(updated);
-    updateDictionaryEntry(updated);
-  };
+  const { draft: editingEntry, apply, setField: handleChange } = useEditingDraft<DictionaryEntry>(entry, updateDictionaryEntry);
 
   // The key is a comma-separated string (v1.2 format); name mirrors it for the list display.
   const handleKeyChange = (arr: string[]) => {
     const key = arr.join(', ');
-    const updated = { ...editingEntry, key, name: key };
-    setEditingEntry(updated);
-    updateDictionaryEntry(updated);
+    apply({ key, name: key });
   };
 
   // Store a numeric field, clearing it (undefined) when the input is blank or not a number.

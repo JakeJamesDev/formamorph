@@ -2,11 +2,15 @@
 // narration must be split into chunks that each stay under the budget. maxChars is a conservative
 // character proxy for that token budget (narration sentences sit well under it).
 
-/** Split text at sentence boundaries (terminator, optional closing quotes/brackets, then whitespace).
+/** Split text at sentence boundaries: a terminator plus optional closing quotes/brackets/emphasis
+ *  markers (`*`/`_`/`~`/backtick — markdown narration routinely ends a sentence inside emphasis, e.g.
+ *  `*screech.*`), then whitespace. A blank line is ALWAYS a boundary, terminator or not — paragraphs
+ *  ending on an em-dash or a bare `**Power: 88%**` line must not fuse with the next paragraph into one
+ *  giant "sentence" (that starves the streaming reveal, then lumps whole paragraphs into one release).
  *  The last segment may be an in-progress sentence with no trailing terminator — useful when feeding
  *  streaming text. */
 export function splitSentenceSegments(text: string): string[] {
-  return text.split(/(?<=[.!?…]["'”’»)\]]*)\s+/);
+  return text.split(/(?<=[.!?…]["'”’»)\]*_~`]*)\s+|[^\S\n]*\n\s*\n\s*/);
 }
 
 /**

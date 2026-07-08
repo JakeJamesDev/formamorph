@@ -6,6 +6,24 @@ type LocationWithEntities = (GameLocation & { entity?: string[] }) | null;
 const pickDescription = (preferSummary: boolean, summary?: string, description?: string) =>
   preferSummary ? summary?.trim() || description : description;
 
+/** Emit a one-line-per-location list (`name: summary` / `- **name:** summary`) — the shared body of the
+ *  sublocations / destinations / reachable builders, which differ only in which locations they pass. */
+function buildLocationList(
+  items: GameLocation[],
+  opts: { preferSummary?: boolean; format?: "simple" | "markdown" } = {},
+): string {
+  const { preferSummary = false, format = "simple" } = opts;
+  const md = format === "markdown";
+  let output = "";
+  for (const item of items) {
+    const desc = pickDescription(preferSummary, item.aiSummary, item.aiDescription);
+    const hasDesc = !!desc && desc.trim() !== "";
+    if (md) output += hasDesc ? `- **${item.name}:** ${desc}\n` : `- **${item.name}**\n`;
+    else output += hasDesc ? `${item.name}: ${desc}\n` : `${item.name}\n`;
+  }
+  return output;
+}
+
 /**
  * Serialize the current location into the plain-text block the AI prompts inject for
  * `<LOCATION>`. Blank fields are skipped so empty values don't confuse smaller models, and
@@ -129,17 +147,7 @@ export function buildSublocationsContext(
   if (!current) return NONE_PLACEHOLDER;
   const kids = locations.filter((l) => (l.parentId ?? null) === current.id);
   if (kids.length === 0) return NONE_PLACEHOLDER;
-
-  const { preferSummary = false, format = "simple" } = opts;
-  const md = format === "markdown";
-  let output = "";
-  for (const kid of kids) {
-    const desc = pickDescription(preferSummary, kid.aiSummary, kid.aiDescription);
-    const hasDesc = !!desc && desc.trim() !== "";
-    if (md) output += hasDesc ? `- **${kid.name}:** ${desc}\n` : `- **${kid.name}**\n`;
-    else output += hasDesc ? `${kid.name}: ${desc}\n` : `${kid.name}\n`;
-  }
-  return output;
+  return buildLocationList(kids, opts);
 }
 
 /** The deduped entity ids across the current location's direct sub-locations. */
@@ -204,17 +212,7 @@ export function buildDestinationsContext(
   if (!current) return NONE_PLACEHOLDER;
   const dests = navigableDestinations(current, locations);
   if (dests.length === 0) return NONE_PLACEHOLDER;
-
-  const { preferSummary = false, format = "simple" } = opts;
-  const md = format === "markdown";
-  let output = "";
-  for (const dest of dests) {
-    const desc = pickDescription(preferSummary, dest.aiSummary, dest.aiDescription);
-    const hasDesc = !!desc && desc.trim() !== "";
-    if (md) output += hasDesc ? `- **${dest.name}:** ${desc}\n` : `- **${dest.name}**\n`;
-    else output += hasDesc ? `${dest.name}: ${desc}\n` : `${dest.name}\n`;
-  }
-  return output;
+  return buildLocationList(dests, opts);
 }
 
 /** The current location's reachable **siblings** — other children of the same non-null parent. */
@@ -237,17 +235,7 @@ export function buildReachableLocationsContext(
   if (!current) return NONE_PLACEHOLDER;
   const sibs = reachableSiblings(current, locations);
   if (sibs.length === 0) return NONE_PLACEHOLDER;
-
-  const { preferSummary = false, format = "simple" } = opts;
-  const md = format === "markdown";
-  let output = "";
-  for (const sib of sibs) {
-    const desc = pickDescription(preferSummary, sib.aiSummary, sib.aiDescription);
-    const hasDesc = !!desc && desc.trim() !== "";
-    if (md) output += hasDesc ? `- **${sib.name}:** ${desc}\n` : `- **${sib.name}**\n`;
-    else output += hasDesc ? `${sib.name}: ${desc}\n` : `${sib.name}\n`;
-  }
-  return output;
+  return buildLocationList(sibs, opts);
 }
 
 /**

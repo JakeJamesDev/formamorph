@@ -65,6 +65,12 @@ function createWindow() {
 // Desktop-only network bridge: renderer → main HTTP fetch that isn't bound by browser CORS. Used by
 // cloud image providers (OpenAI-style) whose APIs can't be reached directly from the web build.
 ipcMain.handle('net-fetch', async (_event, { url, method = 'GET', headers = {}, body }) => {
+  // Scheme allow-list: this bridge exists only for HTTP APIs. net.fetch would happily serve file:
+  // (an arbitrary local-file read for anything that can script the renderer), so reject non-HTTP.
+  const scheme = new URL(url).protocol;
+  if (scheme !== 'http:' && scheme !== 'https:') {
+    throw new Error(`net-fetch: unsupported URL scheme '${scheme}'`);
+  }
   const res = await net.fetch(url, { method, headers, body });
   return { ok: res.ok, status: res.status, body: await res.text() };
 });
@@ -80,8 +86,8 @@ ipcMain.handle('vram-stats', async () => {
 });
 
 // Desktop-only local LLM: load a GGUF and serve an OpenAI-compatible endpoint on localhost. The renderer
-// then points its normal OpenAI endpoint at it. Handlers return the engine's serializable state.
-ipcMain.handle('llm-start', (_event, opts) => llmEngine.start(opts));
+// then points its normal OpenAI endpoint at it. Handlers return the engine's serializable state. Loading
+// is filename-only and confined to the models folder — no arbitrary-path start is exposed over IPC.
 // Load an installed model by filename (resolves it inside the models folder), using the current options.
 ipcMain.handle('llm-load', async (_event, fileName) => {
   await llmEngine.stop();

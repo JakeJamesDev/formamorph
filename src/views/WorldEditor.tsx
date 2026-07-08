@@ -28,6 +28,7 @@ import DictionaryManager from '../managers/DictionaryManager';
 import DictionaryTree from '../managers/DictionaryTree';
 import DictionaryBookManager from '../managers/DictionaryBookManager';
 import { buildDictionaryFile } from '@/lib/dictionaryFile';
+import { downloadBlob } from '@/lib/downloadBlob';
 import AddDictionaryModal from '@/components/modals/AddDictionaryModal';
 import AddEntityModal from '@/components/modals/AddEntityModal';
 import { exportEntityCard } from '@/lib/entityFile';
@@ -192,44 +193,19 @@ const WorldEditor = ({ onClose, embedded = false }: {
       traits: w.traits, traitGroups: w.traitGroups, statUpdates: w.statUpdates, dictionaries: w.dictionaries,
     };
     const jsonData = JSON.stringify(worldData, null, 2);
-    const blob = new Blob([jsonData], { type: 'application/json' });
-    const href = URL.createObjectURL(blob);
-    const link = document.createElement('a');
-
-    link.href = href;
-    link.download = worldOverview.name || 'rpg_world.json';
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-    URL.revokeObjectURL(href);
+    downloadBlob(new Blob([jsonData], { type: 'application/json' }), worldOverview.name || 'rpg_world.json');
   };
 
   // Export one book to its own standalone `.json` (no image downscale — dictionaries are text only).
   const downloadDictionary = (book: Dictionary) => {
     const jsonData = JSON.stringify(buildDictionaryFile(book), null, 2);
-    const blob = new Blob([jsonData], { type: 'application/json' });
-    const href = URL.createObjectURL(blob);
-    const link = document.createElement('a');
-    link.href = href;
-    link.download = `${book.name || 'Dictionary'}.json`;
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-    URL.revokeObjectURL(href);
+    downloadBlob(new Blob([jsonData], { type: 'application/json' }), `${book.name || 'Dictionary'}.json`);
   };
 
   // Export one entity as a shareable WebP character card (its portrait carrying the text fields).
   const downloadEntity = async (entity: Entity) => {
     try {
-      const blob = await exportEntityCard(entity);
-      const href = URL.createObjectURL(blob);
-      const link = document.createElement('a');
-      link.href = href;
-      link.download = `${entity.name || 'Character'}.webp`;
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
-      URL.revokeObjectURL(href);
+      downloadBlob(await exportEntityCard(entity), `${entity.name || 'Character'}.webp`);
     } catch (error) {
       toast.error((error as Error).message);
     }

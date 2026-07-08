@@ -22,6 +22,36 @@ describe('splitSentenceSegments', () => {
       'His eyes gleam.',
     ]);
   });
+
+  it('splits after closing emphasis markers following the terminator', () => {
+    expect(splitSentenceSegments('A horrible *screech.* It stumbles past.')).toEqual([
+      'A horrible *screech.*',
+      'It stumbles past.',
+    ]);
+    expect(splitSentenceSegments('**Not negotiable.** He turns away.')).toEqual([
+      '**Not negotiable.**',
+      'He turns away.',
+    ]);
+  });
+
+  it('treats a blank line as a boundary even without a terminator', () => {
+    // A paragraph ending on an em-dash must not fuse with the next paragraph.
+    expect(splitSentenceSegments('Your evasion protocols kick in—\n\nYou sidestep just in time.')).toEqual([
+      'Your evasion protocols kick in—',
+      'You sidestep just in time.',
+    ]);
+    // Nor a bare bold stat line with no terminator at all.
+    expect(splitSentenceSegments('**Power: 88%**\n\nThe ruins pulse brighter.')).toEqual([
+      '**Power: 88%**',
+      'The ruins pulse brighter.',
+    ]);
+  });
+
+  it('does not treat a single newline (line break) as a boundary', () => {
+    expect(splitSentenceSegments('a line without terminator\nstill the same sentence.')).toEqual([
+      'a line without terminator\nstill the same sentence.',
+    ]);
+  });
 });
 
 describe('stripMarkdownForSpeech', () => {

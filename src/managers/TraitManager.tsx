@@ -1,5 +1,5 @@
-import { useState, useEffect } from 'react';
 import { useGameData } from '@/contexts/GameDataContext';
+import { useEditingDraft } from '@/lib/useEditingDraft';
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
@@ -11,44 +11,22 @@ import type { Trait, StatChange } from '@/types';
 
 const TraitManager = ({ trait }: { trait: Trait }) => {
   const { updateTrait, stats } = useGameData();
-  const [editingTrait, setEditingTrait] = useState<Trait>(trait);
-
-  useEffect(() => {
-    setEditingTrait(trait);
-  }, [trait]);
-
-  const handleChange = (field: string, value: unknown) => {
-    const updatedTrait = { ...editingTrait, [field]: value } as Trait;
-    setEditingTrait(updatedTrait);
-    updateTrait(updatedTrait);
-  };
+  const { draft: editingTrait, apply, setField: handleChange } = useEditingDraft<Trait>(trait, updateTrait);
 
   const handleStatChangeAdd = () => {
-    const updatedTrait = {
-      ...editingTrait,
-      statChanges: [
-        ...editingTrait.statChanges,
-        { statId: '', value: 0, type: 'min' }
-      ]
-    } as Trait;
-    setEditingTrait(updatedTrait);
-    updateTrait(updatedTrait);
+    apply({ statChanges: [...editingTrait.statChanges, { statId: '', value: 0, type: 'min' } as StatChange] });
   };
 
   const handleStatChangeUpdate = (index: number, field: string, value: string | number) => {
     const updatedStatChanges = [...editingTrait.statChanges];
     updatedStatChanges[index] = { ...updatedStatChanges[index], [field]: value } as StatChange;
-    const updatedTrait = { ...editingTrait, statChanges: updatedStatChanges };
-    setEditingTrait(updatedTrait);
-    updateTrait(updatedTrait);
+    apply({ statChanges: updatedStatChanges });
   };
 
   const handleStatChangeRemove = (index: number) => {
     const updatedStatChanges = [...editingTrait.statChanges];
     updatedStatChanges.splice(index, 1);
-    const updatedTrait = { ...editingTrait, statChanges: updatedStatChanges };
-    setEditingTrait(updatedTrait);
-    updateTrait(updatedTrait);
+    apply({ statChanges: updatedStatChanges });
   };
 
   if (!editingTrait) return null;
