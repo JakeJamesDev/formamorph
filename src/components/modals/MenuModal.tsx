@@ -3,13 +3,13 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { Popover, PopoverTrigger, PopoverContent } from "@/components/ui/popover";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { ScrollArea } from "@/components/ui/scroll-area";
 import { Menu, Save, Download, Import, Trash2, Loader2 } from "lucide-react";
 import { ConfirmDialog } from '../ConfirmDialog';
 import { saveToDB, getAllSaves, deleteFromDB, loadFromDB } from './dbUtils';
 import { downloadSaveFile, terminateWorker as terminateDownloadWorker } from '../../lib/saveDownloadWorkerUtils';
 import { APP_VERSION, isSaveEnvelope, migrateSave, SAVE_FILE_KIND } from '../../lib/version';
 import { useDevRoute } from '../../lib/devRouter';
+import { cn } from "@/lib/utils";
 import type { WorldOverview, GameState } from "@/types";
 
 /** A stored save record as read back from IndexedDB (v2 envelope or a legacy flat state). */
@@ -216,8 +216,8 @@ export const MenuModal = ({ onSettingsClick, onSave, onLoad, worldOverview, onEx
           <DialogHeader className="flex-shrink-0">
             <DialogTitle>Load Game</DialogTitle>
           </DialogHeader>
-          <div className="flex flex-col min-h-0 flex-1 py-4">
-              <div className="flex-shrink-0 mb-4">
+          <div className="flex flex-col py-4">
+              <div className="mb-4">
                 <div className="grid grid-cols-1 gap-2">
                   <input
                     type="file"
@@ -271,99 +271,116 @@ export const MenuModal = ({ onSettingsClick, onSave, onLoad, worldOverview, onEx
                   </Button>
                 </div>
               </div>
-              <div className="flex-1 min-h-0">
-                <ScrollArea className="h-full">
+              {/* Plain overflow container (not Radix ScrollArea): the dialog is `max-h`, not a fixed
+                  height, so a ScrollArea Viewport can't inherit a definite height and would clip instead
+                  of scroll. `max-h` + `overflow-y-auto` sizes to content and scrolls past the cap; native
+                  scrollbars are themed to match Radix globally (index.css). */}
+              <div className="max-h-[60vh] overflow-y-auto">
                   <div className="space-y-2 p-4">
-                  {saveList.map((save) => (
-                      <Button
+                  {saveList.map((save) => {
+                    const handleLoad = async () => {
+                      if (isLoading) return;
+                      try {
+                        setIsLoading(true);
+                        setLoadingMessage('Loading save file. Please wait...');
+
+                        // Add a small delay to ensure the loading state is visible
+                        await new Promise(resolve => setTimeout(resolve, 100));
+
+                        await onLoad(save.name);
+                        setShowLoadDialog(false);
+                      } catch (error) {
+                        console.error('Error loading game:', error);
+                      } finally {
+                        setIsLoading(false);
+                        setLoadingMessage('');
+                      }
+                    };
+                    return (
+                      // Row is a div (not a Button) so it grows with its content and never clips, and so the
+                      // Delete/Download controls are valid siblings — a <button> can't nest <button>s.
+                      <div
                         key={save.name}
-                        variant="outline"
-                        className="w-full text-left"
-                        disabled={isLoading}
-                        onClick={async () => {
-                          try {
-                            setIsLoading(true);
-                            setLoadingMessage('Loading save file. Please wait...');
-
-                            // Add a small delay to ensure the loading state is visible
-                            await new Promise(resolve => setTimeout(resolve, 100));
-
-                            await onLoad(save.name);
-                            setShowLoadDialog(false);
-                          } catch (error) {
-                            console.error('Error loading game:', error);
-                          } finally {
-                            setIsLoading(false);
-                            setLoadingMessage('');
-                          }
+                        role="button"
+                        tabIndex={0}
+                        aria-disabled={isLoading}
+                        className={cn(
+                          "flex items-center gap-2 w-full rounded-md border border-input bg-background px-3 py-2 text-left text-sm cursor-pointer transition-colors hover:bg-accent hover:text-accent-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2",
+                          isLoading && "pointer-events-none opacity-50",
+                        )}
+                        onClick={handleLoad}
+                        onKeyDown={(e) => {
+                          if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); handleLoad(); }
                         }}
                       >
-                      <div className="flex items-start w-full">
-                        <div className="flex mr-2">
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            className="h-7 w-7 p-0"
-                            disabled={isDownloading || isLoading}
-                            onClick={async (e) => {
-                              e.stopPropagation();
-                              try {
-                                // Set downloading state
-                                setIsDownloading(true);
-                                setDownloadingSaveName(save.name);
-                                setLoadingMessage(`Preparing ${save.name} for download...`);
+                        {/* Delete — far left */}
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="h-7 w-7 p-0 shrink-0 text-destructive"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleDelete(save.name);
+                          }}
+                        >
+                          <Trash2 className="h-3.5 w-3.5" />
+                        </Button>
 
-                                // Load the save data
-                                const fullSaveData = await loadFromDB(save.name);
-
-                                // Use web worker to process the save data; stamp the (optional) file kind
-                                // on the export only — the stored save is untouched.
-                                const { dataUrl, fileName } = await downloadSaveFile({ formamorphKind: SAVE_FILE_KIND, ...(fullSaveData as object) }) as { dataUrl: string; fileName: string };
-
-                                // Create a download link
-                                const element = document.createElement('a');
-                                element.href = dataUrl;
-                                element.download = `${fileName}.json`;
-                                document.body.appendChild(element);
-                                element.click();
-                                document.body.removeChild(element);
-                              } catch (error) {
-                                console.error('Error downloading save:', error);
-                              } finally {
-                                setIsDownloading(false);
-                                setDownloadingSaveName('');
-                                setLoadingMessage('');
-                              }
-                            }}
-                          >
-                            <Download className="h-3.5 w-3.5" />
-                          </Button>
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            className="h-7 w-7 p-0 text-destructive"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              handleDelete(save.name);
-                            }}
-                          >
-                            <Trash2 className="h-3.5 w-3.5" />
-                          </Button>
-                        </div>
-                        <div className="flex-1">
-                          <div>{save.name}</div>
+                        {/* Details — middle column grows and wraps */}
+                        <div className="flex-1 min-w-0">
+                          <div className="break-words font-medium">{save.name}</div>
                           <div className="text-xs opacity-70">
                             {save.timestamp} - Game Time: {formatGameTime(save.gameTime)}
                           </div>
                           {save.worldName && save.worldName !== worldOverview?.name && (
-                            <div className="text-xs text-warning">
+                            <div className="text-xs text-warning break-words">
                               Warning: Different world ({save.worldName})
                             </div>
                           )}
                         </div>
+
+                        {/* Download — far right */}
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="h-7 w-7 p-0 shrink-0"
+                          disabled={isDownloading || isLoading}
+                          onClick={async (e) => {
+                            e.stopPropagation();
+                            try {
+                              // Set downloading state
+                              setIsDownloading(true);
+                              setDownloadingSaveName(save.name);
+                              setLoadingMessage(`Preparing ${save.name} for download...`);
+
+                              // Load the save data
+                              const fullSaveData = await loadFromDB(save.name);
+
+                              // Use web worker to process the save data; stamp the (optional) file kind
+                              // on the export only — the stored save is untouched.
+                              const { dataUrl, fileName } = await downloadSaveFile({ formamorphKind: SAVE_FILE_KIND, ...(fullSaveData as object) }) as { dataUrl: string; fileName: string };
+
+                              // Create a download link
+                              const element = document.createElement('a');
+                              element.href = dataUrl;
+                              element.download = `${fileName}.json`;
+                              document.body.appendChild(element);
+                              element.click();
+                              document.body.removeChild(element);
+                            } catch (error) {
+                              console.error('Error downloading save:', error);
+                            } finally {
+                              setIsDownloading(false);
+                              setDownloadingSaveName('');
+                              setLoadingMessage('');
+                            }
+                          }}
+                        >
+                          <Download className="h-3.5 w-3.5" />
+                        </Button>
                       </div>
-                    </Button>
-                  ))}
+                    );
+                  })}
                   {(isLoading || isDownloading) && (
                     <div className="text-center py-4 flex flex-col items-center space-y-2">
                       <Loader2 className="h-6 w-6 animate-spin" />
@@ -385,8 +402,7 @@ export const MenuModal = ({ onSettingsClick, onSave, onLoad, worldOverview, onEx
                     </div>
                   )}
                   </div>
-                </ScrollArea>
-              </div>
+                </div>
             </div>
           </DialogContent>
         </Dialog>
