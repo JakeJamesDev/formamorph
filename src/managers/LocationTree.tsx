@@ -5,6 +5,7 @@ import {
   applyLocationDrop, removeLocationPromotingChildren, type FlatLocationNode,
 } from '@/lib/locationTree';
 import { SortableTree, TREE_INDENT, type SortableTreeAdapter } from './SortableTree';
+import { EmptyListHint } from '@/components/EmptyListHint';
 
 /** The Locations tab's sub-location tree: a flat sortable list where horizontal drag sets nesting depth. */
 const LocationTree = ({ selectedId, onSelect }: { selectedId: string | null; onSelect: (id: string) => void }) => {
@@ -43,7 +44,7 @@ const LocationTree = ({ selectedId, onSelect }: { selectedId: string | null; onS
   };
 
   if (!locations.length) {
-    return <p className="text-sm text-muted-foreground p-2">No locations yet — use the + button to add one.</p>;
+    return <EmptyListHint noun="locations" />;
   }
 
   return <SortableTree adapter={adapter} selectedId={selectedId} onSelect={onSelect} />;

@@ -8,7 +8,6 @@ import { SettingsProvider } from './contexts/SettingsContext';
 import { GameplayProvider } from './contexts/GameplayContext';
 import { LocalEngineManager } from './components/LocalEngineManager';
 import GameViewer from './views/GameViewer';
-import WorldEditor from './views/WorldEditor';
 import MainMenu from './views/MainMenu';
 import type { CharacterData, Dictionary, Entity } from '@/types';
 
@@ -58,10 +57,6 @@ function App() {
     setCurrentView('mainMenu');
   };
 
-  const handleOpenWorldEditor = () => {
-    setCurrentView('worldEditor');
-  };
-
   return (
     <ThemeProvider defaultTheme="system" storageKey="vite-ui-theme">
       <SettingsProvider>
@@ -71,7 +66,6 @@ function App() {
           {currentView === 'mainMenu' && (
             <MainMenu
               onStartGame={handleStartGame}
-              onOpenWorldEditor={handleOpenWorldEditor}
               onLoadSaveGame={handleLoadSaveGame}
             />
           )}
@@ -87,9 +81,6 @@ function App() {
                 onExitToMenu={handleExitToMenu}
               />
             </GameplayProvider>
-          )}
-          {currentView === 'worldEditor' && (
-            <WorldEditor onClose={() => setCurrentView('mainMenu')} />
           )}
         </GameDataProvider>
       </SettingsProvider>

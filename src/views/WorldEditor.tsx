@@ -2,6 +2,7 @@ import { useState, useEffect, useMemo, type ChangeEvent } from 'react';
 import { useGameData } from '@/contexts/GameDataContext';
 import { useDevRoute } from '@/lib/devRouter';
 import { WORLD_EDITOR_TABS } from './worldEditorTabs';
+import { EmptyListHint } from '@/components/EmptyListHint';
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
@@ -143,10 +144,14 @@ function SortableRow({ item, selected, onSelect, onRemove, onDuplicate, enabled,
   );
 }
 
-const WorldEditor = ({ onClose, embedded = false }: {
+const WorldEditor = ({ onClose, embedded = false, backButton }: {
   onClose: () => void;
   embedded?: boolean;
+  /** Force the header back arrow on/off independent of `embedded`. Defaults to `!embedded`: a full-screen
+   *  host (MainMenu modal) wants the back arrow without the toast/chrome; GameViewer's popup uses the X. */
+  backButton?: boolean;
 }) => {
+  const showBackButton = backButton ?? !embedded;
   const {
     worldOverview, updateWorldOverview, worldId,
     loadWorldData,
@@ -176,7 +181,7 @@ const WorldEditor = ({ onClose, embedded = false }: {
   };
 
   const [activeTab, setActiveTab] = useState("overview");
-  // DEV dev-router: jump to a specific editor tab via `#dev?view=worldEditor&tab=…`. Tree-shaken in prod.
+  // DEV dev-router: jump to a specific editor tab via `#dev?modal=worldEditor&tab=…`. Tree-shaken in prod.
   const devRoute = useDevRoute();
   useEffect(() => {
     if (import.meta.env.DEV && devRoute?.tab) setActiveTab(devRoute.tab);
@@ -439,7 +444,15 @@ const WorldEditor = ({ onClose, embedded = false }: {
     setSelectedItemId(null);
   };
 
-  const renderItemList = (items: ListItem[]) => (
+  const renderItemList = (items: ListItem[]) => {
+    if (items.length === 0) {
+      const q = searchTerm.trim();
+      // Same empty-state hint the trees show (unified), or a "no matches" note when filtering.
+      return q
+        ? <p className="text-sm text-muted-foreground p-2">No {activeTab} match &ldquo;{q}&rdquo;.</p>
+        : <EmptyListHint noun={activeTab} />;
+    }
+    return (
     <DndContext
       sensors={sensors}
       collisionDetection={closestCenter}
@@ -473,7 +486,8 @@ const WorldEditor = ({ onClose, embedded = false }: {
         </div>
       </SortableContext>
     </DndContext>
-  );
+    );
+  };
 
   return (
     <div className={`${embedded ? "h-full" : "h-screen"} flex flex-col overflow-hidden`}>
@@ -497,7 +511,7 @@ const WorldEditor = ({ onClose, embedded = false }: {
             <Card className="h-full flex flex-col">
               <CardHeader className="space-y-0 pb-2">
                 <div className="flex items-center space-x-4">
-                  {!embedded && (
+                  {showBackButton && (
                     <Button
                       variant="ghost"
                       size="icon"

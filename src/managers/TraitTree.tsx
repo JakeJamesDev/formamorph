@@ -5,6 +5,7 @@ import {
   duplicateTraitNode, type FlatTraitNode,
 } from '@/lib/traitTree';
 import { SortableTree, TREE_INDENT, type SortableTreeAdapter } from './SortableTree';
+import { EmptyListHint } from '@/components/EmptyListHint';
 
 /** The Traits tab's folder tree: a flat sortable list where horizontal drag sets nesting depth. */
 const TraitTree = ({ selectedId, onSelect }: { selectedId: string | null; onSelect: (id: string) => void }) => {
@@ -40,7 +41,7 @@ const TraitTree = ({ selectedId, onSelect }: { selectedId: string | null; onSele
   };
 
   if (!traits.length && !traitGroups.length) {
-    return <p className="text-sm text-muted-foreground p-2">No traits yet — use the + button to add a group or trait.</p>;
+    return <EmptyListHint noun="traits" action="add a group or trait" />;
   }
 
   return <SortableTree adapter={adapter} selectedId={selectedId} onSelect={onSelect} />;

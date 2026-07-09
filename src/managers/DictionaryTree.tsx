@@ -14,6 +14,7 @@ import {
 import { CSS } from '@dnd-kit/utilities';
 import { restrictToVerticalAxis, restrictToFirstScrollableAncestor } from '@dnd-kit/modifiers';
 import { reorderBooks, moveEntryInBooks, duplicateEntryInBooks } from '@/lib/dictionaryTree';
+import { EmptyListHint } from '@/components/EmptyListHint';
 import type { Dictionary, DictionaryEntry } from '@/types';
 
 /** One entry ("page") row inside a book zone: grip handle + enabled toggle + name + duplicate/delete. */
@@ -322,7 +323,7 @@ const DictionaryTree = ({ selectedId, onSelect }: { selectedId: string | null; o
   };
 
   if (!dictionaries.length) {
-    return <p className="text-sm text-muted-foreground p-2">No dictionaries yet — use the + button to add one.</p>;
+    return <EmptyListHint noun="dictionaries" />;
   }
 
   return (
