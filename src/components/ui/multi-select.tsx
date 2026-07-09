@@ -152,9 +152,10 @@ interface MultiSelectProps
 	maxCount?: number;
 
 	/**
-	 * The modality of the popover. When set to true, interaction with outside elements
-	 * will be disabled and only popover content will be visible to screen readers.
-	 * Optional, defaults to false.
+	 * The modality of the popover. When true, the dropdown owns the scroll lock while open — which is
+	 * what lets the option list scroll with the wheel when the MultiSelect lives inside a Dialog (a
+	 * non-modal popover portals its content outside the Dialog's scroll lock, so the wheel is swallowed
+	 * and only the scrollbar works). Defaults to true for that reason; pass false for a non-modal popover.
 	 */
 	modalPopover?: boolean;
 
@@ -315,7 +316,7 @@ export const MultiSelect = React.forwardRef<MultiSelectRef, MultiSelectProps>(
 			animation = 0,
 			animationConfig,
 			maxCount = 3,
-			modalPopover = false,
+			modalPopover = true,
 			className,
 			hideSelectAll = false,
 			searchable = true,
