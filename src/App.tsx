@@ -7,14 +7,33 @@ import { GameDataProvider } from './contexts/GameDataContext';
 import { SettingsProvider } from './contexts/SettingsContext';
 import { GameplayProvider } from './contexts/GameplayContext';
 import { LocalEngineManager } from './components/LocalEngineManager';
+import { IntroSequence } from './components/IntroSequence';
 import GameViewer from './views/GameViewer';
 import MainMenu from './views/MainMenu';
 import type { CharacterData, Dictionary, Entity } from '@/types';
 
+/** Set once the first-run welcome intro has played, so it never auto-plays again on this device. */
+const INTRO_SEEN_KEY = 'FORMAMORPH_introSeen';
 
 function App() {
   const [currentView, setCurrentView] = useState<DevView>('mainMenu');
   const devRoute = useDevRoute();
+
+  // First-run welcome intro: cinematic on the first ever launch (kicker + slow reveal), snappy on replay.
+  // Suppressed when a dev-router hash is steering the app somewhere specific, so verification isn't blocked.
+  const [introPace, setIntroPace] = useState<'cine' | 'snap' | null>(() => {
+    if (typeof window === 'undefined') return null;
+    if (window.location.hash.includes('dev')) return null;
+    try { return localStorage.getItem(INTRO_SEEN_KEY) ? null : 'cine'; } catch { return null; }
+  });
+  const handleIntroDone = () => {
+    setIntroPace(null);
+    try { localStorage.setItem(INTRO_SEEN_KEY, '1'); } catch { /* private mode — just don't persist */ }
+  };
+  // DEV: `#dev?modal=intro` replays the cinematic intro so it can be verified in one jump.
+  useEffect(() => {
+    if (import.meta.env.DEV && devRoute?.modal === 'intro') setIntroPace('cine');
+  }, [devRoute?.modal]);
 
   // DEV dev-router: install `window.__fmDev` and let a `#dev?view=…` hash drive the top-level screen so
   // preview verification can land in one call (see `devRouter.ts`). No-op / tree-shaken in production.
@@ -67,7 +86,11 @@ function App() {
             <MainMenu
               onStartGame={handleStartGame}
               onLoadSaveGame={handleLoadSaveGame}
+              onReplayIntro={() => setIntroPace('snap')}
             />
+          )}
+          {currentView === 'mainMenu' && introPace && (
+            <IntroSequence pace={introPace} onComplete={handleIntroDone} />
           )}
           {currentView === 'gameViewer' && (
             <GameplayProvider>

@@ -72,6 +72,8 @@ interface MainMenuProps {
   onStartGame: (traits: string[], characterData: CharacterData | null, isNewGame?: boolean, startingLocationId?: string | null, dictionaries?: Dictionary[] | null, characters?: Entity[] | null) => void;
   /** Cold-load a save from the menu: its world is loaded into GameData here, then App enters the game. */
   onLoadSaveGame: (saveId: string) => void;
+  /** Easter-egg: replay the first-run welcome intro (snappy). Wired to the footer version click. */
+  onReplayIntro?: () => void;
 }
 
 const defaultWorlds = [
@@ -115,7 +117,7 @@ const applyWorldOrder = <T extends { id: string }>(list: T[], order: string[]): 
 };
 
 
-const MainMenu = ({ onStartGame, onLoadSaveGame }: MainMenuProps) => {
+const MainMenu = ({ onStartGame, onLoadSaveGame, onReplayIntro }: MainMenuProps) => {
   const {
     traits, traitGroups, stats, locations, loadWorldData,
     dictionaries: worldBooks,
@@ -1081,9 +1083,15 @@ const MainMenu = ({ onStartGame, onLoadSaveGame }: MainMenuProps) => {
               )}
             </button>
           )}
-          <span className="text-xs text-muted-foreground/60 select-none">
+          <button
+            type="button"
+            onClick={() => onReplayIntro?.()}
+            className="text-xs text-muted-foreground/60 select-none cursor-pointer hover:text-muted-foreground transition-colors"
+            title="Replay intro"
+            aria-label="Replay intro"
+          >
             v{APP_VERSION}{BUILD_TAG && ` · ${BUILD_TAG}`}
-          </span>
+          </button>
         </div>
 
         {/* Center: copyright + origin credit (original is MIT — see THIRD-PARTY-NOTICES / legal/) */}

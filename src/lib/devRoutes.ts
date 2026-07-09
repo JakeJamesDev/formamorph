@@ -14,9 +14,10 @@ export type DevView = (typeof DEV_VIEWS)[number];
 
 /** Modals the router can open via `#dev?modal=…`. `settings` opens from MainMenu or GameViewer; `menu` and
  *  `worldEditor` open from MainMenu; `entity`/`export` are in-game (GameViewer). `worldEditor` is an in-place
- *  modal on MainMenu (not a top-level view). `localModel` is intentionally absent — it lives inside
+ *  modal on MainMenu (not a top-level view). `intro` replays the first-run welcome overlay on MainMenu.
+ *  `localModel` is intentionally absent — it lives inside
  *  Settings→LocalModelPanel, reached via `modal=settings` + its tab, not its own name. */
-export const DEV_MODALS = ['settings', 'entity', 'export', 'menu', 'worldEditor'] as const;
+export const DEV_MODALS = ['settings', 'entity', 'export', 'menu', 'worldEditor', 'intro'] as const;
 export type DevModal = (typeof DEV_MODALS)[number];
 
 /** Coverage ledger: tabbed surface → the sub-tabs the router can target (via `tab=…`). Kept in lockstep
