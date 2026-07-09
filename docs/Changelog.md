@@ -14,6 +14,13 @@ _Unreleased — new work accumulates here until it earns a version bump._
 
 ### Minor Changes
 
+#### ➕ Added
+
+- **👤 User-facing**
+  - **A first-run welcome animation.** The first time you ever launch Formamorph, a "Welcome To…" title types in and a field of liquid "goo" pops up, gathers together, and merges into the **Formamorph** title before handing off to the menu. It plays once (never again automatically) and respects your **reduced-motion** setting (shows a still title instead). Click the tiny version number in the footer to **replay** it any time (snappier the second time around).
+- **🛠️ Developer tooling**
+  - **Intro sequence** (`src/components/IntroSequence.tsx`) — a self-contained Canvas 2D + SVG-metaball-filter animation. Two layers (themed background + a blob layer behind a `feGaussianBlur`+`feColorMatrix` goo threshold), with the real letterforms drawn *onto* the filtered layer so they read crisply while keeping liquid edges; the word's alpha ramps through the threshold across the whole hold so it appears to *set* out of the goo rather than fade in. Colors are pulled live from the app's CSS theme tokens (`--primary`/`--card`/`--background`), so it adapts to the active skin. The puffy title face is a ~2KB **Baloo 2** subset embedded as base64 (`src/lib/introFont.ts`), loaded via `FontFace` before canvas sampling. First-run gating is a `localStorage` flag in `App.tsx` (cinematic first, snappy on replay); the overlay mounts over MainMenu and fades its backdrop out on hand-off to reveal the menu underneath. Reachable for verification via the dev-router (`#dev?modal=intro`).
+
 #### 🐛 Fixed
 
 - **👤 User-facing**
