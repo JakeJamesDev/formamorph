@@ -45,7 +45,7 @@ function EntryRow({ entry, selected, onSelect, onToggleEnabled, onDuplicate, onR
         {...attributes}
         {...listeners}
         onClick={(e) => e.stopPropagation()}
-        className={`cursor-grab touch-none px-1 ${selected ? 'text-primary-foreground' : 'text-muted-foreground'}`}
+        className={`shrink-0 cursor-grab touch-none px-1 ${selected ? 'text-primary-foreground' : 'text-muted-foreground'}`}
         title="Drag to reorder, re-place, or move to another dictionary"
       >
         <GripVertical className="h-4 w-4" />
@@ -57,12 +57,12 @@ function EntryRow({ entry, selected, onSelect, onToggleEnabled, onDuplicate, onR
         className="mx-1 shrink-0"
         title={entry.enabled === false ? 'Disabled — click to enable' : 'Enabled — click to disable'}
       />
-      <span className="flex-grow truncate">{entry.name || entry.key || 'Untitled'}</span>
-      <Button variant="ghost" size="icon" className={selected ? 'text-primary-foreground' : 'text-muted-foreground'}
+      <span className="min-w-0 flex-grow truncate">{entry.name || entry.key || 'Untitled'}</span>
+      <Button variant="ghost" size="icon" className={`shrink-0 ${selected ? 'text-primary-foreground' : 'text-muted-foreground'}`}
         onClick={(e) => { e.stopPropagation(); onDuplicate(entry.id); }} title="Duplicate">
         <Copy className="h-4 w-4" />
       </Button>
-      <Button variant="ghost" size="icon" className={selected ? 'text-primary-foreground' : 'text-muted-foreground'}
+      <Button variant="ghost" size="icon" className={`shrink-0 ${selected ? 'text-primary-foreground' : 'text-muted-foreground'}`}
         onClick={(e) => { e.stopPropagation(); onRemove(entry.id); }} title="Delete">
         <X className="h-4 w-4" />
       </Button>
@@ -170,7 +170,7 @@ function BookRow({ book, collapsed, collapsedZones, selectedId, onToggleCollapse
           {...attributes}
           {...listeners}
           onClick={(e) => e.stopPropagation()}
-          className={`cursor-grab touch-none px-1 ${selected ? 'text-primary-foreground' : 'text-muted-foreground'}`}
+          className={`shrink-0 cursor-grab touch-none px-1 ${selected ? 'text-primary-foreground' : 'text-muted-foreground'}`}
           title="Drag to reorder dictionaries"
         >
           <GripVertical className="h-4 w-4" />
@@ -182,18 +182,18 @@ function BookRow({ book, collapsed, collapsedZones, selectedId, onToggleCollapse
           className="mx-1 shrink-0"
           title={book.enabled === false ? 'Disabled — click to enable' : 'Enabled — click to disable'}
         />
-        <span className="flex-grow truncate font-medium">{book.name}</span>
+        <span className="min-w-0 flex-grow truncate font-medium">{book.name}</span>
         <span
-          className={`text-xs mr-1 ${selected ? 'text-primary-foreground/80' : 'text-muted-foreground'}`}
+          className={`shrink-0 text-xs mr-1 ${selected ? 'text-primary-foreground/80' : 'text-muted-foreground'}`}
           title="Enabled entries / total entries"
         >
           {enabledCount}/{book.entries.length}
         </span>
-        <Button variant="ghost" size="icon" className={selected ? 'text-primary-foreground' : 'text-muted-foreground'}
+        <Button variant="ghost" size="icon" className={`shrink-0 ${selected ? 'text-primary-foreground' : 'text-muted-foreground'}`}
           onClick={(e) => { e.stopPropagation(); onAddEntry(book.id); }} title="Add entry">
           <FilePlus className="h-4 w-4" />
         </Button>
-        <Button variant="ghost" size="icon" className={selected ? 'text-primary-foreground' : 'text-muted-foreground'}
+        <Button variant="ghost" size="icon" className={`shrink-0 ${selected ? 'text-primary-foreground' : 'text-muted-foreground'}`}
           onClick={(e) => { e.stopPropagation(); onDeleteBook(book.id); }} title="Delete dictionary">
           <X className="h-4 w-4" />
         </Button>

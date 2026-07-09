@@ -17,7 +17,8 @@ win:
     - portable
   icon: public/icon.png
 portable:
-  artifactName: Formamorph-${version}.exe
+  # `-portable` so a future installer (nsis → Formamorph-${version}-setup.exe) never collides on name.
+  artifactName: Formamorph-${version}-portable.exe
 linux:
   target:
     - AppImage

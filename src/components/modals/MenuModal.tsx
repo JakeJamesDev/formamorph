@@ -1,177 +1,88 @@
 import React from 'react';
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Popover, PopoverTrigger, PopoverContent } from "@/components/ui/popover";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Menu, Save, Download, Import, Trash2, Loader2 } from "lucide-react";
+import { Menu, Save } from "lucide-react";
 import { ConfirmDialog } from '../ConfirmDialog';
-import { saveToDB, getAllSaves, deleteFromDB, loadFromDB } from './dbUtils';
-import { downloadSaveFile, terminateWorker as terminateDownloadWorker } from '../../lib/saveDownloadWorkerUtils';
-import { APP_VERSION, isSaveEnvelope, migrateSave, SAVE_FILE_KIND } from '../../lib/version';
+import { getAllSaveRecords } from './dbUtils';
 import { useDevRoute } from '../../lib/devRouter';
-import { cn } from "@/lib/utils";
-import type { WorldOverview, GameState } from "@/types";
+import { LoadGameDialog } from './LoadGameDialog';
+import type { WorldOverview, SaveRecord } from "@/types";
 
-/** A stored save record as read back from IndexedDB (v2 envelope or a legacy flat state). */
-interface RawSave {
-  name: string;
-  version?: number;
-  currentState?: GameState;
-  timestamp?: string;
-  gameTime?: number;
-  worldName?: string | null;
-}
-
-/** A row shown in the load list. */
-interface SaveListItem {
-  name: string;
-  timestamp: string;
-  gameTime: number;
-  worldName: string | null;
-}
-
-export const MenuModal = ({ onSettingsClick, onSave, onLoad, worldOverview, onExitToMenu }: {
+export const MenuModal = ({ onSettingsClick, onSave, onLoad, worldOverview, worldId, onExitToMenu }: {
   onSettingsClick: () => void;
-  onSave: (saveName: string) => Promise<unknown> | void;
-  onLoad: (saveName: string) => Promise<unknown> | void;
+  onSave: (saveName: string, opts?: { overwriteId?: string }) => Promise<unknown> | void;
+  /** `worldId` set ⇒ the save belongs to a different (installed) world; the loader switches to it first. */
+  onLoad: (saveId: string, worldId?: string) => Promise<unknown> | void;
   worldOverview?: WorldOverview;
+  /** Stable id of the currently loaded world (from GameData) — the current world's folder key. */
+  worldId?: string;
   onExitToMenu: () => void;
 }) => {
+  const current = React.useMemo(
+    () => ({ id: worldId ? String(worldId) : '__none__', name: worldOverview?.name ?? 'Current World' }),
+    [worldId, worldOverview],
+  );
+
   const [menuOpen, setMenuOpen] = React.useState(false);
   const [showSaveDialog, setShowSaveDialog] = React.useState(false);
   const [showLoadDialog, setShowLoadDialog] = React.useState(false);
-  // DEV dev-router: `#dev?modal=menu` opens the save/load dialog. Read the route directly (like the other
-  // consumers) so the whole thing tree-shakes from prod — a prop would leak its name into the bundle.
   const devRoute = useDevRoute();
   React.useEffect(() => {
     if (import.meta.env.DEV && devRoute?.modal === 'menu') setShowLoadDialog(true);
   }, [devRoute?.modal]);
   const [showExitConfirm, setShowExitConfirm] = React.useState(false);
   const [saveName, setSaveName] = React.useState('');
-  const [saveList, setSaveList] = React.useState<SaveListItem[]>([]);
-  const [isLoading, setIsLoading] = React.useState(false);
-  const [loadingMessage, setLoadingMessage] = React.useState('');
-  const [isDownloading, setIsDownloading] = React.useState(false);
-  const [downloadingSaveName, setDownloadingSaveName] = React.useState('');
+  const [records, setRecords] = React.useState<SaveRecord[]>([]);
+  const [dupConflict, setDupConflict] = React.useState<{ name: string; existingId: string } | null>(null);
 
-  // Clean up web worker when component unmounts
+  // Load existing saves when the Save dialog opens, to detect a same-name save in the current world.
   React.useEffect(() => {
-    return () => {
-      terminateDownloadWorker();
-    };
-  }, []);
+    if (!showSaveDialog) return;
+    let cancelled = false;
+    void getAllSaveRecords().then(all => { if (!cancelled) setRecords(all); }).catch(() => {});
+    return () => { cancelled = true; };
+  }, [showSaveDialog]);
 
-  React.useEffect(() => {
-    if (showLoadDialog) {
-      const loadSaves = async () => {
-        try {
-          const localStorageSaves = [];
-          for (let i = 0; i < localStorage.length; i++) {
-            const key = localStorage.key(i);
-            if (key && key.startsWith('FORMAMORPH_save_')) {
-              try {
-                const data = JSON.parse(localStorage.getItem(key) || 'null');
-                const saveName = key.replace('FORMAMORPH_save_', '');
-                await saveToDB(saveName, data);
-                localStorageSaves.push(key);
-              } catch (error) {
-                console.error('Error migrating save:', error);
-              }
-            }
-          }
+  const resolvesToCurrent = React.useCallback((r: SaveRecord) =>
+    r.worldId ? r.worldId === current.id : (r.currentState?.worldName ?? null) === current.name,
+    [current],
+  );
 
-          localStorageSaves.forEach(key => localStorage.removeItem(key));
-
-          const saves = await getAllSaves() as RawSave[];
-          setSaveList(saves.map(save => {
-            // Handle both old and new save formats
-            const isNewFormat = !!save.currentState;
-            const state: GameState | RawSave = isNewFormat && save.currentState ? save.currentState : save;
-
-            return {
-              name: save.name,
-              timestamp: state.timestamp ? new Date(state.timestamp).toLocaleString() : '',
-              gameTime: state.gameTime ?? 0,
-              worldName: state.worldName ?? null
-            };
-          }).sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime()));
-        } catch (error) {
-          console.error('Error loading saves:', error);
-          setSaveList([]);
-        }
-      };
-
-      loadSaves();
-    }
-  }, [showLoadDialog]);
-
-  const handleSave = async () => {
-    if (!saveName.trim()) return;
+  const commitSave = async (name: string, overwriteId?: string) => {
     try {
-      await onSave(saveName);
+      await onSave(name, overwriteId ? { overwriteId } : undefined);
       setSaveName('');
       setShowSaveDialog(false);
+      setDupConflict(null);
     } catch (error) {
       console.error('Error saving game:', error);
     }
   };
 
-  const handleDelete = async (saveName: string) => {
-    try {
-      await deleteFromDB(saveName);
-      setSaveList(prevList => prevList.filter(save => save.name !== saveName));
-    } catch (error) {
-      console.error('Error deleting save:', error);
-    }
-  };
-
-  const formatGameTime = (time: number) => {
-    const hours = Math.floor(time);
-    const minutes = Math.floor((time - hours) * 60);
-    return `${hours}h ${minutes}m`;
+  const handleSaveClick = async () => {
+    const name = saveName.trim();
+    if (!name) return;
+    const existing = records.find(r => r.name === name && resolvesToCurrent(r));
+    if (existing) setDupConflict({ name, existingId: existing.id });
+    else await commitSave(name);
   };
 
   return (
     <>
       <Popover open={menuOpen} onOpenChange={setMenuOpen}>
         <PopoverTrigger asChild>
-          <Button
-            className="flex items-center justify-center rounded-full w-10 h-10 p-0"
-            title="Menu"
-          >
+          <Button className="flex items-center justify-center rounded-full w-10 h-10 p-0" title="Menu">
             <Menu className="h-5 w-5" />
           </Button>
         </PopoverTrigger>
         <PopoverContent align="end" className="w-48 p-1">
           <div className="flex flex-col">
-            <Button
-              variant="ghost"
-              className="w-full justify-start"
-              onClick={() => { setMenuOpen(false); setShowSaveDialog(true); }}
-            >
-              Save Game
-            </Button>
-            <Button
-              variant="ghost"
-              className="w-full justify-start"
-              onClick={() => { setMenuOpen(false); setShowLoadDialog(true); }}
-            >
-              Load Game
-            </Button>
-            <Button
-              variant="ghost"
-              className="w-full justify-start"
-              onClick={() => { setMenuOpen(false); onSettingsClick(); }}
-            >
-              Settings
-            </Button>
-            <Button
-              variant="ghost"
-              className="w-full justify-start"
-              onClick={() => { setMenuOpen(false); setShowExitConfirm(true); }}
-            >
-              Exit to Main Menu
-            </Button>
+            <Button variant="ghost" className="w-full justify-start" onClick={() => { setMenuOpen(false); setShowSaveDialog(true); }}>Save Game</Button>
+            <Button variant="ghost" className="w-full justify-start" onClick={() => { setMenuOpen(false); setShowLoadDialog(true); }}>Load Game</Button>
+            <Button variant="ghost" className="w-full justify-start" onClick={() => { setMenuOpen(false); onSettingsClick(); }}>Settings</Button>
+            <Button variant="ghost" className="w-full justify-start" onClick={() => { setMenuOpen(false); setShowExitConfirm(true); }}>Exit to Main Menu</Button>
           </div>
         </PopoverContent>
       </Popover>
@@ -195,14 +106,9 @@ export const MenuModal = ({ onSettingsClick, onSave, onLoad, worldOverview, onEx
               placeholder="Enter save name"
               value={saveName}
               onChange={(e) => setSaveName(e.target.value)}
-              onKeyDown={(e) => {
-                if (e.key === 'Enter') handleSave();
-              }}
+              onKeyDown={(e) => { if (e.key === 'Enter') handleSaveClick(); }}
             />
-            <Button
-              onClick={handleSave}
-              className="flex items-center justify-center gap-2"
-            >
+            <Button onClick={handleSaveClick} className="flex items-center justify-center gap-2">
               <Save className="h-4 w-4" />
               <span>Save</span>
             </Button>
@@ -210,202 +116,24 @@ export const MenuModal = ({ onSettingsClick, onSave, onLoad, worldOverview, onEx
         </DialogContent>
       </Dialog>
 
-      {/* Load Game popup */}
-      <Dialog open={showLoadDialog} onOpenChange={setShowLoadDialog}>
-        <DialogContent className="sm:max-w-[425px] max-h-[90vh] flex flex-col">
-          <DialogHeader className="flex-shrink-0">
-            <DialogTitle>Load Game</DialogTitle>
+      {/* Duplicate-name-in-world resolution */}
+      <Dialog open={!!dupConflict} onOpenChange={(open) => { if (!open) setDupConflict(null); }}>
+        <DialogContent className="sm:max-w-[425px]">
+          <DialogHeader>
+            <DialogTitle>Save already exists</DialogTitle>
           </DialogHeader>
-          <div className="flex flex-col py-4">
-              <div className="mb-4">
-                <div className="grid grid-cols-1 gap-2">
-                  <input
-                    type="file"
-                    id="save-upload"
-                    className="hidden"
-                    accept=".json"
-                    onChange={async (e) => {
-                    try {
-                      const file = e.target.files?.[0];
-                      if (!file) return;
+          <p className="text-sm text-muted-foreground py-2">
+            A save named “{dupConflict?.name}” already exists in this world. Overwrite it, or keep both?
+          </p>
+          <DialogFooter className="gap-2 sm:gap-2">
+            <Button variant="outline" onClick={() => setDupConflict(null)}>Cancel</Button>
+            <Button variant="secondary" onClick={() => dupConflict && commitSave(dupConflict.name)}>Keep both</Button>
+            <Button variant="destructive" onClick={() => dupConflict && commitSave(dupConflict.name, dupConflict.existingId)}>Overwrite</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
-                      const text = await file.text();
-                      const save = JSON.parse(text);
-                      // Migrate a legacy v1.2 envelope to the current shape on import (same migrateSave the
-                      // loader runs), then stamp clean — so the stored save is current and version detection
-                      // stays stamp-based. A current-shape save just gets its version stamp refreshed.
-                      if (isSaveEnvelope(save)) {
-                        const migrated = typeof save.version === 'number' ? migrateSave(save) : save;
-                        Object.assign(save, migrated, { version: APP_VERSION });
-                      }
-
-                      await saveToDB(save.name, save);
-
-                      const saves = await getAllSaves() as RawSave[];
-                      setSaveList(saves.map(save => {
-                        // Handle both old and new save formats
-                        const isNewFormat = !!save.currentState;
-                        const state: GameState | RawSave = isNewFormat && save.currentState ? save.currentState : save;
-
-                        return {
-                          name: save.name,
-                          timestamp: state.timestamp ? new Date(state.timestamp).toLocaleString() : '',
-                          gameTime: state.gameTime ?? 0,
-                          worldName: state.worldName ?? null
-                        };
-                      }).sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime()));
-
-                      e.target.value = '';
-                    } catch (error) {
-                      console.error('Error uploading save:', error);
-                    }
-                  }}
-                />
-                  <Button
-                    variant="outline"
-                    className="w-full flex items-center justify-center gap-2"
-                    onClick={() => document.getElementById('save-upload')?.click()}
-                  >
-                    <Import className="h-4 w-4" />
-                    <span>Import</span>
-                  </Button>
-                </div>
-              </div>
-              {/* Plain overflow container (not Radix ScrollArea): the dialog is `max-h`, not a fixed
-                  height, so a ScrollArea Viewport can't inherit a definite height and would clip instead
-                  of scroll. `max-h` + `overflow-y-auto` sizes to content and scrolls past the cap; native
-                  scrollbars are themed to match Radix globally (index.css). */}
-              <div className="max-h-[60vh] overflow-y-auto">
-                  <div className="space-y-2 p-4">
-                  {saveList.map((save) => {
-                    const handleLoad = async () => {
-                      if (isLoading) return;
-                      try {
-                        setIsLoading(true);
-                        setLoadingMessage('Loading save file. Please wait...');
-
-                        // Add a small delay to ensure the loading state is visible
-                        await new Promise(resolve => setTimeout(resolve, 100));
-
-                        await onLoad(save.name);
-                        setShowLoadDialog(false);
-                      } catch (error) {
-                        console.error('Error loading game:', error);
-                      } finally {
-                        setIsLoading(false);
-                        setLoadingMessage('');
-                      }
-                    };
-                    return (
-                      // Row is a div (not a Button) so it grows with its content and never clips, and so the
-                      // Delete/Download controls are valid siblings — a <button> can't nest <button>s.
-                      <div
-                        key={save.name}
-                        role="button"
-                        tabIndex={0}
-                        aria-disabled={isLoading}
-                        className={cn(
-                          "flex items-center gap-2 w-full rounded-md border border-input bg-background px-3 py-2 text-left text-sm cursor-pointer transition-colors hover:bg-accent hover:text-accent-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2",
-                          isLoading && "pointer-events-none opacity-50",
-                        )}
-                        onClick={handleLoad}
-                        onKeyDown={(e) => {
-                          if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); handleLoad(); }
-                        }}
-                      >
-                        {/* Delete — far left */}
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          className="h-7 w-7 p-0 shrink-0 text-destructive"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            handleDelete(save.name);
-                          }}
-                        >
-                          <Trash2 className="h-3.5 w-3.5" />
-                        </Button>
-
-                        {/* Details — middle column grows and wraps */}
-                        <div className="flex-1 min-w-0">
-                          <div className="break-words font-medium">{save.name}</div>
-                          <div className="text-xs opacity-70">
-                            {save.timestamp} - Game Time: {formatGameTime(save.gameTime)}
-                          </div>
-                          {save.worldName && save.worldName !== worldOverview?.name && (
-                            <div className="text-xs text-warning break-words">
-                              Warning: Different world ({save.worldName})
-                            </div>
-                          )}
-                        </div>
-
-                        {/* Download — far right */}
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          className="h-7 w-7 p-0 shrink-0"
-                          disabled={isDownloading || isLoading}
-                          onClick={async (e) => {
-                            e.stopPropagation();
-                            try {
-                              // Set downloading state
-                              setIsDownloading(true);
-                              setDownloadingSaveName(save.name);
-                              setLoadingMessage(`Preparing ${save.name} for download...`);
-
-                              // Load the save data
-                              const fullSaveData = await loadFromDB(save.name);
-
-                              // Use web worker to process the save data; stamp the (optional) file kind
-                              // on the export only — the stored save is untouched.
-                              const { dataUrl, fileName } = await downloadSaveFile({ formamorphKind: SAVE_FILE_KIND, ...(fullSaveData as object) }) as { dataUrl: string; fileName: string };
-
-                              // Create a download link
-                              const element = document.createElement('a');
-                              element.href = dataUrl;
-                              element.download = `${fileName}.json`;
-                              document.body.appendChild(element);
-                              element.click();
-                              document.body.removeChild(element);
-                            } catch (error) {
-                              console.error('Error downloading save:', error);
-                            } finally {
-                              setIsDownloading(false);
-                              setDownloadingSaveName('');
-                              setLoadingMessage('');
-                            }
-                          }}
-                        >
-                          <Download className="h-3.5 w-3.5" />
-                        </Button>
-                      </div>
-                    );
-                  })}
-                  {(isLoading || isDownloading) && (
-                    <div className="text-center py-4 flex flex-col items-center space-y-2">
-                      <Loader2 className="h-6 w-6 animate-spin" />
-                      <div className="text-sm">
-                        {loadingMessage || 'Processing...'}
-                      </div>
-                      <div className="text-xs text-warning max-w-xs">
-                        {isDownloading
-                          ? `Please wait while the save file "${downloadingSaveName}" is being prepared for download. For large save files, this may take a moment.`
-                          : 'Please wait while the save file is being processed. For large save files, this may take a moment. Do not attempt to load another save until this process completes.'
-                        }
-                      </div>
-                    </div>
-                  )}
-
-                  {!isLoading && saveList.length === 0 && (
-                    <div className="text-center py-4 opacity-70">
-                      No saved games found
-                    </div>
-                  )}
-                  </div>
-                </div>
-            </div>
-          </DialogContent>
-        </Dialog>
+      <LoadGameDialog open={showLoadDialog} onOpenChange={setShowLoadDialog} current={current} onLoad={onLoad} />
     </>
   );
 };

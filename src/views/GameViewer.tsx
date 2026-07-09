@@ -42,10 +42,11 @@ import { LocationModal } from "../components/modals/LocationModal";
 import { SettingsModal } from "../components/modals/SettingsModal";
 import { useDevRoute } from "../lib/devRouter";
 import { loadDevFixture } from "../lib/devFixtures";
-import { saveToDB } from "../components/modals/dbUtils";
+import { putSaveRecord } from "../components/modals/dbUtils";
+import WorldStorageService from "../services/WorldStorageService";
 import { MenuModal } from "../components/modals/MenuModal";
 import WorldEditor from "./WorldEditor";
-import type { CharacterData, ChatMessage, ChatRole, AIRequestType, AITurnResult, StatChange, Trait, GameLocation, MediaAsset, Dictionary, Entity } from "@/types";
+import type { CharacterData, ChatMessage, ChatRole, AIRequestType, AITurnResult, StatChange, Trait, GameLocation, MediaAsset, Dictionary, Entity, SaveRecord, World } from "@/types";
 import { UnsavedChangesDialog } from "../components/UnsavedChangesDialog";
 import { estimateHistoryChars, estimateTokens } from "../lib/memoryUtils";
 import { parseNarration, stripReasoning, stripReasoningLive } from "../lib/aiResponse";
@@ -115,6 +116,9 @@ interface GameViewerProps {
   /** Library characters chosen at the entry step to place in the starting location this playthrough (runtime
    *  only — seeded as `discoveredEntities`, never written to the authored world). */
   initialCharacters?: Entity[] | null;
+  /** Cold-load: a save id to restore on mount (main-menu Load Game) instead of starting a fresh game. The
+   *  world it belongs to is loaded into GameData before this mounts. */
+  initialSaveId?: string | null;
   onExitToMenu: () => void;
 }
 
@@ -193,6 +197,7 @@ const GameViewer = ({
   initialLocationId = null,
   initialDictionaries = null,
   initialCharacters = null,
+  initialSaveId = null,
   onExitToMenu,
 }: GameViewerProps) => {
   // AbortController reference for canceling AI requests
@@ -208,6 +213,7 @@ const GameViewer = ({
     worldId,
     isWorldDirty,
     saveWorld,
+    loadWorldData,
   } = useGameData();
 
   // World README popup — shown once on entry (new game or save load) when the world has README text and
@@ -486,10 +492,10 @@ const GameViewer = ({
     void (async () => {
       const fx = await loadDevFixture(name);
       if (!fx) return;
-      // saveToDB keys off the record's own `name` (spread wins), and the fixture JSON carries its original
-      // name — so align it to saveName, else loadGame looks under the wrong key.
-      await saveToDB(fx.saveName, { ...(fx.save as unknown as Record<string, unknown>), name: fx.saveName });
-      await loadGame(fx.saveName, locations);
+      // Seed the fixture as an id-keyed record and load it by that id.
+      const id = crypto.randomUUID();
+      await putSaveRecord({ ...(fx.save as unknown as Record<string, unknown>), id, name: fx.saveName } as unknown as SaveRecord);
+      await loadGame(id, locations);
     })();
   }, [devRoute?.fixture, locations, loadGame]);
   const [isEditingWorld, setIsEditingWorld] = useState(false);
@@ -2079,6 +2085,13 @@ ${playerNotes || NONE_PLACEHOLDER}
     if (!isInitialized.current && locations.length > 0) {
       isInitialized.current = true;
 
+      // Cold-load from the main menu: restore the save instead of starting a fresh game. Its world is
+      // already in GameData (loaded before this view mounted), so `locations` here are the right ones.
+      if (initialSaveId) {
+        void loadGame(initialSaveId, locations);
+        return;
+      }
+
       initialTraits.forEach((traitId) => {
         const trait = traits.find((t) => t.id === traitId);
         if (trait) {
@@ -2106,6 +2119,8 @@ ${playerNotes || NONE_PLACEHOLDER}
       }
     }
   }, [
+    initialSaveId,
+    loadGame,
     initialTraits,
     initialLocationId,
     initialDictionaries,
@@ -2462,9 +2477,25 @@ ${playerNotes || NONE_PLACEHOLDER}
         </Button>
         <MenuModal
           onSettingsClick={() => setIsSettingsOpen(true)}
-          onSave={(name) => saveGame(name, worldOverview.name)}
-          onLoad={(name) => loadGame(name, locations)}
+          onSave={(name, opts) => saveGame(name, worldOverview.name, worldId ? String(worldId) : undefined, opts?.overwriteId)}
+          onLoad={async (id, targetWorldId) => {
+            // A save from another (installed) world: swap GameData to that world first, then restore the
+            // save against its locations — otherwise the save would run inside the current world's shell.
+            if (targetWorldId && targetWorldId !== (worldId ? String(worldId) : undefined)) {
+              try {
+                const world = await WorldStorageService.getWorldData(targetWorldId) as World;
+                loadWorldData(world);
+                return await loadGame(id, Array.isArray(world.locations) ? world.locations : []);
+              } catch (error) {
+                console.error('Cross-world load failed:', error);
+                toast.error("Couldn't load that save's world.");
+                return false;
+              }
+            }
+            return loadGame(id, locations);
+          }}
           worldOverview={worldOverview}
+          worldId={worldId ? String(worldId) : undefined}
           onExitToMenu={onExitToMenu}
         />
       </div>

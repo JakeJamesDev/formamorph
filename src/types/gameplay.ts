@@ -114,6 +114,16 @@ export interface SaveObject {
   /** v2.x: the dictionary set chosen at world entry (reordered/toggled books, plus any added library
    *  dictionaries). Absent on older saves → loaders keep the world's current dictionaries. */
   dictionaries?: Dictionary[];
+  /** Stable id of the world this save belongs to (`WorldOverview.id`), for grouping saves into per-world
+   *  folders. Absent on saves written before folders — those fall back to matching by `worldName`. */
+  worldId?: string;
+}
+
+/** A save as persisted in IndexedDB: the envelope plus the stable record `id` (store keyPath) and the
+ *  save's display `name`. `id` is device-local — stripped from the exported `.json`, re-minted on import. */
+export interface SaveRecord extends SaveObject {
+  id: string;
+  name: string;
 }
 
 /** v1.2.0: client-side community-browser hide preferences (persisted in localStorage). */
