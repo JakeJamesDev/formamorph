@@ -9,13 +9,14 @@
  */
 
 /** Top-level screens App can route to (App types `currentView` off this — single source of truth). */
-export const DEV_VIEWS = ['mainMenu', 'gameViewer', 'worldEditor'] as const;
+export const DEV_VIEWS = ['mainMenu', 'gameViewer'] as const;
 export type DevView = (typeof DEV_VIEWS)[number];
 
-/** Modals the router can open via `#dev?modal=…`. `settings` opens from MainMenu or GameViewer; the rest
- *  are in-game (GameViewer). `localModel` is intentionally absent — it lives inside Settings→LocalModelPanel,
- *  not as a standalone modal, so it's reached via `modal=settings` + its tab, not its own name. */
-export const DEV_MODALS = ['settings', 'entity', 'export', 'menu'] as const;
+/** Modals the router can open via `#dev?modal=…`. `settings` opens from MainMenu or GameViewer; `menu` and
+ *  `worldEditor` open from MainMenu; `entity`/`export` are in-game (GameViewer). `worldEditor` is an in-place
+ *  modal on MainMenu (not a top-level view). `localModel` is intentionally absent — it lives inside
+ *  Settings→LocalModelPanel, reached via `modal=settings` + its tab, not its own name. */
+export const DEV_MODALS = ['settings', 'entity', 'export', 'menu', 'worldEditor'] as const;
 export type DevModal = (typeof DEV_MODALS)[number];
 
 /** Coverage ledger: tabbed surface → the sub-tabs the router can target (via `tab=…`). Kept in lockstep

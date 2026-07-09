@@ -23,6 +23,7 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import CharacterCustomization, { defaultCharacterData } from './CharacterCustomization';
 import { SettingsModal } from '../components/modals/SettingsModal';
 import { LoadGameDialog } from '../components/modals/LoadGameDialog';
+import WorldEditor from './WorldEditor';
 import {
   DndContext,
   closestCenter,
@@ -69,7 +70,6 @@ import PatreonIcon from "@/components/PatreonIcon";
 
 interface MainMenuProps {
   onStartGame: (traits: string[], characterData: CharacterData | null, isNewGame?: boolean, startingLocationId?: string | null, dictionaries?: Dictionary[] | null, characters?: Entity[] | null) => void;
-  onOpenWorldEditor: () => void;
   /** Cold-load a save from the menu: its world is loaded into GameData here, then App enters the game. */
   onLoadSaveGame: (saveId: string) => void;
 }
@@ -115,7 +115,7 @@ const applyWorldOrder = <T extends { id: string }>(list: T[], order: string[]): 
 };
 
 
-const MainMenu = ({ onStartGame, onOpenWorldEditor, onLoadSaveGame }: MainMenuProps) => {
+const MainMenu = ({ onStartGame, onLoadSaveGame }: MainMenuProps) => {
   const {
     traits, traitGroups, stats, locations, loadWorldData,
     dictionaries: worldBooks,
@@ -138,6 +138,9 @@ const MainMenu = ({ onStartGame, onOpenWorldEditor, onLoadSaveGame }: MainMenuPr
   const toggleWorldModalCollapsed = () => setWorldModalCollapsed((prev) => !prev);
   const [showWorldModal, setShowWorldModal] = useState(false);
   const [showMobileWorldEditorWarning, setShowMobileWorldEditorWarning] = useState(false);
+  // World Editor as an in-place modal (keeps MainMenu mounted so it animates and only the world grid
+  // refreshes on close). The editor's own back arrow + unsaved-changes prompt handle the dirty guard.
+  const [showWorldEditor, setShowWorldEditor] = useState(false);
   const [worldToDelete, setWorldToDelete] = useState<string | null>(null);
   const [showCharacterCustomization, setShowCharacterCustomization] = useState(false);
   const [showTraitSelection, setShowTraitSelection] = useState(false);
@@ -159,6 +162,7 @@ const MainMenu = ({ onStartGame, onOpenWorldEditor, onLoadSaveGame }: MainMenuPr
     if (!import.meta.env.DEV) return;
     if (devRoute?.modal === 'settings') setShowSettings(true);
     if (devRoute?.modal === 'menu') setShowLoadDialog(true);
+    if (devRoute?.modal === 'worldEditor') setShowWorldEditor(true);
   }, [devRoute?.modal]);
 
   // Cold-load: fetch the save's world into GameData, then hand the save id to App to enter the game.
@@ -261,7 +265,26 @@ const MainMenu = ({ onStartGame, onOpenWorldEditor, onLoadSaveGame }: MainMenuPr
     checkAuth();
   }, []);
 
-  // Initialize default worlds and load metadata
+  // Reload the world grid from storage. Reused on mount and after the World Editor modal closes so the
+  // grid reflects renames/edits/deletes without remounting MainMenu (mirrors refreshDictionaries/Entities).
+  const refreshWorlds = useCallback(async () => {
+    try {
+      await WorldStorageService.initialize();
+      const worldMetadata = await WorldStorageService.getWorldMetadata();
+      const mapped = worldMetadata.map(world => ({
+        ...world,
+        isLoading: false,
+        defaultName: defaultWorlds.find(dw => dw.id === world.id)?.defaultName || world.name
+      }));
+      setWorlds(applyWorldOrder(mapped, loadWorldOrder()));
+    } catch (error) {
+      console.error('Error loading worlds:', error);
+    } finally {
+      setIsLoadingWorlds(false);
+    }
+  }, []);
+
+  // Seed the default worlds once (first run only), then load the grid.
   useEffect(() => {
     const initializeWorlds = async () => {
       try {
@@ -273,24 +296,14 @@ const MainMenu = ({ onStartGame, onOpenWorldEditor, onLoadSaveGame }: MainMenuPr
           else if (failed.length < defaultWorlds.length) toast.error(`Some default worlds failed to load: ${failed.join(", ")}`);
           else toast.error("Failed to load default worlds");
         }
-        const worldMetadata = await WorldStorageService.getWorldMetadata();
-
-        const mapped = worldMetadata.map(world => ({
-          ...world,
-          isLoading: false,
-          defaultName: defaultWorlds.find(dw => dw.id === world.id)?.defaultName || world.name
-        }));
-        setWorlds(applyWorldOrder(mapped, loadWorldOrder()));
-
       } catch (error) {
-        console.error('Error initializing worlds:', error);
-      } finally {
-        setIsLoadingWorlds(false);
+        console.error('Error seeding default worlds:', error);
       }
+      await refreshWorlds();
     };
 
     initializeWorlds();
-  }, []);
+  }, [refreshWorlds]);
 
   // Load the local dictionary library metadata (no defaults to seed). Reused on mount and after the editor
   // modal closes so the grid reflects renames/edits.
@@ -660,7 +673,7 @@ const MainMenu = ({ onStartGame, onOpenWorldEditor, onLoadSaveGame }: MainMenuPr
         worldOverview: {
           name: 'New World',
           description: 'A blank world ready for editing',
-          thumbnail: 'https://via.placeholder.com/400x300/2a2a2a/ffffff?text=New+World',
+          thumbnail: null,
           use3DModel: false,
           bgm: null,
           systemPrompt: '',
@@ -689,10 +702,8 @@ const MainMenu = ({ onStartGame, onOpenWorldEditor, onLoadSaveGame }: MainMenuPr
       if (window.innerWidth < 1024) {
         setShowMobileWorldEditorWarning(true);
       } else {
-        onOpenWorldEditor();
+        setShowWorldEditor(true);
       }
-
-      toast.success('New world ready — Save World to keep it.');
     } catch (error) {
       console.error('Error creating new world:', error);
       toast.error('Failed to create new world');
@@ -1240,7 +1251,7 @@ const MainMenu = ({ onStartGame, onOpenWorldEditor, onLoadSaveGame }: MainMenuPr
                       if (window.innerWidth < 1024) {
                         setShowMobileWorldEditorWarning(true);
                       } else {
-                        onOpenWorldEditor();
+                        setShowWorldEditor(true);
                       }
                     }}
                   >
@@ -1397,7 +1408,7 @@ const MainMenu = ({ onStartGame, onOpenWorldEditor, onLoadSaveGame }: MainMenuPr
             <Button
               onClick={() => {
                 setShowMobileWorldEditorWarning(false);
-                onOpenWorldEditor();
+                setShowWorldEditor(true);
               }}
             >
               Go Anyway
@@ -1526,6 +1537,23 @@ const MainMenu = ({ onStartGame, onOpenWorldEditor, onLoadSaveGame }: MainMenuPr
           />
         </>
       )}
+
+      {/* World Editor as a full-screen in-place modal — visually identical to the old top-level view (its own
+          back arrow + unsaved-changes guard), but MainMenu stays mounted so it animates open/closed (zoom from
+          center, like Community Creations) and only the world grid refreshes on close. `hideClose` + no back
+          arrow means the editor's guarded back arrow is the sole exit; Esc/overlay are blocked so they can't
+          bypass the dirty prompt. */}
+      <Dialog open={showWorldEditor} onOpenChange={(open) => { if (open) setShowWorldEditor(true); }}>
+        <DialogContent
+          hideClose
+          onEscapeKeyDown={(e) => e.preventDefault()}
+          onInteractOutside={(e) => e.preventDefault()}
+          className="max-w-none w-screen h-screen sm:max-w-none left-0 top-0 translate-x-0 translate-y-0 rounded-none sm:rounded-none p-0 gap-0 flex flex-col data-[state=open]:!slide-in-from-top-0 data-[state=open]:!slide-in-from-left-0 data-[state=closed]:!slide-out-to-top-0 data-[state=closed]:!slide-out-to-left-0"
+        >
+          <DialogTitle className="sr-only">World Editor</DialogTitle>
+          <WorldEditor embedded backButton onClose={() => { setShowWorldEditor(false); refreshWorlds(); }} />
+        </DialogContent>
+      </Dialog>
 
       {/* Full-size pan/zoom image viewer for the selected world */}
       <ImageZoomViewer

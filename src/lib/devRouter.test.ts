@@ -63,9 +63,10 @@ describe('dev-router coverage guard', () => {
     expect([...DEV_MODAL_TABS.worldEditor]).toEqual(WORLD_EDITOR_TABS.map((t) => t.value));
   });
 
-  it('registers the in-game modals the router opens', () => {
-    // localModel is deliberately excluded (it lives inside Settings, not as a standalone modal).
-    expect(DEV_MODALS).toEqual(['settings', 'entity', 'export', 'menu']);
+  it('registers the modals the router opens', () => {
+    // localModel is deliberately excluded (it lives inside Settings, not as a standalone modal). worldEditor
+    // is an in-place MainMenu modal (no longer a top-level view).
+    expect(DEV_MODALS).toEqual(['settings', 'entity', 'export', 'menu', 'worldEditor']);
   });
 });
 
