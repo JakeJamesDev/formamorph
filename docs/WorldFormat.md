@@ -20,7 +20,7 @@ A world is exported/imported as a single JSON object. The main-menu grid reads a
 
 ## 🔖 Versioning
 
-Every world saved or exported by Formamorph 2.0+ carries a top-level `version` string (e.g. `"2.0.1"`). On import, worlds that don't match the current version are run through a **migration** that upgrades them to the current shape — so anything reaching the editor is already compatible.
+Every world saved or exported by Formamorph 2.0+ carries a top-level `version` string (e.g. `"2.0.3"`). On import, worlds that don't match the current version are run through a **migration** that upgrades them to the current shape — so anything reaching the editor is already compatible.
 
 | Field | Type | Notes |
 |---|---|---|
@@ -38,11 +38,12 @@ Every world saved or exported by Formamorph 2.0+ carries a top-level `version` s
 | `version` | String | Format version (see above) |
 | `worldOverview` | Object | General world info & presentation |
 | `stats` | Array | Game mechanics tracked during play |
-| `locations` | Array | Places the player can visit |
+| `locations` | Array | Places the player can visit (nestable into sub-locations) |
 | `entities` | Array | Characters/objects the player can interact with |
 | `traits` | Array | Selectable characteristics that modify stats |
+| `traitGroups` | Array | Optional folders that organize traits in the editor and selection screen |
 | `statUpdates` | Array | Rules the AI uses to change stats during play |
-| `dictionary` | Array | Lore keywords injected into the AI prompt on match |
+| `dictionaries` | Array | Ordered **books** of lorebook entries injected into the AI prompt on match |
 
 ### 🌍 `worldOverview`
 
@@ -57,6 +58,7 @@ Every world saved or exported by Formamorph 2.0+ carries a top-level `version` s
 | `use3DModel` | Boolean | Whether the world uses a 3D VRM avatar |
 | `tags` | String[] | Tags shown/searchable in the world browser |
 | `customPlayerVRM` | [MediaAsset](#-media-fields) \| null | Optional per-world custom player `.vrm` |
+| `readme` | String | Optional markdown shown to the player on entering the world (per-world "Show Readme" toggle) |
 
 ### 📊 `stats`
 
@@ -74,6 +76,7 @@ Each stat is a tracked mechanic. Two kinds exist, set by `type`:
 | `regen` | Number | Amount regenerated per time unit |
 | `descriptors` | Array | Threshold-based descriptions (below) |
 | `code` | String | Optional JS deriving this stat from others — see the **[Stat Code Guide](StatCodeGuide)** |
+| `morphBindings` | String[] | Body-mesh morph target names this stat drives; `[min, max]` maps linearly to influence `[0, 1]` |
 | `noIncrease` / `noDecrease` | Boolean | Stop the AI from raising/lowering the current value |
 | `noIncreaseMax` / `noDecreaseMax` | Boolean | Stop the AI from raising/lowering the max |
 
@@ -106,8 +109,12 @@ Selectable characteristics that adjust stats at character creation.
 |---|---|---|
 | `id` | String | Unique identifier |
 | `name` | String | Display name |
-| `description` | String | What the trait does |
+| `playerDescription` | String | Shown to the player in the trait-selection screen |
+| `aiDescription` | String | Sent to the AI when this trait is selected |
 | `statChanges` | [StatChange](#stat-changes)[] | How it modifies stats |
+| `groupId` | String \| null | Owning `traitGroups` folder; null/absent = ungrouped |
+| `isDefault` | Boolean | Pre-checked in the selection screen |
+| `order` | Number | Sibling order among items sharing the same group |
 
 #### Stat changes
 
@@ -115,7 +122,21 @@ Selectable characteristics that adjust stats at character creation.
 |---|---|---|
 | `statId` | String | Target stat's `id` |
 | `value` | Number | Amount applied |
-| `type` | `"min"` \| `"max"` \| `"starting"` \| `"regen"` | Which facet of the stat the trait modifies |
+| `type` | `"min"` \| `"max"` \| `"starting"` \| `"regen"` | Which facet of the stat a trait modifies |
+| `interval` | String | Stat-update cadence (e.g. `"hour"`), used by `statUpdates` rather than traits |
+
+### 🗂️ `traitGroups`
+
+Optional folders that organize traits in the editor and the trait-selection screen. Nestable via `parentId`.
+
+| Field | Type | Description |
+|---|---|---|
+| `id` | String | Unique identifier |
+| `name` | String | Folder name |
+| `playerDescription` | String | Shown to the player in the trait-selection screen |
+| `aiDescription` | String | Sent to the AI as a header above this group's selected traits |
+| `parentId` | String \| null | null = top-level; otherwise the parent group's `id` |
+| `order` | Number | Sibling order among groups sharing the same parent |
 
 ### 🗺️ `locations`
 
@@ -128,10 +149,12 @@ Selectable characteristics that adjust stats at character creation.
 | `aiSummary` | String | Short description sent to the AI where the full one is too long |
 | `description` | String | Legacy fallback when `playerDescription` is absent |
 | `backgroundImage` | String | Data-URL background image |
+| `imageTags` | String | Booru tags for AI image generation (editor-only; not sent to the narrative AI) |
 | `ambientSound` | [MediaAsset](#-media-fields) | Looping ambient audio |
 | `entities` | String[] | `id`s of entities present here |
 | `connections` | String[] | Names of connected locations (shown in the location panel) |
 | `isStarting` | Boolean | A candidate start location — one is chosen at random on a new game |
+| `parentId` | String \| null | Parent location `id` for sub-location nesting; null/absent = top-level (editor-only, not sent to the AI) |
 
 ### 👥 `entities`
 
@@ -146,6 +169,7 @@ Characters or objects in the world.
 | `aiDescription` | String | Full description sent to the AI |
 | `aiSummary` | String | Short description sent to the AI where the full one is too long |
 | `image` | String | Data-URL portrait |
+| `imageTags` | String | Booru tags for AI image generation (editor-only; not sent to the narrative AI) |
 | `sound` | [MediaAsset](#-media-fields) | Associated sound |
 | `model` | [MediaAsset](#-media-fields) | Associated 3D model |
 
@@ -161,9 +185,25 @@ Rules the AI evaluates during play to change stats.
 | `stats` | String[] | Names of the stats this update may change |
 | `messageHistory` | Array | Message records for this update |
 
-### 📖 `dictionary`
+### 📖 `dictionaries`
 
-Lore entries injected into the AI prompt when a keyword appears in play (a lightweight world-info / lorebook).
+A lightweight world-info / lorebook. `dictionaries` is an array of **books**; each book holds an ordered array of `entries`, and an entry is injected into the AI prompt when one of its keywords appears in play.
+
+> 🔄 **Shape change (v2.x).** Older worlds stored a single flat `dictionary` array of entries. That folds into one "Default" book automatically on import (`migrateWorld`), and there's always ≥1 book afterward. Author new worlds against `dictionaries`.
+
+Each **book** (`Dictionary`):
+
+| Field | Type | Description |
+|---|---|---|
+| `id` | String | Unique identifier |
+| `name` | String | Book name |
+| `description` | String | Human-facing note (not sent to the AI); round-trips imported lorebook descriptions |
+| `enabled` | Boolean | `false` mutes the whole book; absent/`true` = active |
+| `entries` | [DictionaryEntry](#dictionary-entries)[] | The book's lore entries |
+
+#### Dictionary entries
+
+Book order sets injection order; within a book, an entry's `position` picks the prompt block and array order sets order within it. Everything below `value` is an optional lorebook control — all absent ⇒ the original plain keyword→value behavior.
 
 | Field | Type | Description |
 |---|---|---|
@@ -171,6 +211,20 @@ Lore entries injected into the AI prompt when a keyword appears in play (a light
 | `name` | String | Display label (mirrors `key`) |
 | `key` | String | Comma-separated trigger keywords |
 | `value` | String | Content injected when a keyword matches |
+| `enabled` | Boolean | `false` disables the entry; absent/`true` = active |
+| `constant` | Boolean | Always inject, regardless of keyword matches |
+| `secondaryKeys` | String | Comma-separated secondary keywords that gate activation alongside a primary hit |
+| `secondaryAll` | Boolean | Require ALL secondary keywords rather than any one |
+| `secondaryExclude` | Boolean | Invert the secondary test — activate only when they're ABSENT |
+| `useRegex` | Boolean | Treat keywords as regular expressions instead of substrings |
+| `matchWholeWords` | Boolean | Match on word boundaries (ignored when `useRegex`) |
+| `caseSensitive` | Boolean | Match case-sensitively (default: insensitive) |
+| `recursive` | Boolean | May be activated by other activated entries' content |
+| `position` | `"before"` \| `"after"` | Prompt block: `before` (Background Lore, early) or `after` (Foreground Lore, late — default) |
+| `scanDepth` | Number | Cap history lookback to the last N messages (current scene always scanned); absent = all history |
+| `priority` | Number | Imported-lorebook drop priority when over budget (higher = kept); stored for round-trip |
+| `tokenBudget` | Number | Imported-lorebook token budget; stored for round-trip |
+| `extensions` | Object | Unmapped imported-lorebook fields, preserved for lossless re-export |
 
 ---
 
@@ -193,7 +247,7 @@ A trimmed example showing the shape (media payloads abbreviated):
 ```json
 {
   "id": "example-world",
-  "version": "2.0.1",
+  "version": "2.0.3",
   "worldOverview": {
     "name": "Example World",
     "description": "A sample world demonstrating the data format",
@@ -203,7 +257,8 @@ A trimmed example showing the shape (media payloads abbreviated):
     "systemPrompt": "A fantasy world of magic and adventure.",
     "use3DModel": true,
     "tags": ["fantasy", "adventure"],
-    "customPlayerVRM": { "data": "data:model/vrm;base64,...", "type": "model/vrm" }
+    "customPlayerVRM": { "data": "data:model/vrm;base64,...", "type": "model/vrm" },
+    "readme": "# Welcome\nA short intro shown when you enter this world."
   },
   "stats": [
     {
@@ -226,9 +281,14 @@ A trimmed example showing the shape (media payloads abbreviated):
     {
       "id": "strong",
       "name": "Strong",
-      "description": "Above-average physical strength",
+      "playerDescription": "Above-average physical strength",
+      "aiDescription": "This character is unusually strong.",
+      "groupId": "physical",
       "statChanges": [{ "statId": "strength", "value": 20, "type": "starting" }]
     }
+  ],
+  "traitGroups": [
+    { "id": "physical", "name": "Physical", "parentId": null, "order": 0 }
   ],
   "locations": [
     {
@@ -239,6 +299,12 @@ A trimmed example showing the shape (media payloads abbreviated):
       "entities": ["shopkeeper"],
       "connections": ["Market", "Tavern"],
       "isStarting": true
+    },
+    {
+      "id": "market",
+      "name": "Market",
+      "playerDescription": "Stalls line a narrow lane off the square.",
+      "parentId": "town"
     }
   ],
   "entities": [
@@ -258,12 +324,20 @@ A trimmed example showing the shape (media payloads abbreviated):
       "messageHistory": []
     }
   ],
-  "dictionary": [
+  "dictionaries": [
     {
-      "id": "lore-1",
-      "name": "ancient war, the war",
-      "key": "ancient war, the war",
-      "value": "A centuries-old conflict that shaped the kingdom."
+      "id": "book-1",
+      "name": "Default",
+      "enabled": true,
+      "entries": [
+        {
+          "id": "lore-1",
+          "name": "ancient war, the war",
+          "key": "ancient war, the war",
+          "value": "A centuries-old conflict that shaped the kingdom.",
+          "position": "after"
+        }
+      ]
     }
   ]
 }
