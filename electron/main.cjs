@@ -1,7 +1,7 @@
 // Electron main process: thin desktop shell around the built web app (dist/).
 // Loads the SPA from a privileged custom scheme so module workers, WASM, WebGPU,
 // and fetch behave like a normal web origin (raw file:// gives a null origin and breaks them).
-const { app, BrowserWindow, protocol, net, ipcMain } = require('electron');
+const { app, BrowserWindow, protocol, net, ipcMain, session } = require('electron');
 const path = require('node:path');
 const fs = require('node:fs');
 const { pathToFileURL } = require('node:url');
@@ -9,6 +9,7 @@ const { collect: collectVram } = require('./vramCollect.cjs');
 const llmEngine = require('./llmEngine.cjs');
 const modelDownload = require('./modelDownload.cjs');
 const { portableUserDataDir, migratePersistentStores } = require('./portableProfile.cjs');
+const { withCorsHeaders } = require('./corsShim.cjs');
 
 // Portable/AppImage builds keep their whole profile (settings, saves, worlds, library) beside the exe so
 // copying the folder carries everything; installed (mac dmg) and dev keep the OS-default userData (dev would
@@ -180,6 +181,15 @@ ipcMain.handle('llm-delete-model', async (_event, fileName) => {
 });
 
 app.whenReady().then(() => {
+  // Desktop CORS shim: the renderer lives at app://local, so its fetches to an external endpoint (a user's
+  // custom LLM server, the community server, Hugging Face) are browser-CORS-gated. Servers that send no CORS
+  // headers (e.g. LM Studio with CORS off) fail the preflight, which shows in-app as "Failed to process AI
+  // request". A native app has no reason to be CORS-bound, so rewrite external responses (incl. the OPTIONS
+  // preflight) to carry permissive CORS headers — keeps streaming + webSecurity. See corsShim.cjs.
+  session.defaultSession.webRequest.onHeadersReceived((details, callback) => {
+    callback({ responseHeaders: withCorsHeaders(details.url, details.responseHeaders) });
+  });
+
   // Map app://local/<path> → dist/<path>, defaulting to index.html. Files are kept inside DIST.
   protocol.handle('app', (request) => {
     const { pathname } = new URL(request.url);
