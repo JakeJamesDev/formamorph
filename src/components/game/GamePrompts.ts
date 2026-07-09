@@ -130,7 +130,7 @@ Suggest 3 to 5 distinct things I could do next - each a genuinely different way 
 ## Rules
 - Give at least 3 options, one per line.
 - The reply starts immediately with the first option - no lead-in sentence, no "here are my options" or "I could:" line before or between them.
-- Each option is a single first-person sentence - a specific, concrete action I take, vivid but never more than one sentence.
+- Each option begins with the word "I" and a verb (I ask..., I draw..., I step back...) - a specific, concrete action I take. Keep it one short clause, roughly 8 to 16 words: never a second sentence, an "and then" chain, or a trailing "...as I..." / "...before..." clause that stretches it into prose.
 - Make the options meaningfully different from one another.
 - Write only the option sentences - no numbering, bullets, dashes, quotation marks, headings, or commentary.`;
 
