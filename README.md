@@ -65,7 +65,7 @@ npm run desktop:build:linux    # Linux AppImage
 npm run desktop:build:mac      # macOS dmg
 ```
 
-The Windows target produces a **portable** single-file executable at `release/Formamorph-<version>.exe` (the `release/` folder is gitignored). Double-click it to run — no install step. For a quick dev run in a desktop window without packaging, use `npm run desktop:dev`. Tagging a `v*` release builds all three platforms in CI and attaches them (plus a `formamorph-web-<tag>.zip` browser build) to the GitHub Release.
+The Windows target produces a **portable** single-file executable at `release/Formamorph-<version>-portable.exe` (the `release/` folder is gitignored). Double-click it to run — no install step. For a quick dev run in a desktop window without packaging, use `npm run desktop:dev`. Tagging a `v*` release builds all three platforms in CI and attaches them (plus a `formamorph-web-<tag>.zip` browser build) to the GitHub Release.
 
 > [!WARNING]
 > **`EPERM: … rename 'release\win-unpacked.tmp'` on Windows?**
