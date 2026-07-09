@@ -46,8 +46,11 @@ const nameInText = (text: string, name: string) =>
   new RegExp(`\\b${name.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\b`, 'i').test(text);
 
 describe.skipIf(!RUN)('planning parser fidelity (real pipeline vs live model)', () => {
-  const cfg = JSON.parse(readFileSync(PROFILES, 'utf8'));
-  const data = JSON.parse(readFileSync(CASES, 'utf8'));
+  // skipIf still runs this factory at collection time, so read files only when the probe is armed.
+  const cfg = RUN ? JSON.parse(readFileSync(PROFILES, 'utf8')) : { models: [{ label: '' }] };
+  const data = RUN
+    ? JSON.parse(readFileSync(CASES, 'utf8'))
+    : { world: '', playerName: '', playerTrait: '', location: '', cases: [] };
   const { world, playerName, playerTrait, location, cases } = data as {
     world: string; playerName: string; playerTrait: string; location: string; cases: ProbeCase[];
   };
