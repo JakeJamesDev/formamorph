@@ -28,6 +28,7 @@ function App() {
   const [initialLocationId, setInitialLocationId] = useState<string | null>(null);
   const [initialDictionaries, setInitialDictionaries] = useState<Dictionary[] | null>(null);
   const [initialCharacters, setInitialCharacters] = useState<Entity[] | null>(null);
+  const [initialSaveId, setInitialSaveId] = useState<string | null>(null);
 
   const handleStartGame = (
     traits: string[],
@@ -42,6 +43,14 @@ function App() {
     setInitialLocationId(startingLocationId ?? null);
     setInitialDictionaries(dictionaries ?? null);
     setInitialCharacters(characters ?? null);
+    setInitialSaveId(null); // a fresh game, not a cold-loaded save
+    setCurrentView('gameViewer');
+  };
+
+  // Cold-load a save from the main menu: its world is loaded into GameData first (by MainMenu), then we
+  // enter the game view with the save id so GameViewer restores it on mount instead of starting fresh.
+  const handleLoadSaveGame = (saveId: string) => {
+    setInitialSaveId(saveId);
     setCurrentView('gameViewer');
   };
 
@@ -63,6 +72,7 @@ function App() {
             <MainMenu
               onStartGame={handleStartGame}
               onOpenWorldEditor={handleOpenWorldEditor}
+              onLoadSaveGame={handleLoadSaveGame}
             />
           )}
           {currentView === 'gameViewer' && (
@@ -73,6 +83,7 @@ function App() {
                 initialLocationId={initialLocationId}
                 initialDictionaries={initialDictionaries}
                 initialCharacters={initialCharacters}
+                initialSaveId={initialSaveId}
                 onExitToMenu={handleExitToMenu}
               />
             </GameplayProvider>

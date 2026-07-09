@@ -86,7 +86,7 @@ const AddEntityModal = ({ open, onOpenChange, onAdd }: {
                       <User className="h-4 w-4 text-muted-foreground" />
                     )}
                   </div>
-                  <span className="flex-grow truncate">{e.name}</span>
+                  <span className="min-w-0 flex-grow truncate">{e.name}</span>
                 </div>
               ))}
             </div>

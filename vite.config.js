@@ -12,6 +12,10 @@ export default defineConfig({
   // Expose the package.json version to the app (single source of truth for the app/world/save stamp).
   define: {
     __APP_VERSION__: JSON.stringify(pkg.version),
+    // Build-type class, set per target by the release workflow (FORMAMORPH_BUILD): 'portable' | 'installed'
+    // | 'web'. Empty (a local build) is treated as 'dev'. Purely a label — the desktop userData redirect
+    // keys off the runtime PORTABLE_EXECUTABLE_DIR/APPIMAGE vars, not this.
+    __BUILD_TARGET__: JSON.stringify(process.env.FORMAMORPH_BUILD ?? ''),
   },
   resolve: {
     alias: {

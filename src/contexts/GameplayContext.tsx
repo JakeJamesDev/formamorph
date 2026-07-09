@@ -1,5 +1,5 @@
 import { createContext, useContext, useState, useRef, useCallback, useEffect, useMemo, type ReactNode } from 'react';
-import { saveToDB, loadFromDB } from '../components/modals/dbUtils';
+import { putSaveRecord, getSaveRecord } from '../components/modals/dbUtils';
 import { toast } from 'react-toastify';
 import { convertSaveFile, terminateWorker } from '../lib/saveConversionWorkerUtils';
 import { useTtsPlayback } from '../lib/useTtsPlayback';
@@ -15,6 +15,7 @@ import type {
   ChatMessage,
   GameState,
   SaveObject,
+  SaveRecord,
   Choice,
   DiscoveredEntity,
   Dictionary,
@@ -187,22 +188,25 @@ function useProvideGameplay() {
     }
   }, [addLogEntry]);
 
-  /** Persist the current turn to IndexedDB under `saveName` as a flat envelope (`currentState` +
-   *  `stateHistory` + `APP_VERSION`), stamping `worldName` onto the snapshot. Returns success. */
-  const saveGame = useCallback(async (saveName: string, worldName: string) => {
+  /** Persist the current turn to IndexedDB as a flat envelope (`currentState` + `stateHistory` +
+   *  `APP_VERSION`), stamping `worldName`/`worldId` for per-world folders. A fresh `id` creates a new save;
+   *  passing `saveId` overwrites that record in place (the dup-name "overwrite" path). Returns success. */
+  const saveGame = useCallback(async (saveName: string, worldName: string, worldId?: string, saveId?: string) => {
     try {
       const gameState = saveCurrentGameState();
       gameState.worldName = worldName;
 
-      // Save the current gameStates array separately from the current state
-      const saveObject = {
+      const record: SaveRecord = {
+        id: saveId ?? crypto.randomUUID(),
+        name: saveName,
+        worldId,
         currentState: gameState,
-        stateHistory: gameStates,
+        stateHistory: gameStates, // the current gameStates array, separate from the current state
         version: APP_VERSION, // stamp the current app version (legacy envelopes used numeric 2 ≙ v1.2)
         dictionaries: runtimeDictionaries, // the player's per-playthrough dictionary set, restored on load
       };
 
-      await saveToDB(saveName, saveObject);
+      await putSaveRecord(record);
       addLogEntry(`Game saved as "${saveName}"`);
       return true;
     } catch (error) {
@@ -213,18 +217,19 @@ function useProvideGameplay() {
     }
   }, [saveCurrentGameState, gameStates, runtimeDictionaries, addLogEntry]);
 
-  /** Load a save by name from IndexedDB and restore it. A flat envelope (`isSaveEnvelope`, current or
+  /** Load a save by its record `id` from IndexedDB and restore it. A flat envelope (`isSaveEnvelope`, current or
    *  legacy numeric version) loads directly; an older nested shape is flattened off-thread via the
    *  `convertSaveFile` worker, with a best-effort raw load if conversion throws. Returns success. */
-  const loadGame = useCallback(async (saveName: string, locations: GameLocation[]) => {
+  const loadGame = useCallback(async (saveId: string, locations: GameLocation[]) => {
     try {
       // IndexedDB returns dynamically-shaped data; narrowed by the runtime checks below.
-      const savedData = await loadFromDB(saveName) as SaveObject | null;
+      const savedData = await getSaveRecord(saveId) as SaveObject | null;
 
       if (!savedData) {
         addLogEntry('No save data found');
         return false;
       }
+      const saveName = (savedData as SaveRecord).name ?? 'save';
 
       // Flat envelope (legacy numeric `2` or current APP_VERSION) — detected by shape, not version.
       if (isSaveEnvelope(savedData)) {

@@ -8,6 +8,20 @@ const { pathToFileURL } = require('node:url');
 const { collect: collectVram } = require('./vramCollect.cjs');
 const llmEngine = require('./llmEngine.cjs');
 const modelDownload = require('./modelDownload.cjs');
+const { portableUserDataDir, migratePersistentStores } = require('./portableProfile.cjs');
+
+// Portable/AppImage builds keep their whole profile (settings, saves, worlds, library) beside the exe so
+// copying the folder carries everything; installed (mac dmg) and dev keep the OS-default userData (dev would
+// otherwise dump the Chromium profile into the repo). Must run before app-ready — module load qualifies. On
+// the first post-change launch, migrate the persistent stores out of the old default location once.
+const portableProfile = portableUserDataDir();
+if (portableProfile) {
+  const defaultUserData = app.getPath('userData'); // capture BEFORE overriding
+  const fresh = !fs.existsSync(portableProfile) || fs.readdirSync(portableProfile).length === 0;
+  try { fs.mkdirSync(portableProfile, { recursive: true }); } catch { /* ignore */ }
+  if (fresh && fs.existsSync(defaultUserData)) migratePersistentStores(defaultUserData, portableProfile);
+  app.setPath('userData', portableProfile);
+}
 
 const DIST = path.join(__dirname, '..', 'dist');
 

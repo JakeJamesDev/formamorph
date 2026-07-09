@@ -307,7 +307,7 @@ function ThemePreviewDialog({ open, onOpenChange }: { open: boolean; onOpenChang
                         onChange={(e) => setToken(token, e.target.value)}
                         className="h-6 w-8 shrink-0 cursor-pointer rounded border border-border bg-transparent p-0"
                       />
-                      <span className="flex-1 truncate">{label}</span>
+                      <span className="min-w-0 flex-1 truncate">{label}</span>
                       <code className="text-[10px] text-muted-foreground">{value}</code>
                     </label>
                   );

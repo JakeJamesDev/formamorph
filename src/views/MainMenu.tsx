@@ -7,7 +7,7 @@ import 'react-toastify/dist/ReactToastify.css';
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {ConfirmDialog} from "@/components/ConfirmDialog";
-import {FilePlus2, DoorOpen, Pencil, Github, AlertTriangle, Code, User, LogIn, Import, Globe, Settings, LayoutGrid, GalleryThumbnails, Columns2, RectangleVertical, Menu, Earth, BookOpen, Upload } from "lucide-react";
+import {FilePlus2, DoorOpen, Pencil, Github, AlertTriangle, Code, User, LogIn, Import, Globe, LayoutGrid, GalleryThumbnails, Columns2, RectangleVertical, Menu, Earth, BookOpen, Upload } from "lucide-react";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { ImageZoomViewer } from "@/components/ImageZoomViewer";
 import { cn } from "@/lib/utils";
@@ -22,6 +22,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import CharacterCustomization, { defaultCharacterData } from './CharacterCustomization';
 import { SettingsModal } from '../components/modals/SettingsModal';
+import { LoadGameDialog } from '../components/modals/LoadGameDialog';
 import {
   DndContext,
   closestCenter,
@@ -49,6 +50,7 @@ import EntityStorageService from '../services/EntityStorageService';
 import AuthService from '../services/AuthService';
 import type { World, Stat, CharacterData, Dictionary, DictionaryMetadata, Entity, EntityMetadata } from '@/types';
 import { migrateWorld, APP_VERSION } from '@/lib/version';
+import { BUILD_TAG } from '@/lib/buildInfo';
 import { parseDictionaryImport } from '@/lib/dictionaryFile';
 import { importCharacterFile } from '@/lib/entityFile';
 import { useDownscalePrompt } from '@/lib/useDownscalePrompt';
@@ -68,6 +70,8 @@ import PatreonIcon from "@/components/PatreonIcon";
 interface MainMenuProps {
   onStartGame: (traits: string[], characterData: CharacterData | null, isNewGame?: boolean, startingLocationId?: string | null, dictionaries?: Dictionary[] | null, characters?: Entity[] | null) => void;
   onOpenWorldEditor: () => void;
+  /** Cold-load a save from the menu: its world is loaded into GameData here, then App enters the game. */
+  onLoadSaveGame: (saveId: string) => void;
 }
 
 const defaultWorlds = [
@@ -111,7 +115,7 @@ const applyWorldOrder = <T extends { id: string }>(list: T[], order: string[]): 
 };
 
 
-const MainMenu = ({ onStartGame, onOpenWorldEditor }: MainMenuProps) => {
+const MainMenu = ({ onStartGame, onOpenWorldEditor, onLoadSaveGame }: MainMenuProps) => {
   const {
     traits, traitGroups, stats, locations, loadWorldData,
     dictionaries: worldBooks,
@@ -148,11 +152,29 @@ const MainMenu = ({ onStartGame, onOpenWorldEditor }: MainMenuProps) => {
   const [selectedCharacters, setSelectedCharacters] = useState<Entity[] | null>(null);
   const [showCodeModal, setShowCodeModal] = useState(false);
   const [showSettings, setShowSettings] = useState(false);
-  // DEV dev-router: open Settings (on the requested tab) when the hash asks for it. Tree-shaken in prod.
+  const [showLoadDialog, setShowLoadDialog] = useState(false);
+  // DEV dev-router: open Settings (or the Load menu) when the hash asks. Tree-shaken in prod.
   const devRoute = useDevRoute();
   useEffect(() => {
-    if (import.meta.env.DEV && devRoute?.modal === 'settings') setShowSettings(true);
+    if (!import.meta.env.DEV) return;
+    if (devRoute?.modal === 'settings') setShowSettings(true);
+    if (devRoute?.modal === 'menu') setShowLoadDialog(true);
   }, [devRoute?.modal]);
+
+  // Cold-load: fetch the save's world into GameData, then hand the save id to App to enter the game.
+  // Orphaned saves are blocked inside the dialog, so `worldId` is always an installed world here.
+  const handleColdLoad = async (saveId: string, worldId?: string) => {
+    if (!worldId) return;
+    try {
+      const world = await WorldStorageService.getWorldData(worldId) as World;
+      loadWorldData(world);
+      setShowLoadDialog(false);
+      onLoadSaveGame(saveId);
+    } catch (error) {
+      console.error('Cold-load failed:', error);
+      toast.error("Couldn't load that save's world.");
+    }
+  };
   const fileInputRef = useRef<HTMLInputElement | null>(null);
   const dictionaryImportRef = useRef<HTMLInputElement | null>(null);
   const entityImportRef = useRef<HTMLInputElement | null>(null);
@@ -860,17 +882,30 @@ const MainMenu = ({ onStartGame, onOpenWorldEditor }: MainMenuProps) => {
               </TabsTrigger>
             </TabsList>
           </Tabs>
-          <button
-            className="p-3 bg-secondary text-secondary-foreground rounded-full shadow-lg hover:bg-secondary/80 transition-colors"
-            onClick={() => setShowSettings(true)}
-            aria-label="Settings"
-          >
-            <Settings className="h-6 w-6" />
-          </button>
+          <Popover>
+            <PopoverTrigger asChild>
+              <button
+                className="p-3 bg-secondary text-secondary-foreground rounded-full shadow-lg hover:bg-secondary/80 transition-colors"
+                aria-label="Menu"
+                title="Menu"
+              >
+                <Menu className="h-6 w-6" />
+              </button>
+            </PopoverTrigger>
+            <PopoverContent align="end" className="w-48 p-1">
+              <div className="flex flex-col">
+                <Button variant="ghost" className="w-full justify-start" onClick={() => setShowLoadDialog(true)}>Load Game</Button>
+                <Button variant="ghost" className="w-full justify-start" onClick={() => setShowSettings(true)}>Settings</Button>
+              </div>
+            </PopoverContent>
+          </Popover>
         </div>
       </div>
 
       <SettingsModal isOpen={showSettings} onOpenChange={setShowSettings} initialTab={devRoute?.tab} initialPromptTab={devRoute?.subtab} />
+
+      {/* Main-menu Load Game: no current world (root view), cold-loads the chosen save into its own world. */}
+      <LoadGameDialog open={showLoadDialog} onOpenChange={setShowLoadDialog} onLoad={handleColdLoad} />
 
       <input
         type="file"
@@ -1036,7 +1071,7 @@ const MainMenu = ({ onStartGame, onOpenWorldEditor }: MainMenuProps) => {
             </button>
           )}
           <span className="text-xs text-muted-foreground/60 select-none">
-            v{APP_VERSION}
+            v{APP_VERSION}{BUILD_TAG && ` · ${BUILD_TAG}`}
           </span>
         </div>
 

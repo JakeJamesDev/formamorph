@@ -16,23 +16,30 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
+        # `build` is the portability class baked into the app (FORMAMORPH_BUILD → footer tag). The Windows
+        # portable .exe and the Linux AppImage are both relocatable → 'portable'; the mac .dmg installs → 'installed'.
         include:
           - os: windows-latest
             script: desktop:build
+            build: portable
           - os: ubuntu-latest
             script: desktop:build:linux
+            build: portable
           - os: macos-latest
             script: desktop:build:mac
+            build: installed
     runs-on: ${{ matrix.os }}
     steps:
-      - uses: actions/checkout@v5
-      - uses: actions/setup-node@v5
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v6
         with:
           node-version-file: '.nvmrc'
           cache: npm
       - run: npm ci
       - run: npm run ${{ matrix.script }}
-      - uses: actions/upload-artifact@v4
+        env:
+          FORMAMORPH_BUILD: ${{ matrix.build }}
+      - uses: actions/upload-artifact@v7
         with:
           name: desktop-${{ matrix.os }}
           path: |
@@ -44,18 +51,21 @@ jobs:
   web:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v5
-      - uses: actions/setup-node@v5
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v6
         with:
           node-version-file: '.nvmrc'
           cache: npm
       - run: npm ci
       # No env overrides → full build (community on, full tag data), unlike the Pages demo build.
+      # FORMAMORPH_BUILD=web keeps the footer bare (no build tag) for the browser build.
       - run: npm run build
+        env:
+          FORMAMORPH_BUILD: web
       # Zip from inside dist so index.html sits at the zip root (itch.io requires this to serve it).
       - name: Zip web build
         run: cd dist && zip -r "../formamorph-web-${{ github.ref_name }}.zip" .
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with:
           name: web
           path: formamorph-web-*.zip
@@ -68,7 +78,7 @@ jobs:
     permissions:
       contents: write
     steps:
-      - uses: actions/download-artifact@v4
+      - uses: actions/download-artifact@v8
         with:
           path: artifacts
           merge-multiple: true
