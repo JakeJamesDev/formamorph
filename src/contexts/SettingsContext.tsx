@@ -23,10 +23,11 @@ import {
 import {
   emptyStore, presetStoreCodec, activeValues, isBuiltInActive, activeStyle, BUILTIN_PRESETS,
   setActive as setActivePreset, addPreset as addPresetOp, renamePreset as renamePresetOp, deletePreset as deletePresetOp, resetPreset as resetPresetOp, updateValue,
-  type PromptPresetStore, type PromptValues,
+  activeSamplers, activeReasoning, activeVerbatim, updateSamplers, updateReasoning, updateVerbatim, foldTuningIntoUserPresets,
+  type PromptPresetStore, type PromptValues, type VerbatimMap,
 } from '../lib/promptPresets';
 import { buildStyledValues } from '../lib/sectionStyle';
-import { promptSamplerMapCodec, defaultPromptSampler, type PromptSamplerMap, type PromptSampler } from '../lib/promptSamplers';
+import { defaultPromptSampler, type PromptSamplerMap, type PromptSampler } from '../lib/promptSamplers';
 import type { AIRequestType } from '../types';
 import type { ParagraphLimit } from '../lib/outputLength';
 import { detectSupportedReasoningEfforts, type ReasoningEffortField, type PromptReasoning } from '../lib/reasoningEffort';
@@ -123,6 +124,38 @@ const BUILTIN_VALUES: Record<string, PromptValues> = Object.fromEntries(
   BUILTIN_PRESETS.map((b) => [b.id, buildStyledValues(PROMPT_TEXT_DEFAULTS, b.style)]),
 );
 
+/** One-time migration folding the formerly-global per-prompt tuning (samplers, reasoning, verbatim-turns)
+ *  onto every user preset, so a preset becomes a self-contained "pack". Built-ins keep defaults; a user on a
+ *  built-in with custom tuning reverts to defaults there (by design). Runs once, then retires the old keys. */
+function migratePromptTuning() {
+  const MARK = `${APP_ID}_promptTuningMigrated`;
+  if (localStorage.getItem(MARK)) return;
+  const readJson = <T,>(key: string, fallback: T): T => {
+    try { const r = localStorage.getItem(`${APP_ID}_${key}`); return r ? (JSON.parse(r) as T) : fallback; } catch { return fallback; }
+  };
+  const rawStore = localStorage.getItem(`${APP_ID}_promptPresets`);
+  const store = rawStore ? presetStoreCodec.parse(rawStore) : emptyStore;
+  const samplers = readJson<PromptSamplerMap>('promptSamplers', {});
+  const reasoning = readJson<Record<string, PromptReasoning>>('promptReasoning', {});
+  // Only carry verbatim values the user actually changed from the shipped default.
+  const verbatimDefs: [string, AIRequestType, number][] = [
+    ['narrationVerbatimTurns', 'narration', 3], ['thinkingVerbatimTurns', 'thinking', 1],
+    ['choicesVerbatimTurns', 'choices', 3], ['statUpdatesVerbatimTurns', 'statUpdates', 3],
+    ['locationChangeVerbatimTurns', 'locationChange', 3], ['summaryVerbatimTurns', 'summary', 3],
+  ];
+  const verbatim: VerbatimMap = {};
+  for (const [key, kind, def] of verbatimDefs) {
+    const raw = localStorage.getItem(`${APP_ID}_${key}`);
+    if (raw != null) { const n = parseInt(raw); if (!Number.isNaN(n) && n !== def) verbatim[kind] = n; }
+  }
+  const folded = foldTuningIntoUserPresets(store, samplers, reasoning, verbatim);
+  localStorage.setItem(`${APP_ID}_promptPresets`, presetStoreCodec.serialize(folded));
+  for (const key of ['promptSamplers', 'promptReasoning', ...verbatimDefs.map((v) => v[0])]) {
+    localStorage.removeItem(`${APP_ID}_${key}`);
+  }
+  localStorage.setItem(MARK, '1');
+}
+
 /** One-time migration of the legacy "type DISABLED into the prompt body" hack to per-prompt Enabled
  *  flags. A prompt whose stored body is exactly "DISABLED" is turned off and its body reset to default. */
 function migrateDisabledPrompts() {
@@ -143,6 +176,7 @@ function useProvideSettings() {
   const migrated = useRef(false);
   if (!migrated.current) {
     migrateDisabledPrompts(); // runs before the prompt/flag state below seeds from localStorage
+    migratePromptTuning(); // folds legacy global tuning onto user presets before presetStore seeds
     migrated.current = true;
   }
 
@@ -271,28 +305,8 @@ function useProvideSettings() {
   const [genTopK, setGenTopK] = usePersistentState<number>(`${APP_ID}_genTopK`, DEFAULT_GEN_TOP_K, intCodec);
   const [genMinP, setGenMinP] = usePersistentState<number>(`${APP_ID}_genMinP`, DEFAULT_GEN_MIN_P, floatCodec);
 
-  // Per-prompt temperature overrides (local model only, like the global sampler). Off (default) → the kind's
-  // default temperature (low for deterministic prompts, the global temperature otherwise); on → the stored
-  // custom value, which is preserved across toggling so switching back to default never discards it.
-  const [promptSamplers, setPromptSamplers] = usePersistentState<PromptSamplerMap>(`${APP_ID}_promptSamplers`, {}, promptSamplerMapCodec);
-  // The global slider a given sampler seeds its custom value from when first enabled.
-  const globalForSampler = useCallback(
-    (sampler: PromptSampler) => (sampler === 'temperature' ? genTemperature : genRepetitionPenalty),
-    [genTemperature, genRepetitionPenalty],
-  );
-  const setPromptSamplerCustom = useCallback((kind: AIRequestType, sampler: PromptSampler, custom: boolean) => {
-    // Seed the custom value with the built-in default so it always starts as a real number, never undefined.
-    setPromptSamplers((prev) => {
-      const value = prev[kind]?.[sampler]?.value ?? defaultPromptSampler(kind, sampler, globalForSampler(sampler), true)!;
-      return { ...prev, [kind]: { ...prev[kind], [sampler]: { custom, value } } };
-    });
-  }, [globalForSampler, setPromptSamplers]);
-  const setPromptSamplerValue = useCallback((kind: AIRequestType, sampler: PromptSampler, value: number) => {
-    setPromptSamplers((prev) => ({
-      ...prev,
-      [kind]: { ...prev[kind], [sampler]: { custom: prev[kind]?.[sampler]?.custom ?? true, value } },
-    }));
-  }, [setPromptSamplers]);
+  // Per-prompt tuning (samplers/reasoning/verbatim) is preset-scoped — derived from the active preset and
+  // set through it, below where `presetStore` is declared.
 
   // Context window: a custom endpoint uses its detected/override value; the local engine uses the context
   // size the user set (same number); otherwise the built-in default.
@@ -362,16 +376,6 @@ function useProvideSettings() {
     parse: (r) => (REASONING_VALUES.includes(r) ? (r as ReasoningEffort) : 'auto'),
     serialize: (v) => v,
   });
-  // Per-prompt reasoning overrides (only narration/choices are editable; others are hardwired). Keyed by
-  // request type; a missing key uses the shipped default (`defaultPromptReasoning`). `global` inherits `reasoningEffort`.
-  const [promptReasoning, setPromptReasoningMap] = usePersistentState<Record<string, PromptReasoning>>(
-    `${APP_ID}_promptReasoning`, {}, {
-      parse: (r) => { try { const o = JSON.parse(r); return o && typeof o === 'object' && !Array.isArray(o) && Object.values(o).every((v) => typeof v === 'string') ? o : {}; } catch { return {}; } },
-      serialize: (v) => JSON.stringify(v),
-    });
-  const setPromptReasoning = useCallback((kind: AIRequestType, value: PromptReasoning) => {
-    setPromptReasoningMap((prev) => ({ ...prev, [kind]: value }));
-  }, [setPromptReasoningMap]);
   // The 15 editable prompt strings live in named presets (one localStorage key). Each keeps its original
   // context field + setter name; values derive from the active preset (Default = read-only shipped text),
   // and setters patch the active preset (a no-op under Default). See src/lib/promptPresets.ts.
@@ -397,6 +401,33 @@ function useProvideSettings() {
   const setStatUpdatesUserPrompt = (v: string) => setPresetStore((s) => updateValue(s, 'statUpdatesUserPrompt', v));
   const setLocationChangeUserPrompt = (v: string) => setPresetStore((s) => updateValue(s, 'locationChangeUserPrompt', v));
   const setSummaryUserPrompt = (v: string) => setPresetStore((s) => updateValue(s, 'summaryUserPrompt', v));
+
+  // Preset-scoped tuning derives from the active preset (built-ins → empty → defaults); setters patch the
+  // active preset and no-op under a built-in, mirroring the text setters above.
+  const promptSamplers = useMemo(() => activeSamplers(presetStore), [presetStore]);
+  const promptReasoning = useMemo(() => activeReasoning(presetStore), [presetStore]);
+  const verbatimMap = useMemo(() => activeVerbatim(presetStore), [presetStore]);
+  const globalForSampler = useCallback(
+    (sampler: PromptSampler) => (sampler === 'temperature' ? genTemperature : genRepetitionPenalty),
+    [genTemperature, genRepetitionPenalty],
+  );
+  const setPromptSamplerCustom = useCallback((kind: AIRequestType, sampler: PromptSampler, custom: boolean) => {
+    setPresetStore((s) => updateSamplers(s, (prev) => {
+      // Seed the custom value with the built-in default so it always starts as a real number, never undefined.
+      const value = prev[kind]?.[sampler]?.value ?? defaultPromptSampler(kind, sampler, globalForSampler(sampler), true)!;
+      return { ...prev, [kind]: { ...prev[kind], [sampler]: { custom, value } } };
+    }));
+  }, [globalForSampler, setPresetStore]);
+  const setPromptSamplerValue = useCallback((kind: AIRequestType, sampler: PromptSampler, value: number) => {
+    setPresetStore((s) => updateSamplers(s, (prev) => ({
+      ...prev,
+      [kind]: { ...prev[kind], [sampler]: { custom: prev[kind]?.[sampler]?.custom ?? true, value } },
+    })));
+  }, [setPresetStore]);
+  const setPromptReasoning = useCallback((kind: AIRequestType, value: PromptReasoning) => {
+    setPresetStore((s) => updateReasoning(s, kind, value));
+  }, [setPresetStore]);
+
   // Preset management (Settings → System Prompts selector).
   const activePresetId = presetStore.activeId;
   const activePresetIsBuiltIn = isBuiltInActive(presetStore);
@@ -423,12 +454,18 @@ function useProvideSettings() {
   const [locationAutoApply, setLocationAutoApply] = usePersistentState<boolean>(`${APP_ID}_locationAutoApply`, false, boolCodec);
   // How many recent turns each prompt receives verbatim (the digest-banding floor). Only Narration and
   // Thinking consume history today; the rest are stored for when those prompts gain history.
-  const [narrationVerbatimTurns, setNarrationVerbatimTurns] = usePersistentState<number>(`${APP_ID}_narrationVerbatimTurns`, 3, intCodec);
-  const [thinkingVerbatimTurns, setThinkingVerbatimTurns] = usePersistentState<number>(`${APP_ID}_thinkingVerbatimTurns`, 1, intCodec);
-  const [choicesVerbatimTurns, setChoicesVerbatimTurns] = usePersistentState<number>(`${APP_ID}_choicesVerbatimTurns`, 3, intCodec);
-  const [statUpdatesVerbatimTurns, setStatUpdatesVerbatimTurns] = usePersistentState<number>(`${APP_ID}_statUpdatesVerbatimTurns`, 3, intCodec);
-  const [locationChangeVerbatimTurns, setLocationChangeVerbatimTurns] = usePersistentState<number>(`${APP_ID}_locationChangeVerbatimTurns`, 3, intCodec);
-  const [summaryVerbatimTurns, setSummaryVerbatimTurns] = usePersistentState<number>(`${APP_ID}_summaryVerbatimTurns`, 3, intCodec);
+  const narrationVerbatimTurns = verbatimMap.narration ?? 3;
+  const thinkingVerbatimTurns = verbatimMap.thinking ?? 1;
+  const choicesVerbatimTurns = verbatimMap.choices ?? 3;
+  const statUpdatesVerbatimTurns = verbatimMap.statUpdates ?? 3;
+  const locationChangeVerbatimTurns = verbatimMap.locationChange ?? 3;
+  const summaryVerbatimTurns = verbatimMap.summary ?? 3;
+  const setNarrationVerbatimTurns = (n: number) => setPresetStore((s) => updateVerbatim(s, 'narration', n));
+  const setThinkingVerbatimTurns = (n: number) => setPresetStore((s) => updateVerbatim(s, 'thinking', n));
+  const setChoicesVerbatimTurns = (n: number) => setPresetStore((s) => updateVerbatim(s, 'choices', n));
+  const setStatUpdatesVerbatimTurns = (n: number) => setPresetStore((s) => updateVerbatim(s, 'statUpdates', n));
+  const setLocationChangeVerbatimTurns = (n: number) => setPresetStore((s) => updateVerbatim(s, 'locationChange', n));
+  const setSummaryVerbatimTurns = (n: number) => setPresetStore((s) => updateVerbatim(s, 'summary', n));
   // Image generation config (Settings → Image Gen → Endpoint). Lives in named, freely-editable presets so
   // the user can keep several image-server configs. The active preset's values back the fields below; the
   // public getter/setter names are unchanged so consumers (GenerateImageButton) don't care about presets.

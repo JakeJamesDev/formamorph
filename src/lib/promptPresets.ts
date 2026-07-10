@@ -1,4 +1,12 @@
 import type { Codec } from './usePersistentState';
+import type { AIRequestType } from '@/types';
+import type { PromptSamplerMap } from './promptSamplers';
+import type { PromptReasoning } from './reasoningEffort';
+
+/** Per-request verbatim-turn overrides carried on a preset; a missing kind uses its shipped default. */
+export type VerbatimMap = Partial<Record<AIRequestType, number>>;
+/** Per-request reasoning overrides carried on a preset (narration/choices only are user-editable). */
+export type ReasoningMap = Record<string, PromptReasoning>;
 
 /** The editable prompt-text values a preset captures: the 11 system-prompt bodies + 4 user-message
  *  templates. Enable flags, verbatim-turns, and thinking mode are global and deliberately NOT included. */
@@ -34,6 +42,10 @@ export interface PromptPreset {
   name: string;
   values: PromptValues;
   style?: SectionStyle; // absent on legacy presets → treated as 'markdown'
+  // Preset-scoped tuning (user presets only; built-ins always use shipped defaults). Absent → defaults.
+  samplers?: PromptSamplerMap;
+  reasoning?: ReasoningMap;
+  verbatim?: VerbatimMap;
 }
 
 /** The persisted preset state: the currently selected preset plus every user-saved one (built-ins are virtual). */
@@ -132,5 +144,71 @@ export function updateValue(store: PromptPresetStore, key: PromptTextKey, value:
   return {
     ...store,
     presets: store.presets.map((p) => (p.id === store.activeId ? { ...p, values: { ...p.values, [key]: value } } : p)),
+  };
+}
+
+// --- Preset-scoped tuning (samplers / reasoning / verbatim) ---
+// Built-ins carry no tuning: they resolve to the shipped defaults and their setters no-op, exactly like text.
+
+/** The active preset's sampler overrides (empty for a built-in → every kind resolves to its default). */
+export function activeSamplers(store: PromptPresetStore): PromptSamplerMap {
+  if (isBuiltInActive(store)) return {};
+  return store.presets.find((p) => p.id === store.activeId)?.samplers ?? {};
+}
+
+/** The active preset's reasoning overrides (empty for a built-in). */
+export function activeReasoning(store: PromptPresetStore): ReasoningMap {
+  if (isBuiltInActive(store)) return {};
+  return store.presets.find((p) => p.id === store.activeId)?.reasoning ?? {};
+}
+
+/** The active preset's verbatim-turn overrides (empty for a built-in). */
+export function activeVerbatim(store: PromptPresetStore): VerbatimMap {
+  if (isBuiltInActive(store)) return {};
+  return store.presets.find((p) => p.id === store.activeId)?.verbatim ?? {};
+}
+
+/** Apply a patch to the active user preset; no-op under a built-in. */
+function patchActivePreset(store: PromptPresetStore, patch: (p: PromptPreset) => PromptPreset): PromptPresetStore {
+  if (isBuiltInActive(store)) return store;
+  return { ...store, presets: store.presets.map((p) => (p.id === store.activeId ? patch(p) : p)) };
+}
+
+/** Replace the active preset's sampler map via a transform (the caller owns the toggle/seed logic). No-op under a built-in. */
+export function updateSamplers(store: PromptPresetStore, fn: (m: PromptSamplerMap) => PromptSamplerMap): PromptPresetStore {
+  return patchActivePreset(store, (p) => ({ ...p, samplers: fn(p.samplers ?? {}) }));
+}
+
+/** Set one kind's reasoning choice on the active preset. No-op under a built-in. */
+export function updateReasoning(store: PromptPresetStore, kind: AIRequestType, value: PromptReasoning): PromptPresetStore {
+  return patchActivePreset(store, (p) => ({ ...p, reasoning: { ...(p.reasoning ?? {}), [kind]: value } }));
+}
+
+/** Set one kind's verbatim-turn count on the active preset. No-op under a built-in. */
+export function updateVerbatim(store: PromptPresetStore, kind: AIRequestType, value: number): PromptPresetStore {
+  return patchActivePreset(store, (p) => ({ ...p, verbatim: { ...(p.verbatim ?? {}), [kind]: value } }));
+}
+
+/** One-time migration: fold the (previously global) tuning onto every user preset that lacks it, so switching
+ *  to any user preset preserves the pre-refactor behavior. Built-ins keep defaults. Only non-empty categories
+ *  are applied, and an existing per-preset value is never overwritten. */
+export function foldTuningIntoUserPresets(
+  store: PromptPresetStore,
+  samplers: PromptSamplerMap,
+  reasoning: ReasoningMap,
+  verbatim: VerbatimMap,
+): PromptPresetStore {
+  const hasSamplers = Object.keys(samplers).length > 0;
+  const hasReasoning = Object.keys(reasoning).length > 0;
+  const hasVerbatim = Object.keys(verbatim).length > 0;
+  if (!hasSamplers && !hasReasoning && !hasVerbatim) return store;
+  return {
+    ...store,
+    presets: store.presets.map((p) => ({
+      ...p,
+      samplers: p.samplers ?? (hasSamplers ? { ...samplers } : undefined),
+      reasoning: p.reasoning ?? (hasReasoning ? { ...reasoning } : undefined),
+      verbatim: p.verbatim ?? (hasVerbatim ? { ...verbatim } : undefined),
+    })),
   };
 }
