@@ -6,7 +6,7 @@ import { ThemePreviewButton } from '@/components/ThemePreviewDialog';
 import { LocalModelPanel } from '@/components/modals/LocalModelPanel';
 import { SETTINGS_TABS } from '@/components/modals/settingsTabs';
 import { Row, CheckRow } from '@/components/SettingsRows';
-import { reasoningTabs, reasoningPromptTabs, defaultPromptReasoning, REASONING_CONTROL_KINDS, type PromptReasoning } from '@/lib/reasoningEffort';
+import { reasoningTabs, reasoningPromptTabs, defaultPromptReasoning, defaultReasoningBudgetPct, REASONING_CONTROL_KINDS, type PromptReasoning } from '@/lib/reasoningEffort';
 import { ExportPresetDialog, ImportPresetDialog } from '@/components/modals/PresetShareDialogs';
 import { type SharedPreset } from '@/lib/promptPresetShare';
 import { APP_VERSION } from '@/lib/version';
@@ -164,12 +164,44 @@ function PromptReasoningField({ value, tabs, onChange, disabled }: {
   );
 }
 
+/** A prompt's Native Reasoning BUDGET (local engine only): a % of Max Output Tokens the model may spend on its
+ *  thought segment. 0% = no reasoning on this prompt; higher caps it. Replaces the effort control on the local
+ *  engine, which budgets the thought segment directly rather than taking a coarse effort hint. */
+function PromptReasoningBudgetField({ value, onChange, disabled }: {
+  value: number;
+  onChange: (v: number) => void;
+  disabled?: boolean;
+}) {
+  return (
+    <div className="space-y-2">
+      <div className="flex items-center gap-2">
+        <label className="text-sm">Reasoning Budget</label>
+        <span className="hidden sm:inline text-xs text-muted-foreground">share of Max Output Tokens the model may think for; 0% = no reasoning</span>
+      </div>
+      <div className="flex items-center gap-3">
+        <Slider
+          className={`flex-grow${disabled ? ' opacity-60' : ''}`}
+          value={[value]}
+          min={0}
+          max={100}
+          step={5}
+          disabled={disabled}
+          onValueChange={(v) => onChange(v[0])}
+        />
+        <span className="w-28 text-right text-sm tabular-nums">{value === 0 ? <span className="text-muted-foreground not-italic">No reasoning</span> : `${value}%`}</span>
+      </div>
+    </div>
+  );
+}
+
 /** The per-prompt Options sub-tab: the verbatim-turns control (only when digests are on and the prompt uses
- *  them), the per-prompt Native Reasoning override (narration/choices under Native only), plus one override row
- *  per tunable sampler. `disabled` locks every control when the active prompt preset is built-in (Default/Simple). */
-function PromptOptionsPanel({ verbatim, reasoning, samplers, disabled }: {
+ *  them), the per-prompt Native Reasoning override (narration/choices under Native only — the effort level on
+ *  external endpoints, or the token budget on the local engine), plus one override row per tunable sampler.
+ *  `disabled` locks every control when the active prompt preset is built-in (Default/Simple). */
+function PromptOptionsPanel({ verbatim, reasoning, reasoningBudget, samplers, disabled }: {
   verbatim: { value: number; set: (n: number) => void } | null;
   reasoning: { value: PromptReasoning; tabs: { value: PromptReasoning; label: string }[]; set: (v: PromptReasoning) => void } | null;
+  reasoningBudget: { value: number; set: (v: number) => void } | null;
   samplers: SamplerControlProps[];
   disabled: boolean;
 }) {
@@ -178,6 +210,7 @@ function PromptOptionsPanel({ verbatim, reasoning, samplers, disabled }: {
     <div className="space-y-5 px-3 py-3">
       {verbatim && <VerbatimTurnsField id="promptVerbatim" value={verbatim.value} onChange={verbatim.set} disabled={disabled} />}
       {reasoning && <PromptReasoningField value={reasoning.value} tabs={reasoning.tabs} onChange={reasoning.set} disabled={disabled} />}
+      {reasoningBudget && <PromptReasoningBudgetField value={reasoningBudget.value} onChange={reasoningBudget.set} disabled={disabled} />}
       {samplers.map((s) => <SamplerControl key={s.id} {...s} disabled={disabled} />)}
     </div>
   );
@@ -252,6 +285,8 @@ export const SettingsModal = ({ isOpen, onOpenChange, previewValues, initialTab,
     supportedReasoningEfforts,
     promptReasoning,
     setPromptReasoning,
+    promptReasoningBudget,
+    setPromptReasoningBudget,
     thinkingPrompt,
     setThinkingPrompt,
     summaryPrompt,
@@ -524,12 +559,21 @@ export const SettingsModal = ({ isOpen, onOpenChange, previewValues, initialTab,
     },
   ];
   // Per-prompt Native Reasoning override — only for the controllable prompts and only under Native mode
-  // (guided modes force `none`, so an override there is meaningless).
-  const reasoningControl = thinkingMode === 'off' && REASONING_CONTROL_KINDS.includes(activeKind)
+  // (guided modes force no reasoning, so an override there is meaningless). Engine-split: the local engine
+  // caps the thought segment by a token budget; external endpoints take the coarse effort level. Exactly one
+  // shows per engine (the other is inert there).
+  const reasoningApplicable = thinkingMode === 'off' && REASONING_CONTROL_KINDS.includes(activeKind);
+  const reasoningControl = reasoningApplicable && !localModelActive
     ? {
         value: promptReasoning[activeKind] ?? defaultPromptReasoning(activeKind),
         tabs: reasoningPromptTabs(supportedReasoningEfforts),
         set: (v: PromptReasoning) => setPromptReasoning(activeKind, v),
+      }
+    : null;
+  const reasoningBudgetControl = reasoningApplicable && localModelActive
+    ? {
+        value: promptReasoningBudget[activeKind] ?? defaultReasoningBudgetPct(activeKind),
+        set: (v: number) => setPromptReasoningBudget(activeKind, v),
       }
     : null;
 
@@ -1271,6 +1315,7 @@ export const SettingsModal = ({ isOpen, onOpenChange, previewValues, initialTab,
                   <PromptOptionsPanel
                     verbatim={verbatimApplicable ? activeVerbatimEntry : null}
                     reasoning={reasoningControl}
+                    reasoningBudget={reasoningBudgetControl}
                     samplers={samplerControls}
                     disabled={activePresetIsBuiltIn}
                   />

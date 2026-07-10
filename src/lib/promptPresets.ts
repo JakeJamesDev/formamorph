@@ -7,6 +7,9 @@ import type { PromptReasoning } from './reasoningEffort';
 export type VerbatimMap = Partial<Record<AIRequestType, number>>;
 /** Per-request reasoning overrides carried on a preset (narration/choices only are user-editable). */
 export type ReasoningMap = Record<string, PromptReasoning>;
+/** Per-request reasoning-budget overrides (percent of max output; local engine only). A missing kind uses
+ *  its shipped default. Narration/choices only are user-editable. */
+export type ReasoningBudgetMap = Partial<Record<AIRequestType, number>>;
 
 /** The editable prompt-text values a preset captures: the 11 system-prompt bodies + 4 user-message
  *  templates. Enable flags, verbatim-turns, and thinking mode are global and deliberately NOT included. */
@@ -45,6 +48,7 @@ export interface PromptPreset {
   // Preset-scoped tuning (user presets only; built-ins always use shipped defaults). Absent → defaults.
   samplers?: PromptSamplerMap;
   reasoning?: ReasoningMap;
+  reasoningBudget?: ReasoningBudgetMap;
   verbatim?: VerbatimMap;
 }
 
@@ -178,6 +182,12 @@ export function activeVerbatim(store: PromptPresetStore): VerbatimMap {
   return store.presets.find((p) => p.id === store.activeId)?.verbatim ?? {};
 }
 
+/** The active preset's reasoning-budget overrides (empty for a built-in). */
+export function activeReasoningBudget(store: PromptPresetStore): ReasoningBudgetMap {
+  if (isBuiltInActive(store)) return {};
+  return store.presets.find((p) => p.id === store.activeId)?.reasoningBudget ?? {};
+}
+
 /** Apply a patch to the active user preset; no-op under a built-in. */
 function patchActivePreset(store: PromptPresetStore, patch: (p: PromptPreset) => PromptPreset): PromptPresetStore {
   if (isBuiltInActive(store)) return store;
@@ -197,6 +207,11 @@ export function updateReasoning(store: PromptPresetStore, kind: AIRequestType, v
 /** Set one kind's verbatim-turn count on the active preset. No-op under a built-in. */
 export function updateVerbatim(store: PromptPresetStore, kind: AIRequestType, value: number): PromptPresetStore {
   return patchActivePreset(store, (p) => ({ ...p, verbatim: { ...(p.verbatim ?? {}), [kind]: value } }));
+}
+
+/** Set one kind's reasoning-budget percent on the active preset. No-op under a built-in. */
+export function updateReasoningBudget(store: PromptPresetStore, kind: AIRequestType, value: number): PromptPresetStore {
+  return patchActivePreset(store, (p) => ({ ...p, reasoningBudget: { ...(p.reasoningBudget ?? {}), [kind]: value } }));
 }
 
 /** One-time migration: fold the (previously global) tuning onto every user preset that lacks it, so switching

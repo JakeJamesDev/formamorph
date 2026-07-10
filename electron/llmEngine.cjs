@@ -64,6 +64,8 @@ function promptOptions(body, onResponseChunk) {
   if (typeof body.top_k === 'number') opts.topK = body.top_k;
   if (typeof body.min_p === 'number') opts.minP = body.min_p;
   if (typeof body.max_tokens === 'number') opts.maxTokens = body.max_tokens;
+  // Reasoning cap (llama.cpp-server field name): budget the model's thought segment. 0 = no thinking.
+  if (typeof body.thinking_budget_tokens === 'number') opts.budgets = { thoughtTokens: body.thinking_budget_tokens };
   if (typeof body.repetition_penalty === 'number') opts.repeatPenalty = { penalty: body.repetition_penalty };
   const stop = body.stop == null ? [] : Array.isArray(body.stop) ? body.stop : [body.stop];
   if (stop.length) opts.customStopTriggers = stop;

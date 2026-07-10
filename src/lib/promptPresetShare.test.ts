@@ -11,6 +11,7 @@ const base = {
   name: 'My Pack', style: 'markdown' as const, values,
   samplers: { statUpdates: { temperature: { custom: true, value: 0.2 } } },
   reasoning: { narration: 'high' as const },
+  reasoningBudget: { narration: 30, choices: 0 },
   verbatim: { narration: 5 },
 };
 
@@ -18,7 +19,7 @@ describe('share round-trip', () => {
   it('JSON: build → serialize → parse recovers the preset', () => {
     const r = parseSharedJson(serializeSharedJson(buildSharedPreset(base, APP)), APP);
     expect(r.ok).toBe(true);
-    expect(r.preset).toMatchObject({ name: 'My Pack', style: 'markdown', reasoning: { narration: 'high' }, verbatim: { narration: 5 } });
+    expect(r.preset).toMatchObject({ name: 'My Pack', style: 'markdown', reasoning: { narration: 'high' }, reasoningBudget: { narration: 30, choices: 0 }, verbatim: { narration: 5 } });
     expect(r.preset!.values.systemPrompt).toBe(values.systemPrompt);
     expect(r.warnings).toEqual([]);
   });
@@ -42,9 +43,10 @@ describe('share round-trip', () => {
 
 describe('buildSharedPreset', () => {
   it('omits empty tuning maps', () => {
-    const s = buildSharedPreset({ name: 'Text Only', style: 'markdown', values, samplers: {}, reasoning: {}, verbatim: {} }, APP);
+    const s = buildSharedPreset({ name: 'Text Only', style: 'markdown', values, samplers: {}, reasoning: {}, reasoningBudget: {}, verbatim: {} }, APP);
     expect(s.samplers).toBeUndefined();
     expect(s.reasoning).toBeUndefined();
+    expect(s.reasoningBudget).toBeUndefined();
     expect(s.verbatim).toBeUndefined();
     expect(s.kind).toBe(SHARE_KIND);
     expect(s.appVersion).toBe(APP);
