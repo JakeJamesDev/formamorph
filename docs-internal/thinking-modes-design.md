@@ -77,7 +77,11 @@ A per-prompt cap on **reasoning** length, distinct from the effort level. Proven
 
 **Shipped shape:** `reasoningBudget?: ReasoningBudgetMap` on `PromptPreset` (percent per kind, preset-scoped, exported); `reasoningBudgetBody`/`resolveReasoningBudgetPct`/`defaultReasoningBudgetPct` in `reasoningEffort.ts` (unit-tested); engine-split control in `PromptOptionsPanel` (`PromptReasoningBudgetField` slider on `localModelActive`, effort tabs otherwise); `makeAIRequest` spreads the budget body on the local engine, effort body on external. Additive preset-share shape change (`FORMAT_VERSION` unchanged). **Desktop end-to-end confirmed** by driving the real `llmEngine.cjs` server standalone (require → `start({modelPath})` → POST `/chat/completions` with `thinking_budget_tokens`): omit/200/40/0 capped the `<think>` block to 1785/873/161/0 chars, narration coherent at every budget. Full path proven minus only the renderer's typechecked field-add.
 
-## `<think>` block UI (Slice 3 — spec'd, next to build; version 2.1.0)
+## `<think>` block UI (Slice 3 — SHIPPED; version 2.1.0, additive save-shape)
+
+Built as three gated increments: (1) pure extraction helpers (`extractReasoning`/`extractReasoningLive`, unit-tested) + the `showReasoning` setting; (2) stream capture (native `reasoning`/`reasoning_content` delta + inline `<think>` + first-token→narration timing) persisted into the per-turn assistant JSON as `reasoning: { text, ms }` on `AITurnResult` (additive save-shape, presence-based, old saves fine); (3) the UI — `ReasoningBlock` above the narration in `MiddlePanel`, fed by `reasoningStreamStore` (external store like `gameplayTextStore`), expanded/"Thinking…" while active → auto-collapse "Thought for Ns", de-emphasized markdown, `showReasoning`-gated (default on). Verified end-to-end: meromero emits `<think>` for a clean inline prompt (node), helpers parse both shapes (unit tests), the app correctly captured *nothing* when the model emitted nothing for its full prompt, and the block renders/collapses/styles correctly (preview via injected store data). **Note:** meromero didn't emit reasoning for the app's *full* narration prompt in Inline mode even though a simple prompt triggered it — that's the pending **Inline directive hardening**, not a block bug. Original spec table retained below.
+
+### Original locked spec
 
 Player-facing collapsible reasoning aside, **below the player action, above that turn's narration** — one block per turn. Interview-locked spec:
 
