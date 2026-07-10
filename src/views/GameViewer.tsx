@@ -68,7 +68,7 @@ import {
 } from "../lib/stagedPlanning";
 import { selectDueDiscovery, materializeDiscoveredEntity, mergeDiscoveredIntoLocation, cleanDiscoveredDescription, selectReachableVisitors, DISCOVER_NAME_LABEL, DISCOVER_PASSAGE_LABEL } from "../lib/runtimeCharacters";
 import { lengthGuidance, trimToLastSentence } from "../lib/outputLength";
-import { reasoningEffortBody, resolvePromptReasoning } from "../lib/reasoningEffort";
+import { reasoningEffortBody, resolvePromptReasoning, reasoningBudgetBody } from "../lib/reasoningEffort";
 import { splitSentenceSegments } from "../lib/ttsChunks";
 import { selectDueDigests, applyDigest, parseTurnContent, selectDueDiaries, pendingDiaryNames, applyDiary } from "../lib/turnDigest";
 import { buildTraitContext } from "../lib/traitTree";
@@ -262,6 +262,7 @@ const GameViewer = ({
     reasoningEffort,
     supportedReasoningEfforts,
     promptReasoning,
+    promptReasoningBudget,
     thinkingPrompt,
     memoryDigests,
     summaryPrompt,
@@ -1688,9 +1689,12 @@ ${playerNotes || NONE_PLACEHOLDER}
           // endpoint (undefined → no field, so the endpoint's own value applies).
           ...(resolvedTemperature !== undefined && { temperature: resolvedTemperature }),
           ...(resolvedRepPenalty !== undefined && { repetition_penalty: resolvedRepPenalty }),
-          // Native-reasoning hint: under Native each prompt resolves its own level (narration/choices are
-          // user-set, others forced to none); guided modes force none. Omitted when the endpoint can't accept it.
-          ...reasoningEffortBody(thinkingMode, resolvePromptReasoning(requestType, promptReasoning, reasoningEffort), supportedReasoningEfforts),
+          // Reasoning is engine-split: the local engine caps the thought segment by a token budget
+          // (thinking_budget_tokens, from the per-prompt %); external endpoints take the coarse reasoning_effort
+          // hint. Guided modes / uncontrolled prompts resolve to 0 / none on each path.
+          ...(localModelActive
+            ? reasoningBudgetBody(thinkingMode, requestType, promptReasoningBudget, maxTokensOverride ?? maxTokens)
+            : reasoningEffortBody(thinkingMode, resolvePromptReasoning(requestType, promptReasoning, reasoningEffort), supportedReasoningEfforts)),
           // Single-paragraph stop, but not in inline-thinking mode — the <think> block needs newlines.
           ...(requestType === "narration" && paragraphLimit === "single" && thinkingMode !== "inline" && { stop: ["\n"] }),
         }),

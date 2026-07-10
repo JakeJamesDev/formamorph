@@ -23,7 +23,7 @@ import {
 import {
   emptyStore, presetStoreCodec, activeValues, isBuiltInActive, activeStyle, BUILTIN_PRESETS,
   setActive as setActivePreset, addPreset as addPresetOp, renamePreset as renamePresetOp, deletePreset as deletePresetOp, resetPreset as resetPresetOp, updateValue,
-  activeSamplers, activeReasoning, activeVerbatim, updateSamplers, updateReasoning, updateVerbatim, foldTuningIntoUserPresets,
+  activeSamplers, activeReasoning, activeReasoningBudget, activeVerbatim, updateSamplers, updateReasoning, updateReasoningBudget, updateVerbatim, foldTuningIntoUserPresets,
   addFullPreset, replacePreset,
   type PromptPresetStore, type PromptValues, type VerbatimMap, type PromptPreset,
 } from '../lib/promptPresets';
@@ -408,6 +408,7 @@ function useProvideSettings() {
   // active preset and no-op under a built-in, mirroring the text setters above.
   const promptSamplers = useMemo(() => activeSamplers(presetStore), [presetStore]);
   const promptReasoning = useMemo(() => activeReasoning(presetStore), [presetStore]);
+  const promptReasoningBudget = useMemo(() => activeReasoningBudget(presetStore), [presetStore]);
   const verbatimMap = useMemo(() => activeVerbatim(presetStore), [presetStore]);
   const globalForSampler = useCallback(
     (sampler: PromptSampler) => (sampler === 'temperature' ? genTemperature : genRepetitionPenalty),
@@ -428,6 +429,9 @@ function useProvideSettings() {
   }, [setPresetStore]);
   const setPromptReasoning = useCallback((kind: AIRequestType, value: PromptReasoning) => {
     setPresetStore((s) => updateReasoning(s, kind, value));
+  }, [setPresetStore]);
+  const setPromptReasoningBudget = useCallback((kind: AIRequestType, value: number) => {
+    setPresetStore((s) => updateReasoningBudget(s, kind, value));
   }, [setPresetStore]);
 
   // Preset management (Settings → System Prompts selector).
@@ -453,7 +457,7 @@ function useProvideSettings() {
   const activePresetName = BUILTIN_PRESETS.find((b) => b.id === presetStore.activeId)?.name
     ?? presetStore.presets.find((p) => p.id === presetStore.activeId)?.name ?? 'Preset';
   const exportActivePreset = (appVersion: string): SharedPreset =>
-    buildSharedPreset({ name: activePresetName, style: activeSectionStyle, values: promptValues, samplers: promptSamplers, reasoning: promptReasoning, verbatim: verbatimMap }, appVersion);
+    buildSharedPreset({ name: activePresetName, style: activeSectionStyle, values: promptValues, samplers: promptSamplers, reasoning: promptReasoning, reasoningBudget: promptReasoningBudget, verbatim: verbatimMap }, appVersion);
   const importPreset = (imported: ImportedPreset, opts: { includeTuning: boolean; name: string; overwriteId?: string }): string => {
     const style = imported.style;
     const values = { ...buildStyledValues(PROMPT_TEXT_DEFAULTS, style), ...imported.values };
@@ -461,6 +465,7 @@ function useProvideSettings() {
       name: opts.name, values, style,
       ...(opts.includeTuning && imported.samplers ? { samplers: imported.samplers } : {}),
       ...(opts.includeTuning && imported.reasoning ? { reasoning: imported.reasoning } : {}),
+      ...(opts.includeTuning && imported.reasoningBudget ? { reasoningBudget: imported.reasoningBudget } : {}),
       ...(opts.includeTuning && imported.verbatim ? { verbatim: imported.verbatim } : {}),
     };
     if (opts.overwriteId) { const target = opts.overwriteId; setPresetStore((s) => replacePreset(s, target, content)); return target; }
@@ -750,6 +755,8 @@ function useProvideSettings() {
     supportedReasoningEfforts,
     promptReasoning,
     setPromptReasoning,
+    promptReasoningBudget,
+    setPromptReasoningBudget,
     thinkingPrompt,
     setThinkingPrompt,
     summaryPrompt,

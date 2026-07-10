@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { reasoningEffortBody, reasoningTabs, reasoningPromptTabs, defaultPromptReasoning, resolvePromptReasoning, SAFE_REASONING_EFFORTS } from './reasoningEffort';
+import { reasoningEffortBody, reasoningTabs, reasoningPromptTabs, defaultPromptReasoning, resolvePromptReasoning, defaultReasoningBudgetPct, resolveReasoningBudgetPct, reasoningBudgetBody, SAFE_REASONING_EFFORTS } from './reasoningEffort';
 
 describe('reasoningEffortBody', () => {
   it('sends the hint verbatim under Native mode for every non-auto level', () => {
@@ -83,5 +83,35 @@ describe('per-prompt reasoning', () => {
   it('forces uncontrolled prompts to none regardless of stored prefs or global', () => {
     expect(resolvePromptReasoning('summary', { summary: 'high' }, 'high')).toBe('none');
     expect(resolvePromptReasoning('statUpdates', {}, 'high')).toBe('none');
+  });
+});
+
+describe('reasoning budget (local engine)', () => {
+  it('ships narration at 40% and everything else at 0%', () => {
+    expect(defaultReasoningBudgetPct('narration')).toBe(40);
+    expect(defaultReasoningBudgetPct('choices')).toBe(0);
+    expect(defaultReasoningBudgetPct('summary')).toBe(0);
+  });
+
+  it('resolves a controlled prompt to its stored/default %, others to 0, clamped', () => {
+    expect(resolveReasoningBudgetPct('narration', {})).toBe(40);
+    expect(resolveReasoningBudgetPct('narration', { narration: 20 })).toBe(20);
+    expect(resolveReasoningBudgetPct('choices', {})).toBe(0);
+    expect(resolveReasoningBudgetPct('choices', { choices: 30 })).toBe(30);
+    expect(resolveReasoningBudgetPct('summary', { summary: 90 })).toBe(0); // uncontrolled → 0
+    expect(resolveReasoningBudgetPct('narration', { narration: 250 })).toBe(100); // clamp
+  });
+
+  it('converts the % to a token cap against max output under Native mode', () => {
+    expect(reasoningBudgetBody('off', 'narration', {}, 500)).toEqual({ thinking_budget_tokens: 200 }); // 40% of 500
+    expect(reasoningBudgetBody('off', 'narration', { narration: 20 }, 500)).toEqual({ thinking_budget_tokens: 100 });
+    expect(reasoningBudgetBody('off', 'choices', {}, 500)).toEqual({ thinking_budget_tokens: 0 }); // choices off by default
+    expect(reasoningBudgetBody('off', 'choices', { choices: 30 }, 400)).toEqual({ thinking_budget_tokens: 120 });
+    expect(reasoningBudgetBody('off', 'summary', { summary: 50 }, 500)).toEqual({ thinking_budget_tokens: 0 }); // uncontrolled
+  });
+
+  it('forces 0 in guided modes (local engine ignores reasoning_effort, so this is how they suppress)', () => {
+    expect(reasoningBudgetBody('inline', 'narration', { narration: 40 }, 500)).toEqual({ thinking_budget_tokens: 0 });
+    expect(reasoningBudgetBody('staged', 'narration', {}, 500)).toEqual({ thinking_budget_tokens: 0 });
   });
 });

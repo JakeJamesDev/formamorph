@@ -1,4 +1,4 @@
-import { PROMPT_TEXT_KEYS, type PromptValues, type SectionStyle, type VerbatimMap, type ReasoningMap } from './promptPresets';
+import { PROMPT_TEXT_KEYS, type PromptValues, type SectionStyle, type VerbatimMap, type ReasoningMap, type ReasoningBudgetMap } from './promptPresets';
 import type { PromptSamplerMap } from './promptSamplers';
 
 /** Wire identity + schema version for a shared prompt preset. `FORMAT_VERSION` bumps only on a breaking change
@@ -18,6 +18,7 @@ export interface SharedPreset {
   values: PromptValues;
   samplers?: PromptSamplerMap;
   reasoning?: ReasoningMap;
+  reasoningBudget?: ReasoningBudgetMap;
   verbatim?: VerbatimMap;
 }
 
@@ -28,6 +29,7 @@ export interface ImportedPreset {
   values: PromptValues;
   samplers?: PromptSamplerMap;
   reasoning?: ReasoningMap;
+  reasoningBudget?: ReasoningBudgetMap;
   verbatim?: VerbatimMap;
 }
 
@@ -43,7 +45,7 @@ export interface ParseResult {
 /** Build the shareable artifact from a (resolved) preset. Built-ins should be materialized to concrete
  *  values/tuning by the caller before export. */
 export function buildSharedPreset(
-  input: { name: string; style: SectionStyle; values: PromptValues; samplers?: PromptSamplerMap; reasoning?: ReasoningMap; verbatim?: VerbatimMap },
+  input: { name: string; style: SectionStyle; values: PromptValues; samplers?: PromptSamplerMap; reasoning?: ReasoningMap; reasoningBudget?: ReasoningBudgetMap; verbatim?: VerbatimMap },
   appVersion: string,
 ): SharedPreset {
   return {
@@ -55,6 +57,7 @@ export function buildSharedPreset(
     values: input.values,
     ...(input.samplers && Object.keys(input.samplers).length ? { samplers: input.samplers } : {}),
     ...(input.reasoning && Object.keys(input.reasoning).length ? { reasoning: input.reasoning } : {}),
+    ...(input.reasoningBudget && Object.keys(input.reasoningBudget).length ? { reasoningBudget: input.reasoningBudget } : {}),
     ...(input.verbatim && Object.keys(input.verbatim).length ? { verbatim: input.verbatim } : {}),
   };
 }
@@ -122,6 +125,8 @@ function sanitize(obj: unknown, currentAppVersion: string): ParseResult {
   if (o.samplers && typeof o.samplers === 'object') preset.samplers = o.samplers as PromptSamplerMap;
   const reasoning = sanitizeReasoning(o.reasoning);
   if (reasoning) preset.reasoning = reasoning;
+  const reasoningBudget = sanitizeReasoningBudget(o.reasoningBudget);
+  if (reasoningBudget) preset.reasoningBudget = reasoningBudget;
   const verbatim = sanitizeVerbatim(o.verbatim);
   if (verbatim) preset.verbatim = verbatim;
 
@@ -142,6 +147,14 @@ function sanitizeVerbatim(raw: unknown): VerbatimMap | undefined {
   const out: Record<string, number> = {};
   for (const [k, v] of Object.entries(raw as Record<string, unknown>)) if (typeof v === 'number' && Number.isFinite(v)) out[k] = v;
   return Object.keys(out).length ? (out as VerbatimMap) : undefined;
+}
+
+/** Keep only finite-number reasoning-budget entries, clamped to 0–100 percent. */
+function sanitizeReasoningBudget(raw: unknown): ReasoningBudgetMap | undefined {
+  if (!raw || typeof raw !== 'object') return undefined;
+  const out: Record<string, number> = {};
+  for (const [k, v] of Object.entries(raw as Record<string, unknown>)) if (typeof v === 'number' && Number.isFinite(v)) out[k] = Math.max(0, Math.min(100, v));
+  return Object.keys(out).length ? (out as ReasoningBudgetMap) : undefined;
 }
 
 // --- UTF-8-safe base64 (prompt text carries em-dashes, curly quotes, etc.; btoa alone is Latin1-only) ---

@@ -68,6 +68,35 @@ export function resolvePromptReasoning(
   return pref === 'global' ? globalEffort : pref;
 }
 
+/** Shipped default reasoning budget (percent of max output) per prompt: narration reasons, others are off (0%). */
+export function defaultReasoningBudgetPct(kind: AIRequestType): number {
+  return kind === 'narration' ? 40 : 0;
+}
+
+/** The effective budget percent for a request: a controlled prompt uses its stored value (or shipped default),
+ *  every other prompt is 0 (no reasoning). Clamped to 0–100. */
+export function resolveReasoningBudgetPct(kind: AIRequestType, budgets: Partial<Record<AIRequestType, number>>): number {
+  const pct = REASONING_CONTROL_KINDS.includes(kind) ? (budgets[kind] ?? defaultReasoningBudgetPct(kind)) : 0;
+  return Math.max(0, Math.min(100, pct));
+}
+
+/**
+ * Builds the `thinking_budget_tokens` slice of a request body — the LOCAL-engine reasoning cap (node-llama-cpp
+ * `budgets.thoughtTokens`), sent only when the local engine is active. Guided modes and uncontrolled prompts
+ * force 0 (no reasoning — the local engine ignores `reasoning_effort`, so this is how they're suppressed there);
+ * a controlled prompt under Native mode sends `round(pct% × maxTokens)`. Always returns the field on the local
+ * engine, so `0` cleanly means "off".
+ */
+export function reasoningBudgetBody(
+  mode: ThinkingMode,
+  kind: AIRequestType,
+  budgets: Partial<Record<AIRequestType, number>>,
+  maxTokens: number,
+): { thinking_budget_tokens: number } {
+  const pct = mode !== 'off' ? 0 : resolveReasoningBudgetPct(kind, budgets);
+  return { thinking_budget_tokens: Math.round((pct / 100) * maxTokens) };
+}
+
 /**
  * Builds the `reasoning_effort` slice of a request body, spread into the body so an empty result adds no field.
  *
