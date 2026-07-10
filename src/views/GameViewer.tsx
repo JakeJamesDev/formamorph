@@ -49,7 +49,7 @@ import WorldEditor from "./WorldEditor";
 import type { CharacterData, ChatMessage, ChatRole, AIRequestType, AITurnResult, StatChange, Trait, GameLocation, MediaAsset, Dictionary, Entity, SaveRecord, World } from "@/types";
 import { UnsavedChangesDialog } from "../components/UnsavedChangesDialog";
 import { estimateHistoryChars, estimateTokens } from "../lib/memoryUtils";
-import { parseNarration, stripReasoning, stripReasoningLive } from "../lib/aiResponse";
+import { parseNarration, stripReasoning, stripReasoningLive, extractReasoning } from "../lib/aiResponse";
 import {
   INLINE_THINKING_DIRECTIVE,
   markdownGuidance,
@@ -439,6 +439,9 @@ const GameViewer = ({
   const sceneListCtxRef = useRef<{ cast: DirectorCastMember[] | null; prior: string }>({ cast: null, prior: "" });
   const assistantAddedRef = useRef(false); // whether this turn's in-progress assistant message is in history yet
   const currentTurnIdRef = useRef(""); // stable id for the in-progress turn, stamped into its assistant JSON
+  // This turn's captured reasoning (native `reasoning` stream field + inline <think>) + think duration (ms),
+  // set by the narration request's stream and read into the committed turn JSON. Also drives the live block.
+  const turnReasoningRef = useRef<{ text: string; ms: number }>({ text: "", ms: 0 });
   const digestDrainingRef = useRef(false); // a memory digest is in flight (serializes the drainer)
   const [digestActive, setDigestActive] = useState(false); // drives the status-bar indicator for a running digest
   const diaryDrainingRef = useRef(false); // a character diary entry is in flight (serializes the drainer)
@@ -1405,6 +1408,8 @@ ${playerNotes || NONE_PLACEHOLDER}
               turnId: currentTurnIdRef.current,
               entities: turnParticipants,
               locationId: turnLocation?.id,
+              // Per-turn reasoning (additive save-shape). Absent when the model didn't reason.
+              ...(turnReasoningRef.current.text ? { reasoning: turnReasoningRef.current } : {}),
             }),
           };
         }
@@ -1716,9 +1721,15 @@ ${playerNotes || NONE_PLACEHOLDER}
       let buffer = "";
       let content = "";
       let finishReason = null;
+      // Reasoning capture (narration only): native `reasoning`/`reasoning_content` stream field, plus timing so
+      // the block can show "Thought for Ns" — `firstTokenAt` is the first token of any kind, `narrationAt` the
+      // first visible narration token, so their gap is the think time for both native and inline-<think> paths.
+      let reasoningText = "";
+      let firstTokenAt = 0;
+      let narrationAt = 0;
       // Clear the narration for this turn's fresh reveal (reset re-seeds the reveal's base timing) and
       // mark the reveal live — from here the reveal view shows the streaming gameplayText, not committed.
-      if (requestType === "narration") { fadeReveal.reset(); smoothReveal.reset(); setIsRevealingNarration(true); entitySentenceCursorRef.current = 0; assistantAddedRef.current = false; }
+      if (requestType === "narration") { fadeReveal.reset(); smoothReveal.reset(); setIsRevealingNarration(true); entitySentenceCursorRef.current = 0; assistantAddedRef.current = false; turnReasoningRef.current = { text: "", ms: 0 }; }
       // Opt-in streaming TTS: synthesize narration sentence-by-sentence as it arrives (needs a model).
       const ttsStreaming = streamNarrationAudio && ttsLoaded && requestType === "narration";
       if (ttsStreaming) { ttsModalRef.current?.streamStart(); ttsSentenceCursorRef.current = 0; }
@@ -1733,6 +1744,13 @@ ${playerNotes || NONE_PLACEHOLDER}
           const parsed = JSON.parse(data);
           const delta = parsed.choices[0]?.delta?.content || "";
           content += delta;
+          // A native reasoning model streams its scratchpad in a separate `reasoning` field (some backends
+          // name it `reasoning_content`); accumulate it for the block. Inline <think> stays in `content`.
+          const reasoningDelta = parsed.choices[0]?.delta?.reasoning ?? parsed.choices[0]?.delta?.reasoning_content ?? "";
+          if (requestType === "narration") {
+            if (reasoningDelta) reasoningText += reasoningDelta;
+            if (!firstTokenAt && (delta || reasoningDelta)) firstTokenAt = performance.now();
+          }
           if (parsed.choices[0]?.finish_reason) {
             finishReason = parsed.choices[0].finish_reason;
           }
@@ -1743,6 +1761,7 @@ ${playerNotes || NONE_PLACEHOLDER}
             // reasoning model's <think> block is stripped it leaves leading blank lines, and that shift
             // otherwise makes the reveal re-animate every paragraph at the end.
             const display = stripReasoningLive(content).replace(/^\s+/, '');
+            if (!narrationAt && display.length > 0) narrationAt = performance.now();
             // Split once per token; streaming TTS, the entity tab, and the reveal all read these.
             const segments = splitSentenceSegments(display);
             if (fadeRevealActive) {
@@ -1846,6 +1865,13 @@ ${playerNotes || NONE_PLACEHOLDER}
       let finalContent = stripReasoning(content).trim();
       // On a mid-sentence truncation (hit the token cap), trim back to the last complete sentence.
       if (requestType === "narration") {
+        // Capture this turn's reasoning: the native `reasoning` stream field plus any inline <think> body
+        // (the two are mutually exclusive in practice). `ms` is the gap from the first token to the first
+        // narration token — the think time. Stored for the block + the committed turn (empty ⇒ no block).
+        const inlineReasoning = extractReasoning(content);
+        const reasoning = [reasoningText.trim(), inlineReasoning].filter(Boolean).join("\n\n").trim();
+        const ms = reasoning ? Math.max(0, Math.round((narrationAt || performance.now()) - (firstTokenAt || narrationAt || performance.now()))) : 0;
+        turnReasoningRef.current = { text: reasoning, ms };
         if (finishReason === "length") finalContent = trimToLastSentence(finalContent);
         // Hand the authoritative final text (incl. any held last sentence) to the active reveal. The
         // pacer drains any remaining backlog at its measured rate (capped to not dawdle on the tail).
