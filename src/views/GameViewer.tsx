@@ -1147,7 +1147,10 @@ ${playerNotes || NONE_PLACEHOLDER}
           turnPlan = sanitizePlanForReveal(plan, (name) => matchNames(priorNarration, [name]).length > 0);
         }
       } else if (thinkingMode === "inline") {
-        updatedPrompt += INLINE_THINKING_DIRECTIVE;
+        // Ride the <think> directive on the final user turn (adjacent to where the model writes), like the
+        // plan below — recency is what makes small models actually open the block. Buried in the system
+        // prompt it was mostly ignored (probe: Silver-Siren 2/18 & MeroMero 5/18 -> both 18/18 here).
+        narrationMessages[narrationMessages.length - 1].content += INLINE_THINKING_DIRECTIVE;
       } else if (thinkingMode === "staged") {
         // Staged planning: director (cast + continuation) -> one motivation pass per character
         // (sequential, capped at 3) -> storyboarder. The storyboard is injected like the precall plan.

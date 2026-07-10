@@ -271,7 +271,12 @@ Output only the description - no name heading, label, or preamble.`;
 // block is stripped from the narration before the player sees it.
 export const INLINE_THINKING_DIRECTIVE = `
 
-Before the narration, reason privately inside <think>...</think> tags - consider the player's action, their stats and traits, the location, and consistency with the story so far. The player never sees this. After the closing </think> tag, write only the narration.`;
+Before the narration, think privately inside a <think>...</think> block. Plan this turn as three or four terse bullets:
+- who is present and what each of them wants right now
+- what each of them knows, and what they do not
+- the state carried from last turn - positions, injuries, mood, anything unfinished
+- the single beat this turn must land
+Keep the bullets clipped, like notes to yourself, not prose. The player never sees this block. After the closing </think> tag, write only the narration.`;
 
 // A planning result (the precall plan or the staged storyboard) is attached to the *final user turn*
 // of the game-text request — adjacent to where the model starts writing — rather than appended to the
