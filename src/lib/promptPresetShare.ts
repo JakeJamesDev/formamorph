@@ -76,6 +76,11 @@ export function parseSharedJson(raw: string, currentAppVersion: string): ParseRe
   return sanitize(obj, currentAppVersion);
 }
 
+/** Parse either form (a `.json` body or a share code) — JSON when the text starts with `{`, else a code. */
+export function parseSharedAny(text: string, currentAppVersion: string): ParseResult {
+  return text.trim().startsWith('{') ? parseSharedJson(text, currentAppVersion) : parseSharedCode(text, currentAppVersion);
+}
+
 /** Parse a copy-paste share code (with or without the prefix) into a validated preset (or an error). */
 export function parseSharedCode(code: string, currentAppVersion: string): ParseResult {
   const trimmed = code.trim();

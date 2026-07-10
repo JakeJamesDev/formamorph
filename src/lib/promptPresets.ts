@@ -117,6 +117,16 @@ export function addPreset(store: PromptPresetStore, id: string, name: string, va
   return { activeId: id, presets: [...store.presets, { id, name, values: { ...values }, style }] };
 }
 
+/** Add a full preset (name + values + style + optional tuning, e.g. an import) and select it. */
+export function addFullPreset(store: PromptPresetStore, id: string, preset: Omit<PromptPreset, 'id'>): PromptPresetStore {
+  return { activeId: id, presets: [...store.presets, { id, ...preset }] };
+}
+
+/** Overwrite an existing preset's whole content (name/values/style/tuning) and select it. */
+export function replacePreset(store: PromptPresetStore, id: string, preset: Omit<PromptPreset, 'id'>): PromptPresetStore {
+  return { activeId: id, presets: store.presets.map((p) => (p.id === id ? { id, ...preset } : p)) };
+}
+
 /** Rename a user preset in place; leaves the active selection unchanged. */
 export function renamePreset(store: PromptPresetStore, id: string, name: string): PromptPresetStore {
   return { ...store, presets: store.presets.map((p) => (p.id === id ? { ...p, name } : p)) };
