@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { parseNarration, stripReasoning, stripReasoningLive } from './aiResponse';
+import { parseNarration, stripReasoning, stripReasoningLive, extractReasoning, extractReasoningLive } from './aiResponse';
 
 describe('parseNarration', () => {
   it('returns narration from strict JSON', () => {
@@ -73,5 +73,34 @@ describe('stripReasoningLive', () => {
 
   it('leaves plain streaming text untouched', () => {
     expect(stripReasoningLive('You walk down the')).toBe('You walk down the');
+  });
+});
+
+describe('extractReasoning', () => {
+  it('returns the text inside a complete block (the inverse of stripReasoning)', () => {
+    expect(extractReasoning('<think>plan here</think>You step in.')).toBe('plan here');
+  });
+
+  it('concatenates multiple blocks / tag names', () => {
+    expect(extractReasoning('<think>a</think>x<reasoning>b</reasoning>')).toBe('a\n\nb');
+  });
+
+  it('is empty when there is no inline reasoning block', () => {
+    expect(extractReasoning('Just narration.')).toBe('');
+    expect(extractReasoning('')).toBe('');
+  });
+});
+
+describe('extractReasoningLive', () => {
+  it('includes the tail of an in-progress (unclosed) block', () => {
+    expect(extractReasoningLive('<think>planning so f')).toBe('planning so f');
+  });
+
+  it('combines a completed block with an in-progress one', () => {
+    expect(extractReasoningLive('<think>done</think>narration<think>more think')).toBe('done\n\nmore think');
+  });
+
+  it('returns the completed body once the block closes', () => {
+    expect(extractReasoningLive('<think>all done</think>You arrive.')).toBe('all done');
   });
 });

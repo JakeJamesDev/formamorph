@@ -57,7 +57,7 @@ Today's `INLINE_THINKING_DIRECTIVE` is unbounded narrator-continuity guidance. T
 
 Bounding to 3–4 bullets is the whole point: it captures the continuity value ST users prize without the verbose ramble they complain about.
 
-## Reasoning Budget — per-prompt token cap (Slice 4 — SHIPPED; desktop end-to-end pending a `desktop:dev` run)
+## Reasoning Budget — per-prompt token cap (Slice 4 — SHIPPED + desktop end-to-end confirmed)
 
 A per-prompt cap on **reasoning** length, distinct from the effort level. Proven exact on the desktop engine (node-llama-cpp `budgets.thoughtTokens`): capping thought to 200/100/40/0 tokens landed *exactly* on the cap, narration stayed coherent at every level (even 0), latency scaled 15s→2.2s. `reasoning_effort` levels, by contrast, are binary/noise on `meromero` (Ollama). Interview-locked spec:
 
@@ -75,7 +75,7 @@ A per-prompt cap on **reasoning** length, distinct from the effort level. Proven
 1. **Bridge plumbing — done.** `electron/llmEngine.cjs` `promptOptions` maps `body.thinking_budget_tokens → { budgets: { thoughtTokens } }`. The desktop path is a local OpenAI-compat server, so one field mapping was all it needed (no native rewrite).
 2. **Slice 1 desktop suppression — done.** The local engine ignores `reasoning_effort`, so `reasoningBudgetBody` returns `thinking_budget_tokens: 0` for guided modes AND uncontrolled prompts — that's how "off" is enforced on the local engine now.
 
-**Shipped shape:** `reasoningBudget?: ReasoningBudgetMap` on `PromptPreset` (percent per kind, preset-scoped, exported); `reasoningBudgetBody`/`resolveReasoningBudgetPct`/`defaultReasoningBudgetPct` in `reasoningEffort.ts` (unit-tested); engine-split control in `PromptOptionsPanel` (`PromptReasoningBudgetField` slider on `localModelActive`, effort tabs otherwise); `makeAIRequest` spreads the budget body on the local engine, effort body on external. Additive preset-share shape change (`FORMAT_VERSION` unchanged). **Left:** confirm end-to-end on a real `desktop:dev` Electron run (renderer → local server → `session.prompt`), since the web preview can't exercise the local engine.
+**Shipped shape:** `reasoningBudget?: ReasoningBudgetMap` on `PromptPreset` (percent per kind, preset-scoped, exported); `reasoningBudgetBody`/`resolveReasoningBudgetPct`/`defaultReasoningBudgetPct` in `reasoningEffort.ts` (unit-tested); engine-split control in `PromptOptionsPanel` (`PromptReasoningBudgetField` slider on `localModelActive`, effort tabs otherwise); `makeAIRequest` spreads the budget body on the local engine, effort body on external. Additive preset-share shape change (`FORMAT_VERSION` unchanged). **Desktop end-to-end confirmed** by driving the real `llmEngine.cjs` server standalone (require → `start({modelPath})` → POST `/chat/completions` with `thinking_budget_tokens`): omit/200/40/0 capped the `<think>` block to 1785/873/161/0 chars, narration coherent at every budget. Full path proven minus only the renderer's typechecked field-add.
 
 ## `<think>` block UI (Slice 3 — spec'd, next to build; version 2.1.0)
 

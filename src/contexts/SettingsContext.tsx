@@ -255,6 +255,9 @@ function useProvideSettings() {
   // Reveal "silent" requests (e.g. the memory digest) in the status bar and AI-context viewer.
   // Default off: silent requests do their work without cluttering the UI; this is an inspection toggle.
   const [showSilentRequests, setShowSilentRequests] = usePersistentState<boolean>(`${APP_ID}_showSilentRequests`, false, boolCodec);
+  // Show a reasoning model's (or an inline-thinking) private scratchpad as a collapsible aside above each turn's
+  // narration. Default on: reasoning-model users see it; it's captured/saved regardless so toggling on reveals it.
+  const [showReasoning, setShowReasoning] = usePersistentState<boolean>(`${APP_ID}_showReasoning`, true, boolCodec);
   const [endpointUrl, setEndpointUrl] = usePersistentState<string>(`${APP_ID}_endpointUrl`, DEFAULT_ENDPOINT, stringCodec);
   const [apiToken, setApiToken] = usePersistentState<string>(`${APP_ID}_apiToken`, DEFAULT_API_TOKEN, stringCodec);
   const [modelName, setModelName] = usePersistentState<string>(`${APP_ID}_modelName`, DEFAULT_MODEL_NAME, stringCodec);
@@ -675,6 +678,8 @@ function useProvideSettings() {
     characterDiaries,
     setCharacterDiaries,
     showSilentRequests,
+    setShowReasoning,
+    showReasoning,
     setShowSilentRequests,
     endpointUrl,
     setEndpointUrl,

@@ -65,6 +65,9 @@ export interface AITurnResult {
   diaries?: Record<string, string>;
   /** The location this turn took place at, so a runtime-discovered character joins the right roster. */
   locationId?: string;
+  /** A reasoning model's (or inline-thinking) private scratchpad for this turn, shown as a collapsible aside
+   *  above the narration. `ms` is the think duration. Absent when the model didn't reason / on pre-2.1.0 saves. */
+  reasoning?: { text: string; ms: number };
 }
 
 /** An authenticated account as returned by the auth server; extra server fields pass through the index signature. */
