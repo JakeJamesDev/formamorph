@@ -195,6 +195,11 @@ export function IntroSequence({
 
     const frame = (now: number) => {
       if (cancelled) return;
+      // Re-read each frame so the canvas tracks the live theme: the theme class is applied by a parent
+      // effect that runs *after* this component's, so a one-time read at mount catches the pre-class
+      // (light) defaults and mismatches the kicker's live `text-foreground`. By the first rAF the class
+      // is set, and reading here keeps canvas + CSS in lockstep even if the OS theme flips mid-intro.
+      readColors();
       const t = now - start, e = T();
       ctx.clearRect(0, 0, W, H);
       gooCtx.clearRect(0, 0, W, H);
@@ -257,6 +262,7 @@ export function IntroSequence({
     };
 
     const renderStatic = () => {
+      readColors();
       ctx.clearRect(0, 0, W, H);
       gooCtx.clearRect(0, 0, W, H);
       background();
@@ -277,7 +283,9 @@ export function IntroSequence({
       if (cancelled) return;
       resize();
       if (reduce) {
-        renderStatic();
+        // Defer one frame so the parent theme effect has applied the .dark/.light class before we
+        // sample the tokens (same ordering issue the animated path handles by reading inside rAF).
+        rafId = requestAnimationFrame(renderStatic);
         staticTimer = window.setTimeout(finish, PACE === 'cine' ? 1600 : 900);
         return;
       }
