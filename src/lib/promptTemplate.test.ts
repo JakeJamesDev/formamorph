@@ -136,3 +136,34 @@ describe('token variants', () => {
     expect(parsePromptTemplate('<LOCATION|bogus>')).toEqual([{ type: 'text', value: '<LOCATION|bogus>' }]);
   });
 });
+
+// The compat contract for imported presets (a preset from a different app version may reference chips this
+// build doesn't know): every such token must survive as LITERAL text — never a chip, never dropped, never a
+// crash — through parse (editor/preview), serialize (round-trip), and render (runtime substitution).
+describe('cross-version import compat (Slice 4)', () => {
+  const FOREIGN = '<FUTURE CHIP>';                 // a base this build has never heard of
+  const FOREIGN_VARIANT = '<WORLD DESCRIPTION|future.mode>'; // known base, a variant added in a later version
+
+  it('parse leaves a foreign chip (unknown base or unknown variant) as literal text', () => {
+    expect(parsePromptTemplate(`before ${FOREIGN} after`)).toEqual([{ type: 'text', value: `before ${FOREIGN} after` }]);
+    expect(parsePromptTemplate(FOREIGN_VARIANT)).toEqual([{ type: 'text', value: FOREIGN_VARIANT }]);
+  });
+
+  it('a mixed prompt keeps known chips as chips and foreign ones as text', () => {
+    expect(parsePromptTemplate(`<NOTES> ${FOREIGN} <WORLD DESCRIPTION>`)).toEqual([
+      { type: 'variable', token: '<NOTES>' },
+      { type: 'text', value: ` ${FOREIGN} ` },
+      { type: 'variable', token: '<WORLD DESCRIPTION>' },
+    ]);
+  });
+
+  it('serialize round-trips a foreign chip byte-for-byte (import never mangles it)', () => {
+    const src = `A ${FOREIGN} B ${FOREIGN_VARIANT} C`;
+    expect(serializeSegments(parsePromptTemplate(src))).toBe(src);
+  });
+
+  it('render substitutes known chips and leaves foreign ones raw', () => {
+    const out = renderPromptTemplate(`<NOTES> | ${FOREIGN} | ${FOREIGN_VARIANT}`, { '<NOTES>': 'kept' });
+    expect(out).toBe(`kept | ${FOREIGN} | ${FOREIGN_VARIANT}`);
+  });
+});
