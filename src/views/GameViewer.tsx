@@ -49,7 +49,8 @@ import WorldEditor from "./WorldEditor";
 import type { CharacterData, ChatMessage, ChatRole, AIRequestType, AITurnResult, StatChange, Trait, GameLocation, MediaAsset, Dictionary, Entity, SaveRecord, World } from "@/types";
 import { UnsavedChangesDialog } from "../components/UnsavedChangesDialog";
 import { estimateHistoryChars, estimateTokens } from "../lib/memoryUtils";
-import { parseNarration, stripReasoning, stripReasoningLive, extractReasoning } from "../lib/aiResponse";
+import { parseNarration, stripReasoning, stripReasoningLive, extractReasoning, extractReasoningLive } from "../lib/aiResponse";
+import { setLiveReasoning, getLiveReasoning } from "../lib/reasoningStreamStore";
 import {
   INLINE_THINKING_DIRECTIVE,
   markdownGuidance,
@@ -1727,9 +1728,10 @@ ${playerNotes || NONE_PLACEHOLDER}
       let reasoningText = "";
       let firstTokenAt = 0;
       let narrationAt = 0;
+      let lastLiveReasoningTick = 0;
       // Clear the narration for this turn's fresh reveal (reset re-seeds the reveal's base timing) and
       // mark the reveal live — from here the reveal view shows the streaming gameplayText, not committed.
-      if (requestType === "narration") { fadeReveal.reset(); smoothReveal.reset(); setIsRevealingNarration(true); entitySentenceCursorRef.current = 0; assistantAddedRef.current = false; turnReasoningRef.current = { text: "", ms: 0 }; }
+      if (requestType === "narration") { fadeReveal.reset(); smoothReveal.reset(); setIsRevealingNarration(true); entitySentenceCursorRef.current = 0; assistantAddedRef.current = false; turnReasoningRef.current = { text: "", ms: 0 }; setLiveReasoning({ text: "", ms: 0, active: false }); }
       // Opt-in streaming TTS: synthesize narration sentence-by-sentence as it arrives (needs a model).
       const ttsStreaming = streamNarrationAudio && ttsLoaded && requestType === "narration";
       if (ttsStreaming) { ttsModalRef.current?.streamStart(); ttsSentenceCursorRef.current = 0; }
@@ -1750,6 +1752,16 @@ ${playerNotes || NONE_PLACEHOLDER}
           if (requestType === "narration") {
             if (reasoningDelta) reasoningText += reasoningDelta;
             if (!firstTokenAt && (delta || reasoningDelta)) firstTokenAt = performance.now();
+            // Stream the scratchpad into the live block while still thinking (before narration), throttled so a
+            // token-rate reasoning stream doesn't re-render the block per token.
+            if (!narrationAt) {
+              const nowTick = performance.now();
+              if (nowTick - lastLiveReasoningTick > 80) {
+                lastLiveReasoningTick = nowTick;
+                const liveText = [reasoningText.trim(), extractReasoningLive(content)].filter(Boolean).join("\n\n").trim();
+                if (liveText) setLiveReasoning({ text: liveText, ms: 0, active: true });
+              }
+            }
           }
           if (parsed.choices[0]?.finish_reason) {
             finishReason = parsed.choices[0].finish_reason;
@@ -1762,6 +1774,11 @@ ${playerNotes || NONE_PLACEHOLDER}
             // otherwise makes the reveal re-animate every paragraph at the end.
             const display = stripReasoningLive(content).replace(/^\s+/, '');
             if (!narrationAt && display.length > 0) narrationAt = performance.now();
+            // Narration has begun: collapse the reasoning block, stamping the think duration.
+            if (narrationAt && getLiveReasoning().active) {
+              const lr = getLiveReasoning();
+              setLiveReasoning({ text: lr.text, ms: Math.max(0, Math.round(narrationAt - firstTokenAt)), active: false });
+            }
             // Split once per token; streaming TTS, the entity tab, and the reveal all read these.
             const segments = splitSentenceSegments(display);
             if (fadeRevealActive) {
@@ -1872,6 +1889,7 @@ ${playerNotes || NONE_PLACEHOLDER}
         const reasoning = [reasoningText.trim(), inlineReasoning].filter(Boolean).join("\n\n").trim();
         const ms = reasoning ? Math.max(0, Math.round((narrationAt || performance.now()) - (firstTokenAt || narrationAt || performance.now()))) : 0;
         turnReasoningRef.current = { text: reasoning, ms };
+        setLiveReasoning({ text: reasoning, ms, active: false });
         if (finishReason === "length") finalContent = trimToLastSentence(finalContent);
         // Hand the authoritative final text (incl. any held last sentence) to the active reveal. The
         // pacer drains any remaining backlog at its measured rate (capped to not dawdle on the tail).

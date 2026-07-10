@@ -10,6 +10,8 @@ import { usePlayerModelUrl } from '@/lib/usePlayerModelUrl';
 import { mergeBodyMorphs } from '@/lib/bodyMorphs';
 import { useIsMobile } from '@/lib/useIsMobile';
 import { MarkdownRenderer } from './MarkdownRenderer';
+import { ReasoningBlock } from './ReasoningBlock';
+import { useLiveReasoning } from '@/lib/reasoningStreamStore';
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -37,6 +39,14 @@ import type { TTSProgress } from './TTSModal';
 import { ConfirmDialog } from '../ConfirmDialog';
 import { EditTextModal } from '../modals/EditTextModal';
 import type { Entity, SceneEntity } from '@/types';
+
+/** A committed turn's saved reasoning (from its assistant-message JSON), or null. */
+function parseSavedReasoning(content: string): { text: string; ms: number } | null {
+  try {
+    const r = JSON.parse(content)?.reasoning;
+    return r && typeof r.text === 'string' ? { text: r.text, ms: typeof r.ms === 'number' ? r.ms : 0 } : null;
+  } catch { return null; }
+}
 
 export const LeftPanel = ({ entities, onEntityClick }: {
   entities: Entity[];
@@ -339,7 +349,8 @@ export const MiddlePanel = ({
     playerStats
   } = useGameplay();
   const gameplayText = useGameplayText();
-  const { ttsHighlight, choicesEnabled, statUpdatesEnabled, revealSpec, revealEasing } = useSettings();
+  const { ttsHighlight, choicesEnabled, statUpdatesEnabled, revealSpec, revealEasing, showReasoning } = useSettings();
+  const liveReasoning = useLiveReasoning();
   // Per-word reveal: any enabled effect ⇒ animate (composed keyframe + CSS vars on the container);
   // nothing enabled ⇒ smooth crawl. The keyframe name feeds Streamdown, the amounts ride as CSS vars.
   const revealOn = revealActive(revealSpec);
@@ -510,6 +521,13 @@ export const MiddlePanel = ({
                     <div className="whitespace-pre-wrap">{message.content}</div>
                   ) : (
                     <div ref={narrationRef} style={revealStyle}>
+                      {/* The turn's reasoning aside, above the narration: live for the streaming latest turn,
+                          otherwise this turn's saved scratchpad. */}
+                      {showReasoning && (() => {
+                        const useLive = isLatestMessage && !!liveReasoning.text;
+                        const r = useLive ? liveReasoning : parseSavedReasoning(message.content);
+                        return r?.text ? <ReasoningBlock text={r.text} ms={r.ms} active={useLive && liveReasoning.active} /> : null;
+                      })()}
                       {/* Show the live reveal only while THIS turn's narration is actually streaming;
                           during setup/thinking (or after) show the committed text, so stale last-turn
                           text can't animate all at once (the re-generate flash). */}
@@ -519,6 +537,13 @@ export const MiddlePanel = ({
                 </div>
               );
             })}
+            {/* Thinking phase: the narration's assistant message isn't in history yet, so show the live
+                reasoning block on its own (below the just-submitted action) until narration commits it. */}
+            {showReasoning && liveReasoning.text && displayedMessages[displayedMessages.length - 1]?.role === 'user' && (
+              <div className="mb-2">
+                <ReasoningBlock text={liveReasoning.text} ms={liveReasoning.ms} active={liveReasoning.active} />
+              </div>
+            )}
             <div className="mt-4 flex flex-col gap-2">
                 {choices && choices.length > 0 && choices.map((choice, index) => {
                   const isSelected = choice === playerInput;

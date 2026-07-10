@@ -332,6 +332,8 @@ export const SettingsModal = ({ isOpen, onOpenChange, previewValues, initialTab,
     setPromptSamplerValue,
     showSilentRequests,
     setShowSilentRequests,
+    showReasoning,
+    setShowReasoning,
     paragraphLimit,
     setParagraphLimit,
     locationBackground,
@@ -915,6 +917,22 @@ export const SettingsModal = ({ isOpen, onOpenChange, previewValues, initialTab,
                   </div>
                 </div>
               )}
+              <div className="grid grid-cols-1 sm:grid-cols-4 items-start gap-4">
+                <label htmlFor="showReasoning" className="text-left sm:text-right leading-4">
+                  Show Reasoning
+                </label>
+                <div className="col-span-3 flex items-start gap-2">
+                  <Checkbox
+                    id="showReasoning"
+                    checked={showReasoning}
+                    onCheckedChange={(c) => setShowReasoning(c === true)}
+                    className="shrink-0"
+                  />
+                  <span className="text-xs text-muted-foreground">
+                    Shows a reasoning model&apos;s (or the Inline thinking mode&apos;s) private scratchpad as a collapsible &ldquo;Thinking…&rdquo; note above each turn&apos;s narration. Captured and saved either way, so turning this on reveals it on past turns too.
+                  </span>
+                </div>
+              </div>
               <div className="grid grid-cols-1 sm:grid-cols-4 items-start gap-4">
                 <label htmlFor="showSilentRequests" className="text-left sm:text-right leading-4">
                   Show Silent Requests

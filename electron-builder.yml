@@ -5,6 +5,16 @@ directories:
 files:
   - dist/**/*
   - electron/**/*
+  # Drop the node-llama-cpp CUDA backends (~537MB): the prebuilts need CUDA redistributables that don't ship
+  # with them and aren't on normal systems, AND the prebuilt fails to initialize even with matching redist
+  # (0 devices) — a liability that only balloons the download. Vulkan runs on every GPU incl. NVIDIA, so it's
+  # the shipped GPU backend (with CPU fallback); revisit a dedicated CUDA build later. Matches `*cuda*` on all
+  # platforms; mac has no CUDA package so it's unaffected. Also drop the unused Windows arm64 backend (we don't
+  # target win-arm; mac-arm64 is a different package and stays, so Apple Silicon isn't touched).
+  - '!**/node_modules/@node-llama-cpp/*cuda*/**'
+  - '!**/node_modules/@node-llama-cpp/win-arm64/**'
+  # The llama.cpp git bundle (~32MB) exists only to build the engine from source; a prebuilt ship never does.
+  - '!**/node_modules/node-llama-cpp/llama/gitRelease.bundle'
 # node-llama-cpp ships native binaries (the llama.cpp engine + backend .node/.dll/.so/.dylib). They can't
 # run from inside the asar archive, so keep them (and node-llama-cpp itself) unpacked on disk.
 asarUnpack:
@@ -19,6 +29,9 @@ win:
 portable:
   # `-portable` so a future installer (nsis → Formamorph-${version}-setup.exe) never collides on name.
   artifactName: Formamorph-${version}-portable.exe
+  # NOTE: `useZip: true` (ZIP instead of LZMA for faster per-launch decompression) is BROKEN in
+  # electron-builder 26.x — makensis aborts with a SetCompressor/ZIP_COMPRESSION conflict (NSIS "line 142").
+  # Verified by isolation (builds fine without it). Skipped; the real fix is the extract-once restructure.
 linux:
   target:
     - AppImage
