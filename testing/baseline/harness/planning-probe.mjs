@@ -5,7 +5,7 @@
 // object (not a substitute), and use the "name (alias)" spoiler form only for a not-yet-named character.
 // Mirrors parseDirectorCast (stagedPlanning.ts) so the grade matches what the app would actually extract.
 //
-// Usage:  node planning-probe.mjs [--model rocinante] [--runs 2] [--temp 0.4]
+// Usage:  node planning-probe.mjs [--model silver-siren] [--runs 2] [--temp 0.4]
 
 import { readFile } from "node:fs/promises";
 import path from "node:path";

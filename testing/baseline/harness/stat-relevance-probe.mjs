@@ -4,7 +4,7 @@
 // tracked Sedge world has only 2 stats — too thin to test relevance. Renders the stats block exactly as the
 // app's `<STATS DESCRIPTION|numbers.meaning.markdown>` token does (`- **Name:** value/max - description`).
 //
-// Usage:  node stat-relevance-probe.mjs [--model rocinante] [--runs 2]
+// Usage:  node stat-relevance-probe.mjs [--model silver-siren] [--runs 2]
 
 import { readFile } from "node:fs/promises";
 import path from "node:path";

@@ -1,11 +1,12 @@
 import { useState, useEffect } from 'react';
-import { useSettings, type ThinkingMode, type ParagraphLimit } from '@/contexts/SettingsContext';
+import { useSettings, type ThinkingMode, type ReasoningEffort, type ParagraphLimit } from '@/contexts/SettingsContext';
 import { DEFAULT_ENDPOINT, DEFAULT_API_TOKEN, DEFAULT_MODEL_NAME, DEFAULT_MAX_TOKENS, THEME_COLORS, FONT_OPTIONS, NARRATION_FONT_OPTIONS, DEFAULT_NARRATION_SCALE, DEFAULT_NARRATION_LINE_HEIGHT, type ThemeColor, type FontChoice, type NarrationFont } from '@/contexts/settingsDefaults';
 import { useTheme } from '../theme-provider';
 import { ThemePreviewButton } from '@/components/ThemePreviewDialog';
 import { LocalModelPanel } from '@/components/modals/LocalModelPanel';
 import { SETTINGS_TABS } from '@/components/modals/settingsTabs';
 import { Row, CheckRow } from '@/components/SettingsRows';
+import { reasoningTabs, reasoningPromptTabs, defaultPromptReasoning, REASONING_CONTROL_KINDS, type PromptReasoning } from '@/lib/reasoningEffort';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { RevealAnimationDemoButton } from "@/components/RevealAnimationDemo";
@@ -44,11 +45,23 @@ const PARAGRAPH_LIMIT_OPTIONS: { value: ParagraphLimit; label: string; help: str
   { value: 'auto', label: 'Auto', help: 'Recommended. Scales the paragraph count to your Max Output Tokens so responses fit the budget and end cleanly.' },
 ];
 const THINKING_OPTIONS: { value: ThinkingMode; label: string; help: string }[] = [
-  { value: 'off', label: 'Off', help: 'Fastest. The model responds immediately, with no planning step.' },
+  { value: 'off', label: 'Native', help: 'Nothing is added to the prompt. Reasoning models think as they normally would; other models respond immediately.' },
   { value: 'inline', label: 'Inline', help: 'The model reasons privately before narrating, in the same request. One fewer round-trip.' },
   { value: 'precall', label: 'Planning', help: 'Recommended. A separate request is sent to plan narration before writing it. Most reliable for small models.' },
   { value: 'staged', label: 'Staged', help: 'Highest quality, slowest. A director picks the cast, each character plans its motivation, and a storyboarder writes the plan — several extra requests per turn.' },
 ];
+const REASONING_CAVEAT = 'Only applies to models with native reasoning.';
+// Per-value help; the tabs themselves are built from the endpoint's detected support via `reasoningTabs`.
+const REASONING_EFFORT_HELP: Record<ReasoningEffort, string> = {
+  auto: `No hint sent — the endpoint decides. ${REASONING_CAVEAT}`,
+  none: `Disables native reasoning. ${REASONING_CAVEAT}`,
+  minimal: `Minimal effort. ${REASONING_CAVEAT}`,
+  low: `Low effort. ${REASONING_CAVEAT}`,
+  medium: `Medium effort. ${REASONING_CAVEAT}`,
+  high: `High effort. ${REASONING_CAVEAT}`,
+  xhigh: `Extra-high effort. ${REASONING_CAVEAT}`,
+  max: `Maximum effort. ${REASONING_CAVEAT}`,
+};
 
 /** Per-prompt control: how many recent turns this prompt receives verbatim (the rest are digested). */
 function VerbatimTurnsField({ id, value, onChange, disabled }: { id: string; value: number; onChange: (n: number) => void; disabled?: boolean }) {
@@ -123,11 +136,37 @@ function SamplerControl({ id, label, hint, custom, value, defaultValue, min, max
   );
 }
 
+/** A prompt's Native Reasoning override: `Global | None | <levels>`, shown only for narration/choices under
+ *  Native mode. `Global` follows the endpoint-wide level; the rest override this prompt alone. */
+function PromptReasoningField({ value, tabs, onChange, disabled }: {
+  value: PromptReasoning;
+  tabs: { value: PromptReasoning; label: string }[];
+  onChange: (v: PromptReasoning) => void;
+  disabled?: boolean;
+}) {
+  return (
+    <div className="flex flex-col gap-1">
+      <label className="text-sm">Native Reasoning</label>
+      <Tabs value={value} onValueChange={(v) => onChange(v as PromptReasoning)}>
+        <TabsList className="grid w-full" style={{ gridTemplateColumns: `repeat(${tabs.length}, minmax(0, 1fr))` }}>
+          {tabs.map((t) => (
+            <TabsTrigger key={t.value} value={t.value} disabled={disabled}>{t.label}</TabsTrigger>
+          ))}
+        </TabsList>
+      </Tabs>
+      <span className="text-xs text-muted-foreground">
+        Global follows Settings → Generation → Native Reasoning. Only applies to models with native reasoning.
+      </span>
+    </div>
+  );
+}
+
 /** The per-prompt Options sub-tab: the verbatim-turns control (only when digests are on and the prompt uses
- *  them) plus one override row per tunable sampler (temperature, repetition penalty). `disabled` locks every
- *  control when the active prompt preset is built-in (Default/Simple), matching the read-only prompt editor. */
-function PromptOptionsPanel({ verbatim, samplers, disabled }: {
+ *  them), the per-prompt Native Reasoning override (narration/choices under Native only), plus one override row
+ *  per tunable sampler. `disabled` locks every control when the active prompt preset is built-in (Default/Simple). */
+function PromptOptionsPanel({ verbatim, reasoning, samplers, disabled }: {
   verbatim: { value: number; set: (n: number) => void } | null;
+  reasoning: { value: PromptReasoning; tabs: { value: PromptReasoning; label: string }[]; set: (v: PromptReasoning) => void } | null;
   samplers: SamplerControlProps[];
   disabled: boolean;
 }) {
@@ -135,6 +174,7 @@ function PromptOptionsPanel({ verbatim, samplers, disabled }: {
     // px-3 keeps the slider thumb off the scroll frame's edges (the thumb overflows the track ends at 0/max).
     <div className="space-y-5 px-3 py-3">
       {verbatim && <VerbatimTurnsField id="promptVerbatim" value={verbatim.value} onChange={verbatim.set} disabled={disabled} />}
+      {reasoning && <PromptReasoningField value={reasoning.value} tabs={reasoning.tabs} onChange={reasoning.set} disabled={disabled} />}
       {samplers.map((s) => <SamplerControl key={s.id} {...s} disabled={disabled} />)}
     </div>
   );
@@ -204,6 +244,11 @@ export const SettingsModal = ({ isOpen, onOpenChange, previewValues, initialTab,
     setSummaryVerbatimTurns,
     thinkingMode,
     setThinkingMode,
+    reasoningEffort,
+    setReasoningEffort,
+    supportedReasoningEfforts,
+    promptReasoning,
+    setPromptReasoning,
     thinkingPrompt,
     setThinkingPrompt,
     summaryPrompt,
@@ -469,6 +514,15 @@ export const SettingsModal = ({ isOpen, onOpenChange, previewValues, initialTab,
       onValueChange: (v) => setPromptSamplerValue(activeKind, 'repetitionPenalty', v),
     },
   ];
+  // Per-prompt Native Reasoning override — only for the controllable prompts and only under Native mode
+  // (guided modes force `none`, so an override there is meaningless).
+  const reasoningControl = thinkingMode === 'off' && REASONING_CONTROL_KINDS.includes(activeKind)
+    ? {
+        value: promptReasoning[activeKind] ?? defaultPromptReasoning(activeKind),
+        tabs: reasoningPromptTabs(supportedReasoningEfforts),
+        set: (v: PromptReasoning) => setPromptReasoning(activeKind, v),
+      }
+    : null;
 
   return (
     <>
@@ -744,6 +798,35 @@ export const SettingsModal = ({ isOpen, onOpenChange, previewValues, initialTab,
                   </div>
                 </div>
               </div>
+              {/* Native mode passes reasoning_effort straight through; shown only there since the guided modes drive
+                  their own thinking. The levels are whichever the active endpoint accepts (detected on connect). */}
+              {thinkingMode === 'off' && (() => {
+                const reasoningOptions = reasoningTabs(supportedReasoningEfforts);
+                return (
+                  <div className="grid grid-cols-1 sm:grid-cols-4 items-start gap-4">
+                    <label className="text-left sm:text-right pt-2">Native Reasoning</label>
+                    <div className="col-span-3">
+                      <Tabs value={reasoningEffort} onValueChange={(v) => setReasoningEffort(v as ReasoningEffort)}>
+                        <TabsList className="grid w-full" style={{ gridTemplateColumns: `repeat(${reasoningOptions.length}, minmax(0, 1fr))` }}>
+                          {reasoningOptions.map((o) => (
+                            <TabsTrigger key={o.value} value={o.value}>{o.label}</TabsTrigger>
+                          ))}
+                        </TabsList>
+                      </Tabs>
+                      <div className="grid mt-2">
+                        {reasoningOptions.map((o) => (
+                          <p
+                            key={o.value}
+                            className={`col-start-1 row-start-1 text-xs text-muted-foreground${o.value === reasoningEffort ? '' : ' invisible'}`}
+                          >
+                            {REASONING_EFFORT_HELP[o.value]}
+                          </p>
+                        ))}
+                      </div>
+                    </div>
+                  </div>
+                );
+              })()}
               <div className="grid grid-cols-1 sm:grid-cols-4 items-start gap-4">
                 <label htmlFor="memoryDigests" className="text-left sm:text-right leading-4">
                   Memory Summaries
@@ -1176,6 +1259,7 @@ export const SettingsModal = ({ isOpen, onOpenChange, previewValues, initialTab,
                 <div className="mt-4 flex-1 min-h-0 overflow-y-auto">
                   <PromptOptionsPanel
                     verbatim={verbatimApplicable ? activeVerbatimEntry : null}
+                    reasoning={reasoningControl}
                     samplers={samplerControls}
                     disabled={activePresetIsBuiltIn}
                   />

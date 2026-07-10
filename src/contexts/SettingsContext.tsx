@@ -29,6 +29,7 @@ import { buildStyledValues } from '../lib/sectionStyle';
 import { promptSamplerMapCodec, defaultPromptSampler, type PromptSamplerMap, type PromptSampler } from '../lib/promptSamplers';
 import type { AIRequestType } from '../types';
 import type { ParagraphLimit } from '../lib/outputLength';
+import { detectSupportedReasoningEfforts, type ReasoningEffortField, type PromptReasoning } from '../lib/reasoningEffort';
 
 /** Lifecycle of the context-window auto-detect probe; `error` is set only on a forced (manual) attempt. */
 export type DetectStatus = 'idle' | 'detecting' | 'success' | 'error';
@@ -36,6 +37,11 @@ export type DetectStatus = 'idle' | 'detecting' | 'success' | 'error';
 /** Planning strategy run before game text: `off`, a single `precall` pass, `inline` reasoning, or the
  *  multi-stage director/character/storyboarder `staged` pipeline. */
 export type ThinkingMode = 'off' | 'precall' | 'inline' | 'staged';
+/** Native-reasoning budget hint, sent as `reasoning_effort` under the `off`/Native mode; `auto` omits the
+ *  param and lets the endpoint decide, `none` actively suppresses a reasoning model's thinking. The available
+ *  levels vary by endpoint (detected at connect); `minimal`/`xhigh`/`max` are backend-specific. A no-op on
+ *  models without native reasoning. */
+export type ReasoningEffort = 'auto' | 'none' | 'minimal' | 'low' | 'medium' | 'high' | 'xhigh' | 'max';
 export type { ParagraphLimit };
 
 const APP_ID = 'FORMAMORPH';
@@ -315,10 +321,57 @@ function useProvideSettings() {
     return () => clearTimeout(id);
   }, [useCustomEndpoint, detectContextWindow]);
 
+  // Which reasoning_effort levels each endpoint+model accepts, probed once and remembered per `endpoint|model`
+  // so flipping between endpoints (or swapping the model on one) doesn't re-probe. A missing key means "not yet
+  // known" — the UI falls back to the universally-accepted levels until detected. Bounded so heavy testers don't
+  // grow it without limit; the oldest entry is dropped past the cap.
+  const REASONING_CACHE_CAP = 30;
+  const reasoningSupportSig = `${activeEndpointUrl}|${activeModelName}`;
+  const [reasoningSupportCache, setReasoningSupportCache] = usePersistentState<Record<string, ReasoningEffortField[]>>(
+    `${APP_ID}_reasoningSupport`, {}, {
+      parse: (r) => { try { const o = JSON.parse(r); return o && typeof o === 'object' && !Array.isArray(o) && Object.values(o).every((v) => Array.isArray(v)) ? o : {}; } catch { return {}; } },
+      serialize: (v) => JSON.stringify(v),
+    });
+  const supportedReasoningEfforts = reasoningSupportCache[reasoningSupportSig] ?? null;
+
+  const detectReasoningEfforts = useCallback(async () => {
+    const sig = `${activeEndpointUrl}|${activeModelName}`;
+    const efforts = await detectSupportedReasoningEfforts(activeEndpointUrl, activeApiToken, activeModelName);
+    if (!efforts) return;
+    setReasoningSupportCache((prev) => {
+      const next = { ...prev, [sig]: efforts };
+      const keys = Object.keys(next);
+      if (keys.length > REASONING_CACHE_CAP) delete next[keys[0]];
+      return next;
+    });
+  }, [activeEndpointUrl, activeApiToken, activeModelName, setReasoningSupportCache]);
+
+  // Probe when the active endpoint+model has no cached support list; debounced so editing the URL doesn't fire per keystroke.
+  useEffect(() => {
+    if (supportedReasoningEfforts !== null) return;
+    const id = setTimeout(() => { void detectReasoningEfforts(); }, 1200);
+    return () => clearTimeout(id);
+  }, [supportedReasoningEfforts, detectReasoningEfforts]);
+
   const [thinkingMode, setThinkingMode] = usePersistentState<ThinkingMode>(`${APP_ID}_thinkingMode`, 'off', {
     parse: (r) => (r === 'precall' || r === 'inline' || r === 'staged' ? r : 'off'),
     serialize: (v) => v,
   });
+  const REASONING_VALUES = ['none', 'minimal', 'low', 'medium', 'high', 'xhigh', 'max'];
+  const [reasoningEffort, setReasoningEffort] = usePersistentState<ReasoningEffort>(`${APP_ID}_reasoningEffort`, 'auto', {
+    parse: (r) => (REASONING_VALUES.includes(r) ? (r as ReasoningEffort) : 'auto'),
+    serialize: (v) => v,
+  });
+  // Per-prompt reasoning overrides (only narration/choices are editable; others are hardwired). Keyed by
+  // request type; a missing key uses the shipped default (`defaultPromptReasoning`). `global` inherits `reasoningEffort`.
+  const [promptReasoning, setPromptReasoningMap] = usePersistentState<Record<string, PromptReasoning>>(
+    `${APP_ID}_promptReasoning`, {}, {
+      parse: (r) => { try { const o = JSON.parse(r); return o && typeof o === 'object' && !Array.isArray(o) && Object.values(o).every((v) => typeof v === 'string') ? o : {}; } catch { return {}; } },
+      serialize: (v) => JSON.stringify(v),
+    });
+  const setPromptReasoning = useCallback((kind: AIRequestType, value: PromptReasoning) => {
+    setPromptReasoningMap((prev) => ({ ...prev, [kind]: value }));
+  }, [setPromptReasoningMap]);
   // The 15 editable prompt strings live in named presets (one localStorage key). Each keeps its original
   // context field + setter name; values derive from the active preset (Default = read-only shipped text),
   // and setters patch the active preset (a no-op under Default). See src/lib/promptPresets.ts.
@@ -633,6 +686,11 @@ function useProvideSettings() {
     setSummaryVerbatimTurns,
     thinkingMode,
     setThinkingMode,
+    reasoningEffort,
+    setReasoningEffort,
+    supportedReasoningEfforts,
+    promptReasoning,
+    setPromptReasoning,
     thinkingPrompt,
     setThinkingPrompt,
     summaryPrompt,

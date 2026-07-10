@@ -99,7 +99,7 @@ async function call(sys, user) {
   if (token) headers.Authorization = `Bearer ${token}`;
   const res = await fetch(endpoint, {
     method: "POST", headers,
-    body: JSON.stringify({ model, messages: [{ role: "system", content: sys }, { role: "user", content: user }], max_tokens: maxTokens, stream: false }),
+    body: JSON.stringify({ model, messages: [{ role: "system", content: sys }, { role: "user", content: user }], max_tokens: maxTokens, reasoning_effort: "none", stream: false }),
   });
   if (!res.ok) throw new Error(`HTTP ${res.status}: ${(await res.text()).slice(0, 160)}`);
   const j = await res.json();

@@ -4,8 +4,8 @@
   "apiToken": "",
   "settleMs": 4000,
   "models": [
-    { "label": "rocinante-12b", "modelName": "REPLACE_WITH_YOUR_SERVER_MODEL_ID" },
-    { "label": "cydonia-24b", "modelName": "REPLACE_WITH_YOUR_SERVER_MODEL_ID" }
+    { "label": "silver-siren-12b", "modelName": "REPLACE_WITH_YOUR_SERVER_MODEL_ID" },
+    { "label": "meromero-31b", "modelName": "REPLACE_WITH_YOUR_SERVER_MODEL_ID" }
   ],
   "profiles": [
     {

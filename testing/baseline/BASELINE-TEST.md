@@ -15,7 +15,7 @@ can only get right by actually reading the context. So any bad output pins to th
 
 1. **Import** — MainMenu → upload `sedge-landing.json`. The trait screen shows **Wren the Mapmaker** and
    **Footsore** pre-checked; leave both and Start.
-2. **Models** — run on both reference tiers: **Rocinante 12B** (average small tier) and **Cydonia 24B** (high
+2. **Models** — run on both reference tiers: **Silver-Siren 12B** (average tier) and **MeroMero 31B** (premium
    tier). A prompt that holds on both spans most players.
 3. **Capture** — after the run, export the AI-context dump (the same JSON the earlier Futanari dumps came from)
    and grade against the table below.

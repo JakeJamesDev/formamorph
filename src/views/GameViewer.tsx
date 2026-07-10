@@ -68,6 +68,7 @@ import {
 } from "../lib/stagedPlanning";
 import { selectDueDiscovery, materializeDiscoveredEntity, mergeDiscoveredIntoLocation, cleanDiscoveredDescription, selectReachableVisitors, DISCOVER_NAME_LABEL, DISCOVER_PASSAGE_LABEL } from "../lib/runtimeCharacters";
 import { lengthGuidance, trimToLastSentence } from "../lib/outputLength";
+import { reasoningEffortBody, resolvePromptReasoning } from "../lib/reasoningEffort";
 import { splitSentenceSegments } from "../lib/ttsChunks";
 import { selectDueDigests, applyDigest, parseTurnContent, selectDueDiaries, pendingDiaryNames, applyDiary } from "../lib/turnDigest";
 import { buildTraitContext } from "../lib/traitTree";
@@ -258,6 +259,9 @@ const GameViewer = ({
     narrationVerbatimTurns,
     thinkingVerbatimTurns,
     thinkingMode,
+    reasoningEffort,
+    supportedReasoningEfforts,
+    promptReasoning,
     thinkingPrompt,
     memoryDigests,
     summaryPrompt,
@@ -1684,6 +1688,9 @@ ${playerNotes || NONE_PLACEHOLDER}
           // endpoint (undefined → no field, so the endpoint's own value applies).
           ...(resolvedTemperature !== undefined && { temperature: resolvedTemperature }),
           ...(resolvedRepPenalty !== undefined && { repetition_penalty: resolvedRepPenalty }),
+          // Native-reasoning hint: under Native each prompt resolves its own level (narration/choices are
+          // user-set, others forced to none); guided modes force none. Omitted when the endpoint can't accept it.
+          ...reasoningEffortBody(thinkingMode, resolvePromptReasoning(requestType, promptReasoning, reasoningEffort), supportedReasoningEfforts),
           // Single-paragraph stop, but not in inline-thinking mode — the <think> block needs newlines.
           ...(requestType === "narration" && paragraphLimit === "single" && thinkingMode !== "inline" && { stop: ["\n"] }),
         }),

@@ -38,7 +38,7 @@ Start your local model server (the harness does **not** launch it).
 # from the repo root:
 npm run baseline                       # every model × every profile
 npm run baseline -- --profile A        # just Profile A, all models
-npm run baseline -- --model cydonia    # just the model whose label contains "cydonia"
+npm run baseline -- --model meromero    # just the model whose label contains "meromero"
 ```
 
 Output lands in `testing/baseline/runs/` (gitignored). Each line reports `<turns>/<expected>` so an empty/short
