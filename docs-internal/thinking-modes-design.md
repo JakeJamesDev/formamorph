@@ -57,6 +57,26 @@ Today's `INLINE_THINKING_DIRECTIVE` is unbounded narrator-continuity guidance. T
 
 Bounding to 3–4 bullets is the whole point: it captures the continuity value ST users prize without the verbose ramble they complain about.
 
+## Reasoning Budget — per-prompt token cap (Slice 4 — spec'd, BLOCKED on the preset-export fork)
+
+A per-prompt cap on **reasoning** length, distinct from the effort level. Proven exact on the desktop engine (node-llama-cpp `budgets.thoughtTokens`): capping thought to 200/100/40/0 tokens landed *exactly* on the cap, narration stayed coherent at every level (even 0), latency scaled 15s→2.2s. `reasoning_effort` levels, by contrast, are binary/noise on `meromero` (Ollama). Interview-locked spec:
+
+| Aspect | Decision |
+|---|---|
+| **Two controls, not one** | Keep **Reasoning Effort** (Slice 2, `Global\|None\|levels`); add a **separate Reasoning Budget**. They don't merge. |
+| **Engine-aware visibility** | On the **desktop local engine** (`localModelActive`) show **Budget**, hide the (inert) Effort; on **external** endpoints show **Effort**, hide the (inert) Budget. Exactly one visible per engine; both stored per-prompt. |
+| **Unit** | **% of Max Output Tokens** → `thoughtTokens = round(pct × maxTokens)`. |
+| **Default / range** | Default **40%**; slider **0–100%**. `0%` = no reasoning (== None). High % squeezes narration's token share (accepted). |
+| **Scope** | narration + choices both get a budget field; it only bites when that prompt actually reasons — narration reasons by default (active), choices defaults to no reasoning (inert until enabled). |
+| **Storage** | Per-prompt, in the now-exportable Options/preset data (the fork's domain); travels with preset export/import. |
+| **Mechanism** | node-llama-cpp `session.prompt(…, { budgets: { thoughtTokens: N } })`. Also self-hosted llama.cpp-server (`thinking_budget_tokens`). Does **not** reach Ollama/LM Studio/most cloud. |
+
+**Two build-time gaps to close, both engine-specific:**
+1. **Bridge plumbing.** The desktop path (`electron/llmEngine.cjs` / local engine) must forward the budget into `session.prompt`'s `budgets.thoughtTokens`. If it's a fixed OpenAI-compat local server, custom params get dropped — verify/extend it. This is the main risk.
+2. **Slice 1 doesn't suppress on desktop.** The desktop engine ignores `reasoning_effort`, so guided-mode suppression (which sends `reasoning_effort:none`) is a **no-op on the local engine** — native reasoning still runs there. The desktop equivalent of "off" is `thoughtTokens: 0`. So the guided modes (and Effort=None) must map to `thoughtTokens:0` on the local engine. Fold this into the same build.
+
+**Blocked until** the preset-export fork lands (Options-tab values becoming per-prompt + part of the exportable preset). Do not implement before then.
+
 ## `<think>` block UI (Slice 3 — spec'd, next to build; version 2.1.0)
 
 Player-facing collapsible reasoning aside, **below the player action, above that turn's narration** — one block per turn. Interview-locked spec:

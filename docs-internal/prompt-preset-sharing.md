@@ -21,7 +21,7 @@
 ## Slice status
 
 - [x] **Slice 1 — Preset-scoped tuning + migration (done).** Tuning moved onto `PromptPreset`; `SettingsContext` derives/sets through the active preset (public API unchanged); `migratePromptTuning()` folds legacy global tuning onto user presets once (`foldTuningIntoUserPresets`, non-overwriting, non-default verbatim only), retires old keys behind `_promptTuningMigrated`. Unit-tested (`promptPresets.tuning.test.ts`); migration verified live. Settings-store change, **not** export shape.
-- [ ] **Slice 2 — Export/import file + share-code codec.** Serialize a preset (texts+style+tuning) to `.json` and base64 code, with a stamped app version + a preset-format marker. Round-trip parse with graceful unknown-key drop.
+- [x] **Slice 2 — Export/import codec (done).** `src/lib/promptPresetShare.ts`: `buildSharedPreset` → `serializeSharedJson` / `serializeSharedCode` (UTF-8-safe base64, `FMPRESET1:` prefix), and `parseSharedJson` / `parseSharedCode` → `{ ok, preset, sourceAppVersion, warnings }`. Stamps `kind`/`formatVersion`(1)/`appVersion`; sanitize keeps only known text keys + well-typed tuning, drops the rest with a warning; version/format mismatch warns but imports as-is. Empty tuning maps omitted. Unit-tested (round-trip, unicode, junk rejection, unknown-key drop, version + newer-format warnings, malformed-tuning drop).
 - [ ] **Slice 3 — Import UI.** Export/import buttons in Settings → Prompts (next to add/delete/rename); import dialog: texts-only vs texts+tuning, overwrite-vs-keep-both on name clash, older/newer-version warning.
 - [ ] **Slice 4 — Chip raw-text fallback hardening.** Ensure the chip renderer renders unknown tokens as literal text (never crash/blank) — the compat contract.
 
