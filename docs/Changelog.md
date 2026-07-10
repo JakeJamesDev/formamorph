@@ -2,7 +2,7 @@
 
 All notable changes to Formamorph. This fork's first line is **2.0.0** — a full TypeScript rebuild of the upstream JavaScript app ([FieryLionite's Formamorph](https://fierylion.itch.io/formamorph), ~v1.2) — with feature parity as the baseline plus new features on top.
 
-> ✅ **2.0.0 – 2.0.3 are released** (collapsed below). New work lands under **🚧 In Progress** — an unnumbered section, so changes accumulate without pinning a version. When a batch earns a release it gets a proper version bump (`package.json` **and** this heading), its section is marked **Released** and collapsed, and a fresh In Progress opens. `package.json` reads **2.0.3** (the latest release); the next release will bump it again.
+> ✅ **2.0.0 – 2.0.3 are released** (collapsed below). New work lands under **🚧 In Progress** — an unnumbered section, so changes accumulate without pinning a version. When a batch earns a release its section is marked **Released** and collapsed, and a fresh In Progress opens. `package.json` reads **2.1.0** — the **in-development** version the In Progress work below ships under (bumped early because that work changes the save file shape); **2.0.3** remains the latest *released* version until this batch ships.
 
 Each release groups changes as **Major** / **Minor**, then **Added** / **Removed** / **Fixed**, and within those by audience: 👤 user-facing · 🛠️ developer tooling · ⚙️ backend / invisible.
 

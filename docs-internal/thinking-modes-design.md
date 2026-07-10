@@ -57,15 +57,31 @@ Today's `INLINE_THINKING_DIRECTIVE` is unbounded narrator-continuity guidance. T
 
 Bounding to 3–4 bullets is the whole point: it captures the continuity value ST users prize without the verbose ramble they complain about.
 
-## `<think>` block UI
+## `<think>` block UI (Slice 3 — spec'd, next to build; version 2.1.0)
 
-Parse the block out and render it as a **collapsible aside placed below the player action, above the narration** (ST's pattern). Same parse path serves both Inline's guided block and any native block, so one UI covers both. Near-term: static block (not collapsible) is fine.
+Player-facing collapsible reasoning aside, **below the player action, above that turn's narration** — one block per turn. Interview-locked spec:
+
+| Aspect | Decision |
+|---|---|
+| **Appears for** | **Native** (a native reasoning model's own thinking, from the `reasoning` stream field or an inline `<think>` in content) + **Inline** (the injected `<think>`). Planning/Staged keep their separate hidden plan in the debug view only. |
+| **Live behavior** | Streams live into an **expanded** block while the model reasons, **auto-collapses** the moment narration begins (ChatGPT/Claude pattern). Click to re-expand. |
+| **Header** | `Thinking…` + spinner while active → **`Thought for Ns`** once done (wall-clock: reasoning start → narration start). |
+| **Rendering** | Full markdown (same pipeline as narration) but in a **de-emphasized container** — muted color, smaller size/line-height, down-scaled headings so a stray `#` doesn't shout. |
+| **Setting** | New **"Show reasoning"** toggle (Generation area), **default ON**, collapsed. OFF hides it. |
+| **When OFF** | Still **captured & saved**, just hidden — turning it back on reveals it on those turns. |
+| **Persistence** | **Saved per-turn** in the save envelope (additive `reasoning` field — likely `{ text, ms }`). Survives reload, shows in scrollback, travels with exported saves. |
+| **Empty reasoning** | No block rendered. |
+| **Motion** | Expand/collapse respects `prefers-reduced-motion`. |
+
+**Save-shape change → version.** This is an additive save `.json` shape change; the user bumped `package.json` to **2.1.0** (in-development, not released) on 2026-07-09 specifically to carry it. Old saves lack the field and load fine (presence-based). Remind on the actual code change.
+
+**Plumbing to confirm at build:** capture the streaming `reasoning` delta (native) AND the inline `<think>` span in content (`stripReasoning` already isolates the latter); measure `ms` from first reasoning token to first narration token.
 
 ## Open decisions
 
 - [x] **Force-suppress native reasoning in guided modes (Slice 1, shipped).** Inline/Planning/Staged send `reasoning_effort:none` on every call (`reasoningEffortBody` returns `none` for any non-`off` mode) so the model's own thinking can't fight the guided step — Planning is outright incompatible with it. Omitted when the endpoint can't accept `none`. Unit-tested.
 - [ ] Exact Inline directive wording + cap (3 vs 4 bullets) — tune on MeroMero + Silver-Siren via the probes.
-- [ ] Collapsible vs static block for v1.
+- [x] **`<think>`-block UI (Slice 3) spec locked** — see the section above; next to build under 2.1.0 (save-shape change).
 - [x] **Per-prompt reasoning (Slice 2, shipped).** Native mode only. Narration + Choices (`REASONING_CONTROL_KINDS`) get a `Global | None | <levels>` control in their Options tab (narration default Global, choices default None); all other prompts hardwired `none`. `Global` inherits Settings → Generation → Native Reasoning, which now only feeds `Global`-set prompts — it no longer applies to a request on its own. Disabled under the Default preset (via the existing `activePresetIsBuiltIn` lock). Stored in `FORMAMORPH_promptReasoning` (settings, not export shape). Resolved per-requestType in `makeAIRequest` via `resolvePromptReasoning` → `reasoningEffortBody`. Pure logic unit-tested; UI verified (narration=Global, choices=None, bookkeeping prompts show no control, hidden in guided modes).
 - [x] **Cloud endpoint tolerates `reasoning_effort`** — probe-verified against `api.lyonade.net`: **rejects the literal `auto` (HTTP 400)** but accepts the real levels (`none`/`minimal`/`low`/`medium`/`high`/`xhigh`/`max` all 200). `auto` isn't a wire value anywhere — every backend 400s on it — so "Default" = omit the field.
 - [x] **Endpoint-aware levels (shipped).** Rather than hard-code one set, the app probes each endpoint on connect (`detectSupportedReasoningEfforts`) and shows only accepted levels — remembers each `endpoint|model` in a bounded map (cap 30) so switching endpoints/models reads from cache instead of re-probing, falls back to the universal `none/low/medium/high` when offline/inconclusive. Verified live: cloud → all seven; Ollama → `none/low/medium/high/max` (no `minimal`); LM Studio offline → safe fallback. Native mode wired via `reasoningEffortBody(mode, effort, supported)` (also omits a level the endpoint doesn't accept, so a stale pick can't 400 a turn). All pure logic in `src/lib/reasoningEffort.ts`, unit-tested. Guided modes still send nothing (first open item above).
