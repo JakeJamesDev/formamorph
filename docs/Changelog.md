@@ -2,7 +2,7 @@
 
 All notable changes to Formamorph. This fork's first line is **2.0.0** — a full TypeScript rebuild of the upstream JavaScript app ([FieryLionite's Formamorph](https://fierylion.itch.io/formamorph), ~v1.2) — with feature parity as the baseline plus new features on top.
 
-> ✅ **2.0.0 – 2.0.3 are released** (collapsed below). New work lands under **🚧 In Progress** — an unnumbered section, so changes accumulate without pinning a version. When a batch earns a release its section is marked **Released** and collapsed, and a fresh In Progress opens. `package.json` reads **2.1.0** — the **in-development** version the In Progress work below ships under (bumped early because that work changes the save file shape); **2.0.3** remains the latest *released* version until this batch ships.
+> ✅ **2.0.0 – 2.1.0 are released** (collapsed below). New work lands under **🚧 In Progress** — an unnumbered section, so changes accumulate without pinning a version. When a batch earns a release its section is marked **Released** and collapsed, and a fresh In Progress opens. `package.json` reads **2.1.0**, the latest released version.
 
 Each release groups changes as **Major** / **Minor**, then **Added** / **Removed** / **Fixed**, and within those by audience: 👤 user-facing · 🛠️ developer tooling · ⚙️ backend / invisible.
 
@@ -11,6 +11,13 @@ Each release groups changes as **Major** / **Minor**, then **Added** / **Removed
 ## 🚧 In Progress
 
 _Unreleased — new work accumulates here until it earns a version bump._
+
+_Nothing yet._
+
+---
+
+<details>
+<summary><strong>✅ 2.1.0 — Released</strong> — reasoning-model support (Native mode, endpoint-aware effort, per-prompt reasoning, desktop thought budget, live reasoning block), shareable prompt presets, a first-run welcome animation, and a halved Vulkan-only desktop build (click to expand)</summary>
 
 ### Minor Changes
 
@@ -48,6 +55,8 @@ _Unreleased — new work accumulates here until it earns a version bump._
   - **The desktop app now works with local AI servers that don't send CORS headers.** On the desktop build, pointing at a custom endpoint whose server has CORS turned off (e.g. some LM Studio setups) failed *every* request with a generic "Failed to process AI request" — the browser layer blocked the call before it left the app, so no error detail ever surfaced. The desktop app now handles this itself, so a custom endpoint works regardless of the server's CORS setting. (The browser build still needs the server's CORS enabled — that's a browser rule the web version can't bypass.)
 - **🛠️ Developer tooling**
   - **Desktop CORS shim.** The renderer's `app://local` origin made every external fetch (custom LLM endpoint, community server, Hugging Face) browser-CORS-gated; a server with CORS off failed the preflight (no `Access-Control-Allow-Origin`) and surfaced only as a network-level `TypeError: Failed to fetch` → the generic toast. `electron/main.cjs` now rewrites external http(s) responses (including the `OPTIONS` preflight) via `session.defaultSession.webRequest.onHeadersReceived` to carry permissive CORS headers — keeping the normal streaming fetch and leaving `webSecurity` on (not `webSecurity: false`, which would drop cross-origin protections app-wide given the app loads community-authored worlds). The pure header transform lives in `electron/corsShim.cjs` (`Authorization` is listed explicitly because `Access-Control-Allow-Headers: *` excludes it per spec); Node-verified. The web build is unaffected — browsers enforce CORS, so hosted users still need the server to send the headers.
+
+</details>
 
 ---
 
