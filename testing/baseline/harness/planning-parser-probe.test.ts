@@ -6,7 +6,7 @@
 // sanitizer actually strip a not-yet-revealed real name from what the narrator would read.
 //
 // Opt-in (needs LM Studio up + profiles.json): PARSER_PROBE=1 npx vitest run testing/baseline/harness/planning-parser-probe.test.ts
-// Flags via env: PROBE_MODEL (label substring, default rocinante) · PROBE_TEMP (default 0.4) · PROBE_RUNS (default 1)
+// Flags via env: PROBE_MODEL (label substring, default silver-siren) · PROBE_TEMP (default 0.4) · PROBE_RUNS (default 1)
 
 import { describe, it, expect } from 'vitest';
 import { readFileSync, existsSync } from 'node:fs';
@@ -55,7 +55,7 @@ describe.skipIf(!RUN)('planning parser fidelity (real pipeline vs live model)', 
     world: string; playerName: string; playerTrait: string; location: string; cases: ProbeCase[];
   };
 
-  const modelFilter = process.env.PROBE_MODEL ?? 'rocinante';
+  const modelFilter = process.env.PROBE_MODEL ?? 'silver-siren';
   const temp = Number(process.env.PROBE_TEMP ?? 0.4);
   const runs = Number(process.env.PROBE_RUNS ?? 1);
   const model = cfg.models.find((m: { label: string }) => m.label.includes(modelFilter)) ?? cfg.models[0];

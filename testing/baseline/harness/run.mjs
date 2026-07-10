@@ -2,7 +2,7 @@
 // script for each model x profile, and writes the AI-context dump to ../runs/. Relies on the DEV-only
 // window.__baseline hook (src/lib/baselineTestHook.ts) which exists only when running the dev server.
 //
-// Usage:  node run.mjs [--profile A] [--model cydonia-24b]   (filters are optional, repeatable-ish substrings)
+// Usage:  node run.mjs [--profile A] [--model meromero-31b]   (filters are optional, repeatable-ish substrings)
 // Prereq: `npm install` here, `npx playwright install chromium`, your local model server running, then fill
 //         profiles.json (copy of profiles.example.json).
 

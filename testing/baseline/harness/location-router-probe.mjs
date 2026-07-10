@@ -4,7 +4,7 @@
 // else)? Renders the location blocks exactly as the app's `<LOCATION|summary.markdown>` and
 // `<LOCATION|destinations.summary.markdown>` tokens do (`- **name:** value` / `- **Name:** summary`).
 //
-// Usage:  node location-router-probe.mjs [--model rocinante] [--runs 2] [--temp 0.15]
+// Usage:  node location-router-probe.mjs [--model silver-siren] [--runs 2] [--temp 0.15]
 
 import { readFile } from "node:fs/promises";
 import path from "node:path";

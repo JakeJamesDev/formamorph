@@ -5,7 +5,7 @@
 // narration, plus an explicit per-case forbid list). Prose quality itself still needs eyeballing the raw
 // output printed on each line.
 //
-// Usage:  node summary-probe.mjs [--model rocinante] [--runs 3] [--temp 0.3]
+// Usage:  node summary-probe.mjs [--model silver-siren] [--runs 3] [--temp 0.3]
 
 import { readFile } from "node:fs/promises";
 import path from "node:path";

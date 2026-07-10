@@ -99,7 +99,9 @@ async function call(sys, messages) {
   if (token) headers.Authorization = `Bearer ${token}`;
   const res = await fetch(endpoint, {
     method: "POST", headers,
-    body: JSON.stringify({ model, messages: [{ role: "system", content: sys }, ...messages], max_tokens: maxTokens, stream: false }),
+    // reasoning_effort:"none" suppresses thinking on Ollama's /v1 for Gemma-4 models (meromero) — else it
+    // spends the whole budget reasoning and returns empty content. Harmless/ignored on non-thinking models.
+    body: JSON.stringify({ model, messages: [{ role: "system", content: sys }, ...messages], max_tokens: maxTokens, reasoning_effort: "none", stream: false }),
   });
   if (!res.ok) throw new Error(`HTTP ${res.status}: ${(await res.text()).slice(0, 160)}`);
   const j = await res.json();
