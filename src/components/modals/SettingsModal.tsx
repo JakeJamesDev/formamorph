@@ -7,6 +7,9 @@ import { LocalModelPanel } from '@/components/modals/LocalModelPanel';
 import { SETTINGS_TABS } from '@/components/modals/settingsTabs';
 import { Row, CheckRow } from '@/components/SettingsRows';
 import { reasoningTabs, reasoningPromptTabs, defaultPromptReasoning, REASONING_CONTROL_KINDS, type PromptReasoning } from '@/lib/reasoningEffort';
+import { ExportPresetDialog, ImportPresetDialog } from '@/components/modals/PresetShareDialogs';
+import { type SharedPreset } from '@/lib/promptPresetShare';
+import { APP_VERSION } from '@/lib/version';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { RevealAnimationDemoButton } from "@/components/RevealAnimationDemo";
@@ -280,6 +283,8 @@ export const SettingsModal = ({ isOpen, onOpenChange, previewValues, initialTab,
     renamePreset,
     deletePreset,
     resetPreset,
+    exportActivePreset,
+    importPreset,
     memoryDigests,
     setMemoryDigests,
     characterDiaries,
@@ -380,9 +385,13 @@ export const SettingsModal = ({ isOpen, onOpenChange, previewValues, initialTab,
   // Preset name dialog (Add / Rename); the "Add New Preset…" select option opens it in add mode.
   const [presetDialog, setPresetDialog] = useState<{ mode: 'add' | 'rename' } | null>(null);
   const ADD_PRESET_SENTINEL = '__add_preset__';
+  const IMPORT_PRESET_SENTINEL = '__import_preset__';
+  const [exportShared, setExportShared] = useState<SharedPreset | null>(null);
+  const [importOpen, setImportOpen] = useState(false);
   const activePresetName = [...builtinPresets, ...promptPresets].find((p) => p.id === activePresetId)?.name ?? '';
   const handlePresetSelect = (v: string) => {
     if (v === ADD_PRESET_SENTINEL) setPresetDialog({ mode: 'add' });
+    else if (v === IMPORT_PRESET_SENTINEL) setImportOpen(true);
     else selectPreset(v);
   };
   const handlePresetNameSubmit = (name: string) => {
@@ -1220,11 +1229,13 @@ export const SettingsModal = ({ isOpen, onOpenChange, previewValues, initialTab,
                   ))}
                   <SelectSeparator />
                   <SelectItem value={ADD_PRESET_SENTINEL}>Add New Preset…</SelectItem>
+                  <SelectItem value={IMPORT_PRESET_SENTINEL}>Import Preset…</SelectItem>
                 </SelectContent>
               </Select>
               {!activePresetIsBuiltIn && (
                 <Button variant="outline" size="sm" onClick={() => setPresetDialog({ mode: 'rename' })}>Rename</Button>
               )}
+              <Button variant="outline" size="sm" onClick={() => setExportShared(exportActivePreset(APP_VERSION))}>Export</Button>
             </div>
             {/* Nested tab bar — one prompt per tab; only the selected prompt shows. */}
             <Tabs value={activePromptTab} onValueChange={selectPromptTab} className="w-full flex flex-col flex-1 min-h-0">
@@ -1415,6 +1426,18 @@ export const SettingsModal = ({ isOpen, onOpenChange, previewValues, initialTab,
               initialName={presetDialog?.mode === 'rename' ? activePresetName : ''}
               onOpenChange={(o) => { if (!o) setPresetDialog(null); }}
               onSubmit={handlePresetNameSubmit}
+            />
+            <ExportPresetDialog
+              open={exportShared !== null}
+              onOpenChange={(o) => { if (!o) setExportShared(null); }}
+              shared={exportShared}
+            />
+            <ImportPresetDialog
+              open={importOpen}
+              onOpenChange={setImportOpen}
+              currentAppVersion={APP_VERSION}
+              existingUserNames={promptPresets}
+              onImport={(imported, opts) => { const id = importPreset(imported, opts); selectPreset(id); }}
             />
           </TabsContent>
 

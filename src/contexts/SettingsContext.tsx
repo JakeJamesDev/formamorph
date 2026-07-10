@@ -24,8 +24,10 @@ import {
   emptyStore, presetStoreCodec, activeValues, isBuiltInActive, activeStyle, BUILTIN_PRESETS,
   setActive as setActivePreset, addPreset as addPresetOp, renamePreset as renamePresetOp, deletePreset as deletePresetOp, resetPreset as resetPresetOp, updateValue,
   activeSamplers, activeReasoning, activeVerbatim, updateSamplers, updateReasoning, updateVerbatim, foldTuningIntoUserPresets,
-  type PromptPresetStore, type PromptValues, type VerbatimMap,
+  addFullPreset, replacePreset,
+  type PromptPresetStore, type PromptValues, type VerbatimMap, type PromptPreset,
 } from '../lib/promptPresets';
+import { buildSharedPreset, type SharedPreset, type ImportedPreset } from '../lib/promptPresetShare';
 import { buildStyledValues } from '../lib/sectionStyle';
 import { defaultPromptSampler, type PromptSamplerMap, type PromptSampler } from '../lib/promptSamplers';
 import type { AIRequestType } from '../types';
@@ -446,6 +448,26 @@ function useProvideSettings() {
     const style = s.presets.find((p) => p.id === id)?.style ?? 'markdown';
     return resetPresetOp(s, id, buildStyledValues(PROMPT_TEXT_DEFAULTS, style));
   });
+  // Share (export/import). Export materializes the selected preset (built-ins → concrete text, empty tuning);
+  // import adds a new preset or overwrites one by id, optionally including the shared tuning.
+  const activePresetName = BUILTIN_PRESETS.find((b) => b.id === presetStore.activeId)?.name
+    ?? presetStore.presets.find((p) => p.id === presetStore.activeId)?.name ?? 'Preset';
+  const exportActivePreset = (appVersion: string): SharedPreset =>
+    buildSharedPreset({ name: activePresetName, style: activeSectionStyle, values: promptValues, samplers: promptSamplers, reasoning: promptReasoning, verbatim: verbatimMap }, appVersion);
+  const importPreset = (imported: ImportedPreset, opts: { includeTuning: boolean; name: string; overwriteId?: string }): string => {
+    const style = imported.style;
+    const values = { ...buildStyledValues(PROMPT_TEXT_DEFAULTS, style), ...imported.values };
+    const content: Omit<PromptPreset, 'id'> = {
+      name: opts.name, values, style,
+      ...(opts.includeTuning && imported.samplers ? { samplers: imported.samplers } : {}),
+      ...(opts.includeTuning && imported.reasoning ? { reasoning: imported.reasoning } : {}),
+      ...(opts.includeTuning && imported.verbatim ? { verbatim: imported.verbatim } : {}),
+    };
+    if (opts.overwriteId) { const target = opts.overwriteId; setPresetStore((s) => replacePreset(s, target, content)); return target; }
+    const id = crypto.randomUUID();
+    setPresetStore((s) => addFullPreset(s, id, content));
+    return id;
+  };
   // Whether each optional per-turn request is sent (replaces the legacy "type DISABLED" body hack).
   const [choicesEnabled, setChoicesEnabled] = usePersistentState<boolean>(`${APP_ID}_choicesEnabled`, true, boolCodec);
   const [statUpdatesEnabled, setStatUpdatesEnabled] = usePersistentState<boolean>(`${APP_ID}_statUpdatesEnabled`, true, boolCodec);
@@ -760,6 +782,8 @@ function useProvideSettings() {
     renamePreset,
     deletePreset,
     resetPreset,
+    exportActivePreset,
+    importPreset,
     imageProvider,
     setImageProvider,
     imageEndpoint,
