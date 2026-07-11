@@ -6,6 +6,7 @@ import {
   parseStatUpdates,
   applyAiMaxChanges,
   pageStatDeltas,
+  appliedStatDeltas,
 } from './statChanges';
 import type { PlayerStat } from '@/types';
 
@@ -51,6 +52,31 @@ describe('pageStatDeltas', () => {
 
   it('reports 0 for an unchanged stat', () => {
     expect(pageStatDeltas([resolve(5)], [resolve(5)])).toEqual({ resolve: 0 });
+  });
+});
+
+describe('appliedStatDeltas', () => {
+  const stat = (name: string, value: number, over: Partial<PlayerStat> = {}): PlayerStat => ({
+    id: name, name, type: 'number', description: '', min: 0, max: 100, regen: 0, descriptors: [], value, ...over,
+  });
+
+  it('reports the actual value movement, keyed by lowercased name, omitting unchanged stats', () => {
+    const before = [stat('Health', 80), stat('Coin', 20)];
+    const after = [stat('Health', 90), stat('Coin', 20)];
+    expect(appliedStatDeltas(before, after)).toEqual({ health: 10 });
+  });
+
+  it('is empty when a change was clamped away (the capped-stat bug)', () => {
+    // AI asked for +10 Health but it was already at max — applyAiStatChanges clamps, so the value held.
+    const before = [stat('Health', 100)];
+    const after = applyAiStatChanges(before, { health: 10 }); // clamps to 100
+    expect(appliedStatDeltas(before, after)).toEqual({});
+  });
+
+  it('matches the raw request only when nothing is clamped', () => {
+    const before = [stat('Rampage', 30)];
+    const after = applyAiStatChanges(before, { rampage: 5 });
+    expect(appliedStatDeltas(before, after)).toEqual({ rampage: 5 });
   });
 });
 

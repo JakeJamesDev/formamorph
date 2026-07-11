@@ -92,7 +92,10 @@ export interface GameState {
   gameplayText: string;
   locationId?: string;
   gameTime: number;
-  fullMessageHistory: ChatMessage[];
+  /** A snapshot's own copy of the flat chat history. Live `currentState` carries it in memory, but it is
+   *  stripped from persisted snapshots — the canonical history lives once at `SaveObject.messageHistory`.
+   *  Absent on migrated/persisted snapshots; present on the in-memory current state. */
+  fullMessageHistory?: ChatMessage[];
   characterData: CharacterData | null;
   choices: Choice[];
   isGameStarted: boolean;
@@ -109,6 +112,10 @@ export interface GameState {
 export interface SaveObject {
   currentState: GameState;
   stateHistory: GameState[];
+  /** The single canonical flat chat history for the whole save. Snapshots no longer each embed a copy
+   *  (that was O(N²) on disk); the live narration/rollback path slices this. Absent on pre-2.2 saves →
+   *  `migrateSave` hoists it from the current snapshot's `fullMessageHistory`. */
+  messageHistory?: ChatMessage[];
   /** Legacy envelopes used the numeric `2` (≙ v1.2); current saves stamp the `APP_VERSION` string. */
   version: string | number;
   /** v2.x: the dictionary set chosen at world entry (reordered/toggled books, plus any added library

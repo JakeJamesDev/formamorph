@@ -373,7 +373,9 @@ export function LoadGameDialog({ open, onOpenChange, current, onLoad }: {
       const text = await file.text();
       const save = JSON.parse(text) as SaveRecord & { version?: string | number };
       if (isSaveEnvelope(save)) {
-        const migrated = typeof save.version === 'number' ? migrateSave(save) : save;
+        // migrateSave is idempotent and now also hoists the canonical history + strips snapshot copies for
+        // string-version saves, so run it for every envelope, not just numeric-legacy ones.
+        const migrated = migrateSave(save);
         Object.assign(save, migrated, { version: APP_VERSION });
       }
       const worldName = save.currentState?.worldName ?? null;
