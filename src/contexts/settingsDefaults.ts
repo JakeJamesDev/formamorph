@@ -67,6 +67,11 @@ export type ThemeColor = 'blue' | 'purple' | 'graphite' | 'rose' | 'bubblegum' |
 export const BASE_THEME_COLOR: ThemeColor = 'blue';
 // What a fresh install starts on (independent of the base above).
 export const DEFAULT_THEME_COLOR: ThemeColor = 'graphite';
+
+// Desktop auto-update release channel. 'stable' = only final GitHub releases; 'prerelease' = also betas.
+// No VITE_DEFAULT_* override (players get stable out of the box), so no .env.local coupling.
+export type UpdateChannel = 'stable' | 'prerelease';
+export const DEFAULT_UPDATE_CHANNEL: UpdateChannel = 'stable';
 export const THEME_COLORS: { value: ThemeColor; label: string }[] = [
   { value: 'graphite', label: 'Graphite (default)' },
   { value: 'purple', label: 'Purple' },

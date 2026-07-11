@@ -52,6 +52,8 @@ import AuthService from '../services/AuthService';
 import type { World, Stat, CharacterData, Dictionary, DictionaryMetadata, Entity, EntityMetadata } from '@/types';
 import { migrateWorld, APP_VERSION } from '@/lib/version';
 import { BUILD_TAG } from '@/lib/buildInfo';
+import { isDesktop } from '@/lib/imageGen/desktop';
+import { UpdateVersionControl } from '@/components/menu/UpdateVersionControl';
 import { parseDictionaryImport } from '@/lib/dictionaryFile';
 import { importCharacterFile } from '@/lib/entityFile';
 import { useDownscalePrompt } from '@/lib/useDownscalePrompt';
@@ -1083,20 +1085,26 @@ const MainMenu = ({ onStartGame, onLoadSaveGame, onReplayIntro }: MainMenuProps)
               )}
             </button>
           )}
-          <button
-            type="button"
-            onClick={() => onReplayIntro?.()}
-            className="text-xs text-muted-foreground/60 select-none cursor-pointer hover:text-muted-foreground transition-colors"
-            title="Replay intro"
-            aria-label="Replay intro"
-          >
-            v{APP_VERSION}{BUILD_TAG && ` · ${BUILD_TAG}`}
-          </button>
+          {isDesktop() ? (
+            <UpdateVersionControl />
+          ) : (
+            <span className="text-xs text-muted-foreground/60 select-none">
+              v{APP_VERSION}{BUILD_TAG && ` · ${BUILD_TAG}`}
+            </span>
+          )}
         </div>
 
         {/* Center: copyright + origin credit (original is MIT — see THIRD-PARTY-NOTICES / legal/) */}
         <div className="text-center text-xs text-muted-foreground/60 whitespace-nowrap leading-tight">
-          <div>© 2026 Jake James</div>
+          <button
+            type="button"
+            onClick={() => onReplayIntro?.()}
+            className="cursor-pointer hover:text-muted-foreground transition-colors"
+            title="Replay intro"
+            aria-label="Replay intro"
+          >
+            © 2026 Jake James
+          </button>
           <div>
             Based on{' '}
             <a
