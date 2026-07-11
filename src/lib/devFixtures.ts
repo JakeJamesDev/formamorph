@@ -29,7 +29,7 @@ export async function loadDevFixture(name: string): Promise<DevFixture | null> {
       return {
         world: world.default as unknown as World,
         save: save.default as unknown as SaveObject,
-        saveName: 'DEV: White Room (3 turns)',
+        saveName: 'DEV: White Room (8 turns)',
       };
     }
     default:

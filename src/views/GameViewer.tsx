@@ -18,15 +18,7 @@ import { Input } from "@/components/ui/input";
 import { Checkbox } from "@/components/ui/checkbox";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Collapsible, CollapsibleTrigger, CollapsibleContent } from "@/components/ui/collapsible";
-import {
-  Pagination,
-  PaginationContent,
-  PaginationEllipsis,
-  PaginationItem,
-  PaginationLink,
-  PaginationNext,
-  PaginationPrevious,
-} from "@/components/ui/pagination";
+import { Pager } from "@/components/ui/pagination";
 import { Music, SquarePen, Database, ScrollText, ChevronDown, ChevronRight, ChevronsDownUp, ChevronsUpDown, Search, Eye, EyeOff, Download } from "lucide-react";
 import IndeterminateProgress from "../components/ui/indeterminate-progress";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
@@ -2783,31 +2775,6 @@ ${playerNotes || NONE_PLACEHOLDER}
                 setCollapsedDebug(next);
               }
             };
-            const renderDebugPaginationItems = () => {
-              const items = [];
-              for (let i = 1; i <= totalDebugPages; i++) {
-                if (i === 1 || i === totalDebugPages || (i >= debugPage - 1 && i <= debugPage + 1)) {
-                  items.push(
-                    <PaginationItem key={i}>
-                      <PaginationLink
-                        href="#"
-                        onClick={(e) => { e.preventDefault(); setDebugPage(i); }}
-                        isActive={debugPage === i}
-                      >
-                        {i}
-                      </PaginationLink>
-                    </PaginationItem>,
-                  );
-                } else if (i === debugPage - 2 || i === debugPage + 2) {
-                  items.push(
-                    <PaginationItem key={i}>
-                      <PaginationEllipsis />
-                    </PaginationItem>,
-                  );
-                }
-              }
-              return items;
-            };
             return (
               <>
                 <DialogHeader className="flex-shrink-0">
@@ -3063,25 +3030,7 @@ ${playerNotes || NONE_PLACEHOLDER}
                 </div>
                 {totalDebugPages > 1 && (
                   <div className="flex-shrink-0 flex justify-center pt-2">
-                    <Pagination>
-                      <PaginationContent>
-                        <PaginationItem>
-                          <PaginationPrevious
-                            href="#"
-                            onClick={(e) => { e.preventDefault(); if (debugPage > 1) setDebugPage(debugPage - 1); }}
-                            className={debugPage === 1 ? "pointer-events-none opacity-50" : ""}
-                          />
-                        </PaginationItem>
-                        {renderDebugPaginationItems()}
-                        <PaginationItem>
-                          <PaginationNext
-                            href="#"
-                            onClick={(e) => { e.preventDefault(); if (debugPage < totalDebugPages) setDebugPage(debugPage + 1); }}
-                            className={debugPage === totalDebugPages ? "pointer-events-none opacity-50" : ""}
-                          />
-                        </PaginationItem>
-                      </PaginationContent>
-                    </Pagination>
+                    <Pager page={debugPage} pageCount={totalDebugPages} onPageChange={setDebugPage} />
                   </div>
                 )}
               </>

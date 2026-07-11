@@ -12,7 +12,7 @@
         "max": 10,
         "regen": 0,
         "descriptors": [],
-        "value": 6,
+        "value": 4,
         "starting": 3
       },
       {
@@ -24,7 +24,7 @@
         "max": 100,
         "regen": 0,
         "descriptors": [],
-        "value": 25,
+        "value": 60,
         "starting": 25
       }
     ],
@@ -58,7 +58,7 @@
     ],
     "gameplayText": "As you took a moment to survey the room, you noticed something that had escaped your initial notice. A subtle seam ran along one wall, barely visible against the uniform whiteness. It was there and yet not quite there, defying your efforts to focus on it directly. Intrigued, you stepped closer, reaching out to touch the smooth surface.\n\nTo your surprise, your fingers passed through the wall as if it were no more substantial than mist. Beyond lay a corridor of similar design, stretching off into the distance with an unsettling uniformity. The air here was slightly cooler, carrying a faint scent that reminded you of ozone after a storm. You hesitated for a moment before stepping fully into the passageway, the transition between rooms seamless.\n\n",
     "locationId": "1783535114538",
-    "gameTime": 3,
+    "gameTime": 16,
     "fullMessageHistory": [
       {
         "role": "user",
@@ -83,6 +83,46 @@
       {
         "role": "assistant",
         "content": "{\"game_text\":\"As you took a moment to survey the room, you noticed something that had escaped your initial notice. A subtle seam ran along one wall, barely visible against the uniform whiteness. It was there and yet not quite there, defying your efforts to focus on it directly. Intrigued, you stepped closer, reaching out to touch the smooth surface.\\n\\nTo your surprise, your fingers passed through the wall as if it were no more substantial than mist. Beyond lay a corridor of similar design, stretching off into the distance with an unsettling uniformity. The air here was slightly cooler, carrying a faint scent that reminded you of ozone after a storm. You hesitated for a moment before stepping fully into the passageway, the transition between rooms seamless.\",\"choices\":[\"- You can follow the corridor\",\"- You can turn back to the white room\",\"- You can try to locate an exit\",\"- You can knock on the walls\",\"Change Location\"],\"stat_changes\":[]}"
+      },
+      {
+        "role": "user",
+        "content": "I explore further, attempt 4."
+      },
+      {
+        "role": "assistant",
+        "content": "{\"narration\": \"Turn 4: the White Room hums faintly as you press on. A pale seam shifts under your hand.\", \"choices\": [\"Approach the console again\", \"Inspect the seam more closely\", \"Call out into the white\"], \"stat_changes\": [], \"turnId\": \"wr-turn-4\", \"entities\": []}"
+      },
+      {
+        "role": "user",
+        "content": "I explore further, attempt 5."
+      },
+      {
+        "role": "assistant",
+        "content": "{\"narration\": \"Turn 5: the White Room hums faintly as you press on. A pale seam shifts under your hand.\", \"choices\": [\"Approach the console again\", \"Inspect the seam more closely\", \"Call out into the white\"], \"stat_changes\": [], \"turnId\": \"wr-turn-5\", \"entities\": []}"
+      },
+      {
+        "role": "user",
+        "content": "I explore further, attempt 6."
+      },
+      {
+        "role": "assistant",
+        "content": "{\"narration\": \"Turn 6: the White Room hums faintly as you press on. A pale seam shifts under your hand.\", \"choices\": [\"Approach the console again\", \"Inspect the seam more closely\", \"Call out into the white\"], \"stat_changes\": [], \"turnId\": \"wr-turn-6\", \"entities\": []}"
+      },
+      {
+        "role": "user",
+        "content": "I explore further, attempt 7."
+      },
+      {
+        "role": "assistant",
+        "content": "{\"narration\": \"Turn 7: the White Room hums faintly as you press on. A pale seam shifts under your hand.\", \"choices\": [\"Approach the console again\", \"Inspect the seam more closely\", \"Call out into the white\"], \"stat_changes\": [], \"turnId\": \"wr-turn-7\", \"entities\": []}"
+      },
+      {
+        "role": "user",
+        "content": "I explore further, attempt 8."
+      },
+      {
+        "role": "assistant",
+        "content": "{\"narration\": \"Turn 8: the White Room hums faintly as you press on. A pale seam shifts under your hand.\", \"choices\": [\"Approach the console again\", \"Inspect the seam more closely\", \"Call out into the white\"], \"stat_changes\": [], \"turnId\": \"wr-turn-8\", \"entities\": []}"
       }
     ],
     "characterData": null,
@@ -97,7 +137,7 @@
     "timestamp": "2026-07-08T19:36:55.398Z",
     "worldName": "The White Room",
     "playerNotes": "",
-    "previousStateIndex": 1,
+    "previousStateIndex": 6,
     "stateVersion": 2
   },
   "stateHistory": [
@@ -137,9 +177,7 @@
           "aiDescription": "You are The User"
         }
       ],
-      "visibleEntities": [
-        "The User"
-      ],
+      "visibleEntities": [],
       "discoveredEntities": [],
       "logEntries": [
         {
@@ -151,11 +189,16 @@
           "text": "Starting in random location: The White Room",
           "gameTime": 0,
           "repeat": 0
+        },
+        {
+          "text": "Game loaded from \"Fix_Save_Flow\"",
+          "gameTime": 0,
+          "repeat": 0
         }
       ],
-      "gameplayText": "The sterile whiteness of The White Room enveloped you as you stepped inside, a blank canvas awaiting your command. The door clicked shut behind you with finality, leaving only the faint hum of distant machinery for company. You stood in the center of the room, feet sinking slightly into the soft white flooring that stretched out before you. The air was cool and still, the scent of fresh paint lingering subtly.\n\nA single console protruded from the wall ahead, its sleek surface unmarred by buttons or screens. It pulsed softly with an inner light, beckoning your approach. You found yourself drawn to it, a curious anticipation building in your chest as you reached out and touched the smooth surface. The console lit up at your touch, a soft chime echoing through the room. Words appeared before your eyes: \"Welcome, User. Please select your command.\"",
+      "gameplayText": "As you took a moment to survey the room, you noticed something that had escaped your initial notice. A subtle seam ran along one wall, barely visible against the uniform whiteness. It was there and yet not quite there, defying your efforts to focus on it directly. Intrigued, you stepped closer, reaching out to touch the smooth surface.\n\nTo your surprise, your fingers passed through the wall as if it were no more substantial than mist. Beyond lay a corridor of similar design, stretching off into the distance with an unsettling uniformity. The air here was slightly cooler, carrying a faint scent that reminded you of ozone after a storm. You hesitated for a moment before stepping fully into the passageway, the transition between rooms seamless.\n\n",
       "locationId": "1783535114538",
-      "gameTime": 1,
+      "gameTime": 2,
       "fullMessageHistory": [
         {
           "role": "user",
@@ -168,14 +211,15 @@
       ],
       "characterData": null,
       "choices": [
-        "- You can approach the console",
-        "- You can inspect the room for other objects",
-        "- You can turn around and look at the door you entered from",
+        "- You can follow the corridor",
+        "- You can turn back to the white room",
+        "- You can try to locate an exit",
+        "- You can knock on the walls",
         "Change Location"
       ],
       "isGameStarted": true,
-      "timestamp": "2026-07-08T19:32:56.316Z",
-      "worldName": null,
+      "timestamp": "2026-07-08T19:36:55.398Z",
+      "worldName": "The White Room",
       "playerNotes": "",
       "previousStateIndex": null,
       "stateVersion": 2
@@ -228,11 +272,16 @@
           "text": "Starting in random location: The White Room",
           "gameTime": 0,
           "repeat": 0
+        },
+        {
+          "text": "Game loaded from \"Fix_Save_Flow\"",
+          "gameTime": 0,
+          "repeat": 0
         }
       ],
-      "gameplayText": "You stepped forward, the soles of your shoes whispering against the plush flooring. The console loomed ahead, its surface a mirror reflecting your own face back at you. As you drew closer, the faint hum grew louder, almost expectant. Reaching out, you placed both hands on the cool metal, feeling it vibrate slightly beneath your palms.\n\nThe words on the screen shifted and rearranged themselves as if in response to your presence: \"Ready for command input.\" A soft glow emanated from within the console, casting your shadow onto the wall behind you. The silence was broken only by the sound of your own breathing, slow and steady in the stillness of the room.",
+      "gameplayText": "As you took a moment to survey the room, you noticed something that had escaped your initial notice. A subtle seam ran along one wall, barely visible against the uniform whiteness. It was there and yet not quite there, defying your efforts to focus on it directly. Intrigued, you stepped closer, reaching out to touch the smooth surface.\n\nTo your surprise, your fingers passed through the wall as if it were no more substantial than mist. Beyond lay a corridor of similar design, stretching off into the distance with an unsettling uniformity. The air here was slightly cooler, carrying a faint scent that reminded you of ozone after a storm. You hesitated for a moment before stepping fully into the passageway, the transition between rooms seamless.\n\n",
       "locationId": "1783535114538",
-      "gameTime": 2,
+      "gameTime": 4,
       "fullMessageHistory": [
         {
           "role": "user",
@@ -253,15 +302,15 @@
       ],
       "characterData": null,
       "choices": [
-        "You can type a command.",
-        "You can step back and examine the console more closely.",
-        "You can look around for other objects or details in the room.",
-        "You can test different buttons on the console.",
+        "- You can follow the corridor",
+        "- You can turn back to the white room",
+        "- You can try to locate an exit",
+        "- You can knock on the walls",
         "Change Location"
       ],
       "isGameStarted": true,
-      "timestamp": "2026-07-08T19:33:07.883Z",
-      "worldName": null,
+      "timestamp": "2026-07-08T19:36:55.398Z",
+      "worldName": "The White Room",
       "playerNotes": "",
       "previousStateIndex": 0,
       "stateVersion": 2
@@ -323,7 +372,7 @@
       ],
       "gameplayText": "As you took a moment to survey the room, you noticed something that had escaped your initial notice. A subtle seam ran along one wall, barely visible against the uniform whiteness. It was there and yet not quite there, defying your efforts to focus on it directly. Intrigued, you stepped closer, reaching out to touch the smooth surface.\n\nTo your surprise, your fingers passed through the wall as if it were no more substantial than mist. Beyond lay a corridor of similar design, stretching off into the distance with an unsettling uniformity. The air here was slightly cooler, carrying a faint scent that reminded you of ozone after a storm. You hesitated for a moment before stepping fully into the passageway, the transition between rooms seamless.\n\n",
       "locationId": "1783535114538",
-      "gameTime": 3,
+      "gameTime": 6,
       "fullMessageHistory": [
         {
           "role": "user",
@@ -363,6 +412,621 @@
       "worldName": "The White Room",
       "playerNotes": "",
       "previousStateIndex": 1,
+      "stateVersion": 2
+    },
+    {
+      "playerStats": [
+        {
+          "id": "stat-resolve",
+          "name": "Resolve",
+          "type": "number",
+          "description": "Your composure under pressure.",
+          "min": 0,
+          "max": 10,
+          "regen": 0,
+          "descriptors": [],
+          "value": 5,
+          "starting": 3
+        },
+        {
+          "id": "stat-coin",
+          "name": "Coin",
+          "type": "number",
+          "description": "Money on hand.",
+          "min": 0,
+          "max": 100,
+          "regen": 0,
+          "descriptors": [],
+          "value": 40,
+          "starting": 25
+        }
+      ],
+      "playerTraits": [
+        {
+          "id": "1783535133519",
+          "name": "The User",
+          "statChanges": [],
+          "playerDescription": "You are The User",
+          "aiDescription": "You are The User"
+        }
+      ],
+      "visibleEntities": [],
+      "discoveredEntities": [],
+      "logEntries": [
+        {
+          "text": "Applied trait: The User",
+          "gameTime": 0,
+          "repeat": 0
+        },
+        {
+          "text": "Starting in random location: The White Room",
+          "gameTime": 0,
+          "repeat": 0
+        },
+        {
+          "text": "Game loaded from \"Fix_Save_Flow\"",
+          "gameTime": 0,
+          "repeat": 0
+        }
+      ],
+      "gameplayText": "As you took a moment to survey the room, you noticed something that had escaped your initial notice. A subtle seam ran along one wall, barely visible against the uniform whiteness. It was there and yet not quite there, defying your efforts to focus on it directly. Intrigued, you stepped closer, reaching out to touch the smooth surface.\n\nTo your surprise, your fingers passed through the wall as if it were no more substantial than mist. Beyond lay a corridor of similar design, stretching off into the distance with an unsettling uniformity. The air here was slightly cooler, carrying a faint scent that reminded you of ozone after a storm. You hesitated for a moment before stepping fully into the passageway, the transition between rooms seamless.\n\n",
+      "locationId": "1783535114538",
+      "gameTime": 8,
+      "fullMessageHistory": [
+        {
+          "role": "user",
+          "content": "START GAME"
+        },
+        {
+          "role": "assistant",
+          "content": "{\"game_text\":\"The sterile whiteness of The White Room enveloped you as you stepped inside, a blank canvas awaiting your command. The door clicked shut behind you with finality, leaving only the faint hum of distant machinery for company. You stood in the center of the room, feet sinking slightly into the soft white flooring that stretched out before you. The air was cool and still, the scent of fresh paint lingering subtly.\\n\\nA single console protruded from the wall ahead, its sleek surface unmarred by buttons or screens. It pulsed softly with an inner light, beckoning your approach. You found yourself drawn to it, a curious anticipation building in your chest as you reached out and touched the smooth surface. The console lit up at your touch, a soft chime echoing through the room. Words appeared before your eyes: \\\"Welcome, User. Please select your command.\\\"\",\"choices\":[\"- You can approach the console\",\"- You can inspect the room for other objects\",\"- You can turn around and look at the door you entered from\",\"Change Location\"],\"stat_changes\":[]}"
+        },
+        {
+          "role": "user",
+          "content": "- You can approach the console"
+        },
+        {
+          "role": "assistant",
+          "content": "{\"game_text\":\"You stepped forward, the soles of your shoes whispering against the plush flooring. The console loomed ahead, its surface a mirror reflecting your own face back at you. As you drew closer, the faint hum grew louder, almost expectant. Reaching out, you placed both hands on the cool metal, feeling it vibrate slightly beneath your palms.\\n\\nThe words on the screen shifted and rearranged themselves as if in response to your presence: \\\"Ready for command input.\\\" A soft glow emanated from within the console, casting your shadow onto the wall behind you. The silence was broken only by the sound of your own breathing, slow and steady in the stillness of the room.\",\"choices\":[\"You can type a command.\",\"You can step back and examine the console more closely.\",\"You can look around for other objects or details in the room.\",\"You can test different buttons on the console.\",\"Change Location\"],\"stat_changes\":[]}"
+        },
+        {
+          "role": "user",
+          "content": "You can look around for other objects or details in the room."
+        },
+        {
+          "role": "assistant",
+          "content": "{\"game_text\":\"As you took a moment to survey the room, you noticed something that had escaped your initial notice. A subtle seam ran along one wall, barely visible against the uniform whiteness. It was there and yet not quite there, defying your efforts to focus on it directly. Intrigued, you stepped closer, reaching out to touch the smooth surface.\\n\\nTo your surprise, your fingers passed through the wall as if it were no more substantial than mist. Beyond lay a corridor of similar design, stretching off into the distance with an unsettling uniformity. The air here was slightly cooler, carrying a faint scent that reminded you of ozone after a storm. You hesitated for a moment before stepping fully into the passageway, the transition between rooms seamless.\",\"choices\":[\"- You can follow the corridor\",\"- You can turn back to the white room\",\"- You can try to locate an exit\",\"- You can knock on the walls\",\"Change Location\"],\"stat_changes\":[]}"
+        },
+        {
+          "role": "user",
+          "content": "I explore further, attempt 4."
+        },
+        {
+          "role": "assistant",
+          "content": "{\"narration\": \"Turn 4: the White Room hums faintly as you press on. A pale seam shifts under your hand.\", \"choices\": [\"Approach the console again\", \"Inspect the seam more closely\", \"Call out into the white\"], \"stat_changes\": [], \"turnId\": \"wr-turn-4\", \"entities\": []}"
+        }
+      ],
+      "characterData": null,
+      "choices": [
+        "- You can follow the corridor",
+        "- You can turn back to the white room",
+        "- You can try to locate an exit",
+        "- You can knock on the walls",
+        "Change Location"
+      ],
+      "isGameStarted": true,
+      "timestamp": "2026-07-08T19:36:55.398Z",
+      "worldName": "The White Room",
+      "playerNotes": "",
+      "previousStateIndex": 2,
+      "stateVersion": 2
+    },
+    {
+      "playerStats": [
+        {
+          "id": "stat-resolve",
+          "name": "Resolve",
+          "type": "number",
+          "description": "Your composure under pressure.",
+          "min": 0,
+          "max": 10,
+          "regen": 0,
+          "descriptors": [],
+          "value": 7,
+          "starting": 3
+        },
+        {
+          "id": "stat-coin",
+          "name": "Coin",
+          "type": "number",
+          "description": "Money on hand.",
+          "min": 0,
+          "max": 100,
+          "regen": 0,
+          "descriptors": [],
+          "value": 35,
+          "starting": 25
+        }
+      ],
+      "playerTraits": [
+        {
+          "id": "1783535133519",
+          "name": "The User",
+          "statChanges": [],
+          "playerDescription": "You are The User",
+          "aiDescription": "You are The User"
+        }
+      ],
+      "visibleEntities": [],
+      "discoveredEntities": [],
+      "logEntries": [
+        {
+          "text": "Applied trait: The User",
+          "gameTime": 0,
+          "repeat": 0
+        },
+        {
+          "text": "Starting in random location: The White Room",
+          "gameTime": 0,
+          "repeat": 0
+        },
+        {
+          "text": "Game loaded from \"Fix_Save_Flow\"",
+          "gameTime": 0,
+          "repeat": 0
+        }
+      ],
+      "gameplayText": "As you took a moment to survey the room, you noticed something that had escaped your initial notice. A subtle seam ran along one wall, barely visible against the uniform whiteness. It was there and yet not quite there, defying your efforts to focus on it directly. Intrigued, you stepped closer, reaching out to touch the smooth surface.\n\nTo your surprise, your fingers passed through the wall as if it were no more substantial than mist. Beyond lay a corridor of similar design, stretching off into the distance with an unsettling uniformity. The air here was slightly cooler, carrying a faint scent that reminded you of ozone after a storm. You hesitated for a moment before stepping fully into the passageway, the transition between rooms seamless.\n\n",
+      "locationId": "1783535114538",
+      "gameTime": 10,
+      "fullMessageHistory": [
+        {
+          "role": "user",
+          "content": "START GAME"
+        },
+        {
+          "role": "assistant",
+          "content": "{\"game_text\":\"The sterile whiteness of The White Room enveloped you as you stepped inside, a blank canvas awaiting your command. The door clicked shut behind you with finality, leaving only the faint hum of distant machinery for company. You stood in the center of the room, feet sinking slightly into the soft white flooring that stretched out before you. The air was cool and still, the scent of fresh paint lingering subtly.\\n\\nA single console protruded from the wall ahead, its sleek surface unmarred by buttons or screens. It pulsed softly with an inner light, beckoning your approach. You found yourself drawn to it, a curious anticipation building in your chest as you reached out and touched the smooth surface. The console lit up at your touch, a soft chime echoing through the room. Words appeared before your eyes: \\\"Welcome, User. Please select your command.\\\"\",\"choices\":[\"- You can approach the console\",\"- You can inspect the room for other objects\",\"- You can turn around and look at the door you entered from\",\"Change Location\"],\"stat_changes\":[]}"
+        },
+        {
+          "role": "user",
+          "content": "- You can approach the console"
+        },
+        {
+          "role": "assistant",
+          "content": "{\"game_text\":\"You stepped forward, the soles of your shoes whispering against the plush flooring. The console loomed ahead, its surface a mirror reflecting your own face back at you. As you drew closer, the faint hum grew louder, almost expectant. Reaching out, you placed both hands on the cool metal, feeling it vibrate slightly beneath your palms.\\n\\nThe words on the screen shifted and rearranged themselves as if in response to your presence: \\\"Ready for command input.\\\" A soft glow emanated from within the console, casting your shadow onto the wall behind you. The silence was broken only by the sound of your own breathing, slow and steady in the stillness of the room.\",\"choices\":[\"You can type a command.\",\"You can step back and examine the console more closely.\",\"You can look around for other objects or details in the room.\",\"You can test different buttons on the console.\",\"Change Location\"],\"stat_changes\":[]}"
+        },
+        {
+          "role": "user",
+          "content": "You can look around for other objects or details in the room."
+        },
+        {
+          "role": "assistant",
+          "content": "{\"game_text\":\"As you took a moment to survey the room, you noticed something that had escaped your initial notice. A subtle seam ran along one wall, barely visible against the uniform whiteness. It was there and yet not quite there, defying your efforts to focus on it directly. Intrigued, you stepped closer, reaching out to touch the smooth surface.\\n\\nTo your surprise, your fingers passed through the wall as if it were no more substantial than mist. Beyond lay a corridor of similar design, stretching off into the distance with an unsettling uniformity. The air here was slightly cooler, carrying a faint scent that reminded you of ozone after a storm. You hesitated for a moment before stepping fully into the passageway, the transition between rooms seamless.\",\"choices\":[\"- You can follow the corridor\",\"- You can turn back to the white room\",\"- You can try to locate an exit\",\"- You can knock on the walls\",\"Change Location\"],\"stat_changes\":[]}"
+        },
+        {
+          "role": "user",
+          "content": "I explore further, attempt 4."
+        },
+        {
+          "role": "assistant",
+          "content": "{\"narration\": \"Turn 4: the White Room hums faintly as you press on. A pale seam shifts under your hand.\", \"choices\": [\"Approach the console again\", \"Inspect the seam more closely\", \"Call out into the white\"], \"stat_changes\": [], \"turnId\": \"wr-turn-4\", \"entities\": []}"
+        },
+        {
+          "role": "user",
+          "content": "I explore further, attempt 5."
+        },
+        {
+          "role": "assistant",
+          "content": "{\"narration\": \"Turn 5: the White Room hums faintly as you press on. A pale seam shifts under your hand.\", \"choices\": [\"Approach the console again\", \"Inspect the seam more closely\", \"Call out into the white\"], \"stat_changes\": [], \"turnId\": \"wr-turn-5\", \"entities\": []}"
+        }
+      ],
+      "characterData": null,
+      "choices": [
+        "- You can follow the corridor",
+        "- You can turn back to the white room",
+        "- You can try to locate an exit",
+        "- You can knock on the walls",
+        "Change Location"
+      ],
+      "isGameStarted": true,
+      "timestamp": "2026-07-08T19:36:55.398Z",
+      "worldName": "The White Room",
+      "playerNotes": "",
+      "previousStateIndex": 3,
+      "stateVersion": 2
+    },
+    {
+      "playerStats": [
+        {
+          "id": "stat-resolve",
+          "name": "Resolve",
+          "type": "number",
+          "description": "Your composure under pressure.",
+          "min": 0,
+          "max": 10,
+          "regen": 0,
+          "descriptors": [],
+          "value": 8,
+          "starting": 3
+        },
+        {
+          "id": "stat-coin",
+          "name": "Coin",
+          "type": "number",
+          "description": "Money on hand.",
+          "min": 0,
+          "max": 100,
+          "regen": 0,
+          "descriptors": [],
+          "value": 50,
+          "starting": 25
+        }
+      ],
+      "playerTraits": [
+        {
+          "id": "1783535133519",
+          "name": "The User",
+          "statChanges": [],
+          "playerDescription": "You are The User",
+          "aiDescription": "You are The User"
+        }
+      ],
+      "visibleEntities": [],
+      "discoveredEntities": [],
+      "logEntries": [
+        {
+          "text": "Applied trait: The User",
+          "gameTime": 0,
+          "repeat": 0
+        },
+        {
+          "text": "Starting in random location: The White Room",
+          "gameTime": 0,
+          "repeat": 0
+        },
+        {
+          "text": "Game loaded from \"Fix_Save_Flow\"",
+          "gameTime": 0,
+          "repeat": 0
+        }
+      ],
+      "gameplayText": "As you took a moment to survey the room, you noticed something that had escaped your initial notice. A subtle seam ran along one wall, barely visible against the uniform whiteness. It was there and yet not quite there, defying your efforts to focus on it directly. Intrigued, you stepped closer, reaching out to touch the smooth surface.\n\nTo your surprise, your fingers passed through the wall as if it were no more substantial than mist. Beyond lay a corridor of similar design, stretching off into the distance with an unsettling uniformity. The air here was slightly cooler, carrying a faint scent that reminded you of ozone after a storm. You hesitated for a moment before stepping fully into the passageway, the transition between rooms seamless.\n\n",
+      "locationId": "1783535114538",
+      "gameTime": 12,
+      "fullMessageHistory": [
+        {
+          "role": "user",
+          "content": "START GAME"
+        },
+        {
+          "role": "assistant",
+          "content": "{\"game_text\":\"The sterile whiteness of The White Room enveloped you as you stepped inside, a blank canvas awaiting your command. The door clicked shut behind you with finality, leaving only the faint hum of distant machinery for company. You stood in the center of the room, feet sinking slightly into the soft white flooring that stretched out before you. The air was cool and still, the scent of fresh paint lingering subtly.\\n\\nA single console protruded from the wall ahead, its sleek surface unmarred by buttons or screens. It pulsed softly with an inner light, beckoning your approach. You found yourself drawn to it, a curious anticipation building in your chest as you reached out and touched the smooth surface. The console lit up at your touch, a soft chime echoing through the room. Words appeared before your eyes: \\\"Welcome, User. Please select your command.\\\"\",\"choices\":[\"- You can approach the console\",\"- You can inspect the room for other objects\",\"- You can turn around and look at the door you entered from\",\"Change Location\"],\"stat_changes\":[]}"
+        },
+        {
+          "role": "user",
+          "content": "- You can approach the console"
+        },
+        {
+          "role": "assistant",
+          "content": "{\"game_text\":\"You stepped forward, the soles of your shoes whispering against the plush flooring. The console loomed ahead, its surface a mirror reflecting your own face back at you. As you drew closer, the faint hum grew louder, almost expectant. Reaching out, you placed both hands on the cool metal, feeling it vibrate slightly beneath your palms.\\n\\nThe words on the screen shifted and rearranged themselves as if in response to your presence: \\\"Ready for command input.\\\" A soft glow emanated from within the console, casting your shadow onto the wall behind you. The silence was broken only by the sound of your own breathing, slow and steady in the stillness of the room.\",\"choices\":[\"You can type a command.\",\"You can step back and examine the console more closely.\",\"You can look around for other objects or details in the room.\",\"You can test different buttons on the console.\",\"Change Location\"],\"stat_changes\":[]}"
+        },
+        {
+          "role": "user",
+          "content": "You can look around for other objects or details in the room."
+        },
+        {
+          "role": "assistant",
+          "content": "{\"game_text\":\"As you took a moment to survey the room, you noticed something that had escaped your initial notice. A subtle seam ran along one wall, barely visible against the uniform whiteness. It was there and yet not quite there, defying your efforts to focus on it directly. Intrigued, you stepped closer, reaching out to touch the smooth surface.\\n\\nTo your surprise, your fingers passed through the wall as if it were no more substantial than mist. Beyond lay a corridor of similar design, stretching off into the distance with an unsettling uniformity. The air here was slightly cooler, carrying a faint scent that reminded you of ozone after a storm. You hesitated for a moment before stepping fully into the passageway, the transition between rooms seamless.\",\"choices\":[\"- You can follow the corridor\",\"- You can turn back to the white room\",\"- You can try to locate an exit\",\"- You can knock on the walls\",\"Change Location\"],\"stat_changes\":[]}"
+        },
+        {
+          "role": "user",
+          "content": "I explore further, attempt 4."
+        },
+        {
+          "role": "assistant",
+          "content": "{\"narration\": \"Turn 4: the White Room hums faintly as you press on. A pale seam shifts under your hand.\", \"choices\": [\"Approach the console again\", \"Inspect the seam more closely\", \"Call out into the white\"], \"stat_changes\": [], \"turnId\": \"wr-turn-4\", \"entities\": []}"
+        },
+        {
+          "role": "user",
+          "content": "I explore further, attempt 5."
+        },
+        {
+          "role": "assistant",
+          "content": "{\"narration\": \"Turn 5: the White Room hums faintly as you press on. A pale seam shifts under your hand.\", \"choices\": [\"Approach the console again\", \"Inspect the seam more closely\", \"Call out into the white\"], \"stat_changes\": [], \"turnId\": \"wr-turn-5\", \"entities\": []}"
+        },
+        {
+          "role": "user",
+          "content": "I explore further, attempt 6."
+        },
+        {
+          "role": "assistant",
+          "content": "{\"narration\": \"Turn 6: the White Room hums faintly as you press on. A pale seam shifts under your hand.\", \"choices\": [\"Approach the console again\", \"Inspect the seam more closely\", \"Call out into the white\"], \"stat_changes\": [], \"turnId\": \"wr-turn-6\", \"entities\": []}"
+        }
+      ],
+      "characterData": null,
+      "choices": [
+        "- You can follow the corridor",
+        "- You can turn back to the white room",
+        "- You can try to locate an exit",
+        "- You can knock on the walls",
+        "Change Location"
+      ],
+      "isGameStarted": true,
+      "timestamp": "2026-07-08T19:36:55.398Z",
+      "worldName": "The White Room",
+      "playerNotes": "",
+      "previousStateIndex": 4,
+      "stateVersion": 2
+    },
+    {
+      "playerStats": [
+        {
+          "id": "stat-resolve",
+          "name": "Resolve",
+          "type": "number",
+          "description": "Your composure under pressure.",
+          "min": 0,
+          "max": 10,
+          "regen": 0,
+          "descriptors": [],
+          "value": 6,
+          "starting": 3
+        },
+        {
+          "id": "stat-coin",
+          "name": "Coin",
+          "type": "number",
+          "description": "Money on hand.",
+          "min": 0,
+          "max": 100,
+          "regen": 0,
+          "descriptors": [],
+          "value": 45,
+          "starting": 25
+        }
+      ],
+      "playerTraits": [
+        {
+          "id": "1783535133519",
+          "name": "The User",
+          "statChanges": [],
+          "playerDescription": "You are The User",
+          "aiDescription": "You are The User"
+        }
+      ],
+      "visibleEntities": [],
+      "discoveredEntities": [],
+      "logEntries": [
+        {
+          "text": "Applied trait: The User",
+          "gameTime": 0,
+          "repeat": 0
+        },
+        {
+          "text": "Starting in random location: The White Room",
+          "gameTime": 0,
+          "repeat": 0
+        },
+        {
+          "text": "Game loaded from \"Fix_Save_Flow\"",
+          "gameTime": 0,
+          "repeat": 0
+        }
+      ],
+      "gameplayText": "As you took a moment to survey the room, you noticed something that had escaped your initial notice. A subtle seam ran along one wall, barely visible against the uniform whiteness. It was there and yet not quite there, defying your efforts to focus on it directly. Intrigued, you stepped closer, reaching out to touch the smooth surface.\n\nTo your surprise, your fingers passed through the wall as if it were no more substantial than mist. Beyond lay a corridor of similar design, stretching off into the distance with an unsettling uniformity. The air here was slightly cooler, carrying a faint scent that reminded you of ozone after a storm. You hesitated for a moment before stepping fully into the passageway, the transition between rooms seamless.\n\n",
+      "locationId": "1783535114538",
+      "gameTime": 14,
+      "fullMessageHistory": [
+        {
+          "role": "user",
+          "content": "START GAME"
+        },
+        {
+          "role": "assistant",
+          "content": "{\"game_text\":\"The sterile whiteness of The White Room enveloped you as you stepped inside, a blank canvas awaiting your command. The door clicked shut behind you with finality, leaving only the faint hum of distant machinery for company. You stood in the center of the room, feet sinking slightly into the soft white flooring that stretched out before you. The air was cool and still, the scent of fresh paint lingering subtly.\\n\\nA single console protruded from the wall ahead, its sleek surface unmarred by buttons or screens. It pulsed softly with an inner light, beckoning your approach. You found yourself drawn to it, a curious anticipation building in your chest as you reached out and touched the smooth surface. The console lit up at your touch, a soft chime echoing through the room. Words appeared before your eyes: \\\"Welcome, User. Please select your command.\\\"\",\"choices\":[\"- You can approach the console\",\"- You can inspect the room for other objects\",\"- You can turn around and look at the door you entered from\",\"Change Location\"],\"stat_changes\":[]}"
+        },
+        {
+          "role": "user",
+          "content": "- You can approach the console"
+        },
+        {
+          "role": "assistant",
+          "content": "{\"game_text\":\"You stepped forward, the soles of your shoes whispering against the plush flooring. The console loomed ahead, its surface a mirror reflecting your own face back at you. As you drew closer, the faint hum grew louder, almost expectant. Reaching out, you placed both hands on the cool metal, feeling it vibrate slightly beneath your palms.\\n\\nThe words on the screen shifted and rearranged themselves as if in response to your presence: \\\"Ready for command input.\\\" A soft glow emanated from within the console, casting your shadow onto the wall behind you. The silence was broken only by the sound of your own breathing, slow and steady in the stillness of the room.\",\"choices\":[\"You can type a command.\",\"You can step back and examine the console more closely.\",\"You can look around for other objects or details in the room.\",\"You can test different buttons on the console.\",\"Change Location\"],\"stat_changes\":[]}"
+        },
+        {
+          "role": "user",
+          "content": "You can look around for other objects or details in the room."
+        },
+        {
+          "role": "assistant",
+          "content": "{\"game_text\":\"As you took a moment to survey the room, you noticed something that had escaped your initial notice. A subtle seam ran along one wall, barely visible against the uniform whiteness. It was there and yet not quite there, defying your efforts to focus on it directly. Intrigued, you stepped closer, reaching out to touch the smooth surface.\\n\\nTo your surprise, your fingers passed through the wall as if it were no more substantial than mist. Beyond lay a corridor of similar design, stretching off into the distance with an unsettling uniformity. The air here was slightly cooler, carrying a faint scent that reminded you of ozone after a storm. You hesitated for a moment before stepping fully into the passageway, the transition between rooms seamless.\",\"choices\":[\"- You can follow the corridor\",\"- You can turn back to the white room\",\"- You can try to locate an exit\",\"- You can knock on the walls\",\"Change Location\"],\"stat_changes\":[]}"
+        },
+        {
+          "role": "user",
+          "content": "I explore further, attempt 4."
+        },
+        {
+          "role": "assistant",
+          "content": "{\"narration\": \"Turn 4: the White Room hums faintly as you press on. A pale seam shifts under your hand.\", \"choices\": [\"Approach the console again\", \"Inspect the seam more closely\", \"Call out into the white\"], \"stat_changes\": [], \"turnId\": \"wr-turn-4\", \"entities\": []}"
+        },
+        {
+          "role": "user",
+          "content": "I explore further, attempt 5."
+        },
+        {
+          "role": "assistant",
+          "content": "{\"narration\": \"Turn 5: the White Room hums faintly as you press on. A pale seam shifts under your hand.\", \"choices\": [\"Approach the console again\", \"Inspect the seam more closely\", \"Call out into the white\"], \"stat_changes\": [], \"turnId\": \"wr-turn-5\", \"entities\": []}"
+        },
+        {
+          "role": "user",
+          "content": "I explore further, attempt 6."
+        },
+        {
+          "role": "assistant",
+          "content": "{\"narration\": \"Turn 6: the White Room hums faintly as you press on. A pale seam shifts under your hand.\", \"choices\": [\"Approach the console again\", \"Inspect the seam more closely\", \"Call out into the white\"], \"stat_changes\": [], \"turnId\": \"wr-turn-6\", \"entities\": []}"
+        },
+        {
+          "role": "user",
+          "content": "I explore further, attempt 7."
+        },
+        {
+          "role": "assistant",
+          "content": "{\"narration\": \"Turn 7: the White Room hums faintly as you press on. A pale seam shifts under your hand.\", \"choices\": [\"Approach the console again\", \"Inspect the seam more closely\", \"Call out into the white\"], \"stat_changes\": [], \"turnId\": \"wr-turn-7\", \"entities\": []}"
+        }
+      ],
+      "characterData": null,
+      "choices": [
+        "- You can follow the corridor",
+        "- You can turn back to the white room",
+        "- You can try to locate an exit",
+        "- You can knock on the walls",
+        "Change Location"
+      ],
+      "isGameStarted": true,
+      "timestamp": "2026-07-08T19:36:55.398Z",
+      "worldName": "The White Room",
+      "playerNotes": "",
+      "previousStateIndex": 5,
+      "stateVersion": 2
+    },
+    {
+      "playerStats": [
+        {
+          "id": "stat-resolve",
+          "name": "Resolve",
+          "type": "number",
+          "description": "Your composure under pressure.",
+          "min": 0,
+          "max": 10,
+          "regen": 0,
+          "descriptors": [],
+          "value": 4,
+          "starting": 3
+        },
+        {
+          "id": "stat-coin",
+          "name": "Coin",
+          "type": "number",
+          "description": "Money on hand.",
+          "min": 0,
+          "max": 100,
+          "regen": 0,
+          "descriptors": [],
+          "value": 60,
+          "starting": 25
+        }
+      ],
+      "playerTraits": [
+        {
+          "id": "1783535133519",
+          "name": "The User",
+          "statChanges": [],
+          "playerDescription": "You are The User",
+          "aiDescription": "You are The User"
+        }
+      ],
+      "visibleEntities": [],
+      "discoveredEntities": [],
+      "logEntries": [
+        {
+          "text": "Applied trait: The User",
+          "gameTime": 0,
+          "repeat": 0
+        },
+        {
+          "text": "Starting in random location: The White Room",
+          "gameTime": 0,
+          "repeat": 0
+        },
+        {
+          "text": "Game loaded from \"Fix_Save_Flow\"",
+          "gameTime": 0,
+          "repeat": 0
+        }
+      ],
+      "gameplayText": "As you took a moment to survey the room, you noticed something that had escaped your initial notice. A subtle seam ran along one wall, barely visible against the uniform whiteness. It was there and yet not quite there, defying your efforts to focus on it directly. Intrigued, you stepped closer, reaching out to touch the smooth surface.\n\nTo your surprise, your fingers passed through the wall as if it were no more substantial than mist. Beyond lay a corridor of similar design, stretching off into the distance with an unsettling uniformity. The air here was slightly cooler, carrying a faint scent that reminded you of ozone after a storm. You hesitated for a moment before stepping fully into the passageway, the transition between rooms seamless.\n\n",
+      "locationId": "1783535114538",
+      "gameTime": 16,
+      "fullMessageHistory": [
+        {
+          "role": "user",
+          "content": "START GAME"
+        },
+        {
+          "role": "assistant",
+          "content": "{\"game_text\":\"The sterile whiteness of The White Room enveloped you as you stepped inside, a blank canvas awaiting your command. The door clicked shut behind you with finality, leaving only the faint hum of distant machinery for company. You stood in the center of the room, feet sinking slightly into the soft white flooring that stretched out before you. The air was cool and still, the scent of fresh paint lingering subtly.\\n\\nA single console protruded from the wall ahead, its sleek surface unmarred by buttons or screens. It pulsed softly with an inner light, beckoning your approach. You found yourself drawn to it, a curious anticipation building in your chest as you reached out and touched the smooth surface. The console lit up at your touch, a soft chime echoing through the room. Words appeared before your eyes: \\\"Welcome, User. Please select your command.\\\"\",\"choices\":[\"- You can approach the console\",\"- You can inspect the room for other objects\",\"- You can turn around and look at the door you entered from\",\"Change Location\"],\"stat_changes\":[]}"
+        },
+        {
+          "role": "user",
+          "content": "- You can approach the console"
+        },
+        {
+          "role": "assistant",
+          "content": "{\"game_text\":\"You stepped forward, the soles of your shoes whispering against the plush flooring. The console loomed ahead, its surface a mirror reflecting your own face back at you. As you drew closer, the faint hum grew louder, almost expectant. Reaching out, you placed both hands on the cool metal, feeling it vibrate slightly beneath your palms.\\n\\nThe words on the screen shifted and rearranged themselves as if in response to your presence: \\\"Ready for command input.\\\" A soft glow emanated from within the console, casting your shadow onto the wall behind you. The silence was broken only by the sound of your own breathing, slow and steady in the stillness of the room.\",\"choices\":[\"You can type a command.\",\"You can step back and examine the console more closely.\",\"You can look around for other objects or details in the room.\",\"You can test different buttons on the console.\",\"Change Location\"],\"stat_changes\":[]}"
+        },
+        {
+          "role": "user",
+          "content": "You can look around for other objects or details in the room."
+        },
+        {
+          "role": "assistant",
+          "content": "{\"game_text\":\"As you took a moment to survey the room, you noticed something that had escaped your initial notice. A subtle seam ran along one wall, barely visible against the uniform whiteness. It was there and yet not quite there, defying your efforts to focus on it directly. Intrigued, you stepped closer, reaching out to touch the smooth surface.\\n\\nTo your surprise, your fingers passed through the wall as if it were no more substantial than mist. Beyond lay a corridor of similar design, stretching off into the distance with an unsettling uniformity. The air here was slightly cooler, carrying a faint scent that reminded you of ozone after a storm. You hesitated for a moment before stepping fully into the passageway, the transition between rooms seamless.\",\"choices\":[\"- You can follow the corridor\",\"- You can turn back to the white room\",\"- You can try to locate an exit\",\"- You can knock on the walls\",\"Change Location\"],\"stat_changes\":[]}"
+        },
+        {
+          "role": "user",
+          "content": "I explore further, attempt 4."
+        },
+        {
+          "role": "assistant",
+          "content": "{\"narration\": \"Turn 4: the White Room hums faintly as you press on. A pale seam shifts under your hand.\", \"choices\": [\"Approach the console again\", \"Inspect the seam more closely\", \"Call out into the white\"], \"stat_changes\": [], \"turnId\": \"wr-turn-4\", \"entities\": []}"
+        },
+        {
+          "role": "user",
+          "content": "I explore further, attempt 5."
+        },
+        {
+          "role": "assistant",
+          "content": "{\"narration\": \"Turn 5: the White Room hums faintly as you press on. A pale seam shifts under your hand.\", \"choices\": [\"Approach the console again\", \"Inspect the seam more closely\", \"Call out into the white\"], \"stat_changes\": [], \"turnId\": \"wr-turn-5\", \"entities\": []}"
+        },
+        {
+          "role": "user",
+          "content": "I explore further, attempt 6."
+        },
+        {
+          "role": "assistant",
+          "content": "{\"narration\": \"Turn 6: the White Room hums faintly as you press on. A pale seam shifts under your hand.\", \"choices\": [\"Approach the console again\", \"Inspect the seam more closely\", \"Call out into the white\"], \"stat_changes\": [], \"turnId\": \"wr-turn-6\", \"entities\": []}"
+        },
+        {
+          "role": "user",
+          "content": "I explore further, attempt 7."
+        },
+        {
+          "role": "assistant",
+          "content": "{\"narration\": \"Turn 7: the White Room hums faintly as you press on. A pale seam shifts under your hand.\", \"choices\": [\"Approach the console again\", \"Inspect the seam more closely\", \"Call out into the white\"], \"stat_changes\": [], \"turnId\": \"wr-turn-7\", \"entities\": []}"
+        },
+        {
+          "role": "user",
+          "content": "I explore further, attempt 8."
+        },
+        {
+          "role": "assistant",
+          "content": "{\"narration\": \"Turn 8: the White Room hums faintly as you press on. A pale seam shifts under your hand.\", \"choices\": [\"Approach the console again\", \"Inspect the seam more closely\", \"Call out into the white\"], \"stat_changes\": [], \"turnId\": \"wr-turn-8\", \"entities\": []}"
+        }
+      ],
+      "characterData": null,
+      "choices": [
+        "- You can follow the corridor",
+        "- You can turn back to the white room",
+        "- You can try to locate an exit",
+        "- You can knock on the walls",
+        "Change Location"
+      ],
+      "isGameStarted": true,
+      "timestamp": "2026-07-08T19:36:55.398Z",
+      "worldName": "The White Room",
+      "playerNotes": "",
+      "previousStateIndex": 6,
       "stateVersion": 2
     }
   ],

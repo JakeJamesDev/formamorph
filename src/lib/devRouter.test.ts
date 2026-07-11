@@ -81,8 +81,8 @@ describe('mid-game boot fixtures', () => {
 
   it('white-room save is a loadable envelope whose current state matches the world location', () => {
     expect(isSaveEnvelope(whiteRoomSave)).toBe(true);
-    // 3-turn fixture: history holds each page and current is the latest (what loadGame restores).
-    expect(whiteRoomSave.stateHistory).toHaveLength(3);
+    // 8-turn fixture: history holds each page and current is the latest (what loadGame restores).
+    expect(whiteRoomSave.stateHistory).toHaveLength(8);
     expect(whiteRoomSave.currentState.locationId).toBe(whiteRoomWorld.locations[0].id);
   });
 });

@@ -9,15 +9,7 @@ import {
   Search, RotateCcw, ArrowDownWideNarrow, ArrowUpNarrowWide, ArrowLeft, X,
 } from "lucide-react";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import {
-  Pagination,
-  PaginationContent,
-  PaginationEllipsis,
-  PaginationItem,
-  PaginationLink,
-  PaginationNext,
-  PaginationPrevious,
-} from "@/components/ui/pagination";
+import { Pager } from "@/components/ui/pagination";
 import { TokenAutocomplete } from "@/components/TokenAutocomplete";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { cn } from "@/lib/utils";
@@ -95,31 +87,6 @@ const CommunityCreationsBrowser = ({ open, onOpenChange, worlds, setWorlds, isAu
   } = useCommunityBrowserFilters(remoteWorlds, localCopiesBySource, open);
 
   // Numbered page links with first/last anchors + ellipsis (matches the in-game transcript pager).
-  const renderPaginationItems = () => {
-    const items = [];
-    for (let i = 1; i <= totalPages; i++) {
-      if (i === 1 || i === totalPages || (i >= currentPage - 1 && i <= currentPage + 1)) {
-        items.push(
-          <PaginationItem key={i}>
-            <PaginationLink
-              href="#"
-              onClick={(e) => { e.preventDefault(); setCurrentPage(i); }}
-              isActive={currentPage === i}
-            >
-              {i}
-            </PaginationLink>
-          </PaginationItem>,
-        );
-      } else if (i === currentPage - 2 || i === currentPage + 2) {
-        items.push(
-          <PaginationItem key={i}>
-            <PaginationEllipsis />
-          </PaginationItem>,
-        );
-      }
-    }
-    return items;
-  };
 
   const handleRemoteWorldDelete = async (worldId: string) => {
     try {
@@ -332,25 +299,7 @@ const CommunityCreationsBrowser = ({ open, onOpenChange, worlds, setWorlds, isAu
           {/* Frozen footer: pagination */}
           <div className="shrink-0 border-t px-6 py-3">
             {!isLoadingRemoteWorlds && filteredRemoteWorlds.length > 0 && (
-              <Pagination>
-                <PaginationContent>
-                  <PaginationItem>
-                    <PaginationPrevious
-                      href="#"
-                      onClick={(e) => { e.preventDefault(); if (currentPage > 1) setCurrentPage(currentPage - 1); }}
-                      className={currentPage === 1 ? "pointer-events-none opacity-50" : ""}
-                    />
-                  </PaginationItem>
-                  {renderPaginationItems()}
-                  <PaginationItem>
-                    <PaginationNext
-                      href="#"
-                      onClick={(e) => { e.preventDefault(); if (currentPage < totalPages) setCurrentPage(currentPage + 1); }}
-                      className={currentPage === totalPages ? "pointer-events-none opacity-50" : ""}
-                    />
-                  </PaginationItem>
-                </PaginationContent>
-              </Pagination>
+              <Pager page={currentPage} pageCount={totalPages} onPageChange={setCurrentPage} />
             )}
           </div>
         </DialogContent>
