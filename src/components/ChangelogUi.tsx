@@ -7,7 +7,7 @@ import { WIKI_CHANGELOG_URL } from '@/services/UpdateService';
 /** The scrollable, de-emphasized release-notes box: renders markdown, or the placeholder when there's none. */
 export function ChangelogBody({ text, placeholder }: { text?: string; placeholder: string }) {
   return (
-    <div className="max-h-[60vh] overflow-y-auto rounded-md border bg-muted/30 p-3 text-sm">
+    <div className="changelog-body max-h-[60vh] overflow-y-auto rounded-md border bg-muted/30 p-3 text-sm [&_:first-child]:mt-0">
       {text ? <MarkdownRenderer text={text} /> : <span className="text-muted-foreground">{placeholder}</span>}
     </div>
   );

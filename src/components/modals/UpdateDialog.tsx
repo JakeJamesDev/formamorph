@@ -1,4 +1,4 @@
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from '@/components/ui/select';
 import { ChangelogBody, FullChangelogLink } from '@/components/ChangelogUi';
@@ -47,19 +47,17 @@ export function UpdateDialog({ open, onOpenChange, state, onCheck, onDownload }:
           <ChangelogBody text={state.changelog} placeholder="No release notes." />
         )}
 
-        <div className="flex items-center justify-between gap-2">
+        <DialogFooter className="items-center">
           <FullChangelogLink />
-          <div className="flex gap-2">
-            {available ? (
-              <>
-                <Button variant="outline" onClick={() => onOpenChange(false)}>Cancel</Button>
-                <Button onClick={onDownload}>Download</Button>
-              </>
-            ) : (
-              <Button onClick={onCheck} disabled={checking}>{checking ? 'Checking…' : 'Check for updates'}</Button>
-            )}
-          </div>
-        </div>
+          {available ? (
+            <>
+              <Button variant="outline" className="sm:ml-auto" onClick={() => onOpenChange(false)}>Cancel</Button>
+              <Button onClick={onDownload}>Download</Button>
+            </>
+          ) : (
+            <Button className="sm:ml-auto" onClick={onCheck} disabled={checking}>{checking ? 'Checking…' : 'Check for updates'}</Button>
+          )}
+        </DialogFooter>
       </DialogContent>
     </Dialog>
   );

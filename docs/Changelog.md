@@ -28,6 +28,8 @@ _Unreleased — new work accumulates here until it earns a version bump._
 #### 🐛 Fixed
 
 - **👤 User-facing**
+  - **No more console flash when launching the desktop app (Windows)** — Starting Formamorph briefly popped up a black terminal window before the app appeared; it no longer does, and the launcher now shows the Formamorph icon instead of a generic one
+  - **Updates no longer leave a full-size backup copy behind (Windows)** — After a successful update the previous version was kept on disk, roughly doubling the install size; it's now removed once the new version is confirmed healthy
   - **Re-generate and Rollback no longer undo your edits to the previous turn** — Editing a turn's narration or your Player Notes and then re-generating (or rolling back to that turn) reverted it to the original, unedited text. Both now keep your edits — they restore the turn's game state without throwing away what you changed.
   - **You can recover after a local model fails to load (desktop)** — If the built-in engine reported a context size too large for VRAM, the panel got stuck: lowering **Context Size** (or **GPU Layers**) did nothing because the **Save & Reload** button only worked while a model was already loaded. Now, after a failed load, the button re-enables so you can lower the setting and retry, and a hint points you at what to change. (The GPU Layers slider under Advanced already lets you partially offload a model that doesn't fully fit VRAM.)
 - **🛠️ Developer tooling**

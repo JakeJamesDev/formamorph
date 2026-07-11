@@ -65,6 +65,16 @@ async function download({ url, sha512, version }, onProgress) {
   onProgress({ received, total: total || received, done: true });
 }
 
+/** A previously downloaded, still-staged update awaiting apply (survives an app restart), or null. Reads
+ *  pending.json and confirms its payload zip is still on disk so a deleted/partial stage isn't trusted. */
+function pendingUpdate() {
+  try {
+    const p = JSON.parse(fs.readFileSync(path.join(updatesDir(), 'pending.json'), 'utf8'));
+    if (p && p.version && p.zip && fs.existsSync(p.zip)) return { version: String(p.version) };
+  } catch { /* no pending update */ }
+  return null;
+}
+
 /** Hand off to the launcher to swap /app and relaunch. Spawns it detached (so it outlives us), then the
  *  caller quits the app to release the file locks the launcher needs. */
 function apply() {
@@ -75,4 +85,4 @@ function apply() {
   child.unref();
 }
 
-module.exports = { download, apply, updatesDir };
+module.exports = { download, apply, pendingUpdate, updatesDir };

@@ -38,6 +38,7 @@ contextBridge.exposeInMainWorld('formamorphDesktop', {
   // download/apply and stream progress + completion back from the main process.
   update: {
     check: () => ipcRenderer.invoke('update-check'),
+    pending: () => ipcRenderer.invoke('update-pending'),
     download: (opts) => ipcRenderer.invoke('update-download', opts),
     apply: () => ipcRenderer.invoke('update-apply'),
     onAvailable: (cb) => {

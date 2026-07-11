@@ -1,5 +1,5 @@
 import { render, screen, waitFor, fireEvent } from '@testing-library/react';
-import { describe, it, expect, vi } from 'vitest';
+import { describe, it, expect, vi, afterEach } from 'vitest';
 
 // Isolate the component from the settings provider and the network: a stable channel + an "available" check.
 vi.mock('@/contexts/SettingsContext', () => ({
@@ -23,6 +23,8 @@ vi.mock('@/components/game/MarkdownRenderer', () => ({
 import { UpdateVersionControl } from './UpdateVersionControl';
 
 describe('UpdateVersionControl', () => {
+  afterEach(() => { delete (window as { formamorphDesktop?: unknown }).formamorphDesktop; });
+
   it('tags the version when an update is available and opens the dialog with a Download action', async () => {
     render(<UpdateVersionControl />);
 
@@ -39,5 +41,21 @@ describe('UpdateVersionControl', () => {
     const link = screen.getByRole('link', { name: /Full changelog/ });
     expect(link).toHaveAttribute('href', 'https://github.com/JakeJamesDev/formamorph/wiki/Changelog');
     expect(link).toHaveAttribute('target', '_blank');
+  });
+
+  it('resumes at "Update & Restart" when the available version is already staged on disk', async () => {
+    // Desktop bridge reports a pending download whose version matches the available release.
+    (window as unknown as { formamorphDesktop: unknown }).formamorphDesktop = {
+      update: {
+        pending: async () => ({ version: '9.9.9' }),
+        onProgress: () => () => {},
+        onDownloaded: () => () => {},
+      },
+    };
+
+    render(<UpdateVersionControl />);
+
+    // No re-download: it jumps straight to the apply button instead of showing Download.
+    expect(await screen.findByRole('button', { name: /Update.*Restart/ })).toBeInTheDocument();
   });
 });
