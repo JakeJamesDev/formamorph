@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import type { AITurnResult, ChatMessage } from '@/types';
-import { parseTurnContent, serializeTurnContent, selectDueDigests, applyDigest, selectDueDiaries, pendingDiaryNames, applyDiary, collectCharacterDiary } from './turnDigest';
+import { parseTurnContent, serializeTurnContent, selectDueDigests, applyDigest, clearTurnDerived, selectDueDiaries, pendingDiaryNames, applyDiary, collectCharacterDiary } from './turnDigest';
 
 const user = (content: string): ChatMessage => ({ role: 'user', content });
 
@@ -107,6 +107,39 @@ describe('applyDigest', () => {
   it('returns null when the turnId is gone (rolled back / regenerated)', () => {
     const history = [...pair('a1', { turnId: 't1' })];
     expect(applyDigest(history, 'stale-id', 'orphan digest')).toBeNull();
+  });
+});
+
+describe('clearTurnDerived', () => {
+  const history = () => [
+    ...pair('a1', { turnId: 't1', summary: 's1', diaries: { Bram: 'd1' } }),
+    ...pair('a2', { turnId: 't2', summary: 's2', diaries: { Odette: 'd2' } }),
+  ];
+
+  it('clears summary + diaries with { diaries: true }, and the turn becomes due again', () => {
+    const out = clearTurnDerived(history(), 't1', { diaries: true })!;
+    const t1 = parseTurnContent(out[1].content)!;
+    expect(t1.summary).toBeUndefined();
+    expect(t1.diaries).toBeUndefined();
+    expect(t1.turnId).toBe('t1'); // identity + other fields preserved
+    expect(selectDueDigests(out)).toContain('t1'); // drainer will rebuild it
+    // Other turns untouched.
+    const t2 = parseTurnContent(out[3].content)!;
+    expect(t2.summary).toBe('s2');
+    expect(t2.diaries).toEqual({ Odette: 'd2' });
+  });
+
+  it('clears only the summary by default, keeping diaries', () => {
+    const out = clearTurnDerived(history(), 't1')!;
+    const t1 = parseTurnContent(out[1].content)!;
+    expect(t1.summary).toBeUndefined();
+    expect(t1.diaries).toEqual({ Bram: 'd1' });
+  });
+
+  it('returns null when the turnId is gone and does not mutate the input', () => {
+    const input = history();
+    expect(clearTurnDerived(input, 'stale-id', { diaries: true })).toBeNull();
+    expect(parseTurnContent(input[1].content)?.summary).toBe('s1');
   });
 });
 

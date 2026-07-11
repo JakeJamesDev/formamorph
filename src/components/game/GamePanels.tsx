@@ -6,6 +6,7 @@ import { useGameData } from '@/contexts/GameDataContext';
 import { useSettings } from '@/contexts/SettingsContext';
 import { useSentenceHighlight } from '@/lib/useSentenceHighlight';
 import { findEntityNames } from '@/lib/entityMatch';
+import { clearTurnDerived } from '@/lib/turnDigest';
 import { usePlayerModelUrl } from '@/lib/usePlayerModelUrl';
 import { mergeBodyMorphs } from '@/lib/bodyMorphs';
 import { useIsMobile } from '@/lib/useIsMobile';
@@ -580,11 +581,13 @@ export const MiddlePanel = ({
               const messageIndex = (currentPage - 1) * 2 + 1; // +1 for assistant message
               setFullMessageHistory(prev => {
                 const updatedHistory = [...prev];
+                let editedTurnId: string | undefined;
                 if (messageIndex < updatedHistory.length) {
                   const message = updatedHistory[messageIndex];
                   if (message.role === 'assistant') {
                     try {
                       const content = JSON.parse(message.content);
+                      editedTurnId = content.turnId;
                       updatedHistory[messageIndex] = {
                         role: 'assistant',
                         content: JSON.stringify({
@@ -607,6 +610,11 @@ export const MiddlePanel = ({
                       };
                     }
                   }
+                }
+                // Editing the narration invalidates this turn's memory digest + character diaries (both
+                // derive from the old text); drop them so the drainers rebuild from the edit.
+                if (editedTurnId) {
+                  return clearTurnDerived(updatedHistory, editedTurnId, { diaries: true }) ?? updatedHistory;
                 }
                 return updatedHistory;
               });

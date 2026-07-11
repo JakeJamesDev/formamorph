@@ -141,3 +141,28 @@ export function applyDiary(
   });
   return found ? next : null;
 }
+
+/**
+ * Drop a turn's derived-from-narration data so the drainers regenerate it. Editing a turn's narration
+ * makes its stored digest (`summary`) — and, when `diaries` is set, its character diary entries — disagree
+ * with the visible text; nulling those fields makes `selectDueDigests`/`selectDueDiaries` re-select the
+ * turn and the drainers rebuild lazily. Returns `null` if no turn matches the id (rolled back / regenerated
+ * away), mirroring the apply-guards. Other turns are untouched.
+ */
+export function clearTurnDerived(
+  history: ChatMessage[],
+  turnId: string,
+  opts?: { diaries?: boolean },
+): ChatMessage[] | null {
+  let found = false;
+  const next = history.map((message) => {
+    if (message.role !== 'assistant') return message;
+    const parsed = parseTurnContent(message.content);
+    if (!parsed || parsed.turnId !== turnId) return message;
+    found = true;
+    const { summary: _summary, diaries: _diaries, ...rest } = parsed;
+    const cleared: AITurnResult = opts?.diaries ? rest : { ...rest, diaries: _diaries };
+    return { ...message, content: serializeTurnContent(cleared) };
+  });
+  return found ? next : null;
+}
