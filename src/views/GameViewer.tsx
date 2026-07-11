@@ -94,7 +94,7 @@ import { normalizeStatChanges, applyAiStatChanges, applyTraitStatChanges, parseS
 import { resolvePromptSampler } from "../lib/promptSamplers";
 import { downloadBlob } from "../lib/downloadBlob";
 import { matchLocationResponse } from "../lib/locationMatch";
-import { rollbackState, regenerateState, canRegenerate, lastTurnAction, markRegeneratedTurn, markPrunedTurns, snapshotPageIndex, placeSnapshot } from "../lib/turnHistory";
+import { rollbackState, regenerateState, canRegenerate, lastTurnAction, markRegeneratedTurn, markPrunedTurns, snapshotPageIndex, placeSnapshot, sliceHistoryToPage } from "../lib/turnHistory";
 import { useDeferredSnapshot } from "../lib/useDeferredSnapshot";
 import { statMorphMap } from "../lib/bodyMorphs";
 import { getActivatedDictionary, buildDictionaryContext, parseKeywords } from "../lib/dictionaryUtils";
@@ -319,7 +319,6 @@ const GameViewer = ({
     setGameStates,
     setBodyMorphValues,
     playerNotes,
-    setPlayerNotes,
     saveGame,
     loadGame,
     saveCurrentGameState,
@@ -566,15 +565,16 @@ const GameViewer = ({
     if (currentPage >= totalPages) return;
     const targetState = rollbackState(gameStates, currentPage);
     if (!targetState) return;
-    const success = loadGameState(targetState, locations);
+    // Restore the target turn's mechanical state, but keep the live narration + notes: the snapshot's frozen
+    // history/notes predate any edit the player made after the turn, so re-injecting them would revert those
+    // edits. Narration is rewound by slicing the live flat history to the rolled-back page instead.
+    const success = loadGameState(targetState, locations, { keepLiveHistory: true });
     if (!success) return;
+    setFullMessageHistory(sliceHistoryToPage(fullMessageHistory, currentPage, messagesPerPage));
     addLogEntry("Rolled back to previous game state");
     // Mark the AI-context entries for the turns this rollback discarded (those after the page we
     // rolled back to). States after the current page are kept, allowing future "redo" functionality.
     setDebugTurns((prev) => markPrunedTurns(prev, currentPage));
-    if (targetState.playerNotes !== undefined) {
-      setPlayerNotes(targetState.playerNotes);
-    }
   };
 
   // Export the whole playthrough's narration as a plain-text or Markdown file (user picks the format
@@ -634,7 +634,10 @@ const GameViewer = ({
       (currentPage === 1 ? { ...saveCurrentGameState(), fullMessageHistory: [] } : null);
     const action = lastTurnAction(fullMessageHistory);
     if (!previousState || action === null) return;
-    loadGameState(previousState, locations);
+    // Restore the prior turn's mechanical state but keep the live narration + notes (see handleRollback),
+    // rewinding the flat history to just before the turn being re-rolled. The re-send appends a fresh turn.
+    loadGameState(previousState, locations, { keepLiveHistory: true });
+    setFullMessageHistory(sliceHistoryToPage(fullMessageHistory, currentPage - 1, messagesPerPage));
     // Mark the current turn's AI-context entry as superseded; sendGameAction appends a fresh one.
     setDebugTurns((prev) => markRegeneratedTurn(prev));
     pendingRegenerateRef.current = action;

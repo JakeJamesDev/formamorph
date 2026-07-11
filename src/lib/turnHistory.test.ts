@@ -9,6 +9,7 @@ import {
   snapshotPageIndex,
   placeSnapshot,
   appendCurrentToHistory,
+  sliceHistoryToPage,
 } from './turnHistory';
 
 // Stand-in for the AI-context DebugTurn — carries the flags plus an identifying field.
@@ -60,6 +61,33 @@ describe('appendCurrentToHistory', () => {
     const legacy = ['a', 'b'];
     appendCurrentToHistory(legacy, 'current');
     expect(legacy).toEqual(['a', 'b']);
+  });
+});
+
+describe('sliceHistoryToPage', () => {
+  // Two messages per turn: [u1, a1, u2, a2, u3, a3] = 3 pages.
+  const history = ['u1', 'a1', 'u2', 'a2', 'u3', 'a3'];
+  it('keeps the first `page` turns (page * messagesPerPage messages)', () => {
+    expect(sliceHistoryToPage(history, 1, 2)).toEqual(['u1', 'a1']);
+    expect(sliceHistoryToPage(history, 2, 2)).toEqual(['u1', 'a1', 'u2', 'a2']);
+    expect(sliceHistoryToPage(history, 3, 2)).toEqual(history);
+  });
+  it('yields an empty history for page 0 or below (opening re-generate)', () => {
+    expect(sliceHistoryToPage(history, 0, 2)).toEqual([]);
+    expect(sliceHistoryToPage(history, -1, 2)).toEqual([]);
+  });
+  it('preserves a live edit made to a kept page (the rollback/regen regression)', () => {
+    // Player edited turn 2's assistant message in the live flat history.
+    const edited = ['u1', 'a1', 'u2', 'a2-edited', 'u3', 'a3'];
+    // Rolling back to page 2 slices to 4 messages — the edit at index 3 survives.
+    expect(sliceHistoryToPage(edited, 2, 2)).toEqual(['u1', 'a1', 'u2', 'a2-edited']);
+    // Re-generating page 3 rewinds to page 2 — turn 2's edit is still kept.
+    expect(sliceHistoryToPage(edited, 3 - 1, 2)).toEqual(['u1', 'a1', 'u2', 'a2-edited']);
+  });
+  it('does not mutate the input', () => {
+    const copy = [...history];
+    sliceHistoryToPage(history, 1, 2);
+    expect(history).toEqual(copy);
   });
 });
 

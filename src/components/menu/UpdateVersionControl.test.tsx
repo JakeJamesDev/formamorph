@@ -1,0 +1,34 @@
+import { render, screen, waitFor, fireEvent } from '@testing-library/react';
+import { describe, it, expect, vi } from 'vitest';
+
+// Isolate the component from the settings provider and the network: a stable channel + an "available" check.
+vi.mock('@/contexts/SettingsContext', () => ({
+  useSettings: () => ({ updateChannel: 'stable', setUpdateChannel: vi.fn() }),
+}));
+vi.mock('@/services/UpdateService', () => ({
+  checkForUpdate: vi.fn(async () => ({
+    success: true,
+    result: { available: true, latestVersion: 'v9.9.9', changelog: '## New stuff' },
+  })),
+}));
+// Avoid the streaming-markdown pipeline in jsdom; the release notes just need to be present as text.
+vi.mock('@/components/game/MarkdownRenderer', () => ({
+  MarkdownRenderer: ({ text }: { text: string }) => <div data-testid="changelog">{text}</div>,
+}));
+
+import { UpdateVersionControl } from './UpdateVersionControl';
+
+describe('UpdateVersionControl', () => {
+  it('tags the version when an update is available and opens the dialog with a Download action', async () => {
+    render(<UpdateVersionControl />);
+
+    // The check resolves to "available" → the info-colored tag appears next to the version.
+    await waitFor(() => expect(screen.getByText(/Update Available!/)).toBeInTheDocument());
+
+    // Clicking the version opens the update dialog in its available state.
+    fireEvent.click(screen.getByTitle('Check for updates'));
+    expect(await screen.findByText(/Update available — v9\.9\.9/)).toBeInTheDocument();
+    expect(screen.getByTestId('changelog')).toHaveTextContent('New stuff');
+    expect(screen.getByRole('button', { name: 'Download' })).toBeInTheDocument();
+  });
+});

@@ -136,7 +136,7 @@ function useProvideGameplay() {
   /** Restore a `GameState` into the live gameplay state, resolving `locationId` against `locations` and
    *  recovering `playerNotes` from the newest nested state when the top-level field is absent (legacy saves).
    *  Returns false and toasts on failure. */
-  const loadGameState = useCallback((gameState: GameState, locations: GameLocation[]) => {
+  const loadGameState = useCallback((gameState: GameState, locations: GameLocation[], opts?: { keepLiveHistory?: boolean }) => {
     try {
       // Restore all state
       setPlayerStats(gameState.playerStats);
@@ -146,24 +146,30 @@ function useProvideGameplay() {
       setLogEntries(gameState.logEntries);
       setGameplayText(gameState.gameplayText);
       setGameTime(gameState.gameTime);
-      setFullMessageHistory(gameState.fullMessageHistory);
+      // Rollback / re-generate keep the live narration + notes (they carry the player's post-turn edits) and
+      // rewind the flat history themselves; the snapshot's frozen copies would revert those edits.
+      if (!opts?.keepLiveHistory) {
+        setFullMessageHistory(gameState.fullMessageHistory);
+      }
       setCharacterData(gameState.characterData);
       setChoices(gameState.choices);
       setIsGameStarted(gameState.isGameStarted);
 
       // Load notes from the game state or from the latest game state if available
-      if (gameState.playerNotes !== undefined) {
-        setPlayerNotes(gameState.playerNotes);
-      } else if (gameState.gameStates && gameState.gameStates.length > 0) {
-        // Find the latest game state with notes
-        const latestStateWithNotes = [...gameState.gameStates].reverse().find(state => state && state.playerNotes !== undefined);
-        if (latestStateWithNotes) {
-          setPlayerNotes(latestStateWithNotes.playerNotes);
+      if (!opts?.keepLiveHistory) {
+        if (gameState.playerNotes !== undefined) {
+          setPlayerNotes(gameState.playerNotes);
+        } else if (gameState.gameStates && gameState.gameStates.length > 0) {
+          // Find the latest game state with notes
+          const latestStateWithNotes = [...gameState.gameStates].reverse().find(state => state && state.playerNotes !== undefined);
+          if (latestStateWithNotes) {
+            setPlayerNotes(latestStateWithNotes.playerNotes);
+          } else {
+            setPlayerNotes('');
+          }
         } else {
           setPlayerNotes('');
         }
-      } else {
-        setPlayerNotes('');
       }
 
       // Restore gameStates array for rollback feature

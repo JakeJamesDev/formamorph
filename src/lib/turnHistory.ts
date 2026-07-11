@@ -42,6 +42,13 @@ export function snapshotPageIndex(historyLength: number, messagesPerPage: number
   return Math.ceil(historyLength / messagesPerPage) - 1;
 }
 
+/** The flat message history trimmed to the first `page` turns (`page * messagesPerPage` messages). Rollback
+ *  and re-generate rewind to a target page by slicing the *live* history — which carries the player's
+ *  narration edits — rather than re-injecting a snapshot's frozen (pre-edit) copy. `page <= 0` yields `[]`. */
+export function sliceHistoryToPage<M>(history: readonly M[], page: number, messagesPerPage: number): M[] {
+  return history.slice(0, Math.max(0, page) * messagesPerPage);
+}
+
 /** Store `snapshot` at `pageIndex`: overwrite an existing slot (re-generate / kept-abort re-save) or
  *  append the next turn. Returns a new array; never mutates the input. */
 export function placeSnapshot<S>(states: readonly S[], pageIndex: number, snapshot: S): S[] {

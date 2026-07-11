@@ -12,7 +12,14 @@ Each release groups changes as **Major** / **Minor**, then **Added** / **Removed
 
 _Unreleased — new work accumulates here until it earns a version bump._
 
-_Nothing yet._
+### Minor Changes
+
+#### 🐛 Fixed
+
+- **👤 User-facing**
+  - **Re-generate and Rollback no longer undo your edits to the previous turn.** Editing a turn's narration or your Player Notes and then re-generating (or rolling back to that turn) reverted it to the original, unedited text. Both now keep your edits — they restore the turn's game state without throwing away what you changed.
+- **🛠️ Developer tooling**
+  - **Rollback/Re-generate restore mechanical state only; narration + notes come from the live history.** Each `gameStates[i]` snapshot froze a full copy of `fullMessageHistory` + `playerNotes` at turn-end, and `loadGameState` re-injected those stale copies on restore — clobbering any edit the player made afterward. `loadGameState` gained a `keepLiveHistory` option; `handleRollback`/`handleRegenerate` now restore the snapshot's mechanical fields but rewind narration by slicing the live flat history (`sliceHistoryToPage`, `turnHistory.ts`) and leave notes live. Restore logic only — no save-file shape change. Unit-tested (`turnHistory.test.ts`), incl. a regression that a kept turn's edit survives the slice.
 
 ---
 

@@ -96,6 +96,22 @@ declare global {
         /** Subscribe to download progress; returns an unsubscribe fn. */
         onDownloadProgress: (cb: (progress: LocalDownloadProgress) => void) => () => void;
       };
+      /** Desktop auto-updater bridge (implemented in preload.cjs / electron/updater.cjs). Detection is done
+       *  renderer-side via UpdateService; these drive the per-platform download + apply and stream progress. */
+      update?: {
+        /** Ask the main process to (re)check — used by the Linux electron-updater path. */
+        check: () => Promise<void>;
+        /** Start the platform download/apply for the given target release. */
+        download: (opts: { version?: string }) => Promise<void>;
+        /** Apply a downloaded update and relaunch (Windows launcher swap / Linux quitAndInstall). */
+        apply: () => Promise<void>;
+        /** An update became available (main-detected, e.g. electron-updater); returns an unsubscribe fn. */
+        onAvailable: (cb: (info: { version: string }) => void) => () => void;
+        /** Download progress; returns an unsubscribe fn. */
+        onProgress: (cb: (p: { received: number; total: number }) => void) => () => void;
+        /** Download finished and is staged/ready to apply; returns an unsubscribe fn. */
+        onDownloaded: (cb: () => void) => () => void;
+      };
     };
   }
 }
