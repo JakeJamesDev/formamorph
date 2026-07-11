@@ -2,9 +2,14 @@ name: Release
 
 # Build release artifacts for every tagged release. Each desktop runner packages for its own OS
 # (electron-builder can't reliably cross-build AppImage from Windows), so the matrix produces the Windows
-# portable .exe, Linux AppImage, and macOS .dmg from one tag. A separate `web` job zips the browser build
-# (full config — community on) as formamorph-web-<tag>.zip, ready to drop onto itch.io or any static host.
-# Everything is uploaded to the GitHub Release.
+# launcher distributable, Linux AppImage, and macOS .dmg from one tag. A separate `web` job zips the browser
+# build. Everything is attached to the one GitHub Release for the tag.
+#
+# INVARIANT: the tag must equal `v<package.json version>`. The app bakes package.json's version as its
+# APP_VERSION and every artifact is named from it, and electron-builder publishes the Linux AppImage +
+# latest-linux.yml to the release for that same version — so a tag that disagrees would split the build
+# across two releases and ship an app whose self-reported version doesn't match its tag. The guard below
+# fails fast on a mismatch. To release: bump package.json, commit, then tag `v<version>`.
 on:
   push:
     tags:
@@ -40,6 +45,15 @@ jobs:
         with:
           node-version-file: '.nvmrc'
           cache: npm
+      - name: Tag must match package.json version
+        if: startsWith(github.ref, 'refs/tags/')
+        shell: bash
+        run: |
+          PKG="v$(node -p "require('./package.json').version")"
+          if [ "$PKG" != "$GITHUB_REF_NAME" ]; then
+            echo "::error::Tag '$GITHUB_REF_NAME' must equal 'v<package.json version>' ('$PKG'). Bump package.json, commit, then tag."
+            exit 1
+          fi
       - run: npm ci
       - run: npm run ${{ matrix.script }}
         env:
@@ -89,9 +103,12 @@ jobs:
       - run: npm run build
         env:
           FORMAMORPH_BUILD: web
-      # Zip from inside dist so index.html sits at the zip root (itch.io requires this to serve it).
+      # Zip from inside dist so index.html sits at the zip root (itch.io requires this to serve it). Named
+      # from package.json version (== the tag, per the guard) so every artifact shares one version string.
       - name: Zip web build
-        run: cd dist && zip -r "../formamorph-web-${{ github.ref_name }}.zip" .
+        run: |
+          VER=$(node -p "require('./package.json').version")
+          cd dist && zip -r "../formamorph-web-${VER}.zip" .
       - uses: actions/upload-artifact@v7
         with:
           name: web
@@ -113,8 +130,9 @@ jobs:
       # Generate the release body from the changelog's "In Progress" section (user-facing one-liners), so the
       # release publishes WITH its notes — no manual editing, and no window where an update is live but blank.
       - run: node scripts/extractReleaseNotes.mjs > notes.md
-      # Finalizes the draft the Linux build published (with the AppImage + latest-linux.yml) by attaching the
-      # Windows/mac/web artifacts, setting the notes, and flipping it to a published release — one atomic step.
+      # The Linux build already published the AppImage + latest-linux.yml to this tag's release as a draft
+      # (electron-builder targets `v<package.json version>`, which the guard forces to equal the tag). This
+      # step attaches the Windows/mac/web artifacts to that SAME release, sets the notes, and publishes it.
       # AppImage is intentionally omitted — electron-builder already uploaded it (and its update metadata).
       - uses: softprops/action-gh-release@v2
         with:
