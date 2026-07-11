@@ -6,6 +6,9 @@ import { useTtsPlayback } from '../lib/useTtsPlayback';
 import { APP_VERSION, isSaveEnvelope, migrateSave } from '../lib/version';
 import { flattenEnabledBookEntries } from '../lib/dictionaryUtils';
 import { getGameplayText, setGameplayText } from '../lib/gameplayTextStore';
+import { parseTurnContent } from '../lib/turnDigest';
+import { matchChoiceToAction } from '../lib/choices';
+import { pageStatDeltas } from '../lib/statChanges';
 import type {
   CharacterData,
   LogEntry,
@@ -337,6 +340,38 @@ function useProvideGameplay() {
     };
   }, []);
 
+  // --- Per-page "viewed" state (immersive time-travel) ---
+  // Paging back to an earlier turn shows that turn's whole state read-only, without mutating the live
+  // (latest-turn) state. Every `view*` field aliases the live value when you're on the latest page, so
+  // normal play is unchanged; only when `isViewingPast` do they read the paged snapshot instead.
+  const messagesPerPage = 2;
+  const totalPages = Math.max(1, Math.ceil(fullMessageHistory.length / messagesPerPage));
+  const isViewingPast = currentPage < totalPages;
+  const viewedSnapshot = isViewingPast ? (gameStates[currentPage - 1] ?? null) : null;
+  const viewStats = viewedSnapshot?.playerStats ?? playerStats;
+  const viewTraits = viewedSnapshot?.playerTraits ?? playerTraits;
+  const viewCharacterData = viewedSnapshot?.characterData ?? characterData;
+  const viewVisibleEntities = viewedSnapshot
+    ? normalizeVisibleEntities(viewedSnapshot.visibleEntities)
+    : visibleEntities;
+  const viewGameTime = viewedSnapshot?.gameTime ?? gameTime;
+  const viewLocationId = viewedSnapshot?.locationId ?? currentLocation?.id;
+  // Choices already live on each turn's message JSON; read the paged turn's, else the live choices.
+  const viewChoices: Choice[] = viewedSnapshot
+    ? (parseTurnContent(fullMessageHistory[currentPage * messagesPerPage - 1]?.content ?? '')?.choices ?? [])
+    : choices;
+  // On a past page, infer which of that turn's choices the player acted on by fuzzy-matching the next
+  // turn's action (the user message right after this page) against the choice list; -1 = custom action.
+  const viewSelectedChoice = viewedSnapshot
+    ? matchChoiceToAction(fullMessageHistory[currentPage * messagesPerPage]?.content ?? '', viewChoices)
+    : -1;
+  // Stat deltas: while live, the animated last-turn changes; while viewing the past, the change this turn
+  // made — vs the previous page's stats, or (on the opening turn, which has no predecessor) vs each stat's
+  // starting value, so turn 1 still shows its deltas.
+  const viewStatChanges: Record<string, number> = viewedSnapshot
+    ? pageStatDeltas(viewStats, gameStates[currentPage - 2]?.playerStats)
+    : recentStatChanges;
+
   const value = {
     characterData,
     setCharacterData,
@@ -393,6 +428,17 @@ function useProvideGameplay() {
     setDisplayedMessages,
     currentPage,
     setCurrentPage,
+    totalPages,
+    isViewingPast,
+    viewStats,
+    viewTraits,
+    viewCharacterData,
+    viewVisibleEntities,
+    viewGameTime,
+    viewLocationId,
+    viewChoices,
+    viewSelectedChoice,
+    viewStatChanges,
     gameStates,
     setGameStates,
     playerNotes,

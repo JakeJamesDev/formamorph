@@ -154,3 +154,21 @@ export function applyTraitStatChanges(
 
   return { stats: updated, changedIds };
 }
+
+/**
+ * Per-turn stat change map for the immersive history view: each stat's value minus what it was on the
+ * previous turn (`prevStats`), keyed by lowercased name. When there is no previous turn — the opening turn,
+ * where `prevStats` is undefined — it falls back to the stat's own `starting` value (else `min`), so the
+ * first turn still shows the change it produced from the pre-game baseline. Pure.
+ */
+export function pageStatDeltas(
+  stats: readonly PlayerStat[],
+  prevStats: readonly PlayerStat[] | undefined,
+): Record<string, number> {
+  const map: Record<string, number> = {};
+  for (const s of stats) {
+    const before = prevStats?.find((p) => p.name === s.name)?.value ?? s.starting ?? s.min;
+    map[s.name.toLowerCase()] = typeof before === 'number' ? s.value - before : 0;
+  }
+  return map;
+}

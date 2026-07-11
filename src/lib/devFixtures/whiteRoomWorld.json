@@ -9,7 +9,30 @@
     "use3DModel": false,
     "tags": []
   },
-  "stats": [],
+  "stats": [
+    {
+      "id": "stat-resolve",
+      "name": "Resolve",
+      "type": "number",
+      "description": "Your composure under pressure.",
+      "min": 0,
+      "max": 10,
+      "starting": 0,
+      "regen": 0,
+      "descriptors": []
+    },
+    {
+      "id": "stat-coin",
+      "name": "Coin",
+      "type": "number",
+      "description": "Money on hand.",
+      "min": 0,
+      "max": 100,
+      "starting": 0,
+      "regen": 0,
+      "descriptors": []
+    }
+  ],
   "locations": [
     {
       "id": "1783535114538",

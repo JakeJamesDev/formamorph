@@ -56,9 +56,12 @@ export const LeftPanel = ({ entities, onEntityClick }: {
   // Import systemPrompt from settings context
   const { systemPrompt } = useSettings();
   const {
-    characterData,
+    // Aliased to the viewed-page values so paging back shows that turn's appearance + scene (they equal
+    // the live values on the latest page). Body morphs still ride live `bodyMorphValues`, which the
+    // GameViewer effect derives from the viewed stats.
+    viewCharacterData: characterData,
     bodyMorphValues,
-    visibleEntities,
+    viewVisibleEntities: visibleEntities,
     logEntries,
     logsEndRef,
     playerNotes,
@@ -337,7 +340,6 @@ export const MiddlePanel = ({
     setDisplayedMessages,
     currentPage,
     isGameStarted,
-    choices,
     playerInput,
     setPlayerInput,
     isWaitingForAI,
@@ -347,7 +349,10 @@ export const MiddlePanel = ({
     setIsEditMode,
     ttsPlayback,
     setFullMessageHistory,
-    playerStats
+    playerStats,
+    isViewingPast,
+    viewChoices: choices,
+    viewSelectedChoice
   } = useGameplay();
   const gameplayText = useGameplayText();
   const { ttsHighlight, choicesEnabled, statUpdatesEnabled, revealSpec, revealEasing, showReasoning } = useSettings();
@@ -547,12 +552,14 @@ export const MiddlePanel = ({
             )}
             <div className="mt-4 flex flex-col gap-2">
                 {choices && choices.length > 0 && choices.map((choice, index) => {
-                  const isSelected = choice === playerInput;
+                  // On a past page, highlight the inferred choice the player acted on; on the live page,
+                  // the choice currently staged in the input box.
+                  const isSelected = isViewingPast ? index === viewSelectedChoice : choice === playerInput;
                   return (
                     <Button
                       key={index}
                       onClick={() => setPlayerInput(choice)}
-                      disabled={disabled}
+                      disabled={disabled || isViewingPast}
                       variant={isSelected ? "default" : "outline"}
                       className={`w-full transition-all duration-200 h-auto min-h-[3rem] whitespace-normal
                         ${isSelected
@@ -792,8 +799,11 @@ export const MiddlePanel = ({
  * start of the next action last turn's band drains back toward the current value (`stat-delta-drain`),
  * leaving a clean bar. `delta` is the live held change; `drainDelta` is a change collapsing away.
  */
-const StatBar = ({ value, min, max, delta, drainDelta }: {
+const StatBar = ({ value, min, max, delta, drainDelta, animKey }: {
   value: number; min: number; max: number; delta: number; drainDelta: number;
+  // Extra key input so the grow/drain band re-animates when it changes even if value+delta coincide
+  // (e.g. scrolling between two past turns) — pass the page number while reviewing history.
+  animKey?: string | number;
 }) => {
   // A live held delta takes precedence over a draining one (covers a fast turn that lands mid-drain).
   const draining = delta === 0 && drainDelta !== 0;
@@ -804,15 +814,24 @@ const StatBar = ({ value, min, max, delta, drainDelta }: {
   const basePct = Math.min(curPct, prevPct);
   const hiPct = Math.max(curPct, prevPct);
   const hasBand = d !== 0 && hiPct - basePct > 0.01;
+  // While reviewing history (animKey set), slide the fill from this turn's *previous* value to its value via
+  // a keyed CSS-var animation, so it starts from the right origin no matter which page you scrolled from.
+  // Live, keep the plain width transition (you always arrive from the previous turn, so it's already right).
+  const reviewing = animKey !== undefined;
   return (
     <div className="relative h-4 w-full overflow-hidden rounded-full bg-secondary">
       <div
-        className="absolute inset-y-0 left-0 bg-primary"
-        style={{ width: `${curPct}%`, transition: 'width 500ms cubic-bezier(0.16, 1, 0.3, 1)' }}
+        key={reviewing ? `fill-${value}-${d}-${animKey}` : undefined}
+        className={`absolute inset-y-0 left-0 bg-primary ${reviewing ? 'stat-fill-slide' : ''}`}
+        style={
+          reviewing
+            ? ({ width: `${curPct}%`, ['--fill-from']: `${prevPct}%`, ['--fill-to']: `${curPct}%` } as React.CSSProperties)
+            : { width: `${curPct}%`, transition: 'width 500ms cubic-bezier(0.16, 1, 0.3, 1)' }
+        }
       />
       {hasBand && (
         <div
-          key={`${draining ? 'drain' : 'grow'}-${value}-${d}`}
+          key={`${draining ? 'drain' : 'grow'}-${value}-${d}-${animKey ?? ''}`}
           className={`${draining ? 'stat-delta-drain' : 'stat-delta-grow'} absolute inset-y-0 ${d > 0 ? 'bg-success' : 'bg-destructive'}`}
           style={{
             left: `${basePct}%`,
@@ -832,19 +851,31 @@ export const RightPanel = ({ onLocationClick, language, setLanguage }: {
   setLanguage: (value: string) => void;
 }) => {
   const {
-    gameTime,
+    // Aliased to the viewed-page values (equal to live on the latest page) so paging back shows that
+    // turn's stats/traits/time/deltas read-only. `setPlayerStats` still writes live — the edit control is
+    // disabled while viewing the past, so it only runs on the latest page.
+    viewGameTime: gameTime,
     currentLocation,
+    viewLocationId,
+    isViewingPast,
+    currentPage,
+    totalPages,
     activeTab,
     setActiveTab,
-    playerStats,
+    viewStats: playerStats,
     setPlayerStats,
-    playerTraits,
-    recentStatChanges,
+    viewTraits: playerTraits,
+    viewStatChanges: recentStatChanges,
     recentStatFading,
     heldStatChanges,
     drainingStatChanges
   } = useGameplay();
+  const { locations } = useGameData();
   const [isEditMode, setIsEditMode] = React.useState(false);
+  // On a past page show the viewed turn's location (Location tab); live otherwise.
+  const displayLocation = isViewingPast
+    ? (locations.find((l) => l.id === viewLocationId) ?? currentLocation)
+    : currentLocation;
 
   return (
     <Card className="w-full md:w-1/4 md:ml-1 grow md:grow-0 min-h-0 flex flex-col md:h-full bg-background/60 border-border overflow-hidden">
@@ -864,6 +895,11 @@ export const RightPanel = ({ onLocationClick, language, setLanguage }: {
           </div>
         </div>
         <p className="text-center">{Math.floor(gameTime / 24)} days, {gameTime % 24} hours</p>
+        {isViewingPast && (
+          <p className="text-center text-xs font-medium text-primary bg-primary/10 rounded py-0.5">
+            Viewing turn {currentPage} of {totalPages} — history
+          </p>
+        )}
       </div>
 
       <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full flex-grow flex flex-col overflow-hidden">
@@ -884,8 +920,8 @@ export const RightPanel = ({ onLocationClick, language, setLanguage }: {
                   <div className="flex items-center gap-2">
                     {change !== 0 && (
                       <span
-                        key={change}
-                        className={`${recentStatFading ? 'stat-delta-text-out' : 'stat-delta-text'} text-sm ${change > 0 ? 'text-success' : 'text-destructive'}`}
+                        key={`${currentPage}-${change}`}
+                        className={`${isViewingPast ? 'stat-delta-text-in' : (recentStatFading ? 'stat-delta-text-out' : 'stat-delta-text')} text-sm ${change > 0 ? 'text-success' : 'text-destructive'}`}
                       >
                         {change > 0 ? '+' : ''}{change}
                       </span>
@@ -893,7 +929,7 @@ export const RightPanel = ({ onLocationClick, language, setLanguage }: {
                     <span>{statValue} / {stat.max}</span>
                   </div>
                 </div>
-                {isEditMode ? (
+                {isEditMode && !isViewingPast ? (
                   <Slider
                     value={[statValue]}
                     min={stat.min}
@@ -911,8 +947,11 @@ export const RightPanel = ({ onLocationClick, language, setLanguage }: {
                     value={statValue}
                     min={stat.min}
                     max={stat.max}
-                    delta={heldStatChanges[stat.name.toLowerCase()] || 0}
-                    drainDelta={drainingStatChanges[stat.name.toLowerCase()] || 0}
+                    // While reviewing a past turn, show that turn's change as a persistent, animate-in band
+                    // (green/red grow); live, use the transient held/draining deltas.
+                    delta={isViewingPast ? change : (heldStatChanges[stat.name.toLowerCase()] || 0)}
+                    drainDelta={isViewingPast ? 0 : (drainingStatChanges[stat.name.toLowerCase()] || 0)}
+                    animKey={isViewingPast ? currentPage : undefined}
                   />
                 )}
               </div>
@@ -923,6 +962,7 @@ export const RightPanel = ({ onLocationClick, language, setLanguage }: {
                 variant="ghost"
                 size="icon"
                 onClick={() => setIsEditMode(!isEditMode)}
+                disabled={isViewingPast}
                 className="h-8 w-8"
               >
                 <Pencil className="h-4 w-4" />
@@ -946,18 +986,18 @@ export const RightPanel = ({ onLocationClick, language, setLanguage }: {
         <TabsContent value="location" className="flex-grow overflow-hidden">
           <ScrollArea className="h-[calc(100%-1rem)]">
             <div className="p-2 flex flex-col gap-4">
-              <Button onClick={onLocationClick} className="w-full">
-                Current Location: {currentLocation?.name || 'Unknown'}
+              <Button onClick={onLocationClick} disabled={isViewingPast} className="w-full">
+                {isViewingPast ? 'Location' : 'Current Location'}: {displayLocation?.name || 'Unknown'}
               </Button>
-              {currentLocation && (
+              {displayLocation && (
                 <div className="space-y-2">
                   <p className="font-semibold">Description:</p>
-                  <p className="text-sm">{currentLocation.playerDescription || currentLocation.description}</p>
-                  {currentLocation.connections && currentLocation.connections.length > 0 && (
+                  <p className="text-sm">{displayLocation.playerDescription || displayLocation.description}</p>
+                  {displayLocation.connections && displayLocation.connections.length > 0 && (
                     <>
                       <p className="font-semibold mt-4">Connected Locations:</p>
                       <ul className="list-disc list-inside text-sm">
-                        {currentLocation.connections.map((connection, index) => (
+                        {displayLocation.connections.map((connection, index) => (
                           <li key={index}>{connection}</li>
                         ))}
                       </ul>
