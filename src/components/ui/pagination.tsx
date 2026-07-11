@@ -3,6 +3,7 @@ import { ChevronLeft, ChevronRight, MoreHorizontal } from "lucide-react"
 
 import { cn } from "@/lib/utils"
 import { buttonVariants, type ButtonProps } from "@/components/ui/button";
+import { paginationSlots } from "@/lib/pagination"
 
 const Pagination = ({
   className,
@@ -49,7 +50,8 @@ const PaginationLink = ({
   <a
     aria-current={isActive ? "page" : undefined}
     className={cn(buttonVariants({
-      variant: isActive ? "outline" : "ghost",
+      // Current page: filled primary so it clearly stands out; others are quiet ghost buttons.
+      variant: isActive ? "default" : "ghost",
       size,
     }), className)}
     {...props} />
@@ -100,7 +102,106 @@ const PaginationEllipsis = ({
 )
 PaginationEllipsis.displayName = "PaginationEllipsis"
 
+/**
+ * The shared page footer: Previous · numbered strip · Next. The strip reserves a constant number of
+ * equal-width cells (`paginationSlots`, padding short layouts with invisible spacers) so its width never
+ * changes as you flip — keeping Previous/Next from reflowing. Used by every pager (game turns, AI-context
+ * debug, community browser) so they stay consistent.
+ */
+function Pager({
+  page,
+  pageCount,
+  onPageChange,
+  className,
+}: {
+  page: number
+  pageCount: number
+  onPageChange: (page: number) => void
+  className?: string
+}) {
+  const atStart = pageCount === 0 || page <= 1
+  const atEnd = pageCount === 0 || page >= pageCount
+
+  // Render page links individually, but collapse each contiguous run of spacers+ellipsis into ONE cell
+  // whose width equals what those cells would occupy (so the strip's total width — and Previous/Next —
+  // stays fixed) with the ellipsis centered inside it. This centers a lone ellipsis in the gap between the
+  // two page groups regardless of how lopsided they are (e.g. "1 2 3 4  …  43").
+  const slots = paginationSlots(page, pageCount)
+  const cells: React.ReactNode[] = []
+  for (let i = 0; i < slots.length; ) {
+    const slot = slots[i]
+    if (slot.kind === "page") {
+      const p = slot.page
+      cells.push(
+        <PaginationItem key={`page-${p}`}>
+          <PaginationLink
+            href="#"
+            isActive={page === p}
+            onClick={(e) => {
+              e.preventDefault()
+              onPageChange(p)
+            }}
+          >
+            {p}
+          </PaginationLink>
+        </PaginationItem>,
+      )
+      i += 1
+    } else {
+      let j = i
+      let hasEllipsis = false
+      while (j < slots.length && slots[j].kind !== "page") {
+        if (slots[j].kind === "ellipsis") hasEllipsis = true
+        j += 1
+      }
+      const runLen = j - i
+      cells.push(
+        <PaginationItem
+          key={`gap-${i}`}
+          aria-hidden={!hasEllipsis}
+          className="flex items-center justify-center"
+          // Match the width of `runLen` cells (2.5rem each) plus their inter-cell gaps (0.25rem).
+          style={{ width: `calc(${runLen} * 2.5rem + ${runLen - 1} * 0.25rem)` }}
+        >
+          {hasEllipsis ? <PaginationEllipsis /> : null}
+        </PaginationItem>,
+      )
+      i = j
+    }
+  }
+
+  return (
+    <Pagination className={className}>
+      <PaginationContent>
+        <PaginationItem>
+          <PaginationPrevious
+            href="#"
+            onClick={(e) => {
+              e.preventDefault()
+              if (!atStart) onPageChange(page - 1)
+            }}
+            className={atStart ? "pointer-events-none opacity-50" : ""}
+          />
+        </PaginationItem>
+        {cells}
+        <PaginationItem>
+          <PaginationNext
+            href="#"
+            onClick={(e) => {
+              e.preventDefault()
+              if (!atEnd) onPageChange(page + 1)
+            }}
+            className={atEnd ? "pointer-events-none opacity-50" : ""}
+          />
+        </PaginationItem>
+      </PaginationContent>
+    </Pagination>
+  )
+}
+Pager.displayName = "Pager"
+
 export {
+  Pager,
   Pagination,
   PaginationContent,
   PaginationEllipsis,
