@@ -25,6 +25,7 @@
     "vram-helper": "node scripts/vram-helper.mjs",
     "gen-tags": "node scripts/genDanbooruTags.mjs",
     "docs": "typedoc",
+    "changelog:notes": "node scripts/extractReleaseNotes.mjs",
     "baseline": "node testing/baseline/harness/run.mjs"
   },
   "dependencies": {

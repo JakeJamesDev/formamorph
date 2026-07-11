@@ -11,6 +11,9 @@ const REPO = 'JakeJamesDev/formamorph';
 const RELEASES_URL = `https://api.github.com/repos/${REPO}/releases`;
 const CACHE_KEY = 'FORMAMORPH_updateCache';
 
+/** The verbose changelog, auto-published to the repo wiki from docs/. Linked from the update/changelog popouts. */
+export const WIKI_CHANGELOG_URL = `https://github.com/${REPO}/wiki/Changelog`;
+
 export interface GithubAsset {
   name: string;
   browser_download_url: string;
@@ -70,8 +73,21 @@ function readCache(): GithubRelease[] | null {
   }
 }
 
+/** How many recent releases the changelog popouts show. */
+export const RECENT_CHANGELOG_COUNT = 3;
+
+/** Combine the most recent `count` releases into one markdown doc, each under a `## <tag>` header, so the
+ *  popouts show a short version history rather than only the latest. Pure. */
+export function buildRecentChangelog(releases: GithubRelease[], count = RECENT_CHANGELOG_COUNT): string {
+  return releases
+    .slice(0, count)
+    .map((r) => `## ${r.tag_name}\n\n${(r.body || '_No release notes._').trim()}`)
+    .join('\n\n');
+}
+
 /** Pick the newest release eligible for `channel` and decide whether it's newer than `currentVersion`.
- *  GitHub returns releases newest-first, so the first match is the latest. Pure — no I/O. */
+ *  GitHub returns releases newest-first, so the first match is the latest. `changelog` covers the most recent
+ *  few releases (see buildRecentChangelog). Pure — no I/O. */
 export function parseReleases(
   releases: GithubRelease[],
   channel: UpdateChannel,
@@ -81,10 +97,8 @@ export function parseReleases(
   const latest = eligible[0];
   if (!latest) return { available: false };
   const latestVersion = latest.tag_name;
-  if (!isNewer(latestVersion, currentVersion)) {
-    return { available: false, latestVersion, changelog: latest.body, release: latest };
-  }
-  return { available: true, latestVersion, changelog: latest.body, release: latest };
+  const changelog = buildRecentChangelog(eligible);
+  return { available: isNewer(latestVersion, currentVersion), latestVersion, changelog, release: latest };
 }
 
 /** Check GitHub for an update on `channel`. Never rejects. */

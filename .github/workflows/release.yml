@@ -105,15 +105,20 @@ jobs:
     permissions:
       contents: write
     steps:
+      - uses: actions/checkout@v7
       - uses: actions/download-artifact@v8
         with:
           path: artifacts
           merge-multiple: true
+      # Generate the release body from the changelog's "In Progress" section (user-facing one-liners), so the
+      # release publishes WITH its notes — no manual editing, and no window where an update is live but blank.
+      - run: node scripts/extractReleaseNotes.mjs > notes.md
       # Finalizes the draft the Linux build published (with the AppImage + latest-linux.yml) by attaching the
-      # Windows exe, mac dmg, and web zip and flipping it to a published release. AppImage is intentionally
-      # omitted here — electron-builder already uploaded it (and its update metadata) to the same tag.
+      # Windows/mac/web artifacts, setting the notes, and flipping it to a published release — one atomic step.
+      # AppImage is intentionally omitted — electron-builder already uploaded it (and its update metadata).
       - uses: softprops/action-gh-release@v2
         with:
+          body_path: notes.md
           files: |
             artifacts/*.dmg
             artifacts/*-win.zip
