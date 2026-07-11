@@ -119,8 +119,10 @@ func applyUpdate(root string) {
 	deadline := time.After(90 * time.Second)
 	for {
 		if fileExists(marker) {
-			// Success: clear staging; keep app.backup for the next update's rollback window.
+			// Success: the new build is healthy, so the rollback window is over — drop app.backup (the next
+			// update makes its own) and clear staging. Keeping it would double the install size on disk.
 			_ = os.Remove(marker)
+			_ = os.RemoveAll(backupDir)
 			_ = os.Remove(p.Zip)
 			_ = os.Remove(filepath.Join(updatesDir, "pending.json"))
 			return

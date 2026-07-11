@@ -4,7 +4,7 @@
 // release list so an offline launch can still show the last-known state.
 
 import { APP_VERSION } from '@/lib/version';
-import { isNewer } from '@/lib/updates/semver';
+import { isNewer, parseVersion } from '@/lib/updates/semver';
 import type { UpdateChannel } from '@/contexts/settingsDefaults';
 
 const REPO = 'JakeJamesDev/formamorph';
@@ -76,12 +76,39 @@ function readCache(): GithubRelease[] | null {
 /** How many recent releases the changelog popouts show. */
 export const RECENT_CHANGELOG_COUNT = 3;
 
-/** Combine the most recent `count` releases into one markdown doc, each under a `## <tag>` header, so the
- *  popouts show a short version history rather than only the latest. Pure. */
+/** The `major.minor` a tag belongs to (e.g. `v2.1.1` → `2.1`); falls back to the raw tag when unparseable. */
+function minorKey(tag: string): string {
+  const v = parseVersion(tag);
+  return v ? `${v.major}.${v.minor}` : tag.replace(/^v/, '');
+}
+
+/** Fold one release's body under its patch label. Category headers (`### Added`) are demoted to bold so they
+ *  sit below the `## <minor>` group header; when a patch has a single category, the version and category merge
+ *  onto one line (`**v2.1.1 · Fixed**`) for the compact look. Pure. */
+function foldRelease(tag: string, body: string): string {
+  const text = (body || '_No release notes._').trim();
+  const categories = text.match(/^#{1,6}\s+/gm) ?? [];
+  const demoted = text.replace(/^#{1,6}\s+(.+?)\s*$/gm, '**$1**');
+  if (categories.length === 1) {
+    // Single category: merge the version into that one bold category header.
+    return demoted.replace(/\*\*(.+?)\*\*/, `**${tag} · $1**`);
+  }
+  return `**${tag}**\n\n${demoted}`;
+}
+
+/** Combine the most recent `count` releases into one markdown doc, folding patch versions under a single
+ *  `## <major.minor>` header (each patch a bold label) so the popouts read as a short, grouped history rather
+ *  than one big header per patch. Pure. */
 export function buildRecentChangelog(releases: GithubRelease[], count = RECENT_CHANGELOG_COUNT): string {
-  return releases
-    .slice(0, count)
-    .map((r) => `## ${r.tag_name}\n\n${(r.body || '_No release notes._').trim()}`)
+  const groups: { minor: string; items: GithubRelease[] }[] = [];
+  for (const r of releases.slice(0, count)) {
+    const minor = minorKey(r.tag_name);
+    const group = groups.find((g) => g.minor === minor);
+    if (group) group.items.push(r);
+    else groups.push({ minor, items: [r] });
+  }
+  return groups
+    .map((g) => `## ${g.minor}\n\n${g.items.map((r) => foldRelease(r.tag_name, r.body)).join('\n\n')}`)
     .join('\n\n');
 }
 

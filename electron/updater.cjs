@@ -87,6 +87,10 @@ function init({ getWindow }) {
   // overrides this later to trigger autoUpdater.checkForUpdates().
   ipcMain.handle('update-check', async () => {});
 
+  // A previously downloaded update still staged on disk (Windows launcher), so a restart resumes at
+  // "Update & Restart" instead of re-downloading. Other platforms report none for now.
+  ipcMain.handle('update-pending', async () => (process.platform === 'win32' ? winUpdate.pendingUpdate() : null));
+
   ipcMain.handle('update-download', async (_event, opts = {}) => {
     const { version, channel } = opts;
     if (process.platform === 'darwin') return macDownload(version);

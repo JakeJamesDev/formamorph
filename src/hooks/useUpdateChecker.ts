@@ -34,6 +34,13 @@ export function useUpdateChecker(channel: UpdateChannel): UpdateChecker {
     const r = res.result;
     if (r.available && r.latestVersion) {
       dispatch({ type: 'CHECK_RESULT', available: true, latestVersion: r.latestVersion, changelog: r.changelog ?? '', at: Date.now() });
+      // If this exact version was already downloaded in a prior session (staged on disk), resume at
+      // "Update & Restart" instead of making the user re-download.
+      const stripV = (v: string) => v.replace(/^v/, '');
+      const pending = await window.formamorphDesktop?.update?.pending?.();
+      if (pending && stripV(pending.version) === stripV(r.latestVersion)) {
+        dispatch({ type: 'DOWNLOAD_DONE' });
+      }
     } else {
       dispatch({ type: 'CHECK_RESULT', available: false, changelog: r.changelog, at: Date.now() });
     }

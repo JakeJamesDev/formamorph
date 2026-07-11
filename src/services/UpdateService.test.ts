@@ -37,31 +37,48 @@ describe('parseReleases', () => {
     expect(parseReleases([rel('v9.9.9', true)], 'stable', '2.0.0').available).toBe(false);
   });
 
-  it('carries the recent releases as the changelog, newest first, each under a version header', () => {
+  it('carries the recent releases as the changelog, newest first, folded under minor headers', () => {
     const r = parseReleases(
       [rel('v2.2.0', false, false, '### Added'), rel('v2.1.0', false, false, '### Fixed'), rel('v2.0.0', false, false, 'old')],
       'stable',
       '2.1.0',
     );
-    expect(r.changelog).toContain('## v2.2.0');
-    expect(r.changelog).toContain('### Added');
-    expect(r.changelog).toContain('## v2.1.0');
-    expect(r.changelog!.indexOf('## v2.2.0')).toBeLessThan(r.changelog!.indexOf('## v2.1.0'));
+    expect(r.changelog).toContain('## 2.2');
+    expect(r.changelog).toContain('**v2.2.0 · Added**');
+    expect(r.changelog).toContain('## 2.1');
+    expect(r.changelog!.indexOf('## 2.2')).toBeLessThan(r.changelog!.indexOf('## 2.1'));
   });
 });
 
 describe('buildRecentChangelog', () => {
-  it('combines up to the last 3 releases with version headers, and fills blank bodies', () => {
+  it('folds the last 3 releases under minor headers, and fills blank bodies', () => {
     const md = buildRecentChangelog([
       rel('v3.0.0', false, false, 'three'),
       rel('v2.0.0', false, false, ''),
       rel('v1.0.0', false, false, 'one'),
       rel('v0.9.0', false, false, 'too old'),
     ]);
-    expect(md).toContain('## v3.0.0');
-    expect(md).toContain('## v1.0.0');
-    expect(md).not.toContain('## v0.9.0'); // capped at 3
+    expect(md).toContain('## 3.0');
+    expect(md).toContain('**v3.0.0**');
+    expect(md).toContain('## 1.0');
+    expect(md).not.toContain('## 0.9'); // capped at 3
     expect(md).toContain('_No release notes._'); // blank body filled
+  });
+
+  it('groups patch versions of the same minor under one header, merging single-category patches', () => {
+    const md = buildRecentChangelog([
+      rel('v2.1.1', false, false, '### Fixed\n- a'),
+      rel('v2.1.0', false, false, '### Added\n- b\n\n### Fixed\n- c'),
+      rel('v2.0.3', false, false, '### Fixed\n- d'),
+    ]);
+    // Both 2.1.x patches sit under a single "## 2.1" header.
+    expect(md.match(/## 2\.1$/gm)).toHaveLength(1);
+    // Single-category patch merges version + category; multi-category keeps a bare version label + bold categories.
+    expect(md).toContain('**v2.1.1 · Fixed**');
+    expect(md).toContain('**v2.1.0**');
+    expect(md).toContain('**Added**');
+    expect(md).toContain('## 2.0');
+    expect(md).toContain('**v2.0.3 · Fixed**');
   });
 });
 
