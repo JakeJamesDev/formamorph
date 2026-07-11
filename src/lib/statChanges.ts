@@ -172,3 +172,21 @@ export function pageStatDeltas(
   }
   return map;
 }
+
+/**
+ * The *actual* per-stat change between two same-ordered stat arrays (`after[i]` vs `before[i]`), keyed by
+ * lowercased name, omitting stats that didn't move. Use this — not the AI's requested deltas — to drive the
+ * live bar/text feedback, so a change clamped at a cap (or blocked by noIncrease/noDecrease) shows the real
+ * movement and stays consistent with the history view's value-diff deltas.
+ */
+export function appliedStatDeltas(
+  before: readonly PlayerStat[],
+  after: readonly PlayerStat[],
+): Record<string, number> {
+  const map: Record<string, number> = {};
+  after.forEach((s, i) => {
+    const delta = s.value - (before[i]?.value ?? s.value);
+    if (delta !== 0) map[s.name.toLowerCase()] = delta;
+  });
+  return map;
+}

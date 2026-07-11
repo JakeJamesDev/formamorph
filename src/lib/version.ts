@@ -146,17 +146,35 @@ export function migrateLegacySaveState(state: GameState): GameState {
   return next;
 }
 
+/** Drop a snapshot's own `fullMessageHistory` copy — the canonical history lives once at
+ *  `SaveObject.messageHistory`. Returns the same reference when there's nothing to strip (idempotent). */
+export function stripSnapshotHistory(state: GameState): GameState {
+  if (state.fullMessageHistory === undefined) return state;
+  const { fullMessageHistory: _drop, ...rest } = state;
+  return rest as GameState;
+}
+
 /**
- * Migrate a whole v1.2 save envelope to the current shape and stamp it with `APP_VERSION` — the single path
- * both the file-import boundary and the load path run, so they can't drift. Legacy is detected by the
- * numeric `version` (v1.2 stamped `2`); a save already carrying a string version has the current shape and
- * is returned untouched. Migrates the field copies on every snapshot (currentState + history), then
- * realigns the off-by-one, one-slot-short state history. Pure — callers decide whether to persist the
- * result (import) or just load it (load).
+ * Migrate a save envelope to the current shape — the single path both the file-import boundary and the load
+ * path run, so they can't drift. Two concerns, each idempotent:
+ *   1. Legacy field migration (numeric `version: 2` ≙ v1.2): migrate trait/stat/discovered copies on every
+ *      snapshot, realign the one-slot-short state history (append current), and re-stamp `APP_VERSION`.
+ *   2. Storage cleanup (presence-based, every envelope): hoist the one canonical flat history to top-level
+ *      `messageHistory` and strip the per-snapshot `fullMessageHistory` copies. Old saves (any version) carry
+ *      the history on `currentState`; already-migrated saves already have `messageHistory` and stripped
+ *      snapshots, so this is a no-op for them.
+ * The appended current page stays `=== currentState`, so `gameStates[page - 1]` resolves the current page
+ * identically. Pure — callers decide whether to persist the result (import) or just load it (load).
  */
 export function migrateSave(save: SaveObject): SaveObject {
-  if (typeof save.version !== 'number') return save;
-  const currentState = migrateLegacySaveState(save.currentState);
-  const stateHistory = appendCurrentToHistory(save.stateHistory.map(migrateLegacySaveState), currentState);
-  return { ...save, currentState, stateHistory, version: APP_VERSION };
+  const isLegacy = typeof save.version === 'number';
+  const migratedCurrent = isLegacy ? migrateLegacySaveState(save.currentState) : save.currentState;
+  const migratedHistory = isLegacy ? save.stateHistory.map(migrateLegacySaveState) : save.stateHistory;
+  // Canonical flat history: an already-hoisted top-level copy, else the current snapshot's own copy.
+  const messageHistory = save.messageHistory ?? migratedCurrent.fullMessageHistory ?? [];
+  const currentState = stripSnapshotHistory(migratedCurrent);
+  const stateHistory = isLegacy
+    ? appendCurrentToHistory(migratedHistory.map(stripSnapshotHistory), currentState)
+    : migratedHistory.map(stripSnapshotHistory);
+  return { ...save, currentState, stateHistory, messageHistory, version: isLegacy ? APP_VERSION : save.version };
 }

@@ -3,7 +3,7 @@ import { putSaveRecord, getSaveRecord } from '../components/modals/dbUtils';
 import { toast } from 'react-toastify';
 import { convertSaveFile, terminateWorker } from '../lib/saveConversionWorkerUtils';
 import { useTtsPlayback } from '../lib/useTtsPlayback';
-import { APP_VERSION, isSaveEnvelope, migrateSave } from '../lib/version';
+import { APP_VERSION, isSaveEnvelope, migrateSave, stripSnapshotHistory } from '../lib/version';
 import { flattenEnabledBookEntries } from '../lib/dictionaryUtils';
 import { getGameplayText, setGameplayText } from '../lib/gameplayTextStore';
 import { parseTurnContent } from '../lib/turnDigest';
@@ -152,7 +152,7 @@ function useProvideGameplay() {
       // Rollback / re-generate keep the live narration + notes (they carry the player's post-turn edits) and
       // rewind the flat history themselves; the snapshot's frozen copies would revert those edits.
       if (!opts?.keepLiveHistory) {
-        setFullMessageHistory(gameState.fullMessageHistory);
+        setFullMessageHistory(gameState.fullMessageHistory ?? []);
       }
       setCharacterData(gameState.characterData);
       setChoices(gameState.choices);
@@ -209,8 +209,10 @@ function useProvideGameplay() {
         id: saveId ?? crypto.randomUUID(),
         name: saveName,
         worldId,
-        currentState: gameState,
-        stateHistory: gameStates, // the current gameStates array, separate from the current state
+        // The one canonical flat history; snapshots below are stripped of their own copies (O(N²) on disk).
+        messageHistory: gameState.fullMessageHistory ?? [],
+        currentState: stripSnapshotHistory(gameState),
+        stateHistory: gameStates.map(stripSnapshotHistory), // per-turn snapshots, history-free
         version: APP_VERSION, // stamp the current app version (legacy envelopes used numeric 2 ≙ v1.2)
         dictionaries: runtimeDictionaries, // the player's per-playthrough dictionary set, restored on load
       };
@@ -245,7 +247,12 @@ function useProvideGameplay() {
         // Migrate a legacy v1.2 envelope to the current shape (no-op for a save already stamped with
         // APP_VERSION). Same migrateSave the import boundary runs, so both stay in lockstep.
         const migrated = migrateSave(savedData);
-        const success = loadGameState(migrated.currentState, locations);
+        // Snapshots are history-free post-migration; reconstitute the live current state with the canonical
+        // top-level history so loadGameState restores narration/rollback correctly.
+        const success = loadGameState(
+          { ...migrated.currentState, fullMessageHistory: migrated.messageHistory ?? [] },
+          locations,
+        );
         if (success) {
           setGameStates(migrated.stateHistory);
           // Restore the per-playthrough dictionary set; older saves lack it, so keep the entry-seeded set.

@@ -82,7 +82,7 @@ import { revealActive } from "../lib/narrationRevealConfig";
 import { REVEAL_TEST_NARRATION, REVEAL_TEST_PROFILES, DEFAULT_REVEAL_TEST_PROFILE } from "../lib/revealTestScripts";
 import { MARKDOWN_SAMPLE } from "../lib/markdownSample";
 import { parseSlashCommand } from "../lib/slashCommands";
-import { normalizeStatChanges, applyAiStatChanges, applyTraitStatChanges, parseStatUpdates, applyAiMaxChanges } from "../lib/statChanges";
+import { normalizeStatChanges, applyAiStatChanges, applyTraitStatChanges, parseStatUpdates, applyAiMaxChanges, appliedStatDeltas } from "../lib/statChanges";
 import { resolvePromptSampler } from "../lib/promptSamplers";
 import { downloadBlob } from "../lib/downloadBlob";
 import { matchLocationResponse } from "../lib/locationMatch";
@@ -1563,18 +1563,25 @@ ${playerNotes || NONE_PLACEHOLDER}
       // Merge the AI's change objects into one normalized (name→delta) map.
       const normalizedChanges = normalizeStatChanges(changes);
 
+      // Apply the AI's direct changes, then derive any code-based stats from that result. Both run
+      // outside the state updater (updaters must stay pure), reading the latest stats via the ref.
+      const baseStats = base ?? playerStatsRef.current;
+      const directApplied = applyAiStatChanges(baseStats, normalizedChanges, affectedStats);
+
+      // Show the *actual* applied change (clamped to min/max and honoring noIncrease/noDecrease), not the
+      // raw request — so a stat pinned at its cap shows no delta, and the live bar/text match the history
+      // view's value-diff deltas (`pageStatDeltas`) instead of diverging from them.
+      const actualChanges = appliedStatDeltas(baseStats, directApplied);
+
       // Surface the changes, then clear the highlight after 10s. Cancel any prior timer first so a
       // stale clear can't wipe a newer turn's changes.
-      setRecentStatChanges(normalizedChanges);
+      setRecentStatChanges(actualChanges);
       if (recentStatTimerRef.current) clearTimeout(recentStatTimerRef.current);
       recentStatTimerRef.current = setTimeout(() => setRecentStatChanges({}), 10000);
       // Held changes drive the persistent bar coloring (no fade). Merge this call's deltas over the
       // per-turn reset done by the caller, so AI changes and regen combine into one turn delta.
-      setHeldStatChanges((prev) => ({ ...prev, ...normalizedChanges }));
+      setHeldStatChanges((prev) => ({ ...prev, ...actualChanges }));
 
-      // Apply the AI's direct changes, then derive any code-based stats from that result. Both run
-      // outside the state updater (updaters must stay pure), reading the latest stats via the ref.
-      const directApplied = applyAiStatChanges(base ?? playerStatsRef.current, normalizedChanges, affectedStats);
       setPlayerStats(directApplied);
       try {
         // processStatCode is typed over Stat[]; playerStats is the narrower PlayerStat[] (value: number).

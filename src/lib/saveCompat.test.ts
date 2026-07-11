@@ -181,9 +181,32 @@ describe('migrateSave (shared import + load path)', () => {
     for (const snap of out.stateHistory) expect(snap.discoveredEntities).toEqual([]);
   });
 
-  it('leaves a current (string-version) save untouched', () => {
-    const current = { ...legacyEnvelope, version: APP_VERSION };
-    expect(migrateSave(current)).toBe(current);
+  it('hoists the canonical history and strips every snapshot copy (storage cleanup)', () => {
+    // A legacy 2-turn save: current holds the full 4-message history, the one prior page a 2-message prefix.
+    const state = (t: number) => ({
+      playerTraits: [], playerStats: [],
+      fullMessageHistory: Array.from({ length: t * 2 }, (_, i) => ({ role: i % 2 ? 'assistant' : 'user', content: `m${i}` })),
+    });
+    const out = migrateSave({ name: 'Two', version: 2, currentState: state(2), stateHistory: [state(1)] } as unknown as SaveObject);
+    // The one canonical history is hoisted from the current snapshot (the full 4 messages).
+    expect(out.messageHistory).toHaveLength(4);
+    expect(out.messageHistory?.[3]).toEqual({ role: 'assistant', content: 'm3' });
+    // No snapshot keeps its own copy anymore.
+    for (const snap of [out.currentState, ...out.stateHistory]) {
+      expect('fullMessageHistory' in snap).toBe(false);
+    }
+  });
+
+  it('hoists + strips a string-version old-shape save without a legacy re-stamp, idempotently', () => {
+    const oldShape = { ...legacyEnvelope, version: APP_VERSION }; // string version but history still embedded
+    const out = migrateSave(oldShape);
+    expect(out.version).toBe(APP_VERSION); // not re-run through the legacy branch
+    expect(out.messageHistory).toEqual(legacyEnvelope.currentState.fullMessageHistory);
+    expect('fullMessageHistory' in out.currentState).toBe(false);
+    // Idempotent: a second pass over the already-cleaned save keeps the same history and stays stripped.
+    const again = migrateSave(out);
+    expect(again.messageHistory).toEqual(out.messageHistory);
+    expect('fullMessageHistory' in again.currentState).toBe(false);
   });
 });
 

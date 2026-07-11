@@ -829,11 +829,6 @@ export const RightPanel = ({ onLocationClick, language, setLanguage }: {
           </div>
         </div>
         <p className="text-center">{Math.floor(gameTime / 24)} days, {gameTime % 24} hours</p>
-        {isViewingPast && (
-          <p className="text-center text-xs font-medium text-primary bg-primary/10 rounded py-0.5">
-            Viewing turn {currentPage} of {totalPages} — history
-          </p>
-        )}
       </div>
 
       <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full flex-grow flex flex-col overflow-hidden">
@@ -943,6 +938,11 @@ export const RightPanel = ({ onLocationClick, language, setLanguage }: {
           </ScrollArea>
         </TabsContent>
       </Tabs>
+      {isViewingPast && (
+        <p className="text-center text-xs font-medium text-primary bg-primary/10 rounded py-0.5 mt-2 flex-shrink-0">
+          Viewing turn {currentPage} of {totalPages} — history
+        </p>
+      )}
     </CardContent>
   </Card>
   );
