@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { parseReleases, checkForUpdate, type GithubRelease } from './UpdateService';
+import { parseReleases, buildRecentChangelog, checkForUpdate, type GithubRelease } from './UpdateService';
 
 const rel = (tag: string, prerelease = false, draft = false, body = ''): GithubRelease => ({
   tag_name: tag,
@@ -30,16 +30,38 @@ describe('parseReleases', () => {
     const r = parseReleases([rel('v2.1.0', false, false, 'current notes')], 'stable', '2.1.0');
     expect(r.available).toBe(false);
     expect(r.latestVersion).toBe('v2.1.0');
-    expect(r.changelog).toBe('current notes');
+    expect(r.changelog).toContain('current notes');
   });
 
   it('is not-available when there are no eligible releases', () => {
     expect(parseReleases([rel('v9.9.9', true)], 'stable', '2.0.0').available).toBe(false);
   });
 
-  it('carries the release body as the changelog', () => {
-    const r = parseReleases([rel('v2.2.0', false, false, '## What changed')], 'stable', '2.1.0');
-    expect(r.changelog).toBe('## What changed');
+  it('carries the recent releases as the changelog, newest first, each under a version header', () => {
+    const r = parseReleases(
+      [rel('v2.2.0', false, false, '### Added'), rel('v2.1.0', false, false, '### Fixed'), rel('v2.0.0', false, false, 'old')],
+      'stable',
+      '2.1.0',
+    );
+    expect(r.changelog).toContain('## v2.2.0');
+    expect(r.changelog).toContain('### Added');
+    expect(r.changelog).toContain('## v2.1.0');
+    expect(r.changelog!.indexOf('## v2.2.0')).toBeLessThan(r.changelog!.indexOf('## v2.1.0'));
+  });
+});
+
+describe('buildRecentChangelog', () => {
+  it('combines up to the last 3 releases with version headers, and fills blank bodies', () => {
+    const md = buildRecentChangelog([
+      rel('v3.0.0', false, false, 'three'),
+      rel('v2.0.0', false, false, ''),
+      rel('v1.0.0', false, false, 'one'),
+      rel('v0.9.0', false, false, 'too old'),
+    ]);
+    expect(md).toContain('## v3.0.0');
+    expect(md).toContain('## v1.0.0');
+    expect(md).not.toContain('## v0.9.0'); // capped at 3
+    expect(md).toContain('_No release notes._'); // blank body filled
   });
 });
 

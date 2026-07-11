@@ -50,10 +50,10 @@ import DictionaryStorageService from '../services/DictionaryStorageService';
 import EntityStorageService from '../services/EntityStorageService';
 import AuthService from '../services/AuthService';
 import type { World, Stat, CharacterData, Dictionary, DictionaryMetadata, Entity, EntityMetadata } from '@/types';
-import { migrateWorld, APP_VERSION } from '@/lib/version';
-import { BUILD_TAG } from '@/lib/buildInfo';
+import { migrateWorld } from '@/lib/version';
 import { isDesktop } from '@/lib/imageGen/desktop';
 import { UpdateVersionControl } from '@/components/menu/UpdateVersionControl';
+import { WebVersionChangelog } from '@/components/menu/WebVersionChangelog';
 import { parseDictionaryImport } from '@/lib/dictionaryFile';
 import { importCharacterFile } from '@/lib/entityFile';
 import { useDownscalePrompt } from '@/lib/useDownscalePrompt';
@@ -1085,13 +1085,7 @@ const MainMenu = ({ onStartGame, onLoadSaveGame, onReplayIntro }: MainMenuProps)
               )}
             </button>
           )}
-          {isDesktop() ? (
-            <UpdateVersionControl />
-          ) : (
-            <span className="text-xs text-muted-foreground/60 select-none">
-              v{APP_VERSION}{BUILD_TAG && ` · ${BUILD_TAG}`}
-            </span>
-          )}
+          {isDesktop() ? <UpdateVersionControl /> : <WebVersionChangelog />}
         </div>
 
         {/* Center: copyright + origin credit (original is MIT — see THIRD-PARTY-NOTICES / legal/) */}

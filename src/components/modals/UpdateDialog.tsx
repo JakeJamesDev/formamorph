@@ -1,7 +1,7 @@
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from '@/components/ui/select';
-import { MarkdownRenderer } from '@/components/game/MarkdownRenderer';
+import { ChangelogBody, FullChangelogLink } from '@/components/ChangelogUi';
 import { useSettings } from '@/contexts/SettingsContext';
 import type { UpdateChannel } from '@/contexts/settingsDefaults';
 import type { UpdateState } from '@/lib/updates/updateState';
@@ -27,7 +27,7 @@ export function UpdateDialog({ open, onOpenChange, state, onCheck, onDownload }:
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent aria-describedby={undefined}>
+      <DialogContent aria-describedby={undefined} className="max-w-2xl">
         <DialogHeader><DialogTitle>{title}</DialogTitle></DialogHeader>
 
         <div className="flex items-center justify-between text-sm">
@@ -44,22 +44,21 @@ export function UpdateDialog({ open, onOpenChange, state, onCheck, onDownload }:
         {state.phase === 'error' ? (
           <p className="text-sm text-destructive">{state.error}</p>
         ) : (
-          <div className="max-h-64 overflow-y-auto rounded-md border bg-muted/30 p-3 text-sm">
-            {state.changelog
-              ? <MarkdownRenderer text={state.changelog} />
-              : <span className="text-muted-foreground">No release notes.</span>}
-          </div>
+          <ChangelogBody text={state.changelog} placeholder="No release notes." />
         )}
 
-        <div className="flex justify-end gap-2">
-          {available ? (
-            <>
-              <Button variant="outline" onClick={() => onOpenChange(false)}>Cancel</Button>
-              <Button onClick={onDownload}>Download</Button>
-            </>
-          ) : (
-            <Button onClick={onCheck} disabled={checking}>{checking ? 'Checking…' : 'Check for updates'}</Button>
-          )}
+        <div className="flex items-center justify-between gap-2">
+          <FullChangelogLink />
+          <div className="flex gap-2">
+            {available ? (
+              <>
+                <Button variant="outline" onClick={() => onOpenChange(false)}>Cancel</Button>
+                <Button onClick={onDownload}>Download</Button>
+              </>
+            ) : (
+              <Button onClick={onCheck} disabled={checking}>{checking ? 'Checking…' : 'Check for updates'}</Button>
+            )}
+          </div>
         </div>
       </DialogContent>
     </Dialog>

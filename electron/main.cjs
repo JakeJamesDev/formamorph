@@ -1,7 +1,7 @@
 // Electron main process: thin desktop shell around the built web app (dist/).
 // Loads the SPA from a privileged custom scheme so module workers, WASM, WebGPU,
 // and fetch behave like a normal web origin (raw file:// gives a null origin and breaks them).
-const { app, BrowserWindow, protocol, net, ipcMain, session } = require('electron');
+const { app, BrowserWindow, protocol, net, ipcMain, session, shell } = require('electron');
 const path = require('node:path');
 const fs = require('node:fs');
 const { pathToFileURL } = require('node:url');
@@ -72,6 +72,13 @@ function createWindow() {
     },
   });
   mainWindow = win;
+
+  // External links (footer socials, the update dialog's "Full changelog") open in the system browser, not a
+  // new in-app window — deny the popup and hand http(s) URLs to the OS.
+  win.webContents.setWindowOpenHandler(({ url }) => {
+    if (/^https?:\/\//.test(url)) shell.openExternal(url);
+    return { action: 'deny' };
+  });
 
   // Dev: load the Vite dev server when its URL is provided; otherwise the packaged build.
   const devURL = process.env.VITE_DEV_SERVER_URL;

@@ -5,12 +5,16 @@ import { describe, it, expect, vi } from 'vitest';
 vi.mock('@/contexts/SettingsContext', () => ({
   useSettings: () => ({ updateChannel: 'stable', setUpdateChannel: vi.fn() }),
 }));
-vi.mock('@/services/UpdateService', () => ({
-  checkForUpdate: vi.fn(async () => ({
-    success: true,
-    result: { available: true, latestVersion: 'v9.9.9', changelog: '## New stuff' },
-  })),
-}));
+vi.mock('@/services/UpdateService', async () => {
+  const actual = await vi.importActual<typeof import('@/services/UpdateService')>('@/services/UpdateService');
+  return {
+    ...actual,
+    checkForUpdate: vi.fn(async () => ({
+      success: true,
+      result: { available: true, latestVersion: 'v9.9.9', changelog: '## New stuff' },
+    })),
+  };
+});
 // Avoid the streaming-markdown pipeline in jsdom; the release notes just need to be present as text.
 vi.mock('@/components/game/MarkdownRenderer', () => ({
   MarkdownRenderer: ({ text }: { text: string }) => <div data-testid="changelog">{text}</div>,
@@ -30,5 +34,10 @@ describe('UpdateVersionControl', () => {
     expect(await screen.findByText(/Update available — v9\.9\.9/)).toBeInTheDocument();
     expect(screen.getByTestId('changelog')).toHaveTextContent('New stuff');
     expect(screen.getByRole('button', { name: 'Download' })).toBeInTheDocument();
+
+    // The "Full changelog" link points at the wiki and opens externally.
+    const link = screen.getByRole('link', { name: /Full changelog/ });
+    expect(link).toHaveAttribute('href', 'https://github.com/JakeJamesDev/formamorph/wiki/Changelog');
+    expect(link).toHaveAttribute('target', '_blank');
   });
 });
