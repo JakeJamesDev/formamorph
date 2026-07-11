@@ -5,6 +5,7 @@ import {
   applyTraitStatChanges,
   parseStatUpdates,
   applyAiMaxChanges,
+  pageStatDeltas,
 } from './statChanges';
 import type { PlayerStat } from '@/types';
 
@@ -19,6 +20,38 @@ const stat = (over: Partial<PlayerStat>): PlayerStat => ({
   regen: 0,
   descriptors: [],
   ...over,
+});
+
+describe('pageStatDeltas', () => {
+  const resolve = (value: number, over: Partial<PlayerStat> = {}) =>
+    stat({ name: 'Resolve', min: 0, max: 10, value, ...over });
+  const coin = (value: number, over: Partial<PlayerStat> = {}) =>
+    stat({ name: 'Coin', min: 0, max: 100, value, ...over });
+
+  it('diffs each stat against the previous turn', () => {
+    const cur = [resolve(7), coin(20)];
+    const prev = [resolve(5), coin(30)];
+    expect(pageStatDeltas(cur, prev)).toEqual({ resolve: 2, coin: -10 });
+  });
+
+  it('falls back to `starting` when there is no previous turn (the opening turn)', () => {
+    const cur = [resolve(5, { starting: 3 }), coin(30, { starting: 25 })];
+    expect(pageStatDeltas(cur, undefined)).toEqual({ resolve: 2, coin: 5 });
+  });
+
+  it('falls back to `min` when the opening turn has no `starting`', () => {
+    expect(pageStatDeltas([resolve(4)], undefined)).toEqual({ resolve: 4 }); // min 0
+  });
+
+  it('uses `starting` for a stat absent from the previous turn (newly added mid-game)', () => {
+    const cur = [resolve(7), coin(30, { starting: 25 })];
+    const prev = [resolve(5)]; // Coin did not exist last turn
+    expect(pageStatDeltas(cur, prev)).toEqual({ resolve: 2, coin: 5 });
+  });
+
+  it('reports 0 for an unchanged stat', () => {
+    expect(pageStatDeltas([resolve(5)], [resolve(5)])).toEqual({ resolve: 0 });
+  });
 });
 
 describe('normalizeStatChanges', () => {

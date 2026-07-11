@@ -315,6 +315,10 @@ const GameViewer = ({
     setDisplayedMessages,
     currentPage,
     setCurrentPage,
+    totalPages,
+    isViewingPast,
+    viewStats,
+    viewLocationId,
     gameStates,
     setGameStates,
     setBodyMorphValues,
@@ -783,10 +787,20 @@ const GameViewer = ({
     return buildVerbatimHistory(turns, contextWindow, promptTokens, maxTokens);
   }, [fullMessageHistory, contextWindow, maxTokens, memoryDigests, dictionary, allEntities, narrationVerbatimTurns]);
 
-  // Drive body morphs from stats: each stat's bound sliders track its value (min→max → 0→1 influence).
+  // Drive body morphs from the viewed stats (live on the latest page, the paged turn's when viewing the
+  // past): each stat's bound sliders track its value (min→max → 0→1 influence), so the avatar re-morphs to
+  // match whatever turn is on screen.
   useEffect(() => {
-    setBodyMorphValues(statMorphMap(playerStats));
-  }, [playerStats, setBodyMorphValues]);
+    setBodyMorphValues(statMorphMap(viewStats));
+  }, [viewStats, setBodyMorphValues]);
+
+  // Ambient audio follows the viewed location (the paged turn's when browsing history, the live one
+  // otherwise). Centralizing it here also fixes the load/rollback gap where `loadGameState` set the
+  // location without its ambient sound (only `changeLocation` did).
+  useEffect(() => {
+    const loc = locations.find((l) => l.id === viewLocationId);
+    setAmbientSound(loc?.ambientSound ?? null);
+  }, [viewLocationId, locations]);
 
   const handleTimePassed = useCallback(
     (hours: number) => {
@@ -1512,8 +1526,6 @@ ${playerNotes || NONE_PLACEHOLDER}
   const handlePageChange = (page: number) => {
     setCurrentPage(page);
   };
-
-  const totalPages = Math.ceil(fullMessageHistory.length / messagesPerPage);
 
   // Latest committed stats, so off-render derivations (below) don't rely on a stale closure.
   const playerStatsRef = useRef(playerStats);
@@ -2440,6 +2452,11 @@ ${playerNotes || NONE_PLACEHOLDER}
     />
   );
 
+  // The location whose background the scene shows — the paged turn's when browsing history, else live.
+  const viewLocation = isViewingPast
+    ? (locations.find((l) => l.id === viewLocationId) ?? currentLocation)
+    : currentLocation;
+
   return (
     <div
       className={`flex ${isMobile ? "flex-col" : ""} h-screen p-4 text-sm md:text-base bg-background bg-cover bg-center overflow-hidden`}
@@ -2451,7 +2468,7 @@ ${playerNotes || NONE_PLACEHOLDER}
               !uiHidden && backgroundOverlay > 0
                 ? `linear-gradient(hsl(var(--background) / ${backgroundOverlay}), hsl(var(--background) / ${backgroundOverlay})), `
                 : ""
-            }${currentLocation ? `url(${currentLocation.backgroundImage})` : "url(./default-background.jpg)"}`
+            }${viewLocation ? `url(${viewLocation.backgroundImage})` : "url(./default-background.jpg)"}`
           : undefined,
       }}
     >

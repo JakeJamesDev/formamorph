@@ -495,6 +495,25 @@
 .stat-delta-text-out {
   animation: stat-delta-text-out 300ms ease-in both;
 }
+/* Reviewing a past turn: the delta text fades/slides in on arrival and holds (no auto fade-out) — it's a
+   fact you're scrolling back to, not a transient notification. */
+@keyframes stat-delta-text-in {
+  from { opacity: 0; transform: translateY(3px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+.stat-delta-text-in {
+  animation: stat-delta-text-in 300ms ease-out both;
+}
+/* Reviewing history: slide the base fill from the turn's previous value to its value (via CSS vars) so it
+   always animates from the correct origin — a plain width transition would start from wherever you
+   scrolled from, leaving the fill out of step with the grow band on backward navigation. */
+@keyframes stat-fill-slide {
+  from { width: var(--fill-from); }
+  to   { width: var(--fill-to); }
+}
+.stat-fill-slide {
+  animation: stat-fill-slide 500ms cubic-bezier(0.16, 1, 0.3, 1) both;
+}
 
 /* Karaoke TTS highlighter: soft accent tint on the sentence being narrated (CSS Custom Highlight API). */
 ::highlight(tts-active) {
