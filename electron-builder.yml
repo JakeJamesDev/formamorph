@@ -2,6 +2,13 @@ appId: dev.jakejames.formamorph
 productName: Formamorph
 directories:
   output: release
+# GitHub Releases is the update feed. electron-updater (Linux AppImage self-update) reads latest-linux.yml
+# from the release; the Linux CI step publishes it directly. Windows uses a custom launcher swap and macOS a
+# notifier, so their targets don't rely on this — it's harmless for them.
+publish:
+  provider: github
+  owner: JakeJamesDev
+  repo: formamorph
 files:
   - dist/**/*
   - electron/**/*
@@ -23,15 +30,13 @@ asarUnpack:
 # Single icon source shared with the web favicon (public/icon.png, 512x512). electron-builder converts
 # it to .ico (Windows) and .icns (macOS) at build time and uses the PNG directly on Linux.
 win:
+  # `dir` = the unpacked app payload only (release/win-unpacked), NOT a runnable installer. The Windows
+  # distributable is assembled in CI: the Go launcher (launcher/) at the clean root + this payload under
+  # `<root>/app`, which the launcher swaps in place on update (see electron/winUpdate.cjs + launcher/main.go).
+  # This keeps data/models beside the root across updates and means SmartScreen only ever judges the launcher.
   target:
-    - portable
+    - dir
   icon: public/icon.png
-portable:
-  # `-portable` so a future installer (nsis → Formamorph-${version}-setup.exe) never collides on name.
-  artifactName: Formamorph-${version}-portable.exe
-  # NOTE: `useZip: true` (ZIP instead of LZMA for faster per-launch decompression) is BROKEN in
-  # electron-builder 26.x — makensis aborts with a SetCompressor/ZIP_COMPRESSION conflict (NSIS "line 142").
-  # Verified by isolation (builds fine without it). Skipped; the real fix is the extract-once restructure.
 linux:
   target:
     - AppImage

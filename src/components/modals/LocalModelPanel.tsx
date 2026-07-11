@@ -39,13 +39,19 @@ export function LocalModelPanel() {
 
   const gpuLabel = localGpuLayers === 0 ? 'Off (CPU)' : localGpuLayers >= LOCAL_GPU_LAYERS_MAX ? 'All (GPU)' : `${localGpuLayers} layers`;
 
-  // Save & Reload only matters when a model is loaded and a pending engine setting differs from what it was
-  // loaded with (the engine reports its applied options in its state).
-  const optionsDiffer = engine.status === 'ready' && (
+  // Whether the pending engine settings differ from what the current model was loaded with.
+  const optionsDiffer =
     localContextSize !== engine.contextSize ||
     localGpuLayers !== engine.gpuLayers ||
-    localFlashAttention !== engine.flashAttention
-  );
+    localFlashAttention !== engine.flashAttention;
+
+  // When Save & Reload can act: a loaded model whose settings changed, OR a failed load — so a context/GPU
+  // setting that overflowed VRAM can be lowered and retried (the error state otherwise trapped the user).
+  const loadFailed = engine.status === 'error';
+  const canReload =
+    engine.status !== 'loading' &&
+    !reloading &&
+    ((engine.status === 'ready' && optionsDiffer) || loadFailed);
 
   const saveReload = async () => {
     setReloading(true);
@@ -158,11 +164,21 @@ export function LocalModelPanel() {
 
       {/* Pinned footer — a shrink-0 flex sibling outside the scroll area (no separator), matching the
           community browser's paginated footer pattern. */}
-      <div className="flex shrink-0 items-center justify-between gap-2 pt-3">
-        <Button type="button" variant="ghost" onClick={resetDefaults}>Reset to defaults</Button>
-        <Button type="button" onClick={saveReload} disabled={!optionsDiffer || reloading || engine.status === 'loading'}>
-          {reloading || engine.status === 'loading' ? 'Reloading…' : 'Save & Reload Model'}
-        </Button>
+      <div className="flex shrink-0 flex-col gap-2 pt-3">
+        {/* After a failed load, point at the settings that fix an out-of-VRAM error and enable the retry. */}
+        {loadFailed && (
+          <p className="text-xs text-muted-foreground">
+            The model didn’t fit in VRAM at these settings. Lower <strong>Context Size</strong>
+            {advancedMode ? <> or <strong>GPU Layers</strong></> : <> (or turn on <strong>Advanced</strong> to lower GPU Layers)</>},
+            then reload.
+          </p>
+        )}
+        <div className="flex items-center justify-between gap-2">
+          <Button type="button" variant="ghost" onClick={resetDefaults}>Reset to defaults</Button>
+          <Button type="button" onClick={saveReload} disabled={!canReload}>
+            {reloading || engine.status === 'loading' ? 'Reloading…' : loadFailed ? 'Retry with these settings' : 'Save & Reload Model'}
+          </Button>
+        </div>
       </div>
 
       <LocalModelModal open={showManager} onOpenChange={setShowManager} />

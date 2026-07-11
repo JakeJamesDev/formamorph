@@ -9,9 +9,12 @@ const fs = require('node:fs');
 // (Cache, Code Cache, GPUCache, DawnCache, blob_storage, Network, Service Worker) — they regenerate.
 const PERSISTENT_STORES = ['IndexedDB', 'Local Storage', 'Session Storage'];
 
-/** The folder a relocatable build should keep its data beside (portable .exe or AppImage), or null for
- *  installed (mac dmg) and dev builds — those keep the OS-default userData. Runtime markers only. */
+/** The folder a relocatable build should keep its data beside (Windows launcher root, portable .exe, or
+ *  AppImage), or null for installed (mac dmg) and dev builds — those keep the OS-default userData. Runtime
+ *  markers only. FORMAMORPH_ROOT is set by the Windows Go launcher (the app runs from `<root>/app`, but its
+ *  data + models must stay beside `<root>`, unchanged across `/app` swaps). */
 function portableRoot(env = process.env) {
+  if (env.FORMAMORPH_ROOT) return env.FORMAMORPH_ROOT;
   if (env.PORTABLE_EXECUTABLE_DIR) return env.PORTABLE_EXECUTABLE_DIR;
   if (env.APPIMAGE) return path.dirname(env.APPIMAGE);
   return null;
