@@ -23,12 +23,17 @@ jobs:
             script: desktop:build
             build: portable
           - os: ubuntu-latest
-            script: desktop:build:linux
+            # electron-updater's AppImage self-update needs latest-linux.yml in the release, which is only
+            # produced when publishing — so Linux publishes directly (a draft the `publish` job finalizes).
+            script: desktop:build:linux:publish
             build: portable
           - os: macos-latest
             script: desktop:build:mac
             build: installed
     runs-on: ${{ matrix.os }}
+    # contents: write lets the Linux electron-builder step publish its AppImage + latest-linux.yml draft.
+    permissions:
+      contents: write
     steps:
       - uses: actions/checkout@v7
       - uses: actions/setup-node@v6
@@ -39,13 +44,35 @@ jobs:
       - run: npm run ${{ matrix.script }}
         env:
           FORMAMORPH_BUILD: ${{ matrix.build }}
+          # Only the Linux --publish step consumes this; the Windows/mac --publish never scripts ignore it.
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      # Windows: build the Go launcher, then assemble the distributable — launcher at the clean root + the
+      # electron `dir` payload under app/. Produces the full-root zip (first-time download) plus the app
+      # payload zip + its sha512 (the update unit the running app downloads and the launcher swaps in).
+      - if: matrix.os == 'windows-latest'
+        uses: actions/setup-go@v5
+        with:
+          go-version: 'stable'
+      - if: matrix.os == 'windows-latest'
+        name: Assemble Windows launcher distributable
+        shell: bash
+        run: |
+          set -euo pipefail
+          VER=$(node -p "require('./package.json').version")
+          mkdir -p release/root/app
+          (cd launcher && go build -trimpath -ldflags "-s -w" -o "../release/root/Formamorph.exe" .)
+          cp -r release/win-unpacked/* release/root/app/
+          (cd release/root && 7z a -tzip "../Formamorph-${VER}-win.zip" . >/dev/null)
+          (cd release/win-unpacked && 7z a -tzip "../app-${VER}-win.zip" . >/dev/null)
+          (cd release && sha512sum "app-${VER}-win.zip" | cut -d' ' -f1 > "app-${VER}-win.zip.sha512")
       - uses: actions/upload-artifact@v7
         with:
           name: desktop-${{ matrix.os }}
           path: |
-            release/*.exe
             release/*.AppImage
             release/*.dmg
+            release/*-win.zip
+            release/*-win.zip.sha512
           if-no-files-found: error
 
   web:
@@ -82,10 +109,13 @@ jobs:
         with:
           path: artifacts
           merge-multiple: true
+      # Finalizes the draft the Linux build published (with the AppImage + latest-linux.yml) by attaching the
+      # Windows exe, mac dmg, and web zip and flipping it to a published release. AppImage is intentionally
+      # omitted here — electron-builder already uploaded it (and its update metadata) to the same tag.
       - uses: softprops/action-gh-release@v2
         with:
           files: |
-            artifacts/*.exe
-            artifacts/*.AppImage
             artifacts/*.dmg
+            artifacts/*-win.zip
+            artifacts/*-win.zip.sha512
             artifacts/formamorph-web-*.zip

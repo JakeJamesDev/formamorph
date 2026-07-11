@@ -10,6 +10,7 @@ const llmEngine = require('./llmEngine.cjs');
 const modelDownload = require('./modelDownload.cjs');
 const { portableUserDataDir, migratePersistentStores } = require('./portableProfile.cjs');
 const { withCorsHeaders } = require('./corsShim.cjs');
+const updater = require('./updater.cjs');
 
 // Portable/AppImage builds keep their whole profile (settings, saves, worlds, library) beside the exe so
 // copying the folder carries everything; installed (mac dmg) and dev keep the OS-default userData (dev would
@@ -40,6 +41,7 @@ let engineOptions = { contextSize: 8192, gpuLayers: 64, flashAttention: false };
 // dir but expose PORTABLE_EXECUTABLE_DIR (the exe's real folder); AppImage exposes APPIMAGE; dev uses the
 // project dir; an installed mac/other build falls back to the conventional userData path.
 function appBaseDir() {
+  if (process.env.FORMAMORPH_ROOT) return process.env.FORMAMORPH_ROOT; // Windows launcher root (app runs from <root>/app)
   if (process.env.PORTABLE_EXECUTABLE_DIR) return process.env.PORTABLE_EXECUTABLE_DIR;
   if (process.env.APPIMAGE) return path.dirname(process.env.APPIMAGE);
   if (!app.isPackaged) return app.getAppPath();
@@ -75,6 +77,19 @@ function createWindow() {
   const devURL = process.env.VITE_DEV_SERVER_URL;
   if (devURL) win.loadURL(devURL);
   else win.loadURL('app://local/index.html');
+
+  // Post-update health signal: when the Windows launcher relaunches us with --just-updated, drop a
+  // launch-ok marker once the UI actually loads so the launcher knows the swapped /app booted (and won't
+  // roll back). Harmless no-op on every other launch/platform.
+  if (process.argv.includes('--just-updated')) {
+    win.webContents.once('did-finish-load', () => {
+      try {
+        const dir = path.join(app.getPath('userData'), 'updates');
+        fs.mkdirSync(dir, { recursive: true });
+        fs.writeFileSync(path.join(dir, 'launch-ok'), String(Date.now()));
+      } catch { /* ignore */ }
+    });
+  }
 }
 
 // Desktop-only network bridge: renderer → main HTTP fetch that isn't bound by browser CORS. Used by
@@ -179,6 +194,10 @@ ipcMain.handle('llm-delete-model', async (_event, fileName) => {
   modelDownload.discardPartial(modelsDir(), fileName);
   try { fs.unlinkSync(target); return true; } catch { return false; }
 });
+
+// Desktop auto-updater IPC (per-platform download/apply; detection is renderer-side). getWindow returns the
+// live window so progress events reach the current renderer.
+updater.init({ getWindow: () => mainWindow });
 
 app.whenReady().then(() => {
   // Desktop CORS shim: the renderer lives at app://local, so its fetches to an external endpoint (a user's

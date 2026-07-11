@@ -34,4 +34,26 @@ contextBridge.exposeInMainWorld('formamorphDesktop', {
       return () => ipcRenderer.removeListener('llm-download-progress', handler);
     },
   },
+  // Desktop auto-updater: detection is renderer-side (via the fetch bridge); these drive the per-platform
+  // download/apply and stream progress + completion back from the main process.
+  update: {
+    check: () => ipcRenderer.invoke('update-check'),
+    download: (opts) => ipcRenderer.invoke('update-download', opts),
+    apply: () => ipcRenderer.invoke('update-apply'),
+    onAvailable: (cb) => {
+      const handler = (_event, info) => cb(info);
+      ipcRenderer.on('update-available', handler);
+      return () => ipcRenderer.removeListener('update-available', handler);
+    },
+    onProgress: (cb) => {
+      const handler = (_event, p) => cb(p);
+      ipcRenderer.on('update-download-progress', handler);
+      return () => ipcRenderer.removeListener('update-download-progress', handler);
+    },
+    onDownloaded: (cb) => {
+      const handler = () => cb();
+      ipcRenderer.on('update-downloaded', handler);
+      return () => ipcRenderer.removeListener('update-downloaded', handler);
+    },
+  },
 });

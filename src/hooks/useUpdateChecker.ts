@@ -64,8 +64,8 @@ export function useUpdateChecker(channel: UpdateChannel): UpdateChecker {
 
   const download = useCallback(() => {
     dispatch({ type: 'DOWNLOAD_START' });
-    void window.formamorphDesktop?.update?.download({ version: state.latestVersion });
-  }, [state.latestVersion]);
+    void window.formamorphDesktop?.update?.download({ version: state.latestVersion, channel });
+  }, [state.latestVersion, channel]);
 
   const applyAndRestart = useCallback(() => {
     void window.formamorphDesktop?.update?.apply();

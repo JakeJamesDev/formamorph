@@ -101,8 +101,8 @@ declare global {
       update?: {
         /** Ask the main process to (re)check — used by the Linux electron-updater path. */
         check: () => Promise<void>;
-        /** Start the platform download/apply for the given target release. */
-        download: (opts: { version?: string }) => Promise<void>;
+        /** Start the platform download for the given target release (channel drives the Linux updater). */
+        download: (opts: { version?: string; channel?: 'stable' | 'prerelease' }) => Promise<void>;
         /** Apply a downloaded update and relaunch (Windows launcher swap / Linux quitAndInstall). */
         apply: () => Promise<void>;
         /** An update became available (main-detected, e.g. electron-updater); returns an unsubscribe fn. */
