@@ -86,7 +86,7 @@ import { normalizeStatChanges, applyAiStatChanges, applyTraitStatChanges, parseS
 import { resolvePromptSampler } from "../lib/promptSamplers";
 import { downloadBlob } from "../lib/downloadBlob";
 import { matchLocationResponse } from "../lib/locationMatch";
-import { rollbackState, regenerateState, canRegenerate, lastTurnAction, markRegeneratedTurn, markPrunedTurns, snapshotPageIndex, placeSnapshot, sliceHistoryToPage } from "../lib/turnHistory";
+import { rollbackState, regenerateState, canRegenerate, lastTurnAction, markRegeneratedTurn, markPrunedTurns, snapshotPageIndex, placeSnapshot, sliceHistoryToPage, pageAssistantIndex } from "../lib/turnHistory";
 import { useDeferredSnapshot } from "../lib/useDeferredSnapshot";
 import { statMorphMap } from "../lib/bodyMorphs";
 import { getActivatedDictionary, buildDictionaryContext, parseKeywords } from "../lib/dictionaryUtils";
@@ -306,7 +306,7 @@ const GameViewer = ({
     setFullMessageHistory,
     setDisplayedMessages,
     currentPage,
-    setCurrentPage,
+    setUserPage,
     totalPages,
     isViewingPast,
     viewStats,
@@ -568,9 +568,10 @@ const GameViewer = ({
     const success = loadGameState(targetState, locations, { keepLiveHistory: true });
     if (!success) return;
     setFullMessageHistory(sliceHistoryToPage(fullMessageHistory, currentPage, messagesPerPage));
+    setUserPage(null); // the rolled-back turn is now the latest — resume following it
     // Seed the live notes scratchpad from the rolled-back turn's own notes (per-turn notes live on the
     // message, and keepLiveHistory skips the snapshot's notes) so a later re-generate/action uses them.
-    setPlayerNotes(parseTurnContent(fullMessageHistory[currentPage * messagesPerPage - 1]?.content ?? '')?.notes ?? '');
+    setPlayerNotes(parseTurnContent(fullMessageHistory[pageAssistantIndex(currentPage, messagesPerPage)]?.content ?? '')?.notes ?? '');
     addLogEntry("Rolled back to previous game state");
     // Mark the AI-context entries for the turns this rollback discarded (those after the page we
     // rolled back to). States after the current page are kept, allowing future "redo" functionality.
@@ -640,7 +641,7 @@ const GameViewer = ({
     setFullMessageHistory(sliceHistoryToPage(fullMessageHistory, currentPage - 1, messagesPerPage));
     // Carry the re-rolled turn's own notes onto the fresh turn (per-turn notes live on the message; the live
     // scratchpad still holds the pre-rollback latest turn's notes, which would otherwise be frozen in).
-    setPlayerNotes(parseTurnContent(fullMessageHistory[currentPage * messagesPerPage - 1]?.content ?? '')?.notes ?? '');
+    setPlayerNotes(parseTurnContent(fullMessageHistory[pageAssistantIndex(currentPage, messagesPerPage)]?.content ?? '')?.notes ?? '');
     // Mark the current turn's AI-context entry as superseded; sendGameAction appends a fresh one.
     setDebugTurns((prev) => markRegeneratedTurn(prev));
     pendingRegenerateRef.current = action;
@@ -975,6 +976,7 @@ const GameViewer = ({
 
   const sendGameAction = async (action: string) => {
     if (!isGameStarted && action !== "START GAME") return;
+    setUserPage(null); // taking an action resumes following, so the player sees their new turn land
     stopCommandPreview(); // a real turn supersedes any command preview
     // On the opening turn, snapshot the pre-game state so page 1 can be re-generated later.
     if (fullMessageHistory.length === 0) initialStateRef.current = saveCurrentGameState();
@@ -1510,11 +1512,6 @@ ${playerNotes || NONE_PLACEHOLDER}
     setDisplayedMessages(fullMessageHistory.slice(startIndex, endIndex));
   }, [fullMessageHistory, currentPage, setDisplayedMessages]);
 
-  useEffect(() => {
-    // Move to the last page whenever we receive new AI game text
-    setCurrentPage(Math.ceil(fullMessageHistory.length / messagesPerPage));
-  }, [fullMessageHistory.length, messagesPerPage, setCurrentPage]);
-
   // Fires the re-send half of a re-generate, once the restored pre-turn state has committed.
   useEffect(() => {
     if (regenerateNonce === 0) return;
@@ -1526,7 +1523,8 @@ ${playerNotes || NONE_PLACEHOLDER}
   }, [regenerateNonce]);
 
   const handlePageChange = (page: number) => {
-    setCurrentPage(page);
+    // Paging to the latest page resumes following (null); paging back pins that page.
+    setUserPage(page >= totalPages ? null : page);
   };
 
   // Latest committed stats, so off-render derivations (below) don't rely on a stale closure.
@@ -1596,7 +1594,25 @@ ${playerNotes || NONE_PLACEHOLDER}
       try {
         // processStatCode is typed over Stat[]; playerStats is the narrower PlayerStat[] (value: number).
         const coded = await processStatCode(directApplied);
-        if (coded !== directApplied) setPlayerStats(coded as typeof playerStats);
+        const codedStats = coded as typeof playerStats;
+        const codeChanges = appliedStatDeltas(directApplied, codedStats);
+        if (Object.keys(codeChanges).length > 0) {
+          // Override only the stats the code actually moved, onto the LATEST stats — not a blanket
+          // `setPlayerStats(coded)`, whose `coded` is computed from the pre-`await` baseline and would clobber
+          // anything applied in the meantime (this turn's regen, or a re-generate that landed during the await).
+          const codedById = new Map(codedStats.map((s) => [s.id, s.value]));
+          setPlayerStats((prev) =>
+            prev.map((s) =>
+              codeChanges[s.name.toLowerCase()] !== undefined && codedById.has(s.id)
+                ? { ...s, value: codedById.get(s.id) as number }
+                : s,
+            ),
+          );
+          // Fold the code-derived movement into the live delta feedback, so a code stat's bar/text animates
+          // live — matching the history view (pageStatDeltas diffs the final, post-code snapshot).
+          setRecentStatChanges((prev) => normalizeStatChanges([prev, codeChanges]));
+          setHeldStatChanges((prev) => normalizeStatChanges([prev, codeChanges]));
+        }
       } catch (error) {
         console.error("Error processing stat code after changes:", error);
       }
@@ -2155,12 +2171,6 @@ ${playerNotes || NONE_PLACEHOLDER}
     [setCurrentLocation],
   );
 
-  useEffect(() => {
-    setPlayerStats(
-      stats.map((stat) => ({ ...stat, value: (stat.value as number) || stat.min || 0 })),
-    );
-  }, [stats, setPlayerStats]);
-
   const isInitialized = useRef(false);
 
   useEffect(() => {
@@ -2173,6 +2183,17 @@ ${playerNotes || NONE_PLACEHOLDER}
         void loadGame(initialSaveId, locations);
         return;
       }
+
+      // New game: seed the live stats from the world defaults, recording each stat's game-start baseline
+      // (`starting`) so the opening turn's deltas read from the world value, not 0/min. Seeding lives here —
+      // not in a reactive effect on `stats` — so it runs exactly once for a fresh game and can never race
+      // with / clobber a loaded save (which returns above).
+      setPlayerStats(
+        stats.map((stat) => {
+          const value = (stat.value as number) || stat.min || 0;
+          return { ...stat, value, starting: stat.starting ?? value };
+        }),
+      );
 
       initialTraits.forEach((traitId) => {
         const trait = traits.find((t) => t.id === traitId);
@@ -2210,6 +2231,8 @@ ${playerNotes || NONE_PLACEHOLDER}
     dictionaries,
     traits,
     locations,
+    stats,
+    setPlayerStats,
     applyTrait,
     changeLocation,
     addLogEntry,

@@ -42,6 +42,18 @@ export function snapshotPageIndex(historyLength: number, messagesPerPage: number
   return Math.ceil(historyLength / messagesPerPage) - 1;
 }
 
+/** Index of a page's assistant (narration) message in the flat history — the 2nd of the turn's two
+ *  messages. Centralizes the `page * messagesPerPage - 1` math the view/rollback/regenerate paths all need. */
+export function pageAssistantIndex(page: number, messagesPerPage: number): number {
+  return page * messagesPerPage - 1;
+}
+
+/** Index of the user message that follows a page's turn (the next turn's action) — used to infer which
+ *  choice the player took. `page * messagesPerPage`. */
+export function pageNextActionIndex(page: number, messagesPerPage: number): number {
+  return page * messagesPerPage;
+}
+
 /** The flat message history trimmed to the first `page` turns (`page * messagesPerPage` messages). Rollback
  *  and re-generate rewind to a target page by slicing the *live* history — which carries the player's
  *  narration edits — rather than re-injecting a snapshot's frozen (pre-edit) copy. `page <= 0` yields `[]`. */

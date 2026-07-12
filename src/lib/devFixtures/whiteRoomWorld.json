@@ -19,7 +19,8 @@
       "max": 10,
       "starting": 0,
       "regen": 0,
-      "descriptors": []
+      "descriptors": [],
+      "value": 3
     },
     {
       "id": "stat-coin",
@@ -30,7 +31,8 @@
       "max": 100,
       "starting": 0,
       "regen": 0,
-      "descriptors": []
+      "descriptors": [],
+      "value": 25
     }
   ],
   "locations": [
