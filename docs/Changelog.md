@@ -2,7 +2,7 @@
 
 All notable changes to Formamorph. This fork's first line is **2.0.0** — a full TypeScript rebuild of the upstream JavaScript app ([FieryLionite's Formamorph](https://fierylion.itch.io/formamorph), ~v1.2) — with feature parity as the baseline plus new features on top.
 
-> ✅ **2.0.0 – 2.1.0 are released** (collapsed below). New work lands under **🚧 In Progress** — an unnumbered section, so changes accumulate without pinning a version. When a batch earns a release its section is marked **Released** and collapsed, and a fresh In Progress opens. `package.json` reads **2.1.0**, the latest released version.
+> ✅ **2.0.0 – 2.2.0 are released** (collapsed below). New work lands under **🚧 In Progress** — an unnumbered section, so changes accumulate without pinning a version. When a batch earns a release its section is marked **Released** and collapsed, and a fresh In Progress opens. `package.json` reads **2.2.0**, the latest released version.
 
 Each release groups changes as **Major** / **Minor**, then **Added** / **Removed** / **Fixed**, and within those by audience: 👤 user-facing · 🛠️ developer tooling · ⚙️ backend / invisible.
 
@@ -11,6 +11,13 @@ Each release groups changes as **Major** / **Minor**, then **Added** / **Removed
 ## 🚧 In Progress
 
 _Unreleased — new work accumulates here until it earns a version bump._
+
+_Nothing yet._
+
+---
+
+<details>
+<summary><strong>✅ 2.2.0 — Released</strong> — the desktop app self-updates, paging back shows a whole past turn (stats, scene, and choices travel back with the story text), entity groups, stacked choices, and a batch of drag-and-drop, scrollbar, stat-bar, and theming polish (click to expand)</summary>
 
 ### Major Changes
 
@@ -68,6 +75,8 @@ _Unreleased — new work accumulates here until it earns a version bump._
   - **Player Notes are now per-turn — each turn keeps its own notes as you page back.** Notes used to be one shared box for the whole game; paging to an earlier turn still showed (and edited) that single global note. Now every turn carries the notes it had, so flipping back shows that turn's notes and you can edit them there without touching any other turn. On the current turn the box works exactly as before (a running scratchpad the AI sees), and Re-generate carries your notes onto the fresh turn. Old saves still load — a turn with no saved per-turn note falls back to the save's previous global note.
   - **Save files no longer store the chat history N times over (storage cleanup + migration).** Each per-turn snapshot (`currentState` + every `stateHistory` entry) embedded its own copy of the whole flat message history — O(N²) growth on disk. The envelope now carries **one** canonical top-level `messageHistory`; snapshots are stripped of their `fullMessageHistory` copies (`stripSnapshotHistory`, `version.ts`), and `saveGame` writes the new shape. Loading reconstitutes the live current state from the canonical history, so narration/rollback are unchanged. **Save-file shape change** with a **presence-based migration** in the shared `migrateSave` path (import + load): any old save — legacy numeric `version: 2` **or** a string-version save written before this change — has its history hoisted and copies stripped on load, idempotently; old saves still load. The import boundary now runs `migrateSave` for every envelope (not just numeric-legacy). Unit-tested (`saveCompat.test.ts`: hoist + strip on legacy and string-version saves, idempotency, canonical-history correctness); preview-verified the `whiteRoom` fixture (an old-shape save) still loads all 8 turns through the migration with the live history intact.
   - **Shared, non-reflowing page footer (`Pager`).** Three pagers — game turns, the AI-context debug viewer, and the community browser — each carried their own copy of the same item loop (first, last, ±1 window, ellipsis gaps), so the centered strip's width, and thus Previous/Next, shifted while flipping. Extracted one `Pager` component (`components/ui/pagination.tsx`) over a pure `paginationSlots(currentPage, totalPages)` (`pagination.ts`) that returns a **constant** number of cells (`min(totalPages, 7)`), padding short/near-edge layouts with invisible spacers; every cell is normalized to the same width (links `w-10`, spacers `h-10 w-10`, ellipsis overridden to `w-10`). Constant count × equal width ⇒ invariant strip ⇒ the buttons never reflow. All three call sites now render `<Pager page pageCount onPageChange />` — the three duplicate loops (~60 lines) are gone. For near-edge layouts the spacers are **distributed**, not tail-padded: low pages left, high pages right-anchored. `Pager` coalesces each contiguous spacer+ellipsis run into one flex cell (width = the cells it replaces, incl. inter-cell gaps, so the strip width is unchanged) with the ellipsis centered — so a lone ellipsis sits dead-center of the gap even when the groups are lopsided (`1 2 3 4  …  8`), not jammed against a cluster. The active page uses the filled `default` button variant (was the near-invisible `outline`). Pure logic unit-tested (`pagination.test.ts`); the DEV `whiteRoom` fixture extended to 8 turns to exercise it — preview-measured: ellipsis 0px off gap-center, Previous/Next pixel-identical across pages, active page `bg-primary`.
+
+</details>
 
 ---
 
