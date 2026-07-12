@@ -32,6 +32,7 @@ export interface StoredWorldRecord {
     stats: unknown[];
     locations: unknown[];
     entities: unknown[];
+    entityGroups?: unknown[];
     traits: unknown[];
     traitGroups?: unknown[];
     statUpdates: unknown[];
@@ -260,6 +261,7 @@ class WorldStorageService {
                 stats: worldData.stats || [],
                 locations: worldData.locations || [],
                 entities: worldData.entities || [],
+                entityGroups: worldData.entityGroups || [],
                 traits: worldData.traits || [],
                 traitGroups: worldData.traitGroups || [],
                 statUpdates: worldData.statUpdates || []

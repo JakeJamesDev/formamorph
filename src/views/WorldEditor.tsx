@@ -20,6 +20,7 @@ import EntityManager from '../managers/EntityManager';
 import LocationManager from '../managers/LocationManager';
 import TraitManager from '../managers/TraitManager';
 import GroupManager from '../managers/GroupManager';
+import EntityGroupManager from '../managers/EntityGroupManager';
 import TraitTree from '../managers/TraitTree';
 import LocationTree from '../managers/LocationTree';
 import EntityTree from '../managers/EntityTree';
@@ -157,9 +158,9 @@ const WorldEditor = ({ onClose, embedded = false, backButton }: {
   const {
     worldOverview, updateWorldOverview, worldId,
     loadWorldData,
-    stats, locations, entities, traits, traitGroups, statUpdates, dictionaries,
+    stats, locations, entities, entityGroups, traits, traitGroups, statUpdates, dictionaries,
     addStat, addLocation, addEntity, addTrait, addStatUpdate, addDictionary,
-    addTraitGroup,
+    addTraitGroup, addEntityGroup,
     removeStat, removeEntity, removeTrait, removeStatUpdate,
     setStats, setLocations, setEntities, setTraits, setTraitGroups, setStatUpdates,
     isWorldDirty, saveWorld: saveWorldCtx
@@ -276,6 +277,8 @@ const WorldEditor = ({ onClose, embedded = false, backButton }: {
           aiDescription: '',
           aiSummary: '',
           type: '',
+          groupId: null,
+          order: entityRootSiblingCount(),
         });
       } else if (activeTab === "locations") {
         addLocation({
@@ -344,6 +347,18 @@ const WorldEditor = ({ onClose, embedded = false, backButton }: {
     setSelectedItemId(id);
   };
 
+  // New entity groups append at the root; the author drags entities into them. Order = root sibling count.
+  const entityRootSiblingCount = () =>
+    entities.filter(e => (e.groupId ?? null) === null).length +
+    entityGroups.filter(g => (g.parentId ?? null) === null).length;
+
+  const handleAddEntityGroup = () => {
+    const id = crypto.randomUUID();
+    addEntityGroup({ id, name: searchTerm.trim() || 'New Group', parentId: null, order: entityRootSiblingCount() });
+    setSearchTerm('');
+    setSelectedItemId(id);
+  };
+
   const filteredItems = useMemo(() => {
     const itemsToFilter =
       activeTab === "stats" ? stats :
@@ -361,6 +376,8 @@ const WorldEditor = ({ onClose, embedded = false, backButton }: {
   // Traits tab can select either a trait or a group (the right panel branches on which).
   const selectedTrait = traits.find(t => t.id === selectedItemId);
   const selectedGroup = traitGroups.find(g => g.id === selectedItemId);
+  const selectedEntity = entities.find(e => e.id === selectedItemId);
+  const selectedEntityGroup = entityGroups.find(g => g.id === selectedItemId);
   // Dictionary tab: selection is either a book or one of its entries (the right panel branches on which).
   const selectedBook = dictionaries.find(b => b.id === selectedItemId);
   const selectedEntry = dictionaries.flatMap(b => b.entries).find(e => e.id === selectedItemId);
@@ -535,7 +552,7 @@ const WorldEditor = ({ onClose, embedded = false, backButton }: {
                       </TabsList>
                     {activeTab !== "overview" && (
                       <div className="flex space-x-2 flex-shrink-0 mt-4">
-                        {activeTab === "traits" ? (
+                        {activeTab === "traits" || activeTab === "entities" ? (
                           <Popover>
                             <PopoverTrigger asChild>
                               <Button size="icon">
@@ -546,16 +563,16 @@ const WorldEditor = ({ onClose, embedded = false, backButton }: {
                               <button
                                 type="button"
                                 className="flex w-full items-center gap-2 rounded-sm px-2 py-1.5 text-sm hover:bg-accent"
-                                onClick={handleAddGroup}
+                                onClick={activeTab === "entities" ? handleAddEntityGroup : handleAddGroup}
                               >
                                 <FolderPlus className="h-4 w-4" /> Add Group
                               </button>
                               <button
                                 type="button"
                                 className="flex w-full items-center gap-2 rounded-sm px-2 py-1.5 text-sm hover:bg-accent"
-                                onClick={handleAddTrait}
+                                onClick={activeTab === "entities" ? addItem : handleAddTrait}
                               >
-                                <FilePlus className="h-4 w-4" /> Add Trait
+                                <FilePlus className="h-4 w-4" /> {activeTab === "entities" ? "Add Entity" : "Add Trait"}
                               </button>
                             </PopoverContent>
                           </Popover>
@@ -661,8 +678,11 @@ const WorldEditor = ({ onClose, embedded = false, backButton }: {
                     {activeTab === "stats" && selectedItem && (
                       <StatManager key={selectedItem.id} stat={selectedItem as Stat} />
                     )}
-                    {activeTab === "entities" && selectedItem && (
-                      <EntityManager key={selectedItem.id} entity={selectedItem as Entity} />
+                    {activeTab === "entities" && selectedEntityGroup && (
+                      <EntityGroupManager key={selectedEntityGroup.id} group={selectedEntityGroup} />
+                    )}
+                    {activeTab === "entities" && !selectedEntityGroup && selectedEntity && (
+                      <EntityManager key={selectedEntity.id} entity={selectedEntity} />
                     )}
                     {activeTab === "locations" && selectedItem && (
                       <LocationManager key={selectedItem.id} location={selectedItem as GameLocation} />
@@ -704,7 +724,13 @@ const WorldEditor = ({ onClose, embedded = false, backButton }: {
       <AddEntityModal
         open={showAddEntity}
         onOpenChange={setShowAddEntity}
-        onAdd={(entity) => { addEntity(entity); setSelectedItemId(entity.id); }}
+        // Imported/card entities land ungrouped at the root (a card carries no group; a stale groupId would
+        // otherwise hide the entity under a folder that doesn't exist here).
+        onAdd={(entity) => {
+          const placed = { ...entity, groupId: null, order: entityRootSiblingCount() };
+          addEntity(placed);
+          setSelectedItemId(placed.id);
+        }}
       />
     </div>
   );
