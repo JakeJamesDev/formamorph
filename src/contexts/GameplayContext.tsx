@@ -6,7 +6,7 @@ import { useTtsPlayback } from '../lib/useTtsPlayback';
 import { APP_VERSION, isSaveEnvelope, migrateSave, stripSnapshotHistory } from '../lib/version';
 import { flattenEnabledBookEntries } from '../lib/dictionaryUtils';
 import { getGameplayText, setGameplayText } from '../lib/gameplayTextStore';
-import { parseTurnContent } from '../lib/turnDigest';
+import { parseTurnContent, serializeTurnContent } from '../lib/turnDigest';
 import { matchChoiceToAction } from '../lib/choices';
 import { pageStatDeltas } from '../lib/statChanges';
 import type {
@@ -378,6 +378,26 @@ function useProvideGameplay() {
   const viewStatChanges: Record<string, number> = viewedSnapshot
     ? pageStatDeltas(viewStats, gameStates[currentPage - 2]?.playerStats)
     : recentStatChanges;
+  // Per-turn player notes: on the current page the live scratchpad; on a past page that turn's frozen notes
+  // (from its assistant message), falling back to the snapshot's global notes for pre-per-turn-notes saves.
+  const viewNotes = viewedSnapshot
+    ? (parseTurnContent(fullMessageHistory[currentPage * messagesPerPage - 1]?.content ?? '')?.notes
+        ?? viewedSnapshot.playerNotes ?? '')
+    : playerNotes;
+  // Route a notes edit to the right place: the live scratchpad on the current page, else patch the viewed
+  // turn's assistant message so the edit sticks to that turn only.
+  const setViewNotes = useCallback((text: string) => {
+    if (currentPage >= totalPages) { setPlayerNotes(text); return; }
+    const idx = currentPage * messagesPerPage - 1;
+    setFullMessageHistory((prev) => {
+      const msg = prev[idx];
+      if (!msg || msg.role !== 'assistant') return prev;
+      const parsed = parseTurnContent(msg.content) ?? { narration: '', choices: [], stat_changes: [] };
+      const next = [...prev];
+      next[idx] = { ...msg, content: serializeTurnContent({ ...parsed, notes: text }) };
+      return next;
+    });
+  }, [currentPage, totalPages, messagesPerPage]);
 
   const value = {
     characterData,
@@ -446,6 +466,8 @@ function useProvideGameplay() {
     viewChoices,
     viewSelectedChoice,
     viewStatChanges,
+    viewNotes,
+    setViewNotes,
     gameStates,
     setGameStates,
     playerNotes,

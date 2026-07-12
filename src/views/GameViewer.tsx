@@ -315,6 +315,7 @@ const GameViewer = ({
     setGameStates,
     setBodyMorphValues,
     playerNotes,
+    setPlayerNotes,
     saveGame,
     loadGame,
     saveCurrentGameState,
@@ -567,6 +568,9 @@ const GameViewer = ({
     const success = loadGameState(targetState, locations, { keepLiveHistory: true });
     if (!success) return;
     setFullMessageHistory(sliceHistoryToPage(fullMessageHistory, currentPage, messagesPerPage));
+    // Seed the live notes scratchpad from the rolled-back turn's own notes (per-turn notes live on the
+    // message, and keepLiveHistory skips the snapshot's notes) so a later re-generate/action uses them.
+    setPlayerNotes(parseTurnContent(fullMessageHistory[currentPage * messagesPerPage - 1]?.content ?? '')?.notes ?? '');
     addLogEntry("Rolled back to previous game state");
     // Mark the AI-context entries for the turns this rollback discarded (those after the page we
     // rolled back to). States after the current page are kept, allowing future "redo" functionality.
@@ -634,6 +638,9 @@ const GameViewer = ({
     // rewinding the flat history to just before the turn being re-rolled. The re-send appends a fresh turn.
     loadGameState(previousState, locations, { keepLiveHistory: true });
     setFullMessageHistory(sliceHistoryToPage(fullMessageHistory, currentPage - 1, messagesPerPage));
+    // Carry the re-rolled turn's own notes onto the fresh turn (per-turn notes live on the message; the live
+    // scratchpad still holds the pre-rollback latest turn's notes, which would otherwise be frozen in).
+    setPlayerNotes(parseTurnContent(fullMessageHistory[currentPage * messagesPerPage - 1]?.content ?? '')?.notes ?? '');
     // Mark the current turn's AI-context entry as superseded; sendGameAction appends a fresh one.
     setDebugTurns((prev) => markRegeneratedTurn(prev));
     pendingRegenerateRef.current = action;
@@ -1421,6 +1428,9 @@ ${playerNotes || NONE_PLACEHOLDER}
               turnId: currentTurnIdRef.current,
               entities: turnParticipants,
               locationId: turnLocation?.id,
+              // Freeze this turn's player notes (additive save-shape). Omitted when empty — the view falls
+              // back to the snapshot's global notes, so a blank turn doesn't bloat the JSON.
+              ...(playerNotes ? { notes: playerNotes } : {}),
               // Per-turn reasoning (additive save-shape). Absent when the model didn't reason.
               ...(turnReasoningRef.current.text ? { reasoning: turnReasoningRef.current } : {}),
             }),
