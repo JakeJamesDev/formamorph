@@ -10,6 +10,8 @@ import { clearTurnDerived } from '@/lib/turnDigest';
 import { usePlayerModelUrl } from '@/lib/usePlayerModelUrl';
 import { mergeBodyMorphs } from '@/lib/bodyMorphs';
 import { useIsMobile } from '@/lib/useIsMobile';
+import { usePrefersReducedMotion } from '@/lib/usePrefersReducedMotion';
+import { statBarFrame, bandOrigin } from '@/lib/statBar';
 import { MarkdownRenderer } from './MarkdownRenderer';
 import { ReasoningBlock } from './ReasoningBlock';
 import { useLiveReasoning } from '@/lib/reasoningStreamStore';
@@ -759,51 +761,44 @@ export const MiddlePanel = ({
 };
 
 /**
- * A stat bar with persistent +/- delta coloring. The primary fill always transitions to the true current
- * value; a colored band (`bg-success` gain / `bg-destructive` loss) is painted over the previous→current
- * region on top. On a change the band grows outward from the previous value (`stat-delta-grow`); at the
- * start of the next action last turn's band drains back toward the current value (`stat-delta-drain`),
- * leaving a clean bar. `delta` is the live held change; `drainDelta` is a change collapsing away.
+ * A stat bar with an animated +/- change band. One shared mechanism covers every case (an AI-computed
+ * change, paging between turns, and a band draining on submit): the accent fill slides from the turn's
+ * previous value to its current value, and a colored band (`bg-success` gain / `bg-destructive` loss) is
+ * painted over the [prev, cur] region on top. `delta` is the signed change the band represents (`cur − prev`);
+ * `draining` collapses last turn's band back toward the current value on submit (accent unmoved), leaving a
+ * clean bar before the next turn grows. Geometry is the pure `statBarFrame`; under reduced-motion everything
+ * snaps to its final state (no slide/grow, no drain band). `animKey` re-triggers the animation when the
+ * value+delta coincide between turns (e.g. scrolling between two past turns) — pass the page number.
  */
-const StatBar = ({ value, min, max, delta, drainDelta, animKey }: {
-  value: number; min: number; max: number; delta: number; drainDelta: number;
-  // Extra key input so the grow/drain band re-animates when it changes even if value+delta coincide
-  // (e.g. scrolling between two past turns) — pass the page number while reviewing history.
+const StatBar = ({ value, min, max, delta, draining, animKey }: {
+  value: number; min: number; max: number; delta: number; draining: boolean;
   animKey?: string | number;
 }) => {
-  // A live held delta takes precedence over a draining one (covers a fast turn that lands mid-drain).
-  const draining = delta === 0 && drainDelta !== 0;
-  const d = delta !== 0 ? delta : drainDelta;
-  const pct = (v: number) => Math.max(0, Math.min(100, ((v - min) / (max - min)) * 100));
-  const curPct = pct(value);
-  const prevPct = pct(value - d);
-  const basePct = Math.min(curPct, prevPct);
-  const hiPct = Math.max(curPct, prevPct);
-  const hasBand = d !== 0 && hiPct - basePct > 0.01;
-  // While reviewing history (animKey set), slide the fill from this turn's *previous* value to its value via
-  // a keyed CSS-var animation, so it starts from the right origin no matter which page you scrolled from.
-  // Live, keep the plain width transition (you always arrive from the previous turn, so it's already right).
-  const reviewing = animKey !== undefined;
+  const reduce = usePrefersReducedMotion();
+  // The band always spans the turn's previous value (`value − delta`) to its current value, whether it's
+  // growing in or draining away; only the animation and the accent's motion differ.
+  const frame = statBarFrame(value - delta, value, min, max);
+  const key = `${value}-${delta}-${animKey ?? ''}`;
   return (
     <div className="relative h-4 w-full overflow-hidden rounded-full bg-secondary">
       <div
-        key={reviewing ? `fill-${value}-${d}-${animKey}` : undefined}
-        className={`absolute inset-y-0 left-0 bg-primary ${reviewing ? 'stat-fill-slide' : ''}`}
-        style={
-          reviewing
-            ? ({ width: `${curPct}%`, ['--fill-from']: `${prevPct}%`, ['--fill-to']: `${curPct}%` } as React.CSSProperties)
-            : { width: `${curPct}%`, transition: 'width 500ms cubic-bezier(0.16, 1, 0.3, 1)' }
-        }
+        // Accent slides prev→cur on a grow; on a drain the value is unchanged so it holds at its width.
+        key={`fill-${key}`}
+        className={`absolute inset-y-0 left-0 bg-primary ${!reduce && !draining ? 'stat-fill-slide' : ''}`}
+        style={{
+          width: `${frame.curPct}%`,
+          ['--fill-from']: `${frame.prevPct}%`,
+          ['--fill-to']: `${frame.curPct}%`,
+        } as React.CSSProperties}
       />
-      {hasBand && (
+      {frame.hasBand && !(reduce && draining) && (
         <div
-          key={`${draining ? 'drain' : 'grow'}-${value}-${d}-${animKey ?? ''}`}
-          className={`${draining ? 'stat-delta-drain' : 'stat-delta-grow'} absolute inset-y-0 ${d > 0 ? 'bg-success' : 'bg-destructive'}`}
+          key={`${draining ? 'drain' : 'grow'}-${key}`}
+          className={`${reduce ? '' : draining ? 'stat-delta-drain' : 'stat-delta-grow'} absolute inset-y-0 ${frame.gain ? 'bg-success' : 'bg-destructive'}`}
           style={{
-            left: `${basePct}%`,
-            width: `${hiPct - basePct}%`,
-            // Grow spreads out from the previous value; drain collapses back toward the current value.
-            transformOrigin: draining ? (d > 0 ? 'right' : 'left') : (d > 0 ? 'left' : 'right'),
+            left: `${frame.bandLeftPct}%`,
+            width: `${frame.bandWidthPct}%`,
+            transformOrigin: bandOrigin(frame.gain, draining),
           }}
         />
       )}
@@ -910,8 +905,14 @@ export const RightPanel = ({ onLocationClick, language, setLanguage }: {
                     max={stat.max}
                     // While reviewing a past turn, show that turn's change as a persistent, animate-in band
                     // (green/red grow); live, use the transient held/draining deltas.
-                    delta={isViewingPast ? change : (heldStatChanges[stat.name.toLowerCase()] || 0)}
-                    drainDelta={isViewingPast ? 0 : (drainingStatChanges[stat.name.toLowerCase()] || 0)}
+                    // Live: a held change grows, else a draining change collapses. History: the turn's change
+                    // grows in (never drains). Both feed the same (value − delta → value) geometry.
+                    delta={isViewingPast
+                      ? change
+                      : (heldStatChanges[stat.name.toLowerCase()] || drainingStatChanges[stat.name.toLowerCase()] || 0)}
+                    draining={!isViewingPast
+                      && !heldStatChanges[stat.name.toLowerCase()]
+                      && !!drainingStatChanges[stat.name.toLowerCase()]}
                     animKey={isViewingPast ? currentPage : undefined}
                   />
                 )}
