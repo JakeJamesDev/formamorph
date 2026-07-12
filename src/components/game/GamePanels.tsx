@@ -478,6 +478,11 @@ export const MiddlePanel = ({
             )}
             {displayedMessages.map((message, index) => {
               const isLatestMessage = index === displayedMessages.length - 1;
+              // The live stream (narration + reasoning) belongs only to the current turn on the latest page.
+              // While viewing history, generation keeps running in the background but this page shows the
+              // paged turn's committed text — the stream must not bleed onto it (`isLatestMessage` alone is
+              // page-local, so a past page's last message would otherwise pick up the live reveal).
+              const showLiveReveal = !isViewingPast && isLatestMessage && isRevealingNarration;
               return (
                 <div key={index} className={`mb-2 ${message.role === 'user' ? 'text-warning' : ''}`}>
                   <strong>{message.role === 'user' ? 'You:' : 'Event:'}</strong>
@@ -485,17 +490,17 @@ export const MiddlePanel = ({
                     <div className="whitespace-pre-wrap">{message.content}</div>
                   ) : (
                     <div ref={narrationRef} style={revealStyle}>
-                      {/* The turn's reasoning aside, above the narration: live for the streaming latest turn,
-                          otherwise this turn's saved scratchpad. */}
+                      {/* The turn's reasoning aside, above the narration: live for the streaming latest turn
+                          on the current page, otherwise this turn's saved scratchpad. */}
                       {showReasoning && (() => {
-                        const useLive = isLatestMessage && !!liveReasoning.text;
+                        const useLive = !isViewingPast && isLatestMessage && !!liveReasoning.text;
                         const r = useLive ? liveReasoning : parseSavedReasoning(message.content);
                         return r?.text ? <ReasoningBlock text={r.text} ms={r.ms} active={useLive && liveReasoning.active} /> : null;
                       })()}
-                      {/* Show the live reveal only while THIS turn's narration is actually streaming;
-                          during setup/thinking (or after) show the committed text, so stale last-turn
-                          text can't animate all at once (the re-generate flash). */}
-                      <MarkdownRenderer text={isLatestMessage && isRevealingNarration ? gameplayText : parseAssistantMessage(message.content)} animate={isLatestMessage && isRevealingNarration && revealOn} animation={revealAnim} easing={revealEasing} />
+                      {/* Show the live reveal only while THIS turn's narration is actually streaming and we're
+                          on the current page; during setup/thinking (or after), or while viewing history, show
+                          the committed text so stale/other-turn text can't animate all at once. */}
+                      <MarkdownRenderer text={showLiveReveal ? gameplayText : parseAssistantMessage(message.content)} animate={showLiveReveal && revealOn} animation={revealAnim} easing={revealEasing} />
                     </div>
                   )}
                 </div>
