@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { ScrollArea } from '@/components/ui/scroll-area';
 import { Row, ValueSlider, CheckRow } from '@/components/SettingsRows';
 import { useSettings } from '@/contexts/SettingsContext';
 import { useLocalLlmStatus } from '@/lib/useLocalLlmStatus';
@@ -77,7 +78,8 @@ export function LocalModelPanel() {
   return (
     <div className="flex min-h-0 flex-1 flex-col">
       {/* Settings scroll above a pinned footer — same shape as our other dialog footers. */}
-      <div className="grid min-h-0 flex-1 content-start gap-4 overflow-y-auto pb-4">
+      <ScrollArea className="min-h-0 flex-1">
+      <div className="grid content-start gap-4 pb-4">
       {/* Detail-level toggle: Advanced reveals the extra rows below the always-visible simple ones. */}
       <Tabs value={advancedMode ? 'advanced' : 'simple'} onValueChange={(v) => setAdvancedMode(v === 'advanced')} className="flex justify-center">
         <TabsList className="h-auto">
@@ -161,6 +163,7 @@ export function LocalModelPanel() {
       )}
 
       </div>
+      </ScrollArea>
 
       {/* Pinned footer — a shrink-0 flex sibling outside the scroll area (no separator), matching the
           community browser's paginated footer pattern. */}

@@ -10,6 +10,7 @@ import {
 } from "lucide-react";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Pager } from "@/components/ui/pagination";
+import { ScrollArea } from "@/components/ui/scroll-area";
 import { TokenAutocomplete } from "@/components/TokenAutocomplete";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { cn } from "@/lib/utils";
@@ -253,9 +254,9 @@ const CommunityCreationsBrowser = ({ open, onOpenChange, worlds, setWorlds, isAu
           </div>
 
           {/* Scrollable results */}
-          <div className="flex-1 min-h-0 overflow-y-auto px-6 py-4">
+          <ScrollArea className="flex-1 min-h-0">
             {/* World grid */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4 px-6 py-4">
               {isLoadingRemoteWorlds ? (
                 Array(4).fill(0).map((_, index) => (
                   <div key={index} className="relative w-full h-48 rounded-lg overflow-hidden">
@@ -293,8 +294,7 @@ const CommunityCreationsBrowser = ({ open, onOpenChange, worlds, setWorlds, isAu
                 })
               )}
             </div>
-
-          </div>
+          </ScrollArea>
 
           {/* Frozen footer: pagination */}
           <div className="shrink-0 border-t px-6 py-3">

@@ -87,7 +87,8 @@ export function EditableChip({ value, onCommit, onRemove, sortable = false, getS
       onRemove={onRemove}
       innerRef={sortable ? setNodeRef : undefined}
       style={sortable ? {
-        transform: CSS.Transform.toString(transform),
+        // Translate (not Transform): Transform bakes in a scale that resizes the dragged chip to the target.
+        transform: CSS.Translate.toString(transform),
         transition,
         opacity: isDragging ? 0.5 : 1,
         zIndex: isDragging ? 1 : undefined,

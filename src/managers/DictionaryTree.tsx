@@ -29,7 +29,8 @@ function EntryRow({ entry, selected, onSelect, onToggleEnabled, onDuplicate, onR
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: entry.id });
   const faded = entry.enabled === false;
   const style = {
-    transform: CSS.Transform.toString(transform),
+    // Translate (not Transform): Transform bakes in a scale that resizes the dragged row to the target slot.
+    transform: CSS.Translate.toString(transform),
     transition,
     opacity: isDragging || faded ? 0.5 : 1,
     zIndex: isDragging ? 1 : undefined,
@@ -145,7 +146,8 @@ function BookRow({ book, collapsed, collapsedZones, selectedId, onToggleCollapse
   };
 }) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: book.id });
-  const style = { transform: CSS.Transform.toString(transform), transition, opacity: isDragging ? 0.5 : 1, zIndex: isDragging ? 1 : undefined };
+  // Translate (not Transform): Transform bakes in a scale that resizes the dragged row to the target slot.
+  const style = { transform: CSS.Translate.toString(transform), transition, opacity: isDragging ? 0.5 : 1, zIndex: isDragging ? 1 : undefined };
   const selected = selectedId === book.id;
   const faded = book.enabled === false;
   const before = book.entries.filter((e) => e.position === 'before');

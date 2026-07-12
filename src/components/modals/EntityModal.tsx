@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { ScrollArea } from "@/components/ui/scroll-area";
 import { Button } from "@/components/ui/button";
 import { ImageZoomViewer } from "@/components/ImageZoomViewer";
 import { getModelType } from '../../lib/UtilityComponents';
@@ -42,10 +43,11 @@ export const EntityModal = ({ entity, isOpen, onOpenChange }: {
               />
             </div>
           )}
-          {/* Plain scroll container so the content can sit vertically centered (my-auto) when short,
-              and still scroll from the top when long. */}
-          <div className="flex-1 min-h-0 overflow-y-auto flex flex-col">
-            <div className="my-auto flex flex-col gap-4 pr-3">
+          {/* Scroll area whose content sits vertically centered when short (min-h-full + justify-center)
+              and scrolls from the top when long. */}
+          <ScrollArea className="flex-1 min-h-0">
+            <div className="min-h-full flex flex-col justify-center">
+              <div className="flex flex-col gap-4">
               {entity.playerDescription?.trim() ? (
                 <p>{entity.playerDescription}</p>
               ) : (
@@ -67,8 +69,9 @@ export const EntityModal = ({ entity, isOpen, onOpenChange }: {
                   </DialogContent>
                 </Dialog>
               )}
+              </div>
             </div>
-          </div>
+          </ScrollArea>
         </div>
       </DialogContent>
     </Dialog>

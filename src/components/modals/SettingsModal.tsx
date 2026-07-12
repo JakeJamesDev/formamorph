@@ -17,6 +17,7 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { ScrollArea } from "@/components/ui/scroll-area";
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem, SelectSeparator } from "@/components/ui/select";
 import { Slider } from "@/components/ui/slider";
 import PromptField from '../prompt/PromptField';
@@ -593,8 +594,9 @@ export const SettingsModal = ({ isOpen, onOpenChange, previewValues, initialTab,
             ))}
           </TabsList>
 
-          <TabsContent value="presentation" className="py-4 px-2 flex-1 min-h-0 overflow-y-auto">
-            <div className="grid gap-4">
+          <TabsContent value="presentation" className="px-2 flex-1 min-h-0 data-[state=active]:flex flex-col">
+            <ScrollArea className="flex-1 min-h-0">
+            <div className="grid gap-4 py-4">
               <div className="grid grid-cols-1 sm:grid-cols-4 items-start gap-4">
                 <label className="text-left sm:text-right pt-2">Theme</label>
                 <div className="col-span-3">
@@ -775,10 +777,12 @@ export const SettingsModal = ({ isOpen, onOpenChange, previewValues, initialTab,
                 </div>
               </div>
             </div>
+            </ScrollArea>
           </TabsContent>
 
-          <TabsContent value="generation" className="py-4 px-2 flex-1 min-h-0 overflow-y-auto">
-            <div className="grid gap-4">
+          <TabsContent value="generation" className="px-2 flex-1 min-h-0 data-[state=active]:flex flex-col">
+            <ScrollArea className="flex-1 min-h-0">
+            <div className="grid gap-4 py-4">
               {/* Enable/disable the optional per-turn requests. Synced with the System Prompts tab, which
                   shows a prompt's editor tab only while it's enabled here. */}
               <div className="grid grid-cols-1 sm:grid-cols-4 items-start gap-4">
@@ -950,6 +954,7 @@ export const SettingsModal = ({ isOpen, onOpenChange, previewValues, initialTab,
                 </div>
               </div>
             </div>
+            </ScrollArea>
           </TabsContent>
 
           <TabsContent value="endpoint" className="px-2 flex-1 min-h-0 data-[state=active]:flex flex-col">
@@ -975,8 +980,8 @@ export const SettingsModal = ({ isOpen, onOpenChange, previewValues, initialTab,
             {desktop && !useCustomEndpoint ? (
               <LocalModelPanel />
             ) : (
-              <div className="flex-1 min-h-0 overflow-y-auto pb-4">
-                <div className="grid gap-4">
+              <ScrollArea className="flex-1 min-h-0">
+                <div className="grid gap-4 pb-4">
               <Row center label="Endpoint URL" htmlFor="endpointUrl">
                 <Input
                   id="endpointUrl"
@@ -1052,7 +1057,7 @@ export const SettingsModal = ({ isOpen, onOpenChange, previewValues, initialTab,
                 </ConfirmDialog>
               </div>
                 </div>
-              </div>
+              </ScrollArea>
             )}
           </TabsContent>
 
@@ -1096,7 +1101,7 @@ export const SettingsModal = ({ isOpen, onOpenChange, previewValues, initialTab,
               </Select>
               <Button variant="outline" size="sm" onClick={() => setImagePresetDialog({ mode: 'rename' })}>Rename</Button>
             </div>
-            <div className="flex-1 min-h-0 overflow-y-auto">
+            <ScrollArea className="flex-1 min-h-0">
             <div className="grid gap-4">
               <Row center label="Provider" htmlFor="imageProvider">
                 <Select value={imageProvider} onValueChange={(v) => setImageProvider(v as typeof imageProvider)}>
@@ -1225,7 +1230,7 @@ export const SettingsModal = ({ isOpen, onOpenChange, previewValues, initialTab,
                 </Row>
               )}
             </div>
-            </div>
+            </ScrollArea>
               </TabsContent>
               <TabsContent value="img-tagprompt" className="pt-4 flex-1 min-h-0 data-[state=active]:flex flex-col gap-2">
                 <p className="text-xs text-muted-foreground flex-shrink-0">
@@ -1329,7 +1334,7 @@ export const SettingsModal = ({ isOpen, onOpenChange, previewValues, initialTab,
               </Tabs>
 
               {showingOptions && (
-                <div className="mt-4 flex-1 min-h-0 overflow-y-auto">
+                <ScrollArea className="mt-4 flex-1 min-h-0">
                   <PromptOptionsPanel
                     verbatim={verbatimApplicable ? activeVerbatimEntry : null}
                     reasoning={reasoningControl}
@@ -1337,7 +1342,7 @@ export const SettingsModal = ({ isOpen, onOpenChange, previewValues, initialTab,
                     samplers={samplerControls}
                     disabled={activePresetIsBuiltIn}
                   />
-                </div>
+                </ScrollArea>
               )}
 
               {!showingOptions && (
@@ -1504,8 +1509,9 @@ export const SettingsModal = ({ isOpen, onOpenChange, previewValues, initialTab,
             />
           </TabsContent>
 
-          <TabsContent value="accessibility" className="py-4 px-2 flex-1 min-h-0 overflow-y-auto">
-            <div className="grid gap-4">
+          <TabsContent value="accessibility" className="px-2 flex-1 min-h-0 data-[state=active]:flex flex-col">
+            <ScrollArea className="flex-1 min-h-0">
+            <div className="grid gap-4 py-4">
               <div className="grid grid-cols-1 sm:grid-cols-4 items-start gap-4">
                 <label htmlFor="narrationFont" className="text-left sm:text-right pt-2">
                   Narration Font
@@ -1579,6 +1585,7 @@ export const SettingsModal = ({ isOpen, onOpenChange, previewValues, initialTab,
                 </div>
               </div>
             </div>
+            </ScrollArea>
           </TabsContent>
         </Tabs>
       </DialogContent>
