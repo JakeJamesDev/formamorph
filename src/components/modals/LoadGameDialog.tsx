@@ -1,5 +1,6 @@
 import React from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
+import { ScrollArea } from "@/components/ui/scroll-area";
 import { Button } from "@/components/ui/button";
 import { Download, Import, Loader2, X, GripVertical, Folder, ChevronLeft } from "lucide-react";
 import {
@@ -58,7 +59,9 @@ function SortableSaveRow({ row, disabled, busy, onLoad, onDownload, onDelete }: 
   onDelete: (row: SaveRow) => void;
 }) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: row.id });
-  const style = { transform: CSS.Transform.toString(transform), transition, opacity: isDragging ? 0.5 : 1, zIndex: isDragging ? 1 : undefined };
+  // Translate only (not Transform): a sortable's transform includes a scale to morph the dragged row to the
+  // target slot's size, which visibly resizes it when rows differ in height. Translation keeps its own size.
+  const style = { transform: CSS.Translate.toString(transform), transition, opacity: isDragging ? 0.5 : 1, zIndex: isDragging ? 1 : undefined };
   return (
     <div
       ref={setNodeRef}
@@ -152,7 +155,9 @@ function PinnedFolderRow({ folder, onOpen }: { folder: SaveFolder; onOpen: (f: S
 
 function SortableFolderRow({ folder, onOpen }: { folder: SaveFolder; onOpen: (f: SaveFolder) => void }) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: folder.key });
-  const style = { transform: CSS.Transform.toString(transform), transition, opacity: isDragging ? 0.5 : 1, zIndex: isDragging ? 1 : undefined };
+  // Translate only (not Transform): a sortable's transform includes a scale to morph the dragged row to the
+  // target slot's size, which visibly resizes it when rows differ in height. Translation keeps its own size.
+  const style = { transform: CSS.Translate.toString(transform), transition, opacity: isDragging ? 0.5 : 1, zIndex: isDragging ? 1 : undefined };
   return (
     <div
       ref={setNodeRef}
@@ -469,7 +474,7 @@ export function LoadGameDialog({ open, onOpenChange, current, onLoad }: {
               <div className="w-[68px] shrink-0" aria-hidden />
             </div>
 
-            <div className="max-h-[60vh] overflow-y-auto">
+            <ScrollArea className="max-h-[60vh]">
               <div className="space-y-2 p-1">
                 {atRoot ? (
                   <>
@@ -529,7 +534,7 @@ export function LoadGameDialog({ open, onOpenChange, current, onLoad }: {
                   <div className="text-center py-6 opacity-70 text-sm">No saves for this world yet.</div>
                 )}
               </div>
-            </div>
+            </ScrollArea>
           </div>
         </DialogContent>
       </Dialog>

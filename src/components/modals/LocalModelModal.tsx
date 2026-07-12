@@ -12,6 +12,7 @@ import { restrictToVerticalAxis, restrictToFirstScrollableAncestor } from '@dnd-
 import { CSS } from '@dnd-kit/utilities';
 import { GripVertical, X } from 'lucide-react';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { ScrollArea } from '@/components/ui/scroll-area';
 import { Button } from '@/components/ui/button';
 import { Progress } from '@/components/ui/progress';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -60,7 +61,8 @@ function InstalledRow({ item, engine, busyFile, onLoad, onUnload, onDelete }: {
   onDelete: (item: LocalInstalledModel, name: string) => void;
 }) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: item.fileName });
-  const style = { transform: CSS.Transform.toString(transform), transition, opacity: isDragging ? 0.5 : 1, zIndex: isDragging ? 1 : undefined };
+  // Translate (not Transform): Transform bakes in a scale that resizes the dragged row to the target slot.
+  const style = { transform: CSS.Translate.toString(transform), transition, opacity: isDragging ? 0.5 : 1, zIndex: isDragging ? 1 : undefined };
   const known = CATALOG_BY_FILE.get(item.fileName);
   const name = known ?? item.fileName.replace(/\.gguf$/i, '');
   const isLoaded = engine.status === 'ready' && engine.modelId === item.fileName;
@@ -235,7 +237,8 @@ export function LocalModelModal({ open, onOpenChange }: { open: boolean; onOpenC
         {error && <div className="shrink-0 text-xs text-destructive">{error}</div>}
 
         {view === 'installed' ? (
-          <div className="min-h-0 flex-1 space-y-2 overflow-y-auto pr-1">
+          <ScrollArea className="min-h-0 flex-1">
+            <div className="space-y-2">
             {installed.length === 0 ? (
               <div className="pt-8 text-center text-sm text-muted-foreground">
                 No models installed. Grab one from the Recommended tab, or drop a `.gguf` into the models folder.
@@ -270,7 +273,8 @@ export function LocalModelModal({ open, onOpenChange }: { open: boolean; onOpenC
                 </SortableContext>
               </DndContext>
             )}
-          </div>
+            </div>
+          </ScrollArea>
         ) : (
           <>
             {/* VRAM tier tabs (auto-selected from the GPU). */}
@@ -280,7 +284,8 @@ export function LocalModelModal({ open, onOpenChange }: { open: boolean; onOpenC
               </TabsList>
             </Tabs>
 
-            <div className="min-h-0 flex-1 space-y-3 overflow-y-auto pr-1">
+            <ScrollArea className="min-h-0 flex-1">
+              <div className="space-y-3">
               {models.map((m) => {
                 const isInstalled = installedNames.has(m.fileName);
                 const isLoaded = engine.status === 'ready' && engine.modelId === m.fileName;
@@ -349,7 +354,8 @@ export function LocalModelModal({ open, onOpenChange }: { open: boolean; onOpenC
                   </div>
                 );
               })}
-            </div>
+              </div>
+            </ScrollArea>
           </>
         )}
       </DialogContent>

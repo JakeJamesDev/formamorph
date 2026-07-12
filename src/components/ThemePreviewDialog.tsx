@@ -7,6 +7,7 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
+import { ScrollArea } from '@/components/ui/scroll-area';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
@@ -292,7 +293,8 @@ function ThemePreviewDialog({ open, onOpenChange }: { open: boolean; onOpenChang
 
         <div className="flex flex-1 min-h-0 gap-4">
           {/* Token editor */}
-          <div className="w-[320px] shrink-0 overflow-y-auto pr-1 space-y-4">
+          <ScrollArea className="w-[320px] shrink-0">
+            <div className="space-y-4">
             {TOKEN_GROUPS.map((group) => (
               <div key={group.title} className="space-y-1.5">
                 <div className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">{group.title}</div>
@@ -314,12 +316,13 @@ function ThemePreviewDialog({ open, onOpenChange }: { open: boolean; onOpenChang
                 })}
               </div>
             ))}
-          </div>
+            </div>
+          </ScrollArea>
 
           {/* Live preview — token overrides cascade to everything inside via CSS vars on the wrapper. */}
-          <div className="flex-1 overflow-y-auto" style={previewStyle}>
+          <ScrollArea className="flex-1" style={previewStyle}>
             <PreviewPanel />
-          </div>
+          </ScrollArea>
         </div>
 
         <DialogFooter className="shrink-0 flex-row items-center justify-between sm:justify-between">

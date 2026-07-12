@@ -19,7 +19,8 @@ function SortableWorldCard({ world, onSelect, onDelete, layout, aspect = 'landsc
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } =
     useSortable({ id: world.id });
   const style = {
-    transform: CSS.Transform.toString(transform),
+    // Translate (not Transform): Transform bakes in a scale that resizes the dragged card to the target slot.
+    transform: CSS.Translate.toString(transform),
     transition,
     opacity: isDragging ? 0.5 : 1,
     zIndex: isDragging ? 1 : undefined,

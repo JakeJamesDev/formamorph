@@ -4,6 +4,7 @@ import { Slider } from "@/components/ui/slider"
 import { Label } from "@/components/ui/label"
 import { Input } from "@/components/ui/input"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { ScrollArea } from "@/components/ui/scroll-area"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Button } from "@/components/ui/button"
 import VRMViewer, { type VRMCapabilities, type VRMViewerHandle } from './VRMViewer';
@@ -220,7 +221,8 @@ const CharacterCustomization = ({ onCharacterCustomized, onBack }: {
         </CardContent>
       </Card>
 
-      <Card className="w-1/3 m-4 overflow-y-auto">
+      <Card className="w-1/3 m-4 flex flex-col overflow-hidden">
+        <ScrollArea className="flex-1 min-h-0">
         <CardHeader>
           <CardTitle>Character Customization</CardTitle>
         </CardHeader>
@@ -377,6 +379,7 @@ const CharacterCustomization = ({ onCharacterCustomized, onBack }: {
             )}
           </div>
         </CardContent>
+        </ScrollArea>
       </Card>
     </div>
   );

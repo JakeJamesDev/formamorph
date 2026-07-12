@@ -81,7 +81,8 @@ export function SortableChip({ id, onRemove }: { id: string; onRemove: (label: s
       onRemove={onRemove}
       innerRef={setNodeRef}
       style={{
-        transform: CSS.Transform.toString(transform),
+        // Translate (not Transform): Transform bakes in a scale that resizes the dragged chip to the target.
+        transform: CSS.Translate.toString(transform),
         transition,
         opacity: isDragging ? 0.5 : 1,
         zIndex: isDragging ? 1 : undefined,

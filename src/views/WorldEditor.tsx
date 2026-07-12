@@ -83,7 +83,8 @@ function SortableRow({ item, selected, onSelect, onRemove, onDuplicate, enabled,
     useSortable({ id: item.id });
   const faded = !!onToggleEnabled && enabled === false;
   const style = {
-    transform: CSS.Transform.toString(transform),
+    // Translate (not Transform): Transform bakes in a scale that resizes the dragged row to the target slot.
+    transform: CSS.Translate.toString(transform),
     transition,
     opacity: isDragging || faded ? 0.5 : 1,
     zIndex: isDragging ? 1 : undefined,

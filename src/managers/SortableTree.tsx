@@ -1,17 +1,45 @@
-// The shared drag-tree scaffold behind LocationTree and TraitTree: a flat sortable list where vertical
-// drag reorders and horizontal drag changes nesting depth. Each tree supplies an adapter (visible rows,
-// depth projection, drop commit, per-row presentation); everything else — sensors, drag state, the row
+// The shared drag-tree scaffold behind LocationTree, EntityTree and TraitTree: a flat sortable list where
+// vertical drag reorders and horizontal drag changes nesting depth. Each tree supplies an adapter (visible
+// rows, depth projection, drop commit, per-row presentation); everything else — sensors, drag state, the row
 // chrome (grip / chevron / duplicate / delete) — lives here once.
 //
-// IMPORTANT: no modifiers on the DndContext (e.g. restrictToParentElement) — a bounding-rect modifier
-// clamps the horizontal delta and breaks depth-based nesting (see TraitTree history).
+// IMPORTANT: never clamp the drag's X. A full-axis bounding modifier (restrictToParentElement /
+// restrictToFirstScrollableAncestor / restrictToVerticalAxis) clamps the horizontal delta and breaks
+// depth-based nesting (see TraitTree history). Clamping only Y is fine and is exactly what
+// `restrictYToScrollAncestor` below does — it's why these trees can live in a ScrollArea without the
+// auto-scroll running away, while other lists (which don't need free X) use the stock both-axis modifiers.
 import { useState, type ReactNode } from 'react';
 import { Button } from '@/components/ui/button';
 import { X, GripVertical, ChevronRight, ChevronDown, Copy } from 'lucide-react';
 import {
-  DndContext, pointerWithin, PointerSensor, KeyboardSensor, useSensor, useSensors,
+  DndContext, pointerWithin, closestCenter, PointerSensor, KeyboardSensor, useSensor, useSensors,
+  type CollisionDetection, type Modifier,
   type DragStartEvent, type DragMoveEvent, type DragOverEvent, type DragEndEvent,
 } from '@dnd-kit/core';
+
+// Pointer-precise collisions, but never empty: at the very bottom the pointer sits past the last row, so
+// `pointerWithin` alone returns nothing → dnd-kit drops the sort gap → the list shrinks → the pointer is
+// "inside" again next frame → gap re-added. That per-frame height flip jitters the ScrollArea. Falling back
+// to `closestCenter` when the pointer is outside every row keeps `over` pinned to the nearest row, so the gap
+// (and the scroll height) stays stable.
+const collisionWithFallback: CollisionDetection = (args) => {
+  const within = pointerWithin(args);
+  return within.length > 0 ? within : closestCenter(args);
+};
+
+// Clamp ONLY the dragged row's vertical position to the scroll viewport — never its x. Without this, dragging
+// to the bottom pulls the in-flow row below the last one, which grows the ScrollArea's scrollHeight, so
+// auto-scroll chases it downward forever (runaway scroll into empty space). Bounding y keeps the row at the
+// edge while the list scrolls under it, so scrollHeight stays fixed and auto-scroll stops at the real end.
+// x is left untouched, so horizontal-drag depth nesting still works (the forbidden thing is clamping x).
+const restrictYToScrollAncestor: Modifier = ({ transform, draggingNodeRect, scrollableAncestorRects }) => {
+  const rect = scrollableAncestorRects[0];
+  if (!draggingNodeRect || !rect) return transform;
+  let y = transform.y;
+  if (draggingNodeRect.top + y < rect.top) y = rect.top - draggingNodeRect.top;
+  else if (draggingNodeRect.bottom + y > rect.bottom) y = rect.bottom - draggingNodeRect.bottom;
+  return { ...transform, y };
+};
 import {
   SortableContext, useSortable, sortableKeyboardCoordinates, verticalListSortingStrategy,
 } from '@dnd-kit/sortable';
@@ -63,7 +91,8 @@ function TreeRow({ id, depth, spec, selected, onSelect, isCollapsed, toggleColla
   // transform (the reorder shift animation).
   const rowTransform = isDragging && transform ? { ...transform, x: 0 } : transform;
   const style = {
-    transform: CSS.Transform.toString(rowTransform),
+    // Translate (not Transform): Transform bakes in a scale that resizes the dragged row to the target slot.
+    transform: CSS.Translate.toString(rowTransform),
     transition,
     paddingLeft: depth * TREE_INDENT,
     opacity: isDragging ? 0.5 : 1,
@@ -162,7 +191,8 @@ export function SortableTree<N extends { id: string; depth: number }>({ adapter,
   return (
     <DndContext
       sensors={sensors}
-      collisionDetection={pointerWithin}
+      collisionDetection={collisionWithFallback}
+      modifiers={[restrictYToScrollAncestor]}
       onDragStart={handleDragStart}
       onDragMove={handleDragMove}
       onDragOver={handleDragOver}
