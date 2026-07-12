@@ -8,6 +8,7 @@ import type {
   Stat,
   GameLocation,
   Entity,
+  EntityGroup,
   Trait,
   TraitGroup,
   StatUpdate,
@@ -24,12 +25,13 @@ function serializeWorld(
   stats: Stat[],
   locations: GameLocation[],
   entities: Entity[],
+  entityGroups: EntityGroup[],
   traits: Trait[],
   traitGroups: TraitGroup[],
   statUpdates: StatUpdate[],
   dictionaries: Dictionary[],
 ) {
-  return JSON.stringify({ worldOverview: overview, stats, locations, entities, traits, traitGroups, statUpdates, dictionaries });
+  return JSON.stringify({ worldOverview: overview, stats, locations, entities, entityGroups, traits, traitGroups, statUpdates, dictionaries });
 }
 
 function useProvideGameData() {
@@ -48,6 +50,7 @@ function useProvideGameData() {
   const [stats, setStats] = useState<Stat[]>([]);
   const [locations, setLocations] = useState<GameLocation[]>([]);
   const [entities, setEntities] = useState<Entity[]>([]);
+  const [entityGroups, setEntityGroups] = useState<EntityGroup[]>([]);
   const [traits, setTraits] = useState<Trait[]>([]);
   const [traitGroups, setTraitGroups] = useState<TraitGroup[]>([]);
   const [statUpdates, setStatUpdates] = useState<StatUpdate[]>([]);
@@ -110,6 +113,31 @@ function useProvideGameData() {
   const removeEntity = useCallback((entityId: string) => {
     setEntities(prevEntities => prevEntities.filter(entity => entity.id !== entityId));
   }, []);
+
+  const addEntityGroup = useCallback((newGroup: EntityGroup) => {
+    setEntityGroups(prev => [...prev, newGroup]);
+  }, []);
+
+  const updateEntityGroup = useCallback((updatedGroup: EntityGroup) => {
+    setEntityGroups(prev => prev.map(group =>
+      group.id === updatedGroup.id ? updatedGroup : group
+    ));
+  }, []);
+
+  // Removing a group reparents its direct children (subgroups + entities) to the group's own parent,
+  // rather than orphaning them under a deleted id.
+  const removeEntityGroup = useCallback((groupId: string) => {
+    setEntityGroups(prev => {
+      const parentId = prev.find(g => g.id === groupId)?.parentId ?? null;
+      return prev
+        .filter(g => g.id !== groupId)
+        .map(g => (g.parentId === groupId ? { ...g, parentId } : g));
+    });
+    setEntities(prev => {
+      const parentId = entityGroups.find(g => g.id === groupId)?.parentId ?? null;
+      return prev.map(e => (e.groupId === groupId ? { ...e, groupId: parentId } : e));
+    });
+  }, [entityGroups]);
 
   const addTrait = useCallback((newTrait: Trait) => {
     setTraits(prevTraits => [...prevTraits, newTrait]);
@@ -218,6 +246,7 @@ function useProvideGameData() {
     const nextStats = Array.isArray(worldData.stats) ? worldData.stats : [];
     const nextLocations = Array.isArray(worldData.locations) ? worldData.locations : [];
     const nextEntities = Array.isArray(worldData.entities) ? worldData.entities : [];
+    const nextEntityGroups = Array.isArray(worldData.entityGroups) ? worldData.entityGroups : [];
     const nextTraits = Array.isArray(worldData.traits) ? worldData.traits : [];
     const nextTraitGroups = Array.isArray(worldData.traitGroups) ? worldData.traitGroups : [];
     const nextStatUpdates = Array.isArray(worldData.statUpdates) ? worldData.statUpdates : [];
@@ -228,6 +257,7 @@ function useProvideGameData() {
     setStats(nextStats);
     setLocations(nextLocations);
     setEntities(nextEntities);
+    setEntityGroups(nextEntityGroups);
     setTraits(nextTraits);
     setTraitGroups(nextTraitGroups);
     setStatUpdates(nextStatUpdates);
@@ -235,15 +265,15 @@ function useProvideGameData() {
 
     // Baseline for dirty detection: a freshly loaded world has no pending changes.
     setSavedSnapshot(serializeWorld(
-      normalizedOverview, nextStats, nextLocations, nextEntities, nextTraits, nextTraitGroups, nextStatUpdates, nextDictionaries,
+      normalizedOverview, nextStats, nextLocations, nextEntities, nextEntityGroups, nextTraits, nextTraitGroups, nextStatUpdates, nextDictionaries,
     ));
 
     return isDefault;
   }, [updateWorldOverview, setStats, setLocations, setEntities, setTraits, setStatUpdates, setDictionaries]);
 
   const isWorldDirty = useMemo(
-    () => serializeWorld(worldOverview, stats, locations, entities, traits, traitGroups, statUpdates, dictionaries) !== savedSnapshot,
-    [worldOverview, stats, locations, entities, traits, traitGroups, statUpdates, dictionaries, savedSnapshot],
+    () => serializeWorld(worldOverview, stats, locations, entities, entityGroups, traits, traitGroups, statUpdates, dictionaries) !== savedSnapshot,
+    [worldOverview, stats, locations, entities, entityGroups, traits, traitGroups, statUpdates, dictionaries, savedSnapshot],
   );
 
   // Persist the current world and re-baseline so isWorldDirty clears. Returns success.
@@ -259,15 +289,15 @@ function useProvideGameData() {
         // other sticky fields are preserved by storeWorld).
         dirty: true,
         editedAt: new Date().toISOString(),
-        data: { version: APP_VERSION, worldOverview, stats, locations, entities, traits, traitGroups, statUpdates, dictionaries },
+        data: { version: APP_VERSION, worldOverview, stats, locations, entities, entityGroups, traits, traitGroups, statUpdates, dictionaries },
       });
-      setSavedSnapshot(serializeWorld(worldOverview, stats, locations, entities, traits, traitGroups, statUpdates, dictionaries));
+      setSavedSnapshot(serializeWorld(worldOverview, stats, locations, entities, entityGroups, traits, traitGroups, statUpdates, dictionaries));
       return true;
     } catch (error) {
       console.error('Error saving world:', error);
       return false;
     }
-  }, [worldId, worldOverview, stats, locations, entities, traits, traitGroups, statUpdates, dictionaries]);
+  }, [worldId, worldOverview, stats, locations, entities, entityGroups, traits, traitGroups, statUpdates, dictionaries]);
 
   useEffect(() => {
     WorldStorageService.initialize();
@@ -282,6 +312,7 @@ function useProvideGameData() {
     stats,
     locations,
     entities,
+    entityGroups,
     traits,
     traitGroups,
     statUpdates,
@@ -295,6 +326,9 @@ function useProvideGameData() {
     addEntity,
     updateEntity,
     removeEntity,
+    addEntityGroup,
+    updateEntityGroup,
+    removeEntityGroup,
     addTrait,
     updateTrait,
     removeTrait,
@@ -313,6 +347,7 @@ function useProvideGameData() {
     setStats,
     setLocations,
     setEntities,
+    setEntityGroups,
     setTraits,
     setTraitGroups,
     setStatUpdates,

@@ -1,52 +1,48 @@
-import { useMemo } from 'react';
 import { useGameData } from '@/contexts/GameDataContext';
+import { Folder } from 'lucide-react';
 import {
-  buildTree, flattenTree, removeCollapsedChildren, getDropProjection, applyDrop,
-  removePromotingChildren, type FlatTreeNode,
-} from '@/lib/parentIdTree';
+  buildEntityTree, flattenEntityTree, removeChildrenOf, getEntityDropProjection, applyEntityDrop,
+  duplicateEntityNode, type FlatEntityNode,
+} from '@/lib/entityGroupTree';
 import { SortableTree, TREE_INDENT, type SortableTreeAdapter } from './SortableTree';
 import { EmptyListHint } from '@/components/EmptyListHint';
-import type { Entity } from '@/types';
 
-/** The Entities tab's grouping tree: a flat sortable list where horizontal drag sets nesting depth. Mirrors
- *  LocationTree; the nesting is reflected to the AI as indentation (see buildEntityContext). */
+/** The Entities tab's folder tree: a flat sortable list where horizontal drag sets nesting depth. Groups are
+ *  editor-only folders (never sent to the AI); entities are leaves. Mirrors the Traits tab. */
 const EntityTree = ({ selectedId, onSelect }: { selectedId: string | null; onSelect: (id: string) => void }) => {
-  const { entities, setEntities } = useGameData();
+  const { entities, entityGroups, setEntities, setEntityGroups, removeEntity, removeEntityGroup } = useGameData();
 
-  // Ids that parent at least one entity — drives the chevron (from the full list, so a collapsed node
-  // still shows its expand chevron).
-  const parentIds = useMemo(
-    () => new Set(entities.map((e) => e.parentId ?? null).filter((p): p is string => p !== null)),
-    [entities],
-  );
-
-  const adapter: SortableTreeAdapter<FlatTreeNode<Entity>> = {
-    getVisible: (collapsed) => removeCollapsedChildren(flattenTree(buildTree(entities)), collapsed),
+  const adapter: SortableTreeAdapter<FlatEntityNode> = {
+    getVisible: (collapsed) => removeChildrenOf(flattenEntityTree(buildEntityTree(entityGroups, entities)), collapsed),
     projectDepth: (visible, activeId, overId, offsetLeft) =>
-      getDropProjection(visible, activeId, overId, offsetLeft, TREE_INDENT)?.depth ?? null,
+      getEntityDropProjection(visible, activeId, overId, offsetLeft, TREE_INDENT)?.depth ?? null,
     onDrop: (activeId, overId, offsetLeft, collapsed) => {
-      const next = applyDrop(entities, collapsed, activeId, overId, offsetLeft, TREE_INDENT);
-      if (next !== entities) setEntities(next);
+      const next = applyEntityDrop(entityGroups, entities, collapsed, activeId, overId, offsetLeft, TREE_INDENT);
+      if (next.groups !== entityGroups) setEntityGroups(next.groups);
+      if (next.entities !== entities) setEntities(next.entities);
     },
-    rowSpec: (node) => ({
-      // Any entity can hold children, so non-parents reserve the chevron slot for alignment.
-      lead: parentIds.has(node.id) ? 'chevron' : 'spacer',
-      collapseLabels: ['Expand nested entities', 'Collapse nested entities'],
-      label: node.item.name,
-      remove: () => setEntities(removePromotingChildren(entities, node.id)),
-      duplicate: () => {
-        const index = entities.findIndex((e) => e.id === node.id);
-        if (index === -1) return;
-        const copy = { ...structuredClone(entities[index]), id: crypto.randomUUID() };
-        copy.name = `${copy.name} (Copy)`;
-        setEntities([...entities.slice(0, index + 1), copy, ...entities.slice(index + 1)]);
-        onSelect(copy.id);
-      },
-    }),
+    rowSpec: (node) => {
+      const isGroup = node.kind === 'group';
+      return {
+        // Only groups collapse; entities get no leading slot (matching the flat list layout).
+        lead: isGroup ? 'chevron' : 'none',
+        collapseLabels: ['Expand group', 'Collapse group'],
+        icon: isGroup ? <Folder className="h-4 w-4 shrink-0" /> : undefined,
+        label: isGroup ? node.group?.name : node.entity?.name,
+        labelClass: isGroup ? 'font-medium' : undefined,
+        remove: () => { if (isGroup) removeEntityGroup(node.id); else removeEntity(node.id); },
+        duplicate: () => {
+          const res = duplicateEntityNode(entityGroups, entities, node.id);
+          setEntityGroups(res.groups);
+          setEntities(res.entities);
+          onSelect(res.newId);
+        },
+      };
+    },
   };
 
-  if (!entities.length) {
-    return <EmptyListHint noun="entities" />;
+  if (!entities.length && !entityGroups.length) {
+    return <EmptyListHint noun="entities" action="add a group or entity" />;
   }
 
   return <SortableTree adapter={adapter} selectedId={selectedId} onSelect={onSelect} />;

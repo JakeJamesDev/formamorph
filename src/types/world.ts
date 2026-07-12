@@ -109,10 +109,22 @@ export interface Entity {
   imageTags?: string;
   sound?: MediaAsset;
   model?: MediaAsset;
-  /** Parent entity id for grouping/nesting; null/absent = top-level. Sibling order is the `entities`
-   *  array order. Unlike `GameLocation.parentId` (editor-only), this IS reflected to the AI as indentation
-   *  in the entity context. Reset to top-level when an entity is imported from a character card. */
-  parentId?: string | null;
+  /** Editor-only folder this entity lives in; null/absent = ungrouped. Purely organizational — never sent
+   *  to the AI (grouping does not change the entity context). Reset to ungrouped on character-card import. */
+  groupId?: string | null;
+  /** Sibling order among entities sharing the same group; editor-only, never sent to the AI. */
+  order?: number;
+}
+
+/** An editor-only folder for organizing entities, nestable via `parentId`. Just a name — never sent to the
+ *  AI (entities feed the AI exactly as if ungrouped). Mirrors `TraitGroup` minus the AI-facing fields. */
+export interface EntityGroup {
+  id: string;
+  name: string;
+  /** null = top-level; otherwise the parent group's id. */
+  parentId: string | null;
+  /** Sibling order among items sharing the same parent. */
+  order?: number;
 }
 
 /** Named `GameLocation` to avoid clashing with the DOM `Location` global. */
@@ -236,6 +248,8 @@ export interface World {
   stats: Stat[];
   locations: GameLocation[];
   entities: Entity[];
+  /** Editor-only folders organizing entities (name only; not reflected to the AI). */
+  entityGroups?: EntityGroup[];
   traits: Trait[];
   /** Folders organizing traits in the editor and selection screen. */
   traitGroups?: TraitGroup[];
