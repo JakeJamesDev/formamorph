@@ -9,6 +9,7 @@ import { getGameplayText, setGameplayText } from '../lib/gameplayTextStore';
 import { parseTurnContent, serializeTurnContent } from '../lib/turnDigest';
 import { matchChoiceToAction } from '../lib/choices';
 import { pageStatDeltas } from '../lib/statChanges';
+import { pageAssistantIndex, pageNextActionIndex } from '../lib/turnHistory';
 import type {
   CharacterData,
   LogEntry,
@@ -73,9 +74,18 @@ function useProvideGameplay() {
   const [isRevealingNarration, setIsRevealingNarration] = useState(false);
   const [fullMessageHistory, setFullMessageHistory] = useState<ChatMessage[]>([]);
   const [displayedMessages, setDisplayedMessages] = useState<ChatMessage[]>([]);
-  const [currentPage, setCurrentPage] = useState(1);
+  // The page the player has deliberately paged back to; null means "follow the latest turn".
+  const [userPage, setUserPage] = useState<number | null>(null);
   const [gameStates, setGameStates] = useState<GameState[]>([]);
   const [playerNotes, setPlayerNotes] = useState('');
+
+  const messagesPerPage = 2;
+  const totalPages = Math.max(1, Math.ceil(fullMessageHistory.length / messagesPerPage));
+  // `currentPage` follows the latest turn unless the player has paged back (`userPage`). Deriving it —
+  // rather than syncing it through an effect — keeps it from lagging `totalPages` by a frame when a new
+  // turn is appended, which would transiently flag "viewing history" and flicker the panels. Clamped into
+  // range so a shrunk history (rollback) can't strand it past the end.
+  const currentPage = userPage === null ? totalPages : Math.min(Math.max(1, userPage), totalPages);
 
   // Web Audio engine for progressive (gapless) TTS playback as sentences generate.
   const ttsPlayback = useTtsPlayback();
@@ -351,10 +361,12 @@ function useProvideGameplay() {
   // Paging back to an earlier turn shows that turn's whole state read-only, without mutating the live
   // (latest-turn) state. Every `view*` field aliases the live value when you're on the latest page, so
   // normal play is unchanged; only when `isViewingPast` do they read the paged snapshot instead.
-  const messagesPerPage = 2;
-  const totalPages = Math.max(1, Math.ceil(fullMessageHistory.length / messagesPerPage));
-  const isViewingPast = currentPage < totalPages;
-  const viewedSnapshot = isViewingPast ? (gameStates[currentPage - 1] ?? null) : null;
+  // A page counts as "history" only when it has a mechanical snapshot to show. On a save whose snapshots
+  // are short of the page count (e.g. a converted deep-nested legacy save), paging back would otherwise
+  // flag history mode while every view* silently fell back to the LIVE latest turn — banner + disabled
+  // controls contradicting live stats/location. No snapshot ⇒ not viewing past (panels stay live).
+  const viewedSnapshot = currentPage < totalPages ? (gameStates[currentPage - 1] ?? null) : null;
+  const isViewingPast = viewedSnapshot !== null;
   const viewStats = viewedSnapshot?.playerStats ?? playerStats;
   const viewTraits = viewedSnapshot?.playerTraits ?? playerTraits;
   const viewCharacterData = viewedSnapshot?.characterData ?? characterData;
@@ -363,14 +375,16 @@ function useProvideGameplay() {
     : visibleEntities;
   const viewGameTime = viewedSnapshot?.gameTime ?? gameTime;
   const viewLocationId = viewedSnapshot?.locationId ?? currentLocation?.id;
+  // Parse the paged turn's assistant message once — choices and notes both live on it.
+  const viewedTurn = viewedSnapshot
+    ? parseTurnContent(fullMessageHistory[pageAssistantIndex(currentPage, messagesPerPage)]?.content ?? '')
+    : null;
   // Choices already live on each turn's message JSON; read the paged turn's, else the live choices.
-  const viewChoices: Choice[] = viewedSnapshot
-    ? (parseTurnContent(fullMessageHistory[currentPage * messagesPerPage - 1]?.content ?? '')?.choices ?? [])
-    : choices;
+  const viewChoices: Choice[] = viewedSnapshot ? (viewedTurn?.choices ?? []) : choices;
   // On a past page, infer which of that turn's choices the player acted on by fuzzy-matching the next
   // turn's action (the user message right after this page) against the choice list; -1 = custom action.
   const viewSelectedChoice = viewedSnapshot
-    ? matchChoiceToAction(fullMessageHistory[currentPage * messagesPerPage]?.content ?? '', viewChoices)
+    ? matchChoiceToAction(fullMessageHistory[pageNextActionIndex(currentPage, messagesPerPage)]?.content ?? '', viewChoices)
     : -1;
   // Stat deltas: while live, the animated last-turn changes; while viewing the past, the change this turn
   // made — vs the previous page's stats, or (on the opening turn, which has no predecessor) vs each stat's
@@ -381,18 +395,19 @@ function useProvideGameplay() {
   // Per-turn player notes: on the current page the live scratchpad; on a past page that turn's frozen notes
   // (from its assistant message), falling back to the snapshot's global notes for pre-per-turn-notes saves.
   const viewNotes = viewedSnapshot
-    ? (parseTurnContent(fullMessageHistory[currentPage * messagesPerPage - 1]?.content ?? '')?.notes
-        ?? viewedSnapshot.playerNotes ?? '')
+    ? (viewedTurn?.notes ?? viewedSnapshot.playerNotes ?? '')
     : playerNotes;
   // Route a notes edit to the right place: the live scratchpad on the current page, else patch the viewed
   // turn's assistant message so the edit sticks to that turn only.
   const setViewNotes = useCallback((text: string) => {
     if (currentPage >= totalPages) { setPlayerNotes(text); return; }
-    const idx = currentPage * messagesPerPage - 1;
+    const idx = pageAssistantIndex(currentPage, messagesPerPage);
     setFullMessageHistory((prev) => {
       const msg = prev[idx];
       if (!msg || msg.role !== 'assistant') return prev;
-      const parsed = parseTurnContent(msg.content) ?? { narration: '', choices: [], stat_changes: [] };
+      // Bail if the turn JSON doesn't parse — writing a stub would wipe its narration/choices/turnId.
+      const parsed = parseTurnContent(msg.content);
+      if (!parsed) return prev;
       const next = [...prev];
       next[idx] = { ...msg, content: serializeTurnContent({ ...parsed, notes: text }) };
       return next;
@@ -454,7 +469,7 @@ function useProvideGameplay() {
     displayedMessages,
     setDisplayedMessages,
     currentPage,
-    setCurrentPage,
+    setUserPage,
     totalPages,
     isViewingPast,
     viewStats,

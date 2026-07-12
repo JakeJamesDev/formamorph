@@ -38,18 +38,23 @@ export const processStatCode = async (stats: Stat[]) => {
   // Wait for all code executions to complete
   const results = await Promise.all(codePromises);
 
-  // Apply the results to the stats array
+  // Apply the results to the stats array, tracking whether any value actually moved.
+  let changed = false;
   results.forEach(result => {
     if (result) {
       const statIndex = updatedStats.findIndex(s => s.id === result.id);
-      if (statIndex !== -1) {
+      if (statIndex !== -1 && updatedStats[statIndex].value !== result.value) {
         updatedStats[statIndex] = {
           ...updatedStats[statIndex],
           value: result.value
         };
+        changed = true;
       }
     }
   });
 
-  return updatedStats;
+  // Return the original reference when nothing changed, so callers can skip a redundant state update
+  // (an unconditional new array made the caller re-set playerStats every turn — double-animating the bars
+  // and clobbering regen with a pre-regen baseline).
+  return changed ? updatedStats : stats;
 };

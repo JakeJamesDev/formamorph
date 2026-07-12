@@ -10,6 +10,8 @@ import {
   placeSnapshot,
   appendCurrentToHistory,
   sliceHistoryToPage,
+  pageAssistantIndex,
+  pageNextActionIndex,
 } from './turnHistory';
 
 // Stand-in for the AI-context DebugTurn — carries the flags plus an identifying field.
@@ -61,6 +63,16 @@ describe('appendCurrentToHistory', () => {
     const legacy = ['a', 'b'];
     appendCurrentToHistory(legacy, 'current');
     expect(legacy).toEqual(['a', 'b']);
+  });
+});
+
+describe('pageAssistantIndex / pageNextActionIndex', () => {
+  // History [u1,a1, u2,a2, u3,a3]; page P's assistant is at 2P-1, the next action at 2P.
+  it('maps a page to its assistant message and the following action (2 messages per turn)', () => {
+    expect(pageAssistantIndex(1, 2)).toBe(1);
+    expect(pageAssistantIndex(3, 2)).toBe(5);
+    expect(pageNextActionIndex(1, 2)).toBe(2);
+    expect(pageNextActionIndex(3, 2)).toBe(6);
   });
 });
 
