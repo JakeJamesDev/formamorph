@@ -22,6 +22,7 @@ import TraitManager from '../managers/TraitManager';
 import GroupManager from '../managers/GroupManager';
 import TraitTree from '../managers/TraitTree';
 import LocationTree from '../managers/LocationTree';
+import EntityTree from '../managers/EntityTree';
 import { removeLocationPromotingChildren } from '@/lib/locationTree';
 import { duplicateTraitNode } from '@/lib/traitTree';
 import StatUpdatesManager from '../managers/StatUpdatesManager';
@@ -578,7 +579,9 @@ const WorldEditor = ({ onClose, embedded = false, backButton }: {
                           {renderItemList(filteredItems)}
                         </TabsContent>
                         <TabsContent value="entities">
-                          {renderItemList(filteredItems)}
+                          {searchTerm.trim()
+                            ? renderItemList(filteredItems)
+                            : <EntityTree selectedId={selectedItemId} onSelect={setSelectedItemId} />}
                         </TabsContent>
                         <TabsContent value="locations">
                           {searchTerm.trim()

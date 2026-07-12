@@ -219,4 +219,52 @@ describe("buildEntityContext", () => {
     const loc: GameLocation & { entity?: string[] } = { ...location, entities: ["missing"] };
     expect(buildEntityContext(loc, [guard])).toBe(NONE_PLACEHOLDER);
   });
+
+  describe("nesting (parentId → indentation)", () => {
+    const captain: Entity = { id: "cap", name: "Captain", aiDescription: "Leads the watch." };
+    const soldier: Entity = { id: "sol", name: "Soldier", parentId: "cap", aiDescription: "Under the captain." };
+    const recruit: Entity = { id: "rec", name: "Recruit", parentId: "sol", aiDescription: "Green." };
+
+    it("indents a child under its parent, and each field with it, one step per depth", () => {
+      const loc = { id: "l", name: "Barracks", entities: ["cap", "sol"] };
+      const out = buildEntityContext(loc, [captain, soldier]);
+      // Parent flush-left, child indented two spaces (and its fields two further).
+      expect(out).toContain("Captain\n");
+      expect(out).toContain("  Soldier\n");
+      expect(out).toContain("    description: Under the captain.");
+      // The child follows the parent (pre-order), not raw array position independence.
+      expect(out.indexOf("Captain")).toBeLessThan(out.indexOf("Soldier"));
+    });
+
+    it("indents grandchildren one step further (arbitrary depth)", () => {
+      const loc = { id: "l", name: "Barracks", entities: ["cap", "sol", "rec"] };
+      const out = buildEntityContext(loc, [captain, soldier, recruit]);
+      expect(out).toContain("Captain\n");
+      expect(out).toContain("  Soldier\n");
+      expect(out).toContain("    Recruit\n");
+    });
+
+    it("renders a child flat when its direct parent is not in the block (no phantom parent)", () => {
+      const loc = { id: "l", name: "Barracks", entities: ["sol"] }; // parent "cap" absent
+      const out = buildEntityContext(loc, [captain, soldier]);
+      expect(out).toContain("Soldier\n"); // flush-left, not indented
+      expect(out).not.toContain("  Soldier");
+      expect(out).not.toContain("Captain"); // parent not pulled in (formatting-only, membership unchanged)
+    });
+
+    it("never emits parentId as a field to the AI", () => {
+      const loc = { id: "l", name: "Barracks", entities: ["cap", "sol"] };
+      const out = buildEntityContext(loc, [captain, soldier]);
+      expect(out).not.toContain("parentId");
+    });
+
+    it("is cycle-safe — emits each entity once even if parentIds form a loop", () => {
+      const a: Entity = { id: "a", name: "Alpha", parentId: "b" };
+      const b: Entity = { id: "b", name: "Beta", parentId: "a" };
+      const loc = { id: "l", name: "Loop", entities: ["a", "b"] };
+      const out = buildEntityContext(loc, [a, b]);
+      expect((out.match(/Alpha/g) ?? []).length).toBe(1);
+      expect((out.match(/Beta/g) ?? []).length).toBe(1);
+    });
+  });
 });

@@ -109,6 +109,10 @@ export interface Entity {
   imageTags?: string;
   sound?: MediaAsset;
   model?: MediaAsset;
+  /** Parent entity id for grouping/nesting; null/absent = top-level. Sibling order is the `entities`
+   *  array order. Unlike `GameLocation.parentId` (editor-only), this IS reflected to the AI as indentation
+   *  in the entity context. Reset to top-level when an entity is imported from a character card. */
+  parentId?: string | null;
 }
 
 /** Named `GameLocation` to avoid clashing with the DOM `Location` global. */
