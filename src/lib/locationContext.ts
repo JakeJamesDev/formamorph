@@ -86,6 +86,43 @@ export function buildLocationContext(
  * `key: value` fields indented under it; `'markdown'` makes the name a bold subject bullet with nested
  * bold-key field bullets (`- **Name**` / `  - **key:** value`).
  */
+/**
+ * Order a flat list of present entity ids so a child follows its parent, tagging each with an indentation
+ * `depth`. A child indents (depth+1) only when its **direct** parent is also in the list; a present entity
+ * whose parent is absent sits at top level (no phantom parent line). Cycle-/duplicate-safe: every resolvable
+ * id is emitted exactly once. Sibling order is the input list order.
+ */
+function orderEntitiesByNesting(
+  entityIds: string[],
+  entities: Entity[],
+): { entity: Entity; depth: number }[] {
+  const present = new Set(entityIds);
+  const byId = new Map(entities.map((e) => [e.id, e]));
+  const seen = new Set<string>();
+  const out: { entity: Entity; depth: number }[] = [];
+  const emit = (id: string, depth: number) => {
+    if (seen.has(id)) return;
+    const e = byId.get(id);
+    if (!e) return;
+    seen.add(id);
+    out.push({ entity: e, depth });
+    for (const childId of entityIds) {
+      const c = byId.get(childId);
+      if (c && (c.parentId ?? null) === id) emit(childId, depth + 1);
+    }
+  };
+  for (const id of entityIds) {
+    const e = byId.get(id);
+    if (!e || seen.has(id)) continue;
+    const pid = e.parentId ?? null;
+    if (pid === null || !present.has(pid)) emit(id, 0);
+  }
+  // Anything still unemitted (its parent is present but a cycle kept us from reaching it) — emit flat so no
+  // resolvable entity is silently dropped.
+  for (const id of entityIds) if (byId.has(id) && !seen.has(id)) emit(id, 0);
+  return out;
+}
+
 export function buildEntityContext(
   location: LocationWithEntities,
   entities: Entity[],
@@ -95,37 +132,38 @@ export function buildEntityContext(
 
   const { preferSummary = false, format = "simple" } = opts;
   const md = format === "markdown";
-  const head = (name: string) => (md ? `- **${name}**\n` : `${name}\n`);
-  const field = (key: string, value: string | number | boolean) =>
-    md ? `  - **${key}:** ${value}\n` : `  ${key}: ${value}\n`;
+  // Nested entities indent one step per depth; the whole block (head + fields) shifts right together.
+  const pad = (depth: number) => "  ".repeat(depth);
+  const head = (name: string, depth: number) => `${pad(depth)}${md ? `- **${name}**` : name}\n`;
+  const field = (key: string, value: string | number | boolean, depth: number) =>
+    `${pad(depth)}${md ? `  - **${key}:** ${value}` : `  ${key}: ${value}`}\n`;
   const entityList = location.entities || location.entity || [];
   if (entityList.length === 0) return NONE_PLACEHOLDER;
 
   let output = "";
-  entityList.forEach((entityId: string) => {
-    const entityItem = entities.find((f) => f.id === entityId);
-    if (!entityItem) return;
+  orderEntitiesByNesting(entityList, entities).forEach(({ entity: entityItem, depth }) => {
     const {
       id,
       image,
       sound,
       model,
+      parentId,
       playerDescription,
       aiDescription,
       aiSummary,
       ...entityProps
     } = entityItem;
-    output += head(entityItem.name);
+    output += head(entityItem.name, depth);
     const entityDescription = pickDescription(preferSummary, aiSummary, aiDescription);
     if (entityDescription && entityDescription.trim() !== "") {
-      output += field("description", entityDescription);
+      output += field("description", entityDescription, depth);
     }
     // Add other entity properties, skipping blanks (e.g. an unset type) so empty fields don't pad
     // the prompt and confuse smaller models.
     Object.entries(entityProps).forEach(([key, value]) => {
       if (value === undefined || value === null || key === "name") return;
       if (typeof value === "string" && value.trim() === "") return;
-      output += field(key, value as string | number | boolean);
+      output += field(key, value as string | number | boolean, depth);
     });
   });
 
