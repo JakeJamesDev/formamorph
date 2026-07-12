@@ -133,9 +133,12 @@ jobs:
         with:
           path: artifacts
           merge-multiple: true
-      # Generate the release body from the changelog's "In Progress" section (user-facing one-liners), so the
-      # release publishes WITH its notes — no manual editing, and no window where an update is live but blank.
-      - run: node scripts/extractReleaseNotes.mjs > notes.md
+      # Generate the release body from the changelog's collapsed section for THIS tag's version (user-facing
+      # one-liners), so the release publishes WITH its notes — no manual editing, and no window where an update
+      # is live but blank. Keyed to the tagged version (`v2.2.0` → `--release 2.2.0`), so finalizing the
+      # changelog into its "✅ Released" block is the correct last step *before* tagging — order-independent,
+      # unlike the old "In Progress" read which broke if the section was collapsed first.
+      - run: node scripts/extractReleaseNotes.mjs --release "${GITHUB_REF_NAME#v}" > notes.md
       # The Linux build already published the AppImage + latest-linux.yml to this tag's release as a draft
       # (electron-builder targets `v<package.json version>`, which the guard forces to equal the tag). This
       # step attaches the Windows/mac/web artifacts to that SAME release, sets the notes, and publishes it.
