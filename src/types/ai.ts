@@ -65,6 +65,10 @@ export interface AITurnResult {
   diaries?: Record<string, string>;
   /** The location this turn took place at, so a runtime-discovered character joins the right roster. */
   locationId?: string;
+  /** The player's notes as they were for this turn — frozen from the live scratchpad when the turn commits,
+   *  so paging back shows (and can edit) that turn's notes. Absent on pre-per-turn-notes saves → the view
+   *  falls back to the snapshot's global `playerNotes`. */
+  notes?: string;
   /** A reasoning model's (or inline-thinking) private scratchpad for this turn, shown as a collapsible aside
    *  above the narration. `ms` is the think duration. Absent when the model didn't reason / on pre-2.1.0 saves. */
   reasoning?: { text: string; ms: number };

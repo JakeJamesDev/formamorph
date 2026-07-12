@@ -56,8 +56,10 @@ export const LeftPanel = ({ entities, onEntityClick }: {
     viewVisibleEntities: visibleEntities,
     logEntries,
     logsEndRef,
-    playerNotes,
-    setPlayerNotes
+    // Page-aware notes: live scratchpad on the current page, that turn's frozen notes on a past page (edit
+    // routes to the right place). Notes stay editable on any page.
+    viewNotes: playerNotes,
+    setViewNotes: setPlayerNotes
   } = useGameplay();
   const playerModelUrl = usePlayerModelUrl(characterData?.playerModelId);
   // First present entity that has an image — shown in the model section's Entities view (the portrait shows
