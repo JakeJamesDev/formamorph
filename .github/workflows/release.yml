@@ -64,7 +64,7 @@ jobs:
       # electron `dir` payload under app/. Produces the full-root zip (first-time download) plus the app
       # payload zip + its sha512 (the update unit the running app downloads and the launcher swaps in).
       - if: matrix.os == 'windows-latest'
-        uses: actions/setup-go@v5
+        uses: actions/setup-go@v6
         with:
           go-version: 'stable'
       - if: matrix.os == 'windows-latest'
@@ -143,7 +143,7 @@ jobs:
       # (electron-builder targets `v<package.json version>`, which the guard forces to equal the tag). This
       # step attaches the Windows/mac/web artifacts to that SAME release, sets the notes, and publishes it.
       # AppImage is intentionally omitted — electron-builder already uploaded it (and its update metadata).
-      - uses: softprops/action-gh-release@v2
+      - uses: softprops/action-gh-release@v3
         with:
           body_path: notes.md
           files: |
