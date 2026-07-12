@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { parseChoices, matchChoiceToAction } from './choices';
+import { parseChoices, matchChoicesToAction } from './choices';
 
 describe('parseChoices', () => {
   it('splits lines, trims, and drops empties', () => {
@@ -28,7 +28,7 @@ describe('parseChoices', () => {
   });
 });
 
-describe('matchChoiceToAction', () => {
+describe('matchChoicesToAction', () => {
   const choices = [
     'You can follow the corridor east',
     'You can knock on the wall',
@@ -36,30 +36,44 @@ describe('matchChoiceToAction', () => {
   ];
 
   it('matches an exact choice', () => {
-    expect(matchChoiceToAction('You can knock on the wall', choices)).toBe(1);
+    expect(matchChoicesToAction('You can knock on the wall', choices)).toEqual([1]);
   });
 
   it('matches a lightly reworded action (added/dropped/reordered words)', () => {
-    expect(matchChoiceToAction('I knock firmly on the wall', choices)).toBe(1);
-    expect(matchChoiceToAction('Search around for a hidden switch, carefully', choices)).toBe(2);
+    expect(matchChoicesToAction('I knock firmly on the wall', choices)).toEqual([1]);
+    expect(matchChoicesToAction('Search around for a hidden switch, carefully', choices)).toEqual([2]);
+  });
+
+  it('matches every choice a stacked (shift+click) action combined', () => {
+    // Two choices joined as separate sentences both resolve, returned ascending.
+    expect(matchChoicesToAction('I knock on the wall. I search for a hidden switch.', choices)).toEqual([1, 2]);
+  });
+
+  it('resolves a stacked action even when the whole-action match would dilute below threshold', () => {
+    expect(matchChoicesToAction('You can follow the corridor east. You can knock on the wall.', choices))
+      .toEqual([0, 1]);
+  });
+
+  it('dedupes when segments point at the same choice', () => {
+    expect(matchChoicesToAction('I knock on the wall. I knock on the wall again.', choices)).toEqual([1]);
   });
 
   it('ignores markdown bold and punctuation on the choice', () => {
-    expect(matchChoiceToAction('follow the corridor east', ['**Follow** the corridor, east!'])).toBe(0);
+    expect(matchChoicesToAction('follow the corridor east', ['**Follow** the corridor, east!'])).toEqual([0]);
   });
 
-  it('returns -1 for a custom action that resembles no choice', () => {
-    expect(matchChoiceToAction('I sit down and start singing a song', choices)).toBe(-1);
+  it('returns [] for a custom action that resembles no choice', () => {
+    expect(matchChoicesToAction('I sit down and start singing a song', choices)).toEqual([]);
   });
 
-  it('returns -1 for empty action or empty choices', () => {
-    expect(matchChoiceToAction('', choices)).toBe(-1);
-    expect(matchChoiceToAction('knock on the wall', [])).toBe(-1);
+  it('returns [] for empty action or empty choices', () => {
+    expect(matchChoicesToAction('', choices)).toEqual([]);
+    expect(matchChoicesToAction('knock on the wall', [])).toEqual([]);
   });
 
   it('respects the threshold', () => {
     // A single shared content word is a weak match — below the default 0.5, above a lenient 0.2.
-    expect(matchChoiceToAction('I wander east for a while', choices)).toBe(-1);
-    expect(matchChoiceToAction('I wander east for a while', choices, 0.2)).toBe(0);
+    expect(matchChoicesToAction('I wander east for a while', choices)).toEqual([]);
+    expect(matchChoicesToAction('I wander east for a while', choices, 0.2)).toEqual([0]);
   });
 });

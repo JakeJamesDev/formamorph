@@ -361,6 +361,23 @@ export const MiddlePanel = ({
   const canRegenStats = statUpdatesEnabled && playerStats.length > 0;
   const [regenMenuOpen, setRegenMenuOpen] = useState(false);
 
+  // Ctrl/Cmd+click or a touch long-press appends a choice as a new sentence; a plain tap replaces it.
+  const appendChoice = (choice: string) =>
+    setPlayerInput((prev) => (prev.trim() ? `${prev.replace(/[.\s]+$/, '')}. ${choice}` : choice));
+  // Long-press tracking (touch): a fired press appends and marks the following click to be swallowed.
+  const longPress = useRef<{ timer: ReturnType<typeof setTimeout> | null; fired: boolean }>({ timer: null, fired: false });
+  const startLongPress = (choice: string) => {
+    longPress.current.fired = false;
+    longPress.current.timer = setTimeout(() => {
+      longPress.current.fired = true;
+      appendChoice(choice);
+    }, 500);
+  };
+  const cancelLongPress = () => {
+    if (longPress.current.timer) clearTimeout(longPress.current.timer);
+    longPress.current.timer = null;
+  };
+
   // Whether TTS has produced playable audio for the current text (drives the frozen top row).
   const hasAudio = ttsPlayback.duration > 0;
 
@@ -517,13 +534,21 @@ export const MiddlePanel = ({
             )}
             <div className="mt-4 flex flex-col gap-2">
                 {choices && choices.length > 0 && choices.map((choice, index) => {
-                  // On a past page, highlight the inferred choice the player acted on; on the live page,
-                  // the choice currently staged in the input box.
-                  const isSelected = isViewingPast ? index === viewSelectedChoice : choice === playerInput;
+                  // On a past page, highlight the inferred choice(s) the player acted on; on the live page,
+                  // any choice whose text is staged in the input box (plain-click replaces, shift-click appends).
+                  const isSelected = isViewingPast ? viewSelectedChoice.includes(index) : playerInput.includes(choice);
                   return (
                     <Button
                       key={index}
-                      onClick={() => setPlayerInput(choice)}
+                      // Ctrl/Cmd+click (or a touch long-press) appends the choice as a new sentence; a plain tap replaces.
+                      onClick={(e) => {
+                        if (longPress.current.fired) { longPress.current.fired = false; return; } // swallow the click after a long-press
+                        if (e.ctrlKey || e.metaKey) appendChoice(choice); else setPlayerInput(choice);
+                      }}
+                      onPointerDown={() => startLongPress(choice)}
+                      onPointerUp={cancelLongPress}
+                      onPointerLeave={cancelLongPress}
+                      onPointerCancel={cancelLongPress}
                       disabled={disabled || isViewingPast}
                       variant={isSelected ? "default" : "outline"}
                       className={`w-full transition-all duration-200 h-auto min-h-[3rem] whitespace-normal

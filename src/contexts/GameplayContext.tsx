@@ -7,7 +7,7 @@ import { APP_VERSION, isSaveEnvelope, migrateSave, stripSnapshotHistory } from '
 import { flattenEnabledBookEntries } from '../lib/dictionaryUtils';
 import { getGameplayText, setGameplayText } from '../lib/gameplayTextStore';
 import { parseTurnContent, serializeTurnContent } from '../lib/turnDigest';
-import { matchChoiceToAction } from '../lib/choices';
+import { matchChoicesToAction } from '../lib/choices';
 import { pageStatDeltas } from '../lib/statChanges';
 import { pageAssistantIndex, pageNextActionIndex } from '../lib/turnHistory';
 import type {
@@ -382,10 +382,11 @@ function useProvideGameplay() {
   // Choices already live on each turn's message JSON; read the paged turn's, else the live choices.
   const viewChoices: Choice[] = viewedSnapshot ? (viewedTurn?.choices ?? []) : choices;
   // On a past page, infer which of that turn's choices the player acted on by fuzzy-matching the next
-  // turn's action (the user message right after this page) against the choice list; -1 = custom action.
+  // turn's action (the user message right after this page) against the choice list; [] = custom action.
+  // Multiple indices when the action stacked several choices (shift+click).
   const viewSelectedChoice = viewedSnapshot
-    ? matchChoiceToAction(fullMessageHistory[pageNextActionIndex(currentPage, messagesPerPage)]?.content ?? '', viewChoices)
-    : -1;
+    ? matchChoicesToAction(fullMessageHistory[pageNextActionIndex(currentPage, messagesPerPage)]?.content ?? '', viewChoices)
+    : [];
   // Stat deltas: while live, the animated last-turn changes; while viewing the past, the change this turn
   // made — vs the previous page's stats, or (on the opening turn, which has no predecessor) vs each stat's
   // starting value, so turn 1 still shows its deltas.

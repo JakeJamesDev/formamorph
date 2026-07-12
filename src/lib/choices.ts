@@ -44,15 +44,9 @@ function diceSimilarity(a: Set<string>, b: Set<string>): number {
   return (2 * shared) / (a.size + b.size);
 }
 
-/**
- * Infer which listed choice the player acted on, by fuzzy-matching their `action` against `choices`.
- * Returns the best-matching index, or `-1` when nothing clears `threshold` (a custom, freely-typed action).
- * Pure inference from the text — the chosen option is never stored, only recovered — so a lightly reworded
- * choice still resolves. Uses word-set Dice similarity (tolerant of added/dropped/reordered words).
- */
-export function matchChoiceToAction(action: string, choices: readonly string[], threshold = 0.5): number {
-  if (!action || choices.length === 0) return -1;
-  const a = choiceWordSet(action);
+/** Best-matching choice index for one action phrase, or `-1` when nothing clears `threshold`. */
+function bestChoiceFor(phrase: string, choices: readonly string[], threshold: number): number {
+  const a = choiceWordSet(phrase);
   let bestIdx = -1;
   let bestScore = 0;
   choices.forEach((choice, i) => {
@@ -63,4 +57,23 @@ export function matchChoiceToAction(action: string, choices: readonly string[], 
     }
   });
   return bestScore >= threshold ? bestIdx : -1;
+}
+
+/**
+ * Infer which listed choice(s) the player acted on, by fuzzy-matching their `action` against `choices`.
+ * An action can stack several choices (shift+click joins them into one sentence each), so the action is split
+ * on sentence boundaries and each segment resolves to its own best choice — matching the whole action at once
+ * would dilute a two-choice pick below threshold. Returns the matched indices ascending, `[]` for a custom
+ * action. Pure inference from the text — the chosen options are never stored, only recovered — so lightly
+ * reworded choices still resolve. Uses word-set Dice similarity (tolerant of added/dropped/reordered words).
+ */
+export function matchChoicesToAction(action: string, choices: readonly string[], threshold = 0.5): number[] {
+  if (!action || choices.length === 0) return [];
+  const segments = action.split(/(?<=[.!?])\s+/).map((s) => s.trim()).filter((s) => s.length > 0);
+  const matched = new Set<number>();
+  for (const segment of segments.length > 0 ? segments : [action]) {
+    const idx = bestChoiceFor(segment, choices, threshold);
+    if (idx >= 0) matched.add(idx);
+  }
+  return [...matched].sort((x, y) => x - y);
 }
