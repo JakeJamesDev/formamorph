@@ -550,10 +550,12 @@
 }
 /* Tint the current (installed) and newest-uninstalled version captions toward info/success, keeping the
    muted base so they stay captions — not full-saturation labels. Tagged by ChangelogBody. */
-.changelog-body h3.cl-current {
+.changelog-body h3.cl-current,
+.changelog-body p.cl-current:has(> [data-streamdown="strong"]:only-child) > [data-streamdown="strong"] {
   color: color-mix(in srgb, hsl(var(--info)) 45%, hsl(var(--muted-foreground)));
 }
-.changelog-body h3.cl-update {
+.changelog-body h3.cl-update,
+.changelog-body p.cl-update:has(> [data-streamdown="strong"]:only-child) > [data-streamdown="strong"] {
   color: color-mix(in srgb, hsl(var(--success)) 45%, hsl(var(--muted-foreground)));
 }
 /* Inline status tags on the tinted versions (pseudo-element so they stay out of the heading's text — the
