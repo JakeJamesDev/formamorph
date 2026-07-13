@@ -1,6 +1,7 @@
-import type { Dictionary, DictionaryEntry } from '@/types';
+import type { Dictionary, DictionaryEntry, Placeholder } from '@/types';
 import { APP_VERSION, WORLD_FILE_KIND, SAVE_FILE_KIND } from './version';
 import { convertLorebook } from './lorebookImport';
+import { collectUsedPlaceholders } from './placeholders';
 
 /** Discriminator identifying a standalone one-book dictionary file (vs. a world or save file). */
 export const DICTIONARY_FILE_KIND = 'dictionary' as const;
@@ -13,10 +14,14 @@ export interface DictionaryFile {
   description?: string;
   enabled?: boolean;
   entries: DictionaryEntry[];
+  /** Placeholder defs used by this book's entries, so their chips resolve after import (see lib/placeholders). */
+  placeholders?: Placeholder[];
 }
 
-/** Serialize one book to the standalone file shape, stamped with the current app version. */
-export function buildDictionaryFile(book: Dictionary): DictionaryFile {
+/** Serialize one book to the standalone file shape, stamped with the current app version. `available` is the
+ *  placeholder pool to resolve the book's used chips from — the world's list, or the book's own carried defs. */
+export function buildDictionaryFile(book: Dictionary, available: Placeholder[] = book.placeholders ?? []): DictionaryFile {
+  const used = collectUsedPlaceholders(book.entries.map((e) => e.value ?? ''), available);
   return {
     formamorphKind: DICTIONARY_FILE_KIND,
     version: APP_VERSION,
@@ -24,6 +29,7 @@ export function buildDictionaryFile(book: Dictionary): DictionaryFile {
     ...(book.description ? { description: book.description } : {}),
     ...(book.enabled === false ? { enabled: false } : {}),
     entries: book.entries,
+    ...(used.length ? { placeholders: used } : {}),
   };
 }
 
@@ -46,6 +52,8 @@ export function parseDictionaryFile(raw: unknown): Dictionary {
     ...(typeof obj.description === 'string' && obj.description ? { description: obj.description } : {}),
     ...(obj.enabled === false ? { enabled: false } : {}),
     entries: entries.map((e) => ({ ...e, id: crypto.randomUUID() })),
+    // Carried placeholder defs ride along; absorbed into World.placeholders when this book is added to a world.
+    ...(Array.isArray(obj.placeholders) ? { placeholders: obj.placeholders as Placeholder[] } : {}),
   };
 }
 

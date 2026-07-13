@@ -1,14 +1,15 @@
 import { useState, useEffect } from 'react';
-import { useGameData } from '@/contexts/GameDataContext';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { KeywordChips } from '@/components/KeywordChips';
+import { usePlaceholderStore } from '@/contexts/PlaceholderStoreContext';
 import type { Placeholder } from '@/types';
 
 /** Right-panel editor for a placeholder: a name and its values. The behavior is inferred from the value
- *  count — 1 value is a fixed Variable, 2+ is a random Wildcard — surfaced as a live hint. */
+ *  count — 1 value is a fixed Variable, 2+ is a random Wildcard — surfaced as a live hint. Writes back through
+ *  the scoped `PlaceholderStore` (the world's, or the library item's isolated store). */
 const PlaceholderManager = ({ placeholder }: { placeholder: Placeholder }) => {
-  const { updatePlaceholder } = useGameData();
+  const { updatePlaceholder } = usePlaceholderStore();
   const [editing, setEditing] = useState<Placeholder>(placeholder);
 
   useEffect(() => {

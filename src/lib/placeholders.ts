@@ -104,6 +104,60 @@ export function primeRolls(
   return { world, unique: uniqueRolls };
 }
 
+// --- portability (export bundle / import absorb) ---------------------------------------------------------
+
+/** The subset of `available` defs actually referenced by chips in `texts` — what a standalone export bundles
+ *  so its chips resolve elsewhere. Order follows `available`; each def appears at most once. */
+export function collectUsedPlaceholders(texts: string[], available: Placeholder[]): Placeholder[] {
+  const used = new Set<string>();
+  for (const text of texts) {
+    if (!text) continue;
+    TOKEN_RE.lastIndex = 0;
+    for (const m of text.matchAll(TOKEN_RE)) used.add(m[1]);
+  }
+  return available.filter((p) => used.has(p.id));
+}
+
+/** Rewrite chip tokens' placeholder id via `idMap` (`{{ph:<old>:<mode>:<pid>}}` → new id; mode + placement id
+ *  preserved). Ids absent from the map are left as-is. Used when absorbing an imported item's placeholders. */
+export function remapPlaceholderIds(text: string, idMap: Record<string, string>): string {
+  if (!text || !hasPlaceholders(text)) return text;
+  TOKEN_RE.lastIndex = 0;
+  return text.replace(TOKEN_RE, (full, id: string, mode: string, placementId: string) => {
+    const next = idMap[id];
+    return next ? `{{ph:${next}:${mode}:${placementId}}}` : full;
+  });
+}
+
+/**
+ * Merge an imported item's carried placeholder defs into a world's list. A **perfect match** (same name AND
+ * values) reuses the existing def's id; anything else becomes a fresh-id def (collision-proof). Pure: returns
+ * the defs to add and an id map (every carried id → its resolved world id) for the caller to remap tokens with.
+ */
+export function absorbPlaceholders(
+  carried: Placeholder[],
+  worldPlaceholders: Placeholder[],
+): { toAdd: Placeholder[]; idMap: Record<string, string> } {
+  const sameValues = (a: string[], b: string[]) => a.length === b.length && a.every((v, i) => v === b[i]);
+  const toAdd: Placeholder[] = [];
+  const idMap: Record<string, string> = {};
+  // Match against the world's list plus anything added so far this pass (so two carried copies of the same def
+  // collapse to one).
+  const pool = [...worldPlaceholders];
+  for (const c of carried) {
+    const match = pool.find((p) => p.name === c.name && sameValues(p.values, c.values));
+    if (match) {
+      idMap[c.id] = match.id;
+    } else {
+      const fresh: Placeholder = { id: crypto.randomUUID(), name: c.name, values: [...c.values] };
+      toAdd.push(fresh);
+      pool.push(fresh);
+      idMap[c.id] = fresh.id;
+    }
+  }
+  return { toAdd, idMap };
+}
+
 export interface ResolveOptions {
   placeholders: Placeholder[];
   /** Frozen rolls for this playthrough. Not mutated — new rolls are reported via `setRoll`. */

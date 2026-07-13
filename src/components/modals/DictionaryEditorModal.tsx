@@ -1,17 +1,20 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState, type SetStateAction } from 'react';
 import { toast } from 'react-toastify';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Button } from '@/components/ui/button';
+import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Download, Save } from 'lucide-react';
 import { UnsavedChangesDialog } from '@/components/UnsavedChangesDialog';
 import { DictionaryStoreProvider, useDictionaryStoreState } from '@/contexts/DictionaryStoreContext';
 import DictionaryTree from '@/managers/DictionaryTree';
 import DictionaryBookManager from '@/managers/DictionaryBookManager';
 import DictionaryManager from '@/managers/DictionaryManager';
+import PlaceholderEditor from '@/managers/PlaceholderEditor';
+import { placeholderStore, PlaceholderStoreProvider } from '@/contexts/PlaceholderStoreContext';
 import { buildDictionaryFile } from '@/lib/dictionaryFile';
 import DictionaryStorageService from '@/services/DictionaryStorageService';
-import type { Dictionary } from '@/types';
+import type { Dictionary, Placeholder } from '@/types';
 
 /**
  * Edit a single library dictionary in place. Reuses the World Editor's dictionary widgets, but binds them
@@ -23,6 +26,7 @@ const DictionaryEditorModal = ({ dictionaryId, draft, onClose }: { dictionaryId:
   const { dictionaries, setDictionaries } = store;
   const [book, setBook] = useState<Dictionary | null>(null);
   const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [tab, setTab] = useState<'dictionary' | 'placeholders'>('dictionary');
   const [showUnsaved, setShowUnsaved] = useState(false);
   const baselineRef = useRef('');
   const onCloseRef = useRef(onClose);
@@ -45,6 +49,16 @@ const DictionaryEditorModal = ({ dictionaryId, draft, onClose }: { dictionaryId:
   const dirty = book != null && JSON.stringify(dictionaries) !== baselineRef.current;
   const selectedBook = dictionaries.find((b) => b.id === selectedId);
   const selectedEntry = dictionaries.flatMap((b) => b.entries).find((e) => e.id === selectedId);
+  // The book's carried placeholders live on the sole book (index 0); its entries' chips resolve against them.
+  const bookPlaceholders = useMemo(() => dictionaries[0]?.placeholders ?? [], [dictionaries]);
+  // Isolated placeholder store backed by the sole book's `placeholders` field (empty ⇒ undefined).
+  const phStore = useMemo(() => placeholderStore(bookPlaceholders, (action: SetStateAction<Placeholder[]>) =>
+    setDictionaries((prev) => prev.map((b, i) => {
+      if (i !== 0) return b;
+      const cur = b.placeholders ?? [];
+      const next = typeof action === 'function' ? action(cur) : action;
+      return { ...b, placeholders: next.length ? next : undefined };
+    }))), [bookPlaceholders, setDictionaries]);
 
   const handleSave = async () => {
     const current = dictionaries[0];
@@ -82,13 +96,27 @@ const DictionaryEditorModal = ({ dictionaryId, draft, onClose }: { dictionaryId:
     <>
       <Dialog open={isOpen} onOpenChange={(open) => { if (!open) attemptClose(); }}>
         <DialogContent className="max-w-[1100px] w-[95vw] h-[85vh] flex flex-col p-0 gap-0 overflow-hidden">
-          <DialogHeader className="px-4 py-3 border-b shrink-0">
-            <DialogTitle className="truncate">{book?.name || 'Dictionary'}</DialogTitle>
+          <DialogHeader className="px-4 py-3 border-b shrink-0 flex-row items-center gap-3">
+            <DialogTitle className="truncate flex-1">{book?.name || 'Dictionary'}</DialogTitle>
+            {book && (
+              <Tabs value={tab} onValueChange={(v) => setTab(v as 'dictionary' | 'placeholders')}>
+                <TabsList>
+                  <TabsTrigger value="dictionary">Dictionary</TabsTrigger>
+                  <TabsTrigger value="placeholders">Placeholders</TabsTrigger>
+                </TabsList>
+              </Tabs>
+            )}
+            <div className="flex-1" />
           </DialogHeader>
           {!book ? (
             <div className="flex-1 flex items-center justify-center text-sm text-muted-foreground">Loading…</div>
           ) : (
             <DictionaryStoreProvider value={store}>
+              {tab === 'placeholders' ? (
+                <PlaceholderStoreProvider value={phStore}>
+                  <PlaceholderEditor />
+                </PlaceholderStoreProvider>
+              ) : (
               <div className="flex-1 min-h-0 flex">
                 <ScrollArea className="w-1/2 min-w-0 border-r">
                   <div className="p-2">
@@ -100,13 +128,14 @@ const DictionaryEditorModal = ({ dictionaryId, draft, onClose }: { dictionaryId:
                     {selectedBook ? (
                       <DictionaryBookManager key={selectedBook.id} book={selectedBook} />
                     ) : selectedEntry ? (
-                      <DictionaryManager key={selectedEntry.id} entry={selectedEntry} />
+                      <DictionaryManager key={selectedEntry.id} entry={selectedEntry} placeholders={bookPlaceholders} />
                     ) : (
                       <p className="text-sm text-muted-foreground">Select the dictionary or an entry on the left to edit it.</p>
                     )}
                   </div>
                 </ScrollArea>
               </div>
+              )}
               <div className="px-4 py-3 border-t shrink-0 flex justify-between">
                 <Button variant="outline" size="sm" onClick={handleDownload}>
                   <Download className="h-4 w-4 mr-2" /> Download

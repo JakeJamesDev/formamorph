@@ -1,14 +1,17 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState, type SetStateAction } from 'react';
 import { toast } from 'react-toastify';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Button } from '@/components/ui/button';
+import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Download, Save } from 'lucide-react';
 import { UnsavedChangesDialog } from '@/components/UnsavedChangesDialog';
 import EntityFields from '@/managers/EntityFields';
+import PlaceholderEditor from '@/managers/PlaceholderEditor';
+import { placeholderStore, PlaceholderStoreProvider } from '@/contexts/PlaceholderStoreContext';
 import { exportEntityCard } from '@/lib/entityFile';
 import EntityStorageService from '@/services/EntityStorageService';
-import type { Entity } from '@/types';
+import type { Entity, Placeholder } from '@/types';
 
 /**
  * Edit a single library character in place, bound to ISOLATED state (never the world store). Opens on an
@@ -17,6 +20,7 @@ import type { Entity } from '@/types';
  */
 const EntityEditorModal = ({ entityId, draft, onClose }: { entityId: string | null; draft?: Entity | null; onClose: () => void }) => {
   const [entity, setEntity] = useState<Entity | null>(null);
+  const [tab, setTab] = useState<'entity' | 'placeholders'>('entity');
   const [showUnsaved, setShowUnsaved] = useState(false);
   const baselineRef = useRef('');
   const onCloseRef = useRef(onClose);
@@ -44,6 +48,15 @@ const EntityEditorModal = ({ entityId, draft, onClose }: { entityId: string | nu
   const handleChange = (field: string, value: unknown) => {
     setEntity((prev) => (prev ? ({ ...prev, [field]: value } as Entity) : prev));
   };
+
+  // Isolated placeholder store backed by the character's own `placeholders` field (empty ⇒ undefined).
+  const phStore = useMemo(() => placeholderStore(entity?.placeholders ?? [], (action: SetStateAction<Placeholder[]>) =>
+    setEntity((prev) => {
+      if (!prev) return prev;
+      const cur = prev.placeholders ?? [];
+      const next = typeof action === 'function' ? action(cur) : action;
+      return { ...prev, placeholders: next.length ? next : undefined };
+    })), [entity?.placeholders]);
 
   const handleSave = async () => {
     if (!entity) return;
@@ -82,18 +95,33 @@ const EntityEditorModal = ({ entityId, draft, onClose }: { entityId: string | nu
     <>
       <Dialog open={isOpen} onOpenChange={(open) => { if (!open) attemptClose(); }}>
         <DialogContent className="max-w-[800px] w-[95vw] h-[85vh] flex flex-col p-0 gap-0 overflow-hidden">
-          <DialogHeader className="px-4 py-3 border-b shrink-0">
-            <DialogTitle className="truncate">{entity?.name || 'Character'}</DialogTitle>
+          <DialogHeader className="px-4 py-3 border-b shrink-0 flex-row items-center gap-3">
+            <DialogTitle className="truncate flex-1">{entity?.name || 'Character'}</DialogTitle>
+            {entity && (
+              <Tabs value={tab} onValueChange={(v) => setTab(v as 'entity' | 'placeholders')}>
+                <TabsList>
+                  <TabsTrigger value="entity">Character</TabsTrigger>
+                  <TabsTrigger value="placeholders">Placeholders</TabsTrigger>
+                </TabsList>
+              </Tabs>
+            )}
+            <div className="flex-1" />
           </DialogHeader>
           {!entity ? (
             <div className="flex-1 flex items-center justify-center text-sm text-muted-foreground">Loading…</div>
           ) : (
             <>
-              <ScrollArea className="flex-1 min-h-0">
-                <div className="p-4">
-                  <EntityFields value={entity} onChange={handleChange} />
-                </div>
-              </ScrollArea>
+              {tab === 'entity' ? (
+                <ScrollArea className="flex-1 min-h-0">
+                  <div className="p-4">
+                    <EntityFields value={entity} onChange={handleChange} placeholders={entity.placeholders ?? []} />
+                  </div>
+                </ScrollArea>
+              ) : (
+                <PlaceholderStoreProvider value={phStore}>
+                  <PlaceholderEditor />
+                </PlaceholderStoreProvider>
+              )}
               <div className="px-4 py-3 border-t shrink-0 flex justify-between">
                 <Button variant="outline" size="sm" onClick={handleDownload}>
                   <Download className="h-4 w-4 mr-2" /> Download

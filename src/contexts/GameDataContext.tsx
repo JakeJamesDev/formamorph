@@ -2,6 +2,7 @@ import { createContext, useContext, useState, useCallback, useMemo, useEffect, t
 import WorldStorageService from '../services/WorldStorageService';
 import { migrateWorld, APP_VERSION } from '@/lib/version';
 import { useDictionaryStoreState, DictionaryStoreProvider } from '@/contexts/DictionaryStoreContext';
+import { placeholderStore, PlaceholderStoreProvider } from '@/contexts/PlaceholderStoreContext';
 import type {
   WorldMetadata,
   WorldOverview,
@@ -153,6 +154,10 @@ function useProvideGameData() {
   const removePlaceholder = useCallback((id: string) => {
     setPlaceholders(prev => prev.filter(p => p.id !== id));
   }, []);
+
+  // The world's placeholders as a scoped store, so the same editing widgets can be reused elsewhere
+  // (the library editors) against an isolated store.
+  const phStore = useMemo(() => placeholderStore(placeholders, setPlaceholders), [placeholders]);
 
   const addTrait = useCallback((newTrait: Trait) => {
     setTraits(prevTraits => [...prevTraits, newTrait]);
@@ -380,6 +385,8 @@ function useProvideGameData() {
     saveWorld,
     // The scoped dictionary store, forwarded so the provider can bind the editing widgets to the world's books.
     dictStore,
+    // Likewise for placeholders, so the same editing widgets bind to the world's placeholders.
+    phStore,
   };
 
   return value;
@@ -409,7 +416,9 @@ export const GameDataProvider = ({ children }: { children: ReactNode }) => {
   return (
     <GameDataContext.Provider value={value}>
       <DictionaryStoreProvider value={value.dictStore}>
-        {children}
+        <PlaceholderStoreProvider value={value.phStore}>
+          {children}
+        </PlaceholderStoreProvider>
       </DictionaryStoreProvider>
     </GameDataContext.Provider>
   );

@@ -1,6 +1,7 @@
-import type { Entity } from '@/types';
+import type { Entity, Placeholder } from '@/types';
 import { APP_VERSION, WORLD_FILE_KIND, SAVE_FILE_KIND } from './version';
 import { DICTIONARY_FILE_KIND } from './dictionaryFile';
+import { collectUsedPlaceholders } from './placeholders';
 import type { Dictionary } from '@/types';
 import { embedEntityCard, readEntityCard } from './entityCard';
 import { readTavernCard } from './tavernCard';
@@ -19,10 +20,15 @@ export interface EntityCardData {
   aiDescription?: string;
   aiSummary?: string;
   imageTags?: string;
+  /** Placeholder defs used by this entity's chips, so they resolve after import (see lib/placeholders). */
+  placeholders?: Placeholder[];
 }
 
-/** The card's text fields, stamped with the current app version. `image`/`model`/`sound` are intentionally dropped. */
-export function buildEntityCardData(entity: Entity): EntityCardData {
+/** The card's text fields, stamped with the current app version. `image`/`model`/`sound` are intentionally
+ *  dropped. `available` is the placeholder pool to resolve the entity's used chips from — the world's list
+ *  for a world entity, or the entity's own carried `placeholders` for a library one. */
+export function buildEntityCardData(entity: Entity, available: Placeholder[] = entity.placeholders ?? []): EntityCardData {
+  const used = collectUsedPlaceholders([entity.playerDescription, entity.aiDescription, entity.aiSummary].filter((t): t is string => !!t), available);
   return {
     formamorphKind: ENTITY_FILE_KIND,
     version: APP_VERSION,
@@ -32,6 +38,7 @@ export function buildEntityCardData(entity: Entity): EntityCardData {
     ...(entity.aiDescription ? { aiDescription: entity.aiDescription } : {}),
     ...(entity.aiSummary ? { aiSummary: entity.aiSummary } : {}),
     ...(entity.imageTags ? { imageTags: entity.imageTags } : {}),
+    ...(used.length ? { placeholders: used } : {}),
   };
 }
 
@@ -56,6 +63,8 @@ export function parseEntityCardData(raw: unknown): Entity {
     ...(typeof obj.aiDescription === 'string' && obj.aiDescription ? { aiDescription: obj.aiDescription } : {}),
     ...(typeof obj.aiSummary === 'string' && obj.aiSummary ? { aiSummary: obj.aiSummary } : {}),
     ...(typeof obj.imageTags === 'string' && obj.imageTags ? { imageTags: obj.imageTags } : {}),
+    // Carried placeholder defs ride along; absorbed into World.placeholders when this entity is added to a world.
+    ...(Array.isArray(obj.placeholders) ? { placeholders: obj.placeholders as Placeholder[] } : {}),
   };
 }
 
@@ -84,13 +93,13 @@ async function placeholderPortrait(name: string): Promise<string> {
  * Encode an entity as a shareable WebP character card: its portrait carrying the text fields in a metadata chunk.
  * Entities without a portrait get a generated placeholder so export always yields a valid image.
  */
-export async function exportEntityCard(entity: Entity): Promise<Blob> {
+export async function exportEntityCard(entity: Entity, available?: Placeholder[]): Promise<Blob> {
   let imageUrl = entity.image || (await placeholderPortrait(entity.name || 'Character'));
   if (dataUrlMime(imageUrl) !== 'image/webp') imageUrl = await optimizeImageDataUrl(imageUrl, IMAGE_CAPS.entity);
   if (dataUrlMime(imageUrl) !== 'image/webp') throw new Error('Could not encode the portrait as WebP.');
   const { w, h } = await measureDataUrl(imageUrl);
   const bytes = new Uint8Array(await (await fetch(imageUrl)).arrayBuffer());
-  const card = embedEntityCard(bytes, JSON.stringify(buildEntityCardData(entity)), { w, h });
+  const card = embedEntityCard(bytes, JSON.stringify(buildEntityCardData(entity, available)), { w, h });
   return new Blob([card], { type: 'image/webp' });
 }
 

@@ -50,6 +50,18 @@ describe('buildEntityCardData', () => {
     expect(card).not.toHaveProperty('aiSummary');
     expect(card.name).toBe('Bram');
   });
+
+  it('bundles only the placeholders the entity actually uses, and reads them back on parse', () => {
+    const eye = { id: 'eye', name: 'Eye Color', values: ['Red', 'Blue'] };
+    const unused = { id: 'unused', name: 'Weather', values: ['Rain', 'Sun'] };
+    const withChip: Entity = { id: 'y', name: 'Guard', aiDescription: 'Eyes: {{ph:eye:world:p1}}.' };
+    const card = buildEntityCardData(withChip, [eye, unused]);
+    expect(card.placeholders).toEqual([eye]); // only the referenced one; `unused` excluded
+    // Round-trips onto the parsed entity (which mints a fresh entity id but keeps the carried defs verbatim).
+    const parsed = parseEntityCardData(card);
+    expect(parsed.placeholders).toEqual([eye]);
+    expect(parsed.aiDescription).toContain('{{ph:eye:world:p1}}');
+  });
 });
 
 describe('parseEntityCardData', () => {
