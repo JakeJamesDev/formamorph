@@ -7,6 +7,9 @@ import {
   hasPlaceholders,
   collectPlaceholderPlacements,
   primeRolls,
+  collectUsedPlaceholders,
+  remapPlaceholderIds,
+  absorbPlaceholders,
 } from './placeholders';
 
 const P = (id: string, values: string[]): Placeholder => ({ id, name: id, values });
@@ -132,6 +135,48 @@ describe('resolvePlaceholders', () => {
     const text = tok('eye', 'world', 'p1');
     const rolls = primeRolls(placeholders, [text], { world: { eye: 'Green' } }, first);
     expect(rolls.world?.eye).toBe('Green'); // kept, not overwritten by first()→'Red'
+  });
+
+  describe('portability (export bundle / import absorb)', () => {
+    it('collectUsedPlaceholders returns only the referenced defs', () => {
+      const available = [P('eye', ['Red', 'Blue']), P('king', ['Aldric']), P('unused', ['x'])];
+      const texts = [`${tok('eye', 'world', 'p1')}`, `hi ${tok('king', 'unique', 'p2')}`];
+      expect(collectUsedPlaceholders(texts, available).map((p) => p.id)).toEqual(['eye', 'king']);
+    });
+
+    it('remapPlaceholderIds rewrites the id, keeping mode + placement id; leaves unknown ids alone', () => {
+      const text = `${tok('eye', 'unique', 'p1')} ${tok('other', 'world', 'p2')}`;
+      const out = remapPlaceholderIds(text, { eye: 'EYE2' });
+      expect(out).toBe(`${tok('EYE2', 'unique', 'p1')} ${tok('other', 'world', 'p2')}`);
+    });
+
+    it('absorbPlaceholders reuses a perfect (name+values) match and maps its id', () => {
+      const world = [P('W1', ['Red', 'Blue'])]; // same name+values as the carried one, different id
+      const carried = [{ id: 'C1', name: 'W1', values: ['Red', 'Blue'] }];
+      const { toAdd, idMap } = absorbPlaceholders(carried, world);
+      expect(toAdd).toEqual([]); // nothing added — perfect match
+      expect(idMap).toEqual({ C1: 'W1' }); // token remaps to the existing world id
+    });
+
+    it('absorbPlaceholders adds a fresh-id def when there is no perfect match (same name, different values)', () => {
+      const world = [P('eye', ['Red', 'Blue'])];
+      const carried = [{ id: 'C1', name: 'eye', values: ['Green', 'Gold'] }]; // same name, different values
+      const { toAdd, idMap } = absorbPlaceholders(carried, world);
+      expect(toAdd).toHaveLength(1);
+      expect(toAdd[0]).toMatchObject({ name: 'eye', values: ['Green', 'Gold'] });
+      expect(toAdd[0].id).not.toBe('C1'); // fresh id (collision-proof)
+      expect(idMap.C1).toBe(toAdd[0].id);
+    });
+
+    it('absorbPlaceholders collapses two identical carried defs to one add', () => {
+      const carried = [
+        { id: 'A', name: 'eye', values: ['Red'] },
+        { id: 'B', name: 'eye', values: ['Red'] },
+      ];
+      const { toAdd, idMap } = absorbPlaceholders(carried, []);
+      expect(toAdd).toHaveLength(1); // second matches the first-added one
+      expect(idMap.A).toBe(idMap.B);
+    });
   });
 
   it('does not expand a chip that appears inside a resolved value (no nesting)', () => {

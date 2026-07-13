@@ -114,6 +114,10 @@ export interface Entity {
   groupId?: string | null;
   /** Sibling order among entities sharing the same group; editor-only, never sent to the AI. */
   order?: number;
+  /** Placeholder defs this standalone/library item carries so its `{{ph…}}` chips resolve after import
+   *  (see lib/placeholders). Populated only off-world (export bundle / library); absent while the entity
+   *  lives in a world, where `World.placeholders` is authoritative — it's absorbed there on import. */
+  placeholders?: Placeholder[];
 }
 
 /** An editor-only folder for organizing entities, nestable via `parentId`. Just a name — never sent to the
@@ -221,6 +225,9 @@ export interface Dictionary {
   /** `false` mutes the whole book (all entries); absent/`true` = active. */
   enabled?: boolean;
   entries: DictionaryEntry[];
+  /** Placeholder defs this standalone/library book carries so its entries' `{{ph…}}` chips resolve after
+   *  import (see lib/placeholders). Off-world only; absorbed into `World.placeholders` on import to a world. */
+  placeholders?: Placeholder[];
 }
 
 /** World-level metadata and global settings (system prompt, media, 3D toggle) shared across all saves. */

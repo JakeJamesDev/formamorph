@@ -8,10 +8,9 @@ import { Input } from "@/components/ui/input";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { Download, Plus, X, ArrowLeft, Save, GripVertical, FolderPlus, FilePlus, Copy, ImageDown, BookPlus, UserPlus } from "lucide-react";
+import { Download, Plus, ArrowLeft, Save, FolderPlus, FilePlus, ImageDown, BookPlus, UserPlus } from "lucide-react";
 import { Panel, PanelGroup, PanelResizeHandle } from 'react-resizable-panels';
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { Checkbox } from "@/components/ui/checkbox";
 import { toast } from 'react-toastify';
 import { ThemedToastContainer } from '@/components/ThemedToastContainer';
 import 'react-toastify/dist/ReactToastify.css';
@@ -31,6 +30,7 @@ import WorldOverviewManager from '../managers/WorldOverviewManager';
 import WorldDetailsManager from '../managers/WorldDetailsManager';
 import DictionaryManager from '../managers/DictionaryManager';
 import PlaceholderManager from '../managers/PlaceholderManager';
+import PlaceholderList from '../managers/PlaceholderList';
 import DictionaryTree from '../managers/DictionaryTree';
 import DictionaryBookManager from '../managers/DictionaryBookManager';
 import { buildDictionaryFile } from '@/lib/dictionaryFile';
@@ -38,6 +38,7 @@ import { downloadBlob } from '@/lib/downloadBlob';
 import AddDictionaryModal from '@/components/modals/AddDictionaryModal';
 import AddEntityModal from '@/components/modals/AddEntityModal';
 import { exportEntityCard } from '@/lib/entityFile';
+import { absorbPlaceholders, remapPlaceholderIds } from '@/lib/placeholders';
 import {
   DndContext,
   closestCenter,
@@ -49,12 +50,10 @@ import {
 } from '@dnd-kit/core';
 import {
   SortableContext,
-  useSortable,
   arrayMove,
   verticalListSortingStrategy,
   sortableKeyboardCoordinates,
 } from '@dnd-kit/sortable';
-import { CSS } from '@dnd-kit/utilities';
 import {
   restrictToVerticalAxis,
   restrictToFirstScrollableAncestor,
@@ -63,90 +62,10 @@ import { UnsavedChangesDialog } from "@/components/UnsavedChangesDialog";
 import { APP_VERSION, WORLD_FILE_KIND } from '@/lib/version';
 import type { Stat, Entity, GameLocation, StatUpdate, Dictionary, World } from '@/types';
 import { useDownscalePrompt } from '@/lib/useDownscalePrompt';
+import { SortableRow, type SortableListItem } from '@/components/SortableList';
 
 /** The fields a reorderable list row needs (every editor item has these). */
-interface ListItem {
-  id: string;
-  name: string;
-}
-
-// A single reorderable entry row. The grip is the drag handle (handle-only drag),
-// so clicking the row body still selects it.
-function SortableRow({ item, selected, onSelect, onRemove, onDuplicate, enabled, onToggleEnabled }: {
-  item: ListItem;
-  selected: boolean;
-  onSelect: (id: string) => void;
-  onRemove: (id: string) => void;
-  onDuplicate: (id: string) => void;
-  enabled?: boolean;
-  onToggleEnabled?: (id: string, enabled: boolean) => void;
-}) {
-  const { attributes, listeners, setNodeRef, transform, transition, isDragging } =
-    useSortable({ id: item.id });
-  const faded = !!onToggleEnabled && enabled === false;
-  const style = {
-    // Translate (not Transform): Transform bakes in a scale that resizes the dragged row to the target slot.
-    transform: CSS.Translate.toString(transform),
-    transition,
-    opacity: isDragging || faded ? 0.5 : 1,
-    zIndex: isDragging ? 1 : undefined,
-  };
-  return (
-    <div
-      ref={setNodeRef}
-      style={style}
-      onClick={(e) => { e.stopPropagation(); onSelect(item.id); }}
-      className={`p-2 cursor-pointer rounded-md transition-colors flex justify-between items-center
-        ${selected ? 'bg-primary text-primary-foreground' : 'hover:bg-secondary'}`}
-    >
-      <span
-        {...attributes}
-        {...listeners}
-        onClick={(e) => e.stopPropagation()}
-        className={`cursor-grab touch-none px-1 ${
-          selected ? 'text-primary-foreground' : 'text-muted-foreground'
-        }`}
-        title="Drag to reorder"
-      >
-        <GripVertical className="h-4 w-4" />
-      </span>
-      {onToggleEnabled && (
-        <Checkbox
-          checked={enabled !== false}
-          onCheckedChange={(v) => onToggleEnabled(item.id, v === true)}
-          onClick={(e) => e.stopPropagation()}
-          className="mx-1 shrink-0"
-          title={enabled === false ? 'Disabled — click to enable' : 'Enabled — click to disable'}
-        />
-      )}
-      <span className="flex-grow">{item.name}</span>
-      <Button
-        variant="ghost"
-        size="icon"
-        onClick={(e) => {
-          e.stopPropagation();
-          onDuplicate(item.id);
-        }}
-        className={selected ? 'text-primary-foreground' : 'text-muted-foreground'}
-        title="Duplicate"
-      >
-        <Copy className="h-4 w-4" />
-      </Button>
-      <Button
-        variant="ghost"
-        size="icon"
-        onClick={(e) => {
-          e.stopPropagation();
-          onRemove(item.id);
-        }}
-        className={selected ? 'text-primary-foreground' : 'text-muted-foreground'}
-        title="Delete"
-      >
-        <X className="h-4 w-4" />
-      </Button>
-    </div>
-  );
-}
+type ListItem = SortableListItem;
 
 const WorldEditor = ({ onClose, embedded = false, backButton }: {
   onClose: () => void;
@@ -162,8 +81,8 @@ const WorldEditor = ({ onClose, embedded = false, backButton }: {
     stats, locations, entities, entityGroups, traits, traitGroups, statUpdates, dictionaries, placeholders,
     addStat, addLocation, addEntity, addTrait, addStatUpdate, addDictionary,
     addTraitGroup, addEntityGroup, addPlaceholder,
-    removeStat, removeEntity, removeTrait, removeStatUpdate, removePlaceholder,
-    setStats, setLocations, setEntities, setTraits, setTraitGroups, setStatUpdates, setPlaceholders,
+    removeStat, removeEntity, removeTrait, removeStatUpdate,
+    setStats, setLocations, setEntities, setTraits, setTraitGroups, setStatUpdates,
     isWorldDirty, saveWorld: saveWorldCtx
   } = useGameData();
   const { promptWorld, dialog: downscaleDialog } = useDownscalePrompt();
@@ -214,17 +133,44 @@ const WorldEditor = ({ onClose, embedded = false, backButton }: {
 
   // Export one book to its own standalone `.json` (no image downscale — dictionaries are text only).
   const downloadDictionary = (book: Dictionary) => {
-    const jsonData = JSON.stringify(buildDictionaryFile(book), null, 2);
+    // Bundle the world placeholders this book's entries use, so its chips resolve after import elsewhere.
+    const jsonData = JSON.stringify(buildDictionaryFile(book, placeholders), null, 2);
     downloadBlob(new Blob([jsonData], { type: 'application/json' }), `${book.name || 'Dictionary'}.json`);
   };
 
   // Export one entity as a shareable WebP character card (its portrait carrying the text fields).
   const downloadEntity = async (entity: Entity) => {
     try {
-      downloadBlob(await exportEntityCard(entity), `${entity.name || 'Character'}.webp`);
+      downloadBlob(await exportEntityCard(entity, placeholders), `${entity.name || 'Character'}.webp`);
     } catch (error) {
       toast.error((error as Error).message);
     }
+  };
+
+  // Absorb an imported item's carried placeholders into the world: add any that aren't a perfect (name+values)
+  // match, remap the item's chip tokens to the resolved world ids, and drop the item's own section (now global).
+  const absorbEntityPlaceholders = (entity: Entity): Entity => {
+    if (!entity.placeholders?.length) return entity;
+    const { toAdd, idMap } = absorbPlaceholders(entity.placeholders, placeholders);
+    toAdd.forEach(addPlaceholder);
+    const remap = (t?: string) => (t ? remapPlaceholderIds(t, idMap) : t);
+    return {
+      ...entity,
+      playerDescription: remap(entity.playerDescription),
+      aiDescription: remap(entity.aiDescription),
+      aiSummary: remap(entity.aiSummary),
+      placeholders: undefined,
+    };
+  };
+  const absorbDictionaryPlaceholders = (book: Dictionary): Dictionary => {
+    if (!book.placeholders?.length) return book;
+    const { toAdd, idMap } = absorbPlaceholders(book.placeholders, placeholders);
+    toAdd.forEach(addPlaceholder);
+    return {
+      ...book,
+      entries: book.entries.map((e) => (e.value ? { ...e, value: remapPlaceholderIds(e.value, idMap) } : e)),
+      placeholders: undefined,
+    };
   };
 
   const saveWorld = async () => {
@@ -373,13 +319,12 @@ const WorldEditor = ({ onClose, embedded = false, backButton }: {
       activeTab === "entities" ? entities :
       activeTab === "locations" ? locations :
       activeTab === "traits" ? traits :
-      activeTab === "statUpdates" ? statUpdates :
-      activeTab === "placeholders" ? placeholders : [];
+      activeTab === "statUpdates" ? statUpdates : [];
 
     return itemsToFilter.filter(item =>
       item.name.toLowerCase().includes(searchTerm.toLowerCase())
     );
-  }, [activeTab, stats, entities, locations, traits, statUpdates, placeholders, searchTerm]);
+  }, [activeTab, stats, entities, locations, traits, statUpdates, searchTerm]);
 
   const selectedItem = filteredItems.find(item => item.id === selectedItemId);
   // Traits tab can select either a trait or a group (the right panel branches on which).
@@ -413,7 +358,6 @@ const WorldEditor = ({ onClose, embedded = false, backButton }: {
     locations: { items: locations, setItems: setLocations },
     traits: { items: traits, setItems: setTraits },
     statUpdates: { items: statUpdates, setItems: setStatUpdates },
-    placeholders: { items: placeholders, setItems: setPlaceholders },
   };
 
   const sensors = useSensors(
@@ -470,8 +414,6 @@ const WorldEditor = ({ onClose, embedded = false, backButton }: {
       removeTrait(id);
     } else if (activeTab === "statUpdates") {
       removeStatUpdate(id);
-    } else if (activeTab === "placeholders") {
-      removePlaceholder(id);
     }
     setSelectedItemId(null);
   };
@@ -631,7 +573,7 @@ const WorldEditor = ({ onClose, embedded = false, backButton }: {
                           {renderItemList(filteredItems)}
                         </TabsContent>
                         <TabsContent value="placeholders">
-                          {renderItemList(filteredItems)}
+                          <PlaceholderList selectedId={selectedItemId} onSelect={setSelectedItemId} />
                         </TabsContent>
                       </ScrollArea>
                     </div>
@@ -738,7 +680,7 @@ const WorldEditor = ({ onClose, embedded = false, backButton }: {
       <AddDictionaryModal
         open={showAddDictionary}
         onOpenChange={setShowAddDictionary}
-        onAdd={(book) => { addDictionary(book); setSelectedItemId(book.id); }}
+        onAdd={(book) => { const b = absorbDictionaryPlaceholders(book); addDictionary(b); setSelectedItemId(b.id); }}
       />
       <AddEntityModal
         open={showAddEntity}
@@ -746,7 +688,7 @@ const WorldEditor = ({ onClose, embedded = false, backButton }: {
         // Imported/card entities land ungrouped at the root (a card carries no group; a stale groupId would
         // otherwise hide the entity under a folder that doesn't exist here).
         onAdd={(entity) => {
-          const placed = { ...entity, groupId: null, order: entityRootSiblingCount() };
+          const placed = { ...absorbEntityPlaceholders(entity), groupId: null, order: entityRootSiblingCount() };
           addEntity(placed);
           setSelectedItemId(placed.id);
         }}

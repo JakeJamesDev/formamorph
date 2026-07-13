@@ -145,3 +145,69 @@ Reuse the prompt-chip infra: `PromptField.tsx` (Lexical) + `VariableNode.tsx` (c
 - Resolver unit tests (slice 1): the truth table above, plus idempotent re-resolution and roll-freeze across calls.
 - Editor drift-guard for the new tab (`devRoutes.ts`).
 - An integration check that a Wildcard resolves identically in player display and AI context for the same save (same roll).
+
+---
+
+# Slice 6 — Export/import portability (entity + dictionary)
+
+A standalone entity card or dictionary file whose text contains `{{ph…}}` chips must carry the placeholder
+definitions it uses, so the chips still resolve when imported into a different world (or held in the library).
+
+## Shape — one representation everywhere
+
+`placeholders?: Placeholder[]` **on the object** (`Entity` + the dictionary unit `Dictionary`). Used identically
+for the export file and the in-app item — no separate envelope key, no sidecar store:
+
+- **Populated** only for a standalone/library item carrying its own defs.
+- **Empty/absent** while the item lives in a world (`World.placeholders` is authoritative there).
+
+Additive export-shape change to the entity card (`EntityCardData`) and dictionary file (`DictionaryFile`) —
+they already project the object's fields, so the field just rides along. **Needs a user version/migration
+sign-off.** Absent = none (`migrate*` untouched).
+
+## Export — bundle the used defs
+
+At export, scan the item's text for chips, resolve each referenced id against the **available** defs (the
+world's `placeholders` for a world item; the item's own `placeholders?` for a library item), and set the
+exported object's `placeholders?` to just those.
+
+- New pure helper `collectUsedPlaceholders(texts: string[], available: Placeholder[]): Placeholder[]` —
+  the subset of `available` whose ids appear as tokens in `texts`.
+- `buildEntityCardData(entity, available)` scans `player/aiDescription` + `aiSummary`; `buildDictionaryFile(book, available)` scans every entry `value`.
+- Callers: `downloadEntity` (WorldEditor) passes the world's placeholders; the library export passes `entity.placeholders`.
+
+## Import — carry, then absorb
+
+- **Parse** (`parseEntityCardData` / `parseDictionaryFile`): read `placeholders?` onto the new object (alongside the fresh-id remint they already do).
+- **Into the library** (MainMenu `EntityEditorModal`): nothing extra — `placeholders?` persists on the object.
+- **Into a world** (the two `onAdd` sites: WorldEditor entity + dictionary): **absorb** before adding.
+
+### Absorb (pure core)
+
+`absorbPlaceholders(carried: Placeholder[], worldPlaceholders: Placeholder[]): { toAdd, idMap }`:
+
+- For each `carried` def: a **perfect match** in `worldPlaceholders` (same `name` AND `values`) → map its id to
+  the match's id. Else → a new def `{ id: crypto.randomUUID(), name, values }` (fresh id, collision-proof) added
+  to `toAdd`, and map the old id → the new id.
+- `idMap` covers every carried id → its resolved world id.
+
+Caller then: `toAdd.forEach(addPlaceholder)`; **remap the item's tokens** via `remapPlaceholderIds(text, idMap)`
+across its text fields; and **clear** the item's `placeholders?` (now global). Applies whether importing a card
+into the world or promoting a library item into one.
+
+- New pure helper `remapPlaceholderIds(text, idMap): string` — rewrites `{{ph:<old>:<mode>:<pid>}}` →
+  `{{ph:<new>:<mode>:<pid>}}` (mode + placementId preserved), leaving unknown ids untouched.
+
+## Scope / assumptions
+
+- **Standalone export only.** Whole-world export is unchanged — it already carries all of `World.placeholders`.
+- **Scanned fields:** entity `player/aiDescription` + `aiSummary`; dictionary book = every entry `value`.
+- Dictionary unit is the **book** (`Dictionary`); its `placeholders?` aggregates all its entries' used defs.
+- No nesting / weighting (v1, unchanged).
+
+## Testing
+
+- `collectUsedPlaceholders`: only referenced defs bundled; unreferenced world placeholders excluded.
+- `absorbPlaceholders`: perfect-match reuse; near-match (same name, different values) → new def; idMap correctness.
+- `remapPlaceholderIds`: rewrites matched ids, preserves mode/placementId, leaves unknown/absent ids alone.
+- Round-trip: export an item using a Wildcard → import into a fresh world → its chip resolves to that world's (newly-absorbed) placeholder.
