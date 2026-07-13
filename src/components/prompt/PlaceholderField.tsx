@@ -28,13 +28,16 @@ const PlaceholderField = ({ value, onChange, placeholders, className, readOnly =
     // eslint-disable-next-line react-hooks/exhaustive-deps -- rollNonce forces a fresh roll on each Preview open
     [value, placeholders, rollNonce],
   );
+  // The Edit/Preview toggle only makes sense once the world/item defines placeholders to insert; with none,
+  // this is a plain text field (no preview). Gated on the defined list, not on chips in this field's text.
+  const hasPlaceholders = placeholders.length > 0;
   return (
     <PromptField
       value={value}
       onChange={onChange}
       vocabulary={vocab}
-      previewValues={previewValues}
-      onPreviewOpen={() => setRollNonce((n) => n + 1)}
+      previewValues={hasPlaceholders ? previewValues : undefined}
+      onPreviewOpen={hasPlaceholders ? () => setRollNonce((n) => n + 1) : undefined}
       className={className}
       readOnly={readOnly}
     />

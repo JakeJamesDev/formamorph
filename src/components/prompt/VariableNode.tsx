@@ -74,7 +74,14 @@ function VariableChip({ nodeKey, token }: { nodeKey: NodeKey; token: string }) {
           />
         </span>
       </PopoverTrigger>
-      <PopoverContent className={axes.some((a) => a.options.length >= 4) ? 'w-96' : 'w-64'} align="start">
+      <PopoverContent
+        className={axes.some((a) => a.options.length >= 4) ? 'w-96' : 'w-64'}
+        align="start"
+        // Selecting an option runs editor.update, which returns focus to the editor; without this that
+        // focus-leave dismisses the pop-out, so you can't change two axes in a row. Clicking truly outside
+        // (pointer-down-outside) and Escape still close it.
+        onFocusOutside={(e) => e.preventDefault()}
+      >
         {axes.length ? (
           <div className="space-y-3">
             {axes.map((axis) => {

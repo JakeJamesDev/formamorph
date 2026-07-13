@@ -72,8 +72,8 @@ const PLACEHOLDER_MODE_AXIS: PromptVariantAxis = {
   id: 'mode',
   label: '',
   options: [
-    { id: null, label: 'World', help: 'The same rolled value everywhere this placeholder appears, this playthrough.' },
-    { id: 'unique', label: 'Unique', help: 'Its own rolled value at this spot, independent of other placements.' },
+    { id: null, label: 'World', help: 'Rolls the same value everywhere in the World.' },
+    { id: 'unique', label: 'Unique', help: 'Rolls its own value for this instance.' },
   ],
 };
 

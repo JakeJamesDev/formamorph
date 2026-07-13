@@ -27,7 +27,7 @@ export function UpdateDialog({ open, onOpenChange, state, onCheck, onDownload }:
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent aria-describedby={undefined} className="max-w-2xl">
+      <DialogContent aria-describedby={undefined} className="max-w-3xl">
         <DialogHeader><DialogTitle>{title}</DialogTitle></DialogHeader>
 
         <div className="flex items-center justify-between text-sm">
@@ -44,7 +44,12 @@ export function UpdateDialog({ open, onOpenChange, state, onCheck, onDownload }:
         {state.phase === 'error' ? (
           <p className="text-sm text-destructive">{state.error}</p>
         ) : (
-          <ChangelogBody text={state.changelog} placeholder="No release notes." />
+          <ChangelogBody
+            text={state.changelog}
+            placeholder="No release notes."
+            currentVersion={state.currentVersion}
+            updateVersion={available ? state.latestVersion : undefined}
+          />
         )}
 
         <DialogFooter className="items-center">

@@ -521,16 +521,48 @@
   color: inherit;
 }
 
-/* Changelog popouts (ChangelogBody): the folded per-version/category labels are emitted as bold-only
-   paragraphs. Render them as small, muted secondary text so the `## <minor>` headers stay the primary
-   structure and the patch labels read as captions under them. */
+/* Changelog popouts (ChangelogBody): versions are headings (`## <minor>`, `### <patch>`) and sit flush left;
+   the folded category labels (Added/Fixed) are emitted as bold-only paragraphs. Render those as small, muted
+   captions, indented one level, so each category reads as a labeled group on its own line under the version. */
 .changelog-body p:has(> [data-streamdown="strong"]:only-child) {
   margin-top: 0.75rem;
   margin-bottom: 0.25rem;
+  /* Outline indent: the `## <minor>` header stays flush; patch/category labels sit one level in. */
+  margin-left: 1rem;
+}
+/* ...and their bullet lists sit a second level in. */
+.changelog-body ul {
+  margin-left: 2rem;
 }
 .changelog-body p:has(> [data-streamdown="strong"]:only-child) > [data-streamdown="strong"] {
   font-size: 0.75rem;
   font-weight: 600;
   letter-spacing: 0.01em;
   color: hsl(var(--muted-foreground));
+}
+/* The patch version (`### <tag>`) is a flush-left caption styled like the category labels, not a big heading. */
+.changelog-body h3 {
+  margin: 0.75rem 0 0.25rem;
+  font-size: 0.75rem;
+  font-weight: 600;
+  letter-spacing: 0.01em;
+  color: hsl(var(--muted-foreground));
+}
+/* Tint the current (installed) and newest-uninstalled version captions toward info/success, keeping the
+   muted base so they stay captions — not full-saturation labels. Tagged by ChangelogBody. */
+.changelog-body h3.cl-current {
+  color: color-mix(in srgb, hsl(var(--info)) 45%, hsl(var(--muted-foreground)));
+}
+.changelog-body h3.cl-update {
+  color: color-mix(in srgb, hsl(var(--success)) 45%, hsl(var(--muted-foreground)));
+}
+/* Inline status tags on the tinted versions (pseudo-element so they stay out of the heading's text — the
+   version-match tagging reads textContent). Lighter weight so they read as a secondary marker. */
+.changelog-body h3.cl-current::after {
+  content: ' (Current)';
+  font-weight: 400;
+}
+.changelog-body h3.cl-update::after {
+  content: ' (New!)';
+  font-weight: 400;
 }
