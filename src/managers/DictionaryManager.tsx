@@ -1,11 +1,11 @@
 import { useDictionaryStore } from '@/contexts/DictionaryStoreContext';
 import { useEditingDraft } from '@/lib/useEditingDraft';
 import { Label } from "@/components/ui/label";
-import { Textarea } from "@/components/ui/textarea";
 import { Input } from "@/components/ui/input";
 import { Checkbox } from "@/components/ui/checkbox";
 import { KeywordChips } from "@/components/KeywordChips";
-import type { DictionaryEntry } from '@/types';
+import PlaceholderField from "@/components/prompt/PlaceholderField";
+import type { DictionaryEntry, Placeholder } from '@/types';
 
 /** A compact labeled checkbox for the lorebook options grid. */
 function CheckRow({ label, checked, onChange }: { label: string; checked: boolean; onChange: (v: boolean) => void }) {
@@ -17,7 +17,7 @@ function CheckRow({ label, checked, onChange }: { label: string; checked: boolea
   );
 }
 
-const DictionaryManager = ({ entry }: { entry: DictionaryEntry }) => {
+const DictionaryManager = ({ entry, placeholders = [] }: { entry: DictionaryEntry; placeholders?: Placeholder[] }) => {
   const { updateDictionaryEntry } = useDictionaryStore();
   const { draft: editingEntry, apply, setField: handleChange } = useEditingDraft<DictionaryEntry>(entry, updateDictionaryEntry);
 
@@ -93,10 +93,10 @@ const DictionaryManager = ({ entry }: { entry: DictionaryEntry }) => {
       </div>
       <div className="space-y-2">
         <Label>Value (injected on keyword match)</Label>
-        <Textarea
+        <PlaceholderField
           value={editingEntry.value || ''}
-          onChange={(e) => handleChange('value', e.target.value)}
-          rows={8}
+          onChange={(v) => handleChange('value', v)}
+          placeholders={placeholders}
         />
       </div>
     </div>

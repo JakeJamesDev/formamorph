@@ -1,14 +1,14 @@
 import { useGameData } from '@/contexts/GameDataContext';
 import { Label } from "@/components/ui/label";
-import { Textarea } from "@/components/ui/textarea";
 import { TokenAutocomplete } from "@/components/TokenAutocomplete";
 import MarkdownField from "@/components/MarkdownField";
+import PlaceholderField from "@/components/prompt/PlaceholderField";
 import { useDanbooruTags } from "@/lib/useDanbooruTags";
 
 /** The AI-facing world content fields (description, tags, system prompt), shown in the editor's right
  *  column on the Overview tab. Identity/media fields live in WorldOverviewManager (left column). */
 const WorldDetailsManager = () => {
-  const { worldOverview, updateWorldOverview } = useGameData();
+  const { worldOverview, updateWorldOverview, placeholders } = useGameData();
   const tagOptions = useDanbooruTags();
 
   return (
@@ -37,12 +37,10 @@ const WorldDetailsManager = () => {
 
       <div className="space-y-2">
         <Label htmlFor="systemPrompt">System Prompt Addition</Label>
-        <Textarea
-          id="systemPrompt"
-          value={worldOverview.systemPrompt}
-          onChange={(e) => updateWorldOverview({ systemPrompt: e.target.value })}
-          placeholder="Enter an overview of your world that the AI should know, and rules it should follow..."
-          className="min-h-[150px]"
+        <PlaceholderField
+          value={worldOverview.systemPrompt || ''}
+          onChange={(systemPrompt) => updateWorldOverview({ systemPrompt })}
+          placeholders={placeholders}
         />
       </div>
 

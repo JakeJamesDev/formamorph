@@ -1,19 +1,21 @@
 import { useState } from 'react';
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Textarea } from "@/components/ui/textarea";
 import { MultiSelect } from "@/components/ui/multi-select";
 import AiFieldToolbar from "@/components/AiFieldToolbar";
 import { TagAutocomplete } from "@/components/TagAutocomplete";
 import { ConfirmDialog } from "@/components/ConfirmDialog";
+import PlaceholderField from "@/components/prompt/PlaceholderField";
 import { ImageUpload, ModelUpload } from '../lib/UtilityComponents';
 import { IMAGE_CAPS } from '../lib/imageOptim';
 import { GenerateImageButton } from '../components/GenerateImageButton';
-import type { Entity } from '@/types';
+import type { Entity, Placeholder } from '@/types';
 
 interface EntityFieldsProps {
   value: Entity;
   onChange: (field: string, value: unknown) => void;
+  /** The world's placeholders (World Editor only — a library character has no world to draw them from). */
+  placeholders?: Placeholder[];
   /** When provided, renders the Locations picker (World Editor only — a library character has no world locations). */
   locationOptions?: { label: string; value: string }[];
   selectedLocationIds?: string[];
@@ -24,7 +26,7 @@ interface EntityFieldsProps {
  * The editable-field body for one entity, shared by the World Editor's `EntityManager` (locations picker on,
  * bound to the world store) and the library `EntityEditorModal` (locations hidden, bound to isolated state).
  */
-const EntityFields = ({ value, onChange, locationOptions, selectedLocationIds, onLocationsChange }: EntityFieldsProps) => {
+const EntityFields = ({ value, onChange, placeholders = [], locationOptions, selectedLocationIds, onLocationsChange }: EntityFieldsProps) => {
   // SD prompt pulled from an uploaded image, pending the user's OK to use it as Image Tags.
   const [pendingPrompt, setPendingPrompt] = useState<string | null>(null);
 
@@ -39,16 +41,18 @@ const EntityFields = ({ value, onChange, locationOptions, selectedLocationIds, o
       </div>
       <div className="space-y-2">
         <Label>Player-Facing Description</Label>
-        <Textarea
+        <PlaceholderField
           value={value.playerDescription || ''}
-          onChange={(e) => onChange('playerDescription', e.target.value)}
+          onChange={(v) => onChange('playerDescription', v)}
+          placeholders={placeholders}
         />
       </div>
       <div className="space-y-2">
         <Label>AI-Facing Description</Label>
-        <Textarea
+        <PlaceholderField
           value={value.aiDescription || ''}
-          onChange={(e) => onChange('aiDescription', e.target.value)}
+          onChange={(v) => onChange('aiDescription', v)}
+          placeholders={placeholders}
         />
       </div>
       <div className="space-y-2">
@@ -61,9 +65,10 @@ const EntityFields = ({ value, onChange, locationOptions, selectedLocationIds, o
             onChange={(s) => onChange('aiSummary', s)}
           />
         </div>
-        <Textarea
+        <PlaceholderField
           value={value.aiSummary || ''}
-          onChange={(e) => onChange('aiSummary', e.target.value)}
+          onChange={(v) => onChange('aiSummary', v)}
+          placeholders={placeholders}
         />
         <p className="text-sm text-muted-foreground">
           A one-line version used where the full description is too long — keep it brief.

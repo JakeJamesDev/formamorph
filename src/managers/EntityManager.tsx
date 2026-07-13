@@ -5,7 +5,7 @@ import { useEditingDraft } from '@/lib/useEditingDraft';
 import type { Entity } from '@/types';
 
 const EntityManager = ({ entity }: { entity: Entity }) => {
-  const { updateEntity, locations, updateLocation } = useGameData();
+  const { updateEntity, locations, updateLocation, placeholders } = useGameData();
   const { draft: editingEntity, setField: handleChange } = useEditingDraft<Entity>(entity, updateEntity);
 
   // Entity↔location link lives only on each location's `entities` array; derive the entity's
@@ -34,6 +34,7 @@ const EntityManager = ({ entity }: { entity: Entity }) => {
     <EntityFields
       value={editingEntity}
       onChange={handleChange}
+      placeholders={placeholders}
       locationOptions={locations.map((l) => ({ label: l.name, value: l.id }))}
       selectedLocationIds={selectedLocationIds}
       onLocationsChange={handleLocationsChange}
