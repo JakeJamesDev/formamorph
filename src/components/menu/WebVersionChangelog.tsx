@@ -12,6 +12,7 @@ import { checkForUpdate } from '@/services/UpdateService';
 export function WebVersionChangelog() {
   const [open, setOpen] = useState(false);
   const [changelog, setChangelog] = useState<string | null>(null); // null until first fetch resolves
+  const [updateVersion, setUpdateVersion] = useState<string | undefined>(); // newest version, if an update exists
   const [loading, setLoading] = useState(false);
 
   const openDialog = () => {
@@ -20,6 +21,7 @@ export function WebVersionChangelog() {
       setLoading(true);
       void checkForUpdate('stable').then((res) => {
         setChangelog(res.success ? (res.result?.changelog ?? '') : '');
+        setUpdateVersion(res.success && res.result?.available ? res.result.latestVersion : undefined);
         setLoading(false);
       });
     }
@@ -37,11 +39,13 @@ export function WebVersionChangelog() {
       </button>
 
       <Dialog open={open} onOpenChange={setOpen}>
-        <DialogContent aria-describedby={undefined} hideClose className="max-w-2xl">
+        <DialogContent aria-describedby={undefined} hideClose className="max-w-3xl">
           <DialogHeader><DialogTitle>What’s new</DialogTitle></DialogHeader>
           <ChangelogBody
             text={loading ? undefined : (changelog ?? undefined)}
             placeholder={loading ? 'Loading release notes…' : 'No release notes available.'}
+            currentVersion={APP_VERSION}
+            updateVersion={updateVersion}
           />
           <div className="flex items-center justify-between gap-2">
             <FullChangelogLink />

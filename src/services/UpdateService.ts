@@ -82,18 +82,13 @@ function minorKey(tag: string): string {
   return v ? `${v.major}.${v.minor}` : tag.replace(/^v/, '');
 }
 
-/** Fold one release's body under its patch label. Category headers (`### Added`) are demoted to bold so they
- *  sit below the `## <minor>` group header; when a patch has a single category, the version and category merge
- *  onto one line (`**v2.1.1 · Fixed**`) for the compact look. Pure. */
+/** Fold one release's body under its patch label. The version is its own `### <tag>` heading (rendered flush,
+ *  like the `## <minor>` group header above it), and category headers (`### Added`) are demoted to bold caption
+ *  labels on their own line beneath it (indented via CSS). Pure. */
 function foldRelease(tag: string, body: string): string {
   const text = (body || '_No release notes._').trim();
-  const categories = text.match(/^#{1,6}\s+/gm) ?? [];
-  const demoted = text.replace(/^#{1,6}\s+(.+?)\s*$/gm, '**$1**');
-  if (categories.length === 1) {
-    // Single category: merge the version into that one bold category header.
-    return demoted.replace(/\*\*(.+?)\*\*/, `**${tag} · $1**`);
-  }
-  return `**${tag}**\n\n${demoted}`;
+  const demoted = text.replace(/^#{1,6}\s+(.+?)\s*$/gm, '**$1**'); // category headers → bold caption labels
+  return `### ${tag}\n\n${demoted}`;
 }
 
 /** Combine the most recent `count` releases into one markdown doc, folding patch versions under a single
