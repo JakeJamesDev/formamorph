@@ -130,6 +130,35 @@ describe('local world storage (IndexedDB)', () => {
     await expect(WorldStorageService.getWorldData('rt-1')).rejects.toBe('World not found');
   });
 
+  it('heals a legacy remote-URL thumbnail by falling back to the embedded one in metadata', async () => {
+    await WorldStorageService.storeWorld({
+      ...validWorld,
+      id: 'heal-1',
+      thumbnail: 'https://workshop.fierylion.com/api/thumbnails/x.jpeg', // legacy cross-origin URL
+      data: { ...validWorld.data, worldOverview: { name: 'H', thumbnail: 'data:image/png;base64,AAA' } },
+    });
+
+    const meta = await WorldStorageService.getWorldMetadata();
+    const stored = meta.find((m) => m.id === 'heal-1');
+    expect(stored?.thumbnail).toBe('data:image/png;base64,AAA'); // embedded base64 wins over the URL
+
+    await WorldStorageService.deleteWorld('heal-1');
+  });
+
+  it('keeps a base64 thumbnail as-is in metadata', async () => {
+    await WorldStorageService.storeWorld({
+      ...validWorld,
+      id: 'keep-1',
+      thumbnail: 'data:image/jpeg;base64,BBB',
+      data: { ...validWorld.data, worldOverview: { name: 'K', thumbnail: 'data:image/png;base64,ZZZ' } },
+    });
+
+    const meta = await WorldStorageService.getWorldMetadata();
+    expect(meta.find((m) => m.id === 'keep-1')?.thumbnail).toBe('data:image/jpeg;base64,BBB');
+
+    await WorldStorageService.deleteWorld('keep-1');
+  });
+
   it('keeps sourceId/downloadedAt/sourceUpdatedAt sticky across a save that omits them', async () => {
     await WorldStorageService.storeWorld({
       ...validWorld,
