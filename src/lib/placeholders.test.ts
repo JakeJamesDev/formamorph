@@ -10,6 +10,7 @@ import {
   collectUsedPlaceholders,
   remapPlaceholderIds,
   absorbPlaceholders,
+  buildPlaceholderPreview,
 } from './placeholders';
 
 const P = (id: string, values: string[]): Placeholder => ({ id, name: id, values });
@@ -176,6 +177,45 @@ describe('resolvePlaceholders', () => {
       const { toAdd, idMap } = absorbPlaceholders(carried, []);
       expect(toAdd).toHaveLength(1); // second matches the first-added one
       expect(idMap.A).toBe(idMap.B);
+    });
+  });
+
+  describe('buildPlaceholderPreview (author-time preview map)', () => {
+    it('maps a Variable token to its single value', () => {
+      const t = tok('king', 'world', 'p1');
+      expect(buildPlaceholderPreview(t, [P('king', ['Aldric'])], first)).toEqual({ [t]: 'Aldric' });
+    });
+
+    it('shares one Wildcard value across World chips of the same placeholder', () => {
+      const a = tok('eye', 'world', 'p1');
+      const b = tok('eye', 'world', 'p2');
+      // Cycle the pick; a shared World roll means both tokens get the SAME (first) draw.
+      const picks = ['Red', 'Blue'];
+      let i = 0;
+      const out = buildPlaceholderPreview(`${a} ${b}`, [P('eye', ['Red', 'Blue'])], () => picks[i++]);
+      expect(out[a]).toBe('Red');
+      expect(out[b]).toBe('Red');
+    });
+
+    it('rolls Unique Wildcard chips independently per placement', () => {
+      const a = tok('eye', 'unique', 'p1');
+      const b = tok('eye', 'unique', 'p2');
+      const picks = ['Red', 'Blue'];
+      let i = 0;
+      const out = buildPlaceholderPreview(`${a} ${b}`, [P('eye', ['Red', 'Blue'])], () => picks[i++]);
+      expect(out[a]).toBe('Red');
+      expect(out[b]).toBe('Blue');
+    });
+
+    it('maps a missing or empty placeholder to ""', () => {
+      const missing = tok('gone', 'world', 'p1');
+      const empty = tok('empty', 'world', 'p2');
+      const out = buildPlaceholderPreview(`${missing} ${empty}`, [P('empty', [])], first);
+      expect(out).toEqual({ [missing]: '', [empty]: '' });
+    });
+
+    it('returns an empty map when there are no chips', () => {
+      expect(buildPlaceholderPreview('plain text', [P('eye', ['Red'])])).toEqual({});
     });
   });
 
