@@ -257,6 +257,18 @@ export interface World {
   /** v2.x: ordered books of lorebook entries (replaces the flat `dictionary`; legacy worlds fold to one
    *  "Default" book on load via `migrateWorld`). Guaranteed ≥1 book after that normalization. */
   dictionaries: Dictionary[];
+  /** Author-defined named values dropped into world text as inline chips. Type is inferred from `values`:
+   *  1 value = a fixed Variable (reused, edited in one place); 2+ = a random Wildcard (chips pick World or
+   *  Unique). Resolved at gameplay boundaries (see lib/placeholders); the name/token never reaches runtime. */
+  placeholders?: Placeholder[];
+}
+
+/** One author-defined placeholder. `values.length`: 0 ⇒ empty (resolves to ""), 1 ⇒ Variable (fixed), 2+ ⇒
+ *  Wildcard (random). `id` is stable — in-text chips reference it, so renaming `name` never breaks a chip. */
+export interface Placeholder {
+  id: string;
+  name: string;
+  values: string[];
 }
 
 /** Lightweight preview record used by the main-menu world grid. */

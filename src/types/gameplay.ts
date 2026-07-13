@@ -124,6 +124,16 @@ export interface SaveObject {
   /** Stable id of the world this save belongs to (`WorldOverview.id`), for grouping saves into per-world
    *  folders. Absent on saves written before folders — those fall back to matching by `worldName`. */
   worldId?: string;
+  /** Frozen placeholder rolls for this playthrough (see lib/placeholders). `world` keys by placeholder id
+   *  (one shared value across every World chip); `unique` keys by placement id (a per-spot value). Written
+   *  lazily on first resolution; absent ⇒ nothing rolled yet. Variables need no roll. */
+  placeholderRolls?: PlaceholderRolls;
+}
+
+/** Per-playthrough Wildcard rolls, frozen in the save. */
+export interface PlaceholderRolls {
+  world?: Record<string, string>;
+  unique?: Record<string, string>;
 }
 
 /** A save as persisted in IndexedDB: the envelope plus the stable record `id` (store keyPath) and the

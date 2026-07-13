@@ -38,6 +38,7 @@ export interface StoredWorldRecord {
     statUpdates: unknown[];
     dictionary?: unknown[]; // legacy v1.2.0 flat form (read-only; folded to `dictionaries` on load)
     dictionaries?: unknown[]; // v2.x books
+    placeholders?: unknown[]; // v2.x author-defined variables/wildcards
   };
 }
 

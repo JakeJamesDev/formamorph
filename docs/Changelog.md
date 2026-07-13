@@ -12,7 +12,12 @@ Each release groups changes as **Major** / **Minor**, then **Added** / **Removed
 
 _Unreleased — new work accumulates here until it earns a version bump._
 
-_Nothing yet._
+### Minor Changes
+
+#### ➕ Added
+
+- **🛠️ Developer tooling**
+  - **Placeholders — foundation (slices 1–2).** New authored-world concept: a named value dropped into world text, its behavior inferred from value count (1 = a fixed **Variable**, 2+ = a random **Wildcard**). Slice 1: `Placeholder` type + `World.placeholders`, save-side `SaveObject.placeholderRolls`, and the pure `resolvePlaceholders` core (`lib/placeholders.ts`) with the token codec, World-shared/Unique-per-spot rolls, lazy roll+freeze, and missing/empty → "" (unit-tested). Slice 2: a per-world **Placeholders** editor tab (list dnd/duplicate/delete + `PlaceholderManager` name/values panel), reusing the extracted shared `KeywordChips` input. Additive world + save export-shape change (nothing consumes it at runtime yet — the chip editor + resolution wiring are later slices).
 
 ---
 
