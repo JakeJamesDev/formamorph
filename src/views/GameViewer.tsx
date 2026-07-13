@@ -66,6 +66,7 @@ import { splitSentenceSegments } from "../lib/ttsChunks";
 import { selectDueDigests, applyDigest, parseTurnContent, selectDueDiaries, pendingDiaryNames, applyDiary } from "../lib/turnDigest";
 import { buildTraitContext } from "../lib/traitTree";
 import { buildLocationContext, buildEntityContext, buildSublocationsContext, buildSublocationEntitiesContext, buildReachableLocationsContext, buildReachableEntitiesContext, buildDestinationsContext, navigableDestinations, sublocationEntityIds } from "../lib/locationContext";
+import { primeRolls, resolvePlaceholders } from "@/lib/placeholders";
 import { resolveStartingLocation } from "../lib/startingLocation";
 import { NONE_PLACEHOLDER } from "../lib/promptFallbacks";
 import { buildStatContext } from "../lib/statContext";
@@ -206,6 +207,7 @@ const GameViewer = ({
     traits,
     traitGroups,
     dictionaries,
+    placeholders,
     worldOverview,
     worldId,
     isWorldDirty,
@@ -328,6 +330,8 @@ const GameViewer = ({
     setDiscoveredEntities,
     runtimeDictionary: dictionary,
     setRuntimeDictionaries,
+    placeholderRolls,
+    setPlaceholderRolls,
   } = useGameplay();
 
   // Runtime characters (Slice 2): director-invented characters promoted to persisted entities this
@@ -706,10 +710,10 @@ const GameViewer = ({
       const sceneLoc = withDiscovered(currentLocation);
       let systemPrompt = renderPromptTemplate(choicesPrompt, {
         ...ctx,
-        "<ENTITIES>": buildEntityContext(sceneLoc, sceneEntities),
-        "<ENTITIES|summary>": buildEntityContext(sceneLoc, sceneEntities, { preferSummary: true }),
-        "<ENTITIES|markdown>": buildEntityContext(sceneLoc, sceneEntities, { format: "markdown" }),
-        "<ENTITIES|summary.markdown>": buildEntityContext(sceneLoc, sceneEntities, { preferSummary: true, format: "markdown" }),
+        "<ENTITIES>": resolvePH(buildEntityContext(sceneLoc, sceneEntities)),
+        "<ENTITIES|summary>": resolvePH(buildEntityContext(sceneLoc, sceneEntities, { preferSummary: true })),
+        "<ENTITIES|markdown>": resolvePH(buildEntityContext(sceneLoc, sceneEntities, { format: "markdown" })),
+        "<ENTITIES|summary.markdown>": resolvePH(buildEntityContext(sceneLoc, sceneEntities, { preferSummary: true, format: "markdown" })),
       });
       if (language.toLowerCase() != "english") systemPrompt += `\n Choice language: ` + language;
       const response = await makeAIRequest(
@@ -895,6 +899,26 @@ const GameViewer = ({
 
   // The six shared context chips every system prompt can reference, resolved from current state. Each
   // request spreads these as its base, then layers on its own tokens (length/markdown, scene entities, etc.).
+  // Replace placeholder chips in authored text with their frozen per-playthrough values (pure lookup — rolls
+  // are primed below, so no side effects). Applied at every boundary that emits authored text to the AI.
+  const resolvePH = useCallback(
+    (text: string) => resolvePlaceholders(text, { placeholders, rolls: placeholderRolls }),
+    [placeholders, placeholderRolls],
+  );
+
+  // Eager priming: once a save is active, roll every Wildcard placement across the world's authored text and
+  // freeze it into the save (a loaded save's existing rolls are kept). Resolution then stays a pure lookup.
+  useEffect(() => {
+    if (!isGameStarted || placeholders.length === 0) return;
+    const texts = [
+      worldOverview.systemPrompt || "",
+      ...entities.flatMap((e) => [e.playerDescription, e.aiDescription, e.aiSummary]),
+      ...locations.flatMap((l) => [l.playerDescription, l.aiDescription, l.aiSummary, l.description]),
+      ...dictionaries.flatMap((b) => b.entries.map((en) => en.value)),
+    ].filter((t): t is string => !!t);
+    setPlaceholderRolls((prev) => primeRolls(placeholders, texts, prev));
+  }, [isGameStarted, placeholders, entities, locations, dictionaries, worldOverview, setPlaceholderRolls]);
+
   const buildContextValues = useCallback((locationOverride?: GameLocation | null): Record<string, string> => {
     // The location this turn is scoped to — an override (e.g. a move auto-applied before the narration)
     // or the live current location.
@@ -958,10 +982,12 @@ const GameViewer = ({
     addScoped("<LOCATION>", locationScopes);
     addScoped("<ENTITIES>", entityScopes);
 
+    // Resolve placeholder chips in every assembled value before it's folded into a prompt.
+    for (const k in values) values[k] = resolvePH(values[k]);
     return values;
   }, [
     worldOverview, playerStats, generateTraitDescriptions,
-    currentLocation, locations, withDiscovered, allEntities, playerNotes,
+    currentLocation, locations, withDiscovered, allEntities, playerNotes, resolvePH,
   ]);
 
   // Live variable values for the Settings prompt-editor Preview tab (full-description variant, like the
@@ -1057,8 +1083,8 @@ const GameViewer = ({
         ...ctx,
         "<LENGTH GUIDANCE>": lengthGuidance(paragraphLimit, maxTokens),
         "<MARKDOWN GUIDANCE>": restyle(markdownGuidance(markdownOutput), activeSectionStyle),
-        "<DICTIONARY>": buildDictionaryContext(afterEntries, false) || NONE_PLACEHOLDER,
-        "<DICTIONARY|before>": buildDictionaryContext(beforeEntries, false) || NONE_PLACEHOLDER,
+        "<DICTIONARY>": resolvePH(buildDictionaryContext(afterEntries, false)) || NONE_PLACEHOLDER,
+        "<DICTIONARY|before>": resolvePH(buildDictionaryContext(beforeEntries, false)) || NONE_PLACEHOLDER,
       });
 
       // If the prompt has no <NOTES> chip, fall back to a notes section before the location data.
@@ -1084,7 +1110,7 @@ ${playerNotes || NONE_PLACEHOLDER}
       // Backward-compat: a prompt with no "after" dictionary chip still gets its lore appended (with heading), as
       // it was before the chip existed. (A missing "before" chip already routed those entries into `afterEntries`.)
       if (!hasAfterChip) {
-        const dictionaryContext = buildDictionaryContext(afterEntries);
+        const dictionaryContext = resolvePH(buildDictionaryContext(afterEntries));
         if (dictionaryContext) {
           updatedPrompt += `\n\n${restyle(dictionaryContext, activeSectionStyle)}`;
         }
@@ -1284,10 +1310,10 @@ ${playerNotes || NONE_PLACEHOLDER}
       ]);
       const sceneEntities = allEntities.filter((e) => presentNames.has(e.name));
       const sceneLoc = withDiscovered(turnLocation);
-      const sceneEntityData = buildEntityContext(sceneLoc, sceneEntities);
-      const sceneEntitySummary = buildEntityContext(sceneLoc, sceneEntities, { preferSummary: true });
-      const sceneEntityDataMd = buildEntityContext(sceneLoc, sceneEntities, { format: "markdown" });
-      const sceneEntitySummaryMd = buildEntityContext(sceneLoc, sceneEntities, { preferSummary: true, format: "markdown" });
+      const sceneEntityData = resolvePH(buildEntityContext(sceneLoc, sceneEntities));
+      const sceneEntitySummary = resolvePH(buildEntityContext(sceneLoc, sceneEntities, { preferSummary: true }));
+      const sceneEntityDataMd = resolvePH(buildEntityContext(sceneLoc, sceneEntities, { format: "markdown" }));
+      const sceneEntitySummaryMd = resolvePH(buildEntityContext(sceneLoc, sceneEntities, { preferSummary: true, format: "markdown" }));
 
       // Auto-narrate the new game text if a TTS model is loaded. When streaming is off, block the trailing
       // choices/stat/location requests until the audio has finished generating (avoids GPU contention). When
