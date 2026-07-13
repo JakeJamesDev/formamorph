@@ -59,6 +59,12 @@ export interface LocalLlmState {
   contextSize: number | null;
   gpuLayers: number | null;
   flashAttention: boolean | null;
+  /** Parallel decode slots the model was loaded with (context sequences). */
+  parallelRequests: number | null;
+  /** The loaded model's trained context length — the ceiling for contextSize (null when no model loaded). */
+  maxContextSize: number | null;
+  /** Our VRAM footprint in MB (device-usage delta across model load), or null if unknown/no model. */
+  engineVramMB: number | null;
 }
 
 declare global {
@@ -82,7 +88,7 @@ declare global {
         /** Load an installed model by filename. */
         load: (fileName: string) => Promise<LocalLlmState>;
         /** Set engine load options (context size / GPU layers / flash attention); reloads if changed. */
-        setOptions: (opts: { contextSize: number; gpuLayers: number; flashAttention: boolean }) => Promise<LocalLlmState>;
+        setOptions: (opts: { contextSize: number; gpuLayers: number; flashAttention: boolean; parallelRequests: number }) => Promise<LocalLlmState>;
         /** Download a GGUF from Hugging Face, then load it; resolves with the saved path. */
         download: (opts: { url: string; fileName: string }) => Promise<{ path: string }>;
         /** Cancel (pause) the in-flight download; its partial is kept for a later resume. */
@@ -174,7 +180,7 @@ export const listLocalInstalled = (): Promise<LocalInstalledModel[]> => requireL
 export const loadLocalModel = (fileName: string): Promise<LocalLlmState> => requireLlm().load(fileName);
 
 /** Set engine load options (context size / GPU layers / flash attention); reloads if they changed. */
-export const setLocalLlmOptions = (opts: { contextSize: number; gpuLayers: number; flashAttention: boolean }): Promise<LocalLlmState> =>
+export const setLocalLlmOptions = (opts: { contextSize: number; gpuLayers: number; flashAttention: boolean; parallelRequests: number }): Promise<LocalLlmState> =>
   requireLlm().setOptions(opts);
 
 /** Download a GGUF from Hugging Face and load it; resolves with the saved path. */

@@ -34,7 +34,9 @@ let mainWindow = null;
 // Engine load options set by the renderer (from settings). Defaults match the renderer's defaults so a
 // user who hasn't customized them never triggers a reload. contextSize bounds the KV cache (VRAM);
 // gpuLayers null = auto-offload all that fit.
-let engineOptions = { contextSize: 8192, gpuLayers: 64, flashAttention: false };
+// gpuLayers -1 = AUTO (fit as many layers as VRAM allows); -2 = MAX (all layers); >=0 = literal count.
+// Must match the renderer's DEFAULT_LOCAL_GPU_LAYERS so a fresh boot doesn't trigger a needless reload.
+let engineOptions = { contextSize: 8192, gpuLayers: -1, flashAttention: true, parallelRequests: 2 };
 
 // Keep the (multi-GB) models beside the app so a portable build stays self-contained — burying them in
 // AppData orphans them for a portable exe with no uninstaller. Portable Windows builds run from a temp
@@ -116,9 +118,11 @@ ipcMain.handle('net-fetch', async (_event, { url, method = 'GET', headers = {}, 
 // separate helper. Mirrors the standalone helper's "no GPU" payload when nvidia-smi is missing/errors.
 ipcMain.handle('vram-stats', async () => {
   try {
-    return await collectVram();
+    // selfPid lets the renderer pick our own row out of the per-process list (the bundled engine runs in
+    // this process), to attribute Formamorph's VRAM share on the widget.
+    return { ...(await collectVram()), selfPid: process.pid };
   } catch {
-    return { error: 'nvidia-smi-not-found', gpus: [], processes: [] };
+    return { error: 'nvidia-smi-not-found', gpus: [], processes: [], selfPid: process.pid };
   }
 });
 
@@ -137,10 +141,16 @@ ipcMain.handle('llm-models-dir', () => modelsDir());
 // Update engine load options (context size / GPU layers). Reloads the current model if one is loaded and
 // the options actually changed, so the new context/VRAM budget takes effect.
 ipcMain.handle('llm-set-options', async (_event, opts) => {
-  const next = { contextSize: opts.contextSize, gpuLayers: opts.gpuLayers, flashAttention: opts.flashAttention === true };
+  const next = {
+    contextSize: opts.contextSize,
+    gpuLayers: opts.gpuLayers,
+    flashAttention: opts.flashAttention === true,
+    parallelRequests: typeof opts.parallelRequests === 'number' ? opts.parallelRequests : engineOptions.parallelRequests,
+  };
   const changed = next.contextSize !== engineOptions.contextSize
     || next.gpuLayers !== engineOptions.gpuLayers
-    || next.flashAttention !== engineOptions.flashAttention;
+    || next.flashAttention !== engineOptions.flashAttention
+    || next.parallelRequests !== engineOptions.parallelRequests;
   engineOptions = next;
   const loaded = llmEngine.getState().modelPath;
   if (changed && loaded) {

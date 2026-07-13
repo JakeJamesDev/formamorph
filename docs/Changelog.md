@@ -12,7 +12,19 @@ Each release groups changes as **Major** / **Minor**, then **Added** / **Removed
 
 _Unreleased — new work accumulates here until it earns a version bump._
 
-_Nothing yet._
+### Minor Changes
+
+#### ➕ Added
+
+- **👤 User-facing**
+  - **Turns finish faster with concurrent requests.** After the story text, the app asks the model for your choices, stat changes, and any location change — previously one after another, now all at once by default. On endpoints that handle parallel requests (e.g. LM Studio's **Parallel** setting) this cuts the wait between the narration and your choices by roughly a third, and makes turn times steadier. When memory summaries (and, in Staged mode, character diaries and new-character notes) are on, those run in the same batch too, so they finish with the turn instead of trickling in afterward. In Staged mode the per-character motivation passes also run at the same time instead of one by one, which noticeably speeds up busy scenes. A new **Concurrent Requests** toggle under Settings → Generation lets you turn it off if a memory-tight local model slows down under the extra load; endpoints that don't run requests in parallel are unaffected either way.
+  - **The GPU memory widget now shows Formamorph's own share (Desktop).** The VRAM bars in Settings → Endpoint get a highlighted segment marking how much the bundled model is using, with a "Formamorph: … GB" readout. It uses the exact per-process figure when your GPU reports one, and otherwise falls back to the engine's own estimate (shown with a ~) — so it works even on the many Windows GeForce cards that don't expose per-process VRAM.
+  - **Big models and multi-GPU rigs are now supported (Desktop).** The GPU offload control used to cap at 64 layers, so a large downloaded model (or a multi-GPU setup with room to spare) couldn't be fully offloaded. It now has **Auto** (fits as many layers as your VRAM allows — the new default, never runs out of memory), **Max** (offloads the whole model, splitting across all your GPUs), and **Custom** (a fixed layer count) under Settings → Endpoint (Advanced). The Context Size slider now also tops out at whatever the loaded model was trained for, instead of a fixed limit.
+  - **Flash Attention is now on by default (Desktop).** The bundled local engine's Flash Attention — which lowers the model's memory use and is often faster — now defaults on instead of off. It's widely supported on modern GPUs, and turning it on by default leaves more headroom for the parallel requests above. If an older GPU won't run it, you can still turn it off under Settings → Endpoint (Advanced).
+  - **The bundled desktop engine now handles parallel requests.** The built-in local model (Desktop app) used to answer one request at a time and reject the rest, which meant the concurrent-requests speedup above didn't apply to it. It now runs up to a configurable number of requests at once. A new **Parallel Requests** slider under Settings → Endpoint (Advanced) sets how many — the default is 2, and it shows the per-slot context each setting leaves you. Higher is faster but splits the context window between slots and uses more VRAM, so raise it only if your GPU has room.
+
+- **🛠️ Developer tooling**
+  - **Local engine request pooling (`electron/llmEngine.cjs`).** The single-sequence + `busy`/429 design was replaced with a pool of N node-llama-cpp context sequences (`createContext({ sequences: N })`) plus an acquire/release wait-queue: concurrent requests each take a free sequence and decode in parallel (llama.cpp batching), and overflow requests queue instead of erroring. Sequences are `clearHistory()`-reset between uses; a client disconnect aborts the in-flight generation (via an `AbortController` on the response `close`) so a canceled request frees its slot. Slot count threads through `engineOptions` (`llm-set-options`) and a new `localParallelRequests` setting; changing it reloads the model.
 
 ---
 

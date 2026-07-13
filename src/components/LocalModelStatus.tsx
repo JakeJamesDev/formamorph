@@ -22,11 +22,21 @@ export function EngineStatusLine({ engine, className }: { engine: LocalLlmState;
  * GPU memory box (label + VRAM bars). Presentational — the caller owns the `useVramStats` poll so there's
  * never a double poll. Shared by the endpoint panel and the model-manager popup.
  */
-export function GpuMemoryBox({ stats, className }: { stats: VramStats; className?: string }) {
+export function GpuMemoryBox({
+  stats,
+  className,
+  ownUsedMB = null,
+  ownEstimated = false,
+}: {
+  stats: VramStats;
+  className?: string;
+  ownUsedMB?: number | null;
+  ownEstimated?: boolean;
+}) {
   return (
     <div className={`rounded-md border border-border p-3 ${className ?? ''}`}>
       <div className="mb-2 text-xs font-semibold text-muted-foreground">GPU memory</div>
-      <VramReadout stats={stats} />
+      <VramReadout stats={stats} ownUsedMB={ownUsedMB} ownEstimated={ownEstimated} />
     </div>
   );
 }

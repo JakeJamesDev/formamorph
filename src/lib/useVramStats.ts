@@ -21,6 +21,8 @@ export interface VramStats {
   status: VramStatus;
   gpus: VramGpu[];
   processes: VramProcess[];
+  /** PID of our own process (the desktop main process, which hosts the bundled engine), for self-attribution. */
+  selfPid: number | null;
   lastUpdated: number | null;
 }
 
@@ -29,11 +31,29 @@ interface Options {
   intervalMs?: number;
 }
 
+/**
+ * Resolve Formamorph's own VRAM share for the widget overlay: the measured per-process figure (our pid in the
+ * nvidia-smi list) when available, else the engine's own allocation estimate (marked estimated). Returns a
+ * null footprint when neither is known (no model loaded, or no VRAM source).
+ */
+export function resolveOwnVram(
+  stats: VramStats,
+  engineVramMB: number | null,
+): { ownUsedMB: number | null; ownEstimated: boolean } {
+  const measured =
+    stats.selfPid != null
+      ? stats.processes.find((p) => p.pid === stats.selfPid && p.usedMB != null)?.usedMB ?? null
+      : null;
+  if (measured != null) return { ownUsedMB: measured, ownEstimated: false };
+  return { ownUsedMB: engineVramMB, ownEstimated: engineVramMB != null };
+}
+
 // The raw payload from either source (the desktop IPC bridge or the standalone HTTP helper).
 interface VramPayload {
   error?: string;
   gpus?: VramGpu[];
   processes?: VramProcess[];
+  selfPid?: number | null;
 }
 
 // Live VRAM numbers, from the desktop main process (nvidia-smi over IPC) when running in the desktop build,
@@ -44,6 +64,7 @@ export function useVramStats(helperUrl: string, { enabled = true, intervalMs = 2
     status: "connecting",
     gpus: [],
     processes: [],
+    selfPid: null,
     lastUpdated: null,
   });
   const helperUrlRef = useRef(helperUrl);
@@ -53,7 +74,7 @@ export function useVramStats(helperUrl: string, { enabled = true, intervalMs = 2
     const desktop = isDesktop();
     // Desktop reads via IPC (no URL needed); the web build needs a helper URL to poll.
     if (!enabled || (!desktop && !helperUrl)) {
-      setStats({ status: "offline", gpus: [], processes: [], lastUpdated: null });
+      setStats({ status: "offline", gpus: [], processes: [], selfPid: null, lastUpdated: null });
       return;
     }
 
@@ -77,17 +98,18 @@ export function useVramStats(helperUrl: string, { enabled = true, intervalMs = 2
         }
         if (cancelled) return;
         if (data?.error === "nvidia-smi-not-found" || !Array.isArray(data?.gpus) || data.gpus.length === 0) {
-          setStats({ status: "no-gpu", gpus: [], processes: [], lastUpdated: Date.now() });
+          setStats({ status: "no-gpu", gpus: [], processes: [], selfPid: data?.selfPid ?? null, lastUpdated: Date.now() });
         } else {
           setStats({
             status: "online",
             gpus: data.gpus,
             processes: Array.isArray(data.processes) ? data.processes : [],
+            selfPid: data.selfPid ?? null,
             lastUpdated: Date.now(),
           });
         }
       } catch {
-        if (!cancelled) setStats({ status: "offline", gpus: [], processes: [], lastUpdated: null });
+        if (!cancelled) setStats({ status: "offline", gpus: [], processes: [], selfPid: null, lastUpdated: null });
       }
     };
 

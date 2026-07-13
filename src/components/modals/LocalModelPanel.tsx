@@ -1,16 +1,16 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Row, ValueSlider, CheckRow } from '@/components/SettingsRows';
 import { useSettings } from '@/contexts/SettingsContext';
 import { useLocalLlmStatus } from '@/lib/useLocalLlmStatus';
-import { useVramStats } from '@/lib/useVramStats';
+import { useVramStats, resolveOwnVram } from '@/lib/useVramStats';
 import { EngineStatusLine, GpuMemoryBox } from '@/components/LocalModelStatus';
 import { setLocalLlmOptions } from '@/lib/imageGen/desktop';
 import {
-  LOCAL_GPU_LAYERS_MAX, DEFAULT_MAX_TOKENS,
-  DEFAULT_LOCAL_CONTEXT_SIZE, DEFAULT_LOCAL_GPU_LAYERS, DEFAULT_LOCAL_FLASH_ATTENTION,
+  LOCAL_GPU_LAYERS_MAX, GPU_LAYERS_AUTO, GPU_LAYERS_MAX, LOCAL_PARALLEL_REQUESTS_MAX, DEFAULT_MAX_TOKENS,
+  DEFAULT_LOCAL_CONTEXT_SIZE, DEFAULT_LOCAL_GPU_LAYERS, DEFAULT_LOCAL_FLASH_ATTENTION, DEFAULT_LOCAL_PARALLEL_REQUESTS,
   DEFAULT_GEN_TEMPERATURE, DEFAULT_GEN_TOP_P, DEFAULT_GEN_REPETITION_PENALTY, DEFAULT_GEN_TOP_K, DEFAULT_GEN_MIN_P,
 } from '@/contexts/settingsDefaults';
 import { LocalModelModal } from './LocalModelModal';
@@ -25,6 +25,7 @@ export function LocalModelPanel() {
     localContextSize, setLocalContextSize,
     localGpuLayers, setLocalGpuLayers,
     localFlashAttention, setLocalFlashAttention,
+    localParallelRequests, setLocalParallelRequests,
     maxTokens, setMaxTokens,
     genTemperature, setGenTemperature,
     genTopP, setGenTopP,
@@ -38,13 +39,27 @@ export function LocalModelPanel() {
   const [reloading, setReloading] = useState(false);
   const vram = useVramStats('', { enabled: true });
 
-  const gpuLabel = localGpuLayers === 0 ? 'Off (CPU)' : localGpuLayers >= LOCAL_GPU_LAYERS_MAX ? 'All (GPU)' : `${localGpuLayers} layers`;
+  // GPU Layers mode (Auto / Max / a fixed Custom count), derived from the sentinel-carrying setting.
+  const gpuMode = localGpuLayers === GPU_LAYERS_AUTO ? 'auto' : localGpuLayers === GPU_LAYERS_MAX ? 'max' : 'custom';
+  const setGpuMode = (mode: string) => {
+    if (mode === 'auto') setLocalGpuLayers(GPU_LAYERS_AUTO);
+    else if (mode === 'max') setLocalGpuLayers(GPU_LAYERS_MAX);
+    else setLocalGpuLayers(localGpuLayers >= 0 ? localGpuLayers : LOCAL_GPU_LAYERS_MAX); // Custom keeps any prior count
+  };
+  const gpuLabel = localGpuLayers === 0 ? 'Off (CPU)' : `${localGpuLayers} layers`;
+
+  // Cap Context Size at the loaded model's trained ceiling; a smaller model can make a persisted value invalid.
+  const contextMax = engine.maxContextSize ?? 32768;
+  useEffect(() => {
+    if (engine.maxContextSize && localContextSize > engine.maxContextSize) setLocalContextSize(engine.maxContextSize);
+  }, [engine.maxContextSize, localContextSize, setLocalContextSize]);
 
   // Whether the pending engine settings differ from what the current model was loaded with.
   const optionsDiffer =
     localContextSize !== engine.contextSize ||
     localGpuLayers !== engine.gpuLayers ||
-    localFlashAttention !== engine.flashAttention;
+    localFlashAttention !== engine.flashAttention ||
+    localParallelRequests !== engine.parallelRequests;
 
   // When Save & Reload can act: a loaded model whose settings changed, OR a failed load — so a context/GPU
   // setting that overflowed VRAM can be lowered and retried (the error state otherwise trapped the user).
@@ -57,7 +72,7 @@ export function LocalModelPanel() {
   const saveReload = async () => {
     setReloading(true);
     try {
-      await setLocalLlmOptions({ contextSize: localContextSize, gpuLayers: localGpuLayers, flashAttention: localFlashAttention });
+      await setLocalLlmOptions({ contextSize: localContextSize, gpuLayers: localGpuLayers, flashAttention: localFlashAttention, parallelRequests: localParallelRequests });
     } finally {
       setReloading(false);
     }
@@ -67,6 +82,7 @@ export function LocalModelPanel() {
     setLocalContextSize(DEFAULT_LOCAL_CONTEXT_SIZE);
     setLocalGpuLayers(DEFAULT_LOCAL_GPU_LAYERS);
     setLocalFlashAttention(DEFAULT_LOCAL_FLASH_ATTENTION);
+    setLocalParallelRequests(DEFAULT_LOCAL_PARALLEL_REQUESTS);
     setMaxTokens(DEFAULT_MAX_TOKENS);
     setGenTemperature(DEFAULT_GEN_TEMPERATURE);
     setGenTopP(DEFAULT_GEN_TOP_P);
@@ -89,7 +105,7 @@ export function LocalModelPanel() {
       </Tabs>
 
       {/* GPU memory + engine status, shared with the model-manager popup. */}
-      <GpuMemoryBox stats={vram} />
+      <GpuMemoryBox stats={vram} {...resolveOwnVram(vram, engine.engineVramMB)} />
 
       <div className="grid grid-cols-[1fr_3fr] items-center gap-4">
         <label className="text-right">Local Model</label>
@@ -100,21 +116,34 @@ export function LocalModelPanel() {
       </div>
 
       {/* Simple rows — always visible */}
-      <Row label="Context Size" htmlFor="localContextSize" hint="How much the model keeps in context — also its VRAM cost. Applies on reload.">
-        <ValueSlider id="localContextSize" value={localContextSize} min={2048} max={32768} step={1024} onChange={setLocalContextSize} format={(v) => `${v.toLocaleString()} tok`} />
+      <Row label="Context Size" htmlFor="localContextSize" hint="How much the model keeps in context — also its VRAM cost. Capped at the loaded model's trained maximum. Applies on reload.">
+        <ValueSlider id="localContextSize" value={Math.min(localContextSize, contextMax)} min={2048} max={contextMax} step={1024} onChange={setLocalContextSize} format={(v) => `${v.toLocaleString()} tok`} />
       </Row>
 
-      {/* GPU: a simple on/off checkbox, or (in Advanced) the full layer slider that replaces it — 0 = off. */}
+      {/* GPU: a simple on/off checkbox (on = Auto), or (in Advanced) an Auto/Max/Custom mode with a count slider. */}
       {advancedMode ? (
-        <Row label="GPU Layers" htmlFor="localGpuLayers" hint="Layers to offload to the GPU. 0 = CPU-only, max = all. Lower it to partially offload a model that doesn’t fully fit VRAM. Applies on reload.">
-          <ValueSlider id="localGpuLayers" value={localGpuLayers} min={0} max={LOCAL_GPU_LAYERS_MAX} step={1} onChange={setLocalGpuLayers} format={() => gpuLabel} />
-        </Row>
+        <>
+          <Row label="GPU Layers" htmlFor="localGpuMode" hint="How much of the model runs on the GPU. Auto fits as many layers as your VRAM allows; Max offloads the whole model (needed for large models / multi-GPU, can run out of VRAM); Custom pins an exact count. Applies on reload.">
+            <Tabs value={gpuMode} onValueChange={setGpuMode}>
+              <TabsList>
+                <TabsTrigger value="auto">Auto</TabsTrigger>
+                <TabsTrigger value="max">Max</TabsTrigger>
+                <TabsTrigger value="custom">Custom</TabsTrigger>
+              </TabsList>
+            </Tabs>
+          </Row>
+          {gpuMode === 'custom' && (
+            <Row label="Layers" htmlFor="localGpuLayers" hint="Number of model layers to offload. 0 = CPU-only. Applies on reload.">
+              <ValueSlider id="localGpuLayers" value={localGpuLayers >= 0 ? localGpuLayers : LOCAL_GPU_LAYERS_MAX} min={0} max={LOCAL_GPU_LAYERS_MAX} step={1} onChange={setLocalGpuLayers} format={() => gpuLabel} />
+            </Row>
+          )}
+        </>
       ) : (
         <CheckRow
           label="GPU"
           htmlFor="localGpuOn"
-          checked={localGpuLayers > 0}
-          onChange={(v) => setLocalGpuLayers(v ? LOCAL_GPU_LAYERS_MAX : 0)}
+          checked={localGpuLayers !== 0}
+          onChange={(v) => setLocalGpuLayers(v ? GPU_LAYERS_AUTO : 0)}
           hint="Run on the GPU (recommended). Off falls back to CPU-only — slower, works without a capable GPU. Applies on reload."
         />
       )}
@@ -126,8 +155,23 @@ export function LocalModelPanel() {
           htmlFor="localFlashAttention"
           checked={localFlashAttention}
           onChange={setLocalFlashAttention}
-          hint="Less KV-cache VRAM and often faster. Off by default for broad compatibility; try it on. Applies on reload."
+          hint="Less KV-cache VRAM and often faster. On by default; turn it off only if an older GPU/backend won't run it. Applies on reload."
         />
+      )}
+
+      {/* Parallel slots split the context (each gets ~context / slots), so the per-slot window is worth showing. */}
+      {advancedMode && (
+        <Row label="Parallel Requests" htmlFor="localParallelRequests" hint="How many requests the model answers at once. Higher speeds up each turn (choices, stats, and more fetch together) but splits the context between slots and uses more VRAM. Applies on reload.">
+          <ValueSlider
+            id="localParallelRequests"
+            value={localParallelRequests}
+            min={1}
+            max={LOCAL_PARALLEL_REQUESTS_MAX}
+            step={1}
+            onChange={setLocalParallelRequests}
+            format={(v) => (v === 1 ? '1 (off)' : `${v} · ~${Math.floor(localContextSize / v).toLocaleString()} tok/slot`)}
+          />
+        </Row>
       )}
 
       {/* TODO: re-enable the Thinking toggle once reasoning models are supported (see memory
