@@ -97,7 +97,12 @@ class WorldStorageService {
       name: world.name,
       description: world.description,
       author: world.author || '',
-      thumbnail: world.thumbnail,
+      // A remote (http) thumbnail can't render offline and is blocked cross-origin by the server's CORP
+      // header, so prefer the world's own embedded thumbnail (base64) when the stored one is a URL. New
+      // downloads already store the embedded thumbnail; this heals worlds downloaded before that fix.
+      thumbnail: (world.thumbnail && !/^https?:\/\//i.test(world.thumbnail))
+        ? world.thumbnail
+        : (world.data?.worldOverview?.thumbnail || world.thumbnail),
       tags: world.data?.worldOverview?.tags || [],
       sourceId: world.sourceId,
       dirty: world.dirty,

@@ -94,8 +94,14 @@ export function useDownloadCoordinator(
     const contentData = worldData.data.contentData;
     const migrated = migrateWorld(contentData);
 
+    // Prefer the world's own embedded thumbnail (base64, already in the downloaded content) so the local
+    // copy is self-contained and renders offline. A cross-origin server URL would also be blocked from
+    // embedding by the thumbnail response's `Cross-Origin-Resource-Policy: same-origin` header. Fall back to
+    // the server URL only if the content somehow carries no embedded thumbnail.
     let thumbnailUrl = '';
-    if (world.thumbnail_file) {
+    if (migrated.worldOverview?.thumbnail) {
+      thumbnailUrl = migrated.worldOverview.thumbnail;
+    } else if (world.thumbnail_file) {
       thumbnailUrl = `${WorldStorageService.API_URL}/thumbnails/${world.thumbnail_file}`;
     } else if (world.thumbnail) {
       thumbnailUrl = world.thumbnail;
