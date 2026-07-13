@@ -121,6 +121,9 @@ interface DebugRequest {
   type: string;
   messages: ChatMessage[];
   response?: string;
+  // Correlates a captured request to its own response, so concurrent same-type calls (the staged character
+  // pass, parallel diaries) each land on the right entry instead of overwriting by (type + empty-response).
+  id?: string;
 }
 interface DebugTurn {
   action: string;
@@ -258,6 +261,7 @@ const GameViewer = ({
     promptReasoningBudget,
     thinkingPrompt,
     memoryDigests,
+    concurrentTurnRequests,
     summaryPrompt,
     characterDiaries,
     diaryPrompt,
@@ -1184,6 +1188,7 @@ ${playerNotes || NONE_PLACEHOLDER}
           presentEntityIds: withDiscovered(turnLocation)?.entities || [],
           playerNames: playerTraits.map((t) => t.name),
           characterDiaries,
+          concurrentCharacters: concurrentTurnRequests,
           fullMessageHistory,
           diaryMemoryEntries: DIARY_MEMORY_ENTRIES,
           caps: { director: DIRECTOR_MAX_TOKENS, character: CHARACTER_MAX_TOKENS, storyboard: STORYBOARD_MAX_TOKENS },
@@ -1292,12 +1297,12 @@ ${playerNotes || NONE_PLACEHOLDER}
         if (signal.aborted) return; // player stopped during TTS generation
       }
 
-      // Make choices and stat updates requests concurrently since they both only depend on game text
-      let choicesResponse = "";
-      let statUpdatesResponse = "";
-
-      // Only prepare and make choices request if enabled
-      if (choicesEnabled) {
+      // Choices, stat updates, and location-change all depend only on the narration text, not on each other.
+      // Each is a thunk so the mode below decides whether they run concurrently or one at a time (the thunk
+      // isn't invoked — and the request isn't sent — until called). The `quiet` flag suppresses each request's
+      // own status label so the concurrent batch can set one stable label instead of three racing writes.
+      const runChoices = (quiet: boolean): Promise<string> => {
+        if (!choicesEnabled) return Promise.resolve("");
         let updatedChoicesPrompt = renderPromptTemplate(choicesPrompt, {
           ...ctx,
           // Choices see only who is actually in the scene, not the whole location roster — override every
@@ -1307,79 +1312,172 @@ ${playerNotes || NONE_PLACEHOLDER}
           "<ENTITIES|markdown>": sceneEntityDataMd,
           "<ENTITIES|summary.markdown>": sceneEntitySummaryMd,
         });
-
         if (language.toLowerCase() != "english")
           updatedChoicesPrompt += `\n Choice language: ` + language;
-
-        choicesResponse = await makeAIRequest(
+        return makeAIRequest(
           updatedChoicesPrompt,
-          [
-            {
-              role: "user",
-              content: renderPromptTemplate(choicesUserPrompt, {
-                "<PLAYER ACTION>": action,
-                "<NARRATION>": narrationResponse,
-              }),
-            },
-          ],
+          [{ role: "user", content: renderPromptTemplate(choicesUserPrompt, { "<PLAYER ACTION>": action, "<NARRATION>": narrationResponse }) }],
           "choices",
           null,
           signal,
+          false,
+          undefined,
+          quiet,
         );
-      }
+      };
 
-      if (signal.aborted) return; // stopped during the choices request
-      // Choices (the interactive part of the turn) are ready — let the player start composing their next
-      // action while stat-updates / location requests finish in the background.
-      setChoicesReady(true);
-
-      // Only prepare and make stat updates request if enabled and the world actually defines stats
-      // (otherwise the model hallucinates stat names that match nothing).
-      if (statUpdatesEnabled && playerStats.length > 0) {
+      // Only make stat updates request if enabled and the world actually defines stats (otherwise the model
+      // hallucinates stat names that match nothing).
+      const statsActive = statUpdatesEnabled && playerStats.length > 0;
+      const runStats = (quiet: boolean): Promise<string> => {
+        if (!statsActive) return Promise.resolve("");
         let updatedStatUpdatesPrompt = renderPromptTemplate(statUpdatesPrompt, ctx);
-
         if (language.toLowerCase() != "english")
           updatedStatUpdatesPrompt += "\n Please write in english";
-
-        statUpdatesResponse = await makeAIRequest(
+        return makeAIRequest(
           updatedStatUpdatesPrompt,
-          [
-            {
-              role: "user",
-              content: renderPromptTemplate(statUpdatesUserPrompt, {
-                "<PLAYER ACTION>": action,
-                "<NARRATION>": narrationResponse,
-              }),
-            },
-          ],
+          [{ role: "user", content: renderPromptTemplate(statUpdatesUserPrompt, { "<PLAYER ACTION>": action, "<NARRATION>": narrationResponse }) }],
           "statUpdates",
           null,
           signal,
+          false,
+          undefined,
+          quiet,
         );
-      }
+      };
 
-      if (signal.aborted) return; // stopped during the stat-updates request
-      // Suggest mode only — with auto-apply the move was resolved up front (before the narration). After
-      // the narration, ask whether the player should move (fed the action + narration) and offer it.
-      if (!locationAutoApply && locationChangeEnabled && locationChangePromptText) {
-        const updatedLocationPrompt = renderPromptTemplate(locationChangePromptText, ctx);
-
-        const locationResponse = await makeAIRequest(
-          updatedLocationPrompt,
-          [
-            {
-              role: "user",
-              content: renderPromptTemplate(locationChangeUserPrompt, {
-                "<PLAYER ACTION>": action,
-                "<NARRATION>": narrationResponse,
-              }),
-            },
-          ],
+      // Suggest mode only — with auto-apply the move was resolved up front (before the narration). After the
+      // narration, ask whether the player should move (fed the action + narration) and offer it.
+      const locationActive = !locationAutoApply && locationChangeEnabled && !!locationChangePromptText;
+      const runLocation = (quiet: boolean): Promise<string> => {
+        if (!locationActive) return Promise.resolve("");
+        return makeAIRequest(
+          renderPromptTemplate(locationChangePromptText, ctx),
+          [{ role: "user", content: renderPromptTemplate(locationChangeUserPrompt, { "<PLAYER ACTION>": action, "<NARRATION>": narrationResponse }) }],
           "locationChange",
           null,
           signal,
+          false,
+          undefined,
+          quiet,
+        );
+      };
+
+      // Memory digest + character diaries for THIS turn also depend only on the narration (+ participants),
+      // so in concurrent mode they join the batch and their results are folded into the turn at commit
+      // (below) instead of being patched in afterward by the idle drainers. The drainers stay for backfill
+      // (turns that come due when a feature is enabled mid-game). In sequential mode these are left to the
+      // drainers as before. Both are silent + attached to this turn for the AI-context viewer.
+      const runSummary = (): Promise<string> =>
+        memoryDigests
+          ? makeAIRequest(
+              renderPromptTemplate(summaryPrompt, buildContextValues()),
+              [{ role: "user", content: renderPromptTemplate(summaryUserPrompt, { "<PLAYER ACTION>": action, "<NARRATION>": narrationResponse }) }],
+              "summary",
+              DIGEST_MAX_TOKENS,
+              signal,
+              true,
+              currentTurnIdRef.current,
+            )
+          : Promise.resolve("");
+      const isKnownEntity = (name: string) => allEntities.some((e) => sameCharacterName(e.name, name));
+      // Diaries are read only by the staged character pass, so only write them in that mode. A participant the
+      // narration introduced but no entity matches yet gets discovered first (below); its diary needs that
+      // generated description, so it's left to the drainer to write post-discovery — only KNOWN participants
+      // run their diary in this batch.
+      const diaryNames = characterDiaries && thinkingMode === "staged" ? turnParticipants.filter(isKnownEntity) : [];
+      const runDiary = (name: string): Promise<string> => {
+        const entity = allEntities.find((e) => sameCharacterName(e.name, name));
+        return makeAIRequest(
+          renderPromptTemplate(diaryPrompt, buildContextValues()),
+          [{ role: "user", content: buildDiaryUserMessage({ name, entity, narration: narrationResponse }) }],
+          "diary",
+          DIARY_MAX_TOKENS,
+          signal,
+          true,
+          currentTurnIdRef.current,
+        );
+      };
+      // Runtime characters: a narration-confirmed participant matching no known entity is described (3rd-person,
+      // from this turn's narration) and materialized into `discoveredEntities`, mirroring the idle drainer but
+      // folded into the turn's batch. Gated on Character Diaries (same as the drainer); only staged planning
+      // produces ad-hoc candidates, so this is empty otherwise.
+      const discoverNames = characterDiaries ? turnParticipants.filter((name) => !isKnownEntity(name)) : [];
+      const runDiscover = (name: string): Promise<string> =>
+        makeAIRequest(
+          defaultDiscoverEntityPrompt,
+          [{ role: "user", content: `${DISCOVER_NAME_LABEL} ${name}\n\n${DISCOVER_PASSAGE_LABEL}\n${narrationResponse}` }],
+          "discoverEntity",
+          DISCOVER_MAX_TOKENS,
+          signal,
+          true,
+          currentTurnIdRef.current,
         );
 
+      let choicesResponse = "";
+      let statUpdatesResponse = "";
+      let locationResponse = "";
+      let turnSummary = "";
+      const turnDiaries: Record<string, string> = {};
+      const discoveredThisTurn: { name: string; description: string }[] = [];
+
+      if (concurrentTurnRequests) {
+        // Fire all three at once. On a parallel-capable endpoint (LM Studio "Parallel" ≥2, Ollama) they overlap
+        // and cut the post-narration wait ~30%; serial endpoints just queue the HTTP requests, so this is safe
+        // everywhere. makeAIRequest is concurrency-safe for these non-narration types: its shared writes are
+        // narration-gated (reveal/TTS/reasoning) or keyed by distinct requestType (debug capture). One stable
+        // label for the batch (the three requests run quiet); "Choices" since that's what the player waits on.
+        setAiRequestType("choices");
+        const choicesP = runChoices(true);
+        const statsP = runStats(true);
+        const locationP = runLocation(true);
+        const summaryP = runSummary();
+        const diaryPs = diaryNames.map((name) => runDiary(name));
+        const discoverPs = discoverNames.map((name) => runDiscover(name));
+        // Choices (the interactive part) unblock the input as soon as *choices* resolves — don't wait on the
+        // others. No-op catch so this side-chain never raises an unhandled rejection (the real error surfaces
+        // via allSettled below).
+        choicesP.then(
+          () => { if (!signal.aborted) setChoicesReady(true); },
+          () => {},
+        );
+        // allSettled so one aux failure doesn't discard the others' results or abort the turn — each rejection
+        // just falls back to "" / no entry (the drainers backfill a failed digest/diary/discovery on a later tick).
+        const [cR, sR, lR, sumR, ...rest] = await Promise.allSettled([choicesP, statsP, locationP, summaryP, ...diaryPs, ...discoverPs]);
+        const diaryRs = rest.slice(0, diaryNames.length);
+        const discoverRs = rest.slice(diaryNames.length);
+        choicesResponse = cR.status === "fulfilled" ? cR.value : "";
+        statUpdatesResponse = sR.status === "fulfilled" ? sR.value : "";
+        locationResponse = lR.status === "fulfilled" ? lR.value : "";
+        if (memoryDigests && sumR.status === "fulfilled") turnSummary = (sumR.value ?? "").trim();
+        diaryNames.forEach((name, i) => {
+          const r = diaryRs[i];
+          // Store even an empty reply (as "") so the participant isn't retried forever; a rejected request is
+          // left unset so the drainer backfills it later.
+          if (r && r.status === "fulfilled") turnDiaries[name] = (r.value ?? "").trim();
+        });
+        // Materialize each discovered character (skipping unusable/blank descriptions — those stay due for the
+        // drainer). Added to discoveredEntities below at commit, so it rolls back with the turn.
+        discoverNames.forEach((name, i) => {
+          const r = discoverRs[i];
+          if (!r || r.status !== "fulfilled") return;
+          const cleaned = cleanDiscoveredDescription(r.value ?? "", name);
+          if (cleaned) discoveredThisTurn.push({ name, description: cleaned });
+        });
+      } else {
+        // Sequential: one request at a time, each showing its own status label. Choices first so the player can
+        // start composing while stats/location finish.
+        choicesResponse = await runChoices(false);
+        if (signal.aborted) return;
+        setChoicesReady(true);
+        statUpdatesResponse = await runStats(false);
+        if (signal.aborted) return;
+        locationResponse = await runLocation(false);
+      }
+
+      if (signal.aborted) return; // stopped during one of the aux requests
+
+      if (locationActive && locationResponse) {
         // Scope the router to the local navigable graph: match only against places reachable from here.
         const destinations = navigableDestinations(currentLocation, locations);
         const matchedName = matchLocationResponse(
@@ -1391,8 +1489,6 @@ ${playerNotes || NONE_PLACEHOLDER}
           if (target && target.id !== currentLocation?.id) setSuggestedLocation(target);
         }
       }
-
-      if (signal.aborted) return; // stopped during the location-change request
 
       // Fade path: let the paced reveal finish playing out before the turn's results appear, so choices
       // and stat changes don't pop in over a still-fading narration. The smooth crawl self-catches-up,
@@ -1435,6 +1531,11 @@ ${playerNotes || NONE_PLACEHOLDER}
               ...(playerNotes ? { notes: playerNotes } : {}),
               // Per-turn reasoning (additive save-shape). Absent when the model didn't reason.
               ...(turnReasoningRef.current.text ? { reasoning: turnReasoningRef.current } : {}),
+              // Digest + diaries computed in this turn's concurrent batch (see above), written here so the
+              // idle drainers skip the current turn and only backfill older ones. Omitted when not produced
+              // (feature off, sequential mode, or the request failed) — the drainer fills those in later.
+              ...(turnSummary ? { summary: turnSummary } : {}),
+              ...(Object.keys(turnDiaries).length ? { diaries: turnDiaries } : {}),
             }),
           };
         }
@@ -1443,6 +1544,19 @@ ${playerNotes || NONE_PLACEHOLDER}
 
       //setGameplayText(aiResponse.narration);
       //setChoices(aiResponse.choices || []);
+
+      // Persist any characters discovered in this turn's batch (see runDiscover above), anchored to this
+      // location + turn so they roll back with it. Guarded against a double-add (variant-aware name match).
+      if (discoveredThisTurn.length > 0) {
+        const locationId = turnLocation?.id ?? currentLocation?.id;
+        const turnId = currentTurnIdRef.current;
+        setDiscoveredEntities((prev) => {
+          const additions = discoveredThisTurn
+            .filter((d) => !prev.some((p) => sameCharacterName(p.entity.name, d.name)))
+            .map((d) => ({ entity: materializeDiscoveredEntity(d.name, d.description), locationId, sourceTurnId: turnId }));
+          return additions.length ? [...prev, ...additions] : prev;
+        });
+      }
 
       // Reset the persistent bar deltas for this turn, then let stat changes + regen below re-fill them.
       setHeldStatChanges({});
@@ -1682,6 +1796,9 @@ ${playerNotes || NONE_PLACEHOLDER}
     // request under the right turn rather than whatever turn happens to be current.
     silent = false,
     attachTurnId?: string,
+    // Skip setting the "Generating…" status label. The concurrent aux batch fires choices/stats/location at
+    // once; each would otherwise stomp the shared label, so the batch sets one stable label itself instead.
+    quietLabel = false,
   ) => {
     // Disable a reasoning model's scratchpad when requested — the `/no_think` soft switch (Qwen-style),
     // appended to the system prompt so it applies to every request type (and shows in the AI-context viewer).
@@ -1689,6 +1806,9 @@ ${playerNotes || NONE_PLACEHOLDER}
 
     // Silent requests are only captured into the AI-context viewer when the inspection toggle is on.
     const captureSilent = silent && showSilentRequests && attachTurnId !== undefined;
+    // Unique id tying this call's captured request to its response (concurrent same-type calls otherwise
+    // overwrite each other by matching on type + empty-response).
+    const captureId = crypto.randomUUID();
     // Append a captured request payload onto the matching debug turn (the current turn for foreground
     // requests, or the `attachTurnId` turn for a silent digest). No-op if that turn isn't found.
     const captureRequest = () => setDebugTurns((prev) => {
@@ -1700,7 +1820,7 @@ ${playerNotes || NONE_PLACEHOLDER}
         ...next[idx],
         requests: [
           ...next[idx].requests,
-          { type: requestType, messages: [{ role: "system", content: systemPrompt }, ...messages] },
+          { type: requestType, messages: [{ role: "system", content: systemPrompt }, ...messages], id: captureId },
         ],
       };
       return next;
@@ -1708,7 +1828,7 @@ ${playerNotes || NONE_PLACEHOLDER}
 
     try {
       // Surface which request is currently running (silent requests use the digest status indicator instead).
-      if (!silent) setAiRequestType(requestType);
+      if (!silent && !quietLabel) setAiRequestType(requestType);
 
       // Capture the exact payload into the AI-context viewer.
       if (!silent || captureSilent) captureRequest();
@@ -1956,9 +2076,7 @@ ${playerNotes || NONE_PLACEHOLDER}
         const next = prev.slice();
         const turn = { ...next[idx] };
         turn.requests = turn.requests.map((r) =>
-          r.type === requestType && r.response === undefined
-            ? { ...r, response: rawContent }
-            : r,
+          r.id === captureId ? { ...r, response: rawContent } : r,
         );
         next[idx] = turn;
         return next;

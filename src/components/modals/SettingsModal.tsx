@@ -323,6 +323,8 @@ export const SettingsModal = ({ isOpen, onOpenChange, previewValues, initialTab,
     importPreset,
     memoryDigests,
     setMemoryDigests,
+    concurrentTurnRequests,
+    setConcurrentTurnRequests,
     characterDiaries,
     setCharacterDiaries,
     genTemperature,
@@ -899,6 +901,22 @@ export const SettingsModal = ({ isOpen, onOpenChange, previewValues, initialTab,
                   />
                   <span className="text-xs text-muted-foreground">
                     Condenses older turns while keeping recent ones word-for-word, so long stories stay coherent without bloating each request. Runs an extra request per turn; edit its prompt under Prompts → Summary.
+                  </span>
+                </div>
+              </div>
+              <div className="grid grid-cols-1 sm:grid-cols-4 items-start gap-4">
+                <label htmlFor="concurrentTurnRequests" className="text-left sm:text-right leading-4">
+                  Concurrent Requests
+                </label>
+                <div className="col-span-3 flex items-start gap-2">
+                  <Checkbox
+                    id="concurrentTurnRequests"
+                    checked={concurrentTurnRequests}
+                    onCheckedChange={(c) => setConcurrentTurnRequests(c === true)}
+                    className="shrink-0"
+                  />
+                  <span className="text-xs text-muted-foreground">
+                    Fetches choices, stat updates, and location changes at the same time instead of one after another, making turns finish faster on endpoints that handle parallel requests (e.g. LM Studio&apos;s Parallel setting). Turn off if a memory-tight local model slows down under the extra load.
                   </span>
                 </div>
               </div>

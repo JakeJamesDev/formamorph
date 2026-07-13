@@ -432,6 +432,8 @@ export async function runStagedPlanning(ctx: {
   /** Selected trait names — used to recognize the player when the director names them instead of labeling. */
   playerNames: string[];
   characterDiaries: boolean;
+  /** Run the per-character motivation passes concurrently (they're independent) instead of one at a time. */
+  concurrentCharacters: boolean;
   fullMessageHistory: ChatMessage[];
   diaryMemoryEntries: number;
   caps: { director: number; character: number; storyboard: number };
@@ -445,7 +447,7 @@ export async function runStagedPlanning(ctx: {
 }): Promise<StagedPlanningResult> {
   const {
     action, stageValues, lastStory, entities, presentEntityIds, playerNames, characterDiaries,
-    fullMessageHistory, diaryMemoryEntries, caps,
+    concurrentCharacters, fullMessageHistory, diaryMemoryEntries, caps,
     directorPrompt, directorUserPrompt, characterPrompt, storyboardPrompt, request, signal,
   } = ctx;
 
@@ -467,18 +469,29 @@ export async function runStagedPlanning(ctx: {
   const presentEntities = entities.filter((e) => presentEntityIds.includes(e.id));
   const { chosen, overflow } = matchCastToEntities(npcCast, presentEntities, 3);
 
-  // 2) One motivation pass per chosen character (sequential — makeAIRequest captures per call).
-  const intents: { name: string; text: string }[] = [];
-  for (const member of chosen) {
+  // 2) One motivation pass per chosen character. They're independent, so run concurrently when enabled (the
+  // debug capture correlates each request to its response by id, so parallel same-type "character" calls
+  // stay correctly paired). Intents keep cast order either way, which the storyboard message relies on.
+  const runCharacter = (member: (typeof chosen)[number]) => {
     // Feed the character its own recent diary as private memory (Slice B) — only when enabled.
     const diary = characterDiaries ? collectCharacterDiary(fullMessageHistory, member.name, diaryMemoryEntries) : [];
-    const text = await request(
+    return request(
       renderPromptTemplate(characterPrompt, { ...stageValues, "<CHARACTER NAME>": member.name }),
       [{ role: "user", content: buildCharacterUserMessage({ character: member, scene, action, diary, recap: lastStory }) }],
       "character", caps.character, signal,
     );
+  };
+  let intents: { name: string; text: string }[] = [];
+  if (concurrentCharacters) {
+    const texts = await Promise.all(chosen.map(runCharacter));
     if (signal.aborted) return { turnPlan: "", directorCandidates, adHocCandidates, cast: npcCast };
-    if (text) intents.push({ name: member.name, text });
+    intents = chosen.map((member, i) => ({ name: member.name, text: texts[i] })).filter((intent) => intent.text);
+  } else {
+    for (const member of chosen) {
+      const text = await runCharacter(member);
+      if (signal.aborted) return { turnPlan: "", directorCandidates, adHocCandidates, cast: npcCast };
+      if (text) intents.push({ name: member.name, text });
+    }
   }
 
   // 3) Storyboarder: consolidate the cast + intentions into this turn's plan.

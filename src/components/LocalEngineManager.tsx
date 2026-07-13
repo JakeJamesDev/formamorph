@@ -17,7 +17,7 @@ import {
  * desktop; renders nothing. Mount once near the app root (inside SettingsProvider).
  */
 export function LocalEngineManager() {
-  const { localModelActive, localContextSize, localGpuLayers, localFlashAttention } = useSettings();
+  const { localModelActive, localContextSize, localGpuLayers, localFlashAttention, localParallelRequests } = useSettings();
 
   useEffect(() => {
     if (!isDesktop()) return;
@@ -27,7 +27,7 @@ export function LocalEngineManager() {
         await stopLocalLlm().catch(() => { /* ignore */ });
         return;
       }
-      await setLocalLlmOptions({ contextSize: localContextSize, gpuLayers: localGpuLayers, flashAttention: localFlashAttention }).catch(() => { /* ignore */ });
+      await setLocalLlmOptions({ contextSize: localContextSize, gpuLayers: localGpuLayers, flashAttention: localFlashAttention, parallelRequests: localParallelRequests }).catch(() => { /* ignore */ });
       if (cancelled) return;
       const st = await localLlmStatus().catch(() => null);
       if (cancelled || !st || st.status !== 'stopped') return;

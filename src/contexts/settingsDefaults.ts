@@ -19,11 +19,22 @@ export const DEFAULT_CONTEXT_WINDOW = parseInt(import.meta.env.VITE_DEFAULT_CONT
 // fit, 0 = CPU-only, N = that many layers. Flash attention trades a little compatibility for less KV-cache
 // VRAM + speed. Defaults match engineOptions in electron/main.cjs so no needless reload on boot.
 export const DEFAULT_LOCAL_CONTEXT_SIZE = 8192;
-// GPU layers as a plain count: 0 = CPU-only, up to LOCAL_GPU_LAYERS_MAX = offload everything (llama.cpp
-// clamps to the model's real layer count). Default = full offload.
+// GPU layers: two sentinels + a literal count. AUTO offloads as many layers as fit VRAM (never OOMs); MAX
+// offloads every layer of any model (multi-GPU auto-splits); 0..LOCAL_GPU_LAYERS_MAX = a fixed partial count.
+// Sentinels are kept as numbers so the setting/IPC stay numeric; mirrored in electron/llmEngine.cjs + main.cjs.
+export const GPU_LAYERS_AUTO = -1;
+export const GPU_LAYERS_MAX = -2;
+// Upper bound of the Custom-count slider (llama.cpp clamps to the model's real layer count).
 export const LOCAL_GPU_LAYERS_MAX = 64;
-export const DEFAULT_LOCAL_GPU_LAYERS = LOCAL_GPU_LAYERS_MAX;
-export const DEFAULT_LOCAL_FLASH_ATTENTION = false;
+// Default = Auto: safe for any downloaded model (fits VRAM instead of erroring or under-offloading).
+export const DEFAULT_LOCAL_GPU_LAYERS = GPU_LAYERS_AUTO;
+// On by default: mature and widely supported (modern llama.cpp auto-enables it), cuts KV-cache VRAM — which
+// matters most now that parallel slots split the cache. Only truly old/unsupported backends need it off.
+export const DEFAULT_LOCAL_FLASH_ATTENTION = true;
+// How many requests the bundled engine decodes at once (context sequences). They share the KV cache, so each
+// slot's window is ~contextSize / N — 2 balances a real turn-batch speedup against the halved per-slot window.
+export const LOCAL_PARALLEL_REQUESTS_MAX = 8;
+export const DEFAULT_LOCAL_PARALLEL_REQUESTS = 2;
 
 // Generation sampling for the local model (sent while the local engine is active). Concrete defaults so
 // the sliders always show a sensible value rather than a confusing blank.

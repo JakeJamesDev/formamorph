@@ -19,7 +19,7 @@ import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { ConfirmDialog } from '@/components/ConfirmDialog';
 import { LOCAL_MODELS, VRAM_TIERS, formatModelSize, tierForVram, type LocalModelInfo, type VramTier } from '@/lib/localModels';
 import { useLocalLlmStatus } from '@/lib/useLocalLlmStatus';
-import { useVramStats } from '@/lib/useVramStats';
+import { useVramStats, resolveOwnVram } from '@/lib/useVramStats';
 import type { LocalLlmState } from '@/lib/imageGen/desktop';
 import { EngineStatusLine, GpuMemoryBox } from '@/components/LocalModelStatus';
 import {
@@ -224,7 +224,7 @@ export function LocalModelModal({ open, onOpenChange }: { open: boolean; onOpenC
 
         {/* Engine status + GPU memory (shared with the endpoint panel). */}
         <EngineStatusLine engine={engine} className="shrink-0" />
-        <GpuMemoryBox stats={vram} className="shrink-0" />
+        <GpuMemoryBox stats={vram} className="shrink-0" {...resolveOwnVram(vram, engine.engineVramMB)} />
 
         {/* Top-level view: what's installed vs. what we suggest. */}
         <Tabs value={view} onValueChange={(v) => setView(v as 'installed' | 'recommended')} className="shrink-0">
