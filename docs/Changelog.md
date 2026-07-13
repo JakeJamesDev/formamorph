@@ -12,6 +12,21 @@ Each release groups changes as **Major** / **Minor**, then **Added** / **Removed
 
 _Unreleased — new work accumulates here until it earns a version bump._
 
+### Minor Changes
+
+#### ➕ Added
+
+- **👤 User-facing**
+  - **The "What's new" popup highlights your version.** The changelog popout is wider and laid out as a cleaner outline — each version flush-left with its Added/Fixed groups and items stepped in beneath it. Your installed version is tinted blue and tagged **(Current)**, and the newest available version is tinted green and tagged **(New!)**, so you can tell at a glance what you have versus what's new.
+
+#### 🐛 Fixed
+
+- **👤 User-facing**
+  - **Chip pop-outs stay open while you adjust options.** Picking a mode on a placeholder or prompt chip (e.g. a Wildcard's World/Unique, or a Location chip's scope/content/format) no longer closes the pop-out, so you can change several settings in a row. Click elsewhere or press Escape to close it as before.
+  - **The placeholder Edit/Preview toggle only shows when a world has placeholders.** It used to appear on every placeholder-capable field even when no placeholders were defined; now it shows up only once you've added at least one.
+- **🛠️ Developer tooling**
+  - **Changelog popout formatting.** `UpdateService.foldRelease` now emits each version as its own `### <tag>` heading (no more version·category merge); `ChangelogBody` tags the current / newest-uninstalled version headings (`cl-current` / `cl-update`) so `.changelog-body` CSS can tint them (info / success via `color-mix`, kept muted) and append the (Current) / (New!) labels; indentation is CSS too. Both changelog popouts widened to `max-w-3xl`. Tests updated.
+
 ---
 
 <details>
@@ -38,7 +53,6 @@ _Unreleased — new work accumulates here until it earns a version bump._
 
 - **👤 User-facing**
   - **Downloaded worlds now show their thumbnail in the library — and work fully offline.** A world downloaded from Community Creations was storing a link to the server's thumbnail image, which the browser refuses to display on the library card (the server marks those images as same-origin only) and which wouldn't work offline anyway. Downloads now save the world's own cover image directly into the local copy, so the card shows it and the world is fully self-contained. Worlds you already downloaded are healed automatically — no need to re-download.
-  - **Chip pop-outs stay open while you adjust options.** Picking a mode on a placeholder or prompt chip (e.g. a Wildcard's World/Unique, or a Location chip's scope/content/format) no longer closes the pop-out, so you can change several settings in a row. Click elsewhere or press Escape to close it as before.
 - **🛠️ Developer tooling**
   - **World download stores the embedded thumbnail, not the catalog URL.** `useDownloadCoordinator.fetchWorldContent` now prefers `migrated.worldOverview.thumbnail` (base64, already in the downloaded content) over the `${API_URL}/thumbnails/...` URL — the server's `Cross-Origin-Resource-Policy: same-origin` (Helmet default) blocks the raw URL from `<img>` embedding cross-origin, and a URL can't render offline. `getWorldMetadata` also falls back to the embedded thumbnail when a stored one is an `http(s)` URL, healing pre-fix downloads at read time (it already loads `data` for tags, so no extra cost). Unit-tested. Separately, the FormamorphServer thumbnails route now sets `Cross-Origin-Resource-Policy: cross-origin` (overriding Helmet's `same-origin` default) so those public images are embeddable cross-origin — not needed by the app anymore, but correct for any other embedder (needs a server deploy).
 
