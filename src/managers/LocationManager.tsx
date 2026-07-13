@@ -2,19 +2,19 @@ import { useState, useEffect } from 'react';
 import { useGameData } from '@/contexts/GameDataContext';
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Textarea } from "@/components/ui/textarea";
 import { Checkbox } from "@/components/ui/checkbox";
 import { MultiSelect } from "@/components/ui/multi-select";
 import AiFieldToolbar from "@/components/AiFieldToolbar";
 import { TagAutocomplete } from "@/components/TagAutocomplete";
 import { ConfirmDialog } from "@/components/ConfirmDialog";
+import PlaceholderField from "@/components/prompt/PlaceholderField";
 import { ImageUpload, SoundUpload } from '../lib/UtilityComponents';
 import { IMAGE_CAPS } from '../lib/imageOptim';
 import { GenerateImageButton } from '../components/GenerateImageButton';
 import type { GameLocation } from '@/types';
 
 const LocationManager = ({ location }: { location: GameLocation }) => {
-  const { updateLocation, entities } = useGameData();
+  const { updateLocation, entities, placeholders } = useGameData();
   const [editingLocation, setEditingLocation] = useState<GameLocation>(location);
   // SD prompt pulled from an uploaded image, pending the user's OK to use it as Image Tags.
   const [pendingPrompt, setPendingPrompt] = useState<string | null>(null);
@@ -52,16 +52,18 @@ const LocationManager = ({ location }: { location: GameLocation }) => {
       </div>
       <div className="space-y-2">
         <Label>Player-Facing Description</Label>
-        <Textarea
+        <PlaceholderField
           value={editingLocation.playerDescription || ''}
-          onChange={(e) => handleChange('playerDescription', e.target.value)}
+          onChange={(v) => handleChange('playerDescription', v)}
+          placeholders={placeholders}
         />
       </div>
       <div className="space-y-2">
         <Label>AI-Facing Description</Label>
-        <Textarea
+        <PlaceholderField
           value={editingLocation.aiDescription || ''}
-          onChange={(e) => handleChange('aiDescription', e.target.value)}
+          onChange={(v) => handleChange('aiDescription', v)}
+          placeholders={placeholders}
         />
       </div>
       <div className="space-y-2">
@@ -74,9 +76,10 @@ const LocationManager = ({ location }: { location: GameLocation }) => {
             onChange={(s) => handleChange('aiSummary', s)}
           />
         </div>
-        <Textarea
+        <PlaceholderField
           value={editingLocation.aiSummary || ''}
-          onChange={(e) => handleChange('aiSummary', e.target.value)}
+          onChange={(v) => handleChange('aiSummary', v)}
+          placeholders={placeholders}
         />
         <p className="text-sm text-muted-foreground">
           A one-line version used where the full description is too long — keep it brief.

@@ -713,7 +713,7 @@ const WorldEditor = ({ onClose, embedded = false, backButton }: {
                       <DictionaryBookManager key={selectedBook.id} book={selectedBook} />
                     )}
                     {activeTab === "dictionary" && !selectedBook && selectedEntry && (
-                      <DictionaryManager key={selectedEntry.id} entry={selectedEntry} />
+                      <DictionaryManager key={selectedEntry.id} entry={selectedEntry} placeholders={placeholders} />
                     )}
                     {activeTab === "statUpdates" && selectedItem && (
                       <StatUpdatesManager key={selectedItem.id} statUpdate={selectedItem as StatUpdate} />
