@@ -2,7 +2,7 @@
 
 All notable changes to Formamorph. This fork's first line is **2.0.0** — a full TypeScript rebuild of the upstream JavaScript app ([FieryLionite's Formamorph](https://fierylion.itch.io/formamorph), ~v1.2) — with feature parity as the baseline plus new features on top.
 
-> ✅ **2.0.0 – 2.2.1 are released** (collapsed below). New work lands under **🚧 In Progress** — an unnumbered section, so changes accumulate without pinning a version. When a batch earns a release its section is marked **Released** and collapsed, and a fresh In Progress opens. `package.json` reads **2.2.1**, the latest released version.
+> ✅ **2.0.0 – 2.2.2 are released** (collapsed below). New work lands under **🚧 In Progress** — an unnumbered section, so changes accumulate without pinning a version. When a batch earns a release its section is marked **Released** and collapsed, and a fresh In Progress opens. `package.json` reads **2.2.2**, the latest released version.
 
 Each release groups changes as **Major** / **Minor**, then **Added** / **Removed** / **Fixed**, and within those by audience: 👤 user-facing · 🛠️ developer tooling · ⚙️ backend / invisible.
 
@@ -11,6 +11,11 @@ Each release groups changes as **Major** / **Minor**, then **Added** / **Removed
 ## 🚧 In Progress
 
 _Unreleased — new work accumulates here until it earns a version bump._
+
+---
+
+<details>
+<summary><strong>✅ 2.2.2 — Released</strong> — author-defined **Placeholders**: reusable Variables / random Wildcards dropped into world text as chips, with a live Edit/Preview toggle, portability when you share characters and dictionaries, and one shared editor everywhere — plus downloaded worlds now keep their own thumbnail and work fully offline (click to expand)</summary>
 
 ### Minor Changes
 
@@ -35,6 +40,8 @@ _Unreleased — new work accumulates here until it earns a version bump._
   - **Downloaded worlds now show their thumbnail in the library — and work fully offline.** A world downloaded from Community Creations was storing a link to the server's thumbnail image, which the browser refuses to display on the library card (the server marks those images as same-origin only) and which wouldn't work offline anyway. Downloads now save the world's own cover image directly into the local copy, so the card shows it and the world is fully self-contained. Worlds you already downloaded are healed automatically — no need to re-download.
 - **🛠️ Developer tooling**
   - **World download stores the embedded thumbnail, not the catalog URL.** `useDownloadCoordinator.fetchWorldContent` now prefers `migrated.worldOverview.thumbnail` (base64, already in the downloaded content) over the `${API_URL}/thumbnails/...` URL — the server's `Cross-Origin-Resource-Policy: same-origin` (Helmet default) blocks the raw URL from `<img>` embedding cross-origin, and a URL can't render offline. `getWorldMetadata` also falls back to the embedded thumbnail when a stored one is an `http(s)` URL, healing pre-fix downloads at read time (it already loads `data` for tags, so no extra cost). Unit-tested. Separately, the FormamorphServer thumbnails route now sets `Cross-Origin-Resource-Policy: cross-origin` (overriding Helmet's `same-origin` default) so those public images are embeddable cross-origin — not needed by the app anymore, but correct for any other embedder (needs a server deploy).
+
+</details>
 
 ---
 
