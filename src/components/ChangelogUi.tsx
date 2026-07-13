@@ -25,10 +25,19 @@ export function ChangelogBody({ text, placeholder, currentVersion, updateVersion
     if (!root) return;
     const cur = vtag(currentVersion);
     const upd = vtag(updateVersion);
-    root.querySelectorAll('h3').forEach((h) => {
-      const t = h.textContent?.trim();
-      h.classList.toggle('cl-current', !!cur && t === cur);
-      h.classList.toggle('cl-update', !!upd && upd !== cur && t === upd);
+    // Reset, then walk the flat heading/label sequence: a tinted version heading (`### <tag>`) sets the active
+    // tint, which carries onto its following category labels (Added/Fixed) until the next version/minor header.
+    root.querySelectorAll('.cl-current, .cl-update').forEach((e) => e.classList.remove('cl-current', 'cl-update'));
+    let active: 'cl-current' | 'cl-update' | null = null;
+    root.querySelectorAll('h2, h3, p').forEach((el) => {
+      if (el.tagName === 'H2') { active = null; return; } // minor group header — resets the tint
+      if (el.tagName === 'H3') {
+        const t = el.textContent?.trim();
+        active = cur && t === cur ? 'cl-current' : upd && upd !== cur && t === upd ? 'cl-update' : null;
+        if (active) el.classList.add(active);
+        return;
+      }
+      if (active) el.classList.add(active); // category label under a tinted version
     });
   }, [text, currentVersion, updateVersion]);
 
