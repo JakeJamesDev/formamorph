@@ -3,6 +3,7 @@ import { useGameplay } from '@/contexts/GameplayContext';
 import { useGameplayText, setGameplayText } from '@/lib/gameplayTextStore';
 import { revealActive, revealAnimName, revealVars } from '@/lib/narrationRevealConfig';
 import { useGameData } from '@/contexts/GameDataContext';
+import { usePlaceholderResolver } from '@/lib/usePlaceholderResolver';
 import { useSettings } from '@/contexts/SettingsContext';
 import { useSentenceHighlight } from '@/lib/useSentenceHighlight';
 import { findEntityNames } from '@/lib/entityMatch';
@@ -832,6 +833,7 @@ export const RightPanel = ({ onLocationClick, language, setLanguage }: {
     drainingStatChanges
   } = useGameplay();
   const { locations } = useGameData();
+  const resolvePH = usePlaceholderResolver();
   const [isEditMode, setIsEditMode] = React.useState(false);
   // On a past page show the viewed turn's location (Location tab); live otherwise.
   const displayLocation = isViewingPast
@@ -954,7 +956,7 @@ export const RightPanel = ({ onLocationClick, language, setLanguage }: {
               {displayLocation && (
                 <div className="space-y-2">
                   <p className="font-semibold">Description:</p>
-                  <p className="text-sm">{displayLocation.playerDescription || displayLocation.description}</p>
+                  <p className="text-sm">{resolvePH(displayLocation.playerDescription || displayLocation.description || '')}</p>
                   {displayLocation.connections && displayLocation.connections.length > 0 && (
                     <>
                       <p className="font-semibold mt-4">Connected Locations:</p>

@@ -23,6 +23,7 @@ import type {
   Choice,
   DiscoveredEntity,
   Dictionary,
+  PlaceholderRolls,
   SceneEntity,
 } from '@/types';
 
@@ -47,6 +48,9 @@ function useProvideGameplay() {
   // Per-playthrough dictionary set chosen at world entry (or restored from a save). Runtime-only: the
   // authored world's books live in GameDataContext and are never mutated by gameplay.
   const [runtimeDictionaries, setRuntimeDictionaries] = useState<Dictionary[]>([]);
+  // Frozen placeholder rolls for this playthrough (see lib/placeholders). Primed once when a save becomes
+  // active, then a pure lookup everywhere. Persisted in the save envelope.
+  const [placeholderRolls, setPlaceholderRolls] = useState<PlaceholderRolls>({});
   // Flattened enabled entries fed to the injection pipeline (mirrors GameData's old derived `dictionary`).
   const runtimeDictionary = useMemo(() => flattenEnabledBookEntries(runtimeDictionaries), [runtimeDictionaries]);
   const [recentStatChanges, setRecentStatChanges] = useState<Record<string, number>>({});
@@ -225,6 +229,7 @@ function useProvideGameplay() {
         stateHistory: gameStates.map(stripSnapshotHistory), // per-turn snapshots, history-free
         version: APP_VERSION, // stamp the current app version (legacy envelopes used numeric 2 ≙ v1.2)
         dictionaries: runtimeDictionaries, // the player's per-playthrough dictionary set, restored on load
+        ...(placeholderRolls.world || placeholderRolls.unique ? { placeholderRolls } : {}),
       };
 
       await putSaveRecord(record);
@@ -236,7 +241,7 @@ function useProvideGameplay() {
       addLogEntry('Failed to save game');
       return false;
     }
-  }, [saveCurrentGameState, gameStates, runtimeDictionaries, addLogEntry]);
+  }, [saveCurrentGameState, gameStates, runtimeDictionaries, placeholderRolls, addLogEntry]);
 
   /** Load a save by its record `id` from IndexedDB and restore it. A flat envelope (`isSaveEnvelope`, current or
    *  legacy numeric version) loads directly; an older nested shape is flattened off-thread via the
@@ -267,6 +272,7 @@ function useProvideGameplay() {
           setGameStates(migrated.stateHistory);
           // Restore the per-playthrough dictionary set; older saves lack it, so keep the entry-seeded set.
           if (Array.isArray(migrated.dictionaries)) setRuntimeDictionaries(migrated.dictionaries);
+          setPlaceholderRolls(migrated.placeholderRolls ?? {});
           addLogEntry(`Game loaded from "${saveName}"`);
         }
         return success;
@@ -438,6 +444,8 @@ function useProvideGameplay() {
     setPlayerTraits,
     runtimeDictionaries,
     setRuntimeDictionaries,
+    placeholderRolls,
+    setPlaceholderRolls,
     runtimeDictionary,
     recentStatChanges,
     setRecentStatChanges,

@@ -14,15 +14,15 @@ import { LexicalErrorBoundary } from '@lexical/react/LexicalErrorBoundary';
 import { useLexicalComposerContext } from '@lexical/react/LexicalComposerContext';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { CHIP_BASE } from '@/components/Chip';
-import { parsePromptTemplate } from '@/lib/promptTemplate';
-import { colorForToken, type PromptVariable } from '@/lib/promptVariables';
+import { type PromptVariable } from '@/lib/promptVariables';
+import { ChipVocabularyContext, promptVocabulary, type ChipVocabulary } from '@/lib/chipVocabulary';
 import { cn } from '@/lib/utils';
 import { VariableNode, $createVariableNode, $isVariableNode, PromptDragContext } from './VariableNode';
 
 // --- string <-> editor conversion (a single plain-text paragraph of text / line breaks / chips) ---
 
-function appendSegments(para: ElementNode, value: string) {
-  for (const seg of parsePromptTemplate(value)) {
+function appendSegments(para: ElementNode, value: string, parse: ChipVocabulary['parse']) {
+  for (const seg of parse(value)) {
     if (seg.type === 'variable') {
       para.append($createVariableNode(seg.token));
       continue;
@@ -34,11 +34,11 @@ function appendSegments(para: ElementNode, value: string) {
   }
 }
 
-function buildEditorState(value: string) {
+function buildEditorState(value: string, parse: ChipVocabulary['parse']) {
   const root = $getRoot();
   root.clear();
   const para = $createParagraphNode();
-  appendSegments(para, value);
+  appendSegments(para, value, parse);
   root.append(para);
 }
 
@@ -72,16 +72,18 @@ function caretRangeFromPoint(x: number, y: number): Range | null {
 
 /** Two-way sync between the controlled `value` string and the Lexical editor state. Our own edits set
  *  `expected` first so the external-value effect never rebuilds (and jolts the caret) on an echo. */
-function ValueSyncPlugin({ value, onChange }: { value: string; onChange: (v: string) => void }) {
+function ValueSyncPlugin({ value, onChange, parse }: { value: string; onChange: (v: string) => void; parse: ChipVocabulary['parse'] }) {
   const [editor] = useLexicalComposerContext();
   const expected = useRef(value);
   const onChangeRef = useRef(onChange);
   onChangeRef.current = onChange;
+  const parseRef = useRef(parse);
+  parseRef.current = parse;
 
   useEffect(() => {
     if (value === expected.current) return;
     expected.current = value;
-    editor.update(() => buildEditorState(value));
+    editor.update(() => buildEditorState(value, parseRef.current));
   }, [value, editor]);
 
   useEffect(
@@ -108,16 +110,17 @@ function EditablePlugin({ readOnly }: { readOnly: boolean }) {
 /** Toolbar of colored variable chips. Interactive (Edit tab): clicking inserts a fresh chip at the
  *  caret. Non-interactive (Preview tab): the same chips persist as a color key — which also keeps the
  *  row from reflowing when the tab switches. */
-function VariableToolbar({ variables, interactive }: {
-  variables: PromptVariable[];
+function VariableToolbar({ vocab, interactive }: {
+  vocab: ChipVocabulary;
   interactive: boolean;
 }) {
   const [editor] = useLexicalComposerContext();
-  if (!variables.length) return null;
+  const items = vocab.palette();
+  if (!items.length) return null;
 
-  const insert = (token: string) => {
+  const insert = (paletteToken: string) => {
     editor.update(() => {
-      const node = $createVariableNode(token);
+      const node = $createVariableNode(vocab.freshInsertToken(paletteToken));
       const selection = $getSelection();
       if ($isRangeSelection(selection)) {
         selection.insertNodes([node]);
@@ -138,7 +141,7 @@ function VariableToolbar({ variables, interactive }: {
   return (
     <div className="flex flex-wrap items-center gap-1 flex-shrink-0">
       <span className="text-xs text-muted-foreground mr-1">Insert:</span>
-      {variables.map((v) => (
+      {items.map((v) => (
         <button
           key={v.token}
           type="button"
@@ -250,17 +253,18 @@ function applyAnchor(el: HTMLElement | null, tab: string, anchor: ScrollAnchor):
 
 /** The substituted prompt, with each variable's value lightly tinted its accent color (matching the
  *  chip and the Insert key) so it's obvious which text came from which variable. */
-function PreviewPane({ value, previewValues, scrollRef, onScroll }: {
+function PreviewPane({ value, previewValues, vocab, scrollRef, onScroll }: {
   value: string;
   previewValues: Record<string, string>;
+  vocab: ChipVocabulary;
   scrollRef?: React.Ref<HTMLDivElement>;
   onScroll?: React.UIEventHandler<HTMLDivElement>;
 }) {
   return (
     <div ref={scrollRef} onScroll={onScroll} className="h-full min-h-[160px] overflow-auto rounded-md border border-input bg-muted/40 px-3 py-2 text-sm whitespace-pre-wrap">
-      {parsePromptTemplate(value).map((seg, i) => {
+      {vocab.parse(value).map((seg, i) => {
         if (seg.type === 'text') return <span key={i}>{seg.value}</span>;
-        const color = colorForToken(seg.token);
+        const color = vocab.color(seg.token);
         return (
           <mark
             key={i}
@@ -281,14 +285,18 @@ function PreviewPane({ value, previewValues, scrollRef, onScroll }: {
  * chip for its live value. The composer wraps both tabs so the Insert toolbar persists across them —
  * interactive in Edit, a static color key in Preview. Storage stays the same token-string.
  */
-const PromptField = ({ value, onChange, variables, previewValues, className, readOnly = false }: {
+const PromptField = ({ value, onChange, variables = [], vocabulary, previewValues, className, readOnly = false }: {
   value: string;
   onChange: (v: string) => void;
-  variables: PromptVariable[];
+  /** Prompt-variable palette (used when no explicit `vocabulary` is given — the default prompt family). */
+  variables?: PromptVariable[];
+  /** Override the token family (e.g. world placeholders). Defaults to the prompt vocabulary from `variables`. */
+  vocabulary?: ChipVocabulary;
   previewValues?: Record<string, string>;
   className?: string;
   readOnly?: boolean;
 }) => {
+  const vocab = useMemo(() => vocabulary ?? promptVocabulary(variables), [vocabulary, variables]);
   const dragKey = useRef<string | null>(null);
   const [tab, setTab] = useState('edit');
   // Scroll containers for each tab (only one is mounted at a time). ContentEditable forwards its ref to
@@ -343,7 +351,7 @@ const PromptField = ({ value, onChange, variables, previewValues, className, rea
       nodes: [VariableNode],
       onError: (error: Error) => { throw error; },
       editable: !readOnly,
-      editorState: () => buildEditorState(value),
+      editorState: () => buildEditorState(value, vocab.parse),
     }),
     // eslint-disable-next-line react-hooks/exhaustive-deps -- intentional: only the mount-time value seeds the editor
     [],
@@ -365,9 +373,10 @@ const PromptField = ({ value, onChange, variables, previewValues, className, rea
 
   return (
     <LexicalComposer initialConfig={initialConfig}>
+      <ChipVocabularyContext.Provider value={vocab}>
       <PromptDragContext.Provider value={dragKey}>
         <div className={cn('flex flex-col flex-1 min-h-0 gap-2', className)}>
-          <VariableToolbar variables={variables} interactive={!readOnly && (!previewValues || tab === 'edit')} />
+          <VariableToolbar vocab={vocab} interactive={!readOnly && (!previewValues || tab === 'edit')} />
           {previewValues ? (
             <Tabs value={tab} onValueChange={setTab} className="flex flex-col flex-1 min-h-0">
               <TabsList className="grid w-full grid-cols-2 flex-shrink-0">
@@ -378,7 +387,7 @@ const PromptField = ({ value, onChange, variables, previewValues, className, rea
                 {editorSurface}
               </TabsContent>
               <TabsContent value="preview" className="mt-2 flex-1 min-h-0 data-[state=active]:flex flex-col">
-                <PreviewPane value={value} previewValues={previewValues} scrollRef={previewScrollRef} onScroll={handleScroll} />
+                <PreviewPane value={value} previewValues={previewValues} vocab={vocab} scrollRef={previewScrollRef} onScroll={handleScroll} />
               </TabsContent>
             </Tabs>
           ) : (
@@ -386,10 +395,11 @@ const PromptField = ({ value, onChange, variables, previewValues, className, rea
           )}
         </div>
         <HistoryPlugin />
-        <ValueSyncPlugin value={value} onChange={onChange} />
+        <ValueSyncPlugin value={value} onChange={onChange} parse={vocab.parse} />
         <EditablePlugin readOnly={readOnly} />
         <ChipDragPlugin dragKey={dragKey} />
       </PromptDragContext.Provider>
+      </ChipVocabularyContext.Provider>
     </LexicalComposer>
   );
 };

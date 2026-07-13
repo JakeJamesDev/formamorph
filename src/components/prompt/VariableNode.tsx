@@ -11,10 +11,7 @@ import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Checkbox } from '@/components/ui/checkbox';
 import { cn } from '@/lib/utils';
-import {
-  labelForToken, colorForToken, variableForToken, baseToken, tokenVariant, withVariant,
-  variantLabelForToken, variableAxes, decodeVariant, encodeVariant,
-} from '@/lib/promptVariables';
+import { ChipVocabularyContext } from '@/lib/chipVocabulary';
 
 /** Shared slot the dragged chip's node key is parked in on dragstart, so the editor's drop handler
  *  (in PromptField) knows which node to relocate. One ref per editor instance. */
@@ -30,33 +27,32 @@ const FULL = 'full'; // Tabs value sentinel for the default variant (null id)
 function VariableChip({ nodeKey, token }: { nodeKey: NodeKey; token: string }) {
   const [editor] = useLexicalComposerContext();
   const dragKey = useContext(PromptDragContext);
+  const vocab = useContext(ChipVocabularyContext);
   const [open, setOpen] = useState(false);
   // A read-only editor (e.g. the Default preset) may still show the pop-out to view the chip's mode, but
   // can't change or remove it. Track editability so switching presets re-renders the chip accordingly.
   const [editable, setEditable] = useState(editor.isEditable());
   useEffect(() => editor.registerEditableListener(setEditable), [editor]);
-  const variable = variableForToken(token);
-  const color = colorForToken(token);
+  const known = vocab.isKnown(token);
+  const color = vocab.color(token);
   // Reflect the mode in the chip text so it's readable at a glance, not only in the pop-out.
-  const variantLabel = variantLabelForToken(token);
-  const label = variantLabel ? `${labelForToken(token)} (${variantLabel})` : labelForToken(token);
+  const variantLabel = vocab.variantLabel(token);
+  const label = variantLabel ? `${vocab.label(token)} (${variantLabel})` : vocab.label(token);
 
-  const axes = variable ? variableAxes(variable) : [];
-  const selection = variable ? decodeVariant(variable, tokenVariant(token)) : {};
+  const axes = known ? vocab.axes(token) : [];
+  const selection = known ? vocab.selection(token) : {};
   // How many toggle (checkbox) axes are on — used to lock the last one so at least one piece stays selected.
   const toggleOnCount = axes.filter((a) => a.toggle && selection[a.id] != null).length;
 
   const remove = () => editor.update(() => { $getNodeByKey(nodeKey)?.remove(); });
 
-  // Change one axis, recomputing the combined variant id from the node's live token.
+  // Change one axis via the vocabulary, using the node's live token.
   const setAxis = (axisId: string, optionId: string | null) => {
-    if (!editable || !variable) return;
+    if (!editable || !known) return;
     editor.update(() => {
       const node = $getNodeByKey(nodeKey);
       if (!$isVariableNode(node)) return;
-      const base = baseToken(node.getToken());
-      const next = { ...decodeVariant(variable, tokenVariant(node.getToken())), [axisId]: optionId };
-      node.setToken(withVariant(base, encodeVariant(variable, next)));
+      node.setToken(vocab.setAxis(node.getToken(), axisId, optionId));
     });
   };
 
@@ -106,7 +102,7 @@ function VariableChip({ nodeKey, token }: { nodeKey: NodeKey; token: string }) {
               return (
                 <div key={axis.id} className="space-y-2">
                   {/* One heading per axis (its own label when multi-axis, else the chip name). */}
-                  <p className="text-xs font-medium">{axes.length > 1 ? axis.label : `${labelForToken(token)} mode`}</p>
+                  <p className="text-xs font-medium">{axes.length > 1 ? axis.label : `${vocab.label(token)} mode`}</p>
                   <Tabs value={active} onValueChange={(v) => setAxis(axis.id, v === FULL ? null : v)}>
                     <TabsList className="grid w-full" style={{ gridTemplateColumns: `repeat(${axis.options.length}, minmax(0, 1fr))` }}>
                       {axis.options.map((opt) => (

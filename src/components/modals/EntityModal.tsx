@@ -6,6 +6,7 @@ import { ImageZoomViewer } from "@/components/ImageZoomViewer";
 import { getModelType } from '../../lib/UtilityComponents';
 import ModelViewer from '../../views/ModelViewer';
 import AudioPlayer from '../game/AudioPlayer';
+import { usePlaceholderResolver } from "@/lib/usePlaceholderResolver";
 import type { Entity } from "@/types";
 
 export const EntityModal = ({ entity, isOpen, onOpenChange }: {
@@ -15,6 +16,7 @@ export const EntityModal = ({ entity, isOpen, onOpenChange }: {
 }) => {
   // Shared pan/zoom viewer for the entity image (same as world thumbnails).
   const [zoomOpen, setZoomOpen] = useState(false);
+  const resolvePH = usePlaceholderResolver();
 
   if (!entity) return null;
 
@@ -49,7 +51,7 @@ export const EntityModal = ({ entity, isOpen, onOpenChange }: {
             <div className="min-h-full flex flex-col justify-center">
               <div className="flex flex-col gap-4">
               {entity.playerDescription?.trim() ? (
-                <p>{entity.playerDescription}</p>
+                <p>{resolvePH(entity.playerDescription)}</p>
               ) : (
                 <p className="italic text-muted-foreground">No description provided.</p>
               )}

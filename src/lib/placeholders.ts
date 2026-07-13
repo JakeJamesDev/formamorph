@@ -1,4 +1,5 @@
 import type { Placeholder, PlaceholderRolls } from '@/types';
+import type { PromptSegment } from './promptTemplate';
 
 /**
  * Placeholders — resolve author-defined named values embedded in world text as inline chips. The type is
@@ -39,6 +40,68 @@ export function decodePlaceholderToken(token: string): PlaceholderToken | null {
 export function hasPlaceholders(text: string): boolean {
   TOKEN_RE.lastIndex = 0;
   return TOKEN_RE.test(text);
+}
+
+/** Split text into literal runs and placeholder-chip tokens (mirrors parsePromptTemplate for the `{{ph}}`
+ *  token, so the same Lexical chip editor can render placeholder fields). Non-token text stays literal. */
+export function parsePlaceholderText(text: string): PromptSegment[] {
+  const segments: PromptSegment[] = [];
+  let last = 0;
+  TOKEN_RE.lastIndex = 0;
+  for (const match of text.matchAll(TOKEN_RE)) {
+    const idx = match.index;
+    if (idx > last) segments.push({ type: 'text', value: text.slice(last, idx) });
+    segments.push({ type: 'variable', token: match[0] });
+    last = idx + match[0].length;
+  }
+  if (last < text.length) segments.push({ type: 'text', value: text.slice(last) });
+  return segments;
+}
+
+/** Every placeholder chip found across `texts`, split by mode: `worldIds` (dedup placeholder ids of World
+ *  chips) and `unique` (per-placement id + its placeholder id). Drives eager roll priming. */
+export function collectPlaceholderPlacements(texts: string[]): {
+  worldIds: Set<string>;
+  unique: Array<{ id: string; placementId: string }>;
+} {
+  const worldIds = new Set<string>();
+  const unique = new Map<string, { id: string; placementId: string }>();
+  for (const text of texts) {
+    if (!text) continue;
+    TOKEN_RE.lastIndex = 0;
+    for (const m of text.matchAll(TOKEN_RE)) {
+      const [, id, mode, placementId] = m;
+      if (mode === 'unique') unique.set(placementId, { id, placementId });
+      else worldIds.add(id);
+    }
+  }
+  return { worldIds, unique: [...unique.values()] };
+}
+
+/**
+ * Roll every Wildcard placement referenced across `texts`, keeping any `existing` rolls (so a loaded save's
+ * frozen values are preserved). Only 2+-value placeholders roll — a Variable resolves from its single value,
+ * and a missing/empty placeholder is skipped (resolves to ""). Pure: the caller persists the result.
+ */
+export function primeRolls(
+  placeholders: Placeholder[],
+  texts: string[],
+  existing: PlaceholderRolls = {},
+  pick: (values: string[]) => string = uniform,
+): PlaceholderRolls {
+  const byId = new Map(placeholders.map((p) => [p.id, p]));
+  const isWild = (id: string) => (byId.get(id)?.values.length ?? 0) >= 2;
+  const { worldIds, unique } = collectPlaceholderPlacements(texts);
+
+  const world = { ...(existing.world ?? {}) };
+  for (const id of worldIds) {
+    if (isWild(id) && world[id] == null) world[id] = pick(byId.get(id)!.values);
+  }
+  const uniqueRolls = { ...(existing.unique ?? {}) };
+  for (const { id, placementId } of unique) {
+    if (isWild(id) && uniqueRolls[placementId] == null) uniqueRolls[placementId] = pick(byId.get(id)!.values);
+  }
+  return { world, unique: uniqueRolls };
 }
 
 export interface ResolveOptions {

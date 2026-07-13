@@ -5,6 +5,8 @@ import {
   encodePlaceholderToken,
   decodePlaceholderToken,
   hasPlaceholders,
+  collectPlaceholderPlacements,
+  primeRolls,
 } from './placeholders';
 
 const P = (id: string, values: string[]): Placeholder => ({ id, name: id, values });
@@ -103,6 +105,33 @@ describe('resolvePlaceholders', () => {
     });
     expect(out).toBe('Green Blue');
     expect(setRoll).not.toHaveBeenCalled(); // nothing new minted
+  });
+
+  it('primes and freezes rolls once, then resolution is a pure lookup (no setRoll needed)', () => {
+    const placeholders = [P('eye', ['Red', 'Blue', 'Green']), P('king', ['Aldric'])];
+    const text = `${tok('eye', 'world', 'p1')} ${tok('eye', 'unique', 'p2')} ${tok('king', 'world', 'p3')}`;
+
+    // collect is value-count-agnostic: both World ids, one Unique placement. primeRolls filters to Wildcards.
+    const placements = collectPlaceholderPlacements([text]);
+    expect(placements.worldIds).toEqual(new Set(['eye', 'king']));
+    expect(placements.unique).toEqual([{ id: 'eye', placementId: 'p2' }]);
+
+    const rolls = primeRolls(placeholders, [text], {}, first);
+    expect(rolls.world).toEqual({ eye: 'Red' }); // World eye rolled once
+    expect(rolls.unique).toEqual({ p2: 'Red' }); // Unique placement rolled
+    // King (1 value) is NOT rolled — it resolves from its single value.
+    expect(rolls.world?.king).toBeUndefined();
+
+    // With primed rolls, resolution needs no setRoll and yields the frozen values (+ the Variable).
+    const out = resolvePlaceholders(text, { placeholders, rolls });
+    expect(out).toBe('Red Red Aldric');
+  });
+
+  it('primeRolls keeps existing rolls (a loaded save is not re-rolled)', () => {
+    const placeholders = [P('eye', ['Red', 'Blue', 'Green'])];
+    const text = tok('eye', 'world', 'p1');
+    const rolls = primeRolls(placeholders, [text], { world: { eye: 'Green' } }, first);
+    expect(rolls.world?.eye).toBe('Green'); // kept, not overwritten by first()→'Red'
   });
 
   it('does not expand a chip that appears inside a resolved value (no nesting)', () => {
