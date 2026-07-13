@@ -24,7 +24,7 @@ export type DevModal = (typeof DEV_MODALS)[number];
  *  with each surface's own exported tab list by `devRouter.test.ts`. Add a surface's tabs here when wired. */
 export const DEV_MODAL_TABS = {
   settings: ['presentation', 'generation', 'endpoint', 'image', 'prompts', 'accessibility'],
-  worldEditor: ['overview', 'stats', 'entities', 'locations', 'traits', 'dictionary'],
+  worldEditor: ['overview', 'stats', 'entities', 'locations', 'traits', 'dictionary', 'placeholders'],
 } as const;
 
 // Settings → Prompts exposes a second level reached via `subtab=…` (narration/thinking/choices/…). Those

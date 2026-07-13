@@ -30,6 +30,7 @@ import StatUpdatesManager from '../managers/StatUpdatesManager';
 import WorldOverviewManager from '../managers/WorldOverviewManager';
 import WorldDetailsManager from '../managers/WorldDetailsManager';
 import DictionaryManager from '../managers/DictionaryManager';
+import PlaceholderManager from '../managers/PlaceholderManager';
 import DictionaryTree from '../managers/DictionaryTree';
 import DictionaryBookManager from '../managers/DictionaryBookManager';
 import { buildDictionaryFile } from '@/lib/dictionaryFile';
@@ -158,11 +159,11 @@ const WorldEditor = ({ onClose, embedded = false, backButton }: {
   const {
     worldOverview, updateWorldOverview, worldId,
     loadWorldData,
-    stats, locations, entities, entityGroups, traits, traitGroups, statUpdates, dictionaries,
+    stats, locations, entities, entityGroups, traits, traitGroups, statUpdates, dictionaries, placeholders,
     addStat, addLocation, addEntity, addTrait, addStatUpdate, addDictionary,
-    addTraitGroup, addEntityGroup,
-    removeStat, removeEntity, removeTrait, removeStatUpdate,
-    setStats, setLocations, setEntities, setTraits, setTraitGroups, setStatUpdates,
+    addTraitGroup, addEntityGroup, addPlaceholder,
+    removeStat, removeEntity, removeTrait, removeStatUpdate, removePlaceholder,
+    setStats, setLocations, setEntities, setTraits, setTraitGroups, setStatUpdates, setPlaceholders,
     isWorldDirty, saveWorld: saveWorldCtx
   } = useGameData();
   const { promptWorld, dialog: downscaleDialog } = useDownscalePrompt();
@@ -312,6 +313,13 @@ const WorldEditor = ({ onClose, embedded = false, backButton }: {
     setSelectedItemId(id);
   };
 
+  const handleAddPlaceholder = () => {
+    const id = crypto.randomUUID();
+    addPlaceholder({ id, name: searchTerm.trim() || 'New Placeholder', values: [] });
+    setSearchTerm('');
+    setSelectedItemId(id);
+  };
+
   // New traits/groups append at the root; the author drags them into folders. Order = root sibling count.
   const rootSiblingCount = () =>
     traits.filter(t => (t.groupId ?? null) === null).length +
@@ -365,12 +373,13 @@ const WorldEditor = ({ onClose, embedded = false, backButton }: {
       activeTab === "entities" ? entities :
       activeTab === "locations" ? locations :
       activeTab === "traits" ? traits :
-      activeTab === "statUpdates" ? statUpdates : [];
+      activeTab === "statUpdates" ? statUpdates :
+      activeTab === "placeholders" ? placeholders : [];
 
     return itemsToFilter.filter(item =>
       item.name.toLowerCase().includes(searchTerm.toLowerCase())
     );
-  }, [activeTab, stats, entities, locations, traits, statUpdates, searchTerm]);
+  }, [activeTab, stats, entities, locations, traits, statUpdates, placeholders, searchTerm]);
 
   const selectedItem = filteredItems.find(item => item.id === selectedItemId);
   // Traits tab can select either a trait or a group (the right panel branches on which).
@@ -381,6 +390,7 @@ const WorldEditor = ({ onClose, embedded = false, backButton }: {
   // Dictionary tab: selection is either a book or one of its entries (the right panel branches on which).
   const selectedBook = dictionaries.find(b => b.id === selectedItemId);
   const selectedEntry = dictionaries.flatMap(b => b.entries).find(e => e.id === selectedItemId);
+  const selectedPlaceholder = placeholders.find(p => p.id === selectedItemId);
 
   // Contextual footer actions. Download shows on Overview/Entities/Dictionary; only "Download World"
   // is wired up (entity/dictionary export is a stub). Import shows on Entities (when one is selected)
@@ -403,6 +413,7 @@ const WorldEditor = ({ onClose, embedded = false, backButton }: {
     locations: { items: locations, setItems: setLocations },
     traits: { items: traits, setItems: setTraits },
     statUpdates: { items: statUpdates, setItems: setStatUpdates },
+    placeholders: { items: placeholders, setItems: setPlaceholders },
   };
 
   const sensors = useSensors(
@@ -459,6 +470,8 @@ const WorldEditor = ({ onClose, embedded = false, backButton }: {
       removeTrait(id);
     } else if (activeTab === "statUpdates") {
       removeStatUpdate(id);
+    } else if (activeTab === "placeholders") {
+      removePlaceholder(id);
     }
     setSelectedItemId(null);
   };
@@ -577,7 +590,7 @@ const WorldEditor = ({ onClose, embedded = false, backButton }: {
                             </PopoverContent>
                           </Popover>
                         ) : (
-                          <Button onClick={activeTab === "dictionary" ? handleAddBook : addItem} size="icon">
+                          <Button onClick={activeTab === "dictionary" ? handleAddBook : activeTab === "placeholders" ? handleAddPlaceholder : addItem} size="icon">
                             <Plus className="h-4 w-4" />
                           </Button>
                         )}
@@ -615,6 +628,9 @@ const WorldEditor = ({ onClose, embedded = false, backButton }: {
                           <DictionaryTree selectedId={selectedItemId} onSelect={setSelectedItemId} />
                         </TabsContent>
                         <TabsContent value="statUpdates">
+                          {renderItemList(filteredItems)}
+                        </TabsContent>
+                        <TabsContent value="placeholders">
                           {renderItemList(filteredItems)}
                         </TabsContent>
                       </ScrollArea>
@@ -701,6 +717,9 @@ const WorldEditor = ({ onClose, embedded = false, backButton }: {
                     )}
                     {activeTab === "statUpdates" && selectedItem && (
                       <StatUpdatesManager key={selectedItem.id} statUpdate={selectedItem as StatUpdate} />
+                    )}
+                    {activeTab === "placeholders" && selectedPlaceholder && (
+                      <PlaceholderManager key={selectedPlaceholder.id} placeholder={selectedPlaceholder} />
                     )}
                   </div>
                 </ScrollArea>

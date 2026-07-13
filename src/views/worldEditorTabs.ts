@@ -8,4 +8,5 @@ export const WORLD_EDITOR_TABS = [
   { value: 'locations', label: 'Locations' },
   { value: 'traits', label: 'Traits' },
   { value: 'dictionary', label: 'Dictionary' },
+  { value: 'placeholders', label: 'Placeholders' },
 ] as const;

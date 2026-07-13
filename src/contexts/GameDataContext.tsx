@@ -13,6 +13,7 @@ import type {
   TraitGroup,
   StatUpdate,
   Dictionary,
+  Placeholder,
   World,
 } from '@/types';
 
@@ -30,8 +31,9 @@ function serializeWorld(
   traitGroups: TraitGroup[],
   statUpdates: StatUpdate[],
   dictionaries: Dictionary[],
+  placeholders: Placeholder[],
 ) {
-  return JSON.stringify({ worldOverview: overview, stats, locations, entities, entityGroups, traits, traitGroups, statUpdates, dictionaries });
+  return JSON.stringify({ worldOverview: overview, stats, locations, entities, entityGroups, traits, traitGroups, statUpdates, dictionaries, placeholders });
 }
 
 function useProvideGameData() {
@@ -54,6 +56,7 @@ function useProvideGameData() {
   const [traits, setTraits] = useState<Trait[]>([]);
   const [traitGroups, setTraitGroups] = useState<TraitGroup[]>([]);
   const [statUpdates, setStatUpdates] = useState<StatUpdate[]>([]);
+  const [placeholders, setPlaceholders] = useState<Placeholder[]>([]);
   // The world's books live in a scoped dictionary store (shared, unchanged CRUD) so the same editing
   // widgets can be reused elsewhere against an isolated store.
   const dictStore = useDictionaryStoreState([]);
@@ -138,6 +141,18 @@ function useProvideGameData() {
       return prev.map(e => (e.groupId === groupId ? { ...e, groupId: parentId } : e));
     });
   }, [entityGroups]);
+
+  const addPlaceholder = useCallback((newPlaceholder: Placeholder) => {
+    setPlaceholders(prev => [...prev, newPlaceholder]);
+  }, []);
+
+  const updatePlaceholder = useCallback((updated: Placeholder) => {
+    setPlaceholders(prev => prev.map(p => (p.id === updated.id ? updated : p)));
+  }, []);
+
+  const removePlaceholder = useCallback((id: string) => {
+    setPlaceholders(prev => prev.filter(p => p.id !== id));
+  }, []);
 
   const addTrait = useCallback((newTrait: Trait) => {
     setTraits(prevTraits => [...prevTraits, newTrait]);
@@ -253,6 +268,7 @@ function useProvideGameData() {
     // migrateWorld guarantees ≥1 book; default defensively in case a raw World reaches here another way.
     const nextDictionaries = Array.isArray(worldData.dictionaries) && worldData.dictionaries.length
       ? worldData.dictionaries : [makeDefaultBook()];
+    const nextPlaceholders = Array.isArray(worldData.placeholders) ? worldData.placeholders : [];
     setWorldId(worldData.id);
     setStats(nextStats);
     setLocations(nextLocations);
@@ -262,18 +278,19 @@ function useProvideGameData() {
     setTraitGroups(nextTraitGroups);
     setStatUpdates(nextStatUpdates);
     setDictionaries(nextDictionaries);
+    setPlaceholders(nextPlaceholders);
 
     // Baseline for dirty detection: a freshly loaded world has no pending changes.
     setSavedSnapshot(serializeWorld(
-      normalizedOverview, nextStats, nextLocations, nextEntities, nextEntityGroups, nextTraits, nextTraitGroups, nextStatUpdates, nextDictionaries,
+      normalizedOverview, nextStats, nextLocations, nextEntities, nextEntityGroups, nextTraits, nextTraitGroups, nextStatUpdates, nextDictionaries, nextPlaceholders,
     ));
 
     return isDefault;
   }, [updateWorldOverview, setStats, setLocations, setEntities, setTraits, setStatUpdates, setDictionaries]);
 
   const isWorldDirty = useMemo(
-    () => serializeWorld(worldOverview, stats, locations, entities, entityGroups, traits, traitGroups, statUpdates, dictionaries) !== savedSnapshot,
-    [worldOverview, stats, locations, entities, entityGroups, traits, traitGroups, statUpdates, dictionaries, savedSnapshot],
+    () => serializeWorld(worldOverview, stats, locations, entities, entityGroups, traits, traitGroups, statUpdates, dictionaries, placeholders) !== savedSnapshot,
+    [worldOverview, stats, locations, entities, entityGroups, traits, traitGroups, statUpdates, dictionaries, placeholders, savedSnapshot],
   );
 
   // Persist the current world and re-baseline so isWorldDirty clears. Returns success.
@@ -289,15 +306,15 @@ function useProvideGameData() {
         // other sticky fields are preserved by storeWorld).
         dirty: true,
         editedAt: new Date().toISOString(),
-        data: { version: APP_VERSION, worldOverview, stats, locations, entities, entityGroups, traits, traitGroups, statUpdates, dictionaries },
+        data: { version: APP_VERSION, worldOverview, stats, locations, entities, entityGroups, traits, traitGroups, statUpdates, dictionaries, placeholders },
       });
-      setSavedSnapshot(serializeWorld(worldOverview, stats, locations, entities, entityGroups, traits, traitGroups, statUpdates, dictionaries));
+      setSavedSnapshot(serializeWorld(worldOverview, stats, locations, entities, entityGroups, traits, traitGroups, statUpdates, dictionaries, placeholders));
       return true;
     } catch (error) {
       console.error('Error saving world:', error);
       return false;
     }
-  }, [worldId, worldOverview, stats, locations, entities, entityGroups, traits, traitGroups, statUpdates, dictionaries]);
+  }, [worldId, worldOverview, stats, locations, entities, entityGroups, traits, traitGroups, statUpdates, dictionaries, placeholders]);
 
   useEffect(() => {
     WorldStorageService.initialize();
@@ -317,6 +334,7 @@ function useProvideGameData() {
     traitGroups,
     statUpdates,
     dictionaries,
+    placeholders,
     addStat,
     updateStat,
     removeStat,
@@ -344,6 +362,9 @@ function useProvideGameData() {
     addDictionaryEntry,
     updateDictionaryEntry,
     removeDictionaryEntry,
+    addPlaceholder,
+    updatePlaceholder,
+    removePlaceholder,
     setStats,
     setLocations,
     setEntities,
@@ -352,6 +373,7 @@ function useProvideGameData() {
     setTraitGroups,
     setStatUpdates,
     setDictionaries,
+    setPlaceholders,
     loadWorldData,
     worldId, setWorldId,
     isWorldDirty,
