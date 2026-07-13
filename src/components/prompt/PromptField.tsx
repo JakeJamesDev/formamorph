@@ -285,7 +285,7 @@ function PreviewPane({ value, previewValues, vocab, scrollRef, onScroll }: {
  * chip for its live value. The composer wraps both tabs so the Insert toolbar persists across them —
  * interactive in Edit, a static color key in Preview. Storage stays the same token-string.
  */
-const PromptField = ({ value, onChange, variables = [], vocabulary, previewValues, className, readOnly = false }: {
+const PromptField = ({ value, onChange, variables = [], vocabulary, previewValues, onPreviewOpen, className, readOnly = false }: {
   value: string;
   onChange: (v: string) => void;
   /** Prompt-variable palette (used when no explicit `vocabulary` is given — the default prompt family). */
@@ -293,6 +293,8 @@ const PromptField = ({ value, onChange, variables = [], vocabulary, previewValue
   /** Override the token family (e.g. world placeholders). Defaults to the prompt vocabulary from `variables`. */
   vocabulary?: ChipVocabulary;
   previewValues?: Record<string, string>;
+  /** Fired when the Preview tab is opened — lets a caller re-derive `previewValues` (e.g. re-roll Wildcards). */
+  onPreviewOpen?: () => void;
   className?: string;
   readOnly?: boolean;
 }) => {
@@ -378,7 +380,7 @@ const PromptField = ({ value, onChange, variables = [], vocabulary, previewValue
         <div className={cn('flex flex-col flex-1 min-h-0 gap-2', className)}>
           <VariableToolbar vocab={vocab} interactive={!readOnly && (!previewValues || tab === 'edit')} />
           {previewValues ? (
-            <Tabs value={tab} onValueChange={setTab} className="flex flex-col flex-1 min-h-0">
+            <Tabs value={tab} onValueChange={(v) => { setTab(v); if (v === 'preview') onPreviewOpen?.(); }} className="flex flex-col flex-1 min-h-0">
               <TabsList className="grid w-full grid-cols-2 flex-shrink-0">
                 <TabsTrigger value="edit">Edit</TabsTrigger>
                 <TabsTrigger value="preview">Preview</TabsTrigger>

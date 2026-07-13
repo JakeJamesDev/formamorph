@@ -158,6 +158,37 @@ export function absorbPlaceholders(
   return { toAdd, idMap };
 }
 
+/**
+ * Author-time preview: a `token → resolved value` map for every distinct chip in `text`, so a design-time
+ * Preview pane can swap chips for values without any save/rolls. Mirrors {@link resolvePlaceholders} exactly —
+ * Variable → its value, Wildcard rolled with World shared per placeholder id / Unique per placement id, and a
+ * missing/empty placeholder → "". `pick` is injectable (tests pass a deterministic chooser).
+ */
+export function buildPlaceholderPreview(
+  text: string,
+  placeholders: Placeholder[],
+  pick: (values: string[]) => string = uniform,
+): Record<string, string> {
+  const out: Record<string, string> = {};
+  if (!text || !hasPlaceholders(text)) return out;
+  // Roll once (respecting World/Unique) so shared World chips agree; then map each distinct token to its value.
+  const rolls = primeRolls(placeholders, [text], {}, pick);
+  const byId = new Map(placeholders.map((p) => [p.id, p]));
+  TOKEN_RE.lastIndex = 0;
+  for (const m of text.matchAll(TOKEN_RE)) {
+    const token = m[0];
+    if (token in out) continue;
+    const [, id, mode, placementId] = m;
+    const ph = byId.get(id);
+    if (!ph || ph.values.length === 0) { out[token] = ''; continue; }
+    if (ph.values.length === 1) { out[token] = ph.values[0]; continue; }
+    const scope: PlaceholderMode = mode === 'unique' ? 'unique' : 'world';
+    const key = scope === 'world' ? id : placementId;
+    out[token] = rolls[scope]?.[key] ?? '';
+  }
+  return out;
+}
+
 export interface ResolveOptions {
   placeholders: Placeholder[];
   /** Frozen rolls for this playthrough. Not mutated — new rolls are reported via `setRoll`. */
