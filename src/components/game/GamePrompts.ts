@@ -63,6 +63,15 @@ export function markdownGuidance(enabled: boolean): string {
   return enabled ? MARKDOWN_ON : MARKDOWN_OFF;
 }
 
+/** Director cast-size guidance (the `<ACTIVE CHARACTER GUIDANCE>` chip), from the Limit Active Characters
+ *  setting. Wording shifts by magnitude so it never calls a large cap "small": a "keep it small" nudge for a
+ *  low cap, a neutral "up to N" for a higher one, and "as many as the scene calls for" when disabled. */
+export function activeCharacterGuidance(enabled: boolean, limit: number): string {
+  if (!enabled) return `Cast as many active characters as the scene genuinely calls for, no more than actually act this turn.`;
+  if (limit <= 4) return `Keep the cast small, usually one to ${limit} besides the player.`;
+  return `Cast up to ${limit} characters besides the player, and only those who actually act this turn.`;
+}
+
 // The editable user-message templates for the aux requests. These carry the framing labels and the terse
 // task cue (anchored last, so a small model doesn't just continue the story) that used to be hardcoded in
 // GameViewer. Runtime values are the <PLAYER ACTION> and <GAME TEXT> tokens, substituted per turn.
@@ -336,7 +345,7 @@ Cast:
 - Besides the Player Character, cast only individual beings that can choose to act or speak this turn - a person, creature, or animate threat with a mind of its own. Everything that merely exists in the space - places, structures, objects, crowds, scenery - stays in the Scene, however vivid, magical, or alive-seeming; a thing that only glows, looms, or sits there is not a character, and a place or crowd is not one being. When a settlement or group is present, cast the specific individuals who act this turn, or no one.
 - For each cast member give a positional snapshot: where they stand relative to the space and to each other, and what they are physically doing right now - not their mood or motives. This gives the narration spatial footing for physical interactions; it is a hint, not a guarantee.
 - Prefer the characters listed above by their exact name where they fit; you may also invent a new character when a being that passes the test above enters the scene. Give each such character a specific individual identity with a concrete name it can be called by again next turn - a bare species or generic label on its own (a creature, a figure) is a description, not a character. Naming is only for individuals that can act; never name a place, object, or scenery to make it a character.
-- Keep the cast small, usually one to three besides the player. Output exactly one Scene line and one Cast list - never repeat them, and write nothing else.`;
+- <ACTIVE CHARACTER GUIDANCE> Output exactly one Scene line and one Cast list - never repeat them, and write nothing else.`;
 
 // The director's per-turn user message: the recent narration recap plus the player's action.
 export const defaultDirectorUserPrompt = `What just happened:

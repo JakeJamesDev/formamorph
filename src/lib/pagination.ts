@@ -17,6 +17,18 @@ export function maxPaginationSlots(totalPages: number): number {
 }
 
 /**
+ * The `size` page numbers closest to `currentPage`, clamped to the ends — no ellipsis, no first/last
+ * anchors, no padding. A centered window (`current ±1` for size 3) that slides but never runs past 1 or
+ * `totalPages`, and shrinks when there aren't `size` pages. Used by the compact mobile pager.
+ */
+export function pageWindow(currentPage: number, totalPages: number, size = 3): number[] {
+  if (totalPages <= 0) return [];
+  const count = Math.min(size, totalPages);
+  const start = Math.max(1, Math.min(currentPage - Math.floor(size / 2), totalPages - count + 1));
+  return Array.from({ length: count }, (_, i) => start + i);
+}
+
+/**
  * Build the pager cells for `currentPage`, padded to a constant length so Previous/Next stay put.
  *
  * Layout: low pages hug the left, high pages anchor to the right, and a lone (near-edge) ellipsis sits

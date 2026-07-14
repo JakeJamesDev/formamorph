@@ -495,6 +495,10 @@ function useProvideSettings() {
   const [locationChangeEnabled, setLocationChangeEnabled] = usePersistentState<boolean>(`${APP_ID}_locationChangeEnabled`, true, boolCodec);
   // When on, a detected in-scope move is applied immediately instead of prompting a "Move to X?" confirmation.
   const [locationAutoApply, setLocationAutoApply] = usePersistentState<boolean>(`${APP_ID}_locationAutoApply`, false, boolCodec);
+  // Staged thinking: cap how many characters the director casts (each gets its own sequential pass). When off,
+  // the cast is unbounded. Drives both the hard cap (matchCastToEntities) and the <ACTIVE CHARACTER GUIDANCE> chip.
+  const [limitActiveCharacters, setLimitActiveCharacters] = usePersistentState<boolean>(`${APP_ID}_limitActiveCharacters`, true, boolCodec);
+  const [activeCharacterLimit, setActiveCharacterLimit] = usePersistentState<number>(`${APP_ID}_activeCharacterLimit`, 5, intCodec);
   // How many recent turns each prompt receives verbatim (the digest-banding floor). Only Narration and
   // Thinking consume history today; the rest are stored for when those prompts gain history.
   const narrationVerbatimTurns = verbatimMap.narration ?? 3;
@@ -760,6 +764,10 @@ function useProvideSettings() {
     setLocationChangeEnabled,
     locationAutoApply,
     setLocationAutoApply,
+    limitActiveCharacters,
+    setLimitActiveCharacters,
+    activeCharacterLimit,
+    setActiveCharacterLimit,
     narrationVerbatimTurns,
     setNarrationVerbatimTurns,
     thinkingVerbatimTurns,

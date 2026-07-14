@@ -650,7 +650,7 @@ export const MiddlePanel = ({
           <div className="relative flex flex-col items-center gap-2">
             {locationSuggestion}
             <div className="relative flex w-full items-center justify-center">
-              <Pager page={currentPage} pageCount={totalPages} onPageChange={handlePageChange} />
+              <Pager page={currentPage} pageCount={totalPages} onPageChange={handlePageChange} className="justify-start md:justify-center" />
               {/* Right-aligned action: rollback when viewing a past page, re-generate on the current one. */}
               <div className="absolute right-0">
                 {currentPage < totalPages ? (
@@ -669,12 +669,13 @@ export const MiddlePanel = ({
                     {/* Left half: full re-generate, unchanged. Right caret opens the partial-regenerate flyout. */}
                     <Button
                       variant="outline"
-                      className={`text-xs gap-1 ${canRegenChoices || canRegenStats ? "rounded-r-none w-28" : "w-32"}`}
+                      aria-label="Re-generate"
+                      className={`text-xs gap-1 ${canRegenChoices || canRegenStats ? "rounded-r-none md:w-28" : "md:w-32"}`}
                       onClick={handleRegenerate}
                       disabled={isWaitingForAI}
                     >
                       <RefreshCw className="h-3 w-3" />
-                      Re-generate
+                      <span className="hidden md:inline">Re-generate</span>
                     </Button>
                     {(canRegenChoices || canRegenStats) && (
                       <Popover open={regenMenuOpen} onOpenChange={setRegenMenuOpen}>

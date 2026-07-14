@@ -437,6 +437,8 @@ export async function runStagedPlanning(ctx: {
   fullMessageHistory: ChatMessage[];
   diaryMemoryEntries: number;
   caps: { director: number; character: number; storyboard: number };
+  /** Max characters sent to the per-character pass (overflow goes to the storyboard). Infinity = unbounded. */
+  activeCharacterCap: number;
   /** The (user-editable) staged-stage prompts, seeded from the defaults in GamePrompts. */
   directorPrompt: string;
   directorUserPrompt: string;
@@ -447,7 +449,7 @@ export async function runStagedPlanning(ctx: {
 }): Promise<StagedPlanningResult> {
   const {
     action, stageValues, lastStory, entities, presentEntityIds, playerNames, characterDiaries,
-    concurrentCharacters, fullMessageHistory, diaryMemoryEntries, caps,
+    concurrentCharacters, fullMessageHistory, diaryMemoryEntries, caps, activeCharacterCap,
     directorPrompt, directorUserPrompt, characterPrompt, storyboardPrompt, request, signal,
   } = ctx;
 
@@ -467,7 +469,7 @@ export async function runStagedPlanning(ctx: {
   }
 
   const presentEntities = entities.filter((e) => presentEntityIds.includes(e.id));
-  const { chosen, overflow } = matchCastToEntities(npcCast, presentEntities, 3);
+  const { chosen, overflow } = matchCastToEntities(npcCast, presentEntities, activeCharacterCap);
 
   // 2) One motivation pass per chosen character. They're independent, so run concurrently when enabled (the
   // debug capture correlates each request to its response by id, so parallel same-type "character" calls

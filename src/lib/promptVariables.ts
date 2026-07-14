@@ -113,6 +113,8 @@ const LOCATION: PromptVariable = { token: '<LOCATION>', label: 'Location', color
 const NOTES: PromptVariable = { token: '<NOTES>', label: 'Notes', color: HIGHLIGHT_PALETTE[4] };
 const LENGTH: PromptVariable = { token: '<LENGTH GUIDANCE>', label: 'Length Guidance', color: HIGHLIGHT_PALETTE[5] };
 const MARKDOWN: PromptVariable = { token: '<MARKDOWN GUIDANCE>', label: 'Markdown Guidance', color: HIGHLIGHT_PALETTE[6] };
+// Director prompt only: expands to the cast-size guidance derived from the Limit Active Characters setting.
+const ACTIVE_CHARACTER: PromptVariable = { token: '<ACTIVE CHARACTER GUIDANCE>', label: 'Active Character Guidance', color: HIGHLIGHT_PALETTE[13] };
 // Entities are one chip whose `scope` axis picks here / sub-locations / reachable siblings.
 const ENTITIES: PromptVariable = { token: '<ENTITIES>', label: 'Entities', color: HIGHLIGHT_PALETTE[8], axes: [ENTITY_SCOPE_AXIS, CONTENT_AXIS, FORMAT_AXIS] };
 // The activated-dictionary lore for the turn — supplied by GameViewer per turn (narration prompt only). The
@@ -139,7 +141,7 @@ export const SUBJECT: PromptVariable = { token: '<SUBJECT>', label: 'Subject', c
 
 /** All known variables — used by the parser to recognize any token regardless of which prompt it's in. */
 export const ALL_PROMPT_VARIABLES: PromptVariable[] = [
-  WORLD, STATS, TRAITS, LOCATION, ENTITIES, NOTES, DICTIONARY, LENGTH, MARKDOWN, PLAYER_ACTION, NARRATION, CHARACTER, SUBJECT,
+  WORLD, STATS, TRAITS, LOCATION, ENTITIES, NOTES, DICTIONARY, LENGTH, MARKDOWN, ACTIVE_CHARACTER, PLAYER_ACTION, NARRATION, CHARACTER, SUBJECT,
 ];
 
 /** The context chips every system prompt can reference; GameViewer substitutes them uniformly. */
@@ -155,7 +157,7 @@ export const PROMPT_KIND_VARIABLES: Record<PromptKind, PromptVariable[]> = {
   location: [...CONTEXT_VARS],
   summary: [...CONTEXT_VARS],
   diary: [...CONTEXT_VARS],
-  director: [...CONTEXT_VARS],
+  director: [...CONTEXT_VARS, ACTIVE_CHARACTER],
   character: [CHARACTER, ...CONTEXT_VARS],
   storyboard: [...CONTEXT_VARS],
 };

@@ -7,7 +7,7 @@ import { Progress } from "@/components/ui/progress";
 import IndeterminateProgress from "@/components/ui/indeterminate-progress";
 import { Globe, Columns2, RectangleVertical } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { CachedThumbnail } from "@/lib/useCachedThumbnail";
+import { useCachedThumbnail } from "@/lib/useCachedThumbnail";
 import { WorldDetailsColumn, DateTimeText, splitColumnClasses, type WorldRecord } from "@/components/WorldDetails";
 import { type DownloadState } from "@/lib/downloadState";
 import WorldStorageService from "@/services/WorldStorageService";
@@ -82,6 +82,14 @@ export function RemoteWorldDetailsModal({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open, world?._id, world?.id]);
 
+  const thumbFile = world?.thumbnail_file;
+  const thumbUrl = thumbFile
+    ? `${WorldStorageService.API_URL}/thumbnails/${thumbFile}`
+    : (world?.thumbnail || '');
+  // Resolve through the same blob cache the card thumbnails use, so the zoom gets a same-origin object URL
+  // rather than the raw cross-origin server URL (which CORP blocks from an <img> load, breaking the viewer).
+  const { src: thumbSrc } = useCachedThumbnail(thumbFile, thumbUrl, world?.updated_at);
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className={cn("h-[85dvh] flex flex-col", collapsed ? "sm:max-w-[600px]" : "sm:max-w-[1200px]")}>
@@ -109,28 +117,19 @@ export function RemoteWorldDetailsModal({
                 description={world.description || ""}
                 tags={world.tags}
                 thumbnail={
-                  /* World Thumbnail — click to open the pan/zoom viewer */
+                  /* World Thumbnail — click to open the pan/zoom viewer (uses the cached blob src, so the
+                     zoom isn't CORP-blocked like the raw cross-origin URL would be). */
                   <div
-                    className="relative w-full pt-[56.25%] rounded-lg overflow-hidden cursor-zoom-in"
-                    onClick={() => openImageViewer(
-                      world.thumbnail_file
-                        ? `${WorldStorageService.API_URL}/thumbnails/${world.thumbnail_file}`
-                        : world.thumbnail,
-                      world.name,
+                    className={cn(
+                      "relative w-full pt-[56.25%] rounded-lg overflow-hidden",
+                      thumbSrc && "cursor-zoom-in",
                     )}
-                    title="Click to enlarge"
+                    onClick={() => thumbSrc && openImageViewer(thumbSrc, world.name)}
+                    title={thumbSrc ? "Click to enlarge" : undefined}
                   >
-                    {world.thumbnail_file ? (
-                      <CachedThumbnail
-                        file={world.thumbnail_file}
-                        url={`${WorldStorageService.API_URL}/thumbnails/${world.thumbnail_file}`}
-                        updatedAt={world.updated_at}
-                        alt={world.name}
-                        className="absolute top-0 left-0 w-full h-full object-cover"
-                      />
-                    ) : world.thumbnail ? (
+                    {thumbSrc ? (
                       <img
-                        src={world.thumbnail}
+                        src={thumbSrc}
                         alt={world.name}
                         className="absolute top-0 left-0 w-full h-full object-cover"
                       />

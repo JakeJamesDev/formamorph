@@ -281,6 +281,10 @@ export const SettingsModal = ({ isOpen, onOpenChange, previewValues, initialTab,
     setSummaryVerbatimTurns,
     thinkingMode,
     setThinkingMode,
+    limitActiveCharacters,
+    setLimitActiveCharacters,
+    activeCharacterLimit,
+    setActiveCharacterLimit,
     reasoningEffort,
     setReasoningEffort,
     supportedReasoningEfforts,
@@ -871,6 +875,32 @@ export const SettingsModal = ({ isOpen, onOpenChange, previewValues, initialTab,
                   </div>
                 </div>
               </div>
+              {/* Staged only: cap how many characters the director stages per turn (each is its own pass). Off =
+                  unbounded. Feeds both the hard cap and the <ACTIVE CHARACTER GUIDANCE> chip in the director prompt. */}
+              {thinkingMode === 'staged' && (
+                <div className="grid grid-cols-1 sm:grid-cols-4 items-start gap-4">
+                  <label className="text-left sm:text-right pt-2">Limit Active Characters</label>
+                  <div className="col-span-3 space-y-2">
+                    <div className="flex items-center gap-3">
+                      <Checkbox
+                        checked={limitActiveCharacters}
+                        onCheckedChange={(v) => setLimitActiveCharacters(v === true)}
+                      />
+                      <Input
+                        type="number"
+                        min={1}
+                        value={activeCharacterLimit}
+                        disabled={!limitActiveCharacters}
+                        onChange={(e) => setActiveCharacterLimit(Math.max(1, parseInt(e.target.value) || 1))}
+                        className="w-20"
+                      />
+                    </div>
+                    <span className="text-xs text-muted-foreground">
+                      Caps how many characters the director stages each turn — each one adds its own request. Off lets the scene use as many as it calls for.
+                    </span>
+                  </div>
+                </div>
+              )}
               {/* Native mode passes reasoning_effort straight through; shown only there since the guided modes drive
                   their own thinking. The levels are whichever the active endpoint accepts (detected on connect). */}
               {thinkingMode === 'off' && (() => {

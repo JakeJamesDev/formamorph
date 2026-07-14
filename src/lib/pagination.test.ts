@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { paginationSlots, maxPaginationSlots, type PageSlot } from './pagination';
+import { paginationSlots, maxPaginationSlots, pageWindow, type PageSlot } from './pagination';
 
 const pages = (slots: PageSlot[]) =>
   slots.map((s) => (s.kind === 'page' ? s.page : s.kind === 'ellipsis' ? '…' : '_'));
@@ -35,5 +35,24 @@ describe('paginationSlots', () => {
 
   it('shows every page (no ellipsis/pad) when they all fit', () => {
     expect(pages(paginationSlots(2, 3))).toEqual([1, 2, 3]);
+  });
+});
+
+describe('pageWindow', () => {
+  it('centers a 3-page window on the current page in the middle', () => {
+    expect(pageWindow(5, 10)).toEqual([4, 5, 6]);
+  });
+
+  it('clamps to the start and end without ever leaving the range', () => {
+    expect(pageWindow(1, 10)).toEqual([1, 2, 3]);
+    expect(pageWindow(2, 10)).toEqual([1, 2, 3]);
+    expect(pageWindow(10, 10)).toEqual([8, 9, 10]);
+    expect(pageWindow(9, 10)).toEqual([8, 9, 10]);
+  });
+
+  it('shrinks when there are fewer than `size` pages', () => {
+    expect(pageWindow(1, 2)).toEqual([1, 2]);
+    expect(pageWindow(1, 1)).toEqual([1]);
+    expect(pageWindow(1, 0)).toEqual([]);
   });
 });
