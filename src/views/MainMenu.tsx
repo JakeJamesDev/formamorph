@@ -8,7 +8,7 @@ import 'react-toastify/dist/ReactToastify.css';
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {ConfirmDialog} from "@/components/ConfirmDialog";
-import {FilePlus2, DoorOpen, Pencil, Github, AlertTriangle, Code, User, LogIn, Import, Globe, LayoutGrid, GalleryThumbnails, Columns2, RectangleVertical, Menu, Earth, BookOpen, Upload, ChevronLast } from "lucide-react";
+import {FilePlus2, DoorOpen, Pencil, Github, AlertTriangle, Code, User, LogIn, Import, Globe, LayoutGrid, GalleryThumbnails, Columns2, RectangleVertical, Menu, Earth, BookOpen, Upload, ChevronLast, MoreHorizontal } from "lucide-react";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { ImageZoomViewer } from "@/components/ImageZoomViewer";
 import { cn } from "@/lib/utils";
@@ -54,6 +54,7 @@ import AuthService from '../services/AuthService';
 import type { World, Stat, CharacterData, Dictionary, DictionaryMetadata, Entity, EntityMetadata } from '@/types';
 import { migrateWorld } from '@/lib/version';
 import { isDesktop } from '@/lib/imageGen/desktop';
+import { useIsMobile } from '@/lib/useIsMobile';
 import { UpdateVersionControl } from '@/components/menu/UpdateVersionControl';
 import { WebVersionChangelog } from '@/components/menu/WebVersionChangelog';
 import { parseDictionaryImport } from '@/lib/dictionaryFile';
@@ -143,7 +144,6 @@ const MainMenu = ({ onStartGame, onLoadSaveGame, onReplayIntro }: MainMenuProps)
   const [cardType, setCardType] = useState<'worlds' | 'entities' | 'dictionaries'>('worlds');
   const toggleWorldModalCollapsed = () => setWorldModalCollapsed((prev) => !prev);
   const [showWorldModal, setShowWorldModal] = useState(false);
-  const [showMobileWorldEditorWarning, setShowMobileWorldEditorWarning] = useState(false);
   // World Editor as an in-place modal (keeps MainMenu mounted so it animates and only the world grid
   // refreshes on close). The editor's own back arrow + unsaved-changes prompt handle the dirty guard.
   const [showWorldEditor, setShowWorldEditor] = useState(false);
@@ -164,6 +164,7 @@ const MainMenu = ({ onStartGame, onLoadSaveGame, onReplayIntro }: MainMenuProps)
   const [showLoadDialog, setShowLoadDialog] = useState(false);
   // DEV dev-router: open Settings (or the Load menu) when the hash asks. Tree-shaken in prod.
   const devRoute = useDevRoute();
+  const isMobile = useIsMobile();
   useEffect(() => {
     if (!import.meta.env.DEV) return;
     if (devRoute?.modal === 'settings') setShowSettings(true);
@@ -706,11 +707,7 @@ const MainMenu = ({ onStartGame, onLoadSaveGame, onReplayIntro }: MainMenuProps)
       loadWorldData(blankWorld, true);
 
       // Open the world editor
-      if (window.innerWidth < 1024) {
-        setShowMobileWorldEditorWarning(true);
-      } else {
-        setShowWorldEditor(true);
-      }
+      setShowWorldEditor(true);
     } catch (error) {
       console.error('Error creating new world:', error);
       toast.error('Failed to create new world');
@@ -833,6 +830,13 @@ const MainMenu = ({ onStartGame, onLoadSaveGame, onReplayIntro }: MainMenuProps)
           onStartGame(selectedTraits, customizedData, true, selectedLocationId, selectedDictionaries, selectedCharacters);
         }}
         onBack={backFrom('avatar')}
+        onAbort={() => {
+          setShowCharacterCustomization(false);
+          setSelectedTraits([]);
+          setSelectedLocationId(null);
+          setSelectedCharacters(null);
+          setSelectedDictionaries(null);
+        }}
       />
     );
   }
@@ -886,7 +890,7 @@ const MainMenu = ({ onStartGame, onLoadSaveGame, onReplayIntro }: MainMenuProps)
                 <Menu className="h-5 w-5" />
               </Button>
             </PopoverTrigger>
-            <PopoverContent align="center" className="flex flex-col gap-2 w-56 [&>button]:w-full">
+            <PopoverContent align="center" className="flex flex-col gap-2 w-64 [&>button]:w-full [&_svg]:shrink-0">
               {actionButtons}
               <div className="h-px bg-border my-1" />
               <Button variant="ghost" className="justify-start" onClick={() => setShowLoadDialog(true)}>Load Game</Button>
@@ -962,8 +966,10 @@ const MainMenu = ({ onStartGame, onLoadSaveGame, onReplayIntro }: MainMenuProps)
       {cardType === 'entities' ? (
         <ScrollArea className="flex-1 min-h-0 container mx-auto px-4">
           {!isLoadingEntities && entities.length === 0 ? (
-            <div className="flex items-center justify-center py-16 px-4 text-center text-sm text-muted-foreground select-none">
-              No characters yet — use&nbsp;<span className="font-semibold">New Entity</span>&nbsp;or&nbsp;<span className="font-semibold">Import Entity</span>&nbsp;to add one.
+            <div className="flex items-center justify-center py-16 px-4 select-none">
+              <p className="max-w-md text-center text-sm text-muted-foreground">
+                No characters yet — use <span className="font-semibold">New Entity</span> or <span className="font-semibold">Import Entity</span> to add one.
+              </p>
             </div>
           ) : (
             <div className={`grid ${ENTITY_GRID_CLASS} gap-4`}>
@@ -998,8 +1004,10 @@ const MainMenu = ({ onStartGame, onLoadSaveGame, onReplayIntro }: MainMenuProps)
       ) : cardType === 'dictionaries' ? (
         <ScrollArea className="flex-1 min-h-0 container mx-auto px-4">
           {!isLoadingDictionaries && dictionaries.length === 0 ? (
-            <div className="flex items-center justify-center py-16 px-4 text-center text-sm text-muted-foreground select-none">
-              No dictionaries yet — use&nbsp;<span className="font-semibold">New Dictionary</span>&nbsp;or&nbsp;<span className="font-semibold">Import Dictionary</span>&nbsp;to add one.
+            <div className="flex items-center justify-center py-16 px-4 select-none">
+              <p className="max-w-md text-center text-sm text-muted-foreground">
+                No dictionaries yet — use <span className="font-semibold">New Dictionary</span> or <span className="font-semibold">Import Dictionary</span> to add one.
+              </p>
             </div>
           ) : (
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
@@ -1082,7 +1090,7 @@ const MainMenu = ({ onStartGame, onLoadSaveGame, onReplayIntro }: MainMenuProps)
           moved to the grid scroll areas), so the profile/social sit at the viewport edges. Equal flex-1
           side cells keep the copyright truly centered. */}
       <footer className="shrink-0 flex items-center gap-2 px-4 py-3">
-        {/* Left: user profile circle + app version (version derived from package.json) */}
+        {/* Left: user profile circle + app version (the version moves into the ⋯ menu on mobile). */}
         <div className="flex-1 flex items-center justify-start gap-2">
           {COMMUNITY_ENABLED && (
             <button
@@ -1099,10 +1107,11 @@ const MainMenu = ({ onStartGame, onLoadSaveGame, onReplayIntro }: MainMenuProps)
               )}
             </button>
           )}
-          {isDesktop() ? <UpdateVersionControl /> : <WebVersionChangelog />}
+          {!isMobile && (isDesktop() ? <UpdateVersionControl /> : <WebVersionChangelog />)}
         </div>
 
-        {/* Center: copyright + origin credit (original is MIT — see THIRD-PARTY-NOTICES / legal/) */}
+        {/* Center: copyright + origin credit (original is MIT — see THIRD-PARTY-NOTICES / legal/). The
+            "Based on…" line collapses into the ⋯ menu on mobile; the © stays (it replays the intro). */}
         <div className="text-center text-xs text-muted-foreground/60 whitespace-nowrap leading-tight">
           <button
             type="button"
@@ -1113,39 +1122,83 @@ const MainMenu = ({ onStartGame, onLoadSaveGame, onReplayIntro }: MainMenuProps)
           >
             © 2026 Jake James
           </button>
-          <div>
-            Based on{' '}
-            <a
-              href="https://github.com/FieryLionite/formamorph"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="hover:underline"
-            >
-              Formamorph by FieryLionite
-            </a>
-          </div>
+          {!isMobile && (
+            <div>
+              Based on{' '}
+              <a
+                href="https://github.com/FieryLionite/formamorph"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="hover:underline"
+              >
+                Formamorph by FieryLionite
+              </a>
+            </div>
+          )}
         </div>
 
-        {/* Right: social links */}
+        {/* Right: social links inline on desktop; an overflow menu (version + socials + credit) on mobile. */}
         <div className="flex-1 flex items-center justify-end gap-3">
-          <a
-            href="https://www.patreon.com/JakeJamesNSFW"
-            target="_blank"
-            rel="noopener noreferrer"
-            className="p-3 bg-secondary text-secondary-foreground rounded-full shadow-lg hover:bg-secondary/80 transition-colors"
-            aria-label="Patreon"
-          >
-            <PatreonIcon className="h-6 w-6" />
-          </a>
-          <a
-            href="https://github.com/JakeJamesDev/formamorph"
-            target="_blank"
-            rel="noopener noreferrer"
-            className="p-3 bg-secondary text-secondary-foreground rounded-full shadow-lg hover:bg-secondary/80 transition-colors"
-            aria-label="GitHub Repository"
-          >
-            <Github className="h-6 w-6" />
-          </a>
+          {isMobile ? (
+            <Popover>
+              <PopoverTrigger asChild>
+                <button
+                  className="p-3 bg-secondary text-secondary-foreground rounded-full shadow-lg hover:bg-secondary/80 transition-colors"
+                  aria-label="More"
+                >
+                  <MoreHorizontal className="h-6 w-6" />
+                </button>
+              </PopoverTrigger>
+              <PopoverContent align="end" side="top" className="w-56 flex flex-col gap-1">
+                {isDesktop() ? <UpdateVersionControl /> : <WebVersionChangelog />}
+                <a
+                  href="https://www.patreon.com/JakeJamesNSFW"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="flex items-center gap-2 rounded px-2 py-1.5 text-sm hover:bg-accent"
+                >
+                  <PatreonIcon className="h-4 w-4" /> Patreon
+                </a>
+                <a
+                  href="https://github.com/JakeJamesDev/formamorph"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="flex items-center gap-2 rounded px-2 py-1.5 text-sm hover:bg-accent"
+                >
+                  <Github className="h-4 w-4" /> GitHub
+                </a>
+                <a
+                  href="https://github.com/FieryLionite/formamorph"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="rounded px-2 py-1.5 text-xs text-muted-foreground hover:bg-accent"
+                >
+                  Based on Formamorph by FieryLionite
+                </a>
+              </PopoverContent>
+            </Popover>
+          ) : (
+            <>
+              <a
+                href="https://www.patreon.com/JakeJamesNSFW"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="p-3 bg-secondary text-secondary-foreground rounded-full shadow-lg hover:bg-secondary/80 transition-colors"
+                aria-label="Patreon"
+              >
+                <PatreonIcon className="h-6 w-6" />
+              </a>
+              <a
+                href="https://github.com/JakeJamesDev/formamorph"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="p-3 bg-secondary text-secondary-foreground rounded-full shadow-lg hover:bg-secondary/80 transition-colors"
+                aria-label="GitHub Repository"
+              >
+                <Github className="h-6 w-6" />
+              </a>
+            </>
+          )}
         </div>
       </footer>
 
@@ -1272,13 +1325,7 @@ const MainMenu = ({ onStartGame, onLoadSaveGame, onReplayIntro }: MainMenuProps)
 
                   <Button
                     className="w-full bg-gradient-to-r from-orange-100 to-orange-200 hover:from-orange-200 hover:to-orange-300 text-black font-bold"
-                    onClick={() => {
-                      if (window.innerWidth < 1024) {
-                        setShowMobileWorldEditorWarning(true);
-                      } else {
-                        setShowWorldEditor(true);
-                      }
-                    }}
+                    onClick={() => setShowWorldEditor(true)}
                   >
                     <Pencil className="mr-2 h-4 w-4" /> Edit World
                   </Button>
@@ -1415,32 +1462,11 @@ const MainMenu = ({ onStartGame, onLoadSaveGame, onReplayIntro }: MainMenuProps)
         </DialogContent>
       </Dialog>
 
-      <Dialog open={showMobileWorldEditorWarning} onOpenChange={setShowMobileWorldEditorWarning}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Mobile Not Supported</DialogTitle>
-          </DialogHeader>
-          <div className="text-sm mb-4">
-            The World Editor is not optimized for mobile devices. Please use a desktop computer for the best experience.
-          </div>
-          <div className="flex justify-end gap-2">
-            <Button
-              variant="outline"
-              onClick={() => setShowMobileWorldEditorWarning(false)}
-            >
-              Cancel
-            </Button>
-            <Button
-              onClick={() => {
-                setShowMobileWorldEditorWarning(false);
-                setShowWorldEditor(true);
-              }}
-            >
-              Go Anyway
-            </Button>
-          </div>
-        </DialogContent>
-      </Dialog>
+      {/* Dimming scrim behind the enter-world flow popups (they're bare fixed cards, not Radix dialogs, so
+          they don't bring their own overlay). z-40 sits under the cards' z-50. */}
+      {(showTraitSelection || showLocationSelection || showCharacterSelection || showDictionarySelection) && (
+        <div className="fixed inset-0 z-40 bg-black/80" aria-hidden />
+      )}
 
       {showTraitSelection && (
         <TraitSelectionModal

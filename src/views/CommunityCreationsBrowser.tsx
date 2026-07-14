@@ -6,7 +6,7 @@ import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
 import {
-  Search, RotateCcw, ArrowDownWideNarrow, ArrowUpNarrowWide, ArrowLeft, X,
+  Search, RotateCcw, ArrowDownWideNarrow, ArrowUpNarrowWide, ArrowLeft, X, SlidersHorizontal, ChevronDown,
 } from "lucide-react";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Pager } from "@/components/ui/pagination";
@@ -30,6 +30,8 @@ import {
 } from "@/components/ui/dialog";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Input } from "@/components/ui/input";
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
+import { useIsMobile } from "@/lib/useIsMobile";
 import WorldStorageService from '../services/WorldStorageService';
 import AuthService from '../services/AuthService';
 import { getDownloadState } from '@/lib/downloadState';
@@ -87,6 +89,12 @@ const CommunityCreationsBrowser = ({ open, onOpenChange, worlds, setWorlds, isAu
     allAuthors, allTags, filteredRemoteWorlds, totalPages, pagedRemoteWorlds,
   } = useCommunityBrowserFilters(remoteWorlds, localCopiesBySource, open);
 
+  // On mobile the sort/filter controls collapse behind a "Filters" toggle; on desktop they stay inline.
+  const isMobile = useIsMobile();
+  const [filtersOpen, setFiltersOpen] = useState(false);
+  const activeFilterCount =
+    authorFilter.length + tagFilter.length + hiddenWorldIds.length + hiddenTags.length + hiddenAuthors.length;
+
   // Numbered page links with first/last anchors + ellipsis (matches the in-game transcript pager).
 
   const handleRemoteWorldDelete = async (worldId: string) => {
@@ -120,6 +128,125 @@ const CommunityCreationsBrowser = ({ open, onOpenChange, worlds, setWorlds, isAu
     setShowRemoteWorldDetailsModal(true);
   };
 
+  // Header control fragments — reused across the mobile (collapsible) and desktop (inline) header layouts.
+  const searchControl = (
+    <div className="relative flex-grow min-w-[200px]">
+      <Search className="absolute left-2 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+      <Input
+        placeholder="Search worlds..."
+        className="pl-8"
+        value={searchQuery}
+        onChange={(e) => setSearchQuery(e.target.value)}
+      />
+    </div>
+  );
+
+  const refreshControl = (
+    <Button
+      variant="outline"
+      size="icon"
+      className="h-9 w-9 shrink-0"
+      title="Refresh catalog"
+      disabled={isSyncingCatalog}
+      onClick={() => loadCatalog(true)}
+    >
+      <RotateCcw className={`h-4 w-4 ${isSyncingCatalog ? 'animate-spin' : ''}`} />
+    </Button>
+  );
+
+  const sortControl = (
+    <div className="flex items-center gap-1">
+      <Select value={sortField} onValueChange={(v) => { setSortField(v); setCurrentPage(1); }}>
+        <SelectTrigger className="w-[160px] h-9"><SelectValue /></SelectTrigger>
+        <SelectContent>
+          <SelectItem value="updated_at">Last Updated</SelectItem>
+          <SelectItem value="created_at">Creation Date</SelectItem>
+          <SelectItem value="downloads">Downloads</SelectItem>
+        </SelectContent>
+      </Select>
+      <Button
+        variant="outline"
+        size="icon"
+        className="h-9 w-9 shrink-0"
+        title={sortOrder === 'desc' ? 'Descending' : 'Ascending'}
+        onClick={() => { setSortOrder((o) => (o === 'desc' ? 'asc' : 'desc')); setCurrentPage(1); }}
+      >
+        {sortOrder === 'desc' ? <ArrowDownWideNarrow className="h-4 w-4" /> : <ArrowUpNarrowWide className="h-4 w-4" />}
+      </Button>
+    </div>
+  );
+
+  const authorsControl = (
+    <div className="flex items-center gap-2">
+      <Button variant="outline" size="sm" className="shrink-0 pointer-events-none" tabIndex={-1}>Authors:</Button>
+      <TokenAutocomplete values={authorFilter} onChange={setAuthorFilter} options={allAuthors} placeholder="author…" />
+    </div>
+  );
+
+  const tagsControl = (
+    <div className="flex items-center gap-2">
+      <Button
+        variant="outline"
+        size="sm"
+        className="shrink-0 w-[92px]"
+        onClick={() => setTagMode((m) => (m === 'any' ? 'all' : 'any'))}
+        title="Toggle match: Any vs All"
+      >
+        {tagMode === 'any' ? 'Any' : 'All'} Tags:
+      </Button>
+      <TokenAutocomplete values={tagFilter} onChange={setTagFilter} options={allTags} placeholder="tag…" />
+    </div>
+  );
+
+  const hiddenControl = (
+    <Popover>
+      <PopoverTrigger asChild>
+        <Button variant="outline" size="sm" className="shrink-0">
+          Hidden{hiddenWorldIds.length + hiddenTags.length + hiddenAuthors.length > 0 ? ` (${hiddenWorldIds.length + hiddenTags.length + hiddenAuthors.length})` : ''}
+        </Button>
+      </PopoverTrigger>
+      <PopoverContent portal={false} align="start" side="bottom" className="w-80 space-y-3">
+        {/* Type to hide tags/authors (autocompletes over the catalog); chips are the hidden items. */}
+        <div className="space-y-1">
+          <span className="text-xs font-medium text-muted-foreground">Tags</span>
+          <TokenAutocomplete values={hiddenTags} onChange={setHiddenTagsList} options={allTags} placeholder="tag…" openOnFocus />
+        </div>
+        <div className="space-y-1">
+          <span className="text-xs font-medium text-muted-foreground">Authors</span>
+          <TokenAutocomplete values={hiddenAuthors} onChange={setHiddenAuthorsList} options={allAuthors} placeholder="author…" openOnFocus />
+        </div>
+        {hiddenWorldIds.length > 0 && (
+          <div className="space-y-1">
+            <span className="text-xs font-medium text-muted-foreground">Worlds</span>
+            <div className="flex flex-wrap gap-1">
+              {hiddenWorldIds.map((id) => (
+                <span key={`w-${id}`} className={cn(CHIP_BASE, "bg-secondary text-secondary-foreground")}>
+                  {hiddenWorldName(id)}
+                  <button onClick={() => unhideWorld(id)} className="hover:text-destructive" aria-label="Unhide world"><X className="h-3 w-3" /></button>
+                </span>
+              ))}
+            </div>
+          </div>
+        )}
+        {hiddenWorldIds.length + hiddenTags.length + hiddenAuthors.length > 0 && (
+          <Button variant="ghost" size="sm" className="h-7 px-2 text-xs" onClick={resetHiddenWorlds}>
+            <RotateCcw className="h-3 w-3 mr-1" /> Reset all
+          </Button>
+        )}
+      </PopoverContent>
+    </Popover>
+  );
+
+  const updatesControl = (
+    <label className="ml-auto flex items-center gap-2 shrink-0 cursor-pointer text-sm select-none">
+      <Checkbox
+        checked={sortUpdatesFirst}
+        onCheckedChange={(c) => { setSortUpdatesFirst(c === true); setCurrentPage(1); }}
+      />
+      Updates first
+    </label>
+  );
+
   return (
     <>
       {downscaleDialog}
@@ -129,129 +256,48 @@ const CommunityCreationsBrowser = ({ open, onOpenChange, worlds, setWorlds, isAu
           hideClose
           className="max-w-none w-screen h-dvh sm:max-w-none left-0 top-0 translate-x-0 translate-y-0 rounded-none sm:rounded-none p-0 gap-0 flex flex-col data-[state=open]:!slide-in-from-top-0 data-[state=open]:!slide-in-from-left-0 data-[state=closed]:!slide-out-to-top-0 data-[state=closed]:!slide-out-to-left-0"
         >
-          {/* Frozen header: back button + title + search/filter controls on one row */}
-          <div className="shrink-0 border-b px-6 py-4 space-y-4">
-            <div className="flex flex-wrap items-center gap-2 sm:gap-4">
-              <Button variant="ghost" size="icon" className="shrink-0" onClick={() => onOpenChange(false)} aria-label="Back">
-                <ArrowLeft className="h-5 w-5" />
-              </Button>
-              <DialogTitle className="whitespace-nowrap mr-2">Community Creations</DialogTitle>
-              <div className="relative flex-grow min-w-[200px]">
-                <Search className="absolute left-2 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                <Input
-                  placeholder="Search worlds..."
-                  className="pl-8"
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                />
-              </div>
-
-              <div className="flex flex-wrap items-center gap-2">
-                {/* Sort controls */}
-                <div className="flex items-center gap-1">
-                  <Select
-                    value={sortField}
-                    onValueChange={(v) => { setSortField(v); setCurrentPage(1); }}
-                  >
-                    <SelectTrigger className="w-[160px] h-9">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="updated_at">Last Updated</SelectItem>
-                      <SelectItem value="created_at">Creation Date</SelectItem>
-                      <SelectItem value="downloads">Downloads</SelectItem>
-                    </SelectContent>
-                  </Select>
-                  <Button
-                    variant="outline"
-                    size="icon"
-                    className="h-9 w-9 shrink-0"
-                    title={sortOrder === 'desc' ? 'Descending' : 'Ascending'}
-                    onClick={() => { setSortOrder((o) => (o === 'desc' ? 'asc' : 'desc')); setCurrentPage(1); }}
-                  >
-                    {sortOrder === 'desc' ? <ArrowDownWideNarrow className="h-4 w-4" /> : <ArrowUpNarrowWide className="h-4 w-4" />}
-                  </Button>
-                  <Button
-                    variant="outline"
-                    size="icon"
-                    className="h-9 w-9 shrink-0"
-                    title="Refresh catalog"
-                    disabled={isSyncingCatalog}
-                    onClick={() => loadCatalog(true)}
-                  >
-                    <RotateCcw className={`h-4 w-4 ${isSyncingCatalog ? 'animate-spin' : ''}`} />
-                  </Button>
-                </div>
-              </div>
-            </div>
-
-            {/* Authors / Tags include-filters + Hidden popup */}
-            <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
-              <div className="flex items-center gap-2">
-                <Button variant="outline" size="sm" className="shrink-0 pointer-events-none" tabIndex={-1}>Authors:</Button>
-                <TokenAutocomplete values={authorFilter} onChange={setAuthorFilter} options={allAuthors} placeholder="author…" />
-              </div>
-
-              <div className="flex items-center gap-2">
-                <Button
-                  variant="outline"
-                  size="sm"
-                  className="shrink-0 w-[92px]"
-                  onClick={() => setTagMode((m) => (m === 'any' ? 'all' : 'any'))}
-                  title="Toggle match: Any vs All"
-                >
-                  {tagMode === 'any' ? 'Any' : 'All'} Tags:
+          {/* Header: back · title · search · refresh always visible. On mobile the sort/filter controls
+              collapse behind a "Filters" toggle; on desktop they stay inline. */}
+          <Collapsible open={filtersOpen} onOpenChange={setFiltersOpen} className="shrink-0 border-b">
+            <div className="px-6 py-4 space-y-4">
+              <div className="flex flex-wrap items-center gap-2 sm:gap-4">
+                <Button variant="ghost" size="icon" className="shrink-0" onClick={() => onOpenChange(false)} aria-label="Back">
+                  <ArrowLeft className="h-5 w-5" />
                 </Button>
-                <TokenAutocomplete values={tagFilter} onChange={setTagFilter} options={allTags} placeholder="tag…" />
+                <DialogTitle className="whitespace-nowrap mr-2">Community Creations</DialogTitle>
+                {searchControl}
+                {refreshControl}
+                {isMobile ? (
+                  <CollapsibleTrigger asChild>
+                    <Button variant="outline" size="sm" className="shrink-0 gap-1">
+                      <SlidersHorizontal className="h-4 w-4" />
+                      Filters{activeFilterCount > 0 ? ` (${activeFilterCount})` : ''}
+                      <ChevronDown className={`h-4 w-4 transition-transform ${filtersOpen ? 'rotate-180' : ''}`} />
+                    </Button>
+                  </CollapsibleTrigger>
+                ) : (
+                  sortControl
+                )}
               </div>
 
-              <Popover>
-                <PopoverTrigger asChild>
-                  <Button variant="outline" size="sm" className="shrink-0">
-                    Hidden{hiddenWorldIds.length + hiddenTags.length + hiddenAuthors.length > 0 ? ` (${hiddenWorldIds.length + hiddenTags.length + hiddenAuthors.length})` : ''}
-                  </Button>
-                </PopoverTrigger>
-                <PopoverContent portal={false} align="start" side="bottom" className="w-80 space-y-3">
-                  {/* Type to hide tags/authors (autocompletes over the catalog); chips are the hidden items. */}
-                  <div className="space-y-1">
-                    <span className="text-xs font-medium text-muted-foreground">Tags</span>
-                    <TokenAutocomplete values={hiddenTags} onChange={setHiddenTagsList} options={allTags} placeholder="tag…" openOnFocus />
-                  </div>
-                  <div className="space-y-1">
-                    <span className="text-xs font-medium text-muted-foreground">Authors</span>
-                    <TokenAutocomplete values={hiddenAuthors} onChange={setHiddenAuthorsList} options={allAuthors} placeholder="author…" openOnFocus />
-                  </div>
-                  {hiddenWorldIds.length > 0 && (
-                    <div className="space-y-1">
-                      <span className="text-xs font-medium text-muted-foreground">Worlds</span>
-                      <div className="flex flex-wrap gap-1">
-                        {hiddenWorldIds.map((id) => (
-                          <span key={`w-${id}`} className={cn(CHIP_BASE, "bg-secondary text-secondary-foreground")}>
-                            {hiddenWorldName(id)}
-                            <button onClick={() => unhideWorld(id)} className="hover:text-destructive" aria-label="Unhide world"><X className="h-3 w-3" /></button>
-                          </span>
-                        ))}
-                      </div>
-                    </div>
-                  )}
-                  {hiddenWorldIds.length + hiddenTags.length + hiddenAuthors.length > 0 && (
-                    <Button variant="ghost" size="sm" className="h-7 px-2 text-xs" onClick={resetHiddenWorlds}>
-                      <RotateCcw className="h-3 w-3 mr-1" /> Reset all
-                    </Button>
-                  )}
-                </PopoverContent>
-              </Popover>
-
-              {/* Float worlds with an available update to the front (on by default). */}
-              <label className="ml-auto flex items-center gap-2 shrink-0 cursor-pointer text-sm select-none">
-                <Checkbox
-                  checked={sortUpdatesFirst}
-                  onCheckedChange={(c) => { setSortUpdatesFirst(c === true); setCurrentPage(1); }}
-                />
-                Updates first
-              </label>
+              {isMobile ? (
+                <CollapsibleContent className="space-y-3">
+                  {sortControl}
+                  {authorsControl}
+                  {tagsControl}
+                  {hiddenControl}
+                  {updatesControl}
+                </CollapsibleContent>
+              ) : (
+                <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
+                  {authorsControl}
+                  {tagsControl}
+                  {hiddenControl}
+                  {updatesControl}
+                </div>
+              )}
             </div>
-          </div>
+          </Collapsible>
 
           {/* Scrollable results */}
           <ScrollArea className="flex-1 min-h-0">

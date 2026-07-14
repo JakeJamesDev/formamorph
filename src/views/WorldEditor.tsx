@@ -7,11 +7,13 @@ import { EmptyListHint } from '@/components/EmptyListHint';
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Download, Plus, ArrowLeft, Save, FolderPlus, FilePlus, ImageDown, BookPlus, UserPlus } from "lucide-react";
 import { Panel, PanelGroup, PanelResizeHandle } from 'react-resizable-panels';
 import { ScrollArea } from "@/components/ui/scroll-area";
+import { ListDetail } from "@/components/ui/list-detail";
+import { useIsMobile } from "@/lib/useIsMobile";
 import { toast } from 'react-toastify';
 import { ThemedToastContainer } from '@/components/ThemedToastContainer';
 import 'react-toastify/dist/ReactToastify.css';
@@ -112,6 +114,7 @@ const WorldEditor = ({ onClose, embedded = false, backButton }: {
   }, [devRoute?.tab]);
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedItemId, setSelectedItemId] = useState<string | null>(null);
+  const isMobile = useIsMobile();
   const [showExitPrompt, setShowExitPrompt] = useState(false);
   const [showAddDictionary, setShowAddDictionary] = useState(false);
   const [showAddEntity, setShowAddEntity] = useState(false);
@@ -201,55 +204,57 @@ const WorldEditor = ({ onClose, embedded = false, backButton }: {
     }
   };
 
+  // Add a new item to the active flat-list tab. Like the other handlers, an empty search box falls
+  // back to a default name so the + button always creates something.
   const addItem = () => {
-    if (searchTerm.trim()) {
-      const newId = Date.now().toString();
-      const newName = searchTerm.trim();
+    const newId = randomUUID();
+    const typed = searchTerm.trim();
 
-      if (activeTab === "stats") {
-        addStat({
-          id: newId,
-          name: newName,
-          type: 'number',
-          description: '',
-          min: 0,
-          max: 100,
-          value: 0,
-          regen: 0
-        });
-      } else if (activeTab === "entities") {
-        addEntity({
-          id: newId,
-          name: newName,
-          playerDescription: '',
-          aiDescription: '',
-          aiSummary: '',
-          type: '',
-          groupId: null,
-          order: entityRootSiblingCount(),
-        });
-      } else if (activeTab === "locations") {
-        addLocation({
-          id: newId,
-          name: newName,
-          playerDescription: '',
-          aiDescription: '',
-          aiSummary: '',
-          entities: []
-        });
-      } else if (activeTab === "statUpdates") {
-        addStatUpdate({
-          id: newId,
-          name: newName,
-          prompt: '',
-          stats: [],
-          messageHistory: []
-        });
-      }
-
-      setSearchTerm('');
-      setSelectedItemId(newId);
+    if (activeTab === "stats") {
+      addStat({
+        id: newId,
+        name: typed || 'New Stat',
+        type: 'number',
+        description: '',
+        min: 0,
+        max: 100,
+        value: 0,
+        regen: 0
+      });
+    } else if (activeTab === "entities") {
+      addEntity({
+        id: newId,
+        name: typed || 'New Entity',
+        playerDescription: '',
+        aiDescription: '',
+        aiSummary: '',
+        type: '',
+        groupId: null,
+        order: entityRootSiblingCount(),
+      });
+    } else if (activeTab === "locations") {
+      addLocation({
+        id: newId,
+        name: typed || 'New Location',
+        playerDescription: '',
+        aiDescription: '',
+        aiSummary: '',
+        entities: []
+      });
+    } else if (activeTab === "statUpdates") {
+      addStatUpdate({
+        id: newId,
+        name: typed || 'New Stat Update',
+        prompt: '',
+        stats: [],
+        messageHistory: []
+      });
+    } else {
+      return;
     }
+
+    setSearchTerm('');
+    setSelectedItemId(newId);
   };
 
   // The Dictionary tab's + adds a whole book (name from the search box); entries are added per-book in the tree.
@@ -464,6 +469,147 @@ const WorldEditor = ({ onClose, embedded = false, backButton }: {
     );
   };
 
+  // The per-tab list (master) and detail, extracted so both the desktop resizable split and the mobile
+  // single-panel push render from one source. `overview` isn't master-detail — it shows a form in each slot.
+  const listContent = (
+    <>
+      {activeTab === "overview" && <WorldOverviewManager />}
+      {activeTab === "stats" && renderItemList(filteredItems)}
+      {activeTab === "entities" && (searchTerm.trim() ? renderItemList(filteredItems) : <EntityTree selectedId={selectedItemId} onSelect={setSelectedItemId} />)}
+      {activeTab === "locations" && (searchTerm.trim() ? renderItemList(filteredItems) : <LocationTree selectedId={selectedItemId} onSelect={setSelectedItemId} />)}
+      {activeTab === "traits" && (searchTerm.trim() ? renderItemList(filteredItems) : <TraitTree selectedId={selectedItemId} onSelect={setSelectedItemId} />)}
+      {activeTab === "dictionary" && <DictionaryTree selectedId={selectedItemId} onSelect={setSelectedItemId} />}
+      {activeTab === "statUpdates" && renderItemList(filteredItems)}
+      {activeTab === "placeholders" && <PlaceholderList selectedId={selectedItemId} onSelect={setSelectedItemId} />}
+    </>
+  );
+  const detailContent = (
+    <div className="p-6">
+      {activeTab === "overview" && (
+        <WorldDetailsManager />
+      )}
+      {activeTab === "stats" && selectedItem && (
+        <StatManager key={selectedItem.id} stat={selectedItem as Stat} />
+      )}
+      {activeTab === "entities" && selectedEntityGroup && (
+        <EntityGroupManager key={selectedEntityGroup.id} group={selectedEntityGroup} />
+      )}
+      {activeTab === "entities" && !selectedEntityGroup && selectedEntity && (
+        <EntityManager key={selectedEntity.id} entity={selectedEntity} />
+      )}
+      {activeTab === "locations" && selectedItem && (
+        <LocationManager key={selectedItem.id} location={selectedItem as GameLocation} />
+      )}
+      {activeTab === "traits" && selectedGroup && (
+        <GroupManager key={selectedGroup.id} group={selectedGroup} />
+      )}
+      {activeTab === "traits" && !selectedGroup && selectedTrait && (
+        <TraitManager key={selectedTrait.id} trait={selectedTrait} />
+      )}
+      {activeTab === "dictionary" && selectedBook && (
+        <DictionaryBookManager key={selectedBook.id} book={selectedBook} />
+      )}
+      {activeTab === "dictionary" && !selectedBook && selectedEntry && (
+        <DictionaryManager key={selectedEntry.id} entry={selectedEntry} placeholders={placeholders} />
+      )}
+      {activeTab === "statUpdates" && selectedItem && (
+        <StatUpdatesManager key={selectedItem.id} statUpdate={selectedItem as StatUpdate} />
+      )}
+      {activeTab === "placeholders" && selectedPlaceholder && (
+        <PlaceholderManager key={selectedPlaceholder.id} placeholder={selectedPlaceholder} />
+      )}
+    </div>
+  );
+
+  // Shared chrome — reused by the desktop resizable split and the mobile single-panel layout.
+  const headerBar = (
+    <div className="flex items-center space-x-4">
+      {showBackButton && (
+        <Button variant="ghost" size="icon" onClick={() => (isWorldDirty ? setShowExitPrompt(true) : onClose())}>
+          <ArrowLeft className="h-4 w-4" />
+        </Button>
+      )}
+      <CardTitle>World Editor</CardTitle>
+    </div>
+  );
+  const tabsList = (
+    <TabsList className="flex-shrink-0">
+      {WORLD_EDITOR_TABS.map((t) => (
+        <TabsTrigger key={t.value} value={t.value}>{t.label}</TabsTrigger>
+      ))}
+    </TabsList>
+  );
+  const addSearchBar = activeTab !== "overview" && (
+    <div className="flex space-x-2 flex-shrink-0 mt-4">
+      {activeTab === "traits" || activeTab === "entities" ? (
+        <Popover>
+          <PopoverTrigger asChild>
+            <Button size="icon">
+              <Plus className="h-4 w-4" />
+            </Button>
+          </PopoverTrigger>
+          <PopoverContent side="bottom" align="start" className="w-44 p-1">
+            <button
+              type="button"
+              className="flex w-full items-center gap-2 rounded-sm px-2 py-1.5 text-sm hover:bg-accent"
+              onClick={activeTab === "entities" ? handleAddEntityGroup : handleAddGroup}
+            >
+              <FolderPlus className="h-4 w-4" /> Add Group
+            </button>
+            <button
+              type="button"
+              className="flex w-full items-center gap-2 rounded-sm px-2 py-1.5 text-sm hover:bg-accent"
+              onClick={activeTab === "entities" ? addItem : handleAddTrait}
+            >
+              <FilePlus className="h-4 w-4" /> {activeTab === "entities" ? "Add Entity" : "Add Trait"}
+            </button>
+          </PopoverContent>
+        </Popover>
+      ) : (
+        <Button onClick={activeTab === "dictionary" ? handleAddBook : activeTab === "placeholders" ? handleAddPlaceholder : addItem} size="icon">
+          <Plus className="h-4 w-4" />
+        </Button>
+      )}
+      <Input
+        placeholder={activeTab === "dictionary" ? "Name a new dictionary" : `Search or add new ${activeTab}`}
+        value={searchTerm}
+        onChange={(e) => setSearchTerm(e.target.value)}
+      />
+    </div>
+  );
+  const footerBar = (
+    <div className="p-4 border-t flex flex-wrap gap-2 justify-between">
+      {downscaleDialog}
+      <div className="flex gap-2">
+        {downloadContext && (
+          <Button variant="outline" size="sm" onClick={downloadContext.onClick} disabled={downloadContext.disabled}>
+            <Download className="h-4 w-4 mr-2 shrink-0" />
+            <span className="truncate max-w-[14rem]">{downloadContext.label}</span>
+          </Button>
+        )}
+        {showImport && (
+          <Button variant="outline" size="sm" onClick={() => { if (activeTab === "dictionary") setShowAddDictionary(true); else if (activeTab === "entities") setShowAddEntity(true); }} disabled={importDisabled}>
+            {activeTab === "dictionary"
+              ? <BookPlus className="h-4 w-4 mr-2 shrink-0" />
+              : <UserPlus className="h-4 w-4 mr-2 shrink-0" />}
+            <span className="truncate max-w-[14rem]">{importLabel}</span>
+          </Button>
+        )}
+      </div>
+      <div className="flex gap-2">
+        <Button variant="outline" size="sm" onClick={optimizeImages} title="Downscale oversized images to conserve file size">
+          <ImageDown className="h-4 w-4 mr-2" />
+          Optimize Images
+        </Button>
+        <Button size="sm" onClick={saveWorld} disabled={!isWorldDirty}>
+          <Save className="h-4 w-4 mr-2" />
+          Save
+        </Button>
+      </div>
+      <Input type="file" accept=".json" onChange={loadWorld} className="hidden" id="load-world" />
+    </div>
+  );
+
   return (
     <div className={`${embedded ? "h-full" : "h-screen"} flex flex-col overflow-hidden`}>
       {!embedded && (
@@ -480,197 +626,67 @@ const WorldEditor = ({ onClose, embedded = false, backButton }: {
         />
       )}
       <div className="flex-grow flex overflow-hidden">
-        <PanelGroup direction="horizontal">
-          <Panel defaultSize={50} minSize={30}>
-            <div className="h-full p-4">
-            <Card className="h-full flex flex-col">
-              <CardHeader className="space-y-0 pb-2">
-                <div className="flex items-center space-x-4">
-                  {showBackButton && (
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      onClick={() => (isWorldDirty ? setShowExitPrompt(true) : onClose())}
-                    >
-                      <ArrowLeft className="h-4 w-4" />
-                    </Button>
+        {isMobile ? (
+          <div className="h-full w-full">
+            <Card className="h-full flex flex-col rounded-none border-x-0">
+              <CardHeader className="space-y-0 pb-2 px-2">{headerBar}</CardHeader>
+              <CardContent className="flex-grow flex flex-col overflow-hidden px-2 pt-2">
+                <Tabs value={activeTab} onValueChange={setActiveTab} className="flex-grow flex flex-col min-h-0">
+                  {/* The eight tabs don't fit a phone, so the strip scrolls horizontally. */}
+                  <div className="overflow-x-auto flex-shrink-0">{tabsList}</div>
+                  {addSearchBar}
+                  {activeTab === "overview" ? (
+                    // Overview isn't master-detail — stack its two forms.
+                    <ScrollArea className="flex-grow min-h-0 mt-4">
+                      {listContent}
+                      {detailContent}
+                    </ScrollArea>
+                  ) : (
+                    <ListDetail
+                      className="mt-4"
+                      showDetail={!!selectedItemId}
+                      onBack={() => setSelectedItemId(null)}
+                      backLabel="Back"
+                      list={<div className="h-full" onClick={() => setSelectedItemId(null)}>{listContent}</div>}
+                      detail={detailContent}
+                    />
                   )}
-                  <CardTitle>World Editor</CardTitle>
-                </div>
-              </CardHeader>
-              <CardContent className="flex-grow flex flex-col overflow-hidden pt-6">
-                  <Tabs value={activeTab} onValueChange={setActiveTab} className="flex-grow flex flex-col min-h-0">
-                      <TabsList className="flex-shrink-0">
-                        {WORLD_EDITOR_TABS.map((t) => (
-                          <TabsTrigger key={t.value} value={t.value}>{t.label}</TabsTrigger>
-                        ))}
-                        {/*<TabsTrigger value="statUpdates">Updates</TabsTrigger>*/}
-                      </TabsList>
-                    {activeTab !== "overview" && (
-                      <div className="flex space-x-2 flex-shrink-0 mt-4">
-                        {activeTab === "traits" || activeTab === "entities" ? (
-                          <Popover>
-                            <PopoverTrigger asChild>
-                              <Button size="icon">
-                                <Plus className="h-4 w-4" />
-                              </Button>
-                            </PopoverTrigger>
-                            <PopoverContent side="bottom" align="start" className="w-44 p-1">
-                              <button
-                                type="button"
-                                className="flex w-full items-center gap-2 rounded-sm px-2 py-1.5 text-sm hover:bg-accent"
-                                onClick={activeTab === "entities" ? handleAddEntityGroup : handleAddGroup}
-                              >
-                                <FolderPlus className="h-4 w-4" /> Add Group
-                              </button>
-                              <button
-                                type="button"
-                                className="flex w-full items-center gap-2 rounded-sm px-2 py-1.5 text-sm hover:bg-accent"
-                                onClick={activeTab === "entities" ? addItem : handleAddTrait}
-                              >
-                                <FilePlus className="h-4 w-4" /> {activeTab === "entities" ? "Add Entity" : "Add Trait"}
-                              </button>
-                            </PopoverContent>
-                          </Popover>
-                        ) : (
-                          <Button onClick={activeTab === "dictionary" ? handleAddBook : activeTab === "placeholders" ? handleAddPlaceholder : addItem} size="icon">
-                            <Plus className="h-4 w-4" />
-                          </Button>
-                        )}
-                        <Input
-                          placeholder={activeTab === "dictionary" ? "Name a new dictionary" : `Search or add new ${activeTab}`}
-                          value={searchTerm}
-                          onChange={(e) => setSearchTerm(e.target.value)}
-                        />
+                </Tabs>
+              </CardContent>
+              {footerBar}
+            </Card>
+          </div>
+        ) : (
+          <PanelGroup direction="horizontal">
+            <Panel defaultSize={50} minSize={30}>
+              <div className="h-full p-4">
+                <Card className="h-full flex flex-col">
+                  <CardHeader className="space-y-0 pb-2">{headerBar}</CardHeader>
+                  <CardContent className="flex-grow flex flex-col overflow-hidden pt-6">
+                    <Tabs value={activeTab} onValueChange={setActiveTab} className="flex-grow flex flex-col min-h-0">
+                      {tabsList}
+                      {addSearchBar}
+                      <div className="flex-grow min-h-0 mt-4" onClick={() => setSelectedItemId(null)}>
+                        <ScrollArea className="h-full">{listContent}</ScrollArea>
                       </div>
-                    )}
-                    <div className="flex-grow min-h-0 mt-4" onClick={() => setSelectedItemId(null)}>
-                      <ScrollArea className="h-full">
-                        <TabsContent value="overview">
-                          <WorldOverviewManager />
-                        </TabsContent>
-                        <TabsContent value="stats">
-                          {renderItemList(filteredItems)}
-                        </TabsContent>
-                        <TabsContent value="entities">
-                          {searchTerm.trim()
-                            ? renderItemList(filteredItems)
-                            : <EntityTree selectedId={selectedItemId} onSelect={setSelectedItemId} />}
-                        </TabsContent>
-                        <TabsContent value="locations">
-                          {searchTerm.trim()
-                            ? renderItemList(filteredItems)
-                            : <LocationTree selectedId={selectedItemId} onSelect={setSelectedItemId} />}
-                        </TabsContent>
-                        <TabsContent value="traits">
-                          {searchTerm.trim()
-                            ? renderItemList(filteredItems)
-                            : <TraitTree selectedId={selectedItemId} onSelect={setSelectedItemId} />}
-                        </TabsContent>
-                        <TabsContent value="dictionary">
-                          <DictionaryTree selectedId={selectedItemId} onSelect={setSelectedItemId} />
-                        </TabsContent>
-                        <TabsContent value="statUpdates">
-                          {renderItemList(filteredItems)}
-                        </TabsContent>
-                        <TabsContent value="placeholders">
-                          <PlaceholderList selectedId={selectedItemId} onSelect={setSelectedItemId} />
-                        </TabsContent>
-                      </ScrollArea>
-                    </div>
-                  </Tabs>
-              </CardContent>
-              <div className="p-4 border-t flex justify-between">
-                {downscaleDialog}
-                <div className="flex gap-2">
-                  {downloadContext && (
-                    <Button variant="outline" size="sm" onClick={downloadContext.onClick} disabled={downloadContext.disabled}>
-                      <Download className="h-4 w-4 mr-2 shrink-0" />
-                      <span className="truncate max-w-[14rem]">{downloadContext.label}</span>
-                    </Button>
-                  )}
-                  {showImport && (
-                    <Button variant="outline" size="sm" onClick={() => { if (activeTab === "dictionary") setShowAddDictionary(true); else if (activeTab === "entities") setShowAddEntity(true); }} disabled={importDisabled}>
-                      {activeTab === "dictionary"
-                        ? <BookPlus className="h-4 w-4 mr-2 shrink-0" />
-                        : <UserPlus className="h-4 w-4 mr-2 shrink-0" />}
-                      <span className="truncate max-w-[14rem]">{importLabel}</span>
-                    </Button>
-                  )}
-                </div>
-                <div className="flex gap-2">
-                  <Button variant="outline" size="sm" onClick={optimizeImages} title="Downscale oversized images to conserve file size">
-                    <ImageDown className="h-4 w-4 mr-2" />
-                    Optimize Images
-                  </Button>
-                  <Button size="sm" onClick={saveWorld} disabled={!isWorldDirty}>
-                    <Save className="h-4 w-4 mr-2" />
-                    Save
-                  </Button>
-                </div>
-                {/* Disabled due to new format
-                <Button variant="outline" size="sm" onClick={() => document.getElementById('load-world').click()}>
-                  <Upload className="h-4 w-4 mr-2" />
-                  Upload
-                </Button> */}
-                <Input
-                  type="file"
-                  accept=".json"
-                  onChange={loadWorld}
-                  className="hidden"
-                  id="load-world"
-                />
+                    </Tabs>
+                  </CardContent>
+                  {footerBar}
+                </Card>
               </div>
-            </Card>
-            </div>
-          </Panel>
-          <PanelResizeHandle className="w-1 bg-secondary cursor-col-resize" />
-          <Panel minSize={30}>
-            <div className="h-full p-4">
-            <Card className="h-full">
-              <CardContent className="h-full p-0">
-                <ScrollArea className="h-full">
-                  <div className="p-6">
-                    {activeTab === "overview" && (
-                      <WorldDetailsManager />
-                    )}
-                    {activeTab === "stats" && selectedItem && (
-                      <StatManager key={selectedItem.id} stat={selectedItem as Stat} />
-                    )}
-                    {activeTab === "entities" && selectedEntityGroup && (
-                      <EntityGroupManager key={selectedEntityGroup.id} group={selectedEntityGroup} />
-                    )}
-                    {activeTab === "entities" && !selectedEntityGroup && selectedEntity && (
-                      <EntityManager key={selectedEntity.id} entity={selectedEntity} />
-                    )}
-                    {activeTab === "locations" && selectedItem && (
-                      <LocationManager key={selectedItem.id} location={selectedItem as GameLocation} />
-                    )}
-                    {activeTab === "traits" && selectedGroup && (
-                      <GroupManager key={selectedGroup.id} group={selectedGroup} />
-                    )}
-                    {activeTab === "traits" && !selectedGroup && selectedTrait && (
-                      <TraitManager key={selectedTrait.id} trait={selectedTrait} />
-                    )}
-                    {activeTab === "dictionary" && selectedBook && (
-                      <DictionaryBookManager key={selectedBook.id} book={selectedBook} />
-                    )}
-                    {activeTab === "dictionary" && !selectedBook && selectedEntry && (
-                      <DictionaryManager key={selectedEntry.id} entry={selectedEntry} placeholders={placeholders} />
-                    )}
-                    {activeTab === "statUpdates" && selectedItem && (
-                      <StatUpdatesManager key={selectedItem.id} statUpdate={selectedItem as StatUpdate} />
-                    )}
-                    {activeTab === "placeholders" && selectedPlaceholder && (
-                      <PlaceholderManager key={selectedPlaceholder.id} placeholder={selectedPlaceholder} />
-                    )}
-                  </div>
-                </ScrollArea>
-              </CardContent>
-            </Card>
-            </div>
-          </Panel>
-        </PanelGroup>
+            </Panel>
+            <PanelResizeHandle className="w-1 bg-secondary cursor-col-resize" />
+            <Panel minSize={30}>
+              <div className="h-full p-4">
+                <Card className="h-full">
+                  <CardContent className="h-full p-0">
+                    <ScrollArea className="h-full">{detailContent}</ScrollArea>
+                  </CardContent>
+                </Card>
+              </div>
+            </Panel>
+          </PanelGroup>
+        )}
       </div>
       <UnsavedChangesDialog
         open={showExitPrompt}

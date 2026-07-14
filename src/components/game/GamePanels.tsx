@@ -119,7 +119,8 @@ export const LeftPanel = ({ entities, onEntityClick }: {
   }, []);
 
   const modelViewer = characterData ? (
-    <div className="w-full relative" style={{ paddingTop: '120%' }}>
+    // Mobile: fill the whole panel. Landscape: a fixed 1.2 aspect box sitting atop the panel.
+    <div className={isMobile ? "relative w-full h-full" : "w-full relative"} style={isMobile ? undefined : { paddingTop: '120%' }}>
       <div className="absolute top-0 left-0 w-full h-full flex items-center justify-center">
         {!showVRMViewer ? (
           <Loader2 className="animate-spin" size={32} />
@@ -212,7 +213,7 @@ export const LeftPanel = ({ entities, onEntityClick }: {
           <TabsTrigger value="logs">Logs ({logEntries.reduce((sum, entry) => sum + 1 + (entry.repeat || 0), 0)})</TabsTrigger>
         </TabsList>
         {isMobile && (
-          <TabsContent value="model" className="flex-grow overflow-auto min-h-[100px]">
+          <TabsContent value="model" className="flex-grow overflow-hidden min-h-[100px]">
             {modelViewer}
           </TabsContent>
         )}
