@@ -286,7 +286,7 @@ function ThemePreviewDialog({ open, onOpenChange }: { open: boolean; onOpenChang
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="w-[min(96vw,1080px)] max-w-none h-[640px] max-h-[90vh] flex flex-col">
+      <DialogContent className="w-[min(96vw,1080px)] max-w-none h-[640px] max-h-[90dvh] flex flex-col">
         <DialogHeader className="shrink-0">
           <DialogTitle>Theme preview</DialogTitle>
         </DialogHeader>

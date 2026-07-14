@@ -1,3 +1,4 @@
+import { randomUUID } from "@/lib/uuid";
 import { SortableList } from '@/components/SortableList';
 import { EmptyListHint } from '@/components/EmptyListHint';
 import { usePlaceholderStore } from '@/contexts/PlaceholderStoreContext';
@@ -12,7 +13,7 @@ const PlaceholderList = ({ selectedId, onSelect }: { selectedId: string | null; 
     setPlaceholders((prev) => {
       const i = prev.findIndex((p) => p.id === id);
       if (i === -1) return prev;
-      const copy = { ...prev[i], id: crypto.randomUUID(), name: `${prev[i].name} (Copy)` };
+      const copy = { ...prev[i], id: randomUUID(), name: `${prev[i].name} (Copy)` };
       onSelect(copy.id);
       return [...prev.slice(0, i + 1), copy, ...prev.slice(i + 1)];
     });

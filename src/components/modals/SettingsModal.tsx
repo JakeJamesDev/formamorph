@@ -585,12 +585,24 @@ export const SettingsModal = ({ isOpen, onOpenChange, previewValues, initialTab,
   return (
     <>
     <Dialog open={isOpen} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[800px] h-[90vh] flex flex-col overflow-hidden">
+      <DialogContent className="sm:max-w-[800px] h-[90dvh] flex flex-col overflow-hidden">
         <DialogHeader className="flex-shrink-0">
           <DialogTitle>Settings</DialogTitle>
         </DialogHeader>
         <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full flex flex-col flex-1 min-h-0">
-          <TabsList className="grid w-full grid-cols-6 flex-shrink-0">
+          {/* The six tab labels don't fit a narrow phone, so below sm the tab strip becomes a dropdown of the
+              active tab; sm+ keeps the full row. Both drive the same activeTab state. */}
+          <Select value={activeTab} onValueChange={setActiveTab}>
+            <SelectTrigger className="w-full flex-shrink-0 sm:hidden">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              {SETTINGS_TABS.map((t) => (
+                <SelectItem key={t.value} value={t.value}>{t.label}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          <TabsList className="hidden w-full grid-cols-6 flex-shrink-0 sm:grid">
             {SETTINGS_TABS.map((t) => (
               <TabsTrigger key={t.value} value={t.value}>{t.label}</TabsTrigger>
             ))}

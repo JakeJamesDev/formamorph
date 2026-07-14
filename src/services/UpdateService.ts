@@ -4,7 +4,7 @@
 // release list so an offline launch can still show the last-known state.
 
 import { APP_VERSION } from '@/lib/version';
-import { isNewer, parseVersion } from '@/lib/updates/semver';
+import { isNewer, parseVersion, compareSemver } from '@/lib/updates/semver';
 import type { UpdateChannel } from '@/contexts/settingsDefaults';
 
 const REPO = 'JakeJamesDev/formamorph';
@@ -73,8 +73,11 @@ function readCache(): GithubRelease[] | null {
   }
 }
 
-/** How many recent releases the changelog popouts show. */
+/** When behind by more than one release, how many of the newest releases the changelog always surfaces. */
 export const RECENT_CHANGELOG_COUNT = 3;
+
+/** Marker line inserted where one or more releases are hidden between two shown ones (or below the last). */
+const GAP = '...';
 
 /** The `major.minor` a tag belongs to (e.g. `v2.1.1` → `2.1`); falls back to the raw tag when unparseable. */
 function minorKey(tag: string): string {
@@ -91,20 +94,65 @@ function foldRelease(tag: string, body: string): string {
   return `### ${tag}\n\n${demoted}`;
 }
 
-/** Combine the most recent `count` releases into one markdown doc, folding patch versions under a single
- *  `## <major.minor>` header (each patch a bold label) so the popouts read as a short, grouped history rather
- *  than one big header per patch. Pure. */
-export function buildRecentChangelog(releases: GithubRelease[], count = RECENT_CHANGELOG_COUNT): string {
-  const groups: { minor: string; items: GithubRelease[] }[] = [];
-  for (const r of releases.slice(0, count)) {
-    const minor = minorKey(r.tag_name);
-    const group = groups.find((g) => g.minor === minor);
-    if (group) group.items.push(r);
-    else groups.push({ minor, items: [r] });
+/** Pick which releases the changelog popouts show, relative to the running version, to surface more of what a
+ *  reader cares about without dumping the whole history. A release is shown if it satisfies ANY rule:
+ *    0. it's the newest release (an available update is never omitted);
+ *    1. it shares the running version's `X.Y` (the full current minor, including patches newer than you);
+ *    2. you're behind by more than one release → the newest `RECENT_CHANGELOG_COUNT` releases;
+ *    3. it's one of the two releases immediately older than the running version.
+ *  Newest→oldest, folded under `## <minor>` headers; a `...` line marks any gap where releases are hidden
+ *  between two shown ones (or below the last). Pure. */
+export function buildRecentChangelog(releases: GithubRelease[], currentVersion: string): string {
+  const eligible = [...releases].sort((a, b) => compareSemver(b.tag_name, a.tag_name));
+  if (eligible.length === 0) return '';
+
+  const curMinor = minorKey(currentVersion);
+  const newerCount = eligible.filter((r) => compareSemver(r.tag_name, currentVersion) > 0).length;
+
+  const shown = new Set<string>();
+  shown.add(eligible[0].tag_name); // rule 0
+  for (const r of eligible) if (minorKey(r.tag_name) === curMinor) shown.add(r.tag_name); // rule 1
+  if (newerCount > 1) for (const r of eligible.slice(0, RECENT_CHANGELOG_COUNT)) shown.add(r.tag_name); // rule 2
+  eligible
+    .filter((r) => compareSemver(r.tag_name, currentVersion) < 0)
+    .slice(0, 2)
+    .forEach((r) => shown.add(r.tag_name)); // rule 3
+
+  // Walk newest→oldest, emitting each shown release and a single GAP wherever hidden releases sit between two
+  // shown ones (a pending gap only counts once we've emitted a release, so nothing hidden above the top reads
+  // as a gap; a trailing pending gap flushes for hidden releases below the last shown one).
+  const tokens: (GithubRelease | typeof GAP)[] = [];
+  let seenRel = false;
+  let pendingGap = false;
+  for (const r of eligible) {
+    if (shown.has(r.tag_name)) {
+      if (seenRel && pendingGap) tokens.push(GAP);
+      pendingGap = false;
+      seenRel = true;
+      tokens.push(r);
+    } else if (seenRel) {
+      pendingGap = true;
+    }
   }
-  return groups
-    .map((g) => `## ${g.minor}\n\n${g.items.map((r) => foldRelease(r.tag_name, r.body)).join('\n\n')}`)
-    .join('\n\n');
+  if (seenRel && pendingGap) tokens.push(GAP);
+
+  // Render: a `## <minor>` header when the minor changes; a GAP resets the header so the next release re-labels.
+  const out: string[] = [];
+  let lastMinor: string | null = null;
+  for (const t of tokens) {
+    if (t === GAP) {
+      out.push(GAP);
+      lastMinor = null;
+      continue;
+    }
+    const minor = minorKey(t.tag_name);
+    if (minor !== lastMinor) {
+      out.push(`## ${minor}`);
+      lastMinor = minor;
+    }
+    out.push(foldRelease(t.tag_name, t.body));
+  }
+  return out.join('\n\n');
 }
 
 /** Pick the newest release eligible for `channel` and decide whether it's newer than `currentVersion`.
@@ -119,7 +167,7 @@ export function parseReleases(
   const latest = eligible[0];
   if (!latest) return { available: false };
   const latestVersion = latest.tag_name;
-  const changelog = buildRecentChangelog(eligible);
+  const changelog = buildRecentChangelog(eligible, currentVersion);
   return { available: isNewer(latestVersion, currentVersion), latestVersion, changelog, release: latest };
 }
 

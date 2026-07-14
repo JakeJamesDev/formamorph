@@ -1,3 +1,4 @@
+import { randomUUID } from "@/lib/uuid";
 import type { Dictionary, DictionaryEntry, Placeholder } from '@/types';
 import { APP_VERSION, WORLD_FILE_KIND, SAVE_FILE_KIND } from './version';
 import { convertLorebook } from './lorebookImport';
@@ -47,11 +48,11 @@ export function parseDictionaryFile(raw: unknown): Dictionary {
   }
   const entries = Array.isArray(obj.entries) ? (obj.entries as DictionaryEntry[]) : [];
   return {
-    id: crypto.randomUUID(),
+    id: randomUUID(),
     name: typeof obj.name === 'string' && obj.name ? obj.name : 'Imported Dictionary',
     ...(typeof obj.description === 'string' && obj.description ? { description: obj.description } : {}),
     ...(obj.enabled === false ? { enabled: false } : {}),
-    entries: entries.map((e) => ({ ...e, id: crypto.randomUUID() })),
+    entries: entries.map((e) => ({ ...e, id: randomUUID() })),
     // Carried placeholder defs ride along; absorbed into World.placeholders when this book is added to a world.
     ...(Array.isArray(obj.placeholders) ? { placeholders: obj.placeholders as Placeholder[] } : {}),
   };

@@ -21,7 +21,7 @@ const ReadmeModal = ({
   onShowChange: (show: boolean) => void;
 }) => (
   <Dialog open={open} onOpenChange={onOpenChange}>
-    <DialogContent className="sm:max-w-[640px] max-h-[85vh] flex flex-col">
+    <DialogContent className="sm:max-w-[640px] max-h-[85dvh] flex flex-col">
       <DialogHeader className="shrink-0">
         <DialogTitle>Readme</DialogTitle>
       </DialogHeader>

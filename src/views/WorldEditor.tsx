@@ -1,3 +1,4 @@
+import { randomUUID } from "@/lib/uuid";
 import { useState, useEffect, useMemo, type ChangeEvent } from 'react';
 import { useGameData } from '@/contexts/GameDataContext';
 import { useDevRoute } from '@/lib/devRouter';
@@ -253,14 +254,14 @@ const WorldEditor = ({ onClose, embedded = false, backButton }: {
 
   // The Dictionary tab's + adds a whole book (name from the search box); entries are added per-book in the tree.
   const handleAddBook = () => {
-    const id = crypto.randomUUID();
+    const id = randomUUID();
     addDictionary({ id, name: searchTerm.trim() || 'New Dictionary', enabled: true, entries: [] });
     setSearchTerm('');
     setSelectedItemId(id);
   };
 
   const handleAddPlaceholder = () => {
-    const id = crypto.randomUUID();
+    const id = randomUUID();
     addPlaceholder({ id, name: searchTerm.trim() || 'New Placeholder', values: [] });
     setSearchTerm('');
     setSelectedItemId(id);
@@ -272,7 +273,7 @@ const WorldEditor = ({ onClose, embedded = false, backButton }: {
     traitGroups.filter(g => (g.parentId ?? null) === null).length;
 
   const handleAddTrait = () => {
-    const id = crypto.randomUUID();
+    const id = randomUUID();
     addTrait({
       id,
       name: searchTerm.trim() || 'New Trait',
@@ -288,7 +289,7 @@ const WorldEditor = ({ onClose, embedded = false, backButton }: {
   };
 
   const handleAddGroup = () => {
-    const id = crypto.randomUUID();
+    const id = randomUUID();
     addTraitGroup({
       id,
       name: searchTerm.trim() || 'New Group',
@@ -307,7 +308,7 @@ const WorldEditor = ({ onClose, embedded = false, backButton }: {
     entityGroups.filter(g => (g.parentId ?? null) === null).length;
 
   const handleAddEntityGroup = () => {
-    const id = crypto.randomUUID();
+    const id = randomUUID();
     addEntityGroup({ id, name: searchTerm.trim() || 'New Group', parentId: null, order: entityRootSiblingCount() });
     setSearchTerm('');
     setSelectedItemId(id);
@@ -395,7 +396,7 @@ const WorldEditor = ({ onClose, embedded = false, backButton }: {
     const items = config.items as { id: string; name: string }[];
     const index = items.findIndex((it) => it.id === id);
     if (index === -1) return;
-    const copy = { ...structuredClone(items[index]), id: crypto.randomUUID() };
+    const copy = { ...structuredClone(items[index]), id: randomUUID() };
     copy.name = `${copy.name} (Copy)`;
     const next = [...items.slice(0, index + 1), copy, ...items.slice(index + 1)];
     (config.setItems as (next: { id: string }[]) => void)(next);

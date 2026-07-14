@@ -52,36 +52,59 @@ describe('parseReleases', () => {
 });
 
 describe('buildRecentChangelog', () => {
-  it('folds the last 3 releases under minor headers, and fills blank bodies', () => {
-    const md = buildRecentChangelog([
-      rel('v3.0.0', false, false, 'three'),
-      rel('v2.0.0', false, false, ''),
-      rel('v1.0.0', false, false, 'one'),
-      rel('v0.9.0', false, false, 'too old'),
-    ]);
-    expect(md).toContain('## 3.0');
-    expect(md).toContain('### v3.0.0');
-    expect(md).toContain('## 1.0');
-    expect(md).not.toContain('## 0.9'); // capped at 3
-    expect(md).toContain('_No release notes._'); // blank body filled
+  // A shared history, newest→oldest, spanning three minors with a multi-patch 2.2.
+  const history = () => [
+    rel('v2.4.0', false, false, 'four'),
+    rel('v2.3.1', false, false, '### Fixed\n- a'),
+    rel('v2.3.0', false, false, '### Added\n- b'),
+    rel('v2.2.3', false, false, 'p3'),
+    rel('v2.2.2', false, false, ''),
+    rel('v2.2.1', false, false, 'p1'),
+    rel('v2.2.0', false, false, 'p0'),
+    rel('v2.1.4', false, false, 'q4'),
+    rel('v2.1.0', false, false, 'q0'),
+    rel('v2.0.0', false, false, 'old'),
+  ];
+
+  it('up to date: shows the full current minor + previous two, then a gap for older', () => {
+    const md = buildRecentChangelog(history(), '2.4.0');
+    expect(md).toContain('### v2.4.0'); // current minor (rule 1 / rule 0)
+    expect(md).toContain('### v2.3.1'); // previous two (rule 3)
+    expect(md).toContain('### v2.3.0');
+    expect(md).not.toContain('### v2.2.3'); // older hidden
+    expect(md).toContain('...'); // gap marker for the hidden tail
   });
 
-  it('groups patch versions of the same minor under one header, each version its own heading', () => {
-    const md = buildRecentChangelog([
-      rel('v2.1.1', false, false, '### Fixed\n- a'),
-      rel('v2.1.0', false, false, '### Added\n- b\n\n### Fixed\n- c'),
-      rel('v2.0.3', false, false, '### Fixed\n- d'),
-    ]);
-    // Both 2.1.x patches sit under a single "## 2.1" header.
+  it('behind by exactly one into a new minor: rule 0 still surfaces the newest release', () => {
+    const md = buildRecentChangelog(history(), '2.3.1'); // missing only v2.4.0 → rule 2 off
+    expect(md).toContain('## 2.4');
+    expect(md).toContain('### v2.4.0'); // never omit an available update
+    expect(md).toContain('### v2.3.1'); // current minor
+    expect(md).toContain('### v2.3.0');
+    expect(md).toContain('### v2.2.3'); // previous two (older than 2.3.1)
+  });
+
+  it('behind by many: latest 3 + full current minor, with gaps marking hidden ranges', () => {
+    const md = buildRecentChangelog(history(), '2.1.0');
+    // Rule 2 (behind by >1) → newest three across two minors.
+    expect(md).toContain('## 2.4');
+    expect(md).toContain('### v2.4.0');
+    expect(md).toContain('### v2.3.1');
+    expect(md).toContain('### v2.3.0');
+    // Rule 1 → the full current minor (both 2.1 patches), under one header.
     expect(md.match(/## 2\.1$/gm)).toHaveLength(1);
-    // Each version is its own heading; categories are separate bold caption labels (never merged onto the version).
-    expect(md).toContain('### v2.1.1');
+    expect(md).toContain('### v2.1.4');
     expect(md).toContain('### v2.1.0');
-    expect(md).toContain('**Added**');
-    expect(md).toContain('**Fixed**');
+    expect(md).not.toContain('## 2.2'); // the whole 2.2 range is hidden
+    expect(md).toContain('### v2.0.0'); // previous-two (older than 2.1.0) reaches down to 2.0.0
+    expect(md.match(/^\.\.\.$/gm)).toHaveLength(1); // exactly one gap: the hidden 2.2 range
     expect(md).not.toContain('·'); // no version·category merge
-    expect(md).toContain('## 2.0');
-    expect(md).toContain('### v2.0.3');
+    expect(md).toContain('**Added**'); // category labels preserved
+  });
+
+  it('fills blank release bodies', () => {
+    const md = buildRecentChangelog(history(), '2.2.2');
+    expect(md).toContain('_No release notes._'); // v2.2.2 has an empty body
   });
 });
 

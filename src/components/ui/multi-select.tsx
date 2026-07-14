@@ -1014,7 +1014,7 @@ export const MultiSelect = React.forwardRef<MultiSelectRef, MultiSelectProps>(
 							animationDuration: `${animationConfig?.duration || animation}s`,
 							animationDelay: `${animationConfig?.delay || 0}s`,
 							maxWidth: `min(${widthConstraints.maxWidth}, 85vw)`,
-							maxHeight: screenSize === "mobile" ? "70vh" : "60vh",
+							maxHeight: screenSize === "mobile" ? "70dvh" : "60dvh",
 							touchAction: "manipulation",
 						}}
 						align="start"
@@ -1037,8 +1037,8 @@ export const MultiSelect = React.forwardRef<MultiSelectRef, MultiSelectProps>(
 							)}
 							<CommandList
 								className={cn(
-									"max-h-[40vh] overflow-y-auto multiselect-scrollbar",
-									screenSize === "mobile" && "max-h-[50vh]",
+									"max-h-[40dvh] overflow-y-auto multiselect-scrollbar",
+									screenSize === "mobile" && "max-h-[50dvh]",
 									"overscroll-behavior-y-contain"
 								)}>
 								<CommandEmpty>

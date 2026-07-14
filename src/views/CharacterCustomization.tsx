@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef, type ChangeEvent } from 'react';
-import { Undo2, Loader2 } from "lucide-react";
+import { Undo2, Loader2, SlidersHorizontal, ChevronUp, ChevronDown, X } from "lucide-react";
 import { Slider } from "@/components/ui/slider"
 import { Label } from "@/components/ui/label"
 import { Input } from "@/components/ui/input"
@@ -7,12 +7,20 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { ScrollArea } from "@/components/ui/scroll-area"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Button } from "@/components/ui/button"
+import { Checkbox } from "@/components/ui/checkbox"
+import { Drawer, DrawerContent, DrawerHeader, DrawerTitle, DrawerClose, DrawerOverlay } from "@/components/ui/drawer"
+import { useIsMobile } from "@/lib/useIsMobile"
+import { cn } from "@/lib/utils"
 import VRMViewer, { type VRMCapabilities, type VRMViewerHandle } from './VRMViewer';
 import { useGameData } from '../contexts/GameDataContext';
 import type { CharacterData, PlayerModel } from '@/types';
 import { addModel, getAllModels, deleteModel } from '@/lib/modelLibrary';
 import { usePlayerModelUrl } from '@/lib/usePlayerModelUrl';
 import { toast } from 'react-toastify';
+
+// The two fixed heights the customization drawer toggles between — both fully scrollable. The shorter one
+// keeps the character visible above the sheet; the taller shows more controls at once.
+const DRAWER_HEIGHTS = { short: 'h-[40dvh]', tall: 'h-[90dvh]' } as const;
 
 // Friendly label for a model material/mesh name (e.g. "N00_001_Tops_01_CLOTH" → "N00 001 Tops 01 CLOTH").
 const cleanLabel = (s: string) =>
@@ -183,18 +191,26 @@ const CharacterCustomization = ({ onCharacterCustomized, onBack }: {
   // model (which would otherwise report default capabilities and leave the UI stuck on them after a few swaps).
   const resolvingModel = selectedModelId !== 'default' && selectedModelId !== 'world' && !resolvedModelUrl;
 
-  return (
-    <div className="flex h-screen">
-      <Card className="w-2/3 m-4 bg-secondary">
-        <CardHeader>
-          <CardTitle>Character Viewer</CardTitle>
-        </CardHeader>
-        <CardContent className="flex flex-col items-center justify-center h-full">
-          {/* Adjust the VRMViewer container */}
-          <div className="w-full h-full flex items-center justify-center" style={{ aspectRatio: '3/4' }}>
-            {resolvingModel ? (
-              <Loader2 className="animate-spin" size={32} />
-            ) : (
+  // Portrait/narrow: the controls move into a bottom drawer that hovers over the viewer, so the model gets the
+  // full width and the panel no longer truncates. Desktop keeps the side-by-side split.
+  const isMobile = useIsMobile();
+  const [animatePreview, setAnimatePreview] = useState(true);
+  const [drawerOpen, setDrawerOpen] = useState(false);
+  // Toggles the drawer between its short and tall heights (see DRAWER_HEIGHTS). Opens short so the character
+  // stays visible; the header's expand button grows it. Both heights scroll their full content.
+  const [drawerExpanded, setDrawerExpanded] = useState(false);
+
+  const viewer = (
+    <Card className={cn('m-4 bg-secondary overflow-hidden', isMobile ? 'flex-1 min-h-0' : 'w-2/3')}>
+      <CardHeader>
+        <CardTitle>Character Viewer</CardTitle>
+      </CardHeader>
+      <CardContent className="flex flex-col items-center justify-center h-full">
+        {/* Adjust the VRMViewer container */}
+        <div className="w-full h-full flex items-center justify-center" style={{ aspectRatio: '3/4' }}>
+          {resolvingModel ? (
+            <Loader2 className="animate-spin" size={32} />
+          ) : (
             <VRMViewer
               key={resolvedModelUrl ?? 'default'}
               ref={vrmViewerRef}
@@ -215,19 +231,17 @@ const CharacterCustomization = ({ onCharacterCustomized, onBack }: {
               modelUrl={resolvedModelUrl}
               extraColors={extraColors}
               onCapabilities={setCaps}
+              animate={animatePreview}
             />
-            )}
-          </div>
-        </CardContent>
-      </Card>
+          )}
+        </div>
+      </CardContent>
+    </Card>
+  );
 
-      <Card className="w-1/3 m-4 flex flex-col overflow-hidden">
-        <ScrollArea className="flex-1 min-h-0">
-        <CardHeader>
-          <CardTitle>Character Customization</CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-6">
-        <div className="flex gap-2 mt-4">
+  const controls = (
+    <>
+      <div className="flex gap-2 mt-4">
             <Button onClick={onBack} variant="outline" className="flex-1" disabled={!onBack}>Back</Button>
             <Button onClick={handleFinalize} className="flex-1">
               Finalize Character
@@ -318,6 +332,14 @@ const CharacterCustomization = ({ onCharacterCustomized, onBack }: {
 
 
 
+          <label className="flex items-center gap-2 cursor-pointer">
+            <Checkbox
+              checked={animatePreview}
+              onCheckedChange={(v) => setAnimatePreview(v === true)}
+            />
+            <span className="text-sm font-medium">Animate character</span>
+          </label>
+
           {bodyFeatures.length > 0 && (
           <div className="space-y-4">
             <h3 className="text-lg font-semibold">Initial Body Features</h3>
@@ -378,7 +400,62 @@ const CharacterCustomization = ({ onCharacterCustomized, onBack }: {
               </div>
             )}
           </div>
-        </CardContent>
+    </>
+  );
+
+  if (isMobile) {
+    return (
+      <div className="relative flex h-screen flex-col">
+        {viewer}
+        {!drawerOpen && (
+          <Button
+            onClick={() => { setDrawerExpanded(false); setDrawerOpen(true); }}
+            className="fixed inset-x-0 bottom-0 z-40 mx-4 mb-4 gap-2"
+          >
+            <SlidersHorizontal className="h-4 w-4" /> Customize
+          </Button>
+        )}
+        {/* Modal: the overlay blocks the WebGL canvas so drawer gestures don't fight OrbitControls. It's kept
+            faint so the character still reads above the (short) sheet; collapse the drawer to orbit/inspect. */}
+        <Drawer open={drawerOpen} onOpenChange={setDrawerOpen}>
+          <DrawerOverlay className="bg-black/40" />
+          <DrawerContent className={cn('transition-[height] duration-200', drawerExpanded ? DRAWER_HEIGHTS.tall : DRAWER_HEIGHTS.short)}>
+            <DrawerHeader className="flex flex-row items-center justify-between py-2">
+              <DrawerTitle>Character Customization</DrawerTitle>
+              <div className="flex items-center gap-1">
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  aria-label={drawerExpanded ? 'Shrink panel' : 'Expand panel'}
+                  onClick={() => setDrawerExpanded((v) => !v)}
+                >
+                  {drawerExpanded ? <ChevronDown className="h-5 w-5" /> : <ChevronUp className="h-5 w-5" />}
+                </Button>
+                <DrawerClose asChild>
+                  <Button variant="ghost" size="icon" aria-label="Close panel">
+                    <X className="h-5 w-5" />
+                  </Button>
+                </DrawerClose>
+              </div>
+            </DrawerHeader>
+            <ScrollArea className="min-h-0 flex-1">
+              <div className="space-y-6 px-4 pb-8">{controls}</div>
+            </ScrollArea>
+          </DrawerContent>
+        </Drawer>
+      </div>
+    );
+  }
+
+  return (
+    <div className="flex h-screen">
+      {viewer}
+      <Card className="w-1/3 m-4 flex flex-col overflow-hidden">
+        <ScrollArea className="flex-1 min-h-0">
+          <CardHeader>
+            <CardTitle>Character Customization</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-6">{controls}</CardContent>
         </ScrollArea>
       </Card>
     </div>

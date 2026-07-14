@@ -1,3 +1,4 @@
+import { randomUUID } from "@/lib/uuid";
 import type { Entity, Placeholder } from '@/types';
 import { APP_VERSION, WORLD_FILE_KIND, SAVE_FILE_KIND } from './version';
 import { DICTIONARY_FILE_KIND } from './dictionaryFile';
@@ -56,7 +57,7 @@ export function parseEntityCardData(raw: unknown): Entity {
   if (kind === DICTIONARY_FILE_KIND) throw new Error("That's a dictionary, not a character.");
   if (kind !== ENTITY_FILE_KIND) throw new Error('This file is not a character card.');
   return {
-    id: crypto.randomUUID(),
+    id: randomUUID(),
     name: typeof obj.name === 'string' && obj.name ? obj.name : 'Imported Character',
     ...(typeof obj.type === 'string' && obj.type ? { type: obj.type } : {}),
     ...(typeof obj.playerDescription === 'string' && obj.playerDescription ? { playerDescription: obj.playerDescription } : {}),

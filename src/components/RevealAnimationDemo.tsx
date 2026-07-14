@@ -123,7 +123,7 @@ function RevealAnimationDialog({ open, onOpenChange }: { open: boolean; onOpenCh
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-2xl h-[705px] max-h-[90vh] flex flex-col">
+      <DialogContent className="max-w-2xl h-[705px] max-h-[90dvh] flex flex-col">
         <DialogHeader className="shrink-0">
           <DialogTitle>Narration reveal</DialogTitle>
         </DialogHeader>

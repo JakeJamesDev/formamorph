@@ -63,6 +63,9 @@ interface VRMViewerProps {
   extraColors?: Record<string, string>;
   /** Called once the model loads, reporting which customization morphs/colorables it supports. */
   onCapabilities?: (caps: VRMCapabilities) => void;
+  /** When false, the idle animation and secondary motion freeze in place (the scene still renders, so orbit
+   *  and slider changes stay live). Defaults to true. */
+  animate?: boolean;
 }
 
 // Mixamo VRM Rig Mapping
@@ -131,9 +134,13 @@ const VRMViewer = forwardRef<VRMViewerHandle, VRMViewerProps>(({
   modelUrl = DEFAULT_MODEL_URL,
   animationFiles = ['./idle.fbx', './bashful.fbx', './idle_dwarf.fbx'],
   extraColors,
-  onCapabilities
+  onCapabilities,
+  animate = true
 }, ref) => {
   const mountRef = useRef<HTMLDivElement | null>(null);
+  // Read live in the render loop so toggling it doesn't tear down/rebuild the scene.
+  const pausedRef = useRef(!animate);
+  useEffect(() => { pausedRef.current = !animate; }, [animate]);
   const sceneRef = useRef<THREE.Scene | null>(null);
   const cameraRef = useRef<THREE.PerspectiveCamera | null>(null);
   const rendererRef = useRef<THREE.WebGLRenderer | null>(null);
@@ -595,12 +602,19 @@ const VRMViewer = forwardRef<VRMViewerHandle, VRMViewerProps>(({
       }, undefined, (error) => console.error(`Error loading ${animationName} animation:`, error));
     };
 
+    let animTimeout: ReturnType<typeof setTimeout> | undefined;
     const startAnimationLoop = () => {
       const playNextAnimation = () => {
+        // While frozen, don't swap/reset the clip (that would snap the pose to a new keyframe); re-check
+        // shortly so the cycle resumes once animation is re-enabled.
+        if (pausedRef.current) {
+          animTimeout = setTimeout(() => playNextAnimation(), 500);
+          return;
+        }
         if (currentAnimationRef.current) {
           currentAnimationRef.current.fadeOut(0.5);
         }
-  
+
         const animationName = (animationFiles[animationIndexRef.current].split('/').pop() ?? '').split('.')[0];
         const nextAction = mixerRef.current!.clipAction(animationsRef.current[animationName]);
         nextAction.reset().fadeIn(0.5).play();
@@ -608,40 +622,51 @@ const VRMViewer = forwardRef<VRMViewerHandle, VRMViewerProps>(({
   
         // Schedule the next animation
         animationIndexRef.current = (animationIndexRef.current + 1) % animationFiles.length;
-        setTimeout(() => playNextAnimation(), 
+        animTimeout = setTimeout(() => playNextAnimation(),
           (animationsRef.current[animationName].duration - 0.5) * 1000);
       };
   
       playNextAnimation();
     };
 
-    // Animation loop
-    const animate = () => {
-      requestAnimationFrame(animate);
+    // Animation loop. Track the RAF id and the pending animation timeout so cleanup can cancel them —
+    // otherwise every remount (model swap, layout change) leaks another loop/timer driving a disposed scene.
+    let rafId = 0;
+    const renderFrame = () => {
+      rafId = requestAnimationFrame(renderFrame);
+      // Always consume the delta (so unpausing doesn't jump); feed 0 while paused to freeze in place.
       const deltaTime = clock.getDelta();
+      const dt = pausedRef.current ? 0 : deltaTime;
 
       if (mixerRef.current) {
-        mixerRef.current.update(deltaTime);
+        mixerRef.current.update(dt);
       }
 
       if (vrmRef.current) {
-        vrmRef.current.update(deltaTime);
+        vrmRef.current.update(dt);
       }
 
       renderer.render(scene, camera);
     };
 
     const clock = new THREE.Clock();
-    animate();
+    renderFrame();
 
      
 
     window.addEventListener('resize', handleResize);
+    // Re-measure whenever the mount's own box changes (layout swaps, drawer reflow, orientation) — a window
+    // resize alone reads stale dimensions because it fires before the new layout settles.
+    const resizeObserver = new ResizeObserver(() => handleResize());
+    resizeObserver.observe(mount);
 
     // Cleanup function
     return () => {
       window.removeEventListener('resize', handleResize);
-      
+      resizeObserver.disconnect();
+      cancelAnimationFrame(rafId);
+      clearTimeout(animTimeout);
+
       // Safe cleanup of THREE.js resources
       if (sceneRef.current) {
         sceneRef.current.traverse((object) => {

@@ -1,3 +1,4 @@
+import { randomUUID } from "@/lib/uuid";
 import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
@@ -42,7 +43,7 @@ const CharacterSelectionModal = ({ libraryMeta, onConfirm, onAbort, onBack, conf
       );
       const characters = loaded
         .filter((e): e is Entity => e !== null)
-        .map((e) => ({ ...e, id: crypto.randomUUID() })); // fresh id: a runtime copy, independent of the library
+        .map((e) => ({ ...e, id: randomUUID() })); // fresh id: a runtime copy, independent of the library
       onConfirm(characters);
     } finally {
       setResolving(false);
@@ -50,7 +51,7 @@ const CharacterSelectionModal = ({ libraryMeta, onConfirm, onAbort, onBack, conf
   };
 
   return (
-    <Card className="fixed inset-0 m-auto w-[95%] max-w-[600px] h-[90vh] max-h-[800px] z-50">
+    <Card className="fixed inset-0 m-auto w-[95%] max-w-[600px] h-[90dvh] max-h-[800px] z-50">
       <CardContent className="p-3 sm:p-6 h-full flex flex-col">
         <h2 className="text-lg sm:text-xl font-semibold mb-1">Choose Characters</h2>
         <p className="text-xs sm:text-sm text-muted-foreground mb-3">

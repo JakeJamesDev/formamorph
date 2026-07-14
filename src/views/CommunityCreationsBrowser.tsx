@@ -127,7 +127,7 @@ const CommunityCreationsBrowser = ({ open, onOpenChange, worlds, setWorlds, isAu
       <Dialog open={open} onOpenChange={onOpenChange}>
         <DialogContent
           hideClose
-          className="max-w-none w-screen h-screen sm:max-w-none left-0 top-0 translate-x-0 translate-y-0 rounded-none sm:rounded-none p-0 gap-0 flex flex-col data-[state=open]:!slide-in-from-top-0 data-[state=open]:!slide-in-from-left-0 data-[state=closed]:!slide-out-to-top-0 data-[state=closed]:!slide-out-to-left-0"
+          className="max-w-none w-screen h-dvh sm:max-w-none left-0 top-0 translate-x-0 translate-y-0 rounded-none sm:rounded-none p-0 gap-0 flex flex-col data-[state=open]:!slide-in-from-top-0 data-[state=open]:!slide-in-from-left-0 data-[state=closed]:!slide-out-to-top-0 data-[state=closed]:!slide-out-to-left-0"
         >
           {/* Frozen header: back button + title + search/filter controls on one row */}
           <div className="shrink-0 border-b px-6 py-4 space-y-4">

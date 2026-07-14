@@ -1,3 +1,4 @@
+import { randomUUID } from "@/lib/uuid";
 import { createContext, useContext, useState, useRef, useCallback, useEffect, useMemo, type ReactNode } from 'react';
 import { putSaveRecord, getSaveRecord } from '../components/modals/dbUtils';
 import { toast } from 'react-toastify';
@@ -220,7 +221,7 @@ function useProvideGameplay() {
       gameState.worldName = worldName;
 
       const record: SaveRecord = {
-        id: saveId ?? crypto.randomUUID(),
+        id: saveId ?? randomUUID(),
         name: saveName,
         worldId,
         // The one canonical flat history; snapshots below are stripped of their own copies (O(N²) on disk).

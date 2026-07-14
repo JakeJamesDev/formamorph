@@ -1,3 +1,4 @@
+import { randomUUID } from "@/lib/uuid";
 import { useState, useEffect, useMemo, useCallback } from "react";
 import { useGameData } from "@/contexts/GameDataContext";
 import { useEditingDraft } from "@/lib/useEditingDraft";
@@ -99,7 +100,7 @@ const StatManager = ({ stat }: { stat: Stat }) => {
     if (newDescriptor.threshold && newDescriptor.description) {
       const updatedDescriptors = [
         ...(editingStat.descriptors || []),
-        { ...newDescriptor, id: crypto.randomUUID() },
+        { ...newDescriptor, id: randomUUID() },
       ];
       handleChange("descriptors", updatedDescriptors);
       setNewDescriptor({ threshold: "", description: "" });
@@ -117,7 +118,7 @@ const StatManager = ({ stat }: { stat: Stat }) => {
     if (newListItem.name && editingStat.type === "list") {
       const updatedValue = [
         ...((editingStat.value as StatListItem[]) || []),
-        { ...newListItem, id: crypto.randomUUID() },
+        { ...newListItem, id: randomUUID() },
       ];
       handleChange("value", updatedValue);
       setNewListItem({ name: "", description: "", number: 0 });

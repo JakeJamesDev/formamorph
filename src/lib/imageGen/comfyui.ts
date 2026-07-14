@@ -2,6 +2,7 @@
 // watch a WebSocket (`/ws`) for progress + preview frames, then pull the result from `/history` → `/view`.
 // The user launches ComfyUI with `--enable-cors-header` (see SettingsModal help). Direct browser fetch +
 // WS, so this works in the web dev build and the desktop app (not the hosted https build — mixed content).
+import { randomUUID } from "@/lib/uuid";
 import type { ImageGenOpts, ImageGenParams, ImageProvider } from './types';
 import { bytesToDataUrl } from '../imageOptim';
 import { trimUrl, authHeaders, POLL_INTERVAL_MS } from './http';
@@ -255,7 +256,7 @@ async function pollHistory(base: string, promptId: string, opts: ImageGenOpts): 
 
 export const comfyuiProvider: ImageProvider = async (params: ImageGenParams, opts: ImageGenOpts) => {
   const base = trimUrl(opts.endpointUrl);
-  const clientId = crypto.randomUUID();
+  const clientId = randomUUID();
   const graph = buildComfyGraph((opts.workflow ?? '').trim() || DEFAULT_COMFY_WORKFLOW, params);
   const auth = authHeaders(opts.apiToken, 'Bearer');
 

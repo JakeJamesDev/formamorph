@@ -1,3 +1,4 @@
+import { randomUUID } from "@/lib/uuid";
 import type { Placeholder, PlaceholderRolls } from '@/types';
 import type { PromptSegment } from './promptTemplate';
 
@@ -149,7 +150,7 @@ export function absorbPlaceholders(
     if (match) {
       idMap[c.id] = match.id;
     } else {
-      const fresh: Placeholder = { id: crypto.randomUUID(), name: c.name, values: [...c.values] };
+      const fresh: Placeholder = { id: randomUUID(), name: c.name, values: [...c.values] };
       toAdd.push(fresh);
       pool.push(fresh);
       idMap[c.id] = fresh.id;

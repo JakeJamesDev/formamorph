@@ -1,3 +1,4 @@
+import { randomUUID } from "@/lib/uuid";
 import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
@@ -18,7 +19,7 @@ const PlaceholderEditor = () => {
   const selected = placeholders.find((p) => p.id === selectedId) ?? null;
 
   const add = () => {
-    const p: Placeholder = { id: crypto.randomUUID(), name: 'New Placeholder', values: [] };
+    const p: Placeholder = { id: randomUUID(), name: 'New Placeholder', values: [] };
     addPlaceholder(p);
     setSelectedId(p.id);
   };

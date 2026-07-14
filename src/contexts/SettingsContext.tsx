@@ -1,3 +1,4 @@
+import { randomUUID } from "@/lib/uuid";
 import { createContext, useContext, useState, useEffect, useRef, useCallback, useMemo, type ReactNode } from 'react';
 import { defaultSystemPrompt, defaultChoicesPrompt, defaultStatUpdatesPrompt, defaultLocationChangePrompt, defaultThinkingPrompt, defaultSummaryPrompt, defaultChoicesUserPrompt, defaultStatUpdatesUserPrompt, defaultLocationChangeUserPrompt, defaultSummaryUserPrompt, defaultDiaryPrompt, defaultDirectorPrompt, defaultDirectorUserPrompt, defaultCharacterPrompt, defaultStoryboardPrompt } from '../components/game/GamePrompts';
 import { DEFAULT_ENDPOINT, DEFAULT_API_TOKEN, DEFAULT_MODEL_NAME, DEFAULT_MAX_TOKENS, DEFAULT_CONTEXT_WINDOW, DEFAULT_LOCAL_CONTEXT_SIZE, DEFAULT_LOCAL_GPU_LAYERS, DEFAULT_LOCAL_FLASH_ATTENTION, DEFAULT_LOCAL_PARALLEL_REQUESTS, DEFAULT_GEN_TEMPERATURE, DEFAULT_GEN_TOP_P, DEFAULT_GEN_REPETITION_PENALTY, DEFAULT_GEN_TOP_K, DEFAULT_GEN_MIN_P, DEFAULT_THEME_COLOR, BASE_THEME_COLOR, THEME_COLORS, DEFAULT_FONT, FONT_OPTIONS, SYSTEM_FONT_STACK, DEFAULT_NARRATION_FONT, DEFAULT_NARRATION_SCALE, DEFAULT_NARRATION_LINE_HEIGHT, NARRATION_FONT_OPTIONS, fontStack, fontSizeAdjust, DEFAULT_UPDATE_CHANNEL, type ThemeColor, type FontChoice, type NarrationFont, type UpdateChannel } from './settingsDefaults';
@@ -457,7 +458,7 @@ function useProvideSettings() {
   const promptPresets = presetStore.presets.map((p) => ({ id: p.id, name: p.name }));
   const selectPreset = (id: string) => setPresetStore((s) => setActivePreset(s, id));
   const addPreset = (name: string) => {
-    const id = crypto.randomUUID();
+    const id = randomUUID();
     setPresetStore((s) => addPresetOp(s, id, name, activeValues(s, BUILTIN_VALUES), activeStyle(s)));
     return id;
   };
@@ -484,7 +485,7 @@ function useProvideSettings() {
       ...(opts.includeTuning && imported.verbatim ? { verbatim: imported.verbatim } : {}),
     };
     if (opts.overwriteId) { const target = opts.overwriteId; setPresetStore((s) => replacePreset(s, target, content)); return target; }
-    const id = crypto.randomUUID();
+    const id = randomUUID();
     setPresetStore((s) => addFullPreset(s, id, content));
     return id;
   };
@@ -549,7 +550,7 @@ function useProvideSettings() {
     imagePresetStore.presets.find((p) => p.id === imagePresetStore.activeId)?.name ?? 'Default';
   const selectImageEndpointPreset = (id: string) => setImagePresetStore((s) => imageSetActive(s, id));
   const addImageEndpointPreset = (name: string) => {
-    const id = crypto.randomUUID();
+    const id = randomUUID();
     setImagePresetStore((s) => imageAddPreset(s, id, name, imageEndpointActiveValues(s)));
     return id;
   };

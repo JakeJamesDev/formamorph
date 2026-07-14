@@ -5,6 +5,7 @@
 // equivalent and are dropped. An embedded `character_book` lorebook is offered separately to the dictionary
 // library. See the MIT Character Card V3 spec (credited in THIRD-PARTY-NOTICES.md).
 
+import { randomUUID } from "@/lib/uuid";
 import type { Entity, Dictionary } from '@/types';
 import { readPngTextChunks } from './sdMetadata';
 import { convertLorebook } from './lorebookImport';
@@ -59,7 +60,7 @@ function cardToEntity(data: TavernData): Entity {
   if (str(data.personality)) parts.push(`Personality: ${str(data.personality)}`);
   if (str(data.scenario)) parts.push(`Scenario: ${str(data.scenario)}`);
   const aiDescription = substituteMacros(parts.join('\n\n'), name);
-  return { id: crypto.randomUUID(), name, ...(aiDescription ? { aiDescription } : {}) };
+  return { id: randomUUID(), name, ...(aiDescription ? { aiDescription } : {}) };
 }
 
 /**

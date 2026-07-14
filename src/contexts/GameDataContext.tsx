@@ -1,3 +1,4 @@
+import { randomUUID } from "@/lib/uuid";
 import { createContext, useContext, useState, useCallback, useMemo, useEffect, type ReactNode } from 'react';
 import WorldStorageService from '../services/WorldStorageService';
 import { migrateWorld, APP_VERSION } from '@/lib/version';
@@ -19,7 +20,7 @@ import type {
 } from '@/types';
 
 /** A fresh, empty "Default" book — the ≥1-book invariant's seed. */
-const makeDefaultBook = (): Dictionary => ({ id: crypto.randomUUID(), name: 'Default', enabled: true, entries: [] });
+const makeDefaultBook = (): Dictionary => ({ id: randomUUID(), name: 'Default', enabled: true, entries: [] });
 
 // Stable serialization of the full world definition, used for dirty detection.
 function serializeWorld(
@@ -72,9 +73,9 @@ function useProvideGameData() {
 
   const addStat = useCallback((newStat: Omit<Stat, 'descriptors'>) => {
     const defaultDescriptors = [
-      { id: crypto.randomUUID(), threshold: 30, description: `${newStat.name} is low` },
-      { id: crypto.randomUUID(), threshold: 60, description: `${newStat.name} is medium` },
-      { id: crypto.randomUUID(), threshold: 100, description: `${newStat.name} is high` },
+      { id: randomUUID(), threshold: 30, description: `${newStat.name} is low` },
+      { id: randomUUID(), threshold: 60, description: `${newStat.name} is medium` },
+      { id: randomUUID(), threshold: 100, description: `${newStat.name} is high` },
     ];
     const statWithDescriptors = { ...newStat, descriptors: defaultDescriptors };
     setStats(prevStats => [...prevStats, statWithDescriptors]);

@@ -214,7 +214,7 @@ export function LocalModelModal({ open, onOpenChange }: { open: boolean; onOpenC
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="flex h-[820px] max-h-[92vh] w-[min(96vw,760px)] max-w-none flex-col">
+      <DialogContent className="flex h-[820px] max-h-[92dvh] w-[min(96vw,760px)] max-w-none flex-col">
         <DialogHeader className="shrink-0">
           <DialogTitle>Local model</DialogTitle>
           <DialogDescription>

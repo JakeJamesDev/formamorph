@@ -22,7 +22,7 @@ export const EntityModal = ({ entity, isOpen, onOpenChange }: {
 
   return (
     <Dialog open={isOpen} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[800px] h-[90vh] flex flex-col">
+      <DialogContent className="sm:max-w-[800px] h-[90dvh] flex flex-col">
         <DialogHeader className="flex-shrink-0">
           <DialogTitle>{entity.name}</DialogTitle>
         </DialogHeader>
@@ -63,7 +63,7 @@ export const EntityModal = ({ entity, isOpen, onOpenChange }: {
                   <DialogTrigger asChild>
                     <Button>View 3D Model</Button>
                   </DialogTrigger>
-                  <DialogContent className="sm:max-w-[425px] max-h-[90vh] overflow-hidden flex flex-col">
+                  <DialogContent className="sm:max-w-[425px] max-h-[90dvh] overflow-hidden flex flex-col">
                     <DialogHeader>
                       <DialogTitle>3D Model Viewer</DialogTitle>
                     </DialogHeader>

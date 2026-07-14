@@ -1,3 +1,4 @@
+import { randomUUID } from "@/lib/uuid";
 import { useEffect, useState } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
 import { Checkbox } from '@/components/ui/checkbox';
@@ -47,8 +48,8 @@ const AddDictionaryModal = ({ open, onOpenChange, onAdd }: {
       if (!book) continue;
       onAdd({
         ...book,
-        id: crypto.randomUUID(),
-        entries: book.entries.map((e) => ({ ...e, id: crypto.randomUUID() })),
+        id: randomUUID(),
+        entries: book.entries.map((e) => ({ ...e, id: randomUUID() })),
       });
     }
     onOpenChange(false);
@@ -68,7 +69,7 @@ const AddDictionaryModal = ({ open, onOpenChange, onAdd }: {
             No saved dictionaries yet — import one from the Dictionaries tab on the main menu first.
           </p>
         ) : (
-          <ScrollArea className="max-h-[50vh] pr-2">
+          <ScrollArea className="max-h-[50dvh] pr-2">
             <div className="space-y-1">
               {list.map((d) => (
                 <div

@@ -1,3 +1,4 @@
+import { randomUUID } from "@/lib/uuid";
 import type { Codec } from './usePersistentState';
 import type { ImageProviderId } from './imageGen';
 import { DEFAULT_COMFY_WORKFLOW } from './imageGen/comfyui';
@@ -117,7 +118,7 @@ export function presetStoreFromEnv(
     const rec = item as Record<string, unknown>;
     const name = typeof rec.name === 'string' ? rec.name.trim() : '';
     if (!name) continue;
-    presets.push({ id: crypto.randomUUID(), name, values: coerceValues(rec) });
+    presets.push({ id: randomUUID(), name, values: coerceValues(rec) });
   }
   if (presets.length === 0) return null;
   return { activeId: presets[0].id, presets };

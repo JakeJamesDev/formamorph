@@ -1,7 +1,7 @@
 {
   "name": "formamorph",
   "private": true,
-  "version": "2.2.2",
+  "version": "2.2.3",
   "license": "PolyForm-Noncommercial-1.0.0",
   "type": "module",
   "main": "electron/main.cjs",
@@ -114,6 +114,7 @@
     "typedoc": "^0.28.19",
     "typescript": "^6.0.3",
     "typescript-eslint": "^8.62.0",
+    "vaul": "^1.1.2",
     "vite": "^5.4.0",
     "vitest": "^3.2.6",
     "wasm-webp": "^0.1.0"
