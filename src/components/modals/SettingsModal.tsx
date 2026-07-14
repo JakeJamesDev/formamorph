@@ -54,6 +54,30 @@ const THINKING_OPTIONS: { value: ThinkingMode; label: string; help: string }[] =
   { value: 'precall', label: 'Planning', help: 'Recommended. A separate request is sent to plan narration before writing it. Most reliable for small models.' },
   { value: 'staged', label: 'Staged', help: 'Highest quality, slowest. A director picks the cast, each character plans its motivation, and a storyboarder writes the plan — several extra requests per turn.' },
 ];
+/** A segmented option control that collapses to a dropdown on mobile: a full-width Select below `sm`, the
+ *  tab row at `sm+`. Both drive the same value, so option help stacked beneath it (by the caller) is unaffected. */
+function OptionSwitcher({ value, onChange, options }: {
+  value: string;
+  onChange: (v: string) => void;
+  options: readonly { value: string; label: string }[];
+}) {
+  return (
+    <>
+      <Select value={value} onValueChange={onChange}>
+        <SelectTrigger className="w-full sm:hidden"><SelectValue /></SelectTrigger>
+        <SelectContent>
+          {options.map((o) => <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>)}
+        </SelectContent>
+      </Select>
+      <Tabs value={value} onValueChange={onChange} className="hidden sm:block">
+        <TabsList className="grid w-full" style={{ gridTemplateColumns: `repeat(${options.length}, minmax(0, 1fr))` }}>
+          {options.map((o) => <TabsTrigger key={o.value} value={o.value}>{o.label}</TabsTrigger>)}
+        </TabsList>
+      </Tabs>
+    </>
+  );
+}
+
 const REASONING_CAVEAT = 'Only applies to models with native reasoning.';
 // Per-value help; the tabs themselves are built from the endpoint's detected support via `reasoningTabs`.
 const REASONING_EFFORT_HELP: Record<ReasoningEffort, string> = {
@@ -855,13 +879,7 @@ export const SettingsModal = ({ isOpen, onOpenChange, previewValues, initialTab,
               <div className="grid grid-cols-1 sm:grid-cols-4 items-start gap-4">
                 <label className="text-left sm:text-right pt-2">Thinking</label>
                 <div className="col-span-3">
-                  <Tabs value={thinkingMode} onValueChange={(v) => setThinkingMode(v as ThinkingMode)}>
-                    <TabsList className="grid w-full grid-cols-2 sm:grid-cols-4">
-                      {THINKING_OPTIONS.map((o) => (
-                        <TabsTrigger key={o.value} value={o.value}>{o.label}</TabsTrigger>
-                      ))}
-                    </TabsList>
-                  </Tabs>
+                  <OptionSwitcher value={thinkingMode} onChange={(v) => setThinkingMode(v as ThinkingMode)} options={THINKING_OPTIONS} />
                   {/* Stacked like Paragraph Limit so switching thinking modes doesn't reflow the layout. */}
                   <div className="grid mt-2">
                     {THINKING_OPTIONS.map((o) => (
@@ -909,13 +927,7 @@ export const SettingsModal = ({ isOpen, onOpenChange, previewValues, initialTab,
                   <div className="grid grid-cols-1 sm:grid-cols-4 items-start gap-4">
                     <label className="text-left sm:text-right pt-2">Native Reasoning</label>
                     <div className="col-span-3">
-                      <Tabs value={reasoningEffort} onValueChange={(v) => setReasoningEffort(v as ReasoningEffort)}>
-                        <TabsList className="grid w-full" style={{ gridTemplateColumns: `repeat(${reasoningOptions.length}, minmax(0, 1fr))` }}>
-                          {reasoningOptions.map((o) => (
-                            <TabsTrigger key={o.value} value={o.value}>{o.label}</TabsTrigger>
-                          ))}
-                        </TabsList>
-                      </Tabs>
+                      <OptionSwitcher value={reasoningEffort} onChange={(v) => setReasoningEffort(v as ReasoningEffort)} options={reasoningOptions} />
                       <div className="grid mt-2">
                         {reasoningOptions.map((o) => (
                           <p
@@ -1019,8 +1031,8 @@ export const SettingsModal = ({ isOpen, onOpenChange, previewValues, initialTab,
 
           <TabsContent value="endpoint" className="px-2 flex-1 min-h-0 data-[state=active]:flex flex-col">
             {/* Toggle — a fixed header above the scrolling settings. */}
-            <div className="shrink-0 grid grid-cols-[1fr_3fr] items-center gap-4 py-4">
-              <label htmlFor="useCustomEndpoint" className="text-right">
+            <div className="shrink-0 grid grid-cols-1 sm:grid-cols-[1fr_3fr] sm:items-center gap-4 py-4">
+              <label htmlFor="useCustomEndpoint" className="text-left sm:text-right">
                 {desktop ? 'Use My Own Endpoint' : 'Use Custom Endpoint'}
               </label>
               <div className="flex items-center gap-3">
@@ -1089,8 +1101,8 @@ export const SettingsModal = ({ isOpen, onOpenChange, previewValues, initialTab,
                   </Button>
                 </div>
               </Row>
-              <div className="grid grid-cols-[1fr_3fr] gap-4">
-                <div />
+              <div className="grid grid-cols-1 sm:grid-cols-[1fr_3fr] gap-4">
+                <div className="hidden sm:block" />
                 <div className={contextStatus.red ? 'text-xs text-destructive' : 'text-xs text-muted-foreground'}>
                   {contextStatus.text}
                 </div>
@@ -1177,8 +1189,8 @@ export const SettingsModal = ({ isOpen, onOpenChange, previewValues, initialTab,
                   </SelectContent>
                 </Select>
               </Row>
-              <div className="grid grid-cols-[1fr_3fr] gap-4">
-                <div />
+              <div className="grid grid-cols-1 sm:grid-cols-[1fr_3fr] gap-4">
+                <div className="hidden sm:block" />
                 <div>
                   <Button variant="outline" size="sm" onClick={() => setShowImageSetup(true)}>How to Set Up</Button>
                 </div>
