@@ -1,5 +1,6 @@
 // Shared label+control rows for the settings surfaces (SettingsModal tabs, LocalModelPanel).
-// All build on the same two-column `grid grid-cols-[1fr_3fr]` with a right-aligned label.
+// All build on the same two-column `grid grid-cols-[1fr_3fr]` (stacked to one column below `sm`) with a
+// right-aligned label on wider screens.
 import type { ReactNode } from 'react';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Slider } from '@/components/ui/slider';
@@ -10,8 +11,8 @@ export function Row({ label, htmlFor, children, hint, center }: {
   label: string; htmlFor?: string; children: ReactNode; hint?: string; center?: boolean;
 }) {
   return (
-    <div className={`grid grid-cols-[1fr_3fr] ${center ? 'items-center' : 'items-start'} gap-4`}>
-      <label htmlFor={htmlFor} className={center ? 'text-right' : 'text-right pt-1'}>{label}</label>
+    <div className={`grid grid-cols-1 sm:grid-cols-[1fr_3fr] ${center ? 'sm:items-center' : 'items-start'} gap-4`}>
+      <label htmlFor={htmlFor} className={center ? 'text-left sm:text-right' : 'text-left sm:text-right pt-1'}>{label}</label>
       <div className="space-y-1">
         {children}
         {hint && <p className="text-xs text-muted-foreground">{hint}</p>}
@@ -37,8 +38,8 @@ export function CheckRow({ label, htmlFor, checked, onChange, hint }: {
   label: string; htmlFor: string; checked: boolean; onChange: (v: boolean) => void; hint: string;
 }) {
   return (
-    <div className="grid grid-cols-[1fr_3fr] items-start gap-4">
-      <label htmlFor={htmlFor} className="text-right leading-4">{label}</label>
+    <div className="grid grid-cols-1 sm:grid-cols-[1fr_3fr] items-start gap-4">
+      <label htmlFor={htmlFor} className="text-left sm:text-right leading-4">{label}</label>
       <div className="flex items-start gap-2">
         <Checkbox id={htmlFor} checked={checked} onCheckedChange={(c) => onChange(c === true)} className="shrink-0" />
         <span className="text-xs text-muted-foreground">{hint}</span>
