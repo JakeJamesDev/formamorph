@@ -2,7 +2,7 @@
 
 All notable changes to Formamorph. This fork's first line is **2.0.0** — a full TypeScript rebuild of the upstream JavaScript app ([FieryLionite's Formamorph](https://fierylion.itch.io/formamorph), ~v1.2) — with feature parity as the baseline plus new features on top.
 
-> ✅ **2.0.0 – 2.2.3 are released** (collapsed below). New work lands under **🚧 In Progress** — an unnumbered section, so changes accumulate without pinning a version. When a batch earns a release its section is marked **Released** and collapsed, and a fresh In Progress opens. `package.json` reads **2.2.3**, the latest released version.
+> ✅ **2.0.0 – 2.2.2 are released** (collapsed below). New work lands under **🚧 In Progress** — an unnumbered section, so changes accumulate without pinning a version. When a batch earns a release its section is marked **Released** and collapsed, and a fresh In Progress opens. `package.json` reads **2.2.3** — the in-progress version, not yet released.
 
 Each release groups changes as **Major** / **Minor**, then **Added** / **Removed** / **Fixed**, and within those by audience: 👤 user-facing · 🛠️ developer tooling · ⚙️ backend / invisible.
 
@@ -10,12 +10,7 @@ Each release groups changes as **Major** / **Minor**, then **Added** / **Removed
 
 ## 🚧 In Progress
 
-_Unreleased — new work accumulates here until it earns a version bump._
-
----
-
-<details>
-<summary><strong>✅ 2.2.3 — Released</strong> — polish for the "What's new" popup: a wider, cleaner outline that tints and tags your installed version and the newest available one, plus chip pop-outs that stay open while you adjust options (click to expand)</summary>
+_Unreleased — new work accumulates here until it earns a version bump. Targeting **2.2.3** (`package.json` is already bumped); finalized into a ✅ Released block when tagged._
 
 ### Minor Changes
 
@@ -52,10 +47,9 @@ _Unreleased — new work accumulates here until it earns a version bump._
   - **Changelog popout formatting.** `UpdateService.foldRelease` now emits each version as its own `### <tag>` heading (no more version·category merge); `ChangelogBody` tags the current / newest-uninstalled version headings (`cl-current` / `cl-update`) so `.changelog-body` CSS can tint them (info / success via `color-mix`, kept muted) and append the (Current) / (New!) labels; indentation is CSS too. Both changelog popouts widened to `max-w-3xl`. Tests updated.
   - **Version-aware changelog selection.** `buildRecentChangelog` now takes the running version and picks releases by rule instead of slicing the newest three: always the newest release (rule 0), the full current minor including newer patches (rule 1), the newest `RECENT_CHANGELOG_COUNT` when behind by more than one release (rule 2), and the two releases just below the running version (rule 3). Renders `...` gap markers wherever hidden releases sit between shown ones (or below the last). `currentVersion` threaded through `parseReleases`; unit-tested across the up-to-date, behind-by-one-into-new-minor, and behind-by-many cases.
   - **Character customization responsive layout + bottom drawer.** `CharacterCustomization` extracts the viewer and the controls into shared fragments and branches on `useIsMobile`: desktop keeps the two-card split; portrait renders the viewer full-height with the controls in a `vaul` bottom drawer (new dep) toggled by a floating **Customize** button. New `components/ui/drawer.tsx` follows the shadcn recipe but keeps the overlay separate from `DrawerContent`. The drawer is modal with a faint overlay so its gestures don't contend with the model's OrbitControls (this was the first-interact lag); it toggles between two fixed, fully-scrollable heights (`DRAWER_HEIGHTS`, short/tall) via a header expand button rather than vaul `snapPoints` — a partial snap can't scroll its inner content, so snap points were dropped. The viewer `Card` gained `overflow-hidden` to clip the WebGL canvas, and `VRMViewer` now re-fits via a `ResizeObserver` on its mount (not just `window.resize`, which measured stale dimensions mid-layout-swap) so orientation/landscape↔portrait changes no longer leave the model cut off. Single mount of the controls (no duplicate DOM ids). Reachable for verification via the dev-router (`#dev?modal=avatar`, added to `DEV_MODALS`). No export-shape or behavior change.
+  - **`VRMViewer` cancels its render loop and animation timers on unmount.** The `requestAnimationFrame` loop and the self-scheduling `playNextAnimation` `setTimeout` chain were never cancelled in the effect cleanup (only THREE resources were disposed), so every remount (model swap, layout change) leaked another loop + timer driving a disposed scene. Cleanup now tracks and cancels both. Also: the Animate-character toggle feeds `dt=0` to freeze in place, and `playNextAnimation` skips the clip swap while paused so the pose no longer jumps between keyframes.
   - **Touch-friendly DnD sensors on the library grids.** `MainMenu` swapped the shared `worldSensors` from a single `PointerSensor` (`distance: 8`, which fired on any touch swipe) to a `MouseSensor` (`distance: 8`) + `TouchSensor` (`delay: 200, tolerance: 5`) pair — a touch swipe scrolls, a press-and-hold reorders; mouse behavior is unchanged. Fixes worlds/entities/dictionaries in one place. Paired with this, `SortableWorldCard`'s whole-card draggables changed `touch-none` → `touch-pan-y` so a vertical swipe pans the grid's ScrollArea natively (with `touch-none` the browser couldn't start a scroll on a card, so the grid was unscrollable on touch); the delay sensor still takes over both axes once a drag activates. Small grip-handle draggables keep `touch-none` (their card bodies already scroll).
   - **`randomUUID()` helper with a non-secure-context fallback.** `crypto.randomUUID` is only defined in secure contexts (HTTPS/localhost), so any startup path that mints an id — e.g. `migrateWorld` on load — threw a blank screen when the app was served over plain-HTTP LAN (phone testing the dev server) or self-hosted without TLS. New `lib/uuid.ts` uses the native API when present and otherwise builds an RFC-4122 v4 from `crypto.getRandomValues` (which isn't secure-context-gated); all 34 `crypto.randomUUID()` call sites now route through it. Unit-tested (native path, fallback path, uniqueness). Still v4 UUIDs — no export-shape or version impact.
-
-</details>
 
 ---
 
