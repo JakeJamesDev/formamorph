@@ -1,3 +1,4 @@
+import { randomUUID } from "@/lib/uuid";
 import type { World, SaveObject, Stat, GameState, Trait, PlayerStat } from '@/types';
 import { normalizeCustomVRM } from './worldImport';
 import { autoBindLegacyBodyStats } from './bodyMorphs';
@@ -67,12 +68,12 @@ function foldDictionaryIntoBooks(world: Record<string, unknown>): void {
   if (Array.isArray(world.dictionaries)) {
     delete world.dictionary; // drop a stray legacy key if both somehow present
     if ((world.dictionaries as unknown[]).length === 0) {
-      world.dictionaries = [{ id: crypto.randomUUID(), name: 'Default', enabled: true, entries: [] }];
+      world.dictionaries = [{ id: randomUUID(), name: 'Default', enabled: true, entries: [] }];
     }
     return;
   }
   const entries = Array.isArray(world.dictionary) ? world.dictionary : [];
-  world.dictionaries = [{ id: crypto.randomUUID(), name: 'Default', enabled: true, entries }];
+  world.dictionaries = [{ id: randomUUID(), name: 'Default', enabled: true, entries }];
   delete world.dictionary;
 }
 

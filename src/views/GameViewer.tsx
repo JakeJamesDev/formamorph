@@ -1,3 +1,4 @@
+import { randomUUID } from "@/lib/uuid";
 import React, { useState, useEffect, useCallback, useRef, useMemo } from "react";
 import { useGameData } from "../contexts/GameDataContext";
 import { useSettings } from "@/contexts/SettingsContext";
@@ -506,7 +507,7 @@ const GameViewer = ({
       const fx = await loadDevFixture(name);
       if (!fx) return;
       // Seed the fixture as an id-keyed record and load it by that id.
-      const id = crypto.randomUUID();
+      const id = randomUUID();
       await putSaveRecord({ ...(fx.save as unknown as Record<string, unknown>), id, name: fx.saveName } as unknown as SaveRecord);
       await loadGame(id, locations);
     })();
@@ -1032,7 +1033,7 @@ const GameViewer = ({
       setChoicesReady(false);
       setSuggestedLocation(null);
       // Stamp a stable id for this turn, written into its assistant JSON (powers the digest apply-guard).
-      currentTurnIdRef.current = crypto.randomUUID();
+      currentTurnIdRef.current = randomUUID();
       // Start a new turn in the AI-context history (cap to the last 50 turns).
       setDebugTurns((prev) => [...prev, { action, requests: [], turnId: currentTurnIdRef.current }].slice(-50));
 
@@ -1834,7 +1835,7 @@ ${playerNotes || NONE_PLACEHOLDER}
     const captureSilent = silent && showSilentRequests && attachTurnId !== undefined;
     // Unique id tying this call's captured request to its response (concurrent same-type calls otherwise
     // overwrite each other by matching on type + empty-response).
-    const captureId = crypto.randomUUID();
+    const captureId = randomUUID();
     // Append a captured request payload onto the matching debug turn (the current turn for foreground
     // requests, or the `attachTurnId` turn for a silent digest). No-op if that turn isn't found.
     const captureRequest = () => setDebugTurns((prev) => {
@@ -2635,7 +2636,7 @@ ${playerNotes || NONE_PLACEHOLDER}
 
   return (
     <div
-      className={`flex ${isMobile ? "flex-col" : ""} h-screen p-4 text-sm md:text-base bg-background bg-cover bg-center overflow-hidden`}
+      className={`flex ${isMobile ? "flex-col" : "p-4"} h-screen text-sm md:text-base bg-background bg-cover bg-center overflow-hidden`}
       style={{
         // A background-colored overlay composited over the image fades it toward the theme background.
         // Dropped while the UI is hidden, so the eye toggle reveals the raw image.
@@ -2796,7 +2797,7 @@ ${playerNotes || NONE_PLACEHOLDER}
           else setIsEditingWorld(false);
         }}
       >
-        <DialogContent className="max-w-[95vw] w-[95vw] h-[90vh] p-0 overflow-hidden">
+        <DialogContent className="max-w-[95vw] w-[95vw] h-[90dvh] p-0 overflow-hidden">
           <WorldEditor embedded onClose={() => setIsEditingWorld(false)} />
         </DialogContent>
       </Dialog>
@@ -2809,7 +2810,7 @@ ${playerNotes || NONE_PLACEHOLDER}
 
       {/* Full AI context sent each turn, paginated by turn */}
       <Dialog open={isDebugOpen} onOpenChange={setIsDebugOpen}>
-        <DialogContent className="max-w-[90vw] w-[90vw] h-[85vh] flex flex-col overflow-hidden">
+        <DialogContent className="max-w-[90vw] w-[90vw] h-[85dvh] flex flex-col overflow-hidden">
           {(() => {
             const palette = HIGHLIGHT_PALETTE;
             const colorMap: Record<string, string> = {};

@@ -1,3 +1,4 @@
+import { randomUUID } from "@/lib/uuid";
 import { useEffect, useState } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
 import { Checkbox } from '@/components/ui/checkbox';
@@ -46,7 +47,7 @@ const AddEntityModal = ({ open, onOpenChange, onAdd }: {
     );
     for (const entity of loaded) {
       if (!entity) continue;
-      onAdd({ ...entity, id: crypto.randomUUID() });
+      onAdd({ ...entity, id: randomUUID() });
     }
     onOpenChange(false);
   };
@@ -65,7 +66,7 @@ const AddEntityModal = ({ open, onOpenChange, onAdd }: {
             No saved characters yet — import one from the Entities tab on the main menu first.
           </p>
         ) : (
-          <ScrollArea className="max-h-[50vh] pr-2">
+          <ScrollArea className="max-h-[50dvh] pr-2">
             <div className="space-y-1">
               {list.map((e) => (
                 <div

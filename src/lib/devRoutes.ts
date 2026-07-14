@@ -16,8 +16,9 @@ export type DevView = (typeof DEV_VIEWS)[number];
  *  `worldEditor` open from MainMenu; `entity`/`export` are in-game (GameViewer). `worldEditor` is an in-place
  *  modal on MainMenu (not a top-level view). `intro` replays the first-run welcome overlay on MainMenu.
  *  `localModel` is intentionally absent — it lives inside
- *  Settings→LocalModelPanel, reached via `modal=settings` + its tab, not its own name. */
-export const DEV_MODALS = ['settings', 'entity', 'export', 'menu', 'worldEditor', 'intro'] as const;
+ *  Settings→LocalModelPanel, reached via `modal=settings` + its tab, not its own name. `avatar` opens
+ *  MainMenu's Character Customization step directly (a MainMenu sub-state, like `worldEditor`). */
+export const DEV_MODALS = ['settings', 'entity', 'export', 'menu', 'worldEditor', 'intro', 'avatar'] as const;
 export type DevModal = (typeof DEV_MODALS)[number];
 
 /** Coverage ledger: tabbed surface → the sub-tabs the router can target (via `tab=…`). Kept in lockstep

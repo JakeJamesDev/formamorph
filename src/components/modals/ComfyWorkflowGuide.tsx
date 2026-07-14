@@ -9,7 +9,7 @@ const Code = ({ children }: { children: React.ReactNode }) => (
  *  field expects, by exporting it and swapping the Formamorph-controlled values for %tokens%. */
 const ComfyWorkflowGuide = ({ open, onOpenChange }: { open: boolean; onOpenChange: (open: boolean) => void }) => (
   <Dialog open={open} onOpenChange={onOpenChange}>
-    <DialogContent className="sm:max-w-[600px] max-h-[85vh] flex flex-col">
+    <DialogContent className="sm:max-w-[600px] max-h-[85dvh] flex flex-col">
       <DialogHeader className="shrink-0">
         <DialogTitle>Use a workflow you already have</DialogTitle>
       </DialogHeader>

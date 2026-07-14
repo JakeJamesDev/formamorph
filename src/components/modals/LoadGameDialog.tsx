@@ -1,3 +1,4 @@
+import { randomUUID } from "@/lib/uuid";
 import React from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -234,7 +235,7 @@ export function LoadGameDialog({ open, onOpenChange, current, onLoad }: {
           try {
             const data = JSON.parse(localStorage.getItem(key) || 'null');
             const name = key.replace('FORMAMORPH_save_', '');
-            await putSaveRecord({ ...(data as object), id: crypto.randomUUID(), name } as SaveRecord);
+            await putSaveRecord({ ...(data as object), id: randomUUID(), name } as SaveRecord);
             staleKeys.push(key);
           } catch (error) {
             console.error('Error migrating save:', error);
@@ -386,7 +387,7 @@ export function LoadGameDialog({ open, onOpenChange, current, onLoad }: {
       const worldName = save.currentState?.worldName ?? null;
       const record: SaveRecord = {
         ...save,
-        id: crypto.randomUUID(),
+        id: randomUUID(),
         name: save.name ?? 'Imported save',
         worldId: save.worldId ?? nameToId.get(worldName ?? ''),
       };
@@ -440,7 +441,7 @@ export function LoadGameDialog({ open, onOpenChange, current, onLoad }: {
       />
 
       <Dialog open={open} onOpenChange={onOpenChange}>
-        <DialogContent className="sm:max-w-[425px] max-h-[90vh] flex flex-col">
+        <DialogContent className="sm:max-w-[425px] max-h-[90dvh] flex flex-col">
           <DialogHeader className="flex-shrink-0">
             <DialogTitle>Load Game</DialogTitle>
           </DialogHeader>
@@ -474,7 +475,7 @@ export function LoadGameDialog({ open, onOpenChange, current, onLoad }: {
               <div className="w-[68px] shrink-0" aria-hidden />
             </div>
 
-            <ScrollArea className="max-h-[60vh]">
+            <ScrollArea className="max-h-[60dvh]">
               <div className="space-y-2 p-1">
                 {atRoot ? (
                   <>

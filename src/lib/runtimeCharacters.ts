@@ -1,3 +1,4 @@
+import { randomUUID } from "@/lib/uuid";
 import type { ChatMessage, Entity, GameLocation, DiscoveredEntity } from '@/types';
 import { parseTurnContent } from '@/lib/turnDigest';
 import { stripReasoning } from '@/lib/aiResponse';
@@ -48,7 +49,7 @@ export function selectDueDiscovery(history: ChatMessage[], knownNames: string[])
 
 /** Build a minimal valid runtime `Entity` from a coined name and a generated AI-facing description. */
 export function materializeDiscoveredEntity(name: string, aiDescription: string): Entity {
-  return { id: crypto.randomUUID(), name: name.trim(), aiDescription: aiDescription.trim() };
+  return { id: randomUUID(), name: name.trim(), aiDescription: aiDescription.trim() };
 }
 
 /**

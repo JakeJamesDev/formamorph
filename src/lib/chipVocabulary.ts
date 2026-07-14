@@ -1,3 +1,4 @@
+import { randomUUID } from "@/lib/uuid";
 import { createContext } from 'react';
 import type { Placeholder } from '@/types';
 import type { PromptSegment } from './promptTemplate';
@@ -123,7 +124,7 @@ export function placeholderVocabulary(placeholders: Placeholder[]): ChipVocabula
       })),
     freshInsertToken: (t) => {
       const d = decodePlaceholderToken(t);
-      return d ? encodePlaceholderToken({ ...d, placementId: crypto.randomUUID() }) : t;
+      return d ? encodePlaceholderToken({ ...d, placementId: randomUUID() }) : t;
     },
   };
 }

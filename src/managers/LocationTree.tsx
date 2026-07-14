@@ -1,3 +1,4 @@
+import { randomUUID } from "@/lib/uuid";
 import { useMemo } from 'react';
 import { useGameData } from '@/contexts/GameDataContext';
 import {
@@ -35,7 +36,7 @@ const LocationTree = ({ selectedId, onSelect }: { selectedId: string | null; onS
       duplicate: () => {
         const index = locations.findIndex((l) => l.id === node.id);
         if (index === -1) return;
-        const copy = { ...structuredClone(locations[index]), id: crypto.randomUUID() };
+        const copy = { ...structuredClone(locations[index]), id: randomUUID() };
         copy.name = `${copy.name} (Copy)`;
         setLocations([...locations.slice(0, index + 1), copy, ...locations.slice(index + 1)]);
         onSelect(copy.id);

@@ -1,3 +1,4 @@
+import { randomUUID } from "@/lib/uuid";
 import { openDatabase, promisifyRequest } from '@/lib/idb';
 import type { SaveRecord } from '@/types';
 
@@ -56,7 +57,7 @@ export const migrateLegacySaves = async (
     const worldName = currentState?.worldName ?? (old.worldName as string | null | undefined) ?? null;
     const record = {
       ...old,
-      id: (old.id as string | undefined) ?? crypto.randomUUID(),
+      id: (old.id as string | undefined) ?? randomUUID(),
       name: old.name as string,
       worldId: (old.worldId as string | undefined) ?? nameToId(worldName),
     } as unknown as SaveRecord;

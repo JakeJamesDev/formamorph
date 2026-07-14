@@ -1,3 +1,4 @@
+import { randomUUID } from "@/lib/uuid";
 import { useState } from 'react';
 import { useDictionaryStore } from '@/contexts/DictionaryStoreContext';
 import { Button } from '@/components/ui/button';
@@ -307,7 +308,7 @@ const DictionaryTree = ({ selectedId, onSelect }: { selectedId: string | null; o
   };
 
   const addEntry = (bookId: string) => {
-    const id = crypto.randomUUID();
+    const id = randomUUID();
     addDictionaryEntry(bookId, { id, name: 'New Entry', key: '', value: '' });
     setCollapsed((prev) => { const next = new Set(prev); next.delete(bookId); return next; });
     onSelect(id);

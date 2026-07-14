@@ -1,3 +1,4 @@
+import { randomUUID } from "@/lib/uuid";
 import type { PlayerModel } from '@/types';
 import { openDatabase, promisifyRequest } from './idb';
 
@@ -17,7 +18,7 @@ const openDB = (): Promise<IDBDatabase> =>
 /** Store an uploaded VRM file and return its library record. */
 export const addModel = async (file: File): Promise<PlayerModel> => {
   const model: PlayerModel = {
-    id: crypto.randomUUID(),
+    id: randomUUID(),
     name: file.name.replace(/\.[^.]+$/, ''),
     type: file.type || 'model/vrm',
     blob: file,

@@ -1,6 +1,7 @@
 // Pure helpers for the trait folder tree (groups + traits, nestable via parentId/groupId). The editor
 // and selection screen build/walk the tree from the two flat arrays kept on the world.
 
+import { randomUUID } from "@/lib/uuid";
 import type { Trait, TraitGroup } from '@/types';
 
 export type TraitTreeNode =
@@ -125,8 +126,8 @@ export function duplicateTraitNode(
     : [id];
 
   const idMap = new Map<string, string>();
-  subtreeGroupIds.forEach((gid) => idMap.set(gid, crypto.randomUUID()));
-  subtreeTraitIds.forEach((tid) => idMap.set(tid, crypto.randomUUID()));
+  subtreeGroupIds.forEach((gid) => idMap.set(gid, randomUUID()));
+  subtreeTraitIds.forEach((tid) => idMap.set(tid, randomUUID()));
   const newId = idMap.get(id)!;
   const rootParent = isGroup
     ? groups.find((g) => g.id === id)!.parentId ?? null

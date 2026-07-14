@@ -42,7 +42,7 @@ export function ChangelogBody({ text, placeholder, currentVersion, updateVersion
   }, [text, currentVersion, updateVersion]);
 
   return (
-    <ScrollArea className="changelog-body max-h-[60vh] rounded-md border bg-muted/30 text-sm">
+    <ScrollArea className="changelog-body max-h-[60dvh] rounded-md border bg-muted/30 text-sm">
       <div ref={ref} className="p-3 [&_:first-child]:mt-0">
         {text ? <MarkdownRenderer text={text} /> : <span className="text-muted-foreground">{placeholder}</span>}
       </div>

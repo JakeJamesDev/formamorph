@@ -94,7 +94,7 @@ const EntityEditorModal = ({ entityId, draft, onClose }: { entityId: string | nu
   return (
     <>
       <Dialog open={isOpen} onOpenChange={(open) => { if (!open) attemptClose(); }}>
-        <DialogContent className="max-w-[800px] w-[95vw] h-[85vh] flex flex-col p-0 gap-0 overflow-hidden">
+        <DialogContent className="max-w-[800px] w-[95vw] h-[85dvh] flex flex-col p-0 gap-0 overflow-hidden">
           <DialogHeader className="px-4 py-3 border-b shrink-0 flex-row items-center gap-3">
             <DialogTitle className="truncate flex-1">{entity?.name || 'Character'}</DialogTitle>
             {entity && (

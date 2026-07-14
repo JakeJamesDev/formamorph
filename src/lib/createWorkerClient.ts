@@ -6,6 +6,7 @@
  * Pass a factory that constructs the worker — kept as a literal
  * `new Worker(new URL('./x.ts', import.meta.url))` at the call site so Vite can statically bundle it.
  */
+import { randomUUID } from "@/lib/uuid";
 type PendingRequest = {
   resolve: (value: unknown) => void;
   reject: (reason: Error) => void;
@@ -41,7 +42,7 @@ export function createWorkerClient(createWorker: () => Worker) {
     new Promise((resolve, reject) => {
       try {
         const worker = getWorker();
-        const id = crypto.randomUUID();
+        const id = randomUUID();
         pendingRequests.set(id, { resolve, reject });
         worker.postMessage({ ...payload, id });
       } catch (error) {

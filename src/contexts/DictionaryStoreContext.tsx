@@ -1,8 +1,9 @@
+import { randomUUID } from "@/lib/uuid";
 import { createContext, useContext, useState, useCallback, type ReactNode } from 'react';
 import type { Dictionary, DictionaryEntry } from '@/types';
 
 /** A fresh, empty "Default" book — the ≥1-book invariant's seed. */
-const makeDefaultBook = (): Dictionary => ({ id: crypto.randomUUID(), name: 'Default', enabled: true, entries: [] });
+const makeDefaultBook = (): Dictionary => ({ id: randomUUID(), name: 'Default', enabled: true, entries: [] });
 
 /**
  * The book/entry CRUD the dictionary editing widgets need, scoped to whatever collection of books is being

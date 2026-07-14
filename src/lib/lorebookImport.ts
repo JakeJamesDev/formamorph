@@ -1,3 +1,4 @@
+import { randomUUID } from "@/lib/uuid";
 import type { Dictionary, DictionaryEntry } from '@/types';
 
 /**
@@ -64,7 +65,7 @@ function convertEntry(raw: RawEntry, book: { scanDepth?: number; recursive?: boo
   // book-level recursive_scanning enables recursion; an ST entry can opt out via excludeRecursion.
   const recursive = book.recursive === true && raw.excludeRecursion !== true;
 
-  const entry: DictionaryEntry = { id: crypto.randomUUID(), name, key: keys.join(', '), value };
+  const entry: DictionaryEntry = { id: randomUUID(), name, key: keys.join(', '), value };
   if (secondary.length) {
     entry.secondaryKeys = secondary.join(', ');
     // ST `selectiveLogic`: 0 AND_ANY (default), 1 NOT_ALL, 2 NOT_ANY, 3 AND_ALL → our exclude/all flags.
@@ -129,5 +130,5 @@ export function convertLorebook(raw: unknown, fallbackName?: string): Dictionary
     fallbackName || 'Imported Dictionary';
   const description = typeof book.description === 'string' && book.description ? book.description : undefined;
 
-  return { id: crypto.randomUUID(), name, enabled: true, ...(description ? { description } : {}), entries };
+  return { id: randomUUID(), name, enabled: true, ...(description ? { description } : {}), entries };
 }

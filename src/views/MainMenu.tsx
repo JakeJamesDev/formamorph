@@ -1,4 +1,5 @@
-﻿import React, { useState, useRef, useEffect, useCallback } from 'react';
+import { randomUUID } from "@/lib/uuid";
+import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { useGameData } from '../contexts/GameDataContext';
 import { useDevRoute } from '../lib/devRouter';
 import { toast } from 'react-toastify';
@@ -7,7 +8,7 @@ import 'react-toastify/dist/ReactToastify.css';
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {ConfirmDialog} from "@/components/ConfirmDialog";
-import {FilePlus2, DoorOpen, Pencil, Github, AlertTriangle, Code, User, LogIn, Import, Globe, LayoutGrid, GalleryThumbnails, Columns2, RectangleVertical, Menu, Earth, BookOpen, Upload } from "lucide-react";
+import {FilePlus2, DoorOpen, Pencil, Github, AlertTriangle, Code, User, LogIn, Import, Globe, LayoutGrid, GalleryThumbnails, Columns2, RectangleVertical, Menu, Earth, BookOpen, Upload, ChevronLast } from "lucide-react";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { ImageZoomViewer } from "@/components/ImageZoomViewer";
 import { cn } from "@/lib/utils";
@@ -27,7 +28,8 @@ import WorldEditor from './WorldEditor';
 import {
   DndContext,
   closestCenter,
-  PointerSensor,
+  MouseSensor,
+  TouchSensor,
   useSensor,
   useSensors,
   type DragEndEvent,
@@ -167,6 +169,7 @@ const MainMenu = ({ onStartGame, onLoadSaveGame, onReplayIntro }: MainMenuProps)
     if (devRoute?.modal === 'settings') setShowSettings(true);
     if (devRoute?.modal === 'menu') setShowLoadDialog(true);
     if (devRoute?.modal === 'worldEditor') setShowWorldEditor(true);
+    if (devRoute?.modal === 'avatar') setShowCharacterCustomization(true);
   }, [devRoute?.modal]);
 
   // Cold-load: fetch the save's world into GameData, then hand the save id to App to enter the game.
@@ -505,12 +508,12 @@ const MainMenu = ({ onStartGame, onLoadSaveGame, onReplayIntro }: MainMenuProps)
 
   // Open the editor on a blank character DRAFT — nothing is stored until the user hits Save in the editor.
   const handleCreateNewEntity = () => {
-    setDraftEntity({ id: crypto.randomUUID(), name: 'New Character' });
+    setDraftEntity({ id: randomUUID(), name: 'New Character' });
   };
 
   // Open the editor on a blank dictionary DRAFT — nothing is stored until the user hits Save in the editor.
   const handleCreateNewDictionary = () => {
-    setDraftDictionary({ id: crypto.randomUUID(), name: 'New Dictionary', enabled: true, entries: [] });
+    setDraftDictionary({ id: randomUUID(), name: 'New Dictionary', enabled: true, entries: [] });
   };
 
   const handleTraitSelection = (traitId: string) => {
@@ -688,14 +691,14 @@ const MainMenu = ({ onStartGame, onLoadSaveGame, onReplayIntro }: MainMenuProps)
         traits: [],
         // Seed the two default trait groups so authors start with World/Player folders.
         traitGroups: [
-          { id: crypto.randomUUID(), name: 'World', parentId: null, order: 0 },
-          { id: crypto.randomUUID(), name: 'Player', parentId: null, order: 1 },
+          { id: randomUUID(), name: 'World', parentId: null, order: 0 },
+          { id: randomUUID(), name: 'Player', parentId: null, order: 1 },
         ],
         locations: [],
         entities: [],
         statUpdates: [], // This field is required by WorldStorageService
         // Seed one "Default" book so new worlds start with a dictionary (Foreground by default).
-        dictionaries: [{ id: crypto.randomUUID(), name: 'Default', enabled: true, entries: [] }],
+        dictionaries: [{ id: randomUUID(), name: 'Default', enabled: true, entries: [] }],
       };
 
       // Load the blank world into context for editing; it is NOT persisted until the user hits Save World
@@ -744,8 +747,11 @@ const MainMenu = ({ onStartGame, onLoadSaveGame, onReplayIntro }: MainMenuProps)
     return 'U';
   };
 
+  // Mouse drags immediately (8px); touch requires a short press-and-hold so a swipe scrolls the grid instead
+  // of grabbing a card (no scroll wheel on mobile). Shared by the worlds, dictionary, and entity grids.
   const worldSensors = useSensors(
-    useSensor(PointerSensor, { activationConstraint: { distance: 8 } }),
+    useSensor(MouseSensor, { activationConstraint: { distance: 8 } }),
+    useSensor(TouchSensor, { activationConstraint: { delay: 200, tolerance: 5 } }),
   );
 
   // Reorder one library grid and persist the new id order — shared by the worlds, dictionary, and
@@ -864,12 +870,13 @@ const MainMenu = ({ onStartGame, onLoadSaveGame, onReplayIntro }: MainMenuProps)
           </Tabs>
         </div>
 
-        {/* Action buttons — full row in landscape, collapsed into a hamburger popover in portrait. Auto
-            width so it centers between the flex-1 side cells; wraps only as a last resort. */}
-        <div className="hidden landscape:flex items-center gap-4 flex-wrap justify-center">
+        {/* Action buttons — full row on wide viewports, collapsed into a hamburger below 1000px. Auto width so
+            it centers between the flex-1 side cells; wraps only as a last resort. When collapsed, the right-cell
+            menu (Load Game / Settings) folds into this same popover so there's one menu, not two. */}
+        <div className="hidden min-[1000px]:flex items-center gap-4 flex-wrap justify-center">
           {actionButtons}
         </div>
-        <div className="portrait:flex hidden">
+        <div className="flex min-[1000px]:hidden">
           <Popover>
             <PopoverTrigger asChild>
               <Button
@@ -881,6 +888,9 @@ const MainMenu = ({ onStartGame, onLoadSaveGame, onReplayIntro }: MainMenuProps)
             </PopoverTrigger>
             <PopoverContent align="center" className="flex flex-col gap-2 w-56 [&>button]:w-full">
               {actionButtons}
+              <div className="h-px bg-border my-1" />
+              <Button variant="ghost" className="justify-start" onClick={() => setShowLoadDialog(true)}>Load Game</Button>
+              <Button variant="ghost" className="justify-start" onClick={() => setShowSettings(true)}>Settings</Button>
             </PopoverContent>
           </Popover>
         </div>
@@ -897,23 +907,27 @@ const MainMenu = ({ onStartGame, onLoadSaveGame, onReplayIntro }: MainMenuProps)
               </TabsTrigger>
             </TabsList>
           </Tabs>
-          <Popover>
-            <PopoverTrigger asChild>
-              <button
-                className="p-3 bg-secondary text-secondary-foreground rounded-full shadow-lg hover:bg-secondary/80 transition-colors"
-                aria-label="Menu"
-                title="Menu"
-              >
-                <Menu className="h-6 w-6" />
-              </button>
-            </PopoverTrigger>
-            <PopoverContent align="end" className="w-48 p-1">
-              <div className="flex flex-col">
-                <Button variant="ghost" className="w-full justify-start" onClick={() => setShowLoadDialog(true)}>Load Game</Button>
-                <Button variant="ghost" className="w-full justify-start" onClick={() => setShowSettings(true)}>Settings</Button>
-              </div>
-            </PopoverContent>
-          </Popover>
+          {/* Right menu — hidden below 1000px, where its items fold into the center hamburger; the view toggle
+              then becomes the right-most control. */}
+          <div className="hidden min-[1000px]:block">
+            <Popover>
+              <PopoverTrigger asChild>
+                <button
+                  className="p-3 bg-secondary text-secondary-foreground rounded-full shadow-lg hover:bg-secondary/80 transition-colors"
+                  aria-label="Menu"
+                  title="Menu"
+                >
+                  <Menu className="h-6 w-6" />
+                </button>
+              </PopoverTrigger>
+              <PopoverContent align="end" className="w-48 p-1">
+                <div className="flex flex-col">
+                  <Button variant="ghost" className="w-full justify-start" onClick={() => setShowLoadDialog(true)}>Load Game</Button>
+                  <Button variant="ghost" className="w-full justify-start" onClick={() => setShowSettings(true)}>Settings</Button>
+                </div>
+              </PopoverContent>
+            </Popover>
+          </div>
         </div>
       </div>
 
@@ -1136,7 +1150,7 @@ const MainMenu = ({ onStartGame, onLoadSaveGame, onReplayIntro }: MainMenuProps)
       </footer>
 
       <Dialog open={showWorldModal} onOpenChange={setShowWorldModal}>
-        <DialogContent className={cn("h-[85vh] flex flex-col overflow-x-hidden", worldModalCollapsed ? "sm:max-w-[600px]" : "sm:max-w-[1200px]")}>
+        <DialogContent className={cn("h-[85dvh] flex flex-col overflow-x-hidden", worldModalCollapsed ? "sm:max-w-[600px]" : "sm:max-w-[1200px]")}>
           <DialogHeader className="shrink-0">
             <DialogTitle className="flex items-center gap-2">
               <span className="truncate">{selectedWorld?.name}</span>
@@ -1251,7 +1265,8 @@ const MainMenu = ({ onStartGame, onLoadSaveGame, onReplayIntro }: MainMenuProps)
                         onStartGame(selectedTraits, currentWorldData.worldOverview?.use3DModel ? defaultCharacterData : null, true);
                       }}
                     >
-                      Skip Customize
+                      <ChevronLast className="h-4 w-4 landscape:mr-2" />
+                      <span className="hidden landscape:inline">Skip Customize</span>
                     </Button>
                   </div>
 
@@ -1375,7 +1390,7 @@ const MainMenu = ({ onStartGame, onLoadSaveGame, onReplayIntro }: MainMenuProps)
       />
 
       <Dialog open={showCodeModal} onOpenChange={setShowCodeModal}>
-        <DialogContent className="sm:max-w-[500px] h-[85vh] overflow-y-auto">
+        <DialogContent className="sm:max-w-[500px] h-[85dvh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>Custom Code Execution</DialogTitle>
           </DialogHeader>
@@ -1558,7 +1573,7 @@ const MainMenu = ({ onStartGame, onLoadSaveGame, onReplayIntro }: MainMenuProps)
           hideClose
           onEscapeKeyDown={(e) => e.preventDefault()}
           onInteractOutside={(e) => e.preventDefault()}
-          className="max-w-none w-screen h-screen sm:max-w-none left-0 top-0 translate-x-0 translate-y-0 rounded-none sm:rounded-none p-0 gap-0 flex flex-col data-[state=open]:!slide-in-from-top-0 data-[state=open]:!slide-in-from-left-0 data-[state=closed]:!slide-out-to-top-0 data-[state=closed]:!slide-out-to-left-0"
+          className="max-w-none w-screen h-dvh sm:max-w-none left-0 top-0 translate-x-0 translate-y-0 rounded-none sm:rounded-none p-0 gap-0 flex flex-col data-[state=open]:!slide-in-from-top-0 data-[state=open]:!slide-in-from-left-0 data-[state=closed]:!slide-out-to-top-0 data-[state=closed]:!slide-out-to-left-0"
         >
           <DialogTitle className="sr-only">World Editor</DialogTitle>
           <WorldEditor embedded backButton onClose={() => { setShowWorldEditor(false); refreshWorlds(); }} />

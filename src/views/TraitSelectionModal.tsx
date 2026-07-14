@@ -109,7 +109,7 @@ const TraitSelectionModal = ({
   const next = () => (isLast ? onConfirm() : setIndex((i) => i + 1));
 
   return (
-    <Card className="fixed inset-0 m-auto w-[95%] max-w-[600px] h-[90vh] max-h-[800px] z-50">
+    <Card className="fixed inset-0 m-auto w-[95%] max-w-[600px] h-[90dvh] max-h-[800px] z-50">
       <CardContent className="p-3 sm:p-6 h-full flex flex-col">
         <h2 className="text-lg sm:text-xl font-semibold mb-3">Select Starting Traits</h2>
 

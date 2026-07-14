@@ -84,7 +84,7 @@ export function RemoteWorldDetailsModal({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className={cn("h-[85vh] flex flex-col", collapsed ? "sm:max-w-[600px]" : "sm:max-w-[1200px]")}>
+      <DialogContent className={cn("h-[85dvh] flex flex-col", collapsed ? "sm:max-w-[600px]" : "sm:max-w-[1200px]")}>
         <DialogHeader className="shrink-0">
           <DialogTitle className="flex items-center gap-2">
             <span className="truncate">{world?.name || 'World Details'}</span>

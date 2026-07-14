@@ -26,16 +26,19 @@ export function DateTimeText({ value }: { value?: string }) {
 /** Shared `{wrapper,left,right}` Tailwind class strings for the two-column detail modals; `collapsed`
  *  forces the single-column (portrait) layout regardless of viewport width. */
 export function splitColumnClasses(collapsed: boolean) {
+  // `overflow-y-auto` alone makes the browser compute overflow-x to `auto` too, so a child a hair too wide (at
+  // narrow mobile widths) adds a stray horizontal scrollbar. Pin overflow-x hidden and let the flex children
+  // shrink (`min-w-0`) so content wraps instead of forcing width.
   return {
     wrapper: collapsed
-      ? "flex-1 min-h-0 flex flex-col gap-6 overflow-y-auto"
-      : "flex-1 min-h-0 flex flex-col md:flex-row gap-6 overflow-y-auto md:overflow-hidden",
+      ? "flex-1 min-h-0 min-w-0 flex flex-col gap-6 overflow-y-auto overflow-x-hidden pr-2"
+      : "flex-1 min-h-0 min-w-0 flex flex-col md:flex-row gap-6 overflow-y-auto overflow-x-hidden pr-2 md:pr-0 md:overflow-hidden",
     left: collapsed
-      ? ""
-      : "md:w-1/2 md:min-h-0 md:overflow-y-auto md:pr-1",
+      ? "min-w-0"
+      : "md:w-1/2 md:min-h-0 min-w-0 md:overflow-y-auto md:pr-1",
     right: collapsed
-      ? "border-t pt-4"
-      : "md:w-1/2 md:min-h-0 md:overflow-y-auto border-t pt-4 md:border-t-0 md:pt-0 md:border-l md:pl-6",
+      ? "border-t pt-4 min-w-0"
+      : "md:w-1/2 md:min-h-0 min-w-0 md:overflow-y-auto border-t pt-4 md:border-t-0 md:pt-0 md:border-l md:pl-6",
   };
 }
 

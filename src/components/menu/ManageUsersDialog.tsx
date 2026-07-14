@@ -114,7 +114,7 @@ export function ManageUsersDialog({ open, onOpenChange }: ManageUsersDialogProps
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[800px] h-[85vh] overflow-y-auto flex flex-col items-start">
+      <DialogContent className="sm:max-w-[800px] h-[85dvh] overflow-y-auto flex flex-col items-start">
         <DialogHeader>
           <DialogTitle>Manage Users</DialogTitle>
           <DialogDescription>

@@ -1,3 +1,4 @@
+import { randomUUID } from "@/lib/uuid";
 import type { Dictionary, DictionaryMetadata } from '@/types';
 
 /**
@@ -75,9 +76,9 @@ export function finalizeSelection(
     if (!resolved) continue; // library record vanished between listing and confirm
     result.push({
       ...resolved,
-      id: crypto.randomUUID(),
+      id: randomUUID(),
       enabled: true,
-      entries: resolved.entries.map((e) => ({ ...e, id: crypto.randomUUID() })),
+      entries: resolved.entries.map((e) => ({ ...e, id: randomUUID() })),
     });
   }
   return result;
