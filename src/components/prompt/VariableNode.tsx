@@ -60,6 +60,21 @@ function VariableChip({ nodeKey, token }: { nodeKey: NodeKey; token: string }) {
     dragKey.current = nodeKey;
     e.dataTransfer.effectAllowed = 'move';
     e.dataTransfer.setData('text/plain', token); // some browsers won't start a drag without payload
+    // Custom drag image: a translucent copy of the chip offset down-right of the pointer, so the chip stops
+    // sitting on the cursor and hiding the insertion point (the pointer aligns to the wrapper's transparent
+    // top-left corner). Cleaned up on the next tick, after the browser has snapshotted it.
+    const chip = (e.currentTarget as HTMLElement).firstElementChild as HTMLElement | null;
+    if (chip) {
+      const wrap = document.createElement('div');
+      wrap.style.cssText = 'position:absolute;top:-1000px;left:-1000px;padding:16px 0 0 16px;pointer-events:none';
+      const ghost = chip.cloneNode(true) as HTMLElement;
+      ghost.style.opacity = '0.6';
+      ghost.style.margin = '0';
+      wrap.appendChild(ghost);
+      document.body.appendChild(wrap);
+      e.dataTransfer.setDragImage(wrap, 0, 0);
+      setTimeout(() => wrap.remove(), 0);
+    }
   };
 
   return (
