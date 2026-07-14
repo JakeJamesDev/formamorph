@@ -72,18 +72,27 @@ function caretRangeFromPoint(x: number, y: number): Range | null {
 
 /** Two-way sync between the controlled `value` string and the Lexical editor state. Our own edits set
  *  `expected` first so the external-value effect never rebuilds (and jolts the caret) on an echo. */
-function ValueSyncPlugin({ value, onChange, parse }: { value: string; onChange: (v: string) => void; parse: ChipVocabulary['parse'] }) {
+function ValueSyncPlugin({ value, onChange, parse, onExternalValue }: {
+  value: string;
+  onChange: (v: string) => void;
+  parse: ChipVocabulary['parse'];
+  /** Fired when `value` changes from outside the editor (a Reset or a template swap), not on a typed echo. */
+  onExternalValue?: () => void;
+}) {
   const [editor] = useLexicalComposerContext();
   const expected = useRef(value);
   const onChangeRef = useRef(onChange);
   onChangeRef.current = onChange;
   const parseRef = useRef(parse);
   parseRef.current = parse;
+  const onExternalRef = useRef(onExternalValue);
+  onExternalRef.current = onExternalValue;
 
   useEffect(() => {
     if (value === expected.current) return;
     expected.current = value;
     editor.update(() => buildEditorState(value, parseRef.current));
+    onExternalRef.current?.();
   }, [value, editor]);
 
   useEffect(
@@ -163,11 +172,30 @@ function VariableToolbar({ vocab, interactive }: {
 function ChipDragPlugin({ dragKey }: { dragKey: { current: string | null } }) {
   const [editor] = useLexicalComposerContext();
   useEffect(() => {
+    // Browsers don't render a native drop caret when dragging our contenteditable=false chip, so we draw our
+    // own: a thin vertical line positioned at the drop caret during dragover, hidden on drop / drag end.
+    const caret = document.createElement('div');
+    caret.style.cssText =
+      'position:fixed;width:2px;pointer-events:none;z-index:60;background:hsl(var(--foreground));display:none';
+    document.body.appendChild(caret);
+    const hideCaret = () => { caret.style.display = 'none'; };
+    const showCaretAt = (x: number, y: number) => {
+      const range = caretRangeFromPoint(x, y);
+      const rect = range?.getBoundingClientRect();
+      if (!rect) return hideCaret();
+      caret.style.left = `${rect.left}px`;
+      caret.style.top = `${rect.top}px`;
+      caret.style.height = `${rect.height || 18}px`;
+      caret.style.display = 'block';
+    };
+
     const removeOver = editor.registerCommand(
       DRAGOVER_COMMAND,
       (event: DragEvent) => {
         if (!dragKey.current) return false;
         event.preventDefault(); // allow the drop
+        if (event.dataTransfer) event.dataTransfer.dropEffect = 'move';
+        showCaretAt(event.clientX, event.clientY);
         return true;
       },
       COMMAND_PRIORITY_LOW,
@@ -179,6 +207,7 @@ function ChipDragPlugin({ dragKey }: { dragKey: { current: string | null } }) {
         if (!key) return false;
         event.preventDefault();
         dragKey.current = null;
+        hideCaret();
         const range = caretRangeFromPoint(event.clientX, event.clientY);
         if (!range) return true;
         editor.update(() => {
@@ -196,7 +225,14 @@ function ChipDragPlugin({ dragKey }: { dragKey: { current: string | null } }) {
       },
       COMMAND_PRIORITY_HIGH,
     );
-    return () => { removeOver(); removeDrop(); };
+    // dragend fires even when the drag is canceled or dropped outside the editor, so the caret never lingers.
+    document.addEventListener('dragend', hideCaret);
+    return () => {
+      removeOver();
+      removeDrop();
+      document.removeEventListener('dragend', hideCaret);
+      caret.remove();
+    };
   }, [editor, dragKey]);
   return null;
 }
@@ -319,6 +355,19 @@ const PromptField = ({ value, onChange, variables = [], vocabulary, previewValue
     proxyAnchor.current = captureAnchor(e.currentTarget, tab);
   };
 
+  // On an external value change (Reset / template swap), snap both panes back to the top — the browser keeps
+  // the old scrollTop when the content is replaced, so a reset would otherwise leave you mid-prompt. rAF so it
+  // lands after the editor rebuild's layout. `applying` gates out the resulting scroll event.
+  const resetScroll = () => {
+    proxyAnchor.current = null;
+    applying.current = true;
+    requestAnimationFrame(() => {
+      if (editScrollRef.current) editScrollRef.current.scrollTop = 0;
+      if (previewScrollRef.current) previewScrollRef.current.scrollTop = 0;
+      requestAnimationFrame(() => { applying.current = false; });
+    });
+  };
+
   useLayoutEffect(() => {
     const anchor = proxyAnchor.current;
     if (!anchor) return;
@@ -397,7 +446,7 @@ const PromptField = ({ value, onChange, variables = [], vocabulary, previewValue
           )}
         </div>
         <HistoryPlugin />
-        <ValueSyncPlugin value={value} onChange={onChange} parse={vocab.parse} />
+        <ValueSyncPlugin value={value} onChange={onChange} parse={vocab.parse} onExternalValue={resetScroll} />
         <EditablePlugin readOnly={readOnly} />
         <ChipDragPlugin dragKey={dragKey} />
       </PromptDragContext.Provider>
