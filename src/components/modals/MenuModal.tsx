@@ -10,7 +10,7 @@ import { useDevRoute } from '../../lib/devRouter';
 import { LoadGameDialog } from './LoadGameDialog';
 import type { WorldOverview, SaveRecord } from "@/types";
 
-export const MenuModal = ({ onSettingsClick, onSave, onLoad, worldOverview, worldId, onExitToMenu }: {
+export const MenuModal = ({ onSettingsClick, onSave, onLoad, worldOverview, worldId, onExitToMenu, onEditWorld, onShowAiContext }: {
   onSettingsClick: () => void;
   onSave: (saveName: string, opts?: { overwriteId?: string }) => Promise<unknown> | void;
   /** `worldId` set ⇒ the save belongs to a different (installed) world; the loader switches to it first. */
@@ -19,6 +19,9 @@ export const MenuModal = ({ onSettingsClick, onSave, onLoad, worldOverview, worl
   /** Stable id of the currently loaded world (from GameData) — the current world's folder key. */
   worldId?: string;
   onExitToMenu: () => void;
+  /** Optional extra items — used on mobile, where these live in the menu instead of their own header buttons. */
+  onEditWorld?: () => void;
+  onShowAiContext?: () => void;
 }) => {
   const current = React.useMemo(
     () => ({ id: worldId ? String(worldId) : '__none__', name: worldOverview?.name ?? 'Current World' }),
@@ -81,6 +84,8 @@ export const MenuModal = ({ onSettingsClick, onSave, onLoad, worldOverview, worl
           <div className="flex flex-col">
             <Button variant="ghost" className="w-full justify-start" onClick={() => { setMenuOpen(false); setShowSaveDialog(true); }}>Save Game</Button>
             <Button variant="ghost" className="w-full justify-start" onClick={() => { setMenuOpen(false); setShowLoadDialog(true); }}>Load Game</Button>
+            {onEditWorld && <Button variant="ghost" className="w-full justify-start" onClick={() => { setMenuOpen(false); onEditWorld(); }}>Edit World</Button>}
+            {onShowAiContext && <Button variant="ghost" className="w-full justify-start" onClick={() => { setMenuOpen(false); onShowAiContext(); }}>AI Context</Button>}
             <Button variant="ghost" className="w-full justify-start" onClick={() => { setMenuOpen(false); onSettingsClick(); }}>Settings</Button>
             <Button variant="ghost" className="w-full justify-start" onClick={() => { setMenuOpen(false); setShowExitConfirm(true); }}>Exit to Main Menu</Button>
           </div>

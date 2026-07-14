@@ -1,8 +1,8 @@
 import { useEffect, useMemo, useRef, useState, type SetStateAction } from 'react';
 import { toast } from 'react-toastify';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
-import { ScrollArea } from '@/components/ui/scroll-area';
 import { Button } from '@/components/ui/button';
+import { ListDetail } from '@/components/ui/list-detail';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Download, Save } from 'lucide-react';
 import { UnsavedChangesDialog } from '@/components/UnsavedChangesDialog';
@@ -117,24 +117,27 @@ const DictionaryEditorModal = ({ dictionaryId, draft, onClose }: { dictionaryId:
                   <PlaceholderEditor />
                 </PlaceholderStoreProvider>
               ) : (
-              <div className="flex-1 min-h-0 flex">
-                <ScrollArea className="w-1/2 min-w-0 border-r">
+              <ListDetail
+                showDetail={!!(selectedBook || selectedEntry)}
+                onBack={() => setSelectedId(null)}
+                backLabel="Dictionary"
+                list={
                   <div className="p-2">
                     <DictionaryTree selectedId={selectedId} onSelect={setSelectedId} />
                   </div>
-                </ScrollArea>
-                <ScrollArea className="w-1/2 min-w-0">
+                }
+                detail={
                   <div className="p-4">
                     {selectedBook ? (
                       <DictionaryBookManager key={selectedBook.id} book={selectedBook} />
                     ) : selectedEntry ? (
                       <DictionaryManager key={selectedEntry.id} entry={selectedEntry} placeholders={bookPlaceholders} />
                     ) : (
-                      <p className="text-sm text-muted-foreground">Select the dictionary or an entry on the left to edit it.</p>
+                      <p className="text-sm text-muted-foreground">Select the dictionary or an entry to edit it.</p>
                     )}
                   </div>
-                </ScrollArea>
-              </div>
+                }
+              />
               )}
               <div className="px-4 py-3 border-t shrink-0 flex justify-between">
                 <Button variant="outline" size="sm" onClick={handleDownload}>

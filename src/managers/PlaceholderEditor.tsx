@@ -1,17 +1,17 @@
 import { randomUUID } from "@/lib/uuid";
 import { useState } from 'react';
 import { Button } from '@/components/ui/button';
-import { ScrollArea } from '@/components/ui/scroll-area';
 import { Plus } from 'lucide-react';
+import { ListDetail } from '@/components/ui/list-detail';
 import { usePlaceholderStore } from '@/contexts/PlaceholderStoreContext';
 import PlaceholderList from './PlaceholderList';
 import PlaceholderManager from './PlaceholderManager';
 import type { Placeholder } from '@/types';
 
 /**
- * Self-contained placeholder editor — the same two-column list + right-panel layout as the World Editor's
- * Placeholders tab (mirrors the standalone Dictionary editor's shape), bound to the scoped `PlaceholderStore`
- * from context. Fills its flex parent; the caller sizes it. Reuses `PlaceholderList` + `PlaceholderManager`.
+ * Self-contained placeholder editor — a list of placeholders and the editor for the selected one, bound to the
+ * scoped `PlaceholderStore` from context. `ListDetail` gives it the two-column split on desktop and a single-
+ * panel push on mobile. Fills its flex parent; the caller sizes it.
  */
 const PlaceholderEditor = () => {
   const { placeholders, addPlaceholder } = usePlaceholderStore();
@@ -25,25 +25,28 @@ const PlaceholderEditor = () => {
   };
 
   return (
-    <div className="flex-1 min-h-0 flex">
-      <ScrollArea className="w-1/2 min-w-0 border-r">
+    <ListDetail
+      showDetail={!!selected}
+      onBack={() => setSelectedId(null)}
+      backLabel="Placeholders"
+      list={
         <div className="p-2 space-y-2">
           <Button size="sm" onClick={add} className="w-full">
             <Plus className="h-4 w-4 mr-1" /> Add Placeholder
           </Button>
           <PlaceholderList selectedId={selectedId} onSelect={setSelectedId} />
         </div>
-      </ScrollArea>
-      <ScrollArea className="w-1/2 min-w-0">
+      }
+      detail={
         <div className="p-4">
           {selected ? (
             <PlaceholderManager key={selected.id} placeholder={selected} />
           ) : (
-            <p className="text-sm text-muted-foreground">Select a placeholder on the left to edit it, or add one.</p>
+            <p className="text-sm text-muted-foreground">Select a placeholder to edit it, or add one.</p>
           )}
         </div>
-      </ScrollArea>
-    </div>
+      }
+    />
   );
 };
 

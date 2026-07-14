@@ -2645,6 +2645,37 @@ ${playerNotes || NONE_PLACEHOLDER}
     ? (locations.find((l) => l.id === viewLocationId) ?? currentLocation)
     : currentLocation;
 
+  // Menu save/load handlers, extracted so the desktop (header) and mobile (tab-row) MenuModal instances share them.
+  const handleMenuSave = (name: string, opts?: { overwriteId?: string }) =>
+    saveGame(name, worldOverview.name, worldId ? String(worldId) : undefined, opts?.overwriteId);
+  const handleMenuLoad = async (id: string, targetWorldId?: string) => {
+    // A save from another (installed) world: swap GameData to that world first, then restore the save against
+    // its locations — otherwise the save would run inside the current world's shell.
+    if (targetWorldId && targetWorldId !== (worldId ? String(worldId) : undefined)) {
+      try {
+        const world = await WorldStorageService.getWorldData(targetWorldId) as World;
+        loadWorldData(world);
+        return await loadGame(id, Array.isArray(world.locations) ? world.locations : []);
+      } catch (error) {
+        console.error('Cross-world load failed:', error);
+        toast.error("Couldn't load that save's world.");
+        return false;
+      }
+    }
+    return loadGame(id, locations);
+  };
+  const menuModal = (extra?: { onEditWorld?: () => void; onShowAiContext?: () => void }) => (
+    <MenuModal
+      onSettingsClick={() => setIsSettingsOpen(true)}
+      onSave={handleMenuSave}
+      onLoad={handleMenuLoad}
+      worldOverview={worldOverview}
+      worldId={worldId ? String(worldId) : undefined}
+      onExitToMenu={onExitToMenu}
+      {...extra}
+    />
+  );
+
   return (
     <div
       className={`flex ${isMobile ? "flex-col" : "p-4"} h-screen text-sm md:text-base bg-background bg-cover bg-center overflow-hidden`}
@@ -2663,7 +2694,7 @@ ${playerNotes || NONE_PLACEHOLDER}
       <ThemedToastContainer />
 
       {isMobile && !uiHidden && (
-        <div className="flex shrink-0 gap-1 mb-1">
+        <div className="flex shrink-0 items-center gap-1 mb-1">
           {[
             { key: "character", label: "Character" },
             { key: "game", label: "Game" },
@@ -2672,7 +2703,7 @@ ${playerNotes || NONE_PLACEHOLDER}
             <button
               key={t.key}
               onClick={() => setMobilePanel(t.key)}
-              className={`flex-1 rounded py-2 text-sm ${
+              className={`flex-1 min-w-0 rounded py-2 text-sm ${
                 mobilePanel === t.key
                   ? "bg-primary text-primary-foreground"
                   : "bg-muted text-muted-foreground"
@@ -2681,6 +2712,8 @@ ${playerNotes || NONE_PLACEHOLDER}
               {t.label}
             </button>
           ))}
+          {/* Menu joins the tab row on mobile; Edit World + AI Context fold into it (their header buttons hide). */}
+          {menuModal({ onEditWorld: () => setIsEditingWorld(true), onShowAiContext: () => setIsDebugOpen(true) })}
         </div>
       )}
 
@@ -2698,8 +2731,9 @@ ${playerNotes || NONE_PLACEHOLDER}
         </>
       ))}
 
-      {/* Hide-UI toggle: reveals the background image. While the UI is hidden the button
-          fades out completely until hovered, so it doesn't obscure the background. */}
+      {/* Hide-UI toggle: reveals the background image. While the UI is hidden the button fades out completely
+          until hovered. Hidden on mobile — the panels already fill the screen there, so it isn't needed. */}
+      {!isMobile && (
       <Button
         onClick={() => setUiHidden((h) => !h)}
         title={uiHidden ? "Show UI" : "Hide UI"}
@@ -2709,9 +2743,11 @@ ${playerNotes || NONE_PLACEHOLDER}
       >
         {uiHidden ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}
       </Button>
+      )}
 
-      {/* BGM + AI-context buttons */}
-      {!uiHidden && (
+      {/* BGM + AI-context buttons — desktop only. On mobile the music toggle is dropped and AI context moves
+          into the tab-row menu. */}
+      {!uiHidden && !isMobile && (
       <div className="absolute top-16 left-2 md:top-2 flex gap-2">
         <Button
           onClick={() => setBgmEnabled(!bgmEnabled)}
@@ -2731,8 +2767,8 @@ ${playerNotes || NONE_PLACEHOLDER}
       </div>
       )}
 
-      {/* Edit-world + Menu buttons */}
-      {!uiHidden && (
+      {/* Edit-world + Menu buttons — desktop only. On mobile both fold into the tab-row menu. */}
+      {!uiHidden && !isMobile && (
       <div className="absolute top-16 right-2 md:top-2 flex gap-2">
         <Button
           onClick={() => setIsEditingWorld(true)}
@@ -2741,29 +2777,7 @@ ${playerNotes || NONE_PLACEHOLDER}
         >
           <SquarePen className="h-5 w-5" />
         </Button>
-        <MenuModal
-          onSettingsClick={() => setIsSettingsOpen(true)}
-          onSave={(name, opts) => saveGame(name, worldOverview.name, worldId ? String(worldId) : undefined, opts?.overwriteId)}
-          onLoad={async (id, targetWorldId) => {
-            // A save from another (installed) world: swap GameData to that world first, then restore the
-            // save against its locations — otherwise the save would run inside the current world's shell.
-            if (targetWorldId && targetWorldId !== (worldId ? String(worldId) : undefined)) {
-              try {
-                const world = await WorldStorageService.getWorldData(targetWorldId) as World;
-                loadWorldData(world);
-                return await loadGame(id, Array.isArray(world.locations) ? world.locations : []);
-              } catch (error) {
-                console.error('Cross-world load failed:', error);
-                toast.error("Couldn't load that save's world.");
-                return false;
-              }
-            }
-            return loadGame(id, locations);
-          }}
-          worldOverview={worldOverview}
-          worldId={worldId ? String(worldId) : undefined}
-          onExitToMenu={onExitToMenu}
-        />
+        {menuModal()}
       </div>
       )}
 

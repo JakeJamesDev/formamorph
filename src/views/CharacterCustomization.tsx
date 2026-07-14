@@ -42,10 +42,12 @@ const ColorRow = ({ label, value, onChange, onRevert }: {
   </div>
 );
 
-const CharacterCustomization = ({ onCharacterCustomized, onBack }: {
+const CharacterCustomization = ({ onCharacterCustomized, onBack, onAbort }: {
   onCharacterCustomized: (data: CharacterData) => void;
-  /** Step back in the enter-world flow. Undefined on the flow's first step (the Back button then fades). */
+  /** Step back in the enter-world flow. Undefined on the flow's first step, where the button becomes Abort. */
   onBack?: () => void;
+  /** Cancel the whole enter-world flow (shown as Abort when there's no previous step to go back to). */
+  onAbort?: () => void;
 }) => {
   const { worldOverview } = useGameData();
   const [bodyShape, setBodyShape] = useState({
@@ -242,7 +244,9 @@ const CharacterCustomization = ({ onCharacterCustomized, onBack }: {
   const controls = (
     <>
       <div className="flex gap-2 mt-4">
-            <Button onClick={onBack} variant="outline" className="flex-1" disabled={!onBack}>Back</Button>
+            {onBack
+              ? <Button onClick={onBack} variant="outline" className="flex-1">Back</Button>
+              : <Button onClick={onAbort} variant="destructive" className="flex-1">Abort</Button>}
             <Button onClick={handleFinalize} className="flex-1">
               Finalize Character
             </Button>
