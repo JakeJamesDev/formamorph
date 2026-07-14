@@ -47,6 +47,7 @@ import { setLiveReasoning, getLiveReasoning } from "../lib/reasoningStreamStore"
 import {
   INLINE_THINKING_DIRECTIVE,
   markdownGuidance,
+  activeCharacterGuidance,
   planDirective,
   defaultDiscoverEntityPrompt,
   OPENING_SCENE_CUE,
@@ -265,6 +266,8 @@ const GameViewer = ({
     thinkingPrompt,
     memoryDigests,
     concurrentTurnRequests,
+    limitActiveCharacters,
+    activeCharacterLimit,
     summaryPrompt,
     characterDiaries,
     diaryPrompt,
@@ -997,13 +1000,14 @@ const GameViewer = ({
     ...buildContextValues(),
     "<LENGTH GUIDANCE>": lengthGuidance(paragraphLimit, maxTokens),
     "<MARKDOWN GUIDANCE>": restyle(markdownGuidance(markdownOutput), activeSectionStyle),
+    "<ACTIVE CHARACTER GUIDANCE>": activeCharacterGuidance(limitActiveCharacters, activeCharacterLimit),
     "<DICTIONARY>": "keyword-triggered lore active this turn (or N/A)",
     "<DICTIONARY|before>": "background lore active this turn (or N/A)",
     // Illustrative placeholders for the aux user-message templates (real values are per-turn at runtime).
     "<PLAYER ACTION>": "the player's latest action",
     "<NARRATION>": "the most recent narration",
     "<CHARACTER NAME>": "the speaking character",
-  }), [buildContextValues, paragraphLimit, maxTokens, markdownOutput, activeSectionStyle]);
+  }), [buildContextValues, paragraphLimit, maxTokens, markdownOutput, activeSectionStyle, limitActiveCharacters, activeCharacterLimit]);
 
   const sendGameAction = async (action: string) => {
     if (!isGameStarted && action !== "START GAME") return;
@@ -1042,7 +1046,9 @@ const GameViewer = ({
       // Fed only the action here (no narration exists yet); the trailing suggest request is skipped, and
       // the move itself is applied once the narration commits (below), so an abort leaves it unchanged.
       let turnLocation = currentLocation;
-      if (locationAutoApply && locationChangeEnabled && locationChangePromptText && currentLocation) {
+      // A single-location world has nowhere to move, so skip the location request even when the setting is on
+      // (saves the user toggling it per world).
+      if (locationAutoApply && locationChangeEnabled && locations.length > 1 && locationChangePromptText && currentLocation) {
         const preMoveCtx = buildContextValues();
         const locationResponse = await makeAIRequest(
           renderPromptTemplate(locationChangePromptText, preMoveCtx),
@@ -1202,8 +1208,11 @@ ${playerNotes || NONE_PLACEHOLDER}
         narrationMessages[narrationMessages.length - 1].content += INLINE_THINKING_DIRECTIVE;
       } else if (thinkingMode === "staged") {
         // Staged planning: director (cast + continuation) -> one motivation pass per character
-        // (sequential, capped at 3) -> storyboarder. The storyboard is injected like the precall plan.
-        const stageValues = ctx;
+        // (capped by the Limit Active Characters setting) -> storyboarder. Storyboard is injected like precall.
+        const stageValues = {
+          ...ctx,
+          "<ACTIVE CHARACTER GUIDANCE>": activeCharacterGuidance(limitActiveCharacters, activeCharacterLimit),
+        };
         // Banded turns ride as condensed pairs, so the last assistant message is the real last narration.
         const lastStory =
           [...trimmedHistory].reverse().find((m) => m.role === "assistant")?.content || "";
@@ -1219,6 +1228,7 @@ ${playerNotes || NONE_PLACEHOLDER}
           fullMessageHistory,
           diaryMemoryEntries: DIARY_MEMORY_ENTRIES,
           caps: { director: DIRECTOR_MAX_TOKENS, character: CHARACTER_MAX_TOKENS, storyboard: STORYBOARD_MAX_TOKENS },
+          activeCharacterCap: limitActiveCharacters ? activeCharacterLimit : Infinity,
           directorPrompt,
           directorUserPrompt,
           characterPrompt,
@@ -1375,7 +1385,8 @@ ${playerNotes || NONE_PLACEHOLDER}
 
       // Suggest mode only — with auto-apply the move was resolved up front (before the narration). After the
       // narration, ask whether the player should move (fed the action + narration) and offer it.
-      const locationActive = !locationAutoApply && locationChangeEnabled && !!locationChangePromptText;
+      // locations.length > 1: a single-location world has nowhere to move, so don't run it even when enabled.
+      const locationActive = !locationAutoApply && locationChangeEnabled && locations.length > 1 && !!locationChangePromptText;
       const runLocation = (quiet: boolean): Promise<string> => {
         if (!locationActive) return Promise.resolve("");
         return makeAIRequest(

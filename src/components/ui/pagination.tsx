@@ -3,7 +3,8 @@ import { ChevronLeft, ChevronRight, MoreHorizontal } from "lucide-react"
 
 import { cn } from "@/lib/utils"
 import { buttonVariants, type ButtonProps } from "@/components/ui/button";
-import { paginationSlots } from "@/lib/pagination"
+import { paginationSlots, pageWindow } from "@/lib/pagination"
+import { useIsMobile } from "@/lib/useIsMobile"
 
 const Pagination = ({
   className,
@@ -68,7 +69,7 @@ const PaginationPrevious = ({
     className={cn("gap-1 pl-2.5", className)}
     {...props}>
     <ChevronLeft className="h-4 w-4" />
-    <span>Previous</span>
+    <span className="hidden md:inline">Previous</span>
   </PaginationLink>
 )
 PaginationPrevious.displayName = "PaginationPrevious"
@@ -82,7 +83,7 @@ const PaginationNext = ({
     size="default"
     className={cn("gap-1 pr-2.5", className)}
     {...props}>
-    <span>Next</span>
+    <span className="hidden md:inline">Next</span>
     <ChevronRight className="h-4 w-4" />
   </PaginationLink>
 )
@@ -122,51 +123,59 @@ function Pager({
   const atStart = pageCount === 0 || page <= 1
   const atEnd = pageCount === 0 || page >= pageCount
 
-  // Render page links individually, but collapse each contiguous run of spacers+ellipsis into ONE cell
-  // whose width equals what those cells would occupy (so the strip's total width — and Previous/Next —
-  // stays fixed) with the ellipsis centered inside it. This centers a lone ellipsis in the gap between the
-  // two page groups regardless of how lopsided they are (e.g. "1 2 3 4  …  43").
-  const slots = paginationSlots(page, pageCount)
+  const isMobile = useIsMobile()
+
+  const pageCell = (p: number) => (
+    <PaginationItem key={`page-${p}`}>
+      <PaginationLink
+        href="#"
+        isActive={page === p}
+        onClick={(e) => {
+          e.preventDefault()
+          onPageChange(p)
+        }}
+      >
+        {p}
+      </PaginationLink>
+    </PaginationItem>
+  )
+
   const cells: React.ReactNode[] = []
-  for (let i = 0; i < slots.length; ) {
-    const slot = slots[i]
-    if (slot.kind === "page") {
-      const p = slot.page
-      cells.push(
-        <PaginationItem key={`page-${p}`}>
-          <PaginationLink
-            href="#"
-            isActive={page === p}
-            onClick={(e) => {
-              e.preventDefault()
-              onPageChange(p)
-            }}
+  if (isMobile) {
+    // Compact: just the three page numbers closest to the current one, no ellipsis or reserved spacers.
+    for (const p of pageWindow(page, pageCount, 3)) cells.push(pageCell(p))
+  } else {
+    // Render page links individually, but collapse each contiguous run of spacers+ellipsis into ONE cell
+    // whose width equals what those cells would occupy (so the strip's total width — and Previous/Next —
+    // stays fixed) with the ellipsis centered inside it. This centers a lone ellipsis in the gap between the
+    // two page groups regardless of how lopsided they are (e.g. "1 2 3 4  …  43").
+    const slots = paginationSlots(page, pageCount)
+    for (let i = 0; i < slots.length; ) {
+      const slot = slots[i]
+      if (slot.kind === "page") {
+        cells.push(pageCell(slot.page))
+        i += 1
+      } else {
+        let j = i
+        let hasEllipsis = false
+        while (j < slots.length && slots[j].kind !== "page") {
+          if (slots[j].kind === "ellipsis") hasEllipsis = true
+          j += 1
+        }
+        const runLen = j - i
+        cells.push(
+          <PaginationItem
+            key={`gap-${i}`}
+            aria-hidden={!hasEllipsis}
+            className="flex items-center justify-center"
+            // Match the width of `runLen` cells (2.5rem each) plus their inter-cell gaps (0.25rem).
+            style={{ width: `calc(${runLen} * 2.5rem + ${runLen - 1} * 0.25rem)` }}
           >
-            {p}
-          </PaginationLink>
-        </PaginationItem>,
-      )
-      i += 1
-    } else {
-      let j = i
-      let hasEllipsis = false
-      while (j < slots.length && slots[j].kind !== "page") {
-        if (slots[j].kind === "ellipsis") hasEllipsis = true
-        j += 1
+            {hasEllipsis ? <PaginationEllipsis /> : null}
+          </PaginationItem>,
+        )
+        i = j
       }
-      const runLen = j - i
-      cells.push(
-        <PaginationItem
-          key={`gap-${i}`}
-          aria-hidden={!hasEllipsis}
-          className="flex items-center justify-center"
-          // Match the width of `runLen` cells (2.5rem each) plus their inter-cell gaps (0.25rem).
-          style={{ width: `calc(${runLen} * 2.5rem + ${runLen - 1} * 0.25rem)` }}
-        >
-          {hasEllipsis ? <PaginationEllipsis /> : null}
-        </PaginationItem>,
-      )
-      i = j
     }
   }
 

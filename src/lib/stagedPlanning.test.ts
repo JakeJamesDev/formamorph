@@ -446,6 +446,7 @@ describe('runStagedPlanning', () => {
     fullMessageHistory: [],
     diaryMemoryEntries: 5,
     caps: { director: 100, character: 100, storyboard: 100 },
+    activeCharacterCap: 3,
     directorPrompt: defaultDirectorPrompt,
     directorUserPrompt: defaultDirectorUserPrompt,
     characterPrompt: defaultCharacterPrompt,

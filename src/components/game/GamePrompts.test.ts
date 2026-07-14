@@ -16,6 +16,7 @@ import {
   defaultSummaryUserPrompt,
   OPENING_SCENE_CUE,
   markdownGuidance,
+  activeCharacterGuidance,
   planDirective,
 } from './GamePrompts';
 import { parsePromptTemplate } from '@/lib/promptTemplate';
@@ -105,6 +106,7 @@ describe('default prompts carry the expected variable chips', () => {
       '<ENTITIES|sublocations.summary.markdown>',
       '<ENTITIES|reachable.summary.markdown>',
       '<NOTES>',
+      '<ACTIVE CHARACTER GUIDANCE>',
     ]);
   });
 
@@ -140,6 +142,21 @@ describe('aux user-message templates carry the runtime value-tokens', () => {
   it('choices user template has only the narration token', () => {
     expect(tokensIn(defaultChoicesUserPrompt)).toEqual(['<NARRATION>']);
   });
+  it('active-character guidance reflects the limit setting', () => {
+    // Low cap: the "keep it small" nudge.
+    const small = activeCharacterGuidance(true, 2);
+    expect(small).toContain('one to 2');
+    expect(small.toLowerCase()).toContain('small');
+    // Higher cap: neutral wording that never calls a large number "small".
+    const large = activeCharacterGuidance(true, 10);
+    expect(large).toContain('up to 10');
+    expect(large.toLowerCase()).not.toContain('small');
+    // Disabled: unbounded.
+    const off = activeCharacterGuidance(false, 5);
+    expect(off).not.toContain('one to');
+    expect(off.toLowerCase()).toContain('as many');
+  });
+
   it('director user template carries the narration + player-action tokens', () => {
     expect(tokensIn(defaultDirectorUserPrompt)).toEqual(['<NARRATION>', '<PLAYER ACTION>']);
   });

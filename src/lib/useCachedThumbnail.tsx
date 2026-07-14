@@ -1,3 +1,5 @@
+/* eslint-disable react-refresh/only-export-components -- this module intentionally co-locates the
+   `useCachedThumbnail` hook with its one-line `<img>` wrapper `CachedThumbnail`; they're one unit. */
 import { useEffect, useState } from 'react';
 import { getThumb, putThumb, toEpoch } from './thumbnailCache';
 
@@ -6,7 +8,7 @@ import { getThumb, putThumb, toEpoch } from './thumbnailCache';
  * possible. Fetches (and caches) the image only on a miss or when `updatedAt` is newer than the
  * cached copy; falls back to the direct `url` on any error so images never break.
  */
-function useCachedThumbnail(
+export function useCachedThumbnail(
   file: string | null | undefined,
   url: string,
   updatedAt: string | number | null | undefined,
