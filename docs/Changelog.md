@@ -2,7 +2,7 @@
 
 All notable changes to Formamorph. This fork's first line is **2.0.0** — a full TypeScript rebuild of the upstream JavaScript app ([FieryLionite's Formamorph](https://fierylion.itch.io/formamorph), ~v1.2) — with feature parity as the baseline plus new features on top.
 
-> ✅ **2.0.0 – 2.2.2 are released** (collapsed below). New work lands under **🚧 In Progress** — an unnumbered section, so changes accumulate without pinning a version. When a batch earns a release its section is marked **Released** and collapsed, and a fresh In Progress opens. `package.json` reads **2.2.3** — the in-progress version, not yet released.
+> ✅ **2.0.0 – 2.3.0 are released** (collapsed below). New work lands under **🚧 In Progress** — an unnumbered section, so changes accumulate without pinning a version. When a batch earns a release its section is marked **Released** and collapsed, and a fresh In Progress opens. `package.json` reads **2.3.0** — the latest released version.
 
 Each release groups changes as **Major** / **Minor**, then **Added** / **Removed** / **Fixed**, and within those by audience: 👤 user-facing · 🛠️ developer tooling · ⚙️ backend / invisible.
 
@@ -10,7 +10,14 @@ Each release groups changes as **Major** / **Minor**, then **Added** / **Removed
 
 ## 🚧 In Progress
 
-_Unreleased — new work accumulates here until it earns a version bump. Targeting **2.2.3** (`package.json` is already bumped); finalized into a ✅ Released block when tagged._
+_Unreleased — new work accumulates here until it earns a version bump. The next batch will pin its own version; `package.json` reads **2.3.0** (just released below)._
+
+_Nothing yet._
+
+---
+
+<details>
+<summary><strong>✅ 2.3.0 — Released 2026-07-14</strong> — Formamorph goes mobile: the game view, World Editor, character customization, Settings, and Community Creations all adapt to phones and portrait — one-panel push layouts, bottom sheets, collapsing toolbars, and viewport-correct popups — plus a version-aware "What's new" popup and a configurable Staged-thinking cast (click to expand)</summary>
 
 ### Minor Changes
 
@@ -62,6 +69,8 @@ _Unreleased — new work accumulates here until it earns a version bump. Targeti
   - **`VRMViewer` cancels its render loop and animation timers on unmount.** The `requestAnimationFrame` loop and the self-scheduling `playNextAnimation` `setTimeout` chain were never cancelled in the effect cleanup (only THREE resources were disposed), so every remount (model swap, layout change) leaked another loop + timer driving a disposed scene. Cleanup now tracks and cancels both. Also: the Animate-character toggle feeds `dt=0` to freeze in place, and `playNextAnimation` skips the clip swap while paused so the pose no longer jumps between keyframes.
   - **Touch-friendly DnD sensors on the library grids.** `MainMenu` swapped the shared `worldSensors` from a single `PointerSensor` (`distance: 8`, which fired on any touch swipe) to a `MouseSensor` (`distance: 8`) + `TouchSensor` (`delay: 200, tolerance: 5`) pair — a touch swipe scrolls, a press-and-hold reorders; mouse behavior is unchanged. Fixes worlds/entities/dictionaries in one place. Paired with this, `SortableWorldCard`'s whole-card draggables changed `touch-none` → `touch-pan-y` so a vertical swipe pans the grid's ScrollArea natively (with `touch-none` the browser couldn't start a scroll on a card, so the grid was unscrollable on touch); the delay sensor still takes over both axes once a drag activates. Small grip-handle draggables keep `touch-none` (their card bodies already scroll).
   - **`randomUUID()` helper with a non-secure-context fallback.** `crypto.randomUUID` is only defined in secure contexts (HTTPS/localhost), so any startup path that mints an id — e.g. `migrateWorld` on load — threw a blank screen when the app was served over plain-HTTP LAN (phone testing the dev server) or self-hosted without TLS. New `lib/uuid.ts` uses the native API when present and otherwise builds an RFC-4122 v4 from `crypto.getRandomValues` (which isn't secure-context-gated); all 34 `crypto.randomUUID()` call sites now route through it. Unit-tested (native path, fallback path, uniqueness). Still v4 UUIDs — no export-shape or version impact.
+
+</details>
 
 ---
 
