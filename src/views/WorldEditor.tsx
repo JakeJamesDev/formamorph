@@ -116,6 +116,7 @@ const WorldEditor = ({ onClose, embedded = false, backButton }: {
   const [selectedItemId, setSelectedItemId] = useState<string | null>(null);
   const isMobile = useIsMobile();
   const [showExitPrompt, setShowExitPrompt] = useState(false);
+  const [addMenuOpen, setAddMenuOpen] = useState(false);
   const [showAddDictionary, setShowAddDictionary] = useState(false);
   const [showAddEntity, setShowAddEntity] = useState(false);
 
@@ -542,7 +543,7 @@ const WorldEditor = ({ onClose, embedded = false, backButton }: {
   const addSearchBar = activeTab !== "overview" && (
     <div className="flex space-x-2 flex-shrink-0 mt-4">
       {activeTab === "traits" || activeTab === "entities" ? (
-        <Popover>
+        <Popover open={addMenuOpen} onOpenChange={setAddMenuOpen}>
           <PopoverTrigger asChild>
             <Button size="icon">
               <Plus className="h-4 w-4" />
@@ -552,14 +553,14 @@ const WorldEditor = ({ onClose, embedded = false, backButton }: {
             <button
               type="button"
               className="flex w-full items-center gap-2 rounded-sm px-2 py-1.5 text-sm hover:bg-accent"
-              onClick={activeTab === "entities" ? handleAddEntityGroup : handleAddGroup}
+              onClick={() => { (activeTab === "entities" ? handleAddEntityGroup : handleAddGroup)(); setAddMenuOpen(false); }}
             >
               <FolderPlus className="h-4 w-4" /> Add Group
             </button>
             <button
               type="button"
               className="flex w-full items-center gap-2 rounded-sm px-2 py-1.5 text-sm hover:bg-accent"
-              onClick={activeTab === "entities" ? addItem : handleAddTrait}
+              onClick={() => { (activeTab === "entities" ? addItem : handleAddTrait)(); setAddMenuOpen(false); }}
             >
               <FilePlus className="h-4 w-4" /> {activeTab === "entities" ? "Add Entity" : "Add Trait"}
             </button>
