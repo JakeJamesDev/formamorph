@@ -15,8 +15,14 @@ import path from "node:path";
 
 const HARNESS_DIR = path.dirname(fileURLToPath(import.meta.url));
 const REPO_ROOT = path.resolve(HARNESS_DIR, "../../..");
-const WORLD_PATH = path.resolve(HARNESS_DIR, "../sedge-landing.json");
+const BASELINE_DIR = path.resolve(HARNESS_DIR, "..");
+const DEFAULT_WORLD = "sedge-landing.json";
 const RUNS_DIR = path.resolve(HARNESS_DIR, "../runs");
+// The B-arm neutral prompt preset, seeded into FORMAMORPH_promptPresets when a profile sets
+// `"promptArm": "neutral"`. Any other value (or absent) leaves the built-in Default preset active (A-arm).
+const NEUTRAL_PRESET = JSON.parse(
+  await readFile(path.join(HARNESS_DIR, "neutral-preset.json"), "utf8"),
+);
 const PORT = 5180;
 const BASE_URL = `http://localhost:${PORT}`;
 
@@ -63,6 +69,14 @@ function buildSeed(cfg, model, profile) {
   for (const [k, v] of Object.entries(profile.settings ?? {})) {
     seed[`FORMAMORPH_${k}`] = serialize(v);
   }
+  // B-arm: activate the neutral prompt preset so every AI call uses the stripped-down control wording and its
+  // pin-neutralizing samplers. A-arm (default/absent) leaves the built-in Default preset active.
+  if (profile.promptArm === "neutral") {
+    seed.FORMAMORPH_promptPresets = JSON.stringify({
+      activeId: NEUTRAL_PRESET.id,
+      presets: [NEUTRAL_PRESET],
+    });
+  }
   return seed;
 }
 
@@ -93,8 +107,10 @@ async function runOne(browser, cfg, model, profile) {
   page.setDefaultTimeout(60000);
   await page.goto(BASE_URL);
 
-  // Import the world via the hidden file input (no OS dialog), then enter it.
-  await page.locator('input[type="file"]').first().setInputFiles(WORLD_PATH);
+  // Import the world via the hidden file input (no OS dialog), then enter it. Per-profile `world` overrides
+  // the Sedge Landing default (e.g. the gate profiles use blackrue-waystation.json).
+  const worldPath = path.join(BASELINE_DIR, profile.world ?? DEFAULT_WORLD);
+  await page.locator('input[type="file"]').first().setInputFiles(worldPath);
   await page.getByRole("button", { name: /Enter World/i }).click();
 
   // Advance the trait modal (defaults pre-checked) until the game mounts and __baseline registers.

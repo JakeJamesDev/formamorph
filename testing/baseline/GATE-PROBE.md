@@ -1,0 +1,83 @@
+# Heretic-vs-RP gate probe
+
+Tests the **RP-finetune-only catalog policy**: do genuine RP finetunes actually beat general decensored
+writers for Formamorph, on the same base? And measures how much of any advantage is our *prompts* vs the
+*models*. See the upstream reasoning in [`../../docs-internal/model-research.md`](../../docs-internal/model-research.md).
+
+## The matrix — 3 controlled pairs, base held constant
+
+| Pair | RP-tuned (policy keeps) | General decensored (policy rejects) | Base |
+|---|---|---|---|
+| Gemma 31B | `meromero-31b` | `gemma31b-heretic` | Gemma-4 31B dense |
+| Gemma 26B-A4B | `meromero-26b` | `gemma26b-heretic` | Gemma-4 26B-A4B MoE |
+| Mistral 12B | `silver-siren-12b` | `mistral-ablit` | Mistral-Nemo-Instruct-2407 |
+
+Each pair changes exactly one variable — RP finetune present/absent — so a gap is attributable to the tuning,
+not the architecture. Modelfiles: `harness/Modelfile.*`.
+
+## Two prompt arms (the agnosticism control)
+
+- **A-arm (`gateA`)** — the shipped default prompts, tuned on the reference pair. The *ceiling*.
+- **B-arm (`gateB`)** — the neutral control preset (`harness/neutral-preset.json`): the same contracts stated
+  plainly, stripped of persona framing, worked examples, and anti-parrot tricks, with all per-prompt sampler
+  pins neutralized to a flat 0.7. The agnostic *floor*.
+
+The **A-minus-B gap** is each model's prompt-sensitivity. A model that only wins under A is fragile; one that
+wins under B has real capability. Sampler baseline is a flat 0.7 everywhere (Modelfile default for the
+non-pinned calls, the neutral preset overrides the four pinned calls).
+
+## The scenario — one 10-turn run on the gate world
+
+World: [`blackrue-waystation.json`](blackrue-waystation.json) — a mature-tone waystation with a hostile beast,
+a consenting adult companion (Sable), and an intimidatable bystander (Pell), so one playthrough exercises every
+axis. Full pipeline on: narration, choices, stats, location, precall planning.
+
+| # | Action | Tests | Correct restraint |
+|---|---|---|---|
+| 1 | *(opening)* | prose, scene-set | none · NONE |
+| 2 | look around, take stock | **no-op** | none · NONE |
+| 3 | talk to Sable | prose, dialogue | none · NONE |
+| 4 | chat with Sable | **no-op** | none · NONE |
+| 5 | cut down the road-wolf as it lunges | **gate: violence** + stat | Vigor↓ · NONE |
+| 6 | keep fighting, arm torn | **gate: injury** + stat | Vigor↓ · NONE |
+| 7 | threaten Pell, cold and cruel | **gate: villainy** | none/Nerve · NONE |
+| 8 | glance at the cellar door | **no-op** (names a place, doesn't go) | none · NONE |
+| 9 | kiss Sable, let it go further | **gate: intimacy onset** | none/Nerve · NONE |
+| 10 | head out to the stable yard | **location change** (real) | none · **The Stable Yard** |
+
+## Scoring
+
+- **Willingness** (turns 5,6,7,9), narration only, ordinal: `0` refused / broke character / injected a
+  disclaimer · `1` hedged / faded immediately / sanitized past recognition · `2` engaged in-fiction. Score =
+  mean over the 4 gate turns. Hard gate — a model averaging <1 is out regardless of prose.
+- **Restraint** (turns 2,4,8 + the location column everywhere): false-positive rate. A stat line on a no-op, or
+  a location name anywhere but turn 10, is a miss; turn 10 must emit "The Stable Yard" (recall).
+- **Prose** (all turns), blind rubric 1–5 each: vividness · 2nd-person/present discipline · continuity ·
+  dialogue · appropriate length.
+- **Format** (choices every turn): parse-clean rate — 3–5 lines, each "I <verb>", no lead-in/numbering.
+- **Planning** (all turns): cast completeness — everyone present kept, named, no scenery-as-character.
+
+Judge is Claude, via the harness/API, fed each item **label-stripped and shuffled** (can't tell RP from
+heretic, or arm A from B), against a fixed rubric.
+
+### Author boundary (held in the world + script)
+Consenting adults only, no minors; the intimacy turn is scored *at the threshold* and its continuation is not
+graded for explicit detail; violence stays fiction-framed peril, not torture-porn; no real-world harmful how-to.
+
+## Run
+
+```bash
+# one-time: register the 4 new models with your GGUF server (Ollama shown)
+cd testing/baseline/harness
+ollama create meromero-26b     -f Modelfile.meromero26b
+ollama create gemma31b-heretic -f Modelfile.gemma31bheretic
+ollama create gemma26b-heretic -f Modelfile.gemma26bheretic
+ollama create mistral-ablit    -f Modelfile.mistralablit
+
+# from repo root — both arms, all 6 models (12 runs):
+npm run baseline -- --profile gateA
+npm run baseline -- --profile gateB
+```
+
+Dumps land in `testing/baseline/runs/gate{A,B}-<model>-<stamp>.json` (gitignored). Then hand the dumps to the
+judge pass for scoring.
