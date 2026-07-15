@@ -10,11 +10,13 @@ import { getGameplayText, setGameplayText } from '../lib/gameplayTextStore';
 import { parseTurnContent, serializeTurnContent } from '../lib/turnDigest';
 import { matchChoicesToAction } from '../lib/choices';
 import { pageStatDeltas } from '../lib/statChanges';
-import { pageAssistantIndex, pageNextActionIndex } from '../lib/turnHistory';
+import { pageAssistantIndex, pageNextActionIndex, placeSnapshot } from '../lib/turnHistory';
+import { backfillGameStateStats } from '../lib/statBackfill';
 import type {
   CharacterData,
   LogEntry,
   GameLocation,
+  Stat,
   PlayerStat,
   Trait,
   ChatMessage,
@@ -247,7 +249,7 @@ function useProvideGameplay() {
   /** Load a save by its record `id` from IndexedDB and restore it. A flat envelope (`isSaveEnvelope`, current or
    *  legacy numeric version) loads directly; an older nested shape is flattened off-thread via the
    *  `convertSaveFile` worker, with a best-effort raw load if conversion throws. Returns success. */
-  const loadGame = useCallback(async (saveId: string, locations: GameLocation[]) => {
+  const loadGame = useCallback(async (saveId: string, locations: GameLocation[], worldStats: Stat[] = []) => {
     try {
       // IndexedDB returns dynamically-shaped data; narrowed by the runtime checks below.
       const savedData = await getSaveRecord(saveId) as SaveObject | null;
@@ -264,13 +266,14 @@ function useProvideGameplay() {
         // APP_VERSION). Same migrateSave the import boundary runs, so both stay in lockstep.
         const migrated = migrateSave(savedData);
         // Snapshots are history-free post-migration; reconstitute the live current state with the canonical
-        // top-level history so loadGameState restores narration/rollback correctly.
+        // top-level history so loadGameState restores narration/rollback correctly. Backfill any stat the
+        // world has since added (e.g. an updated default world) so an older save shows it — additive only.
         const success = loadGameState(
-          { ...migrated.currentState, fullMessageHistory: migrated.messageHistory ?? [] },
+          backfillGameStateStats({ ...migrated.currentState, fullMessageHistory: migrated.messageHistory ?? [] }, worldStats),
           locations,
         );
         if (success) {
-          setGameStates(migrated.stateHistory);
+          setGameStates(migrated.stateHistory.map((s) => backfillGameStateStats(s, worldStats)));
           // Restore the per-playthrough dictionary set; older saves lack it, so keep the entry-seeded set.
           if (Array.isArray(migrated.dictionaries)) setRuntimeDictionaries(migrated.dictionaries);
           setPlaceholderRolls(migrated.placeholderRolls ?? {});
@@ -300,7 +303,7 @@ function useProvideGameplay() {
 
           // If we have flattened states, use them
           if (flattenedStates && flattenedStates.length > 0) {
-            setGameStates(flattenedStates);
+            setGameStates(flattenedStates.map((s) => backfillGameStateStats(s, worldStats)));
 
             // Show toast message for successful conversion
             toast.success('Old save format converted to new format successfully', {
@@ -315,7 +318,7 @@ function useProvideGameplay() {
             addLogEntry('Old save format converted to new format successfully');
           }
 
-          const success = loadGameState(convertedData, locations);
+          const success = loadGameState(backfillGameStateStats(convertedData, worldStats), locations);
           if (success) {
             addLogEntry(`Game loaded from "${saveName}"`);
           }
@@ -422,6 +425,19 @@ function useProvideGameplay() {
     });
   }, [currentPage, totalPages, messagesPerPage]);
 
+  // A manual stat edit (the in-game slider) is authoritative post-turn state, so it must also update the
+  // current page's snapshot — the mechanical baseline a later re-generate of the *next* turn restores from
+  // (regenerateState reads gameStates[nextPage - 2] = this page's snapshot). Without this the edit lives
+  // only in `playerStats` and gets reverted on the next re-generate. Editing is disabled while viewing the
+  // past, so this always targets the latest snapshot; guarded so a not-yet-captured slot is left alone.
+  const commitManualStatEdit = useCallback((newStats: PlayerStat[]) => {
+    setPlayerStats(newStats);
+    const idx = currentPage - 1;
+    setGameStates((prev) => (idx >= 0 && idx < prev.length
+      ? placeSnapshot(prev, idx, { ...prev[idx], playerStats: newStats })
+      : prev));
+  }, [currentPage]);
+
   const value = {
     characterData,
     setCharacterData,
@@ -441,6 +457,7 @@ function useProvideGameplay() {
     changeLocation,
     playerStats,
     setPlayerStats,
+    commitManualStatEdit,
     playerTraits,
     setPlayerTraits,
     runtimeDictionaries,

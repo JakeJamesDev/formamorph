@@ -17,7 +17,8 @@ import { Button } from '@/components/ui/button';
 import { Progress } from '@/components/ui/progress';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { ConfirmDialog } from '@/components/ConfirmDialog';
-import { LOCAL_MODELS, VRAM_TIERS, formatModelSize, tierForVram, type LocalModelInfo, type VramTier } from '@/lib/localModels';
+import { LOCAL_MODELS, VRAM_TIERS, formatModelSize, formatReleased, formatDownloads, repoOf, tierForVram, type LocalModelInfo, type VramTier } from '@/lib/localModels';
+import { useCatalogDownloads } from '@/lib/useCatalogDownloads';
 import { useLocalLlmStatus } from '@/lib/useLocalLlmStatus';
 import { useVramStats, resolveOwnVram } from '@/lib/useVramStats';
 import type { LocalLlmState } from '@/lib/imageGen/desktop';
@@ -211,6 +212,7 @@ export function LocalModelModal({ open, onOpenChange }: { open: boolean; onOpenC
   };
 
   const models = LOCAL_MODELS.filter((m) => m.tier === tier);
+  const liveDownloads = useCatalogDownloads();
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -296,6 +298,7 @@ export function LocalModelModal({ open, onOpenChange }: { open: boolean; onOpenC
                 const partialBytes = partials[m.fileName];
                 const hasPartial = partialBytes !== undefined && !isInstalled;
                 const partialPct = hasPartial ? Math.round((partialBytes / m.sizeBytes) * 100) : 0;
+                const downloadsLabel = `${formatDownloads(liveDownloads[repoOf(m)] ?? m.downloads)} downloads`;
 
                 return (
                   <div key={m.id} className="space-y-2 rounded-md border border-border p-3">
@@ -303,11 +306,15 @@ export function LocalModelModal({ open, onOpenChange }: { open: boolean; onOpenC
                       <div>
                         <div className="font-medium">
                           {m.name} <span className="text-xs text-muted-foreground">{m.params} · {m.quant} · {formatModelSize(m.sizeBytes)}</span>
+                          {m.reasoning && <span className="ml-1.5 rounded bg-info/15 px-1.5 py-0.5 align-middle text-[10px] font-medium text-info">Reasoning</span>}
                         </div>
                         <div className="text-xs text-muted-foreground">{m.note}</div>
                         <div className="text-xs text-muted-foreground">License: {m.license}</div>
                       </div>
-                      {isLoaded && <span className="shrink-0 rounded bg-success px-2 py-0.5 text-xs text-success-foreground">Loaded</span>}
+                      <div className="flex shrink-0 flex-col items-end gap-1">
+                        <span className="text-xs text-muted-foreground">Released {formatReleased(m.released)}</span>
+                        {isLoaded && <span className="rounded bg-success px-2 py-0.5 text-xs text-success-foreground">Loaded</span>}
+                      </div>
                     </div>
 
                     {thisDownloading ? (
@@ -345,9 +352,12 @@ export function LocalModelModal({ open, onOpenChange }: { open: boolean; onOpenC
                             </span>
                           </>
                         ) : (
-                          <Button size="sm" onClick={() => startDownload(m)} disabled={downloading}>
-                            Download ({formatModelSize(m.sizeBytes)})
-                          </Button>
+                          <>
+                            <Button size="sm" onClick={() => startDownload(m)} disabled={downloading}>
+                              Download ({formatModelSize(m.sizeBytes)})
+                            </Button>
+                            <span className="text-xs text-muted-foreground">{downloadsLabel}</span>
+                          </>
                         )}
                       </div>
                     )}

@@ -12,7 +12,20 @@ Each release groups changes as **Major** / **Minor**, then **Added** / **Removed
 
 _Unreleased — new work accumulates here until it earns a version bump. The next batch will pin its own version; `package.json` reads **2.3.0** (just released below)._
 
-_Nothing yet._
+### Minor Changes
+
+#### ➕ Added
+
+- **👤 User-facing**
+  - **The desktop model catalog now includes reasoning roleplay models, backed by data.** The Recommended list (desktop) was refreshed with current community roleplay finetunes, and each now shows its **release date and download count** so you can weigh the recommendation yourself (counts refresh from Hugging Face and fall back to a snapshot when you're offline). The reasoning-capable ones are flagged with a **Reasoning** badge (a compact 4B and the Qwen3.6 mixture-of-experts finetune); reasoning is controlled per-prompt from Settings, so these pair with the thinking-budget control out of the box.
+  - **Built-in worlds refresh themselves.** When a newer version of a built-in world ships, your copy updates to it automatically on launch — as long as you haven't edited that world (edited copies are always left alone). Any worlds updated this way are named in a notification so you know what changed.
+  - **Old saves pick up newly added stats.** If a world gains a new stat after you started playing it, loading an existing save now shows that stat (at its starting value) instead of leaving it out. Your existing stats and progress are untouched.
+  - **Built-in worlds no longer warn about custom code.** The "this world contains custom code, trust the source" warning is meant for worlds from elsewhere — it no longer shows for the unmodified built-in example worlds, since they're ours. If you edit a built-in world, the warning returns.
+
+#### 🐛 Fixed
+
+- **⚙️ Backend**
+  - **Built-in worlds seed with their full content.** The first-run seeding path dropped a world's lorebook (dictionaries) and placeholders; they're now carried over intact.
 
 ---
 
@@ -35,6 +48,7 @@ _Nothing yet._
 #### 🐛 Fixed
 
 - **👤 User-facing**
+  - **Manual stat edits survive a re-generate.** Nudging a stat with the in-game slider, then playing on and re-generating a later turn, no longer reverts that stat to its pre-edit value. The edit now becomes the turn's baseline, matching how edited narration and notes already carry forward.
   - **Chip pop-outs stay open while you adjust options.** Picking a mode on a placeholder or prompt chip (e.g. a Wildcard's World/Unique, or a Location chip's scope/content/format) no longer closes the pop-out, so you can change several settings in a row. Click elsewhere or press Escape to close it as before.
   - **The placeholder Edit/Preview toggle only shows when a world has placeholders.** It used to appear on every placeholder-capable field even when no placeholders were defined; now it shows up only once you've added at least one.
   - **Popups fit the visible screen on mobile.** Dialogs (Settings, world details, entity/dictionary editors, load game, and more) were sized to the full device height including the browser's address-bar area, so on mobile a centered popup's title and close button could sit above the visible screen. Every popup now sizes to the actually-visible area, so its header and controls stay on-screen.

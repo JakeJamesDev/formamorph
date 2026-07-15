@@ -174,9 +174,6 @@ export function LocalModelPanel() {
         </Row>
       )}
 
-      {/* TODO: re-enable the Thinking toggle once reasoning models are supported (see memory
-          reasoning-model-support). Hidden for now — reasoning models are excluded from the catalog. */}
-
       {/* Sampling settings, grouped together (all "apply to the next turn"). */}
       <Row label="Temperature" htmlFor="genTemperature" hint="Higher = more random/creative, lower = more focused. Applies to the next turn.">
         <ValueSlider id="genTemperature" value={genTemperature} min={0} max={2} step={0.05} onChange={setGenTemperature} format={(v) => v.toFixed(2)} />

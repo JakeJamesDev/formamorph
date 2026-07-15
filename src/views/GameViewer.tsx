@@ -512,9 +512,9 @@ const GameViewer = ({
       // Seed the fixture as an id-keyed record and load it by that id.
       const id = randomUUID();
       await putSaveRecord({ ...(fx.save as unknown as Record<string, unknown>), id, name: fx.saveName } as unknown as SaveRecord);
-      await loadGame(id, locations);
+      await loadGame(id, locations, stats);
     })();
-  }, [devRoute?.fixture, locations, loadGame]);
+  }, [devRoute?.fixture, locations, stats, loadGame]);
   const [isEditingWorld, setIsEditingWorld] = useState(false);
   const [uiHidden, setUiHidden] = useState(false); // hide all panels/buttons to reveal the background image
   const [showEditorExitPrompt, setShowEditorExitPrompt] = useState(false);
@@ -2336,7 +2336,7 @@ ${playerNotes || NONE_PLACEHOLDER}
       // Cold-load from the main menu: restore the save instead of starting a fresh game. Its world is
       // already in GameData (loaded before this view mounted), so `locations` here are the right ones.
       if (initialSaveId) {
-        void loadGame(initialSaveId, locations);
+        void loadGame(initialSaveId, locations, stats);
         return;
       }
 
@@ -2655,14 +2655,14 @@ ${playerNotes || NONE_PLACEHOLDER}
       try {
         const world = await WorldStorageService.getWorldData(targetWorldId) as World;
         loadWorldData(world);
-        return await loadGame(id, Array.isArray(world.locations) ? world.locations : []);
+        return await loadGame(id, Array.isArray(world.locations) ? world.locations : [], Array.isArray(world.stats) ? world.stats : []);
       } catch (error) {
         console.error('Cross-world load failed:', error);
         toast.error("Couldn't load that save's world.");
         return false;
       }
     }
-    return loadGame(id, locations);
+    return loadGame(id, locations, stats);
   };
   const menuModal = (extra?: { onEditWorld?: () => void; onShowAiContext?: () => void }) => (
     <MenuModal

@@ -816,8 +816,8 @@ export const RightPanel = ({ onLocationClick, language, setLanguage }: {
 }) => {
   const {
     // Aliased to the viewed-page values (equal to live on the latest page) so paging back shows that
-    // turn's stats/traits/time/deltas read-only. `setPlayerStats` still writes live — the edit control is
-    // disabled while viewing the past, so it only runs on the latest page.
+    // turn's stats/traits/time/deltas read-only. `commitManualStatEdit` writes live and rebaselines the
+    // snapshot — the edit control is disabled while viewing the past, so it only runs on the latest page.
     viewGameTime: gameTime,
     currentLocation,
     viewLocationId,
@@ -827,7 +827,7 @@ export const RightPanel = ({ onLocationClick, language, setLanguage }: {
     activeTab,
     setActiveTab,
     viewStats: playerStats,
-    setPlayerStats,
+    commitManualStatEdit,
     viewTraits: playerTraits,
     viewStatChanges: recentStatChanges,
     recentStatFading,
@@ -899,7 +899,7 @@ export const RightPanel = ({ onLocationClick, language, setLanguage }: {
                     onValueChange={(value) => {
                       const newStats = [...playerStats];
                       newStats[index] = { ...stat, value: value[0] };
-                      setPlayerStats(newStats);
+                      commitManualStatEdit(newStats);
                     }}
                   />
                 ) : (
