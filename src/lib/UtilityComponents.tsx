@@ -20,6 +20,15 @@ interface UploadedMedia {
   data: string;
 }
 
+/** Read an uploaded file into the base64 data-URL envelope the media uploaders emit. */
+function readMediaFile(file: File): Promise<UploadedMedia> {
+  return new Promise((resolve) => {
+    const reader = new FileReader();
+    reader.onloadend = () => resolve({ name: file.name, type: file.type, size: file.size, data: reader.result as string });
+    reader.readAsDataURL(file);
+  });
+}
+
 // eslint-disable-next-line react-refresh/only-export-components
 export const getModelType = (fileName: string) => {
   const extension = fileName.split('.').pop()?.toLowerCase() ?? '';
@@ -144,19 +153,7 @@ export const SoundUpload = ({ onChange, id, value }: {
 }) => {
   const handleSoundChange = useCallback((e: ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
-    if (file) {
-      const reader = new FileReader();
-      reader.onloadend = () => {
-        const base64String = reader.result as string;
-        onChange({
-          name: file.name,
-          type: file.type,
-          size: file.size,
-          data: base64String
-        });
-      };
-      reader.readAsDataURL(file);
-    }
+    if (file) readMediaFile(file).then(onChange);
   }, [onChange]);
 
   return (
@@ -194,19 +191,7 @@ export const ModelUpload = ({ model, onModelChange, uniqueId }: {
 
   const handleModelChange = (e: ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
-    if (file) {
-      const reader = new FileReader();
-      reader.onloadend = () => {
-        const base64String = reader.result as string;
-        onModelChange({
-          name: file.name,
-          type: file.type,
-          size: file.size,
-          data: base64String
-        });
-      };
-      reader.readAsDataURL(file);
-    }
+    if (file) readMediaFile(file).then(onModelChange);
   };
 
   return (

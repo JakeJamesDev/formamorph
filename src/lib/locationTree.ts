@@ -3,6 +3,8 @@
 // Sibling order is the `locations` array order (no separate `order` field). The editor builds/walks the
 // tree from the single flat array; a drag rewrites the array so its order encodes the new tree.
 
+import { arrayMove } from '@dnd-kit/sortable';
+import { clamp } from "@/lib/utils";
 import type { GameLocation } from '@/types';
 
 export interface LocationTreeNode {
@@ -77,15 +79,6 @@ export function removeLocationPromotingChildren(locations: GameLocation[], id: s
     .filter((l) => l.id !== id)
     .map((l) => ((l.parentId ?? null) === id ? { ...l, parentId: newParent } : l));
 }
-
-function arrayMove<T>(arr: T[], from: number, to: number): T[] {
-  const copy = arr.slice();
-  const [item] = copy.splice(from, 1);
-  copy.splice(to, 0, item);
-  return copy;
-}
-
-const clamp = (n: number, min: number, max: number) => Math.min(Math.max(n, min), max);
 
 /** Projected drop `{depth, parentId}` for the active row, given the pointer's horizontal drag offset. */
 export function getLocationDropProjection(

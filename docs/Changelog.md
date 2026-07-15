@@ -24,6 +24,14 @@ _Unreleased — new work accumulates here until it earns a version bump. The nex
 
 #### 🐛 Fixed
 
+- **👤 User-facing**
+  - **Downloading community worlds quickly no longer loses one.** Two worlds downloaded within the same instant could be assigned the same internal id, so the second silently overwrote the first in your library. Each download now gets a unique id.
+  - **Clicking a character opens the right one.** When two characters shared a name prefix (e.g. "Guard" and "Guard Captain"), clicking one could open the other's details. It now matches the exact character.
+  - **Dragging a chip and dropping it outside a text box no longer misplaces one later.** Cancelling a chip drag (dropping it on empty space or pressing Escape) could leave a stray reference that made your next unrelated drag move a chip you didn't touch. Cancelled drags now clear cleanly.
+  - **Stat descriptors accept a 0% threshold.** In the World Editor, adding a stat descriptor with a threshold of 0 did nothing; it now saves like any other value.
+  - **Starving no longer cancels a stat's recovery that turn.** On a turn where time passed, a regenerating Health could lose the gain it just made when the starvation penalty applied. The penalty now subtracts from the recovered value, not the old one.
+  - **Loading a save can't hang on a worker failure.** If a background helper (save conversion/download) failed to start, the "Processing save file…" notice could spin forever; such failures now surface as an error and release the dialog.
+  - **The oldest saves restore their traits and body changes.** Very old saves (the deep-nested pre-2.0 format) loaded with their character traits stripped of description (so the AI saw only bare names) and their body stats no longer driving the 3D model. Loading one now brings those up to the current format, the same as newer saves already did.
 - **⚙️ Backend**
   - **Built-in worlds seed with their full content.** The first-run seeding path dropped a world's lorebook (dictionaries) and placeholders; they're now carried over intact.
 

@@ -33,6 +33,7 @@ const argVal = (flag) => {
 };
 const profileFilter = argVal("--profile");
 const modelFilter = argVal("--model");
+const repeat = Math.max(1, parseInt(argVal("--repeat") ?? "1", 10) || 1);
 
 // localStorage serialization: strings stored raw (stringCodec), everything else JSON (bool/int codecs).
 const serialize = (v) => (typeof v === "string" ? v : JSON.stringify(v));
@@ -40,11 +41,17 @@ const serialize = (v) => (typeof v === "string" ? v : JSON.stringify(v));
 // Warm up a model before the scripted turns: on a single GPU, requesting a model that isn't loaded triggers a
 // load (evicting the previous one), and the request that triggers it comes back truncated. A throwaway 1-token
 // call absorbs that load so the first real turn hits a fully-loaded model.
+// Per-model endpoint overrides let one matrix span multiple servers (e.g. a model that won't load in Ollama
+// routed to LM Studio): a model entry may carry its own endpointUrl/apiToken, else the top-level cfg applies.
+const modelEndpoint = (cfg, model) => model.endpointUrl ?? cfg.endpointUrl;
+const modelToken = (cfg, model) => model.apiToken ?? cfg.apiToken ?? "";
+
 async function warmUp(cfg, model) {
   const headers = { "Content-Type": "application/json" };
-  if (cfg.apiToken) headers.Authorization = `Bearer ${cfg.apiToken}`;
+  const token = modelToken(cfg, model);
+  if (token) headers.Authorization = `Bearer ${token}`;
   try {
-    await fetch(cfg.endpointUrl, {
+    await fetch(modelEndpoint(cfg, model), {
       method: "POST",
       headers,
       body: JSON.stringify({
@@ -62,8 +69,8 @@ async function warmUp(cfg, model) {
 function buildSeed(cfg, model, profile) {
   const seed = {
     FORMAMORPH_useCustomEndpoint: "true",
-    FORMAMORPH_endpointUrl: cfg.endpointUrl,
-    FORMAMORPH_apiToken: cfg.apiToken ?? "",
+    FORMAMORPH_endpointUrl: modelEndpoint(cfg, model),
+    FORMAMORPH_apiToken: modelToken(cfg, model),
     FORMAMORPH_modelName: model.modelName,
   };
   for (const [k, v] of Object.entries(profile.settings ?? {})) {
@@ -185,12 +192,15 @@ async function main() {
     await waitForServer(BASE_URL);
     const browser = await chromium.launch();
     try {
-      for (const model of models) {
-        for (const profile of profiles) {
-          try {
-            await runOne(browser, cfg, model, profile);
-          } catch (err) {
-            console.error(`  ✖ ${profile.name} x ${model.label}: ${err.message}`);
+      for (let run = 1; run <= repeat; run++) {
+        if (repeat > 1) console.log(`\n===== seed run ${run}/${repeat} =====`);
+        for (const model of models) {
+          for (const profile of profiles) {
+            try {
+              await runOne(browser, cfg, model, profile);
+            } catch (err) {
+              console.error(`  ✖ ${profile.name} x ${model.label}: ${err.message}`);
+            }
           }
         }
       }

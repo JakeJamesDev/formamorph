@@ -3,6 +3,7 @@ import { toast } from "react-toastify";
 import WorldStorageService from "@/services/WorldStorageService";
 import AuthService from "@/services/AuthService";
 import { migrateWorld } from "@/lib/version";
+import { randomUUID } from "@/lib/uuid";
 import { getDownloadState, type DownloadState } from "@/lib/downloadState";
 import { type WorldRecord } from "@/components/WorldDetails";
 import type { World } from "@/types";
@@ -118,7 +119,7 @@ export function useDownloadCoordinator(
     try {
       const { migrated, thumbnailUrl } = await fetchWorldContent(world, worldId);
 
-      const localWorldId = `downloaded-${Date.now()}`;
+      const localWorldId = `downloaded-${randomUUID()}`;
       const name = world.name || 'Downloaded World';
       const description = world.description || 'Downloaded from server';
       const author = world.author?.username || '';

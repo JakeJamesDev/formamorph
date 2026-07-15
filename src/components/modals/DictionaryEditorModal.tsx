@@ -13,6 +13,7 @@ import DictionaryManager from '@/managers/DictionaryManager';
 import PlaceholderEditor from '@/managers/PlaceholderEditor';
 import { placeholderStore, PlaceholderStoreProvider } from '@/contexts/PlaceholderStoreContext';
 import { buildDictionaryFile } from '@/lib/dictionaryFile';
+import { downloadBlob } from '@/lib/downloadBlob';
 import DictionaryStorageService from '@/services/DictionaryStorageService';
 import type { Dictionary, Placeholder } from '@/types';
 
@@ -80,14 +81,7 @@ const DictionaryEditorModal = ({ dictionaryId, draft, onClose }: { dictionaryId:
     const current = dictionaries[0];
     if (!current) return;
     const blob = new Blob([JSON.stringify(buildDictionaryFile(current), null, 2)], { type: 'application/json' });
-    const href = URL.createObjectURL(blob);
-    const link = document.createElement('a');
-    link.href = href;
-    link.download = `${current.name || 'Dictionary'}.json`;
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-    URL.revokeObjectURL(href);
+    downloadBlob(blob, `${current.name || 'Dictionary'}.json`);
   };
 
   const attemptClose = () => { if (dirty) setShowUnsaved(true); else onClose(); };

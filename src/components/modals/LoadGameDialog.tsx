@@ -1,4 +1,5 @@
 import { randomUUID } from "@/lib/uuid";
+import { downloadUrl } from "@/lib/downloadBlob";
 import React from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -328,12 +329,7 @@ export function LoadGameDialog({ open, onOpenChange, current, onLoad }: {
       setLoadingMessage(`Preparing ${row.name} for download...`);
       const { id: _id, ...fileData } = row.record; // strip the device-local record id from the export
       const { dataUrl, fileName } = await downloadSaveFile({ formamorphKind: SAVE_FILE_KIND, ...fileData }) as { dataUrl: string; fileName: string };
-      const element = document.createElement('a');
-      element.href = dataUrl;
-      element.download = `${fileName}.json`;
-      document.body.appendChild(element);
-      element.click();
-      document.body.removeChild(element);
+      downloadUrl(dataUrl, `${fileName}.json`);
     } catch (error) {
       console.error('Error downloading save:', error);
     } finally {

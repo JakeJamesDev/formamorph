@@ -4,7 +4,7 @@ import { putSaveRecord, getSaveRecord } from '../components/modals/dbUtils';
 import { toast } from 'react-toastify';
 import { convertSaveFile, terminateWorker } from '../lib/saveConversionWorkerUtils';
 import { useTtsPlayback } from '../lib/useTtsPlayback';
-import { APP_VERSION, isSaveEnvelope, migrateSave, stripSnapshotHistory } from '../lib/version';
+import { APP_VERSION, isSaveEnvelope, migrateSave, migrateLegacySaveState, stripSnapshotHistory } from '../lib/version';
 import { flattenEnabledBookEntries } from '../lib/dictionaryUtils';
 import { getGameplayText, setGameplayText } from '../lib/gameplayTextStore';
 import { parseTurnContent, serializeTurnContent } from '../lib/turnDigest';
@@ -301,9 +301,11 @@ function useProvideGameplay() {
           // Close the loading toast
           toast.dismiss(loadingToastId);
 
-          // If we have flattened states, use them
+          // If we have flattened states, use them. migrateLegacySaveState brings each snapshot's frozen trait/
+          // stat copies up to the current shape (trait aiDescription, body-stat morphBindings, discoveredEntities)
+          // — the flat-envelope path gets this via migrateSave, so the nested path must apply it too.
           if (flattenedStates && flattenedStates.length > 0) {
-            setGameStates(flattenedStates.map((s) => backfillGameStateStats(s, worldStats)));
+            setGameStates(flattenedStates.map((s) => backfillGameStateStats(migrateLegacySaveState(s), worldStats)));
 
             // Show toast message for successful conversion
             toast.success('Old save format converted to new format successfully', {
@@ -318,7 +320,7 @@ function useProvideGameplay() {
             addLogEntry('Old save format converted to new format successfully');
           }
 
-          const success = loadGameState(backfillGameStateStats(convertedData, worldStats), locations);
+          const success = loadGameState(backfillGameStateStats(migrateLegacySaveState(convertedData), worldStats), locations);
           if (success) {
             addLogEntry(`Game loaded from "${saveName}"`);
           }

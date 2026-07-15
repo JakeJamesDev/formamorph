@@ -9,7 +9,7 @@
     { "label": "meromero-26b", "modelName": "REPLACE_WITH_YOUR_SERVER_MODEL_ID" },
     { "label": "gemma31b-heretic", "modelName": "REPLACE_WITH_YOUR_SERVER_MODEL_ID" },
     { "label": "gemma26b-heretic", "modelName": "REPLACE_WITH_YOUR_SERVER_MODEL_ID" },
-    { "label": "mistral-ablit", "modelName": "REPLACE_WITH_YOUR_SERVER_MODEL_ID" }
+    { "label": "mistral-heretic", "modelName": "REPLACE_WITH_YOUR_SERVER_MODEL_ID" }
   ],
   "profiles": [
     {

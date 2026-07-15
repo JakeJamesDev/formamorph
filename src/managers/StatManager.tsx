@@ -97,7 +97,7 @@ const StatManager = ({ stat }: { stat: Stat }) => {
   };
 
   const handleAddDescriptor = () => {
-    if (newDescriptor.threshold && newDescriptor.description) {
+    if (newDescriptor.threshold !== "" && newDescriptor.description) {
       const updatedDescriptors = [
         ...(editingStat.descriptors || []),
         { ...newDescriptor, id: randomUUID() },
@@ -391,7 +391,7 @@ const StatManager = ({ stat }: { stat: Stat }) => {
             onChange={(e) =>
               setNewDescriptor({
                 ...newDescriptor,
-                threshold: Number(e.target.value),
+                threshold: e.target.value === "" ? "" : Number(e.target.value),
               })
             }
             placeholder="New Threshold %"
