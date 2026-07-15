@@ -860,9 +860,13 @@ const GameViewer = ({
       const health = getStatByName("Health");
       const hunger = getStatByName("Hunger");
       if (health && hunger) {
-        if (hunger.value <= 20) {
+        // Read post-regen values (regenChanges holds the delta just applied above), so a regenerating Health
+        // isn't overwritten with its pre-regen value and the starvation threshold tests the current Hunger.
+        const postRegenHunger = hunger.value + (regenChanges[hunger.name.toLowerCase()] || 0);
+        const postRegenHealth = health.value + (regenChanges[health.name.toLowerCase()] || 0);
+        if (postRegenHunger <= 20) {
           const healthLoss = 5 * hours;
-          setStatByName("Health", health.value - healthLoss);
+          setStatByName("Health", postRegenHealth - healthLoss);
           addLogEntry(`You're starving! Lost ${healthLoss} health.`);
           // Add health loss to recent changes
           const applyLoss = (prev: Record<string, number>) => ({
@@ -874,18 +878,6 @@ const GameViewer = ({
         }
       }
 
-      // Process any code-based stats after all direct changes
-      //REMOVE
-      // setTimeout(async () => {
-      //   try {
-      //     const updatedStats = await processStatCode(playerStats);
-      //     if (updatedStats !== playerStats) {
-      //       setPlayerStats(updatedStats);
-      //     }
-      //   } catch (error) {
-      //     console.error('Error processing stat code after time passed:', error);
-      //   }
-      // }, 0);
     },
     [getStatByName, setStatByName, addLogEntry, setGameTime, setPlayerStats, setRecentStatChanges, setHeldStatChanges, setRecentStatFading],
   );
@@ -2794,11 +2786,7 @@ ${playerNotes || NONE_PLACEHOLDER}
 
       {selectedEntity && (
         <EntityModal
-          entity={entities.find((f) =>
-            f.name.length >= selectedEntity.length
-              ? f.name.substring(0, selectedEntity.length) === selectedEntity
-              : selectedEntity.substring(0, f.name.length) === f.name,
-          ) ?? null}
+          entity={entities.find((f) => f.name === selectedEntity) ?? null}
           isOpen={isEntityModalOpen}
           onOpenChange={setIsEntityModalOpen}
         />

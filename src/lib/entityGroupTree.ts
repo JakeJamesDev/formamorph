@@ -3,7 +3,9 @@
 // are NEVER sent to the AI — there is deliberately no build*Context here (unlike traitTree), because entities
 // feed the AI exactly as if ungrouped. Mirrors traitTree's drag/duplicate machinery otherwise.
 
+import { arrayMove } from '@dnd-kit/sortable';
 import { randomUUID } from "@/lib/uuid";
+import { clamp } from "@/lib/utils";
 import type { Entity, EntityGroup } from '@/types';
 
 export type EntityTreeNode =
@@ -157,15 +159,6 @@ export function removeChildrenOf(items: FlatEntityNode[], ids: Iterable<string>)
   }
   return out;
 }
-
-function arrayMove<T>(arr: T[], from: number, to: number): T[] {
-  const copy = arr.slice();
-  const [item] = copy.splice(from, 1);
-  copy.splice(to, 0, item);
-  return copy;
-}
-
-const clamp = (n: number, min: number, max: number) => Math.min(Math.max(n, min), max);
 
 /** Projected drop `{depth, parentId}` for the active row, given the pointer's horizontal drag offset. */
 export function getEntityDropProjection(

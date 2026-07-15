@@ -33,6 +33,14 @@ export function createWorkerClient(createWorker: () => Worker) {
         }
         pendingRequests.delete(id);
       });
+      // A worker that fails to load (script fetch/CSP failure) or a structured-clone-in error never posts a
+      // `message`, so without these every awaiter hangs forever (e.g. the save-load toast never closing).
+      const failAll = (reason: string) => {
+        pendingRequests.forEach((req) => req.reject(new Error(reason)));
+        pendingRequests.clear();
+      };
+      workerInstance.addEventListener('error', (event) => failAll(event.message || 'Worker failed to load'));
+      workerInstance.addEventListener('messageerror', () => failAll('Worker message could not be deserialized'));
     }
     return workerInstance;
   };

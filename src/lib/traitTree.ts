@@ -1,7 +1,9 @@
 // Pure helpers for the trait folder tree (groups + traits, nestable via parentId/groupId). The editor
 // and selection screen build/walk the tree from the two flat arrays kept on the world.
 
+import { arrayMove } from '@dnd-kit/sortable';
 import { randomUUID } from "@/lib/uuid";
+import { clamp } from "@/lib/utils";
 import type { Trait, TraitGroup } from '@/types';
 
 export type TraitTreeNode =
@@ -213,15 +215,6 @@ export function removeChildrenOf(items: FlatTraitNode[], ids: Iterable<string>):
   }
   return out;
 }
-
-function arrayMove<T>(arr: T[], from: number, to: number): T[] {
-  const copy = arr.slice();
-  const [item] = copy.splice(from, 1);
-  copy.splice(to, 0, item);
-  return copy;
-}
-
-const clamp = (n: number, min: number, max: number) => Math.min(Math.max(n, min), max);
 
 /** Projected drop `{depth, parentId}` for the active row, given the pointer's horizontal drag offset. */
 export function getTraitDropProjection(

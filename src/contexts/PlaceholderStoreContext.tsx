@@ -1,4 +1,4 @@
-import { createContext, useContext, useState, useMemo, type Dispatch, type SetStateAction, type ReactNode } from 'react';
+import { createContext, useContext, type Dispatch, type SetStateAction, type ReactNode } from 'react';
 import type { Placeholder } from '@/types';
 
 /**
@@ -29,13 +29,6 @@ export function placeholderStore(
     updatePlaceholder: (u) => setPlaceholders((prev) => prev.map((p) => (p.id === u.id ? u : p))),
     removePlaceholder: (id) => setPlaceholders((prev) => prev.filter((p) => p.id !== id)),
   };
-}
-
-/** Local-state implementation of a `PlaceholderStore`, for a self-owned list (e.g. the world's placeholders). */
-// eslint-disable-next-line react-refresh/only-export-components
-export function usePlaceholderStoreState(initial: Placeholder[] = []): PlaceholderStore {
-  const [placeholders, setPlaceholders] = useState<Placeholder[]>(initial);
-  return useMemo(() => placeholderStore(placeholders, setPlaceholders), [placeholders]);
 }
 
 const PlaceholderStoreContext = createContext<PlaceholderStore | null>(null);

@@ -10,7 +10,12 @@ writers for Formamorph, on the same base? And measures how much of any advantage
 |---|---|---|---|
 | Gemma 31B | `meromero-31b` | `gemma31b-heretic` | Gemma-4 31B dense |
 | Gemma 26B-A4B | `meromero-26b` | `gemma26b-heretic` | Gemma-4 26B-A4B MoE |
-| Mistral 12B | `silver-siren-12b` | `mistral-ablit` | Mistral-Nemo-Instruct-2407 |
+| Mistral 12B | `silver-siren-12b` | `mistral-heretic` | Mistral-Nemo-Instruct-2407 |
+
+> The general-decensored Mistral control is `mradermacher/Mistral-Nemo-Instruct-2407-Heretic-v2-i1-GGUF`
+> (heretic method on plain instruct — not a creative finetune). The originally planned `natong19` abliterated
+> GGUFs won't load in current llama.cpp (Ollama **or** LM Studio): their embedded tool-calling template crashes
+> llama-server (`selectattr: unknown test 'tool_calls'`). The Heretic-v2 GGUF has a clean template.
 
 Each pair changes exactly one variable — RP finetune present/absent — so a gap is attributable to the tuning,
 not the architecture. Modelfiles: `harness/Modelfile.*`.
@@ -72,11 +77,11 @@ cd testing/baseline/harness
 ollama create meromero-26b     -f Modelfile.meromero26b
 ollama create gemma31b-heretic -f Modelfile.gemma31bheretic
 ollama create gemma26b-heretic -f Modelfile.gemma26bheretic
-ollama create mistral-ablit    -f Modelfile.mistralablit
+ollama create mistral-heretic  -f Modelfile.mistralheretic
 
-# from repo root — both arms, all 6 models (12 runs):
-npm run baseline -- --profile gateA
-npm run baseline -- --profile gateB
+# from repo root — both arms, all 6 models, 3 seeds each (--repeat 3):
+npm run baseline -- --profile gateA --repeat 3
+npm run baseline -- --profile gateB --repeat 3
 ```
 
 Dumps land in `testing/baseline/runs/gate{A,B}-<model>-<stamp>.json` (gitignored). Then hand the dumps to the

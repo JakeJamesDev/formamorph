@@ -226,11 +226,17 @@ function ChipDragPlugin({ dragKey }: { dragKey: { current: string | null } }) {
       COMMAND_PRIORITY_HIGH,
     );
     // dragend fires even when the drag is canceled or dropped outside the editor, so the caret never lingers.
-    document.addEventListener('dragend', hideCaret);
+    // Clear the parked node key too, or a canceled/outside drop leaves it set and the next unrelated drag
+    // (text, a file) satisfies the dragover guard and gets treated as a continued chip move.
+    const onDragEnd = () => {
+      hideCaret();
+      dragKey.current = null;
+    };
+    document.addEventListener('dragend', onDragEnd);
     return () => {
       removeOver();
       removeDrop();
-      document.removeEventListener('dragend', hideCaret);
+      document.removeEventListener('dragend', onDragEnd);
       caret.remove();
     };
   }, [editor, dragKey]);

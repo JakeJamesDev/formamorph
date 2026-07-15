@@ -10,6 +10,7 @@ import EntityFields from '@/managers/EntityFields';
 import PlaceholderEditor from '@/managers/PlaceholderEditor';
 import { placeholderStore, PlaceholderStoreProvider } from '@/contexts/PlaceholderStoreContext';
 import { exportEntityCard } from '@/lib/entityFile';
+import { downloadBlob } from '@/lib/downloadBlob';
 import EntityStorageService from '@/services/EntityStorageService';
 import type { Entity, Placeholder } from '@/types';
 
@@ -76,14 +77,7 @@ const EntityEditorModal = ({ entityId, draft, onClose }: { entityId: string | nu
     if (!entity) return;
     try {
       const blob = await exportEntityCard(entity);
-      const href = URL.createObjectURL(blob);
-      const link = document.createElement('a');
-      link.href = href;
-      link.download = `${entity.name || 'Character'}.webp`;
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
-      URL.revokeObjectURL(href);
+      downloadBlob(blob, `${entity.name || 'Character'}.webp`);
     } catch (error) {
       toast.error((error as Error).message);
     }

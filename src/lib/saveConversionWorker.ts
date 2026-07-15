@@ -2,34 +2,7 @@
  * Web Worker for handling save file conversion
  * This prevents the main thread from freezing when converting large save files
  */
-
-// A possibly-nested legacy game-state node; fields beyond `gameStates` vary, so they stay loose.
-type NestedState = { gameStates?: NestedState[] } & Record<string, unknown>;
-
-// Helper function to extract a flattened array of game states from a nested structure
-function flattenNestedGameStates(nestedState: NestedState | null | undefined, result: NestedState[] = []) {
-  if (!nestedState || !nestedState.gameStates || !Array.isArray(nestedState.gameStates)) {
-    return result;
-  }
-  
-  // Create a version of this state without the nested gameStates to avoid recursion
-  const { gameStates, ...stateWithoutNesting } = nestedState;
-  
-  // Add state version flag
-  stateWithoutNesting.stateVersion = 2;
-  
-  // Add this state to the result array
-  result.push(stateWithoutNesting);
-  
-  // Process each state in the gameStates array
-  for (const state of gameStates) {
-    if (state) {
-      flattenNestedGameStates(state, result);
-    }
-  }
-  
-  return result;
-}
+import { flattenNestedGameStates } from './saveConversion';
 
 // Listen for messages from the main thread
 self.addEventListener('message', (event) => {
