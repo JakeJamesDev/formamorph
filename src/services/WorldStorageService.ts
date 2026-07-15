@@ -48,6 +48,25 @@ interface DefaultWorldSeed {
   defaultName: string;
 }
 
+/** Result of a default-world seed/update pass: ids that failed to load, and display names that were
+ *  auto-updated in place (so the caller can notify the player). */
+export interface DefaultWorldSyncResult {
+  failed: string[];
+  updated: string[];
+}
+
+/** True when dotted numeric version `a` is strictly newer than `b` (e.g. '2.3.0' beats '2.2.5'). Missing or
+ *  non-numeric parts read as 0, so an unversioned/legacy stored copy is always older than a stamped bundle. */
+function isVersionNewer(a?: string, b?: string): boolean {
+  const pa = String(a ?? '0').split('.').map((n) => parseInt(n, 10) || 0);
+  const pb = String(b ?? '0').split('.').map((n) => parseInt(n, 10) || 0);
+  for (let i = 0; i < Math.max(pa.length, pb.length); i++) {
+    const d = (pa[i] || 0) - (pb[i] || 0);
+    if (d !== 0) return d > 0;
+  }
+  return false;
+}
+
 // The world payload sent to the server when publishing.
 interface PublishableWorld {
   worldOverview: { name?: string; description?: string; thumbnail?: string } & Record<string, unknown>;
@@ -232,57 +251,77 @@ class WorldStorageService {
     });
   }
 
-  /** Seed missing default worlds. Returns the ids that failed to load ([] = all succeeded). */
-  async loadDefaultWorlds(defaultWorlds: DefaultWorldSeed[]): Promise<string[]> {
-    const existingWorlds = await this.getWorldMetadata();
-    const worldsToLoad = defaultWorlds.filter(
-      world => !existingWorlds.some(existing => existing.id === world.id)
+  /** Seed missing default worlds and auto-update unedited ones whose bundled `version` is newer than the
+   *  stored copy's. Runs every launch (cheap when nothing changed). A world is left untouched if the player
+   *  has edited it (`dirty`), since that diverges from the bundled default (git-dirty model). Returns the
+   *  ids that failed to load plus the display names auto-updated in place. */
+  async loadDefaultWorlds(defaultWorlds: DefaultWorldSeed[]): Promise<DefaultWorldSyncResult> {
+    await this.ensureInitialized();
+    // Full records (not getWorldMetadata) so we can read each stored copy's `data.version` and `dirty`.
+    const transaction = this.db!.transaction([this.storeName], 'readonly');
+    const stored = await promisifyRequest(transaction.objectStore(this.storeName).getAll());
+    const byId = new Map<string, { dirty?: boolean; data?: { version?: string } }>(
+      stored.map((w) => [w.id, w]),
     );
 
-    const results = await Promise.all(
-      worldsToLoad.map(async world => {
+    const failed: string[] = [];
+    const updated: string[] = [];
+    await Promise.all(
+      defaultWorlds.map(async world => {
         try {
-            // Import the world JSON file
-            const module = await import(`../defaultworlds/${world.id}.json`);
-            const worldData = module.default;
+          const existing = byId.get(world.id);
+          const module = await import(`../defaultworlds/${world.id}.json`);
+          const worldData = module.default;
 
-            // Create a full world object with the correct structure
-            const fullWorld = {
-              id: world.id,
-              name: worldData.worldOverview?.name || world.defaultName,
-              description: worldData.worldOverview?.description || `Default ${world.defaultName} world`,
-              author: worldData.worldOverview?.author || '',
-              thumbnail: worldData.worldOverview?.thumbnail || '',
-              data: {
-                id: world.id,
-                worldOverview: worldData.worldOverview || {
-                  name: world.defaultName,
-                  description: `Default ${world.defaultName} world`,
-                  author: '',
-                  thumbnail: '',
-                  bgm: null,
-                  systemPrompt: '',
-                  use3DModel: true
-                },
-                stats: worldData.stats || [],
-                locations: worldData.locations || [],
-                entities: worldData.entities || [],
-                entityGroups: worldData.entityGroups || [],
-                traits: worldData.traits || [],
-                traitGroups: worldData.traitGroups || [],
-                statUpdates: worldData.statUpdates || []
-              }
-            };
-            // Safety pass: defaults are stamped in-file, so this is normally a no-op.
-            await this.storeWorld({ ...fullWorld, data: migrateWorld(fullWorld.data) });
-            return null;
-          } catch (error) {
-            console.error(`Error loading world ${world.id}:`, error);
-            return world.id; // Skip this world but continue with others; report it as failed.
+          if (existing) {
+            // Present already: replace only an unedited copy the bundle has moved past. An edited world
+            // (`dirty`) or a same/older bundle version is left as-is.
+            if (existing.dirty || !isVersionNewer(worldData.version, existing.data?.version)) return;
           }
-        })
-      );
-    return results.filter((id): id is string => id !== null);
+
+          // Full record, preserving every authored section (dictionaries + placeholders included — omitting
+          // them here silently dropped lorebooks/wildcards on seed). storeWorld read-merges sticky local
+          // fields (createdAt, sourceId) and keeps `dirty` false for an unedited update.
+          const fullWorld = {
+            id: world.id,
+            name: worldData.worldOverview?.name || world.defaultName,
+            description: worldData.worldOverview?.description || `Default ${world.defaultName} world`,
+            author: worldData.worldOverview?.author || '',
+            thumbnail: worldData.worldOverview?.thumbnail || '',
+            data: {
+              id: world.id,
+              worldOverview: worldData.worldOverview || {
+                name: world.defaultName,
+                description: `Default ${world.defaultName} world`,
+                author: '',
+                thumbnail: '',
+                bgm: null,
+                systemPrompt: '',
+                use3DModel: true,
+              },
+              stats: worldData.stats || [],
+              locations: worldData.locations || [],
+              entities: worldData.entities || [],
+              entityGroups: worldData.entityGroups || [],
+              traits: worldData.traits || [],
+              traitGroups: worldData.traitGroups || [],
+              statUpdates: worldData.statUpdates || [],
+              // Pass both dictionary forms through: v2.x books directly, and the legacy flat `dictionary`
+              // so migrateWorld can fold it into a book (older bundled defaults still use the flat form).
+              dictionary: worldData.dictionary,
+              dictionaries: worldData.dictionaries,
+              placeholders: worldData.placeholders,
+            },
+          };
+          await this.storeWorld({ ...fullWorld, data: migrateWorld(fullWorld.data) });
+          if (existing) updated.push(fullWorld.name);
+        } catch (error) {
+          console.error(`Error loading world ${world.id}:`, error);
+          failed.push(world.id); // Skip this world but continue with others; report it as failed.
+        }
+      }),
+    );
+    return { failed, updated };
   }
 
   /** Remove a world from IndexedDB by `id`; this is the only path that drops the sticky `sourceId` link. */

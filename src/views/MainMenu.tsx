@@ -292,17 +292,23 @@ const MainMenu = ({ onStartGame, onLoadSaveGame, onReplayIntro }: MainMenuProps)
     }
   }, []);
 
-  // Seed the default worlds once (first run only), then load the grid.
+  // Seed missing default worlds and auto-update unedited ones to the newest bundled version. Runs every
+  // launch (cheap when nothing changed); only a first-run seed toasts success/failure, while an in-place
+  // update of an unedited default is announced so a shifted in-progress save isn't a surprise.
   useEffect(() => {
     const initializeWorlds = async () => {
       try {
         await WorldStorageService.initialize();
         const existingWorlds = await WorldStorageService.getWorldMetadata();
-        if (existingWorlds.length === 0) {
-          const failed = await WorldStorageService.loadDefaultWorlds(defaultWorlds);
+        const firstRun = existingWorlds.length === 0;
+        const { failed, updated } = await WorldStorageService.loadDefaultWorlds(defaultWorlds);
+        if (firstRun) {
           if (failed.length === 0) toast.success("Loaded default worlds");
           else if (failed.length < defaultWorlds.length) toast.error(`Some default worlds failed to load: ${failed.join(", ")}`);
           else toast.error("Failed to load default worlds");
+        }
+        if (updated.length > 0) {
+          toast.info(`Updated ${updated.length} default world${updated.length > 1 ? "s" : ""}: ${updated.join(", ")}`);
         }
       } catch (error) {
         console.error('Error seeding default worlds:', error);
@@ -1221,7 +1227,9 @@ const MainMenu = ({ onStartGame, onLoadSaveGame, onReplayIntro }: MainMenuProps)
           </DialogHeader>
 
           <div className="mt-4 flex-1 min-h-0 flex flex-col">
-            {hasStatWithCode(stats) && (
+            {/* Trust a pristine bundled default (id is unspoofable — imports/downloads always re-mint ids),
+                so our own example worlds don't warn. An edited default (`dirty`) forfeits that trust. */}
+            {hasStatWithCode(stats) && !(defaultWorlds.some(dw => dw.id === selectedWorld?.id) && !selectedWorld?.dirty) && (
               <div className="mb-4 shrink-0 p-3 bg-warning/10 border border-warning/30 rounded-md flex items-start">
                 <AlertTriangle className="h-5 w-5 text-warning mr-2 flex-shrink-0 mt-0.5" />
                 <div className="text-sm text-warning flex-grow">
