@@ -60,7 +60,8 @@ import { WebVersionChangelog } from '@/components/menu/WebVersionChangelog';
 import { parseDictionaryImport } from '@/lib/dictionaryFile';
 import { importCharacterFile } from '@/lib/entityFile';
 import { useDownscalePrompt } from '@/lib/useDownscalePrompt';
-import { IMAGE_CAPS } from '@/lib/imageOptim';
+import { IMAGE_CAPS, applyWorldOptimize, applyImageOptimize } from '@/lib/imageOptim';
+import { filesFrom, importSummaryToast } from '@/lib/importFiles';
 import CommunityCreationsBrowser from './CommunityCreationsBrowser';
 import { WorldDetailsColumn, DateTimeText, type WorldRecord } from "@/components/WorldDetails";
 import SortableWorldCard from "@/components/SortableWorldCard";
@@ -130,7 +131,7 @@ const MainMenu = ({ onStartGame, onLoadSaveGame, onReplayIntro }: MainMenuProps)
     dictionaries: worldBooks,
   } = useGameData();
   const { showReadme, setShowReadme } = useReadmeVisibility();
-  const { promptWorld, promptImage, dialog: downscaleDialog } = useDownscalePrompt();
+  const { promptWorldsBatch, promptImagesBatch, dialog: downscaleDialog } = useDownscalePrompt();
   const [selectedWorld, setSelectedWorld] = useState<WorldRecord | null>(null);
   // Local-world grid layout: "grid" (default compact cards) or "detailed" (community-browser-style card + info
   // beneath). Persisted across sessions in localStorage.
@@ -209,8 +210,6 @@ const MainMenu = ({ onStartGame, onLoadSaveGame, onReplayIntro }: MainMenuProps)
   const [editingEntityId, setEditingEntityId] = useState<string | null>(null);
   // A blank character being authored but not yet saved (New Entity → editor, persisted only on Save).
   const [draftEntity, setDraftEntity] = useState<Entity | null>(null);
-  // A lorebook found inside a just-imported SillyTavern character, pending the user's OK to add it too.
-  const [pendingLorebook, setPendingLorebook] = useState<Dictionary | null>(null);
 
   // Shared auth identity (header, publish gating, community browser). The login/profile forms live in AuthModals.
   const [isAuthenticated, setIsAuthenticated] = useState(false);
@@ -391,131 +390,128 @@ const MainMenu = ({ onStartGame, onLoadSaveGame, onReplayIntro }: MainMenuProps)
     }
   };
 
+  // Persist a dictionary and show its card — shared by the dictionary import and the lorebooks that ride
+  // along inside imported character cards.
+  const addDictionaryToLibrary = async (book: Dictionary) => {
+    const now = new Date().toISOString();
+    await DictionaryStorageService.storeDictionary({ id: book.id, name: book.name, createdAt: now, lastAccessed: now, data: book });
+    setDictionaries(prev => [...prev, { id: book.id, name: book.name, entryCount: book.entries.length, createdAt: now, lastAccessed: now }]);
+  };
+
+  // Import one or more world `.json` files into the library. Bad files are skipped; a single combined
+  // Optimize/Downscale prompt covers all of them. A single-file import still opens the world's details.
   const handleFileUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
-    const file = event.target.files?.[0];
-    if (file) {
-      const reader = new FileReader();
-      reader.onload = async (e) => {
+    const files = filesFrom(event);
+    if (!files.length) return;
+
+    const parsed: { world: World; id: string }[] = [];
+    let skipped = 0;
+    let stored = 0;
+    for (const file of files) {
+      try {
+        // Sanitize at the import boundary: migrate any legacy/v1.2 shape to the current version.
+        const world = migrateWorld(JSON.parse(await file.text())) as World;
+        const id = `uploaded-${randomUUID()}`;
+        world.id = id;
+        parsed.push({ world, id });
+      } catch (error) {
+        console.error('Error parsing world file:', file.name, error);
+        skipped++;
+      }
+    }
+
+    if (parsed.length) {
+      const mode = await promptWorldsBatch(parsed.map((p) => p.world));
+      const now = new Date().toISOString();
+      let last: { id: string; data: World } | null = null;
+      for (const { world, id } of parsed) {
+        // Storing is guarded per world: `storeWorld` rejects a shape `migrateWorld` can't complete (no
+        // `statUpdates`, say), and one such file must not abort the rest of the batch.
         try {
-          // Sanitize at the import boundary: migrate any legacy/v1.2 shape to the current version.
-          const parsedWorldData = migrateWorld(JSON.parse(e.target?.result as string));
-          const worldId = `uploaded-${Date.now()}`;
-          const now = new Date().toISOString();
-
-          parsedWorldData.id = worldId;
-
-          await WorldStorageService.storeWorld({
-            id: worldId,
-            name: parsedWorldData.worldOverview?.name || 'Uploaded World',
-            description: parsedWorldData.worldOverview?.description || 'Custom uploaded world',
-            thumbnail: parsedWorldData.worldOverview?.thumbnail ?? undefined,
-            data: parsedWorldData
-          });
-
-          // Offer to downscale oversized images; if accepted, re-store in place and use the smaller world below.
-          let finalData = parsedWorldData;
-          const downscaled = await promptWorld(parsedWorldData);
-          if (downscaled) {
-            downscaled.id = worldId;
-            finalData = downscaled;
-            await WorldStorageService.storeWorld({
-              id: worldId,
-              name: finalData.worldOverview?.name || 'Uploaded World',
-              description: finalData.worldOverview?.description || 'Custom uploaded world',
-              thumbnail: finalData.worldOverview?.thumbnail ?? undefined,
-              data: finalData
-            });
-          }
-
-          setWorlds(prev => [...prev, {
-            id: worldId,
-            name: finalData.worldOverview?.name || 'Uploaded World',
-            description: finalData.worldOverview?.description || 'Custom uploaded world',
-            thumbnail: finalData.worldOverview?.thumbnail,
-            tags: finalData.worldOverview?.tags || [],
-            createdAt: now,
-            lastAccessed: now,
-            isLoading: false
-          }]);
-
-          loadWorldData(finalData, true);
-          setSelectedWorld({
-            id: worldId,
-            name: finalData.worldOverview?.name || 'Uploaded World',
-            description: finalData.worldOverview?.description || 'Custom uploaded world',
-            thumbnail: finalData.worldOverview?.thumbnail,
-            createdAt: now,
-            lastAccessed: now,
-            data: finalData
-          });
-          setShowWorldModal(true);
+          const data = mode === 'off' ? world : await applyWorldOptimize(world, mode);
+          data.id = id;
+          const name = data.worldOverview?.name || 'Uploaded World';
+          const description = data.worldOverview?.description || 'Custom uploaded world';
+          await WorldStorageService.storeWorld({ id, name, description, thumbnail: data.worldOverview?.thumbnail ?? undefined, data });
+          setWorlds(prev => [...prev, { id, name, description, thumbnail: data.worldOverview?.thumbnail, tags: data.worldOverview?.tags || [], createdAt: now, lastAccessed: now, isLoading: false }]);
+          stored++;
+          last = { id, data };
         } catch (error) {
-          console.error('Error parsing world file:', error);
+          console.error('Error storing world:', world.worldOverview?.name, error);
+          skipped++;
         }
-      };
-      reader.readAsText(file);
+      }
+      // A lone import opens the world's details; a batch just lands the cards.
+      if (files.length === 1 && last) {
+        const d = last.data;
+        loadWorldData(d, true);
+        setSelectedWorld({ id: last.id, name: d.worldOverview?.name || 'Uploaded World', description: d.worldOverview?.description || 'Custom uploaded world', thumbnail: d.worldOverview?.thumbnail, createdAt: now, lastAccessed: now, data: d });
+        setShowWorldModal(true);
+      }
     }
+    // A lone success needs no toast — the details modal above already shows what landed.
+    if (files.length > 1 || skipped) importSummaryToast(stored, skipped, { one: 'world', many: 'worlds' });
   };
 
-  // Import a standalone dictionary `.json` into the local library. Parses + validates (rejecting world and
-  // save files via the discriminator), then persists to IndexedDB and adds a card. `parseDictionaryFile`
+  // Import one or more standalone dictionary `.json` files. Bad files are skipped. `parseDictionaryImport`
   // regenerates the book + entry ids, so re-imports never collide.
-  const importDictionaryFile = (event: React.ChangeEvent<HTMLInputElement>) => {
-    const file = event.target.files?.[0];
-    if (file) {
-      const reader = new FileReader();
-      reader.onload = async (e) => {
-        try {
-          // Foreign lorebooks (ST / character cards) carry no internal name — fall back to the filename.
-          const fallbackName = file.name.replace(/\.[^.]+$/, '');
-          const book = parseDictionaryImport(JSON.parse(e.target?.result as string), fallbackName);
-          const now = new Date().toISOString();
-          await DictionaryStorageService.storeDictionary({ id: book.id, name: book.name, createdAt: now, lastAccessed: now, data: book });
-          setDictionaries(prev => [...prev, { id: book.id, name: book.name, entryCount: book.entries.length, createdAt: now, lastAccessed: now }]);
-          toast.success(`Imported dictionary "${book.name}".`);
-        } catch (err) {
-          toast.error((err as Error).message);
-        }
-      };
-      reader.readAsText(file);
+  const importDictionaryFile = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const files = filesFrom(event);
+    if (!files.length) return;
+    let ok = 0, skipped = 0;
+    for (const file of files) {
+      try {
+        // Foreign lorebooks (ST / character cards) carry no internal name — fall back to the filename.
+        const fallbackName = file.name.replace(/\.[^.]+$/, '');
+        await addDictionaryToLibrary(parseDictionaryImport(JSON.parse(await file.text()), fallbackName));
+        ok++;
+      } catch (err) {
+        console.error('Error importing dictionary:', file.name, err);
+        skipped++;
+      }
     }
-    event.target.value = ''; // allow re-importing the same file
+    if (ok || skipped) importSummaryToast(ok, skipped, { one: 'dictionary', many: 'dictionaries' });
   };
 
-  // Import a character image into the local library: our own WebP card, or a SillyTavern character PNG.
-  // The file's own pixels become the portrait; a lorebook found inside a ST card is offered separately.
-  const importEntityFile = (event: React.ChangeEvent<HTMLInputElement>) => {
-    const file = event.target.files?.[0];
-    if (file) {
-      (async () => {
+  // Import one or more character images (our WebP cards or SillyTavern PNGs) into the library. One combined
+  // Optimize/Downscale prompt covers every portrait; any lorebooks embedded in the cards are added too.
+  const importEntityFile = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const files = filesFrom(event);
+    if (!files.length) return;
+
+    const parsed: { entity: Entity; book: Dictionary | null }[] = [];
+    let skipped = 0;
+    for (const file of files) {
+      try { parsed.push(await importCharacterFile(file)); }
+      catch (err) { console.error('Error importing character:', file.name, err); skipped++; }
+    }
+
+    if (parsed.length) {
+      const mode = await promptImagesBatch(parsed.map((p) => p.entity.image).filter(Boolean) as string[], IMAGE_CAPS.entity);
+      const now = new Date().toISOString();
+      let lorebooks = 0;
+      let stored = 0;
+      for (const { entity, book } of parsed) {
+        // Guarded per card: a portrait can blow the storage quota mid-batch, and that must not drop the rest.
         try {
-          const { entity, book } = await importCharacterFile(file);
-          // Offer to optimize/downscale an oversized portrait before it's stored (no-op when within budget).
-          if (entity.image) entity.image = await promptImage(entity.image, IMAGE_CAPS.entity);
-          const now = new Date().toISOString();
+          if (mode !== 'off' && entity.image) entity.image = (await applyImageOptimize(entity.image, mode, IMAGE_CAPS.entity)) ?? entity.image;
           await EntityStorageService.storeEntity({ id: entity.id, name: entity.name, createdAt: now, lastAccessed: now, data: entity });
           setEntities(prev => [...prev, { id: entity.id, name: entity.name, image: entity.image, createdAt: now, lastAccessed: now }]);
-          toast.success(`Imported character "${entity.name}".`);
-          if (book) setPendingLorebook(book);
+          stored++;
         } catch (err) {
-          toast.error((err as Error).message);
+          console.error('Error storing character:', entity.name, err);
+          skipped++;
+          continue; // the card never landed, so its lorebook has nothing to attach to
         }
-      })();
-    }
-    event.target.value = ''; // allow re-importing the same file
-  };
-
-  // Save a just-imported character's lorebook into the dictionary library (the user opted in).
-  const importPendingLorebook = async () => {
-    if (!pendingLorebook) return;
-    const book = pendingLorebook;
-    const now = new Date().toISOString();
-    try {
-      await DictionaryStorageService.storeDictionary({ id: book.id, name: book.name, createdAt: now, lastAccessed: now, data: book });
-      setDictionaries(prev => [...prev, { id: book.id, name: book.name, entryCount: book.entries.length, createdAt: now, lastAccessed: now }]);
-      toast.success(`Imported dictionary "${book.name}".`);
-    } catch (err) {
-      toast.error((err as Error).message);
+        if (book) {
+          try { await addDictionaryToLibrary(book); lorebooks++; }
+          catch (err) { console.error('Error adding lorebook for:', entity.name, err); } // the card still landed
+        }
+      }
+      importSummaryToast(stored, skipped, { one: 'character', many: 'characters' },
+        lorebooks ? `, ${lorebooks} lorebook${lorebooks === 1 ? '' : 's'}` : '');
+    } else if (skipped) {
+      toast.error(`Couldn't import ${skipped} character${skipped === 1 ? '' : 's'}.`);
     }
   };
 
@@ -960,6 +956,7 @@ const MainMenu = ({ onStartGame, onLoadSaveGame, onReplayIntro }: MainMenuProps)
         ref={fileInputRef}
         onChange={handleFileUpload}
         accept=".json"
+        multiple
         className="hidden"
       />
       <input
@@ -967,6 +964,7 @@ const MainMenu = ({ onStartGame, onLoadSaveGame, onReplayIntro }: MainMenuProps)
         ref={dictionaryImportRef}
         onChange={importDictionaryFile}
         accept=".json,application/json"
+        multiple
         className="hidden"
       />
       <input
@@ -974,6 +972,7 @@ const MainMenu = ({ onStartGame, onLoadSaveGame, onReplayIntro }: MainMenuProps)
         ref={entityImportRef}
         onChange={importEntityFile}
         accept="image/webp,image/png,.webp,.png"
+        multiple
         className="hidden"
       />
 
@@ -1440,17 +1439,6 @@ const MainMenu = ({ onStartGame, onLoadSaveGame, onReplayIntro }: MainMenuProps)
         entityId={editingEntityId}
         draft={draftEntity}
         onClose={() => { setEditingEntityId(null); setDraftEntity(null); refreshEntities(); }}
-      />
-
-      <ConfirmDialog
-        open={!!pendingLorebook}
-        onOpenChange={(open) => !open && setPendingLorebook(null)}
-        title="Import character's lorebook?"
-        description={pendingLorebook
-          ? `This character includes a lorebook ("${pendingLorebook.name}", ${pendingLorebook.entries.length} ${pendingLorebook.entries.length === 1 ? 'entry' : 'entries'}). Add it to your dictionary library too?`
-          : ''}
-        onConfirm={importPendingLorebook}
-        onCancel={() => setPendingLorebook(null)}
       />
 
       <Dialog open={showCodeModal} onOpenChange={setShowCodeModal}>

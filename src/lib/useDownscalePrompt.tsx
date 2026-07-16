@@ -12,17 +12,61 @@ import {
 import type { World } from '@/types';
 import { useClosingSnapshot } from './useClosingSnapshot';
 import {
-  dataUrlMime,
-  downscaleWorldImages,
+  applyImageOptimize,
+  applyWorldOptimize,
   estimateEncodedBytes,
   formatBytes,
-  measureDataUrl,
-  optimizeImageDataUrl,
-  reencodeImageDataUrl,
+  scanImages,
   scanWorldImages,
-  REENCODE_DEPS,
   type ImageCap,
+  type OversizedImage,
+  type OptimizeMode,
 } from './imageOptim';
+
+/** Aggregate size facts about a set of oversized images, shared by every optimize prompt's wording. */
+interface OptimizeStats {
+  /** How many images are over budget. */
+  n: number;
+  totalBytes: number;
+  /** False when every image is already WebP — Optimize (lossless WebP→WebP) would be a no-op, so it's hidden. */
+  canOptimize: boolean;
+  optTotal: number;
+  downTotal: number;
+}
+
+/** The words one optimize prompt shows; the choices themselves are identical everywhere. */
+interface PromptCopy {
+  title: string;
+  description: string;
+  cancelLabel: string;
+}
+
+const optimizeStats = (items: OversizedImage[]): OptimizeStats => ({
+  n: items.length,
+  totalBytes: items.reduce((s, i) => s + i.bytes, 0),
+  canOptimize: items.some((i) => i.mime !== 'image/webp'),
+  // An already-WebP image re-encodes to itself, so Optimize leaves its bytes as-is.
+  optTotal: items.reduce(
+    (s, i) => s + (i.mime === 'image/webp' ? i.bytes : estimateEncodedBytes(i.bytes, i.w, i.h, 'reencode', i.cap)),
+    0,
+  ),
+  downTotal: items.reduce((s, i) => s + estimateEncodedBytes(i.bytes, i.w, i.h, 'downscale', i.cap), 0),
+});
+
+/**
+ * The shared tail of every optimize prompt: what each choice costs and does. Only the lead sentence differs
+ * per caller, so the size figures and the what-Optimize-does claim are worded once. `many` picks the pronouns.
+ */
+const optimizeTail = (s: OptimizeStats, many: boolean): string => {
+  const them = many ? 'them' : 'it';
+  return (
+    (s.canOptimize
+      ? `Optimize converts ${them} to lossless WebP${many ? '' : ' at the same resolution'} (~${formatBytes(s.optTotal)}, no quality loss). `
+      : '') +
+    `Downscale ${s.canOptimize ? 'also shrinks' : 'shrinks'} ${them}${many ? '' : ' to fit'} ` +
+    `(~${formatBytes(s.downTotal)}). Animated GIFs keep their animation.`
+  );
+};
 
 interface PromptAction {
   label: string;
@@ -48,87 +92,87 @@ export function useDownscalePrompt() {
   const confirmingRef = useRef(false);
   const close = useCallback(() => setPending(null), []);
 
-  const promptImage = useCallback(
-    async (url: string, cap: ImageCap): Promise<string> => {
-      let info;
-      try {
-        info = await measureDataUrl(url);
-      } catch {
-        return url;
-      }
-      if (!(Math.max(info.w, info.h) > cap.maxDim || info.bytes > cap.maxBytes)) return url;
-      // Already-WebP images gain nothing from Optimize (lossless WebP→WebP no-ops); only offer Downscale.
-      const alreadyWebp = dataUrlMime(url) === 'image/webp';
-      const opt = estimateEncodedBytes(info.bytes, info.w, info.h, 'reencode', cap);
-      const down = estimateEncodedBytes(info.bytes, info.w, info.h, 'downscale', cap);
-      return new Promise<string>((resolve) => {
+  /**
+   * The one prompt builder: given the oversized images, offer Optimize / Downscale / keep and resolve to the
+   * chosen mode. Callers supply only the wording (`copy`) and apply the mode themselves — so the size math,
+   * the WebP-can't-be-optimized rule, and the dialog plumbing live here once.
+   */
+  const promptOptimizeChoice = useCallback(
+    (items: OversizedImage[], copy: (s: OptimizeStats) => PromptCopy): Promise<OptimizeMode> => {
+      if (items.length === 0) return Promise.resolve('off');
+      const stats = optimizeStats(items);
+      const { title, description, cancelLabel } = copy(stats);
+      return new Promise<OptimizeMode>((resolve) => {
         let done = false;
-        const finish = (v: string) => {
-          if (done) return;
-          done = true;
-          resolve(v);
-          close();
-        };
-        const optimizeSentence = alreadyWebp
-          ? ''
-          : `Optimize converts it to lossless WebP at the same resolution (~${formatBytes(opt)}, no quality loss). `;
+        const finish = (v: OptimizeMode) => { if (done) return; done = true; resolve(v); close(); };
         setPending({
-          title: 'Large image',
-          description:
-            `This image is ${formatBytes(info.bytes)} (${info.w}×${info.h}). ` +
-            optimizeSentence +
-            `Downscale ${alreadyWebp ? 'shrinks it to fit' : 'also shrinks it to fit'} (~${formatBytes(down)}). Animated GIFs keep their animation.`,
+          title,
+          description,
           actions: [
-            ...(alreadyWebp ? [] : [{ label: 'Optimize', run: () => void reencodeImageDataUrl(url).then(finish) }]),
-            { label: 'Downscale', run: () => void optimizeImageDataUrl(url, cap).then(finish) },
+            ...(stats.canOptimize ? [{ label: 'Optimize', run: () => finish('optimize') }] : []),
+            { label: 'Downscale', run: () => finish('downscale') },
           ],
-          cancel: () => finish(url),
-          cancelLabel: 'Keep original',
+          cancel: () => finish('off'),
+          cancelLabel,
         });
       });
     },
     [close],
   );
 
+  /** Offer to shrink one oversized image (e.g. an upload). Returns the chosen URL — the original when kept. */
+  const promptImage = useCallback(
+    async (url: string, cap: ImageCap): Promise<string> => {
+      const [item] = await scanImages([url], cap);
+      if (!item) return url;
+      const mode = await promptOptimizeChoice([item], (s) => ({
+        title: 'Large image',
+        description: `This image is ${formatBytes(s.totalBytes)} (${item.w}×${item.h}). ` + optimizeTail(s, false),
+        cancelLabel: 'Keep original',
+      }));
+      return mode === 'off' ? url : (await applyImageOptimize(url, mode, cap)) ?? url;
+    },
+    [promptOptimizeChoice],
+  );
+
+  /** Offer to shrink one world's oversized images. Returns the new world, or null when nothing changed. */
   const promptWorld = useCallback(
     async (world: World): Promise<World | null> => {
-      const { items, totalBytes } = await scanWorldImages(world);
-      if (items.length === 0) return null;
-      // Optimize only helps non-WebP images; already-WebP ones re-encode to themselves (unchanged size).
-      const canOptimize = items.some((i) => i.mime !== 'image/webp');
-      const optTotal = items.reduce(
-        (s, i) => s + (i.mime === 'image/webp' ? i.bytes : estimateEncodedBytes(i.bytes, i.w, i.h, 'reencode', i.cap)),
-        0,
-      );
-      const downTotal = items.reduce((s, i) => s + estimateEncodedBytes(i.bytes, i.w, i.h, 'downscale', i.cap), 0);
-      const n = items.length;
-      return new Promise<World | null>((resolve) => {
-        let done = false;
-        const finish = (v: World | null) => {
-          if (done) return;
-          done = true;
-          resolve(v);
-          close();
-        };
-        const optimizeSentence = canOptimize
-          ? `Optimize converts them to lossless WebP (~${formatBytes(optTotal)}, no quality loss). `
-          : '';
-        setPending({
-          title: 'Optimize world images?',
-          description:
-            `This world has ${n} image${n > 1 ? 's' : ''} larger than recommended (${formatBytes(totalBytes)} total). ` +
-            optimizeSentence +
-            `Downscale ${canOptimize ? 'also shrinks them' : 'shrinks them'} (~${formatBytes(downTotal)}). Animated GIFs keep their animation.`,
-          actions: [
-            ...(canOptimize ? [{ label: 'Optimize', run: () => void downscaleWorldImages(world, REENCODE_DEPS).then(finish) }] : []),
-            { label: 'Downscale', run: () => void downscaleWorldImages(world).then(finish) },
-          ],
-          cancel: () => finish(null),
-          cancelLabel: 'Keep as-is',
-        });
-      });
+      const { items } = await scanWorldImages(world);
+      const mode = await promptOptimizeChoice(items, (s) => ({
+        title: 'Optimize world images?',
+        description:
+          `This world has ${s.n} image${s.n > 1 ? 's' : ''} larger than recommended (${formatBytes(s.totalBytes)} total). ` +
+          optimizeTail(s, true),
+        cancelLabel: 'Keep as-is',
+      }));
+      return mode === 'off' ? null : applyWorldOptimize(world, mode);
     },
-    [close],
+    [promptOptimizeChoice],
+  );
+
+  /** The wording an import batch uses — shared by the world and image batch prompts. */
+  const batchCopy = (s: OptimizeStats): PromptCopy => ({
+    title: 'Optimize imported images?',
+    description:
+      `${s.n} image${s.n > 1 ? 's' : ''} in this import ${s.n > 1 ? 'are' : 'is'} larger than recommended (${formatBytes(s.totalBytes)} total). ` +
+      optimizeTail(s, true),
+    cancelLabel: 'Keep as-is',
+  });
+
+  /** One optimize choice for a batch of worlds — scans every world's images and prompts once. */
+  const promptWorldsBatch = useCallback(
+    async (worlds: World[]): Promise<OptimizeMode> => {
+      const items = (await Promise.all(worlds.map(scanWorldImages))).flatMap((r) => r.items);
+      return promptOptimizeChoice(items, batchCopy);
+    },
+    [promptOptimizeChoice],
+  );
+
+  /** One optimize choice for a batch of images (e.g. character portraits) against a shared cap. */
+  const promptImagesBatch = useCallback(
+    async (urls: string[], cap: ImageCap): Promise<OptimizeMode> => promptOptimizeChoice(await scanImages(urls, cap), batchCopy),
+    [promptOptimizeChoice],
   );
 
   // Keep the prompt's content while it fades out (pending goes null on close, which would blank the text).
@@ -171,5 +215,5 @@ export function useDownscalePrompt() {
     </AlertDialog>
   );
 
-  return { promptImage, promptWorld, dialog };
+  return { promptImage, promptWorld, promptWorldsBatch, promptImagesBatch, dialog };
 }

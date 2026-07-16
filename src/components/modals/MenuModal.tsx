@@ -9,7 +9,7 @@ import { getAllSaveRecords } from './dbUtils';
 import { useDevRoute } from '../../lib/devRouter';
 import { LoadGameDialog } from './LoadGameDialog';
 import { useGameplay } from '../../contexts/GameplayContext';
-import { useClosingSnapshot } from '../../lib/useClosingSnapshot';
+import { useClosingSnapshot } from '@/lib/useClosingSnapshot';
 import type { WorldOverview, SaveRecord } from "@/types";
 
 export const MenuModal = ({ onSettingsClick, onSave, onLoad, worldOverview, worldId, onExitToMenu, onEditWorld, onShowAiContext }: {

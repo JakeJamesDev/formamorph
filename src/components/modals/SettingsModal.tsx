@@ -1672,22 +1672,13 @@ export const SettingsModal = ({ isOpen, onOpenChange, previewValues, initialTab,
                   </ConfirmDialog>
                 </div>
               </div>
-              <div className="grid grid-cols-1 sm:grid-cols-4 items-start gap-4">
-                <label htmlFor="autosaveEnabled" className="text-left sm:text-right leading-4">
-                  Autosave
-                </label>
-                <div className="col-span-3 flex items-start gap-2">
-                  <Checkbox
-                    id="autosaveEnabled"
-                    checked={autosaveEnabled}
-                    onCheckedChange={(c) => setAutosaveEnabled(c === true)}
-                    className="shrink-0"
-                  />
-                  <span className="text-xs text-muted-foreground">
-                    Automatically saves your game after every turn to a per-world “Autosave” slot, starting once the opening scene finishes. It never touches your manual saves and shows in Load with an “Auto” tag. Turn off to save only manually.
-                  </span>
-                </div>
-              </div>
+              <CheckRow
+                label="Autosave"
+                htmlFor="autosaveEnabled"
+                checked={autosaveEnabled}
+                onChange={setAutosaveEnabled}
+                hint="Automatically saves your game after every turn to a per-world “Autosave” slot, starting once the opening scene finishes. It never touches your manual saves and shows in Load with an “Auto” tag. Turn off to save only manually."
+              />
             </div>
             </ScrollArea>
           </TabsContent>

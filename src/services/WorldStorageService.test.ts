@@ -181,4 +181,123 @@ describe('local world storage (IndexedDB)', () => {
 
     await WorldStorageService.deleteWorld('sticky-1');
   });
+
+  it('keeps sourceHash sticky across a save that omits it', async () => {
+    await WorldStorageService.storeWorld({ ...validWorld, id: 'sticky-2', sourceHash: 'abc123' });
+    await WorldStorageService.storeWorld({ ...validWorld, id: 'sticky-2', dirty: true });
+
+    expect((await readRaw('sticky-2'))?.sourceHash).toBe('abc123');
+
+    await WorldStorageService.deleteWorld('sticky-2');
+  });
+});
+
+/** Read a stored record straight from IndexedDB — `getWorldMetadata` doesn't expose `sourceHash`. */
+const readRaw = (id: string): Promise<StoredWorldRecord | undefined> =>
+  new Promise((resolve, reject) => {
+    const open = indexedDB.open('worldsDB');
+    open.onerror = () => reject(open.error);
+    open.onsuccess = () => {
+      const db = open.result;
+      const req = db.transaction(['worlds'], 'readonly').objectStore('worlds').get(id);
+      req.onsuccess = () => { resolve(req.result); db.close(); };
+      req.onerror = () => { reject(req.error); db.close(); };
+    };
+  });
+
+/**
+ * Patch a stored record in place, bypassing `storeWorld` — its sticky merge would restore the very
+ * `sourceHash` these tests need to stale or clear.
+ */
+const writeRaw = (record: StoredWorldRecord): Promise<void> =>
+  new Promise((resolve, reject) => {
+    const open = indexedDB.open('worldsDB');
+    open.onerror = () => reject(open.error);
+    open.onsuccess = () => {
+      const db = open.result;
+      const req = db.transaction(['worlds'], 'readwrite').objectStore('worlds').put(record);
+      req.onsuccess = () => { resolve(); db.close(); };
+      req.onerror = () => { reject(req.error); db.close(); };
+    };
+  });
+
+describe('loadDefaultWorlds (content-hash refresh)', () => {
+  // The real bundled world, hashed through the real `?raw` glob — the smallest one keeps the parse cheap.
+  const seed = [{ id: 'rampage', defaultName: 'Rampage' }];
+
+  afterEach(async () => {
+    await WorldStorageService.deleteWorld('rampage').catch(() => {});
+  });
+
+  it('seeds a missing world with its content hash, announcing nothing on a first run', async () => {
+    const { failed, updated } = await WorldStorageService.loadDefaultWorlds(seed);
+
+    expect(failed).toEqual([]);
+    expect(updated).toEqual([]); // a first seed isn't news to the player
+    expect((await readRaw('rampage'))?.sourceHash).toEqual(expect.any(String));
+  });
+
+  it('does not rewrite an already-converged world (the every-launch re-save loop)', async () => {
+    await WorldStorageService.loadDefaultWorlds(seed);
+
+    // A sentinel that only a rewrite would clobber, plus a direct watch on the write path.
+    const record = (await readRaw('rampage'))!;
+    await writeRaw({ ...record, name: 'SENTINEL' });
+    const storeSpy = vi.spyOn(WorldStorageService, 'storeWorld');
+
+    const { updated } = await WorldStorageService.loadDefaultWorlds(seed);
+
+    expect(storeSpy).not.toHaveBeenCalled();
+    expect(updated).toEqual([]);
+    expect((await readRaw('rampage'))?.name).toBe('SENTINEL');
+  });
+
+  it('reseeds and announces when the bundled content changed', async () => {
+    await WorldStorageService.loadDefaultWorlds(seed);
+    const record = (await readRaw('rampage'))!;
+    await writeRaw({ ...record, sourceHash: 'STALE-HASH', name: 'OLD NAME' });
+
+    const { updated } = await WorldStorageService.loadDefaultWorlds(seed);
+
+    expect(updated).toHaveLength(1);
+    const healed = await readRaw('rampage');
+    expect(healed?.name).not.toBe('OLD NAME'); // bundle content won
+    expect(healed?.sourceHash).toBe(record.sourceHash); // hash healed, so the next run converges
+  });
+
+  it('backfills a hashless copy silently, then converges', async () => {
+    await WorldStorageService.loadDefaultWorlds(seed);
+    const record = (await readRaw('rampage'))!;
+    delete record.sourceHash; // a world seeded before hashing existed
+    await writeRaw(record);
+
+    const first = await WorldStorageService.loadDefaultWorlds(seed);
+    expect(first.updated).toEqual([]); // adopting a hash isn't a content change — don't announce it
+    expect((await readRaw('rampage'))?.sourceHash).toEqual(expect.any(String));
+
+    const second = await WorldStorageService.loadDefaultWorlds(seed);
+    expect(second.updated).toEqual([]);
+  });
+
+  it('leaves an edited world alone even when the bundle changed', async () => {
+    await WorldStorageService.loadDefaultWorlds(seed);
+    const record = (await readRaw('rampage'))!;
+    await writeRaw({ ...record, sourceHash: 'STALE-HASH', dirty: true, name: 'MY EDIT' });
+
+    const { updated } = await WorldStorageService.loadDefaultWorlds(seed);
+
+    expect(updated).toEqual([]);
+    const stored = await readRaw('rampage');
+    expect(stored?.name).toBe('MY EDIT');
+    expect(stored?.sourceHash).toBe('STALE-HASH'); // still stale: a later un-edit can still pick the update up
+  });
+
+  it('reports a world with no bundled JSON as failed without throwing', async () => {
+    const { failed, updated } = await WorldStorageService.loadDefaultWorlds([
+      { id: 'no-such-world', defaultName: 'Nope' },
+    ]);
+
+    expect(failed).toEqual(['no-such-world']);
+    expect(updated).toEqual([]);
+  });
 });

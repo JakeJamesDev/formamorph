@@ -88,14 +88,36 @@ export async function measureDataUrl(url: string): Promise<{ w: number; h: numbe
   return out;
 }
 
-/** True when the image exceeds either budget — catches a 4000px photo AND a small-dim multi-MB animated GIF. */
-export async function isOversized(url: string, cap: ImageCap): Promise<boolean> {
+/**
+ * The one place the over-budget rule lives: measure `url` and describe it when it exceeds either budget —
+ * catching a 4000px photo AND a small-dim multi-MB animated GIF. Null when it fits or can't be read.
+ * Every scan/check below goes through this, so the rule can't drift between call sites.
+ */
+async function oversizedItem(url: string, cap: ImageCap, path: string): Promise<OversizedImage | null> {
   try {
     const { w, h, bytes } = await measureDataUrl(url);
-    return Math.max(w, h) > cap.maxDim || bytes > cap.maxBytes;
+    if (Math.max(w, h) > cap.maxDim || bytes > cap.maxBytes) return { path, cap, w, h, bytes, mime: dataUrlMime(url) };
   } catch {
-    return false;
+    /* unreadable → treat as within budget */
   }
+  return null;
+}
+
+/** True when the image exceeds either budget. */
+export async function isOversized(url: string, cap: ImageCap): Promise<boolean> {
+  return (await oversizedItem(url, cap, '')) !== null;
+}
+
+/** Scan standalone image data-URLs against one cap (e.g. character portraits), returning only the oversized
+ *  ones — the flat-list sibling of `scanWorldImages`. Blank/unreadable entries are skipped. */
+export async function scanImages(urls: (string | undefined | null)[], cap: ImageCap): Promise<OversizedImage[]> {
+  const items: OversizedImage[] = [];
+  for (const url of urls) {
+    if (!url) continue;
+    const item = await oversizedItem(url, cap, '');
+    if (item) items.push(item);
+  }
+  return items;
 }
 
 export function dataUrlMime(url: string): string {
@@ -249,14 +271,8 @@ function worldImageSlots(world: World): ImageSlot[] {
 export async function scanWorldImages(world: World): Promise<{ items: OversizedImage[]; totalBytes: number }> {
   const items: OversizedImage[] = [];
   for (const slot of worldImageSlots(world)) {
-    try {
-      const { w, h, bytes } = await measureDataUrl(slot.url);
-      if (Math.max(w, h) > slot.cap.maxDim || bytes > slot.cap.maxBytes) {
-        items.push({ path: slot.path, cap: slot.cap, w, h, bytes, mime: dataUrlMime(slot.url) });
-      }
-    } catch {
-      /* skip unreadable */
-    }
+    const item = await oversizedItem(slot.url, slot.cap, slot.path);
+    if (item) items.push(item);
   }
   return { items, totalBytes: items.reduce((sum, i) => sum + i.bytes, 0) };
 }

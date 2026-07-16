@@ -185,6 +185,7 @@ function Pager({
           <JumpPopover page={page} pageCount={pageCount} onPageChange={onPageChange}>
             <button
               type="button"
+              aria-current="page"
               aria-label={`Page ${p} of ${pageCount} — jump to a page`}
               className={cn(buttonVariants({ variant: "default", size: "icon" }))}
             >
@@ -246,10 +247,9 @@ function Pager({
                 <button
                   type="button"
                   aria-label="Jump to a page"
-                  className="flex h-9 w-9 items-center justify-center rounded-md hover:bg-accent hover:text-accent-foreground"
+                  className="rounded-md hover:bg-accent hover:text-accent-foreground"
                 >
-                  <MoreHorizontal className="h-4 w-4" />
-                  <span className="sr-only">More pages</span>
+                  <PaginationEllipsis />
                 </button>
               </JumpPopover>
             ) : null}

@@ -1,13 +1,6 @@
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import type { ImageProviderId } from "@/lib/imageGen";
-
-const Code = ({ children }: { children: React.ReactNode }) => (
-  <code className="rounded bg-muted px-1.5 py-0.5 font-mono text-xs break-all">{children}</code>
-);
-
-const Snippet = ({ children }: { children: React.ReactNode }) => (
-  <pre className="overflow-x-auto rounded bg-muted p-2 font-mono text-xs">{children}</pre>
-);
+import { Code, Snippet } from "./guideBits";
 
 const TITLES: Record<ImageProviderId, string> = {
   a1111: "Set up Automatic1111 / Forge",

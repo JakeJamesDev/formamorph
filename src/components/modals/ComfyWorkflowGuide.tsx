@@ -1,9 +1,6 @@
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { ScrollArea } from "@/components/ui/scroll-area";
-
-const Code = ({ children }: { children: React.ReactNode }) => (
-  <code className="rounded bg-muted px-1.5 py-0.5 font-mono text-xs break-all">{children}</code>
-);
+import { Code } from "./guideBits";
 
 /** Explains how to turn a ComfyUI workflow the user already has into the API-format template the Workflow
  *  field expects, by exporting it and swapping the Formamorph-controlled values for %tokens%. */

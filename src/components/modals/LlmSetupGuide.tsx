@@ -1,8 +1,5 @@
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-
-const Code = ({ children }: { children: React.ReactNode }) => (
-  <code className="rounded bg-muted px-1.5 py-0.5 font-mono text-xs break-all">{children}</code>
-);
+import { Code } from "./guideBits";
 
 /** Derive a browsable base (`http://host:port`) from the configured chat-completions URL, for the
  *  "open it in a tab" reachability check. Falls back to the raw string if it doesn't parse. */

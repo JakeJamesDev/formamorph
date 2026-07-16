@@ -35,11 +35,19 @@ export function createWorkerClient(createWorker: () => Worker) {
       });
       // A worker that fails to load (script fetch/CSP failure) or a structured-clone-in error never posts a
       // `message`, so without these every awaiter hangs forever (e.g. the save-load toast never closing).
-      const failAll = (reason: string) => {
+      // `discard` also drops the instance: a worker whose script failed to load won't answer later requests
+      // either, so keeping it cached would hang every *subsequent* call too — the next run() builds a fresh
+      // one (and can succeed once the transient cause, e.g. an offline chunk fetch, clears). A `messageerror`
+      // leaves the worker itself healthy, so that one keeps the instance.
+      const failAll = (reason: string, discard = false) => {
         pendingRequests.forEach((req) => req.reject(new Error(reason)));
         pendingRequests.clear();
+        if (discard) {
+          workerInstance?.terminate();
+          workerInstance = null;
+        }
       };
-      workerInstance.addEventListener('error', (event) => failAll(event.message || 'Worker failed to load'));
+      workerInstance.addEventListener('error', (event) => failAll(event.message || 'Worker failed to load', true));
       workerInstance.addEventListener('messageerror', () => failAll('Worker message could not be deserialized'));
     }
     return workerInstance;

@@ -565,11 +565,16 @@ const GameViewer = ({
     [playerStats],
   );
 
-  const setStatByName = useCallback((name: string, value: number) => {
+  /**
+   * Move a stat by `delta`, clamped to its range. Deltas rather than absolute values because a turn's other
+   * updates to the same stat may still be queued: React runs updaters in order, so this lands on their result
+   * instead of overwriting it with a value read before they applied.
+   */
+  const adjustStatByName = useCallback((name: string, delta: number) => {
     setPlayerStats((prevStats) =>
       prevStats.map((stat) =>
         stat.name === name
-          ? { ...stat, value: Math.max(stat.min, Math.min(stat.max, value)) }
+          ? { ...stat, value: Math.max(stat.min, Math.min(stat.max, stat.value + delta)) }
           : stat,
       ),
     );
@@ -880,13 +885,12 @@ const GameViewer = ({
       const health = getStatByName("Health");
       const hunger = getStatByName("Hunger");
       if (health && hunger) {
-        // Read post-regen values (regenChanges holds the delta just applied above), so a regenerating Health
-        // isn't overwritten with its pre-regen value and the starvation threshold tests the current Hunger.
-        const postRegenHunger = hunger.value + (regenChanges[hunger.name.toLowerCase()] || 0);
-        const postRegenHealth = health.value + (regenChanges[health.name.toLowerCase()] || 0);
-        if (postRegenHunger <= 20) {
+        // This turn's AI changes and the regen above are both still queued, so neither `hunger.value` nor
+        // `regenChanges` reflects them here — the penalty subtracts via an updater, which lands on the
+        // regenerated Health rather than overwriting it. The threshold still reads the pre-turn Hunger.
+        if (hunger.value <= 20) {
           const healthLoss = 5 * hours;
-          setStatByName("Health", postRegenHealth - healthLoss);
+          adjustStatByName("Health", -healthLoss);
           addLogEntry(`You're starving! Lost ${healthLoss} health.`);
           // Add health loss to recent changes
           const applyLoss = (prev: Record<string, number>) => ({
@@ -899,7 +903,7 @@ const GameViewer = ({
       }
 
     },
-    [getStatByName, setStatByName, addLogEntry, setGameTime, setPlayerStats, setRecentStatChanges, setHeldStatChanges, setRecentStatFading],
+    [getStatByName, adjustStatByName, addLogEntry, setGameTime, setPlayerStats, setRecentStatChanges, setHeldStatChanges, setRecentStatFading],
   );
 
   const getEndpointUrl = () => endpointUrl;
