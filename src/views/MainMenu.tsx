@@ -8,7 +8,7 @@ import 'react-toastify/dist/ReactToastify.css';
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {ConfirmDialog} from "@/components/ConfirmDialog";
-import {FilePlus2, DoorOpen, Pencil, Github, AlertTriangle, Code, User, LogIn, Import, Globe, LayoutGrid, GalleryThumbnails, Columns2, RectangleVertical, Menu, Earth, BookOpen, Upload, ChevronLast, MoreHorizontal } from "lucide-react";
+import {FilePlus2, DoorOpen, Pencil, Github, AlertTriangle, Code, User, Import, Globe, LayoutGrid, GalleryThumbnails, Columns2, RectangleVertical, Menu, Earth, BookOpen, Upload, ChevronLast, MoreHorizontal } from "lucide-react";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { ImageZoomViewer } from "@/components/ImageZoomViewer";
 import { cn } from "@/lib/utils";
@@ -60,6 +60,7 @@ import { WebVersionChangelog } from '@/components/menu/WebVersionChangelog';
 import { parseDictionaryImport } from '@/lib/dictionaryFile';
 import { importCharacterFile } from '@/lib/entityFile';
 import { useDownscalePrompt } from '@/lib/useDownscalePrompt';
+import { IMAGE_CAPS } from '@/lib/imageOptim';
 import CommunityCreationsBrowser from './CommunityCreationsBrowser';
 import { WorldDetailsColumn, DateTimeText, type WorldRecord } from "@/components/WorldDetails";
 import SortableWorldCard from "@/components/SortableWorldCard";
@@ -68,6 +69,7 @@ import EntityEditorModal from "@/components/modals/EntityEditorModal";
 import { ManageUsersDialog } from "@/components/menu/ManageUsersDialog";
 import { AuthModals } from "@/components/menu/AuthModals";
 import { PublishModal } from "@/components/menu/PublishModal";
+import { BackupRestoreDialog } from "@/components/menu/BackupRestoreDialog";
 import { COMMUNITY_ENABLED } from "@/lib/featureFlags";
 import { Checkbox } from "@/components/ui/checkbox";
 import { useReadmeVisibility } from "@/lib/useReadmeVisibility";
@@ -128,7 +130,7 @@ const MainMenu = ({ onStartGame, onLoadSaveGame, onReplayIntro }: MainMenuProps)
     dictionaries: worldBooks,
   } = useGameData();
   const { showReadme, setShowReadme } = useReadmeVisibility();
-  const { promptWorld, dialog: downscaleDialog } = useDownscalePrompt();
+  const { promptWorld, promptImage, dialog: downscaleDialog } = useDownscalePrompt();
   const [selectedWorld, setSelectedWorld] = useState<WorldRecord | null>(null);
   // Local-world grid layout: "grid" (default compact cards) or "detailed" (community-browser-style card + info
   // beneath). Persisted across sessions in localStorage.
@@ -169,6 +171,7 @@ const MainMenu = ({ onStartGame, onLoadSaveGame, onReplayIntro }: MainMenuProps)
     if (!import.meta.env.DEV) return;
     if (devRoute?.modal === 'settings') setShowSettings(true);
     if (devRoute?.modal === 'menu') setShowLoadDialog(true);
+    if (devRoute?.modal === 'backup') setShowBackup(true);
     if (devRoute?.modal === 'worldEditor') setShowWorldEditor(true);
     if (devRoute?.modal === 'avatar') setShowCharacterCustomization(true);
   }, [devRoute?.modal]);
@@ -217,6 +220,7 @@ const MainMenu = ({ onStartGame, onLoadSaveGame, onReplayIntro }: MainMenuProps)
 
   // Publish modal open state; the publish form/handlers live in the PublishModal component.
   const [showPublishModal, setShowPublishModal] = useState(false);
+  const [showBackup, setShowBackup] = useState(false);
 
   // Community Creations browser open state (the browser itself lives in <CommunityCreationsBrowser>).
   const [showCommunityBrowser, setShowCommunityBrowser] = useState(false);
@@ -486,6 +490,8 @@ const MainMenu = ({ onStartGame, onLoadSaveGame, onReplayIntro }: MainMenuProps)
       (async () => {
         try {
           const { entity, book } = await importCharacterFile(file);
+          // Offer to optimize/downscale an oversized portrait before it's stored (no-op when within budget).
+          if (entity.image) entity.image = await promptImage(entity.image, IMAGE_CAPS.entity);
           const now = new Date().toISOString();
           await EntityStorageService.storeEntity({ id: entity.id, name: entity.name, createdAt: now, lastAccessed: now, data: entity });
           setEntities(prev => [...prev, { id: entity.id, name: entity.name, image: entity.image, createdAt: now, lastAccessed: now }]);
@@ -900,6 +906,7 @@ const MainMenu = ({ onStartGame, onLoadSaveGame, onReplayIntro }: MainMenuProps)
               {actionButtons}
               <div className="h-px bg-border my-1" />
               <Button variant="ghost" className="justify-start" onClick={() => setShowLoadDialog(true)}>Load Game</Button>
+              <Button variant="ghost" className="justify-start" onClick={() => setShowBackup(true)}>Backup &amp; Restore</Button>
               <Button variant="ghost" className="justify-start" onClick={() => setShowSettings(true)}>Settings</Button>
             </PopoverContent>
           </Popover>
@@ -933,6 +940,7 @@ const MainMenu = ({ onStartGame, onLoadSaveGame, onReplayIntro }: MainMenuProps)
               <PopoverContent align="end" className="w-48 p-1">
                 <div className="flex flex-col">
                   <Button variant="ghost" className="w-full justify-start" onClick={() => setShowLoadDialog(true)}>Load Game</Button>
+                  <Button variant="ghost" className="w-full justify-start" onClick={() => setShowBackup(true)}>Backup &amp; Restore</Button>
                   <Button variant="ghost" className="w-full justify-start" onClick={() => setShowSettings(true)}>Settings</Button>
                 </div>
               </PopoverContent>
@@ -942,6 +950,7 @@ const MainMenu = ({ onStartGame, onLoadSaveGame, onReplayIntro }: MainMenuProps)
       </div>
 
       <SettingsModal isOpen={showSettings} onOpenChange={setShowSettings} initialTab={devRoute?.tab} initialPromptTab={devRoute?.subtab} />
+      <BackupRestoreDialog open={showBackup} onOpenChange={setShowBackup} />
 
       {/* Main-menu Load Game: no current world (root view), cold-loads the chosen save into its own world. */}
       <LoadGameDialog open={showLoadDialog} onOpenChange={setShowLoadDialog} onLoad={handleColdLoad} />
@@ -1109,7 +1118,7 @@ const MainMenu = ({ onStartGame, onLoadSaveGame, onReplayIntro }: MainMenuProps)
                   {getUserInitial()}
                 </div>
               ) : (
-                <LogIn className="h-6 w-6" />
+                <User className="h-6 w-6" />
               )}
             </button>
           )}

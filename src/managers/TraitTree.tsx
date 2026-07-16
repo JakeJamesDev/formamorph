@@ -27,7 +27,7 @@ const TraitTree = ({ selectedId, onSelect }: { selectedId: string | null; onSele
         lead: isGroup ? 'chevron' : 'none',
         collapseLabels: ['Expand group', 'Collapse group'],
         icon: isGroup ? <Folder className="h-4 w-4 shrink-0" /> : undefined,
-        label: isGroup ? node.group?.name : node.trait?.name,
+        label: isGroup ? node.group?.name : node.leaf?.name,
         labelClass: isGroup ? 'font-medium' : undefined,
         remove: () => { if (isGroup) removeTraitGroup(node.id); else removeTrait(node.id); },
         duplicate: () => {

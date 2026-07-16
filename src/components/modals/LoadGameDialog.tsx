@@ -196,11 +196,18 @@ function SortableFolderRow({ folder, onOpen }: { folder: SaveFolder; onOpen: (f:
  * - `current` omitted (main menu — no world loaded): root lists every world with saves; loading an installed
  *   world's save cold-starts it (`onLoad` with its worldId, no confirm); an uninstalled world is blocked.
  */
-export function LoadGameDialog({ open, onOpenChange, current, onLoad }: {
+export function LoadGameDialog({ open, onOpenChange, current, onLoad, title, onPickSave, topSlot }: {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   current?: { id: string; name: string };
   onLoad: (saveId: string, targetWorldId?: string) => Promise<unknown> | void;
+  /** Dialog title; defaults to "Load Game". */
+  title?: string;
+  /** Pick mode (Save dialog): clicking a save row calls this with the row instead of loading it, and the
+   *  cross-world/blocked-load confirms never fire. */
+  onPickSave?: (row: SaveRow) => void;
+  /** Extra content rendered at the top of the body — used by the Save dialog for its name input + Save button. */
+  topSlot?: React.ReactNode;
 }) {
   const coldStart = !current;
 
@@ -439,9 +446,10 @@ export function LoadGameDialog({ open, onOpenChange, current, onLoad }: {
       <Dialog open={open} onOpenChange={onOpenChange}>
         <DialogContent className="sm:max-w-[425px] max-h-[90dvh] flex flex-col">
           <DialogHeader className="flex-shrink-0">
-            <DialogTitle>Load Game</DialogTitle>
+            <DialogTitle>{title ?? 'Load Game'}</DialogTitle>
           </DialogHeader>
           <div className="flex flex-col py-4">
+            {topSlot && <div className="mb-3">{topSlot}</div>}
             <div className="mb-3">
               <input
                 type="file"
@@ -503,7 +511,7 @@ export function LoadGameDialog({ open, onOpenChange, current, onLoad }: {
                           row={row}
                           disabled={isLoading}
                           busy={busy}
-                          onLoad={requestLoad}
+                          onLoad={onPickSave ?? requestLoad}
                           onDownload={(r) => void doDownload(r)}
                           onDelete={(r) => setPendingDelete(r)}
                         />

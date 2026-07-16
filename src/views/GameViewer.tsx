@@ -261,6 +261,7 @@ const GameViewer = ({
     thinkingMode,
     reasoningEffort,
     supportedReasoningEfforts,
+    reasoningEngaged,
     promptReasoning,
     promptReasoningBudget,
     thinkingPrompt,
@@ -1893,7 +1894,11 @@ ${playerNotes || NONE_PLACEHOLDER}
           // hint. Guided modes / uncontrolled prompts resolve to 0 / none on each path.
           ...(localModelActive
             ? reasoningBudgetBody(thinkingMode, requestType, promptReasoningBudget, maxTokensOverride ?? maxTokens)
-            : reasoningEffortBody(thinkingMode, resolvePromptReasoning(requestType, promptReasoning, reasoningEffort), supportedReasoningEfforts)),
+            // Only send `reasoning_effort` to an external endpoint when reasoning is actually engaged; otherwise
+            // omit it entirely so a plain endpoint (e.g. LM Studio) isn't sent fields it rejects.
+            : reasoningEngaged
+              ? reasoningEffortBody(thinkingMode, resolvePromptReasoning(requestType, promptReasoning, reasoningEffort), supportedReasoningEfforts)
+              : {}),
           // Single-paragraph stop, but not in inline-thinking mode — the <think> block needs newlines.
           ...(requestType === "narration" && paragraphLimit === "single" && thinkingMode !== "inline" && { stop: ["\n"] }),
         }),

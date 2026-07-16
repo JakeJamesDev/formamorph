@@ -5,6 +5,8 @@ import {
   dataUrlMime,
   downscaleWorldImages,
   estimateEncodedBytes,
+  applyWorldOptimize,
+  applyImageOptimize,
   IMAGE_CAPS,
   type DownscaleDeps,
 } from './imageOptim';
@@ -110,5 +112,22 @@ describe('estimateEncodedBytes', () => {
     const cap = IMAGE_CAPS.background;
     expect(estimateEncodedBytes(bytes, 100, 100, 'downscale', cap))
       .toBeLessThan(estimateEncodedBytes(bytes, 100, 100, 'reencode', cap));
+  });
+});
+
+describe('applyWorldOptimize / applyImageOptimize (mode gating)', () => {
+  const world = { worldOverview: { thumbnail: 'data:x' }, entities: [], locations: [] } as unknown as World;
+
+  it("'off' returns the world untouched", async () => {
+    expect(await applyWorldOptimize(world, 'off')).toBe(world);
+  });
+
+  it("'off' leaves an image url unchanged", async () => {
+    expect(await applyImageOptimize('data:image/png;base64,AAAA', 'off')).toBe('data:image/png;base64,AAAA');
+  });
+
+  it('passes a missing image url through for any mode', async () => {
+    expect(await applyImageOptimize(undefined, 'downscale')).toBeUndefined();
+    expect(await applyImageOptimize(null, 'optimize', IMAGE_CAPS.entity)).toBeNull();
   });
 });

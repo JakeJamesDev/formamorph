@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { reasoningEffortBody, reasoningTabs, reasoningPromptTabs, defaultPromptReasoning, resolvePromptReasoning, defaultReasoningBudgetPct, resolveReasoningBudgetPct, reasoningBudgetBody, SAFE_REASONING_EFFORTS } from './reasoningEffort';
+import { reasoningEffortBody, reasoningTabs, reasoningPromptTabs, defaultPromptReasoning, resolvePromptReasoning, defaultReasoningBudgetPct, resolveReasoningBudgetPct, reasoningBudgetBody, isReasoningEngaged, SAFE_REASONING_EFFORTS } from './reasoningEffort';
 
 describe('reasoningEffortBody', () => {
   it('sends the hint verbatim under Native mode for every non-auto level', () => {
@@ -113,5 +113,23 @@ describe('reasoning budget (local engine)', () => {
   it('forces 0 in guided modes (local engine ignores reasoning_effort, so this is how they suppress)', () => {
     expect(reasoningBudgetBody('inline', 'narration', { narration: 40 }, 500)).toEqual({ thinking_budget_tokens: 0 });
     expect(reasoningBudgetBody('staged', 'narration', {}, 500)).toEqual({ thinking_budget_tokens: 0 });
+  });
+});
+
+describe('isReasoningEngaged', () => {
+  it('is false for the default off/auto setup with default per-prompt reasoning', () => {
+    expect(isReasoningEngaged('off', 'auto', { narration: 'global', choices: 'none' })).toBe(false);
+    expect(isReasoningEngaged('off', 'auto', {})).toBe(false);
+  });
+  it('is true when a Thinking mode is active', () => {
+    expect(isReasoningEngaged('staged', 'auto', {})).toBe(true);
+    expect(isReasoningEngaged('inline', 'auto', {})).toBe(true);
+  });
+  it('is true when a global native effort is chosen', () => {
+    expect(isReasoningEngaged('off', 'high', {})).toBe(true);
+  });
+  it('is true when a per-prompt positive level is set, but not for global/none', () => {
+    expect(isReasoningEngaged('off', 'auto', { narration: 'high' })).toBe(true);
+    expect(isReasoningEngaged('off', 'auto', { narration: 'global', choices: 'none' })).toBe(false);
   });
 });

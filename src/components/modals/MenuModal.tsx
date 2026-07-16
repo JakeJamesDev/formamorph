@@ -100,26 +100,30 @@ export const MenuModal = ({ onSettingsClick, onSave, onLoad, worldOverview, worl
         onConfirm={onExitToMenu}
       />
 
-      {/* Save Game popup */}
-      <Dialog open={showSaveDialog} onOpenChange={(open) => { setShowSaveDialog(open); if (!open) setSaveName(''); }}>
-        <DialogContent className="sm:max-w-[425px]">
-          <DialogHeader>
-            <DialogTitle>Save Game</DialogTitle>
-          </DialogHeader>
-          <div className="flex gap-2 py-4">
+      {/* Save Game popup: the same browser as Load, but clicking a save fills the name box (to overwrite it)
+          rather than loading. The name input + Save button ride at the top. */}
+      <LoadGameDialog
+        open={showSaveDialog}
+        onOpenChange={(open) => { setShowSaveDialog(open); if (!open) setSaveName(''); }}
+        current={current}
+        onLoad={() => {}}
+        title="Save Game"
+        onPickSave={(row) => setSaveName(row.name)}
+        topSlot={
+          <div className="flex gap-2">
             <Input
               placeholder="Enter save name"
               value={saveName}
               onChange={(e) => setSaveName(e.target.value)}
               onKeyDown={(e) => { if (e.key === 'Enter') handleSaveClick(); }}
             />
-            <Button onClick={handleSaveClick} className="flex items-center justify-center gap-2">
+            <Button onClick={handleSaveClick} className="flex items-center justify-center gap-2 shrink-0">
               <Save className="h-4 w-4" />
               <span>Save</span>
             </Button>
           </div>
-        </DialogContent>
-      </Dialog>
+        }
+      />
 
       {/* Duplicate-name-in-world resolution */}
       <Dialog open={!!dupConflict} onOpenChange={(open) => { if (!open) setDupConflict(null); }}>

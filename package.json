@@ -26,7 +26,8 @@
     "gen-tags": "node scripts/genDanbooruTags.mjs",
     "docs": "typedoc",
     "changelog:notes": "node scripts/extractReleaseNotes.mjs",
-    "baseline": "node testing/baseline/harness/run.mjs"
+    "baseline": "node testing/baseline/harness/run.mjs",
+    "screen": "node testing/baseline/harness/screen.mjs"
   },
   "dependencies": {
     "electron-updater": "^6.8.9",
