@@ -33,7 +33,7 @@ import { buildStyledValues } from '../lib/sectionStyle';
 import { defaultPromptSampler, type PromptSamplerMap, type PromptSampler } from '../lib/promptSamplers';
 import type { AIRequestType } from '../types';
 import type { ParagraphLimit } from '../lib/outputLength';
-import { detectSupportedReasoningEfforts, type ReasoningEffortField, type PromptReasoning } from '../lib/reasoningEffort';
+import { detectSupportedReasoningEfforts, isReasoningEngaged, type ReasoningEffortField, type PromptReasoning } from '../lib/reasoningEffort';
 
 /** Lifecycle of the context-window auto-detect probe; `error` is set only on a forced (manual) attempt. */
 export type DetectStatus = 'idle' | 'detecting' | 'success' | 'error';
@@ -378,12 +378,6 @@ function useProvideSettings() {
     });
   }, [activeEndpointUrl, activeApiToken, activeModelName, setReasoningSupportCache]);
 
-  // Probe when the active endpoint+model has no cached support list; debounced so editing the URL doesn't fire per keystroke.
-  useEffect(() => {
-    if (supportedReasoningEfforts !== null) return;
-    const id = setTimeout(() => { void detectReasoningEfforts(); }, 1200);
-    return () => clearTimeout(id);
-  }, [supportedReasoningEfforts, detectReasoningEfforts]);
 
   const [thinkingMode, setThinkingMode] = usePersistentState<ThinkingMode>(`${APP_ID}_thinkingMode`, 'off', {
     parse: (r) => (r === 'precall' || r === 'inline' || r === 'staged' ? r : 'off'),
@@ -425,6 +419,23 @@ function useProvideSettings() {
   const promptSamplers = useMemo(() => activeSamplers(presetStore), [presetStore]);
   const promptReasoning = useMemo(() => activeReasoning(presetStore), [presetStore]);
   const promptReasoningBudget = useMemo(() => activeReasoningBudget(presetStore), [presetStore]);
+
+  // Reasoning is "engaged" only when the user has opted into it somewhere — a Thinking mode, a global native
+  // effort, or a per-prompt positive level. When it isn't, the app sends no `reasoning_effort` at all (so a
+  // plain endpoint like LM Studio isn't hit with fields it rejects, e.g. the aux prompts' `none`) and skips
+  // the support probe entirely, matching the pre-reasoning behavior for the many users who never touch it.
+  const reasoningEngaged = useMemo(
+    () => isReasoningEngaged(thinkingMode, reasoningEffort, promptReasoning),
+    [thinkingMode, reasoningEffort, promptReasoning],
+  );
+
+  // Probe the endpoint's accepted reasoning levels only once reasoning is actually engaged and we have no
+  // cached list yet; debounced so editing the URL doesn't fire per keystroke.
+  useEffect(() => {
+    if (!reasoningEngaged || supportedReasoningEfforts !== null) return;
+    const id = setTimeout(() => { void detectReasoningEfforts(); }, 1200);
+    return () => clearTimeout(id);
+  }, [reasoningEngaged, supportedReasoningEfforts, detectReasoningEfforts]);
   const verbatimMap = useMemo(() => activeVerbatim(presetStore), [presetStore]);
   const globalForSampler = useCallback(
     (sampler: PromptSampler) => (sampler === 'temperature' ? genTemperature : genRepetitionPenalty),
@@ -785,6 +796,7 @@ function useProvideSettings() {
     reasoningEffort,
     setReasoningEffort,
     supportedReasoningEfforts,
+    reasoningEngaged,
     promptReasoning,
     setPromptReasoning,
     promptReasoningBudget,

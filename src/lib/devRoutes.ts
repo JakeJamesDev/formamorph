@@ -18,7 +18,7 @@ export type DevView = (typeof DEV_VIEWS)[number];
  *  `localModel` is intentionally absent — it lives inside
  *  Settings→LocalModelPanel, reached via `modal=settings` + its tab, not its own name. `avatar` opens
  *  MainMenu's Character Customization step directly (a MainMenu sub-state, like `worldEditor`). */
-export const DEV_MODALS = ['settings', 'entity', 'export', 'menu', 'worldEditor', 'intro', 'avatar'] as const;
+export const DEV_MODALS = ['settings', 'entity', 'export', 'menu', 'worldEditor', 'intro', 'avatar', 'backup'] as const;
 export type DevModal = (typeof DEV_MODALS)[number];
 
 /** Coverage ledger: tabbed surface → the sub-tabs the router can target (via `tab=…`). Kept in lockstep

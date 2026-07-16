@@ -1,0 +1,13 @@
+[
+  {
+    "model": "silver-siren-12b",
+    "date": "2026-07-16",
+    "tier": "B",
+    "objective": 50,
+    "restraint": 0,
+    "statDir": 50,
+    "format": 100,
+    "locAcc": 100,
+    "refusals": 0
+  }
+]

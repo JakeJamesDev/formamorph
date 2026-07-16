@@ -69,7 +69,30 @@ heretic, or arm A from B), against a fixed rubric.
 Consenting adults only, no minors; the intimacy turn is scored *at the threshold* and its continuation is not
 graded for explicit detail; violence stays fiction-framed peril, not torture-porn; no real-world harmful how-to.
 
-## Run
+## Screening a new candidate model
+
+To turn "which model?" into a scorecard instead of a gut call, screen any candidate through the gate world
+with the **shipped default prompts** (what the app actually runs):
+
+```bash
+# 1. register it (Ollama example) with a Modelfile pointing at the GGUF
+ollama create my-candidate -f Modelfile.mycandidate
+# 2. add a { "label": "my-candidate", "modelName": "my-candidate" } entry to profiles.json models
+# 3. screen it (runs the gate world once, scores, updates the leaderboard):
+npm run screen -- --model my-candidate
+```
+
+Emits a one-page card (tier + objective score + per-axis bars + latency) and appends a deduped row to
+[`leaderboard.json`](leaderboard.json) / [`leaderboard.md`](leaderboard.md), so new candidates rank against the
+accumulated field. `--no-run` re-scores the newest existing dump without re-running.
+
+- **Auto axes:** restraint (no-op over-fire), stat-direction, choices format, location routing (hard gate),
+  latency, and a narrator-voice refusal scan (a ⚠ review flag, not an auto-reject — quoted NPC dialogue is
+  stripped first so an in-character "I can't" doesn't trip it).
+- **Prose** is the one axis auto-metrics can't judge — left as a slot filled by an in-session Claude read of the
+  dump (or a future `--judge` flag). Objective score weights restraint 35 / stat-direction 30 / format 35.
+
+## Run (full A/B probe)
 
 ```bash
 # one-time: register the 4 new models with your GGUF server (Ollama shown)

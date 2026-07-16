@@ -41,6 +41,20 @@ export type PromptReasoning = 'global' | ReasoningEffortField;
 /** The only prompts with an interactive per-prompt reasoning control (Native mode only). */
 export const REASONING_CONTROL_KINDS: readonly AIRequestType[] = ['narration', 'choices'];
 
+/**
+ * True when the user has opted into reasoning somewhere: a Thinking mode, a global native effort level, or a
+ * per-prompt positive level. When false, callers send no `reasoning_effort` at all and skip the support probe —
+ * so a plain endpoint (e.g. LM Studio) isn't hit with reasoning fields it rejects.
+ */
+export function isReasoningEngaged(
+  mode: ThinkingMode,
+  globalEffort: ReasoningEffort,
+  promptReasoning: Record<string, PromptReasoning>,
+): boolean {
+  const positive = (v: PromptReasoning) => v !== 'global' && v !== 'none';
+  return mode !== 'off' || globalEffort !== 'auto' || Object.values(promptReasoning).some(positive);
+}
+
 /** Shipped default per prompt: narration follows the global level, everything else suppresses reasoning. */
 export function defaultPromptReasoning(kind: AIRequestType): PromptReasoning {
   return kind === 'narration' ? 'global' : 'none';

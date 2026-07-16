@@ -4,7 +4,7 @@
 > baseline instead of re-deriving (and getting different answers each time). When asked for model info,
 > **read this first, refresh only what's stale, then update this doc** with the new numbers + date.
 
-**Last updated:** 2026-07-15 (added Model profile / selection criteria section)
+**Last updated:** 2026-07-15 (added Model profile section + gate-probe results: RP-tune vs general decensored)
 
 ---
 
@@ -93,7 +93,8 @@ restraint-heavy calls), not a taste call.
   8B beats Stheno v3.4 / Lunaris. Reasoning RP finetunes barely exist below ~35B.
 - **Policy: catalog = genuine RP finetunes only.** Popular *general* decensored models (e.g. gemma-4 heretic)
   write well and top benches but aren't RP-tuned — excluded. A reasoning badge only where the model is an RP
-  finetune on a reasoning base (Qwen3 / Qwen3.6-A3B).
+  finetune on a reasoning base (Qwen3 / Qwen3.6-A3B). **⚠️ CHALLENGED by the 2026-07-15 gate probe (below) —
+  general decensored models were competitive; policy decision pending user sign-off.**
 - **Two reference test tiers** for probes (harness): Silver-Siren-ST-12B (average) + G4-MeroMero-31B (premium),
   cross-family. Modelfiles in `testing/baseline/harness/`.
 
@@ -132,6 +133,40 @@ them; the numbers above are the bundled snapshot / fallback.
 - **Qwen3.6-35B-A3B base** — replaced by the allura **Anko** RP finetune.
 
 ---
+
+## Gate probe results — RP-tune vs general decensored (2026-07-15)
+
+Controlled A/B: same base, RP finetune vs general decensored, across 3 pairs × 2 prompt arms (shipped vs
+neutral control) × 3 seeds, on the mature-tone `blackrue-waystation` gate world. Full method + scoring in
+[`../testing/baseline/GATE-PROBE.md`](../testing/baseline/GATE-PROBE.md).
+
+| Pair (same base) | RP-tuned | General decensored | Result |
+|---|---|---|---|
+| Gemma-4 31B | meromero-31b | gemma31b-heretic | **general ≥ RP** (best stat-direction; prose/willingness tied) |
+| Gemma-4 26B-A4B | meromero-26b | gemma26b-heretic | **tie** (both over-fire on no-op restraint) |
+| Mistral-Nemo 12B | silver-siren | mistral-heretic | **RP ≥ general** (cleaner prose + choices format) |
+
+**Findings (n=3–4/cell):**
+- **Willingness is uniform** — ~0 refusal markers in any model, RP or general. At judgeable content, heretic/
+  abliterated general models engage with violence, cruelty, and intimacy exactly as RP tunes do. The
+  refusal-gate rationale for excluding general models is **not supported**.
+- **RP-tuning washes out** — an advantage in Gemma, a slight *dis*advantage in Nemo. The real drivers are
+  **tier/base** (premium Gemma-31B beats all on restraint + stat direction) and per-model quality, not the
+  RP-tune label.
+- **Location routing is solved** — 0 errors, all models, both arms.
+- **Restraint (no-op over-fire) is the discriminator** — only premium Gemma-31B under the neutral prompt
+  restrains cleanly (meromero-31b 2/12, gemma31b-heretic 4/12); silver-siren + both 26B fire on nearly every
+  no-op. Weakest overall = silver-siren (wrong-direction Vigor, chronic Nerve-spam, messiest choices).
+- **Prompt-arm effect** — the neutral control *improved* restraint on the strong models; the shipped prompt's
+  main value is avoiding the "(no stats moved)" prose verbalization that the real parser would choke on.
+
+**Recommended policy shift (pending user sign-off):** from *"RP-finetunes only"* to *"evaluate per-model by
+tier + measured quality; general decensored models are eligible and often competitive."* This vindicates the
+gemma-heretic cloud default.
+
+**Caveats:** n=3–4, single world, content bounded at what the Claude judge can grade (hardest refusals
+unprobed). The Mistral general control is `Heretic-v2` (the natong19 abliterated GGUFs won't load in current
+llama.cpp — broken tool template).
 
 ## Open questions / gaps
 

@@ -35,6 +35,13 @@ function App() {
     if (import.meta.env.DEV && devRoute?.modal === 'intro') setIntroPace('cine');
   }, [devRoute?.modal]);
 
+  // Ask the browser to keep our IndexedDB (worlds, saves, library) exempt from eviction. Hosted/web builds
+  // — notably the itch app's HTML wrapper — can otherwise clear non-persisted storage. Best-effort: the
+  // desktop build's app://local origin is already durable, and a denied request is harmless.
+  useEffect(() => {
+    navigator.storage?.persist?.().catch(() => {});
+  }, []);
+
   // DEV dev-router: install `window.__fmDev` and let a `#dev?view=…` hash drive the top-level screen so
   // preview verification can land in one call (see `devRouter.ts`). No-op / tree-shaken in production.
   useEffect(() => installDevRouter(), []);

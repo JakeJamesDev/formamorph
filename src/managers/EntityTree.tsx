@@ -28,7 +28,7 @@ const EntityTree = ({ selectedId, onSelect }: { selectedId: string | null; onSel
         lead: isGroup ? 'chevron' : 'none',
         collapseLabels: ['Expand group', 'Collapse group'],
         icon: isGroup ? <Folder className="h-4 w-4 shrink-0" /> : undefined,
-        label: isGroup ? node.group?.name : node.entity?.name,
+        label: isGroup ? node.group?.name : node.leaf?.name,
         labelClass: isGroup ? 'font-medium' : undefined,
         remove: () => { if (isGroup) removeEntityGroup(node.id); else removeEntity(node.id); },
         duplicate: () => {

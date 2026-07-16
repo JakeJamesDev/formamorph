@@ -272,6 +272,31 @@ const REAL_DEPS: DownscaleDeps = { optimize: optimizeImageDataUrl, isOversized }
 /** Deps for the "Optimize" (WebP, keep resolution) world pass — same oversized-gating, no downscale. */
 export const REENCODE_DEPS: DownscaleDeps = { optimize: (url) => reencodeImageDataUrl(url), isOversized };
 
+/** An image-handling choice offered on import: leave images as-is, optimize (lossless WebP), or downscale. */
+export type OptimizeMode = 'off' | 'optimize' | 'downscale';
+
+/** The world/image deps for a mode, or null for 'off' (no re-encoding). */
+function depsForMode(mode: OptimizeMode): DownscaleDeps | null {
+  return mode === 'optimize' ? REENCODE_DEPS : mode === 'downscale' ? REAL_DEPS : null;
+}
+
+/** Apply an optimize mode to every oversized image in a world; a no-op (returns the same world) for 'off'. */
+export async function applyWorldOptimize(world: World, mode: OptimizeMode): Promise<World> {
+  const deps = depsForMode(mode);
+  return deps ? downscaleWorldImages(world, deps) : world;
+}
+
+/** Apply an optimize mode to a single image data-URL (e.g. a character portrait); no-op for 'off' or within-budget. */
+export async function applyImageOptimize(
+  url: string | undefined | null,
+  mode: OptimizeMode,
+  cap: ImageCap = IMAGE_CAPS.entity,
+): Promise<string | undefined | null> {
+  const deps = depsForMode(mode);
+  if (!deps || !url) return url;
+  return (await deps.isOversized(url, cap)) ? deps.optimize(url, cap) : url;
+}
+
 /**
  * Return a new world with every oversized image re-encoded in place (shape-preserving — still a data-URL). Only
  * the three image fields are touched; all other data is passed through untouched.
