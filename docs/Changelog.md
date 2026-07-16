@@ -2,7 +2,7 @@
 
 All notable changes to Formamorph. This fork's first line is **2.0.0** — a full TypeScript rebuild of the upstream JavaScript app ([FieryLionite's Formamorph](https://fierylion.itch.io/formamorph), ~v1.2) — with feature parity as the baseline plus new features on top.
 
-> ✅ **2.0.0 – 2.3.0 are released** (collapsed below). New work lands under **🚧 In Progress** — an unnumbered section, so changes accumulate without pinning a version. When a batch earns a release its section is marked **Released** and collapsed, and a fresh In Progress opens. `package.json` reads **2.3.0** — the latest released version.
+> ✅ **2.0.0 – 2.4.0 are released** (collapsed below). New work lands under **🚧 In Progress** — an unnumbered section, so changes accumulate without pinning a version. When a batch earns a release its section is marked **Released** and collapsed, and a fresh In Progress opens. `package.json` reads **2.4.0** — the latest released version.
 
 Each release groups changes as **Major** / **Minor**, then **Added** / **Removed** / **Fixed**, and within those by audience: 👤 user-facing · 🛠️ developer tooling · ⚙️ backend / invisible.
 
@@ -10,7 +10,12 @@ Each release groups changes as **Major** / **Minor**, then **Added** / **Removed
 
 ## 🚧 In Progress
 
-_Unreleased — new work accumulates here until it earns a version bump. The next batch will pin its own version; `package.json` reads **2.3.0** (just released below)._
+_Unreleased — new work accumulates here until it earns a version bump. The next batch will pin its own version; `package.json` reads **2.4.0** (just released below)._
+
+---
+
+<details>
+<summary><strong>✅ 2.4.0 — Released 2026-07-16</strong> — a safety net for your library: full Backup &amp; Restore to one portable file, per-turn Autosave, and persistent-storage marking — plus multi-file imports, a browsable Save menu, jump-to-page, data-backed reasoning-model recommendations, and built-in worlds that refresh themselves (click to expand)</summary>
 
 ### Minor Changes
 
@@ -52,6 +57,8 @@ _Unreleased — new work accumulates here until it earns a version bump. The nex
   - **Built-in worlds seed with their full content.** The first-run seeding path dropped a world's lorebook (dictionaries) and placeholders; they're now carried over intact.
   - **Built-in worlds stop re-saving themselves on every launch.** The refresh check compared a world's shipped version against a field that actually records the app version that last touched it — so a world could look permanently "newer", rewriting itself (and showing an "Updated" notice) every single launch, while a genuine content-only fix could never reach you at all. It now compares a hash of the shipped content, which settles after one update and can't loop.
   - **A background helper that fails to start no longer wedges the rest of the session.** If a worker's script failed to load, the broken instance was kept and reused, so every later save load hung on a spinner instead of reporting the error. The failed worker is now discarded and the next attempt starts fresh.
+
+</details>
 
 ---
 
