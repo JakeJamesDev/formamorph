@@ -1,6 +1,7 @@
 import AuthService from './AuthService';
 import { openDatabase, promisifyRequest } from '@/lib/idb';
 import { migrateWorld } from '@/lib/version';
+import { contentHash } from '@/lib/contentHash';
 import type { WorldMetadata } from '@/types';
 
 /** A locally-stored world record (metadata + nested world `data`). Inner fields stay loose since
@@ -26,6 +27,10 @@ export interface StoredWorldRecord {
   /** The server world's `updated_at` captured at (re)download — i.e. the source version we hold.
    *  Compared against the server's live `updated_at` to detect refresh vs update. Sticky; local-only. */
   sourceUpdatedAt?: string;
+  /** Bundled defaults only: a hash of the bundle's raw JSON this copy was seeded from, so a later launch can
+   *  tell whether the shipped content actually changed. Derived (never hand-written) and local-only, so it
+   *  isn't exported and needs no version bump. Absent on copies seeded before hashing existed. */
+  sourceHash?: string;
   data: {
     version?: string; // stamped on save/export (see lib/version)
     worldOverview: unknown;
@@ -55,17 +60,15 @@ export interface DefaultWorldSyncResult {
   updated: string[];
 }
 
-/** True when dotted numeric version `a` is strictly newer than `b` (e.g. '2.3.0' beats '2.2.5'). Missing or
- *  non-numeric parts read as 0, so an unversioned/legacy stored copy is always older than a stamped bundle. */
-function isVersionNewer(a?: string, b?: string): boolean {
-  const pa = String(a ?? '0').split('.').map((n) => parseInt(n, 10) || 0);
-  const pb = String(b ?? '0').split('.').map((n) => parseInt(n, 10) || 0);
-  for (let i = 0; i < Math.max(pa.length, pb.length); i++) {
-    const d = (pa[i] || 0) - (pb[i] || 0);
-    if (d !== 0) return d > 0;
-  }
-  return false;
-}
+/**
+ * The bundled default worlds as raw JSON text, so their content can be hashed without re-serializing the
+ * parsed object (they carry base64 images and run to megabytes). Parsing happens only when a world actually
+ * needs (re)seeding.
+ */
+const DEFAULT_WORLD_RAW = import.meta.glob('../defaultworlds/*.json', {
+  query: '?raw',
+  import: 'default',
+}) as Record<string, () => Promise<string>>;
 
 // The world payload sent to the server when publishing.
 interface PublishableWorld {
@@ -239,6 +242,7 @@ class WorldStorageService {
           editedAt: world.editedAt ?? existing?.editedAt,
           downloadedAt: world.downloadedAt ?? existing?.downloadedAt,
           sourceUpdatedAt: world.sourceUpdatedAt ?? existing?.sourceUpdatedAt,
+          sourceHash: world.sourceHash ?? existing?.sourceHash,
           data: world.data,
           // createdAt is sticky: stamped once on first store, preserved across later saves.
           createdAt: existing?.createdAt ?? new Date().toISOString(),
@@ -251,16 +255,16 @@ class WorldStorageService {
     });
   }
 
-  /** Seed missing default worlds and auto-update unedited ones whose bundled `version` is newer than the
-   *  stored copy's. Runs every launch (cheap when nothing changed). A world is left untouched if the player
-   *  has edited it (`dirty`), since that diverges from the bundled default (git-dirty model). Returns the
-   *  ids that failed to load plus the display names auto-updated in place. */
+  /** Seed missing default worlds and auto-update unedited ones whose bundled content no longer matches the
+   *  stored copy's `sourceHash`. Runs every launch (cheap when nothing changed). A world is left untouched if
+   *  the player has edited it (`dirty`), since that diverges from the bundled default (git-dirty model).
+   *  Returns the ids that failed to load plus the display names auto-updated in place. */
   async loadDefaultWorlds(defaultWorlds: DefaultWorldSeed[]): Promise<DefaultWorldSyncResult> {
     await this.ensureInitialized();
-    // Full records (not getWorldMetadata) so we can read each stored copy's `data.version` and `dirty`.
+    // Full records (not getWorldMetadata) so we can read each stored copy's `sourceHash` and `dirty`.
     const transaction = this.db!.transaction([this.storeName], 'readonly');
     const stored = await promisifyRequest(transaction.objectStore(this.storeName).getAll());
-    const byId = new Map<string, { dirty?: boolean; data?: { version?: string } }>(
+    const byId = new Map<string, { dirty?: boolean; sourceHash?: string }>(
       stored.map((w) => [w.id, w]),
     );
 
@@ -270,14 +274,23 @@ class WorldStorageService {
       defaultWorlds.map(async world => {
         try {
           const existing = byId.get(world.id);
-          const module = await import(`../defaultworlds/${world.id}.json`);
-          const worldData = module.default;
+          const loadRaw = DEFAULT_WORLD_RAW[`../defaultworlds/${world.id}.json`];
+          if (!loadRaw) throw new Error(`No bundled JSON for default world "${world.id}"`);
+          // Hash the raw text, then parse it — one read, and no re-serializing a multi-MB parsed world.
+          const raw = await loadRaw();
+          const hash = contentHash(raw);
+          // A copy seeded before hashing existed has no hash to compare; reseed once to adopt the current
+          // bundle (its content may genuinely differ), then it converges like any other.
+          const backfill = existing !== undefined && existing.sourceHash === undefined;
 
           if (existing) {
-            // Present already: replace only an unedited copy the bundle has moved past. An edited world
-            // (`dirty`) or a same/older bundle version is left as-is.
-            if (existing.dirty || !isVersionNewer(worldData.version, existing.data?.version)) return;
+            // Replace only an unedited copy whose content differs from the bundle. An edited world (`dirty`)
+            // is always left alone (git-dirty model). Comparing the *content* — not a version — is what makes
+            // this converge: after a reseed the hashes match, so it can't re-fire on every launch.
+            if (existing.dirty || existing.sourceHash === hash) return;
           }
+
+          const worldData = JSON.parse(raw);
 
           // Full record, preserving every authored section (dictionaries + placeholders included — omitting
           // them here silently dropped lorebooks/wildcards on seed). storeWorld read-merges sticky local
@@ -313,8 +326,10 @@ class WorldStorageService {
               placeholders: worldData.placeholders,
             },
           };
-          await this.storeWorld({ ...fullWorld, data: migrateWorld(fullWorld.data) });
-          if (existing) updated.push(fullWorld.name);
+          await this.storeWorld({ ...fullWorld, sourceHash: hash, data: migrateWorld(fullWorld.data) });
+          // Only announce a real content change: a first-run seed has nothing to compare, and a backfill is
+          // just adopting the hash — neither is news to the player.
+          if (existing && !backfill) updated.push(fullWorld.name);
         } catch (error) {
           console.error(`Error loading world ${world.id}:`, error);
           failed.push(world.id); // Skip this world but continue with others; report it as failed.

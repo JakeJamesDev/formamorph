@@ -189,14 +189,18 @@ export function formatReleased(ym: string): string {
 
 /** Compact download count: 1_244_993 → '1.2M', 41_900 → '41.9K', 900 → '900'. */
 export function formatDownloads(n: number): string {
-  if (n >= 1_000_000) return `${(n / 1_000_000).toFixed(1)}M`;
+  // Pick the unit from the *rounded* value: 999_960 would otherwise land in the K branch and render
+  // '1000.0K' instead of '1.0M'.
+  if (n >= 999_950) return `${(n / 1_000_000).toFixed(1)}M`;
   if (n >= 1_000) return `${(n / 1_000).toFixed(1)}K`;
   return String(n);
 }
 
 /** Human-readable size, GB-aware (the shared imageOptim.formatBytes tops out at MB). */
 export function formatModelSize(bytes: number): string {
-  if (bytes >= 1_000_000_000) return `${(bytes / 1_000_000_000).toFixed(1)} GB`;
-  if (bytes >= 1_000_000) return `${Math.round(bytes / 1_000_000)} MB`;
+  // Every boundary picks its unit from the *rounded* value, as formatDownloads does: 999_960_000 would
+  // otherwise render '1000 MB' instead of '1.0 GB', and 999_500 '1000 KB' instead of '1 MB'.
+  if (bytes >= 999_500_000) return `${(bytes / 1_000_000_000).toFixed(1)} GB`;
+  if (bytes >= 999_500) return `${Math.round(bytes / 1_000_000)} MB`;
   return `${Math.round(bytes / 1_000)} KB`;
 }

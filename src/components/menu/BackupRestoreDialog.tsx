@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { useResetOnOpen } from '@/lib/useResetOnOpen';
+import { filesFrom } from '@/lib/importFiles';
 import { toast } from 'react-toastify';
 import {
   Dialog,
@@ -226,8 +227,7 @@ export function BackupRestoreDialog({ open, onOpenChange }: { open: boolean; onO
   const pickFile = () => fileRef.current?.click();
 
   const handleFile = async (event: React.ChangeEvent<HTMLInputElement>) => {
-    const file = event.target.files?.[0];
-    event.target.value = ''; // allow re-picking the same file
+    const [file] = filesFrom(event);
     if (!file) return;
     setBusy(true);
     try {
@@ -249,8 +249,8 @@ export function BackupRestoreDialog({ open, onOpenChange }: { open: boolean; onO
   const handleSave = async () => {
     setBusy(true);
     try {
-      const result = await saveBackup(await buildBackup(exportSel));
-      if (result === 'saved') setStep('backup-done');
+      saveBackup(await buildBackup(exportSel));
+      setStep('backup-done');
     } catch (err) {
       toast.error(`Backup failed: ${(err as Error).message}`);
     } finally {

@@ -6,6 +6,7 @@ import { Input } from '@/components/ui/input';
 import { Checkbox } from '@/components/ui/checkbox';
 import { toast } from 'react-toastify';
 import { downloadBlob } from '@/lib/downloadBlob';
+import { filesFrom } from '@/lib/importFiles';
 import {
   serializeSharedJson, serializeSharedCode, parseSharedAny,
   type SharedPreset, type ImportedPreset, type ParseResult,
@@ -68,9 +69,8 @@ export function ImportPresetDialog({ open, onOpenChange, currentAppVersion, exis
     if (r.ok && r.preset) setName(r.preset.name);
   };
   const onFile = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const f = e.target.files?.[0];
+    const [f] = filesFrom(e);
     if (f) ingest(await f.text());
-    e.target.value = ''; // allow re-picking the same file
   };
 
   const hasTuning = !!(parsed?.preset && (parsed.preset.samplers || parsed.preset.reasoning || parsed.preset.verbatim));

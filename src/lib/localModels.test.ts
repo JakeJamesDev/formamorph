@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { LOCAL_MODELS, VRAM_TIERS, repoOf, formatReleased, formatDownloads } from './localModels';
+import { LOCAL_MODELS, VRAM_TIERS, repoOf, formatReleased, formatDownloads, formatModelSize } from './localModels';
 
 describe('localModels catalog', () => {
   it('every model fits its tier ceiling', () => {
@@ -32,5 +32,23 @@ describe('localModels catalog', () => {
     expect(formatDownloads(1_244_993)).toBe('1.2M');
     expect(formatDownloads(41_900)).toBe('41.9K');
     expect(formatDownloads(900)).toBe('900');
+    // Rounding must pick the unit: these would read '1000.0K' / '999.9K' if the K branch rounded up into 4 digits.
+    expect(formatDownloads(999_960)).toBe('1.0M');
+    expect(formatDownloads(999_949)).toBe('999.9K');
+  });
+
+  it('formatModelSize is GB-aware', () => {
+    expect(formatModelSize(4_920_000_000)).toBe('4.9 GB');
+    expect(formatModelSize(2_500_000_000)).toBe('2.5 GB');
+    expect(formatModelSize(250_000_000)).toBe('250 MB');
+    expect(formatModelSize(512_000)).toBe('512 KB');
+  });
+
+  it('formatModelSize picks each unit from the rounded value', () => {
+    // Both boundaries round up into the next unit; neither may render four digits of the smaller one.
+    expect(formatModelSize(999_960_000)).toBe('1.0 GB'); // not '1000 MB'
+    expect(formatModelSize(999_499_999)).toBe('999 MB');
+    expect(formatModelSize(999_500)).toBe('1 MB'); // not '1000 KB'
+    expect(formatModelSize(999_499)).toBe('999 KB');
   });
 });

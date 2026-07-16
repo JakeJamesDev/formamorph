@@ -35,15 +35,17 @@ export function ListDetail({ list, detail, showDetail, onBack, backLabel = 'Back
   return (
     <div className={cn('flex-1 min-h-0 relative overflow-hidden', className)}>
       {/* List sits underneath; parallaxes left while the detail is open (it isn't interactable then, so its
-          transform is `none` at rest — keeping dnd/portals inside it unaffected). */}
-      <ScrollArea
+          transform is `none` at rest — keeping dnd/portals inside it unaffected). The absolute box owns the
+          positioning: ScrollArea's own Root is always `position: relative`, so `absolute inset-0` on it would
+          be ignored and its viewport would size to content (no scroll) — the wrapper gives it a definite height. */}
+      <div
         className={cn(
           'absolute inset-0 transition-transform duration-200 motion-reduce:transition-none',
           showDetail && '-translate-x-1/4',
         )}
       >
-        {list}
-      </ScrollArea>
+        <ScrollArea className="h-full w-full">{list}</ScrollArea>
+      </div>
       {/* Detail slides in from the right over the list. Opaque, so it fully covers the list when open. */}
       <div
         className={cn(

@@ -8,6 +8,7 @@
  * re-derivable, not irreplaceable authored content.
  */
 import { openDatabase, promisifyRequest } from '@/lib/idb';
+import { downloadBlob } from '@/lib/downloadBlob';
 import { getAllSaveRecords, putSaveRecord } from '@/components/modals/dbUtils';
 import { APP_VERSION } from '@/lib/version';
 import type { SaveRecord } from '@/types';
@@ -203,31 +204,17 @@ export async function applyBackup(
   return result;
 }
 
-/** The `.json` filename a backup downloads/saves under, dated from the bundle. */
+/** The `.json` filename a backup saves under, dated from the bundle. */
 function backupFilename(bundle: BackupBundle): string {
   return `formamorph-backup-${(bundle.exportedAt || new Date().toISOString()).slice(0, 10)}.json`;
 }
 
-/** Serialize + trigger a download of the bundle to the browser's default download location. */
-export function downloadBackup(bundle: BackupBundle): void {
-  const blob = new Blob([JSON.stringify(bundle)], { type: 'application/json' });
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement('a');
-  a.href = url;
-  a.download = backupFilename(bundle);
-  document.body.appendChild(a);
-  a.click();
-  a.remove();
-  URL.revokeObjectURL(url);
-}
-
 /**
- * Save the backup to a file. Uses a plain download rather than the File System Access save picker: that
- * API's write is blocked in embedded contexts (the itch app's HTML wrapper), where it both errored on
- * overwrite and, via the failed-write fallback, popped a second save dialog. A download is one dialog (or
- * none) and works everywhere.
+ * Save the backup to a file. A plain download rather than the File System Access save picker: that API's
+ * write is blocked in embedded contexts (the itch app's HTML wrapper), where it both errored on overwrite
+ * and, via the failed-write fallback, popped a second save dialog. A download is one dialog (or none) and
+ * works everywhere.
  */
-export async function saveBackup(bundle: BackupBundle): Promise<'saved'> {
-  downloadBackup(bundle);
-  return 'saved';
+export function saveBackup(bundle: BackupBundle): void {
+  downloadBlob(new Blob([JSON.stringify(bundle)], { type: 'application/json' }), backupFilename(bundle));
 }

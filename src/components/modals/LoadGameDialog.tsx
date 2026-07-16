@@ -2,7 +2,6 @@ import { randomUUID } from "@/lib/uuid";
 import { downloadUrl } from "@/lib/downloadBlob";
 import React from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
-import { ScrollArea } from "@/components/ui/scroll-area";
 import { Button } from "@/components/ui/button";
 import { Download, Import, Loader2, X, GripVertical, Folder, ChevronLeft } from "lucide-react";
 import {
@@ -21,6 +20,7 @@ import { downloadSaveFile, terminateWorker as terminateDownloadWorker } from '..
 import { APP_VERSION, isSaveEnvelope, migrateSave, SAVE_FILE_KIND } from '../../lib/version';
 import { cn } from "@/lib/utils";
 import { useClosingSnapshot } from "@/lib/useClosingSnapshot";
+import { filesFrom, importSummaryToast } from "@/lib/importFiles";
 import WorldStorageService from '../../services/WorldStorageService';
 import {
   groupSaves, mergeOrder, folderRefFor, FOLDER_ORDER_KEY, type SaveMeta, type SaveFolder, type WorldRef,
@@ -391,29 +391,36 @@ export function LoadGameDialog({ open, onOpenChange, current, onLoad, title, onP
     void setOrder(FOLDER_ORDER_KEY, next);
   };
 
-  const handleImport = async (file: File) => {
-    try {
-      const text = await file.text();
-      const save = JSON.parse(text) as SaveRecord & { version?: string | number };
-      if (isSaveEnvelope(save)) {
-        // migrateSave is idempotent and now also hoists the canonical history + strips snapshot copies for
-        // string-version saves, so run it for every envelope, not just numeric-legacy ones.
-        const migrated = migrateSave(save);
-        Object.assign(save, migrated, { version: APP_VERSION });
+  const handleImport = async (files: File[]) => {
+    let ok = 0, skipped = 0;
+    let lastKey: string | null = null;
+    for (const file of files) {
+      try {
+        const save = JSON.parse(await file.text()) as SaveRecord & { version?: string | number };
+        if (isSaveEnvelope(save)) {
+          // migrateSave is idempotent and now also hoists the canonical history + strips snapshot copies for
+          // string-version saves, so run it for every envelope, not just numeric-legacy ones.
+          const migrated = migrateSave(save);
+          Object.assign(save, migrated, { version: APP_VERSION });
+        }
+        const worldName = save.currentState?.worldName ?? null;
+        const record: SaveRecord = {
+          ...save,
+          id: randomUUID(),
+          name: save.name ?? 'Imported save',
+          worldId: save.worldId ?? nameToId.get(worldName ?? ''),
+          isAutosave: undefined, // an imported save is always a manual one, never the auto slot
+        };
+        await putSaveRecord(record);
+        lastKey = folderRefFor(recordToRow(record), nameToId, idToName).key;
+        ok++;
+      } catch (error) {
+        console.error('Error uploading save:', file.name, error);
+        skipped++;
       }
-      const worldName = save.currentState?.worldName ?? null;
-      const record: SaveRecord = {
-        ...save,
-        id: randomUUID(),
-        name: save.name ?? 'Imported save',
-        worldId: save.worldId ?? nameToId.get(worldName ?? ''),
-      };
-      await putSaveRecord(record);
-      await loadData();
-      setActiveKey(folderRefFor(recordToRow(record), nameToId, idToName).key);
-    } catch (error) {
-      console.error('Error uploading save:', error);
     }
+    if (ok) { await loadData(); if (lastKey) setActiveKey(lastKey); }
+    if (ok || skipped) importSummaryToast(ok, skipped, { one: 'save', many: 'saves' });
   };
 
   const busy = isLoading || isDownloading;
@@ -472,7 +479,8 @@ export function LoadGameDialog({ open, onOpenChange, current, onLoad, title, onP
                 id="save-upload"
                 className="hidden"
                 accept=".json"
-                onChange={(e) => { const f = e.target.files?.[0]; if (f) void handleImport(f); e.target.value = ''; }}
+                multiple
+                onChange={(e) => { const f = filesFrom(e); if (f.length) void handleImport(f); }}
               />
               <Button
                 variant="outline"
@@ -495,7 +503,10 @@ export function LoadGameDialog({ open, onOpenChange, current, onLoad, title, onP
               <div className="w-[68px] shrink-0" aria-hidden />
             </div>
 
-            <ScrollArea className="max-h-[60dvh]">
+            {/* Native scroll (not ScrollArea): a bare `max-h` gives ScrollArea's `h-full` viewport no definite
+                height to resolve against, so it sizes to content and clips with no scroll. `overflow-y-auto`
+                treats `max-h` as a real scroll boundary and stays the dnd autoscroll ancestor. */}
+            <div className="max-h-[60dvh] overflow-y-auto">
               <div className="space-y-2 p-1">
                 {atRoot ? (
                   <>
@@ -555,7 +566,7 @@ export function LoadGameDialog({ open, onOpenChange, current, onLoad, title, onP
                   <div className="text-center py-6 opacity-70 text-sm">No saves for this world yet.</div>
                 )}
               </div>
-            </ScrollArea>
+            </div>
           </div>
         </DialogContent>
       </Dialog>
