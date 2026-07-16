@@ -254,6 +254,8 @@ function useProvideSettings() {
   // Ollama), harmless on serial endpoints (they queue). Turn off if a VRAM-tight local engine slows or OOMs
   // under concurrent decodes.
   const [concurrentTurnRequests, setConcurrentTurnRequests] = usePersistentState<boolean>(`${APP_ID}_concurrentTurnRequests`, true, boolCodec);
+  // Autosave the world's single autosave slot after every completed turn (starting with the opening). On by default.
+  const [autosaveEnabled, setAutosaveEnabled] = usePersistentState<boolean>(`${APP_ID}_autosaveEnabled`, true, boolCodec);
   // Lazily write a per-character first-person diary entry for each turn's participants as turns age out.
   // Write-side only for now (entries are stored + inspectable, not yet fed back into the character pass).
   // Default off: extra async requests (one per participant) that matter mostly on a local endpoint.
@@ -705,6 +707,8 @@ function useProvideSettings() {
     setMemoryDigests,
     concurrentTurnRequests,
     setConcurrentTurnRequests,
+    autosaveEnabled,
+    setAutosaveEnabled,
     characterDiaries,
     setCharacterDiaries,
     showSilentRequests,

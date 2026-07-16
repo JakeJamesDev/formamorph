@@ -38,6 +38,8 @@ import { loadDevFixture } from "../lib/devFixtures";
 import { putSaveRecord } from "../components/modals/dbUtils";
 import WorldStorageService from "../services/WorldStorageService";
 import { MenuModal } from "../components/modals/MenuModal";
+import LlmSetupGuide from "../components/modals/LlmSetupGuide";
+import { isLikelyConnectionError } from "../lib/connectionError";
 import WorldEditor from "./WorldEditor";
 import type { CharacterData, ChatMessage, ChatRole, AIRequestType, AITurnResult, StatChange, Trait, GameLocation, MediaAsset, Dictionary, Entity, SaveRecord, World } from "@/types";
 import { UnsavedChangesDialog } from "../components/UnsavedChangesDialog";
@@ -267,6 +269,7 @@ const GameViewer = ({
     thinkingPrompt,
     memoryDigests,
     concurrentTurnRequests,
+    autosaveEnabled,
     limitActiveCharacters,
     activeCharacterLimit,
     summaryPrompt,
@@ -328,6 +331,7 @@ const GameViewer = ({
     playerNotes,
     setPlayerNotes,
     saveGame,
+    autosaveGame,
     loadGame,
     saveCurrentGameState,
     loadGameState,
@@ -362,6 +366,7 @@ const GameViewer = ({
 
   // Slash-command preview (e.g. `/markdown test`): drives the narration reveal with local text, off the AI path.
   const [commandPreview, setCommandPreview] = useState(false);
+  const [connectionGuideOpen, setConnectionGuideOpen] = useState(false); // AI-server connection guide (web-only)
   const commandTimer = useRef<ReturnType<typeof setInterval> | null>(null);
 
   const stopCommandPreview = useCallback(() => {
@@ -627,14 +632,28 @@ const GameViewer = ({
   // advanced time). Saving the snapshot synchronously alongside them captures a stale, half-applied state
   // — and inside the async turn flow the closure's length is stale too, which misaligns gameStates. So we
   // defer the snapshot to the next commit (after the batch lands) and index it by its own history length.
+  // Bumped when a turn's snapshot commits (forward turn or regenerate — undo restores state without committing
+  // a new snapshot, so it never bumps this). Drives the autosave effect below.
+  const [turnCommitNonce, setTurnCommitNonce] = useState(0);
   const { arm: armTurnSnapshot } = useDeferredSnapshot(
     fullMessageHistory,
     saveCurrentGameState,
     (snapshot) => {
       const pageIndex = snapshotPageIndex(snapshot.fullMessageHistory?.length ?? 0, messagesPerPage);
       setGameStates((prev) => placeSnapshot(prev, pageIndex, snapshot));
+      setTurnCommitNonce((n) => n + 1);
     },
   );
+
+  // Autosave after each completed turn's snapshot lands (the effect runs post-commit, so it captures this
+  // turn). First fire is the opening scene; loaded games fire on their next completed turn. Silent on success,
+  // toasts once on failure (see autosaveGame). Gated on the setting.
+  useEffect(() => {
+    if (turnCommitNonce === 0 || !autosaveEnabled) return;
+    void autosaveGame(worldOverview.name, worldId ? String(worldId) : undefined);
+    // Only re-fire on a new committed turn — reading the latest setting/world at fire time is intentional.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [turnCommitNonce]);
   const [regenerateNonce, setRegenerateNonce] = useState(0);
 
   const handleRegenerate = () => {
@@ -1609,10 +1628,16 @@ ${playerNotes || NONE_PLACEHOLDER}
         setIsGameStarted(true);
       }
     } catch (error) {
-      const err = error as { response?: { status?: number }; message?: string };
+      const err = error as { response?: { status?: number }; message?: string; connectionHandled?: boolean };
       // Reset game started state if START GAME action fails
       if (action === "START GAME") {
         setIsGameStarted(false);
+      }
+
+      // A connection failure already surfaced its own guide toast in makeAIRequest — don't stack a second.
+      if (err.connectionHandled) {
+        addLogEntry("Couldn't reach the AI server — see the connection guide.");
+        return;
       }
 
       let errorMessage = "Failed to complete action. Please try again.";
@@ -2129,7 +2154,23 @@ ${playerNotes || NONE_PLACEHOLDER}
       console.error("Error in makeAIRequest:", error);
       // A failed silent request (the digest) is non-fatal — let the drainer swallow it without a toast.
       if (silent) throw error;
-      toast.error("Failed to process AI request");
+      // A browser-build network failure (server off / wrong URL / CORS disabled) is opaque and unactionable
+      // from the generic toast — offer the connection guide instead, and tag the error so the outer handler
+      // in sendGameAction doesn't stack its own toast on top.
+      if (isLikelyConnectionError(error)) {
+        (error as { connectionHandled?: boolean }).connectionHandled = true;
+        toast.error(
+          <div className="flex flex-col items-start gap-1">
+            <span>Couldn&apos;t reach your AI server.</span>
+            <button type="button" className="text-xs underline" onClick={() => setConnectionGuideOpen(true)}>
+              Fix connection →
+            </button>
+          </div>,
+          { position: "top-right", autoClose: 8000, closeOnClick: false, pauseOnHover: true, draggable: true },
+        );
+      } else {
+        toast.error("Failed to process AI request");
+      }
       throw error;
     }
   };
@@ -3273,6 +3314,12 @@ ${playerNotes || NONE_PLACEHOLDER}
         previewValues={promptPreviewValues}
         initialTab={devRoute?.tab}
         initialPromptTab={devRoute?.subtab}
+      />
+
+      <LlmSetupGuide
+        open={connectionGuideOpen}
+        onOpenChange={setConnectionGuideOpen}
+        endpointUrl={getEndpointUrl()}
       />
 
       <AlertDialog open={isExportModalOpen} onOpenChange={setIsExportModalOpen}>

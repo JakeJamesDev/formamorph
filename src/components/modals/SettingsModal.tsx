@@ -4,6 +4,7 @@ import { DEFAULT_ENDPOINT, DEFAULT_API_TOKEN, DEFAULT_MODEL_NAME, DEFAULT_MAX_TO
 import { useTheme } from '../theme-provider';
 import { ThemePreviewButton } from '@/components/ThemePreviewDialog';
 import { LocalModelPanel } from '@/components/modals/LocalModelPanel';
+import LlmSetupGuide from '@/components/modals/LlmSetupGuide';
 import { SETTINGS_TABS } from '@/components/modals/settingsTabs';
 import { Row, CheckRow } from '@/components/SettingsRows';
 import { reasoningTabs, reasoningPromptTabs, defaultPromptReasoning, defaultReasoningBudgetPct, REASONING_CONTROL_KINDS, type PromptReasoning } from '@/lib/reasoningEffort';
@@ -353,6 +354,8 @@ export const SettingsModal = ({ isOpen, onOpenChange, previewValues, initialTab,
     setMemoryDigests,
     concurrentTurnRequests,
     setConcurrentTurnRequests,
+    autosaveEnabled,
+    setAutosaveEnabled,
     characterDiaries,
     setCharacterDiaries,
     genTemperature,
@@ -426,6 +429,7 @@ export const SettingsModal = ({ isOpen, onOpenChange, previewValues, initialTab,
   } = useSettings();
   const { theme, setTheme } = useTheme();
   const desktop = isDesktop();
+  const [connectionGuideOpen, setConnectionGuideOpen] = useState(false);
   const handleResetEndpointSettings = () => {
     setEndpointUrl(DEFAULT_ENDPOINT);
     setModelName(DEFAULT_MODEL_NAME);
@@ -1063,6 +1067,18 @@ export const SettingsModal = ({ isOpen, onOpenChange, previewValues, initialTab,
                   className={useCustomEndpoint ? undefined : 'opacity-60 cursor-not-allowed'}
                 />
               </Row>
+              {!desktop && (
+                <div className="grid grid-cols-1 sm:grid-cols-[1fr_3fr] gap-4">
+                  <div className="hidden sm:block" />
+                  <button
+                    type="button"
+                    className="justify-self-start text-xs text-muted-foreground underline hover:text-foreground"
+                    onClick={() => setConnectionGuideOpen(true)}
+                  >
+                    Trouble connecting?
+                  </button>
+                </div>
+              )}
               <Row center label="API Token" htmlFor="apiToken">
                 <Input
                   id="apiToken"
@@ -1656,6 +1672,22 @@ export const SettingsModal = ({ isOpen, onOpenChange, previewValues, initialTab,
                   </ConfirmDialog>
                 </div>
               </div>
+              <div className="grid grid-cols-1 sm:grid-cols-4 items-start gap-4">
+                <label htmlFor="autosaveEnabled" className="text-left sm:text-right leading-4">
+                  Autosave
+                </label>
+                <div className="col-span-3 flex items-start gap-2">
+                  <Checkbox
+                    id="autosaveEnabled"
+                    checked={autosaveEnabled}
+                    onCheckedChange={(c) => setAutosaveEnabled(c === true)}
+                    className="shrink-0"
+                  />
+                  <span className="text-xs text-muted-foreground">
+                    Automatically saves your game after every turn to a per-world “Autosave” slot, starting once the opening scene finishes. It never touches your manual saves and shows in Load with an “Auto” tag. Turn off to save only manually.
+                  </span>
+                </div>
+              </div>
             </div>
             </ScrollArea>
           </TabsContent>
@@ -1664,6 +1696,11 @@ export const SettingsModal = ({ isOpen, onOpenChange, previewValues, initialTab,
     </Dialog>
     <ImageSetupGuide provider={imageProvider} open={showImageSetup} onOpenChange={setShowImageSetup} />
     <ComfyWorkflowGuide open={showComfyWorkflow} onOpenChange={setShowComfyWorkflow} />
+    <LlmSetupGuide
+      open={connectionGuideOpen}
+      onOpenChange={setConnectionGuideOpen}
+      endpointUrl={useCustomEndpoint ? endpointUrl : DEFAULT_ENDPOINT}
+    />
     </>
   );
 };

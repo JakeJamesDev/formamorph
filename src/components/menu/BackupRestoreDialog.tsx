@@ -1,4 +1,5 @@
-import { useEffect, useLayoutEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
+import { useResetOnOpen } from '@/lib/useResetOnOpen';
 import { toast } from 'react-toastify';
 import {
   Dialog,
@@ -171,9 +172,7 @@ export function BackupRestoreDialog({ open, onOpenChange }: { open: boolean; onO
 
   // Reset to the home step when the dialog opens (before paint), not when it closes — resetting on close
   // would swap the content back to the home options mid fade-out, flashing them during the exit animation.
-  useLayoutEffect(() => {
-    if (open) reset();
-  }, [open]);
+  useResetOnOpen(open, reset);
 
   // Load items (and select them all by default) when entering the backup step.
   useEffect(() => {

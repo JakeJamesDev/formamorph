@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { useClosingSnapshot } from "@/lib/useClosingSnapshot";
 
 /** Short name-input dialog for adding or renaming a system-prompt preset. Trims input; ignores empty. */
 export const PresetNameDialog = ({
@@ -24,6 +25,9 @@ export const PresetNameDialog = ({
     if (open) setName(initialName);
   }, [open, initialName]);
 
+  // Hold the title's mode through the fade-out — the parent flips `mode` back to 'add' as it closes.
+  const shownMode = useClosingSnapshot(open, mode);
+
   const trimmed = name.trim();
   const submit = () => {
     if (!trimmed) return;
@@ -35,7 +39,7 @@ export const PresetNameDialog = ({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-[400px]">
         <DialogHeader>
-          <DialogTitle>{mode === 'add' ? 'New Preset' : 'Rename Preset'}</DialogTitle>
+          <DialogTitle>{shownMode === 'add' ? 'New Preset' : 'Rename Preset'}</DialogTitle>
         </DialogHeader>
         <div className="my-4">
           <Input

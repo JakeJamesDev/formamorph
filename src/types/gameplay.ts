@@ -141,6 +141,9 @@ export interface PlaceholderRolls {
 export interface SaveRecord extends SaveObject {
   id: string;
   name: string;
+  /** Device-local: marks the per-world autosave slot (one per world, overwritten each turn). Like `id`, it's
+   *  stripped from the exported `.json` — a downloaded autosave re-imports as an ordinary manual save. */
+  isAutosave?: boolean;
 }
 
 /** v1.2.0: client-side community-browser hide preferences (persisted in localStorage). */

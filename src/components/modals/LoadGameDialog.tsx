@@ -20,6 +20,7 @@ import {
 import { downloadSaveFile, terminateWorker as terminateDownloadWorker } from '../../lib/saveDownloadWorkerUtils';
 import { APP_VERSION, isSaveEnvelope, migrateSave, SAVE_FILE_KIND } from '../../lib/version';
 import { cn } from "@/lib/utils";
+import { useClosingSnapshot } from "@/lib/useClosingSnapshot";
 import WorldStorageService from '../../services/WorldStorageService';
 import {
   groupSaves, mergeOrder, folderRefFor, FOLDER_ORDER_KEY, type SaveMeta, type SaveFolder, type WorldRef,
@@ -37,6 +38,7 @@ const formatStamp = (ms: number) => (ms ? new Date(ms).toLocaleString() : '');
 /** SaveMeta enriched with the raw record + display bits, so the row can render and export without a re-read. */
 export interface SaveRow extends SaveMeta {
   gameTime: number;
+  isAutosave?: boolean;
   record: SaveRecord;
 }
 
@@ -47,6 +49,7 @@ const recordToRow = (r: SaveRecord): SaveRow => ({
   worldName: r.currentState?.worldName ?? null,
   timestamp: r.currentState?.timestamp ? Date.parse(r.currentState.timestamp) : 0,
   gameTime: r.currentState?.gameTime ?? 0,
+  isAutosave: r.isAutosave,
   record: r,
 });
 
@@ -91,7 +94,14 @@ function SortableSaveRow({ row, disabled, busy, onLoad, onDownload, onDelete }: 
         onClick={() => onLoad(row)}
         onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onLoad(row); } }}
       >
-        <div className="break-words font-medium">{row.name}</div>
+        <div className="break-words font-medium">
+          {row.name}
+          {row.isAutosave && (
+            <span className="relative -top-[2px] ml-2 inline-block rounded bg-info/15 px-1.5 py-px align-middle text-[10px] font-semibold uppercase leading-none tracking-wide text-info">
+              Auto
+            </span>
+          )}
+        </div>
         <div className="text-xs opacity-70">
           {formatStamp(row.timestamp)} - Game Time: {formatGameTime(row.gameTime)}
         </div>
@@ -298,6 +308,8 @@ export function LoadGameDialog({ open, onOpenChange, current, onLoad, title, onP
   );
 
   const atRoot = activeKey === '';
+  // In pick mode (the Save dialog) hide the autosave slot — it can't be manually overwritten.
+  const shownSaves = onPickSave ? activeSaves.filter((s) => !s.isAutosave) : activeSaves;
 
   const doLoad = async (row: SaveRow, targetWorldId?: string) => {
     if (isLoading) return;
@@ -334,7 +346,9 @@ export function LoadGameDialog({ open, onOpenChange, current, onLoad, title, onP
       setIsDownloading(true);
       setDownloadingSaveName(row.name);
       setLoadingMessage(`Preparing ${row.name} for download...`);
-      const { id: _id, ...fileData } = row.record; // strip the device-local record id from the export
+      // Strip device-local fields from the export: the record id and the autosave marker (a downloaded
+      // autosave re-imports as an ordinary manual save).
+      const { id: _id, isAutosave: _auto, ...fileData } = row.record;
       const { dataUrl, fileName } = await downloadSaveFile({ formamorphKind: SAVE_FILE_KIND, ...fileData }) as { dataUrl: string; fileName: string };
       downloadUrl(dataUrl, `${fileName}.json`);
     } catch (error) {
@@ -404,6 +418,8 @@ export function LoadGameDialog({ open, onOpenChange, current, onLoad, title, onP
 
   const busy = isLoading || isDownloading;
   const rootEmpty = atRoot && !currentFolder && listFolders.length === 0;
+  // Hold the blocked save's world name while its "not installed" dialog fades out (blockedLoad nulls on close).
+  const shownBlocked = useClosingSnapshot(!!blockedLoad, blockedLoad);
 
   return (
     <>
@@ -425,7 +441,7 @@ export function LoadGameDialog({ open, onOpenChange, current, onLoad, title, onP
             <DialogTitle>World not installed</DialogTitle>
           </DialogHeader>
           <p className="text-sm text-muted-foreground py-2">
-            This save belongs to “{blockedLoad?.worldName ?? 'a world'}”, which is not installed. Import or
+            This save belongs to “{shownBlocked?.worldName ?? 'a world'}”, which is not installed. Import or
             download that world first to play its saves. You can still download or delete this save.
           </p>
           <DialogFooter>
@@ -504,8 +520,8 @@ export function LoadGameDialog({ open, onOpenChange, current, onLoad, title, onP
                     onDragEnd={handleSaveDragEnd}
                     modifiers={[restrictToVerticalAxis, restrictToFirstScrollableAncestor]}
                   >
-                    <SortableContext items={activeSaves.map(s => s.id)} strategy={verticalListSortingStrategy}>
-                      {activeSaves.map(row => (
+                    <SortableContext items={shownSaves.map(s => s.id)} strategy={verticalListSortingStrategy}>
+                      {shownSaves.map(row => (
                         <SortableSaveRow
                           key={row.id}
                           row={row}
@@ -535,7 +551,7 @@ export function LoadGameDialog({ open, onOpenChange, current, onLoad, title, onP
                 {!busy && rootEmpty && (
                   <div className="text-center py-6 opacity-70 text-sm">No saved games found.</div>
                 )}
-                {!busy && !atRoot && activeSaves.length === 0 && (
+                {!busy && !atRoot && shownSaves.length === 0 && (
                   <div className="text-center py-6 opacity-70 text-sm">No saves for this world yet.</div>
                 )}
               </div>

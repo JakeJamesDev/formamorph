@@ -2,7 +2,9 @@ import * as React from "react"
 import { ChevronLeft, ChevronRight, MoreHorizontal } from "lucide-react"
 
 import { cn } from "@/lib/utils"
-import { buttonVariants, type ButtonProps } from "@/components/ui/button";
+import { buttonVariants, Button, type ButtonProps } from "@/components/ui/button";
+import { Input } from "@/components/ui/input"
+import { Popover, PopoverTrigger, PopoverContent } from "@/components/ui/popover"
 import { paginationSlots, pageWindow } from "@/lib/pagination"
 import { useIsMobile } from "@/lib/useIsMobile"
 
@@ -103,6 +105,56 @@ const PaginationEllipsis = ({
 )
 PaginationEllipsis.displayName = "PaginationEllipsis"
 
+/** The "go to page" form shown in the jump popover: a number field prefilled with the current page (clamped
+ *  to 1–pageCount on submit) plus Go. Enter submits. */
+function JumpToPageForm({ page, pageCount, onSubmit }: {
+  page: number
+  pageCount: number
+  onSubmit: (page: number) => void
+}) {
+  const [value, setValue] = React.useState(String(page))
+  React.useEffect(() => setValue(String(page)), [page])
+  const go = () => {
+    const parsed = parseInt(value, 10)
+    onSubmit(Number.isNaN(parsed) ? page : Math.max(1, Math.min(pageCount, parsed)))
+  }
+  return (
+    <div className="flex items-center gap-2">
+      <span className="whitespace-nowrap text-xs text-muted-foreground">Page (1–{pageCount})</span>
+      <Input
+        type="number"
+        min={1}
+        max={pageCount}
+        autoFocus
+        value={value}
+        onChange={(e) => setValue(e.target.value)}
+        onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); go() } }}
+        className="h-8 w-16"
+        aria-label="Page number"
+      />
+      <Button size="sm" className="h-8" onClick={go}>Go</Button>
+    </div>
+  )
+}
+
+/** Wraps a pager trigger (an ellipsis or the current page) in a popover that opens the jump-to-page form. */
+function JumpPopover({ page, pageCount, onPageChange, children }: {
+  page: number
+  pageCount: number
+  onPageChange: (page: number) => void
+  children: React.ReactNode
+}) {
+  const [open, setOpen] = React.useState(false)
+  return (
+    <Popover open={open} onOpenChange={setOpen}>
+      <PopoverTrigger asChild>{children}</PopoverTrigger>
+      <PopoverContent align="center" className="w-auto p-2">
+        <JumpToPageForm page={page} pageCount={pageCount} onSubmit={(p) => { setOpen(false); onPageChange(p) }} />
+      </PopoverContent>
+    </Popover>
+  )
+}
+
 /**
  * The shared page footer: Previous · numbered strip · Next. The strip reserves a constant number of
  * equal-width cells (`paginationSlots`, padding short layouts with invisible spacers) so its width never
@@ -125,20 +177,38 @@ function Pager({
 
   const isMobile = useIsMobile()
 
-  const pageCell = (p: number) => (
-    <PaginationItem key={`page-${p}`}>
-      <PaginationLink
-        href="#"
-        isActive={page === p}
-        onClick={(e) => {
-          e.preventDefault()
-          onPageChange(p)
-        }}
-      >
-        {p}
-      </PaginationLink>
-    </PaginationItem>
-  )
+  const pageCell = (p: number) => {
+    // The current page opens the jump-to-page popover (desktop + mobile) instead of navigating to itself.
+    if (p === page && pageCount > 1) {
+      return (
+        <PaginationItem key={`page-${p}`}>
+          <JumpPopover page={page} pageCount={pageCount} onPageChange={onPageChange}>
+            <button
+              type="button"
+              aria-label={`Page ${p} of ${pageCount} — jump to a page`}
+              className={cn(buttonVariants({ variant: "default", size: "icon" }))}
+            >
+              {p}
+            </button>
+          </JumpPopover>
+        </PaginationItem>
+      )
+    }
+    return (
+      <PaginationItem key={`page-${p}`}>
+        <PaginationLink
+          href="#"
+          isActive={page === p}
+          onClick={(e) => {
+            e.preventDefault()
+            onPageChange(p)
+          }}
+        >
+          {p}
+        </PaginationLink>
+      </PaginationItem>
+    )
+  }
 
   const cells: React.ReactNode[] = []
   if (isMobile) {
@@ -171,7 +241,18 @@ function Pager({
             // Match the width of `runLen` cells (2.5rem each) plus their inter-cell gaps (0.25rem).
             style={{ width: `calc(${runLen} * 2.5rem + ${runLen - 1} * 0.25rem)` }}
           >
-            {hasEllipsis ? <PaginationEllipsis /> : null}
+            {hasEllipsis ? (
+              <JumpPopover page={page} pageCount={pageCount} onPageChange={onPageChange}>
+                <button
+                  type="button"
+                  aria-label="Jump to a page"
+                  className="flex h-9 w-9 items-center justify-center rounded-md hover:bg-accent hover:text-accent-foreground"
+                >
+                  <MoreHorizontal className="h-4 w-4" />
+                  <span className="sr-only">More pages</span>
+                </button>
+              </JumpPopover>
+            ) : null}
           </PaginationItem>,
         )
         i = j
