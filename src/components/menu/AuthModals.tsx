@@ -12,6 +12,7 @@ import {
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import AuthService from "@/services/AuthService";
+import { useResetOnOpen } from "@/lib/useResetOnOpen";
 import { type WorldRecord } from "@/components/WorldDetails";
 
 interface AuthModalsProps {
@@ -50,6 +51,11 @@ export function AuthModals({
     setNewPassword('');
     setAuthError('');
   };
+
+  // Reset the forms when a dialog opens, not when it closes — clearing on close blanks the still-visible
+  // fields for a frame or two during the fade-out.
+  useResetOnOpen(showAuthDialog, resetAuthForms);
+  useResetOnOpen(showProfileDialog, resetAuthForms);
 
   const handleLogin = async () => {
     setAuthError('');
@@ -130,10 +136,7 @@ export function AuthModals({
 
   return (
     <>
-      <Dialog open={showAuthDialog} onOpenChange={(open) => {
-        setShowAuthDialog(open);
-        if (!open) resetAuthForms();
-      }}>
+      <Dialog open={showAuthDialog} onOpenChange={setShowAuthDialog}>
         <DialogContent className="sm:max-w-[425px]">
           <DialogHeader>
             <DialogTitle>{authMode === 'login' ? 'Login' : 'Register'}</DialogTitle>
@@ -206,10 +209,7 @@ export function AuthModals({
       </Dialog>
 
       {/* Profile Dialog */}
-      <Dialog open={showProfileDialog} onOpenChange={(open) => {
-        setShowProfileDialog(open);
-        if (!open) resetAuthForms();
-      }}>
+      <Dialog open={showProfileDialog} onOpenChange={setShowProfileDialog}>
         <DialogContent className="sm:max-w-[425px]">
           <DialogHeader>
             <DialogTitle>User Profile</DialogTitle>

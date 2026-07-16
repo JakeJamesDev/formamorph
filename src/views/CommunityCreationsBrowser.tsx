@@ -19,6 +19,7 @@ import { CHIP_BASE } from "@/components/Chip";
 import { useCatalogSync } from "@/lib/useCatalogSync";
 import { useDownloadCoordinator } from "@/lib/useDownloadCoordinator";
 import { useDownscalePrompt } from "@/lib/useDownscalePrompt";
+import { useClosingSnapshot } from "@/lib/useClosingSnapshot";
 import { useCommunityBrowserFilters } from "@/lib/useCommunityBrowserFilters";
 import {
   Dialog,
@@ -71,6 +72,10 @@ const CommunityCreationsBrowser = ({ open, onOpenChange, worlds, setWorlds, isAu
     localCopiesBySource, copiesForWorld, downloadStateForWorld,
     handleContextualDownload, handleChooseOverwrite, handleConfirmOverwrite, handleDownloadWorld,
   } = useDownloadCoordinator(worlds, setWorlds, (_id, data) => promptWorld(data));
+
+  // Hold the copy-vs-overwrite decision's content while its dialogs fade out (contextualAction nulls on close,
+  // which would otherwise flip the title/description to the other mode's text for a frame or two).
+  const shownAction = useClosingSnapshot(!!contextualAction, contextualAction);
 
   const [communityBrowserModalCollapsed, setCommunityBrowserModalCollapsed] = usePersistentState(
     COMMUNITY_BROWSER_MODAL_COLLAPSED_KEY, false, boolCodec,
@@ -372,9 +377,9 @@ const CommunityCreationsBrowser = ({ open, onOpenChange, worlds, setWorlds, isAu
       >
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>{contextualAction?.mode === 'update' ? 'Update available' : 'Re-download world'}</DialogTitle>
+            <DialogTitle>{shownAction?.mode === 'update' ? 'Update available' : 'Re-download world'}</DialogTitle>
             <DialogDescription>
-              {contextualAction?.mode === 'update'
+              {shownAction?.mode === 'update'
                 ? 'A newer version of this world is available. Update an existing copy in place, or download the new version as a separate copy.'
                 : 'You already have this world. Download another copy, or overwrite an existing copy with a fresh download.'}
             </DialogDescription>
@@ -388,7 +393,7 @@ const CommunityCreationsBrowser = ({ open, onOpenChange, worlds, setWorlds, isAu
               Download a copy
             </Button>
             <Button onClick={handleChooseOverwrite}>
-              {contextualAction?.mode === 'update' ? 'Update an existing copy' : 'Overwrite an existing copy'}
+              {shownAction?.mode === 'update' ? 'Update an existing copy' : 'Overwrite an existing copy'}
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -401,20 +406,20 @@ const CommunityCreationsBrowser = ({ open, onOpenChange, worlds, setWorlds, isAu
       >
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>{contextualAction?.mode === 'update' ? 'Choose a copy to update' : 'Choose a copy to overwrite'}</DialogTitle>
+            <DialogTitle>{shownAction?.mode === 'update' ? 'Choose a copy to update' : 'Choose a copy to overwrite'}</DialogTitle>
             <DialogDescription>
               You have several local copies of this world. Pick which one to replace with the fresh download — edited copies lose their local changes.
             </DialogDescription>
           </DialogHeader>
           <div className="py-2">
             <RadioGroup value={overwriteSelectedId ?? undefined} onValueChange={setOverwriteSelectedId}>
-              {(contextualAction ? copiesForWorld(contextualAction.world) : []).map((copy) => {
+              {(shownAction ? copiesForWorld(shownAction.world) : []).map((copy) => {
                 const radioId = `overwrite-${copy.id}`;
                 const edited = copy.lastAccessed ? new Date(copy.lastAccessed).toLocaleString() : 'Unknown';
                 // In the update flow only, flag copies that already hold the current source version
                 // (not out of date vs the server). Irrelevant when re-downloading a current world.
-                const upToDate = contextualAction?.mode === 'update'
-                  && getDownloadState(contextualAction.world.updated_at, [copy]) === 'refresh';
+                const upToDate = shownAction?.mode === 'update'
+                  && getDownloadState(shownAction.world.updated_at, [copy]) === 'refresh';
                 return (
                   <div key={copy.id} className="flex items-start space-x-2 p-2 rounded-md hover:bg-accent">
                     <RadioGroupItem value={copy.id} id={radioId} />
@@ -439,7 +444,7 @@ const CommunityCreationsBrowser = ({ open, onOpenChange, worlds, setWorlds, isAu
               Cancel
             </Button>
             <Button onClick={handleConfirmOverwrite} disabled={!overwriteSelectedId}>
-              {contextualAction?.mode === 'update' ? 'Update' : 'Overwrite'}
+              {shownAction?.mode === 'update' ? 'Update' : 'Overwrite'}
             </Button>
           </DialogFooter>
         </DialogContent>

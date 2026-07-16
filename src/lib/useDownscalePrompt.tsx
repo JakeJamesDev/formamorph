@@ -10,6 +10,7 @@ import {
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
 import type { World } from '@/types';
+import { useClosingSnapshot } from './useClosingSnapshot';
 import {
   dataUrlMime,
   downscaleWorldImages,
@@ -130,6 +131,9 @@ export function useDownscalePrompt() {
     [close],
   );
 
+  // Keep the prompt's content while it fades out (pending goes null on close, which would blank the text).
+  const shown = useClosingSnapshot(!!pending, pending);
+
   const dialog = (
     <AlertDialog
       open={!!pending}
@@ -146,12 +150,12 @@ export function useDownscalePrompt() {
     >
       <AlertDialogContent>
         <AlertDialogHeader>
-          <AlertDialogTitle>{pending?.title}</AlertDialogTitle>
-          <AlertDialogDescription>{pending?.description}</AlertDialogDescription>
+          <AlertDialogTitle>{shown?.title}</AlertDialogTitle>
+          <AlertDialogDescription>{shown?.description}</AlertDialogDescription>
         </AlertDialogHeader>
         <AlertDialogFooter>
-          <AlertDialogCancel onClick={() => pending?.cancel()}>{pending?.cancelLabel ?? 'Cancel'}</AlertDialogCancel>
-          {pending?.actions.map((a) => (
+          <AlertDialogCancel onClick={() => pending?.cancel()}>{shown?.cancelLabel ?? 'Cancel'}</AlertDialogCancel>
+          {shown?.actions.map((a) => (
             <AlertDialogAction
               key={a.label}
               onClick={() => {

@@ -8,6 +8,8 @@ import { ConfirmDialog } from '../ConfirmDialog';
 import { getAllSaveRecords } from './dbUtils';
 import { useDevRoute } from '../../lib/devRouter';
 import { LoadGameDialog } from './LoadGameDialog';
+import { useGameplay } from '../../contexts/GameplayContext';
+import { useClosingSnapshot } from '../../lib/useClosingSnapshot';
 import type { WorldOverview, SaveRecord } from "@/types";
 
 export const MenuModal = ({ onSettingsClick, onSave, onLoad, worldOverview, worldId, onExitToMenu, onEditWorld, onShowAiContext }: {
@@ -40,13 +42,19 @@ export const MenuModal = ({ onSettingsClick, onSave, onLoad, worldOverview, worl
   const [records, setRecords] = React.useState<SaveRecord[]>([]);
   const [dupConflict, setDupConflict] = React.useState<{ name: string; existingId: string } | null>(null);
 
-  // Load existing saves when the Save dialog opens, to detect a same-name save in the current world.
+  const { lastSaveName } = useGameplay();
+  // Hold the conflicting save's name while the "already exists" dialog fades out (dupConflict goes null on close).
+  const shownDup = useClosingSnapshot(!!dupConflict, dupConflict);
+
+  // Load existing saves when the Save dialog opens (to detect a same-name save), and prefill the name with
+  // the save the player is currently in this session (last loaded or saved), so re-saving is one step.
   React.useEffect(() => {
     if (!showSaveDialog) return;
+    setSaveName(lastSaveName);
     let cancelled = false;
     void getAllSaveRecords().then(all => { if (!cancelled) setRecords(all); }).catch(() => {});
     return () => { cancelled = true; };
-  }, [showSaveDialog]);
+  }, [showSaveDialog, lastSaveName]);
 
   const resolvesToCurrent = React.useCallback((r: SaveRecord) =>
     r.worldId ? r.worldId === current.id : (r.currentState?.worldName ?? null) === current.name,
@@ -56,7 +64,7 @@ export const MenuModal = ({ onSettingsClick, onSave, onLoad, worldOverview, worl
   const commitSave = async (name: string, overwriteId?: string) => {
     try {
       await onSave(name, overwriteId ? { overwriteId } : undefined);
-      setSaveName('');
+      // Don't clear the name here — the box would blank out as the dialog fades. The next open re-prefills it.
       setShowSaveDialog(false);
       setDupConflict(null);
     } catch (error) {
@@ -67,7 +75,7 @@ export const MenuModal = ({ onSettingsClick, onSave, onLoad, worldOverview, worl
   const handleSaveClick = async () => {
     const name = saveName.trim();
     if (!name) return;
-    const existing = records.find(r => r.name === name && resolvesToCurrent(r));
+    const existing = records.find(r => r.name === name && resolvesToCurrent(r) && !r.isAutosave);
     if (existing) setDupConflict({ name, existingId: existing.id });
     else await commitSave(name);
   };
@@ -104,7 +112,7 @@ export const MenuModal = ({ onSettingsClick, onSave, onLoad, worldOverview, worl
           rather than loading. The name input + Save button ride at the top. */}
       <LoadGameDialog
         open={showSaveDialog}
-        onOpenChange={(open) => { setShowSaveDialog(open); if (!open) setSaveName(''); }}
+        onOpenChange={(open) => setShowSaveDialog(open)}
         current={current}
         onLoad={() => {}}
         title="Save Game"
@@ -132,7 +140,7 @@ export const MenuModal = ({ onSettingsClick, onSave, onLoad, worldOverview, worl
             <DialogTitle>Save already exists</DialogTitle>
           </DialogHeader>
           <p className="text-sm text-muted-foreground py-2">
-            A save named “{dupConflict?.name}” already exists in this world. Overwrite it, or keep both?
+            A save named “{shownDup?.name}” already exists in this world. Overwrite it, or keep both?
           </p>
           <DialogFooter className="gap-2 sm:gap-2">
             <Button variant="outline" onClick={() => setDupConflict(null)}>Cancel</Button>

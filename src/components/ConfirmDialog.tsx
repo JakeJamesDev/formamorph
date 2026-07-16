@@ -10,6 +10,7 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "./ui/alert-dialog"
+import { useClosingSnapshot } from "@/lib/useClosingSnapshot"
 
 /**
  * Yes/no confirmation prompt wrapping the Radix `AlertDialog`. Works controlled (`open`/`onOpenChange`)
@@ -40,14 +41,18 @@ export function ConfirmDialog({
     onCancel?.()
   }
 
+  // Hold the title/description shown while open so a controlled dialog keeps them through its fade-out, even
+  // as the parent clears the state that drove them (e.g. `pendingDelete?.name` going undefined on close).
+  const shown = useClosingSnapshot(open, { title, description })
+
   return (
     <AlertDialog open={open} onOpenChange={onOpenChange}>
       {children && <AlertDialogTrigger asChild>{children}</AlertDialogTrigger>}
       <AlertDialogContent>
         <AlertDialogHeader>
-          <AlertDialogTitle>{title}</AlertDialogTitle>
+          <AlertDialogTitle>{shown.title}</AlertDialogTitle>
           <AlertDialogDescription>
-            {description}
+            {shown.description}
           </AlertDialogDescription>
         </AlertDialogHeader>
         <AlertDialogFooter>

@@ -1,6 +1,7 @@
 import { randomUUID } from "@/lib/uuid";
 import { createContext, useContext, useState, useRef, useCallback, useEffect, useMemo, type ReactNode } from 'react';
-import { putSaveRecord, getSaveRecord } from '../components/modals/dbUtils';
+import { putSaveRecord, getSaveRecord, getAllSaveRecords } from '../components/modals/dbUtils';
+import { findAutosaveId, AUTOSAVE_NAME } from '../lib/autosave';
 import { toast } from 'react-toastify';
 import { convertSaveFile, terminateWorker } from '../lib/saveConversionWorkerUtils';
 import { useTtsPlayback } from '../lib/useTtsPlayback';
@@ -217,7 +218,12 @@ function useProvideGameplay() {
   /** Persist the current turn to IndexedDB as a flat envelope (`currentState` + `stateHistory` +
    *  `APP_VERSION`), stamping `worldName`/`worldId` for per-world folders. A fresh `id` creates a new save;
    *  passing `saveId` overwrites that record in place (the dup-name "overwrite" path). Returns success. */
-  const saveGame = useCallback(async (saveName: string, worldName: string, worldId?: string, saveId?: string) => {
+  // The name of the save the player is currently "in" this session (last loaded or saved). Not persisted —
+  // used to prefill the Save dialog so re-saving over the same slot is one step. Cleared per fresh session.
+  const [lastSaveName, setLastSaveName] = useState('');
+
+  const saveGame = useCallback(async (saveName: string, worldName: string, worldId?: string, saveId?: string, opts?: { isAutosave?: boolean }) => {
+    const isAutosave = opts?.isAutosave ?? false;
     try {
       const gameState = saveCurrentGameState();
       gameState.worldName = worldName;
@@ -233,18 +239,42 @@ function useProvideGameplay() {
         version: APP_VERSION, // stamp the current app version (legacy envelopes used numeric 2 ≙ v1.2)
         dictionaries: runtimeDictionaries, // the player's per-playthrough dictionary set, restored on load
         ...(placeholderRolls.world || placeholderRolls.unique ? { placeholderRolls } : {}),
+        ...(isAutosave ? { isAutosave: true } : {}),
       };
 
       await putSaveRecord(record);
-      addLogEntry(`Game saved as "${saveName}"`);
+      // Autosave is silent and doesn't become the "current slot": no prefill name, no log line, no toast.
+      if (!isAutosave) {
+        setLastSaveName(saveName);
+        addLogEntry(`Game saved as "${saveName}"`);
+      }
       return true;
     } catch (error) {
       console.error('Error saving game:', error);
-      toast.error('Failed to save game');
-      addLogEntry('Failed to save game');
+      if (!isAutosave) {
+        toast.error('Failed to save game');
+        addLogEntry('Failed to save game');
+      }
       return false;
     }
   }, [saveCurrentGameState, gameStates, runtimeDictionaries, placeholderRolls, addLogEntry]);
+
+  // Autosave has failed at least once this session — used to toast only once, re-armed on a later success.
+  const autosaveFailedRef = useRef(false);
+
+  /** Write (or overwrite) the world's single autosave slot with the current state. Silent on success; toasts
+   *  once per session on failure and keeps trying on later turns. */
+  const autosaveGame = useCallback(async (worldName: string, worldId?: string) => {
+    const existingId = findAutosaveId(await getAllSaveRecords(), worldName, worldId);
+    const ok = await saveGame(AUTOSAVE_NAME, worldName, worldId, existingId, { isAutosave: true });
+    if (ok) {
+      autosaveFailedRef.current = false;
+    } else if (!autosaveFailedRef.current) {
+      autosaveFailedRef.current = true;
+      toast.error('Autosave failed — your manual saves still work.');
+    }
+    return ok;
+  }, [saveGame]);
 
   /** Load a save by its record `id` from IndexedDB and restore it. A flat envelope (`isSaveEnvelope`, current or
    *  legacy numeric version) loads directly; an older nested shape is flattened off-thread via the
@@ -259,6 +289,8 @@ function useProvideGameplay() {
         return false;
       }
       const saveName = (savedData as SaveRecord).name ?? 'save';
+      // Loading the autosave leaves the Save box empty (it's a system slot you can't manually overwrite).
+      setLastSaveName((savedData as SaveRecord).isAutosave ? '' : saveName);
 
       // Flat envelope (legacy numeric `2` or current APP_VERSION) — detected by shape, not version.
       if (isSaveEnvelope(savedData)) {
@@ -517,7 +549,9 @@ function useProvideGameplay() {
     playerNotes,
     setPlayerNotes,
     saveGame,
+    autosaveGame,
     loadGame,
+    lastSaveName,
     saveCurrentGameState,
     loadGameState
   };

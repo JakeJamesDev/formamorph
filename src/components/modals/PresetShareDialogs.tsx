@@ -1,4 +1,5 @@
-import { useEffect, useRef, useState } from 'react';
+import { useRef, useState } from 'react';
+import { useResetOnOpen } from '@/lib/useResetOnOpen';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -56,9 +57,8 @@ export function ImportPresetDialog({ open, onOpenChange, currentAppVersion, exis
   const [overwrite, setOverwrite] = useState(false);
   const fileRef = useRef<HTMLInputElement>(null);
 
-  useEffect(() => {
-    if (!open) { setParsed(null); setName(''); setIncludeTuning(true); setOverwrite(false); }
-  }, [open]);
+  // Reset on open, not close — clearing on close blanks the still-visible fields during the fade-out.
+  useResetOnOpen(open, () => { setParsed(null); setName(''); setIncludeTuning(true); setOverwrite(false); });
 
   const ingest = (text: string) => {
     if (!text.trim()) { setParsed(null); return; }
