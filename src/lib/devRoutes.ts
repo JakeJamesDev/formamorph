@@ -12,13 +12,13 @@
 export const DEV_VIEWS = ['mainMenu', 'gameViewer'] as const;
 export type DevView = (typeof DEV_VIEWS)[number];
 
-/** Modals the router can open via `#dev?modal=…`. `settings` opens from MainMenu or GameViewer; `menu` and
- *  `worldEditor` open from MainMenu; `entity`/`export` are in-game (GameViewer). `worldEditor` is an in-place
- *  modal on MainMenu (not a top-level view). `intro` replays the first-run welcome overlay on MainMenu.
- *  `localModel` is intentionally absent — it lives inside
+/** Modals the router can open via `#dev?modal=…`. `settings` opens from MainMenu or GameViewer; `menu`,
+ *  `worldEditor` and `community` open from MainMenu; `entity`/`export` are in-game (GameViewer).
+ *  `worldEditor` is an in-place modal on MainMenu (not a top-level view). `intro` replays the first-run
+ *  welcome overlay on MainMenu. `localModel` is intentionally absent — it lives inside
  *  Settings→LocalModelPanel, reached via `modal=settings` + its tab, not its own name. `avatar` opens
  *  MainMenu's Character Customization step directly (a MainMenu sub-state, like `worldEditor`). */
-export const DEV_MODALS = ['settings', 'entity', 'export', 'menu', 'worldEditor', 'intro', 'avatar', 'backup'] as const;
+export const DEV_MODALS = ['settings', 'entity', 'export', 'menu', 'worldEditor', 'intro', 'avatar', 'backup', 'community'] as const;
 export type DevModal = (typeof DEV_MODALS)[number];
 
 /** Coverage ledger: tabbed surface → the sub-tabs the router can target (via `tab=…`). Kept in lockstep
@@ -26,6 +26,8 @@ export type DevModal = (typeof DEV_MODALS)[number];
 export const DEV_MODAL_TABS = {
   settings: ['presentation', 'generation', 'endpoint', 'image', 'prompts', 'accessibility'],
   worldEditor: ['overview', 'stats', 'entities', 'locations', 'traits', 'dictionary', 'placeholders'],
+  // Community Creations browses one kind per tab; these are the server's kinds (see lib/catalogKinds).
+  community: ['world', 'entity', 'dictionary'],
 } as const;
 
 // Settings → Prompts exposes a second level reached via `subtab=…` (narration/thinking/choices/…). Those

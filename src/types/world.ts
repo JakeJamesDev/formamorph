@@ -279,7 +279,25 @@ export interface Placeholder {
 }
 
 /** Lightweight preview record used by the main-menu world grid. */
-export interface WorldMetadata {
+/**
+ * A local copy's link back to the community listing it came from. Identical for all three kinds, so the
+ * refresh/update machinery (see lib/downloadState) reads any of them without knowing which it holds.
+ * Every field is local-only: none is ever exported or published.
+ */
+export interface CommunityLink {
+  /** Server `_id` of the community listing this local copy was downloaded from, if any. */
+  sourceId?: string;
+  /** True if a downloaded copy has been edited locally and so diverges from its source. */
+  dirty?: boolean;
+  /** Wall-clock time of the most recent editor save; unset until first edited. */
+  editedAt?: string;
+  /** Wall-clock time this copy was (re)downloaded. */
+  downloadedAt?: string;
+  /** The listing's `updated_at` captured at download — the source version this copy holds. */
+  sourceUpdatedAt?: string;
+}
+
+export interface WorldMetadata extends CommunityLink {
   id: string;
   name: string;
   description: string;
@@ -288,20 +306,10 @@ export interface WorldMetadata {
   createdAt?: string;
   lastAccessed?: string;
   tags?: string[];
-  /** Server `_id` of the community world this local copy was downloaded from, if any. */
-  sourceId?: string;
-  /** True if a downloaded world has been edited locally and so diverges from its source. */
-  dirty?: boolean;
-  /** Wall-clock time of the most recent editor save; unset until the world is first edited. */
-  editedAt?: string;
-  /** Wall-clock time this copy was (re)downloaded. */
-  downloadedAt?: string;
-  /** The server world's `updated_at` captured at download — the source version this copy holds. */
-  sourceUpdatedAt?: string;
 }
 
 /** Lightweight preview record used by the main-menu dictionary-library grid (no entries). */
-export interface DictionaryMetadata {
+export interface DictionaryMetadata extends CommunityLink {
   id: string;
   name: string;
   entryCount?: number;
@@ -310,7 +318,7 @@ export interface DictionaryMetadata {
 }
 
 /** Lightweight preview record used by the main-menu character-library grid; `image` is the card portrait. */
-export interface EntityMetadata {
+export interface EntityMetadata extends CommunityLink {
   id: string;
   name: string;
   image?: Base64Data;

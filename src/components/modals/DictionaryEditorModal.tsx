@@ -4,7 +4,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/u
 import { Button } from '@/components/ui/button';
 import { ListDetail } from '@/components/ui/list-detail';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Download, Save } from 'lucide-react';
+import { Download, Save, Upload } from 'lucide-react';
 import { UnsavedChangesDialog } from '@/components/UnsavedChangesDialog';
 import { DictionaryStoreProvider, useDictionaryStoreState } from '@/contexts/DictionaryStoreContext';
 import DictionaryTree from '@/managers/DictionaryTree';
@@ -20,9 +20,15 @@ import type { Dictionary, Placeholder } from '@/types';
 /**
  * Edit a single library dictionary in place. Reuses the World Editor's dictionary widgets, but binds them
  * to an ISOLATED `DictionaryStore` (this one book) so editing never touches the app's world store. Open ⇔
- * `dictionaryId !== null`; saves back to `DictionaryStorageService`.
+ * `dictionaryId !== null`; saves back to `DictionaryStorageService`. `onPublish` (when the user is signed
+ * in) hands the book up to the publish dialog.
  */
-const DictionaryEditorModal = ({ dictionaryId, draft, onClose }: { dictionaryId: string | null; draft?: Dictionary | null; onClose: () => void }) => {
+const DictionaryEditorModal = ({ dictionaryId, draft, onClose, onPublish }: {
+  dictionaryId: string | null;
+  draft?: Dictionary | null;
+  onClose: () => void;
+  onPublish?: (book: Dictionary) => void;
+}) => {
   const store = useDictionaryStoreState([]);
   const { dictionaries, setDictionaries } = store;
   const [book, setBook] = useState<Dictionary | null>(null);
@@ -47,7 +53,7 @@ const DictionaryEditorModal = ({ dictionaryId, draft, onClose }: { dictionaryId:
     return () => { cancelled = true; };
   }, [dictionaryId, draft, setDictionaries]);
 
-  const dirty = book != null && JSON.stringify(dictionaries) !== baselineRef.current;
+  const hasUnsavedChanges = book != null && JSON.stringify(dictionaries) !== baselineRef.current;
   const selectedBook = dictionaries.find((b) => b.id === selectedId);
   const selectedEntry = dictionaries.flatMap((b) => b.entries).find((e) => e.id === selectedId);
   // The book's carried placeholders live on the sole book (index 0); its entries' chips resolve against them.
@@ -68,7 +74,11 @@ const DictionaryEditorModal = ({ dictionaryId, draft, onClose }: { dictionaryId:
     const recordId = dictionaryId ?? current.id;
     const normalized: Dictionary[] = dictionaries.map((b, i) => (i === 0 ? { ...b, id: recordId } : b));
     try {
-      await DictionaryStorageService.storeDictionary({ id: recordId, name: normalized[0].name, data: normalized[0] });
+      // A save means this copy diverged from whatever it was downloaded from; the store read-merges the rest.
+      await DictionaryStorageService.storeDictionary({
+        id: recordId, name: normalized[0].name, data: normalized[0],
+        dirty: true, editedAt: new Date().toISOString(),
+      });
       setDictionaries(normalized);
       baselineRef.current = JSON.stringify(normalized);
       toast.success('Dictionary saved!');
@@ -84,7 +94,7 @@ const DictionaryEditorModal = ({ dictionaryId, draft, onClose }: { dictionaryId:
     downloadBlob(blob, `${current.name || 'Dictionary'}.json`);
   };
 
-  const attemptClose = () => { if (dirty) setShowUnsaved(true); else onClose(); };
+  const attemptClose = () => { if (hasUnsavedChanges) setShowUnsaved(true); else onClose(); };
 
   return (
     <>
@@ -133,13 +143,21 @@ const DictionaryEditorModal = ({ dictionaryId, draft, onClose }: { dictionaryId:
                 }
               />
               )}
-              <div className="px-4 py-3 border-t shrink-0 flex justify-between">
+              <div className="px-4 py-3 border-t shrink-0 flex justify-between gap-2">
                 <Button variant="outline" size="sm" onClick={handleDownload}>
                   <Download className="h-4 w-4 mr-2" /> Download
                 </Button>
-                <Button size="sm" onClick={handleSave} disabled={!dirty}>
-                  <Save className="h-4 w-4 mr-2" /> Save
-                </Button>
+                <div className="flex gap-2">
+                  {onPublish && (
+                    // Publishes what's on screen, saved or not — the same book Save would write.
+                    <Button variant="outline" size="sm" onClick={() => dictionaries[0] && onPublish(dictionaries[0])}>
+                      <Upload className="h-4 w-4 mr-2" /> Publish
+                    </Button>
+                  )}
+                  <Button size="sm" onClick={handleSave} disabled={!hasUnsavedChanges}>
+                    <Save className="h-4 w-4 mr-2" /> Save
+                  </Button>
+                </div>
               </div>
             </DictionaryStoreProvider>
           )}

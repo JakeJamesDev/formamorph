@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useCallback } from 'react';
 import { toast } from 'react-toastify';
 import { Button } from "@/components/ui/button";
 import { ConfirmDialog } from "@/components/ConfirmDialog";
@@ -7,7 +7,10 @@ import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
 import {
   Search, RotateCcw, ArrowDownWideNarrow, ArrowUpNarrowWide, ArrowLeft, X, SlidersHorizontal, ChevronDown,
+  Earth, User, BookOpen,
 } from "lucide-react";
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { KIND_LABELS, kindOf, type CatalogKind } from "@/lib/catalogKinds";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Pager } from "@/components/ui/pagination";
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -18,7 +21,12 @@ import { usePersistentState, boolCodec } from "@/lib/usePersistentState";
 import { CHIP_BASE } from "@/components/Chip";
 import { useCatalogSync } from "@/lib/useCatalogSync";
 import { useDownloadCoordinator } from "@/lib/useDownloadCoordinator";
+import { useLibraryDownload } from "@/lib/useLibraryDownload";
 import { useDownscalePrompt } from "@/lib/useDownscalePrompt";
+import { IMAGE_CAPS } from "@/lib/imageOptim";
+import EntityStorageService from "@/services/EntityStorageService";
+import DictionaryStorageService from "@/services/DictionaryStorageService";
+import type { Entity, Dictionary, EntityMetadata, DictionaryMetadata } from "@/types";
 import { useClosingSnapshot } from "@/lib/useClosingSnapshot";
 import { useCommunityBrowserFilters } from "@/lib/useCommunityBrowserFilters";
 import {
@@ -35,7 +43,7 @@ import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/component
 import { useIsMobile } from "@/lib/useIsMobile";
 import WorldStorageService from '../services/WorldStorageService';
 import AuthService from '../services/AuthService';
-import { getDownloadState } from '@/lib/downloadState';
+import { getDownloadState, type DownloadState } from '@/lib/downloadState';
 import { type WorldRecord } from "@/components/WorldDetails";
 import { RemoteWorldDetailsModal } from "@/components/community/RemoteWorldDetailsModal";
 import { RemoteWorldCard } from "@/components/community/RemoteWorldCard";
@@ -50,21 +58,32 @@ interface CommunityCreationsBrowserProps {
   // Local world list (drives download-state) + setter (download/overwrite add or update local copies).
   worlds: WorldRecord[];
   setWorlds: React.Dispatch<React.SetStateAction<WorldRecord[]>>;
+  // The character/dictionary libraries drive their tabs' download-state; refreshing re-reads them after a
+  // download lands (unlike worlds, these are stored by their own service rather than set here).
+  entities: EntityMetadata[];
+  dictionaries: DictionaryMetadata[];
+  refreshEntities: () => void;
+  refreshDictionaries: () => void;
   isAuthenticated: boolean;
   currentUser: WorldRecord | null;
   openImageViewer: (src: string | undefined, alt: string | undefined) => void;
+  /** DEV dev-router: the kind tab to open on (`#dev?modal=community&tab=entity`). */
+  initialKind?: CatalogKind;
 }
 
 // The Community Creations browser: browse/search/filter/sort the published catalog, view world details
 // and comments, and download/refresh/update copies to the local library.
-const CommunityCreationsBrowser = ({ open, onOpenChange, worlds, setWorlds, isAuthenticated, currentUser, openImageViewer }: CommunityCreationsBrowserProps) => {
+const CommunityCreationsBrowser = ({
+  open, onOpenChange, worlds, setWorlds, entities, dictionaries, refreshEntities, refreshDictionaries,
+  isAuthenticated, currentUser, openImageViewer, initialKind,
+}: CommunityCreationsBrowserProps) => {
   // Catalog fetch/cache/sync (loads on open, refreshes in the background).
   const { remoteWorlds, setRemoteWorlds, isLoadingRemoteWorlds, isSyncingCatalog, loadCatalog } = useCatalogSync(open);
   const [remoteWorldToDelete, setRemoteWorldToDelete] = useState<string | null>(null);
   const [selectedRemoteWorld, setSelectedRemoteWorld] = useState<WorldRecord | null>(null);
   const [showRemoteWorldDetailsModal, setShowRemoteWorldDetailsModal] = useState(false);
   // Offer to downscale oversized images right after a world is downloaded/overwritten.
-  const { promptWorld, dialog: downscaleDialog } = useDownscalePrompt();
+  const { promptWorld, promptImage, dialog: downscaleDialog } = useDownscalePrompt();
   // Download flow: per-world progress, the copy-vs-overwrite decision state, and the fetch/store handlers.
   const {
     downloadProgress, contextualAction, setContextualAction,
@@ -82,6 +101,65 @@ const CommunityCreationsBrowser = ({ open, onOpenChange, worlds, setWorlds, isAu
   );
   const toggleCommunityBrowserModalCollapsed = () => setCommunityBrowserModalCollapsed((prev) => !prev);
 
+  // Which kind is being browsed. The catalog holds all three; the pipeline below scopes to this one.
+  const [browseKind, setBrowseKind] = useState<CatalogKind>(initialKind ?? 'world');
+
+  // Characters and dictionaries download into their own libraries, one copy per listing. Worlds keep the
+  // coordinator's multi-copy flow (see useLibraryDownload for why the two differ).
+  const entityDownload = useLibraryDownload<Entity>({
+    kind: 'entity',
+    records: entities,
+    store: async (id, entity, link) => {
+      await EntityStorageService.storeEntity({ id, name: entity.name, data: entity, ...link });
+    },
+    refresh: refreshEntities,
+    // Offer to shrink an oversized portrait before it lands, as worlds do for their images.
+    onFetched: async (entity) => {
+      if (!entity.image) return entity;
+      const image = await promptImage(entity.image, IMAGE_CAPS.entity);
+      return image === entity.image ? entity : { ...entity, image };
+    },
+  });
+
+  const dictionaryDownload = useLibraryDownload<Dictionary>({
+    kind: 'dictionary',
+    records: dictionaries,
+    store: async (id, book, link) => {
+      await DictionaryStorageService.storeDictionary({ id, name: book.name, data: book, ...link });
+    },
+    refresh: refreshDictionaries,
+  });
+
+  const downloadFor = (kind: CatalogKind) => (kind === 'entity' ? entityDownload : dictionaryDownload);
+
+  /**
+   * The none/refresh/update state for any listing, from whichever library holds that kind.
+   *
+   * Memoized on the three copy maps: the browse pipeline sorts by it, so an identity that changed every
+   * render would re-sort the whole catalog every time.
+   */
+  const downloadStateForRecord = useCallback((record: WorldRecord): DownloadState => {
+    const kind = kindOf(record);
+    return kind === 'world' ? downloadStateForWorld(record) : downloadFor(kind).downloadStateFor(record);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [localCopiesBySource, entityDownload.copyBySource, dictionaryDownload.copyBySource]);
+
+  // Every in-flight bar, keyed by listing id — unique across kinds, so the three sources merge cleanly.
+  const allDownloadProgress = {
+    ...downloadProgress,
+    ...entityDownload.downloadProgress,
+    ...dictionaryDownload.downloadProgress,
+  };
+
+  const handleCardDownload = (record: WorldRecord, state: DownloadState) => {
+    const kind = kindOf(record);
+    if (kind === 'world') {
+      handleContextualDownload(record, state);
+      return;
+    }
+    downloadFor(kind).startDownload(record);
+  };
+
   // Browse pipeline: search/author/tag/sort filters, hide preferences, and responsive pagination.
   const {
     searchQuery, setSearchQuery, authorFilter, setAuthorFilter, tagFilter, setTagFilter,
@@ -92,7 +170,7 @@ const CommunityCreationsBrowser = ({ open, onOpenChange, worlds, setWorlds, isAu
     setHiddenTagsList, setHiddenAuthorsList,
     resetHiddenWorlds, unhideWorld, hiddenWorldName,
     allAuthors, allTags, filteredRemoteWorlds, totalPages, pagedRemoteWorlds,
-  } = useCommunityBrowserFilters(remoteWorlds, localCopiesBySource, open);
+  } = useCommunityBrowserFilters(remoteWorlds, downloadStateForRecord, open, browseKind);
 
   // On mobile the sort/filter controls collapse behind a "Filters" toggle; on desktop they stay inline.
   const isMobile = useIsMobile();
@@ -103,8 +181,9 @@ const CommunityCreationsBrowser = ({ open, onOpenChange, worlds, setWorlds, isAu
   // Numbered page links with first/last anchors + ellipsis (matches the in-game transcript pager).
 
   const handleRemoteWorldDelete = async (worldId: string) => {
+    // Every kind is served by the /worlds route; only the wording differs, so name it from the record.
+    const noun = KIND_LABELS[kindOf(remoteWorlds.find((w) => (w._id || w.id) === worldId) ?? {})].one;
     try {
-      // Call API to delete the world
       const response = await fetch(`${WorldStorageService.API_URL}/worlds/${worldId}`, {
         method: 'DELETE',
         headers: {
@@ -114,16 +193,15 @@ const CommunityCreationsBrowser = ({ open, onOpenChange, worlds, setWorlds, isAu
 
       if (!response.ok) {
         const errorData = await response.json();
-        throw new Error(errorData.message || 'Failed to delete world');
+        throw new Error(errorData.message || `Failed to delete ${noun.toLowerCase()}`);
       }
 
-      // Remove the world from the list
       setRemoteWorlds(prev => prev.filter(w => (w._id || w.id) !== worldId));
       setRemoteWorldToDelete(null);
-      toast.success('World deleted successfully');
+      toast.success(`${noun} deleted successfully`);
     } catch (error) {
-      console.error('Error deleting remote world:', error);
-      toast.error((error as Error).message || 'Failed to delete world');
+      console.error('Error deleting remote item:', error);
+      toast.error((error as Error).message || `Failed to delete ${noun.toLowerCase()}`);
     }
   };
 
@@ -134,11 +212,32 @@ const CommunityCreationsBrowser = ({ open, onOpenChange, worlds, setWorlds, isAu
   };
 
   // Header control fragments — reused across the mobile (collapsible) and desktop (inline) header layouts.
+  // Mirrors the local library's tabs (MainMenu's `cardType`) so the same three kinds read the same way
+  // in both places — icons below the label breakpoint, matching that header.
+  const kindTabs = (
+    <Tabs value={browseKind} onValueChange={(v) => setBrowseKind(v as CatalogKind)}>
+      <TabsList>
+        <TabsTrigger value="world" aria-label="Worlds" title="Worlds">
+          <Earth className="h-5 w-5 min-[1040px]:hidden" />
+          <span className="hidden min-[1040px]:inline">Worlds</span>
+        </TabsTrigger>
+        <TabsTrigger value="entity" aria-label="Characters" title="Characters">
+          <User className="h-5 w-5 min-[1040px]:hidden" />
+          <span className="hidden min-[1040px]:inline">Characters</span>
+        </TabsTrigger>
+        <TabsTrigger value="dictionary" aria-label="Dictionaries" title="Dictionaries">
+          <BookOpen className="h-5 w-5 min-[1040px]:hidden" />
+          <span className="hidden min-[1040px]:inline">Dictionaries</span>
+        </TabsTrigger>
+      </TabsList>
+    </Tabs>
+  );
+
   const searchControl = (
     <div className="relative flex-grow min-w-[200px]">
       <Search className="absolute left-2 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
       <Input
-        placeholder="Search worlds..."
+        placeholder={`Search ${KIND_LABELS[browseKind].many.toLowerCase()}...`}
         className="pl-8"
         value={searchQuery}
         onChange={(e) => setSearchQuery(e.target.value)}
@@ -255,6 +354,25 @@ const CommunityCreationsBrowser = ({ open, onOpenChange, worlds, setWorlds, isAu
   return (
     <>
       {downscaleDialog}
+
+      {/* Updating a character/dictionary replaces the single local copy, so an edited one asks first —
+          there's no second copy for the edits to survive in (unlike worlds). ConfirmDialog holds its text
+          while fading out, so the name doesn't vanish mid-animation. */}
+      <ConfirmDialog
+        open={!!entityDownload.dirtyConfirm}
+        onOpenChange={(v) => { if (!v) entityDownload.setDirtyConfirm(null); }}
+        title="Replace your edited character?"
+        description={`You've edited your copy of "${entityDownload.dirtyConfirm?.name ?? ''}". Downloading again replaces it with the published version, and your changes are lost.`}
+        onConfirm={entityDownload.confirmDirtyDownload}
+      />
+
+      <ConfirmDialog
+        open={!!dictionaryDownload.dirtyConfirm}
+        onOpenChange={(v) => { if (!v) dictionaryDownload.setDirtyConfirm(null); }}
+        title="Replace your edited dictionary?"
+        description={`You've edited your copy of "${dictionaryDownload.dirtyConfirm?.name ?? ''}". Downloading again replaces it with the published version, and your changes are lost.`}
+        onConfirm={dictionaryDownload.confirmDirtyDownload}
+      />
       {/* Community Creations browser dialog */}
       <Dialog open={open} onOpenChange={onOpenChange}>
         <DialogContent
@@ -270,6 +388,7 @@ const CommunityCreationsBrowser = ({ open, onOpenChange, worlds, setWorlds, isAu
                   <ArrowLeft className="h-5 w-5" />
                 </Button>
                 <DialogTitle className="whitespace-nowrap mr-2">Community Creations</DialogTitle>
+                {kindTabs}
                 {searchControl}
                 {refreshControl}
                 {isMobile ? (
@@ -320,8 +439,8 @@ const CommunityCreationsBrowser = ({ open, onOpenChange, worlds, setWorlds, isAu
               ) : filteredRemoteWorlds.length === 0 ? (
                 <div className="col-span-2 text-center py-12 text-muted-foreground">
                   {searchQuery ?
-                    "No worlds found matching your criteria." :
-                    "No worlds available. Be the first to publish one!"}
+                    `No ${KIND_LABELS[browseKind].many.toLowerCase()} found matching your criteria.` :
+                    `No ${KIND_LABELS[browseKind].many.toLowerCase()} available. Be the first to publish one!`}
                 </div>
               ) : (
                 pagedRemoteWorlds.map((world) => {
@@ -330,15 +449,15 @@ const CommunityCreationsBrowser = ({ open, onOpenChange, worlds, setWorlds, isAu
                     <RemoteWorldCard
                       key={worldId}
                       world={world}
-                      downloadState={downloadStateForWorld(world)}
-                      downloadProgress={downloadProgress[worldId]}
+                      downloadState={downloadStateForRecord(world)}
+                      downloadProgress={allDownloadProgress[worldId]}
                       isAuthenticated={isAuthenticated}
                       currentUser={currentUser}
                       onView={handleViewRemoteWorldDetails}
                       onHideWorld={hideRemoteWorld}
                       onHideAuthor={hideRemoteAuthor}
                       onHideTag={hideRemoteTag}
-                      onContextualDownload={handleContextualDownload}
+                      onContextualDownload={handleCardDownload}
                       onDelete={setRemoteWorldToDelete}
                     />
                   );
@@ -365,9 +484,9 @@ const CommunityCreationsBrowser = ({ open, onOpenChange, worlds, setWorlds, isAu
         onToggleCollapsed={toggleCommunityBrowserModalCollapsed}
         isAuthenticated={isAuthenticated}
         openImageViewer={openImageViewer}
-        downloadStateForWorld={downloadStateForWorld}
-        downloadProgress={downloadProgress}
-        onContextualDownload={handleContextualDownload}
+        downloadStateForWorld={downloadStateForRecord}
+        downloadProgress={allDownloadProgress}
+        onContextualDownload={handleCardDownload}
       />
 
       {/* Refresh/Update decision: download a separate copy vs overwrite an existing local copy */}

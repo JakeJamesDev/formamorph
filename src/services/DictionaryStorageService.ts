@@ -1,9 +1,12 @@
 import { openDatabase, promisifyRequest } from '@/lib/idb';
-import type { Dictionary, DictionaryMetadata } from '@/types';
+import type { Dictionary, DictionaryMetadata, CommunityLink } from '@/types';
 
-/** A locally-stored dictionary ("book") plus its library timestamps. Analogous to `StoredWorldRecord`,
- *  but purely local — dictionaries aren't a community-server concept. */
-export interface StoredDictionaryRecord {
+/**
+ * A locally-stored dictionary ("book") plus its library timestamps and community link. Analogous to
+ * `StoredWorldRecord`: every field outside `data` stays on this wrapper, so none of it reaches an exported
+ * dictionary file.
+ */
+export interface StoredDictionaryRecord extends CommunityLink {
   id: string;
   name: string;
   createdAt?: string;
@@ -44,6 +47,13 @@ class DictionaryStorageService {
       entryCount: r.data?.entries?.length ?? 0,
       createdAt: r.createdAt,
       lastAccessed: r.lastAccessed,
+      // The community link travels with the metadata: the library grid never shows it, but the download
+      // flow reads these to tell a fresh listing from one you already hold (see lib/downloadState).
+      sourceId: r.sourceId,
+      dirty: r.dirty,
+      editedAt: r.editedAt,
+      downloadedAt: r.downloadedAt,
+      sourceUpdatedAt: r.sourceUpdatedAt,
     }));
   }
 
@@ -68,12 +78,20 @@ class DictionaryStorageService {
       const getRequest = store.get(dictionary.id);
       getRequest.onsuccess = () => {
         const existing = getRequest.result as StoredDictionaryRecord | undefined;
+        // Rebuilt field-by-field rather than spread, so anything not named here is dropped. The community
+        // link is read-merged because the editor's save passes only id/name/data — without this, the first
+        // edit to a downloaded book would sever it. `??`, not `||`: a download's `dirty: false` must win.
         const putRequest = store.put({
           id: dictionary.id,
           name: dictionary.name,
           data: dictionary.data,
           createdAt: existing?.createdAt ?? dictionary.createdAt ?? new Date().toISOString(),
           lastAccessed: new Date().toISOString(),
+          sourceId: dictionary.sourceId ?? existing?.sourceId,
+          dirty: dictionary.dirty ?? existing?.dirty,
+          editedAt: dictionary.editedAt ?? existing?.editedAt,
+          downloadedAt: dictionary.downloadedAt ?? existing?.downloadedAt,
+          sourceUpdatedAt: dictionary.sourceUpdatedAt ?? existing?.sourceUpdatedAt,
         });
         putRequest.onsuccess = () => resolve();
         putRequest.onerror = () => reject('Failed to store dictionary');

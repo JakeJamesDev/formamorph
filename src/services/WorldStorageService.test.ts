@@ -46,6 +46,24 @@ describe('fetchRemoteWorlds', () => {
     expect(out.success).toBe(false);
     expect(out.data).toEqual([]);
   });
+
+  it('omits kind entirely for worlds, so the request is what shipped before kinds existed', async () => {
+    vi.mocked(fetch).mockResolvedValue(res({ data: [], total: 0 }));
+    await WorldStorageService.fetchRemoteWorlds();
+    expect(vi.mocked(fetch).mock.calls[0][0] as string).not.toContain('kind');
+  });
+
+  it('asks for a single kind when given one', async () => {
+    vi.mocked(fetch).mockResolvedValue(res({ data: [], total: 0 }));
+    await WorldStorageService.fetchRemoteWorlds(1, 10, '', false, false, '', 'desc', 'entity');
+    expect(vi.mocked(fetch).mock.calls[0][0] as string).toContain('kind=entity');
+  });
+
+  it('asks for the whole catalog when given `all`', async () => {
+    vi.mocked(fetch).mockResolvedValue(res({ data: [], total: 0 }));
+    await WorldStorageService.fetchRemoteWorlds(1, 1000, '', false, false, '', 'desc', 'all');
+    expect(vi.mocked(fetch).mock.calls[0][0] as string).toContain('kind=all');
+  });
 });
 
 describe('getUserWorlds', () => {
@@ -73,23 +91,72 @@ describe('postComment', () => {
   });
 });
 
-describe('publishWorld', () => {
-  it('throws when not authenticated', async () => {
-    await expect(WorldStorageService.publishWorld({ worldOverview: {} })).rejects.toThrow(/logged in/);
+describe('publishItem', () => {
+  const payload = (over = {}) => ({
+    kind: 'world' as const, name: 'N', description: 'D', thumbnail: 't', contentData: { a: 1 }, ...over,
   });
 
-  it('POSTs a new world and PUTs an existing one', async () => {
+  it('throws when not authenticated', async () => {
+    await expect(WorldStorageService.publishItem(payload())).rejects.toThrow(/logged in/);
+  });
+
+  it('POSTs a new listing and PUTs an existing one', async () => {
     AuthService.token = 'tok';
-    const wd = { worldOverview: { name: 'N', description: 'D', thumbnail: 't' } };
     vi.mocked(fetch).mockResolvedValue(res({ id: 'created' }));
 
-    await WorldStorageService.publishWorld(wd);
+    await WorldStorageService.publishItem(payload());
     expect(vi.mocked(fetch).mock.calls[0][1]?.method).toBe('POST');
 
-    await WorldStorageService.publishWorld(wd, 'w99');
+    await WorldStorageService.publishItem(payload(), 'w99');
     const second = vi.mocked(fetch).mock.calls[1];
     expect(second[1]?.method).toBe('PUT');
     expect(second[0] as string).toContain('/worlds/w99');
+  });
+
+  it('sends the kind, so a character is not filed as a world', async () => {
+    AuthService.token = 'tok';
+    vi.mocked(fetch).mockResolvedValue(res({ id: 'created' }));
+
+    await WorldStorageService.publishItem(payload({ kind: 'entity', contentData: { name: 'Mara' } }));
+
+    const body = JSON.parse(vi.mocked(fetch).mock.calls[0][1]?.body as string);
+    expect(body.kind).toBe('entity');
+    expect(body.contentData).toEqual({ name: 'Mara' });
+  });
+
+  it('mirrors the list fields into previewData, never the content', async () => {
+    AuthService.token = 'tok';
+    vi.mocked(fetch).mockResolvedValue(res({ id: 'created' }));
+
+    await WorldStorageService.publishItem(payload());
+
+    const body = JSON.parse(vi.mocked(fetch).mock.calls[0][1]?.body as string);
+    expect(body.previewData).toEqual({ name: 'N', description: 'D', thumbnail: 't' });
+  });
+});
+
+describe('getUserWorlds', () => {
+  it('omits kind for worlds, so the request is what shipped before kinds existed', async () => {
+    AuthService.token = 'tok';
+    vi.mocked(fetch).mockResolvedValue(res({ data: [] }));
+
+    await WorldStorageService.getUserWorlds();
+
+    expect(vi.mocked(fetch).mock.calls[0][0] as string).not.toContain('kind');
+  });
+
+  it('asks for a kind when given one, so a world is never offered a character to overwrite', async () => {
+    AuthService.token = 'tok';
+    vi.mocked(fetch).mockResolvedValue(res({ data: [] }));
+
+    await WorldStorageService.getUserWorlds('entity');
+
+    expect(vi.mocked(fetch).mock.calls[0][0] as string).toContain('kind=entity');
+  });
+
+  it('returns [] when signed out, without a request', async () => {
+    expect(await WorldStorageService.getUserWorlds('entity')).toEqual([]);
+    expect(fetch).not.toHaveBeenCalled();
   });
 });
 

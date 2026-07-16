@@ -70,6 +70,8 @@ import EntityEditorModal from "@/components/modals/EntityEditorModal";
 import { ManageUsersDialog } from "@/components/menu/ManageUsersDialog";
 import { AuthModals } from "@/components/menu/AuthModals";
 import { PublishModal } from "@/components/menu/PublishModal";
+import { worldPublishPayload, entityPublishPayload, dictionaryPublishPayload, type PublishPayload } from "@/lib/publishPayload";
+import { type CatalogKind } from "@/lib/catalogKinds";
 import { BackupRestoreDialog } from "@/components/menu/BackupRestoreDialog";
 import { COMMUNITY_ENABLED } from "@/lib/featureFlags";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -131,7 +133,7 @@ const MainMenu = ({ onStartGame, onLoadSaveGame, onReplayIntro }: MainMenuProps)
     dictionaries: worldBooks,
   } = useGameData();
   const { showReadme, setShowReadme } = useReadmeVisibility();
-  const { promptWorldsBatch, promptImagesBatch, dialog: downscaleDialog } = useDownscalePrompt();
+  const { promptWorldsBatch, promptImagesBatch, promptImage, dialog: downscaleDialog } = useDownscalePrompt();
   const [selectedWorld, setSelectedWorld] = useState<WorldRecord | null>(null);
   // Local-world grid layout: "grid" (default compact cards) or "detailed" (community-browser-style card + info
   // beneath). Persisted across sessions in localStorage.
@@ -173,6 +175,7 @@ const MainMenu = ({ onStartGame, onLoadSaveGame, onReplayIntro }: MainMenuProps)
     if (devRoute?.modal === 'settings') setShowSettings(true);
     if (devRoute?.modal === 'menu') setShowLoadDialog(true);
     if (devRoute?.modal === 'backup') setShowBackup(true);
+    if (devRoute?.modal === 'community') setShowCommunityBrowser(true);
     if (devRoute?.modal === 'worldEditor') setShowWorldEditor(true);
     if (devRoute?.modal === 'avatar') setShowCharacterCustomization(true);
   }, [devRoute?.modal]);
@@ -219,6 +222,25 @@ const MainMenu = ({ onStartGame, onLoadSaveGame, onReplayIntro }: MainMenuProps)
 
   // Publish modal open state; the publish form/handlers live in the PublishModal component.
   const [showPublishModal, setShowPublishModal] = useState(false);
+  // What the publish modal is publishing. Deliberately not cleared on close: the modal names itself from
+  // the payload's kind, so dropping it would flash the title back to "World" during the fade-out.
+  const [publishPayload, setPublishPayload] = useState<PublishPayload | null>(null);
+  const openPublish = (payload: PublishPayload) => {
+    setPublishPayload(payload);
+    setShowPublishModal(true);
+  };
+
+  /**
+   * Publish a character, offering to shrink an oversized portrait first.
+   *
+   * Without this the upload reaches the server and is rejected with "Thumbnail exceeds maximum size of
+   * 5MB" — a dead end in a dialog that never mentions thumbnails, and no way to act on it. The download
+   * side already offers this choice; the publish side is where the big image actually comes from.
+   */
+  const publishEntity = async (entity: Entity) => {
+    const image = entity.image ? await promptImage(entity.image, IMAGE_CAPS.entity) : entity.image;
+    openPublish(entityPublishPayload(image === entity.image ? entity : { ...entity, image }));
+  };
   const [showBackup, setShowBackup] = useState(false);
 
   // Community Creations browser open state (the browser itself lives in <CommunityCreationsBrowser>).
@@ -1356,7 +1378,7 @@ const MainMenu = ({ onStartGame, onLoadSaveGame, onReplayIntro }: MainMenuProps)
                   {isAuthenticated && (
                     <Button
                       className="w-full bg-gradient-to-r from-red-100 to-red-200 hover:from-purple-200 hover:to-indigo-300 text-black font-bold"
-                      onClick={() => setShowPublishModal(true)}
+                      onClick={() => selectedWorld && openPublish(worldPublishPayload(selectedWorld.data))}
                     >
                       <Upload className="mr-2 h-4 w-4" /> Publish World
                     </Button>
@@ -1417,6 +1439,7 @@ const MainMenu = ({ onStartGame, onLoadSaveGame, onReplayIntro }: MainMenuProps)
         dictionaryId={editingDictionaryId}
         draft={draftDictionary}
         onClose={() => { setEditingDictionaryId(null); setDraftDictionary(null); refreshDictionaries(); }}
+        onPublish={isAuthenticated ? (book) => openPublish(dictionaryPublishPayload(book)) : undefined}
       />
 
       <ConfirmDialog
@@ -1439,6 +1462,7 @@ const MainMenu = ({ onStartGame, onLoadSaveGame, onReplayIntro }: MainMenuProps)
         entityId={editingEntityId}
         draft={draftEntity}
         onClose={() => { setEditingEntityId(null); setDraftEntity(null); refreshEntities(); }}
+        onPublish={isAuthenticated ? publishEntity : undefined}
       />
 
       <Dialog open={showCodeModal} onOpenChange={setShowCodeModal}>
@@ -1578,7 +1602,7 @@ const MainMenu = ({ onStartGame, onLoadSaveGame, onReplayIntro }: MainMenuProps)
             open={showPublishModal}
             onOpenChange={setShowPublishModal}
             isAuthenticated={isAuthenticated}
-            selectedWorld={selectedWorld}
+            payload={publishPayload}
           />
 
           {/* Community Creations browser — see CommunityCreationsBrowser.tsx */}
@@ -1587,9 +1611,14 @@ const MainMenu = ({ onStartGame, onLoadSaveGame, onReplayIntro }: MainMenuProps)
             onOpenChange={setShowCommunityBrowser}
             worlds={worlds}
             setWorlds={setWorlds}
+            entities={entities}
+            dictionaries={dictionaries}
+            refreshEntities={refreshEntities}
+            refreshDictionaries={refreshDictionaries}
             isAuthenticated={isAuthenticated}
             currentUser={currentUser}
             openImageViewer={openImageViewer}
+            initialKind={devRoute?.modal === 'community' ? (devRoute.tab as CatalogKind | undefined) : undefined}
           />
         </>
       )}

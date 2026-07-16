@@ -12,6 +12,21 @@ Each release groups changes as **Major** / **Minor**, then **Added** / **Removed
 
 _Unreleased — new work accumulates here until it earns a version bump. The next batch will pin its own version; `package.json` reads **2.4.0** (just released below)._
 
+### Minor Changes
+
+#### ➕ Added
+
+- **👤 User-facing**
+  - **Browse and download community characters and dictionaries.** Community Creations gains Characters and Dictionaries tabs, with the same search, filters, sorting, and paging worlds already had — each tab scoped to its own kind. Downloading one adds it straight to your library, and the button tells you what you're getting: nothing yet, a re-download of the copy you hold, or an update when the author has published a newer version. Each listing keeps a single local copy that a re-download refreshes in place — so if you've edited yours, it asks before replacing it. An oversized portrait offers the same Optimize / Downscale / Keep choice worlds do.
+  - **Publish a character or dictionary.** When you're signed in, the character and dictionary editors gain a **Publish** button, working the same way worlds already do: publish as new, or pick one of your existing listings to update. A character with no portrait and a dictionary (which has no art at all) both get stand-in cover art on the listing, so every card looks right in the grid. Only listings of the same type are offered as update targets — a world can't be replaced by a character.
+- **⚙️ Backend**
+  - **Characters and dictionaries can remember where they came from.** Their local library records now carry the same community link worlds already had — which listing a copy was downloaded from, the version held, when it was downloaded, and whether you've since edited it. The link survives an editor save, and editing a downloaded copy marks it as yours so a later re-download can't quietly overwrite your changes. It's device-local: it never travels in an exported character card or dictionary file, though a **backup** does carry it, the same way backups already carry this for worlds.
+
+#### 🐛 Fixed
+
+- **👤 User-facing**
+  - **Publishing works when you've published a lot.** The publish dialog only ever listed your first 10 published worlds, so an 11th could never be picked to update — it simply wasn't there, with nothing to say so. It now lists every world you've published, and the list scrolls instead of growing the dialog off the top and bottom of the screen (which could put the Publish button out of reach).
+
 ---
 
 <details>

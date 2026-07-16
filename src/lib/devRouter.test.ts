@@ -1,5 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { DEV_MODAL_TABS, DEV_MODALS } from './devRoutes';
+import { CATALOG_KINDS } from './catalogKinds';
 import { DEV_FIXTURES } from './devFixtures';
 import { SETTINGS_TABS } from '@/components/modals/settingsTabs';
 import { WORLD_EDITOR_TABS } from '@/views/worldEditorTabs';
@@ -63,10 +64,17 @@ describe('dev-router coverage guard', () => {
     expect([...DEV_MODAL_TABS.worldEditor]).toEqual(WORLD_EDITOR_TABS.map((t) => t.value));
   });
 
+  it('ledger lists exactly the kinds the Community browser tabs between', () => {
+    // The browser renders one tab per catalog kind, so a new kind must be consciously covered here too.
+    expect([...DEV_MODAL_TABS.community]).toEqual([...CATALOG_KINDS]);
+  });
+
   it('registers the modals the router opens', () => {
     // localModel is deliberately excluded (it lives inside Settings, not as a standalone modal). worldEditor
     // is an in-place MainMenu modal (no longer a top-level view).
-    expect(DEV_MODALS).toEqual(['settings', 'entity', 'export', 'menu', 'worldEditor', 'intro', 'avatar', 'backup']);
+    expect(DEV_MODALS).toEqual([
+      'settings', 'entity', 'export', 'menu', 'worldEditor', 'intro', 'avatar', 'backup', 'community',
+    ]);
   });
 });
 

@@ -1,8 +1,12 @@
 import { openDatabase, promisifyRequest } from '@/lib/idb';
-import type { Entity, EntityMetadata } from '@/types';
+import type { Entity, EntityMetadata, CommunityLink } from '@/types';
 
-/** A locally-stored character ("entity") plus its library timestamps. Local-only, like `StoredDictionaryRecord`. */
-export interface StoredEntityRecord {
+/**
+ * A locally-stored character ("entity") plus its library timestamps and community link. Local-only, like
+ * `StoredDictionaryRecord` — every field outside `data` stays on this wrapper, so none of it reaches an
+ * exported character card.
+ */
+export interface StoredEntityRecord extends CommunityLink {
   id: string;
   name: string;
   createdAt?: string;
@@ -43,6 +47,13 @@ class EntityStorageService {
       image: r.data?.image,
       createdAt: r.createdAt,
       lastAccessed: r.lastAccessed,
+      // The community link travels with the metadata: the library grid never shows it, but the download
+      // flow reads these to tell a fresh listing from one you already hold (see lib/downloadState).
+      sourceId: r.sourceId,
+      dirty: r.dirty,
+      editedAt: r.editedAt,
+      downloadedAt: r.downloadedAt,
+      sourceUpdatedAt: r.sourceUpdatedAt,
     }));
   }
 
@@ -67,12 +78,20 @@ class EntityStorageService {
       const getRequest = store.get(entity.id);
       getRequest.onsuccess = () => {
         const existing = getRequest.result as StoredEntityRecord | undefined;
+        // Rebuilt field-by-field rather than spread, so anything not named here is dropped. The community
+        // link is read-merged because the editor's save passes only id/name/data — without this, the first
+        // edit to a downloaded character would sever it. `??`, not `||`: a download's `dirty: false` must win.
         const putRequest = store.put({
           id: entity.id,
           name: entity.name,
           data: entity.data,
           createdAt: existing?.createdAt ?? entity.createdAt ?? new Date().toISOString(),
           lastAccessed: new Date().toISOString(),
+          sourceId: entity.sourceId ?? existing?.sourceId,
+          dirty: entity.dirty ?? existing?.dirty,
+          editedAt: entity.editedAt ?? existing?.editedAt,
+          downloadedAt: entity.downloadedAt ?? existing?.downloadedAt,
+          sourceUpdatedAt: entity.sourceUpdatedAt ?? existing?.sourceUpdatedAt,
         });
         putRequest.onsuccess = () => resolve();
         putRequest.onerror = () => reject('Failed to store entity');
