@@ -1,5 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { APP_VERSION, isSaveEnvelope, migrateLegacySaveState, migrateSave } from './version';
+import { DEFAULT_MODEL_ID } from './defaultModel';
 import { parseNarration } from './aiResponse';
 import { appendCurrentToHistory, rollbackState } from './turnHistory';
 import type { GameState, SaveObject } from '@/types';
@@ -160,6 +161,46 @@ describe('migrateSave (shared import + load path)', () => {
     // opening-only save: empty history + appended current = a single page (the migrated currentState).
     expect(out.stateHistory).toHaveLength(1);
     expect(out.stateHistory[0]).toBe(out.currentState);
+  });
+
+  describe('player model sentinel', () => {
+    const envelope = (current?: string, history: (string | undefined)[] = []) => ({
+      name: 'Save', version: APP_VERSION,
+      currentState: { playerTraits: [], playerStats: [], characterData: current ? { playerModelId: current } : null },
+      stateHistory: history.map((h) => ({ playerTraits: [], playerStats: [], characterData: h ? { playerModelId: h } : null })),
+    } as unknown as SaveObject);
+
+    it("rewrites the 'default' sentinel to the seeded model's library id", () => {
+      const out = migrateSave(envelope('default'));
+      expect(out.currentState.characterData?.playerModelId).toBe(DEFAULT_MODEL_ID);
+    });
+
+    it('rewrites the sentinel in every history snapshot, not just the current one', () => {
+      const out = migrateSave(envelope('default', ['default', 'other-model']));
+      expect(out.stateHistory.map((s) => s.characterData?.playerModelId))
+        .toEqual([DEFAULT_MODEL_ID, 'other-model']);
+    });
+
+    it('leaves a real library id alone', () => {
+      const out = migrateSave(envelope('some-uploaded-model'));
+      expect(out.currentState.characterData?.playerModelId).toBe('some-uploaded-model');
+    });
+
+    it("leaves the 'world' selection alone", () => {
+      const out = migrateSave(envelope('world'));
+      expect(out.currentState.characterData?.playerModelId).toBe('world');
+    });
+
+    it('tolerates a save with no character data', () => {
+      const out = migrateSave(envelope());
+      expect(out.currentState.characterData).toBeNull();
+    });
+
+    it('is idempotent — a migrated save is unchanged by a second pass', () => {
+      const once = migrateSave(envelope('default'));
+      const twice = migrateSave(once);
+      expect(twice.currentState.characterData?.playerModelId).toBe(DEFAULT_MODEL_ID);
+    });
   });
 
   it('appends current and stamps discoveredEntities on a multi-turn envelope (the import regression)', () => {

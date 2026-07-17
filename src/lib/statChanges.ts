@@ -103,6 +103,9 @@ export function applyAiMaxChanges(
  * pulls the value up to it); the second applies 'starting' deltas plus those
  * adjustments, clamping to [min, max]. Returns new stat objects (input is not
  * mutated) and the set of ids that were touched, so the caller can persist them.
+ *
+ * Min is bounded below by the stat's authored floor: traits can raise it and undo each other's raises, but
+ * none can take a stat below the range its author designed. Max has no such limit and moves either way.
  */
 export function applyTraitStatChanges(
   stats: PlayerStat[],
@@ -111,6 +114,9 @@ export function applyTraitStatChanges(
   const updated = stats.map((s) => ({ ...s }));
   const changedIds = new Set<string>();
   const valueAdjustments = new Map<string, number>();
+  // The floor each stat was authored with. Changes apply in sequence, so `stat.min` already carries any
+  // earlier trait's raise — this keeps the original as the hard limit no trait may dig below.
+  const authoredMin = new Map(stats.map((s) => [s.id, s.min]));
 
   // First pass: bounds + regen, collecting value adjustments.
   changes.forEach((change) => {
@@ -118,7 +124,10 @@ export function applyTraitStatChanges(
     if (!stat) return;
 
     if (change.type === 'min') {
-      const newMin = Math.max(stat.min, stat.min + change.value);
+      // A trait may raise a floor, and lower one back toward where it started — but never past the stat's
+      // authored Min, so traits can cancel each other without moving the stat outside its designed range.
+      const floor = authoredMin.get(stat.id) ?? stat.min;
+      const newMin = Math.max(floor, stat.min + change.value);
       stat.min = newMin;
       if (newMin > stat.value) {
         valueAdjustments.set(stat.id, (valueAdjustments.get(stat.id) || 0) + (newMin - stat.value));

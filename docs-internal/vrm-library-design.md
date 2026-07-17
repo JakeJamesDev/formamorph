@@ -115,13 +115,17 @@ interface VrmLicense {
 
 ---
 
-## 5. ⚠️ Save-shape change — needs your approval
+## 5. ⚠️ Save-shape change — approved, implemented
 
-**Decision 13 (migrate `playerModelId: 'default'` → the seeded record's real id) modifies the save envelope.**
+**Decision 13 (migrate `playerModelId: 'default'` → the seeded record's real id) modifies the save envelope.** Confirmed by the user 2026-07-17 after the alternative (a read-time alias) was offered and declined.
 
-`CharacterData.playerModelId` (`types/gameplay.ts:69`) currently has three meanings: a library id, the `'default'` sentinel, or unset/`'world'`. Migrating rewrites existing saves' values.
+`CharacterData.playerModelId` had three meanings: a library id, the `'default'` sentinel, or unset/`'world'`. The sentinel now resolves to `DEFAULT_MODEL_ID` (`'default-model'`), the seeded record's fixed id.
 
-Per hard constraint #2 this is flagged every time it comes up. It may force a **version bump + migration**, which is your call alone — this spec does not assume one. Lower-risk alternative if you'd rather not touch saves: keep `'default'` as a permanent alias resolved in `usePlayerModelUrl` (one line, no save writes, no migration).
+**How it lands:** `migrateSave` rewrites the sentinel on `currentState` and every `stateHistory` snapshot, as a presence-based pass alongside the existing history cleanup. It's the single path both load and import already run, so the two can't drift. `migrateSave` is pure — old saves are rewritten in memory on load and persist the new value on their next save, so nothing is rewritten behind the player's back.
+
+**Backwards compatibility:** reading an old save is unaffected (the sentinel migrates on the way in), and `usePlayerModelUrl` still honours `'default'` for state that hasn't been through a save round-trip. A save naming a *deleted* model — the seeded default included — falls back to the bundled file.
+
+**Still the user's call:** whether this warrants a version bump. The spec does not assume one.
 
 ---
 
@@ -134,6 +138,6 @@ Per hard constraint #2 this is flagged every time it comes up. It may force a **
 5. **Details + preview** — 3D preview on card click; license/author/credit/size display.
 6. **Export** — raw `.vrm` bytes back out.
 7. **Delete-in-use** — all-saves reference scan → warning copy.
-8. **Default seeding** — seed `readheadedit.vrm` as a real record; resolve the `'default'` sentinel per §5.
+8. **Default seeding** — seed `default-model.vrm` as a real record; resolve the `'default'` sentinel per §5.
 
 Each step ends four gates green + `graphify update .`.

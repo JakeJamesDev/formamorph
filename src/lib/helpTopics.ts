@@ -26,6 +26,34 @@ export function helpWikiUrl(topic: HelpTopic): string | null {
 }
 
 export const HELP_TOPICS: Record<string, HelpTopic> = {
+  'worldEditor.locations': {
+    title: 'Locations',
+    wikiAnchor: 'locations',
+    body: `The places your story happens. The player is always in exactly one, and it decides what the AI is told about the scene — the description, who's there, and where the story might go next.
+
+Locations exist to keep the story somewhere. Without a fixed place the narrator drifts: the tavern becomes a street becomes a forest, and nothing stays put. A location is an anchor the AI is handed again every turn.
+
+**Nesting is the AI's map, not the player's.** The player can travel anywhere at any time — the in-game location list offers every location in your world, unfiltered.
+
+What nesting decides is where *the story* can take them. When the AI reads an action as movement, it only considers places connected to where they are: down into a sub-location, or up and sideways from one. It then offers the move — *Move to the Eelhouse?* — and the player takes it or dismisses it. Nest your places and the story starts proposing journeys through them. Leave them flat and travel stays something the player reaches for.
+
+**What the AI sees**
+
+- **AI-Facing Description** — the full text the AI works from. The player never sees it, so it's where a secret belongs.
+- **AI-Facing Summary** — a one-line version for slots where the full text is too long; the default prompt uses it for sub-locations and reachable places. Left blank, the full description is used instead.
+- **Player-Facing Description** — what the player reads in the location panel. Never sent to the AI, so whatever you write here, the player simply knows.
+- **Entities** — who's here. The same list an entity's own Locations picker writes to, from the other end.
+
+**Starting location** marks where a new game can begin, and the box does more than it looks:
+
+- **Tick none** and the game starts somewhere random — *any* location in the world.
+- **Tick one** and every game starts there.
+- **Tick several** and the player chooses between them before starting.
+
+The background image, image tags and ambient sound are for the player's screen — the narrator never sees them.
+
+Write the AI-Facing Description first; it's the one doing the work. Reach for nesting when you want the story to move the player on its own.`,
+  },
   'worldEditor.entities': {
     title: 'Entities',
     wikiAnchor: 'entities',
@@ -50,6 +78,34 @@ They exist to give the AI a cast it can't lose track of. Left to itself the narr
 Image, Image Tags and the 3D model are for the player's screen and for image generation — the narrator never sees them.
 
 Give a location the two or three entities the scene genuinely turns on. Everything at the player's location is sent every turn, so a crowded location is a permanent context bill.`,
+  },
+  'worldEditor.traits': {
+    title: 'Traits',
+    wikiAnchor: 'traits',
+    body: `The choices that make one playthrough different from the next — *Scarred*, *Silver-Tongued*, *Afraid of Water*. The player picks their traits before the story starts, and the ones they take are described to the AI on every turn.
+
+A trait is a durable fact about the character. Stats move constantly and the story moves with them; a trait stays put, so the narrator is handed the same truth on turn one and turn ninety. A stat says *how much*, a trait says *who you are*.
+
+**Only chosen traits count.** A trait the player didn't take isn't sent to the AI and changes nothing. Everything below applies to the ones they picked.
+
+**What the AI sees**
+
+- **AI-Facing Description** — what the AI is told this trait means. Leave it blank and the AI just gets the trait's name, which is often enough for something like *Left-Handed*.
+- **Player-Facing Description** — what the player reads while choosing. Never sent to the AI.
+- **Stat Changes are invisible to the AI.** It's told you're *Sickly*; it's never told that cost you 20 Vigor. The number does its work through the stat itself.
+
+**Enabled by Default** pre-checks the trait on the selection screen. The player can still untick it.
+
+**Stat Changes** adjust a stat when the trait is taken. Each row is a stat, a number, and what to change. **They're all adjustments, not settings** — \`+20\` on a stat that starts at 50 gives you 70, not 20.
+
+- **Starting Value** shifts where the stat begins.
+- **Min** raises the stat's floor, pulling the value up with it if it's below. It can also be lowered, but only far enough to undo another trait's raise — never below the floor you gave the stat.
+- **Max** moves the ceiling either way. Lowering it below the current value drags the value down too.
+- **Regen** adds to what the stat recovers each turn. Negative bleeds.
+
+**Groups** organize the list, and they also speak to the AI: give a group an AI-Facing Description and it becomes a header above its chosen traits, letting you frame a whole set at once (*"Origin: where this life began"*). A group with nothing chosen inside it is skipped entirely.
+
+Write the AI-Facing Description as a fact about the character the narrator can act on, not a stat note. *"Flinches at open water"* beats *"-20 swimming"*.`,
   },
   'worldEditor.stats': {
     title: 'Stats',

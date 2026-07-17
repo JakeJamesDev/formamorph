@@ -4,6 +4,8 @@ import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { useGameData } from '../contexts/GameDataContext';
 import { useDevRoute } from '../lib/devRouter';
 import { MAIN_MENU_CARD_TABS, type MainMenuCardTab } from './mainMenuTabs';
+import { findSavesUsingModel } from '@/lib/modelUsage';
+import { DEFAULT_MODEL_URL } from '@/lib/defaultModel';
 import { toast } from 'react-toastify';
 import { ThemedToastContainer } from '@/components/ThemedToastContainer';
 import 'react-toastify/dist/ReactToastify.css';
@@ -101,6 +103,15 @@ const WORLD_ORDER_KEY = 'FORMAMORPH_worldOrder';
 const DICTIONARY_ORDER_KEY = 'FORMAMORPH_dictionaryOrder';
 const ENTITY_ORDER_KEY = 'FORMAMORPH_entityOrder';
 const MODEL_ORDER_KEY = 'FORMAMORPH_modelOrder';
+
+/** Name the affected saves in a prompt, capping the list so a big library doesn't produce a wall of text. */
+const listSaves = (names: string[]): string => {
+  const shown = names.slice(0, 3).map((name) => `"${name}"`);
+  const rest = names.length - shown.length;
+  if (rest > 0) return `${shown.join(', ')} and ${rest} more`;
+  if (shown.length === 1) return shown[0];
+  return `${shown.slice(0, -1).join(', ')} and ${shown[shown.length - 1]}`;
+};
 
 
 // Responsive column counts for the card grids. Tailwind only emits classes it sees literally, so map each
@@ -273,6 +284,8 @@ const MainMenu = ({ onStartGame, onLoadSaveGame, onReplayIntro, introActive = fa
   const [isLoadingModels, setIsLoadingModels] = useState(true);
   const [modelToDelete, setModelToDelete] = useState<string | null>(null);
   const [previewModelId, setPreviewModelId] = useState<string | null>(null);
+  // Saves whose character wears the model queued for deletion; null while the scan is still running.
+  const [modelUsage, setModelUsage] = useState<string[] | null>(null);
   const [editingEntityId, setEditingEntityId] = useState<string | null>(null);
   // A blank character being authored but not yet saved (New Entity → editor, persisted only on Save).
   const [draftEntity, setDraftEntity] = useState<Entity | null>(null);
@@ -404,10 +417,12 @@ const MainMenu = ({ onStartGame, onLoadSaveGame, onReplayIntro, introActive = fa
 
   useEffect(() => { refreshDictionaries(); }, [refreshDictionaries]);
 
-  // Load the local model library metadata. Reused on mount and after an import or delete.
+  // Load the local model library metadata, seeding the bundled model on the very first run. Seeding is a
+  // no-op after that (a localStorage flag short-circuits it before the model is fetched).
   const refreshModels = useCallback(async () => {
     try {
       await ModelStorageService.initialize();
+      await ModelStorageService.seedDefaultModel(DEFAULT_MODEL_URL);
       const metadata = await ModelStorageService.getModelMetadata();
       setModels(applyWorldOrder(metadata, loadOrder(MODEL_ORDER_KEY)));
     } catch (error) {
@@ -418,6 +433,15 @@ const MainMenu = ({ onStartGame, onLoadSaveGame, onReplayIntro, introActive = fa
   }, []);
 
   useEffect(() => { refreshModels(); }, [refreshModels]);
+
+  // Work out what a pending model deletion would affect, so the prompt can name the saves rather than warn
+  // in the abstract. Runs when the dialog opens; the scan reads every save, so it isn't done up front.
+  useEffect(() => {
+    if (!modelToDelete) { setModelUsage(null); return; }
+    let cancelled = false;
+    findSavesUsingModel(modelToDelete).then((names) => { if (!cancelled) setModelUsage(names); });
+    return () => { cancelled = true; };
+  }, [modelToDelete]);
 
   // Fill in thumbnails for models that don't have one yet, one at a time so a grid of un-thumbnailed models
   // doesn't try to hold several WebGL contexts at once. Each card updates in place as its picture arrives;
@@ -1170,12 +1194,12 @@ const MainMenu = ({ onStartGame, onLoadSaveGame, onReplayIntro, introActive = fa
                       world={{ id: model.id, name: model.name, thumbnail: model.thumbnail }}
                       layout="grid"
                       aspect="portrait"
-                      // A plain .glb carries no VRM metadata, so it has no licence and its morph targets
+                      // A plain .glb carries no VRM metadata, so it has no license and its morph targets
                       // aren't guaranteed — say so on the card rather than letting it pass as a full VRM.
                       badge={model.license?.metaVersion === null ? (
                         <span
                           className="rounded bg-overlay/70 px-1.5 py-0.5 text-[10px] font-semibold text-white"
-                          title="Plain glTF: no licence information, and morph targets aren't guaranteed."
+                          title="Plain glTF: no license information, and morph targets aren't guaranteed."
                         >
                           GLB
                         </span>
@@ -1651,7 +1675,13 @@ const MainMenu = ({ onStartGame, onLoadSaveGame, onReplayIntro, introActive = fa
         open={!!modelToDelete}
         onOpenChange={(open) => !open && setModelToDelete(null)}
         title="Delete Model"
-        description="Are you sure you want to delete this model? Anything using it falls back to the default model. This action cannot be undone."
+        description={
+          modelUsage === null
+            ? 'Checking which saves use this model…'
+            : modelUsage.length === 0
+              ? 'Are you sure you want to delete this model? This action cannot be undone.'
+              : `${modelUsage.length === 1 ? 'One save uses' : `${modelUsage.length} saves use`} this model — ${listSaves(modelUsage)}. ${modelUsage.length === 1 ? 'It' : 'They'} will fall back to the default model. This action cannot be undone.`
+        }
         onConfirm={async () => {
           try {
             await ModelStorageService.deleteModel(modelToDelete!);
