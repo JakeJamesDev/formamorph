@@ -20,8 +20,10 @@ export type DevView = (typeof DEV_VIEWS)[number];
  *  MainMenu's Character Customization step directly (a MainMenu sub-state, like `worldEditor`).
  *  `aiSetup` opens the AI setup gate on MainMenu in its skippable (first-run) form. `entityEditor` and
  *  `dictionaryEditor` are the *library* editors (MainMenu), distinct from the in-game `entity` modal; both
- *  open on a blank draft, so they're reachable without any stored data. */
-export const DEV_MODALS = ['settings', 'entity', 'export', 'menu', 'worldEditor', 'intro', 'avatar', 'backup', 'aiSetup', 'entityEditor', 'dictionaryEditor'] as const;
+ *  open on a blank draft, so they're reachable without any stored data. `modelDetails` is the exception to
+ *  that: a VRM preview has nothing to show without a stored model, so it opens the library's first model and
+ *  does nothing on an empty library. */
+export const DEV_MODALS = ['settings', 'entity', 'export', 'menu', 'worldEditor', 'intro', 'avatar', 'backup', 'aiSetup', 'entityEditor', 'dictionaryEditor', 'modelDetails'] as const;
 export type DevModal = (typeof DEV_MODALS)[number];
 
 /** Coverage ledger: tabbed surface → the sub-tabs the router can target (via `tab=…`). Kept in lockstep
@@ -29,6 +31,9 @@ export type DevModal = (typeof DEV_MODALS)[number];
 export const DEV_MODAL_TABS = {
   settings: ['presentation', 'generation', 'endpoint', 'image', 'prompts', 'accessibility'],
   worldEditor: ['overview', 'stats', 'entities', 'locations', 'traits', 'dictionary', 'placeholders'],
+  // MainMenu's library card-type switcher. Not a modal: reached with `tab=…` and no `modal=…`, i.e.
+  // `#dev?view=mainMenu&tab=models`. Listed here so the same drift guard covers it.
+  mainMenu: ['worlds', 'entities', 'dictionaries', 'models'],
 } as const;
 
 // Settings → Prompts exposes a second level reached via `subtab=…` (narration/thinking/choices/…). Those

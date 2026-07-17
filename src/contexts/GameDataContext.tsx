@@ -117,6 +117,18 @@ function useProvideGameData() {
 
   const removeEntity = useCallback((entityId: string) => {
     setEntities(prevEntities => prevEntities.filter(entity => entity.id !== entityId));
+    // The entity↔location link is stored on the location, so dropping the entity alone strands its id in
+    // every location that listed it. The AI feed skips ids it can't resolve, but they'd ride along into the
+    // exported world and accumulate. Returns the original array when nothing referenced it.
+    setLocations(prevLocations => {
+      let changed = false;
+      const next = prevLocations.map((location) => {
+        if (!location.entities?.includes(entityId)) return location;
+        changed = true;
+        return { ...location, entities: location.entities.filter((id) => id !== entityId) };
+      });
+      return changed ? next : prevLocations;
+    });
   }, []);
 
   const addEntityGroup = useCallback((newGroup: EntityGroup) => {

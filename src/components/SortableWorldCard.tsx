@@ -8,13 +8,15 @@ import { WorldCardShell } from "@/components/WorldCardShell";
 /** A draggable local-world tile. The whole card is the drag handle; a small move distance is required to
  *  start a drag so a plain click still selects the world. `detailed` mirrors the community-browser card layout.
  *  `aspect='portrait'` gives the grid image a tall 2:3 frame (for character portraits) instead of the short
- *  landscape default. */
-function SortableWorldCard({ world, onSelect, onDelete, layout, aspect = 'landscape' }: {
+ *  landscape default. Omit `onSelect` for a card with nothing to open — it drops the pointer cursor too, so
+ *  the tile doesn't advertise a click it won't answer. `badge` overlays the grid thumbnail's top-left. */
+function SortableWorldCard({ world, onSelect, onDelete, layout, aspect = 'landscape', badge }: {
   world: WorldRecord;
-  onSelect: (id: string) => void;
+  onSelect?: (id: string) => void;
   onDelete: (id: string) => void;
   layout: 'grid' | 'detailed';
   aspect?: 'landscape' | 'portrait';
+  badge?: React.ReactNode;
 }) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } =
     useSortable({ id: world.id });
@@ -41,7 +43,7 @@ function SortableWorldCard({ world, onSelect, onDelete, layout, aspect = 'landsc
         // content-visibility:auto lets the browser skip layout/paint for off-screen cards; the auto
         // intrinsic-size reserves space (remembered after first paint) so scrolling stays stable.
         frameClassName="bg-card touch-pan-y [content-visibility:auto] [contain-intrinsic-size:auto_360px]"
-        onClick={() => onSelect(world.id)}
+        onClick={() => onSelect?.(world.id)}
         name={world.name}
         description={world.description}
         author={`By ${world.author || "Unknown"}`}
@@ -73,9 +75,13 @@ function SortableWorldCard({ world, onSelect, onDelete, layout, aspect = 'landsc
       {...attributes}
       {...listeners}
       // content-visibility:auto skips layout/paint for off-screen tiles; the auto intrinsic-size reserves
-      // their height (remembered after first paint) so the scroll frame doesn't jump.
-      className="relative cursor-pointer rounded-lg overflow-hidden hover:opacity-90 transition-opacity touch-pan-y [content-visibility:auto] [contain-intrinsic-size:auto_240px]"
-      onClick={() => onSelect(world.id)}
+      // their height (remembered after first paint) so the scroll frame doesn't jump. The reservation is
+      // per-aspect: a 2:3 portrait stands about half again as tall as the landscape tile, and a single
+      // figure for both would misreserve one of them on first paint.
+      className={`relative rounded-lg overflow-hidden transition-opacity touch-pan-y [content-visibility:auto] ${
+        aspect === 'portrait' ? '[contain-intrinsic-size:auto_360px]' : '[contain-intrinsic-size:auto_240px]'
+      } ${onSelect ? 'cursor-pointer hover:opacity-90' : ''}`}
+      onClick={() => onSelect?.(world.id)}
     >
       {world.thumbnail ? (
         <img
@@ -86,6 +92,7 @@ function SortableWorldCard({ world, onSelect, onDelete, layout, aspect = 'landsc
       ) : (
         <div className={`w-full ${aspect === 'portrait' ? 'aspect-[2/3]' : 'h-48'} bg-muted`} />
       )}
+      {badge && <div className="absolute top-1 left-1 z-10">{badge}</div>}
       <div className="absolute bottom-0 left-0 right-0 bg-overlay/50 p-2">
         <h3 className="text-white font-semibold">{world.name}</h3>
         <button

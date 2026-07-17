@@ -100,12 +100,16 @@ export function AiSetupGate({ open, reason, mode, blocker, reachable, recheck, o
   };
 
   const custom = mode === 'custom';
-  const title = custom
+  const title = blocker === 'unknownModel'
+    ? 'No model loaded on your server'
+    : custom
     ? 'Can’t reach your endpoint'
     : blocker === 'engineDown'
     ? 'Your model didn’t load'
     : 'Set up your AI';
-  const description = custom
+  const description = blocker === 'unknownModel'
+    ? 'Your endpoint is answering, but it has no model loaded and doesn’t recognize the model name Formamorph is set to ask for — so every turn would fail. Load a model, or set the model name to one your server lists.'
+    : custom
     ? 'Formamorph couldn’t get a response from your custom endpoint. Check that the server is running and the URL is right.'
     : blocker === 'engineDown'
     ? 'A model is installed but the engine couldn’t load it — it may not fit in VRAM at the current settings.'
@@ -141,6 +145,10 @@ export function AiSetupGate({ open, reason, mode, blocker, reachable, recheck, o
               You can keep browsing while this downloads — the game starts on its own once it’s ready.
             </p>
           </div>
+        ) : blocker === 'unknownModel' ? (
+          <p className="text-xs text-muted-foreground">
+            Load a model in LM Studio and this continues on its own — no need to reload.
+          </p>
         ) : custom ? (
           <p className="text-xs text-muted-foreground">
             Start your server and this will continue on its own — no need to reload.

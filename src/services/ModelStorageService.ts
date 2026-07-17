@@ -1,5 +1,9 @@
 import { randomUUID } from '@/lib/uuid';
 import { promisifyRequest } from '@/lib/idb';
+import { blobHash } from '@/lib/blobHash';
+import { readVrmMeta } from '@/lib/vrmMeta';
+import { optimizeImageDataUrl, IMAGE_CAPS } from '@/lib/imageOptim';
+import { renderVrmThumbnail } from '@/lib/vrmThumbnail';
 import { LibraryStore, type StoredRecord } from './LibraryStore';
 import type { ModelMetadata, VrmData } from '@/types';
 
@@ -23,6 +27,30 @@ const isFlat = (record: unknown): record is FlatModelRecord =>
   !!record && typeof record === 'object' && !('data' in record) && 'blob' in record;
 
 /**
+ * Bring an embedded thumbnail down to card size and re-encode it to WebP.
+ *
+ * A VRM's own thumbnail is authored for a storefront, not a tile: real files carry multi-megabyte PNGs (one
+ * sample ships a 1.6MB 2048px image), and base64 adds a third on top. Every one of those rides in
+ * `ModelMetadata`, so the whole grid would load them all. The rendered fallback is already WebP; this puts the
+ * embedded path on the same footing. `optimizeImageDataUrl` hands back the original if it can't do better, so
+ * this is safe to apply unconditionally.
+ */
+const shrinkThumbnail = (thumbnail: string | undefined): Promise<string | undefined> =>
+  thumbnail ? optimizeImageDataUrl(thumbnail, IMAGE_CAPS.thumbnail) : Promise.resolve(undefined);
+
+/** Shared by the store's grid listing and the lookups that read raw records. */
+const toMetadata = (record: StoredModelRecord): ModelMetadata => ({
+  id: record.id,
+  name: record.name,
+  type: record.data?.type ?? '',
+  size: record.data?.size ?? 0,
+  thumbnail: record.data?.thumbnail,
+  license: record.data?.license,
+  createdAt: record.createdAt,
+  lastAccessed: record.lastAccessed,
+});
+
+/**
  * Singleton owning the local model library (IndexedDB `FORMAMORPH_MODELS_DB`/`models`). Kept out of the
  * save-game DB (`dbUtils`) because that one opens versionlessly and can't gain a new object store cleanly.
  * VRMs are stored as Blobs — lighter than base64 for multi-MB files, and GLTFLoader accepts the resulting
@@ -37,14 +65,7 @@ class ModelStorageService {
     // Presence, not `instanceof Blob`: structured-clone round-trips don't guarantee the constructor
     // identity of this realm, and a missing payload is the failure actually worth catching.
     isValid: (model) => !!model.blob,
-    toMetadata: (record) => ({
-      id: record.id,
-      name: record.name,
-      type: record.data?.type ?? '',
-      size: record.data?.size ?? 0,
-      createdAt: record.createdAt,
-      lastAccessed: record.lastAccessed,
-    }),
+    toMetadata,
   });
 
   /** Runs once per session; later calls await the same pass rather than rescanning. */
@@ -53,6 +74,23 @@ class ModelStorageService {
   /** Open the IndexedDB connection (idempotent). */
   initialize() {
     return this.store.initialize();
+  }
+
+  /** Every stored record, wrapper included — `LibraryStore` only exposes projected metadata or bare payloads. */
+  private async allRecords(): Promise<StoredModelRecord[]> {
+    await this.store.ensureInitialized();
+    return promisifyRequest<StoredModelRecord[]>(
+      this.store.db!.transaction(['models'], 'readonly').objectStore('models').getAll(),
+    );
+  }
+
+  /** One stored record with its wrapper, or null. */
+  private async getRecord(id: string): Promise<StoredModelRecord | null> {
+    await this.store.ensureInitialized();
+    const record = await promisifyRequest<StoredModelRecord | undefined>(
+      this.store.db!.transaction(['models'], 'readonly').objectStore('models').get(id),
+    );
+    return record ?? null;
   }
 
   /**
@@ -86,16 +124,41 @@ class ModelStorageService {
     return this.migration;
   }
 
-  /** Store an uploaded VRM file and return its library record. */
+  /**
+   * Store an uploaded VRM file and return its library record. Reads the file's own metadata up front — that's
+   * cheap and pure — but leaves the thumbnail render to `ensureThumbnail`, since only files with no embedded
+   * thumbnail need it and rendering costs a GPU context.
+   */
   async addModel(file: File): Promise<StoredModelRecord> {
     await this.ensureMigrated();
+    const [hash, { license, thumbnail }] = await Promise.all([blobHash(file), readVrmMeta(file)]);
     const record: StoredModelRecord = {
       id: randomUUID(),
-      name: file.name.replace(/\.[^.]+$/, ''),
-      data: { type: file.type || 'model/vrm', blob: file, size: file.size },
+      // Prefer the model's own title over the filename, which is often a export-tool default.
+      name: license.title?.trim() || file.name.replace(/\.[^.]+$/, ''),
+      data: {
+        type: file.type || 'model/vrm',
+        blob: file,
+        size: file.size,
+        hash,
+        license,
+        thumbnail: await shrinkThumbnail(thumbnail),
+      },
     };
     await this.store.store(record);
     return record;
+  }
+
+  /**
+   * The stored model with the same bytes as `file`, if the library already holds one. Lets an import offer to
+   * replace rather than silently keeping two copies of a multi-MB file.
+   */
+  async findDuplicate(file: Blob): Promise<ModelMetadata | null> {
+    await this.ensureMigrated();
+    const hash = await blobHash(file);
+    const records = await this.allRecords();
+    const match = records.find((record) => record.data?.hash === hash);
+    return match ? toMetadata(match) : null;
   }
 
   /** List stored models as grid metadata, newest first. */
@@ -103,6 +166,45 @@ class ModelStorageService {
     await this.ensureMigrated();
     const models = await this.store.getMetadata();
     return models.sort((a, b) => (b.createdAt ?? '').localeCompare(a.createdAt ?? ''));
+  }
+
+  /**
+   * Fill in whatever a record is missing — license, hash, and a thumbnail — and persist the result. Legacy
+   * records predate all three, so this is the library's backfill: cards call it on first view rather than the
+   * whole library paying for every model up front.
+   *
+   * Returns the thumbnail if there is one. A render that produces nothing is recorded, so a model that simply
+   * can't be drawn isn't re-attempted on every view. Never throws: a card renders this, and a bad model must
+   * cost that card its picture, not the whole grid.
+   */
+  async ensureThumbnail(id: string): Promise<string | undefined> {
+    await this.ensureMigrated();
+    const record = await this.getRecord(id);
+    if (!record?.data?.blob) return undefined;
+    const data = record.data;
+    if (data.thumbnail) return data.thumbnail;
+    if (data.thumbnailFailed) return undefined;
+
+    try {
+      const resolved: VrmData = { ...data };
+      if (!resolved.license || !resolved.hash) {
+        const [hash, meta] = await Promise.all([
+          resolved.hash ? Promise.resolve(resolved.hash) : blobHash(data.blob),
+          readVrmMeta(data.blob),
+        ]);
+        resolved.hash = hash;
+        resolved.license ??= meta.license;
+        resolved.thumbnail = await shrinkThumbnail(meta.thumbnail);
+      }
+      // Only render when the file carried no thumbnail of its own.
+      resolved.thumbnail ??= await renderVrmThumbnail(data.blob, resolved.license?.metaVersion ?? null);
+      if (!resolved.thumbnail) resolved.thumbnailFailed = true;
+
+      await this.store.store({ ...record, data: resolved });
+      return resolved.thumbnail;
+    } catch {
+      return undefined;
+    }
   }
 
   /** Load one model's payload; rejects if missing or malformed. */
@@ -117,9 +219,17 @@ class ModelStorageService {
     return this.store.store(model);
   }
 
-  /** Remove a model from the library by `id`. */
+  /**
+   * Remove a model from the library by `id`, unless it's the only one left — the player must always have a
+   * model to be. The rule is "at least one", not "keep the bundled default": once another model exists, the
+   * default is as deletable as anything else.
+   */
   async deleteModel(id: string): Promise<void> {
     await this.ensureMigrated();
+    const records = await this.allRecords();
+    if (records.length <= 1 && records.some((record) => record.id === id)) {
+      throw new Error('Cannot delete the last model: the library must always have at least one.');
+    }
     return this.store.delete(id);
   }
 }

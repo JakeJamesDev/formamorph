@@ -95,7 +95,7 @@ The people, creatures and things that populate your world — a ferryman, an eel
 
 Left to itself, the narrator invents a stranger, names them, and forgets both by the next turn. An entity is a fixed, reusable character the story can return to — one the AI is reminded of every time the player is somewhere it lives.
 
-It's framed as a *cast list, not a roll-call*. The prompt heading is "Characters and things that **may** appear in this location", so eight entities at a location doesn't force eight into the scene — the AI casts who the moment needs.
+The default prompt introduces them under "Characters and things that **may** appear in this location". That hedge is a hint to the AI, not a rule the app enforces — nothing stops the narrator reaching for anyone on the list, and the wording is yours to change in the prompt editor.
 
 ### What reaches the AI
 
@@ -110,21 +110,25 @@ Assignment to a location is the entire gate: an entity in no location never reac
 | **Player-Facing Description** | **Never** |
 | Image, Image Tags, 3D model, group, order | Never |
 
-> 💡 **Player-Facing Description is a genuine secret.** It's shown to the player in-game and withheld from the AI, which makes it the right home for anything the narrator shouldn't be able to spoil.
+> 💡 **The two descriptions are disjoint, and that's the point.** The player only ever sees the Player-Facing one; the AI only ever sees the AI-Facing one. So the **AI-Facing Description** is where a secret lives — the narrator can act on it while the player stays in the dark. The default prompt even asks the narrator to hold a name back until the player would plausibly have learned it, though that's a request to the AI rather than something the app enforces.
 
 ### Descriptions and summaries
 
 Three description fields, with distinct jobs:
 
-- **Player-Facing Description** — what the player reads. Never sent to the AI.
-- **AI-Facing Description** — the full text the AI works from.
+- **Player-Facing Description** — what the player reads on the entity's card. Never sent to the AI, so it costs no context; whatever you write here, the player simply knows.
+- **AI-Facing Description** — the full text the AI works from, and the player never sees it. This is the one that does the work, and the one a secret goes in.
 - **AI-Facing Summary** — a one-line version for slots where the full description is too long. **Blank is fine** — it falls back to the full description. The default prompt uses summaries for entities in *reachable* locations, and full descriptions for the player's current location.
 
 The **✨ toolbar** beside AI-Facing Summary can draft it from your AI-Facing Description.
 
 ### Locations
 
-The link lives on the **location**, not the entity — the entity's Locations picker writes into each location's entity list. Same relationship from either end; assign it wherever you like.
+The link lives on the **location**, not the entity. The Locations picker here is a convenience — it writes the entity into each of those locations' own entity lists. You can set the same relationship from either end.
+
+That storage detail has one consequence worth knowing:
+
+> ⚠️ **Deleting a location drops its entities from it, silently.** The assignments live on the location, so they go when it does. The entities themselves survive — but one that was only in that location is now in no location, which means it never reaches the AI again. Nothing warns you, and the entity still looks fine in its own tab.
 
 The default prompt feeds entities from three places, as separate blocks: the player's **current location**, its **sub-locations**, and **reachable** locations.
 
@@ -140,7 +144,7 @@ The image and 3D model are for the player's screen. **Image Tags** are booru tag
 
 ### Getting started
 
-Write the AI-Facing Description first — it's the one that does the work. Add a Summary only if the entity turns up in reachable locations, and use the Player-Facing Description when the player and the AI should know different things.
+Write the AI-Facing Description first — it's the one that does the work, and it's safe to put things there the player shouldn't know yet. Add a Summary only if the entity turns up in reachable locations. Reach for the Player-Facing Description when you want the player to read something the AI has no use for.
 
 ---
 

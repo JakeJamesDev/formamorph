@@ -3,6 +3,7 @@ import { DEV_MODAL_TABS, DEV_MODALS } from './devRoutes';
 import { DEV_FIXTURES } from './devFixtures';
 import { SETTINGS_TABS } from '@/components/modals/settingsTabs';
 import { WORLD_EDITOR_TABS } from '@/views/worldEditorTabs';
+import { MAIN_MENU_CARD_TABS } from '@/views/mainMenuTabs';
 import { isSaveEnvelope } from './version';
 import whiteRoomWorld from './devFixtures/whiteRoomWorld.json';
 import whiteRoomSave from './devFixtures/whiteRoomSave.json';
@@ -63,10 +64,14 @@ describe('dev-router coverage guard', () => {
     expect([...DEV_MODAL_TABS.worldEditor]).toEqual(WORLD_EDITOR_TABS.map((t) => t.value));
   });
 
+  it('ledger lists exactly the library card tabs MainMenu renders', () => {
+    expect([...DEV_MODAL_TABS.mainMenu]).toEqual([...MAIN_MENU_CARD_TABS]);
+  });
+
   it('registers the modals the router opens', () => {
     // localModel is deliberately excluded (it lives inside Settings, not as a standalone modal). worldEditor
     // is an in-place MainMenu modal (no longer a top-level view).
-    expect(DEV_MODALS).toEqual(['settings', 'entity', 'export', 'menu', 'worldEditor', 'intro', 'avatar', 'backup', 'aiSetup', 'entityEditor', 'dictionaryEditor']);
+    expect(DEV_MODALS).toEqual(['settings', 'entity', 'export', 'menu', 'worldEditor', 'intro', 'avatar', 'backup', 'aiSetup', 'entityEditor', 'dictionaryEditor', 'modelDetails']);
   });
 });
 

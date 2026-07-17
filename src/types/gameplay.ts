@@ -69,12 +69,20 @@ export interface CharacterData {
   playerModelId?: string;
 }
 
-/** The stored payload of a library VRM: the file itself plus its descriptors. The `id`, display name, and
- *  library timestamps live on the wrapping record, as with dictionaries and characters. */
+/** The stored payload of a library VRM: the file itself plus what we know about it. The `id`, display name,
+ *  and library timestamps live on the wrapping record, as with dictionaries and characters. */
 export interface VrmData {
   type: string;
   blob: Blob;
   size: number;
+  /** Portrait as a data URL: the file's embedded thumbnail, else one rendered on first view. */
+  thumbnail?: string;
+  /** Absent on records stored before the library read metadata; resolved lazily, then kept. */
+  license?: VrmLicense;
+  /** Content hash for duplicate detection. Absent on records stored before hashing existed. */
+  hash?: string;
+  /** Set once a thumbnail render has been attempted and produced nothing, so it isn't retried every view. */
+  thumbnailFailed?: boolean;
 }
 
 /**
@@ -95,12 +103,15 @@ export interface VrmLicense {
   creditRequired?: boolean;
 }
 
-/** Lightweight preview record for the model library grid and the character-model picker. */
+/** Lightweight preview record for the model library grid and the character-model picker. Carries no blob, so
+ *  the grid can render without holding every model's bytes. */
 export interface ModelMetadata {
   id: string;
   name: string;
   type: string;
   size: number;
+  thumbnail?: string;
+  license?: VrmLicense;
   createdAt?: string;
   lastAccessed?: string;
 }
