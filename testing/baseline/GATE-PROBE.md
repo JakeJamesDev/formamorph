@@ -92,6 +92,12 @@ accumulated field. `--no-run` re-scores the newest existing dump without re-runn
 - **Prose** is the one axis auto-metrics can't judge — left as a slot filled by an in-session Claude read of the
   dump (or a future `--judge` flag). Objective score weights restraint 35 / stat-direction 30 / format 35.
 
+**Screening a catalog model:** give it `"modelPath": "<path to .gguf>"` instead of `modelName` and it runs on the
+desktop app's own engine — the only way to measure what a user actually gets. The engine loads it with an **8k KV
+cache**; the profiles peak near 5.4k tokens, so a prompt sees the same context either way. Don't raise it without
+a reason: the KV competes with the weights for VRAM, and a 19GB-class model on a 24GB card won't load at 16k once
+the harness browser takes its share. If a profile ever outgrows 8k, set `contextSize` on that model entry.
+
 ## Run (full A/B probe)
 
 ```bash

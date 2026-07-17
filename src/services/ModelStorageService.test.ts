@@ -1,6 +1,6 @@
 // Must load before importing the service: its singleton constructor opens IndexedDB.
 import 'fake-indexeddb/auto';
-import { describe, it, expect, beforeEach } from 'vitest';
+import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import ModelStorageService, { type StoredModelRecord } from './ModelStorageService';
 import { promisifyRequest } from '@/lib/idb';
 import { makeVrm1, THUMB_DATA_URL } from '@/test/glbFixture';
@@ -28,6 +28,7 @@ beforeEach(async () => {
   await promisifyRequest(store.clear());
   // The migration memoizes per instance; reset it so each test's planted records are actually scanned.
   (ModelStorageService as unknown as { migration: Promise<void> | null }).migration = null;
+  localStorage.clear();
 });
 
 describe('addModel', () => {
@@ -126,6 +127,44 @@ describe('deleteModel', () => {
     await ModelStorageService.addModel(new File([blob()], 'only.vrm', { type: 'model/vrm' }));
     // The single stored model isn't the target, so the invariant is not at risk.
     await expect(ModelStorageService.deleteModel('not-here')).resolves.toBeUndefined();
+  });
+});
+
+describe('seedDefaultModel', () => {
+  const vrmUrl = './default-model.vrm';
+  const serve = (blob: Blob) => vi.stubGlobal('fetch', vi.fn().mockResolvedValue({ blob: async () => blob }));
+
+  afterEach(() => vi.unstubAllGlobals());
+
+  it('seeds the bundled model under a stable id, named from its own title', async () => {
+    serve(await makeVrm1({ name: 'Default Model' }));
+    await ModelStorageService.seedDefaultModel(vrmUrl);
+    const [meta] = await ModelStorageService.getModelMetadata();
+    expect(meta).toMatchObject({ id: 'default-model', name: 'Default Model' });
+  });
+
+  it('only seeds once, so a deleted default stays deleted', async () => {
+    serve(await makeVrm1({ name: 'Default Model' }));
+    await ModelStorageService.seedDefaultModel(vrmUrl);
+    await ModelStorageService.addModel(new File([blob('other')], 'Other.vrm', { type: 'model/vrm' }));
+    await ModelStorageService.deleteModel('default-model');
+
+    await ModelStorageService.seedDefaultModel(vrmUrl);
+    const names = (await ModelStorageService.getModelMetadata()).map((m) => m.id);
+    expect(names).not.toContain('default-model');
+  });
+
+  it('does not re-fetch on a later launch', async () => {
+    serve(await makeVrm1({ name: 'Default Model' }));
+    await ModelStorageService.seedDefaultModel(vrmUrl);
+    await ModelStorageService.seedDefaultModel(vrmUrl);
+    expect(vi.mocked(fetch)).toHaveBeenCalledTimes(1);
+  });
+
+  it('survives a fetch failure rather than breaking the library', async () => {
+    vi.stubGlobal('fetch', vi.fn().mockRejectedValue(new Error('offline')));
+    await expect(ModelStorageService.seedDefaultModel(vrmUrl)).resolves.toBeUndefined();
+    await expect(ModelStorageService.getModelMetadata()).resolves.toEqual([]);
   });
 });
 

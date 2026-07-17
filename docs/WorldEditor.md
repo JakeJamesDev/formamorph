@@ -148,6 +148,126 @@ Write the AI-Facing Description first — it's the one that does the work, and i
 
 ---
 
+## Locations
+
+The places your story happens. The player is always in exactly one, and it decides what the AI is told about the scene — the description, who's present, and where the story might go next.
+
+### Why it exists
+
+Without a fixed place the narrator drifts: the tavern becomes a street becomes a forest, and nothing stays put. A location is an anchor the AI is handed again on every turn.
+
+### Nesting is the AI's map, not the player's
+
+This is the part that surprises people.
+
+> 💡 **The player can travel anywhere, always.** The in-game location list offers **every** location in your world, unfiltered, no matter how you've arranged them. Nesting never gates a player's choice, and no arrangement can strand them.
+
+What nesting decides is where **the story** can take the player. When the AI reads an action as movement, it only considers places connected to where they already are:
+
+| From | The story can move them |
+|---|---|
+| A **top-level** location | Down into its own sub-locations |
+| A **sub-location** | Down into its children, **up** to its parent, and **sideways** to its siblings |
+
+By default the story *offers* the move — a small **Move to _X_?** prompt with **Go** and **Dismiss** — rather than making it for you.
+
+Two consequences worth knowing:
+
+- **A flat list of top-level locations** gives the AI nothing to connect, so it never proposes a move. Travel becomes entirely player-driven — a legitimate design, just a deliberate one.
+- **A single-location world** never runs the router at all.
+
+If the AI's answer doesn't match a connected place, it's discarded and nothing is offered — the story can never teleport the player somewhere unconnected.
+
+### What reaches the AI
+
+| Field | Sent? |
+|---|---|
+| **Name** | Always |
+| **AI-Facing Description** | Yes — the main thing the AI knows |
+| **AI-Facing Summary** | Only in prompt slots that ask for the short form |
+| **Player-Facing Description** | **Never** |
+| Background image, Image Tags, ambient sound, starting flag, nesting | Never |
+
+The default prompt gives the AI the **current location** in full, and its **sub-locations** and **reachable** places as summaries.
+
+> 💡 **The two descriptions are disjoint.** The player only ever sees the Player-Facing one; the AI only ever sees the AI-Facing one — so the AI-Facing Description is where a secret lives.
+
+The **✨ toolbar** beside AI-Facing Summary can draft it from your AI-Facing Description. Blank is fine — it falls back to the full description.
+
+### Entities
+
+The **Entities** picker lists who's at this location. It's the same link an entity's own **Locations** picker writes, seen from the other end — set it wherever you prefer.
+
+### Starting location
+
+The checkbox marks a place a new game can begin. It does more than it looks:
+
+| Ticked | Result |
+|---|---|
+| **None** | The game starts at a **random location — any of them**. Rarely what you want. |
+| **One** | Every game starts there. |
+| **Several** | The player chooses between them before starting. |
+
+### Getting started
+
+Write the AI-Facing Description first — it's the one doing the work. Reach for nesting when you want the story to move the player on its own, and tick at least one starting location so new games don't begin somewhere arbitrary.
+
+> 📎 The world file also supports a `connections` list for wiring locations together by name, but there's no editor field for it — it can only be set by hand-editing the world JSON.
+
+---
+
+## Traits
+
+The choices that make one playthrough different from the next — *Scarred*, *Silver-Tongued*, *Afraid of Water*. The player picks their traits before the story starts, and the ones they take are described to the AI on every turn.
+
+### Why it exists
+
+A trait is a durable fact about the character. Stats move constantly and the story moves with them; a trait stays put, so the narrator is handed the same truth on turn one and turn ninety. A stat says *how much*; a trait says *who you are*.
+
+> 💡 **Only chosen traits reach the AI.** A trait the player didn't take is sent nowhere and does nothing. Everything below applies to the ones they picked.
+
+### What the AI sees
+
+| Field | Sent? |
+|---|---|
+| **Name** | Always (it's the fallback when the AI description is blank) |
+| **AI-Facing Description** | Yes — what the AI is told the trait means |
+| **Player-Facing Description** | **Never** |
+| **Stat Changes** | **Never** |
+
+A blank **AI-Facing Description** falls back to just the trait's name — often enough for something self-explanatory like *Left-Handed*.
+
+> 💡 **Stat Changes are invisible to the AI.** It's told the player is *Sickly*; it's never told that cost them 20 Vigor. The number does its work through the stat itself, so write the description as a fact the narrator can act on — *"Flinches at open water"*, not *"-20 swimming"*.
+
+### Enabled by Default
+
+Pre-checks the trait on the selection screen. The player can still untick it — it's a default, not a requirement.
+
+### Stat Changes
+
+Each row adjusts one stat when the trait is taken: a stat, a number, and what to change.
+
+> ⚠️ **Every type is an adjustment, not a setting.** `+20` on a stat that starts at 50 gives 70, not 20.
+
+| Type | Effect |
+|---|---|
+| **Starting Value** | Shifts where the stat begins. |
+| **Min** | Raises the floor, pulling the value up with it if it's below. Can be lowered only far enough to undo another trait's raise — **never below the floor the stat was authored with**. |
+| **Max** | Moves the ceiling either way. Lowering it below the current value drags the value down too. |
+| **Regen** | Adds to what the stat recovers each turn. Negative bleeds. |
+
+Min and Max are deliberately asymmetric: a trait can take the ceiling anywhere, but can never push a stat below the range its author designed.
+
+### Groups
+
+Groups organize the list — and unlike organizational folders elsewhere, a trait group also **speaks to the AI**. Give a group an **AI-Facing Description** and it becomes a header above its chosen traits, letting you frame a whole set at once (*"Origin: where this life began"*). A group with no chosen traits inside it is skipped entirely.
+
+### Getting started
+
+Name the trait, write one line of AI-Facing Description that reads as character rather than mechanics, and add Stat Changes only when the trait should also move a number. Leave the description blank for anything the name already says.
+
+---
+
 ## Dictionary
 
 Your world's lorebook. Each **book** holds **entries**; an entry injects its content into the AI's prompt whenever one of its keywords appears in the text being scanned.

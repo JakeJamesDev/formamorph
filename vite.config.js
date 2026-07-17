@@ -29,11 +29,13 @@ export default defineConfig({
   },
   server: {
     watch: {
-      // Generated output the app never imports. Watching it costs a full page reload every time a background
-      // tool rewrites it — `graphify watch` regenerates graphify-out/graph.html on any source change, and the
-      // baseline harness writes a dump per run. Either one reloading the page mid-run kills a scripted turn
-      // ("Execution context was destroyed"), which made long harness runs fail ~1 in 3.
-      ignored: ['**/graphify-out/**', '**/testing/baseline/runs/**', '**/graph.json', '**/GRAPH_REPORT.md'],
+      // Paths the app never imports. Watching them costs a full page reload every time a background tool
+      // rewrites one — `graphify watch` regenerates graphify-out/graph.html on any source change, and the
+      // baseline harness writes dumps, profiles and docs of its own. A reload mid-run kills the scripted turn
+      // it was driving ("Execution context was destroyed" / "__baseline is undefined"), which made long harness
+      // runs fail ~1 in 3. `testing/` is ignored wholesale: it drives the dev server, it is never served by it,
+      // so editing the harness while a run is in flight must not restart the page under it.
+      ignored: ['**/graphify-out/**', '**/testing/**', '**/graph.json', '**/GRAPH_REPORT.md'],
     },
   },
   test: {

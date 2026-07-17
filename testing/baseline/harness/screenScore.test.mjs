@@ -9,7 +9,7 @@
 
 import { describe, it, expect } from 'vitest';
 import {
-  scoreDump, tierFor, isEmptyStat, hasRefusalMarker, cleanLoc, pickResponse, aggregateScores,
+  scoreDump, tierFor, isEmptyStat, hasRefusalMarker, cleanLoc, pickResponse, aggregateScores, stripReasoning,
 } from './screenScore.mjs';
 
 /** Build one turn from a map of requestType -> reply. */
@@ -85,6 +85,25 @@ describe('cleanLoc / pickResponse', () => {
     expect(pickResponse({ completion: 'b' })).toBe('b');
     expect(pickResponse({})).toBe('');
   });
+
+  it('strips reasoning from the reply, mirroring the app', () => {
+    // A reasoning model on the engine path emits an empty <think></think> even when thinking is suppressed;
+    // a non-suppressed one emits a full block. Both must vanish before scoring, as the app strips them.
+    expect(pickResponse({ response: '<think></think>\nI run.' })).toBe('\nI run.');
+    expect(pickResponse({ response: '<think>plan the scene</think>\nYou run.' })).toBe('\nYou run.');
+    expect(pickResponse({ response: 'no tags here' })).toBe('no tags here');
+  });
+});
+
+describe('stripReasoning', () => {
+  it('removes each reasoning tag family, complete blocks only', () => {
+    expect(stripReasoning('<thinking>a</thinking>X')).toBe('X');
+    expect(stripReasoning('<reasoning>a</reasoning>X')).toBe('X');
+    expect(stripReasoning('<thought>a</thought>X')).toBe('X');
+    // An unterminated block is not a complete block — left as-is rather than eating the rest of the reply.
+    expect(stripReasoning('<think>a\nI run.')).toBe('<think>a\nI run.');
+    expect(stripReasoning(null)).toBe('');
+  });
 });
 
 describe('tierFor', () => {
@@ -132,6 +151,25 @@ describe('scoreDump', () => {
     const dump = perfectDump({ 2: { action: 'x' } });
     expect(() => scoreDump(dump)).not.toThrow();
     expect(scoreDump(dump).chDen).toBe(9);
+  });
+
+  it('counts a reasoning model\'s choices as clean once reasoning is stripped', () => {
+    // Anko on the engine path prefixes every reply with an empty <think></think> (thinking suppressed). Scored
+    // raw, that stray line makes acts.length !== lines.length and format reads 0 — but the app strips it and
+    // parses three clean actions. Every turn here carries the prefix; format must still be 100.
+    const withThink = (replies) =>
+      turn(Object.fromEntries(Object.entries(replies).map(([k, v]) => [k, `<think></think>\n${v}`])));
+    const dump = perfectDump();
+    for (let i = 0; i < 10; i++) {
+      const base = { narration: 'You cut the wolf down as it lunges.', choices: 'I step.\nI draw.\nI ask.', locationChange: i === 9 ? 'The Stable Yard' : 'NONE' };
+      if ([1, 3, 7].includes(i)) base.statUpdates = '';
+      if ([4, 5].includes(i)) base.statUpdates = 'Vigor: -12';
+      dump[i] = withThink(base);
+    }
+    const s = scoreDump(dump);
+    expect(s.format).toBe(100);
+    expect(s.locAcc).toBe(100);
+    expect(s.statDir).toBe(100);
   });
 
   it('scores a clean run as S with both gates passing', () => {

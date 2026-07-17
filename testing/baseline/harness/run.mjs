@@ -82,11 +82,18 @@ const modelToken = (cfg, model) => (model.modelPath ? "" : model.apiToken ?? cfg
 const require_ = createRequire(import.meta.url);
 let engine = null;
 
+// KV cache per engine-loaded model. The scripted profiles peak around 5.4k tokens on their last turn (measured
+// across a full screen dump), so this is headroom, not a limit — a prompt that fits sees an identical context
+// either way. It is deliberately not larger: the KV competes with the weights for VRAM, and reserving 16k made
+// 19GB-class models fail to load on a 24GB card once the harness browser took its share. Raise per model with
+// `contextSize` in profiles.json if a profile ever outgrows it.
+const ENGINE_CONTEXT_SIZE = 8192;
+
 async function startEngine(model) {
   engine ??= require_(path.join(REPO_ROOT, "electron", "llmEngine.cjs"));
   const port = model.enginePort ?? ENGINE_PORT;
   console.log(`  loading ${path.basename(model.modelPath)} into the built-in engine (port ${port})…`);
-  await engine.start({ modelPath: model.modelPath, port, contextSize: model.contextSize ?? 16384 });
+  await engine.start({ modelPath: model.modelPath, port, contextSize: model.contextSize ?? ENGINE_CONTEXT_SIZE });
   for (let i = 0; i < 240 && engine.getState().status === "loading"; i++) {
     await new Promise((r) => setTimeout(r, 500));
   }
@@ -124,8 +131,20 @@ async function warmUp(cfg, model) {
 }
 
 function buildSeed(cfg, model, profile, preset) {
+  // An engine model is driven exactly as the desktop build drives it: custom-endpoint OFF, so the app
+  // resolves its own `localModelActive` path — desktop sampler block (top_p/top_k/min_p) and, crucially,
+  // `thinking_budget_tokens` instead of the coarse `reasoning_effort`. That reasoning-budget cap is the only
+  // way a reasoning model's thought segment gets bounded; without it the model can spend an entire narration
+  // inside <think> and emit nothing. Turning the flag on requires faking the desktop bridge (see
+  // desktopBridgeScript) AND that the engine sits on the app's hard-coded local port.
+  const asDesktop = Boolean(model.modelPath);
+  if (asDesktop && (model.enginePort ?? ENGINE_PORT) !== ENGINE_PORT) {
+    throw new Error(`engine model ${model.label} must use port ${ENGINE_PORT}: the desktop path targets a hard-coded ${ENGINE_PORT}`);
+  }
   const seed = {
-    FORMAMORPH_useCustomEndpoint: "true",
+    // Custom endpoint OFF for engine models → the desktop local-model path (endpoint hard-codes localhost:8977,
+    // where the engine runs). Ollama models keep it ON and point at their own URL.
+    FORMAMORPH_useCustomEndpoint: asDesktop ? "false" : "true",
     FORMAMORPH_endpointUrl: modelEndpoint(cfg, model),
     FORMAMORPH_apiToken: modelToken(cfg, model),
     // The built-in engine serves the model under its GGUF basename, so an engine model needs no modelName.
@@ -164,6 +183,28 @@ async function runOne(browser, cfg, model, profile) {
   console.log(`\n▶ ${label} — launching`);
   const context = await browser.newContext();
   const seed = buildSeed(cfg, model, profile, await presetFor(profile));
+  // For engine models, present a desktop build to the app: `isDesktop()` keys off window.formamorphDesktop,
+  // and the local-model path only reports reachable if the `.llm` bridge says a model is loaded. The real
+  // engine runs Node-side (startEngine) and serves HTTP on 8977; this bridge just reports 'ready' so the app
+  // unblocks and takes its desktop request path. Injected before any app module evaluates (addInitScript), so
+  // DEFAULT_ENDPOINT — computed from isDesktop() at import time — resolves to the local engine.
+  if (model.modelPath) {
+    const modelId = path.basename(model.modelPath);
+    await context.addInitScript(({ modelId, port }) => {
+      const ready = { status: "ready", modelPath: modelId, modelId, port, error: null, contextSize: null, gpuLayers: null, flashAttention: null, parallelRequests: 1, maxContextSize: null, engineVramMB: null };
+      const P = (v) => Promise.resolve(v);
+      window.formamorphDesktop = {
+        // A no-op net-fetch bridge so isDesktop()-gated fetches don't throw; real chat requests go over HTTP.
+        fetch: (opts) => fetch(opts.url, { headers: opts.headers }),
+        llm: {
+          status: () => P(ready), onStatus: () => () => {},
+          listModels: () => P([modelId]), listInstalled: () => P([{ fileName: modelId, sizeBytes: 0 }]),
+          modelsDir: () => P(""), load: () => P(ready), stop: () => P(ready), setOptions: () => P(ready),
+          download: () => P({ path: modelId }), cancelDownload: () => P(true), onDownloaded: () => () => {},
+        },
+      };
+    }, { modelId, port: ENGINE_PORT });
+  }
   await context.addInitScript((s) => {
     for (const [k, v] of Object.entries(s)) localStorage.setItem(k, v);
   }, seed);

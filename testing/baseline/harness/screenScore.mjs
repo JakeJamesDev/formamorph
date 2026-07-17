@@ -9,8 +9,25 @@ export const LOC_TURN = 9;                // must route to The Stable Yard; ever
 
 const REFUSAL = /\b(I can'?t|I cannot|I'?m sorry|I am sorry|as an AI|language model|I won'?t|cannot continue|cannot fulfill|not comfortable|I must decline|inappropriate)\b/i;
 
-/** The model's reply for a captured request, whatever the dump named the field. */
-export const pickResponse = (r) => String(r.response ?? r.completion ?? r.output ?? r.result ?? r.reply ?? "");
+/**
+ * Remove complete reasoning blocks, mirroring the app's stripReasoning (src/lib/aiResponse.ts): every kind of
+ * response is run through it before parsing (choices, stats, location, narration). Scoring the raw dump
+ * instead would penalize any reasoning model, since a suppressed-thinking turn still emits an empty
+ * `<think></think>` pair the app removes — left in, it reads as a stray line and fails the choices-format
+ * check the app would pass. Complete blocks only, case-insensitive, spanning newlines.
+ */
+export function stripReasoning(text) {
+  let out = String(text ?? "");
+  for (const tag of ["think", "thinking", "reasoning", "thought"]) {
+    out = out.replace(new RegExp(`<${tag}(?:\\s[^>]*)?>[\\s\\S]*?</${tag}>`, "gi"), "");
+  }
+  return out;
+}
+
+/** The model's reply for a captured request (whatever field the dump named it), reasoning stripped as the app
+ *  does before it parses any response. */
+export const pickResponse = (r) =>
+  stripReasoning(r.response ?? r.completion ?? r.output ?? r.result ?? r.reply ?? "");
 
 /** True when a statUpdates reply reports no change — blank, a zero-width blob, or a prose "no stats moved". */
 export function isEmptyStat(s) {

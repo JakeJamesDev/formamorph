@@ -4,6 +4,7 @@ import { blobHash } from '@/lib/blobHash';
 import { readVrmMeta } from '@/lib/vrmMeta';
 import { optimizeImageDataUrl, IMAGE_CAPS } from '@/lib/imageOptim';
 import { renderVrmThumbnail } from '@/lib/vrmThumbnail';
+import { DEFAULT_MODEL_ID } from '@/lib/defaultModel';
 import { LibraryStore, type StoredRecord } from './LibraryStore';
 import type { ModelMetadata, VrmData } from '@/types';
 
@@ -22,6 +23,9 @@ interface FlatModelRecord {
   size?: number;
   addedAt?: string;
 }
+
+/** Set once the bundled model has been offered; a later delete is the player's business, not a gap to refill. */
+const SEEDED_KEY = 'FORMAMORPH_defaultModelSeeded';
 
 const isFlat = (record: unknown): record is FlatModelRecord =>
   !!record && typeof record === 'object' && !('data' in record) && 'blob' in record;
@@ -147,6 +151,41 @@ class ModelStorageService {
     };
     await this.store.store(record);
     return record;
+  }
+
+  /**
+   * Put the bundled model in the library, once ever. Fetches it only when it hasn't been seeded before, so a
+   * normal launch costs a localStorage read rather than an 18MB read.
+   *
+   * Seeding is one-shot rather than a per-launch reconcile: once seeded, the copy is the player's, and
+   * deleting it means it's gone. That's the whole point of it being an ordinary record — unlike the bundled
+   * worlds, which re-seed on content change and so need tombstones to respect a delete.
+   */
+  async seedDefaultModel(url: string): Promise<void> {
+    await this.ensureMigrated();
+    try {
+      if (localStorage.getItem(SEEDED_KEY)) return;
+      // Mark first: a half-finished seed must not retry forever on a machine that can't fetch it.
+      localStorage.setItem(SEEDED_KEY, '1');
+      if (await this.getRecord(DEFAULT_MODEL_ID)) return;
+
+      const blob = await (await fetch(url)).blob();
+      const [hash, { license, thumbnail }] = await Promise.all([blobHash(blob), readVrmMeta(blob)]);
+      await this.store.store({
+        id: DEFAULT_MODEL_ID,
+        name: license.title?.trim() || 'Default Model',
+        data: {
+          type: blob.type || 'model/vrm',
+          blob,
+          size: blob.size,
+          hash,
+          license,
+          thumbnail: await shrinkThumbnail(thumbnail),
+        },
+      });
+    } catch (error) {
+      console.error('Failed to seed the default model:', error);
+    }
   }
 
   /**
