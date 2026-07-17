@@ -8,7 +8,7 @@
 //   --file     score a specific dump file instead of running / searching
 
 import { spawn } from "node:child_process";
-import { readFileSync, writeFileSync, readdirSync, existsSync } from "node:fs";
+import { readFileSync, writeFileSync, readdirSync, existsSync, statSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import path from "node:path";
 import { scoreDump } from "./screenScore.mjs";
@@ -39,11 +39,20 @@ function runBaseline() {
   });
 }
 
-function newestDump() {
+/**
+ * Newest dump for this model. `after` (ms) guards against scoring a stale dump: when the baseline run fails
+ * it writes nothing, and without this we'd silently score the previous run and report it as fresh — which
+ * once produced a bogus "engine" score that was really an old Ollama result.
+ */
+function newestDump(after = 0) {
   const safe = model.replace(/[^a-z0-9-]/gi, "-");
   const files = readdirSync(RUNS_DIR).filter((f) => f.startsWith(`screen-${safe}-`) || f.startsWith(`screen-${model}-`));
   if (!files.length) throw new Error(`no screen-${model} dump in ${RUNS_DIR} — run without --no-run first`);
-  return path.join(RUNS_DIR, files.sort().at(-1));
+  const newest = path.join(RUNS_DIR, files.sort().at(-1));
+  if (after && statSync(newest).mtimeMs < after) {
+    throw new Error(`the run produced no new dump for ${model} (newest is from before this run) — the run failed; not scoring a stale dump`);
+  }
+  return newest;
 }
 
 const score = (dump) => scoreDump(JSON.parse(readFileSync(dump, "utf8")));
@@ -91,8 +100,9 @@ ${rows}
   writeFileSync(BOARD_MD, md, "utf8");
 }
 
+const runStart = Date.now();
 const latencyMs = fileArg || noRun ? null : await runBaseline();
-const dump = fileArg ? path.resolve(fileArg) : newestDump();
+const dump = fileArg ? path.resolve(fileArg) : newestDump(latencyMs === null ? 0 : runStart);
 const s = score(dump);
 console.log("\n" + card(s, latencyMs) + "\n");
 updateBoard(s);

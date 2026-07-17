@@ -66,7 +66,7 @@ describe('dev-router coverage guard', () => {
   it('registers the modals the router opens', () => {
     // localModel is deliberately excluded (it lives inside Settings, not as a standalone modal). worldEditor
     // is an in-place MainMenu modal (no longer a top-level view).
-    expect(DEV_MODALS).toEqual(['settings', 'entity', 'export', 'menu', 'worldEditor', 'intro', 'avatar', 'backup']);
+    expect(DEV_MODALS).toEqual(['settings', 'entity', 'export', 'menu', 'worldEditor', 'intro', 'avatar', 'backup', 'aiSetup']);
   });
 });
 

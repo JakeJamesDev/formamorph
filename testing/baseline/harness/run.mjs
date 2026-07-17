@@ -11,6 +11,7 @@ import { spawn } from "node:child_process";
 import { readFile, writeFile, mkdir } from "node:fs/promises";
 import { existsSync } from "node:fs";
 import { fileURLToPath } from "node:url";
+import { createRequire } from "node:module";
 import path from "node:path";
 
 const HARNESS_DIR = path.dirname(fileURLToPath(import.meta.url));
@@ -18,11 +19,19 @@ const REPO_ROOT = path.resolve(HARNESS_DIR, "../../..");
 const BASELINE_DIR = path.resolve(HARNESS_DIR, "..");
 const DEFAULT_WORLD = "sedge-landing.json";
 const RUNS_DIR = path.resolve(HARNESS_DIR, "../runs");
-// The B-arm neutral prompt preset, seeded into FORMAMORPH_promptPresets when a profile sets
-// `"promptArm": "neutral"`. Any other value (or absent) leaves the built-in Default preset active (A-arm).
-const NEUTRAL_PRESET = JSON.parse(
-  await readFile(path.join(HARNESS_DIR, "neutral-preset.json"), "utf8"),
-);
+// Prompt presets seeded into FORMAMORPH_promptPresets. A profile picks one with `"promptArm": "neutral"`
+// (the probe's stripped B-arm) or `"promptPreset": "<file>.json"` (any preset file in this dir — e.g.
+// screen-preset.json, which keeps the shipped prompt text but pins samplers explicitly). Neither → the
+// built-in Default preset stays active.
+const loadPreset = async (file) => JSON.parse(await readFile(path.join(HARNESS_DIR, file), "utf8"));
+const NEUTRAL_PRESET = await loadPreset("neutral-preset.json");
+const presetCache = new Map();
+async function presetFor(profile) {
+  if (profile.promptArm === "neutral") return NEUTRAL_PRESET;
+  if (!profile.promptPreset) return null;
+  if (!presetCache.has(profile.promptPreset)) presetCache.set(profile.promptPreset, await loadPreset(profile.promptPreset));
+  return presetCache.get(profile.promptPreset);
+}
 const PORT = 5180;
 const BASE_URL = `http://localhost:${PORT}`;
 
@@ -38,14 +47,44 @@ const repeat = Math.max(1, parseInt(argVal("--repeat") ?? "1", 10) || 1);
 // localStorage serialization: strings stored raw (stringCodec), everything else JSON (bool/int codecs).
 const serialize = (v) => (typeof v === "string" ? v : JSON.stringify(v));
 
+// Per-model endpoint overrides let one matrix span multiple servers (e.g. a model that won't load in Ollama
+// routed to LM Studio): a model entry may carry its own endpointUrl/apiToken, else the top-level cfg applies.
+// A model with `modelPath` instead drives the DESKTOP APP'S OWN engine (electron/llmEngine.cjs) — see below.
+const ENGINE_PORT = 8977;
+const engineUrl = (port) => `http://127.0.0.1:${port}/v1/chat/completions`;
+const modelEndpoint = (cfg, model) =>
+  model.modelPath ? engineUrl(model.enginePort ?? ENGINE_PORT) : (model.endpointUrl ?? cfg.endpointUrl);
+const modelToken = (cfg, model) => (model.modelPath ? "" : model.apiToken ?? cfg.apiToken ?? "");
+
+// The built-in engine is a plain Node module (no Electron): it loads a GGUF via node-llama-cpp and serves an
+// OpenAI-compatible endpoint on 127.0.0.1. Driving it here is the only way to screen a catalog model the way
+// the desktop build actually runs it — notably the `<think>` re-wrapping, which an external server does not
+// do (a reasoning model's answer otherwise arrives as bare chain-of-thought). Single model at a time: always
+// stopEngine() before starting the next.
+const require_ = createRequire(import.meta.url);
+let engine = null;
+
+async function startEngine(model) {
+  engine ??= require_(path.join(REPO_ROOT, "electron", "llmEngine.cjs"));
+  const port = model.enginePort ?? ENGINE_PORT;
+  console.log(`  loading ${path.basename(model.modelPath)} into the built-in engine (port ${port})…`);
+  await engine.start({ modelPath: model.modelPath, port, contextSize: model.contextSize ?? 16384 });
+  for (let i = 0; i < 240 && engine.getState().status === "loading"; i++) {
+    await new Promise((r) => setTimeout(r, 500));
+  }
+  const s = engine.getState();
+  if (s.status !== "ready") throw new Error(`built-in engine failed to load: ${s.error ?? s.status}`);
+  return s;
+}
+
+async function stopEngine() {
+  if (!engine) return;
+  try { await engine.stop(); } catch { /* already down */ }
+}
+
 // Warm up a model before the scripted turns: on a single GPU, requesting a model that isn't loaded triggers a
 // load (evicting the previous one), and the request that triggers it comes back truncated. A throwaway 1-token
 // call absorbs that load so the first real turn hits a fully-loaded model.
-// Per-model endpoint overrides let one matrix span multiple servers (e.g. a model that won't load in Ollama
-// routed to LM Studio): a model entry may carry its own endpointUrl/apiToken, else the top-level cfg applies.
-const modelEndpoint = (cfg, model) => model.endpointUrl ?? cfg.endpointUrl;
-const modelToken = (cfg, model) => model.apiToken ?? cfg.apiToken ?? "";
-
 async function warmUp(cfg, model) {
   const headers = { "Content-Type": "application/json" };
   const token = modelToken(cfg, model);
@@ -66,23 +105,21 @@ async function warmUp(cfg, model) {
   }
 }
 
-function buildSeed(cfg, model, profile) {
+function buildSeed(cfg, model, profile, preset) {
   const seed = {
     FORMAMORPH_useCustomEndpoint: "true",
     FORMAMORPH_endpointUrl: modelEndpoint(cfg, model),
     FORMAMORPH_apiToken: modelToken(cfg, model),
-    FORMAMORPH_modelName: model.modelName,
+    // The built-in engine serves the model under its GGUF basename, so an engine model needs no modelName.
+    FORMAMORPH_modelName: model.modelPath ? path.basename(model.modelPath) : model.modelName,
   };
   for (const [k, v] of Object.entries(profile.settings ?? {})) {
     seed[`FORMAMORPH_${k}`] = serialize(v);
   }
-  // B-arm: activate the neutral prompt preset so every AI call uses the stripped-down control wording and its
-  // pin-neutralizing samplers. A-arm (default/absent) leaves the built-in Default preset active.
-  if (profile.promptArm === "neutral") {
-    seed.FORMAMORPH_promptPresets = JSON.stringify({
-      activeId: NEUTRAL_PRESET.id,
-      presets: [NEUTRAL_PRESET],
-    });
+  // Activate a prompt preset when the profile asked for one (neutral B-arm, or a named preset file such as
+  // screen-preset.json). Absent → the built-in Default preset stays active.
+  if (preset) {
+    seed.FORMAMORPH_promptPresets = JSON.stringify({ activeId: preset.id, presets: [preset] });
   }
   return seed;
 }
@@ -105,7 +142,7 @@ async function runOne(browser, cfg, model, profile) {
   const label = `${profile.name} x ${model.label}`;
   console.log(`\n▶ ${label} — launching`);
   const context = await browser.newContext();
-  const seed = buildSeed(cfg, model, profile);
+  const seed = buildSeed(cfg, model, profile, await presetFor(profile));
   await context.addInitScript((s) => {
     for (const [k, v] of Object.entries(s)) localStorage.setItem(k, v);
   }, seed);
@@ -173,7 +210,7 @@ async function main() {
   const dev = spawn("npm", ["run", "dev", "--", "--port", String(PORT), "--strictPort"], {
     cwd: REPO_ROOT,
     shell: true,
-    stdio: "ignore",
+    stdio: "inherit",
   });
   const cleanup = () => {
     try {
@@ -195,12 +232,27 @@ async function main() {
       for (let run = 1; run <= repeat; run++) {
         if (repeat > 1) console.log(`\n===== seed run ${run}/${repeat} =====`);
         for (const model of models) {
-          for (const profile of profiles) {
+          // A `modelPath` model runs on the desktop engine: load it once for this model's profiles, then
+          // unload before the next model (the engine holds one model at a time).
+          if (model.modelPath) {
             try {
-              await runOne(browser, cfg, model, profile);
+              await startEngine(model);
             } catch (err) {
-              console.error(`  ✖ ${profile.name} x ${model.label}: ${err.message}`);
+              console.error(`  ✖ ${model.label}: ${err.message}`);
+              await stopEngine();
+              continue;
             }
+          }
+          try {
+            for (const profile of profiles) {
+              try {
+                await runOne(browser, cfg, model, profile);
+              } catch (err) {
+                console.error(`  ✖ ${profile.name} x ${model.label}: ${err.message}`);
+              }
+            }
+          } finally {
+            if (model.modelPath) await stopEngine();
           }
         }
       }

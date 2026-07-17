@@ -26,6 +26,9 @@ import { PROMPT_KIND_VARIABLES, PROMPT_KIND_USER_VARIABLES, SUBJECT } from '@/li
 import { defaultPromptSampler } from '@/lib/promptSamplers';
 import type { AIRequestType } from '@/types';
 import { ConfirmDialog } from '../ConfirmDialog';
+import { toast } from 'react-toastify';
+import WorldStorageService from '@/services/WorldStorageService';
+import { DEFAULT_WORLDS, readDeletedDefaultWorlds, clearDeletedDefaultWorlds } from '@/lib/defaultWorlds';
 import { PresetNameDialog } from './PresetNameDialog';
 import { defaultSystemPrompt, defaultChoicesPrompt, defaultStatUpdatesPrompt, defaultLocationChangePrompt, defaultThinkingPrompt, defaultSummaryPrompt, defaultChoicesUserPrompt, defaultStatUpdatesUserPrompt, defaultLocationChangeUserPrompt, defaultSummaryUserPrompt, defaultDiaryPrompt, defaultDirectorPrompt, defaultDirectorUserPrompt, defaultCharacterPrompt, defaultStoryboardPrompt } from '../game/GamePrompts';
 import { isDesktop } from '@/lib/imageGen/desktop';
@@ -242,9 +245,11 @@ function PromptOptionsPanel({ verbatim, reasoning, reasoningBudget, samplers, di
   );
 }
 
-export const SettingsModal = ({ isOpen, onOpenChange, previewValues, initialTab, initialPromptTab }: {
+export const SettingsModal = ({ isOpen, onOpenChange, previewValues, initialTab, initialPromptTab, onWorldsRestored }: {
   isOpen: boolean;
   onOpenChange: (open: boolean) => void;
+  /** Called after Restore Default Worlds re-seeds, so a world list on screen can refresh. */
+  onWorldsRestored?: () => void;
   /** Live variable values for the prompt-editor Preview tab. Supplied only in-game; absent → no Preview. */
   previewValues?: Record<string, string>;
   /** DEV dev-router: open on this top-level tab instead of the default (see `devRouter.ts`). */
@@ -253,6 +258,23 @@ export const SettingsModal = ({ isOpen, onOpenChange, previewValues, initialTab,
   initialPromptTab?: string;
 }) => {
   const [activeTab, setActiveTab] = useState<string>(initialTab ?? SETTINGS_TABS[0].value);
+  // Deleted-default count, refreshed whenever the modal opens: localStorage isn't reactive, and the player
+  // may have deleted a world since it last rendered.
+  const [deletedDefaultCount, setDeletedDefaultCount] = useState(0);
+  useEffect(() => { if (isOpen) setDeletedDefaultCount(readDeletedDefaultWorlds().size); }, [isOpen]);
+
+  const restoreDefaultWorlds = async () => {
+    clearDeletedDefaultWorlds();
+    try {
+      const { failed } = await WorldStorageService.loadDefaultWorlds(DEFAULT_WORLDS);
+      if (failed.length) toast.error(`Some default worlds failed to restore: ${failed.join(', ')}`);
+      else toast.success('Default worlds restored');
+    } catch {
+      toast.error('Could not restore the default worlds');
+    }
+    setDeletedDefaultCount(readDeletedDefaultWorlds().size);
+    onWorldsRestored?.();
+  };
   // Honor a later dev-router tab change while the modal stays open (a fresh __fmDev.goto).
   useEffect(() => { if (initialTab) setActiveTab(initialTab); }, [initialTab]);
   const {
@@ -1679,6 +1701,25 @@ export const SettingsModal = ({ isOpen, onOpenChange, previewValues, initialTab,
                 onChange={setAutosaveEnabled}
                 hint="Automatically saves your game after every turn to a per-world “Autosave” slot, starting once the opening scene finishes. It never touches your manual saves and shows in Load with an “Auto” tag. Turn off to save only manually."
               />
+              <div className="grid grid-cols-1 sm:grid-cols-4 gap-4">
+                <div className="hidden sm:block" />
+                <div className="col-span-3">
+                  <ConfirmDialog
+                    title="Restore default worlds"
+                    description="Bring back the bundled worlds you've deleted (City Rampage, Valentines Survival, Reincarnated Drone)? Worlds you still have are left untouched, and nothing you made or imported is affected."
+                    onConfirm={restoreDefaultWorlds}
+                  >
+                    <Button variant="outline" size="sm" disabled={deletedDefaultCount === 0}>
+                      Restore default worlds
+                    </Button>
+                  </ConfirmDialog>
+                  <p className="text-xs text-muted-foreground mt-1">
+                    {deletedDefaultCount === 0
+                      ? "You haven't deleted any of the bundled worlds."
+                      : `Re-creates ${deletedDefaultCount} deleted bundled world${deletedDefaultCount > 1 ? 's' : ''} at their latest version.`}
+                  </p>
+                </div>
+              </div>
             </div>
             </ScrollArea>
           </TabsContent>

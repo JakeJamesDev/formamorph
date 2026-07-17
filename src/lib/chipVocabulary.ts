@@ -88,6 +88,27 @@ function placeholderColor(id: string): string {
 // Palette tokens carry a sentinel placement id; freshInsertToken re-mints a real one on insertion.
 const PALETTE_PID = 'palette';
 
+/**
+ * A vocabulary with no token family at all: everything is literal text and the insert toolbar is empty.
+ * For fields that render before any roll exists (the world description), where a `{{ph…}}` token would
+ * never resolve — so it stays visible as the inert text the player would actually see, rather than
+ * masquerading as a working chip.
+ */
+export function plainVocabulary(): ChipVocabulary {
+  return {
+    parse: (text) => (text ? [{ type: 'text', value: text }] : []),
+    isKnown: () => false,
+    label: (t) => t,
+    variantLabel: () => null,
+    color: () => undefined,
+    axes: () => [],
+    selection: () => ({}),
+    setAxis: (t) => t,
+    palette: () => [],
+    freshInsertToken: (t) => t,
+  };
+}
+
 /** Vocabulary backed by a world's placeholders. A chip's World/Unique axis only appears once the placeholder
  *  has 2+ values (a single-value Variable has nothing to randomize). */
 export function placeholderVocabulary(placeholders: Placeholder[]): ChipVocabulary {
