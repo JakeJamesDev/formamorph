@@ -62,38 +62,24 @@ export const DOWNLOADS_AS_OF = '2026-07';
 
 // Verified against the HF API (filenames, sizes, release dates, all-time downloads) July 2026. Entries here
 // all happen to be roleplay finetunes — that's history, not an entry requirement (see the eligibility note at
-// the top of this file). The two flagged `reasoning: true` are RP finetunes on reasoning bases (Qwen3 /
-// Qwen3.6-A3B); the local engine handles the thought segment (per-prompt budget → node-llama-cpp
-// `budgets.thoughtTokens`, with `<think>` reconstruction). Refresh this list periodically; the scene moves fast.
+// the top of this file). The one flagged `reasoning: true` is an RP finetune on a reasoning base
+// (Qwen3.6-A3B); the local engine handles the thought segment (per-prompt budget → node-llama-cpp
+// `budgets.thoughtTokens`, with `<think>` reconstruction). That handling is not a guarantee at small sizes —
+// the 4B reasoning entry was cut for returning empty narrations, so screen any reasoning candidate before
+// adding it. Refresh this list periodically; the scene moves fast.
 export const LOCAL_MODELS: LocalModelInfo[] = [
   // ≤4 GB — 2-4B
-  {
-    id: 'qwen3-4b-rpg-roleplay', name: 'Qwen3-4B RPG Roleplay v2', params: '4B', quant: 'Q4_K_M', tier: 'tier4',
-    fileName: 'Qwen3-4B-RPG-Roleplay-V2-Q4_K_M.gguf',
-    url: hf('Chun121/Qwen3-4B-RPG-Roleplay-V2', 'unsloth.Q4_K_M.gguf'),
-    sizeBytes: 2_500_000_000, note: 'Tiny reasoning RP model — experimental at this size; may loop.', license: 'MIT',
-    released: '2025-07', downloads: 120_108, reasoning: true,
-  },
-  {
-    id: 'gemmasutra-small-4b', name: 'Gemmasutra Small 4B', params: '4B', quant: 'Q4_K_M', tier: 'tier4',
-    fileName: 'Gemmasutra-Small-4B-v1a-Q4_K_M.gguf',
-    url: hf('TheDrummer/Gemmasutra-Small-4B-v1-GGUF', 'Gemmasutra-Small-4B-v1a-Q4_K_M.gguf'),
-    sizeBytes: 2_460_000_000, note: 'TheDrummer’s Gemma-based RP — small but capable.', license: 'Gemma Terms',
-    released: '2025-03', downloads: 111_174,
-  },
+  // Thin by design, not by neglect: the 2026-07-17 screen (3 seeds each, gate world, built-in engine) cut
+  // Qwen3-4B RPG Roleplay v2, Gemmasutra Small 4B, and Gemmasutra Mini 2B — all three missed the location
+  // router's 90% gate (60/77/67%), and the Qwen3 one returned an empty narration on ~2 in 9 runs, which
+  // stalls the turn loop outright. Impish is the only ≤4GB entry that cleared the gate, and only just (93%).
+  // Backfilling this tier needs candidates that survive `npm run screen` — see testing/baseline/GATE-PROBE.md.
   {
     id: 'impish-llama-4b', name: 'Impish LLAMA 4B', params: '4B', quant: 'Q4_K_M', tier: 'tier4',
     fileName: 'Impish_LLAMA_V2-Q4_K_M.gguf',
     url: hf('SicariusSicariiStuff/Impish_LLAMA_4B_GGUF', 'Impish_LLAMA_V2-Q4_K_M.gguf'),
     sizeBytes: 2_780_000_000, note: 'Sicarius’s compact roleplay model.', license: 'Llama 3.2',
     released: '2025-07', downloads: 20_245,
-  },
-  {
-    id: 'gemmasutra-mini-2b', name: 'Gemmasutra Mini 2B', params: '2B', quant: 'Q4_K_M', tier: 'tier4',
-    fileName: 'Gemmasutra-Mini-2B-v1-Q4_K_M.gguf',
-    url: hf('TheDrummer/Gemmasutra-Mini-2B-v1-GGUF', 'Gemmasutra-Mini-2B-v1-Q4_K_M.gguf'),
-    sizeBytes: 1_710_000_000, note: 'Tiny RP model for minimal VRAM.', license: 'Gemma Terms',
-    released: '2024-08', downloads: 1_244_993,
   },
 
   // ≤8 GB — 8B

@@ -182,12 +182,15 @@ const MainMenu = ({ onStartGame, onLoadSaveGame, onReplayIntro, introActive = fa
     if (devRoute?.modal === 'worldEditor') setShowWorldEditor(true);
     if (devRoute?.modal === 'avatar') setShowCharacterCustomization(true);
     if (devRoute?.modal === 'aiSetup') setGate({ reason: 'firstRun' });
+    // Library editors open on a blank draft — nothing is stored, so these are reachable on a fresh profile.
+    if (devRoute?.modal === 'entityEditor') setDraftEntity({ id: randomUUID(), name: 'New Character' });
+    if (devRoute?.modal === 'dictionaryEditor') setDraftDictionary({ id: randomUUID(), name: 'New Dictionary', enabled: true, entries: [] });
   }, [devRoute?.modal]);
 
   // --- AI setup gate -------------------------------------------------------------------------------
   // Nothing can play until the configured AI answers. The gate offers the remedy that fits: download a
   // model (bundled engine) or fix the endpoint (anything else).
-  const { reachable, mode, blocker } = useAiReachable();
+  const { reachable, mode, blocker, recheck } = useAiReachable();
   const [gate, setGate] = useState<{ reason: GateReason } | null>(null);
   // The launch the gate interrupted, replayed once the engine comes up.
   const pendingLaunch = useRef<(() => void) | null>(null);
@@ -999,6 +1002,8 @@ const MainMenu = ({ onStartGame, onLoadSaveGame, onReplayIntro, introActive = fa
         reason={gate?.reason ?? 'firstRun'}
         mode={mode}
         blocker={blocker}
+        reachable={reachable}
+        recheck={recheck}
         onOpenChange={(v) => { if (!v) { pendingLaunch.current = null; setGate(null); } }}
         onOpenSettings={() => { setGate(null); setSettingsTab('endpoint'); setShowSettings(true); }}
         onReady={handleGateReady}

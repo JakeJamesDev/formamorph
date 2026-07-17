@@ -9,6 +9,21 @@ describe('localModels catalog', () => {
     }
   });
 
+  it('every VRAM tier offers at least one model', () => {
+    // Each tier is a tab in the desktop model picker, so an empty one ships as a dead tab with nothing to
+    // download. Screening cut three of the four ≤4GB entries at once (2026-07-17), which left that tier on a
+    // single model — one more removal would empty it. Retire the tier deliberately rather than by attrition.
+    for (const tier of VRAM_TIERS) {
+      const inTier = LOCAL_MODELS.filter((m) => m.tier === tier.value);
+      expect(inTier.length, `tier ${tier.value} (${tier.label}) has no models`).toBeGreaterThan(0);
+    }
+  });
+
+  it('every model id is unique', () => {
+    const ids = LOCAL_MODELS.map((m) => m.id);
+    expect(new Set(ids).size, `duplicate id in: ${ids.join(', ')}`).toBe(ids.length);
+  });
+
   it('every model has a release month and a download snapshot', () => {
     for (const m of LOCAL_MODELS) {
       expect(m.released, m.id).toMatch(/^\d{4}-\d{2}$/);

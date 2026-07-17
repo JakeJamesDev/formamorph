@@ -234,7 +234,7 @@ async function main() {
   // and kill() actually stops it (see the PORT comment above for what the wrapper cost us).
   const dev = spawn(process.execPath, [path.join(REPO_ROOT, "node_modules", "vite", "bin", "vite.js"), "--port", String(PORT), "--strictPort"], {
     cwd: REPO_ROOT,
-    stdio: "inherit",
+    stdio: "ignore",
   });
   let devExited = false;
   dev.on("exit", () => { devExited = true; });

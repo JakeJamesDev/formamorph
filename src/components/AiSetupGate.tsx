@@ -16,6 +16,9 @@ import {
 /** Why the gate opened: after the first-run intro (skippable) or because they tried to play (not). */
 export type GateReason = 'firstRun' | 'play';
 
+/** How often the gate re-probes a custom endpoint. Tuned to human scale — starting a server takes seconds. */
+const ENDPOINT_POLL_MS = 3000;
+
 /** Pick the catalog's suggestion for a tier: the largest model that still fits it reads as the best default. */
 function recommendFor(tier: VramTier): LocalModelInfo | null {
   const inTier = LOCAL_MODELS.filter((m) => m.tier === tier);
@@ -28,11 +31,15 @@ function recommendFor(tier: VramTier): LocalModelInfo | null {
  * since we can't fix someone else's server for them. A download runs in the background — the gate keeps
  * showing progress and calls `onReady` the moment the engine comes up, so a queued launch resumes itself.
  */
-export function AiSetupGate({ open, reason, mode, blocker, onOpenChange, onOpenSettings, onReady }: {
+export function AiSetupGate({ open, reason, mode, blocker, reachable, recheck, onOpenChange, onOpenSettings, onReady }: {
   open: boolean;
   reason: GateReason;
   mode: AiMode;
   blocker: AiBlocker | null;
+  /** Live reachability from `useAiReachable` — drives the custom endpoint's auto-resume. */
+  reachable: boolean | null;
+  /** Re-probe the configured AI. Polled while the gate is open, and behind the "Try again" button. */
+  recheck: () => void;
   onOpenChange: (v: boolean) => void;
   onOpenSettings: () => void;
   /** Fired when the engine becomes ready while the gate is open (download finished + model loaded). */
@@ -57,9 +64,23 @@ export function AiSetupGate({ open, reason, mode, blocker, onOpenChange, onOpenS
   useEffect(() => subscribeLocalDownload((p) => setProgress(p.done ? null : p)), []);
 
   // The whole point of the gate: once the engine is up, let the caller resume whatever it was blocking.
+  // Local only — the bundled engine can be running even when the user is pointed at a custom endpoint,
+  // and that says nothing about whether *their* endpoint answers.
   useEffect(() => {
-    if (open && engine.status === 'ready') onReady();
-  }, [open, engine.status, onReady]);
+    if (open && mode === 'local' && engine.status === 'ready') onReady();
+  }, [open, mode, engine.status, onReady]);
+
+  // A custom endpoint has no status to subscribe to, so poll it while the gate is up. This is what lets
+  // "start LM Studio, come back" resolve itself, matching how the local engine already self-heals.
+  useEffect(() => {
+    if (!open || mode !== 'custom') return;
+    const id = setInterval(recheck, ENDPOINT_POLL_MS);
+    return () => clearInterval(id);
+  }, [open, mode, recheck]);
+
+  useEffect(() => {
+    if (open && mode === 'custom' && reachable === true) onReady();
+  }, [open, mode, reachable, onReady]);
 
   const recommended = useMemo(() => recommendFor(tier), [tier]);
   const downloading = progress !== null;
@@ -120,7 +141,11 @@ export function AiSetupGate({ open, reason, mode, blocker, onOpenChange, onOpenS
               You can keep browsing while this downloads — the game starts on its own once it’s ready.
             </p>
           </div>
-        ) : custom || blocker === 'engineDown' ? null : (
+        ) : custom ? (
+          <p className="text-xs text-muted-foreground">
+            Start your server and this will continue on its own — no need to reload.
+          </p>
+        ) : blocker === 'engineDown' ? null : (
           <div className="space-y-3">
             {recommended && (
               <div className="space-y-2 rounded-md border border-border p-3">
@@ -159,6 +184,12 @@ export function AiSetupGate({ open, reason, mode, blocker, onOpenChange, onOpenS
         )}
 
         <DialogFooter className="gap-2 sm:justify-start">
+          {/* The poll gets there on its own; this is for people who'd rather not wait for the next tick. */}
+          {custom && (
+            <Button onClick={recheck} disabled={reachable === null}>
+              {reachable === null ? 'Checking…' : 'Try again'}
+            </Button>
+          )}
           <Button variant="outline" onClick={onOpenSettings}>Open Settings</Button>
           {/* Only the first-run prompt is skippable — they can look around before committing to a download. */}
           {reason === 'firstRun' && !downloading && (

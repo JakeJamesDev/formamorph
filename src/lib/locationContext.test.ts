@@ -235,6 +235,19 @@ describe("buildEntityContext", () => {
     expect(buildEntityContext({ id: "loc2", name: "Empty Field" }, [guard])).toBe(NONE_PLACEHOLDER);
   });
 
+  it("omits editor-only fields — they're spread in unless named, so each must stay excluded", () => {
+    const out = buildEntityContext(
+      location,
+      [{ ...guard, playerDescription: "What the player reads.", imageTags: "1girl, blue_hair", placeholders: [] }],
+    );
+    expect(out).not.toContain("imageTags"); // booru tags for image gen, not story context
+    expect(out).not.toContain("blue_hair");
+    expect(out).not.toContain("playerDescription");
+    expect(out).not.toContain("What the player reads.");
+    expect(out).not.toContain("placeholders");
+    expect(out).toContain("description: A burly guard in full plate, scarred from old wars."); // aiDescription still lands
+  });
+
   it("emits a top-level roster (name as subject, indented fields) with full aiDescription by default", () => {
     const out = buildEntityContext(location, [guard]);
     expect(out).toContain("Guard\n");
