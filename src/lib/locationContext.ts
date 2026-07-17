@@ -182,9 +182,10 @@ export function buildSublocationEntitiesContext(
 
 /**
  * The places the player can move to from the current location — the **local navigable graph**: the union of
- * its authored `connections` (resolved by name), its direct sub-locations, and its reachable siblings.
- * Deduped by id, current excluded, dangling connection names skipped. This is the location router's whole
- * world: the only candidates fed to the model and the only names its reply is matched against.
+ * its authored `connections` (resolved by name), its direct sub-locations, and its reachable locations (the
+ * containing location + siblings). Deduped by id, current excluded, dangling connection names skipped. This is
+ * the location router's whole world: the only candidates fed to the model and the only names its reply is
+ * matched against.
  */
 export function navigableDestinations(
   current: LocationWithEntities,
@@ -198,7 +199,7 @@ export function navigableDestinations(
   };
   for (const name of current.connections ?? []) add(byLowerName.get(name.toLowerCase().trim()));
   for (const child of locations.filter((l) => (l.parentId ?? null) === current.id)) add(child);
-  for (const sib of reachableSiblings(current as GameLocation, locations)) add(sib);
+  for (const loc of reachableLocations(current as GameLocation, locations)) add(loc);
   return [...out.values()];
 }
 
@@ -218,17 +219,29 @@ export function buildDestinationsContext(
   return buildLocationList(dests, opts);
 }
 
-/** The current location's reachable **siblings** — other children of the same non-null parent. */
-function reachableSiblings(current: GameLocation, locations: GameLocation[]): GameLocation[] {
-  const parent = current.parentId ?? null;
-  if (parent === null) return []; // top-level → no containing region → nothing reachable
-  return locations.filter((l) => l.id !== current.id && (l.parentId ?? null) === parent);
+/**
+ * The locations reachable from the current one without going deeper: the containing location first, then its
+ * siblings (the parent's other children). The parent is what makes nesting two-way — without it a sub-location
+ * with no children and no siblings has nowhere to go and the player is stranded there.
+ */
+function reachableLocations(current: GameLocation, locations: GameLocation[]): GameLocation[] {
+  const parentId = current.parentId ?? null;
+  if (parentId === null) return []; // top-level → no containing region → nothing reachable
+  const parent = locations.find((l) => l.id === parentId);
+  const siblings = locations.filter((l) => l.id !== current.id && (l.parentId ?? null) === parentId);
+  return parent ? [parent, ...siblings] : siblings; // a parentId pointing at nothing leaves just the siblings
+}
+
+/** The deduped entity ids across the current location's reachable locations (parent + siblings). */
+export function reachableEntityIds(current: LocationWithEntities, locations: GameLocation[]): string[] {
+  if (!current) return [];
+  return [...new Set(reachableLocations(current as GameLocation, locations).flatMap((l) => l.entities ?? []))];
 }
 
 /**
- * Serialize the sibling locations reachable from the current one (same parent) for the
- * `<LOCATION|reachable>` chip — one line per sibling (`name: <summary>` / `- **name:** <summary>`).
- * Returns `N/A` when the location is top-level (no parent) or has no siblings.
+ * Serialize the locations reachable from the current one for the `<LOCATION|reachable>` chip — one line each
+ * (`name: <summary>` / `- **name:** <summary>`), containing location first. Returns `N/A` when the location is
+ * top-level (no parent).
  */
 export function buildReachableLocationsContext(
   current: LocationWithEntities,
@@ -236,16 +249,16 @@ export function buildReachableLocationsContext(
   opts: { preferSummary?: boolean; format?: "simple" | "markdown" } = {},
 ): string {
   if (!current) return NONE_PLACEHOLDER;
-  const sibs = reachableSiblings(current, locations);
-  if (sibs.length === 0) return NONE_PLACEHOLDER;
-  return buildLocationList(sibs, opts);
+  const reachable = reachableLocations(current, locations);
+  if (reachable.length === 0) return NONE_PLACEHOLDER;
+  return buildLocationList(reachable, opts);
 }
 
 /**
- * Serialize the characters/things in the current location's reachable siblings for the
- * `<ENTITIES|reachable>` chip. Gathers + dedupes the siblings' entity ids (minus `excludeIds` — anyone shown
- * in a higher-precedence roster, i.e. present here or in a sub-location) and delegates to `buildEntityContext`.
- * Returns `N/A` when there are no siblings or no remaining entities.
+ * Serialize the characters/things in the current location's reachable locations for the
+ * `<ENTITIES|reachable>` chip. Gathers + dedupes their entity ids (minus `excludeIds` — anyone shown in a
+ * higher-precedence roster, i.e. present here or in a sub-location) and delegates to `buildEntityContext`.
+ * Returns `N/A` when nothing is reachable or no entities remain.
  */
 export function buildReachableEntitiesContext(
   current: LocationWithEntities,
@@ -254,9 +267,8 @@ export function buildReachableEntitiesContext(
   opts: { preferSummary?: boolean; format?: "simple" | "markdown"; excludeIds?: string[] } = {},
 ): string {
   if (!current) return NONE_PLACEHOLDER;
-  const sibs = reachableSiblings(current, locations);
   const exclude = new Set(opts.excludeIds ?? []);
-  const ids = [...new Set(sibs.flatMap((s) => s.entities ?? []))].filter((id) => !exclude.has(id));
+  const ids = reachableEntityIds(current, locations).filter((id) => !exclude.has(id));
   if (ids.length === 0) return NONE_PLACEHOLDER;
   return buildEntityContext({ id: current.id, name: current.name, entities: ids }, entities, opts);
 }
