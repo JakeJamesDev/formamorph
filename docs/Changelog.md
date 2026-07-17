@@ -2,7 +2,7 @@
 
 All notable changes to Formamorph. This fork's first line is **2.0.0** — a full TypeScript rebuild of the upstream JavaScript app ([FieryLionite's Formamorph](https://fierylion.itch.io/formamorph), ~v1.2) — with feature parity as the baseline plus new features on top.
 
-> ✅ **2.0.0 – 2.4.0 are released** (collapsed below). New work lands under **🚧 In Progress** — an unnumbered section, so changes accumulate without pinning a version. When a batch earns a release its section is marked **Released** and collapsed, and a fresh In Progress opens. `package.json` reads **2.4.0** — the latest released version.
+> ✅ **2.0.0 – 2.4.1 are released** (collapsed below). New work lands under **🚧 In Progress** — an unnumbered section, so changes accumulate without pinning a version. When a batch earns a release its section is marked **Released** and collapsed, and a fresh In Progress opens. `package.json` reads **2.4.1** — the latest released version.
 
 Each release groups changes as **Major** / **Minor**, then **Added** / **Removed** / **Fixed**, and within those by audience: 👤 user-facing · 🛠️ developer tooling · ⚙️ backend / invisible.
 
@@ -10,7 +10,23 @@ Each release groups changes as **Major** / **Minor**, then **Added** / **Removed
 
 ## 🚧 In Progress
 
-_Unreleased — new work accumulates here until it earns a version bump. The next batch will pin its own version; `package.json` reads **2.4.0** (just released below)._
+_Unreleased — new work accumulates here until it earns a version bump. The next batch will pin its own version; `package.json` reads **2.4.1** (just released below)._
+
+---
+
+<details>
+<summary><strong>✅ 2.4.1 — Released 2026-07-16</strong> — a fix-only follow-up to 2.4.0: sub-locations you can walk back out of and a narrator that knows what place you're inside, dropdowns that stay on screen, and desktop publishing that can update and delete again (click to expand)</summary>
+
+### Minor Changes
+
+#### 🐛 Fixed
+
+- **👤 User-facing**
+  - **The AI now knows what place your location is inside, and you can walk back out of it.** The **Reachable** scope on the Location and Entities prompt chips now sends the location that contains your current one — listed first — alongside its neighbors, so the narrator knows what building the room is in and who's out there. Previously nothing you could put in a prompt could mention it at all. It's also somewhere you can now travel to: moving into a sub-location with no sub-locations of its own and no neighbors used to strand you there permanently, because the game worked out where you could go from a place without ever considering the one containing it. No prompt edits needed — if you use the Reachable chip, this arrives on its own.
+  - **Long dropdown lists no longer run off the top of the screen.** In a world with a lot of locations, the Change Location list was tall enough that it opened upward and had its top cut off by the edge of the screen, putting the first locations out of reach. Dropdowns now size themselves to the space actually available and scroll inside it. Affects every dropdown in the app, not just Change Location — most noticeable on shorter screens.
+  - **Updating and deleting your published worlds works again in the desktop app.** Publishing an update over an existing world, or deleting one you'd already posted, failed in the desktop app with a "Failed to fetch" error — while both worked fine in the browser. The desktop app rewrites the community server's permissions so a native app can talk to it, and that rewrite was accidentally dropping the permission to update or delete. Publishing a brand-new world and downloading were never affected, and nothing about your worlds or the server needed changing.
+
+</details>
 
 ---
 
