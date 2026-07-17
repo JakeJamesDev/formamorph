@@ -1,0 +1,55 @@
+{
+  "id": "screen",
+  "name": "Screen (desktop sampling)",
+  "style": "markdown",
+  "_comment": [
+    "Shipped default prompt TEXT (empty `values` inherits the built-in Default preset) plus explicit samplers.",
+    "Why: the app only sends temperature for a prompt kind when that kind is code-pinned (promptSamplers.ts",
+    "PROMPT_SAMPLER_PINS) or when it thinks it's driving the built-in engine (localModelActive = isDesktop() &&",
+    "!useCustomEndpoint). The harness reaches the engine over a custom endpoint from a browser, so",
+    "localModelActive is false and every UNPINNED kind sent no temperature at all — node-llama-cpp then",
+    "defaults to 0 ('Disabled by default'), i.e. greedy decoding. Ollama filled in its Modelfile's 0.7 instead,",
+    "so engine-vs-Ollama scores were comparing sampling, not engines.",
+    "These pins send the values a real desktop build would resolve: DEFAULT_GEN_TEMPERATURE 0.7 and",
+    "DEFAULT_GEN_REPETITION_PENALTY 1.1 for the unpinned kinds. The code-pinned kinds (statUpdates 0.2,",
+    "locationChange 0.15, summary 0, thinking 0.4/rep 1) are deliberately absent: their pins already apply on",
+    "every endpoint, so they were never part of the discrepancy.",
+    "Residual gap vs a real desktop build: top_p 0.9 / top_k 40 / min_p 0 are gated behind localModelActive and",
+    "cannot be set from a preset, so the engine uses node-llama-cpp's own defaults for those. Fixed across all",
+    "models, so cross-model ranking stays fair; absolute parity with desktop is approximate."
+  ],
+  "values": {},
+  "samplers": {
+    "narration": {
+      "temperature": { "custom": true, "value": 0.7 },
+      "repetitionPenalty": { "custom": true, "value": 1.1 }
+    },
+    "choices": {
+      "temperature": { "custom": true, "value": 0.7 },
+      "repetitionPenalty": { "custom": true, "value": 1.1 }
+    },
+    "director": {
+      "temperature": { "custom": true, "value": 0.7 },
+      "repetitionPenalty": { "custom": true, "value": 1.1 }
+    },
+    "character": {
+      "temperature": { "custom": true, "value": 0.7 },
+      "repetitionPenalty": { "custom": true, "value": 1.1 }
+    },
+    "storyboard": {
+      "temperature": { "custom": true, "value": 0.7 },
+      "repetitionPenalty": { "custom": true, "value": 1.1 }
+    },
+    "diary": {
+      "temperature": { "custom": true, "value": 0.7 },
+      "repetitionPenalty": { "custom": true, "value": 1.1 }
+    },
+    "discoverEntity": {
+      "temperature": { "custom": true, "value": 0.7 },
+      "repetitionPenalty": { "custom": true, "value": 1.1 }
+    },
+    "statUpdates": { "repetitionPenalty": { "custom": true, "value": 1.1 } },
+    "locationChange": { "repetitionPenalty": { "custom": true, "value": 1.1 } },
+    "summary": { "repetitionPenalty": { "custom": true, "value": 1.1 } }
+  }
+}

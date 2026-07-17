@@ -12,15 +12,15 @@ full `gateA`/`gateB` matrix at `--repeat 3` before a decision that matters. Meth
 | meromero-31b | A | 77 | 33 | 100 | 100 | 100% | 0 | 2026-07-17 |
 | gemma31b-heretic | A | 77 | 33 | 100 | 100 | 100% | 0 | 2026-07-17 |
 | meromero-26b | B | 65 | 0 | 100 | 100 | 100% | 0 | 2026-07-17 |
-| anubis-mini-8b | B | 55 | 0 | 100 | 70 | 90% | 0 | 2026-07-17 |
 | gemma26b-heretic | B | 50 | 0 | 50 | 100 | 100% | 0 | 2026-07-17 |
 | silver-siren-12b | B | 50 | 0 | 50 | 100 | 100% | 0 | 2026-07-17 |
-| lunaris-8b-v1 | C | 43 | 0 | 50 | 80 | 100% | 0 | 2026-07-17 |
+| lunaris-8b-v1 | B | 50 | 0 | 50 | 100 | 90% | 0 | 2026-07-17 |
+| anubis-mini-8b | B | 50 | 0 | 50 | 100 | 90% | 0 | 2026-07-17 |
+| rocinante-x-12b | C | 44 | 0 | 100 | 40 | 100% | 0 | 2026-07-17 |
 | mistral-heretic | C | 41 | 0 | 100 | 30 | 100% | 0 | 2026-07-17 |
-| impish-llama-4b | C | 34 | 0 | 100 | 10 | 100% | 0 | 2026-07-17 |
-| wingless-imp-8b | C | 33 | 0 | 50 | 50 | 90% | 0 | 2026-07-17 |
-| rocinante-x-12b | C | 14 | 0 | 0 | 40 | 100% | 0 | 2026-07-17 |
-| stheno-8b-v34 | C ⚠ | 36 | 0 | 50 | 60 | 100% | 1 | 2026-07-17 |
+| stheno-8b-v34 | C | 40 | 0 | 50 | 70 | 100% | 0 | 2026-07-17 |
+| impish-llama-4b | C | 30 | 0 | 100 | 0 | 90% | 0 | 2026-07-17 |
+| gemmasutra-small-4b | C | 18 | 0 | 0 | 50 | 90% | 0 | 2026-07-17 |
+| wingless-imp-8b | C | 7 | 0 | 0 | 20 | 90% | 0 | 2026-07-17 |
 | qwen3-4b-rpg-roleplay | REJECT (routing) | 30 | 0 | 100 | 0 | 30% | 0 | 2026-07-17 |
-| gemmasutra-mini-2b | REJECT (routing) | 29 | 0 | 50 | 40 | 60% | 0 | 2026-07-17 |
-| gemmasutra-small-4b | REJECT (routing) | 28 | 0 | 0 | 80 | 70% | 0 | 2026-07-17 |
+| gemmasutra-mini-2b | REJECT (routing) | 0 | 0 | 0 | 0 | 60% | 0 | 2026-07-17 |

@@ -926,12 +926,16 @@ const GameViewer = ({
     [placeholders, placeholderRolls],
   );
 
+  // The README is authored text shown to the player, so its chips resolve like any other.
+  const readmeResolved = useMemo(() => resolvePH(readmeText), [resolvePH, readmeText]);
+
   // Eager priming: once a save is active, roll every Wildcard placement across the world's authored text and
   // freeze it into the save (a loaded save's existing rolls are kept). Resolution then stays a pure lookup.
   useEffect(() => {
     if (!isGameStarted || placeholders.length === 0) return;
     const texts = [
       worldOverview.systemPrompt || "",
+      worldOverview.readme || "",
       ...entities.flatMap((e) => [e.playerDescription, e.aiDescription, e.aiSummary]),
       ...locations.flatMap((l) => [l.playerDescription, l.aiDescription, l.aiSummary, l.description]),
       ...dictionaries.flatMap((b) => b.entries.map((en) => en.value)),
@@ -2826,7 +2830,7 @@ ${playerNotes || NONE_PLACEHOLDER}
       {/* Modals */}
       {readmeText && (
         <ReadmeModal
-          readme={readmeText}
+          readme={readmeResolved}
           open={showReadmeModal}
           onOpenChange={setShowReadmeModal}
           show={showReadme(worldId)}

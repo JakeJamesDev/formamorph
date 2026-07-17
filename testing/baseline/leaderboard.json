@@ -33,17 +33,6 @@
     "refusals": 0
   },
   {
-    "model": "anubis-mini-8b",
-    "date": "2026-07-17",
-    "tier": "B",
-    "objective": 55,
-    "restraint": 0,
-    "statDir": 100,
-    "format": 70,
-    "locAcc": 90,
-    "refusals": 0
-  },
-  {
     "model": "gemma26b-heretic",
     "date": "2026-07-17",
     "tier": "B",
@@ -68,11 +57,33 @@
   {
     "model": "lunaris-8b-v1",
     "date": "2026-07-17",
-    "tier": "C",
-    "objective": 43,
+    "tier": "B",
+    "objective": 50,
     "restraint": 0,
     "statDir": 50,
-    "format": 80,
+    "format": 100,
+    "locAcc": 90,
+    "refusals": 0
+  },
+  {
+    "model": "anubis-mini-8b",
+    "date": "2026-07-17",
+    "tier": "B",
+    "objective": 50,
+    "restraint": 0,
+    "statDir": 50,
+    "format": 100,
+    "locAcc": 90,
+    "refusals": 0
+  },
+  {
+    "model": "rocinante-x-12b",
+    "date": "2026-07-17",
+    "tier": "C",
+    "objective": 44,
+    "restraint": 0,
+    "statDir": 100,
+    "format": 40,
     "locAcc": 100,
     "refusals": 0
   },
@@ -88,48 +99,48 @@
     "refusals": 0
   },
   {
+    "model": "stheno-8b-v34",
+    "date": "2026-07-17",
+    "tier": "C",
+    "objective": 40,
+    "restraint": 0,
+    "statDir": 50,
+    "format": 70,
+    "locAcc": 100,
+    "refusals": 0
+  },
+  {
     "model": "impish-llama-4b",
     "date": "2026-07-17",
     "tier": "C",
-    "objective": 34,
+    "objective": 30,
     "restraint": 0,
     "statDir": 100,
-    "format": 10,
-    "locAcc": 100,
+    "format": 0,
+    "locAcc": 90,
+    "refusals": 0
+  },
+  {
+    "model": "gemmasutra-small-4b",
+    "date": "2026-07-17",
+    "tier": "C",
+    "objective": 18,
+    "restraint": 0,
+    "statDir": 0,
+    "format": 50,
+    "locAcc": 90,
     "refusals": 0
   },
   {
     "model": "wingless-imp-8b",
     "date": "2026-07-17",
     "tier": "C",
-    "objective": 33,
-    "restraint": 0,
-    "statDir": 50,
-    "format": 50,
-    "locAcc": 90,
-    "refusals": 0
-  },
-  {
-    "model": "rocinante-x-12b",
-    "date": "2026-07-17",
-    "tier": "C",
-    "objective": 14,
+    "objective": 7,
     "restraint": 0,
     "statDir": 0,
-    "format": 40,
-    "locAcc": 100,
+    "format": 20,
+    "locAcc": 90,
     "refusals": 0
-  },
-  {
-    "model": "stheno-8b-v34",
-    "date": "2026-07-17",
-    "tier": "C ⚠",
-    "objective": 36,
-    "restraint": 0,
-    "statDir": 50,
-    "format": 60,
-    "locAcc": 100,
-    "refusals": 1
   },
   {
     "model": "qwen3-4b-rpg-roleplay",
@@ -146,22 +157,11 @@
     "model": "gemmasutra-mini-2b",
     "date": "2026-07-17",
     "tier": "REJECT (routing)",
-    "objective": 29,
-    "restraint": 0,
-    "statDir": 50,
-    "format": 40,
-    "locAcc": 60,
-    "refusals": 0
-  },
-  {
-    "model": "gemmasutra-small-4b",
-    "date": "2026-07-17",
-    "tier": "REJECT (routing)",
-    "objective": 28,
+    "objective": 0,
     "restraint": 0,
     "statDir": 0,
-    "format": 80,
-    "locAcc": 70,
+    "format": 0,
+    "locAcc": 60,
     "refusals": 0
   }
 ]

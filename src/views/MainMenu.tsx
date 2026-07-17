@@ -1,4 +1,5 @@
 import { randomUUID } from "@/lib/uuid";
+import { DEFAULT_WORLDS, isDefaultWorldId } from "@/lib/defaultWorlds";
 import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { useGameData } from '../contexts/GameDataContext';
 import { useDevRoute } from '../lib/devRouter';
@@ -23,6 +24,8 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import CharacterCustomization, { defaultCharacterData } from './CharacterCustomization';
 import { SettingsModal } from '../components/modals/SettingsModal';
+import { AiSetupGate, type GateReason } from '../components/AiSetupGate';
+import { useAiReachable } from '@/lib/useAiReachable';
 import { LoadGameDialog } from '../components/modals/LoadGameDialog';
 import WorldEditor from './WorldEditor';
 import {
@@ -82,13 +85,13 @@ interface MainMenuProps {
   onLoadSaveGame: (saveId: string) => void;
   /** Easter-egg: replay the first-run welcome intro (snappy). Wired to the footer version click. */
   onReplayIntro?: () => void;
+  /** True while the welcome intro is playing, so the AI setup gate waits its turn instead of racing it. */
+  introActive?: boolean;
 }
 
-const defaultWorlds = [
-  { id: 'rampage', defaultName: 'City Rampage' },
-  { id: 'valentines', defaultName: 'Valentines Survival' },
-  { id: 'drone', defaultName: 'Reincarnated Drone' }
-];
+/** Set once the first-run AI setup prompt has been offered, so it never nags again. The play gate still fires. */
+const AI_SETUP_SEEN_KEY = 'FORMAMORPH_aiSetupSeen';
+
 
 // User-defined world/dictionary ordering is a UI preference, persisted as an ordered list of ids.
 const WORLD_ORDER_KEY = 'FORMAMORPH_worldOrder';
@@ -125,7 +128,7 @@ const applyWorldOrder = <T extends { id: string }>(list: T[], order: string[]): 
 };
 
 
-const MainMenu = ({ onStartGame, onLoadSaveGame, onReplayIntro }: MainMenuProps) => {
+const MainMenu = ({ onStartGame, onLoadSaveGame, onReplayIntro, introActive = false }: MainMenuProps) => {
   const {
     traits, traitGroups, stats, locations, loadWorldData,
     dictionaries: worldBooks,
@@ -164,6 +167,9 @@ const MainMenu = ({ onStartGame, onLoadSaveGame, onReplayIntro }: MainMenuProps)
   const [selectedCharacters, setSelectedCharacters] = useState<Entity[] | null>(null);
   const [showCodeModal, setShowCodeModal] = useState(false);
   const [showSettings, setShowSettings] = useState(false);
+  // Forces Settings to a specific tab when something deep-links into it (the AI setup gate → Endpoint).
+  // Cleared on close so the next deep-link re-triggers the modal's initialTab effect.
+  const [settingsTab, setSettingsTab] = useState<string | undefined>(undefined);
   const [showLoadDialog, setShowLoadDialog] = useState(false);
   // DEV dev-router: open Settings (or the Load menu) when the hash asks. Tree-shaken in prod.
   const devRoute = useDevRoute();
@@ -175,7 +181,43 @@ const MainMenu = ({ onStartGame, onLoadSaveGame, onReplayIntro }: MainMenuProps)
     if (devRoute?.modal === 'backup') setShowBackup(true);
     if (devRoute?.modal === 'worldEditor') setShowWorldEditor(true);
     if (devRoute?.modal === 'avatar') setShowCharacterCustomization(true);
+    if (devRoute?.modal === 'aiSetup') setGate({ reason: 'firstRun' });
   }, [devRoute?.modal]);
+
+  // --- AI setup gate -------------------------------------------------------------------------------
+  // Nothing can play until the configured AI answers. The gate offers the remedy that fits: download a
+  // model (bundled engine) or fix the endpoint (anything else).
+  const { reachable, mode, blocker } = useAiReachable();
+  const [gate, setGate] = useState<{ reason: GateReason } | null>(null);
+  // The launch the gate interrupted, replayed once the engine comes up.
+  const pendingLaunch = useRef<(() => void) | null>(null);
+
+  // Run a launch now, or hold it and raise the gate. Every play/resume path goes through this.
+  const guardLaunch = (launch: () => void) => {
+    if (reachable === false) {
+      pendingLaunch.current = launch;
+      setGate({ reason: 'play' });
+      return;
+    }
+    launch();
+  };
+
+  const handleGateReady = useCallback(() => {
+    setGate(null);
+    const launch = pendingLaunch.current;
+    pendingLaunch.current = null;
+    launch?.();
+  }, []);
+
+  // First-run nudge: once the intro is done and we know the bundled engine has nothing to run, offer the
+  // download up front rather than letting them discover it by hitting a dead turn. Skippable, and only
+  // ever shown once — the play gate is what actually enforces it.
+  useEffect(() => {
+    if (introActive || gate || reachable !== false || mode !== 'local') return;
+    if (localStorage.getItem(AI_SETUP_SEEN_KEY)) return;
+    localStorage.setItem(AI_SETUP_SEEN_KEY, '1');
+    setGate({ reason: 'firstRun' });
+  }, [introActive, gate, reachable, mode]);
 
   // Cold-load: fetch the save's world into GameData, then hand the save id to App to enter the game.
   // Orphaned saves are blocked inside the dialog, so `worldId` is always an installed world here.
@@ -185,7 +227,7 @@ const MainMenu = ({ onStartGame, onLoadSaveGame, onReplayIntro }: MainMenuProps)
       const world = await WorldStorageService.getWorldData(worldId) as World;
       loadWorldData(world);
       setShowLoadDialog(false);
-      onLoadSaveGame(saveId);
+      guardLaunch(() => onLoadSaveGame(saveId));
     } catch (error) {
       console.error('Cold-load failed:', error);
       toast.error("Couldn't load that save's world.");
@@ -285,7 +327,7 @@ const MainMenu = ({ onStartGame, onLoadSaveGame, onReplayIntro }: MainMenuProps)
       const mapped = worldMetadata.map(world => ({
         ...world,
         isLoading: false,
-        defaultName: defaultWorlds.find(dw => dw.id === world.id)?.defaultName || world.name
+        defaultName: DEFAULT_WORLDS.find(dw => dw.id === world.id)?.defaultName || world.name
       }));
       setWorlds(applyWorldOrder(mapped, loadWorldOrder()));
     } catch (error) {
@@ -304,10 +346,10 @@ const MainMenu = ({ onStartGame, onLoadSaveGame, onReplayIntro }: MainMenuProps)
         await WorldStorageService.initialize();
         const existingWorlds = await WorldStorageService.getWorldMetadata();
         const firstRun = existingWorlds.length === 0;
-        const { failed, updated } = await WorldStorageService.loadDefaultWorlds(defaultWorlds);
+        const { failed, updated } = await WorldStorageService.loadDefaultWorlds(DEFAULT_WORLDS);
         if (firstRun) {
           if (failed.length === 0) toast.success("Loaded default worlds");
-          else if (failed.length < defaultWorlds.length) toast.error(`Some default worlds failed to load: ${failed.join(", ")}`);
+          else if (failed.length < DEFAULT_WORLDS.length) toast.error(`Some default worlds failed to load: ${failed.join(", ")}`);
           else toast.error("Failed to load default worlds");
         }
         if (updated.length > 0) {
@@ -541,7 +583,7 @@ const MainMenu = ({ onStartGame, onLoadSaveGame, onReplayIntro }: MainMenuProps)
     if (selectedWorld!.data.worldOverview?.use3DModel) {
       setShowCharacterCustomization(true);
     } else {
-      onStartGame(traitIds, null, true, locationId, dicts, chars);
+      guardLaunch(() => onStartGame(traitIds, null, true, locationId, dicts, chars));
     }
   };
 
@@ -835,7 +877,7 @@ const MainMenu = ({ onStartGame, onLoadSaveGame, onReplayIntro }: MainMenuProps)
       <CharacterCustomization
         onCharacterCustomized={(customizedData) => {
           setShowCharacterCustomization(false);
-          onStartGame(selectedTraits, customizedData, true, selectedLocationId, selectedDictionaries, selectedCharacters);
+          guardLaunch(() => onStartGame(selectedTraits, customizedData, true, selectedLocationId, selectedDictionaries, selectedCharacters));
         }}
         onBack={backFrom('avatar')}
         onAbort={() => {
@@ -945,7 +987,22 @@ const MainMenu = ({ onStartGame, onLoadSaveGame, onReplayIntro }: MainMenuProps)
         </div>
       </div>
 
-      <SettingsModal isOpen={showSettings} onOpenChange={setShowSettings} initialTab={devRoute?.tab} initialPromptTab={devRoute?.subtab} />
+      <SettingsModal
+        isOpen={showSettings}
+        onOpenChange={(v) => { setShowSettings(v); if (!v) setSettingsTab(undefined); }}
+        initialTab={settingsTab ?? devRoute?.tab}
+        initialPromptTab={devRoute?.subtab}
+        onWorldsRestored={refreshWorlds}
+      />
+      <AiSetupGate
+        open={gate !== null}
+        reason={gate?.reason ?? 'firstRun'}
+        mode={mode}
+        blocker={blocker}
+        onOpenChange={(v) => { if (!v) { pendingLaunch.current = null; setGate(null); } }}
+        onOpenSettings={() => { setGate(null); setSettingsTab('endpoint'); setShowSettings(true); }}
+        onReady={handleGateReady}
+      />
       <BackupRestoreDialog open={showBackup} onOpenChange={setShowBackup} />
 
       {/* Main-menu Load Game: no current world (root view), cold-loads the chosen save into its own world. */}
@@ -1237,7 +1294,7 @@ const MainMenu = ({ onStartGame, onLoadSaveGame, onReplayIntro }: MainMenuProps)
           <div className="mt-4 flex-1 min-h-0 flex flex-col">
             {/* Trust a pristine bundled default (id is unspoofable — imports/downloads always re-mint ids),
                 so our own example worlds don't warn. An edited default (`dirty`) forfeits that trust. */}
-            {hasStatWithCode(stats) && !(defaultWorlds.some(dw => dw.id === selectedWorld?.id) && !selectedWorld?.dirty) && (
+            {hasStatWithCode(stats) && !(isDefaultWorldId(selectedWorld?.id ?? '') && !selectedWorld?.dirty) && (
               <div className="mb-4 shrink-0 p-3 bg-warning/10 border border-warning/30 rounded-md flex items-start">
                 <AlertTriangle className="h-5 w-5 text-warning mr-2 flex-shrink-0 mt-0.5" />
                 <div className="text-sm text-warning flex-grow">
@@ -1274,7 +1331,7 @@ const MainMenu = ({ onStartGame, onLoadSaveGame, onReplayIntro }: MainMenuProps)
                       Default worlds were none of these, so they show a dash. */}
                   {(() => {
                     const id: string = selectedWorld?.id ?? '';
-                    const isDefault = defaultWorlds.some(dw => dw.id === id);
+                    const isDefault = isDefaultWorldId(id);
                     const isImported = id.startsWith('uploaded-');
                     const label = selectedWorld?.downloadedAt ? "Downloaded" : isImported ? "Imported" : "Created";
                     const value = isDefault ? undefined : (selectedWorld?.downloadedAt ?? selectedWorld?.createdAt);
@@ -1331,7 +1388,7 @@ const MainMenu = ({ onStartGame, onLoadSaveGame, onReplayIntro }: MainMenuProps)
                       onClick={() => {
                         // For uploaded worlds, use the worldData from context
                         const currentWorldData = selectedWorld!.data;
-                        onStartGame(selectedTraits, currentWorldData.worldOverview?.use3DModel ? defaultCharacterData : null, true);
+                        guardLaunch(() => onStartGame(selectedTraits, currentWorldData.worldOverview?.use3DModel ? defaultCharacterData : null, true));
                       }}
                     >
                       <ChevronLast className="h-4 w-4 landscape:mr-2" />
