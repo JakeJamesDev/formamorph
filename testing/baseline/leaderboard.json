@@ -1,12 +1,67 @@
 [
   {
-    "model": "silver-siren-12b",
-    "date": "2026-07-16",
+    "model": "meromero-31b",
+    "date": "2026-07-17",
+    "tier": "A",
+    "objective": 77,
+    "restraint": 33,
+    "statDir": 100,
+    "format": 100,
+    "locAcc": 100,
+    "refusals": 0
+  },
+  {
+    "model": "gemma31b-heretic",
+    "date": "2026-07-17",
+    "tier": "A",
+    "objective": 77,
+    "restraint": 33,
+    "statDir": 100,
+    "format": 100,
+    "locAcc": 100,
+    "refusals": 0
+  },
+  {
+    "model": "meromero-26b",
+    "date": "2026-07-17",
+    "tier": "B",
+    "objective": 65,
+    "restraint": 0,
+    "statDir": 100,
+    "format": 100,
+    "locAcc": 100,
+    "refusals": 0
+  },
+  {
+    "model": "gemma26b-heretic",
+    "date": "2026-07-17",
     "tier": "B",
     "objective": 50,
     "restraint": 0,
     "statDir": 50,
     "format": 100,
+    "locAcc": 100,
+    "refusals": 0
+  },
+  {
+    "model": "silver-siren-12b",
+    "date": "2026-07-17",
+    "tier": "B",
+    "objective": 50,
+    "restraint": 0,
+    "statDir": 50,
+    "format": 100,
+    "locAcc": 100,
+    "refusals": 0
+  },
+  {
+    "model": "mistral-heretic",
+    "date": "2026-07-17",
+    "tier": "C",
+    "objective": 41,
+    "restraint": 0,
+    "statDir": 100,
+    "format": 30,
     "locAcc": 100,
     "refusals": 0
   }

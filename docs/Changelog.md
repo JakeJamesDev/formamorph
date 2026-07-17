@@ -2,7 +2,7 @@
 
 All notable changes to Formamorph. This fork's first line is **2.0.0** — a full TypeScript rebuild of the upstream JavaScript app ([FieryLionite's Formamorph](https://fierylion.itch.io/formamorph), ~v1.2) — with feature parity as the baseline plus new features on top.
 
-> ✅ **2.0.0 – 2.4.1 are released** (collapsed below). New work lands under **🚧 In Progress** — an unnumbered section, so changes accumulate without pinning a version. When a batch earns a release its section is marked **Released** and collapsed, and a fresh In Progress opens. `package.json` reads **2.4.1** — the latest released version.
+> ✅ **2.0.0 – 2.4.2 are released** (collapsed below). New work lands under **🚧 In Progress** — an unnumbered section, so changes accumulate without pinning a version. When a batch earns a release its section is marked **Released** and collapsed, and a fresh In Progress opens. `package.json` reads **2.4.2** — the latest released version.
 
 Each release groups changes as **Major** / **Minor**, then **Added** / **Removed** / **Fixed**, and within those by audience: 👤 user-facing · 🛠️ developer tooling · ⚙️ backend / invisible.
 
@@ -10,7 +10,21 @@ Each release groups changes as **Major** / **Minor**, then **Added** / **Removed
 
 ## 🚧 In Progress
 
-_Unreleased — new work accumulates here until it earns a version bump. The next batch will pin its own version; `package.json` reads **2.4.1** (just released below)._
+_Unreleased — new work accumulates here until it earns a version bump. The next batch will pin its own version; `package.json` reads **2.4.2** (just released below)._
+
+---
+
+<details>
+<summary><strong>✅ 2.4.2 — Released 2026-07-16</strong> — a one-fix release: each world shows its own Readme again, instead of every world showing the last one you edited (click to expand)</summary>
+
+### Minor Changes
+
+#### 🐛 Fixed
+
+- **👤 User-facing**
+  - **Each world shows its own Readme again.** Once you'd written or edited a Readme, that same text kept appearing when you entered *every other* world, and a world's own Readme never showed at all. Loading a world now clears the previous world's details instead of carrying them over. This also means editing a world can no longer save someone else's Readme into it — if a world picked up the wrong Readme this way, open it in the editor and correct the text, then save.
+
+</details>
 
 ---
 

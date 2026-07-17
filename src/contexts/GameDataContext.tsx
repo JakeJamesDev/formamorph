@@ -259,9 +259,12 @@ function useProvideGameData() {
       systemPrompt: overview.systemPrompt || defaultOverview.systemPrompt,
       use3DModel: typeof overview.use3DModel === 'boolean' ? overview.use3DModel : defaultOverview.use3DModel,
       tags: Array.isArray(overview.tags) ? overview.tags : defaultOverview.tags,
-      customPlayerVRM: overview.customPlayerVRM || defaultOverview.customPlayerVRM
+      customPlayerVRM: overview.customPlayerVRM || defaultOverview.customPlayerVRM,
+      readme: overview.readme || defaultOverview.readme
     };
-    updateWorldOverview(normalizedOverview);
+    // Replace, never merge: a merge lets a field the normalizer doesn't set survive from the previously
+    // loaded world, leaking it into this one and into the next saveWorld.
+    setWorldOverview(normalizedOverview);
 
     // Load other data with array validation
     const nextStats = Array.isArray(worldData.stats) ? worldData.stats : [];
@@ -292,7 +295,7 @@ function useProvideGameData() {
     ));
 
     return isDefault;
-  }, [updateWorldOverview, setStats, setLocations, setEntities, setTraits, setStatUpdates, setDictionaries]);
+  }, [setWorldOverview, setStats, setLocations, setEntities, setTraits, setStatUpdates, setDictionaries]);
 
   const isWorldDirty = useMemo(
     () => serializeWorld(worldOverview, stats, locations, entities, entityGroups, traits, traitGroups, statUpdates, dictionaries, placeholders) !== savedSnapshot,
