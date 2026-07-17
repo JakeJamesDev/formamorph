@@ -45,6 +45,7 @@ const EntityFields = ({ value, onChange, placeholders = [], locationOptions, sel
           value={value.playerDescription || ''}
           onChange={(v) => onChange('playerDescription', v)}
           placeholders={placeholders}
+          resizable
         />
       </div>
       <div className="space-y-2">
@@ -53,6 +54,7 @@ const EntityFields = ({ value, onChange, placeholders = [], locationOptions, sel
           value={value.aiDescription || ''}
           onChange={(v) => onChange('aiDescription', v)}
           placeholders={placeholders}
+          resizable
         />
       </div>
       <div className="space-y-2">
@@ -69,6 +71,7 @@ const EntityFields = ({ value, onChange, placeholders = [], locationOptions, sel
           value={value.aiSummary || ''}
           onChange={(v) => onChange('aiSummary', v)}
           placeholders={placeholders}
+          resizable
         />
         <p className="text-sm text-muted-foreground">
           A one-line version used where the full description is too long — keep it brief.

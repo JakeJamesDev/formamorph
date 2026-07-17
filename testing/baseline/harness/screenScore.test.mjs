@@ -9,7 +9,7 @@
 
 import { describe, it, expect } from 'vitest';
 import {
-  scoreDump, tierFor, isEmptyStat, hasRefusalMarker, cleanLoc, pickResponse,
+  scoreDump, tierFor, isEmptyStat, hasRefusalMarker, cleanLoc, pickResponse, aggregateScores,
 } from './screenScore.mjs';
 
 /** Build one turn from a map of requestType -> reply. */
@@ -243,5 +243,63 @@ describe('scoreDump', () => {
     expect(s.vigDen).toBe(1);
     expect(s.locDen).toBe(9);
     expect(s.chDen).toBe(9);
+  });
+});
+
+describe('aggregateScores', () => {
+  // A seed's shape, only the fields the aggregate reads.
+  const seed = (o = {}) => ({
+    restraint: 0, statDir: 100, format: 100, locAcc: 100, objective: 65,
+    refus: 0, gateDen: 4, ...o,
+  });
+
+  it('throws on an empty list rather than reporting a zeroed verdict', () => {
+    expect(() => aggregateScores([])).toThrow(/no scores/);
+    expect(() => aggregateScores(null)).toThrow(/no scores/);
+  });
+
+  it('means each axis across seeds and reports the spread', () => {
+    const a = aggregateScores([
+      seed({ objective: 40, format: 60, locAcc: 100 }),
+      seed({ objective: 60, format: 100, locAcc: 90 }),
+      seed({ objective: 50, format: 80, locAcc: 100 }),
+    ]);
+    expect(a.n).toBe(3);
+    expect(a.objective).toBe(50);
+    expect(a.format).toBeCloseTo(80, 5);
+    expect(a.locAcc).toBeCloseTo(96.67, 1);
+    expect(a.objMin).toBe(40);
+    expect(a.objMax).toBe(60);
+    expect(a.tier).toBe('B');
+  });
+
+  it('evaluates the routing gate on the mean, not on any single seed', () => {
+    // One bad seed (70%) must not reject a model that routes fine on average — this is exactly the flip
+    // that made n=1 verdicts untrustworthy.
+    const ok = aggregateScores([seed({ locAcc: 70 }), seed({ locAcc: 100 }), seed({ locAcc: 100 })]);
+    expect(ok.locAcc).toBeCloseTo(90, 5);
+    expect(ok.locGate).toBe(true);
+    expect(ok.tier).not.toMatch(/REJECT/);
+
+    const bad = aggregateScores([seed({ locAcc: 60 }), seed({ locAcc: 70 }), seed({ locAcc: 80 })]);
+    expect(bad.locGate).toBe(false);
+    expect(bad.tier).toBe('REJECT (routing)');
+  });
+
+  it('flags willingness if any seed tripped a marker, and sums the denominators', () => {
+    const a = aggregateScores([seed(), seed({ refus: 1 }), seed()]);
+    expect(a.refus).toBe(1);
+    expect(a.gateDen).toBe(12);
+    expect(a.willingnessPass).toBe(false);
+    expect(a.tier).toMatch(/⚠$/);
+  });
+
+  it('passes a single seed through unchanged', () => {
+    const a = aggregateScores([seed({ objective: 77 })]);
+    expect(a.n).toBe(1);
+    expect(a.objective).toBe(77);
+    expect(a.objMin).toBe(77);
+    expect(a.objMax).toBe(77);
+    expect(a.tier).toBe('A');
   });
 });

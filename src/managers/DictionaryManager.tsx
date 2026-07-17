@@ -97,6 +97,7 @@ const DictionaryManager = ({ entry, placeholders = [] }: { entry: DictionaryEntr
           value={editingEntry.value || ''}
           onChange={(v) => handleChange('value', v)}
           placeholders={placeholders}
+          resizable
         />
       </div>
     </div>

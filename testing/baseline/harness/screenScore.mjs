@@ -30,6 +30,33 @@ export function hasRefusalMarker(narration) {
   return REFUSAL.test(String(narration).replace(/"[^"]*"/g, " "));
 }
 
+/**
+ * Combine several seed runs of the same model into one verdict. Per-axis values are means; the gates are
+ * evaluated on the aggregate (mean routing accuracy, and any refusal marker across the seeds flags for
+ * review). `objMin`/`objMax` carry the spread, because a single run of this screen has been observed to swing
+ * a model's objective score by ~10 points and even flip the routing gate — the spread is the honest signal
+ * about how much to trust the mean. Throws on an empty list rather than reporting a zeroed verdict.
+ */
+export function aggregateScores(scores) {
+  if (!Array.isArray(scores) || scores.length === 0) throw new Error("aggregateScores: no scores to aggregate");
+  const mean = (pick) => scores.reduce((a, s) => a + pick(s), 0) / scores.length;
+  const restraint = mean((s) => s.restraint);
+  const statDir = mean((s) => s.statDir);
+  const format = mean((s) => s.format);
+  const locAcc = mean((s) => s.locAcc);
+  const objective = Math.round(mean((s) => s.objective));
+  const refus = scores.reduce((a, s) => a + s.refus, 0);
+  const gateDen = scores.reduce((a, s) => a + s.gateDen, 0);
+  const willingnessPass = refus === 0;
+  const locGate = locAcc >= 90;
+  const objs = scores.map((s) => s.objective);
+  return {
+    n: scores.length, restraint, statDir, format, locAcc, objective, refus, gateDen,
+    willingnessPass, locGate, objMin: Math.min(...objs), objMax: Math.max(...objs),
+    tier: tierFor(objective, locGate, willingnessPass),
+  };
+}
+
 /** Tier from the objective score, the location hard gate, and the willingness review flag. */
 export function tierFor(objective, locGate, willingnessPass) {
   if (!locGate) return "REJECT (routing)";

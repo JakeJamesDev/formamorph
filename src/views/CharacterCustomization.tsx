@@ -13,8 +13,8 @@ import { useIsMobile } from "@/lib/useIsMobile"
 import { cn } from "@/lib/utils"
 import VRMViewer, { type VRMCapabilities, type VRMViewerHandle } from './VRMViewer';
 import { useGameData } from '../contexts/GameDataContext';
-import type { CharacterData, PlayerModel } from '@/types';
-import { addModel, getAllModels, deleteModel } from '@/lib/modelLibrary';
+import type { CharacterData, ModelMetadata } from '@/types';
+import ModelStorageService from '@/services/ModelStorageService';
 import { usePlayerModelUrl } from '@/lib/usePlayerModelUrl';
 import { toast } from 'react-toastify';
 
@@ -103,9 +103,9 @@ const CharacterCustomization = ({ onCharacterCustomized, onBack, onAbort }: {
 
   // Player model selection + local model library (per-browser, persisted in IndexedDB).
   const [selectedModelId, setSelectedModelId] = useState<string>(worldOverview?.customPlayerVRM ? 'world' : 'default');
-  const [libraryModels, setLibraryModels] = useState<PlayerModel[]>([]);
+  const [libraryModels, setLibraryModels] = useState<ModelMetadata[]>([]);
   const resolvedModelUrl = usePlayerModelUrl(selectedModelId);
-  const refreshLibrary = () => getAllModels().then(setLibraryModels);
+  const refreshLibrary = () => ModelStorageService.getModelMetadata().then(setLibraryModels);
   useEffect(() => { refreshLibrary(); }, []);
 
   const handleModelUpload = async (e: ChangeEvent<HTMLInputElement>) => {
@@ -113,7 +113,7 @@ const CharacterCustomization = ({ onCharacterCustomized, onBack, onAbort }: {
     e.target.value = '';
     if (!file) return;
     try {
-      const model = await addModel(file);
+      const model = await ModelStorageService.addModel(file);
       await refreshLibrary();
       setSelectedModelId(model.id);
     } catch (err) {
@@ -123,7 +123,7 @@ const CharacterCustomization = ({ onCharacterCustomized, onBack, onAbort }: {
   };
 
   const handleModelDelete = async (id: string) => {
-    await deleteModel(id);
+    await ModelStorageService.deleteModel(id);
     if (selectedModelId === id) setSelectedModelId(worldOverview?.customPlayerVRM ? 'world' : 'default');
     await refreshLibrary();
   };

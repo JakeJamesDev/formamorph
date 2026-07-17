@@ -26,6 +26,7 @@ const WorldDetailsManager = () => {
           vocabulary={plainVocab}
           markdown
           placeholder="Enter world description..."
+          resizable
         />
       </div>
 
@@ -48,6 +49,7 @@ const WorldDetailsManager = () => {
           value={worldOverview.systemPrompt || ''}
           onChange={(systemPrompt) => updateWorldOverview({ systemPrompt })}
           placeholders={placeholders}
+          resizable
         />
       </div>
 
@@ -60,6 +62,7 @@ const WorldDetailsManager = () => {
           placeholders={placeholders}
           markdown
           placeholder="Shown to the player when they enter the world. Supports markdown."
+          resizable
         />
       </div>
     </div>
