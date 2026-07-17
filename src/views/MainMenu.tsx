@@ -3,13 +3,14 @@ import { DEFAULT_WORLDS, isDefaultWorldId } from "@/lib/defaultWorlds";
 import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { useGameData } from '../contexts/GameDataContext';
 import { useDevRoute } from '../lib/devRouter';
+import { MAIN_MENU_CARD_TABS, type MainMenuCardTab } from './mainMenuTabs';
 import { toast } from 'react-toastify';
 import { ThemedToastContainer } from '@/components/ThemedToastContainer';
 import 'react-toastify/dist/ReactToastify.css';
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {ConfirmDialog} from "@/components/ConfirmDialog";
-import {FilePlus2, DoorOpen, Pencil, Github, AlertTriangle, Code, User, Import, Globe, LayoutGrid, GalleryThumbnails, Columns2, RectangleVertical, Menu, Earth, BookOpen, Upload, ChevronLast, MoreHorizontal } from "lucide-react";
+import {FilePlus2, DoorOpen, Pencil, Github, AlertTriangle, Code, User, Import, Globe, LayoutGrid, GalleryThumbnails, Columns2, RectangleVertical, Menu, Earth, BookOpen, Upload, ChevronLast, MoreHorizontal, PersonStanding } from "lucide-react";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { ImageZoomViewer } from "@/components/ImageZoomViewer";
 import { cn } from "@/lib/utils";
@@ -53,8 +54,9 @@ import { shouldShowCharacterStep } from '@/lib/characterSelection';
 import WorldStorageService from '../services/WorldStorageService';
 import DictionaryStorageService from '../services/DictionaryStorageService';
 import EntityStorageService from '../services/EntityStorageService';
+import ModelStorageService from '../services/ModelStorageService';
 import AuthService from '../services/AuthService';
-import type { World, Stat, CharacterData, Dictionary, DictionaryMetadata, Entity, EntityMetadata } from '@/types';
+import type { World, Stat, CharacterData, Dictionary, DictionaryMetadata, Entity, EntityMetadata, ModelMetadata } from '@/types';
 import { migrateWorld } from '@/lib/version';
 import { isDesktop } from '@/lib/imageGen/desktop';
 import { useIsMobile } from '@/lib/useIsMobile';
@@ -70,6 +72,7 @@ import { WorldDetailsColumn, DateTimeText, type WorldRecord } from "@/components
 import SortableWorldCard from "@/components/SortableWorldCard";
 import DictionaryEditorModal from "@/components/modals/DictionaryEditorModal";
 import EntityEditorModal from "@/components/modals/EntityEditorModal";
+import { ModelDetailsModal } from "@/components/modals/ModelDetailsModal";
 import { ManageUsersDialog } from "@/components/menu/ManageUsersDialog";
 import { AuthModals } from "@/components/menu/AuthModals";
 import { PublishModal } from "@/components/menu/PublishModal";
@@ -97,6 +100,8 @@ const AI_SETUP_SEEN_KEY = 'FORMAMORPH_aiSetupSeen';
 const WORLD_ORDER_KEY = 'FORMAMORPH_worldOrder';
 const DICTIONARY_ORDER_KEY = 'FORMAMORPH_dictionaryOrder';
 const ENTITY_ORDER_KEY = 'FORMAMORPH_entityOrder';
+const MODEL_ORDER_KEY = 'FORMAMORPH_modelOrder';
+
 
 // Responsive column counts for the card grids. Tailwind only emits classes it sees literally, so map each
 // count to its class string; the counts themselves are the single source of truth (the entity grid derives
@@ -147,7 +152,7 @@ const MainMenu = ({ onStartGame, onLoadSaveGame, onReplayIntro, introActive = fa
     WORLD_MODAL_COLLAPSED_KEY, false, boolCodec,
   );
   // Which content library the menu shows. Only "worlds" is populated for now; the rest swap to an empty view.
-  const [cardType, setCardType] = useState<'worlds' | 'entities' | 'dictionaries'>('worlds');
+  const [cardType, setCardType] = useState<MainMenuCardTab>('worlds');
   const toggleWorldModalCollapsed = () => setWorldModalCollapsed((prev) => !prev);
   const [showWorldModal, setShowWorldModal] = useState(false);
   // World Editor as an in-place modal (keeps MainMenu mounted so it animates and only the world grid
@@ -185,7 +190,17 @@ const MainMenu = ({ onStartGame, onLoadSaveGame, onReplayIntro, introActive = fa
     // Library editors open on a blank draft — nothing is stored, so these are reachable on a fresh profile.
     if (devRoute?.modal === 'entityEditor') setDraftEntity({ id: randomUUID(), name: 'New Character' });
     if (devRoute?.modal === 'dictionaryEditor') setDraftDictionary({ id: randomUUID(), name: 'New Dictionary', enabled: true, entries: [] });
-  }, [devRoute?.modal]);
+    // Unlike the editors above, a model preview needs a real model — open the first one, if the library has any.
+    if (devRoute?.modal === 'modelDetails') {
+      setCardType('models');
+      ModelStorageService.getModelMetadata().then(([first]) => first && setPreviewModelId(first.id));
+    }
+    // With no modal named, `tab` selects the library's card type — the switcher is a Radix Tabs list, which
+    // doesn't answer synthetic clicks, so this is the only way to reach a grid from a preview.
+    if (!devRoute?.modal && devRoute?.tab && (MAIN_MENU_CARD_TABS as readonly string[]).includes(devRoute.tab)) {
+      setCardType(devRoute.tab as typeof cardType);
+    }
+  }, [devRoute?.modal, devRoute?.tab]);
 
   // --- AI setup gate -------------------------------------------------------------------------------
   // Nothing can play until the configured AI answers. The gate offers the remedy that fits: download a
@@ -239,6 +254,7 @@ const MainMenu = ({ onStartGame, onLoadSaveGame, onReplayIntro, introActive = fa
   const fileInputRef = useRef<HTMLInputElement | null>(null);
   const dictionaryImportRef = useRef<HTMLInputElement | null>(null);
   const entityImportRef = useRef<HTMLInputElement | null>(null);
+  const modelImportRef = useRef<HTMLInputElement | null>(null);
   const [worlds, setWorlds] = useState<WorldRecord[]>([]);
   const [isLoadingWorlds, setIsLoadingWorlds] = useState(true);
   // Local dictionary library (metadata only) shown on the Dictionaries tab.
@@ -252,6 +268,11 @@ const MainMenu = ({ onStartGame, onLoadSaveGame, onReplayIntro, introActive = fa
   const [entities, setEntities] = useState<EntityMetadata[]>([]);
   const [isLoadingEntities, setIsLoadingEntities] = useState(true);
   const [entityToDelete, setEntityToDelete] = useState<string | null>(null);
+  // Local VRM library (metadata only) shown on the Models tab.
+  const [models, setModels] = useState<ModelMetadata[]>([]);
+  const [isLoadingModels, setIsLoadingModels] = useState(true);
+  const [modelToDelete, setModelToDelete] = useState<string | null>(null);
+  const [previewModelId, setPreviewModelId] = useState<string | null>(null);
   const [editingEntityId, setEditingEntityId] = useState<string | null>(null);
   // A blank character being authored but not yet saved (New Entity → editor, persisted only on Save).
   const [draftEntity, setDraftEntity] = useState<Entity | null>(null);
@@ -382,6 +403,41 @@ const MainMenu = ({ onStartGame, onLoadSaveGame, onReplayIntro, introActive = fa
   }, []);
 
   useEffect(() => { refreshDictionaries(); }, [refreshDictionaries]);
+
+  // Load the local model library metadata. Reused on mount and after an import or delete.
+  const refreshModels = useCallback(async () => {
+    try {
+      await ModelStorageService.initialize();
+      const metadata = await ModelStorageService.getModelMetadata();
+      setModels(applyWorldOrder(metadata, loadOrder(MODEL_ORDER_KEY)));
+    } catch (error) {
+      console.error('Error loading models:', error);
+    } finally {
+      setIsLoadingModels(false);
+    }
+  }, []);
+
+  useEffect(() => { refreshModels(); }, [refreshModels]);
+
+  // Fill in thumbnails for models that don't have one yet, one at a time so a grid of un-thumbnailed models
+  // doesn't try to hold several WebGL contexts at once. Each card updates in place as its picture arrives;
+  // models whose render fails are marked in storage, so this settles rather than retrying every visit.
+  useEffect(() => {
+    if (cardType !== 'models') return;
+    const pending = models.filter((model) => !model.thumbnail);
+    if (!pending.length) return;
+    let cancelled = false;
+    (async () => {
+      for (const model of pending) {
+        if (cancelled) return;
+        const thumbnail = await ModelStorageService.ensureThumbnail(model.id);
+        if (cancelled || !thumbnail) continue;
+        setModels((prev) => prev.map((m) => (m.id === model.id ? { ...m, thumbnail } : m)));
+      }
+    })();
+    return () => { cancelled = true; };
+    // Keyed on the pending ids: re-runs when a model is added or removed, not when a thumbnail lands.
+  }, [cardType, models.map((m) => (m.thumbnail ? '' : m.id)).join(',')]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Load the local character library metadata. Reused on mount and after the editor modal closes.
   const refreshEntities = useCallback(async () => {
@@ -558,6 +614,32 @@ const MainMenu = ({ onStartGame, onLoadSaveGame, onReplayIntro, introActive = fa
     } else if (skipped) {
       toast.error(`Couldn't import ${skipped} character${skipped === 1 ? '' : 's'}.`);
     }
+  };
+
+  // Import one or more .vrm/.glb files into the model library. A file whose bytes are already stored asks
+  // before adding a second copy — these run to tens of megabytes, so a silent duplicate is expensive.
+  const importModelFile = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const files = filesFrom(event);
+    if (!files.length) return;
+
+    let stored = 0;
+    let skipped = 0;
+    for (const file of files) {
+      try {
+        const duplicate = await ModelStorageService.findDuplicate(file);
+        if (duplicate && !window.confirm(`"${duplicate.name}" is already in your library, and this file is identical.\n\nAdd it again anyway?`)) {
+          skipped++;
+          continue;
+        }
+        await ModelStorageService.addModel(file);
+        stored++;
+      } catch (error) {
+        console.error('Error importing model:', file.name, error);
+        skipped++;
+      }
+    }
+    await refreshModels();
+    importSummaryToast(stored, skipped, { one: 'model', many: 'models' });
   };
 
   // Open the editor on a blank character DRAFT — nothing is stored until the user hits Save in the editor.
@@ -825,9 +907,13 @@ const MainMenu = ({ onStartGame, onLoadSaveGame, onReplayIntro, introActive = fa
   const handleWorldDragEnd = makeDragEndHandler(setWorlds, WORLD_ORDER_KEY);
   const handleDictionaryDragEnd = makeDragEndHandler(setDictionaries, DICTIONARY_ORDER_KEY);
   const handleEntityDragEnd = makeDragEndHandler(setEntities, ENTITY_ORDER_KEY);
+  const handleModelDragEnd = makeDragEndHandler(setModels, MODEL_ORDER_KEY);
 
   // The singular noun for the selected card type — drives the contextual New/Import button labels.
-  const cardNoun = cardType === 'worlds' ? 'World' : cardType === 'entities' ? 'Entity' : 'Dictionary';
+  const cardNoun = cardType === 'worlds' ? 'World'
+    : cardType === 'entities' ? 'Entity'
+    : cardType === 'models' ? 'Model'
+    : 'Dictionary';
 
   // The menu's action buttons, shared between the full landscape row and the portrait hamburger popover.
   // New/Import are contextual to the selected card type; only Worlds is wired up so far.
@@ -842,16 +928,19 @@ const MainMenu = ({ onStartGame, onLoadSaveGame, onReplayIntro, introActive = fa
         </Button>
       )}
 
-      <Button
-        className="bg-gradient-to-r from-amber-200 to-yellow-200 hover:from-amber-300 hover:to-yellow-300 text-black font-bold"
-        onClick={() => {
-          if (cardType === 'worlds') handleCreateNewWorld();
-          else if (cardType === 'entities') handleCreateNewEntity();
-          else if (cardType === 'dictionaries') handleCreateNewDictionary();
-        }}
-      >
-        <FilePlus2 className="mr-2 h-4 w-4" /> New {cardNoun}
-      </Button>
+      {/* Models are import-only: a VRM is authored in modelling software, so there's nothing to create here. */}
+      {cardType !== 'models' && (
+        <Button
+          className="bg-gradient-to-r from-amber-200 to-yellow-200 hover:from-amber-300 hover:to-yellow-300 text-black font-bold"
+          onClick={() => {
+            if (cardType === 'worlds') handleCreateNewWorld();
+            else if (cardType === 'entities') handleCreateNewEntity();
+            else if (cardType === 'dictionaries') handleCreateNewDictionary();
+          }}
+        >
+          <FilePlus2 className="mr-2 h-4 w-4" /> New {cardNoun}
+        </Button>
+      )}
 
       <Button
         className="bg-gradient-to-r from-green-200 to-emerald-200 hover:from-green-300 hover:to-emerald-300 text-black font-bold"
@@ -859,6 +948,7 @@ const MainMenu = ({ onStartGame, onLoadSaveGame, onReplayIntro, introActive = fa
           if (cardType === 'worlds') fileInputRef.current?.click();
           else if (cardType === 'dictionaries') dictionaryImportRef.current?.click();
           else if (cardType === 'entities') entityImportRef.current?.click();
+          else if (cardType === 'models') modelImportRef.current?.click();
         }}
       >
         <Import className="mr-2 h-4 w-4" /> Import {cardNoun}
@@ -922,6 +1012,10 @@ const MainMenu = ({ onStartGame, onLoadSaveGame, onReplayIntro, introActive = fa
               <TabsTrigger value="dictionaries" aria-label="Dictionaries" title="Dictionaries">
                 <BookOpen className="h-5 w-5 min-[1040px]:hidden" />
                 <span className="hidden min-[1040px]:inline">Dictionaries</span>
+              </TabsTrigger>
+              <TabsTrigger value="models" aria-label="Models" title="Models">
+                <PersonStanding className="h-5 w-5 min-[1040px]:hidden" />
+                <span className="hidden min-[1040px]:inline">Models</span>
               </TabsTrigger>
             </TabsList>
           </Tabs>
@@ -1037,9 +1131,65 @@ const MainMenu = ({ onStartGame, onLoadSaveGame, onReplayIntro, introActive = fa
         multiple
         className="hidden"
       />
+      <input
+        type="file"
+        ref={modelImportRef}
+        onChange={importModelFile}
+        accept=".vrm,.glb"
+        multiple
+        className="hidden"
+      />
 
-      {/* Worlds, Entities, and Dictionaries are card grids. */}
-      {cardType === 'entities' ? (
+      {/* Worlds, Entities, Dictionaries, and Models are card grids. */}
+      {cardType === 'models' ? (
+        <ScrollArea className="flex-1 min-h-0 container mx-auto px-4">
+          {!isLoadingModels && models.length === 0 ? (
+            <div className="flex items-center justify-center py-16 px-4 select-none">
+              <p className="max-w-md text-center text-sm text-muted-foreground">
+                No models yet — use <span className="font-semibold">Import Model</span> to add a .vrm.
+              </p>
+            </div>
+          ) : (
+            <div className={`grid ${ENTITY_GRID_CLASS} gap-4`}>
+              <DndContext
+                sensors={worldSensors}
+                collisionDetection={closestCenter}
+                onDragEnd={handleModelDragEnd}
+                modifiers={[restrictToFirstScrollableAncestor]}
+                autoScroll={{
+                  canScroll: (el) =>
+                    el !== document.scrollingElement &&
+                    el !== document.body &&
+                    el !== document.documentElement,
+                }}
+              >
+                <SortableContext items={models.map((m) => m.id)} strategy={rectSortingStrategy}>
+                  {models.map((model) => (
+                    <SortableWorldCard
+                      key={model.id}
+                      world={{ id: model.id, name: model.name, thumbnail: model.thumbnail }}
+                      layout="grid"
+                      aspect="portrait"
+                      // A plain .glb carries no VRM metadata, so it has no licence and its morph targets
+                      // aren't guaranteed — say so on the card rather than letting it pass as a full VRM.
+                      badge={model.license?.metaVersion === null ? (
+                        <span
+                          className="rounded bg-overlay/70 px-1.5 py-0.5 text-[10px] font-semibold text-white"
+                          title="Plain glTF: no licence information, and morph targets aren't guaranteed."
+                        >
+                          GLB
+                        </span>
+                      ) : undefined}
+                      onSelect={setPreviewModelId}
+                      onDelete={setModelToDelete}
+                    />
+                  ))}
+                </SortableContext>
+              </DndContext>
+            </div>
+          )}
+        </ScrollArea>
+      ) : cardType === 'entities' ? (
         <ScrollArea className="flex-1 min-h-0 container mx-auto px-4">
           {!isLoadingEntities && entities.length === 0 ? (
             <div className="flex items-center justify-center py-16 px-4 select-none">
@@ -1495,6 +1645,29 @@ const MainMenu = ({ onStartGame, onLoadSaveGame, onReplayIntro, introActive = fa
             console.error('Error deleting character:', error);
           }
         }}
+      />
+
+      <ConfirmDialog
+        open={!!modelToDelete}
+        onOpenChange={(open) => !open && setModelToDelete(null)}
+        title="Delete Model"
+        description="Are you sure you want to delete this model? Anything using it falls back to the default model. This action cannot be undone."
+        onConfirm={async () => {
+          try {
+            await ModelStorageService.deleteModel(modelToDelete!);
+            setModels(prev => prev.filter(m => m.id !== modelToDelete));
+          } catch (error) {
+            // The library refuses to drop its last model; tell the player why rather than failing silently.
+            toast.error((error as Error).message);
+          } finally {
+            setModelToDelete(null);
+          }
+        }}
+      />
+
+      <ModelDetailsModal
+        model={models.find((m) => m.id === previewModelId) ?? null}
+        onClose={() => setPreviewModelId(null)}
       />
 
       <EntityEditorModal

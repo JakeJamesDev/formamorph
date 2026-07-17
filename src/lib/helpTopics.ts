@@ -36,16 +36,16 @@ They exist to give the AI a cast it can't lose track of. Left to itself the narr
 **What the AI sees.** An entity only reaches the AI when the player is somewhere it's assigned to — that assignment is the whole gate.
 
 - **Name** — always sent.
-- **AI-Facing Description** — the full description, and the main thing the AI knows about it.
+- **AI-Facing Description** — the full description, and the main thing the AI knows. **The player never sees this field**, so it's where a secret belongs: who the ferryman really works for, what's behind the door. The default prompt does ask the narrator to hold a name back until the player would have learned it — but that's a request to the AI, not a guarantee.
 - **AI-Facing Summary** — a one-line version for prompt slots where the full text is too long; the default prompt uses it for entities in reachable locations. Left blank, the full description is used instead.
-- **Player-Facing Description** — **never sent to the AI.** This is what the player reads in-game, so it's where spoilers and surprises are safe.
+- **Player-Facing Description** — what the player reads when they look at this entity. **Never sent to the AI**, so it costs no context — and anything you write here, the player simply knows.
 - **Type** — sent as a plain field.
 
 **Locations** decides where the entity can appear. Assign it to as many as you like; an entity in no location never reaches the AI at all.
 
-**A cast list, not a roll-call.** The prompt frames these as characters that *may* appear, so ten entities at a location doesn't force ten into the scene — the AI picks who's actually present.
+**The link lives on the location.** Assigning locations here just writes the entity into each of those locations' lists — so **deleting a location quietly drops its entities from it**. They aren't deleted, but one that was only in that location now appears nowhere, and nothing warns you.
 
-**Groups** are folders for your own sanity. Nesting and order are editor-only and never reach the AI, so grouping never changes the story.
+**Groups** are organizational. Nesting and order are editor-only and never reach the AI, so grouping never changes the story.
 
 Image, Image Tags and the 3D model are for the player's screen and for image generation — the narrator never sees them.
 

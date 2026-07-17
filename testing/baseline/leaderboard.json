@@ -33,6 +33,19 @@
     "refusals": 0
   },
   {
+    "model": "cydonia-24b-v43-q6",
+    "date": "2026-07-17",
+    "tier": "B",
+    "objective": 65,
+    "seeds": 1,
+    "spread": "—",
+    "restraint": 0,
+    "statDir": 100,
+    "format": 100,
+    "locAcc": 100,
+    "refusals": 0
+  },
+  {
     "model": "anubis-mini-8b",
     "date": "2026-07-17",
     "tier": "B",

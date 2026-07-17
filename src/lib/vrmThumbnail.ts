@@ -25,7 +25,13 @@ const PORTRAIT_HEADS = 2.2;
 const HEAD_TARGET_RISE = 0.25;
 /** Margin so a bounds-fitted model doesn't touch the frame edge. */
 const FIT_MARGIN = 1.2;
-const DEFAULT_SIZE = 256;
+/**
+ * 2:3 by default, matching the library card's portrait frame — a square would be upscaled to the card's
+ * height and have its sides cropped away by `object-cover`. Rendered at twice the card's on-screen width so
+ * it still reads on a high-DPI display.
+ */
+const DEFAULT_WIDTH = 512;
+const DEFAULT_HEIGHT = 768;
 
 /** Distance at which `height` exactly fills a 30° vertical FOV. */
 const distanceToFit = (height: number) => height / 2 / Math.tan((FOV * Math.PI) / 180 / 2);
@@ -89,7 +95,8 @@ const stubMetaPlugin = (parser: GLTFParser, metaVersion: '0' | '1' | null): VRMM
 export async function renderVrmThumbnail(
   file: Blob,
   metaVersion: '0' | '1' | null,
-  size = DEFAULT_SIZE,
+  width = DEFAULT_WIDTH,
+  height = DEFAULT_HEIGHT,
 ): Promise<string | undefined> {
   let url: string | undefined;
   let gltf: GLTF | null = null;
@@ -119,9 +126,11 @@ export async function renderVrmThumbnail(
     // preserveDrawingBuffer keeps the frame readable by toDataURL after the draw call returns.
     renderer = new THREE.WebGLRenderer({ canvas, alpha: true, antialias: true, preserveDrawingBuffer: true });
     renderer.setClearColor(0x000000, 0);
-    renderer.setSize(size, size, false);
+    renderer.setSize(width, height, false);
 
-    const camera = new THREE.PerspectiveCamera(FOV, 1, 0.01, 100);
+    // FOV is vertical in three.js, so `frameModel`'s head-height maths holds at any aspect; a taller frame
+    // simply shows less to either side, which is what a portrait wants.
+    const camera = new THREE.PerspectiveCamera(FOV, width / height, 0.01, 100);
     camera.position.copy(position);
     camera.lookAt(target);
     renderer.render(scene, camera);

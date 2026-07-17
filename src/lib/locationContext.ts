@@ -44,6 +44,7 @@ export function buildLocationContext(
   const { preferSummary = false, format = "simple" } = opts;
   const field = (key: string, value: string | number | boolean) =>
     format === "markdown" ? `- **${key}:** ${value}\n` : `${key}: ${value}\n`;
+  // Everything not pulled out here is spread into the feed below, so each non-story field must be named.
   const {
     backgroundImage,
     ambientSound,
@@ -51,6 +52,8 @@ export function buildLocationContext(
     playerDescription,
     aiDescription,
     aiSummary,
+    description: legacyDescription, // v1.2 alias; folded into the description line below, never emitted raw
+    imageTags, // booru tags for image generation; not story context
     isStarting, // editor-only new-game seeding flag; irrelevant to the AI
     parentId, // editor-only sub-location nesting; not part of the AI feed
     entity, // entity ids — emitted by buildEntityContext, not here
@@ -58,9 +61,11 @@ export function buildLocationContext(
     ...otherProps
   } = location;
 
-  // Start with name and description (skip a blank description so it doesn't print "undefined")
+  // Start with name and description (skip a blank description so it doesn't print "undefined").
+  // The legacy `description` is a last resort: migration never folds it, so a pre-audience-split world may
+  // carry only that. Used only when no authored AI text exists, and emitted once under the same key.
   let output = field("name", location.name);
-  const locationDescription = pickDescription(preferSummary, aiSummary, aiDescription);
+  const locationDescription = pickDescription(preferSummary, aiSummary, aiDescription) || legacyDescription;
   if (locationDescription && locationDescription.trim() !== "") {
     output += field("description", locationDescription);
   }

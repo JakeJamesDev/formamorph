@@ -1,38 +1,8 @@
 import { describe, it, expect } from 'vitest';
 import { readVrmMeta } from './vrmMeta';
+import { makeGlb } from '@/test/glbFixture';
 
 const CHUNK_JSON = 0x4e4f534a;
-const CHUNK_BIN = 0x004e4942;
-
-/** Build a real GLB so the container parsing is exercised rather than stubbed. */
-function makeGlb(json: unknown, bin?: Uint8Array, magic = 0x46546c67): Blob {
-  const jsonBytes = new TextEncoder().encode(JSON.stringify(json));
-  const pad = (n: number) => (4 - (n % 4)) % 4;
-  const jsonPadded = new Uint8Array(jsonBytes.byteLength + pad(jsonBytes.byteLength));
-  jsonPadded.fill(0x20); // the GLB spec pads the JSON chunk with trailing spaces
-  jsonPadded.set(jsonBytes);
-
-  const binLen = bin ? bin.byteLength + 8 : 0;
-  const total = 12 + 8 + jsonPadded.byteLength + binLen;
-  const buffer = new ArrayBuffer(total);
-  const view = new DataView(buffer);
-  const bytes = new Uint8Array(buffer);
-
-  view.setUint32(0, magic, true);
-  view.setUint32(4, 2, true);
-  view.setUint32(8, total, true);
-  view.setUint32(12, jsonPadded.byteLength, true);
-  view.setUint32(16, CHUNK_JSON, true);
-  bytes.set(jsonPadded, 20);
-
-  if (bin) {
-    const at = 20 + jsonPadded.byteLength;
-    view.setUint32(at, bin.byteLength, true);
-    view.setUint32(at + 4, CHUNK_BIN, true);
-    bytes.set(bin, at + 8);
-  }
-  return new Blob([buffer]);
-}
 
 const PIXEL = new Uint8Array([0x89, 0x50, 0x4e, 0x47]); // the real thumbnail bytes
 const DECOY = new Uint8Array([0x44, 0x45, 0x43, 0x59]); // a second image, to catch a wrong index

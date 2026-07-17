@@ -28,6 +28,31 @@ describe("buildLocationContext", () => {
     expect(buildLocationContext(null)).toBe(NONE_PLACEHOLDER);
   });
 
+  it("omits editor-only fields — they're spread in unless named, so each must stay excluded", () => {
+    const out = buildLocationContext({
+      ...location,
+      playerDescription: "What the player reads.",
+      imageTags: "outdoors, dock, sunset",
+    });
+    expect(out).not.toContain("imageTags"); // booru tags for image gen, not story context
+    expect(out).not.toContain("sunset");
+    expect(out).not.toContain("playerDescription");
+    expect(out).not.toContain("What the player reads.");
+  });
+
+  it("folds the legacy `description` into one description line rather than emitting a second key", () => {
+    const out = buildLocationContext({ ...location, description: "Legacy text." });
+    expect(out).not.toContain("Legacy text."); // authored aiDescription wins
+    expect(out.match(/description:/g)).toHaveLength(1); // never two conflicting description lines
+  });
+
+  it("falls back to the legacy `description` when a pre-split world has no AI text", () => {
+    // migrateWorld renames inGameDescription/detailedDescription but never folds a plain `description`,
+    // so dropping it outright would silently mute those locations.
+    const out = buildLocationContext({ id: "old", name: "Old Well", description: "A mossy well." });
+    expect(out).toContain("description: A mossy well.");
+  });
+
   it("uses full aiDescription by default", () => {
     const out = buildLocationContext(location);
     expect(out).toContain("description: A towering stone gate, portcullis raised, banners snapping in the wind.");
