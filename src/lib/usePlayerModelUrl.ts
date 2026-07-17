@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { getModel } from './modelLibrary';
+import ModelStorageService from '@/services/ModelStorageService';
 import { useGameData } from '@/contexts/GameDataContext';
 
 /**
@@ -23,7 +23,8 @@ export function usePlayerModelUrl(playerModelId?: string): string | undefined {
     }
     let cancelled = false;
     let url: string | undefined;
-    getModel(playerModelId).then((model) => {
+    // A deleted or malformed model rejects; swallow it so the caller falls back to the bundled default.
+    ModelStorageService.getModelData(playerModelId).catch(() => null).then((model) => {
       if (cancelled || !model) return;
       url = URL.createObjectURL(model.blob);
       setLibraryUrl(url);

@@ -56,6 +56,7 @@ const LocationManager = ({ location }: { location: GameLocation }) => {
           value={editingLocation.playerDescription || ''}
           onChange={(v) => handleChange('playerDescription', v)}
           placeholders={placeholders}
+          resizable
         />
       </div>
       <div className="space-y-2">
@@ -64,6 +65,7 @@ const LocationManager = ({ location }: { location: GameLocation }) => {
           value={editingLocation.aiDescription || ''}
           onChange={(v) => handleChange('aiDescription', v)}
           placeholders={placeholders}
+          resizable
         />
       </div>
       <div className="space-y-2">
@@ -80,6 +82,7 @@ const LocationManager = ({ location }: { location: GameLocation }) => {
           value={editingLocation.aiSummary || ''}
           onChange={(v) => handleChange('aiSummary', v)}
           placeholders={placeholders}
+          resizable
         />
         <p className="text-sm text-muted-foreground">
           A one-line version used where the full description is too long — keep it brief.

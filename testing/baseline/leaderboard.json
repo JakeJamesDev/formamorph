@@ -33,6 +33,17 @@
     "refusals": 0
   },
   {
+    "model": "anubis-mini-8b",
+    "date": "2026-07-17",
+    "tier": "B",
+    "objective": 62,
+    "restraint": 0,
+    "statDir": 100,
+    "format": 90,
+    "locAcc": 90,
+    "refusals": 0
+  },
+  {
     "model": "gemma26b-heretic",
     "date": "2026-07-17",
     "tier": "B",
@@ -56,17 +67,6 @@
   },
   {
     "model": "lunaris-8b-v1",
-    "date": "2026-07-17",
-    "tier": "B",
-    "objective": 50,
-    "restraint": 0,
-    "statDir": 50,
-    "format": 100,
-    "locAcc": 90,
-    "refusals": 0
-  },
-  {
-    "model": "anubis-mini-8b",
     "date": "2026-07-17",
     "tier": "B",
     "objective": 50,
@@ -157,11 +157,13 @@
     "model": "gemmasutra-mini-2b",
     "date": "2026-07-17",
     "tier": "REJECT (routing)",
-    "objective": 0,
+    "objective": 6,
+    "seeds": 3,
+    "spread": "0–11",
     "restraint": 0,
     "statDir": 0,
-    "format": 0,
-    "locAcc": 60,
+    "format": 17,
+    "locAcc": 70,
     "refusals": 0
   }
 ]

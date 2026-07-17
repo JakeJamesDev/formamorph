@@ -381,7 +381,7 @@ function MarkdownPreviewPane({ value, previewValues, vocab, scrollRef, onScroll 
  * With `markdown`, it also gains a formatting toolbar and its Preview renders markdown instead of tinting
  * chips — for author-facing prose fields (world description, readme) that the player reads as markdown.
  */
-const PromptField = ({ value, onChange, variables = [], vocabulary, previewValues, onPreviewOpen, markdown = false, placeholder, className, readOnly = false }: {
+const PromptField = ({ value, onChange, variables = [], vocabulary, previewValues, onPreviewOpen, markdown = false, resizable = false, placeholder, className, readOnly = false }: {
   value: string;
   onChange: (v: string) => void;
   /** Prompt-variable palette (used when no explicit `vocabulary` is given — the default prompt family). */
@@ -393,6 +393,9 @@ const PromptField = ({ value, onChange, variables = [], vocabulary, previewValue
   onPreviewOpen?: () => void;
   /** Prose field: adds a markdown formatting toolbar and renders the Preview as markdown. */
   markdown?: boolean;
+  /** Let the author drag the field taller/shorter. Only for fields in a content-height container (the
+   *  world editor's scroll panes) — in a height-pinned pane the dragged box would just overflow its slot. */
+  resizable?: boolean;
   /** Empty-field hint. */
   placeholder?: string;
   className?: string;
@@ -475,8 +478,14 @@ const PromptField = ({ value, onChange, variables = [], vocabulary, previewValue
     [],
   );
 
+  // The resize grabber goes on whichever element outlives a tab switch — the Tabs root, or this surface when
+  // there are no tabs. Putting it on the editor itself would lose the dragged height every toggle (Radix
+  // unmounts the inactive pane) and would size Edit without Preview. `h-full` panes then fill the new height.
+  // `flex-none` is what makes the drag take: as a flex-1 item, flex owns the main size and the height a
+  // resize writes is ignored. Unset, it sizes to content (floored at min-h) exactly as before.
+  const resizeClass = resizable && 'flex-none resize-y overflow-hidden min-h-[160px]';
   const editorSurface = (
-    <div className="relative flex-1 min-h-0">
+    <div className={cn('relative flex-1 min-h-0', !showTabs && resizeClass)}>
       <PlainTextPlugin
         contentEditable={<ContentEditable ref={editScrollRef} onScroll={handleScroll} className={EDITOR_CLASS} />}
         placeholder={
@@ -497,7 +506,7 @@ const PromptField = ({ value, onChange, variables = [], vocabulary, previewValue
           <VariableToolbar vocab={vocab} interactive={!readOnly && (!showTabs || tab === 'edit')} />
           {markdown && <MarkdownToolbar parse={vocab.parse} disabled={readOnly || tab !== 'edit'} />}
           {showTabs ? (
-            <Tabs value={tab} onValueChange={(v) => { setTab(v); if (v === 'preview') onPreviewOpen?.(); }} className="flex flex-col flex-1 min-h-0">
+            <Tabs value={tab} onValueChange={(v) => { setTab(v); if (v === 'preview') onPreviewOpen?.(); }} className={cn('flex flex-col flex-1 min-h-0', resizeClass)}>
               <TabsList className="grid w-full grid-cols-2 flex-shrink-0">
                 <TabsTrigger value="edit">Edit</TabsTrigger>
                 <TabsTrigger value="preview">Preview</TabsTrigger>

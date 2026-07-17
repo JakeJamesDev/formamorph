@@ -12,6 +12,7 @@ import { readFile, writeFile, mkdir } from "node:fs/promises";
 import { existsSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { createRequire } from "node:module";
+import net from "node:net";
 import path from "node:path";
 
 const HARNESS_DIR = path.dirname(fileURLToPath(import.meta.url));
@@ -32,8 +33,25 @@ async function presetFor(profile) {
   if (!presetCache.has(profile.promptPreset)) presetCache.set(profile.promptPreset, await loadPreset(profile.promptPreset));
   return presetCache.get(profile.promptPreset);
 }
-const PORT = 5180;
-const BASE_URL = `http://localhost:${PORT}`;
+// A fixed port made runs collide: `npm run dev` under shell:true spawns vite as a GRANDCHILD, so killing the
+// npm wrapper orphaned the real server. The next run then failed to bind ("port already in use"), silently
+// attached to the stale orphan instead, and died mid-turn with "Execution context was destroyed" as soon as
+// another run's cleanup killed the server out from under it. Now: claim a free port per run, and spawn vite
+// directly so kill() reaches it.
+let PORT = 0;
+let BASE_URL = "";
+
+/** An OS-assigned free port. Bind to 0, read the port, release it, hand it to vite (--strictPort). */
+function freePort() {
+  return new Promise((resolve, reject) => {
+    const srv = net.createServer();
+    srv.on("error", reject);
+    srv.listen(0, "127.0.0.1", () => {
+      const { port } = srv.address();
+      srv.close(() => resolve(port));
+    });
+  });
+}
 
 const args = process.argv.slice(2);
 const argVal = (flag) => {
@@ -124,9 +142,12 @@ function buildSeed(cfg, model, profile, preset) {
   return seed;
 }
 
-async function waitForServer(url, timeoutMs = 60000) {
+async function waitForServer(url, timeoutMs = 60000, hasExited = () => false) {
   const deadline = Date.now() + timeoutMs;
   while (Date.now() < deadline) {
+    // If vite died (e.g. it couldn't bind), stop: a responder on this port would be someone else's server,
+    // and attaching to it is what produced mid-run "Execution context was destroyed" failures.
+    if (hasExited()) throw new Error("vite exited before the dev server came up — see its output");
     try {
       const res = await fetch(url);
       if (res.ok) return;
@@ -206,12 +227,17 @@ async function main() {
   const profiles = cfg.profiles.filter((p) => !profileFilter || p.name === profileFilter);
   if (!models.length || !profiles.length) throw new Error("No models/profiles matched the filters.");
 
+  PORT = await freePort();
+  BASE_URL = `http://localhost:${PORT}`;
   console.log(`Starting dev server on ${BASE_URL} …`);
-  const dev = spawn("npm", ["run", "dev", "--", "--port", String(PORT), "--strictPort"], {
+  // Spawn vite's own entry with this node binary — no npm wrapper, no shell — so `dev` IS the server process
+  // and kill() actually stops it (see the PORT comment above for what the wrapper cost us).
+  const dev = spawn(process.execPath, [path.join(REPO_ROOT, "node_modules", "vite", "bin", "vite.js"), "--port", String(PORT), "--strictPort"], {
     cwd: REPO_ROOT,
-    shell: true,
     stdio: "inherit",
   });
+  let devExited = false;
+  dev.on("exit", () => { devExited = true; });
   const cleanup = () => {
     try {
       dev.kill();
@@ -226,7 +252,7 @@ async function main() {
   });
 
   try {
-    await waitForServer(BASE_URL);
+    await waitForServer(BASE_URL, 60000, () => devExited);
     const browser = await chromium.launch();
     try {
       for (let run = 1; run <= repeat; run++) {
