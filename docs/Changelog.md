@@ -12,6 +12,14 @@ Each release groups changes as **Major** / **Minor**, then **Added** / **Removed
 
 _Unreleased — new work accumulates here until it earns a version bump. The next batch will pin its own version; `package.json` reads **2.4.2** (just released below)._
 
+### Minor Changes
+
+#### 🐛 Fixed
+
+- **👤 User-facing**
+  - **Desktop updates on Windows can no longer get permanently stuck.** If an update was interrupted partway through — the app killed, the machine shut down, antivirus stepping in — every update after it would silently fail and quietly reopen the old version, with no error and no way back. The updater used to test whether the old app had let go of its files by briefly renaming its folder aside and back; an interruption in that split second left the spare folder behind, and its mere presence made every future attempt fail. That step is gone entirely — the update now simply retries the real swap until the old app releases its files, which can't leave anything behind. **If you're already stuck, this fix reaches you only by downloading the full app again** (the updater can't replace the piece that was broken), or by deleting the leftover `app.locktest` folder next to `Formamorph.exe`.
+  - **A missing launcher now explains itself instead of crashing.** If `Formamorph.exe` had been removed or quarantined by antivirus, choosing **Update & Restart** closed the app with a raw JavaScript error dialog and no explanation. It now tells you the launcher is missing, names the likely cause, and leaves the app open so you don't lose your place.
+
 ---
 
 <details>

@@ -4,7 +4,7 @@
 > baseline instead of re-deriving (and getting different answers each time). When asked for model info,
 > **read this first, refresh only what's stale, then update this doc** with the new numbers + date.
 
-**Last updated:** 2026-07-15 (added Model profile section + gate-probe results: RP-tune vs general decensored)
+**Last updated:** 2026-07-17 (policy flipped to per-model eligibility; Model profile + gate-probe results)
 
 ---
 
@@ -72,12 +72,10 @@ an author), sort by `downloads`.
   director/character/storyboard. A reasoning model is judged on its thinking-off prose first, planning second.
 - Raw knowledge / MMLU-style intelligence — steerability beats smarts here.
 
-**Open policy tension (under test, not settled):** the catalog rule below is "RP-finetunes only," yet the
-shipped **cloud default is a *general* decensored writer (gemma-4 heretic)** — excluded from the local catalog
-by a policy it contradicts. The positive-contract, role-framed prompts are exactly the style strong general
-instruct-decensored models handle well, so the RP-tune premium may not survive an A/B. Treat as a **probe
-question** (heretic-family vs RP-tuned, same tier, on the reference pair, across narration + the
-restraint-heavy calls), not a taste call.
+**Policy tension — RESOLVED 2026-07-17.** The old catalog rule was "RP-finetunes only," while the shipped
+**cloud default is a *general* decensored writer (gemma-4 heretic)** — excluded by a policy it contradicted.
+The A/B settled it: the RP-tune premium did **not** survive. Eligibility is now per-model on measured quality,
+general decensored included. See the gate-probe results below.
 
 ---
 
@@ -91,10 +89,12 @@ restraint-heavy calls), not a taste call.
   offload — the community's current default reasoning models.
 - **The 8B RP scene is frozen at 2024.** Community moved to 12B (Nemo) and 24B (Mistral-Small); nothing new at
   8B beats Stheno v3.4 / Lunaris. Reasoning RP finetunes barely exist below ~35B.
-- **Policy: catalog = genuine RP finetunes only.** Popular *general* decensored models (e.g. gemma-4 heretic)
-  write well and top benches but aren't RP-tuned — excluded. A reasoning badge only where the model is an RP
-  finetune on a reasoning base (Qwen3 / Qwen3.6-A3B). **⚠️ CHALLENGED by the 2026-07-15 gate probe (below) —
-  general decensored models were competitive; policy decision pending user sign-off.**
+- **Policy: judge per-model, not by the RP-finetune label** (decided 2026-07-17, superseding the old
+  "RP-finetunes only" rule). General decensored models (e.g. gemma-4 heretic) **are eligible** — the gate
+  probe below found no willingness or prose advantage from RP-tuning on a matched base; tier and per-model
+  quality dominated. Screen a candidate before adding it (`npm run screen -- --model <label>`). The catalog
+  was **not** changed on the flip: every current entry is still an RP finetune, which is now history rather
+  than a requirement. A reasoning badge still needs a reasoning base (Qwen3 / Qwen3.6-A3B).
 - **Two reference test tiers** for probes (harness): Silver-Siren-ST-12B (average) + G4-MeroMero-31B (premium),
   cross-family. Modelfiles in `testing/baseline/harness/`.
 
@@ -127,8 +127,9 @@ The app also refreshes these download counts live at runtime (`src/lib/useCatalo
 them; the numbers above are the bundled snapshot / fallback.
 
 ### Notable rejects (don't re-propose without reason)
-- **gemma-4 heretic** family (E4B/12B/26B-A4B) — great writing bench + huge downloads, but *general* decensored,
-  not RP-tuned. Excluded by the RP-only policy.
+- **gemma-4 heretic** family (E4B/12B/26B-A4B) — ~~excluded by the RP-only policy~~ **no longer a reject**: the
+  policy flipped 2026-07-17 and general decensored models are eligible. Not yet added — a candidate needs a
+  screen run first. `gemma31b-heretic` scored A/77 on the gate probe, tied with the RP MeroMero-31B.
 - **Magnum v4 72B** — dropped; Qwen2.5-era, superseded.
 - **Qwen3.6-35B-A3B base** — replaced by the allura **Anko** RP finetune.
 
@@ -160,9 +161,11 @@ neutral control) × 3 seeds, on the mature-tone `blackrue-waystation` gate world
 - **Prompt-arm effect** — the neutral control *improved* restraint on the strong models; the shipped prompt's
   main value is avoiding the "(no stats moved)" prose verbalization that the real parser would choke on.
 
-**Recommended policy shift (pending user sign-off):** from *"RP-finetunes only"* to *"evaluate per-model by
-tier + measured quality; general decensored models are eligible and often competitive."* This vindicates the
-gemma-heretic cloud default.
+**Policy outcome (decided 2026-07-17):** flipped from *"RP-finetunes only"* to *"evaluate per-model by tier +
+measured quality; general decensored models are eligible."* The **catalog was deliberately left unchanged** —
+the flip grants eligibility, it does not add models. Candidates go through `npm run screen` first. This also
+vindicates the gemma-heretic cloud default. Note the probed models (MeroMero / gemma-heretic / Silver-Siren)
+are the *reference test tiers*, not catalog entries — no shipped model has been through the screen yet.
 
 **Caveats:** n=3–4, single world, content bounded at what the Claude judge can grade (hardest refusals
 unprobed). The Mistral general control is `Heretic-v2` (the natong19 abliterated GGUFs won't load in current

@@ -4,12 +4,66 @@
   "apiToken": "",
   "settleMs": 4000,
   "models": [
-    { "label": "silver-siren-12b", "modelName": "REPLACE_WITH_YOUR_SERVER_MODEL_ID" },
-    { "label": "meromero-31b", "modelName": "REPLACE_WITH_YOUR_SERVER_MODEL_ID" },
-    { "label": "meromero-26b", "modelName": "REPLACE_WITH_YOUR_SERVER_MODEL_ID" },
-    { "label": "gemma31b-heretic", "modelName": "REPLACE_WITH_YOUR_SERVER_MODEL_ID" },
-    { "label": "gemma26b-heretic", "modelName": "REPLACE_WITH_YOUR_SERVER_MODEL_ID" },
-    { "label": "mistral-heretic", "modelName": "REPLACE_WITH_YOUR_SERVER_MODEL_ID" }
+    {
+      "label": "silver-siren-12b",
+      "modelName": "REPLACE_WITH_YOUR_SERVER_MODEL_ID"
+    },
+    {
+      "label": "meromero-31b",
+      "modelName": "REPLACE_WITH_YOUR_SERVER_MODEL_ID"
+    },
+    {
+      "label": "meromero-26b",
+      "modelName": "REPLACE_WITH_YOUR_SERVER_MODEL_ID"
+    },
+    {
+      "label": "gemma31b-heretic",
+      "modelName": "REPLACE_WITH_YOUR_SERVER_MODEL_ID"
+    },
+    {
+      "label": "gemma26b-heretic",
+      "modelName": "REPLACE_WITH_YOUR_SERVER_MODEL_ID"
+    },
+    {
+      "label": "mistral-heretic",
+      "modelName": "REPLACE_WITH_YOUR_SERVER_MODEL_ID"
+    },
+    {
+      "label": "qwen3-4b-rpg-roleplay",
+      "modelName": "REPLACE_WITH_YOUR_SERVER_MODEL_ID"
+    },
+    {
+      "label": "gemmasutra-small-4b",
+      "modelName": "REPLACE_WITH_YOUR_SERVER_MODEL_ID"
+    },
+    {
+      "label": "impish-llama-4b",
+      "modelName": "REPLACE_WITH_YOUR_SERVER_MODEL_ID"
+    },
+    {
+      "label": "gemmasutra-mini-2b",
+      "modelName": "REPLACE_WITH_YOUR_SERVER_MODEL_ID"
+    },
+    {
+      "label": "wingless-imp-8b",
+      "modelName": "REPLACE_WITH_YOUR_SERVER_MODEL_ID"
+    },
+    {
+      "label": "anubis-mini-8b",
+      "modelName": "REPLACE_WITH_YOUR_SERVER_MODEL_ID"
+    },
+    {
+      "label": "stheno-8b-v34",
+      "modelName": "REPLACE_WITH_YOUR_SERVER_MODEL_ID"
+    },
+    {
+      "label": "lunaris-8b-v1",
+      "modelName": "REPLACE_WITH_YOUR_SERVER_MODEL_ID"
+    },
+    {
+      "label": "rocinante-x-12b",
+      "modelName": "REPLACE_WITH_YOUR_SERVER_MODEL_ID"
+    }
   ],
   "profiles": [
     {

@@ -81,12 +81,6 @@ func applyUpdate(root string) {
 		return
 	}
 
-	// The app quit before spawning us, but shutdown may still be releasing file handles.
-	if !waitUnlocked(appDir, 60*time.Second) {
-		launchApp(root, nil, false)
-		return
-	}
-
 	// Extract to a clean staging dir first, so a failed extract never corrupts the live app.
 	_ = os.RemoveAll(newDir)
 	if err := unzip(p.Zip, newDir); err != nil {
@@ -95,9 +89,11 @@ func applyUpdate(root string) {
 		return
 	}
 
-	// Swap, keeping exactly one backup generation for rollback.
+	// Swap, keeping exactly one backup generation for rollback. The app quit before spawning us, but
+	// shutdown may still be releasing file handles, so retry until they drop. This rename doubles as the
+	// lock test: it's atomic, so a failure leaves the live app untouched.
 	_ = os.RemoveAll(backupDir)
-	if err := os.Rename(appDir, backupDir); err != nil {
+	if !renameRetry(appDir, backupDir, 60*time.Second) {
 		_ = os.RemoveAll(newDir)
 		launchApp(root, nil, false)
 		return
@@ -163,18 +159,19 @@ func fileExists(p string) bool {
 	return err == nil
 }
 
-// waitUnlocked returns true once appDir can be renamed — a proxy for "the old app released its files".
-func waitUnlocked(appDir string, timeout time.Duration) bool {
-	tmp := appDir + ".locktest"
+// renameRetry retries a rename until it succeeds or the timeout expires, giving the exiting app time to
+// release its file handles. Safe to retry: rename is atomic, so a failed attempt changes nothing.
+func renameRetry(from, to string, timeout time.Duration) bool {
 	deadline := time.Now().Add(timeout)
-	for time.Now().Before(deadline) {
-		if err := os.Rename(appDir, tmp); err == nil {
-			_ = os.Rename(tmp, appDir)
+	for {
+		if err := os.Rename(from, to); err == nil {
 			return true
+		}
+		if time.Now().After(deadline) {
+			return false
 		}
 		time.Sleep(500 * time.Millisecond)
 	}
-	return false
 }
 
 func unzip(src, dest string) error {
