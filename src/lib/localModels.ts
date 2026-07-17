@@ -1,8 +1,13 @@
 // Curated GGUF models the desktop build can download and run locally, grouped by the VRAM tier they
-// comfortably fit (weights + a working context). All are community roleplay finetunes; URLs, sizes,
-// release dates, and download snapshots verified against the Hugging Face API. Licenses are informational
-// hints — vet before shipping. The engine (electron/llmEngine.cjs) can load any GGUF; this is just the
-// offered set.
+// comfortably fit (weights + a working context). URLs, sizes, release dates, and download snapshots verified
+// against the Hugging Face API. Licenses are informational hints — vet before shipping. The engine
+// (electron/llmEngine.cjs) can load any GGUF; this is just the offered set.
+//
+// Eligibility: entries are judged per-model on measured quality, not on carrying a roleplay-finetune label.
+// General decensored models are eligible — a controlled probe (same base, RP finetune vs decensored-only)
+// found no willingness or prose advantage from RP-tuning; tier and per-model quality dominated. Screen a
+// candidate before adding it: `npm run screen -- --model <label>` (testing/baseline/GATE-PROBE.md).
+// Every entry below happens to be an RP finetune — that's history, not a requirement.
 
 export type VramTier = 'tier4' | 'tier8' | 'tier16' | 'unlimited';
 
@@ -55,10 +60,11 @@ const hf = (repo: string, file: string) => `https://huggingface.co/${repo}/resol
 /** Month the `downloads` snapshots below were captured, for the "as of" label when live counts are offline. */
 export const DOWNLOADS_AS_OF = '2026-07';
 
-// Verified against the HF API (filenames, sizes, release dates, all-time downloads) July 2026. All entries
-// are genuine roleplay finetunes — the two flagged `reasoning: true` are RP finetunes on reasoning bases
-// (Qwen3 / Qwen3.6-A3B); the local engine handles the thought segment (per-prompt budget → node-llama-cpp
-// `budgets.thoughtTokens`, with `<think>` reconstruction). Refresh this list periodically; the RP scene moves fast.
+// Verified against the HF API (filenames, sizes, release dates, all-time downloads) July 2026. Entries here
+// all happen to be roleplay finetunes — that's history, not an entry requirement (see the eligibility note at
+// the top of this file). The two flagged `reasoning: true` are RP finetunes on reasoning bases (Qwen3 /
+// Qwen3.6-A3B); the local engine handles the thought segment (per-prompt budget → node-llama-cpp
+// `budgets.thoughtTokens`, with `<think>` reconstruction). Refresh this list periodically; the scene moves fast.
 export const LOCAL_MODELS: LocalModelInfo[] = [
   // ≤4 GB — 2-4B
   {

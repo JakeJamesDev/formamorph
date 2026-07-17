@@ -81,7 +81,17 @@ function apply() {
   const root = process.env.FORMAMORPH_ROOT;
   if (!root) throw new Error('Not a launcher build (FORMAMORPH_ROOT unset).');
   const launcher = path.join(root, 'Formamorph.exe');
+  // Throw synchronously so the caller skips its app.quit() and the user gets a real message: quitting into
+  // a launcher that can't start would close the app for good. Antivirus quarantine is the usual cause.
+  if (!fs.existsSync(launcher)) {
+    throw new Error(
+      `Launcher missing at ${launcher} — antivirus may have quarantined it. Reinstall from the latest release, then retry the update.`,
+    );
+  }
   const child = spawn(launcher, ['--apply-update'], { detached: true, stdio: 'ignore' });
+  // spawn reports failure asynchronously; with no 'error' listener it becomes an uncaught main-process
+  // exception (the raw ENOENT crash dialog) instead of a logged, survivable error.
+  child.on('error', (err) => console.error('Launcher spawn failed:', err));
   child.unref();
 }
 

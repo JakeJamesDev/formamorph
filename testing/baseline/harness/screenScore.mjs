@@ -65,7 +65,9 @@ export function scoreDump(turns) {
   }
   for (const i of STAT_MOVE_TURNS) {
     const s = by(i).statUpdates;
-    if (s !== undefined) { vigDen++; const m = s.match(/vigor\s*:?\s*(-?\d+)/i); if (m && parseInt(m[1]) < 0) vigOk++; }
+    // The stat prompt asks for a signed number, so accept a leading + as well as - : with a bare `-?` a
+    // "Vigor: +5" never parses, and the sign check below is then never the thing rejecting it.
+    if (s !== undefined) { vigDen++; const m = s.match(/vigor\s*:?\s*([+-]?\d+)/i); if (m && parseInt(m[1]) < 0) vigOk++; }
   }
   for (let i = 0; i < 10; i++) {
     const c = by(i).choices;
