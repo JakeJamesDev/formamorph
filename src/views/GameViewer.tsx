@@ -1286,8 +1286,20 @@ ${playerNotes || NONE_PLACEHOLDER}
         signal,
       );
 
-      // If the user stopped, or the request came back empty, bail (the `finally` resets waiting state).
-      if (signal.aborted || !narrationResponse) return;
+      // The user stopping is an expected, silent exit (the `finally` resets waiting state).
+      if (signal.aborted) return;
+      // An empty narration is not. The model either returned nothing or spent the whole response on
+      // reasoning, so there's no story text to play and the turn can't advance. Say so — silence here is
+      // indistinguishable from a dead submit button. Downstream calls (choices/stats) are skipped either
+      // way: they take the narration as input.
+      if (!narrationResponse) {
+        addLogEntry("The AI returned an empty narration — the turn was not advanced.");
+        toast.error("The AI returned an empty response. Try again, or switch models if it keeps happening.", {
+          position: "top-right",
+          autoClose: 5000,
+        });
+        return;
+      }
 
       // Commit the auto-resolved move now that the narration — already written for the new location —
       // succeeded, so an aborted/empty turn leaves the location unchanged.

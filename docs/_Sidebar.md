@@ -3,6 +3,7 @@
 - [🏠 Home](Home)
 
 **Reference**
+- [🛠️ World Editor](WorldEditor)
 - [📐 World Format](WorldFormat)
 - [🧮 Stat Code Guide](StatCodeGuide)
 

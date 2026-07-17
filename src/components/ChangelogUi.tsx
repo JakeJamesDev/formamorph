@@ -1,6 +1,5 @@
 import { useEffect, useRef } from 'react';
-import { MarkdownRenderer } from '@/components/game/MarkdownRenderer';
-import { ScrollArea } from '@/components/ui/scroll-area';
+import { MarkdownPanel } from '@/components/MarkdownPanel';
 import { WIKI_CHANGELOG_URL } from '@/services/UpdateService';
 
 // Small pieces shared by the desktop update dialog (UpdateDialog) and the web changelog popout
@@ -41,13 +40,7 @@ export function ChangelogBody({ text, placeholder, currentVersion, updateVersion
     });
   }, [text, currentVersion, updateVersion]);
 
-  return (
-    <ScrollArea className="changelog-body max-h-[60dvh] rounded-md border bg-muted/30 text-sm">
-      <div ref={ref} className="p-3 [&_:first-child]:mt-0">
-        {text ? <MarkdownRenderer text={text} /> : <span className="text-muted-foreground">{placeholder}</span>}
-      </div>
-    </ScrollArea>
-  );
+  return <MarkdownPanel ref={ref} text={text} placeholder={placeholder} className="changelog-body max-h-[60dvh]" />;
 }
 
 /** Link to the full (verbose) changelog on the wiki, opened in the system browser. */

@@ -105,7 +105,9 @@ export function buildEntityContext(
   entityList.forEach((entityId: string) => {
     const entityItem = entities.find((f) => f.id === entityId);
     if (!entityItem) return;
-    // `groupId`/`order` are editor-only organization and must never reach the AI (grouping is invisible here).
+    // Everything not pulled out here is spread into the feed, so each editor-only field must be named:
+    // `groupId`/`order` are organization (grouping is invisible to the AI), `imageTags` are booru tags for
+    // image generation, and `placeholders` are defs carried by off-world copies — none are story context.
     const {
       id,
       image,
@@ -113,6 +115,8 @@ export function buildEntityContext(
       model,
       groupId,
       order,
+      imageTags,
+      placeholders,
       playerDescription,
       aiDescription,
       aiSummary,
