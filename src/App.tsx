@@ -94,6 +94,7 @@ function App() {
               onStartGame={handleStartGame}
               onLoadSaveGame={handleLoadSaveGame}
               onReplayIntro={() => setIntroPace('snap')}
+              introActive={introPace !== null}
             />
           )}
           {currentView === 'mainMenu' && introPace && (

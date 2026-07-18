@@ -4,6 +4,7 @@ import type { PublishPayload } from '@/lib/publishPayload';
 import { openDatabase, promisifyRequest } from '@/lib/idb';
 import { migrateWorld } from '@/lib/version';
 import { contentHash } from '@/lib/contentHash';
+import { readDeletedDefaultWorlds, tombstoneDefaultWorld, type DefaultWorldSeed } from '@/lib/defaultWorlds';
 import type { WorldMetadata } from '@/types';
 
 /** A locally-stored world record (metadata + nested world `data`). Inner fields stay loose since
@@ -49,11 +50,6 @@ export interface StoredWorldRecord {
   };
 }
 
-// A built-in world to seed on first run; its JSON is imported by `id`.
-interface DefaultWorldSeed {
-  id: string;
-  defaultName: string;
-}
 
 /** Result of a default-world seed/update pass: ids that failed to load, and display names that were
  *  auto-updated in place (so the caller can notify the player). */
@@ -253,10 +249,14 @@ class WorldStorageService {
 
   /** Seed missing default worlds and auto-update unedited ones whose bundled content no longer matches the
    *  stored copy's `sourceHash`. Runs every launch (cheap when nothing changed). A world is left untouched if
-   *  the player has edited it (`dirty`), since that diverges from the bundled default (git-dirty model).
+   *  the player has edited it (`dirty`), since that diverges from the bundled default (git-dirty model), or if
+   *  they deleted it — absent alone can't be trusted to mean "never seeded", so a deleted default carries a
+   *  tombstone and stays gone even when the bundled copy changes.
    *  Returns the ids that failed to load plus the display names auto-updated in place. */
   async loadDefaultWorlds(defaultWorlds: DefaultWorldSeed[]): Promise<DefaultWorldSyncResult> {
     await this.ensureInitialized();
+    const deleted = readDeletedDefaultWorlds();
+    defaultWorlds = defaultWorlds.filter((w) => !deleted.has(w.id));
     // Full records (not getWorldMetadata) so we can read each stored copy's `sourceHash` and `dirty`.
     const transaction = this.db!.transaction([this.storeName], 'readonly');
     const stored = await promisifyRequest(transaction.objectStore(this.storeName).getAll());
@@ -346,6 +346,9 @@ class WorldStorageService {
     const transaction = this.db!.transaction([this.storeName], 'readwrite');
     const store = transaction.objectStore(this.storeName);
     await promisifyRequest(store.delete(worldId));
+    // Deleting a default is permanent: without this the next seed pass sees it missing and re-creates it.
+    // A no-op for any non-default id.
+    tombstoneDefaultWorld(worldId);
   }
 
   /** Fetch a page of community worlds with optional search/sort; `ownedOnly` switches to the caller's own

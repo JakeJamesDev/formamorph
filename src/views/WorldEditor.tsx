@@ -4,6 +4,8 @@ import { useGameData } from '@/contexts/GameDataContext';
 import { useDevRoute } from '@/lib/devRouter';
 import { WORLD_EDITOR_TABS } from './worldEditorTabs';
 import { EmptyListHint } from '@/components/EmptyListHint';
+import { HelpButton } from '@/components/HelpButton';
+import { worldEditorTopicId } from '@/lib/helpTopics';
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
@@ -540,6 +542,8 @@ const WorldEditor = ({ onClose, embedded = false, backButton }: {
       ))}
     </TabsList>
   );
+  // The active tab's help topic, when it has copy yet — drives the `?` beside the search box.
+  const helpTopicId = worldEditorTopicId(activeTab);
   const addSearchBar = activeTab !== "overview" && (
     <div className="flex space-x-2 flex-shrink-0 mt-4">
       {activeTab === "traits" || activeTab === "entities" ? (
@@ -576,6 +580,8 @@ const WorldEditor = ({ onClose, embedded = false, backButton }: {
         value={searchTerm}
         onChange={(e) => setSearchTerm(e.target.value)}
       />
+      {/* key: remount per topic so each tab's nudge reads its own seen-state (HelpButton reads it on mount). */}
+      {helpTopicId && <HelpButton key={helpTopicId} topicId={helpTopicId} />}
     </div>
   );
   const footerBar = (
@@ -612,7 +618,7 @@ const WorldEditor = ({ onClose, embedded = false, backButton }: {
   );
 
   return (
-    <div className={`${embedded ? "h-full" : "h-screen"} flex flex-col overflow-hidden`}>
+    <div className={`${embedded ? "h-full" : "h-[100dvh]"} flex flex-col overflow-hidden`}>
       {!embedded && (
         <ThemedToastContainer
           position="top-right"

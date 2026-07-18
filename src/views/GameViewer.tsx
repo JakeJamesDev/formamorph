@@ -926,12 +926,16 @@ const GameViewer = ({
     [placeholders, placeholderRolls],
   );
 
+  // The README is authored text shown to the player, so its chips resolve like any other.
+  const readmeResolved = useMemo(() => resolvePH(readmeText), [resolvePH, readmeText]);
+
   // Eager priming: once a save is active, roll every Wildcard placement across the world's authored text and
   // freeze it into the save (a loaded save's existing rolls are kept). Resolution then stays a pure lookup.
   useEffect(() => {
     if (!isGameStarted || placeholders.length === 0) return;
     const texts = [
       worldOverview.systemPrompt || "",
+      worldOverview.readme || "",
       ...entities.flatMap((e) => [e.playerDescription, e.aiDescription, e.aiSummary]),
       ...locations.flatMap((l) => [l.playerDescription, l.aiDescription, l.aiSummary, l.description]),
       ...dictionaries.flatMap((b) => b.entries.map((en) => en.value)),
@@ -1282,8 +1286,20 @@ ${playerNotes || NONE_PLACEHOLDER}
         signal,
       );
 
-      // If the user stopped, or the request came back empty, bail (the `finally` resets waiting state).
-      if (signal.aborted || !narrationResponse) return;
+      // The user stopping is an expected, silent exit (the `finally` resets waiting state).
+      if (signal.aborted) return;
+      // An empty narration is not. The model either returned nothing or spent the whole response on
+      // reasoning, so there's no story text to play and the turn can't advance. Say so — silence here is
+      // indistinguishable from a dead submit button. Downstream calls (choices/stats) are skipped either
+      // way: they take the narration as input.
+      if (!narrationResponse) {
+        addLogEntry("The AI returned an empty narration — the turn was not advanced.");
+        toast.error("The AI returned an empty response. Try again, or switch models if it keeps happening.", {
+          position: "top-right",
+          autoClose: 5000,
+        });
+        return;
+      }
 
       // Commit the auto-resolved move now that the narration — already written for the new location —
       // succeeded, so an aborted/empty turn leaves the location unchanged.
@@ -2720,7 +2736,7 @@ ${playerNotes || NONE_PLACEHOLDER}
 
   return (
     <div
-      className={`flex ${isMobile ? "flex-col" : "p-4"} h-screen text-sm md:text-base bg-background bg-cover bg-center overflow-hidden`}
+      className={`flex ${isMobile ? "flex-col" : "p-4"} h-[100dvh] text-sm md:text-base bg-background bg-cover bg-center overflow-hidden`}
       style={{
         // A background-colored overlay composited over the image fades it toward the theme background.
         // Dropped while the UI is hidden, so the eye toggle reveals the raw image.
@@ -2826,7 +2842,7 @@ ${playerNotes || NONE_PLACEHOLDER}
       {/* Modals */}
       {readmeText && (
         <ReadmeModal
-          readme={readmeText}
+          readme={readmeResolved}
           open={showReadmeModal}
           onOpenChange={setShowReadmeModal}
           show={showReadme(worldId)}

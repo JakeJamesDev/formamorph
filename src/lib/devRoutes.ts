@@ -17,8 +17,13 @@ export type DevView = (typeof DEV_VIEWS)[number];
  *  `worldEditor` is an in-place modal on MainMenu (not a top-level view). `intro` replays the first-run
  *  welcome overlay on MainMenu. `localModel` is intentionally absent — it lives inside
  *  Settings→LocalModelPanel, reached via `modal=settings` + its tab, not its own name. `avatar` opens
- *  MainMenu's Character Customization step directly (a MainMenu sub-state, like `worldEditor`). */
-export const DEV_MODALS = ['settings', 'entity', 'export', 'menu', 'worldEditor', 'intro', 'avatar', 'backup', 'community'] as const;
+ *  MainMenu's Character Customization step directly (a MainMenu sub-state, like `worldEditor`).
+ *  `aiSetup` opens the AI setup gate on MainMenu in its skippable (first-run) form. `entityEditor` and
+ *  `dictionaryEditor` are the *library* editors (MainMenu), distinct from the in-game `entity` modal; both
+ *  open on a blank draft, so they're reachable without any stored data. `modelDetails` is the exception to
+ *  that: a VRM preview has nothing to show without a stored model, so it opens the library's first model and
+ *  does nothing on an empty library. `community` opens Community Creations from MainMenu. */
+export const DEV_MODALS = ['settings', 'entity', 'export', 'menu', 'worldEditor', 'intro', 'avatar', 'backup', 'aiSetup', 'entityEditor', 'dictionaryEditor', 'modelDetails', 'community'] as const;
 export type DevModal = (typeof DEV_MODALS)[number];
 
 /** Coverage ledger: tabbed surface → the sub-tabs the router can target (via `tab=…`). Kept in lockstep
@@ -28,6 +33,9 @@ export const DEV_MODAL_TABS = {
   worldEditor: ['overview', 'stats', 'entities', 'locations', 'traits', 'dictionary', 'placeholders'],
   // Community Creations browses one kind per tab; these are the server's kinds (see lib/catalogKinds).
   community: ['world', 'entity', 'dictionary'],
+  // MainMenu's library card-type switcher. Not a modal: reached with `tab=…` and no `modal=…`, i.e.
+  // `#dev?view=mainMenu&tab=models`. Listed here so the same drift guard covers it.
+  mainMenu: ['worlds', 'entities', 'dictionaries', 'models'],
 } as const;
 
 // Settings → Prompts exposes a second level reached via `subtab=…` (narration/thinking/choices/…). Those

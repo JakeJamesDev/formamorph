@@ -1,20 +1,26 @@
 import { useEffect, useState } from 'react';
-import { getModel } from './modelLibrary';
+import ModelStorageService from '@/services/ModelStorageService';
 import { useGameData } from '@/contexts/GameDataContext';
+import { LEGACY_DEFAULT_MODEL_SENTINEL } from '@/lib/defaultModel';
 
 /**
  * Resolve a `characterData.playerModelId` into a URL for `VRMViewer.modelUrl`.
  * - a model-library id → that model's Blob as an object URL (revoked on change/unmount)
- * - `'default'` → `undefined` (VRMViewer falls back to the bundled model)
  * - unset / `'world'` → the world's `customPlayerVRM`, else `undefined` (bundled default)
- * A library id that no longer exists falls back to the bundled default.
+ * - `'default'` → `undefined` (bundled default). `migrateSave` rewrites this sentinel to the seeded model's
+ *   id, so it only reaches here from state that hasn't been through a save round-trip.
+ *
+ * Anything unresolvable — a deleted model, the seeded default among them — falls back to the bundled file,
+ * which is why deleting the seeded copy is safe.
  */
 export function usePlayerModelUrl(playerModelId?: string): string | undefined {
   const { worldOverview } = useGameData();
   const worldUrl = worldOverview?.customPlayerVRM?.data || undefined;
   const [libraryUrl, setLibraryUrl] = useState<string | undefined>(undefined);
 
-  const isLibraryId = !!playerModelId && playerModelId !== 'default' && playerModelId !== 'world';
+  const isLibraryId = !!playerModelId
+    && playerModelId !== LEGACY_DEFAULT_MODEL_SENTINEL
+    && playerModelId !== 'world';
 
   useEffect(() => {
     if (!isLibraryId) {
@@ -23,7 +29,8 @@ export function usePlayerModelUrl(playerModelId?: string): string | undefined {
     }
     let cancelled = false;
     let url: string | undefined;
-    getModel(playerModelId).then((model) => {
+    // A deleted or malformed model rejects; swallow it so the caller falls back to the bundled default.
+    ModelStorageService.getModelData(playerModelId).catch(() => null).then((model) => {
       if (cancelled || !model) return;
       url = URL.createObjectURL(model.blob);
       setLibraryUrl(url);
@@ -35,7 +42,7 @@ export function usePlayerModelUrl(playerModelId?: string): string | undefined {
     };
   }, [playerModelId, isLibraryId]);
 
-  if (playerModelId === 'default') return undefined;
+  if (playerModelId === LEGACY_DEFAULT_MODEL_SENTINEL) return undefined;
   if (isLibraryId) return libraryUrl;
   return worldUrl;
 }

@@ -3,6 +3,7 @@ import type { World, SaveObject, Stat, GameState, Trait, PlayerStat } from '@/ty
 import { normalizeCustomVRM } from './worldImport';
 import { autoBindLegacyBodyStats } from './bodyMorphs';
 import { appendCurrentToHistory } from './turnHistory';
+import { DEFAULT_MODEL_ID, LEGACY_DEFAULT_MODEL_SENTINEL } from './defaultModel';
 
 /** Current app version, derived from package.json (see vite.config.js `define`). User-managed. */
 export const APP_VERSION = __APP_VERSION__;
@@ -156,14 +157,27 @@ export function stripSnapshotHistory(state: GameState): GameState {
 }
 
 /**
+ * Point a snapshot's player model at the seeded library record instead of the old `'default'` sentinel. The
+ * bundled model is an ordinary library entry now, so the sentinel has no referent; every other value —
+ * a library id, `'world'`, or unset — is already meaningful and passes through.
+ */
+function migrateDefaultModelId(state: GameState): GameState {
+  const character = state?.characterData;
+  if (!character || character.playerModelId !== LEGACY_DEFAULT_MODEL_SENTINEL) return state;
+  return { ...state, characterData: { ...character, playerModelId: DEFAULT_MODEL_ID } };
+}
+
+/**
  * Migrate a save envelope to the current shape — the single path both the file-import boundary and the load
- * path run, so they can't drift. Two concerns, each idempotent:
+ * path run, so they can't drift. Three concerns, each idempotent:
  *   1. Legacy field migration (numeric `version: 2` ≙ v1.2): migrate trait/stat/discovered copies on every
  *      snapshot, realign the one-slot-short state history (append current), and re-stamp `APP_VERSION`.
  *   2. Storage cleanup (presence-based, every envelope): hoist the one canonical flat history to top-level
  *      `messageHistory` and strip the per-snapshot `fullMessageHistory` copies. Old saves (any version) carry
  *      the history on `currentState`; already-migrated saves already have `messageHistory` and stripped
  *      snapshots, so this is a no-op for them.
+ *   3. Player model (presence-based, every envelope): rewrite the `'default'` sentinel to the seeded model's
+ *      library id. A save that never used it is untouched, and a rewritten one no longer matches.
  * The appended current page stays `=== currentState`, so `gameStates[page - 1]` resolves the current page
  * identically. Pure — callers decide whether to persist the result (import) or just load it (load).
  */
@@ -173,9 +187,10 @@ export function migrateSave(save: SaveObject): SaveObject {
   const migratedHistory = isLegacy ? save.stateHistory.map(migrateLegacySaveState) : save.stateHistory;
   // Canonical flat history: an already-hoisted top-level copy, else the current snapshot's own copy.
   const messageHistory = save.messageHistory ?? migratedCurrent.fullMessageHistory ?? [];
-  const currentState = stripSnapshotHistory(migratedCurrent);
-  const stateHistory = isLegacy
+  const currentState = migrateDefaultModelId(stripSnapshotHistory(migratedCurrent));
+  const history = isLegacy
     ? appendCurrentToHistory(migratedHistory.map(stripSnapshotHistory), currentState)
     : migratedHistory.map(stripSnapshotHistory);
+  const stateHistory = history.map(migrateDefaultModelId);
   return { ...save, currentState, stateHistory, messageHistory, version: isLegacy ? APP_VERSION : save.version };
 }

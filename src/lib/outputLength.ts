@@ -2,8 +2,9 @@
 export type ParagraphLimit = 'none' | 'single' | 'auto';
 
 // Rough average tokens in one short narration paragraph (English), with headroom so the model
-// tends to finish before the hard max_tokens cap. Heuristic constants — tune as needed.
-const AVG_TOKENS_PER_PARAGRAPH = 90;
+// tends to finish before the hard max_tokens cap. Measured ~32 tok/para on a batch of real narration
+// (Mistral tokenizer); set above that to absorb denser tokenizers (Gemma/Llama) and longer-paragraph models.
+const AVG_TOKENS_PER_PARAGRAPH = 45;
 const HEADROOM = 0.8;
 
 /** How many paragraphs comfortably fit in `maxTokens` of output (at least 1). */

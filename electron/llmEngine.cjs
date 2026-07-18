@@ -261,9 +261,16 @@ async function start({ modelPath, port = DEFAULT_PORT, contextSize, gpuLayers, f
     let vramUsedBefore = null;
     try { vramUsedBefore = (await llama.getVramState()).used; } catch { /* not all backends report VRAM */ }
     const loadOpts = { modelPath };
-    // AUTO → omit (fit VRAM); MAX → "max" (all layers); else the literal layer count.
+    // AUTO → fit layers around the KV cache we're about to allocate; MAX → "max" (all layers); else the
+    // literal layer count. Auto-fitting without `fitContext` sizes layers to free VRAM alone and offloads
+    // enough to leave the context no room, so createContext then rejects a size that would have fit — and
+    // the more VRAM is free, the more it over-offloads. Requesting above the trained max only over-reserves
+    // (createContext clamps below), which is the safe direction.
     if (gpuLayers === GPU_LAYERS_MAX) loadOpts.gpuLayers = 'max';
     else if (typeof gpuLayers === 'number' && gpuLayers >= 0) loadOpts.gpuLayers = gpuLayers;
+    else if (typeof contextSize === 'number' && contextSize > 0) {
+      loadOpts.gpuLayers = { fitContext: { contextSize } };
+    }
     model = await llama.loadModel(loadOpts);
     // The model's trained context length is the hard ceiling for contextSize — surface it so the UI can cap
     // its slider, and clamp our request to it (createContext rejects a contextSize above the trained max).

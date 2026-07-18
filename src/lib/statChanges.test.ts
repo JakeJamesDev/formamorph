@@ -134,6 +134,25 @@ describe('applyTraitStatChanges', () => {
     expect(changedIds.has('h')).toBe(true);
   });
 
+  it('lets one trait lower a floor another raised, back to the authored min but no further', () => {
+    const { stats } = applyTraitStatChanges(
+      [stat({ id: 'h', value: 50, min: 10 })],
+      [
+        { statId: 'h', value: 20, type: 'min' },
+        { statId: 'h', value: -999, type: 'min' },
+      ],
+    );
+    expect(stats[0].min).toBe(10); // the authored floor is the hard limit, however far the trait digs
+  });
+
+  it('ignores a lone negative min — traits never loosen a floor past the authored one', () => {
+    const { stats } = applyTraitStatChanges(
+      [stat({ id: 'h', value: 50, min: 10 })],
+      [{ statId: 'h', value: -5, type: 'min' }],
+    );
+    expect(stats[0].min).toBe(10);
+  });
+
   it('raising min pulls the value up to the new floor', () => {
     const { stats } = applyTraitStatChanges(
       [stat({ id: 'h', value: 50, min: 0 })],

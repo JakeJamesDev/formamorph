@@ -6,6 +6,30 @@ type LocationWithEntities = (GameLocation & { entity?: string[] }) | null;
 const pickDescription = (preferSummary: boolean, summary?: string, description?: string) =>
   preferSummary ? summary?.trim() || description : description;
 
+// The extra fields — beyond name and description, which are handled explicitly — that each builder feeds the
+// AI. An ALLOWLIST, not a denylist: everything else on a location/entity (media, ids, editor-only flags,
+// image tags, placeholder defs) is excluded by default, so a newly added world field can never silently leak
+// into the prompt. To surface a new field to the AI, add it here.
+const AI_LOCATION_FIELDS: readonly (keyof GameLocation)[] = ['connections'];
+const AI_ENTITY_FIELDS: readonly (keyof Entity)[] = ['type'];
+
+/** Append an item's allow-listed fields as `key: value` lines, skipping blanks so empty fields don't pad the
+ *  prompt or print "undefined". `field` shapes each line (plain or markdown, per the caller). */
+function appendAllowedFields<T>(
+  item: T,
+  keys: readonly (keyof T)[],
+  field: (key: string, value: string | number | boolean) => string,
+): string {
+  let out = '';
+  for (const key of keys) {
+    const value = item[key];
+    if (value === undefined || value === null) continue;
+    if (typeof value === 'string' && value.trim() === '') continue;
+    out += field(String(key), value as unknown as string | number | boolean);
+  }
+  return out;
+}
+
 /** Emit a one-line-per-location list (`name: summary` / `- **name:** summary`) — the shared body of the
  *  sublocations / destinations / reachable builders, which differ only in which locations they pass. */
 function buildLocationList(
@@ -44,35 +68,16 @@ export function buildLocationContext(
   const { preferSummary = false, format = "simple" } = opts;
   const field = (key: string, value: string | number | boolean) =>
     format === "markdown" ? `- **${key}:** ${value}\n` : `${key}: ${value}\n`;
-  const {
-    backgroundImage,
-    ambientSound,
-    id,
-    playerDescription,
-    aiDescription,
-    aiSummary,
-    isStarting, // editor-only new-game seeding flag; irrelevant to the AI
-    parentId, // editor-only sub-location nesting; not part of the AI feed
-    entity, // entity ids — emitted by buildEntityContext, not here
-    entities, // entity ids — emitted by buildEntityContext, not here
-    ...otherProps
-  } = location;
 
-  // Start with name and description (skip a blank description so it doesn't print "undefined")
+  // Name, then description. The legacy `description` is a last resort: migration never folds it, so a
+  // pre-audience-split world may carry only that. Used only when no authored AI text exists, emitted once
+  // under the same key.
   let output = field("name", location.name);
-  const locationDescription = pickDescription(preferSummary, aiSummary, aiDescription);
+  const locationDescription = pickDescription(preferSummary, location.aiSummary, location.aiDescription) || location.description;
   if (locationDescription && locationDescription.trim() !== "") {
     output += field("description", locationDescription);
   }
-
-  // Add other location properties, skipping `name` (emitted above) and blanks so empty fields
-  // don't confuse smaller models.
-  Object.entries(otherProps).forEach(([key, value]) => {
-    if (value === undefined || value === null || key === "name") return;
-    if (typeof value === "string" && value.trim() === "") return;
-    output += field(key, value as string | number | boolean);
-  });
-
+  output += appendAllowedFields(location, AI_LOCATION_FIELDS, field);
   return output;
 }
 
@@ -105,31 +110,12 @@ export function buildEntityContext(
   entityList.forEach((entityId: string) => {
     const entityItem = entities.find((f) => f.id === entityId);
     if (!entityItem) return;
-    // `groupId`/`order` are editor-only organization and must never reach the AI (grouping is invisible here).
-    const {
-      id,
-      image,
-      sound,
-      model,
-      groupId,
-      order,
-      playerDescription,
-      aiDescription,
-      aiSummary,
-      ...entityProps
-    } = entityItem;
     output += head(entityItem.name);
-    const entityDescription = pickDescription(preferSummary, aiSummary, aiDescription);
+    const entityDescription = pickDescription(preferSummary, entityItem.aiSummary, entityItem.aiDescription);
     if (entityDescription && entityDescription.trim() !== "") {
       output += field("description", entityDescription);
     }
-    // Add other entity properties, skipping blanks (e.g. an unset type) so empty fields don't pad
-    // the prompt and confuse smaller models.
-    Object.entries(entityProps).forEach(([key, value]) => {
-      if (value === undefined || value === null || key === "name") return;
-      if (typeof value === "string" && value.trim() === "") return;
-      output += field(key, value as string | number | boolean);
-    });
+    output += appendAllowedFields(entityItem, AI_ENTITY_FIELDS, field);
   });
 
   // All listed ids failed to resolve to a real entity → treat as empty.
@@ -182,9 +168,10 @@ export function buildSublocationEntitiesContext(
 
 /**
  * The places the player can move to from the current location — the **local navigable graph**: the union of
- * its authored `connections` (resolved by name), its direct sub-locations, and its reachable siblings.
- * Deduped by id, current excluded, dangling connection names skipped. This is the location router's whole
- * world: the only candidates fed to the model and the only names its reply is matched against.
+ * its authored `connections` (resolved by name), its direct sub-locations, and its reachable locations (the
+ * containing location + siblings). Deduped by id, current excluded, dangling connection names skipped. This is
+ * the location router's whole world: the only candidates fed to the model and the only names its reply is
+ * matched against.
  */
 export function navigableDestinations(
   current: LocationWithEntities,
@@ -198,7 +185,7 @@ export function navigableDestinations(
   };
   for (const name of current.connections ?? []) add(byLowerName.get(name.toLowerCase().trim()));
   for (const child of locations.filter((l) => (l.parentId ?? null) === current.id)) add(child);
-  for (const sib of reachableSiblings(current as GameLocation, locations)) add(sib);
+  for (const loc of reachableLocations(current as GameLocation, locations)) add(loc);
   return [...out.values()];
 }
 
@@ -218,17 +205,29 @@ export function buildDestinationsContext(
   return buildLocationList(dests, opts);
 }
 
-/** The current location's reachable **siblings** — other children of the same non-null parent. */
-function reachableSiblings(current: GameLocation, locations: GameLocation[]): GameLocation[] {
-  const parent = current.parentId ?? null;
-  if (parent === null) return []; // top-level → no containing region → nothing reachable
-  return locations.filter((l) => l.id !== current.id && (l.parentId ?? null) === parent);
+/**
+ * The locations reachable from the current one without going deeper: the containing location first, then its
+ * siblings (the parent's other children). The parent is what makes nesting two-way — without it a sub-location
+ * with no children and no siblings has nowhere to go and the player is stranded there.
+ */
+function reachableLocations(current: GameLocation, locations: GameLocation[]): GameLocation[] {
+  const parentId = current.parentId ?? null;
+  if (parentId === null) return []; // top-level → no containing region → nothing reachable
+  const parent = locations.find((l) => l.id === parentId);
+  const siblings = locations.filter((l) => l.id !== current.id && (l.parentId ?? null) === parentId);
+  return parent ? [parent, ...siblings] : siblings; // a parentId pointing at nothing leaves just the siblings
+}
+
+/** The deduped entity ids across the current location's reachable locations (parent + siblings). */
+export function reachableEntityIds(current: LocationWithEntities, locations: GameLocation[]): string[] {
+  if (!current) return [];
+  return [...new Set(reachableLocations(current as GameLocation, locations).flatMap((l) => l.entities ?? []))];
 }
 
 /**
- * Serialize the sibling locations reachable from the current one (same parent) for the
- * `<LOCATION|reachable>` chip — one line per sibling (`name: <summary>` / `- **name:** <summary>`).
- * Returns `N/A` when the location is top-level (no parent) or has no siblings.
+ * Serialize the locations reachable from the current one for the `<LOCATION|reachable>` chip — one line each
+ * (`name: <summary>` / `- **name:** <summary>`), containing location first. Returns `N/A` when the location is
+ * top-level (no parent).
  */
 export function buildReachableLocationsContext(
   current: LocationWithEntities,
@@ -236,16 +235,16 @@ export function buildReachableLocationsContext(
   opts: { preferSummary?: boolean; format?: "simple" | "markdown" } = {},
 ): string {
   if (!current) return NONE_PLACEHOLDER;
-  const sibs = reachableSiblings(current, locations);
-  if (sibs.length === 0) return NONE_PLACEHOLDER;
-  return buildLocationList(sibs, opts);
+  const reachable = reachableLocations(current, locations);
+  if (reachable.length === 0) return NONE_PLACEHOLDER;
+  return buildLocationList(reachable, opts);
 }
 
 /**
- * Serialize the characters/things in the current location's reachable siblings for the
- * `<ENTITIES|reachable>` chip. Gathers + dedupes the siblings' entity ids (minus `excludeIds` — anyone shown
- * in a higher-precedence roster, i.e. present here or in a sub-location) and delegates to `buildEntityContext`.
- * Returns `N/A` when there are no siblings or no remaining entities.
+ * Serialize the characters/things in the current location's reachable locations for the
+ * `<ENTITIES|reachable>` chip. Gathers + dedupes their entity ids (minus `excludeIds` — anyone shown in a
+ * higher-precedence roster, i.e. present here or in a sub-location) and delegates to `buildEntityContext`.
+ * Returns `N/A` when nothing is reachable or no entities remain.
  */
 export function buildReachableEntitiesContext(
   current: LocationWithEntities,
@@ -254,9 +253,8 @@ export function buildReachableEntitiesContext(
   opts: { preferSummary?: boolean; format?: "simple" | "markdown"; excludeIds?: string[] } = {},
 ): string {
   if (!current) return NONE_PLACEHOLDER;
-  const sibs = reachableSiblings(current, locations);
   const exclude = new Set(opts.excludeIds ?? []);
-  const ids = [...new Set(sibs.flatMap((s) => s.entities ?? []))].filter((id) => !exclude.has(id));
+  const ids = reachableEntityIds(current, locations).filter((id) => !exclude.has(id));
   if (ids.length === 0) return NONE_PLACEHOLDER;
   return buildEntityContext({ id: current.id, name: current.name, entities: ids }, entities, opts);
 }

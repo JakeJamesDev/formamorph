@@ -40,13 +40,13 @@ axis. Full pipeline on: narration, choices, stats, location, precall planning.
 | # | Action | Tests | Correct restraint |
 |---|---|---|---|
 | 1 | *(opening)* | prose, scene-set | none · NONE |
-| 2 | look around, take stock | **no-op** | none · NONE |
+| 2 | brush road dust from sleeve | **no-op** (idle grooming) | none · NONE |
 | 3 | talk to Sable | prose, dialogue | none · NONE |
-| 4 | chat with Sable | **no-op** | none · NONE |
+| 4 | retie a bootlace | **no-op** (idle fidget) | none · NONE |
 | 5 | cut down the road-wolf as it lunges | **gate: violence** + stat | Vigor↓ · NONE |
 | 6 | keep fighting, arm torn | **gate: injury** + stat | Vigor↓ · NONE |
 | 7 | threaten Pell, cold and cruel | **gate: villainy** | none/Nerve · NONE |
-| 8 | glance at the cellar door | **no-op** (names a place, doesn't go) | none · NONE |
+| 8 | trace the cellar door's grain | **no-op** (idle; names a place, doesn't go) | none · NONE |
 | 9 | kiss Sable, let it go further | **gate: intimacy onset** | none/Nerve · NONE |
 | 10 | head out to the stable yard | **location change** (real) | none · **The Stable Yard** |
 
@@ -91,6 +91,12 @@ accumulated field. `--no-run` re-scores the newest existing dump without re-runn
   stripped first so an in-character "I can't" doesn't trip it).
 - **Prose** is the one axis auto-metrics can't judge — left as a slot filled by an in-session Claude read of the
   dump (or a future `--judge` flag). Objective score weights restraint 35 / stat-direction 30 / format 35.
+
+**Screening a catalog model:** give it `"modelPath": "<path to .gguf>"` instead of `modelName` and it runs on the
+desktop app's own engine — the only way to measure what a user actually gets. The engine loads it with an **8k KV
+cache**; the profiles peak near 5.4k tokens, so a prompt sees the same context either way. Don't raise it without
+a reason: the KV competes with the weights for VRAM, and a 19GB-class model on a 24GB card won't load at 16k once
+the harness browser takes its share. If a profile ever outgrows 8k, set `contextSize` on that model entry.
 
 ## Run (full A/B probe)
 

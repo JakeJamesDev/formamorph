@@ -1,57 +1,87 @@
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import {
   $getRoot, $getNodeByKey, $getSelection, $isRangeSelection, $createRangeSelection, $setSelection,
-  $insertNodes, $createParagraphNode, $createTextNode, $createLineBreakNode,
-  $isElementNode, $isTextNode, $isLineBreakNode,
+  $insertNodes, $createParagraphNode,
+  $isElementNode,
   COMMAND_PRIORITY_LOW, COMMAND_PRIORITY_HIGH, DRAGOVER_COMMAND, DROP_COMMAND,
-  type LexicalNode, type ElementNode,
+  UNDO_COMMAND, REDO_COMMAND, CAN_UNDO_COMMAND, CAN_REDO_COMMAND,
 } from 'lexical';
+import { mergeRegister } from '@lexical/utils';
 import { LexicalComposer } from '@lexical/react/LexicalComposer';
 import { PlainTextPlugin } from '@lexical/react/LexicalPlainTextPlugin';
 import { ContentEditable } from '@lexical/react/LexicalContentEditable';
 import { HistoryPlugin } from '@lexical/react/LexicalHistoryPlugin';
 import { LexicalErrorBoundary } from '@lexical/react/LexicalErrorBoundary';
 import { useLexicalComposerContext } from '@lexical/react/LexicalComposerContext';
+import {
+  Bold, Italic, Heading1, Heading2, List, ListOrdered, Link2, Quote, Code, Undo2, Redo2,
+} from 'lucide-react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { CHIP_BASE } from '@/components/Chip';
+import { MarkdownRenderer } from '@/components/game/MarkdownRenderer';
+import { type MarkdownAction } from '@/lib/markdownToolbar';
 import { type PromptVariable } from '@/lib/promptVariables';
 import { ChipVocabularyContext, promptVocabulary, type ChipVocabulary } from '@/lib/chipVocabulary';
 import { cn } from '@/lib/utils';
 import { VariableNode, $createVariableNode, $isVariableNode, PromptDragContext } from './VariableNode';
+import { buildEditorState, serializeRoot, $applyMarkdownAction } from './promptFieldState';
 
-// --- string <-> editor conversion (a single plain-text paragraph of text / line breaks / chips) ---
+const MARKDOWN_TOOLBAR: { action: MarkdownAction; Icon: typeof Bold; title: string }[] = [
+  { action: 'bold', Icon: Bold, title: 'Bold' },
+  { action: 'italic', Icon: Italic, title: 'Italic' },
+  { action: 'h1', Icon: Heading1, title: 'Heading 1' },
+  { action: 'h2', Icon: Heading2, title: 'Heading 2' },
+  { action: 'ul', Icon: List, title: 'Bullet list' },
+  { action: 'ol', Icon: ListOrdered, title: 'Numbered list' },
+  { action: 'link', Icon: Link2, title: 'Link' },
+  { action: 'quote', Icon: Quote, title: 'Blockquote' },
+  { action: 'code', Icon: Code, title: 'Inline code' },
+];
 
-function appendSegments(para: ElementNode, value: string, parse: ChipVocabulary['parse']) {
-  for (const seg of parse(value)) {
-    if (seg.type === 'variable') {
-      para.append($createVariableNode(seg.token));
-      continue;
-    }
-    seg.value.split('\n').forEach((line, i) => {
-      if (i > 0) para.append($createLineBreakNode());
-      if (line.length) para.append($createTextNode(line));
-    });
-  }
-}
 
-function buildEditorState(value: string, parse: ChipVocabulary['parse']) {
-  const root = $getRoot();
-  root.clear();
-  const para = $createParagraphNode();
-  appendSegments(para, value, parse);
-  root.append(para);
-}
+/** Markdown formatting toolbar. Reads the editor as a flat string, applies the pure transform, rebuilds,
+ *  then restores the selection the transform asked for. Editing the tree directly (rather than routing
+ *  through `onChange`) keeps ValueSyncPlugin's external-value path — and its scroll reset — out of it. */
+function MarkdownToolbar({ parse, disabled }: { parse: ChipVocabulary['parse']; disabled: boolean }) {
+  const [editor] = useLexicalComposerContext();
+  // History lives in Lexical's HistoryPlugin; mirror its can-undo/redo so the buttons disable like the rest.
+  const [canUndo, setCanUndo] = useState(false);
+  const [canRedo, setCanRedo] = useState(false);
+  useEffect(() => mergeRegister(
+    editor.registerCommand(CAN_UNDO_COMMAND, (v: boolean) => { setCanUndo(v); return false; }, COMMAND_PRIORITY_LOW),
+    editor.registerCommand(CAN_REDO_COMMAND, (v: boolean) => { setCanRedo(v); return false; }, COMMAND_PRIORITY_LOW),
+  ), [editor]);
 
-function serializeNode(node: LexicalNode): string {
-  if ($isVariableNode(node)) return node.getToken();
-  if ($isLineBreakNode(node)) return '\n';
-  if ($isTextNode(node)) return node.getTextContent();
-  if ($isElementNode(node)) return node.getChildren().map(serializeNode).join('');
-  return '';
-}
+  const apply = (action: MarkdownAction) => {
+    editor.update(() => $applyMarkdownAction(parse, action));
+    editor.focus();
+  };
 
-function serializeRoot(): string {
-  return $getRoot().getChildren().map(serializeNode).join('\n');
+  const btn = 'rounded p-1.5 text-muted-foreground hover:bg-accent hover:text-foreground disabled:pointer-events-none disabled:opacity-50';
+  return (
+    <div className="flex flex-wrap gap-1">
+      {MARKDOWN_TOOLBAR.map(({ action, Icon, title }) => (
+        <button key={action} type="button" title={title} aria-label={title} disabled={disabled} onClick={() => apply(action)} className={btn}>
+          <Icon className="h-4 w-4" />
+        </button>
+      ))}
+      <span className="mx-1 w-px self-stretch bg-border" />
+      <button
+        type="button" title="Undo" aria-label="Undo" className={btn}
+        disabled={disabled || !canUndo}
+        onClick={() => editor.dispatchCommand(UNDO_COMMAND, undefined)}
+      >
+        <Undo2 className="h-4 w-4" />
+      </button>
+      <button
+        type="button" title="Redo" aria-label="Redo" className={btn}
+        disabled={disabled || !canRedo}
+        onClick={() => editor.dispatchCommand(REDO_COMMAND, undefined)}
+      >
+        <Redo2 className="h-4 w-4" />
+      </button>
+    </div>
+  );
 }
 
 function caretRangeFromPoint(x: number, y: number): Range | null {
@@ -321,13 +351,37 @@ function PreviewPane({ value, previewValues, vocab, scrollRef, onScroll }: {
   );
 }
 
+/** Preview for a markdown field: resolve each chip to its value, then render the result the way the game
+ *  will. Deliberately untinted — this pane's job is to show exactly what the player sees, and the markdown
+ *  renderer takes a string (no raw HTML), so a chip-colored span couldn't survive it anyway. */
+function MarkdownPreviewPane({ value, previewValues, vocab, scrollRef, onScroll }: {
+  value: string;
+  previewValues?: Record<string, string>;
+  vocab: ChipVocabulary;
+  scrollRef?: React.Ref<HTMLDivElement>;
+  onScroll?: React.UIEventHandler<HTMLDivElement>;
+}) {
+  const resolved = vocab
+    .parse(value)
+    .map((seg) => (seg.type === 'text' ? seg.value : previewValues?.[seg.token] ?? seg.token))
+    .join('');
+  return (
+    <div ref={scrollRef} onScroll={onScroll} className="h-full min-h-[160px] overflow-auto rounded-md border border-input bg-muted/40 px-3 py-2 text-sm">
+      <MarkdownRenderer text={resolved} />
+    </div>
+  );
+}
+
 /**
  * Chip-based prompt editor: variable tokens render as draggable/removable chips, a colored toolbar
  * inserts more, and (when `previewValues` is supplied — i.e. a game is active) a Preview tab swaps each
  * chip for its live value. The composer wraps both tabs so the Insert toolbar persists across them —
  * interactive in Edit, a static color key in Preview. Storage stays the same token-string.
+ *
+ * With `markdown`, it also gains a formatting toolbar and its Preview renders markdown instead of tinting
+ * chips — for author-facing prose fields (world description, readme) that the player reads as markdown.
  */
-const PromptField = ({ value, onChange, variables = [], vocabulary, previewValues, onPreviewOpen, className, readOnly = false }: {
+const PromptField = ({ value, onChange, variables = [], vocabulary, previewValues, onPreviewOpen, markdown = false, resizable = false, placeholder, className, readOnly = false }: {
   value: string;
   onChange: (v: string) => void;
   /** Prompt-variable palette (used when no explicit `vocabulary` is given — the default prompt family). */
@@ -337,12 +391,22 @@ const PromptField = ({ value, onChange, variables = [], vocabulary, previewValue
   previewValues?: Record<string, string>;
   /** Fired when the Preview tab is opened — lets a caller re-derive `previewValues` (e.g. re-roll Wildcards). */
   onPreviewOpen?: () => void;
+  /** Prose field: adds a markdown formatting toolbar and renders the Preview as markdown. */
+  markdown?: boolean;
+  /** Let the author drag the field taller/shorter. Only for fields in a content-height container (the
+   *  world editor's scroll panes) — in a height-pinned pane the dragged box would just overflow its slot. */
+  resizable?: boolean;
+  /** Empty-field hint. */
+  placeholder?: string;
   className?: string;
   readOnly?: boolean;
 }) => {
   const vocab = useMemo(() => vocabulary ?? promptVocabulary(variables), [vocabulary, variables]);
   const dragKey = useRef<string | null>(null);
   const [tab, setTab] = useState('edit');
+  // A markdown field always has something to preview (the rendered prose); a plain chip field only earns
+  // the toggle once there are values to swap in.
+  const showTabs = markdown || !!previewValues;
   // Scroll containers for each tab (only one is mounted at a time). ContentEditable forwards its ref to
   // the editable <div>, which is the Edit-mode scroller (overflow-auto via EDITOR_CLASS).
   const editScrollRef = useRef<HTMLDivElement | null>(null);
@@ -414,13 +478,19 @@ const PromptField = ({ value, onChange, variables = [], vocabulary, previewValue
     [],
   );
 
+  // The resize grabber goes on whichever element outlives a tab switch — the Tabs root, or this surface when
+  // there are no tabs. Putting it on the editor itself would lose the dragged height every toggle (Radix
+  // unmounts the inactive pane) and would size Edit without Preview. `h-full` panes then fill the new height.
+  // `flex-none` is what makes the drag take: as a flex-1 item, flex owns the main size and the height a
+  // resize writes is ignored. Unset, it sizes to content (floored at min-h) exactly as before.
+  const resizeClass = resizable && 'flex-none resize-y overflow-hidden min-h-[160px]';
   const editorSurface = (
-    <div className="relative flex-1 min-h-0">
+    <div className={cn('relative flex-1 min-h-0', !showTabs && resizeClass)}>
       <PlainTextPlugin
         contentEditable={<ContentEditable ref={editScrollRef} onScroll={handleScroll} className={EDITOR_CLASS} />}
         placeholder={
           <div className="pointer-events-none absolute left-3 top-2 text-sm text-muted-foreground">
-            Empty prompt
+            {placeholder ?? 'Empty prompt'}
           </div>
         }
         ErrorBoundary={LexicalErrorBoundary}
@@ -433,9 +503,10 @@ const PromptField = ({ value, onChange, variables = [], vocabulary, previewValue
       <ChipVocabularyContext.Provider value={vocab}>
       <PromptDragContext.Provider value={dragKey}>
         <div className={cn('flex flex-col flex-1 min-h-0 gap-2', className)}>
-          <VariableToolbar vocab={vocab} interactive={!readOnly && (!previewValues || tab === 'edit')} />
-          {previewValues ? (
-            <Tabs value={tab} onValueChange={(v) => { setTab(v); if (v === 'preview') onPreviewOpen?.(); }} className="flex flex-col flex-1 min-h-0">
+          <VariableToolbar vocab={vocab} interactive={!readOnly && (!showTabs || tab === 'edit')} />
+          {markdown && <MarkdownToolbar parse={vocab.parse} disabled={readOnly || tab !== 'edit'} />}
+          {showTabs ? (
+            <Tabs value={tab} onValueChange={(v) => { setTab(v); if (v === 'preview') onPreviewOpen?.(); }} className={cn('flex flex-col flex-1 min-h-0', resizeClass)}>
               <TabsList className="grid w-full grid-cols-2 flex-shrink-0">
                 <TabsTrigger value="edit">Edit</TabsTrigger>
                 <TabsTrigger value="preview">Preview</TabsTrigger>
@@ -444,7 +515,11 @@ const PromptField = ({ value, onChange, variables = [], vocabulary, previewValue
                 {editorSurface}
               </TabsContent>
               <TabsContent value="preview" className="mt-2 flex-1 min-h-0 data-[state=active]:flex flex-col">
-                <PreviewPane value={value} previewValues={previewValues} vocab={vocab} scrollRef={previewScrollRef} onScroll={handleScroll} />
+                {markdown ? (
+                  <MarkdownPreviewPane value={value} previewValues={previewValues} vocab={vocab} scrollRef={previewScrollRef} onScroll={handleScroll} />
+                ) : (
+                  <PreviewPane value={value} previewValues={previewValues ?? {}} vocab={vocab} scrollRef={previewScrollRef} onScroll={handleScroll} />
+                )}
               </TabsContent>
             </Tabs>
           ) : (

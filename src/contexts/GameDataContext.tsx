@@ -117,6 +117,26 @@ function useProvideGameData() {
 
   const removeEntity = useCallback((entityId: string) => {
     setEntities(prevEntities => prevEntities.filter(entity => entity.id !== entityId));
+    // The entity↔location link is stored on the location, so dropping the entity alone strands its id in
+    // every location that listed it. The AI feed skips ids it can't resolve, but they'd ride along into the
+    // exported world and accumulate. The link sits on `entities` (current) or the legacy `entity` alias
+    // (pre-audience-split worlds, which migration never folds) — clean whichever holds it. Returns the
+    // original array when nothing referenced the entity.
+    setLocations(prevLocations => {
+      let changed = false;
+      const next = prevLocations.map((location) => {
+        const legacy = (location as GameLocation & { entity?: string[] }).entity;
+        const inEntities = location.entities?.includes(entityId) ?? false;
+        const inLegacy = legacy?.includes(entityId) ?? false;
+        if (!inEntities && !inLegacy) return location;
+        changed = true;
+        const cleaned: GameLocation & { entity?: string[] } = { ...location };
+        if (inEntities) cleaned.entities = location.entities!.filter((id) => id !== entityId);
+        if (inLegacy) cleaned.entity = legacy!.filter((id) => id !== entityId);
+        return cleaned;
+      });
+      return changed ? next : prevLocations;
+    });
   }, []);
 
   const addEntityGroup = useCallback((newGroup: EntityGroup) => {
@@ -259,9 +279,12 @@ function useProvideGameData() {
       systemPrompt: overview.systemPrompt || defaultOverview.systemPrompt,
       use3DModel: typeof overview.use3DModel === 'boolean' ? overview.use3DModel : defaultOverview.use3DModel,
       tags: Array.isArray(overview.tags) ? overview.tags : defaultOverview.tags,
-      customPlayerVRM: overview.customPlayerVRM || defaultOverview.customPlayerVRM
+      customPlayerVRM: overview.customPlayerVRM || defaultOverview.customPlayerVRM,
+      readme: overview.readme || defaultOverview.readme
     };
-    updateWorldOverview(normalizedOverview);
+    // Replace, never merge: a merge lets a field the normalizer doesn't set survive from the previously
+    // loaded world, leaking it into this one and into the next saveWorld.
+    setWorldOverview(normalizedOverview);
 
     // Load other data with array validation
     const nextStats = Array.isArray(worldData.stats) ? worldData.stats : [];
@@ -292,7 +315,7 @@ function useProvideGameData() {
     ));
 
     return isDefault;
-  }, [updateWorldOverview, setStats, setLocations, setEntities, setTraits, setStatUpdates, setDictionaries]);
+  }, [setWorldOverview, setStats, setLocations, setEntities, setTraits, setStatUpdates, setDictionaries]);
 
   const isWorldDirty = useMemo(
     () => serializeWorld(worldOverview, stats, locations, entities, entityGroups, traits, traitGroups, statUpdates, dictionaries, placeholders) !== savedSnapshot,

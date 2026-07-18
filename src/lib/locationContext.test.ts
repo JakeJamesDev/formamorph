@@ -2,7 +2,7 @@ import { describe, it, expect } from "vitest";
 import {
   buildLocationContext, buildEntityContext, buildSublocationsContext, buildSublocationEntitiesContext,
   buildReachableLocationsContext, buildReachableEntitiesContext,
-  navigableDestinations, buildDestinationsContext, sublocationEntityIds,
+  navigableDestinations, buildDestinationsContext, sublocationEntityIds, reachableEntityIds,
 } from "./locationContext";
 import { NONE_PLACEHOLDER } from "./promptFallbacks";
 import type { Entity, GameLocation } from "@/types";
@@ -26,6 +26,36 @@ const location: GameLocation & { entity?: string[] } = {
 describe("buildLocationContext", () => {
   it("returns the placeholder for a null location", () => {
     expect(buildLocationContext(null)).toBe(NONE_PLACEHOLDER);
+  });
+
+  it("emits only allow-listed fields — an unknown field never leaks to the AI by default", () => {
+    const out = buildLocationContext({
+      ...location,
+      playerDescription: "What the player reads.",
+      imageTags: "outdoors, dock, sunset",
+      // A field the allowlist doesn't name — the whole point is it's dropped without anyone updating this code.
+      someFutureField: "secret editor state",
+    } as never);
+    expect(out).not.toContain("imageTags"); // booru tags for image gen, not story context
+    expect(out).not.toContain("sunset");
+    expect(out).not.toContain("playerDescription");
+    expect(out).not.toContain("What the player reads.");
+    expect(out).not.toContain("someFutureField");
+    expect(out).not.toContain("secret editor state");
+    expect(out).toContain("description:"); // the allow-listed content still lands
+  });
+
+  it("folds the legacy `description` into one description line rather than emitting a second key", () => {
+    const out = buildLocationContext({ ...location, description: "Legacy text." });
+    expect(out).not.toContain("Legacy text."); // authored aiDescription wins
+    expect(out.match(/description:/g)).toHaveLength(1); // never two conflicting description lines
+  });
+
+  it("falls back to the legacy `description` when a pre-split world has no AI text", () => {
+    // migrateWorld renames inGameDescription/detailedDescription but never folds a plain `description`,
+    // so dropping it outright would silently mute those locations.
+    const out = buildLocationContext({ id: "old", name: "Old Well", description: "A mossy well." });
+    expect(out).toContain("description: A mossy well.");
   });
 
   it("uses full aiDescription by default", () => {
@@ -118,31 +148,64 @@ describe("buildSublocationsContext / buildSublocationEntitiesContext", () => {
 });
 
 describe("buildReachableLocationsContext / buildReachableEntitiesContext", () => {
-  // town > { houseA (Alice), Sarah's House (Sarah), Mall } ; houseA > roomA ; plus a top-level location.
+  // town (Mayor) > { houseA (Alice), Sarah's House (Sarah), Mall } ; houseA > roomA ; plus a top-level location.
+  const town: GameLocation = { id: "town", name: "Town", aiDescription: "A small town.", entities: ["mayor"] };
   const houseA: GameLocation = { id: "a", name: "House A", parentId: "town", entities: ["alice"] };
   const sarahs: GameLocation = { id: "b", name: "Sarah's House", parentId: "town", aiDescription: "Where Sarah lives.", entities: ["sarah"] };
   const mall: GameLocation = { id: "m", name: "Mall", parentId: "town", aiDescription: "A big mall." };
   const roomA: GameLocation = { id: "ra", name: "Room A", parentId: "a" }; // child of houseA, not a sibling
   const top: GameLocation = { id: "top", name: "Overworld" }; // top-level, no parent
-  const locs = [houseA, sarahs, mall, roomA, top];
+  const locs = [town, houseA, sarahs, mall, roomA, top];
   const sarah: Entity = { id: "sarah", name: "Sarah", aiDescription: "A friendly neighbor." };
+  const mayor: Entity = { id: "mayor", name: "Mayor", aiDescription: "Runs the town." };
 
-  it("reachable locations: siblings only — not self, not children, N/A for top-level/only-child", () => {
+  it("reachable locations: the containing location and its neighbors — not self, not children", () => {
     const out = buildReachableLocationsContext(houseA, locs);
+    expect(out).toContain("Town: A small town.");
     expect(out).toContain("Sarah's House: Where Sarah lives.");
     expect(out).toContain("Mall: A big mall.");
     expect(out).not.toContain("House A"); // self
-    expect(out).not.toContain("Room A"); // child, not sibling
-    expect(buildReachableLocationsContext(top, locs)).toBe(NONE_PLACEHOLDER); // no parent
-    expect(buildReachableLocationsContext(roomA, locs)).toBe(NONE_PLACEHOLDER); // only child of houseA
+    expect(out).not.toContain("Room A"); // child — that's the sub-locations chip's job
   });
 
-  it("reachable entities: gathers siblings' entities, honors excludeIds, N/A when none", () => {
-    const out = buildReachableEntitiesContext(houseA, locs, [sarah]);
+  it("reachable locations: the containing location comes first", () => {
+    const lines = buildReachableLocationsContext(houseA, locs).trim().split("\n");
+    expect(lines[0]).toContain("Town");
+  });
+
+  it("reachable locations: an only child still reaches the place that contains it", () => {
+    // Room A has no siblings and no children. Without the parent this is N/A and the router has no candidates
+    // at all — the player walks in and can never leave.
+    expect(buildReachableLocationsContext(roomA, locs)).toContain("House A");
+  });
+
+  it("reachable locations: N/A for a top-level location, which has no containing region", () => {
+    expect(buildReachableLocationsContext(top, locs)).toBe(NONE_PLACEHOLDER);
+  });
+
+  it("reachable locations: a parentId pointing at nothing still lists the neighbors", () => {
+    const orphaned = [houseA, sarahs, mall]; // no Town in the world
+    const out = buildReachableLocationsContext(houseA, orphaned);
+    expect(out).toContain("Sarah's House");
+    expect(out).not.toContain("Town");
+  });
+
+  it("reachable entities: gathers the containing location's cast alongside the neighbors'", () => {
+    const out = buildReachableEntitiesContext(houseA, locs, [sarah, mayor]);
     expect(out).toContain("Sarah");
-    expect(out).toContain("A friendly neighbor.");
-    expect(buildReachableEntitiesContext(houseA, locs, [sarah], { excludeIds: ["sarah"] })).toBe(NONE_PLACEHOLDER);
+    expect(out).toContain("Mayor");
+    expect(out).toContain("Runs the town.");
+  });
+
+  it("reachable entities: honors excludeIds, N/A when nobody is left or nothing is reachable", () => {
+    expect(buildReachableEntitiesContext(houseA, locs, [sarah, mayor], { excludeIds: ["sarah", "mayor"] })).toBe(NONE_PLACEHOLDER);
     expect(buildReachableEntitiesContext(top, locs, [sarah])).toBe(NONE_PLACEHOLDER);
+  });
+
+  it("reachableEntityIds: dedupes someone standing in two reachable places", () => {
+    const alsoMayor: GameLocation = { ...mall, entities: ["mayor"] }; // Mayor is in Town and at the Mall
+    expect(reachableEntityIds(houseA, [town, houseA, sarahs, alsoMayor]).sort()).toEqual(["mayor", "sarah"]);
+    expect(reachableEntityIds(top, locs)).toEqual([]); // top-level → nothing reachable
   });
 });
 
@@ -154,10 +217,26 @@ describe("navigableDestinations / buildDestinationsContext", () => {
   const landing: GameLocation = { id: "landing", name: "Landing", connections: ["Green"] }; // top-level
   const locs = [green, cottage, eelhouse, landing];
 
+  // The same hamlet, with the containing location actually present in the world.
+  const hamlet: GameLocation = { id: "hamlet", name: "Hamlet", aiSummary: "A reed-thatched hamlet." };
+  const nested = [hamlet, green, cottage, eelhouse, landing];
+
   it("unions connections + sub-locations + reachable siblings, deduped, excluding self", () => {
     const names = navigableDestinations(green, locs).map((l) => l.name).sort();
     // Cottage is both a connection AND a reachable sibling → appears once; Eelhouse is a sibling; Landing is a connection.
     expect(names).toEqual(["Cottage", "Eelhouse", "Landing"]);
+  });
+
+  it("includes the containing location, so nesting is two-way", () => {
+    expect(navigableDestinations(green, nested).map((l) => l.name).sort())
+      .toEqual(["Cottage", "Eelhouse", "Hamlet", "Landing"]);
+  });
+
+  it("lets a leaf sub-location back out instead of stranding the player", () => {
+    // No children, no siblings, no connections: the containing location is the only way out. Without it this
+    // is empty, the router has zero candidates, and the player is stuck for the rest of the playthrough.
+    const cellar: GameLocation = { id: "cellar", name: "Cellar", parentId: "cottage" };
+    expect(navigableDestinations(cellar, [hamlet, cottage, cellar]).map((l) => l.name)).toEqual(["Cottage"]);
   });
 
   it("skips dangling connection names and never includes the current location", () => {
@@ -184,6 +263,21 @@ describe("buildEntityContext", () => {
   it("returns the placeholder for a null location or no entities", () => {
     expect(buildEntityContext(null, [guard])).toBe(NONE_PLACEHOLDER);
     expect(buildEntityContext({ id: "loc2", name: "Empty Field" }, [guard])).toBe(NONE_PLACEHOLDER);
+  });
+
+  it("emits only allow-listed fields — an unknown field never leaks to the AI by default", () => {
+    const out = buildEntityContext(
+      location,
+      [{ ...guard, playerDescription: "What the player reads.", imageTags: "1girl, blue_hair", placeholders: [], someFutureField: "secret editor state" } as never],
+    );
+    expect(out).not.toContain("imageTags"); // booru tags for image gen, not story context
+    expect(out).not.toContain("blue_hair");
+    expect(out).not.toContain("playerDescription");
+    expect(out).not.toContain("What the player reads.");
+    expect(out).not.toContain("placeholders");
+    expect(out).not.toContain("someFutureField"); // dropped without anyone updating the builder
+    expect(out).not.toContain("secret editor state");
+    expect(out).toContain("description: A burly guard in full plate, scarred from old wars."); // aiDescription still lands
   });
 
   it("emits a top-level roster (name as subject, indented fields) with full aiDescription by default", () => {
