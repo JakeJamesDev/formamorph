@@ -6,6 +6,7 @@ import { CachedThumbnail } from "@/lib/useCachedThumbnail";
 import { CardTags, type WorldRecord } from "@/components/WorldDetails";
 import { WorldCardShell } from "@/components/WorldCardShell";
 import { type DownloadState } from "@/lib/downloadState";
+import { KIND_LABELS, kindOf } from "@/lib/catalogKinds";
 import WorldStorageService from "@/services/WorldStorageService";
 
 interface RemoteWorldCardProps {
@@ -32,6 +33,10 @@ export function RemoteWorldCard({
 }: RemoteWorldCardProps) {
   // Get the world ID (server uses _id)
   const worldId = world._id || world.id;
+  // Player-facing noun for this listing's kind (World / Entity / Dictionary), for the download tooltips.
+  const noun = KIND_LABELS[kindOf(world)].one.toLowerCase();
+  // Entity art is almost always a portrait; anchor it to the top so faces aren't cropped out by centering.
+  const thumbClass = cn("w-full h-full object-cover", kindOf(world) === 'entity' && "object-top");
 
   // Check if the world is owned by the current user
   const isOwnedByUser = isAuthenticated &&
@@ -79,8 +84,8 @@ export function RemoteWorldCard({
         <button
           onClick={(e) => { e.stopPropagation(); onContextualDownload(world, dlState); }}
           className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 z-10 p-2 rounded bg-overlay/50 text-white hover:bg-overlay/70 opacity-0 pointer-events-none transition-opacity group-hover:opacity-100 group-hover:pointer-events-auto"
-          title={dlState === 'update' ? "Update available — download the newer version" : dlState === 'refresh' ? "Re-download this world" : "Download this world"}
-          aria-label={dlState === 'update' ? "Update available" : dlState === 'refresh' ? "Re-download this world" : "Download this world"}
+          title={dlState === 'update' ? "Update available — download the newer version" : dlState === 'refresh' ? `Re-download this ${noun}` : `Download this ${noun}`}
+          aria-label={dlState === 'update' ? "Update available" : dlState === 'refresh' ? `Re-download this ${noun}` : `Download this ${noun}`}
         >
           {dlState === 'update' ? (
             <CircleArrowUp className="h-8 w-8" />
@@ -97,13 +102,13 @@ export function RemoteWorldCard({
           url={`${WorldStorageService.API_URL}/thumbnails/${world.thumbnail_file}`}
           updatedAt={world.updated_at}
           alt={world.name}
-          className="w-full h-full object-cover"
+          className={thumbClass}
         />
       ) : world.thumbnail ? (
         <img
           src={world.thumbnail}
           alt={world.name}
-          className="w-full h-full object-cover"
+          className={thumbClass}
         />
       ) : undefined}
       author={(

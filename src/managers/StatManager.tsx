@@ -22,8 +22,8 @@ import {
 } from "@/components/ui/collapsible";
 import { executeStatCode } from "@/lib/statCodeExecutor";
 import { MultiSelect } from "@/components/ui/multi-select";
-import { useBodyMorphNames } from "@/lib/useBodyMorphNames";
-import { boundMorphNamesExcluding } from "@/lib/bodyMorphs";
+import { useBodyMorphSources } from "@/lib/useBodyMorphNames";
+import { boundMorphNamesExcluding, buildMorphGroups } from "@/lib/bodyMorphs";
 import type { Stat, StatDescriptor, StatListItem, StatType } from "@/types";
 
 /** The stat being edited — a loose, partial Stat while fields are filled in. */
@@ -55,13 +55,13 @@ const StatManager = ({ stat }: { stat: Stat }) => {
   const writeStat = useCallback((next: EditingStat) => updateStat(next as Stat), [updateStat]);
   const { draft: editingStat, apply } = useEditingDraft<EditingStat>(stat, writeStat, normalizeStat);
 
-  // Body sliders available to this stat: the model's morph names minus those already owned by another
-  // stat (each slider binds to a single stat).
-  const { names: bodyMorphNames } = useBodyMorphNames();
-  const morphOptions = useMemo(() => {
+  // Body sliders available to this stat: every model's morph names (grouped by model) minus those already
+  // owned by another stat (each slider binds to a single stat). Loaded lazily when the picker opens.
+  const { sources: morphSources, loading: morphsLoading, load: loadMorphs } = useBodyMorphSources();
+  const morphGroups = useMemo(() => {
     const taken = boundMorphNamesExcluding(stats, stat.id);
-    return bodyMorphNames.filter((n) => !taken.has(n)).map((n) => ({ label: n, value: n }));
-  }, [bodyMorphNames, stats, stat.id]);
+    return buildMorphGroups(morphSources, taken);
+  }, [morphSources, stats, stat.id]);
 
   // Open the code section by default when the selected stat carries code (the draft sync itself is
   // handled by useEditingDraft).
@@ -219,10 +219,12 @@ const StatManager = ({ stat }: { stat: Stat }) => {
             </p>
             <MultiSelect
               key={stat.id}
-              options={morphOptions}
+              options={morphGroups}
               defaultValue={editingStat.morphBindings ?? []}
               onValueChange={(v) => handleChange("morphBindings", v)}
+              onOpenChange={(open) => { if (open) loadMorphs(); }}
               placeholder="Select body sliders"
+              emptyIndicator={morphsLoading ? "Loading sliders…" : undefined}
               hideSelectAll
               maxCount={6}
             />

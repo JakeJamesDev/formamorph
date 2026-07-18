@@ -277,6 +277,12 @@ interface MultiSelectProps
 	 * Optional, defaults to false.
 	 */
 	closeOnSelect?: boolean;
+
+	/**
+	 * Called when the dropdown opens or closes. Lets a parent lazy-load options on first open.
+	 * Optional.
+	 */
+	onOpenChange?: (open: boolean) => void;
 }
 
 /**
@@ -331,6 +337,7 @@ export const MultiSelect = React.forwardRef<MultiSelectRef, MultiSelectProps>(
 			deduplicateOptions = false,
 			resetOnDefaultValueChange = true,
 			closeOnSelect = false,
+			onOpenChange,
 			...props
 		},
 		ref
@@ -774,7 +781,7 @@ export const MultiSelect = React.forwardRef<MultiSelectRef, MultiSelectProps>(
 
 				<Popover
 					open={isPopoverOpen}
-					onOpenChange={setIsPopoverOpen}
+					onOpenChange={(open) => { setIsPopoverOpen(open); onOpenChange?.(open); }}
 					modal={modalPopover}>
 					<div id={triggerDescriptionId} className="sr-only">
 						Multi-select dropdown. Use arrow keys to navigate, Enter to select,
@@ -840,9 +847,9 @@ export const MultiSelect = React.forwardRef<MultiSelectRef, MultiSelectProps>(
 												const option = getOptionByValue(value);
 												const IconComponent = option?.icon;
 												const customStyle = option?.style;
-												if (!option) {
-													return null;
-												}
+												// Fall back to the raw value when its option isn't loaded yet (e.g. options
+												// fetched lazily), so a selected value is never an invisible, unremovable badge.
+												const label = option?.label ?? value;
 												const badgeStyle: React.CSSProperties = {
 													animationDuration: `${animation}s`,
 													...(customStyle?.badgeColor && {
@@ -892,7 +899,7 @@ export const MultiSelect = React.forwardRef<MultiSelectRef, MultiSelectProps>(
 															className={cn(
 																screenSize === "mobile" && "truncate"
 															)}>
-															{option.label}
+															{label}
 														</span>
 														<div
 															role="button"
@@ -911,7 +918,7 @@ export const MultiSelect = React.forwardRef<MultiSelectRef, MultiSelectProps>(
 																	toggleOption(value);
 																}
 															}}
-															aria-label={`Remove ${option.label} from selection`}
+															aria-label={`Remove ${label} from selection`}
 															className="ml-2 h-4 w-4 cursor-pointer hover:bg-foreground/20 rounded-sm p-0.5 -m-0.5 focus:outline-none focus:ring-1 focus:ring-ring">
 															<XCircle
 																className={cn(

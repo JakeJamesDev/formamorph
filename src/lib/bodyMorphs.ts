@@ -55,6 +55,44 @@ export function boundMorphNamesExcluding(stats: readonly Stat[], statId: string)
   return set;
 }
 
+/** One model's contribution to the body-slider picker: its display name and the morphs it exposes. */
+export interface MorphSource {
+  /** Group heading — the model's name. */
+  heading: string;
+  /** Every body morph the model exposes. */
+  morphs: readonly string[];
+}
+
+/** A model's options as the MultiSelect's grouped-options shape. */
+export interface MorphOptionGroup {
+  heading: string;
+  options: { label: string; value: string }[];
+}
+
+/**
+ * Build the grouped body-slider options: one group per model, each carrying its morph names minus those
+ * already owned by another stat, and de-duplicated within the model. A morph shared by several models
+ * appears under each — selecting it anywhere binds the name everywhere, since a binding is the bare name.
+ * Empty groups (all names taken or none exposed) are dropped.
+ */
+export function buildMorphGroups(
+  sources: readonly MorphSource[],
+  taken: ReadonlySet<string>,
+): MorphOptionGroup[] {
+  const groups: MorphOptionGroup[] = [];
+  for (const source of sources) {
+    const seen = new Set<string>();
+    const options: { label: string; value: string }[] = [];
+    for (const name of source.morphs) {
+      if (taken.has(name) || seen.has(name)) continue;
+      seen.add(name);
+      options.push({ label: name, value: name });
+    }
+    if (options.length) groups.push({ heading: source.heading, options });
+  }
+  return groups;
+}
+
 /** Auto-bind legacy body stats on import: a Stomach/Fatness/Breastsize stat that has no `morphBindings`
  *  yet gets the standard mapping. Idempotent (skips any stat that already carries the field) and
  *  immutable (returns new objects for changed stats only). */

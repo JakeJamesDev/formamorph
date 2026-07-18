@@ -221,9 +221,9 @@ const CommunityCreationsBrowser = ({
           <Earth className="h-5 w-5 min-[1040px]:hidden" />
           <span className="hidden min-[1040px]:inline">Worlds</span>
         </TabsTrigger>
-        <TabsTrigger value="entity" aria-label="Characters" title="Characters">
+        <TabsTrigger value="entity" aria-label="Entities" title="Entities">
           <User className="h-5 w-5 min-[1040px]:hidden" />
-          <span className="hidden min-[1040px]:inline">Characters</span>
+          <span className="hidden min-[1040px]:inline">Entities</span>
         </TabsTrigger>
         <TabsTrigger value="dictionary" aria-label="Dictionaries" title="Dictionaries">
           <BookOpen className="h-5 w-5 min-[1040px]:hidden" />
@@ -573,8 +573,8 @@ const CommunityCreationsBrowser = ({
       <ConfirmDialog
         open={!!remoteWorldToDelete}
         onOpenChange={(o) => !o && setRemoteWorldToDelete(null)}
-        title="Delete Published World"
-        description="Are you sure you want to delete this published world? This will remove it from the server and it will no longer be available to other users. This action cannot be undone."
+        title={`Delete Published ${KIND_LABELS[browseKind].one}`}
+        description={`Are you sure you want to delete this published ${KIND_LABELS[browseKind].one.toLowerCase()}? This will remove it from the server and it will no longer be available to other users. This action cannot be undone.`}
         onConfirm={() => handleRemoteWorldDelete(remoteWorldToDelete!)}
       />
     </>

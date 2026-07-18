@@ -10,6 +10,7 @@ import { cn } from "@/lib/utils";
 import { useCachedThumbnail } from "@/lib/useCachedThumbnail";
 import { WorldDetailsColumn, DateTimeText, splitColumnClasses, type WorldRecord } from "@/components/WorldDetails";
 import { type DownloadState } from "@/lib/downloadState";
+import { KIND_LABELS, kindOf } from "@/lib/catalogKinds";
 import WorldStorageService from "@/services/WorldStorageService";
 
 interface RemoteWorldDetailsModalProps {
@@ -131,7 +132,11 @@ export function RemoteWorldDetailsModal({
                       <img
                         src={thumbSrc}
                         alt={world.name}
-                        className="absolute top-0 left-0 w-full h-full object-cover"
+                        className={cn(
+                          "absolute top-0 left-0 w-full h-full object-cover",
+                          // Entity art is almost always a portrait; anchor it to the top so faces aren't cropped.
+                          kindOf(world) === 'entity' && "object-top",
+                        )}
                       />
                     ) : (
                       <div className="absolute top-0 left-0 w-full h-full flex items-center justify-center bg-muted text-muted-foreground">
@@ -150,9 +155,10 @@ export function RemoteWorldDetailsModal({
                       ? <IndeterminateProgress />
                       : <Progress value={progress * 100} className="h-2" />;
                   }
+                  const noun = KIND_LABELS[kindOf(world)].one;
                   const label = dlState === 'update' ? 'Update Available'
-                    : dlState === 'refresh' ? 'Re-download World'
-                    : 'Download World';
+                    : dlState === 'refresh' ? `Re-download ${noun}`
+                    : `Download ${noun}`;
                   return (
                     <Button
                       className="w-full bg-gradient-to-r from-sky-200 to-cyan-200 hover:from-sky-300 hover:to-cyan-300 text-black font-bold"

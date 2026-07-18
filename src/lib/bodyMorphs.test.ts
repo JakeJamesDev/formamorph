@@ -6,6 +6,7 @@ import {
   mergeBodyMorphs,
   boundMorphNamesExcluding,
   autoBindLegacyBodyStats,
+  buildMorphGroups,
 } from "./bodyMorphs";
 
 // Minimal Stat factory — only the fields these helpers read matter; the rest satisfy the type.
@@ -81,6 +82,47 @@ describe("boundMorphNamesExcluding", () => {
     ];
     expect(boundMorphNamesExcluding(stats, "b")).toEqual(new Set(["Belly", "Fat"]));
     expect(boundMorphNamesExcluding(stats, "a")).toEqual(new Set(["Breasts"]));
+  });
+});
+
+describe("buildMorphGroups", () => {
+  it("keeps one group per model and maps each morph to a {label,value} option", () => {
+    const groups = buildMorphGroups(
+      [
+        { heading: "Alpha", morphs: ["Height", "Muscle"] },
+        { heading: "Beta", morphs: ["Width"] },
+      ],
+      new Set(),
+    );
+    expect(groups).toEqual([
+      { heading: "Alpha", options: [{ label: "Height", value: "Height" }, { label: "Muscle", value: "Muscle" }] },
+      { heading: "Beta", options: [{ label: "Width", value: "Width" }] },
+    ]);
+  });
+  it("shows a shared morph under every model that has it", () => {
+    const groups = buildMorphGroups(
+      [
+        { heading: "Alpha", morphs: ["Height"] },
+        { heading: "Beta", morphs: ["Height"] },
+      ],
+      new Set(),
+    );
+    expect(groups.map((g) => g.heading)).toEqual(["Alpha", "Beta"]);
+    expect(groups.every((g) => g.options[0].value === "Height")).toBe(true);
+  });
+  it("drops names taken by another stat, and any group left empty", () => {
+    const groups = buildMorphGroups(
+      [
+        { heading: "Alpha", morphs: ["Height", "Muscle"] },
+        { heading: "Beta", morphs: ["Muscle"] }, // only Muscle, which is taken → group dropped
+      ],
+      new Set(["Muscle"]),
+    );
+    expect(groups).toEqual([{ heading: "Alpha", options: [{ label: "Height", value: "Height" }] }]);
+  });
+  it("de-duplicates a name repeated within one model", () => {
+    const groups = buildMorphGroups([{ heading: "Alpha", morphs: ["Height", "Height"] }], new Set());
+    expect(groups[0].options).toEqual([{ label: "Height", value: "Height" }]);
   });
 });
 
