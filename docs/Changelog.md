@@ -2,7 +2,7 @@
 
 All notable changes to Formamorph. This fork's first line is **2.0.0** — a full TypeScript rebuild of the upstream JavaScript app ([FieryLionite's Formamorph](https://fierylion.itch.io/formamorph), ~v1.2) — with feature parity as the baseline plus new features on top.
 
-> ✅ **2.0.0 – 2.4.2 are released** (collapsed below). New work lands under **🚧 In Progress** — an unnumbered section, so changes accumulate without pinning a version. When a batch earns a release its section is marked **Released** and collapsed, and a fresh In Progress opens. `package.json` reads **2.4.2** — the latest released version.
+> ✅ **2.0.0 – 2.5.0 are released** (collapsed below). New work lands under **🚧 In Progress** — an unnumbered section, so changes accumulate without pinning a version. When a batch earns a release its section is marked **Released** and collapsed, and a fresh In Progress opens. `package.json` reads **2.5.0** — the latest released version.
 
 Each release groups changes as **Major** / **Minor**, then **Added** / **Removed** / **Fixed**, and within those by audience: 👤 user-facing · 🛠️ developer tooling · ⚙️ backend / invisible.
 
@@ -10,7 +10,12 @@ Each release groups changes as **Major** / **Minor**, then **Added** / **Removed
 
 ## 🚧 In Progress
 
-_Unreleased — new work accumulates here until it earns a version bump. The next batch will pin its own version; `package.json` reads **2.4.2** (just released below)._
+_Unreleased — new work accumulates here until it earns a version bump. The next batch will pin its own version; `package.json` reads **2.5.0** (just released below)._
+
+---
+
+<details>
+<summary><strong>✅ 2.5.0 — Released 2026-07-18</strong> — a local Models library with its own tab — add, preview in 3D, inspect license, reorder, delete — plus first-run model onboarding sized to your GPU, body sliders that bind from every model grouped by name, two more local models and a new top-tier pick, dead-endpoint and unloaded-LM-Studio detection, World Editor tab help, and a batch of placeholder, text-box, and Community Creations fixes (click to expand)</summary>
 
 ### Minor Changes
 
@@ -40,6 +45,7 @@ _Unreleased — new work accumulates here until it earns a version bump. The nex
 #### 🐛 Fixed
 
 - **👤 User-facing**
+  - **The "nothing here yet" message in Community Creations is now centered.** When a section had no listings (or a search matched none), the "Be the first to publish one!" line sat off to the left instead of centered across the grid.
   - **Selected multi-select chips are never invisible.** A chosen value whose option hadn't loaded yet (for lists filled on demand, like the body-slider picker) counted toward the selection but drew a blank, unremovable chip. Such a chip now shows its own value as its label and can be removed like any other.
   - **Binding a stat to a body slider now sees every model, not just the default.** When you tie a stat to a body shape in the World Editor, the slider list used to offer only the bundled default model's shapes — so a shape that exists on another model you'd added was simply missing. It now gathers sliders from every model in your library (plus the world's own custom model), grouped under each model's name so you can tell where each comes from. A shape shared by several models appears under each; picking it drives that shape on whichever model is worn. The list loads the first time you open the picker.
   - **Community Creations dialogs now name the right kind of thing.** Deleting one of your published listings always read "Delete Published World", and the download button always said "Download World" — whatever you were actually looking at. Both now match the item: World, Entity, or Dictionary. The middle browser tab also read "Characters"; it now reads "Entities", matching the library tab.
@@ -62,6 +68,8 @@ _Unreleased — new work accumulates here until it earns a version bump. The nex
   - **Placeholders in a world's Readme now read as words, not raw code.** A Readme using Variables or Wildcards showed the underlying token text instead of the value, so the first thing you read on entering a world was gibberish. Readme text now resolves its placeholders like every other piece of authored writing. Wildcards in a Readme are also frozen into your save now, so the Readme names the same value the story goes on to use, rather than picking a fresh one each time the popup opened.
   - **Deleting a bundled world now sticks.** City Rampage, Valentines Survival, and Reincarnated Drone came straight back the next time you returned to the main menu — Formamorph couldn't tell a world you'd deleted apart from one you'd never been given, so it helpfully re-created it. It now remembers that you deleted it and leaves it alone, including when that world's bundled copy is later updated. Changed your mind? **Settings → Accessibility → Restore default worlds** brings back everything you've deleted, at its latest version. Worlds you made or imported yourself were never affected.
   - **Auto response length no longer cuts turns short.** With Response Length set to Auto, Formamorph sizes each narration to your Max Output Tokens — but it had badly overestimated how much a paragraph costs, so it was telling the AI to stop after about a third of the room you'd actually given it. It now estimates paragraph length from real narration, so Auto turns fill the budget you set instead of ending early. Nothing changes if you pick a fixed paragraph length yourself; this only affects Auto.
+
+</details>
 
 ---
 
