@@ -139,7 +139,8 @@ Suggest 3 to 5 distinct things I could do next - each a genuinely different way 
 ## Rules
 - Give at least 3 options, one per line.
 - The reply starts immediately with the first option - no lead-in sentence, no "here are my options" or "I could:" line before or between them.
-- Each option begins with the word "I" and a verb (I ask..., I draw..., I step back...) - a specific, concrete action I take. Keep it one short clause, roughly 8 to 16 words: never a second sentence, an "and then" chain, or a trailing "...as I..." / "...before..." clause that stretches it into prose.
+- Each option begins with the word "I" and a verb (I ask..., I tell her..., I admit..., I step back...) - a specific, concrete action I take. Keep it one short clause, roughly 8 to 16 words: never a second sentence, an "and then" chain, or a trailing "...as I..." / "...before..." clause that stretches it into prose.
+- When the scene puts a question to me or invites me to speak, at least one option answers it in my own words - a single clause, no quotation marks (I tell her I'm new here, I admit the truth, I lie that nothing's wrong) - not only ways to stall or avoid answering.
 - Make the options meaningfully different from one another.
 - Write only the option sentences - no numbering, bullets, dashes, quotation marks, headings, or commentary.`;
 
@@ -186,7 +187,7 @@ Output a destination's exact name from the list above only if the player charact
 // continuity: carry established objects/positions forward, keep/add/drop the cast honestly, and name each
 // member so the plan's Cast can be parsed (parseDirectorCast) into the turn's scene list. Output is injected
 // as private stage directions (planDirective); the player never sees it.
-export const defaultThinkingPrompt = `You are the continuity planner for an interactive roleplay. Before the scene is written, you set the stage the narrator then plays out: who is here, exactly how they are placed, and the grounded physical beats that follow from the player's action. You never write the narration itself, and you never decide whether the player's own action succeeds - the narrator judges that.
+export const defaultThinkingPrompt = `You are the continuity planner for an interactive roleplay. Before the scene is written, you set the stage the narrator then plays out: who is here, exactly how they are placed, and the grounded beats - action and spoken words alike - that follow from the player's action. You never write the narration itself, and you never decide whether the player's own action succeeds - the narrator judges that.
 
 ## Game World
 <WORLD DESCRIPTION>
@@ -220,7 +221,7 @@ Scene: <one or two sentences on the physical situation right now, continued from
 Cast:
 - Player Character - <where the player character is and what it is physically doing right now>
 - <name> - <where they are and what they are physically doing right now>
-Beats: <two to four sentences of what physically happens this turn as the scene continues>
+Beats: <two to four sentences of what happens this turn as the scene continues - the physical actions and, in quotation marks, the words the present characters actually speak aloud>
 
 ## Rules
 - Carry the moment forward, don't reinvent it. Whatever a character was holding, wearing, or doing last turn, and wherever they stood, stays true this turn unless the action changes it - never swap an established object or position for a new one.
@@ -228,7 +229,7 @@ Beats: <two to four sentences of what physically happens this turn as the scene 
 - Label each cast member with their real name from the lists above, so the same person is tracked every turn. If that name has already been spoken in the story, write it plainly, with no parentheses. But if the player has not yet heard it, do not reveal it: write the real name, then how the player currently knows them - by look, role, or manner - in parentheses, and the game shows only the parenthetical; drop the parentheses the turn the name is first spoken.
 - Begin the Cast with "- Player Character - <placement>", giving only the player's position and what they are physically doing, never an action they choose.
 - Cast only individual beings that can act or speak - a person, creature, or animate threat. Places, objects, structures, crowds, and scenery stay out of the Cast, however vivid. You may name a new individual when one enters, with a concrete name to reuse next turn; never name a place or object to make it a character.
-- The Beats are only what the world and the other characters do - their grounded, physical reactions, consistent with the Cast above. Never write the outcome of the player's own action, their thoughts, or their next move.
+- The Beats are what the world and the other characters do and say - their grounded physical reactions and the words they speak aloud, in quotation marks, consistent with the Cast above. Characters present keep speaking as the scene continues; don't reduce them to silent motion. Never write the outcome of the player's own action, their thoughts, or their next move.
 - Output exactly one Scene line, one Cast list, and one Beats - no narration, no choices, no stat talk, nothing else.`;
 
 // System prompt for the lazy per-turn memory digest (requestType 'summary'). Runs once per turn as it
@@ -293,7 +294,7 @@ Keep the bullets clipped, like notes to yourself, not prose. The player never se
 // The wrapper frames the plan as stage directions to the narrator, so it reads as separate from the
 // player's action on the same turn (the player supplied only the action, not these notes).
 export function planDirective(plan: string): string {
-  return `\n\nStage directions for you, the narrator (not words the player spoke): play these beats out this turn as flowing second-person prose. The notes below are private scaffolding - never repeat their labels, lists, or headings on the page.\n${plan}`;
+  return `\n\nRough notes on what happens this turn (not words the player spoke) - write the scene from them as flowing second-person prose in your own words, expanding and voicing the characters' dialogue freshly rather than reciting the notes. They are private scaffolding - never repeat their labels, lists, or headings on the page.\n${plan}`;
 }
 
 // The "staged" thinking pipeline (thinkingMode === 'staged') runs three planning passes before
