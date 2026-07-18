@@ -2,7 +2,7 @@ import { useCallback, useEffect, useState } from 'react';
 import { useSettings } from '@/contexts/SettingsContext';
 import { useLocalLlmStatus } from '@/lib/useLocalLlmStatus';
 import { deriveModelsUrls } from '@/lib/contextLength';
-import { isDesktop, listLocalModels } from '@/lib/imageGen/desktop';
+import { isDesktop, listLocalModels, localLlmStatus } from '@/lib/imageGen/desktop';
 
 /** Which AI the app is pointed at: the desktop's bundled engine, or any user-configured endpoint. */
 export type AiMode = 'local' | 'custom';
@@ -30,6 +30,9 @@ export interface AiReachable {
   /** Only meaningful while `reachable === false`. */
   blocker: AiBlocker | null;
   recheck: () => void;
+  /** Run a FRESH probe right now and resolve to whether the AI is reachable. Use before gating a launch so a
+   *  stale `false` (e.g. the endpoint probed before its model was loaded) can't block a now-working setup. */
+  revalidate: () => Promise<boolean>;
 }
 
 /**
@@ -116,17 +119,31 @@ export function useAiReachable(): AiReachable {
     return () => { active = false; };
   }, [mode, nonce, engine.status]);
 
+  // Fresh point-in-time check that bypasses the cached probe/engine state — the launch guard calls this so a
+  // stale answer can't gate a working setup. Also seeds the cached state so the UI catches up. Never throws.
+  const revalidate = useCallback(async (): Promise<boolean> => {
+    if (mode === 'custom') {
+      const result = await probeEndpoint(activeEndpointUrl, activeApiToken, activeModelName);
+      setProbe(result);
+      return result === 'ok';
+    }
+    if (!isDesktop()) return false;
+    const st = await localLlmStatus().catch(() => null);
+    return st?.status === 'ready';
+  }, [mode, activeEndpointUrl, activeApiToken, activeModelName]);
+
   if (mode === 'custom') {
     return {
       reachable: probe === null ? null : probe === 'ok',
       mode,
       blocker: probe === null || probe === 'ok' ? null : probe,
       recheck,
+      revalidate,
     };
   }
 
-  if (engine.status === 'ready') return { reachable: true, mode, blocker: null, recheck };
+  if (engine.status === 'ready') return { reachable: true, mode, blocker: null, recheck, revalidate };
   // Mid-load, or we don't yet know what's on disk — undecided rather than blocked.
-  if (engine.status === 'loading' || hasModel === null) return { reachable: null, mode, blocker: null, recheck };
-  return { reachable: false, mode, blocker: hasModel ? 'engineDown' : 'noModel', recheck };
+  if (engine.status === 'loading' || hasModel === null) return { reachable: null, mode, blocker: null, recheck, revalidate };
+  return { reachable: false, mode, blocker: hasModel ? 'engineDown' : 'noModel', recheck, revalidate };
 }

@@ -67,6 +67,10 @@ export const DOWNLOADS_AS_OF = '2026-07';
 // `budgets.thoughtTokens`, with `<think>` reconstruction). That handling is not a guarantee at small sizes —
 // the 4B reasoning entry was cut for returning empty narrations, so screen any reasoning candidate before
 // adding it. Refresh this list periodically; the scene moves fast.
+//
+// ORDER IS LOAD-BEARING: entries are grouped by tier, and within a tier they run best-first by screen ranking
+// (testing/baseline/leaderboard.md), with untested/unfit models last. The UI recommends a tier's FIRST entry
+// and lists in this order (AiSetupGate `recommendFor`, LocalModelModal) — keep new entries in rank position.
 export const LOCAL_MODELS: LocalModelInfo[] = [
   // ≤4 GB — 2-4B
   // Thin by design, not by neglect: the 2026-07-17 screen (3 seeds each, gate world, built-in engine) cut
@@ -93,13 +97,6 @@ export const LOCAL_MODELS: LocalModelInfo[] = [
     released: '2026-06', downloads: 150_443,
   },
   {
-    id: 'wingless-imp-8b', name: 'Wingless Imp 8B', params: '8B', quant: 'Q4_K_M', tier: 'tier8',
-    fileName: 'Wingless_Imp_8B.Q4_K_M.gguf',
-    url: hf('mradermacher/Wingless_Imp_8B-GGUF', 'Wingless_Imp_8B.Q4_K_M.gguf'),
-    sizeBytes: 4_920_000_000, note: 'Uncensored 8B with strong prose.', license: 'Llama 3.1',
-    released: '2025-02', downloads: 3_446,
-  },
-  {
     id: 'anubis-mini-8b', name: 'Anubis Mini 8B', params: '8B', quant: 'Q4_K_M', tier: 'tier8',
     fileName: 'Anubis-Mini-8B-v1h-Q4_K_M.gguf',
     url: hf('TheDrummer/Anubis-Mini-8B-v1-GGUF', 'Anubis-Mini-8B-v1h-Q4_K_M.gguf'),
@@ -120,6 +117,13 @@ export const LOCAL_MODELS: LocalModelInfo[] = [
     sizeBytes: 4_920_000_000, note: 'Sao10K’s well-rounded RP/creativity 8B blend.', license: 'Llama 3',
     released: '2024-06', downloads: 153_645,
   },
+  {
+    id: 'wingless-imp-8b', name: 'Wingless Imp 8B', params: '8B', quant: 'Q4_K_M', tier: 'tier8',
+    fileName: 'Wingless_Imp_8B.Q4_K_M.gguf',
+    url: hf('mradermacher/Wingless_Imp_8B-GGUF', 'Wingless_Imp_8B.Q4_K_M.gguf'),
+    sizeBytes: 4_920_000_000, note: 'Uncensored 8B with strong prose.', license: 'Llama 3.1',
+    released: '2025-02', downloads: 3_446,
+  },
 
   // ≤16 GB — 12-24B
   {
@@ -130,18 +134,18 @@ export const LOCAL_MODELS: LocalModelInfo[] = [
     released: '2025-11', downloads: 116_605,
   },
   {
-    id: 'paintedfantasy-24b', name: 'Painted Fantasy 24B v4.1', params: '24B', quant: 'Q4_K_M', tier: 'tier16',
-    fileName: 'MS3.2-PaintedFantasy-v4.1-24B-Q4_K_M.gguf',
-    url: hf('zerofata/MS3.2-PaintedFantasy-v4.1-24B-GGUF', 'MS3.2-PaintedFantasy-v4.1-24B-Q4_K_M.gguf'),
-    sizeBytes: 14_330_000_000, note: 'zerofata’s vivid, scene-driven RP 24B.', license: 'Apache 2.0',
-    released: '2026-02', downloads: 8_578,
-  },
-  {
     id: 'rocinante-x-12b', name: 'Rocinante-X 12B', params: '12B', quant: 'Q4_K_M', tier: 'tier16',
     fileName: 'Rocinante-X-12B-v1b-Q4_K_M.gguf',
     url: hf('TheDrummer/Rocinante-X-12B-v1-GGUF', 'Rocinante-X-12B-v1b-Q4_K_M.gguf'),
     sizeBytes: 7_480_000_000, note: 'Newer Rocinante — reliable, well-rounded 12B.', license: 'Apache 2.0',
     released: '2026-01', downloads: 44_913,
+  },
+  {
+    id: 'paintedfantasy-24b', name: 'Painted Fantasy 24B v4.1', params: '24B', quant: 'Q4_K_M', tier: 'tier16',
+    fileName: 'MS3.2-PaintedFantasy-v4.1-24B-Q4_K_M.gguf',
+    url: hf('zerofata/MS3.2-PaintedFantasy-v4.1-24B-GGUF', 'MS3.2-PaintedFantasy-v4.1-24B-Q4_K_M.gguf'),
+    sizeBytes: 14_330_000_000, note: 'zerofata’s vivid, scene-driven RP 24B.', license: 'Apache 2.0',
+    released: '2026-02', downloads: 8_578,
   },
   {
     id: 'impish-bloodmoon-12b', name: 'Impish Bloodmoon 12B', params: '12B', quant: 'Q4_K_M', tier: 'tier16',
@@ -153,18 +157,18 @@ export const LOCAL_MODELS: LocalModelInfo[] = [
 
   // No Limit — 26B MoE / 31B / 35B MoE / 70B
   {
-    id: 'gemma4-styletune-26b-a4b', name: 'Gemma-4 26B StyleTune V2', params: '26B-A4B', quant: 'Q4_K_M', tier: 'unlimited',
-    fileName: 'Gemma-4-26B-A4B-StyleTune-V2.i1-Q4_K_M.gguf',
-    url: hf('mradermacher/Gemma-4-26B-A4B-StyleTune-V2-i1-GGUF', 'Gemma-4-26B-A4B-StyleTune-V2.i1-Q4_K_M.gguf'),
-    sizeBytes: 17_210_000_000, note: 'Gryphe’s StyleTune on a Gemma-4 MoE — second-highest screen score, unusually disciplined stats.', license: 'Apache 2.0',
-    released: '2026-06', downloads: 25_934,
-  },
-  {
     id: 'g4-meromero-31b', name: 'G4 MeroMero 31B', params: '31B', quant: 'Q4_K_M', tier: 'unlimited',
     fileName: 'G4-MeroMero-31B-Q4_K_M.gguf',
     url: hf('zerofata/G4-MeroMero-31B-gguf', 'G4-MeroMero-31B-Q4_K_M.gguf'),
     sizeBytes: 18_690_000_000, note: 'Gemma-4 31B RP finetune — top screen scorer; the one model that keeps stats quiet on idle turns.', license: 'Apache 2.0',
     released: '2026-05', downloads: 6_492,
+  },
+  {
+    id: 'gemma4-styletune-26b-a4b', name: 'Gemma-4 26B StyleTune V2', params: '26B-A4B', quant: 'Q4_K_M', tier: 'unlimited',
+    fileName: 'Gemma-4-26B-A4B-StyleTune-V2.i1-Q4_K_M.gguf',
+    url: hf('mradermacher/Gemma-4-26B-A4B-StyleTune-V2-i1-GGUF', 'Gemma-4-26B-A4B-StyleTune-V2.i1-Q4_K_M.gguf'),
+    sizeBytes: 17_210_000_000, note: 'Gryphe’s StyleTune on a Gemma-4 MoE — second-highest screen score, unusually disciplined stats.', license: 'Apache 2.0',
+    released: '2026-06', downloads: 25_934,
   },
   {
     id: 'qwen36-35b-a3b-anko', name: 'Qwen3.6 35B-A3B Anko', params: '35B-A3B', quant: 'Q4_K_M', tier: 'unlimited',

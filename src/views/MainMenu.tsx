@@ -225,19 +225,19 @@ const MainMenu = ({ onStartGame, onLoadSaveGame, onReplayIntro, introActive = fa
   // --- AI setup gate -------------------------------------------------------------------------------
   // Nothing can play until the configured AI answers. The gate offers the remedy that fits: download a
   // model (bundled engine) or fix the endpoint (anything else).
-  const { reachable, mode, blocker, recheck } = useAiReachable();
+  const { reachable, mode, blocker, recheck, revalidate } = useAiReachable();
   const [gate, setGate] = useState<{ reason: GateReason } | null>(null);
   // The launch the gate interrupted, replayed once the engine comes up.
   const pendingLaunch = useRef<(() => void) | null>(null);
 
   // Run a launch now, or hold it and raise the gate. Every play/resume path goes through this.
-  const guardLaunch = (launch: () => void) => {
-    if (reachable === false) {
-      pendingLaunch.current = launch;
-      setGate({ reason: 'play' });
-      return;
-    }
-    launch();
+  // `reachable` can be a stale answer (an endpoint probed before its model was loaded, then loaded since), so
+  // never gate on it directly — re-probe fresh first, and only raise the gate if the AI is still unreachable.
+  const guardLaunch = async (launch: () => void) => {
+    if (reachable === true) { launch(); return; }
+    if (await revalidate()) { launch(); return; }
+    pendingLaunch.current = launch;
+    setGate({ reason: 'play' });
   };
 
   const handleGateReady = useCallback(() => {

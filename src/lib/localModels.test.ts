@@ -24,6 +24,21 @@ describe('localModels catalog', () => {
     expect(new Set(ids).size, `duplicate id in: ${ids.join(', ')}`).toBe(ids.length);
   });
 
+  it('entries are grouped by tier (contiguous), so the per-tier recommendation is well-defined', () => {
+    // The UI recommends a tier's FIRST entry and lists in array order, best-first by screen rank. That only
+    // holds if each tier's models are contiguous — an entry dropped into the wrong tier block would silently
+    // change which model is recommended. Guards against a tier being split across the array.
+    const seen = new Set<string>();
+    let prev: string | null = null;
+    for (const m of LOCAL_MODELS) {
+      if (m.tier !== prev) {
+        expect(seen.has(m.tier), `tier '${m.tier}' is split — group all its entries together`).toBe(false);
+        seen.add(m.tier);
+        prev = m.tier;
+      }
+    }
+  });
+
   it('every model has a release month and a download snapshot', () => {
     for (const m of LOCAL_MODELS) {
       expect(m.released, m.id).toMatch(/^\d{4}-\d{2}$/);
