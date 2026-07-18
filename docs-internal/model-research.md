@@ -110,7 +110,8 @@ tier B≥50, A≥70. **▶ = recommended pick** for that VRAM tier.
 | Tier | Model | Obj | Seeds | Size | Notes |
 |---|---|---|---|---|---|
 | ≤4GB | ▶ Impish LLAMA 4B | C/31 | 3 | 2.8GB | only tier member; weak (format 30%). Tier is a hole. |
-| ≤8GB | ▶ Anubis Mini 8B | **B/60** | 3 | 4.9GB | clear tier winner |
+| ≤8GB | ▶ Gemma-4 12B Uncensored (HauhauCS) | **B/65** | 3 | 7.4GB | **added 2026-07-17**; new tier winner. License 'gemma' (uploader-declared; binds the downloader, not us) |
+| ≤8GB | Anubis Mini 8B | B/60 | 3 | 4.9GB | prior tier best |
 | ≤8GB | Stheno v3.4 8B | B/51 | 3 | 4.9GB | high variance (36–62) |
 | ≤8GB | Lunaris v1 8B | C/49 | 3 | 4.9GB | |
 | ≤8GB | Wingless Imp 8B | C/29 | 2 | 4.9GB | weakest tier8 |
@@ -119,6 +120,7 @@ tier B≥50, A≥70. **▶ = recommended pick** for that VRAM tier.
 | ≤16GB | Painted Fantasy 24B v4.1 | — | 0 | 14.3GB | untested; Magistral base, same as Skyfall |
 | ≤16GB | Impish Bloodmoon 12B | — | 0 | 7.5GB | untested; Mistral-Nemo base (has never cleared B) |
 | No-Limit | ▶ G4 MeroMero 31B | **A/84** | 3 | 18.7GB | **added 2026-07-17**; top of the board, only model with real restraint (56%) |
+| No-Limit | Gemma-4 26B StyleTune V2 | B/69 | 3 | 17.2GB | **added 2026-07-17**; #2 overall, 2nd model to show restraint (11%) |
 | No-Limit | 🧠 Qwen3.6 35B-A3B Anko | B/65 | 3 | 21.4GB | reasoning flag verified correct |
 | No-Limit | Skyfall 31B v4.2 | B/51 | 2 | 19.0GB | Magistral (reasoning) base, **not** flagged 🧠 — behaves fine, no `[THINK]` leak |
 | No-Limit | Euryale 70B v2.3 | — | 0 | 42.5GB | untested; won't fit a 24GB card at Q4 |
