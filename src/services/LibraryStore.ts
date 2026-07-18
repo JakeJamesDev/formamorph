@@ -1,11 +1,12 @@
 import { openDatabase, promisifyRequest } from '@/lib/idb';
+import type { CommunityLink } from '@/types';
 
 /**
  * The wrapper shape every local library record shares: identity and library timestamps around an opaque
- * `data` payload. Community-server fields (as on `StoredWorldRecord`) live on the owning service instead,
- * since only worlds have them.
+ * `data` payload, plus the optional `CommunityLink` fields (`sourceId`/`dirty`/download stamps) so any library
+ * type can be published/downloaded. Types that never link to the community simply leave them unset.
  */
-export interface StoredRecord<T> {
+export interface StoredRecord<T> extends CommunityLink {
   id: string;
   name: string;
   createdAt?: string;
@@ -105,6 +106,13 @@ export class LibraryStore<T, M> {
           data: record.data,
           createdAt: existing?.createdAt ?? record.createdAt ?? new Date().toISOString(),
           lastAccessed: new Date().toISOString(),
+          // Community link (publish/download): read-merged so an editor save that passes only id/name/data
+          // keeps it. `??`, not `||`: a download's `dirty: false` must win over an existing `true`.
+          sourceId: record.sourceId ?? existing?.sourceId,
+          dirty: record.dirty ?? existing?.dirty,
+          editedAt: record.editedAt ?? existing?.editedAt,
+          downloadedAt: record.downloadedAt ?? existing?.downloadedAt,
+          sourceUpdatedAt: record.sourceUpdatedAt ?? existing?.sourceUpdatedAt,
         });
         putRequest.onsuccess = () => resolve();
         putRequest.onerror = () => reject(`Failed to store ${this.lowerNoun}`);
