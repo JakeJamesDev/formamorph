@@ -13,10 +13,15 @@ import type { Placeholder } from '@/types';
  * Wildcard → a random pick (World shared per placeholder, Unique per placement) — re-rolled each time the
  * tab is opened. The resolved text is tinted the chip's own color, like the prompt previews.
  */
-const PlaceholderField = ({ value, onChange, placeholders, className, readOnly = false }: {
+const PlaceholderField = ({ value, onChange, placeholders, markdown = false, resizable = false, placeholder, className, readOnly = false }: {
   value: string;
   onChange: (v: string) => void;
   placeholders: Placeholder[];
+  /** Prose field: adds a markdown toolbar and renders the Preview as markdown (see `PromptField`). */
+  markdown?: boolean;
+  /** Let the author drag the field taller/shorter (see `PromptField`). */
+  resizable?: boolean;
+  placeholder?: string;
   className?: string;
   readOnly?: boolean;
 }) => {
@@ -38,6 +43,9 @@ const PlaceholderField = ({ value, onChange, placeholders, className, readOnly =
       vocabulary={vocab}
       previewValues={hasPlaceholders ? previewValues : undefined}
       onPreviewOpen={hasPlaceholders ? () => setRollNonce((n) => n + 1) : undefined}
+      markdown={markdown}
+      resizable={resizable}
+      placeholder={placeholder}
       className={className}
       readOnly={readOnly}
     />

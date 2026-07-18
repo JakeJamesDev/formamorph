@@ -27,6 +27,17 @@ export default defineConfig({
     // .wasm lookup (the QuickJS engine file). Serving them unbundled keeps the wasm path resolvable.
     exclude: ['quickjs-emscripten', '@jitl/quickjs-wasmfile-release-sync', 'wasm-webp'],
   },
+  server: {
+    watch: {
+      // Paths the app never imports. Watching them costs a full page reload every time a background tool
+      // rewrites one — `graphify watch` regenerates graphify-out/graph.html on any source change, and the
+      // baseline harness writes dumps, profiles and docs of its own. A reload mid-run kills the scripted turn
+      // it was driving ("Execution context was destroyed" / "__baseline is undefined"), which made long harness
+      // runs fail ~1 in 3. `testing/` is ignored wholesale: it drives the dev server, it is never served by it,
+      // so editing the harness while a run is in flight must not restart the page under it.
+      ignored: ['**/graphify-out/**', '**/testing/**', '**/graph.json', '**/GRAPH_REPORT.md'],
+    },
+  },
   test: {
     environment: 'jsdom',
     setupFiles: ['./src/test/setup.ts'],

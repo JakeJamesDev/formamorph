@@ -12,5 +12,18 @@ if (typeof globalThis.ResizeObserver === 'undefined') {
   };
 }
 
+// jsdom's Blob predates `arrayBuffer()` and doesn't implement it; every browser we target (and Electron's
+// Chromium) has had it since 2019. FileReader is jsdom's supported path to the same bytes.
+if (typeof Blob !== 'undefined' && typeof Blob.prototype.arrayBuffer === 'undefined') {
+  Blob.prototype.arrayBuffer = function arrayBuffer(this: Blob): Promise<ArrayBuffer> {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = () => resolve(reader.result as ArrayBuffer);
+      reader.onerror = () => reject(reader.error);
+      reader.readAsArrayBuffer(this);
+    });
+  };
+}
+
 // Unmount anything React Testing Library rendered between tests.
 afterEach(() => cleanup());

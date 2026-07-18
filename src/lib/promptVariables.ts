@@ -54,8 +54,8 @@ const LOCATION_SCOPE_AXIS: PromptVariantAxis = {
   options: [
     { id: null, label: 'Current', help: 'The location the player is in right now.' },
     { id: 'sublocations', label: 'Sub-locations', help: "The current location's direct sub-locations." },
-    { id: 'reachable', label: 'Reachable', help: 'Sibling locations reachable from here (same parent).' },
-    { id: 'destinations', label: 'Destinations', help: 'Everywhere reachable from here — connections + sub-locations + reachable siblings.' },
+    { id: 'reachable', label: 'Reachable', help: 'The location that contains this one, plus its neighbors (same parent).' },
+    { id: 'destinations', label: 'Destinations', help: 'Everywhere reachable from here — connections + sub-locations + the containing location and its neighbors.' },
   ],
 };
 
@@ -65,7 +65,7 @@ const ENTITY_SCOPE_AXIS: PromptVariantAxis = {
   options: [
     { id: null, label: 'Here', help: 'Characters and things at the current location.' },
     { id: 'sublocations', label: 'Sub-locations', help: 'Characters and things in the direct sub-locations.' },
-    { id: 'reachable', label: 'Reachable', help: 'Characters and things in reachable sibling locations.' },
+    { id: 'reachable', label: 'Reachable', help: 'Characters and things in the containing location and its neighbors.' },
   ],
 };
 

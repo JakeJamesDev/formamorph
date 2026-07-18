@@ -2,6 +2,7 @@
 import 'fake-indexeddb/auto';
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import WorldStorageService, { type StoredWorldRecord } from './WorldStorageService';
+import { clearDeletedDefaultWorlds } from '@/lib/defaultWorlds';
 import AuthService from './AuthService';
 
 const res = (body: unknown, ok = true, status = 200): Response =>
@@ -366,5 +367,65 @@ describe('loadDefaultWorlds (content-hash refresh)', () => {
 
     expect(failed).toEqual(['no-such-world']);
     expect(updated).toEqual([]);
+  });
+});
+
+describe('default worlds: seed vs. the player deleting one', () => {
+  const RAMPAGE = [{ id: 'rampage', defaultName: 'City Rampage' }];
+
+  it('seeds a default that has never been stored', async () => {
+    const { failed } = await WorldStorageService.loadDefaultWorlds(RAMPAGE);
+    expect(failed).toEqual([]);
+    await expect(WorldStorageService.getWorldData('rampage')).resolves.toBeTruthy();
+  });
+
+  it('does not re-create a default the player deleted', async () => {
+    // The bug: the seeder decides on presence alone, so a deleted default looked "never seeded" and came
+    // back on the next Main Menu mount.
+    await WorldStorageService.loadDefaultWorlds(RAMPAGE);
+    await WorldStorageService.deleteWorld('rampage');
+
+    await WorldStorageService.loadDefaultWorlds(RAMPAGE);
+
+    await expect(WorldStorageService.getWorldData('rampage')).rejects.toBe('World not found');
+  });
+
+  it('leaves a deleted default gone across repeated seed passes', async () => {
+    await WorldStorageService.loadDefaultWorlds(RAMPAGE);
+    await WorldStorageService.deleteWorld('rampage');
+    for (let i = 0; i < 3; i++) await WorldStorageService.loadDefaultWorlds(RAMPAGE);
+    await expect(WorldStorageService.getWorldData('rampage')).rejects.toBe('World not found');
+  });
+
+  it('still seeds the other defaults after one is deleted', async () => {
+    await WorldStorageService.loadDefaultWorlds(RAMPAGE);
+    await WorldStorageService.deleteWorld('rampage');
+
+    await WorldStorageService.loadDefaultWorlds([...RAMPAGE, { id: 'drone', defaultName: 'Reincarnated Drone' }]);
+
+    await expect(WorldStorageService.getWorldData('rampage')).rejects.toBe('World not found');
+    await expect(WorldStorageService.getWorldData('drone')).resolves.toBeTruthy();
+  });
+
+  it('re-seeds a deleted default once the tombstones are cleared (the Restore button)', async () => {
+    await WorldStorageService.loadDefaultWorlds(RAMPAGE);
+    await WorldStorageService.deleteWorld('rampage');
+    await expect(WorldStorageService.getWorldData('rampage')).rejects.toBe('World not found');
+
+    clearDeletedDefaultWorlds();
+    await WorldStorageService.loadDefaultWorlds(RAMPAGE);
+
+    await expect(WorldStorageService.getWorldData('rampage')).resolves.toBeTruthy();
+  });
+
+  it('does not tombstone a deleted non-default world', async () => {
+    await WorldStorageService.storeWorld({
+      id: 'uploaded-1', name: 'Mine', description: '', author: '', thumbnail: '',
+      data: { worldOverview: { name: 'Mine' }, stats: [], locations: [], entities: [], traits: [], statUpdates: [] },
+    } as unknown as StoredWorldRecord);
+
+    await WorldStorageService.deleteWorld('uploaded-1');
+
+    expect(localStorage.getItem('FORMAMORPH_deletedDefaultWorlds')).toBeNull();
   });
 });

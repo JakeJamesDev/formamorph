@@ -69,14 +69,51 @@ export interface CharacterData {
   playerModelId?: string;
 }
 
-/** A player-uploaded VRM stored in the local model library (IndexedDB), keyed by `id`. */
-export interface PlayerModel {
-  id: string;
-  name: string;
+/** The stored payload of a library VRM: the file itself plus what we know about it. The `id`, display name,
+ *  and library timestamps live on the wrapping record, as with dictionaries and characters. */
+export interface VrmData {
   type: string;
   blob: Blob;
   size: number;
-  addedAt: string;
+  /** Portrait as a data URL: the file's embedded thumbnail, else one rendered on first view. */
+  thumbnail?: string;
+  /** Absent on records stored before the library read metadata; resolved lazily, then kept. */
+  license?: VrmLicense;
+  /** Content hash for duplicate detection. Absent on records stored before hashing existed. */
+  hash?: string;
+  /** Set once a thumbnail render has been attempted and produced nothing, so it isn't retried every view. */
+  thumbnailFailed?: boolean;
+}
+
+/**
+ * A VRM's embedded rights metadata, normalized across the two incompatible VRM meta schemas (0.0's
+ * `licenseName`/`commercialUssageName` enums and 1.0's booleans). Every field is optional because VRM 0.0
+ * makes them all optional and a plain `.glb` carries none — absent means unknown, never "permitted".
+ */
+export interface VrmLicense {
+  /** `null` when the file carries no VRM meta at all, i.e. a plain glTF. */
+  metaVersion: '0' | '1' | null;
+  title?: string;
+  authors?: string[];
+  /** VRM 0.0's license enum, e.g. `CC_BY_NC`. VRM 1.0 has no equivalent and leaves this unset. */
+  licenseName?: string;
+  licenseUrl?: string;
+  allowRedistribution?: boolean;
+  commercialUse?: 'allow' | 'disallow' | 'personalNonProfit' | 'personalProfit' | 'corporation';
+  creditRequired?: boolean;
+}
+
+/** Lightweight preview record for the model library grid and the character-model picker. Carries no blob, so
+ *  the grid can render without holding every model's bytes. */
+export interface ModelMetadata {
+  id: string;
+  name: string;
+  type: string;
+  size: number;
+  thumbnail?: string;
+  license?: VrmLicense;
+  createdAt?: string;
+  lastAccessed?: string;
 }
 
 /** One saved snapshot of a play session (see GameplayContext.saveCurrentGameState). */
