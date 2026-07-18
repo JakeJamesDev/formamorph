@@ -35,7 +35,7 @@ export const KIND_BY_CARD_TYPE = {
 /** Player-facing name for a kind, singular and plural. */
 export const KIND_LABELS: Record<CatalogKind, { one: string; many: string }> = {
   world: { one: 'World', many: 'Worlds' },
-  entity: { one: 'Character', many: 'Characters' },
+  entity: { one: 'Entity', many: 'Entities' },
   dictionary: { one: 'Dictionary', many: 'Dictionaries' },
 };
 
