@@ -84,7 +84,9 @@ class WorldStorageService {
     this.API_URL = import.meta.env.MODE === 'production'
       ? import.meta.env.VITE_API_URL_PROD
       : import.meta.env.VITE_API_URL_DEV;
-    this.initialize();
+    // No eager open: every operation awaits `ensureInitialized` first, so opening here only adds an
+    // import-time IndexedDB touch — which throws an unhandled rejection in test files that import this
+    // module without a fake IndexedDB. Lazy init matches ModelStorageService.
   }
 
   /** Open the IndexedDB connection (idempotent — no-op once `db` is set). */
