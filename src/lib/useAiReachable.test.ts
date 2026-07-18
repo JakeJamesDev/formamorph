@@ -1,5 +1,13 @@
 import { describe, it, expect, vi, afterEach } from 'vitest';
-import { probeEndpoint } from './useAiReachable';
+import { renderHook, act, waitFor } from '@testing-library/react';
+import { probeEndpoint, useAiReachable } from './useAiReachable';
+
+// The hook reads these; mock them so the hook runs a custom-endpoint probe with no real provider/IPC.
+vi.mock('@/contexts/SettingsContext', () => ({
+  useSettings: () => ({ localModelActive: false, activeEndpointUrl: 'http://localhost:1234/v1/chat/completions', activeApiToken: '', activeModelName: 'default' }),
+}));
+vi.mock('@/lib/useLocalLlmStatus', () => ({ useLocalLlmStatus: () => ({ status: 'stopped' }) }));
+vi.mock('@/lib/imageGen/desktop', () => ({ isDesktop: () => false, listLocalModels: async () => [], localLlmStatus: async () => ({ status: 'stopped' }) }));
 
 const ENDPOINT = 'http://localhost:1234/v1/chat/completions';
 const OPENAI_URL = 'http://localhost:1234/v1/models';
@@ -86,5 +94,23 @@ describe('probeEndpoint', () => {
     const fetchMock = mockFetch({ [LMS_URL]: { body: lmsList(['m', 'loaded']) } });
     await probeEndpoint(ENDPOINT, 'secret-token', 'm');
     expect(fetchMock).toHaveBeenCalledWith(LMS_URL, { headers: { Authorization: 'Bearer secret-token' } });
+  });
+});
+
+describe('useAiReachable revalidate (stale-probe fix)', () => {
+  it('re-probes fresh, so an endpoint that loaded a model after boot is not blocked by a stale false', async () => {
+    // Boot probe: LM Studio up, nothing loaded, and a name it can't load → the one provable block.
+    mockFetch({ [LMS_URL]: { body: lmsList(['cydonia-24b-v4.3', 'not-loaded']) } });
+    const { result } = renderHook(() => useAiReachable());
+    await waitFor(() => expect(result.current.reachable).toBe(false));
+    expect(result.current.blocker).toBe('unknownModel');
+
+    // The user loads a model in LM Studio. The cached probe is still false — but a fresh probe now says ok,
+    // which is exactly what the launch guard calls before deciding to block.
+    mockFetch({ [LMS_URL]: { body: lmsList(['cydonia-24b-v4.3', 'loaded']) } });
+    let ok: boolean | undefined;
+    await act(async () => { ok = await result.current.revalidate(); });
+    expect(ok, 'revalidate re-probed and saw the loaded model').toBe(true);
+    await waitFor(() => expect(result.current.reachable, 'cached state catches up').toBe(true));
   });
 });

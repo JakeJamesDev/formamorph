@@ -19,10 +19,11 @@ export type GateReason = 'firstRun' | 'play';
 /** How often the gate re-probes a custom endpoint. Tuned to human scale — starting a server takes seconds. */
 const ENDPOINT_POLL_MS = 3000;
 
-/** Pick the catalog's suggestion for a tier: the largest model that still fits it reads as the best default. */
+/** The catalog is ordered best-first within each tier by screen ranking (see localModels.ts), so the tier's
+ *  first entry is its recommended pick. (Was "largest that fits" — size is a poor proxy for quality; it would
+ *  push the untested 70B in No-Limit over the top-scoring 31B.) */
 function recommendFor(tier: VramTier): LocalModelInfo | null {
-  const inTier = LOCAL_MODELS.filter((m) => m.tier === tier);
-  return inTier.reduce<LocalModelInfo | null>((best, m) => (!best || m.sizeBytes > best.sizeBytes ? m : best), null);
+  return LOCAL_MODELS.find((m) => m.tier === tier) ?? null;
 }
 
 /**
