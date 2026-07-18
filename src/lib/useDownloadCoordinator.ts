@@ -1,8 +1,8 @@
 import { useState, useMemo, type Dispatch, type SetStateAction } from "react";
 import { toast } from "react-toastify";
 import WorldStorageService from "@/services/WorldStorageService";
-import AuthService from "@/services/AuthService";
 import { migrateWorld } from "@/lib/version";
+import { fetchCatalogContent } from "@/lib/fetchCatalogContent";
 import { randomUUID } from "@/lib/uuid";
 import { getDownloadState, type DownloadState } from "@/lib/downloadState";
 import { type WorldRecord } from "@/components/WorldDetails";
@@ -53,46 +53,9 @@ export function useDownloadCoordinator(
     world: WorldRecord,
     worldId: string,
   ): Promise<{ migrated: World; thumbnailUrl: string }> => {
-    const response = await fetch(`${WorldStorageService.API_URL}/worlds/${worldId}/content`, {
-      headers: AuthService.isAuthenticated() ? {
-        'Authorization': `Bearer ${AuthService.token}`
-      } : {}
-    });
+    const contentData = await fetchCatalogContent(worldId, (fraction) =>
+      setDownloadProgress((p) => ({ ...p, [worldId]: fraction })));
 
-    if (!response.ok) {
-      const errorData = await response.json();
-      throw new Error(errorData.message || 'Failed to download world');
-    }
-
-    // Stream the (often large) response body so we can report download progress. Falls back to a
-    // plain json() read when streaming isn't available. Content-Length may be absent/compressed,
-    // so we clamp the fraction and treat a missing total as indeterminate (-1).
-    const total = Number(response.headers.get('Content-Length')) || 0;
-    const reader = response.body?.getReader();
-    let worldData: { success?: boolean; data?: { contentData?: unknown } };
-    if (reader) {
-      const decoder = new TextDecoder();
-      let text = '';
-      let received = 0;
-      for (;;) {
-        const { done, value } = await reader.read();
-        if (done) break;
-        received += value.length;
-        text += decoder.decode(value, { stream: true });
-        setDownloadProgress((p) => ({ ...p, [worldId]: total ? Math.min(received / total, 1) : -1 }));
-      }
-      text += decoder.decode();
-      worldData = JSON.parse(text);
-    } else {
-      worldData = await response.json();
-    }
-
-    if (!worldData.success || !worldData.data) {
-      throw new Error('Invalid world data received');
-    }
-
-    // Capture into a const so narrowing survives the awaits below (property narrowing would reset).
-    const contentData = worldData.data.contentData;
     const migrated = migrateWorld(contentData);
 
     // Prefer the world's own embedded thumbnail (base64, already in the downloaded content) so the local

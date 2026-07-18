@@ -1,8 +1,8 @@
 import { LibraryStore, type StoredRecord } from './LibraryStore';
 import type { Dictionary, DictionaryMetadata } from '@/types';
 
-/** A locally-stored dictionary ("book") plus its library timestamps. Analogous to `StoredWorldRecord`,
- *  but purely local — dictionaries aren't a community-server concept. */
+/** A locally-stored dictionary ("book") plus its library timestamps, and (via `StoredRecord`) the
+ *  community-link fields so a dictionary can be published to and downloaded from the community server. */
 export type StoredDictionaryRecord = StoredRecord<Dictionary>;
 
 /** Singleton owning the local dictionary library (IndexedDB `dictionariesDB`/`dictionaries`). The CRUD lives
@@ -19,6 +19,13 @@ class DictionaryStorageService {
       entryCount: record.data?.entries?.length ?? 0,
       createdAt: record.createdAt,
       lastAccessed: record.lastAccessed,
+      // The community link travels with the metadata: the library grid never shows it, but the download flow
+      // reads these to tell a fresh listing from one you already hold (see lib/downloadState).
+      sourceId: record.sourceId,
+      dirty: record.dirty,
+      editedAt: record.editedAt,
+      downloadedAt: record.downloadedAt,
+      sourceUpdatedAt: record.sourceUpdatedAt,
     }),
   });
 

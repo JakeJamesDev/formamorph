@@ -1,4 +1,6 @@
 import AuthService from './AuthService';
+import type { CatalogKindQuery } from '@/lib/catalogKinds';
+import type { PublishPayload } from '@/lib/publishPayload';
 import { openDatabase, promisifyRequest } from '@/lib/idb';
 import { migrateWorld } from '@/lib/version';
 import { contentHash } from '@/lib/contentHash';
@@ -65,12 +67,6 @@ const DEFAULT_WORLD_RAW = import.meta.glob('../defaultworlds/*.json', {
   query: '?raw',
   import: 'default',
 }) as Record<string, () => Promise<string>>;
-
-// The world payload sent to the server when publishing.
-interface PublishableWorld {
-  worldOverview: { name?: string; description?: string; thumbnail?: string } & Record<string, unknown>;
-  [key: string]: unknown;
-}
 
 /** Singleton owning local world persistence (IndexedDB `worldsDB`/`worlds`) and community server calls
  *  (fetch/publish/comments). Default-exported as one shared instance; the constructor kicks off DB init. */
@@ -357,12 +353,14 @@ class WorldStorageService {
 
   /** Fetch a page of community worlds with optional search/sort; `ownedOnly` switches to the caller's own
    *  worlds and requires auth. Never throws — errors resolve to `{success:false, error, data:[]}`. */
-  async fetchRemoteWorlds(page = 1, limit = 10, search = '', ownedOnly = false, searchByAuthor = false, sort = '', order = 'desc') {
+  async fetchRemoteWorlds(page = 1, limit = 10, search = '', ownedOnly = false, searchByAuthor = false, sort = '', order = 'desc', kind: CatalogKindQuery = 'world') {
     try {
       let url = `${this.API_URL}/worlds?page=${page}&limit=${limit}`;
       if (search) url += `&search=${encodeURIComponent(search)}`;
       if (searchByAuthor) url += `&searchByAuthor=true`;
       if (sort) url += `&sort=${encodeURIComponent(sort)}&order=${encodeURIComponent(order)}`;
+      // Omitted entirely for 'world' so the request stays byte-identical to what shipped before kinds.
+      if (kind !== 'world') url += `&kind=${encodeURIComponent(kind)}`;
 
       const headers: Record<string, string> = {};
       if (AuthService.isAuthenticated()) {
@@ -445,11 +443,13 @@ class WorldStorageService {
   }
 
   /** Fetch the current user's published worlds; returns `[]` when unauthenticated or on error. */
-  async getUserWorlds() {
+  async getUserWorlds(kind: CatalogKindQuery = 'world') {
     if (!AuthService.isAuthenticated()) return [];
 
+    // Omitted for 'world' so the request stays byte-identical to what shipped before kinds.
+    const query = kind === 'world' ? '' : `?kind=${encodeURIComponent(kind)}`;
     try {
-      const response = await fetch(`${this.API_URL}/users/me/worlds`, {
+      const response = await fetch(`${this.API_URL}/users/me/worlds${query}`, {
         headers: {
           'Authorization': `Bearer ${AuthService.token}`
         }
@@ -469,18 +469,21 @@ class WorldStorageService {
     }
   }
 
-  /** Publish a world to the community server: `PUT` updates when `worldId` is given, else `POST` creates. Requires
-   *  auth; rethrows on failure. */
-  async publishWorld(worldData: PublishableWorld, worldId: string | null = null) {
+  /**
+   * Publish a world, character, or dictionary: `PUT` updates when `targetId` names one of the user's own
+   * listings, else `POST` creates. Requires auth; rethrows on failure. Build `payload` with the per-kind
+   * helpers in `lib/publishPayload`, which own where each kind's fields come from.
+   */
+  async publishItem(payload: PublishPayload, targetId: string | null = null) {
     if (!AuthService.isAuthenticated()) {
-      throw new Error('You must be logged in to publish worlds');
+      throw new Error('You must be logged in to publish');
     }
 
-    const endpoint = worldId
-      ? `${this.API_URL}/worlds/${worldId}` // Update existing world
-      : `${this.API_URL}/worlds`;           // Create new world
+    const endpoint = targetId
+      ? `${this.API_URL}/worlds/${targetId}` // Update an existing listing
+      : `${this.API_URL}/worlds`;            // Create a new one
 
-    const method = worldId ? 'PUT' : 'POST';
+    const method = targetId ? 'PUT' : 'POST';
 
     try {
       const response = await fetch(endpoint, {
@@ -490,26 +493,28 @@ class WorldStorageService {
           'Authorization': `Bearer ${AuthService.token}`
         },
         body: JSON.stringify({
-          name: worldData.worldOverview.name,
-          description: worldData.worldOverview.description,
-          thumbnail: worldData.worldOverview.thumbnail,
+          name: payload.name,
+          description: payload.description,
+          thumbnail: payload.thumbnail,
+          // The catalog card reads previewData; it mirrors the list fields, never the content.
           previewData: {
-            name: worldData.worldOverview.name,
-            description: worldData.worldOverview.description,
-            thumbnail: worldData.worldOverview.thumbnail
+            name: payload.name,
+            description: payload.description,
+            thumbnail: payload.thumbnail
           },
-          contentData: worldData
+          contentData: payload.contentData,
+          kind: payload.kind
         })
       });
 
       if (!response.ok) {
         const errorData = await response.json();
-        throw new Error(errorData.message || 'Failed to publish world');
+        throw new Error(errorData.message || errorData.error || 'Failed to publish');
       }
 
       return await response.json();
     } catch (error) {
-      console.error('Error publishing world:', error);
+      console.error('Error publishing:', error);
       throw error;
     }
   }

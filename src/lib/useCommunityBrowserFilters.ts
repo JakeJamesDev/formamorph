@@ -1,7 +1,8 @@
 import { useState, useEffect, useMemo } from "react";
 import { sanitizeTag, collectSanitizedTags } from "@/lib/tagUtils";
-import { getDownloadState } from "@/lib/downloadState";
+import { type DownloadState } from "@/lib/downloadState";
 import { toEpoch } from "@/lib/thumbnailCache";
+import { kindOf, type CatalogKind } from "@/lib/catalogKinds";
 import { type WorldRecord } from "@/components/WorldDetails";
 
 const DEFAULT_PAGE_SIZE = 12;
@@ -15,13 +16,21 @@ const gridColumns = (w: number): number =>
 
 /**
  * The Community Creations browse pipeline: search/author/tag/sort filters, client-side hide preferences
- * (persisted), and pagination sized to the responsive grid. Derives the filtered/sorted/paged world list
- * from the catalog. `localCopiesBySource` (from the download coordinator) powers the "updates first" sort.
+ * (persisted), and pagination sized to the responsive grid. Derives the filtered/sorted/paged list from
+ * the catalog.
+ *
+ * `kind` scopes the whole pipeline: the catalog holds every kind in one list, so it's narrowed once here
+ * and everything downstream — authors, tags, search, sort, paging — follows without needing to know.
+ *
+ * `downloadStateOf` powers the "updates first" sort. It's a function rather than a map of local copies
+ * because each kind keeps its copies in its own library: handing this one library's map would silently
+ * make the sort a no-op on the other tabs, which is exactly what it did.
  */
 export function useCommunityBrowserFilters(
   remoteWorlds: WorldRecord[],
-  localCopiesBySource: Map<string, WorldRecord[]>,
+  downloadStateOf: (record: WorldRecord) => DownloadState,
   open: boolean,
+  kind: CatalogKind = 'world',
 ) {
   const [searchQuery, setSearchQuery] = useState('');
   const [authorFilter, setAuthorFilter] = useState<string[]>([]);
@@ -103,19 +112,25 @@ export function useCommunityBrowserFilters(
     remoteWorlds.find((w) => (w._id || w.id) === id)?.name || `${id.slice(0, 8)}…`;
 
   // Unique authors/tags from the cached catalog (excluding hidden ones), for the filter autocomplete.
+  // The catalog is one list of every kind; narrow it once so nothing below has to re-ask.
+  const kindWorlds = useMemo(
+    () => remoteWorlds.filter((w) => kindOf(w) === kind),
+    [remoteWorlds, kind],
+  );
+
   const allAuthors = useMemo(() => {
     const hidden = new Set(hiddenAuthors.map((a) => a.toLowerCase()));
     const set = new Set<string>();
-    remoteWorlds.forEach((w) => {
+    kindWorlds.forEach((w) => {
       const name = w.author?.username;
       if (name && !hidden.has(name.toLowerCase())) set.add(name);
     });
     return Array.from(set).sort((a, b) => a.localeCompare(b));
-  }, [remoteWorlds, hiddenAuthors]);
+  }, [kindWorlds, hiddenAuthors]);
   // hiddenTags are already sanitized; collectSanitizedTags normalizes the rest.
   const allTags = useMemo(
-    () => collectSanitizedTags(remoteWorlds.map((w) => w.tags), new Set(hiddenTags)),
-    [remoteWorlds, hiddenTags],
+    () => collectSanitizedTags(kindWorlds.map((w) => w.tags), new Set(hiddenTags)),
+    [kindWorlds, hiddenTags],
   );
 
   // Client-side browse pipeline: hide filters → text search → author/tag include filters → sort.
@@ -125,7 +140,7 @@ export function useCommunityBrowserFilters(
     const q = searchQuery.trim().toLowerCase();
     const authors = authorFilter.map((a) => a.toLowerCase());
     const tags = tagFilter.map((t) => sanitizeTag(t)).filter(Boolean);
-    const list = remoteWorlds.filter((world) => {
+    const list = kindWorlds.filter((world) => {
       const id = world._id || world.id;
       if (hiddenWorldIds.includes(id)) return false;
       if ((world.tags || []).some((t: string) => hiddenTags.includes(sanitizeTag(t)))) return false;
@@ -142,15 +157,15 @@ export function useCommunityBrowserFilters(
     const dir = sortOrder === 'asc' ? 1 : -1;
     return [...list].sort((a, b) => {
       if (sortUpdatesFirst) {
-        const au = getDownloadState(a.updated_at, localCopiesBySource.get(a._id || a.id) ?? []) === 'update' ? 1 : 0;
-        const bu = getDownloadState(b.updated_at, localCopiesBySource.get(b._id || b.id) ?? []) === 'update' ? 1 : 0;
+        const au = downloadStateOf(a) === 'update' ? 1 : 0;
+        const bu = downloadStateOf(b) === 'update' ? 1 : 0;
         if (au !== bu) return bu - au; // updates first, regardless of sort direction
       }
       const av = sortField === 'downloads' ? (a.downloads || 0) : toEpoch(a[sortField]);
       const bv = sortField === 'downloads' ? (b.downloads || 0) : toEpoch(b[sortField]);
       return (av - bv) * dir;
     });
-  }, [remoteWorlds, searchQuery, authorFilter, tagFilter, tagMode, hiddenWorldIds, hiddenTags, hiddenAuthors, sortField, sortOrder, sortUpdatesFirst, localCopiesBySource]);
+  }, [kindWorlds, searchQuery, authorFilter, tagFilter, tagMode, hiddenWorldIds, hiddenTags, hiddenAuthors, sortField, sortOrder, sortUpdatesFirst, downloadStateOf]);
 
   const totalPages = Math.max(1, Math.ceil(filteredRemoteWorlds.length / pageSize));
   const pagedRemoteWorlds = filteredRemoteWorlds.slice((currentPage - 1) * pageSize, currentPage * pageSize);
@@ -171,7 +186,8 @@ export function useCommunityBrowserFilters(
   }, [open]);
 
   // Reset to page 1 when the result set changes; clamp if hiding shrinks it below the current page.
-  useEffect(() => { setCurrentPage(1); }, [searchQuery, authorFilter, tagFilter, tagMode, sortField, sortOrder]);
+  // `kind` included: switching tabs shortens the list, so a page-5 view would otherwise land on nothing.
+  useEffect(() => { setCurrentPage(1); }, [searchQuery, authorFilter, tagFilter, tagMode, sortField, sortOrder, kind]);
   useEffect(() => { if (currentPage > totalPages) setCurrentPage(totalPages); }, [currentPage, totalPages]);
 
   return {

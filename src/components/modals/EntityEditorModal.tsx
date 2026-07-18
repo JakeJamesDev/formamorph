@@ -4,7 +4,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/u
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Download, Save } from 'lucide-react';
+import { Download, Save, Upload } from 'lucide-react';
 import { UnsavedChangesDialog } from '@/components/UnsavedChangesDialog';
 import EntityFields from '@/managers/EntityFields';
 import PlaceholderEditor from '@/managers/PlaceholderEditor';
@@ -18,8 +18,14 @@ import type { Entity, Placeholder } from '@/types';
  * Edit a single library character in place, bound to ISOLATED state (never the world store). Opens on an
  * existing `entityId` (loaded from storage) or a `draft` (a brand-new character not yet stored). Download
  * exports a `.webp` card; Save writes to `EntityStorageService` — a draft isn't persisted until then.
+ * `onPublish` (when the user is signed in) hands the character up to the publish dialog.
  */
-const EntityEditorModal = ({ entityId, draft, onClose }: { entityId: string | null; draft?: Entity | null; onClose: () => void }) => {
+const EntityEditorModal = ({ entityId, draft, onClose, onPublish }: {
+  entityId: string | null;
+  draft?: Entity | null;
+  onClose: () => void;
+  onPublish?: (entity: Entity) => void;
+}) => {
   const [entity, setEntity] = useState<Entity | null>(null);
   const [tab, setTab] = useState<'entity' | 'placeholders'>('entity');
   const [showUnsaved, setShowUnsaved] = useState(false);
@@ -44,7 +50,7 @@ const EntityEditorModal = ({ entityId, draft, onClose }: { entityId: string | nu
     return () => { cancelled = true; };
   }, [entityId, draft]);
 
-  const dirty = entity != null && JSON.stringify(entity) !== baselineRef.current;
+  const hasUnsavedChanges = entity != null && JSON.stringify(entity) !== baselineRef.current;
 
   const handleChange = (field: string, value: unknown) => {
     setEntity((prev) => (prev ? ({ ...prev, [field]: value } as Entity) : prev));
@@ -64,7 +70,10 @@ const EntityEditorModal = ({ entityId, draft, onClose }: { entityId: string | nu
     const id = entityId ?? entity.id;
     const normalized: Entity = { ...entity, id };
     try {
-      await EntityStorageService.storeEntity({ id, name: normalized.name, data: normalized });
+      // A save means this copy diverged from whatever it was downloaded from; the store read-merges the rest.
+      await EntityStorageService.storeEntity({
+        id, name: normalized.name, data: normalized, dirty: true, editedAt: new Date().toISOString(),
+      });
       setEntity(normalized);
       baselineRef.current = JSON.stringify(normalized);
       toast.success('Character saved!');
@@ -83,7 +92,7 @@ const EntityEditorModal = ({ entityId, draft, onClose }: { entityId: string | nu
     }
   };
 
-  const attemptClose = () => { if (dirty) setShowUnsaved(true); else onClose(); };
+  const attemptClose = () => { if (hasUnsavedChanges) setShowUnsaved(true); else onClose(); };
 
   return (
     <>
@@ -116,13 +125,21 @@ const EntityEditorModal = ({ entityId, draft, onClose }: { entityId: string | nu
                   <PlaceholderEditor />
                 </PlaceholderStoreProvider>
               )}
-              <div className="px-4 py-3 border-t shrink-0 flex justify-between">
+              <div className="px-4 py-3 border-t shrink-0 flex justify-between gap-2">
                 <Button variant="outline" size="sm" onClick={handleDownload}>
                   <Download className="h-4 w-4 mr-2" /> Download
                 </Button>
-                <Button size="sm" onClick={handleSave} disabled={!dirty}>
-                  <Save className="h-4 w-4 mr-2" /> Save
-                </Button>
+                <div className="flex gap-2">
+                  {onPublish && (
+                    // Publishes what's on screen, saved or not — the same thing Save would write.
+                    <Button variant="outline" size="sm" onClick={() => entity && onPublish(entity)}>
+                      <Upload className="h-4 w-4 mr-2" /> Publish
+                    </Button>
+                  )}
+                  <Button size="sm" onClick={handleSave} disabled={!hasUnsavedChanges}>
+                    <Save className="h-4 w-4 mr-2" /> Save
+                  </Button>
+                </div>
               </div>
             </>
           )}
