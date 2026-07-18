@@ -119,13 +119,21 @@ function useProvideGameData() {
     setEntities(prevEntities => prevEntities.filter(entity => entity.id !== entityId));
     // The entity↔location link is stored on the location, so dropping the entity alone strands its id in
     // every location that listed it. The AI feed skips ids it can't resolve, but they'd ride along into the
-    // exported world and accumulate. Returns the original array when nothing referenced it.
+    // exported world and accumulate. The link sits on `entities` (current) or the legacy `entity` alias
+    // (pre-audience-split worlds, which migration never folds) — clean whichever holds it. Returns the
+    // original array when nothing referenced the entity.
     setLocations(prevLocations => {
       let changed = false;
       const next = prevLocations.map((location) => {
-        if (!location.entities?.includes(entityId)) return location;
+        const legacy = (location as GameLocation & { entity?: string[] }).entity;
+        const inEntities = location.entities?.includes(entityId) ?? false;
+        const inLegacy = legacy?.includes(entityId) ?? false;
+        if (!inEntities && !inLegacy) return location;
         changed = true;
-        return { ...location, entities: location.entities.filter((id) => id !== entityId) };
+        const cleaned: GameLocation & { entity?: string[] } = { ...location };
+        if (inEntities) cleaned.entities = location.entities!.filter((id) => id !== entityId);
+        if (inLegacy) cleaned.entity = legacy!.filter((id) => id !== entityId);
+        return cleaned;
       });
       return changed ? next : prevLocations;
     });

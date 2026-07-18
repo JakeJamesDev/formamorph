@@ -2736,7 +2736,7 @@ ${playerNotes || NONE_PLACEHOLDER}
 
   return (
     <div
-      className={`flex ${isMobile ? "flex-col" : "p-4"} h-screen text-sm md:text-base bg-background bg-cover bg-center overflow-hidden`}
+      className={`flex ${isMobile ? "flex-col" : "p-4"} h-[100dvh] text-sm md:text-base bg-background bg-cover bg-center overflow-hidden`}
       style={{
         // A background-colored overlay composited over the image fades it toward the theme background.
         // Dropped while the UI is hidden, so the eye toggle reveals the raw image.

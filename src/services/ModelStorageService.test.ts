@@ -166,6 +166,18 @@ describe('seedDefaultModel', () => {
     await expect(ModelStorageService.seedDefaultModel(vrmUrl)).resolves.toBeUndefined();
     await expect(ModelStorageService.getModelMetadata()).resolves.toEqual([]);
   });
+
+  it('retries on the next launch after a failure, rather than locking the default out forever', async () => {
+    // A transient failure must not set the seeded flag, or the default could never appear.
+    vi.stubGlobal('fetch', vi.fn().mockRejectedValueOnce(new Error('offline')));
+    await ModelStorageService.seedDefaultModel(vrmUrl);
+    expect((await ModelStorageService.getModelMetadata()).map((m) => m.id)).not.toContain('default-model');
+
+    // Next launch: fetch works, and because the flag was never set, it seeds now.
+    serve(await makeVrm1({ name: 'Default Model' }));
+    await ModelStorageService.seedDefaultModel(vrmUrl);
+    expect((await ModelStorageService.getModelMetadata()).map((m) => m.id)).toContain('default-model');
+  });
 });
 
 describe('findDuplicate', () => {
@@ -239,6 +251,38 @@ describe('ensureThumbnail', () => {
 
   it('returns undefined for a model that is not in the library', async () => {
     await expect(ModelStorageService.ensureThumbnail('missing')).resolves.toBeUndefined();
+  });
+});
+
+// The atomic write the thumbnail backfill uses: if a delete lands while a thumbnail is being computed, the
+// backfill must NOT write the row back (resurrecting a deleted model). Tested directly because the timing of
+// the delete-vs-persist race isn't reproducible through the public API in a unit test.
+describe('updateDataIfPresent (backfill persist)', () => {
+  const persist = (id: string, data: unknown) =>
+    (ModelStorageService as unknown as { updateDataIfPresent: (id: string, data: unknown) => Promise<void> })
+      .updateDataIfPresent(id, data);
+
+  it('does not recreate a record that was deleted before the write', async () => {
+    const gone = await ModelStorageService.addModel(new File([blob('a')], 'gone.vrm', { type: 'model/vrm' }));
+    await ModelStorageService.addModel(new File([blob('b')], 'keep.vrm', { type: 'model/vrm' }));
+    await ModelStorageService.deleteModel(gone.id);
+
+    await persist(gone.id, { type: 'model/vrm', blob: blob('a'), size: 1, thumbnail: 'data:image/webp;base64,ZZ' });
+
+    expect(await getRaw(gone.id)).toBeUndefined();
+    await expect(ModelStorageService.getModelData(gone.id)).rejects.toBe('Model not found');
+  });
+
+  it('writes the data onto a record that still exists, preserving its identity fields', async () => {
+    const kept = await ModelStorageService.addModel(new File([blob('a')], 'kept.vrm', { type: 'model/vrm' }));
+    const before = await getRaw(kept.id);
+
+    await persist(kept.id, { type: 'model/vrm', blob: blob('a'), size: 1, thumbnail: 'data:image/webp;base64,ZZ' });
+
+    const after = await getRaw(kept.id);
+    expect((after.data as Record<string, unknown>).thumbnail).toBe('data:image/webp;base64,ZZ');
+    expect(after.createdAt).toBe(before.createdAt); // identity untouched
+    expect(after.name).toBe('kept');
   });
 });
 

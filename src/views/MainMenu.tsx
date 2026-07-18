@@ -12,7 +12,7 @@ import 'react-toastify/dist/ReactToastify.css';
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {ConfirmDialog} from "@/components/ConfirmDialog";
-import {FilePlus2, DoorOpen, Pencil, Github, AlertTriangle, Code, User, Import, Globe, LayoutGrid, GalleryThumbnails, Columns2, RectangleVertical, Menu, Earth, BookOpen, Upload, ChevronLast, MoreHorizontal, PersonStanding } from "lucide-react";
+import {FilePlus2, DoorOpen, Pencil, Github, AlertTriangle, Code, User, Import, Globe, LayoutGrid, GalleryThumbnails, Columns2, RectangleVertical, Menu, Earth, BookOpen, Upload, ChevronLast, MoreHorizontal, PersonStanding, type LucideIcon } from "lucide-react";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { ImageZoomViewer } from "@/components/ImageZoomViewer";
 import { cn } from "@/lib/utils";
@@ -103,6 +103,15 @@ const WORLD_ORDER_KEY = 'FORMAMORPH_worldOrder';
 const DICTIONARY_ORDER_KEY = 'FORMAMORPH_dictionaryOrder';
 const ENTITY_ORDER_KEY = 'FORMAMORPH_entityOrder';
 const MODEL_ORDER_KEY = 'FORMAMORPH_modelOrder';
+
+/** The library's card-type tabs, with their icon + label, so the top switcher and the mobile bottom bar
+ *  render from one source and can't drift. */
+const CARD_TABS: { value: MainMenuCardTab; label: string; Icon: LucideIcon }[] = [
+  { value: 'worlds', label: 'Worlds', Icon: Earth },
+  { value: 'entities', label: 'Entities', Icon: User },
+  { value: 'dictionaries', label: 'Dictionaries', Icon: BookOpen },
+  { value: 'models', label: 'Models', Icon: PersonStanding },
+];
 
 /** Name the affected saves in a prompt, capping the list so a big library doesn't produce a wall of text. */
 const listSaves = (names: string[]): string => {
@@ -460,8 +469,10 @@ const MainMenu = ({ onStartGame, onLoadSaveGame, onReplayIntro, introActive = fa
       }
     })();
     return () => { cancelled = true; };
-    // Keyed on the pending ids: re-runs when a model is added or removed, not when a thumbnail lands.
-  }, [cardType, models.map((m) => (m.thumbnail ? '' : m.id)).join(',')]); // eslint-disable-line react-hooks/exhaustive-deps
+    // Keyed on the id set, not on thumbnail state: one run processes every pending model in sequence, and
+    // a landing thumbnail (which changes `models` but not the id list) doesn't tear the loop down and restart
+    // it. It re-runs only when a model is added or removed.
+  }, [cardType, models.map((m) => m.id).join(',')]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Load the local character library metadata. Reused on mount and after the editor modal closes.
   const refreshEntities = useCallback(async () => {
@@ -1009,7 +1020,7 @@ const MainMenu = ({ onStartGame, onLoadSaveGame, onReplayIntro, introActive = fa
   }
 
   return (
-    <div className="pt-20 relative flex flex-col h-screen overflow-hidden">
+    <div className="pt-[calc(5rem+env(safe-area-inset-top))] relative flex flex-col h-[100dvh] overflow-hidden">
       {downscaleDialog}
       <ThemedToastContainer />
 
@@ -1017,30 +1028,20 @@ const MainMenu = ({ onStartGame, onLoadSaveGame, onReplayIntro, introActive = fa
           settings (right). items-center keeps every control on the settings cog's centerline (the cog is
           tallest). The side cells are equal flex-1 so the center section sits at true viewport-center when
           there's room; it only shifts/wraps once the sides can't yield more space. */}
-      <div className="fixed top-4 left-4 right-4 z-10 flex items-center gap-2">
+      <div className="fixed z-10 flex items-center gap-2 top-[calc(1rem+env(safe-area-inset-top))] left-[calc(1rem+env(safe-area-inset-left))] right-[calc(1rem+env(safe-area-inset-right))]">
         {/* Card-type switcher: text labels at >=1040px, icon-only below — collapsing it (not the action
-            buttons) reclaims the width so the centered buttons keep their labels longer. Portrait is always
-            below the threshold, so it stays icon-only as before. No min-w-0: the cell keeps its real width
-            so it never overflows onto the centered buttons — it pushes them. */}
-        <div className="flex-1 flex items-center justify-start">
+            buttons) reclaims the width so the centered buttons keep their labels longer. Hidden on mobile,
+            where the bottom tab bar takes over (adding a 4th tab left the top row too cramped in portrait).
+            No min-w-0: the cell keeps its real width so it never overflows onto the centered buttons. */}
+        <div className="flex-1 hidden md:flex items-center justify-start">
           <Tabs value={cardType} onValueChange={(v) => setCardType(v as typeof cardType)}>
             <TabsList>
-              <TabsTrigger value="worlds" aria-label="Worlds" title="Worlds">
-                <Earth className="h-5 w-5 min-[1040px]:hidden" />
-                <span className="hidden min-[1040px]:inline">Worlds</span>
-              </TabsTrigger>
-              <TabsTrigger value="entities" aria-label="Entities" title="Entities">
-                <User className="h-5 w-5 min-[1040px]:hidden" />
-                <span className="hidden min-[1040px]:inline">Entities</span>
-              </TabsTrigger>
-              <TabsTrigger value="dictionaries" aria-label="Dictionaries" title="Dictionaries">
-                <BookOpen className="h-5 w-5 min-[1040px]:hidden" />
-                <span className="hidden min-[1040px]:inline">Dictionaries</span>
-              </TabsTrigger>
-              <TabsTrigger value="models" aria-label="Models" title="Models">
-                <PersonStanding className="h-5 w-5 min-[1040px]:hidden" />
-                <span className="hidden min-[1040px]:inline">Models</span>
-              </TabsTrigger>
+              {CARD_TABS.map(({ value, label, Icon }) => (
+                <TabsTrigger key={value} value={value} aria-label={label} title={label}>
+                  <Icon className="h-5 w-5 min-[1040px]:hidden" />
+                  <span className="hidden min-[1040px]:inline">{label}</span>
+                </TabsTrigger>
+              ))}
             </TabsList>
           </Tabs>
         </div>
@@ -1334,12 +1335,33 @@ const MainMenu = ({ onStartGame, onLoadSaveGame, onReplayIntro, introActive = fa
       </ScrollArea>
       )}
 
+      {/* Mobile card-type switch: an in-flow bottom tab bar (one-tap, always visible) that frees the cramped
+          top row. In-flow rather than fixed so it stacks above the footer instead of covering it; it caps the
+          scroll frame the same way the footer does. Hidden at md+, where the top switcher returns. */}
+      <nav className="md:hidden shrink-0 flex border-t bg-background">
+        {CARD_TABS.map(({ value, label, Icon }) => (
+          <button
+            key={value}
+            onClick={() => setCardType(value)}
+            aria-label={label}
+            aria-current={cardType === value ? 'page' : undefined}
+            className={cn(
+              'flex-1 flex flex-col items-center gap-0.5 py-2 text-[11px] transition-colors',
+              cardType === value ? 'text-primary' : 'text-muted-foreground hover:text-foreground',
+            )}
+          >
+            <Icon className="h-5 w-5" />
+            {label}
+          </button>
+        ))}
+      </nav>
+
       {/* Real footer: profile + version (left), copyright (center), social links (right). In-flow and
           shrink-0 so it caps the flex-1 scroll frame above — the card grid ends at the footer instead of
           scrolling under floating buttons. Full-width (the root is no longer the max-width container — that
           moved to the grid scroll areas), so the profile/social sit at the viewport edges. Equal flex-1
           side cells keep the copyright truly centered. */}
-      <footer className="shrink-0 flex items-center gap-2 px-4 py-3">
+      <footer className="shrink-0 flex items-center gap-2 py-3 px-4 pb-[calc(0.75rem+env(safe-area-inset-bottom))] pl-[calc(1rem+env(safe-area-inset-left))] pr-[calc(1rem+env(safe-area-inset-right))]">
         {/* Left: user profile circle + app version (the version moves into the ⋯ menu on mobile). */}
         <div className="flex-1 flex items-center justify-start gap-2">
           {COMMUNITY_ENABLED && (

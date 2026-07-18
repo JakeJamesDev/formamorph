@@ -88,6 +88,28 @@ class ModelStorageService {
     );
   }
 
+  /**
+   * Persist `data` onto an existing record, but only if the record is still there — a delete that lands while
+   * a thumbnail is being computed must not be undone by the backfill writing the row back. The get and put
+   * share one readwrite transaction, which IndexedDB serializes against a concurrent delete, so the check and
+   * the write can't interleave.
+   */
+  private async updateDataIfPresent(id: string, data: VrmData): Promise<void> {
+    await this.store.ensureInitialized();
+    return new Promise<void>((resolve, reject) => {
+      const store = this.store.db!.transaction(['models'], 'readwrite').objectStore('models');
+      const get = store.get(id);
+      get.onsuccess = () => {
+        const existing = get.result as StoredModelRecord | undefined;
+        if (!existing) return resolve(); // deleted meanwhile — leave it gone
+        const put = store.put({ ...existing, data });
+        put.onsuccess = () => resolve();
+        put.onerror = () => reject(put.error);
+      };
+      get.onerror = () => reject(get.error);
+    });
+  }
+
   /** One stored record with its wrapper, or null. */
   private async getRecord(id: string): Promise<StoredModelRecord | null> {
     await this.store.ensureInitialized();
@@ -165,9 +187,12 @@ class ModelStorageService {
     await this.ensureMigrated();
     try {
       if (localStorage.getItem(SEEDED_KEY)) return;
-      // Mark first: a half-finished seed must not retry forever on a machine that can't fetch it.
-      localStorage.setItem(SEEDED_KEY, '1');
-      if (await this.getRecord(DEFAULT_MODEL_ID)) return;
+      // Already present (flag lost, or a prior run seeded then the flag was cleared): mark it and stop, no
+      // needless re-fetch. The flag is only ever set once the record is known to exist — see below.
+      if (await this.getRecord(DEFAULT_MODEL_ID)) {
+        localStorage.setItem(SEEDED_KEY, '1');
+        return;
+      }
 
       const blob = await (await fetch(url)).blob();
       const [hash, { license, thumbnail }] = await Promise.all([blobHash(blob), readVrmMeta(blob)]);
@@ -183,6 +208,10 @@ class ModelStorageService {
           thumbnail: await shrinkThumbnail(thumbnail),
         },
       });
+      // Only mark seeded once the store has actually landed. A transient fetch/store failure leaves the flag
+      // unset so the next launch retries, rather than locking the default out forever. The fetch is a bundled
+      // same-origin file (browser-cached), so re-attempting on failure is cheap.
+      localStorage.setItem(SEEDED_KEY, '1');
     } catch (error) {
       console.error('Failed to seed the default model:', error);
     }
@@ -239,7 +268,9 @@ class ModelStorageService {
       resolved.thumbnail ??= await renderVrmThumbnail(data.blob, resolved.license?.metaVersion ?? null);
       if (!resolved.thumbnail) resolved.thumbnailFailed = true;
 
-      await this.store.store({ ...record, data: resolved });
+      // Persist only if the record still exists — the render can take a second, and a delete in that window
+      // must not be undone by writing the row back.
+      await this.updateDataIfPresent(id, resolved);
       return resolved.thumbnail;
     } catch {
       return undefined;
@@ -265,11 +296,28 @@ class ModelStorageService {
    */
   async deleteModel(id: string): Promise<void> {
     await this.ensureMigrated();
-    const records = await this.allRecords();
-    if (records.length <= 1 && records.some((record) => record.id === id)) {
-      throw new Error('Cannot delete the last model: the library must always have at least one.');
-    }
-    return this.store.delete(id);
+    await this.store.ensureInitialized();
+    // The count, the existence check, and the delete share one readwrite transaction. IndexedDB serializes
+    // transactions over the store, so two concurrent deletes can't both see count > 1 and then both delete —
+    // which a read-then-delete across separate transactions would allow, emptying the library.
+    return new Promise<void>((resolve, reject) => {
+      const store = this.store.db!.transaction(['models'], 'readwrite').objectStore('models');
+      const countReq = store.count();
+      countReq.onsuccess = () => {
+        const total = countReq.result;
+        const getReq = store.get(id);
+        getReq.onsuccess = () => {
+          if (total <= 1 && getReq.result) {
+            return reject(new Error('Cannot delete the last model: the library must always have at least one.'));
+          }
+          const del = store.delete(id);
+          del.onsuccess = () => resolve();
+          del.onerror = () => reject(del.error);
+        };
+        getReq.onerror = () => reject(getReq.error);
+      };
+      countReq.onerror = () => reject(countReq.error);
+    });
   }
 }
 

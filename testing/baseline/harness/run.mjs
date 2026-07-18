@@ -264,7 +264,10 @@ async function main() {
   const cfg = JSON.parse(await readFile(profilesPath, "utf8"));
   await mkdir(RUNS_DIR, { recursive: true });
 
-  const models = cfg.models.filter((m) => !modelFilter || m.label.includes(modelFilter));
+  // Substring filter, but an exact label wins when one exists — otherwise `--model foo` also matches `foo-q6`
+  // (a label that is a prefix of another), silently screening the wrong quant and mixing its dumps into the row.
+  const exact = modelFilter ? cfg.models.filter((m) => m.label === modelFilter) : [];
+  const models = !modelFilter ? cfg.models : exact.length ? exact : cfg.models.filter((m) => m.label.includes(modelFilter));
   const profiles = cfg.profiles.filter((p) => !profileFilter || p.name === profileFilter);
   if (!models.length || !profiles.length) throw new Error("No models/profiles matched the filters.");
 

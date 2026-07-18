@@ -28,16 +28,21 @@ describe("buildLocationContext", () => {
     expect(buildLocationContext(null)).toBe(NONE_PLACEHOLDER);
   });
 
-  it("omits editor-only fields — they're spread in unless named, so each must stay excluded", () => {
+  it("emits only allow-listed fields — an unknown field never leaks to the AI by default", () => {
     const out = buildLocationContext({
       ...location,
       playerDescription: "What the player reads.",
       imageTags: "outdoors, dock, sunset",
-    });
+      // A field the allowlist doesn't name — the whole point is it's dropped without anyone updating this code.
+      someFutureField: "secret editor state",
+    } as never);
     expect(out).not.toContain("imageTags"); // booru tags for image gen, not story context
     expect(out).not.toContain("sunset");
     expect(out).not.toContain("playerDescription");
     expect(out).not.toContain("What the player reads.");
+    expect(out).not.toContain("someFutureField");
+    expect(out).not.toContain("secret editor state");
+    expect(out).toContain("description:"); // the allow-listed content still lands
   });
 
   it("folds the legacy `description` into one description line rather than emitting a second key", () => {
@@ -260,16 +265,18 @@ describe("buildEntityContext", () => {
     expect(buildEntityContext({ id: "loc2", name: "Empty Field" }, [guard])).toBe(NONE_PLACEHOLDER);
   });
 
-  it("omits editor-only fields — they're spread in unless named, so each must stay excluded", () => {
+  it("emits only allow-listed fields — an unknown field never leaks to the AI by default", () => {
     const out = buildEntityContext(
       location,
-      [{ ...guard, playerDescription: "What the player reads.", imageTags: "1girl, blue_hair", placeholders: [] }],
+      [{ ...guard, playerDescription: "What the player reads.", imageTags: "1girl, blue_hair", placeholders: [], someFutureField: "secret editor state" } as never],
     );
     expect(out).not.toContain("imageTags"); // booru tags for image gen, not story context
     expect(out).not.toContain("blue_hair");
     expect(out).not.toContain("playerDescription");
     expect(out).not.toContain("What the player reads.");
     expect(out).not.toContain("placeholders");
+    expect(out).not.toContain("someFutureField"); // dropped without anyone updating the builder
+    expect(out).not.toContain("secret editor state");
     expect(out).toContain("description: A burly guard in full plate, scarred from old wars."); // aiDescription still lands
   });
 

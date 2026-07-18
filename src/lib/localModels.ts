@@ -144,6 +144,13 @@ export const LOCAL_MODELS: LocalModelInfo[] = [
 
   // No Limit — 31B / 35B MoE / 70B
   {
+    id: 'g4-meromero-31b', name: 'G4 MeroMero 31B', params: '31B', quant: 'Q4_K_M', tier: 'unlimited',
+    fileName: 'G4-MeroMero-31B-Q4_K_M.gguf',
+    url: hf('zerofata/G4-MeroMero-31B-gguf', 'G4-MeroMero-31B-Q4_K_M.gguf'),
+    sizeBytes: 18_690_000_000, note: 'Gemma-4 31B RP finetune — top screen scorer; the one model that keeps stats quiet on idle turns.', license: 'Apache 2.0',
+    released: '2026-05', downloads: 6_492,
+  },
+  {
     id: 'qwen36-35b-a3b-anko', name: 'Qwen3.6 35B-A3B Anko', params: '35B-A3B', quant: 'Q4_K_M', tier: 'unlimited',
     fileName: 'allura-org_Qwen3.6-35B-A3B-Anko-Q4_K_M.gguf',
     url: hf('bartowski/allura-org_Qwen3.6-35B-A3B-Anko-GGUF', 'allura-org_Qwen3.6-35B-A3B-Anko-Q4_K_M.gguf'),

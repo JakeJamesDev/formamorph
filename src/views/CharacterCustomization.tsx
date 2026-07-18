@@ -15,7 +15,7 @@ import type { CharacterData, ModelMetadata } from '@/types';
 import ModelStorageService from '@/services/ModelStorageService';
 import { usePlayerModelUrl } from '@/lib/usePlayerModelUrl';
 import { useVrmCustomization } from '@/lib/useVrmCustomization';
-import { DEFAULT_MODEL_ID } from '@/lib/defaultModel';
+import { DEFAULT_MODEL_ID, DEFAULT_MODEL_URL } from '@/lib/defaultModel';
 import { toast } from 'react-toastify';
 
 const CharacterCustomization = ({ onCharacterCustomized, onBack, onAbort }: {
@@ -35,7 +35,12 @@ const CharacterCustomization = ({ onCharacterCustomized, onBack, onAbort }: {
   const [libraryModels, setLibraryModels] = useState<ModelMetadata[]>([]);
   const resolvedModelUrl = usePlayerModelUrl(selectedModelId);
   const refreshLibrary = () => ModelStorageService.getModelMetadata().then(setLibraryModels);
-  useEffect(() => { refreshLibrary(); }, []);
+  // Seed the bundled default before listing, so the picker isn't blank if this screen is reached before
+  // MainMenu has seeded (its default selection is DEFAULT_MODEL_ID, which must exist to show as selected).
+  // Seeding is idempotent — a no-op once done.
+  useEffect(() => {
+    ModelStorageService.seedDefaultModel(DEFAULT_MODEL_URL).finally(refreshLibrary);
+  }, []);
 
   const handleModelUpload = async (e: ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -52,7 +57,13 @@ const CharacterCustomization = ({ onCharacterCustomized, onBack, onAbort }: {
   };
 
   const handleModelDelete = async (id: string) => {
-    await ModelStorageService.deleteModel(id);
+    try {
+      await ModelStorageService.deleteModel(id);
+    } catch (err) {
+      // The library refuses to drop its last model; surface why rather than failing the click silently.
+      toast.error((err as Error).message);
+      return;
+    }
     if (selectedModelId === id) setSelectedModelId(worldOverview?.customPlayerVRM ? 'world' : DEFAULT_MODEL_ID);
     await refreshLibrary();
   };
@@ -139,7 +150,7 @@ const CharacterCustomization = ({ onCharacterCustomized, onBack, onAbort }: {
 
   if (isMobile) {
     return (
-      <div className="relative flex h-screen flex-col">
+      <div className="relative flex h-[100dvh] flex-col pt-[env(safe-area-inset-top)]">
         {viewer}
         <MobileControlsDrawer title="Character Customization">{panel}</MobileControlsDrawer>
       </div>
@@ -147,7 +158,7 @@ const CharacterCustomization = ({ onCharacterCustomized, onBack, onAbort }: {
   }
 
   return (
-    <div className="flex h-screen">
+    <div className="flex h-[100dvh]">
       {viewer}
       <Card className="w-1/3 m-4 flex flex-col overflow-hidden">
         <ScrollArea className="flex-1 min-h-0">
