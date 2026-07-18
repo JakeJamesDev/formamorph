@@ -1060,8 +1060,8 @@ const MainMenu = ({ onStartGame, onLoadSaveGame, onReplayIntro, introActive = fa
             <TabsList>
               {CARD_TABS.map(({ value, label, Icon }) => (
                 <TabsTrigger key={value} value={value} aria-label={label} title={label}>
-                  <Icon className="h-5 w-5 min-[1040px]:hidden" />
-                  <span className="hidden min-[1040px]:inline">{label}</span>
+                  <Icon className="h-5 w-5 min-[1100px]:hidden" />
+                  <span className="hidden min-[1100px]:inline">{label}</span>
                 </TabsTrigger>
               ))}
             </TabsList>

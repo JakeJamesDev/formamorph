@@ -437,7 +437,7 @@ const CommunityCreationsBrowser = ({
                   </div>
                 ))
               ) : filteredRemoteWorlds.length === 0 ? (
-                <div className="col-span-2 text-center py-12 text-muted-foreground">
+                <div className="col-span-full text-center py-12 text-muted-foreground">
                   {searchQuery ?
                     `No ${KIND_LABELS[browseKind].many.toLowerCase()} found matching your criteria.` :
                     `No ${KIND_LABELS[browseKind].many.toLowerCase()} available. Be the first to publish one!`}
