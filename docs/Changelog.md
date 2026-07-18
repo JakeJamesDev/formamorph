@@ -69,6 +69,9 @@ _Unreleased — new work accumulates here until it earns a version bump. The nex
   - **Deleting a bundled world now sticks.** City Rampage, Valentines Survival, and Reincarnated Drone came straight back the next time you returned to the main menu — Formamorph couldn't tell a world you'd deleted apart from one you'd never been given, so it helpfully re-created it. It now remembers that you deleted it and leaves it alone, including when that world's bundled copy is later updated. Changed your mind? **Settings → Accessibility → Restore default worlds** brings back everything you've deleted, at its latest version. Worlds you made or imported yourself were never affected.
   - **Auto response length no longer cuts turns short.** With Response Length set to Auto, Formamorph sizes each narration to your Max Output Tokens — but it had badly overestimated how much a paragraph costs, so it was telling the AI to stop after about a third of the room you'd actually given it. It now estimates paragraph length from real narration, so Auto turns fill the budget you set instead of ending early. Nothing changes if you pick a fixed paragraph length yourself; this only affects Auto.
 
+- **⚙️ Backend / invisible**
+  - **The world store no longer opens its database at import.** It opened IndexedDB in its constructor, which every operation already does lazily anyway — harmless in the app, but it surfaced as an unhandled error (and a red CI run) in test files that import the store without a database. Opening is now fully lazy.
+
 </details>
 
 ---
