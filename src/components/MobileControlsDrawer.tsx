@@ -31,7 +31,7 @@ export function MobileControlsDrawer({ title, triggerLabel = 'Customize', childr
       {!open && (
         <Button
           onClick={() => { setExpanded(false); setOpen(true); }}
-          className="fixed inset-x-0 bottom-0 z-40 mx-4 mb-4 gap-2"
+          className="fixed inset-x-0 bottom-0 z-40 mx-4 gap-2 mb-[calc(1rem+env(safe-area-inset-bottom))]"
         >
           <SlidersHorizontal className="h-4 w-4" /> {triggerLabel}
         </Button>
@@ -60,7 +60,7 @@ export function MobileControlsDrawer({ title, triggerLabel = 'Customize', childr
             </div>
           </DrawerHeader>
           <ScrollArea className="min-h-0 flex-1">
-            <div className="space-y-6 px-4 pb-8">{children}</div>
+            <div className="space-y-6 px-4 pb-[calc(2rem+env(safe-area-inset-bottom))]">{children}</div>
           </ScrollArea>
         </DrawerContent>
       </Drawer>

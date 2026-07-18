@@ -580,7 +580,8 @@ const WorldEditor = ({ onClose, embedded = false, backButton }: {
         value={searchTerm}
         onChange={(e) => setSearchTerm(e.target.value)}
       />
-      {helpTopicId && <HelpButton topicId={helpTopicId} />}
+      {/* key: remount per topic so each tab's nudge reads its own seen-state (HelpButton reads it on mount). */}
+      {helpTopicId && <HelpButton key={helpTopicId} topicId={helpTopicId} />}
     </div>
   );
   const footerBar = (
@@ -617,7 +618,7 @@ const WorldEditor = ({ onClose, embedded = false, backButton }: {
   );
 
   return (
-    <div className={`${embedded ? "h-full" : "h-screen"} flex flex-col overflow-hidden`}>
+    <div className={`${embedded ? "h-full" : "h-[100dvh]"} flex flex-col overflow-hidden`}>
       {!embedded && (
         <ThemedToastContainer
           position="top-right"

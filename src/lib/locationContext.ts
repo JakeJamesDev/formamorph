@@ -6,6 +6,30 @@ type LocationWithEntities = (GameLocation & { entity?: string[] }) | null;
 const pickDescription = (preferSummary: boolean, summary?: string, description?: string) =>
   preferSummary ? summary?.trim() || description : description;
 
+// The extra fields — beyond name and description, which are handled explicitly — that each builder feeds the
+// AI. An ALLOWLIST, not a denylist: everything else on a location/entity (media, ids, editor-only flags,
+// image tags, placeholder defs) is excluded by default, so a newly added world field can never silently leak
+// into the prompt. To surface a new field to the AI, add it here.
+const AI_LOCATION_FIELDS: readonly (keyof GameLocation)[] = ['connections'];
+const AI_ENTITY_FIELDS: readonly (keyof Entity)[] = ['type'];
+
+/** Append an item's allow-listed fields as `key: value` lines, skipping blanks so empty fields don't pad the
+ *  prompt or print "undefined". `field` shapes each line (plain or markdown, per the caller). */
+function appendAllowedFields<T>(
+  item: T,
+  keys: readonly (keyof T)[],
+  field: (key: string, value: string | number | boolean) => string,
+): string {
+  let out = '';
+  for (const key of keys) {
+    const value = item[key];
+    if (value === undefined || value === null) continue;
+    if (typeof value === 'string' && value.trim() === '') continue;
+    out += field(String(key), value as unknown as string | number | boolean);
+  }
+  return out;
+}
+
 /** Emit a one-line-per-location list (`name: summary` / `- **name:** summary`) — the shared body of the
  *  sublocations / destinations / reachable builders, which differ only in which locations they pass. */
 function buildLocationList(
@@ -44,40 +68,16 @@ export function buildLocationContext(
   const { preferSummary = false, format = "simple" } = opts;
   const field = (key: string, value: string | number | boolean) =>
     format === "markdown" ? `- **${key}:** ${value}\n` : `${key}: ${value}\n`;
-  // Everything not pulled out here is spread into the feed below, so each non-story field must be named.
-  const {
-    backgroundImage,
-    ambientSound,
-    id,
-    playerDescription,
-    aiDescription,
-    aiSummary,
-    description: legacyDescription, // v1.2 alias; folded into the description line below, never emitted raw
-    imageTags, // booru tags for image generation; not story context
-    isStarting, // editor-only new-game seeding flag; irrelevant to the AI
-    parentId, // editor-only sub-location nesting; not part of the AI feed
-    entity, // entity ids — emitted by buildEntityContext, not here
-    entities, // entity ids — emitted by buildEntityContext, not here
-    ...otherProps
-  } = location;
 
-  // Start with name and description (skip a blank description so it doesn't print "undefined").
-  // The legacy `description` is a last resort: migration never folds it, so a pre-audience-split world may
-  // carry only that. Used only when no authored AI text exists, and emitted once under the same key.
+  // Name, then description. The legacy `description` is a last resort: migration never folds it, so a
+  // pre-audience-split world may carry only that. Used only when no authored AI text exists, emitted once
+  // under the same key.
   let output = field("name", location.name);
-  const locationDescription = pickDescription(preferSummary, aiSummary, aiDescription) || legacyDescription;
+  const locationDescription = pickDescription(preferSummary, location.aiSummary, location.aiDescription) || location.description;
   if (locationDescription && locationDescription.trim() !== "") {
     output += field("description", locationDescription);
   }
-
-  // Add other location properties, skipping `name` (emitted above) and blanks so empty fields
-  // don't confuse smaller models.
-  Object.entries(otherProps).forEach(([key, value]) => {
-    if (value === undefined || value === null || key === "name") return;
-    if (typeof value === "string" && value.trim() === "") return;
-    output += field(key, value as string | number | boolean);
-  });
-
+  output += appendAllowedFields(location, AI_LOCATION_FIELDS, field);
   return output;
 }
 
@@ -110,35 +110,12 @@ export function buildEntityContext(
   entityList.forEach((entityId: string) => {
     const entityItem = entities.find((f) => f.id === entityId);
     if (!entityItem) return;
-    // Everything not pulled out here is spread into the feed, so each editor-only field must be named:
-    // `groupId`/`order` are organization (grouping is invisible to the AI), `imageTags` are booru tags for
-    // image generation, and `placeholders` are defs carried by off-world copies — none are story context.
-    const {
-      id,
-      image,
-      sound,
-      model,
-      groupId,
-      order,
-      imageTags,
-      placeholders,
-      playerDescription,
-      aiDescription,
-      aiSummary,
-      ...entityProps
-    } = entityItem;
     output += head(entityItem.name);
-    const entityDescription = pickDescription(preferSummary, aiSummary, aiDescription);
+    const entityDescription = pickDescription(preferSummary, entityItem.aiSummary, entityItem.aiDescription);
     if (entityDescription && entityDescription.trim() !== "") {
       output += field("description", entityDescription);
     }
-    // Add other entity properties, skipping blanks (e.g. an unset type) so empty fields don't pad
-    // the prompt and confuse smaller models.
-    Object.entries(entityProps).forEach(([key, value]) => {
-      if (value === undefined || value === null || key === "name") return;
-      if (typeof value === "string" && value.trim() === "") return;
-      output += field(key, value as string | number | boolean);
-    });
+    output += appendAllowedFields(entityItem, AI_ENTITY_FIELDS, field);
   });
 
   // All listed ids failed to resolve to a real entity → treat as empty.

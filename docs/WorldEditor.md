@@ -329,3 +329,52 @@ A book's **enabled** state is a *default*, not a lock. Before starting, players 
 ### Getting started
 
 Start with one book and a handful of plain keyword entries. Everything above exists for a specific problem — reach for it only when an entry fires when it shouldn't, or fails to fire when it should.
+
+---
+
+## Placeholders
+
+Reusable bits of world text you define once and drop into your writing as chips — an eye color, a street name, a deity. Each has a **Name** and a list of **Values**, and everywhere its chip appears, it resolves to one of those values when the story runs.
+
+### Why it exists
+
+So a world can vary without being rewritten. Author *"the {{Eye Color}} stranger"* once and it reads as a real detail every playthrough — the same detail on purpose, or a fresh one each time.
+
+### Variable or Wildcard
+
+The kind is inferred from how many values you give it — there's no separate switch.
+
+| Values | Kind | Resolves to |
+|---|---|---|
+| **One** | **Variable** | Always that value. Edit it here once and every chip updates. |
+| **Two or more** | **Wildcard** | A random one of the values. |
+| **None** | — | Nothing (empty). Give it at least one value. |
+
+### World vs. Unique
+
+A **Wildcard** chip chooses how its roll is shared, per placement:
+
+| Scope | Behavior |
+|---|---|
+| **World** | Every World chip of this placeholder shows the **same** rolled value everywhere — one town name, used consistently. |
+| **Unique** | Each placement rolls on its own — ten Unique *Eye Color* chips give ten independent eyes. |
+
+A **Variable** ignores this — it's the same single value no matter what.
+
+### The roll is frozen for the playthrough
+
+> 💡 A Wildcard rolls **once, when a game begins**, and the result is stored in that save. The stranger with gray eyes on turn one still has them on turn ninety, and reloading the save changes nothing. A new game rolls fresh.
+
+### Where chips work
+
+Placeholders resolve **both** in what the AI reads and in what the player sees, in any field with the chip picker:
+
+- entity, location and dictionary descriptions
+- the readme
+- the system prompt addition
+
+> ⚠️ **The World Description is the exception.** It's shown in the library *before* a playthrough exists, so there are no rolls to resolve yet — that field takes no chips at all.
+
+### Getting started
+
+Define the placeholder here, then place its chip from any field that offers them. Reach for a Wildcard when you want variety, a Variable when you want one editable fact in many places.

@@ -107,10 +107,33 @@ A trait is a durable fact about the character. Stats move constantly and the sto
 
 Write the AI-Facing Description as a fact about the character the narrator can act on, not a stat note. *"Flinches at open water"* beats *"-20 swimming"*.`,
   },
+  'worldEditor.placeholders': {
+    title: 'Placeholders',
+    wikiAnchor: 'placeholders',
+    body: `Reusable bits of world text you define once and drop into your writing as chips — an eye color, a street name, a deity. Each has a **Name** and a list of **Values**, and everywhere you place its chip, it resolves to one of those values when the story runs.
+
+They exist so a world can vary without being rewritten. Author *"the {{Eye Color}} stranger"* once, and it reads as a real detail every playthrough — sometimes the same detail on purpose, sometimes a fresh one each time.
+
+**The kind is set by how many values you give it:**
+
+- **One value → a Variable.** It always resolves to that value. Change it here once and every chip updates. Good for a name or a fact you want consistent and easy to edit.
+- **Two or more → a Wildcard.** It resolves to a *random* one of the values. Good for variety — a crowd of strangers who aren't all identical.
+
+**World vs. Unique** (Wildcards only). Each chip you place chooses how its roll is shared:
+
+- **World** — every World chip of this placeholder rolls once and shows the *same* value everywhere. One randomly-chosen town name, used consistently across the whole world.
+- **Unique** — each placement rolls on its own. Ten Unique chips of *Eye Color* give ten independent eyes.
+
+**The roll is frozen for the playthrough.** A Wildcard is rolled once, when a game begins, and stored in that save. The stranger who had gray eyes on turn one still has them on turn ninety — reload the save and nothing shifts. A new game rolls fresh.
+
+**Where chips work.** Anywhere with the chip picker: entity, location and dictionary descriptions, the readme, the system prompt addition. They resolve both in what the AI reads and in what the player sees. The **World Description is the exception** — it's read in the library before any game exists, so there are no rolls yet, and it takes no chips.
+
+Define a placeholder here, then place its chip from any field that offers them. A placeholder with no values resolves to nothing, so give it at least one.`,
+  },
   'worldEditor.stats': {
     title: 'Stats',
     wikiAnchor: 'stats',
-    body: `The numbers that describe your player — health, coin, reputation, whatever your world needs. Each stat has a value between a **Min** and **Max**, and the AI sees them every turn and lets them colour how each action turns out.
+    body: `The numbers that describe your player — health, coin, reputation, whatever your world needs. Each stat has a value between a **Min** and **Max**, and the AI sees them every turn and lets them color how each action turns out.
 
 They exist to give the story a memory with consequences. Prose alone drifts; a stat is a fact the AI has to write around — a low one shows up as effort and cost, a high one as ease. The narrator is told to work them into events rather than announce them, so stats shape the story without reading like a spreadsheet.
 

@@ -40,13 +40,13 @@ axis. Full pipeline on: narration, choices, stats, location, precall planning.
 | # | Action | Tests | Correct restraint |
 |---|---|---|---|
 | 1 | *(opening)* | prose, scene-set | none · NONE |
-| 2 | look around, take stock | **no-op** | none · NONE |
+| 2 | brush road dust from sleeve | **no-op** (idle grooming) | none · NONE |
 | 3 | talk to Sable | prose, dialogue | none · NONE |
-| 4 | chat with Sable | **no-op** | none · NONE |
+| 4 | retie a bootlace | **no-op** (idle fidget) | none · NONE |
 | 5 | cut down the road-wolf as it lunges | **gate: violence** + stat | Vigor↓ · NONE |
 | 6 | keep fighting, arm torn | **gate: injury** + stat | Vigor↓ · NONE |
 | 7 | threaten Pell, cold and cruel | **gate: villainy** | none/Nerve · NONE |
-| 8 | glance at the cellar door | **no-op** (names a place, doesn't go) | none · NONE |
+| 8 | trace the cellar door's grain | **no-op** (idle; names a place, doesn't go) | none · NONE |
 | 9 | kiss Sable, let it go further | **gate: intimacy onset** | none/Nerve · NONE |
 | 10 | head out to the stable yard | **location change** (real) | none · **The Stable Yard** |
 

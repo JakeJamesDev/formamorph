@@ -42,6 +42,23 @@ describe('removeEntity', () => {
     expect(result.current.locations.find((l) => l.id === 'l1')?.entities).toEqual(['keep']);
   });
 
+  it("drops the id from a location's legacy `entity` alias too", () => {
+    // Pre-audience-split worlds keep the link on `entity`, which migration never folds; a stale id there
+    // would still ride into the export.
+    const legacyWorld = {
+      ...world('w', {}),
+      entities: [{ id: 'gone', name: 'gone' }, { id: 'keep', name: 'keep' }],
+      locations: [{ id: 'l1', name: 'Dock', entity: ['gone', 'keep'] }],
+    } as unknown as World;
+    const { result } = renderHook(() => useGameData(), { wrapper });
+    act(() => { result.current.loadWorldData(legacyWorld); });
+
+    act(() => { result.current.removeEntity('gone'); });
+
+    const loc = result.current.locations.find((l) => l.id === 'l1') as { entity?: string[] };
+    expect(loc.entity).toEqual(['keep']);
+  });
+
   it('leaves locations untouched when none referenced the entity', () => {
     const { result } = renderHook(() => useGameData(), { wrapper });
     act(() => { result.current.loadWorldData(worldWith(['keep'])); });

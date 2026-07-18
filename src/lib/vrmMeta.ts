@@ -164,9 +164,19 @@ function imageToDataUrl(index: number | undefined, { json, bin }: GlbChunks): st
   if (start + view.byteLength > bin.byteLength) return undefined;
 
   const bytes = bin.subarray(start, start + view.byteLength);
+  return `data:${image.mimeType || 'image/png'};base64,${bytesToBase64(bytes)}`;
+}
+
+/** Base64 a byte array without a per-character concat: an embedded thumbnail can be multi-MB, and building
+ *  one giant string a character at a time is a needless main-thread stall. Chunked so the `fromCharCode.apply`
+ *  argument list stays well under the engine's limit. */
+function bytesToBase64(bytes: Uint8Array): string {
+  const CHUNK = 0x8000;
   let binary = '';
-  for (const byte of bytes) binary += String.fromCharCode(byte);
-  return `data:${image.mimeType || 'image/png'};base64,${btoa(binary)}`;
+  for (let i = 0; i < bytes.length; i += CHUNK) {
+    binary += String.fromCharCode(...bytes.subarray(i, i + CHUNK));
+  }
+  return btoa(binary);
 }
 
 /**

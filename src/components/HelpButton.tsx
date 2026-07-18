@@ -17,11 +17,9 @@ import { cn } from '@/lib/utils';
 export function HelpButton({ topicId, className }: { topicId: string; className?: string }) {
   const topic = HELP_TOPICS[topicId];
   const [open, setOpen] = useState(false);
-  // Tracked against the topic it was read for: a host that swaps `topicId` on one mounted button (the World
-  // Editor does, per tab) would otherwise keep showing the previous topic's seen state. Re-read during
-  // render rather than in an effect so the first paint of a new topic is never wrong.
-  const [seen, setSeen] = useState(() => ({ id: topicId, value: isHelpSeen(topicId) }));
-  if (seen.id !== topicId) setSeen({ id: topicId, value: isHelpSeen(topicId) });
+  // Read once on mount. A host that shows different topics on one button (the World Editor, per tab) must
+  // give it `key={topicId}` so each topic gets a fresh mount — otherwise this keeps the first topic's state.
+  const [seen, setSeen] = useState(() => isHelpSeen(topicId));
 
   if (!topic) return null;
   const wikiUrl = helpWikiUrl(topic);
@@ -29,7 +27,7 @@ export function HelpButton({ topicId, className }: { topicId: string; className?
   const openHelp = () => {
     setOpen(true);
     markHelpSeen(topicId);
-    setSeen({ id: topicId, value: true });
+    setSeen(true);
   };
 
   return (
@@ -39,7 +37,7 @@ export function HelpButton({ topicId, className }: { topicId: string; className?
         size="icon"
         onClick={openHelp}
         aria-label={`About ${topic.title}`}
-        className={cn('flex-shrink-0', !seen.value && 'border-primary text-primary', className)}
+        className={cn('flex-shrink-0', !seen && 'border-primary text-primary', className)}
       >
         <HelpCircle className="h-4 w-4" />
       </Button>

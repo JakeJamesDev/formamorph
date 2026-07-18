@@ -165,7 +165,7 @@ export function ModelDetailsModal({ model, onClose }: {
     if (!model) return null;
     return (
       <div className="fixed inset-0 z-50 bg-background flex flex-col">
-        <div className="flex items-center justify-between border-b px-4 py-3">
+        <div className="flex items-center justify-between border-b px-4 py-3 pt-[calc(0.75rem+env(safe-area-inset-top))]">
           <h2 className="truncate text-lg font-semibold">{model.name}</h2>
           <Button variant="ghost" size="icon" aria-label="Close" onClick={onClose}>
             <X className="h-5 w-5" />

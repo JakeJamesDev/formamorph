@@ -100,38 +100,51 @@ general decensored included. See the gate-probe results below.
 
 ---
 
-## Current recommended catalog (desktop app) — data as of 2026-07
+## Current catalog + screen scores — data as of 2026-07-17
 
-Source of truth is [`src/lib/localModels.ts`](../src/lib/localModels.ts); this mirrors it with provenance.
-Tiers by VRAM ceiling: ≤4 / ≤8 / ≤16 / No-Limit. 🧠 = reasoning badge.
+Source of truth is [`src/lib/localModels.ts`](../src/lib/localModels.ts) (12 models); this mirrors it with
+screen scores. Live board: [`../testing/baseline/leaderboard.md`](../testing/baseline/leaderboard.md). Tiers by
+VRAM ceiling. 🧠 = reasoning badge. **Obj** = gate-probe objective (restraint 35 / stat-dir 30 / format 35);
+tier B≥50, A≥70. **▶ = recommended pick** for that VRAM tier.
 
-| Tier | Model | GGUF repo | Size | Released | Downloads |
+| Tier | Model | Obj | Seeds | Size | Notes |
 |---|---|---|---|---|---|
-| ≤4GB | 🧠 Qwen3-4B RPG Roleplay v2 | Chun121/Qwen3-4B-RPG-Roleplay-V2 | 2.5GB | 2025-07 | 120K |
-| ≤4GB | Gemmasutra Small 4B | TheDrummer/Gemmasutra-Small-4B-v1-GGUF | 2.5GB | 2025-03 | 111K |
-| ≤4GB | Impish LLAMA 4B | SicariusSicariiStuff/Impish_LLAMA_4B_GGUF | 2.8GB | 2025-07 | 20K |
-| ≤4GB | Gemmasutra Mini 2B | TheDrummer/Gemmasutra-Mini-2B-v1-GGUF | 1.7GB | 2024-08 | 1.2M |
-| ≤8GB | Wingless Imp 8B | mradermacher/Wingless_Imp_8B-GGUF | 4.9GB | 2025-02 | 3.4K |
-| ≤8GB | Anubis Mini 8B | TheDrummer/Anubis-Mini-8B-v1-GGUF | 4.9GB | 2026-01 | 12K |
-| ≤8GB | Stheno v3.4 8B | bartowski/Llama-3.1-8B-Stheno-v3.4-GGUF | 4.9GB | 2024-09 | 42K |
-| ≤8GB | Lunaris v1 8B | bartowski/L3-8B-Lunaris-v1-GGUF | 4.9GB | 2024-06 | 154K |
-| ≤16GB | Cydonia 24B v4.3 | TheDrummer/Cydonia-24B-v4.3-GGUF | 14.3GB | 2025-11 | 117K |
-| ≤16GB | Painted Fantasy 24B v4.1 | zerofata/MS3.2-PaintedFantasy-v4.1-24B-GGUF | 14.3GB | 2026-02 | 8.6K |
-| ≤16GB | Rocinante-X 12B | TheDrummer/Rocinante-X-12B-v1-GGUF | 7.5GB | 2026-01 | 45K |
-| ≤16GB | Impish Bloodmoon 12B | SicariusSicariiStuff/Impish_Bloodmoon_12B_GGUF | 7.5GB | 2025-12 | 32K |
-| No-Limit | 🧠 Qwen3.6 35B-A3B Anko | bartowski/allura-org_Qwen3.6-35B-A3B-Anko-GGUF | 21.4GB | 2026-04 | 26K |
-| No-Limit | Skyfall 31B v4.2 | TheDrummer/Skyfall-31B-v4.2-GGUF | 19.0GB | 2026-02 | 34K |
-| No-Limit | Euryale 70B v2.3 | bartowski/L3.3-70B-Euryale-v2.3-GGUF | 42.5GB | 2024-12 | 38K |
+| ≤4GB | ▶ Impish LLAMA 4B | C/31 | 3 | 2.8GB | only tier member; weak (format 30%). Tier is a hole. |
+| ≤8GB | ▶ Anubis Mini 8B | **B/60** | 3 | 4.9GB | clear tier winner |
+| ≤8GB | Stheno v3.4 8B | B/51 | 3 | 4.9GB | high variance (36–62) |
+| ≤8GB | Lunaris v1 8B | C/49 | 3 | 4.9GB | |
+| ≤8GB | Wingless Imp 8B | C/29 | 2 | 4.9GB | weakest tier8 |
+| ≤16GB | ▶ Cydonia 24B v4.3 | **B/60** | 3 | 14.3GB | score is the **shipping Q4_K_M**; Q6 proxy read B/65 (quant costs ~5, not the tier). Tier winner. |
+| ≤16GB | Rocinante-X 12B | C/37 | 3 | 7.5GB | |
+| ≤16GB | Painted Fantasy 24B v4.1 | — | 0 | 14.3GB | untested; Magistral base, same as Skyfall |
+| ≤16GB | Impish Bloodmoon 12B | — | 0 | 7.5GB | untested; Mistral-Nemo base (has never cleared B) |
+| No-Limit | ▶ G4 MeroMero 31B | **A/84** | 3 | 18.7GB | **added 2026-07-17**; top of the board, only model with real restraint (56%) |
+| No-Limit | 🧠 Qwen3.6 35B-A3B Anko | B/65 | 3 | 21.4GB | reasoning flag verified correct |
+| No-Limit | Skyfall 31B v4.2 | B/51 | 2 | 19.0GB | Magistral (reasoning) base, **not** flagged 🧠 — behaves fine, no `[THINK]` leak |
+| No-Limit | Euryale 70B v2.3 | — | 0 | 42.5GB | untested; won't fit a 24GB card at Q4 |
 
-The app also refreshes these download counts live at runtime (`src/lib/useCatalogDownloads.ts`) and caches
-them; the numbers above are the bundled snapshot / fallback.
+Download counts refresh live at runtime (`src/lib/useCatalogDownloads.ts`); the bundled snapshot is in
+localModels.ts.
+
+**Gemma-4 added (2026-07-17).** Screened both A/77 reference-tier candidates properly (3 seeds, engine,
+hardened turns) to pick one: **G4 MeroMero 31B (RP) A/84 vs gemma31b-heretic (general) B/65** — MeroMero wins
+on restraint (56% vs 0%), the only model on the board that keeps stats quiet on idle turns. This **reverses**
+the old gate-probe "general ≥ RP" call, which was 1-seed/Ollama/soft-turns. MeroMero is now the No-Limit pick
+and top of the board. Gemma-4 is Apache-2.0 (verified live — ungated, no field-of-use restriction). The
+gemma-heretic variant stays a reference tier, not added.
 
 ### Notable rejects (don't re-propose without reason)
-- **gemma-4 heretic** family (E4B/12B/26B-A4B) — ~~excluded by the RP-only policy~~ **no longer a reject**: the
-  policy flipped 2026-07-17 and general decensored models are eligible. Not yet added — a candidate needs a
-  screen run first. `gemma31b-heretic` scored A/77 on the gate probe, tied with the RP MeroMero-31B.
+- **Qwen3-4B RPG Roleplay v2**, **Gemmasutra Small 4B**, **Gemmasutra Mini 2B** — removed from the catalog
+  2026-07-17. All three fail location routing (60/77/67%). Qwen3-4B additionally ships a broken embedded chat
+  template (Unsloth GRPO training template, not Qwen3's) that intermittently returns an empty narration and
+  stalls the turn. Removing them left tier4 on a single model (see the hole above).
+- **gemma-4 heretic** family (E4B/12B/26B-A4B) — **not a reject**: policy flipped 2026-07-17, general
+  decensored models are eligible. `gemma31b-heretic` scored A/77. Needs a screen before adding.
+- **Qwen3.5-2B abliterated** — screened 2026-07-17, REJECT (routing 80%): teleports on START GAME, misses the
+  real move. Template is clean (proper QwenChatWrapper, reasoning model) — it's a capability limit, not a bug.
 - **Magnum v4 72B** — dropped; Qwen2.5-era, superseded.
-- **Qwen3.6-35B-A3B base** — replaced by the allura **Anko** RP finetune.
+- **Mistral-Nemo abliterated** (natong19 / Triangle104 GGUFs) — won't load: broken tool-call chat template
+  (`selectattr('tool_calls', 'undefined')`) on both Ollama and llama.cpp. Use `Heretic-v2` instead.
 
 ---
 
@@ -165,7 +178,31 @@ neutral control) × 3 seeds, on the mature-tone `blackrue-waystation` gate world
 measured quality; general decensored models are eligible."* The **catalog was deliberately left unchanged** —
 the flip grants eligibility, it does not add models. Candidates go through `npm run screen` first. This also
 vindicates the gemma-heretic cloud default. Note the probed models (MeroMero / gemma-heretic / Silver-Siren)
-are the *reference test tiers*, not catalog entries — no shipped model has been through the screen yet.
+are the *reference test tiers*, not catalog entries.
+
+## Full-catalog screen (2026-07-17)
+
+The entire 12-model catalog has now been through the gate (scores in the catalog table above). Getting there
+required three harness fixes — all landed, all in `run.mjs` / `screenScore.mjs` / `electron/llmEngine.cjs`:
+
+- **Engine driven as the desktop build** — the harness fakes `window.formamorphDesktop` and turns
+  `useCustomEndpoint` off, so an engine model takes the real `localModelActive` path and gets
+  `thinking_budget_tokens` (not the coarse `reasoning_effort` the engine ignores). Without this a reasoning
+  model spends the whole narration inside `<think>` and stalls — Anko was unscreenable until this landed.
+- **`fitContext` on model load** — `llmEngine.start()` now loads with `gpuLayers:{fitContext:{contextSize}}`,
+  so auto layer-fit reserves KV room. Prior behavior over-offloaded and failed to load 19GB-class models on a
+  24GB card — and got *worse* the more VRAM was free.
+- **Scorer strips reasoning** — `screenScore.pickResponse` strips `<think>` like the app does. Without it a
+  suppressed-thinking reasoning model's empty `<think></think>` failed the choices-format check (Anko C/30 →
+  B/65 once fixed). Harness KV default dropped 16k → 8k (screens peak ~5.4k); big models fit at 8k.
+
+**Restraint is real, not miscalibrated.** Earlier notes called it broken; it is not. The gate's no-op turns
+(1/3/7) were hardened to genuinely idle actions (brush dust, retie a bootlace) — every catalog model *still*
+fires stats on them (Cydonia charges Vigor for retying a lace), against the stat prompt's explicit "output
+nothing when nothing changed." Only the two Gemma-4 reference models restrain (33 vs 0). It's a real top-end
+differentiator; its 35% weight uniformly compresses the 8–24B pack (all 0) but correctly rewards Gemma-4.
+Hardening the turns is score-neutral for models already at restraint 0 (confirmed: Cydonia scores identically
+under both), so big-model rows sourced from pre-hardening fixed-harness runs remain valid.
 
 **Caveats:** n=3–4, single world, content bounded at what the Claude judge can grade (hardest refusals
 unprobed). The Mistral general control is `Heretic-v2` (the natong19 abliterated GGUFs won't load in current
@@ -173,7 +210,20 @@ llama.cpp — broken tool template).
 
 ## Open questions / gaps
 
+- ~~Cydonia Q4 unscreened~~ **done 2026-07-17**: shipping Q4_K_M screens B/60 (3 seeds, 50–65), routing 100% —
+  confirms the ≤16GB pick. Q6 proxy read B/65; the quant costs a few points but not the tier. The earlier
+  violence-gate softening did not reproduce (0/3 at Q4, 1/5 seeds overall — noise).
+- **tier4 (≤4GB) is a hole** — Impish LLAMA 4B (C/31) is the only member and it's weak, and the first backfill
+  candidate **Qwen3.5-2B abliterated failed** (screened 2026-07-17): REJECT, routing 80% — it teleports to the
+  Stable Yard on START GAME and misses the real move on turn 9, all 3 seeds. Tiny models keep failing routing;
+  the tier may not be viable for this pipeline. Needs a different candidate or a decision to retire the tier.
+- **A-tier rows are 1-seed / Ollama / old no-op turns** — meromero-31b & gemma31b-heretic (A/77) top the board
+  on the weakest evidence. Re-screen 3-seed via the engine before treating the winner as settled.
+- **Gemma-4 not in the catalog** — the two A/77 models are Gemma-4 31B; adding one is the highest-value change.
+- **Untested catalog members** — Painted Fantasy 24B, Impish Bloodmoon 12B, Euryale 70B never screened
+  (downloads/VRAM). Painted Fantasy shares Skyfall's Magistral base; Bloodmoon is Mistral-Nemo (never cleared B).
 - **≤8GB has no reasoning option** — no RP reasoning finetune exists at ~8B. Revisit when one ships.
-- **Cydonia 24B** can reason via `[THINK]` prefill but isn't native — left unbadged, noted.
+- **Skyfall's reasoning flag** — Magistral base (a reasoning model) but unflagged 🧠; behaved fine and leaked no
+  `[THINK]`, so left as-is, but the flag is arguably wrong.
 - Reference test tiers were pin-tuned on an older model pair; sampler pins not yet re-benchmarked on the
   Silver-Siren / MeroMero pair (see `test-models` memory).
