@@ -115,12 +115,20 @@ const FIRST_PERSON = /^\s*(I|I'|I’|My )\b/;                      // first-pers
 const sentences = (s) => (s.match(/[.!?]+(\s|$)/g) || []).length;
 const words = (s) => (s.trim().match(/\S+/g) || []).length;
 
+// Verbal-answer axis (both directions). SPEAKS = the option has the player say content; ANSWER = speaks and
+// isn't a deflection. QUESTION_CASES pose a question / invite a reply — they WANT >=1 answer. The rest have no
+// one or nothing to answer, so they're the false-positive guard: verbal there should stay ~0.
+const SPEAKS = /("[^"]{2,}"|\b(tells?|told|says?|saying|answer(s|ing)?|repl(y|ies|ying)|responds?|responding|admit|explain|confess|insist|agree|deny|denies|l(ie|ying)|claim|mention|joke|introduce|assure|remind|announce|blurt)\b)/i;
+const DEFLECT = /\b(deflect|vague|avoid|decline|dodge|stall|evade|change the subject|turn it back|say(s|ing)? nothing|mysterious|refuse|without answering|non-?committal|sidestep|rather (not|talk about)|something else)\b/i;
+const QUESTION_CASES = new Set(["gossip", "reunion"]); // Odette asks a question; Mira waits for a spoken reply
+
 const pick = CASES.filter((c) => !only || c.name.includes(only));
 console.log(`Choices probe · ${endpoint} · "${model}" · ${pick.length} case(s) · ${runs} run(s)/case`);
 console.log(`Contract: 3-5 lines · each ONE first-person sentence · no bullets/quotes/headings/lead-in/commentary\n`);
 await call(renderSys(pick[0]), "warm up").catch(() => {});
 
-const T = { runs: 0, options: 0, leaks: 0, nonFP: 0, multiSent: 0, longOpt: 0, badCount: 0, maxWords: 0 };
+const T = { runs: 0, options: 0, leaks: 0, nonFP: 0, multiSent: 0, longOpt: 0, badCount: 0, maxWords: 0,
+  qAnswers: 0, qRuns: 0, npVerbal: 0, npRuns: 0 };
 for (const c of pick) {
   console.log(`\n######## ${c.name}`);
   for (let r = 0; r < runs; r++) {
@@ -150,8 +158,15 @@ for (const c of pick) {
     const countOk = lines.length >= 3 && lines.length <= 5;
     if (!countOk) T.badCount++;
     T.leaks += leaks; T.nonFP += nonFP; T.multiSent += multi; T.longOpt += long;
-    console.log(`  #${r + 1} ${lines.length} opts${countOk ? "" : " (COUNT!)"} · leaks ${leaks} · multi-sent ${multi} · >25w ${long}`);
-    for (const row of rows) console.log(`      [${String(row.w).padStart(2)}w${row.flags.length ? " " + row.flags.join(",") : ""}] ${row.l}`);
+    // Verbal-answer axis: count spoken/answering options; accumulate split by question vs non-question case.
+    const isQ = QUESTION_CASES.has(c.name);
+    const speaks = lines.filter((l) => SPEAKS.test(l)).length;
+    const answers = lines.filter((l) => SPEAKS.test(l) && !DEFLECT.test(l)).length;
+    if (isQ) { T.qAnswers += answers; T.qRuns++; } else { T.npVerbal += speaks; T.npRuns++; }
+    const verbalNote = isQ ? `answer ${answers}` : `verbal ${speaks} (want 0)`;
+    console.log(`  #${r + 1} ${lines.length} opts${countOk ? "" : " (COUNT!)"} · leaks ${leaks} · multi-sent ${multi} · >25w ${long} · ${verbalNote}`);
+    for (const row of rows) console.log(`      ${SPEAKS.test(row.l) ? "🗣" : "  "}[${String(row.w).padStart(2)}w${row.flags.length ? " " + row.flags.join(",") : ""}] ${row.l}`);
   }
 }
 console.log(`\n==== ${T.runs} runs · ${(T.options / T.runs).toFixed(1)} opts/run · bad-count ${T.badCount} · leaks ${T.leaks} · non-1st-person ${T.nonFP} · multi-sentence ${T.multiSent} · >25w ${T.longOpt} · longest ${T.maxWords}w ====`);
+console.log(`==== verbal-answer axis · question scenes: ${T.qRuns ? (T.qAnswers / T.qRuns).toFixed(1) : "-"} answers/run (want >=1) · non-question scenes: ${T.npRuns ? (T.npVerbal / T.npRuns).toFixed(1) : "-"} verbal/run (false-positive guard, want ~0) ====`);

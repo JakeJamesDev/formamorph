@@ -184,7 +184,7 @@ are the *reference test tiers*, not catalog entries.
 
 ## Full-catalog screen (2026-07-17)
 
-The entire 12-model catalog has now been through the gate (scores in the catalog table above). Getting there
+The entire 15-model catalog has now been through the gate (scores in the catalog table above). Getting there
 required three harness fixes — all landed, all in `run.mjs` / `screenScore.mjs` / `electron/llmEngine.cjs`:
 
 - **Engine driven as the desktop build** — the harness fakes `window.formamorphDesktop` and turns
@@ -209,6 +209,26 @@ under both), so big-model rows sourced from pre-hardening fixed-harness runs rem
 **Caveats:** n=3–4, single world, content bounded at what the Claude judge can grade (hardest refusals
 unprobed). The Mistral general control is `Heretic-v2` (the natong19 abliterated GGUFs won't load in current
 llama.cpp — broken tool template).
+
+### Non-catalog screens (2026-07-18) — reference tiers, candidates, cloud default
+
+3-seed engine screens, hardened turns. None added to the catalog; recorded for comparison.
+
+| Model | Obj | Restraint | Note |
+|---|---|---|---|
+| Silver-Siren-ST-12B (avg reference) | B/53 | 0 | refreshed from a stale B/50 (1-seed Ollama); high variance 43–65 |
+| G4-MeroMero-26B-A4B | B/60 | 0 | MoE sibling of the A/84 31B — does **not** inherit its restraint; the magic is dense-31B-specific |
+| gemma-4-E4B-heretic (cloud default) | **B/59** cloud / **B/65** local | 0 | `cooperdk/…-GPTQ-4bit` served via Aphrodite (custom-endpoint path) vs the Abiray GGUF on the engine path; local scores a touch higher/tighter — likelier the sampling path than the quant |
+
+The **restraint gradient** now reads: MeroMero-31B 56 ≫ StyleTune-26B 11 ≫ everything else 0 (incl. the 26B MeroMero MoE and the cloud default). Restraint is what separates the top two from the B/65 pack.
+
+### Workflow (2026-07-18): engine-only, Ollama dropped
+
+Every model — catalog and reference — now screens through the built-in engine (`llmEngine.cjs`, port 8977)
+straight off the LM Studio GGUFs (`<publisher>/<model>/file.gguf` under `D:\lmstudio-models`). Ollama was
+dropped (its blob store double-stored ~100GB and it isn't needed once the engine reads GGUFs directly); the
+only external endpoint left is the cloud default. `profiles.json` model entries use `modelPath` (engine) or a
+per-model `endpointUrl` (cloud); it is gitignored, so this is local machine config.
 
 ## Open questions / gaps
 
