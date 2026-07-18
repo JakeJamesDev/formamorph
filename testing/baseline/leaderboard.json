@@ -35,6 +35,19 @@
     "refusals": 0
   },
   {
+    "model": "styletune-v2-26b-a4b",
+    "date": "2026-07-18",
+    "tier": "B",
+    "objective": 69,
+    "seeds": 3,
+    "spread": "65–77",
+    "restraint": 11,
+    "statDir": 100,
+    "format": 100,
+    "locAcc": 100,
+    "refusals": 0
+  },
+  {
     "model": "meromero-26b",
     "date": "2026-07-17",
     "tier": "B",
@@ -85,6 +98,32 @@
     "refusals": 0
   },
   {
+    "model": "hauhau-gemma4-12b",
+    "date": "2026-07-18",
+    "tier": "B",
+    "objective": 65,
+    "seeds": 3,
+    "spread": "65–65",
+    "restraint": 0,
+    "statDir": 100,
+    "format": 100,
+    "locAcc": 100,
+    "refusals": 0
+  },
+  {
+    "model": "gemma4-e4b-heretic",
+    "date": "2026-07-18",
+    "tier": "B",
+    "objective": 65,
+    "seeds": 3,
+    "spread": "65–65",
+    "restraint": 0,
+    "statDir": 100,
+    "format": 100,
+    "locAcc": 100,
+    "refusals": 0
+  },
+  {
     "model": "anubis-mini-8b",
     "date": "2026-07-17",
     "tier": "B",
@@ -107,6 +146,32 @@
     "restraint": 0,
     "statDir": 83,
     "format": 100,
+    "locAcc": 100,
+    "refusals": 0
+  },
+  {
+    "model": "meromero-26b-a4b-q4",
+    "date": "2026-07-18",
+    "tier": "B",
+    "objective": 60,
+    "seeds": 3,
+    "spread": "50–65",
+    "restraint": 0,
+    "statDir": 83,
+    "format": 100,
+    "locAcc": 100,
+    "refusals": 0
+  },
+  {
+    "model": "gemma4-e4b-cloud",
+    "date": "2026-07-18",
+    "tier": "B",
+    "objective": 59,
+    "seeds": 3,
+    "spread": "50–65",
+    "restraint": 0,
+    "statDir": 83,
+    "format": 97,
     "locAcc": 100,
     "refusals": 0
   },

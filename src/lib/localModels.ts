@@ -82,7 +82,16 @@ export const LOCAL_MODELS: LocalModelInfo[] = [
     released: '2025-07', downloads: 20_245,
   },
 
-  // ≤8 GB — 8B
+  // ≤8 GB — 8B / 12B
+  {
+    id: 'hauhau-gemma4-12b', name: 'Gemma-4 12B Uncensored (HauhauCS)', params: '12B', quant: 'Q4_K_M', tier: 'tier8',
+    fileName: 'Gemma4-12B-QAT-Uncensored-HauhauCS-Balanced-Q4_K_M.gguf',
+    url: hf('HauhauCS/Gemma4-12B-QAT-Uncensored-HauhauCS-Balanced', 'Gemma4-12B-QAT-Uncensored-HauhauCS-Balanced-Q4_K_M.gguf'),
+    // License 'gemma' (Gemma Terms of Use) as declared by the uploader — surfaced to the user, who is the party
+    // bound by it on download. The app links to HF; it neither redistributes nor runs the weights itself.
+    sizeBytes: 7_380_000_000, note: 'Best-fitting model for an 8GB card — clean stats, choices and routing.', license: 'Gemma',
+    released: '2026-06', downloads: 150_443,
+  },
   {
     id: 'wingless-imp-8b', name: 'Wingless Imp 8B', params: '8B', quant: 'Q4_K_M', tier: 'tier8',
     fileName: 'Wingless_Imp_8B.Q4_K_M.gguf',
@@ -142,7 +151,14 @@ export const LOCAL_MODELS: LocalModelInfo[] = [
     released: '2025-12', downloads: 32_488,
   },
 
-  // No Limit — 31B / 35B MoE / 70B
+  // No Limit — 26B MoE / 31B / 35B MoE / 70B
+  {
+    id: 'gemma4-styletune-26b-a4b', name: 'Gemma-4 26B StyleTune V2', params: '26B-A4B', quant: 'Q4_K_M', tier: 'unlimited',
+    fileName: 'Gemma-4-26B-A4B-StyleTune-V2.i1-Q4_K_M.gguf',
+    url: hf('mradermacher/Gemma-4-26B-A4B-StyleTune-V2-i1-GGUF', 'Gemma-4-26B-A4B-StyleTune-V2.i1-Q4_K_M.gguf'),
+    sizeBytes: 17_210_000_000, note: 'Gryphe’s StyleTune on a Gemma-4 MoE — second-highest screen score, unusually disciplined stats.', license: 'Apache 2.0',
+    released: '2026-06', downloads: 25_934,
+  },
   {
     id: 'g4-meromero-31b', name: 'G4 MeroMero 31B', params: '31B', quant: 'Q4_K_M', tier: 'unlimited',
     fileName: 'G4-MeroMero-31B-Q4_K_M.gguf',
