@@ -130,6 +130,10 @@ export function jaccard(a, b) {
   return inter / (A.size + B.size - inter);
 }
 
+// Fire every job concurrently — LM Studio runs as many as the model's parallel slots allow and QUEUES the
+// rest, so there's no benefit to throttling here. Keep jobs independent (per-request seed) so order is moot.
+export const runAll = (items, fn) => Promise.all(items.map((it, i) => fn(it, i)));
+
 export function printOut(text, indent = "      ") {
   return text.split("\n").filter(Boolean).map((l) => indent + l).join("\n");
 }

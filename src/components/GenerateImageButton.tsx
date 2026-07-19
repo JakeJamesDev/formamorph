@@ -34,7 +34,7 @@ export function GenerateImageButton({ subject, cap, onChange, tags, onTagsChange
     imageProvider, imageEndpoint, imageApiToken, imageModel,
     imagePositivePrompt, imageNegativePrompt, imageSteps, imageCfg, imageSampler,
     imagePortraitWidth, imagePortraitHeight, imageLandscapeWidth, imageLandscapeHeight, imageAdetailer,
-    imageWorkflow,
+    imageWorkflow, imageInvokeEncoder, imageInvokeVae,
     imageEndpointPresets, activeImageEndpointPresetId, selectImageEndpointPreset,
   } = useSettings();
   // Characters get portrait dimensions; locations and the world thumbnail get landscape.
@@ -92,7 +92,8 @@ export function GenerateImageButton({ subject, cap, onChange, tags, onTagsChange
           sampler: imageSampler, seed: -1, model: imageModel, adetailer: imageAdetailer,
         },
         {
-          endpointUrl: resolveImageEndpoint(imageProvider, imageEndpoint), apiToken: imageApiToken, workflow: imageWorkflow, signal: controller.signal,
+          endpointUrl: resolveImageEndpoint(imageProvider, imageEndpoint), apiToken: imageApiToken, workflow: imageWorkflow,
+          invokeEncoder: imageInvokeEncoder, invokeVae: imageInvokeVae, signal: controller.signal,
           onProgress: (p) => {
             if (abortRef.current !== controller) return;
             setProgress(p.progress);

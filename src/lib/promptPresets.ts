@@ -36,7 +36,7 @@ export type PromptValues = Record<PromptTextKey, string>;
 
 /** The section-header formatting a preset renders in: `markdown` (`## Foo`) or `labels` (`FOO:`). The
  *  bodies are shared; only the header decoration differs (see src/lib/sectionStyle.ts). */
-export type SectionStyle = 'markdown' | 'labels';
+export type SectionStyle = 'markdown' | 'labels' | 'xml';
 
 /** A named set of prompt text. Built-ins are virtual (derived from the shipped canonical, never stored);
  *  a user preset stores a full value snapshot plus the section style it was authored in. */
@@ -62,6 +62,7 @@ export interface PromptPresetStore {
 export const BUILTIN_PRESETS: { id: string; name: string; style: SectionStyle }[] = [
   { id: 'default', name: 'Default', style: 'markdown' },
   { id: 'simple', name: 'Simple', style: 'labels' },
+  { id: 'xml', name: 'XML', style: 'xml' },
 ];
 
 const BUILTIN_IDS = new Set(BUILTIN_PRESETS.map((b) => b.id));

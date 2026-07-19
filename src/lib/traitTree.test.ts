@@ -200,6 +200,23 @@ describe('buildTraitContext', () => {
     );
   });
 
+  it('xml: ungrouped <trait> first, then a <group> nesting name/description and its traits', () => {
+    const withDesc = [{ ...groups[0], aiDescription: 'Born of the storm clans.' }, groups[1]];
+    const out = buildTraitContext(['storm', 'quick', 'loner'], traits, withDesc, 'xml');
+    expect(out).toBe(
+      '<trait>\n  <name>Loner</name>\n</trait>\n' +
+      '<group>\n' +
+      '  <name>World</name>\n' +
+      '  <description>Born of the storm clans.</description>\n' +
+      '  <trait>\n    <name>Stormtouched</name>\n    <description>lightning resistance</description>\n  </trait>\n' +
+      '</group>\n' +
+      '<group>\n' +
+      '  <name>Player</name>\n' +
+      '  <trait>\n    <name>Quick</name>\n    <description>+2 reflexes</description>\n  </trait>\n' +
+      '</group>',
+    );
+  });
+
   it('omits a blank group AI description and groups with no selected trait', () => {
     const out = buildTraitContext(['quick'], traits, groups);
     expect(out).toBe('Player:\n  Quick: +2 reflexes');

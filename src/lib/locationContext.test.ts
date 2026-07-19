@@ -80,6 +80,14 @@ describe("buildLocationContext", () => {
     expect(out).not.toContain("name: North Gate\n");
   });
 
+  it("xml format emits a <key> child tag per field (section tag is the location wrapper)", () => {
+    const out = buildLocationContext(location, { format: "xml" });
+    expect(out).toBe(
+      "<name>North Gate</name>\n" +
+      "<description>A towering stone gate, portcullis raised, banners snapping in the wind.</description>\n",
+    );
+  });
+
   it("no longer emits the entities sub-block (entities are their own section)", () => {
     const out = buildLocationContext(location);
     expect(out).not.toContain("entities:");
@@ -294,6 +302,17 @@ describe("buildEntityContext", () => {
     expect(out).toContain("- **Guard**");
     expect(out).toContain("  - **description:** A burly guard in full plate, scarred from old wars.");
     expect(out).toContain("  - **type:** npc");
+  });
+
+  it("xml format wraps each entity in <entity> with <name> and one <key> child per field", () => {
+    const out = buildEntityContext(location, [guard], { format: "xml" });
+    expect(out).toBe(
+      "<entity>\n" +
+      "  <name>Guard</name>\n" +
+      "  <description>A burly guard in full plate, scarred from old wars.</description>\n" +
+      "  <type>npc</type>\n" +
+      "</entity>\n",
+    );
   });
 
   it("prefers aiSummary for entities when preferSummary is set", () => {

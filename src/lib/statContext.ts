@@ -1,5 +1,6 @@
 import type { PlayerStat } from '@/types';
 import { NONE_PLACEHOLDER } from './promptFallbacks';
+import { xmlEscape } from './utils';
 
 /** Which pieces of each stat the prompt embeds. The stat's Name is always present; these are the chip's
  *  multi-select toggles (Values / Status / Meaning). */
@@ -15,13 +16,14 @@ export interface StatPieces {
 /**
  * Render the player's stats for a prompt: one line per stat, `Name:` followed by the selected pieces in a
  * fixed order — value/max, then the status descriptor, then ` — ` and the meaning. With no piece selected a
- * line is just the stat's name. `markdown` bullets each line with a bold name. Pure and unit-testable; this
- * is the single source of the app's stat context (see buildContextValues).
+ * line is just the stat's name. `markdown` bullets each line with a bold name; `xml` emits one `<stat>` per
+ * stat with a nested child tag per selected piece. Pure and unit-testable; this is the single source of the
+ * app's stat context (see buildContextValues).
  */
 export function buildStatContext(
   stats: PlayerStat[],
   pieces: StatPieces,
-  format: 'simple' | 'markdown' = 'simple',
+  format: 'simple' | 'markdown' | 'xml' = 'simple',
 ): string {
   if (!stats.length) return NONE_PLACEHOLDER;
   return stats
@@ -29,6 +31,14 @@ export function buildStatContext(
       const range = stat.max - stat.min;
       const percentage = range === 0 ? 0 : ((stat.value - stat.min) / range) * 100;
       const descriptor = stat.descriptors.find((d) => percentage <= d.threshold);
+      if (format === 'xml') {
+        const child = (tag: string, value: string | number) => `\n  <${tag}>${xmlEscape(String(value))}</${tag}>`;
+        let inner = child('name', stat.name);
+        if (pieces.values) inner += child('value', `${stat.value}/${stat.max}`);
+        if (pieces.status && descriptor) inner += child('status', descriptor.description);
+        if (pieces.meaning && stat.description) inner += child('meaning', stat.description);
+        return `<stat>${inner}\n</stat>`;
+      }
       let body = '';
       if (pieces.values) body += `${stat.value}/${stat.max}`;
       // Descriptor is parenthesized when it trails a value, bare when it stands alone (matches prior output).
