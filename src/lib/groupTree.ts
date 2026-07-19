@@ -26,18 +26,27 @@ export interface FlatTreeNode<G extends TreeGroup, L extends TreeLeaf> {
   leaf?: L;
 }
 
+/**
+ * Effective parent of a raw `parentId`/`groupId`: null (top-level) if the reference is null/absent OR points
+ * at a group id that doesn't exist. Orphan-referenced items surface at the root rather than vanishing — a
+ * dangling reference (missing `entityGroups`, deleted group) must never make an item unreachable.
+ */
+function effectiveParent(ref: string | null | undefined, knownGroupIds: Set<string>): string | null {
+  return ref != null && knownGroupIds.has(ref) ? ref : null;
+}
+
 /** Direct children (subgroups + leaves) of `parentId`, ordered by `order` (falling back to array index). */
 function childrenOf<G extends TreeGroup, L extends TreeLeaf>(
-  groups: G[], leaves: L[], parentId: string | null,
+  groups: G[], leaves: L[], parentId: string | null, knownGroupIds: Set<string>,
 ): GroupTreeNode<G, L>[] {
   const entries: { node: GroupTreeNode<G, L>; sort: number }[] = [];
   groups.forEach((g, i) => {
-    if ((g.parentId ?? null) === parentId) {
+    if (effectiveParent(g.parentId, knownGroupIds) === parentId) {
       entries.push({ node: { kind: 'group', id: g.id, group: g, children: [] }, sort: g.order ?? i });
     }
   });
   leaves.forEach((l, i) => {
-    if ((l.groupId ?? null) === parentId) {
+    if (effectiveParent(l.groupId, knownGroupIds) === parentId) {
       entries.push({ node: { kind: 'leaf', id: l.id, leaf: l }, sort: l.order ?? i });
     }
   });
@@ -46,8 +55,9 @@ function childrenOf<G extends TreeGroup, L extends TreeLeaf>(
 
 /** Build the full ordered tree of top-level nodes, each group carrying its recursive children. */
 export function buildTree<G extends TreeGroup, L extends TreeLeaf>(groups: G[], leaves: L[]): GroupTreeNode<G, L>[] {
+  const knownGroupIds = new Set(groups.map((g) => g.id));
   const build = (parentId: string | null): GroupTreeNode<G, L>[] =>
-    childrenOf(groups, leaves, parentId).map((node) =>
+    childrenOf(groups, leaves, parentId, knownGroupIds).map((node) =>
       node.kind === 'group' ? { ...node, children: build(node.id) } : node,
     );
   return build(null);
@@ -123,7 +133,7 @@ export function duplicateNode<G extends TreeGroup, L extends TreeLeaf>(
 
   // Place the copy right after the original among its siblings, then renormalize that parent's order
   // (handles worlds whose items have no explicit `order`, where array index would misplace the copy).
-  const seq = childrenOf(groups, leaves, rootParent).map((n) => n.id);
+  const seq = childrenOf(groups, leaves, rootParent, new Set(groups.map((g) => g.id))).map((n) => n.id);
   seq.splice(seq.indexOf(id) + 1, 0, newId);
   seq.forEach((sid, i) => {
     const g = g2.find((x) => x.id === sid);

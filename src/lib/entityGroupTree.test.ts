@@ -30,6 +30,20 @@ describe('buildEntityTree', () => {
     const entities: Entity[] = [{ id: 'a', name: 'a' }, { id: 'b', name: 'b' }];
     expect(buildEntityTree([], entities).map((n) => n.id)).toEqual(['a', 'b']);
   });
+
+  it('renders an entity whose groupId points at a missing group at the top level (never drops it)', () => {
+    // Repro: entityGroups lost but the entity still carries a groupId.
+    const tree = buildEntityTree([], [entity('orphan', 'ghost', 0)]);
+    expect(tree.map((n) => n.id)).toEqual(['orphan']);
+    expect(tree[0].kind).toBe('leaf');
+  });
+
+  it('surfaces a group whose parentId points at a missing group at the top level', () => {
+    const tree = buildEntityTree([group('elves', 'ghost', 0)], [entity('synthia', 'elves', 0)]);
+    expect(tree.map((n) => n.id)).toEqual(['elves']);
+    const elves = tree[0];
+    expect(elves.kind === 'group' && elves.children.map((c) => c.id)).toEqual(['synthia']);
+  });
 });
 
 describe('isDescendantGroup', () => {

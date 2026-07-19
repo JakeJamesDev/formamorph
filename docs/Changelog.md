@@ -12,6 +12,11 @@ Each release groups changes as **Major** / **Minor**, then **Added** / **Removed
 
 _Unreleased — new work accumulates here until it earns a version bump. The next batch will pin its own version; `package.json` reads **2.5.0** (just released below)._
 
+#### 🐛 Fixed
+
+- **👤 User-facing**
+  - **Entities and traits filed under a missing group no longer vanish from the World Editor.** If a world's group list was lost but its entities or traits still remembered which group they belonged to, those items simply didn't show up in the editor — only the ungrouped ones loaded. They now appear at the top level instead of disappearing.
+
 ---
 
 <details>
