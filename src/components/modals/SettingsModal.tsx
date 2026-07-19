@@ -525,15 +525,17 @@ export const SettingsModal = ({ isOpen, onOpenChange, previewValues, initialTab,
   // InvokeAI model/submodel lists that back the Model + Z-Image override dropdowns. Auto-fetched from
   // /api/v2/models/ whenever InvokeAI is the active provider (debounced); fails silently when unreachable.
   const [invokeMeta, setInvokeMeta] = useState<InvokeMeta | null>(null);
+  const [invokeMetaError, setInvokeMetaError] = useState(false);
   useEffect(() => {
     if (imageProvider !== 'invokeai') return;
     let cancelled = false;
     const t = setTimeout(async () => {
       try {
         const meta = await fetchInvokeMeta(resolveImageEndpoint(imageProvider, imageEndpoint), imageApiToken);
-        if (!cancelled) setInvokeMeta(meta);
+        if (!cancelled) { setInvokeMeta(meta); setInvokeMetaError(false); }
       } catch {
-        // silent: InvokeAI not running / unreachable — the fields fall back to free text
+        // Unreachable / CORS-blocked — show a hint under the Model field (the fields still take free text).
+        if (!cancelled) { setInvokeMeta(null); setInvokeMetaError(true); }
       }
     }, 300);
     return () => { cancelled = true; clearTimeout(t); };
@@ -1278,14 +1280,21 @@ export const SettingsModal = ({ isOpen, onOpenChange, previewValues, initialTab,
                     placeholder="(server default)"
                   />
                 ) : imageProvider === 'invokeai' ? (
-                  <TokenAutocomplete
-                    single
-                    openOnFocus
-                    values={imageModel ? [imageModel] : []}
-                    onChange={(v) => setImageModel(v[0] ?? '')}
-                    options={(invokeMeta?.models ?? []).map((m) => m.name)}
-                    placeholder="Pick an installed model"
-                  />
+                  <div className="grid gap-1.5">
+                    <TokenAutocomplete
+                      single
+                      openOnFocus
+                      values={imageModel ? [imageModel] : []}
+                      onChange={(v) => setImageModel(v[0] ?? '')}
+                      options={(invokeMeta?.models ?? []).map((m) => m.name)}
+                      placeholder="Pick an installed model"
+                    />
+                    {invokeMetaError && (
+                      <p className="text-xs text-destructive">
+                        Couldn’t load models from InvokeAI. Check it’s running and the app’s origin is in its <code>allow_origins</code> (see How to Set Up), then reopen this tab.
+                      </p>
+                    )}
+                  </div>
                 ) : (
                   <Input id="imageModel" value={imageModel} onChange={(e) => setImageModel(e.target.value)} placeholder="(server default)" />
                 )}

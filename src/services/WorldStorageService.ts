@@ -290,41 +290,32 @@ class WorldStorageService {
 
           const worldData = JSON.parse(raw);
 
-          // Full record, preserving every authored section (dictionaries + placeholders included — omitting
-          // them here silently dropped lorebooks/wildcards on seed). storeWorld read-merges sticky local
+          // Preserve every authored section by passing the parsed world through untouched — `migrateWorld`
+          // spreads it (so present and future sections survive) and folds the legacy flat `dictionary` into
+          // books. Only `id` and a default `worldOverview` are stamped. storeWorld read-merges sticky local
           // fields (createdAt, sourceId) and keeps `dirty` false for an unedited update.
+          const data = migrateWorld({
+            ...worldData,
+            id: world.id,
+            worldOverview: worldData.worldOverview || {
+              name: world.defaultName,
+              description: `Default ${world.defaultName} world`,
+              author: '',
+              thumbnail: '',
+              bgm: null,
+              systemPrompt: '',
+              use3DModel: true,
+            },
+          });
           const fullWorld = {
             id: world.id,
-            name: worldData.worldOverview?.name || world.defaultName,
-            description: worldData.worldOverview?.description || `Default ${world.defaultName} world`,
-            author: worldData.worldOverview?.author || '',
-            thumbnail: worldData.worldOverview?.thumbnail || '',
-            data: {
-              id: world.id,
-              worldOverview: worldData.worldOverview || {
-                name: world.defaultName,
-                description: `Default ${world.defaultName} world`,
-                author: '',
-                thumbnail: '',
-                bgm: null,
-                systemPrompt: '',
-                use3DModel: true,
-              },
-              stats: worldData.stats || [],
-              locations: worldData.locations || [],
-              entities: worldData.entities || [],
-              entityGroups: worldData.entityGroups || [],
-              traits: worldData.traits || [],
-              traitGroups: worldData.traitGroups || [],
-              statUpdates: worldData.statUpdates || [],
-              // Pass both dictionary forms through: v2.x books directly, and the legacy flat `dictionary`
-              // so migrateWorld can fold it into a book (older bundled defaults still use the flat form).
-              dictionary: worldData.dictionary,
-              dictionaries: worldData.dictionaries,
-              placeholders: worldData.placeholders,
-            },
+            name: data.worldOverview?.name || world.defaultName,
+            description: data.worldOverview?.description || `Default ${world.defaultName} world`,
+            author: data.worldOverview?.author || '',
+            thumbnail: data.worldOverview?.thumbnail || '',
+            data,
           };
-          await this.storeWorld({ ...fullWorld, sourceHash: hash, data: migrateWorld(fullWorld.data) });
+          await this.storeWorld({ ...fullWorld, sourceHash: hash });
           // Only announce a real content change: a first-run seed has nothing to compare, and a backfill is
           // just adopting the hash — neither is news to the player.
           if (existing && !backfill) updated.push(fullWorld.name);

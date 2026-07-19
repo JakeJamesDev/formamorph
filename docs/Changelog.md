@@ -25,6 +25,7 @@ _Unreleased — new work accumulates here until it earns a version bump. The nex
 
 - **👤 User-facing**
   - **Entities and traits filed under a missing group no longer vanish from the World Editor.** If a world's group list was lost but its entities or traits still remembered which group they belonged to, those items simply didn't show up in the editor — only the ungrouped ones loaded. They now appear at the top level instead of disappearing.
+  - **Exporting a world no longer drops your entity folders or placeholders.** The **Download World** file left out entity groups and placeholders, so importing that file elsewhere lost your folder organization and any author-defined variables/wildcards. Exports now carry the complete world (saving to your library was already fine — only the downloaded `.json` was affected).
 
 ---
 

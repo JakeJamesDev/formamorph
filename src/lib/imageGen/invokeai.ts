@@ -223,7 +223,14 @@ export const invokeaiProvider: ImageProvider = async (params: ImageGenParams, op
   const auth = authHeaders(opts.apiToken, 'Bearer');
   const jsonHeaders = { 'Content-Type': 'application/json', ...auth };
 
-  const models = await fetchInvokeModels(opts.endpointUrl, opts.apiToken);
+  let models: InvokeModel[];
+  try {
+    models = await fetchInvokeModels(opts.endpointUrl, opts.apiToken);
+  } catch (error) {
+    if ((error as Error).name === 'AbortError') throw error;
+    // A network/CORS failure surfaces as a bare TypeError ("Failed to fetch") — make it actionable.
+    throw new Error(`Couldn't reach InvokeAI at ${base}. Check it's running and that the app's origin is in its allow_origins (Settings → How to Set Up).`);
+  }
   const model = findModel(models, params.model);
   if (!model) {
     throw new Error(params.model.trim()
@@ -261,10 +268,12 @@ export const invokeaiProvider: ImageProvider = async (params: ImageGenParams, op
   if (itemId == null) throw new Error('InvokeAI did not return a queue item id');
 
   try {
+    let consecutiveErrors = 0; // give up rather than poll a dead/erroring endpoint forever
     for (;;) {
       if (opts.signal?.aborted) throw new DOMException('Aborted', 'AbortError');
       const poll = await fetch(`${base}/api/v1/queue/default/i/${itemId}`, { headers: auth, signal: opts.signal });
       if (poll.ok) {
+        consecutiveErrors = 0;
         const item = (await poll.json()) as QueueItem;
         opts.onProgress?.({ progress: statusProgress(item.status) });
         if (item.status === 'completed') {
@@ -276,8 +285,15 @@ export const invokeaiProvider: ImageProvider = async (params: ImageGenParams, op
         }
         if (item.status === 'failed') throw new Error(`InvokeAI generation failed: ${item.error_message ?? 'unknown error'}`);
         if (item.status === 'canceled') throw new DOMException('Aborted', 'AbortError');
+      } else if (++consecutiveErrors >= 5) {
+        throw new Error(`InvokeAI stopped responding while generating (HTTP ${poll.status}).`);
       }
-      await new Promise((r) => setTimeout(r, POLL_INTERVAL_MS));
+      // Abortable wait: resolve early the moment the run is canceled, so Stop doesn't hang for a poll cycle.
+      await new Promise<void>((resolve) => {
+        const timer = setTimeout(done, POLL_INTERVAL_MS);
+        function done() { opts.signal?.removeEventListener('abort', done); clearTimeout(timer); resolve(); }
+        opts.signal?.addEventListener('abort', done, { once: true });
+      });
     }
   } finally {
     // Best-effort cancel so an aborted run doesn't keep cooking on the server.

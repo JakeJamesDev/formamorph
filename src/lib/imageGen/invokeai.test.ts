@@ -176,6 +176,23 @@ describe('invokeaiProvider', () => {
     await expect(invokeaiProvider(params, { endpointUrl: 'http://127.0.0.1:9090', apiToken: '' }))
       .rejects.toThrow(/out of memory/);
   });
+
+  it('gives an actionable message when the server is unreachable (CORS/network)', async () => {
+    vi.stubGlobal('fetch', vi.fn(async () => { throw new TypeError('Failed to fetch'); }));
+    await expect(invokeaiProvider(params, { endpointUrl: 'http://127.0.0.1:9090', apiToken: '' }))
+      .rejects.toThrow(/allow_origins/);
+  });
+
+  it('stops polling instead of hanging when the item endpoint keeps erroring', async () => {
+    // enqueue succeeds, then every poll returns a non-OK response.
+    vi.stubGlobal('fetch', vi.fn(async (url: string) => {
+      if (url.endsWith('/api/v2/models/')) return { ok: true, json: async () => ({ models: [sdxl] }) } as Response;
+      if (url.endsWith('/enqueue_batch')) return { ok: true, json: async () => ({ item_ids: [7] }) } as Response;
+      return { ok: false, status: 500 } as Response; // poll always fails
+    }));
+    await expect(invokeaiProvider(params, { endpointUrl: 'http://127.0.0.1:9090', apiToken: '' }))
+      .rejects.toThrow(/stopped responding/);
+  }, 10000);
 });
 
 describe('fetchInvokeMeta', () => {
