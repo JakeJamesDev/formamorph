@@ -12,6 +12,14 @@ Each release groups changes as **Major** / **Minor**, then **Added** / **Removed
 
 _Unreleased — new work accumulates here until it earns a version bump. The next batch will pin its own version; `package.json` reads **2.5.1** (just released below)._
 
+### Minor Changes
+
+#### ✨ Added
+
+- **🛠️ Developer tooling**
+  - **Section-style regression probe.** `regression-style-probe.mjs` A/B-tests the Default (Markdown) vs XML prompt preset on the committed regression corpus (planner continuation + digest), assembling each style faithfully — chip bodies through the real context builders, headings through the real `restyle` — so section style is the only variable. Runs under `vite-node`.
+  - **Fact-adherence style probe.** `factstyle-probe.mjs` A/B-tests Markdown vs XML on a fact-dense, comprehension-trap scenario (fixed counts, positions, a name the player hasn't heard) across planner + narration surfaces at matched seeds, dumping every paired output for human judging. Also `vite-node`.
+
 ---
 
 <details>
