@@ -68,41 +68,52 @@ const narrDefer = (t) => {
   return DEFER_RE.test(n);
 };
 
-console.log("turn  freeze act spk def stall  echo  nDef manual  action");
+// Recorded mode has one baked plan per turn; live mode fires --runs samples (varied seed) to beat noise.
+const RUNS = replay ? Math.max(1, opts.runs) : 1;
+console.log(`runs/turn: ${RUNS}${replay ? ` (seeds ${opts.seed}..${opts.seed + RUNS - 1})` : ""}\n`);
+console.log("turn  freeze  stall  act  spk  def  echo  nDef  manual  action");
 
-const totals = { n: 0, freeze: 0, action: 0, speech: 0, defer: 0, stall: 0, echo: 0, echoN: 0, narrDefer: 0 };
-let prevPlanText = "";
+// Plan metrics accumulate over every turn×run sample (n = turns × RUNS). Narration-defer is per turn.
+const totals = { n: 0, freeze: 0, action: 0, speech: 0, defer: 0, stall: 0, echo: 0, echoN: 0, narrDefer: 0, turns: 0 };
+const prevPlanByRun = {}; // run index -> previous turn's plan (paired echo)
 for (let i = from; i <= Math.min(to, turns.length - 1); i++) {
   const t = turns[i];
   const think = planOf(t);
   if (!think) continue;
-  let planText = think.response || "";
-  if (replay) {
-    let messages = think.messages;
-    if (rerender) {
-      messages = messages.map((m) => (m.role === "system" ? { ...m, content: rerenderSystem(m.content) } : m));
+  const per = { freeze: 0, stall: 0, action: 0, speech: 0, defer: 0 };
+  let bad = false;
+  for (let r = 0; r < RUNS; r++) {
+    let planText = think.response || "";
+    if (replay) {
+      let messages = think.messages;
+      if (rerender) messages = messages.map((m) => (m.role === "system" ? { ...m, content: rerenderSystem(m.content) } : m));
+      try { planText = await callMessages({ ...opts, seed: opts.seed + r }, messages); }
+      catch (e) { console.log(`${String(i).padStart(3)}   REPLAY ERROR (run ${r}): ${String(e.message || e)}`); bad = true; break; }
     }
-    try { planText = await callMessages({ ...opts, seed: opts.seed }, messages); }
-    catch (e) { console.log(`${String(i).padStart(3)}   REPLAY ERROR: ${String(e.message || e)}`); continue; }
+    const beats = parsePlan(planText).beats || planText;
+    const s = scorePlan(beats);
+    const prev = prevPlanByRun[r];
+    const echo = prev ? jaccard(parsePlan(prev).beats || prev, beats) : 0;
+    totals.n++;
+    totals.freeze += s.freeze; if (s.npcAction) totals.action++; if (s.npcSpeech) totals.speech++;
+    if (s.defer) totals.defer++; if (s.stall) totals.stall++;
+    if (prev) { totals.echo += echo; totals.echoN++; }
+    per.freeze += s.freeze; if (s.stall) per.stall++; if (s.npcAction) per.action++; if (s.npcSpeech) per.speech++; if (s.defer) per.defer++;
+    prevPlanByRun[r] = planText;
+    if (verbose) console.log(printOut(planText, `    r${r} `));
   }
-  const beats = parsePlan(planText).beats || planText;
-  const s = scorePlan(beats);
-  const echo = prevPlanText ? jaccard(parsePlan(prevPlanText).beats || prevPlanText, beats) : 0;
-  const manual = /^[a-z]/.test((t.action || "").trim()) ? "*" : " ";
-  totals.n++;
-  totals.freeze += s.freeze; if (s.npcAction) totals.action++; if (s.npcSpeech) totals.speech++;
-  if (s.defer) totals.defer++; if (s.stall) totals.stall++;
-  if (prevPlanText) { totals.echo += echo; totals.echoN++; }
+  if (bad) continue;
+  totals.turns++;
   const nDef = narrDefer(t); if (nDef) totals.narrDefer++;
+  const manual = /^[a-z]/.test((t.action || "").trim()) ? "*" : " ";
   console.log(
-    `${String(i).padStart(3)}  ${String(s.freeze).padStart(6)} ${s.npcAction ? " Y " : " . "} ${s.npcSpeech ? " Y " : " . "} ${s.defer ? " D " : " . "} ${s.stall ? "STALL" : "  .  "} ${echo.toFixed(2)}${echo > 0.4 ? "!" : " "}  ${nDef ? " D " : " . "}   ${manual}    ${(t.action || "").slice(0, 60)}`,
+    `${String(i).padStart(3)}  ${(per.freeze / RUNS).toFixed(1).padStart(5)}  ${String(per.stall).padStart(2)}/${RUNS}  ${per.action}/${RUNS} ${per.speech}/${RUNS} ${per.defer}/${RUNS}  ` +
+    `      ${nDef ? " D " : " . "}    ${manual}    ${(t.action || "").slice(0, 46)}`,
   );
-  if (verbose) console.log(printOut(planText, "        "));
-  prevPlanText = planText;
 }
 
 const pct = (x) => `${x}/${totals.n} (${Math.round((100 * x) / totals.n)}%)`;
-console.log(`\n==== ${totals.n} planner turns${replay ? " [LIVE]" : " [recorded]"} ====`);
-console.log(`freeze ${(totals.freeze / totals.n).toFixed(1)}/turn · npc-action ${pct(totals.action)} · npc-speech ${pct(totals.speech)}`);
-console.log(`plan-defer ${pct(totals.defer)} · narration-defer ${pct(totals.narrDefer)} · stalls ${pct(totals.stall)} · mean echo-vs-prev ${(totals.echo / (totals.echoN || 1)).toFixed(2)} (turns >0.4 flagged with !)`);
+console.log(`\n==== ${totals.turns} turns × ${RUNS} runs = ${totals.n} plan samples${replay ? " [LIVE]" : " [recorded]"} ====`);
+console.log(`freeze ${(totals.freeze / totals.n).toFixed(2)}/sample · npc-action ${pct(totals.action)} · npc-speech ${pct(totals.speech)}`);
+console.log(`plan-defer ${pct(totals.defer)} · stalls ${pct(totals.stall)} · mean echo-vs-prev ${(totals.echo / (totals.echoN || 1)).toFixed(2)} · narration-defer ${totals.narrDefer}/${totals.turns} turns`);
 console.log(`( * = manual action: the player had to author it because choices didn't advance )`);

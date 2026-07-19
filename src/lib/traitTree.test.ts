@@ -34,6 +34,12 @@ describe('buildTraitTree', () => {
     ];
     expect(buildTraitTree([], traits).map((n) => n.id)).toEqual(['a', 'b']);
   });
+
+  it('renders a trait whose groupId points at a missing group at the top level (never drops it)', () => {
+    const tree = buildTraitTree([], [trait('orphan', 'ghost', 0)]);
+    expect(tree.map((n) => n.id)).toEqual(['orphan']);
+    expect(tree[0].kind).toBe('leaf');
+  });
 });
 
 describe('isDescendantGroup', () => {
