@@ -10,7 +10,14 @@ Each release groups changes as **Major** / **Minor**, then **Added** / **Removed
 
 ## 🚧 In Progress
 
-_Unreleased — new work accumulates here until it earns a version bump. The next batch will pin its own version; `package.json` reads **2.5.0** (just released below)._
+_Unreleased — new work accumulates here until it earns a version bump. The next batch will pin its own version; `package.json` reads **2.5.1** (just released below)._
+
+---
+
+<details>
+<summary><strong>✅ 2.5.1 — Released 2026-07-19</strong> — a new built-in XML prompt preset (section wrapping + nested-tag chip bodies), InvokeAI as a supported image generator, plus fixes for world export dropping entity folders/placeholders and missing-group items vanishing from the editor (click to expand)</summary>
+
+### Minor Changes
 
 #### ✨ Added
 
@@ -26,6 +33,8 @@ _Unreleased — new work accumulates here until it earns a version bump. The nex
 - **👤 User-facing**
   - **Entities and traits filed under a missing group no longer vanish from the World Editor.** If a world's group list was lost but its entities or traits still remembered which group they belonged to, those items simply didn't show up in the editor — only the ungrouped ones loaded. They now appear at the top level instead of disappearing.
   - **Exporting a world no longer drops your entity folders or placeholders.** The **Download World** file left out entity groups and placeholders, so importing that file elsewhere lost your folder organization and any author-defined variables/wildcards. Exports now carry the complete world (saving to your library was already fine — only the downloaded `.json` was affected).
+
+</details>
 
 ---
 
