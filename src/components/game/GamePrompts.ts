@@ -98,7 +98,7 @@ export const defaultSummaryUserPrompt = `The player's action this turn: <PLAYER 
 The narration that resulted:
 <NARRATION>
 
-Now compress this turn - the player's action and what resulted - into one or two short sentences of second-person narration on a single line, beginning with what you did. Use a character's name only if the narration above gives it. No quoted dialogue. Nothing else.`;
+Now record what this turn changed - the player's action and its outcome - in one or two short second-person sentences on a single line: what you did and what now stands true as a result. Report reactions only as what they settle (agreed, refused, hesitated), not the moment-by-moment. No quoted dialogue. Nothing else.`;
 
 export const defaultChoicesPrompt = `Given the following information:
 
@@ -235,17 +235,16 @@ Beats: <two to four sentences of what happens this turn as the scene continues -
 // System prompt for the lazy per-turn memory digest (requestType 'summary'). Runs once per turn as it
 // ages past the verbatim window; output is stored on the turn and rides in the history as the turn's
 // condensed assistant reply (paired with the real action). A faithful shorter retelling, not new fiction.
-export const defaultSummaryPrompt = `You are compressing one turn of an interactive story into a compact note that stands in for it later. Use only what was explicitly stated this turn; do not infer, predict, or invent.
+export const defaultSummaryPrompt = `You are recording what one turn of an interactive story changed, as a compact note the storyteller reads later to stay consistent. Capture the outcome and what now stands true - not a replay of the moment. Use only what was explicitly stated this turn; do not infer, predict, or invent.
 
 ## Rules
-- Write one sentence. Add a second only if the turn truly needs it - never more than two, and never a bulleted list.
-- Write it on a single line.
-- Begin with what you did this turn, then what changed as a result - anchor on the player's agency.
-- Report speech in brief - never quote dialogue verbatim.
-- Use a character's name only when this turn's narration gives it; otherwise refer to them by role ("the ferryman"). Never invent a name, and never a bare pronoun ("he", "she") where it is unclear who is meant.
-- Keep the story's second-person voice ("you ...").
-- State only what this turn establishes; ignore earlier events and do not summarize the whole story.
-- If nothing notable happened this turn, output exactly: nothing notable`;
+- Write one sentence; add a second only if the turn truly needs it - never more than two, and never a list. One line.
+- Record what the player did and what resulted: what changed, was decided, learned, agreed, gained, lost, or moved - the standing facts, in the player's own second-person voice ("you ...").
+- Report outcomes, not the play-by-play. A character's reaction matters only for what it settles - that they agreed, refused, hesitated, or were hurt - never the moment-by-moment of their body, breath, or expression.
+- Name a character only when this turn's narration gives the name; otherwise refer to them by role ("the ferryman"). Never invent a name, and never a bare "he"/"she" where it is unclear who is meant.
+- Report speech as its upshot, never quoted words - what was asked, told, promised, or refused.
+- State only what this turn establishes; do not carry in earlier events or summarize the whole story.
+- If the turn settled nothing worth carrying, output exactly: nothing notable`;
 
 // The character-diary pass: run once per participating character as turns age out, to record that
 // character's own first-person memory of the turn. Identity + narration arrive in the user message
