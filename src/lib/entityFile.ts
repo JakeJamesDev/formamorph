@@ -16,6 +16,7 @@ export interface EntityCardData {
   formamorphKind: typeof ENTITY_FILE_KIND;
   version: string;
   name: string;
+  aliases?: string[];
   type?: string;
   playerDescription?: string;
   aiDescription?: string;
@@ -34,6 +35,7 @@ export function buildEntityCardData(entity: Entity, available: Placeholder[] = e
     formamorphKind: ENTITY_FILE_KIND,
     version: APP_VERSION,
     name: entity.name,
+    ...(entity.aliases?.length ? { aliases: entity.aliases } : {}),
     ...(entity.type ? { type: entity.type } : {}),
     ...(entity.playerDescription ? { playerDescription: entity.playerDescription } : {}),
     ...(entity.aiDescription ? { aiDescription: entity.aiDescription } : {}),
@@ -56,9 +58,13 @@ export function parseEntityCardData(raw: unknown): Entity {
   if (kind === SAVE_FILE_KIND) throw new Error("That's a save file, not a character.");
   if (kind === DICTIONARY_FILE_KIND) throw new Error("That's a dictionary, not a character.");
   if (kind !== ENTITY_FILE_KIND) throw new Error('This file is not a character card.');
+  const aliases = Array.isArray(obj.aliases)
+    ? (obj.aliases as unknown[]).filter((a): a is string => typeof a === 'string' && !!a.trim())
+    : [];
   return {
     id: randomUUID(),
     name: typeof obj.name === 'string' && obj.name ? obj.name : 'Imported Character',
+    ...(aliases.length ? { aliases } : {}),
     ...(typeof obj.type === 'string' && obj.type ? { type: obj.type } : {}),
     ...(typeof obj.playerDescription === 'string' && obj.playerDescription ? { playerDescription: obj.playerDescription } : {}),
     ...(typeof obj.aiDescription === 'string' && obj.aiDescription ? { aiDescription: obj.aiDescription } : {}),

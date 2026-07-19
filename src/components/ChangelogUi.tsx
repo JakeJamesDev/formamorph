@@ -40,7 +40,7 @@ export function ChangelogBody({ text, placeholder, currentVersion, updateVersion
     });
   }, [text, currentVersion, updateVersion]);
 
-  return <MarkdownPanel ref={ref} text={text} placeholder={placeholder} className="changelog-body max-h-[60dvh]" />;
+  return <MarkdownPanel ref={ref} text={text} placeholder={placeholder} className="changelog-body max-h-[70dvh]" />;
 }
 
 /** Link to the full (verbose) changelog on the wiki, opened in the system browser. */

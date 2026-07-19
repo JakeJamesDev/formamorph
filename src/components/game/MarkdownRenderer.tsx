@@ -22,7 +22,7 @@ export const MarkdownRenderer = memo(function MarkdownRenderer(
   // Read the current fade timing at render (a new sentence's release re-renders us via the text prop),
   // so the words just added animate at the model's current smoothed rate.
   return (
-    <div className="[overflow-wrap:anywhere]">
+    <div className="[overflow-wrap:anywhere] [&_ul]:list-outside [&_ul]:pl-6 [&_ol]:list-outside [&_ol]:pl-6">
       <Streamdown
         remarkPlugins={[remarkGfm, remarkBreaks]}
         controls={false}

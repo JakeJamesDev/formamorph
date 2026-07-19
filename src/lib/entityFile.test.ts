@@ -48,7 +48,17 @@ describe('buildEntityCardData', () => {
     const card = buildEntityCardData({ id: 'x', name: 'Bram' });
     expect(card).not.toHaveProperty('type');
     expect(card).not.toHaveProperty('aiSummary');
+    expect(card).not.toHaveProperty('aliases');
     expect(card.name).toBe('Bram');
+  });
+
+  it('round-trips aliases, dropping empty/blank ones', () => {
+    const card = buildEntityCardData({ id: 'z', name: 'Synthia', aliases: ['Matron', 'Em'] });
+    expect(card.aliases).toEqual(['Matron', 'Em']);
+    expect(parseEntityCardData(card).aliases).toEqual(['Matron', 'Em']);
+    // A card whose aliases are all blank parses to no aliases field at all.
+    expect(parseEntityCardData({ formamorphKind: 'entity', name: 'X', aliases: ['  ', ''] })).not.toHaveProperty('aliases');
+    expect(buildEntityCardData({ id: 'q', name: 'Y', aliases: [] })).not.toHaveProperty('aliases');
   });
 
   it('bundles only the placeholders the entity actually uses, and reads them back on parse', () => {

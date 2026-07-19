@@ -97,6 +97,9 @@ export interface Trait {
 export interface Entity {
   id: string;
   name: string;
+  /** Author-defined nicknames/other names (e.g. "Matron", "Em"). Detected in narration like the name
+   *  (case-sensitive, word-bounded, plural-tolerant) and surfaced to the AI as "also known as". */
+  aliases?: string[];
   type?: string;
   /** Shown to the player in-game. */
   playerDescription?: string;

@@ -11,8 +11,7 @@
 // A playthrough is serial (each turn needs the prior narration); RUNS playthroughs fire concurrently (varied
 // seed) and LM Studio queues past its slots. Context is windowed to --window recent turns so per-slot fits.
 
-import { parseArgs, callMessages, runAll, grab, buildThinkingUser, QUOTE_RE, FREEZE_RE } from "./planner-probe-lib.mjs";
-import { WORLD, PLAYER_TRAIT, LOCATION, ENTITIES, TURNS } from "./dialogue-corpus.mjs";
+import { parseArgs, callMessages, runAll, grab, buildThinkingUser, QUOTE_RE, FREEZE_RE, DEFER_RE } from "./planner-probe-lib.mjs";
 
 const argv = process.argv.slice(2);
 const num = (f, d) => { const i = argv.indexOf(f); return i >= 0 ? Number(argv[i + 1]) : d; };
@@ -22,6 +21,7 @@ const opts = parseArgs(process.argv);
 const RUNS = num("--runs", 5);
 const WINDOW = num("--window", 12);
 const which = strArg("--template", "shipped");
+const { WORLD, PLAYER_TRAIT, LOCATION, ENTITIES, TURNS } = await import(strArg("--corpus", "./dialogue-corpus.mjs"));
 
 // ── Prompt fills ──
 const THINK = grab("defaultThinkingPrompt");
@@ -61,15 +61,19 @@ const PREAMBLE = "Rough notes on what happens this turn (not words the player sp
 const ALL_NAMES = ENTITIES.map((e) => e.name);
 const hasName = (s, n) => new RegExp(`\\b${n.split(/\s+/)[0].replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}\\b`).test(s);
 const hasQuote = (s) => /"[^"]{2,}"|[“][^”]{2,}[”]/.test(s);
-function spoke(text, name) {
-  const sents = text.split(/(?<=[.!?])\s+/);
-  for (let k = 0; k < sents.length; k++) {
-    if (!hasQuote(sents[k])) continue;
-    if (hasName(sents[k], name)) return true;
-    if (!ALL_NAMES.some((n) => hasName(sents[k], n)) && k > 0 && hasName(sents[k - 1], name)) return true;
+// Attribute quotes by tracking the most-recently-named cast member: a quoted sentence's speaker is the last
+// cast name in that sentence, or (when it's just "she said") the last cast name seen before it. Handles the
+// common "Sofia leans in. She murmurs. '...'" form that same-sentence matching misses.
+function speakerSet(text) {
+  const set = new Set(); let last = null;
+  for (const s of text.split(/(?<=[.!?])\s+/)) {
+    const named = ALL_NAMES.filter((n) => hasName(s, n));
+    if (hasQuote(s)) { const spk = named.length ? named[named.length - 1] : last; if (spk) set.add(spk); }
+    if (named.length) last = named[named.length - 1];
   }
-  return false;
+  return set;
 }
+const spoke = (text, name) => speakerSet(text).has(name);
 const HANDBACK_RE = /\b(waits? for (?:your|you to)|waiting for (?:you|your)|as you consider|it'?s your (?:turn|move|call)|for you to (?:respond|decide|answer)|awaiting your)\b/i;
 const dialoguePct = (t) => Math.round((100 * (t.match(QUOTE_RE) || []).reduce((a, q) => a + q.length, 0)) / (t.length || 1));
 
@@ -103,13 +107,14 @@ let pass = 0, hardFail = 0, baitN = 0;
 for (const rows of runs) {
   for (const { i, turn, text } of rows) {
     if (turn.expect) {
-      const { responders, mode } = turn.expect;
-      const detected = responders.filter((r) => spoke(text, r));
-      const present = turn.present.filter((p) => spoke(text, p));
-      const ok = mode === "group" ? present.length >= 2 : detected.length === responders.length;
-      const hard = mode === "direct" && detected.length === 0;
+      const e = turn.expect;
+      let spkOk = true, advOk = true, detected = [];
+      if (e.responders) { detected = e.responders.filter((r) => spoke(text, r)); spkOk = e.mode === "group" ? turn.present.filter((p) => spoke(text, p)).length >= 2 : detected.length === e.responders.length; }
+      if (e.advance) advOk = !HANDBACK_RE.test(text.trim().slice(-220)) && !DEFER_RE.test(text); // advance = no stall/defer
+      const ok = spkOk && advOk;
+      const hard = e.mode === "direct" && e.responders && detected.length === 0; // addressed, wholly silent
       baitN++; if (ok) pass++; if (hard) hardFail++;
-      baited.push({ i, mode, responders, detected, present: present.length, ok, hard, text });
+      baited.push({ i, e, detected, ok, spkOk, advOk, hard, text });
     } else {
       guard.dlg += dialoguePct(text); guard.frz += (text.match(FREEZE_RE) || []).length; guard.hb += HANDBACK_RE.test(text.trim().slice(-200)) ? 1 : 0; guard.wrd += (text.match(/\S+/g) || []).length; guard.n++;
     }
@@ -117,15 +122,18 @@ for (const rows of runs) {
 }
 
 console.log("── BAITED (main metric) ──");
-console.log("turn  mode    expected            spoke               verdict");
+console.log("turn  mode     goal                     pass     detail");
 const byTurn = {};
 for (const b of baited) (byTurn[b.i] ||= []).push(b);
 for (const i of Object.keys(byTurn).map(Number).sort((a, b) => a - b)) {
-  const bs = byTurn[i], ex = bs[0].responders.join("+"), mode = bs[0].mode;
+  const bs = byTurn[i], e = bs[0].e;
+  const mode = e.mode || (e.advance ? "advance" : "?");
+  const goal = [e.responders ? e.responders.join("+") : null, e.advance ? "advance" : null].filter(Boolean).join(" & ");
   const okN = bs.filter((b) => b.ok).length, hardN = bs.filter((b) => b.hard).length;
-  console.log(`${String(i).padStart(3)}  ${mode.padEnd(6)}  ${ex.padEnd(18)}  ${`${okN}/${bs.length} pass`.padEnd(18)}  ${hardN ? `${hardN} HARD-FAIL` : ""}`);
+  const silentN = bs.filter((b) => !b.spkOk).length, stallN = bs.filter((b) => !b.advOk).length;
+  console.log(`${String(i).padStart(3)}  ${mode.padEnd(7)}  ${goal.padEnd(23)}  ${`${okN}/${bs.length}`.padEnd(7)}  ${silentN ? `${silentN} silent ` : ""}${stallN ? `${stallN} stalled ` : ""}${hardN ? `${hardN} HARD` : ""}`);
 }
-if (verbose) for (const b of baited) console.log(`\n[turn ${b.i} ${b.mode} want ${b.responders.join("+")} · spoke ${b.detected.join("+") || "NONE"} · ${b.ok ? "pass" : "FAIL"}${b.hard ? " HARD" : ""}]\n${b.text}`);
+if (verbose) for (const b of baited) console.log(`\n[turn ${b.i} · spoke ${b.detected.join("+") || "NONE"} · ${b.ok ? "pass" : "FAIL"}${b.spkOk ? "" : " silent"}${b.advOk ? "" : " stalled"}]\n${b.text}`);
 
 console.log(`\nMAIN: ${pass}/${baitN} baited pass (${Math.round((100 * pass) / baitN)}%) · HARD-FAILS ${hardFail}`);
 console.log(`GUARDRAILS (${guard.n} regular turns): dialogue ${Math.round(guard.dlg / guard.n)}% · freeze ${(guard.frz / guard.n).toFixed(2)} · handback ${Math.round((100 * guard.hb) / guard.n)}% · words ${Math.round(guard.wrd / guard.n)}`);
