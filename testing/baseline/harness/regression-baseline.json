@@ -1,0 +1,12 @@
+{
+  "model": "cydonia-24b-v4.3@q4_k_m",
+  "runs": 5,
+  "capturedMetrics": {
+    "contFreeze": 0.23,
+    "contAction": 43,
+    "contSpeech": 63,
+    "contStall": 0,
+    "digestFreeze": 0,
+    "factRetention": 86
+  }
+}
