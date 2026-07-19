@@ -92,10 +92,17 @@ function toBlock(messages) {
   return out;
 }
 
-// Optional fact-retention guardrail: extract [state] facts from the RECORDED narration (ground truth is the
-// real story), then judge whether each fresh generation still carries them. Heavier — only with --deep.
+// Fact guardrail. Two modes (--factmode):
+//   recorded     — [state] facts from THIS turn's recorded narration; judged as "still stated". Penalizes any
+//                  plan divergence (breaking the recorded stall scores as a lost fact) — the biased original.
+//   carryforward — [state] facts from the PRIOR turn (the durable state entering this turn); judged as "not
+//                  CONTRADICTED" (a fact simply not mentioned is fine). Measures real memory fidelity — does the
+//                  fresh narration violate established state — blind to which beats the turn chooses. (default)
 const EXTRACT_SYS = `You extract the durable facts a passage of a story establishes, for a memory system. List 3 to 6 concrete, checkable [state] facts (a decision, admission, revealed trait, position, relationship shift, object, or commitment) - most important first, only what the passage explicitly states. Format each line: [state] <fact>. Nothing else.`;
-const JUDGE_SYS = `You check whether a passage preserves a list of facts. It preserves a fact if it conveys the same thing, explicitly or by clear implication - same words not required. For each numbered fact reply on its own line "<n>: yes" or "<n>: no". Only those lines.`;
+const JUDGE_RECORDED = `You check whether a passage preserves a list of facts. It preserves a fact if it conveys the same thing, explicitly or by clear implication - same words not required. For each numbered fact reply on its own line "<n>: yes" or "<n>: no". Only those lines.`;
+const JUDGE_CARRYFWD = `You check whether a story passage stays CONSISTENT with a list of previously-established facts. A fact is preserved (yes) unless the passage CONTRADICTS it - states or clearly implies something that cannot both be true. A fact the passage simply does not mention is still preserved (yes); only an actual contradiction is "no". For each numbered fact reply on its own line "<n>: yes" or "<n>: no". Only those lines.`;
+const factMode = strArg("--factmode", "carryforward");
+const JUDGE_SYS = factMode === "recorded" ? JUDGE_RECORDED : JUDGE_CARRYFWD;
 // Retry transient failures (LM Studio occasionally 500s a request under heavy concurrency) so one bad call
 // doesn't abort the whole batch; give up after `tries` and let the caller treat it as empty.
 async function withRetry(fn, tries = 3) {
@@ -163,7 +170,7 @@ async function replanMessages(i, seed, tmpl) {
 
 const CONDS = format === "both" ? ["turnwise", "block"] : format.split(",");
 console.log(`NARRATION BAND-FORMAT · ${file} · "${opts.model}"`);
-console.log(`conditions: ${CONDS.join(" vs ")} · runs ${RUNS} · floor ${FLOOR} · temp ${TEMP}${deep ? " · deep(fact-retention)" : ""}\n`);
+console.log(`conditions: ${CONDS.join(" vs ")} · runs ${RUNS} · floor ${FLOOR} · temp ${TEMP}${deep ? ` · deep(fact:${factMode})` : ""}\n`);
 
 const acc = Object.fromEntries(CONDS.map((c) => [c, { dlg: 0, spk: 0, hb: 0, frz: 0, wrd: 0, kept: 0, factN: 0, n: 0 }]));
 const t0 = Date.now();
@@ -172,7 +179,9 @@ const t0 = Date.now();
 const idxs = [];
 for (let i = from; i <= Math.min(to, turns.length - 1); i++) if (nreq(turns[i])?.messages) idxs.push(i);
 const factsByTurn = {};
-if (deep) await runAll(idxs, async (i) => { try { factsByTurn[i] = await extractFacts(nreq(turns[i]).response || ""); } catch { factsByTurn[i] = []; } });
+// carryforward sources facts from the PRIOR turn's narration (state entering this turn); recorded from this turn.
+const factSource = (i) => factMode === "recorded" ? (nreq(turns[i])?.response || "") : (nreq(turns[i - 1])?.response || "");
+if (deep) await runAll(idxs, async (i) => { try { factsByTurn[i] = await extractFacts(factSource(i)); } catch { factsByTurn[i] = []; } });
 
 // Flatten every (turn × condition × run) generation into ONE concurrent batch — LM Studio queues past its slots.
 const jobs = [];

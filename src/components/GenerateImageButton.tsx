@@ -62,6 +62,9 @@ export function GenerateImageButton({ subject, cap, onChange, tags, onTagsChange
   }, [activeImageEndpointPresetId]);
 
   const openDialog = () => {
+    abortRef.current?.abort(); // drop any run left in flight so the dialog never reopens mid-generation
+    abortRef.current = null;
+    setGenerating(false);
     setPreview(null);
     setPreviewFrame(null);
     setProgress(null);

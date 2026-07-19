@@ -82,7 +82,7 @@ const WorldEditor = ({ onClose, embedded = false, backButton }: {
   const showBackButton = backButton ?? !embedded;
   const {
     worldOverview, updateWorldOverview, worldId,
-    loadWorldData,
+    loadWorldData, getWorldData,
     stats, locations, entities, entityGroups, traits, traitGroups, statUpdates, dictionaries, placeholders,
     addStat, addLocation, addEntity, addTrait, addStatUpdate, addDictionary,
     addTraitGroup, addEntityGroup, addPlaceholder,
@@ -94,8 +94,7 @@ const WorldEditor = ({ onClose, embedded = false, backButton }: {
 
   // Assemble the editor's live world for an image scan/downscale (id/version unused by the scan).
   const buildCurrentWorld = (): World => ({
-    id: worldId ?? '', version: APP_VERSION,
-    worldOverview, stats, locations, entities, traits, traitGroups, statUpdates, dictionaries,
+    id: worldId ?? '', version: APP_VERSION, ...getWorldData(),
   });
   // Apply a downscaled world back to the editor's state (marks dirty for the user to Save).
   const applyDownscaled = (w: World) => {
@@ -128,12 +127,9 @@ const WorldEditor = ({ onClose, embedded = false, backButton }: {
     const current = buildCurrentWorld();
     const downscaled = await promptWorld(current);
     const w = downscaled ?? current;
-    const worldData = {
-      formamorphKind: WORLD_FILE_KIND,
-      version: APP_VERSION,
-      worldOverview: w.worldOverview, stats: w.stats, locations: w.locations, entities: w.entities,
-      traits: w.traits, traitGroups: w.traitGroups, statUpdates: w.statUpdates, dictionaries: w.dictionaries,
-    };
+    // `w` is buildCurrentWorld() (possibly downscaled), already the full canonical payload via getWorldData().
+    const { id: _id, ...worldFields } = w;
+    const worldData = { formamorphKind: WORLD_FILE_KIND, ...worldFields };
     const jsonData = JSON.stringify(worldData, null, 2);
     downloadBlob(new Blob([jsonData], { type: 'application/json' }), worldOverview.name || 'rpg_world.json');
   };
