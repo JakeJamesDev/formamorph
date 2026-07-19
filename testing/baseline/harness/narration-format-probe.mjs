@@ -146,6 +146,25 @@ const CAND = (() => {
   }
   return c;
 })();
+// STRUCTURAL candidate: the collapse (57% of plans voice <=1 of 2+ present) survives exhortation because Beats
+// is a prose blob with room for one speaker. This forces distribution with a per-character Lines slot: speech
+// moves out of Beats into a list with one entry (a line, or explicit "(silent)") per present character.
+const SLOT = (() => {
+  const edits = [
+    // 1. Format block: Beats becomes physical-only; add a Lines section with a per-name slot.
+    ["Beats: <two to four sentences of what happens this turn as the scene continues - the physical actions and, in quotation marks, the words the present characters actually speak aloud>",
+      "Beats: <two to four sentences of the physical actions and reactions that happen this turn as the scene continues>\nLines:\n- <name> - \"<the words this character speaks aloud this turn>\" (or (silent) if they truly say nothing)"],
+    // 2. Beats rule → physical-only, plus a new Lines rule that forces one entry per present character.
+    ["- The Beats are what the world and the other characters do and say - their grounded physical reactions and the words they speak aloud, in quotation marks, consistent with the Cast above. Characters present keep speaking as the scene continues; don't reduce them to silent motion. Never write the outcome of the player's own action, their thoughts, or their next move.",
+      "- The Beats are the grounded physical actions and reactions that happen this turn - what the world and the characters physically do, consistent with the Cast above. Never write the outcome of the player's own action, their thoughts, or their next move.\n- Lines carries the spoken words: give one entry for each present character who could react this turn, their actual words aloud in quotation marks and in their own voice. Mark a character (silent) only when they genuinely say nothing - a scene with several people present normally has several of them speaking, not one voice carrying it alone."],
+    // 3. Closing line: require the Lines list too.
+    ["- Output exactly one Scene line, one Cast list, and one Beats - no narration, no choices, no stat talk, nothing else.",
+      "- Output exactly one Scene line, one Cast list, one Beats, and one Lines list - no narration, no choices, no stat talk, nothing else."],
+  ];
+  let c = grab("defaultThinkingPrompt");
+  for (const [f, t] of edits) { if (!c.includes(f)) throw new Error(`slotplan: edit target not found:\n${f}`); c = c.replace(f, t); }
+  return c;
+})();
 function rerenderPlanner(recordedSys, tmpl) {
   const START = "## Game World", END = "Respond in exactly this format:";
   const data = recordedSys.slice(recordedSys.indexOf(START), recordedSys.indexOf(END)).trimEnd();
@@ -192,6 +211,7 @@ const results = await runAll(jobs, async ({ i, cond, run }) => {
     messages = cond === "block" ? toBlock(nreq(turns[i]).messages)
       : cond === "castplan" ? await replanMessages(i, opts.seed + run, CAND)
       : cond === "shipreplan" ? await replanMessages(i, opts.seed + run, THINK)
+      : cond === "slotplan" ? await replanMessages(i, opts.seed + run, SLOT)
       : nreq(turns[i]).messages;
   } catch (e) { console.log(`${i} ${cond} r${run} PLAN ERROR: ${String(e.message || e)}`); messages = nreq(turns[i]).messages; }
   let text = "";
@@ -215,7 +235,7 @@ for (const { i, cond, sc } of results) {
 }
 for (const i of idxs) {
   const line = [String(i).padStart(3)];
-  for (const cond of CONDS) { const p = perTurn[`${i}|${cond}`]; line.push(`${cond[0]}: dlg ${Math.round(p.dlg / RUNS)}% spk ${(p.spk / RUNS).toFixed(1)} hb ${p.hb}/${RUNS}`); }
+  for (const cond of CONDS) { const p = perTurn[`${i}|${cond}`]; line.push(`${cond.slice(0, 4)}: dlg ${Math.round(p.dlg / RUNS)}% spk ${(p.spk / RUNS).toFixed(1)} hb ${p.hb}/${RUNS}`); }
   console.log(line.join("  |  "));
 }
 

@@ -24,10 +24,25 @@ const to = num("--to", Infinity);
 const turns = JSON.parse(readFileSync(file, "utf8"));
 const thinkOf = (t) => t.requests?.find((r) => r.type === "thinking");
 
-const THINK = grab("defaultThinkingPrompt");
+const which = argv[argv.indexOf("--template") + 1] || "shipped";
+const SHIPPED = grab("defaultThinkingPrompt");
+// slot = the structural per-character Lines candidate (kept in sync with narration-format-probe's SLOT).
+function buildSlot() {
+  const edits = [
+    ["Beats: <two to four sentences of what happens this turn as the scene continues - the physical actions and, in quotation marks, the words the present characters actually speak aloud>",
+      "Beats: <two to four sentences of the physical actions and reactions that happen this turn as the scene continues>\nLines:\n- <name> - \"<the words this character speaks aloud this turn>\" (or (silent) if they truly say nothing)"],
+    ["- The Beats are what the world and the other characters do and say - their grounded physical reactions and the words they speak aloud, in quotation marks, consistent with the Cast above. Characters present keep speaking as the scene continues; don't reduce them to silent motion. Never write the outcome of the player's own action, their thoughts, or their next move.",
+      "- The Beats are the grounded physical actions and reactions that happen this turn - what the world and the characters physically do, consistent with the Cast above. Never write the outcome of the player's own action, their thoughts, or their next move.\n- Lines carries the spoken words: give one entry for each present character who could react this turn, their actual words aloud in quotation marks and in their own voice. Mark a character (silent) only when they genuinely say nothing - a scene with several people present normally has several of them speaking, not one voice carrying it alone."],
+    ["- Output exactly one Scene line, one Cast list, and one Beats - no narration, no choices, no stat talk, nothing else.",
+      "- Output exactly one Scene line, one Cast list, one Beats, and one Lines list - no narration, no choices, no stat talk, nothing else."],
+  ];
+  let c = SHIPPED; for (const [f, t] of edits) { if (!c.includes(f)) throw new Error("slot edit target missing"); c = c.replace(f, t); }
+  return c;
+}
+const TMPL = which === "slot" ? buildSlot() : SHIPPED;
 function rerender(sys) {
   const S = "## Game World", E = "Respond in exactly this format:";
-  return THINK.slice(0, THINK.indexOf(S)) + sys.slice(sys.indexOf(S), sys.indexOf(E)).trimEnd() + "\n\n" + THINK.slice(THINK.indexOf(E));
+  return TMPL.slice(0, TMPL.indexOf(S)) + sys.slice(sys.indexOf(S), sys.indexOf(E)).trimEnd() + "\n\n" + TMPL.slice(TMPL.indexOf(E));
 }
 
 // Cast members (besides the player), from the "- <Name> - <placement>" lines; strip any "(how known)" tail.
@@ -49,7 +64,7 @@ function voicedCount(beats, names) {
 const jobs = [];
 for (let i = from; i <= Math.min(to, turns.length - 1); i++) if (thinkOf(turns[i])?.messages) for (let r = 0; r < RUNS; r++) jobs.push({ i, r });
 
-console.log(`PLAN-QUALITY VARIANCE · ${file} · "${opts.model}" · runs ${RUNS}\n`);
+console.log(`PLAN-QUALITY VARIANCE · ${file} · "${opts.model}" · template ${which} · runs ${RUNS}\n`);
 const scored = await runAll(jobs, async ({ i, r }) => {
   const th = thinkOf(turns[i]);
   const msgs = th.messages.map((m) => (m.role === "system" ? { ...m, content: rerender(m.content) } : m));
