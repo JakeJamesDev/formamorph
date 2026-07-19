@@ -12,6 +12,7 @@ import {
   type ImageEndpointPresetStore, type ImageEndpointValues, type ImageEndpointValueKey,
 } from '../lib/imageEndpointPresets';
 import { fetchContextLength } from '../lib/contextLength';
+import { registerDevHook } from '../lib/devRouter';
 import { usePersistentState, stringCodec, boolCodec, intCodec, floatCodec, nullableIntCodec } from '../lib/usePersistentState';
 import { usePrefersReducedMotion } from '../lib/usePrefersReducedMotion';
 import {
@@ -80,6 +81,8 @@ function seedImagePresetStore(): ImageEndpointPresetStore {
     sampler: str('imageSampler', d.sampler),
     adetailer: d.adetailer,
     workflow: d.workflow,
+    invokeEncoder: d.invokeEncoder,
+    invokeVae: d.invokeVae,
   });
 }
 
@@ -543,7 +546,7 @@ function useProvideSettings() {
     portraitWidth: imagePortraitWidth, portraitHeight: imagePortraitHeight,
     landscapeWidth: imageLandscapeWidth, landscapeHeight: imageLandscapeHeight,
     steps: imageSteps, cfg: imageCfg, sampler: imageSampler, adetailer: imageAdetailer,
-    workflow: imageWorkflow,
+    workflow: imageWorkflow, invokeEncoder: imageInvokeEncoder, invokeVae: imageInvokeVae,
   } = imageValues;
   const setImageProvider = patchImage('provider');
   const setImageEndpoint = patchImage('endpoint');
@@ -560,6 +563,18 @@ function useProvideSettings() {
   const setImageSampler = patchImage('sampler');
   const setImageAdetailer = patchImage('adetailer');
   const setImageWorkflow = patchImage('workflow');
+  const setImageInvokeEncoder = patchImage('invokeEncoder');
+  const setImageInvokeVae = patchImage('invokeVae');
+  // DEV-only: let preview verification set Image Gen values in one call (`window.__fmDev.setImage({...})`)
+  // instead of driving Radix dropdowns by hand. Tree-shaken from prod via the import.meta.env.DEV guard.
+  useEffect(() => {
+    if (!import.meta.env.DEV) return;
+    return registerDevHook('setImage', (partial: Partial<ImageEndpointValues>) => {
+      setImagePresetStore((s) => (Object.entries(partial) as [ImageEndpointValueKey, ImageEndpointValues[ImageEndpointValueKey]][])
+        .reduce((acc, [key, value]) => imageUpdateValue(acc, key, value), s));
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- register the dev hook once; setImagePresetStore is stable
+  }, []);
   // Preset management (Settings → Image Gen → Endpoint selector). Every preset is editable, including Default.
   const imageEndpointPresets = imagePresetStore.presets.map((p) => ({ id: p.id, name: p.name }));
   const activeImageEndpointPresetId = imagePresetStore.activeId;
@@ -869,6 +884,10 @@ function useProvideSettings() {
     setImageAdetailer,
     imageWorkflow,
     setImageWorkflow,
+    imageInvokeEncoder,
+    setImageInvokeEncoder,
+    imageInvokeVae,
+    setImageInvokeVae,
     imageEndpointPresets,
     activeImageEndpointPresetId,
     activeImageEndpointPresetName,

@@ -118,7 +118,7 @@ function sanitize(obj: unknown, currentAppVersion: string): ParseResult {
   }
   if (droppedKeys > 0) warnings.push(`${droppedKeys} unrecognized field(s) were ignored.`);
 
-  const style: SectionStyle = o.style === 'labels' ? 'labels' : 'markdown';
+  const style: SectionStyle = o.style === 'labels' ? 'labels' : o.style === 'xml' ? 'xml' : 'markdown';
   const name = typeof o.name === 'string' && o.name.trim() ? o.name.trim() : 'Imported Preset';
 
   const preset: ImportedPreset = { name, style, values: values as PromptValues };

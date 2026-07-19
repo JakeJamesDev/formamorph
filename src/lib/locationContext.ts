@@ -1,7 +1,11 @@
 import type { Entity, GameLocation } from "@/types";
 import { NONE_PLACEHOLDER } from "./promptFallbacks";
+import { xmlEscape } from "./utils";
 
 type LocationWithEntities = (GameLocation & { entity?: string[] }) | null;
+
+/** Section-style shape a context builder renders in (mirrors the chip format axis). */
+type ContextFormat = "simple" | "markdown" | "xml";
 
 const pickDescription = (preferSummary: boolean, summary?: string, description?: string) =>
   preferSummary ? summary?.trim() || description : description;
@@ -34,15 +38,18 @@ function appendAllowedFields<T>(
  *  sublocations / destinations / reachable builders, which differ only in which locations they pass. */
 function buildLocationList(
   items: GameLocation[],
-  opts: { preferSummary?: boolean; format?: "simple" | "markdown" } = {},
+  opts: { preferSummary?: boolean; format?: ContextFormat } = {},
 ): string {
   const { preferSummary = false, format = "simple" } = opts;
-  const md = format === "markdown";
   let output = "";
   for (const item of items) {
     const desc = pickDescription(preferSummary, item.aiSummary, item.aiDescription);
     const hasDesc = !!desc && desc.trim() !== "";
-    if (md) output += hasDesc ? `- **${item.name}:** ${desc}\n` : `- **${item.name}**\n`;
+    if (format === "xml") {
+      let inner = `  <name>${xmlEscape(item.name)}</name>\n`;
+      if (hasDesc) inner += `  <description>${xmlEscape(desc!)}</description>\n`;
+      output += `<location>\n${inner}</location>\n`;
+    } else if (format === "markdown") output += hasDesc ? `- **${item.name}:** ${desc}\n` : `- **${item.name}**\n`;
     else output += hasDesc ? `${item.name}: ${desc}\n` : `${item.name}\n`;
   }
   return output;
@@ -57,17 +64,20 @@ function buildLocationList(
  * `aiDescription` when no summary is authored) — used by the lightweight precall planning request.
  *
  * `format` mirrors the Default/Simple presets: `'simple'` is plain `key: value` lines; `'markdown'` is a
- * bold-key bullet per field (`- **key:** value`) a small model sections more cleanly.
+ * bold-key bullet per field (`- **key:** value`) a small model sections more cleanly; `'xml'` is a `<key>`
+ * child tag per field (the wrapping section tag stands in for a `<location>` element).
  */
 export function buildLocationContext(
   location: LocationWithEntities,
-  opts: { preferSummary?: boolean; format?: "simple" | "markdown" } = {},
+  opts: { preferSummary?: boolean; format?: ContextFormat } = {},
 ): string {
   if (!location) return NONE_PLACEHOLDER;
 
   const { preferSummary = false, format = "simple" } = opts;
   const field = (key: string, value: string | number | boolean) =>
-    format === "markdown" ? `- **${key}:** ${value}\n` : `${key}: ${value}\n`;
+    format === "xml" ? `<${key}>${xmlEscape(String(value))}</${key}>\n`
+    : format === "markdown" ? `- **${key}:** ${value}\n`
+    : `${key}: ${value}\n`;
 
   // Name, then description. The legacy `description` is a last resort: migration never folds it, so a
   // pre-audience-split world may carry only that. Used only when no authored AI text exists, emitted once
@@ -89,20 +99,24 @@ export function buildLocationContext(
  *
  * `format` mirrors the Default/Simple presets: `'simple'` leads each entity with its bare name and plain
  * `key: value` fields indented under it; `'markdown'` makes the name a bold subject bullet with nested
- * bold-key field bullets (`- **Name**` / `  - **key:** value`).
+ * bold-key field bullets (`- **Name**` / `  - **key:** value`); `'xml'` wraps each entity in `<entity>` with
+ * a `<name>` and one `<key>` child per field.
  */
 export function buildEntityContext(
   location: LocationWithEntities,
   entities: Entity[],
-  opts: { preferSummary?: boolean; format?: "simple" | "markdown" } = {},
+  opts: { preferSummary?: boolean; format?: ContextFormat } = {},
 ): string {
   if (!location) return NONE_PLACEHOLDER;
 
   const { preferSummary = false, format = "simple" } = opts;
   const md = format === "markdown";
+  const xml = format === "xml";
   const head = (name: string) => (md ? `- **${name}**\n` : `${name}\n`);
   const field = (key: string, value: string | number | boolean) =>
-    md ? `  - **${key}:** ${value}\n` : `  ${key}: ${value}\n`;
+    xml ? `  <${key}>${xmlEscape(String(value))}</${key}>\n`
+    : md ? `  - **${key}:** ${value}\n`
+    : `  ${key}: ${value}\n`;
   const entityList = location.entities || location.entity || [];
   if (entityList.length === 0) return NONE_PLACEHOLDER;
 
@@ -110,11 +124,17 @@ export function buildEntityContext(
   entityList.forEach((entityId: string) => {
     const entityItem = entities.find((f) => f.id === entityId);
     if (!entityItem) return;
-    output += head(entityItem.name);
     const entityDescription = pickDescription(preferSummary, entityItem.aiSummary, entityItem.aiDescription);
-    if (entityDescription && entityDescription.trim() !== "") {
-      output += field("description", entityDescription);
+    const hasDesc = !!entityDescription && entityDescription.trim() !== "";
+    if (xml) {
+      let inner = field("name", entityItem.name);
+      if (hasDesc) inner += field("description", entityDescription!);
+      inner += appendAllowedFields(entityItem, AI_ENTITY_FIELDS, field);
+      output += `<entity>\n${inner}</entity>\n`;
+      return;
     }
+    output += head(entityItem.name);
+    if (hasDesc) output += field("description", entityDescription!);
     output += appendAllowedFields(entityItem, AI_ENTITY_FIELDS, field);
   });
 
@@ -131,7 +151,7 @@ export function buildEntityContext(
 export function buildSublocationsContext(
   current: LocationWithEntities,
   locations: GameLocation[],
-  opts: { preferSummary?: boolean; format?: "simple" | "markdown" } = {},
+  opts: { preferSummary?: boolean; format?: ContextFormat } = {},
 ): string {
   if (!current) return NONE_PLACEHOLDER;
   const kids = locations.filter((l) => (l.parentId ?? null) === current.id);
@@ -157,7 +177,7 @@ export function buildSublocationEntitiesContext(
   current: LocationWithEntities,
   locations: GameLocation[],
   entities: Entity[],
-  opts: { preferSummary?: boolean; format?: "simple" | "markdown"; excludeIds?: string[] } = {},
+  opts: { preferSummary?: boolean; format?: ContextFormat; excludeIds?: string[] } = {},
 ): string {
   if (!current) return NONE_PLACEHOLDER;
   const exclude = new Set(opts.excludeIds ?? []);
@@ -197,7 +217,7 @@ export function navigableDestinations(
 export function buildDestinationsContext(
   current: LocationWithEntities,
   locations: GameLocation[],
-  opts: { preferSummary?: boolean; format?: "simple" | "markdown" } = {},
+  opts: { preferSummary?: boolean; format?: ContextFormat } = {},
 ): string {
   if (!current) return NONE_PLACEHOLDER;
   const dests = navigableDestinations(current, locations);
@@ -232,7 +252,7 @@ export function reachableEntityIds(current: LocationWithEntities, locations: Gam
 export function buildReachableLocationsContext(
   current: LocationWithEntities,
   locations: GameLocation[],
-  opts: { preferSummary?: boolean; format?: "simple" | "markdown" } = {},
+  opts: { preferSummary?: boolean; format?: ContextFormat } = {},
 ): string {
   if (!current) return NONE_PLACEHOLDER;
   const reachable = reachableLocations(current, locations);
@@ -250,7 +270,7 @@ export function buildReachableEntitiesContext(
   current: LocationWithEntities,
   locations: GameLocation[],
   entities: Entity[],
-  opts: { preferSummary?: boolean; format?: "simple" | "markdown"; excludeIds?: string[] } = {},
+  opts: { preferSummary?: boolean; format?: ContextFormat; excludeIds?: string[] } = {},
 ): string {
   if (!current) return NONE_PLACEHOLDER;
   const exclude = new Set(opts.excludeIds ?? []);

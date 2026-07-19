@@ -5,6 +5,7 @@ import { Code, Snippet } from "./guideBits";
 const TITLES: Record<ImageProviderId, string> = {
   a1111: "Set up Automatic1111 / Forge",
   comfyui: "Set up ComfyUI",
+  invokeai: "Set up InvokeAI",
   openai: "Set up OpenAI-compatible (cloud)",
 };
 
@@ -46,6 +47,17 @@ const ImageSetupGuide = ({
             <Snippet>--enable-cors-header</Snippet>
             <ul className="list-disc list-inside text-muted-foreground space-y-0.5">
               <li>The Model &amp; Sampler lists load from the server automatically; the Workflow field ships an editable default.</li>
+            </ul>
+          </>
+        )}
+
+        {provider === "invokeai" && (
+          <>
+            <p>Let InvokeAI accept the app&apos;s origin. Add it to <Code>allow_origins</Code> in your <Code>invokeai.yaml</Code> (in the InvokeAI root folder), then restart InvokeAI:</p>
+            <Snippet>{`allow_origins: ["${window.location.origin}"]`}</Snippet>
+            <ul className="list-disc list-inside text-muted-foreground space-y-0.5">
+              <li>Default endpoint is <Code>http://127.0.0.1:9090</Code>. The Model list loads from the server automatically — pick an installed SDXL, SD1.5, or Z-Image model.</li>
+              <li>Z-Image also needs a Qwen3 encoder and a FLUX-type VAE; Formamorph auto-picks installed ones (override in Settings if needed).</li>
             </ul>
           </>
         )}

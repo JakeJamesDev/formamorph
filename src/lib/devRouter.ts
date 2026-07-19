@@ -72,8 +72,10 @@ export function useDevRoute(): DevRoute | null {
 /** Install `window.__fmDev` (goto/route/clear). Returns a cleanup; a no-op outside DEV. Call once from App. */
 export function installDevRouter(): () => void {
   if (!DEV) return () => {};
-  const w = window as unknown as { __fmDev?: unknown };
-  w.__fmDev = {
+  const w = window as unknown as { __fmDev?: Record<string, unknown> };
+  // Merge (don't replace) so imperative hooks registered by mounted providers (e.g. `setImage` from
+  // SettingsContext) survive regardless of effect order — child effects run before this parent effect.
+  w.__fmDev = Object.assign(w.__fmDev ?? {}, {
     /** Jump to a screen/modal/tab in one call — sets the `#dev` hash the consumers react to. */
     goto(view?: string, opts?: { modal?: string; tab?: string; subtab?: string; fixture?: string }) {
       const params = new URLSearchParams();
@@ -93,8 +95,21 @@ export function installDevRouter(): () => void {
     clear() {
       window.location.hash = '';
     },
-  };
+  });
   return () => {
     delete (w as { __fmDev?: unknown }).__fmDev;
+  };
+}
+
+/** DEV-only: attach an imperative helper onto `window.__fmDev` (e.g. a settings setter), so preview
+ *  verification can drive app state that has no hash route. Merges into whatever the router installed;
+ *  returns a cleanup. No-op (and tree-shaken) outside DEV. */
+export function registerDevHook(name: string, fn: (...args: never[]) => unknown): () => void {
+  if (!DEV) return () => {};
+  const w = window as unknown as { __fmDev?: Record<string, unknown> };
+  w.__fmDev = w.__fmDev ?? {};
+  w.__fmDev[name] = fn;
+  return () => {
+    if (w.__fmDev) delete w.__fmDev[name];
   };
 }

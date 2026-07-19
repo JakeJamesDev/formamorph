@@ -1,7 +1,7 @@
 // Shared shape for AI image generation. `ImageGenParams` is the lowest-common-denominator request
 // (the A1111 txt2img field set) that every provider normalizes toward; providers drop what they can't map.
 
-export type ImageProviderId = 'a1111' | 'openai' | 'comfyui';
+export type ImageProviderId = 'a1111' | 'openai' | 'comfyui' | 'invokeai';
 
 export interface ImageGenParams {
   prompt: string;
@@ -28,6 +28,8 @@ export interface ImageGenOpts {
   signal?: AbortSignal;
   onProgress?: (p: ImageProgress) => void; // A1111 + ComfyUI emit; OpenAI ignores it
   workflow?: string; // ComfyUI only: the API-format workflow template with %tokens%
+  invokeEncoder?: string; // InvokeAI Z-Image only: Qwen3 encoder override (name/key); blank = auto-pick
+  invokeVae?: string; // InvokeAI Z-Image only: FLUX VAE override (name/key); blank = auto-pick
 }
 
 /** Generate one image, returning a `data:image/...;base64,...` URL. Throws on failure (caller ignores AbortError). */

@@ -33,6 +33,7 @@ import { PresetNameDialog } from './PresetNameDialog';
 import { defaultSystemPrompt, defaultChoicesPrompt, defaultStatUpdatesPrompt, defaultLocationChangePrompt, defaultThinkingPrompt, defaultSummaryPrompt, defaultChoicesUserPrompt, defaultStatUpdatesUserPrompt, defaultLocationChangeUserPrompt, defaultSummaryUserPrompt, defaultDiaryPrompt, defaultDirectorPrompt, defaultDirectorUserPrompt, defaultCharacterPrompt, defaultStoryboardPrompt } from '../game/GamePrompts';
 import { isDesktop } from '@/lib/imageGen/desktop';
 import { fetchComfyMeta, DEFAULT_COMFY_WORKFLOW, type ComfyMeta } from '@/lib/imageGen/comfyui';
+import { fetchInvokeMeta, type InvokeMeta } from '@/lib/imageGen/invokeai';
 import { DEFAULT_ENDPOINT_BY_PROVIDER, resolveImageEndpoint } from '@/lib/imageGen';
 import { TokenAutocomplete } from '@/components/TokenAutocomplete';
 import { COMMON_LANGUAGES } from '@/lib/languages';
@@ -428,6 +429,10 @@ export const SettingsModal = ({ isOpen, onOpenChange, previewValues, initialTab,
     setImageAdetailer,
     imageWorkflow,
     setImageWorkflow,
+    imageInvokeEncoder,
+    setImageInvokeEncoder,
+    imageInvokeVae,
+    setImageInvokeVae,
     imageEndpointPresets,
     activeImageEndpointPresetId,
     activeImageEndpointPresetName,
@@ -512,6 +517,23 @@ export const SettingsModal = ({ isOpen, onOpenChange, previewValues, initialTab,
         if (!cancelled) setComfyMeta(meta);
       } catch {
         // silent: ComfyUI not running / unreachable — the fields fall back to free text
+      }
+    }, 300);
+    return () => { cancelled = true; clearTimeout(t); };
+  }, [imageProvider, imageEndpoint, imageApiToken]);
+
+  // InvokeAI model/submodel lists that back the Model + Z-Image override dropdowns. Auto-fetched from
+  // /api/v2/models/ whenever InvokeAI is the active provider (debounced); fails silently when unreachable.
+  const [invokeMeta, setInvokeMeta] = useState<InvokeMeta | null>(null);
+  useEffect(() => {
+    if (imageProvider !== 'invokeai') return;
+    let cancelled = false;
+    const t = setTimeout(async () => {
+      try {
+        const meta = await fetchInvokeMeta(resolveImageEndpoint(imageProvider, imageEndpoint), imageApiToken);
+        if (!cancelled) setInvokeMeta(meta);
+      } catch {
+        // silent: InvokeAI not running / unreachable — the fields fall back to free text
       }
     }, 300);
     return () => { cancelled = true; clearTimeout(t); };
@@ -1221,6 +1243,7 @@ export const SettingsModal = ({ isOpen, onOpenChange, previewValues, initialTab,
                   <SelectContent>
                     <SelectItem value="a1111">Automatic1111 / Forge (local)</SelectItem>
                     <SelectItem value="comfyui">ComfyUI (local)</SelectItem>
+                    <SelectItem value="invokeai">InvokeAI (local)</SelectItem>
                     <SelectItem value="openai" disabled={!desktop}>
                       OpenAI-compatible (cloud){desktop ? '' : ' — desktop app only'}
                     </SelectItem>
@@ -1253,6 +1276,15 @@ export const SettingsModal = ({ isOpen, onOpenChange, previewValues, initialTab,
                     onChange={(v) => setImageModel(v[0] ?? '')}
                     options={comfyMeta?.checkpoints ?? []}
                     placeholder="(server default)"
+                  />
+                ) : imageProvider === 'invokeai' ? (
+                  <TokenAutocomplete
+                    single
+                    openOnFocus
+                    values={imageModel ? [imageModel] : []}
+                    onChange={(v) => setImageModel(v[0] ?? '')}
+                    options={(invokeMeta?.models ?? []).map((m) => m.name)}
+                    placeholder="Pick an installed model"
                   />
                 ) : (
                   <Input id="imageModel" value={imageModel} onChange={(e) => setImageModel(e.target.value)} placeholder="(server default)" />
@@ -1338,6 +1370,31 @@ export const SettingsModal = ({ isOpen, onOpenChange, previewValues, initialTab,
                     </p>
                   </div>
                 </Row>
+              )}
+              {imageProvider === 'invokeai'
+                && invokeMeta?.models.find((m) => m.name === imageModel || m.key === imageModel)?.base === 'z-image' && (
+                <>
+                  <Row center label="Qwen3 Encoder" htmlFor="imageInvokeEncoder" hint="Z-Image needs a Qwen3 text encoder. Leave blank to auto-pick the first installed one.">
+                    <TokenAutocomplete
+                      single
+                      openOnFocus
+                      values={imageInvokeEncoder ? [imageInvokeEncoder] : []}
+                      onChange={(v) => setImageInvokeEncoder(v[0] ?? '')}
+                      options={(invokeMeta?.encoders ?? []).map((m) => m.name)}
+                      placeholder="(auto)"
+                    />
+                  </Row>
+                  <Row center label="Z-Image VAE" htmlFor="imageInvokeVae" hint="Z-Image needs a FLUX-type VAE (e.g. FLUX.1-schnell VAE). Leave blank to auto-pick.">
+                    <TokenAutocomplete
+                      single
+                      openOnFocus
+                      values={imageInvokeVae ? [imageInvokeVae] : []}
+                      onChange={(v) => setImageInvokeVae(v[0] ?? '')}
+                      options={(invokeMeta?.vaes ?? []).map((m) => m.name)}
+                      placeholder="(auto)"
+                    />
+                  </Row>
+                </>
               )}
             </div>
             </ScrollArea>

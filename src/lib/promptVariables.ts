@@ -86,6 +86,7 @@ const FORMAT_AXIS: PromptVariantAxis = {
   options: [
     { id: null, label: 'Simple', help: 'Plain lines — no bullets or bold.' },
     { id: 'markdown', label: 'Markdown', help: 'Markdown: bullets with bold names.' },
+    { id: 'xml', label: 'XML', help: 'XML: nested tags per item.' },
   ],
 };
 

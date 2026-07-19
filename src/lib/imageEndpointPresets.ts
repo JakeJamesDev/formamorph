@@ -27,6 +27,10 @@ export interface ImageEndpointValues {
   adetailer: boolean;
   /** ComfyUI only: the API-format workflow template with %tokens%. */
   workflow: string;
+  /** InvokeAI Z-Image only: Qwen3 encoder override (model name/key); blank = auto-pick. */
+  invokeEncoder: string;
+  /** InvokeAI Z-Image only: FLUX VAE override (model name/key); blank = auto-pick. */
+  invokeVae: string;
 }
 
 export type ImageEndpointValueKey = keyof ImageEndpointValues;
@@ -59,6 +63,8 @@ export const DEFAULT_IMAGE_ENDPOINT_VALUES: ImageEndpointValues = {
   sampler: DEFAULT_IMAGE_SAMPLER,
   adetailer: DEFAULT_IMAGE_ADETAILER,
   workflow: DEFAULT_COMFY_WORKFLOW,
+  invokeEncoder: '',
+  invokeVae: '',
 };
 
 export const DEFAULT_IMAGE_PRESET_ID = 'default';
@@ -77,6 +83,7 @@ function coerceValues(rec: Record<string, unknown>): ImageEndpointValues {
     provider:
       rec.provider === 'openai' ? 'openai'
       : rec.provider === 'comfyui' ? 'comfyui'
+      : rec.provider === 'invokeai' ? 'invokeai'
       : rec.provider === 'a1111' ? 'a1111'
       : d.provider,
     endpoint: str('endpoint', d.endpoint),
@@ -93,6 +100,8 @@ function coerceValues(rec: Record<string, unknown>): ImageEndpointValues {
     sampler: str('sampler', d.sampler),
     adetailer: typeof rec.adetailer === 'boolean' ? rec.adetailer : d.adetailer,
     workflow: str('workflow', d.workflow),
+    invokeEncoder: str('invokeEncoder', d.invokeEncoder),
+    invokeVae: str('invokeVae', d.invokeVae),
   };
 }
 

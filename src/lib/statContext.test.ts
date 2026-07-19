@@ -40,4 +40,20 @@ describe('buildStatContext', () => {
     const bare = { ...vigor, description: '' } as PlayerStat;
     expect(buildStatContext([bare], all)).toBe('Vigor: 62/100 (Winded)');
   });
+  it('xml → one <stat> with a nested child tag per selected piece', () => {
+    expect(buildStatContext([vigor], all, 'xml')).toBe(
+      '<stat>\n  <name>Vigor</name>\n  <value>62/100</value>\n  <status>Winded</status>\n  <meaning>Physical stamina.</meaning>\n</stat>',
+    );
+  });
+  it('xml with no pieces → just the <name> child', () => {
+    expect(buildStatContext([vigor], { values: false, status: false, meaning: false }, 'xml')).toBe(
+      '<stat>\n  <name>Vigor</name>\n</stat>',
+    );
+  });
+  it('xml escapes markup in values', () => {
+    const amp = { ...vigor, name: 'H<P & M', description: '' } as PlayerStat;
+    expect(buildStatContext([amp], { values: false, status: false, meaning: false }, 'xml')).toBe(
+      '<stat>\n  <name>H&lt;P &amp; M</name>\n</stat>',
+    );
+  });
 });

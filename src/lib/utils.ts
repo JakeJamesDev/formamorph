@@ -10,6 +10,11 @@ export function escapeRegExp(s: string): string {
   return s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
 }
 
+/** Escape a string for use as XML text/attribute content (`&`, `<`, `>`). */
+export function xmlEscape(s: string): string {
+  return s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+}
+
 /** Clamp `value` into the inclusive `[min, max]` range. */
 export function clamp(value: number, min: number, max: number): number {
   return Math.min(Math.max(value, min), max)

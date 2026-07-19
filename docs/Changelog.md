@@ -12,6 +12,15 @@ Each release groups changes as **Major** / **Minor**, then **Added** / **Removed
 
 _Unreleased — new work accumulates here until it earns a version bump. The next batch will pin its own version; `package.json` reads **2.5.0** (just released below)._
 
+#### ✨ Added
+
+- **👤 User-facing**
+  - **New built-in "XML" prompt preset.** Alongside Default (Markdown) and Simple, you can now switch the whole prompt set to an **XML** style — a format some models follow more reliably. It wraps each context section in tags (`<game_world>…</game_world>`) *and* renders each chip's contents as nested XML (stats, traits, location, and cast become `<stat>`, `<trait>`, `<entity>` elements with child tags). The chips' new **XML** format option is also selectable individually on any preset. Like the others the built-in is read-only; duplicate it to a preset of your own to edit.
+  - **InvokeAI is now a supported image generator.** Alongside Automatic1111/Forge and ComfyUI, you can point Formamorph at a local **InvokeAI** server to generate entity, location, and world images. Pick an installed **SDXL**, **SD1.5**, or **Z-Image** model from a list that loads straight from the server — no filenames to type. Z-Image needs a Qwen3 text encoder and a FLUX-type VAE too; Formamorph finds installed ones for you, with an override in Settings if you'd rather choose. The **How to Set Up** button shows the one line to add to your `invokeai.yaml` so the app is allowed to reach it.
+
+- **🛠️ Developer tooling**
+  - **The dev router can set Image Gen settings directly.** `window.__fmDev.setImage({ provider, model, … })` patches the active image-endpoint preset in one call, so preview verification can reach a provider/model state without driving the Settings dropdowns by hand. DEV-only, tree-shaken from production.
+
 #### 🐛 Fixed
 
 - **👤 User-facing**

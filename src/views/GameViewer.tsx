@@ -908,7 +908,7 @@ const GameViewer = ({
 
   const getEndpointUrl = () => endpointUrl;
 
-  const generateTraitDescriptions = useCallback((format: 'simple' | 'markdown' = 'simple') => {
+  const generateTraitDescriptions = useCallback((format: 'simple' | 'markdown' | 'xml' = 'simple') => {
     if (!playerTraits.length) {
       return NONE_PLACEHOLDER;
     }
@@ -951,7 +951,7 @@ const GameViewer = ({
     // reachable-entities roster from re-listing someone who has already come over.
     const presentIds = withDiscovered(loc)?.entities ?? [];
     const here = withDiscovered(loc);
-    type CtxOpts = { preferSummary?: boolean; format?: "simple" | "markdown" };
+    type CtxOpts = { preferSummary?: boolean; format?: "simple" | "markdown" | "xml" };
 
     // Entity roster precedence: here > sub-location > reachable. A character shows only in the highest scope
     // it belongs to — sub-location drops anyone present here; reachable drops present + sub-location ids.
@@ -978,7 +978,7 @@ const GameViewer = ({
         return [tok, buildStatContext(
           playerStats,
           { values: sel.numbers != null, status: sel.descriptions != null, meaning: sel.meaning != null },
-          sel.format === 'markdown' ? 'markdown' : 'simple',
+          sel.format === 'markdown' ? 'markdown' : sel.format === 'xml' ? 'xml' : 'simple',
         )];
       }),
     );
@@ -987,18 +987,24 @@ const GameViewer = ({
       ...statsValues,
       "<TRAITS DESCRIPTION>": generateTraitDescriptions('simple'),
       "<TRAITS DESCRIPTION|markdown>": generateTraitDescriptions('markdown'),
+      "<TRAITS DESCRIPTION|xml>": generateTraitDescriptions('xml'),
       "<NOTES>": playerNotes || NONE_PLACEHOLDER,
     };
 
-    // Generate every scope × content (full/summary) × format (simple/markdown) variant token. The id order
+    // Generate every scope × content (full/summary) × format (simple/markdown/xml) variant token. The id order
     // (scope.content.format) mirrors the chip's axis order, so tokens match what encodeVariant produces.
+    const formats: { id: string; format: CtxOpts["format"] }[] = [
+      { id: "", format: "simple" },
+      { id: "markdown", format: "markdown" },
+      { id: "xml", format: "xml" },
+    ];
     const addScoped = (base: string, scopes: Record<string, (opts: CtxOpts) => string>) => {
       for (const [scope, build] of Object.entries(scopes)) {
         for (const preferSummary of [false, true]) {
-          for (const markdown of [false, true]) {
-            const id = [scope, preferSummary ? "summary" : "", markdown ? "markdown" : ""].filter(Boolean).join(".");
+          for (const { id: fmtId, format } of formats) {
+            const id = [scope, preferSummary ? "summary" : "", fmtId].filter(Boolean).join(".");
             const token = id ? `${base.slice(0, -1)}|${id}>` : base;
-            values[token] = build({ preferSummary, format: markdown ? "markdown" : "simple" });
+            values[token] = build({ preferSummary, format });
           }
         }
       }

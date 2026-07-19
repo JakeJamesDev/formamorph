@@ -36,6 +36,20 @@ describe('restyle', () => {
     ].join('\n'));
   });
 
+  it('wraps each section in slugified xml tags, leaving preamble outside', () => {
+    const src = 'intro prose\n\n## Game World\n<WORLD DESCRIPTION>\n\n## Formatting (Markdown)\n- do a thing';
+    expect(restyle(src, 'xml')).toBe(
+      'intro prose\n\n<game_world>\n<WORLD DESCRIPTION>\n\n</game_world>\n<formatting_markdown>\n- do a thing\n</formatting_markdown>',
+    );
+  });
+
+  it('closes deeper sections when a same-or-higher-level header opens, and all at EOF', () => {
+    const src = '## A\na body\n### B\nb body\n## C\nc body';
+    expect(restyle(src, 'xml')).toBe(
+      '<a>\na body\n<b>\nb body\n</b>\n</a>\n<c>\nc body\n</c>',
+    );
+  });
+
   it('leaves a pure-prose prompt (no headers) unchanged in both styles', () => {
     expect(restyle(defaultDiscoverEntityPrompt, 'labels')).toBe(defaultDiscoverEntityPrompt);
     expect(restyle(defaultDiscoverEntityPrompt, 'markdown')).toBe(defaultDiscoverEntityPrompt);
@@ -71,6 +85,15 @@ describe('buildStyledValues', () => {
     const markdown = buildStyledValues(canonical, 'markdown');
     expect(labels.systemPrompt).toBe('PLAYER STATS:\n<STATS DESCRIPTION|descriptions>');
     expect(markdown.systemPrompt).toBe('## Player Stats\n<STATS DESCRIPTION|descriptions.markdown>');
+  });
+
+  it('xml style sets the chip format axis to xml (markdown → xml)', () => {
+    const canonical: PromptValues = Object.fromEntries(
+      PROMPT_TEXT_KEYS.map((k) => [k, '## Player Stats\n<STATS DESCRIPTION|descriptions.markdown>']),
+    ) as PromptValues;
+    expect(buildStyledValues(canonical, 'xml').systemPrompt).toBe(
+      '<player_stats>\n<STATS DESCRIPTION|descriptions.xml>\n</player_stats>',
+    );
   });
 
   it('labels style strips a bare markdown-format stat token to the plain base', () => {

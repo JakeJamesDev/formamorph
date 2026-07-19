@@ -8,6 +8,7 @@ import {
   type GroupTreeNode, type FlatTreeNode,
 } from './groupTree';
 import type { Trait, TraitGroup } from '@/types';
+import { xmlEscape } from './utils';
 
 export type TraitTreeNode = GroupTreeNode<TraitGroup, Trait>;
 export type FlatTraitNode = FlatTreeNode<TraitGroup, Trait>;
@@ -57,16 +58,18 @@ export function applyTraitDrop(
  *
  * `format` controls the shape (mirrors the Default/Simple presets): `'simple'` is plain labels + indentation
  * (`World:` / `Name: desc`); `'markdown'` is nested bold bullets (`- **World:** desc` / `- **Name:** desc`)
- * a small model parses more cleanly. The tree walk + selection are identical; only line shaping differs.
+ * a small model parses more cleanly; `'xml'` nests `<trait>`/`<group>` tags. The tree walk + selection are
+ * identical; only line shaping differs.
  */
 export function buildTraitContext(
   selectedIds: Iterable<string>,
   traits: Trait[],
   groups: TraitGroup[],
-  format: 'simple' | 'markdown' = 'simple',
+  format: 'simple' | 'markdown' | 'xml' = 'simple',
 ): string {
-  const md = format === 'markdown';
   const sel = new Set(selectedIds);
+  if (format === 'xml') return buildTraitContextXml(sel, traits, groups);
+  const md = format === 'markdown';
   const traitLine = (t: Trait) => {
     const name = md ? `**${t.name}:**` : `${t.name}:`;
     const bare = md ? `**${t.name}**` : t.name;
@@ -101,5 +104,46 @@ export function buildTraitContext(
     }
   };
   walk(buildTraitTree(groups, traits), 0);
+  return lines.join('\n');
+}
+
+/** XML shape of the trait block: ungrouped `<trait>` first, then each group (with ≥1 selected trait) as a
+ *  `<group>` nesting its `<name>`/`<description>`, its traits, and any descendant groups. A group with no
+ *  directly-selected trait isn't wrapped but its descendants still surface (mirrors the simple/markdown walk). */
+function buildTraitContextXml(sel: Set<string>, traits: Trait[], groups: TraitGroup[]): string {
+  const selectedIn = (groupId: string | null) =>
+    traits
+      .filter((t) => (t.groupId ?? null) === groupId && sel.has(t.id))
+      .sort((a, b) => (a.order ?? 0) - (b.order ?? 0));
+
+  const traitXml = (t: Trait, pad: string): string => {
+    const desc = t.aiDescription?.trim();
+    let inner = `\n${pad}  <name>${xmlEscape(t.name)}</name>`;
+    if (desc) inner += `\n${pad}  <description>${xmlEscape(desc)}</description>`;
+    return `${pad}<trait>${inner}\n${pad}</trait>`;
+  };
+
+  const walk = (nodes: TraitTreeNode[], pad: string): string[] => {
+    const out: string[] = [];
+    for (const node of nodes) {
+      if (node.kind !== 'group') continue;
+      const groupTraits = selectedIn(node.id);
+      const childBlocks = walk(node.children, groupTraits.length ? `${pad}  ` : pad);
+      if (!groupTraits.length) {
+        out.push(...childBlocks);
+        continue;
+      }
+      const desc = node.group.aiDescription?.trim();
+      let inner = `\n${pad}  <name>${xmlEscape(node.group.name)}</name>`;
+      if (desc) inner += `\n${pad}  <description>${xmlEscape(desc)}</description>`;
+      for (const t of groupTraits) inner += `\n${traitXml(t, `${pad}  `)}`;
+      for (const cb of childBlocks) inner += `\n${cb}`;
+      out.push(`${pad}<group>${inner}\n${pad}</group>`);
+    }
+    return out;
+  };
+
+  const lines = selectedIn(null).map((t) => traitXml(t, ''));
+  lines.push(...walk(buildTraitTree(groups, traits), ''));
   return lines.join('\n');
 }
