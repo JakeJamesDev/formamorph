@@ -79,6 +79,27 @@ Image, Image Tags and the 3D model are for the player's screen and for image gen
 
 Give a location the two or three entities the scene genuinely turns on. Everything at the player's location is sent every turn, so a crowded location is a permanent context bill.`,
   },
+  'worldEditor.aliases': {
+    title: 'Aliases',
+    body: `Other names an entity goes by — a nickname, a title, an epithet. "Rosalind" answers to "Roz", and to her title, "Warden". List as many as you like.
+
+They exist so the story keeps recognizing a character even when it doesn't use their full name. Given only the name, the narrator writes "the Warden" and Formamorph no longer sees Rosalind in the scene — she drops off the cast, out of the choices, off the Entities tab. An alias closes that gap, and the AI is told the nickname too so it can reach for it naturally.
+
+**What an alias does**
+
+- **Detection.** When an alias appears in the narration, the entity counts as present that turn — exactly as if its name had appeared. This drives who shows in the Entities tab, who the choices consider, and which characters travel with the scene.
+- **Told to the AI.** Aliases are sent alongside the name as *also known as*, so the narrator knows Rosalind and the Warden are one person and can use either.
+
+**How matching works**
+
+- **Case-sensitive**, unlike the name. Write an alias with the capitalization it'll appear in — *Cat* matches *Cat*, not *cat*. This is deliberate: short nicknames would otherwise fire inside ordinary words (*Cat* inside *category*, *scatter*).
+- **Whole words only**, and **plurals match** — an alias *Wolf* is found in *Wolves*.
+- **Skip a leading "the"/"a".** Write *Gray One*, not *the Gray One*. An article baked into the alias, matched case-sensitively, would miss *The Gray One* at the start of a sentence.
+
+Aliases apply in every mode, and they travel with the world and with an exported character card.
+
+Give a character the one or two names the story will actually use. Each alias is also a line the AI reads whenever the entity is in scene, so a long list is just extra prompt for no gain.`,
+  },
   'worldEditor.traits': {
     title: 'Traits',
     wikiAnchor: 'traits',

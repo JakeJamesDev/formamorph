@@ -20,7 +20,7 @@ export function MarkdownModal({ open, onOpenChange, title, text, footer }: {
         <DialogHeader>
           <DialogTitle>{title}</DialogTitle>
         </DialogHeader>
-        <MarkdownPanel text={text} className="max-h-[60dvh]" />
+        <MarkdownPanel text={text} className="max-h-[70dvh]" />
         {footer}
       </DialogContent>
     </Dialog>

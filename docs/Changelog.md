@@ -16,6 +16,11 @@ _Unreleased — new work accumulates here until it earns a version bump. The nex
 
 #### ✨ Added
 
+- **👤 User-facing**
+  - **Help & changelog pop-outs read better.** The in-app help, world Readme, and changelog pop-outs are taller (so long topics need less scrolling) while short ones still size to their content, and bullet lists now hang their wrapped text under the text instead of back under the bullet.
+  - **Smarter plural detection for entity names.** The story parser now recognizes irregular plurals, so an entity named "Wolf" is detected when the narration says "Wolves" (likewise City→Cities, Child→Children, Person→People) — previously only a simple trailing "s" was caught. Applies to entity names and aliases alike.
+  - **Entity aliases.** Entities now have an **Aliases** field — other names a character or thing goes by (e.g. "Synthia" also called "Matron" or "Em"). Aliases are detected in the story text just like the real name, so an entity is still recognized when the narration uses a nickname, and they're shared with the AI as "also known as" so it can use those nicknames naturally. Aliases travel with a world and with exported character cards.
+
 - **🛠️ Developer tooling**
   - **Section-style regression probe.** `regression-style-probe.mjs` A/B-tests the Default (Markdown) vs XML prompt preset on the committed regression corpus (planner continuation + digest), assembling each style faithfully — chip bodies through the real context builders, headings through the real `restyle` — so section style is the only variable. Runs under `vite-node`.
   - **Fact-adherence style probe.** `factstyle-probe.mjs` A/B-tests Markdown vs XML on a fact-dense, comprehension-trap scenario (fixed counts, positions, a name the player hasn't heard) across planner + narration surfaces at matched seeds, dumping every paired output for human judging. Also `vite-node`.

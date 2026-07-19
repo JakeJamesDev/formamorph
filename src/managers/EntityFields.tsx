@@ -2,6 +2,8 @@ import { useState } from 'react';
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { MultiSelect } from "@/components/ui/multi-select";
+import { KeywordChips } from "@/components/KeywordChips";
+import { HelpButton } from "@/components/HelpButton";
 import AiFieldToolbar from "@/components/AiFieldToolbar";
 import { TagAutocomplete } from "@/components/TagAutocomplete";
 import { ConfirmDialog } from "@/components/ConfirmDialog";
@@ -38,6 +40,20 @@ const EntityFields = ({ value, onChange, placeholders = [], locationOptions, sel
           value={value.name || ''}
           onChange={(e) => onChange('name', e.target.value)}
         />
+      </div>
+      <div className="space-y-2">
+        <div className="flex items-center gap-2">
+          <Label>Aliases</Label>
+          <HelpButton topicId="worldEditor.aliases" className="h-6 w-6" />
+        </div>
+        <KeywordChips
+          keywords={value.aliases ?? []}
+          onChange={(aliases) => onChange('aliases', aliases)}
+          placeholder="e.g. Liz, Your Majesty, Gray One"
+        />
+        <p className="text-sm text-muted-foreground">
+          Other names this entity is called — detected in narration and shared with the AI. Case-sensitive.
+        </p>
       </div>
       <div className="space-y-2">
         <Label>Player-Facing Description</Label>

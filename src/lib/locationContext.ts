@@ -126,14 +126,22 @@ export function buildEntityContext(
     if (!entityItem) return;
     const entityDescription = pickDescription(preferSummary, entityItem.aiSummary, entityItem.aiDescription);
     const hasDesc = !!entityDescription && entityDescription.trim() !== "";
+    // Aliases render explicitly (not via the scalar allowlist): joined, and under a spaced label the
+    // small models read naturally — except in xml, where a tag name can't contain spaces.
+    const aliases = (entityItem.aliases ?? []).map((a) => a.trim()).filter(Boolean);
+    const aliasLine = aliases.length
+      ? field(xml ? "aliases" : "also known as", aliases.join(", "))
+      : "";
     if (xml) {
       let inner = field("name", entityItem.name);
+      inner += aliasLine;
       if (hasDesc) inner += field("description", entityDescription!);
       inner += appendAllowedFields(entityItem, AI_ENTITY_FIELDS, field);
       output += `<entity>\n${inner}</entity>\n`;
       return;
     }
     output += head(entityItem.name);
+    output += aliasLine;
     if (hasDesc) output += field("description", entityDescription!);
     output += appendAllowedFields(entityItem, AI_ENTITY_FIELDS, field);
   });

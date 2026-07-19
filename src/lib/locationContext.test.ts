@@ -333,6 +333,22 @@ describe("buildEntityContext", () => {
     expect(buildEntityContext(loc, [guard])).toBe(NONE_PLACEHOLDER);
   });
 
+  it("surfaces aliases as an 'also known as' line, joined, right after the name", () => {
+    const aka = { ...guard, aliases: ["Matron", "Em"] };
+    const simple = buildEntityContext(location, [aka]);
+    expect(simple).toContain("  also known as: Matron, Em");
+    const md = buildEntityContext(location, [aka], { format: "markdown" });
+    expect(md).toContain("  - **also known as:** Matron, Em");
+    const xml = buildEntityContext(location, [aka], { format: "xml" });
+    expect(xml).toContain("  <name>Guard</name>\n  <aliases>Matron, Em</aliases>\n"); // spaced label can't be an xml tag
+  });
+
+  it("emits no alias line when aliases are absent, empty, or blank", () => {
+    expect(buildEntityContext(location, [guard])).not.toContain("also known as");
+    expect(buildEntityContext(location, [{ ...guard, aliases: [] }])).not.toContain("also known as");
+    expect(buildEntityContext(location, [{ ...guard, aliases: ["  "] }])).not.toContain("also known as");
+  });
+
   it("never emits editor-only grouping fields (groupId/order) to the AI", () => {
     // Grouping is purely organizational; the entity context is identical whether grouped or not.
     const grouped: Entity = { id: "g9", name: "Synthia", aiDescription: "The matron.", groupId: "elf", order: 2 };

@@ -1,3 +1,4 @@
+import pluralize from 'pluralize';
 import type { Entity } from '@/types';
 import { escapeRegExp } from './utils';
 
@@ -11,14 +12,21 @@ import { escapeRegExp } from './utils';
  * - **Multi-word** name: an exact contiguous match, or every word present somewhere, or (partial) any
  *   significant word used as a proper noun — so "Emily" marks "Emily Foster" present. The capital guard
  *   keeps lowercase common-word usage from matching.
- * - A trailing plural `s` is tolerated; blank names are skipped. A sub-3-char word (e.g. surname "Wu") is
+ * - Plurals match via `pluralize` (irregulars included: Wolf↔Wolves, City↔Cities); blank names skipped. A sub-3-char word (e.g. surname "Wu") is
  *   below the significance floor, so a bare "Wu" won't match "Ling Wu" — the exact/all-words pass still does.
  */
 
-// A word-boundary match for `word`, tolerating a trailing plural `s`. Default case-insensitive; pass
-// 'gi' for iteration via exec().
+// The distinct singular + plural surface forms of a word/phrase (deduped, blanks dropped). `pluralize`
+// inflects on the final word, so a phrase like "Iron Gate" yields "Iron Gate"/"Iron Gates" and handles
+// irregulars ("Wolf"→"Wolves", "City"→"Cities", "Child"→"Children"). Proper nouns it can't inflect
+// cleanly (e.g. "Reyes") stay self-consistent — a bad form simply never appears in prose, so it's inert.
+const wordForms = (word: string): string[] =>
+  [...new Set([word, pluralize.singular(word), pluralize.plural(word)])].filter(Boolean);
+
+// A word-boundary match for `word` OR its singular/plural forms. Default case-insensitive; pass 'gi' for
+// iteration via exec().
 const makeWordRegex = (word: string, flags = 'i'): RegExp =>
-  new RegExp(`\\b${escapeRegExp(word)}(?:s)?\\b`, flags);
+  new RegExp(`\\b(?:${wordForms(word).map(escapeRegExp).join('|')})\\b`, flags);
 
 /** True if `name` appears in `text` with an uppercase first letter (a proper-noun occurrence). */
 function occursCapitalized(text: string, name: string): boolean {
@@ -66,9 +74,32 @@ export function matchNames(
   return [...found];
 }
 
-/** The names of the defined entities that appear in `text` (a thin wrapper over `matchNames`). */
+/** True if any of an entity's aliases appears in `text`. Aliases match differently from names: exact
+ *  **case-sensitive** and `\b`-word-bounded (so short nicknames like "Em" don't hit "System"), with the
+ *  the same `pluralize`-based plural matching names get. A hit resolves to the entity's canonical name upstream. */
+function anyAliasMatches(text: string, aliases: string[] | undefined): boolean {
+  if (!aliases) return false;
+  for (const alias of aliases) {
+    const trimmed = alias?.trim();
+    if (!trimmed) continue;
+    if (makeWordRegex(trimmed, '').test(text)) return true;
+  }
+  return false;
+}
+
+/**
+ * The names of the defined entities that appear in `text`. An entity counts when its **name** matches
+ * (via `matchNames`) OR any of its **aliases** matches (case-sensitive, word-bounded); either way the
+ * returned value is the entity's canonical name. Name hits keep their in-text order; alias-only hits
+ * follow in entity order. Deduped.
+ */
 export function findEntityNames(text: string, entities: Entity[], opts?: { requireCapital?: boolean }): string[] {
-  return matchNames(text, entities.map((e) => e.name), opts);
+  const found = matchNames(text, entities.map((e) => e.name), opts);
+  for (const entity of entities) {
+    if (found.includes(entity.name)) continue;
+    if (anyAliasMatches(text, entity.aliases)) found.push(entity.name);
+  }
+  return found;
 }
 
 // Short/function words dropped before loose matching so a name like "The Wolf" can't match on "the".

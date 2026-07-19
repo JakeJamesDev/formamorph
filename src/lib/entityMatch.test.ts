@@ -16,6 +16,17 @@ describe('matchNames — single-word names (capital guard)', () => {
   it('tolerates a trailing plural s', () => {
     expect(matchNames('Goblins swarm the gate.', ['Goblin'])).toEqual(['Goblin']);
   });
+
+  it('matches irregular plurals, not just a trailing s', () => {
+    expect(matchNames('The Wolves close in.', ['Wolf'])).toEqual(['Wolf']);
+    expect(matchNames('Cities burn on the horizon.', ['City'])).toEqual(['City']);
+    expect(matchNames('The Children scatter.', ['Child'])).toEqual(['Child']);
+    expect(matchNames('The People gather.', ['Person'])).toEqual(['Person']);
+  });
+
+  it('keeps the capital guard for an irregular plural (lowercase common-word use skipped)', () => {
+    expect(matchNames('a pack of wolves roams', ['Wolf'])).toEqual([]);
+  });
 });
 
 describe('matchNames — multi-word names (no capital guard)', () => {
@@ -95,6 +106,38 @@ describe('findEntityNames', () => {
 
   it('populates a multi-word entity from a first-name-only reference', () => {
     expect(findEntityNames('Emily smiles.', [ent('Emily Foster')])).toEqual(['Emily Foster']);
+  });
+});
+
+describe('findEntityNames — aliases', () => {
+  const withAliases = (name: string, aliases: string[]): Entity => ({ id: name, name, aliases });
+
+  it('resolves an alias hit to the canonical entity name', () => {
+    const entities = [withAliases('Synthia', ['Matron', 'Matron of Teldoril'])];
+    expect(findEntityNames('The Matron watches in silence.', entities)).toEqual(['Synthia']);
+  });
+
+  it('matches aliases case-sensitively (exact) unlike the fuzzy name rule', () => {
+    const entities = [withAliases('Synthia', ['Em'])];
+    expect(findEntityNames('Em waves.', entities)).toEqual(['Synthia']);
+    expect(findEntityNames('the system reboots', entities)).toEqual([]); // no substring/lowercase hit
+  });
+
+  it('matches an alias plural, irregulars included', () => {
+    const entities = [withAliases('Wolf', ['Grey One'])];
+    expect(findEntityNames('The Grey Ones circle.', entities)).toEqual(['Wolf']);
+    const wives = [withAliases('Beast', ['Wife'])];
+    expect(findEntityNames('The Wives whisper.', wives)).toEqual(['Beast']);
+  });
+
+  it('does not duplicate when both name and an alias appear', () => {
+    const entities = [withAliases('Synthia', ['Matron'])];
+    expect(findEntityNames('Synthia, the Matron, nods.', entities)).toEqual(['Synthia']);
+  });
+
+  it('lists name hits in text order, then alias-only hits', () => {
+    const entities = [withAliases('Synthia', ['Matron']), ent('Reyes')];
+    expect(findEntityNames('Reyes bows before the Matron.', entities)).toEqual(['Reyes', 'Synthia']);
   });
 });
 
