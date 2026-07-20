@@ -31,7 +31,8 @@ export function parseArgs(argv, defaults = {}) {
 }
 
 // Pull the live prompt text from source so editing GamePrompts.ts is all that's needed between runs.
-const source = await readFile(path.join(REPO_ROOT, "src/components/game/GamePrompts.ts"), "utf8");
+// PROMPTS_SRC overrides the source file — lets an A/B run point the same probe at a baseline snapshot.
+const source = await readFile(process.env.PROMPTS_SRC ?? path.join(REPO_ROOT, "src/components/game/GamePrompts.ts"), "utf8");
 export function grab(name) {
   const at = source.indexOf(name + " = `");
   if (at === -1) throw new Error("missing " + name);

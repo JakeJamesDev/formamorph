@@ -90,6 +90,10 @@ const StatManager = ({ stat }: { stat: Stat }) => {
     apply({ type: value, value: raw });
   };
 
+  // Ascending by threshold; stable so equal thresholds keep authored order. Band lookup expects this order.
+  const sortDescriptors = (descriptors: StatDescriptor[]) =>
+    [...descriptors].sort((a, b) => Number(a.threshold) - Number(b.threshold));
+
   const handleDescriptorChange = (index: number, field: string, value: string | number) => {
     const updatedDescriptors = [...(editingStat.descriptors || [])];
     updatedDescriptors[index] = {
@@ -99,12 +103,17 @@ const StatManager = ({ stat }: { stat: Stat }) => {
     handleChange("descriptors", updatedDescriptors);
   };
 
+  // Re-sort on blur, not on each keystroke, so a row doesn't jump out from under the cursor mid-type.
+  const handleDescriptorBlur = () => {
+    handleChange("descriptors", sortDescriptors(editingStat.descriptors || []));
+  };
+
   const handleAddDescriptor = () => {
     if (newDescriptor.threshold !== "" && newDescriptor.description) {
-      const updatedDescriptors = [
+      const updatedDescriptors = sortDescriptors([
         ...(editingStat.descriptors || []),
-        { ...newDescriptor, id: randomUUID() },
-      ];
+        { ...newDescriptor, threshold: Number(newDescriptor.threshold), id: randomUUID() },
+      ]);
       handleChange("descriptors", updatedDescriptors);
       setNewDescriptor({ threshold: "", description: "" });
     }
@@ -411,6 +420,7 @@ const StatManager = ({ stat }: { stat: Stat }) => {
                     Number(e.target.value),
                   )
                 }
+                onBlur={handleDescriptorBlur}
                 placeholder="Threshold %"
                 className="w-24"
               />

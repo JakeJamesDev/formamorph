@@ -1,10 +1,11 @@
 // Output-length mode: 'none' = unbounded, 'single' = one paragraph, 'auto' = scale to maxTokens.
 export type ParagraphLimit = 'none' | 'single' | 'auto';
 
-// Rough average tokens in one short narration paragraph (English), with headroom so the model
-// tends to finish before the hard max_tokens cap. Measured ~32 tok/para on a batch of real narration
-// (Mistral tokenizer); set above that to absorb denser tokenizers (Gemma/Llama) and longer-paragraph models.
-const AVG_TOKENS_PER_PARAGRAPH = 45;
+// Tokens budgeted per narration paragraph, with headroom so the model tends to finish before the
+// hard max_tokens cap. p75 of real narration paragraphs (~65, Mistral tokenizer, 380 paras across two
+// sessions; mean ~51). Budgeting at p75 rather than the mean absorbs dense charged-scene paragraphs
+// AND the model overshooting the stated count - truncated turns wrote 11-14 paras against "at most 9".
+const AVG_TOKENS_PER_PARAGRAPH = 65;
 const HEADROOM = 0.8;
 
 /** How many paragraphs comfortably fit in `maxTokens` of output (at least 1). */

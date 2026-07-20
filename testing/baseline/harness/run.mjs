@@ -217,6 +217,9 @@ async function runOne(browser, cfg, model, profile) {
   // the Sedge Landing default (e.g. the gate profiles use blackrue-waystation.json).
   const worldPath = path.join(BASELINE_DIR, profile.world ?? DEFAULT_WORLD);
   await page.locator('input[type="file"]').first().setInputFiles(worldPath);
+  // Worlds with embedded images pop an "Optimize imported images?" dialog before the world card renders.
+  const keepAsIs = page.getByRole("button", { name: "Keep as-is" });
+  await keepAsIs.click({ timeout: 5000 }).catch(() => {});
   await page.getByRole("button", { name: /Enter World/i }).click();
 
   // Advance the enter-world steps (defaults pre-selected) until the game mounts and __baseline registers.
@@ -241,9 +244,15 @@ async function runOne(browser, cfg, model, profile) {
   console.log(`  warming up ${model.modelName}…`);
   await warmUp(cfg, model);
 
-  // Drive the fixed script; runScript awaits each turn's synchronous requests.
-  console.log(`  running ${profile.script.length} actions…`);
-  await page.evaluate((actions) => window.__baseline.runScript(actions), profile.script);
+  // Drive the turns: a `dynamic` profile picks each action live via a chooser model reading the latest
+  // narration + choices; otherwise the fixed script runs as one batch.
+  const plannedTurns = profile.dynamic ? profile.dynamic.turns : profile.script.length;
+  if (profile.dynamic) {
+    await runDynamic(page, profile.dynamic);
+  } else {
+    console.log(`  running ${profile.script.length} actions…`);
+    await page.evaluate((actions) => window.__baseline.runScript(actions), profile.script);
+  }
   // Settle: let async digest/diary drainers (if any) flush before we snapshot. Per-profile override wins
   // — the summary profile needs far longer than the default so every turn's digest drains.
   await page.waitForTimeout(profile.settleMs ?? cfg.settleMs ?? 4000);
@@ -254,8 +263,55 @@ async function runOne(browser, cfg, model, profile) {
   const stamp = new Date().toISOString().replace(/[:.]/g, "-");
   const file = path.join(RUNS_DIR, `${profile.name}-${model.label}-${stamp}.json`);
   await writeFile(file, JSON.stringify(dump, null, 2), "utf8");
-  const ok = Array.isArray(dump) && dump.length === profile.script.length;
-  console.log(`  ${ok ? "✔" : "⚠"} ${dump?.length ?? 0}/${profile.script.length} turns → ${path.relative(REPO_ROOT, file)}`);
+  const ok = Array.isArray(dump) && dump.length === plannedTurns;
+  console.log(`  ${ok ? "✔" : "⚠"} ${dump?.length ?? 0}/${plannedTurns} turns → ${path.relative(REPO_ROOT, file)}`);
+}
+
+// ---- Dynamic mode: a chooser model plays the player character live ----
+// Each turn: read the latest narration + offered choices from the debug dump, ask the chooser (cloud default
+// endpoint — free, no VRAM contention with the game model) for the next player action, send it via the same
+// __baseline.runScript path as scripted mode. Falls back to the first offered choice if the chooser balks.
+const CHOOSER_ENDPOINT = "https://api.lyonade.net/v1/chat/completions";
+async function chooseAction(goal, narration, choices, turnNo, total) {
+  const sys = `You control the player character in a text adventure session run by an automated game-engine test harness. ${goal}\n\nReply with ONLY the player's next action: first person, one or two sentences, concrete. No commentary, no quotes around the whole line.`;
+  const user = `Turn ${turnNo} of ${total}.\n\nLatest scene:\n${narration}\n\nOffered choices (you may pick one or write your own action):\n${choices || "(none)"}`;
+  try {
+    const res = await fetch(CHOOSER_ENDPOINT, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        model: "default",
+        messages: [{ role: "system", content: sys }, { role: "user", content: user }],
+        max_tokens: 120, temperature: 0.7, stream: false,
+      }),
+    });
+    const j = await res.json();
+    const out = (j.choices?.[0]?.message?.content ?? "").trim().replace(/^["']|["']$/g, "");
+    // A refusal/meta reply instead of an action → fall back to the first offered choice.
+    if (!out || /as an ai|i can'?t assist|i cannot|language model/i.test(out)) throw new Error("chooser balked");
+    return out.split("\n")[0].slice(0, 300);
+  } catch {
+    const first = (choices || "").split("\n").map((l) => l.replace(/^\s*\d+[).\s-]*/, "").trim()).find(Boolean);
+    return first || "I continue.";
+  }
+}
+
+async function runDynamic(page, dyn) {
+  console.log(`  dynamic mode: ${dyn.turns} turns, chooser on cloud default…`);
+  for (let t = 0; t < dyn.turns; t++) {
+    let action = "START GAME";
+    if (t > 0) {
+      const last = await page.evaluate(() => {
+        const turns = window.__baseline.getDebugTurns();
+        const turn = turns[turns.length - 1];
+        const grab = (ty) => turn?.requests?.find((r) => r.type === ty)?.response ?? "";
+        return { narration: grab("narration"), choices: grab("choices") };
+      });
+      action = await chooseAction(dyn.goal, last.narration, last.choices, t + 1, dyn.turns);
+    }
+    console.log(`  [${t + 1}/${dyn.turns}] ${action.slice(0, 100)}`);
+    await page.evaluate((a) => window.__baseline.runScript([a]), action);
+  }
 }
 
 async function main() {
