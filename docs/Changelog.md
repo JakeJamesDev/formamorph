@@ -26,8 +26,10 @@ _Unreleased — new work accumulates here until it earns a version bump. The nex
 
 - **👤 User-facing**
   - **Player Notes now trigger dictionary entries.** Keywords written into your Player Notes now activate matching dictionary/lorebook entries, just like the current scene and your action already did — previously notes were sent to the AI but never scanned for triggers.
+  - **No more reasoning errors on non-reasoning models.** When a model doesn't support reasoning (e.g. many local models in LM Studio), Formamorph now stops sending it reasoning settings — which previously made those backends error on every turn — and the **Native Reasoning** control is replaced with a short "this model doesn't support reasoning" note. Reasoning-capable models are unaffected.
 
 - **🛠️ Developer tooling**
+  - **Stat editor tidy-up + shared collapsible.** The Stats editor's lower half (Prevent AI Changes, Stat Descriptors, Dynamic Value Calculation) now matches the labeled-block rhythm of the other editor tabs instead of heavy section headings, and the code section uses a new reusable `CollapsibleSection` component.
   - **Section-style regression probe.** `regression-style-probe.mjs` A/B-tests the Default (Markdown) vs XML prompt preset on the committed regression corpus (planner continuation + digest), assembling each style faithfully — chip bodies through the real context builders, headings through the real `restyle` — so section style is the only variable. Runs under `vite-node`.
   - **Fact-adherence style probe.** `factstyle-probe.mjs` A/B-tests Markdown vs XML on a fact-dense, comprehension-trap scenario (fixed counts, positions, a name the player hasn't heard) across planner + narration surfaces at matched seeds, dumping every paired output for human judging. Also `vite-node`.
 

@@ -80,7 +80,7 @@ export function activeCharacterGuidance(enabled: boolean, limit: number): string
 // that sentinel as the opening narration's user message — a real instruction in the high-recency slot.
 export const OPENING_SCENE_CUE = `Begin the story: write the opening scene now. Establish where the player character is and what is happening around them, then stop on a concrete image, action, or line of dialogue. Do not ask the player what to do or list options - a separate step handles that.`;
 
-export const defaultChoicesUserPrompt = `What just happened (here "you" means me, the player character):
+export const defaultChoicesUserPrompt = `The scene just told to me, the player character:
 <NARRATION>
 
 Now write my options - one per line, each a single action I take.`;
@@ -100,7 +100,7 @@ The narration that resulted:
 
 Now record what this turn changed - the player's action and its outcome - in one or two short second-person sentences on a single line: what you did and what now stands true as a result. Report reactions only as what they settle (agreed, refused, hesitated), not the moment-by-moment. No quoted dialogue. Nothing else.`;
 
-export const defaultChoicesPrompt = `Given the following information:
+export const defaultChoicesPrompt = `You are the player choice writer for an interactive roleplay. Your one job is to offer the player a short list of distinct actions their character could take next, in the player's own first-person voice. You never narrate events or act in the story - a separate step already wrote what just happened; you only propose what the player might do about it.
 
 ## Game World
 <WORLD DESCRIPTION>

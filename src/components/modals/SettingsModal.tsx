@@ -645,8 +645,11 @@ export const SettingsModal = ({ isOpen, onOpenChange, previewValues, initialTab,
   // (guided modes force no reasoning, so an override there is meaningless). Engine-split: the local engine
   // caps the thought segment by a token budget; external endpoints take the coarse effort level. Exactly one
   // shows per engine (the other is inert there).
+  // A probed-but-empty support list means the active endpoint rejects every reasoning_effort literal (even
+  // `none`) — a conclusively non-reasoning model. `null`/undefined = not yet probed, so keep showing controls.
+  const reasoningUnsupported = Array.isArray(supportedReasoningEfforts) && supportedReasoningEfforts.length === 0;
   const reasoningApplicable = thinkingMode === 'off' && REASONING_CONTROL_KINDS.includes(activeKind);
-  const reasoningControl = reasoningApplicable && !localModelActive
+  const reasoningControl = reasoningApplicable && !localModelActive && !reasoningUnsupported
     ? {
         value: promptReasoning[activeKind] ?? defaultPromptReasoning(activeKind),
         tabs: reasoningPromptTabs(supportedReasoningEfforts),
@@ -971,7 +974,15 @@ export const SettingsModal = ({ isOpen, onOpenChange, previewValues, initialTab,
               )}
               {/* Native mode passes reasoning_effort straight through; shown only there since the guided modes drive
                   their own thinking. The levels are whichever the active endpoint accepts (detected on connect). */}
-              {thinkingMode === 'off' && (() => {
+              {thinkingMode === 'off' && reasoningUnsupported && (
+                <div className="grid grid-cols-1 sm:grid-cols-4 items-start gap-4">
+                  <label className="text-left sm:text-right pt-2 text-muted-foreground">Native Reasoning</label>
+                  <div className="col-span-3 pt-2">
+                    <span className="text-xs text-muted-foreground">This model doesn&apos;t support reasoning, so there&apos;s nothing to configure.</span>
+                  </div>
+                </div>
+              )}
+              {thinkingMode === 'off' && !reasoningUnsupported && (() => {
                 const reasoningOptions = reasoningTabs(supportedReasoningEfforts);
                 return (
                   <div className="grid grid-cols-1 sm:grid-cols-4 items-start gap-4">

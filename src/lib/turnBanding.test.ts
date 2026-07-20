@@ -195,7 +195,10 @@ describe('buildBandedHistory', () => {
     expect(messages.some((m) => m.content === 'g1' || m.content === 'a1')).toBe(false);
   });
 
-  it('rehydrates a relevant older turn to full text and removes it from the band', () => {
+  // TODO(rehydration): re-enable with the feature. Rehydration is disabled in buildBandedHistory (it drove
+  // the charged-scene freeze); these two behavior tests assert the disabled path. selectRehydrations and the
+  // scorers stay unit-tested above, so the logic is still covered for when it is restored.
+  it.skip('rehydrates a relevant older turn to full text and removes it from the band', () => {
     const turns = parseTurns([
       ...pair('a1', { turnId: 't1', narration: 'the vault scene', summary: 'You opened the vault.' }),
       ...pair('a2', { turnId: 't2', narration: 'g2', summary: 'A quiet walk.' }),
@@ -211,7 +214,7 @@ describe('buildBandedHistory', () => {
     expect(counts.rehydratedTokens).toBeGreaterThan(0);
   });
 
-  it('caps how many older turns rehydrate so the band is not cannibalized', () => {
+  it.skip('caps how many older turns rehydrate so the band is not cannibalized', () => {
     const turns = parseTurns([
       ...pair('a1', { turnId: 't1', narration: 'g1', summary: 'Mira vault gold.' }),
       ...pair('a2', { turnId: 't2', narration: 'g2', summary: 'Mira vault.' }),

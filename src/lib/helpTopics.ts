@@ -160,13 +160,14 @@ They exist to give the story a memory with consequences. Prose alone drifts; a s
 
 **What the AI sees.** Each stat's **Name** is always sent. The Stats chip in your prompt picks what rides along with it:
 
-- **Values** — the current number and its ceiling, like \`62/100\`.
+- **Values** — the current number and its ceiling, like \`62/100\` (or \`62%\` for a percentage stat).
 - **Status** — the matching **Stat Descriptor**, a word for the current level.
 - **Meaning** — the stat's **Description**, i.e. what it represents.
 
 **The fields**
 
-- **Min / Max / Initial Value** set the range and where the stat starts.
+- **Type** — a **Number** stat spans a range you set; a **Percentage** stat is pinned from 0 to 100 and shown everywhere as \`N%\`. Everything below works the same for both — a percentage stat just fixes the range for you and drops the Max, so you only set its **Initial Value (%)**.
+- **Min / Max / Initial Value** set the range and where the stat starts. (A percentage stat locks Min/Max at 0/100 and shows just Initial Value.)
 - **Regen** is added every turn, then clamped to the range — a positive number heals over time, a negative one bleeds.
 - **Stat Descriptors** turn a number into a word. **Threshold % is a percentage of the way from Min to Max, not a raw value**, and the *first* descriptor whose threshold the stat is at or below wins — so list them low to high, or the wrong one matches.
 - **Prevent AI Changes** locks a stat against the AI in one direction. Useful for anything only your world's rules should move.

@@ -34,7 +34,7 @@ import { buildStyledValues } from '../lib/sectionStyle';
 import { defaultPromptSampler, type PromptSamplerMap, type PromptSampler } from '../lib/promptSamplers';
 import type { AIRequestType } from '../types';
 import type { ParagraphLimit } from '../lib/outputLength';
-import { detectSupportedReasoningEfforts, isReasoningEngaged, type ReasoningEffortField, type PromptReasoning } from '../lib/reasoningEffort';
+import { detectSupportedReasoningEfforts, detectReasoningCapability, isReasoningEngaged, type ReasoningEffortField, type PromptReasoning } from '../lib/reasoningEffort';
 
 /** Lifecycle of the context-window auto-detect probe; `error` is set only on a forced (manual) attempt. */
 export type DetectStatus = 'idle' | 'detecting' | 'success' | 'error';
@@ -373,6 +373,8 @@ function useProvideSettings() {
 
   const detectReasoningEfforts = useCallback(async () => {
     const sig = `${activeEndpointUrl}|${activeModelName}`;
+    // `detectSupportedReasoningEfforts` first consults LM Studio's native capability list, so a non-reasoning
+    // model resolves to `[]` (→ hide the control, send no reasoning_effort) without a warning-triggering probe.
     const efforts = await detectSupportedReasoningEfforts(activeEndpointUrl, activeApiToken, activeModelName);
     if (!efforts) return;
     setReasoningSupportCache((prev) => {
@@ -441,6 +443,35 @@ function useProvideSettings() {
     const id = setTimeout(() => { void detectReasoningEfforts(); }, 1200);
     return () => clearTimeout(id);
   }, [reasoningEngaged, supportedReasoningEfforts, detectReasoningEfforts]);
+
+  // The reasoning-capability check hits LM Studio's native model list — a side-effect-free GET that logs no
+  // warning — so unlike the effort probe it runs eagerly on every endpoint/model change AND overrides the
+  // write-once cache: a model the backend lists as non-reasoning is forced to `[]` (hide the control, send no
+  // reasoning_effort) even if an earlier probe cached levels for it; a model listed as reasoning clears a
+  // wrongly-cached `[]` so levels re-probe. Inconclusive (non-LM-Studio / unlisted / unreachable) leaves the
+  // cache untouched, so plain OpenAI endpoints keep the effort-probe behavior.
+  useEffect(() => {
+    const sig = `${activeEndpointUrl}|${activeModelName}`;
+    let cancelled = false;
+    const id = setTimeout(async () => {
+      const capable = await detectReasoningCapability(activeEndpointUrl, activeApiToken, activeModelName);
+      if (cancelled || capable === null) return;
+      setReasoningSupportCache((prev) => {
+        const current = prev[sig];
+        const cachedEmpty = Array.isArray(current) && current.length === 0;
+        if (!capable) {
+          if (cachedEmpty) return prev; // already marked non-reasoning
+          const next = { ...prev, [sig]: [] as ReasoningEffortField[] };
+          const keys = Object.keys(next);
+          if (keys.length > REASONING_CACHE_CAP) delete next[keys[0]];
+          return next;
+        }
+        if (cachedEmpty) { const next = { ...prev }; delete next[sig]; return next; } // reasoning after all → re-probe levels
+        return prev;
+      });
+    }, 1200);
+    return () => { cancelled = true; clearTimeout(id); };
+  }, [activeEndpointUrl, activeApiToken, activeModelName, setReasoningSupportCache]);
   const verbatimMap = useMemo(() => activeVerbatim(presetStore), [presetStore]);
   const globalForSampler = useCallback(
     (sampler: PromptSampler) => (sampler === 'temperature' ? genTemperature : genRepetitionPenalty),

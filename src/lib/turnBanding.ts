@@ -188,9 +188,9 @@ export function selectRehydrations(
   return chosen;
 }
 
-/** Assemble the banded history: verbatim floor (guaranteed) → digest band (guaranteed) → rehydrated
- *  relevant turns (best-effort) → drop. Output is `[band?, ...verbatim turns chronological]`; the
- *  caller appends the current action. */
+/** Assemble the banded history: verbatim floor (guaranteed) → digest band (guaranteed) → drop. Output is
+ *  `[band?, ...verbatim turns chronological]`; the caller appends the current action. Rehydration (pulling
+ *  relevant older turns back to full text) is currently DISABLED — see step 3. */
 export function buildBandedHistory(args: {
   turns: BandTurn[];
   contextWindow: number;
@@ -202,7 +202,9 @@ export function buildBandedHistory(args: {
   rehydrateCap: number;
   maxRehydrations?: number;
 }): BandResult {
-  const { turns, contextWindow, promptTokens, maxTokens, verbatimFloor, keywords, actionEntities, rehydrateCap, maxRehydrations = Infinity } = args;
+  // `keywords`, `actionEntities`, `rehydrateCap`, `maxRehydrations` are intentionally not destructured:
+  // rehydration is disabled (see step 3). Kept in the arg type so callers compile unchanged.
+  const { turns, contextWindow, promptTokens, maxTokens, verbatimFloor } = args;
   const margin = Math.max(256, Math.round(contextWindow * 0.05));
   const budget = Math.max(0, contextWindow - promptTokens - maxTokens - margin);
 
@@ -229,15 +231,17 @@ export function buildBandedHistory(args: {
     bandTokens = bandCost(bandTurns);
   }
 
-  // 3. Rehydration (best-effort) — pull relevant band turns back to full text within leftover budget.
-  const rehydrateBudget = Math.min(rehydrateCap, Math.max(0, remaining - bandTokens));
-  const chosen = selectRehydrations(bandTurns, keywords, actionEntities, rehydrateBudget, maxRehydrations);
-  const rehydratedTurns = bandTurns.filter((t) => t.turnId && chosen.has(t.turnId));
-  let rehydratedTokens = 0;
-  for (const t of rehydratedTurns) rehydratedTokens += pairTokenCost(t);
-  // Rehydrated turns leave the band so they aren't duplicated (they're now full, not condensed).
-  bandTurns = bandTurns.filter((t) => !(t.turnId && chosen.has(t.turnId)));
-  bandTokens = bandCost(bandTurns);
+  // 3. Rehydration — DISABLED. Keyed on the current (charged) action, lexical rehydration pulled many
+  //    near-identical prior charged turns back to full verbatim, packing the narration context with ~6
+  //    repeated "poised / about-to" tableaux — the confirmed driver of the charged-scene freeze (real-app
+  //    A/B on Cydonia-24B: fewer full charged turns advanced, more froze). Off wholesale until redesigned.
+  //    TODO(rehydration): re-enable behind a smarter selector — dedupe near-duplicate charged turns and cap
+  //    how many charged turns may be verbatim — then restore the AI-Context "Rehydrated" row + the
+  //    Hydrations highlight toggle in GameViewer. `selectRehydrations` and the scorers are kept for that.
+  // const rehydrateBudget = Math.min(rehydrateCap, Math.max(0, remaining - bandTokens));
+  // const chosen = selectRehydrations(bandTurns, keywords, actionEntities, rehydrateBudget, maxRehydrations);
+  const rehydratedTurns: BandTurn[] = [];
+  const rehydratedTokens = 0;
 
   // Assemble one chronological back-and-forth: every turn is its own user/assistant pair. Full turns
   // (rehydrated + recent floor) carry their real narration; banded turns carry the same real user action

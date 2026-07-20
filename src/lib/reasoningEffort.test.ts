@@ -1,24 +1,26 @@
-import { describe, it, expect } from 'vitest';
-import { reasoningEffortBody, reasoningTabs, reasoningPromptTabs, defaultPromptReasoning, resolvePromptReasoning, defaultReasoningBudgetPct, resolveReasoningBudgetPct, reasoningBudgetBody, isReasoningEngaged, SAFE_REASONING_EFFORTS } from './reasoningEffort';
+import { describe, it, expect, vi, afterEach } from 'vitest';
+import { reasoningEffortBody, reasoningTabs, reasoningPromptTabs, defaultPromptReasoning, resolvePromptReasoning, defaultReasoningBudgetPct, resolveReasoningBudgetPct, reasoningBudgetBody, isReasoningEngaged, SAFE_REASONING_EFFORTS, detectReasoningCapability, detectSupportedReasoningEfforts } from './reasoningEffort';
 
 describe('reasoningEffortBody', () => {
-  it('sends the hint verbatim under Native mode for every non-auto level', () => {
-    expect(reasoningEffortBody('off', 'none')).toEqual({ reasoning_effort: 'none' });
-    expect(reasoningEffortBody('off', 'low')).toEqual({ reasoning_effort: 'low' });
-    expect(reasoningEffortBody('off', 'medium')).toEqual({ reasoning_effort: 'medium' });
-    expect(reasoningEffortBody('off', 'high')).toEqual({ reasoning_effort: 'high' });
-    expect(reasoningEffortBody('off', 'max')).toEqual({ reasoning_effort: 'max' });
+  const all = ['none', 'minimal', 'low', 'medium', 'high', 'xhigh', 'max'] as const;
+
+  it('sends the hint verbatim under Native mode for every non-auto level the endpoint accepts', () => {
+    expect(reasoningEffortBody('off', 'none', all)).toEqual({ reasoning_effort: 'none' });
+    expect(reasoningEffortBody('off', 'low', all)).toEqual({ reasoning_effort: 'low' });
+    expect(reasoningEffortBody('off', 'medium', all)).toEqual({ reasoning_effort: 'medium' });
+    expect(reasoningEffortBody('off', 'high', all)).toEqual({ reasoning_effort: 'high' });
+    expect(reasoningEffortBody('off', 'max', all)).toEqual({ reasoning_effort: 'max' });
   });
 
-  it('omits the field for auto (the endpoint rejects the literal, so its default applies)', () => {
-    expect(reasoningEffortBody('off', 'auto')).toEqual({});
-    expect('reasoning_effort' in reasoningEffortBody('off', 'auto')).toBe(false);
+  it('omits the field for auto (send nothing → endpoint default)', () => {
+    expect(reasoningEffortBody('off', 'auto', all)).toEqual({});
+    expect('reasoning_effort' in reasoningEffortBody('off', 'auto', all)).toBe(false);
   });
 
   it('forces none in guided modes to suppress native reasoning fighting the guided step', () => {
     for (const mode of ['precall', 'inline', 'staged'] as const) {
-      expect(reasoningEffortBody(mode, 'high')).toEqual({ reasoning_effort: 'none' });
-      expect(reasoningEffortBody(mode, 'auto')).toEqual({ reasoning_effort: 'none' });
+      expect(reasoningEffortBody(mode, 'high', all)).toEqual({ reasoning_effort: 'none' });
+      expect(reasoningEffortBody(mode, 'auto', all)).toEqual({ reasoning_effort: 'none' });
     }
   });
 
@@ -34,8 +36,15 @@ describe('reasoningEffortBody', () => {
     expect(reasoningEffortBody('off', 'max', ollama)).toEqual({ reasoning_effort: 'max' });
   });
 
-  it('sends the value when support is unknown (null) — the UI only offered safe levels', () => {
-    expect(reasoningEffortBody('off', 'low', null)).toEqual({ reasoning_effort: 'low' });
+  it('sends nothing until support is confirmed — unknown (null/undefined) omits the field', () => {
+    expect(reasoningEffortBody('off', 'low', null)).toEqual({});
+    expect(reasoningEffortBody('off', 'low')).toEqual({});
+    expect(reasoningEffortBody('inline', 'high', null)).toEqual({});
+  });
+
+  it('sends nothing to a conclusively non-reasoning endpoint (empty support), even none', () => {
+    expect(reasoningEffortBody('off', 'none', [])).toEqual({});
+    expect(reasoningEffortBody('inline', 'high', [])).toEqual({});
   });
 });
 
@@ -131,5 +140,63 @@ describe('isReasoningEngaged', () => {
   it('is true when a per-prompt positive level is set, but not for global/none', () => {
     expect(isReasoningEngaged('off', 'auto', { narration: 'high' })).toBe(true);
     expect(isReasoningEngaged('off', 'auto', { narration: 'global', choices: 'none' })).toBe(false);
+  });
+});
+
+describe('detectReasoningCapability (LM Studio native /api/v1/models)', () => {
+  afterEach(() => vi.unstubAllGlobals());
+
+  const stubFetch = (impl: (url: string) => { ok: boolean; json?: () => Promise<unknown> }) =>
+    vi.stubGlobal('fetch', vi.fn(async (u: string) => impl(u) as unknown as Response));
+
+  const list = (models: unknown[]) => ({ ok: true, json: async () => ({ models }) });
+
+  it('returns false when the model is listed without a reasoning capability', async () => {
+    stubFetch(() => list([{ key: 'cydonia-24b', capabilities: { vision: false, trained_for_tool_use: false } }]));
+    expect(await detectReasoningCapability('http://localhost:1234/v1/chat/completions', '', 'cydonia-24b')).toBe(false);
+  });
+
+  it('returns true when the model exposes a reasoning capability object', async () => {
+    stubFetch(() => list([{ key: 'g4-meromero-31b', capabilities: { reasoning: { allowed_options: ['off', 'on'], default: 'on' } } }]));
+    expect(await detectReasoningCapability('http://localhost:1234/v1/chat/completions', '', 'g4-meromero-31b')).toBe(true);
+  });
+
+  it('hits the origin-derived native path, not the configured completions URL', async () => {
+    const fetchMock = vi.fn(async () => list([{ key: 'm', capabilities: {} }]) as unknown as Response);
+    vi.stubGlobal('fetch', fetchMock);
+    await detectReasoningCapability('http://localhost:1234/v1/chat/completions', '', 'm');
+    expect(fetchMock).toHaveBeenCalledWith('http://localhost:1234/api/v1/models', expect.anything());
+  });
+
+  it('falls back to the loaded model when the configured name is unmatched (e.g. "default")', async () => {
+    stubFetch(() => list([
+      { key: 'cydonia-24b@q4_k_m', loaded_instances: [{ id: 'cydonia-24b@q4_k_m' }], capabilities: { vision: false } },
+      { key: 'g4-meromero-31b', loaded_instances: [], capabilities: { reasoning: { allowed_options: ['off', 'on'], default: 'on' } } },
+    ]));
+    // "default" matches no key → resolves to the loaded (Cydonia) entry, which has no reasoning capability.
+    expect(await detectReasoningCapability('http://127.0.0.1:1234/v1/chat/completions', '', 'default')).toBe(false);
+  });
+
+  it('is inconclusive (null) when the model is absent, the shape is foreign, or the endpoint errors', async () => {
+    stubFetch(() => list([{ key: 'other', capabilities: {} }]));
+    expect(await detectReasoningCapability('http://x/v1/chat/completions', '', 'missing')).toBeNull();
+    stubFetch(() => ({ ok: true, json: async () => ({ data: [] }) })); // OpenAI shape, not native
+    expect(await detectReasoningCapability('http://x/v1/chat/completions', '', 'm')).toBeNull();
+    stubFetch(() => ({ ok: false })); // 404 on non-LM-Studio backends
+    expect(await detectReasoningCapability('http://x/v1/chat/completions', '', 'm')).toBeNull();
+    expect(await detectReasoningCapability('not a url', '', 'm')).toBeNull();
+  });
+
+  it('short-circuits detectSupportedReasoningEfforts to [] without sending any effort probe', async () => {
+    const fetchMock = vi.fn(async (u: string) =>
+      (u.includes('/api/v1/models')
+        ? list([{ key: 'cydonia', capabilities: {} }])
+        : { ok: true, status: 200, text: async () => '' }) as unknown as Response,
+    );
+    vi.stubGlobal('fetch', fetchMock);
+    expect(await detectSupportedReasoningEfforts('http://localhost:1234/v1/chat/completions', '', 'cydonia')).toEqual([]);
+    // Only the capability GET fired — no POST probe reached the completions URL.
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+    expect(fetchMock).toHaveBeenCalledWith('http://localhost:1234/api/v1/models', expect.anything());
   });
 });
