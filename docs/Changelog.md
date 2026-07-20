@@ -17,9 +17,15 @@ _Unreleased — new work accumulates here until it earns a version bump. The nex
 #### ✨ Added
 
 - **👤 User-facing**
+  - **New "Percentage" stat type.** Stats can now be a **Percentage** — a value pinned to 0–100% and shown to you and the AI as `N%` (e.g. `40%`) instead of `40 / 100`. It keeps everything a number stat has (descriptors, regen, dynamic code, body-slider bindings, don't-increase/don't-decrease locks); only the min/max range is fixed and the cap can never be moved. Switching an existing stat to Percentage snaps its value into range.
   - **Help & changelog pop-outs read better.** The in-app help, world Readme, and changelog pop-outs are taller (so long topics need less scrolling) while short ones still size to their content, and bullet lists now hang their wrapped text under the text instead of back under the bullet.
   - **Smarter plural detection for entity names.** The story parser now recognizes irregular plurals, so an entity named "Wolf" is detected when the narration says "Wolves" (likewise City→Cities, Child→Children, Person→People) — previously only a simple trailing "s" was caught. Applies to entity names and aliases alike.
   - **Entity aliases.** Entities now have an **Aliases** field — other names a character or thing goes by (e.g. "Synthia" also called "Matron" or "Em"). Aliases are detected in the story text just like the real name, so an entity is still recognized when the narration uses a nickname, and they're shared with the AI as "also known as" so it can use those nicknames naturally. Aliases travel with a world and with exported character cards.
+
+#### 🐛 Fixed
+
+- **👤 User-facing**
+  - **Player Notes now trigger dictionary entries.** Keywords written into your Player Notes now activate matching dictionary/lorebook entries, just like the current scene and your action already did — previously notes were sent to the AI but never scanned for triggers.
 
 - **🛠️ Developer tooling**
   - **Section-style regression probe.** `regression-style-probe.mjs` A/B-tests the Default (Markdown) vs XML prompt preset on the committed regression corpus (planner continuation + digest), assembling each style faithfully — chip bodies through the real context builders, headings through the real `restyle` — so section style is the only variable. Runs under `vite-node`.

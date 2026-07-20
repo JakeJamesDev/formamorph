@@ -9,8 +9,9 @@ export interface MediaAsset {
   type: string;
 }
 
-/** A scalar `number` stat or a `list` stat whose value is an array of items. */
-export type StatType = 'number' | 'list';
+/** A scalar `number` stat, a `percentage` stat (a number pinned to 0–100, displayed as `N%`), or a `list`
+ *  stat whose value is an array of items. */
+export type StatType = 'number' | 'percentage' | 'list';
 
 /** A text label surfaced to the AI once the stat's value crosses `threshold`. */
 export interface StatDescriptor {

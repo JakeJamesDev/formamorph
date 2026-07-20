@@ -24,6 +24,7 @@ import { executeStatCode } from "@/lib/statCodeExecutor";
 import { MultiSelect } from "@/components/ui/multi-select";
 import { useBodyMorphSources } from "@/lib/useBodyMorphNames";
 import { boundMorphNamesExcluding, buildMorphGroups } from "@/lib/bodyMorphs";
+import { clamp } from "@/lib/utils";
 import type { Stat, StatDescriptor, StatListItem, StatType } from "@/types";
 
 /** The stat being edited — a loose, partial Stat while fields are filled in. */
@@ -80,11 +81,17 @@ const StatManager = ({ stat }: { stat: Stat }) => {
   };
 
   const handleTypeChange = (value: StatType) => {
-    const nextValue =
-      value === "list"
-        ? editingStat.value || []
-        : typeof editingStat.value === "number" ? editingStat.value : 0;
-    apply({ type: value, value: nextValue });
+    if (value === "list") {
+      apply({ type: value, value: editingStat.value || [] });
+      return;
+    }
+    const raw = typeof editingStat.value === "number" ? editingStat.value : 0;
+    // Percentage stats are pinned to 0–100: clamp the value and force the bounds so display and math agree.
+    if (value === "percentage") {
+      apply({ type: value, value: clamp(raw, 0, 100), min: 0, max: 100 });
+      return;
+    }
+    apply({ type: value, value: raw });
   };
 
   const handleDescriptorChange = (index: number, field: string, value: string | number) => {
@@ -145,6 +152,12 @@ const StatManager = ({ stat }: { stat: Stat }) => {
 
   if (!editingStat) return null;
 
+  const statType = editingStat.type?.toLowerCase();
+  const isPercentage = statType === "percentage";
+  // Percentage stats share every scalar affordance (descriptors, sliders, code, AI-locks) with number stats;
+  // they only differ in the range fields and how the value is displayed.
+  const isNumeric = statType === "number" || isPercentage;
+
   return (
     <div className="space-y-4">
       <div className="space-y-2">
@@ -165,6 +178,7 @@ const StatManager = ({ stat }: { stat: Stat }) => {
           </SelectTrigger>
           <SelectContent>
             <SelectItem value="number">Number</SelectItem>
+            <SelectItem value="percentage">Percentage</SelectItem>
             {/* <SelectItem value="list">List</SelectItem> */}
           </SelectContent>
         </Select>
@@ -176,42 +190,73 @@ const StatManager = ({ stat }: { stat: Stat }) => {
           onChange={(e) => handleChange("description", e.target.value)}
         />
       </div>
-      {editingStat.type?.toLowerCase() === "number" && (
+      {isNumeric && (
         <div className="flex flex-col gap-4">
-          <div className="grid grid-cols-2 gap-2">
-            <div>
-              <Label>Min</Label>
-              <Input
-                type="number"
-                value={editingStat.min || 0}
-                onChange={(e) => handleChange("min", Number(e.target.value))}
-              />
+          {isPercentage ? (
+            <div className="grid grid-cols-2 gap-2">
+              <div>
+                <Label>Min</Label>
+                <Input type="number" value={0} readOnly disabled />
+              </div>
+              <div>
+                <Label>Max</Label>
+                <Input type="number" value={100} readOnly disabled />
+              </div>
+              <div>
+                <Label>Initial Value (%)</Label>
+                <Input
+                  type="number"
+                  min={0}
+                  max={100}
+                  value={(editingStat.value as number) || 0}
+                  onChange={(e) => handleChange("value", clamp(Number(e.target.value), 0, 100))}
+                />
+              </div>
+              <div>
+                <Label>Regen</Label>
+                <Input
+                  type="number"
+                  value={editingStat.regen || 0}
+                  onChange={(e) => handleChange("regen", Number(e.target.value))}
+                />
+              </div>
             </div>
-            <div>
-              <Label>Max</Label>
-              <Input
-                type="number"
-                value={editingStat.max || 100}
-                onChange={(e) => handleChange("max", Number(e.target.value))}
-              />
+          ) : (
+            <div className="grid grid-cols-2 gap-2">
+              <div>
+                <Label>Min</Label>
+                <Input
+                  type="number"
+                  value={editingStat.min || 0}
+                  onChange={(e) => handleChange("min", Number(e.target.value))}
+                />
+              </div>
+              <div>
+                <Label>Max</Label>
+                <Input
+                  type="number"
+                  value={editingStat.max || 100}
+                  onChange={(e) => handleChange("max", Number(e.target.value))}
+                />
+              </div>
+              <div>
+                <Label>Initial Value</Label>
+                <Input
+                  type="number"
+                  value={(editingStat.value as number) || 0}
+                  onChange={(e) => handleChange("value", Number(e.target.value))}
+                />
+              </div>
+              <div>
+                <Label>Regen</Label>
+                <Input
+                  type="number"
+                  value={editingStat.regen || 0}
+                  onChange={(e) => handleChange("regen", Number(e.target.value))}
+                />
+              </div>
             </div>
-            <div>
-              <Label>Initial Value</Label>
-              <Input
-                type="number"
-                value={(editingStat.value as number) || 0}
-                onChange={(e) => handleChange("value", Number(e.target.value))}
-              />
-            </div>
-            <div>
-              <Label>Regen</Label>
-              <Input
-                type="number"
-                value={editingStat.regen || 0}
-                onChange={(e) => handleChange("regen", Number(e.target.value))}
-              />
-            </div>
-          </div>
+          )}
           <div>
             <Label>Body Sliders</Label>
             <p className="py-2 text-sm text-muted-foreground">
@@ -241,13 +286,15 @@ const StatManager = ({ stat }: { stat: Stat }) => {
                 <span>Don&apos;t increase</span>
               </label>
 
-              <label className="flex items-center space-x-2 cursor-pointer">
-                <Checkbox
-                  checked={!!editingStat.noIncreaseMax}
-                  onCheckedChange={(c) => handleChange("noIncreaseMax", c === true)}
-                />
-                <span>Don&apos;t increase max</span>
-              </label>
+              {!isPercentage && (
+                <label className="flex items-center space-x-2 cursor-pointer">
+                  <Checkbox
+                    checked={!!editingStat.noIncreaseMax}
+                    onCheckedChange={(c) => handleChange("noIncreaseMax", c === true)}
+                  />
+                  <span>Don&apos;t increase max</span>
+                </label>
+              )}
 
               <label className="flex items-center space-x-2 cursor-pointer">
                 <Checkbox
@@ -257,13 +304,15 @@ const StatManager = ({ stat }: { stat: Stat }) => {
                 <span>Don&apos;t decrease</span>
               </label>
 
-              <label className="flex items-center space-x-2 cursor-pointer">
-                <Checkbox
-                  checked={!!editingStat.noDecreaseMax}
-                  onCheckedChange={(c) => handleChange("noDecreaseMax", c === true)}
-                />
-                <span>Don&apos;t decrease Max</span>
-              </label>
+              {!isPercentage && (
+                <label className="flex items-center space-x-2 cursor-pointer">
+                  <Checkbox
+                    checked={!!editingStat.noDecreaseMax}
+                    onCheckedChange={(c) => handleChange("noDecreaseMax", c === true)}
+                  />
+                  <span>Don&apos;t decrease Max</span>
+                </label>
+              )}
             </div>
           </div>
         </div>
@@ -415,7 +464,7 @@ const StatManager = ({ stat }: { stat: Stat }) => {
       </div>
 
       {/* Code Section */}
-      {editingStat.type?.toLowerCase() === "number" && (
+      {isNumeric && (
         <Collapsible
           open={codeOpen}
           onOpenChange={setCodeOpen}

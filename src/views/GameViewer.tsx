@@ -1094,12 +1094,12 @@ const GameViewer = ({
       // every system-prompt render below spreads it and adds its own tokens.
       const ctx = buildContextValues(turnLocation);
 
-      // Dictionary/lorebook entries active this turn. The current scene (location + entities present + action) is
-      // always scanned; message history is scanned per entry up to its `scanDepth` (all of it when unset). The
-      // always-present world description is intentionally excluded so its terms don't fire every turn.
+      // Dictionary/lorebook entries active this turn. The current scene (location + entities present + action +
+      // player notes) is always scanned; message history is scanned per entry up to its `scanDepth` (all of it when
+      // unset). The always-present world description is intentionally excluded so its terms don't fire every turn.
       const activatedEntries = getActivatedDictionary(
         dictionary,
-        [ctx["<LOCATION>"], ctx["<ENTITIES>"], action],
+        [ctx["<LOCATION>"], ctx["<ENTITIES>"], action, playerNotes],
         { history: fullMessageHistory.map((m) => m.content) },
       );
       // Split by position into the two lorebook blocks. When the active prompt has no "before" chip, those entries

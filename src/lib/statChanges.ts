@@ -78,15 +78,17 @@ export function parseStatUpdates(text: string): {
 }
 
 /**
- * Apply normalized max-cap deltas to stats. Honors the noIncreaseMax/noDecreaseMax flags,
- * floors the new max at the stat's min, and re-clamps the current value into the new
- * [min, max] range so lowering a cap can't leave the value stranded above it. Pure.
+ * Apply normalized max-cap deltas to stats. Percentage stats are skipped (their cap is pinned at 100).
+ * Honors the noIncreaseMax/noDecreaseMax flags, floors the new max at the stat's min, and re-clamps the
+ * current value into the new [min, max] range so lowering a cap can't leave the value stranded above it. Pure.
  */
 export function applyAiMaxChanges(
   stats: PlayerStat[],
   maxChanges: Record<string, number>,
 ): PlayerStat[] {
   return stats.map((stat) => {
+    // Percentage stats are pinned to a 0–100 cap; the AI can never move their max.
+    if (stat.type === 'percentage') return stat;
     const delta = maxChanges[stat.name.toLowerCase()];
     if (typeof delta !== 'number' || delta === 0) return stat;
     const allowed = (delta > 0 && !stat.noIncreaseMax) || (delta < 0 && !stat.noDecreaseMax);
