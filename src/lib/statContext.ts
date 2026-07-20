@@ -30,7 +30,11 @@ export function buildStatContext(
     .map((stat) => {
       const range = stat.max - stat.min;
       const percentage = range === 0 ? 0 : ((stat.value - stat.min) / range) * 100;
-      const descriptor = stat.descriptors.find((d) => percentage <= d.threshold);
+      // Sort ascending: the band is the first threshold at/above the current %, so order must be low→high
+      // regardless of how the world stored its descriptors.
+      const descriptor = [...stat.descriptors]
+        .sort((a, b) => a.threshold - b.threshold)
+        .find((d) => percentage <= d.threshold);
       const valueStr = stat.type === 'percentage' ? `${stat.value}%` : `${stat.value}/${stat.max}`;
       if (format === 'xml') {
         const child = (tag: string, value: string | number) => `\n  <${tag}>${xmlEscape(String(value))}</${tag}>`;

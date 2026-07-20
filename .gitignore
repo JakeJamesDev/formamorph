@@ -45,3 +45,4 @@ launcher/*.syso
 
 # Claude Code agent files (local-only, like CLAUDE.md)
 .claude/
+testing/baseline/mothers-struggles.json
