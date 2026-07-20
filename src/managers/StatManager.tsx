@@ -7,7 +7,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
-import { Trash2, Plus, ChevronDown, ChevronUp, Code } from "lucide-react";
+import { Trash2, Plus, Code } from "lucide-react";
 import {
   Select,
   SelectContent,
@@ -15,11 +15,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import {
-  Collapsible,
-  CollapsibleTrigger,
-  CollapsibleContent,
-} from "@/components/ui/collapsible";
+import { CollapsibleSection } from "@/components/ui/collapsible-section";
 import { executeStatCode } from "@/lib/statCodeExecutor";
 import { MultiSelect } from "@/components/ui/multi-select";
 import { useBodyMorphSources } from "@/lib/useBodyMorphNames";
@@ -274,9 +270,9 @@ const StatManager = ({ stat }: { stat: Stat }) => {
               maxCount={6}
             />
           </div>
-          <div>
-            <h3 className="text-xl font-semibold">Prevent AI Changes</h3>
-            <p className="py-2"> Stop the AI from changing this stat </p>
+          <div className="space-y-2">
+            <Label>Prevent AI Changes</Label>
+            <p className="text-sm text-muted-foreground">Stop the AI from changing this stat in a given direction.</p>
             <div className="grid grid-cols-2 gap-2">
               <label className="flex items-center space-x-2 cursor-pointer">
                 <Checkbox
@@ -401,7 +397,7 @@ const StatManager = ({ stat }: { stat: Stat }) => {
         </div>
       )}
       <div className="space-y-2">
-        <h3 className="text-xl font-semibold">Stat Descriptors</h3>
+        <Label>Stat Descriptors</Label>
         {editingStat.descriptors &&
           editingStat.descriptors.map((descriptor, index) => (
             <div key={descriptor.id} className="flex items-center space-x-2">
@@ -465,30 +461,12 @@ const StatManager = ({ stat }: { stat: Stat }) => {
 
       {/* Code Section */}
       {isNumeric && (
-        <Collapsible
+        <CollapsibleSection
           open={codeOpen}
           onOpenChange={setCodeOpen}
-          className="border p-2 rounded"
+          icon={<Code className="h-4 w-4" />}
+          title="Dynamic Value Calculation (Optional)"
         >
-          <div className="flex items-center justify-between">
-            <div className="flex items-center">
-              <Code className="h-4 w-4 mr-2" />
-              <h3 className="text-xl font-semibold">
-                Dynamic Value Calculation (Optional)
-              </h3>
-            </div>
-            <CollapsibleTrigger asChild>
-              <Button variant="ghost" size="sm">
-                {codeOpen ? (
-                  <ChevronUp className="h-4 w-4" />
-                ) : (
-                  <ChevronDown className="h-4 w-4" />
-                )}
-              </Button>
-            </CollapsibleTrigger>
-          </div>
-
-          <CollapsibleContent className="space-y-2 mt-2">
             <p className="text-sm text-muted-foreground">
               Write JavaScript code to dynamically calculate this stat&apos;s value
               based on other stats. The code should return a number. You have
@@ -550,8 +528,7 @@ return (health + strength) / 2;"
               setting. Leave empty to use the manual value. AI can&apos;t modify
               stats with code (but it can see the stat value and desc).
             </p>
-          </CollapsibleContent>
-        </Collapsible>
+        </CollapsibleSection>
       )}
     </div>
   );

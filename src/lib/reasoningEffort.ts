@@ -116,9 +116,13 @@ export function reasoningBudgetBody(
  *
  * The guided modes (`inline`/`precall`/`staged`) drive their own thinking, so they force `none` to suppress a
  * native model's reasoning fighting the guided step. Native mode passes the chosen hint through: `auto` omits
- * the field (send nothing → endpoint default), any level is sent verbatim. In every case a value the active
- * endpoint doesn't accept is omitted, so `none` can't 400 a non-reasoning endpoint and a stale selection can't
- * 400 a turn after switching endpoints. A no-op on models without native reasoning.
+ * the field (send nothing → endpoint default), any level maps to itself.
+ *
+ * The field is sent ONLY when `supported` is a non-empty list that includes the value — i.e. we've probed the
+ * active endpoint and confirmed it accepts that literal. An unknown (`null`/`undefined`, not yet probed) or a
+ * conclusively non-reasoning endpoint (`[]`) sends nothing, so a backend that rejects even `none` (e.g. LM Studio
+ * on a non-reasoning model) is never hit with the field. A reasoning-capable endpoint gets the hint once its
+ * probe caches. A no-op on models without native reasoning.
  */
 export function reasoningEffortBody(
   mode: ThinkingMode,
@@ -127,15 +131,62 @@ export function reasoningEffortBody(
 ): { reasoning_effort?: ReasoningEffortField } {
   const value: ReasoningEffortField | null = mode !== 'off' ? 'none' : effort === 'auto' ? null : effort;
   if (value === null) return {};
-  if (supported && !supported.includes(value)) return {};
+  if (!supported || !supported.includes(value)) return {};
   return { reasoning_effort: value };
 }
 
 /**
+ * Best-effort check of whether the active model natively reasons, via LM Studio's native REST API
+ * (`{origin}/api/v1/models` → `models[].capabilities.reasoning`, an object present only for reasoning
+ * models). LM Studio silently ignores an unsupported `reasoning_effort` (HTTP 200 + a server-side warning),
+ * so the effort probe can't tell — this can. Returns `false` when the model is listed without a reasoning
+ * capability, `true` when it has one, and `null` when the check doesn't apply (not LM Studio, model absent
+ * from the list, or the endpoint is unreachable) so callers keep probing / fall back.
+ */
+export async function detectReasoningCapability(
+  endpointUrl: string,
+  token: string,
+  model: string,
+  signal?: AbortSignal,
+): Promise<boolean | null> {
+  let origin: string;
+  try {
+    origin = new URL(endpointUrl).origin;
+  } catch {
+    return null;
+  }
+  try {
+    const res = await fetch(`${origin}/api/v1/models`, {
+      headers: token ? { Authorization: `Bearer ${token}` } : {},
+      signal,
+    });
+    if (!res.ok) return null;
+    const json: unknown = await res.json();
+    const models = (json as { models?: unknown }).models;
+    if (!Array.isArray(models)) return null; // not the LM Studio native shape
+    // Match by exact key; if the configured name doesn't map to one (e.g. the literal "default", which makes
+    // LM Studio serve whatever's loaded), fall back to the single loaded model so capability still resolves.
+    const loaded = (m: unknown) => Array.isArray((m as { loaded_instances?: unknown }).loaded_instances) && (m as { loaded_instances: unknown[] }).loaded_instances.length > 0;
+    const entry = models.find((m) => (m as { key?: unknown }).key === model) ?? models.find(loaded);
+    if (!entry || typeof entry !== 'object') return null; // model not listed → inconclusive
+    const caps = (entry as { capabilities?: unknown }).capabilities;
+    const reasoning = caps && typeof caps === 'object' ? (caps as Record<string, unknown>).reasoning : undefined;
+    return !!reasoning;
+  } catch {
+    return null; // network/abort → inconclusive
+  }
+}
+
+/**
  * Probes an endpoint for which `reasoning_effort` literals it accepts by sending a minimal request per
- * candidate and keeping the ones that return HTTP 200 (400 = rejected). Returns the accepted list, or `null`
- * if the probe is inconclusive (network/auth/5xx on any candidate) so callers keep their fallback rather than
- * narrowing to a wrong set.
+ * candidate and keeping the ones that return HTTP 200 (400 = rejected). Returns the accepted list, `[]` when
+ * the endpoint rejects even `none` (a conclusively non-reasoning model), or `null` if the probe is inconclusive
+ * (network/auth/5xx on any candidate) so callers keep their fallback rather than narrowing to a wrong set.
+ *
+ * First consults `detectReasoningCapability` (LM Studio's native model list): a positively non-reasoning model
+ * returns `[]` immediately, without sending any `reasoning_effort` probe — LM Studio would otherwise 200-and-warn
+ * on every one. Otherwise `none` is probed first and short-circuits: if the backend rejects it, the model exposes
+ * no reasoning fields, so we return `[]` without sending the other six candidates.
  */
 export async function detectSupportedReasoningEfforts(
   url: string,
@@ -167,7 +218,15 @@ export async function detectSupportedReasoningEfforts(
     }
   };
 
-  const results = await Promise.all(REASONING_CANDIDATES.map(probe));
+  const capability = await detectReasoningCapability(url, token, model, signal);
+  if (capability === false) return []; // backend advertises this model as non-reasoning
+
+  const noneAccepted = await probe('none');
+  if (noneAccepted === null) return null; // inconclusive → keep fallback
+  if (noneAccepted === false) return []; // rejects `none` → non-reasoning; skip the rest
+
+  const rest = REASONING_CANDIDATES.filter((v) => v !== 'none');
+  const results = await Promise.all(rest.map(probe));
   if (results.some((r) => r === null)) return null; // couldn't cleanly classify → keep fallback
-  return REASONING_CANDIDATES.filter((_, i) => results[i]);
+  return ['none', ...rest.filter((_, i) => results[i])];
 }

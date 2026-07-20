@@ -536,6 +536,9 @@ const GameViewer = ({
   const [debugPage, setDebugPage] = useState(1); // 1-based page = index into visibleDebugTurns
   const [disabledHighlights, setDisabledHighlights] = useState<Record<string, boolean>>({});
   // AI-context highlight mode: dictionary entries vs the per-turn rehydration ("hydration") signal.
+  // TODO(rehydration): the Hydrations mode visualizes the rehydration selection, which is currently
+  // disabled in turnBanding.ts. The toggle + highlighter are left intact but dormant; remove or restore
+  // together when rehydration is redesigned.
   const [debugHighlightMode, setDebugHighlightMode] = useState<"dictionary" | "hydrations">("dictionary");
   const [disabledHydrations, setDisabledHydrations] = useState<Record<string, boolean>>({});
   const [debugSearch, setDebugSearch] = useState("");
@@ -2600,7 +2603,9 @@ ${playerNotes || NONE_PLACEHOLDER}
             {bandCounts && (
               <div className="pl-3 text-muted-foreground space-y-0.5">
                 {row("Summary band", bandCounts.bandTokens)}
-                {row("Rehydrated", bandCounts.rehydratedTokens)}
+                {/* TODO(rehydration): restore when rehydration is re-enabled — it is disabled in
+                    turnBanding.ts (drove the charged-scene freeze), so this row is always 0. */}
+                {/* {row("Rehydrated", bandCounts.rehydratedTokens)} */}
               </div>
             )}
             {row("Reserved output", outputTokens)}

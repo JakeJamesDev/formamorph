@@ -24,7 +24,7 @@ Each stat's **Name** is always sent. The Stats chip in your prompt decides what 
 
 | Piece | Adds |
 |---|---|
-| **Values** | The current value and its ceiling — `62/100` |
+| **Values** | The current value and its ceiling — `62/100`, or `62%` for a percentage stat |
 | **Status** | The matching Stat Descriptor — a word for the current level |
 | **Meaning** | The stat's **Description** — what it represents |
 
@@ -37,9 +37,9 @@ With no piece selected, the line is just the stat's name.
 | Field | What it does |
 |---|---|
 | **Name** | Also how the AI refers to the stat, and how stat changes are matched back to it. |
-| **Type** | Number. (List exists in the data format but isn't currently offered.) |
+| **Type** | **Number** (a range you set) or **Percentage** (pinned 0–100, shown everywhere as `N%`). Everything below works the same for both. (List exists in the data format but isn't currently offered.) |
 | **Description** | What the stat represents. Sent to the AI when the chip's **Meaning** piece is on. |
-| **Min** / **Max** | The range. Values are always clamped to it. |
+| **Min** / **Max** | The range. Values are always clamped to it. A percentage stat locks these at 0 / 100 and hides Max — you set only its **Initial Value (%)**. |
 | **Initial Value** | Where the stat starts. Ignored when the stat has code. |
 | **Regen** | Added to the value once per turn, then clamped. Positive heals over time; negative bleeds. |
 | **Body Sliders** | Bind body morph sliders to this stat — its value, from Min to Max, drives each slider. Each slider belongs to only one stat. |
@@ -64,6 +64,8 @@ Four checkboxes stop the AI moving a stat in one direction, while your world's o
 | **Don't decrease** | AI lowering the value |
 | **Don't increase max** | AI raising the ceiling |
 | **Don't decrease Max** | AI lowering the ceiling |
+
+Percentage stats show only the first two — their ceiling is pinned at 100, so the AI can never move it.
 
 ### Dynamic Value Calculation
 
