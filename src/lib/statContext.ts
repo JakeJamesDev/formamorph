@@ -31,16 +31,17 @@ export function buildStatContext(
       const range = stat.max - stat.min;
       const percentage = range === 0 ? 0 : ((stat.value - stat.min) / range) * 100;
       const descriptor = stat.descriptors.find((d) => percentage <= d.threshold);
+      const valueStr = stat.type === 'percentage' ? `${stat.value}%` : `${stat.value}/${stat.max}`;
       if (format === 'xml') {
         const child = (tag: string, value: string | number) => `\n  <${tag}>${xmlEscape(String(value))}</${tag}>`;
         let inner = child('name', stat.name);
-        if (pieces.values) inner += child('value', `${stat.value}/${stat.max}`);
+        if (pieces.values) inner += child('value', valueStr);
         if (pieces.status && descriptor) inner += child('status', descriptor.description);
         if (pieces.meaning && stat.description) inner += child('meaning', stat.description);
         return `<stat>${inner}\n</stat>`;
       }
       let body = '';
-      if (pieces.values) body += `${stat.value}/${stat.max}`;
+      if (pieces.values) body += valueStr;
       // Descriptor is parenthesized when it trails a value, bare when it stands alone (matches prior output).
       if (pieces.status && descriptor) body += pieces.values ? ` (${descriptor.description})` : descriptor.description;
       if (pieces.meaning && stat.description) body += body ? ` — ${stat.description}` : stat.description;

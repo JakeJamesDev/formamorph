@@ -12,6 +12,7 @@
 // seed) and LM Studio queues past its slots. Context is windowed to --window recent turns so per-slot fits.
 
 import { parseArgs, callMessages, runAll, grab, buildThinkingUser, QUOTE_RE, FREEZE_RE, DEFER_RE } from "./planner-probe-lib.mjs";
+import { applyFix } from "./candidates/freeze-fixes.mjs";
 
 const argv = process.argv.slice(2);
 const num = (f, d) => { const i = argv.indexOf(f); return i >= 0 ? Number(argv[i + 1]) : d; };
@@ -24,8 +25,8 @@ const which = strArg("--template", "shipped");
 const { WORLD, PLAYER_TRAIT, LOCATION, ENTITIES, TURNS } = await import(strArg("--corpus", "./dialogue-corpus.mjs"));
 
 // ── Prompt fills ──
-const THINK = grab("defaultThinkingPrompt");
-const NARR = grab("defaultSystemPrompt");
+const FIX = strArg("--fix", "shipped");
+const { narr: NARR, think: THINK } = applyFix(FIX, { narr: grab("defaultSystemPrompt"), think: grab("defaultThinkingPrompt") });
 const entMd = ENTITIES.map((e) => `- **${e.name}** (${e.type}): ${e.description}`).join("\n");
 const PLANNER_SYS = THINK
   .replaceAll("<WORLD DESCRIPTION>", WORLD)
@@ -98,7 +99,7 @@ async function playthrough(seed) {
   return rows;
 }
 
-console.log(`DIALOGUE-INTENT · corpus ${TURNS.length} turns · "${opts.model}" · template ${which} · runs ${RUNS} · window ${WINDOW}\n`);
+console.log(`DIALOGUE-INTENT · corpus ${TURNS.length} turns · "${opts.model}" · fix ${FIX} · runs ${RUNS} · window ${WINDOW}\n`);
 const runs = (await runAll(Array.from({ length: RUNS }, (_, r) => r), (r) => playthrough(opts.seed + r).catch((e) => { console.log(`run ${r} ERROR: ${String(e.message || e).slice(0, 80)}`); return null; }))).filter(Boolean);
 
 // ── Score ──

@@ -277,4 +277,9 @@ describe('applyAiMaxChanges', () => {
     const out = applyAiMaxChanges([stat({ name: 'Mana', max: 30 })], { mana: 5 });
     expect(out[0].max).toBe(35);
   });
+
+  it('never moves a percentage stat’s pinned max', () => {
+    const out = applyAiMaxChanges([stat({ type: 'percentage', max: 100 })], { health: 20 });
+    expect(out[0].max).toBe(100);
+  });
 });

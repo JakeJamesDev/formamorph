@@ -28,15 +28,21 @@ export default defineConfig({
     exclude: ['quickjs-emscripten', '@jitl/quickjs-wasmfile-release-sync', 'wasm-webp'],
   },
   server: {
-    watch: {
-      // Paths the app never imports. Watching them costs a full page reload every time a background tool
-      // rewrites one — `graphify watch` regenerates graphify-out/graph.html on any source change, and the
-      // baseline harness writes dumps, profiles and docs of its own. A reload mid-run kills the scripted turn
-      // it was driving ("Execution context was destroyed" / "__baseline is undefined"), which made long harness
-      // runs fail ~1 in 3. `testing/` is ignored wholesale: it drives the dev server, it is never served by it,
-      // so editing the harness while a run is in flight must not restart the page under it.
-      ignored: ['**/graphify-out/**', '**/testing/**', '**/graph.json', '**/GRAPH_REPORT.md'],
-    },
+    // When the baseline harness spawns the dev server (BASELINE_NO_WATCH=1) it disables watching and HMR
+    // entirely: the harness reads source once at page load and never needs live reload, so a developer editing
+    // ANY file (src included) while a long scripted run is in flight can't restart the page under it. A normal
+    // `npm run dev` leaves both on and keeps the ignore list below.
+    ...(process.env.BASELINE_NO_WATCH
+      ? { hmr: false, watch: null }
+      : {
+          watch: {
+            // Paths the app never imports. Watching them costs a full page reload every time a background tool
+            // rewrites one — `graphify watch` regenerates graphify-out/graph.html on any source change, and the
+            // baseline harness writes dumps, profiles and docs of its own. A reload mid-run kills the scripted
+            // turn it was driving ("Execution context was destroyed" / "__baseline is undefined").
+            ignored: ['**/graphify-out/**', '**/testing/**', '**/graph.json', '**/GRAPH_REPORT.md'],
+          },
+        }),
   },
   test: {
     environment: 'jsdom',

@@ -872,6 +872,7 @@ export const RightPanel = ({ onLocationClick, language, setLanguage }: {
           <ScrollArea className="h-[calc(100%-1rem)] relative">
             {playerStats.map((stat, index) => {
               const statValue = stat.value as number;
+              const isPercentage = stat.type === 'percentage';
               const change = recentStatChanges[stat.name.toLowerCase()] || 0;
               return (
               <div key={index} className="mb-2">
@@ -886,7 +887,7 @@ export const RightPanel = ({ onLocationClick, language, setLanguage }: {
                         {change > 0 ? '+' : ''}{change}
                       </span>
                     )}
-                    <span>{statValue} / {stat.max}</span>
+                    <span>{isPercentage ? `${statValue}%` : `${statValue} / ${stat.max}`}</span>
                   </div>
                 </div>
                 {isEditMode && !isViewingPast ? (

@@ -219,16 +219,18 @@ async function runOne(browser, cfg, model, profile) {
   await page.locator('input[type="file"]').first().setInputFiles(worldPath);
   await page.getByRole("button", { name: /Enter World/i }).click();
 
-  // Advance the trait modal (defaults pre-checked) until the game mounts and __baseline registers.
-  for (let i = 0; i < 12; i++) {
+  // Advance the enter-world steps (defaults pre-selected) until the game mounts and __baseline registers.
+  // Each step's primary button is labeled with the NEXT step's name (Traits→Characters→Dictionaries→Start),
+  // so click whichever advance label is present this iteration. Richer worlds (a character library, a
+  // dictionary choice) chain more steps than Sedge's traits-only flow.
+  const ADVANCE = ["Next", "Location", "Characters", "Dictionaries", "Avatar", "Start", "Continue", "Random", "Skip"];
+  for (let i = 0; i < 24; i++) {
     if (await page.evaluate(() => Boolean(window.__baseline))) break;
-    const start = page.getByRole("button", { name: "Start", exact: true });
-    const next = page.getByRole("button", { name: "Next", exact: true });
-    const skip = page.getByRole("button", { name: "Skip", exact: true });
-    if (await start.count()) await start.first().click().catch(() => {});
-    else if (await next.count()) await next.first().click().catch(() => {});
-    else if (await skip.count()) await skip.first().click().catch(() => {});
-    await page.waitForTimeout(400);
+    for (const name of ADVANCE) {
+      const btn = page.getByRole("button", { name, exact: true });
+      if (await btn.count()) { await btn.first().click().catch(() => {}); break; }
+    }
+    await page.waitForTimeout(500);
   }
   if (!(await page.evaluate(() => Boolean(window.__baseline)))) {
     throw new Error(`${label}: window.__baseline never registered (did the game screen mount?)`);
@@ -279,6 +281,9 @@ async function main() {
   const dev = spawn(process.execPath, [path.join(REPO_ROOT, "node_modules", "vite", "bin", "vite.js"), "--port", String(PORT), "--strictPort"], {
     cwd: REPO_ROOT,
     stdio: "ignore",
+    // Disable HMR/file-watching for the harness's server (see vite.config.js): a developer editing source
+    // during a long scripted run then can't trigger a page reload that kills the turn under it.
+    env: { ...process.env, BASELINE_NO_WATCH: "1" },
   });
   let devExited = false;
   dev.on("exit", () => { devExited = true; });

@@ -8,6 +8,12 @@ const vigor = {
   descriptors: [{ id: 'd', threshold: 100, description: 'Winded' }],
 } as unknown as PlayerStat;
 
+// A percentage stat renders its value as N% instead of value/max.
+const focus = {
+  id: 'f', name: 'Focus', type: 'percentage', description: 'Mental sharpness.', min: 0, max: 100, value: 40, regen: 0,
+  descriptors: [{ id: 'd', threshold: 100, description: 'Sharp' }],
+} as unknown as PlayerStat;
+
 const all = { values: true, status: true, meaning: true };
 
 describe('buildStatContext', () => {
@@ -54,6 +60,17 @@ describe('buildStatContext', () => {
     const amp = { ...vigor, name: 'H<P & M', description: '' } as PlayerStat;
     expect(buildStatContext([amp], { values: false, status: false, meaning: false }, 'xml')).toBe(
       '<stat>\n  <name>H&lt;P &amp; M</name>\n</stat>',
+    );
+  });
+  it('percentage stat renders its value as N%', () => {
+    expect(buildStatContext([focus], { values: true, status: false, meaning: false })).toBe('Focus: 40%');
+  });
+  it('percentage value + status → descriptor parenthesized after the percent', () => {
+    expect(buildStatContext([focus], { values: true, status: true, meaning: false })).toBe('Focus: 40% (Sharp)');
+  });
+  it('percentage renders as N% in xml', () => {
+    expect(buildStatContext([focus], { values: true, status: false, meaning: false }, 'xml')).toBe(
+      '<stat>\n  <name>Focus</name>\n  <value>40%</value>\n</stat>',
     );
   });
 });
