@@ -185,12 +185,13 @@ Start with two or three stats that the story would genuinely turn on. Every stat
 
 It exists because the AI can't hold your whole world in mind at once. Rather than spending context on every detail every turn, the Dictionary keeps lore on standby and pays for it only when it's relevant — someone mentions the Gloamwater, and the AI knows what it is.
 
-**What gets scanned.** On each turn — one action from you and the AI's reply — Formamorph scans:
+**What gets scanned.** The rule is simple: **if the AI is told it, it can fire a trigger.** Each turn Formamorph scans:
 
-- the **current scene**: your location, the characters present, and the action you just took;
+- the **scene as the AI receives it** — your location and the characters present, plus any **nearby or sub-location** detail your prompt sends. Keywords match the exact wording the AI gets, so where a block is sent as a summary, the summary is what's matched;
+- your **notes** and the **action** you just took;
 - **earlier turns**, both your actions and the AI's replies, as far back as the entry's **Scan depth** allows — all of them by default, none at 0.
 
-Your world description is deliberately left out, so its terms don't fire on every turn.
+Text that's present every single turn is deliberately left out — your world description, stats, traits, and formatting guidance — since its terms would otherwise fire constantly.
 
 **The controls**
 

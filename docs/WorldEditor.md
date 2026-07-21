@@ -282,14 +282,19 @@ The Dictionary is the alternative: lore sits on standby and costs nothing until 
 
 ### What gets scanned
 
-A **turn** is one action from you and the AI's reply. On each turn, Formamorph scans:
+The rule: **if the AI is told it, it can fire a trigger.** A **turn** is one action from you and the AI's reply. On each turn, Formamorph scans:
 
 | Scanned | Always? |
 |---|---|
-| **Current scene** — your location, the characters present, and the action you just took | Always |
+| **The scene as the AI receives it** — your location and the characters present, plus any nearby / sub-location detail your prompt sends | Always |
+| **Your notes** and the **action** you just took | Always |
 | **Earlier turns** — your actions and the AI's replies | Up to the entry's **Scan depth** |
 
-Your world description is deliberately **excluded**. It's present every turn, so terms inside it would fire their entries constantly and defeat the point.
+> 💡 Keywords match **the exact wording the AI is given**. Where a block is sent as a *summary*, the summary is what's matched — so a keyword that appears only in an entity's full description won't fire if the AI was sent the short version. Check which form your prompt sends in **Settings → System Prompts**.
+
+Text that appears on **every** turn is deliberately **excluded** — your world description, stats, traits, and formatting guidance. Terms inside them would fire their entries constantly and defeat the point.
+
+Lore doesn't trigger other lore unless you ask it to: that's what **Recursive** is for.
 
 ### The entry editor
 

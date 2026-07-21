@@ -94,7 +94,8 @@ import { matchLocationResponse } from "../lib/locationMatch";
 import { rollbackState, regenerateState, canRegenerate, lastTurnAction, markRegeneratedTurn, markPrunedTurns, snapshotPageIndex, placeSnapshot, sliceHistoryToPage, pageAssistantIndex } from "../lib/turnHistory";
 import { useDeferredSnapshot } from "../lib/useDeferredSnapshot";
 import { statMorphMap } from "../lib/bodyMorphs";
-import { getActivatedDictionary, buildDictionaryContext, parseKeywords } from "../lib/dictionaryUtils";
+import { explainActivation, buildDictionaryContext, parseKeywords, locateMatches, type EntryActivation, type ScanSource, type MatchHit, type MatchRule } from "../lib/dictionaryUtils";
+import { buildScanCorpus } from "../lib/dictionaryScan";
 import { restyle } from "../lib/sectionStyle";
 import { highlightSegments, HIGHLIGHT_PALETTE, type HighlightRule, type HighlightSegment } from "../lib/highlightUtils";
 import { useIsMobile } from "../lib/useIsMobile";
@@ -122,6 +123,13 @@ interface GameViewerProps {
 }
 
 // One AI sub-request captured per turn for the AI-context viewer (its sent messages + raw response).
+// The dictionary activation captured for a turn's narration request: the per-entry report plus the verbatim
+// scanned strings (only those a hit landed in) so the AI-context viewer can mark real matches — and only real
+// matches — even on historical turns whose live state has moved on.
+interface DictionaryDebug {
+  report: EntryActivation[];
+  sources: ScanSource[];
+}
 interface DebugRequest {
   type: string;
   messages: ChatMessage[];
@@ -129,6 +137,8 @@ interface DebugRequest {
   // Correlates a captured request to its own response, so concurrent same-type calls (the staged character
   // pass, parallel diaries) each land on the right entry instead of overwriting by (type + empty-response).
   id?: string;
+  // Narration only: the dictionary activation behind this turn's injected lore.
+  dictionary?: DictionaryDebug;
 }
 interface DebugTurn {
   action: string;
@@ -454,6 +464,9 @@ const GameViewer = ({
   const sceneListCtxRef = useRef<{ cast: DirectorCastMember[] | null; prior: string }>({ cast: null, prior: "" });
   const assistantAddedRef = useRef(false); // whether this turn's in-progress assistant message is in history yet
   const currentTurnIdRef = useRef(""); // stable id for the in-progress turn, stamped into its assistant JSON
+  // This turn's dictionary activation, computed at narration-assembly time and consumed by the narration
+  // request's AI-context capture (reset per turn so a turn without one never reuses a stale report).
+  const pendingDictionaryDebugRef = useRef<DictionaryDebug | null>(null);
   // This turn's captured reasoning (native `reasoning` stream field + inline <think>) + think duration (ms),
   // set by the narration request's stream and read into the committed turn JSON. Also drives the live block.
   const turnReasoningRef = useRef<{ text: string; ms: number }>({ text: "", ms: 0 });
@@ -1088,6 +1101,7 @@ const GameViewer = ({
       // Stamp a stable id for this turn, written into its assistant JSON (powers the digest apply-guard).
       currentTurnIdRef.current = randomUUID();
       // Start a new turn in the AI-context history (cap to the last 50 turns).
+      pendingDictionaryDebugRef.current = null;
       setDebugTurns((prev) => [...prev, { action: effectiveAction, requests: [], turnId: currentTurnIdRef.current }].slice(-50));
 
       // With auto-apply on, resolve the location change up front — from the action alone, before any
@@ -1117,13 +1131,21 @@ const GameViewer = ({
       // every system-prompt render below spreads it and adds its own tokens.
       const ctx = buildContextValues(turnLocation);
 
-      // Dictionary/lorebook entries active this turn. The current scene (location + entities present + action +
-      // player notes) is always scanned; message history is scanned per entry up to its `scanDepth` (all of it when
-      // unset). The always-present world description is intentionally excluded so its terms don't fire every turn.
-      const activatedEntries = getActivatedDictionary(
-        dictionary,
-        [ctx["<LOCATION>"], ctx["<ENTITIES>"], effectiveAction, playerNotes],
-        { history: fullMessageHistory.map((m) => m.content) },
+      // Dictionary/lorebook entries active this turn. The scan corpus is exactly the context the AI is given —
+      // whichever location/entity blocks this prompt renders, in their rendered form — so anything the model
+      // can read can fire a trigger, and nothing it can't. Always-present scaffolding (world description,
+      // stats/traits, guidance) is excluded; see `buildScanCorpus`. History honors each entry's `scanDepth`.
+      const dictCorpus = buildScanCorpus({
+        template: systemPrompt,
+        ctx,
+        action: effectiveAction,
+        // The prompt shows the resolved <NOTES> chip, or the raw fallback section when it has no chip.
+        notes: systemPrompt.includes("<NOTES>") ? ctx["<NOTES>"] : playerNotes,
+        history: fullMessageHistory,
+      });
+      const activationReport = explainActivation(dictionary, dictCorpus.scene, { history: dictCorpus.history });
+      const activatedEntries = dictionary.filter(
+        (e) => e.enabled !== false && activationReport.byId.get(e.id)?.activated,
       );
       // Split by position into the two lorebook blocks. When the active prompt has no "before" chip, those entries
       // fall back into the single "after" block so no lore is lost; a prompt with no dictionary chip at all gets a
@@ -1183,6 +1205,21 @@ ${playerNotes || NONE_PLACEHOLDER}
         // (baseline harness / fixtures) still maps to the default cue.
         { role: "user", content: isOpeningTurn ? (action === "START GAME" ? OPENING_SCENE_CUE : action) : `Player action: ${action}` },
       ];
+
+      // AI-context capture. Every scanned source is a string the prompt genuinely contains, so the viewer can
+      // locate each match directly — no re-derivation, and the highlights cannot drift from what activated.
+      // Recursion hits point at an active entry's value, which the injected lore block shows verbatim.
+      {
+        const report = activationReport.entries;
+        const recursionSources: ScanSource[] = activatedEntries
+          .filter((e) => e.value)
+          .map((e) => ({ region: `recursion:${e.id}`, text: e.value }));
+        // Keep only the scanned strings a hit actually landed in, so the debug/export JSON stays lean.
+        const hitRegions = new Set(report.flatMap((e) => e.hits.map((h) => h.region)));
+        const sources = [...dictCorpus.scene, ...dictCorpus.history, ...recursionSources]
+          .filter((s) => hitRegions.has(s.region));
+        pendingDictionaryDebugRef.current = { report, sources };
+      }
 
       // Add user message to history after getting trimmed history. Stores the proxy on the opening turn so
       // later turns' context is byte-identical to the old flow (the real opening text lives in openingActionRef).
@@ -1924,11 +1961,13 @@ ${playerNotes || NONE_PLACEHOLDER}
       const idx = silent ? prev.findIndex((t) => t.turnId === attachTurnId) : prev.length - 1;
       if (idx === -1) return prev;
       const next = prev.slice();
+      // Attach the dictionary activation to the narration request only (the sole request that injects lore).
+      const dictionary = requestType === "narration" ? pendingDictionaryDebugRef.current ?? undefined : undefined;
       next[idx] = {
         ...next[idx],
         requests: [
           ...next[idx].requests,
-          { type: requestType, messages: [{ role: "system", content: systemPrompt }, ...messages], id: captureId },
+          { type: requestType, messages: [{ role: "system", content: systemPrompt }, ...messages], id: captureId, dictionary },
         ],
       };
       return next;
@@ -2931,39 +2970,14 @@ ${playerNotes || NONE_PLACEHOLDER}
         <DialogContent className="max-w-[90vw] w-[90vw] h-[85dvh] flex flex-col overflow-hidden">
           {(() => {
             const palette = HIGHLIGHT_PALETTE;
+            // Stable per-entry color + name lookups (by the live dictionary's order), shared by the legend,
+            // the inline match-chips, and the reason popovers so one accent always means one entry.
             const colorMap: Record<string, string> = {};
-            // Trigger keywords highlight in the narrative/history (showing why an entry
-            // activated); inside the injected "Foreground Lore:" block only the entry
-            // name declaration ("Name:") highlights — not keyword occurrences in the value.
-            const triggerRules: HighlightRule[] = [];
-            const declarationRules: HighlightRule[] = [];
+            const nameById = new Map<string, string>();
             dictionary.forEach((entry, i) => {
-              const color = palette[i % palette.length];
-              colorMap[entry.id] = color;
-              if (disabledHighlights[entry.id]) return;
-              parseKeywords(entry).forEach((term) => triggerRules.push({ term, color }));
-              if (entry.name) declarationRules.push({ term: `${entry.name}:`, color });
+              colorMap[entry.id] = palette[i % palette.length];
+              nameById.set(entry.id, entry.name || parseKeywords(entry)[0] || "unnamed");
             });
-            // The late dictionary block header, in either section style (## Foreground Lore / FOREGROUND LORE:).
-            const RELEVANT_MARKER = /^#{0,6}[ \t]*Foreground Lore:?/im;
-            // Highlight only a "Name:" at the start of a line — the declaration prepended by
-            // buildDictionaryContext — not a "Name:" that recurs inside the entry's value text.
-            const highlightDeclarations = (block: string) => {
-              const segments: HighlightSegment[] = [];
-              block.split("\n").forEach((line, li) => {
-                if (li > 0) segments.push({ text: "\n" });
-                const rule = declarationRules
-                  .filter((r) => line.startsWith(r.term))
-                  .sort((a, b) => b.term.length - a.term.length)[0];
-                if (rule) {
-                  segments.push({ text: rule.term, color: rule.color });
-                  segments.push({ text: line.slice(rule.term.length) });
-                } else if (line) {
-                  segments.push({ text: line });
-                }
-              });
-              return segments;
-            };
             const searchTerms = debugSearch.trim().toLowerCase().split(/\s+/).filter(Boolean);
             const searchActive = searchTerms.length > 0;
             // Keep only lines matching any search term; collapse each run of dropped lines into "...".
@@ -2984,20 +2998,29 @@ ${playerNotes || NONE_PLACEHOLDER}
               if (shownAny && pendingGap) out.push("...");
               return shownAny ? out.join("\n") : "";
             };
-            // Section-aware highlight (+ optional search filter); returns [] when search hides everything.
-            const buildSegments = (text: string) => {
-              const idx = text.search(RELEVANT_MARKER);
-              let body = idx === -1 ? text : text.slice(0, idx);
-              let block = idx === -1 ? "" : text.slice(idx);
-              if (searchActive) {
-                body = filterLines(body);
-                block = filterLines(block);
-              }
-              const segs: HighlightSegment[] = [];
-              if (body) segs.push(...highlightSegments(body, triggerRules));
-              if (searchActive && body && block) segs.push({ text: "\n" });
-              if (block) segs.push(...highlightDeclarations(block));
-              return segs;
+            // One inline match-chip: the entry it belongs to plus the exact hit behind it (drives the popover).
+            interface DictChip { entryId: string; color: string; activation: EntryActivation; hit: MatchHit; }
+            // A rendered run of text — plain, a legacy flat color mark (hydrations), or a dictionary match-chip.
+            interface Seg { text: string; color?: string; chip?: DictChip; }
+            // Dictionary highlighter — the truthful path. Marks ONLY the real activation hits, located inside
+            // the exact scanned strings (`dict.sources`) captured for this turn, so a highlight means the text
+            // genuinely drove an entry to activate. `dict` is undefined for non-narration requests and raw
+            // output (never scanned) — those render plain. Honors the search filter and the legend toggles.
+            const buildDictSegments = (text: string, dict?: DictionaryDebug): Seg[] => {
+              const shown = searchActive ? filterLines(text) : text;
+              if (searchActive && !shown) return [];
+              if (!dict) return shown ? [{ text: shown }] : [];
+              // Locate real activation hits (lib does the offset math + overlap resolution); paint on the color.
+              return locateMatches(
+                shown,
+                dict.report,
+                dict.sources,
+                (entryId) => disabledHighlights[entryId] || !colorMap[entryId],
+              ).map((seg) =>
+                seg.chip
+                  ? { text: seg.text, color: colorMap[seg.chip.entryId], chip: { entryId: seg.chip.entryId, color: colorMap[seg.chip.entryId], activation: seg.chip.activation, hit: seg.chip.hit } }
+                  : { text: seg.text },
+              );
             };
             // Hydration highlighter: no section/declaration logic — just mark the (active) hydration terms,
             // honoring the search filter and returning [] when search hides everything.
@@ -3006,9 +3029,80 @@ ${playerNotes || NONE_PLACEHOLDER}
               if (searchActive && !t) return [];
               return highlightSegments(t, rules);
             };
-            const renderSegs = (segs: HighlightSegment[]) =>
-              segs.map((seg, k) =>
-                seg.color ? (
+            // Human labels for a scanned region + an entry's match rule, shown in the reason popover.
+            // Scene regions are the prompt token that produced the block, so the label names the scope the
+            // player actually sees in the prompt (here / sub-locations / nearby).
+            const regionLabel = (region: string): string => {
+              if (region === "action") return "the player action";
+              if (region === "notes") return "player notes";
+              if (region.startsWith("history:")) return "an earlier message";
+              if (region.startsWith("recursion:")) {
+                const src = nameById.get(region.slice("recursion:".length));
+                return src ? `the lore of "${src}"` : "another entry's lore";
+              }
+              if (region.startsWith("<LOCATION") || region.startsWith("<ENTITIES")) {
+                const what = region.startsWith("<LOCATION") ? "location" : "characters & things";
+                const variant = tokenVariant(region) ?? "";
+                const scope = variant.includes("sublocations") ? "in the sub-locations"
+                  : variant.includes("reachable") ? "nearby"
+                  : variant.includes("destinations") ? "where you can go"
+                  : "here";
+                return `${what} ${scope}${variant.includes("summary") ? " (summary)" : ""}`;
+              }
+              return region;
+            };
+            const ruleLabel = (rule: MatchRule): string => {
+              const how = rule.regex ? "regex" : rule.wholeWord ? "whole word" : "substring";
+              return rule.caseSensitive ? `${how}, case-sensitive` : how;
+            };
+            const reasonBadge = (reason: EntryActivation["reason"]): string =>
+              reason === "constant" ? "always on" : reason === "recursive" ? "recursively activated" : "keyword match";
+            // The "why it fired" popover for one match-chip.
+            const renderReason = (chip: DictChip) => {
+              const { activation: act, hit } = chip;
+              const sec = act.secondary;
+              return (
+                <div className="space-y-1.5">
+                  <div className="flex items-center justify-between gap-2">
+                    <span className="font-semibold">{nameById.get(chip.entryId) ?? "unnamed"}</span>
+                    <span className="rounded px-1 py-0.5 text-[10px]" style={{ backgroundColor: chip.color, color: "#000" }}>
+                      {reasonBadge(act.reason)}
+                    </span>
+                  </div>
+                  <div>
+                    Matched <span className="font-medium">“{hit.matchedText}”</span> in {regionLabel(hit.region)}
+                    {hit.keyword !== hit.matchedText ? <> (keyword <code>{hit.keyword}</code>)</> : null}.
+                  </div>
+                  <div className="text-muted-foreground">Match rule: {ruleLabel(act.rule)}.</div>
+                  {sec ? (
+                    <div className="text-muted-foreground">
+                      Secondary ({sec.requireAll ? "all" : "any"} of {sec.keywords.map((k) => `“${k}”`).join(", ")}):{" "}
+                      {sec.present ? "present" : "absent"}{sec.exclude ? " — inverted, fires when absent" : ""}.
+                    </div>
+                  ) : null}
+                </div>
+              );
+            };
+            const renderSegs = (segs: Seg[]) =>
+              segs.map((seg, k) => {
+                if (seg.chip) {
+                  return (
+                    <Popover key={k}>
+                      <PopoverTrigger asChild>
+                        <mark
+                          style={{ backgroundColor: seg.color, color: "#000" }}
+                          className="rounded px-0.5 cursor-pointer hover:ring-2 hover:ring-ring"
+                        >
+                          {seg.text}
+                        </mark>
+                      </PopoverTrigger>
+                      <PopoverContent align="start" className="w-72 text-xs">
+                        {renderReason(seg.chip)}
+                      </PopoverContent>
+                    </Popover>
+                  );
+                }
+                return seg.color ? (
                   <mark
                     key={k}
                     style={{ backgroundColor: seg.color, color: "#000" }}
@@ -3018,13 +3112,17 @@ ${playerNotes || NONE_PLACEHOLDER}
                   </mark>
                 ) : (
                   <span key={k}>{seg.text}</span>
-                ),
-              );
+                );
+              });
             // Page = turn; show the requests captured for the currently selected (visible) turn.
             const totalDebugPages = visibleDebugTurns.length;
             const pageIndex = Math.min(Math.max(debugPage, 1), Math.max(totalDebugPages, 1)) - 1;
             const currentTurn = visibleDebugTurns[pageIndex];
             const currentRequests = currentTurn?.requests ?? [];
+            // This turn's narration activation report drives the legend's activated/dimmed state.
+            const activationById = new Map(
+              (currentRequests.find((r) => r.type === "narration")?.dictionary?.report ?? []).map((a) => [a.entryId, a]),
+            );
             // The hydration signal for this turn: the action's keywords (matched vs summaries) + the action's
             // entities (matched vs participation) — exactly what selectRehydrations sees. Deduped, colored.
             const hydrationTerms: string[] = [];
@@ -3048,11 +3146,12 @@ ${playerNotes || NONE_PLACEHOLDER}
             const activeHydrationRules: HighlightRule[] = hydrationTerms
               .filter((term) => !disabledHydrations[term])
               .map((term) => ({ term, color: hydrationColorMap[term.toLowerCase()] }));
-            // Per-block segmenter honoring the mode: hydrations highlight only inside the narration request.
-            const segmentsFor = (text: string, reqType: string): HighlightSegment[] =>
+            // Per-block segmenter honoring the mode. Hydrations mark only inside the narration request;
+            // dictionary marks come from that request's captured activation and never touch the raw output.
+            const segmentsFor = (text: string, req: DebugRequest, isOutput: boolean): Seg[] =>
               debugHighlightMode === "hydrations"
-                ? buildHydrationSegments(text, reqType === "narration" ? activeHydrationRules : [])
-                : buildSegments(text);
+                ? buildHydrationSegments(text, req.type === "narration" ? activeHydrationRules : [])
+                : buildDictSegments(text, isOutput ? undefined : req.dictionary);
             // The memory digest for this turn (stored on its assistant message), if one has been generated.
             const currentSummary = currentTurn?.turnId
               ? fullMessageHistory
@@ -3114,6 +3213,21 @@ ${playerNotes || NONE_PLACEHOLDER}
                   {debugHighlightMode === "dictionary" ? (
                     dictionary.length > 0 ? (
                       dictionary.map((entry) => {
+                        // Only entries that actually activated this turn are togglable; the rest read as
+                        // dimmed, non-interactive tags so the full set stays visible.
+                        const activated = !!activationById.get(entry.id)?.activated;
+                        const label = entry.name || parseKeywords(entry)[0] || "unnamed";
+                        if (!activated) {
+                          return (
+                            <span
+                              key={entry.id}
+                              className="rounded border border-border px-1.5 py-0.5 opacity-40 text-muted-foreground"
+                              title="Did not activate this turn"
+                            >
+                              {label}
+                            </span>
+                          );
+                        }
                         const disabled = disabledHighlights[entry.id];
                         return (
                           <button
@@ -3127,9 +3241,9 @@ ${playerNotes || NONE_PLACEHOLDER}
                                 ? { borderColor: colorMap[entry.id], opacity: 0.5 }
                                 : { backgroundColor: colorMap[entry.id], borderColor: colorMap[entry.id], color: "#000" }
                             }
-                            title={disabled ? "Click to enable highlight" : "Click to disable highlight"}
+                            title={disabled ? "Click to show highlights" : "Click to hide highlights"}
                           >
-                            {entry.name || parseKeywords(entry)[0] || "unnamed"}
+                            {label}
                           </button>
                         );
                       })
@@ -3227,12 +3341,12 @@ ${playerNotes || NONE_PLACEHOLDER}
                         currentRequests.map((req, i) => {
                           const msgSegs = req.messages.map((m) => ({
                             role: m.role,
-                            segs: segmentsFor(m.content, req.type),
+                            segs: segmentsFor(m.content, req, false),
                           }));
                           const hasReqMatch = msgSegs.some((ms) => ms.segs.length > 0);
                           // Raw, unmodified AI output for this request (captured in makeAIRequest).
                           const outSegs =
-                            typeof req.response === "string" ? segmentsFor(req.response, req.type) : null;
+                            typeof req.response === "string" ? segmentsFor(req.response, req, true) : null;
                           const hasOutMatch = outSegs !== null && outSegs.length > 0;
                           // While searching, drop the whole block only if neither the request nor its output matches.
                           if (searchActive && !hasReqMatch && !hasOutMatch) return null;
