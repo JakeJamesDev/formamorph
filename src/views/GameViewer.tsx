@@ -1202,8 +1202,10 @@ ${playerNotes || NONE_PLACEHOLDER}
       const narrationMessages: ChatMessage[] = [
         ...trimmedHistory,
         // Opening turn sends the player's (editable) cue text verbatim; the legacy "START GAME" sentinel
-        // (baseline harness / fixtures) still maps to the default cue.
-        { role: "user", content: isOpeningTurn ? (action === "START GAME" ? OPENING_SCENE_CUE : action) : `Player action: ${action}` },
+        // (baseline harness / fixtures) still maps to the default cue. Later turns send the bare action —
+        // no "Player action:" wrapper — matching the stored history shape (format-arms probe: bare beats
+        // wrapped on quoted-dialogue rate with no guardrail cost).
+        { role: "user", content: isOpeningTurn ? (action === "START GAME" ? OPENING_SCENE_CUE : action) : action },
       ];
 
       // AI-context capture. Every scanned source is a string the prompt genuinely contains, so the viewer can

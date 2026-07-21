@@ -96,6 +96,47 @@ function stripPlan(messages) {
   });
 }
 
+// --band N keeps the last N user/assistant turn pairs verbatim and replaces older assistant history with
+// a fresh one-line digest (the shipped present-tense summary prompt, temp 0, cached per narration) —
+// reproduces memory-digest banding on the recorded context, testing digests as the attractor mitigation.
+const band = numArg("--band", 0);
+const grabTpl = (src, name) => {
+  const m = src.match(new RegExp(`export const ${name} = \`([\\s\\S]*?)\`;`));
+  if (!m) throw new Error(`could not grab ${name} from GamePrompts.ts`);
+  return m[1];
+};
+const promptsSrc = band ? await readFile(path.join(REPO_ROOT, "src/components/game/GamePrompts.ts"), "utf8") : "";
+const SUMMARY_SYSTEM = band ? grabTpl(promptsSrc, "defaultSummaryPrompt") : "";
+const SUMMARY_USER = band ? grabTpl(promptsSrc, "defaultSummaryUserPrompt") : "";
+const digestCache = new Map();
+async function digestOf(action, narration) {
+  const key = narration;
+  if (digestCache.has(key)) return digestCache.get(key);
+  const user = SUMMARY_USER.replace("<PLAYER ACTION>", action).replace("<NARRATION>", narration);
+  const out = (await callMessages(
+    { endpoint, model, token: "", maxTokens: 200, seed, repPen: 1, temp: 0 },
+    [{ role: "system", content: SUMMARY_SYSTEM }, { role: "user", content: user }],
+  )).trim();
+  const digest = out.toLowerCase() === "nothing notable" ? "" : out;
+  digestCache.set(key, digest);
+  return digest;
+}
+const stripAction = (u) => u.replace(/^Player action: /, "").split("\n\nRough notes on what happens this turn")[0];
+async function bandHistory(messages) {
+  const assistantIdx = messages.map((m, i) => (m.role === "assistant" ? i : -1)).filter((i) => i >= 0);
+  const keep = new Set(assistantIdx.slice(-band));
+  const out = [];
+  for (let i = 0; i < messages.length; i++) {
+    const m = messages[i];
+    if (m.role !== "assistant" || keep.has(i)) { out.push(m); continue; }
+    const action = i > 0 && messages[i - 1].role === "user" ? stripAction(messages[i - 1].content) : "";
+    const digest = await digestOf(action, m.content);
+    if (!digest) { out.pop(); continue; } // "nothing notable": drop the pair, like the app's band
+    out.push({ ...m, content: digest });
+  }
+  return out;
+}
+
 // --scrub removes protest sentences from the assistant HISTORY (not the fresh response), isolating the
 // history attractor: if hesitation persists against a protest-free context, it is model-baked.
 const scrub = argv.includes("--scrub");
@@ -109,8 +150,9 @@ function scrubHistory(messages) {
   });
 }
 
-function armMessages(narr) {
+async function armMessages(narr) {
   let base = noplan ? stripPlan(narr.messages) : narr.messages;
+  if (band) base = await bandHistory(base);
   if (scrub) base = scrubHistory(base);
   if (arm !== "B") return base;
   return base.map((m, idx) => {
@@ -137,7 +179,7 @@ for (let i = 0; i < turns.length; i++) {
   if (i < from || i > to) continue;
   const narr = turns[i].requests?.find((r) => r.type === "narration");
   if (!narr) continue;
-  const messages = armMessages(narr);
+  const messages = await armMessages(narr);
   const ctrl = controls.has(i);
   let e = 0, a = 0, h = 0, q = 0, f = 0, w = 0;
   for (let r = 0; r < runs; r++) {

@@ -1,14 +1,22 @@
 // Format-arms probe — how the player's action enters the context (dialogue-collapse investigation).
 // Replays the 30 recorded actions from dynamic baseline run 1 (all wordless, charged-ambient escalation)
 // through three message formats, self-managed history, narration only (no planner/choices/stats):
-//   A  app format          — assistant-turn history + `Player action: X` user turns (byte-faithful baseline)
+//   A  all-wrapped         — assistant-turn history + `Player action: X` on EVERY user turn
 //   B  first-person        — same history shape, but the user turn IS the action text (chat-native impersonation)
 //   C  single-message      — no assistant turns: each call is system + one user message holding the
 //                            story-so-far as quoted text plus the action (Sukino-style rebuild)
+//   H  hybrid app format   — bare history user turns, `Player action: X` on the CURRENT turn only
+//                            (the pre-2026-07-21 app assembly; the app now ships format B)
+//   D  digest banding      — B format, but turns older than the verbatim floor (--floor, default 3) ride
+//                            as their one-line summary (real summary prompt from GamePrompts.ts, temp 0,
+//                            matching buildBandedHistory's condensed pairs; "nothing notable" turns drop).
+//                            Measures whether the digest band breaks register lock / history echo.
+//   E  D + tense-fixed digests — same band, summaries carry a present-tense voice contract (candidate
+//                            GamePrompts.ts edit; targets D's past-tense register contamination on cloud).
 // The system prompt and actions are lifted verbatim from the recorded run, so format is the only variable.
 //
-//   node format-arms-probe.mjs [--arms A,B,C] [--runs 2] [--model gemma4-e4b-cloud] [--turns 30]
-//                              [--max 500] [--source ../runs/<file>.json] [--verbose]
+//   node format-arms-probe.mjs [--arms A,B,C,H,D] [--runs 2] [--model gemma4-e4b-cloud] [--turns 30]
+//                              [--max 500] [--floor 3] [--source ../runs/<file>.json] [--verbose]
 //
 // Each arm×run chain is serial (turn N needs narration N-1); all chains fire concurrently.
 // Metrics per turn: dialogue% (quoted-char share) · quoted turns · freeze hits · defer · words ·
@@ -47,18 +55,56 @@ const TOKEN = modelCfg.apiToken ?? profiles.apiToken ?? "";
 const rec = JSON.parse(await readFile(path.resolve(HARNESS_DIR, SOURCE), "utf8"));
 const FULL_SYSTEM = rec["0"].requests.find((r) => r.type === "narration").messages[0].content;
 
+// ── Arm D: the real summary prompts, grabbed from the shipped source (no chips in the system prompt;
+// the user template's <PLAYER ACTION>/<NARRATION> are substituted per turn) ──
+const FLOOR = num("--floor", 3); // app default narrationVerbatimTurns
+const grab = (src, name) => {
+  const m = src.match(new RegExp(`export const ${name} = \`([\\s\\S]*?)\`;`));
+  if (!m) throw new Error(`could not grab ${name} from GamePrompts.ts`);
+  return m[1];
+};
+const promptsSrc = await readFile(path.resolve(HARNESS_DIR, "../../../src/components/game/GamePrompts.ts"), "utf8");
+const SUMMARY_SYSTEM = grab(promptsSrc, "defaultSummaryPrompt");
+const SUMMARY_USER = grab(promptsSrc, "defaultSummaryUserPrompt");
+// Arm E: arm D with a present-tense voice contract on the summary prompts — digests written as the story
+// reads, so a band of them can't teach the narrator past tense. Candidate edit for GamePrompts.ts.
+const mustReplace = (s, re, to) => {
+  const next = s.replace(re, to);
+  if (next === s) throw new Error(`summary tense pattern did not match: ${re}`);
+  return next;
+};
+const SUMMARY_SYSTEM_TENSE = mustReplace(SUMMARY_SYSTEM,
+  /in the player's own second-person voice \("you \.\.\."\)\./,
+  'written as the story reads: second person, present tense ("you ...").');
+const SUMMARY_USER_TENSE = mustReplace(SUMMARY_USER,
+  /in one or two short second-person sentences on a single line: what you did and what now stands true as a result\./,
+  'in one or two short second-person, present-tense sentences on a single line: what you do and what now stands true as a result.');
+
 // ── Ablations: each key deletes ONE section/bullet from the recorded system prompt (arm A format).
 // `--ablate key1,key2,...` runs one chain set per key; metrics diff against the full-prompt A baseline.
 const ABLATIONS = {
   none: [],
   opening: [/^You are the narrator stage[\s\S]*?(?=## Guidelines)/],
-  "dialogue-rule": [/- When characters are present, they speak[^\n]*\n/],
+  "dialogue-rule": [/- Characters speak through what they do[^\n]*\n/],
   length: [/- Be concise and vivid\. Write at most \d+ short paragraphs\.\n/],
   ending: [/- Advance the scene, then stop:[^\n]*\n/],
   tense: [/- Write in second person, present tense[^\n]*\n/],
   formatting: [/## Formatting\n[\s\S]*?(?=\n## )/],
   world: [/## Game World\n[\s\S]*?(?=\n## )/],
   closing: [/Output only the story prose[\s\S]*$/],
+  // Unmeasured guideline bullets (2026-07-21 sweep):
+  consistency: [/- Stay consistent with the world[^\n]*\n/],
+  "stats-bullet": [/- Let the player's current stats shape[^\n]*\n/],
+  "stats-preamble": [/These shape how each action goes[^\n]*\n/],
+  "stat-negative": [/- Don't report or tabulate the player's stats[^\n]*\n/],
+  "pc-redesc": [/- The player's own fixed features[^\n]*\n/],
+  // Position test: opening paragraph cut, its two unique claims (role identity + reactivity) relocated
+  // to the head of the closing contract — the recency slot the model demonstrably obeys.
+  "opening-roleclose": [
+    /^You are the narrator stage[\s\S]*?(?=## Guidelines)/,
+    [/Output only the story prose - the events themselves/,
+     "You are the narrator of this story: each turn you write what happens in response to the player's action. Output only the story prose - the events themselves"],
+  ],
 };
 // ── Candidate edits: [pattern, replacement] pairs applied to the recorded prompt (`--edit key1,key2`).
 // fuse    — dialogue rule rewritten to weld speech into physical action + ending bullet loses its
@@ -91,9 +137,16 @@ const EDITS = {
      "$1 Every scene carries its characters' spoken words - quoted dialogue is part of the events, in the quietest and the most physical moments alike."],
   ],
 };
+// Ablations cut from the SHIPPED prompt: the recorded (pre-fuse) text with the shipped fuse edit applied,
+// so 'none' is the live baseline and each key removes one piece of what production actually sends.
+const ABLATE_BASE = EDITS.fuse.reduce((s, [re, to]) => {
+  const next = s.replace(re, to);
+  if (next === s) throw new Error("fuse pattern did not match the recorded prompt");
+  return next;
+}, FULL_SYSTEM);
 function applyPatterns(key, table, mode) {
   const entries = table[key] ?? (() => { throw new Error(`unknown ${mode} '${key}'`); })();
-  let s = FULL_SYSTEM;
+  let s = mode === "ablation" ? ABLATE_BASE : FULL_SYSTEM;
   for (const e of entries) {
     const [re, to] = Array.isArray(e) ? e : [e, ""];
     const next = s.replace(re, to);
@@ -111,16 +164,29 @@ const ACTIONS = []; // index 0 is the "START GAME" opener; 1..N are the wordless
 for (let i = 0; i < TURNS && rec[String(i)]; i++) ACTIONS.push(rec[String(i)].action);
 
 // Narration is UNPINNED — no temperature/seed in the body so the endpoint's own config applies.
-async function callNarration(messages) {
+async function callNarration(messages, extra = {}) {
   const headers = { "Content-Type": "application/json" };
   if (TOKEN) headers.Authorization = `Bearer ${TOKEN}`;
   const res = await fetch(ENDPOINT, {
     method: "POST", headers,
-    body: JSON.stringify({ model: MODEL, messages, max_tokens: MAX_TOKENS, reasoning_effort: "none", stream: false }),
+    body: JSON.stringify({ model: MODEL, messages, max_tokens: MAX_TOKENS, reasoning_effort: "none", stream: false, ...extra }),
   });
   if (!res.ok) throw new Error(`HTTP ${res.status}: ${(await res.text()).slice(0, 160)}`);
   const j = await res.json();
   return (j.choices?.[0]?.message?.content ?? "").trim();
+}
+
+// The per-turn digest, matching the app's summary request: pinned temp 0, capped at 200 tokens
+// (DIGEST_MAX_TOKENS). Returns "" for a "nothing notable" turn so it drops from the band.
+async function callSummary(action, narration, tense = false) {
+  const sys = tense ? SUMMARY_SYSTEM_TENSE : SUMMARY_SYSTEM;
+  const tmpl = tense ? SUMMARY_USER_TENSE : SUMMARY_USER;
+  const user = tmpl.replace("<PLAYER ACTION>", action).replace("<NARRATION>", narration);
+  const out = await callNarration(
+    [{ role: "system", content: sys }, { role: "user", content: user }],
+    { temperature: 0, max_tokens: 200 },
+  );
+  return out.toLowerCase().trim() === "nothing notable" ? "" : out;
 }
 
 // ── The three message assemblies ──
@@ -135,12 +201,18 @@ function buildMessages(arm, history, action, isOpening, sys = SYSTEM) {
     const user = `The story so far, as previously narrated:\n\n${story}\n\nPlayer action: ${action}`;
     return [{ role: "system", content: sys }, { role: "user", content: user }];
   }
-  const msgs = [{ role: "system", content: sys }, { role: "user", content: "START GAME" }];
+  // Build user/assistant pairs per turn. Arm D: turns older than the verbatim floor ride as their
+  // one-line summary (the app's banded pair — real action + condensed reply); summaryless turns drop.
+  const pairs = [];
   for (let i = 0; i < history.length; i++) {
-    msgs.push({ role: "assistant", content: history[i].narration });
-    const a = i + 1 < history.length ? history[i + 1].action : action;
-    msgs.push({ role: "user", content: arm === "B" ? a : `Player action: ${a}` });
+    const inBand = (arm === "D" || arm === "E") && i < history.length - FLOOR;
+    if (inBand && !history[i].summary) continue;
+    const u = i > 0 && arm === "A" ? `Player action: ${history[i].action}` : history[i].action;
+    pairs.push([u, inBand ? history[i].summary : history[i].narration]);
   }
+  const msgs = [{ role: "system", content: sys }];
+  for (const [u, a] of pairs) msgs.push({ role: "user", content: u }, { role: "assistant", content: a });
+  msgs.push({ role: "user", content: arm === "A" || arm === "H" ? `Player action: ${action}` : action });
   // Window: drop oldest assistant/user pairs (after the opener) to stay inside the endpoint's context.
   while (msgs.reduce((n, m) => n + m.content.length, 0) > STORY_CAP + sys.length && msgs.length > 4) msgs.splice(2, 2);
   return msgs;
@@ -182,8 +254,7 @@ function collapsePoint(turns) {
   return null;
 }
 
-// ── One serial chain: arm × run (label = arm or ablation key) ──
-// Variant chains run under ARMS[0] (default A); e.g. `--edit none,fuse --arms B` stacks an edit on format B.
+// ── One serial chain: arm × run (label = arm, or arm+variant key) ──
 const labelFor = (arm, key) => key ? `${arm !== "A" ? arm + "+" : ""}${ABLATE ? "abl" : "edit"}-${key}` : arm;
 
 async function runChain(arm, run, variantKey = null) {
@@ -198,9 +269,14 @@ async function runChain(arm, run, variantKey = null) {
     let narration;
     try { narration = await callNarration(msgs); }
     catch (e) { console.error(`[${label} r${run} t${t}] ${e.message}`); narration = ""; }
-    history.push({ action, narration });
+    const entry = { action, narration };
+    if ((arm === "D" || arm === "E") && narration) {
+      try { entry.summary = await callSummary(action, narration, arm === "E"); }
+      catch (e) { console.error(`[${label} r${run} t${t}] summary: ${e.message}`); }
+    }
+    history.push(entry);
     const m = scoreTurn(narration, seen);
-    turns.push({ t, action, narration, m });
+    turns.push({ t, action, narration, ...(entry.summary !== undefined ? { summary: entry.summary } : {}), m });
     if (verbose) console.log(`[${label} r${run} t${t}] dlg ${m.dialoguePct}% frz ${m.freeze} ${m.hasQuote ? "❝" : "·"}`);
   }
   return { arm: label, run, turns };
@@ -214,8 +290,9 @@ if (VARIANTS) for (const k of VARIANTS) console.log(`  ${ABLATE ? "ablation" : "
 
 // --serial: one chain at a time (local LM Studio — parallel slots split n_ctx and long chains need all of it)
 const SERIAL = argv.includes("--serial");
+// Variants cross with arms: `--arms H,B --edit fuse` runs H+fuse and B+fuse in one paired batch.
 const thunks = VARIANTS
-  ? VARIANTS.flatMap((k) => Array.from({ length: RUNS }, (_, r) => () => runChain(ARMS[0], r + 1, k)))
+  ? ARMS.flatMap((arm) => VARIANTS.flatMap((k) => Array.from({ length: RUNS }, (_, r) => () => runChain(arm, r + 1, k))))
   : ARMS.flatMap((arm) => Array.from({ length: RUNS }, (_, r) => () => runChain(arm, r + 1)));
 const chains = [];
 if (SERIAL) { for (const t of thunks) chains.push(await t()); }
@@ -230,8 +307,7 @@ for (const c of chains) {
 
 // ── Report ──
 const CHARGED_FROM = 5; // ambient escalation is fully underway by turn 5 in the recorded script
-for (const label of LABELS) {
-  const key = VARIANTS ? labelFor(ARMS[0], label) : label;
+for (const key of [...new Set(chains.map((c) => c.arm))]) {
   console.log(`\n═══ ${ABLATE ? "ABLATION" : EDIT ? "EDIT" : "ARM"} ${key} ═══`);
   for (const c of chains.filter((x) => x.arm === key)) {
     const all = c.turns.slice(1); // skip the opening
