@@ -4,6 +4,10 @@ import {
   getActivatedDictionary,
   buildDictionaryContext,
   flattenEnabledBookEntries,
+  matchSpans,
+  explainActivation,
+  locateMatches,
+  type ScanSource,
 } from './dictionaryUtils';
 import type { Dictionary, DictionaryEntry } from '@/types';
 
@@ -185,6 +189,208 @@ describe('buildDictionaryContext', () => {
   it('returns "" for no entries', () => {
     expect(buildDictionaryContext([])).toBe('');
     expect(buildDictionaryContext([], false)).toBe('');
+  });
+});
+
+describe('matchSpans — located occurrences under an entry\'s flags', () => {
+  it('finds every case-insensitive substring occurrence with offsets and the exact matched text', () => {
+    const e = entry({ key: 'dragon' });
+    expect(matchSpans(e, 'The Dragon eyes a dragon.')).toEqual([
+      { start: 4, end: 10, text: 'Dragon', keyword: 'dragon' },
+      { start: 18, end: 24, text: 'dragon', keyword: 'dragon' },
+    ]);
+  });
+
+  it('respects matchWholeWords — no mid-word hits', () => {
+    const e = entry({ key: 'art', matchWholeWords: true });
+    expect(matchSpans(e, 'art cart start art')).toEqual([
+      { start: 0, end: 3, text: 'art', keyword: 'art' },
+      { start: 15, end: 18, text: 'art', keyword: 'art' },
+    ]);
+  });
+
+  it('treats the key as a regex with useRegex and reports the real matched text', () => {
+    const e = entry({ key: 'dragons?', useRegex: true });
+    expect(matchSpans(e, 'dragon and dragons')).toEqual([
+      { start: 0, end: 6, text: 'dragon', keyword: 'dragons?' },
+      { start: 11, end: 18, text: 'dragons', keyword: 'dragons?' },
+    ]);
+  });
+
+  it('respects caseSensitive', () => {
+    const e = entry({ key: 'IT', caseSensitive: true });
+    expect(matchSpans(e, 'IT is not it')).toEqual([{ start: 0, end: 2, text: 'IT', keyword: 'IT' }]);
+  });
+
+  it('a malformed regex yields no spans (no throw)', () => {
+    expect(matchSpans(entry({ key: '(', useRegex: true }), 'a ( b')).toEqual([]);
+  });
+
+  it('does not loop on a zero-length-capable regex', () => {
+    // `a*` can match empty; the scanner must still terminate and only report the real "aa" run.
+    const spans = matchSpans(entry({ key: 'a*', useRegex: true }), 'aa');
+    expect(spans.some((s) => s.text === 'aa')).toBe(true);
+    expect(spans.length).toBeLessThan(10);
+  });
+
+  it('collects hits across multiple keywords', () => {
+    const e = entry({ key: 'fire, ice' });
+    expect(matchSpans(e, 'ice then fire').map((s) => s.keyword)).toEqual(['fire', 'ice']);
+  });
+});
+
+describe('explainActivation — report matches getActivatedDictionary and attributes hits', () => {
+  const scene = (...texts: string[]): ScanSource[] =>
+    texts.map((text, i) => ({ region: ['location', 'entities', 'action', 'notes'][i] ?? `scene:${i}`, text }));
+
+  it('activation membership agrees with getActivatedDictionary across a mixed dictionary', () => {
+    const dict = [
+      entry({ id: 'const', key: 'zzz', value: 'x', constant: true }),
+      entry({ id: 'hit', key: 'dragon', value: 'x' }),
+      entry({ id: 'miss', key: 'castle', value: 'x' }),
+      entry({ id: 'off', key: 'dragon', value: 'x', enabled: false }),
+    ];
+    const sceneTexts = ['a dragon roars'];
+    const report = explainActivation(dict, scene(...sceneTexts));
+    const fromReport = dict.filter((e) => report.byId.get(e.id)?.activated).map((e) => e.id);
+    const fromWrapper = getActivatedDictionary(dict, sceneTexts).map((e) => e.id);
+    expect(fromReport).toEqual(fromWrapper);
+    expect(fromReport).toEqual(['const', 'hit']);
+  });
+
+  it('records every entry, including disabled and non-activated ones, in declaration order', () => {
+    const dict = [
+      entry({ id: 'a', key: 'dragon' }),
+      entry({ id: 'b', key: 'castle' }),
+      entry({ id: 'c', key: 'dragon', enabled: false }),
+    ];
+    const report = explainActivation(dict, scene('a dragon'));
+    expect(report.entries.map((e) => e.entryId)).toEqual(['a', 'b', 'c']);
+    expect(report.byId.get('a')).toMatchObject({ activated: true, reason: 'keyword' });
+    expect(report.byId.get('b')).toMatchObject({ activated: false, reason: 'none', hits: [] });
+    expect(report.byId.get('c')).toMatchObject({ activated: false, reason: 'none', hits: [] });
+  });
+
+  it('attributes each hit to the scene region it was found in', () => {
+    const dict = [entry({ id: 'd', key: 'dragon' })];
+    const report = explainActivation(dict, scene('quiet town', 'a dragon here'));
+    const hits = report.byId.get('d')!.hits;
+    expect(hits).toHaveLength(1);
+    expect(hits[0]).toMatchObject({ region: 'entities', keyword: 'dragon', matchedText: 'dragon' });
+  });
+
+  it('attributes history hits to their history region and honors scanDepth', () => {
+    const dict = [entry({ id: 'g', key: 'ghost', scanDepth: 2 })];
+    const history: ScanSource[] = ['m1 ghost', 'm2', 'a ghost', 'm4'].map((text, i) => ({ region: `history:${i}`, text }));
+    const report = explainActivation(dict, scene('calm'), { history });
+    const hits = report.byId.get('g')!.hits;
+    // only the ghost within the last 2 messages (index 2) is in scope
+    expect(hits).toHaveLength(1);
+    expect(hits[0].region).toBe('history:2');
+  });
+
+  it('marks constant entries with reason "constant" even when nothing matches', () => {
+    const dict = [entry({ id: 'k', key: 'never', value: 'rule', constant: true })];
+    const report = explainActivation(dict, scene('unrelated'));
+    expect(report.byId.get('k')).toMatchObject({ activated: true, reason: 'constant', hits: [] });
+  });
+
+  it('records secondary-gate status (present, requireAll, exclude)', () => {
+    const dict = [entry({ id: 's', key: 'dragon', secondaryKeys: 'red, ancient', secondaryAll: true })];
+    const present = explainActivation(dict, scene('an ancient red dragon')).byId.get('s')!;
+    expect(present).toMatchObject({ activated: true });
+    expect(present.secondary).toEqual({ keywords: ['red', 'ancient'], requireAll: true, exclude: false, present: true });
+
+    const absent = explainActivation(dict, scene('a red dragon')).byId.get('s')!;
+    expect(absent.activated).toBe(false);
+    expect(absent.secondary).toMatchObject({ present: false });
+  });
+
+  it('attributes a recursive hit to the source entry\'s value region', () => {
+    const gate = entry({ id: 'gate', key: 'gate', value: 'Beyond the gate lies the Keep.' });
+    const keep = entry({ id: 'keep', key: 'Keep', value: 'The Keep houses a warden.', recursive: true });
+    const report = explainActivation([gate, keep], scene('the gate creaks'));
+    const rec = report.byId.get('keep')!;
+    expect(rec).toMatchObject({ activated: true, reason: 'recursive' });
+    expect(rec.hits).toHaveLength(1);
+    expect(rec.hits[0]).toMatchObject({ region: 'recursion:gate', keyword: 'Keep', matchedText: 'Keep' });
+  });
+
+  it('reports the interpreted match rule per entry', () => {
+    const dict = [
+      entry({ id: 'plain', key: 'a' }),
+      entry({ id: 'rx', key: 'a', useRegex: true, matchWholeWords: true }),
+      entry({ id: 'ww', key: 'a', matchWholeWords: true, caseSensitive: true }),
+    ];
+    const report = explainActivation(dict, scene('a'));
+    expect(report.byId.get('plain')!.rule).toEqual({ regex: false, wholeWord: false, caseSensitive: false });
+    // useRegex wins over matchWholeWords
+    expect(report.byId.get('rx')!.rule).toEqual({ regex: true, wholeWord: false, caseSensitive: false });
+    expect(report.byId.get('ww')!.rule).toEqual({ regex: false, wholeWord: true, caseSensitive: true });
+  });
+});
+
+describe('locateMatches — maps real hits onto displayed text, only in scanned regions', () => {
+  const reportFor = (entries: DictionaryEntry[], sources: ScanSource[]) =>
+    explainActivation(entries, sources).entries;
+
+  it('marks the keyword only inside the scanned source, not a coincidental echo elsewhere', () => {
+    const dragon = entry({ id: 'd', key: 'dragon', value: 'x' });
+    const action = 'look at the dragon';
+    const report = reportFor([dragon], [{ region: 'action', text: action }]);
+    const displayed = `A dragon statue looms.\n${action}`;
+    const segs = locateMatches(displayed, report, [{ region: 'action', text: action }]);
+    const chips = segs.filter((s) => s.chip);
+    expect(chips).toHaveLength(1); // the statue's "dragon" is not a scanned source → left plain
+    expect(chips[0].text).toBe('dragon');
+    const before = segs.slice(0, segs.indexOf(chips[0])).map((s) => s.text).join('');
+    expect(before).toContain('A dragon statue looms.'); // first "dragon" survives as plain text
+  });
+
+  it('offsets the hit into the located source within a larger block', () => {
+    const e = entry({ id: 'e', key: 'ghost' });
+    const loc = 'a quiet ghost town';
+    const report = reportFor([e], [{ region: 'location', text: loc }]);
+    const segs = locateMatches(`## Location\n${loc}\n## End`, report, [{ region: 'location', text: loc }]);
+    const chip = segs.find((s) => s.chip)!;
+    expect(chip.text).toBe('ghost');
+    expect(chip.chip!.entryId).toBe('e');
+  });
+
+  it('resolves overlaps longest-first', () => {
+    const short = entry({ id: 's', key: 'dragon' });
+    const long = entry({ id: 'l', key: 'fire dragon' });
+    const src = 'a fire dragon roars';
+    const report = reportFor([short, long], [{ region: 'action', text: src }]);
+    const chips = locateMatches(src, report, [{ region: 'action', text: src }]).filter((s) => s.chip);
+    expect(chips).toHaveLength(1);
+    expect(chips[0].text).toBe('fire dragon');
+    expect(chips[0].chip!.entryId).toBe('l');
+  });
+
+  it('omits entries the skip predicate rejects', () => {
+    const e = entry({ id: 'e', key: 'ghost' });
+    const src = 'a ghost';
+    const report = reportFor([e], [{ region: 'action', text: src }]);
+    expect(locateMatches(src, report, [{ region: 'action', text: src }], (id) => id === 'e')).toEqual([{ text: src }]);
+  });
+
+  it("locates a recursive hit inside the source entry's value region", () => {
+    const gate = entry({ id: 'gate', key: 'gate', value: 'Beyond the gate lies the Keep.' });
+    const keep = entry({ id: 'keep', key: 'Keep', value: 'The Keep.', recursive: true });
+    const report = reportFor([gate, keep], [{ region: 'action', text: 'the gate creaks' }]);
+    const displayed = `## Foreground Lore\ngate: ${gate.value}`;
+    const segs = locateMatches(displayed, report, [{ region: 'recursion:gate', text: gate.value }]);
+    const chip = segs.find((s) => s.chip)!;
+    expect(chip.text).toBe('Keep');
+    expect(chip.chip!.entryId).toBe('keep');
+    expect(chip.chip!.activation.reason).toBe('recursive');
+  });
+
+  it('returns [] for empty text and a single plain segment when nothing locates', () => {
+    expect(locateMatches('', [], [])).toEqual([]);
+    const report = reportFor([entry({ id: 'e', key: 'ghost' })], [{ region: 'action', text: 'a ghost' }]);
+    expect(locateMatches('unrelated', report, [{ region: 'action', text: 'a ghost' }])).toEqual([{ text: 'unrelated' }]);
   });
 });
 

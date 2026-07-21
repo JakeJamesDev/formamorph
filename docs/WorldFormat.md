@@ -205,6 +205,8 @@ Each **book** (`Dictionary`):
 
 Book order sets injection order; within a book, an entry's `position` picks the prompt block and array order sets order within it. Everything below `value` is an optional lorebook control — all absent ⇒ the original plain keyword→value behavior.
 
+> 🔍 **What "scanned" means.** Keywords are matched against the context the AI is actually given that turn — the location and entity blocks your prompt renders (**in their rendered form**, so a block sent as a summary is matched as a summary), player notes, the action, and message history per `scanDepth`. Always-present text is excluded: the world description, stats, traits, and formatting guidance. See [World Editor → Dictionary](WorldEditor#what-gets-scanned).
+
 | Field | Type | Description |
 |---|---|---|
 | `id` | String | Unique identifier |

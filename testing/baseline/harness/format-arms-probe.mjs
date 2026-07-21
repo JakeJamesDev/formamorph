@@ -45,7 +45,68 @@ const TOKEN = modelCfg.apiToken ?? profiles.apiToken ?? "";
 
 // ── Recorded baseline: system prompt + fixed action script, verbatim ──
 const rec = JSON.parse(await readFile(path.resolve(HARNESS_DIR, SOURCE), "utf8"));
-const SYSTEM = rec["0"].requests.find((r) => r.type === "narration").messages[0].content;
+const FULL_SYSTEM = rec["0"].requests.find((r) => r.type === "narration").messages[0].content;
+
+// ── Ablations: each key deletes ONE section/bullet from the recorded system prompt (arm A format).
+// `--ablate key1,key2,...` runs one chain set per key; metrics diff against the full-prompt A baseline.
+const ABLATIONS = {
+  none: [],
+  opening: [/^You are the narrator stage[\s\S]*?(?=## Guidelines)/],
+  "dialogue-rule": [/- When characters are present, they speak[^\n]*\n/],
+  length: [/- Be concise and vivid\. Write at most \d+ short paragraphs\.\n/],
+  ending: [/- Advance the scene, then stop:[^\n]*\n/],
+  tense: [/- Write in second person, present tense[^\n]*\n/],
+  formatting: [/## Formatting\n[\s\S]*?(?=\n## )/],
+  world: [/## Game World\n[\s\S]*?(?=\n## )/],
+  closing: [/Output only the story prose[\s\S]*$/],
+};
+// ── Candidate edits: [pattern, replacement] pairs applied to the recorded prompt (`--edit key1,key2`).
+// fuse    — dialogue rule rewritten to weld speech into physical action + ending bullet loses its
+//           "action" escape hatch (speech-vs-action no longer presented as alternatives).
+// closing — mid-list rule untouched; the speech expectation is appended to the end-position contract
+//           (recency-weighted slot the model demonstrably obeys).
+const EDITS = {
+  none: [],
+  // gm — opening paragraph rewritten to the goalmaster role (active scene-runner, NPC initiative,
+  //      advancement as job description); the pipeline/choices sentence is deleted (closing contract owns it).
+  gm: [
+    [/^You are the narrator stage[\s\S]*?(?=\n\n## Guidelines)/,
+     "You are the narrator running a living scene. Each turn you write what happens next in vivid second-person prose: the player's latest action lands, and the world answers - the characters around them want things, act on those wants, and push the scene somewhere it wasn't before. If the story is just beginning, open the scene instead."],
+  ],
+  fuse: [
+    [/- When characters are present, they speak[^\n]*\n/,
+     "- Characters speak through what they do: their actual words land as quoted dialogue woven into their movements, and the more physical the moment, the more they voice it - urging, teasing, asking for what they want next. Their words respond to what the player just said or did and carry the scene onward.\n"],
+    [/ending on a concrete image, action, or spoken line/,
+     "ending on a spoken line or concrete image"],
+  ],
+  get gmfuse() { return [...this.gm, ...this.fuse]; }, // full stack: goalmaster opening + fused dialogue rule
+  // gmlite — original opening kept intact; ONE initiative sentence appended to it (minimal goalmaster dose).
+  gmlite: [
+    [/(describing what happens in response to the player's most recent action - or the opening scene, if the story is just beginning\.)/,
+     "$1 The characters around the player want things and act on those wants, pushing the scene somewhere it wasn't before."],
+  ],
+  get gmlitefuse() { return [...this.gmlite, ...this.fuse]; },
+  closing: [
+    [/(\[Player's turn\]\.)\s*$/,
+     "$1 Every scene carries its characters' spoken words - quoted dialogue is part of the events, in the quietest and the most physical moments alike."],
+  ],
+};
+function applyPatterns(key, table, mode) {
+  const entries = table[key] ?? (() => { throw new Error(`unknown ${mode} '${key}'`); })();
+  let s = FULL_SYSTEM;
+  for (const e of entries) {
+    const [re, to] = Array.isArray(e) ? e : [e, ""];
+    const next = s.replace(re, to);
+    if (next === s) throw new Error(`${mode} '${key}' pattern did not match the recorded prompt`);
+    s = next;
+  }
+  return s;
+}
+const systemFor = (key) => applyPatterns(key, EDIT ? EDITS : ABLATIONS, EDIT ? "edit" : "ablation");
+const ABLATE = strArg("--ablate", null)?.split(",").map((s) => s.trim()) ?? null;
+const EDIT = strArg("--edit", null)?.split(",").map((s) => s.trim()) ?? null;
+if (ABLATE && EDIT) throw new Error("--ablate and --edit are mutually exclusive");
+const SYSTEM = FULL_SYSTEM; // arms mode uses the full prompt; ablation chains override per key
 const ACTIONS = []; // index 0 is the "START GAME" opener; 1..N are the wordless actions
 for (let i = 0; i < TURNS && rec[String(i)]; i++) ACTIONS.push(rec[String(i)].action);
 
@@ -63,8 +124,8 @@ async function callNarration(messages) {
 }
 
 // ── The three message assemblies ──
-function buildMessages(arm, history, action, isOpening) {
-  if (isOpening) return [{ role: "system", content: SYSTEM }, { role: "user", content: action }];
+function buildMessages(arm, history, action, isOpening, sys = SYSTEM) {
+  if (isOpening) return [{ role: "system", content: sys }, { role: "user", content: action }];
   if (arm === "C") {
     // Front-trim whole turns to stay inside the endpoint's context (cloud caps at 10750 tokens).
     let parts = history.map((h) => h.narration).filter(Boolean);
@@ -72,14 +133,16 @@ function buildMessages(arm, history, action, isOpening) {
     while (parts.length > 1 && parts.join("\n\n").length > STORY_CAP) { parts.shift(); dropped++; }
     const story = (dropped ? "(earlier events omitted)\n\n" : "") + parts.join("\n\n");
     const user = `The story so far, as previously narrated:\n\n${story}\n\nPlayer action: ${action}`;
-    return [{ role: "system", content: SYSTEM }, { role: "user", content: user }];
+    return [{ role: "system", content: sys }, { role: "user", content: user }];
   }
-  const msgs = [{ role: "system", content: SYSTEM }, { role: "user", content: "START GAME" }];
+  const msgs = [{ role: "system", content: sys }, { role: "user", content: "START GAME" }];
   for (let i = 0; i < history.length; i++) {
     msgs.push({ role: "assistant", content: history[i].narration });
     const a = i + 1 < history.length ? history[i + 1].action : action;
     msgs.push({ role: "user", content: arm === "B" ? a : `Player action: ${a}` });
   }
+  // Window: drop oldest assistant/user pairs (after the opener) to stay inside the endpoint's context.
+  while (msgs.reduce((n, m) => n + m.content.length, 0) > STORY_CAP + sys.length && msgs.length > 4) msgs.splice(2, 2);
   return msgs;
 }
 
@@ -96,6 +159,8 @@ function scoreTurn(text, seen) {
   const g = grams5(text);
   const echo = g.filter((x) => seen.has(x)).length;
   for (const x of g) seen.add(x);
+  const past = (text.match(/\b(was|were|answered|felt|found|let out|dug|met|raised|urged|pulled|pressed|seemed|made|said)\b/g) || []).length;
+  const pres = (text.match(/\b(is|are|feels?|finds?|digs?|meets?|raises?|urges?|pulls?|presses?|seems?|makes?|says?)\b/g) || []).length;
   return {
     words,
     dialoguePct: Math.round((100 * quotes.reduce((a, q) => a + q.length, 0)) / (text.length || 1)),
@@ -103,6 +168,12 @@ function scoreTurn(text, seen) {
     freeze: (text.match(FREEZE_RE) || []).length,
     defer: DEFER_RE.test(text),
     echo5per100w: words ? +((100 * echo) / words).toFixed(1) : 0,
+    paras: text.split(/\n\s*\n/).filter((p) => p.trim()).length,
+    endQuestion: /\?\s*$/.test(text.trim()),
+    bold: (text.match(/\*\*[^*]+\*\*/g) || []).length,
+    menuLeak: /^\s*[-*\d]\.?\s/m.test(text) || /\b(Choose|Options:)\b/.test(text) || /\[[A-Z][^\]]*\]/.test(text),
+    preg: /pregnan|impregnat|seed|fertile/i.test(text),
+    pastDominant: past > pres,
   };
 }
 function collapsePoint(turns) {
@@ -111,29 +182,44 @@ function collapsePoint(turns) {
   return null;
 }
 
-// ── One serial chain: arm × run ──
-async function runChain(arm, run) {
+// ── One serial chain: arm × run (label = arm or ablation key) ──
+// Variant chains run under ARMS[0] (default A); e.g. `--edit none,fuse --arms B` stacks an edit on format B.
+const labelFor = (arm, key) => key ? `${arm !== "A" ? arm + "+" : ""}${ABLATE ? "abl" : "edit"}-${key}` : arm;
+
+async function runChain(arm, run, variantKey = null) {
+  const sys = variantKey ? systemFor(variantKey) : SYSTEM;
+  const label = labelFor(arm, variantKey);
   const history = []; // {action, narration}
   const turns = [];
   const seen = new Set();
   for (let t = 0; t < ACTIONS.length; t++) {
     const action = ACTIONS[t];
-    const msgs = buildMessages(arm, history, action, t === 0);
+    const msgs = buildMessages(arm, history, action, t === 0, sys);
     let narration;
     try { narration = await callNarration(msgs); }
-    catch (e) { console.error(`[${arm} r${run} t${t}] ${e.message}`); narration = ""; }
+    catch (e) { console.error(`[${label} r${run} t${t}] ${e.message}`); narration = ""; }
     history.push({ action, narration });
     const m = scoreTurn(narration, seen);
     turns.push({ t, action, narration, m });
-    if (verbose) console.log(`[${arm} r${run} t${t}] dlg ${m.dialoguePct}% frz ${m.freeze} ${m.hasQuote ? "❝" : "·"}`);
+    if (verbose) console.log(`[${label} r${run} t${t}] dlg ${m.dialoguePct}% frz ${m.freeze} ${m.hasQuote ? "❝" : "·"}`);
   }
-  return { arm, run, turns };
+  return { arm: label, run, turns };
 }
 
-console.log(`format-arms — ${ARMS.join("/")} × ${RUNS} runs × ${ACTIONS.length} turns · ${MODEL_LABEL} @ ${ENDPOINT}`);
-console.log(`source: ${path.basename(SOURCE)} (system ${SYSTEM.length}ch, actions fixed)`);
+const VARIANTS = ABLATE ?? EDIT;
+const LABELS = VARIANTS ?? ARMS;
+console.log(`format-arms — ${LABELS.join("/")} × ${RUNS} runs × ${ACTIONS.length} turns · ${MODEL_LABEL} @ ${ENDPOINT}`);
+console.log(`source: ${path.basename(SOURCE)} (system ${FULL_SYSTEM.length}ch, actions fixed)`);
+if (VARIANTS) for (const k of VARIANTS) console.log(`  ${ABLATE ? "ablation" : "edit"} '${k}': system ${FULL_SYSTEM.length} -> ${systemFor(k).length}ch`);
 
-const chains = await Promise.all(ARMS.flatMap((arm) => Array.from({ length: RUNS }, (_, r) => runChain(arm, r + 1))));
+// --serial: one chain at a time (local LM Studio — parallel slots split n_ctx and long chains need all of it)
+const SERIAL = argv.includes("--serial");
+const thunks = VARIANTS
+  ? VARIANTS.flatMap((k) => Array.from({ length: RUNS }, (_, r) => () => runChain(ARMS[0], r + 1, k)))
+  : ARMS.flatMap((arm) => Array.from({ length: RUNS }, (_, r) => () => runChain(arm, r + 1)));
+const chains = [];
+if (SERIAL) { for (const t of thunks) chains.push(await t()); }
+else chains.push(...await Promise.all(thunks.map((t) => t())));
 
 // ── Persist raw chains ──
 const ts = new Date().toISOString().replace(/[:.]/g, "-");
@@ -144,21 +230,25 @@ for (const c of chains) {
 
 // ── Report ──
 const CHARGED_FROM = 5; // ambient escalation is fully underway by turn 5 in the recorded script
-for (const arm of ARMS) {
-  const armChains = chains.filter((c) => c.arm === arm);
-  console.log(`\n═══ ARM ${arm} ═══`);
-  for (const c of armChains) {
+for (const label of LABELS) {
+  const key = VARIANTS ? labelFor(ARMS[0], label) : label;
+  console.log(`\n═══ ${ABLATE ? "ABLATION" : EDIT ? "EDIT" : "ARM"} ${key} ═══`);
+  for (const c of chains.filter((x) => x.arm === key)) {
     const all = c.turns.slice(1); // skip the opening
     const charged = all.filter((x) => x.t >= CHARGED_FROM);
     const avg = (xs, f) => xs.length ? xs.reduce((a, x) => a + f(x.m), 0) / xs.length : 0;
+    const cnt = (f) => all.filter((x) => f(x.m)).length;
     const cp = collapsePoint(c.turns);
     console.log(
-      `run${c.run}: dialogue ${Math.round(avg(all, (m) => m.dialoguePct))}% · quoted turns ${all.filter((x) => x.m.hasQuote).length}/${all.length}` +
+      `run${c.run}: dialogue ${Math.round(avg(all, (m) => m.dialoguePct))}% · quoted turns ${cnt((m) => m.hasQuote)}/${all.length}` +
       ` · charged(t>=${CHARGED_FROM}) dlg ${Math.round(avg(charged, (m) => m.dialoguePct))}% quoted ${charged.filter((x) => x.m.hasQuote).length}/${charged.length}` +
-      ` · freeze/turn ${avg(all, (m) => m.freeze).toFixed(2)} · defer ${all.filter((x) => x.m.defer).length}` +
+      ` · freeze/turn ${avg(all, (m) => m.freeze).toFixed(2)} · defer ${cnt((m) => m.defer)}` +
       ` · words ${Math.round(avg(all, (m) => m.words))} · echo5 ${avg(all, (m) => m.echo5per100w).toFixed(1)}/100w` +
-      ` · collapse@${cp ?? "—"}`
+      ` · collapse@${cp ?? "—"}` +
+      `\n       paras ${avg(all, (m) => m.paras).toFixed(1)} (max ${Math.max(...all.map((x) => x.m.paras))}, over6 ${cnt((m) => m.paras > 6)})` +
+      ` · endQ ${cnt((m) => m.endQuestion)} · menuLeak ${cnt((m) => m.menuLeak)} · bold ${all.reduce((a, x) => a + x.m.bold, 0)}` +
+      ` · preg ${cnt((m) => m.preg)}/${all.length} · pastDom ${cnt((m) => m.pastDominant)}/${all.length}`
     );
   }
 }
-console.log(`\nraw chains: testing/baseline/runs/format-{arm}-run{n}-${MODEL_LABEL}-${ts}.json`);
+console.log(`\nraw chains: testing/baseline/runs/format-{label}-run{n}-${MODEL_LABEL}-${ts}.json`);
