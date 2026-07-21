@@ -18,6 +18,7 @@ _Unreleased — new work accumulates here until it earns a version bump. The nex
 
 - **👤 User-facing**
   - **Characters speak up a little more often.** Your action now reaches the AI as plain text instead of behind a `Player action:` label — matching how past turns already appear — which measurably nudges the narrator toward spoken dialogue on charged scenes, with no change to anything you see or type.
+  - **Characters answer you in their own words.** When you speak to a character, the narrator could voice *your* question aloud and then have the character "answer" with only body language. The narration prompt now closes with an explicit contract: the character's spoken, quoted reply is the scene's answer — measured to roughly double the rate of turns where a character genuinely engages you in dialogue.
 
 - **⚙️ Backend / invisible**
   - **Memory digests no longer teach the narrator past tense.** With Memory Digests enabled, the one-line turn summaries were written in the past tense, and a history full of them could drag the whole story's narration into past tense (and mute dialogue) on some models. Summaries are now written in the story's own present tense — measured to eliminate the tense drift entirely and to make repeated-phrasing echo drop rather than rise.
