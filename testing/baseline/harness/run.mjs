@@ -211,6 +211,41 @@ async function runOne(browser, cfg, model, profile) {
 
   const page = await context.newPage();
   page.setDefaultTimeout(60000);
+  // Experimental: profile.injectThinking rewrites NARRATION requests to enable Gemma's native thought
+  // channel (chat_template_kwargs) with token headroom, then strips the unmarked CoT from the response
+  // before the app sees it — so the story history stays clean. Endpoint has no reasoning parser, hence
+  // the paragraph heuristic. Harness-only; the app never sends this field itself.
+  if (profile.injectThinking) {
+    // Exact split via the model's own channel tokens: `skip_special_tokens: false` makes Aphrodite keep
+    // `<|channel>thought ... <channel|>` in the text (verified 3/3 clean live), so the story is simply
+    // everything after the first channel close — a token-level boundary, no heuristics. If the close is
+    // missing (thought hit the token cap), there is no story; return empty so the failure is visible.
+    const stripCot = (text) => {
+      const close = text.indexOf("<channel|>");
+      const story = close >= 0 ? text.slice(close + "<channel|>".length) : (text.startsWith("<|channel>") ? "" : text);
+      return story.replace(/<[^>\n]{1,30}>/g, "").trim();
+    };
+    await page.route("**/chat/completions", async (route) => {
+      let body;
+      try { body = JSON.parse(route.request().postData() || "{}"); } catch { return route.continue(); }
+      const isNarration = typeof body.messages?.[0]?.content === "string" &&
+        body.messages[0].content.startsWith("You are the narrator stage");
+      if (!isNarration) return route.continue();
+      body.chat_template_kwargs = { enable_thinking: true };
+      body.skip_special_tokens = false; // keep the channel tokens so stripCot can split exactly
+      body.max_tokens = Math.max((body.max_tokens ?? 512) * 3, 1600);
+      body.stream = false; // fetch whole completion so the CoT can be stripped before the app parses it
+      const res = await route.fetch({ postData: JSON.stringify(body) });
+      const j = await res.json();
+      const cleaned = stripCot(j.choices?.[0]?.message?.content ?? "");
+      const sse = [
+        `data: ${JSON.stringify({ id: j.id, object: "chat.completion.chunk", choices: [{ index: 0, delta: { content: cleaned }, finish_reason: null }] })}`,
+        `data: ${JSON.stringify({ id: j.id, object: "chat.completion.chunk", choices: [{ index: 0, delta: {}, finish_reason: "stop" }] })}`,
+        "data: [DONE]", "",
+      ].join("\n\n");
+      await route.fulfill({ status: 200, contentType: "text/event-stream", body: sse });
+    });
+  }
   await page.goto(BASE_URL);
 
   // Import the world via the hidden file input (no OS dialog), then enter it. Per-profile `world` overrides

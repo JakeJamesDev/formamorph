@@ -1611,11 +1611,14 @@ const MainMenu = ({ onStartGame, onLoadSaveGame, onReplayIntro, introActive = fa
                       onClick={() => {
                         // For uploaded worlds, use the worldData from context
                         const currentWorldData = selectedWorld!.data;
-                        guardLaunch(() => onStartGame(selectedTraits, currentWorldData.worldOverview?.use3DModel ? defaultCharacterData : null, true));
+                        // Skip the setup steps but honor the author's default trait choices.
+                        const defaults = traits.filter((t) => t.isDefault).map((t) => t.id);
+                        setSelectedTraits(defaults);
+                        guardLaunch(() => onStartGame(defaults, currentWorldData.worldOverview?.use3DModel ? defaultCharacterData : null, true));
                       }}
                     >
                       <ChevronLast className="h-4 w-4 landscape:mr-2" />
-                      <span className="hidden landscape:inline">Skip Customize</span>
+                      <span className="hidden landscape:inline">Quick Start</span>
                     </Button>
                   </div>
 

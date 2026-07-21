@@ -632,6 +632,9 @@ const GameViewer = ({
   // deferred via `regenerateNonce` below — sendGameAction reads game state from its render's closure,
   // so it must run after loadGameState has committed, not synchronously alongside it.
   const pendingRegenerateRef = useRef<string | null>(null);
+  // The real (editable) opening text last submitted, kept so re-generating the opening can re-fill the box
+  // with it — history stores only the "START GAME" proxy (parity), which would otherwise lose the edit.
+  const openingActionRef = useRef<string>("");
   // Snapshot of the pre-game state (before the opening turn), so page 1 can also be re-generated —
   // gameStates only holds post-turn snapshots, so the first turn has no predecessor there. Captured in
   // sendGameAction on the first turn.
@@ -684,6 +687,15 @@ const GameViewer = ({
     setPlayerNotes(parseTurnContent(fullMessageHistory[pageAssistantIndex(currentPage, messagesPerPage)]?.content ?? '')?.notes ?? '');
     // Mark the current turn's AI-context entry as superseded; sendGameAction appends a fresh one.
     setDebugTurns((prev) => markRegeneratedTurn(prev));
+    // Re-generating the opening (page 1) returns to the not-started state and re-fills the box with the
+    // prior opening action, so the player can edit their starting action before re-submitting it.
+    if (currentPage === 1) {
+      setIsGameStarted(false);
+      // History holds the "START GAME" proxy, so recover the player's real opening text from the ref (falling
+      // back to the default cue for a loaded save, where it was never captured this session).
+      setPlayerInput(openingActionRef.current || (action === "START GAME" ? OPENING_SCENE_CUE : action));
+      return;
+    }
     pendingRegenerateRef.current = action;
     setRegenerateNonce((n) => n + 1);
   };
@@ -1039,7 +1051,15 @@ const GameViewer = ({
   }), [buildContextValues, paragraphLimit, maxTokens, markdownOutput, activeSectionStyle, limitActiveCharacters, activeCharacterLimit]);
 
   const sendGameAction = async (action: string) => {
-    if (!isGameStarted && action !== "START GAME") return;
+    // The opening turn is simply any action taken before the game has started (the player submits the
+    // pre-filled, editable opening cue). It sends its text verbatim and flips isGameStarted on success.
+    const isOpeningTurn = !isGameStarted;
+    // Only narration sees the real opening text; every other consumer (stats, planner, choices, dictionary
+    // triggers, stored history) sees the terse "START GAME" proxy, exactly as before the opening became
+    // editable — the full cue is a narrator directive that derails those prompts. Zero behavior change vs.
+    // the old flow when the box is left at its default; edits flow to narration only.
+    const effectiveAction = isOpeningTurn ? "START GAME" : action;
+    if (isOpeningTurn) openingActionRef.current = action;
     setUserPage(null); // taking an action resumes following, so the player sees their new turn land
     stopCommandPreview(); // a real turn supersedes any command preview
     // On the opening turn, snapshot the pre-game state so page 1 can be re-generated later.
@@ -1068,7 +1088,7 @@ const GameViewer = ({
       // Stamp a stable id for this turn, written into its assistant JSON (powers the digest apply-guard).
       currentTurnIdRef.current = randomUUID();
       // Start a new turn in the AI-context history (cap to the last 50 turns).
-      setDebugTurns((prev) => [...prev, { action, requests: [], turnId: currentTurnIdRef.current }].slice(-50));
+      setDebugTurns((prev) => [...prev, { action: effectiveAction, requests: [], turnId: currentTurnIdRef.current }].slice(-50));
 
       // With auto-apply on, resolve the location change up front — from the action alone, before any
       // context is built — so the whole turn (narration, lore, staged planning) runs in the new location.
@@ -1077,7 +1097,7 @@ const GameViewer = ({
       let turnLocation = currentLocation;
       // A single-location world has nowhere to move, so skip the location request even when the setting is on
       // (saves the user toggling it per world).
-      if (locationAutoApply && locationChangeEnabled && locations.length > 1 && locationChangePromptText && currentLocation) {
+      if (!isOpeningTurn && locationAutoApply && locationChangeEnabled && locations.length > 1 && locationChangePromptText && currentLocation) {
         const preMoveCtx = buildContextValues();
         const locationResponse = await makeAIRequest(
           renderPromptTemplate(locationChangePromptText, preMoveCtx),
@@ -1102,7 +1122,7 @@ const GameViewer = ({
       // unset). The always-present world description is intentionally excluded so its terms don't fire every turn.
       const activatedEntries = getActivatedDictionary(
         dictionary,
-        [ctx["<LOCATION>"], ctx["<ENTITIES>"], action, playerNotes],
+        [ctx["<LOCATION>"], ctx["<ENTITIES>"], effectiveAction, playerNotes],
         { history: fullMessageHistory.map((m) => m.content) },
       );
       // Split by position into the two lorebook blocks. When the active prompt has no "before" chip, those entries
@@ -1154,16 +1174,19 @@ ${playerNotes || NONE_PLACEHOLDER}
 
       // Get trimmed history before adding new action (history fills the window left by the prompt).
       // Pass the action so banding can rehydrate older turns it references.
-      const trimmedHistory = getTrimmedMessageHistory(estimateTokens(updatedPrompt.length), action);
+      const trimmedHistory = getTrimmedMessageHistory(estimateTokens(updatedPrompt.length), effectiveAction);
 
       // Create message array for game text request
       const narrationMessages: ChatMessage[] = [
         ...trimmedHistory,
-        { role: "user", content: action === "START GAME" ? OPENING_SCENE_CUE : `Player action: ${action}` },
+        // Opening turn sends the player's (editable) cue text verbatim; the legacy "START GAME" sentinel
+        // (baseline harness / fixtures) still maps to the default cue.
+        { role: "user", content: isOpeningTurn ? (action === "START GAME" ? OPENING_SCENE_CUE : action) : `Player action: ${action}` },
       ];
 
-      // Add user message to history after getting trimmed history
-      addMessageToHistory("user", action);
+      // Add user message to history after getting trimmed history. Stores the proxy on the opening turn so
+      // later turns' context is byte-identical to the old flow (the real opening text lives in openingActionRef).
+      addMessageToHistory("user", effectiveAction);
 
       // Optional thinking step (runs exactly once). 'precall' and 'staged' produce a hidden plan
       // (captured in turnPlan and attached to the final user turn below); 'inline' appends a <think>
@@ -1214,7 +1237,7 @@ ${playerNotes || NONE_PLACEHOLDER}
         const thinkMessages: ChatMessage[] = [
           {
             role: "user",
-            content: `${digestBand ? `${digestBand}\n\n` : ""}${lastStory ? `What just happened:\n${lastStory}\n\n` : ""}The player's next action: ${action}\n\nSet the scene, list the cast, and lay out the beats now. Do not narrate.`,
+            content: `${digestBand ? `${digestBand}\n\n` : ""}${lastStory ? `What just happened:\n${lastStory}\n\n` : ""}The player's next action: ${effectiveAction}\n\nList the cast and lay out the beats now. Do not narrate.`,
           },
         ];
         const plan = await makeAIRequest(thinkPrompt, thinkMessages, "thinking", 256, signal);
@@ -1246,7 +1269,7 @@ ${playerNotes || NONE_PLACEHOLDER}
         const lastStory =
           [...trimmedHistory].reverse().find((m) => m.role === "assistant")?.content || "";
         const staged = await runStagedPlanning({
-          action,
+          action: effectiveAction,
           stageValues,
           lastStory,
           entities: allEntities,
@@ -1394,7 +1417,7 @@ ${playerNotes || NONE_PLACEHOLDER}
           updatedChoicesPrompt += `\n Choice language: ` + language;
         return makeAIRequest(
           updatedChoicesPrompt,
-          [{ role: "user", content: renderPromptTemplate(choicesUserPrompt, { "<PLAYER ACTION>": action, "<NARRATION>": narrationResponse }) }],
+          [{ role: "user", content: renderPromptTemplate(choicesUserPrompt, { "<PLAYER ACTION>": effectiveAction, "<NARRATION>": narrationResponse }) }],
           "choices",
           null,
           signal,
@@ -1414,7 +1437,7 @@ ${playerNotes || NONE_PLACEHOLDER}
           updatedStatUpdatesPrompt += "\n Please write in english";
         return makeAIRequest(
           updatedStatUpdatesPrompt,
-          [{ role: "user", content: renderPromptTemplate(statUpdatesUserPrompt, { "<PLAYER ACTION>": action, "<NARRATION>": narrationResponse }) }],
+          [{ role: "user", content: renderPromptTemplate(statUpdatesUserPrompt, { "<PLAYER ACTION>": effectiveAction, "<NARRATION>": narrationResponse }) }],
           "statUpdates",
           null,
           signal,
@@ -1427,7 +1450,7 @@ ${playerNotes || NONE_PLACEHOLDER}
       // Suggest mode only — with auto-apply the move was resolved up front (before the narration). After the
       // narration, ask whether the player should move (fed the action + narration) and offer it.
       // locations.length > 1: a single-location world has nowhere to move, so don't run it even when enabled.
-      const locationActive = !locationAutoApply && locationChangeEnabled && locations.length > 1 && !!locationChangePromptText;
+      const locationActive = !isOpeningTurn && !locationAutoApply && locationChangeEnabled && locations.length > 1 && !!locationChangePromptText;
       const runLocation = (quiet: boolean): Promise<string> => {
         if (!locationActive) return Promise.resolve("");
         return makeAIRequest(
@@ -1451,7 +1474,7 @@ ${playerNotes || NONE_PLACEHOLDER}
         memoryDigests
           ? makeAIRequest(
               renderPromptTemplate(summaryPrompt, buildContextValues()),
-              [{ role: "user", content: renderPromptTemplate(summaryUserPrompt, { "<PLAYER ACTION>": action, "<NARRATION>": narrationResponse }) }],
+              [{ role: "user", content: renderPromptTemplate(summaryUserPrompt, { "<PLAYER ACTION>": effectiveAction, "<NARRATION>": narrationResponse }) }],
               "summary",
               DIGEST_MAX_TOKENS,
               signal,
@@ -1652,14 +1675,14 @@ ${playerNotes || NONE_PLACEHOLDER}
       // message, applied stat changes, and advanced time rather than a stale mid-batch read).
       armTurnSnapshot();
 
-      // Only set game as started after successful START GAME action
-      if (action === "START GAME") {
+      // Only set game as started after a successful opening turn
+      if (isOpeningTurn) {
         setIsGameStarted(true);
       }
     } catch (error) {
       const err = error as { response?: { status?: number }; message?: string; connectionHandled?: boolean };
-      // Reset game started state if START GAME action fails
-      if (action === "START GAME") {
+      // Reset game started state if the opening turn fails
+      if (isOpeningTurn) {
         setIsGameStarted(false);
       }
 
@@ -2358,8 +2381,10 @@ ${playerNotes || NONE_PLACEHOLDER}
     sendGameAction(input);
   };
 
+  // Enter submits; Shift+Enter inserts a newline (the action box is a multi-line textarea).
   const handleKeyPress = (e: React.KeyboardEvent) => {
-    if (e.key === "Enter" && !isWaitingForAI) {
+    if (e.key === "Enter" && !e.shiftKey && !isWaitingForAI) {
+      e.preventDefault();
       handleSendAction();
     }
   };
@@ -2443,6 +2468,9 @@ ${playerNotes || NONE_PLACEHOLDER}
           initialCharacters.map((entity) => ({ entity, locationId: location.id, sourceTurnId: 'initial' })),
         );
       }
+
+      // Pre-fill the editable opening cue so the player can shape the first turn before submitting it.
+      setPlayerInput(OPENING_SCENE_CUE);
     }
   }, [
     initialSaveId,
@@ -2461,6 +2489,7 @@ ${playerNotes || NONE_PLACEHOLDER}
     addLogEntry,
     setRuntimeDictionaries,
     setDiscoveredEntities,
+    setPlayerInput,
   ]);
 
   const scrollToBottom = useCallback(() => {
@@ -2678,7 +2707,6 @@ ${playerNotes || NONE_PLACEHOLDER}
       parseAssistantMessage={parseAssistantMessage}
       totalPages={totalPages}
       handlePageChange={handlePageChange}
-      sendGameAction={sendGameAction}
       handleSendAction={handleSendAction}
       handleKeyPress={handleKeyPress}
       handleRollback={handleRollback}

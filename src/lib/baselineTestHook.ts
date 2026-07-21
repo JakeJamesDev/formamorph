@@ -24,9 +24,9 @@ export function useBaselineTestHook(
       runScript: async (actions: string[]) => {
         for (const a of actions) {
           await sendGameActionRef.current(a);
-          // Yield a macrotask so React flushes pending state (esp. isGameStarted after START GAME) and
-          // sendGameActionRef.current refreshes to the latest closure before the next action — otherwise
-          // the guard `if (!isGameStarted && action !== "START GAME") return` silently drops turns 2+.
+          // Yield a macrotask so React flushes pending state (esp. isGameStarted after the opening turn)
+          // and sendGameActionRef.current refreshes to the latest closure before the next action — the
+          // opening turn's message content and isGameStarted flip both read this render's closure.
           await new Promise((r) => setTimeout(r, 500));
         }
       },

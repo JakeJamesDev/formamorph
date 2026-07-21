@@ -18,7 +18,6 @@ import { ReasoningBlock } from './ReasoningBlock';
 import { useLiveReasoning } from '@/lib/reasoningStreamStore';
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import { TokenAutocomplete } from "@/components/TokenAutocomplete";
 import { COMMON_LANGUAGES } from "@/lib/languages";
 import { Send, RefreshCw, Pencil, Languages, Loader2, Headphones, Square, ChevronUp, ChevronDown, X, Download } from "lucide-react";
@@ -35,6 +34,7 @@ import type { TTSProgress } from './TTSModal';
 import { ConfirmDialog } from '../ConfirmDialog';
 import { EditTextModal } from '../modals/EditTextModal';
 import type { Entity, SceneEntity } from '@/types';
+import { cn } from "@/lib/utils";
 
 /** A committed turn's saved reasoning (from its assistant-message JSON), or null. */
 function parseSavedReasoning(content: string): { text: string; ms: number } | null {
@@ -283,11 +283,78 @@ export const LeftPanel = ({ entities, onEntityClick }: {
   );
 };
 
+// One-line anchor height (matches the Send button) and the cap the popover grows to before it scrolls.
+const ACTION_INPUT_LINE_H = 40;
+const ACTION_INPUT_MAX_H = 240;
+
+/**
+ * The action box: a one-line field that, while focused, grows upward into an overlay popover as the text
+ * needs more room — without reflowing the layout, since the grown textarea is absolutely positioned and the
+ * anchor keeps its one-line footprint. Caps at ACTION_INPUT_MAX_H then scrolls; collapses back to one line on
+ * blur (text preserved, clipped) and whenever the content fits. Enter submits (handled by the caller's
+ * onKeyDown); Shift+Enter inserts a newline.
+ */
+const ActionInput = ({
+  value,
+  onChange,
+  onKeyDown,
+  placeholder,
+  disabled,
+}: {
+  value: string;
+  onChange: (e: React.ChangeEvent<HTMLTextAreaElement>) => void;
+  onKeyDown: (e: React.KeyboardEvent<HTMLTextAreaElement>) => void;
+  placeholder: string;
+  disabled: boolean;
+}) => {
+  const ref = useRef<HTMLTextAreaElement>(null);
+  const [focused, setFocused] = useState(false);
+
+  // Size the textarea to its content while focused (bounded, then scroll); reset to the one-line anchor when
+  // blurred. Runs on every value/focus change so growth tracks typing.
+  React.useLayoutEffect(() => {
+    const el = ref.current;
+    if (!el) return;
+    if (!focused) {
+      el.style.height = "";
+      el.style.overflowY = "hidden";
+      return;
+    }
+    el.style.height = "auto";
+    const h = Math.min(Math.max(el.scrollHeight, ACTION_INPUT_LINE_H), ACTION_INPUT_MAX_H);
+    el.style.height = `${h}px`;
+    el.style.overflowY = el.scrollHeight > ACTION_INPUT_MAX_H ? "auto" : "hidden";
+  }, [value, focused]);
+
+  return (
+    <div className="relative flex-grow mr-2" style={{ height: ACTION_INPUT_LINE_H }}>
+      <textarea
+        ref={ref}
+        rows={1}
+        value={value}
+        onChange={onChange}
+        onKeyDown={onKeyDown}
+        onFocus={() => setFocused(true)}
+        onBlur={() => setFocused(false)}
+        placeholder={placeholder}
+        disabled={disabled}
+        className={cn(
+          // ring-inset (no ring-offset): the focus glow draws inside the box so the overflow-hidden panel
+          // walls can't clip it (the box sits flush against them).
+          "absolute inset-x-0 bottom-0 w-full resize-none rounded-md border border-input bg-background px-3 py-2 text-sm leading-normal placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50",
+          focused
+            ? "z-20 shadow-lg whitespace-pre-wrap"
+            : "h-10 overflow-hidden whitespace-nowrap",
+        )}
+      />
+    </div>
+  );
+};
+
 export const MiddlePanel = ({
   parseAssistantMessage,
   totalPages,
   handlePageChange,
-  sendGameAction,
   handleSendAction,
   handleKeyPress,
   handleRollback,
@@ -311,9 +378,8 @@ export const MiddlePanel = ({
   parseAssistantMessage: (content: string) => string;
   totalPages: number;
   handlePageChange: (page: number) => void;
-  sendGameAction: (action: string) => void;
   handleSendAction: () => void;
-  handleKeyPress: (e: React.KeyboardEvent<HTMLInputElement>) => void;
+  handleKeyPress: (e: React.KeyboardEvent<HTMLTextAreaElement>) => void;
   handleRollback: () => void;
   handleRegenerate: () => void;
   handleRegenerateChoices: () => void;
@@ -337,7 +403,6 @@ export const MiddlePanel = ({
     displayedMessages,
     setDisplayedMessages,
     currentPage,
-    isGameStarted,
     playerInput,
     setPlayerInput,
     isWaitingForAI,
@@ -719,23 +784,14 @@ export const MiddlePanel = ({
               </div>
             </div>
           </div>
-          {!isGameStarted && (
-            <div className="flex flex-nowrap">
-              <Button onClick={() => sendGameAction("START GAME")} className="flex-1" disabled={disabled}>
-                Start Game
-              </Button>
-            </div>
-          )}
           {progressBar}
           <div className="flex flex-col gap-2">
-            <div className="flex">
-              <Input
-                type="text"
+            <div className="flex items-end">
+              <ActionInput
                 value={playerInput}
                 onChange={(e) => setPlayerInput(e.target.value)}
-                onKeyPress={handleKeyPress}
+                onKeyDown={handleKeyPress}
                 placeholder="Type your action..."
-                className="flex-grow mr-2"
                 disabled={disabled}
               />
               {isWaitingForAI ? (
