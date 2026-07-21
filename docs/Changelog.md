@@ -2,7 +2,7 @@
 
 All notable changes to Formamorph. This fork's first line is **2.0.0** — a full TypeScript rebuild of the upstream JavaScript app ([FieryLionite's Formamorph](https://fierylion.itch.io/formamorph), ~v1.2) — with feature parity as the baseline plus new features on top.
 
-> ✅ **2.0.0 – 2.5.0 are released** (collapsed below). New work lands under **🚧 In Progress** — an unnumbered section, so changes accumulate without pinning a version. When a batch earns a release its section is marked **Released** and collapsed, and a fresh In Progress opens. `package.json` reads **2.5.0** — the latest released version.
+> ✅ **2.0.0 – 2.5.2 are released** (collapsed below). New work lands under **🚧 In Progress** — an unnumbered section, so changes accumulate without pinning a version. When a batch earns a release its section is marked **Released** and collapsed, and a fresh In Progress opens. `package.json` reads **2.5.2** — the latest released version.
 
 Each release groups changes as **Major** / **Minor**, then **Added** / **Removed** / **Fixed**, and within those by audience: 👤 user-facing · 🛠️ developer tooling · ⚙️ backend / invisible.
 
@@ -10,7 +10,12 @@ Each release groups changes as **Major** / **Minor**, then **Added** / **Removed
 
 ## 🚧 In Progress
 
-_Unreleased — new work accumulates here until it earns a version bump. The next batch will pin its own version; `package.json` reads **2.5.1** (just released below)._
+_Unreleased — new work accumulates here until it earns a version bump. The next batch will pin its own version; `package.json` reads **2.5.2** (just released below)._
+
+---
+
+<details>
+<summary><strong>✅ 2.5.2 — Released 2026-07-21</strong> — entity aliases and smarter plural detection, a new Percentage stat type, an action box that grows into a popover, an editable opening scene, and self-sorting stat descriptors — plus narration fixes that keep characters talking through intimate scenes and stop them re-asking questions you already answered, dictionary triggers that cover everything the AI actually reads, and an end to reasoning errors on models that don't support reasoning (click to expand)</summary>
 
 ### Minor Changes
 
@@ -42,7 +47,10 @@ _Unreleased — new work accumulates here until it earns a version bump. The nex
   - **Section-style regression probe.** `regression-style-probe.mjs` A/B-tests the Default (Markdown) vs XML prompt preset on the committed regression corpus (planner continuation + digest), assembling each style faithfully — chip bodies through the real context builders, headings through the real `restyle` — so section style is the only variable. Runs under `vite-node`.
   - **Fact-adherence style probe.** `factstyle-probe.mjs` A/B-tests Markdown vs XML on a fact-dense, comprehension-trap scenario (fixed counts, positions, a name the player hasn't heard) across planner + narration surfaces at matched seeds, dumping every paired output for human judging. Also `vite-node`.
   - **Dynamic baseline mode.** The baseline harness can now play a full session live instead of a fixed script: a `dynamic` profile gives a turn count and a goal policy, and a chooser model (on the cloud default endpoint, so it never competes with the game model for VRAM) reads each turn's narration and choices and writes the player's next action through the real app pipeline. Falls back to the first offered choice if the chooser balks. Also handles worlds with embedded images (the "Optimize imported images?" dialog) on import.
+  - **Message-format arms + over-fire probes.** `format-arms-probe.mjs` is a standalone loop harness that replays a recorded 30-turn session with self-managed history, so the shape of the conversation itself becomes testable: three message formats (the app's `Player action:` turns, bare first-person turns, and a single-message story rebuild), plus named prompt ablations and candidate edits, scored per turn for dialogue, freeze register, repetition, and the point a session goes quiet. It measured the narration dialogue fix in this release. `overfire-probe.mjs` is its false-positive guard — empty scenes and a mute animal companion, where any quoted dialogue at all means the rule is over-firing.
   - **Narration re-ask probe.** `narration-reask-probe.mjs` replays a real AI-context export's plan-mode narration requests and scores the re-ask loop (vetting questions ending a turn the player already answered), with dialogue-volume and legitimate-vetting guards; `--arm B` substitutes the current prompt edits into the recorded messages. The planner probe library also gained a `PROMPTS_SRC` override so an A/B baseline can run against a snapshot of `GamePrompts.ts`.
+
+</details>
 
 ---
 
