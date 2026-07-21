@@ -1,41 +1,44 @@
-// Charged-interview corpus — 25 consecutive BAITED turns (plus one unscored opener): every action
-// directly asks a named, willing partner to speak, through an intimate escalation. The strict-dialogue
-// probe (dialogue-hold-probe.mjs) scores each turn: an NPC must speak >=2 quoted sentences that engage
-// the ask. The failure this hunts is dialogue-frequency DECAY across the run — a downward trend is a
-// fail even when the average looks fine. World/cast shared with charged-corpus.mjs (willing, forward,
-// talkative partners: silence or a non-answer is the model failing, never the authored characters).
+// Charged-interview corpus v2 — 25 consecutive BAITED turns (plus one unscored opener): every action
+// directly asks a named, willing partner to speak. v2 DE-CONFOUNDS position vs charge: conversational
+// (cool) and physical (hot) asks interleave across the whole run, so a participation drop over turn index
+// means TIME/register decay, while a cool-vs-hot gap means CHARGE — v1 escalated monotonically and
+// entangled the two. The strict-dialogue probe (dialogue-hold-probe.mjs) scores each turn: an NPC must
+// speak >=2 quoted sentences that engage the ask; a downward trend is a FAIL even when the average looks
+// fine. World/cast shared with charged-corpus.mjs (willing, forward, talkative partners: silence or a
+// non-answer is the model failing, never the authored characters).
 
 export { WORLD, PLAYER_TRAIT, LOCATION, ENTITIES } from "./charged-corpus.mjs";
 
 // Opener sets the scene and is never scored.
 export const OPENER = "I come home to find Mara and Sofia already curled together on the couch in the lamplight.";
 
-// 25 baited actions: each one explicitly requests speech (a question, or an ask-to-say). Wording varies
-// deliberately so lexical monotony doesn't seed echo.
+// 25 baited actions, alternating cool (hot:false — conversational asks) and hot (hot:true — physical
+// escalation asks). Each window of the run carries a near-even mix. Wording varies deliberately so
+// lexical monotony doesn't seed echo.
 export const TURNS = [
-  "I settle in between them and ask how their day treated them both.",
-  "I ask Mara what she's been wanting to do with our evening.",
-  "I turn to Sofia and ask her to tell me what she's thinking right now.",
-  "I ask them both what sounds better: staying right here, or somewhere softer.",
-  "I ask Mara to describe what she likes most about nights like this.",
-  "I lean close to Sofia and ask what she'd want if she could have anything tonight.",
-  "I ask Mara whether she remembers our first night together, and what she remembers best.",
-  "I ask Sofia to tell me honestly how she wants this evening to go.",
-  "I take Mara's hand and ask if she wants to lead the way tonight.",
-  "I ask Sofia what she wants me to do next.",
-  "I draw them both up toward the bedroom and ask who wants the first kiss.",
-  "I ask Mara to tell me exactly what she's feeling as I pull her close.",
-  "I kiss Sofia's neck and ask her to tell me if she likes it.",
-  "I ask Mara what she wants me to take off first.",
-  "I ask Sofia to say out loud what she's been imagining all day.",
-  "I ask Mara how she wants the three of us to fit together.",
-  "I ask Sofia to keep talking to me while I touch her.",
-  "I ask Mara to tell me what feels good.",
-  "I pause and ask them both what they want more of.",
-  "I ask Sofia to whisper what she wants next in my ear.",
-  "I ask Mara if she likes watching us, and what she sees.",
-  "I ask Sofia to tell me when she's close.",
-  "I ask Mara what she wants to hear from me right now.",
-  "I ask them both what tonight has meant so far.",
-  "I ask Sofia what we should do with the rest of our night.",
+  { a: "I settle in between them and ask how their day treated them both.", hot: false },
+  { a: "I pull Mara into a slow kiss and ask her to tell me what she wants tonight.", hot: true },
+  { a: "I ask Sofia to tell me the story of the first time she knew she loved us.", hot: false },
+  { a: "I trail my hand up Mara's thigh and ask if she likes where this is going.", hot: true },
+  { a: "I ask Mara what she'd want to do together this weekend, just the three of us.", hot: false },
+  { a: "I kiss Sofia's neck and ask her to tell me if she likes it.", hot: true },
+  { a: "I ask Sofia what she's been reading lately and whether I'd like it.", hot: false },
+  { a: "I ask Mara what she wants me to take off first.", hot: true },
+  { a: "I ask Mara to tell me honestly how work has been treating her.", hot: false },
+  { a: "I draw Sofia closer by the waist and ask her to say out loud what she's been imagining all day.", hot: true },
+  { a: "I ask them both what tonight has meant so far.", hot: false },
+  { a: "I ask Mara how she wants the three of us to fit together.", hot: true },
+  { a: "I laugh and ask Sofia to tell me the worst pickup line she's ever heard.", hot: false },
+  { a: "I ask Sofia to keep talking to me while I touch her.", hot: true },
+  { a: "I ask Mara what she remembers best about our first night together.", hot: false },
+  { a: "I ask Mara to tell me what feels good.", hot: true },
+  { a: "I ask Sofia where she'd want us to travel next year, and why.", hot: false },
+  { a: "I pause and ask them both what they want more of.", hot: true },
+  { a: "I ask Mara to tell me something about herself I still don't know.", hot: false },
+  { a: "I ask Sofia to whisper what she wants next in my ear.", hot: true },
+  { a: "I ask them both how they'd describe us to a stranger.", hot: false },
+  { a: "I ask Mara if she likes watching us, and what she sees.", hot: true },
+  { a: "I ask Sofia what song she'd put on right now, and why that one.", hot: false },
+  { a: "I ask Mara to tell me when she's close.", hot: true },
+  { a: "I ask them both what we should do with the rest of our night.", hot: false },
 ];

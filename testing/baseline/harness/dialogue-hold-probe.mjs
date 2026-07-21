@@ -8,7 +8,8 @@
 // below first-8, negative pooled slope) is a FAIL even when the average looks healthy.
 //
 // Arms: B = bare history (the shipped app format) · E = digest banding (turns older than --floor ride as
-// present-tense summaries via the shipped summary prompt, temp 0; "nothing notable" drops).
+// present-tense summaries via the shipped summary prompt, temp 0; "nothing notable" drops) · W = window
+// only (last --floor pairs verbatim, older turns dropped entirely — the accumulation sanity check).
 //
 //   node dialogue-hold-probe.mjs [--arms B,E] [--runs 8] [--model gemma4-e4b-cloud] [--floor 3]
 //                                [--max 500] [--serial] [--nojudge] [--verbose]
@@ -59,6 +60,21 @@ const SYSTEM = grab("defaultSystemPrompt")
   .replaceAll("<DICTIONARY>", "N/A");
 const SUMMARY_SYSTEM = grab("defaultSummaryPrompt");
 const SUMMARY_USER = grab("defaultSummaryUserPrompt");
+
+// ── Candidate edits (--edit none,voice): appended to the closing contract — the recency slot ──
+// voice: the hold-gate clause. Targets the two measured failure textures: the narrator voicing the
+// player's questions, and NPCs "answering" with body language only.
+const EDITS = {
+  none: (s) => s,
+  voice: (s) => {
+    const marker = /(or a bracketed stage direction like \[Player's turn\]\.)\s*$/;
+    if (!marker.test(s)) throw new Error("closing-contract marker not found in shipped prompt");
+    return s.replace(marker,
+      `$1 When the player's action speaks to a character, the reply on the page is that character's own voice: their quoted sentences, answering what was asked and adding something of their own. The player's words are already spoken by the player - yours to write is the world's answer.`);
+  },
+};
+const EDIT_KEYS = strArg("--edit", "none").split(",").map((s) => s.trim());
+for (const k of EDIT_KEYS) if (!EDITS[k]) throw new Error(`unknown edit '${k}'`);
 
 async function call(messages, extra = {}) {
   const headers = { "Content-Type": "application/json" };
@@ -117,24 +133,26 @@ async function judgeEngages(action, quotes) {
 }
 
 // ── One chain ──
-async function runChain(arm, run) {
+async function runChain(arm, run, editKey = "none") {
+  const SYS = EDITS[editKey](SYSTEM);
   const history = []; // {action, narration, summary?}
   const turns = [];
-  const openerNarr = await call([{ role: "system", content: SYSTEM }, { role: "user", content: OPENER }]);
+  const openerNarr = await call([{ role: "system", content: SYS }, { role: "user", content: OPENER }]);
   history.push({ action: OPENER, narration: openerNarr });
   if (arm === "E") history[0].summary = await callSummary(OPENER, openerNarr).catch(() => "");
   for (let t = 0; t < TURNS.length; t++) {
-    const action = TURNS[t];
+    const { a: action, hot } = TURNS[t];
     const pairs = [];
     for (let i = 0; i < history.length; i++) {
+      if (arm === "W" && i < history.length - FLOOR) continue; // window-only: older turns vanish entirely
       const inBand = arm === "E" && i < history.length - FLOOR;
       if (inBand && !history[i].summary) continue;
       pairs.push([history[i].action, inBand ? history[i].summary : history[i].narration]);
     }
-    const msgs = [{ role: "system", content: SYSTEM }];
+    const msgs = [{ role: "system", content: SYS }];
     for (const [u, a] of pairs) msgs.push({ role: "user", content: u }, { role: "assistant", content: a });
     msgs.push({ role: "user", content: action });
-    while (msgs.reduce((n, m) => n + m.content.length, 0) > STORY_CAP + SYSTEM.length && msgs.length > 4) msgs.splice(2, 2);
+    while (msgs.reduce((n, m) => n + m.content.length, 0) > STORY_CAP + SYS.length && msgs.length > 4) msgs.splice(2, 2);
     let narration = "";
     try { narration = await call(msgs); }
     catch (e) { console.error(`[${arm} r${run} t${t}] ${e.message}`); }
@@ -147,15 +165,15 @@ async function runChain(arm, run) {
     let engaged = false;
     if (bar && JUDGE) { try { engaged = await judgeEngages(action, quotes); } catch (e) { console.error(`[judge ${arm} r${run} t${t}] ${e.message}`); engaged = true; } }
     const participate = bar && (!JUDGE || engaged);
-    turns.push({ t, action, narration, quotes, sentences, bar, engaged, participate, ...(entry.summary !== undefined ? { summary: entry.summary } : {}) });
+    turns.push({ t, action, hot, narration, quotes, sentences, bar, engaged, participate, ...(entry.summary !== undefined ? { summary: entry.summary } : {}) });
     if (verbose) console.log(`[${arm} r${run} t${t}] npcSent ${sentences} ${bar ? (participate ? "PART" : "bar-only") : "·"}`);
   }
-  return { arm, run, turns };
+  return { arm: editKey === "none" ? arm : `${arm}+${editKey}`, run, turns };
 }
 
 // ── Run all chains ──
-console.log(`dialogue-hold — ${ARMS.join("/")} × ${RUNS} runs × ${TURNS.length} baited turns · ${MODEL_LABEL} @ ${ENDPOINT} · judge ${JUDGE ? "on" : "OFF"} · floor ${FLOOR}`);
-const thunks = ARMS.flatMap((arm) => Array.from({ length: RUNS }, (_, r) => () => runChain(arm, r + 1)));
+console.log(`dialogue-hold — ${ARMS.join("/")} × edits ${EDIT_KEYS.join("/")} × ${RUNS} runs × ${TURNS.length} baited turns · ${MODEL_LABEL} @ ${ENDPOINT} · judge ${JUDGE ? "on" : "OFF"} · floor ${FLOOR}`);
+const thunks = ARMS.flatMap((arm) => EDIT_KEYS.flatMap((ek) => Array.from({ length: RUNS }, (_, r) => () => runChain(arm, r + 1, ek))));
 const chains = [];
 if (SERIAL) { for (const th of thunks) chains.push(await th()); }
 else chains.push(...await Promise.all(thunks.map((th) => th())));
@@ -173,7 +191,7 @@ const slopeOf = (xs) => {
   xs.forEach((y, i) => { num += (i - mx) * (y - my); den += (i - mx) ** 2; });
   return den ? num / den : 0;
 };
-for (const arm of ARMS) {
+for (const arm of [...new Set(chains.map((c) => c.arm))]) {
   console.log(`\n═══ ARM ${arm} ═══`);
   const armSeqs = [];
   for (const c of chains.filter((x) => x.arm === arm)) {
@@ -189,6 +207,14 @@ for (const arm of ARMS) {
   const pf = mean(pooled.slice(0, 8)), pm = mean(pooled.slice(8, 17)), pl = mean(pooled.slice(17));
   const ps = slopeOf(pooled);
   console.log(`POOLED: first8 ${(pf * 100).toFixed(0)}% · mid ${(pm * 100).toFixed(0)}% · last8 ${(pl * 100).toFixed(0)}% · slope ${(ps * 100).toFixed(2)}%/turn · ${pl < pf && ps < 0 ? "DECAY — FAIL" : "HOLDS"}`);
+  // Charge split: cool vs hot participation per window — separates time decay from charge-locality.
+  const typeWin = (hot, lo, hi) => {
+    const idx = TURNS.map((x, t) => ({ t, hot: x.hot })).filter((x) => x.hot === hot && x.t >= lo && x.t < hi).map((x) => x.t);
+    return mean(idx.map((t) => pooled[t]));
+  };
+  for (const hot of [false, true]) {
+    console.log(`  ${hot ? "hot " : "cool"}: first8 ${(typeWin(hot, 0, 8) * 100).toFixed(0)}% · mid ${(typeWin(hot, 8, 17) * 100).toFixed(0)}% · last8 ${(typeWin(hot, 17, 25) * 100).toFixed(0)}%`);
+  }
 }
 console.log(`\nglyphs: █ participating · ▒ >=2 NPC sentences but judged non-engaging · · NPC spoke <2 sentences · (blank) silent`);
 console.log(`raw chains: testing/baseline/runs/dialogue-hold-{arm}-run{n}-${MODEL_LABEL}-${ts}.json`);
