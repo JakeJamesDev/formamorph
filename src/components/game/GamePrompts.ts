@@ -20,7 +20,6 @@ export const defaultSystemPrompt = `You are the narrator stage of an interactive
 <DICTIONARY|before>
 
 ## Player Stats
-These shape how each action goes - low stats cost, high stats come easy.
 <STATS DESCRIPTION|descriptions.markdown>
 
 ## Traits
@@ -98,7 +97,7 @@ export const defaultSummaryUserPrompt = `The player's action this turn: <PLAYER 
 The narration that resulted:
 <NARRATION>
 
-Now record what this turn changed - the player's action and its outcome - in one or two short second-person sentences on a single line: what you did and what now stands true as a result. Report reactions only as what they settle (agreed, refused, hesitated), not the moment-by-moment. No quoted dialogue. Nothing else.`;
+Now record what this turn changed - the player's action and its outcome - in one or two short second-person, present-tense sentences on a single line: what you do and what now stands true as a result. Report reactions only as what they settle (agreed, refused, hesitated), not the moment-by-moment. No quoted dialogue. Nothing else.`;
 
 export const defaultChoicesPrompt = `You are the player choice writer for an interactive roleplay. Your one job is to offer the player a short list of distinct actions their character could take next, in the player's own first-person voice. You never narrate events or act in the story - a separate step already wrote what just happened; you only propose what the player might do about it.
 
@@ -239,7 +238,7 @@ export const defaultSummaryPrompt = `You are recording what one turn of an inter
 
 ## Rules
 - Write one sentence; add a second only if the turn truly needs it - never more than two, and never a list. One line.
-- Record what the player did and what resulted: what changed, was decided, learned, agreed, gained, lost, or moved - the standing facts, in the player's own second-person voice ("you ...").
+- Record what the player did and what resulted: what changed, was decided, learned, agreed, gained, lost, or moved - the standing facts, written as the story reads: second person, present tense ("you ...").
 - Report outcomes, not the play-by-play. A character's reaction matters only for what it settles - that they agreed, refused, hesitated, or were hurt - never the moment-by-moment of their body, breath, or expression.
 - Name a character only when this turn's narration gives the name; otherwise refer to them by role ("the ferryman"). Never invent a name, and never a bare "he"/"she" where it is unclear who is meant.
 - Report speech as its upshot, never quoted words - what was asked, told, promised, or refused.

@@ -12,6 +12,21 @@ Each release groups changes as **Major** / **Minor**, then **Added** / **Removed
 
 _Unreleased — new work accumulates here until it earns a version bump. The next batch will pin its own version; `package.json` reads **2.5.2** (just released below)._
 
+### Minor Changes
+
+#### 🐛 Fixed
+
+- **👤 User-facing**
+  - **Characters speak up a little more often.** Your action now reaches the AI as plain text instead of behind a `Player action:` label — matching how past turns already appear — which measurably nudges the narrator toward spoken dialogue on charged scenes, with no change to anything you see or type.
+
+- **⚙️ Backend / invisible**
+  - **Memory digests no longer teach the narrator past tense.** With Memory Digests enabled, the one-line turn summaries were written in the past tense, and a history full of them could drag the whole story's narration into past tense (and mute dialogue) on some models. Summaries are now written in the story's own present tense — measured to eliminate the tense drift entirely and to make repeated-phrasing echo drop rather than rise.
+  - **Narration prompt trimmed.** The Player Stats section's preamble line duplicated the stats guideline bullet; a section-by-section ablation on both test models measured it inert, so it's removed to spare prompt tokens.
+
+- **🛠️ Developer tooling**
+  - **Strict dialogue-hold probe.** New `dialogue-hold-probe.mjs` + `charged-interview-corpus.mjs`: 25 consecutive baited turns (every action directly asks a willing character to speak) scored on a strict bar — a character must speak at least two quoted sentences that engage the ask, player-voiced lines excluded — with per-turn trend reporting, so a steadily decreasing dialogue rate registers as a failure even when the average looks fine.
+  - **Format-arms probe: hybrid arm + edit crossing.** `format-arms-probe.mjs` gains arm `H` (bare history with the label on the current turn only — byte-faithful to the app's real message assembly) and `--edit` variants now cross with `--arms`, so e.g. `--arms H,B --edit fuse` runs both cells fused in one paired batch.
+
 ---
 
 <details>
