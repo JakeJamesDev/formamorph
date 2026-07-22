@@ -163,9 +163,11 @@ export const PROMPT_KIND_VARIABLES: Record<PromptKind, PromptVariable[]> = {
   storyboard: [...CONTEXT_VARS],
 };
 
-/** Variables offered by the aux requests' editable user-message templates (the per-turn runtime values
- *  the code substitutes). Only the four aux kinds have a user template. */
+/** Variables offered by the editable user-message templates (the per-turn runtime values the code
+ *  substitutes). Narration's template is just the action by default — its chip list is deliberately
+ *  minimal, since anything added there rides the prompt's highest-recency slot. */
 export const PROMPT_KIND_USER_VARIABLES: Partial<Record<PromptKind, PromptVariable[]>> = {
+  narration: [PLAYER_ACTION],
   choices: [PLAYER_ACTION, NARRATION],
   statupdates: [PLAYER_ACTION, NARRATION],
   location: [PLAYER_ACTION, NARRATION],

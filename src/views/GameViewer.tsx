@@ -293,6 +293,7 @@ const GameViewer = ({
     directorUserPrompt,
     characterPrompt,
     storyboardPrompt,
+    narrationUserPrompt,
     choicesUserPrompt,
     statUpdatesUserPrompt,
     locationChangeUserPrompt,
@@ -1231,8 +1232,19 @@ ${playerNotes || NONE_PLACEHOLDER}
         // Opening turn sends the player's (editable) cue text verbatim; the legacy "START GAME" sentinel
         // (baseline harness / fixtures) still maps to the default cue. Later turns send the bare action —
         // no "Player action:" wrapper — matching the stored history shape (format-arms probe: bare beats
-        // wrapped on quoted-dialogue rate with no guardrail cost).
-        { role: "user", content: isOpeningTurn ? (action === "START GAME" ? OPENING_SCENE_CUE : action) : action },
+        // wrapped on quoted-dialogue rate with no guardrail cost). The user template defaults to exactly
+        // <PLAYER ACTION> (byte-identical to bare) and applies ONLY with thinking off — the template is
+        // a non-thinking experimentation surface; plan/inline modes always send the bare action so their
+        // appended directives (plan notes, <think>) never sandwich against custom text. History stays bare.
+        {
+          role: "user",
+          content: (() => {
+            const actionText = isOpeningTurn ? (action === "START GAME" ? OPENING_SCENE_CUE : action) : action;
+            return thinkingMode === "off"
+              ? renderPromptTemplate(narrationUserPrompt, { "<PLAYER ACTION>": actionText })
+              : actionText;
+          })(),
+        },
       ];
 
       // AI-context capture. Every scanned source is a string the prompt genuinely contains, so the viewer can
