@@ -255,11 +255,12 @@ Beats: <two to four sentences of what happens this turn as the scene continues -
 export const defaultSummaryPrompt = `You are recording what one turn of an interactive story changed, as a compact note the storyteller reads later to stay consistent. Capture the outcome and what now stands true - not a replay of the moment. Use only what was explicitly stated this turn; do not infer, predict, or invent.
 
 ## Rules
-- Write one sentence; add a second only if the turn truly needs it - never more than two, and never a list. One line.
+- Write one sentence; add a second only if the turn truly needs it - never more than two, and never a list. One line. A turn dense with specifics is exactly the turn that needs its second sentence: drop padding, never a fact.
 - Record what the player did and what resulted: what changed, was decided, learned, agreed, gained, lost, or moved - the standing facts, written as the story reads: second person, present tense ("you ...").
+- A specific stays specific: any name, place, object, amount, or deadline this turn establishes - in the player's action or in the narration - goes into the note as itself, never reduced to the kind of thing it is (a destination, an item, a sum). The note is the only place that fact survives - a category cannot be read back.
 - Report outcomes, not the play-by-play. A character's reaction matters only for what it settles - that they agreed, refused, hesitated, or were hurt - never the moment-by-moment of their body, breath, or expression.
-- Name a character only when this turn's narration gives the name; otherwise refer to them by role ("the ferryman"). Never invent a name, and never a bare "he"/"she" where it is unclear who is meant.
-- Report speech as its upshot, never quoted words - what was asked, told, promised, or refused.
+- Name a character only when this turn gives the name - spoken in the narration, or the player stating their own; otherwise refer to them by role ("the ferryman"). Never invent a name, and never a bare "he"/"she" where it is unclear who is meant.
+- Report speech as its upshot, never quoted words - and the upshot carries what the speech actually named: who, what, where, how much, by when. What was asked, told, promised, or refused travels as its content, not its category.
 - State only what this turn establishes; do not carry in earlier events or summarize the whole story.
 - If the turn settled nothing worth carrying, output exactly: nothing notable`;
 
