@@ -165,6 +165,10 @@ export interface SaveObject {
    *  (one shared value across every World chip); `unique` keys by placement id (a per-spot value). Written
    *  lazily on first resolution; absent ⇒ nothing rolled yet. Variables need no roll. */
   placeholderRolls?: PlaceholderRolls;
+  /** v2.x milestone memory: the player's memory pins, keyed by turn id — 'keep' force-holds that turn's
+   *  digest in long-term memory, 'drop' force-removes it. Absent (or empty) on older saves ⇒ no pins;
+   *  the AI selection itself is derived state and is never persisted. */
+  memoryPins?: Record<string, 'keep' | 'drop'>;
 }
 
 /** Per-playthrough Wildcard rolls, frozen in the save. */

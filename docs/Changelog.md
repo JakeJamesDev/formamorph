@@ -14,10 +14,20 @@ _Unreleased — new work accumulates here until it earns a version bump. The nex
 
 ### Minor Changes
 
+#### ✨ Added
+
+- **👤 User-facing**
+  - **Milestone memory: the story now remembers what matters.** With Memory Digests on, older turns used to ride along as an ever-growing list of one-line summaries — most of them noise ("you walk the bridge road…") that crowded the story's context and, measurably, dragged characters toward silence. Now a silent AI pass reviews those older summaries each turn and keeps only real milestones — promises made, debts owed, wounds taken, things gained, how characters came to see you — while recent turns always stay. In testing this held dialogue as well as sending the full history at roughly a quarter of the context size, and it means long sessions stop growing their prompt every turn.
+  - **A Memory tab in the game side panel.** See exactly what the story remembers long-term: kept moments in full, let-go moments faded. Pin a faded memory to bring it back for good, or forget a kept one — your pins always override the AI's choice, and they're saved with your game. Memories appear the turn they form — the newest sit under a subtle "Recent" divider (those turns are still in the story's full view regardless; the keep/let-go verdict takes effect once they age out of it).
+  - **Memory Digests is now on by default** for new installs — with milestone memory it is simply the better way to play; existing installs keep whatever they had.
+  - **Narration now keeps 4 recent turns in full (was 3).** Paired long-session sweeps of the verbatim window (2 vs 3 vs 4 vs 5, six 50-turn runs each) put the dialogue-holding peak at 4: fewer full turns starve the AI of dialogue examples to imitate, more just adds weight that drags it toward silence. Applies only if you haven't set the Narration verbatim-turns value yourself.
+
 #### 🐛 Fixed
 
 - **👤 User-facing**
   - **Characters speak up a little more often.** Your action now reaches the AI as plain text instead of behind a `Player action:` label — matching how past turns already appear — which measurably nudges the narrator toward spoken dialogue on charged scenes, with no change to anything you see or type.
+  - **Characters confirm less and carry the scene more.** Two vague narrator guidelines rewritten to say what they actually mean: "stay consistent with the story so far" (which quietly encouraged repeating the story's question habit back at you) is now a concrete continuity rule — positions, objects, and what's been said carry forward unless the action changes them — and the undefined "your reply is complete once the events have been told" clause is simply gone. Measured together on a real stuck session: character turns that end by re-asking something you already answered dropped ~58%, with slightly more spoken dialogue, on both test models.
+  - **Characters say what they want instead of asking if they may.** One word in the narrator's dialogue guidance — characters "asking for what they want next" — read to the AI as a license to seek permission, feeding the confirm-everything habit on charged scenes. It now reads "voicing what they want next": on the default endpoint that nearly doubled turns where characters genuinely engage you (with charged-scene dialogue holding steady across a whole session instead of fading), and on a strong local model it added ~27% more spoken dialogue with no change to its confirmation habits. Credit where due: found by chasing the theory that the AI wrongly believes it needs the player's explicit permission for things to happen.
   - **Characters answer you in their own words.** When you speak to a character, the narrator could voice *your* question aloud and then have the character "answer" with only body language. The narration prompt now closes with an explicit contract: the character's spoken, quoted reply is the scene's answer — measured to roughly double the rate of turns where a character genuinely engages you in dialogue.
 
 - **⚙️ Backend / invisible**
@@ -26,6 +36,7 @@ _Unreleased — new work accumulates here until it earns a version bump. The nex
 
 - **🛠️ Developer tooling**
   - **Strict dialogue-hold probe.** New `dialogue-hold-probe.mjs` + `charged-interview-corpus.mjs`: 25 consecutive baited turns (every action directly asks a willing character to speak) scored on a strict bar — a character must speak at least two quoted sentences that engage the ask, player-voiced lines excluded — with per-turn trend reporting, so a steadily decreasing dialogue rate registers as a failure even when the average looks fine.
+  - **Milestone-memory harness.** New `milestone-select-probe.mjs` (hand-labeled 57-entry fixture across four story genres; must-keep recall and noise-keep metrics; prompt variants including the shipping few-shot selector) and `carryforward-check.mjs` (re-derives each chain's kept/dropped split and judges every dropped fact against late narration for contradictions), plus a selection-driven arm `M` in the dialogue-hold probe.
   - **Format-arms probe: hybrid arm + edit crossing.** `format-arms-probe.mjs` gains arm `H` (bare history with the label on the current turn only — byte-faithful to the app's real message assembly) and `--edit` variants now cross with `--arms`, so e.g. `--arms H,B --edit fuse` runs both cells fused in one paired batch.
 
 ---

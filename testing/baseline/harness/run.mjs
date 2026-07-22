@@ -284,6 +284,16 @@ async function runOne(browser, cfg, model, profile) {
   const plannedTurns = profile.dynamic ? profile.dynamic.turns : profile.script.length;
   if (profile.dynamic) {
     await runDynamic(page, profile.dynamic);
+  } else if (profile.turnPauseMs) {
+    // Paced mode: one action at a time with real idle between turns, so the app's between-turn drainers
+    // (memory digests, milestone selection) run the way they do under a human player. Batch mode's 500ms
+    // yield starves them and old turns reach the selector undigested.
+    console.log(`  running ${profile.script.length} actions, paced ${profile.turnPauseMs}ms…`);
+    for (let i = 0; i < profile.script.length; i++) {
+      console.log(`  [${i + 1}/${profile.script.length}] ${profile.script[i].slice(0, 80)}`);
+      await page.evaluate((a) => window.__baseline.runScript([a]), profile.script[i]);
+      await page.waitForTimeout(profile.turnPauseMs);
+    }
   } else {
     console.log(`  running ${profile.script.length} actions…`);
     await page.evaluate((actions) => window.__baseline.runScript(actions), profile.script);

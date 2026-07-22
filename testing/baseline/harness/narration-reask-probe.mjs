@@ -68,6 +68,88 @@ const FIX_SETS = {
     directive: [],
   },
 };
+
+// 2026-07-21 permission-stance test: `shipped` reconstructs the CURRENT app prompt on this pre-batch
+// export (reask edits + 2.5.2 intimate speech line + voice clause) as the paired baseline; `authority`
+// adds the narrative-authority clause (user theory: the model believes charged outcomes need explicit
+// player permission — but engagement IS the permission; outcomes belong to the narrator); and
+// `authorityVoicing` additionally removes the one shipped wording that licenses asking
+// ("asking for what they want next" → "voicing").
+const SHIPPED_SYS = [
+  ["narrator stage of an interactive roleplay",
+   "narrator stage of an interactive story"],
+  // 2026-07-22 combo SHIPPED: concrete continuity line + vague ending middle removed.
+  ["- Stay consistent with the world, traits, location, and the story so far.",
+   "- What the story has established stays true: where everyone is, what they hold and wear, and what has been said or done carry into this turn unless the action changes them."],
+  ["your reply is complete once the events have been told, ending on a concrete image, action, or line of dialogue.",
+   "ending on a spoken line or concrete image that lands what this turn changed."],
+  ["- When characters are present, they speak - render their actual spoken words as quoted dialogue, not a summary of what they say. Let real conversation carry the scene where it fits, rather than narrating around silent figures.",
+   "- Characters speak through what they do: their actual words land as quoted dialogue woven into their movements, and the more physical the moment, the more they voice it - urging, teasing, voicing what they want next. Their words respond to what the player just said or did and carry the scene onward."],
+  ["or a bracketed stage direction like [Player's turn].",
+   "or a bracketed stage direction like [Player's turn]. When the player's action speaks to a character, the reply on the page is that character's own voice: their quoted sentences, answering what was asked and adding something of their own. The player's words are already spoken by the player - yours to write is the world's answer."],
+];
+const SHIPPED_DIRECTIVE = [[
+  "reciting the notes. They are private scaffolding",
+  "reciting the notes. The notes decide what happens: whatever they settle, answer, or finish this turn stays that way on the page. They are private scaffolding",
+]];
+const AUTHORITY_CLAUSE =
+  " The world moves on its own authority. The player's action is their whole say in the turn - once it is taken, what follows is yours to decide by the world's own logic. Characters act on their own desires without waiting to be invited, and events land on the player uninvited when the world would deal them.";
+FIX_SETS.shipped = { sys: SHIPPED_SYS, directive: SHIPPED_DIRECTIVE };
+FIX_SETS.authority = {
+  sys: [...SHIPPED_SYS, ["yours to write is the world's answer.", `yours to write is the world's answer.${AUTHORITY_CLAUSE}`]],
+  directive: SHIPPED_DIRECTIVE,
+};
+FIX_SETS.authorityVoicing = {
+  sys: [...FIX_SETS.authority.sys, ["asking for what they want next", "voicing what they want next"]],
+  directive: SHIPPED_DIRECTIVE,
+};
+// 2026-07-21 verdict: the authority clause backfired on Cydonia (ending re-asks 2→11/18) and the
+// ask→voicing swap alone carried the cloud gains — SHIPPED, so `shipped` above now includes it.
+// The clause arms are kept for the record.
+// Retry v2: zero player-reference (the v1 backfire hypothesis: "the player's whole say" put the
+// player's say in the recency slot and fed the permission prior). Pure world-authority framing.
+const AUTHORITY2 =
+  " The world moves on its own authority: characters act on their own desires without waiting to be invited, and what happens this turn lands on the page as settled fact, not as an offer.";
+const AUTHORITY2B =
+  `${AUTHORITY2} Events arrive when the world's logic deals them - no announcement, no invitation.`;
+FIX_SETS.authority2 = {
+  sys: [...SHIPPED_SYS, ["yours to write is the world's answer.", `yours to write is the world's answer.${AUTHORITY2}`]],
+  directive: SHIPPED_DIRECTIVE,
+};
+FIX_SETS.authority2b = {
+  sys: [...SHIPPED_SYS, ["yours to write is the world's answer.", `yours to write is the world's answer.${AUTHORITY2B}`]],
+  directive: SHIPPED_DIRECTIVE,
+};
+// 2026-07-21 vague-line rewrites (paired with dialogue-hold's consfix/endfix edits).
+FIX_SETS.consfix = {
+  sys: [...SHIPPED_SYS,
+    ["- Stay consistent with the world, traits, location, and the story so far.",
+     "- What the story has established stays true: where everyone is, what they hold and wear, and what has been said or done carry into this turn unless the action changes them."]],
+  directive: SHIPPED_DIRECTIVE,
+};
+FIX_SETS.endfix = {
+  sys: [...SHIPPED_SYS,
+    ["your reply is complete once the events have been told, ending on a spoken line or concrete image that lands what this turn changed.",
+     "tell what the player's action sets off - what the world and its characters do and say in answer - and end on a spoken line or concrete image that lands what this turn changed."]],
+  directive: SHIPPED_DIRECTIVE,
+};
+FIX_SETS.conscut = {
+  sys: [...SHIPPED_SYS,
+    ["- Stay consistent with the world, traits, location, and the story so far.\n", ""]],
+  directive: SHIPPED_DIRECTIVE,
+};
+FIX_SETS.endcut = {
+  sys: [...SHIPPED_SYS,
+    ["your reply is complete once the events have been told, ending on",
+     "ending on"]],
+  directive: SHIPPED_DIRECTIVE,
+};
+FIX_SETS.combo = {
+  sys: [...FIX_SETS.consfix.sys,
+    ["your reply is complete once the events have been told, ending on",
+     "ending on"]],
+  directive: SHIPPED_DIRECTIVE,
+};
 const fix = FIX_SETS[strArg("--fix", "reask")];
 if (!fix) { console.error("Unknown --fix (use reask | hesitation)"); process.exit(1); }
 const SYS_EDITS = fix.sys;
