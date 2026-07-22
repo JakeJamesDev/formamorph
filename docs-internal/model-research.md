@@ -4,7 +4,7 @@
 > baseline instead of re-deriving (and getting different answers each time). When asked for model info,
 > **read this first, refresh only what's stale, then update this doc** with the new numbers + date.
 
-**Last updated:** 2026-07-17 (policy flipped to per-model eligibility; Model profile + gate-probe results)
+**Last updated:** 2026-07-22 (per-model behavior findings from the dialogue-collapse investigation: memory-shape sensitivity, the recency-slot lever, measurement gotchas)
 
 ---
 
@@ -97,6 +97,40 @@ general decensored included. See the gate-probe results below.
   than a requirement. A reasoning badge still needs a reasoning base (Qwen3 / Qwen3.6-A3B).
 - **Two reference test tiers** for probes (harness): Silver-Siren-ST-12B (average) + G4-MeroMero-31B (premium),
   cross-family. Modelfiles in `testing/baseline/harness/`.
+
+---
+
+## Per-model behavior findings — dialogue-collapse investigation (2026-07-22)
+
+> Full evidence trail lives in the `dialogue-collapse-investigation` memory + `milestone-memory-design.md`;
+> this is the model-facing summary. Metric: the strict dialogue-hold gate (NPC speaks ≥2 engaging quoted
+> sentences, 25–50 consecutive baited turns, decay = fail).
+
+**Cloud default endpoint (gemma4-e4b class):**
+
+| Finding | Numbers |
+|---|---|
+| Dialogue decay is **model-level, time-based** | Every history shape decays; charge is an additive tax, not the cause (cool asks decay too) |
+| **Condensed history is its lifeline** | Milestone memory ≈ bare history at ~¼ flat context (7–8k chars vs 30k growing) |
+| **The recency slot is its big lever** | Voice clause on the current user turn: ~3× participation (23→82, 40→71/100), first-ever full 50-turn hold; shipped |
+| Verbatim floor sweet spot = **4** | 2 < 3 < 4 ≥ 5 (floor turns are its only dialogue exemplars; more is just register mass) |
+| Cannot follow name-withholding | Leaks names with or without the rule — the plan-mode code sanitizer is the real guard |
+
+**Cydonia 24B v4.3 (strong local, the class representative):**
+
+| Finding | Numbers |
+|---|---|
+| **Perfect dialogue on verbatim history** — at any tested length | 50-turn: 97–100% participation, 31k context no strain |
+| **Condensed history REGRESSES it** long-session | Milestone memory: all runs silent by ~turn 42 (last8 0% vs bare 100%) — digests only cost it exemplars |
+| Permission-stance fixes must be **subtractive** | Authority clauses (4 wordings) made re-asks up to 5× worse; deleting the prompt's ask-license worked |
+| Follows name-withholding beautifully | Converts label-leaks into earned diegetic introductions |
+
+**Cross-model (both tiers):**
+
+- **The current-turn user slot is clause-specific, not a migration lane.** Voice clause thrives there; the
+  ending contract (first8 59→19%) and length guidance (words +58%) both measured worse. Evidence per candidate.
+- **Measurement gotchas:** cloud mood-drifts ±2–3× BETWEEN batches (in-batch pairing only, always); LM Studio
+  replay probes pin `--seed` — same-seed reruns are byte-identical, NOT replication (vary the seed).
 
 ---
 
@@ -249,3 +283,10 @@ per-model `endpointUrl` (cloud); it is gitignored, so this is local machine conf
   `[THINK]`, so left as-is, but the flag is arguably wrong.
 - Reference test tiers were pin-tuned on an older model pair; sampler pins not yet re-benchmarked on the
   Silver-Siren / MeroMero pair (see `test-models` memory).
+- **Memory Digests' benefit is model-dependent and currently one-default-fits-all** (2026-07-22): the cloud
+  tier needs condensation (bare history collapses it), strong locals like Cydonia are actively hurt by it on
+  long sessions (silent by ~turn 42 vs perfect on bare). Default is now ON for fresh installs. Open decision:
+  endpoint-gated defaults, a per-model recommendation surface, or accept the toggle as the escape hatch.
+- **Voice-clause user-slot ship validated on 2 of the catalog's model classes only** (cloud + Cydonia-class,
+  2026-07-22). The 12B/8B tiers and reasoning models are unmeasured on the new default narration user
+  template — worth a screen pass before assuming the 3× transfers down-tier.

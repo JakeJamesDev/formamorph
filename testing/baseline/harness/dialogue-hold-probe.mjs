@@ -144,6 +144,37 @@ const EDITS = {
     return out.replace("asking for what they want next", "voicing what they want next");
   },
 };
+// endmove — the recency experiment: the ending contract CUT from the system prompt and appended to the
+// CURRENT user turn instead (history stays bare; the contract rides only the in-flight message).
+EDITS.endmove = (s) => {
+  const marker = "- Advance the scene, then stop, ending on a spoken line or concrete image that lands what this turn changed.";
+  if (!s.includes(marker)) throw new Error("ending line not found in shipped prompt");
+  return s.replace(marker, "").replace(/\r?\n\r?\n\r?\n/, "\n\n");
+};
+// lenmove — length guidance CUT from the system prompt (the "Be concise" bullet keeps its lead) and
+// appended to the CURRENT user turn.
+EDITS.lenmove = (s) => {
+  const marker = "- Be concise and vivid. Write at most 4 short paragraphs.";
+  if (!s.includes(marker)) throw new Error("length line not found in probe prompt");
+  return s.replace(marker, "- Be concise and vivid.");
+};
+// voicemove — the voice clause CUT from the closing contract and appended to the CURRENT user turn.
+const VOICE_CLAUSE = " When the player's action speaks to a character, the reply on the page is that character's own voice: their quoted sentences, answering what was asked and adding something of their own. The player's words are already spoken by the player - yours to write is the world's answer.";
+EDITS.voicemove = (s) => {
+  if (!s.includes(VOICE_CLAUSE)) throw new Error("voice clause not found in shipped prompt");
+  return s.replace(VOICE_CLAUSE, "");
+};
+// voiceboth — clause kept in the system prompt AND appended to the user turn (the trivially-shippable
+// shape: default template gains it, system untouched, thinking modes keep their clause).
+EDITS.voiceboth = (s) => s;
+// Per-edit suffix appended to the current-turn user message (the move's destination slot).
+const EDIT_USER_SUFFIX = {
+  endmove: "\n\nAdvance the scene, then stop, ending on a spoken line or concrete image that lands what this turn changed.",
+  lenmove: "\n\nWrite at most 4 short paragraphs.",
+  voicemove: `\n\n${VOICE_CLAUSE.trim()}`,
+  voiceboth: `\n\n${VOICE_CLAUSE.trim()}`,
+};
+
 const EDIT_KEYS = strArg("--edit", "none").split(",").map((s) => s.trim());
 for (const k of EDIT_KEYS) if (!EDITS[k]) throw new Error(`unknown edit '${k}'`);
 
@@ -267,7 +298,7 @@ async function runChain(arm, run, editKey = "none") {
     }
     const msgs = [{ role: "system", content: SYS }];
     for (const [u, a] of pairs) msgs.push({ role: "user", content: u }, { role: "assistant", content: a });
-    msgs.push({ role: "user", content: action });
+    msgs.push({ role: "user", content: action + (EDIT_USER_SUFFIX[editKey] ?? "") });
     while (msgs.reduce((n, m) => n + m.content.length, 0) > STORY_CAP + SYS.length && msgs.length > 4) msgs.splice(2, 2);
     const ctxChars = msgs.reduce((n, m) => n + m.content.length, 0);
     let narration = "";
@@ -318,7 +349,10 @@ for (const arm of [...new Set(chains.map((c) => c.arm))]) {
     const sl = slopeOf(seq);
     const verdict = last8 < first8 && sl < 0 ? "DECAY" : "steady";
     const glyphs = c.turns.map((x) => (x.participate ? "█" : x.bar ? "▒" : x.sentences > 0 ? "·" : " ")).join("");
-    console.log(`run${c.run}: |${glyphs}| part ${seq.reduce((a, b) => a + b, 0)}/${seq.length} · first8 ${(first8 * 100).toFixed(0)}% mid ${(mid * 100).toFixed(0)}% last8 ${(last8 * 100).toFixed(0)}% · slope ${(sl * 100).toFixed(1)}%/turn · ${verdict}`);
+    // Length compliance (the lenmove experiment's target): mean words + turns over the 4-paragraph cap.
+    const words = mean(c.turns.map((x) => (x.narration?.match(/\S+/g) || []).length));
+    const overParas = c.turns.filter((x) => (x.narration ?? "").split(/\n\s*\n/).filter((p) => p.trim()).length > 4).length;
+    console.log(`run${c.run}: |${glyphs}| part ${seq.reduce((a, b) => a + b, 0)}/${seq.length} · first8 ${(first8 * 100).toFixed(0)}% mid ${(mid * 100).toFixed(0)}% last8 ${(last8 * 100).toFixed(0)}% · slope ${(sl * 100).toFixed(1)}%/turn · ${verdict} · words ${Math.round(words)} · over4paras ${overParas}/${c.turns.length}`);
   }
   const pooled = Array.from({ length: SESSION.length }, (_, t) => mean(armSeqs.map((s) => s[t])));
   const pf = mean(pooled.slice(0, 8)), pm = mean(pooled.slice(8, pooled.length - 8)), pl = mean(pooled.slice(pooled.length - 8));

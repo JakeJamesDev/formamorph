@@ -79,6 +79,17 @@ export function activeCharacterGuidance(enabled: boolean, limit: number): string
 // that sentinel as the opening narration's user message — a real instruction in the high-recency slot.
 export const OPENING_SCENE_CUE = `Begin the story: write the opening scene now. Establish where the player character is and what is happening around them, then stop on a concrete image, action, or line of dialogue. Do not ask the player what to do or list options - a separate step handles that.`;
 
+// The narration request's current-turn user message (thinking-off only; other modes send the bare
+// action). The voice clause riding after the action is the strongest dialogue lever ever measured on
+// the hold gate (cloud ~3× participation incl. the first full 50-turn hold; Cydonia 50/50) — the same
+// clause stays in the system prompt's closing contract for the thinking modes, and having it in both
+// places measured identical to user-slot-only. NOT every directive works here: the ending contract and
+// length guidance both measured WORSE moved to this slot — evidence before adding anything else.
+// History always stores the bare action, so this text never accumulates.
+export const defaultNarrationUserPrompt = `<PLAYER ACTION>
+
+When the player's action speaks to a character, the reply on the page is that character's own voice: their quoted sentences, answering what was asked and adding something of their own. The player's words are already spoken by the player - yours to write is the world's answer.`;
+
 export const defaultChoicesUserPrompt = `The scene just told to me, the player character:
 <NARRATION>
 

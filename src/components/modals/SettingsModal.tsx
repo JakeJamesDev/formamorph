@@ -30,7 +30,7 @@ import { toast } from 'react-toastify';
 import WorldStorageService from '@/services/WorldStorageService';
 import { DEFAULT_WORLDS, readDeletedDefaultWorlds, clearDeletedDefaultWorlds } from '@/lib/defaultWorlds';
 import { PresetNameDialog } from './PresetNameDialog';
-import { defaultSystemPrompt, defaultChoicesPrompt, defaultStatUpdatesPrompt, defaultLocationChangePrompt, defaultThinkingPrompt, defaultSummaryPrompt, defaultChoicesUserPrompt, defaultStatUpdatesUserPrompt, defaultLocationChangeUserPrompt, defaultSummaryUserPrompt, defaultDiaryPrompt, defaultDirectorPrompt, defaultDirectorUserPrompt, defaultCharacterPrompt, defaultStoryboardPrompt } from '../game/GamePrompts';
+import { defaultSystemPrompt, defaultNarrationUserPrompt, defaultChoicesPrompt, defaultStatUpdatesPrompt, defaultLocationChangePrompt, defaultThinkingPrompt, defaultSummaryPrompt, defaultChoicesUserPrompt, defaultStatUpdatesUserPrompt, defaultLocationChangeUserPrompt, defaultSummaryUserPrompt, defaultDiaryPrompt, defaultDirectorPrompt, defaultDirectorUserPrompt, defaultCharacterPrompt, defaultStoryboardPrompt } from '../game/GamePrompts';
 import { isDesktop } from '@/lib/imageGen/desktop';
 import { fetchComfyMeta, DEFAULT_COMFY_WORKFLOW, type ComfyMeta } from '@/lib/imageGen/comfyui';
 import { fetchInvokeMeta, type InvokeMeta } from '@/lib/imageGen/invokeai';
@@ -354,6 +354,8 @@ export const SettingsModal = ({ isOpen, onOpenChange, previewValues, initialTab,
     setCharacterPrompt,
     storyboardPrompt,
     setStoryboardPrompt,
+    narrationUserPrompt,
+    setNarrationUserPrompt,
     choicesUserPrompt,
     setChoicesUserPrompt,
     statUpdatesUserPrompt,
@@ -589,6 +591,9 @@ export const SettingsModal = ({ isOpen, onOpenChange, previewValues, initialTab,
   const [promptView, setPromptView] = useState<'system' | 'user' | 'options'>('system');
   const selectPromptTab = (t: string) => { setPromptTab(t); setPromptView('system'); };
   const userPrompts: Record<string, { value: string; set: (s: string) => void; reset: () => void; variables: typeof PROMPT_KIND_VARIABLES.choices }> = {
+    // Narration's user template applies only with thinking off (GameViewer guard); hide the editor
+    // in other modes so a change there can't silently do nothing.
+    ...(thinkingMode === 'off' ? { narration: { value: narrationUserPrompt, set: setNarrationUserPrompt, reset: () => setNarrationUserPrompt(defaultNarrationUserPrompt), variables: PROMPT_KIND_USER_VARIABLES.narration ?? [] } } : {}),
     choices: { value: choicesUserPrompt, set: setChoicesUserPrompt, reset: () => setChoicesUserPrompt(defaultChoicesUserPrompt), variables: PROMPT_KIND_USER_VARIABLES.choices ?? [] },
     statupdates: { value: statUpdatesUserPrompt, set: setStatUpdatesUserPrompt, reset: () => setStatUpdatesUserPrompt(defaultStatUpdatesUserPrompt), variables: PROMPT_KIND_USER_VARIABLES.statupdates ?? [] },
     location: { value: locationChangeUserPrompt, set: setLocationChangeUserPrompt, reset: () => setLocationChangeUserPrompt(defaultLocationChangeUserPrompt), variables: PROMPT_KIND_USER_VARIABLES.location ?? [] },
@@ -1536,9 +1541,9 @@ export const SettingsModal = ({ isOpen, onOpenChange, previewValues, initialTab,
               <>
               <TabsContent value="narration" className="mt-4 flex-1 min-h-0 data-[state=active]:flex flex-col">
                 <PromptField
-                  value={systemPrompt}
-                  onChange={setSystemPrompt}
-                  variables={PROMPT_KIND_VARIABLES.narration}
+                  value={showingUser ? narrationUserPrompt : systemPrompt}
+                  onChange={showingUser ? setNarrationUserPrompt : setSystemPrompt}
+                  variables={showingUser ? (PROMPT_KIND_USER_VARIABLES.narration ?? []) : PROMPT_KIND_VARIABLES.narration}
                   previewValues={previewValues}
                   readOnly={activePresetIsBuiltIn}
                 />
