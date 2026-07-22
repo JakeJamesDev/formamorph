@@ -7,19 +7,22 @@ import { containsWord } from './locationMatch';
 /**
  * Pure core of Slice 2 memory banding: turns the flat chat history into a budgeted, layered history.
  *
- * The result is one continuous back-and-forth — user action → assistant story — that's full where it
- * matters and condensed where it doesn't. Every turn appears as its own user/assistant pair:
- *   1. Recent **verbatim floor** — the last K turns, always full (guaranteed).
+ * The result is full where it matters and condensed where it doesn't:
+ *   1. Recent **verbatim floor** — the last K turns, always full (guaranteed), each its own
+ *      user/assistant pair.
  *   2. **Rehydration** — older turns the current action lexically touches, restored to full text
  *      (best-effort, from whatever budget is left).
- *   3. **Digest band** — remaining older turns, condensed: the real user action paired with the turn's
- *      short narration summary as the assistant reply (oldest turns dropped if the band overflows).
+ *   3. **Digest band** — remaining older turns' summaries merged into ONE leading exchange: a recap
+ *      question as the user line, the digests joined as the assistant reply (oldest dropped if the
+ *      band overflows). Digests must NOT ride as per-turn pairs: a history of many short "own replies"
+ *      drags small models into matching that length — measured on a real collapsed turn, paired
+ *      digests averaged 40 words/turn vs ~125 for the merged recap exchange (digest-framing-probe.mjs).
+ *      Framed as a recap answer, the short style reads as a different task, not a narration exemplar.
  *   4. Drop — older turns with no summary, or beyond budget.
  *
- * A banded turn's assistant reply is condensed narration in the same voice as a full turn, so a model that
- * copies the last assistant shape just keeps narrating — the copy is the goal, not a hazard. The summary is
- * still only a pointer: when an old turn matters again it's rehydrated from its real text, so a hallucinated
- * summary is never load-bearing. Kept React-free so the index/budget math is unit-testable.
+ * A digest is still only a pointer: when an old turn matters again it's rehydrated from its real text,
+ * so a hallucinated summary is never load-bearing. Kept React-free so the index/budget math is
+ * unit-testable.
  */
 
 /** A parsed user→assistant turn from the flat history. `index` is the assistant message's position
@@ -50,8 +53,8 @@ export interface BandCounts {
 export interface BandResult {
   messages: ChatMessage[];
   /** The summarized-older turns as a labeled recap block (empty when no band), for consumers that want just
-   *  that context. It is NOT part of `messages` — there the banded turns ride as condensed user/assistant
-   *  pairs; this is a separate string only the precall planner uses. */
+   *  that context. It is NOT part of `messages` — there the band rides as the recap exchange; this is a
+   *  separate newline-joined string only the precall planner uses. */
   recap: string;
   counts: BandCounts;
 }
@@ -74,11 +77,21 @@ function pairTokenCost(turn: BandTurn): number {
   return estimateTokens(JSON.stringify([turn.userMsg, assistant]).length);
 }
 
-/** The token cost of a banded turn: its real user action paired with the short summary as the assistant
- *  reply (the condensed form that actually rides in the history). */
-function bandedPairCost(turn: BandTurn): number {
-  const assistant: ChatMessage = { role: 'assistant', content: (turn.summary || '').trim() };
-  return estimateTokens(JSON.stringify([turn.userMsg, assistant]).length);
+/** The digests joined into the recap exchange's assistant reply. Space-joined — the exact merged form
+ *  the digest-framing probe validated (newline-join is untested). */
+function mergedBandText(turns: BandTurn[]): string {
+  return turns.map((t) => (t.summary || '').trim()).filter(Boolean).join(' ');
+}
+
+/** The token cost of the whole digest band as it actually rides: one recap-question user line plus the
+ *  merged digests as the assistant reply. 0 when the band is empty (no exchange is emitted). */
+function bandExchangeCost(turns: BandTurn[], recapPrompt: string): number {
+  if (turns.length === 0) return 0;
+  const pair: ChatMessage[] = [
+    { role: 'user', content: recapPrompt },
+    { role: 'assistant', content: mergedBandText(turns) },
+  ];
+  return estimateTokens(JSON.stringify(pair).length);
 }
 
 /** Join turns' summaries into the recap body (chronological, one turn per join). */
@@ -191,8 +204,8 @@ export function selectRehydrations(
 }
 
 /** Assemble the banded history: verbatim floor (guaranteed) → digest band (guaranteed) → drop. Output is
- *  `[band?, ...verbatim turns chronological]`; the caller appends the current action. Rehydration (pulling
- *  relevant older turns back to full text) is currently DISABLED — see step 3. */
+ *  `[recap exchange?, ...verbatim turns chronological]`; the caller appends the current action. Rehydration
+ *  (pulling relevant older turns back to full text) is currently DISABLED — see step 3. */
 export function buildBandedHistory(args: {
   turns: BandTurn[];
   contextWindow: number;
@@ -203,6 +216,8 @@ export function buildBandedHistory(args: {
   actionEntities: string[];
   rehydrateCap: number;
   maxRehydrations?: number;
+  /** The recap exchange's user line (Settings → Prompts → Narration → Recap; default in GamePrompts). */
+  recapPrompt: string;
   /** Turn ids removed by milestone selection (selection + pins already resolved by the caller — see
    *  lib/milestoneMemory). Absent/empty = no filtering, the pre-milestone behavior. The caller owns the
    *  window math so every stage filters the exact same turns regardless of its own floor width. */
@@ -210,7 +225,7 @@ export function buildBandedHistory(args: {
 }): BandResult {
   // `keywords`, `actionEntities`, `rehydrateCap`, `maxRehydrations` are intentionally not destructured:
   // rehydration is disabled (see step 3). Kept in the arg type so callers compile unchanged.
-  const { turns, contextWindow, promptTokens, maxTokens, verbatimFloor, milestoneDrop = null } = args;
+  const { turns, contextWindow, promptTokens, maxTokens, verbatimFloor, milestoneDrop = null, recapPrompt } = args;
   const margin = Math.max(256, Math.round(contextWindow * 0.05));
   const budget = Math.max(0, contextWindow - promptTokens - maxTokens - margin);
 
@@ -227,8 +242,8 @@ export function buildBandedHistory(args: {
   const candidates = turns.slice(0, turns.length - floorTaken.length);
   const remaining = budget - floorTokens;
 
-  // 2. Digest band (guaranteed) — older turns carrying a summary, oldest turns dropped to fit. Sized by
-  // the condensed pair cost (real action + summary reply), since each banded turn rides as its own pair.
+  // 2. Digest band (guaranteed) — older turns carrying a summary, oldest turns dropped to fit. Sized as
+  // it actually rides: one recap exchange (question + merged digests), not per-turn pairs.
   // Milestone selection: the caller hands in the exact turn ids to remove (recent digests past the
   // floor always survive by construction — they are never in the drop set). No selection yet = empty
   // set = keep everything: fail-safe, never fail-drop.
@@ -239,11 +254,10 @@ export function buildBandedHistory(args: {
     turnsSelectedOut = bandTurns.length - kept.length;
     bandTurns = kept;
   }
-  const bandCost = (ts: BandTurn[]) => ts.reduce((n, t) => n + bandedPairCost(t), 0);
-  let bandTokens = bandCost(bandTurns);
+  let bandTokens = bandExchangeCost(bandTurns, recapPrompt);
   while (bandTokens > remaining && bandTurns.length > 0) {
     bandTurns = bandTurns.slice(1); // drop the oldest
-    bandTokens = bandCost(bandTurns);
+    bandTokens = bandExchangeCost(bandTurns, recapPrompt);
   }
 
   // 3. Rehydration — DISABLED. Keyed on the current (charged) action, lexical rehydration pulled many
@@ -258,19 +272,19 @@ export function buildBandedHistory(args: {
   const rehydratedTurns: BandTurn[] = [];
   const rehydratedTokens = 0;
 
-  // Assemble one chronological back-and-forth: every turn is its own user/assistant pair. Full turns
-  // (rehydrated + recent floor) carry their real narration; banded turns carry the same real user action
-  // paired with the turn's short summary as the assistant reply. Because a banded reply is condensed
-  // narration in the story's own voice, a small model copying the last assistant shape just keeps
-  // narrating — no headings to echo — while strict user/assistant alternation stays valid on any endpoint.
-  const kind = new Map<BandTurn, string>();
-  for (const t of rehydratedTurns) kind.set(t, t.gameText);
-  for (const t of floorTaken) kind.set(t, t.gameText);
-  for (const t of bandTurns) kind.set(t, (t.summary || '').trim());
-  const ordered = [...rehydratedTurns, ...floorTaken, ...bandTurns].sort((a, b) => a.index - b.index);
+  // Assemble: the recap exchange first (older events condensed), then full turns (rehydrated + recent
+  // floor) chronological, each as its real user/assistant pair. Strict alternation stays valid on any
+  // endpoint — the recap question is a genuine user turn. The digests deliberately do NOT ride as
+  // per-turn pairs: many short "own replies" in a row measurably collapse small-model narration length
+  // (see module header); answered to a recap question, the short style belongs to a different task.
   const messages: ChatMessage[] = [];
+  const bandBody = mergedBandText(bandTurns);
+  if (bandBody) {
+    messages.push({ role: 'user', content: recapPrompt }, { role: 'assistant', content: bandBody });
+  }
+  const ordered = [...rehydratedTurns, ...floorTaken].sort((a, b) => a.index - b.index);
   for (const t of ordered) {
-    messages.push({ ...t.userMsg }, { role: 'assistant', content: kind.get(t) ?? '' });
+    messages.push({ ...t.userMsg }, { role: 'assistant', content: t.gameText });
   }
 
   const bandText = buildBandText(bandTurns);

@@ -105,16 +105,17 @@ describe('buildBandedHistory milestone filtering', () => {
     keywords: [],
     actionEntities: [],
     rehydrateCap: 0,
+    recapPrompt: 'Recap the story so far.',
   };
 
   it('drops exactly the given turn ids from the digest band', () => {
     const list = turns(12);
     const { messages, counts } = buildBandedHistory({ ...args, turns: list, milestoneDrop: new Set(['t0', 't2']) });
-    const contents = messages.map((m) => m.content);
-    expect(contents).not.toContain('digest 0');
-    expect(contents).toContain('digest 1');
-    expect(contents).not.toContain('digest 2');
-    expect(contents).toContain('narration 11'); // floor untouched
+    const joined = messages.map((m) => m.content).join('\n');
+    expect(joined).not.toContain('digest 0');
+    expect(joined).toContain('digest 1');
+    expect(joined).not.toContain('digest 2');
+    expect(joined).toContain('narration 11'); // floor untouched
     expect(counts.turnsSelectedOut).toBe(2);
   });
 

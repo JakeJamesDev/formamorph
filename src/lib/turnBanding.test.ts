@@ -158,9 +158,10 @@ describe('selectRehydrations', () => {
 });
 
 describe('buildBandedHistory', () => {
-  const base = { contextWindow: WIDE, promptTokens: 0, maxTokens: 0, verbatimFloor: 2, rehydrateCap: WIDE, actionEntities: [] as string[] };
+  const RECAP = 'Recap the story so far.';
+  const base = { contextWindow: WIDE, promptTokens: 0, maxTokens: 0, verbatimFloor: 2, rehydrateCap: WIDE, actionEntities: [] as string[], recapPrompt: RECAP };
 
-  it('keeps the recent floor verbatim and bands older turns as condensed pairs', () => {
+  it('keeps the recent floor verbatim and merges older turns into one leading recap exchange', () => {
     const turns = parseTurns([
       ...pair('a1', { turnId: 't1', narration: 'g1', summary: 's1' }),
       ...pair('a2', { turnId: 't2', narration: 'g2', summary: 's2' }),
@@ -168,12 +169,15 @@ describe('buildBandedHistory', () => {
       ...pair('a4', { turnId: 't4', narration: 'g4', summary: 's4' }),
     ]);
     const { messages, recap } = buildBandedHistory({ ...base, turns, keywords: [] });
-    // Banded turns (t1,t2) ride as their real action + the summary as the assistant reply; the recent
-    // floor (t3,t4) stays full. One continuous, strictly-alternating back-and-forth.
+    // Banded turns (t1,t2) ride as ONE exchange — the recap question answered by the merged digests —
+    // never as per-turn pairs (many short "own replies" collapse small-model narration length; see
+    // digest-framing-probe.mjs). The recent floor (t3,t4) stays full. Alternation stays strict.
     expect(messages.map((m) => m.role)).toEqual([
-      'user', 'assistant', 'user', 'assistant', 'user', 'assistant', 'user', 'assistant',
+      'user', 'assistant', 'user', 'assistant', 'user', 'assistant',
     ]);
-    expect(messages.map((m) => m.content)).toEqual(['a1', 's1', 'a2', 's2', 'a3', 'g3', 'a4', 'g4']);
+    expect(messages.map((m) => m.content)).toEqual([RECAP, 's1 s2', 'a3', 'g3', 'a4', 'g4']);
+    // The banded turns' real actions ride only in the planner recap, never as history user messages.
+    expect(messages.some((m) => m.content === 'a1' || m.content === 'a2')).toBe(false);
     // The "Earlier events" label lives only in the planner recap, never in the narration history.
     expect(messages.some((m) => m.content.includes('Earlier events'))).toBe(false);
     expect(recap).toContain('Earlier events');
@@ -190,8 +194,8 @@ describe('buildBandedHistory', () => {
       ...pair('a4', { turnId: 't4', narration: 'g4', summary: 's4' }),
     ]);
     const { messages } = buildBandedHistory({ ...base, turns, keywords: [] });
-    // t1 has no summary → dropped entirely; t2 bands, t3/t4 stay full.
-    expect(messages.map((m) => m.content)).toEqual(['a2', 's2', 'a3', 'g3', 'a4', 'g4']);
+    // t1 has no summary → dropped entirely; t2 alone fills the recap exchange, t3/t4 stay full.
+    expect(messages.map((m) => m.content)).toEqual([RECAP, 's2', 'a3', 'g3', 'a4', 'g4']);
     expect(messages.some((m) => m.content === 'g1' || m.content === 'a1')).toBe(false);
   });
 
@@ -242,6 +246,8 @@ describe('buildBandedHistory', () => {
     const { messages, recap } = buildBandedHistory({ ...base, turns, keywords: [] });
     expect(recap).toBe('');
     expect(messages.some((m) => m.content.includes('Earlier events'))).toBe(false);
+    // No band → no recap exchange at all.
+    expect(messages.some((m) => m.content === RECAP)).toBe(false);
     expect(messages.map((m) => m.content)).toEqual(['a1', 'g1', 'a2', 'g2']);
   });
 
@@ -256,7 +262,7 @@ describe('buildBandedHistory', () => {
     const { messages, recap } = buildBandedHistory({ ...base, contextWindow: 600, turns, keywords: [] });
     expect(recap).not.toContain('OLDEST');
     expect(recap).toContain('NEWERBAND');
-    expect(messages.some((m) => m.content === 'NEWERBAND')).toBe(true); // t2 rides as a condensed pair
+    expect(messages.some((m) => m.content.includes('NEWERBAND'))).toBe(true); // t2 survives in the recap exchange
     expect(messages.some((m) => m.content.includes('OLDEST'))).toBe(false);
   });
 });

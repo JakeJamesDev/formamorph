@@ -30,7 +30,7 @@ import { toast } from 'react-toastify';
 import WorldStorageService from '@/services/WorldStorageService';
 import { DEFAULT_WORLDS, readDeletedDefaultWorlds, clearDeletedDefaultWorlds } from '@/lib/defaultWorlds';
 import { PresetNameDialog } from './PresetNameDialog';
-import { defaultSystemPrompt, defaultNarrationUserPrompt, defaultChoicesPrompt, defaultStatUpdatesPrompt, defaultLocationChangePrompt, defaultThinkingPrompt, defaultSummaryPrompt, defaultChoicesUserPrompt, defaultStatUpdatesUserPrompt, defaultLocationChangeUserPrompt, defaultSummaryUserPrompt, defaultDiaryPrompt, defaultDirectorPrompt, defaultDirectorUserPrompt, defaultCharacterPrompt, defaultStoryboardPrompt } from '../game/GamePrompts';
+import { defaultSystemPrompt, defaultNarrationUserPrompt, defaultRecapUserPrompt, defaultChoicesPrompt, defaultStatUpdatesPrompt, defaultLocationChangePrompt, defaultThinkingPrompt, defaultSummaryPrompt, defaultChoicesUserPrompt, defaultStatUpdatesUserPrompt, defaultLocationChangeUserPrompt, defaultSummaryUserPrompt, defaultDiaryPrompt, defaultDirectorPrompt, defaultDirectorUserPrompt, defaultCharacterPrompt, defaultStoryboardPrompt } from '../game/GamePrompts';
 import { isDesktop } from '@/lib/imageGen/desktop';
 import { fetchComfyMeta, DEFAULT_COMFY_WORKFLOW, type ComfyMeta } from '@/lib/imageGen/comfyui';
 import { fetchInvokeMeta, type InvokeMeta } from '@/lib/imageGen/invokeai';
@@ -356,6 +356,8 @@ export const SettingsModal = ({ isOpen, onOpenChange, previewValues, initialTab,
     setStoryboardPrompt,
     narrationUserPrompt,
     setNarrationUserPrompt,
+    recapUserPrompt,
+    setRecapUserPrompt,
     choicesUserPrompt,
     setChoicesUserPrompt,
     statUpdatesUserPrompt,
@@ -586,9 +588,10 @@ export const SettingsModal = ({ isOpen, onOpenChange, previewValues, initialTab,
   const selectedPrompt = promptResets[activePromptTab] ?? promptResets.narration;
 
   // Each prompt has a System editor, an Options sub-tab, and — for the aux prompts — a User-message editor.
-  // A System | User | Options toggle swaps between them (User only where a user template exists). `promptView`
-  // resets to System on every tab change.
-  const [promptView, setPromptView] = useState<'system' | 'user' | 'options'>('system');
+  // Narration additionally has a Recap editor (the memory-recap exchange's user line; digests-on only).
+  // A System | User | Recap | Options toggle swaps between them (User/Recap only where they exist).
+  // `promptView` resets to System on every tab change.
+  const [promptView, setPromptView] = useState<'system' | 'user' | 'recap' | 'options'>('system');
   const selectPromptTab = (t: string) => { setPromptTab(t); setPromptView('system'); };
   const userPrompts: Record<string, { value: string; set: (s: string) => void; reset: () => void; variables: typeof PROMPT_KIND_VARIABLES.choices }> = {
     // Narration's user template applies only with thinking off (GameViewer guard); hide the editor
@@ -602,12 +605,18 @@ export const SettingsModal = ({ isOpen, onOpenChange, previewValues, initialTab,
   };
   const activeUserPrompt = userPrompts[activePromptTab];
   const showingUser = promptView === 'user' && !!activeUserPrompt;
+  // The recap line rides the narration history only while Memory Digests is on; the editor lives on the
+  // Narration tab and hides with the feature so an edit can't silently do nothing.
+  const recapAvailable = activePromptTab === 'narration' && memoryDigests;
+  const showingRecap = promptView === 'recap' && recapAvailable;
   const showingOptions = promptView === 'options';
   // The Reset button targets whichever template is on screen. `label` is the full noun ("Narration Prompt"
   // or just "Message" for the user-message template), so the button reads "Reset <label>".
-  const resetTarget = showingUser && activeUserPrompt
-    ? { label: `${selectedPrompt.label} Message`, reset: activeUserPrompt.reset }
-    : { label: `${selectedPrompt.label} Prompt`, reset: selectedPrompt.reset };
+  const resetTarget = showingRecap
+    ? { label: 'Recap Message', reset: () => setRecapUserPrompt(defaultRecapUserPrompt) }
+    : showingUser && activeUserPrompt
+      ? { label: `${selectedPrompt.label} Message`, reset: activeUserPrompt.reset }
+      : { label: `${selectedPrompt.label} Prompt`, reset: selectedPrompt.reset };
 
   // Verbatim-turns control for the active prompt, shown once in the footer (like Reset).
   const promptVerbatim: Record<string, { value: number; set: (n: number) => void }> = {
@@ -1521,6 +1530,7 @@ export const SettingsModal = ({ isOpen, onOpenChange, previewValues, initialTab,
                 <TabsList className="h-auto">
                   <TabsTrigger value="system" className="text-xs">System Prompt</TabsTrigger>
                   {activeUserPrompt && <TabsTrigger value="user" className="text-xs">User Message</TabsTrigger>}
+                  {recapAvailable && <TabsTrigger value="recap" className="text-xs">Recap Message</TabsTrigger>}
                   <TabsTrigger value="options" className="text-xs">Options</TabsTrigger>
                 </TabsList>
               </Tabs>
@@ -1541,9 +1551,9 @@ export const SettingsModal = ({ isOpen, onOpenChange, previewValues, initialTab,
               <>
               <TabsContent value="narration" className="mt-4 flex-1 min-h-0 data-[state=active]:flex flex-col">
                 <PromptField
-                  value={showingUser ? narrationUserPrompt : systemPrompt}
-                  onChange={showingUser ? setNarrationUserPrompt : setSystemPrompt}
-                  variables={showingUser ? (PROMPT_KIND_USER_VARIABLES.narration ?? []) : PROMPT_KIND_VARIABLES.narration}
+                  value={showingRecap ? recapUserPrompt : showingUser ? narrationUserPrompt : systemPrompt}
+                  onChange={showingRecap ? setRecapUserPrompt : showingUser ? setNarrationUserPrompt : setSystemPrompt}
+                  variables={showingRecap ? [] : showingUser ? (PROMPT_KIND_USER_VARIABLES.narration ?? []) : PROMPT_KIND_VARIABLES.narration}
                   previewValues={previewValues}
                   readOnly={activePresetIsBuiltIn}
                 />

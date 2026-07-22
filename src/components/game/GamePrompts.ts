@@ -90,6 +90,13 @@ export const defaultNarrationUserPrompt = `<PLAYER ACTION>
 
 When the player's action speaks to a character, the reply on the page is that character's own voice: their quoted sentences, answering what was asked and adding something of their own. The player's words are already spoken by the player - yours to write is the world's answer.`;
 
+// The user line of the memory-recap exchange: with Memory Digests on, older turns ride the narration
+// history as ONE recap exchange - this question, answered by the merged digest text. Framing the digests
+// as a recap (instead of per-turn action/one-liner pairs) is what stops small models imitating the
+// digests' length: probed on a real collapsed turn, paired digests averaged 40 words with the NPC's
+// answer dropped 4/5 runs; this shape held ~125 words and answered 5/5 (digest-framing-probe.mjs).
+export const defaultRecapUserPrompt = `Recap the story so far.`;
+
 export const defaultChoicesUserPrompt = `The scene just told to me, the player character:
 <NARRATION>
 
