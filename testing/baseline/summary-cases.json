@@ -49,6 +49,27 @@
       "action": "I sign the ledger with my traveling name and slide it back across the counter.",
       "narration": "The clerk spins the ledger, reads the entry, and taps the line twice with an inked finger. \"Mapmaker, then.\" He copies something into a second book you can't see. \"Room's paid through the week. Don't go into the east wing.\" He sets a heavy iron key on the counter between you.",
       "forbid": []
+    },
+    {
+      "name": "fact-stated-goal",
+      "action": "I tell the gatekeeper I'm called Ness, a courier bound for the counting-house at Verrin Cross, and that my satchel must arrive before the frost fair.",
+      "narration": "The gatekeeper looks you over, then at the satchel strapped tight across your chest. He rolls his shoulders and steps aside, dragging the bar from the gate. \"Long road for paper,\" he says, and waves you through without further ceremony.",
+      "forbid": [],
+      "require": ["\\bNess\\b", "Verrin", "frost fair"]
+    },
+    {
+      "name": "fact-introduced-object",
+      "action": "I take out my grandmother's bone-handled knife - the one with the chipped tip - and cut the wax seal on the bundle.",
+      "narration": "The old blade parts the wax cleanly despite its chip, and the oilcloth falls open across your knees. Inside lies a coil of new rope and a paper of iron nails, nothing more. You fold the cloth back over them and slide the knife away.",
+      "forbid": [],
+      "require": ["knife", "bone|chip|grandmother"]
+    },
+    {
+      "name": "fact-named-price",
+      "action": "I ask the carter what he would charge to haul my crates as far as the mill.",
+      "narration": "The carter squints at the crates, then at his mule. \"Three copper pennies the load,\" he says, slapping the sideboard. \"Half now, half at the millpond. And if the axle goes on that hill road, you're pushing.\" He holds out a broad, cracked palm to seal it.",
+      "forbid": [],
+      "require": ["three|3", "copper|penn"]
     }
   ]
 }
