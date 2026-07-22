@@ -294,6 +294,7 @@ const GameViewer = ({
     characterPrompt,
     storyboardPrompt,
     narrationUserPrompt,
+    recapUserPrompt,
     choicesUserPrompt,
     statUpdatesUserPrompt,
     locationChangeUserPrompt,
@@ -872,13 +873,14 @@ const GameViewer = ({
         rehydrateCap,
         maxRehydrations: DIGEST_MAX_REHYDRATIONS,
         milestoneDrop: getMilestoneDrop(turns),
+        recapPrompt: recapUserPrompt,
       });
       lastBandCountsRef.current = counts;
       return messages;
     }
     lastBandCountsRef.current = null;
     return buildVerbatimHistory(turns, contextWindow, promptTokens, maxTokens);
-  }, [fullMessageHistory, contextWindow, maxTokens, memoryDigests, dictionary, allEntities, narrationVerbatimTurns, getMilestoneDrop]);
+  }, [fullMessageHistory, contextWindow, maxTokens, memoryDigests, dictionary, allEntities, narrationVerbatimTurns, getMilestoneDrop, recapUserPrompt]);
 
   // Drive body morphs from the viewed stats (live on the latest page, the paged turn's when viewing the
   // past): each stat's bound sliders track its value (min→max → 0→1 influence), so the avatar re-morphs to
@@ -1289,8 +1291,8 @@ ${playerNotes || NONE_PLACEHOLDER}
         const thinkPrompt = renderPromptTemplate(thinkingPrompt, ctx);
         // Frame the planning task as a single instruction. Reusing the narration message history
         // (turns of action -> story) primes the model to just continue the story instead of planning.
-        // Banded turns ride as condensed pairs; the last assistant message is the recent floor turn's
-        // real narration, so pull it straight from history.
+        // The last assistant message is the recent floor turn's real narration, so pull it straight
+        // from history.
         let lastStory =
           [...trimmedHistory].reverse().find((m) => m.role === "assistant")?.content || "";
         // Planning needs the least context: the immediate turn verbatim, everything older summarized.
@@ -1311,6 +1313,7 @@ ${playerNotes || NONE_PLACEHOLDER}
             // Same filtered memory as narration: the drop set is window-exact regardless of this
             // stage's narrower floor.
             milestoneDrop: getMilestoneDrop(plannerTurns),
+            recapPrompt: recapUserPrompt,
           });
           digestBand = planner.recap;
           lastStory =
