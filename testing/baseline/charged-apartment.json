@@ -1,0 +1,58 @@
+{
+  "worldOverview": {
+    "name": "Charged Apartment",
+    "description": "Harness world matching charged-corpus.mjs: a consenting-adult evening in with two established partners. Used by the dialoguehold profile.",
+    "author": "baseline-harness",
+    "thumbnail": null,
+    "bgm": null,
+    "systemPrompt": "A consenting-adult romance among three established partners. The player and both partners share an openly affectionate relationship; mutual desire is long established and the quiet evening in is turning intimate. Warm and tasteful, never graphic.",
+    "use3DModel": false,
+    "tags": []
+  },
+  "stats": [],
+  "locations": [
+    {
+      "id": "loc-apartment",
+      "name": "The Shared Apartment",
+      "inGameDescription": "",
+      "detailedDescription": "The partners' shared apartment - a couch in warm lamplight, the bedroom just down the hall.",
+      "backgroundImage": null,
+      "ambientSound": null,
+      "entities": ["ent-mara", "ent-sofia"]
+    }
+  ],
+  "entities": [
+    {
+      "id": "ent-mara",
+      "name": "Mara",
+      "inGameDescription": "",
+      "detailedDescription": "AGE 30. A partner. Warm, forward, playful and talkative; openly desires the player and says so easily.",
+      "type": "Person",
+      "image": null,
+      "sound": null,
+      "model": null
+    },
+    {
+      "id": "ent-sofia",
+      "name": "Sofia",
+      "inGameDescription": "",
+      "detailedDescription": "AGE 32. A partner. Affectionate, direct, and expressive; comfortable voicing what she wants.",
+      "type": "Person",
+      "image": null,
+      "sound": null,
+      "model": null
+    }
+  ],
+  "traits": [
+    {
+      "id": "trait-alex",
+      "name": "Identity",
+      "description": "Alex, an adult in a loving, established relationship with both partners.",
+      "isDefault": true,
+      "statChanges": []
+    }
+  ],
+  "statUpdates": [],
+  "dictionary": [],
+  "customPlayerVRM": null
+}

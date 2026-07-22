@@ -66,19 +66,10 @@ const grab = (src, name) => {
 const promptsSrc = await readFile(path.resolve(HARNESS_DIR, "../../../src/components/game/GamePrompts.ts"), "utf8");
 const SUMMARY_SYSTEM = grab(promptsSrc, "defaultSummaryPrompt");
 const SUMMARY_USER = grab(promptsSrc, "defaultSummaryUserPrompt");
-// Arm E: arm D with a present-tense voice contract on the summary prompts — digests written as the story
-// reads, so a band of them can't teach the narrator past tense. Candidate edit for GamePrompts.ts.
-const mustReplace = (s, re, to) => {
-  const next = s.replace(re, to);
-  if (next === s) throw new Error(`summary tense pattern did not match: ${re}`);
-  return next;
-};
-const SUMMARY_SYSTEM_TENSE = mustReplace(SUMMARY_SYSTEM,
-  /in the player's own second-person voice \("you \.\.\."\)\./,
-  'written as the story reads: second person, present tense ("you ...").');
-const SUMMARY_USER_TENSE = mustReplace(SUMMARY_USER,
-  /in one or two short second-person sentences on a single line: what you did and what now stands true as a result\./,
-  'in one or two short second-person, present-tense sentences on a single line: what you do and what now stands true as a result.');
+// Arm E's present-tense summary contract SHIPPED (2026-07-21) — the grabbed prompts already carry it,
+// so E ≡ D now and the tense variants are aliases of the shipped prompts.
+const SUMMARY_SYSTEM_TENSE = SUMMARY_SYSTEM;
+const SUMMARY_USER_TENSE = SUMMARY_USER;
 
 // ── Ablations: each key deletes ONE section/bullet from the recorded system prompt (arm A format).
 // `--ablate key1,key2,...` runs one chain set per key; metrics diff against the full-prompt A baseline.
@@ -98,6 +89,9 @@ const ABLATIONS = {
   "stats-preamble": [/These shape how each action goes[^\n]*\n/],
   "stat-negative": [/- Don't report or tabulate the player's stats[^\n]*\n/],
   "pc-redesc": [/- The player's own fixed features[^\n]*\n/],
+  // Line 10 (2026-07-21): the name-withholding bullet — the prompt's longest guideline, now with code
+  // backstops (alias reveal system). Measured via the coldName metrics.
+  names: [/- The names in your notes are what you know[^\n]*\n/],
   // Position test: opening paragraph cut, its two unique claims (role identity + reactivity) relocated
   // to the head of the closing contract — the recency slot the model demonstrably obeys.
   "opening-roleclose": [
@@ -121,9 +115,26 @@ const EDITS = {
   ],
   fuse: [
     [/- When characters are present, they speak[^\n]*\n/,
-     "- Characters speak through what they do: their actual words land as quoted dialogue woven into their movements, and the more physical the moment, the more they voice it - urging, teasing, asking for what they want next. Their words respond to what the player just said or did and carry the scene onward.\n"],
+     "- Characters speak through what they do: their actual words land as quoted dialogue woven into their movements, and the more physical the moment, the more they voice it - urging, teasing, voicing what they want next. Their words respond to what the player just said or did and carry the scene onward.\n"],
     [/ending on a concrete image, action, or spoken line/,
      "ending on a spoken line or concrete image"],
+  ],
+  // 2026-07-21 line-12 positive-rewrite candidates (run against the shipped base):
+  // statfold — the Don't-report bullet deleted, its job folded into the stats bullet's tail.
+  statfold: [
+    [/- Let the player's current stats shape[^\n]*\n/,
+     "- Let the player's current stats shape how each action turns out: a low stat shows in the effort it costs, a high one shows as ease or assurance - worked into the events, not stated; the numbers themselves belong to a separate step.\n"],
+    [/- Don't report or tabulate the player's stats[^\n]*\n/, ""],
+  ],
+  // statpos — bullet kept as its own line but rewritten positive.
+  statpos: [
+    [/- Don't report or tabulate the player's stats[^\n]*\n/,
+     "- The numbers are another step's job: on the page, stats live only as effort, ease, and consequence.\n"],
+  ],
+  // prune — every empty section (header + N/A body) removed, the empty-section-pruning candidate.
+  // Global flag: one entry strips all of them (mustReplace semantics still hold — at least one match).
+  prune: [
+    [/## [^\n]+\nN\/A\n\n/g, ""],
   ],
   get gmfuse() { return [...this.gm, ...this.fuse]; }, // full stack: goalmaster opening + fused dialogue rule
   // gmlite — original opening kept intact; ONE initiative sentence appended to it (minimal goalmaster dose).
@@ -137,16 +148,34 @@ const EDITS = {
      "$1 Every scene carries its characters' spoken words - quoted dialogue is part of the events, in the quietest and the most physical moments alike."],
   ],
 };
-// Ablations cut from the SHIPPED prompt: the recorded (pre-fuse) text with the shipped fuse edit applied,
-// so 'none' is the live baseline and each key removes one piece of what production actually sends.
-const ABLATE_BASE = EDITS.fuse.reduce((s, [re, to]) => {
+// Both modes now start from the SHIPPED prompt: the recorded text patched with every shipped delta
+// (fuse w/ 2026-07-21 voicing swap + voice clause + stats-preamble cut), so 'none' is the live baseline.
+// NOTE: historical edit keys authored against the RECORDED prompt (gm/gmlite/…) now fail loud if used.
+const SHIPPED_PATCH = [
+  ...EDITS.fuse,
+  // 2026-07-22 combo: concrete continuity line + vague ending middle removed.
+  [/- Stay consistent with the world, traits, location, and the story so far\./,
+   "- What the story has established stays true: where everyone is, what they hold and wear, and what has been said or done carry into this turn unless the action changes them."],
+  [/your reply is complete once the events have been told, ending on/,
+   "ending on"],
+  [/(\[Player's turn\]\.)\s*$/,
+   "$1 When the player's action speaks to a character, the reply on the page is that character's own voice: their quoted sentences, answering what was asked and adding something of their own. The player's words are already spoken by the player - yours to write is the world's answer."],
+  [/These shape how each action goes[^\n]*\n/, ""],
+];
+const ABLATE_BASE = SHIPPED_PATCH.reduce((s, [re, to]) => {
   const next = s.replace(re, to);
-  if (next === s) throw new Error("fuse pattern did not match the recorded prompt");
+  if (next === s) {
+    // A source recorded on the current prompt already carries this delta — skip. Anything else is drift.
+    const marker = to.replace(/^\$1\s*/, "").slice(0, 60);
+    if (marker && s.includes(marker)) return s;
+    if (!to && !re.test(s)) return s; // deletion already applied
+    throw new Error(`shipped patch did not match the recorded prompt: ${re}`);
+  }
   return next;
 }, FULL_SYSTEM);
 function applyPatterns(key, table, mode) {
   const entries = table[key] ?? (() => { throw new Error(`unknown ${mode} '${key}'`); })();
-  let s = mode === "ablation" ? ABLATE_BASE : FULL_SYSTEM;
+  let s = ABLATE_BASE;
   for (const e of entries) {
     const [re, to] = Array.isArray(e) ? e : [e, ""];
     const next = s.replace(re, to);
@@ -244,6 +273,8 @@ function scoreTurn(text, seen) {
     endQuestion: /\?\s*$/.test(text.trim()),
     bold: (text.match(/\*\*[^*]+\*\*/g) || []).length,
     menuLeak: /^\s*[-*\d]\.?\s/m.test(text) || /\b(Choose|Options:)\b/.test(text) || /\[[A-Z][^\]]*\]/.test(text),
+    // Stat leakage: numeric stat talk on the page ("+2", "10/100", "Stamina: 4") — what line 12 guards.
+    statLeak: /[+-]\d+\b|\b\d+\s*\/\s*\d+\b|\b[A-Z][a-z]+\s*:\s*\d+\b/.test(text),
     preg: /pregnan|impregnat|seed|fertile/i.test(text),
     pastDominant: past > pres,
   };
@@ -305,6 +336,23 @@ for (const c of chains) {
   await writeFile(file, JSON.stringify({ model: MODEL_LABEL, source: SOURCE, ...c }, null, 1));
 }
 
+// ── Name-reveal metrics (line-10 test): entity names parsed from the recorded system prompt's
+// character sections. A "cold" reveal = a name whose first appearance anywhere in the chain is in a
+// NARRATION (the player never used it first) — line 10 says these should wait until learned in-story.
+const KNOWN_NAMES = [...FULL_SYSTEM.matchAll(/^- \*\*([A-Z][^*\n:]{1,30})\*\*\s*$/gm)].map((m) => m[1].trim());
+function nameStats(turns) {
+  const seenInAction = new Set(), revealed = new Map(); // name -> first narration turn
+  for (const t of turns) {
+    for (const n of KNOWN_NAMES) {
+      const re = new RegExp(`\\b${n}\\b`);
+      if (re.test(t.action)) seenInAction.add(n);
+      if (!revealed.has(n) && re.test(t.narration ?? "")) revealed.set(n, { turn: t.t, cold: !seenInAction.has(n) });
+    }
+  }
+  const cold = [...revealed.values()].filter((r) => r.cold);
+  return { cold: cold.length, meanColdTurn: cold.length ? (cold.reduce((a, r) => a + r.turn, 0) / cold.length).toFixed(1) : "—", revealedTotal: revealed.size };
+}
+
 // ── Report ──
 const CHARGED_FROM = 5; // ambient escalation is fully underway by turn 5 in the recorded script
 for (const key of [...new Set(chains.map((c) => c.arm))]) {
@@ -323,7 +371,9 @@ for (const key of [...new Set(chains.map((c) => c.arm))]) {
       ` · collapse@${cp ?? "—"}` +
       `\n       paras ${avg(all, (m) => m.paras).toFixed(1)} (max ${Math.max(...all.map((x) => x.m.paras))}, over6 ${cnt((m) => m.paras > 6)})` +
       ` · endQ ${cnt((m) => m.endQuestion)} · menuLeak ${cnt((m) => m.menuLeak)} · bold ${all.reduce((a, x) => a + x.m.bold, 0)}` +
-      ` · preg ${cnt((m) => m.preg)}/${all.length} · pastDom ${cnt((m) => m.pastDominant)}/${all.length}`
+      ` · preg ${cnt((m) => m.preg)}/${all.length} · pastDom ${cnt((m) => m.pastDominant)}/${all.length}` +
+      ` · statLeak ${cnt((m) => m.statLeak)}` +
+      (KNOWN_NAMES.length ? (() => { const ns = nameStats(c.turns); return ` · coldNames ${ns.cold}/${KNOWN_NAMES.length} (mean t${ns.meanColdTurn})`; })() : "")
     );
   }
 }

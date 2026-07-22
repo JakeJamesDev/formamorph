@@ -14,6 +14,7 @@ export const PROMPT_SAMPLER_PINS: Partial<Record<AIRequestType, Partial<Record<P
   statUpdates: { temperature: 0.2 },
   locationChange: { temperature: 0.15 },
   summary: { temperature: 0 },
+  milestoneSelect: { temperature: 0 },
   thinking: { temperature: 0.4, repetitionPenalty: 1 },
 };
 

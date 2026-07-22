@@ -249,9 +249,12 @@ function useProvideSettings() {
   // Default off: streaming TTS competes with the LLM for the GPU when both run on one machine.
   const [streamNarrationAudio, setStreamNarrationAudio] = usePersistentState<boolean>(`${APP_ID}_streamNarrationAudio`, false, boolCodec);
   // The single summaries toggle: generate a lazy per-turn memory digest as turns age out of the
-  // verbatim window AND feed those digests into context (recent-verbatim floor + a "story so far" band
-  // + lexical rehydration). Default off: extra async request + it changes what's sent to the model.
-  const [memoryDigests, setMemoryDigests] = usePersistentState<boolean>(`${APP_ID}_memoryDigests`, false, boolCodec);
+  // verbatim window AND feed those digests into context (recent-verbatim floor + a "story so far" band,
+  // milestone-filtered past the recent window — see lib/milestoneMemory). Default on since milestone
+  // memory landed: condensed history holds dialogue as well as full history at a fraction of the
+  // context. Note the persistent-state hook writes the default on first run, so this flip only reaches
+  // installs that have never opened the app — existing stores keep their recorded value.
+  const [memoryDigests, setMemoryDigests] = usePersistentState<boolean>(`${APP_ID}_memoryDigests`, true, boolCodec);
   // Fire the post-narration aux requests (choices + stat updates + location router) concurrently instead of
   // one after another. Default on: ~29% faster turns on a parallel-capable endpoint (LM Studio "Parallel",
   // Ollama), harmless on serial endpoints (they queue). Turn off if a VRAM-tight local engine slows or OOMs
@@ -548,7 +551,9 @@ function useProvideSettings() {
   const [activeCharacterLimit, setActiveCharacterLimit] = usePersistentState<number>(`${APP_ID}_activeCharacterLimit`, 5, intCodec);
   // How many recent turns each prompt receives verbatim (the digest-banding floor). Only Narration and
   // Thinking consume history today; the rest are stored for when those prompts gain history.
-  const narrationVerbatimTurns = verbatimMap.narration ?? 3;
+  // Narration defaults to 4: paired 50-turn floor sweeps (2<3<4>=5, milestone-memory-design.md) put the
+  // dialogue-hold peak there. Explicitly-set values are stored absolutely, so this reaches defaults only.
+  const narrationVerbatimTurns = verbatimMap.narration ?? 4;
   const thinkingVerbatimTurns = verbatimMap.thinking ?? 1;
   const choicesVerbatimTurns = verbatimMap.choices ?? 3;
   const statUpdatesVerbatimTurns = verbatimMap.statUpdates ?? 3;

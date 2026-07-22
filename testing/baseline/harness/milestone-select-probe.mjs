@@ -9,7 +9,7 @@
 //            (target ~<= 0.10): kept drops are the history mass this feature exists to kill.
 //   malformed — unparseable replies (fall back to keep-everything in the app; counted here).
 //
-//   node milestone-select-probe.mjs [--runs 3] [--model gemma4-e4b-cloud] [--prompt base] [--verbose]
+//   node milestone-select-probe.mjs [--runs 3] [--model gemma4-e4b-cloud] [--prompt base] [--fixture milestone-fixture.json] [--verbose]
 
 import { readFile } from "node:fs/promises";
 import path from "node:path";
@@ -43,6 +43,19 @@ Reply with only the numbers to keep, comma-separated.`,
   reframe2: `You are the memory keeper of an interactive story. You are given the story's remembered moments as a numbered list, oldest first. Keep an entry only if someone in the story would bring it up again or act on it: a promise or debt still open, a threat or wound that persists, a thing gained and kept, a favor done or a slight given that changes how one character sees another, a secret learned, a task done well that someone might mention. When something begun is later finished, the ending carries the memory - keep the outcome and let the setup go. Drop what no one would ever speak of again - passing movement, small talk, and any moment whose outcome a later entry already carries. When unsure whether something still matters, let it go.
 
 Reply with only the numbers to keep, comma-separated.`,
+  // fewshot: reframe + a worked toy example demonstrating the commitment->resolution pattern (keep the
+  // outcome, drop the setup) — teaching by demonstration after instruction wording went null five times.
+  fewshot: `You are the memory keeper of an interactive story. You are given the story's remembered moments as a numbered list, oldest first. Keep an entry only if someone in the story would bring it up again or act on it: a promise or debt still open, a threat or wound that persists, a thing gained and kept, a favor done or a slight given that changes how one character sees another, a secret learned, a task done well that someone might mention. Drop what no one would ever speak of again - passing movement, small talk, and any moment whose outcome a later entry already carries. When unsure whether something still matters, let it go.
+
+Example:
+1. You take the cliff path toward the lighthouse.
+2. You promise the keeper Brann you will fetch his lamp oil from town.
+3. You trade jokes with a fishwife on the quay.
+4. You bring Brann his lamp oil, and he lights the beacon, calling you a friend of the tower.
+Correct reply: 4
+Entry 4 carries entry 2's outcome - the fulfilled promise replaces the promise itself, so the ending is kept and the setup is dropped. Entries 1 and 3 are passing moments no one would mention again.
+
+Reply with only the numbers to keep, comma-separated.`,
   // twostep: supersession discrimination as its own dedicated output step before selection — the
   // structural fix for cloud keeping commitments and dropping resolutions (wording alone was null twice).
   twostep: `You are the memory keeper of an interactive story. You are given the story's remembered moments as a numbered list, oldest first.
@@ -57,10 +70,34 @@ const PROMPT_KEY = strArg("--prompt", "reframe");
 const TWO_STEP = PROMPT_KEY === "twostep";
 const SELECTOR_SYS = PROMPTS[PROMPT_KEY] ?? (() => { throw new Error(`unknown prompt '${PROMPT_KEY}'`); })();
 
-const { stories } = JSON.parse(await readFile(path.join(HARNESS_DIR, "milestone-fixture.json"), "utf8"));
+const FIXTURE = strArg("--fixture", "milestone-fixture.json");
+// --reverse: present the list newest-first (prompt wording flipped to match); scoring maps indices back.
+const REVERSE = argv.includes("--reverse");
+// --entityrule: post-filter prototype — the newest entry mentioning each known entity is force-kept
+// (in-app this would ride the existing entity/alias matcher; here a per-story name list stands in).
+const ENTITY_RULE = argv.includes("--entityrule");
+const STORY_ENTITIES = {
+  "ferry-quest": ["Halvern", "Wren"],
+  "evening": ["Mara", "Sofia"],
+  "town-intrigue": ["Essa", "Corin", "Odo", "harbormaster", "cooper"],
+  "wilds": ["Maren", "hound"],
+};
+function entityForced(entries, storyName) {
+  const forced = new Set();
+  for (const name of STORY_ENTITIES[storyName] ?? []) {
+    const re = new RegExp(`\\b${name}\\b`, "i");
+    for (let i = entries.length - 1; i >= 0; i--) {
+      if (re.test(entries[i].text)) { forced.add(i); break; }
+    }
+  }
+  return forced;
+}
+const { stories } = JSON.parse(await readFile(path.join(HARNESS_DIR, FIXTURE), "utf8"));
 
 async function callSelector(entries) {
-  const list = entries.map((e, i) => `${i + 1}. ${e.text}`).join("\n");
+  const shown = REVERSE ? [...entries].reverse() : entries;
+  const list = shown.map((e, i) => `${i + 1}. ${e.text}`).join("\n");
+  const order = REVERSE ? "newest first" : "oldest first";
   const headers = { "Content-Type": "application/json" };
   if (TOKEN) headers.Authorization = `Bearer ${TOKEN}`;
   const res = await fetch(ENDPOINT, {
@@ -68,8 +105,8 @@ async function callSelector(entries) {
     body: JSON.stringify({
       model: MODEL, temperature: 0, max_tokens: 200, reasoning_effort: "none", stream: false,
       messages: [
-        { role: "system", content: SELECTOR_SYS },
-        { role: "user", content: `The story's remembered moments, oldest first:\n${list}\n\nReply with only the numbers to keep, comma-separated.` },
+        { role: "system", content: SELECTOR_SYS.replace("oldest first", order) },
+        { role: "user", content: `The story's remembered moments, ${order}:\n${list}\n\nReply with only the numbers to keep, comma-separated.` },
       ],
     }),
   });
@@ -86,7 +123,8 @@ function parseKeep(reply, count) {
   // A reply that is mostly prose is suspect; accept if it contains at least one valid index and
   // no more text than a list plausibly carries.
   if (!TWO_STEP && reply.replace(/[\d,.\s\-and]+/gi, "").length > 40) return null;
-  return new Set(nums.map((n) => n - 1));
+  // Map shown positions back to chronological indices when the list was reversed.
+  return new Set(nums.map((n) => (REVERSE ? count - n : n - 1)));
 }
 
 const agg = { mKept: 0, mAll: 0, eKept: 0, eAll: 0, dKept: 0, dAll: 0, malformed: 0, calls: 0 };
@@ -102,6 +140,12 @@ for (const story of stories) {
     agg.calls++;
     const keep = parseKeep(reply, entries.length);
     if (!keep) { agg.malformed++; line += `  r${r + 1}:MALFORMED`; continue; }
+    let forcedAdds = 0;
+    if (ENTITY_RULE) {
+      for (const i of entityForced(entries, story.name)) {
+        if (!keep.has(i)) { keep.add(i); forcedAdds++; }
+      }
+    }
     let mK = 0, mA = 0, eK = 0, eA = 0, dK = 0, dA = 0;
     entries.forEach((e, i) => {
       const kept = keep.has(i);
@@ -110,7 +154,7 @@ for (const story of stories) {
       else { dA++; if (kept) { dK++; keptDrops.set(e.text, (keptDrops.get(e.text) || 0) + 1); } }
     });
     agg.mKept += mK; agg.mAll += mA; agg.eKept += eK; agg.eAll += eA; agg.dKept += dK; agg.dAll += dA;
-    line += `  r${r + 1}: must ${mK}/${mA} drop↑ ${dK}/${dA} either↑ ${eK}/${eA}`;
+    line += `  r${r + 1}: must ${mK}/${mA} drop↑ ${dK}/${dA} either↑ ${eK}/${eA}${ENTITY_RULE ? ` forced+${forcedAdds}` : ""}`;
     if (verbose) console.log(`[${story.name} r${r + 1}] reply: ${reply}`);
   }
   console.log(line);

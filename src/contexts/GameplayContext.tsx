@@ -13,6 +13,7 @@ import { matchChoicesToAction } from '../lib/choices';
 import { pageStatDeltas } from '../lib/statChanges';
 import { pageAssistantIndex, pageNextActionIndex, placeSnapshot } from '../lib/turnHistory';
 import { backfillGameStateStats } from '../lib/statBackfill';
+import type { MemoryPinMap } from '../lib/milestoneMemory';
 import type {
   CharacterData,
   LogEntry,
@@ -55,6 +56,12 @@ function useProvideGameplay() {
   // Frozen placeholder rolls for this playthrough (see lib/placeholders). Primed once when a save becomes
   // active, then a pure lookup everywhere. Persisted in the save envelope.
   const [placeholderRolls, setPlaceholderRolls] = useState<PlaceholderRolls>({});
+  // Milestone-memory player pins, keyed by turn id ('keep' resurrects a dropped digest, 'drop' removes a
+  // kept one). Persisted in the save envelope; the AI selection below is derived and never persisted.
+  const [memoryPins, setMemoryPins] = useState<MemoryPinMap>({});
+  // The latest milestone selection: which candidate turn ids the selector saw and which it kept
+  // (`selected` null = malformed reply → keep everything). Runtime-only, recomputed as turns age.
+  const [milestoneSelection, setMilestoneSelection] = useState<{ seen: string[]; selected: string[] | null } | null>(null);
   // Flattened enabled entries fed to the injection pipeline (mirrors GameData's old derived `dictionary`).
   const runtimeDictionary = useMemo(() => flattenEnabledBookEntries(runtimeDictionaries), [runtimeDictionaries]);
   const [recentStatChanges, setRecentStatChanges] = useState<Record<string, number>>({});
@@ -239,6 +246,7 @@ function useProvideGameplay() {
         version: APP_VERSION, // stamp the current app version (legacy envelopes used numeric 2 ≙ v1.2)
         dictionaries: runtimeDictionaries, // the player's per-playthrough dictionary set, restored on load
         ...(placeholderRolls.world || placeholderRolls.unique ? { placeholderRolls } : {}),
+        ...(Object.keys(memoryPins).length ? { memoryPins } : {}),
         ...(isAutosave ? { isAutosave: true } : {}),
       };
 
@@ -257,7 +265,7 @@ function useProvideGameplay() {
       }
       return false;
     }
-  }, [saveCurrentGameState, gameStates, runtimeDictionaries, placeholderRolls, addLogEntry]);
+  }, [saveCurrentGameState, gameStates, runtimeDictionaries, placeholderRolls, memoryPins, addLogEntry]);
 
   // Autosave has failed at least once this session — used to toast only once, re-armed on a later success.
   const autosaveFailedRef = useRef(false);
@@ -309,6 +317,8 @@ function useProvideGameplay() {
           // Restore the per-playthrough dictionary set; older saves lack it, so keep the entry-seeded set.
           if (Array.isArray(migrated.dictionaries)) setRuntimeDictionaries(migrated.dictionaries);
           setPlaceholderRolls(migrated.placeholderRolls ?? {});
+          setMemoryPins(migrated.memoryPins ?? {});
+          setMilestoneSelection(null); // derived; recomputed for the loaded history on the next idle tick
           addLogEntry(`Game loaded from "${saveName}"`);
         }
         return success;
@@ -498,6 +508,10 @@ function useProvideGameplay() {
     setRuntimeDictionaries,
     placeholderRolls,
     setPlaceholderRolls,
+    memoryPins,
+    setMemoryPins,
+    milestoneSelection,
+    setMilestoneSelection,
     runtimeDictionary,
     recentStatChanges,
     setRecentStatChanges,

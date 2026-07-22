@@ -30,6 +30,9 @@ import { Pager } from "@/components/ui/pagination";
 import VRMViewer from '@/views/VRMViewer';
 import { ImageZoomViewer } from '@/components/ImageZoomViewer';
 import TtsPlaybackBar from './TtsPlaybackBar';
+import { MemoryPanel } from './MemoryPanel';
+import { GAME_LEFT_PANEL_TABS } from './leftPanelTabs';
+import { useDevRoute } from '@/lib/devRouter';
 import type { TTSProgress } from './TTSModal';
 import { ConfirmDialog } from '../ConfirmDialog';
 import { EditTextModal } from '../modals/EditTextModal';
@@ -110,6 +113,15 @@ export const LeftPanel = ({ entities, onEntityClick }: {
   React.useEffect(() => {
     if (!isMobile && leftTab === "model") setLeftTab("notes");
   }, [isMobile, leftTab]);
+
+  // DEV-only: land on a side-panel tab in one goto (`#dev?view=gameViewer&tab=memory`).
+  const devRoute = useDevRoute();
+  React.useEffect(() => {
+    if (!import.meta.env.DEV) return;
+    if (!devRoute?.modal && devRoute?.tab && (GAME_LEFT_PANEL_TABS as readonly string[]).includes(devRoute.tab)) {
+      setLeftTab(devRoute.tab);
+    }
+  }, [devRoute?.modal, devRoute?.tab]);
 
   React.useEffect(() => {
     const timer = setTimeout(() => {
@@ -210,6 +222,7 @@ export const LeftPanel = ({ entities, onEntityClick }: {
           {isMobile && <TabsTrigger value="model">Model</TabsTrigger>}
           <TabsTrigger value="entities">Entities</TabsTrigger>
           <TabsTrigger value="notes">Notes</TabsTrigger>
+          <TabsTrigger value="memory">Memory</TabsTrigger>
           <TabsTrigger value="logs">Logs ({logEntries.reduce((sum, entry) => sum + 1 + (entry.repeat || 0), 0)})</TabsTrigger>
         </TabsList>
         {isMobile && (
@@ -263,6 +276,9 @@ export const LeftPanel = ({ entities, onEntityClick }: {
               style={{ height: "calc(100% - 8px)" }}
             />
           </div>
+        </TabsContent>
+        <TabsContent value="memory" className="flex-grow overflow-hidden min-h-[100px]">
+          <MemoryPanel />
         </TabsContent>
         <TabsContent value="logs" className="flex-grow overflow-hidden min-h-[100px]">
           <ScrollArea className="h-[calc(100%-1rem)]">

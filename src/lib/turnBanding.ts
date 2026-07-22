@@ -43,6 +43,8 @@ export interface BandCounts {
   turnsVerbatim: number;
   turnsBanded: number;
   turnsTotal: number;
+  /** Old-band digests removed by milestone selection (0 when selection is off or kept everything). */
+  turnsSelectedOut: number;
 }
 
 export interface BandResult {
@@ -201,10 +203,14 @@ export function buildBandedHistory(args: {
   actionEntities: string[];
   rehydrateCap: number;
   maxRehydrations?: number;
+  /** Turn ids removed by milestone selection (selection + pins already resolved by the caller — see
+   *  lib/milestoneMemory). Absent/empty = no filtering, the pre-milestone behavior. The caller owns the
+   *  window math so every stage filters the exact same turns regardless of its own floor width. */
+  milestoneDrop?: Set<string> | null;
 }): BandResult {
   // `keywords`, `actionEntities`, `rehydrateCap`, `maxRehydrations` are intentionally not destructured:
   // rehydration is disabled (see step 3). Kept in the arg type so callers compile unchanged.
-  const { turns, contextWindow, promptTokens, maxTokens, verbatimFloor } = args;
+  const { turns, contextWindow, promptTokens, maxTokens, verbatimFloor, milestoneDrop = null } = args;
   const margin = Math.max(256, Math.round(contextWindow * 0.05));
   const budget = Math.max(0, contextWindow - promptTokens - maxTokens - margin);
 
@@ -223,7 +229,16 @@ export function buildBandedHistory(args: {
 
   // 2. Digest band (guaranteed) — older turns carrying a summary, oldest turns dropped to fit. Sized by
   // the condensed pair cost (real action + summary reply), since each banded turn rides as its own pair.
+  // Milestone selection: the caller hands in the exact turn ids to remove (recent digests past the
+  // floor always survive by construction — they are never in the drop set). No selection yet = empty
+  // set = keep everything: fail-safe, never fail-drop.
   let bandTurns = candidates.filter((t) => t.summary && t.summary.trim());
+  let turnsSelectedOut = 0;
+  if (milestoneDrop && milestoneDrop.size > 0) {
+    const kept = bandTurns.filter((t) => !t.turnId || !milestoneDrop.has(t.turnId));
+    turnsSelectedOut = bandTurns.length - kept.length;
+    bandTurns = kept;
+  }
   const bandCost = (ts: BandTurn[]) => ts.reduce((n, t) => n + bandedPairCost(t), 0);
   let bandTokens = bandCost(bandTurns);
   while (bandTokens > remaining && bandTurns.length > 0) {
@@ -272,6 +287,7 @@ export function buildBandedHistory(args: {
       turnsVerbatim: rehydratedTurns.length + floorTaken.length,
       turnsBanded: bandTurns.length,
       turnsTotal: turns.length,
+      turnsSelectedOut,
     },
   };
 }

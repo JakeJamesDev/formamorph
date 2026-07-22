@@ -1,6 +1,6 @@
 # Milestone Memory — design spec
 
-**Status:** spec only — nothing implemented. Phase 1 proves the idea in the probe harness before any app code changes.
+**Status:** Phase 2 **shipped** (2026-07-21). Selector prompt is `fewshot` — the worked commitment→resolution example fixed the inversion that six instruction-wording attacks could not (cloud 0.88→0.94 must-recall, Cydonia drop-keep 0.58→0.17; both models pass the ≥0.90 gate). Digest-side anchoring was falsified first (anchored and state-voice fixture variants: null and worse, respectively; list-order reversal also null). End-to-end re-validated with fewshot (arm M ≈ bare history in-batch at ~¼ flat context; carry-forward clean modulo soft-fact judge noise). App integration: `milestoneSelect` silent request (temp 0), drop-set filtering in `buildBandedHistory` for narration and planner, Memory side-panel tab with pins persisted in the save envelope (`memoryPins`, additive), `memoryDigests` default flipped to on (reaches fresh installs only — the persistence hook writes the default on first run, so explicit-off is indistinguishable from never-touched in existing stores).
 
 ## The problem this solves
 
@@ -38,10 +38,12 @@ Selection decides *which* banded pairs survive; it never restructures them. The 
 | Band | Content | Width |
 |---|---|---|
 | **Floor** | Full verbatim turns | last 3 (existing `narrationVerbatimTurns`) |
-| **Recent band** | Per-turn digests, **unfiltered** | last ~6 summarized turns (`RECENT_BAND`, tune in harness) |
+| **Recent band** | Per-turn digests, **unfiltered** | `MILESTONE_RECENT_BAND` — **0 as shipped** (user call, 2026-07-21) |
 | **Milestone band** | Per-turn digests, **selected only** | everything older |
 
-The middle band exists because "she just agreed to guide you" is no milestone but is load-bearing for the next few turns; jumping from floor straight to milestones drops scene-level continuity.
+The middle band was hypothesized to protect scene-level continuity ("she just agreed to guide you" is no milestone but load-bearing for a few turns). Shipped at 0 per the user's directive — and then **proved right in a 50-turn paired cloud batch** (M0 vs M6, 6 runs each, 2026-07-21): M6 decayed to 0% last-8 dialogue in all six runs (every run silent by ~turn 42), while M0 held 10% last-8 with two steady runs and the only late-session recoveries. Six permanently-unfiltered digests are enough recent-history mass to make the quiet register sticky (the arm-W lesson again). The `--recent` harness knob and per-arm `M<width>` tokens remain for future width tests.
+
+**Floor sweep (paired 50-turn batches ×6, 2026-07-21): the peak is 4.** F2 45 < F3 84 (same batch); next batch F3 49 < F4 73; next batch F4 79 ≥ F5 76 with F4 holding the tail twice as well (last8 15% vs 8%, slope −0.49 vs −0.68) at less context. Digests carry no quoted speech, so the verbatim floor is the model's only dialogue-formatting exemplar — too few turns starve imitation, and past 4 the extra mass only feeds the quiet register. Shipped: `narrationVerbatimTurns` default 4 (explicit user values untouched), recent band 0. Cross-batch totals are not comparable (cloud mood drift ±2×) — only in-batch pairings count. (Arm tokens support recent + floor suffixes, e.g. `M0F4`.)
 
 ### 5. Selection runs every turn (for now)
 

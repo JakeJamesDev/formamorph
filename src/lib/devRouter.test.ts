@@ -5,6 +5,7 @@ import { DEV_FIXTURES } from './devFixtures';
 import { SETTINGS_TABS } from '@/components/modals/settingsTabs';
 import { WORLD_EDITOR_TABS } from '@/views/worldEditorTabs';
 import { MAIN_MENU_CARD_TABS } from '@/views/mainMenuTabs';
+import { GAME_LEFT_PANEL_TABS } from '@/components/game/leftPanelTabs';
 import { isSaveEnvelope } from './version';
 import whiteRoomWorld from './devFixtures/whiteRoomWorld.json';
 import whiteRoomSave from './devFixtures/whiteRoomSave.json';
@@ -72,6 +73,10 @@ describe('dev-router coverage guard', () => {
 
   it('ledger lists exactly the library card tabs MainMenu renders', () => {
     expect([...DEV_MODAL_TABS.mainMenu]).toEqual([...MAIN_MENU_CARD_TABS]);
+  });
+
+  it('ledger lists exactly the game side panel tabs', () => {
+    expect([...DEV_MODAL_TABS.gameViewer]).toEqual([...GAME_LEFT_PANEL_TABS]);
   });
 
   it('registers the modals the router opens', () => {

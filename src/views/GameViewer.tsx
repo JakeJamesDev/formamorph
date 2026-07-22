@@ -53,6 +53,7 @@ import {
   planDirective,
   defaultDiscoverEntityPrompt,
   OPENING_SCENE_CUE,
+  defaultMilestonePrompt,
 } from "../components/game/GamePrompts";
 import {
   buildDiaryUserMessage,
@@ -78,6 +79,7 @@ import { variableForToken, variableVariantIds, decodeVariant, tokenVariant, with
 import { renderPromptTemplate } from "../lib/promptTemplate";
 import { useBaselineTestHook } from "../lib/baselineTestHook";
 import { parseTurns, buildVerbatimHistory, buildBandedHistory, extractKeywords, type BandCounts } from "../lib/turnBanding";
+import { milestoneCandidates, agedMilestoneCandidates, resolveMilestoneDrop, buildMilestoneUserMessage, parseMilestoneReply } from "../lib/milestoneMemory";
 import { findEntityNames, matchNames, matchNamesLoose, sameCharacterName } from "../lib/entityMatch";
 import { parseChoices } from "../lib/choices";
 import { setGameplayText } from "../lib/gameplayTextStore";
@@ -152,6 +154,8 @@ interface DebugTurn {
 // Each completed turn is digested as soon as it commits (same-turn), so a summary is always ready for
 // the next turn's context assembly. Small cap on each digest request — a condensed retelling is short.
 const DIGEST_MAX_TOKENS = 200;
+// The milestone selector replies with a comma-separated index list; sized for long histories.
+const MILESTONE_SELECT_MAX_TOKENS = 300;
 
 // Every Stats chip token (base + all piece/format combos), so buildContextValues can render each. The pieces
 // (Values/Status/Meaning) are decoded per token and handed to buildStatContext; ids mirror encodeVariant.
@@ -351,6 +355,10 @@ const GameViewer = ({
     setRuntimeDictionaries,
     placeholderRolls,
     setPlaceholderRolls,
+    memoryPins,
+    setMemoryPins,
+    milestoneSelection,
+    setMilestoneSelection,
   } = useGameplay();
 
   // Runtime characters (Slice 2): director-invented characters promoted to persisted entities this
@@ -476,6 +484,8 @@ const GameViewer = ({
   const [diaryActive, setDiaryActive] = useState(false); // drives the status-bar indicator for a running diary pass
   const discoverDrainingRef = useRef(false); // a runtime-character describe request is in flight (serializes the drainer)
   const [discoverActive, setDiscoverActive] = useState(false); // drives the status-bar indicator for a running discovery pass
+  const milestoneDrainingRef = useRef(false); // a milestone selection is in flight (serializes the drainer)
+  const [milestoneActive, setMilestoneActive] = useState(false); // drives the status-bar indicator for a running selection
 
   // Generate TTS for `text` (or the current game text) with the busy flag set, so both the
   // manual refresh button and auto-narration show the same spinner + chunk progress.
@@ -827,6 +837,22 @@ const GameViewer = ({
   // meter passes no action, so it shows the steady-state band cost with no rehydration.
   const lastBandCountsRef = useRef<BandCounts | null>(null);
 
+  // The milestone turn ids removed from every stage's history: the selector's verdict (only over turns
+  // it actually saw; unseen turns always survive) with the player's pins applied on top. Recomputed
+  // cheaply — the AI call itself lives in the selection drainer below. Only AGED candidates filter
+  // context; a fresh turn's verdict is display-only until it leaves the narration verbatim floor.
+  const getMilestoneDrop = useCallback((turns: ReturnType<typeof parseTurns>) => {
+    const candidates = agedMilestoneCandidates(turns, narrationVerbatimTurns);
+    if (candidates.length === 0) return null;
+    const selection = milestoneSelection
+      ? {
+          seen: new Set(milestoneSelection.seen),
+          selected: milestoneSelection.selected === null ? null : new Set(milestoneSelection.selected),
+        }
+      : null;
+    return resolveMilestoneDrop(candidates, selection, memoryPins);
+  }, [milestoneSelection, memoryPins, narrationVerbatimTurns]);
+
   const getTrimmedMessageHistory = useCallback((promptTokens = 0, action = "") => {
     const turns = parseTurns(fullMessageHistory);
     if (memoryDigests) {
@@ -844,13 +870,14 @@ const GameViewer = ({
         actionEntities,
         rehydrateCap,
         maxRehydrations: DIGEST_MAX_REHYDRATIONS,
+        milestoneDrop: getMilestoneDrop(turns),
       });
       lastBandCountsRef.current = counts;
       return messages;
     }
     lastBandCountsRef.current = null;
     return buildVerbatimHistory(turns, contextWindow, promptTokens, maxTokens);
-  }, [fullMessageHistory, contextWindow, maxTokens, memoryDigests, dictionary, allEntities, narrationVerbatimTurns]);
+  }, [fullMessageHistory, contextWindow, maxTokens, memoryDigests, dictionary, allEntities, narrationVerbatimTurns, getMilestoneDrop]);
 
   // Drive body morphs from the viewed stats (live on the latest page, the paged turn's when viewing the
   // past): each stat's bound sliders track its value (min→max → 0→1 influence), so the avatar re-morphs to
@@ -1258,8 +1285,9 @@ ${playerNotes || NONE_PLACEHOLDER}
         // When banding is on, rebuild with a floor of 1 (no rehydration) so prior turns are all digests.
         let digestBand = "";
         if (memoryDigests) {
+          const plannerTurns = parseTurns(fullMessageHistory);
           const planner = buildBandedHistory({
-            turns: parseTurns(fullMessageHistory),
+            turns: plannerTurns,
             contextWindow,
             promptTokens: estimateTokens(thinkPrompt.length),
             maxTokens: 256,
@@ -1268,6 +1296,9 @@ ${playerNotes || NONE_PLACEHOLDER}
             actionEntities: [],
             rehydrateCap: 0,
             maxRehydrations: 0,
+            // Same filtered memory as narration: the drop set is window-exact regardless of this
+            // stage's narrower floor.
+            milestoneDrop: getMilestoneDrop(plannerTurns),
           });
           digestBand = planner.recap;
           lastStory =
@@ -2322,6 +2353,50 @@ ${playerNotes || NONE_PLACEHOLDER}
     })();
   }, [memoryDigests, isWaitingForAI, diaryActive, discoverActive, fullMessageHistory, summaryPrompt, summaryUserPrompt, buildContextValues, setFullMessageHistory]);
 
+  // Milestone-selection drainer: once every due digest is written, silently re-select which old-band
+  // digests stay in long-term memory (see lib/milestoneMemory). Runs at most once per history state —
+  // the stored selection records exactly which turn ids it saw, so it is stale whenever the candidate
+  // window has shifted. A malformed reply is stored as `selected: null` (keep everything) rather than
+  // retried: fail-safe, never fail-drop.
+  useEffect(() => {
+    if (!memoryDigests || isWaitingForAI || diaryActive || discoverActive || digestDrainingRef.current || diaryDrainingRef.current || discoverDrainingRef.current || milestoneDrainingRef.current) return;
+    if (selectDueDigests(fullMessageHistory).length > 0) return; // digests first — the selector reads them
+    const turns = parseTurns(fullMessageHistory);
+    const candidates = milestoneCandidates(turns);
+    if (candidates.length === 0) return;
+    const candIds = candidates.map((t) => t.turnId ?? "");
+    if (milestoneSelection && milestoneSelection.seen.join("\n") === candIds.join("\n")) return; // fresh
+    const digests = candidates.map((t) => (t.summary ?? "").trim());
+    const attachTurnId = turns[turns.length - 1]?.turnId;
+
+    milestoneDrainingRef.current = true;
+    setMilestoneActive(true);
+    (async () => {
+      try {
+        const reply = await makeAIRequestRef.current(
+          defaultMilestonePrompt,
+          [{ role: "user", content: buildMilestoneUserMessage(digests) }],
+          "milestoneSelect",
+          MILESTONE_SELECT_MAX_TOKENS,
+          undefined,
+          true, // silent: surfaces only when "Show Silent Requests" is on
+          attachTurnId,
+        );
+        const parsed = parseMilestoneReply((reply ?? "").trim(), candidates.length);
+        setMilestoneSelection({
+          seen: candIds,
+          selected: parsed === null ? null : candIds.filter((_, i) => parsed.has(i)),
+        });
+      } catch {
+        // Non-fatal: the selection stays stale and is retried on a later idle tick; until then the
+        // previous selection (or keep-everything) applies.
+      } finally {
+        milestoneDrainingRef.current = false;
+        setMilestoneActive(false);
+      }
+    })();
+  }, [memoryDigests, isWaitingForAI, diaryActive, discoverActive, fullMessageHistory, narrationVerbatimTurns, milestoneSelection, setMilestoneSelection]);
+
   // Character-diary drainer (write side): for each completed turn with participants, silently write a
   // first-person diary entry per participant as an idle-time job, patched back onto that turn's `diaries`
   // map. Mirrors the digest drainer, and serializes against it (only one silent job runs at a time) so a
@@ -2502,6 +2577,10 @@ ${playerNotes || NONE_PLACEHOLDER}
       // when the step was skipped. A loaded save overrides this later via loadGame.
       setRuntimeDictionaries(initialDictionaries ?? dictionaries);
 
+      // Fresh playthrough: no memory pins and no milestone selection yet. loadGame overrides.
+      setMemoryPins({});
+      setMilestoneSelection(null);
+
       // Seed the entry-step characters into the starting location as runtime-only entities (never written
       // to the authored world). They flow through the existing discovered-entity path; loadGame overrides.
       if (location && initialCharacters && initialCharacters.length > 0) {
@@ -2531,6 +2610,8 @@ ${playerNotes || NONE_PLACEHOLDER}
     setRuntimeDictionaries,
     setDiscoveredEntities,
     setPlayerInput,
+    setMemoryPins,
+    setMilestoneSelection,
   ]);
 
   const scrollToBottom = useCallback(() => {
@@ -2580,6 +2661,7 @@ ${playerNotes || NONE_PLACEHOLDER}
         statUpdates: "Stat Updates",
         locationChange: "Location",
         summary: "Memory",
+        milestoneSelect: "Memory Select",
         diary: "Diary",
         discoverEntity: "Character",
       };
@@ -2600,6 +2682,18 @@ ${playerNotes || NONE_PLACEHOLDER}
         <div className="flex items-center gap-2 mb-1">
           <span className="text-xs text-muted-foreground whitespace-nowrap">
             Summarizing turn…
+          </span>
+          <div className="flex-grow">
+            <IndeterminateProgress />
+          </div>
+        </div>
+      );
+    }
+    if (milestoneActive && showSilentRequests) {
+      return (
+        <div className="flex items-center gap-2 mb-1">
+          <span className="text-xs text-muted-foreground whitespace-nowrap">
+            Selecting memories…
           </span>
           <div className="flex-grow">
             <IndeterminateProgress />
