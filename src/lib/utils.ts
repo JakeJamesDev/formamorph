@@ -19,3 +19,11 @@ export function xmlEscape(s: string): string {
 export function clamp(value: number, min: number, max: number): number {
   return Math.min(Math.max(value, min), max)
 }
+
+/** Seconds → `m:ss` for audio timers; non-finite input reads as `0:00`. */
+export function formatMMSS(s: number): string {
+  if (!Number.isFinite(s)) return "0:00"
+  const m = Math.floor(s / 60)
+  const sec = Math.floor(s % 60)
+  return `${m}:${sec.toString().padStart(2, "0")}`
+}

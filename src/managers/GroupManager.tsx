@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useEditingDraft } from '@/lib/useEditingDraft';
 import { useGameData } from '@/contexts/GameDataContext';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -8,17 +8,7 @@ import type { TraitGroup } from '@/types';
 /** Right-panel editor for a trait group: name + audience-split descriptions (blank-friendly). */
 const GroupManager = ({ group }: { group: TraitGroup }) => {
   const { updateTraitGroup } = useGameData();
-  const [editingGroup, setEditingGroup] = useState<TraitGroup>(group);
-
-  useEffect(() => {
-    setEditingGroup(group);
-  }, [group]);
-
-  const handleChange = (field: keyof TraitGroup, value: string) => {
-    const updated = { ...editingGroup, [field]: value };
-    setEditingGroup(updated);
-    updateTraitGroup(updated);
-  };
+  const { draft: editingGroup, setField: handleChange } = useEditingDraft(group, updateTraitGroup);
 
   if (!editingGroup) return null;
 

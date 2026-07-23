@@ -46,6 +46,7 @@ import {
   rectSortingStrategy,
 } from '@dnd-kit/sortable';
 import { restrictToFirstScrollableAncestor } from '@dnd-kit/modifiers';
+import { CONTAINED_AUTO_SCROLL } from '@/lib/dndAutoScroll';
 import TraitSelectionModal from './TraitSelectionModal';
 import StartingLocationModal from './StartingLocationModal';
 import DictionarySelectionModal from './DictionarySelectionModal';
@@ -1205,12 +1206,7 @@ const MainMenu = ({ onStartGame, onLoadSaveGame, onReplayIntro, introActive = fa
                 collisionDetection={closestCenter}
                 onDragEnd={handleModelDragEnd}
                 modifiers={[restrictToFirstScrollableAncestor]}
-                autoScroll={{
-                  canScroll: (el) =>
-                    el !== document.scrollingElement &&
-                    el !== document.body &&
-                    el !== document.documentElement,
-                }}
+                autoScroll={CONTAINED_AUTO_SCROLL}
               >
                 <SortableContext items={models.map((m) => m.id)} strategy={rectSortingStrategy}>
                   {models.map((model) => (
@@ -1253,12 +1249,7 @@ const MainMenu = ({ onStartGame, onLoadSaveGame, onReplayIntro, introActive = fa
                 collisionDetection={closestCenter}
                 onDragEnd={handleEntityDragEnd}
                 modifiers={[restrictToFirstScrollableAncestor]}
-                autoScroll={{
-                  canScroll: (el) =>
-                    el !== document.scrollingElement &&
-                    el !== document.body &&
-                    el !== document.documentElement,
-                }}
+                autoScroll={CONTAINED_AUTO_SCROLL}
               >
                 <SortableContext items={entities.map((e) => e.id)} strategy={rectSortingStrategy}>
                   {entities.map((entity) => (
@@ -1291,12 +1282,7 @@ const MainMenu = ({ onStartGame, onLoadSaveGame, onReplayIntro, introActive = fa
                 collisionDetection={closestCenter}
                 onDragEnd={handleDictionaryDragEnd}
                 modifiers={[restrictToFirstScrollableAncestor]}
-                autoScroll={{
-                  canScroll: (el) =>
-                    el !== document.scrollingElement &&
-                    el !== document.body &&
-                    el !== document.documentElement,
-                }}
+                autoScroll={CONTAINED_AUTO_SCROLL}
               >
                 <SortableContext items={dictionaries.map((d) => d.id)} strategy={rectSortingStrategy}>
                   {dictionaries.map((dictionary) => (
@@ -1335,12 +1321,7 @@ const MainMenu = ({ onStartGame, onLoadSaveGame, onReplayIntro, introActive = fa
               // Clamp the drag to the ScrollArea viewport and never auto-scroll the page/window,
               // so dragging a tile past an edge scrolls this finite frame rather than growing the page.
               modifiers={[restrictToFirstScrollableAncestor]}
-              autoScroll={{
-                canScroll: (el) =>
-                  el !== document.scrollingElement &&
-                  el !== document.body &&
-                  el !== document.documentElement,
-              }}
+              autoScroll={CONTAINED_AUTO_SCROLL}
             >
               <SortableContext items={worlds.map((w) => w.id)} strategy={rectSortingStrategy}>
                 {worlds.map((world) => (

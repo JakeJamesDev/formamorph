@@ -1,16 +1,9 @@
 import { useEffect, useRef, useState } from "react";
-import { Play, Pause, Volume2, Volume1, VolumeX } from "lucide-react";
+import { Play, Pause } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Slider } from "@/components/ui/slider";
-import { useSettings } from "@/contexts/SettingsContext";
-import { cn } from "@/lib/utils";
-
-function fmtTime(s: number): string {
-  if (!Number.isFinite(s)) return "0:00";
-  const m = Math.floor(s / 60);
-  const sec = Math.floor(s % 60);
-  return `${m}:${sec.toString().padStart(2, "0")}`;
-}
+import { cn, formatMMSS } from "@/lib/utils";
+import { useVolumeMute } from "@/lib/useVolumeMute";
 
 // Compact, on-theme player replacing the native <audio controls> so it matches the app's
 // Button/Slider styling. `src` is a URL / data URL (e.g. uploaded background music or entity
@@ -24,23 +17,12 @@ export default function AudioPlayer({ src, autoPlay = false, className }: {
   const [isPlaying, setIsPlaying] = useState(false);
   const [currentTime, setCurrentTime] = useState(0);
   const [duration, setDuration] = useState(0);
-  const { ttsVolume, setTtsVolume } = useSettings();
-  const lastVolRef = useRef(ttsVolume || 1);
+  const { ttsVolume, setTtsVolume, toggleMute, VolumeIcon } = useVolumeMute();
 
   // Keep the element's volume in sync with the persisted setting.
   useEffect(() => {
     if (audioRef.current) audioRef.current.volume = ttsVolume;
   }, [ttsVolume]);
-
-  const toggleMute = () => {
-    if (ttsVolume > 0) {
-      lastVolRef.current = ttsVolume;
-      setTtsVolume(0);
-    } else {
-      setTtsVolume(lastVolRef.current || 1);
-    }
-  };
-  const VolumeIcon = ttsVolume === 0 ? VolumeX : ttsVolume < 0.5 ? Volume1 : Volume2;
 
   const url = src ?? "";
 
@@ -87,7 +69,7 @@ export default function AudioPlayer({ src, autoPlay = false, className }: {
         className="flex-grow"
       />
       <span className="text-xs text-muted-foreground whitespace-nowrap shrink-0">
-        {fmtTime(currentTime)} / {fmtTime(duration)}
+        {formatMMSS(currentTime)} / {formatMMSS(duration)}
       </span>
       <Button variant="ghost" size="icon" onClick={toggleMute} className="shrink-0" title="Mute / unmute">
         <VolumeIcon className="h-4 w-4" />

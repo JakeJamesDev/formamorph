@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useEditingDraft } from '@/lib/useEditingDraft';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { KeywordChips } from '@/components/KeywordChips';
@@ -10,16 +10,7 @@ import type { Placeholder } from '@/types';
  *  the scoped `PlaceholderStore` (the world's, or the library item's isolated store). */
 const PlaceholderManager = ({ placeholder }: { placeholder: Placeholder }) => {
   const { updatePlaceholder } = usePlaceholderStore();
-  const [editing, setEditing] = useState<Placeholder>(placeholder);
-
-  useEffect(() => {
-    setEditing(placeholder);
-  }, [placeholder]);
-
-  const apply = (next: Placeholder) => {
-    setEditing(next);
-    updatePlaceholder(next);
-  };
+  const { draft: editing, apply } = useEditingDraft(placeholder, updatePlaceholder);
 
   const count = editing.values.length;
   const hint =
@@ -33,13 +24,13 @@ const PlaceholderManager = ({ placeholder }: { placeholder: Placeholder }) => {
     <div className="space-y-4">
       <div className="space-y-2">
         <Label>Name</Label>
-        <Input value={editing.name} onChange={(e) => apply({ ...editing, name: e.target.value })} placeholder="e.g. Eye Color" />
+        <Input value={editing.name} onChange={(e) => apply({ name: e.target.value })} placeholder="e.g. Eye Color" />
       </div>
       <div className="space-y-2">
         <Label>Values</Label>
         <KeywordChips
           keywords={editing.values}
-          onChange={(values) => apply({ ...editing, values })}
+          onChange={(values) => apply({ values })}
           placeholder="e.g. Red, Blue, Green"
         />
         <p className="text-sm text-muted-foreground">{hint}</p>
