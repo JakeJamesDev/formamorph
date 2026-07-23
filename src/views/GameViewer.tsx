@@ -80,6 +80,9 @@ import { renderPromptTemplate } from "../lib/promptTemplate";
 import { useBaselineTestHook } from "../lib/baselineTestHook";
 import { parseTurns, buildVerbatimHistory, buildBandedHistory, extractKeywords, type BandCounts } from "../lib/turnBanding";
 import { milestoneCandidates, agedMilestoneCandidates, resolveMilestoneDrop, buildMilestoneUserMessage, parseMilestoneReply } from "../lib/milestoneMemory";
+import { buildRelevanceScores, vectorKey } from "../lib/memoryRelevance";
+import { embedTexts, isEmbeddingModelReady, loadEmbeddingModel } from "../lib/embeddingWorkerClient";
+import { getVectors, putVector } from "../lib/embeddingCache";
 import { findEntityNames, matchNames, matchNamesLoose, sameCharacterName } from "../lib/entityMatch";
 import { parseChoices } from "../lib/choices";
 import { setGameplayText } from "../lib/gameplayTextStore";
@@ -282,6 +285,7 @@ const GameViewer = ({
     promptReasoningBudget,
     thinkingPrompt,
     memoryDigests,
+    semanticMemory,
     concurrentTurnRequests,
     autosaveEnabled,
     limitActiveCharacters,
@@ -489,6 +493,14 @@ const GameViewer = ({
   const [discoverActive, setDiscoverActive] = useState(false); // drives the status-bar indicator for a running discovery pass
   const milestoneDrainingRef = useRef(false); // a milestone selection is in flight (serializes the drainer)
   const [milestoneActive, setMilestoneActive] = useState(false); // drives the status-bar indicator for a running selection
+  const embedDrainingRef = useRef(false); // an embedding batch is in flight (serializes the drainer)
+  // Digest vectors by vectorKey, hydrated from the embedding cache and topped up by the drainer.
+  // Session-local derived data — never persisted with the save.
+  const embedVectorsRef = useRef<Map<string, Float32Array>>(new Map());
+  const embedModelKickedRef = useRef(false); // one background model (re)load attempt per session
+  // The last turn's relevance scores, reused by the context meter so its counts mirror what actually
+  // rode (a null-scored meter run would otherwise report the ranked drops as plain oldest-first).
+  const lastRelevanceScoresRef = useRef<Map<string, number> | null>(null);
 
   // Generate TTS for `text` (or the current game text) with the busy flag set, so both the
   // manual refresh button and auto-narration show the same spinner + chunk progress.
@@ -837,7 +849,7 @@ const GameViewer = ({
     return resolveMilestoneDrop(candidates, selection, memoryPins);
   }, [milestoneSelection, memoryPins, narrationVerbatimTurns]);
 
-  const getTrimmedMessageHistory = useCallback((promptTokens = 0, action = "") => {
+  const getTrimmedMessageHistory = useCallback((promptTokens = 0, action = "", relevanceScores: Map<string, number> | null = null) => {
     const turns = parseTurns(fullMessageHistory);
     if (memoryDigests) {
       const keywords = extractKeywords(action, dictionary);
@@ -867,6 +879,7 @@ const GameViewer = ({
         milestoneDrop: getMilestoneDrop(turns),
         recapPrompt: recapUserPrompt,
         nowLine,
+        relevanceScores,
       });
       lastBandCountsRef.current = counts;
       return messages;
@@ -874,6 +887,27 @@ const GameViewer = ({
     lastBandCountsRef.current = null;
     return buildVerbatimHistory(turns, contextWindow, promptTokens, maxTokens);
   }, [fullMessageHistory, contextWindow, maxTokens, memoryDigests, dictionary, allEntities, narrationVerbatimTurns, getMilestoneDrop, recapUserPrompt, currentLocation, playerNotes]);
+
+  // Semantic memory: score every digest against the current action so band trimming can drop the least
+  // relevant memory instead of the oldest. Null on ANY miss (feature off, model cold, a digest not yet
+  // embedded, worker slow) — banding then falls back to oldest-first; a degraded score set must never
+  // silently change which memories ride. The 2s race bounds a wedged worker, not normal inference (~ms).
+  const computeRelevanceScores = useCallback(async (action: string): Promise<Map<string, number> | null> => {
+    if (!semanticMemory || !memoryDigests || !isEmbeddingModelReady()) return null;
+    try {
+      const participants = recentParticipants(fullMessageHistory, 3);
+      const query = [action, currentLocation?.name, participants.join(", ")].filter(Boolean).join(" — ");
+      if (!query.trim()) return null;
+      const vecs = await Promise.race([
+        embedTexts([query]),
+        new Promise<null>((resolve) => setTimeout(() => resolve(null), 2000)),
+      ]);
+      if (!vecs || vecs.length === 0) return null;
+      return buildRelevanceScores(parseTurns(fullMessageHistory), vecs[0], embedVectorsRef.current);
+    } catch {
+      return null;
+    }
+  }, [semanticMemory, memoryDigests, fullMessageHistory, currentLocation]);
 
   // Drive body morphs from the viewed stats (live on the latest page, the paged turn's when viewing the
   // past): each stat's bound sliders track its value (min→max → 0→1 influence), so the avatar re-morphs to
@@ -1252,8 +1286,11 @@ ${playerNotes || NONE_PLACEHOLDER}
       }
 
       // Get trimmed history before adding new action (history fills the window left by the prompt).
-      // Pass the action so banding can rehydrate older turns it references.
-      const trimmedHistory = getTrimmedMessageHistory(estimateTokens(updatedPrompt.length), effectiveAction);
+      // Pass the action so banding can rehydrate older turns it references. Relevance scores are
+      // computed once here and shared with the planner rebuild below so both stages trim identically.
+      const relevanceScores = await computeRelevanceScores(effectiveAction);
+      lastRelevanceScoresRef.current = relevanceScores; // the context meter re-trims with the same scores
+      const trimmedHistory = getTrimmedMessageHistory(estimateTokens(updatedPrompt.length), effectiveAction, relevanceScores);
 
       // Create message array for game text request
       const narrationMessages: ChatMessage[] = [
@@ -1342,6 +1379,7 @@ ${playerNotes || NONE_PLACEHOLDER}
             // stage's narrower floor.
             milestoneDrop: getMilestoneDrop(plannerTurns),
             recapPrompt: recapUserPrompt,
+            relevanceScores,
           });
           digestBand = planner.recap;
           lastStory =
@@ -2486,6 +2524,52 @@ ${playerNotes || NONE_PLACEHOLDER}
     })();
   }, [memoryDigests, isWaitingForAI, diaryActive, discoverActive, fullMessageHistory, narrationVerbatimTurns, milestoneSelection, setMilestoneSelection]);
 
+  // Embedding drainer: keep a vector on hand for every digest so relevance scoring is a sync lookup at
+  // turn time. Cache-first (IndexedDB, hash-keyed so save/world switches just repopulate), then batch-
+  // embeds the rest in the worker. Runs off the LLM path entirely — it only serializes against itself.
+  // Until every digest is covered, scoring returns null and banding stays oldest-first (fail open).
+  useEffect(() => {
+    if (!semanticMemory || !memoryDigests || embedDrainingRef.current) return;
+    if (!isEmbeddingModelReady()) {
+      // A session that starts with the toggle already on re-opens the model from the browser cache
+      // (or retries a failed first download) in the background, once.
+      if (!embedModelKickedRef.current) {
+        embedModelKickedRef.current = true;
+        loadEmbeddingModel().catch(() => {}); // failure keeps scoring fail-open; Settings offers Retry
+      }
+      return;
+    }
+    const digests = parseTurns(fullMessageHistory)
+      .filter((t) => t.summary && t.summary.trim())
+      .map((t) => t.summary!.trim());
+    const missing = [...new Set(digests.filter((d) => !embedVectorsRef.current.has(vectorKey(d))))];
+    if (missing.length === 0) return;
+
+    embedDrainingRef.current = true;
+    (async () => {
+      try {
+        const cached = await getVectors(missing.map(vectorKey));
+        cached.forEach((vec, key) => embedVectorsRef.current.set(key, vec));
+        // Embed the rest in bounded batches, looping to completion — nothing re-triggers this effect
+        // when a batch lands (unlike the digest drainer, it never touches history), so a first-enable
+        // backfill must finish in one pass.
+        const toEmbed = missing.filter((d) => !cached.has(vectorKey(d)));
+        for (let start = 0; start < toEmbed.length; start += 8) {
+          const batch = toEmbed.slice(start, start + 8);
+          const vecs = await embedTexts(batch);
+          await Promise.all(vecs.map((vec, i) => {
+            embedVectorsRef.current.set(vectorKey(batch[i]), vec);
+            return putVector(vectorKey(batch[i]), vec).catch(() => {}); // cache write is best-effort
+          }));
+        }
+      } catch {
+        // Non-fatal: uncovered digests keep scoring fail-open; retried on a later history change.
+      } finally {
+        embedDrainingRef.current = false;
+      }
+    })();
+  }, [semanticMemory, memoryDigests, fullMessageHistory]);
+
   // Character-diary drainer (write side): for each completed turn with participants, silently write a
   // first-person diary entry per participant as an idle-time job, patched back onto that turn's `diaries`
   // map. Mirrors the digest drainer, and serializes against it (only one silent job runs at a time) so a
@@ -2810,7 +2894,7 @@ ${playerNotes || NONE_PLACEHOLDER}
   // not on every render.
   const memoryStats = useMemo(() => {
     const promptTokens = estimateTokens(lastPromptChars);
-    const trimmed = getTrimmedMessageHistory(promptTokens);
+    const trimmed = getTrimmedMessageHistory(promptTokens, "", lastRelevanceScoresRef.current);
     return {
       promptTokens,
       trimmed,
@@ -2872,7 +2956,8 @@ ${playerNotes || NONE_PLACEHOLDER}
                   {bandCounts.turnsTotal} ({bandCounts.turnsVerbatim} full, {bandCounts.turnsBanded} summarized
                   {bandCounts.turnsTotal - bandCounts.turnsVerbatim - bandCounts.turnsBanded > 0
                     ? `, ${bandCounts.turnsTotal - bandCounts.turnsVerbatim - bandCounts.turnsBanded} dropped`
-                    : ""})
+                    : ""}
+                  {bandCounts.turnsRelevanceDropped > 0 ? `, ${bandCounts.turnsRelevanceDropped} by relevance` : ""})
                 </span>
               </div>
             ) : (

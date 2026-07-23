@@ -264,6 +264,11 @@ function useProvideSettings() {
   // context. Note the persistent-state hook writes the default on first run, so this flip only reaches
   // installs that have never opened the app — existing stores keep their recorded value.
   const [memoryDigests, setMemoryDigests] = usePersistentState<boolean>(`${APP_ID}_memoryDigests`, true, boolCodec);
+  // EXPERIMENTAL semantic memory: trim the digest band by relevance to the current action (local
+  // embedding model in a worker) instead of oldest-first. Default off — enabling downloads the ~23 MB
+  // model, and the context change needs probe evidence before it can default on. Everything fails open
+  // to oldest-first while the model is absent, so a stale-on toggle can never lose memories.
+  const [semanticMemory, setSemanticMemory] = usePersistentState<boolean>(`${APP_ID}_semanticMemory`, false, boolCodec);
   // Fire the post-narration aux requests (choices + stat updates + location router) concurrently instead of
   // one after another. Default on: ~29% faster turns on a parallel-capable endpoint (LM Studio "Parallel",
   // Ollama), harmless on serial endpoints (they queue). Turn off if a VRAM-tight local engine slows or OOMs
@@ -779,6 +784,8 @@ function useProvideSettings() {
     setStreamNarrationAudio,
     memoryDigests,
     setMemoryDigests,
+    semanticMemory,
+    setSemanticMemory,
     concurrentTurnRequests,
     setConcurrentTurnRequests,
     autosaveEnabled,

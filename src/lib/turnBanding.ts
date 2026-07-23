@@ -48,6 +48,9 @@ export interface BandCounts {
   turnsTotal: number;
   /** Old-band digests removed by milestone selection (0 when selection is off or kept everything). */
   turnsSelectedOut: number;
+  /** Digests dropped by relevance ranking instead of oldest-first (0 when semantic memory is off or
+   *  the band fit its budget). */
+  turnsRelevanceDropped: number;
 }
 
 export interface BandResult {
@@ -229,10 +232,15 @@ export function buildBandedHistory(args: {
    *  lib/milestoneMemory). Absent/empty = no filtering, the pre-milestone behavior. The caller owns the
    *  window math so every stage filters the exact same turns regardless of its own floor width. */
   milestoneDrop?: Set<string> | null;
+  /** Relevance score per turnId (semantic memory: cosine-to-current-action × recency decay, built by
+   *  lib/memoryRelevance). When present AND covering every band turn, budget trimming drops the
+   *  lowest-scored memory instead of the oldest. Null/absent/incomplete = oldest-first, the exact
+   *  pre-feature path — cold caches and disabled settings fail open, never fail-drop. */
+  relevanceScores?: Map<string, number> | null;
 }): BandResult {
   // `keywords`, `actionEntities`, `rehydrateCap`, `maxRehydrations` are intentionally not destructured:
   // rehydration is disabled (see step 3). Kept in the arg type so callers compile unchanged.
-  const { turns, contextWindow, promptTokens, maxTokens, verbatimFloor, milestoneDrop = null, recapPrompt, nowLine } = args;
+  const { turns, contextWindow, promptTokens, maxTokens, verbatimFloor, milestoneDrop = null, recapPrompt, nowLine, relevanceScores = null } = args;
   const margin = Math.max(256, Math.round(contextWindow * 0.05));
   const budget = Math.max(0, contextWindow - promptTokens - maxTokens - margin);
 
@@ -262,8 +270,24 @@ export function buildBandedHistory(args: {
     bandTurns = kept;
   }
   let bandTokens = bandExchangeCost(bandTurns, recapPrompt, nowLine);
+  // Scored trimming engages only when every band turn is covered — a partial map (embedding cache still
+  // warming) must not rank some turns and default others, or stages could disagree on what dropped.
+  const scored = relevanceScores !== null && bandTurns.every((t) => t.turnId && relevanceScores.has(t.turnId));
+  let turnsRelevanceDropped = 0;
   while (bandTokens > remaining && bandTurns.length > 0) {
-    bandTurns = bandTurns.slice(1); // drop the oldest
+    if (scored && bandTurns.length > 1) {
+      // Drop the least relevant memory, chronological order preserved. Index 0 — the oldest survivor —
+      // is never eligible: losing the story's opening makes the recap start mid-scene and models write
+      // a fresh establishing scene over the live one (same guard as resolveMilestoneKeep).
+      let lowest = 1;
+      for (let i = 2; i < bandTurns.length; i++) {
+        if (relevanceScores.get(bandTurns[i].turnId!)! < relevanceScores.get(bandTurns[lowest].turnId!)!) lowest = i;
+      }
+      bandTurns = bandTurns.slice(0, lowest).concat(bandTurns.slice(lowest + 1));
+      turnsRelevanceDropped++;
+    } else {
+      bandTurns = bandTurns.slice(1); // drop the oldest
+    }
     bandTokens = bandExchangeCost(bandTurns, recapPrompt, nowLine);
   }
 
@@ -310,6 +334,7 @@ export function buildBandedHistory(args: {
       turnsBanded: bandTurns.length,
       turnsTotal: turns.length,
       turnsSelectedOut,
+      turnsRelevanceDropped,
     },
   };
 }

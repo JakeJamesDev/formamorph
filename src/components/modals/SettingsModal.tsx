@@ -17,6 +17,8 @@ import { RevealAnimationDemoButton } from "@/components/RevealAnimationDemo";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Checkbox } from "@/components/ui/checkbox";
+import { Progress } from "@/components/ui/progress";
+import { loadEmbeddingModel, disposeEmbeddingModel, type EmbeddingLoadProgress } from '@/lib/embeddingWorkerClient';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem, SelectSeparator } from "@/components/ui/select";
@@ -386,6 +388,8 @@ export const SettingsModal = ({ isOpen, onOpenChange, previewValues, initialTab,
     importPreset,
     memoryDigests,
     setMemoryDigests,
+    semanticMemory,
+    setSemanticMemory,
     concurrentTurnRequests,
     setConcurrentTurnRequests,
     autosaveEnabled,
@@ -468,6 +472,26 @@ export const SettingsModal = ({ isOpen, onOpenChange, previewValues, initialTab,
   const { theme, setTheme } = useTheme();
   const desktop = isDesktop();
   const [connectionGuideOpen, setConnectionGuideOpen] = useState(false);
+  // Embedding-model download state for the semantic memory toggle. Local to the modal: the toggle
+  // stays on through a failed download (scoring fails open until the model arrives), so this state
+  // only drives the progress bar / error row.
+  const [embedLoading, setEmbedLoading] = useState(false);
+  const [embedProgress, setEmbedProgress] = useState<EmbeddingLoadProgress | null>(null);
+  const [embedError, setEmbedError] = useState<string | null>(null);
+  const startEmbeddingDownload = () => {
+    setEmbedLoading(true);
+    setEmbedError(null);
+    setEmbedProgress(null);
+    loadEmbeddingModel(setEmbedProgress)
+      .then(() => setEmbedError(null))
+      .catch((err) => setEmbedError((err as Error).message))
+      .finally(() => { setEmbedLoading(false); setEmbedProgress(null); });
+  };
+  const handleSemanticMemoryToggle = (on: boolean) => {
+    setSemanticMemory(on);
+    if (on) startEmbeddingDownload();
+    else void disposeEmbeddingModel();
+  };
   const handleResetEndpointSettings = () => {
     setEndpointUrl(DEFAULT_ENDPOINT);
     setModelName(DEFAULT_MODEL_NAME);
@@ -1040,6 +1064,45 @@ export const SettingsModal = ({ isOpen, onOpenChange, previewValues, initialTab,
                   </span>
                 </div>
               </div>
+              {memoryDigests && (
+                <div className="grid grid-cols-1 sm:grid-cols-4 items-start gap-4">
+                  <label htmlFor="semanticMemory" className="text-left sm:text-right leading-4">
+                    Semantic Memory
+                  </label>
+                  <div className="col-span-3 flex flex-col gap-2">
+                    <div className="flex items-start gap-2">
+                      <Checkbox
+                        id="semanticMemory"
+                        checked={semanticMemory}
+                        onCheckedChange={(c) => handleSemanticMemoryToggle(c === true)}
+                        className="shrink-0"
+                      />
+                      <span className="text-xs text-muted-foreground">
+                        Experimental. When memories no longer fit, keeps the ones most relevant to your current action instead of just the newest. Runs a small language model on your device — enabling downloads it once (~23 MB) and stores it in your browser.
+                      </span>
+                    </div>
+                    {embedLoading && (
+                      <div className="flex items-center gap-2">
+                        <Progress
+                          className="h-2 flex-1"
+                          value={embedProgress && embedProgress.total > 0 ? (embedProgress.loaded / embedProgress.total) * 100 : 0}
+                        />
+                        <span className="text-xs text-muted-foreground whitespace-nowrap">
+                          {embedProgress && embedProgress.total > 0
+                            ? `${Math.round(embedProgress.loaded / 1048576)} / ${Math.round(embedProgress.total / 1048576)} MB`
+                            : 'Preparing…'}
+                        </span>
+                      </div>
+                    )}
+                    {embedError && !embedLoading && (
+                      <div className="flex items-center gap-2">
+                        <span className="text-xs text-destructive">Model download failed: {embedError}</span>
+                        <Button variant="outline" size="sm" onClick={startEmbeddingDownload}>Retry</Button>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              )}
               <div className="grid grid-cols-1 sm:grid-cols-4 items-start gap-4">
                 <label htmlFor="concurrentTurnRequests" className="text-left sm:text-right leading-4">
                   Concurrent Requests

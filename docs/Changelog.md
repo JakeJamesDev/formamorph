@@ -12,6 +12,13 @@ Each release groups changes as **Major** / **Minor**, then **Added** / **Removed
 
 _Unreleased — new work accumulates here until it earns a version bump. The next batch will pin its own version; `package.json` reads **2.6.0** (just released below)._
 
+### Minor Changes
+
+#### ✨ Added
+
+- **👤 User-facing**
+  - **Semantic Memory (experimental).** A new toggle under Settings → Gameplay, off by default. When the story's remembered moments no longer fit the context budget, the game normally lets the oldest go first; with Semantic Memory on it instead keeps the ones most relevant to what you're doing right now — an old promise resurfaces when you return to the person you made it to. Relevance is judged by a small AI model running entirely on your device (a one-time ~23 MB download when you enable it); nothing about your story leaves your machine, and if the model isn't ready the game simply falls back to the old behavior. The milestone keep/forget system and your pins are unchanged — this only reorders what gets trimmed under pressure.
+
 ---
 
 <details>

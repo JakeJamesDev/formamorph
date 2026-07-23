@@ -281,3 +281,77 @@ describe('buildBandedHistory', () => {
     expect(messages.some((m) => m.content.includes('OLDEST'))).toBe(false);
   });
 });
+
+describe('buildBandedHistory relevance-ranked trimming', () => {
+  const RECAP = 'Recap the story so far.';
+  // verbatimFloor 0 keeps the whole budget for the band; each ~400-char digest costs ~100 tokens and
+  // contextWindow 620 (margin 256) leaves room for three of the five.
+  const base = { contextWindow: 620, promptTokens: 0, maxTokens: 0, verbatimFloor: 0, rehydrateCap: 0, actionEntities: [] as string[], keywords: [] as string[], recapPrompt: RECAP };
+  const digest = (tag: string) => `${tag} ${'x'.repeat(392)}`;
+  const fiveTurns = () =>
+    parseTurns([
+      ...pair('a1', { turnId: 't1', narration: 'g1', summary: digest('D1') }),
+      ...pair('a2', { turnId: 't2', narration: 'g2', summary: digest('D2') }),
+      ...pair('a3', { turnId: 't3', narration: 'g3', summary: digest('D3') }),
+      ...pair('a4', { turnId: 't4', narration: 'g4', summary: digest('D4') }),
+      ...pair('a5', { turnId: 't5', narration: 'g5', summary: digest('D5') }),
+    ]);
+  const scores = (map: Record<string, number>) => new Map(Object.entries(map));
+  const survivors = (recap: string) => ['D1', 'D2', 'D3', 'D4', 'D5'].filter((d) => recap.includes(d));
+
+  it('drops the lowest-scored memories instead of the oldest, keeping chronological order', () => {
+    const { recap, counts } = buildBandedHistory({
+      ...base, turns: fiveTurns(),
+      relevanceScores: scores({ t1: 0.9, t2: 0.1, t3: 0.8, t4: 0.2, t5: 0.7 }),
+    });
+    expect(survivors(recap)).toEqual(['D1', 'D3', 'D5']);
+    expect(counts.turnsRelevanceDropped).toBe(2);
+    expect(counts.turnsSelectedOut).toBe(0);
+  });
+
+  it('never drops the oldest surviving memory, even at the lowest score', () => {
+    const { recap } = buildBandedHistory({
+      ...base, turns: fiveTurns(),
+      relevanceScores: scores({ t1: 0.0, t2: 0.9, t3: 0.8, t4: 0.1, t5: 0.2 }),
+    });
+    // t1 scores lowest but holds the story's opening; t4 and t5 go instead.
+    expect(survivors(recap)).toEqual(['D1', 'D2', 'D3']);
+  });
+
+  it('falls back to oldest-first when the score map misses any band turn', () => {
+    const { recap, counts } = buildBandedHistory({
+      ...base, turns: fiveTurns(),
+      relevanceScores: scores({ t1: 0.9, t2: 0.9, t3: 0.9, t4: 0.9 }), // t5 missing
+    });
+    expect(survivors(recap)).toEqual(['D3', 'D4', 'D5']);
+    expect(counts.turnsRelevanceDropped).toBe(0);
+  });
+
+  it('produces the oldest-first result when scores are absent — the off path', () => {
+    const unscored = buildBandedHistory({ ...base, turns: fiveTurns() });
+    const nullScored = buildBandedHistory({ ...base, turns: fiveTurns(), relevanceScores: null });
+    expect(unscored).toEqual(nullScored);
+    expect(survivors(unscored.recap)).toEqual(['D3', 'D4', 'D5']);
+  });
+
+  it('applies milestone drops first, then ranks the survivors — scores for dropped turns not required', () => {
+    const { recap, counts } = buildBandedHistory({
+      ...base, turns: fiveTurns(),
+      milestoneDrop: new Set(['t2']),
+      relevanceScores: scores({ t1: 0.9, t3: 0.1, t4: 0.8, t5: 0.7 }), // no t2 — it's already gone
+    });
+    expect(counts.turnsSelectedOut).toBe(1);
+    // Four remain, three fit: t3 is least relevant.
+    expect(survivors(recap)).toEqual(['D1', 'D4', 'D5']);
+    expect(counts.turnsRelevanceDropped).toBe(1);
+  });
+
+  it('still empties a one-turn band that cannot fit', () => {
+    const turns = parseTurns([...pair('a1', { turnId: 't1', narration: 'g1', summary: 'HUGE ' + 'x'.repeat(4000) })]);
+    const { recap, counts } = buildBandedHistory({
+      ...base, turns, relevanceScores: scores({ t1: 1 }),
+    });
+    expect(recap).toBe('');
+    expect(counts.turnsRelevanceDropped).toBe(0); // terminal drop is the plain path, not a ranked one
+  });
+});
