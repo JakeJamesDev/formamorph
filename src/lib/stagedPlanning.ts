@@ -1,6 +1,7 @@
 import type { Entity, ChatMessage, AIRequestType, SceneEntity } from "@/types";
 import { renderPromptTemplate } from "./promptTemplate";
 import { collectCharacterDiary } from "./turnDigest";
+import { selectRelevantDiary } from "./semanticDiary";
 import { sameCharacterName, matchNames, findEntityNames } from "./entityMatch";
 import { escapeRegExp } from "./utils";
 import { NONE_PLACEHOLDER } from "./promptFallbacks";
@@ -436,6 +437,10 @@ export async function runStagedPlanning(ctx: {
   concurrentCharacters: boolean;
   fullMessageHistory: ChatMessage[];
   diaryMemoryEntries: number;
+  /** Diary retrieval (semantic-memory step 4): when set, each character's diary block becomes the
+   *  recent tail plus the relevant older entries (lib/semanticDiary) instead of pure recency. Null =
+   *  the pre-feature last-N path, byte-identical. */
+  diaryRetrieval?: { queryVec: Float32Array; vectorsByKey: Map<string, Float32Array> } | null;
   caps: { director: number; character: number; storyboard: number };
   /** Max characters sent to the per-character pass (overflow goes to the storyboard). Infinity = unbounded. */
   activeCharacterCap: number;
@@ -451,6 +456,7 @@ export async function runStagedPlanning(ctx: {
     action, stageValues, lastStory, entities, presentEntityIds, playerNames, characterDiaries,
     concurrentCharacters, fullMessageHistory, diaryMemoryEntries, caps, activeCharacterCap,
     directorPrompt, directorUserPrompt, characterPrompt, storyboardPrompt, request, signal,
+    diaryRetrieval = null,
   } = ctx;
 
   // 1) Director: who is in the scene and what carries over.
@@ -475,8 +481,13 @@ export async function runStagedPlanning(ctx: {
   // debug capture correlates each request to its response by id, so parallel same-type "character" calls
   // stay correctly paired). Intents keep cast order either way, which the storyboard message relies on.
   const runCharacter = (member: (typeof chosen)[number]) => {
-    // Feed the character its own recent diary as private memory (Slice B) — only when enabled.
-    const diary = characterDiaries ? collectCharacterDiary(fullMessageHistory, member.name, diaryMemoryEntries) : [];
+    // Feed the character its own diary as private memory (Slice B) — only when enabled. With
+    // retrieval, the whole diary is collected and lib/semanticDiary keeps the recent tail plus the
+    // relevant older entries (chronological either way, so the block's "oldest first" stays true).
+    const all = characterDiaries
+      ? collectCharacterDiary(fullMessageHistory, member.name, diaryRetrieval ? Number.MAX_SAFE_INTEGER : diaryMemoryEntries)
+      : [];
+    const diary = diaryRetrieval ? selectRelevantDiary(all, diaryRetrieval.queryVec, diaryRetrieval.vectorsByKey) : all;
     return request(
       renderPromptTemplate(characterPrompt, { ...stageValues, "<CHARACTER NAME>": member.name }),
       [{ role: "user", content: buildCharacterUserMessage({ character: member, scene, action, diary, recap: lastStory }) }],

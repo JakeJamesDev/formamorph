@@ -277,6 +277,10 @@ function useProvideSettings() {
   // narration rides back as a framed remembered-scene exchange (roadmap step 2 — near-duplicate and
   // temporal-framing guards). Requires semanticMemory (same model, same digest vectors). Default off.
   const [semanticRehydration, setSemanticRehydration] = usePersistentState<boolean>(`${APP_ID}_semanticRehydration`, false, boolCodec);
+  // EXPERIMENTAL diary retrieval: a character's motivation pass carries its recent diary tail plus
+  // the RELEVANT older entries instead of pure recency (roadmap step 4). Requires semanticMemory
+  // (shared model) and characterDiaries (the entries themselves). Default off.
+  const [semanticDiaries, setSemanticDiaries] = usePersistentState<boolean>(`${APP_ID}_semanticDiaries`, false, boolCodec);
   // Fire the post-narration aux requests (choices + stat updates + location router) concurrently instead of
   // one after another. Default on: ~29% faster turns on a parallel-capable endpoint (LM Studio "Parallel",
   // Ollama), harmless on serial endpoints (they queue). Turn off if a VRAM-tight local engine slows or OOMs
@@ -798,6 +802,8 @@ function useProvideSettings() {
     setSemanticLore,
     semanticRehydration,
     setSemanticRehydration,
+    semanticDiaries,
+    setSemanticDiaries,
     concurrentTurnRequests,
     setConcurrentTurnRequests,
     autosaveEnabled,

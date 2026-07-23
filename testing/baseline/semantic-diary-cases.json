@@ -1,0 +1,23 @@
+{
+  "comment": "Diary-retrieval probe fixture: first-person 1-2 sentence diary entries (the shape defaultDiaryPrompt produces) plus player actions labeled with which entries a character should recall. Positives are meaning-matches sharing no distinctive noun with the action (asserted); negatives are actions that should recall nothing. Sweeps DIARY_SIM_THRESHOLD (src/lib/semanticDiary.ts).",
+  "entries": [
+    { "id": "blade", "text": "The trader drew steel on me over a miscount today. I will not forget how fast that hand moved." },
+    { "id": "debt", "text": "I lent them my last three coppers for the toll. Kindness, or foolishness - the road will tell." },
+    { "id": "lie", "text": "They told the gate guard they were a courier. I held my tongue, but I know a false name when I hear one." },
+    { "id": "gift", "text": "They gave me their own dry cloak in the storm without being asked. I slept warm and thought about that." },
+    { "id": "drink", "text": "We shared a jar of plum wine by the fire and they laughed at my worst story. A good evening." },
+    { "id": "wound", "text": "I bound the gash on their arm with my spare linen. They did not wince once, which worried me more than the cut." },
+    { "id": "mule", "text": "Their gray mule bit me when I reached for its halter. The red ribbon does not make it friendly." },
+    { "id": "song", "text": "They hummed a tune from my home marshes tonight. I did not ask where they learned it, but it followed me into sleep." }
+  ],
+  "actions": [
+    { "name": "weapon-again", "text": "I rest my palm on my knife hilt as the argument grows sharp.", "expect": ["blade"] },
+    { "name": "repay", "text": "I count out what I owe and set it in front of her.", "expect": ["debt"] },
+    { "name": "false-name", "text": "I introduce myself to the innkeeper as someone I am not.", "expect": ["lie"] },
+    { "name": "cold-night", "text": "I offer to take the coldest watch so the others can sleep by the embers.", "expect": ["gift"] },
+    { "name": "injury", "text": "I roll up my sleeve and show her the half-healed scar.", "expect": ["wound"] },
+    { "name": "neg-directions", "text": "I ask the fisherman which fork leads to the hill fort.", "expect": [] },
+    { "name": "neg-shopping", "text": "I haggle over the price of a sack of salt.", "expect": [] },
+    { "name": "neg-weather", "text": "I study the clouds massing over the marsh.", "expect": [] }
+  ]
+}

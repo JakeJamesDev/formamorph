@@ -394,6 +394,8 @@ export const SettingsModal = ({ isOpen, onOpenChange, previewValues, initialTab,
     setSemanticLore,
     semanticRehydration,
     setSemanticRehydration,
+    semanticDiaries,
+    setSemanticDiaries,
     concurrentTurnRequests,
     setConcurrentTurnRequests,
     autosaveEnabled,
@@ -1181,6 +1183,24 @@ export const SettingsModal = ({ isOpen, onOpenChange, previewValues, initialTab,
                     />
                     <span className="text-xs text-muted-foreground">
                       Each character present in a turn records a first-person diary entry as turns age out, and its recent entries feed back into that character&apos;s motivation. Runs an extra request per participant; edit its prompt under Prompts → Diary.
+                    </span>
+                  </div>
+                </div>
+              )}
+              {thinkingMode === 'staged' && characterDiaries && semanticMemory && (
+                <div className="grid grid-cols-1 sm:grid-cols-4 items-start gap-4">
+                  <label htmlFor="semanticDiaries" className="text-left sm:text-right leading-4">
+                    Diary Recall
+                  </label>
+                  <div className="col-span-3 flex items-start gap-2">
+                    <Checkbox
+                      id="semanticDiaries"
+                      checked={semanticDiaries}
+                      onCheckedChange={(c) => setSemanticDiaries(c === true)}
+                      className="shrink-0"
+                    />
+                    <span className="text-xs text-muted-foreground">
+                      Experimental. Instead of only their newest diary entries, characters also remember the older entries most relevant to what you&apos;re doing — she recalls the last time you drew a blade. Same number of entries as before, so it costs nothing extra. Uses Semantic Memory&apos;s model.
                     </span>
                   </div>
                 </div>

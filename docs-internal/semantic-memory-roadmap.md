@@ -4,9 +4,9 @@ Working roadmap for the embedding-retrieval workstream on branch **`Mem0`**. Res
 lives in this doc; the shipped foundation is described below, then the planned steps in build order.
 Steps ship one at a time, each behind its own probe evidence — nothing here is committed-to-all-at-once.
 
-**▶ Resume here:** steps 0, 1, and 2 shipped (2026-07-23, unreleased, all off by default). Next up is
-**step 3 (always-on top-K band)** — the strongest probe bar of the arc — or step 4 (diary retrieval)
-if a smaller bite fits the session.
+**▶ Resume here:** steps 0, 1, 2, and 4 shipped (2026-07-23, unreleased, all off by default). Next up
+is **step 3 (always-on top-K band)** — the strongest probe bar of the arc — then step 5 (hybrid
+scoring) only if real-world recall shows similarity-only misses.
 
 ## Architecture decision (2026-07-23)
 
@@ -104,11 +104,23 @@ turn — smaller prompts, denser signal, mid-game benefit. This changes narratio
 turn, so it needs the strongest probe evidence of the arc (dialogue-hold + recall + Q-profile) and
 likely its own setting (band cap) rather than a hidden constant.
 
-## Step 4 — Diary retrieval
+## Step 4 — ✅ Diary Recall (SHIPPED 2026-07-23, unreleased, off by default)
 
-Staged mode feeds each character's *recent* diary entries; retrieval pulls the *relevant* one
-("she remembers the last time you drew a blade"). Embed diary entries at write time (same cache);
-score against the current action + that character's presence. Small, contained, staged-mode-only.
+`semanticDiaries` toggle (requires semanticMemory + characterDiaries; Settings "Diary Recall",
+staged-mode row). `src/lib/semanticDiary.ts`: keep the newest **3** entries verbatim (continuity,
+no vectors needed) + retrieve up to **2** relevant older ones at cosine ≥ **0.34**, near-duplicate
+skip ≥ 0.75 vs the included set (the brooding-character guard), merged chronological — total stays 5,
+token-neutral vs the old pure-recency path. Wired via `runStagedPlanning`'s optional `diaryRetrieval`
+ctx field (null = byte-identical last-N path); drainer embeds diary texts (skips "nothing notable");
+query = the shared bare-action vector.
+
+**Probed** (`diary-retrieve-probe.mjs`, shared-word guard asserted): diary-shaped texts separate
+WORST of any surface so far — positives 0.33-0.44, false fires to 0.33. Shipped 0.34 = the measured
+knee (100% precision / 60% recall, cap 2) but the margin is ~0.01 — fragile across worlds, so the
+design leans conservative (silent beats wrong memory). This surface is the strongest argument yet
+for the step-5/stronger-embedder revisit. No LLM-side probe: the character pass carries the same
+count of same-shaped entries, so the context contract is unchanged; what changed is *which* entries,
+covered by the deterministic sweep + unit tests.
 
 ## Step 5 — Hybrid scoring (exploratory)
 

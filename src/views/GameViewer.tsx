@@ -291,6 +291,7 @@ const GameViewer = ({
     semanticMemory,
     semanticLore,
     semanticRehydration,
+    semanticDiaries,
     concurrentTurnRequests,
     autosaveEnabled,
     limitActiveCharacters,
@@ -919,7 +920,7 @@ const GameViewer = ({
   // (semantic-band-probe trim stage: the letter target ranked 15/28 with the location clause, 5/28
   // without; all four planted targets survive action-only).
   const embedActionVec = useCallback(async (action: string): Promise<Float32Array | null> => {
-    const anySemantic = (semanticMemory && memoryDigests) || semanticLore;
+    const anySemantic = semanticLore || (semanticMemory && (memoryDigests || (semanticDiaries && characterDiaries)));
     if (!anySemantic || !isEmbeddingModelReady() || !action.trim()) return null;
     try {
       const vecs = await Promise.race([
@@ -1471,6 +1472,11 @@ ${playerNotes || NONE_PLACEHOLDER}
           concurrentCharacters: concurrentTurnRequests,
           fullMessageHistory,
           diaryMemoryEntries: DIARY_MEMORY_ENTRIES,
+          // Diary retrieval: relevant older entries join the recent tail (lib/semanticDiary). Null =
+          // pure recency, the pre-feature path.
+          diaryRetrieval: semanticDiaries && characterDiaries && actionVec
+            ? { queryVec: actionVec, vectorsByKey: embedVectorsRef.current }
+            : null,
           caps: { director: DIRECTOR_MAX_TOKENS, character: CHARACTER_MAX_TOKENS, storyboard: STORYBOARD_MAX_TOKENS },
           activeCharacterCap: limitActiveCharacters ? activeCharacterLimit : Infinity,
           directorPrompt,
@@ -2572,7 +2578,8 @@ ${playerNotes || NONE_PLACEHOLDER}
   // item is covered it simply can't score (band: fail open to oldest-first; lore: entry can't fire).
   useEffect(() => {
     const wantDigests = semanticMemory && memoryDigests;
-    if ((!wantDigests && !semanticLore) || embedDrainingRef.current) return;
+    const wantDiaries = semanticMemory && semanticDiaries && characterDiaries;
+    if ((!wantDigests && !semanticLore && !wantDiaries) || embedDrainingRef.current) return;
     if (!isEmbeddingModelReady()) {
       // A session that starts with a toggle already on re-opens the model from the browser cache
       // (or retries a failed first download) in the background, once.
@@ -2583,10 +2590,19 @@ ${playerNotes || NONE_PLACEHOLDER}
       return;
     }
     const wanted = new Map<string, string>(); // vector key → text to embed
-    if (wantDigests) {
-      for (const t of parseTurns(fullMessageHistory)) {
-        const d = t.summary?.trim();
+    if (wantDigests || wantDiaries) {
+      for (const m of fullMessageHistory) {
+        if (m.role !== "assistant") continue;
+        const parsed = parseTurnContent(m.content);
+        if (!parsed) continue;
+        const d = wantDigests ? parsed.summary?.trim() : undefined;
         if (d) wanted.set(vectorKey(d), d);
+        if (wantDiaries && parsed.diaries) {
+          for (const text of Object.values(parsed.diaries)) {
+            const t = text?.trim();
+            if (t && t.toLowerCase() !== "nothing notable") wanted.set(vectorKey(t), t);
+          }
+        }
       }
     }
     if (semanticLore) {
@@ -2621,7 +2637,7 @@ ${playerNotes || NONE_PLACEHOLDER}
         embedDrainingRef.current = false;
       }
     })();
-  }, [semanticMemory, memoryDigests, semanticLore, fullMessageHistory, dictionary]);
+  }, [semanticMemory, memoryDigests, semanticLore, semanticDiaries, characterDiaries, fullMessageHistory, dictionary]);
 
   // Character-diary drainer (write side): for each completed turn with participants, silently write a
   // first-person diary entry per participant as an idle-time job, patched back onto that turn's `diaries`
