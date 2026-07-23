@@ -11,7 +11,7 @@ import {
 import {
   SortableContext,
   arrayMove,
-  horizontalListSortingStrategy,
+  rectSortingStrategy,
   sortableKeyboardCoordinates,
 } from '@dnd-kit/sortable';
 import { splitChipInput, replaceChipValue } from '@/components/Chip';
@@ -73,7 +73,11 @@ export function KeywordChips({
   return (
     <div className="flex flex-wrap items-center gap-1 rounded-md border border-border bg-background/80 p-2">
       <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd} autoScroll={false}>
-        <SortableContext items={keywords} strategy={horizontalListSortingStrategy}>
+        {/* rectSortingStrategy (2D), not horizontalListSortingStrategy: the container is flex-wrap, so chips
+            span multiple rows — a single-row strategy mispositions drags once they wrap. Dedup stays
+            case-sensitive (unlike TokenAutocomplete) because dictionary keyword matching supports a
+            per-entry caseSensitive mode, so distinct-case keywords can be meaningful. */}
+        <SortableContext items={keywords} strategy={rectSortingStrategy}>
           {keywords.map((kw) => (
             <EditableChip
               key={kw}
