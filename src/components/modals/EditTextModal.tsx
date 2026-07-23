@@ -1,7 +1,8 @@
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
+import { useResetOnOpen } from "@/lib/useResetOnOpen";
 
 export const EditTextModal = ({
   isOpen,
@@ -16,9 +17,9 @@ export const EditTextModal = ({
 }) => {
   const [editedText, setEditedText] = useState(text);
 
-  useEffect(() => {
-    setEditedText(text);
-  }, [text]);
+  // Reseed from `text` on each open, not on `text` changing — otherwise cancelling and reopening the same
+  // page (unchanged `text`) would leave the discarded edits sitting in the textarea.
+  useResetOnOpen(isOpen, () => setEditedText(text));
 
   const handleSave = () => {
     onSave(editedText);

@@ -253,7 +253,10 @@ function useProvideGameData() {
     }
   }, []);
 
-  const loadWorldData = useCallback((rawWorldData: World, isDefault = false) => {
+  // Returns the migrated world so a caller that also needs the loaded data (e.g. to seed a cross-world save
+  // load, or to cache it for later reuse) uses the current-shape version rather than the raw input — which
+  // would otherwise bypass the migration this function just applied.
+  const loadWorldData = useCallback((rawWorldData: World, isDefault = false): { world: World; isDefault: boolean } => {
     // Central sanitation net: normalize any legacy import shape to the current version (idempotent),
     // so worlds reaching the editor are always current regardless of which entry point loaded them.
     const worldData = migrateWorld(rawWorldData);
@@ -315,7 +318,7 @@ function useProvideGameData() {
       normalizedOverview, nextStats, nextLocations, nextEntities, nextEntityGroups, nextTraits, nextTraitGroups, nextStatUpdates, nextDictionaries, nextPlaceholders,
     )));
 
-    return isDefault;
+    return { world: worldData, isDefault };
   }, [setWorldOverview, setStats, setLocations, setEntities, setTraits, setStatUpdates, setDictionaries]);
 
   // The current editor state as a canonical world payload; the one source consumers serialize/save/export from.

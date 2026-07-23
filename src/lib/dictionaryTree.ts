@@ -39,6 +39,26 @@ export function moveEntryInBooks(
   overEntryId: string | null,
 ): Dictionary[] {
   if (!books.some((b) => b.id === targetBookId)) return books;
+  // Dropped on itself (a pick-up with no move): a no-op, like arrayMove(i, i). Without this, stripping the
+  // entry then `findIndex(over)` returns -1 (over IS the stripped entry) and the fallback appends it to the
+  // zone's end — so any in-place drag would banish the item to the bottom.
+  if (overEntryId === entryId) return books;
+
+  // Same-zone downward reorder: the entry sat *above* `over` in the same zone of the same book. Each zone is
+  // its own SortableContext, whose live preview (arrayMove) lands the entry *after* `over`. Insert-before —
+  // correct for upward, cross-zone, and cross-book moves — would drop it one slot too high here, mismatching
+  // the preview. Detected from the pre-move positions, so it only fires for a genuine same-zone reorder.
+  // `position` defaults to 'after' (the Foreground zone) when unset, so compare with that default applied —
+  // an untouched entry has `position: undefined` and a strict `===` would misread it as a cross-zone move.
+  const zone = (e: DictionaryEntry) => e.position ?? 'after';
+  const targetBook = books.find((b) => b.id === targetBookId);
+  const movedOrig = targetBook?.entries.find((e) => e.id === entryId);
+  const overOrig = overEntryId ? targetBook?.entries.find((e) => e.id === overEntryId) : undefined;
+  const insertAfterOver =
+    !!movedOrig && !!overOrig
+    && zone(movedOrig) === zone(overOrig)
+    && targetBook!.entries.indexOf(movedOrig) < targetBook!.entries.indexOf(overOrig);
+
   let moved: DictionaryEntry | undefined;
   const stripped = books.map((b) => {
     const idx = b.entries.findIndex((e) => e.id === entryId);
@@ -52,7 +72,8 @@ export function moveEntryInBooks(
     if (b.id !== targetBookId) return b;
     const entries = b.entries.slice();
     const oi = overEntryId ? entries.findIndex((e) => e.id === overEntryId) : -1;
-    entries.splice(oi === -1 ? entries.length : oi, 0, movedEntry);
+    const at = oi === -1 ? entries.length : insertAfterOver ? oi + 1 : oi;
+    entries.splice(at, 0, movedEntry);
     return { ...b, entries: normalizeZones(entries) };
   });
 }

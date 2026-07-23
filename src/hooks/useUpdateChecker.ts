@@ -71,7 +71,11 @@ export function useUpdateChecker(channel: UpdateChannel): UpdateChecker {
 
   const download = useCallback(() => {
     dispatch({ type: 'DOWNLOAD_START' });
-    void window.formamorphDesktop?.update?.download({ version: state.latestVersion, channel });
+    // The bridge exposes no error event, so a rejected download would otherwise leave the UI stuck at
+    // 'downloading' forever — surface it as an error the dialog can show and retry from.
+    window.formamorphDesktop?.update
+      ?.download({ version: state.latestVersion, channel })
+      .catch((e) => dispatch({ type: 'ERROR', error: (e as Error)?.message ?? 'Update download failed' }));
   }, [state.latestVersion, channel]);
 
   const applyAndRestart = useCallback(() => {

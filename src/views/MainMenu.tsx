@@ -536,10 +536,12 @@ const MainMenu = ({ onStartGame, onLoadSaveGame, onReplayIntro, introActive = fa
       const selectedWorld = worlds.find(w => w.id === worldId);
 
       if (worldData && selectedWorld) {
-        loadWorldData(worldData as World, true);
+        // Cache the migrated world (not the raw one) so downstream reuse — duplicate, use3DModel checks —
+        // sees the current shape instead of the legacy input.
+        const { world: migrated } = loadWorldData(worldData as World, true);
         setSelectedWorld({
           ...selectedWorld,
-          data: worldData
+          data: migrated
         });
         setShowWorldModal(true);
       }
@@ -821,7 +823,7 @@ const MainMenu = ({ onStartGame, onLoadSaveGame, onReplayIntro, introActive = fa
       const worldToDuplicate = selectedWorld!.data;
 
       // Generate a unique ID for the duplicated world
-      const worldId = `duplicate-${Date.now()}`;
+      const worldId = `duplicate-${randomUUID()}`;
 
       // Create a copy of the world with a new ID and modified name
       const duplicatedWorld = {
@@ -865,7 +867,7 @@ const MainMenu = ({ onStartGame, onLoadSaveGame, onReplayIntro, introActive = fa
   const handleCreateNewWorld = async () => {
     try {
       // Generate a unique ID for the new world
-      const worldId = `new-${Date.now()}`;
+      const worldId = `new-${randomUUID()}`;
 
       // Create a basic blank world structure
       const blankWorld: World = {
@@ -973,7 +975,7 @@ const MainMenu = ({ onStartGame, onLoadSaveGame, onReplayIntro, introActive = fa
     : 'Dictionary';
 
   // The menu's action buttons, shared between the full landscape row and the portrait hamburger popover.
-  // New/Import are contextual to the selected card type; only Worlds is wired up so far.
+  // New/Import are contextual to the selected card type.
   const actionButtons = (
     <>
       {COMMUNITY_ENABLED && (

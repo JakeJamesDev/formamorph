@@ -43,8 +43,11 @@ const HAIR_TYPES: Record<string, HairTypeDef> = {
   bobcut: { shapekey: 'Hair001', canChangeLength: false },
 };
 
-/** Body-shape slider keys → the morph that backs each, so a slider only shows when its morph exists. */
-const SHAPE_MORPH: Record<string, string> = { pear: 'B_Pear', apple: 'B_Apple', hourglass: 'B_HourGlass' };
+// Body-morph slider bounds. The stored value is the absolute morph influence (0 = off, 1 = the model's
+// authored full shape); this range only clamps the UI, so widening it later needs no save migration.
+const BODY_MORPH_MIN = -0.25;
+const BODY_MORPH_MAX = 1.25;
+const BODY_MORPH_STEP = 0.05;
 
 export interface VrmCustomization {
   /** Pass to `VRMViewer.onCapabilities` so the controls learn what the loaded model supports. */
@@ -77,10 +80,8 @@ export function useVrmCustomization(includeAnimateToggle = true): VrmCustomizati
   const [caps, setCaps] = useState<VRMCapabilities | null>(null);
   const vrmViewerRef = useRef<VRMViewerHandle>(null);
 
-  const [bodyShape, setBodyShape] = useState({ pear: 0, apple: 0, hourglass: 0 });
-  const [bellySize] = useState(0);
-  const [breastsSize, setBreastsSize] = useState(0);
-  const [bodyWeight, setBodyWeight] = useState(0);
+  // Chosen morph influences keyed by morph name; one slider is derived per morph the loaded model exposes.
+  const [bodyMorphs, setBodyMorphs] = useState<Record<string, number>>({});
   const [hairColor, setHairColor] = useState('#7d0909');
   const [eyeColor, setEyeColor] = useState('#86ff70');
   const [skinColor, setSkinColor] = useState('#fcdec7');
@@ -110,8 +111,8 @@ export function useVrmCustomization(includeAnimateToggle = true): VrmCustomizati
     }
   }, [caps, currentHairStyle]);
 
-  const handleBodyShapeChange = (shape: string, value: number[]) =>
-    setBodyShape((prev) => ({ ...prev, [shape]: value[0] }));
+  const setBodyMorph = (morph: string, value: number) =>
+    setBodyMorphs((prev) => ({ ...prev, [morph]: value }));
 
   const channelSetters = { hair: setHairColor, eye: setEyeColor, skin: setSkinColor } as const;
   const changeChannel = (channel: 'hair' | 'eye' | 'skin', value: string) => {
@@ -146,23 +147,12 @@ export function useVrmCustomization(includeAnimateToggle = true): VrmCustomizati
     if (calc) setExtraPicker((p) => ({ ...p, [name]: calc }));
   };
 
-  // Only surface sliders whose backing morph exists in the loaded model.
-  const visibleShapes = Object.entries(bodyShape).filter(([shape]) => caps?.bodyMorphs.includes(SHAPE_MORPH[shape]));
-  const bodyFeatures = [
-    { label: 'Breasts Size', value: breastsSize, setValue: setBreastsSize, morph: 'Breasts' },
-    { label: 'Body Weight', value: bodyWeight, setValue: setBodyWeight, morph: 'Fat' },
-  ].filter((f) => caps?.bodyMorphs.includes(f.morph));
+  // One slider per body morph the loaded model actually exposes — fully model-driven, nothing hardcoded.
+  const bodyMorphSliders = caps?.bodyMorphs ?? [];
   const visibleHairStyles = caps?.hairStyles ?? [];
 
   const viewerProps: VrmCustomization['viewerProps'] = {
-    bodyMorphValues: {
-      Belly: bellySize,
-      Breasts: breastsSize,
-      Fat: bodyWeight,
-      B_Pear: bodyShape.pear,
-      B_HourGlass: bodyShape.hourglass,
-      B_Apple: bodyShape.apple,
-    },
+    bodyMorphValues: bodyMorphs,
     hairColor: colorTouched.hair ? hairColor : undefined,
     eyeColor: colorTouched.eye ? eyeColor : undefined,
     skinColor: colorTouched.skin ? skinColor : undefined,
@@ -174,10 +164,7 @@ export function useVrmCustomization(includeAnimateToggle = true): VrmCustomizati
   };
 
   const characterData: Omit<CharacterData, 'playerModelId'> = {
-    bodyShape,
-    bellySize,
-    breastsSize,
-    bodyWeight,
+    bodyMorphs,
     hairColor: colorTouched.hair ? hairColor : undefined,
     eyeColor: colorTouched.eye ? eyeColor : undefined,
     skinColor: colorTouched.skin ? skinColor : undefined,
@@ -221,29 +208,26 @@ export function useVrmCustomization(includeAnimateToggle = true): VrmCustomizati
         </div>
       )}
 
-      {visibleShapes.length > 0 && (
-        <div className="space-y-4">
-          <h3 className="text-lg font-semibold">Body Shape</h3>
-          {visibleShapes.map(([shape, value]) => (
-            <div key={shape} className="space-y-2">
-              <Label htmlFor={shape}>{shape.charAt(0).toUpperCase() + shape.slice(1)}</Label>
-              <Slider id={shape} min={0} max={2} step={0.1} value={[value]} onValueChange={(v) => handleBodyShapeChange(shape, v)} />
-              <span className="text-sm text-muted-foreground">{value.toFixed(1)}</span>
-            </div>
-          ))}
-        </div>
-      )}
-
-      {bodyFeatures.length > 0 && (
+      {bodyMorphSliders.length > 0 && (
         <div className="space-y-4">
           <h3 className="text-lg font-semibold">Initial Body Features</h3>
-          {bodyFeatures.map(({ label, value, setValue }) => (
-            <div key={label} className="space-y-2">
-              <Label htmlFor={label.toLowerCase().replace(' ', '-')}>{label}</Label>
-              <Slider id={label.toLowerCase().replace(' ', '-')} min={-0.3} max={0.3} step={0.05} value={[value]} onValueChange={([v]) => setValue(v)} />
-              <span className="text-sm text-muted-foreground">{value.toFixed(1)}</span>
-            </div>
-          ))}
+          {bodyMorphSliders.map((morph) => {
+            const value = bodyMorphs[morph] ?? 0;
+            return (
+              <div key={morph} className="space-y-2">
+                <Label htmlFor={`morph-${morph}`}>{cleanLabel(morph)}</Label>
+                <Slider
+                  id={`morph-${morph}`}
+                  min={BODY_MORPH_MIN}
+                  max={BODY_MORPH_MAX}
+                  step={BODY_MORPH_STEP}
+                  value={[value]}
+                  onValueChange={([v]) => setBodyMorph(morph, v)}
+                />
+                <span className="text-sm text-muted-foreground">{value.toFixed(2)}</span>
+              </div>
+            );
+          })}
         </div>
       )}
 

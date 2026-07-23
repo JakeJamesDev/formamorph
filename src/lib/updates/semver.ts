@@ -17,6 +17,25 @@ export function parseVersion(v: string): SemVer | null {
   return { major: Number(m[1]), minor: Number(m[2]), patch: Number(m[3]), prerelease: m[4] ?? null };
 }
 
+/** Compare two dot-separated prerelease strings per semver section 11: identifier by identifier, numeric
+ *  ones numerically (so `beta.9` sorts before `beta.10`), numeric identifiers rank below alphanumeric, and
+ *  when all shared identifiers match the one with more identifiers wins. */
+function comparePrerelease(a: string, b: string): number {
+  const as = a.split('.');
+  const bs = b.split('.');
+  const len = Math.min(as.length, bs.length);
+  for (let i = 0; i < len; i++) {
+    const x = as[i], y = bs[i];
+    if (x === y) continue;
+    const xNum = /^\d+$/.test(x), yNum = /^\d+$/.test(y);
+    if (xNum && yNum) return Number(x) < Number(y) ? -1 : 1;
+    if (xNum !== yNum) return xNum ? -1 : 1; // numeric identifiers have the lower precedence
+    return x < y ? -1 : 1; // both alphanumeric → ASCII order
+  }
+  if (as.length !== bs.length) return as.length < bs.length ? -1 : 1;
+  return 0;
+}
+
 /** Returns negative when a precedes b, 0 when equal, positive when a follows b. Unparseable input compares
  *  as equal (so a bad tag never reads as newer). */
 export function compareSemver(a: string, b: string): number {
@@ -29,9 +48,7 @@ export function compareSemver(a: string, b: string): number {
   // Same core version: a final release outranks a prerelease of it.
   if (pa.prerelease && !pb.prerelease) return -1;
   if (!pa.prerelease && pb.prerelease) return 1;
-  if (pa.prerelease && pb.prerelease && pa.prerelease !== pb.prerelease) {
-    return pa.prerelease < pb.prerelease ? -1 : 1;
-  }
+  if (pa.prerelease && pb.prerelease) return comparePrerelease(pa.prerelease, pb.prerelease);
   return 0;
 }
 

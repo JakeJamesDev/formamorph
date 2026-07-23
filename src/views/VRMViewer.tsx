@@ -445,6 +445,12 @@ const VRMViewer = forwardRef<VRMViewerHandle, VRMViewerProps>(({
     // Initial resize to set correct dimensions
     handleResize();
 
+    // GLTFLoader/FBXLoader have no abort, so a flag gates their async callbacks: on unmount (model swap,
+    // layout change) an in-flight load must not repopulate nulled refs, attach to the disposed scene, or —
+    // once all FBX clips land — start the self-rescheduling animation timer chain that cleanup can no
+    // longer clear (its clearTimeout already ran while animTimeout was still undefined).
+    let cancelled = false;
+
     // Load VRM model
     const loader = new GLTFLoader();
     loader.register((parser) => new VRMLoaderPlugin(parser));
@@ -452,6 +458,7 @@ const VRMViewer = forwardRef<VRMViewerHandle, VRMViewerProps>(({
     loader.load(
       modelUrl,
       (gltf) => {
+        if (cancelled) return;
         const vrm: VRM = gltf.userData.vrm;
 
         scene.add(vrm.scene);
@@ -514,6 +521,7 @@ const VRMViewer = forwardRef<VRMViewerHandle, VRMViewerProps>(({
       const animationName = (animationPath.split('/').pop() ?? '').split('.')[0]; // Extract name from filename
       const loader = new FBXLoader();
       loader.load(animationPath, (asset) => {
+        if (cancelled) return;
         const clip = THREE.AnimationClip.findByName(asset.animations, 'mixamo.com');
         
         if (!clip || !vrmRef.current) {
@@ -605,6 +613,8 @@ const VRMViewer = forwardRef<VRMViewerHandle, VRMViewerProps>(({
     let animTimeout: ReturnType<typeof setTimeout> | undefined;
     const startAnimationLoop = () => {
       const playNextAnimation = () => {
+        // Stop the chain if the effect was cleaned up while a timer was pending (guards the post-unmount tick).
+        if (cancelled) return;
         // While frozen, don't swap/reset the clip (that would snap the pose to a new keyframe); re-check
         // shortly so the cycle resumes once animation is re-enabled.
         if (pausedRef.current) {
@@ -662,6 +672,8 @@ const VRMViewer = forwardRef<VRMViewerHandle, VRMViewerProps>(({
 
     // Cleanup function
     return () => {
+      // Gate any still-in-flight GLTF/FBX callbacks so they can't restart the animation loop post-unmount.
+      cancelled = true;
       window.removeEventListener('resize', handleResize);
       resizeObserver.disconnect();
       cancelAnimationFrame(rafId);

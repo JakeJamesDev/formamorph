@@ -82,6 +82,18 @@ function createWindow() {
     return { action: 'deny' };
   });
 
+  // Keep the window on its own origin. An in-window navigation away from app://local (or the dev server) —
+  // e.g. a redirect from rendered/imported content — would run with the full preload bridge (net-fetch to
+  // localhost, llm control) attached. Block it; http(s) targets still open in the system browser.
+  win.webContents.on('will-navigate', (event, url) => {
+    const dev = process.env.VITE_DEV_SERVER_URL;
+    const allowed = dev ? url.startsWith(dev) : url.startsWith('app://local');
+    if (!allowed) {
+      event.preventDefault();
+      if (/^https?:\/\//.test(url)) shell.openExternal(url);
+    }
+  });
+
   // Dev: load the Vite dev server when its URL is provided; otherwise the packaged build.
   const devURL = process.env.VITE_DEV_SERVER_URL;
   if (devURL) win.loadURL(devURL);
@@ -231,7 +243,10 @@ app.whenReady().then(() => {
     const { pathname } = new URL(request.url);
     const rel = pathname === '/' ? 'index.html' : decodeURIComponent(pathname).replace(/^\/+/, '');
     const filePath = path.join(DIST, rel);
-    if (!filePath.startsWith(DIST)) return new Response('Not found', { status: 404 });
+    // Containment must be a path check, not a string prefix: `startsWith(DIST)` also passes a sibling like
+    // `<DIST>-evil`. `path.relative` yields a `..`-leading (or absolute) path when filePath escapes DIST.
+    const relToDist = path.relative(DIST, filePath);
+    if (relToDist.startsWith('..') || path.isAbsolute(relToDist)) return new Response('Not found', { status: 404 });
     return net.fetch(pathToFileURL(filePath).toString());
   });
 

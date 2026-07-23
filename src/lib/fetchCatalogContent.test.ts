@@ -89,6 +89,37 @@ describe('fetchCatalogContent', () => {
     await expect(fetchCatalogContent('w1', () => {})).rejects.toThrow(/Invalid data/);
   });
 
+  // A fetch that never settles until its AbortSignal fires — models a server that stalls.
+  const stalling = () =>
+    vi.fn((_url: RequestInfo | URL, init?: RequestInit) =>
+      new Promise<Response>((_resolve, reject) => {
+        const sig = init?.signal;
+        const fail = () => reject(sig?.reason ?? new DOMException('Aborted', 'AbortError'));
+        if (sig?.aborted) fail();
+        else sig?.addEventListener('abort', fail, { once: true });
+      }),
+    );
+
+  it('aborts a stalled download instead of hanging forever', async () => {
+    vi.useFakeTimers();
+    vi.mocked(fetch).mockImplementation(stalling());
+    try {
+      const p = fetchCatalogContent('w1', () => {}, { stallTimeoutMs: 1000 });
+      const assertion = expect(p).rejects.toThrow(/stalled/i);
+      await vi.advanceTimersByTimeAsync(1100); // past the stall window → controller aborts the fetch
+      await assertion;
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it('rejects when the caller aborts via signal', async () => {
+    vi.mocked(fetch).mockImplementation(stalling());
+    const ac = new AbortController();
+    ac.abort(new DOMException('User canceled', 'AbortError'));
+    await expect(fetchCatalogContent('w1', () => {}, { signal: ac.signal })).rejects.toThrow();
+  });
+
   it('sends the auth header only when signed in', async () => {
     vi.mocked(fetch).mockResolvedValue(plain({ success: true, data: { contentData: {} } }));
 

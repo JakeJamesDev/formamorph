@@ -31,6 +31,20 @@ describe('compareSemver', () => {
     expect(compareSemver('2.1.0-beta.2', '2.1.0-beta.1')).toBe(1);
   });
 
+  it('orders numeric prerelease identifiers numerically, not lexically', () => {
+    // The bug: string compare made 'beta.10' < 'beta.9'. Semver orders these numerically.
+    expect(compareSemver('2.1.0-beta.10', '2.1.0-beta.9')).toBe(1);
+    expect(compareSemver('2.1.0-beta.9', '2.1.0-beta.10')).toBe(-1);
+    expect(isNewer('2.1.0-beta.10', '2.1.0-beta.9')).toBe(true);
+  });
+
+  it('follows semver identifier precedence (numeric < alphanumeric, more fields wins)', () => {
+    expect(compareSemver('1.0.0-alpha', '1.0.0-alpha.1')).toBe(-1); // fewer fields precede
+    expect(compareSemver('1.0.0-alpha.1', '1.0.0-alpha.beta')).toBe(-1); // numeric < alphanumeric
+    expect(compareSemver('1.0.0-beta', '1.0.0-alpha')).toBe(1); // ASCII order for alphanumerics
+    expect(compareSemver('1.0.0-rc.1', '1.0.0-rc.1')).toBe(0);
+  });
+
   it('compares as equal when either side is unparseable (no false newer)', () => {
     expect(compareSemver('garbage', '2.1.0')).toBe(0);
     expect(compareSemver('2.1.0', 'garbage')).toBe(0);

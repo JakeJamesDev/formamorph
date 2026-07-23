@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { toast } from "react-toastify";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
@@ -41,17 +41,23 @@ export function RemoteWorldDetailsModal({
   const [commentText, setCommentText] = useState('');
   const [postingComment, setPostingComment] = useState(false);
 
+  // Token each comments fetch so a slow response for a since-closed world can't land in a different world's
+  // modal: opening world B fires a newer request, and world A's late result is discarded.
+  const commentsReqRef = useRef(0);
+
   // Load comments for the world detail modal (page 1 resets, higher pages append).
   const loadComments = async (worldId: string, page = 1) => {
+    const reqId = ++commentsReqRef.current;
     setCommentsLoading(true);
     try {
       const res = await WorldStorageService.fetchComments(worldId, page, 20);
+      if (reqId !== commentsReqRef.current) return; // superseded by a newer world's fetch
       setCommentsTotal(res.total);
       setCommentsHasMore(!!res.pagination?.next);
       setCommentsPage(page);
       setComments((prev) => (page === 1 ? res.data : [...prev, ...res.data]));
     } finally {
-      setCommentsLoading(false);
+      if (reqId === commentsReqRef.current) setCommentsLoading(false);
     }
   };
 

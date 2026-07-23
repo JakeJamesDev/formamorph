@@ -29,13 +29,17 @@ describe('EditTextModal', () => {
     expect(onOpenChange).toHaveBeenCalledWith(false);
   });
 
-  it('resets the field when the text prop changes', () => {
+  it('reseeds from text on each open, discarding edits abandoned on a prior open', () => {
+    // Cancel + reopen the SAME text (prop unchanged) must clear the abandoned edit — the bug was reseeding
+    // only when `text` changed, so a same-text reopen kept the discarded draft.
     const { rerender } = render(
       <EditTextModal isOpen text="a" onOpenChange={() => {}} onSave={() => {}} />,
     );
-    expect((screen.getByRole('textbox') as HTMLTextAreaElement).value).toBe('a');
+    const box = () => screen.getByRole('textbox') as HTMLTextAreaElement;
+    fireEvent.change(box(), { target: { value: 'abandoned edit' } });
 
-    rerender(<EditTextModal isOpen text="b" onOpenChange={() => {}} onSave={() => {}} />);
-    expect((screen.getByRole('textbox') as HTMLTextAreaElement).value).toBe('b');
+    rerender(<EditTextModal isOpen={false} text="a" onOpenChange={() => {}} onSave={() => {}} />); // close
+    rerender(<EditTextModal isOpen text="a" onOpenChange={() => {}} onSave={() => {}} />); // reopen, same text
+    expect(box().value).toBe('a'); // reseeded, not the abandoned edit
   });
 });

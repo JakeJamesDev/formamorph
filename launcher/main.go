@@ -12,6 +12,8 @@ package main
 
 import (
 	"archive/zip"
+	"crypto/sha512"
+	"encoding/hex"
 	"encoding/json"
 	"io"
 	"os"
@@ -77,6 +79,14 @@ func applyUpdate(root string) {
 
 	p, err := readPending(updatesDir)
 	if err != nil || p.Zip == "" {
+		launchApp(root, nil, false)
+		return
+	}
+
+	// Re-verify the staged zip against its recorded checksum before extracting. The Electron app verified it
+	// at download time, but this runs later (after a full app quit), so a payload swapped on disk in between
+	// would otherwise be trusted. Fail closed on a missing or mismatched hash: skip the update, launch as-is.
+	if sum, sErr := sha512File(p.Zip); sErr != nil || p.Sha512 == "" || !strings.EqualFold(sum, p.Sha512) {
 		launchApp(root, nil, false)
 		return
 	}
@@ -157,6 +167,21 @@ func readPending(dir string) (pending, error) {
 func fileExists(p string) bool {
 	_, err := os.Stat(p)
 	return err == nil
+}
+
+// sha512File returns the lowercase hex SHA-512 of a file, streamed so a multi-hundred-MB payload isn't
+// buffered in memory.
+func sha512File(path string) (string, error) {
+	f, err := os.Open(path)
+	if err != nil {
+		return "", err
+	}
+	defer f.Close()
+	h := sha512.New()
+	if _, err := io.Copy(h, f); err != nil {
+		return "", err
+	}
+	return hex.EncodeToString(h.Sum(nil)), nil
 }
 
 // renameRetry retries a rename until it succeeds or the timeout expires, giving the exiting app time to

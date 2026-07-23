@@ -153,6 +153,21 @@ describe('applyTraitStatChanges', () => {
     expect(stats[0].min).toBe(10);
   });
 
+  it('applies a stat\'s bounds adjustment once even with multiple changes (no per-change over-adjust)', () => {
+    // min +30 pulls value 20 up to the floor (a +10 adjustment); the second change (max +50) must not
+    // re-apply that +10. Pre-fix this landed at 40; correct is 30.
+    const { stats } = applyTraitStatChanges(
+      [stat({ id: 'h', value: 20, min: 0, max: 100 })],
+      [
+        { statId: 'h', value: 30, type: 'min' },
+        { statId: 'h', value: 50, type: 'max' },
+      ],
+    );
+    expect(stats[0].min).toBe(30);
+    expect(stats[0].max).toBe(150);
+    expect(stats[0].value).toBe(30);
+  });
+
   it('raising min pulls the value up to the new floor', () => {
     const { stats } = applyTraitStatChanges(
       [stat({ id: 'h', value: 50, min: 0 })],

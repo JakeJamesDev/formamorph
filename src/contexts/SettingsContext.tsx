@@ -197,7 +197,14 @@ function useProvideSettings() {
     const saved = localStorage.getItem(`${APP_ID}_paragraphLimit`);
     if (saved === 'none' || saved === 'single' || saved === 'auto') return saved;
     const legacy = localStorage.getItem(`${APP_ID}_shortform`);
-    if (legacy !== null) return JSON.parse(legacy) ? 'single' : 'none';
+    // Guard the parse: a corrupt legacy value must not crash this root-provider initializer.
+    if (legacy !== null) {
+      try {
+        return JSON.parse(legacy) ? 'single' : 'none';
+      } catch {
+        /* ignore corrupt legacy value → fall through to the default */
+      }
+    }
     return 'auto';
   });
   useEffect(() => {
@@ -288,7 +295,14 @@ function useProvideSettings() {
   // with any non-default stored value default on, so a saved/working config isn't silently dropped.
   const [useCustomEndpoint, setUseCustomEndpoint] = useState<boolean>(() => {
     const saved = localStorage.getItem(`${APP_ID}_useCustomEndpoint`);
-    if (saved !== null) return JSON.parse(saved);
+    // Guard the parse: a corrupt value falls through to detection instead of crashing the boot render.
+    if (saved !== null) {
+      try {
+        return JSON.parse(saved);
+      } catch {
+        /* fall through to the non-default detection below */
+      }
+    }
     return (
       (localStorage.getItem(`${APP_ID}_endpointUrl`) ?? DEFAULT_ENDPOINT) !== DEFAULT_ENDPOINT ||
       (localStorage.getItem(`${APP_ID}_apiToken`) ?? DEFAULT_API_TOKEN) !== DEFAULT_API_TOKEN ||
@@ -344,9 +358,14 @@ function useProvideSettings() {
     ? localContextSize
     : DEFAULT_CONTEXT_WINDOW;
 
+  const detectReqRef = useRef(0);
   const detectContextWindow = useCallback(async (force = false) => {
+    // Token this probe so a slow one for a since-abandoned endpoint can't overwrite a newer endpoint's
+    // detected window: switching A→B fires a new probe (higher token), and A's late result is discarded.
+    const reqId = ++detectReqRef.current;
     setDetectStatus('detecting');
     const detected = await fetchContextLength(activeEndpointUrl, activeApiToken, activeModelName);
+    if (reqId !== detectReqRef.current) return; // superseded by a newer detect
     if (detected !== null) {
       setDetectedContextWindow(detected);
       if (force) setContextWindowOverride(null); // snap the field back to the detected value

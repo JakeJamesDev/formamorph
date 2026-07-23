@@ -34,13 +34,6 @@ export interface LogEntry {
   repeat: number;
 }
 
-/** Body-silhouette blend weights driving the corresponding VRM morphs. */
-export interface BodyShape {
-  pear: number;
-  apple: number;
-  hourglass: number;
-}
-
 /** A VRM hair variant: its morph shapekey and whether length is adjustable. */
 export interface HairTypeDef {
   shapekey: string;
@@ -49,10 +42,11 @@ export interface HairTypeDef {
 
 /** The player character's appearance customization applied to the VRM model. */
 export interface CharacterData {
-  bodyShape: BodyShape;
-  bellySize: number;
-  breastsSize: number;
-  bodyWeight: number;
+  /** Chosen body-morph influences, keyed by the model's morph name. The value is the absolute morph
+   *  influence written to three.js (0 = off, 1 = the model's authored full shape); the customization
+   *  slider's range is only a UI clamp, so it can change without touching this stored meaning. Auto-derived
+   *  per model, so any morph the model exposes is adjustable — nothing is hardcoded to a fixed field. */
+  bodyMorphs: Record<string, number>;
   /** Colors are present only if the player actually changed them; otherwise the model keeps its own. */
   hairColor?: string;
   eyeColor?: string;

@@ -33,7 +33,7 @@ const CharacterCustomization = ({ onCharacterCustomized, onBack, onAbort }: {
   // Player model selection + local model library (per-browser, persisted in IndexedDB).
   const [selectedModelId, setSelectedModelId] = useState<string>(worldOverview?.customPlayerVRM ? 'world' : DEFAULT_MODEL_ID);
   const [libraryModels, setLibraryModels] = useState<ModelMetadata[]>([]);
-  const resolvedModelUrl = usePlayerModelUrl(selectedModelId);
+  const { url: resolvedModelUrl, resolving: resolvingModel } = usePlayerModelUrl(selectedModelId);
   const refreshLibrary = () => ModelStorageService.getModelMetadata().then(setLibraryModels);
   // Seed the bundled default before listing, so the picker isn't blank if this screen is reached before
   // MainMenu has seeded (its default selection is DEFAULT_MODEL_ID, which must exist to show as selected).
@@ -71,10 +71,6 @@ const CharacterCustomization = ({ onCharacterCustomized, onBack, onAbort }: {
   const handleFinalize = () => {
     onCharacterCustomized({ ...characterData, playerModelId: selectedModelId });
   };
-
-  // A library model is still loading its blob URL — show a loader instead of transiently mounting the default
-  // model (which would otherwise report default capabilities and leave the UI stuck on them after a few swaps).
-  const resolvingModel = selectedModelId !== DEFAULT_MODEL_ID && selectedModelId !== 'world' && !resolvedModelUrl;
 
   // Portrait/narrow: the controls move into a bottom drawer that hovers over the viewer, so the model gets the
   // full width and the panel no longer truncates. Desktop keeps the side-by-side split.
@@ -174,14 +170,7 @@ const CharacterCustomization = ({ onCharacterCustomized, onBack, onAbort }: {
 
 // eslint-disable-next-line react-refresh/only-export-components
 export const defaultCharacterData = {
-  bodyShape: {
-    pear: 0,
-    apple: 0,
-    hourglass: 0
-  },
-  bellySize: 0,
-  breastsSize: 0,
-  bodyWeight: 0,
+  bodyMorphs: {},
   // No colors → the model keeps its own when customization is skipped.
   currentHairStyle: '',
   hairLength: 0,

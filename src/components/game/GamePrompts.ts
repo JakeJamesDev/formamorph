@@ -73,7 +73,7 @@ export function activeCharacterGuidance(enabled: boolean, limit: number): string
 
 // The editable user-message templates for the aux requests. These carry the framing labels and the terse
 // task cue (anchored last, so a small model doesn't just continue the story) that used to be hardcoded in
-// GameViewer. Runtime values are the <PLAYER ACTION> and <GAME TEXT> tokens, substituted per turn.
+// GameViewer. Runtime values are the <PLAYER ACTION> and <NARRATION> tokens, substituted per turn.
 // The opening turn has no prior narration to imitate, so the bare "START GAME" sentinel lets the model fall
 // back on generic-assistant habits (e.g. closing with "What do you want to do?"). This anchored cue replaces
 // that sentinel as the opening narration's user message — a real instruction in the high-recency slot.
