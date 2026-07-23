@@ -135,8 +135,10 @@ export interface MatchRule {
 }
 
 /** Why an entry did or didn't activate. `keyword` = a scanned-text hit; `recursive` = fired against another
- *  active entry's value; `constant` = always-on; `none` = not activated (disabled, or no qualifying hit). */
-export type ActivationReason = 'constant' | 'keyword' | 'recursive' | 'none';
+ *  active entry's value; `constant` = always-on; `semantic` = meaning-similar to the player action (applied
+ *  after the keyword pass by lib/semanticDictionary — never overrides a keyword reason); `none` = not
+ *  activated (disabled, or no qualifying hit). */
+export type ActivationReason = 'constant' | 'keyword' | 'recursive' | 'semantic' | 'none';
 
 /** One entry's activation outcome with the evidence behind it. */
 export interface EntryActivation {
@@ -148,6 +150,8 @@ export interface EntryActivation {
   /** Present only when the entry has `secondaryKeys`. */
   secondary?: SecondaryStatus;
   rule: MatchRule;
+  /** Cosine similarity to the player action; present only when `reason` is 'semantic'. */
+  semanticSimilarity?: number;
 }
 
 /** Full per-entry activation report — the single source of truth `getActivatedDictionary` also runs on. */

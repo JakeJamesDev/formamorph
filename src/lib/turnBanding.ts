@@ -62,6 +62,11 @@ export interface BandResult {
   counts: BandCounts;
 }
 
+/** How many of the band's newest digests are immune to ranked (relevance) dropping — the immediate
+ *  scene lead-in must survive however low it scores, or a topically-hot old memory can evict the turn
+ *  the scene is actually continuing from (probe: semantic-band control case). */
+export const RANKED_RECENT_IMMUNE = 2;
+
 /** Common words that carry no retrieval signal; dropped from lexical keywords (1–2 char words are
  *  already excluded by the length floor). */
 const STOPWORDS = new Set([
@@ -275,12 +280,15 @@ export function buildBandedHistory(args: {
   const scored = relevanceScores !== null && bandTurns.every((t) => t.turnId && relevanceScores.has(t.turnId));
   let turnsRelevanceDropped = 0;
   while (bandTokens > remaining && bandTurns.length > 0) {
-    if (scored && bandTurns.length > 1) {
-      // Drop the least relevant memory, chronological order preserved. Index 0 — the oldest survivor —
-      // is never eligible: losing the story's opening makes the recap start mid-scene and models write
-      // a fresh establishing scene over the live one (same guard as resolveMilestoneKeep).
+    // Ranked drop protects both ends of the band: index 0 (the story's opening — losing it makes the
+    // recap start mid-scene and models write a fresh establishing scene over the live one, same guard
+    // as resolveMilestoneKeep) and the newest RANKED_RECENT_IMMUNE digests (the immediate scene
+    // lead-in — the probe's control case showed a topical old memory can outscore it, same failure
+    // class). Only the middle competes on relevance; an all-protected band falls back to oldest-first.
+    const lastEligible = bandTurns.length - 1 - RANKED_RECENT_IMMUNE;
+    if (scored && lastEligible >= 1) {
       let lowest = 1;
-      for (let i = 2; i < bandTurns.length; i++) {
+      for (let i = 2; i <= lastEligible; i++) {
         if (relevanceScores.get(bandTurns[i].turnId!)! < relevanceScores.get(bandTurns[lowest].turnId!)!) lowest = i;
       }
       bandTurns = bandTurns.slice(0, lowest).concat(bandTurns.slice(lowest + 1));

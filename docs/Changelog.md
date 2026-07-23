@@ -17,6 +17,11 @@ _Unreleased — new work accumulates here until it earns a version bump. The nex
 #### ✨ Added
 
 - **👤 User-facing**
+  - **Semantic Lore (experimental).** A companion toggle to Semantic Memory, off by default. Dictionary entries can now also activate when your action's *meaning* matches them, even with none of their keywords in the text — "I climb the ruined tower on the headland" wakes an Old Beacon entry whose keywords are only "beacon, lighthouse". Keyword activation is completely unchanged; meaning-matches only ever add entries (at most three per turn, above a tuned similarity bar). The AI-context legend marks them with ≈ and shows the similarity, since there's no keyword hit to highlight. Uses the same on-device model as Semantic Memory. For authors: a clear, concrete entry description now doubles as its activation net — sprawling synonym keyword lists become optional rather than necessary.
+- **🛠️ Developer tooling**
+  - **Semantic-lore probe.** `semantic-lore-probe.mjs` + `semantic-lore-cases.json`: threshold sweep for meaning-based dictionary activation — paraphrase actions (asserted keyword-free) vs unrelated actions, precision/recall per candidate threshold, shipped value marked.
+  - **Semantic-band probe.** `semantic-band-probe.mjs` + `semantic-band-cases.json`: A/Bs the two digest-band trim strategies on a 28-digest story with planted old facts — a deterministic trim-survival stage (embeddings in Node, no LLM) and a narration-recall stage on both test targets.
+- **👤 User-facing**
   - **Semantic Memory (experimental).** A new toggle under Settings → Gameplay, off by default. When the story's remembered moments no longer fit the context budget, the game normally lets the oldest go first; with Semantic Memory on it instead keeps the ones most relevant to what you're doing right now — an old promise resurfaces when you return to the person you made it to. Relevance is judged by a small AI model running entirely on your device (a one-time ~23 MB download when you enable it); nothing about your story leaves your machine, and if the model isn't ready the game simply falls back to the old behavior. The milestone keep/forget system and your pins are unchanged — this only reorders what gets trimmed under pressure.
 
 ---

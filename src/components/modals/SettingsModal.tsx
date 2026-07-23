@@ -390,6 +390,8 @@ export const SettingsModal = ({ isOpen, onOpenChange, previewValues, initialTab,
     setMemoryDigests,
     semanticMemory,
     setSemanticMemory,
+    semanticLore,
+    setSemanticLore,
     concurrentTurnRequests,
     setConcurrentTurnRequests,
     autosaveEnabled,
@@ -490,7 +492,12 @@ export const SettingsModal = ({ isOpen, onOpenChange, previewValues, initialTab,
   const handleSemanticMemoryToggle = (on: boolean) => {
     setSemanticMemory(on);
     if (on) startEmbeddingDownload();
-    else void disposeEmbeddingModel();
+    else if (!semanticLore) void disposeEmbeddingModel(); // model stays while any semantic feature needs it
+  };
+  const handleSemanticLoreToggle = (on: boolean) => {
+    setSemanticLore(on);
+    if (on) startEmbeddingDownload();
+    else if (!semanticMemory) void disposeEmbeddingModel();
   };
   const handleResetEndpointSettings = () => {
     setEndpointUrl(DEFAULT_ENDPOINT);
@@ -1069,37 +1076,57 @@ export const SettingsModal = ({ isOpen, onOpenChange, previewValues, initialTab,
                   <label htmlFor="semanticMemory" className="text-left sm:text-right leading-4">
                     Semantic Memory
                   </label>
-                  <div className="col-span-3 flex flex-col gap-2">
-                    <div className="flex items-start gap-2">
-                      <Checkbox
-                        id="semanticMemory"
-                        checked={semanticMemory}
-                        onCheckedChange={(c) => handleSemanticMemoryToggle(c === true)}
-                        className="shrink-0"
-                      />
-                      <span className="text-xs text-muted-foreground">
-                        Experimental. When memories no longer fit, keeps the ones most relevant to your current action instead of just the newest. Runs a small language model on your device — enabling downloads it once (~23 MB) and stores it in your browser.
-                      </span>
-                    </div>
-                    {embedLoading && (
-                      <div className="flex items-center gap-2">
-                        <Progress
-                          className="h-2 flex-1"
-                          value={embedProgress && embedProgress.total > 0 ? (embedProgress.loaded / embedProgress.total) * 100 : 0}
-                        />
-                        <span className="text-xs text-muted-foreground whitespace-nowrap">
-                          {embedProgress && embedProgress.total > 0
-                            ? `${Math.round(embedProgress.loaded / 1048576)} / ${Math.round(embedProgress.total / 1048576)} MB`
-                            : 'Preparing…'}
-                        </span>
-                      </div>
-                    )}
-                    {embedError && !embedLoading && (
-                      <div className="flex items-center gap-2">
-                        <span className="text-xs text-destructive">Model download failed: {embedError}</span>
-                        <Button variant="outline" size="sm" onClick={startEmbeddingDownload}>Retry</Button>
-                      </div>
-                    )}
+                  <div className="col-span-3 flex items-start gap-2">
+                    <Checkbox
+                      id="semanticMemory"
+                      checked={semanticMemory}
+                      onCheckedChange={(c) => handleSemanticMemoryToggle(c === true)}
+                      className="shrink-0"
+                    />
+                    <span className="text-xs text-muted-foreground">
+                      Experimental. When memories no longer fit, keeps the ones most relevant to your current action instead of just the newest. Runs a small language model on your device — enabling downloads it once (~23 MB) and stores it in your browser.
+                    </span>
+                  </div>
+                </div>
+              )}
+              <div className="grid grid-cols-1 sm:grid-cols-4 items-start gap-4">
+                <label htmlFor="semanticLore" className="text-left sm:text-right leading-4">
+                  Semantic Lore
+                </label>
+                <div className="col-span-3 flex items-start gap-2">
+                  <Checkbox
+                    id="semanticLore"
+                    checked={semanticLore}
+                    onCheckedChange={(c) => handleSemanticLoreToggle(c === true)}
+                    className="shrink-0"
+                  />
+                  <span className="text-xs text-muted-foreground">
+                    Experimental. Dictionary entries also activate when your action&apos;s meaning matches them, even with none of their keywords — &quot;the ruined tower&quot; can wake an Old Beacon entry. Keyword activation is unchanged; this only adds entries. Uses the same on-device model as Semantic Memory (~23 MB download on first enable).
+                  </span>
+                </div>
+              </div>
+              {embedLoading && (
+                <div className="grid grid-cols-1 sm:grid-cols-4 items-center gap-4">
+                  <span />
+                  <div className="col-span-3 flex items-center gap-2">
+                    <Progress
+                      className="h-2 flex-1"
+                      value={embedProgress && embedProgress.total > 0 ? (embedProgress.loaded / embedProgress.total) * 100 : 0}
+                    />
+                    <span className="text-xs text-muted-foreground whitespace-nowrap">
+                      {embedProgress && embedProgress.total > 0
+                        ? `${Math.round(embedProgress.loaded / 1048576)} / ${Math.round(embedProgress.total / 1048576)} MB`
+                        : 'Preparing…'}
+                    </span>
+                  </div>
+                </div>
+              )}
+              {embedError && !embedLoading && (semanticMemory || semanticLore) && (
+                <div className="grid grid-cols-1 sm:grid-cols-4 items-center gap-4">
+                  <span />
+                  <div className="col-span-3 flex items-center gap-2">
+                    <span className="text-xs text-destructive">Model download failed: {embedError}</span>
+                    <Button variant="outline" size="sm" onClick={startEmbeddingDownload}>Retry</Button>
                   </div>
                 </div>
               )}

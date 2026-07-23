@@ -299,23 +299,24 @@ describe('buildBandedHistory relevance-ranked trimming', () => {
   const scores = (map: Record<string, number>) => new Map(Object.entries(map));
   const survivors = (recap: string) => ['D1', 'D2', 'D3', 'D4', 'D5'].filter((d) => recap.includes(d));
 
-  it('drops the lowest-scored memories instead of the oldest, keeping chronological order', () => {
+  it('drops the lowest-scored eligible memories instead of the oldest, keeping chronological order', () => {
     const { recap, counts } = buildBandedHistory({
       ...base, turns: fiveTurns(),
       relevanceScores: scores({ t1: 0.9, t2: 0.1, t3: 0.8, t4: 0.2, t5: 0.7 }),
     });
-    expect(survivors(recap)).toEqual(['D1', 'D3', 'D5']);
+    // t4/t5 are the newest two (immune); the middle competes and t2 then t3 go.
+    expect(survivors(recap)).toEqual(['D1', 'D4', 'D5']);
     expect(counts.turnsRelevanceDropped).toBe(2);
     expect(counts.turnsSelectedOut).toBe(0);
   });
 
-  it('never drops the oldest surviving memory, even at the lowest score', () => {
+  it('never drops the protected ends — opening or the newest two — however low they score', () => {
     const { recap } = buildBandedHistory({
       ...base, turns: fiveTurns(),
-      relevanceScores: scores({ t1: 0.0, t2: 0.9, t3: 0.8, t4: 0.1, t5: 0.2 }),
+      relevanceScores: scores({ t1: 0.0, t2: 0.9, t3: 0.8, t4: 0.0, t5: 0.0 }),
     });
-    // t1 scores lowest but holds the story's opening; t4 and t5 go instead.
-    expect(survivors(recap)).toEqual(['D1', 'D2', 'D3']);
+    // t1 (opening) and t4/t5 (scene lead-in) all score lowest yet survive; the middle goes instead.
+    expect(survivors(recap)).toEqual(['D1', 'D4', 'D5']);
   });
 
   it('falls back to oldest-first when the score map misses any band turn', () => {

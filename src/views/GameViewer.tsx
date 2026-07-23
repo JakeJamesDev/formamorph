@@ -81,6 +81,7 @@ import { useBaselineTestHook } from "../lib/baselineTestHook";
 import { parseTurns, buildVerbatimHistory, buildBandedHistory, extractKeywords, type BandCounts } from "../lib/turnBanding";
 import { milestoneCandidates, agedMilestoneCandidates, resolveMilestoneDrop, buildMilestoneUserMessage, parseMilestoneReply } from "../lib/milestoneMemory";
 import { buildRelevanceScores, vectorKey } from "../lib/memoryRelevance";
+import { entryVectorKey, entryEmbedText, selectSemanticLore, applySemanticLore } from "../lib/semanticDictionary";
 import { embedTexts, isEmbeddingModelReady, loadEmbeddingModel } from "../lib/embeddingWorkerClient";
 import { getVectors, putVector } from "../lib/embeddingCache";
 import { findEntityNames, matchNames, matchNamesLoose, sameCharacterName } from "../lib/entityMatch";
@@ -286,6 +287,7 @@ const GameViewer = ({
     thinkingPrompt,
     memoryDigests,
     semanticMemory,
+    semanticLore,
     concurrentTurnRequests,
     autosaveEnabled,
     limitActiveCharacters,
@@ -888,26 +890,36 @@ const GameViewer = ({
     return buildVerbatimHistory(turns, contextWindow, promptTokens, maxTokens);
   }, [fullMessageHistory, contextWindow, maxTokens, memoryDigests, dictionary, allEntities, narrationVerbatimTurns, getMilestoneDrop, recapUserPrompt, currentLocation, playerNotes]);
 
-  // Semantic memory: score every digest against the current action so band trimming can drop the least
-  // relevant memory instead of the oldest. Null on ANY miss (feature off, model cold, a digest not yet
-  // embedded, worker slow) — banding then falls back to oldest-first; a degraded score set must never
-  // silently change which memories ride. The 2s race bounds a wedged worker, not normal inference (~ms).
-  const computeRelevanceScores = useCallback(async (action: string): Promise<Map<string, number> | null> => {
-    if (!semanticMemory || !memoryDigests || !isEmbeddingModelReady()) return null;
+  // The action's embedding, shared by every semantic consumer this turn (band relevance + lore
+  // activation) so the action is embedded once. Null when no semantic feature is on, the model is
+  // cold, the action is empty, or the worker stalls (the 2s race bounds a wedged worker, not normal
+  // inference (~ms)) — consumers then fail open. Query is the BARE action: appending location or
+  // participants measurably poisons ranking — location terms dominate MiniLM similarity, so every
+  // digest mentioning the current place outscores the memory the action is actually about
+  // (semantic-band-probe trim stage: the letter target ranked 15/28 with the location clause, 5/28
+  // without; all four planted targets survive action-only).
+  const embedActionVec = useCallback(async (action: string): Promise<Float32Array | null> => {
+    const anySemantic = (semanticMemory && memoryDigests) || semanticLore;
+    if (!anySemantic || !isEmbeddingModelReady() || !action.trim()) return null;
     try {
-      const participants = recentParticipants(fullMessageHistory, 3);
-      const query = [action, currentLocation?.name, participants.join(", ")].filter(Boolean).join(" — ");
-      if (!query.trim()) return null;
       const vecs = await Promise.race([
-        embedTexts([query]),
+        embedTexts([action]),
         new Promise<null>((resolve) => setTimeout(() => resolve(null), 2000)),
       ]);
-      if (!vecs || vecs.length === 0) return null;
-      return buildRelevanceScores(parseTurns(fullMessageHistory), vecs[0], embedVectorsRef.current);
+      return vecs && vecs.length > 0 ? vecs[0] : null;
     } catch {
       return null;
     }
-  }, [semanticMemory, memoryDigests, fullMessageHistory, currentLocation]);
+  }, [semanticMemory, memoryDigests, semanticLore]);
+
+  // Semantic memory: score every digest against the current action so band trimming can drop the least
+  // relevant memory instead of the oldest. Null on ANY miss (feature off, no action vector, a digest
+  // not yet embedded) — banding then falls back to oldest-first; a degraded score set must never
+  // silently change which memories ride.
+  const computeRelevanceScores = useCallback((actionVec: Float32Array | null): Map<string, number> | null => {
+    if (!actionVec || !semanticMemory || !memoryDigests) return null;
+    return buildRelevanceScores(parseTurns(fullMessageHistory), actionVec, embedVectorsRef.current);
+  }, [semanticMemory, memoryDigests, fullMessageHistory]);
 
   // Drive body morphs from the viewed stats (live on the latest page, the paged turn's when viewing the
   // past): each stat's bound sliders track its value (min→max → 0→1 influence), so the avatar re-morphs to
@@ -1234,7 +1246,14 @@ const GameViewer = ({
         notes: systemPrompt.includes("<NOTES>") ? ctx["<NOTES>"] : playerNotes,
         history: fullMessageHistory,
       });
+      // One action embedding for every semantic consumer this turn (lore activation here, band
+      // relevance below). Null = all semantic features quietly off for this turn.
+      const actionVec = await embedActionVec(effectiveAction);
       const activationReport = explainActivation(dictionary, dictCorpus.scene, { history: dictCorpus.history });
+      if (semanticLore && actionVec) {
+        // Additive meaning-based activations; a keyword reason always wins (see lib/semanticDictionary).
+        applySemanticLore(activationReport, selectSemanticLore(dictionary, actionVec, embedVectorsRef.current));
+      }
       const activatedEntries = dictionary.filter(
         (e) => e.enabled !== false && activationReport.byId.get(e.id)?.activated,
       );
@@ -1288,7 +1307,7 @@ ${playerNotes || NONE_PLACEHOLDER}
       // Get trimmed history before adding new action (history fills the window left by the prompt).
       // Pass the action so banding can rehydrate older turns it references. Relevance scores are
       // computed once here and shared with the planner rebuild below so both stages trim identically.
-      const relevanceScores = await computeRelevanceScores(effectiveAction);
+      const relevanceScores = computeRelevanceScores(actionVec);
       lastRelevanceScoresRef.current = relevanceScores; // the context meter re-trims with the same scores
       const trimmedHistory = getTrimmedMessageHistory(estimateTokens(updatedPrompt.length), effectiveAction, relevanceScores);
 
@@ -2524,51 +2543,63 @@ ${playerNotes || NONE_PLACEHOLDER}
     })();
   }, [memoryDigests, isWaitingForAI, diaryActive, discoverActive, fullMessageHistory, narrationVerbatimTurns, milestoneSelection, setMilestoneSelection]);
 
-  // Embedding drainer: keep a vector on hand for every digest so relevance scoring is a sync lookup at
-  // turn time. Cache-first (IndexedDB, hash-keyed so save/world switches just repopulate), then batch-
-  // embeds the rest in the worker. Runs off the LLM path entirely — it only serializes against itself.
-  // Until every digest is covered, scoring returns null and banding stays oldest-first (fail open).
+  // Embedding drainer: keep a vector on hand for everything the semantic features score at turn time —
+  // turn digests (semanticMemory) and dictionary entries (semanticLore) — so scoring is a sync lookup.
+  // Cache-first (IndexedDB, hash-keyed so save/world switches just repopulate), then batch-embeds the
+  // rest in the worker. Runs off the LLM path entirely — it only serializes against itself. Until an
+  // item is covered it simply can't score (band: fail open to oldest-first; lore: entry can't fire).
   useEffect(() => {
-    if (!semanticMemory || !memoryDigests || embedDrainingRef.current) return;
+    const wantDigests = semanticMemory && memoryDigests;
+    if ((!wantDigests && !semanticLore) || embedDrainingRef.current) return;
     if (!isEmbeddingModelReady()) {
-      // A session that starts with the toggle already on re-opens the model from the browser cache
+      // A session that starts with a toggle already on re-opens the model from the browser cache
       // (or retries a failed first download) in the background, once.
       if (!embedModelKickedRef.current) {
         embedModelKickedRef.current = true;
-        loadEmbeddingModel().catch(() => {}); // failure keeps scoring fail-open; Settings offers Retry
+        loadEmbeddingModel().catch(() => {}); // failure keeps everything fail-open; Settings offers Retry
       }
       return;
     }
-    const digests = parseTurns(fullMessageHistory)
-      .filter((t) => t.summary && t.summary.trim())
-      .map((t) => t.summary!.trim());
-    const missing = [...new Set(digests.filter((d) => !embedVectorsRef.current.has(vectorKey(d))))];
+    const wanted = new Map<string, string>(); // vector key → text to embed
+    if (wantDigests) {
+      for (const t of parseTurns(fullMessageHistory)) {
+        const d = t.summary?.trim();
+        if (d) wanted.set(vectorKey(d), d);
+      }
+    }
+    if (semanticLore) {
+      for (const entry of dictionary) {
+        if (entry.enabled === false || entry.constant) continue;
+        wanted.set(entryVectorKey(entry), entryEmbedText(entry));
+      }
+    }
+    const missing = [...wanted.keys()].filter((k) => !embedVectorsRef.current.has(k));
     if (missing.length === 0) return;
 
     embedDrainingRef.current = true;
     (async () => {
       try {
-        const cached = await getVectors(missing.map(vectorKey));
+        const cached = await getVectors(missing);
         cached.forEach((vec, key) => embedVectorsRef.current.set(key, vec));
         // Embed the rest in bounded batches, looping to completion — nothing re-triggers this effect
         // when a batch lands (unlike the digest drainer, it never touches history), so a first-enable
         // backfill must finish in one pass.
-        const toEmbed = missing.filter((d) => !cached.has(vectorKey(d)));
+        const toEmbed = missing.filter((k) => !cached.has(k));
         for (let start = 0; start < toEmbed.length; start += 8) {
           const batch = toEmbed.slice(start, start + 8);
-          const vecs = await embedTexts(batch);
+          const vecs = await embedTexts(batch.map((k) => wanted.get(k)!));
           await Promise.all(vecs.map((vec, i) => {
-            embedVectorsRef.current.set(vectorKey(batch[i]), vec);
-            return putVector(vectorKey(batch[i]), vec).catch(() => {}); // cache write is best-effort
+            embedVectorsRef.current.set(batch[i], vec);
+            return putVector(batch[i], vec).catch(() => {}); // cache write is best-effort
           }));
         }
       } catch {
-        // Non-fatal: uncovered digests keep scoring fail-open; retried on a later history change.
+        // Non-fatal: uncovered items stay fail-open; retried on a later history/dictionary change.
       } finally {
         embedDrainingRef.current = false;
       }
     })();
-  }, [semanticMemory, memoryDigests, fullMessageHistory]);
+  }, [semanticMemory, memoryDigests, semanticLore, fullMessageHistory, dictionary]);
 
   // Character-diary drainer (write side): for each completed turn with participants, silently write a
   // first-person diary entry per participant as an idle-time job, patched back onto that turn's `diaries`
@@ -3328,7 +3359,10 @@ ${playerNotes || NONE_PLACEHOLDER}
               return rule.caseSensitive ? `${how}, case-sensitive` : how;
             };
             const reasonBadge = (reason: EntryActivation["reason"]): string =>
-              reason === "constant" ? "always on" : reason === "recursive" ? "recursively activated" : "keyword match";
+              reason === "constant" ? "always on"
+              : reason === "recursive" ? "recursively activated"
+              : reason === "semantic" ? "meaning match"
+              : "keyword match";
             // The "why it fired" popover for one match-chip.
             const renderReason = (chip: DictChip) => {
               const { activation: act, hit } = chip;
@@ -3487,8 +3521,12 @@ ${playerNotes || NONE_PLACEHOLDER}
                       dictionary.map((entry) => {
                         // Only entries that actually activated this turn are togglable; the rest read as
                         // dimmed, non-interactive tags so the full set stays visible.
-                        const activated = !!activationById.get(entry.id)?.activated;
-                        const label = entry.name || parseKeywords(entry)[0] || "unnamed";
+                        const activation = activationById.get(entry.id);
+                        const activated = !!activation?.activated;
+                        // Semantic activations have no text span to highlight, so the legend chip is
+                        // their visible evidence: ≈ plus the similarity in the tooltip.
+                        const semantic = activation?.reason === "semantic";
+                        const label = (semantic ? "≈ " : "") + (entry.name || parseKeywords(entry)[0] || "unnamed");
                         if (!activated) {
                           return (
                             <span
@@ -3513,7 +3551,11 @@ ${playerNotes || NONE_PLACEHOLDER}
                                 ? { borderColor: colorMap[entry.id], opacity: 0.5 }
                                 : { backgroundColor: colorMap[entry.id], borderColor: colorMap[entry.id], color: "#000" }
                             }
-                            title={disabled ? "Click to show highlights" : "Click to hide highlights"}
+                            title={
+                              semantic
+                                ? `Activated by meaning (similarity ${activation?.semanticSimilarity?.toFixed(2) ?? "?"}) — no keyword hit to highlight`
+                                : disabled ? "Click to show highlights" : "Click to hide highlights"
+                            }
                           >
                             {label}
                           </button>

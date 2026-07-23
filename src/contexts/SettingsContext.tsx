@@ -269,6 +269,10 @@ function useProvideSettings() {
   // model, and the context change needs probe evidence before it can default on. Everything fails open
   // to oldest-first while the model is absent, so a stale-on toggle can never lose memories.
   const [semanticMemory, setSemanticMemory] = usePersistentState<boolean>(`${APP_ID}_semanticMemory`, false, boolCodec);
+  // EXPERIMENTAL semantic lore: dictionary entries also activate on meaning-similarity to the player's
+  // action (additive over keyword matching, never replacing it). Shares the local embedding model with
+  // semanticMemory but is independent of memoryDigests — lore has no digest dependency. Default off.
+  const [semanticLore, setSemanticLore] = usePersistentState<boolean>(`${APP_ID}_semanticLore`, false, boolCodec);
   // Fire the post-narration aux requests (choices + stat updates + location router) concurrently instead of
   // one after another. Default on: ~29% faster turns on a parallel-capable endpoint (LM Studio "Parallel",
   // Ollama), harmless on serial endpoints (they queue). Turn off if a VRAM-tight local engine slows or OOMs
@@ -786,6 +790,8 @@ function useProvideSettings() {
     setMemoryDigests,
     semanticMemory,
     setSemanticMemory,
+    semanticLore,
+    setSemanticLore,
     concurrentTurnRequests,
     setConcurrentTurnRequests,
     autosaveEnabled,

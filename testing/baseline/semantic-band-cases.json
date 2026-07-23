@@ -1,0 +1,73 @@
+{
+  "comment": "Semantic-band probe fixture: a 28-digest journey with planted OLD facts (indexes 1-6) that a budget squeeze under oldest-first trimming always discards. Each case's action returns to one planted fact; mustRecall tokens are names/objects NOT present in the action text, so a recall hit proves the band carried the memory (not parroting). The control case ties to nothing old — it guards against ranked trimming sacrificing recency. Digests are fact-shaped (all would plausibly survive milestone selection; this fixture tests the trim layer below it).",
+  "world": "A rain-worn trade coast where goods move by ferry and mule track. Small harbors, tidal marshes, and a fortified hill town inland. No magic; weather, debts, and reputations are the real forces.",
+  "playerTrait": "A young trader working your late father's route for the first time, ledger in hand.",
+  "location": "Harrowgate, the hill fort's market terrace",
+  "digests": [
+    "You land at Sedge Ferry with your father's ledger and take his old trade route inland.",
+    "Maren the ferrywoman entrusts you with a sealed letter for her brother Callum, sworn to his hand only.",
+    "You hide your coin pouch under the loose hearthstone in your room at the Gull and Anchor inn.",
+    "A scarred drover named Weck blames you for his spilled cart and swears you will pay him by month's end.",
+    "Innkeeper Odd lends you his brass storm lantern and makes you promise to return it on your way back.",
+    "You learn the high pass is buried by rockslide; the marsh causeway is now the only road north.",
+    "You buy a gray mule at the fish market and tie a red ribbon to its halter so it cannot be swapped.",
+    "You leave the harbor at dawn and follow the levee path toward the marshes.",
+    "A peddler shares your fire and trades you dried eel for needles and thread.",
+    "Rain forces you to shelter half a day under a ruined boat hull.",
+    "You pay the causeway toll keeper two coppers and cross the first span.",
+    "A heron startles the mule; your ledger lands in the mud and dries stained but readable.",
+    "You camp on a shell mound and mend the mule's girth strap by firelight.",
+    "Two fowlers point out the safe fork where the causeway splits at the drowned willow.",
+    "You sell needles to a marsh farmwife and note the price in the ledger.",
+    "Fog holds you a morning; you inch forward lead-rope in hand.",
+    "You reach the causeway's end and climb onto firm ground below the hills.",
+    "A shepherd boy walks you an hour and talks the whole way about his dog.",
+    "You trade the dried eel for a wheel of hard cheese at a crossroads stall.",
+    "You sleep in a hay barn after helping its owner rack the last of the cut grass.",
+    "A wagon train bound for Harrowgate lets you walk in its dust for safety.",
+    "You mend a teamster's snapped rein in trade for bread and news of the fort.",
+    "You sight Harrowgate's walls at dusk and camp below the gate field.",
+    "Morning queue at the fort gate; a guard chalks your name and waves you through.",
+    "You stable the mule inside the walls and pay a boy to watch your packs.",
+    "You walk Harrowgate's market terrace, learning stall prices before you sell.",
+    "A cloth merchant named Sera offers you standing space beside her awning.",
+    "You set out your needles and thread on a borrowed board as the market fills."
+  ],
+  "cases": [
+    {
+      "name": "letter-delivery",
+      "action": "I ask the gate guard where I can find a man called Callum.",
+      "participants": ["gate guard"],
+      "targetIndex": 1,
+      "mustRecall": ["Maren", "letter", "sister"]
+    },
+    {
+      "name": "hidden-pouch",
+      "action": "I think back to whether my savings are safe while I am away up here.",
+      "participants": [],
+      "targetIndex": 2,
+      "mustRecall": ["hearthstone", "hearth", "Gull", "pouch"]
+    },
+    {
+      "name": "debt-threat",
+      "action": "I spot the scarred drover from the harbor pushing through the market crowd toward me.",
+      "participants": ["scarred drover"],
+      "targetIndex": 3,
+      "mustRecall": ["Weck", "pay", "cart", "owe", "debt", "month"]
+    },
+    {
+      "name": "lantern-return",
+      "action": "I plan my route back to the harbor and what I still owe there.",
+      "participants": [],
+      "targetIndex": 4,
+      "mustRecall": ["Odd", "lantern"]
+    },
+    {
+      "name": "control-generic",
+      "action": "I call out my prices to the market crowd and start selling.",
+      "participants": ["Sera"],
+      "targetIndex": -1,
+      "mustRecall": []
+    }
+  ]
+}

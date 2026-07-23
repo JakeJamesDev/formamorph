@@ -4,8 +4,9 @@ Working roadmap for the embedding-retrieval workstream on branch **`Mem0`**. Res
 lives in this doc; the shipped foundation is described below, then the planned steps in build order.
 Steps ship one at a time, each behind its own probe evidence — nothing here is committed-to-all-at-once.
 
-**▶ Resume here:** step 0 shipped (2026-07-23, unreleased). Next up is **step 1 (semantic dictionary
-activation)** — highest player-visible value, no interaction with narration-band tuning.
+**▶ Resume here:** steps 0 and 1 shipped (2026-07-23, unreleased, both off by default). Next up is
+**step 2 (semantic rehydration)** — read its section's hard requirement (near-duplicate penalty)
+before starting.
 
 ## Architecture decision (2026-07-23)
 
@@ -30,21 +31,34 @@ Consumer: `buildBandedHistory` drops the lowest-scored digest instead of the old
 (index 0 immune — scene-reset guard; any coverage gap fails open to oldest-first, byte-identical).
 Settings → Generation → Semantic Memory sub-toggle (needs Memory Summaries on).
 
-**Open before default-on:** a real long-session A/B (ranked vs oldest-first trimming) per the
-prompt-writing guide — the band only ranks under budget pressure, so the probe needs a history past
-the budget. Not yet run.
+**Probed 2026-07-23** (`semantic-band-probe.mjs` + `semantic-band-cases.json`, 28-digest story, 13-drop
+squeeze): trim-survival 4/4 planted targets kept by ranked / all lost by oldest-first; narration recall
+of the planted fact **cloud 0/12 → 7/12 (58%)**, **Cydonia 2/12 (17%) → 9/12 (75%)**. Two probe-driven
+fixes shipped with it: (a) the relevance **query is the bare action** — appending location/participants
+poisoned ranking (location terms dominate; the letter target ranked 15/28 with the clause, 5/28
+without); (b) **`RANKED_RECENT_IMMUNE = 2`** — the newest two band digests are immune to ranked drops
+(the scene lead-in was losing to topically-hot old memories; control case now clean, newest-6 keep
+5/6). Known case artifact: `letter-delivery` recalls 0/6 in stage 2 on both tiers even when the digest
+rides — the wayfinding action doesn't invite mentioning the sender; stage 1 proves the memory is in
+context. **Open before default-on:** a real long-session play A/B (the probe isolates the band; a full
+session carries floor + prompts + planner interplay).
 
-## Step 1 — Semantic dictionary activation (NEXT)
+## Step 1 — ✅ Semantic Lore (SHIPPED 2026-07-23, unreleased, off by default)
 
-Lorebook entries activate on keyword match today (`dictionaryUtils` / `dictionaryScan`); embed entries
-so "the ruined tower on the hill" activates the *Old Beacon* entry with zero shared words. The
-SillyTavern "vector storage" feature players expect, on a surface with no narration-band coupling.
-- Embed entry title+keywords+content once (same cache, hash-keyed); score against the current action
-  (+ recent narration?); activate above a similarity threshold, unioned with keyword hits (never
-  replacing them — keyword activation is authored intent).
-- Needs: threshold tuning against real worlds; the AI-context dictionary popup must show semantic hits
-  distinctly (it currently shows real activation hits only — keep that honesty).
-- Probe: activation precision/recall on authored worlds (Sedge Landing dictionaries), both test tiers.
+`semanticLore` toggle (independent of memoryDigests; shares the model + download UI with step 0).
+`src/lib/semanticDictionary.ts`: entries embed as name — keys — value (capped 1000 chars),
+content-hash-keyed so import/duplicate id regeneration is free; `selectSemanticLore` fires enabled,
+non-constant entries at cosine ≥ **0.30** (probe-tuned), cap **3**/turn; `applySemanticLore` folds
+into the keyword report as `reason: 'semantic'` — a keyword reason always wins, keyword activation
+untouched. Query = bare action vector, shared with band scoring (`embedActionVec`). Debug legend marks
+semantic activations with ≈ + similarity tooltip (no text span exists to highlight — honesty kept).
+
+**Probed** (`semantic-lore-probe.mjs`, keyword-free paraphrases asserted): threshold sweep gave
+0.30 → **100% precision / 71% recall** (cap 3); 0.25 → 100% recall but 58% precision. The two missed
+paraphrases (0.26/0.28) sit inside the negative noise band (top false fire 0.26) — a MiniLM ceiling,
+not a threshold problem; revisit with a stronger embedder if real-world recall disappoints.
+Live-verified in the browser: "ruined tower on the headland" → Old Beacon fires semantically (0.367),
+unrelated entry stays off.
 
 ## Step 2 — Semantic rehydration (phase 2 of the original plan)
 
