@@ -12,13 +12,20 @@ export const ORDER_STORE = 'saveOrder';
 export const DB_VERSION = 2;
 
 /** Open at v2, creating any missing store. The v1 DB only had `saves`; the upgrade adds the id-keyed
- *  record store and the ordering store (existing `saves` rows are migrated in `migrateLegacySaves`). */
-export const initDB = (): Promise<IDBDatabase> =>
-  openDatabase(DB_NAME, DB_VERSION, [
-    { name: LEGACY_STORE, keyPath: 'name' },
-    { name: STORE_NAME, keyPath: 'id' },
-    { name: ORDER_STORE, keyPath: 'key' },
-  ]);
+ *  record store and the ordering store (existing `saves` rows are migrated in `migrateLegacySaves`).
+ *  The connection is cached — autosave issues several ops per turn, and a fresh connection each time
+ *  leaks handles that would block a future `DB_VERSION` bump. */
+let dbPromise: Promise<IDBDatabase> | null = null;
+export const initDB = (): Promise<IDBDatabase> => {
+  if (!dbPromise) {
+    dbPromise = openDatabase(DB_NAME, DB_VERSION, [
+      { name: LEGACY_STORE, keyPath: 'name' },
+      { name: STORE_NAME, keyPath: 'id' },
+      { name: ORDER_STORE, keyPath: 'key' },
+    ]).catch((err) => { dbPromise = null; throw err; }); // let a later call retry the open
+  }
+  return dbPromise;
+};
 
 const store = async (name: string, mode: IDBTransactionMode) =>
   (await initDB()).transaction([name], mode).objectStore(name);
