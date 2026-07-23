@@ -1,4 +1,3 @@
-import { useState } from 'react';
 import { useEditingDraft } from '@/lib/useEditingDraft';
 import { useGameData } from '@/contexts/GameDataContext';
 import { Input } from "@/components/ui/input";
@@ -6,19 +5,15 @@ import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
 import { MultiSelect } from "@/components/ui/multi-select";
 import AiFieldToolbar from "@/components/AiFieldToolbar";
-import { TagAutocomplete } from "@/components/TagAutocomplete";
-import { ConfirmDialog } from "@/components/ConfirmDialog";
 import PlaceholderField from "@/components/prompt/PlaceholderField";
-import { ImageUpload, SoundUpload } from '../lib/UtilityComponents';
+import { SoundUpload } from '../lib/UtilityComponents';
 import { IMAGE_CAPS } from '../lib/imageOptim';
-import { GenerateImageButton } from '../components/GenerateImageButton';
+import ImageTagsField from './ImageTagsField';
 import type { GameLocation } from '@/types';
 
 const LocationManager = ({ location }: { location: GameLocation }) => {
   const { updateLocation, entities, placeholders } = useGameData();
   const { draft: editingLocation, setField: handleChange } = useEditingDraft(location, updateLocation);
-  // SD prompt pulled from an uploaded image, pending the user's OK to use it as Image Tags.
-  const [pendingPrompt, setPendingPrompt] = useState<string | null>(null);
 
   if (!editingLocation) return null;
 
@@ -90,47 +85,18 @@ const LocationManager = ({ location }: { location: GameLocation }) => {
           hideSelectAll
         />
       </div>
-      <div className="space-y-2">
-        <Label>Background Image</Label>
-        <ImageUpload
-          onChange={(file) => handleChange('backgroundImage', file)}
-          id={`location-image-${editingLocation.id}`}
-          value={editingLocation.backgroundImage}
-          cap={IMAGE_CAPS.background}
-          onPromptExtracted={setPendingPrompt}
-        />
-        <ConfirmDialog
-          open={pendingPrompt !== null}
-          onOpenChange={(o) => { if (!o) setPendingPrompt(null); }}
-          title="Use the image's prompt?"
-          description="This image has an embedded AI prompt. Use it as the Image Tags? This replaces the current tags."
-          onConfirm={() => { if (pendingPrompt) handleChange('imageTags', pendingPrompt); }}
-          onCancel={() => setPendingPrompt(null)}
-        />
-        <div className="flex items-center justify-between">
-          <Label>Image Tags</Label>
-          <AiFieldToolbar
-            mode="tags"
-            name={editingLocation.name}
-            kind="location"
-            source={editingLocation.aiDescription || editingLocation.playerDescription}
-            value={editingLocation.imageTags}
-            onChange={(t) => handleChange('imageTags', t)}
-          />
-        </div>
-        <TagAutocomplete
-          value={editingLocation.imageTags || ''}
-          onChange={(t) => handleChange('imageTags', t)}
-          placeholder="booru tags, comma separated"
-        />
-        <GenerateImageButton
-          subject={{ name: editingLocation.name || '', description: editingLocation.aiDescription || editingLocation.playerDescription || '', kind: 'location' }}
-          cap={IMAGE_CAPS.background}
-          onChange={(file) => handleChange('backgroundImage', file)}
-          tags={editingLocation.imageTags ?? ''}
-          onTagsChange={(t) => handleChange('imageTags', t)}
-        />
-      </div>
+      <ImageTagsField
+        label="Background Image"
+        image={editingLocation.backgroundImage}
+        onImageChange={(file) => handleChange('backgroundImage', file)}
+        imageId={`location-image-${editingLocation.id}`}
+        cap={IMAGE_CAPS.background}
+        name={editingLocation.name}
+        description={editingLocation.aiDescription || editingLocation.playerDescription}
+        kind="location"
+        tags={editingLocation.imageTags}
+        onTagsChange={(t) => handleChange('imageTags', t)}
+      />
       <div className="space-y-2">
         <Label>Ambient Sound</Label>
         <SoundUpload

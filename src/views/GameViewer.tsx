@@ -764,23 +764,17 @@ const GameViewer = ({
     if (!target || !choicesEnabled) return;
     const { prev, action } = target;
     void runPartialRegen(async (signal) => {
-      const ctx = buildContextValues();
       const presentNames = new Set([
         ...(prev.entities ?? []),
         ...recentParticipants(fullMessageHistory, CHOICES_PRESENCE_TURNS - 1),
       ]);
       const sceneEntities = allEntities.filter((e) => presentNames.has(e.name));
       const sceneLoc = withDiscovered(currentLocation);
-      let systemPrompt = renderPromptTemplate(choicesPrompt, {
-        ...ctx,
-        ...sceneEntityOverride(sceneLoc, sceneEntities),
-      });
-      if (language.toLowerCase() != "english") systemPrompt += `\n Choice language: ` + language;
-      const response = await makeAIRequest(
-        systemPrompt,
-        [{ role: "user", content: renderPromptTemplate(choicesUserPrompt, { "<PLAYER ACTION>": action, "<NARRATION>": prev.narration ?? "" }) }],
-        "choices",
-        null,
+      const response = await requestChoices(
+        buildContextValues(),
+        sceneEntityOverride(sceneLoc, sceneEntities),
+        action,
+        prev.narration ?? "",
         signal,
       );
       if (signal.aborted) return;
@@ -800,15 +794,7 @@ const GameViewer = ({
     if (!baseline) return;
     const { prev, action } = target;
     void runPartialRegen(async (signal) => {
-      let systemPrompt = renderPromptTemplate(statUpdatesPrompt, buildContextValues());
-      if (language.toLowerCase() != "english") systemPrompt += "\n Please write in english";
-      const response = await makeAIRequest(
-        systemPrompt,
-        [{ role: "user", content: renderPromptTemplate(statUpdatesUserPrompt, { "<PLAYER ACTION>": action, "<NARRATION>": prev.narration ?? "" }) }],
-        "statUpdates",
-        null,
-        signal,
-      );
+      const response = await requestStats(buildContextValues(), action, prev.narration ?? "", signal);
       if (signal.aborted) return;
       const { values, maxes } = parseStatUpdates(response);
       const statChanges = Object.entries(values).map(([k, v]) => ({ [k]: v }));
@@ -1518,46 +1504,19 @@ ${playerNotes || NONE_PLACEHOLDER}
       // Each is a thunk so the mode below decides whether they run concurrently or one at a time (the thunk
       // isn't invoked — and the request isn't sent — until called). The `quiet` flag suppresses each request's
       // own status label so the concurrent batch can set one stable label instead of three racing writes.
-      const runChoices = (quiet: boolean): Promise<string> => {
-        if (!choicesEnabled) return Promise.resolve("");
-        let updatedChoicesPrompt = renderPromptTemplate(choicesPrompt, {
-          ...ctx,
-          // Choices see only who is actually in the scene, not the whole location roster.
-          ...sceneEntityTokens,
-        });
-        if (language.toLowerCase() != "english")
-          updatedChoicesPrompt += `\n Choice language: ` + language;
-        return makeAIRequest(
-          updatedChoicesPrompt,
-          [{ role: "user", content: renderPromptTemplate(choicesUserPrompt, { "<PLAYER ACTION>": effectiveAction, "<NARRATION>": narrationResponse }) }],
-          "choices",
-          null,
-          signal,
-          false,
-          undefined,
-          quiet,
-        );
-      };
+      // Choices see only who is actually in the scene (sceneEntityTokens), not the whole location roster.
+      const runChoices = (quiet: boolean): Promise<string> =>
+        choicesEnabled
+          ? requestChoices(ctx, sceneEntityTokens, effectiveAction, narrationResponse, signal, quiet)
+          : Promise.resolve("");
 
       // Only make stat updates request if enabled and the world actually defines stats (otherwise the model
       // hallucinates stat names that match nothing).
       const statsActive = statUpdatesEnabled && playerStats.length > 0;
-      const runStats = (quiet: boolean): Promise<string> => {
-        if (!statsActive) return Promise.resolve("");
-        let updatedStatUpdatesPrompt = renderPromptTemplate(statUpdatesPrompt, ctx);
-        if (language.toLowerCase() != "english")
-          updatedStatUpdatesPrompt += "\n Please write in english";
-        return makeAIRequest(
-          updatedStatUpdatesPrompt,
-          [{ role: "user", content: renderPromptTemplate(statUpdatesUserPrompt, { "<PLAYER ACTION>": effectiveAction, "<NARRATION>": narrationResponse }) }],
-          "statUpdates",
-          null,
-          signal,
-          false,
-          undefined,
-          quiet,
-        );
-      };
+      const runStats = (quiet: boolean): Promise<string> =>
+        statsActive
+          ? requestStats(ctx, effectiveAction, narrationResponse, signal, quiet)
+          : Promise.resolve("");
 
       // Suggest mode only — with auto-apply the move was resolved up front (before the narration). After the
       // narration, ask whether the player should move (fed the action + narration) and offer it.
@@ -2376,6 +2335,52 @@ ${playerNotes || NONE_PLACEHOLDER}
   // re-running its effect every render (makeAIRequest is rebuilt each render by design).
   const makeAIRequestRef = useRef(makeAIRequest);
   makeAIRequestRef.current = makeAIRequest;
+
+  // Build + issue the choices/stats aux requests. Shared verbatim by the live turn (the concurrent/sequential
+  // batch in sendGameAction) and the standalone re-rolls (handleRegenerateChoices/Stats), so the prompt
+  // assembly and request shape can't drift between them. Callers own the enable-guard and result handling;
+  // `quiet` suppresses the status label (the concurrent batch sets one stable label for all three).
+  const requestChoices = (
+    ctx: Record<string, string>,
+    sceneEntityTokens: Record<string, string>,
+    action: string,
+    narration: string,
+    signal: AbortSignal,
+    quiet = false,
+  ): Promise<string> => {
+    let prompt = renderPromptTemplate(choicesPrompt, { ...ctx, ...sceneEntityTokens });
+    if (language.toLowerCase() != "english") prompt += `\n Choice language: ` + language;
+    return makeAIRequest(
+      prompt,
+      [{ role: "user", content: renderPromptTemplate(choicesUserPrompt, { "<PLAYER ACTION>": action, "<NARRATION>": narration }) }],
+      "choices",
+      null,
+      signal,
+      false,
+      undefined,
+      quiet,
+    );
+  };
+  const requestStats = (
+    ctx: Record<string, string>,
+    action: string,
+    narration: string,
+    signal: AbortSignal,
+    quiet = false,
+  ): Promise<string> => {
+    let prompt = renderPromptTemplate(statUpdatesPrompt, ctx);
+    if (language.toLowerCase() != "english") prompt += "\n Please write in english";
+    return makeAIRequest(
+      prompt,
+      [{ role: "user", content: renderPromptTemplate(statUpdatesUserPrompt, { "<PLAYER ACTION>": action, "<NARRATION>": narration }) }],
+      "statUpdates",
+      null,
+      signal,
+      false,
+      undefined,
+      quiet,
+    );
+  };
 
   // DEV-only: expose window.__baseline for the fork-local test harness (no-op in production builds).
   const debugTurnsRef = useRef(debugTurns);
