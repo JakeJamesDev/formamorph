@@ -2,7 +2,7 @@
 
 All notable changes to Formamorph. This fork's first line is **2.0.0** — a full TypeScript rebuild of the upstream JavaScript app ([FieryLionite's Formamorph](https://fierylion.itch.io/formamorph), ~v1.2) — with feature parity as the baseline plus new features on top.
 
-> ✅ **2.0.0 – 2.5.2 are released** (collapsed below). New work lands under **🚧 In Progress** — an unnumbered section, so changes accumulate without pinning a version. When a batch earns a release its section is marked **Released** and collapsed, and a fresh In Progress opens. `package.json` reads **2.5.2** — the latest released version.
+> ✅ **2.0.0 – 2.6.0 are released** (collapsed below). New work lands under **🚧 In Progress** — an unnumbered section, so changes accumulate without pinning a version. When a batch earns a release its section is marked **Released** and collapsed, and a fresh In Progress opens. `package.json` reads **2.6.0** — the latest released version.
 
 Each release groups changes as **Major** / **Minor**, then **Added** / **Removed** / **Fixed**, and within those by audience: 👤 user-facing · 🛠️ developer tooling · ⚙️ backend / invisible.
 
@@ -10,7 +10,12 @@ Each release groups changes as **Major** / **Minor**, then **Added** / **Removed
 
 ## 🚧 In Progress
 
-_Unreleased — new work accumulates here until it earns a version bump. The next batch will pin its own version; `package.json` reads **2.5.2** (just released below)._
+_Unreleased — new work accumulates here until it earns a version bump. The next batch will pin its own version; `package.json` reads **2.6.0** (just released below)._
+
+---
+
+<details>
+<summary><strong>✅ 2.6.0 — Released 2026-07-23</strong> — the memory release: a milestone system that keeps what actually matters with a Memory tab to pin or forget moments, digests that preserve names, places, and deadlines and travel as a single story recap ending with where things now stand, characters that engage you in dialogue several times more often, editable narration User and Recap Messages — plus a long tail of save, stat, model-viewer, and editor fixes (click to expand)</summary>
 
 ### Minor Changes
 
@@ -63,12 +68,15 @@ _Unreleased — new work accumulates here until it earns a version bump. The nex
   - **Trait stat effects apply once, not once per rule.** A trait that both raised a stat's floor and shifted its cap could over-adjust the stat's value — the pull-to-floor correction was re-applied for every rule the trait carried instead of once. Now applied a single time per stat.
   - **The 3D character viewer no longer leaks when you switch models.** Swapping the previewed VRM while its model was still loading left the old model's animation loop running forever against a discarded scene, quietly piling up over a session. In-flight loads are now cancelled on switch.
   - **The save database opens one connection instead of one per operation.** Every save read/write used to open a fresh IndexedDB connection and never close it, so autosave leaked handles each turn — enough of them would have blocked a future save-format upgrade. The connection is now opened once and reused.
+  - **The story recap now ends with where things stand.** The memory recap read as pure backstory — a chronicle with no *now* — and on some models that caused real harm: a live mid-scene conversation re-opened as a fresh arrival scene, and a standing roleplay agreement lost out to the recap's older framing, inverting who was playing whom. The recap block now closes with a code-built line stating the present: current location, who is present, and your Player Notes verbatim ("the player's own notes hold true: …"). Replayed against the real failing turns, the scene-reset and identity-inversion failures disappeared from every run; no AI call is added — the line is assembled from state the game already tracks. This also gives Player Notes a much stronger seat: they now ride right beside the story instead of only sitting mid-prompt.
+  - **Long-term memory now keeps the facts that govern the story, not just its events.** The milestone selector judged memories by what *happened* — promises, debts, things gained — so standing *state* fell through: in real sessions it forgot the player's own stated goal and an in-effect roleplay agreement, leaving later scenes misread. Two fixes: the selector's keep-criteria and worked example now cover a role or pretense being played and the player's stated errand (probed: the goal digest went from dropped 3/3 to kept on both test models), with the example rewritten in placeholder form — generic `<entry>` slots instead of a concrete mini-story, so the model learns the reasoning rather than pattern-matching real play against example content; and the story's opening memory is always kept as an anchor — with it gone, models wrote a fresh arrival scene over the live one. A player's drop-pin still overrides the anchor.
   - **Memory digests keep the facts, not just the shape of them.** The turn-summary prompt compressed specifics into categories — "you state your destination and deadline" with the place and date gone for good, since a digest is all that survives of an old turn. Three rules rewritten: specifics stay specific (names, places, objects, amounts, deadlines go in as themselves, from the player's action or the narration), speech's upshot carries what was actually named, and a fact-dense turn is what the allowed second sentence is for. Probed on both test models: fact retention on the default endpoint rose from 8/21 to 18/21 planted facts (both runs), and the strong local model — already retaining everything — cut its over-long two-paragraph digests by two-thirds as a side effect.
 
   - **Memory digests no longer teach the narrator past tense.** With Memory Digests enabled, the one-line turn summaries were written in the past tense, and a history full of them could drag the whole story's narration into past tense (and mute dialogue) on some models. Summaries are now written in the story's own present tense — measured to eliminate the tense drift entirely and to make repeated-phrasing echo drop rather than rise.
   - **Narration prompt trimmed.** The Player Stats section's preamble line duplicated the stats guideline bullet; a section-by-section ablation on both test models measured it inert, so it's removed to spare prompt tokens.
 
 - **🛠️ Developer tooling**
+  - **Now-line probe.** New `now-line-probe.mjs`: replays a real session turn's narration context with and without a proposed recap closing line, for judging mid-scene anchoring and frame-fact fixes against the exact contexts that failed.
   - **Summary probe measures fact retention.** `summary-cases.json` gains three planted-fact cases (a stated goal with name/place/deadline, an introduced personal object, a named price) with per-case `require` regexes; `summary-probe.mjs` scores them, honors per-model endpoint overrides, counts the player's action as legitimate name material, and sends `reasoning_effort: "none"`.
   - **Quality baseline profile + scorer.** New harness Profile Q: a 25-turn scripted Sedge Landing session with planted facts, question turns, action-outcome turns, and an agency trap, paced so memory digests drain like real play; `qualityScore.mjs` scores the countable side (planted-fact recall, cross-turn 8-gram repetition, sentence shape, format violations).
   - **Digest-framing probe.** New `digest-framing-probe.mjs`: replays a real collapsed turn's context in three message shapes (paired one-line digests vs one grouped block vs a "Recap the story so far" exchange) to isolate why narration length collapses once digests dominate the history.
@@ -76,7 +84,7 @@ _Unreleased — new work accumulates here until it earns a version bump. The nex
   - **Milestone-memory harness.** New `milestone-select-probe.mjs` (hand-labeled 57-entry fixture across four story genres; must-keep recall and noise-keep metrics; prompt variants including the shipping few-shot selector) and `carryforward-check.mjs` (re-derives each chain's kept/dropped split and judges every dropped fact against late narration for contradictions), plus a selection-driven arm `M` in the dialogue-hold probe.
   - **Format-arms probe: hybrid arm + edit crossing.** `format-arms-probe.mjs` gains arm `H` (bare history with the label on the current turn only — byte-faithful to the app's real message assembly) and `--edit` variants now cross with `--arms`, so e.g. `--arms H,B --edit fuse` runs both cells fused in one paired batch.
 
----
+</details>
 
 <details>
 <summary><strong>✅ 2.5.2 — Released 2026-07-21</strong> — entity aliases and smarter plural detection, a new Percentage stat type, an action box that grows into a popover, an editable opening scene, and self-sorting stat descriptors — plus narration fixes that keep characters talking through intimate scenes and stop them re-asking questions you already answered, dictionary triggers that cover everything the AI actually reads, and an end to reasoning errors on models that don't support reasoning (click to expand)</summary>

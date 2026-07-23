@@ -1,82 +1,361 @@
 {
-  "comment": "Hand-labeled fixture for milestone-select-probe.mjs (v2, 2026-07-21 reframe). Entries are per-turn digests in the shipped summary voice. The selection test: would someone in the story bring this up again or act on it? Tiers: must = must-keep (open promises/debts/threats, standing relationship or reputation facts, kept possessions, unresolved hooks) - recall gate is strict here; either = defensible in both directions under the drop-when-unsure bias - no penalty either way; drop = no one would ever mention it again (passing movement, small talk, or superseded - a later entry carries the standing fact). Every label carries its why so the labeling philosophy is auditable, not relitigated per entry.",
-  "stories": [
+ "comment": "Hand-labeled fixture for milestone-select-probe.mjs (v2, 2026-07-21 reframe). Entries are per-turn digests in the shipped summary voice. The selection test: would someone in the story bring this up again or act on it? Tiers: must = must-keep (open promises/debts/threats, standing relationship or reputation facts, kept possessions, unresolved hooks) - recall gate is strict here; either = defensible in both directions under the drop-when-unsure bias - no penalty either way; drop = no one would ever mention it again (passing movement, small talk, or superseded - a later entry carries the standing fact). Every label carries its why so the labeling philosophy is auditable, not relitigated per entry.",
+ "stories": [
+  {
+   "name": "ferry-quest",
+   "entries": [
     {
-      "name": "ferry-quest",
-      "entries": [
-        { "text": "You arrive at Sedge Landing as the ferry bell rings across the water.", "label": "drop", "why": "passing movement" },
-        { "text": "You read the notices at the leaning post and learn a merchant seeks an escort to Teldoril.", "label": "drop", "why": "hook superseded by the completed delivery" },
-        { "text": "You cross the plank bridge on your way into the village.", "label": "drop", "why": "passing movement" },
-        { "text": "You agree to escort the merchant Halvern to Teldoril in exchange for twenty silver.", "label": "drop", "why": "superseded by the completed delivery" },
-        { "text": "You buy a heel of bread and eat it by the water.", "label": "drop", "why": "no one would mention it again" },
-        { "text": "You meet the eel-smoker Wren, who warns you the marsh road floods at dusk.", "label": "either", "why": "environmental fact; matters only while in the region" },
-        { "text": "You walk the marsh road as a light rain begins to fall.", "label": "drop", "why": "passing movement" },
-        { "text": "You find a bronze relic half-buried in the reeds and take it with you.", "label": "must", "why": "kept possession, tied to the open temple obligation" },
-        { "text": "You chat with Halvern about the weather as you walk.", "label": "drop", "why": "small talk" },
-        { "text": "You are ambushed by two men; you drive them off, but your left arm takes a deep cut.", "label": "must", "why": "persistent wound" },
-        { "text": "You rest briefly and drink from your waterskin.", "label": "drop", "why": "no one would mention it again" },
-        { "text": "You deliver Halvern safely to Teldoril and receive your twenty silver.", "label": "must", "why": "relationship delta: Halvern now trusts you; capability evidence an NPC could reference" },
-        { "text": "You pass through Teldoril's gate as vendors call the evening market.", "label": "drop", "why": "passing movement" },
-        { "text": "You learn from a gate guard that relic-bearers must register with the temple.", "label": "must", "why": "open obligation" },
-        { "text": "You pick up five coppers someone dropped near the fountain.", "label": "drop", "why": "trivial gain, never referenced again" },
-        { "text": "You take a room at the Grey Heron inn for the night.", "label": "drop", "why": "current-scene state is the verbatim floor's job" },
-        { "text": "Halvern asks you to carry a second consignment to the river depot, and you deliver it by nightfall.", "label": "must", "why": "second completed task for the same NPC - the aggregation evidence for a helpful reputation" },
-        { "text": "Halvern calls you the most reliable guard he has hired and promises to vouch for you in Teldoril.", "label": "must", "why": "explicit standing reputation an NPC would bring up" }
-      ]
+     "text": "You arrive at Sedge Landing as the ferry bell rings across the water.",
+     "label": "drop",
+     "why": "passing movement"
     },
     {
-      "name": "evening",
-      "entries": [
-        { "text": "You are welcomed home by Mara and Sofia, who express contentment with the shared closeness.", "label": "drop", "why": "scene mood, no standing fact" },
-        { "text": "You ask Mara what she wants tonight, and she asks you to stay close and decide honestly.", "label": "drop", "why": "scene beat, no standing fact" },
-        { "text": "You learn that Sofia is reading an old collection of unreliable narrators she thinks you would like.", "label": "either", "why": "characterization a partner might reference; harmless either way" },
-        { "text": "You promise Mara a weekend at the coast, just the three of you, before the month is out.", "label": "must", "why": "open promise someone will bring up" },
-        { "text": "You are invited by Mara to move to the bedroom.", "label": "drop", "why": "superseded by the night together" },
-        { "text": "You receive confirmation that she likes it, and she reciprocates by affirming her contentment.", "label": "drop", "why": "scene beat, no standing fact" },
-        { "text": "You invite Sofia to share her worst pickup line, and she recounts one involving questionable horticulture.", "label": "drop", "why": "small talk" },
-        { "text": "You prompt Mara to discuss her work, and she admits it involved predictable chaos with no new developments.", "label": "drop", "why": "small talk, explicitly no developments" },
-        { "text": "Sofia tells you she has been offered a job in another city and has not yet decided whether to take it.", "label": "must", "why": "unresolved hook that will come up again" },
-        { "text": "You maintain physical contact while she continues to narrate, and she pivots her story to include you.", "label": "drop", "why": "scene beat" },
-        { "text": "You spend the night together and fall asleep tangled in the sheets.", "label": "either", "why": "soft conclusion; defensible in both directions under the drop bias" },
-        { "text": "You ask Sofia what song she would put on, and she names one you have never heard of.", "label": "drop", "why": "small talk" }
-      ]
+     "text": "You read the notices at the leaning post and learn a merchant seeks an escort to Teldoril.",
+     "label": "drop",
+     "why": "hook superseded by the completed delivery"
     },
     {
-      "name": "town-intrigue",
-      "entries": [
-        { "text": "You arrive in Brackwall as the fog lifts off the canals.", "label": "drop", "why": "passing movement" },
-        { "text": "You meet the moneylender Essa, who agrees to loan you fifty silver due by the new moon.", "label": "drop", "why": "superseded by the repayment" },
-        { "text": "You wander the fish market, sampling pickled herring.", "label": "drop", "why": "passing movement" },
-        { "text": "You are hired by Magistrate Corin to find who is forging tax seals.", "label": "drop", "why": "superseded by the delivered confession" },
-        { "text": "You ask around the docks without learning anything useful.", "label": "drop", "why": "explicitly fruitless" },
-        { "text": "You discover a forged seal press hidden in the cooper's back room.", "label": "drop", "why": "evidence superseded by the delivered confession" },
-        { "text": "You share a drink with the harbormaster, trading harmless gossip.", "label": "drop", "why": "small talk" },
-        { "text": "You confront the cooper, who confesses and names the clerk Odo as the ringleader.", "label": "drop", "why": "superseded by the arrest" },
-        { "text": "You walk the canal ring at dusk to clear your head.", "label": "drop", "why": "passing movement" },
-        { "text": "You repay Essa her fifty silver in full.", "label": "must", "why": "relationship delta: Essa now knows you good for your word" },
-        { "text": "You buy a sturdy pair of boots to replace your worn ones.", "label": "drop", "why": "trivial purchase" },
-        { "text": "You deliver the cooper's confession to Magistrate Corin; Odo is arrested, and Corin owes you a favor.", "label": "must", "why": "open favor owed plus reputation with the magistrate" },
-        { "text": "You watch the lamplighters make their rounds along the water.", "label": "drop", "why": "passing movement" },
-        { "text": "You are warned by Essa that Odo's brother captains a smuggler crew and remembers faces.", "label": "must", "why": "standing threat" },
-        { "text": "You publicly call the harbormaster a coward when he refuses to testify, and he hears every word.", "label": "must", "why": "negative relationship delta: an insult he will remember" },
-        { "text": "Essa gives you her late husband's compass as thanks, telling you it always finds the harbor.", "label": "must", "why": "gift: kept possession plus a relationship it embodies" },
-        { "text": "You learn that the clerk Odo is secretly Essa's nephew, though she does not know you know.", "label": "must", "why": "secret learned about someone" }
-      ]
+     "text": "You cross the plank bridge on your way into the village.",
+     "label": "drop",
+     "why": "passing movement"
     },
     {
-      "name": "wilds",
-      "entries": [
-        { "text": "You set out along the ridge trail under a clear sky.", "label": "drop", "why": "passing movement" },
-        { "text": "You find a sealed letter addressed to someone named Maren in a ruined watchtower.", "label": "must", "why": "kept possession and an open task" },
-        { "text": "You ford a shallow stream, boots soaked through.", "label": "drop", "why": "passing movement" },
-        { "text": "You shelter from a squall beneath a rock overhang.", "label": "drop", "why": "passing weather" },
-        { "text": "You befriend a wounded hound and splint its leg; it follows you now.", "label": "must", "why": "standing companion" },
-        { "text": "You gather blackberries along the old wall.", "label": "drop", "why": "no one would mention it again" },
-        { "text": "You spot smoke rising from a farmstead two valleys over.", "label": "either", "why": "transient sighting; could become a hook or nothing" },
-        { "text": "You learn from a shepherd that Maren keeps the mill at Foldwater.", "label": "must", "why": "advances the open letter task" },
-        { "text": "You camp for the night beside the old wall.", "label": "drop", "why": "passing rest" },
-        { "text": "You cross the high pasture, sheep scattering ahead of you.", "label": "drop", "why": "passing movement" }
-      ]
+     "text": "You agree to escort the merchant Halvern to Teldoril in exchange for twenty silver.",
+     "label": "drop",
+     "why": "superseded by the completed delivery"
+    },
+    {
+     "text": "You buy a heel of bread and eat it by the water.",
+     "label": "drop",
+     "why": "no one would mention it again"
+    },
+    {
+     "text": "You meet the eel-smoker Wren, who warns you the marsh road floods at dusk.",
+     "label": "either",
+     "why": "environmental fact; matters only while in the region"
+    },
+    {
+     "text": "You walk the marsh road as a light rain begins to fall.",
+     "label": "drop",
+     "why": "passing movement"
+    },
+    {
+     "text": "You find a bronze relic half-buried in the reeds and take it with you.",
+     "label": "must",
+     "why": "kept possession, tied to the open temple obligation"
+    },
+    {
+     "text": "You chat with Halvern about the weather as you walk.",
+     "label": "drop",
+     "why": "small talk"
+    },
+    {
+     "text": "You are ambushed by two men; you drive them off, but your left arm takes a deep cut.",
+     "label": "must",
+     "why": "persistent wound"
+    },
+    {
+     "text": "You rest briefly and drink from your waterskin.",
+     "label": "drop",
+     "why": "no one would mention it again"
+    },
+    {
+     "text": "You deliver Halvern safely to Teldoril and receive your twenty silver.",
+     "label": "must",
+     "why": "relationship delta: Halvern now trusts you; capability evidence an NPC could reference"
+    },
+    {
+     "text": "You pass through Teldoril's gate as vendors call the evening market.",
+     "label": "drop",
+     "why": "passing movement"
+    },
+    {
+     "text": "You learn from a gate guard that relic-bearers must register with the temple.",
+     "label": "must",
+     "why": "open obligation"
+    },
+    {
+     "text": "You pick up five coppers someone dropped near the fountain.",
+     "label": "drop",
+     "why": "trivial gain, never referenced again"
+    },
+    {
+     "text": "You take a room at the Grey Heron inn for the night.",
+     "label": "drop",
+     "why": "current-scene state is the verbatim floor's job"
+    },
+    {
+     "text": "Halvern asks you to carry a second consignment to the river depot, and you deliver it by nightfall.",
+     "label": "must",
+     "why": "second completed task for the same NPC - the aggregation evidence for a helpful reputation"
+    },
+    {
+     "text": "Halvern calls you the most reliable guard he has hired and promises to vouch for you in Teldoril.",
+     "label": "must",
+     "why": "explicit standing reputation an NPC would bring up"
     }
-  ]
+   ]
+  },
+  {
+   "name": "evening",
+   "entries": [
+    {
+     "text": "You are welcomed home by Mara and Sofia, who express contentment with the shared closeness.",
+     "label": "drop",
+     "why": "scene mood, no standing fact"
+    },
+    {
+     "text": "You ask Mara what she wants tonight, and she asks you to stay close and decide honestly.",
+     "label": "drop",
+     "why": "scene beat, no standing fact"
+    },
+    {
+     "text": "You learn that Sofia is reading an old collection of unreliable narrators she thinks you would like.",
+     "label": "either",
+     "why": "characterization a partner might reference; harmless either way"
+    },
+    {
+     "text": "You promise Mara a weekend at the coast, just the three of you, before the month is out.",
+     "label": "must",
+     "why": "open promise someone will bring up"
+    },
+    {
+     "text": "You are invited by Mara to move to the bedroom.",
+     "label": "drop",
+     "why": "superseded by the night together"
+    },
+    {
+     "text": "You receive confirmation that she likes it, and she reciprocates by affirming her contentment.",
+     "label": "drop",
+     "why": "scene beat, no standing fact"
+    },
+    {
+     "text": "You invite Sofia to share her worst pickup line, and she recounts one involving questionable horticulture.",
+     "label": "drop",
+     "why": "small talk"
+    },
+    {
+     "text": "You prompt Mara to discuss her work, and she admits it involved predictable chaos with no new developments.",
+     "label": "drop",
+     "why": "small talk, explicitly no developments"
+    },
+    {
+     "text": "Sofia tells you she has been offered a job in another city and has not yet decided whether to take it.",
+     "label": "must",
+     "why": "unresolved hook that will come up again"
+    },
+    {
+     "text": "You maintain physical contact while she continues to narrate, and she pivots her story to include you.",
+     "label": "drop",
+     "why": "scene beat"
+    },
+    {
+     "text": "You spend the night together and fall asleep tangled in the sheets.",
+     "label": "either",
+     "why": "soft conclusion; defensible in both directions under the drop bias"
+    },
+    {
+     "text": "You ask Sofia what song she would put on, and she names one you have never heard of.",
+     "label": "drop",
+     "why": "small talk"
+    }
+   ]
+  },
+  {
+   "name": "town-intrigue",
+   "entries": [
+    {
+     "text": "You arrive in Brackwall as the fog lifts off the canals.",
+     "label": "drop",
+     "why": "passing movement"
+    },
+    {
+     "text": "You meet the moneylender Essa, who agrees to loan you fifty silver due by the new moon.",
+     "label": "drop",
+     "why": "superseded by the repayment"
+    },
+    {
+     "text": "You wander the fish market, sampling pickled herring.",
+     "label": "drop",
+     "why": "passing movement"
+    },
+    {
+     "text": "You are hired by Magistrate Corin to find who is forging tax seals.",
+     "label": "drop",
+     "why": "superseded by the delivered confession"
+    },
+    {
+     "text": "You ask around the docks without learning anything useful.",
+     "label": "drop",
+     "why": "explicitly fruitless"
+    },
+    {
+     "text": "You discover a forged seal press hidden in the cooper's back room.",
+     "label": "drop",
+     "why": "evidence superseded by the delivered confession"
+    },
+    {
+     "text": "You share a drink with the harbormaster, trading harmless gossip.",
+     "label": "drop",
+     "why": "small talk"
+    },
+    {
+     "text": "You confront the cooper, who confesses and names the clerk Odo as the ringleader.",
+     "label": "drop",
+     "why": "superseded by the arrest"
+    },
+    {
+     "text": "You walk the canal ring at dusk to clear your head.",
+     "label": "drop",
+     "why": "passing movement"
+    },
+    {
+     "text": "You repay Essa her fifty silver in full.",
+     "label": "must",
+     "why": "relationship delta: Essa now knows you good for your word"
+    },
+    {
+     "text": "You buy a sturdy pair of boots to replace your worn ones.",
+     "label": "drop",
+     "why": "trivial purchase"
+    },
+    {
+     "text": "You deliver the cooper's confession to Magistrate Corin; Odo is arrested, and Corin owes you a favor.",
+     "label": "must",
+     "why": "open favor owed plus reputation with the magistrate"
+    },
+    {
+     "text": "You watch the lamplighters make their rounds along the water.",
+     "label": "drop",
+     "why": "passing movement"
+    },
+    {
+     "text": "You are warned by Essa that Odo's brother captains a smuggler crew and remembers faces.",
+     "label": "must",
+     "why": "standing threat"
+    },
+    {
+     "text": "You publicly call the harbormaster a coward when he refuses to testify, and he hears every word.",
+     "label": "must",
+     "why": "negative relationship delta: an insult he will remember"
+    },
+    {
+     "text": "Essa gives you her late husband's compass as thanks, telling you it always finds the harbor.",
+     "label": "must",
+     "why": "gift: kept possession plus a relationship it embodies"
+    },
+    {
+     "text": "You learn that the clerk Odo is secretly Essa's nephew, though she does not know you know.",
+     "label": "must",
+     "why": "secret learned about someone"
+    }
+   ]
+  },
+  {
+   "name": "wilds",
+   "entries": [
+    {
+     "text": "You set out along the ridge trail under a clear sky.",
+     "label": "drop",
+     "why": "passing movement"
+    },
+    {
+     "text": "You find a sealed letter addressed to someone named Maren in a ruined watchtower.",
+     "label": "must",
+     "why": "kept possession and an open task"
+    },
+    {
+     "text": "You ford a shallow stream, boots soaked through.",
+     "label": "drop",
+     "why": "passing movement"
+    },
+    {
+     "text": "You shelter from a squall beneath a rock overhang.",
+     "label": "drop",
+     "why": "passing weather"
+    },
+    {
+     "text": "You befriend a wounded hound and splint its leg; it follows you now.",
+     "label": "must",
+     "why": "standing companion"
+    },
+    {
+     "text": "You gather blackberries along the old wall.",
+     "label": "drop",
+     "why": "no one would mention it again"
+    },
+    {
+     "text": "You spot smoke rising from a farmstead two valleys over.",
+     "label": "either",
+     "why": "transient sighting; could become a hook or nothing"
+    },
+    {
+     "text": "You learn from a shepherd that Maren keeps the mill at Foldwater.",
+     "label": "must",
+     "why": "advances the open letter task"
+    },
+    {
+     "text": "You camp for the night beside the old wall.",
+     "label": "drop",
+     "why": "passing rest"
+    },
+    {
+     "text": "You cross the high pasture, sheep scattering ahead of you.",
+     "label": "drop",
+     "why": "passing movement"
+    }
+   ]
+  },
+  {
+   "name": "frame-and-goal",
+   "comment": "v3 addition: state-shaped memory (standing arrangement, player stated goal) + controls. v3.1: goal entry restructured to share NO sentence template with any prompt example - a prompt example that mirrors the fixture template makes the probe measure pattern-matching (caught 2026-07-23).",
+   "entries": [
+    {
+     "text": "You arrive at the riverside inn as evening settles.",
+     "label": "drop",
+     "why": "passing movement (opening anchor is handled code-side, not by the selector)"
+    },
+    {
+     "text": "You mean to reach the high monastery at Coldharbour before the ice closes the pass this winter - you say as much to the innkeeper, giving your name as Odile.",
+     "label": "must",
+     "why": "the player's own stated goal, still open - identity, destination, deadline (structured unlike any prompt example; no kinship terms - an earlier wording said 'your sister' and collided with the pretense entry)"
+    },
+    {
+     "text": "You share a joke with a drover by the fire.",
+     "label": "drop",
+     "why": "small talk"
+    },
+    {
+     "text": "You agree with the innkeeper's daughter Lys that she will speak and act as your absent sister Mara for the rest of the evening, and she takes up the role at once.",
+     "label": "must",
+     "why": "standing arrangement still in effect - every later turn is misread without it"
+    },
+    {
+     "text": "You and Lys, still speaking as Mara, trade stories over supper.",
+     "label": "either",
+     "why": "the pretense in action; the arrangement itself is the prior entry"
+    },
+    {
+     "text": "You order a second plate of stew.",
+     "label": "drop",
+     "why": "noise"
+    },
+    {
+     "text": "You promise the drover you will carry his letter as far as the crossroads.",
+     "label": "drop",
+     "why": "superseded by the delivery entry"
+    },
+    {
+     "text": "You hand the drover's letter to the crossroads warden, who thanks you and marks the drover's debt settled.",
+     "label": "must",
+     "why": "outcome carrying the promise"
+    },
+    {
+     "text": "You take up your pack and set out along the north road.",
+     "label": "drop",
+     "why": "passing movement"
+    }
+   ]
+  }
+ ]
 }

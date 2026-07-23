@@ -186,6 +186,21 @@ describe('buildBandedHistory', () => {
     expect(recap).not.toContain('s3'); // floor turns aren't in the band recap
   });
 
+  it('appends the now-line to the recap reply, and only when a band exists', () => {
+    const NOW = 'Now you are at the dock; the scene is already underway.';
+    const withBand = parseTurns([
+      ...pair('a1', { turnId: 't1', narration: 'g1', summary: 's1' }),
+      ...pair('a2', { turnId: 't2', narration: 'g2', summary: 's2' }),
+      ...pair('a3', { turnId: 't3', narration: 'g3', summary: 's3' }),
+    ]);
+    const { messages } = buildBandedHistory({ ...base, turns: withBand, keywords: [], nowLine: NOW });
+    expect(messages[1].content).toBe(`s1\n\n${NOW}`);
+    // No band (short game) → no recap exchange, so no now-line either.
+    const short = parseTurns([...pair('a1', { turnId: 't1', narration: 'g1', summary: 's1' })]);
+    const shortOut = buildBandedHistory({ ...base, turns: short, keywords: [], nowLine: NOW });
+    expect(shortOut.messages.some((m) => m.content.includes(NOW))).toBe(false);
+  });
+
   it('drops older turns that have no digest', () => {
     const turns = parseTurns([
       ...pair('a1', { turnId: 't1', narration: 'g1' }), // no summary

@@ -163,19 +163,6 @@
     "refusals": 0
   },
   {
-    "model": "gemma4-e4b-cloud",
-    "date": "2026-07-18",
-    "tier": "B",
-    "objective": 59,
-    "seeds": 3,
-    "spread": "50–65",
-    "restraint": 0,
-    "statDir": 83,
-    "format": 97,
-    "locAcc": 100,
-    "refusals": 0
-  },
-  {
     "model": "silver-siren-12b",
     "date": "2026-07-18",
     "tier": "B",
@@ -219,6 +206,19 @@
     "date": "2026-07-17",
     "tier": "B",
     "objective": 50,
+    "restraint": 0,
+    "statDir": 50,
+    "format": 100,
+    "locAcc": 100,
+    "refusals": 0
+  },
+  {
+    "model": "gemma4-e4b-cloud",
+    "date": "2026-07-23",
+    "tier": "B",
+    "objective": 50,
+    "seeds": 1,
+    "spread": "—",
     "restraint": 0,
     "statDir": 50,
     "format": 100,

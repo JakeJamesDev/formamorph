@@ -29,7 +29,9 @@ const model = cfg.models.find((m) => !modelFilter || m.label.includes(modelFilte
 let { cases } = JSON.parse(await readFile(path.resolve(HARNESS_DIR, "../summary-cases.json"), "utf8"));
 if (only) { const subs = only.split(","); cases = cases.filter((c) => subs.some((s) => c.name.includes(s))); }
 
-const source = await readFile(path.join(REPO_ROOT, "src/components/game/GamePrompts.ts"), "utf8");
+// --source <file>: read the prompts from a snapshot (e.g. `git show <rev>:src/components/game/GamePrompts.ts`
+// dumped to the scratchpad) instead of the working tree — baseline arms without touching checked-out files.
+const source = await readFile(argVal("--source") ?? path.join(REPO_ROOT, "src/components/game/GamePrompts.ts"), "utf8");
 const grab = (name) => {
   const at = source.indexOf(name + " = `");
   if (at === -1) throw new Error("missing " + name);
@@ -43,7 +45,15 @@ const renderUser = (action, narration) =>
 
 // A rough sentence count: terminal .!? runs, ignoring a single trailing terminator.
 const sentenceCount = (s) => (s.trim().replace(/[.!?]+$/, "").match(/[.!?]+(\s|$)/g) || []).length + 1;
-const wordSet = (s) => new Set((s.toLowerCase().match(/[a-z']+/g) || []));
+// Tokens both with and without possessive/apostrophe endings, so "Sunday's" whitelists "Sunday".
+const wordSet = (s) => {
+  const set = new Set();
+  for (const w of s.toLowerCase().match(/[a-z']+/g) || []) {
+    set.add(w);
+    set.add(w.replace(/'s?$/, "").replace(/'/g, ""));
+  }
+  return set;
+};
 // Capitalized words that could be a name: not sentence-initial, not "I", absent from the source text
 // (action + narration - a fact the player states in the action is legitimate summary material).
 function nameLeaks(summary, sourceText, forbid) {

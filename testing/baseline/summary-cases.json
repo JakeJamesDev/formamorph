@@ -52,24 +52,27 @@
     },
     {
       "name": "fact-stated-goal",
-      "action": "I tell the gatekeeper I'm called Ness, a courier bound for the counting-house at Verrin Cross, and that my satchel must arrive before the frost fair.",
-      "narration": "The gatekeeper looks you over, then at the satchel strapped tight across your chest. He rolls his shoulders and steps aside, dragging the bar from the gate. \"Long road for paper,\" he says, and waves you through without further ceremony.",
+      "_note": "De-correlated 2026-07-23: the earlier wording ('I'm called X, a courier bound for the counting-house at Verrin Cross, satchel due before the frost fair') shared its template with the Sedge Landing Profile Q planted fact, so probe results could not confirm the prompt generalizes. Facts now arrive explanation-first with the name trailing, different fact flavors.",
+      "action": "I explain my errand to the toll-keeper: the physician over in Marrowdown is waiting on the medicine in my bag, and it must be in her hands before Sunday's bell. When she asks, I give my name - Petra.",
+      "narration": "The toll-keeper listens without hurry, one thumb hooked in her belt. She glances at the bag, then lifts the chain from across the road. \"Bell waits for no one,\" she says, and jerks her chin toward the far side.",
       "forbid": [],
-      "require": ["\\bNess\\b", "Verrin", "frost fair"]
+      "require": ["\\bPetra\\b", "Marrowdown", "sunday|bell"]
     },
     {
       "name": "fact-introduced-object",
-      "action": "I take out my grandmother's bone-handled knife - the one with the chipped tip - and cut the wax seal on the bundle.",
-      "narration": "The old blade parts the wax cleanly despite its chip, and the oilcloth falls open across your knees. Inside lies a coil of new rope and a paper of iron nails, nothing more. You fold the cloth back over them and slide the knife away.",
+      "_note": "De-correlated 2026-07-23: was '[relative]'s [material]-handled [tool] with [flaw]', mirroring the Q world's mother's-compass fact. Now a won object with a repair detail.",
+      "action": "I unwrap the signal-lamp I won at cards back in Dunmere - green glass, mended with a tin patch - and set it burning in the window.",
+      "narration": "The little flame takes on the second strike, and the green glass throws a pale ring of light across the sill. The tin patch rattles faintly in its solder as the lamp warms. Outside, the yard stays dark and still.",
       "forbid": [],
-      "require": ["knife", "bone|chip|grandmother"]
+      "require": ["lamp", "dunmere|cards|green|tin"]
     },
     {
       "name": "fact-named-price",
-      "action": "I ask the carter what he would charge to haul my crates as far as the mill.",
-      "narration": "The carter squints at the crates, then at his mule. \"Three copper pennies the load,\" he says, slapping the sideboard. \"Half now, half at the millpond. And if the axle goes on that hill road, you're pushing.\" He holds out a broad, cracked palm to seal it.",
+      "_note": "De-correlated 2026-07-23: was a haulage quote (mirroring the Q script's ferry-price turn). Now a fine with an alternative payment, stated in odd units.",
+      "action": "I ask the warden what the fine for the broken gate comes to.",
+      "narration": "The warden flips a page in her ledger without looking up. \"Nine iron bits,\" she says flatly. \"Or two days hauling sand for the wall, if your purse is lighter than your temper.\" She dips her pen and waits.",
       "forbid": [],
-      "require": ["three|3", "copper|penn"]
+      "require": ["nine|9", "iron|bit", "sand|two days"]
     }
   ]
 }
