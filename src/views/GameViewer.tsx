@@ -41,7 +41,7 @@ import { MenuModal } from "../components/modals/MenuModal";
 import LlmSetupGuide from "../components/modals/LlmSetupGuide";
 import { isLikelyConnectionError } from "../lib/connectionError";
 import WorldEditor from "./WorldEditor";
-import type { CharacterData, ChatMessage, ChatRole, AIRequestType, AITurnResult, StatChange, Trait, GameLocation, MediaAsset, Dictionary, Entity, SaveRecord, World } from "@/types";
+import type { CharacterData, ChatMessage, ChatRole, AIRequestType, AITurnResult, StatChange, Trait, GameLocation, MediaAsset, Dictionary, Entity, SaveRecord, World, PlayerStat } from "@/types";
 import { UnsavedChangesDialog } from "../components/UnsavedChangesDialog";
 import { estimateHistoryChars, estimateTokens } from "../lib/memoryUtils";
 import { parseNarration, stripReasoning, stripReasoningLive, extractReasoning, extractReasoningLive } from "../lib/aiResponse";
@@ -473,6 +473,7 @@ const GameViewer = ({
   // reveal corpus. Set just before the narration request each turn.
   const sceneListCtxRef = useRef<{ cast: DirectorCastMember[] | null; prior: string }>({ cast: null, prior: "" });
   const assistantAddedRef = useRef(false); // whether this turn's in-progress assistant message is in history yet
+  const userTurnAddedRef = useRef(false); // whether this turn's user message has been appended to history yet
   const currentTurnIdRef = useRef(""); // stable id for the in-progress turn, stamped into its assistant JSON
   // This turn's dictionary activation, computed at narration-assembly time and consumed by the narration
   // request's AI-context capture (reset per turn so a turn without one never reuses a stale report).
@@ -585,13 +586,6 @@ const GameViewer = ({
   const [mobilePanel, setMobilePanel] = useState("game");
   const [showPotatoPCDialog, setShowPotatoPCDialog] = useState(false);
   const [isLocationModalOpen, setIsLocationModalOpen] = useState(false);
-
-  const getStatByName = useCallback(
-    (name: string) => {
-      return playerStats.find((stat) => stat.name === name);
-    },
-    [playerStats],
-  );
 
   /**
    * Move a stat by `delta`, clamped to its range. Deltas rather than absolute values because a turn's other
@@ -779,10 +773,7 @@ const GameViewer = ({
       const sceneLoc = withDiscovered(currentLocation);
       let systemPrompt = renderPromptTemplate(choicesPrompt, {
         ...ctx,
-        "<ENTITIES>": resolvePH(buildEntityContext(sceneLoc, sceneEntities)),
-        "<ENTITIES|summary>": resolvePH(buildEntityContext(sceneLoc, sceneEntities, { preferSummary: true })),
-        "<ENTITIES|markdown>": resolvePH(buildEntityContext(sceneLoc, sceneEntities, { format: "markdown" })),
-        "<ENTITIES|summary.markdown>": resolvePH(buildEntityContext(sceneLoc, sceneEntities, { preferSummary: true, format: "markdown" })),
+        ...sceneEntityOverride(sceneLoc, sceneEntities),
       });
       if (language.toLowerCase() != "english") systemPrompt += `\n Choice language: ` + language;
       const response = await makeAIRequest(
@@ -821,8 +812,13 @@ const GameViewer = ({
       if (signal.aborted) return;
       const { values, maxes } = parseStatUpdates(response);
       const statChanges = Object.entries(values).map(([k, v]) => ({ [k]: v }));
-      // Max-cap deltas first (may re-clamp), then value deltas onto that baseline via applyStatChanges.
-      await applyStatChanges(statChanges, null, applyAiMaxChanges(baseline, maxes));
+      // Mirror the live turn's stat commit: reset the per-turn bar deltas, apply max-cap + value deltas onto
+      // the pre-turn baseline, then re-run the regen/starvation tick (thresholded on that baseline) WITHOUT
+      // re-advancing game time. Not awaited, so regen stacks before stat code — the same order the live turn
+      // uses. Without this the re-roll dropped the turn's regen and left stale held deltas on the bar.
+      setHeldStatChanges({});
+      applyStatChanges(statChanges, null, applyAiMaxChanges(baseline, maxes));
+      applyRegenTick(1, baseline);
       patchLatestTurn({ stat_changes: statChanges });
       armTurnSnapshot();
     });
@@ -897,9 +893,12 @@ const GameViewer = ({
     setAmbientSound(loc?.ambientSound ?? null);
   }, [viewLocationId, locations]);
 
-  const handleTimePassed = useCallback(
-    (hours: number) => {
-      setGameTime((prevTime) => prevTime + hours);
+  // Regen + starvation for `hours`, WITHOUT advancing game time. Split out from handleTimePassed so a stat
+  // re-roll can re-apply the same tick (a re-roll must not lose the turn's regen, but must not re-advance
+  // time either). `thresholdStats` is the pre-turn stats the starvation check reads, so a re-roll thresholds
+  // on the same pre-turn Hunger the original turn did rather than the re-rolled value.
+  const applyRegenTick = useCallback(
+    (hours: number, thresholdStats: PlayerStat[]) => {
       // New turn's changes are landing — make sure any pending text fade-out flag is cleared so this
       // turn's delta text shows normally (covers a response that beat the submit-time fade timer).
       setRecentStatFading(false);
@@ -940,12 +939,12 @@ const GameViewer = ({
       setRecentStatChanges(mergeRegen);
       setHeldStatChanges(mergeRegen);
 
-      const health = getStatByName("Health");
-      const hunger = getStatByName("Hunger");
+      const health = thresholdStats.find((s) => s.name === "Health");
+      const hunger = thresholdStats.find((s) => s.name === "Hunger");
       if (health && hunger) {
-        // This turn's AI changes and the regen above are both still queued, so neither `hunger.value` nor
-        // `regenChanges` reflects them here — the penalty subtracts via an updater, which lands on the
-        // regenerated Health rather than overwriting it. The threshold still reads the pre-turn Hunger.
+        // This turn's AI changes and the regen above are both still queued, so the penalty subtracts via an
+        // updater, which lands on the regenerated Health rather than overwriting it. The threshold reads the
+        // pre-turn Hunger (thresholdStats), which the caller passes explicitly.
         if (hunger.value <= 20) {
           const healthLoss = 5 * hours;
           adjustStatByName("Health", -healthLoss);
@@ -959,9 +958,17 @@ const GameViewer = ({
           setHeldStatChanges(applyLoss);
         }
       }
-
     },
-    [getStatByName, adjustStatByName, addLogEntry, setGameTime, setPlayerStats, setRecentStatChanges, setHeldStatChanges, setRecentStatFading],
+    [adjustStatByName, addLogEntry, setPlayerStats, setRecentStatChanges, setHeldStatChanges, setRecentStatFading],
+  );
+
+  const handleTimePassed = useCallback(
+    (hours: number) => {
+      setGameTime((prevTime) => prevTime + hours);
+      // Threshold on the pre-turn stats (playerStats here is still this render's pre-commit snapshot).
+      applyRegenTick(hours, playerStats);
+    },
+    [applyRegenTick, setGameTime, playerStats],
   );
 
   const getEndpointUrl = () => endpointUrl;
@@ -982,6 +989,26 @@ const GameViewer = ({
   const resolvePH = useCallback(
     (text: string) => resolvePlaceholders(text, { placeholders, rolls: placeholderRolls }),
     [placeholders, placeholderRolls],
+  );
+
+  // Scene-roster override for the entity chips. Choices/re-roll prompts must see only who is actually in the
+  // scene, not the whole location roster — so replace EVERY unscoped <ENTITIES> variant (full/summary × the
+  // three formats). Missing one (the xml pair was the bug) lets an edited prompt using that chip slip the
+  // full roster past the presence filter. Mirrors the variant set addScoped() emits for the "" entity scope.
+  const sceneEntityOverride = useCallback(
+    (sceneLoc: GameLocation | null, sceneEntities: Entity[]): Record<string, string> => {
+      const build = (opts: { preferSummary?: boolean; format?: "markdown" | "xml" }) =>
+        resolvePH(buildEntityContext(sceneLoc, sceneEntities, opts));
+      return {
+        "<ENTITIES>": build({}),
+        "<ENTITIES|markdown>": build({ format: "markdown" }),
+        "<ENTITIES|xml>": build({ format: "xml" }),
+        "<ENTITIES|summary>": build({ preferSummary: true }),
+        "<ENTITIES|summary.markdown>": build({ preferSummary: true, format: "markdown" }),
+        "<ENTITIES|summary.xml>": build({ preferSummary: true, format: "xml" }),
+      };
+    },
+    [resolvePH],
   );
 
   // The README is authored text shown to the player, so its chips resolve like any other.
@@ -1130,6 +1157,9 @@ const GameViewer = ({
       setSuggestedLocation(null);
       // Stamp a stable id for this turn, written into its assistant JSON (powers the digest apply-guard).
       currentTurnIdRef.current = randomUUID();
+      // This turn hasn't entered history yet; an abort before the user message is added (the up-front
+      // location request) must not be mistaken for "narration came through" (see abortGeneration).
+      userTurnAddedRef.current = false;
       // Start a new turn in the AI-context history (cap to the last 50 turns).
       pendingDictionaryDebugRef.current = null;
       setDebugTurns((prev) => [...prev, { action: effectiveAction, requests: [], turnId: currentTurnIdRef.current }].slice(-50));
@@ -1267,6 +1297,7 @@ ${playerNotes || NONE_PLACEHOLDER}
       // Add user message to history after getting trimmed history. Stores the proxy on the opening turn so
       // later turns' context is byte-identical to the old flow (the real opening text lives in openingActionRef).
       addMessageToHistory("user", effectiveAction);
+      userTurnAddedRef.current = true;
 
       // Optional thinking step (runs exactly once). 'precall' and 'staged' produce a hidden plan
       // (captured in turnPlan and attached to the final user turn below); 'inline' appends a <think>
@@ -1410,6 +1441,9 @@ ${playerNotes || NONE_PLACEHOLDER}
       // indistinguishable from a dead submit button. Downstream calls (choices/stats) are skipped either
       // way: they take the narration as input.
       if (!narrationResponse) {
+        // No assistant message was persisted (streaming only appends one once text arrives), so drop this
+        // turn's dangling user message before returning — otherwise history pairing is corrupted.
+        discardUnpairedUserTurn();
         addLogEntry("The AI returned an empty narration — the turn was not advanced.");
         toast.error("The AI returned an empty response. Try again, or switch models if it keeps happening.", {
           position: "top-right",
@@ -1470,10 +1504,7 @@ ${playerNotes || NONE_PLACEHOLDER}
       ]);
       const sceneEntities = allEntities.filter((e) => presentNames.has(e.name));
       const sceneLoc = withDiscovered(turnLocation);
-      const sceneEntityData = resolvePH(buildEntityContext(sceneLoc, sceneEntities));
-      const sceneEntitySummary = resolvePH(buildEntityContext(sceneLoc, sceneEntities, { preferSummary: true }));
-      const sceneEntityDataMd = resolvePH(buildEntityContext(sceneLoc, sceneEntities, { format: "markdown" }));
-      const sceneEntitySummaryMd = resolvePH(buildEntityContext(sceneLoc, sceneEntities, { preferSummary: true, format: "markdown" }));
+      const sceneEntityTokens = sceneEntityOverride(sceneLoc, sceneEntities);
 
       // Auto-narrate the new game text if a TTS model is loaded. When streaming is off, block the trailing
       // choices/stat/location requests until the audio has finished generating (avoids GPU contention). When
@@ -1491,12 +1522,8 @@ ${playerNotes || NONE_PLACEHOLDER}
         if (!choicesEnabled) return Promise.resolve("");
         let updatedChoicesPrompt = renderPromptTemplate(choicesPrompt, {
           ...ctx,
-          // Choices see only who is actually in the scene, not the whole location roster — override every
-          // entity form so whichever the (editable) choices prompt uses gets the scene roster, not all present.
-          "<ENTITIES>": sceneEntityData,
-          "<ENTITIES|summary>": sceneEntitySummary,
-          "<ENTITIES|markdown>": sceneEntityDataMd,
-          "<ENTITIES|summary.markdown>": sceneEntitySummaryMd,
+          // Choices see only who is actually in the scene, not the whole location roster.
+          ...sceneEntityTokens,
         });
         if (language.toLowerCase() != "english")
           updatedChoicesPrompt += `\n Choice language: ` + language;
@@ -1681,6 +1708,9 @@ ${playerNotes || NONE_PLACEHOLDER}
       // and stat changes don't pop in over a still-fading narration. The smooth crawl self-catches-up,
       // so it needs no hold. (The reveal has been running in parallel with the aux requests above.)
       if (fadeRevealActive) await fadeReveal.drained();
+      // Stop pressed while the reveal was still draining — bail before committing choices/stats/snapshot,
+      // exactly as the aux-request abort checks above do. abortGeneration already kept the narration.
+      if (signal.aborted) return;
 
       // Parse choices (line-separated), hard-capped to 6 to stop the AI over-producing
       const choicesList = !choicesEnabled ? [] : parseChoices(choicesResponse);
@@ -1766,6 +1796,10 @@ ${playerNotes || NONE_PLACEHOLDER}
       }
     } catch (error) {
       const err = error as { response?: { status?: number }; message?: string; connectionHandled?: boolean };
+      // Drop this turn's dangling user message on any error exit (both the early connection-failure return
+      // and the fall-through below), unless narration had already streamed a partial assistant reply — the
+      // guard inside leaves a valid [user, assistant] pair intact.
+      discardUnpairedUserTurn();
       // Reset game started state if the opening turn fails
       if (isOpeningTurn) {
         setIsGameStarted(false);
@@ -1927,6 +1961,38 @@ ${playerNotes || NONE_PLACEHOLDER}
     [setPlayerStats, setRecentStatChanges, setHeldStatChanges],
   );
 
+  // Discard a turn's dangling, unpaired user message. The failure exits (empty narration, request error)
+  // and user-initiated Stop can all leave the user message with no assistant reply; left in place it
+  // corrupts history pairing — page math and parseTurns both walk strict index pairs — and silently drops
+  // every later turn from the model's context. Guarded on the tail actually being a lone user message, so a
+  // partially-streamed assistant turn is kept intact. Also restores the choices cleared at turn start.
+  const discardUnpairedUserTurn = () => {
+    setFullMessageHistory((prev) =>
+      prev[prev.length - 1]?.role === "user" ? prev.slice(0, -1) : prev,
+    );
+    // This turn never made it into the context; flag it so the AI-context viewer can hide it.
+    setDebugTurns((prev) => {
+      if (!prev.length) return prev;
+      const next = prev.slice();
+      next[next.length - 1] = { ...next[next.length - 1], aborted: true };
+      return next;
+    });
+    // Restore the previous turn's choices from the last committed assistant turn. Reverse-find is
+    // closure-agnostic: it lands on the prior assistant whether or not this turn's user message is in the
+    // current render's history snapshot (it is in abortGeneration, isn't yet inside sendGameAction).
+    const lastAssistant = [...fullMessageHistory].reverse().find((m) => m.role === "assistant");
+    let restored: string[] = [];
+    if (lastAssistant) {
+      try {
+        const parsed = JSON.parse(lastAssistant.content);
+        if (Array.isArray(parsed.choices)) restored = parsed.choices;
+      } catch {
+        restored = [];
+      }
+    }
+    setChoices(restored);
+  };
+
   // Function to abort ongoing AI generation
   const abortGeneration = () => {
     if (!abortControllerRef.current) return;
@@ -1938,10 +2004,13 @@ ${playerNotes || NONE_PLACEHOLDER}
     setChoicesReady(false);
 
     const last = fullMessageHistory[fullMessageHistory.length - 1];
-    if (last?.role === "assistant") {
+    if (userTurnAddedRef.current && last?.role === "assistant") {
       // Narration came through — keep this turn so the player can stop here and edit it manually. A kept
       // narration means the game is underway (covers aborting the opening turn). Save a snapshot so
-      // gameStates stays aligned with history (rollback / re-generate key off the page count).
+      // gameStates stays aligned with history (rollback / re-generate key off the page count). The
+      // userTurnAdded guard matters: without it, aborting during the up-front location request (before this
+      // turn's user message is added, so the tail is still the *previous* turn's assistant) would land here
+      // and overwrite that previous turn's snapshot with the current, choices-cleared state.
       setIsGameStarted(true);
       // Event-handler context: saveCurrentGameState reads the latest committed state, and the kept
       // narration already landed during streaming — so a synchronous snapshot here is fresh. Index it by
@@ -1949,32 +2018,21 @@ ${playerNotes || NONE_PLACEHOLDER}
       const snapshot = { ...saveCurrentGameState(), isGameStarted: true };
       const pageIndex = snapshotPageIndex(snapshot.fullMessageHistory?.length ?? 0, messagesPerPage);
       setGameStates((prev) => placeSnapshot(prev, pageIndex, snapshot));
-    } else if (last?.role === "user") {
-      // Nothing came back — drop the lone, unpaired user message (it would corrupt history pairing) and
-      // restore the previous turn's choices, which were cleared when this turn started.
-      setFullMessageHistory((prev) => prev.slice(0, -1));
-      // This turn never made it into the context; flag it so the AI-context viewer can hide it.
-      setDebugTurns((prev) => {
-        if (!prev.length) return prev;
-        const next = prev.slice();
-        next[next.length - 1] = { ...next[next.length - 1], aborted: true };
-        return next;
-      });
-      const previous = fullMessageHistory[fullMessageHistory.length - 2];
-      let restored: string[] = [];
-      if (previous?.role === "assistant") {
-        try {
-          const parsed = JSON.parse(previous.content);
-          if (Array.isArray(parsed.choices)) restored = parsed.choices;
-        } catch {
-          restored = [];
-        }
-      }
-      setChoices(restored);
+    } else {
+      // Either this turn's user message is the unpaired tail (nothing came back), or we aborted before it
+      // was added at all (the up-front location request). discardUnpairedUserTurn handles both via its
+      // guards: it drops only a lone user tail, flags this turn's debug entry, and restores the prior turn's
+      // choices — without re-snapshotting anything.
+      discardUnpairedUserTurn();
     }
 
     addLogEntry("AI generation aborted");
   };
+
+  // Abort any in-flight AI request when GameViewer unmounts (e.g. exiting to the menu mid-turn), so the SSE
+  // stream stops instead of a local model generating a whole narration into a torn-down provider. The
+  // turn's own `signal.aborted` checks then short-circuit its continuations.
+  useEffect(() => () => { abortControllerRef.current?.abort(); }, []);
 
   const makeAIRequest = async (
     systemPrompt: string,
@@ -2901,8 +2959,10 @@ ${playerNotes || NONE_PLACEHOLDER}
     if (targetWorldId && targetWorldId !== (worldId ? String(worldId) : undefined)) {
       try {
         const world = await WorldStorageService.getWorldData(targetWorldId) as World;
-        loadWorldData(world);
-        return await loadGame(id, Array.isArray(world.locations) ? world.locations : [], Array.isArray(world.stats) ? world.stats : []);
+        // Use the migrated world for the save restore — the raw one may be a legacy shape whose locations/
+        // stats lack the migration fixes (morph bindings, renamed keys) that loadWorldData just applied.
+        const { world: migrated } = loadWorldData(world);
+        return await loadGame(id, Array.isArray(migrated.locations) ? migrated.locations : [], Array.isArray(migrated.stats) ? migrated.stats : []);
       } catch (error) {
         console.error('Cross-world load failed:', error);
         toast.error("Couldn't load that save's world.");

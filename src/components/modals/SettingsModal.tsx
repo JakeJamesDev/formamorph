@@ -83,6 +83,13 @@ function OptionSwitcher({ value, onChange, options }: {
   );
 }
 
+/** Parse a numeric `<input>` value, falling back to `min` when it's empty or invalid. Without this a cleared
+ *  field yields `Number('') === 0`, which would persist a zero (a 0-token request, a 0px image) to settings. */
+const numInput = (raw: string, min: number): number => {
+  const n = Number(raw);
+  return Number.isFinite(n) && n >= min ? n : min;
+};
+
 const REASONING_CAVEAT = 'Only applies to models with native reasoning.';
 // Per-value help; the tabs themselves are built from the endpoint's detected support via `reasoningTabs`.
 const REASONING_EFFORT_HELP: Record<ReasoningEffort, string> = {
@@ -1199,7 +1206,7 @@ export const SettingsModal = ({ isOpen, onOpenChange, previewValues, initialTab,
                   id="maxTokens"
                   type="number"
                   value={useCustomEndpoint ? maxTokens : DEFAULT_MAX_TOKENS}
-                  onChange={(e) => setMaxTokens(Number(e.target.value))}
+                  onChange={(e) => setMaxTokens(numInput(e.target.value, 1))}
                   readOnly={!useCustomEndpoint}
                   className={useCustomEndpoint ? undefined : 'opacity-60 cursor-not-allowed'}
                 />
@@ -1332,24 +1339,24 @@ export const SettingsModal = ({ isOpen, onOpenChange, previewValues, initialTab,
               </Row>
               <Row center label="Portrait (W × H)">
                 <div className="flex items-center gap-2">
-                  <Input aria-label="Portrait width" type="number" min={64} step={64} value={imagePortraitWidth} onChange={(e) => setImagePortraitWidth(Number(e.target.value))} className="w-28" />
+                  <Input aria-label="Portrait width" type="number" min={64} step={64} value={imagePortraitWidth} onChange={(e) => setImagePortraitWidth(numInput(e.target.value, 64))} className="w-28" />
                   <span className="text-muted-foreground">×</span>
-                  <Input aria-label="Portrait height" type="number" min={64} step={64} value={imagePortraitHeight} onChange={(e) => setImagePortraitHeight(Number(e.target.value))} className="w-28" />
+                  <Input aria-label="Portrait height" type="number" min={64} step={64} value={imagePortraitHeight} onChange={(e) => setImagePortraitHeight(numInput(e.target.value, 64))} className="w-28" />
                   <span className="text-xs text-muted-foreground">entity portraits</span>
                 </div>
               </Row>
               <Row center label="Landscape (W × H)">
                 <div className="flex items-center gap-2">
-                  <Input aria-label="Landscape width" type="number" min={64} step={64} value={imageLandscapeWidth} onChange={(e) => setImageLandscapeWidth(Number(e.target.value))} className="w-28" />
+                  <Input aria-label="Landscape width" type="number" min={64} step={64} value={imageLandscapeWidth} onChange={(e) => setImageLandscapeWidth(numInput(e.target.value, 64))} className="w-28" />
                   <span className="text-muted-foreground">×</span>
-                  <Input aria-label="Landscape height" type="number" min={64} step={64} value={imageLandscapeHeight} onChange={(e) => setImageLandscapeHeight(Number(e.target.value))} className="w-28" />
+                  <Input aria-label="Landscape height" type="number" min={64} step={64} value={imageLandscapeHeight} onChange={(e) => setImageLandscapeHeight(numInput(e.target.value, 64))} className="w-28" />
                   <span className="text-xs text-muted-foreground">locations &amp; thumbnail</span>
                 </div>
               </Row>
               <Row center label="Steps / CFG">
                 <div className="flex items-center gap-2">
-                  <Input aria-label="Steps" type="number" min={1} value={imageSteps} onChange={(e) => setImageSteps(Number(e.target.value))} className="w-28" />
-                  <Input aria-label="CFG scale" type="number" min={0} step={0.5} value={imageCfg} onChange={(e) => setImageCfg(Number(e.target.value))} className="w-28" />
+                  <Input aria-label="Steps" type="number" min={1} value={imageSteps} onChange={(e) => setImageSteps(numInput(e.target.value, 1))} className="w-28" />
+                  <Input aria-label="CFG scale" type="number" min={0} step={0.5} value={imageCfg} onChange={(e) => setImageCfg(numInput(e.target.value, 0))} className="w-28" />
                 </div>
               </Row>
               <Row center label="Sampler" htmlFor="imageSampler">

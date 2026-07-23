@@ -67,7 +67,7 @@ export const LeftPanel = ({ entities, onEntityClick }: {
     viewNotes: playerNotes,
     setViewNotes: setPlayerNotes
   } = useGameplay();
-  const playerModelUrl = usePlayerModelUrl(characterData?.playerModelId);
+  const { url: playerModelUrl, resolving: modelResolving } = usePlayerModelUrl(characterData?.playerModelId);
   // First present entity that has an image — shown in the model section's Entities view (the portrait shows
   // whether or not the name is revealed yet).
   const firstEntityImage = visibleEntities
@@ -84,7 +84,6 @@ export const LeftPanel = ({ entities, onEntityClick }: {
   // Entity image picked from the list; falls back to the first detected entity's image.
   const [selectedEntityImage, setSelectedEntityImage] = React.useState<string | undefined>(undefined);
   const [leftTab, setLeftTab] = React.useState(isMobile ? "model" : "notes");
-  const [showVRMViewer, setShowVRMViewer] = React.useState(false);
 
   const entityViewImage = selectedEntityImage ?? firstEntityImage;
 
@@ -123,33 +122,18 @@ export const LeftPanel = ({ entities, onEntityClick }: {
     }
   }, [devRoute?.modal, devRoute?.tab]);
 
-  React.useEffect(() => {
-    const timer = setTimeout(() => {
-      setShowVRMViewer(true);
-    }, 5000);
-    return () => clearTimeout(timer);
-  }, []);
-
   const modelViewer = characterData ? (
     // Mobile: fill the whole panel. Landscape: a fixed 1.2 aspect box sitting atop the panel.
     <div className={isMobile ? "relative w-full h-full" : "w-full relative"} style={isMobile ? undefined : { paddingTop: '120%' }}>
       <div className="absolute top-0 left-0 w-full h-full flex items-center justify-center">
-        {!showVRMViewer ? (
+        {modelResolving ? (
+          // Hold a loader while a library model's blob resolves, so we don't transiently mount the bundled
+          // default (which would report default capabilities and flash before the real model swaps in).
           <Loader2 className="animate-spin" size={32} />
         ) : (
           <VRMViewer
             key={playerModelUrl ?? 'default'}
-            bodyMorphValues={mergeBodyMorphs(
-              {
-                Belly: characterData.bellySize + (characterData.bellySize || 0),
-                Fat: characterData.bodyWeight + (characterData.bodyWeight || 0),
-                Breasts: characterData.breastsSize + (characterData.breastsSize || 0),
-                B_Pear: characterData.bodyShape.pear,
-                B_HourGlass: characterData.bodyShape.hourglass,
-                B_Apple: characterData.bodyShape.apple,
-              },
-              bodyMorphValues,
-            )}
+            bodyMorphValues={mergeBodyMorphs(characterData.bodyMorphs, bodyMorphValues)}
             hairColor={characterData.hairColor}
             eyeColor={characterData.eyeColor}
             skinColor={characterData.skinColor}

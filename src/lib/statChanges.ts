@@ -148,20 +148,25 @@ export function applyTraitStatChanges(
     }
   });
 
-  // Second pass: 'starting' deltas + collected adjustments, clamped to [min, max].
+  // Second pass: 'starting' deltas, applied per change entry (a stat may carry several), clamped each time.
   changes.forEach((change) => {
     const stat = updated.find((s) => s.id === change.statId);
     if (!stat) return;
-
     if (change.type === 'starting') {
       stat.value = clamp(stat.value + change.value, stat.min, stat.max);
     }
-    const adjustment = valueAdjustments.get(stat.id) || 0;
-    if (adjustment !== 0) {
-      stat.value = clamp(stat.value + adjustment, stat.min, stat.max);
-    }
     changedIds.add(stat.id);
   });
+
+  // Then apply each stat's accumulated bounds adjustment exactly once — iterating `changes` here would
+  // re-apply it once per change entry, over-adjusting any stat that carries two or more changes.
+  for (const [statId, adjustment] of valueAdjustments) {
+    if (adjustment === 0) continue;
+    const stat = updated.find((s) => s.id === statId);
+    if (!stat) continue;
+    stat.value = clamp(stat.value + adjustment, stat.min, stat.max);
+    changedIds.add(statId);
+  }
 
   return { stats: updated, changedIds };
 }

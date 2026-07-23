@@ -6,7 +6,7 @@ import { collectUsedPlaceholders } from './placeholders';
 import type { Dictionary } from '@/types';
 import { embedEntityCard, readEntityCard } from './entityCard';
 import { readTavernCard } from './tavernCard';
-import { IMAGE_CAPS, bytesToDataUrl, dataUrlMime, measureDataUrl, optimizeImageDataUrl } from './imageOptim';
+import { IMAGE_CAPS, bytesToDataUrl, dataUrlMime, measureDataUrl, optimizeImageDataUrl, optimizeToWebpDataUrl } from './imageOptim';
 
 /** Discriminator identifying a standalone character card (vs. a world, save, or dictionary file). */
 export const ENTITY_FILE_KIND = 'entity' as const;
@@ -102,7 +102,9 @@ async function placeholderPortrait(name: string): Promise<string> {
  */
 export async function exportEntityCard(entity: Entity, available?: Placeholder[]): Promise<Blob> {
   let imageUrl = entity.image || (await placeholderPortrait(entity.name || 'Character'));
-  if (dataUrlMime(imageUrl) !== 'image/webp') imageUrl = await optimizeImageDataUrl(imageUrl, IMAGE_CAPS.entity);
+  // Force WebP even if it comes out larger than the source: the card embeds its metadata in a WebP chunk, so
+  // a PNG/JPEG portrait (which the size-optimizing path would keep for an already-small image) is unusable.
+  if (dataUrlMime(imageUrl) !== 'image/webp') imageUrl = await optimizeToWebpDataUrl(imageUrl, IMAGE_CAPS.entity);
   if (dataUrlMime(imageUrl) !== 'image/webp') throw new Error('Could not encode the portrait as WebP.');
   const { w, h } = await measureDataUrl(imageUrl);
   const bytes = new Uint8Array(await (await fetch(imageUrl)).arrayBuffer());

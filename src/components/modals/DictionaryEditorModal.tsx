@@ -67,9 +67,10 @@ const DictionaryEditorModal = ({ dictionaryId, draft, onClose, onPublish }: {
       return { ...b, placeholders: next.length ? next : undefined };
     }))), [bookPlaceholders, setDictionaries]);
 
-  const handleSave = async () => {
+  // Returns whether the save succeeded, so a save-and-exit caller only closes on success.
+  const handleSave = async (): Promise<boolean> => {
     const current = dictionaries[0];
-    if (!current) return;
+    if (!current) return true;
     // Normalize the book id back to the record id (a delete-reseed can change it) so the record isn't orphaned.
     const recordId = dictionaryId ?? current.id;
     const normalized: Dictionary[] = dictionaries.map((b, i) => (i === 0 ? { ...b, id: recordId } : b));
@@ -82,8 +83,10 @@ const DictionaryEditorModal = ({ dictionaryId, draft, onClose, onPublish }: {
       setDictionaries(normalized);
       baselineRef.current = JSON.stringify(normalized);
       toast.success('Dictionary saved!');
+      return true;
     } catch {
       toast.error('Could not save dictionary.');
+      return false;
     }
   };
 
@@ -166,7 +169,7 @@ const DictionaryEditorModal = ({ dictionaryId, draft, onClose, onPublish }: {
       <UnsavedChangesDialog
         open={showUnsaved}
         onOpenChange={setShowUnsaved}
-        onSave={async () => { await handleSave(); onClose(); }}
+        onSave={async () => { if (await handleSave()) onClose(); }}
         onExit={onClose}
       />
     </>

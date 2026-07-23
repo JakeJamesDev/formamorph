@@ -203,6 +203,60 @@ describe('migrateSave (shared import + load path)', () => {
     });
   });
 
+  describe('body morphs', () => {
+    const envelope = (character: Record<string, unknown> | null, history: (Record<string, unknown> | null)[] = []) => ({
+      name: 'Save', version: APP_VERSION,
+      currentState: { playerTraits: [], playerStats: [], characterData: character },
+      stateHistory: history.map((h) => ({ playerTraits: [], playerStats: [], characterData: h })),
+    } as unknown as SaveObject);
+    // A character carrying the legacy fixed body fields (pre-generic-map shape).
+    const legacyCharacter = () => ({
+      playerModelId: 'm', bellySize: 0.4, bodyWeight: -0.2, breastsSize: 0,
+      bodyShape: { pear: 1.1, apple: 0, hourglass: 0.3 },
+    });
+
+    it('folds the legacy fixed fields into bodyMorphs under their morph names', () => {
+      const out = migrateSave(envelope(legacyCharacter()));
+      expect(out.currentState.characterData?.bodyMorphs).toEqual({
+        Belly: 0.4, Fat: -0.2, B_Pear: 1.1, B_HourGlass: 0.3,
+      });
+    });
+
+    it('drops zero-valued legacy fields (0 = off = absent) and the old fields themselves', () => {
+      const character = out(legacyCharacter());
+      expect(character).not.toHaveProperty('bellySize');
+      expect(character).not.toHaveProperty('bodyShape');
+      // breastsSize was 0 and bodyShape.apple was 0 → no Breasts / B_Apple key.
+      expect(character?.bodyMorphs).not.toHaveProperty('Breasts');
+      expect(character?.bodyMorphs).not.toHaveProperty('B_Apple');
+    });
+
+    it('preserves an already-migrated character (idempotent — a second pass is a no-op)', () => {
+      const migrated = { playerModelId: 'm', bodyMorphs: { Belly: 0.4, Custom_Tail: 0.9 } };
+      const once = migrateSave(envelope(migrated));
+      const twice = migrateSave(once);
+      expect(twice.currentState.characterData?.bodyMorphs).toEqual({ Belly: 0.4, Custom_Tail: 0.9 });
+    });
+
+    it('tolerates a save with no character data', () => {
+      expect(migrateSave(envelope(null)).currentState.characterData).toBeNull();
+    });
+
+    it('folds every history snapshot, not just the current one', () => {
+      const migrated = migrateSave(envelope(legacyCharacter(), [legacyCharacter(), null]));
+      expect(migrated.stateHistory[0].characterData?.bodyMorphs).toEqual({
+        Belly: 0.4, Fat: -0.2, B_Pear: 1.1, B_HourGlass: 0.3,
+      });
+      expect(migrated.stateHistory[1].characterData).toBeNull();
+    });
+
+    // Helper: run migrateSave and return the current snapshot's character.
+    function out(character: Record<string, unknown>) {
+      return migrateSave(envelope(character)).currentState.characterData as
+        (Record<string, unknown> & { bodyMorphs?: Record<string, number> }) | null;
+    }
+  });
+
   it('appends current and stamps discoveredEntities on a multi-turn envelope (the import regression)', () => {
     // Real 3-turn v1.2 shape: stateHistory = prior pages only; the regression duplicated page 1 and
     // dropped current. Migration must yield 3 distinct pages ending in currentState, each with the field.

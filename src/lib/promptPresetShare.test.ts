@@ -90,4 +90,19 @@ describe('sanitize / compat', () => {
     expect(r.preset!.reasoning).toBeUndefined(); // 42 is not a string
     expect(r.preset!.verbatim).toBeUndefined(); // 'five' is not a number
   });
+
+  it('validates sampler settings — drops a non-numeric value, keeps well-formed ones', () => {
+    const shared = buildSharedPreset(base, APP);
+    const crafted = JSON.stringify({
+      ...shared,
+      samplers: {
+        narration: { temperature: { custom: true, value: 'hot' } }, // malformed → whole kind dropped
+        statUpdates: { temperature: { custom: true, value: 0.3 } },  // valid → kept
+        choices: { temperature: { custom: true, value: Infinity } }, // non-finite → dropped
+      },
+    });
+    const r = parseSharedJson(crafted, APP);
+    expect(r.ok).toBe(true);
+    expect(r.preset!.samplers).toEqual({ statUpdates: { temperature: { custom: true, value: 0.3 } } });
+  });
 });

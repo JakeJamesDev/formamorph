@@ -121,6 +121,22 @@ interface ComfyImageRef {
 
 interface ComfyHistoryEntry {
   outputs?: Record<string, { images?: ComfyImageRef[] }>;
+  // Present once the run reaches a terminal state. `completed` true (or `status_str: 'error'`) with no image
+  // means the run finished without producing one — a failure, not "still rendering".
+  status?: { status_str?: string; completed?: boolean; messages?: [string, unknown][] };
+}
+
+/** How many consecutive failed /history fetches to tolerate before giving up (matches the InvokeAI poll). */
+const MAX_POLL_ERRORS = 5;
+
+/** A human-readable reason from a terminal-but-imageless history entry (the node's exception, if any). */
+function comfyHistoryError(entry?: ComfyHistoryEntry): string {
+  const errMsg = entry?.status?.messages?.find((m) => m[0] === 'execution_error');
+  const detail =
+    errMsg && typeof errMsg[1] === 'object' && errMsg[1] !== null
+      ? (errMsg[1] as { exception_message?: string }).exception_message
+      : undefined;
+  return `ComfyUI generation failed${detail ? `: ${detail}` : ' (the run finished without an image).'}`;
 }
 
 /** Pull the first output image reference for a prompt out of a /history payload. */
@@ -240,15 +256,25 @@ function watchComfyProgress(
 /** Poll /history until the prompt has an output image; the authoritative result fetch. */
 async function pollHistory(base: string, promptId: string, opts: ImageGenOpts): Promise<ComfyImageRef> {
   const headers = authHeaders(opts.apiToken, 'Bearer');
+  let consecutiveErrors = 0;
   for (;;) {
     if (opts.signal?.aborted) throw new DOMException('Aborted', 'AbortError');
     const res = await fetch(`${base}/history/${promptId}`, { headers, signal: opts.signal });
     if (res.ok) {
+      consecutiveErrors = 0;
+      const history = await res.json();
       try {
-        return parseHistoryImages(await res.json(), promptId);
+        return parseHistoryImages(history, promptId);
       } catch {
-        // not ready yet — keep polling
+        // No image yet. If the entry shows the run has reached a terminal state, it will never produce one
+        // (bad graph, execution error, OOM) — fail fast instead of polling forever.
+        const entry = (history as Record<string, ComfyHistoryEntry>)?.[promptId];
+        if (entry?.status?.status_str === 'error' || entry?.status?.completed) {
+          throw new Error(comfyHistoryError(entry));
+        }
       }
+    } else if (++consecutiveErrors >= MAX_POLL_ERRORS) {
+      throw new Error(`ComfyUI stopped responding while generating (HTTP ${res.status}).`);
     }
     await new Promise((r) => setTimeout(r, POLL_INTERVAL_MS));
   }

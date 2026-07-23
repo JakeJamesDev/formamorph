@@ -85,6 +85,8 @@ const TTSModal = forwardRef<TTSModalHandle, {
   const streamDrainingRef = useRef(false);
   const streamEndedRef = useRef(false);
   const streamSentenceIndexRef = useRef(0); // sequential sentence index for the karaoke highlighter
+  const streamGenRef = useRef(0); // session token; bumped on start/cancel so a stale drain loop bails
+  const drainStreamRef = useRef<() => void>(() => {}); // latest drainStream, for re-kicking after a stale bail
   const ttsRef = useRef(tts);
   const voiceRef = useRef(selectedVoice);
   const speedRef = useRef(ttsSpeed);
@@ -176,10 +178,11 @@ const TTSModal = forwardRef<TTSModalHandle, {
   // Synthesize queued sentences sequentially, appending each to the playback engine; finalize once
   // the stream has ended and the queue is drained.
   const drainStream = useCallback(async () => {
-    if (streamDrainingRef.current) return;
+    if (streamDrainingRef.current) return; // one loop at a time
     streamDrainingRef.current = true;
+    const gen = streamGenRef.current; // this loop belongs to the session live when it started
     try {
-      while (streamQueueRef.current.length > 0) {
+      while (streamGenRef.current === gen && streamQueueRef.current.length > 0) {
         const text = streamQueueRef.current.shift()!;
         const model = ttsRef.current;
         const voice = voiceRef.current;
@@ -187,6 +190,9 @@ const TTSModal = forwardRef<TTSModalHandle, {
         const sentenceIndex = streamSentenceIndexRef.current++;
         try {
           const result = await synthesizeSpeech(model, text, voice, speedRef.current);
+          // A start/cancel during the awaited synthesis reset the playback session — drop this stale audio
+          // instead of appending it into the new one.
+          if (streamGenRef.current !== gen) break;
           ttsPlayback.append(new Float32Array(result.audio), result.sampling_rate, {
             sentenceIndex,
             text: stripMarkdownForSpeech(text),
@@ -198,15 +204,19 @@ const TTSModal = forwardRef<TTSModalHandle, {
     } finally {
       streamDrainingRef.current = false;
     }
-    if (streamEndedRef.current && streamQueueRef.current.length === 0) {
-      ttsPlayback.finalize();
+    if (streamGenRef.current === gen) {
+      if (streamEndedRef.current && streamQueueRef.current.length === 0) ttsPlayback.finalize();
+    } else if (streamQueueRef.current.length > 0 || streamEndedRef.current) {
+      // We bailed on a superseded session but the current one has queued work — kick a fresh loop for it.
+      drainStreamRef.current();
     }
   }, [ttsPlayback, synthesizeSpeech]);
+  drainStreamRef.current = drainStream;
 
   const streamStart = useCallback(() => {
+    streamGenRef.current++; // new session — any in-flight old loop bails at its next checkpoint
     streamQueueRef.current = [];
     streamEndedRef.current = false;
-    streamDrainingRef.current = false;
     streamSentenceIndexRef.current = 0;
     ttsPlayback.reset();
   }, [ttsPlayback]);
@@ -224,6 +234,7 @@ const TTSModal = forwardRef<TTSModalHandle, {
   }, [drainStream]);
 
   const streamCancel = useCallback(() => {
+    streamGenRef.current++; // supersede any in-flight drain loop so its pending audio is dropped
     streamQueueRef.current = [];
     streamEndedRef.current = false;
     streamSentenceIndexRef.current = 0;

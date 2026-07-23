@@ -131,7 +131,7 @@ const WorldEditor = ({ onClose, embedded = false, backButton }: {
     const { id: _id, ...worldFields } = w;
     const worldData = { formamorphKind: WORLD_FILE_KIND, ...worldFields };
     const jsonData = JSON.stringify(worldData, null, 2);
-    downloadBlob(new Blob([jsonData], { type: 'application/json' }), worldOverview.name || 'rpg_world.json');
+    downloadBlob(new Blob([jsonData], { type: 'application/json' }), `${worldOverview.name || 'rpg_world'}.json`);
   };
 
   // Export one book to its own standalone `.json` (no image downscale — dictionaries are text only).
@@ -694,7 +694,7 @@ const WorldEditor = ({ onClose, embedded = false, backButton }: {
       <UnsavedChangesDialog
         open={showExitPrompt}
         onOpenChange={setShowExitPrompt}
-        onSave={async () => { await saveWorld(); onClose(); }}
+        onSave={async () => { if (await saveWorld()) onClose(); }}
         onExit={onClose}
       />
       <AddDictionaryModal

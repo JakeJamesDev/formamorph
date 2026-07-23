@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { toast } from "react-toastify";
 import { Search } from "lucide-react";
 import {
@@ -28,16 +28,22 @@ export function ManageUsersDialog({ open, onOpenChange }: ManageUsersDialogProps
   const [userSearchQuery, setUserSearchQuery] = useState('');
   const [userCurrentPage, setUserCurrentPage] = useState(1);
   const [userTotalPages, setUserTotalPages] = useState(1);
+  // Bumped to (re)run a search even when the page is already 1 (where a page reset wouldn't change state).
+  const [searchNonce, setSearchNonce] = useState(0);
+  // Tokens each fetch so a stale one can't overwrite the table (page change / re-search mid-flight).
+  const fetchReqRef = useRef(0);
 
   // Fetch users from the server
   const fetchUsers = async () => {
     if (!open) return;
 
+    const reqId = ++fetchReqRef.current;
     setIsLoadingUsers(true);
 
     try {
-      // Fetch users from the API
-      const response = await fetch(`${WorldStorageService.API_URL}/users?page=${userCurrentPage}&limit=10&search=${userSearchQuery}`, {
+      // Fetch users from the API. Encode the query so a term with & or # can't break the URL.
+      const query = new URLSearchParams({ page: String(userCurrentPage), limit: '10', search: userSearchQuery });
+      const response = await fetch(`${WorldStorageService.API_URL}/users?${query}`, {
         headers: {
           'Authorization': `Bearer ${AuthService.token}`
         }
@@ -49,6 +55,7 @@ export function ManageUsersDialog({ open, onOpenChange }: ManageUsersDialogProps
       }
 
       const result = await response.json();
+      if (reqId !== fetchReqRef.current) return; // superseded by a newer fetch (page change / re-search)
 
       if (result.success) {
         setUsers(result.data);
@@ -64,10 +71,12 @@ export function ManageUsersDialog({ open, onOpenChange }: ManageUsersDialogProps
       }
     } catch (error) {
       console.error('Error in fetchUsers:', error);
-      toast.error((error as Error).message || 'Failed to connect to server');
-      setUsers([]);
+      if (reqId === fetchReqRef.current) {
+        toast.error((error as Error).message || 'Failed to connect to server');
+        setUsers([]);
+      }
     } finally {
-      setIsLoadingUsers(false);
+      if (reqId === fetchReqRef.current) setIsLoadingUsers(false);
     }
   };
 
@@ -103,14 +112,20 @@ export function ManageUsersDialog({ open, onOpenChange }: ManageUsersDialogProps
     }
   };
 
-  // Fetch users when the dialog is opened or the page changes
+  // Fetch users when the dialog opens, the page changes, or a search is triggered. Driving the search
+  // through state (not a direct call) means one fetch with the current page/query — no stale-page double
+  // fetch. React batches the page-reset + nonce bump into a single render, so this fires exactly once.
   useEffect(() => {
     if (open) {
       fetchUsers();
     }
-    // Fetch only when the dialog opens or the page changes — not on fetchUsers identity.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [open, userCurrentPage]);
+  }, [open, userCurrentPage, searchNonce]);
+
+  const runSearch = () => {
+    setUserCurrentPage(1);
+    setSearchNonce((n) => n + 1);
+  };
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -134,8 +149,7 @@ export function ManageUsersDialog({ open, onOpenChange }: ManageUsersDialogProps
                 onChange={(e) => setUserSearchQuery(e.target.value)}
                 onKeyDown={(e) => {
                   if (e.key === 'Enter') {
-                    setUserCurrentPage(1);
-                    fetchUsers();
+                    runSearch();
                   }
                 }}
               />
@@ -144,10 +158,7 @@ export function ManageUsersDialog({ open, onOpenChange }: ManageUsersDialogProps
             <Button
               variant="outline"
               size="sm"
-              onClick={() => {
-                setUserCurrentPage(1);
-                fetchUsers();
-              }}
+              onClick={runSearch}
             >
               Search
             </Button>

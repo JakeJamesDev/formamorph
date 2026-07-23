@@ -19,10 +19,49 @@ describe('reorderBooks', () => {
 });
 
 describe('moveEntryInBooks', () => {
-  it('reorders within a zone by inserting before the target entry', () => {
+  it('reorders within a zone by inserting before the target entry (upward drag)', () => {
     const books = [bk('b1', [e('a', 'after'), e('b', 'after'), e('c', 'after')])];
     const out = moveEntryInBooks(books, 'c', 'b1', 'after', 'a');
     expect(out[0].entries.map((x) => x.id)).toEqual(['c', 'a', 'b']);
+  });
+
+  it('a downward same-zone drag lands after the over entry, matching the arrayMove preview', () => {
+    // Drag `a` down over `c`. The sortable preview shows [b, c, a]; insert-before would wrongly give [b,a,c].
+    const books = [bk('b1', [e('a', 'after'), e('b', 'after'), e('c', 'after')])];
+    const out = moveEntryInBooks(books, 'a', 'b1', 'after', 'c');
+    expect(out[0].entries.map((x) => x.id)).toEqual(['b', 'c', 'a']);
+  });
+
+  it('a downward drag over the immediate next entry swaps the pair', () => {
+    // Drag `a` over `b` → preview [b, a, c]; insert-before would give the no-op [a, b, c].
+    const books = [bk('b1', [e('a', 'after'), e('b', 'after'), e('c', 'after')])];
+    const out = moveEntryInBooks(books, 'a', 'b1', 'after', 'b');
+    expect(out[0].entries.map((x) => x.id)).toEqual(['b', 'a', 'c']);
+  });
+
+  it('is a no-op when an entry is dropped on itself (in-place drag)', () => {
+    // dnd-kit fires drag-end with over === active when you pick up an entry and don't move it. Without a
+    // guard, stripping then re-finding `over` (which is the stripped entry) appended it to the zone's end.
+    const books = [bk('b1', [e('a', 'after'), e('b', 'after'), e('c', 'after')])];
+    const out = moveEntryInBooks(books, 'b', 'b1', 'after', 'b');
+    expect(out).toBe(books); // unchanged reference
+    expect(out[0].entries.map((x) => x.id)).toEqual(['a', 'b', 'c']);
+  });
+
+  it('treats an unset position as the default (Foreground) zone on a downward drag', () => {
+    // Real-world repro: an untouched entry has `position: undefined`; a previously-moved one carries an
+    // explicit 'after'. Both live in the Foreground zone, so a downward drag must land after `over`. A strict
+    // `===` on position misreads the mix as cross-zone and wrongly inserts before → [b, a, c].
+    const books = [bk('b1', [e('a'), e('b'), e('c', 'after')])];
+    const out = moveEntryInBooks(books, 'a', 'b1', 'after', 'c');
+    expect(out[0].entries.map((x) => x.id)).toEqual(['b', 'c', 'a']);
+  });
+
+  it('a cross-zone move still inserts before the over entry (not treated as downward)', () => {
+    // `a` (before zone) dropped onto `c` (after zone): a genuine zone change, insert-before is correct.
+    const books = [bk('b1', [e('a', 'before'), e('b', 'after'), e('c', 'after')])];
+    const out = moveEntryInBooks(books, 'a', 'b1', 'after', 'c');
+    expect(out[0].entries.map((x) => `${x.id}:${x.position}`)).toEqual(['b:after', 'a:after', 'c:after']);
   });
 
   it('re-places an entry to the other zone and keeps zones contiguous (before then after)', () => {

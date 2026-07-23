@@ -167,6 +167,49 @@ function migrateDefaultModelId(state: GameState): GameState {
   return { ...state, characterData: { ...character, playerModelId: DEFAULT_MODEL_ID } };
 }
 
+/** The legacy fixed body fields, before they were folded into the generic `bodyMorphs` map. */
+type LegacyCharacterBody = {
+  bodyShape?: { pear?: number; apple?: number; hourglass?: number };
+  bellySize?: number;
+  breastsSize?: number;
+  bodyWeight?: number;
+};
+
+/** Legacy fixed body field → the morph name it drove. */
+const LEGACY_BODY_MORPHS: Array<[keyof Omit<LegacyCharacterBody, 'bodyShape'>, string]> = [
+  ['bellySize', 'Belly'],
+  ['bodyWeight', 'Fat'],
+  ['breastsSize', 'Breasts'],
+];
+const LEGACY_SHAPE_MORPHS: Array<[keyof NonNullable<LegacyCharacterBody['bodyShape']>, string]> = [
+  ['pear', 'B_Pear'],
+  ['hourglass', 'B_HourGlass'],
+  ['apple', 'B_Apple'],
+];
+
+/**
+ * Fold a legacy character's fixed body fields (`bellySize`/`bodyWeight`/`breastsSize` and the `bodyShape`
+ * trio) into the generic `bodyMorphs` map, keyed by the morph each drove. Presence-based and idempotent: a
+ * character already carrying `bodyMorphs` is returned untouched. Only nonzero values are carried (0 = off =
+ * absent), and the old fields are dropped from the result. The stored numbers are unchanged — they were
+ * already raw morph influences — so the map renders identically to the old fixed fields.
+ */
+function migrateBodyMorphs(state: GameState): GameState {
+  const character = state?.characterData as (typeof state.characterData & LegacyCharacterBody) | null;
+  if (!character || character.bodyMorphs) return state;
+  const bodyMorphs: Record<string, number> = {};
+  for (const [field, morph] of LEGACY_BODY_MORPHS) {
+    const v = character[field];
+    if (typeof v === 'number' && v !== 0) bodyMorphs[morph] = v;
+  }
+  for (const [field, morph] of LEGACY_SHAPE_MORPHS) {
+    const v = character.bodyShape?.[field];
+    if (typeof v === 'number' && v !== 0) bodyMorphs[morph] = v;
+  }
+  const { bodyShape: _s, bellySize: _b, breastsSize: _br, bodyWeight: _w, ...rest } = character;
+  return { ...state, characterData: { ...rest, bodyMorphs } };
+}
+
 /**
  * Migrate a save envelope to the current shape — the single path both the file-import boundary and the load
  * path run, so they can't drift. Three concerns, each idempotent:
@@ -178,6 +221,8 @@ function migrateDefaultModelId(state: GameState): GameState {
  *      snapshots, so this is a no-op for them.
  *   3. Player model (presence-based, every envelope): rewrite the `'default'` sentinel to the seeded model's
  *      library id. A save that never used it is untouched, and a rewritten one no longer matches.
+ *   4. Body morphs (presence-based, every snapshot): fold the legacy fixed body fields into the generic
+ *      `bodyMorphs` map. A character already carrying the map is untouched.
  * The appended current page stays `=== currentState`, so `gameStates[page - 1]` resolves the current page
  * identically. Pure — callers decide whether to persist the result (import) or just load it (load).
  */
@@ -187,10 +232,11 @@ export function migrateSave(save: SaveObject): SaveObject {
   const migratedHistory = isLegacy ? save.stateHistory.map(migrateLegacySaveState) : save.stateHistory;
   // Canonical flat history: an already-hoisted top-level copy, else the current snapshot's own copy.
   const messageHistory = save.messageHistory ?? migratedCurrent.fullMessageHistory ?? [];
-  const currentState = migrateDefaultModelId(stripSnapshotHistory(migratedCurrent));
+  const normalizeSnapshot = (s: GameState) => migrateBodyMorphs(migrateDefaultModelId(s));
+  const currentState = normalizeSnapshot(stripSnapshotHistory(migratedCurrent));
   const history = isLegacy
     ? appendCurrentToHistory(migratedHistory.map(stripSnapshotHistory), currentState)
     : migratedHistory.map(stripSnapshotHistory);
-  const stateHistory = history.map(migrateDefaultModelId);
+  const stateHistory = history.map(normalizeSnapshot);
   return { ...save, currentState, stateHistory, messageHistory, version: isLegacy ? APP_VERSION : save.version };
 }

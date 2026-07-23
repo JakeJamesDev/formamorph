@@ -65,8 +65,9 @@ const EntityEditorModal = ({ entityId, draft, onClose, onPublish }: {
       return { ...prev, placeholders: next.length ? next : undefined };
     })), [entity?.placeholders]);
 
-  const handleSave = async () => {
-    if (!entity) return;
+  // Returns whether the save succeeded, so a save-and-exit caller only closes on success.
+  const handleSave = async (): Promise<boolean> => {
+    if (!entity) return true;
     const id = entityId ?? entity.id;
     const normalized: Entity = { ...entity, id };
     try {
@@ -77,8 +78,10 @@ const EntityEditorModal = ({ entityId, draft, onClose, onPublish }: {
       setEntity(normalized);
       baselineRef.current = JSON.stringify(normalized);
       toast.success('Character saved!');
+      return true;
     } catch {
       toast.error('Could not save character.');
+      return false;
     }
   };
 
@@ -148,7 +151,7 @@ const EntityEditorModal = ({ entityId, draft, onClose, onPublish }: {
       <UnsavedChangesDialog
         open={showUnsaved}
         onOpenChange={setShowUnsaved}
-        onSave={async () => { await handleSave(); onClose(); }}
+        onSave={async () => { if (await handleSave()) onClose(); }}
         onExit={onClose}
       />
     </>

@@ -36,28 +36,45 @@ async function download({ url, sha512, version }, onProgress) {
   const total = Number(res.headers.get('content-length')) || 0;
 
   const out = fs.createWriteStream(tmp, { flags: 'w' });
+  // Without an 'error' listener a mid-write failure emits an unhandled 'error' that crashes the main process,
+  // and the drain wait would hang. Capture it and surface it through the loop.
+  let writeErr = null;
+  out.on('error', (err) => { writeErr = err; });
   let received = 0;
   try {
     const reader = res.body.getReader();
     for (;;) {
       const { done, value } = await reader.read();
+      if (writeErr) throw writeErr;
       if (done) break;
       received += value.length;
-      if (!out.write(Buffer.from(value))) await new Promise((r) => out.once('drain', r));
+      if (!out.write(Buffer.from(value))) {
+        await new Promise((resolve, reject) => {
+          const onDrain = () => { out.off('error', onErr); resolve(); };
+          const onErr = (err) => { out.off('drain', onDrain); reject(err); };
+          out.once('drain', onDrain);
+          out.once('error', onErr);
+        });
+      }
       onProgress({ received, total, done: false });
     }
+    if (writeErr) throw writeErr;
     await new Promise((resolve, reject) => out.end((err) => (err ? reject(err) : resolve())));
   } catch (e) {
     try { out.destroy(); fs.unlinkSync(tmp); } catch { /* ignore */ }
     throw e;
   }
 
-  if (sha512) {
-    const got = await sha512Of(tmp);
-    if (got.toLowerCase() !== sha512.toLowerCase()) {
-      try { fs.unlinkSync(tmp); } catch { /* ignore */ }
-      throw new Error('Update checksum mismatch — download discarded.');
-    }
+  // Fail closed: an update with no checksum (missing/errored sidecar) is refused rather than trusted on TLS
+  // alone. This means every release MUST ship its `.sha512` sidecar.
+  if (!sha512) {
+    try { fs.unlinkSync(tmp); } catch { /* ignore */ }
+    throw new Error('Update refused: no checksum available to verify the download.');
+  }
+  const got = await sha512Of(tmp);
+  if (got.toLowerCase() !== sha512.toLowerCase()) {
+    try { fs.unlinkSync(tmp); } catch { /* ignore */ }
+    throw new Error('Update checksum mismatch — download discarded.');
   }
 
   fs.renameSync(tmp, zipPath);

@@ -188,11 +188,11 @@ async function encodeAnimatedImage(url: string, maxDim: number, lossless: boolea
  * Animated GIFs/WebP re-encode to animated WebP (animation preserved); static images go through canvas. Never grows the
  * image and never throws: on any failure the original is returned.
  */
-export async function encodeImageDataUrl(url: string, maxDim: number, lossless = false): Promise<string> {
+export async function encodeImageDataUrl(url: string, maxDim: number, lossless = false, allowGrow = false): Promise<string> {
   try {
     if (await isAnimatedImage(url)) {
       const anim = await encodeAnimatedImage(url, maxDim, lossless);
-      return anim && anim.length < url.length ? anim : url;
+      return anim && (allowGrow || anim.length < url.length) ? anim : url;
     }
     const blob = await (await fetch(url)).blob();
     const bitmap = await createImageBitmap(blob);
@@ -217,8 +217,9 @@ export async function encodeImageDataUrl(url: string, maxDim: number, lossless =
       }
     }
     if (!out) out = canvas.toDataURL(supportsWebp() ? 'image/webp' : 'image/jpeg', QUALITY);
-    // Guard against re-encode growing a small/optimized image (e.g. lossless of an already-compressed source).
-    return out && out.length < url.length ? out : url;
+    // Guard against re-encode growing a small/optimized image (e.g. lossless of an already-compressed source),
+    // unless the caller requires the re-encoded container regardless of size (allowGrow).
+    return out && (allowGrow || out.length < url.length) ? out : url;
   } catch {
     return url;
   }
@@ -230,6 +231,12 @@ export const reencodeImageDataUrl = (url: string): Promise<string> => encodeImag
 /** Downscale to the cap and re-encode to (lossy) WebP. */
 export const optimizeImageDataUrl = (url: string, cap: ImageCap): Promise<string> =>
   encodeImageDataUrl(url, cap.maxDim, false);
+
+/** Like optimizeImageDataUrl but keeps the WebP result even when it's larger than the source — for callers
+ *  that require the WebP container (character cards embed metadata in a WebP chunk, so a returned PNG/JPEG
+ *  would be unusable). Still falls back to the source only if WebP encoding is unavailable/fails. */
+export const optimizeToWebpDataUrl = (url: string, cap: ImageCap): Promise<string> =>
+  encodeImageDataUrl(url, cap.maxDim, false, true);
 
 /** Rough display-only estimate of the encoded size for each option (real size is only known after encoding). */
 export function estimateEncodedBytes(

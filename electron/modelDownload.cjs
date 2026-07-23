@@ -73,17 +73,30 @@ async function download({ url, fileName, destDir }, onProgress) {
     if (!res.body) throw new Error('Download failed: empty response body.');
 
     out = fs.createWriteStream(tmpPath, { flags: append ? 'a' : 'w' });
+    // Without an 'error' listener a mid-write failure (disk full, locked path) emits an unhandled 'error'
+    // that crashes the main process — and the drain wait below would hang. Capture it and surface it.
+    let writeErr = null;
+    out.on('error', (err) => { writeErr = err; });
     onProgress({ fileName, received, total, done: false }); // seed the bar at the resumed position
 
     const reader = res.body.getReader();
     for (;;) {
       const { done, value } = await reader.read();
+      if (writeErr) throw writeErr;
       if (done) break;
       received += value.length;
-      // Respect backpressure so an 8 GB file doesn't buffer in memory.
-      if (!out.write(Buffer.from(value))) await new Promise((r) => out.once('drain', r));
+      // Respect backpressure so an 8 GB file doesn't buffer in memory; reject the wait on a write error too.
+      if (!out.write(Buffer.from(value))) {
+        await new Promise((resolve, reject) => {
+          const onDrain = () => { out.off('error', onErr); resolve(); };
+          const onErr = (err) => { out.off('drain', onDrain); reject(err); };
+          out.once('drain', onDrain);
+          out.once('error', onErr);
+        });
+      }
       onProgress({ fileName, received, total, done: false });
     }
+    if (writeErr) throw writeErr;
     await new Promise((resolve, reject) => out.end((err) => (err ? reject(err) : resolve())));
     out = null;
     fs.renameSync(tmpPath, finalPath);

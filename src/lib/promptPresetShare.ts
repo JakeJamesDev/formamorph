@@ -1,5 +1,6 @@
 import { PROMPT_TEXT_KEYS, type PromptValues, type SectionStyle, type VerbatimMap, type ReasoningMap, type ReasoningBudgetMap } from './promptPresets';
-import type { PromptSamplerMap } from './promptSamplers';
+import type { PromptSamplerMap, PromptSampler, PromptSamplerSetting } from './promptSamplers';
+import type { AIRequestType } from '@/types';
 
 /** Wire identity + schema version for a shared prompt preset. `FORMAT_VERSION` bumps only on a breaking change
  *  to the shared shape; the source app version is stamped separately for the older/newer import warning. */
@@ -122,7 +123,8 @@ function sanitize(obj: unknown, currentAppVersion: string): ParseResult {
   const name = typeof o.name === 'string' && o.name.trim() ? o.name.trim() : 'Imported Preset';
 
   const preset: ImportedPreset = { name, style, values: values as PromptValues };
-  if (o.samplers && typeof o.samplers === 'object') preset.samplers = o.samplers as PromptSamplerMap;
+  const samplers = sanitizeSamplers(o.samplers);
+  if (samplers) preset.samplers = samplers;
   const reasoning = sanitizeReasoning(o.reasoning);
   if (reasoning) preset.reasoning = reasoning;
   const reasoningBudget = sanitizeReasoningBudget(o.reasoningBudget);
@@ -131,6 +133,30 @@ function sanitize(obj: unknown, currentAppVersion: string): ParseResult {
   if (verbatim) preset.verbatim = verbatim;
 
   return { ok: true, preset, sourceAppVersion, warnings };
+}
+
+const SAMPLER_KEYS: readonly PromptSampler[] = ['temperature', 'repetitionPenalty'];
+
+/** Keep only well-formed sampler settings — a boolean `custom` and a finite numeric `value` — dropping
+ *  everything else so a crafted share code can't push a non-numeric value into a request body.
+ *  resolvePromptSampler returns the value untyped-checked, so an unvalidated string would be sent as the
+ *  request temperature and 400 every call. */
+function sanitizeSamplers(raw: unknown): PromptSamplerMap | undefined {
+  if (!raw || typeof raw !== 'object') return undefined;
+  const out: PromptSamplerMap = {};
+  for (const [kind, perSampler] of Object.entries(raw as Record<string, unknown>)) {
+    if (!perSampler || typeof perSampler !== 'object') continue;
+    const settings: Partial<Record<PromptSampler, PromptSamplerSetting>> = {};
+    for (const key of SAMPLER_KEYS) {
+      const s = (perSampler as Record<string, unknown>)[key] as Partial<PromptSamplerSetting> | undefined;
+      if (s && typeof s === 'object' && typeof s.custom === 'boolean'
+        && typeof s.value === 'number' && Number.isFinite(s.value)) {
+        settings[key] = { custom: s.custom, value: s.value };
+      }
+    }
+    if (Object.keys(settings).length) out[kind as AIRequestType] = settings;
+  }
+  return Object.keys(out).length ? out : undefined;
 }
 
 /** Keep only string-valued reasoning entries. */
