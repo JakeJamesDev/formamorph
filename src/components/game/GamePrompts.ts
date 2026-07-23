@@ -267,17 +267,23 @@ export const defaultSummaryPrompt = `You are recording what one turn of an inter
 // The milestone selector (requestType 'milestoneSelect'): runs silently between turns over the old-band
 // digests and outputs which entries stay in long-term memory. Selection, never rewriting — code assembles
 // the survivors verbatim, and a malformed reply falls back to keep-everything. The worked example is
-// load-bearing: it teaches the commitment→resolution supersession that instruction wording alone never
-// did (probe history in docs-internal/milestone-memory-design.md).
-export const defaultMilestonePrompt = `You are the memory keeper of an interactive story. You are given the story's remembered moments as a numbered list, oldest first. Keep an entry only if someone in the story would bring it up again or act on it: a promise or debt still open, a threat or wound that persists, a thing gained and kept, a favor done or a slight given that changes how one character sees another, a secret learned, a task done well that someone might mention. Drop what no one would ever speak of again - passing movement, small talk, and any moment whose outcome a later entry already carries. When unsure whether something still matters, let it go.
+// load-bearing (instruction wording alone left the player's stated goal dropped 3/3 on both test tiers)
+// and is deliberately PLACEHOLDER-FORM: concrete example stories get pattern-matched against real play
+// and against probe fixtures, inflating both. This is the 'genericex' probe arm — cloud 0.97 / Cydonia
+// 0.95 must-recall on the de-correlated fixture; known trade-off: Cydonia keeps a standing-pretense
+// entry only under the concrete-example arm ('stateful7', 1.00). The example holds ~two lessons max —
+// a third keep ('genericex2') broke the cloud gate. History: milestone-select-probe.mjs arm comments +
+// docs-internal/milestone-memory-design.md.
+export const defaultMilestonePrompt = `You are the memory keeper of an interactive story. You are given the story's remembered moments as a numbered list, oldest first. Keep an entry only if someone in the story would bring it up again or act on it: a promise or debt still open, a threat or wound that persists, a thing gained and kept, a favor done or a slight given that changes how one character sees another, a secret learned, a role or pretense being played, or the player's own stated errand - who they say they are and where they are bound. Drop what no one would ever speak of again - passing movement, small talk, and any moment whose outcome a later entry already carries. When unsure whether something still matters, let it go.
 
-Example:
-1. You take the cliff path toward the lighthouse.
-2. You promise the keeper Brann you will fetch his lamp oil from town.
-3. You trade jokes with a fishwife on the quay.
-4. You bring Brann his lamp oil, and he lights the beacon, calling you a friend of the tower.
-Correct reply: 4
-Entry 4 carries entry 2's outcome - the fulfilled promise replaces the promise itself, so the ending is kept and the setup is dropped. Entries 1 and 3 are passing moments no one would mention again.
+Example of the reasoning, with placeholder entries standing for any story:
+1. <the player travels from one place to another>
+2. <the player states who they are and what they mean to accomplish>
+3. <the player promises a character they will do some task>
+4. <idle small talk with a passerby>
+5. <the player completes the promised task, and the character acknowledges it>
+Correct reply: 2, 5
+Entry 2 is the player's stated errand - the story steers by it, so it stays. Entry 5 carries entry 3's outcome - the fulfilled promise replaces the promise itself, so the ending is kept and the setup is dropped. Entries 1 and 4 are passing moments no one would mention again.
 
 Reply with only the numbers to keep, comma-separated.`;
 

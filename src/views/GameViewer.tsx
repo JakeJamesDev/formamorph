@@ -844,6 +844,16 @@ const GameViewer = ({
       // Entities the action references (case-insensitive — actions are lowercase) drive participation rehydration.
       const actionEntities = findEntityNames(action, allEntities, { requireCapital: false });
       const rehydrateCap = Math.round(Math.max(0, contextWindow - promptTokens - maxTokens) * 0.25);
+      // The recap's "where things stand" closer: mid-scene anchor (location + recent participants) plus
+      // the player's standing notes. Probed on real failure turns (now-line-probe.mjs): removed the
+      // scene-reset / roleplay-identity-inversion class entirely; without it the recap reads as backstory.
+      const participants = recentParticipants(fullMessageHistory, 3);
+      const present = participants.length ? ` with ${participants.join(", ")} present` : "";
+      const notes = playerNotes.trim();
+      const nowLine = currentLocation
+        ? `Now you are at ${currentLocation.name}${present}; the scene is already underway.` +
+          (notes ? ` The player's own notes hold true: ${notes}` : "")
+        : undefined;
       const { messages, counts } = buildBandedHistory({
         turns,
         contextWindow,
@@ -856,13 +866,14 @@ const GameViewer = ({
         maxRehydrations: DIGEST_MAX_REHYDRATIONS,
         milestoneDrop: getMilestoneDrop(turns),
         recapPrompt: recapUserPrompt,
+        nowLine,
       });
       lastBandCountsRef.current = counts;
       return messages;
     }
     lastBandCountsRef.current = null;
     return buildVerbatimHistory(turns, contextWindow, promptTokens, maxTokens);
-  }, [fullMessageHistory, contextWindow, maxTokens, memoryDigests, dictionary, allEntities, narrationVerbatimTurns, getMilestoneDrop, recapUserPrompt]);
+  }, [fullMessageHistory, contextWindow, maxTokens, memoryDigests, dictionary, allEntities, narrationVerbatimTurns, getMilestoneDrop, recapUserPrompt, currentLocation, playerNotes]);
 
   // Drive body morphs from the viewed stats (live on the latest page, the paged turn's when viewing the
   // past): each stat's bound sliders track its value (min→max → 0→1 influence), so the avatar re-morphs to

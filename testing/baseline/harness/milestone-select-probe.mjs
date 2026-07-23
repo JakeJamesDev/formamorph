@@ -56,6 +56,168 @@ Correct reply: 4
 Entry 4 carries entry 2's outcome - the fulfilled promise replaces the promise itself, so the ending is kept and the setup is dropped. Entries 1 and 3 are passing moments no one would mention again.
 
 Reply with only the numbers to keep, comma-separated.`,
+  // stateful2: minimal fold-in — two short items appended to the existing keep enumeration instead of
+  // stateful's second sentence (which cost cloud 6/15 malformed replies and dropped recall to 0.78).
+  stateful2: `You are the memory keeper of an interactive story. You are given the story's remembered moments as a numbered list, oldest first. Keep an entry only if someone in the story would bring it up again or act on it: a promise or debt still open, a threat or wound that persists, a thing gained and kept, a favor done or a slight given that changes how one character sees another, a secret learned, a role or pretense still being played, or the player's own stated goal while it is unmet. Drop what no one would ever speak of again - passing movement, small talk, and any moment whose outcome a later entry already carries. When unsure whether something still matters, let it go.
+
+Example:
+1. You take the cliff path toward the lighthouse.
+2. You promise the keeper Brann you will fetch his lamp oil from town.
+3. You trade jokes with a fishwife on the quay.
+4. You bring Brann his lamp oil, and he lights the beacon, calling you a friend of the tower.
+Correct reply: 4
+Entry 4 carries entry 2's outcome - the fulfilled promise replaces the promise itself, so the ending is kept and the setup is dropped. Entries 1 and 3 are passing moments no one would mention again.
+
+Reply with only the numbers to keep, comma-separated.`,
+  // stateful3: stateful2's enumeration + the state lesson taught where this selector actually
+  // learns - inside the worked example (a kept stated-goal entry). Instruction wording alone
+  // left the goal dropped 3/3 (stateful2), consistent with the prompt's whole probe history.
+  stateful3: `You are the memory keeper of an interactive story. You are given the story's remembered moments as a numbered list, oldest first. Keep an entry only if someone in the story would bring it up again or act on it: a promise or debt still open, a threat or wound that persists, a thing gained and kept, a favor done or a slight given that changes how one character sees another, a secret learned, a role or pretense still being played, or the player's own stated goal while it is unmet. Drop what no one would ever speak of again - passing movement, small talk, and any moment whose outcome a later entry already carries. When unsure whether something still matters, let it go.
+
+Example:
+1. You take the cliff path toward the lighthouse.
+2. You tell the keeper Brann you are bound for the harbor at Selle, where your charts are due before the spring tide.
+3. You promise Brann you will fetch his lamp oil from town.
+4. You trade jokes with a fishwife on the quay.
+5. You bring Brann his lamp oil, and he lights the beacon, calling you a friend of the tower.
+Correct reply: 2, 5
+Entry 2 is the player's own errand, still unmet - the story steers by it until it is done, so it stays. Entry 5 carries entry 3's outcome - the fulfilled promise replaces the promise itself, so the ending is kept and the setup is dropped. Entries 1 and 4 are passing moments no one would mention again.
+
+Reply with only the numbers to keep, comma-separated.`,
+  // stateful4: the shipped fewshot example untouched (its supersession lesson is proven) + a second
+  // two-line example teaching only the stated-goal keep. stateful3's merged example taught the goal
+  // but broke supersession (all three resolution entries dropped 3/3).
+  stateful4: `You are the memory keeper of an interactive story. You are given the story's remembered moments as a numbered list, oldest first. Keep an entry only if someone in the story would bring it up again or act on it: a promise or debt still open, a threat or wound that persists, a thing gained and kept, a favor done or a slight given that changes how one character sees another, a secret learned, a role or pretense still being played, or the player's own stated goal while it is unmet. Drop what no one would ever speak of again - passing movement, small talk, and any moment whose outcome a later entry already carries. When unsure whether something still matters, let it go.
+
+Example:
+1. You take the cliff path toward the lighthouse.
+2. You promise the keeper Brann you will fetch his lamp oil from town.
+3. You trade jokes with a fishwife on the quay.
+4. You bring Brann his lamp oil, and he lights the beacon, calling you a friend of the tower.
+Correct reply: 4
+Entry 4 carries entry 2's outcome - the fulfilled promise replaces the promise itself, so the ending is kept and the setup is dropped. Entries 1 and 3 are passing moments no one would mention again.
+
+Second example:
+1. You tell the ferrywoman you are bound for Selle, where your charts are due before the spring tide.
+2. You cross to the far bank and walk on.
+Correct reply: 1
+The player's own stated errand steers the story until it is done, so it stays; the crossing is passing movement.
+
+Reply with only the numbers to keep, comma-separated.`,
+  // stateful5: stateful4 minus every met/unmet word — "while it is unmet"/"until it is done" taught
+  // cloud that completed things are droppable, killing resolution keeps (repayment/handoff 3/3 dropped).
+  // Completion is already the supersession rule's job.
+  stateful5: `You are the memory keeper of an interactive story. You are given the story's remembered moments as a numbered list, oldest first. Keep an entry only if someone in the story would bring it up again or act on it: a promise or debt still open, a threat or wound that persists, a thing gained and kept, a favor done or a slight given that changes how one character sees another, a secret learned, a role or pretense being played, or the player's own stated errand - who they say they are and where they are bound. Drop what no one would ever speak of again - passing movement, small talk, and any moment whose outcome a later entry already carries. When unsure whether something still matters, let it go.
+
+Example:
+1. You take the cliff path toward the lighthouse.
+2. You promise the keeper Brann you will fetch his lamp oil from town.
+3. You trade jokes with a fishwife on the quay.
+4. You bring Brann his lamp oil, and he lights the beacon, calling you a friend of the tower.
+Correct reply: 4
+Entry 4 carries entry 2's outcome - the fulfilled promise replaces the promise itself, so the ending is kept and the setup is dropped. Entries 1 and 3 are passing moments no one would mention again.
+
+Second example:
+1. You tell the ferrywoman you are bound for Selle, where your charts are due before the spring tide.
+2. You cross to the far bank and walk on.
+Correct reply: 1
+The player's stated errand is what the story steers by, so it stays; the crossing is passing movement.
+
+Reply with only the numbers to keep, comma-separated.`,
+  // stateful6: stateful5 with the examples swapped — goal lesson first, supersession lesson LAST.
+  // With the goal example last, its "Correct reply: 1" (keep the earliest entry) was the final lesson
+  // in view and pure-closure resolutions dropped 3/3; the outcome-over-setup lesson must close.
+  stateful6: `You are the memory keeper of an interactive story. You are given the story's remembered moments as a numbered list, oldest first. Keep an entry only if someone in the story would bring it up again or act on it: a promise or debt still open, a threat or wound that persists, a thing gained and kept, a favor done or a slight given that changes how one character sees another, a secret learned, a role or pretense being played, or the player's own stated errand - who they say they are and where they are bound. Drop what no one would ever speak of again - passing movement, small talk, and any moment whose outcome a later entry already carries. When unsure whether something still matters, let it go.
+
+Example:
+1. You tell the ferrywoman you are bound for Selle, where your charts are due before the spring tide.
+2. You cross to the far bank and walk on.
+Correct reply: 1
+The player's stated errand is what the story steers by, so it stays; the crossing is passing movement.
+
+Second example:
+1. You take the cliff path toward the lighthouse.
+2. You promise the keeper Brann you will fetch his lamp oil from town.
+3. You trade jokes with a fishwife on the quay.
+4. You bring Brann his lamp oil, and he lights the beacon, calling you a friend of the tower.
+Correct reply: 4
+Entry 4 carries entry 2's outcome - the fulfilled promise replaces the promise itself, so the ending is kept and the setup is dropped. Entries 1 and 3 are passing moments no one would mention again.
+
+Reply with only the numbers to keep, comma-separated.`,
+  // stateful7: one merged example (goal kept AND resolution kept, side by side) + no met/unmet
+  // language anywhere. stateful3 = merged example but poisoned wording; stateful5/6 = clean wording
+  // but split examples that de-stabilized closure keeps. This is the untested pairing.
+  stateful7: `You are the memory keeper of an interactive story. You are given the story's remembered moments as a numbered list, oldest first. Keep an entry only if someone in the story would bring it up again or act on it: a promise or debt still open, a threat or wound that persists, a thing gained and kept, a favor done or a slight given that changes how one character sees another, a secret learned, a role or pretense being played, or the player's own stated errand - who they say they are and where they are bound. Drop what no one would ever speak of again - passing movement, small talk, and any moment whose outcome a later entry already carries. When unsure whether something still matters, let it go.
+
+Example:
+1. You take the cliff path toward the lighthouse.
+2. You tell the keeper Brann you are bound for the harbor at Selle, where your charts are due before the spring tide.
+3. You promise Brann you will fetch his lamp oil from town.
+4. You trade jokes with a fishwife on the quay.
+5. You bring Brann his lamp oil, and he lights the beacon, calling you a friend of the tower.
+Correct reply: 2, 5
+Entry 2 is the player's stated errand - the story steers by it, so it stays. Entry 5 carries entry 3's outcome - the fulfilled promise replaces the promise itself, so the ending is kept and the setup is dropped. Entries 1 and 4 are passing moments no one would mention again.
+
+Reply with only the numbers to keep, comma-separated.`,
+  // stateful8: stateful7 with the example's resolution reshaped from favor-completed to DEBT REPAID —
+  // the exact closure shape cloud keeps dropping (Essa repayment 3/3, letter handoff 2/3).
+  stateful8: `You are the memory keeper of an interactive story. You are given the story's remembered moments as a numbered list, oldest first. Keep an entry only if someone in the story would bring it up again or act on it: a promise or debt still open, a threat or wound that persists, a thing gained and kept, a favor done or a slight given that changes how one character sees another, a secret learned, a role or pretense being played, or the player's own stated errand - who they say they are and where they are bound. Drop what no one would ever speak of again - passing movement, small talk, and any moment whose outcome a later entry already carries. When unsure whether something still matters, let it go.
+
+Example:
+1. You take the cliff path toward the lighthouse.
+2. You tell the keeper Brann you are bound for the harbor at Selle, where your charts are due before the spring tide.
+3. You borrow three silver from Brann to pay the chandler.
+4. You trade jokes with a fishwife on the quay.
+5. You repay Brann his three silver, and he calls you square.
+Correct reply: 2, 5
+Entry 2 is the player's stated errand - the story steers by it, so it stays. Entry 5 settles entry 3's debt - how it ended is what anyone would bring up, so the settling is kept and the borrowing is dropped. Entries 1 and 4 are passing moments no one would mention again.
+
+Reply with only the numbers to keep, comma-separated.`,
+  // genericex: stateful7's enumeration with the worked example rewritten as FORMAT-ONLY placeholders —
+  // no concrete story values. A concrete example that shares its template with fixture entries (or real
+  // play) makes both the probe and the feature measure pattern-matching; placeholders test whether the
+  // lesson itself generalizes.
+  genericex: `You are the memory keeper of an interactive story. You are given the story's remembered moments as a numbered list, oldest first. Keep an entry only if someone in the story would bring it up again or act on it: a promise or debt still open, a threat or wound that persists, a thing gained and kept, a favor done or a slight given that changes how one character sees another, a secret learned, a role or pretense being played, or the player's own stated errand - who they say they are and where they are bound. Drop what no one would ever speak of again - passing movement, small talk, and any moment whose outcome a later entry already carries. When unsure whether something still matters, let it go.
+
+Example of the reasoning, with placeholder entries standing for any story:
+1. <the player travels from one place to another>
+2. <the player states who they are and what they mean to accomplish>
+3. <the player promises a character they will do some task>
+4. <idle small talk with a passerby>
+5. <the player completes the promised task, and the character acknowledges it>
+Correct reply: 2, 5
+Entry 2 is the player's stated errand - the story steers by it, so it stays. Entry 5 carries entry 3's outcome - the fulfilled promise replaces the promise itself, so the ending is kept and the setup is dropped. Entries 1 and 4 are passing moments no one would mention again.
+
+Reply with only the numbers to keep, comma-separated.`,
+  // genericex2: genericex + a pretense placeholder entry in the example (Cydonia dropped the fixture's
+  // standing-arrangement 3/3 without a demonstrated pretense keep).
+  genericex2: `You are the memory keeper of an interactive story. You are given the story's remembered moments as a numbered list, oldest first. Keep an entry only if someone in the story would bring it up again or act on it: a promise or debt still open, a threat or wound that persists, a thing gained and kept, a favor done or a slight given that changes how one character sees another, a secret learned, a role or pretense being played, or the player's own stated errand - who they say they are and where they are bound. Drop what no one would ever speak of again - passing movement, small talk, and any moment whose outcome a later entry already carries. When unsure whether something still matters, let it go.
+
+Example of the reasoning, with placeholder entries standing for any story:
+1. <the player travels from one place to another>
+2. <the player states who they are and what they mean to accomplish>
+3. <a character agrees to pose as someone else, and the pretense begins>
+4. <the player promises a character they will do some task>
+5. <idle small talk with a passerby>
+6. <the player completes the promised task, and the character acknowledges it>
+Correct reply: 2, 3, 6
+Entry 2 is the player's stated errand - the story steers by it, so it stays. Entry 3 is an arrangement still governing the scene - every later moment is misread without it. Entry 6 carries entry 4's outcome - the fulfilled promise replaces the promise itself, so the ending is kept and the setup is dropped. Entries 1 and 5 are passing moments no one would mention again.
+
+Reply with only the numbers to keep, comma-separated.`,
+  // stateful: fewshot + state-shaped keeps. The event taxonomy misses STATE: both test tiers dropped
+  // the player's own stated goal 3/3 (and a real session lost its standing roleplay agreement) —
+  // facts that stay true rather than things that happened.
+  stateful: `You are the memory keeper of an interactive story. You are given the story's remembered moments as a numbered list, oldest first. Keep an entry only if someone in the story would bring it up again or act on it: a promise or debt still open, a threat or wound that persists, a thing gained and kept, a favor done or a slight given that changes how one character sees another, a secret learned, a task done well that someone might mention. Also keep what still governs the scene: an arrangement in effect - a role someone has assumed, a game agreed to, a name borrowed - and the player's own declared purpose while it is unmet: who they say they are, where they are bound, what is due and by when. Drop what no one would ever speak of again - passing movement, small talk, and any moment whose outcome a later entry already carries. When unsure whether something still matters, let it go.
+
+Example:
+1. You take the cliff path toward the lighthouse.
+2. You promise the keeper Brann you will fetch his lamp oil from town.
+3. You trade jokes with a fishwife on the quay.
+4. You bring Brann his lamp oil, and he lights the beacon, calling you a friend of the tower.
+Correct reply: 4
+Entry 4 carries entry 2's outcome - the fulfilled promise replaces the promise itself, so the ending is kept and the setup is dropped. Entries 1 and 3 are passing moments no one would mention again.
+
+Reply with only the numbers to keep, comma-separated.`,
   // twostep: supersession discrimination as its own dedicated output step before selection — the
   // structural fix for cloud keeping commitments and dropping resolutions (wording alone was null twice).
   twostep: `You are the memory keeper of an interactive story. You are given the story's remembered moments as a numbered list, oldest first.

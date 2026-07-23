@@ -80,14 +80,18 @@ export function resolveMilestoneKeep(
   pins: MemoryPinMap = {},
 ): Set<string> {
   const keep = new Set<string>();
-  for (const t of candidates) {
-    if (!t.turnId) continue;
+  candidates.forEach((t, i) => {
+    if (!t.turnId) return;
     const pin = pins[t.turnId];
+    // The oldest remembered moment (the story's opening, in practice) is kept regardless of the
+    // selector: with it gone the recap starts mid-scene and models write a fresh establishing scene
+    // over the live one (observed as a full scene reset in a real session). A player 'drop' pin still wins.
     const kept =
       pin === 'keep' ? true :
       pin === 'drop' ? false :
+      i === 0 ? true :
       selection === null || !selection.seen.has(t.turnId) || selection.selected === null || selection.selected.has(t.turnId);
     if (kept) keep.add(t.turnId);
-  }
+  });
   return keep;
 }

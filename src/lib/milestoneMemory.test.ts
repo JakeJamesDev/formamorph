@@ -76,14 +76,19 @@ describe('resolveMilestoneKeep / resolveMilestoneDrop', () => {
     expect(resolveMilestoneDrop(cands, null).size).toBe(0);
   });
 
-  it('applies the selector verdict', () => {
-    expect([...resolveMilestoneKeep(cands, selection)]).toEqual(['t1', 't3']);
-    expect([...resolveMilestoneDrop(cands, selection)]).toEqual(['t0', 't2', 't4']);
+  it('applies the selector verdict — except the opening anchor, which is always kept', () => {
+    expect([...resolveMilestoneKeep(cands, selection)]).toEqual(['t0', 't1', 't3']);
+    expect([...resolveMilestoneDrop(cands, selection)]).toEqual(['t2', 't4']);
   });
 
   it('a turn the selector never saw always survives', () => {
     const partial = { seen: new Set(['t0', 't1']), selected: new Set<string>([]) };
-    expect([...resolveMilestoneKeep(cands, partial)]).toEqual(['t2', 't3', 't4']);
+    expect([...resolveMilestoneKeep(cands, partial)]).toEqual(['t0', 't2', 't3', 't4']);
+  });
+
+  it('a player drop-pin still removes the opening anchor', () => {
+    const keep = resolveMilestoneKeep(cands, selection, { t0: 'drop' });
+    expect(keep.has('t0')).toBe(false);
   });
 
   it('a malformed run (selected null) keeps everything it saw', () => {

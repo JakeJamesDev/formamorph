@@ -84,12 +84,14 @@ function mergedBandText(turns: BandTurn[]): string {
 }
 
 /** The token cost of the whole digest band as it actually rides: one recap-question user line plus the
- *  merged digests as the assistant reply. 0 when the band is empty (no exchange is emitted). */
-function bandExchangeCost(turns: BandTurn[], recapPrompt: string): number {
+ *  merged digests (and the now-line closer, when set) as the assistant reply. 0 when the band is empty
+ *  (no exchange is emitted). */
+function bandExchangeCost(turns: BandTurn[], recapPrompt: string, nowLine?: string): number {
   if (turns.length === 0) return 0;
+  const body = mergedBandText(turns);
   const pair: ChatMessage[] = [
     { role: 'user', content: recapPrompt },
-    { role: 'assistant', content: mergedBandText(turns) },
+    { role: 'assistant', content: nowLine ? `${body}\n\n${nowLine}` : body },
   ];
   return estimateTokens(JSON.stringify(pair).length);
 }
@@ -218,6 +220,11 @@ export function buildBandedHistory(args: {
   maxRehydrations?: number;
   /** The recap exchange's user line (Settings → Prompts → Narration → Recap; default in GamePrompts). */
   recapPrompt: string;
+  /** Optional "where things stand" closer appended to the recap reply: a code-built present-state
+   *  sentence (location, who is present, standing player notes). The recap alone is a chronicle —
+   *  without a stated *now*, models have re-opened a live scene as a fresh arrival and lost standing
+   *  frame facts (probed on real failure turns via now-line-probe.mjs). Only rides when a band exists. */
+  nowLine?: string;
   /** Turn ids removed by milestone selection (selection + pins already resolved by the caller — see
    *  lib/milestoneMemory). Absent/empty = no filtering, the pre-milestone behavior. The caller owns the
    *  window math so every stage filters the exact same turns regardless of its own floor width. */
@@ -225,7 +232,7 @@ export function buildBandedHistory(args: {
 }): BandResult {
   // `keywords`, `actionEntities`, `rehydrateCap`, `maxRehydrations` are intentionally not destructured:
   // rehydration is disabled (see step 3). Kept in the arg type so callers compile unchanged.
-  const { turns, contextWindow, promptTokens, maxTokens, verbatimFloor, milestoneDrop = null, recapPrompt } = args;
+  const { turns, contextWindow, promptTokens, maxTokens, verbatimFloor, milestoneDrop = null, recapPrompt, nowLine } = args;
   const margin = Math.max(256, Math.round(contextWindow * 0.05));
   const budget = Math.max(0, contextWindow - promptTokens - maxTokens - margin);
 
@@ -254,10 +261,10 @@ export function buildBandedHistory(args: {
     turnsSelectedOut = bandTurns.length - kept.length;
     bandTurns = kept;
   }
-  let bandTokens = bandExchangeCost(bandTurns, recapPrompt);
+  let bandTokens = bandExchangeCost(bandTurns, recapPrompt, nowLine);
   while (bandTokens > remaining && bandTurns.length > 0) {
     bandTurns = bandTurns.slice(1); // drop the oldest
-    bandTokens = bandExchangeCost(bandTurns, recapPrompt);
+    bandTokens = bandExchangeCost(bandTurns, recapPrompt, nowLine);
   }
 
   // 3. Rehydration — DISABLED. Keyed on the current (charged) action, lexical rehydration pulled many
@@ -280,7 +287,8 @@ export function buildBandedHistory(args: {
   const messages: ChatMessage[] = [];
   const bandBody = mergedBandText(bandTurns);
   if (bandBody) {
-    messages.push({ role: 'user', content: recapPrompt }, { role: 'assistant', content: bandBody });
+    const reply = nowLine ? `${bandBody}\n\n${nowLine}` : bandBody;
+    messages.push({ role: 'user', content: recapPrompt }, { role: 'assistant', content: reply });
   }
   const ordered = [...rehydratedTurns, ...floorTaken].sort((a, b) => a.index - b.index);
   for (const t of ordered) {
