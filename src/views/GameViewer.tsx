@@ -54,6 +54,7 @@ import {
   defaultDiscoverEntityPrompt,
   OPENING_SCENE_CUE,
   defaultMilestonePrompt,
+  defaultRehydrateUserPrompt,
 } from "../components/game/GamePrompts";
 import {
   buildDiaryUserMessage,
@@ -82,6 +83,7 @@ import { parseTurns, buildVerbatimHistory, buildBandedHistory, extractKeywords, 
 import { milestoneCandidates, agedMilestoneCandidates, resolveMilestoneDrop, buildMilestoneUserMessage, parseMilestoneReply } from "../lib/milestoneMemory";
 import { buildRelevanceScores, vectorKey } from "../lib/memoryRelevance";
 import { entryVectorKey, entryEmbedText, selectSemanticLore, applySemanticLore } from "../lib/semanticDictionary";
+import { selectSemanticRehydrations } from "../lib/semanticRehydration";
 import { embedTexts, isEmbeddingModelReady, loadEmbeddingModel } from "../lib/embeddingWorkerClient";
 import { getVectors, putVector } from "../lib/embeddingCache";
 import { findEntityNames, matchNames, matchNamesLoose, sameCharacterName } from "../lib/entityMatch";
@@ -288,6 +290,7 @@ const GameViewer = ({
     memoryDigests,
     semanticMemory,
     semanticLore,
+    semanticRehydration,
     concurrentTurnRequests,
     autosaveEnabled,
     limitActiveCharacters,
@@ -500,9 +503,11 @@ const GameViewer = ({
   // Session-local derived data — never persisted with the save.
   const embedVectorsRef = useRef<Map<string, Float32Array>>(new Map());
   const embedModelKickedRef = useRef(false); // one background model (re)load attempt per session
-  // The last turn's relevance scores, reused by the context meter so its counts mirror what actually
-  // rode (a null-scored meter run would otherwise report the ranked drops as plain oldest-first).
+  // The last turn's relevance scores + action vector, reused by the context meter so its counts mirror
+  // what actually rode (a null-scored meter run would otherwise report ranked drops as oldest-first
+  // and show no recalled scenes).
   const lastRelevanceScoresRef = useRef<Map<string, number> | null>(null);
+  const lastActionVecRef = useRef<Float32Array | null>(null);
 
   // Generate TTS for `text` (or the current game text) with the busy flag set, so both the
   // manual refresh button and auto-narration show the same spinner + chunk progress.
@@ -851,13 +856,26 @@ const GameViewer = ({
     return resolveMilestoneDrop(candidates, selection, memoryPins);
   }, [milestoneSelection, memoryPins, narrationVerbatimTurns]);
 
-  const getTrimmedMessageHistory = useCallback((promptTokens = 0, action = "", relevanceScores: Map<string, number> | null = null) => {
+  const getTrimmedMessageHistory = useCallback((promptTokens = 0, action = "", relevanceScores: Map<string, number> | null = null, actionVec: Float32Array | null = null) => {
     const turns = parseTurns(fullMessageHistory);
     if (memoryDigests) {
       const keywords = extractKeywords(action, dictionary);
       // Entities the action references (case-insensitive — actions are lowercase) drive participation rehydration.
       const actionEntities = findEntityNames(action, allEntities, { requireCapital: false });
       const rehydrateCap = Math.round(Math.max(0, contextWindow - promptTokens - maxTokens) * 0.25);
+      // Semantic rehydration: rank the old scenes this action returns to (threshold + near-duplicate
+      // guard in lib/semanticRehydration). Floor/band split here is the budget-free approximation of
+      // buildBandedHistory's; it re-validates band membership before spending tokens.
+      let semanticRehydrate: string[] | null = null;
+      if (semanticRehydration && semanticMemory && actionVec) {
+        const floorCount = Math.min(narrationVerbatimTurns, turns.length);
+        const floorTurns = turns.slice(turns.length - floorCount);
+        const drop = getMilestoneDrop(turns);
+        const band = turns.slice(0, turns.length - floorCount).filter(
+          (t) => t.summary?.trim() && !(drop && t.turnId && drop.has(t.turnId)),
+        );
+        semanticRehydrate = selectSemanticRehydrations(band, floorTurns, actionVec, embedVectorsRef.current);
+      }
       // The recap's "where things stand" closer: mid-scene anchor (location + recent participants) plus
       // the player's standing notes. Probed on real failure turns (now-line-probe.mjs): removed the
       // scene-reset / roleplay-identity-inversion class entirely; without it the recap reads as backstory.
@@ -882,13 +900,15 @@ const GameViewer = ({
         recapPrompt: recapUserPrompt,
         nowLine,
         relevanceScores,
+        semanticRehydrate,
+        rehydratePrompt: defaultRehydrateUserPrompt,
       });
       lastBandCountsRef.current = counts;
       return messages;
     }
     lastBandCountsRef.current = null;
     return buildVerbatimHistory(turns, contextWindow, promptTokens, maxTokens);
-  }, [fullMessageHistory, contextWindow, maxTokens, memoryDigests, dictionary, allEntities, narrationVerbatimTurns, getMilestoneDrop, recapUserPrompt, currentLocation, playerNotes]);
+  }, [fullMessageHistory, contextWindow, maxTokens, memoryDigests, semanticMemory, semanticRehydration, dictionary, allEntities, narrationVerbatimTurns, getMilestoneDrop, recapUserPrompt, currentLocation, playerNotes]);
 
   // The action's embedding, shared by every semantic consumer this turn (band relevance + lore
   // activation) so the action is embedded once. Null when no semantic feature is on, the model is
@@ -1308,8 +1328,10 @@ ${playerNotes || NONE_PLACEHOLDER}
       // Pass the action so banding can rehydrate older turns it references. Relevance scores are
       // computed once here and shared with the planner rebuild below so both stages trim identically.
       const relevanceScores = computeRelevanceScores(actionVec);
-      lastRelevanceScoresRef.current = relevanceScores; // the context meter re-trims with the same scores
-      const trimmedHistory = getTrimmedMessageHistory(estimateTokens(updatedPrompt.length), effectiveAction, relevanceScores);
+      // The context meter re-trims with the same scores + action vector so its counts mirror this turn.
+      lastRelevanceScoresRef.current = relevanceScores;
+      lastActionVecRef.current = actionVec;
+      const trimmedHistory = getTrimmedMessageHistory(estimateTokens(updatedPrompt.length), effectiveAction, relevanceScores, actionVec);
 
       // Create message array for game text request
       const narrationMessages: ChatMessage[] = [
@@ -2925,7 +2947,7 @@ ${playerNotes || NONE_PLACEHOLDER}
   // not on every render.
   const memoryStats = useMemo(() => {
     const promptTokens = estimateTokens(lastPromptChars);
-    const trimmed = getTrimmedMessageHistory(promptTokens, "", lastRelevanceScoresRef.current);
+    const trimmed = getTrimmedMessageHistory(promptTokens, "", lastRelevanceScoresRef.current, lastActionVecRef.current);
     return {
       promptTokens,
       trimmed,
@@ -2988,7 +3010,8 @@ ${playerNotes || NONE_PLACEHOLDER}
                   {bandCounts.turnsTotal - bandCounts.turnsVerbatim - bandCounts.turnsBanded > 0
                     ? `, ${bandCounts.turnsTotal - bandCounts.turnsVerbatim - bandCounts.turnsBanded} dropped`
                     : ""}
-                  {bandCounts.turnsRelevanceDropped > 0 ? `, ${bandCounts.turnsRelevanceDropped} by relevance` : ""})
+                  {bandCounts.turnsRelevanceDropped > 0 ? `, ${bandCounts.turnsRelevanceDropped} by relevance` : ""}
+                  {bandCounts.turnsRehydrated > 0 ? `, ${bandCounts.turnsRehydrated} recalled` : ""})
                 </span>
               </div>
             ) : (

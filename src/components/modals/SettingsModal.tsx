@@ -392,6 +392,8 @@ export const SettingsModal = ({ isOpen, onOpenChange, previewValues, initialTab,
     setSemanticMemory,
     semanticLore,
     setSemanticLore,
+    semanticRehydration,
+    setSemanticRehydration,
     concurrentTurnRequests,
     setConcurrentTurnRequests,
     autosaveEnabled,
@@ -1085,6 +1087,24 @@ export const SettingsModal = ({ isOpen, onOpenChange, previewValues, initialTab,
                     />
                     <span className="text-xs text-muted-foreground">
                       Experimental. When memories no longer fit, keeps the ones most relevant to your current action instead of just the newest. Runs a small language model on your device — enabling downloads it once (~23 MB) and stores it in your browser.
+                    </span>
+                  </div>
+                </div>
+              )}
+              {memoryDigests && semanticMemory && (
+                <div className="grid grid-cols-1 sm:grid-cols-4 items-start gap-4">
+                  <label htmlFor="semanticRehydration" className="text-left sm:text-right leading-4">
+                    Scene Recall
+                  </label>
+                  <div className="col-span-3 flex items-start gap-2">
+                    <Checkbox
+                      id="semanticRehydration"
+                      checked={semanticRehydration}
+                      onCheckedChange={(c) => setSemanticRehydration(c === true)}
+                      className="shrink-0"
+                    />
+                    <span className="text-xs text-muted-foreground">
+                      Experimental. When your action returns to an old moment — going back to someone you made a promise to — the full original scene is recalled for the AI, word for word, clearly marked as the past. At most two scenes per turn, never near-duplicates of each other or of recent turns. Uses Semantic Memory&apos;s model and memories.
                     </span>
                   </div>
                 </div>

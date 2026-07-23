@@ -273,6 +273,10 @@ function useProvideSettings() {
   // action (additive over keyword matching, never replacing it). Shares the local embedding model with
   // semanticMemory but is independent of memoryDigests — lore has no digest dependency. Default off.
   const [semanticLore, setSemanticLore] = usePersistentState<boolean>(`${APP_ID}_semanticLore`, false, boolCodec);
+  // EXPERIMENTAL semantic rehydration: when the action returns to an old scene, that turn's full
+  // narration rides back as a framed remembered-scene exchange (roadmap step 2 — near-duplicate and
+  // temporal-framing guards). Requires semanticMemory (same model, same digest vectors). Default off.
+  const [semanticRehydration, setSemanticRehydration] = usePersistentState<boolean>(`${APP_ID}_semanticRehydration`, false, boolCodec);
   // Fire the post-narration aux requests (choices + stat updates + location router) concurrently instead of
   // one after another. Default on: ~29% faster turns on a parallel-capable endpoint (LM Studio "Parallel",
   // Ollama), harmless on serial endpoints (they queue). Turn off if a VRAM-tight local engine slows or OOMs
@@ -792,6 +796,8 @@ function useProvideSettings() {
     setSemanticMemory,
     semanticLore,
     setSemanticLore,
+    semanticRehydration,
+    setSemanticRehydration,
     concurrentTurnRequests,
     setConcurrentTurnRequests,
     autosaveEnabled,

@@ -356,3 +356,66 @@ describe('buildBandedHistory relevance-ranked trimming', () => {
     expect(counts.turnsRelevanceDropped).toBe(0); // terminal drop is the plain path, not a ranked one
   });
 });
+
+describe('buildBandedHistory semantic rehydration', () => {
+  const RECAP = 'Recap the story so far.';
+  const RECALL = 'Recall the earlier scene.';
+  const base = {
+    contextWindow: 1_000_000, promptTokens: 0, maxTokens: 0, verbatimFloor: 1,
+    rehydrateCap: 1_000_000, actionEntities: [] as string[], keywords: [] as string[],
+    recapPrompt: RECAP, rehydratePrompt: RECALL,
+  };
+  const fourTurns = () =>
+    parseTurns([
+      ...pair('a1', { turnId: 't1', narration: 'SCENE-ONE', summary: 's1' }),
+      ...pair('a2', { turnId: 't2', narration: 'SCENE-TWO', summary: 's2' }),
+      ...pair('a3', { turnId: 't3', narration: 'SCENE-THREE', summary: 's3' }),
+      ...pair('a4', { turnId: 't4', narration: 'FLOOR-TURN', summary: 's4' }),
+    ]);
+
+  it('rides chosen turns as ONE framed exchange after the recap, never as live pairs', () => {
+    const { messages, counts } = buildBandedHistory({ ...base, turns: fourTurns(), semanticRehydrate: ['t2', 't1'] });
+    expect(messages.map((m) => m.content)).toEqual([
+      RECAP, 's3',                          // band shrinks to the un-rehydrated digest
+      RECALL, 'SCENE-ONE\n\nSCENE-TWO',     // remembered scenes, chronological, one exchange
+      'a4', 'FLOOR-TURN',                   // floor unchanged
+    ]);
+    // The rehydrated turns' real user messages must NOT ride — that's the live-looking-history bug.
+    expect(messages.some((m) => m.content === 'a1' || m.content === 'a2')).toBe(false);
+    expect(counts.turnsRehydrated).toBe(2);
+    expect(counts.turnsVerbatim).toBe(3); // 2 recalled + 1 floor
+  });
+
+  it('removes rehydrated turns from the recap so no event rides twice', () => {
+    const { messages, recap } = buildBandedHistory({ ...base, turns: fourTurns(), semanticRehydrate: ['t1'] });
+    const recapReply = messages[1].content;
+    expect(recapReply).not.toContain('s1');
+    expect(recapReply).toContain('s2');
+    expect(recap).not.toContain('s1'); // the planner recap agrees
+  });
+
+  it('ignores ids not in the band and does nothing when the list is empty', () => {
+    const withUnknown = buildBandedHistory({ ...base, turns: fourTurns(), semanticRehydrate: ['t4', 'ghost'] }); // t4 is floor
+    expect(withUnknown.messages.some((m) => m.content === RECALL)).toBe(false);
+    expect(withUnknown.counts.turnsRehydrated).toBe(0);
+    const empty = buildBandedHistory({ ...base, turns: fourTurns(), semanticRehydrate: [] });
+    expect(empty.messages).toEqual(buildBandedHistory({ ...base, turns: fourTurns() }).messages);
+  });
+
+  it('respects the token budget and the maxRehydrations cap', () => {
+    const turns = parseTurns([
+      ...pair('a1', { turnId: 't1', narration: 'HUGE ' + 'x'.repeat(4000), summary: 's1' }),
+      ...pair('a2', { turnId: 't2', narration: 'SMALL-SCENE', summary: 's2' }),
+      ...pair('a3', { turnId: 't3', narration: 'ALSO-SMALL', summary: 's3' }),
+      ...pair('a4', { turnId: 't4', narration: 'FLOOR-TURN', summary: 's4' }),
+    ]);
+    // Budget fits the small scenes but not the huge one — it's skipped, not blocking.
+    const budgeted = buildBandedHistory({ ...base, turns, rehydrateCap: 200, semanticRehydrate: ['t1', 't2', 't3'] });
+    expect(budgeted.messages.find((m) => m.content.includes('SMALL-SCENE'))).toBeTruthy();
+    expect(budgeted.messages.some((m) => m.content.includes('HUGE'))).toBe(false);
+    // maxRehydrations 1 keeps only the best-ranked.
+    const capped = buildBandedHistory({ ...base, turns, maxRehydrations: 1, semanticRehydrate: ['t2', 't3'] });
+    expect(capped.counts.turnsRehydrated).toBe(1);
+    expect(capped.messages.some((m) => m.content.includes('ALSO-SMALL'))).toBe(false);
+  });
+});

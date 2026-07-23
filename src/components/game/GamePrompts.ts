@@ -97,6 +97,14 @@ When the player's action speaks to a character, the reply on the page is that ch
 // answer dropped 4/5 runs; this shape held ~125 words and answered 5/5 (digest-framing-probe.mjs).
 export const defaultRecapUserPrompt = `Recap the story so far.`;
 
+// The user line of the remembered-scene exchange (semantic rehydration): when the player's action
+// returns to an old scene, that turn's full narration rides as the answer to this question, directly
+// after the recap. The wording must mark the scene as PAST — position reads as time to small models,
+// and an unframed vivid old scene can overrule the recap's later facts (a character who has since
+// died acts alive again). Framing + guards: docs-internal/semantic-memory-roadmap.md step 2;
+// rehydrate-probe.mjs is the evidence bar for any wording change.
+export const defaultRehydrateUserPrompt = `Recall in full the earlier moment my next action returns to. This scene already happened; everything in the recap since then still stands.`;
+
 export const defaultChoicesUserPrompt = `The scene just told to me, the player character:
 <NARRATION>
 

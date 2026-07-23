@@ -4,9 +4,9 @@ Working roadmap for the embedding-retrieval workstream on branch **`Mem0`**. Res
 lives in this doc; the shipped foundation is described below, then the planned steps in build order.
 Steps ship one at a time, each behind its own probe evidence — nothing here is committed-to-all-at-once.
 
-**▶ Resume here:** steps 0 and 1 shipped (2026-07-23, unreleased, both off by default). Next up is
-**step 2 (semantic rehydration)** — read its section's hard requirement (near-duplicate penalty)
-before starting.
+**▶ Resume here:** steps 0, 1, and 2 shipped (2026-07-23, unreleased, all off by default). Next up is
+**step 3 (always-on top-K band)** — the strongest probe bar of the arc — or step 4 (diary retrieval)
+if a smaller bite fits the session.
 
 ## Architecture decision (2026-07-23)
 
@@ -60,14 +60,42 @@ not a threshold problem; revisit with a stronger embedder if real-world recall d
 Live-verified in the browser: "ruined tower on the headland" → Old Beacon fires semantically (0.367),
 unrelated entry stays off.
 
-## Step 2 — Semantic rehydration (phase 2 of the original plan)
+## Step 2 — ✅ Scene Recall / semantic rehydration (SHIPPED 2026-07-23, unreleased, off by default)
 
-Re-enable the disabled rehydration slot (`turnBanding.ts` step 3, scorers kept) with embedding
-similarity instead of lexical matching: pull whole *verbatim* turns back when the action touches them.
-- **Hard requirement: near-duplicate penalty** (MMR-style). Similarity maximally favors the repeated
+`semanticRehydration` toggle (requires semanticMemory; Settings "Scene Recall").
+`src/lib/semanticRehydration.ts`: candidates = milestone-surviving band digests (supersession-gated),
+plain cosine ≥ **0.35**, greedy best-first with near-duplicate skip at ≥ **0.75** vs both the chosen
+set and floor digests, cap **2**. `buildBandedHistory` applies the token budget (existing
+`rehydrateCap` = 25% free context), pulls chosen turns out of the digest band, and rides them as ONE
+framed remembered-scene exchange after the recap (`defaultRehydrateUserPrompt`: "Recall in full the
+earlier moment my next action returns to. This scene already happened; everything in the recap since
+then still stands.") — never as live-looking pairs. Lexical selection stays disabled.
+
+**Probed** (`rehydrate-probe.mjs`, dead-Jim fixture, 3 arms × 2 cases × 3 runs × both tiers):
+detail-recall (planted gull-whistle detail, absent from all digests) 0-1/3 without recall → **3/3
+framed** on both tiers (cloud bait case: framed 3/3 vs bare-splice 1/3 — framing helps the model USE
+the scene). Alive-writes: **0/36 everywhere including the bare-splice control with the whistle bait**
+— the temporal hazard did not reproduce in this fixture (death is strongly reinforced by recap +
+prior turn), so the framing's safety value is defense-in-depth, not a measured delta; it costs
+nothing and stays. The near-duplicate guard is unit-tested (twin-scene and floor-duplicate cases),
+not probe-tested — the real freeze-scenario replay (close-session real failure turns) remains open
+before default-on, alongside the long-session play A/B shared with step 0.
+
+Original requirements, kept for reference:
+- **Hard requirement 1: near-duplicate penalty** (MMR-style). Similarity maximally favors the repeated
   charged turns that caused the charged-scene freeze — the exact failure that got rehydration disabled.
   Dedup among candidates AND against the verbatim floor, cap charged-turn count.
-- Probe: the freeze scenario itself (close-session real failure turns) + dialogue-hold, both tiers.
+- **Hard requirement 2: temporal framing** (user-raised, 2026-07-23 — the "dead Jim" problem). Models
+  read position as time and vivid verbatim beats a compressed recap line: splice an old scene in as a
+  bare conversation pair and a character who died in the recap walks again. Mitigations layered:
+  candidates are milestone survivors only (the selector's supersession judgment already gates what can
+  come back — the superseded skeever-fight digest is gone), the recap still states the later fact, and
+  — the design change from v1 — the rehydrated turn rides as an explicitly framed memory exchange
+  right after the recap ("Recall the earlier scene this action returns to." → old narration), never as
+  live-looking history. Framing shape needs its own probe (label wording has measurably changed model
+  behavior before — see digest-framing history).
+- Probe: the freeze scenario (close-session real failure turns) + dialogue-hold + a dead-Jim temporal
+  case: plant a death digest, rehydrate a pre-death scene of that character, count alive-writes. Both tiers.
 
 ## Step 3 — Always-on top-K band (the full Mem0 shape)
 
