@@ -63,6 +63,7 @@ import {
   restrictToVerticalAxis,
   restrictToFirstScrollableAncestor,
 } from '@dnd-kit/modifiers';
+import { CONTAINED_AUTO_SCROLL } from '@/lib/dndAutoScroll';
 import { UnsavedChangesDialog } from "@/components/UnsavedChangesDialog";
 import { APP_VERSION, WORLD_FILE_KIND } from '@/lib/version';
 import type { Stat, Entity, GameLocation, StatUpdate, Dictionary, World } from '@/types';
@@ -439,13 +440,7 @@ const WorldEditor = ({ onClose, embedded = false, backButton }: {
       // Vertical-only movement, clamped to the scroll viewport's bounds so dragging can't
       // extend the scrollable area infinitely.
       modifiers={[restrictToVerticalAxis, restrictToFirstScrollableAncestor]}
-      autoScroll={{
-        // Only auto-scroll a real inner scroll viewport (the list), never the page/window.
-        canScroll: (el) =>
-          el !== document.scrollingElement &&
-          el !== document.body &&
-          el !== document.documentElement,
-      }}
+      autoScroll={CONTAINED_AUTO_SCROLL}
     >
       <SortableContext
         items={items.map((i) => i.id)}

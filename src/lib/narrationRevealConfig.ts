@@ -3,6 +3,8 @@
 // They live on orthogonal CSS properties, so any combination composes into a single keyframe
 // (sd-reveal / sd-reveal-blur in index.css) driven by CSS vars — GPU-composited, no reflow. With no
 // effect enabled the reveal falls back to the smooth character crawl.
+import { clamp } from './utils';
+
 export type RevealDirection = 'bottom' | 'top' | 'left' | 'right';
 export type RevealScaleMode = 'uniform' | 'axis';
 
@@ -133,7 +135,7 @@ export const DRAIN_TARGET_WORDS = 4;
 export const PACE_CORRECTION_MIN = 0.5;
 export const PACE_CORRECTION_MAX = 2;
 
-export const clamp = (n: number, lo: number, hi: number): number => Math.min(hi, Math.max(lo, n));
+export { clamp }; // re-exported (from ./utils) so existing importers/tests keep their path
 
 /** Apply the user's minimum floors to a timing (0 = no floor): stagger can't drop below `minStagger`,
  *  and duration can't drop below `minDuration` (re-derived from the floored stagger so the fade keeps

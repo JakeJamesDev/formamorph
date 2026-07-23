@@ -1,4 +1,5 @@
 import type { Dictionary, DictionaryEntry } from '@/types';
+import { escapeRegExp } from './utils';
 
 const MAX_RECURSION_PASSES = 3;
 
@@ -20,10 +21,6 @@ function splitKeys(raw: string | undefined): string[] {
 /** An entry's primary trigger keywords (its comma-separated `key`, trimmed, empties dropped). */
 export function parseKeywords(entry: DictionaryEntry): string[] {
   return splitKeys(entry.key);
-}
-
-function escapeRegExp(s: string): string {
-  return s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 }
 
 /**

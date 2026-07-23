@@ -1,4 +1,5 @@
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
+import { useEditingDraft } from '@/lib/useEditingDraft';
 import { useGameData } from '@/contexts/GameDataContext';
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -15,19 +16,9 @@ import type { GameLocation } from '@/types';
 
 const LocationManager = ({ location }: { location: GameLocation }) => {
   const { updateLocation, entities, placeholders } = useGameData();
-  const [editingLocation, setEditingLocation] = useState<GameLocation>(location);
+  const { draft: editingLocation, setField: handleChange } = useEditingDraft(location, updateLocation);
   // SD prompt pulled from an uploaded image, pending the user's OK to use it as Image Tags.
   const [pendingPrompt, setPendingPrompt] = useState<string | null>(null);
-
-  useEffect(() => {
-    setEditingLocation(location);
-  }, [location]);
-
-  const handleChange = (field: string, value: unknown) => {
-    const updatedLocation = { ...editingLocation, [field]: value } as GameLocation;
-    setEditingLocation(updatedLocation);
-    updateLocation(updatedLocation);
-  };
 
   if (!editingLocation) return null;
 

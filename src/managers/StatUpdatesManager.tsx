@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useEditingDraft } from '@/lib/useEditingDraft';
 import { useGameData } from '@/contexts/GameDataContext';
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -11,17 +11,7 @@ import type { StatUpdate, ChatMessage } from '@/types';
 
 const StatUpdatesManager = ({ statUpdate }: { statUpdate: StatUpdate }) => {
   const { stats, updateStatUpdate } = useGameData();
-  const [editingStatUpdate, setEditingStatUpdate] = useState<StatUpdate>(statUpdate);
-
-  useEffect(() => {
-    setEditingStatUpdate(statUpdate);
-  }, [statUpdate]);
-
-  const handleChange = (field: string, value: unknown) => {
-    const updatedStatUpdate = { ...editingStatUpdate, [field]: value } as StatUpdate;
-    setEditingStatUpdate(updatedStatUpdate);
-    updateStatUpdate(updatedStatUpdate);
-  };
+  const { draft: editingStatUpdate, setField: handleChange } = useEditingDraft(statUpdate, updateStatUpdate);
 
   const handleStatToggle = (statName: string) => {
     const updatedStats = editingStatUpdate.stats.includes(statName)
