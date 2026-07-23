@@ -1,16 +1,13 @@
-import { useState } from 'react';
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { MultiSelect } from "@/components/ui/multi-select";
 import { KeywordChips } from "@/components/KeywordChips";
 import { HelpButton } from "@/components/HelpButton";
 import AiFieldToolbar from "@/components/AiFieldToolbar";
-import { TagAutocomplete } from "@/components/TagAutocomplete";
-import { ConfirmDialog } from "@/components/ConfirmDialog";
 import PlaceholderField from "@/components/prompt/PlaceholderField";
-import { ImageUpload, ModelUpload } from '../lib/UtilityComponents';
+import { ModelUpload } from '../lib/UtilityComponents';
 import { IMAGE_CAPS } from '../lib/imageOptim';
-import { GenerateImageButton } from '../components/GenerateImageButton';
+import ImageTagsField from './ImageTagsField';
 import type { Entity, Placeholder } from '@/types';
 
 interface EntityFieldsProps {
@@ -29,9 +26,6 @@ interface EntityFieldsProps {
  * bound to the world store) and the library `EntityEditorModal` (locations hidden, bound to isolated state).
  */
 const EntityFields = ({ value, onChange, placeholders = [], locationOptions, selectedLocationIds, onLocationsChange }: EntityFieldsProps) => {
-  // SD prompt pulled from an uploaded image, pending the user's OK to use it as Image Tags.
-  const [pendingPrompt, setPendingPrompt] = useState<string | null>(null);
-
   return (
     <div className="space-y-4">
       <div className="space-y-2">
@@ -114,47 +108,18 @@ const EntityFields = ({ value, onChange, placeholders = [], locationOptions, sel
           />
         </div>
       )}
-      <div className="space-y-2">
-        <Label>Image</Label>
-        <ImageUpload
-          onChange={(file) => onChange('image', file)}
-          id={`entity-image-${value.id}`}
-          value={value.image}
-          cap={IMAGE_CAPS.entity}
-          onPromptExtracted={setPendingPrompt}
-        />
-        <ConfirmDialog
-          open={pendingPrompt !== null}
-          onOpenChange={(o) => { if (!o) setPendingPrompt(null); }}
-          title="Use the image's prompt?"
-          description="This image has an embedded AI prompt. Use it as the Image Tags? This replaces the current tags."
-          onConfirm={() => { if (pendingPrompt) onChange('imageTags', pendingPrompt); }}
-          onCancel={() => setPendingPrompt(null)}
-        />
-        <div className="flex items-center justify-between">
-          <Label>Image Tags</Label>
-          <AiFieldToolbar
-            mode="tags"
-            name={value.name}
-            kind="character"
-            source={value.aiDescription || value.playerDescription}
-            value={value.imageTags}
-            onChange={(t) => onChange('imageTags', t)}
-          />
-        </div>
-        <TagAutocomplete
-          value={value.imageTags || ''}
-          onChange={(t) => onChange('imageTags', t)}
-          placeholder="booru tags, comma separated"
-        />
-        <GenerateImageButton
-          subject={{ name: value.name || '', description: value.aiDescription || value.playerDescription || '', kind: 'character' }}
-          cap={IMAGE_CAPS.entity}
-          onChange={(file) => onChange('image', file)}
-          tags={value.imageTags ?? ''}
-          onTagsChange={(t) => onChange('imageTags', t)}
-        />
-      </div>
+      <ImageTagsField
+        label="Image"
+        image={value.image}
+        onImageChange={(file) => onChange('image', file)}
+        imageId={`entity-image-${value.id}`}
+        cap={IMAGE_CAPS.entity}
+        name={value.name}
+        description={value.aiDescription || value.playerDescription}
+        kind="character"
+        tags={value.imageTags}
+        onTagsChange={(t) => onChange('imageTags', t)}
+      />
       <div className="space-y-2">
         <Label>3D Model</Label>
         <ModelUpload

@@ -1,11 +1,7 @@
 import { useEffect, useMemo, useRef, useState, type SetStateAction } from 'react';
 import { toast } from 'react-toastify';
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
-import { Button } from '@/components/ui/button';
 import { ListDetail } from '@/components/ui/list-detail';
-import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Download, Save, Upload } from 'lucide-react';
-import { UnsavedChangesDialog } from '@/components/UnsavedChangesDialog';
+import EditorModalShell from './EditorModalShell';
 import { DictionaryStoreProvider, useDictionaryStoreState } from '@/contexts/DictionaryStoreContext';
 import DictionaryTree from '@/managers/DictionaryTree';
 import DictionaryBookManager from '@/managers/DictionaryBookManager';
@@ -14,8 +10,11 @@ import PlaceholderEditor from '@/managers/PlaceholderEditor';
 import { placeholderStore, PlaceholderStoreProvider } from '@/contexts/PlaceholderStoreContext';
 import { buildDictionaryFile } from '@/lib/dictionaryFile';
 import { downloadBlob } from '@/lib/downloadBlob';
+import { memoStringify } from '@/lib/memoStringify';
 import DictionaryStorageService from '@/services/DictionaryStorageService';
 import type { Dictionary, Placeholder } from '@/types';
+
+const TABS = [{ value: 'dictionary', label: 'Dictionary' }, { value: 'placeholders', label: 'Placeholders' }];
 
 /**
  * Edit a single library dictionary in place. Reuses the World Editor's dictionary widgets, but binds them
@@ -34,8 +33,9 @@ const DictionaryEditorModal = ({ dictionaryId, draft, onClose, onPublish }: {
   const [book, setBook] = useState<Dictionary | null>(null);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [tab, setTab] = useState<'dictionary' | 'placeholders'>('dictionary');
-  const [showUnsaved, setShowUnsaved] = useState(false);
   const baselineRef = useRef('');
+  // Reuses cached serialization for unedited entries on each keystroke; matches the JSON.stringify baseline.
+  const stringifyCache = useRef(new WeakMap<object, string>());
   const onCloseRef = useRef(onClose);
   onCloseRef.current = onClose;
 
@@ -53,7 +53,7 @@ const DictionaryEditorModal = ({ dictionaryId, draft, onClose, onPublish }: {
     return () => { cancelled = true; };
   }, [dictionaryId, draft, setDictionaries]);
 
-  const hasUnsavedChanges = book != null && JSON.stringify(dictionaries) !== baselineRef.current;
+  const hasUnsavedChanges = book != null && memoStringify(dictionaries, stringifyCache.current) !== baselineRef.current;
   const selectedBook = dictionaries.find((b) => b.id === selectedId);
   const selectedEntry = dictionaries.flatMap((b) => b.entries).find((e) => e.id === selectedId);
   // The book's carried placeholders live on the sole book (index 0); its entries' chips resolve against them.
@@ -97,82 +97,51 @@ const DictionaryEditorModal = ({ dictionaryId, draft, onClose, onPublish }: {
     downloadBlob(blob, `${current.name || 'Dictionary'}.json`);
   };
 
-  const attemptClose = () => { if (hasUnsavedChanges) setShowUnsaved(true); else onClose(); };
-
   return (
-    <>
-      <Dialog open={isOpen} onOpenChange={(open) => { if (!open) attemptClose(); }}>
-        <DialogContent className="max-w-[1100px] w-[95vw] h-[85dvh] flex flex-col p-0 gap-0 overflow-hidden">
-          <DialogHeader className="px-4 py-3 border-b shrink-0 flex-row items-center gap-3">
-            <DialogTitle className="truncate flex-1">{book?.name || 'Dictionary'}</DialogTitle>
-            {book && (
-              <Tabs value={tab} onValueChange={(v) => setTab(v as 'dictionary' | 'placeholders')}>
-                <TabsList>
-                  <TabsTrigger value="dictionary">Dictionary</TabsTrigger>
-                  <TabsTrigger value="placeholders">Placeholders</TabsTrigger>
-                </TabsList>
-              </Tabs>
-            )}
-            <div className="flex-1" />
-          </DialogHeader>
-          {!book ? (
-            <div className="flex-1 flex items-center justify-center text-sm text-muted-foreground">Loading…</div>
-          ) : (
-            <DictionaryStoreProvider value={store}>
-              {tab === 'placeholders' ? (
-                <PlaceholderStoreProvider value={phStore}>
-                  <PlaceholderEditor />
-                </PlaceholderStoreProvider>
-              ) : (
-              <ListDetail
-                showDetail={!!(selectedBook || selectedEntry)}
-                onBack={() => setSelectedId(null)}
-                backLabel="Dictionary"
-                list={
-                  <div className="p-2">
-                    <DictionaryTree selectedId={selectedId} onSelect={setSelectedId} />
-                  </div>
-                }
-                detail={
-                  <div className="p-4">
-                    {selectedBook ? (
-                      <DictionaryBookManager key={selectedBook.id} book={selectedBook} />
-                    ) : selectedEntry ? (
-                      <DictionaryManager key={selectedEntry.id} entry={selectedEntry} placeholders={bookPlaceholders} />
-                    ) : (
-                      <p className="text-sm text-muted-foreground">Select the dictionary or an entry to edit it.</p>
-                    )}
-                  </div>
-                }
-              />
-              )}
-              <div className="px-4 py-3 border-t shrink-0 flex justify-between gap-2">
-                <Button variant="outline" size="sm" onClick={handleDownload}>
-                  <Download className="h-4 w-4 mr-2" /> Download
-                </Button>
-                <div className="flex gap-2">
-                  {onPublish && (
-                    // Publishes what's on screen, saved or not — the same book Save would write.
-                    <Button variant="outline" size="sm" onClick={() => dictionaries[0] && onPublish(dictionaries[0])}>
-                      <Upload className="h-4 w-4 mr-2" /> Publish
-                    </Button>
-                  )}
-                  <Button size="sm" onClick={handleSave} disabled={!hasUnsavedChanges}>
-                    <Save className="h-4 w-4 mr-2" /> Save
-                  </Button>
-                </div>
+    <EditorModalShell
+      open={isOpen}
+      title={book?.name || 'Dictionary'}
+      contentClassName="max-w-[1100px] w-[95vw] h-[85dvh] flex flex-col p-0 gap-0 overflow-hidden"
+      loading={!book}
+      tabs={TABS}
+      tab={tab}
+      onTabChange={(v) => setTab(v as 'dictionary' | 'placeholders')}
+      hasUnsavedChanges={hasUnsavedChanges}
+      onSave={handleSave}
+      onClose={onClose}
+      onDownload={handleDownload}
+      onPublish={onPublish ? () => { if (dictionaries[0]) onPublish(dictionaries[0]); } : undefined}
+    >
+      <DictionaryStoreProvider value={store}>
+        {tab === 'placeholders' ? (
+          <PlaceholderStoreProvider value={phStore}>
+            <PlaceholderEditor />
+          </PlaceholderStoreProvider>
+        ) : (
+          <ListDetail
+            showDetail={!!(selectedBook || selectedEntry)}
+            onBack={() => setSelectedId(null)}
+            backLabel="Dictionary"
+            list={
+              <div className="p-2">
+                <DictionaryTree selectedId={selectedId} onSelect={setSelectedId} />
               </div>
-            </DictionaryStoreProvider>
-          )}
-        </DialogContent>
-      </Dialog>
-      <UnsavedChangesDialog
-        open={showUnsaved}
-        onOpenChange={setShowUnsaved}
-        onSave={async () => { if (await handleSave()) onClose(); }}
-        onExit={onClose}
-      />
-    </>
+            }
+            detail={
+              <div className="p-4">
+                {selectedBook ? (
+                  <DictionaryBookManager key={selectedBook.id} book={selectedBook} />
+                ) : selectedEntry ? (
+                  <DictionaryManager key={selectedEntry.id} entry={selectedEntry} placeholders={bookPlaceholders} />
+                ) : (
+                  <p className="text-sm text-muted-foreground">Select the dictionary or an entry to edit it.</p>
+                )}
+              </div>
+            }
+          />
+        )}
+      </DictionaryStoreProvider>
+    </EditorModalShell>
   );
 };
 

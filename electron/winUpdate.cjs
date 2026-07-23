@@ -6,6 +6,7 @@ const fs = require('node:fs');
 const path = require('node:path');
 const crypto = require('node:crypto');
 const { spawn } = require('node:child_process');
+const { pumpResponseToFile } = require('./streamDownload.cjs');
 
 function updatesDir() {
   return path.join(app.getPath('userData'), 'updates');
@@ -36,30 +37,9 @@ async function download({ url, sha512, version }, onProgress) {
   const total = Number(res.headers.get('content-length')) || 0;
 
   const out = fs.createWriteStream(tmp, { flags: 'w' });
-  // Without an 'error' listener a mid-write failure emits an unhandled 'error' that crashes the main process,
-  // and the drain wait would hang. Capture it and surface it through the loop.
-  let writeErr = null;
-  out.on('error', (err) => { writeErr = err; });
   let received = 0;
   try {
-    const reader = res.body.getReader();
-    for (;;) {
-      const { done, value } = await reader.read();
-      if (writeErr) throw writeErr;
-      if (done) break;
-      received += value.length;
-      if (!out.write(Buffer.from(value))) {
-        await new Promise((resolve, reject) => {
-          const onDrain = () => { out.off('error', onErr); resolve(); };
-          const onErr = (err) => { out.off('drain', onDrain); reject(err); };
-          out.once('drain', onDrain);
-          out.once('error', onErr);
-        });
-      }
-      onProgress({ received, total, done: false });
-    }
-    if (writeErr) throw writeErr;
-    await new Promise((resolve, reject) => out.end((err) => (err ? reject(err) : resolve())));
+    received = await pumpResponseToFile(res.body, out, 0, (r) => onProgress({ received: r, total, done: false }));
   } catch (e) {
     try { out.destroy(); fs.unlinkSync(tmp); } catch { /* ignore */ }
     throw e;

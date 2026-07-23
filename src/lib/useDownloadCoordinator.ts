@@ -74,134 +74,68 @@ export function useDownloadCoordinator(
     return { migrated, thumbnailUrl };
   };
 
-  // Download a remote world as a new local entry.
-  const handleDownloadWorld = async (world: WorldRecord) => {
+  // Fetch + store a remote world at `localId`, then hand the finished local record to `commit` (add a new
+  // entry vs replace one in place). Shared by the new-copy download and the in-place overwrite paths — the
+  // only differences are the id, the list mutation, and the success/error wording.
+  const downloadAndStore = async (
+    world: WorldRecord,
+    localId: string,
+    commit: (record: WorldRecord) => void,
+    messages: { successVerb: string; errorLog: string; errorToast: string },
+  ) => {
     const worldId = world._id || world.id;
     // Mark this world as in-flight (indeterminate until we know the size) so the card swaps to a bar.
     setDownloadProgress((p) => ({ ...p, [worldId]: -1 }));
     try {
       const { migrated, thumbnailUrl } = await fetchWorldContent(world, worldId);
 
-      const localWorldId = `downloaded-${randomUUID()}`;
       const name = world.name || 'Downloaded World';
       const description = world.description || 'Downloaded from server';
       const author = world.author?.username || '';
       const now = new Date().toISOString();
+      // Link back to the community catalog entry so the "Downloaded" state survives reloads; record the
+      // source version we hold (server updated_at) and when, for refresh/update detection.
+      const meta = {
+        name, description, thumbnail: thumbnailUrl, author,
+        sourceId: worldId, dirty: false, downloadedAt: now, sourceUpdatedAt: world.updated_at,
+      };
 
-      await WorldStorageService.storeWorld({
-        id: localWorldId,
-        name,
-        description,
-        thumbnail: thumbnailUrl,
-        author,
-        // Link back to the community catalog entry so the "Downloaded" state survives reloads. Record the
-        // source version we hold (server updated_at) and when, for refresh/update detection.
-        sourceId: worldId,
-        dirty: false,
-        downloadedAt: now,
-        sourceUpdatedAt: world.updated_at,
-        // Sanitize at the download boundary so the stored copy is already current.
-        data: migrated
-      });
+      // Sanitize at the download boundary so the stored copy is already current. Same local id ⇒ storeWorld
+      // overwrites in place (the overwrite path); a fresh id adds a new record.
+      await WorldStorageService.storeWorld({ id: localId, ...meta, data: migrated });
 
       // Offer to downscale oversized images; if accepted, overwrite the just-stored copy in place.
       let finalData = migrated;
       if (onStored) {
-        const w = await onStored(localWorldId, migrated);
+        const w = await onStored(localId, migrated);
         if (w) {
           finalData = w;
-          await WorldStorageService.storeWorld({
-            id: localWorldId, name, description, thumbnail: thumbnailUrl, author,
-            sourceId: worldId, dirty: false, downloadedAt: now, sourceUpdatedAt: world.updated_at, data: finalData,
-          });
+          await WorldStorageService.storeWorld({ id: localId, ...meta, data: finalData });
         }
       }
 
-      setWorlds(prev => [...prev, {
-        id: localWorldId,
-        name,
-        description,
-        thumbnail: thumbnailUrl,
-        author,
-        tags: finalData.worldOverview?.tags || [],
-        sourceId: worldId,
-        dirty: false,
-        downloadedAt: now,
-        sourceUpdatedAt: world.updated_at,
-        lastAccessed: now,
-        isLoading: false
-      }]);
-
-      toast.success(`"${name}" downloaded successfully`);
+      commit({ id: localId, ...meta, tags: finalData.worldOverview?.tags || [], lastAccessed: now });
+      toast.success(`"${name}" ${messages.successVerb} successfully`);
     } catch (error) {
-      console.error('Error downloading world:', error);
-      toast.error((error as Error).message || 'Failed to download world');
+      console.error(messages.errorLog, error);
+      toast.error((error as Error).message || messages.errorToast);
     } finally {
       // Clear the in-flight bar whether it succeeded or failed.
       setDownloadProgress((p) => { const next = { ...p }; delete next[worldId]; return next; });
     }
   };
 
+  // Download a remote world as a new local entry.
+  const handleDownloadWorld = (world: WorldRecord) =>
+    downloadAndStore(world, `downloaded-${randomUUID()}`,
+      (record) => setWorlds((prev) => [...prev, { ...record, isLoading: false }]),
+      { successVerb: 'downloaded', errorLog: 'Error downloading world:', errorToast: 'Failed to download world' });
+
   // Overwrite an existing local copy in place with the current server content (refresh or update).
-  const overwriteWorld = async (world: WorldRecord, localId: string) => {
-    const worldId = world._id || world.id;
-    setDownloadProgress((p) => ({ ...p, [worldId]: -1 }));
-    try {
-      const { migrated, thumbnailUrl } = await fetchWorldContent(world, worldId);
-
-      const name = world.name || 'Downloaded World';
-      const description = world.description || 'Downloaded from server';
-      const author = world.author?.username || '';
-      const now = new Date().toISOString();
-
-      // Same local id ⇒ storeWorld overwrites the record in place; flags/stamps reset to a clean copy.
-      await WorldStorageService.storeWorld({
-        id: localId,
-        name,
-        description,
-        thumbnail: thumbnailUrl,
-        author,
-        sourceId: worldId,
-        dirty: false,
-        downloadedAt: now,
-        sourceUpdatedAt: world.updated_at,
-        data: migrated
-      });
-
-      let finalData = migrated;
-      if (onStored) {
-        const w = await onStored(localId, migrated);
-        if (w) {
-          finalData = w;
-          await WorldStorageService.storeWorld({
-            id: localId, name, description, thumbnail: thumbnailUrl, author,
-            sourceId: worldId, dirty: false, downloadedAt: now, sourceUpdatedAt: world.updated_at, data: finalData,
-          });
-        }
-      }
-
-      setWorlds(prev => prev.map(w => w.id === localId ? {
-        ...w,
-        name,
-        description,
-        thumbnail: thumbnailUrl,
-        author,
-        tags: finalData.worldOverview?.tags || [],
-        sourceId: worldId,
-        dirty: false,
-        downloadedAt: now,
-        sourceUpdatedAt: world.updated_at,
-        lastAccessed: now,
-      } : w));
-
-      toast.success(`"${name}" updated successfully`);
-    } catch (error) {
-      console.error('Error updating world:', error);
-      toast.error((error as Error).message || 'Failed to update world');
-    } finally {
-      setDownloadProgress((p) => { const next = { ...p }; delete next[worldId]; return next; });
-    }
-  };
+  const overwriteWorld = (world: WorldRecord, localId: string) =>
+    downloadAndStore(world, localId,
+      (record) => setWorlds((prev) => prev.map((w) => (w.id === localId ? { ...w, ...record } : w))),
+      { successVerb: 'updated', errorLog: 'Error updating world:', errorToast: 'Failed to update world' });
 
   // Contextual button click: new worlds download immediately; already-downloaded ones open the
   // refresh/update decision dialog (copy vs overwrite).
