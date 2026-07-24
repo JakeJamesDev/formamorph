@@ -31,6 +31,11 @@ _Unreleased — new work accumulates here until it earns a version bump. The nex
   - **Semantic-band probe.** `semantic-band-probe.mjs` + `semantic-band-cases.json`: A/Bs the two digest-band trim strategies on a 28-digest story with planted old facts — a deterministic trim-survival stage (embeddings in Node, no LLM) and a narration-recall stage on both test targets.
 - **👤 User-facing**
   - **Semantic Memory (experimental).** A new toggle under Settings → Gameplay, off by default. When the story's remembered moments no longer fit the context budget, the game normally lets the oldest go first; with Semantic Memory on it instead keeps the ones most relevant to what you're doing right now — an old promise resurfaces when you return to the person you made it to. Relevance is judged by a small AI model running entirely on your device (a one-time ~23 MB download when you enable it); nothing about your story leaves your machine, and if the model isn't ready the game simply falls back to the old behavior. The milestone keep/forget system and your pins are unchanged — this only reorders what gets trimmed under pressure.
+- **👤 User-facing**
+  - **Settings tabs are grouped instead of one long list.** Presentation, Generation, and Accessibility now break into labeled sections — Appearance / Scene / Narration, Turn Extras / Reasoning / Memory / Performance / Inspection, and Reading / Saves & Worlds — so a tab reads as a few named blocks rather than a wall of rows. Settings that only exist because a parent toggle is on (Background Fade, Move Automatically, Semantic Memory and its Memory Cap and Scene Recall, Diary Recall) are now visibly indented under the setting they belong to, so it's clear what turns them off. Nothing was added, removed, or renamed — only regrouped, with Narration Reveal and AI Language moved down beside the other narration settings.
+
+- **⚙️ Backend / invisible**
+  - **Scene Recall cooldown.** A scene that just rode as a recalled memory sits out the next 2 turns before it can be recalled again, so the same moment no longer rides turn after turn while the story stalls. Re-rolling a turn reproduces its original recall exactly.
 
 ---
 

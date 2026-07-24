@@ -5,6 +5,29 @@ import type { ReactNode } from 'react';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Slider } from '@/components/ui/slider';
 
+/** A titled block of setting rows: a small-caps header with a hairline rule, so a long tab reads as a few
+ *  named groups instead of one undifferentiated list. Sections space themselves via the tab's outer grid. */
+export function Section({ title, hint, children }: { title: string; hint?: string; children: ReactNode }) {
+  return (
+    <section className="grid gap-4">
+      <div className="space-y-1">
+        <div className="flex items-baseline gap-3">
+          <h3 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">{title}</h3>
+          <div className="h-px flex-1 bg-border" />
+        </div>
+        {hint && <p className="text-xs text-muted-foreground">{hint}</p>}
+      </div>
+      {children}
+    </section>
+  );
+}
+
+/** Indents rows that only exist while a parent toggle is on, so the dependency is visible rather than
+ *  implied by the rows merely appearing. Nests for a second level (a child of a child). */
+export function SubGroup({ children }: { children: ReactNode }) {
+  return <div className="grid gap-4 border-l-2 border-border pl-3 sm:pl-4">{children}</div>;
+}
+
 /** A label + control row on the settings tabs' two-column grid. `center` vertically centers the label
  *  against a single-line control; the default top-aligns it (for controls with a hint or multiple lines). */
 export function Row({ label, htmlFor, children, hint, center }: {

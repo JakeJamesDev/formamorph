@@ -24,16 +24,39 @@ export const REHYDRATE_DUP_THRESHOLD = 0.75;
 /** Most turns one action may rehydrate, before the caller's token budget applies. */
 export const REHYDRATE_MAX = 2;
 
+/** Turns a scene sits out after riding: fired on turn X, it can't fire again before turn X + N.
+ *  Kills same-scene stickiness (T1: 9/27 real-session firings were identical to the previous
+ *  turn's; one scene rode three consecutive turns while the context froze). */
+export const REHYDRATE_COOLDOWN_TURNS = 3;
+
+/** Turn ids still cooling down at `currentTurn`, given each scene's last-fired turn. A gap of 0
+ *  (same-turn re-roll) or negative (rolled-back save) does not block, so a re-roll reproduces the
+ *  original selection instead of losing its recalled scene. */
+export function rehydrationCooldownBlocked(
+  lastFired: ReadonlyMap<string, number>,
+  currentTurn: number,
+  cooldown = REHYDRATE_COOLDOWN_TURNS,
+): Set<string> {
+  const blocked = new Set<string>();
+  for (const [id, fired] of lastFired) {
+    const gap = currentTurn - fired;
+    if (gap > 0 && gap < cooldown) blocked.add(id);
+  }
+  return blocked;
+}
+
 /** Rank the band turns worth rehydrating for this action: candidates are digest-carrying band
  *  survivors (milestone selection has already run — a superseded scene can't come back), scored by
  *  plain cosine to the action, greedy best-first with the near-duplicate guard against both the
- *  already-chosen set and the floor turns' digests. Returns turnIds, best first, capped. Turns
- *  without a cached vector simply can't qualify (per-turn fail-open, like semantic lore). */
+ *  already-chosen set and the floor turns' digests. Turns in `blocked` (the cooldown set) are
+ *  excluded outright. Returns turnIds, best first, capped. Turns without a cached vector simply
+ *  can't qualify (per-turn fail-open, like semantic lore). */
 export function selectSemanticRehydrations(
   bandTurns: BandTurn[],
   floorTurns: BandTurn[],
   queryVec: Float32Array,
   vectorsByKey: Map<string, Float32Array>,
+  blocked: ReadonlySet<string> | null = null,
   maxCount = REHYDRATE_MAX,
 ): string[] {
   const vecOf = (t: BandTurn): Float32Array | undefined => {
@@ -44,6 +67,7 @@ export function selectSemanticRehydrations(
   const scored = bandTurns
     .map((t) => ({ t, vec: vecOf(t) }))
     .filter((c): c is { t: BandTurn; vec: Float32Array } => !!c.vec && !!c.t.turnId)
+    .filter((c) => !blocked?.has(c.t.turnId!))
     .map((c) => ({ ...c, sim: cosineSimilarity(queryVec, c.vec) }))
     .filter((c) => c.sim >= REHYDRATE_SIM_THRESHOLD)
     .sort((a, b) => b.sim - a.sim);

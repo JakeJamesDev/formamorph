@@ -5,9 +5,9 @@ lives in this doc; the shipped foundation is described below, then the planned s
 Steps ship one at a time, each behind its own probe evidence — nothing here is committed-to-all-at-once.
 
 **▶ Resume here:** build phase done (steps 0-4 shipped 2026-07-23, unreleased, off by default), and a
-real charged session (repeat.json findings below) has produced the **tuning todo** — work it in order
-from **T1**. Still open before any default-on: the repeated 50+-turn A/B, the charged-scene freeze
-replay (step 2), and step 5 only if similarity misses persist after T1-T3.
+real charged session (repeat.json findings below) has produced the **tuning todo** — T1 is done
+(2026-07-23); continue from **T2**. Still open before any default-on: the repeated 50+-turn A/B, the
+charged-scene freeze replay (step 2), and step 5 only if similarity misses persist after T1-T3.
 
 ## Tuning todo (ranked, from the 2026-07-23 real-session review + literature)
 
@@ -15,13 +15,21 @@ Reference precedent: SillyTavern chat vectorization (the production analog — q
 25% score floor, insert top-3, protect newest 5, "past events" injection template) validates our
 framed injection / protected floor / top-K-with-floor shape. Divergences and fixes:
 
-### T1. Scene-recall cooldown — small, do first
+### T1. Scene-recall cooldown — DONE 2026-07-23
 No re-recall of the same scene within N turns (start N=3). Kills the observed stickiness (9/27
 firings identical to the previous turn's; same scene rode turns 29-31 while the context froze).
 Chosen over ST's shuffle-top-K (their anti-staleness device) because sampling breaks our
 paired-seed probe methodology; revisit sampling only if cooldown feels too binary.
 - Cost: trivial (a per-scene last-fired turn map in GameViewer, or turnBanding arg).
 - Probe: rehydrate-probe gains a consecutive-turn case; assert no repeat within N.
+- Shipped: `REHYDRATE_COOLDOWN_TURNS = 3` + pure `rehydrationCooldownBlocked` in
+  `semanticRehydration.ts`; last-fired map + live-vs-meter split in GameViewer (`liveRecall` flag —
+  only the real turn records and advances the window, the meter replays it so it still shows what
+  rode). Gap 0/negative exempt → re-rolls and rolled-back saves reproduce their recall. The
+  consecutive-turn "no repeat within N" assertion landed as unit tests (windows, release at N,
+  re-roll/rollback exemptions) rather than a rehydrate-probe case: the probe exercises prompt
+  framing against a live model, and T1 touched no prompt text — the cooldown is deterministic
+  selection logic, fully covered without an LLM.
 
 ### T2. Margin-over-baseline recall threshold — the calibration fix
 Absolute cosine floors don't transfer across worlds (literature: embedding scores are only

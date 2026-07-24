@@ -82,7 +82,7 @@ import { parseTurns, buildVerbatimHistory, buildBandedHistory, extractKeywords, 
 import { milestoneCandidates, agedMilestoneCandidates, resolveMilestoneDrop, buildMilestoneUserMessage, parseMilestoneReply } from "../lib/milestoneMemory";
 import { buildRelevanceScores, vectorKey } from "../lib/memoryRelevance";
 import { entryVectorKey, entryEmbedText, selectSemanticLore, applySemanticLore } from "../lib/semanticDictionary";
-import { selectSemanticRehydrations } from "../lib/semanticRehydration";
+import { selectSemanticRehydrations, rehydrationCooldownBlocked } from "../lib/semanticRehydration";
 import { embedTexts, isEmbeddingModelReady, loadEmbeddingModel } from "../lib/embeddingWorkerClient";
 import { getVectors, putVector } from "../lib/embeddingCache";
 import { findEntityNames, matchNames, matchNamesLoose, sameCharacterName } from "../lib/entityMatch";
@@ -510,6 +510,11 @@ const GameViewer = ({
   // and show no recalled scenes).
   const lastRelevanceScoresRef = useRef<Map<string, number> | null>(null);
   const lastActionVecRef = useRef<Float32Array | null>(null);
+  // Scene-recall cooldown (T1): each rehydrated turn's last-fired turn number, plus the turn the
+  // live selection ran at so the context meter evaluates the same cooldown window instead of
+  // hiding the scene that actually rode. Session-local, like the vectors above.
+  const rehydrateLastFiredRef = useRef<Map<string, number>>(new Map());
+  const lastRecallTurnRef = useRef<number | null>(null);
 
   // Generate TTS for `text` (or the current game text) with the busy flag set, so both the
   // manual refresh button and auto-narration show the same spinner + chunk progress.
@@ -858,7 +863,9 @@ const GameViewer = ({
     return resolveMilestoneDrop(candidates, selection, memoryPins);
   }, [milestoneSelection, memoryPins, narrationVerbatimTurns]);
 
-  const getTrimmedMessageHistory = useCallback((promptTokens = 0, action = "", relevanceScores: Map<string, number> | null = null, actionVec: Float32Array | null = null) => {
+  // `liveRecall` marks the real turn's call: it evaluates the cooldown at the current turn and
+  // records what fired. The meter leaves it false and replays the live call's window.
+  const getTrimmedMessageHistory = useCallback((promptTokens = 0, action = "", relevanceScores: Map<string, number> | null = null, actionVec: Float32Array | null = null, liveRecall = false) => {
     const turns = parseTurns(fullMessageHistory);
     if (memoryDigests) {
       const keywords = extractKeywords(action, dictionary);
@@ -876,7 +883,13 @@ const GameViewer = ({
         const band = turns.slice(0, turns.length - floorCount).filter(
           (t) => t.summary?.trim() && !(drop && t.turnId && drop.has(t.turnId)),
         );
-        semanticRehydrate = selectSemanticRehydrations(band, floorTurns, actionVec, embedVectorsRef.current);
+        const recallTurn = liveRecall ? turns.length : lastRecallTurnRef.current ?? turns.length;
+        const blocked = rehydrationCooldownBlocked(rehydrateLastFiredRef.current, recallTurn);
+        semanticRehydrate = selectSemanticRehydrations(band, floorTurns, actionVec, embedVectorsRef.current, blocked);
+        if (liveRecall) {
+          lastRecallTurnRef.current = recallTurn;
+          for (const id of semanticRehydrate) rehydrateLastFiredRef.current.set(id, recallTurn);
+        }
       }
       // The recap's "where things stand" closer: mid-scene anchor (location + recent participants) plus
       // the player's standing notes. Probed on real failure turns (now-line-probe.mjs): removed the
@@ -1334,7 +1347,7 @@ ${playerNotes || NONE_PLACEHOLDER}
       // The context meter re-trims with the same scores + action vector so its counts mirror this turn.
       lastRelevanceScoresRef.current = relevanceScores;
       lastActionVecRef.current = actionVec;
-      const trimmedHistory = getTrimmedMessageHistory(estimateTokens(updatedPrompt.length), effectiveAction, relevanceScores, actionVec);
+      const trimmedHistory = getTrimmedMessageHistory(estimateTokens(updatedPrompt.length), effectiveAction, relevanceScores, actionVec, true);
 
       // Create message array for game text request
       const narrationMessages: ChatMessage[] = [

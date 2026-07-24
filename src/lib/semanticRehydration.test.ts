@@ -3,7 +3,9 @@ import {
   REHYDRATE_SIM_THRESHOLD,
   REHYDRATE_DUP_THRESHOLD,
   REHYDRATE_MAX,
+  REHYDRATE_COOLDOWN_TURNS,
   selectSemanticRehydrations,
+  rehydrationCooldownBlocked,
 } from './semanticRehydration';
 import { vectorKey } from './memoryRelevance';
 import type { BandTurn } from './turnBanding';
@@ -65,9 +67,37 @@ describe('selectSemanticRehydrations', () => {
     expect(selectSemanticRehydrations(band, [], query, v)).toEqual(['t2']);
   });
 
+  it('excludes blocked (cooling-down) turns and lets the runner-up take the slot', () => {
+    const band = [turn(0, 'best'), turn(1, 'good'), turn(2, 'ok')];
+    const v = vectors([
+      ['best', vec(0.9, 0, 0.44)],
+      ['good', vec(0.7, 0.71, 0)],
+      ['ok', vec(0.5, 0, 0.87)],
+    ]);
+    const out = selectSemanticRehydrations(band, [], query, v, new Set(['t0']));
+    expect(out).toEqual(['t1', 't2']);
+  });
+
   it('ships with sane guards', () => {
     expect(REHYDRATE_SIM_THRESHOLD).toBeGreaterThan(0);
     expect(REHYDRATE_DUP_THRESHOLD).toBeGreaterThan(REHYDRATE_SIM_THRESHOLD);
     expect(REHYDRATE_DUP_THRESHOLD).toBeLessThan(1);
+  });
+});
+
+describe('rehydrationCooldownBlocked', () => {
+  it('blocks a scene for the cooldown window, then releases it — no consecutive-turn repeat', () => {
+    const fired = new Map([['t0', 29]]);
+    // Fired on turn 29 with N=3: blocked on 30 and 31, eligible again on 32.
+    expect(rehydrationCooldownBlocked(fired, 30).has('t0')).toBe(true);
+    expect(rehydrationCooldownBlocked(fired, 31).has('t0')).toBe(true);
+    expect(rehydrationCooldownBlocked(fired, 32).has('t0')).toBe(false);
+    expect(REHYDRATE_COOLDOWN_TURNS).toBe(3);
+  });
+
+  it('does not block a same-turn re-roll or a rolled-back save', () => {
+    const fired = new Map([['t0', 29]]);
+    expect(rehydrationCooldownBlocked(fired, 29).size).toBe(0); // re-roll of the firing turn
+    expect(rehydrationCooldownBlocked(fired, 20).size).toBe(0); // load of an earlier save
   });
 });

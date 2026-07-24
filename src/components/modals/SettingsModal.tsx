@@ -6,7 +6,7 @@ import { ThemePreviewButton } from '@/components/ThemePreviewDialog';
 import { LocalModelPanel } from '@/components/modals/LocalModelPanel';
 import LlmSetupGuide from '@/components/modals/LlmSetupGuide';
 import { SETTINGS_TABS } from '@/components/modals/settingsTabs';
-import { Row, CheckRow } from '@/components/SettingsRows';
+import { Row, CheckRow, Section, SubGroup } from '@/components/SettingsRows';
 import { reasoningTabs, reasoningPromptTabs, defaultPromptReasoning, defaultReasoningBudgetPct, REASONING_CONTROL_KINDS, type PromptReasoning } from '@/lib/reasoningEffort';
 import { ExportPresetDialog, ImportPresetDialog } from '@/components/modals/PresetShareDialogs';
 import { type SharedPreset } from '@/lib/promptPresetShare';
@@ -756,7 +756,8 @@ export const SettingsModal = ({ isOpen, onOpenChange, previewValues, initialTab,
 
           <TabsContent value="presentation" className="px-2 flex-1 min-h-0 data-[state=active]:flex flex-col">
             <ScrollArea className="flex-1 min-h-0">
-            <div className="grid gap-4 py-4">
+            <div className="grid gap-6 py-4">
+              <Section title="Appearance">
               <div className="grid grid-cols-1 sm:grid-cols-4 items-start gap-4">
                 <label className="text-left sm:text-right pt-2">Theme</label>
                 <div className="col-span-3">
@@ -823,31 +824,9 @@ export const SettingsModal = ({ isOpen, onOpenChange, previewValues, initialTab,
                   </span>
                 </div>
               </div>
-              <div className="grid grid-cols-1 sm:grid-cols-4 items-center gap-4">
-                <span className="text-left sm:text-right leading-4">Narration Reveal</span>
-                <div className="col-span-3 flex items-center gap-2">
-                  <RevealAnimationDemoButton />
-                  <span className="text-xs text-muted-foreground">How each sentence appears as it streams.</span>
-                </div>
-              </div>
-              <div className="grid grid-cols-1 sm:grid-cols-4 items-start gap-4">
-                <label className="text-left sm:text-right pt-2">
-                  AI Language
-                </label>
-                <div className="col-span-3">
-                  <TokenAutocomplete
-                    single
-                    openOnFocus
-                    values={language ? [language] : []}
-                    onChange={(vals) => setLanguage(vals[0] ?? '')}
-                    options={COMMON_LANGUAGES}
-                    placeholder="Language or style…"
-                  />
-                  <p className="text-xs text-muted-foreground mt-1">
-                    The language the AI writes narration and choices in. Pick a suggestion or type your own — even a style, like formal English or pirate speak.
-                  </p>
-                </div>
-              </div>
+              </Section>
+
+              <Section title="Scene">
               <div className="grid grid-cols-1 sm:grid-cols-4 items-center gap-4">
                 <label htmlFor="bgmEnabled" className="text-left sm:text-right leading-4">
                   Background Music
@@ -876,6 +855,7 @@ export const SettingsModal = ({ isOpen, onOpenChange, previewValues, initialTab,
                 </div>
               </div>
               {locationBackground && (
+                <SubGroup>
                 <div className="grid grid-cols-1 sm:grid-cols-4 items-center gap-4">
                   <label className="text-left sm:text-right leading-4">Background Fade</label>
                   <div className="col-span-3 flex items-center gap-3">
@@ -895,7 +875,36 @@ export const SettingsModal = ({ isOpen, onOpenChange, previewValues, initialTab,
                     Fades the location image toward the background color for readability. 0% shows the full image.
                   </p>
                 </div>
+                </SubGroup>
               )}
+              </Section>
+
+              <Section title="Narration">
+              <div className="grid grid-cols-1 sm:grid-cols-4 items-center gap-4">
+                <span className="text-left sm:text-right leading-4">Narration Reveal</span>
+                <div className="col-span-3 flex items-center gap-2">
+                  <RevealAnimationDemoButton />
+                  <span className="text-xs text-muted-foreground">How each sentence appears as it streams.</span>
+                </div>
+              </div>
+              <div className="grid grid-cols-1 sm:grid-cols-4 items-start gap-4">
+                <label className="text-left sm:text-right pt-2">
+                  AI Language
+                </label>
+                <div className="col-span-3">
+                  <TokenAutocomplete
+                    single
+                    openOnFocus
+                    values={language ? [language] : []}
+                    onChange={(vals) => setLanguage(vals[0] ?? '')}
+                    options={COMMON_LANGUAGES}
+                    placeholder="Language or style…"
+                  />
+                  <p className="text-xs text-muted-foreground mt-1">
+                    The language the AI writes narration and choices in. Pick a suggestion or type your own — even a style, like formal English or pirate speak.
+                  </p>
+                </div>
+              </div>
               <div className="grid grid-cols-1 sm:grid-cols-4 items-start gap-4">
                 <label className="text-left sm:text-right pt-2">Paragraph Limit</label>
                 <div className="col-span-3">
@@ -936,13 +945,15 @@ export const SettingsModal = ({ isOpen, onOpenChange, previewValues, initialTab,
                   </span>
                 </div>
               </div>
+              </Section>
             </div>
             </ScrollArea>
           </TabsContent>
 
           <TabsContent value="generation" className="px-2 flex-1 min-h-0 data-[state=active]:flex flex-col">
             <ScrollArea className="flex-1 min-h-0">
-            <div className="grid gap-4 py-4">
+            <div className="grid gap-6 py-4">
+              <Section title="Turn Extras" hint="Optional passes that run alongside each turn's narration.">
               {/* Enable/disable the optional per-turn requests. Synced with the System Prompts tab, which
                   shows a prompt's editor tab only while it's enabled here. */}
               <div className="grid grid-cols-1 sm:grid-cols-4 items-start gap-4">
@@ -979,6 +990,7 @@ export const SettingsModal = ({ isOpen, onOpenChange, previewValues, initialTab,
               </div>
               {/* Auto-apply detected location changes — its own row, only shown while Location Change is on. */}
               {locationChangeEnabled && (
+                <SubGroup>
                 <div className="grid grid-cols-1 sm:grid-cols-4 items-start gap-4">
                   <label htmlFor="locationAutoApply" className="text-left sm:text-right leading-4">Move Automatically</label>
                   <div className="col-span-3 flex items-start gap-2">
@@ -993,7 +1005,11 @@ export const SettingsModal = ({ isOpen, onOpenChange, previewValues, initialTab,
                     </span>
                   </div>
                 </div>
+                </SubGroup>
               )}
+              </Section>
+
+              <Section title="Reasoning" hint="How the AI plans a turn before writing it.">
               <div className="grid grid-cols-1 sm:grid-cols-4 items-start gap-4">
                 <label className="text-left sm:text-right pt-2">Thinking</label>
                 <div className="col-span-3">
@@ -1014,6 +1030,7 @@ export const SettingsModal = ({ isOpen, onOpenChange, previewValues, initialTab,
               {/* Staged only: cap how many characters the director stages per turn (each is its own pass). Off =
                   unbounded. Feeds both the hard cap and the <ACTIVE CHARACTER GUIDANCE> chip in the director prompt. */}
               {thinkingMode === 'staged' && (
+                <SubGroup>
                 <div className="grid grid-cols-1 sm:grid-cols-4 items-start gap-4">
                   <label className="text-left sm:text-right pt-2">Limit Active Characters</label>
                   <div className="col-span-3 space-y-2">
@@ -1036,20 +1053,24 @@ export const SettingsModal = ({ isOpen, onOpenChange, previewValues, initialTab,
                     </span>
                   </div>
                 </div>
+                </SubGroup>
               )}
               {/* Native mode passes reasoning_effort straight through; shown only there since the guided modes drive
                   their own thinking. The levels are whichever the active endpoint accepts (detected on connect). */}
               {thinkingMode === 'off' && reasoningUnsupported && (
+                <SubGroup>
                 <div className="grid grid-cols-1 sm:grid-cols-4 items-start gap-4">
                   <label className="text-left sm:text-right pt-2 text-muted-foreground">Native Reasoning</label>
                   <div className="col-span-3 pt-2">
                     <span className="text-xs text-muted-foreground">This model doesn&apos;t support reasoning, so there&apos;s nothing to configure.</span>
                   </div>
                 </div>
+                </SubGroup>
               )}
               {thinkingMode === 'off' && !reasoningUnsupported && (() => {
                 const reasoningOptions = reasoningTabs(supportedReasoningEfforts);
                 return (
+                  <SubGroup>
                   <div className="grid grid-cols-1 sm:grid-cols-4 items-start gap-4">
                     <label className="text-left sm:text-right pt-2">Native Reasoning</label>
                     <div className="col-span-3">
@@ -1066,8 +1087,12 @@ export const SettingsModal = ({ isOpen, onOpenChange, previewValues, initialTab,
                       </div>
                     </div>
                   </div>
+                  </SubGroup>
                 );
               })()}
+              </Section>
+
+              <Section title="Memory" hint="What the AI carries forward from earlier turns.">
               <div className="grid grid-cols-1 sm:grid-cols-4 items-start gap-4">
                 <label htmlFor="memoryDigests" className="text-left sm:text-right leading-4">
                   Memory Summaries
@@ -1085,6 +1110,7 @@ export const SettingsModal = ({ isOpen, onOpenChange, previewValues, initialTab,
                 </div>
               </div>
               {memoryDigests && (
+                <SubGroup>
                 <div className="grid grid-cols-1 sm:grid-cols-4 items-start gap-4">
                   <label htmlFor="semanticMemory" className="text-left sm:text-right leading-4">
                     Semantic Memory
@@ -1101,11 +1127,11 @@ export const SettingsModal = ({ isOpen, onOpenChange, previewValues, initialTab,
                     </span>
                   </div>
                 </div>
-              )}
-              {/* Always-on top-K cap: derived checkbox (cap > 0), enabling seeds a sensible default. */}
-              {memoryDigests && semanticMemory && (
-                <div className="grid grid-cols-1 sm:grid-cols-4 items-start gap-4">
-                  <label className="text-left sm:text-right pt-2">Memory Cap</label>
+                {semanticMemory && (
+                  <SubGroup>
+                  {/* Always-on top-K cap: derived checkbox (cap > 0), enabling seeds a sensible default. */}
+                  <div className="grid grid-cols-1 sm:grid-cols-4 items-start gap-4">
+                    <label className="text-left sm:text-right pt-2">Memory Cap</label>
                   <div className="col-span-3 space-y-2">
                     <div className="flex items-center gap-3">
                       <Checkbox
@@ -1125,11 +1151,9 @@ export const SettingsModal = ({ isOpen, onOpenChange, previewValues, initialTab,
                       Experimental. Keeps only this many remembered moments in view each turn — the ones most relevant to your action — even when more would fit. Smaller, sharper prompts on long stories; the story opening and the newest memories always stay. Off carries everything that fits.
                     </span>
                   </div>
-                </div>
-              )}
-              {memoryDigests && semanticMemory && (
-                <div className="grid grid-cols-1 sm:grid-cols-4 items-start gap-4">
-                  <label htmlFor="semanticRehydration" className="text-left sm:text-right leading-4">
+                  </div>
+                  <div className="grid grid-cols-1 sm:grid-cols-4 items-start gap-4">
+                    <label htmlFor="semanticRehydration" className="text-left sm:text-right leading-4">
                     Scene Recall
                   </label>
                   <div className="col-span-3 flex items-start gap-2">
@@ -1143,7 +1167,10 @@ export const SettingsModal = ({ isOpen, onOpenChange, previewValues, initialTab,
                       Experimental. When your action returns to an old moment — going back to someone you made a promise to — the full original scene is recalled for the AI, word for word, clearly marked as the past. At most two scenes per turn, never near-duplicates of each other or of recent turns. Uses Semantic Memory&apos;s model and memories.
                     </span>
                   </div>
-                </div>
+                  </div>
+                  </SubGroup>
+                )}
+                </SubGroup>
               )}
               <div className="grid grid-cols-1 sm:grid-cols-4 items-start gap-4">
                 <label htmlFor="semanticLore" className="text-left sm:text-right leading-4">
@@ -1186,24 +1213,9 @@ export const SettingsModal = ({ isOpen, onOpenChange, previewValues, initialTab,
                   </div>
                 </div>
               )}
-              <div className="grid grid-cols-1 sm:grid-cols-4 items-start gap-4">
-                <label htmlFor="concurrentTurnRequests" className="text-left sm:text-right leading-4">
-                  Concurrent Requests
-                </label>
-                <div className="col-span-3 flex items-start gap-2">
-                  <Checkbox
-                    id="concurrentTurnRequests"
-                    checked={concurrentTurnRequests}
-                    onCheckedChange={(c) => setConcurrentTurnRequests(c === true)}
-                    className="shrink-0"
-                  />
-                  <span className="text-xs text-muted-foreground">
-                    Fetches choices, stat updates, and location changes at the same time instead of one after another, making turns finish faster on endpoints that handle parallel requests (e.g. LM Studio&apos;s Parallel setting). Turn off if a memory-tight local model slows down under the extra load.
-                  </span>
-                </div>
-              </div>
               {/* Diaries are only read by the staged character pass, so the option only appears in that mode. */}
               {thinkingMode === 'staged' && (
+                <>
                 <div className="grid grid-cols-1 sm:grid-cols-4 items-start gap-4">
                   <label htmlFor="characterDiaries" className="text-left sm:text-right leading-4">
                     Character Diaries
@@ -1220,10 +1232,10 @@ export const SettingsModal = ({ isOpen, onOpenChange, previewValues, initialTab,
                     </span>
                   </div>
                 </div>
-              )}
-              {thinkingMode === 'staged' && characterDiaries && semanticMemory && (
-                <div className="grid grid-cols-1 sm:grid-cols-4 items-start gap-4">
-                  <label htmlFor="semanticDiaries" className="text-left sm:text-right leading-4">
+                {characterDiaries && semanticMemory && (
+                  <SubGroup>
+                  <div className="grid grid-cols-1 sm:grid-cols-4 items-start gap-4">
+                    <label htmlFor="semanticDiaries" className="text-left sm:text-right leading-4">
                     Diary Recall
                   </label>
                   <div className="col-span-3 flex items-start gap-2">
@@ -1237,8 +1249,33 @@ export const SettingsModal = ({ isOpen, onOpenChange, previewValues, initialTab,
                       Experimental. Instead of only their newest diary entries, characters also remember the older entries most relevant to what you&apos;re doing — she recalls the last time you drew a blade. Same number of entries as before, so it costs nothing extra. Uses Semantic Memory&apos;s model.
                     </span>
                   </div>
-                </div>
+                  </div>
+                  </SubGroup>
+                )}
+                </>
               )}
+              </Section>
+
+              <Section title="Performance">
+              <div className="grid grid-cols-1 sm:grid-cols-4 items-start gap-4">
+                <label htmlFor="concurrentTurnRequests" className="text-left sm:text-right leading-4">
+                  Concurrent Requests
+                </label>
+                <div className="col-span-3 flex items-start gap-2">
+                  <Checkbox
+                    id="concurrentTurnRequests"
+                    checked={concurrentTurnRequests}
+                    onCheckedChange={(c) => setConcurrentTurnRequests(c === true)}
+                    className="shrink-0"
+                  />
+                  <span className="text-xs text-muted-foreground">
+                    Fetches choices, stat updates, and location changes at the same time instead of one after another, making turns finish faster on endpoints that handle parallel requests (e.g. LM Studio&apos;s Parallel setting). Turn off if a memory-tight local model slows down under the extra load.
+                  </span>
+                </div>
+              </div>
+              </Section>
+
+              <Section title="Inspection" hint="Surfaces work that normally happens out of sight.">
               <div className="grid grid-cols-1 sm:grid-cols-4 items-start gap-4">
                 <label htmlFor="showReasoning" className="text-left sm:text-right leading-4">
                   Show Reasoning
@@ -1271,6 +1308,7 @@ export const SettingsModal = ({ isOpen, onOpenChange, previewValues, initialTab,
                   </span>
                 </div>
               </div>
+              </Section>
             </div>
             </ScrollArea>
           </TabsContent>
@@ -1885,7 +1923,8 @@ export const SettingsModal = ({ isOpen, onOpenChange, previewValues, initialTab,
 
           <TabsContent value="accessibility" className="px-2 flex-1 min-h-0 data-[state=active]:flex flex-col">
             <ScrollArea className="flex-1 min-h-0">
-            <div className="grid gap-4 py-4">
+            <div className="grid gap-6 py-4">
+              <Section title="Reading" hint="Applies to the story text only, not the rest of the app.">
               <div className="grid grid-cols-1 sm:grid-cols-4 items-start gap-4">
                 <label htmlFor="narrationFont" className="text-left sm:text-right pt-2">
                   Narration Font
@@ -1958,6 +1997,9 @@ export const SettingsModal = ({ isOpen, onOpenChange, previewValues, initialTab,
                   </ConfirmDialog>
                 </div>
               </div>
+              </Section>
+
+              <Section title="Saves & Worlds">
               <CheckRow
                 label="Autosave"
                 htmlFor="autosaveEnabled"
@@ -1984,6 +2026,7 @@ export const SettingsModal = ({ isOpen, onOpenChange, previewValues, initialTab,
                   </p>
                 </div>
               </div>
+              </Section>
             </div>
             </ScrollArea>
           </TabsContent>
