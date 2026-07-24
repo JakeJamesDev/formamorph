@@ -3,6 +3,9 @@ import {
   MILESTONE_RECENT_BAND,
   buildMilestoneUserMessage,
   parseMilestoneReply,
+  buildIncrementalMilestoneUserMessage,
+  parseIncrementalMilestoneReply,
+  applyIncrementalVerdict,
   milestoneCandidates,
   agedMilestoneCandidates,
   resolveMilestoneKeep,
@@ -135,5 +138,98 @@ describe('buildBandedHistory milestone filtering', () => {
 describe('buildMilestoneUserMessage', () => {
   it('numbers the digests oldest first', () => {
     expect(buildMilestoneUserMessage(['a', 'b'])).toContain('1. a\n2. b');
+  });
+});
+
+describe('buildIncrementalMilestoneUserMessage', () => {
+  it('numbers kept context and new arrivals continuously', () => {
+    const msg = buildIncrementalMilestoneUserMessage(['old a', 'old b'], ['new c']);
+    expect(msg).toContain('1. old a\n2. old b');
+    expect(msg).toContain('3. new c');
+    expect(msg).toContain('Forget:');
+  });
+
+  it('asks only for the Keep line when nothing is kept yet', () => {
+    const msg = buildIncrementalMilestoneUserMessage([], ['new a', 'new b']);
+    expect(msg).toContain('1. new a\n2. new b');
+    expect(msg).not.toContain('Forget:');
+  });
+});
+
+describe('parseIncrementalMilestoneReply', () => {
+  it('parses Keep and honors a Forget only as a citation of a kept new entry', () => {
+    const v = parseIncrementalMilestoneReply('Keep: 4, 5\nForget: 2 replaced by 4', 3, 2)!;
+    expect([...v.keepFresh]).toEqual([0, 1]); // 4,5 → fresh indices 0,1
+    expect([...v.forgetOld]).toEqual([1]);    // 2 → old index 1, cited by kept 4
+  });
+
+  it('voids an uncited Forget and one whose citation is not kept — the anti-flip-flop filter', () => {
+    expect(parseIncrementalMilestoneReply('Keep: 4\nForget: 2', 3, 2)!.forgetOld.size).toBe(0);
+    expect(parseIncrementalMilestoneReply('Keep: 4\nForget: 2 replaced by 5', 3, 2)!.forgetOld.size).toBe(0);
+  });
+
+  it('parses one-line replies with trailing prose (the Cydonia shape)', () => {
+    const v = parseIncrementalMilestoneReply('Keep: 4 Forget: 2 replaced by 4 The promise is now fulfilled.', 3, 2)!;
+    expect([...v.keepFresh]).toEqual([0]);
+    expect([...v.forgetOld]).toEqual([1]);
+  });
+
+  it('ignores out-of-range numbers: Keep only applies to fresh, Forget only to old', () => {
+    const v = parseIncrementalMilestoneReply('Keep: 1, 4\nForget: none', 3, 2)!;
+    expect([...v.keepFresh]).toEqual([0]);
+    expect(v.forgetOld.size).toBe(0);
+  });
+
+  it('accepts a bare number list as keeps and "none" as keep-nothing', () => {
+    const v = parseIncrementalMilestoneReply('4, 5', 3, 2)!;
+    expect([...v.keepFresh]).toEqual([0, 1]);
+    expect(v.forgetOld.size).toBe(0);
+    const none = parseIncrementalMilestoneReply('Keep: none\nForget: none', 3, 2)!;
+    expect(none.keepFresh.size).toBe(0);
+    expect(none.forgetOld.size).toBe(0);
+  });
+
+  it('treats an explicit Forget with no Keep line as keep-nothing-new (and voids its uncited forget)', () => {
+    const v = parseIncrementalMilestoneReply('Forget: 2', 3, 2)!;
+    expect(v.keepFresh.size).toBe(0);
+    expect(v.forgetOld.size).toBe(0);
+  });
+
+  it('returns null on prose — callers keep all new and touch nothing old', () => {
+    expect(parseIncrementalMilestoneReply('', 3, 2)).toBeNull();
+    expect(parseIncrementalMilestoneReply('I would keep the moment with the ferryman because the debt still matters to him.', 3, 2)).toBeNull();
+  });
+});
+
+describe('applyIncrementalVerdict', () => {
+  const prev = { seen: ['t0', 't1', 't2'], selected: ['t0', 't2'] };
+
+  it('adds kept fresh ids and forgets superseded old ids, preserving everything else', () => {
+    const out = applyIncrementalVerdict(prev, ['t0', 't2'], ['t3', 't4'], {
+      keepFresh: new Set([1]),
+      forgetOld: new Set([1]), // shown old index 1 = t2
+    });
+    expect(out.seen).toEqual(['t0', 't1', 't2', 't3', 't4']);
+    expect(out.selected).toEqual(['t0', 't4']);
+  });
+
+  it('a null verdict keeps every fresh entry and leaves old verdicts untouched', () => {
+    const out = applyIncrementalVerdict(prev, ['t0', 't2'], ['t3'], null);
+    expect(out.seen).toEqual(['t0', 't1', 't2', 't3']);
+    expect(out.selected).toEqual(['t0', 't2', 't3']);
+  });
+
+  it('materializes a legacy malformed full-vote (selected null) as keep-everything-seen', () => {
+    const out = applyIncrementalVerdict({ seen: ['t0', 't1'], selected: null }, ['t0', 't1'], ['t2'], {
+      keepFresh: new Set([0]),
+      forgetOld: new Set([0]),
+    });
+    expect(out.selected).toEqual(['t1', 't2']);
+  });
+
+  it('starts from nothing: no prior selection, first batch judged', () => {
+    const out = applyIncrementalVerdict(null, [], ['t0', 't1'], { keepFresh: new Set([1]), forgetOld: new Set() });
+    expect(out.seen).toEqual(['t0', 't1']);
+    expect(out.selected).toEqual(['t1']);
   });
 });

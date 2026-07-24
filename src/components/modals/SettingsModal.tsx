@@ -6,7 +6,7 @@ import { ThemePreviewButton } from '@/components/ThemePreviewDialog';
 import { LocalModelPanel } from '@/components/modals/LocalModelPanel';
 import LlmSetupGuide from '@/components/modals/LlmSetupGuide';
 import { SETTINGS_TABS } from '@/components/modals/settingsTabs';
-import { Row, CheckRow } from '@/components/SettingsRows';
+import { Row, CheckRow, Section, SubGroup, RowLabel, HintInfo } from '@/components/SettingsRows';
 import { reasoningTabs, reasoningPromptTabs, defaultPromptReasoning, defaultReasoningBudgetPct, REASONING_CONTROL_KINDS, type PromptReasoning } from '@/lib/reasoningEffort';
 import { ExportPresetDialog, ImportPresetDialog } from '@/components/modals/PresetShareDialogs';
 import { type SharedPreset } from '@/lib/promptPresetShare';
@@ -17,6 +17,8 @@ import { RevealAnimationDemoButton } from "@/components/RevealAnimationDemo";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Checkbox } from "@/components/ui/checkbox";
+import { Progress } from "@/components/ui/progress";
+import { loadEmbeddingModel, disposeEmbeddingModel, type EmbeddingLoadProgress } from '@/lib/embeddingWorkerClient';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem, SelectSeparator } from "@/components/ui/select";
@@ -30,7 +32,7 @@ import { toast } from 'react-toastify';
 import WorldStorageService from '@/services/WorldStorageService';
 import { DEFAULT_WORLDS, readDeletedDefaultWorlds, clearDeletedDefaultWorlds } from '@/lib/defaultWorlds';
 import { PresetNameDialog } from './PresetNameDialog';
-import { defaultSystemPrompt, defaultNarrationUserPrompt, defaultRecapUserPrompt, defaultChoicesPrompt, defaultStatUpdatesPrompt, defaultLocationChangePrompt, defaultThinkingPrompt, defaultSummaryPrompt, defaultChoicesUserPrompt, defaultStatUpdatesUserPrompt, defaultLocationChangeUserPrompt, defaultSummaryUserPrompt, defaultDiaryPrompt, defaultDirectorPrompt, defaultDirectorUserPrompt, defaultCharacterPrompt, defaultStoryboardPrompt } from '../game/GamePrompts';
+import { defaultSystemPrompt, defaultNarrationUserPrompt, defaultRecapUserPrompt, defaultRehydrateUserPrompt, defaultChoicesPrompt, defaultStatUpdatesPrompt, defaultLocationChangePrompt, defaultThinkingPrompt, defaultSummaryPrompt, defaultChoicesUserPrompt, defaultStatUpdatesUserPrompt, defaultLocationChangeUserPrompt, defaultSummaryUserPrompt, defaultDiaryPrompt, defaultDirectorPrompt, defaultDirectorUserPrompt, defaultCharacterPrompt, defaultStoryboardPrompt } from '../game/GamePrompts';
 import { isDesktop } from '@/lib/imageGen/desktop';
 import { fetchComfyMeta, DEFAULT_COMFY_WORKFLOW, type ComfyMeta } from '@/lib/imageGen/comfyui';
 import { fetchInvokeMeta, type InvokeMeta } from '@/lib/imageGen/invokeai';
@@ -364,6 +366,8 @@ export const SettingsModal = ({ isOpen, onOpenChange, previewValues, initialTab,
     narrationUserPrompt,
     setNarrationUserPrompt,
     recapUserPrompt,
+    rehydrateUserPrompt,
+    setRehydrateUserPrompt,
     setRecapUserPrompt,
     choicesUserPrompt,
     setChoicesUserPrompt,
@@ -386,6 +390,16 @@ export const SettingsModal = ({ isOpen, onOpenChange, previewValues, initialTab,
     importPreset,
     memoryDigests,
     setMemoryDigests,
+    semanticMemory,
+    setSemanticMemory,
+    semanticLore,
+    setSemanticLore,
+    semanticRehydration,
+    setSemanticRehydration,
+    semanticDiaries,
+    setSemanticDiaries,
+    semanticBandCap,
+    setSemanticBandCap,
     concurrentTurnRequests,
     setConcurrentTurnRequests,
     autosaveEnabled,
@@ -468,6 +482,31 @@ export const SettingsModal = ({ isOpen, onOpenChange, previewValues, initialTab,
   const { theme, setTheme } = useTheme();
   const desktop = isDesktop();
   const [connectionGuideOpen, setConnectionGuideOpen] = useState(false);
+  // Embedding-model download state for the semantic memory toggle. Local to the modal: the toggle
+  // stays on through a failed download (scoring fails open until the model arrives), so this state
+  // only drives the progress bar / error row.
+  const [embedLoading, setEmbedLoading] = useState(false);
+  const [embedProgress, setEmbedProgress] = useState<EmbeddingLoadProgress | null>(null);
+  const [embedError, setEmbedError] = useState<string | null>(null);
+  const startEmbeddingDownload = () => {
+    setEmbedLoading(true);
+    setEmbedError(null);
+    setEmbedProgress(null);
+    loadEmbeddingModel(setEmbedProgress)
+      .then(() => setEmbedError(null))
+      .catch((err) => setEmbedError((err as Error).message))
+      .finally(() => { setEmbedLoading(false); setEmbedProgress(null); });
+  };
+  const handleSemanticMemoryToggle = (on: boolean) => {
+    setSemanticMemory(on);
+    if (on) startEmbeddingDownload();
+    else if (!semanticLore) void disposeEmbeddingModel(); // model stays while any semantic feature needs it
+  };
+  const handleSemanticLoreToggle = (on: boolean) => {
+    setSemanticLore(on);
+    if (on) startEmbeddingDownload();
+    else if (!semanticMemory) void disposeEmbeddingModel();
+  };
   const handleResetEndpointSettings = () => {
     setEndpointUrl(DEFAULT_ENDPOINT);
     setModelName(DEFAULT_MODEL_NAME);
@@ -598,7 +637,7 @@ export const SettingsModal = ({ isOpen, onOpenChange, previewValues, initialTab,
   // Narration additionally has a Recap editor (the memory-recap exchange's user line; digests-on only).
   // A System | User | Recap | Options toggle swaps between them (User/Recap only where they exist).
   // `promptView` resets to System on every tab change.
-  const [promptView, setPromptView] = useState<'system' | 'user' | 'recap' | 'options'>('system');
+  const [promptView, setPromptView] = useState<'system' | 'user' | 'recap' | 'recall' | 'options'>('system');
   const selectPromptTab = (t: string) => { setPromptTab(t); setPromptView('system'); };
   const userPrompts: Record<string, { value: string; set: (s: string) => void; reset: () => void; variables: typeof PROMPT_KIND_VARIABLES.choices }> = {
     // Narration's user template applies only with thinking off (GameViewer guard); hide the editor
@@ -616,14 +655,19 @@ export const SettingsModal = ({ isOpen, onOpenChange, previewValues, initialTab,
   // Narration tab and hides with the feature so an edit can't silently do nothing.
   const recapAvailable = activePromptTab === 'narration' && memoryDigests;
   const showingRecap = promptView === 'recap' && recapAvailable;
+  // The recall line rides only while Scene Recall is on — same hide-with-the-feature rule as the recap.
+  const recallAvailable = activePromptTab === 'narration' && memoryDigests && semanticMemory && semanticRehydration;
+  const showingRecall = promptView === 'recall' && recallAvailable;
   const showingOptions = promptView === 'options';
   // The Reset button targets whichever template is on screen. `label` is the full noun ("Narration Prompt"
   // or just "Message" for the user-message template), so the button reads "Reset <label>".
   const resetTarget = showingRecap
     ? { label: 'Recap Message', reset: () => setRecapUserPrompt(defaultRecapUserPrompt) }
-    : showingUser && activeUserPrompt
-      ? { label: `${selectedPrompt.label} Message`, reset: activeUserPrompt.reset }
-      : { label: `${selectedPrompt.label} Prompt`, reset: selectedPrompt.reset };
+    : showingRecall
+      ? { label: 'Recall Message', reset: () => setRehydrateUserPrompt(defaultRehydrateUserPrompt) }
+      : showingUser && activeUserPrompt
+        ? { label: `${selectedPrompt.label} Message`, reset: activeUserPrompt.reset }
+        : { label: `${selectedPrompt.label} Prompt`, reset: selectedPrompt.reset };
 
   // Verbatim-turns control for the active prompt, shown once in the footer (like Reset).
   const promptVerbatim: Record<string, { value: number; set: (n: number) => void }> = {
@@ -712,10 +756,11 @@ export const SettingsModal = ({ isOpen, onOpenChange, previewValues, initialTab,
 
           <TabsContent value="presentation" className="px-2 flex-1 min-h-0 data-[state=active]:flex flex-col">
             <ScrollArea className="flex-1 min-h-0">
-            <div className="grid gap-4 py-4">
-              <div className="grid grid-cols-1 sm:grid-cols-4 items-start gap-4">
-                <label className="text-left sm:text-right pt-2">Theme</label>
-                <div className="col-span-3">
+            <div className="grid gap-6 py-4">
+              <Section title="Appearance">
+              <div className="grid grid-cols-1 sm:grid-cols-[minmax(0,1fr)_minmax(0,3fr)] items-start gap-4">
+                <RowLabel top>Theme</RowLabel>
+                <div>
                   <Tabs value={theme} onValueChange={(v) => setTheme(v as 'light' | 'dark' | 'system')}>
                     <TabsList className="grid w-full grid-cols-3">
                       {THEME_OPTIONS.map((o) => (
@@ -736,11 +781,9 @@ export const SettingsModal = ({ isOpen, onOpenChange, previewValues, initialTab,
                   </div>
                 </div>
               </div>
-              <div className="grid grid-cols-1 sm:grid-cols-4 items-center gap-4">
-                <label htmlFor="themeColor" className="text-left sm:text-right leading-4">
-                  Theme Color
-                </label>
-                <div className="col-span-3 flex items-center gap-3">
+              <div className="grid grid-cols-1 sm:grid-cols-[minmax(0,1fr)_minmax(0,3fr)] items-center gap-4">
+                <RowLabel htmlFor="themeColor">Theme Color</RowLabel>
+                <div className="flex items-center gap-3">
                   <Select value={themeColor} onValueChange={(v) => setThemeColor(v as ThemeColor)}>
                     <SelectTrigger id="themeColor" className="w-48">
                       <SelectValue />
@@ -752,16 +795,12 @@ export const SettingsModal = ({ isOpen, onOpenChange, previewValues, initialTab,
                     </SelectContent>
                   </Select>
                   <ThemePreviewButton />
-                  <span className="text-xs text-muted-foreground">
-                    Recolors the whole app; applies to both light and dark.
-                  </span>
+                  <span className="text-xs text-muted-foreground">Recolors the whole app; applies to both light and dark.</span>
                 </div>
               </div>
-              <div className="grid grid-cols-1 sm:grid-cols-4 items-center gap-4">
-                <label htmlFor="fontFamily" className="text-left sm:text-right leading-4">
-                  Font
-                </label>
-                <div className="col-span-3 flex items-center gap-3">
+              <div className="grid grid-cols-1 sm:grid-cols-[minmax(0,1fr)_minmax(0,3fr)] items-center gap-4">
+                <RowLabel htmlFor="fontFamily">Font</RowLabel>
+                <div className="flex items-center gap-3">
                   <Select value={fontFamily} onValueChange={(v) => setFontFamily(v as FontChoice)}>
                     <SelectTrigger id="fontFamily" className="w-48">
                       <SelectValue />
@@ -774,41 +813,15 @@ export const SettingsModal = ({ isOpen, onOpenChange, previewValues, initialTab,
                       ))}
                     </SelectContent>
                   </Select>
-                  <span className="text-xs text-muted-foreground">
-                    The typeface for the whole app.
-                  </span>
+                  <span className="text-xs text-muted-foreground">The typeface for the whole app.</span>
                 </div>
               </div>
-              <div className="grid grid-cols-1 sm:grid-cols-4 items-center gap-4">
-                <span className="text-left sm:text-right leading-4">Narration Reveal</span>
-                <div className="col-span-3 flex items-center gap-2">
-                  <RevealAnimationDemoButton />
-                  <span className="text-xs text-muted-foreground">How each sentence appears as it streams.</span>
-                </div>
-              </div>
-              <div className="grid grid-cols-1 sm:grid-cols-4 items-start gap-4">
-                <label className="text-left sm:text-right pt-2">
-                  AI Language
-                </label>
-                <div className="col-span-3">
-                  <TokenAutocomplete
-                    single
-                    openOnFocus
-                    values={language ? [language] : []}
-                    onChange={(vals) => setLanguage(vals[0] ?? '')}
-                    options={COMMON_LANGUAGES}
-                    placeholder="Language or style…"
-                  />
-                  <p className="text-xs text-muted-foreground mt-1">
-                    The language the AI writes narration and choices in. Pick a suggestion or type your own — even a style, like formal English or pirate speak.
-                  </p>
-                </div>
-              </div>
-              <div className="grid grid-cols-1 sm:grid-cols-4 items-center gap-4">
-                <label htmlFor="bgmEnabled" className="text-left sm:text-right leading-4">
-                  Background Music
-                </label>
-                <div className="col-span-3 flex items-center">
+              </Section>
+
+              <Section title="Scene">
+              <div className="grid grid-cols-1 sm:grid-cols-[minmax(0,1fr)_minmax(0,3fr)] items-center gap-4">
+                <RowLabel htmlFor="bgmEnabled">Background Music</RowLabel>
+                <div className="flex items-center">
                   <Checkbox
                     id="bgmEnabled"
                     checked={bgmEnabled}
@@ -816,25 +829,22 @@ export const SettingsModal = ({ isOpen, onOpenChange, previewValues, initialTab,
                   />
                 </div>
               </div>
-              <div className="grid grid-cols-1 sm:grid-cols-4 items-center gap-4">
-                <label htmlFor="locationBackground" className="text-left sm:text-right leading-4">
-                  Location Background
-                </label>
-                <div className="col-span-3 flex items-center gap-3">
+              <div className="grid grid-cols-1 sm:grid-cols-[minmax(0,1fr)_minmax(0,3fr)] items-center gap-4">
+                <RowLabel htmlFor="locationBackground">Location Background</RowLabel>
+                <div className="flex items-center gap-3">
                   <Checkbox
                     id="locationBackground"
                     checked={locationBackground}
                     onCheckedChange={(c) => setLocationBackground(c === true)}
                   />
-                  <span className="text-xs text-muted-foreground">
-                    Show the location image behind the game. Off uses a blank themed background.
-                  </span>
+                  <span className="text-xs text-muted-foreground">Show the location image behind the game. Off uses a blank themed background.</span>
                 </div>
               </div>
               {locationBackground && (
-                <div className="grid grid-cols-1 sm:grid-cols-4 items-center gap-4">
-                  <label className="text-left sm:text-right leading-4">Background Fade</label>
-                  <div className="col-span-3 flex items-center gap-3">
+                <SubGroup>
+                <div className="grid grid-cols-1 sm:grid-cols-[minmax(0,1fr)_minmax(0,3fr)] items-center gap-4">
+                  <RowLabel>Background Fade</RowLabel>
+                  <div className="flex items-center gap-3">
                     <Slider
                       value={[backgroundOverlay]}
                       min={0}
@@ -847,14 +857,42 @@ export const SettingsModal = ({ isOpen, onOpenChange, previewValues, initialTab,
                       {Math.round(backgroundOverlay * 100)}%
                     </span>
                   </div>
-                  <p className="text-xs text-muted-foreground sm:col-start-2 sm:col-span-3">
+                  <p className="text-xs text-muted-foreground sm:col-start-2">
                     Fades the location image toward the background color for readability. 0% shows the full image.
                   </p>
                 </div>
+                </SubGroup>
               )}
-              <div className="grid grid-cols-1 sm:grid-cols-4 items-start gap-4">
-                <label className="text-left sm:text-right pt-2">Paragraph Limit</label>
-                <div className="col-span-3">
+              </Section>
+
+              <Section title="Narration">
+              <div className="grid grid-cols-1 sm:grid-cols-[minmax(0,1fr)_minmax(0,3fr)] items-center gap-4">
+                <RowLabel>Narration Reveal</RowLabel>
+                <div className="flex items-center gap-2">
+                  <RevealAnimationDemoButton />
+                  <span className="text-xs text-muted-foreground">How each sentence appears as it streams.</span>
+                </div>
+              </div>
+              <div className="grid grid-cols-1 sm:grid-cols-[minmax(0,1fr)_minmax(0,3fr)] items-start gap-4">
+                <RowLabel top info={
+                  <HintInfo>{`The language the AI writes narration and choices in.
+
+Pick a suggestion, type your own, or even a **style** — like *formal English* or *pirate speak*.`}</HintInfo>
+                }>AI Language</RowLabel>
+                <div>
+                  <TokenAutocomplete
+                    single
+                    openOnFocus
+                    values={language ? [language] : []}
+                    onChange={(vals) => setLanguage(vals[0] ?? '')}
+                    options={COMMON_LANGUAGES}
+                    placeholder="Language or style…"
+                  />
+                </div>
+              </div>
+              <div className="grid grid-cols-1 sm:grid-cols-[minmax(0,1fr)_minmax(0,3fr)] items-start gap-4">
+                <RowLabel top>Paragraph Limit</RowLabel>
+                <div>
                   <Tabs value={paragraphLimit} onValueChange={(v) => setParagraphLimit(v as ParagraphLimit)}>
                     <TabsList className="grid w-full grid-cols-3">
                       {PARAGRAPH_LIMIT_OPTIONS.map((o) => (
@@ -876,34 +914,36 @@ export const SettingsModal = ({ isOpen, onOpenChange, previewValues, initialTab,
                   </div>
                 </div>
               </div>
-              <div className="grid grid-cols-1 sm:grid-cols-4 items-start gap-4">
-                <label htmlFor="markdownOutput" className="text-left sm:text-right leading-4">
-                  Markdown Formatting
-                </label>
-                <div className="col-span-3 flex items-start gap-2">
+              <div className="grid grid-cols-1 sm:grid-cols-[minmax(0,1fr)_minmax(0,3fr)] items-start gap-4">
+                <RowLabel htmlFor="markdownOutput" info={
+                  <HintInfo>{`Let the AI format narration with **bold/italics**, lists, and tables.
+
+Works best when **Paragraph Limit** isn't set to *Single*.`}</HintInfo>
+                }>Markdown Formatting</RowLabel>
+                <div className="flex items-center gap-2">
                   <Checkbox
                     id="markdownOutput"
                     checked={markdownOutput}
                     onCheckedChange={(c) => setMarkdownOutput(c === true)}
                     className="shrink-0"
                   />
-                  <span className="text-xs text-muted-foreground">
-                    Let the AI format narration with bold/italics, lists, and tables. Works best with Paragraph Limit not set to Single.
-                  </span>
+                  <span className="text-xs text-muted-foreground">Let the AI use bold, lists, and tables.</span>
                 </div>
               </div>
+              </Section>
             </div>
             </ScrollArea>
           </TabsContent>
 
           <TabsContent value="generation" className="px-2 flex-1 min-h-0 data-[state=active]:flex flex-col">
             <ScrollArea className="flex-1 min-h-0">
-            <div className="grid gap-4 py-4">
+            <div className="grid gap-6 py-4">
+              <Section title="Turn Extras" hint="Optional passes that run alongside each turn's narration.">
               {/* Enable/disable the optional per-turn requests. Synced with the System Prompts tab, which
                   shows a prompt's editor tab only while it's enabled here. */}
-              <div className="grid grid-cols-1 sm:grid-cols-4 items-start gap-4">
-                <label className="text-left sm:text-right leading-4">System Prompts</label>
-                <div className="col-span-3 flex flex-wrap gap-x-4 gap-y-2">
+              <div className="grid grid-cols-1 sm:grid-cols-[minmax(0,1fr)_minmax(0,3fr)] items-start gap-4">
+                <RowLabel>System Prompts</RowLabel>
+                <div className="flex flex-wrap gap-x-4 gap-y-2">
                   <label htmlFor="choicesEnabled" className="flex items-center gap-2 text-sm cursor-pointer">
                     <Checkbox
                       id="choicesEnabled"
@@ -935,24 +975,31 @@ export const SettingsModal = ({ isOpen, onOpenChange, previewValues, initialTab,
               </div>
               {/* Auto-apply detected location changes — its own row, only shown while Location Change is on. */}
               {locationChangeEnabled && (
-                <div className="grid grid-cols-1 sm:grid-cols-4 items-start gap-4">
-                  <label htmlFor="locationAutoApply" className="text-left sm:text-right leading-4">Move Automatically</label>
-                  <div className="col-span-3 flex items-start gap-2">
+                <SubGroup>
+                <div className="grid grid-cols-1 sm:grid-cols-[minmax(0,1fr)_minmax(0,3fr)] items-start gap-4">
+                  <RowLabel htmlFor="locationAutoApply" info={
+                    <HintInfo>{`Resolves the move from your action **before** the scene is written, so it's narrated in the new location.
+
+Skips the "Move to…?" confirmation.`}</HintInfo>
+                  }>Move Automatically</RowLabel>
+                  <div className="flex items-center gap-2">
                     <Checkbox
                       id="locationAutoApply"
                       checked={locationAutoApply}
                       onCheckedChange={(c) => setLocationAutoApply(c === true)}
                       className="shrink-0"
                     />
-                    <span className="text-xs text-muted-foreground">
-                      Decides the move from your action before the scene is written, so it’s narrated in the new location — skipping the “Move to…?” confirmation.
-                    </span>
+                    <span className="text-xs text-muted-foreground">Resolve the move before the scene is written.</span>
                   </div>
                 </div>
+                </SubGroup>
               )}
-              <div className="grid grid-cols-1 sm:grid-cols-4 items-start gap-4">
-                <label className="text-left sm:text-right pt-2">Thinking</label>
-                <div className="col-span-3">
+              </Section>
+
+              <Section title="Reasoning" hint="How the AI plans a turn before writing it.">
+              <div className="grid grid-cols-1 sm:grid-cols-[minmax(0,1fr)_minmax(0,3fr)] items-start gap-4">
+                <RowLabel top>Thinking</RowLabel>
+                <div>
                   <OptionSwitcher value={thinkingMode} onChange={(v) => setThinkingMode(v as ThinkingMode)} options={THINKING_OPTIONS} />
                   {/* Stacked like Paragraph Limit so switching thinking modes doesn't reflow the layout. */}
                   <div className="grid mt-2">
@@ -970,9 +1017,15 @@ export const SettingsModal = ({ isOpen, onOpenChange, previewValues, initialTab,
               {/* Staged only: cap how many characters the director stages per turn (each is its own pass). Off =
                   unbounded. Feeds both the hard cap and the <ACTIVE CHARACTER GUIDANCE> chip in the director prompt. */}
               {thinkingMode === 'staged' && (
-                <div className="grid grid-cols-1 sm:grid-cols-4 items-start gap-4">
-                  <label className="text-left sm:text-right pt-2">Limit Active Characters</label>
-                  <div className="col-span-3 space-y-2">
+                <SubGroup>
+                <div className="grid grid-cols-1 sm:grid-cols-[minmax(0,1fr)_minmax(0,3fr)] items-start gap-4">
+                  <RowLabel top info={
+                    <HintInfo>{`Caps how many characters the director stages each turn.
+
+- Each staged character adds its **own request**
+- Off lets the scene use as many as it calls for`}</HintInfo>
+                  }>Limit Active Characters</RowLabel>
+                  <div className="space-y-2">
                     <div className="flex items-center gap-3">
                       <Checkbox
                         checked={limitActiveCharacters}
@@ -987,28 +1040,30 @@ export const SettingsModal = ({ isOpen, onOpenChange, previewValues, initialTab,
                         className="w-20"
                       />
                     </div>
-                    <span className="text-xs text-muted-foreground">
-                      Caps how many characters the director stages each turn — each one adds its own request. Off lets the scene use as many as it calls for.
-                    </span>
+                    <span className="text-xs text-muted-foreground">Cap characters the director stages per turn.</span>
                   </div>
                 </div>
+                </SubGroup>
               )}
               {/* Native mode passes reasoning_effort straight through; shown only there since the guided modes drive
                   their own thinking. The levels are whichever the active endpoint accepts (detected on connect). */}
               {thinkingMode === 'off' && reasoningUnsupported && (
-                <div className="grid grid-cols-1 sm:grid-cols-4 items-start gap-4">
-                  <label className="text-left sm:text-right pt-2 text-muted-foreground">Native Reasoning</label>
-                  <div className="col-span-3 pt-2">
+                <SubGroup>
+                <div className="grid grid-cols-1 sm:grid-cols-[minmax(0,1fr)_minmax(0,3fr)] items-start gap-4">
+                  <RowLabel top muted>Native Reasoning</RowLabel>
+                  <div className="pt-2">
                     <span className="text-xs text-muted-foreground">This model doesn&apos;t support reasoning, so there&apos;s nothing to configure.</span>
                   </div>
                 </div>
+                </SubGroup>
               )}
               {thinkingMode === 'off' && !reasoningUnsupported && (() => {
                 const reasoningOptions = reasoningTabs(supportedReasoningEfforts);
                 return (
-                  <div className="grid grid-cols-1 sm:grid-cols-4 items-start gap-4">
-                    <label className="text-left sm:text-right pt-2">Native Reasoning</label>
-                    <div className="col-span-3">
+                  <SubGroup>
+                  <div className="grid grid-cols-1 sm:grid-cols-[minmax(0,1fr)_minmax(0,3fr)] items-start gap-4">
+                    <RowLabel top>Native Reasoning</RowLabel>
+                    <div>
                       <OptionSwitcher value={reasoningEffort} onChange={(v) => setReasoningEffort(v as ReasoningEffort)} options={reasoningOptions} />
                       <div className="grid mt-2">
                         {reasoningOptions.map((o) => (
@@ -1022,101 +1077,247 @@ export const SettingsModal = ({ isOpen, onOpenChange, previewValues, initialTab,
                       </div>
                     </div>
                   </div>
+                  </SubGroup>
                 );
               })()}
-              <div className="grid grid-cols-1 sm:grid-cols-4 items-start gap-4">
-                <label htmlFor="memoryDigests" className="text-left sm:text-right leading-4">
-                  Memory Summaries
-                </label>
-                <div className="col-span-3 flex items-start gap-2">
+              </Section>
+
+              <Section title="Memory" hint="What the AI carries forward from earlier turns.">
+              <div className="grid grid-cols-1 sm:grid-cols-[minmax(0,1fr)_minmax(0,3fr)] items-start gap-4">
+                <RowLabel htmlFor="memoryDigests" info={
+                  <HintInfo>{`Condenses older turns while keeping recent ones **word-for-word**, so long stories stay coherent without bloating each request.
+
+Runs an extra request per turn; edit its prompt under **Prompts → Summary**.`}</HintInfo>
+                }>Memory Summaries</RowLabel>
+                <div className="flex items-center gap-2">
                   <Checkbox
                     id="memoryDigests"
                     checked={memoryDigests}
                     onCheckedChange={(c) => setMemoryDigests(c === true)}
                     className="shrink-0"
                   />
-                  <span className="text-xs text-muted-foreground">
-                    Condenses older turns while keeping recent ones word-for-word, so long stories stay coherent without bloating each request. Runs an extra request per turn; edit its prompt under Prompts → Summary.
-                  </span>
+                  <span className="text-xs text-muted-foreground">Condense older turns so long stories stay coherent.</span>
                 </div>
               </div>
-              <div className="grid grid-cols-1 sm:grid-cols-4 items-start gap-4">
-                <label htmlFor="concurrentTurnRequests" className="text-left sm:text-right leading-4">
-                  Concurrent Requests
-                </label>
-                <div className="col-span-3 flex items-start gap-2">
+              {memoryDigests && (
+                <SubGroup>
+                <div className="grid grid-cols-1 sm:grid-cols-[minmax(0,1fr)_minmax(0,3fr)] items-start gap-4">
+                  <RowLabel htmlFor="semanticMemory" info={
+                    <HintInfo>{`When memories no longer all fit, keeps the ones most **relevant to your current action** instead of just dropping the oldest.
+
+- Runs a small model **on your device**
+- One-time **~23 MB** download when enabled
+- Nothing about your story leaves your machine`}</HintInfo>
+                  }>Semantic Memory</RowLabel>
+                  <div className="flex items-center gap-2">
+                    <Checkbox
+                      id="semanticMemory"
+                      checked={semanticMemory}
+                      onCheckedChange={(c) => handleSemanticMemoryToggle(c === true)}
+                      className="shrink-0"
+                    />
+                    <span className="text-xs text-muted-foreground">Experimental. Keep the memories most relevant to your action, not just the newest.</span>
+                  </div>
+                </div>
+                {semanticMemory && (
+                  <SubGroup>
+                  {/* Always-on top-K cap: derived checkbox (cap > 0), enabling seeds a sensible default. */}
+                  <div className="grid grid-cols-1 sm:grid-cols-[minmax(0,1fr)_minmax(0,3fr)] items-start gap-4">
+                    <RowLabel top info={
+                      <HintInfo>{`Keeps only this many remembered moments in view each turn — the ones most relevant to your action — even when more would fit.
+
+- Smaller, sharper prompts on long stories
+- The story opening and newest memories always stay
+- Off carries everything that fits`}</HintInfo>
+                    }>Memory Cap</RowLabel>
+                  <div className="space-y-2">
+                    <div className="flex items-center gap-3">
+                      <Checkbox
+                        checked={semanticBandCap > 0}
+                        onCheckedChange={(v) => setSemanticBandCap(v === true ? 12 : 0)}
+                      />
+                      <Input
+                        type="number"
+                        min={3}
+                        value={semanticBandCap > 0 ? semanticBandCap : 12}
+                        disabled={semanticBandCap === 0}
+                        onChange={(e) => setSemanticBandCap(Math.max(3, parseInt(e.target.value) || 3))}
+                        className="w-20"
+                      />
+                    </div>
+                    <span className="text-xs text-muted-foreground">Cap how many memories ride along each turn.</span>
+                  </div>
+                  </div>
+                  <div className="grid grid-cols-1 sm:grid-cols-[minmax(0,1fr)_minmax(0,3fr)] items-start gap-4">
+                    <RowLabel htmlFor="semanticRehydration" info={
+                      <HintInfo>{`When your action returns to an old moment — going back to someone you made a promise to — the full original scene is recalled for the AI, word for word, clearly marked as the past.
+
+- At most **two scenes** per turn
+- Never near-duplicates of each other or of recent turns
+- Uses Semantic Memory's model and memories`}</HintInfo>
+                    }>Scene Recall</RowLabel>
+                  <div className="flex items-center gap-2">
+                    <Checkbox
+                      id="semanticRehydration"
+                      checked={semanticRehydration}
+                      onCheckedChange={(c) => setSemanticRehydration(c === true)}
+                      className="shrink-0"
+                    />
+                    <span className="text-xs text-muted-foreground">Experimental. Recall a full past scene when your action returns to it.</span>
+                  </div>
+                  </div>
+                  </SubGroup>
+                )}
+                </SubGroup>
+              )}
+              <div className="grid grid-cols-1 sm:grid-cols-[minmax(0,1fr)_minmax(0,3fr)] items-start gap-4">
+                <RowLabel htmlFor="semanticLore" info={
+                  <HintInfo>{`Dictionary entries also activate when your action's **meaning** matches them, even with none of their keywords — "the ruined tower" can wake an *Old Beacon* entry.
+
+- Keyword activation is unchanged; this only **adds** entries
+- Uses the same on-device model as Semantic Memory (~23 MB on first enable)`}</HintInfo>
+                }>Semantic Lore</RowLabel>
+                <div className="flex items-center gap-2">
                   <Checkbox
-                    id="concurrentTurnRequests"
-                    checked={concurrentTurnRequests}
-                    onCheckedChange={(c) => setConcurrentTurnRequests(c === true)}
+                    id="semanticLore"
+                    checked={semanticLore}
+                    onCheckedChange={(c) => handleSemanticLoreToggle(c === true)}
                     className="shrink-0"
                   />
-                  <span className="text-xs text-muted-foreground">
-                    Fetches choices, stat updates, and location changes at the same time instead of one after another, making turns finish faster on endpoints that handle parallel requests (e.g. LM Studio&apos;s Parallel setting). Turn off if a memory-tight local model slows down under the extra load.
-                  </span>
+                  <span className="text-xs text-muted-foreground">Experimental. Activate dictionary entries by meaning, not just keywords.</span>
                 </div>
               </div>
+              {embedLoading && (
+                <div className="grid grid-cols-1 sm:grid-cols-[minmax(0,1fr)_minmax(0,3fr)] items-center gap-4">
+                  <span />
+                  <div className="flex items-center gap-2">
+                    <Progress
+                      className="h-2 flex-1"
+                      value={embedProgress && embedProgress.total > 0 ? (embedProgress.loaded / embedProgress.total) * 100 : 0}
+                    />
+                    <span className="text-xs text-muted-foreground whitespace-nowrap">
+                      {embedProgress && embedProgress.total > 0
+                        ? `${Math.round(embedProgress.loaded / 1048576)} / ${Math.round(embedProgress.total / 1048576)} MB`
+                        : 'Preparing…'}
+                    </span>
+                  </div>
+                </div>
+              )}
+              {embedError && !embedLoading && (semanticMemory || semanticLore) && (
+                <div className="grid grid-cols-1 sm:grid-cols-[minmax(0,1fr)_minmax(0,3fr)] items-center gap-4">
+                  <span />
+                  <div className="flex items-center gap-2">
+                    <span className="text-xs text-destructive">Model download failed: {embedError}</span>
+                    <Button variant="outline" size="sm" onClick={startEmbeddingDownload}>Retry</Button>
+                  </div>
+                </div>
+              )}
               {/* Diaries are only read by the staged character pass, so the option only appears in that mode. */}
               {thinkingMode === 'staged' && (
-                <div className="grid grid-cols-1 sm:grid-cols-4 items-start gap-4">
-                  <label htmlFor="characterDiaries" className="text-left sm:text-right leading-4">
-                    Character Diaries
-                  </label>
-                  <div className="col-span-3 flex items-start gap-2">
+                <>
+                <div className="grid grid-cols-1 sm:grid-cols-[minmax(0,1fr)_minmax(0,3fr)] items-start gap-4">
+                  <RowLabel htmlFor="characterDiaries" info={
+                    <HintInfo>{`Each character present in a turn records a **first-person diary entry** as turns age out, and its recent entries feed back into that character's motivation.
+
+Runs an extra request per participant; edit its prompt under **Prompts → Diary**.`}</HintInfo>
+                  }>Character Diaries</RowLabel>
+                  <div className="flex items-center gap-2">
                     <Checkbox
                       id="characterDiaries"
                       checked={characterDiaries}
                       onCheckedChange={(c) => setCharacterDiaries(c === true)}
                       className="shrink-0"
                     />
-                    <span className="text-xs text-muted-foreground">
-                      Each character present in a turn records a first-person diary entry as turns age out, and its recent entries feed back into that character&apos;s motivation. Runs an extra request per participant; edit its prompt under Prompts → Diary.
-                    </span>
+                    <span className="text-xs text-muted-foreground">Characters keep diaries that shape their motivation.</span>
                   </div>
                 </div>
+                {characterDiaries && semanticMemory && (
+                  <SubGroup>
+                  <div className="grid grid-cols-1 sm:grid-cols-[minmax(0,1fr)_minmax(0,3fr)] items-start gap-4">
+                    <RowLabel htmlFor="semanticDiaries" info={
+                      <HintInfo>{`Instead of only their newest diary entries, characters also recall the older ones most relevant to what you're doing — she remembers the last time you drew a blade.
+
+- Same total entry count, so it costs **nothing extra**
+- Uses Semantic Memory's model`}</HintInfo>
+                    }>Diary Recall</RowLabel>
+                  <div className="flex items-center gap-2">
+                    <Checkbox
+                      id="semanticDiaries"
+                      checked={semanticDiaries}
+                      onCheckedChange={(c) => setSemanticDiaries(c === true)}
+                      className="shrink-0"
+                    />
+                    <span className="text-xs text-muted-foreground">Experimental. Characters also recall older, relevant diary entries.</span>
+                  </div>
+                  </div>
+                  </SubGroup>
+                )}
+                </>
               )}
-              <div className="grid grid-cols-1 sm:grid-cols-4 items-start gap-4">
-                <label htmlFor="showReasoning" className="text-left sm:text-right leading-4">
-                  Show Reasoning
-                </label>
-                <div className="col-span-3 flex items-start gap-2">
+              </Section>
+
+              <Section title="Performance">
+              <div className="grid grid-cols-1 sm:grid-cols-[minmax(0,1fr)_minmax(0,3fr)] items-start gap-4">
+                <RowLabel htmlFor="concurrentTurnRequests" info={
+                  <HintInfo>{`Fetches choices, stat updates, and location changes **at the same time** instead of one after another.
+
+- Faster turns on endpoints that handle parallel requests (e.g. LM Studio's **Parallel** setting)
+- Turn off if a memory-tight local model slows down under the load`}</HintInfo>
+                }>Concurrent Requests</RowLabel>
+                <div className="flex items-center gap-2">
+                  <Checkbox
+                    id="concurrentTurnRequests"
+                    checked={concurrentTurnRequests}
+                    onCheckedChange={(c) => setConcurrentTurnRequests(c === true)}
+                    className="shrink-0"
+                  />
+                  <span className="text-xs text-muted-foreground">Fetch post-narration requests in parallel.</span>
+                </div>
+              </div>
+              </Section>
+
+              <Section title="Inspection" hint="Surfaces work that normally happens out of sight.">
+              <div className="grid grid-cols-1 sm:grid-cols-[minmax(0,1fr)_minmax(0,3fr)] items-start gap-4">
+                <RowLabel htmlFor="showReasoning" info={
+                  <HintInfo>{`Shows a reasoning model's (or the Inline mode's) private scratchpad as a collapsible **"Thinking…"** note above each turn's narration.
+
+Captured and saved either way, so turning it on reveals it on past turns too.`}</HintInfo>
+                }>Show Reasoning</RowLabel>
+                <div className="flex items-center gap-2">
                   <Checkbox
                     id="showReasoning"
                     checked={showReasoning}
                     onCheckedChange={(c) => setShowReasoning(c === true)}
                     className="shrink-0"
                   />
-                  <span className="text-xs text-muted-foreground">
-                    Shows a reasoning model&apos;s (or the Inline thinking mode&apos;s) private scratchpad as a collapsible &ldquo;Thinking…&rdquo; note above each turn&apos;s narration. Captured and saved either way, so turning this on reveals it on past turns too.
-                  </span>
+                  <span className="text-xs text-muted-foreground">Show the model&apos;s private reasoning above each turn.</span>
                 </div>
               </div>
-              <div className="grid grid-cols-1 sm:grid-cols-4 items-start gap-4">
-                <label htmlFor="showSilentRequests" className="text-left sm:text-right leading-4">
-                  Show Silent Requests
-                </label>
-                <div className="col-span-3 flex items-start gap-2">
+              <div className="grid grid-cols-1 sm:grid-cols-[minmax(0,1fr)_minmax(0,3fr)] items-start gap-4">
+                <RowLabel htmlFor="showSilentRequests" info={
+                  <HintInfo>{`Surfaces requests that normally run quietly — **memory summaries**, **character diaries**, and new-character notes — in the status bar and the AI context viewer.
+
+An inspection aid for authoring and debugging; off by default.`}</HintInfo>
+                }>Show Silent Requests</RowLabel>
+                <div className="flex items-center gap-2">
                   <Checkbox
                     id="showSilentRequests"
                     checked={showSilentRequests}
                     onCheckedChange={(c) => setShowSilentRequests(c === true)}
                     className="shrink-0"
                   />
-                  <span className="text-xs text-muted-foreground">
-                    Surfaces requests that normally run quietly — memory summaries, character diaries, and new-character notes — in the status bar and the AI context viewer. An inspection aid for authoring and debugging; off by default.
-                  </span>
+                  <span className="text-xs text-muted-foreground">Surface background requests for inspection.</span>
                 </div>
               </div>
+              </Section>
             </div>
             </ScrollArea>
           </TabsContent>
 
           <TabsContent value="endpoint" className="px-2 flex-1 min-h-0 data-[state=active]:flex flex-col">
             {/* Toggle — a fixed header above the scrolling settings. */}
-            <div className="shrink-0 grid grid-cols-1 sm:grid-cols-[1fr_3fr] sm:items-center gap-4 py-4">
-              <label htmlFor="useCustomEndpoint" className="text-left sm:text-right">
-                {desktop ? 'Use My Own Endpoint' : 'Use Custom Endpoint'}
-              </label>
+            <div className="shrink-0 grid grid-cols-1 sm:grid-cols-[minmax(0,1fr)_minmax(0,3fr)] sm:items-center gap-4 py-4">
+              <RowLabel htmlFor="useCustomEndpoint">{desktop ? 'Use My Own Endpoint' : 'Use Custom Endpoint'}</RowLabel>
               <div className="flex items-center gap-3">
                 <Checkbox
                   id="useCustomEndpoint"
@@ -1146,7 +1347,7 @@ export const SettingsModal = ({ isOpen, onOpenChange, previewValues, initialTab,
                 />
               </Row>
               {!desktop && (
-                <div className="grid grid-cols-1 sm:grid-cols-[1fr_3fr] gap-4">
+                <div className="grid grid-cols-1 sm:grid-cols-[minmax(0,1fr)_minmax(0,3fr)] gap-4">
                   <div className="hidden sm:block" />
                   <button
                     type="button"
@@ -1195,7 +1396,7 @@ export const SettingsModal = ({ isOpen, onOpenChange, previewValues, initialTab,
                   </Button>
                 </div>
               </Row>
-              <div className="grid grid-cols-1 sm:grid-cols-[1fr_3fr] gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-[minmax(0,1fr)_minmax(0,3fr)] gap-4">
                 <div className="hidden sm:block" />
                 <div className={contextStatus.red ? 'text-xs text-destructive' : 'text-xs text-muted-foreground'}>
                   {contextStatus.text}
@@ -1268,7 +1469,8 @@ export const SettingsModal = ({ isOpen, onOpenChange, previewValues, initialTab,
               <Button variant="outline" size="sm" onClick={() => setImagePresetDialog({ mode: 'rename' })}>Rename</Button>
             </div>
             <ScrollArea className="flex-1 min-h-0">
-            <div className="grid gap-4">
+            <div className="grid gap-6">
+              <Section title="Connection">
               <Row center label="Provider" htmlFor="imageProvider">
                 <Select value={imageProvider} onValueChange={(v) => setImageProvider(v as typeof imageProvider)}>
                   <SelectTrigger id="imageProvider">
@@ -1284,7 +1486,7 @@ export const SettingsModal = ({ isOpen, onOpenChange, previewValues, initialTab,
                   </SelectContent>
                 </Select>
               </Row>
-              <div className="grid grid-cols-1 sm:grid-cols-[1fr_3fr] gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-[minmax(0,1fr)_minmax(0,3fr)] gap-4">
                 <div className="hidden sm:block" />
                 <div>
                   <Button variant="outline" size="sm" onClick={() => setShowImageSetup(true)}>How to Set Up</Button>
@@ -1331,6 +1533,9 @@ export const SettingsModal = ({ isOpen, onOpenChange, previewValues, initialTab,
                   <Input id="imageModel" value={imageModel} onChange={(e) => setImageModel(e.target.value)} placeholder="(server default)" />
                 )}
               </Row>
+              </Section>
+
+              <Section title="Image">
               <Row label="Prompt Prefix" htmlFor="imagePositivePrompt" hint="Prepended to every generated prompt (quality/style tags). Leave blank for none.">
                 <Input id="imagePositivePrompt" value={imagePositivePrompt} onChange={(e) => setImagePositivePrompt(e.target.value)} placeholder="e.g. masterpiece, best quality" />
               </Row>
@@ -1437,6 +1642,7 @@ export const SettingsModal = ({ isOpen, onOpenChange, previewValues, initialTab,
                   </Row>
                 </>
               )}
+              </Section>
             </div>
             </ScrollArea>
               </TabsContent>
@@ -1531,13 +1737,14 @@ export const SettingsModal = ({ isOpen, onOpenChange, previewValues, initialTab,
                   kept at text-xs. User Message shows only when the prompt has a user template. */}
               <Tabs
                 value={promptView}
-                onValueChange={(v) => setPromptView(v as 'system' | 'user' | 'options')}
+                onValueChange={(v) => setPromptView(v as 'system' | 'user' | 'recap' | 'recall' | 'options')}
                 className="flex justify-center mt-3 flex-shrink-0"
               >
                 <TabsList className="h-auto">
                   <TabsTrigger value="system" className="text-xs">System Prompt</TabsTrigger>
                   {activeUserPrompt && <TabsTrigger value="user" className="text-xs">User Message</TabsTrigger>}
                   {recapAvailable && <TabsTrigger value="recap" className="text-xs">Recap Message</TabsTrigger>}
+                  {recallAvailable && <TabsTrigger value="recall" className="text-xs">Recall Message</TabsTrigger>}
                   <TabsTrigger value="options" className="text-xs">Options</TabsTrigger>
                 </TabsList>
               </Tabs>
@@ -1558,9 +1765,9 @@ export const SettingsModal = ({ isOpen, onOpenChange, previewValues, initialTab,
               <>
               <TabsContent value="narration" className="mt-4 flex-1 min-h-0 data-[state=active]:flex flex-col">
                 <PromptField
-                  value={showingRecap ? recapUserPrompt : showingUser ? narrationUserPrompt : systemPrompt}
-                  onChange={showingRecap ? setRecapUserPrompt : showingUser ? setNarrationUserPrompt : setSystemPrompt}
-                  variables={showingRecap ? [] : showingUser ? (PROMPT_KIND_USER_VARIABLES.narration ?? []) : PROMPT_KIND_VARIABLES.narration}
+                  value={showingRecall ? rehydrateUserPrompt : showingRecap ? recapUserPrompt : showingUser ? narrationUserPrompt : systemPrompt}
+                  onChange={showingRecall ? setRehydrateUserPrompt : showingRecap ? setRecapUserPrompt : showingUser ? setNarrationUserPrompt : setSystemPrompt}
+                  variables={showingRecall || showingRecap ? [] : showingUser ? (PROMPT_KIND_USER_VARIABLES.narration ?? []) : PROMPT_KIND_VARIABLES.narration}
                   previewValues={previewValues}
                   readOnly={activePresetIsBuiltIn}
                 />
@@ -1720,12 +1927,15 @@ export const SettingsModal = ({ isOpen, onOpenChange, previewValues, initialTab,
 
           <TabsContent value="accessibility" className="px-2 flex-1 min-h-0 data-[state=active]:flex flex-col">
             <ScrollArea className="flex-1 min-h-0">
-            <div className="grid gap-4 py-4">
-              <div className="grid grid-cols-1 sm:grid-cols-4 items-start gap-4">
-                <label htmlFor="narrationFont" className="text-left sm:text-right pt-2">
-                  Narration Font
-                </label>
-                <div className="col-span-3">
+            <div className="grid gap-6 py-4">
+              <Section title="Reading" hint="Applies to the story text only, not the rest of the app.">
+              <div className="grid grid-cols-1 sm:grid-cols-[minmax(0,1fr)_minmax(0,3fr)] items-start gap-4">
+                <RowLabel htmlFor="narrationFont" top info={
+                  <HintInfo>{`A separate font for the story text, defaulting to the app font.
+
+Includes faces tuned for **dyslexia**, **low vision**, and reading.`}</HintInfo>
+                }>Narration Font</RowLabel>
+                <div>
                   <Select value={narrationFont} onValueChange={(v) => setNarrationFont(v as NarrationFont)}>
                     <SelectTrigger id="narrationFont" className="w-56">
                       <SelectValue />
@@ -1738,14 +1948,11 @@ export const SettingsModal = ({ isOpen, onOpenChange, previewValues, initialTab,
                       ))}
                     </SelectContent>
                   </Select>
-                  <p className="text-xs text-muted-foreground mt-1">
-                    A separate font for the story text. Includes fonts tuned for dyslexia, low vision, and reading. Defaults to the app font.
-                  </p>
                 </div>
               </div>
-              <div className="grid grid-cols-1 sm:grid-cols-4 items-center gap-4">
-                <label className="text-left sm:text-right leading-4">Narration Text Size</label>
-                <div className="col-span-3 flex items-center gap-3">
+              <div className="grid grid-cols-1 sm:grid-cols-[minmax(0,1fr)_minmax(0,3fr)] items-center gap-4">
+                <RowLabel>Narration Text Size</RowLabel>
+                <div className="flex items-center gap-3">
                   <Slider
                     value={[narrationScale]}
                     min={0.85}
@@ -1759,9 +1966,9 @@ export const SettingsModal = ({ isOpen, onOpenChange, previewValues, initialTab,
                   </span>
                 </div>
               </div>
-              <div className="grid grid-cols-1 sm:grid-cols-4 items-center gap-4">
-                <label className="text-left sm:text-right leading-4">Line Spacing</label>
-                <div className="col-span-3 flex items-center gap-3">
+              <div className="grid grid-cols-1 sm:grid-cols-[minmax(0,1fr)_minmax(0,3fr)] items-center gap-4">
+                <RowLabel>Line Spacing</RowLabel>
+                <div className="flex items-center gap-3">
                   <Slider
                     value={[narrationLineHeight]}
                     min={1.2}
@@ -1775,9 +1982,9 @@ export const SettingsModal = ({ isOpen, onOpenChange, previewValues, initialTab,
                   </span>
                 </div>
               </div>
-              <div className="grid grid-cols-1 sm:grid-cols-4 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-[minmax(0,1fr)_minmax(0,3fr)] gap-4">
                 <div className="hidden sm:block" />
-                <div className="col-span-3">
+                <div>
                   <ConfirmDialog
                     title="Reset size & spacing"
                     description="Reset the narration text size and line spacing to their defaults?"
@@ -1793,6 +2000,9 @@ export const SettingsModal = ({ isOpen, onOpenChange, previewValues, initialTab,
                   </ConfirmDialog>
                 </div>
               </div>
+              </Section>
+
+              <Section title="Saves & Worlds">
               <CheckRow
                 label="Autosave"
                 htmlFor="autosaveEnabled"
@@ -1800,9 +2010,9 @@ export const SettingsModal = ({ isOpen, onOpenChange, previewValues, initialTab,
                 onChange={setAutosaveEnabled}
                 hint="Automatically saves your game after every turn to a per-world “Autosave” slot, starting once the opening scene finishes. It never touches your manual saves and shows in Load with an “Auto” tag. Turn off to save only manually."
               />
-              <div className="grid grid-cols-1 sm:grid-cols-4 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-[minmax(0,1fr)_minmax(0,3fr)] gap-4">
                 <div className="hidden sm:block" />
-                <div className="col-span-3">
+                <div>
                   <ConfirmDialog
                     title="Restore default worlds"
                     description="Bring back the bundled worlds you've deleted (City Rampage, Valentines Survival, Reincarnated Drone)? Worlds you still have are left untouched, and nothing you made or imported is affected."
@@ -1819,6 +2029,7 @@ export const SettingsModal = ({ isOpen, onOpenChange, previewValues, initialTab,
                   </p>
                 </div>
               </div>
+              </Section>
             </div>
             </ScrollArea>
           </TabsContent>

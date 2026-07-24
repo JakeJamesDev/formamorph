@@ -19,7 +19,8 @@ import {
   defaultCharacterPrompt,
   defaultStoryboardPrompt,
 } from '@/components/game/GamePrompts';
-import type { Entity } from '@/types';
+import { vectorKey } from './memoryRelevance';
+import type { Entity, ChatMessage } from '@/types';
 
 const ent = (id: string, name: string, extra: Partial<Entity> = {}): Entity => ({ id, name, ...extra });
 
@@ -546,5 +547,60 @@ describe('runStagedPlanning', () => {
     };
     const res = await runStagedPlanning({ ...baseCtx, request, signal: controller.signal });
     expect(res.turnPlan).toBe('');
+  });
+
+  it('with diaryRetrieval, the character diary block is recent tail plus the relevant older entry', async () => {
+    // Six turns of Mira diaries: retrieval kicks in past 5 (recent 3 + retrieved 2).
+    const diaryTexts = ['blade-drawn-old', 'noise-1', 'noise-2', 'recent-1', 'recent-2', 'recent-3'];
+    const history: ChatMessage[] = diaryTexts.flatMap((text, i) => [
+      { role: 'user' as const, content: `a${i}` },
+      { role: 'assistant' as const, content: JSON.stringify({ narration: `g${i}`, turnId: `t${i}`, diaries: { Mira: text } }) },
+    ]);
+    const vectorsByKey = new Map([
+      [vectorKey('blade-drawn-old'), new Float32Array([0.9, 0.44, 0])],
+      [vectorKey('noise-1'), new Float32Array([0, 1, 0])],
+      [vectorKey('noise-2'), new Float32Array([0, 0, 1])],
+    ]);
+    let characterMsg = '';
+    const request: StagedRequestFn = async (_s, m, type) => {
+      if (type === 'director') return 'Scene: A gate.\nCast:\n- Mira - wary';
+      if (type === 'character') { characterMsg = m[0].content; return 'I keep my distance.'; }
+      return 'It happens.';
+    };
+    await runStagedPlanning({
+      ...baseCtx,
+      characterDiaries: true,
+      fullMessageHistory: history,
+      diaryRetrieval: { queryVec: new Float32Array([1, 0, 0]), vectorsByKey },
+      request,
+      signal: new AbortController().signal,
+    });
+    // Retrieved old entry present, chronological before the recent tail; irrelevant middles absent.
+    expect(characterMsg).toContain('- blade-drawn-old');
+    expect(characterMsg).toContain('- recent-3');
+    expect(characterMsg).not.toContain('noise-1');
+    expect(characterMsg.indexOf('blade-drawn-old')).toBeLessThan(characterMsg.indexOf('recent-1'));
+  });
+
+  it('without diaryRetrieval, the diary block stays the plain last-N path', async () => {
+    const diaryTexts = ['blade-drawn-old', 'noise-1', 'noise-2', 'recent-1', 'recent-2', 'recent-3'];
+    const history: ChatMessage[] = diaryTexts.flatMap((text, i) => [
+      { role: 'user' as const, content: `a${i}` },
+      { role: 'assistant' as const, content: JSON.stringify({ narration: `g${i}`, turnId: `t${i}`, diaries: { Mira: text } }) },
+    ]);
+    let characterMsg = '';
+    const request: StagedRequestFn = async (_s, m, type) => {
+      if (type === 'director') return 'Scene: A gate.\nCast:\n- Mira - wary';
+      if (type === 'character') { characterMsg = m[0].content; return 'I wait.'; }
+      return 'It happens.';
+    };
+    await runStagedPlanning({
+      ...baseCtx, characterDiaries: true, fullMessageHistory: history, request,
+      signal: new AbortController().signal,
+    });
+    // Last 5 by recency — the old blade entry ages out, noise stays.
+    expect(characterMsg).not.toContain('blade-drawn-old');
+    expect(characterMsg).toContain('- noise-1');
+    expect(characterMsg).toContain('- recent-3');
   });
 });

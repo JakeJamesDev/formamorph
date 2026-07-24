@@ -57,10 +57,11 @@ function useProvideGameplay() {
   // active, then a pure lookup everywhere. Persisted in the save envelope.
   const [placeholderRolls, setPlaceholderRolls] = useState<PlaceholderRolls>({});
   // Milestone-memory player pins, keyed by turn id ('keep' resurrects a dropped digest, 'drop' removes a
-  // kept one). Persisted in the save envelope; the AI selection below is derived and never persisted.
+  // kept one). Persisted in the save envelope.
   const [memoryPins, setMemoryPins] = useState<MemoryPinMap>({});
-  // The latest milestone selection: which candidate turn ids the selector saw and which it kept
-  // (`selected` null = malformed reply → keep everything). Runtime-only, recomputed as turns age.
+  // The accumulated milestone verdicts (T4: incremental, sticky): which candidate turn ids the
+  // selector has judged and which it kept (`selected` null = a legacy malformed full-vote → keep
+  // everything). Persisted in the save envelope so verdicts survive load.
   const [milestoneSelection, setMilestoneSelection] = useState<{ seen: string[]; selected: string[] | null } | null>(null);
   // Flattened enabled entries fed to the injection pipeline (mirrors GameData's old derived `dictionary`).
   const runtimeDictionary = useMemo(() => flattenEnabledBookEntries(runtimeDictionaries), [runtimeDictionaries]);
@@ -247,6 +248,7 @@ function useProvideGameplay() {
         dictionaries: runtimeDictionaries, // the player's per-playthrough dictionary set, restored on load
         ...(placeholderRolls.world || placeholderRolls.unique ? { placeholderRolls } : {}),
         ...(Object.keys(memoryPins).length ? { memoryPins } : {}),
+        ...(milestoneSelection ? { milestoneSelection } : {}),
         ...(isAutosave ? { isAutosave: true } : {}),
       };
 
@@ -265,7 +267,7 @@ function useProvideGameplay() {
       }
       return false;
     }
-  }, [saveCurrentGameState, gameStates, runtimeDictionaries, placeholderRolls, memoryPins, addLogEntry]);
+  }, [saveCurrentGameState, gameStates, runtimeDictionaries, placeholderRolls, memoryPins, milestoneSelection, addLogEntry]);
 
   // Autosave has failed at least once this session — used to toast only once, re-armed on a later success.
   const autosaveFailedRef = useRef(false);
@@ -318,7 +320,9 @@ function useProvideGameplay() {
           if (Array.isArray(migrated.dictionaries)) setRuntimeDictionaries(migrated.dictionaries);
           setPlaceholderRolls(migrated.placeholderRolls ?? {});
           setMemoryPins(migrated.memoryPins ?? {});
-          setMilestoneSelection(null); // derived; recomputed for the loaded history on the next idle tick
+          // Restore accumulated verdicts (T4: sticky, never re-voted); older saves lack the field —
+          // the loaded history is then judged fresh in one incremental batch on the next idle tick.
+          setMilestoneSelection(migrated.milestoneSelection ?? null);
           addLogEntry(`Game loaded from "${saveName}"`);
         }
         return success;

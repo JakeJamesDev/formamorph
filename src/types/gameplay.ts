@@ -163,6 +163,11 @@ export interface SaveObject {
    *  digest in long-term memory, 'drop' force-removes it. Absent (or empty) on older saves ⇒ no pins;
    *  the AI selection itself is derived state and is never persisted. */
   memoryPins?: Record<string, 'keep' | 'drop'>;
+  /** v2.x incremental milestone memory: the selector's accumulated verdicts — which candidate turn
+   *  ids it has judged (`seen`) and which of those it kept (`selected`; null = a legacy malformed
+   *  full-vote, treated as keep-everything-seen). Absent on older saves ⇒ the loaded history is
+   *  judged fresh in one incremental batch. */
+  milestoneSelection?: { seen: string[]; selected: string[] | null };
 }
 
 /** Per-playthrough Wildcard rolls, frozen in the save. */
