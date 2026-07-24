@@ -1,0 +1,25 @@
+{
+  "comment": "Semantic-lore probe fixture: dictionary entries plus actions labeled with which entries SHOULD activate by meaning. Positive actions are paraphrases sharing no keyword with their entry (the probe asserts this); negative actions relate to nothing. Precision/recall are swept across thresholds to tune SEMANTIC_LORE_THRESHOLD. Entries follow the trade-coast world of semantic-band-cases.json.",
+  "entries": [
+    { "id": "beacon", "name": "The Old Beacon", "key": "beacon, lighthouse, the light", "value": "The abandoned lighthouse on the headland above the harbor. Fishermen swear its dead lamp still glows on drowning nights and will not moor beneath it." },
+    { "id": "causeway", "name": "Marsh Causeway", "key": "causeway, marsh road", "value": "The raised stone road through the tidal marsh, the only route north while the pass is blocked. Sinking stones and toll keepers; locals cross only at low water." },
+    { "id": "guild", "name": "Salt Factors' Guild", "key": "guild, salt factors", "value": "The merchant brotherhood that sets prices in every harbor. Crossing them means no stall, no ferry passage, and cargo that mysteriously spoils." },
+    { "id": "weck", "name": "Weck", "key": "Weck", "value": "A scarred drover with a long memory for debts. Works the harbor cattle yards; his word is good and his grudges are permanent." },
+    { "id": "tides", "name": "The Black Tide", "key": "black tide, red water", "value": "A poisonous algal bloom that closes the fisheries some autumns. Fish caught during it sicken whole villages; harbormasters burn tainted catches on the shingle." },
+    { "id": "ledger", "name": "Trader's Ledger Law", "key": "ledger law", "value": "Coast custom: a dead trader's ledger binds their heir to every open debt and delivery in it. Refusing the book means refusing the route and its protections." },
+    { "id": "harrowgate", "name": "Harrowgate", "key": "Harrowgate, hill fort", "value": "The fortified hill town inland where the mule tracks meet. Its market terrace is the only legal exchange for northbound goods." },
+    { "id": "ferry", "name": "Sedge Ferry", "key": "Sedge Ferry, ferry landing", "value": "The rope-ferry crossing at the coast road's end, run by the ferrywoman Maren. The only way over the sedge channel with a loaded animal." }
+  ],
+  "actions": [
+    { "name": "beacon-paraphrase", "text": "I climb toward the ruined tower on the headland where no ships anchor.", "expect": ["beacon"] },
+    { "name": "causeway-paraphrase", "text": "I ask which path through the wetlands is safe for a loaded mule.", "expect": ["causeway"] },
+    { "name": "guild-paraphrase", "text": "I ask who really decides what a sack of salt sells for around here.", "expect": ["guild"] },
+    { "name": "tide-paraphrase", "text": "I ask the fishermen why they are burning their own catch on the beach.", "expect": ["tides"] },
+    { "name": "ledger-paraphrase", "text": "I wonder aloud what my father's debts mean for me now that I carry his book.", "expect": ["ledger"] },
+    { "name": "ferry-paraphrase", "text": "I need to get my animal across the channel at the end of the coast road.", "expect": ["ferry", "causeway"] },
+    { "name": "neg-smalltalk", "text": "I trade jokes with a passing shepherd about his dog.", "expect": [] },
+    { "name": "neg-camp", "text": "I water the mule and make camp for the night.", "expect": [] },
+    { "name": "neg-mend", "text": "I sit by the fire and mend the tear in my coat sleeve.", "expect": [] },
+    { "name": "neg-weather", "text": "I study the clouds, wondering if tomorrow brings rain.", "expect": [] }
+  ]
+}

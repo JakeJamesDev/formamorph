@@ -1,0 +1,38 @@
+{
+  "comment": "Rehydration framing fixture (dead-Jim temporal case). The digests establish that Jim died mid-journey; the rehydrated scene is from BEFORE his death and shows him alive, with a planted detail (the carved gull whistle halves) that appears in no digest. The action returns to Jim's memory via his sister. ALIVE-WRITE = the narration depicts Jim acting in the present scene (the temporal failure); DETAIL-RECALL = the whistle surfaces (the benefit rehydration exists for). Good framing keeps DETAIL-RECALL high and ALIVE-WRITE at zero.",
+  "world": "A rain-worn trade coast where goods move by ferry and mule track. Small harbors, tidal marshes, and a fortified hill town inland. No magic; weather, debts, and reputations are the real forces.",
+  "playerTrait": "A young trader working your late father's route for the first time, ledger in hand.",
+  "location": "The Drowned Willow inn at the causeway crossroads",
+  "digests": [
+    "You land at Sedge Ferry with your father's ledger and take his old trade route inland.",
+    "A cheerful drover named Jim joins your road north, sharing his fire and his knowledge of the marsh.",
+    "You and Jim drive off a marsh cat on the levee road; he laughs about it for a day.",
+    "One night on the levee road, Jim carves you a keepsake by the fire.",
+    "You cross the causeway tolls with Jim and camp on the shell mounds.",
+    "Jim takes a chest fever in the rains and dies on the road; you bury him under a cairn by the causeway and carry his pack on.",
+    "You reach the crossroads and take a room at the Drowned Willow inn.",
+    "The innkeeper Alice turns out to be Jim's sister; she does not yet know he is gone.",
+    "You tell Alice her brother is dead; she closes the taproom early and sits with you in silence."
+  ],
+  "sceneDigestIndex": 3,
+  "rehydratedScene": "Jim whittles by the fire, wood curls catching in his beard, and will not say what he is making until it is done. \"There,\" he says at last, and holds up a small carved gull, split down the middle into two whistle halves. \"One for you, one for me. A trader taught me this: split a gull, and the road always brings the halves back together.\" He presses one half into your hand and blows a sour note on his own that startles the mule. His laugh carries out over the dark marsh. \"When you hear that,\" he says, \"you'll know it's me coming up the road, and you'll put the kettle on.\"",
+  "sceneUserMsg": "I sit by the fire with Jim while he whittles.",
+  "cases": [
+    {
+      "name": "memorial",
+      "comment": "Benefit case: the action honors Jim's memory — detail should surface, nobody should write him alive.",
+      "priorUserMsg": "I stay in the taproom after the others leave, keeping Alice company.",
+      "priorTurn": "Alice wipes the same mug for a long while, eyes on the window. \"Tell me something true about him,\" she says finally. \"Not how he went. Something from the road. I want to hear my brother laughing in it.\"",
+      "action": "I reach into my coat, find the little wooden thing he gave me, and set it on the bar in front of Alice."
+    },
+    {
+      "name": "bait",
+      "comment": "Temporal stress case: the rehydrated scene promises 'when you hear that whistle, it's me coming up the road' — and the action hears one. A model reading the scene as live-recent history should write Jim approaching; one that reads it as memory should not.",
+      "priorUserMsg": "I turn in early, taking the room above the taproom.",
+      "priorTurn": "The room is low and warm, the bed narrow. Below you the taproom goes quiet, chairs upturned one by one. Outside, the marsh wind worries the shutters and the causeway lies empty under a thin moon.",
+      "action": "A thin, sour whistle-note rises from the dark road outside. I go to the window."
+    }
+  ],
+  "aliveVerbs": "says|asks|grins|smiles|laughs|chuckles|nods|winks|steps|walks|strides|stands up|rises|leans|hands|passes|claps|shrugs|replies|answers|calls|waves|arrives|enters|joins",
+  "detailTokens": ["whistle", "gull", "halves", "carved bird", "two halves"]
+}

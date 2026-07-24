@@ -53,7 +53,7 @@ import {
   planDirective,
   defaultDiscoverEntityPrompt,
   OPENING_SCENE_CUE,
-  defaultMilestonePrompt,
+  defaultMilestoneIncrementalPrompt,
 } from "../components/game/GamePrompts";
 import {
   buildDiaryUserMessage,
@@ -79,7 +79,12 @@ import { variableForToken, variableVariantIds, decodeVariant, tokenVariant, with
 import { renderPromptTemplate } from "../lib/promptTemplate";
 import { useBaselineTestHook } from "../lib/baselineTestHook";
 import { parseTurns, buildVerbatimHistory, buildBandedHistory, extractKeywords, type BandCounts } from "../lib/turnBanding";
-import { milestoneCandidates, agedMilestoneCandidates, resolveMilestoneDrop, buildMilestoneUserMessage, parseMilestoneReply } from "../lib/milestoneMemory";
+import { milestoneCandidates, agedMilestoneCandidates, resolveMilestoneDrop, resolveMilestoneKeep, buildIncrementalMilestoneUserMessage, parseIncrementalMilestoneReply, applyIncrementalVerdict } from "../lib/milestoneMemory";
+import { buildRelevanceScores, vectorKey } from "../lib/memoryRelevance";
+import { entryVectorKey, entryEmbedText, selectSemanticLore, applySemanticLore } from "../lib/semanticDictionary";
+import { selectSemanticRehydrations, rehydrationCooldownBlocked } from "../lib/semanticRehydration";
+import { embedTexts, isEmbeddingModelReady, loadEmbeddingModel } from "../lib/embeddingWorkerClient";
+import { getVectors, putVector } from "../lib/embeddingCache";
 import { findEntityNames, matchNames, matchNamesLoose, sameCharacterName } from "../lib/entityMatch";
 import { parseChoices } from "../lib/choices";
 import { setGameplayText } from "../lib/gameplayTextStore";
@@ -282,6 +287,11 @@ const GameViewer = ({
     promptReasoningBudget,
     thinkingPrompt,
     memoryDigests,
+    semanticMemory,
+    semanticLore,
+    semanticRehydration,
+    semanticDiaries,
+    semanticBandCap,
     concurrentTurnRequests,
     autosaveEnabled,
     limitActiveCharacters,
@@ -295,6 +305,7 @@ const GameViewer = ({
     storyboardPrompt,
     narrationUserPrompt,
     recapUserPrompt,
+    rehydrateUserPrompt,
     choicesUserPrompt,
     statUpdatesUserPrompt,
     locationChangeUserPrompt,
@@ -489,6 +500,21 @@ const GameViewer = ({
   const [discoverActive, setDiscoverActive] = useState(false); // drives the status-bar indicator for a running discovery pass
   const milestoneDrainingRef = useRef(false); // a milestone selection is in flight (serializes the drainer)
   const [milestoneActive, setMilestoneActive] = useState(false); // drives the status-bar indicator for a running selection
+  const embedDrainingRef = useRef(false); // an embedding batch is in flight (serializes the drainer)
+  // Digest vectors by vectorKey, hydrated from the embedding cache and topped up by the drainer.
+  // Session-local derived data — never persisted with the save.
+  const embedVectorsRef = useRef<Map<string, Float32Array>>(new Map());
+  const embedModelKickedRef = useRef(false); // one background model (re)load attempt per session
+  // The last turn's relevance scores + action vector, reused by the context meter so its counts mirror
+  // what actually rode (a null-scored meter run would otherwise report ranked drops as oldest-first
+  // and show no recalled scenes).
+  const lastRelevanceScoresRef = useRef<Map<string, number> | null>(null);
+  const lastActionVecRef = useRef<Float32Array | null>(null);
+  // Scene-recall cooldown (T1): each rehydrated turn's last-fired turn number, plus the turn the
+  // live selection ran at so the context meter evaluates the same cooldown window instead of
+  // hiding the scene that actually rode. Session-local, like the vectors above.
+  const rehydrateLastFiredRef = useRef<Map<string, number>>(new Map());
+  const lastRecallTurnRef = useRef<number | null>(null);
 
   // Generate TTS for `text` (or the current game text) with the busy flag set, so both the
   // manual refresh button and auto-narration show the same spinner + chunk progress.
@@ -837,13 +863,34 @@ const GameViewer = ({
     return resolveMilestoneDrop(candidates, selection, memoryPins);
   }, [milestoneSelection, memoryPins, narrationVerbatimTurns]);
 
-  const getTrimmedMessageHistory = useCallback((promptTokens = 0, action = "") => {
+  // `liveRecall` marks the real turn's call: it evaluates the cooldown at the current turn and
+  // records what fired. The meter leaves it false and replays the live call's window.
+  const getTrimmedMessageHistory = useCallback((promptTokens = 0, action = "", relevanceScores: Map<string, number> | null = null, actionVec: Float32Array | null = null, liveRecall = false) => {
     const turns = parseTurns(fullMessageHistory);
     if (memoryDigests) {
       const keywords = extractKeywords(action, dictionary);
       // Entities the action references (case-insensitive — actions are lowercase) drive participation rehydration.
       const actionEntities = findEntityNames(action, allEntities, { requireCapital: false });
       const rehydrateCap = Math.round(Math.max(0, contextWindow - promptTokens - maxTokens) * 0.25);
+      // Semantic rehydration: rank the old scenes this action returns to (threshold + near-duplicate
+      // guard in lib/semanticRehydration). Floor/band split here is the budget-free approximation of
+      // buildBandedHistory's; it re-validates band membership before spending tokens.
+      let semanticRehydrate: string[] | null = null;
+      if (semanticRehydration && semanticMemory && actionVec) {
+        const floorCount = Math.min(narrationVerbatimTurns, turns.length);
+        const floorTurns = turns.slice(turns.length - floorCount);
+        const drop = getMilestoneDrop(turns);
+        const band = turns.slice(0, turns.length - floorCount).filter(
+          (t) => t.summary?.trim() && !(drop && t.turnId && drop.has(t.turnId)),
+        );
+        const recallTurn = liveRecall ? turns.length : lastRecallTurnRef.current ?? turns.length;
+        const blocked = rehydrationCooldownBlocked(rehydrateLastFiredRef.current, recallTurn);
+        semanticRehydrate = selectSemanticRehydrations(band, floorTurns, actionVec, embedVectorsRef.current, blocked);
+        if (liveRecall) {
+          lastRecallTurnRef.current = recallTurn;
+          for (const id of semanticRehydrate) rehydrateLastFiredRef.current.set(id, recallTurn);
+        }
+      }
       // The recap's "where things stand" closer: mid-scene anchor (location + recent participants) plus
       // the player's standing notes. Probed on real failure turns (now-line-probe.mjs): removed the
       // scene-reset / roleplay-identity-inversion class entirely; without it the recap reads as backstory.
@@ -867,13 +914,48 @@ const GameViewer = ({
         milestoneDrop: getMilestoneDrop(turns),
         recapPrompt: recapUserPrompt,
         nowLine,
+        relevanceScores,
+        bandCap: semanticMemory ? semanticBandCap : 0,
+        semanticRehydrate,
+        rehydratePrompt: rehydrateUserPrompt,
       });
       lastBandCountsRef.current = counts;
       return messages;
     }
     lastBandCountsRef.current = null;
     return buildVerbatimHistory(turns, contextWindow, promptTokens, maxTokens);
-  }, [fullMessageHistory, contextWindow, maxTokens, memoryDigests, dictionary, allEntities, narrationVerbatimTurns, getMilestoneDrop, recapUserPrompt, currentLocation, playerNotes]);
+  }, [fullMessageHistory, contextWindow, maxTokens, memoryDigests, semanticMemory, semanticRehydration, semanticBandCap, dictionary, allEntities, narrationVerbatimTurns, getMilestoneDrop, recapUserPrompt, rehydrateUserPrompt, currentLocation, playerNotes]);
+
+  // The action's embedding, shared by every semantic consumer this turn (band relevance + lore
+  // activation) so the action is embedded once. Null when no semantic feature is on, the model is
+  // cold, the action is empty, or the worker stalls (the 2s race bounds a wedged worker, not normal
+  // inference (~ms)) — consumers then fail open. Query is the BARE action: appending location or
+  // participants measurably poisons ranking — location terms dominate MiniLM similarity, so every
+  // digest mentioning the current place outscores the memory the action is actually about
+  // (semantic-band-probe trim stage: the letter target ranked 15/28 with the location clause, 5/28
+  // without; all four planted targets survive action-only).
+  const embedActionVec = useCallback(async (action: string): Promise<Float32Array | null> => {
+    const anySemantic = semanticLore || (semanticMemory && (memoryDigests || (semanticDiaries && characterDiaries)));
+    if (!anySemantic || !isEmbeddingModelReady() || !action.trim()) return null;
+    try {
+      const vecs = await Promise.race([
+        embedTexts([action]),
+        new Promise<null>((resolve) => setTimeout(() => resolve(null), 2000)),
+      ]);
+      return vecs && vecs.length > 0 ? vecs[0] : null;
+    } catch {
+      return null;
+    }
+  }, [semanticMemory, memoryDigests, semanticLore]);
+
+  // Semantic memory: score every digest against the current action so band trimming can drop the least
+  // relevant memory instead of the oldest. Null on ANY miss (feature off, no action vector, a digest
+  // not yet embedded) — banding then falls back to oldest-first; a degraded score set must never
+  // silently change which memories ride.
+  const computeRelevanceScores = useCallback((actionVec: Float32Array | null): Map<string, number> | null => {
+    if (!actionVec || !semanticMemory || !memoryDigests) return null;
+    return buildRelevanceScores(parseTurns(fullMessageHistory), actionVec, embedVectorsRef.current);
+  }, [semanticMemory, memoryDigests, fullMessageHistory]);
 
   // Drive body morphs from the viewed stats (live on the latest page, the paged turn's when viewing the
   // past): each stat's bound sliders track its value (min→max → 0→1 influence), so the avatar re-morphs to
@@ -1200,7 +1282,14 @@ const GameViewer = ({
         notes: systemPrompt.includes("<NOTES>") ? ctx["<NOTES>"] : playerNotes,
         history: fullMessageHistory,
       });
+      // One action embedding for every semantic consumer this turn (lore activation here, band
+      // relevance below). Null = all semantic features quietly off for this turn.
+      const actionVec = await embedActionVec(effectiveAction);
       const activationReport = explainActivation(dictionary, dictCorpus.scene, { history: dictCorpus.history });
+      if (semanticLore && actionVec) {
+        // Additive meaning-based activations; a keyword reason always wins (see lib/semanticDictionary).
+        applySemanticLore(activationReport, selectSemanticLore(dictionary, actionVec, embedVectorsRef.current));
+      }
       const activatedEntries = dictionary.filter(
         (e) => e.enabled !== false && activationReport.byId.get(e.id)?.activated,
       );
@@ -1252,8 +1341,13 @@ ${playerNotes || NONE_PLACEHOLDER}
       }
 
       // Get trimmed history before adding new action (history fills the window left by the prompt).
-      // Pass the action so banding can rehydrate older turns it references.
-      const trimmedHistory = getTrimmedMessageHistory(estimateTokens(updatedPrompt.length), effectiveAction);
+      // Pass the action so banding can rehydrate older turns it references. Relevance scores are
+      // computed once here and shared with the planner rebuild below so both stages trim identically.
+      const relevanceScores = computeRelevanceScores(actionVec);
+      // The context meter re-trims with the same scores + action vector so its counts mirror this turn.
+      lastRelevanceScoresRef.current = relevanceScores;
+      lastActionVecRef.current = actionVec;
+      const trimmedHistory = getTrimmedMessageHistory(estimateTokens(updatedPrompt.length), effectiveAction, relevanceScores, actionVec, true);
 
       // Create message array for game text request
       const narrationMessages: ChatMessage[] = [
@@ -1342,6 +1436,8 @@ ${playerNotes || NONE_PLACEHOLDER}
             // stage's narrower floor.
             milestoneDrop: getMilestoneDrop(plannerTurns),
             recapPrompt: recapUserPrompt,
+            relevanceScores,
+            bandCap: semanticMemory ? semanticBandCap : 0,
           });
           digestBand = planner.recap;
           lastStory =
@@ -1392,6 +1488,11 @@ ${playerNotes || NONE_PLACEHOLDER}
           concurrentCharacters: concurrentTurnRequests,
           fullMessageHistory,
           diaryMemoryEntries: DIARY_MEMORY_ENTRIES,
+          // Diary retrieval: relevant older entries join the recent tail (lib/semanticDiary). Null =
+          // pure recency, the pre-feature path.
+          diaryRetrieval: semanticDiaries && characterDiaries && actionVec
+            ? { queryVec: actionVec, vectorsByKey: embedVectorsRef.current }
+            : null,
           caps: { director: DIRECTOR_MAX_TOKENS, character: CHARACTER_MAX_TOKENS, storyboard: STORYBOARD_MAX_TOKENS },
           activeCharacterCap: limitActiveCharacters ? activeCharacterLimit : Infinity,
           directorPrompt,
@@ -2442,49 +2543,146 @@ ${playerNotes || NONE_PLACEHOLDER}
     })();
   }, [memoryDigests, isWaitingForAI, diaryActive, discoverActive, fullMessageHistory, summaryPrompt, summaryUserPrompt, buildContextValues, setFullMessageHistory]);
 
-  // Milestone-selection drainer: once every due digest is written, silently re-select which old-band
-  // digests stay in long-term memory (see lib/milestoneMemory). Runs at most once per history state —
-  // the stored selection records exactly which turn ids it saw, so it is stale whenever the candidate
-  // window has shifted. A malformed reply is stored as `selected: null` (keep everything) rather than
-  // retried: fail-safe, never fail-drop.
+  // Milestone-selection drainer (incremental, T4): once every due digest is written, silently judge
+  // only the NEWLY-ARRIVED digests against the already-kept list (see lib/milestoneMemory). Old
+  // verdicts persist — an old memory changes state only via an explicit Forget (supersession) or a
+  // player pin — so the whole-list flip-flop is dead by construction. A malformed reply keeps every
+  // new entry and touches nothing old: fail-safe, never fail-drop. Selection entries whose turns
+  // left the candidate set (rollback) are pruned so a re-aging turn is judged fresh.
   useEffect(() => {
     if (!memoryDigests || isWaitingForAI || diaryActive || discoverActive || digestDrainingRef.current || diaryDrainingRef.current || discoverDrainingRef.current || milestoneDrainingRef.current) return;
     if (selectDueDigests(fullMessageHistory).length > 0) return; // digests first — the selector reads them
     const turns = parseTurns(fullMessageHistory);
     const candidates = milestoneCandidates(turns);
     if (candidates.length === 0) return;
-    const candIds = candidates.map((t) => t.turnId ?? "");
-    if (milestoneSelection && milestoneSelection.seen.join("\n") === candIds.join("\n")) return; // fresh
-    const digests = candidates.map((t) => (t.summary ?? "").trim());
+    const candSet = new Set(candidates.map((t) => t.turnId ?? ""));
+    let selection = milestoneSelection;
+    if (selection && selection.seen.some((id) => !candSet.has(id))) {
+      selection = {
+        seen: selection.seen.filter((id) => candSet.has(id)),
+        selected: selection.selected === null ? null : selection.selected.filter((id) => candSet.has(id)),
+      };
+    }
+    const seenSet = new Set(selection?.seen ?? []);
+    const freshCands = candidates.filter((t) => t.turnId && !seenSet.has(t.turnId));
+    if (freshCands.length === 0) {
+      if (selection !== milestoneSelection) setMilestoneSelection(selection); // commit the prune
+      return;
+    }
+    // The kept-old context mirrors what actually rides: the selector's surviving verdicts with the
+    // player's pins applied (a pin-dropped memory is gone and can't be "forgotten" again).
+    const oldCands = candidates.filter((t) => t.turnId && seenSet.has(t.turnId));
+    const selObj = selection
+      ? { seen: seenSet, selected: selection.selected === null ? null : new Set(selection.selected) }
+      : null;
+    const keptIds = resolveMilestoneKeep(oldCands, selObj, memoryPins);
+    const shownOld = oldCands.filter((t) => keptIds.has(t.turnId!));
     const attachTurnId = turns[turns.length - 1]?.turnId;
+    const stableSelection = selection;
 
     milestoneDrainingRef.current = true;
     setMilestoneActive(true);
     (async () => {
       try {
         const reply = await makeAIRequestRef.current(
-          defaultMilestonePrompt,
-          [{ role: "user", content: buildMilestoneUserMessage(digests) }],
+          defaultMilestoneIncrementalPrompt,
+          [{
+            role: "user",
+            content: buildIncrementalMilestoneUserMessage(
+              shownOld.map((t) => (t.summary ?? "").trim()),
+              freshCands.map((t) => (t.summary ?? "").trim()),
+            ),
+          }],
           "milestoneSelect",
           MILESTONE_SELECT_MAX_TOKENS,
           undefined,
           true, // silent: surfaces only when "Show Silent Requests" is on
           attachTurnId,
         );
-        const parsed = parseMilestoneReply((reply ?? "").trim(), candidates.length);
-        setMilestoneSelection({
-          seen: candIds,
-          selected: parsed === null ? null : candIds.filter((_, i) => parsed.has(i)),
-        });
+        const verdict = parseIncrementalMilestoneReply((reply ?? "").trim(), shownOld.length, freshCands.length);
+        setMilestoneSelection(applyIncrementalVerdict(
+          stableSelection,
+          shownOld.map((t) => t.turnId!),
+          freshCands.map((t) => t.turnId!),
+          verdict,
+        ));
       } catch {
         // Non-fatal: the selection stays stale and is retried on a later idle tick; until then the
-        // previous selection (or keep-everything) applies.
+        // previous selection (or keep-everything-unseen) applies.
       } finally {
         milestoneDrainingRef.current = false;
         setMilestoneActive(false);
       }
     })();
-  }, [memoryDigests, isWaitingForAI, diaryActive, discoverActive, fullMessageHistory, narrationVerbatimTurns, milestoneSelection, setMilestoneSelection]);
+  }, [memoryDigests, isWaitingForAI, diaryActive, discoverActive, fullMessageHistory, narrationVerbatimTurns, milestoneSelection, setMilestoneSelection, memoryPins]);
+
+  // Embedding drainer: keep a vector on hand for everything the semantic features score at turn time —
+  // turn digests (semanticMemory) and dictionary entries (semanticLore) — so scoring is a sync lookup.
+  // Cache-first (IndexedDB, hash-keyed so save/world switches just repopulate), then batch-embeds the
+  // rest in the worker. Runs off the LLM path entirely — it only serializes against itself. Until an
+  // item is covered it simply can't score (band: fail open to oldest-first; lore: entry can't fire).
+  useEffect(() => {
+    const wantDigests = semanticMemory && memoryDigests;
+    const wantDiaries = semanticMemory && semanticDiaries && characterDiaries;
+    if ((!wantDigests && !semanticLore && !wantDiaries) || embedDrainingRef.current) return;
+    if (!isEmbeddingModelReady()) {
+      // A session that starts with a toggle already on re-opens the model from the browser cache
+      // (or retries a failed first download) in the background, once.
+      if (!embedModelKickedRef.current) {
+        embedModelKickedRef.current = true;
+        loadEmbeddingModel().catch(() => {}); // failure keeps everything fail-open; Settings offers Retry
+      }
+      return;
+    }
+    const wanted = new Map<string, string>(); // vector key → text to embed
+    if (wantDigests || wantDiaries) {
+      for (const m of fullMessageHistory) {
+        if (m.role !== "assistant") continue;
+        const parsed = parseTurnContent(m.content);
+        if (!parsed) continue;
+        const d = wantDigests ? parsed.summary?.trim() : undefined;
+        if (d) wanted.set(vectorKey(d), d);
+        if (wantDiaries && parsed.diaries) {
+          for (const text of Object.values(parsed.diaries)) {
+            const t = text?.trim();
+            if (t && t.toLowerCase() !== "nothing notable") wanted.set(vectorKey(t), t);
+          }
+        }
+      }
+    }
+    if (semanticLore) {
+      for (const entry of dictionary) {
+        if (entry.enabled === false || entry.constant) continue;
+        wanted.set(entryVectorKey(entry), entryEmbedText(entry));
+      }
+    }
+    const missing = [...wanted.keys()].filter((k) => !embedVectorsRef.current.has(k));
+    if (missing.length === 0) return;
+
+    embedDrainingRef.current = true;
+    (async () => {
+      try {
+        const cached = await getVectors(missing);
+        cached.forEach((vec, key) => embedVectorsRef.current.set(key, vec));
+        // Embed the rest in bounded batches, looping to completion — nothing re-triggers this effect
+        // when a batch lands (unlike the digest drainer, it never touches history), so a first-enable
+        // backfill must finish in one pass.
+        const toEmbed = missing.filter((k) => !cached.has(k));
+        for (let start = 0; start < toEmbed.length; start += 8) {
+          const batch = toEmbed.slice(start, start + 8);
+          const vecs = await embedTexts(batch.map((k) => wanted.get(k)!));
+          await Promise.all(vecs.map((vec, i) => {
+            embedVectorsRef.current.set(batch[i], vec);
+            return putVector(batch[i], vec).catch(() => {}); // cache write is best-effort
+          }));
+        }
+      } catch {
+        // Non-fatal: uncovered items stay fail-open; retried on a later history/dictionary change.
+      } finally {
+        embedDrainingRef.current = false;
+      }
+    })();
+  }, [semanticMemory, memoryDigests, semanticLore, semanticDiaries, characterDiaries, fullMessageHistory, dictionary]);
 
   // Character-diary drainer (write side): for each completed turn with participants, silently write a
   // first-person diary entry per participant as an idle-time job, patched back onto that turn's `diaries`
@@ -2810,7 +3008,7 @@ ${playerNotes || NONE_PLACEHOLDER}
   // not on every render.
   const memoryStats = useMemo(() => {
     const promptTokens = estimateTokens(lastPromptChars);
-    const trimmed = getTrimmedMessageHistory(promptTokens);
+    const trimmed = getTrimmedMessageHistory(promptTokens, "", lastRelevanceScoresRef.current, lastActionVecRef.current);
     return {
       promptTokens,
       trimmed,
@@ -2872,7 +3070,9 @@ ${playerNotes || NONE_PLACEHOLDER}
                   {bandCounts.turnsTotal} ({bandCounts.turnsVerbatim} full, {bandCounts.turnsBanded} summarized
                   {bandCounts.turnsTotal - bandCounts.turnsVerbatim - bandCounts.turnsBanded > 0
                     ? `, ${bandCounts.turnsTotal - bandCounts.turnsVerbatim - bandCounts.turnsBanded} dropped`
-                    : ""})
+                    : ""}
+                  {bandCounts.turnsRelevanceDropped > 0 ? `, ${bandCounts.turnsRelevanceDropped} by relevance` : ""}
+                  {bandCounts.turnsRehydrated > 0 ? `, ${bandCounts.turnsRehydrated} recalled` : ""})
                 </span>
               </div>
             ) : (
@@ -3243,7 +3443,10 @@ ${playerNotes || NONE_PLACEHOLDER}
               return rule.caseSensitive ? `${how}, case-sensitive` : how;
             };
             const reasonBadge = (reason: EntryActivation["reason"]): string =>
-              reason === "constant" ? "always on" : reason === "recursive" ? "recursively activated" : "keyword match";
+              reason === "constant" ? "always on"
+              : reason === "recursive" ? "recursively activated"
+              : reason === "semantic" ? "meaning match"
+              : "keyword match";
             // The "why it fired" popover for one match-chip.
             const renderReason = (chip: DictChip) => {
               const { activation: act, hit } = chip;
@@ -3402,8 +3605,12 @@ ${playerNotes || NONE_PLACEHOLDER}
                       dictionary.map((entry) => {
                         // Only entries that actually activated this turn are togglable; the rest read as
                         // dimmed, non-interactive tags so the full set stays visible.
-                        const activated = !!activationById.get(entry.id)?.activated;
-                        const label = entry.name || parseKeywords(entry)[0] || "unnamed";
+                        const activation = activationById.get(entry.id);
+                        const activated = !!activation?.activated;
+                        // Semantic activations have no text span to highlight, so the legend chip is
+                        // their visible evidence: ≈ plus the similarity in the tooltip.
+                        const semantic = activation?.reason === "semantic";
+                        const label = (semantic ? "≈ " : "") + (entry.name || parseKeywords(entry)[0] || "unnamed");
                         if (!activated) {
                           return (
                             <span
@@ -3428,7 +3635,11 @@ ${playerNotes || NONE_PLACEHOLDER}
                                 ? { borderColor: colorMap[entry.id], opacity: 0.5 }
                                 : { backgroundColor: colorMap[entry.id], borderColor: colorMap[entry.id], color: "#000" }
                             }
-                            title={disabled ? "Click to show highlights" : "Click to hide highlights"}
+                            title={
+                              semantic
+                                ? `Activated by meaning (similarity ${activation?.semanticSimilarity?.toFixed(2) ?? "?"}) — no keyword hit to highlight`
+                                : disabled ? "Click to show highlights" : "Click to hide highlights"
+                            }
                           >
                             {label}
                           </button>

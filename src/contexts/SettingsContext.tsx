@@ -1,6 +1,6 @@
 import { randomUUID } from "@/lib/uuid";
 import { createContext, useContext, useState, useEffect, useRef, useCallback, useMemo, type ReactNode } from 'react';
-import { defaultSystemPrompt, defaultNarrationUserPrompt, defaultRecapUserPrompt, defaultChoicesPrompt, defaultStatUpdatesPrompt, defaultLocationChangePrompt, defaultThinkingPrompt, defaultSummaryPrompt, defaultChoicesUserPrompt, defaultStatUpdatesUserPrompt, defaultLocationChangeUserPrompt, defaultSummaryUserPrompt, defaultDiaryPrompt, defaultDirectorPrompt, defaultDirectorUserPrompt, defaultCharacterPrompt, defaultStoryboardPrompt } from '../components/game/GamePrompts';
+import { defaultSystemPrompt, defaultNarrationUserPrompt, defaultRecapUserPrompt, defaultRehydrateUserPrompt, defaultChoicesPrompt, defaultStatUpdatesPrompt, defaultLocationChangePrompt, defaultThinkingPrompt, defaultSummaryPrompt, defaultChoicesUserPrompt, defaultStatUpdatesUserPrompt, defaultLocationChangeUserPrompt, defaultSummaryUserPrompt, defaultDiaryPrompt, defaultDirectorPrompt, defaultDirectorUserPrompt, defaultCharacterPrompt, defaultStoryboardPrompt } from '../components/game/GamePrompts';
 import { DEFAULT_ENDPOINT, DEFAULT_API_TOKEN, DEFAULT_MODEL_NAME, DEFAULT_MAX_TOKENS, DEFAULT_CONTEXT_WINDOW, DEFAULT_LOCAL_CONTEXT_SIZE, DEFAULT_LOCAL_GPU_LAYERS, DEFAULT_LOCAL_FLASH_ATTENTION, DEFAULT_LOCAL_PARALLEL_REQUESTS, DEFAULT_GEN_TEMPERATURE, DEFAULT_GEN_TOP_P, DEFAULT_GEN_REPETITION_PENALTY, DEFAULT_GEN_TOP_K, DEFAULT_GEN_MIN_P, DEFAULT_THEME_COLOR, BASE_THEME_COLOR, THEME_COLORS, DEFAULT_FONT, FONT_OPTIONS, SYSTEM_FONT_STACK, DEFAULT_NARRATION_FONT, DEFAULT_NARRATION_SCALE, DEFAULT_NARRATION_LINE_HEIGHT, NARRATION_FONT_OPTIONS, fontStack, fontSizeAdjust, DEFAULT_UPDATE_CHANNEL, type ThemeColor, type FontChoice, type NarrationFont, type UpdateChannel } from './settingsDefaults';
 import { isDesktop } from '../lib/imageGen/desktop';
 import { DEFAULT_TAG_PROMPT } from '../lib/imagePrompt';
@@ -110,6 +110,7 @@ const PROMPT_TEXT_DEFAULTS: PromptValues = {
   systemPrompt: defaultSystemPrompt,
   narrationUserPrompt: defaultNarrationUserPrompt,
   recapUserPrompt: defaultRecapUserPrompt,
+  rehydrateUserPrompt: defaultRehydrateUserPrompt,
   choicesPrompt: defaultChoicesPrompt,
   statUpdatesPrompt: defaultStatUpdatesPrompt,
   locationChangePromptText: defaultLocationChangePrompt,
@@ -264,6 +265,29 @@ function useProvideSettings() {
   // context. Note the persistent-state hook writes the default on first run, so this flip only reaches
   // installs that have never opened the app — existing stores keep their recorded value.
   const [memoryDigests, setMemoryDigests] = usePersistentState<boolean>(`${APP_ID}_memoryDigests`, true, boolCodec);
+  // EXPERIMENTAL semantic memory: trim the digest band by relevance to the current action (local
+  // embedding model in a worker) instead of oldest-first. Default off — enabling downloads the ~23 MB
+  // model, and the context change needs probe evidence before it can default on. Everything fails open
+  // to oldest-first while the model is absent, so a stale-on toggle can never lose memories.
+  const [semanticMemory, setSemanticMemory] = usePersistentState<boolean>(`${APP_ID}_semanticMemory`, false, boolCodec);
+  // EXPERIMENTAL semantic lore: dictionary entries also activate on meaning-similarity to the player's
+  // action (additive over keyword matching, never replacing it). Shares the local embedding model with
+  // semanticMemory but is independent of memoryDigests — lore has no digest dependency. Default off.
+  const [semanticLore, setSemanticLore] = usePersistentState<boolean>(`${APP_ID}_semanticLore`, false, boolCodec);
+  // EXPERIMENTAL semantic rehydration: when the action returns to an old scene, that turn's full
+  // narration rides back as a framed remembered-scene exchange (roadmap step 2 — near-duplicate and
+  // temporal-framing guards). Requires semanticMemory (same model, same digest vectors). Default off.
+  const [semanticRehydration, setSemanticRehydration] = usePersistentState<boolean>(`${APP_ID}_semanticRehydration`, false, boolCodec);
+  // EXPERIMENTAL diary retrieval: a character's motivation pass carries its recent diary tail plus
+  // the RELEVANT older entries instead of pure recency (roadmap step 4). Requires semanticMemory
+  // (shared model) and characterDiaries (the entries themselves). Default off.
+  const [semanticDiaries, setSemanticDiaries] = usePersistentState<boolean>(`${APP_ID}_semanticDiaries`, false, boolCodec);
+  // Memory cap (roadmap T5, default on since the 50-turn A/B): with semanticMemory on, the digest
+  // band keeps at most this many memories every turn — the most relevant ones — even when more
+  // would fit. 0 = no cap (the band carries everything that fits, trimming only under budget
+  // pressure). usePersistentState stores the default on first mount, so the flip reaches fresh
+  // installs only — existing installs keep their stored value.
+  const [semanticBandCap, setSemanticBandCap] = usePersistentState<number>(`${APP_ID}_semanticBandCap`, 12, intCodec);
   // Fire the post-narration aux requests (choices + stat updates + location router) concurrently instead of
   // one after another. Default on: ~29% faster turns on a parallel-capable endpoint (LM Studio "Parallel",
   // Ollama), harmless on serial endpoints (they queue). Turn off if a VRAM-tight local engine slows or OOMs
@@ -425,13 +449,14 @@ function useProvideSettings() {
   const [presetStore, setPresetStore] = usePersistentState<PromptPresetStore>(`${APP_ID}_promptPresets`, emptyStore, presetStoreCodec);
   const promptValues = useMemo(() => activeValues(presetStore, BUILTIN_VALUES), [presetStore]);
   const {
-    systemPrompt, narrationUserPrompt, recapUserPrompt, choicesPrompt, statUpdatesPrompt, locationChangePromptText, thinkingPrompt, summaryPrompt,
+    systemPrompt, narrationUserPrompt, recapUserPrompt, rehydrateUserPrompt, choicesPrompt, statUpdatesPrompt, locationChangePromptText, thinkingPrompt, summaryPrompt,
     diaryPrompt, directorPrompt, directorUserPrompt, characterPrompt, storyboardPrompt,
     choicesUserPrompt, statUpdatesUserPrompt, locationChangeUserPrompt, summaryUserPrompt,
   } = promptValues;
   const setSystemPrompt = (v: string) => setPresetStore((s) => updateValue(s, 'systemPrompt', v));
   const setNarrationUserPrompt = (v: string) => setPresetStore((s) => updateValue(s, 'narrationUserPrompt', v));
   const setRecapUserPrompt = (v: string) => setPresetStore((s) => updateValue(s, 'recapUserPrompt', v));
+  const setRehydrateUserPrompt = (v: string) => setPresetStore((s) => updateValue(s, 'rehydrateUserPrompt', v));
   const setChoicesPrompt = (v: string) => setPresetStore((s) => updateValue(s, 'choicesPrompt', v));
   const setStatUpdatesPrompt = (v: string) => setPresetStore((s) => updateValue(s, 'statUpdatesPrompt', v));
   const setLocationChangePromptText = (v: string) => setPresetStore((s) => updateValue(s, 'locationChangePromptText', v));
@@ -779,6 +804,16 @@ function useProvideSettings() {
     setStreamNarrationAudio,
     memoryDigests,
     setMemoryDigests,
+    semanticMemory,
+    setSemanticMemory,
+    semanticLore,
+    setSemanticLore,
+    semanticRehydration,
+    setSemanticRehydration,
+    semanticDiaries,
+    setSemanticDiaries,
+    semanticBandCap,
+    setSemanticBandCap,
     concurrentTurnRequests,
     setConcurrentTurnRequests,
     autosaveEnabled,
@@ -843,6 +878,8 @@ function useProvideSettings() {
     setNarrationUserPrompt,
     recapUserPrompt,
     setRecapUserPrompt,
+    rehydrateUserPrompt,
+    setRehydrateUserPrompt,
     choicesPrompt,
     setChoicesPrompt,
     statUpdatesPrompt,

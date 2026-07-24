@@ -48,6 +48,11 @@ export interface BandCounts {
   turnsTotal: number;
   /** Old-band digests removed by milestone selection (0 when selection is off or kept everything). */
   turnsSelectedOut: number;
+  /** Digests dropped by relevance ranking instead of oldest-first (0 when semantic memory is off or
+   *  the band fit its budget). */
+  turnsRelevanceDropped: number;
+  /** Turns restored to full text as the remembered-scene exchange (semantic rehydration). */
+  turnsRehydrated: number;
 }
 
 export interface BandResult {
@@ -58,6 +63,11 @@ export interface BandResult {
   recap: string;
   counts: BandCounts;
 }
+
+/** How many of the band's newest digests are immune to ranked (relevance) dropping — the immediate
+ *  scene lead-in must survive however low it scores, or a topically-hot old memory can evict the turn
+ *  the scene is actually continuing from (probe: semantic-band control case). */
+export const RANKED_RECENT_IMMUNE = 2;
 
 /** Common words that carry no retrieval signal; dropped from lexical keywords (1–2 char words are
  *  already excluded by the length floor). */
@@ -229,10 +239,30 @@ export function buildBandedHistory(args: {
    *  lib/milestoneMemory). Absent/empty = no filtering, the pre-milestone behavior. The caller owns the
    *  window math so every stage filters the exact same turns regardless of its own floor width. */
   milestoneDrop?: Set<string> | null;
+  /** Relevance score per turnId (semantic memory: cosine-to-current-action × recency decay, built by
+   *  lib/memoryRelevance). When present AND covering every band turn, budget trimming drops the
+   *  lowest-scored memory instead of the oldest. Null/absent/incomplete = oldest-first, the exact
+   *  pre-feature path — cold caches and disabled settings fail open, never fail-drop. */
+  relevanceScores?: Map<string, number> | null;
+  /** Always-on top-K band (roadmap step 3): cap the digest band at this many memories every turn,
+   *  keeping the most relevant, even when the band fits the budget — smaller prompts, denser signal.
+   *  Only acts in scored mode (a cap without relevance scores would blind-trim by age, which the
+   *  feature never promises); protected ends (opening + newest RANKED_RECENT_IMMUNE) can't drop, so
+   *  an effective floor of 1 + RANKED_RECENT_IMMUNE applies. 0/null/absent = no cap. */
+  bandCap?: number | null;
+  /** Semantic rehydration (roadmap step 2): the turnIds worth restoring to full text for this action,
+   *  best-first, already threshold-gated and near-duplicate-filtered by lib/semanticRehydration. The
+   *  band takes as many as fit `rehydrateCap` tokens (up to `maxRehydrations`), removes them from the
+   *  digest band, and rides them as ONE framed remembered-scene exchange after the recap — never as
+   *  live-looking history (the dead-Jim guard). Null/absent/empty = no rehydration. */
+  semanticRehydrate?: string[] | null;
+  /** The framed exchange's user line ("Recall the earlier scene…"); required when semanticRehydrate
+   *  is non-empty. */
+  rehydratePrompt?: string;
 }): BandResult {
-  // `keywords`, `actionEntities`, `rehydrateCap`, `maxRehydrations` are intentionally not destructured:
-  // rehydration is disabled (see step 3). Kept in the arg type so callers compile unchanged.
-  const { turns, contextWindow, promptTokens, maxTokens, verbatimFloor, milestoneDrop = null, recapPrompt, nowLine } = args;
+  // `keywords` and `actionEntities` are intentionally not destructured: lexical rehydration stays
+  // disabled (see step 3). Kept in the arg type so callers compile unchanged.
+  const { turns, contextWindow, promptTokens, maxTokens, verbatimFloor, milestoneDrop = null, recapPrompt, nowLine, relevanceScores = null, bandCap = null, semanticRehydrate = null, rehydratePrompt = '', rehydrateCap, maxRehydrations = Infinity } = args;
   const margin = Math.max(256, Math.round(contextWindow * 0.05));
   const budget = Math.max(0, contextWindow - promptTokens - maxTokens - margin);
 
@@ -262,35 +292,87 @@ export function buildBandedHistory(args: {
     bandTurns = kept;
   }
   let bandTokens = bandExchangeCost(bandTurns, recapPrompt, nowLine);
+  // Scored trimming engages only when every band turn is covered — a partial map (embedding cache still
+  // warming) must not rank some turns and default others, or stages could disagree on what dropped.
+  const scored = relevanceScores !== null && bandTurns.every((t) => t.turnId && relevanceScores.has(t.turnId));
+  let turnsRelevanceDropped = 0;
+  // Ranked drop protects both ends of the band: index 0 (the story's opening — losing it makes the
+  // recap start mid-scene and models write a fresh establishing scene over the live one, same guard
+  // as resolveMilestoneKeep) and the newest RANKED_RECENT_IMMUNE digests (the immediate scene
+  // lead-in — the probe's control case showed a topical old memory can outscore it, same failure
+  // class). Only the middle competes on relevance; an all-protected band has nothing to rank-drop.
+  const dropLowestEligible = (): boolean => {
+    if (!scored) return false;
+    const lastEligible = bandTurns.length - 1 - RANKED_RECENT_IMMUNE;
+    if (lastEligible < 1) return false;
+    let lowest = 1;
+    for (let i = 2; i <= lastEligible; i++) {
+      if (relevanceScores!.get(bandTurns[i].turnId!)! < relevanceScores!.get(bandTurns[lowest].turnId!)!) lowest = i;
+    }
+    bandTurns = bandTurns.slice(0, lowest).concat(bandTurns.slice(lowest + 1));
+    turnsRelevanceDropped++;
+    return true;
+  };
   while (bandTokens > remaining && bandTurns.length > 0) {
-    bandTurns = bandTurns.slice(1); // drop the oldest
+    if (!dropLowestEligible()) bandTurns = bandTurns.slice(1); // fall back: drop the oldest
+    bandTokens = bandExchangeCost(bandTurns, recapPrompt, nowLine);
+  }
+  // Always-on top-K cap (step 3): even a band that fits gets trimmed to the K most relevant memories.
+  // Scored mode only, and the protected ends set the effective floor.
+  if (bandCap && bandCap > 0) {
+    const floor = Math.max(bandCap, 1 + RANKED_RECENT_IMMUNE);
+    while (bandTurns.length > floor && dropLowestEligible()) { /* trimmed in dropLowestEligible */ }
     bandTokens = bandExchangeCost(bandTurns, recapPrompt, nowLine);
   }
 
-  // 3. Rehydration — DISABLED. Keyed on the current (charged) action, lexical rehydration pulled many
-  //    near-identical prior charged turns back to full verbatim, packing the narration context with ~6
-  //    repeated "poised / about-to" tableaux — the confirmed driver of the charged-scene freeze (real-app
-  //    A/B on Cydonia-24B: fewer full charged turns advanced, more froze). Off wholesale until redesigned.
-  //    TODO(rehydration): re-enable behind a smarter selector — dedupe near-duplicate charged turns and cap
-  //    how many charged turns may be verbatim — then restore the AI-Context "Rehydrated" row + the
-  //    Hydrations highlight toggle in GameViewer. `selectRehydrations` and the scorers are kept for that.
-  // const rehydrateBudget = Math.min(rehydrateCap, Math.max(0, remaining - bandTokens));
-  // const chosen = selectRehydrations(bandTurns, keywords, actionEntities, rehydrateBudget, maxRehydrations);
+  // 3. Rehydration. Lexical selection stays DISABLED — keyed on the charged action it pulled ~6
+  //    near-identical "poised / about-to" tableaux back verbatim, the confirmed charged-scene-freeze
+  //    driver (real-app A/B on Cydonia-24B). `selectRehydrations` and the scorers are kept for reference.
+  //    SEMANTIC rehydration replaces it: the caller hands in an already-deduped best-first turnId list
+  //    (lib/semanticRehydration — near-duplicate guard against chosen set AND floor); here we only apply
+  //    the token budget, pull the turns out of the digest band, and (below) frame them as memory.
   const rehydratedTurns: BandTurn[] = [];
-  const rehydratedTokens = 0;
+  let rehydratedTokens = 0;
+  if (semanticRehydrate && semanticRehydrate.length > 0) {
+    const rehydrateBudget = Math.min(rehydrateCap, Math.max(0, remaining - bandTokens));
+    const byId = new Map(bandTurns.filter((t) => t.turnId).map((t) => [t.turnId!, t]));
+    for (const id of semanticRehydrate) {
+      if (rehydratedTurns.length >= maxRehydrations) break;
+      const t = byId.get(id);
+      if (!t) continue; // not in the band (already floor, milestone-dropped since scoring, or trimmed)
+      const cost = estimateTokens(JSON.stringify([{ role: 'user', content: rehydratePrompt }, { role: 'assistant', content: t.gameText }]).length);
+      if (rehydratedTokens + cost > rehydrateBudget) continue; // try a smaller scene rather than stopping
+      rehydratedTurns.push(t);
+      rehydratedTokens += cost;
+    }
+    if (rehydratedTurns.length > 0) {
+      // Rehydrated turns leave the band so the same event isn't in context twice (once compressed,
+      // once full). Band cost shrinks; no re-trim needed — removal only frees tokens.
+      const chosen = new Set(rehydratedTurns.map((t) => t.turnId));
+      bandTurns = bandTurns.filter((t) => !chosen.has(t.turnId));
+      bandTokens = bandExchangeCost(bandTurns, recapPrompt, nowLine);
+    }
+  }
 
-  // Assemble: the recap exchange first (older events condensed), then full turns (rehydrated + recent
-  // floor) chronological, each as its real user/assistant pair. Strict alternation stays valid on any
-  // endpoint — the recap question is a genuine user turn. The digests deliberately do NOT ride as
-  // per-turn pairs: many short "own replies" in a row measurably collapse small-model narration length
-  // (see module header); answered to a recap question, the short style belongs to a different task.
+  // Assemble: the recap exchange first (older events condensed), then the remembered-scene exchange
+  // (rehydrated turns, chronological, as ONE framed question/answer — explicitly the past, never
+  // live-looking pairs: position reads as time and a vivid old scene would otherwise overrule the
+  // recap's later facts, e.g. a character who has since died walks again), then the recent floor as
+  // real user/assistant pairs. Strict alternation stays valid on any endpoint. The digests deliberately
+  // do NOT ride as per-turn pairs: many short "own replies" in a row measurably collapse small-model
+  // narration length (see module header); answered to a recap question, the short style belongs to a
+  // different task.
   const messages: ChatMessage[] = [];
   const bandBody = mergedBandText(bandTurns);
   if (bandBody) {
     const reply = nowLine ? `${bandBody}\n\n${nowLine}` : bandBody;
     messages.push({ role: 'user', content: recapPrompt }, { role: 'assistant', content: reply });
   }
-  const ordered = [...rehydratedTurns, ...floorTaken].sort((a, b) => a.index - b.index);
+  if (rehydratedTurns.length > 0) {
+    const scenes = [...rehydratedTurns].sort((a, b) => a.index - b.index).map((t) => t.gameText).join('\n\n');
+    messages.push({ role: 'user', content: rehydratePrompt }, { role: 'assistant', content: scenes });
+  }
+  const ordered = [...floorTaken].sort((a, b) => a.index - b.index);
   for (const t of ordered) {
     messages.push({ ...t.userMsg }, { role: 'assistant', content: t.gameText });
   }
@@ -310,6 +392,8 @@ export function buildBandedHistory(args: {
       turnsBanded: bandTurns.length,
       turnsTotal: turns.length,
       turnsSelectedOut,
+      turnsRelevanceDropped,
+      turnsRehydrated: rehydratedTurns.length,
     },
   };
 }
