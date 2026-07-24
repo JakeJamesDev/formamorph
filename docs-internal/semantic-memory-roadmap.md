@@ -4,15 +4,78 @@ Working roadmap for the embedding-retrieval workstream on branch **`Mem0`**. Res
 lives in this doc; the shipped foundation is described below, then the planned steps in build order.
 Steps ship one at a time, each behind its own probe evidence — nothing here is committed-to-all-at-once.
 
-**▶ Resume here:** ALL of steps 0-4 shipped (2026-07-23, unreleased, everything off by default). The
-arc's build phase is done. **First real-app play A/B run 2026-07-23** (Q profile, 25 turns, semQA/semQB
-profiles in profiles.json, 1 run/arm/tier — see "Play A/B findings" below): machinery verified
-end-to-end in the real app; no measurable recall benefit at 25 turns (bands too small — milestone
-selection already prunes to ~8-14 digests, cloud cap never engaged); recall B ≤ A on 3/4 checks but
-inside single-run noise (milestone-selector keep-variance dominates). What remains before any
-default-on: a REPEATED A/B (≥3 runs/arm) at 50+ turns where the band genuinely overflows
-(dialoguehold-length), the charged-scene freeze replay (step 2), and step 5 only if real-world use
-shows similarity misses.
+**▶ Resume here:** build phase done (steps 0-4 shipped 2026-07-23, unreleased, off by default), and a
+real charged session (repeat.json findings below) has produced the **tuning todo** — work it in order
+from **T1**. Still open before any default-on: the repeated 50+-turn A/B, the charged-scene freeze
+replay (step 2), and step 5 only if similarity misses persist after T1-T3.
+
+## Tuning todo (ranked, from the 2026-07-23 real-session review + literature)
+
+Reference precedent: SillyTavern chat vectorization (the production analog — query = last 2 MESSAGES,
+25% score floor, insert top-3, protect newest 5, "past events" injection template) validates our
+framed injection / protected floor / top-K-with-floor shape. Divergences and fixes:
+
+### T1. Scene-recall cooldown — small, do first
+No re-recall of the same scene within N turns (start N=3). Kills the observed stickiness (9/27
+firings identical to the previous turn's; same scene rode turns 29-31 while the context froze).
+Chosen over ST's shuffle-top-K (their anti-staleness device) because sampling breaks our
+paired-seed probe methodology; revisit sampling only if cooldown feels too binary.
+- Cost: trivial (a per-scene last-fired turn map in GameViewer, or turnBanding arg).
+- Probe: rehydrate-probe gains a consecutive-turn case; assert no repeat within N.
+
+### T2. Margin-over-baseline recall threshold — the calibration fix
+Absolute cosine floors don't transfer across worlds (literature: embedding scores are only
+relatively comparable; our own knees differ per surface: 0.30 lore / 0.34 diary / 0.35 scenes; the
+repeat.json session shows a one-house same-cast world where EVERYTHING clears 0.35 — the living-room
+scene fired 10x during unrelated charged scenes). Fix: fire only when the candidate beats the band's
+MEDIAN action-similarity by a margin (start +0.10), absolute floor kept as sanity bound. Applies to
+Scene Recall first; evaluate for lore/diary after.
+- Rejected alternatives: raising the fixed floor (the knob that just failed to generalize);
+  cross-encoder reranking (the industry answer — retrieve loose, rerank jointly, +5-15 NDCG@10 —
+  but a second on-device model + per-candidate WASM latency; parked as T6).
+- Probe: semantic-lore-probe-style sweep on a SAME-CAST charged fixture (new cases file — the
+  trade-coast fixture's distinct-events world overestimates separation).
+
+### T3. Recall query = action + latest narration tail — one probe away
+ST queries the last 2 messages, not the bare action; our bare-action query starves recall of scene
+identity in charged play ("I moan louder" distinguishes nothing). Try action + ~2 sentences of the
+latest narration FOR SCENE RECALL ONLY (band trimming keeps the probe-validated bare action).
+- Risk: recency bias pulls near-duplicates of the current scene (dup-guard-vs-floor held in
+  repeat.json — verify it still does); our band probe showed appended METADATA poisons ranking —
+  narration text may behave differently, hence the A/B.
+- Probe: rehydrate-probe arm with the enriched query; targets must still rank, stickiness must not rise.
+
+### T4. Sticky milestone verdicts — the structural fix (bigger)
+The T31→T32 flip-flop (keep 7 → keep all 30, recap 1.2KB → 7KB) is inherent to re-voting the WHOLE
+memory list every turn with a small LLM. Mem0-class systems decide at WRITE time and never re-judge
+the store. Refactor: only newly-aged digests get judged; old verdicts persist unless superseded;
+pins remain the correction path. Kills flip-flop by construction and cuts a recurring request.
+- Cost: selector prompt + selection-state rework; supersession (the selector's best skill) must
+  still fire on new-entry-vs-old-entry pairs. Own probe cycle (milestone-select-probe extension).
+
+### T5. Memory Cap as default behavior once validated
+ST ships bounded injection always-on; unbounded here = 30-digest 7KB recaps. After the 50+-turn
+repeated A/B, fold the cap into Semantic Memory's default (keep the number editable) instead of a
+separate opt-in.
+
+### T6. Cross-encoder reranker — parked quality ceiling
+The calibrated fix for all similarity mushiness (incl. Diary Recall's hopeless 0.01 margin). Second
+model download + latency; only if T1-T3 leave real quality on the table.
+
+## Play A/B findings (2026-07-23, Q profile, 25 turns, semQA/semQB in profiles.json, 1 run/arm/tier)
+
+Machinery verified end-to-end in the real app; no measurable recall benefit at 25 turns (bands too
+small — milestone selection already prunes to ~8-14 digests, cloud cap never engaged); recall B ≤ A
+on 3/4 checks but inside single-run noise (milestone keep-variance dominates). Repeat with ≥3
+runs/arm at 50+ turns where the band overflows.
+
+## Real-session findings (repeat.json, 2026-07-23, 34 turns, charged, cloud default)
+
+Scene Recall fired 27/34 turns; living-room scene recalled 10x during unrelated charged scenes
+(threshold miscalibration → T2); 9/27 firings sticky (→ T1); zero copy-through, zero double-rides,
+fail-opens held. The repetition the player noticed (T32-34, 38-48 shared 8-grams) is the charged
+loop + milestone flip-flop (T31 kept 7, T32 kept all 30 → T4), not the semantic stack; band trimming
+never engaged (cap off, band fit → T5). Final request ~6k tokens.
 
 ## Play A/B findings (2026-07-23, Q × {cloud, Cydonia}, 1 run/arm)
 

@@ -54,7 +54,6 @@ import {
   defaultDiscoverEntityPrompt,
   OPENING_SCENE_CUE,
   defaultMilestonePrompt,
-  defaultRehydrateUserPrompt,
 } from "../components/game/GamePrompts";
 import {
   buildDiaryUserMessage,
@@ -306,6 +305,7 @@ const GameViewer = ({
     storyboardPrompt,
     narrationUserPrompt,
     recapUserPrompt,
+    rehydrateUserPrompt,
     choicesUserPrompt,
     statUpdatesUserPrompt,
     locationChangeUserPrompt,
@@ -904,14 +904,14 @@ const GameViewer = ({
         relevanceScores,
         bandCap: semanticMemory ? semanticBandCap : 0,
         semanticRehydrate,
-        rehydratePrompt: defaultRehydrateUserPrompt,
+        rehydratePrompt: rehydrateUserPrompt,
       });
       lastBandCountsRef.current = counts;
       return messages;
     }
     lastBandCountsRef.current = null;
     return buildVerbatimHistory(turns, contextWindow, promptTokens, maxTokens);
-  }, [fullMessageHistory, contextWindow, maxTokens, memoryDigests, semanticMemory, semanticRehydration, semanticBandCap, dictionary, allEntities, narrationVerbatimTurns, getMilestoneDrop, recapUserPrompt, currentLocation, playerNotes]);
+  }, [fullMessageHistory, contextWindow, maxTokens, memoryDigests, semanticMemory, semanticRehydration, semanticBandCap, dictionary, allEntities, narrationVerbatimTurns, getMilestoneDrop, recapUserPrompt, rehydrateUserPrompt, currentLocation, playerNotes]);
 
   // The action's embedding, shared by every semantic consumer this turn (band relevance + lore
   // activation) so the action is embedded once. Null when no semantic feature is on, the model is
