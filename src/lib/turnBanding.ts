@@ -244,6 +244,12 @@ export function buildBandedHistory(args: {
    *  lowest-scored memory instead of the oldest. Null/absent/incomplete = oldest-first, the exact
    *  pre-feature path — cold caches and disabled settings fail open, never fail-drop. */
   relevanceScores?: Map<string, number> | null;
+  /** Always-on top-K band (roadmap step 3): cap the digest band at this many memories every turn,
+   *  keeping the most relevant, even when the band fits the budget — smaller prompts, denser signal.
+   *  Only acts in scored mode (a cap without relevance scores would blind-trim by age, which the
+   *  feature never promises); protected ends (opening + newest RANKED_RECENT_IMMUNE) can't drop, so
+   *  an effective floor of 1 + RANKED_RECENT_IMMUNE applies. 0/null/absent = no cap. */
+  bandCap?: number | null;
   /** Semantic rehydration (roadmap step 2): the turnIds worth restoring to full text for this action,
    *  best-first, already threshold-gated and near-duplicate-filtered by lib/semanticRehydration. The
    *  band takes as many as fit `rehydrateCap` tokens (up to `maxRehydrations`), removes them from the
@@ -256,7 +262,7 @@ export function buildBandedHistory(args: {
 }): BandResult {
   // `keywords` and `actionEntities` are intentionally not destructured: lexical rehydration stays
   // disabled (see step 3). Kept in the arg type so callers compile unchanged.
-  const { turns, contextWindow, promptTokens, maxTokens, verbatimFloor, milestoneDrop = null, recapPrompt, nowLine, relevanceScores = null, semanticRehydrate = null, rehydratePrompt = '', rehydrateCap, maxRehydrations = Infinity } = args;
+  const { turns, contextWindow, promptTokens, maxTokens, verbatimFloor, milestoneDrop = null, recapPrompt, nowLine, relevanceScores = null, bandCap = null, semanticRehydrate = null, rehydratePrompt = '', rehydrateCap, maxRehydrations = Infinity } = args;
   const margin = Math.max(256, Math.round(contextWindow * 0.05));
   const budget = Math.max(0, contextWindow - promptTokens - maxTokens - margin);
 
@@ -290,23 +296,32 @@ export function buildBandedHistory(args: {
   // warming) must not rank some turns and default others, or stages could disagree on what dropped.
   const scored = relevanceScores !== null && bandTurns.every((t) => t.turnId && relevanceScores.has(t.turnId));
   let turnsRelevanceDropped = 0;
-  while (bandTokens > remaining && bandTurns.length > 0) {
-    // Ranked drop protects both ends of the band: index 0 (the story's opening — losing it makes the
-    // recap start mid-scene and models write a fresh establishing scene over the live one, same guard
-    // as resolveMilestoneKeep) and the newest RANKED_RECENT_IMMUNE digests (the immediate scene
-    // lead-in — the probe's control case showed a topical old memory can outscore it, same failure
-    // class). Only the middle competes on relevance; an all-protected band falls back to oldest-first.
+  // Ranked drop protects both ends of the band: index 0 (the story's opening — losing it makes the
+  // recap start mid-scene and models write a fresh establishing scene over the live one, same guard
+  // as resolveMilestoneKeep) and the newest RANKED_RECENT_IMMUNE digests (the immediate scene
+  // lead-in — the probe's control case showed a topical old memory can outscore it, same failure
+  // class). Only the middle competes on relevance; an all-protected band has nothing to rank-drop.
+  const dropLowestEligible = (): boolean => {
+    if (!scored) return false;
     const lastEligible = bandTurns.length - 1 - RANKED_RECENT_IMMUNE;
-    if (scored && lastEligible >= 1) {
-      let lowest = 1;
-      for (let i = 2; i <= lastEligible; i++) {
-        if (relevanceScores.get(bandTurns[i].turnId!)! < relevanceScores.get(bandTurns[lowest].turnId!)!) lowest = i;
-      }
-      bandTurns = bandTurns.slice(0, lowest).concat(bandTurns.slice(lowest + 1));
-      turnsRelevanceDropped++;
-    } else {
-      bandTurns = bandTurns.slice(1); // drop the oldest
+    if (lastEligible < 1) return false;
+    let lowest = 1;
+    for (let i = 2; i <= lastEligible; i++) {
+      if (relevanceScores!.get(bandTurns[i].turnId!)! < relevanceScores!.get(bandTurns[lowest].turnId!)!) lowest = i;
     }
+    bandTurns = bandTurns.slice(0, lowest).concat(bandTurns.slice(lowest + 1));
+    turnsRelevanceDropped++;
+    return true;
+  };
+  while (bandTokens > remaining && bandTurns.length > 0) {
+    if (!dropLowestEligible()) bandTurns = bandTurns.slice(1); // fall back: drop the oldest
+    bandTokens = bandExchangeCost(bandTurns, recapPrompt, nowLine);
+  }
+  // Always-on top-K cap (step 3): even a band that fits gets trimmed to the K most relevant memories.
+  // Scored mode only, and the protected ends set the effective floor.
+  if (bandCap && bandCap > 0) {
+    const floor = Math.max(bandCap, 1 + RANKED_RECENT_IMMUNE);
+    while (bandTurns.length > floor && dropLowestEligible()) { /* trimmed in dropLowestEligible */ }
     bandTokens = bandExchangeCost(bandTurns, recapPrompt, nowLine);
   }
 

@@ -30,6 +30,7 @@ const model = argVal("--model", "default");
 const only = argVal("--only");
 const runs = Number(argVal("--runs", "3"));
 const budget = Number(argVal("--budget", "340")); // band token budget; default forces ~8 of 28 digests out
+const cap = Number(argVal("--cap", "0")); // always-on top-K cap (step 3); 0 = off. Pair with a huge --budget to isolate it.
 const maxTokens = Number(argVal("--max", "400"));
 const token = argVal("--token", process.env.PROBE_TOKEN || "");
 
@@ -79,15 +80,21 @@ const trimOldest = (items, nowLine) => {
 // an all-protected band falls back to oldest-first (mirrors buildBandedHistory exactly).
 const trimRanked = (items, scores, nowLine) => {
   let band = [...items];
-  while (bandCost(band.map((i) => i.text), nowLine) > budget && band.length > 0) {
+  const dropLowest = () => {
     const lastEligible = band.length - 1 - RECENT_IMMUNE;
-    if (lastEligible >= 1) {
-      let lowest = 1;
-      for (let i = 2; i <= lastEligible; i++) if (scores.get(band[i].idx) < scores.get(band[lowest].idx)) lowest = i;
-      band = band.slice(0, lowest).concat(band.slice(lowest + 1));
-    } else {
-      band = band.slice(1);
-    }
+    if (lastEligible < 1) return false;
+    let lowest = 1;
+    for (let i = 2; i <= lastEligible; i++) if (scores.get(band[i].idx) < scores.get(band[lowest].idx)) lowest = i;
+    band = band.slice(0, lowest).concat(band.slice(lowest + 1));
+    return true;
+  };
+  while (bandCost(band.map((i) => i.text), nowLine) > budget && band.length > 0) {
+    if (!dropLowest()) band = band.slice(1);
+  }
+  // Always-on top-K cap (step 3), mirroring buildBandedHistory: protected-ends floor applies.
+  if (cap > 0) {
+    const floor = Math.max(cap, 1 + RECENT_IMMUNE);
+    while (band.length > floor && dropLowest()) { /* trimmed */ }
   }
   return band;
 };

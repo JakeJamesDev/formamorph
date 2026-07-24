@@ -4,9 +4,37 @@ Working roadmap for the embedding-retrieval workstream on branch **`Mem0`**. Res
 lives in this doc; the shipped foundation is described below, then the planned steps in build order.
 Steps ship one at a time, each behind its own probe evidence — nothing here is committed-to-all-at-once.
 
-**▶ Resume here:** steps 0, 1, 2, and 4 shipped (2026-07-23, unreleased, all off by default). Next up
-is **step 3 (always-on top-K band)** — the strongest probe bar of the arc — then step 5 (hybrid
-scoring) only if real-world recall shows similarity-only misses.
+**▶ Resume here:** ALL of steps 0-4 shipped (2026-07-23, unreleased, everything off by default). The
+arc's build phase is done. **First real-app play A/B run 2026-07-23** (Q profile, 25 turns, semQA/semQB
+profiles in profiles.json, 1 run/arm/tier — see "Play A/B findings" below): machinery verified
+end-to-end in the real app; no measurable recall benefit at 25 turns (bands too small — milestone
+selection already prunes to ~8-14 digests, cloud cap never engaged); recall B ≤ A on 3/4 checks but
+inside single-run noise (milestone-selector keep-variance dominates). What remains before any
+default-on: a REPEATED A/B (≥3 runs/arm) at 50+ turns where the band genuinely overflows
+(dialoguehold-length), the charged-scene freeze replay (step 2), and step 5 only if real-world use
+shows similarity misses.
+
+## Play A/B findings (2026-07-23, Q × {cloud, Cydonia}, 1 run/arm)
+
+| Metric | Cloud A | Cloud B | Cydonia A | Cydonia B |
+|---|---|---|---|---|
+| C1 compass recall (T21) | PARTIAL | FAIL | PASS | PARTIAL |
+| C2 destination recall (T22) | PARTIAL | FAIL | PASS | PASS |
+| 8-gram repeat pairs | 0 | 0 | 11 (worst 16) | 4 (worst 12) |
+| Scene recalls fired | — | 6 | — | 14 |
+| Cap engaged | — | no (band ≤ 9) | — | yes (13-14 → ≤ 12) |
+
+- **Machinery verified live:** embedding model downloads inside the harness browser, drainer covers
+  digests, Scene Recall fires on-topic (sketching the ferry → the opening ferry scene; re-reading the
+  notices → the notices scene), cap trims Cydonia's oversized turns.
+- **Attribution trap:** each run generates a different story, and the milestone selector's keep
+  decisions vary run-to-run — cloud A kept the Harrowgate digest, cloud B's selector dropped it
+  (the cap never engaged there, so the semantic stack cannot have caused that recall FAIL). One run
+  per arm cannot separate the stack from this noise.
+- **Design caveat worth keeping:** Q's recall probes are OBLIQUE ("I check my pack" → compass) —
+  exactly where action-similarity ranking is weakest. If capped trimming ever defaults on, oblique
+  callbacks are the failure mode to probe hardest.
+- Cydonia repetition drop (11 → 4 pairs) under B is interesting but single-run.
 
 ## Architecture decision (2026-07-23)
 
@@ -97,12 +125,21 @@ Original requirements, kept for reference:
 - Probe: the freeze scenario (close-session real failure turns) + dialogue-hold + a dead-Jim temporal
   case: plant a death digest, rehydrate a pre-death scene of that character, count alive-writes. Both tiers.
 
-## Step 3 — Always-on top-K band (the full Mem0 shape)
+## Step 3 — ✅ Memory Cap / always-on top-K band (SHIPPED 2026-07-23, unreleased, off by default)
 
-Today ranking fires only under budget pressure. Cap the digest band at K most-relevant memories every
-turn — smaller prompts, denser signal, mid-game benefit. This changes narration context on *every*
-turn, so it needs the strongest probe evidence of the arc (dialogue-hold + recall + Q-profile) and
-likely its own setting (band cap) rather than a hidden constant.
+`semanticBandCap` int setting (0 = off, UI derived-checkbox seeding 12, min 3; Settings "Memory Cap",
+requires semanticMemory). `buildBandedHistory` gains `bandCap`: after budget trimming, the shared
+`dropLowestEligible` keeps trimming to the cap even when the band fits — scored mode ONLY (no scores
+→ no cap; it never blind-trims by age), protected-ends floor = 1 + RANKED_RECENT_IMMUNE = 3. Passed
+to both narration and planner call sites (stage-consistency preserved).
+
+**Probed** (`semantic-band-probe.mjs --cap 12 --budget 5000`, cap isolated from budget pressure):
+deterministic — all 4 planted targets survive cap 12 (16 of 28 digests dropped), guards hold; recall —
+full-28 band vs capped-12: cloud 3/12 (25%) → 4/12 (33%), Cydonia 10/12 (83%) → 11/12 (92%). Capped ≥
+full on both tiers with 57% fewer memories — the needle-in-haystack dilution is real (the cloud model
+recalls WORSE with all 28 in view than it did with 15 in the step-0 squeeze runs). Still open before
+default-on: dialogue-hold + Q-profile on a real long session (the probe measures recall, not narration
+quality).
 
 ## Step 4 — ✅ Diary Recall (SHIPPED 2026-07-23, unreleased, off by default)
 

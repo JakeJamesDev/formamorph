@@ -357,6 +357,44 @@ describe('buildBandedHistory relevance-ranked trimming', () => {
   });
 });
 
+describe('buildBandedHistory always-on band cap', () => {
+  const RECAP = 'Recap the story so far.';
+  // Wide window: nothing is budget-trimmed, so any drop comes from the cap alone.
+  const base = { contextWindow: 1_000_000, promptTokens: 0, maxTokens: 0, verbatimFloor: 0, rehydrateCap: 0, actionEntities: [] as string[], keywords: [] as string[], recapPrompt: RECAP };
+  const sixTurns = () =>
+    parseTurns(Array.from({ length: 6 }, (_, i) => pair(`a${i + 1}`, { turnId: `t${i + 1}`, narration: `g${i + 1}`, summary: `D${i + 1}` })).flat());
+  const scores = (map: Record<string, number>) => new Map(Object.entries(map));
+  const survivors = (recap: string) => ['D1', 'D2', 'D3', 'D4', 'D5', 'D6'].filter((d) => new RegExp(`${d}\\b`).test(recap));
+
+  it('trims a fitting band down to the K most relevant, ends protected', () => {
+    const { recap, counts } = buildBandedHistory({
+      ...base, turns: sixTurns(), bandCap: 4,
+      relevanceScores: scores({ t1: 0.0, t2: 0.9, t3: 0.1, t4: 0.2, t5: 0.0, t6: 0.0 }),
+    });
+    // 6 → 4: t3 and t4 (lowest eligible) go; t1 (opening) and t5/t6 (newest two) are immune.
+    expect(survivors(recap)).toEqual(['D1', 'D2', 'D5', 'D6']);
+    expect(counts.turnsRelevanceDropped).toBe(2);
+    expect(counts.turnsBanded).toBe(4);
+  });
+
+  it('does nothing without scores, at cap 0, or when the band is already within the cap', () => {
+    const unscored = buildBandedHistory({ ...base, turns: sixTurns(), bandCap: 3 });
+    expect(survivors(unscored.recap)).toHaveLength(6); // no scores → cap never blind-trims by age
+    const uncapped = buildBandedHistory({ ...base, turns: sixTurns(), bandCap: 0, relevanceScores: scores({ t1: 1, t2: 1, t3: 1, t4: 1, t5: 1, t6: 1 }) });
+    expect(survivors(uncapped.recap)).toHaveLength(6);
+    const within = buildBandedHistory({ ...base, turns: sixTurns(), bandCap: 10, relevanceScores: scores({ t1: 1, t2: 1, t3: 1, t4: 1, t5: 1, t6: 1 }) });
+    expect(within.counts.turnsRelevanceDropped).toBe(0);
+  });
+
+  it('clamps a too-small cap to the protected floor (opening + newest two)', () => {
+    const { recap } = buildBandedHistory({
+      ...base, turns: sixTurns(), bandCap: 1,
+      relevanceScores: scores({ t1: 0, t2: 0, t3: 0, t4: 0, t5: 0, t6: 0 }),
+    });
+    expect(survivors(recap)).toEqual(['D1', 'D5', 'D6']); // floor of 3, never fewer
+  });
+});
+
 describe('buildBandedHistory semantic rehydration', () => {
   const RECAP = 'Recap the story so far.';
   const RECALL = 'Recall the earlier scene.';

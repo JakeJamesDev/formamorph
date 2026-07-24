@@ -396,6 +396,8 @@ export const SettingsModal = ({ isOpen, onOpenChange, previewValues, initialTab,
     setSemanticRehydration,
     semanticDiaries,
     setSemanticDiaries,
+    semanticBandCap,
+    setSemanticBandCap,
     concurrentTurnRequests,
     setConcurrentTurnRequests,
     autosaveEnabled,
@@ -1089,6 +1091,31 @@ export const SettingsModal = ({ isOpen, onOpenChange, previewValues, initialTab,
                     />
                     <span className="text-xs text-muted-foreground">
                       Experimental. When memories no longer fit, keeps the ones most relevant to your current action instead of just the newest. Runs a small language model on your device — enabling downloads it once (~23 MB) and stores it in your browser.
+                    </span>
+                  </div>
+                </div>
+              )}
+              {/* Always-on top-K cap: derived checkbox (cap > 0), enabling seeds a sensible default. */}
+              {memoryDigests && semanticMemory && (
+                <div className="grid grid-cols-1 sm:grid-cols-4 items-start gap-4">
+                  <label className="text-left sm:text-right pt-2">Memory Cap</label>
+                  <div className="col-span-3 space-y-2">
+                    <div className="flex items-center gap-3">
+                      <Checkbox
+                        checked={semanticBandCap > 0}
+                        onCheckedChange={(v) => setSemanticBandCap(v === true ? 12 : 0)}
+                      />
+                      <Input
+                        type="number"
+                        min={3}
+                        value={semanticBandCap > 0 ? semanticBandCap : 12}
+                        disabled={semanticBandCap === 0}
+                        onChange={(e) => setSemanticBandCap(Math.max(3, parseInt(e.target.value) || 3))}
+                        className="w-20"
+                      />
+                    </div>
+                    <span className="text-xs text-muted-foreground">
+                      Experimental. Keeps only this many remembered moments in view each turn — the ones most relevant to your action — even when more would fit. Smaller, sharper prompts on long stories; the story opening and the newest memories always stay. Off carries everything that fits.
                     </span>
                   </div>
                 </div>
