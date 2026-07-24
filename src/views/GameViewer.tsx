@@ -53,7 +53,7 @@ import {
   planDirective,
   defaultDiscoverEntityPrompt,
   OPENING_SCENE_CUE,
-  defaultMilestonePrompt,
+  defaultMilestoneIncrementalPrompt,
 } from "../components/game/GamePrompts";
 import {
   buildDiaryUserMessage,
@@ -79,7 +79,7 @@ import { variableForToken, variableVariantIds, decodeVariant, tokenVariant, with
 import { renderPromptTemplate } from "../lib/promptTemplate";
 import { useBaselineTestHook } from "../lib/baselineTestHook";
 import { parseTurns, buildVerbatimHistory, buildBandedHistory, extractKeywords, type BandCounts } from "../lib/turnBanding";
-import { milestoneCandidates, agedMilestoneCandidates, resolveMilestoneDrop, buildMilestoneUserMessage, parseMilestoneReply } from "../lib/milestoneMemory";
+import { milestoneCandidates, agedMilestoneCandidates, resolveMilestoneDrop, resolveMilestoneKeep, buildIncrementalMilestoneUserMessage, parseIncrementalMilestoneReply, applyIncrementalVerdict } from "../lib/milestoneMemory";
 import { buildRelevanceScores, vectorKey } from "../lib/memoryRelevance";
 import { entryVectorKey, entryEmbedText, selectSemanticLore, applySemanticLore } from "../lib/semanticDictionary";
 import { selectSemanticRehydrations, rehydrationCooldownBlocked } from "../lib/semanticRehydration";
@@ -2543,49 +2543,78 @@ ${playerNotes || NONE_PLACEHOLDER}
     })();
   }, [memoryDigests, isWaitingForAI, diaryActive, discoverActive, fullMessageHistory, summaryPrompt, summaryUserPrompt, buildContextValues, setFullMessageHistory]);
 
-  // Milestone-selection drainer: once every due digest is written, silently re-select which old-band
-  // digests stay in long-term memory (see lib/milestoneMemory). Runs at most once per history state —
-  // the stored selection records exactly which turn ids it saw, so it is stale whenever the candidate
-  // window has shifted. A malformed reply is stored as `selected: null` (keep everything) rather than
-  // retried: fail-safe, never fail-drop.
+  // Milestone-selection drainer (incremental, T4): once every due digest is written, silently judge
+  // only the NEWLY-ARRIVED digests against the already-kept list (see lib/milestoneMemory). Old
+  // verdicts persist — an old memory changes state only via an explicit Forget (supersession) or a
+  // player pin — so the whole-list flip-flop is dead by construction. A malformed reply keeps every
+  // new entry and touches nothing old: fail-safe, never fail-drop. Selection entries whose turns
+  // left the candidate set (rollback) are pruned so a re-aging turn is judged fresh.
   useEffect(() => {
     if (!memoryDigests || isWaitingForAI || diaryActive || discoverActive || digestDrainingRef.current || diaryDrainingRef.current || discoverDrainingRef.current || milestoneDrainingRef.current) return;
     if (selectDueDigests(fullMessageHistory).length > 0) return; // digests first — the selector reads them
     const turns = parseTurns(fullMessageHistory);
     const candidates = milestoneCandidates(turns);
     if (candidates.length === 0) return;
-    const candIds = candidates.map((t) => t.turnId ?? "");
-    if (milestoneSelection && milestoneSelection.seen.join("\n") === candIds.join("\n")) return; // fresh
-    const digests = candidates.map((t) => (t.summary ?? "").trim());
+    const candSet = new Set(candidates.map((t) => t.turnId ?? ""));
+    let selection = milestoneSelection;
+    if (selection && selection.seen.some((id) => !candSet.has(id))) {
+      selection = {
+        seen: selection.seen.filter((id) => candSet.has(id)),
+        selected: selection.selected === null ? null : selection.selected.filter((id) => candSet.has(id)),
+      };
+    }
+    const seenSet = new Set(selection?.seen ?? []);
+    const freshCands = candidates.filter((t) => t.turnId && !seenSet.has(t.turnId));
+    if (freshCands.length === 0) {
+      if (selection !== milestoneSelection) setMilestoneSelection(selection); // commit the prune
+      return;
+    }
+    // The kept-old context mirrors what actually rides: the selector's surviving verdicts with the
+    // player's pins applied (a pin-dropped memory is gone and can't be "forgotten" again).
+    const oldCands = candidates.filter((t) => t.turnId && seenSet.has(t.turnId));
+    const selObj = selection
+      ? { seen: seenSet, selected: selection.selected === null ? null : new Set(selection.selected) }
+      : null;
+    const keptIds = resolveMilestoneKeep(oldCands, selObj, memoryPins);
+    const shownOld = oldCands.filter((t) => keptIds.has(t.turnId!));
     const attachTurnId = turns[turns.length - 1]?.turnId;
+    const stableSelection = selection;
 
     milestoneDrainingRef.current = true;
     setMilestoneActive(true);
     (async () => {
       try {
         const reply = await makeAIRequestRef.current(
-          defaultMilestonePrompt,
-          [{ role: "user", content: buildMilestoneUserMessage(digests) }],
+          defaultMilestoneIncrementalPrompt,
+          [{
+            role: "user",
+            content: buildIncrementalMilestoneUserMessage(
+              shownOld.map((t) => (t.summary ?? "").trim()),
+              freshCands.map((t) => (t.summary ?? "").trim()),
+            ),
+          }],
           "milestoneSelect",
           MILESTONE_SELECT_MAX_TOKENS,
           undefined,
           true, // silent: surfaces only when "Show Silent Requests" is on
           attachTurnId,
         );
-        const parsed = parseMilestoneReply((reply ?? "").trim(), candidates.length);
-        setMilestoneSelection({
-          seen: candIds,
-          selected: parsed === null ? null : candIds.filter((_, i) => parsed.has(i)),
-        });
+        const verdict = parseIncrementalMilestoneReply((reply ?? "").trim(), shownOld.length, freshCands.length);
+        setMilestoneSelection(applyIncrementalVerdict(
+          stableSelection,
+          shownOld.map((t) => t.turnId!),
+          freshCands.map((t) => t.turnId!),
+          verdict,
+        ));
       } catch {
         // Non-fatal: the selection stays stale and is retried on a later idle tick; until then the
-        // previous selection (or keep-everything) applies.
+        // previous selection (or keep-everything-unseen) applies.
       } finally {
         milestoneDrainingRef.current = false;
         setMilestoneActive(false);
       }
     })();
-  }, [memoryDigests, isWaitingForAI, diaryActive, discoverActive, fullMessageHistory, narrationVerbatimTurns, milestoneSelection, setMilestoneSelection]);
+  }, [memoryDigests, isWaitingForAI, diaryActive, discoverActive, fullMessageHistory, narrationVerbatimTurns, milestoneSelection, setMilestoneSelection, memoryPins]);
 
   // Embedding drainer: keep a vector on hand for everything the semantic features score at turn time —
   // turn digests (semanticMemory) and dictionary entries (semanticLore) — so scoring is a sync lookup.

@@ -1,0 +1,33 @@
+{
+  "comment": "Recall-margin probe fixture (T2/T3): a one-house SAME-CAST world where every digest shares cast, location, and register, so absolute cosine floors saturate — the repeat.json failure shape. Charged actions (expect: []) are in-scene continuations that should recall NOTHING; return actions name a distinct past event and should recall it. expect lists every acceptable digest index (chest events are legitimately ambiguous between discovery and opening). Unlike the trade-coast fixtures, nothing here is separated by geography or cast — separation must come from the margin rule alone. Each action carries a narrationTail (~2 sentences of the narration preceding it) for the T3 enriched-query arm; tails deliberately avoid the target digest's distinctive tokens (chest, key, Liss, coalman, plum wine, grate) so an enriched win must come from the action's intent, not a handed keyword — while charged tails are fully charged, the honest stickiness risk.",
+  "world": "A narrow canal house in a snowbound port town. Two people, one roof, one winter. No magic; weather, money, and what they are to each other are the only forces.",
+  "digests": [
+    "You move into the narrow canal house with Sera; the first night you share a bottle of plum wine on the stairs.",
+    "You and Sera spend a slow morning tangled in bed, trading whispered teasing until noon.",
+    "Sera pulls you into the window seat at dusk; kisses grow heated before the unlit lamp.",
+    "You undress each other by candlelight in the upstairs bedroom, laughing at the creaking floorboards.",
+    "Sera shows you the small brass key she wears on a cord: it opens the sea chest her mother left her, and she has never once opened it.",
+    "Another charged evening on the living-room couch: wine, slow kisses, her hands in your hair.",
+    "You wake before dawn wrapped around Sera and stay until the harbor bells; she murmurs your name in her sleep.",
+    "You quarrel with Sera over the unpaid coal bill; she sleeps in the spare room and you slide an apology note under the door.",
+    "A storm keeps you both in; you spend the whole gray day in bed, skin to skin, listening to the rain.",
+    "Sera finally opens her mother's sea chest with the brass key: inside lie a wedding veil and a letter naming a sister, Liss, she never knew she had.",
+    "You bathe together in the copper tub until the water goes cool, neither of you willing to move first.",
+    "Sera straddles your lap on the couch again; the same couch, the same slow heat, the fire burned low.",
+    "Forehead to forehead, you promise Sera you will help her find Liss when the mountain passes clear in spring.",
+    "You and Sera make love in the upstairs bedroom while snow ticks against the glass.",
+    "Sera burns her mother's letter in the grate after copying one name into her pocketbook; she cries and will not say why.",
+    "Late night tangled on the couch once more, whispering half-made plans and kissing between them."
+  ],
+  "actions": [
+    { "name": "charged-moan", "text": "I moan louder", "expect": [], "narrationTail": "Sera's mouth finds the hollow of your throat as the fire settles low. Her breath is warm against your skin, unhurried and certain." },
+    { "name": "charged-kiss", "text": "I kiss her slower, taking my time", "expect": [], "narrationTail": "She draws you down onto the couch, fingers curling into your shirt. Outside the snow keeps falling, and neither of you cares." },
+    { "name": "charged-blanket", "text": "I pull her closer under the blanket", "expect": [], "narrationTail": "The blanket has slipped to your waists, and Sera laughs softly, pressing closer for warmth. Her heart beats quick against your ribs." },
+    { "name": "charged-hands", "text": "I run my hands down her back", "expect": [], "narrationTail": "Sera arches into you, her hair spilling loose across the pillow. The candle gutters, and the dark makes everything slower." },
+    { "name": "return-chest", "text": "I ask her what she imagined was inside all those years she never turned that little key", "expect": [4, 9], "narrationTail": "The two of you share tea while the harbor bells count the hour. Sera hums something tuneless, mending the hem of her coat." },
+    { "name": "return-promise", "text": "I tell her I haven't forgotten what I swore about spring, once the passes open", "expect": [12], "narrationTail": "Morning light comes in thin and blue off the snow. Sera stands at the window a long while, looking out at the frozen canal." },
+    { "name": "return-grate", "text": "I ask her gently why she wept by the fireplace that night and wouldn't speak", "expect": [14], "narrationTail": "The evening is quiet, the two of you at either end of the couch with your feet tangled in the middle. Sera stares into the fire longer than usual." },
+    { "name": "return-coal", "text": "I offer to settle what we still owe the coalman so it stops sitting between us", "expect": [7], "narrationTail": "Frost flowers the windows, and the scuttle by the stove rings hollow when you nudge it. Sera pulls her shawl tighter and says nothing." },
+    { "name": "return-firstnight", "text": "I remind her of our first night here, the stairs and the plum wine", "expect": [0], "narrationTail": "Sera falls asleep against your shoulder halfway through your story. The house creaks around you, familiar now as your own pulse." }
+  ]
+}

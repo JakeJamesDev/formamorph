@@ -282,10 +282,12 @@ function useProvideSettings() {
   // the RELEVANT older entries instead of pure recency (roadmap step 4). Requires semanticMemory
   // (shared model) and characterDiaries (the entries themselves). Default off.
   const [semanticDiaries, setSemanticDiaries] = usePersistentState<boolean>(`${APP_ID}_semanticDiaries`, false, boolCodec);
-  // EXPERIMENTAL always-on memory cap (roadmap step 3): with semanticMemory on, the digest band keeps
-  // at most this many memories every turn — the most relevant ones — even when more would fit.
-  // 0 = no cap (the band carries everything that fits, trimming only under budget pressure).
-  const [semanticBandCap, setSemanticBandCap] = usePersistentState<number>(`${APP_ID}_semanticBandCap`, 0, intCodec);
+  // Memory cap (roadmap T5, default on since the 50-turn A/B): with semanticMemory on, the digest
+  // band keeps at most this many memories every turn — the most relevant ones — even when more
+  // would fit. 0 = no cap (the band carries everything that fits, trimming only under budget
+  // pressure). usePersistentState stores the default on first mount, so the flip reaches fresh
+  // installs only — existing installs keep their stored value.
+  const [semanticBandCap, setSemanticBandCap] = usePersistentState<number>(`${APP_ID}_semanticBandCap`, 12, intCodec);
   // Fire the post-narration aux requests (choices + stat updates + location router) concurrently instead of
   // one after another. Default on: ~29% faster turns on a parallel-capable endpoint (LM Studio "Parallel",
   // Ollama), harmless on serial endpoints (they queue). Turn off if a VRAM-tight local engine slows or OOMs

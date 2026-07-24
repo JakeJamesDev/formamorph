@@ -295,6 +295,44 @@ Entry 2 is the player's stated errand - the story steers by it, so it stays. Ent
 
 Reply with only the numbers to keep, comma-separated.`;
 
+// The incremental milestone selector (T4): judges only NEWLY-AGED digests against the already-kept
+// list, so old verdicts never flip-flop — an old memory changes state only via an explicit Forget.
+// The pairing protocol is load-bearing: a Forget must cite WHICH kept new moment replaces the old
+// one ("Forget: 2 replaced by 4"), and the parser voids uncited forgets — prompt wording alone let
+// the model forget an old entry nearly every batch (probe arms 'shipped' 0.38 / 'restraint' 0.53
+// must recall vs 'paired' cloud 0.88-0.90, Cydonia 1.00, must-forgets 21→0). The second example
+// (none/none) teaches that most batches forget nothing; 'paired2's extra strictness clauses
+// REGRESSED closure keeps (0.80) — don't re-add them. Probe: milestone-select-probe.mjs --mode
+// incremental; keep its parser mirror in sync with lib/milestoneMemory.
+export const defaultMilestoneIncrementalPrompt = `You are the memory keeper of an interactive story. You are given the moments already in memory, then the new moments to judge. Keep a new moment only if someone in the story would bring it up again or act on it: a promise or debt still open, a threat or wound that persists, a thing gained and kept, a favor done or a slight given that changes how one character sees another, a secret learned, a role or pretense being played, or the player's own stated errand - who they say they are and where they are bound. Drop what no one would ever speak of again - passing movement and small talk. When unsure whether a new moment still matters, let it go.
+
+The already-kept moments are settled: never list them under Keep, and never forget one because it is old, already used, or quiet. A kept moment may be forgotten only when a NEW moment you are keeping carries its outcome - the promise now fulfilled, the debt now repaid - and then you must say which: "Forget: 2 replaced by 4". Most of the time nothing is replaced: reply "Forget: none".
+
+Example of the reasoning, with placeholder entries standing for any story:
+Moments already in memory, oldest first:
+1. <the player states who they are and what they mean to accomplish>
+2. <the player promises a character they will do some task>
+New moments to judge:
+3. <idle small talk with a passerby>
+4. <the player completes the promised task, and the character acknowledges it>
+Correct reply:
+Keep: 4
+Forget: 2 replaced by 4
+Entry 4 carries entry 2's outcome - the fulfilled promise replaces the promise itself, so the ending is kept and the setup is forgotten. Entry 3 is a passing moment. Entry 1 still steers the story and nothing replaced it, so it stays untouched.
+
+Second example:
+Moments already in memory, oldest first:
+1. <the player promises a character they will do some task>
+2. <the player takes something valuable and keeps it>
+New moments to judge:
+3. <the player walks from one place to another>
+Correct reply:
+Keep: none
+Forget: none
+The promise is still open and the valuable is still carried - nothing here touches either - and the walk is a passing moment no one would mention again.
+
+Reply with the Keep line, then the Forget line.`;
+
 // The character-diary pass: run once per participating character as turns age out, to record that
 // character's own first-person memory of the turn. Identity + narration arrive in the user message
 // (buildDiaryUserMessage); this system prompt is the generic diarist framing.

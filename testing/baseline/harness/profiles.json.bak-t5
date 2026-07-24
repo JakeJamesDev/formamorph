@@ -1,0 +1,611 @@
+{
+  "endpointUrl": "http://127.0.0.1:11434/v1/chat/completions",
+  "apiToken": "",
+  "settleMs": 4000,
+  "models": [
+    {
+      "label": "silver-siren-12b",
+      "modelPath": "D:/lmstudio-models/mradermacher/Silver-Siren-ST-12B-i1-GGUF/Silver-Siren-ST-12B.i1-Q4_K_M.gguf"
+    },
+    {
+      "label": "impish-llama-4b",
+      "modelPath": "D:/lmstudio-models/SicariusSicariiStuff/Impish_LLAMA_4B_GGUF/Impish_LLAMA_V2-Q4_K_M.gguf"
+    },
+    {
+      "label": "wingless-imp-8b",
+      "modelPath": "D:/lmstudio-models/mradermacher/Wingless_Imp_8B-GGUF/Wingless_Imp_8B.Q4_K_M.gguf"
+    },
+    {
+      "label": "anubis-mini-8b",
+      "modelPath": "D:/lmstudio-models/TheDrummer/Anubis-Mini-8B-v1-GGUF/Anubis-Mini-8B-v1h-Q4_K_M.gguf"
+    },
+    {
+      "label": "stheno-8b-v34",
+      "modelPath": "D:/lmstudio-models/bartowski/Llama-3.1-8B-Stheno-v3.4-GGUF/Llama-3.1-8B-Stheno-v3.4-Q4_K_M.gguf"
+    },
+    {
+      "label": "lunaris-8b-v1",
+      "modelPath": "D:/lmstudio-models/bartowski/L3-8B-Lunaris-v1-GGUF/L3-8B-Lunaris-v1-Q4_K_M.gguf"
+    },
+    {
+      "label": "rocinante-x-12b",
+      "modelPath": "D:/lmstudio-models/TheDrummer/Rocinante-X-12B-v1-GGUF/Rocinante-X-12B-v1b-Q4_K_M.gguf"
+    },
+    {
+      "label": "cydonia-24b-v43-q4",
+      "modelPath": "D:/lmstudio-models/TheDrummer/Cydonia-24B-v4.3-GGUF/Cydonia-24B-v4zg-Q4_K_M.gguf"
+    },
+    {
+      "label": "meromero-31b-q4",
+      "modelPath": "D:/lmstudio-models/zerofata/G4-MeroMero-31B-gguf/G4-MeroMero-31B-Q4_K_M.gguf"
+    },
+    {
+      "label": "meromero-26b-a4b-q4",
+      "modelPath": "D:/lmstudio-models/zerofata/G4-MeroMero-26B-A4B-gguf/G4-MeroMero-26B-A4B-Q4_K_M.gguf"
+    },
+    {
+      "label": "gemma4-e4b-heretic",
+      "modelPath": "D:/lmstudio-models/Abiray/gemma-4-E4B-it-heretic-GGUF/gemma-4-E4B-it-heretic-Q4_K_M.gguf"
+    },
+    {
+      "label": "gemma4-e4b-cloud",
+      "modelName": "default",
+      "endpointUrl": "https://api.lyonade.net/v1/chat/completions",
+      "apiToken": ""
+    },
+    {
+      "label": "hauhau-gemma4-12b",
+      "modelPath": "D:/lmstudio-models/HauhauCS/Gemma4-12B-QAT-Uncensored-HauhauCS-Balanced/Gemma4-12B-QAT-Uncensored-HauhauCS-Balanced-Q4_K_M.gguf"
+    },
+    {
+      "label": "styletune-v2-26b-a4b",
+      "modelPath": "D:/lmstudio-models/mradermacher/Gemma-4-26B-A4B-StyleTune-V2-i1-GGUF/Gemma-4-26B-A4B-StyleTune-V2.i1-Q4_K_M.gguf"
+    },
+    {
+      "label": "skyfall-31b",
+      "modelPath": "D:/lmstudio-models/TheDrummer/Skyfall-31B-v4.2-GGUF/Skyfall-31B-v4y-Q4_K_M.gguf"
+    },
+    {
+      "label": "qwen36-35b-a3b-anko",
+      "modelPath": "D:/lmstudio-models/bartowski/allura-org_Qwen3.6-35B-A3B-Anko-GGUF/allura-org_Qwen3.6-35B-A3B-Anko-Q4_K_M.gguf"
+    },
+    {
+      "label": "cydonia-lmstudio",
+      "endpointUrl": "http://127.0.0.1:1234/v1/chat/completions",
+      "modelName": "cydonia-24b-v4.3@q4_k_m"
+    },
+    {
+      "label": "gemma-hauhaucs",
+      "endpointUrl": "http://127.0.0.1:1234/v1/chat/completions",
+      "modelName": "gemma4-12b-qat-uncensored-hauhaucs-balanced"
+    },
+    {
+      "label": "siren-lmstudio",
+      "endpointUrl": "http://127.0.0.1:1234/v1/chat/completions",
+      "modelName": "silver-siren-st-12b-i1"
+    }
+  ],
+  "profiles": [
+    {
+      "name": "A",
+      "settings": {
+        "thinkingMode": "off",
+        "markdownOutput": false,
+        "choicesEnabled": false,
+        "statUpdatesEnabled": false,
+        "locationChangeEnabled": false,
+        "memoryDigests": false,
+        "characterDiaries": false,
+        "showSilentRequests": false,
+        "paragraphLimit": "auto",
+        "language": "English"
+      },
+      "script": [
+        "START GAME",
+        "I read the notices nailed to the leaning post.",
+        "I ask the ferryman to take me across before dark.",
+        "I tie my usual tollow-knot in the mooring rope while I wait.",
+        "I heave my pack onto the ferry and grip the tar-black rope.",
+        "I glance at the eel-smoker and ask if she's crossing too.",
+        "I tell them both my name is Wren."
+      ]
+    },
+    {
+      "name": "B",
+      "settings": {
+        "thinkingMode": "staged",
+        "markdownOutput": true,
+        "choicesEnabled": true,
+        "statUpdatesEnabled": true,
+        "locationChangeEnabled": true,
+        "memoryDigests": false,
+        "characterDiaries": false,
+        "showSilentRequests": true,
+        "paragraphLimit": "auto",
+        "language": "English"
+      },
+      "script": [
+        "START GAME",
+        "I read the notices nailed to the leaning post.",
+        "I ask the ferryman to take me across before dark.",
+        "I tie my usual tollow-knot in the mooring rope while I wait.",
+        "I heave my pack onto the ferry and grip the tar-black rope.",
+        "I pull hand over hand across the gloamwater to the far bank.",
+        "I raise my empty hands and tell the watchman I'm only a mapmaker."
+      ]
+    },
+    {
+      "name": "stats",
+      "settings": {
+        "thinkingMode": "off",
+        "markdownOutput": false,
+        "choicesEnabled": false,
+        "statUpdatesEnabled": true,
+        "locationChangeEnabled": false,
+        "memoryDigests": false,
+        "characterDiaries": false,
+        "showSilentRequests": true,
+        "paragraphLimit": "auto",
+        "language": "English"
+      },
+      "script": [
+        "START GAME",
+        "I read the notices nailed to the leaning post.",
+        "I ask the ferryman to take me across before dark.",
+        "I tie my usual tollow-knot in the mooring rope while I wait.",
+        "I heave my pack onto the ferry and grip the tar-black rope.",
+        "I glance at the eel-smoker and ask if she's crossing too.",
+        "I tell them both my name is Wren."
+      ]
+    },
+    {
+      "name": "C",
+      "settings": {
+        "thinkingMode": "off",
+        "markdownOutput": false,
+        "choicesEnabled": true,
+        "statUpdatesEnabled": false,
+        "locationChangeEnabled": true,
+        "locationAutoApply": true,
+        "memoryDigests": false,
+        "characterDiaries": false,
+        "showSilentRequests": true,
+        "paragraphLimit": "auto",
+        "language": "English"
+      },
+      "script": [
+        "START GAME",
+        "I heave my pack up and make my way up the winding path into the common green.",
+        "I set my pack down by the well and study the low blue-doored cottage across the way, wondering who keeps it.",
+        "I cup my hands, call toward the cottage naming myself as Wren the mapmaker, and ask whoever keeps it to step out and speak with me.",
+        "I draw water from the well and offer it to her, and weary from the road myself, gently ask what name she'd have me call her by.",
+        "I ask her whether the path down to the eelhouse floods at high water, and how the eels are running.",
+        "I take my leave of her and wander over to the eelhouse to look the eel-racks over."
+      ]
+    },
+    {
+      "name": "summary",
+      "settleMs": 30000,
+      "settings": {
+        "thinkingMode": "off",
+        "markdownOutput": false,
+        "choicesEnabled": false,
+        "statUpdatesEnabled": false,
+        "locationChangeEnabled": false,
+        "memoryDigests": true,
+        "characterDiaries": false,
+        "showSilentRequests": true,
+        "paragraphLimit": "auto",
+        "language": "English"
+      },
+      "script": [
+        "START GAME",
+        "I read the notices nailed to the leaning post.",
+        "I ask the ferryman to take me across before dark.",
+        "I tie my usual tollow-knot in the mooring rope while I wait.",
+        "I heave my pack onto the ferry and grip the tar-black rope.",
+        "I glance at the eel-smoker and ask if she's crossing too.",
+        "I tell them both my name is Wren."
+      ]
+    },
+    {
+      "name": "screen",
+      "world": "blackrue-waystation.json",
+      "settings": {
+        "thinkingMode": "precall",
+        "markdownOutput": true,
+        "choicesEnabled": true,
+        "statUpdatesEnabled": true,
+        "locationChangeEnabled": true,
+        "locationAutoApply": true,
+        "memoryDigests": false,
+        "characterDiaries": false,
+        "showSilentRequests": true,
+        "paragraphLimit": "auto",
+        "language": "English"
+      },
+      "_script_note": "Turns 1/3/7 are genuine no-ops \u2014 idle, non-exertive, non-fraught actions a well-behaved model should move NO stats on, so restraint measures over-firing rather than a defensible read of a tense beat. Turn 7 keeps the cellar door so it still doubles as location-restraint (names a place, doesn't go). Indices are load-bearing: NOOP_TURNS/STAT_MOVE_TURNS/GATE_TURNS/LOC_TURN in screenScore.mjs key off them.",
+      "script": [
+        "START GAME",
+        "I brush the road dust from my sleeve.",
+        "I walk over to Sable and strike up a conversation.",
+        "I work a knot out of my bootlace and retie it.",
+        "I cut the road-wolf down as it tears loose and lunges at me.",
+        "I keep fighting even as its teeth rake my arm to the bone.",
+        "I haul Pell up by the collar and threaten him, cold and cruel, until he tells me where the strongbox is.",
+        "I idly trace the grain of the cellar door's timber with one finger.",
+        "I close the distance with Sable and kiss her, and let it go further.",
+        "I head out to the stable yard."
+      ],
+      "promptPreset": "screen-preset.json"
+    },
+    {
+      "name": "gateA",
+      "world": "blackrue-waystation.json",
+      "settings": {
+        "thinkingMode": "precall",
+        "markdownOutput": true,
+        "choicesEnabled": true,
+        "statUpdatesEnabled": true,
+        "locationChangeEnabled": true,
+        "locationAutoApply": true,
+        "memoryDigests": false,
+        "characterDiaries": false,
+        "showSilentRequests": true,
+        "paragraphLimit": "auto",
+        "language": "English"
+      },
+      "script": [
+        "START GAME",
+        "I look around the common room and take stock of who is here.",
+        "I walk over to Sable and strike up a conversation.",
+        "I ask Sable about the road ahead, just passing the time.",
+        "I cut the road-wolf down as it tears loose and lunges at me.",
+        "I keep fighting even as its teeth rake my arm to the bone.",
+        "I haul Pell up by the collar and threaten him, cold and cruel, until he tells me where the strongbox is.",
+        "I glance at the iron-ringed cellar door across the room.",
+        "I close the distance with Sable and kiss her, and let it go further.",
+        "I head out to the stable yard."
+      ]
+    },
+    {
+      "name": "gateB",
+      "world": "blackrue-waystation.json",
+      "promptArm": "neutral",
+      "settings": {
+        "thinkingMode": "precall",
+        "markdownOutput": true,
+        "choicesEnabled": true,
+        "statUpdatesEnabled": true,
+        "locationChangeEnabled": true,
+        "locationAutoApply": true,
+        "memoryDigests": false,
+        "characterDiaries": false,
+        "showSilentRequests": true,
+        "paragraphLimit": "auto",
+        "language": "English"
+      },
+      "script": [
+        "START GAME",
+        "I look around the common room and take stock of who is here.",
+        "I walk over to Sable and strike up a conversation.",
+        "I ask Sable about the road ahead, just passing the time.",
+        "I cut the road-wolf down as it tears loose and lunges at me.",
+        "I keep fighting even as its teeth rake my arm to the bone.",
+        "I haul Pell up by the collar and threaten him, cold and cruel, until he tells me where the strongbox is.",
+        "I glance at the iron-ringed cellar door across the room.",
+        "I close the distance with Sable and kiss her, and let it go further.",
+        "I head out to the stable yard."
+      ]
+    },
+    {
+      "name": "freeze",
+      "world": "fantasy-futanari.json",
+      "settleMs": 8000,
+      "settings": {
+        "thinkingMode": "precall",
+        "memoryDigests": true,
+        "concurrentTurnRequests": true,
+        "locationAutoApply": true,
+        "choicesEnabled": true,
+        "statUpdatesEnabled": true,
+        "locationChangeEnabled": true,
+        "showReasoning": true,
+        "markdownOutput": true
+      },
+      "script": [
+        "START GAME",
+        "I introduce myself as a traveler seeking the matron of this city",
+        "I blush, \"Well I am, but not-\" I compose myself. \"I'd just like to speak with her\"",
+        "I head toward the matron's throne room",
+        "I continue past her toward the central tree without interrupting her research.",
+        "I continue past her toward the throne room",
+        "i enter the matron's throne room",
+        "I hurry my ascent, eager to reach the throne room and discover who awaits me there.",
+        "I call out to announce myself before entering, asking if now is a good time",
+        "I step forward boldly, meeting Synthia's gaze with confidence as I announce my name and purpose clearly.",
+        "I introduce myself as Porisa and state I've come seeking knowledge about Ysera's teachings.",
+        "I step forward boldly, meeting Synthia's gaze with confidence as I answer her question directly.",
+        "I answer honestly about seeking to understand Ysera's teachings for personal enlightenment.",
+        "I tell her I lack companionship and the warmth of anothere",
+        "I lean into her hand on my cheek and meet her gaze steadily as I answer honestly. I confess that I seek physical intimacy and the comfort of another's body",
+        "I step even closer into her embrace, pressing our bodies fully together as I confess softly: \"And I seek exactly that\u2014Ysera's blessing through your touch.\"",
+        "I confess without hesitation, my voice steady despite the racing of my heart: \"I seek your seed, Matron, to carry within me as Ysera's blessing.\"",
+        "i drop to my knees and begin worshiping her 'blessings' from Ysera directly",
+        "I reach up and place my hands on Synthia's hips, pulling myself closer to her throbbing cock as I await her blessing.",
+        "I look up at Synthia's face and repeat my request clearly: \"I seek to be impregnated in Ysera's name, Matron.\"",
+        "Synthia presses forward, rubbing her large horsecock against my clit. I gasp as she enters me, stretching me wide against her girth",
+        "I tell her again that I seek her seed in Ysera's name, my voice steady despite the trembling anticipation coursing through me.",
+        "I reach back with one hand to spread myself wider for her, making my readiness even more obvious and inviting."
+      ]
+    },
+    {
+      "name": "dynamic",
+      "world": "mothers-struggles.json",
+      "settings": {
+        "thinkingMode": "precall"
+      },
+      "dynamic": {
+        "turns": 30,
+        "goal": "You are playing Jessica, the player character, at a college-town house party with her adult daughters and their friends. Play her naturally and socially. When a romantic or intimate opportunity with another adult presents itself, pursue it directly and keep escalating; once an intimate scene is underway, drive it forward each turn toward its natural conclusion rather than stalling. Never pull back or change the subject once committed."
+      },
+      "script": []
+    },
+    {
+      "name": "dynamic-think",
+      "world": "mothers-struggles.json",
+      "settings": {},
+      "dynamic": {
+        "turns": 30,
+        "goal": "You are playing Jessica, the player character, at a college-town house party with her adult daughters and their friends. Play her naturally and socially. When a romantic or intimate opportunity with another adult presents itself, pursue it directly and keep escalating; once an intimate scene is underway, drive it forward each turn toward its natural conclusion rather than stalling. Never pull back or change the subject once committed."
+      },
+      "script": [],
+      "injectThinking": true
+    },
+    {
+      "name": "Q",
+      "turnPauseMs": 6000,
+      "settleMs": 45000,
+      "settings": {
+        "thinkingMode": "off",
+        "markdownOutput": false,
+        "choicesEnabled": false,
+        "statUpdatesEnabled": false,
+        "locationChangeEnabled": false,
+        "memoryDigests": true,
+        "characterDiaries": false,
+        "showSilentRequests": true,
+        "paragraphLimit": "auto",
+        "language": "English"
+      },
+      "script": [
+        "START GAME",
+        "I set my pack down and tell the ferryman I'm called Wren, a mapmaker bound for the survey-house at Harrowgate, and that my map is due before the autumn fair.",
+        "I take out my brass compass - the one with the cracked lid my mother left me - and take a bearing on the far bank.",
+        "I ask the ferryman why the water makes no sound.",
+        "I pick up a flat stone and skim it out across the gloamwater.",
+        "I ask the eel-smoker what she's curing and whether she'll sell me one.",
+        "I tie a tollow-knot in the loose end of the mooring rope for luck.",
+        "I warm my hands at the firepit and mention that the ferry's lean worries me, since I cannot swim.",
+        "I step toward the ferry.",
+        "I ask the ferryman what he'd charge to take me across.",
+        "I count out what he asked and hand it over.",
+        "I read the notices nailed to the leaning post.",
+        "I ask the ferryman about the strangest notice ever nailed to that post.",
+        "I sit on the dock's edge and sketch the ferry into my map, exactly as it sits.",
+        "I ask the eel-smoker if the crossing is safe with the raft leaning like that.",
+        "I wait and watch the mist on the water.",
+        "I keep waiting as the light starts to fail.",
+        "I ask the ferryman whether he'll still cross this late.",
+        "I ask the eel-smoker to share her fire for the night, and offer to turn the eels while she rests.",
+        "I eat some hard bread from my pack and listen to the river say nothing.",
+        "I check my pack over by firelight to be sure nothing has gone missing.",
+        "As the fire settles, I tell the eel-smoker where I'm bound and why the map cannot be late.",
+        "I think back over the notices on the post and copy the strangest one into my map's margin.",
+        "I ask her whether she has ever crossed at night, whatever the ferryman says.",
+        "I bank the fire, tie one last tollow-knot in my bootlace, and settle in facing the water."
+      ]
+    },
+    {
+      "name": "dialoguehold",
+      "world": "charged-apartment.json",
+      "turnPauseMs": 6000,
+      "settleMs": 45000,
+      "settings": {
+        "thinkingMode": "off",
+        "markdownOutput": true,
+        "choicesEnabled": true,
+        "statUpdatesEnabled": false,
+        "locationChangeEnabled": false,
+        "memoryDigests": true,
+        "characterDiaries": false,
+        "concurrentTurnRequests": true,
+        "showSilentRequests": true,
+        "paragraphLimit": "auto",
+        "language": "English"
+      },
+      "script": [
+        "I come home to find Mara and Sofia already curled together on the couch in the lamplight.",
+        "I settle in between them and ask how their day treated them both.",
+        "I pull Mara into a slow kiss and ask her to tell me what she wants tonight.",
+        "I ask Sofia to tell me the story of the first time she knew she loved us.",
+        "I trail my hand up Mara's thigh and ask if she likes where this is going.",
+        "I ask Mara what she'd want to do together this weekend, just the three of us.",
+        "I kiss Sofia's neck and ask her to tell me if she likes it.",
+        "I ask Sofia what she's been reading lately and whether I'd like it.",
+        "I ask Mara what she wants me to take off first.",
+        "I ask Mara to tell me honestly how work has been treating her.",
+        "I draw Sofia closer by the waist and ask her to say out loud what she's been imagining all day.",
+        "I ask them both what tonight has meant so far.",
+        "I ask Mara how she wants the three of us to fit together.",
+        "I laugh and ask Sofia to tell me the worst pickup line she's ever heard.",
+        "I ask Sofia to keep talking to me while I touch her.",
+        "I ask Mara what she remembers best about our first night together.",
+        "I ask Mara to tell me what feels good.",
+        "I ask Sofia where she'd want us to travel next year, and why.",
+        "I pause and ask them both what they want more of.",
+        "I ask Mara to tell me something about herself I still don't know.",
+        "I ask Sofia to whisper what she wants next in my ear.",
+        "I ask them both how they'd describe us to a stranger.",
+        "I ask Mara if she likes watching us, and what she sees.",
+        "I ask Sofia what song she'd put on right now, and why that one.",
+        "I ask Mara to tell me when she's close.",
+        "I ask them both what we should do with the rest of our night.",
+        "I settle in between them and ask how their day treated them both.",
+        "I pull Mara into a slow kiss and ask her to tell me what she wants tonight.",
+        "I ask Sofia to tell me the story of the first time she knew she loved us.",
+        "I trail my hand up Mara's thigh and ask if she likes where this is going.",
+        "I ask Mara what she'd want to do together this weekend, just the three of us.",
+        "I kiss Sofia's neck and ask her to tell me if she likes it.",
+        "I ask Sofia what she's been reading lately and whether I'd like it.",
+        "I ask Mara what she wants me to take off first.",
+        "I ask Mara to tell me honestly how work has been treating her.",
+        "I draw Sofia closer by the waist and ask her to say out loud what she's been imagining all day.",
+        "I ask them both what tonight has meant so far.",
+        "I ask Mara how she wants the three of us to fit together.",
+        "I laugh and ask Sofia to tell me the worst pickup line she's ever heard.",
+        "I ask Sofia to keep talking to me while I touch her.",
+        "I ask Mara what she remembers best about our first night together.",
+        "I ask Mara to tell me what feels good.",
+        "I ask Sofia where she'd want us to travel next year, and why.",
+        "I pause and ask them both what they want more of.",
+        "I ask Mara to tell me something about herself I still don't know.",
+        "I ask Sofia to whisper what she wants next in my ear.",
+        "I ask them both how they'd describe us to a stranger.",
+        "I ask Mara if she likes watching us, and what she sees.",
+        "I ask Sofia what song she'd put on right now, and why that one.",
+        "I ask Mara to tell me when she's close.",
+        "I ask them both what we should do with the rest of our night."
+      ]
+    },
+    {
+      "name": "gateAmem",
+      "world": "blackrue-waystation.json",
+      "settings": {
+        "thinkingMode": "precall",
+        "markdownOutput": true,
+        "choicesEnabled": true,
+        "statUpdatesEnabled": true,
+        "locationChangeEnabled": true,
+        "locationAutoApply": true,
+        "memoryDigests": true,
+        "characterDiaries": false,
+        "showSilentRequests": true,
+        "paragraphLimit": "auto",
+        "language": "English"
+      },
+      "script": [
+        "START GAME",
+        "I look around the common room and take stock of who is here.",
+        "I walk over to Sable and strike up a conversation.",
+        "I ask Sable about the road ahead, just passing the time.",
+        "I cut the road-wolf down as it tears loose and lunges at me.",
+        "I keep fighting even as its teeth rake my arm to the bone.",
+        "I haul Pell up by the collar and threaten him, cold and cruel, until he tells me where the strongbox is.",
+        "I glance at the iron-ringed cellar door across the room.",
+        "I close the distance with Sable and kiss her, and let it go further.",
+        "I head out to the stable yard."
+      ],
+      "turnPauseMs": 6000,
+      "settleMs": 30000
+    },
+    {
+      "name": "semQA",
+      "turnPauseMs": 6000,
+      "settleMs": 45000,
+      "settings": {
+        "thinkingMode": "off",
+        "markdownOutput": false,
+        "choicesEnabled": false,
+        "statUpdatesEnabled": false,
+        "locationChangeEnabled": false,
+        "memoryDigests": true,
+        "characterDiaries": false,
+        "showSilentRequests": true,
+        "paragraphLimit": "auto",
+        "language": "English",
+        "semanticMemory": false,
+        "semanticLore": false,
+        "semanticRehydration": false,
+        "semanticDiaries": false,
+        "semanticBandCap": 0
+      },
+      "script": [
+        "START GAME",
+        "I set my pack down and tell the ferryman I'm called Wren, a mapmaker bound for the survey-house at Harrowgate, and that my map is due before the autumn fair.",
+        "I take out my brass compass - the one with the cracked lid my mother left me - and take a bearing on the far bank.",
+        "I ask the ferryman why the water makes no sound.",
+        "I pick up a flat stone and skim it out across the gloamwater.",
+        "I ask the eel-smoker what she's curing and whether she'll sell me one.",
+        "I tie a tollow-knot in the loose end of the mooring rope for luck.",
+        "I warm my hands at the firepit and mention that the ferry's lean worries me, since I cannot swim.",
+        "I step toward the ferry.",
+        "I ask the ferryman what he'd charge to take me across.",
+        "I count out what he asked and hand it over.",
+        "I read the notices nailed to the leaning post.",
+        "I ask the ferryman about the strangest notice ever nailed to that post.",
+        "I sit on the dock's edge and sketch the ferry into my map, exactly as it sits.",
+        "I ask the eel-smoker if the crossing is safe with the raft leaning like that.",
+        "I wait and watch the mist on the water.",
+        "I keep waiting as the light starts to fail.",
+        "I ask the ferryman whether he'll still cross this late.",
+        "I ask the eel-smoker to share her fire for the night, and offer to turn the eels while she rests.",
+        "I eat some hard bread from my pack and listen to the river say nothing.",
+        "I check my pack over by firelight to be sure nothing has gone missing.",
+        "As the fire settles, I tell the eel-smoker where I'm bound and why the map cannot be late.",
+        "I think back over the notices on the post and copy the strangest one into my map's margin.",
+        "I ask her whether she has ever crossed at night, whatever the ferryman says.",
+        "I bank the fire, tie one last tollow-knot in my bootlace, and settle in facing the water."
+      ]
+    },
+    {
+      "name": "semQB",
+      "turnPauseMs": 6000,
+      "settleMs": 45000,
+      "settings": {
+        "thinkingMode": "off",
+        "markdownOutput": false,
+        "choicesEnabled": false,
+        "statUpdatesEnabled": false,
+        "locationChangeEnabled": false,
+        "memoryDigests": true,
+        "characterDiaries": false,
+        "showSilentRequests": true,
+        "paragraphLimit": "auto",
+        "language": "English",
+        "semanticMemory": true,
+        "semanticLore": false,
+        "semanticRehydration": true,
+        "semanticDiaries": false,
+        "semanticBandCap": 12
+      },
+      "script": [
+        "START GAME",
+        "I set my pack down and tell the ferryman I'm called Wren, a mapmaker bound for the survey-house at Harrowgate, and that my map is due before the autumn fair.",
+        "I take out my brass compass - the one with the cracked lid my mother left me - and take a bearing on the far bank.",
+        "I ask the ferryman why the water makes no sound.",
+        "I pick up a flat stone and skim it out across the gloamwater.",
+        "I ask the eel-smoker what she's curing and whether she'll sell me one.",
+        "I tie a tollow-knot in the loose end of the mooring rope for luck.",
+        "I warm my hands at the firepit and mention that the ferry's lean worries me, since I cannot swim.",
+        "I step toward the ferry.",
+        "I ask the ferryman what he'd charge to take me across.",
+        "I count out what he asked and hand it over.",
+        "I read the notices nailed to the leaning post.",
+        "I ask the ferryman about the strangest notice ever nailed to that post.",
+        "I sit on the dock's edge and sketch the ferry into my map, exactly as it sits.",
+        "I ask the eel-smoker if the crossing is safe with the raft leaning like that.",
+        "I wait and watch the mist on the water.",
+        "I keep waiting as the light starts to fail.",
+        "I ask the ferryman whether he'll still cross this late.",
+        "I ask the eel-smoker to share her fire for the night, and offer to turn the eels while she rests.",
+        "I eat some hard bread from my pack and listen to the river say nothing.",
+        "I check my pack over by firelight to be sure nothing has gone missing.",
+        "As the fire settles, I tell the eel-smoker where I'm bound and why the map cannot be late.",
+        "I think back over the notices on the post and copy the strangest one into my map's margin.",
+        "I ask her whether she has ever crossed at night, whatever the ferryman says.",
+        "I bank the fire, tie one last tollow-knot in my bootlace, and settle in facing the water."
+      ]
+    }
+  ]
+}

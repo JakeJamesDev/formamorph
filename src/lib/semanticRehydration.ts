@@ -24,6 +24,17 @@ export const REHYDRATE_DUP_THRESHOLD = 0.75;
 /** Most turns one action may rehydrate, before the caller's token budget applies. */
 export const REHYDRATE_MAX = 2;
 
+/** Margin a candidate must clear over the band's median action-similarity to fire (T2). Absolute
+ *  cosine floors don't transfer across worlds — in a one-house same-cast world everything clears
+ *  0.35, so the floor alone let one scene fire 10x during unrelated charged scenes. The median is
+ *  the world's own baseline relatedness; a real return-to-scene stands out from it. Value from the
+ *  recall-margin-probe sweep: 0.15 kept all return hits and cleaned 3/4 charged false-fires. */
+export const REHYDRATE_MARGIN = 0.15;
+
+/** Fewest scored candidates before the margin applies. A small band's median is mostly the
+ *  candidate's own neighborhood — too noisy a baseline — so early game keeps the floor-only rule. */
+export const REHYDRATE_MARGIN_MIN_BAND = 5;
+
 /** Turns a scene sits out after riding: fired on turn X, it can't fire again before turn X + N.
  *  Kills same-scene stickiness (T1: 9/27 real-session firings were identical to the previous
  *  turn's; one scene rode three consecutive turns while the context froze). */
@@ -49,8 +60,10 @@ export function rehydrationCooldownBlocked(
  *  survivors (milestone selection has already run — a superseded scene can't come back), scored by
  *  plain cosine to the action, greedy best-first with the near-duplicate guard against both the
  *  already-chosen set and the floor turns' digests. Turns in `blocked` (the cooldown set) are
- *  excluded outright. Returns turnIds, best first, capped. Turns without a cached vector simply
- *  can't qualify (per-turn fail-open, like semantic lore). */
+ *  excluded outright. A candidate must clear both the absolute floor and (once the band is big
+ *  enough) the band's median similarity plus REHYDRATE_MARGIN — relevance relative to the world's
+ *  own baseline, not just an absolute score. Returns turnIds, best first, capped. Turns without a
+ *  cached vector simply can't qualify (per-turn fail-open, like semantic lore). */
 export function selectSemanticRehydrations(
   bandTurns: BandTurn[],
   floorTurns: BandTurn[],
@@ -64,12 +77,22 @@ export function selectSemanticRehydrations(
     return d ? vectorsByKey.get(vectorKey(d)) : undefined;
   };
   const floorVecs = floorTurns.map(vecOf).filter((v): v is Float32Array => !!v);
-  const scored = bandTurns
+  const candidates = bandTurns
     .map((t) => ({ t, vec: vecOf(t) }))
     .filter((c): c is { t: BandTurn; vec: Float32Array } => !!c.vec && !!c.t.turnId)
+    .map((c) => ({ ...c, sim: cosineSimilarity(queryVec, c.vec) }));
+  // The margin bar: median over ALL candidates (blocked ones still describe the band's baseline),
+  // floor kept as the sanity bound. Below MIN_BAND the median is too noisy — floor-only.
+  const sims = candidates.map((c) => c.sim).sort((a, b) => a - b);
+  const median = sims.length % 2
+    ? sims[(sims.length - 1) / 2]
+    : (sims[sims.length / 2 - 1] + sims[sims.length / 2]) / 2;
+  const minSim = candidates.length >= REHYDRATE_MARGIN_MIN_BAND
+    ? Math.max(REHYDRATE_SIM_THRESHOLD, median + REHYDRATE_MARGIN)
+    : REHYDRATE_SIM_THRESHOLD;
+  const scored = candidates
     .filter((c) => !blocked?.has(c.t.turnId!))
-    .map((c) => ({ ...c, sim: cosineSimilarity(queryVec, c.vec) }))
-    .filter((c) => c.sim >= REHYDRATE_SIM_THRESHOLD)
+    .filter((c) => c.sim >= minSim)
     .sort((a, b) => b.sim - a.sim);
 
   const chosen: Array<{ id: string; vec: Float32Array }> = [];

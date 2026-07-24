@@ -4,6 +4,8 @@ import {
   REHYDRATE_DUP_THRESHOLD,
   REHYDRATE_MAX,
   REHYDRATE_COOLDOWN_TURNS,
+  REHYDRATE_MARGIN,
+  REHYDRATE_MARGIN_MIN_BAND,
   selectSemanticRehydrations,
   rehydrationCooldownBlocked,
 } from './semanticRehydration';
@@ -76,6 +78,31 @@ describe('selectSemanticRehydrations', () => {
     ]);
     const out = selectSemanticRehydrations(band, [], query, v, new Set(['t0']));
     expect(out).toEqual(['t1', 't2']);
+  });
+
+  it('fires nothing in a flat same-cast band even when everything clears the floor — the margin', () => {
+    // Five candidates all above the 0.35 floor but within 0.08 of each other: no scene stands out
+    // from the world's baseline relatedness, so no recall (the repeat.json failure shape).
+    const band = [0.4, 0.42, 0.44, 0.46, 0.48].map((_s, i) => turn(i, `flat${i}`));
+    const v = vectors([0.4, 0.42, 0.44, 0.46, 0.48].map((s, i) => [`flat${i}`, vec(s, Math.sqrt(1 - s * s), 0)] as [string, Float32Array]));
+    expect(selectSemanticRehydrations(band, [], query, v)).toEqual([]);
+    expect(REHYDRATE_MARGIN_MIN_BAND).toBe(5);
+  });
+
+  it('fires only the standout that beats the band median by the margin', () => {
+    const simsIn = [0.4, 0.42, 0.44, 0.46, 0.48, 0.66]; // median 0.45, bar 0.60 → only 0.66
+    const band = simsIn.map((_s, i) => turn(i, `c${i}`));
+    const v = vectors(simsIn.map((s, i) => [`c${i}`, vec(s, Math.sqrt(1 - s * s), 0)] as [string, Float32Array]));
+    expect(selectSemanticRehydrations(band, [], query, v)).toEqual(['t5']);
+    expect(REHYDRATE_MARGIN).toBe(0.15);
+  });
+
+  it('keeps the floor-only rule below the minimum band size', () => {
+    // Four flat candidates — margin would kill them all, but the band is too small for a median bar.
+    const simsIn = [0.4, 0.42, 0.44, 0.46];
+    const band = simsIn.map((_s, i) => turn(i, `s${i}`));
+    const v = vectors(simsIn.map((s, i) => [`s${i}`, vec(s, i % 2 ? Math.sqrt(1 - s * s) : -Math.sqrt(1 - s * s), 0)] as [string, Float32Array]));
+    expect(selectSemanticRehydrations(band, [], query, v)).toEqual(['t3', 't2']);
   });
 
   it('ships with sane guards', () => {

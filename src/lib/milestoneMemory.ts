@@ -23,6 +23,97 @@ export function buildMilestoneUserMessage(digests: string[]): string {
   return `The story's remembered moments, oldest first:\n${list}\n\nReply with only the numbers to keep, comma-separated.`;
 }
 
+/**
+ * Incremental selection (T4): verdicts are decided once, when a digest ages in, and never re-voted.
+ * The selector sees the already-kept memories as numbered context and judges only the new arrivals;
+ * an old memory can change state only by explicit supersession ("Forget"). This kills the
+ * whole-list flip-flop by construction and shrinks the recurring request to the new entries.
+ */
+
+/** The incremental user message: kept memories as context (1..K), then the new arrivals to judge
+ *  (K+1..K+N), numbered continuously so a reply index is unambiguous. With no kept context (first
+ *  run, or everything so far dropped) only the new list and the Keep line are asked for. */
+export function buildIncrementalMilestoneUserMessage(keptOld: string[], fresh: string[]): string {
+  const oldList = keptOld.map((d, i) => `${i + 1}. ${d}`).join('\n');
+  const freshList = fresh.map((d, i) => `${keptOld.length + i + 1}. ${d}`).join('\n');
+  if (keptOld.length === 0) {
+    return `New moments to judge, oldest first:\n${freshList}\n\nReply with one line:\nKeep: the numbers worth remembering, comma-separated, or "none".`;
+  }
+  return `Moments already in memory, oldest first:\n${oldList}\n\nNew moments to judge:\n${freshList}\n\nReply with two lines:\nKeep: the numbers of the NEW moments worth remembering, comma-separated, or "none".\nForget: the numbers of already-kept moments whose outcome a new moment now carries, or "none".`;
+}
+
+/** One incremental verdict: zero-based indices into the fresh list to keep, and zero-based indices
+ *  into the shown kept-old list to forget (supersession only). */
+export interface IncrementalVerdict {
+  keepFresh: Set<number>;
+  forgetOld: Set<number>;
+}
+
+/** Parse an incremental reply. Labeled segments win even inside prose — models append reasoning on
+ *  the same line — and the Keep capture stops where a same-line "Forget" begins. A bare number list
+ *  is accepted as keeps (the shape small models fall back to; the prose guard applies only there).
+ *  Forgets are honored ONLY as "OLD replaced by NEW" citations whose NEW entry is actually kept:
+ *  prompt wording alone let the model forget an old entry nearly every batch, and this structural
+ *  filter is what restored must-recall (see the probe's paired arm). Returns null when nothing is
+ *  parseable — callers keep every fresh entry and touch nothing old (fail-safe). */
+export function parseIncrementalMilestoneReply(
+  reply: string,
+  oldCount: number,
+  freshCount: number,
+): IncrementalVerdict | null {
+  const total = oldCount + freshCount;
+  const nums = (line: string) =>
+    (line.match(/\d+/g) || []).map(Number).filter((n) => n >= 1 && n <= total);
+  // The colon is required: prose that merely uses the word "keep" must fall through to the
+  // bare-number path and its guard, not parse as an empty (keep-nothing) label.
+  const keepLine = reply.match(/keep\s*:((?:(?!forget)[^\n])*)/i);
+  const forgetLine = reply.match(/forget\s*:([^\n]*)/i);
+  let keepNums: number[];
+  if (keepLine) {
+    keepNums = nums(keepLine[1]);
+  } else if (forgetLine) {
+    keepNums = []; // an explicit Forget with no Keep line: nothing new kept.
+  } else {
+    if (reply.replace(/none|[\d,.\s\-:and]+/gi, '').length > 40) return null;
+    keepNums = nums(reply); // bare number list = keeps.
+    if (!keepNums.length && !/none/i.test(reply)) return null;
+  }
+  const keepFresh = new Set(keepNums.filter((n) => n > oldCount).map((n) => n - oldCount - 1));
+  const forgetOld = new Set<number>();
+  for (const m of (forgetLine?.[1] ?? '').matchAll(/(\d+)\s*(?:replaced by|->|→)\s*(\d+)/gi)) {
+    const oldN = Number(m[1]);
+    if (oldN >= 1 && oldN <= oldCount && keepFresh.has(Number(m[2]) - oldCount - 1)) forgetOld.add(oldN - 1);
+  }
+  return { keepFresh, forgetOld };
+}
+
+/** Fold one incremental verdict into the stored selection. `shownOldIds` are the kept-old turn ids
+ *  in the order they were numbered; `freshIds` the judged arrivals in order. A null verdict
+ *  (malformed reply) keeps every fresh entry and leaves old verdicts untouched. A legacy
+ *  `selected: null` (old malformed full-vote) materializes to keep-everything-seen first. */
+export function applyIncrementalVerdict(
+  prev: { seen: string[]; selected: string[] | null } | null,
+  shownOldIds: string[],
+  freshIds: string[],
+  verdict: IncrementalVerdict | null,
+): { seen: string[]; selected: string[] } {
+  const prevSeen = prev?.seen ?? [];
+  const prevSelected = new Set(prev ? (prev.selected ?? prev.seen) : []);
+  if (verdict) {
+    verdict.forgetOld.forEach((i) => {
+      const id = shownOldIds[i];
+      if (id) prevSelected.delete(id);
+    });
+    freshIds.forEach((id, i) => {
+      if (verdict.keepFresh.has(i)) prevSelected.add(id);
+    });
+  } else {
+    freshIds.forEach((id) => prevSelected.add(id));
+  }
+  const seen = [...prevSeen, ...freshIds.filter((id) => !prevSeen.includes(id))];
+  return { seen, selected: seen.filter((id) => prevSelected.has(id)) };
+}
+
 /** Parse the selector's reply into kept zero-based indices, or null when malformed (callers keep
  *  everything). A reply that is mostly prose rather than a number list is treated as malformed. */
 export function parseMilestoneReply(reply: string, count: number): Set<number> | null {

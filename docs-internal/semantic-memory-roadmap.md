@@ -5,9 +5,12 @@ lives in this doc; the shipped foundation is described below, then the planned s
 Steps ship one at a time, each behind its own probe evidence — nothing here is committed-to-all-at-once.
 
 **▶ Resume here:** build phase done (steps 0-4 shipped 2026-07-23, unreleased, off by default), and a
-real charged session (repeat.json findings below) has produced the **tuning todo** — T1 is done
-(2026-07-23); continue from **T2**. Still open before any default-on: the repeated 50+-turn A/B, the
-charged-scene freeze replay (step 2), and step 5 only if similarity misses persist after T1-T3.
+real charged session (repeat.json findings below) has produced the **tuning todo** — T1 and T2 are
+done, T3 tested and rejected (all 2026-07-23), T4 done 2026-07-24 (incremental verdicts, paired
+protocol, save-envelope persistence), T5 done 2026-07-24 (cap default 12, gated on the 50-turn
+repeated A/B — findings section below), T6 tested and rejected 2026-07-24 (browser-size rerankers
+don't beat cosine on the real failure cases — see its section). **The tuning todo is complete.**
+Remaining before default-on: the charged-scene freeze replay (step 2).
 
 ## Tuning todo (ranked, from the 2026-07-23 real-session review + literature)
 
@@ -31,7 +34,7 @@ paired-seed probe methodology; revisit sampling only if cooldown feels too binar
   framing against a live model, and T1 touched no prompt text — the cooldown is deterministic
   selection logic, fully covered without an LLM.
 
-### T2. Margin-over-baseline recall threshold — the calibration fix
+### T2. Margin-over-baseline recall threshold — DONE 2026-07-23 (margin 0.15)
 Absolute cosine floors don't transfer across worlds (literature: embedding scores are only
 relatively comparable; our own knees differ per surface: 0.30 lore / 0.34 diary / 0.35 scenes; the
 repeat.json session shows a one-house same-cast world where EVERYTHING clears 0.35 — the living-room
@@ -43,8 +46,19 @@ Scene Recall first; evaluate for lore/diary after.
   but a second on-device model + per-candidate WASM latency; parked as T6).
 - Probe: semantic-lore-probe-style sweep on a SAME-CAST charged fixture (new cases file — the
   trade-coast fixture's distinct-events world overestimates separation).
+- Shipped: `REHYDRATE_MARGIN = 0.15` + `REHYDRATE_MARGIN_MIN_BAND = 5` in `semanticRehydration.ts`
+  (fire = sim >= max(floor, band-median + margin); median over ALL vectored candidates incl.
+  cooled-down ones; below 5 candidates floor-only — a small band's median is the candidate's own
+  neighborhood). Probe: `recall-margin-probe.mjs` + `semantic-recall-margin-cases.json` (same-cast
+  one-house fixture; deterministic, embeddings only). Sweep: baseline 0.00 → 4/5 return-hits,
+  1/4 charged-clean; 0.10 → 4/5, 1/4; **0.15 → 4/5, 3/4** (dominates); 0.20 → 3/5, 3/4. Caveat:
+  fixture medians (0.11-0.36) run lower than the saturated repeat.json session, so 0.10's benefit
+  is understated on it; the residual charged-kiss false-fire is a genuinely-similar single standout
+  (margin can't separate it — that class belongs to cooldown + dup guard). Decided 2026-07-23:
+  0.15 (dominates 0.10 on the fixture: same hits, 3/4 vs 1/4 clean); the 50+-turn A/B is the
+  backstop if it proves too aggressive in saturated play.
 
-### T3. Recall query = action + latest narration tail — one probe away
+### T3. Recall query = action + latest narration tail — TESTED 2026-07-23, REJECTED
 ST queries the last 2 messages, not the bare action; our bare-action query starves recall of scene
 identity in charged play ("I moan louder" distinguishes nothing). Try action + ~2 sentences of the
 latest narration FOR SCENE RECALL ONLY (band trimming keeps the probe-validated bare action).
@@ -52,23 +66,98 @@ latest narration FOR SCENE RECALL ONLY (band trimming keeps the probe-validated 
   repeat.json — verify it still does); our band probe showed appended METADATA poisons ranking —
   narration text may behave differently, hence the A/B.
 - Probe: rehydrate-probe arm with the enriched query; targets must still rank, stickiness must not rise.
+- Verdict: the risk the band probe flagged materialized. A/B on the same-cast fixture
+  (recall-margin-probe `--arms bare,enriched`; tails avoid target-digest tokens, so nothing was
+  handed): the ~2-sentence tail dominates the short action in mean pooling — every median jumps
+  ~+0.15-0.28 (0.11-0.36 → 0.27-0.45), the whole band saturates, and at the shipped margin 0.15
+  return-hits collapse 4/5 → 2/5 (return-grate's target is outranked by an unrelated bedroom scene;
+  return-promise dies under its own inflated median) while charged-clean drops 3/4 → 2/4. Bare
+  action + margin already yields the desired behavior: a terse charged action that "distinguishes
+  nothing" correctly recalls nothing. Bare query stays. If query starvation resurfaces in the
+  50+-turn A/B, try a weighted VECTOR blend (e.g. 0.7·action + 0.3·tail, renormalized) rather than
+  text concatenation — the failure is length dominance in pooling, not the idea of context.
 
-### T4. Sticky milestone verdicts — the structural fix (bigger)
+### T4. Sticky milestone verdicts — DONE 2026-07-24 (paired-forget protocol)
 The T31→T32 flip-flop (keep 7 → keep all 30, recap 1.2KB → 7KB) is inherent to re-voting the WHOLE
 memory list every turn with a small LLM. Mem0-class systems decide at WRITE time and never re-judge
 the store. Refactor: only newly-aged digests get judged; old verdicts persist unless superseded;
 pins remain the correction path. Kills flip-flop by construction and cuts a recurring request.
 - Cost: selector prompt + selection-state rework; supersession (the selector's best skill) must
   still fire on new-entry-vs-old-entry pairs. Own probe cycle (milestone-select-probe extension).
+- Shipped: incremental drainer in GameViewer (only unseen digests judged, kept list as context,
+  rollback prunes seen so re-aging turns re-judge), `defaultMilestoneIncrementalPrompt` +
+  incremental builder/parser/apply in `lib/milestoneMemory.ts`, verdicts persisted in the save
+  envelope (additive `milestoneSelection` field; older saves judge the loaded history fresh once).
+  The **paired-forget protocol is load-bearing**: a Forget must cite the kept new moment that
+  replaces it ("2 replaced by 4"); the parser voids uncited forgets. Probe (`--mode incremental`,
+  batch-of-1 replay, end-state vs labels, 2 runs/tier): wording-only arms collapsed (cloud must
+  recall 'shipped' 0.38 / 'restraint' 0.53, must-forgets 21/17 — the model forgot ~one old entry
+  per batch); 'paired' → cloud 0.88-0.90 / Cydonia 1.00, must-forgets 4-5/0, malformed 0.
+  'paired2' (extra strictness) regressed closure keeps to 0.80 — don't re-add. Trade-off vs
+  full-vote (cloud 0.95/0.20, Cydonia 0.95/0.27 on the same fixture): drop keep rises to ~0.41
+  both tiers — write-time judgment keeps more incidental mass (charged beats; setups whose
+  citation never fires) — accepted because the probe's full-vote number hides the real-session
+  flip-flop (T31 keep 7 → T32 keep all 30) and T5's cap bounds recap mass; several probe
+  kept-drops are index-0 entries resolve force-keeps anyway. Cloud's two stable bad forgets
+  (relic→temple-rule, coast-promise→night-together: related-but-not-same citations) are the known
+  residual; revisit only if the 50+-turn A/B surfaces them in play.
 
-### T5. Memory Cap as default behavior once validated
+### T5. Memory Cap as default behavior once validated — DONE 2026-07-24 (default 12)
 ST ships bounded injection always-on; unbounded here = 30-digest 7KB recaps. After the 50+-turn
 repeated A/B, fold the cap into Semantic Memory's default (keep the number editable) instead of a
 separate opt-in.
+- The 50-turn A/B ran 2026-07-24 (findings section below); on its evidence `semanticBandCap`
+  default flipped 0 → 12 (SettingsContext; usePersistentState → fresh installs only). Number stays
+  editable, 0 = uncapped.
 
-### T6. Cross-encoder reranker — parked quality ceiling
+### T6. Cross-encoder reranker — TESTED 2026-07-24, REJECTED (browser-feasible class)
 The calibrated fix for all similarity mushiness (incl. Diary Recall's hopeless 0.01 margin). Second
 model download + latency; only if T1-T3 leave real quality on the table.
+- Verdict: the 50-turn A/B gave T6 its live trigger (oblique probes outside the cosine top-12), and
+  `t6-rerank-probe.mjs` tested the browser-feasible class against the REAL failure cases (12 probe
+  turns from the semQB dumps: action + the actual 43-49 band candidates, target = the missed
+  digest) plus the same-cast fixture. Three families, raw logits, q8: targets inside the top-12 —
+  cosine 10/17, ms-marco-MiniLM-L-6 9/17 (1.4 ms/pair), jina-reranker-v1-turbo 9/17 (2.5),
+  mxbai-rerank-xsmall (70M deberta) 10/17 (8.4). All three polish the easy cases to rank 1 but
+  move the oblique failures (compass at cosine rank 22-34) only a few places — never into cap. The
+  gap is inference-level ("my pack" ⊃ "the compass I took out 40 turns ago"), not scoring
+  precision; no browser-size reranker bridges it. Latency was NOT the blocker (~0.1s/turn batch).
+- Gotcha for any revisit: the transformers.js text-classification pipeline sigmoid-saturates every
+  pair to 1.000 on this domain — rankings silently collapse to input order. Use raw logits via
+  AutoModelForSequenceClassification (first probe pass showed a phantom "win" from exactly this).
+- Untested residual: 280MB+ rerankers (bge-reranker-base class) — out of the on-device download
+  budget, not proven bad. The realistic path to oblique recall is LLM-side (a planner/selector
+  hint listing carried items, or letting the narration model see a keyed inventory), not a bigger
+  similarity model.
+
+## 50-turn repeated A/B (2026-07-24, semQA/semQB extended to 52 turns, 3 runs/arm/tier — THE gate run)
+
+Scripts extended 24 → 52 turns (profiles.json; backup `profiles.json.bak-t5`), three planted facts
+(compass T2, Harrowgate errand T1, survey-seal T32), oblique probes at T46/48/50, objective scorer
+`sem-ab-score.mjs` (action-matched token greps + 8-gram pairs + request size + digests riding).
+Note: the AI-context dump caps at 50 turns (GameViewer `.slice(-50)`), so the earliest entries slide
+off 52-turn dumps — probe turns are unaffected.
+
+| Tier · arm | C1 | C2 | C3 | 8gr avg | req chars | digests |
+|---|---|---|---|---|---|---|
+| Cydonia · A | 3/3 | 3/3 | 3/3 | 100 | 28,560 | 48 |
+| Cydonia · B (cap 12) | 3/3 | 2/3 | 1/3 | 21 | 17,277 | 12 |
+| Cloud · A | 0/3 | 0/3 | 1/3 | 1 | 14,089 | 48 |
+| Cloud · B (cap 12) | 0/3 | 0/3 | 0/3 | 1 | 11,970 | 13 |
+
+- **Cap verdict (T5): flip.** On the recall-capable tier the cap trades 3/9 oblique-probe passes
+  (concentrated on C3, the newest planted fact) for a 40% smaller final request and a ~5× drop in
+  cross-turn 8-gram repetition (avg 100 → 21; A had a 266-pair outlier run — the unbounded recap
+  correlates with repetition explosions, the player-visible complaint this workstream started from).
+  On cloud the cap is free: oblique recall is at the floor in BOTH arms (48 riding digests don't
+  help it — presence ≠ use).
+- **Recall loss mechanism verified (cloud B, C1):** milestone selection KEPT the compass (sticky
+  verdicts + "Forget: none" behaving); the semantic ranking failed to place its digest in the
+  top-12 for the oblique "go through my pack" action — bare-cosine mush, exactly T6's territory.
+  Arm A's failures are the opposite mechanism: fact present in a 48-digest recap, never used.
+- T4's incremental selector ran live all 12 runs: high keep-rate (~47-49 digests survive to T52),
+  no flip-flop observed, `Forget: none` the dominant reply. The high keep-rate is the T4 trade-off
+  showing up in play — the cap is what bounds it (and now does, by default).
 
 ## Play A/B findings (2026-07-23, Q profile, 25 turns, semQA/semQB in profiles.json, 1 run/arm/tier)
 
