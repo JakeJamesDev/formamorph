@@ -27,6 +27,12 @@ export default defineConfig({
     // .wasm lookup (the QuickJS engine file). Serving them unbundled keeps the wasm path resolvable.
     exclude: ['quickjs-emscripten', '@jitl/quickjs-wasmfile-release-sync', 'wasm-webp'],
   },
+  worker: {
+    // The image-encode worker lazily `import()`s wasm-webp; under the default iife worker format that dynamic
+    // import would force code-splitting (unsupported for iife). Inlining folds it into the single worker chunk.
+    // No-op for the other workers (they have no dynamic imports).
+    rollupOptions: { output: { inlineDynamicImports: true } },
+  },
   server: {
     // When the baseline harness spawns the dev server (BASELINE_NO_WATCH=1) it disables watching and HMR
     // entirely: the harness reads source once at page load and never needs live reload, so a developer editing

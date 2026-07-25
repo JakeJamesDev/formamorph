@@ -11,6 +11,7 @@ import { reasoningTabs, reasoningPromptTabs, defaultPromptReasoning, defaultReas
 import { ExportPresetDialog, ImportPresetDialog } from '@/components/modals/PresetShareDialogs';
 import { type SharedPreset } from '@/lib/promptPresetShare';
 import { APP_VERSION } from '@/lib/version';
+import { computePromptTabAvailability } from '@/lib/promptTabAvailability';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { RevealAnimationDemoButton } from "@/components/RevealAnimationDemo";
@@ -32,7 +33,7 @@ import { toast } from 'react-toastify';
 import WorldStorageService from '@/services/WorldStorageService';
 import { DEFAULT_WORLDS, readDeletedDefaultWorlds, clearDeletedDefaultWorlds } from '@/lib/defaultWorlds';
 import { PresetNameDialog } from './PresetNameDialog';
-import { defaultSystemPrompt, defaultNarrationUserPrompt, defaultRecapUserPrompt, defaultRehydrateUserPrompt, defaultChoicesPrompt, defaultStatUpdatesPrompt, defaultLocationChangePrompt, defaultThinkingPrompt, defaultSummaryPrompt, defaultChoicesUserPrompt, defaultStatUpdatesUserPrompt, defaultLocationChangeUserPrompt, defaultSummaryUserPrompt, defaultDiaryPrompt, defaultDirectorPrompt, defaultDirectorUserPrompt, defaultCharacterPrompt, defaultStoryboardPrompt } from '../game/GamePrompts';
+import { defaultSystemPrompt, defaultNarrationUserPrompt, defaultRecapUserPrompt, defaultRehydrateUserPrompt, defaultOocDirectivePrompt, defaultChoicesPrompt, defaultStatUpdatesPrompt, defaultLocationChangePrompt, defaultThinkingPrompt, defaultSummaryPrompt, defaultChoicesUserPrompt, defaultStatUpdatesUserPrompt, defaultLocationChangeUserPrompt, defaultSummaryUserPrompt, defaultDiaryPrompt, defaultDirectorPrompt, defaultDirectorUserPrompt, defaultCharacterPrompt, defaultStoryboardPrompt } from '../game/GamePrompts';
 import { isDesktop } from '@/lib/imageGen/desktop';
 import { fetchComfyMeta, DEFAULT_COMFY_WORKFLOW, type ComfyMeta } from '@/lib/imageGen/comfyui';
 import { fetchInvokeMeta, type InvokeMeta } from '@/lib/imageGen/invokeai';
@@ -308,6 +309,16 @@ export const SettingsModal = ({ isOpen, onOpenChange, previewValues, initialTab,
     detectContextWindow,
     useCustomEndpoint,
     setUseCustomEndpoint,
+    builtinTextEndpointPresets,
+    textEndpointPresets,
+    activeTextEndpointPresetId,
+    activeTextEndpointPresetIsBuiltIn,
+    activeTextEndpointPresetName,
+    selectTextEndpointPreset,
+    addTextEndpointPreset,
+    renameTextEndpointPreset,
+    deleteTextEndpointPreset,
+    resetTextEndpointPreset,
     systemPrompt,
     setSystemPrompt,
     choicesPrompt,
@@ -369,6 +380,8 @@ export const SettingsModal = ({ isOpen, onOpenChange, previewValues, initialTab,
     rehydrateUserPrompt,
     setRehydrateUserPrompt,
     setRecapUserPrompt,
+    oocDirectivePrompt,
+    setOocDirectivePrompt,
     choicesUserPrompt,
     setChoicesUserPrompt,
     statUpdatesUserPrompt,
@@ -519,8 +532,8 @@ export const SettingsModal = ({ isOpen, onOpenChange, previewValues, initialTab,
   // gray for detecting / detected / the idle helper.
   const contextOverLimit =
     contextWindowOverride != null && detectedContextWindow != null && contextWindowOverride > detectedContextWindow;
-  const contextStatus = !useCustomEndpoint
-    ? { red: false, text: 'Using the default endpoint — enable Use Custom Endpoint to set or detect the context window.' }
+  const contextStatus = activeTextEndpointPresetIsBuiltIn
+    ? { red: false, text: 'Using the shared endpoint — add or pick a preset to set or detect the context window.' }
     : contextOverLimit
     ? { red: true, text: `Above the detected limit (${detectedContextWindow?.toLocaleString()} tok) — the server may truncate requests.` }
     : detectStatus === 'error'
@@ -548,9 +561,21 @@ export const SettingsModal = ({ isOpen, onOpenChange, previewValues, initialTab,
     else if (presetDialog?.mode === 'rename') renamePreset(activePresetId, name);
   };
 
-  // Image Gen → Endpoint preset name dialog (mirrors the prompt preset one; all presets editable).
+  // AI Endpoints → Image preset name dialog (mirrors the prompt preset one; all presets editable).
   const [imagePresetDialog, setImagePresetDialog] = useState<{ mode: 'add' | 'rename' } | null>(null);
   const IMG_ADD_PRESET_SENTINEL = '__add_image_preset__';
+
+  // AI Endpoints → Text preset name dialog (immutable Default + editable user presets, like the prompts tab).
+  const [textPresetDialog, setTextPresetDialog] = useState<{ mode: 'add' | 'rename' } | null>(null);
+  const TEXT_ADD_PRESET_SENTINEL = '__add_text_preset__';
+  const handleTextPresetSelect = (v: string) => {
+    if (v === TEXT_ADD_PRESET_SENTINEL) setTextPresetDialog({ mode: 'add' });
+    else selectTextEndpointPreset(v);
+  };
+  const handleTextPresetNameSubmit = (name: string) => {
+    if (textPresetDialog?.mode === 'add') addTextEndpointPreset(name);
+    else if (textPresetDialog?.mode === 'rename') renameTextEndpointPreset(activeTextEndpointPresetId, name);
+  };
 
   // ComfyUI checkpoint/sampler lists that back the Model/Sampler autocompletes. Auto-fetched from
   // /object_info whenever ComfyUI is the active provider (debounced on endpoint edits); fails silently
@@ -618,26 +643,18 @@ export const SettingsModal = ({ isOpen, onOpenChange, previewValues, initialTab,
   // Each prompt tab only exists while its prompt is enabled (toggled in Generation → System Prompts, or
   // its governing setting for Thinking/Summary). If the open tab is no longer available (disabled since,
   // or on reopen), fall back to Narration so the panel isn't blank.
-  const promptAvailable: Record<string, boolean> = {
-    narration: true,
-    thinking: thinkingMode === 'precall',
-    choices: choicesEnabled,
-    statupdates: statUpdatesEnabled,
-    location: locationChangeEnabled,
-    summary: memoryDigests,
-    diary: characterDiaries,
-    director: thinkingMode === 'staged',
-    character: thinkingMode === 'staged',
-    storyboard: thinkingMode === 'staged',
-  };
+  const promptAvailable = computePromptTabAvailability({
+    thinkingMode, choicesEnabled, statUpdatesEnabled, locationChangeEnabled, memoryDigests, characterDiaries,
+  });
   const activePromptTab = promptAvailable[promptTab] ? promptTab : 'narration';
   const selectedPrompt = promptResets[activePromptTab] ?? promptResets.narration;
 
   // Each prompt has a System editor, an Options sub-tab, and — for the aux prompts — a User-message editor.
-  // Narration additionally has a Recap editor (the memory-recap exchange's user line; digests-on only).
-  // A System | User | Recap | Options toggle swaps between them (User/Recap only where they exist).
+  // Narration additionally has a Messages view: the conditional user-slot lines that ride the narration
+  // exchange (Recap, Recall, Direction), stacked with per-field resets, each hidden with its feature.
+  // A System | User | Messages | Options toggle swaps between them (User/Messages only where they exist).
   // `promptView` resets to System on every tab change.
-  const [promptView, setPromptView] = useState<'system' | 'user' | 'recap' | 'recall' | 'options'>('system');
+  const [promptView, setPromptView] = useState<'system' | 'user' | 'messages' | 'options'>('system');
   const selectPromptTab = (t: string) => { setPromptTab(t); setPromptView('system'); };
   const userPrompts: Record<string, { value: string; set: (s: string) => void; reset: () => void; variables: typeof PROMPT_KIND_VARIABLES.choices }> = {
     // Narration's user template applies only with thinking off (GameViewer guard); hide the editor
@@ -654,20 +671,38 @@ export const SettingsModal = ({ isOpen, onOpenChange, previewValues, initialTab,
   // The recap line rides the narration history only while Memory Digests is on; the editor lives on the
   // Narration tab and hides with the feature so an edit can't silently do nothing.
   const recapAvailable = activePromptTab === 'narration' && memoryDigests;
-  const showingRecap = promptView === 'recap' && recapAvailable;
   // The recall line rides only while Scene Recall is on — same hide-with-the-feature rule as the recap.
   const recallAvailable = activePromptTab === 'narration' && memoryDigests && semanticMemory && semanticRehydration;
-  const showingRecall = promptView === 'recall' && recallAvailable;
+  // The direction rider fires only on [bracket] turns with thinking off (same guard as the User template).
+  const directionAvailable = activePromptTab === 'narration' && thinkingMode === 'off';
+  // The Messages view stacks whichever of the conditional narration lines are live.
+  const messagesAvailable = recapAvailable || recallAvailable || directionAvailable;
+  const showingMessages = promptView === 'messages' && messagesAvailable;
+  // The stacked fields the Messages view renders — one per live line, each with its own reset.
+  const messageFields = [
+    ...(recapAvailable ? [{
+      key: 'recap', label: 'Recap Message',
+      hint: 'The question the story recap answers — older turns ride the narration history as this one exchange. Only used while Memory Summaries is on.',
+      value: recapUserPrompt, set: setRecapUserPrompt, def: defaultRecapUserPrompt,
+    }] : []),
+    ...(recallAvailable ? [{
+      key: 'recall', label: 'Recall Message',
+      hint: 'Frames a remembered scene as the past when Scene Recall brings an old turn back word-for-word.',
+      value: rehydrateUserPrompt, set: setRehydrateUserPrompt, def: defaultRehydrateUserPrompt,
+    }] : []),
+    ...(directionAvailable ? [{
+      key: 'direction', label: 'Direction Message',
+      hint: 'Rides with your action whenever it contains [square brackets] — tells the AI the bracketed text is you directing the scene as the author, not something your character says.',
+      value: oocDirectivePrompt, set: setOocDirectivePrompt, def: defaultOocDirectivePrompt,
+    }] : []),
+  ];
   const showingOptions = promptView === 'options';
   // The Reset button targets whichever template is on screen. `label` is the full noun ("Narration Prompt"
-  // or just "Message" for the user-message template), so the button reads "Reset <label>".
-  const resetTarget = showingRecap
-    ? { label: 'Recap Message', reset: () => setRecapUserPrompt(defaultRecapUserPrompt) }
-    : showingRecall
-      ? { label: 'Recall Message', reset: () => setRehydrateUserPrompt(defaultRehydrateUserPrompt) }
-      : showingUser && activeUserPrompt
-        ? { label: `${selectedPrompt.label} Message`, reset: activeUserPrompt.reset }
-        : { label: `${selectedPrompt.label} Prompt`, reset: selectedPrompt.reset };
+  // or just "Message" for the user-message template), so the button reads "Reset <label>". The Messages
+  // view carries its own per-field resets, so the footer button hides there (like Options).
+  const resetTarget = showingUser && activeUserPrompt
+    ? { label: `${selectedPrompt.label} Message`, reset: activeUserPrompt.reset }
+    : { label: `${selectedPrompt.label} Prompt`, reset: selectedPrompt.reset };
 
   // Verbatim-turns control for the active prompt, shown once in the footer (like Reset).
   const promptVerbatim: Record<string, { value: number; set: (n: number) => void }> = {
@@ -736,7 +771,7 @@ export const SettingsModal = ({ isOpen, onOpenChange, previewValues, initialTab,
           <DialogTitle>Settings</DialogTitle>
         </DialogHeader>
         <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full flex flex-col flex-1 min-h-0">
-          {/* The six tab labels don't fit a narrow phone, so below sm the tab strip becomes a dropdown of the
+          {/* The tab labels don't fit a narrow phone, so below sm the tab strip becomes a dropdown of the
               active tab; sm+ keeps the full row. Both drive the same activeTab state. */}
           <Select value={activeTab} onValueChange={setActiveTab}>
             <SelectTrigger className="w-full flex-shrink-0 sm:hidden">
@@ -748,7 +783,7 @@ export const SettingsModal = ({ isOpen, onOpenChange, previewValues, initialTab,
               ))}
             </SelectContent>
           </Select>
-          <TabsList className="hidden w-full grid-cols-6 flex-shrink-0 sm:grid">
+          <TabsList className="hidden w-full grid-cols-5 flex-shrink-0 sm:grid">
             {SETTINGS_TABS.map((t) => (
               <TabsTrigger key={t.value} value={t.value}>{t.label}</TabsTrigger>
             ))}
@@ -1314,36 +1349,88 @@ An inspection aid for authoring and debugging; off by default.`}</HintInfo>
             </ScrollArea>
           </TabsContent>
 
-          <TabsContent value="endpoint" className="px-2 flex-1 min-h-0 data-[state=active]:flex flex-col">
-            {/* Toggle — a fixed header above the scrolling settings. */}
-            <div className="shrink-0 grid grid-cols-1 sm:grid-cols-[minmax(0,1fr)_minmax(0,3fr)] sm:items-center gap-4 py-4">
-              <RowLabel htmlFor="useCustomEndpoint">{desktop ? 'Use My Own Endpoint' : 'Use Custom Endpoint'}</RowLabel>
-              <div className="flex items-center gap-3">
-                <Checkbox
-                  id="useCustomEndpoint"
-                  checked={useCustomEndpoint}
-                  onCheckedChange={(c) => setUseCustomEndpoint(c === true)}
-                />
-                {desktop && !useCustomEndpoint && (
-                  <span className="text-xs text-muted-foreground">Off: run a model on this PC. On: point at your own API.</span>
-                )}
+          <TabsContent value="endpoints" className="py-4 px-2 flex-1 min-h-0 data-[state=active]:flex flex-col">
+            <Tabs defaultValue="text-endpoint" className="flex flex-col flex-1 min-h-0">
+              <TabsList className="grid w-full grid-cols-3 flex-shrink-0">
+                <TabsTrigger value="text-endpoint">Text</TabsTrigger>
+                <TabsTrigger value="img-endpoint">Image</TabsTrigger>
+                <TabsTrigger value="img-tagprompt">Tag Prompt</TabsTrigger>
+              </TabsList>
+              <TabsContent value="text-endpoint" className="flex-1 min-h-0 data-[state=active]:flex flex-col">
+            {/* Desktop: a checkbox gates the bundled local engine vs a custom endpoint. Web has no local
+                engine, so there's no checkbox — the preset picker's immutable "Default" entry is "our endpoint". */}
+            {desktop && (
+              <div className="shrink-0 grid grid-cols-1 sm:grid-cols-[minmax(0,1fr)_minmax(0,3fr)] sm:items-center gap-4 py-4">
+                <RowLabel htmlFor="useCustomEndpoint">Use My Own Endpoint</RowLabel>
+                <div className="flex items-center gap-3">
+                  <Checkbox
+                    id="useCustomEndpoint"
+                    checked={useCustomEndpoint}
+                    onCheckedChange={(c) => setUseCustomEndpoint(c === true)}
+                  />
+                  {!useCustomEndpoint && (
+                    <span className="text-xs text-muted-foreground">Off: run a model on this PC. On: point at your own API.</span>
+                  )}
+                </div>
               </div>
-            </div>
+            )}
 
             {/* Desktop + local model: model + runtime settings (with their own pinned footer). Otherwise the
-                scrollable endpoint fields. */}
+                preset selector + scrollable endpoint fields. */}
             {desktop && !useCustomEndpoint ? (
               <LocalModelPanel />
             ) : (
+              <>
+              {/* Preset selector: swaps the whole endpoint field set. The immutable "Default" preset (the
+                  shared endpoint) is read-only; user presets are freely editable. */}
+              <div className="flex items-center gap-2 flex-shrink-0 pt-4">
+                <span className="text-sm text-muted-foreground">Preset</span>
+                {!activeTextEndpointPresetIsBuiltIn && (
+                  <ConfirmDialog
+                    title="Delete Preset"
+                    description={`Delete the "${activeTextEndpointPresetName}" preset? This can't be undone.`}
+                    onConfirm={() => deleteTextEndpointPreset(activeTextEndpointPresetId)}
+                  >
+                    <Button variant="outline" size="sm">Delete</Button>
+                  </ConfirmDialog>
+                )}
+                {!activeTextEndpointPresetIsBuiltIn && (
+                  <ConfirmDialog
+                    title="Reset Preset"
+                    description={`Reset the "${activeTextEndpointPresetName}" preset to its default values? This can't be undone.`}
+                    onConfirm={() => resetTextEndpointPreset(activeTextEndpointPresetId)}
+                  >
+                    <Button variant="outline" size="sm">Reset</Button>
+                  </ConfirmDialog>
+                )}
+                <Select value={activeTextEndpointPresetId} onValueChange={handleTextPresetSelect}>
+                  <SelectTrigger className="flex-1 min-w-0">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {builtinTextEndpointPresets.map((p) => (
+                      <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>
+                    ))}
+                    {textEndpointPresets.map((p) => (
+                      <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>
+                    ))}
+                    <SelectSeparator />
+                    <SelectItem value={TEXT_ADD_PRESET_SENTINEL}>Add New Preset…</SelectItem>
+                  </SelectContent>
+                </Select>
+                {!activeTextEndpointPresetIsBuiltIn && (
+                  <Button variant="outline" size="sm" onClick={() => setTextPresetDialog({ mode: 'rename' })}>Rename</Button>
+                )}
+              </div>
               <ScrollArea className="flex-1 min-h-0">
-                <div className="grid gap-4 pb-4">
+                <div className="grid gap-4 py-4">
               <Row center label="Endpoint URL" htmlFor="endpointUrl">
                 <Input
                   id="endpointUrl"
-                  value={useCustomEndpoint ? endpointUrl : DEFAULT_ENDPOINT}
+                  value={endpointUrl}
                   onChange={(e) => setEndpointUrl(e.target.value)}
-                  readOnly={!useCustomEndpoint}
-                  className={useCustomEndpoint ? undefined : 'opacity-60 cursor-not-allowed'}
+                  readOnly={activeTextEndpointPresetIsBuiltIn}
+                  className={activeTextEndpointPresetIsBuiltIn ? 'opacity-60 cursor-not-allowed' : undefined}
                 />
               </Row>
               {!desktop && (
@@ -1362,19 +1449,19 @@ An inspection aid for authoring and debugging; off by default.`}</HintInfo>
                 <Input
                   id="apiToken"
                   type="password"
-                  value={useCustomEndpoint ? apiToken : DEFAULT_API_TOKEN}
+                  value={apiToken}
                   onChange={(e) => setApiToken(e.target.value)}
-                  readOnly={!useCustomEndpoint}
-                  className={useCustomEndpoint ? undefined : 'opacity-60 cursor-not-allowed'}
+                  readOnly={activeTextEndpointPresetIsBuiltIn}
+                  className={activeTextEndpointPresetIsBuiltIn ? 'opacity-60 cursor-not-allowed' : undefined}
                 />
               </Row>
               <Row center label="Model Name" htmlFor="modelName">
                 <Input
                   id="modelName"
-                  value={useCustomEndpoint ? modelName : DEFAULT_MODEL_NAME}
+                  value={modelName}
                   onChange={(e) => setModelName(e.target.value)}
-                  readOnly={!useCustomEndpoint}
-                  className={useCustomEndpoint ? undefined : 'opacity-60 cursor-not-allowed'}
+                  readOnly={activeTextEndpointPresetIsBuiltIn}
+                  className={activeTextEndpointPresetIsBuiltIn ? 'opacity-60 cursor-not-allowed' : undefined}
                 />
               </Row>
               <Row center label="Context Window (tokens)" htmlFor="contextWindow">
@@ -1382,15 +1469,15 @@ An inspection aid for authoring and debugging; off by default.`}</HintInfo>
                   <Input
                     id="contextWindow"
                     type="number"
-                    className={useCustomEndpoint ? 'flex-grow' : 'flex-grow opacity-60 cursor-not-allowed'}
+                    className={activeTextEndpointPresetIsBuiltIn ? 'flex-grow opacity-60 cursor-not-allowed' : 'flex-grow'}
                     value={contextWindow}
                     onChange={(e) => setContextWindowOverride(e.target.value === '' ? null : Number(e.target.value))}
-                    readOnly={!useCustomEndpoint}
+                    readOnly={activeTextEndpointPresetIsBuiltIn}
                   />
                   <Button
                     variant="outline"
                     onClick={() => detectContextWindow(true)}
-                    disabled={!useCustomEndpoint || detectStatus === 'detecting'}
+                    disabled={activeTextEndpointPresetIsBuiltIn || detectStatus === 'detecting'}
                   >
                     Detect
                   </Button>
@@ -1406,10 +1493,10 @@ An inspection aid for authoring and debugging; off by default.`}</HintInfo>
                 <Input
                   id="maxTokens"
                   type="number"
-                  value={useCustomEndpoint ? maxTokens : DEFAULT_MAX_TOKENS}
+                  value={maxTokens}
                   onChange={(e) => setMaxTokens(numInput(e.target.value, 1))}
-                  readOnly={!useCustomEndpoint}
-                  className={useCustomEndpoint ? undefined : 'opacity-60 cursor-not-allowed'}
+                  readOnly={activeTextEndpointPresetIsBuiltIn}
+                  className={activeTextEndpointPresetIsBuiltIn ? 'opacity-60 cursor-not-allowed' : undefined}
                 />
               </Row>
               <div className="flex justify-start">
@@ -1418,22 +1505,23 @@ An inspection aid for authoring and debugging; off by default.`}</HintInfo>
                   description="Are you sure you want to reset the endpoint URL, model name, API token, and limits to their default values?"
                   onConfirm={handleResetEndpointSettings}
                 >
-                  <Button variant="outline" className="flex items-center gap-2" disabled={!useCustomEndpoint}>
+                  <Button variant="outline" className="flex items-center gap-2" disabled={activeTextEndpointPresetIsBuiltIn}>
                     Reset AI Endpoint
                   </Button>
                 </ConfirmDialog>
               </div>
                 </div>
               </ScrollArea>
+              </>
             )}
-          </TabsContent>
-
-          <TabsContent value="image" className="py-4 px-2 flex-1 min-h-0 data-[state=active]:flex flex-col">
-            <Tabs defaultValue="img-endpoint" className="flex flex-col flex-1 min-h-0">
-              <TabsList className="grid w-full grid-cols-2 flex-shrink-0">
-                <TabsTrigger value="img-endpoint">Endpoint</TabsTrigger>
-                <TabsTrigger value="img-tagprompt">Tag Prompt</TabsTrigger>
-              </TabsList>
+            <PresetNameDialog
+              open={textPresetDialog !== null}
+              mode={textPresetDialog?.mode ?? 'add'}
+              initialName={textPresetDialog?.mode === 'rename' ? activeTextEndpointPresetName : ''}
+              onOpenChange={(o) => { if (!o) setTextPresetDialog(null); }}
+              onSubmit={handleTextPresetNameSubmit}
+            />
+              </TabsContent>
               <TabsContent value="img-endpoint" className="pt-4 flex-1 min-h-0 data-[state=active]:flex flex-col gap-3">
             {/* Preset selector: swaps the whole endpoint field set. Every preset (incl. Default) is editable. */}
             <div className="flex items-center gap-2 flex-shrink-0">
@@ -1727,7 +1815,7 @@ An inspection aid for authoring and debugging; off by default.`}</HintInfo>
                 {statUpdatesEnabled && <TabsTrigger value="statupdates">Stat Updates</TabsTrigger>}
                 {locationChangeEnabled && <TabsTrigger value="location">Location Change</TabsTrigger>}
                 {memoryDigests && <TabsTrigger value="summary">Summary</TabsTrigger>}
-                {characterDiaries && <TabsTrigger value="diary">Diary</TabsTrigger>}
+                {promptAvailable.diary && <TabsTrigger value="diary">Diary</TabsTrigger>}
                 {thinkingMode === 'staged' && <TabsTrigger value="director">Director</TabsTrigger>}
                 {thinkingMode === 'staged' && <TabsTrigger value="character">Character</TabsTrigger>}
                 {thinkingMode === 'staged' && <TabsTrigger value="storyboard">Storyboard</TabsTrigger>}
@@ -1737,14 +1825,13 @@ An inspection aid for authoring and debugging; off by default.`}</HintInfo>
                   kept at text-xs. User Message shows only when the prompt has a user template. */}
               <Tabs
                 value={promptView}
-                onValueChange={(v) => setPromptView(v as 'system' | 'user' | 'recap' | 'recall' | 'options')}
+                onValueChange={(v) => setPromptView(v as 'system' | 'user' | 'messages' | 'options')}
                 className="flex justify-center mt-3 flex-shrink-0"
               >
                 <TabsList className="h-auto">
                   <TabsTrigger value="system" className="text-xs">System Prompt</TabsTrigger>
                   {activeUserPrompt && <TabsTrigger value="user" className="text-xs">User Message</TabsTrigger>}
-                  {recapAvailable && <TabsTrigger value="recap" className="text-xs">Recap Message</TabsTrigger>}
-                  {recallAvailable && <TabsTrigger value="recall" className="text-xs">Recall Message</TabsTrigger>}
+                  {messagesAvailable && <TabsTrigger value="messages" className="text-xs">Messages</TabsTrigger>}
                   <TabsTrigger value="options" className="text-xs">Options</TabsTrigger>
                 </TabsList>
               </Tabs>
@@ -1764,13 +1851,44 @@ An inspection aid for authoring and debugging; off by default.`}</HintInfo>
               {!showingOptions && (
               <>
               <TabsContent value="narration" className="mt-4 flex-1 min-h-0 data-[state=active]:flex flex-col">
-                <PromptField
-                  value={showingRecall ? rehydrateUserPrompt : showingRecap ? recapUserPrompt : showingUser ? narrationUserPrompt : systemPrompt}
-                  onChange={showingRecall ? setRehydrateUserPrompt : showingRecap ? setRecapUserPrompt : showingUser ? setNarrationUserPrompt : setSystemPrompt}
-                  variables={showingRecall || showingRecap ? [] : showingUser ? (PROMPT_KIND_USER_VARIABLES.narration ?? []) : PROMPT_KIND_VARIABLES.narration}
-                  previewValues={previewValues}
-                  readOnly={activePresetIsBuiltIn}
-                />
+                {showingMessages ? (
+                  <ScrollArea className="flex-1 min-h-0">
+                    <div className="flex flex-col gap-5 pr-3">
+                      {messageFields.map((f) => (
+                        <div key={f.key} className="flex flex-col gap-1">
+                          <div className="flex items-center justify-between">
+                            <span className="text-sm font-medium">{f.label}</span>
+                            {!activePresetIsBuiltIn && (
+                              <ConfirmDialog
+                                title={`Reset ${f.label}`}
+                                description={`Are you sure you want to reset the ${f.label} to its default value?`}
+                                onConfirm={() => f.set(f.def)}
+                              >
+                                <Button variant="outline" size="sm" disabled={f.value === f.def}>Reset</Button>
+                              </ConfirmDialog>
+                            )}
+                          </div>
+                          <PromptField
+                            value={f.value}
+                            onChange={f.set}
+                            variables={[]}
+                            previewValues={previewValues}
+                            readOnly={activePresetIsBuiltIn}
+                          />
+                          <p className="text-xs text-muted-foreground">{f.hint}</p>
+                        </div>
+                      ))}
+                    </div>
+                  </ScrollArea>
+                ) : (
+                  <PromptField
+                    value={showingUser ? narrationUserPrompt : systemPrompt}
+                    onChange={showingUser ? setNarrationUserPrompt : setSystemPrompt}
+                    variables={showingUser ? (PROMPT_KIND_USER_VARIABLES.narration ?? []) : PROMPT_KIND_VARIABLES.narration}
+                    previewValues={previewValues}
+                    readOnly={activePresetIsBuiltIn}
+                  />
+                )}
               </TabsContent>
 
               {thinkingMode === 'precall' && (
@@ -1890,9 +2008,10 @@ An inspection aid for authoring and debugging; off by default.`}</HintInfo>
               )}
             </Tabs>
 
-            {/* Reset targets the on-screen template; hidden on the Options sub-tab, which edits no template. */}
+            {/* Reset targets the on-screen template; hidden on the Options sub-tab (edits no template)
+                and the Messages view (per-field resets). */}
             <div className="flex flex-wrap justify-end items-center gap-2 flex-shrink-0">
-              {!activePresetIsBuiltIn && !showingOptions && (
+              {!activePresetIsBuiltIn && !showingOptions && !showingMessages && (
                 <ConfirmDialog
                   title={`Reset ${resetTarget.label}`}
                   description={`Are you sure you want to reset the ${resetTarget.label} to its default value?`}

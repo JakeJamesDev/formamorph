@@ -136,7 +136,7 @@ const CHARACTER: PromptVariable = { token: '<CHARACTER NAME>', label: 'Character
 // game text), distinct from the world/context tokens above.
 const PLAYER_ACTION: PromptVariable = { token: '<PLAYER ACTION>', label: 'Player Action', color: HIGHLIGHT_PALETTE[9] };
 const NARRATION: PromptVariable = { token: '<NARRATION>', label: 'Narration', color: HIGHLIGHT_PALETTE[10] };
-// Image-gen tag prompt only (Settings → Image Gen → Tag Prompt): expands to per-kind guidance. Registered
+// Image-gen tag prompt only (Settings → AI Endpoints → Tag Prompt): expands to per-kind guidance. Registered
 // here so the shared prompt parser/chip recognize it; it is never offered in a game prompt's toolbar.
 export const SUBJECT: PromptVariable = { token: '<SUBJECT>', label: 'Subject', color: HIGHLIGHT_PALETTE[12] };
 

@@ -159,7 +159,8 @@ for (let r = 0; r < RUNS; r++) {
         out = await call({ ...opts, maxTokens: 420, temp: 0.7, seed }, [
           { role: "system", content: sys },
           { role: "assistant", content: RECAP },
-          { role: "user", content: `Player action: ${ACTION}` },
+          // Bare action, no "Player action:" wrapper — matches the app's message assembly (dropped 2026-07-21).
+          { role: "user", content: ACTION },
         ]);
         flags = narrationFlags(out);
       }

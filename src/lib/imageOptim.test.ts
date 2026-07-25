@@ -95,6 +95,52 @@ describe('downscaleWorldImages', () => {
     expect(out.entities[0].image).toBe('WEBP:BIG-e');
     expect(out.entities[1].image).toBe('small-e'); // within cap → untouched
   });
+
+  it('reports monotonic progress that ticks once per image-bearing slot (skipped ones included)', async () => {
+    const calls: { done: number; total: number }[] = [];
+    await downscaleWorldImages(world, deps, (done, total) => calls.push({ done, total }));
+    // 4 image slots: thumbnail, 1 background (l2 has none), 2 entity images. `total` is constant.
+    expect(calls.every((c) => c.total === 4)).toBe(true);
+    // First call is the 0/total prime; then done climbs 1→4, never repeating or skipping.
+    expect(calls.map((c) => c.done)).toEqual([0, 1, 2, 3, 4]);
+  });
+
+  it('an aborted signal stops the run before the next image and rejects with AbortError', async () => {
+    const controller = new AbortController();
+    const optimized: string[] = [];
+    const abortingDeps: DownscaleDeps = {
+      isOversized: () => Promise.resolve(true),
+      optimize: (url) => {
+        // Abort mid-run, as the editor's unmount cleanup does — after the first image completes.
+        optimized.push(url);
+        controller.abort();
+        return Promise.resolve(`OPT:${url}`);
+      },
+    };
+    await expect(downscaleWorldImages(world, abortingDeps, undefined, controller.signal)).rejects.toMatchObject({
+      name: 'AbortError',
+    });
+    expect(optimized).toEqual(['BIG-thumb']); // the remaining slots were never dispatched
+  });
+
+  it('a pre-aborted signal rejects before any work', async () => {
+    const controller = new AbortController();
+    controller.abort();
+    const spyDeps: DownscaleDeps = {
+      isOversized: () => Promise.resolve(true),
+      optimize: (url) => Promise.resolve(`OPT:${url}`),
+    };
+    await expect(downscaleWorldImages(world, spyDeps, undefined, controller.signal)).rejects.toMatchObject({
+      name: 'AbortError',
+    });
+  });
+
+  it('reports a zero total when the world has no images', async () => {
+    const empty = { worldOverview: {}, entities: [], locations: [] } as unknown as World;
+    const calls: { done: number; total: number }[] = [];
+    await downscaleWorldImages(empty, deps, (done, total) => calls.push({ done, total }));
+    expect(calls).toEqual([{ done: 0, total: 0 }]);
+  });
 });
 
 describe('estimateEncodedBytes', () => {

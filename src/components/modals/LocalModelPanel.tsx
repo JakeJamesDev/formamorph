@@ -26,7 +26,7 @@ export function LocalModelPanel() {
     localGpuLayers, setLocalGpuLayers,
     localFlashAttention, setLocalFlashAttention,
     localParallelRequests, setLocalParallelRequests,
-    maxTokens, setMaxTokens,
+    localMaxTokens, setLocalMaxTokens,
     genTemperature, setGenTemperature,
     genTopP, setGenTopP,
     genRepetitionPenalty, setGenRepetitionPenalty,
@@ -83,7 +83,7 @@ export function LocalModelPanel() {
     setLocalGpuLayers(DEFAULT_LOCAL_GPU_LAYERS);
     setLocalFlashAttention(DEFAULT_LOCAL_FLASH_ATTENTION);
     setLocalParallelRequests(DEFAULT_LOCAL_PARALLEL_REQUESTS);
-    setMaxTokens(DEFAULT_MAX_TOKENS);
+    setLocalMaxTokens(DEFAULT_MAX_TOKENS);
     setGenTemperature(DEFAULT_GEN_TEMPERATURE);
     setGenTopP(DEFAULT_GEN_TOP_P);
     setGenRepetitionPenalty(DEFAULT_GEN_REPETITION_PENALTY);
@@ -180,7 +180,7 @@ export function LocalModelPanel() {
       </Row>
 
       <Row label="Max Output Tokens" htmlFor="maxTokens" hint="Cap on the model's reply length. Applies to the next turn.">
-        <ValueSlider id="maxTokens" value={maxTokens} min={128} max={8192} step={128} onChange={setMaxTokens} format={(v) => `${v.toLocaleString()} tok`} />
+        <ValueSlider id="maxTokens" value={localMaxTokens} min={128} max={8192} step={128} onChange={setLocalMaxTokens} format={(v) => `${v.toLocaleString()} tok`} />
       </Row>
 
       {advancedMode && (

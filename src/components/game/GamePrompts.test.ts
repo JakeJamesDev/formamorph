@@ -15,6 +15,9 @@ import {
   defaultLocationChangeUserPrompt,
   defaultSummaryUserPrompt,
   OPENING_SCENE_CUE,
+  defaultOocDirectivePrompt,
+  hasOocDirective,
+  stripOocDirectives,
   markdownGuidance,
   activeCharacterGuidance,
   planDirective,
@@ -175,6 +178,33 @@ describe('OPENING_SCENE_CUE', () => {
   // Anti-echo mechanical guard: a trailing question is a copy-magnet small models parrot back at the player.
   it('is phrased as an instruction, not a question', () => {
     expect(OPENING_SCENE_CUE).not.toContain('?');
+  });
+});
+
+describe('OOC channel', () => {
+  it('hasOocDirective detects a square-bracket directive anywhere in the action', () => {
+    expect(hasOocDirective('I swing up behind her. [She agrees and they ride on.]')).toBe(true);
+    expect(hasOocDirective('[Skip ahead to dusk.] I keep walking.')).toBe(true);
+  });
+
+  it('hasOocDirective ignores bracket-free, empty-bracket, and unclosed-bracket actions', () => {
+    expect(hasOocDirective('I ask her what she is running from.')).toBe(false);
+    expect(hasOocDirective('I mark the crate [] and move on.')).toBe(false);
+    expect(hasOocDirective('I shout [into the dark')).toBe(false);
+  });
+
+  it('the rider is a single line composed after the action', () => {
+    expect(defaultOocDirectivePrompt).not.toContain('\n');
+  });
+
+  it('stripOocDirectives removes bracket directives and tidies the seams', () => {
+    expect(stripOocDirectives('I swing up behind her. [She agrees and they ride on.]')).toBe('I swing up behind her.');
+    expect(stripOocDirectives('[Skip ahead.] I keep walking. [At dusk.]')).toBe('I keep walking.');
+    expect(stripOocDirectives('I hand over the coin [he takes it gladly] and wait.')).toBe('I hand over the coin and wait.');
+  });
+
+  it('stripOocDirectives leaves bracket-free actions untouched', () => {
+    expect(stripOocDirectives('I ask her what she is running from.')).toBe('I ask her what she is running from.');
   });
 });
 

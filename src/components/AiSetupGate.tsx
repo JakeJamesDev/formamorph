@@ -13,7 +13,8 @@ import {
   type LocalDownloadProgress,
 } from '@/lib/imageGen/desktop';
 
-/** Why the gate opened: after the first-run intro (skippable) or because they tried to play (not). */
+/** Why the gate opened: after the first-run intro, or on entering a world with the AI unreachable. Both are
+ *  dismissible — the gate warns, it doesn't trap. A failed turn is recoverable; a modal with no exit isn't. */
 export type GateReason = 'firstRun' | 'play';
 
 /** How often the gate re-probes a custom endpoint. Tuned to human scale — starting a server takes seconds. */
@@ -117,14 +118,14 @@ export function AiSetupGate({ open, reason, mode, blocker, reachable, recheck, o
     : 'Formamorph runs its AI on your own machine. Download a model to start playing — no account, no endpoint setup.';
 
   return (
-    <Dialog open={open} onOpenChange={(v) => { if (!v && reason === 'firstRun') onOpenChange(false); }}>
+    <Dialog open={open} onOpenChange={(v) => { if (!v && !downloading) onOpenChange(false); }}>
       <DialogContent
         className="w-[min(96vw,560px)] max-w-none"
-        // At the play gate there's no "play anyway" — closing it would just resume into a broken turn.
-        // A download in flight is the same: closing loses the progress view they need.
-        hideClose={reason === 'play' || downloading}
-        onInteractOutside={(e) => { if (reason === 'play' || downloading) e.preventDefault(); }}
-        onEscapeKeyDown={(e) => { if (reason === 'play' || downloading) e.preventDefault(); }}
+        // Dismissible in both reasons: the gate is a warning, not a cell. Only a download in flight holds it
+        // open, since closing would lose the progress view they need.
+        hideClose={downloading}
+        onInteractOutside={(e) => { if (downloading) e.preventDefault(); }}
+        onEscapeKeyDown={(e) => { if (downloading) e.preventDefault(); }}
       >
         <DialogHeader>
           <DialogTitle>{title}</DialogTitle>
@@ -200,9 +201,12 @@ export function AiSetupGate({ open, reason, mode, blocker, reachable, recheck, o
             </Button>
           )}
           <Button variant="outline" onClick={onOpenSettings}>Open Settings</Button>
-          {/* Only the first-run prompt is skippable — they can look around before committing to a download. */}
-          {reason === 'firstRun' && !downloading && (
-            <Button variant="ghost" onClick={() => onOpenChange(false)}>Later</Button>
+          {/* Always skippable: at first run they can look around before committing to a download; in a world
+              they can read and explore, and the turn simply fails until the AI answers. */}
+          {!downloading && (
+            <Button variant="ghost" onClick={() => onOpenChange(false)}>
+              {reason === 'play' ? 'Continue anyway' : 'Later'}
+            </Button>
           )}
         </DialogFooter>
       </DialogContent>

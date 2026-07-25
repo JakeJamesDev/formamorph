@@ -1,6 +1,6 @@
 import { randomUUID } from "@/lib/uuid";
 import { createContext, useContext, useState, useEffect, useRef, useCallback, useMemo, type ReactNode } from 'react';
-import { defaultSystemPrompt, defaultNarrationUserPrompt, defaultRecapUserPrompt, defaultRehydrateUserPrompt, defaultChoicesPrompt, defaultStatUpdatesPrompt, defaultLocationChangePrompt, defaultThinkingPrompt, defaultSummaryPrompt, defaultChoicesUserPrompt, defaultStatUpdatesUserPrompt, defaultLocationChangeUserPrompt, defaultSummaryUserPrompt, defaultDiaryPrompt, defaultDirectorPrompt, defaultDirectorUserPrompt, defaultCharacterPrompt, defaultStoryboardPrompt } from '../components/game/GamePrompts';
+import { defaultSystemPrompt, defaultNarrationUserPrompt, defaultRecapUserPrompt, defaultRehydrateUserPrompt, defaultOocDirectivePrompt, defaultChoicesPrompt, defaultStatUpdatesPrompt, defaultLocationChangePrompt, defaultThinkingPrompt, defaultSummaryPrompt, defaultChoicesUserPrompt, defaultStatUpdatesUserPrompt, defaultLocationChangeUserPrompt, defaultSummaryUserPrompt, defaultDiaryPrompt, defaultDirectorPrompt, defaultDirectorUserPrompt, defaultCharacterPrompt, defaultStoryboardPrompt } from '../components/game/GamePrompts';
 import { DEFAULT_ENDPOINT, DEFAULT_API_TOKEN, DEFAULT_MODEL_NAME, DEFAULT_MAX_TOKENS, DEFAULT_CONTEXT_WINDOW, DEFAULT_LOCAL_CONTEXT_SIZE, DEFAULT_LOCAL_GPU_LAYERS, DEFAULT_LOCAL_FLASH_ATTENTION, DEFAULT_LOCAL_PARALLEL_REQUESTS, DEFAULT_GEN_TEMPERATURE, DEFAULT_GEN_TOP_P, DEFAULT_GEN_REPETITION_PENALTY, DEFAULT_GEN_TOP_K, DEFAULT_GEN_MIN_P, DEFAULT_THEME_COLOR, BASE_THEME_COLOR, THEME_COLORS, DEFAULT_FONT, FONT_OPTIONS, SYSTEM_FONT_STACK, DEFAULT_NARRATION_FONT, DEFAULT_NARRATION_SCALE, DEFAULT_NARRATION_LINE_HEIGHT, NARRATION_FONT_OPTIONS, fontStack, fontSizeAdjust, DEFAULT_UPDATE_CHANNEL, type ThemeColor, type FontChoice, type NarrationFont, type UpdateChannel } from './settingsDefaults';
 import { isDesktop } from '../lib/imageGen/desktop';
 import { DEFAULT_TAG_PROMPT } from '../lib/imagePrompt';
@@ -11,6 +11,14 @@ import {
   updateValue as imageUpdateValue,
   type ImageEndpointPresetStore, type ImageEndpointValues, type ImageEndpointValueKey,
 } from '../lib/imageEndpointPresets';
+import {
+  textEndpointPresetCodec, emptyStore as emptyTextStore, presetStoreFromEnv as textPresetStoreFromEnv,
+  DEFAULT_TEXT_PRESET_ID,
+  activeValues as textActiveValues, isBuiltInActive as isTextBuiltInActive, setActive as textSetActive,
+  addPreset as textAddPreset, renamePreset as textRenamePreset, deletePreset as textDeletePreset,
+  resetPreset as textResetPreset, updateValue as textUpdateValue,
+  type TextEndpointPresetStore, type TextEndpointValues, type TextEndpointValueKey,
+} from '../lib/textEndpointPresets';
 import { fetchContextLength } from '../lib/contextLength';
 import { registerDevHook } from '../lib/devRouter';
 import { usePersistentState, stringCodec, boolCodec, intCodec, floatCodec, nullableIntCodec } from '../lib/usePersistentState';
@@ -86,6 +94,36 @@ function seedImagePresetStore(): ImageEndpointPresetStore {
   });
 }
 
+/** Build the initial text-endpoint preset store, migrating a pre-preset custom endpoint from the legacy
+ *  individual `FORMAMORPH_endpointUrl`/`_apiToken`/`_modelName`/`_maxTokens`/`_contextWindowOverride` keys
+ *  into a seeded "Custom" user preset when the user had one. With no custom config, VITE_DEFAULT_TEXT_PRESETS
+ *  (if set) seeds named presets; otherwise the Default built-in is active alone. */
+function seedTextPresetStore(): TextEndpointPresetStore {
+  const get = (k: string) => localStorage.getItem(`${APP_ID}_${k}`);
+  const overrideRaw = get('contextWindowOverride');
+  const maxRaw = get('maxTokens');
+  const stashed: TextEndpointValues = {
+    endpoint: get('endpointUrl') ?? DEFAULT_ENDPOINT,
+    apiToken: get('apiToken') ?? DEFAULT_API_TOKEN,
+    model: get('modelName') ?? DEFAULT_MODEL_NAME,
+    contextWindowOverride:
+      overrideRaw === null || overrideRaw === '' || !Number.isFinite(parseInt(overrideRaw)) ? null : parseInt(overrideRaw),
+    maxTokens: maxRaw === null ? DEFAULT_MAX_TOKENS : parseInt(maxRaw) || DEFAULT_MAX_TOKENS,
+  };
+  const hasStashedCustom =
+    stashed.endpoint !== DEFAULT_ENDPOINT || stashed.apiToken !== DEFAULT_API_TOKEN || stashed.model !== DEFAULT_MODEL_NAME;
+  if (!hasStashedCustom) return textPresetStoreFromEnv() ?? emptyTextStore;
+  // Was the user actually on the custom endpoint? Make the migrated preset active if so (web: any non-default;
+  // desktop: the checkbox was on) so a working config carries over; otherwise keep it available but inactive.
+  let toggleOn = true;
+  const savedToggle = get('useCustomEndpoint');
+  if (savedToggle !== null) {
+    try { toggleOn = JSON.parse(savedToggle) === true; } catch { toggleOn = true; }
+  }
+  const id = randomUUID();
+  return { activeId: toggleOn ? id : DEFAULT_TEXT_PRESET_ID, presets: [{ id, name: 'Custom', values: stashed }] };
+}
+
 /** First-run default theme color. Honors an OS high-contrast request — but only while the user is still
  *  following the OS for appearance (light/dark = "system", the theme provider's default): if they've
  *  explicitly picked light or dark, they're customizing, so we don't force High Contrast on them. Applied
@@ -111,6 +149,7 @@ const PROMPT_TEXT_DEFAULTS: PromptValues = {
   narrationUserPrompt: defaultNarrationUserPrompt,
   recapUserPrompt: defaultRecapUserPrompt,
   rehydrateUserPrompt: defaultRehydrateUserPrompt,
+  oocDirectivePrompt: defaultOocDirectivePrompt,
   choicesPrompt: defaultChoicesPrompt,
   statUpdatesPrompt: defaultStatUpdatesPrompt,
   locationChangePromptText: defaultLocationChangePrompt,
@@ -310,16 +349,37 @@ function useProvideSettings() {
     parse: (r) => (r === 'prerelease' ? 'prerelease' : 'stable'),
     serialize: (v) => v,
   });
-  const [endpointUrl, setEndpointUrl] = usePersistentState<string>(`${APP_ID}_endpointUrl`, DEFAULT_ENDPOINT, stringCodec);
-  const [apiToken, setApiToken] = usePersistentState<string>(`${APP_ID}_apiToken`, DEFAULT_API_TOKEN, stringCodec);
-  const [modelName, setModelName] = usePersistentState<string>(`${APP_ID}_modelName`, DEFAULT_MODEL_NAME, stringCodec);
-  const [maxTokens, setMaxTokens] = usePersistentState<number>(`${APP_ID}_maxTokens`, DEFAULT_MAX_TOKENS, intCodec);
+  // The custom text endpoint lives in named, freely-editable presets (an immutable "Default" built-in = the
+  // shared/embedded endpoint, plus user presets) so the user can swap endpoints at will. The active preset's
+  // values back the endpointUrl/apiToken/modelName/contextWindowOverride/maxTokens getters below; the public
+  // names are unchanged so consumers (GameViewer) don't care about presets.
+  const initialTextStore = useRef<TextEndpointPresetStore | null>(null);
+  if (!initialTextStore.current) initialTextStore.current = seedTextPresetStore();
+  const [textPresetStore, setTextPresetStore] = usePersistentState<TextEndpointPresetStore>(
+    `${APP_ID}_textEndpointPresets`, initialTextStore.current, textEndpointPresetCodec,
+  );
+  const textValues = useMemo(() => textActiveValues(textPresetStore), [textPresetStore]);
+  // Stable setters: setTextPresetStore is stable, so each patch keeps a fixed identity across renders. This
+  // matters because setContextWindowOverride feeds detectContextWindow's deps — an unstable one re-fires the
+  // auto-detect effect every render.
+  const patchText = useCallback(
+    <K extends TextEndpointValueKey>(key: K) => (value: TextEndpointValues[K]) =>
+      setTextPresetStore((s) => textUpdateValue(s, key, value)),
+    [setTextPresetStore],
+  );
+  const { endpoint: endpointUrl, apiToken, model: modelName, contextWindowOverride, maxTokens } = textValues;
+  const setEndpointUrl = useMemo(() => patchText('endpoint'), [patchText]);
+  const setApiToken = useMemo(() => patchText('apiToken'), [patchText]);
+  const setModelName = useMemo(() => patchText('model'), [patchText]);
+  const setContextWindowOverride = useMemo(() => patchText('contextWindowOverride'), [patchText]);
+  const setMaxTokens = useMemo(() => patchText('maxTokens'), [patchText]);
+  const textIsBuiltInActive = isTextBuiltInActive(textPresetStore);
 
-  // Gates the custom endpoint fields. Fresh installs default off (use built-in defaults above); existing users
-  // with any non-default stored value default on, so a saved/working config isn't silently dropped.
-  const [useCustomEndpoint, setUseCustomEndpoint] = useState<boolean>(() => {
+  // Desktop checkbox: local bundled engine (off) vs a custom endpoint (on). Fresh installs default off;
+  // existing users who had a custom endpoint default on. On the web there's no local engine, so the toggle
+  // is instead derived from the preset selection (Default built-in = "our endpoint" = off).
+  const [customEndpointToggle, setCustomEndpointToggle] = useState<boolean>(() => {
     const saved = localStorage.getItem(`${APP_ID}_useCustomEndpoint`);
-    // Guard the parse: a corrupt value falls through to detection instead of crashing the boot render.
     if (saved !== null) {
       try {
         return JSON.parse(saved);
@@ -330,25 +390,31 @@ function useProvideSettings() {
     return (
       (localStorage.getItem(`${APP_ID}_endpointUrl`) ?? DEFAULT_ENDPOINT) !== DEFAULT_ENDPOINT ||
       (localStorage.getItem(`${APP_ID}_apiToken`) ?? DEFAULT_API_TOKEN) !== DEFAULT_API_TOKEN ||
-      (localStorage.getItem(`${APP_ID}_modelName`) ?? DEFAULT_MODEL_NAME) !== DEFAULT_MODEL_NAME ||
-      (localStorage.getItem(`${APP_ID}_maxTokens`) ?? String(DEFAULT_MAX_TOKENS)) !== String(DEFAULT_MAX_TOKENS)
+      (localStorage.getItem(`${APP_ID}_modelName`) ?? DEFAULT_MODEL_NAME) !== DEFAULT_MODEL_NAME
     );
   });
   useEffect(() => {
-    localStorage.setItem(`${APP_ID}_useCustomEndpoint`, JSON.stringify(useCustomEndpoint));
-  }, [useCustomEndpoint]);
+    localStorage.setItem(`${APP_ID}_useCustomEndpoint`, JSON.stringify(customEndpointToggle));
+  }, [customEndpointToggle]);
+  const useCustomEndpoint = isDesktop() ? customEndpointToggle : !textIsBuiltInActive;
+  const setUseCustomEndpoint = setCustomEndpointToggle;
 
-  // What the app actually sends with: the user's values when custom is on, the built-in defaults otherwise.
-  const activeEndpointUrl = useCustomEndpoint ? endpointUrl : DEFAULT_ENDPOINT;
-  const activeApiToken = useCustomEndpoint ? apiToken : DEFAULT_API_TOKEN;
-  const activeModelName = useCustomEndpoint ? modelName : DEFAULT_MODEL_NAME;
-  // Honor the user's cap on a custom endpoint AND on the desktop local engine (their own machine); only the
-  // shared default cloud endpoint forces the built-in default.
-  const activeMaxTokens = (useCustomEndpoint || isDesktop()) ? maxTokens : DEFAULT_MAX_TOKENS;
+  // Desktop bundled-engine output cap — kept separate from the preset-scoped custom-endpoint maxTokens so
+  // switching endpoints never disturbs the local engine. Seeded from the legacy shared key on first run.
+  const [localMaxTokens, setLocalMaxTokens] = usePersistentState<number>(
+    `${APP_ID}_localMaxTokens`,
+    (() => { const r = localStorage.getItem(`${APP_ID}_maxTokens`); return r === null ? DEFAULT_MAX_TOKENS : parseInt(r) || DEFAULT_MAX_TOKENS; })(),
+    intCodec,
+  );
+
+  // What the app actually sends with: the active preset's values (the Default preset already holds the shared
+  // built-in endpoint, so a Default selection sends the shared endpoint).
+  const activeEndpointUrl = endpointUrl;
+  const activeApiToken = apiToken;
+  const activeModelName = modelName;
 
   // Context window (tokens): auto-detected from the active endpoint, with an optional manual override.
   const [detectedContextWindow, setDetectedContextWindow] = usePersistentState<number | null>(`${APP_ID}_detectedContextWindow`, null, nullableIntCodec);
-  const [contextWindowOverride, setContextWindowOverride] = usePersistentState<number | null>(`${APP_ID}_contextWindowOverride`, null, nullableIntCodec);
   const [detectStatus, setDetectStatus] = useState<DetectStatus>('idle');
 
   // Desktop bundled-model runtime. Only meaningful when the local engine is active (desktop + no custom
@@ -363,6 +429,9 @@ function useProvideSettings() {
   // Append a `/no_think` directive to requests so reasoning models skip their scratchpad (faster).
   const [disableThinking, setDisableThinking] = usePersistentState<boolean>(`${APP_ID}_disableThinking`, false, boolCodec);
   const localModelActive = isDesktop() && !useCustomEndpoint;
+  // Honor the desktop local engine's own cap when it's active; otherwise the active endpoint preset's cap
+  // (the Default preset holds DEFAULT_MAX_TOKENS, so a Default selection matches the shared-endpoint cap).
+  const activeMaxTokens = localModelActive ? localMaxTokens : maxTokens;
 
   // Generation sampling for the local model — sent while the local engine is active.
   const [genTemperature, setGenTemperature] = usePersistentState<number>(`${APP_ID}_genTemperature`, DEFAULT_GEN_TEMPERATURE, floatCodec);
@@ -449,7 +518,7 @@ function useProvideSettings() {
   const [presetStore, setPresetStore] = usePersistentState<PromptPresetStore>(`${APP_ID}_promptPresets`, emptyStore, presetStoreCodec);
   const promptValues = useMemo(() => activeValues(presetStore, BUILTIN_VALUES), [presetStore]);
   const {
-    systemPrompt, narrationUserPrompt, recapUserPrompt, rehydrateUserPrompt, choicesPrompt, statUpdatesPrompt, locationChangePromptText, thinkingPrompt, summaryPrompt,
+    systemPrompt, narrationUserPrompt, recapUserPrompt, rehydrateUserPrompt, oocDirectivePrompt, choicesPrompt, statUpdatesPrompt, locationChangePromptText, thinkingPrompt, summaryPrompt,
     diaryPrompt, directorPrompt, directorUserPrompt, characterPrompt, storyboardPrompt,
     choicesUserPrompt, statUpdatesUserPrompt, locationChangeUserPrompt, summaryUserPrompt,
   } = promptValues;
@@ -457,6 +526,7 @@ function useProvideSettings() {
   const setNarrationUserPrompt = (v: string) => setPresetStore((s) => updateValue(s, 'narrationUserPrompt', v));
   const setRecapUserPrompt = (v: string) => setPresetStore((s) => updateValue(s, 'recapUserPrompt', v));
   const setRehydrateUserPrompt = (v: string) => setPresetStore((s) => updateValue(s, 'rehydrateUserPrompt', v));
+  const setOocDirectivePrompt = (v: string) => setPresetStore((s) => updateValue(s, 'oocDirectivePrompt', v));
   const setChoicesPrompt = (v: string) => setPresetStore((s) => updateValue(s, 'choicesPrompt', v));
   const setStatUpdatesPrompt = (v: string) => setPresetStore((s) => updateValue(s, 'statUpdatesPrompt', v));
   const setLocationChangePromptText = (v: string) => setPresetStore((s) => updateValue(s, 'locationChangePromptText', v));
@@ -613,7 +683,7 @@ function useProvideSettings() {
   const setStatUpdatesVerbatimTurns = (n: number) => setPresetStore((s) => updateVerbatim(s, 'statUpdates', n));
   const setLocationChangeVerbatimTurns = (n: number) => setPresetStore((s) => updateVerbatim(s, 'locationChange', n));
   const setSummaryVerbatimTurns = (n: number) => setPresetStore((s) => updateVerbatim(s, 'summary', n));
-  // Image generation config (Settings → Image Gen → Endpoint). Lives in named, freely-editable presets so
+  // Image generation config (Settings → AI Endpoints → Image). Lives in named, freely-editable presets so
   // the user can keep several image-server configs. The active preset's values back the fields below; the
   // public getter/setter names are unchanged so consumers (GenerateImageButton) don't care about presets.
   const initialImageStore = useRef<ImageEndpointPresetStore | null>(null);
@@ -659,7 +729,7 @@ function useProvideSettings() {
     });
     // eslint-disable-next-line react-hooks/exhaustive-deps -- register the dev hook once; setImagePresetStore is stable
   }, []);
-  // Preset management (Settings → Image Gen → Endpoint selector). Every preset is editable, including Default.
+  // Preset management (Settings → AI Endpoints → Image selector). Every preset is editable, including Default.
   const imageEndpointPresets = imagePresetStore.presets.map((p) => ({ id: p.id, name: p.name }));
   const activeImageEndpointPresetId = imagePresetStore.activeId;
   const activeImageEndpointPresetName =
@@ -673,7 +743,27 @@ function useProvideSettings() {
   const renameImageEndpointPreset = (id: string, name: string) => setImagePresetStore((s) => imageRenamePreset(s, id, name));
   const deleteImageEndpointPreset = (id: string) => setImagePresetStore((s) => imageDeletePreset(s, id));
   const resetImageEndpointPreset = (id: string) => setImagePresetStore((s) => imageResetPreset(s, id));
-  // User-editable prompt that turns a subject's description into booru tags (Settings → Image Gen → Tag Prompt).
+
+  // Preset management (Settings → AI Endpoints → Text selector). The immutable "Default" built-in is virtual
+  // (never stored) and read-only; user presets are freely editable. Mirrors the prompt-preset UX.
+  const builtinTextEndpointPresets = [{ id: DEFAULT_TEXT_PRESET_ID, name: 'Default' }];
+  const textEndpointPresets = textPresetStore.presets.map((p) => ({ id: p.id, name: p.name }));
+  const activeTextEndpointPresetId = textPresetStore.activeId;
+  const activeTextEndpointPresetIsBuiltIn = textIsBuiltInActive;
+  const activeTextEndpointPresetName = activeTextEndpointPresetIsBuiltIn
+    ? 'Default'
+    : textPresetStore.presets.find((p) => p.id === textPresetStore.activeId)?.name ?? 'Default';
+  const selectTextEndpointPreset = (id: string) => setTextPresetStore((s) => textSetActive(s, id));
+  const addTextEndpointPreset = (name: string) => {
+    const id = randomUUID();
+    setTextPresetStore((s) => textAddPreset(s, id, name, textActiveValues(s)));
+    return id;
+  };
+  const renameTextEndpointPreset = (id: string, name: string) => setTextPresetStore((s) => textRenamePreset(s, id, name));
+  const deleteTextEndpointPreset = (id: string) => setTextPresetStore((s) => textDeletePreset(s, id));
+  const resetTextEndpointPreset = (id: string) => setTextPresetStore((s) => textResetPreset(s, id));
+
+  // User-editable prompt that turns a subject's description into booru tags (Settings → AI Endpoints → Tag Prompt).
   const [imageTagPrompt, setImageTagPrompt] = usePersistentState<string>(`${APP_ID}_imageTagPrompt`, DEFAULT_TAG_PROMPT, stringCodec);
 
   const [vramHelperUrl, setVramHelperUrl] = usePersistentState<string>(`${APP_ID}_vramHelperUrl`, 'http://localhost:5179', stringCodec);
@@ -834,8 +924,20 @@ function useProvideSettings() {
     setModelName,
     maxTokens,
     setMaxTokens,
+    localMaxTokens,
+    setLocalMaxTokens,
     useCustomEndpoint,
     setUseCustomEndpoint,
+    builtinTextEndpointPresets,
+    textEndpointPresets,
+    activeTextEndpointPresetId,
+    activeTextEndpointPresetIsBuiltIn,
+    activeTextEndpointPresetName,
+    selectTextEndpointPreset,
+    addTextEndpointPreset,
+    renameTextEndpointPreset,
+    deleteTextEndpointPreset,
+    resetTextEndpointPreset,
     activeEndpointUrl,
     activeApiToken,
     activeModelName,
@@ -880,6 +982,8 @@ function useProvideSettings() {
     setRecapUserPrompt,
     rehydrateUserPrompt,
     setRehydrateUserPrompt,
+    oocDirectivePrompt,
+    setOocDirectivePrompt,
     choicesPrompt,
     setChoicesPrompt,
     statUpdatesPrompt,

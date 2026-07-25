@@ -4,6 +4,7 @@ export const defaultSystemPrompt = `You are the narrator stage of an interactive
 - Write in second person, present tense ("You ...").
 - Be concise and vivid. <LENGTH GUIDANCE>
 - What the story has established stays true: where everyone is, what they hold and wear, and what has been said or done carry into this turn unless the action changes them.
+- Square-bracketed text in the player's action is the author directing the scene, not something the character says or does: make this turn go the way it directs, and keep the story's prose free of it.
 - Let the player's current stats shape how each action turns out: a low stat shows in the effort it costs, a high one shows as ease or assurance - worked into the events, not stated.
 - Advance the scene, then stop, ending on a spoken line or concrete image that lands what this turn changed.
 - Characters speak through what they do: their actual words land as quoted dialogue woven into their movements, and the more physical the moment, the more they voice it - urging, teasing, voicing what they want next. Their words respond to what the player just said or did and carry the scene onward.
@@ -89,6 +90,26 @@ export const OPENING_SCENE_CUE = `Begin the story: write the opening scene now. 
 export const defaultNarrationUserPrompt = `<PLAYER ACTION>
 
 When the player's action speaks to a character, the reply on the page is that character's own voice: their quoted sentences, answering what was asked and adding something of their own. The player's words are already spoken by the player - yours to write is the world's answer.`;
+
+// The OOC channel: square-bracketed text in the player's action is authorial direction, not in-fiction
+// speech. The convention is defined once in the system prompt's Guidelines; this rider re-states it in
+// the high-recency user slot ON BRACKET TURNS ONLY (composed per-turn in GameViewer, thinking-off lane),
+// so bracket-free turns are byte-identical to before and there is no standing attention cost. History
+// stores the bare action, so the rider never accumulates. Editable per preset (Settings → Prompts →
+// Narration → Messages). Evidence bar: ooc-probe.mjs.
+export const defaultOocDirectivePrompt = `The square-bracketed text in the action is the author directing the scene, not something the player's character says or does: make this turn go the way it directs, and keep the story's prose free of it.`;
+
+/** True when a player action carries an OOC square-bracket directive (used to gate the rider). */
+export function hasOocDirective(action: string): boolean {
+  return /\[[^\]]+\]/.test(action);
+}
+
+/** The action with OOC bracket directives removed — what the summary writer sees, so a direction's
+ *  wording can never be recorded as story content (probed: a prompt rule alone still let the digest
+ *  lift the bracket's phrasing). */
+export function stripOocDirectives(action: string): string {
+  return action.replace(/\s*\[[^\]]+\]/g, "").replace(/\s{2,}/g, " ").trim();
+}
 
 // The user line of the memory-recap exchange: with Memory Digests on, older turns ride the narration
 // history as ONE recap exchange - this question, answered by the merged digest text. Framing the digests

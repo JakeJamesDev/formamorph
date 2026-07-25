@@ -40,8 +40,11 @@ const grab = (name) => {
 };
 const SYS = grab("defaultSummaryPrompt");
 const USER = grab("defaultSummaryUserPrompt");
+// Matches the app's assembly: GameViewer strips OOC bracket directives (stripOocDirectives) from the
+// action before the summary request, so a direction's wording can never reach the digest writer.
+const stripOoc = (a) => a.replace(/\s*\[[^\]]+\]/g, "").replace(/\s{2,}/g, " ").trim();
 const renderUser = (action, narration) =>
-  USER.replaceAll("<PLAYER ACTION>", action).replaceAll("<NARRATION>", narration);
+  USER.replaceAll("<PLAYER ACTION>", stripOoc(action)).replaceAll("<NARRATION>", narration);
 
 // A rough sentence count: terminal .!? runs, ignoring a single trailing terminator.
 const sentenceCount = (s) => (s.trim().replace(/[.!?]+$/, "").match(/[.!?]+(\s|$)/g) || []).length + 1;
@@ -95,7 +98,7 @@ async function call(action, narration) {
 
 console.log(`Summary probe · ${model.label} · temp ${temp} · ${runs} run(s)/case\n`);
 await call("warm up", "warm up").catch(() => {});
-const agg = { pass: 0, total: 0, multiline: 0, tooLong: 0, notYou: 0, quotes: 0, nameLeak: 0, missedIdle: 0, factMiss: 0, factHits: 0, factTotal: 0 };
+const agg = { pass: 0, total: 0, multiline: 0, tooLong: 0, notYou: 0, quotes: 0, nameLeak: 0, missedIdle: 0, factMiss: 0, factHits: 0, factTotal: 0, banned: 0 };
 for (const c of cases) {
   for (let r = 0; r < runs; r++) {
     const out = await call(c.action, c.narration);
@@ -113,10 +116,13 @@ for (const c of cases) {
       agg.factTotal += (c.require || []).length;
       agg.factHits += (c.require || []).length - missed.length;
       if (missed.length) { fails.push(`FACT-MISS:${missed.join("/")}`); agg.factMiss++; }
+      // forbidRe: regexes that must NOT appear (e.g. an OOC bracket direction's wording read as story content).
+      const banned = (c.forbidRe || []).filter((re) => new RegExp(re, "i").test(out));
+      if (banned.length) { fails.push(`BANNED:${banned.join("/")}`); agg.banned++; }
     }
     const pass = fails.length === 0;
     agg.total++; if (pass) agg.pass++;
     console.log(`[${pass ? "PASS" : "FAIL"}] ${c.name}${runs > 1 ? ` #${r + 1}` : ""}${fails.length ? "  <" + fails.join(",") + ">" : ""}\n        ${JSON.stringify(out)}`);
   }
 }
-console.log(`\n${agg.pass}/${agg.total} clean · multiline=${agg.multiline} tooLong=${agg.tooLong} notYou=${agg.notYou} quotes=${agg.quotes} nameLeak=${agg.nameLeak} missedIdle=${agg.missedIdle} · facts ${agg.factHits}/${agg.factTotal} (turns missing facts=${agg.factMiss})`);
+console.log(`\n${agg.pass}/${agg.total} clean · multiline=${agg.multiline} tooLong=${agg.tooLong} notYou=${agg.notYou} quotes=${agg.quotes} nameLeak=${agg.nameLeak} missedIdle=${agg.missedIdle} banned=${agg.banned} · facts ${agg.factHits}/${agg.factTotal} (turns missing facts=${agg.factMiss})`);

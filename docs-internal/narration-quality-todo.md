@@ -11,8 +11,9 @@ stat restraint 2/3 no-ops); Q on Cydonia (first tier-2 run: C2 PASS, C1 PARTIAL)
 best run on record (first-ever 50/50 turns with dialogue, mid-band length collapse gone, best
 late-band hold). Q-run recall status: C2 now PASSES on both tiers end-to-end.
 
-**▶ Resume here:** next up is item 4 (OOC / register channel). Item 3 is largely absorbed by
-item 2's now-line (notes now ride the recap's end) — revisit only if frame-fact failures persist.
+**▶ Resume here:** next up is item 5 (repetition / stalling in sustained scenes) — needs the
+two-lever probe design (anti-echo clause arm vs narration sampler-pin arm, plus a callback-regression
+metric). Item 3 is largely absorbed by item 2's now-line — revisit only if frame-fact failures persist.
 
 ## Shipped so far (context)
 
@@ -80,7 +81,22 @@ recap. Precedent: the user-slot beside the action is the highest-leverage positi
 ~3× dialogue). Experiment: ride Player Notes (or a frame-note subset) in the narration user
 message. Cheap; probe for side effects on dialogue metrics.
 
-### 4. OOC / register channel
+### 4. ✅ OOC / register channel — SHIPPED 2026-07-24
+Square brackets in the action are now the authorial channel: a Guidelines line in
+`defaultSystemPrompt` defines the convention, and bracket turns get `OOC_DIRECTIVE` appended in the
+high-recency user slot (thinking-off lane; composed in GameViewer, history stores the bare action).
+The summary pass never sees the direction at all — `stripOocDirectives` removes brackets code-side
+before the digest request, after a probe showed a prompt rule alone let Cydonia lift the bracket's
+wording into the digest ("He softens toward you"). Action-box placeholder hints at the feature.
+Evidence (`ooc-probe.mjs`, 4 cases from the T27/28 shape + 2 bracket-free controls, 4 runs/case):
+both models largely obey brackets even unprompted (base comply cloud 13/16, Cydonia 15/16); shipped
+arm (line + rider) cloud 14/16 comply / 0 defy, Cydonia 15–16/16, leak 0 everywhere, controls clean.
+Regression: dialogue-unbaited A/B on cloud identical across arms (0/20 both — probe still uses the
+stale `Player action:` wrapper, separate fix); Cydonia controls held dialogue 8/8 on all arms.
+Honest caveat: the probe is single-prior-turn; the real T27/28 failure lived in a 27-turn context
+where instruction-following is weaker — the convention's long-session value rests on the documented
+channel + rider recency, not on these near-saturated single-turn numbers.
+Original finding follows for context.
 T27/28: in-character hesitation read as a real brake; Sarah dismounted twice; user had to script
 the NPC (T29) to proceed. The model's read was coherent — the missing signal is authorial register.
 Feature: documented OOC convention — bracketed/parenthetical text in the action treated as

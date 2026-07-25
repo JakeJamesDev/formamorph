@@ -1,6 +1,20 @@
 import { render, fireEvent, cleanup } from '@testing-library/react';
-import { describe, it, expect, beforeEach } from 'vitest';
+import { describe, it, expect, beforeEach, vi, afterEach } from 'vitest';
 import { HelpButton } from './HelpButton';
+
+// Minimal MediaQueryList stub so `useIsMobile` (tabbed topics' body switch) resolves in jsdom.
+const stubMatchMedia = () =>
+  vi.stubGlobal('matchMedia', vi.fn(() => ({
+    matches: false,
+    media: '',
+    onchange: null,
+    addEventListener: () => {},
+    removeEventListener: () => {},
+    addListener: () => {},
+    removeListener: () => {},
+    dispatchEvent: () => true,
+  })));
+afterEach(() => vi.unstubAllGlobals());
 
 /** The help button itself. Queried by its aria-label rather than by role: while the pop-out is open Radix
  *  marks the background `aria-hidden`, so a role query silently returns the dialog's close button instead. */
@@ -17,6 +31,7 @@ describe('HelpButton', () => {
   beforeEach(() => {
     localStorage.clear();
     cleanup();
+    stubMatchMedia();
   });
 
   it('renders nothing for a topic with no copy yet', () => {
