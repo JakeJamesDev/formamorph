@@ -17,7 +17,10 @@ import { cosineSimilarity } from './memoryRelevance';
  *  fire. 0.44 is the lowest value scoring 100% precision on both populations — authored (name mirrors the
  *  keywords) and imported (distinct names) — at 65% / 61% recall; below it authored drops to 94%. Recall
  *  decays smoothly above, so the cost of being one step high is a missed activation, not bad lore.
- *  Run `--matrix` to reproduce. The remaining misses sit in MiniLM's noise band, not fixable by threshold. */
+ *  Held out under `--holdout` (2-fold, tune on one half of the cases and score the other): 0.44 keeps 100%
+ *  precision on every held-out fold of both populations, while the tempting 0.42 falls to 89% — it is
+ *  fitted to the cases it was picked on. Run `--matrix` / `--holdout` to reproduce. The remaining misses
+ *  sit in MiniLM's noise band, not fixable by threshold. */
 export const SEMANTIC_LORE_THRESHOLD = 0.44;
 
 /** Most entries one action may semantically activate — keeps a lore-dense world from flooding the

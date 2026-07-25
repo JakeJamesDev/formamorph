@@ -6,7 +6,8 @@
 // only come from meaning, never from a literal keyword the keyword pass would have caught anyway.
 //
 // Usage:  node semantic-lore-probe.mjs [--cap 3] [--sweep 0.25,0.3,0.35,0.4,0.45,0.5,0.55]
-//                                      [--mirror-names] [--embed legacy|deduped|deduped-list] [--matrix]
+//                                      [--mirror-names] [--embed legacy|deduped|deduped-list]
+//                                      [--matrix] [--holdout]
 //
 // `--mirror-names` rewrites every entry's name to its own joined keys, reproducing an AUTHORED world (the
 // World Editor mirrored name←keywords until the fields were decoupled). The shipped fixture has distinct
@@ -20,6 +21,10 @@
 //   deduped-list — dropped only when it duplicates a MULTI-keyword list; rejected (see embedTextFor)
 //
 // `--matrix` runs every {authored,imported} × arm combination and prints each arm's delta vs legacy.
+//
+// `--holdout` cross-validates the THRESHOLD CHOICE: a stratified 2-fold split of the actions (the entry
+// pool stays whole), tuning on one fold and scoring on the other. A threshold fitted to the cases rather
+// than the phenomenon shows up as a large tune→held-out drop, or as the folds picking different values.
 
 import { readFile } from "node:fs/promises";
 import path from "node:path";
@@ -36,11 +41,35 @@ const argVal = (f, d = null) => { const i = args.indexOf(f); return i >= 0 ? arg
 const cap = Number(argVal("--cap", "3"));
 const sweep = argVal("--sweep", "0.25,0.3,0.35,0.4,0.45,0.5,0.55").split(",").map(Number);
 const matrix = args.includes("--matrix");
+const holdout = args.includes("--holdout");
 const mirrorNames = args.includes("--mirror-names");
 const embedArm = argVal("--embed", "legacy");
+const selectRule = argVal("--select", "precision");
+if (!["precision", "f1"].includes(selectRule)) throw new Error(`--select must be precision|f1`);
 if (!ARMS.includes(embedArm)) throw new Error(`--embed must be one of ${ARMS.join("|")}`);
 
-const { entries, actions } = JSON.parse(await readFile(path.resolve(HARNESS_DIR, "../semantic-lore-cases.json"), "utf8"));
+// Cases carry their own actions. They either inline the entries (the original synthetic fixture) or name a
+// world file to pull them from — a real authored world is the stronger test, since its entries were written
+// as lore rather than as test material.
+const casesFile = argVal("--cases", "semantic-lore-cases.json");
+const cases = JSON.parse(await readFile(path.resolve(HARNESS_DIR, "..", casesFile), "utf8"));
+const actions = cases.actions;
+const worldFile = argVal("--world", cases.world ?? null);
+const entries = worldFile
+  ? JSON.parse(await readFile(path.resolve(HARNESS_DIR, "..", worldFile), "utf8"))
+      .dictionaries.flatMap((b) => b.entries)
+  : cases.entries;
+if (worldFile) console.log(`Entries from ${worldFile}: ${entries.length} · cases from ${casesFile}: ${actions.length}`);
+
+// Every expected id must exist, or a typo silently becomes an unreachable recall miss.
+for (const a of actions) {
+  for (const id of a.expect) {
+    if (!entries.some((e) => e.id === id || e.id === `dict-${id}`)) throw new Error(`case "${a.name}" expects unknown entry "${id}"`);
+  }
+}
+// Cases may reference entries by bare id; normalize to whatever the entry actually carries.
+const resolveId = (id) => (entries.some((e) => e.id === id) ? id : `dict-${id}`);
+for (const a of actions) a.expect = a.expect.map(resolveId);
 
 const semSrc = await readFile(path.join(REPO_ROOT, "src/lib/semanticDictionary.ts"), "utf8");
 const SHIPPED = Number(semSrc.match(/SEMANTIC_LORE_THRESHOLD = ([\d.]+)/)[1]);
@@ -90,10 +119,13 @@ const cos = (a, b) => { let s = 0; for (let i = 0; i < a.length; i++) s += a[i] 
 
 const actionVecs = await embed(actions.map((a) => a.text));
 
-/** Precision/recall for one arm's entry vectors at one threshold, under the cap. */
-function score(entryVecs, thr) {
+/** Every action index, the default scoring set (a fold passes its own subset). */
+const ALL_IDX = actions.map((_, i) => i);
+
+/** Precision/recall for one arm's entry vectors at one threshold, over `idx`, under the cap. */
+function score(entryVecs, thr, idx = ALL_IDX) {
   let tp = 0, fp = 0, fn = 0, fired = 0;
-  for (let ai = 0; ai < actions.length; ai++) {
+  for (const ai of idx) {
     const a = actions[ai];
     const hits = entries
       .map((e, ei) => ({ id: e.id, sim: cos(actionVecs[ai], entryVecs[ei]) }))
@@ -105,11 +137,9 @@ function score(entryVecs, thr) {
     for (const h of hits) (a.expect.includes(h) ? tp++ : fp++);
     for (const want of a.expect) if (!hits.includes(want)) fn++;
   }
-  return {
-    fired,
-    precision: tp + fp ? tp / (tp + fp) : 1,
-    recall: tp + fn ? tp / (tp + fn) : 1,
-  };
+  const precision = tp + fp ? tp / (tp + fp) : 1;
+  const recall = tp + fn ? tp / (tp + fn) : 1;
+  return { fired, precision, recall, f1: precision + recall ? (2 * precision * recall) / (precision + recall) : 0 };
 }
 
 /** Embed one arm's entries. `population` is 'authored' (name mirrors keys) or 'imported' (distinct names). */
@@ -120,17 +150,94 @@ async function armVectors(population, arm) {
 
 const pct = (x) => `${(100 * x).toFixed(0).padStart(3)}%`;
 
+/**
+ * Deterministic stratified 2-fold split of the ACTIONS. The 20-entry pool stays whole in both folds —
+ * it is the world, and shrinking it would change how many false fires are even possible, making the two
+ * halves incomparable. Positives and negatives are alternated separately (after a name sort) so each fold
+ * gets a balanced mix, and the assignment is reproducible with no RNG.
+ */
+function actionFolds() {
+  const fold = [[], []];
+  for (const cls of [true, false]) {
+    actions
+      .map((a, i) => ({ a, i }))
+      .filter(({ a }) => (a.expect.length > 0) === cls)
+      .sort((x, y) => x.a.name.localeCompare(y.a.name))
+      .forEach(({ i }, n) => fold[n % 2].push(i));
+  }
+  return fold.map((idx) => idx.sort((x, y) => x - y));
+}
+
+/**
+ * The tuning rule, applied to one fold. Two are supported because they answer different product questions:
+ *   precision — the LOWEST threshold reaching 100% precision, maximizing recall under that. What the shipped
+ *               value was originally chosen by; only reachable when the entry pool is small enough that a
+ *               clean separation exists at all.
+ *   f1        — the threshold with the best harmonic mean. The only workable rule once the pool is large
+ *               enough that no threshold is perfectly clean.
+ * Stated explicitly so the held-out check measures the actual selection procedure, not a hindsight pick.
+ */
+function selectThreshold(entryVecs, idx, grid, rule = selectRule) {
+  if (rule === "f1") {
+    let best = null;
+    for (const thr of grid) {
+      const s = score(entryVecs, thr, idx);
+      if (!best || s.f1 > best.f1) best = { thr, f1: s.f1 };
+    }
+    return best ? best.thr : null;
+  }
+  const ok = grid.filter((thr) => score(entryVecs, thr, idx).precision >= 1);
+  return ok.length ? ok[0] : null;
+}
+
 function printSweep(label, entryVecs) {
   console.log(`\n${label}`);
-  console.log(`  thr    fired  precision  recall`);
-  for (const thr of sweep) {
-    const { fired, precision, recall } = score(entryVecs, thr);
-    const mark = thr === SHIPPED ? "  ← shipped" : "";
-    console.log(`  ${thr.toFixed(2)}   ${String(fired).padStart(3)}    ${pct(precision)}      ${pct(recall)}${mark}`);
+  console.log(`  thr    fired  precision  recall     F1`);
+  const rows = sweep.map((thr) => ({ thr, ...score(entryVecs, thr) }));
+  const best = Math.max(...rows.map((r) => r.f1));
+  for (const { thr, fired, precision, recall, f1 } of rows) {
+    const mark = (thr === SHIPPED ? "  ← shipped" : "") + (f1 === best ? "  ★ best F1" : "");
+    console.log(`  ${thr.toFixed(2)}   ${String(fired).padStart(3)}    ${pct(precision)}      ${pct(recall)}   ${pct(f1)}${mark}`);
   }
 }
 
-if (!matrix) {
+if (holdout) {
+  // Two-fold cross-validation of the SELECTION PROCEDURE. Tune the threshold on one fold, then score it
+  // on the fold it never saw. A threshold fitted to the cases rather than to the phenomenon shows up as a
+  // large tune→held-out drop, or as the two folds disagreeing on which threshold to pick.
+  const [foldA, foldB] = actionFolds();
+  const grid = Array.from({ length: 31 }, (_, i) => Number((0.25 + i * 0.01).toFixed(2)));
+  const nPos = (idx) => idx.filter((i) => actions[i].expect.length).length;
+
+  console.log(`\nStratified 2-fold split of ${actions.length} actions (entry pool whole in both):`);
+  console.log(`  fold A: ${foldA.length} actions (${nPos(foldA)} positive)  ${foldA.map((i) => actions[i].name).join(", ")}`);
+  console.log(`  fold B: ${foldB.length} actions (${nPos(foldB)} positive)  ${foldB.map((i) => actions[i].name).join(", ")}`);
+  const ruleText = selectRule === "f1" ? "best F1" : "lowest threshold reaching 100% precision";
+  console.log(`\nSelection rule (--select ${selectRule}): ${ruleText}, scanned ${grid[0]}–${grid[grid.length - 1]}.`);
+
+  for (const population of ["authored", "imported"]) {
+    const entryVecs = await armVectors(population, embedArm);
+    console.log(`\n\n${population} · ${embedArm}`);
+    console.log(`  tuned on   thr     tune P/R        held-out P/R     Δprecision  Δrecall`);
+    for (const [name, tune, held] of [["A", foldA, foldB], ["B", foldB, foldA]]) {
+      const thr = selectThreshold(entryVecs, tune, grid);
+      if (thr === null) { console.log(`  fold ${name}      —     no threshold reaches 100% precision`); continue; }
+      const t = score(entryVecs, thr, tune);
+      const h = score(entryVecs, thr, held);
+      const sign = (x) => `${x >= 0 ? "+" : ""}${(100 * x).toFixed(0)}`.padStart(5);
+      console.log(
+        `  fold ${name}     ${thr.toFixed(2)}   ${pct(t.precision)} / ${pct(t.recall)}   ` +
+        `${pct(h.precision)} / ${pct(h.recall)}    ${sign(h.precision - t.precision)}      ${sign(h.recall - t.recall)}`,
+      );
+    }
+    // The shipped value judged on each fold separately — if it only looks good on one, it is fitted to it.
+    console.log(`\n  shipped ${SHIPPED} scored per fold:`);
+    for (const [name, idx] of [["A", foldA], ["B", foldB]]) {
+      const s = score(entryVecs, SHIPPED, idx);
+      console.log(`    fold ${name}: ${pct(s.precision)} precision / ${pct(s.recall)} recall`);
+    }
+  }
+} else if (!matrix) {
   const population = mirrorNames ? "authored" : "imported";
   const entryVecs = await armVectors(population, embedArm);
 

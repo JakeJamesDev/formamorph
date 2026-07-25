@@ -34,13 +34,20 @@ const ModelViewer = ({ model, modelType }: ModelViewerProps) => {
     controls.enableZoom = true;
 
     // Physically-correct intensities (three r155+); the legacy 0.5/1 values render a lit model near-black.
-    // The key light matches VRMViewer/vrmThumbnail so a model reads the same everywhere it's shown.
     const ambientLight = new THREE.AmbientLight(0xffffff, Math.PI * 0.3);
     scene.add(ambientLight);
 
+    // World-fixed key light, matching VRMViewer/vrmThumbnail so a model reads the same everywhere it's shown.
     const keyLight = new THREE.DirectionalLight(0xffffff, Math.PI);
     keyLight.position.set(1, 1, 1).normalize();
     scene.add(keyLight);
+
+    // Fill from the opposite side, at a third of the key. The preview orbits freely, so without this the far
+    // side falls to flat ambient and spinning the model walks you into an unlit half. Deliberately weaker than
+    // the key: matching them would cancel the shading that shows the model's shape.
+    const fillLight = new THREE.DirectionalLight(0xffffff, Math.PI / 3);
+    fillLight.position.set(-1, -0.5, -1).normalize();
+    scene.add(fillLight);
 
     let loader;
     switch (modelType) {

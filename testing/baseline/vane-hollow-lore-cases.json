@@ -1,0 +1,327 @@
+{
+  "comment": "Labeled semantic-lore cases for the Vane Hollow baseline world. Entries live in vane-hollow.json (45 of them, across five domains) and are NOT duplicated here — the probe loads them from the world with --world. Positives are keyword-free paraphrases (asserted by the probe); negatives are in-world actions that must match nothing. Domains give both near-neighbour pairs (within a domain) and far pairs (across), so a loose threshold is punished.",
+  "world": "vane-hollow.json",
+  "actions": [
+    {
+      "name": "deepworks-paraphrase",
+      "text": "I climb down into the shaft galleries beneath the town.",
+      "expect": [
+        "deepworks"
+      ]
+    },
+    {
+      "name": "blackdamp-paraphrase",
+      "text": "I notice my flame shrinking and the air turning heavy and dead.",
+      "expect": [
+        "blackdamp"
+      ]
+    },
+    {
+      "name": "cagebirds-paraphrase",
+      "text": "I check whether the little bird in the wire is still making noise.",
+      "expect": [
+        "cagebirds"
+      ]
+    },
+    {
+      "name": "slip-paraphrase",
+      "text": "I ask which seam has been shifting and dropping rock without warning.",
+      "expect": [
+        "slip"
+      ]
+    },
+    {
+      "name": "vanesilver-paraphrase",
+      "text": "I turn the soft grey metal over in my palm, judging its weight.",
+      "expect": [
+        "vanesilver"
+      ]
+    },
+    {
+      "name": "shaftrights-paraphrase",
+      "text": "I ask who holds the recorded right to work this particular seam.",
+      "expect": [
+        "shaftrights"
+      ]
+    },
+    {
+      "name": "springflood-paraphrase",
+      "text": "I ask what happens to the lower galleries once the snow melts.",
+      "expect": [
+        "springflood",
+        "breakup"
+      ]
+    },
+    {
+      "name": "widowspurse-paraphrase",
+      "text": "I ask what a household is owed when a man does not come back up.",
+      "expect": [
+        "widowspurse"
+      ]
+    },
+    {
+      "name": "safetylamp-paraphrase",
+      "text": "I ask why an open flame is forbidden past the second gallery.",
+      "expect": [
+        "safetylamp"
+      ]
+    },
+    {
+      "name": "tallyman-paraphrase",
+      "text": "I watch the clerk weigh our haul and wonder about his thumb.",
+      "expect": [
+        "tallyman"
+      ]
+    },
+    {
+      "name": "observatory-paraphrase",
+      "text": "I climb to the round-roofed house on the summit ridge where they watch the stars.",
+      "expect": [
+        "observatory"
+      ]
+    },
+    {
+      "name": "longvisitor-paraphrase",
+      "text": "I ask about the tailed star that returns once in a lifetime.",
+      "expect": [
+        "longvisitor"
+      ]
+    },
+    {
+      "name": "vanecharts-paraphrase",
+      "text": "I ask what those inked position records are worth to a lowland buyer.",
+      "expect": [
+        "vanecharts"
+      ]
+    },
+    {
+      "name": "groundlens-paraphrase",
+      "text": "I ask who could possibly replace the great polished disc if it cracked.",
+      "expect": [
+        "groundlens"
+      ]
+    },
+    {
+      "name": "almanac-paraphrase",
+      "text": "I ask which bound tables they consult before deciding when to plant.",
+      "expect": [
+        "almanac"
+      ]
+    },
+    {
+      "name": "skystone-paraphrase",
+      "text": "I ask about the iron that came down burning onto the high slopes.",
+      "expect": [
+        "skystone"
+      ]
+    },
+    {
+      "name": "shadowdays-paraphrase",
+      "text": "I ask why every tool goes down when the sun is eaten at noon.",
+      "expect": [
+        "shadowdays"
+      ]
+    },
+    {
+      "name": "nightwatch-paraphrase",
+      "text": "I take my turn sitting the summit through a clear night, recording.",
+      "expect": [
+        "nightwatch"
+      ]
+    },
+    {
+      "name": "council-paraphrase",
+      "text": "I ask who actually decides anything in this town.",
+      "expect": [
+        "council"
+      ]
+    },
+    {
+      "name": "scrip-paraphrase",
+      "text": "I look at the printed chit I was handed instead of coin.",
+      "expect": [
+        "scrip"
+      ]
+    },
+    {
+      "name": "assayhouse-paraphrase",
+      "text": "I take the sample somewhere it can be tested and stamped for purity.",
+      "expect": [
+        "assayhouse"
+      ]
+    },
+    {
+      "name": "tithe-paraphrase",
+      "text": "I ask what cut comes off the top before any crew sees payment.",
+      "expect": [
+        "tithe"
+      ]
+    },
+    {
+      "name": "bondlabor-paraphrase",
+      "text": "I ask how long a man must work underground to buy back his freedom.",
+      "expect": [
+        "bondlabor"
+      ]
+    },
+    {
+      "name": "warden-paraphrase",
+      "text": "I look for whoever keeps order around here.",
+      "expect": [
+        "warden"
+      ]
+    },
+    {
+      "name": "castingout-paraphrase",
+      "text": "I ask what they do with a man when there is no gaol to put him in.",
+      "expect": [
+        "castingout"
+      ]
+    },
+    {
+      "name": "needle-paraphrase",
+      "text": "I ask whether the high notch through the ridge is open yet.",
+      "expect": [
+        "needle"
+      ]
+    },
+    {
+      "name": "whitedeath-paraphrase",
+      "text": "I ask how many were buried when the slope came down last spring.",
+      "expect": [
+        "whitedeath"
+      ]
+    },
+    {
+      "name": "oretram-paraphrase",
+      "text": "I watch the buckets running down the mountain on their steel line.",
+      "expect": [
+        "oretram"
+      ]
+    },
+    {
+      "name": "thinsickness-paraphrase",
+      "text": "I stop to breathe, head pounding, and wonder whether I will adjust.",
+      "expect": [
+        "thinsickness"
+      ]
+    },
+    {
+      "name": "snowhouse-paraphrase",
+      "text": "I look for one of the stone refuges along the road to wait out the weather.",
+      "expect": [
+        "snowhouse"
+      ]
+    },
+    {
+      "name": "greyrunners-paraphrase",
+      "text": "I hear something pacing us below the treeline and count four shapes.",
+      "expect": [
+        "greyrunners"
+      ]
+    },
+    {
+      "name": "ilsa-paraphrase",
+      "text": "I ask where to find someone who can set a broken bone here.",
+      "expect": [
+        "ilsa"
+      ]
+    },
+    {
+      "name": "moth-paraphrase",
+      "text": "I ask who keeps the rooms above the taproom.",
+      "expect": [
+        "moth"
+      ]
+    },
+    {
+      "name": "tessin-paraphrase",
+      "text": "I look for the woman who works metal and ask what she charges.",
+      "expect": [
+        "tessin"
+      ]
+    },
+    {
+      "name": "hollowwinds-paraphrase",
+      "text": "I brace as the cold pours off the icefield hard enough to knock me flat.",
+      "expect": [
+        "hollowwinds"
+      ]
+    },
+    {
+      "name": "neg-01",
+      "text": "I lace my boots tighter and start walking.",
+      "expect": []
+    },
+    {
+      "name": "neg-02",
+      "text": "I stretch my shoulders and roll the stiffness out of my neck.",
+      "expect": []
+    },
+    {
+      "name": "neg-03",
+      "text": "I eat the last of the bread in my pack.",
+      "expect": []
+    },
+    {
+      "name": "neg-04",
+      "text": "I watch smoke rise straight up in the still morning.",
+      "expect": []
+    },
+    {
+      "name": "neg-05",
+      "text": "I write a short note and fold it into my coat.",
+      "expect": []
+    },
+    {
+      "name": "neg-06",
+      "text": "I sit down and work a splinter out of my thumb.",
+      "expect": []
+    },
+    {
+      "name": "neg-07",
+      "text": "I whistle a tune I only half remember.",
+      "expect": []
+    },
+    {
+      "name": "neg-08",
+      "text": "I wash my face in cold water from the basin.",
+      "expect": []
+    },
+    {
+      "name": "neg-09",
+      "text": "I look for a quiet corner to sit and think.",
+      "expect": []
+    },
+    {
+      "name": "neg-10",
+      "text": "I comb the tangles out of my hair.",
+      "expect": []
+    },
+    {
+      "name": "neg-11",
+      "text": "I stack my gear neatly against the wall.",
+      "expect": []
+    },
+    {
+      "name": "neg-12",
+      "text": "I nod to a stranger passing in the street.",
+      "expect": []
+    },
+    {
+      "name": "neg-13",
+      "text": "I check that my knife is still on my belt.",
+      "expect": []
+    },
+    {
+      "name": "neg-14",
+      "text": "I yawn and rub the sleep out of my eyes.",
+      "expect": []
+    },
+    {
+      "name": "neg-15",
+      "text": "I count how many days I have been travelling.",
+      "expect": []
+    }
+  ]
+}

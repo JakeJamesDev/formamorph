@@ -70,6 +70,64 @@ describe('removeEntity', () => {
   });
 });
 
+describe('discardChanges', () => {
+  const worldWithEntity = () => ({
+    ...world('w', {}),
+    entities: [{ id: 'e1', name: 'Sedge' }],
+  } as unknown as World);
+
+  it('rolls the world back to the last load and clears the dirty flag', () => {
+    const { result } = renderHook(() => useGameData(), { wrapper });
+    act(() => { result.current.loadWorldData(worldWithEntity()); });
+
+    act(() => { result.current.updateEntity({ id: 'e1', name: 'Sedge', model: { name: 'x.glb', data: 'data:x' } } as never); });
+    expect(result.current.isWorldDirty).toBe(true);
+
+    act(() => { result.current.discardChanges(); });
+
+    // The edit is gone, not merely re-flagged clean: the pre-edit entity is back verbatim.
+    expect(result.current.entities).toEqual([{ id: 'e1', name: 'Sedge' }]);
+    expect(result.current.isWorldDirty).toBe(false);
+  });
+
+  it('reverts an edit made to a field that was previously absent', () => {
+    // The reported bug: a model attached where there was none stayed attached, because nothing rolled it back.
+    const { result } = renderHook(() => useGameData(), { wrapper });
+    act(() => { result.current.loadWorldData(worldWithEntity()); });
+
+    act(() => { result.current.updateEntity({ id: 'e1', name: 'Sedge', model: { name: 'x.glb' } } as never); });
+    act(() => { result.current.discardChanges(); });
+
+    expect(result.current.entities[0]).not.toHaveProperty('model');
+  });
+
+  it('keeps the world id, so a discard does not orphan the editor from its record', () => {
+    const { result } = renderHook(() => useGameData(), { wrapper });
+    act(() => { result.current.loadWorldData(worldWithEntity()); });
+
+    act(() => { result.current.discardChanges(); });
+
+    expect(result.current.worldId).toBe('w');
+  });
+
+  it('is a no-op before any world is loaded', () => {
+    const { result } = renderHook(() => useGameData(), { wrapper });
+    act(() => { result.current.discardChanges(); });
+    expect(result.current.entities).toEqual([]);
+  });
+
+  it('discards back to the most recent load, not the first', () => {
+    const { result } = renderHook(() => useGameData(), { wrapper });
+    act(() => { result.current.loadWorldData(world('a', { readme: "A's readme" })); });
+    act(() => { result.current.loadWorldData(world('b', { readme: "B's readme" })); });
+
+    act(() => { result.current.updateWorldOverview({ readme: 'edited' }); });
+    act(() => { result.current.discardChanges(); });
+
+    expect(result.current.worldOverview.readme).toBe("B's readme");
+  });
+});
+
 describe('loadWorldData', () => {
   it("loads the world's own readme", () => {
     const { result } = renderHook(() => useGameData(), { wrapper });
