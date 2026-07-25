@@ -78,10 +78,47 @@ function foldDictionaryIntoBooks(world: Record<string, unknown>): void {
   delete world.dictionary;
 }
 
+/** Split a legacy comma-joined keyword string into the array shape. */
+function splitLegacyKeys(raw: unknown): string[] {
+  if (Array.isArray(raw)) return raw.map((k) => String(k)).filter(Boolean);
+  return typeof raw === 'string' ? raw.split(',').map((k) => k.trim()).filter(Boolean) : [];
+}
+
+/**
+ * Move one entry's `key`/`secondaryKeys` from the legacy comma-joined strings to arrays, so a keyword may
+ * contain any character (regex patterns need commas). Idempotent — an entry already carrying arrays passes
+ * through untouched. Returns the same reference when nothing changed. `secondaryKeys` stays optional: an
+ * empty result drops the field rather than storing `[]`.
+ */
+export function migrateEntryKeys<T extends { key?: unknown; secondaryKeys?: unknown }>(entry: T): T {
+  const keyIsArray = Array.isArray(entry.key);
+  const secIsArray = entry.secondaryKeys === undefined || Array.isArray(entry.secondaryKeys);
+  if (keyIsArray && secIsArray) return entry;
+  const secondary = splitLegacyKeys(entry.secondaryKeys);
+  const next = { ...entry, key: splitLegacyKeys(entry.key) } as T & { secondaryKeys?: string[] };
+  if (secondary.length) next.secondaryKeys = secondary;
+  else delete next.secondaryKeys;
+  return next;
+}
+
+/**
+ * Migrate every entry of every book to the array-keyword shape. Deliberately NOT version-gated for the same
+ * reason as `foldDictionaryIntoBooks`: shipped 2.x worlds carry `version === APP_VERSION` yet predate the
+ * change, so this must also run on already-current worlds.
+ */
+function migrateDictionaryKeys(world: Record<string, unknown>): void {
+  if (!Array.isArray(world.dictionaries)) return;
+  world.dictionaries = world.dictionaries.map((book) => {
+    const b = book as Record<string, unknown>;
+    if (!Array.isArray(b.entries)) return book;
+    return { ...b, entries: b.entries.map((e) => migrateEntryKeys(e as Record<string, unknown>)) };
+  });
+}
+
 /**
  * Bring an imported world up to the current format and stamp it with `APP_VERSION`. The dictionary→books
- * fold runs unconditionally (it isn't version-gated — see `foldDictionaryIntoBooks`); the rest is skipped
- * for a world already at `APP_VERSION`. Moves the legacy root `customPlayerVRM` bare data-URL into
+ * fold and the keyword-array migration run unconditionally (they aren't version-gated — see
+ * `foldDictionaryIntoBooks`); the rest is skipped for a world already at `APP_VERSION`. Moves the legacy root `customPlayerVRM` bare data-URL into
  * `worldOverview.customPlayerVRM` as a `MediaAsset`, auto-binds legacy body stats to body morphs, and
  * renames v1.2 description keys on entities/locations/traits to the audience-based keys. Remaining field
  * defaults are left to `loadWorldData`. Add further 2.0 → 2.x steps here when the shape changes — a version
@@ -91,6 +128,7 @@ function foldDictionaryIntoBooks(world: Record<string, unknown>): void {
 export function migrateWorld(raw: unknown): World {
   const world = { ...(raw as Record<string, unknown>) };
   foldDictionaryIntoBooks(world);
+  migrateDictionaryKeys(world);
   if (world.version === APP_VERSION) return world as unknown as World;
 
   const overview = { ...((world.worldOverview as Record<string, unknown>) ?? {}) };
@@ -238,5 +276,18 @@ export function migrateSave(save: SaveObject): SaveObject {
     ? appendCurrentToHistory(migratedHistory.map(stripSnapshotHistory), currentState)
     : migratedHistory.map(stripSnapshotHistory);
   const stateHistory = history.map(normalizeSnapshot);
-  return { ...save, currentState, stateHistory, messageHistory, version: isLegacy ? APP_VERSION : save.version };
+  // The save carries its own copy of the playthrough's books, so it needs the keyword-array migration too —
+  // ungated for the same reason as the world's (a save stamped APP_VERSION can still predate the change).
+  const dictionaries = save.dictionaries?.map((book) => ({
+    ...book,
+    entries: (book.entries ?? []).map(migrateEntryKeys),
+  }));
+  return {
+    ...save,
+    currentState,
+    stateHistory,
+    messageHistory,
+    ...(dictionaries ? { dictionaries } : {}),
+    version: isLegacy ? APP_VERSION : save.version,
+  };
 }

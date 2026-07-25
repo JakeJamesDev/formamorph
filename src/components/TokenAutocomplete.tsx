@@ -14,7 +14,7 @@ import {
   rectSortingStrategy,
   sortableKeyboardCoordinates,
 } from "@dnd-kit/sortable";
-import { Chip, SortableChip, splitChipInput, replaceChipValue } from "./Chip";
+import { Chip, SortableChip, splitPastedChips, replaceChipValue } from "./Chip";
 import { EditableChip } from "./EditableChip";
 import { SuggestionList } from "./SuggestionList";
 import { rankTagSuggestions } from "@/lib/tagSuggest";
@@ -22,9 +22,9 @@ import { rankTagSuggestions } from "@/lib/tagSuggest";
 const SUGGESTION_LIMIT = 50;
 
 /**
- * Chip input with autocomplete. Type to filter `options` (closest match); Enter or a clicked
- * suggestion adds a chip, and a comma (typed or pasted) adds the segment(s) before it. Free text not
- * in `options` is allowed. Suggestions are added on mousedown so the click registers before blur.
+ * Chip input with autocomplete. Type to filter `options` (closest match); Enter or a clicked suggestion
+ * adds a chip, and a multi-line paste adds one per line. Commas are literal, so a chip may contain any
+ * character. Free text not in `options` is allowed. Suggestions are added on mousedown so the click registers before blur.
  * - `openOnFocus`: show all available options the moment the field is focused (before typing).
  * - `reorderable`: chips can be dragged to reorder (the X still removes; click vs. drag is distance-gated).
  * - `single`: scalar combobox mode — no chips; the input edits one value (`values[0]`, free text allowed),
@@ -126,13 +126,21 @@ export function TokenAutocomplete({ values, onChange, options, placeholder, open
     setActive(0);
   };
 
-  // Split commas out of typed/pasted input: complete segments become chips, the remainder stays typed.
   const handleInput = (raw: string) => {
-    const { complete, remainder } = splitChipInput(raw);
-    if (complete.length) addMany(complete);
-    setText(remainder);
+    setText(raw);
     setOpen(true);
     setActive(0);
+  };
+
+  // A multi-line paste adds one chip per line; anything else types into the buffer. Commas stay literal so
+  // a value may contain any character. `<input>` strips newlines before `onChange`, hence the clipboard read.
+  const handlePaste = (e: React.ClipboardEvent<HTMLInputElement>) => {
+    if (single) return;
+    const lines = splitPastedChips(e.clipboardData.getData("text"));
+    if (lines.length < 2) return;
+    e.preventDefault();
+    addMany(lines);
+    setText("");
   };
 
   const handleDragEnd = (e: DragEndEvent) => {
@@ -145,7 +153,8 @@ export function TokenAutocomplete({ values, onChange, options, placeholder, open
   };
 
   const onKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
-    if (e.key === "Enter") {
+    // Ignore Enter while an IME composition is open — Android keyboards fire it mid-word.
+    if (e.key === "Enter" && !e.nativeEvent.isComposing) {
       e.preventDefault();
       commit(open && suggestions[active] ? suggestions[active] : query);
     } else if (e.key === "ArrowDown") {
@@ -178,6 +187,8 @@ export function TokenAutocomplete({ values, onChange, options, placeholder, open
           value={single ? query : text}
           onChange={(e) => (single ? handleSingleInput(e.target.value) : handleInput(e.target.value))}
           onKeyDown={onKeyDown}
+          onPaste={handlePaste}
+          enterKeyHint="enter"
           onFocus={() => setOpen(true)}
           onBlur={() => setTimeout(() => setOpen(false), 100)}
           placeholder={single ? placeholder : (values.length ? "" : placeholder)}

@@ -1,5 +1,5 @@
 /* eslint-disable react-refresh/only-export-components -- this module intentionally exports the chip
-   components alongside the shared CHIP_BASE constant and splitChipInput helper. */
+   components alongside the shared CHIP_BASE constant and paste helpers. */
 import { type CSSProperties } from "react";
 import { X } from "lucide-react";
 import { useSortable } from "@dnd-kit/sortable";
@@ -10,13 +10,22 @@ import { cn } from "@/lib/utils";
  *  keyword chips). Colored chips layer their bg/text on top via `className`. */
 export const CHIP_BASE = "inline-flex items-center gap-1 rounded px-1.5 py-0.5 text-xs";
 
-/** Split a chip-input value on commas into complete (trimmed, non-empty) segments plus the trailing
- *  remainder still being typed. Powers comma-to-chip and pasted-comma behavior across chip inputs. */
-export function splitChipInput(value: string): { complete: string[]; remainder: string } {
-  if (!value.includes(",")) return { complete: [], remainder: value };
-  const parts = value.split(",");
-  const remainder = parts.pop() ?? "";
-  return { complete: parts.map((p) => p.trim()).filter(Boolean), remainder };
+/** The separator the comma-split offer looks for. Comma+space, not a bare comma, so a `{2,3}` quantifier
+ *  or a compact `a,b` list is left alone — only human-formatted lists are candidates. */
+export const CHIP_SPLIT_SEPARATOR = ", ";
+
+/** Split pasted text into chips: one per non-empty line. Newlines are always safe — no regex pattern
+ *  contains one — while commas stay literal so a keyword can hold any character. */
+export function splitPastedChips(text: string): string[] {
+  return text.split(/\r?\n/).map((p) => p.trim()).filter(Boolean);
+}
+
+/** The segments a single pasted value would split into, or `null` when it isn't worth offering (fewer
+ *  than two non-empty parts). Drives the one-shot "Split into N?" affordance. */
+export function commaSplitCandidate(value: string): string[] | null {
+  if (!value.includes(CHIP_SPLIT_SEPARATOR)) return null;
+  const parts = value.split(CHIP_SPLIT_SEPARATOR).map((p) => p.trim()).filter(Boolean);
+  return parts.length > 1 ? parts : null;
 }
 
 /** Replace `old` with a trimmed `next` in a chip list (drop `old` if `next` is empty), then dedupe

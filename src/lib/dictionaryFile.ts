@@ -1,6 +1,6 @@
 import { randomUUID } from "@/lib/uuid";
 import type { Dictionary, DictionaryEntry, Placeholder } from '@/types';
-import { APP_VERSION, WORLD_FILE_KIND, SAVE_FILE_KIND } from './version';
+import { APP_VERSION, WORLD_FILE_KIND, SAVE_FILE_KIND, migrateEntryKeys } from './version';
 import { convertLorebook } from './lorebookImport';
 import { collectUsedPlaceholders } from './placeholders';
 
@@ -38,7 +38,8 @@ export function buildDictionaryFile(book: Dictionary, available: Placeholder[] =
  * Parse a standalone dictionary file into a NEW book. The discriminator rejects world files (they have
  * `worldOverview` and no `formamorphKind`) and save files (`currentState`/`stateHistory`) with a clear
  * error. The book id and every entry id are regenerated so an import never collides with or overwrites
- * existing content — safe to import the same file twice.
+ * existing content — safe to import the same file twice. Entries exported before keywords became arrays
+ * are migrated on the way in.
  */
 export function parseDictionaryFile(raw: unknown): Dictionary {
   if (!raw || typeof raw !== 'object') throw new Error('Not a valid dictionary file.');
@@ -52,7 +53,7 @@ export function parseDictionaryFile(raw: unknown): Dictionary {
     name: typeof obj.name === 'string' && obj.name ? obj.name : 'Imported Dictionary',
     ...(typeof obj.description === 'string' && obj.description ? { description: obj.description } : {}),
     ...(obj.enabled === false ? { enabled: false } : {}),
-    entries: entries.map((e) => ({ ...e, id: randomUUID() })),
+    entries: entries.map((e) => migrateEntryKeys({ ...e, id: randomUUID() })),
     // Carried placeholder defs ride along; absorbed into World.placeholders when this book is added to a world.
     ...(Array.isArray(obj.placeholders) ? { placeholders: obj.placeholders as Placeholder[] } : {}),
   };

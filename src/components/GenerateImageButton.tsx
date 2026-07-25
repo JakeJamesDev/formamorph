@@ -36,6 +36,7 @@ export function GenerateImageButton({ subject, cap, onChange, tags, onTagsChange
     imagePortraitWidth, imagePortraitHeight, imageLandscapeWidth, imageLandscapeHeight, imageAdetailer,
     imageWorkflow, imageInvokeEncoder, imageInvokeVae,
     imageEndpointPresets, activeImageEndpointPresetId, selectImageEndpointPreset,
+    imageGenDisabled,
   } = useSettings();
   // Characters get portrait dimensions; locations and the world thumbnail get landscape.
   const [genWidth, genHeight] = subject.kind === 'character'
@@ -124,6 +125,9 @@ export function GenerateImageButton({ subject, cap, onChange, tags, onTagsChange
     if (!o) abortRef.current?.abort();
     setOpen(o);
   };
+
+  // Settings → AI Endpoints → Image → "Disable Image Generation" hides the affordance everywhere at once.
+  if (imageGenDisabled) return null;
 
   return (
     <>

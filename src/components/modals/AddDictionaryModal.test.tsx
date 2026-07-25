@@ -9,8 +9,8 @@ const meta = [
 ];
 
 const books: Record<string, Dictionary> = {
-  a: { id: 'a', name: 'Alpha', entries: [{ id: 'a-e', name: 'E', key: 'k', value: 'v' }] },
-  b: { id: 'b', name: 'Beta', entries: [{ id: 'b-e', name: 'E', key: 'k', value: 'v' }] },
+  a: { id: 'a', name: 'Alpha', entries: [{ id: 'a-e', name: 'E', key: ['k'], value: 'v' }] },
+  b: { id: 'b', name: 'Beta', entries: [{ id: 'b-e', name: 'E', key: ['k'], value: 'v' }] },
 };
 
 const getDictionaryMetadata = vi.fn(() => Promise.resolve(meta));

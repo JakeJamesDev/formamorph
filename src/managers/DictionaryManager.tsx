@@ -19,13 +19,7 @@ function CheckRow({ label, checked, onChange }: { label: string; checked: boolea
 
 const DictionaryManager = ({ entry, placeholders = [] }: { entry: DictionaryEntry; placeholders?: Placeholder[] }) => {
   const { updateDictionaryEntry } = useDictionaryStore();
-  const { draft: editingEntry, apply, setField: handleChange } = useEditingDraft<DictionaryEntry>(entry, updateDictionaryEntry);
-
-  // The key is a comma-separated string (v1.2 format); name mirrors it for the list display.
-  const handleKeyChange = (arr: string[]) => {
-    const key = arr.join(', ');
-    apply({ key, name: key });
-  };
+  const { draft: editingEntry, setField: handleChange } = useEditingDraft<DictionaryEntry>(entry, updateDictionaryEntry);
 
   // Store a numeric field, clearing it (undefined) when the input is blank or not a number.
   const handleNumber = (field: 'scanDepth', raw: string) => {
@@ -35,17 +29,10 @@ const DictionaryManager = ({ entry, placeholders = [] }: { entry: DictionaryEntr
 
   if (!editingEntry) return null;
 
-  const keywords = (editingEntry.key || '')
-    .split(',')
-    .map((k) => k.trim())
-    .filter(Boolean);
-
-  // Secondary keywords share the trigger-keyword chip UI; stored as the same comma-separated string.
-  const secondaryKeywords = (editingEntry.secondaryKeys || '')
-    .split(',')
-    .map((k) => k.trim())
-    .filter(Boolean);
-  const handleSecondaryChange = (arr: string[]) => handleChange('secondaryKeys', arr.join(', '));
+  const keywords = editingEntry.key ?? [];
+  // Secondary keywords share the trigger-keyword chip UI and the same array shape; empty clears the field.
+  const secondaryKeywords = editingEntry.secondaryKeys ?? [];
+  const handleSecondaryChange = (arr: string[]) => handleChange('secondaryKeys', arr.length ? arr : undefined);
 
   // Plain-English summary of the secondary-keyword gate for the four any/all × require/exclude modes.
   const secondaryHint = secondaryKeywords.length === 0
@@ -61,10 +48,22 @@ const DictionaryManager = ({ entry, placeholders = [] }: { entry: DictionaryEntr
   return (
     <div className="space-y-4">
       <div className="space-y-2">
-        <Label>Trigger Keywords (Key)</Label>
-        <KeywordChips keywords={keywords} onChange={handleKeyChange} />
+        <Label>Name</Label>
+        <Input
+          value={editingEntry.name ?? ''}
+          onChange={(e) => handleChange('name', e.target.value)}
+          placeholder="e.g. Hostile Forces"
+        />
         <p className="text-xs text-muted-foreground">
-          Type a keyword and press comma or Enter to add it. Double-click to edit, drag to reorder, click the × to remove.
+          Labels this entry in the list, and prefixes its value in the AI prompt. Falls back to the first
+          keyword when blank.
+        </p>
+      </div>
+      <div className="space-y-2">
+        <Label>Trigger Keywords (Key)</Label>
+        <KeywordChips keywords={keywords} onChange={(key) => handleChange('key', key)} offerCommaSplit={!editingEntry.useRegex} />
+        <p className="text-xs text-muted-foreground">
+          Type a keyword and press Enter to add it. Tap (or double-click) to edit, drag to reorder, click the × to remove.
           The value below is injected into the AI prompt only when one of these appears in play.
         </p>
       </div>
@@ -83,7 +82,7 @@ const DictionaryManager = ({ entry, placeholders = [] }: { entry: DictionaryEntr
         </div>
         <div className="space-y-1">
           <Label className="text-xs text-muted-foreground">Secondary Keywords</Label>
-          <KeywordChips keywords={secondaryKeywords} onChange={handleSecondaryChange} placeholder="e.g. red, crimson" />
+          <KeywordChips keywords={secondaryKeywords} onChange={handleSecondaryChange} placeholder="e.g. red" offerCommaSplit={!editingEntry.useRegex} />
           <div className="flex flex-wrap gap-x-4 gap-y-1 pt-1">
             <CheckRow label="Require all" checked={!!editingEntry.secondaryAll} onChange={(v) => handleChange('secondaryAll', v)} />
             <CheckRow label="Exclude (activate when absent)" checked={!!editingEntry.secondaryExclude} onChange={(v) => handleChange('secondaryExclude', v)} />

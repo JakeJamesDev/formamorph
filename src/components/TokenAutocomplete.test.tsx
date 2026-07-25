@@ -56,21 +56,33 @@ describe('TokenAutocomplete', () => {
     expect(onChange).toHaveBeenCalledWith(['wyvern']);
   });
 
-  it('adds a chip when a comma is typed', async () => {
+  it('keeps a typed comma literal instead of committing a chip', async () => {
     const user = userEvent.setup();
     const onChange = vi.fn();
     render(<TokenAutocomplete values={[]} onChange={onChange} options={options} placeholder="tag…" />);
-    await user.type(screen.getByRole('textbox'), 'wyvern,');
-    expect(onChange).toHaveBeenCalledWith(['wyvern']);
+    await user.type(screen.getByRole('textbox'), 'wyvern, winged{Enter}');
+    expect(onChange).toHaveBeenCalledTimes(1);
+    expect(onChange).toHaveBeenCalledWith(['wyvern, winged']);
   });
 
-  it('adds multiple chips from pasted comma-separated text', async () => {
+  it('adds one chip per line from a multi-line paste', async () => {
     const user = userEvent.setup();
     const onChange = vi.fn();
     render(<TokenAutocomplete values={[]} onChange={onChange} options={options} placeholder="tag…" />);
     await user.click(screen.getByRole('textbox'));
-    await user.paste('red, blue, green,');
+    await user.paste('red\nblue\ngreen');
     expect(onChange).toHaveBeenCalledWith(['red', 'blue', 'green']);
+  });
+
+  it('leaves a single-line paste in the buffer, commas intact', async () => {
+    const user = userEvent.setup();
+    const onChange = vi.fn();
+    render(<TokenAutocomplete values={[]} onChange={onChange} options={options} placeholder="tag…" />);
+    await user.click(screen.getByRole('textbox'));
+    await user.paste('red, blue');
+    expect(onChange).not.toHaveBeenCalled();
+    await user.keyboard('{Enter}');
+    expect(onChange).toHaveBeenCalledWith(['red, blue']);
   });
 
   it('removes a chip when its X is clicked', async () => {

@@ -14,13 +14,9 @@ export function flattenEnabledBookEntries(dictionaries: Dictionary[] | undefined
   return dictionaries.flatMap((book) => (book.enabled === false ? [] : book.entries ?? []));
 }
 
-function splitKeys(raw: string | undefined): string[] {
-  return (raw || '').split(',').map((k) => k.trim()).filter(Boolean);
-}
-
-/** An entry's primary trigger keywords (its comma-separated `key`, trimmed, empties dropped). */
+/** An entry's primary trigger keywords (empties dropped). */
 export function parseKeywords(entry: DictionaryEntry): string[] {
-  return splitKeys(entry.key);
+  return (entry.key ?? []).filter(Boolean);
 }
 
 /**
@@ -183,7 +179,7 @@ export function matchHits(entry: DictionaryEntry, sources: ScanSource[]): MatchH
 }
 
 function secondaryStatus(entry: DictionaryEntry, haystack: string): SecondaryStatus | undefined {
-  const secondary = splitKeys(entry.secondaryKeys);
+  const secondary = (entry.secondaryKeys ?? []).filter(Boolean);
   if (secondary.length === 0) return undefined;
   return {
     keywords: secondary,
@@ -369,7 +365,7 @@ export function buildDictionaryContext(entries: DictionaryEntry[], includeHeadin
   const lines = entries
     .filter((e) => e.value)
     .map((e) => {
-      const label = e.name || e.key || '';
+      const label = e.name || e.key?.[0] || '';
       return label ? `${label}: ${e.value}` : e.value;
     });
   if (lines.length === 0) return '';

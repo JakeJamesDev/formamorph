@@ -83,7 +83,7 @@ describe('extractKeywords', () => {
   });
 
   it('unions in keywords of activated dictionary entries', () => {
-    const dict: DictionaryEntry[] = [{ id: '1', name: 'Mira', key: 'Mira, vault keeper', value: 'A guard.' }];
+    const dict: DictionaryEntry[] = [{ id: '1', name: 'Mira', key: ['Mira', 'vault keeper'], value: 'A guard.' }];
     const kw = extractKeywords('talk to mira', dict);
     expect(kw).toContain('mira');
     expect(kw).toContain('vault keeper'); // multi-word entity term from the dictionary

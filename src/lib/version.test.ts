@@ -1,5 +1,6 @@
 import { describe, it, expect } from 'vitest';
-import { APP_VERSION, migrateWorld, isSaveEnvelope } from './version';
+import { APP_VERSION, migrateWorld, migrateSave, isSaveEnvelope } from './version';
+import type { SaveObject } from '@/types';
 
 // Loose view of a migrated world for assertions (avoids `any`).
 type DescItem = {
@@ -142,6 +143,74 @@ describe('migrateWorld', () => {
     }) as unknown as MigratedWorld;
     expect(out.dictionary).toBeUndefined();
     expect(out.dictionaries).toEqual([{ id: 'b1', name: 'Lore', enabled: true, entries: [] }]);
+  });
+});
+
+describe('migrateWorld — dictionary keyword arrays', () => {
+  type KeyedWorld = {
+    dictionaries?: { entries: { key: string[]; secondaryKeys?: string[] }[] }[];
+  };
+  const withEntries = (entries: unknown[], version?: string) =>
+    migrateWorld({
+      ...(version ? { version } : {}),
+      dictionaries: [{ id: 'b1', name: 'Lore', enabled: true, entries }],
+    }) as unknown as KeyedWorld;
+
+  it('splits legacy comma-joined keys into arrays', () => {
+    const out = withEntries([{ id: 'a', name: 'a', key: 'dragon, wyrm ,, drake', value: 'v' }]);
+    expect(out.dictionaries?.[0].entries[0].key).toEqual(['dragon', 'wyrm', 'drake']);
+  });
+
+  it('splits legacy secondaryKeys and drops the field when it is empty', () => {
+    const [withSec, empty] = withEntries([
+      { id: 'a', name: 'a', key: 'a', value: 'v', secondaryKeys: 'ruin,vault' },
+      { id: 'b', name: 'b', key: 'b', value: 'v', secondaryKeys: '' },
+    ]).dictionaries![0].entries;
+    expect(withSec.secondaryKeys).toEqual(['ruin', 'vault']);
+    expect('secondaryKeys' in empty).toBe(false);
+  });
+
+  it('leaves already-migrated entries untouched (idempotent, commas preserved)', () => {
+    const entries = [{ id: 'a', name: 'a', key: ['\\d{2,3}', 'Elizabeth, Queen'], value: 'v' }];
+    const once = withEntries(entries);
+    const twice = migrateWorld(once) as unknown as KeyedWorld;
+    expect(twice.dictionaries?.[0].entries[0].key).toEqual(['\\d{2,3}', 'Elizabeth, Queen']);
+  });
+
+  it('runs on a world already stamped at APP_VERSION (shipped 2.x worlds predate the change)', () => {
+    const out = withEntries([{ id: 'a', name: 'a', key: 'dragon,wyrm', value: 'v' }], APP_VERSION);
+    expect(out.dictionaries?.[0].entries[0].key).toEqual(['dragon', 'wyrm']);
+  });
+
+  it('defaults a missing key to []', () => {
+    expect(withEntries([{ id: 'a', name: 'a', value: 'v' }]).dictionaries?.[0].entries[0].key).toEqual([]);
+  });
+});
+
+describe('migrateSave — dictionary keyword arrays', () => {
+  // A save carries its own copy of the playthrough's books; they need the same migration as the world's.
+  const saveWith = (entries: unknown[], version: string | number = APP_VERSION) =>
+    migrateSave({
+      version,
+      currentState: {},
+      stateHistory: [],
+      dictionaries: [{ id: 'b1', name: 'Lore', enabled: true, entries }],
+    } as unknown as SaveObject) as unknown as { dictionaries?: { entries: { key: string[]; secondaryKeys?: string[] }[] }[] };
+
+  it('splits legacy comma-joined keys in a save-carried book', () => {
+    const out = saveWith([{ id: 'a', name: 'a', key: 'dragon, wyrm', value: 'v', secondaryKeys: 'ruin,vault' }]);
+    expect(out.dictionaries?.[0].entries[0].key).toEqual(['dragon', 'wyrm']);
+    expect(out.dictionaries?.[0].entries[0].secondaryKeys).toEqual(['ruin', 'vault']);
+  });
+
+  it('runs on a save already stamped at APP_VERSION', () => {
+    expect(saveWith([{ id: 'a', name: 'a', key: 'dragon', value: 'v' }], APP_VERSION)
+      .dictionaries?.[0].entries[0].key).toEqual(['dragon']);
+  });
+
+  it('leaves a save without dictionaries alone', () => {
+    const out = migrateSave({ version: APP_VERSION, currentState: {}, stateHistory: [] } as unknown as SaveObject);
+    expect('dictionaries' in out).toBe(false);
   });
 });
 

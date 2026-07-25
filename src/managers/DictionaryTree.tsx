@@ -60,7 +60,7 @@ function EntryRow({ entry, selected, onSelect, onToggleEnabled, onDuplicate, onR
         className="mx-1 shrink-0"
         title={entry.enabled === false ? 'Disabled — click to enable' : 'Enabled — click to disable'}
       />
-      <span className="min-w-0 flex-grow truncate">{entry.name || entry.key || 'Untitled'}</span>
+      <span className="min-w-0 flex-grow truncate">{entry.name || entry.key?.[0] || 'Untitled'}</span>
       <Button variant="ghost" size="icon" className={`shrink-0 ${selected ? 'text-primary-foreground' : 'text-muted-foreground'}`}
         onClick={(e) => { e.stopPropagation(); onDuplicate(entry.id); }} title="Duplicate">
         <Copy className="h-4 w-4" />
@@ -309,7 +309,8 @@ const DictionaryTree = ({ selectedId, onSelect }: { selectedId: string | null; o
 
   const addEntry = (bookId: string) => {
     const id = randomUUID();
-    addDictionaryEntry(bookId, { id, name: 'New Entry', key: '', value: '' });
+    // Name is left blank so the tree and the prompt label fall back to the first keyword until the author names it.
+    addDictionaryEntry(bookId, { id, name: '', key: [], value: '' });
     setCollapsed((prev) => { const next = new Set(prev); next.delete(bookId); return next; });
     onSelect(id);
   };

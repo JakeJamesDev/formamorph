@@ -11,7 +11,7 @@ import type { Dictionary, DictionaryMetadata } from '@/types';
 const book = (id: string, over: Partial<Dictionary> = {}): Dictionary => ({
   id,
   name: id,
-  entries: [{ id: `${id}-e1`, name: 'E1', key: 'k', value: 'v' }],
+  entries: [{ id: `${id}-e1`, name: 'E1', key: ['k'], value: 'v' }],
   ...over,
 });
 

@@ -11,6 +11,7 @@ import { useDownscalePrompt } from './useDownscalePrompt';
 import { ImageZoomViewer } from '../components/ImageZoomViewer';
 import type { ImageCap } from './imageOptim';
 import { readSdPromptFromFile } from './sdMetadata';
+import type { MediaAsset } from '@/types';
 
 /** An uploaded media file, base64-encoded as a data URL. */
 interface UploadedMedia {
@@ -29,8 +30,9 @@ function readMediaFile(file: File): Promise<UploadedMedia> {
   });
 }
 
-// eslint-disable-next-line react-refresh/only-export-components
-export const getModelType = (fileName: string) => {
+export type ModelType = 'glb' | 'fbx' | 'obj' | 'unknown';
+
+const typeFromExtension = (fileName: string): ModelType => {
   const extension = fileName.split('.').pop()?.toLowerCase() ?? '';
   switch (extension) {
     case 'glb':
@@ -43,6 +45,43 @@ export const getModelType = (fileName: string) => {
     default:
       return 'unknown';
   }
+};
+
+/** Browsers report model MIME types inconsistently — often empty for .fbx/.obj — so this map is a hint, not a source of truth. */
+const MODEL_MIME_TYPES: Record<string, ModelType> = {
+  'model/gltf-binary': 'glb',
+  'model/gltf+json': 'glb',
+  'model/obj': 'obj',
+  'application/x-tgif': 'obj',
+  'application/octet-stream': 'unknown',
+};
+
+/** Last resort: read the file's leading bytes. GLB and binary FBX both carry a magic string; the text formats are matched by their opening tokens. */
+const typeFromMagic = (data: string): ModelType => {
+  const marker = data.indexOf(';base64,');
+  if (marker === -1) return 'unknown';
+  let head: string;
+  try {
+    head = atob(data.slice(marker + 8, marker + 8 + 64));
+  } catch {
+    return 'unknown';
+  }
+  if (head.startsWith('glTF')) return 'glb';
+  if (head.startsWith('Kaydara FBX') || head.includes('FBXHeaderExtension')) return 'fbx';
+  if (/^\s*\{/.test(head)) return 'glb'; // .gltf JSON — GLTFLoader reads both
+  if (/^\s*(#|v\s|vt\s|vn\s|o\s|g\s|mtllib\s)/.test(head)) return 'obj';
+  return 'unknown';
+};
+
+/** Pick the loader for an uploaded model: filename first, then MIME, then the file's own bytes. */
+// eslint-disable-next-line react-refresh/only-export-components
+export const resolveModelType = (model: Partial<MediaAsset>): ModelType => {
+  const byName = model.name ? typeFromExtension(model.name) : 'unknown';
+  if (byName !== 'unknown') return byName;
+  const mime = (model.type || model.data?.slice(5, model.data.indexOf(';')) || '').toLowerCase();
+  const byMime = MODEL_MIME_TYPES[mime];
+  if (byMime && byMime !== 'unknown') return byMime;
+  return model.data ? typeFromMagic(model.data) : 'unknown';
 };
 
 /** The shared dashed "click to upload" frame for the media uploaders (image / sound / 3D model). Pass
@@ -147,7 +186,7 @@ export const ImageUpload = ({ onChange, id, value, cap, previewClassName, object
 };
 
 export const SoundUpload = ({ onChange, id, value }: {
-  onChange: (value: UploadedMedia) => void;
+  onChange: (value: UploadedMedia | undefined) => void;
   id: string | number;
   value?: { name?: string; data?: string } | null;
 }) => {
@@ -169,7 +208,19 @@ export const SoundUpload = ({ onChange, id, value }: {
         {value ? (
           <div className="w-full" onClick={(e) => e.preventDefault()}>
             <AudioPlayer src={value.data} className="w-full" />
-            <p className="text-sm text-muted-foreground mt-2">{value.name}</p>
+            <div className="flex items-center justify-between gap-2 mt-2">
+              <p className="text-sm text-muted-foreground truncate">{value.name}</p>
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                onClick={(e) => { e.preventDefault(); e.stopPropagation(); onChange(undefined); }}
+                title="Remove sound"
+                aria-label="Remove sound"
+              >
+                <X className="h-4 w-4" />
+              </Button>
+            </div>
           </div>
         ) : (
           <>
@@ -183,8 +234,8 @@ export const SoundUpload = ({ onChange, id, value }: {
 };
 
 export const ModelUpload = ({ model, onModelChange, uniqueId }: {
-  model?: { name?: string; type?: string; size?: number; data?: string } | null;
-  onModelChange: (model: UploadedMedia) => void;
+  model?: Partial<MediaAsset> | null;
+  onModelChange: (model: UploadedMedia | undefined) => void;
   uniqueId: string | number;
 }) => {
   const [isModelViewerOpen, setIsModelViewerOpen] = useState(false);
@@ -198,7 +249,7 @@ export const ModelUpload = ({ model, onModelChange, uniqueId }: {
     <div className="space-y-2">
       {model ? (
         <div className="flex items-center space-x-2">
-          <span>{model.name}</span>
+          <span className="truncate">{model.name ?? '3D model'}</span>
           <Dialog open={isModelViewerOpen} onOpenChange={setIsModelViewerOpen}>
             <DialogTrigger asChild>
               <Button variant="outline">View Model</Button>
@@ -207,9 +258,19 @@ export const ModelUpload = ({ model, onModelChange, uniqueId }: {
               <DialogHeader>
                 <DialogTitle>3D Model Viewer</DialogTitle>
               </DialogHeader>
-              <ModelViewer model={model} modelType={getModelType(model.name ?? '')} />
+              <ModelViewer model={model} modelType={resolveModelType(model)} />
             </DialogContent>
           </Dialog>
+          <Button
+            type="button"
+            variant="ghost"
+            size="sm"
+            onClick={() => onModelChange(undefined)}
+            title="Remove model"
+            aria-label="Remove model"
+          >
+            <X className="h-4 w-4" />
+          </Button>
         </div>
       ) : (
         <div>

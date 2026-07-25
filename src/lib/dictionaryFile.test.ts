@@ -7,8 +7,8 @@ const book = (over: Partial<Dictionary> = {}): Dictionary => ({
   id: 'b1',
   name: 'Lore',
   entries: [
-    { id: 'e1', name: 'Dragon', key: 'dragon', value: 'A big lizard.', position: 'before' },
-    { id: 'e2', name: 'Castle', key: 'castle', value: 'A fortress.' },
+    { id: 'e1', name: 'Dragon', key: ['dragon'], value: 'A big lizard.', position: 'before' },
+    { id: 'e2', name: 'Castle', key: ['castle'], value: 'A fortress.' },
   ],
   ...over,
 });

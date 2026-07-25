@@ -1,4 +1,4 @@
-import { useRef, type ChangeEvent } from 'react';
+import { useEffect, useRef, useState, type ChangeEvent } from 'react';
 import { useGameData } from '@/contexts/GameDataContext';
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
@@ -9,11 +9,60 @@ import AudioPlayer from '../components/game/AudioPlayer';
 import { ImageUpload } from '../lib/UtilityComponents';
 import { IMAGE_CAPS } from '../lib/imageOptim';
 import { GenerateImageButton } from '../components/GenerateImageButton';
+import { ModelDetailsPanel } from '../components/modals/ModelDetailsPanel';
+import { readVrmMeta } from '../lib/vrmMeta';
+import type { VrmLicense } from '@/types';
+
+/**
+ * The world's custom player VRM in the same details view the model library uses. The world stores the model
+ * inline as a data URL rather than as a library record, so the bytes are decoded here and its license is read
+ * from the file itself. Its own component so the work happens only while the preview is open.
+ */
+const PlayerVrmPreview = ({ data, open, onClose }: { data: string; open: boolean; onClose: () => void }) => {
+  const [url, setUrl] = useState<string | undefined>();
+  const [meta, setMeta] = useState<{ license?: VrmLicense; size?: number }>({});
+  const [failed, setFailed] = useState(false);
+
+  useEffect(() => {
+    let cancelled = false;
+    let objectUrl: string | undefined;
+    fetch(data)
+      .then((r) => r.blob())
+      .then(async (blob) => {
+        if (cancelled) return;
+        objectUrl = URL.createObjectURL(blob);
+        setUrl(objectUrl);
+        const { license } = await readVrmMeta(blob);
+        if (!cancelled) setMeta({ license, size: blob.size });
+      })
+      .catch(() => { if (!cancelled) setFailed(true); });
+    return () => {
+      cancelled = true;
+      if (objectUrl) URL.revokeObjectURL(objectUrl);
+    };
+  }, [data]);
+
+  return (
+    <ModelDetailsPanel
+      open={open}
+      name="Player Model"
+      url={url}
+      license={meta.license}
+      size={meta.size}
+      failed={failed}
+      onClose={onClose}
+    />
+  );
+};
 
 const WorldOverviewManager = () => {
   const { worldOverview, updateWorldOverview } = useGameData();
   const bgmInputRef = useRef<HTMLInputElement>(null);
   const vrmInputRef = useRef<HTMLInputElement>(null);
+  const [vrmPreviewOpen, setVrmPreviewOpen] = useState(false);
+  // Mounted on first open and kept mounted from then on: decoding a VRM's tens of megabytes shouldn't happen
+  // just because the tab is showing, but unmounting on close would cut the dialog's close animation short.
+  const [vrmPreviewMounted, setVrmPreviewMounted] = useState(false);
 
   const handleBGMChange = (e: ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -122,14 +171,26 @@ const WorldOverviewManager = () => {
               {worldOverview.customPlayerVRM ? "Change Player VRM" : "Add Player VRM"}
             </Button>
             {worldOverview.customPlayerVRM && (
-              <Button
-                variant="destructive"
-                onClick={() => updateWorldOverview({ customPlayerVRM: null })}
-              >
-                Remove
-              </Button>
+              <>
+                <Button variant="outline" onClick={() => { setVrmPreviewMounted(true); setVrmPreviewOpen(true); }}>
+                  Preview
+                </Button>
+                <Button
+                  variant="destructive"
+                  onClick={() => updateWorldOverview({ customPlayerVRM: null })}
+                >
+                  Remove
+                </Button>
+              </>
             )}
           </div>
+          {worldOverview.customPlayerVRM?.data && vrmPreviewMounted && (
+            <PlayerVrmPreview
+              data={worldOverview.customPlayerVRM.data}
+              open={vrmPreviewOpen}
+              onClose={() => setVrmPreviewOpen(false)}
+            />
+          )}
           <p className="text-xs text-muted-foreground">
             Overrides the default 3D player model.
           </p>

@@ -2,8 +2,8 @@ import { describe, it, expect } from 'vitest';
 import { convertLorebook } from './lorebookImport';
 import type { DictionaryEntry } from '@/types';
 
-// Grab a converted entry by its (joined) key, since ids are randomized.
-const byKey = (entries: DictionaryEntry[], key: string) => entries.find((e) => e.key === key)!;
+// Grab a converted entry by its joined keywords, since ids are randomized.
+const byKey = (entries: DictionaryEntry[], key: string) => entries.find((e) => e.key.join(', ') === key)!;
 
 describe('convertLorebook — Character Card V3 lorebook (array entries)', () => {
   it('maps core fields; a true `enabled`/false `constant` stay unset (defaults)', () => {
@@ -14,7 +14,7 @@ describe('convertLorebook — Character Card V3 lorebook (array entries)', () =>
     const d = convertLorebook(book);
     expect(d?.name).toBe('Lore');
     const e = d!.entries[0];
-    expect(e).toMatchObject({ name: 'Dragon', key: 'dragon, wyrm', value: 'A big lizard.', caseSensitive: true, priority: 10 });
+    expect(e).toMatchObject({ name: 'Dragon', key: ['dragon', 'wyrm'], value: 'A big lizard.', caseSensitive: true, priority: 10 });
     expect(e.enabled).toBeUndefined();
     expect(e.constant).toBeUndefined();
   });
@@ -30,9 +30,9 @@ describe('convertLorebook — Character Card V3 lorebook (array entries)', () =>
     const on = convertLorebook({ entries: [{ keys: ['a'], content: 'x', secondary_keys: ['b'], selective: true }] });
     const off = convertLorebook({ entries: [{ keys: ['a'], content: 'x', secondary_keys: ['b'], selective: false }] });
     const omitted = convertLorebook({ entries: [{ keys: ['a'], content: 'x', secondary_keys: ['b'] }] });
-    expect(on!.entries[0].secondaryKeys).toBe('b');
+    expect(on!.entries[0].secondaryKeys).toEqual(['b']);
     expect(off!.entries[0].secondaryKeys).toBeUndefined();
-    expect(omitted!.entries[0].secondaryKeys).toBe('b');
+    expect(omitted!.entries[0].secondaryKeys).toEqual(['b']);
   });
 
   it('derives recursive from book `recursive_scanning`, honoring ST excludeRecursion', () => {
@@ -58,7 +58,7 @@ describe('convertLorebook — Character Card V3 lorebook (array entries)', () =>
 
   it('sorts entries by insertion_order', () => {
     const d = convertLorebook({ entries: [{ keys: ['a'], content: 'x', insertion_order: 20 }, { keys: ['b'], content: 'y', insertion_order: 5 }] });
-    expect(d!.entries.map((e) => e.key)).toEqual(['b', 'a']);
+    expect(d!.entries.map((e) => e.key)).toEqual([['b'], ['a']]);
   });
 
   it('strips leading @@ decorator lines from content', () => {
@@ -96,7 +96,7 @@ describe('convertLorebook — SillyTavern World Info (object-map entries)', () =
       },
     });
     const e = d!.entries[0];
-    expect(e).toMatchObject({ name: 'Ghost', key: 'ghost', secondaryKeys: 'pale', value: 'A specter.', enabled: false, position: 'before', priority: 3 });
+    expect(e).toMatchObject({ name: 'Ghost', key: ['ghost'], secondaryKeys: ['pale'], value: 'A specter.', enabled: false, position: 'before', priority: 3 });
   });
 });
 
