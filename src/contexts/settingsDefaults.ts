@@ -3,10 +3,11 @@
 import { isDesktop, DEFAULT_LOCAL_LLM_ENDPOINT } from '@/lib/imageGen/desktop';
 // Desktop always defaults to the bundled local engine — VITE_DEFAULT_ENDPOINT is a web/cloud default and
 // is deliberately ignored there (so a .env.local set for web testing doesn't leak into desktop builds).
-// The web build uses the override when set, else the hosted endpoint.
+// The web build uses the override when set, else the hosted endpoint. Written as a base URL (normalizeEndpointUrl
+// completes it), matching the shape every server's setup docs hand out.
 export const DEFAULT_ENDPOINT = isDesktop()
   ? DEFAULT_LOCAL_LLM_ENDPOINT
-  : (import.meta.env.VITE_DEFAULT_ENDPOINT || 'https://api.lyonade.net/v1/chat/completions');
+  : (import.meta.env.VITE_DEFAULT_ENDPOINT || 'https://api.lyonade.net/v1');
 export const DEFAULT_API_TOKEN = import.meta.env.VITE_DEFAULT_API_TOKEN || '';
 export const DEFAULT_MODEL_NAME = import.meta.env.VITE_DEFAULT_MODEL_NAME || 'default';
 export const DEFAULT_MAX_TOKENS = parseInt(import.meta.env.VITE_DEFAULT_MAX_TOKENS) || 1024;

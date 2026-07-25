@@ -1,4 +1,6 @@
 import pluralize from 'pluralize';
+import commonWordsCore from 'wordlist-english/english-words-10.json';
+import commonWordsExtra from 'wordlist-english/english-words-20.json';
 import type { Entity } from '@/types';
 import { escapeRegExp } from './utils';
 
@@ -9,11 +11,13 @@ import { escapeRegExp } from './utils';
  * Matching rules (per name):
  * - **Single-word** name: counts only when it occurs with an **initial capital** (proper-noun use), so a
  *   name that is also a common word (Hope, Will, Rose, Crow) doesn't match ordinary lowercase prose.
- * - **Multi-word** name: an exact contiguous match, or every word present somewhere, or (partial) any
- *   significant word used as a proper noun — so "Emily" marks "Emily Foster" present. The capital guard
- *   keeps lowercase common-word usage from matching.
+ * - **Multi-word** name: the words in order within a short window (so "Emily J. Foster" counts but two
+ *   unrelated sentences sharing a word do not), or (partial) a *distinctive* word used as a proper noun —
+ *   so "Emily" marks "Emily Foster" present. The capital guard keeps lowercase common-word usage out.
  * - Plurals match via `pluralize` (irregulars included: Wolf↔Wolves, City↔Cities); blank names skipped. A sub-3-char word (e.g. surname "Wu") is
- *   below the significance floor, so a bare "Wu" won't match "Ling Wu" — the exact/all-words pass still does.
+ *   below the significance floor, so a bare "Wu" won't match "Ling Wu" — the in-order pass still does.
+ * - Pass `partial: false` for consumers where a false positive has real consequences (the visitor pull,
+ *   which relocates an authored NPC); that drops the single-word partial pass, leaving in-order matching.
  */
 
 // The distinct singular + plural surface forms of a word/phrase (deduped, blanks dropped). `pluralize`
@@ -27,6 +31,15 @@ const wordForms = (word: string): string[] =>
 // iteration via exec().
 const makeWordRegex = (word: string, flags = 'i'): RegExp =>
   new RegExp(`\\b(?:${wordForms(word).map(escapeRegExp).join('|')})\\b`, flags);
+
+// Words common enough that they carry no identifying signal on their own. SCOWL frequency tiers 10+20
+// (~10.7k words) — deep enough to cover the name-shaped ones (hope, will, rose, dawn, blade, mill, wolf,
+// guard, captain), shallow enough that real surnames (Foster, Crow, Marsh) stay distinctive.
+const COMMON_WORDS = new Set<string>([...commonWordsCore, ...commonWordsExtra]);
+
+// How many unrelated words may sit between two words of a name and still count as the same phrase —
+// absorbs middle initials, honorifics, and parentheticals without spanning a sentence break.
+const MAX_NAME_GAP_WORDS = 2;
 
 /** True if `name` appears in `text` with an uppercase first letter (a proper-noun occurrence). */
 function occursCapitalized(text: string, name: string): boolean {
@@ -46,9 +59,9 @@ function occursCapitalized(text: string, name: string): boolean {
 export function matchNames(
   text: string,
   names: string[],
-  opts: { requireCapital?: boolean } = {},
+  opts: { requireCapital?: boolean; partial?: boolean } = {},
 ): string[] {
-  const { requireCapital = true } = opts;
+  const { requireCapital = true, partial: allowPartial = true } = opts;
   if (!text) return [];
   const found = new Set<string>();
   for (const name of names) {
@@ -62,14 +75,12 @@ export function matchNames(
       if (matched) found.add(name);
       continue;
     }
-    const exact = makeWordRegex(trimmed);
-    const allWordsPresent = words.every((w) => makeWordRegex(w).test(text));
-    // Partial reference: a significant word used as a proper noun (e.g. "Emily" for "Emily Foster").
-    const sig = significantWords(trimmed);
-    const partial = requireCapital
+    // Partial reference: a distinctive word used as a proper noun (e.g. "Emily" for "Emily Foster").
+    const sig = distinctiveWords(trimmed);
+    const partial = allowPartial && (requireCapital
       ? sig.some((w) => occursCapitalized(text, w))
-      : sig.some((w) => makeWordRegex(w).test(text));
-    if (exact.test(text) || allWordsPresent || partial) found.add(name);
+      : sig.some((w) => makeWordRegex(w).test(text)));
+    if (partial || occursInOrder(text, words)) found.add(name);
   }
   return [...found];
 }
@@ -93,7 +104,11 @@ function anyAliasMatches(text: string, aliases: string[] | undefined): boolean {
  * returned value is the entity's canonical name. Name hits keep their in-text order; alias-only hits
  * follow in entity order. Deduped.
  */
-export function findEntityNames(text: string, entities: Entity[], opts?: { requireCapital?: boolean }): string[] {
+export function findEntityNames(
+  text: string,
+  entities: Entity[],
+  opts?: { requireCapital?: boolean; partial?: boolean },
+): string[] {
   const found = matchNames(text, entities.map((e) => e.name), opts);
   for (const entity of entities) {
     if (found.includes(entity.name)) continue;
@@ -107,6 +122,28 @@ const LOOSE_STOPWORDS = new Set(['the', 'a', 'an', 'of', 'and', 'or', 'with']);
 
 const significantWords = (name: string): string[] =>
   name.toLowerCase().split(/\s+/).filter((w) => w.length >= 3 && !LOOSE_STOPWORDS.has(w));
+
+/**
+ * The words of `name` that could identify it on their own: its significant words minus the everyday ones.
+ * A name whose words are *all* everyday ("Rose Wolf", "Iron Gate") keeps them — dropping every word would
+ * guarantee a miss, and a false positive is the cheaper error for the surfaces this feeds.
+ */
+const distinctiveWords = (name: string): string[] => {
+  const sig = significantWords(name);
+  const distinct = sig.filter((w) => !COMMON_WORDS.has(w));
+  return distinct.length > 0 ? distinct : sig;
+};
+
+/**
+ * True if every word of a multi-word name occurs in `text` in order, with at most `MAX_NAME_GAP_WORDS`
+ * unrelated words between neighbors — the phrase test that replaces a bare "all words appear somewhere"
+ * check, which let two unrelated clauses ("the old woman … a young man") satisfy "Old Man".
+ */
+function occursInOrder(text: string, words: string[]): boolean {
+  const gap = String.raw`(?:\W+\w+){0,${MAX_NAME_GAP_WORDS}}\W+`;
+  const parts = words.map((w) => `(?:${wordForms(w).map(escapeRegExp).join('|')})`);
+  return new RegExp(`\\b${parts.join(gap)}\\b`, 'i').test(text);
+}
 
 /**
  * Whether two names likely refer to the same character — conservative, for de-duping discovered

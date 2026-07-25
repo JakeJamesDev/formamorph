@@ -20,6 +20,7 @@ import {
   type TextEndpointPresetStore, type TextEndpointValues, type TextEndpointValueKey,
 } from '../lib/textEndpointPresets';
 import { fetchContextLength } from '../lib/contextLength';
+import { normalizeEndpointUrl } from '../lib/endpointUrl';
 import { registerDevHook } from '../lib/devRouter';
 import { usePersistentState, stringCodec, boolCodec, intCodec, floatCodec, nullableIntCodec } from '../lib/usePersistentState';
 import { usePrefersReducedMotion } from '../lib/usePrefersReducedMotion';
@@ -110,8 +111,11 @@ function seedTextPresetStore(): TextEndpointPresetStore {
       overrideRaw === null || overrideRaw === '' || !Number.isFinite(parseInt(overrideRaw)) ? null : parseInt(overrideRaw),
     maxTokens: maxRaw === null ? DEFAULT_MAX_TOKENS : parseInt(maxRaw) || DEFAULT_MAX_TOKENS,
   };
+  // Endpoints compare normalized: a legacy install stashed the built-in as a full chat-completions URL, and
+  // the shipped default is now the base URL — the same endpoint either way, so it isn't a custom config.
   const hasStashedCustom =
-    stashed.endpoint !== DEFAULT_ENDPOINT || stashed.apiToken !== DEFAULT_API_TOKEN || stashed.model !== DEFAULT_MODEL_NAME;
+    normalizeEndpointUrl(stashed.endpoint) !== normalizeEndpointUrl(DEFAULT_ENDPOINT) ||
+    stashed.apiToken !== DEFAULT_API_TOKEN || stashed.model !== DEFAULT_MODEL_NAME;
   if (!hasStashedCustom) return textPresetStoreFromEnv() ?? emptyTextStore;
   // Was the user actually on the custom endpoint? Make the migrated preset active if so (web: any non-default;
   // desktop: the checkbox was on) so a working config carries over; otherwise keep it available but inactive.
@@ -388,7 +392,7 @@ function useProvideSettings() {
       }
     }
     return (
-      (localStorage.getItem(`${APP_ID}_endpointUrl`) ?? DEFAULT_ENDPOINT) !== DEFAULT_ENDPOINT ||
+      normalizeEndpointUrl(localStorage.getItem(`${APP_ID}_endpointUrl`) ?? DEFAULT_ENDPOINT) !== normalizeEndpointUrl(DEFAULT_ENDPOINT) ||
       (localStorage.getItem(`${APP_ID}_apiToken`) ?? DEFAULT_API_TOKEN) !== DEFAULT_API_TOKEN ||
       (localStorage.getItem(`${APP_ID}_modelName`) ?? DEFAULT_MODEL_NAME) !== DEFAULT_MODEL_NAME
     );
@@ -409,7 +413,9 @@ function useProvideSettings() {
 
   // What the app actually sends with: the active preset's values (the Default preset already holds the shared
   // built-in endpoint, so a Default selection sends the shared endpoint).
-  const activeEndpointUrl = endpointUrl;
+  // Normalized at the point of use, never on the stored string: the user's text stays exactly as typed,
+  // while a bare origin or `/v1` base URL still reaches the chat-completions path.
+  const activeEndpointUrl = useMemo(() => normalizeEndpointUrl(endpointUrl), [endpointUrl]);
   const activeApiToken = apiToken;
   const activeModelName = modelName;
 

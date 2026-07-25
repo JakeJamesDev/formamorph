@@ -4,7 +4,7 @@
 export const SETTINGS_TABS = [
   { value: 'presentation', label: 'Presentation' },
   { value: 'generation', label: 'Generation' },
-  { value: 'endpoints', label: 'AI Endpoints' },
   { value: 'prompts', label: 'Prompts' },
+  { value: 'endpoints', label: 'AI Endpoints' },
   { value: 'accessibility', label: 'Accessibility' },
 ] as const;

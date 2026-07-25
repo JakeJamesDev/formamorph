@@ -32,6 +32,7 @@ const { world, playerTrait, location } = JSON.parse(
 const CASES = [
   {
     name: "tavern-arrival",
+    framing: "engaged",
     entities: [{ name: "Tomas", description: "The barkeep, wiping down mugs behind the counter.", type: "Person" }],
     prevNarration: "The tavern is low and warm, a few patrons hunched over their cups. Behind the counter, a heavyset barkeep works a rag around the rim of a mug, glancing up as the door swings shut behind you.",
     action: "I cross to the bar and set my pack down on a stool.",
@@ -39,6 +40,7 @@ const CASES = [
   },
   {
     name: "gate-guard",
+    framing: "engaged",
     entities: [{ name: "Halvard", description: "A gate guard in a mud-spattered tabard, spear butt planted in the dirt.", type: "Person" }],
     prevNarration: "The hamlet's gate is little more than two posts and a swung-back hurdle. A guard leans on his spear beneath it, watching the road, his eyes tracking you as you come up the rise.",
     action: "I walk up to the gate and slow my pace, letting him see my empty hands.",
@@ -46,6 +48,7 @@ const CASES = [
   },
   {
     name: "dock-worker",
+    framing: "withdrawn",
     entities: [{ name: "Sedge", description: "A weathered fisherwoman mending a net, absorbed in the work.", type: "Person" }],
     prevNarration: "Out on the jetty a woman sits on an upturned crate, a great tangle of net across her knees, her needle flashing as she works a tear closed. She has not looked up.",
     action: "I wander out onto the jetty and stand near her, watching her hands work the net.",
@@ -53,6 +56,7 @@ const CASES = [
   },
   {
     name: "market-browse",
+    framing: "neutral",
     entities: [{ name: "Pell", description: "A fruit-seller arranging his stall, calling prices to no one in particular.", type: "Person" }],
     prevNarration: "The market is thinning as the light goes. At one stall a wiry man stacks bruised apples into a careful pyramid, straightening the topmost fruit with a fussy sort of pride.",
     action: "I stop at the stall and look over what he has left.",
@@ -60,10 +64,57 @@ const CASES = [
   },
   {
     name: "road-companion",
+    framing: "neutral",
     entities: [{ name: "Rook", description: "A traveling companion walking the road beside the player; easy company, prone to filling silences.", type: "Person" }],
     prevNarration: "The road runs on into the dusk, hedgerows black against a bruised sky. Rook walks at your shoulder, kicking a stone ahead of him, the only sound your two sets of boots on the packed dirt.",
     action: "I keep walking, watching the treeline for the first lights of the next village.",
     expects: "Rook breaks the silence with a line — a remark, a question, idle talk.",
+  },
+  // ── Expectant cases (framing: "expectant"): the NPC is oriented toward the player and socially DUE to
+  // speak — mid-transaction, sharing a table, awaiting an instruction — yet the player's action still says
+  // nothing to them, so these stay un-baited. They separate "the prompt suppresses unprompted speech" from
+  // "the prior narration established a withdrawn NPC and the model is correctly carrying that forward".
+  {
+    name: "expectant-ferry-boarding",
+    framing: "expectant",
+    entities: [{ name: "the ferryman", description: "A river ferryman working a rope crossing; paid, and about to cast off.", type: "Person" }],
+    prevNarration: "The ferryman pockets your coin without counting it and turns to the mooring rope, working the knot loose with two thick fingers. He glances back over his shoulder at you, then at the flat brown water, waiting on you to settle before he pushes off.",
+    action: "I step aboard and stow my pack between my boots.",
+    expects: "He says something as he casts off — a warning, a remark on the crossing, small talk.",
+  },
+  {
+    name: "expectant-shared-table",
+    framing: "expectant",
+    entities: [{ name: "the traveler", description: "Another traveler taking the last free seat at the common table.", type: "Person" }],
+    prevNarration: "A woman in road-stained wool sets her bowl down across from you and swings a leg over the bench, the only free seat left in the crowded room. She pulls back her hood, catches your eye across the table, and reaches for the salt.",
+    action: "I keep eating, making room for her elbow.",
+    expects: "She opens with a line — a greeting, a complaint about the road, a question.",
+  },
+  {
+    name: "expectant-stablehand",
+    framing: "expectant",
+    entities: [{ name: "the stablehand", description: "A stablehand holding the horse's bridle, waiting on the player's word.", type: "Person" }],
+    prevNarration: "The stablehand takes the bridle and holds it, one hand on the mare's cheek strap, looking to you. He does not lead her off yet - he is waiting to be told how long you mean to stay.",
+    action: "I run a hand down the mare's foreleg, checking the swelling above the fetlock.",
+    expects: "He asks — how long, what feed, whether she's lame — rather than standing mute.",
+  },
+  // ── Negative controls (guard=true): nobody who can speak. Any quoted line here is over-fire, so an
+  // initiative clause that raises the cases above must leave these at zero. Reported as their own axis.
+  {
+    name: "guard-empty-room",
+    guard: true,
+    entities: [],
+    prevNarration: "The waystation's common room is long abandoned, the hearth cold and drifted with ash. Rain finds its way through the roof in two places, and the only sound is water striking rotten boards.",
+    action: "I set my lamp on the table and start going through the cupboards.",
+    expects: "Nobody is present — no quoted speech at all.",
+  },
+  {
+    name: "guard-mute-companion",
+    guard: true,
+    entities: [{ name: "the mare", description: "A packhorse, tired and footsore. An animal; she does not speak.", type: "Animal" }],
+    prevNarration: "The mare stands hipshot at the end of her lead, head low, steam rising off her flanks in the cold. She has carried you a long way today and it shows in every line of her.",
+    action: "I loosen the girth and rub her down while she cools.",
+    expects: "An animal cannot speak — no quoted speech at all.",
   },
 ];
 
@@ -133,7 +184,11 @@ const pick = CASES.filter((c) => !only || c.name.includes(only));
 console.log(`Un-baited dialogue probe · ${endpoint} · "${model}" · ${pick.length} case(s) · ${runs} run(s)/case\n`);
 await call(renderSys(pick[0]), [{ role: "user", content: "warm up" }]).catch(() => {});
 
-const totals = { runs: 0, npcSpoke: 0, silenceHits: 0, bold: 0, pcTic: 0 };
+const totals = { runs: 0, npcSpoke: 0, silenceHits: 0, bold: 0, pcTic: 0, guardRuns: 0, guardQuotes: 0 };
+// Per-framing tally: does the prior narration's framing of the NPC (withdrawn / neutral / engaged /
+// expectant) explain the silence? Withdrawn scenes staying quiet is arguably correct continuity;
+// expectant scenes staying quiet is not.
+const byFraming = {};
 for (const c of pick) {
   let npcSpoke = 0, silence = 0;
   console.log(`\n######## ${c.name} — expects: ${c.expects}`);
@@ -146,19 +201,32 @@ for (const c of pick) {
         { role: "user", content: renderUser(c.action) },
       ]);
     } catch (e) { err = String(e.message || e); }
-    totals.runs++;
+    if (!c.guard) totals.runs++;
     if (err) { console.log(`  #${r + 1} ERROR: ${err}`); continue; }
     const quotes = [...out.matchAll(QUOTE_RE)];
     const npcQuotes = quotes.filter((m) => isNpcQuote(out, m.index, m[0].length));
     const sil = (out.match(SILENCE_RE) || []).length;
     const hasNpc = npcQuotes.length > 0;
-    if (hasNpc) { npcSpoke++; totals.npcSpoke++; }
+    // Guard cases score the opposite way: ANY quoted speech is over-fire (nobody there can talk).
+    if (c.guard) { totals.guardRuns++; totals.guardQuotes += quotes.length; }
+    else {
+      const f = (byFraming[c.framing] ??= { runs: 0, spoke: 0 });
+      f.runs++;
+      if (hasNpc) { f.spoke++; npcSpoke++; totals.npcSpoke++; }
+    }
     const bold = (out.match(BOLD_RE) || []).length;
     const pcTic = (out.match(PC_TIC_RE) || []).length;
     silence += sil; totals.silenceHits += sil; totals.bold += bold; totals.pcTic += pcTic;
-    console.log(`  #${r + 1} ${hasNpc ? "NPC-SPOKE" : "SILENT"} · quotes ${quotes.length} (npc ${npcQuotes.length}) · silence-motif ${sil} · bold ${bold} · pc-tic ${pcTic}`);
+    const verdict = c.guard ? (quotes.length ? "OVER-FIRE" : "clean") : (hasNpc ? "NPC-SPOKE" : "SILENT");
+    console.log(`  #${r + 1} ${verdict} · quotes ${quotes.length} (npc ${npcQuotes.length}) · silence-motif ${sil} · bold ${bold} · pc-tic ${pcTic}`);
     console.log(out.split("\n").filter(Boolean).map((l) => "      " + l).join("\n"));
   }
-  console.log(`  -> ${c.name}: NPC spoke ${npcSpoke}/${runs} · silence-motif ${silence} total`);
+  if (!c.guard) console.log(`  -> ${c.name}: NPC spoke ${npcSpoke}/${runs} · silence-motif ${silence} total`);
 }
 console.log(`\n==== NPC spoke in ${totals.npcSpoke}/${totals.runs} turns · silence-motif ${(totals.silenceHits / totals.runs).toFixed(1)}/turn · bold ${(totals.bold / totals.runs).toFixed(1)}/turn · pc-tic ${(totals.pcTic / totals.runs).toFixed(1)}/turn ====`);
+const framingLine = ["expectant", "engaged", "neutral", "withdrawn"]
+  .filter((f) => byFraming[f])
+  .map((f) => `${f} ${byFraming[f].spoke}/${byFraming[f].runs}`)
+  .join(" · ");
+console.log(`==== by prior-narration framing: ${framingLine} ====`);
+console.log(`==== over-fire guard (no-speaker scenes): ${totals.guardQuotes} quote(s) in ${totals.guardRuns} runs — want 0 ====`);
