@@ -116,6 +116,64 @@ describe('discardChanges', () => {
     expect(result.current.entities).toEqual([]);
   });
 
+  it('reverts a never-saved world to the blank it started from', () => {
+    // A brand-new world is loaded into the editor but not persisted until Save, so its baseline is the blank
+    // itself. Discarding has to land back on that blank rather than on nothing — an empty overview and a
+    // missing seed book would leave the editor in a state the author can't recover from.
+    const blank = {
+      id: 'new',
+      worldOverview: {
+        name: '', description: '', author: '', thumbnail: null, bgm: null,
+        systemPrompt: '', use3DModel: true, tags: [],
+      },
+      stats: [], locations: [], entities: [], traits: [], statUpdates: [],
+      dictionaries: [{ id: 'seed', name: 'Default', enabled: true, entries: [] }],
+    } as unknown as World;
+
+    const { result } = renderHook(() => useGameData(), { wrapper });
+    act(() => { result.current.loadWorldData(blank, true); });
+
+    act(() => { result.current.updateWorldOverview({ name: 'Half-written world' }); });
+    act(() => { result.current.addEntity({ id: 'e1', name: 'Stray' } as never); });
+    expect(result.current.isWorldDirty).toBe(true);
+
+    act(() => { result.current.discardChanges(); });
+
+    expect(result.current.worldOverview.name).toBe('');
+    expect(result.current.entities).toEqual([]);
+    // The seed book has to survive, or the ≥1-book invariant breaks on a discard.
+    expect(result.current.dictionaries.map((d) => d.name)).toEqual(['Default']);
+    expect(result.current.isWorldDirty).toBe(false);
+  });
+
+  it('keeps a migrated world in its current shape across a discard', () => {
+    // `discardChanges` reloads through `loadWorldData`, which re-runs `migrateWorld`. That has to be a no-op
+    // on an already-migrated world: resurrecting the legacy keys would hand stale field names to the AI, and
+    // a non-idempotent migration would corrupt the world every time the author backed out.
+    const legacy = {
+      id: 'w',
+      worldOverview: {
+        name: 'Legacy', description: '', author: '', thumbnail: null, bgm: null,
+        systemPrompt: '', use3DModel: true, tags: [],
+      },
+      stats: [], locations: [], traits: [], statUpdates: [],
+      entities: [{ id: 'e1', name: 'Sedge', inGameDescription: 'Seen', detailedDescription: 'Known' }],
+    } as unknown as World;
+
+    const { result } = renderHook(() => useGameData(), { wrapper });
+    act(() => { result.current.loadWorldData(legacy); });
+    const migrated = result.current.entities[0];
+    expect(migrated).toMatchObject({ playerDescription: 'Seen', aiDescription: 'Known' });
+
+    act(() => { result.current.updateEntity({ ...migrated, name: 'Renamed' } as never); });
+    act(() => { result.current.discardChanges(); });
+
+    expect(result.current.entities[0]).toEqual(migrated);
+    expect(result.current.entities[0]).not.toHaveProperty('inGameDescription');
+    expect(result.current.entities[0]).not.toHaveProperty('detailedDescription');
+    expect(result.current.isWorldDirty).toBe(false);
+  });
+
   it('discards back to the most recent load, not the first', () => {
     const { result } = renderHook(() => useGameData(), { wrapper });
     act(() => { result.current.loadWorldData(world('a', { readme: "A's readme" })); });
