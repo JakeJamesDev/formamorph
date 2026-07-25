@@ -19,6 +19,7 @@ import { RevealAnimationDemoButton } from "@/components/RevealAnimationDemo";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Checkbox } from "@/components/ui/checkbox";
+import { Label } from "@/components/ui/label";
 import { Progress } from "@/components/ui/progress";
 import { loadEmbeddingModel, disposeEmbeddingModel, type EmbeddingLoadProgress } from '@/lib/embeddingWorkerClient';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -472,6 +473,8 @@ export const SettingsModal = ({ isOpen, onOpenChange, previewValues, initialTab,
     setImageInvokeEncoder,
     imageInvokeVae,
     setImageInvokeVae,
+    imageGenDisabled,
+    setImageGenDisabled,
     imageEndpointPresets,
     activeImageEndpointPresetId,
     activeImageEndpointPresetName,
@@ -1563,6 +1566,17 @@ An inspection aid for authoring and debugging; off by default.`}</HintInfo>
                 </SelectContent>
               </Select>
               <Button variant="outline" size="sm" onClick={() => setImagePresetDialog({ mode: 'rename' })}>Rename</Button>
+            </div>
+            {/* Global kill switch: hides every "Generate with AI" image button without touching the presets. */}
+            <div className="flex items-center gap-2 flex-shrink-0">
+              <Checkbox
+                id="imageGenDisabled"
+                checked={imageGenDisabled}
+                onCheckedChange={(c) => setImageGenDisabled(c === true)}
+                className="shrink-0"
+              />
+              <Label htmlFor="imageGenDisabled" className="text-sm font-normal">Disable Image Generation</Label>
+              <span className="text-xs text-muted-foreground">Hides the &ldquo;Generate with AI&rdquo; buttons.</span>
             </div>
             <ScrollArea className="flex-1 min-h-0">
             <div className="grid gap-6">

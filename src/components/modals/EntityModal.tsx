@@ -3,7 +3,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Button } from "@/components/ui/button";
 import { ImageZoomViewer } from "@/components/ImageZoomViewer";
-import { getModelType } from '../../lib/UtilityComponents';
+import { resolveModelType } from '../../lib/UtilityComponents';
 import ModelViewer from '../../views/ModelViewer';
 import AudioPlayer from '../game/AudioPlayer';
 import { usePlaceholderResolver } from "@/lib/usePlaceholderResolver";
@@ -67,7 +67,7 @@ export const EntityModal = ({ entity, isOpen, onOpenChange }: {
                     <DialogHeader>
                       <DialogTitle>3D Model Viewer</DialogTitle>
                     </DialogHeader>
-                    <ModelViewer model={entity.model} modelType={getModelType(entity.model.type)} />
+                    <ModelViewer model={entity.model} modelType={resolveModelType(entity.model)} />
                   </DialogContent>
                 </Dialog>
               )}

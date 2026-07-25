@@ -521,7 +521,7 @@
      "id": "b54fae74-7901-4b8b-aae8-2742f2daec01",
      "enabled": true,
      "name": "The Threat",
-     "key": "threat,enemy,evil",
+     "key": ["threat", "enemy", "evil"],
      "constant": true,
      "position": "before",
      "value": "The overarching threat menacing Magiterra Nova is {{ph:bbda3bbc-ffc6-4e69-91df-3304d81cf69c:world:20fe7c06-6bca-4387-923a-0524b18a5dbc}}. Growing strong enough to confront it is the drone's grand quest; the world reacts to that shadow even when it is far away."
@@ -530,15 +530,15 @@
      "id": "ce15608b-494b-49a7-8ef3-e6c26f9a4da3",
      "enabled": true,
      "name": "Precursor Power Cores",
-     "key": "power core,core,relic,precursor",
-     "secondaryKeys": "ruin,dungeon,vault",
+     "key": ["power core", "core", "relic", "precursor"],
+     "secondaryKeys": ["ruin", "dungeon", "vault"],
      "value": "Power Cores are palm-sized precursor relics humming with stored energy. The drone can integrate them to permanently expand its capabilities. Factions across the land hunt them; most lie buried in precursor ruins."
     },
     {
      "id": "301b10d3-9e84-4d49-a8f1-fc1f2bc63f5d",
      "enabled": true,
      "name": "Overdrive",
-     "key": "overdrive,charge,capacitor",
+     "key": ["overdrive", "charge", "capacitor"],
      "position": "after",
      "value": "Overdrive is the drone unleashing its fully-charged capacitors in a single devastating burst. It requires Charge at maximum, and firing it empties the meter. No native creature of this world has seen anything like it."
     },
@@ -546,28 +546,28 @@
      "id": "281dd561-ed42-48e5-9372-182dad378566",
      "enabled": true,
      "name": "The Summoner Order",
-     "key": "summoner,order,archon,vael,mage",
+     "key": ["summoner", "order", "archon", "vael", "mage"],
      "value": "A cloistered order of mages who believe the drone is a summoned guardian from another plane. Led by Archon Vael, they offer knowledge and sanctuary — in exchange for service against the world threat."
     },
     {
      "id": "4d69e287-13a7-4a7c-ac01-86b5255a4a87",
      "enabled": true,
      "name": "Scavenger Clans",
-     "key": "scavenger,salvage,scrap,rustjaw,waste",
+     "key": ["scavenger", "salvage", "scrap", "rustjaw", "waste"],
      "value": "Nomad clans of the wastes who strip precursor ruins for salvage. Pragmatic and prickly. Their broker, Rustjaw, will trade Power Cores and parts — for the right price or a favor owed."
     },
     {
      "id": "2c3c32dd-353a-4df2-b67f-ce4e15d40094",
      "enabled": true,
      "name": "Ironhold Kingdom",
-     "key": "ironhold,knight,kingdom,halden",
+     "key": ["ironhold", "knight", "kingdom", "halden"],
      "value": "A proud human kingdom of knights and walls, wary of the strange little machine. Ser Halden, a border-captain, is willing to judge the drone by its deeds rather than its shape."
     },
     {
      "id": "2a73b9e7-b6dd-4f11-80a5-be11798dd437",
      "enabled": true,
      "name": "The Old Civilization",
-     "key": "ruins,ancient,machine,precursor",
+     "key": ["ruins", "ancient", "machine", "precursor"],
      "recursive": true,
      "value": "Long before the kingdoms, a precursor civilization braided magic and machinery together, then vanished. Their ruins litter the land — and the drone, uncannily, seems to be one of their works, or something very like it."
     },
@@ -575,7 +575,7 @@
      "id": "30b97ac2-d56d-4f61-87ec-f2dfe72d9eb6",
      "enabled": true,
      "name": "Demonkind",
-     "key": "demon,corruption,blight,demonic",
+     "key": ["demon", "corruption", "blight", "demonic"],
      "value": "Demonkind spread from {{ph:bbda3bbc-ffc6-4e69-91df-3304d81cf69c:world:d396ffa7-9ce8-4ec4-8f72-7bcb6b4e1d82}}, corrupting land and beast into blighted horrors. They are drawn to power and unsettled by the drone's unfamiliar, unmagical nature."
     }
    ]

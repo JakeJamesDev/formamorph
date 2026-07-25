@@ -1,25 +1,287 @@
 {
-  "comment": "Semantic-lore probe fixture: dictionary entries plus actions labeled with which entries SHOULD activate by meaning. Positive actions are paraphrases sharing no keyword with their entry (the probe asserts this); negative actions relate to nothing. Precision/recall are swept across thresholds to tune SEMANTIC_LORE_THRESHOLD. Entries follow the trade-coast world of semantic-band-cases.json.",
+  "comment": "Semantic-lore probe fixture: dictionary entries plus actions labeled with which entries SHOULD activate by meaning. Positive actions are paraphrases sharing no keyword with their entry (the probe asserts this); negative actions relate to nothing in the set. Precision/recall are swept across thresholds to tune SEMANTIC_LORE_THRESHOLD. Entries follow the trade-coast world of semantic-band-cases.json. Several entries are deliberate near-neighbors (beacon/wreckers/shrine, causeway/pass/ferry, guild/charter/coin) so a threshold that is too loose is punished by a measurable false fire rather than going unnoticed, and the negatives include in-world actions that must still match nothing.",
   "entries": [
-    { "id": "beacon", "name": "The Old Beacon", "key": "beacon, lighthouse, the light", "value": "The abandoned lighthouse on the headland above the harbor. Fishermen swear its dead lamp still glows on drowning nights and will not moor beneath it." },
-    { "id": "causeway", "name": "Marsh Causeway", "key": "causeway, marsh road", "value": "The raised stone road through the tidal marsh, the only route north while the pass is blocked. Sinking stones and toll keepers; locals cross only at low water." },
-    { "id": "guild", "name": "Salt Factors' Guild", "key": "guild, salt factors", "value": "The merchant brotherhood that sets prices in every harbor. Crossing them means no stall, no ferry passage, and cargo that mysteriously spoils." },
-    { "id": "weck", "name": "Weck", "key": "Weck", "value": "A scarred drover with a long memory for debts. Works the harbor cattle yards; his word is good and his grudges are permanent." },
-    { "id": "tides", "name": "The Black Tide", "key": "black tide, red water", "value": "A poisonous algal bloom that closes the fisheries some autumns. Fish caught during it sicken whole villages; harbormasters burn tainted catches on the shingle." },
-    { "id": "ledger", "name": "Trader's Ledger Law", "key": "ledger law", "value": "Coast custom: a dead trader's ledger binds their heir to every open debt and delivery in it. Refusing the book means refusing the route and its protections." },
-    { "id": "harrowgate", "name": "Harrowgate", "key": "Harrowgate, hill fort", "value": "The fortified hill town inland where the mule tracks meet. Its market terrace is the only legal exchange for northbound goods." },
-    { "id": "ferry", "name": "Sedge Ferry", "key": "Sedge Ferry, ferry landing", "value": "The rope-ferry crossing at the coast road's end, run by the ferrywoman Maren. The only way over the sedge channel with a loaded animal." }
+    {
+      "id": "beacon",
+      "name": "The Old Beacon",
+      "key": ["beacon", "lighthouse", "the light"],
+      "value": "The abandoned lighthouse on the headland above the harbor. Fishermen swear its dead lamp still glows on drowning nights and will not moor beneath it."
+    },
+    {
+      "id": "causeway",
+      "name": "Marsh Causeway",
+      "key": ["causeway", "marsh road"],
+      "value": "The raised stone road through the tidal marsh, the only route north while the pass is blocked. Sinking stones and toll keepers; locals cross only at low water."
+    },
+    {
+      "id": "guild",
+      "name": "Salt Factors' Guild",
+      "key": ["guild", "salt factors"],
+      "value": "The merchant brotherhood that sets prices in every harbor. Crossing them means no stall, no ferry passage, and cargo that mysteriously spoils."
+    },
+    {
+      "id": "weck",
+      "name": "Weck",
+      "key": ["Weck"],
+      "value": "A scarred drover with a long memory for debts. Works the harbor cattle yards; his word is good and his grudges are permanent."
+    },
+    {
+      "id": "tides",
+      "name": "The Black Tide",
+      "key": ["black tide", "red water"],
+      "value": "A poisonous algal bloom that closes the fisheries some autumns. Fish caught during it sicken whole villages; harbormasters burn tainted catches on the shingle."
+    },
+    {
+      "id": "ledger",
+      "name": "Trader's Ledger Law",
+      "key": ["ledger law"],
+      "value": "Coast custom: a dead trader's ledger binds their heir to every open debt and delivery in it. Refusing the book means refusing the route and its protections."
+    },
+    {
+      "id": "harrowgate",
+      "name": "Harrowgate",
+      "key": ["Harrowgate", "hill fort"],
+      "value": "The fortified hill town inland where the mule tracks meet. Its market terrace is the only legal exchange for northbound goods."
+    },
+    {
+      "id": "ferry",
+      "name": "Sedge Ferry",
+      "key": ["Sedge Ferry", "ferry landing"],
+      "value": "The rope-ferry crossing at the coast road's end, run by the ferrywoman Maren. The only way over the sedge channel with a loaded animal."
+    },
+    {
+      "id": "harbormaster",
+      "name": "Harbormaster Sella",
+      "key": ["harbormaster", "port warden"],
+      "value": "She assigns every mooring and can impound a hold on suspicion alone. Takes no bribes, remembers every hull that ever slipped its berth owing fees."
+    },
+    {
+      "id": "saltpans",
+      "name": "The Saltpans",
+      "key": ["saltpans", "salt flats"],
+      "value": "Shallow evaporation beds south of the harbor where bonded laborers rake the crust into heaps. Debt-work; most who go in do not rake their way out."
+    },
+    {
+      "id": "wreckers",
+      "name": "Wreckers",
+      "key": ["wreckers", "false lights"],
+      "value": "Coastal bands who show lanterns on the cliffs to draw hulls onto the reef, then strip what washes in. Hanged at the tideline when caught."
+    },
+    {
+      "id": "fever",
+      "name": "Sedge Fever",
+      "key": ["sedge fever", "the shakes"],
+      "value": "A wasting marsh sickness that comes with the summer damp. Afflicted villages hang yellow cloth at the road and turn travelers back."
+    },
+    {
+      "id": "coin",
+      "name": "Clipped Coin",
+      "key": ["clipped coin", "short weight"],
+      "value": "Silver shaved at the rim passes freely inland but not here. Every serious trade on this coast ends with a set of scales on the table."
+    },
+    {
+      "id": "maren",
+      "name": "Maren",
+      "key": ["Maren"],
+      "value": "The ferrywoman at the sedge channel. Hauls the rope crossing alone, drinks nothing, and will refuse a passenger she mistrusts without explaining why."
+    },
+    {
+      "id": "pass",
+      "name": "Weatherhead Pass",
+      "key": ["Weatherhead", "the pass"],
+      "value": "The mountain route north, shut by rockfall since spring. Until it clears, everything bound inland goes the long way through the marsh."
+    },
+    {
+      "id": "smuggling",
+      "name": "Night Landings",
+      "key": ["night landing", "untaxed cargo"],
+      "value": "Goods put ashore in the coves after dark to dodge the harbor tithe. Everyone knows which coves; nobody names them to a stranger."
+    },
+    {
+      "id": "charter",
+      "name": "Harbor Charter",
+      "key": ["charter", "harbor rights"],
+      "value": "The sealed grant that lets a trading house sell in this port at all. Without one you may buy, but never open a stall or take on freight."
+    },
+    {
+      "id": "drovers",
+      "name": "Drovers' Company",
+      "key": ["drovers", "pack train"],
+      "value": "The loose company that runs animals up the mule tracks to the hill market. They set their own departure days and take no cargo they cannot insure."
+    },
+    {
+      "id": "gales",
+      "name": "The Equinox Gales",
+      "key": ["equinox gales", "the gales"],
+      "value": "Three weeks of autumn storms that shut the harbor mouth entirely. Crews haul boats above the shingle and wait it out drinking."
+    },
+    {
+      "id": "shrine",
+      "name": "The Drowned Shrine",
+      "key": ["drowned shrine", "offering stones"],
+      "value": "A half-submerged altar below the headland where sailors leave coin before a crossing. Uncovered at low water, gone again by dusk."
+    }
   ],
   "actions": [
-    { "name": "beacon-paraphrase", "text": "I climb toward the ruined tower on the headland where no ships anchor.", "expect": ["beacon"] },
-    { "name": "causeway-paraphrase", "text": "I ask which path through the wetlands is safe for a loaded mule.", "expect": ["causeway"] },
-    { "name": "guild-paraphrase", "text": "I ask who really decides what a sack of salt sells for around here.", "expect": ["guild"] },
-    { "name": "tide-paraphrase", "text": "I ask the fishermen why they are burning their own catch on the beach.", "expect": ["tides"] },
-    { "name": "ledger-paraphrase", "text": "I wonder aloud what my father's debts mean for me now that I carry his book.", "expect": ["ledger"] },
-    { "name": "ferry-paraphrase", "text": "I need to get my animal across the channel at the end of the coast road.", "expect": ["ferry", "causeway"] },
-    { "name": "neg-smalltalk", "text": "I trade jokes with a passing shepherd about his dog.", "expect": [] },
-    { "name": "neg-camp", "text": "I water the mule and make camp for the night.", "expect": [] },
-    { "name": "neg-mend", "text": "I sit by the fire and mend the tear in my coat sleeve.", "expect": [] },
-    { "name": "neg-weather", "text": "I study the clouds, wondering if tomorrow brings rain.", "expect": [] }
+    {
+      "name": "beacon-paraphrase",
+      "text": "I climb toward the ruined tower on the headland where no ships anchor.",
+      "expect": ["beacon"]
+    },
+    {
+      "name": "causeway-paraphrase",
+      "text": "I ask which path through the wetlands is safe for a loaded mule.",
+      "expect": ["causeway"]
+    },
+    {
+      "name": "guild-paraphrase",
+      "text": "I ask who really decides what a sack of salt sells for around here.",
+      "expect": ["guild"]
+    },
+    {
+      "name": "tide-paraphrase",
+      "text": "I ask the fishermen why they are burning their own catch on the beach.",
+      "expect": ["tides"]
+    },
+    {
+      "name": "ledger-paraphrase",
+      "text": "I wonder aloud what my father's debts mean for me now that I carry his book.",
+      "expect": ["ledger"]
+    },
+    {
+      "name": "ferry-paraphrase",
+      "text": "I need to get my animal across the channel at the end of the coast road.",
+      "expect": ["ferry", "causeway"]
+    },
+    {
+      "name": "harbormaster-paraphrase",
+      "text": "I ask who has the authority to release a hold that has been impounded.",
+      "expect": ["harbormaster"]
+    },
+    {
+      "name": "saltpans-paraphrase",
+      "text": "I watch bonded laborers rake white crust into heaps in the shallow beds.",
+      "expect": ["saltpans"]
+    },
+    {
+      "name": "wreckers-paraphrase",
+      "text": "I hear someone has been showing lanterns on the cliffs to draw hulls onto the reef.",
+      "expect": ["wreckers"]
+    },
+    {
+      "name": "fever-paraphrase",
+      "text": "I ask why that village hangs yellow cloth at the road and turns travelers back.",
+      "expect": ["fever"]
+    },
+    {
+      "name": "coin-paraphrase",
+      "text": "I bite the silver I was handed and reach for my scales.",
+      "expect": ["coin"]
+    },
+    {
+      "name": "maren-paraphrase",
+      "text": "I look for the woman who hauls the rope crossing alone.",
+      "expect": ["maren", "ferry"]
+    },
+    {
+      "name": "pass-paraphrase",
+      "text": "I ask whether the mountain route north has been cleared of rockfall yet.",
+      "expect": ["pass"]
+    },
+    {
+      "name": "smuggling-paraphrase",
+      "text": "I ask about goods that come ashore after dark without meeting a tithe man.",
+      "expect": ["smuggling"]
+    },
+    {
+      "name": "charter-paraphrase",
+      "text": "I ask what sealed grant a trading house needs before it may open a stall.",
+      "expect": ["charter"]
+    },
+    {
+      "name": "drovers-paraphrase",
+      "text": "I look for the company that runs animals up the mule tracks to the hill market.",
+      "expect": ["drovers", "harrowgate"]
+    },
+    {
+      "name": "gales-paraphrase",
+      "text": "I ask how many weeks before the autumn storms shut the harbor mouth.",
+      "expect": ["gales"]
+    },
+    {
+      "name": "shrine-paraphrase",
+      "text": "I set a coin on the wet altar below the headland before crossing.",
+      "expect": ["shrine"]
+    },
+    {
+      "name": "harrowgate-paraphrase",
+      "text": "I ask where northbound goods can be legally exchanged inland.",
+      "expect": ["harrowgate"]
+    },
+    {
+      "name": "weck-paraphrase",
+      "text": "I ask after the scarred man in the cattle yards who never forgets a debt.",
+      "expect": ["weck"]
+    },
+    {
+      "name": "neg-smalltalk",
+      "text": "I trade jokes with a passing shepherd about his dog.",
+      "expect": []
+    },
+    {
+      "name": "neg-camp",
+      "text": "I water the mule and make camp for the night.",
+      "expect": []
+    },
+    {
+      "name": "neg-mend",
+      "text": "I sit by the fire and mend the tear in my coat sleeve.",
+      "expect": []
+    },
+    {
+      "name": "neg-weather",
+      "text": "I study the clouds, wondering if tomorrow brings rain.",
+      "expect": []
+    },
+    {
+      "name": "neg-barnacles",
+      "text": "I scrape barnacles from the hull while the water is out.",
+      "expect": []
+    },
+    {
+      "name": "neg-lodging",
+      "text": "I ask the innkeeper for a room with a window over the street.",
+      "expect": []
+    },
+    {
+      "name": "neg-whetstone",
+      "text": "I sharpen my knife on a whetstone by the door.",
+      "expect": []
+    },
+    {
+      "name": "neg-letter",
+      "text": "I write a letter home and look for someone heading that way.",
+      "expect": []
+    },
+    {
+      "name": "neg-provisions",
+      "text": "I buy bread and hard cheese to carry on the road.",
+      "expect": []
+    },
+    {
+      "name": "neg-boots",
+      "text": "I pull off my boots and pick the grit out of the seams.",
+      "expect": []
+    },
+    {
+      "name": "neg-gulls",
+      "text": "I watch two gulls fight over something dropped on the stones.",
+      "expect": []
+    },
+    {
+      "name": "neg-sleep",
+      "text": "I lie awake listening to the rigging knock until I finally sleep.",
+      "expect": []
+    }
   ]
 }

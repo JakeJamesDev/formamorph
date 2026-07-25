@@ -109,6 +109,34 @@ describe('DictionaryStorageService', () => {
     });
   });
 
+  // Library books never pass through `migrateWorld`, so a book stored before keywords became arrays would
+  // otherwise reach the chip editor as a string and crash it on `keywords.map`.
+  it('migrates legacy comma-joined keywords on read', async () => {
+    await DictionaryStorageService.storeDictionary({
+      id: 'd1',
+      name: 'Lore',
+      data: {
+        id: 'd1',
+        name: 'Lore',
+        entries: [{ id: 'e1', name: 'Dragon', key: 'dragon, wyrm', value: 'v', secondaryKeys: 'ruin,vault' }],
+      },
+    } as unknown as StoredDictionaryRecord);
+
+    const [entry] = (await DictionaryStorageService.getDictionaryData('d1')).entries;
+    expect(entry.key).toEqual(['dragon', 'wyrm']);
+    expect(entry.secondaryKeys).toEqual(['ruin', 'vault']);
+  });
+
+  it('leaves an already-migrated book untouched, commas intact', async () => {
+    await DictionaryStorageService.storeDictionary({
+      id: 'd1',
+      name: 'Lore',
+      data: { id: 'd1', name: 'Lore', entries: [{ id: 'e1', name: 'Rx', key: ['\\d{2,3}'], value: 'v' }] },
+    } as unknown as StoredDictionaryRecord);
+
+    expect((await DictionaryStorageService.getDictionaryData('d1')).entries[0].key).toEqual(['\\d{2,3}']);
+  });
+
   it('rejects a book missing its entries array', async () => {
     await expect(
       DictionaryStorageService.storeDictionary({ id: 'd1', name: 'X', data: {} } as unknown as StoredDictionaryRecord),

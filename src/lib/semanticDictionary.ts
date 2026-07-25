@@ -12,10 +12,13 @@ import { cosineSimilarity } from './memoryRelevance';
  * cross-stage consistency to protect). Pure module: embedding production lives with the caller.
  */
 
-/** Minimum cosine similarity for a semantic activation. Tuned by semantic-lore-probe.mjs: 0.30 scores
- *  100% precision / 71% recall on the fixture — the strongest false fire sits at 0.26, and the missed
- *  paraphrases (0.26-0.28) are inside that noise band, unrecoverable by threshold alone with MiniLM. */
-export const SEMANTIC_LORE_THRESHOLD = 0.3;
+/** Minimum cosine similarity for a semantic activation. Tuned by semantic-lore-probe.mjs against a
+ *  20-entry fixture whose entries are deliberate near-neighbors, so a loose threshold shows up as a false
+ *  fire. 0.44 is the lowest value scoring 100% precision on both populations — authored (name mirrors the
+ *  keywords) and imported (distinct names) — at 65% / 61% recall; below it authored drops to 94%. Recall
+ *  decays smoothly above, so the cost of being one step high is a missed activation, not bad lore.
+ *  Run `--matrix` to reproduce. The remaining misses sit in MiniLM's noise band, not fixable by threshold. */
+export const SEMANTIC_LORE_THRESHOLD = 0.44;
 
 /** Most entries one action may semantically activate — keeps a lore-dense world from flooding the
  *  prompt when everything is topically "near" (keyword activations don't count against it). */
@@ -23,9 +26,13 @@ export const SEMANTIC_LORE_CAP = 3;
 
 /** The text an entry is embedded as: name + trigger keys + content. Keys are included because authors
  *  write them as meaning-bearing synonyms; content is capped so one giant entry can't dilute itself
- *  past the model's input window. */
+ *  past the model's input window. The name is dropped when it merely repeats the keys — the editor
+ *  mirrored `name` from the keyword list before the fields were decoupled, and embedding both weights
+ *  those keywords twice against the entry's actual content. */
 export function entryEmbedText(entry: DictionaryEntry): string {
-  return [entry.name, entry.key, (entry.value || '').slice(0, 1000)].filter(Boolean).join(' — ');
+  const keys = (entry.key ?? []).join(', ');
+  const name = entry.name === keys ? '' : entry.name;
+  return [name, keys, (entry.value || '').slice(0, 1000)].filter(Boolean).join(' — ');
 }
 
 /** Cache key for one entry's vector — content-hashed, so it survives the id regeneration that

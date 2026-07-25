@@ -2,7 +2,7 @@ import { describe, it, expect } from 'vitest';
 import { reorderBooks, moveEntryInBooks, duplicateEntryInBooks } from './dictionaryTree';
 import type { Dictionary, DictionaryEntry } from '@/types';
 
-const e = (id: string, position?: 'before' | 'after'): DictionaryEntry => ({ id, name: id, key: id, value: id, ...(position ? { position } : {}) });
+const e = (id: string, position?: 'before' | 'after'): DictionaryEntry => ({ id, name: id, key: [id], value: id, ...(position ? { position } : {}) });
 const bk = (id: string, entries: DictionaryEntry[]): Dictionary => ({ id, name: id, enabled: true, entries });
 
 describe('reorderBooks', () => {

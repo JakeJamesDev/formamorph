@@ -65,9 +65,9 @@ function convertEntry(raw: RawEntry, book: { scanDepth?: number; recursive?: boo
   // book-level recursive_scanning enables recursion; an ST entry can opt out via excludeRecursion.
   const recursive = book.recursive === true && raw.excludeRecursion !== true;
 
-  const entry: DictionaryEntry = { id: randomUUID(), name, key: keys.join(', '), value };
+  const entry: DictionaryEntry = { id: randomUUID(), name, key: keys, value };
   if (secondary.length) {
-    entry.secondaryKeys = secondary.join(', ');
+    entry.secondaryKeys = secondary;
     // ST `selectiveLogic`: 0 AND_ANY (default), 1 NOT_ALL, 2 NOT_ANY, 3 AND_ALL → our exclude/all flags.
     const logic = typeof raw.selectiveLogic === 'number' ? raw.selectiveLogic : 0;
     if (logic === 1) { entry.secondaryExclude = true; entry.secondaryAll = true; }

@@ -33,12 +33,14 @@ const ModelViewer = ({ model, modelType }: ModelViewerProps) => {
     controls.dampingFactor = 0.25;
     controls.enableZoom = true;
 
-    const ambientLight = new THREE.AmbientLight(0xffffff, 0.5);
+    // Physically-correct intensities (three r155+); the legacy 0.5/1 values render a lit model near-black.
+    // The key light matches VRMViewer/vrmThumbnail so a model reads the same everywhere it's shown.
+    const ambientLight = new THREE.AmbientLight(0xffffff, Math.PI * 0.3);
     scene.add(ambientLight);
 
-    const pointLight = new THREE.PointLight(0xffffff, 1);
-    pointLight.position.set(5, 5, 5);
-    scene.add(pointLight);
+    const keyLight = new THREE.DirectionalLight(0xffffff, Math.PI);
+    keyLight.position.set(1, 1, 1).normalize();
+    scene.add(keyLight);
 
     let loader;
     switch (modelType) {
@@ -61,6 +63,8 @@ const ModelViewer = ({ model, modelType }: ModelViewerProps) => {
     // stalls the main thread for seconds and balloons memory before the first frame ever draws.
     let objectURL: string | null = null;
     let disposed = false;
+    // Created only once a model with clips has landed, so the render loop has to null-check it.
+    let mixer: THREE.AnimationMixer | null = null;
     void fetch(model.data).then((r) => r.blob()).then((blob) => {
       if (disposed) return;
       objectURL = URL.createObjectURL(blob);
@@ -71,6 +75,14 @@ const ModelViewer = ({ model, modelType }: ModelViewerProps) => {
       // GLTFLoader yields a { scene } wrapper; FBX/OBJ loaders yield the Object3D directly.
       const object = 'scene' in loaded ? loaded.scene : loaded;
       scene.add(object);
+
+      // Play every clip the file carries. A Blender/glTF export splits motion into one clip per animated
+      // object, so playing only the first would leave the rest of the model frozen. `animations` lives on
+      // the GLTF wrapper, not its scene — hence reading it off `loaded` rather than `object`.
+      if (loaded.animations?.length) {
+        mixer = new THREE.AnimationMixer(object);
+        loaded.animations.forEach((clip) => mixer!.clipAction(clip).play());
+      }
 
       const box = new THREE.Box3().setFromObject(object);
       const center = box.getCenter(new THREE.Vector3());
@@ -93,8 +105,13 @@ const ModelViewer = ({ model, modelType }: ModelViewerProps) => {
     });
 
     let animationFrameId: number;
+    const clock = new THREE.Clock();
     const animate = () => {
       animationFrameId = requestAnimationFrame(animate);
+      // Consume the delta unconditionally, so a mixer created mid-loop doesn't start on the whole
+      // elapsed-since-mount gap and jump straight to a late keyframe.
+      const delta = clock.getDelta();
+      mixer?.update(delta);
       controls.update();
       renderer.render(scene, camera);
     };
@@ -104,11 +121,27 @@ const ModelViewer = ({ model, modelType }: ModelViewerProps) => {
     return () => {
       disposed = true;
       cancelAnimationFrame(animationFrameId);
+      mixer?.stopAllAction();
+      mixer = null;
+
+      // Release the model's GPU buffers, not just the renderer's — this dialog opens once per entity, and
+      // leaving geometry/materials resident piles them up for the lifetime of the page.
+      scene.traverse((object) => {
+        const mesh = object as THREE.Mesh;
+        mesh.geometry?.dispose();
+        const material = mesh.material;
+        if (Array.isArray(material)) material.forEach((m) => m.dispose());
+        else material?.dispose();
+      });
+
       if (mount) {
         mount.removeChild(renderer.domElement);
       }
       if (objectURL) URL.revokeObjectURL(objectURL);
       renderer.dispose();
+      // Drop the WebGL context immediately; otherwise repeated opens accumulate contexts until the browser
+      // evicts the oldest and rendering silently breaks (same failure VRMViewer guards against).
+      renderer.forceContextLoss?.();
       controls.dispose();
     };
   }, [model, modelType]);

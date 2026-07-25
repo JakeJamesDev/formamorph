@@ -7,6 +7,9 @@ export type Base64Data = string;
 export interface MediaAsset {
   data: Base64Data;
   type: string;
+  /** Original filename — the most reliable format hint, since browsers report MIME inconsistently. */
+  name?: string;
+  size?: number;
 }
 
 /** A scalar `number` stat, a `percentage` stat (a number pinned to 0–100, displayed as `N%`), or a `list`
@@ -174,23 +177,25 @@ export interface StatUpdate {
 }
 
 /**
- * Dictionary / lorebook entry. `key` is a comma-separated list of trigger keywords; `value` is the content
- * injected into the AI prompt when a keyword is in scope; `name` mirrors `key` for the list display (as in
- * v1.2). Every field below `value` is an optional lorebook control — all absent ⇒ the original v1.2 behavior
- * (a plain keyword→value entry rendered in the single late block), so already-shipped worlds are unaffected.
+ * Dictionary / lorebook entry. `key` lists the trigger keywords, one per element, so a keyword may contain
+ * any character (commas included — regex patterns need them); `value` is the content injected into the AI
+ * prompt when a keyword is in scope; `name` is the author's free label for the entry, shown in the list and
+ * used to prefix the value in the prompt (blank falls back to the first keyword). Every field
+ * below `value` is an optional lorebook control — all absent ⇒ the original v1.2 behavior (a plain
+ * keyword→value entry rendered in the single late block), so already-shipped worlds are unaffected.
  */
 export interface DictionaryEntry {
   id: string;
   name: string;
-  key: string;
+  key: string[];
   value: string;
   /** `false` disables the entry entirely (never injected); absent/`true` = active. */
   enabled?: boolean;
   /** Always inject, regardless of keyword matches. */
   constant?: boolean;
-  /** Comma-separated secondary keywords; when set, they gate activation alongside a primary hit (see
+  /** Secondary keywords, one per element; when set, they gate activation alongside a primary hit (see
    *  `secondaryAll`/`secondaryExclude`; default is "at least one secondary must also appear"). */
-  secondaryKeys?: string;
+  secondaryKeys?: string[];
   /** Require ALL secondary keywords rather than any one of them. */
   secondaryAll?: boolean;
   /** Invert the secondary test: activate only when the secondary keywords are ABSENT (with `secondaryAll`,

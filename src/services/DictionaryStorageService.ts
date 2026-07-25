@@ -1,4 +1,5 @@
 import { LibraryStore, type StoredRecord } from './LibraryStore';
+import { migrateEntryKeys } from '@/lib/version';
 import type { Dictionary, DictionaryMetadata } from '@/types';
 
 /** A locally-stored dictionary ("book") plus its library timestamps, and (via `StoredRecord`) the
@@ -39,9 +40,14 @@ class DictionaryStorageService {
     return this.store.getMetadata();
   }
 
-  /** Load one dictionary's full book (with entries); rejects if missing or malformed. */
-  getDictionaryData(id: string): Promise<Dictionary> {
-    return this.store.getData(id);
+  /**
+   * Load one dictionary's full book (with entries); rejects if missing or malformed. Library books never pass
+   * through `migrateWorld`, so the keyword-array migration is applied here — the single read boundary every
+   * caller (editor, add-to-world, selection) goes through.
+   */
+  async getDictionaryData(id: string): Promise<Dictionary> {
+    const book = await this.store.getData(id);
+    return { ...book, entries: (book.entries ?? []).map(migrateEntryKeys) };
   }
 
   /** Upsert a dictionary by `id`; `createdAt` is sticky (stamped once), `lastAccessed` bumped each store. */

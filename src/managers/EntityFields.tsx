@@ -43,10 +43,11 @@ const EntityFields = ({ value, onChange, placeholders = [], locationOptions, sel
         <KeywordChips
           keywords={value.aliases ?? []}
           onChange={(aliases) => onChange('aliases', aliases)}
-          placeholder="e.g. Liz, Your Majesty, Gray One"
+          placeholder="e.g. Liz — press Enter for each"
         />
         <p className="text-sm text-muted-foreground">
           Other names this entity is called — detected in narration and shared with the AI. Case-sensitive.
+          Press Enter after each one; an alias may contain commas.
         </p>
       </div>
       <div className="space-y-2">

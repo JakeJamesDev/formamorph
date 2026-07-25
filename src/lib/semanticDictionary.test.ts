@@ -13,7 +13,7 @@ import type { DictionaryEntry } from '@/types';
 const entry = (id: string, over: Partial<DictionaryEntry> = {}): DictionaryEntry => ({
   id,
   name: `Entry ${id}`,
-  key: `key-${id}`,
+  key: [`key-${id}`],
   value: `lore of ${id}`,
   ...over,
 });
@@ -24,10 +24,27 @@ const withVectors = (entries: DictionaryEntry[], vecs: Float32Array[]) =>
 
 describe('entryEmbedText', () => {
   it('joins name, keys, and content, capping giant content', () => {
-    const e = entry('a', { name: 'Old Beacon', key: 'tower, beacon', value: 'x'.repeat(2000) });
+    const e = entry('a', { name: 'Old Beacon', key: ['tower', 'beacon'], value: 'x'.repeat(2000) });
     const text = entryEmbedText(e);
     expect(text.startsWith('Old Beacon — tower, beacon — ')).toBe(true);
     expect(text.length).toBeLessThan(1100);
+  });
+
+  // The editor mirrored `name` from the keywords before the fields were decoupled; embedding both weighted
+  // those keywords twice against the entry's own content.
+  it('drops a name that merely repeats the keys', () => {
+    const e = entry('a', { name: 'tower, beacon', key: ['tower', 'beacon'], value: 'A ruined light.' });
+    expect(entryEmbedText(e)).toBe('tower, beacon — A ruined light.');
+  });
+
+  it('drops a single-keyword name that repeats its only key', () => {
+    const e = entry('a', { name: 'Weck', key: ['Weck'], value: 'A ferryman.' });
+    expect(entryEmbedText(e)).toBe('Weck — A ferryman.');
+  });
+
+  it('keeps a name that differs from the keys', () => {
+    const e = entry('a', { name: 'Old Beacon', key: ['tower'], value: 'A ruined light.' });
+    expect(entryEmbedText(e)).toBe('Old Beacon — tower — A ruined light.');
   });
 
   it('keys the vector by content, so a text edit changes the key and an id change does not', () => {
@@ -69,7 +86,7 @@ describe('selectSemanticLore', () => {
 
 describe('applySemanticLore', () => {
   it('activates non-keyword entries as semantic and never overrides a keyword reason', () => {
-    const entries = [entry('kw', { key: 'lighthouse' }), entry('sem', { key: 'unrelated' })];
+    const entries = [entry('kw', { key: ['lighthouse'] }), entry('sem', { key: ['unrelated'] })];
     const report = explainActivation(entries, [{ region: 'action', text: 'I walk to the lighthouse' }]);
     applySemanticLore(report, new Map([['kw', 0.9], ['sem', 0.6]]));
     const kw = report.byId.get('kw')!;
@@ -82,7 +99,7 @@ describe('applySemanticLore', () => {
   });
 
   it('leaves unselected entries untouched', () => {
-    const entries = [entry('quiet', { key: 'unrelated' })];
+    const entries = [entry('quiet', { key: ['unrelated'] })];
     const report = explainActivation(entries, [{ region: 'action', text: 'nothing relevant' }]);
     applySemanticLore(report, new Map());
     expect(report.byId.get('quiet')!.activated).toBe(false);

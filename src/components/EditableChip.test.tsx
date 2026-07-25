@@ -1,5 +1,5 @@
 import { describe, it, expect, vi } from 'vitest';
-import { render, screen, fireEvent } from '@testing-library/react';
+import { render, screen, fireEvent, createEvent } from '@testing-library/react';
 import { DndContext } from '@dnd-kit/core';
 import { SortableContext } from '@dnd-kit/sortable';
 import { EditableChip } from './EditableChip';
@@ -25,6 +25,27 @@ describe('EditableChip', () => {
     fireEvent.keyDown(input, { key: 'Enter' });
     expect(onCommit).toHaveBeenCalledWith('red rose');
     expect(onRemove).not.toHaveBeenCalled();
+  });
+
+  // jsdom has no PointerEvent, so `pointerType` has to be attached to the event by hand.
+  const tapWith = (el: HTMLElement, pointerType: string) => {
+    for (const make of [createEvent.pointerDown, createEvent.click]) {
+      const ev = make(el);
+      Object.defineProperty(ev, 'pointerType', { value: pointerType });
+      fireEvent(el, ev);
+    }
+  };
+
+  it('a touch tap opens the editor (touch has no double-click)', () => {
+    wrap(<EditableChip value="cat" onCommit={vi.fn()} onRemove={vi.fn()} sortable />);
+    tapWith(screen.getByText('cat'), 'touch');
+    expect(screen.getByLabelText('Edit cat')).toBeInTheDocument();
+  });
+
+  it('a mouse click does not open the editor (it would fight drag-to-reorder)', () => {
+    wrap(<EditableChip value="cat" onCommit={vi.fn()} onRemove={vi.fn()} sortable />);
+    tapWith(screen.getByText('cat'), 'mouse');
+    expect(screen.queryByLabelText('Edit cat')).not.toBeInTheDocument();
   });
 
   it('Escape cancels without committing', () => {

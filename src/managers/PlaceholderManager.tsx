@@ -31,7 +31,7 @@ const PlaceholderManager = ({ placeholder }: { placeholder: Placeholder }) => {
         <KeywordChips
           keywords={editing.values}
           onChange={(values) => apply({ values })}
-          placeholder="e.g. Red, Blue, Green"
+          placeholder="e.g. Red — press Enter for each"
         />
         <p className="text-sm text-muted-foreground">{hint}</p>
       </div>

@@ -689,6 +689,9 @@ function useProvideSettings() {
   const setStatUpdatesVerbatimTurns = (n: number) => setPresetStore((s) => updateVerbatim(s, 'statUpdates', n));
   const setLocationChangeVerbatimTurns = (n: number) => setPresetStore((s) => updateVerbatim(s, 'locationChange', n));
   const setSummaryVerbatimTurns = (n: number) => setPresetStore((s) => updateVerbatim(s, 'summary', n));
+  // Hide every "Generate with AI" image affordance app-wide. Global (not per-preset) so the user can turn
+  // image generation off entirely without losing their endpoint configs.
+  const [imageGenDisabled, setImageGenDisabled] = usePersistentState<boolean>(`${APP_ID}_imageGenDisabled`, false, boolCodec);
   // Image generation config (Settings → AI Endpoints → Image). Lives in named, freely-editable presets so
   // the user can keep several image-server configs. The active preset's values back the fields below; the
   // public getter/setter names are unchanged so consumers (GenerateImageButton) don't care about presets.
@@ -1064,6 +1067,8 @@ function useProvideSettings() {
     resetPreset,
     exportActivePreset,
     importPreset,
+    imageGenDisabled,
+    setImageGenDisabled,
     imageProvider,
     setImageProvider,
     imageEndpoint,
