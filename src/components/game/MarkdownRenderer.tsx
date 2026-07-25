@@ -1,9 +1,14 @@
-import { memo } from 'react';
+import { memo, type ComponentProps } from 'react';
 import { Streamdown } from 'streamdown';
 import remarkGfm from 'remark-gfm';
 import remarkBreaks from 'remark-breaks';
+import { remarkSubSuper } from '@/lib/remarkSubSuper';
 import { getRevealTiming } from '@/lib/revealTimingStore';
 import 'streamdown/styles.css';
+
+// `singleTilde: false` hands `~x~` to remarkSubSuper (subscript); GFM keeps `~~strike~~`.
+const REMARK_PLUGINS: ComponentProps<typeof Streamdown>['remarkPlugins'] =
+  [[remarkGfm, { singleTilde: false }], remarkBreaks, remarkSubSuper];
 
 /**
  * Renders text as GitHub-flavored Markdown via Streamdown, which formats incomplete markdown as it
@@ -24,7 +29,7 @@ export const MarkdownRenderer = memo(function MarkdownRenderer(
   return (
     <div className="[overflow-wrap:anywhere] [&_ul]:list-outside [&_ul]:pl-6 [&_ol]:list-outside [&_ol]:pl-6">
       <Streamdown
-        remarkPlugins={[remarkGfm, remarkBreaks]}
+        remarkPlugins={REMARK_PLUGINS}
         controls={false}
         animated={animate ? { animation, sep: 'word', easing, ...getRevealTiming() } : false}
         isAnimating={animate}

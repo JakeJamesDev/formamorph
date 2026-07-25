@@ -9,6 +9,7 @@
  */
 import { openDatabase, promisifyRequest } from '@/lib/idb';
 import { downloadBlob } from '@/lib/downloadBlob';
+import { serializeJsonBlob } from '@/lib/jsonFileWorkerUtils';
 import { getAllSaveRecords, putSaveRecord } from '@/components/modals/dbUtils';
 import { APP_VERSION } from '@/lib/version';
 import type { SaveRecord } from '@/types';
@@ -215,6 +216,7 @@ function backupFilename(bundle: BackupBundle): string {
  * and, via the failed-write fallback, popped a second save dialog. A download is one dialog (or none) and
  * works everywhere.
  */
-export function saveBackup(bundle: BackupBundle): void {
-  downloadBlob(new Blob([JSON.stringify(bundle)], { type: 'application/json' }), backupFilename(bundle));
+export async function saveBackup(bundle: BackupBundle): Promise<void> {
+  // Off-thread: a bundle is every selected world and save, the largest payload the app ever serializes.
+  downloadBlob(await serializeJsonBlob(bundle), backupFilename(bundle));
 }

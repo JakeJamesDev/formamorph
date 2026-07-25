@@ -40,6 +40,7 @@ import DictionaryTree from '../managers/DictionaryTree';
 import DictionaryBookManager from '../managers/DictionaryBookManager';
 import { buildDictionaryFile } from '@/lib/dictionaryFile';
 import { downloadBlob } from '@/lib/downloadBlob';
+import { serializeJsonBlob, parseJsonText, terminateWorker as terminateJsonWorker } from '@/lib/jsonFileWorkerUtils';
 import AddDictionaryModal from '@/components/modals/AddDictionaryModal';
 import AddEntityModal from '@/components/modals/AddEntityModal';
 import { exportEntityCard } from '@/lib/entityFile';
@@ -110,6 +111,8 @@ const WorldEditor = ({ onClose, embedded = false, backButton }: {
   // clobbering any edits made after re-entering.
   const optimizeAbortRef = useRef<AbortController | null>(null);
   useEffect(() => () => optimizeAbortRef.current?.abort(), []);
+  // Drop the import/export JSON worker when the editor unmounts — it's idle outside those two actions.
+  useEffect(() => () => terminateJsonWorker(), []);
   const optimizeImages = async () => {
     const controller = new AbortController();
     optimizeAbortRef.current = controller;
@@ -151,8 +154,8 @@ const WorldEditor = ({ onClose, embedded = false, backButton }: {
     // `w` is buildCurrentWorld() (possibly downscaled), already the full canonical payload via getWorldData().
     const { id: _id, ...worldFields } = w;
     const worldData = { formamorphKind: WORLD_FILE_KIND, ...worldFields };
-    const jsonData = JSON.stringify(worldData, null, 2);
-    downloadBlob(new Blob([jsonData], { type: 'application/json' }), `${worldOverview.name || 'rpg_world'}.json`);
+    // Serialized off-thread: a world's embedded base64 images make this stringify a multi-second main-thread stall.
+    downloadBlob(await serializeJsonBlob(worldData, 2), `${worldOverview.name || 'rpg_world'}.json`);
   };
 
   // Export one book to its own standalone `.json` (no image downscale — dictionaries are text only).
@@ -207,20 +210,16 @@ const WorldEditor = ({ onClose, embedded = false, backButton }: {
     return ok;
   };
 
-  const loadWorld = (e: ChangeEvent<HTMLInputElement>) => {
+  const loadWorld = async (e: ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
-    if (file) {
-      const reader = new FileReader();
-      reader.onload = (e) => {
-        try {
-          const loadedWorld = JSON.parse(e.target?.result as string);
-          loadWorldData(loadedWorld, false);
-        } catch (error) {
-          console.error('Error parsing JSON:', error);
-          toast.error('Error loading world data. Please check the file format.');
-        }
-      };
-      reader.readAsText(file);
+    if (!file) return;
+    try {
+      // Parsed off-thread — an image-heavy world file is multi-MB and JSON.parse can't be chunked.
+      const loadedWorld = await parseJsonText(await file.text());
+      loadWorldData(loadedWorld as World, false);
+    } catch (error) {
+      console.error('Error parsing JSON:', error);
+      toast.error('Error loading world data. Please check the file format.');
     }
   };
 

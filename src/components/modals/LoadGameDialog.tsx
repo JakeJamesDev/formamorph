@@ -1,5 +1,5 @@
 import { randomUUID } from "@/lib/uuid";
-import { downloadUrl } from "@/lib/downloadBlob";
+import { downloadBlob } from "@/lib/downloadBlob";
 import React from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
@@ -16,7 +16,7 @@ import { ConfirmDialog } from '../ConfirmDialog';
 import {
   getAllSaveRecords, deleteSaveRecord, putSaveRecord, migrateLegacySaves, getOrder, setOrder,
 } from './dbUtils';
-import { downloadSaveFile, terminateWorker as terminateDownloadWorker } from '../../lib/saveDownloadWorkerUtils';
+import { serializeJsonBlob, terminateWorker as terminateDownloadWorker } from '../../lib/jsonFileWorkerUtils';
 import { APP_VERSION, isSaveEnvelope, migrateSave, SAVE_FILE_KIND } from '../../lib/version';
 import { cn } from "@/lib/utils";
 import { useClosingSnapshot } from "@/lib/useClosingSnapshot";
@@ -349,8 +349,8 @@ export function LoadGameDialog({ open, onOpenChange, current, onLoad, title, onP
       // Strip device-local fields from the export: the record id and the autosave marker (a downloaded
       // autosave re-imports as an ordinary manual save).
       const { id: _id, isAutosave: _auto, ...fileData } = row.record;
-      const { dataUrl, fileName } = await downloadSaveFile({ formamorphKind: SAVE_FILE_KIND, ...fileData }) as { dataUrl: string; fileName: string };
-      downloadUrl(dataUrl, `${fileName}.json`);
+      const blob = await serializeJsonBlob({ formamorphKind: SAVE_FILE_KIND, ...fileData }, 2);
+      downloadBlob(blob, `${fileData.name || 'save'}.json`);
     } catch (error) {
       console.error('Error downloading save:', error);
     } finally {

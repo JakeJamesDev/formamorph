@@ -6,6 +6,11 @@ module.exports = {
     './components/**/*.{js,jsx,ts,tsx}',
     './app/**/*.{js,jsx,ts,tsx}',
     './src/**/*.{js,jsx,ts,tsx}',
+    // Streamdown styles its markdown output with Tailwind classes that live only in its own bundle. Without
+    // this, any utility we don't also use in src/ is never generated and the class is inert — which silently
+    // flattened `#`/`###` headings to body size and left blockquotes with no indent or quote bar.
+    // Prescribed by Streamdown's README (shown there in Tailwind v4 `@source` form; this is the v3 equivalent).
+    './node_modules/streamdown/dist/*.js',
   ],
   prefix: "",
   theme: {
