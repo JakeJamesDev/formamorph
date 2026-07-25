@@ -24,6 +24,7 @@ import { Send, RefreshCw, Pencil, Languages, Loader2, Headphones, Square, Chevro
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Progress } from "@/components/ui/progress";
 import { Slider } from "@/components/ui/slider";
+import { Checkbox } from "@/components/ui/checkbox";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Pager } from "@/components/ui/pagination";
@@ -35,6 +36,7 @@ import { GAME_LEFT_PANEL_TABS } from './leftPanelTabs';
 import { useDevRoute } from '@/lib/devRouter';
 import type { TTSProgress } from './TTSModal';
 import { ConfirmDialog } from '../ConfirmDialog';
+import { HelpButton } from '../HelpButton';
 import { EditTextModal } from '../modals/EditTextModal';
 import type { Entity, SceneEntity } from '@/types';
 import { cn } from "@/lib/utils";
@@ -418,7 +420,7 @@ export const MiddlePanel = ({
     viewSelectedChoice
   } = useGameplay();
   const gameplayText = useGameplayText();
-  const { ttsHighlight, choicesEnabled, statUpdatesEnabled, revealSpec, revealEasing, showReasoning } = useSettings();
+  const { ttsHighlight, choicesEnabled, setChoicesEnabled, statUpdatesEnabled, revealSpec, revealEasing, showReasoning, memoryDigests, setMemoryDigests } = useSettings();
   const liveReasoning = useLiveReasoning();
   // Per-word reveal: any enabled effect ⇒ animate (composed keyframe + CSS vars on the container);
   // nothing enabled ⇒ smooth crawl. The keyframe name feeds Streamdown, the amounts ride as CSS vars.
@@ -791,8 +793,32 @@ export const MiddlePanel = ({
                 value={playerInput}
                 onChange={(e) => setPlayerInput(e.target.value)}
                 onKeyDown={handleKeyPress}
-                placeholder="Type your action..."
+                placeholder="Type your action... [square brackets] direct the story as the author"
                 disabled={disabled}
+              />
+              <HelpButton
+                topicId="game.howToPlay"
+                className="mr-2"
+                tabExtras={{
+                  Choices: (
+                    <label className="flex items-center gap-3 rounded-md border p-3 text-sm flex-shrink-0 cursor-pointer">
+                      <Checkbox checked={choicesEnabled} onCheckedChange={(c: boolean | 'indeterminate') => setChoicesEnabled(c === true)} />
+                      <span>
+                        <span className="font-medium">Choices</span>
+                        <span className="ml-2 text-muted-foreground">offer ready-made actions after each turn</span>
+                      </span>
+                    </label>
+                  ),
+                  'Memory & Notes': (
+                    <label className="flex items-center gap-3 rounded-md border p-3 text-sm flex-shrink-0 cursor-pointer">
+                      <Checkbox checked={memoryDigests} onCheckedChange={(c: boolean | 'indeterminate') => setMemoryDigests(c === true)} />
+                      <span>
+                        <span className="font-medium">Memory Summaries</span>
+                        <span className="ml-2 text-muted-foreground">carry older turns as memory notes</span>
+                      </span>
+                    </label>
+                  ),
+                }}
               />
               {isWaitingForAI ? (
                 <Button

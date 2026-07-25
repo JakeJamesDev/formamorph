@@ -9,8 +9,11 @@ real charged session (repeat.json findings below) has produced the **tuning todo
 done, T3 tested and rejected (all 2026-07-23), T4 done 2026-07-24 (incremental verdicts, paired
 protocol, save-envelope persistence), T5 done 2026-07-24 (cap default 12, gated on the 50-turn
 repeated A/B — findings section below), T6 tested and rejected 2026-07-24 (browser-size rerankers
-don't beat cosine on the real failure cases — see its section). **The tuning todo is complete.**
-Remaining before default-on: the charged-scene freeze replay (step 2).
+don't beat cosine on the real failure cases — see its section). **The tuning todo is complete**,
+the branch merged to main 2026-07-24, and the charged-scene freeze replay PASSED (step 2 section
+below). **Every validation gate is closed — whether Semantic Memory goes default-on is now purely
+a product call.** Candidate follow-up work, uncommitted: the LLM-side carried-items line for
+oblique possession recall (T6 verdict).
 
 ## Tuning todo (ranked, from the 2026-07-23 real-session review + literature)
 
@@ -268,6 +271,13 @@ prior turn), so the framing's safety value is defense-in-depth, not a measured d
 nothing and stays. The near-duplicate guard is unit-tested (twin-scene and floor-duplicate cases),
 not probe-tested — the real freeze-scenario replay (close-session real failure turns) remains open
 before default-on, alongside the long-session play A/B shared with step 0.
+
+**Freeze replay DONE 2026-07-24** (`freeze-replay-probe.mjs` vs the real repeat.json dump, real
+digests + actions, deterministic embeddings): the old arm (floor + dup guard only) reproduces the
+reported pathology (26/34 turns firing, living-room scene 9×, 11 consecutive-repeat fires ≈ the
+reported 27/34, 10×, 9 sticky — replay validated); the shipped stack (+ margin 0.15 + cooldown 3)
+cuts the same session to 6/34 turns firing, every scene at most once, ZERO consecutive repeats.
+Combined with the T2 fixture's held return-hits (4/5), the charged-scene freeze gate is CLOSED.
 
 Original requirements, kept for reference:
 - **Hard requirement 1: near-duplicate penalty** (MMR-style). Similarity maximally favors the repeated

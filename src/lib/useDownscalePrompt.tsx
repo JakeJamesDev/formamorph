@@ -135,9 +135,11 @@ export function useDownscalePrompt() {
     [promptOptimizeChoice],
   );
 
-  /** Offer to shrink one world's oversized images. Returns the new world, or null when nothing changed. */
+  /** Offer to shrink one world's oversized images. Returns the new world, or null when nothing changed.
+   *  `onProgress(done, total)` fires per image once the user picks a re-encoding mode. An aborted `signal`
+   *  (e.g. the caller unmounted mid-run) resolves to null — a canceled run is just "nothing changed". */
   const promptWorld = useCallback(
-    async (world: World): Promise<World | null> => {
+    async (world: World, onProgress?: (done: number, total: number) => void, signal?: AbortSignal): Promise<World | null> => {
       const { items } = await scanWorldImages(world);
       const mode = await promptOptimizeChoice(items, (s) => ({
         title: 'Optimize world images?',
@@ -146,7 +148,13 @@ export function useDownscalePrompt() {
           optimizeTail(s, true),
         cancelLabel: 'Keep as-is',
       }));
-      return mode === 'off' ? null : applyWorldOptimize(world, mode);
+      if (mode === 'off') return null;
+      try {
+        return await applyWorldOptimize(world, mode, onProgress, signal);
+      } catch (error) {
+        if ((error as DOMException).name === 'AbortError') return null;
+        throw error;
+      }
     },
     [promptOptimizeChoice],
   );

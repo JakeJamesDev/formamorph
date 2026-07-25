@@ -14,8 +14,12 @@ const WIKI_WORLD_EDITOR_URL = 'https://github.com/JakeJamesDev/formamorph/wiki/W
 export interface HelpTopic {
   /** Dialog title. */
   title: string;
-  /** Markdown body. */
-  body: string;
+  /** Markdown body. Give a topic either this or `tabs`, not both. */
+  body?: string;
+  /** Sectioned body: the dialog renders a tab bar with one markdown panel per section. Each tab must
+   *  stand alone — users land on the first and may never click the others, so it gets the essentials.
+   *  `mobileBody` swaps in on narrow viewports for copy naming platform gestures (show one, not both). */
+  tabs?: { label: string; body: string; mobileBody?: string }[];
   /** Anchor on the wiki's World Editor page, appended to the page URL. Omit until a section exists. */
   wikiAnchor?: string;
 }
@@ -26,6 +30,59 @@ export function helpWikiUrl(topic: HelpTopic): string | null {
 }
 
 export const HELP_TOPICS: Record<string, HelpTopic> = {
+  'game.howToPlay': {
+    title: 'How to Play',
+    tabs: [
+      {
+        label: 'Actions',
+        body: `Type what your character does, in the first person: *I ask her where the road leads. I draw my knife. I hand him the coin and wait.*
+
+**The suggested choices are only suggestions.** You can always type anything instead — the story responds to whatever you write.
+
+**Speak in your own words.** When you talk to someone, say what your character says — *I tell her the truth about the fire* lands better than *I respond*.
+
+**Success isn't guaranteed.** The narrator decides how your attempt goes, and your stats shape it — a drained character struggles where a strong one breezes through.
+
+**Enter** sends your action; **Shift+Enter** starts a new line.`,
+      },
+      {
+        label: 'Choices',
+        body: `The choices under the story are ready-made actions: **click one to put it in the action box**, edit it if you like, then send.
+
+**Ctrl+click** (Cmd+click on Mac) *adds* a choice to the box as an extra sentence instead of replacing what's there — stack two choices together, or add your own twist before sending.
+
+And you never need them at all: type anything, the story answers. Prefer pure freeform play? The checkbox below turns choice generation off entirely.`,
+        mobileBody: `The choices under the story are ready-made actions: **tap one to put it in the action box**, edit it if you like, then send.
+
+**Press and hold** a choice to *add* it to the box as an extra sentence instead of replacing what's there — stack two choices together, or add your own twist before sending.
+
+And you never need them at all: type anything, the story answers. Prefer pure freeform play? The checkbox below turns choice generation off entirely.`,
+      },
+      {
+        label: 'Directing',
+        body: `Square brackets in your action speak to the AI as the **author**, not your character. Everything outside the brackets is what your character does; everything inside is stage direction for how the turn should go.
+
+*I climb on behind her. [She stops hesitating — she agrees, and they ride off.]*
+
+Use it to steer an outcome, skip ahead, or hold a tone:
+
+- *[Skip ahead — the scene picks up when we reach the harbor at dusk.]*
+- *[Keep this scene light — nothing goes wrong tonight.]*
+
+The direction itself never enters the story: your character doesn't say it, the prose won't quote it, and the story's memory records only what actually happened. Brackets direct *this turn* — for a standing fact the AI should always keep in mind, use your Notes instead.`,
+      },
+      {
+        label: 'Memory & Notes',
+        body: `The story remembers your most recent turns word-for-word. As it grows, older turns are carried as short memory notes instead — open the **Memory** tab in the side panel to see exactly what's kept, pin a memory to keep it for good, or let one go.
+
+Memory notes need **Memory Summaries** (the checkbox below; on unless you've turned it off). Without it, the oldest turns simply drop off as the story outgrows its context.
+
+**Notes travel with every turn.** Anything you write in the **Notes** tab is sent to the AI alongside each action, so standing facts belong there: who you're pretending to be, what you're carrying, the goal you're working toward.
+
+The rule of thumb: **[brackets] direct this one turn; Notes persist until you change them.** If the story keeps forgetting something that matters, put it in Notes.`,
+      },
+    ],
+  },
   'worldEditor.locations': {
     title: 'Locations',
     wikiAnchor: 'locations',

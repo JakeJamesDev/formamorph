@@ -101,7 +101,8 @@ for (const c of pick) {
     try {
       out = await call(renderSys(c), [
         { role: "assistant", content: c.prevNarration },
-        { role: "user", content: `Player action: ${c.action}` },
+        // Bare action, no "Player action:" wrapper — matches the app's message assembly (dropped 2026-07-21).
+        { role: "user", content: c.action },
       ]);
     } catch (e) { err = String(e.message || e); }
     agg.total++;

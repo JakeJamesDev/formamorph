@@ -235,7 +235,7 @@ export const invokeaiProvider: ImageProvider = async (params: ImageGenParams, op
   if (!model) {
     throw new Error(params.model.trim()
       ? `InvokeAI model not found: "${params.model}". Pick an installed model in Settings.`
-      : 'InvokeAI has no default model — choose one in Settings → Image Gen → Model.');
+      : 'InvokeAI has no default model — choose one in Settings → AI Endpoints → Image → Model.');
   }
   if (!(SUPPORTED_INVOKE_BASES as readonly string[]).includes(model.base)) {
     throw new Error(`InvokeAI provider does not support ${model.base} models yet (supports SDXL, SD1.5, Z-Image).`);

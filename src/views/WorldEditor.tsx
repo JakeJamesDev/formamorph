@@ -1,5 +1,5 @@
 import { randomUUID } from "@/lib/uuid";
-import { useState, useEffect, useMemo, type ChangeEvent } from 'react';
+import { useState, useEffect, useMemo, useRef, type ChangeEvent } from 'react';
 import { useGameData } from '@/contexts/GameDataContext';
 import { useDevRoute } from '@/lib/devRouter';
 import { WORLD_EDITOR_TABS } from './worldEditorTabs';
@@ -11,7 +11,7 @@ import { Input } from "@/components/ui/input";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { Download, Plus, ArrowLeft, Save, FolderPlus, FilePlus, ImageDown, BookPlus, UserPlus } from "lucide-react";
+import { Download, Plus, ArrowLeft, Save, FolderPlus, FilePlus, ImageDown, BookPlus, UserPlus, Loader2 } from "lucide-react";
 import { Panel, PanelGroup, PanelResizeHandle } from 'react-resizable-panels';
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { ListDetail } from "@/components/ui/list-detail";
@@ -103,9 +103,29 @@ const WorldEditor = ({ onClose, embedded = false, backButton }: {
     setEntities(w.entities);
     setLocations(w.locations);
   };
+  // null = idle; 'scanning' = measuring before the choice dialog; then the live per-image encode progress.
+  const [optimizeProgress, setOptimizeProgress] = useState<{ done: number; total: number } | 'scanning' | null>(null);
+  // Cancels an in-flight optimize when the editor closes: without it the orphaned run keeps the shared encode
+  // worker busy for the whole world and then writes its stale click-time snapshot back into GameDataContext,
+  // clobbering any edits made after re-entering.
+  const optimizeAbortRef = useRef<AbortController | null>(null);
+  useEffect(() => () => optimizeAbortRef.current?.abort(), []);
   const optimizeImages = async () => {
-    const w = await promptWorld(buildCurrentWorld());
-    if (w) applyDownscaled(w);
+    const controller = new AbortController();
+    optimizeAbortRef.current = controller;
+    setOptimizeProgress('scanning');
+    try {
+      const w = await promptWorld(
+        buildCurrentWorld(),
+        (done, total) => setOptimizeProgress({ done, total }),
+        controller.signal,
+      );
+      // Never apply after an abort — the editor is gone or the run is stale.
+      if (w && !controller.signal.aborted) applyDownscaled(w);
+    } finally {
+      optimizeAbortRef.current = null;
+      setOptimizeProgress(null);
+    }
   };
 
   const [activeTab, setActiveTab] = useState("overview");
@@ -595,9 +615,18 @@ const WorldEditor = ({ onClose, embedded = false, backButton }: {
         )}
       </div>
       <div className="flex gap-2">
-        <Button variant="outline" size="sm" onClick={optimizeImages} title="Downscale oversized images to conserve file size">
-          <ImageDown className="h-4 w-4 mr-2" />
-          Optimize Images
+        <Button variant="outline" size="sm" onClick={optimizeImages} disabled={optimizeProgress !== null} title="Downscale oversized images to conserve file size">
+          {optimizeProgress !== null ? (
+            <>
+              <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+              {optimizeProgress === 'scanning' ? 'Scanning…' : `Optimizing ${optimizeProgress.done}/${optimizeProgress.total}…`}
+            </>
+          ) : (
+            <>
+              <ImageDown className="h-4 w-4 mr-2" />
+              Optimize Images
+            </>
+          )}
         </Button>
         <Button size="sm" onClick={saveWorld} disabled={!isWorldDirty}>
           <Save className="h-4 w-4 mr-2" />

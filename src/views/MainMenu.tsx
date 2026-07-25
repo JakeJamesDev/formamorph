@@ -227,33 +227,17 @@ const MainMenu = ({ onStartGame, onLoadSaveGame, onReplayIntro, introActive = fa
   }, [devRoute?.modal, devRoute?.tab]);
 
   // --- AI setup gate -------------------------------------------------------------------------------
-  // Nothing can play until the configured AI answers. The gate offers the remedy that fits: download a
-  // model (bundled engine) or fix the endpoint (anything else).
-  const { reachable, mode, blocker, recheck, revalidate } = useAiReachable();
+  // Only the first-run nudge lives here. Launching is never blocked: the unreachable-AI warning is raised in
+  // the game view instead, so a broken endpoint doesn't strand the player on the menu.
+  const { reachable, mode, blocker, recheck } = useAiReachable();
   const [gate, setGate] = useState<{ reason: GateReason } | null>(null);
-  // The launch the gate interrupted, replayed once the engine comes up.
-  const pendingLaunch = useRef<(() => void) | null>(null);
 
-  // Run a launch now, or hold it and raise the gate. Every play/resume path goes through this.
-  // `reachable` can be a stale answer (an endpoint probed before its model was loaded, then loaded since), so
-  // never gate on it directly — re-probe fresh first, and only raise the gate if the AI is still unreachable.
-  const guardLaunch = async (launch: () => void) => {
-    if (reachable === true) { launch(); return; }
-    if (await revalidate()) { launch(); return; }
-    pendingLaunch.current = launch;
-    setGate({ reason: 'play' });
-  };
-
-  const handleGateReady = useCallback(() => {
-    setGate(null);
-    const launch = pendingLaunch.current;
-    pendingLaunch.current = null;
-    launch?.();
-  }, []);
+  // Close the first-run nudge the moment the engine comes up — nothing is queued behind it any more.
+  const handleGateReady = useCallback(() => setGate(null), []);
 
   // First-run nudge: once the intro is done and we know the bundled engine has nothing to run, offer the
   // download up front rather than letting them discover it by hitting a dead turn. Skippable, and only
-  // ever shown once — the play gate is what actually enforces it.
+  // ever shown once — the in-game gate is what catches it later.
   useEffect(() => {
     if (introActive || gate || reachable !== false || mode !== 'local') return;
     if (localStorage.getItem(AI_SETUP_SEEN_KEY)) return;
@@ -269,7 +253,7 @@ const MainMenu = ({ onStartGame, onLoadSaveGame, onReplayIntro, introActive = fa
       const world = await WorldStorageService.getWorldData(worldId) as World;
       loadWorldData(world);
       setShowLoadDialog(false);
-      guardLaunch(() => onLoadSaveGame(saveId));
+      onLoadSaveGame(saveId);
     } catch (error) {
       console.error('Cold-load failed:', error);
       toast.error("Couldn't load that save's world.");
@@ -728,7 +712,7 @@ const MainMenu = ({ onStartGame, onLoadSaveGame, onReplayIntro, introActive = fa
     if (selectedWorld!.data.worldOverview?.use3DModel) {
       setShowCharacterCustomization(true);
     } else {
-      guardLaunch(() => onStartGame(traitIds, null, true, locationId, dicts, chars));
+      onStartGame(traitIds, null, true, locationId, dicts, chars);
     }
   };
 
@@ -1030,7 +1014,7 @@ const MainMenu = ({ onStartGame, onLoadSaveGame, onReplayIntro, introActive = fa
       <CharacterCustomization
         onCharacterCustomized={(customizedData) => {
           setShowCharacterCustomization(false);
-          guardLaunch(() => onStartGame(selectedTraits, customizedData, true, selectedLocationId, selectedDictionaries, selectedCharacters));
+          onStartGame(selectedTraits, customizedData, true, selectedLocationId, selectedDictionaries, selectedCharacters);
         }}
         onBack={backFrom('avatar')}
         onAbort={() => {
@@ -1148,8 +1132,8 @@ const MainMenu = ({ onStartGame, onLoadSaveGame, onReplayIntro, introActive = fa
         blocker={blocker}
         reachable={reachable}
         recheck={recheck}
-        onOpenChange={(v) => { if (!v) { pendingLaunch.current = null; setGate(null); } }}
-        onOpenSettings={() => { setGate(null); setSettingsTab('endpoint'); setShowSettings(true); }}
+        onOpenChange={(v) => { if (!v) setGate(null); }}
+        onOpenSettings={() => { setGate(null); setSettingsTab('endpoints'); setShowSettings(true); }}
         onReady={handleGateReady}
       />
       <BackupRestoreDialog open={showBackup} onOpenChange={setShowBackup} />
@@ -1597,7 +1581,7 @@ const MainMenu = ({ onStartGame, onLoadSaveGame, onReplayIntro, introActive = fa
                         // Skip the setup steps but honor the author's default trait choices.
                         const defaults = traits.filter((t) => t.isDefault).map((t) => t.id);
                         setSelectedTraits(defaults);
-                        guardLaunch(() => onStartGame(defaults, currentWorldData.worldOverview?.use3DModel ? defaultCharacterData : null, true));
+                        onStartGame(defaults, currentWorldData.worldOverview?.use3DModel ? defaultCharacterData : null, true);
                       }}
                     >
                       <ChevronLast className="h-4 w-4 landscape:mr-2" />

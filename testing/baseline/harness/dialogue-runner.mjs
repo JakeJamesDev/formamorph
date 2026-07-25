@@ -91,7 +91,8 @@ async function playthrough(seed) {
     ])).trim();
     const msgs = [{ role: "system", content: NARR_SYS }];
     for (const h of win) msgs.push({ role: "user", content: h.action }, { role: "assistant", content: h.text });
-    msgs.push({ role: "user", content: `Player action: ${turn.action}\n\n${PREAMBLE}\n${plan}` });
+    // Bare action, no "Player action:" wrapper — matches the app's message assembly (dropped 2026-07-21).
+    msgs.push({ role: "user", content: `${turn.action}\n\n${PREAMBLE}\n${plan}` });
     const text = (await callMessages({ ...opts, temp: 0.7, maxTokens: 512, seed }, msgs)).trim();
     history.push({ action: turn.action, text });
     rows.push({ i, turn, text });

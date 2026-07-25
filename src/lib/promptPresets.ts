@@ -12,13 +12,14 @@ export type ReasoningMap = Record<string, PromptReasoning>;
 export type ReasoningBudgetMap = Partial<Record<AIRequestType, number>>;
 
 /** The editable prompt-text values a preset captures: the 11 system-prompt bodies + 6 user-message
- *  templates + the memory-recap and scene-recall lines. Enable flags, verbatim-turns, and thinking
- *  mode are global and deliberately NOT included. */
+ *  templates + the memory-recap, scene-recall, and OOC-direction lines. Enable flags, verbatim-turns,
+ *  and thinking mode are global and deliberately NOT included. */
 export const PROMPT_TEXT_KEYS = [
   'systemPrompt',
   'narrationUserPrompt',
   'recapUserPrompt',
   'rehydrateUserPrompt',
+  'oocDirectivePrompt',
   'choicesPrompt',
   'statUpdatesPrompt',
   'locationChangePromptText',

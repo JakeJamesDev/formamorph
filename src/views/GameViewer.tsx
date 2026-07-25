@@ -53,6 +53,8 @@ import {
   planDirective,
   defaultDiscoverEntityPrompt,
   OPENING_SCENE_CUE,
+  hasOocDirective,
+  stripOocDirectives,
   defaultMilestoneIncrementalPrompt,
 } from "../components/game/GamePrompts";
 import {
@@ -112,6 +114,8 @@ import {
   RightPanel,
 } from "../components/game/GamePanels";
 import { ConfirmDialog } from "../components/ConfirmDialog";
+import { AiSetupGate } from "../components/AiSetupGate";
+import { useAiReachable } from "../lib/useAiReachable";
 
 interface GameViewerProps {
   initialTraits?: string[];
@@ -304,6 +308,7 @@ const GameViewer = ({
     characterPrompt,
     storyboardPrompt,
     narrationUserPrompt,
+    oocDirectivePrompt,
     recapUserPrompt,
     rehydrateUserPrompt,
     choicesUserPrompt,
@@ -538,6 +543,22 @@ const GameViewer = ({
   const [isEntityModalOpen, setIsEntityModalOpen] = useState(false);
   const [ambientSound, setAmbientSound] = useState<MediaAsset | null>(null);
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
+
+  // --- AI setup gate -------------------------------------------------------------------------------
+  // Warn on entering a world whose configured AI doesn't answer, rather than blocking the launch from the
+  // menu — the player can still read, explore, and fix Settings; only the turn itself would fail. Raised at
+  // most once per visit so dismissing it sticks.
+  const { reachable: aiReachable, mode: aiMode, blocker: aiBlocker, recheck: aiRecheck } = useAiReachable();
+  const [aiGateOpen, setAiGateOpen] = useState(false);
+  const aiGateShownRef = useRef(false);
+  useEffect(() => {
+    if (aiGateShownRef.current || aiReachable !== false) return;
+    aiGateShownRef.current = true;
+    setAiGateOpen(true);
+  }, [aiReachable]);
+  // The AI came up while the warning was showing — nothing is queued behind it, so just dismiss.
+  const handleAiGateReady = useCallback(() => setAiGateOpen(false), []);
+
   // DEV dev-router: open an in-game modal when the hash asks for it (Menu routes via MenuModal's own
   // devOpenLoad prop below). Tree-shaken in prod.
   const devRoute = useDevRoute();
@@ -1363,8 +1384,11 @@ ${playerNotes || NONE_PLACEHOLDER}
           role: "user",
           content: (() => {
             const actionText = isOpeningTurn ? (action === "START GAME" ? OPENING_SCENE_CUE : action) : action;
+            // OOC channel: bracket turns get the rider appended in the high-recency slot (thinking-off
+            // lane only — plan/inline modes append their own directives and send the bare action).
+            const oocRider = hasOocDirective(actionText) && oocDirectivePrompt.trim() ? `\n\n${oocDirectivePrompt}` : "";
             return thinkingMode === "off"
-              ? renderPromptTemplate(narrationUserPrompt, { "<PLAYER ACTION>": actionText })
+              ? renderPromptTemplate(narrationUserPrompt, { "<PLAYER ACTION>": actionText }) + oocRider
               : actionText;
           })(),
         },
@@ -1657,7 +1681,7 @@ ${playerNotes || NONE_PLACEHOLDER}
         memoryDigests
           ? makeAIRequest(
               renderPromptTemplate(summaryPrompt, buildContextValues()),
-              [{ role: "user", content: renderPromptTemplate(summaryUserPrompt, { "<PLAYER ACTION>": effectiveAction, "<NARRATION>": narrationResponse }) }],
+              [{ role: "user", content: renderPromptTemplate(summaryUserPrompt, { "<PLAYER ACTION>": stripOocDirectives(effectiveAction), "<NARRATION>": narrationResponse }) }],
               "summary",
               DIGEST_MAX_TOKENS,
               signal,
@@ -2525,7 +2549,7 @@ ${playerNotes || NONE_PLACEHOLDER}
       try {
         const digest = await makeAIRequestRef.current(
           renderPromptTemplate(summaryPrompt, buildContextValues()),
-          [{ role: "user", content: renderPromptTemplate(summaryUserPrompt, { "<PLAYER ACTION>": playerAction, "<NARRATION>": narrationText }) }],
+          [{ role: "user", content: renderPromptTemplate(summaryUserPrompt, { "<PLAYER ACTION>": stripOocDirectives(playerAction), "<NARRATION>": narrationText }) }],
           "summary",
           DIGEST_MAX_TOKENS,
           undefined,
@@ -2825,7 +2849,11 @@ ${playerNotes || NONE_PLACEHOLDER}
   const isInitialized = useRef(false);
 
   useEffect(() => {
-    if (!isInitialized.current && locations.length > 0) {
+    // Gate on the world being loaded, NOT on `locations.length` — a world with no locations authored yet
+    // (every freshly created one) would otherwise never initialize, silently skipping the stat baselines,
+    // traits, dictionaries and the opening-cue pre-fill below. `worldId` is set in the same batch as the
+    // rest of the world data by loadWorldData, so it's non-null exactly when that data has landed.
+    if (!isInitialized.current && worldId !== null) {
       isInitialized.current = true;
 
       // Cold-load from the main menu: restore the save instead of starting a fresh game. Its world is
@@ -2889,6 +2917,7 @@ ${playerNotes || NONE_PLACEHOLDER}
     dictionaries,
     traits,
     locations,
+    worldId,
     stats,
     setPlayerStats,
     applyTrait,
@@ -3885,6 +3914,18 @@ ${playerNotes || NONE_PLACEHOLDER}
         previewValues={promptPreviewValues}
         initialTab={devRoute?.tab}
         initialPromptTab={devRoute?.subtab}
+      />
+
+      <AiSetupGate
+        open={aiGateOpen}
+        reason="play"
+        mode={aiMode}
+        blocker={aiBlocker}
+        reachable={aiReachable}
+        recheck={aiRecheck}
+        onOpenChange={(v) => { if (!v) setAiGateOpen(false); }}
+        onOpenSettings={() => { setAiGateOpen(false); setIsSettingsOpen(true); }}
+        onReady={handleAiGateReady}
       />
 
       <LlmSetupGuide

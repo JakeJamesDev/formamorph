@@ -66,7 +66,9 @@ const CASES = [
   },
 ];
 
-const source = await readFile(path.join(REPO_ROOT, "src/components/game/GamePrompts.ts"), "utf8");
+// --source <file>: read the prompts from a snapshot (e.g. `git show <rev>:...GamePrompts.ts` dumped to the
+// scratchpad) instead of the working tree — baseline arms without touching checked-out files.
+const source = await readFile(argVal("--source") ?? path.join(REPO_ROOT, "src/components/game/GamePrompts.ts"), "utf8");
 const grab = (name) => {
   const at = source.indexOf(name + " = `");
   if (at === -1) throw new Error("missing " + name);
@@ -134,7 +136,8 @@ for (const c of pick) {
     try {
       out = await call(renderSys(c), [
         { role: "assistant", content: c.prevNarration },
-        { role: "user", content: `Player action: ${c.action}` },
+        // Bare action, no "Player action:" wrapper — matches the app's message assembly (dropped 2026-07-21).
+        { role: "user", content: c.action },
       ]);
     } catch (e) { err = String(e.message || e); }
     totals.runs++;

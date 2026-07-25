@@ -136,7 +136,7 @@ export function GenerateImageButton({ subject, cap, onChange, tags, onTagsChange
         <DialogContent className="sm:max-w-[560px]">
           <DialogHeader>
             <DialogTitle>Generate image</DialogTitle>
-            <DialogDescription>Uses your configured image provider (Settings → Image Gen).</DialogDescription>
+            <DialogDescription>Uses your configured image provider (Settings → AI Endpoints → Image).</DialogDescription>
           </DialogHeader>
 
           <div className="grid gap-3">

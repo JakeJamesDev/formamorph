@@ -1,6 +1,14 @@
 {
-  "_note": "Fixed gold-case set for probing the turn-summary prompt's RULE COMPLIANCE (the mechanically checkable parts: single line, <=2 sentences, opens second-person 'you', no verbatim quotes, exact 'nothing notable' on an idle turn, and name discipline - don't invent a name or leak one the narration only gives as an unrevealed aside). Prose quality itself still needs eyeballing the raw output. Each case is an (action, narration) pair. `nothingNotable`=true means the only correct reply is exactly 'nothing notable'. `forbid`=names/words that must NOT appear (invented or unrevealed). Run via harness/summary-probe.mjs.",
+  "_note": "Fixed gold-case set for probing the turn-summary prompt's RULE COMPLIANCE (the mechanically checkable parts: single line, <=2 sentences, opens second-person 'you', no verbatim quotes, exact 'nothing notable' on an idle turn, and name discipline - don't invent a name or leak one the narration only gives as an unrevealed aside). Prose quality itself still needs eyeballing the raw output. Each case is an (action, narration) pair. `nothingNotable`=true means the only correct reply is exactly 'nothing notable'. `forbid`=names/words that must NOT appear (invented or unrevealed). `forbidRe`=regexes that must NOT appear (e.g. an OOC bracket direction's wording recorded as story content). Run via harness/summary-probe.mjs.",
   "cases": [
+    {
+      "name": "ooc-bracket",
+      "action": "I hold the waterskin out to the ferryman. [He softens toward me here - this is the moment we start becoming friends.]",
+      "narration": "The ferryman eyes the skin a moment, then takes it with a grunt that is almost thanks. \"Dry work, this,\" he says, and drinks deep. When he hands it back there is something easier in the set of his shoulders, and he shifts along the bench to make room for you beside him.",
+      "require": ["waterskin|skin|drink|drank"],
+      "forbidRe": ["[\\[\\]]", "becom\\w+ friends?", "softens? toward", "\\bauthor\\b"],
+      "forbid": []
+    },
     {
       "name": "normal-named",
       "action": "I step up to the gate guard and ask who commands the watch tonight.",
