@@ -57,18 +57,17 @@ const ModelViewer = ({ model, modelType }: ModelViewerProps) => {
         return;
     }
 
-    // Convert base64 to blob
-    const byteCharacters = atob(model.data.split(',')[1]);
-    const byteNumbers = new Array(byteCharacters.length);
-    for (let i = 0; i < byteCharacters.length; i++) {
-      byteNumbers[i] = byteCharacters.charCodeAt(i);
-    }
-    const byteArray = new Uint8Array(byteNumbers);
-    const blob = new Blob([byteArray], { type: model.type });
+    // Decode the data URL via fetch rather than by hand: a per-character `atob` loop over a multi-MB model
+    // stalls the main thread for seconds and balloons memory before the first frame ever draws.
+    let objectURL: string | null = null;
+    let disposed = false;
+    void fetch(model.data).then((r) => r.blob()).then((blob) => {
+      if (disposed) return;
+      objectURL = URL.createObjectURL(blob);
+      loadModel(objectURL);
+    }).catch((error) => console.error('Error reading model data:', error));
 
-    const objectURL = URL.createObjectURL(blob);
-
-    loader.load(objectURL, (loaded) => {
+    const loadModel = (url: string) => loader.load(url, (loaded) => {
       // GLTFLoader yields a { scene } wrapper; FBX/OBJ loaders yield the Object3D directly.
       const object = 'scene' in loaded ? loaded.scene : loaded;
       scene.add(object);
@@ -103,11 +102,12 @@ const ModelViewer = ({ model, modelType }: ModelViewerProps) => {
     animate();
 
     return () => {
+      disposed = true;
       cancelAnimationFrame(animationFrameId);
       if (mount) {
         mount.removeChild(renderer.domElement);
       }
-      URL.revokeObjectURL(objectURL);
+      if (objectURL) URL.revokeObjectURL(objectURL);
       renderer.dispose();
       controls.dispose();
     };

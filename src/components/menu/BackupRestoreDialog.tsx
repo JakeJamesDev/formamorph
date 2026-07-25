@@ -249,7 +249,7 @@ export function BackupRestoreDialog({ open, onOpenChange }: { open: boolean; onO
   const handleSave = async () => {
     setBusy(true);
     try {
-      saveBackup(await buildBackup(exportSel));
+      await saveBackup(await buildBackup(exportSel));
       setStep('backup-done');
     } catch (err) {
       toast.error(`Backup failed: ${(err as Error).message}`);

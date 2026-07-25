@@ -102,6 +102,26 @@ the NPC (T29) to proceed. The model's read was coherent — the missing signal i
 Feature: documented OOC convention — bracketed/parenthetical text in the action treated as
 authorial direction, defined in the narration prompt. Small feature, clear scope.
 
+### 4b. Un-baited dialogue is at ZERO on cloud (found 2026-07-24, not yet worked)
+Probe hygiene fix turned up a live pathology. `dialogue-unbaited-probe.mjs` (NPC present but passive,
+player's action ambient — set down a pack, stand near, keep walking) on the current shipped prompt:
+
+| tier | NPC spoke | note |
+|---|---|---|
+| cloud default | **0/20** | identical bare-action vs rendered-user-template (0/20 both) |
+| Cydonia 24B | **10/15** | same cases, same prompt |
+
+Not a metric artifact — read the raw output: barkeeps *nod, slide a mug, acknowledge without ceremony*,
+never a quoted line. Not an assembly artifact either: both probes were fixed this session to send the
+real rendered `defaultNarrationUserPrompt` (they sent the bare action; `--bare` keeps the ablation) and
+the arms measured identical, because **the voice clause is conditional** — "When the player's action
+*speaks to a character*…" — so it does not fire on exactly the ambient turns where the silence lives.
+The dialogue-collapse work (shipped, [[dialogue-collapse-investigation]]) fixed baited scenes and the
+long-session hold; this class was never covered. Candidate: an unconditional initiative clause (NPCs
+speak up on their own about what they want/notice), which must be probed against the overfire guard —
+`overfire-probe.mjs` + the empty-room/mute-companion cases exist for exactly this. Cloud-only failure,
+so per the guide: tighten the contract, don't tune to the model.
+
 ### 5. Repetition / stalling in sustained scenes
 close.json T38–45: "some part of you that no one else ever has" ×6, T44~T45 share 50 8-grams;
 scene stopped advancing (six turns of announced-but-never-arriving climax). Mechanism:

@@ -19,6 +19,7 @@ const model = argVal("--model", "default");
 const runs = Number(argVal("--runs", "4"));
 const maxTokens = Number(argVal("--max", "380"));
 const only = argVal("--only");
+const bare = args.includes("--bare"); // ablation: send the bare action instead of the real user template
 const token = argVal("--token", process.env.PROBE_TOKEN || "");
 
 const { world, playerTrait, location } = JSON.parse(
@@ -76,6 +77,11 @@ const grab = (name) => {
   return source.slice(from, source.indexOf("`;", from));
 };
 const SYS = grab("defaultSystemPrompt");
+// The app's thinking-off narration turn is the user TEMPLATE rendered, not the bare action — it carries the
+// voice clause, the strongest dialogue lever measured (~3x participation). A probe sending the bare action
+// measures a strictly weaker config than production. `--bare` restores it for ablation.
+const USER_TMPL = grab("defaultNarrationUserPrompt");
+const renderUser = (action) => (bare ? action : USER_TMPL.replaceAll("<PLAYER ACTION>", action));
 const MARKDOWN_ON = `## Formatting
 - Write immersive, flowing prose - never a list, menu, or table.
 - Reach for Markdown emphasis where it genuinely lands: **bold** the single most important noun of the moment and *italicize* a sharp inner thought, sound, or stressed word.`;
@@ -136,8 +142,8 @@ for (const c of pick) {
     try {
       out = await call(renderSys(c), [
         { role: "assistant", content: c.prevNarration },
-        // Bare action, no "Player action:" wrapper — matches the app's message assembly (dropped 2026-07-21).
-        { role: "user", content: c.action },
+        // No "Player action:" wrapper (dropped 2026-07-21); the user turn is the rendered narration template.
+        { role: "user", content: renderUser(c.action) },
       ]);
     } catch (e) { err = String(e.message || e); }
     totals.runs++;

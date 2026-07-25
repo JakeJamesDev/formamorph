@@ -93,7 +93,7 @@ import { setGameplayText } from "../lib/gameplayTextStore";
 import { useSentenceReveal } from "../lib/useSentenceReveal";
 import { useSmoothedReveal } from "../lib/useSmoothedReveal";
 import { revealActive } from "../lib/narrationRevealConfig";
-import { REVEAL_TEST_NARRATION, REVEAL_TEST_PROFILES, DEFAULT_REVEAL_TEST_PROFILE } from "../lib/revealTestScripts";
+import { REVEAL_TEST_NARRATION, REVEAL_TEST_PROFILES } from "../lib/revealTestScripts";
 import { MARKDOWN_SAMPLE } from "../lib/markdownSample";
 import { parseSlashCommand } from "../lib/slashCommands";
 import { normalizeStatChanges, applyAiStatChanges, applyTraitStatChanges, parseStatUpdates, applyAiMaxChanges, appliedStatDeltas } from "../lib/statChanges";
@@ -420,10 +420,11 @@ const GameViewer = ({
   // real wall-clock times reproduces production pacing exactly, with no estimator to mirror here.
   const runMarkdownTest = useCallback((profileName?: string) => {
     if (commandTimer.current !== null) clearTimeout(commandTimer.current);
-    // `render` previews rich-markdown formatting (tables/code) at a steady pace; every other name is an
-    // arrival-timing profile that replays the prose narration to test the reveal pacer.
-    const isRender = profileName === 'render';
-    const profile = isRender ? REVEAL_TEST_PROFILES.steady : REVEAL_TEST_PROFILES[profileName ?? DEFAULT_REVEAL_TEST_PROFILE];
+    // No profile (and the explicit `render`) previews the markdown sample at a steady pace — the reading
+    // this command's name implies. Naming an arrival-timing profile instead replays the prose narration to
+    // test the reveal pacer.
+    const isRender = profileName === undefined || profileName === 'render';
+    const profile = isRender ? REVEAL_TEST_PROFILES.steady : REVEAL_TEST_PROFILES[profileName];
     if (!profile) {
       toast.info(`Unknown profile. Try: render, ${Object.keys(REVEAL_TEST_PROFILES).join(', ')}`);
       return;
@@ -460,7 +461,8 @@ const GameViewer = ({
     const parsed = parseSlashCommand(input);
     if (!parsed) return false;
     if (parsed.command === "markdown" && parsed.args[0] === "test") {
-      // Optional profile: /markdown test [burst|steady|slow|fast|erratic]
+      // No arg renders the markdown sample; a profile name replays the prose reveal test instead.
+      // /markdown test [render|burst|steady|slow|fast|erratic]
       runMarkdownTest(parsed.args[1]);
       return true;
     }
