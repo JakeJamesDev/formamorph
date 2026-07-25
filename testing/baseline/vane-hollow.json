@@ -1,0 +1,666 @@
+{
+  "id": "baseline-vane-hollow",
+  "version": "2.0.1",
+  "worldOverview": {
+    "name": "Vane Hollow",
+    "description": "A silver town at the top of a road, half the year cut off, with an observatory nobody built and a mine nobody can leave.",
+    "author": "Formamorph baseline",
+    "thumbnail": "",
+    "bgm": "",
+    "systemPrompt": "You are narrating Vane Hollow, a high mountain mining town. Keep to what the context establishes; invent nothing about the mine, the dome, or the council that is not given.",
+    "use3DModel": false,
+    "tags": [
+      "baseline",
+      "test",
+      "dictionary-dense"
+    ],
+    "customPlayerVRM": null
+  },
+  "stats": [
+    {
+      "id": "stat-vigor",
+      "name": "Vigor",
+      "type": "number",
+      "description": "Physical reserve at altitude.",
+      "min": 0,
+      "max": 100,
+      "starting": 40,
+      "value": 40,
+      "regen": 0,
+      "descriptors": [
+        {
+          "id": 1,
+          "threshold": 0,
+          "description": "Spent"
+        },
+        {
+          "id": 2,
+          "threshold": 35,
+          "description": "Winded"
+        },
+        {
+          "id": 3,
+          "threshold": 70,
+          "description": "Steady"
+        }
+      ]
+    },
+    {
+      "id": "stat-standing",
+      "name": "Standing",
+      "type": "number",
+      "description": "How the Hollow regards you.",
+      "min": 0,
+      "max": 100,
+      "starting": 20,
+      "value": 20,
+      "regen": 0,
+      "descriptors": [
+        {
+          "id": 1,
+          "threshold": 0,
+          "description": "Outsider"
+        },
+        {
+          "id": 2,
+          "threshold": 40,
+          "description": "Tolerated"
+        },
+        {
+          "id": 3,
+          "threshold": 75,
+          "description": "Hollow-born"
+        }
+      ]
+    }
+  ],
+  "locations": [
+    {
+      "id": "loc-shafthead",
+      "name": "The Shaft Head",
+      "playerDescription": "Winding gear, ore carts, and the smell of wet stone coming up out of the ground.",
+      "aiDescription": "The mouth of the Deep Works. The tallyman's scale stands here; the warden's authority stops at this line.",
+      "aiSummary": "Mine entrance and tally scale.",
+      "entities": [
+        "ent-bracken",
+        "ent-pip"
+      ],
+      "connections": [
+        "The Upper Market",
+        "The Summit Ridge"
+      ],
+      "isStarting": true
+    },
+    {
+      "id": "loc-market",
+      "name": "The Upper Market",
+      "playerDescription": "Three streets of stalls on the only flat ground in the Hollow.",
+      "aiDescription": "Where scrip trades at face value. The assay house and the taproom both open onto it.",
+      "aiSummary": "Market, assay house, taproom.",
+      "entities": [
+        "ent-moth",
+        "ent-tessin"
+      ],
+      "connections": [
+        "The Shaft Head",
+        "The Switchbacks"
+      ],
+      "isStarting": false
+    },
+    {
+      "id": "loc-ridge",
+      "name": "The Summit Ridge",
+      "playerDescription": "Bare rock above the treeline, and the dome sitting on it like a dropped egg.",
+      "aiDescription": "The observatory stands here. The hollow winds come down this face after sundown.",
+      "aiSummary": "Observatory on the ridge.",
+      "entities": [
+        "ent-sable"
+      ],
+      "connections": [
+        "The Shaft Head"
+      ],
+      "isStarting": false
+    },
+    {
+      "id": "loc-switchbacks",
+      "name": "The Switchbacks",
+      "playerDescription": "Forty-one hairpins cut into the valley wall, with a snow house at the halfway turn.",
+      "aiDescription": "The road down. Avalanche ground in spring; the grey runners work the treeline at the bottom.",
+      "aiSummary": "The road down the mountain.",
+      "entities": [],
+      "connections": [
+        "The Upper Market"
+      ],
+      "isStarting": false
+    },
+    {
+      "id": "loc-surgery",
+      "name": "Ilsa's Surgery",
+      "playerDescription": "Two rooms behind the market, always warm, always smelling of carbolic.",
+      "aiDescription": "Where the Hollow's injuries arrive. Ilsa signs the death notes that release the widow's purse.",
+      "aiSummary": "The physician's rooms.",
+      "entities": [
+        "ent-ilsa"
+      ],
+      "connections": [
+        "The Upper Market"
+      ],
+      "isStarting": false
+    }
+  ],
+  "entities": [
+    {
+      "id": "ent-bracken",
+      "name": "Bracken",
+      "type": "character",
+      "playerDescription": "A broad, unhurried foreman with a permanent squint.",
+      "aiDescription": "Foreman of the second gallery. Has cleared a working on a quiet bird four times and been right four times.",
+      "aiSummary": "Mine foreman.",
+      "image": "",
+      "sound": null,
+      "model": null
+    },
+    {
+      "id": "ent-ilsa",
+      "name": "Ilsa",
+      "type": "character",
+      "playerDescription": "The physician, grey-braided, entirely unhurried by other people's emergencies.",
+      "aiDescription": "The Hollow's only doctor. Keeps a private tally of what the mine costs in bodies.",
+      "aiSummary": "Town physician.",
+      "image": "",
+      "sound": null,
+      "model": null
+    },
+    {
+      "id": "ent-moth",
+      "name": "Moth",
+      "type": "character",
+      "playerDescription": "Keeps the taproom rooms; misses nothing said in them.",
+      "aiDescription": "Innkeeper. Her ledger of local debts is more accurate than the council's.",
+      "aiSummary": "Innkeeper.",
+      "image": "",
+      "sound": null,
+      "model": null
+    },
+    {
+      "id": "ent-tessin",
+      "name": "Tessin",
+      "type": "character",
+      "playerDescription": "The smith, forearms scarred, hammers ruined in a row on the wall.",
+      "aiDescription": "The only smith here who has worked fallen iron. Charges what she likes.",
+      "aiSummary": "The smith.",
+      "image": "",
+      "sound": null,
+      "model": null
+    },
+    {
+      "id": "ent-sable",
+      "name": "Sable",
+      "type": "character",
+      "playerDescription": "The astronomer. Speaks as though every word is being recorded.",
+      "aiDescription": "Keeps the observatory and the Vane Charts. Has not come down to the market in four years.",
+      "aiSummary": "The astronomer.",
+      "image": "",
+      "sound": null,
+      "model": null
+    },
+    {
+      "id": "ent-pip",
+      "name": "Pip",
+      "type": "character",
+      "playerDescription": "A runner of about eleven, always mid-errand.",
+      "aiDescription": "Carries messages between the shaft head and the market for chits. Knows every back stair.",
+      "aiSummary": "Child runner.",
+      "image": "",
+      "sound": null,
+      "model": null
+    }
+  ],
+  "traits": [
+    {
+      "id": "trait-surveyor",
+      "name": "Company Surveyor",
+      "playerDescription": "You were sent up here to measure things and not to explain why.",
+      "aiDescription": "The player is the lowland company's surveyor, one month into an unexplained survey of the Hollow.",
+      "statChanges": [
+        {
+          "statId": "stat-standing",
+          "value": -10,
+          "type": "starting"
+        }
+      ],
+      "isDefault": true,
+      "order": 0
+    },
+    {
+      "id": "trait-thin",
+      "name": "Thin Sickness",
+      "playerDescription": "The altitude has not finished with you.",
+      "aiDescription": "The player is still suffering thin sickness: headache, breathlessness on any climb.",
+      "statChanges": [
+        {
+          "statId": "stat-vigor",
+          "value": -15,
+          "type": "starting"
+        }
+      ],
+      "isDefault": true,
+      "order": 1,
+      "groupId": "tg-condition"
+    }
+  ],
+  "traitGroups": [
+    {
+      "id": "tg-condition",
+      "name": "Condition",
+      "playerDescription": "How you arrived.",
+      "aiDescription": "Current physical condition.",
+      "parentId": null,
+      "order": 0
+    }
+  ],
+  "statUpdates": [],
+  "dictionaries": [
+    {
+      "id": "book-vane",
+      "name": "Vane Hollow Lore",
+      "enabled": true,
+      "entries": [
+        {
+          "id": "dict-deepworks",
+          "name": "The Deep Works",
+          "key": [
+            "deep works",
+            "the works"
+          ],
+          "value": "The shaft network under Vane Hollow, sunk in three descending galleries. Everything the town eats is bought with what comes up out of it."
+        },
+        {
+          "id": "dict-blackdamp",
+          "name": "Blackdamp",
+          "key": [
+            "blackdamp",
+            "bad air"
+          ],
+          "value": "The dead air that pools in worked-out galleries. It does not smell and it does not warn; a lamp gutters, then a man sits down and does not get up."
+        },
+        {
+          "id": "dict-slip",
+          "name": "The Slip",
+          "key": [
+            "the slip",
+            "fault seam"
+          ],
+          "value": "A shearing fault that runs across the second gallery. It moves a finger's width each season and drops stone without sound when it does."
+        },
+        {
+          "id": "dict-cagebirds",
+          "name": "Cage Birds",
+          "key": [
+            "cage birds",
+            "canary"
+          ],
+          "value": "Small birds carried down in wire cages. While the bird sings the air is good; when it goes quiet the gallery is cleared without argument."
+        },
+        {
+          "id": "dict-tallyman",
+          "name": "The Tallyman",
+          "key": [
+            "tallyman"
+          ],
+          "value": "The clerk who weighs and records each crew's ore at the shaft head. Every miner believes his thumb rests on the scale and nobody can prove it."
+        },
+        {
+          "id": "dict-vanesilver",
+          "name": "Vane Silver",
+          "key": [
+            "vane silver",
+            "pale ore"
+          ],
+          "value": "The soft grey metal the mountain gives up. It takes an edge badly and a polish beautifully, so it goes to plate and mirror-backing, never to blades."
+        },
+        {
+          "id": "dict-shaftrights",
+          "name": "Shaft Rights",
+          "key": [
+            "shaft rights",
+            "claim stake"
+          ],
+          "value": "The recorded right to work a given seam. Rights pass by inheritance and are lost by leaving a seam untouched a full season."
+        },
+        {
+          "id": "dict-springflood",
+          "name": "The Spring Flood",
+          "key": [
+            "spring flood",
+            "the drowning"
+          ],
+          "value": "Meltwater finds the lower gallery every thaw and fills it to the roof. The pumps buy a week; after that the deep workings belong to the water until autumn."
+        },
+        {
+          "id": "dict-safetylamp",
+          "name": "Safety Lamps",
+          "key": [
+            "safety lamp",
+            "flame gauge"
+          ],
+          "value": "A shielded flame whose height reads the air. Carrying an unshielded light below the second gallery is the one offense the crews punish themselves."
+        },
+        {
+          "id": "dict-widowspurse",
+          "name": "The Widow's Purse",
+          "key": [
+            "widow's purse",
+            "death fund"
+          ],
+          "value": "A levy on every crew's tally, paid out to the household of any man who does not come back up. It has never once covered a full year of living."
+        },
+        {
+          "id": "dict-observatory",
+          "name": "The Vane Observatory",
+          "key": [
+            "observatory",
+            "the dome"
+          ],
+          "value": "The domed house on the summit ridge, older than the mine and built by people nobody here can name. The town tolerates it because visitors pay to see it."
+        },
+        {
+          "id": "dict-sable",
+          "name": "Sable",
+          "key": [
+            "Sable"
+          ],
+          "value": "The astronomer who keeps the dome. Sleeps by day, speaks precisely, and has not come down to the market in four years."
+        },
+        {
+          "id": "dict-longvisitor",
+          "name": "The Long Visitor",
+          "key": [
+            "long visitor",
+            "the comet"
+          ],
+          "value": "The tailed star that returns every sixty-one years and is due. Half the Hollow expects a blessing from it and half expects a burial."
+        },
+        {
+          "id": "dict-vanecharts",
+          "name": "The Vane Charts",
+          "key": [
+            "vane charts",
+            "sky maps"
+          ],
+          "value": "Generations of hand-inked sky positions kept in the dome. Buyers from the lowlands have offered absurd sums; Sable has refused all of them."
+        },
+        {
+          "id": "dict-shadowdays",
+          "name": "The Shadow Days",
+          "key": [
+            "shadow days",
+            "eclipse"
+          ],
+          "value": "When the sun is eaten at midday, all work stops mid-motion. Tools are laid down where they are and nobody speaks until the light returns."
+        },
+        {
+          "id": "dict-groundlens",
+          "name": "The Ground Lens",
+          "key": [
+            "ground lens",
+            "great lens"
+          ],
+          "value": "The single polished disc at the heart of the dome, thicker than a hand. There is no one alive within a month's travel who could grind another."
+        },
+        {
+          "id": "dict-almanac",
+          "name": "The Reckoning Almanac",
+          "key": [
+            "almanac",
+            "reckoning book"
+          ],
+          "value": "The bound tables that say when to plant, when to travel, and when the passes shut. It has been wrong twice in living memory and both times are still argued about."
+        },
+        {
+          "id": "dict-skystone",
+          "name": "Skystone",
+          "key": [
+            "skystone",
+            "fallen iron"
+          ],
+          "value": "Iron that came down burning and buried itself on the high slopes. It works harder than anything smelted and holds an edge the local ore never will."
+        },
+        {
+          "id": "dict-nightwatch",
+          "name": "The Night Watch",
+          "key": [
+            "night watch",
+            "the vigil"
+          ],
+          "value": "The rota of townsfolk who sit the dome through clear nights and record what they are told to record. It is considered an honor and a tedium in equal measure."
+        },
+        {
+          "id": "dict-council",
+          "name": "The Hollow Council",
+          "key": [
+            "hollow council",
+            "the council"
+          ],
+          "value": "Seven seats, six of them held by families with shaft rights. It meets in the assay house because that is the only room with a lock."
+        },
+        {
+          "id": "dict-scrip",
+          "name": "Company Scrip",
+          "key": [
+            "scrip",
+            "company paper"
+          ],
+          "value": "Printed chits paid in place of coin, good in the upper market and nowhere below the mountain. The exchange rate is whatever the council last decided."
+        },
+        {
+          "id": "dict-assayhouse",
+          "name": "The Assay House",
+          "key": [
+            "assay house",
+            "the assay"
+          ],
+          "value": "Where ore is tested and stamped for purity. A stamp from here is honored in three lowland cities; a disputed one has started two feuds."
+        },
+        {
+          "id": "dict-tithe",
+          "name": "The Mountain Tithe",
+          "key": [
+            "mountain tithe",
+            "the tithe"
+          ],
+          "value": "A cut taken off the top of every tally before a crew sees a chit of it, nominally for the pumps and the road. Nobody has audited it in eleven years."
+        },
+        {
+          "id": "dict-stonewrights",
+          "name": "The Stonewrights",
+          "key": [
+            "stonewrights",
+            "masons guild"
+          ],
+          "value": "The guild that raises and maintains everything built of stone here, including the shaft heads. They will down tools over a safety question and the council always folds."
+        },
+        {
+          "id": "dict-bondlabor",
+          "name": "Bond Labor",
+          "key": [
+            "bond labor",
+            "indenture"
+          ],
+          "value": "Debt worked off underground at a rate set by the creditor. Legal, common, and the reason a third of the crews cannot leave."
+        },
+        {
+          "id": "dict-uppermarket",
+          "name": "The Upper Market",
+          "key": [
+            "upper market"
+          ],
+          "value": "Three streets of stalls on the only flat ground in the Hollow. Scrip trades here at face value and nowhere else on earth."
+        },
+        {
+          "id": "dict-warden",
+          "name": "The Hollow Warden",
+          "key": [
+            "warden",
+            "peacekeeper"
+          ],
+          "value": "One office, one holder, no deputies. The warden's authority stops at the shaft mouth, which everyone finds convenient except the miners."
+        },
+        {
+          "id": "dict-castingout",
+          "name": "Casting Out",
+          "key": [
+            "casting out",
+            "the long walk"
+          ],
+          "value": "The Hollow does not keep a gaol. Serious offense means being walked to the switchbacks with what you can carry and told not to come back up."
+        },
+        {
+          "id": "dict-needle",
+          "name": "The Needle",
+          "key": [
+            "the needle",
+            "needle pass"
+          ],
+          "value": "The high notch through the ridge, barely wide enough for two mules abreast. Shut by snow from first frost to breakup, which isolates the Hollow half the year."
+        },
+        {
+          "id": "dict-whitedeath",
+          "name": "White Death",
+          "key": [
+            "white death",
+            "the slide"
+          ],
+          "value": "Avalanche. The slopes above the switchbacks go every spring, and the Hollow has lost more people to them than to the mine."
+        },
+        {
+          "id": "dict-oretram",
+          "name": "The Ore Tram",
+          "key": [
+            "ore tram",
+            "the cable"
+          ],
+          "value": "Buckets on a steel line running ore down to the lowland road. It carries no passengers by law and carries them anyway."
+        },
+        {
+          "id": "dict-breakup",
+          "name": "Breakup",
+          "key": [
+            "breakup",
+            "the thaw"
+          ],
+          "value": "The two weeks when the snow goes and everything moves at once — the pass opens, the lower gallery floods, and the year's arguments begin."
+        },
+        {
+          "id": "dict-hollowwinds",
+          "name": "The Hollow Winds",
+          "key": [
+            "hollow winds"
+          ],
+          "value": "Cold air that pours off the icefield down the valley after sundown, hard enough to put a standing person down. They stop at dawn as if switched off."
+        },
+        {
+          "id": "dict-snowhouse",
+          "name": "Snow Houses",
+          "key": [
+            "snow house",
+            "waystation"
+          ],
+          "value": "Stone refuges spaced a half day apart along the switchbacks, stocked by custom and never locked. Taking the last of the fuel without replacing it is unforgivable here."
+        },
+        {
+          "id": "dict-switchbacks",
+          "name": "The Switchbacks",
+          "key": [
+            "switchbacks",
+            "the low road"
+          ],
+          "value": "The road down, forty-one hairpins cut into the valley wall. Loaded animals go down slower than they go up."
+        },
+        {
+          "id": "dict-thinsickness",
+          "name": "Thin Sickness",
+          "key": [
+            "thin sickness",
+            "the gasp"
+          ],
+          "value": "What the altitude does to arrivals: headache, dizziness, breath that will not come. It passes in a week or it does not pass at all and you go back down."
+        },
+        {
+          "id": "dict-greyrunners",
+          "name": "The Grey Runners",
+          "key": [
+            "grey runners"
+          ],
+          "value": "The wolf pack that works the treeline below the switchbacks. They do not approach a party of four and they have excellent judgement about which travellers are alone."
+        },
+        {
+          "id": "dict-corrin",
+          "name": "Corrin Vale",
+          "key": [
+            "Corrin Vale",
+            "Corrin"
+          ],
+          "value": "First seat on the council and the only one who reads the tithe ledgers personally. Courteous, tired, and entirely uninterested in being liked."
+        },
+        {
+          "id": "dict-ilsa",
+          "name": "Doctor Ilsa",
+          "key": [
+            "Ilsa"
+          ],
+          "value": "The Hollow's only physician, who sets bones, delivers children, and signs the death notes for the widow's purse. Keeps her own tally of what the mine costs."
+        },
+        {
+          "id": "dict-bracken",
+          "name": "Bracken",
+          "key": [
+            "Bracken"
+          ],
+          "value": "Foreman of the second gallery. Has cleared a working on a quiet bird four times and been proved right four times."
+        },
+        {
+          "id": "dict-moth",
+          "name": "Moth",
+          "key": [
+            "Moth"
+          ],
+          "value": "Keeps the rooms above the taproom and a ledger of who owes what to whom that is more accurate than the council's."
+        },
+        {
+          "id": "dict-tessin",
+          "name": "Tessin",
+          "key": [
+            "Tessin"
+          ],
+          "value": "The smith, the only one here who has worked fallen iron and has the ruined hammers to show for it. Charges what she likes and is worth it."
+        },
+        {
+          "id": "dict-pip",
+          "name": "Pip",
+          "key": [
+            "Pip"
+          ],
+          "value": "A runner of about eleven who carries messages between the shaft head and the market for chits. Knows every back stair in the Hollow."
+        },
+        {
+          "id": "dict-reader",
+          "name": "The Reader",
+          "key": [
+            "the reader"
+          ],
+          "value": "Whoever currently holds the office of interpreting the almanac aloud at the turn of each season. The post is unpaid and impossible to refuse."
+        },
+        {
+          "id": "dict-surveyor",
+          "name": "The Surveyor",
+          "key": [
+            "the surveyor"
+          ],
+          "value": "A lowland company man who has been measuring things in the Hollow for a month and answering no questions about why."
+        }
+      ]
+    }
+  ],
+  "placeholders": []
+}

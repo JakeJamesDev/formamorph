@@ -90,7 +90,7 @@ const WorldEditor = ({ onClose, embedded = false, backButton }: {
     addTraitGroup, addEntityGroup, addPlaceholder,
     removeStat, removeEntity, removeTrait, removeStatUpdate,
     setStats, setLocations, setEntities, setTraits, setTraitGroups, setStatUpdates,
-    isWorldDirty, saveWorld: saveWorldCtx
+    isWorldDirty, saveWorld: saveWorldCtx, discardChanges
   } = useGameData();
   const { promptWorld, dialog: downscaleDialog } = useDownscalePrompt();
 
@@ -718,7 +718,9 @@ const WorldEditor = ({ onClose, embedded = false, backButton }: {
         open={showExitPrompt}
         onOpenChange={setShowExitPrompt}
         onSave={async () => { if (await saveWorld()) onClose(); }}
-        onExit={onClose}
+        // The managers write edits straight into the store as you type, so leaving has to actively roll them
+        // back — closing alone would keep them live for the next time this world is opened.
+        onExit={() => { discardChanges(); onClose(); }}
       />
       <AddDictionaryModal
         open={showAddDictionary}

@@ -337,6 +337,20 @@ function useProvideGameData() {
     [getWorldData, savedSnapshot],
   );
 
+  /**
+   * Drop every pending edit and restore the last saved (or freshly loaded) world.
+   *
+   * The editor's managers write straight through to this store as you type, so "exit without saving" has
+   * nothing of its own to roll back — the only record of the pre-edit world is `savedSnapshot`, and reloading
+   * from it is the revert. `loadWorldData` re-baselines the snapshot, so `isWorldDirty` clears as a side effect.
+   */
+  const discardChanges = useCallback(() => {
+    // No baseline means nothing has been loaded yet; there is no state worth restoring.
+    if (!savedSnapshot) return;
+    // The snapshot is `buildWorldData` output — `Omit<World, 'id' | 'version'>` — so the id has to go back on.
+    loadWorldData({ ...JSON.parse(savedSnapshot), id: worldId ?? '' } as World);
+  }, [savedSnapshot, worldId, loadWorldData]);
+
   // Persist the current world and re-baseline so isWorldDirty clears. Returns success.
   const saveWorld = useCallback(async (): Promise<boolean> => {
     try {
@@ -423,6 +437,7 @@ function useProvideGameData() {
     worldId, setWorldId,
     isWorldDirty,
     saveWorld,
+    discardChanges,
     // The scoped dictionary store, forwarded so the provider can bind the editing widgets to the world's books.
     dictStore,
     // Likewise for placeholders, so the same editing widgets bind to the world's placeholders.
