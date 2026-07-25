@@ -190,6 +190,24 @@ export function buildPlaceholderPreview(
   return out;
 }
 
+/**
+ * Display-only chip rendering for surfaces with no world or rolls behind them — a library card, a community
+ * listing blurb. A Variable shows its value; a Wildcard shows its options as `{a|b}` (first 3, then `…`);
+ * a chip whose def is missing or empty shows nothing. Never rolls, so the same text always reads the same.
+ */
+export function describePlaceholders(text: string, placeholders: Placeholder[] = []): string {
+  if (!text || !hasPlaceholders(text)) return text;
+  const byId = new Map(placeholders.map((p) => [p.id, p]));
+  TOKEN_RE.lastIndex = 0;
+  return text.replace(TOKEN_RE, (_full, id: string) => {
+    const values = byId.get(id)?.values ?? [];
+    if (values.length === 0) return '';
+    if (values.length === 1) return values[0];
+    const shown = values.slice(0, 3).join('|');
+    return `{${shown}${values.length > 3 ? '|…' : ''}}`;
+  });
+}
+
 export interface ResolveOptions {
   placeholders: Placeholder[];
   /** Frozen rolls for this playthrough. Not mutated — new rolls are reported via `setRoll`. */

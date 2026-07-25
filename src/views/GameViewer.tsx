@@ -1596,14 +1596,17 @@ ${playerNotes || NONE_PLACEHOLDER}
       // Apply the authoritative scene list now (narration is done). Presence is the planner's cast (so a
       // merely-mentioned character never shows); a name reveals once it has appeared in the narration. With
       // no planner (Off/Inline) it falls back to the narration parse. Independent of turnParticipants above,
-      // which still feeds stored participation / choices / visitors from the narration.
+      // which still feeds stored participation and choices from the narration.
       setVisibleEntities(buildSceneList({ cast: sceneCast, entities: allEntities, narrationSoFar: narrationResponse, priorNarration }));
       // Bring-them-over: an authored character living in a reachable sibling that the narration named joins
       // the current location as a visitor — anchored via the discovered-entity path, so it persists and
       // rolls back with the turn. Affects the next turn's context (this turn's ctx already ran).
+      // Fed by a stricter parse than `turnParticipants`: this path physically relocates an authored NPC, so
+      // it takes full-name hits only — a loose single-word match must not teleport someone into the scene.
       if (turnLocation) {
+        const visitorParticipants = findEntityNames(narrationResponse, allEntities, { partial: false });
         const visitors = selectReachableVisitors(
-          turnParticipants, turnLocation, locations, entities,
+          visitorParticipants, turnLocation, locations, entities,
           withDiscovered(turnLocation)?.entities ?? [],
         );
         if (visitors.length) {

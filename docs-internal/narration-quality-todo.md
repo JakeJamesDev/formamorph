@@ -11,9 +11,10 @@ stat restraint 2/3 no-ops); Q on Cydonia (first tier-2 run: C2 PASS, C1 PARTIAL)
 best run on record (first-ever 50/50 turns with dialogue, mid-band length collapse gone, best
 late-band hold). Q-run recall status: C2 now PASSES on both tiers end-to-end.
 
-**▶ Resume here:** next up is item 5 (repetition / stalling in sustained scenes) — needs the
-two-lever probe design (anti-echo clause arm vs narration sampler-pin arm, plus a callback-regression
-metric). Item 3 is largely absorbed by item 2's now-line — revisit only if frame-fact failures persist.
+**▶ Resume here:** item 5 — harness and reproduction are solved (Cydonia + `--prefill 38`); what remains
+is one large paired batch to settle the arms. Item 4b is closed as *not a prompt problem* (cloud writes
+no unprompted dialogue regardless of wording; remaining levers are sampler or the planning modes).
+Item 3 is largely absorbed by item 2's now-line — revisit only if frame-fact failures persist.
 
 ## Shipped so far (context)
 
@@ -117,12 +118,85 @@ real rendered `defaultNarrationUserPrompt` (they sent the bare action; `--bare` 
 the arms measured identical, because **the voice clause is conditional** — "When the player's action
 *speaks to a character*…" — so it does not fire on exactly the ambient turns where the silence lives.
 The dialogue-collapse work (shipped, [[dialogue-collapse-investigation]]) fixed baited scenes and the
-long-session hold; this class was never covered. Candidate: an unconditional initiative clause (NPCs
-speak up on their own about what they want/notice), which must be probed against the overfire guard —
-`overfire-probe.mjs` + the empty-room/mute-companion cases exist for exactly this. Cloud-only failure,
-so per the guide: tighten the contract, don't tune to the model.
+long-session hold; this class was never covered.
 
-### 5. Repetition / stalling in sustained scenes
+**VERDICT 2026-07-24: not a prompt problem. Do not iterate wording further.**
+
+Probe hardened first: cases tagged by how the prior narration frames the NPC (`framing:`
+withdrawn/neutral/engaged/expectant), three new **expectant** cases added (NPC oriented at the player
+and socially due to speak — paid ferryman casting off, stranger sharing your table, stablehand awaiting
+instruction — while the player's action still says nothing), plus two in-batch negative controls
+(`guard: true`: empty room, mute animal) so the false-positive axis rides every run.
+
+Cloud, 4 runs/case (32 positive runs per arm):
+
+| arm | NPC spoke | expectant | guard |
+|---|---|---|---|
+| control (shipped) | **0/32** | 0/12 | 0 quotes / 8 |
+| `initiative` — line-10 tail gains unprompted speech | **0/32** | 0/12 | 0 / 8 |
+| `userinit` — voice clause unconditional (both locations) | **0/32** | 0/12 | 0 / 8 |
+
+Cydonia, same cases, shipped prompt: **15/24** (expectant 7/9, engaged 5/6).
+
+Three phrasings × 96 cloud runs → exactly zero. An earlier small batch showed 2/15 and 1/15; that was
+noise, confirmed by the larger paired run. The disengagement confound is **disproven** — expectant
+cases scored the same hard zero as withdrawn ones, and only `dock-worker` was ever truly withdrawn.
+Cloud isn't omitting speech by accident: it actively narrates *around* it ("the silence stretches
+taut", "her unspoken offer", "waiting"), silence-motif ~0.7-0.8/turn.
+
+So per the guide's prompt-vs-model rule this is model interpretation, not contract wording — and
+tightening the contract twice bought nothing, so the remaining levers are **not prompt text**:
+- sampler (untested on this axis; narration is deliberately unpinned),
+- the planning modes, which already force spoken beats (`defaultThinkingPrompt` Beats: "in quotation
+  marks, the words the present characters actually speak aloud") — likely the real mitigation for
+  cloud users, and cheap to test with the same cases.
+
+**Cydonia over-fire, worth its own line:** its guard hit 6 quotes / 6 runs, but the empty room was
+clean 3/3 and the mare never speaks — Cydonia **invents an unrequested human** (a ferrywoman walking
+in) who then talks. Different failure from voicing a non-speaker, and arguably worse (invented cast).
+Not yet investigated.
+
+### 5. Repetition / stalling in sustained scenes — IN PROGRESS (harness solved, arms unresolved)
+
+**2026-07-24. The blocker was reproducing the bug, and that is now solved.** Three harness additions to
+`format-arms-probe.mjs`:
+- **`--prefill N`** — seed history with the recorded run's OWN narrations for turns < N, then generate
+  from N on (only generated turns scored). Repetition collapse is an *in-context feedback loop*, not a
+  property of the action script, so it must be entered, not replayed into.
+- **callback guard** — `callback x/n (names/turn)`: does the turn still name people/places established
+  earlier in the chain. Read WITH echo5: echo down + callback flat = win; both down = the clause is
+  eating deliberate callbacks. This is the axis that makes an anti-echo arm judgeable at all.
+- **sampler variants** (`freq03`/`freq06`/`pres03`) + `--freqpen`/`--prespen`. Modelled as *variants* so
+  a sampler arm rides the same batch as the prompt arms — cloud drifts up to 3x between batches.
+
+**Reproduction, measured (echo5 per 100w):**
+
+| corpus | echo5 |
+|---|---|
+| real session T40-44 (the pathology) | 63 · 35 · 41 · 60 · 56 |
+| clean 45-turn replay, cloud | ~1 |
+| prefill 38, **cloud** | 0.5 |
+| prefill 38, **Cydonia** | **24.7** |
+
+So **item 5 is a local-tier failure**: cloud does not repeat (it fails the *other* way — see 4b), Cydonia
+does, at ~50x cloud on identical prefilled context. Cydonia + `--prefill 38` is the corpus; any arm
+judged on a clean replay is measuring a bug that isn't there (a full cloud arm batch was run before this
+was understood — discarded).
+
+**Arms so far — all unresolved, nothing shipped.** Cydonia, prefill 38, n=2:
+
+| arm | echo5 (run1 / run2) | callback |
+|---|---|---|
+| control | 25.8 / 26.8 | 7/7 |
+| `antiecho` | 29.6 / 18.5 | 7/7 |
+| `payoff` | 22.0 / 31.8 | 7/7 |
+| `freq03` (frequency_penalty 0.3) | 21.5 / 30.4 | 7/7 |
+
+Within-arm spread (σ≈5-6) exceeds every between-arm difference, so nothing is distinguishable at n=2.
+No arm harmed callbacks. **▶ Next: one large paired batch on Cydonia — 4 cells × 8+ runs × 7 turns,
+serial (~225 local calls).** Do not read the n=2 table as a result in either direction.
+
+### 5. Repetition / stalling in sustained scenes (original finding)
 close.json T38–45: "some part of you that no one else ever has" ×6, T44~T45 share 50 8-grams;
 scene stopped advancing (six turns of announced-but-never-arriving climax). Mechanism:
 4 near-identical verbatim turns + similar actions + unpinned narration sampler → in-context

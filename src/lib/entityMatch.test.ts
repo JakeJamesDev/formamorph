@@ -34,12 +34,28 @@ describe('matchNames — multi-word names (no capital guard)', () => {
     expect(matchNames('the iron gate creaks', ['Iron Gate'])).toEqual(['Iron Gate']);
   });
 
-  it('matches loosely when every word appears somewhere', () => {
-    expect(matchNames('iron bars rust beside the gate', ['Iron Gate'])).toEqual(['Iron Gate']);
+  it('tolerates a short gap between the words of a name', () => {
+    expect(matchNames('Emily J. Foster signs the ledger.', ['Emily Foster'])).toEqual(['Emily Foster']);
   });
 
-  it('excludes a candidate when a word is missing (the AND pass)', () => {
+  it('does not match words scattered across unrelated clauses', () => {
+    expect(matchNames('iron bars rust beside the gate', ['Iron Gate'])).toEqual([]);
+    expect(matchNames('The old woman is gone; a young man tends the mill.', ['Old Man'])).toEqual([]);
+  });
+
+  it('excludes a candidate when a word is missing', () => {
     expect(matchNames('the officer flees', ['a fleeing officer'])).toEqual([]);
+  });
+
+  it('ignores an everyday word as a partial reference when a distinctive one exists', () => {
+    // "Guard" is everyday, "Vashti" is not — so only the distinctive word can carry a lone match.
+    expect(matchNames('Guards shout from the wall.', ['Vashti Guard'])).toEqual([]);
+    expect(matchNames('Vashti shouts from the wall.', ['Vashti Guard'])).toEqual(['Vashti Guard']);
+  });
+
+  it('keeps every word usable when a name is entirely everyday words', () => {
+    // Dropping all of them would guarantee a miss, so "Rose Wolf" still matches on "Rose" alone.
+    expect(matchNames('Rose draws her blade.', ['Rose Wolf'])).toEqual(['Rose Wolf']);
   });
 
   it('matches on a capitalized first name alone (partial proper-noun reference)', () => {
@@ -52,6 +68,22 @@ describe('matchNames — multi-word names (no capital guard)', () => {
 
   it('does not match a lowercase partial (capital guard holds)', () => {
     expect(matchNames('someone fosters false hope', ['Emily Foster'])).toEqual([]);
+  });
+});
+
+describe('matchNames — partial: false (the visitor-pull parse)', () => {
+  it('drops the lone-word partial that the default parse allows', () => {
+    expect(matchNames('Emily waves from the porch.', ['Emily Foster'], { partial: false })).toEqual([]);
+  });
+
+  it('still matches the full name', () => {
+    expect(matchNames('Emily Foster waves.', ['Emily Foster'], { partial: false })).toEqual([
+      'Emily Foster',
+    ]);
+  });
+
+  it('leaves single-word names on the capital guard alone', () => {
+    expect(matchNames('Mira waves.', ['Mira'], { partial: false })).toEqual(['Mira']);
   });
 });
 

@@ -11,6 +11,7 @@ import { reasoningTabs, reasoningPromptTabs, defaultPromptReasoning, defaultReas
 import { ExportPresetDialog, ImportPresetDialog } from '@/components/modals/PresetShareDialogs';
 import { type SharedPreset } from '@/lib/promptPresetShare';
 import { APP_VERSION } from '@/lib/version';
+import { normalizeEndpointUrl, endpointUrlWasCompleted } from '@/lib/endpointUrl';
 import { computePromptTabAvailability } from '@/lib/promptTabAvailability';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
@@ -1425,13 +1426,20 @@ An inspection aid for authoring and debugging; off by default.`}</HintInfo>
               <ScrollArea className="flex-1 min-h-0">
                 <div className="grid gap-4 py-4">
               <Row center label="Endpoint URL" htmlFor="endpointUrl">
-                <Input
-                  id="endpointUrl"
-                  value={endpointUrl}
-                  onChange={(e) => setEndpointUrl(e.target.value)}
-                  readOnly={activeTextEndpointPresetIsBuiltIn}
-                  className={activeTextEndpointPresetIsBuiltIn ? 'opacity-60 cursor-not-allowed' : undefined}
-                />
+                <div className="grid gap-1">
+                  <Input
+                    id="endpointUrl"
+                    value={endpointUrl}
+                    onChange={(e) => setEndpointUrl(e.target.value)}
+                    readOnly={activeTextEndpointPresetIsBuiltIn}
+                    className={activeTextEndpointPresetIsBuiltIn ? 'opacity-60 cursor-not-allowed' : undefined}
+                  />
+                  {endpointUrlWasCompleted(endpointUrl) && (
+                    <p className="text-xs text-muted-foreground">
+                      Requests go to <span className="font-mono break-all">{normalizeEndpointUrl(endpointUrl)}</span>
+                    </p>
+                  )}
+                </div>
               </Row>
               {!desktop && (
                 <div className="grid grid-cols-1 sm:grid-cols-[minmax(0,1fr)_minmax(0,3fr)] gap-4">

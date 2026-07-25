@@ -11,6 +11,7 @@ import {
   remapPlaceholderIds,
   absorbPlaceholders,
   buildPlaceholderPreview,
+  describePlaceholders,
 } from './placeholders';
 
 const P = (id: string, values: string[]): Placeholder => ({ id, name: id, values });
@@ -216,6 +217,42 @@ describe('resolvePlaceholders', () => {
 
     it('returns an empty map when there are no chips', () => {
       expect(buildPlaceholderPreview('plain text', [P('eye', ['Red'])])).toEqual({});
+    });
+  });
+
+  describe('describePlaceholders (display-only, no world/rolls)', () => {
+    it('shows a Variable as its value', () => {
+      expect(describePlaceholders(`A ${tok('king', 'world', 'p1')} rules`, [P('king', ['Aldric'])]))
+        .toBe('A Aldric rules');
+    });
+
+    it('shows a Wildcard as its options', () => {
+      expect(describePlaceholders(tok('eye', 'world', 'p1'), [P('eye', ['Red', 'Blue'])]))
+        .toBe('{Red|Blue}');
+    });
+
+    it('caps a long Wildcard at three options', () => {
+      expect(describePlaceholders(tok('eye', 'world', 'p1'), [P('eye', ['Red', 'Blue', 'Green', 'Gray'])]))
+        .toBe('{Red|Blue|Green|…}');
+    });
+
+    it('never leaks a raw token for a missing or empty def — the bug this exists to prevent', () => {
+      const out = describePlaceholders(
+        `[${tok('gone', 'world', 'p1')}][${tok('empty', 'unique', 'p2')}]`,
+        [P('empty', [])],
+      );
+      expect(out).toBe('[][]');
+    });
+
+    it('is deterministic — the same text always reads the same', () => {
+      const t = tok('eye', 'world', 'p1');
+      const defs = [P('eye', ['Red', 'Blue'])];
+      expect(describePlaceholders(t, defs)).toBe(describePlaceholders(t, defs));
+    });
+
+    it('leaves chipless text and defaults missing defs to none', () => {
+      expect(describePlaceholders('plain text')).toBe('plain text');
+      expect(describePlaceholders(tok('eye', 'world', 'p1'))).toBe('');
     });
   });
 

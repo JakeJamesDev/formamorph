@@ -32,7 +32,8 @@
   "dependencies": {
     "electron-updater": "^6.8.9",
     "node-llama-cpp": "^3.19.0",
-    "pluralize": "^8.0.0"
+    "pluralize": "^8.0.0",
+    "wordlist-english": "^1.2.1"
   },
   "devDependencies": {
     "@dnd-kit/core": "^6.3.1",

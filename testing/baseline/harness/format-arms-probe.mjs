@@ -107,6 +107,26 @@ const ABLATIONS = {
 //           (recency-weighted slot the model demonstrably obeys).
 const EDITS = {
   none: [],
+  // ── Item 5 (repetition / stalling in sustained scenes). Two DISTINCT symptoms, so two arms — the
+  // ablation table warns that stacking levers on one channel buys variance, not compliance.
+  // antiecho — fresh language each turn. Positive contract (state the wanted action), added as its own
+  //            Guidelines bullet rather than bolted onto the ending rule.
+  antiecho: [
+    [/- Advance the scene, then stop, ending on/,
+     "- Each turn brings new words to the page: reach for an image, a phrasing, and a detail this scene has not used yet, so the writing keeps finding fresh ground as the scene runs long.\n- Advance the scene, then stop, ending on"],
+  ],
+  // payoff — the anti-stall arm, per the goalmaster pattern: a scene stalls because nothing obliges a
+  //          set-up to land, so give the payoff a job instead of forbidding the stall.
+  payoff: [
+    [/- Advance the scene, then stop, ending on/,
+     "- What the last turn set up, this turn delivers: a promise made, a move begun, or a threat raised pays off here rather than being restated or deferred again.\n- Advance the scene, then stop, ending on"],
+  ],
+  // Sampler variants: NO prompt edit — they change only the narration sampler (see VARIANT_SAMPLERS).
+  // Modelled as variants so a sampler arm rides the SAME batch as the prompt arms; cloud mood-drifts
+  // up to 3x between batches, so a sampler tested in its own run could not be compared to them.
+  freq03: [],
+  freq06: [],
+  pres03: [],
   // gm — opening paragraph rewritten to the goalmaster role (active scene-runner, NPC initiative,
   //      advancement as job description); the pipeline/choices sentence is deleted (closing contract owns it).
   gm: [
@@ -185,12 +205,39 @@ function applyPatterns(key, table, mode) {
   return s;
 }
 const systemFor = (key) => applyPatterns(key, EDIT ? EDITS : ABLATIONS, EDIT ? "edit" : "ablation");
+const FREQPEN = strArg("--freqpen", null);
+const PRESPEN = strArg("--prespen", null);
+const SAMPLER = {
+  ...(FREQPEN != null ? { frequency_penalty: Number(FREQPEN) } : {}),
+  ...(PRESPEN != null ? { presence_penalty: Number(PRESPEN) } : {}),
+};
+// Per-variant narration samplers, layered over the global --freqpen/--prespen.
+const VARIANT_SAMPLERS = {
+  freq03: { frequency_penalty: 0.3 },
+  freq06: { frequency_penalty: 0.6 },
+  pres03: { presence_penalty: 0.3 },
+};
 const ABLATE = strArg("--ablate", null)?.split(",").map((s) => s.trim()) ?? null;
 const EDIT = strArg("--edit", null)?.split(",").map((s) => s.trim()) ?? null;
 if (ABLATE && EDIT) throw new Error("--ablate and --edit are mutually exclusive");
 const SYSTEM = FULL_SYSTEM; // arms mode uses the full prompt; ablation chains override per key
 const ACTIONS = []; // index 0 is the "START GAME" opener; 1..N are the wordless actions
 for (let i = 0; i < TURNS && rec[String(i)]; i++) ACTIONS.push(rec[String(i)].action);
+
+// --prefill N: seed history with the recorded run's OWN narrations for turns < N, then generate from N on.
+// Repetition collapse is an in-context feedback loop, not a property of the action script: replaying the
+// actions against freshly generated narration never enters the loop (measured — the real session runs
+// echo5 40-60/100w over its last turns while a clean replay of the same actions sits near 1). Prefilling
+// puts the chain INSIDE the degraded context, which is the only way an anti-repetition arm is testable.
+// Only generated turns are scored.
+const PREFILL = num("--prefill", 0);
+const RECORDED_NARRATION = [];
+for (let i = 0; i < TURNS && rec[String(i)]; i++) {
+  const nr = (rec[String(i)].requests ?? []).find((r) => r.type === "narration");
+  RECORDED_NARRATION.push(nr?.response ?? "");
+}
+if (PREFILL && RECORDED_NARRATION.slice(0, PREFILL).some((n) => !n))
+  throw new Error(`--prefill ${PREFILL}: source lacks recorded narration for some turns below ${PREFILL}`);
 
 // Narration is UNPINNED — no temperature/seed in the body so the endpoint's own config applies.
 async function callNarration(messages, extra = {}) {
@@ -254,12 +301,25 @@ const grams5 = (text) => {
   for (let i = 0; i + 5 <= w.length; i++) out.push(w.slice(i, i + 5).join(" "));
   return out;
 };
-function scoreTurn(text, seen) {
+// Proper nouns the chain has already established (names of people/places). Sentence-initial words are
+// stripped first so ordinary openers aren't counted as names.
+const properNouns = (text) => {
+  const scan = text.replace(/(^|[.!?"”]\s+)([A-Z][a-z]+)/g, "$1");
+  return new Set((scan.match(/\b[A-Z][a-z]{2,}\b/g) || []));
+};
+// The CALLBACK GUARD for anti-echo work: echo5 measures repeated 5-gram PHRASES (what we want down);
+// this measures whether the turn still refers to people/places established earlier in the same chain
+// (what must stay FLAT). A clause that suppresses phrase-echo but also drops established names is
+// killing deliberate callbacks, not just filler — the two axes must be read together.
+function scoreTurn(text, seen, names) {
   const quotes = text.match(QUOTE_RE) || [];
   const words = (text.match(/\S+/g) || []).length;
   const g = grams5(text);
   const echo = g.filter((x) => seen.has(x)).length;
   for (const x of g) seen.add(x);
+  const here = properNouns(text);
+  const carried = [...here].filter((n) => names.has(n)).length; // established names this turn re-uses
+  for (const n of here) names.add(n);
   const past = (text.match(/\b(was|were|answered|felt|found|let out|dug|met|raised|urged|pulled|pressed|seemed|made|said)\b/g) || []).length;
   const pres = (text.match(/\b(is|are|feels?|finds?|digs?|meets?|raises?|urges?|pulls?|presses?|seems?|makes?|says?)\b/g) || []).length;
   return {
@@ -269,6 +329,8 @@ function scoreTurn(text, seen) {
     freeze: (text.match(FREEZE_RE) || []).length,
     defer: DEFER_RE.test(text),
     echo5per100w: words ? +((100 * echo) / words).toFixed(1) : 0,
+    carriedNames: carried,
+    hasCallback: carried > 0,
     paras: text.split(/\n\s*\n/).filter((p) => p.trim()).length,
     endQuestion: /\?\s*$/.test(text.trim()),
     bold: (text.match(/\*\*[^*]+\*\*/g) || []).length,
@@ -294,11 +356,20 @@ async function runChain(arm, run, variantKey = null) {
   const history = []; // {action, narration}
   const turns = [];
   const seen = new Set();
+  const names = new Set(); // proper nouns established so far in this chain (callback-guard baseline)
   for (let t = 0; t < ACTIONS.length; t++) {
     const action = ACTIONS[t];
+    // Prefilled turns are the recorded run's own narration: they build the degraded context without
+    // being generated or scored, so metrics describe only what the arm actually wrote.
+    if (t < PREFILL) {
+      const recorded = RECORDED_NARRATION[t];
+      history.push({ action, narration: recorded });
+      scoreTurn(recorded, seen, names); // seeds the echo/name baselines the loop feeds on
+      continue;
+    }
     const msgs = buildMessages(arm, history, action, t === 0, sys);
     let narration;
-    try { narration = await callNarration(msgs); }
+    try { narration = await callNarration(msgs, { ...SAMPLER, ...(VARIANT_SAMPLERS[variantKey] ?? {}) }); }
     catch (e) { console.error(`[${label} r${run} t${t}] ${e.message}`); narration = ""; }
     const entry = { action, narration };
     if ((arm === "D" || arm === "E") && narration) {
@@ -306,7 +377,7 @@ async function runChain(arm, run, variantKey = null) {
       catch (e) { console.error(`[${label} r${run} t${t}] summary: ${e.message}`); }
     }
     history.push(entry);
-    const m = scoreTurn(narration, seen);
+    const m = scoreTurn(narration, seen, names);
     turns.push({ t, action, narration, ...(entry.summary !== undefined ? { summary: entry.summary } : {}), m });
     if (verbose) console.log(`[${label} r${run} t${t}] dlg ${m.dialoguePct}% frz ${m.freeze} ${m.hasQuote ? "❝" : "·"}`);
   }
@@ -321,6 +392,10 @@ if (VARIANTS) for (const k of VARIANTS) console.log(`  ${ABLATE ? "ablation" : "
 
 // --serial: one chain at a time (local LM Studio — parallel slots split n_ctx and long chains need all of it)
 const SERIAL = argv.includes("--serial");
+// Sampler arm for the repetition work: narration ships UNPINNED, so `--freqpen`/`--prespen` test whether
+// a loop is a sampler problem rather than a wording one. The guide is explicit that wording gets
+// miscredited when rep-pen isn't co-varied, so run these crossed with the prompt arms, not after them.
+// Applies to narration only — the summary call keeps its own pinned temp 0.
 // Variants cross with arms: `--arms H,B --edit fuse` runs H+fuse and B+fuse in one paired batch.
 const thunks = VARIANTS
   ? ARMS.flatMap((arm) => VARIANTS.flatMap((k) => Array.from({ length: RUNS }, (_, r) => () => runChain(arm, r + 1, k))))
@@ -358,7 +433,9 @@ const CHARGED_FROM = 5; // ambient escalation is fully underway by turn 5 in the
 for (const key of [...new Set(chains.map((c) => c.arm))]) {
   console.log(`\n═══ ${ABLATE ? "ABLATION" : EDIT ? "EDIT" : "ARM"} ${key} ═══`);
   for (const c of chains.filter((x) => x.arm === key)) {
-    const all = c.turns.slice(1); // skip the opening
+    // Skip the opening turn — but under --prefill the opening was prefilled and never pushed, so every
+    // entry here is already a generated turn and slicing would silently drop real data.
+    const all = PREFILL ? c.turns : c.turns.slice(1);
     const charged = all.filter((x) => x.t >= CHARGED_FROM);
     const avg = (xs, f) => xs.length ? xs.reduce((a, x) => a + f(x.m), 0) / xs.length : 0;
     const cnt = (f) => all.filter((x) => f(x.m)).length;
@@ -368,6 +445,9 @@ for (const key of [...new Set(chains.map((c) => c.arm))]) {
       ` · charged(t>=${CHARGED_FROM}) dlg ${Math.round(avg(charged, (m) => m.dialoguePct))}% quoted ${charged.filter((x) => x.m.hasQuote).length}/${charged.length}` +
       ` · freeze/turn ${avg(all, (m) => m.freeze).toFixed(2)} · defer ${cnt((m) => m.defer)}` +
       ` · words ${Math.round(avg(all, (m) => m.words))} · echo5 ${avg(all, (m) => m.echo5per100w).toFixed(1)}/100w` +
+      // Callback guard: read WITH echo5. echo5 down + callback flat = anti-echo worked; both down =
+      // the clause is eating deliberate callbacks, which is a regression, not a win.
+      ` · callback ${cnt((m) => m.hasCallback)}/${all.length} (${avg(all, (m) => m.carriedNames).toFixed(1)} names/turn)` +
       ` · collapse@${cp ?? "—"}` +
       `\n       paras ${avg(all, (m) => m.paras).toFixed(1)} (max ${Math.max(...all.map((x) => x.m.paras))}, over6 ${cnt((m) => m.paras > 6)})` +
       ` · endQ ${cnt((m) => m.endQuestion)} · menuLeak ${cnt((m) => m.menuLeak)} · bold ${all.reduce((a, x) => a + x.m.bold, 0)}` +
