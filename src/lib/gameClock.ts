@@ -106,6 +106,20 @@ export function formatAbsolute(elapsed: number, calendar?: WorldCalendar): strin
   return `Day ${day}, ${daypart(hour, calendar)}`;
 }
 
+/** Position in story time as a readable timestamp, e.g. `Day 3, 19:00`. The player-facing log wants a
+ *  clock rather than a daypart: an exact numeral is a parrotable value only where a model can read it, and
+ *  the log never enters context. Accumulated in whole minutes so a measured 15m delta shows, and so a
+ *  moment just short of midnight rolls the day instead of printing `24:00`. */
+export function formatClock(elapsed: number, calendar?: WorldCalendar): string {
+  const { hoursPerDay, startHour } = resolve(calendar);
+  const minutesPerDay = hoursPerDay * 60;
+  const total = Math.round((Math.max(0, elapsed) + startHour) * 60);
+  const within = total % minutesPerDay;
+  const hh = String(Math.floor(within / 60)).padStart(2, '0');
+  const mm = String(within % 60).padStart(2, '0');
+  return `Day ${Math.floor(total / minutesPerDay) + 1}, ${hh}:${mm}`;
+}
+
 const NUMBER_WORDS = ['', '', 'two', 'three', 'four', 'five', 'six'];
 
 /** How long ago `then` was, from `now`, in the phrasing a person would use. Measured in calendar days
@@ -121,10 +135,15 @@ export function formatRelative(then: number, now: number, calendar?: WorldCalend
   return `about ${Math.round(dayGap / 30)} months ago`;
 }
 
+/** Both readings of a remembered moment, unadorned — the form the Memory surfaces show the player. */
+export function formatStampPlain(then: number, now: number, calendar?: WorldCalendar): string {
+  return `${formatAbsolute(then, calendar)} — ${formatRelative(then, now, calendar)}`;
+}
+
 /** The label a remembered moment carries into context: both readings, in brackets, ready to prefix a
  *  digest. Empty when the moment is the present one — a stamp on the live scene is noise. */
 export function formatStamp(then: number, now: number, calendar?: WorldCalendar): string {
-  return `[${formatAbsolute(then, calendar)} — ${formatRelative(then, now, calendar)}]`;
+  return `[${formatStampPlain(then, now, calendar)}]`;
 }
 
 /**

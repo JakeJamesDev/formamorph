@@ -72,7 +72,7 @@ import { reasoningEffortBody, resolvePromptReasoning, reasoningBudgetBody } from
 import { splitSentenceSegments } from "../lib/ttsChunks";
 import { selectDueDigests, applyDigest, applyImportance, parseTurnContent, recentParticipants, selectDueDiaries, pendingDiaryNames, applyDiary } from "../lib/turnDigest";
 import { buildTraitContext } from "../lib/traitTree";
-import { buildLocationContext, buildEntityContext, buildSublocationsContext, buildSublocationEntitiesContext, buildReachableLocationsContext, buildReachableEntitiesContext, buildDestinationsContext, navigableDestinations, sublocationEntityIds } from "../lib/locationContext";
+import { buildLocationContext, buildEntityContext, buildSublocationsContext, buildSublocationEntitiesContext, buildReachableLocationsContext, buildReachableEntitiesContext, buildDestinationsContext, buildParentLocationContext, buildSceneEntitiesContext, navigableDestinations, sublocationEntityIds } from "../lib/locationContext";
 import { primeRolls, resolvePlaceholders } from "@/lib/placeholders";
 import { resolveStartingLocation } from "../lib/startingLocation";
 import { NONE_PLACEHOLDER } from "../lib/promptFallbacks";
@@ -81,7 +81,7 @@ import { variableForToken, variableVariantIds, decodeVariant, tokenVariant, with
 import { renderPromptTemplate } from "../lib/promptTemplate";
 import { useBaselineTestHook } from "../lib/baselineTestHook";
 import { parseTurns, buildVerbatimHistory, buildBandedHistory, extractKeywords, type BandCounts } from "../lib/turnBanding";
-import { buildStamper, formatNow, hoursByPosition, parseTimeDelta, FLAT_HOURS_PER_TURN } from "../lib/gameClock";
+import { buildStamper, formatAbsolute, hoursByPosition, parseTimeDelta, FLAT_HOURS_PER_TURN } from "../lib/gameClock";
 import { milestoneCandidates, agedMilestoneCandidates, resolveMilestoneDrop, resolveMilestoneKeep, buildIncrementalMilestoneUserMessage, parseIncrementalMilestoneReply, applyIncrementalVerdict } from "../lib/milestoneMemory";
 import { applyMemoryOverrides, activeNotes } from "../lib/memoryOverrides";
 import { buildRelevanceScores, vectorKey } from "../lib/memoryRelevance";
@@ -939,6 +939,10 @@ const GameViewer = ({
 
   // `liveRecall` marks the real turn's call: it evaluates the cooldown at the current turn and
   // records what fired. The meter leaves it false and replays the live call's window.
+  // buildContextValues is declared further down (it depends on callbacks defined below), so the history
+  // builder reaches it through a ref rather than the closure — same dodge as makeAIRequestRef.
+  const buildContextValuesRef = useRef<(loc?: GameLocation | null) => Record<string, string>>(() => ({}));
+
   const getTrimmedMessageHistory = useCallback((promptTokens = 0, action = "", relevanceScores: Map<string, number> | null = null, actionVec: Float32Array | null = null, liveRecall = false) => {
     const turns = parseEffectiveTurns(fullMessageHistory);
     if (memoryDigests) {
@@ -968,21 +972,12 @@ const GameViewer = ({
       // The recap's "where things stand" closer: mid-scene anchor (location + recent participants) plus
       // the player's standing notes. Probed on real failure turns (now-line-probe.mjs): removed the
       // scene-reset / roleplay-identity-inversion class entirely; without it the recap reads as backstory.
-      const participants = recentParticipants(fullMessageHistory, 3);
-      const notes = playerNotes.trim();
-      // In-world time (experimental): the present moment closes the now-line, and each remembered
-      // moment is stamped with when it happened — the recap otherwise reads as an undated chronicle
-      // (docs-internal/time-system-design.md).
+      // In-world time (experimental): each remembered moment is stamped with when it happened — the recap
+      // otherwise reads as an undated chronicle (docs-internal/time-system-design.md).
       const stamp = timeContext ? buildStamper({ nowHours: gameTime, hoursAt: hoursByPosition(turns) }) : undefined;
-      // Each optional piece expands to its whole clause (leading space included) or to nothing, so the
-      // editable template stays a clean sentence whichever pieces the turn actually has.
-      const nowLine = currentLocation
-        ? renderPromptTemplate(nowLinePrompt, {
-            "<SCENE CAST>": participants.length ? ` with ${participants.join(", ")} present` : "",
-            "<SCENE NOTES>": notes ? ` The player's own notes hold true: ${notes}` : "",
-            "<SCENE TIME>": timeContext ? ` ${formatNow(gameTime)}` : "",
-          })
-        : undefined;
+      // Assembled from the same context values every other prompt uses: each chip carries its own wording
+      // in its affixes and disappears with its value, so any combination still reads as a sentence.
+      const nowLine = currentLocation ? renderPromptTemplate(nowLinePrompt, buildContextValuesRef.current()) : undefined;
       const { messages, counts, bandTurnIds } = buildBandedHistory({
         turns,
         contextWindow,
@@ -1011,7 +1006,7 @@ const GameViewer = ({
     lastBandCountsRef.current = null;
     // Digests off: no band to anchor into, so the player's own memories lead as a standing block.
     return buildVerbatimHistory(turns, contextWindow, promptTokens, maxTokens, effectiveNotes, recapUserPrompt);
-  }, [fullMessageHistory, contextWindow, maxTokens, memoryDigests, semanticMemory, semanticRehydration, semanticBandCap, dictionary, allEntities, narrationVerbatimTurns, getMilestoneDrop, recapUserPrompt, rehydrateUserPrompt, currentLocation, playerNotes, parseEffectiveTurns, effectiveNotes, timeContext, gameTime, nowLinePrompt]);
+  }, [fullMessageHistory, contextWindow, maxTokens, memoryDigests, semanticMemory, semanticRehydration, semanticBandCap, dictionary, allEntities, narrationVerbatimTurns, getMilestoneDrop, recapUserPrompt, rehydrateUserPrompt, currentLocation, parseEffectiveTurns, effectiveNotes, timeContext, gameTime, nowLinePrompt]);
 
   // The action's embedding, shared by every semantic consumer this turn (band relevance + lore
   // activation) so the action is embedded once. Null when no semantic feature is on, the model is
@@ -1213,6 +1208,7 @@ const GameViewer = ({
     const locationScopes: Record<string, (opts: CtxOpts) => string> = {
       "": (opts) => buildLocationContext(loc, opts),
       sublocations: (opts) => buildSublocationsContext(loc, locations, opts),
+      parent: (opts) => buildParentLocationContext(loc, locations, opts),
       reachable: (opts) => buildReachableLocationsContext(loc, locations, opts),
       destinations: (opts) => buildDestinationsContext(loc, locations, opts),
     };
@@ -1220,6 +1216,9 @@ const GameViewer = ({
       "": (opts) => buildEntityContext(here, allEntities, opts),
       sublocations: (opts) => buildSublocationEntitiesContext(loc, locations, allEntities, { ...opts, excludeIds: presentIds }),
       reachable: (opts) => buildReachableEntitiesContext(loc, locations, allEntities, { ...opts, excludeIds: reachableExclude }),
+      // Who has actually taken part lately, wherever they came from — the roster a sentence about the
+      // present scene wants, as opposed to whoever the location happens to list.
+      inscene: (opts) => buildSceneEntitiesContext(recentParticipants(fullMessageHistory, CHOICES_PRESENCE_TURNS), allEntities, opts),
     };
 
     // Render each Stats token from its decoded pieces (Values/Status/Meaning) + format.
@@ -1240,6 +1239,9 @@ const GameViewer = ({
       "<TRAITS DESCRIPTION|markdown>": generateTraitDescriptions('markdown'),
       "<TRAITS DESCRIPTION|xml>": generateTraitDescriptions('xml'),
       "<NOTES>": playerNotes || NONE_PLACEHOLDER,
+      // The story clock as a plain inline value. Off ⇒ the uniform placeholder, so an affixed placement
+      // (the now-line's) simply vanishes and the setting needs no special case anywhere else.
+      "<TIME>": timeContext ? formatAbsolute(gameTime) : NONE_PLACEHOLDER,
     };
 
     // Generate every scope × content (full/summary/name) × format (simple/markdown/xml) variant token. The id order
@@ -1275,7 +1277,9 @@ const GameViewer = ({
   }, [
     worldOverview, playerStats, generateTraitDescriptions,
     currentLocation, locations, withDiscovered, allEntities, playerNotes, resolvePH,
+    fullMessageHistory, timeContext, gameTime,
   ]);
+  buildContextValuesRef.current = buildContextValues;
 
   // Live variable values for the Settings prompt-editor Preview tab (full-description variant, like the
   // game-text request). Only meaningful in-game, which is the only place this modal receives them.
@@ -1290,9 +1294,6 @@ const GameViewer = ({
     "<PLAYER ACTION>": "the player's latest action",
     "<NARRATION>": "the most recent narration",
     "<CHARACTER NAME>": "the speaking character",
-    "<SCENE CAST>": " with the characters present",
-    "<SCENE NOTES>": " The player's own notes hold true: your standing notes",
-    "<SCENE TIME>": " It is now the current in-world time.",
   }), [buildContextValues, paragraphLimit, maxTokens, markdownOutput, activeSectionStyle, limitActiveCharacters, activeCharacterLimit]);
 
   const sendGameAction = async (action: string) => {

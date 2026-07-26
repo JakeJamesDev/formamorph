@@ -346,3 +346,35 @@ the board.
 - Suppression: a deleted name is not re-promoted on a later turn, via either discovery path.
 - Setting: `discoverCharacters` off → `discoverNames` empty → no describe request.
 - No probe run needed — nothing here touches prompt text or the model.
+
+
+## Anatomical possessives carry alone (2026-07-26)
+
+`qualifiesAsCharacter` gained a third path: `titled || bodied || (mid >= 2 && person)`.
+
+**Why.** `mid` ignores sentence-initial occurrences — the guard that stops "But"/"That" becoming
+characters. A character whose name opens every sentence it appears in therefore scores `mid: 0` forever:
+
+> Lyria's hand is warm and firm as it closes around yours. […] Lyria glances back at you with a playful smile.
+
+She speaks four times, is touched, and sits down — and never qualified. `person` was already true (the
+possessive check set it); only the repetition bar blocked her.
+
+**Why it's safe.** `PERSON_POSSESSIVE` is a tight body/expression list (eyes, hands, voice, face, hair,
+smile, shoulders, lips, gaze, fingers, arms, head, expression, cheeks, brow, chin, throat). Nothing but a
+person owns one. Place and object possessives — "Timbermaw's border", "the Inn's roof", "Teldorill's
+markets" — don't match, and are covered by tests. Sentence-initial function words never reach the check:
+`That's`/`There's`/`It's` have stopword heads and are rejected a branch earlier.
+
+**Measured** across 47 distinct recorded sessions (one per playthrough; the semQ/freeze families are the
+same session re-run and were deduped): **+2 names, both genuine characters** (Sable, Pell — authored
+NPCs in the gate world), **0 demotions, 0 false positives** out of 416 sentence-initial possessives seen.
+
+A weaker variant was measured and rejected: counting a sentence-initial possessive toward `mid` promotes
+only 1 name and does **not** fix the reported case, since one possessive still leaves `mid` at 1.
+
+**Caveat on the evidence.** The recorded sessions are harness runs in test worlds with authored casts, so
+`findEntityNames` catches those characters anyway and the narrator-invented path barely fires. The change
+rests on the reasoning above; the dumps establish it does no harm, not that it fixes the field reports.
+A real playthrough export where a character went undiscovered would still be worth running through
+`collectCandidateEvidence` to confirm `mid` was the blocker.

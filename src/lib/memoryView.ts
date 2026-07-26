@@ -2,6 +2,7 @@ import type { ChatMessage } from '@/types';
 import { parseTurns } from './turnBanding';
 import { milestoneCandidates, agedMilestoneCandidates, resolveMilestoneKeep, type MemoryPinMap, type MilestoneSelection } from './milestoneMemory';
 import { applyMemoryOverrides, type MemoryOverrides } from './memoryOverrides';
+import { formatStampPlain, hoursByPosition, type WorldCalendar } from './gameClock';
 
 /**
  * The memory ledger as the player sees it, shared by the Memory side panel and the Memory Manager so the
@@ -28,6 +29,9 @@ export interface MemoryRow {
   turnNumber: number;
   /** Chronological sort position, in the message-history index domain. */
   pos: number;
+  /** When this moment happened, both readings — `Day 3, evening — two days ago`. Only set when the
+   *  caller passes a clock, which it does only while the turn duration is actually measured. */
+  stamp?: string;
 }
 
 export interface MemoryLedger {
@@ -48,8 +52,11 @@ export function buildMemoryLedger(args: {
   pins: MemoryPinMap;
   selection: { seen: string[]; selected: string[] | null } | null;
   verbatimFloor: number;
+  /** Omit to leave rows unstamped. Callers pass it only when the clock is measured, since under the flat
+   *  hour-per-turn a stamp is a turn count wearing a date. */
+  clock?: { nowHours: number; calendar?: WorldCalendar };
 }): MemoryLedger {
-  const { history, overrides, pins, selection, verbatimFloor } = args;
+  const { history, overrides, pins, selection, verbatimFloor, clock } = args;
   const rawTurns = parseTurns(history);
   const turns = applyMemoryOverrides(rawTurns, overrides);
   const candidates = milestoneCandidates(turns);
@@ -115,6 +122,13 @@ export function buildMemoryLedger(args: {
   }
   // Notes tie-break after the turn they were written at, matching how they ride in the recap.
   rows.sort((a, b) => a.pos - b.pos || Number(a.isNote) - Number(b.isNote));
+
+  if (clock) {
+    // Same resolver the AI-facing stamp uses, so the two can't disagree. A turn with no measured delta
+    // charges the flat hour, which keeps a history that straddles the setting monotonic.
+    const hoursAt = hoursByPosition(rawTurns);
+    for (const row of rows) row.stamp = formatStampPlain(hoursAt(row.pos), clock.nowHours, clock.calendar);
+  }
 
   const visible = rows.filter((r) => !r.deleted);
   // The divider sits after the aged candidates. Notes never gate on aging, so they don't shift it: count

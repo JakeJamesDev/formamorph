@@ -47,12 +47,23 @@ function isBlankValue(value: string): boolean {
  * when there is no value to wrap (the whole point: "…, inside <empty>" must not reach the model).
  */
 export function renderPromptTemplate(template: string, values: Record<string, string>): string {
-  return template.replace(TOKEN_RE, (match) => {
-    const parts = splitToken(match);
-    if (!parts) return match;
-    const value = values[parts.key];
-    if (value === undefined) return match;
-    if (!parts.pre && !parts.post) return value;
-    return isBlankValue(value) ? '' : `${parts.pre}${value}${parts.post}`;
-  });
+  return template.replace(TOKEN_RE, (match) => resolveToken(match, values) ?? match);
+}
+
+/**
+ * What one token renders to, or `undefined` when it has no value in the map (callers keep the raw token).
+ * An empty string is a real result — an affixed placement whose value is absent renders as nothing — so
+ * callers must use `??`, never `||`.
+ *
+ * Shared with the editor's preview panes so a preview shows exactly what the model receives, affixes and
+ * all. Values are keyed by the affix-free token; a token from another chip family (placeholders) doesn't
+ * parse here and returns undefined, leaving that family's own lookup to handle it.
+ */
+export function resolveToken(token: string, values: Record<string, string>): string | undefined {
+  const parts = splitToken(token);
+  if (!parts) return undefined;
+  const value = values[parts.key];
+  if (value === undefined) return undefined;
+  if (!parts.pre && !parts.post) return value;
+  return isBlankValue(value) ? '' : `${parts.pre}${value}${parts.post}`;
 }

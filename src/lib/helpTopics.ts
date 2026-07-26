@@ -102,11 +102,15 @@ As the story grows, older turns stop riding word-for-word and are carried as sho
 | **Rewrite** | Have the story summarize that turn again, in case the first attempt missed the point. |
 | **Pin / forget** | Force a memory to stay, or let one go, without changing its words. |
 | **Delete** | Remove it entirely. Nothing is really lost — switch the filter to **Deleted** to bring it back. |
-| **Add memory** | Write something the story should remember that never happened in a turn. Yours are always kept. |
+| **Add Memory** | Write something the story should remember that never happened in a turn. Yours are always kept. |
 
-**Nothing you do here is permanent.** The story's own version is always kept underneath, so **Revert** restores the original wording and **Reset all my changes** puts everything back the way the story had it.
+**Nothing you do here is permanent.** The story's own version is always kept underneath, so **Revert** restores the original wording and **Reset All My Changes** puts everything back the way the story had it.
 
-Memories under the **Recent** line are still fresh enough that the story has them word-for-word — your changes to them start mattering once they age out.`,
+Memories under the **Recent** line are still fresh enough that the story has them word-for-word — your changes to them start mattering once they age out.
+
+**When it happened.** With **Measured Clock** on, each memory carries its place in the story's time — *"Day 3, evening — two days ago"* — the same stamp the story itself reads. Without that setting every turn costs a flat hour whatever happened in it, so nothing is dated rather than dating it wrongly.`,
+    wikiPage: 'Memory',
+    wikiAnchor: 'when-each-memory-happened',
   },
   // Deliberately separate from `worldEditor.entities`: that copy is for an author choosing fields, this
   // is for a player mid-story wondering who a name in their scene list is.

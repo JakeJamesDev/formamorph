@@ -23,11 +23,8 @@ export type SerializedVariableNode = Spread<{ token: string }, SerializedLexical
 
 const FULL = 'full'; // Tabs value sentinel for the default variant (null id)
 
-/**
- * One affix field. These hold connective words like `" with "` or `", inside "`, where the leading and
- * trailing spaces carry the whole effect and are invisible in a normal input — so the value is echoed
- * underneath with spaces rendered as `·`. The echo is display-only; the stored text stays literal.
- */
+/** One affix field: the connective words that wrap a chip's value, stored literally. Leading and trailing
+ *  spaces matter here and an input hides them, so the Preview tab is where you confirm the spacing. */
 function AffixInput({ label, value, disabled, onChange }: {
   label: string;
   value: string;
@@ -46,9 +43,6 @@ function AffixInput({ label, value, disabled, onChange }: {
         onChange={(e) => onChange(e.target.value.split(AFFIX_FORBIDDEN).join(''))}
         className="h-7 text-xs font-mono"
       />
-      <span className="block h-3 text-[11px] font-mono text-muted-foreground truncate">
-        {value ? value.replace(/ /g, '·') : ''}
-      </span>
     </label>
   );
 }
@@ -172,9 +166,20 @@ function VariableChip({ nodeKey, token }: { nodeKey: NodeKey; token: string }) {
                   {/* One heading per axis (its own label when multi-axis, else the chip name). */}
                   <p className="text-xs font-medium">{axes.length > 1 ? axis.label : `${vocab.label(token)} mode`}</p>
                   <Tabs value={active} onValueChange={(v) => setAxis(axis.id, v === FULL ? null : v)}>
-                    <TabsList className="grid w-full" style={{ gridTemplateColumns: `repeat(${axis.options.length}, minmax(0, 1fr))` }}>
+                    {/* `columns` wraps a long option list onto rows of that width, centered — so a final
+                        short row sits under the middle of the one above rather than hanging off the left. */}
+                    <TabsList
+                      className={cn('grid w-full', axis.columns && 'flex flex-wrap justify-center gap-1 h-auto')}
+                      style={axis.columns ? undefined : { gridTemplateColumns: `repeat(${axis.options.length}, minmax(0, 1fr))` }}
+                    >
                       {axis.options.map((opt) => (
-                        <TabsTrigger key={opt.id ?? FULL} value={opt.id ?? FULL} disabled={!editable} className="text-xs px-1.5">{opt.label}</TabsTrigger>
+                        <TabsTrigger
+                          key={opt.id ?? FULL}
+                          value={opt.id ?? FULL}
+                          disabled={!editable}
+                          className="text-xs px-1.5"
+                          style={axis.columns ? { flexBasis: `calc((100% - ${(axis.columns - 1) * 0.25}rem) / ${axis.columns})` } : undefined}
+                        >{opt.label}</TabsTrigger>
                       ))}
                     </TabsList>
                   </Tabs>
@@ -201,14 +206,13 @@ function VariableChip({ nodeKey, token }: { nodeKey: NodeKey; token: string }) {
         )}
         {affixes && (
           <div className={cn('space-y-2', axes.length && 'mt-4 pt-3 border-t')}>
-            <p className="text-xs font-medium">Wording around it</p>
+            <p className="text-xs font-medium">Prepend / Append</p>
             <p className="text-[11px] text-muted-foreground">
-              Text to put before and after the value. Both disappear when this chip has nothing to show, so a
-              sentence still reads correctly. Spaces count — they are shown as ·
+              Wraps the value, and vanishes with it. Spaces count — check Preview.
             </p>
             <div className="grid grid-cols-2 gap-2">
-              <AffixInput label="Before" value={affixes.pre} disabled={!editable} onChange={(v) => setAffix('pre', v)} />
-              <AffixInput label="After" value={affixes.post} disabled={!editable} onChange={(v) => setAffix('post', v)} />
+              <AffixInput label="Prepend" value={affixes.pre} disabled={!editable} onChange={(v) => setAffix('pre', v)} />
+              <AffixInput label="Append" value={affixes.post} disabled={!editable} onChange={(v) => setAffix('post', v)} />
             </div>
           </div>
         )}

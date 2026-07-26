@@ -256,6 +256,43 @@ function reachableLocations(current: GameLocation, locations: GameLocation[]): G
   return parent ? [parent, ...siblings] : siblings; // a parentId pointing at nothing leaves just the siblings
 }
 
+/**
+ * Serialize the single location that contains the current one, for the `<LOCATION|parent>` chip. Narrower
+ * than `reachable` (which is the parent *plus* its other children) because a sentence naming where you are
+ * usually wants only the containing place: "the kitchen, inside the Old Mill". Returns `N/A` at the top
+ * level, so an affixed placement disappears rather than trailing a dangling preposition.
+ */
+export function buildParentLocationContext(
+  current: LocationWithEntities,
+  locations: GameLocation[],
+  opts: { preferSummary?: boolean; format?: ContextFormat; nameOnly?: boolean } = {},
+): string {
+  if (!current) return NONE_PLACEHOLDER;
+  const parentId = current.parentId ?? null;
+  const parent = parentId === null ? undefined : locations.find((l) => l.id === parentId);
+  return parent ? buildLocationList([parent], opts) : NONE_PLACEHOLDER;
+}
+
+/**
+ * Serialize the characters who have actually taken part in the recent scene for the `<ENTITIES|inscene>`
+ * chip. `names` comes from the turns' recorded participants, so it includes characters the narration
+ * invented that no authored entity matches — those carry no description, so they appear only in the
+ * name-only rendering. Returns `N/A` when nobody has taken part.
+ */
+export function buildSceneEntitiesContext(
+  names: string[],
+  entities: Entity[],
+  opts: { preferSummary?: boolean; format?: ContextFormat; nameOnly?: boolean } = {},
+): string {
+  if (names.length === 0) return NONE_PLACEHOLDER;
+  if (opts.nameOnly) return names.join(', ');
+  const ids = names
+    .map((n) => entities.find((e) => e.name.trim().toLowerCase() === n.trim().toLowerCase())?.id)
+    .filter((id): id is string => !!id);
+  if (ids.length === 0) return NONE_PLACEHOLDER;
+  return buildEntityContext({ id: 'scene', name: 'scene', entities: ids }, entities, opts);
+}
+
 /** The deduped entity ids across the current location's reachable locations (parent + siblings). */
 export function reachableEntityIds(current: LocationWithEntities, locations: GameLocation[]): string[] {
   if (!current) return [];

@@ -39,6 +39,7 @@ import { ConfirmDialog } from '../ConfirmDialog';
 import { HelpButton } from '../HelpButton';
 import { EditTextModal } from '../modals/EditTextModal';
 import type { Entity, SceneEntity } from '@/types';
+import { formatAbsolute } from '@/lib/gameClock';
 import { cn } from "@/lib/utils";
 
 /** A committed turn's saved reasoning (from its assistant-message JSON), or null. */
@@ -1017,7 +1018,9 @@ export const RightPanel = ({ onLocationClick, language, setLanguage }: {
             />
           </div>
         </div>
-        <p className="text-center">{Math.floor(gameTime / 24)} days, {gameTime % 24} hours</p>
+        {/* The story's position, not an hour count: elapsed hours read as a stopwatch, and the daypart is
+            what the prose is actually written around. Same wording the memory stamps use. */}
+        <p className="text-center">{formatAbsolute(gameTime)}</p>
       </div>
 
       <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full flex-grow flex flex-col overflow-hidden">

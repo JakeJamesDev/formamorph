@@ -259,3 +259,58 @@ describe('buildMemoryLedger', () => {
     expect(ledger({}).recentFrom).toBe(3);
   });
 });
+
+describe('buildMemoryLedger time stamps', () => {
+  /** Four turns, each a full day apart — a measured clock, not the flat hour. */
+  const measured = (): ChatMessage[] => [
+    ...pair('a1', { turnId: 't1', summary: 's1', timeDelta: 24 }),
+    ...pair('a2', { turnId: 't2', summary: 's2', timeDelta: 24 }),
+    ...pair('a3', { turnId: 't3', summary: 's3', timeDelta: 24 }),
+    ...pair('a4', { turnId: 't4', summary: 's4', timeDelta: 24 }),
+  ];
+  const stamped = (history: ChatMessage[], nowHours: number, overrides: MemoryOverrides = {}) =>
+    buildMemoryLedger({ history, overrides, pins: {}, selection: null, verbatimFloor: 1, clock: { nowHours } }).rows;
+
+  it('leaves every row unstamped when no clock is passed', () => {
+    const { rows } = buildMemoryLedger({ history: measured(), overrides: {}, pins: {}, selection: null, verbatimFloor: 1 });
+    expect(rows.every((r) => r.stamp === undefined)).toBe(true);
+  });
+
+  it('dates each memory by its own measured elapsed time, not its position in the list', () => {
+    // Day 1 opens at hour 8, so a turn costing 24h lands on the next day at the same daypart.
+    const rows = stamped(measured(), 96);
+    expect(rows.map((r) => r.stamp)).toEqual([
+      'Day 2, morning — three days ago',
+      'Day 3, morning — two days ago',
+      'Day 4, morning — yesterday',
+      'Day 5, morning — moments ago',
+    ]);
+  });
+
+  it('charges the flat hour for turns the clock never measured, so a mixed history stays ordered', () => {
+    // t1/t2 predate the setting; t3/t4 were measured at a day each.
+    const mixed: ChatMessage[] = [
+      ...pair('a1', { turnId: 't1', summary: 's1' }),
+      ...pair('a2', { turnId: 't2', summary: 's2' }),
+      ...pair('a3', { turnId: 't3', summary: 's3', timeDelta: 24 }),
+      ...pair('a4', { turnId: 't4', summary: 's4', timeDelta: 24 }),
+    ];
+    expect(stamped(mixed, 50).map((r) => r.stamp)).toEqual([
+      'Day 1, morning — two days ago',
+      'Day 1, morning — two days ago',
+      'Day 2, morning — yesterday',
+      'Day 3, morning — moments ago',
+    ]);
+  });
+
+  it('stamps player-written memories at their anchor, like any other row', () => {
+    const rows = stamped(measured(), 96, { notes: [{ id: 'n1', text: 'NOTE', anchorTurn: 4 }] });
+    const note = rows.find((r) => r.id === 'n1')!;
+    expect(note.stamp).toBe('Day 3, morning — two days ago');
+  });
+
+  it('stamps rows under the Recent divider too', () => {
+    const rows = stamped(measured(), 96);
+    expect(rows[rows.length - 1].stamp).toBeTruthy();
+  });
+});

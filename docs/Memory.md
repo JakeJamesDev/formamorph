@@ -4,19 +4,19 @@ How Formamorph remembers a long story — and how you can change what it remembe
 
 ---
 
-## Why memory exists
+## Why Memory Exists
 
 An AI model can only hold so much text at once. A story that runs 50 turns doesn't fit, so something has to give. Formamorph's answer is to keep the **recent** turns word-for-word and carry **older** turns as short memories instead.
 
-| Layer | What it is |
+| Layer | What It Is |
 |---|---|
 | 🔍 **Recent turns** | The last few turns, sent exactly as written. Their full prose is what keeps the story's voice consistent. |
 | 📌 **Memories** | Everything older, compressed to a sentence each. The story writes these itself, one per turn. |
-| 🗑️ **Let go** | Memories the story judged not worth carrying — the errand you already finished, the door you already opened. |
+| 🗑️ **Let Go** | Memories the story judged not worth carrying — the errand you already finished, the door you already opened. |
 
 That last step is the important one: **more memory is not better memory.** A recap stuffed with everything that ever happened crowds out the part that matters, and the story starts repeating itself. Memories are pruned deliberately.
 
-## The Memory tab
+## The Memory Tab
 
 Open the side panel's **Memory** tab during play to see the whole ledger. Faded, struck-through lines are the ones the story let go.
 
@@ -28,20 +28,41 @@ Memories under the **Recent** divider are still riding word-for-word, so your pi
 
 ## The Memory Manager
 
-**Manage memories** opens the full editor.
+**Manage Memories** opens the full editor.
 
-| Action | What it does |
+| Action | What It Does |
 |---|---|
 | ✏️ **Edit** | Rewrite a memory in your own words. Your version is always kept — the story doesn't get to drop something you wrote. |
 | 🔄 **Rewrite** | Have the story summarize that turn again, if the first attempt missed the point. |
-| ➕ **Add memory** | Write a memory for something that never happened in a turn: a standing fact, a promise, a detail you want carried. Yours are always kept and never judged. |
+| ➕ **Add Memory** | Write a memory for something that never happened in a turn: a standing fact, a promise, a detail you want carried. Yours are always kept and never judged. |
 | 🗑️ **Delete** | Remove a memory. Switch the filter to **Deleted** to bring it back. |
 | ↩️ **Revert** | Put an edited memory back to the story's own wording. |
 
-Search and the filter chips — **Kept · Let go · Edited · Mine · Deleted** — make a long story's ledger navigable.
+Search and the filter chips — **Kept · Let Go · Edited · Mine · Deleted** — make a long story's ledger navigable.
 
 > [!TIP]
-> **Nothing here is destructive.** The story's own summary is always preserved underneath whatever you write, so every change is reversible — and **Reset all my changes** puts the whole ledger back the way the story had it.
+> **Nothing here is destructive.** The story's own summary is always preserved underneath whatever you write, so every change is reversible — and **Reset All My Changes** puts the whole ledger back the way the story had it.
+
+## When Each Memory Happened
+
+With **Measured Clock** on, every memory carries its place in the story's own time:
+
+> Day 3, evening — two days ago
+
+Both readings sit together on purpose. *Day 3, evening* tells you where in the story you were; *two days ago* tells you how far back that is. Working out one from the other is a small tax you'd pay on every line, and the AI reads the exact same stamp for exactly this reason.
+
+The character panel's clock reads the same way — **Day 1, morning** rather than an elapsed-hours count.
+
+| | |
+|---|---|
+| **Recent Memories** | *moments ago*, *earlier today* |
+| **Your Own Memories** | Stamped at the moment you anchored them |
+| **Times of Day** | Coarse — *dawn*, *morning*, *midday*, *afternoon*, *evening*, *night*. Never a clock reading. |
+
+> [!NOTE]
+> **Nothing is stamped while Measured Clock is off.** Without it every turn costs a flat hour whatever happened in it, so a date would really just be a turn count wearing a costume. Switch it on partway through a story and the earlier turns are dated at that flat hour — roughly wrong in scale, but still in the right order.
+
+Both settings live under Settings → Generation → Memory. **Measured Clock** decides whether time is measured at all; **Time in Memory** decides whether the AI is told.
 
 ## Memories vs Notes
 
@@ -56,7 +77,7 @@ Both travel with the story, but they answer different questions.
 
 If the story keeps forgetting something that should always hold, that belongs in **Notes**. If it forgot something that *happened*, that's a memory — pin it, or write it yourself.
 
-## Turning memory off
+## Turning Memory Off
 
 Settings → **Memory Summaries** controls whether the story writes memories at all. With it off, the oldest turns simply drop away as the story outgrows its context, and nothing is carried forward in their place.
 

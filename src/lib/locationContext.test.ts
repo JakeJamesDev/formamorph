@@ -3,6 +3,7 @@ import {
   buildLocationContext, buildEntityContext, buildSublocationsContext, buildSublocationEntitiesContext,
   buildReachableLocationsContext, buildReachableEntitiesContext,
   navigableDestinations, buildDestinationsContext, sublocationEntityIds, reachableEntityIds,
+  buildParentLocationContext, buildSceneEntitiesContext,
 } from "./locationContext";
 import { NONE_PLACEHOLDER } from "./promptFallbacks";
 import type { Entity, GameLocation } from "@/types";
@@ -407,5 +408,67 @@ describe('name-only content variant', () => {
   it('leaves the full and summary variants untouched', () => {
     expect(buildLocationContext(here, {})).toContain('laundromat');
     expect(buildLocationContext(here, { preferSummary: true })).toContain('A cramped flat.');
+  });
+});
+
+describe('buildParentLocationContext', () => {
+  const mill: GameLocation = { id: 'p1', name: 'The Old Mill', description: '', aiDescription: 'A gutted mill.', aiSummary: 'A mill.' } as GameLocation;
+  const kitchen: GameLocation = { id: 'c1', name: 'Kitchen', description: '', parentId: 'p1' } as GameLocation;
+  const locations = [mill, kitchen];
+
+  it('names only the containing location — narrower than reachable', () => {
+    expect(buildParentLocationContext(kitchen, locations, { nameOnly: true })).toBe('The Old Mill');
+  });
+
+  it('renders the parent in full or summary like any other location list', () => {
+    expect(buildParentLocationContext(kitchen, locations, {})).toContain('gutted mill');
+    expect(buildParentLocationContext(kitchen, locations, { preferSummary: true })).toContain('A mill.');
+  });
+
+  it('is N/A at the top level, so an affixed placement disappears', () => {
+    expect(buildParentLocationContext(mill, locations, { nameOnly: true })).toBe(NONE_PLACEHOLDER);
+  });
+
+  it('is N/A when the parentId points at nothing', () => {
+    const orphan = { ...kitchen, parentId: 'gone' } as GameLocation;
+    expect(buildParentLocationContext(orphan, locations, { nameOnly: true })).toBe(NONE_PLACEHOLDER);
+  });
+
+  it('excludes the siblings that reachable would include', () => {
+    const pantry: GameLocation = { id: 'c2', name: 'Pantry', description: '', parentId: 'p1' } as GameLocation;
+    const out = buildParentLocationContext(kitchen, [...locations, pantry], { nameOnly: true });
+    expect(out).toBe('The Old Mill');
+    expect(out).not.toContain('Pantry');
+  });
+});
+
+describe('buildSceneEntitiesContext', () => {
+  const cast: Entity[] = [
+    { id: 'e1', name: 'Sarah Jones', description: '', aiDescription: 'The tenant.' } as Entity,
+    { id: 'e2', name: 'Mira', description: '', aiDescription: 'A visitor.' } as Entity,
+  ];
+
+  it('lists the recent participants by name, in the order given', () => {
+    expect(buildSceneEntitiesContext(['Mira', 'Sarah Jones'], cast, { nameOnly: true })).toBe('Mira, Sarah Jones');
+  });
+
+  it('keeps a name no authored entity matches — a character the narration invented', () => {
+    expect(buildSceneEntitiesContext(['Mira', 'the ferryman'], cast, { nameOnly: true }))
+      .toBe('Mira, the ferryman');
+  });
+
+  it('matches names case-insensitively when resolving descriptions', () => {
+    expect(buildSceneEntitiesContext(['mira'], cast, {})).toContain('A visitor.');
+  });
+
+  it('drops unresolvable names from the described rendering, which has nothing to say about them', () => {
+    const out = buildSceneEntitiesContext(['Mira', 'the ferryman'], cast, {});
+    expect(out).toContain('Mira');
+    expect(out).not.toContain('ferryman');
+  });
+
+  it('is N/A when nobody has taken part, so an affixed placement disappears', () => {
+    expect(buildSceneEntitiesContext([], cast, { nameOnly: true })).toBe(NONE_PLACEHOLDER);
+    expect(buildSceneEntitiesContext(['nobody known'], cast, {})).toBe(NONE_PLACEHOLDER);
   });
 });

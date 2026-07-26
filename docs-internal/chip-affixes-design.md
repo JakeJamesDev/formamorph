@@ -1,8 +1,16 @@
 # Chip affixes — phase 1 spec
 
-**Status:** ✅ **phase 1 built** (2026-07-26) — token grammar, renderer, editor fields, `restyle` and `setAxis` preservation, all eight gate tests green and mutation-checked. Phase 2 (Parent scope, Time chip, Entities "In scene" scope, retiring the three clause tokens, two-row popover, preview real values) is not started.
+**Status:** ✅ **phase 1 built** (2026-07-26) — token grammar, renderer, editor fields, `restyle` and `setAxis` preservation, all eight gate tests green and mutation-checked. ✅ **Phase 2 built** (same day): Parent scope, Time chip, Entities "In scene" scope, the three clause tokens retired, two-row scope popover, and the preview now shows real cast/time values (they come from `buildContextValues` like every other chip, so the placeholders were deleted rather than replaced).
 
-One thing the build found that this spec missed: `chipVocabulary.setAxis` dropped affixes exactly like `restyle` did — switching a chip's mode in the editor would have deleted the user's wording. Same root cause (rebuilding a token through `withVariant`), same fix (`joinToken`), and it now has its own gate test.
+**Three defects this spec missed, all found after the first "done".** Each is the same shape — a place that assumed the closed grammar — which is worth remembering when phase 2 adds chips:
+
+1. `chipVocabulary.setAxis` dropped affixes exactly like `restyle` did. Switching a chip's mode in the editor would have deleted the user's wording. Same root cause (rebuilding through `withVariant`), same fix (`joinToken`).
+2. **Both preview panes** did a raw `previewValues[token]` lookup. Since the value map is keyed affix-free, every affixed chip previewed as its literal token — the exact failure the spec's §2 predicted for the renderer, in a place §2 didn't look. Fixed by extracting `resolveToken` from the renderer and sharing it, so preview and prompt can't diverge.
+3. The preview fix initially shipped **untested** — reverting it passed the whole suite. Now covered by `PromptField.preview.test.tsx` and mutation-checked.
+
+**Every guard in this feature has been mutation-checked**: reinstating each bug fails a named test. `promptFieldState` needed no change — flat offsets derive from the live token length, so the markdown toolbar's mapping absorbed longer tokens on its own.
+
+**Deliberately permissive:** the grammar accepts affixes on any chip; `affixable` governs only whether the editor offers the fields. A hand-pasted `<WORLD DESCRIPTION|pre="…">` renders its affixes rather than erroring.
 
 **Problem.** A chip used inside a sentence needs connective words around it, and those words must disappear when the chip has no value. `Now you are at <LOCATION|name>, inside <LOCATION|parent.name>` reads as "…inside ." at a top-level location, or "…inside N/A" today. So far this has been solved four times by hardcoding the whole clause into a bespoke token (`<SCENE CAST>`, `<SCENE NOTES>`, `<SCENE TIME>`, and a proposed `<SCENE PARENT>`), which freezes the wording in code.
 
@@ -91,7 +99,7 @@ Tests 1, 2 and 6 are the ones that actually gate the phase; 3–5 are the featur
 
 ## 6. Explicitly out of scope for phase 1
 
-Parent scope · the Time chip · the Entities "In scene" scope · retiring `<SCENE CAST>`/`<SCENE NOTES>`/`<SCENE TIME>` · the two-row scope popover · the preview real-values fix. All of those are phase 2 and get cheap once the mechanism holds.
+Parent scope · the Time chip · the Entities "In scene" scope · retiring `<SCENE CAST>`/`<SCENE NOTES>`/`<SCENE TIME>` · the two-row scope popover · the preview real-values fix. **All shipped in phase 2**, and all of it was cheap once the mechanism held — the prediction was right.
 
 ## 7. Compatibility
 

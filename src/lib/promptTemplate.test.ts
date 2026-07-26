@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { parsePromptTemplate, serializeSegments, renderPromptTemplate } from './promptTemplate';
+import { parsePromptTemplate, serializeSegments, renderPromptTemplate, resolveToken } from './promptTemplate';
 import { joinToken } from './promptVariables';
 import {
   defaultNowLinePrompt,
@@ -171,47 +171,51 @@ describe('cross-version import compat (Slice 4)', () => {
 });
 
 describe('the default now-line template', () => {
-  // The line used to be string-concatenated in GameViewer. These assert the template reproduces that
-  // output byte-for-byte, including the way each optional clause carries its own leading space.
+  // Every piece is an ordinary chip carrying its own wording in its affixes. These assert the assembled
+  // sentence still reads correctly for any combination of present/absent values.
   const render = (v: Partial<Record<string, string>>) =>
     renderPromptTemplate(defaultNowLinePrompt, {
       '<LOCATION|name>': "Sarah's Place",
-      '<SCENE CAST>': '',
-      '<SCENE NOTES>': '',
-      '<SCENE TIME>': '',
+      '<LOCATION|parent.name>': 'N/A',
+      '<ENTITIES|inscene.name>': 'N/A',
+      '<TIME>': 'N/A',
       ...v,
     });
 
-  it('renders location, cast and time as one sentence', () => {
-    expect(
-      render({
-        '<SCENE CAST>': ' with Sarah Jones present',
-        '<SCENE TIME>': ' It is now Day 2, afternoon.',
-      }),
-    ).toBe(
-      "Now you are at Sarah's Place with Sarah Jones present; the scene is already underway." +
-        ' It is now Day 2, afternoon.',
+  it('renders location, containing place, cast and time as one sentence', () => {
+    expect(render({
+      '<LOCATION|parent.name>': 'the Old Mill',
+      '<ENTITIES|inscene.name>': 'Sarah Jones',
+      '<TIME>': 'Day 2, afternoon',
+    })).toBe(
+      "Now you are at Sarah's Place, in the Old Mill, with Sarah Jones present;" +
+        ' the scene is already underway. It is now Day 2, afternoon.',
     );
   });
 
-  it('omits the notes clause — they already ride the system prompt (notes-duplication-probe)', () => {
-    expect(defaultNowLinePrompt).not.toContain('<SCENE NOTES>');
-    // Supplying a value changes nothing while the chip is absent; adding the chip back is what re-enables it.
-    expect(render({ '<SCENE NOTES>': ' notes text' })).not.toContain('notes text');
+  it('drops the containing place at a top-level location, leaving the sentence intact', () => {
+    expect(render({ '<ENTITIES|inscene.name>': 'Sarah Jones' })).toBe(
+      "Now you are at Sarah's Place, with Sarah Jones present; the scene is already underway.",
+    );
   });
 
   it('reads as a clean sentence with every optional piece absent', () => {
     expect(render({})).toBe("Now you are at Sarah's Place; the scene is already underway.");
   });
 
+  it('omits a notes chip — they already ride the system prompt (notes-duplication-probe)', () => {
+    expect(defaultNowLinePrompt).not.toContain('<NOTES');
+  });
+
   it('leaves no double space or dangling punctuation for any subset', () => {
-    const pieces = ['<SCENE CAST>', '<SCENE TIME>'] as const;
+    const pieces = ['<LOCATION|parent.name>', '<ENTITIES|inscene.name>', '<TIME>'] as const;
     const filled: Record<string, string> = {
-      '<SCENE CAST>': ' with Mira present',
-      '<SCENE TIME>': ' It is now Day 1, dawn.',
+      '<LOCATION|parent.name>': 'the Old Mill',
+      '<ENTITIES|inscene.name>': 'Mira',
+      '<TIME>': 'Day 1, dawn',
     };
-    for (let mask = 0; mask < 4; mask++) {
-      const vals = Object.fromEntries(pieces.map((p, i) => [p, mask & (1 << i) ? filled[p] : '']));
+    for (let mask = 0; mask < 8; mask++) {
+      const vals = Object.fromEntries(pieces.map((k, i) => [k, mask & (1 << i) ? filled[k] : 'N/A']));
       const out = render(vals);
       expect(out).not.toMatch(/ {2}/);
       expect(out).not.toMatch(/\s;/);
@@ -323,5 +327,29 @@ describe('affix grammar: malformed forms stay literal (gate 7)', () => {
     const out = parsePromptTemplate('<LOCATION|name|pre=" a> tail');
     expect(serializeSegments(out)).toBe('<LOCATION|name|pre=" a> tail');
     expect(out.every((s) => s.type === 'text')).toBe(true);
+  });
+});
+
+describe('resolveToken (shared by the renderer and the editor preview)', () => {
+  const values = { '<ENTITIES|name>': 'Mira', '<LOCATION|name>': 'N/A' };
+  const affixed = (base: string, variantId: string) =>
+    joinToken({ base, variantId, pre: ' with ', post: ' present' });
+
+  it('distinguishes "renders as nothing" from "no value" — the ?? vs || trap', () => {
+    // An affixed chip with an absent value resolves to '' — a real result the caller must keep.
+    expect(resolveToken(affixed('<LOCATION>', 'name'), values)).toBe('');
+    // A token with no entry at all resolves to undefined, so the caller keeps the raw token.
+    expect(resolveToken('<ENTITIES|summary>', values)).toBeUndefined();
+    // Using || instead of ?? would collapse these two into the same fallback.
+    expect(resolveToken(affixed('<LOCATION>', 'name'), values) ?? 'FALLBACK').toBe('');
+  });
+
+  it('returns undefined for a token of another chip family, leaving its own lookup to handle it', () => {
+    expect(resolveToken('{{ph:p1:world:x}}', values)).toBeUndefined();
+  });
+
+  it('agrees with renderPromptTemplate for the same token', () => {
+    const token = affixed('<ENTITIES>', 'name');
+    expect(renderPromptTemplate(token, values)).toBe(resolveToken(token, values));
   });
 });

@@ -126,6 +126,9 @@ export interface CandidateEvidence {
   /** The narrator named them outside quoted speech, so they were shown rather than merely discussed.
    *  Required on every path, the title one included. */
   inProse: boolean;
+  /** This name owned a body or expression ("Lyria's hand is warm"), which qualifies it regardless of
+   *  `mid` — see `qualifiesAsCharacter`. */
+  bodied: boolean;
 }
 
 /** Markdown headings and stand-alone bold labels are page furniture, not narration. A real turn
@@ -219,9 +222,12 @@ function scanRuns(text: string): Map<string, CandidateEvidence> {
       const sentenceInitial = /^[\s"'“”*_([]*$/.test(before);
       // Did this occurrence behave like a person? Checked against the immediate neighbours only —
       // a wide window matches "The air … speaks of deep wilderness" and calls every article a person.
+      // An anatomical possessive is the strongest single signal there is: PERSON_POSSESSIVE is a tight
+      // body/expression list, so only a person owns one. Tracked separately from `person` because it
+      // carries on its own, where the other signals need repetition.
+      const bodied = /['’]s$/.test(match[0]) && POSSESSIVE_AFTER.test(after);
       const person =
-        VERB_AFTER.test(after) || VERB_BEFORE.test(before) || PERSON_INTRO.test(before) ||
-        (/['’]s$/.test(match[0]) && POSSESSIVE_AFTER.test(after));
+        VERB_AFTER.test(after) || VERB_BEFORE.test(before) || PERSON_INTRO.test(before) || bodied;
       const record = out.get(name) ?? {
         name,
         mid: 0,
@@ -229,10 +235,12 @@ function scanRuns(text: string): Map<string, CandidateEvidence> {
         titled: words.length > 1 && TITLES.has(lower[0]),
         person: false,
         inProse: false,
+        bodied: false,
       };
       record.total += 1;
       if (!sentenceInitial) record.mid += 1;
       record.person = record.person || person;
+      record.bodied = record.bodied || bodied;
       out.set(name, record);
     }
   }
@@ -253,6 +261,7 @@ export function mergeCandidateEvidence(
       record.titled = record.titled || add.titled;
       record.person = record.person || add.person;
       record.inProse = record.inProse || add.inProse;
+      record.bodied = record.bodied || add.bodied;
     } else {
       into.set(name, { ...add });
     }
@@ -265,12 +274,19 @@ export function mergeCandidateEvidence(
  *
  * A title carries on its own — "Doctor Chen" is a person whether or not she has spoken yet, and page
  * furniture that used to abuse this path ("Professor Assignments") is dropped earlier as non-prose.
- * Repetition alone is not enough: a name that merely recurs is as likely to be an agency, a café or a
- * weekday, so it must also have behaved like a person somewhere.
+ * So does owning a body ("Lyria's hand is warm"): PERSON_POSSESSIVE lists only body and expression
+ * words, so nothing but a person satisfies it, and requiring repetition on top of it stranded
+ * characters whose name happened to open every sentence it appeared in — the mid-sentence tally
+ * ignores sentence-initial uses by design, so a name written only as "Lyria's hand…" / "Lyria
+ * glances…" never scored. Measured across 47 real sessions this promotes two names, both genuine
+ * characters, and demotes none.
+ *
+ * Repetition alone is still not enough: a name that merely recurs is as likely to be an agency, a
+ * café or a weekday, so it must also have behaved like a person somewhere.
  */
 export function qualifiesAsCharacter(evidence: CandidateEvidence): boolean {
   if (!evidence.inProse) return false;
-  return evidence.titled || (evidence.mid >= MID_SENTENCE_THRESHOLD && evidence.person);
+  return evidence.titled || evidence.bodied || (evidence.mid >= MID_SENTENCE_THRESHOLD && evidence.person);
 }
 
 /**

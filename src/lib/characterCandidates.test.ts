@@ -209,7 +209,42 @@ describe('evidence helpers', () => {
   });
 
   it('qualifies a titled name regardless of position count', () => {
-    expect(qualifiesAsCharacter({ name: 'Doctor Chen', mid: 0, total: 1, titled: true, person: false, inProse: true })).toBe(true);
-    expect(qualifiesAsCharacter({ name: 'Sarah', mid: 1, total: 9, titled: false, person: true, inProse: true })).toBe(false);
+    expect(qualifiesAsCharacter({ name: 'Doctor Chen', mid: 0, total: 1, titled: true, person: false, inProse: true, bodied: false })).toBe(true);
+    expect(qualifiesAsCharacter({ name: 'Sarah', mid: 1, total: 9, titled: false, person: true, inProse: true, bodied: false })).toBe(false);
+  });
+});
+
+describe('a name that owns a body qualifies without repetition', () => {
+  // The reported miss: a character whose name opens every sentence it appears in. `mid` ignores
+  // sentence-initial uses by design, so she scored 0 and was never discovered.
+  const lyria = `Lyria's hand is warm and firm as it closes around yours. "You're very welcome!"
+
+Lyria glances back at you with a playful smile.`;
+
+  it('qualifies her from the possessive alone', () => {
+    expect(extractCharacterCandidates(lyria, {})).toEqual(['Lyria']);
+    const e = collectCandidateEvidence(lyria).get('Lyria')!;
+    expect(e.bodied).toBe(true);
+    expect(e.mid).toBe(0); // still zero — the mid-sentence rule is untouched
+  });
+
+  it('accepts the body words wherever they sit after the name', () => {
+    for (const s of ["Sable's eyes narrow.", "Pell's voice drops low.", "Mira's gaze flicks up.", "Odette's thin face tightens."]) {
+      expect(extractCharacterCandidates(s, {})).toHaveLength(1);
+    }
+  });
+
+  it('does not fire on a possessive that owns something inanimate', () => {
+    expect(extractCharacterCandidates("Timbermaw's border runs east from here.", {})).toEqual([]);
+    expect(extractCharacterCandidates("The Moonpetal Inn's roof sags under the snow.", {})).toEqual([]);
+    expect(extractCharacterCandidates("Teldorill's markets open at dawn.", {})).toEqual([]);
+  });
+
+  it('still requires the name to appear in prose, not only inside quoted speech', () => {
+    expect(extractCharacterCandidates('"I saw Lyria\'s face," she says.', {})).toEqual([]);
+  });
+
+  it('leaves an already-known name alone', () => {
+    expect(extractCharacterCandidates("Lyria's hand is warm.", { characters: ['Lyria'] })).toEqual([]);
   });
 });

@@ -23,6 +23,9 @@ export interface PromptVariantAxis {
   toggle?: boolean;
   /** Help shown beside a toggle axis's checkbox. */
   help?: string;
+  /** Lay the options out this many per row instead of all on one. For axes with enough options that a
+   *  single row squeezes the labels unreadably. */
+  columns?: number;
 }
 
 /** Registry of the angle-bracket variables that prompt templates can embed. The base `token`
@@ -55,9 +58,12 @@ const SUMMARY_VARIANT: PromptVariant = {
 const LOCATION_SCOPE_AXIS: PromptVariantAxis = {
   id: 'scope',
   label: 'Scope',
+  // Three per row: the scopes that name ONE place lead, the two that list many follow.
+  columns: 3,
   options: [
     { id: null, label: 'Current', help: 'The location the player is in right now.' },
     { id: 'sublocations', label: 'Sub', help: "The current location's direct sub-locations." },
+    { id: 'parent', label: 'Parent', help: 'The single location that contains this one (nothing at the top level).' },
     { id: 'reachable', label: 'Reachable', help: 'The location that contains this one, plus its neighbors (same parent).' },
     { id: 'destinations', label: 'Destinations', help: 'Everywhere reachable from here — connections + sub-locations + the containing location and its neighbors.' },
   ],
@@ -68,8 +74,9 @@ const ENTITY_SCOPE_AXIS: PromptVariantAxis = {
   label: 'Scope',
   options: [
     { id: null, label: 'Here', help: 'Characters and things at the current location.' },
-    { id: 'sublocations', label: 'Sub-locations', help: 'Characters and things in the direct sub-locations.' },
+    { id: 'sublocations', label: 'In Sub', help: 'Characters and things in the direct sub-locations.' },
     { id: 'reachable', label: 'Reachable', help: 'Characters and things in the containing location and its neighbors.' },
+    { id: 'inscene', label: 'In Scene', help: 'Whoever has actually taken part in the last few turns, wherever they are from.' },
   ],
 };
 
@@ -145,26 +152,22 @@ const NARRATION: PromptVariable = { token: '<NARRATION>', label: 'Narration', co
 // here so the shared prompt parser/chip recognize it; it is never offered in a game prompt's toolbar.
 export const SUBJECT: PromptVariable = { token: '<SUBJECT>', label: 'Subject', color: HIGHLIGHT_PALETTE[12] };
 
-// The now-line's own pieces (Settings → Prompts → Narration → Messages); the location comes from the shared
-// `<LOCATION>` chip with Content set to Name. Each expands to its WHOLE clause, leading space included, and to
-// nothing when it has no value — so a scene with nobody present or no notes reads as a clean sentence instead
-// of leaving dangling words behind an empty token.
-const SCENE_CAST: PromptVariable = { token: '<SCENE CAST>', label: 'Who Is Present', color: HIGHLIGHT_PALETTE[8] };
-const SCENE_NOTES: PromptVariable = { token: '<SCENE NOTES>', label: 'Player Notes', color: HIGHLIGHT_PALETTE[4] };
-const SCENE_TIME: PromptVariable = { token: '<SCENE TIME>', label: 'Current Time', color: HIGHLIGHT_PALETTE[10] };
+// The story's own clock — "Day 3, evening" — as a plain inline value. Renders the uniform placeholder while
+// Time in Memory is off, so an affixed placement simply disappears rather than needing its own switch.
+const TIME: PromptVariable = { token: '<TIME>', label: 'Time', color: HIGHLIGHT_PALETTE[10], affixable: true };
 
-/** The chips the now-line message offers. `<LOCATION>` carries its own axes — set Content to Name for the
- *  bare name this sentence wants. */
-export const NOW_LINE_VARIABLES: PromptVariable[] = [LOCATION, SCENE_CAST, SCENE_NOTES, SCENE_TIME];
+/** The chips the now-line message offers. All ordinary chips: the wording that used to be welded into
+ *  bespoke `<SCENE …>` tokens now lives in each placement's prefix/suffix, so it can be reworded. */
+export const NOW_LINE_VARIABLES: PromptVariable[] = [LOCATION, ENTITIES, TIME, NOTES];
 
 /** All known variables — used by the parser to recognize any token regardless of which prompt it's in. */
 export const ALL_PROMPT_VARIABLES: PromptVariable[] = [
   WORLD, STATS, TRAITS, LOCATION, ENTITIES, NOTES, DICTIONARY, LENGTH, MARKDOWN, ACTIVE_CHARACTER, PLAYER_ACTION, NARRATION, CHARACTER, SUBJECT,
-  SCENE_CAST, SCENE_NOTES, SCENE_TIME,
+  TIME,
 ];
 
 /** The context chips every system prompt can reference; GameViewer substitutes them uniformly. */
-const CONTEXT_VARS: PromptVariable[] = [WORLD, STATS, TRAITS, LOCATION, ENTITIES, NOTES];
+const CONTEXT_VARS: PromptVariable[] = [WORLD, STATS, TRAITS, LOCATION, ENTITIES, NOTES, TIME];
 
 /** Which variables each prompt's toolbar offers. Every kind gets the shared context chips (even when its
  *  default text doesn't use them); some add their own extras (narration's length/markdown, character's name). */
