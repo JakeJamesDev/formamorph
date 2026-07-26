@@ -119,6 +119,10 @@ export interface GameState {
   visibleEntities: SceneEntity[];
   /** Director-invented characters promoted to persisted entities this playthrough (runtime characters). */
   discoveredEntities?: DiscoveredEntity[];
+  /** Names the player deleted from the discovered cast. Removal alone would be whack-a-mole — the next
+   *  turn naming them re-promotes them — so a deletion is remembered and blocks every discovery path.
+   *  Absent on saves written before the feature, which correctly reads as "nothing suppressed". */
+  suppressedCharacterNames?: string[];
   logEntries: LogEntry[];
   gameplayText: string;
   locationId?: string;
@@ -168,6 +172,19 @@ export interface SaveObject {
    *  full-vote, treated as keep-everything-seen). Absent on older saves ⇒ the loaded history is
    *  judged fresh in one incremental batch. */
   milestoneSelection?: { seen: string[]; selected: string[] | null };
+  /** v2.x memory editing: the player's rewrites, keyed by turn id. `source` separates a hand-written
+   *  rewrite (intent — force-kept and top-ranked) from a regeneration (fresher AI text under the usual
+   *  verdict). The turn's own `summary` is never overwritten, so clearing an edit restores the original.
+   *  Absent (or empty) on older saves ⇒ no rewrites. */
+  memoryEdits?: Record<string, { text: string; source: 'player' | 'ai' }>;
+  /** v2.x memory editing: tombstoned memories — turn ids and manual-memory ids the player removed. A
+   *  tombstone hides the memory and keeps it out of context everywhere, but the underlying summary
+   *  survives, so it is restorable. Absent (or empty) on older saves ⇒ nothing deleted. */
+  memoryDeleted?: string[];
+  /** v2.x memory editing: memories the player wrote by hand. `anchorTurn` is the message-history length
+   *  at creation, which places the note chronologically among the digests. Never judged by the selector —
+   *  a player-written memory rides until deleted. Absent (or empty) on older saves ⇒ none. */
+  memoryNotes?: Array<{ id: string; text: string; anchorTurn: number }>;
 }
 
 /** Per-playthrough Wildcard rolls, frozen in the save. */

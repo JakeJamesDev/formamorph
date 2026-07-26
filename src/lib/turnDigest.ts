@@ -72,6 +72,46 @@ export function applyDigest(history: ChatMessage[], turnId: string, summary: str
 }
 
 /**
+ * Who took part across the last `turns` participation-carrying turns, deduped, most-recent turn first.
+ * The dedup is load-bearing for the recap's now-line, which renders this list verbatim — a character
+ * present for three turns running otherwise reads as "Sarah, Sarah, Sarah present". Turns with no
+ * recorded participants are skipped without consuming the window.
+ */
+export function recentParticipants(history: ChatMessage[], turns: number): string[] {
+  const names = new Set<string>();
+  let seen = 0;
+  for (let i = history.length - 1; i >= 0 && seen < turns; i--) {
+    if (history[i].role !== 'assistant') continue;
+    const parsed = parseTurnContent(history[i].content);
+    if (!parsed || parsed.entities === undefined) continue;
+    for (const name of parsed.entities) names.add(name);
+    seen += 1;
+  }
+  return [...names];
+}
+
+/**
+ * Patch importance ratings onto the assistant turns whose ids match, returning the new history.
+ * Turns absent from the map, and ratings for ids not in the history, are left alone — a verdict that
+ * lands after a rollback simply finds nothing to write. Returns the original array when nothing
+ * matched, so callers can skip a state update.
+ */
+export function applyImportance(history: ChatMessage[], byTurnId: Map<string, number>): ChatMessage[] {
+  if (byTurnId.size === 0) return history;
+  let found = false;
+  const next = history.map((message) => {
+    if (message.role !== 'assistant') return message;
+    const parsed = parseTurnContent(message.content);
+    if (!parsed || !parsed.turnId) return message;
+    const importance = byTurnId.get(parsed.turnId);
+    if (importance === undefined) return message;
+    found = true;
+    return { ...message, content: serializeTurnContent({ ...parsed, importance }) };
+  });
+  return found ? next : history;
+}
+
+/**
  * Pick the `turnId`s of assistant turns due for a character diary entry: those with a stable id and at
  * least one participant (`entities`) that has no diary entry yet. Turns with no participants are skipped
  * (no one to write). Returns ids most-recent-first; the drainer decides which end to process.

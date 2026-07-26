@@ -20,7 +20,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { TokenAutocomplete } from "@/components/TokenAutocomplete";
 import { COMMON_LANGUAGES } from "@/lib/languages";
-import { Send, RefreshCw, Pencil, Languages, Loader2, Headphones, Square, ChevronUp, ChevronDown, X, Download } from "lucide-react";
+import { Send, RefreshCw, Pencil, Languages, Loader2, Headphones, Square, ChevronUp, ChevronDown, X, Download, Trash2 } from "lucide-react";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Progress } from "@/components/ui/progress";
 import { Slider } from "@/components/ui/slider";
@@ -49,12 +49,16 @@ function parseSavedReasoning(content: string): { text: string; ms: number } | nu
   } catch { return null; }
 }
 
-export const LeftPanel = ({ entities, onEntityClick }: {
+export const LeftPanel = ({ entities, onEntityClick, onRegenerateMemory }: {
   entities: Entity[];
   onEntityClick: (entityId: string) => void;
+  /** Re-run the digest prompt for one turn (Memory Manager's regenerate); owned by GameViewer. */
+  onRegenerateMemory?: (turnId: string) => Promise<boolean>;
 }) => {
   // Import systemPrompt from settings context
   const { systemPrompt } = useSettings();
+  // The authored cast, separate from the `entities` prop (authored + runtime-discovered).
+  const { entities: authoredEntities } = useGameData();
   const {
     // Aliased to the viewed-page values so paging back shows that turn's appearance + scene (they equal
     // the live values on the latest page). Body morphs still ride live `bodyMorphValues`, which the
@@ -67,8 +71,28 @@ export const LeftPanel = ({ entities, onEntityClick }: {
     // Page-aware notes: live scratchpad on the current page, that turn's frozen notes on a past page (edit
     // routes to the right place). Notes stay editable on any page.
     viewNotes: playerNotes,
-    setViewNotes: setPlayerNotes
+    setViewNotes: setPlayerNotes,
+    // Runtime-discovered cast: shown with a badge and removable, since the story invents these and an
+    // occasional wrong guess (a place read as a person) needs a way out.
+    setDiscoveredEntities,
+    setSuppressedCharacterNames,
+    setVisibleEntities,
   } = useGameplay();
+  // The discovered character awaiting delete confirmation, or null.
+  const [pendingRemoval, setPendingRemoval] = useState<string | null>(null);
+  // Authored cast only — the panel receives authored + discovered together, and the two need telling
+  // apart to decide what the player may remove.
+  const authoredNames = new Set(authoredEntities.map((e) => e.name));
+  const removeDiscovered = (name: string) => {
+    // Suppression is what makes the deletion stick: without it the next turn naming them promotes
+    // them straight back.
+    setDiscoveredEntities((prev) => prev.filter((d) => d.entity.name !== name));
+    setSuppressedCharacterNames((prev) => (prev.includes(name) ? prev : [...prev, name]));
+    // Also drop them from the live scene list, or the row lingers as a dead, unopenable entry that
+    // no longer resolves to any entity.
+    setVisibleEntities((prev) => prev.filter((se) => se.name !== name));
+    setPendingRemoval(null);
+  };
   const { url: playerModelUrl, resolving: modelResolving } = usePlayerModelUrl(characterData?.playerModelId);
   // First present entity that has an image — shown in the model section's Entities view (the portrait shows
   // whether or not the name is revealed yet).
@@ -119,6 +143,12 @@ export const LeftPanel = ({ entities, onEntityClick }: {
   const devRoute = useDevRoute();
   React.useEffect(() => {
     if (!import.meta.env.DEV) return;
+    // The Memory Manager opens from inside the Memory tab, so route to the tab first — MemoryPanel opens
+    // the modal itself once mounted.
+    if (devRoute?.modal === 'memoryManager') {
+      setLeftTab('memory');
+      return;
+    }
     if (!devRoute?.modal && devRoute?.tab && (GAME_LEFT_PANEL_TABS as readonly string[]).includes(devRoute.tab)) {
       setLeftTab(devRoute.tab);
     }
@@ -227,16 +257,37 @@ export const LeftPanel = ({ entities, onEntityClick }: {
                   );
                   // Show the real name only once revealed; before that, how the player currently knows them.
                   const label = se.revealed ? (entityItem?.name ?? se.name) : (se.alias ?? 'Unknown');
-                  const isDisabled = !entityItem;
+                  // A name the story invented has no entity behind it until (and unless) a description is
+                  // written for it, so it reads as a normal row that simply doesn't open — not as a
+                  // broken one. Only an authored entry we failed to resolve is genuinely disabled.
+                  const isAuthored = authoredNames.has(label);
+                  const isDisabled = !entityItem && isAuthored;
+                  // Anything the story invented is removable, whether or not it got a description.
+                  // Authored characters belong to the world and are never deletable from play.
+                  const isRemovable = !isAuthored;
                   return (
                     <div
                       key={index}
-                      className={`mb-1 flex justify-between items-center p-2 ${
+                      className={`mb-1 flex justify-between items-center gap-2 p-2 ${
                         isDisabled ? 'opacity-50 cursor-not-allowed' : 'hover:bg-muted cursor-pointer'
                       }`}
                       onClick={() => handleEntityListClick(se)}
                     >
-                      <span>{label}</span>
+                      <span className="min-w-0 truncate">{label}</span>
+                      {isRemovable && (
+                        <span className="flex items-center gap-1 shrink-0">
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-6 w-6 text-muted-foreground hover:text-destructive"
+                            aria-label={`Remove ${label}`}
+                            title={`Remove ${label}`}
+                            onClick={(e) => { e.stopPropagation(); setPendingRemoval(label); }}
+                          >
+                            <Trash2 className="h-3.5 w-3.5" />
+                          </Button>
+                        </span>
+                      )}
                     </div>
                   );
                 })
@@ -245,6 +296,14 @@ export const LeftPanel = ({ entities, onEntityClick }: {
               )}
             </div>
           </ScrollArea>
+          <ConfirmDialog
+            open={pendingRemoval !== null}
+            onOpenChange={(o) => { if (!o) setPendingRemoval(null); }}
+            title={`Remove ${pendingRemoval ?? ''}?`}
+            description="This character was invented by the story rather than authored. Removing them takes them out of the scene and stops them being brought back later. Authored characters are unaffected."
+            onConfirm={() => { if (pendingRemoval) removeDiscovered(pendingRemoval); }}
+            onCancel={() => setPendingRemoval(null)}
+          />
         </TabsContent>
 
         <TabsContent value="notes" className="flex-grow overflow-hidden min-h-[100px]">
@@ -264,7 +323,7 @@ export const LeftPanel = ({ entities, onEntityClick }: {
           </div>
         </TabsContent>
         <TabsContent value="memory" className="flex-grow overflow-hidden min-h-[100px]">
-          <MemoryPanel />
+          <MemoryPanel onRegenerateMemory={onRegenerateMemory} />
         </TabsContent>
         <TabsContent value="logs" className="flex-grow overflow-hidden min-h-[100px]">
           <ScrollArea className="h-[calc(100%-1rem)]">
@@ -414,6 +473,7 @@ export const MiddlePanel = ({
     setIsEditMode,
     ttsPlayback,
     setFullMessageHistory,
+    setMemoryEdits,
     playerStats,
     isViewingPast,
     viewChoices: choices,
@@ -680,9 +740,18 @@ export const MiddlePanel = ({
                   }
                 }
                 // Editing the narration invalidates this turn's memory digest + character diaries (both
-                // derive from the old text); drop them so the drainers rebuild from the edit.
+                // derive from the old text); drop them so the drainers rebuild from the edit. The player's
+                // own rewrite of that memory goes too — it describes prose that no longer exists, and
+                // leaving it would mask the rebuilt digest forever.
                 if (editedTurnId) {
-                  return clearTurnDerived(updatedHistory, editedTurnId, { diaries: true }) ?? updatedHistory;
+                  const cleared = editedTurnId;
+                  setMemoryEdits((edits) => {
+                    if (!edits[cleared]) return edits;
+                    const next = { ...edits };
+                    delete next[cleared];
+                    return next;
+                  });
+                  return clearTurnDerived(updatedHistory, cleared, { diaries: true }) ?? updatedHistory;
                 }
                 return updatedHistory;
               });

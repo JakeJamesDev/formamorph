@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import type { AITurnResult, ChatMessage } from '@/types';
-import { parseTurnContent, serializeTurnContent, selectDueDigests, applyDigest, clearTurnDerived, selectDueDiaries, pendingDiaryNames, applyDiary, collectCharacterDiary } from './turnDigest';
+import { parseTurnContent, serializeTurnContent, selectDueDigests, applyDigest, clearTurnDerived, selectDueDiaries, pendingDiaryNames, applyDiary, collectCharacterDiary, recentParticipants, applyImportance } from './turnDigest';
 
 const user = (content: string): ChatMessage => ({ role: 'user', content });
 
@@ -245,5 +245,49 @@ describe('collectCharacterDiary', () => {
   it('returns empty when the character has no entries', () => {
     const history = [...pair('a1', { turnId: 't1', diaries: { Kael: 'I watched.' } })];
     expect(collectCharacterDiary(history, 'Mira', 5)).toEqual([]);
+  });
+});
+
+describe('recentParticipants', () => {
+  const turn = (entities?: string[]) => [user('a'), assistant({ turnId: 't', narration: 'n', entities })];
+
+  it('dedupes a character present across several turns', () => {
+    // The now-line renders this verbatim; the real session produced
+    // "Dean Wolfram, Sarah, Dean Wolfram, Sarah, Dean Wolfram, Sarah present".
+    const history = [
+      ...turn(['Dean Wolfram', 'Sarah']),
+      ...turn(['Dean Wolfram', 'Sarah']),
+      ...turn(['Dean Wolfram', 'Sarah']),
+    ];
+    expect(recentParticipants(history, 3)).toEqual(['Dean Wolfram', 'Sarah']);
+  });
+
+  it('orders most-recent turn first and unions across the window', () => {
+    const history = [...turn(['Older']), ...turn(['Newer'])];
+    expect(recentParticipants(history, 2)).toEqual(['Newer', 'Older']);
+  });
+
+  it('honors the window and skips turns with no recorded participants', () => {
+    const history = [...turn(['Outside']), ...turn(['Inside'])];
+    expect(recentParticipants(history, 1)).toEqual(['Inside']);
+    expect(recentParticipants([...turn(undefined), ...turn(['Only'])], 1)).toEqual(['Only']);
+  });
+});
+
+describe('applyImportance', () => {
+  it('writes ratings onto matching turns and leaves the rest untouched', () => {
+    const history = [
+      user('a'), assistant({ turnId: 't1', narration: 'n1' }),
+      user('b'), assistant({ turnId: 't2', narration: 'n2' }),
+    ];
+    const next = applyImportance(history, new Map([['t1', 3]]));
+    expect(parseTurnContent(next[1].content)?.importance).toBe(3);
+    expect(parseTurnContent(next[3].content)?.importance).toBeUndefined();
+  });
+
+  it('returns the original array when nothing matched, so callers can skip a state update', () => {
+    const history = [user('a'), assistant({ turnId: 't1', narration: 'n1' })];
+    expect(applyImportance(history, new Map([['gone', 2]]))).toBe(history);
+    expect(applyImportance(history, new Map())).toBe(history);
   });
 });

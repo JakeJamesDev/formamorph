@@ -7,6 +7,8 @@ import {
   scoreTurnDigest,
   selectRehydrations,
   buildBandedHistory,
+  importanceFactors,
+  IMPORTANCE_SPREAD,
   type BandTurn,
 } from './turnBanding';
 
@@ -42,6 +44,13 @@ describe('parseTurns', () => {
     expect(turns).toHaveLength(2);
     expect(turns[0]).toMatchObject({ turnId: 't1', gameText: 'g1', summary: 's1' });
     expect(turns[1]).toMatchObject({ turnId: 't2', gameText: 'g2', summary: undefined });
+  });
+
+  it('carries the measured turn duration through, for the clock', () => {
+    const turns = parseTurns(pair('a1', { turnId: 't1', narration: 'g1', timeDelta: 8 }));
+    expect(turns[0].timeDelta).toBe(8);
+    // A pre-clock turn stays undefined rather than defaulting here — the resolver charges the flat hour.
+    expect(parseTurns(pair('a2', { turnId: 't2', narration: 'g2' }))[0].timeDelta).toBeUndefined();
   });
 
   it('skips unparseable assistant turns', () => {
@@ -393,6 +402,120 @@ describe('buildBandedHistory always-on band cap', () => {
     });
     expect(survivors(recap)).toEqual(['D1', 'D5', 'D6']); // floor of 3, never fewer
   });
+
+  it('reports the surviving band ids so the caller can feed them back as sticky', () => {
+    const { bandTurnIds } = buildBandedHistory({
+      ...base, turns: sixTurns(), bandCap: 4,
+      relevanceScores: scores({ t1: 0.0, t2: 0.9, t3: 0.1, t4: 0.2, t5: 0.0, t6: 0.0 }),
+    });
+    expect(bandTurnIds).toEqual(['t1', 't2', 't5', 't6']);
+  });
+});
+
+describe('importanceFactors', () => {
+  it('spreads by RANK, not by raw value — so a model-relative scale still orders correctly', () => {
+    // Cydonia rates in a compressed band (2 vs 3), the cloud tier in a wide one (1 vs 3). Ranking
+    // must produce the SAME factors from both, which is the whole reason it exists.
+    const compressed = importanceFactors(['a', 'b'], new Map([['a', 2], ['b', 3]]));
+    const wide = importanceFactors(['a', 'b'], new Map([['a', 1], ['b', 3]]));
+    expect(compressed.get('a')).toBeCloseTo(1 / IMPORTANCE_SPREAD);
+    expect(compressed.get('b')).toBeCloseTo(1);
+    expect([...compressed.entries()]).toEqual([...wide.entries()]);
+  });
+
+  it('places an unrated memory at the midpoint, never at the bottom', () => {
+    const f = importanceFactors(['lo', 'mid', 'hi'], new Map([['lo', 1], ['hi', 3]]));
+    expect(f.get('mid')!).toBeGreaterThan(f.get('lo')!);
+    expect(f.get('mid')!).toBeLessThan(f.get('hi')!);
+  });
+
+  it('collapses to a flat 1 when nothing distinguishes the band', () => {
+    const allSame = importanceFactors(['a', 'b'], new Map([['a', 2], ['b', 2]]));
+    const none = importanceFactors(['a', 'b'], new Map());
+    const off = importanceFactors(['a', 'b'], null);
+    for (const f of [allSame, none, off]) expect([...f.values()]).toEqual([1, 1]);
+  });
+});
+
+describe('buildBandedHistory importance ranking', () => {
+  const RECAP = 'Recap the story so far.';
+  const base = { contextWindow: 1_000_000, promptTokens: 0, maxTokens: 0, verbatimFloor: 0, rehydrateCap: 0, actionEntities: [] as string[], keywords: [] as string[], recapPrompt: RECAP };
+  const scores = (map: Record<string, number>) => new Map(Object.entries(map));
+  const turnsWith = (importance: Record<string, number | undefined>) =>
+    parseTurns(Array.from({ length: 6 }, (_, i) => pair(`a${i + 1}`, {
+      turnId: `t${i + 1}`, narration: `g${i + 1}`, summary: `D${i + 1}`, importance: importance[`t${i + 1}`],
+    })).flat());
+
+  it('keeps the pivotal memory over the slightly more topical one', () => {
+    // t4 is marginally more relevant (0.40 vs 0.36) but rated 1; t3 is rated 3. This is the
+    // turn-96 shape from the findings doc: a comfort scene out-matching the arc it belongs to.
+    const args = { ...base, bandCap: 4, relevanceScores: scores({ t1: 0.9, t2: 0.0, t3: 0.36, t4: 0.40, t5: 0.9, t6: 0.9 }) };
+    const { bandTurnIds } = buildBandedHistory({ ...args, turns: turnsWith({ t3: 3, t4: 1 }) });
+    expect(bandTurnIds).toContain('t3');
+    expect(bandTurnIds).not.toContain('t4');
+    // Same relevance, no ratings → the topical one wins, proving importance is what flipped it.
+    const unrated = buildBandedHistory({ ...args, turns: turnsWith({}) });
+    expect(unrated.bandTurnIds).toContain('t4');
+    expect(unrated.bandTurnIds).not.toContain('t3');
+  });
+
+  it('does not let importance override a large relevance gap', () => {
+    const { bandTurnIds } = buildBandedHistory({
+      ...base, bandCap: 4, turns: turnsWith({ t3: 3, t4: 1 }),
+      relevanceScores: scores({ t1: 0.9, t2: 0.0, t3: 0.10, t4: 0.90, t5: 0.9, t6: 0.9 }),
+    });
+    expect(bandTurnIds).toContain('t4');
+  });
+});
+
+describe('buildBandedHistory sticky band membership', () => {
+  const RECAP = 'Recap the story so far.';
+  const base = { contextWindow: 1_000_000, promptTokens: 0, maxTokens: 0, verbatimFloor: 0, rehydrateCap: 0, actionEntities: [] as string[], keywords: [] as string[], recapPrompt: RECAP };
+  const sixTurns = () =>
+    parseTurns(Array.from({ length: 6 }, (_, i) => pair(`a${i + 1}`, { turnId: `t${i + 1}`, narration: `g${i + 1}`, summary: `D${i + 1}` })).flat());
+  const scores = (map: Record<string, number>) => new Map(Object.entries(map));
+
+  // t3 is the incumbent; t4 outscores it raw (0.40 vs 0.35) but by less than STICKY_BONUS, so the
+  // incumbent must hold. This is the churn the feature exists to stop: without hysteresis the band
+  // flips on a margin this small every turn (measured 57% of free slots/turn on a real session).
+  const contested = {
+    ...base, turns: sixTurns(), bandCap: 4,
+    relevanceScores: scores({ t1: 0.9, t2: 0.0, t3: 0.35, t4: 0.40, t5: 0.9, t6: 0.9 }),
+  };
+
+  it('holds an incumbent that a challenger beats by less than the margin', () => {
+    const { bandTurnIds } = buildBandedHistory({ ...contested, stickyIds: new Set(['t3']) });
+    expect(bandTurnIds).toContain('t3');
+    expect(bandTurnIds).not.toContain('t4');
+  });
+
+  it('drops that same incumbent when it is not sticky — proving the bonus is what held it', () => {
+    const { bandTurnIds } = buildBandedHistory({ ...contested, stickyIds: null });
+    expect(bandTurnIds).toContain('t4');
+    expect(bandTurnIds).not.toContain('t3');
+  });
+
+  it('still evicts an incumbent a challenger beats by more than the margin', () => {
+    // 0.9 vs 0.35 × 1.25 = 0.4375 — a real improvement, not noise.
+    const { bandTurnIds } = buildBandedHistory({
+      ...base, turns: sixTurns(), bandCap: 4, stickyIds: new Set(['t3']),
+      relevanceScores: scores({ t1: 0.9, t2: 0.0, t3: 0.35, t4: 0.9, t5: 0.9, t6: 0.9 }),
+    });
+    expect(bandTurnIds).toContain('t4');
+    expect(bandTurnIds).not.toContain('t3');
+  });
+
+  it('never lets stickiness override the protected ends or act unscored', () => {
+    // t2 sticky and top-scored cannot save t1/t5/t6 from being protected regardless.
+    const { bandTurnIds } = buildBandedHistory({
+      ...base, turns: sixTurns(), bandCap: 1, stickyIds: new Set(['t2']),
+      relevanceScores: scores({ t1: 0, t2: 0.9, t3: 0, t4: 0, t5: 0, t6: 0 }),
+    });
+    expect(bandTurnIds).toEqual(['t1', 't5', 't6']);
+    // Unscored: hysteresis has nothing to rank, so the band is untouched.
+    const unscored = buildBandedHistory({ ...base, turns: sixTurns(), bandCap: 3, stickyIds: new Set(['t3']) });
+    expect(unscored.bandTurnIds).toHaveLength(6);
+  });
 });
 
 describe('buildBandedHistory semantic rehydration', () => {
@@ -455,5 +578,59 @@ describe('buildBandedHistory semantic rehydration', () => {
     const capped = buildBandedHistory({ ...base, turns, maxRehydrations: 1, semanticRehydrate: ['t2', 't3'] });
     expect(capped.counts.turnsRehydrated).toBe(1);
     expect(capped.messages.some((m) => m.content.includes('ALSO-SMALL'))).toBe(false);
+  });
+
+});
+
+describe('buildBandedHistory in-world time stamps', () => {
+  const RECAP = 'Recap the story so far.';
+  const base = { contextWindow: WIDE, promptTokens: 0, maxTokens: 0, verbatimFloor: 2, rehydrateCap: WIDE, actionEntities: [] as string[], recapPrompt: RECAP };
+  const stamp = (pos: number) => `[T${pos}]`;
+  const stamped = (extra: Parameters<typeof buildBandedHistory>[0]['notes'] = []) => {
+    const turns = parseTurns([
+      ...pair('a1', { turnId: 't1', narration: 'g1', summary: 's1' }),
+      ...pair('a2', { turnId: 't2', narration: 'g2', summary: 's2' }),
+      ...pair('a3', { turnId: 't3', narration: 'g3', summary: 's3' }),
+      ...pair('a4', { turnId: 't4', narration: 'g4', summary: 's4' }),
+    ]);
+    return { turns, notes: extra };
+  };
+
+  it('prefixes each banded digest with its stamp, leaving the verbatim floor untouched', () => {
+    const { turns } = stamped();
+    const { messages, recap } = buildBandedHistory({ ...base, turns, keywords: [], stamp });
+    // t1 is the assistant at index 1, t2 at index 3.
+    expect(messages[1].content).toBe('[T1] s1 [T3] s2');
+    expect(recap).toContain('[T1] s1');
+    // The floor is the live scene, not a memory — it is never stamped.
+    expect(messages.slice(2).every((m) => !m.content.includes('[T'))).toBe(true);
+  });
+
+  it('stamps a player-written note at its anchor, like any other memory', () => {
+    const { turns, notes } = stamped([{ id: 'n1', text: 'note', anchorTurn: 2 }]);
+    const { messages } = buildBandedHistory({ ...base, turns, keywords: [], stamp, notes });
+    expect(messages[1].content).toBe('[T1] s1 [T2] note [T3] s2');
+  });
+
+  it('leaves the band byte-identical when no stamp is supplied', () => {
+    const { turns } = stamped();
+    const plain = buildBandedHistory({ ...base, turns, keywords: [] });
+    expect(plain.messages[1].content).toBe('s1 s2');
+    expect(plain.counts.bandTokens).toBeLessThan(
+      buildBandedHistory({ ...base, turns, keywords: [], stamp }).counts.bandTokens,
+    );
+  });
+
+  it('costs the stamps against the band budget rather than overflowing silently', () => {
+    const { turns } = stamped();
+    // A window sized to fit the UNSTAMPED band exactly (margin floors at 256). Stamps make the band
+    // bigger, so the stamped run must drop a digest at that same window. Were the stamps uncosted the
+    // stamped band would keep every digest and silently overflow the window.
+    const plain = buildBandedHistory({ ...base, turns, keywords: [] });
+    const exact = plain.counts.floorTokens + plain.counts.bandTokens + 256;
+    expect(buildBandedHistory({ ...base, turns, keywords: [], contextWindow: exact }).counts.turnsBanded)
+      .toBe(plain.counts.turnsBanded);
+    expect(buildBandedHistory({ ...base, turns, keywords: [], stamp, contextWindow: exact }).counts.turnsBanded)
+      .toBeLessThan(plain.counts.turnsBanded);
   });
 });

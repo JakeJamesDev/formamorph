@@ -32,11 +32,11 @@ describe('variable lookup by token (base or variant)', () => {
   it('resolves any variant token to its base variable', () => {
     expect(variableForToken('<LOCATION|reachable>')?.label).toBe('Location');
     const loc = variableForToken('<LOCATION|summary>')!;
-    expect(variableAxes(loc).find((a) => a.id === 'content')?.options).toHaveLength(2);
+    expect(variableAxes(loc).find((a) => a.id === 'content')?.options.map((o) => o.label)).toEqual(['Full', 'Summary', 'Name']);
   });
 
   it('exposes the variant label for the chip (null for the full form)', () => {
-    expect(variantLabelForToken('<LOCATION|sublocations>')).toBe('Sub-locations');
+    expect(variantLabelForToken('<LOCATION|sublocations>')).toBe('Sub');
     expect(variantLabelForToken('<LOCATION|summary>')).toBe('Summary');
     expect(variantLabelForToken('<LOCATION>')).toBeNull();
   });
@@ -106,15 +106,18 @@ describe('multi-axis variants (Stats: content × format)', () => {
     expect(variantLabelForToken('<TRAITS DESCRIPTION>')).toBeNull();
   });
 
-  it('gives Location a scope axis (Current/Sub-locations/Reachable/Destinations) plus content and format', () => {
+  it('gives Location a scope axis (Current/Sub/Reachable/Destinations) plus content and format', () => {
     const LOC = variableForToken('<LOCATION>')!;
     expect(variableAxes(LOC).map((a) => a.id)).toEqual(['scope', 'content', 'format']);
     expect(variantLabelForToken('<LOCATION|summary.markdown>')).toBe('Summary, Markdown');
     expect(variantLabelForToken('<LOCATION|reachable.summary.markdown>')).toBe('Reachable, Summary, Markdown');
     expect(variantLabelForToken('<LOCATION|destinations>')).toBe('Destinations');
+    // The Name content option — the bare-name rendering the now-line message uses mid-sentence.
+    expect(variantLabelForToken('<LOCATION|name>')).toBe('Name');
+    expect(variantLabelForToken('<LOCATION|sublocations.name>')).toBe('Sub, Name');
   });
 
-  it('gives Entities a scope axis (Here/Sub-locations/Reachable) plus content and format', () => {
+  it('gives Entities a scope axis (Here/Sub/Reachable) plus content and format', () => {
     const ENT = variableForToken('<ENTITIES>')!;
     expect(variableAxes(ENT).map((a) => a.id)).toEqual(['scope', 'content', 'format']);
     expect(variantLabelForToken('<ENTITIES|reachable.summary.markdown>')).toBe('Reachable, Summary, Markdown');

@@ -1,0 +1,66 @@
+[
+  {
+    "id": "exchange",
+    "why": "a few words traded, nothing else — minutes",
+    "action": "I ask her which road leads to the mill.",
+    "narration": "She barely looks up from the sack she is tying off. \"Left at the split stone,\" she says, \"then keep the water on your right.\" A cart creaks past behind you. She goes back to her knot, and that is the end of it.",
+    "min": 0,
+    "max": 0.35
+  },
+  {
+    "id": "walk",
+    "why": "crossing a town on foot — most of an hour",
+    "action": "I walk across town to the harbor office.",
+    "narration": "You take the long way, through the market and down the stepped lane where the gulls argue over fish heads. The crowds thin as the streets tilt toward the water. By the time the harbor office comes into view, the light has shifted and your legs have that dull ache that comes from cobbles. You push the door open.",
+    "min": 0.4,
+    "max": 2
+  },
+  {
+    "id": "meal",
+    "why": "a sit-down meal and conversation — a couple of hours",
+    "action": "I sit down to eat with them.",
+    "narration": "The stew comes out in a chipped pot and keeps coming. Someone refills your cup twice without asking. Talk wanders from the harvest to an old argument about a boundary stone and back again, and nobody seems in any hurry. The fire burns down to a red bed before anyone thinks about standing up.",
+    "min": 1,
+    "max": 5
+  },
+  {
+    "id": "sleep",
+    "why": "a full night's rest — hours, not minutes",
+    "action": "I lie down and sleep.",
+    "narration": "The straw is coarse but the blanket is thick, and you are asleep before you have finished being uncomfortable. You do not dream, or do not remember it. When you open your eyes the shutters have gone pale at the edges and somewhere below a door is banging in the wind.",
+    "min": 5,
+    "max": 12
+  },
+  {
+    "id": "fight",
+    "why": "a short violent scuffle — minutes at most",
+    "action": "I block the strike and drive him back.",
+    "narration": "The blow lands hard enough to numb your forearm. You shove into him before he can set his feet, and the two of you go crashing against the barrels. He swings again, wide, and you get inside it. Then he is down, breathing hard, and you are standing over him with your heart going like a hammer.",
+    "min": 0,
+    "max": 0.5
+  },
+  {
+    "id": "stated-skip",
+    "why": "the passage states the elapsed time outright — it must be used, not estimated",
+    "action": "I settle in and wait for the thaw.",
+    "narration": "Three weeks pass. The snow comes twice more and each time gives up a little faster. You mend what needs mending, learn the names of everyone on the lane, and grow used to the smell of woodsmoke in your clothes. When the river finally breaks, the sound of it wakes half the village.",
+    "min": 336,
+    "max": 672
+  },
+  {
+    "id": "stated-short",
+    "why": "a stated SHORT interval — the guard against reading every stated time as a long skip",
+    "action": "I wait for her to come back.",
+    "narration": "She holds up a hand and disappears into the back room. You count the knots in the floorboards. Perhaps ten minutes later she returns with a flat tin box under one arm and an apologetic look.",
+    "min": 0.08,
+    "max": 0.5
+  },
+  {
+    "id": "journey",
+    "why": "an overland journey — days",
+    "action": "I set out for the capital.",
+    "narration": "The road runs east and keeps running. You sleep the first night under a hedge and the second in a barn that costs you a coin and an hour of listening to a farmer's grievances. The country flattens, then rises. On the fourth morning the capital's smoke smudges the horizon ahead of you.",
+    "min": 48,
+    "max": 168
+  }
+]

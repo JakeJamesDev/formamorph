@@ -39,7 +39,7 @@ export function buildIncrementalMilestoneUserMessage(keptOld: string[], fresh: s
   if (keptOld.length === 0) {
     return `New moments to judge, oldest first:\n${freshList}\n\nReply with one line:\nKeep: the numbers worth remembering, comma-separated, or "none".`;
   }
-  return `Moments already in memory, oldest first:\n${oldList}\n\nNew moments to judge:\n${freshList}\n\nReply with two lines:\nKeep: the numbers of the NEW moments worth remembering, comma-separated, or "none".\nForget: the numbers of already-kept moments whose outcome a new moment now carries, or "none".`;
+  return `Moments already in memory, oldest first:\n${oldList}\n\nNew moments to judge:\n${freshList}\n\nReply with three lines:\nKeep: the numbers of the NEW moments worth remembering, comma-separated, or "none".\nForget: the numbers of already-kept moments whose outcome a new moment now carries, or "none".\nWeight: each kept number with its weight, like "<number>=<weight>", comma-separated, or "none".`;
 }
 
 /** One incremental verdict: zero-based indices into the fresh list to keep, and zero-based indices
@@ -47,6 +47,12 @@ export function buildIncrementalMilestoneUserMessage(keptOld: string[], fresh: s
 export interface IncrementalVerdict {
   keepFresh: Set<number>;
   forgetOld: Set<number>;
+  /** Importance per kept fresh entry (zero-based index into the fresh list) on the prompt's 1-3
+   *  scale. Sparse: a rating the model omitted is simply absent and reads as neutral downstream.
+   *  The absolute value is NOT comparable across models — the probe measured the same prompt
+   *  separating must-keeps from drops by 0.64 on the cloud tier and 0.26 on Cydonia — so consumers
+   *  must rank-normalize rather than use it directly (see turnBanding's importanceFactor). */
+  weights: Map<number, number>;
 }
 
 /** Parse an incremental reply. Labeled segments win even inside prose — models append reasoning on
@@ -84,7 +90,16 @@ export function parseIncrementalMilestoneReply(
     const oldN = Number(m[1]);
     if (oldN >= 1 && oldN <= oldCount && keepFresh.has(Number(m[2]) - oldCount - 1)) forgetOld.add(oldN - 1);
   }
-  return { keepFresh, forgetOld };
+  // Weight line: only ratings for entries actually kept are meaningful, so unkept and out-of-range
+  // citations are discarded rather than stored. Measured coverage is ~0.80 — an absent rating is
+  // normal, not an error, and stays absent so consumers can treat it as neutral.
+  const weights = new Map<number, number>();
+  const weightLine = reply.match(/weight\s*:([^\n]*)/i);
+  for (const m of (weightLine?.[1] ?? '').matchAll(/(\d+)\s*=\s*([123])\b/g)) {
+    const idx = Number(m[1]) - oldCount - 1;
+    if (keepFresh.has(idx)) weights.set(idx, Number(m[2]));
+  }
+  return { keepFresh, forgetOld, weights };
 }
 
 /** Fold one incremental verdict into the stored selection. `shownOldIds` are the kept-old turn ids

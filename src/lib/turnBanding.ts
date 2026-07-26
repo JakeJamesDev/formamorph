@@ -1,4 +1,5 @@
 import type { ChatMessage, DictionaryEntry } from '@/types';
+import type { MemoryNote } from './memoryOverrides';
 import { parseTurnContent } from './turnDigest';
 import { getActivatedDictionary, parseKeywords } from './dictionaryUtils';
 import { estimateTokens } from './memoryUtils';
@@ -34,6 +35,8 @@ export interface BandTurn {
   gameText: string;
   summary?: string;
   entities?: string[]; // participants recorded on this turn (drives entity-based rehydration)
+  importance?: number; // 1-3, the selector's write-time judgment; model-relative, so ranked not read
+  timeDelta?: number; // in-world hours this turn consumed (lib/gameClock); absent = the flat hour
 }
 
 /** Per-layer token spend and turn tallies for one banding run, for the debug/telemetry view.
@@ -57,6 +60,9 @@ export interface BandCounts {
 
 export interface BandResult {
   messages: ChatMessage[];
+  /** The turn ids that survived into the digest band, chronological. Feed back as `stickyIds` next
+   *  turn to give incumbents hysteresis. Empty when there is no band. */
+  bandTurnIds: string[];
   /** The summarized-older turns as a labeled recap block (empty when no band), for consumers that want just
    *  that context. It is NOT part of `messages` — there the band rides as the recap exchange; this is a
    *  separate newline-joined string only the precall planner uses. */
@@ -68,6 +74,45 @@ export interface BandResult {
  *  scene lead-in must survive however low it scores, or a topically-hot old memory can evict the turn
  *  the scene is actually continuing from (probe: semantic-band control case). */
 export const RANKED_RECENT_IMMUNE = 2;
+
+/** Hysteresis for ranked dropping: a memory already in last turn's band scores as if multiplied by
+ *  this, so a challenger must be meaningfully better to evict it rather than merely luckier. Without
+ *  it the band is re-drawn from scratch every turn against a fresh action vector — measured at 57%
+ *  of the free slots replaced per turn across a real 50-turn export, which is churn, not memory
+ *  (docs-internal/long-session-recall-findings.md item 1a). At the 40-turn relevance half-life this
+ *  margin is worth ~13 turns of age advantage. Tunable: the value wants real-session churn numbers,
+ *  not a probe. */
+export const STICKY_BONUS = 1.25;
+
+/** Spread of the importance multiplier: the least important memory in the band ranks at 1/IMPORTANCE_SPREAD
+ *  of the most important, all else equal. Importance is applied as a WITHIN-BAND RANK, never as the raw
+ *  1-3 rating, because the rating's scale is model-relative — the same prompt separated must-keeps from
+ *  drops by 0.64 on the cloud tier and 0.26 on Cydonia (milestone-select-probe, --prompt weight). Ranking
+ *  keeps only the ordering, which was correct on both tiers, and discards the magnitude, which was not.
+ *  Chosen above STICKY_BONUS so a genuinely pivotal memory can still displace a merely topical incumbent. */
+export const IMPORTANCE_SPREAD = 1.6;
+
+/** Map raw importance ratings to a multiplier in [1/IMPORTANCE_SPREAD, 1] by rank within the band.
+ *  Unrated memories (the model omits ~1 in 5) sit at the neutral midpoint rather than the bottom, so an
+ *  absent rating never costs a memory its slot. All-equal or all-absent ratings collapse to a flat 1 —
+ *  the exact pre-feature ranking. */
+export function importanceFactors(ids: string[], importance: Map<string, number> | null | undefined): Map<string, number> {
+  const flat = new Map(ids.map((id) => [id, 1]));
+  if (!importance) return flat;
+  const rated = ids.map((id) => importance.get(id)).filter((v): v is number => v !== undefined);
+  const distinct = [...new Set(rated)].sort((a, b) => a - b);
+  if (distinct.length < 2) return flat; // nothing to order by
+  const lo = 1 / IMPORTANCE_SPREAD;
+  const span = 1 - lo;
+  const out = new Map<string, number>();
+  for (const id of ids) {
+    const v = importance.get(id);
+    // Rank position in [0,1]; unrated sits at the midpoint.
+    const pos = v === undefined ? 0.5 : distinct.indexOf(v) / (distinct.length - 1);
+    out.set(id, lo + span * pos);
+  }
+  return out;
+}
 
 /** Common words that carry no retrieval signal; dropped from lexical keywords (1–2 char words are
  *  already excluded by the length floor). */
@@ -87,18 +132,41 @@ function pairTokenCost(turn: BandTurn): number {
   return estimateTokens(JSON.stringify([turn.userMsg, assistant]).length);
 }
 
+/** The band body's pieces in chronological order: each surviving digest at its turn's position, each
+ *  player-written note at its anchor. A note anchored past the last banded turn lands at the end — the
+ *  standing block immediately before the verbatim floor, which is where a note written this scene
+ *  belongs. Notes are never trimmed: they aren't band turns, so the budget trimmer can't see them. */
+/** A stamp resolver over the same position domain the pieces sort by (see lib/gameClock). */
+export type BandStamp = (pos: number) => string;
+
+function bandPieces(turns: BandTurn[], notes: MemoryNote[] = [], stamp?: BandStamp): string[] {
+  const pieces: Array<{ pos: number; order: number; text: string }> = [];
+  for (const t of turns) pieces.push({ pos: t.index, order: 0, text: (t.summary || '').trim() });
+  // order 1 breaks a tie toward the note: it was written after that turn committed.
+  for (const n of notes) pieces.push({ pos: n.anchorTurn, order: 1, text: (n.text || '').trim() });
+  return pieces
+    .sort((a, b) => a.pos - b.pos || a.order - b.order)
+    .filter((p) => p.text)
+    // The in-world time label leads each memory so the model reads when before what. A note is stamped
+    // like a digest — it sits at an anchor in the same chronology and reads as one.
+    .map((p) => {
+      const label = stamp?.(p.pos)?.trim();
+      return label ? `${label} ${p.text}` : p.text;
+    });
+}
+
 /** The digests joined into the recap exchange's assistant reply. Space-joined — the exact merged form
  *  the digest-framing probe validated (newline-join is untested). */
-function mergedBandText(turns: BandTurn[]): string {
-  return turns.map((t) => (t.summary || '').trim()).filter(Boolean).join(' ');
+function mergedBandText(turns: BandTurn[], notes: MemoryNote[] = [], stamp?: BandStamp): string {
+  return bandPieces(turns, notes, stamp).join(' ');
 }
 
 /** The token cost of the whole digest band as it actually rides: one recap-question user line plus the
- *  merged digests (and the now-line closer, when set) as the assistant reply. 0 when the band is empty
- *  (no exchange is emitted). */
-function bandExchangeCost(turns: BandTurn[], recapPrompt: string, nowLine?: string): number {
-  if (turns.length === 0) return 0;
-  const body = mergedBandText(turns);
+ *  merged digests (and the now-line closer, when set) as the assistant reply. 0 when there is nothing to
+ *  say — no surviving digest and no note (no exchange is emitted). */
+function bandExchangeCost(turns: BandTurn[], recapPrompt: string, nowLine?: string, notes: MemoryNote[] = [], stamp?: BandStamp): number {
+  const body = mergedBandText(turns, notes, stamp);
+  if (!body) return 0;
   const pair: ChatMessage[] = [
     { role: 'user', content: recapPrompt },
     { role: 'assistant', content: nowLine ? `${body}\n\n${nowLine}` : body },
@@ -106,12 +174,9 @@ function bandExchangeCost(turns: BandTurn[], recapPrompt: string, nowLine?: stri
   return estimateTokens(JSON.stringify(pair).length);
 }
 
-/** Join turns' summaries into the recap body (chronological, one turn per join). */
-function buildBandText(turns: BandTurn[]): string {
-  return turns
-    .map((t) => (t.summary || '').trim())
-    .filter(Boolean)
-    .join('\n');
+/** Join the band body into the planner's recap block (chronological, one piece per line). */
+function buildBandText(turns: BandTurn[], notes: MemoryNote[] = [], stamp?: BandStamp): string {
+  return bandPieces(turns, notes, stamp).join('\n');
 }
 
 /** Walk the flat history in user→assistant pairs and parse each assistant turn's JSON. Unparseable or
@@ -132,21 +197,35 @@ export function parseTurns(history: ChatMessage[]): BandTurn[] {
       gameText: parsed.narration ?? '',
       summary: parsed.summary,
       entities: parsed.entities,
+      importance: parsed.importance,
+      timeDelta: parsed.timeDelta,
     });
   }
   return turns;
 }
 
 /** Legacy assembly: pack recent turns verbatim newest-first until the budget runs out, dropping the
- *  rest. Returned chronological. Used when banding is off — kept here so the off path is testable too. */
+ *  rest. Returned chronological. Used when banding is off — kept here so the off path is testable too.
+ *
+ *  Player-written notes still ride with banding off: with no band to anchor into, chronology has nothing
+ *  to mean, so they lead as one standing block ahead of the verbatim history. Their cost comes off the
+ *  budget first — a note is player intent and outranks an extra old turn. */
 export function buildVerbatimHistory(
   turns: BandTurn[],
   contextWindow: number,
   promptTokens: number,
   maxTokens: number,
+  notes: MemoryNote[] = [],
+  recapPrompt = '',
 ): ChatMessage[] {
   const margin = Math.max(256, Math.round(contextWindow * 0.05));
-  const budget = Math.max(0, contextWindow - promptTokens - maxTokens - margin);
+  let budget = Math.max(0, contextWindow - promptTokens - maxTokens - margin);
+  const noteBody = notes.map((n) => (n.text || '').trim()).filter(Boolean).join(' ');
+  const lead: ChatMessage[] = [];
+  if (noteBody && recapPrompt) {
+    lead.push({ role: 'user', content: recapPrompt }, { role: 'assistant', content: noteBody });
+    budget = Math.max(0, budget - estimateTokens(JSON.stringify(lead).length));
+  }
   const out: ChatMessage[] = [];
   let used = 0;
   for (let i = turns.length - 1; i >= 0; i--) {
@@ -155,7 +234,7 @@ export function buildVerbatimHistory(
     out.unshift(turns[i].userMsg, { role: 'assistant', content: turns[i].gameText });
     used += cost;
   }
-  return out;
+  return [...lead, ...out];
 }
 
 /** Significant keywords from `text` (lowercased, length ≥ 3, minus stopwords) unioned with the
@@ -250,6 +329,10 @@ export function buildBandedHistory(args: {
    *  feature never promises); protected ends (opening + newest RANKED_RECENT_IMMUNE) can't drop, so
    *  an effective floor of 1 + RANKED_RECENT_IMMUNE applies. 0/null/absent = no cap. */
   bandCap?: number | null;
+  /** Last turn's band membership (`BandResult.bandTurnIds`). Members rank as if scored STICKY_BONUS×
+   *  higher, so the band drifts instead of being re-drawn every turn. Only acts in scored mode, and
+   *  never overrides the protected ends. Null/absent/empty = no hysteresis, the pre-feature path. */
+  stickyIds?: Set<string> | null;
   /** Semantic rehydration (roadmap step 2): the turnIds worth restoring to full text for this action,
    *  best-first, already threshold-gated and near-duplicate-filtered by lib/semanticRehydration. The
    *  band takes as many as fit `rehydrateCap` tokens (up to `maxRehydrations`), removes them from the
@@ -259,10 +342,20 @@ export function buildBandedHistory(args: {
   /** The framed exchange's user line ("Recall the earlier scene…"); required when semanticRehydrate
    *  is non-empty. */
   rehydratePrompt?: string;
+  /** Player-written memories (lib/memoryOverrides), tombstones already removed. They ride in the recap
+   *  body at their anchor, read to the model exactly like a digest, and are never judged or trimmed —
+   *  they leave only when the player deletes them. Absent/empty = the pre-feature body. */
+  notes?: MemoryNote[];
+  /** In-world time labels for the digest band: maps a memory's position to a stamp like
+   *  `[Day 3, evening — two days ago]`, prefixed to each piece so the model reads when before what
+   *  (lib/gameClock). Costed with the band, so a stamped band is trimmed against its real size. The
+   *  verbatim floor is never stamped — that is the live scene, not a memory. Absent = unstamped, the
+   *  exact pre-feature body. */
+  stamp?: BandStamp;
 }): BandResult {
   // `keywords` and `actionEntities` are intentionally not destructured: lexical rehydration stays
   // disabled (see step 3). Kept in the arg type so callers compile unchanged.
-  const { turns, contextWindow, promptTokens, maxTokens, verbatimFloor, milestoneDrop = null, recapPrompt, nowLine, relevanceScores = null, bandCap = null, semanticRehydrate = null, rehydratePrompt = '', rehydrateCap, maxRehydrations = Infinity } = args;
+  const { turns, contextWindow, promptTokens, maxTokens, verbatimFloor, milestoneDrop = null, recapPrompt, nowLine, relevanceScores = null, bandCap = null, stickyIds = null, semanticRehydrate = null, rehydratePrompt = '', rehydrateCap, maxRehydrations = Infinity, notes = [], stamp } = args;
   const margin = Math.max(256, Math.round(contextWindow * 0.05));
   const budget = Math.max(0, contextWindow - promptTokens - maxTokens - margin);
 
@@ -291,7 +384,7 @@ export function buildBandedHistory(args: {
     turnsSelectedOut = bandTurns.length - kept.length;
     bandTurns = kept;
   }
-  let bandTokens = bandExchangeCost(bandTurns, recapPrompt, nowLine);
+  let bandTokens = bandExchangeCost(bandTurns, recapPrompt, nowLine, notes, stamp);
   // Scored trimming engages only when every band turn is covered — a partial map (embedding cache still
   // warming) must not rank some turns and default others, or stages could disagree on what dropped.
   const scored = relevanceScores !== null && bandTurns.every((t) => t.turnId && relevanceScores.has(t.turnId));
@@ -301,13 +394,25 @@ export function buildBandedHistory(args: {
   // as resolveMilestoneKeep) and the newest RANKED_RECENT_IMMUNE digests (the immediate scene
   // lead-in — the probe's control case showed a topical old memory can outscore it, same failure
   // class). Only the middle competes on relevance; an all-protected band has nothing to rank-drop.
+  // Effective rank score: raw relevance, lifted for last turn's incumbents so eviction needs a real
+  // margin rather than a fresh action vector's noise (see STICKY_BONUS).
+  // Importance ranks are computed once over the band as it stands before trimming, so a memory's
+  // factor doesn't shift as its neighbors are evicted around it.
+  const impFactor = importanceFactors(
+    bandTurns.map((t) => t.turnId).filter((id): id is string => !!id),
+    new Map(bandTurns.flatMap((t) => (t.turnId && t.importance !== undefined ? [[t.turnId, t.importance] as const] : []))),
+  );
+  const rankScore = (t: BandTurn): number => {
+    const raw = relevanceScores!.get(t.turnId!)! * (impFactor.get(t.turnId!) ?? 1);
+    return stickyIds && t.turnId && stickyIds.has(t.turnId) ? raw * STICKY_BONUS : raw;
+  };
   const dropLowestEligible = (): boolean => {
     if (!scored) return false;
     const lastEligible = bandTurns.length - 1 - RANKED_RECENT_IMMUNE;
     if (lastEligible < 1) return false;
     let lowest = 1;
     for (let i = 2; i <= lastEligible; i++) {
-      if (relevanceScores!.get(bandTurns[i].turnId!)! < relevanceScores!.get(bandTurns[lowest].turnId!)!) lowest = i;
+      if (rankScore(bandTurns[i]) < rankScore(bandTurns[lowest])) lowest = i;
     }
     bandTurns = bandTurns.slice(0, lowest).concat(bandTurns.slice(lowest + 1));
     turnsRelevanceDropped++;
@@ -315,14 +420,14 @@ export function buildBandedHistory(args: {
   };
   while (bandTokens > remaining && bandTurns.length > 0) {
     if (!dropLowestEligible()) bandTurns = bandTurns.slice(1); // fall back: drop the oldest
-    bandTokens = bandExchangeCost(bandTurns, recapPrompt, nowLine);
+    bandTokens = bandExchangeCost(bandTurns, recapPrompt, nowLine, notes, stamp);
   }
   // Always-on top-K cap (step 3): even a band that fits gets trimmed to the K most relevant memories.
   // Scored mode only, and the protected ends set the effective floor.
   if (bandCap && bandCap > 0) {
     const floor = Math.max(bandCap, 1 + RANKED_RECENT_IMMUNE);
     while (bandTurns.length > floor && dropLowestEligible()) { /* trimmed in dropLowestEligible */ }
-    bandTokens = bandExchangeCost(bandTurns, recapPrompt, nowLine);
+    bandTokens = bandExchangeCost(bandTurns, recapPrompt, nowLine, notes, stamp);
   }
 
   // 3. Rehydration. Lexical selection stays DISABLED — keyed on the charged action it pulled ~6
@@ -350,7 +455,7 @@ export function buildBandedHistory(args: {
       // once full). Band cost shrinks; no re-trim needed — removal only frees tokens.
       const chosen = new Set(rehydratedTurns.map((t) => t.turnId));
       bandTurns = bandTurns.filter((t) => !chosen.has(t.turnId));
-      bandTokens = bandExchangeCost(bandTurns, recapPrompt, nowLine);
+      bandTokens = bandExchangeCost(bandTurns, recapPrompt, nowLine, notes, stamp);
     }
   }
 
@@ -363,7 +468,7 @@ export function buildBandedHistory(args: {
   // narration length (see module header); answered to a recap question, the short style belongs to a
   // different task.
   const messages: ChatMessage[] = [];
-  const bandBody = mergedBandText(bandTurns);
+  const bandBody = mergedBandText(bandTurns, notes, stamp);
   if (bandBody) {
     const reply = nowLine ? `${bandBody}\n\n${nowLine}` : bandBody;
     messages.push({ role: 'user', content: recapPrompt }, { role: 'assistant', content: reply });
@@ -377,9 +482,10 @@ export function buildBandedHistory(args: {
     messages.push({ ...t.userMsg }, { role: 'assistant', content: t.gameText });
   }
 
-  const bandText = buildBandText(bandTurns);
+  const bandText = buildBandText(bandTurns, notes, stamp);
   return {
     messages,
+    bandTurnIds: bandTurns.map((t) => t.turnId).filter((id): id is string => !!id),
     // The summarized-older turns as a labeled block (empty when there is no band), for consumers (the
     // precall planner) that want just that recap as context without walking the message pairs. This label
     // rides only the planner's own user message — it never appears in the narration history above.

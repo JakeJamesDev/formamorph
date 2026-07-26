@@ -148,3 +148,19 @@ describe('setActive', () => {
     expect(setActive(emptyStore, 'p9').activeId).toBe('p9');
   });
 });
+
+describe('forward compatibility of the key list', () => {
+  it('resolves a key the stored preset predates to the shipped default', () => {
+    // A user preset saved before `timePassedPrompt` existed: every other key is theirs, that one is absent.
+    const { timePassedPrompt: _absent, ...older } = defaults;
+    const store: PromptPresetStore = {
+      activeId: 'p1',
+      presets: [{ id: 'p1', name: 'Mine', values: older as PromptValues }],
+    };
+    const resolved = activeValues(store, builtinValues);
+    expect(resolved.timePassedPrompt).toBe('default:timePassedPrompt'); // filled from the built-in base
+    expect(resolved.systemPrompt).toBe('default:systemPrompt'); // the user's own values still win
+    // Every key the app knows about resolves to something — no undefined reaches a prompt template.
+    for (const k of PROMPT_TEXT_KEYS) expect(resolved[k]).toBeTypeOf('string');
+  });
+});

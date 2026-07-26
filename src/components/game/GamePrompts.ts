@@ -352,7 +352,9 @@ Keep: none
 Forget: none
 The promise is still open and the valuable is still carried - nothing here touches either - and the walk is a passing moment no one would mention again.
 
-Reply with the Keep line, then the Forget line.`;
+Every moment you keep also carries a weight: 3 when the story turns on it, 2 when it shapes what follows, 1 when it simply holds true.
+
+Reply with the Keep line, the Forget line, then the Weight line.`;
 
 // The character-diary pass: run once per participating character as turns age out, to record that
 // character's own first-person memory of the turn. Identity + narration arrive in the user message
@@ -383,6 +385,44 @@ Write two or three sentences describing who this character is - their enduring a
 Keep it strictly third person, referring to this character by name and to everyone else - including whoever they are reacting to - only as "them" or by role. The words "you" and "your" never appear. Invent nothing the passage does not support.
 
 Output only the description - no name heading, label, or preamble.`;
+
+// The recap's closing "where things stand" line, appended to the recap reply (never the system prompt) and
+// riding only while a digest band exists. The recap alone is all past tense; without a stated present, models
+// re-open a live scene as a fresh arrival (probed on real failure turns via now-line-probe.mjs). Each optional
+// token carries its own clause and vanishes when empty, so any subset still reads as a sentence.
+// The notes clause is deliberately absent: the notes already ride the system prompt's Player Notes
+// section, and a probe across both tiers found the second copy bought nothing (every arm 6-11%
+// contradiction, the single-copy arms disagreeing on which is better — noise). The `<SCENE NOTES>` chip
+// stays available for anyone who wants it back.
+export const defaultNowLinePrompt = `Now you are at <LOCATION|name><SCENE CAST>; the scene is already underway.<SCENE TIME>`;
+
+// The clock pass (requestType 'timePassed'): run silently after the narration to measure how much
+// in-world time the turn consumed. It asks for the DELTA, never the resulting date — a small model can
+// judge "how long did that take" but cannot do calendar arithmetic, and the two-stage change-detection
+// shape is what the roleplay trackers converged on (docs-internal/time-system-design.md §2a). It reads
+// the narration, not just the action, because a timeskip ("three weeks later") only ever lives there —
+// hence the clause giving stated time precedence over the model's own estimate.
+export const defaultTimePassedPrompt = `You measure how much time passes in a story. You are given what the character did and what happened next.
+
+Decide how long it took, then write that as a count followed by its unit. Always write the count first - a bare unit letter is not an answer. Use m for minutes, h for hours, d for days, w for weeks.
+
+- A brief exchange, a glance, a few words traded: some number of minutes.
+- A conversation, a walk across town, a meal, a night's sleep, a task seen through: some number of hours.
+- An overland journey, a long convalescence, a season of training: some number of days or weeks.
+- When the passage says how much time passed, answer with the amount it names rather than your own estimate.
+- When no time passes at all, the count is zero.
+
+Your entire reply is that count and its unit, with nothing before or after it.`;
+
+// The clock pass's user message. Same <PLAYER ACTION>/<NARRATION> tokens the other post-narration
+// extractors use, so the assembly matches choices/stats.
+export const defaultTimePassedUserPrompt = `What the character did:
+<PLAYER ACTION>
+
+What happened:
+<NARRATION>
+
+How much in-world time passed?`;
 
 // Appended to the game-text prompt for inline thinking (thinkingMode === 'inline'). The <think>
 // block is stripped from the narration before the player sees it.

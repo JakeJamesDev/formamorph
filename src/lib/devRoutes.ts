@@ -22,8 +22,9 @@ export type DevView = (typeof DEV_VIEWS)[number];
  *  `dictionaryEditor` are the *library* editors (MainMenu), distinct from the in-game `entity` modal; both
  *  open on a blank draft, so they're reachable without any stored data. `modelDetails` is the exception to
  *  that: a VRM preview has nothing to show without a stored model, so it opens the library's first model and
- *  does nothing on an empty library. `community` opens Community Creations from MainMenu. */
-export const DEV_MODALS = ['settings', 'entity', 'export', 'menu', 'worldEditor', 'intro', 'avatar', 'backup', 'aiSetup', 'entityEditor', 'dictionaryEditor', 'modelDetails', 'community'] as const;
+ *  does nothing on an empty library. `community` opens Community Creations from MainMenu. `memoryManager` is
+ *  in-game (GameViewer) and opens on an empty ledger before any turn has been summarized. */
+export const DEV_MODALS = ['settings', 'entity', 'export', 'menu', 'worldEditor', 'intro', 'avatar', 'backup', 'aiSetup', 'entityEditor', 'dictionaryEditor', 'modelDetails', 'community', 'memoryManager'] as const;
 export type DevModal = (typeof DEV_MODALS)[number];
 
 /** Coverage ledger: tabbed surface → the sub-tabs the router can target (via `tab=…`). Kept in lockstep

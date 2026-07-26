@@ -46,3 +46,6 @@ launcher/*.syso
 # Claude Code agent files (local-only, like CLAUDE.md)
 .claude/
 testing/baseline/mothers-struggles.json
+
+# Real authored worlds used as extraction test corpora (large, and not ours to publish).
+testing/authored-worlds/

@@ -410,7 +410,47 @@ The promise is still open and the valuable is still carried - nothing new settle
 
 Reply with the Keep line, then the Forget line.`,
   };
+  // weight/weightex: the shipped prompt plus an importance rating on each kept moment, so ranking can
+  // tell a moment the story turns on from one that merely holds true (long-session-recall-findings
+  // item 1b). Two arms because the examples are the risk: the prompt's own history says they hold
+  // ~two lessons and a third destabilized it. 'weight' adds the contract only, leaving both proven
+  // examples untouched; 'weightex' also shows the line in each example.
+  const WEIGHT_RULE = `\n\nEvery moment you keep also carries a weight: 3 when the story turns on it, 2 when it shapes what follows, 1 when it simply holds true.`;
+  const WEIGHT_TAIL = `\n\nReply with the Keep line, the Forget line, then the Weight line.`;
+  const stripTail = (p) => p.slice(0, p.lastIndexOf("\n\nReply with the Keep line"));
+  const withWeightExamples = (p) =>
+    stripTail(p)
+      .replace("Keep: 4\nForget: 2 replaced by 4", "Keep: 4\nForget: 2 replaced by 4\nWeight: 4=3")
+      .replace("Keep: none\nForget: none", "Keep: none\nForget: none\nWeight: none");
+  // weight2: same contract, but states the base rate. Cydonia rated generously under 'weight'
+  // (mean drop 1.80 vs must 2.06 — separation 0.26, weaker than the sticky bonus it would multiply
+  // against), which is the classic small-model behavior of using the top of any scale. Naming 1 as
+  // the common case is the positive-phrasing fix for that.
+  const WEIGHT_RULE2 = `\n\nEvery moment you keep also carries a weight. Most weigh 1 - they simply hold true. A moment weighs 2 when it shapes what follows, and 3 only when the story turns on it.`;
+  INC_PROMPTS.weight = stripTail(SHIPPED_INC) + WEIGHT_RULE + WEIGHT_TAIL;
+  INC_PROMPTS.weight2 = stripTail(SHIPPED_INC) + WEIGHT_RULE2 + WEIGHT_TAIL;
+  INC_PROMPTS.weightex = withWeightExamples(SHIPPED_INC) + WEIGHT_RULE + WEIGHT_TAIL;
+
+  // mark: no numeric scale at all. A 1-3 scale anchors the two tiers in opposite directions
+  // (cloud sep 0.64/Cydonia 0.26 under 'weight'; cloud 0.25/Cydonia 0.57 under 'weight2' — naming
+  // the base rate simply moved the anchor). A binary "which of these does the story turn on"
+  // has no scale to anchor on, so it should port across tiers.
+  const MARK_RULE = `\n\nAmong the moments you keep, the story turns on only some. Name those.`;
+  const MARK_TAIL = `\n\nReply with the Keep line, the Forget line, then the Turns line.`;
+  INC_PROMPTS.mark = stripTail(SHIPPED_INC) + MARK_RULE + MARK_TAIL;
+
+  // preweight: reconstructs the prompt as it stood BEFORE the weight line, so the A/B is against the
+  // real predecessor rather than a remembered number. Deliberately not matched by WEIGHTED below, so
+  // its user message asks for two lines exactly as the old build did.
+  INC_PROMPTS.preweight =
+    stripTail(SHIPPED_INC).replace(WEIGHT_RULE, "") + `\n\nReply with the Keep line, then the Forget line.`;
+
   const INC_KEY = strArg("--prompt", "shipped");
+  const MARKED = INC_KEY.startsWith("mark");
+  // 'shipped' now carries the weight contract (it grabs the live GamePrompts text), so it must emit
+  // the Weight line in the user message too — a system prompt asking for a line the user message
+  // never requests measures a mismatch the app doesn't have.
+  const WEIGHTED = INC_KEY.startsWith("weight") || MARKED || INC_KEY === "shipped";
   const INC_SYS = INC_PROMPTS[INC_KEY] ?? (() => { throw new Error(`unknown incremental prompt '${INC_KEY}'`); })();
 
   // Mirrors of lib/milestoneMemory's incremental builder + parser (keep in sync by hand).
@@ -420,9 +460,34 @@ Reply with the Keep line, then the Forget line.`,
     if (keptOld.length === 0) {
       return `New moments to judge, oldest first:\n${freshList}\n\nReply with one line:\nKeep: the numbers worth remembering, comma-separated, or "none".`;
     }
-    return `Moments already in memory, oldest first:\n${oldList}\n\nNew moments to judge:\n${freshList}\n\nReply with two lines:\nKeep: the numbers of the NEW moments worth remembering, comma-separated, or "none".\nForget: the numbers of already-kept moments whose outcome a new moment now carries, or "none".`;
+    const base = `Moments already in memory, oldest first:\n${oldList}\n\nNew moments to judge:\n${freshList}\n\nReply with two lines:\nKeep: the numbers of the NEW moments worth remembering, comma-separated, or "none".\nForget: the numbers of already-kept moments whose outcome a new moment now carries, or "none".`;
+    if (!WEIGHTED) return base;
+    const three = base.replace("Reply with two lines:", "Reply with three lines:");
+    if (MARKED) return three + `\nTurns: the numbers among your keeps that the story turns on, comma-separated, or "none".`;
+    return three + `\nWeight: each kept number with its weight, like "<number>=<weight>", comma-separated, or "none".`;
   };
-  const PAIRED = INC_KEY.startsWith("paired");
+  // Parse mirror. Scale arms: kept-number → 1..3. Mark arm: a present Turns line rates every keep,
+  // marked → 3 and unmarked → 1, so "none" is a real (all-low) verdict rather than missing data.
+  // Anything absent or unreadable is left undefined and treated as neutral downstream.
+  const parseWeights = (reply, keptNum) => {
+    const out = new Map();
+    if (MARKED) {
+      const line = reply.match(/turns\s*:([^\n]*)/i);
+      if (!line) return out;
+      const marked = new Set((line[1].match(/\d+/g) || []).map(Number));
+      out.set(keptNum, marked.has(keptNum) ? 3 : 1);
+      return out;
+    }
+    const line = reply.match(/weight\s*:([^\n]*)/i);
+    for (const m of (line?.[1] ?? "").matchAll(/(\d+)\s*=\s*([123])/g)) out.set(Number(m[1]), Number(m[2]));
+    return out;
+  };
+  // lib/milestoneMemory's parser applies the cited-pair filter UNCONDITIONALLY, so every arm running
+  // the shipped protocol must too or the probe measures a parser the app doesn't have. Only the
+  // pre-pairing arms (restraint/twostep/stateful*) keep the old permissive forget parse for
+  // historical comparability.
+  const LEGACY_UNPAIRED = /^(restraint|twostep|stateful)/;
+  const PAIRED = !LEGACY_UNPAIRED.test(INC_KEY);
   const parseInc = (reply, oldCount, freshCount) => {
     const total = oldCount + freshCount;
     const nums = (line) => (line.match(/\d+/g) || []).map(Number).filter((n) => n >= 1 && n <= total);
@@ -473,7 +538,8 @@ Reply with the Keep line, then the Forget line.`,
     return ((await res.json()).choices?.[0]?.message?.content ?? "").trim();
   };
 
-  const agg = { mKept: 0, mAll: 0, eKept: 0, eAll: 0, dKept: 0, dAll: 0, malformed: 0, calls: 0, mForgotten: 0 };
+  const agg = { mKept: 0, mAll: 0, eKept: 0, eAll: 0, dKept: 0, dAll: 0, malformed: 0, calls: 0, mForgotten: 0,
+    wSeen: 0, wMissing: 0, wMust: [], wDrop: [], wEither: [] };
   const missNever = new Map(); // must-keep never kept on arrival -> count
   const missForgot = new Map(); // must-keep later forgotten -> count (the new failure mode)
   const keptDrops = new Map(); // drop-tier text kept at end -> count (history mass)
@@ -502,6 +568,12 @@ Reply with the Keep line, then the Forget line.`,
           });
         }
         if (keepNew) { kept.push({ i, text: entries[i].text }); everKept.add(i); }
+        if (WEIGHTED && keepNew) {
+          // The fresh entry is numbered kept.length (1-based) at call time — i.e. old count + 1.
+          const w = parseWeights(reply, kept.length).get(kept.length);
+          if (w === undefined) agg.wMissing++;
+          else { agg.wSeen++; (entries[i].label === "must" ? agg.wMust : entries[i].label === "drop" ? agg.wDrop : agg.wEither).push(w); }
+        }
         if (verbose) console.log(`[${story.name} r${r + 1} e${i}] ${reply.replace(/\s+/g, " ").slice(0, 100)}`);
       }
       const keepSet = new Set(kept.map((k) => k.i));
@@ -521,7 +593,7 @@ Reply with the Keep line, then the Forget line.`,
     console.log(line);
   }
 
-  console.log(`\n==== ${MODEL_LABEL} · incremental (shipped prompt) · ${RUNS} run(s)/story ====`);
+  console.log(`\n==== ${MODEL_LABEL} · incremental (${INC_KEY} prompt) · ${RUNS} run(s)/story ====`);
   console.log(
     `must recall ${(agg.mKept / Math.max(1, agg.mAll)).toFixed(2)} (gate >= 0.90)` +
     ` · drop keep ${(agg.dKept / Math.max(1, agg.dAll)).toFixed(2)} (target <= 0.10)` +
@@ -529,6 +601,19 @@ Reply with the Keep line, then the Forget line.`,
     ` · must-forgets ${agg.mForgotten}` +
     ` · malformed ${agg.malformed}/${agg.calls}`,
   );
+  if (WEIGHTED) {
+    const mean = (a) => (a.length ? (a.reduce((s, x) => s + x, 0) / a.length) : NaN);
+    const cov = agg.wSeen / Math.max(1, agg.wSeen + agg.wMissing);
+    // The whole point: must-keeps must score materially above kept drops. A separation near zero
+    // means the rating is decoration and must not be wired into ranking.
+    console.log(
+      `weight coverage ${cov.toFixed(2)} (${agg.wSeen}/${agg.wSeen + agg.wMissing})` +
+      ` · mean must ${mean(agg.wMust).toFixed(2)} (n=${agg.wMust.length})` +
+      ` · mean either ${mean(agg.wEither).toFixed(2)} (n=${agg.wEither.length})` +
+      ` · mean drop ${mean(agg.wDrop).toFixed(2)} (n=${agg.wDrop.length})` +
+      ` · separation ${(mean(agg.wMust) - mean(agg.wDrop)).toFixed(2)}`,
+    );
+  }
   if (missNever.size) {
     console.log(`\nMUST-KEEPS NEVER KEPT (arrival misses):`);
     for (const [text, n] of missNever) console.log(`  ${n}× ${text.slice(0, 90)}`);

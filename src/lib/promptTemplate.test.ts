@@ -1,6 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import { parsePromptTemplate, serializeSegments, renderPromptTemplate } from './promptTemplate';
 import {
+  defaultNowLinePrompt,
   defaultSystemPrompt, defaultChoicesPrompt, defaultStatUpdatesPrompt,
   defaultLocationChangePrompt, defaultThinkingPrompt, defaultSummaryPrompt,
   defaultDirectorPrompt, defaultCharacterPrompt, defaultStoryboardPrompt, defaultDiaryPrompt,
@@ -165,5 +166,55 @@ describe('cross-version import compat (Slice 4)', () => {
   it('render substitutes known chips and leaves foreign ones raw', () => {
     const out = renderPromptTemplate(`<NOTES> | ${FOREIGN} | ${FOREIGN_VARIANT}`, { '<NOTES>': 'kept' });
     expect(out).toBe(`kept | ${FOREIGN} | ${FOREIGN_VARIANT}`);
+  });
+});
+
+describe('the default now-line template', () => {
+  // The line used to be string-concatenated in GameViewer. These assert the template reproduces that
+  // output byte-for-byte, including the way each optional clause carries its own leading space.
+  const render = (v: Partial<Record<string, string>>) =>
+    renderPromptTemplate(defaultNowLinePrompt, {
+      '<LOCATION|name>': "Sarah's Place",
+      '<SCENE CAST>': '',
+      '<SCENE NOTES>': '',
+      '<SCENE TIME>': '',
+      ...v,
+    });
+
+  it('renders location, cast and time as one sentence', () => {
+    expect(
+      render({
+        '<SCENE CAST>': ' with Sarah Jones present',
+        '<SCENE TIME>': ' It is now Day 2, afternoon.',
+      }),
+    ).toBe(
+      "Now you are at Sarah's Place with Sarah Jones present; the scene is already underway." +
+        ' It is now Day 2, afternoon.',
+    );
+  });
+
+  it('omits the notes clause — they already ride the system prompt (notes-duplication-probe)', () => {
+    expect(defaultNowLinePrompt).not.toContain('<SCENE NOTES>');
+    // Supplying a value changes nothing while the chip is absent; adding the chip back is what re-enables it.
+    expect(render({ '<SCENE NOTES>': ' notes text' })).not.toContain('notes text');
+  });
+
+  it('reads as a clean sentence with every optional piece absent', () => {
+    expect(render({})).toBe("Now you are at Sarah's Place; the scene is already underway.");
+  });
+
+  it('leaves no double space or dangling punctuation for any subset', () => {
+    const pieces = ['<SCENE CAST>', '<SCENE TIME>'] as const;
+    const filled: Record<string, string> = {
+      '<SCENE CAST>': ' with Mira present',
+      '<SCENE TIME>': ' It is now Day 1, dawn.',
+    };
+    for (let mask = 0; mask < 4; mask++) {
+      const vals = Object.fromEntries(pieces.map((p, i) => [p, mask & (1 << i) ? filled[p] : '']));
+      const out = render(vals);
+      expect(out).not.toMatch(/ {2}/);
+      expect(out).not.toMatch(/\s;/);
+      expect(out.startsWith("Now you are at Sarah's Place")).toBe(true);
+    }
   });
 });
