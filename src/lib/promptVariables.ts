@@ -1,4 +1,5 @@
 import { HIGHLIGHT_PALETTE } from './highlightUtils';
+import { escapeRegExp } from './utils';
 
 /** An optional alternate form a variable's chip can be switched to via its pop-out. `id: null` is the
  *  default form with no token suffix; a non-null id contributes to the token suffix (e.g. `|summary`). */
@@ -35,6 +36,9 @@ export interface PromptVariable {
   color: string; // chip/preview accent, from HIGHLIGHT_PALETTE
   variants?: PromptVariant[]; // single-axis pop-out modes; first entry is the default/full form
   axes?: PromptVariantAxis[]; // multi-axis pop-out (takes precedence over `variants`)
+  /** Offers the prefix/suffix fields: this chip renders one short value that can sit inside a sentence,
+   *  rather than a multi-line block. See docs-internal/chip-affixes-design.md. */
+  affixable?: boolean;
 }
 
 /** Every prompt editor maps to one of these kinds (mirrors the Settings → System Prompts sub-tabs). */
@@ -111,14 +115,14 @@ const STAT_MEANING_AXIS: PromptVariantAxis = {
 const WORLD: PromptVariable = { token: '<WORLD DESCRIPTION>', label: 'World', color: HIGHLIGHT_PALETTE[0] };
 const STATS: PromptVariable = { token: '<STATS DESCRIPTION>', label: 'Stats', color: HIGHLIGHT_PALETTE[1], axes: [STAT_VALUES_AXIS, STAT_STATUS_AXIS, STAT_MEANING_AXIS, FORMAT_AXIS] };
 const TRAITS: PromptVariable = { token: '<TRAITS DESCRIPTION>', label: 'Traits', color: HIGHLIGHT_PALETTE[2], axes: [FORMAT_AXIS] };
-const LOCATION: PromptVariable = { token: '<LOCATION>', label: 'Location', color: HIGHLIGHT_PALETTE[3], axes: [LOCATION_SCOPE_AXIS, CONTENT_AXIS, FORMAT_AXIS] };
-const NOTES: PromptVariable = { token: '<NOTES>', label: 'Notes', color: HIGHLIGHT_PALETTE[4] };
+const LOCATION: PromptVariable = { token: '<LOCATION>', label: 'Location', color: HIGHLIGHT_PALETTE[3], axes: [LOCATION_SCOPE_AXIS, CONTENT_AXIS, FORMAT_AXIS], affixable: true };
+const NOTES: PromptVariable = { token: '<NOTES>', label: 'Notes', color: HIGHLIGHT_PALETTE[4], affixable: true };
 const LENGTH: PromptVariable = { token: '<LENGTH GUIDANCE>', label: 'Length Guidance', color: HIGHLIGHT_PALETTE[5] };
 const MARKDOWN: PromptVariable = { token: '<MARKDOWN GUIDANCE>', label: 'Markdown Guidance', color: HIGHLIGHT_PALETTE[6] };
 // Director prompt only: expands to the cast-size guidance derived from the Limit Active Characters setting.
 const ACTIVE_CHARACTER: PromptVariable = { token: '<ACTIVE CHARACTER GUIDANCE>', label: 'Active Character Guidance', color: HIGHLIGHT_PALETTE[13] };
 // Entities are one chip whose `scope` axis picks here / sub-locations / reachable siblings.
-const ENTITIES: PromptVariable = { token: '<ENTITIES>', label: 'Entities', color: HIGHLIGHT_PALETTE[8], axes: [ENTITY_SCOPE_AXIS, CONTENT_AXIS, FORMAT_AXIS] };
+const ENTITIES: PromptVariable = { token: '<ENTITIES>', label: 'Entities', color: HIGHLIGHT_PALETTE[8], axes: [ENTITY_SCOPE_AXIS, CONTENT_AXIS, FORMAT_AXIS], affixable: true };
 // The activated-dictionary lore for the turn — supplied by GameViewer per turn (narration prompt only). The
 // `before` variant renders the early "## Background Lore" block; the default renders the late "## Foreground Lore".
 const DICTIONARY: PromptVariable = {
@@ -240,19 +244,98 @@ export const ALL_VARIANT_IDS: string[] = [
   ...new Set(ALL_PROMPT_VARIABLES.flatMap(variableVariantIds)),
 ].sort((a, b) => b.length - a.length);
 
+/**
+ * The token grammar, shared by the template parser, the style downcast and the chip editor:
+ *
+ *     `<BASE [|variantId] [|pre="…"] [|post="…"]>`
+ *
+ * Affixes are the connective words around a chip used inside a sentence ("Now you are at X, inside Y"),
+ * and they render only when the chip has a value — see `renderPromptTemplate`. They live in the token
+ * rather than a side table because a preset is a plain string that gets copied, shared and style-downcast,
+ * so the wording has to travel with it. Design: docs-internal/chip-affixes-design.md.
+ *
+ * Quotes delimit the affix, which keeps leading/trailing spaces visible in the raw text and makes `>` and
+ * `|` harmless inside one. `"` is therefore the single character an affix cannot contain — one banned
+ * character beats an escape grammar for a field that holds words like `, inside `.
+ *
+ * The order is fixed and empty affixes are never written. Anything else — reordered, unquoted, `pre=""` —
+ * simply fails to match and stays literal text, exactly as an unknown variant id does. That is what makes
+ * `serialize(parse(x)) === x` hold by construction rather than by care.
+ */
+const TOKEN_BASES = ALL_PROMPT_VARIABLES.map((v) => v.token.slice(0, -1)) // drop trailing '>'
+  .sort((a, b) => b.length - a.length) // longest-first so a short base can't mask a longer one
+  .map(escapeRegExp)
+  .join('|');
+// `[^"]+` (not `*`): an empty affix has no canonical spelling, so `pre=""` must not parse.
+const AFFIX_BODY = '"([^"]+)"';
+export const TOKEN_PATTERN =
+  `(?:${TOKEN_BASES})(?:\\|(?:${ALL_VARIANT_IDS.map(escapeRegExp).join('|')}))?` +
+  `(?:\\|pre=${AFFIX_BODY})?(?:\\|post=${AFFIX_BODY})?>`;
+
+/** Longest an affix may be. They are connective phrases, not prose. */
+export const AFFIX_MAX_LENGTH = 40;
+
+/** The character an affix cannot contain (it delimits the affix in the token). */
+export const AFFIX_FORBIDDEN = '"';
+
+/** A token taken apart. `key` is the token WITHOUT affixes — the string `buildContextValues` precomputes
+ *  and the renderer looks values up by. */
+export interface TokenParts {
+  base: string;
+  variantId: string | null;
+  pre: string;
+  post: string;
+  key: string;
+}
+
+// Anchored, non-global twin of the parser's regex, with the pieces captured.
+const TOKEN_EXACT = new RegExp(
+  `^(${TOKEN_BASES})(?:\\|(${ALL_VARIANT_IDS.map(escapeRegExp).join('|')}))?` +
+    `(?:\\|pre=${AFFIX_BODY})?(?:\\|post=${AFFIX_BODY})?>$`,
+);
+
+/** Take a token apart, or null when it isn't a canonical token. */
+export function splitToken(token: string): TokenParts | null {
+  const m = TOKEN_EXACT.exec(token);
+  if (!m) return null;
+  const base = `${m[1]}>`;
+  const variantId = m[2] ?? null;
+  return { base, variantId, pre: m[3] ?? '', post: m[4] ?? '', key: withVariant(base, variantId) };
+}
+
+/** Build a canonical token from its pieces. Empty affixes are omitted, so there is exactly one spelling
+ *  of any given token — the property the round-trip guarantee rests on. */
+export function joinToken(parts: { base: string; variantId?: string | null; pre?: string; post?: string }): string {
+  const inner = parts.base.slice(0, -1);
+  const variant = parts.variantId ? `|${parts.variantId}` : '';
+  const pre = parts.pre ? `|pre="${parts.pre}"` : '';
+  const post = parts.post ? `|post="${parts.post}"` : '';
+  return `${inner}${variant}${pre}${post}>`;
+}
+
+/** True when `text` is usable as an affix (short enough, and free of the delimiter). */
+export function isValidAffix(text: string): boolean {
+  return text.length <= AFFIX_MAX_LENGTH && !text.includes(AFFIX_FORBIDDEN);
+}
+
 /** The base token (`<…>`) of a possibly-variant token, e.g. `<LOCATION|summary>` → `<LOCATION>`. */
 export function baseToken(token: string): string {
   const pipe = token.indexOf('|');
   return pipe === -1 ? token : `${token.slice(0, pipe)}>`;
 }
 
-/** The variant id of a token (`<LOCATION|list>` → `'list'`), or null for the default/full form. */
+/** The variant id of a token (`<LOCATION|list>` → `'list'`), or null for the default/full form. Affixes
+ *  are not part of the variant, so an affixed token reports the same id as a bare one. */
 export function tokenVariant(token: string): string | null {
+  const parts = splitToken(token);
+  if (parts) return parts.variantId;
+  // Not canonical (a hand-built token in a test or a legacy call) — fall back to the pre-affix reading.
   const match = token.match(/\|([^>]+)>$/);
   return match ? match[1] : null;
 }
 
-/** Re-apply a variant to a base token: `<LOCATION>`, `'list'` → `<LOCATION|list>` (null → base unchanged). */
+/** Re-apply a variant to a base token: `<LOCATION>`, `'list'` → `<LOCATION|list>` (null → base unchanged).
+ *  Affix-free by definition; callers that must preserve affixes use `joinToken`. */
 export function withVariant(base: string, variantId: string | null): string {
   return variantId ? `${base.slice(0, -1)}|${variantId}>` : base;
 }

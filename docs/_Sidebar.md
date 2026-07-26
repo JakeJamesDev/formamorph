@@ -4,6 +4,7 @@
 
 **Playing**
 - [🧠 Story Memory](Memory)
+- [🎭 Entities in Play](Entities)
 
 **Reference**
 - [🛠️ World Editor](WorldEditor)

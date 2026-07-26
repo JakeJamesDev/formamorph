@@ -16,6 +16,7 @@ Formamorph runs entirely in the browser and talks to any **OpenAI-compatible** c
 | Page | What's inside |
 |---|---|
 | 🧠 **[Story Memory](Memory)** | How a long story is remembered, and how to pin, edit or write its memories yourself |
+| 🎭 **[Entities in Play](Entities)** | Who the story tracks as present — including the characters it invents mid-scene, and how to remove one it got wrong |
 | 📐 **[World Format](WorldFormat)** | The full structure of a world `.json` — every field of stats, traits, locations, entities, stat-updates, and the dictionary |
 | 🧮 **[Stat Code Guide](StatCodeGuide)** | Writing dynamic JS formulas that derive one stat from others |
 | 📝 **[Changelog](Changelog)** | What's changed, release by release |

@@ -5,7 +5,7 @@ import type { PromptSegment } from './promptTemplate';
 import { parsePromptTemplate } from './promptTemplate';
 import { HIGHLIGHT_PALETTE } from './highlightUtils';
 import {
-  labelForToken, colorForToken, variableForToken, baseToken, tokenVariant, withVariant,
+  labelForToken, colorForToken, variableForToken, baseToken, tokenVariant, splitToken, joinToken,
   variantLabelForToken, variableAxes, decodeVariant, encodeVariant,
   type PromptVariable, type PromptVariantAxis,
 } from './promptVariables';
@@ -35,6 +35,11 @@ export interface ChipVocabulary {
   selection(token: string): Record<string, string | null>;
   /** The token with one axis changed. */
   setAxis(token: string, axisId: string, optionId: string | null): string;
+  /** The placement's prefix/suffix, or null when this chip doesn't take them (it renders a block, not a
+   *  phrase). See docs-internal/chip-affixes-design.md. */
+  affixes(token: string): { pre: string; post: string } | null;
+  /** The token with its affixes replaced. Empty strings remove them. */
+  setAffixes(token: string, pre: string, post: string): string;
   /** Toolbar items to insert. */
   palette(): { token: string; label: string; color?: string }[];
   /** Prepare a palette token for a fresh insertion (placeholders re-mint their placement id). */
@@ -61,7 +66,21 @@ export function promptVocabulary(palette: PromptVariable[]): ChipVocabulary {
       const v = variableForToken(t);
       if (!v) return t;
       const next = { ...decodeVariant(v, tokenVariant(t)), [axisId]: optionId };
-      return withVariant(baseToken(t), encodeVariant(v, next));
+      // Rebuilt through joinToken so switching a mode keeps the placement's affixes — withVariant knows
+      // nothing about them and would silently drop the user's wording.
+      const parts = splitToken(t);
+      return joinToken({ base: baseToken(t), variantId: encodeVariant(v, next), pre: parts?.pre, post: parts?.post });
+    },
+    affixes: (t) => {
+      const v = variableForToken(t);
+      if (!v?.affixable) return null;
+      const parts = splitToken(t);
+      return { pre: parts?.pre ?? '', post: parts?.post ?? '' };
+    },
+    setAffixes: (t, pre, post) => {
+      const v = variableForToken(t);
+      if (!v?.affixable) return t;
+      return joinToken({ base: baseToken(t), variantId: tokenVariant(t), pre, post });
     },
     palette: () => palette.map((v) => ({ token: v.token, label: v.label, color: v.color })),
     freshInsertToken: (t) => t,
@@ -104,6 +123,8 @@ export function plainVocabulary(): ChipVocabulary {
     axes: () => [],
     selection: () => ({}),
     setAxis: (t) => t,
+    affixes: () => null,
+    setAffixes: (t: string) => t,
     palette: () => [],
     freshInsertToken: (t) => t,
   };
@@ -137,6 +158,8 @@ export function placeholderVocabulary(placeholders: Placeholder[]): ChipVocabula
       if (!d || axisId !== 'mode') return t;
       return encodePlaceholderToken({ ...d, mode: optionId === 'unique' ? 'unique' : 'world' });
     },
+    affixes: () => null,
+    setAffixes: (t: string) => t,
     palette: () =>
       placeholders.map((p) => ({
         token: encodePlaceholderToken({ id: p.id, mode: 'world', placementId: PALETTE_PID }),

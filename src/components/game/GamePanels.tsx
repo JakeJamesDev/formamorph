@@ -246,8 +246,15 @@ export const LeftPanel = ({ entities, onEntityClick, onRegenerateMemory }: {
             {modelViewer}
           </TabsContent>
         )}
-        <TabsContent value="entities" className="flex-grow overflow-hidden min-h-[100px]">
-          <ScrollArea className="h-[calc(100%-1rem)]">
+        {/* `flex` must be state-scoped: a plain `flex` class beats the UA `[hidden]{display:none}` Radix
+            uses to hide an inactive panel, so the list would keep its space and shove the live tab down. */}
+        <TabsContent value="entities" className="flex-grow overflow-hidden min-h-[100px] flex-col data-[state=active]:flex">
+          {/* Shown even when the list is empty — "no entity visible" is itself the state that prompts
+              the question, so the `?` has to be reachable then too. */}
+          <div className="flex-shrink-0 flex justify-end px-2 pt-1">
+            <HelpButton topicId="game.entities" className="h-6 w-6" />
+          </div>
+          <ScrollArea className="flex-grow min-h-0">
             <div className="p-2">
               {visibleEntities.length > 0 ? (
                 visibleEntities.map((se, index) => {

@@ -9,7 +9,7 @@
  * does — placement inside the prompt is author-editable, so don't promise an order the chips don't fix.
  */
 
-const WIKI_WORLD_EDITOR_URL = 'https://github.com/JakeJamesDev/formamorph/wiki/WorldEditor';
+const WIKI_BASE = 'https://github.com/JakeJamesDev/formamorph/wiki';
 
 export interface HelpTopic {
   /** Dialog title. */
@@ -20,13 +20,18 @@ export interface HelpTopic {
    *  stand alone — users land on the first and may never click the others, so it gets the essentials.
    *  `mobileBody` swaps in on narrow viewports for copy naming platform gestures (show one, not both). */
   tabs?: { label: string; body: string; mobileBody?: string }[];
-  /** Anchor on the wiki's World Editor page, appended to the page URL. Omit until a section exists. */
+  /** Wiki page this topic documents, e.g. `WorldEditor` or `Entities`. Stated on every topic rather
+   *  than defaulted: a wrong default silently sends a reader to the wrong page, and a missing one is a
+   *  type error instead. Omit only while no page covers the topic yet. */
+  wikiPage?: string;
+  /** Anchor within `wikiPage`, appended after `#`. Omit to link the page itself. */
   wikiAnchor?: string;
 }
 
-/** Full "Learn more" target for a topic, or null when it has no wiki section yet. */
+/** Full "Learn more" target for a topic, or null when no wiki page covers it yet. */
 export function helpWikiUrl(topic: HelpTopic): string | null {
-  return topic.wikiAnchor ? `${WIKI_WORLD_EDITOR_URL}#${topic.wikiAnchor}` : null;
+  if (!topic.wikiPage) return null;
+  return `${WIKI_BASE}/${topic.wikiPage}${topic.wikiAnchor ? `#${topic.wikiAnchor}` : ''}`;
 }
 
 export const HELP_TOPICS: Record<string, HelpTopic> = {
@@ -93,18 +98,40 @@ As the story grows, older turns stop riding word-for-word and are carried as sho
 
 | | |
 |---|---|
-| ✏️ **Edit** | Rewrite it in your own words. An edited memory is always kept — you wrote it, so the story doesn't get to drop it. |
-| 🔄 **Rewrite** | Have the story summarize that turn again, in case the first attempt missed the point. |
-| 📌 **Pin / forget** | Force a memory to stay, or let one go, without changing its words. |
-| 🗑️ **Delete** | Remove it entirely. Nothing is really lost — switch the filter to **Deleted** to bring it back. |
-| ➕ **Add memory** | Write something the story should remember that never happened in a turn. Yours are always kept. |
+| **Edit** | Rewrite it in your own words. An edited memory is always kept — you wrote it, so the story doesn't get to drop it. |
+| **Rewrite** | Have the story summarize that turn again, in case the first attempt missed the point. |
+| **Pin / forget** | Force a memory to stay, or let one go, without changing its words. |
+| **Delete** | Remove it entirely. Nothing is really lost — switch the filter to **Deleted** to bring it back. |
+| **Add memory** | Write something the story should remember that never happened in a turn. Yours are always kept. |
 
 **Nothing you do here is permanent.** The story's own version is always kept underneath, so **Revert** restores the original wording and **Reset all my changes** puts everything back the way the story had it.
 
 Memories under the **Recent** line are still fresh enough that the story has them word-for-word — your changes to them start mattering once they age out.`,
   },
+  // Deliberately separate from `worldEditor.entities`: that copy is for an author choosing fields, this
+  // is for a player mid-story wondering who a name in their scene list is.
+  'game.entities': {
+    title: 'Entities in Play',
+    wikiPage: 'Entities',
+    body: `Who the story counts as being here with you right now. The list changes as the scene does — people arrive, people leave.
+
+Most of these are characters the world's author wrote. Some the story **invented on the spot**: ask a shopkeeper for directions and it may answer with a name nobody wrote down. Those are remembered from the moment they're named, so the story can keep them consistent and offer you things to do with them.
+
+Someone merely *talked about* isn't added — only characters the story actually shows in the scene.
+
+**When something isn't a person**
+
+Names come out of the story's own prose, so once in a while it capitalizes a café or a street and that ends up here. Use the remove button beside the entry to take it out. The story stops picking that name up for the rest of this playthrough, and the prose itself is left exactly as written.
+
+Only story-invented entries can be removed. The world's own cast belongs to the world — that's the World Editor's job, not yours mid-scene.
+
+**Descriptions**
+
+Settings → Generation → **Describe New Characters** gives each invented character a written description you can open from here. Everything else on this list works whether that's on or off.`,
+  },
   'worldEditor.locations': {
     title: 'Locations',
+    wikiPage: 'WorldEditor',
     wikiAnchor: 'locations',
     body: `The places your story happens. The player is always in exactly one, and it decides what the AI is told about the scene — the description, who's there, and where the story might go next.
 
@@ -133,6 +160,7 @@ Write the AI-Facing Description first; it's the one doing the work. Reach for ne
   },
   'worldEditor.entities': {
     title: 'Entities',
+    wikiPage: 'WorldEditor',
     wikiAnchor: 'entities',
     body: `The people, creatures and things that populate your world — a ferryman, an eel-smoker, a barred door. An entity belongs to one or more **Locations**, and the AI is handed the ones that could turn up wherever the player currently is.
 
@@ -179,6 +207,7 @@ Give a character the one or two names the story will actually use. Each alias is
   },
   'worldEditor.traits': {
     title: 'Traits',
+    wikiPage: 'WorldEditor',
     wikiAnchor: 'traits',
     body: `The choices that make one playthrough different from the next — *Scarred*, *Silver-Tongued*, *Afraid of Water*. The player picks their traits before the story starts, and the ones they take are described to the AI on every turn.
 
@@ -207,6 +236,7 @@ Write the AI-Facing Description as a fact about the character the narrator can a
   },
   'worldEditor.placeholders': {
     title: 'Placeholders',
+    wikiPage: 'WorldEditor',
     wikiAnchor: 'placeholders',
     body: `Reusable bits of world text you define once and drop into your writing as chips — an eye color, a street name, a deity. Each has a **Name** and a list of **Values**, and everywhere you place its chip, it resolves to one of those values when the story runs.
 
@@ -230,6 +260,7 @@ Define a placeholder here, then place its chip from any field that offers them. 
   },
   'worldEditor.stats': {
     title: 'Stats',
+    wikiPage: 'WorldEditor',
     wikiAnchor: 'stats',
     body: `The numbers that describe your player — health, coin, reputation, whatever your world needs. Each stat has a value between a **Min** and **Max**, and the AI sees them every turn and lets them color how each action turns out.
 
@@ -257,6 +288,7 @@ Start with two or three stats that the story would genuinely turn on. Every stat
   },
   'worldEditor.dictionary': {
     title: 'Dictionary',
+    wikiPage: 'WorldEditor',
     wikiAnchor: 'dictionary',
     body: `Your world's lorebook. Each **book** holds **entries**, and an entry slips its content into the AI's prompt whenever one of its keywords shows up in the scanned text.
 

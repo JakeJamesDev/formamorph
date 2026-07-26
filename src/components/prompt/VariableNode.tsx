@@ -10,6 +10,8 @@ import { Chip } from '@/components/Chip';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Checkbox } from '@/components/ui/checkbox';
+import { Input } from '@/components/ui/input';
+import { AFFIX_MAX_LENGTH, AFFIX_FORBIDDEN, isValidAffix } from '@/lib/promptVariables';
 import { cn } from '@/lib/utils';
 import { ChipVocabularyContext } from '@/lib/chipVocabulary';
 
@@ -20,6 +22,36 @@ export const PromptDragContext = createContext<{ current: string | null }>({ cur
 export type SerializedVariableNode = Spread<{ token: string }, SerializedLexicalNode>;
 
 const FULL = 'full'; // Tabs value sentinel for the default variant (null id)
+
+/**
+ * One affix field. These hold connective words like `" with "` or `", inside "`, where the leading and
+ * trailing spaces carry the whole effect and are invisible in a normal input — so the value is echoed
+ * underneath with spaces rendered as `·`. The echo is display-only; the stored text stays literal.
+ */
+function AffixInput({ label, value, disabled, onChange }: {
+  label: string;
+  value: string;
+  disabled: boolean;
+  onChange: (v: string) => void;
+}) {
+  return (
+    <label className="space-y-1">
+      <span className="text-[11px] text-muted-foreground">{label}</span>
+      <Input
+        value={value}
+        disabled={disabled}
+        maxLength={AFFIX_MAX_LENGTH}
+        // The quote delimits the affix inside the token, so it's the one character that can't appear.
+        // Stripped on entry rather than rejected, so typing never silently does nothing.
+        onChange={(e) => onChange(e.target.value.split(AFFIX_FORBIDDEN).join(''))}
+        className="h-7 text-xs font-mono"
+      />
+      <span className="block h-3 text-[11px] font-mono text-muted-foreground truncate">
+        {value ? value.replace(/ /g, '·') : ''}
+      </span>
+    </label>
+  );
+}
 
 /** The interactive chip a `VariableNode` renders: label + remove (×), draggable to reposition, and a
  *  single-click pop-out. Variables with `variants` show a segmented control to switch the chip's mode
@@ -41,6 +73,7 @@ function VariableChip({ nodeKey, token }: { nodeKey: NodeKey; token: string }) {
 
   const axes = known ? vocab.axes(token) : [];
   const selection = known ? vocab.selection(token) : {};
+  const affixes = known ? vocab.affixes(token) : null;
   // How many toggle (checkbox) axes are on — used to lock the last one so at least one piece stays selected.
   const toggleOnCount = axes.filter((a) => a.toggle && selection[a.id] != null).length;
 
@@ -53,6 +86,19 @@ function VariableChip({ nodeKey, token }: { nodeKey: NodeKey; token: string }) {
       const node = $getNodeByKey(nodeKey);
       if (!$isVariableNode(node)) return;
       node.setToken(vocab.setAxis(node.getToken(), axisId, optionId));
+    });
+  };
+
+  // Replace one affix, keeping the other. Written straight through to the token — a placement's wording
+  // travels with it, so there is no separate state to keep in sync.
+  const setAffix = (which: 'pre' | 'post', value: string) => {
+    if (!editable || !affixes) return;
+    if (!isValidAffix(value)) return;
+    editor.update(() => {
+      const node = $getNodeByKey(nodeKey);
+      if (!$isVariableNode(node)) return;
+      const current = vocab.affixes(node.getToken()) ?? { pre: '', post: '' };
+      node.setToken(vocab.setAffixes(node.getToken(), ...(which === 'pre' ? [value, current.post] : [current.pre, value]) as [string, string]));
     });
   };
 
@@ -151,7 +197,20 @@ function VariableChip({ nodeKey, token }: { nodeKey: NodeKey; token: string }) {
             })}
           </div>
         ) : (
-          <p className="text-xs text-muted-foreground">No options for this variable.</p>
+          !affixes && <p className="text-xs text-muted-foreground">No options for this variable.</p>
+        )}
+        {affixes && (
+          <div className={cn('space-y-2', axes.length && 'mt-4 pt-3 border-t')}>
+            <p className="text-xs font-medium">Wording around it</p>
+            <p className="text-[11px] text-muted-foreground">
+              Text to put before and after the value. Both disappear when this chip has nothing to show, so a
+              sentence still reads correctly. Spaces count — they are shown as ·
+            </p>
+            <div className="grid grid-cols-2 gap-2">
+              <AffixInput label="Before" value={affixes.pre} disabled={!editable} onChange={(v) => setAffix('pre', v)} />
+              <AffixInput label="After" value={affixes.post} disabled={!editable} onChange={(v) => setAffix('post', v)} />
+            </div>
+          </div>
         )}
       </PopoverContent>
     </Popover>

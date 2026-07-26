@@ -1,6 +1,6 @@
 import { PROMPT_TEXT_KEYS, type PromptValues, type SectionStyle } from './promptPresets';
 import { parsePromptTemplate, serializeSegments } from './promptTemplate';
-import { variableForToken, variableAxes, decodeVariant, encodeVariant, baseToken, tokenVariant, withVariant } from './promptVariables';
+import { variableForToken, variableAxes, decodeVariant, encodeVariant, baseToken, tokenVariant, splitToken, joinToken } from './promptVariables';
 
 /**
  * Style downcasting. Prompts are authored canonically in markdown — `## Game World` headers and chip tokens
@@ -65,7 +65,18 @@ function setChipFormat(text: string, format: string | null): string {
       const variable = variableForToken(seg.token);
       if (!variable || !variableAxes(variable).some((a) => a.id === 'format')) return seg;
       const selection = { ...decodeVariant(variable, tokenVariant(seg.token)), format };
-      return { type: 'variable', token: withVariant(baseToken(seg.token), encodeVariant(variable, selection)) };
+      // Rebuild through joinToken, carrying the placement's affixes: withVariant alone knows nothing
+      // about them, so a style downcast would silently delete the user's connective wording.
+      const parts = splitToken(seg.token);
+      return {
+        type: 'variable',
+        token: joinToken({
+          base: baseToken(seg.token),
+          variantId: encodeVariant(variable, selection),
+          pre: parts?.pre,
+          post: parts?.post,
+        }),
+      };
     }),
   );
 }

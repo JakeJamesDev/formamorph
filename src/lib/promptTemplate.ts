@@ -1,24 +1,14 @@
-import { ALL_PROMPT_VARIABLES, ALL_VARIANT_IDS } from './promptVariables';
-import { escapeRegExp } from './utils';
+import { TOKEN_PATTERN, splitToken } from './promptVariables';
+import { NONE_PLACEHOLDER } from './promptFallbacks';
 
 /** A prompt template parsed into an ordered run of literal text and variable tokens. */
 export type PromptSegment =
   | { type: 'text'; value: string }
   | { type: 'variable'; token: string };
 
-// One alternation matching any known base token, with an optional `|variant` (e.g. `summary`, `list`)
-// before the `>`. Bases are sorted longest-first so a shorter token can't mask a longer one.
-const TOKEN_RE = new RegExp(
-  '(?:' +
-    ALL_PROMPT_VARIABLES.map((v) => v.token.slice(0, -1)) // drop trailing '>'
-      .sort((a, b) => b.length - a.length)
-      .map(escapeRegExp)
-      .join('|') +
-    ')(?:\\|(?:' +
-    ALL_VARIANT_IDS.map(escapeRegExp).join('|') +
-    '))?>',
-  'g',
-);
+// The shared token grammar (see promptVariables.TOKEN_PATTERN): a known base, an optional known variant
+// id, and optional quoted `pre=`/`post=` affixes, in that order.
+const TOKEN_RE = new RegExp(TOKEN_PATTERN, 'g');
 
 /** Split a template into text/variable segments. Only registry tokens become `variable` segments;
  *  any other `<...>` the user typed stays inside a `text` segment. */
@@ -41,8 +31,28 @@ export function serializeSegments(segments: PromptSegment[]): string {
   return segments.map((s) => (s.type === 'text' ? s.value : s.token)).join('');
 }
 
-/** Substitute every occurrence of each known token with its value (unlike `String.replace`, which
- *  only swaps the first). A token with no entry in `values` is left untouched. */
+/** A value that has nothing to say: blank, or the uniform `N/A` an empty context section renders. Only
+ *  affixed placements consult this — `N/A` reads fine under a heading and absurd mid-sentence. */
+function isBlankValue(value: string): boolean {
+  return value.trim() === '' || value === NONE_PLACEHOLDER;
+}
+
+/**
+ * Substitute every occurrence of each known token with its value (unlike `String.replace`, which only
+ * swaps the first). A token with no entry in `values` is left untouched.
+ *
+ * Values are keyed by the AFFIX-FREE token, which is what `buildContextValues` precomputes — affixes are
+ * unbounded, so the value map cannot enumerate them. A placement with no affixes therefore resolves
+ * byte-identically to the pre-affix behavior; one with affixes wraps its value, or renders nothing at all
+ * when there is no value to wrap (the whole point: "…, inside <empty>" must not reach the model).
+ */
 export function renderPromptTemplate(template: string, values: Record<string, string>): string {
-  return template.replace(TOKEN_RE, (match) => values[match] ?? match);
+  return template.replace(TOKEN_RE, (match) => {
+    const parts = splitToken(match);
+    if (!parts) return match;
+    const value = values[parts.key];
+    if (value === undefined) return match;
+    if (!parts.pre && !parts.post) return value;
+    return isBlankValue(value) ? '' : `${parts.pre}${value}${parts.post}`;
+  });
 }
