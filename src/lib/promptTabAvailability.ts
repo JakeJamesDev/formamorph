@@ -31,5 +31,6 @@ export function computePromptTabAvailability(flags: PromptTabFlags): Record<stri
     character: thinkingMode === 'staged',
     storyboard: thinkingMode === 'staged',
     timepassed: aiClock,
+    timeopening: aiClock,
   };
 }

@@ -133,6 +133,12 @@ export interface GameState {
   gameplayText: string;
   locationId?: string;
   gameTime: number;
+  /** Hour of day the story opened at, as read from the first narration by the opening-time pass. Every
+   *  clock reading is `gameTime` measured from here, so a midnight ritual no longer reports as morning.
+   *  Absent whenever the pass was off, failed, or the save predates it — absent reads as the shipped
+   *  `DEFAULT_START_HOUR`, which is exactly how the game behaved before. Never re-asked for an existing
+   *  save: a retroactive answer would shift every memory stamp already written. */
+  startHour?: number;
   /** A snapshot's own copy of the flat chat history. Live `currentState` carries it in memory, but it is
    *  stripped from persisted snapshots — the canonical history lives once at `SaveObject.messageHistory`.
    *  Absent on migrated/persisted snapshots; present on the in-memory current state. */

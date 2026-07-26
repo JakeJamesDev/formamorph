@@ -3,7 +3,7 @@ import type { AITurnResult, ChatMessage } from '@/types';
 import { parseTurns, buildBandedHistory, buildVerbatimHistory, type BandTurn } from './turnBanding';
 import { applyMemoryOverrides, activeNotes, PLAYER_EDIT_IMPORTANCE, type MemoryOverrides } from './memoryOverrides';
 import { milestoneCandidates, resolveMilestoneKeep, resolveMilestoneDrop } from './milestoneMemory';
-import { buildMemoryLedger } from './memoryView';
+import { buildMemoryLedger, matchesMemoryFilter, MEMORY_FILTER_LABELS, MEMORY_FILTER_COUNT_LABELS, type MemoryRow, type MemoryFilter } from './memoryView';
 
 const user = (content: string): ChatMessage => ({ role: 'user', content });
 const assistant = (turn: Partial<AITurnResult> & { narration?: string }): ChatMessage => ({
@@ -257,6 +257,100 @@ describe('buildMemoryLedger', () => {
   it('puts the Recent divider where the verbatim floor begins', () => {
     // Floor 1 → t4 rides verbatim, so it is the first Recent row.
     expect(ledger({}).recentFrom).toBe(3);
+  });
+});
+
+describe('matchesMemoryFilter', () => {
+  const row = (over: Partial<MemoryRow> = {}): MemoryRow => ({
+    id: 'x', text: 't', isNote: false, kept: true, deleted: false, turnNumber: 1, pos: 0,
+    inContext: false, asScene: false, verbatim: false, ...over,
+  });
+
+  it('hides a deleted row from every filter but Deleted', () => {
+    const dead = row({ deleted: true, kept: false });
+    for (const f of ['all', 'verbatim', 'summary', 'held', 'letGo', 'edited', 'custom'] as const) {
+      expect(matchesMemoryFilter(dead, f), f).toBe(false);
+    }
+    expect(matchesMemoryFilter(dead, 'deleted')).toBe(true);
+  });
+
+  it('counts both ways of having the real text under Verbatim', () => {
+    expect(matchesMemoryFilter(row({ verbatim: true }), 'verbatim')).toBe(true);
+    expect(matchesMemoryFilter(row({ asScene: true, inContext: true }), 'verbatim')).toBe(true);
+    expect(matchesMemoryFilter(row({ inContext: true }), 'verbatim')).toBe(false);
+  });
+
+  it('keeps Verbatim, Summary and Held mutually exclusive', () => {
+    const forms = ['verbatim', 'summary', 'held'] as const;
+    const cases = [
+      row({ verbatim: true }),                          // riding word-for-word in the floor
+      row({ asScene: true, inContext: true }),          // pulled back whole by Scene Recall
+      row({ inContext: true }),                         // sent as a digest line
+      row({ kept: true }),                              // remembered, sat this turn out
+    ];
+    for (const c of cases) {
+      expect(forms.filter((f) => matchesMemoryFilter(c, f)), JSON.stringify(c)).toHaveLength(1);
+    }
+  });
+
+  it('does not count a verbatim or already-sent memory as Held', () => {
+    expect(matchesMemoryFilter(row({ kept: true, verbatim: true }), 'held')).toBe(false);
+    expect(matchesMemoryFilter(row({ kept: true, inContext: true }), 'held')).toBe(false);
+    expect(matchesMemoryFilter(row({ kept: true }), 'held')).toBe(true);
+  });
+
+  it('labels every filter for both the chip and the header count', () => {
+    // A missing entry renders as `undefined` in the header rather than failing, so guard it here.
+    const filters: MemoryFilter[] = ['all', 'verbatim', 'summary', 'held', 'letGo', 'edited', 'custom', 'deleted'];
+    for (const f of filters) {
+      expect(MEMORY_FILTER_LABELS[f], f).toBeTruthy();
+      expect(MEMORY_FILTER_COUNT_LABELS[f], f).toBeTruthy();
+    }
+    expect(Object.keys(MEMORY_FILTER_LABELS).sort()).toEqual([...filters].sort());
+    expect(Object.keys(MEMORY_FILTER_COUNT_LABELS).sort()).toEqual([...filters].sort());
+  });
+
+  it('puts player-written memories under Custom', () => {
+    expect(matchesMemoryFilter(row({ isNote: true }), 'custom')).toBe(true);
+    expect(matchesMemoryFilter(row(), 'custom')).toBe(false);
+  });
+});
+
+describe('buildMemoryLedger context marking', () => {
+  const ledger = (context?: { bandIds?: string[]; rehydratedIds?: string[] }, overrides: MemoryOverrides = {}) =>
+    buildMemoryLedger({ history: history(), overrides, pins: {}, selection: null, verbatimFloor: 1, context }).rows;
+
+  it('marks nothing before a turn has reported a band', () => {
+    expect(ledger().every((r) => !r.inContext && !r.asScene)).toBe(true);
+    expect(ledger({ bandIds: [] }).every((r) => !r.inContext)).toBe(true);
+  });
+
+  it('marks only the memories the band actually carried', () => {
+    const rows = ledger({ bandIds: ['t1', 't3'] });
+    expect(rows.filter((r) => r.inContext).map((r) => r.id)).toEqual(['t1', 't3']);
+  });
+
+  it('separates kept-but-not-sent from let-go — the two states the panel has to tell apart', () => {
+    // t2 is kept by the selector yet lost its band slot this turn; nothing marks it as let go.
+    const rows = buildMemoryLedger({
+      history: history(), overrides: {}, pins: {}, selection: null, verbatimFloor: 1,
+      context: { bandIds: ['t1'] },
+    }).rows;
+    const t2 = rows.find((r) => r.id === 't2')!;
+    expect(t2).toMatchObject({ kept: true, inContext: false });
+  });
+
+  it('marks a rehydrated turn as in context even though it left the band', () => {
+    const rows = ledger({ bandIds: ['t1'], rehydratedIds: ['t3'] });
+    expect(rows.find((r) => r.id === 't3')).toMatchObject({ inContext: true, asScene: true });
+    expect(rows.find((r) => r.id === 't1')).toMatchObject({ inContext: true, asScene: false });
+  });
+
+  it('marks a player note whenever there is a band, since it carries no turn id to match on', () => {
+    const notes = { notes: [{ id: 'n1', text: 'NOTE', anchorTurn: 4 }] };
+    expect(ledger({ bandIds: ['t1'] }, notes).find((r) => r.id === 'n1')!.inContext).toBe(true);
+    // …but not when no band was reported at all.
+    expect(ledger(undefined, notes).find((r) => r.id === 'n1')!.inContext).toBe(false);
   });
 });
 

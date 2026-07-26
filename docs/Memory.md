@@ -38,10 +38,35 @@ Memories under the **Recent** divider are still riding word-for-word, so your pi
 | 🗑️ **Delete** | Remove a memory. Switch the filter to **Deleted** to bring it back. |
 | ↩️ **Revert** | Put an edited memory back to the story's own wording. |
 
-Search and the filter chips — **Kept · Let Go · Edited · Mine · Deleted** — make a long story's ledger navigable.
+Search and the filter chips — **Verbatim · Summary · Held · Let Go · Edited · Custom · Deleted** — make a long story's ledger navigable. The first three name the *form* the story holds a memory in, and no memory is ever two of them at once. The Memory tab carries a short version of the same chips.
 
 > [!TIP]
 > **Nothing here is destructive.** The story's own summary is always preserved underneath whatever you write, so every change is reversible — and **Reset All My Changes** puts the whole ledger back the way the story had it.
+
+## Kept vs Sent
+
+Being **kept** and being **sent** are different things.
+
+*Kept* is a standing verdict — the story judged this memory worth carrying, or you pinned it. *Sent* is about one turn: with **Semantic Memory** on, the kept pool is ranked against what you just did, and only the most relevant handful actually rides. A long story keeps far more memories than any single turn carries.
+
+| Row | Means |
+|---|---|
+| **Left accent bar** | Reached the story on the last turn |
+| **Plain** | Remembered — just held back this turn |
+| ~~**Struck through**~~ | The story let this one go |
+
+The three forms a memory can be in:
+
+| Chip | The story has… |
+|---|---|
+| **Verbatim** | The real text — a recent turn, or one Scene Recall brought back whole |
+| **Summary** | The compressed line you're reading, and nothing more |
+| **Held** | Nothing this turn. Still remembered, waiting to become relevant again |
+
+A memory **Scene Recall** sent back as its full original prose is accented too, and tagged **Scene** in the Manager — the story saw far more than the one-line summary you're reading. The **Verbatim** filter collects those along with the recent turns still riding word-for-word: both mean the story has the real text, not a compression of it.
+
+> [!NOTE]
+> Nothing is marked until a turn has run. A freshly loaded save shows no accents rather than replaying an old turn's selection. Memories under the **Recent** divider are never marked — they ride word-for-word regardless, which the divider already tells you.
 
 ## When Each Memory Happened
 
@@ -63,6 +88,25 @@ The character panel's clock reads the same way — **Day 1, morning** rather tha
 > **Nothing is stamped while Measured Clock is off.** Without it every turn costs a flat hour whatever happened in it, so a date would really just be a turn count wearing a costume. Switch it on partway through a story and the earlier turns are dated at that flat hour — roughly wrong in scale, but still in the right order.
 
 Both settings live under Settings → Generation → Memory. **Measured Clock** decides whether time is measured at all; **Time in Memory** decides whether the AI is told.
+
+### Where the clock starts
+
+Knowing how far each turn moves is only half of it — the clock also has to start in the right place. Every story used to open at eight in the morning, so a world written to begin at a midnight vigil or a supper table was wrong from its first line, and stayed wrong by the same amount forever.
+
+With **Measured Clock** on, the game reads your opening scene once and sets the clock to match it. A story that opens on lamps and a cold watch starts at night; one that opens on morning rounds starts in the morning.
+
+| | |
+|---|---|
+| **When it runs** | Once, on the opening turn, alongside the rest of it |
+| **What it reads** | Your opening scene — not the world description |
+| **If it can't tell** | Falls back to morning, exactly as before |
+| **Existing stories** | Never re-dated — see below |
+| **Re-rolling the opening** | Read again, so a rewritten opening keeps its own clock |
+
+> [!IMPORTANT]
+> **Turning Measured Clock on partway through a story does not change when that story began.** The opening scene is long gone by then, and re-dating it would move every stamp you've already collected. Stories started before this existed keep the clock they have.
+
+Edit how it judges a scene under Settings → **Prompts** → **Opening**, next to **Clock**.
 
 ## Memories vs Notes
 

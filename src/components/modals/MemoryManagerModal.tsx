@@ -2,7 +2,7 @@ import { useMemo, useState } from 'react';
 import { toast } from 'react-toastify';
 import { useGameplay } from '@/contexts/GameplayContext';
 import { useSettings } from '@/contexts/SettingsContext';
-import { buildMemoryLedger, type MemoryRow } from '@/lib/memoryView';
+import { buildMemoryLedger, matchesMemoryFilter, MEMORY_FILTER_LABELS, MEMORY_FILTER_COUNT_LABELS, type MemoryRow, type MemoryFilter } from '@/lib/memoryView';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -27,16 +27,8 @@ import { cn } from '@/lib/utils';
  *  eating the recap budget it shares with every other memory. Advisory only — never blocks. */
 export const MEMORY_SOFT_LIMIT = 400;
 
-type Filter = 'all' | 'kept' | 'letGo' | 'edited' | 'mine' | 'deleted';
-
-const FILTERS: { id: Filter; label: string }[] = [
-  { id: 'all', label: 'All' },
-  { id: 'kept', label: 'Kept' },
-  { id: 'letGo', label: 'Let Go' },
-  { id: 'edited', label: 'Edited' },
-  { id: 'mine', label: 'Mine' },
-  { id: 'deleted', label: 'Deleted' },
-];
+/** Ordered by how present a memory is, most first: whole text, sent as a summary, merely kept. */
+const FILTERS: MemoryFilter[] = ['all', 'verbatim', 'summary', 'held', 'letGo', 'edited', 'custom', 'deleted'];
 
 export const MemoryManagerModal = ({
   isOpen,
@@ -56,12 +48,13 @@ export const MemoryManagerModal = ({
     memoryDeleted, setMemoryDeleted,
     memoryNotes, setMemoryNotes,
     isWaitingForAI,
-    gameTime,
+    gameTime, calendar,
+    contextMemoryIds, rehydratedMemoryIds,
   } = useGameplay();
   const { memoryDigests, narrationVerbatimTurns, aiClock } = useSettings();
 
   const [query, setQuery] = useState('');
-  const [filter, setFilter] = useState<Filter>('all');
+  const [filter, setFilter] = useState<MemoryFilter>('all');
   const [editingId, setEditingId] = useState<string | null>(null);
   const [draft, setDraft] = useState('');
   const [adding, setAdding] = useState(false);
@@ -78,9 +71,10 @@ export const MemoryManagerModal = ({
       selection: milestoneSelection,
       verbatimFloor: narrationVerbatimTurns,
       // Ages are shown only while the clock measures each turn; the flat hour would date them arbitrarily.
-      clock: aiClock ? { nowHours: gameTime } : undefined,
+      clock: aiClock ? { nowHours: gameTime, calendar } : undefined,
+      context: { bandIds: contextMemoryIds, rehydratedIds: rehydratedMemoryIds },
     }),
-    [fullMessageHistory, memoryEdits, memoryDeleted, memoryNotes, memoryPins, milestoneSelection, narrationVerbatimTurns, aiClock, gameTime],
+    [fullMessageHistory, memoryEdits, memoryDeleted, memoryNotes, memoryPins, milestoneSelection, narrationVerbatimTurns, aiClock, gameTime, calendar, contextMemoryIds, rehydratedMemoryIds],
   );
 
   const oldestId = ledger.rows.find((r) => !r.deleted && !r.isNote)?.id;
@@ -92,11 +86,7 @@ export const MemoryManagerModal = ({
   const visible = useMemo(() => {
     const q = query.trim().toLowerCase();
     return ledger.rows.filter((r) => {
-      if (filter === 'deleted' ? !r.deleted : r.deleted) return false;
-      if (filter === 'kept' && !r.kept) return false;
-      if (filter === 'letGo' && r.kept) return false;
-      if (filter === 'edited' && !r.edited) return false;
-      if (filter === 'mine' && !r.isNote) return false;
+      if (!matchesMemoryFilter(r, filter)) return false;
       if (q && !r.text.toLowerCase().includes(q)) return false;
       return true;
     });
@@ -196,7 +186,9 @@ export const MemoryManagerModal = ({
             <HelpButton topicId="game.memoryManager" />
           </DialogTitle>
           <DialogDescription>
-            {ledger.keptCount} of {ledger.totalCount} Moments Remembered
+            {filter === 'all'
+              ? `${ledger.totalCount} ${MEMORY_FILTER_COUNT_LABELS.all}`
+              : `${visible.length} of ${ledger.totalCount} ${MEMORY_FILTER_COUNT_LABELS[filter]}`}
             {editedCount > 0 && ` · ${editedCount} edited`}
             {mineCount > 0 && ` · ${mineCount} yours`}
           </DialogDescription>
@@ -223,13 +215,13 @@ export const MemoryManagerModal = ({
         <div className="flex flex-wrap gap-1">
           {FILTERS.map((f) => (
             <Button
-              key={f.id}
+              key={f}
               size="sm"
-              variant={filter === f.id ? 'default' : 'outline'}
+              variant={filter === f ? 'default' : 'outline'}
               className="h-6 px-2 text-[11px]"
-              onClick={() => setFilter(f.id)}
+              onClick={() => setFilter(f)}
             >
-              {f.label}
+              {MEMORY_FILTER_LABELS[f]}
             </Button>
           ))}
         </div>
@@ -275,7 +267,16 @@ export const MemoryManagerModal = ({
                       <div className="h-px flex-grow bg-border" />
                     </div>
                   )}
-                  <div className={cn('rounded border border-border p-2', !row.kept && !isEditing && 'opacity-60')}>
+                  {/* Accent marks what actually reached the model last turn — the minority state, and the
+                      one the panel can't otherwise tell you. See MemoryPanel for the reasoning. */}
+                  <div
+                    title={row.asScene ? 'Sent as a full scene last turn' : row.inContext ? 'Sent to the story last turn' : undefined}
+                    className={cn(
+                      'rounded border border-border p-2',
+                      !row.kept && !isEditing && 'opacity-60',
+                      row.inContext && !isEditing && 'border-l-2 border-l-primary',
+                    )}
+                  >
                     {isEditing ? (
                       <div className="space-y-2">
                         <Textarea
@@ -356,9 +357,12 @@ export const MemoryManagerModal = ({
                         </div>
                         <div className="mt-1 flex flex-wrap items-center gap-1">
                           {row.isNote && <Badge variant="secondary" className="h-4 px-1 text-[9px]">Yours</Badge>}
+                          {/* Rehydration replaces the digest with the turn's original prose, so this row
+                              reached the model as a great deal more than the sentence shown here. */}
+                          {row.asScene && <Badge variant="outline" className="h-4 px-1 text-[9px]">Scene</Badge>}
                           {/* A deleted row has no ordinal — the remaining memories renumbered without it. */}
                           {!row.isNote && row.turnNumber > 0 && (
-                            <span className="text-[9px] text-muted-foreground">Moment {row.turnNumber}</span>
+                            <span className="text-[9px] text-muted-foreground">Memory {row.turnNumber}</span>
                           )}
                           {row.stamp && (
                             <span className="text-[9px] text-muted-foreground">

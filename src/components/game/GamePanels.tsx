@@ -39,7 +39,8 @@ import { ConfirmDialog } from '../ConfirmDialog';
 import { HelpButton } from '../HelpButton';
 import { EditTextModal } from '../modals/EditTextModal';
 import type { Entity, SceneEntity } from '@/types';
-import { formatAbsolute } from '@/lib/gameClock';
+import { formatAbsolute, formatClock } from '@/lib/gameClock';
+import { logKind } from '@/lib/playLog';
 import { cn } from "@/lib/utils";
 
 /** A committed turn's saved reasoning (from its assistant-message JSON), or null. */
@@ -68,6 +69,7 @@ export const LeftPanel = ({ entities, onEntityClick, onRegenerateMemory }: {
     bodyMorphValues,
     viewVisibleEntities: visibleEntities,
     logEntries,
+    calendar,
     logsEndRef,
     // Page-aware notes: live scratchpad on the current page, that turn's frozen notes on a past page (edit
     // routes to the right place). Notes stay editable on any page.
@@ -336,9 +338,15 @@ export const LeftPanel = ({ entities, onEntityClick, onRegenerateMemory }: {
         <TabsContent value="logs" className="flex-grow overflow-hidden min-h-[100px]">
           <ScrollArea className="h-[calc(100%-1rem)]">
             <div className="p-2">
+              {/* Story events are timestamped in world time; app events (saves, load failures, aborted
+                  requests) are not — a story date on the save dialog would be a claim, not a rounding.
+                  Entries from before the split carry no `kind` and read as story events, as they did. */}
               {logEntries.map((entry, index) => (
-                <p key={index} className="mb-1">
-                  [{Math.floor(entry.gameTime / 24)}d {entry.gameTime % 24}h] {entry.text}
+                <p key={index} className={`mb-1${logKind(entry) === 'system' ? ' text-muted-foreground italic' : ''}`}>
+                  {logKind(entry) === 'system' ? null : (
+                    <span className="text-muted-foreground">[{formatClock(entry.gameTime, calendar)}] </span>
+                  )}
+                  {entry.text}
                   {entry.repeat > 0 ? ` (${entry.repeat + 1})` : ''}
                 </p>
               ))}
@@ -978,6 +986,7 @@ export const RightPanel = ({ onLocationClick, language, setLanguage }: {
     // turn's stats/traits/time/deltas read-only. `commitManualStatEdit` writes live and rebaselines the
     // snapshot — the edit control is disabled while viewing the past, so it only runs on the latest page.
     viewGameTime: gameTime,
+    calendar,
     currentLocation,
     viewLocationId,
     isViewingPast,
@@ -1020,7 +1029,7 @@ export const RightPanel = ({ onLocationClick, language, setLanguage }: {
         </div>
         {/* The story's position, not an hour count: elapsed hours read as a stopwatch, and the daypart is
             what the prose is actually written around. Same wording the memory stamps use. */}
-        <p className="text-center">{formatAbsolute(gameTime)}</p>
+        <p className="text-center">{formatAbsolute(gameTime, calendar)}</p>
       </div>
 
       <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full flex-grow flex flex-col overflow-hidden">

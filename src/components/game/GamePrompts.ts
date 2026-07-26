@@ -415,6 +415,46 @@ Decide how long it took, then write that as a count followed by its unit. Always
 
 Your entire reply is that count and its unit, with nothing before or after it.`;
 
+// The opening-time pass (requestType 'openingTime'): run once, silently, after the FIRST narration, to
+// work out what time of day the story opens at. Without it every world starts at 08:00 and a midnight
+// ritual or an evening dinner party is told it is morning — so a measured clock can be right about every
+// duration and still wrong about the phase for the whole playthrough.
+//
+// It asks for a DAYPART from the closed set gameClock's `daypart()` emits, never a clock reading, for the
+// same reason the delta pass asks for a duration and not a date. Two lines are load-bearing, both measured:
+//
+//   "not a broad word" — without it the cloud model answers "day", the single largest source of
+//   unparseable replies (10% -> 1% with the line).
+//
+//   `unstated` — an escape hatch that costs nothing and occasionally saves a lot. Cloud never takes it
+//   (0 of 264) so it is inert there; Cydonia takes it ~20-27% of the time and only on scenes with no sky,
+//   never on one that states a time (false-hatch 0% on both tiers). Where it fires, the alternative is a
+//   coin flip: forced, Vane Hollow's mine scattered across three dayparts at 33% agreement. An unreadable
+//   answer falls back to DEFAULT_START_HOUR, so declining and failing take the same safe path.
+//
+// Deliberately NOT here: a gloss explaining where each daypart falls. Probed and rejected — it cost 7pp of
+// accuracy on both arms by dragging "past midnight" into `evening`. Probe:
+// testing/baseline/harness/opening-time-probe.mjs.
+export const defaultOpeningTimePrompt = `You read the opening scene of a story and say what time of day it takes place at.
+
+- Go by what the passage shows: the light, what the people in it are doing, what has just finished or is about to start.
+- Treat night as covering the dark hours on either side of midnight.
+- A lamp or a fire on its own does not tell you the time. Rooms are lit at every hour.
+- Name the specific part of the day. A broad word like "day" or "daytime" is not one of the answers.
+
+Answer with exactly one of these words: night, dawn, morning, midday, afternoon, evening, unstated.
+
+- Answer unstated when the passage genuinely gives you nothing to go on, rather than choosing the time that seems most likely.
+
+Your entire reply is that one word, with nothing before or after it.`;
+
+// The opening pass's user message. Reads the narration alone: the pass runs on turn one, where there is no
+// player action worth measuring against.
+export const defaultOpeningTimeUserPrompt = `The opening scene:
+<NARRATION>
+
+What time of day does this scene take place at?`;
+
 // The clock pass's user message. Same <PLAYER ACTION>/<NARRATION> tokens the other post-narration
 // extractors use, so the assembly matches choices/stats.
 export const defaultTimePassedUserPrompt = `What the character did:

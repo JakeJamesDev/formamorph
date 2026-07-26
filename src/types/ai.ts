@@ -44,7 +44,8 @@ export type AIRequestType =
   | 'milestoneSelect'
   | 'diary'
   | 'discoverEntity'
-  | 'timePassed';
+  | 'timePassed'
+  | 'openingTime';
 
 /**
  * Structured payload the game stores per turn (mirrors the JSON the app round-trips).

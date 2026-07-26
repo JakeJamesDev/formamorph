@@ -7,6 +7,9 @@ import {
   dayAndHour,
   daypart,
   formatAbsolute,
+  formatClock,
+  parseOpeningDaypart,
+  OPENING_HOURS,
   formatRelative,
   formatStamp,
   formatNow,
@@ -52,6 +55,83 @@ describe('dayAndHour', () => {
   it('wraps an out-of-range start hour instead of losing the clock', () => {
     expect(dayAndHour(0, { startHour: 26 })).toEqual({ day: 1, hour: 2 });
     expect(dayAndHour(0, { startHour: -1 })).toEqual({ day: 1, hour: 23 });
+  });
+});
+
+describe('parseOpeningDaypart', () => {
+  it('reads every word in the closed set', () => {
+    expect(parseOpeningDaypart('dawn')).toBe(OPENING_HOURS.dawn);
+    expect(parseOpeningDaypart('morning')).toBe(OPENING_HOURS.morning);
+    expect(parseOpeningDaypart('midday')).toBe(OPENING_HOURS.midday);
+    expect(parseOpeningDaypart('afternoon')).toBe(OPENING_HOURS.afternoon);
+    expect(parseOpeningDaypart('evening')).toBe(OPENING_HOURS.evening);
+    expect(parseOpeningDaypart('night')).toBe(OPENING_HOURS.night);
+  });
+
+  it('tolerates the stray prose small models append', () => {
+    expect(parseOpeningDaypart('  Evening.')).toBe(OPENING_HOURS.evening);
+    expect(parseOpeningDaypart('The scene takes place at night.')).toBe(OPENING_HOURS.night);
+  });
+
+  it('rejects a broad word rather than coercing it — the cloud model answers "day" unprompted', () => {
+    expect(parseOpeningDaypart('day')).toBeNull();
+    expect(parseOpeningDaypart('daytime')).toBeNull();
+  });
+
+  it('rejects anything else, so a garbled reply falls back to the default start hour', () => {
+    expect(parseOpeningDaypart('')).toBeNull();
+    expect(parseOpeningDaypart('unstated')).toBeNull();
+    expect(parseOpeningDaypart('14:00')).toBeNull();
+  });
+
+  it('maps night to late evening, so an opening at night is not minutes from sunrise', () => {
+    const hour = parseOpeningDaypart('night')!;
+    expect(daypart(hour)).toBe('night');
+    // Seeded as the opening hour, the story stays dark for a realistic stretch rather than hours.
+    expect(dayAndHour(0, { startHour: hour })).toEqual({ day: 1, hour: 22 });
+  });
+
+  it('round-trips every answer back through daypart(), so the sets cannot drift apart', () => {
+    for (const [word, hour] of Object.entries(OPENING_HOURS)) {
+      expect(daypart(hour)).toBe(word);
+    }
+  });
+
+  it('opens on day 1 whatever the answer, including the small hours', () => {
+    for (const hour of Object.values(OPENING_HOURS)) {
+      expect(dayAndHour(0, { startHour: hour }).day).toBe(1);
+    }
+  });
+});
+
+describe('formatClock', () => {
+  it('opens at the calendar start hour, zero-padded', () => {
+    expect(formatClock(0)).toBe('Day 1, 08:00');
+  });
+
+  it('tracks the same day boundary dayAndHour does', () => {
+    expect(formatClock(15)).toBe('Day 1, 23:00');
+    expect(formatClock(16)).toBe('Day 2, 00:00');
+    expect(formatClock(40)).toBe('Day 3, 00:00');
+  });
+
+  it('shows the minutes a measured sub-hour delta produces', () => {
+    expect(formatClock(0.25)).toBe('Day 1, 08:15');
+    expect(formatClock(1.5)).toBe('Day 1, 09:30');
+  });
+
+  it('rolls the day rather than printing a 24th hour when rounding up to midnight', () => {
+    // 15h59m30s past an 08:00 start rounds to the minute, and that minute is the next day's first.
+    expect(formatClock(16 - 0.5 / 60)).toBe('Day 2, 00:00');
+  });
+
+  it('honors a non-24-hour day and a custom start', () => {
+    expect(formatClock(0, { hoursPerDay: 10, startHour: 2 })).toBe('Day 1, 02:00');
+    expect(formatClock(8, { hoursPerDay: 10, startHour: 2 })).toBe('Day 2, 00:00');
+  });
+
+  it('never runs backwards before the start of the story', () => {
+    expect(formatClock(-5)).toBe('Day 1, 08:00');
   });
 });
 

@@ -81,7 +81,7 @@ import { variableForToken, variableVariantIds, decodeVariant, tokenVariant, with
 import { renderPromptTemplate } from "../lib/promptTemplate";
 import { useBaselineTestHook } from "../lib/baselineTestHook";
 import { parseTurns, buildVerbatimHistory, buildBandedHistory, extractKeywords, type BandCounts } from "../lib/turnBanding";
-import { buildStamper, formatAbsolute, hoursByPosition, parseTimeDelta, FLAT_HOURS_PER_TURN } from "../lib/gameClock";
+import { buildStamper, formatAbsolute, hoursByPosition, parseTimeDelta, parseOpeningDaypart, FLAT_HOURS_PER_TURN } from "../lib/gameClock";
 import { milestoneCandidates, agedMilestoneCandidates, resolveMilestoneDrop, resolveMilestoneKeep, buildIncrementalMilestoneUserMessage, parseIncrementalMilestoneReply, applyIncrementalVerdict } from "../lib/milestoneMemory";
 import { applyMemoryOverrides, activeNotes } from "../lib/memoryOverrides";
 import { buildRelevanceScores, vectorKey } from "../lib/memoryRelevance";
@@ -168,6 +168,8 @@ interface DebugTurn {
 const DIGEST_MAX_TOKENS = 200;
 // The clock pass answers with one value like "2h"; anything longer is stray prose the parser ignores.
 const TIME_PASSED_MAX_TOKENS = 12;
+// One daypart word; the contract is "nothing before or after it".
+const OPENING_TIME_MAX_TOKENS = 8;
 // The milestone selector replies with a comma-separated index list; sized for long histories.
 const MILESTONE_SELECT_MAX_TOKENS = 300;
 
@@ -292,6 +294,8 @@ const GameViewer = ({
     aiClock,
     nowLinePrompt,
     timePassedPrompt,
+    openingTimePrompt,
+    openingTimeUserPrompt,
     timePassedUserPrompt,
     concurrentTurnRequests,
     autosaveEnabled,
@@ -335,9 +339,15 @@ const GameViewer = ({
     setHeldStatChanges,
     setDrainingStatChanges,
     addLogEntry,
+    addSystemLogEntry,
+    setContextMemoryIds,
+    setRehydratedMemoryIds,
     logEntries,
     gameTime,
     setGameTime,
+    startHour,
+    setStartHour,
+    calendar,
     logsEndRef,
     setChoices,
     isGameStarted,
@@ -696,7 +706,7 @@ const GameViewer = ({
     // Seed the live notes scratchpad from the rolled-back turn's own notes (per-turn notes live on the
     // message, and keepLiveHistory skips the snapshot's notes) so a later re-generate/action uses them.
     setPlayerNotes(parseTurnContent(fullMessageHistory[pageAssistantIndex(currentPage, messagesPerPage)]?.content ?? '')?.notes ?? '');
-    addLogEntry("Rolled back to previous game state");
+    addSystemLogEntry("Rolled back to previous game state");
     // Mark the AI-context entries for the turns this rollback discarded (those after the page we
     // rolled back to). States after the current page are kept, allowing future "redo" functionality.
     setDebugTurns((prev) => markPrunedTurns(prev, currentPage));
@@ -829,7 +839,7 @@ const GameViewer = ({
     try {
       await run(controller.signal);
     } catch (error) {
-      addLogEntry((error as Error).message);
+      addSystemLogEntry((error as Error).message);
     } finally {
       setIsWaitingForAI(false);
       setAiRequestType(null);
@@ -974,11 +984,11 @@ const GameViewer = ({
       // scene-reset / roleplay-identity-inversion class entirely; without it the recap reads as backstory.
       // In-world time (experimental): each remembered moment is stamped with when it happened — the recap
       // otherwise reads as an undated chronicle (docs-internal/time-system-design.md).
-      const stamp = timeContext ? buildStamper({ nowHours: gameTime, hoursAt: hoursByPosition(turns) }) : undefined;
+      const stamp = timeContext ? buildStamper({ nowHours: gameTime, hoursAt: hoursByPosition(turns), calendar }) : undefined;
       // Assembled from the same context values every other prompt uses: each chip carries its own wording
       // in its affixes and disappears with its value, so any combination still reads as a sentence.
       const nowLine = currentLocation ? renderPromptTemplate(nowLinePrompt, buildContextValuesRef.current()) : undefined;
-      const { messages, counts, bandTurnIds } = buildBandedHistory({
+      const { messages, counts, bandTurnIds, rehydratedTurnIds } = buildBandedHistory({
         turns,
         contextWindow,
         promptTokens,
@@ -1000,13 +1010,19 @@ const GameViewer = ({
         stamp,
       });
       lastBandCountsRef.current = counts;
-      if (liveRecall) lastBandIdsRef.current = new Set(bandTurnIds);
+      // `liveRecall` is the real turn's call — the AI-context preview builds the same band with it off, so
+      // gating here keeps the Memory panel reporting what was actually sent rather than what a preview drew.
+      if (liveRecall) {
+        lastBandIdsRef.current = new Set(bandTurnIds);
+        setContextMemoryIds(bandTurnIds);
+        setRehydratedMemoryIds(rehydratedTurnIds);
+      }
       return messages;
     }
     lastBandCountsRef.current = null;
     // Digests off: no band to anchor into, so the player's own memories lead as a standing block.
     return buildVerbatimHistory(turns, contextWindow, promptTokens, maxTokens, effectiveNotes, recapUserPrompt);
-  }, [fullMessageHistory, contextWindow, maxTokens, memoryDigests, semanticMemory, semanticRehydration, semanticBandCap, dictionary, allEntities, narrationVerbatimTurns, getMilestoneDrop, recapUserPrompt, rehydrateUserPrompt, currentLocation, parseEffectiveTurns, effectiveNotes, timeContext, gameTime, nowLinePrompt]);
+  }, [fullMessageHistory, contextWindow, maxTokens, memoryDigests, semanticMemory, semanticRehydration, semanticBandCap, dictionary, allEntities, narrationVerbatimTurns, getMilestoneDrop, recapUserPrompt, rehydrateUserPrompt, currentLocation, parseEffectiveTurns, effectiveNotes, timeContext, gameTime, calendar, nowLinePrompt, setContextMemoryIds, setRehydratedMemoryIds]);
 
   // The action's embedding, shared by every semantic consumer this turn (band relevance + lore
   // activation) so the action is embedded once. Null when no semantic feature is on, the model is
@@ -1189,6 +1205,11 @@ const GameViewer = ({
     setPlaceholderRolls((prev) => primeRolls(placeholders, texts, prev));
   }, [isGameStarted, placeholders, entities, locations, dictionaries, worldOverview, setPlaceholderRolls]);
 
+  // True while the story's opening hour is still unmeasured and about to be asked for — i.e. the clock is on
+  // and the opening turn hasn't committed. A game that started with the clock off keeps `startHour` null
+  // forever, but `isGameStarted` is true by then, so it is never treated as pending.
+  const openingHourPending = aiClock && startHour === null && !isGameStarted;
+
   const buildContextValues = useCallback((locationOverride?: GameLocation | null): Record<string, string> => {
     // The location this turn is scoped to — an override (e.g. a move auto-applied before the narration)
     // or the live current location.
@@ -1241,7 +1262,10 @@ const GameViewer = ({
       "<NOTES>": playerNotes || NONE_PLACEHOLDER,
       // The story clock as a plain inline value. Off ⇒ the uniform placeholder, so an affixed placement
       // (the now-line's) simply vanishes and the setting needs no special case anywhere else.
-      "<TIME>": timeContext ? formatAbsolute(gameTime) : NONE_PLACEHOLDER,
+      // Also withheld until the opening hour is known: on the opening turn the clock would read the
+      // untested 08:00 default, and the opening-time pass is about to ask the model what time it is from
+      // that very narration. Telling it first would make the answer a restatement of the guess.
+      "<TIME>": timeContext && !openingHourPending ? formatAbsolute(gameTime, calendar) : NONE_PLACEHOLDER,
     };
 
     // Generate every scope × content (full/summary/name) × format (simple/markdown/xml) variant token. The id order
@@ -1277,7 +1301,7 @@ const GameViewer = ({
   }, [
     worldOverview, playerStats, generateTraitDescriptions,
     currentLocation, locations, withDiscovered, allEntities, playerNotes, resolvePH,
-    fullMessageHistory, timeContext, gameTime,
+    fullMessageHistory, timeContext, gameTime, calendar, openingHourPending,
   ]);
   buildContextValuesRef.current = buildContextValues;
 
@@ -1649,7 +1673,7 @@ ${playerNotes || NONE_PLACEHOLDER}
         // No assistant message was persisted (streaming only appends one once text arrives), so drop this
         // turn's dangling user message before returning — otherwise history pairing is corrupted.
         discardUnpairedUserTurn();
-        addLogEntry("The AI returned an empty narration — the turn was not advanced.");
+        addSystemLogEntry("The AI returned an empty narration — the turn was not advanced.");
         toast.error("The AI returned an empty response. Try again, or switch models if it keeps happening.", {
           position: "top-right",
           autoClose: 5000,
@@ -1795,6 +1819,25 @@ ${playerNotes || NONE_PLACEHOLDER}
             )
           : Promise.resolve("");
 
+      // The opening-time pass: what time of day does the story START at? Runs once, on the opening turn
+      // only, because it reads the scene the world was written to open on. Deliberately NOT run when the
+      // clock is switched on mid-story: a retroactive answer would re-date every memory stamp already
+      // written, and the opening narration it would need is long gone. A turn-1 re-generate does re-run it
+      // (isOpeningTurn is true again once the history rewinds), so a rerolled opening can't contradict its
+      // own clock — the same rule the delta pass follows.
+      const runOpeningTime = (): Promise<string> =>
+        aiClock && isOpeningTurn
+          ? makeAIRequest(
+              renderPromptTemplate(openingTimePrompt, ctx),
+              [{ role: "user", content: renderPromptTemplate(openingTimeUserPrompt, { "<NARRATION>": narrationResponse }) }],
+              "openingTime",
+              OPENING_TIME_MAX_TOKENS,
+              signal,
+              true,
+              currentTurnIdRef.current,
+            )
+          : Promise.resolve("");
+
       // Memory digest + character diaries for THIS turn also depend only on the narration (+ participants),
       // so in concurrent mode they join the batch and their results are folded into the turn at commit
       // (below) instead of being patched in afterward by the idle drainers. The drainers stay for backfill
@@ -1853,6 +1896,7 @@ ${playerNotes || NONE_PLACEHOLDER}
       let locationResponse = "";
       let turnSummary = "";
       let turnTimeResponse = "";
+      let openingTimeResponse = "";
       const turnDiaries: Record<string, string> = {};
       const discoveredThisTurn: { name: string; description: string }[] = [];
 
@@ -1868,6 +1912,7 @@ ${playerNotes || NONE_PLACEHOLDER}
         const locationP = runLocation(true);
         const summaryP = runSummary();
         const timeP = runTimePassed();
+        const openP = runOpeningTime();
         const diaryPs = diaryNames.map((name) => runDiary(name));
         const discoverPs = discoverNames.map((name) => runDiscover(name));
         // Choices (the interactive part) unblock the input as soon as *choices* resolves — don't wait on the
@@ -1879,7 +1924,7 @@ ${playerNotes || NONE_PLACEHOLDER}
         );
         // allSettled so one aux failure doesn't discard the others' results or abort the turn — each rejection
         // just falls back to "" / no entry (the drainers backfill a failed digest/diary/discovery on a later tick).
-        const [cR, sR, lR, sumR, timeR, ...rest] = await Promise.allSettled([choicesP, statsP, locationP, summaryP, timeP, ...diaryPs, ...discoverPs]);
+        const [cR, sR, lR, sumR, timeR, openR, ...rest] = await Promise.allSettled([choicesP, statsP, locationP, summaryP, timeP, openP, ...diaryPs, ...discoverPs]);
         const diaryRs = rest.slice(0, diaryNames.length);
         const discoverRs = rest.slice(diaryNames.length);
         choicesResponse = cR.status === "fulfilled" ? cR.value : "";
@@ -1887,6 +1932,7 @@ ${playerNotes || NONE_PLACEHOLDER}
         locationResponse = lR.status === "fulfilled" ? lR.value : "";
         if (memoryDigests && sumR.status === "fulfilled") turnSummary = (sumR.value ?? "").trim();
         if (timeR.status === "fulfilled") turnTimeResponse = (timeR.value ?? "").trim();
+        if (openR.status === "fulfilled") openingTimeResponse = (openR.value ?? "").trim();
         diaryNames.forEach((name, i) => {
           const r = diaryRs[i];
           // Store even an empty reply (as "") so the participant isn't retried forever; a rejected request is
@@ -1912,6 +1958,8 @@ ${playerNotes || NONE_PLACEHOLDER}
         locationResponse = await runLocation(false);
         if (signal.aborted) return;
         turnTimeResponse = await runTimePassed();
+        if (signal.aborted) return;
+        openingTimeResponse = await runOpeningTime();
       }
 
       if (signal.aborted) return; // stopped during one of the aux requests
@@ -1955,6 +2003,14 @@ ${playerNotes || NONE_PLACEHOLDER}
       // This turn's measured duration. An unparseable, out-of-range, or absent reply resolves to the flat
       // hour the game has always charged — never to zero, so a bad reply cannot freeze the clock.
       const turnHours = (aiClock ? parseTimeDelta(turnTimeResponse) : null) ?? FLAT_HOURS_PER_TURN;
+
+      // Seed the story's opening hour. Only ever written on the opening turn, and only when the reply names
+      // a daypart in the closed set — an unreadable answer leaves it null, which reads downstream as the
+      // shipped DEFAULT_START_HOUR and so plays exactly like the game did before this pass existed.
+      if (isOpeningTurn) {
+        const openingHour = openingTimeResponse ? parseOpeningDaypart(openingTimeResponse) : null;
+        setStartHour(openingHour);
+      }
 
       // Update final assistant message with complete data
       setFullMessageHistory((prev) => {
@@ -2039,7 +2095,7 @@ ${playerNotes || NONE_PLACEHOLDER}
 
       // A connection failure already surfaced its own guide toast in makeAIRequest — don't stack a second.
       if (err.connectionHandled) {
-        addLogEntry("Couldn't reach the AI server — see the connection guide.");
+        addSystemLogEntry("Couldn't reach the AI server — see the connection guide.");
         return;
       }
 
@@ -2069,7 +2125,7 @@ ${playerNotes || NONE_PLACEHOLDER}
         pauseOnHover: true,
         draggable: true,
       });
-      addLogEntry(errorMessage);
+      addSystemLogEntry(errorMessage);
     } finally {
       setIsWaitingForAI(false);
       setIsRevealingNarration(false);
@@ -2258,7 +2314,7 @@ ${playerNotes || NONE_PLACEHOLDER}
       discardUnpairedUserTurn();
     }
 
-    addLogEntry("AI generation aborted");
+    addSystemLogEntry("AI generation aborted");
   };
 
   // Abort any in-flight AI request when GameViewer unmounts (e.g. exiting to the menu mid-turn), so the SSE
@@ -3170,6 +3226,7 @@ ${playerNotes || NONE_PLACEHOLDER}
         diary: "Diary",
         discoverEntity: "Character",
         timePassed: "Clock",
+        openingTime: "Opening",
       };
       const label = aiRequestType ? labels[aiRequestType] : "Response";
       return (

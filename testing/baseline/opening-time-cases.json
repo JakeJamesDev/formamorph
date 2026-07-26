@@ -1,0 +1,148 @@
+[
+  {
+    "id": "vigil",
+    "group": "stated",
+    "expect": ["night"],
+    "world": "A cold northern keep in the last year of a long siege. The garrison is thin and the watch rotations are brutal.",
+    "location": "The North Rampart",
+    "locationDesc": "A stretch of wall above the frozen moat. Braziers stand at intervals along it and the sentries walk their beat between them; the relief watch changes on a fixed rotation.",
+    "action": "Well past midnight, I pull my cloak tighter and walk the line of the wall.",
+    "note": "explicit 'past midnight' — the clearest possible stated night"
+  },
+  {
+    "id": "predawn",
+    "group": "stated",
+    "expect": ["dawn", "night"],
+    "world": "A fishing settlement on a hard coast, where the boats go out before light and the whole village lives by the tide.",
+    "location": "The Slipway",
+    "locationDesc": "A shingle beach where the boats are hauled up. Lamps hang along the sea wall and the crews load by hand.",
+    "action": "The sky over the water has only just begun to grey and the sun is not up yet. I find the boat I was told to look for and wait to be noticed.",
+    "note": "pre-sunrise: 'dawn' is the target, 'night' is a defensible read of the same passage"
+  },
+  {
+    "id": "market",
+    "group": "stated",
+    "expect": ["midday", "morning"],
+    "world": "A trade city built around a single enormous covered market, where every guild keeps a stall and nothing is bought without argument.",
+    "location": "The Grand Concourse",
+    "locationDesc": "The central aisle of the covered market. Roof vents run the length of it and the guild stalls crowd both sides.",
+    "action": "The sun stands directly over the roof vents and the crowd is at its thickest. I push into it and look for the spice row.",
+    "note": "sun overhead + peak trading — midday, with morning as the near-miss"
+  },
+  {
+    "id": "supper",
+    "group": "stated",
+    "expect": ["evening"],
+    "world": "A quiet farming valley where the households are large and the meals are the only time everyone is in one room.",
+    "location": "The Long Kitchen",
+    "locationDesc": "The kitchen of a working farmhouse. A long table fills most of it and lamps stand along the dresser.",
+    "action": "Supper is on the table and the light through the west window has gone deep orange. I take the empty seat and reach for the bread.",
+    "note": "supper + low western light — evening"
+  },
+  {
+    "id": "shift",
+    "group": "stated",
+    "expect": ["afternoon"],
+    "phrasing": "relative",
+    "world": "A company town organized entirely around a foundry that never stops running.",
+    "location": "The Casting Floor",
+    "locationDesc": "The foundry floor. The crews work in shifts around the clock and the shift bell governs everything that happens here.",
+    "action": "It is a few hours past noon, midway through the second shift. I check the pour schedule pinned by the door.",
+    "note": "'a few hours past noon' — the case with competing signals; the heat and the far-off bell pull toward evening"
+  },
+  {
+    "id": "rounds",
+    "group": "stated",
+    "expect": ["morning"],
+    "world": "A teaching hospital in a city that has been quietly running out of everything for a decade.",
+    "location": "The Long Ward",
+    "locationDesc": "A ward of twenty beds with a row of windows down one side. Staff hand over between shifts and the trays go out at set times.",
+    "action": "Morning rounds have just begun and the night staff are handing over. I follow the consultant to the first bed and listen.",
+    "note": "a genuine morning, so accuracy cannot be gamed by never answering the default"
+  },
+  {
+    "id": "pastnoon",
+    "group": "stated",
+    "expect": ["afternoon"],
+    "phrasing": "relative",
+    "world": "A river port where the customs house sets the rhythm of every working day.",
+    "location": "The Weigh House",
+    "locationDesc": "A long shed where cargo is weighed and taxed. Carters queue out into the yard and the clerks work straight through.",
+    "action": "It is two hours past noon. I join the back of the queue and try to see how far ahead the desk is.",
+    "note": "sibling to `shift` without the competing signals — isolates the relative-to-noon phrasing itself"
+  },
+  {
+    "id": "beforenoon",
+    "group": "stated",
+    "expect": ["morning"],
+    "phrasing": "relative",
+    "world": "A monastery whose day is divided by bells and whose scriptorium is its only source of income.",
+    "location": "The Scriptorium",
+    "locationDesc": "A hall of sloped desks under high windows. The copyists work to the rhythm of the monastery's bells.",
+    "action": "There are a good two hours yet before noon. I find the desk I have been assigned and look at what is waiting on it.",
+    "note": "relative-to-noon in the other direction — a model anchoring on 'noon' alone lands on midday"
+  },
+  {
+    "id": "pastmidnight",
+    "group": "stated",
+    "expect": ["night"],
+    "phrasing": "relative",
+    "world": "A lighthouse station on a shipping lane, worked by two keepers on opposite watches.",
+    "location": "The Lamp Room",
+    "locationDesc": "The glazed chamber at the top of the tower. The lamp turns steadily and there is nothing beyond the glass but open water.",
+    "action": "Some three hours past midnight, I check the oil reservoir and note the level in the book.",
+    "note": "relative to midnight rather than noon — the small hours, where `night` must not drift to `evening`"
+  },
+  {
+    "id": "afterfirstlight",
+    "group": "stated",
+    "expect": ["dawn", "morning"],
+    "phrasing": "relative",
+    "world": "A cavalry post on a frontier road, where patrols go out at the earliest usable light.",
+    "location": "The Muster Yard",
+    "locationDesc": "A gravel yard in front of the stables. Patrols form up here before riding out.",
+    "action": "The light has been up perhaps an hour and the frost is still on the rails. I look for the sergeant and report myself ready.",
+    "note": "relative to first light — dawn or early morning are both defensible, so both are accepted"
+  },
+
+  {
+    "id": "sedge",
+    "group": "unstated",
+    "worldFile": "sedge-landing.json",
+    "location": "Sedge Landing",
+    "action": "I look around for whoever is closest and ask where the ferry puts in.",
+    "note": "a lantern hangs here, but nothing says when — the ambient-light trap"
+  },
+  {
+    "id": "waystation",
+    "group": "unstated",
+    "worldFile": "blackrue-waystation.json",
+    "location": "The Common Room",
+    "action": "I set my pack down and take stock of the room.",
+    "note": "a lamp burns green; again ambience, not a time"
+  },
+  {
+    "id": "hollow",
+    "group": "unstated",
+    "worldFile": "vane-hollow.json",
+    "location": "The Shaft Head",
+    "action": "I walk the length of the works, looking for anything out of place.",
+    "note": "underground — the one setting where a daypart is arguably meaningless"
+  },
+  {
+    "id": "timbermaw",
+    "group": "unstated",
+    "worldFile": "fantasy-futanari.json",
+    "location": "Timbermaw",
+    "action": "I step off the path and listen for anything moving.",
+    "note": "forest canopy: 'the sky is hidden, but plenty of light still reaches the floor'"
+  },
+  {
+    "id": "tempe",
+    "group": "unstated",
+    "worldFile": "mothers-struggles.json",
+    "location": "Tempe",
+    "action": "I head across campus to find where I am supposed to be.",
+    "note": "contemporary town, no time language at all"
+  }
+]

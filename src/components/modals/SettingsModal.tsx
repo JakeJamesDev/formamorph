@@ -35,7 +35,7 @@ import { toast } from 'react-toastify';
 import WorldStorageService from '@/services/WorldStorageService';
 import { DEFAULT_WORLDS, readDeletedDefaultWorlds, clearDeletedDefaultWorlds } from '@/lib/defaultWorlds';
 import { PresetNameDialog } from './PresetNameDialog';
-import { defaultSystemPrompt, defaultNarrationUserPrompt, defaultRecapUserPrompt, defaultRehydrateUserPrompt, defaultOocDirectivePrompt, defaultChoicesPrompt, defaultStatUpdatesPrompt, defaultLocationChangePrompt, defaultThinkingPrompt, defaultSummaryPrompt, defaultChoicesUserPrompt, defaultStatUpdatesUserPrompt, defaultLocationChangeUserPrompt, defaultSummaryUserPrompt, defaultDiaryPrompt, defaultDirectorPrompt, defaultDirectorUserPrompt, defaultCharacterPrompt, defaultStoryboardPrompt, defaultNowLinePrompt, defaultTimePassedPrompt, defaultTimePassedUserPrompt } from '../game/GamePrompts';
+import { defaultSystemPrompt, defaultNarrationUserPrompt, defaultRecapUserPrompt, defaultRehydrateUserPrompt, defaultOocDirectivePrompt, defaultChoicesPrompt, defaultStatUpdatesPrompt, defaultLocationChangePrompt, defaultThinkingPrompt, defaultSummaryPrompt, defaultChoicesUserPrompt, defaultStatUpdatesUserPrompt, defaultLocationChangeUserPrompt, defaultSummaryUserPrompt, defaultDiaryPrompt, defaultDirectorPrompt, defaultDirectorUserPrompt, defaultCharacterPrompt, defaultStoryboardPrompt, defaultNowLinePrompt, defaultTimePassedPrompt, defaultTimePassedUserPrompt, defaultOpeningTimePrompt, defaultOpeningTimeUserPrompt } from '../game/GamePrompts';
 import { isDesktop } from '@/lib/imageGen/desktop';
 import { fetchComfyMeta, DEFAULT_COMFY_WORKFLOW, type ComfyMeta } from '@/lib/imageGen/comfyui';
 import { fetchInvokeMeta, type InvokeMeta } from '@/lib/imageGen/invokeai';
@@ -131,7 +131,7 @@ function VerbatimTurnsField({ id, value, onChange, disabled }: { id: string; val
 const TAB_TO_REQUEST: Record<string, AIRequestType> = {
   narration: 'narration', thinking: 'thinking', choices: 'choices', statupdates: 'statUpdates',
   location: 'locationChange', summary: 'summary', diary: 'diary', director: 'director',
-  character: 'character', storyboard: 'storyboard', timepassed: 'timePassed',
+  character: 'character', storyboard: 'storyboard', timepassed: 'timePassed', timeopening: 'openingTime',
 };
 
 /** One custom-sampler override row: a checkbox that enables the override, a slider, and a value readout that
@@ -397,6 +397,10 @@ export const SettingsModal = ({ isOpen, onOpenChange, previewValues, initialTab,
     setTimePassedPrompt,
     timePassedUserPrompt,
     setTimePassedUserPrompt,
+    openingTimePrompt,
+    setOpeningTimePrompt,
+    openingTimeUserPrompt,
+    setOpeningTimeUserPrompt,
     setSummaryUserPrompt,
     promptPresets,
     builtinPresets,
@@ -652,6 +656,7 @@ export const SettingsModal = ({ isOpen, onOpenChange, previewValues, initialTab,
     location: { label: 'Location Change', reset: () => setLocationChangePromptText(defaultLocationChangePrompt) },
     summary: { label: 'Summary', reset: () => setSummaryPrompt(defaultSummaryPrompt) },
     timepassed: { label: 'Clock', reset: () => setTimePassedPrompt(defaultTimePassedPrompt) },
+    timeopening: { label: 'Opening', reset: () => setOpeningTimePrompt(defaultOpeningTimePrompt) },
     diary: { label: 'Diary', reset: () => setDiaryPrompt(defaultDiaryPrompt) },
     director: { label: 'Director', reset: () => setDirectorPrompt(defaultDirectorPrompt) },
     character: { label: 'Character', reset: () => setCharacterPrompt(defaultCharacterPrompt) },
@@ -682,6 +687,7 @@ export const SettingsModal = ({ isOpen, onOpenChange, previewValues, initialTab,
     location: { value: locationChangeUserPrompt, set: setLocationChangeUserPrompt, reset: () => setLocationChangeUserPrompt(defaultLocationChangeUserPrompt), variables: PROMPT_KIND_USER_VARIABLES.location ?? [] },
     summary: { value: summaryUserPrompt, set: setSummaryUserPrompt, reset: () => setSummaryUserPrompt(defaultSummaryUserPrompt), variables: PROMPT_KIND_USER_VARIABLES.summary ?? [] },
     timepassed: { value: timePassedUserPrompt, set: setTimePassedUserPrompt, reset: () => setTimePassedUserPrompt(defaultTimePassedUserPrompt), variables: PROMPT_KIND_USER_VARIABLES.timepassed ?? [] },
+    timeopening: { value: openingTimeUserPrompt, set: setOpeningTimeUserPrompt, reset: () => setOpeningTimeUserPrompt(defaultOpeningTimeUserPrompt), variables: PROMPT_KIND_USER_VARIABLES.timeopening ?? [] },
     director: { value: directorUserPrompt, set: setDirectorUserPrompt, reset: () => setDirectorUserPrompt(defaultDirectorUserPrompt), variables: PROMPT_KIND_USER_VARIABLES.director ?? [] },
   };
   const activeUserPrompt = userPrompts[activePromptTab];
@@ -1185,7 +1191,7 @@ Runs an extra request per turn; edit its prompt under **Prompts → Summary**.`}
                   {/* Always-on top-K cap: derived checkbox (cap > 0), enabling seeds a sensible default. */}
                   <div className="grid grid-cols-1 sm:grid-cols-[minmax(0,1fr)_minmax(0,3fr)] items-start gap-4">
                     <RowLabel top info={
-                      <HintInfo>{`Keeps only this many remembered moments in view each turn — the ones most relevant to your action — even when more would fit.
+                      <HintInfo>{`Keeps only this many memories in view each turn — the ones most relevant to your action — even when more would fit.
 
 - Smaller, sharper prompts on long stories
 - The story opening and newest memories always stay
@@ -1231,7 +1237,7 @@ Runs an extra request per turn; edit its prompt under **Prompts → Summary**.`}
                 )}
                 <div className="grid grid-cols-1 sm:grid-cols-[minmax(0,1fr)_minmax(0,3fr)] items-start gap-4">
                   <RowLabel htmlFor="timeContext" info={
-                    <HintInfo>{`Each remembered moment carries **when** it happened — *"Day 3, evening — two days ago"* — and the recap states the present moment.
+                    <HintInfo>{`Each memory carries **when** it happened — *"Day 3, evening — two days ago"* — and the recap states the present moment.
 
 - Without it the AI sees the story as an undated list and guesses at how long ago things were
 - Time of day is coarse (*morning*, *evening*), never a clock reading
@@ -1913,6 +1919,7 @@ An inspection aid for authoring and debugging; off by default.`}</HintInfo>
                 {locationChangeEnabled && <TabsTrigger value="location">Location Change</TabsTrigger>}
                 {memoryDigests && <TabsTrigger value="summary">Summary</TabsTrigger>}
                 {aiClock && <TabsTrigger value="timepassed">Clock</TabsTrigger>}
+                {aiClock && <TabsTrigger value="timeopening">Opening</TabsTrigger>}
                 {promptAvailable.diary && <TabsTrigger value="diary">Diary</TabsTrigger>}
                 {thinkingMode === 'staged' && <TabsTrigger value="director">Director</TabsTrigger>}
                 {thinkingMode === 'staged' && <TabsTrigger value="character">Character</TabsTrigger>}
@@ -2061,6 +2068,19 @@ An inspection aid for authoring and debugging; off by default.`}</HintInfo>
                     readOnly={activePresetIsBuiltIn}
                   />
                   <p className="text-xs text-muted-foreground flex-shrink-0">Measures how much in-world time each turn takes. Answer with a count and its unit (m, h, d, w). Only used when Measured Clock is on.</p>
+                </TabsContent>
+              )}
+
+              {aiClock && (
+                <TabsContent value="timeopening" className="mt-4 flex-1 min-h-0 data-[state=active]:flex flex-col gap-1">
+                  <PromptField
+                    value={showingUser ? openingTimeUserPrompt : openingTimePrompt}
+                    onChange={showingUser ? setOpeningTimeUserPrompt : setOpeningTimePrompt}
+                    variables={showingUser ? (PROMPT_KIND_USER_VARIABLES.timeopening ?? []) : PROMPT_KIND_VARIABLES.timeopening}
+                    previewValues={previewValues}
+                    readOnly={activePresetIsBuiltIn}
+                  />
+                  <p className="text-xs text-muted-foreground flex-shrink-0">Reads the opening scene once to work out what time of day the story starts at. Answer with one daypart: night, dawn, morning, midday, afternoon, evening. Only used when Measured Clock is on.</p>
                 </TabsContent>
               )}
 
