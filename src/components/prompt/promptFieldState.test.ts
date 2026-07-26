@@ -2,7 +2,9 @@ import { describe, it, expect } from 'vitest';
 import { createEditor, $getRoot, $isElementNode, $createRangeSelection, $setSelection, type ElementNode } from 'lexical';
 import { VariableNode } from './VariableNode';
 import { buildEditorState, serializeRoot, pointAtOffset, $applyMarkdownAction } from './promptFieldState';
-import { plainVocabulary, placeholderVocabulary } from '@/lib/chipVocabulary';
+import { plainVocabulary, placeholderVocabulary, promptVocabulary } from '@/lib/chipVocabulary';
+import { joinToken } from '@/lib/promptVariables';
+import { defaultSystemPrompt, defaultNowLinePrompt } from '@/components/game/GamePrompts';
 import { encodePlaceholderToken } from '@/lib/placeholders';
 import type { Placeholder } from '@/types';
 
@@ -91,5 +93,40 @@ describe('promptFieldState', () => {
       // The world description renders before any roll exists, so a token there must never become a chip.
       expect(plainVocabulary().parse(`a ${TOKEN} b`)).toEqual([{ type: 'text', value: `a ${TOKEN} b` }]);
     });
+  });
+});
+
+describe('chip affixes survive the editor round-trip', () => {
+  /** Seed the editor from a flat string and read it straight back — the path taken every time the
+   *  settings panel opens and closes. Any drift here silently rewrites a stored prompt. */
+  const roundTrip = (value: string): string => {
+    const editor = makeEditor();
+    const parse = promptVocabulary([]).parse;
+    let out = '';
+    editor.update(() => { buildEditorState(value, parse); }, { discrete: true });
+    editor.getEditorState().read(() => { out = serializeRoot(); });
+    return out;
+  };
+
+  it('returns an affixed prompt byte-identically', () => {
+    const affixed = joinToken({ base: '<ENTITIES>', variantId: 'name', pre: ' with ', post: ' present' });
+    const value = `Now you are at <LOCATION|name>${affixed}; the scene is underway.`;
+    expect(roundTrip(value)).toBe(value);
+  });
+
+  it('preserves affixes containing the characters the quoting protects', () => {
+    for (const pre of [' > ', ' | ', ', inside ', "the player's own: "]) {
+      const value = `lead ${joinToken({ base: '<NOTES>', pre })} tail`;
+      expect(roundTrip(value)).toBe(value);
+    }
+  });
+
+  it('returns the shipped prompts unchanged', () => {
+    for (const p of [defaultSystemPrompt, defaultNowLinePrompt]) expect(roundTrip(p)).toBe(p);
+  });
+
+  it('leaves a malformed affix as literal text rather than eating it', () => {
+    const value = '<LOCATION|name|pre=unquoted> tail';
+    expect(roundTrip(value)).toBe(value);
   });
 });

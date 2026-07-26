@@ -1,0 +1,51 @@
+[
+  {
+    "id": "green",
+    "world": "sedge-landing.json",
+    "location": "The Common Green",
+    "action": "I look around for whoever is closest and ask where the ferry puts in.",
+    "note": "outdoor green inside a hamlet — the case that made 'inside' read wrong"
+  },
+  {
+    "id": "cottage",
+    "world": "sedge-landing.json",
+    "location": "Ferryman's Cottage",
+    "action": "I knock and wait.",
+    "note": "a building inside a hamlet — 'in' and 'inside' are both defensible here"
+  },
+  {
+    "id": "sarahs",
+    "world": "mothers-struggles.json",
+    "location": "Sarah's Place",
+    "action": "I let myself in and call out that I'm here.",
+    "note": "a home inside a city"
+  },
+  {
+    "id": "throne",
+    "world": "fantasy-futanari.json",
+    "location": "The Matron's Throne Room",
+    "action": "I step forward and wait to be acknowledged.",
+    "note": "genuinely enclosed — the one case 'inside' fitted"
+  },
+  {
+    "id": "statue",
+    "world": "fantasy-futanari.json",
+    "location": "Statue of Ysera",
+    "action": "I stop and read the inscription.",
+    "note": "a landmark inside a grove"
+  },
+  {
+    "id": "waystation",
+    "world": "blackrue-waystation.json",
+    "location": null,
+    "action": "I set my pack down and take stock of the room.",
+    "note": "CONTROL — top-level location, no parent: both arms must be byte-identical"
+  },
+  {
+    "id": "hollow",
+    "world": "vane-hollow.json",
+    "location": null,
+    "action": "I walk the length of the room, looking for anything out of place.",
+    "note": "CONTROL — top-level location, no parent"
+  }
+]

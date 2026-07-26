@@ -2,7 +2,7 @@ import { describe, it, expect } from 'vitest';
 import {
   baseToken, tokenVariant, withVariant, variantLabelForToken,
   variableForToken, labelForToken, colorForToken,
-  variableAxes, decodeVariant, encodeVariant, ALL_VARIANT_IDS,
+  variableAxes, decodeVariant, encodeVariant, ALL_VARIANT_IDS, NOW_LINE_VARIABLES,
   PROMPT_KIND_VARIABLES,
   type PromptVariable,
 } from './promptVariables';
@@ -141,5 +141,41 @@ describe('the Dictionary chip is narration-scoped', () => {
     expect(labelForToken('<DICTIONARY>')).toBe('Dictionary');
     // Not a shared context chip — absent from the other kinds' toolbars.
     expect(PROMPT_KIND_VARIABLES.choices.map((v) => v.token)).not.toContain('<DICTIONARY>');
+  });
+});
+
+describe('phase 2 registry changes', () => {
+  it('offers Parent alongside the other location scopes, three per row', () => {
+    const LOC = variableForToken('<LOCATION>')!;
+    const scope = variableAxes(LOC).find((a) => a.id === 'scope')!;
+    expect(scope.options.map((o) => o.label)).toEqual(['Current', 'Sub', 'Parent', 'Reachable', 'Destinations']);
+    expect(scope.columns).toBe(3); // Current|Sub|Parent / Reachable|Destinations
+    expect(variantLabelForToken('<LOCATION|parent.name>')).toBe('Parent, Name');
+  });
+
+  it('offers the In Scene entity scope', () => {
+    const ENT = variableForToken('<ENTITIES>')!;
+    const scope = variableAxes(ENT).find((a) => a.id === 'scope')!;
+    expect(scope.options.map((o) => o.id)).toContain('inscene');
+    expect(variantLabelForToken('<ENTITIES|inscene.name>')).toBe('In Scene, Name');
+    expect(scope.options.map((o) => o.label)).toEqual(['Here', 'In Sub', 'Reachable', 'In Scene']);
+  });
+
+  it('registers Time as an ordinary affixable context chip', () => {
+    const TIME = variableForToken('<TIME>')!;
+    expect(TIME.label).toBe('Time');
+    expect(TIME.affixable).toBe(true);
+    expect(variableAxes(TIME)).toHaveLength(0); // one value, no modes
+  });
+
+  it('has retired the bespoke clause tokens', () => {
+    for (const t of ['<SCENE CAST>', '<SCENE NOTES>', '<SCENE TIME>', '<SCENE LOCATION>']) {
+      expect(variableForToken(t)).toBeUndefined();
+    }
+  });
+
+  it('offers the now-line only ordinary chips, each of which can carry wording', () => {
+    expect(NOW_LINE_VARIABLES.map((v) => v.token)).toEqual(['<LOCATION>', '<ENTITIES>', '<TIME>', '<NOTES>']);
+    expect(NOW_LINE_VARIABLES.every((v) => v.affixable)).toBe(true);
   });
 });

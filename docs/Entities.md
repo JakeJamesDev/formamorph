@@ -6,7 +6,7 @@ Who the story knows is standing in front of you — the cast you authored, plus 
 
 ---
 
-## Two kinds of character
+## Two Kinds of Character
 
 | | **Authored** | **Story-invented** |
 |---|---|---|
@@ -17,16 +17,25 @@ Who the story knows is standing in front of you — the cast you authored, plus 
 
 Both appear in the **Entities** panel during play, and both count the same way when the story works out who is present and what you can do next.
 
-## Characters the story invents
+## Characters the Story Invents
 
 Ask a shopkeeper for directions and the story might answer with a name you never wrote. That character used to exist only in the prose — no entry anywhere, absent from the list of who's present, never considered when the story offered you choices. Now the game reads names straight out of the narration, so an invented character joins the scene the moment they're named.
 
 This costs nothing and is always on. It works in every Thinking mode, including plain narration with no planning at all.
 
 > [!NOTE]
-> Not every capitalized name becomes a character. A talent agency, a café, a weekday and a song title all *look* like names. The game only adds someone who behaves like a person in the prose — speaks, gestures, is introduced, or is described with a face or a voice — or who carries a title like **Doctor** or **Ms**.
+> Not every capitalized name becomes a character. A talent agency, a café, a weekday and a song title all *look* like names. The game only adds someone who behaves like a person in the prose — speaks, gestures, or is introduced — and a name that just recurs without ever doing something is left alone.
 
-### Being shown vs being mentioned
+Two things identify a person outright, without waiting for them to come up again:
+
+| Signal | Example |
+|---|---|
+| A **title** | *"**Doctor** Chen sets down the chart."* |
+| Owning a **body or an expression** | *"**Lyria's** hand is warm as it closes around yours."* |
+
+Only a person has a hand, a voice, a gaze or a face, so one of those is enough on its own. A place or an object with a possessive — *Teldorill's markets*, *the inn's roof* — is not a character and is skipped.
+
+### Being Shown vs Being Mentioned
 
 Someone your companion merely *talks about* — an absent neighbour, a baker who works in the back — is not added to your cast. A character has to appear in the story's own narration, not only inside someone's quoted dialogue.
 
@@ -48,7 +57,7 @@ Turn this on and each invented character also gets a written description, so you
 
 Everything except the description is free, which is why only the description is a setting. If you already had **Character Diaries** on, this is on for you already.
 
-## Removing one
+## Removing One
 
 Because names come out of the prose, now and then the story capitalizes something that isn't a person and it gets added anyway.
 
@@ -65,7 +74,7 @@ Authored characters have no remove button. They belong to the world, and the Wor
 > [!TIP]
 > Removing is per-playthrough and travels with your save. Starting a new game gives you a clean slate.
 
-## When it's quiet
+## When It's Quiet
 
 Some AI models rarely name anyone, writing characters as *"she"* and *"the woman in the white coat"* for a whole scene. Nothing is wrong when that happens — there is simply no name to catch. If your Entities panel stays sparse while the prose is full of people, that's the model's style rather than a setting you've missed.
 

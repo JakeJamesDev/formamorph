@@ -26,8 +26,9 @@ export const MemoryPanel = ({ onRegenerateMemory }: {
     memoryPins, setMemoryPins,
     milestoneSelection,
     memoryEdits, memoryDeleted, memoryNotes,
+    gameTime,
   } = useGameplay();
-  const { memoryDigests, narrationVerbatimTurns } = useSettings();
+  const { memoryDigests, narrationVerbatimTurns, aiClock } = useSettings();
   const [managerOpen, setManagerOpen] = useState(false);
 
   // DEV-only: land straight on the manager (`#dev?view=gameViewer&modal=memoryManager`).
@@ -44,8 +45,10 @@ export const MemoryPanel = ({ onRegenerateMemory }: {
       pins: memoryPins,
       selection: milestoneSelection,
       verbatimFloor: narrationVerbatimTurns,
+      // Ages are shown only while the clock measures each turn; the flat hour would date them arbitrarily.
+      clock: aiClock ? { nowHours: gameTime } : undefined,
     }),
-    [fullMessageHistory, memoryEdits, memoryDeleted, memoryNotes, memoryPins, milestoneSelection, narrationVerbatimTurns],
+    [fullMessageHistory, memoryEdits, memoryDeleted, memoryNotes, memoryPins, milestoneSelection, narrationVerbatimTurns, aiClock, gameTime],
   );
 
   const setPin = (id: string, pin: 'keep' | 'drop' | null) => {
@@ -59,7 +62,7 @@ export const MemoryPanel = ({ onRegenerateMemory }: {
 
   const manageButton = (
     <Button variant="outline" size="sm" className="h-7 w-full text-xs" onClick={() => setManagerOpen(true)}>
-      <SlidersHorizontal className="mr-1 h-3.5 w-3.5" /> Manage memories
+      <SlidersHorizontal className="mr-1 h-3.5 w-3.5" /> Manage Memories
     </Button>
   );
   const manager = (
@@ -94,60 +97,67 @@ export const MemoryPanel = ({ onRegenerateMemory }: {
 
   return (
     <>
-      <ScrollArea className="h-[calc(100%-1rem)]">
-        <div className="p-2 space-y-1">
-          <p className="text-xs text-muted-foreground mb-2">
-            {ledger.keptCount} of {ledger.totalCount} moments remembered. Faded lines have been let go —
-            pin one to keep it in the story&apos;s memory.
-          </p>
+      <div className="flex h-full flex-col">
+        {/* Pinned: the count and the way into the manager stay reachable however far the list is scrolled. */}
+        <div className="flex-shrink-0 space-y-1 border-b border-border p-2">
           {manageButton}
-          {rows.map((row, i) => (
-            <div key={row.id}>
-              {i === ledger.recentFrom && (
-                <div className="flex items-center gap-2 py-1" aria-label="Recent memories">
-                  <div className="h-px flex-grow bg-border" />
-                  <span className="text-[10px] uppercase tracking-wide text-muted-foreground">Recent</span>
-                  <div className="h-px flex-grow bg-border" />
-                </div>
-              )}
-              <div
-                className={cn(
-                  'group flex items-start gap-1 rounded border border-border p-2',
-                  !row.kept && 'opacity-50',
-                  row.isNote && 'border-primary/40',
+          <p className="text-xs text-muted-foreground">
+            {ledger.keptCount} of {ledger.totalCount} Moments Remembered
+          </p>
+        </div>
+        <ScrollArea className="min-h-0 flex-grow">
+          <div className="p-2 space-y-1">
+            {rows.map((row, i) => (
+              <div key={row.id}>
+                {i === ledger.recentFrom && (
+                  <div className="flex items-center gap-2 py-1" aria-label="Recent Memories">
+                    <div className="h-px flex-grow bg-border" />
+                    <span className="text-[10px] uppercase tracking-wide text-muted-foreground">Recent</span>
+                    <div className="h-px flex-grow bg-border" />
+                  </div>
                 )}
-              >
-                <p className={cn('flex-grow text-xs', !row.kept && 'line-through')}>{row.text}</p>
-                <div className="flex flex-shrink-0 items-center gap-0.5">
-                  {row.pin && (
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      className="h-6 w-6"
-                      title="Clear pin (let the story decide)"
-                      onClick={() => setPin(row.id, null)}
-                    >
-                      <RotateCcw className="h-3.5 w-3.5" />
-                    </Button>
+                <div
+                  className={cn(
+                    'group flex items-start gap-1 rounded border border-border p-2',
+                    !row.kept && 'opacity-50',
+                    row.isNote && 'border-primary/40',
                   )}
-                  {/* Player-written memories are never judged, so there is nothing to pin against. */}
-                  {!row.isNote && (
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      className={cn('h-6 w-6', row.pin && 'text-primary')}
-                      title={row.kept ? 'Forget this memory' : 'Pin this memory'}
-                      onClick={() => setPin(row.id, row.kept ? 'drop' : 'keep')}
-                    >
-                      {row.kept ? <PinOff className="h-3.5 w-3.5" /> : <Pin className="h-3.5 w-3.5" />}
-                    </Button>
-                  )}
+                >
+                  <div className="flex-grow">
+                    <p className={cn('text-xs', !row.kept && 'line-through')}>{row.text}</p>
+                    {row.stamp && <p className="mt-0.5 text-[10px] text-muted-foreground">{row.stamp}</p>}
+                  </div>
+                  <div className="flex flex-shrink-0 items-center gap-0.5">
+                    {row.pin && (
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-6 w-6"
+                        title="Clear Pin (Let the Story Decide)"
+                        onClick={() => setPin(row.id, null)}
+                      >
+                        <RotateCcw className="h-3.5 w-3.5" />
+                      </Button>
+                    )}
+                    {/* Player-written memories are never judged, so there is nothing to pin against. */}
+                    {!row.isNote && (
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className={cn('h-6 w-6', row.pin && 'text-primary')}
+                        title={row.kept ? 'Forget This Memory' : 'Pin This Memory'}
+                        onClick={() => setPin(row.id, row.kept ? 'drop' : 'keep')}
+                      >
+                        {row.kept ? <PinOff className="h-3.5 w-3.5" /> : <Pin className="h-3.5 w-3.5" />}
+                      </Button>
+                    )}
+                  </div>
                 </div>
               </div>
-            </div>
-          ))}
-        </div>
-      </ScrollArea>
+            ))}
+          </div>
+        </ScrollArea>
+      </div>
       {manager}
     </>
   );

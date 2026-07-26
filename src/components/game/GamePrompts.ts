@@ -390,11 +390,12 @@ Output only the description - no name heading, label, or preamble.`;
 // riding only while a digest band exists. The recap alone is all past tense; without a stated present, models
 // re-open a live scene as a fresh arrival (probed on real failure turns via now-line-probe.mjs). Each optional
 // token carries its own clause and vanishes when empty, so any subset still reads as a sentence.
-// The notes clause is deliberately absent: the notes already ride the system prompt's Player Notes
-// section, and a probe across both tiers found the second copy bought nothing (every arm 6-11%
-// contradiction, the single-copy arms disagreeing on which is better — noise). The `<SCENE NOTES>` chip
-// stays available for anyone who wants it back.
-export const defaultNowLinePrompt = `Now you are at <LOCATION|name><SCENE CAST>; the scene is already underway.<SCENE TIME>`;
+// Every piece is an ordinary chip carrying its own wording in its prefix/suffix, and each disappears with
+// its value — so a scene with nobody present, or with the clock off, still reads as a sentence.
+// A Notes chip is deliberately absent: the notes already ride the system prompt's Player Notes section, and
+// a probe across both tiers found the second copy bought nothing (every arm 6-11% contradiction, the
+// single-copy arms disagreeing on which is better — noise). Add the chip back to restore it.
+export const defaultNowLinePrompt = `Now you are at <LOCATION|name><LOCATION|parent.name|pre=", in "><ENTITIES|inscene.name|pre=", with "|post=" present">; the scene is already underway.<TIME|pre=" It is now "|post=".">`;
 
 // The clock pass (requestType 'timePassed'): run silently after the narration to measure how much
 // in-world time the turn consumed. It asks for the DELTA, never the resulting date — a small model can

@@ -32,7 +32,7 @@ type Filter = 'all' | 'kept' | 'letGo' | 'edited' | 'mine' | 'deleted';
 const FILTERS: { id: Filter; label: string }[] = [
   { id: 'all', label: 'All' },
   { id: 'kept', label: 'Kept' },
-  { id: 'letGo', label: 'Let go' },
+  { id: 'letGo', label: 'Let Go' },
   { id: 'edited', label: 'Edited' },
   { id: 'mine', label: 'Mine' },
   { id: 'deleted', label: 'Deleted' },
@@ -56,8 +56,9 @@ export const MemoryManagerModal = ({
     memoryDeleted, setMemoryDeleted,
     memoryNotes, setMemoryNotes,
     isWaitingForAI,
+    gameTime,
   } = useGameplay();
-  const { memoryDigests, narrationVerbatimTurns } = useSettings();
+  const { memoryDigests, narrationVerbatimTurns, aiClock } = useSettings();
 
   const [query, setQuery] = useState('');
   const [filter, setFilter] = useState<Filter>('all');
@@ -76,8 +77,10 @@ export const MemoryManagerModal = ({
       pins: memoryPins,
       selection: milestoneSelection,
       verbatimFloor: narrationVerbatimTurns,
+      // Ages are shown only while the clock measures each turn; the flat hour would date them arbitrarily.
+      clock: aiClock ? { nowHours: gameTime } : undefined,
     }),
-    [fullMessageHistory, memoryEdits, memoryDeleted, memoryNotes, memoryPins, milestoneSelection, narrationVerbatimTurns],
+    [fullMessageHistory, memoryEdits, memoryDeleted, memoryNotes, memoryPins, milestoneSelection, narrationVerbatimTurns, aiClock, gameTime],
   );
 
   const oldestId = ledger.rows.find((r) => !r.deleted && !r.isNote)?.id;
@@ -193,7 +196,7 @@ export const MemoryManagerModal = ({
             <HelpButton topicId="game.memoryManager" />
           </DialogTitle>
           <DialogDescription>
-            {ledger.keptCount} of {ledger.totalCount} moments remembered
+            {ledger.keptCount} of {ledger.totalCount} Moments Remembered
             {editedCount > 0 && ` · ${editedCount} edited`}
             {mineCount > 0 && ` · ${mineCount} yours`}
           </DialogDescription>
@@ -214,7 +217,7 @@ export const MemoryManagerModal = ({
             className="h-8 flex-grow min-w-[140px] text-xs"
           />
           <Button size="sm" variant="outline" className="h-8" onClick={() => { setAdding(true); setEditingId(null); setDraft(''); }}>
-            <Plus className="mr-1 h-3.5 w-3.5" /> Add memory
+            <Plus className="mr-1 h-3.5 w-3.5" /> Add Memory
           </Button>
         </div>
         <div className="flex flex-wrap gap-1">
@@ -266,7 +269,7 @@ export const MemoryManagerModal = ({
               return (
                 <div key={row.id}>
                   {showDivider && (
-                    <div className="flex items-center gap-2 py-1" aria-label="Recent memories">
+                    <div className="flex items-center gap-2 py-1" aria-label="Recent Memories">
                       <div className="h-px flex-grow bg-border" />
                       <span className="text-[10px] uppercase tracking-wide text-muted-foreground">Recent</span>
                       <div className="h-px flex-grow bg-border" />
@@ -299,17 +302,17 @@ export const MemoryManagerModal = ({
                           <p className={cn('flex-grow text-xs', !row.kept && 'line-through')}>{row.text}</p>
                           <div className="flex flex-shrink-0 items-center gap-0.5">
                             {row.deleted ? (
-                              <Button variant="ghost" size="icon" className="h-6 w-6" title="Restore this memory" onClick={() => restore(row)}>
+                              <Button variant="ghost" size="icon" className="h-6 w-6" title="Restore This Memory" onClick={() => restore(row)}>
                                 <Undo2 className="h-3.5 w-3.5" />
                               </Button>
                             ) : (
                               <>
                                 {row.edited && (
-                                  <Button variant="ghost" size="icon" className="h-6 w-6" title="Revert to the original" onClick={() => revert(row)}>
+                                  <Button variant="ghost" size="icon" className="h-6 w-6" title="Revert to the Original" onClick={() => revert(row)}>
                                     <Undo2 className="h-3.5 w-3.5" />
                                   </Button>
                                 )}
-                                <Button variant="ghost" size="icon" className="h-6 w-6" title="Edit this memory" onClick={() => startEdit(row)}>
+                                <Button variant="ghost" size="icon" className="h-6 w-6" title="Edit This Memory" onClick={() => startEdit(row)}>
                                   <Pencil className="h-3.5 w-3.5" />
                                 </Button>
                                 {!row.isNote && onRegenerate && (
@@ -319,7 +322,7 @@ export const MemoryManagerModal = ({
                                     className="h-6 w-6"
                                     // Editing stays live mid-turn, but a regeneration is an AI request:
                                     // it waits for the turn rather than contending with it.
-                                    title={isWaitingForAI ? 'Wait for the current turn to finish' : 'Have the story write this memory again'}
+                                    title={isWaitingForAI ? 'Wait for the Current Turn to Finish' : 'Have the Story Write This Memory Again'}
                                     disabled={regenerating !== null || isWaitingForAI}
                                     onClick={() => regenerate(row)}
                                   >
@@ -329,7 +332,7 @@ export const MemoryManagerModal = ({
                                   </Button>
                                 )}
                                 {!row.isNote && row.pin && (
-                                  <Button variant="ghost" size="icon" className="h-6 w-6" title="Clear pin (let the story decide)" onClick={() => setPin(row.id, null)}>
+                                  <Button variant="ghost" size="icon" className="h-6 w-6" title="Clear Pin (Let the Story Decide)" onClick={() => setPin(row.id, null)}>
                                     <RotateCcw className="h-3.5 w-3.5" />
                                   </Button>
                                 )}
@@ -338,13 +341,13 @@ export const MemoryManagerModal = ({
                                     variant="ghost"
                                     size="icon"
                                     className={cn('h-6 w-6', row.pin && 'text-primary')}
-                                    title={row.kept ? 'Forget this memory' : 'Pin this memory'}
+                                    title={row.kept ? 'Forget This Memory' : 'Pin This Memory'}
                                     onClick={() => setPin(row.id, row.kept ? 'drop' : 'keep')}
                                   >
                                     {row.kept ? <PinOff className="h-3.5 w-3.5" /> : <Pin className="h-3.5 w-3.5" />}
                                   </Button>
                                 )}
-                                <Button variant="ghost" size="icon" className="h-6 w-6" title="Delete this memory" onClick={() => remove(row)}>
+                                <Button variant="ghost" size="icon" className="h-6 w-6" title="Delete This Memory" onClick={() => remove(row)}>
                                   <Trash2 className="h-3.5 w-3.5" />
                                 </Button>
                               </>
@@ -356,6 +359,11 @@ export const MemoryManagerModal = ({
                           {/* A deleted row has no ordinal — the remaining memories renumbered without it. */}
                           {!row.isNote && row.turnNumber > 0 && (
                             <span className="text-[9px] text-muted-foreground">Moment {row.turnNumber}</span>
+                          )}
+                          {row.stamp && (
+                            <span className="text-[9px] text-muted-foreground">
+                              {!row.isNote && row.turnNumber > 0 && '· '}{row.stamp}
+                            </span>
                           )}
                           {row.edited === 'player' && <Badge variant="outline" className="h-4 px-1 text-[9px]">Edited</Badge>}
                           {row.edited === 'ai' && <Badge variant="outline" className="h-4 px-1 text-[9px]">Rewritten</Badge>}
@@ -377,7 +385,7 @@ export const MemoryManagerModal = ({
 
         <div className="flex justify-end border-t border-border pt-2">
           <Button size="sm" variant="ghost" className="h-7 text-xs text-muted-foreground" disabled={!hasChanges} onClick={() => setConfirmReset(true)}>
-            Reset all my changes
+            Reset All My Changes
           </Button>
         </div>
       </DialogContent>
@@ -385,14 +393,14 @@ export const MemoryManagerModal = ({
       <ConfirmDialog
         open={confirmReset}
         onOpenChange={(o) => !o && setConfirmReset(false)}
-        title="Reset every memory change?"
+        title="Reset Every Memory Change?"
         description="Your edits, deletions, pins and hand-written memories all go away, leaving only what the story remembered on its own. This can't be undone."
         onConfirm={resetAll}
       />
       <ConfirmDialog
         open={confirmOldest !== null}
         onOpenChange={(o) => !o && setConfirmOldest(null)}
-        title="Delete the story's opening memory?"
+        title="Delete the Story's Opening Memory?"
         description="This is the earliest thing the story remembers, and it's what keeps later scenes anchored to how everything began. Without it the story may re-establish the scene from scratch."
         onConfirm={() => {
           if (confirmOldest) setMemoryDeleted((prev) => (prev.includes(confirmOldest) ? prev : [...prev, confirmOldest]));

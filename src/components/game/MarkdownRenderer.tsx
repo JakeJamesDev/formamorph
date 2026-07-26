@@ -4,11 +4,28 @@ import remarkGfm from 'remark-gfm';
 import remarkBreaks from 'remark-breaks';
 import { remarkSubSuper } from '@/lib/remarkSubSuper';
 import { getRevealTiming } from '@/lib/revealTimingStore';
+import { cn } from '@/lib/utils';
 import 'streamdown/styles.css';
 
 // `singleTilde: false` hands `~x~` to remarkSubSuper (subscript); GFM keeps `~~strike~~`.
 const REMARK_PLUGINS: ComponentProps<typeof Streamdown>['remarkPlugins'] =
   [[remarkGfm, { singleTilde: false }], remarkBreaks, remarkSubSuper];
+
+// Streamdown boxes every table in a bordered card inside a second bordered scroller. Our markdown
+// surfaces are already panels, so that reads as a box in a box. Keep the scroller and the solid fill
+// that sets rows off against a translucent panel; drop the borders.
+const COMPONENTS: ComponentProps<typeof Streamdown>['components'] = {
+  table: ({ node: _node, className, children, ...props }) => (
+    <div
+      className="my-4 overflow-x-auto rounded-md bg-background [&_tr]:divide-x [&_tr]:divide-border"
+      data-streamdown="table-wrapper"
+    >
+      <table className={cn('w-full divide-y divide-border', className)} data-streamdown="table" {...props}>
+        {children}
+      </table>
+    </div>
+  ),
+};
 
 /**
  * Renders text as GitHub-flavored Markdown via Streamdown, which formats incomplete markdown as it
@@ -30,6 +47,7 @@ export const MarkdownRenderer = memo(function MarkdownRenderer(
     <div className="[overflow-wrap:anywhere] [&_ul]:list-outside [&_ul]:pl-6 [&_ol]:list-outside [&_ol]:pl-6">
       <Streamdown
         remarkPlugins={REMARK_PLUGINS}
+        components={COMPONENTS}
         controls={false}
         animated={animate ? { animation, sep: 'word', easing, ...getRevealTiming() } : false}
         isAnimating={animate}

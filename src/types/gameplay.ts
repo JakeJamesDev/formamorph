@@ -27,11 +27,17 @@ export interface SceneEntity {
 /** A choice is a single plaintext action line. */
 export type Choice = string;
 
-/** One entry in the play log; `repeat` counts consecutive identical entries collapsed into one. */
+/** One entry in the play log; `repeat` counts consecutive identical entries collapsed into one.
+ *
+ *  `kind` separates things that happened in the story from things that happened to the app: only a
+ *  world entry gets an in-world timestamp, because stamping "Game saved" with a story date claims the
+ *  save dialog happened at seven in the evening. Absent on pre-split saves, where everything was stamped
+ *  anyway — so undefined reads as `world` and those saves render unchanged. */
 export interface LogEntry {
   text: string;
   gameTime: number;
   repeat: number;
+  kind?: 'world' | 'system';
 }
 
 /** A VRM hair variant: its morph shapekey and whether length is adjustable. */

@@ -21,6 +21,7 @@ import { CHIP_BASE } from '@/components/Chip';
 import { MarkdownRenderer } from '@/components/game/MarkdownRenderer';
 import { type MarkdownAction } from '@/lib/markdownToolbar';
 import { type PromptVariable } from '@/lib/promptVariables';
+import { resolveToken } from '@/lib/promptTemplate';
 import { ChipVocabularyContext, promptVocabulary, type ChipVocabulary } from '@/lib/chipVocabulary';
 import { cn } from '@/lib/utils';
 import { VariableNode, $createVariableNode, $isVariableNode, PromptDragContext } from './VariableNode';
@@ -337,13 +338,19 @@ function PreviewPane({ value, previewValues, vocab, scrollRef, onScroll }: {
       {vocab.parse(value).map((seg, i) => {
         if (seg.type === 'text') return <span key={i}>{seg.value}</span>;
         const color = vocab.color(seg.token);
+        // resolveToken applies the placement's affixes and the vanish-when-empty rule, so the preview
+        // matches what the model receives. It returns undefined for another family's token (placeholders),
+        // which then falls back to that family's own by-token lookup. `??` — '' is a real result.
+        const rendered = resolveToken(seg.token, previewValues) ?? previewValues[seg.token] ?? seg.token;
+        // An affixed chip with nothing to show renders as nothing, not an empty highlight.
+        if (rendered === '') return null;
         return (
           <mark
             key={i}
             className="rounded px-0.5"
             style={color ? { backgroundColor: `${color}59`, color: 'inherit' } : undefined}
           >
-            {previewValues[seg.token] ?? seg.token}
+            {rendered}
           </mark>
         );
       })}
@@ -363,7 +370,7 @@ function MarkdownPreviewPane({ value, previewValues, vocab, scrollRef, onScroll 
 }) {
   const resolved = vocab
     .parse(value)
-    .map((seg) => (seg.type === 'text' ? seg.value : previewValues?.[seg.token] ?? seg.token))
+    .map((seg) => (seg.type === 'text' ? seg.value : resolveToken(seg.token, previewValues ?? {}) ?? previewValues?.[seg.token] ?? seg.token))
     .join('');
   return (
     <div ref={scrollRef} onScroll={onScroll} className="h-full min-h-[160px] overflow-auto rounded-md border border-input bg-muted/40 px-3 py-2 text-sm">
