@@ -159,12 +159,16 @@ const age = Math.max(ageTurns, ageHours / HOURS_PER_TURN_NOMINAL);
 
 Both of these change exported JSON and need a version/migration decision before implementation:
 
-| Shape | Field | Additive? |
-|---|---|---|
-| **World** | `calendar?: WorldCalendar` | yes |
-| **Save** (`AITurnResult` per turn) | `timeDelta?: number` | yes |
+| Shape | Field | Additive? | Status |
+|---|---|---|---|
+| **World** | `calendar?: WorldCalendar` | yes | not built — superseded by `startHour` below, which sources the same seam from the save instead |
+| **Save** (`AITurnResult` per turn) | `timeDelta?: number` | yes | shipped (phase 2) |
+| **Save** (`GameState`) | `startHour?: number` | yes | shipped (phase 2b) |
+| **Save** (`LogEntry`) | `kind?: 'world' \| 'system'` | yes | shipped (log timestamps) |
 
-Both are additive and absent-tolerant — an old save reads as flat 1h/turn, an old world as Day 1 / 08:00 / 24h. Per hard constraint #2 that still requires an explicit call from you, not from me.
+All additive and absent-tolerant — an old save reads as flat 1h/turn, opening at 08:00, with every log line stamped as a story event, which is exactly how the game behaved before each field existed. Per hard constraint #2 they still require an explicit version/migration call from the user, not from me.
+
+Note that the **world** calendar was never needed: sourcing `startHour` from the save gets the phase-1 `WorldCalendar` seam wired without touching world export shape at all, and without asking authors to fill in a field.
 
 ---
 
@@ -248,8 +252,37 @@ Calendar leak (probe C): cloud **0/108**. Cydonia ~**2/22 (9%)** — a daypart w
 |---|---|---|
 | 1 ✅ **built + probed** | `gameClock.ts` + stamps derived from the **existing** flat 1h; rendered in `nowLine` + digests behind the `timeContext` setting (default off). No export-shape change — the calendar stayed hardcoded. | ✅ Probe B/C passed (§7) — default-on is a product call |
 | 2 ✅ **built + probed** | The `timePassed` pass measures each turn; `AITurnResult.timeDelta` stores it; cumulative time is derived, so stamps and regen use the real clock. Behind the `aiClock` setting (default off). Prompt is preset-editable — `timePassedPrompt`/`timePassedUserPrompt` in `PROMPT_TEXT_KEYS`, Settings → Prompts → **Clock** tab (gated on `aiClock`). | ✅ Probe A: 100% Cydonia / 88% cloud vs 25% flat. Residual: cloud's `sleep` case |
+| 2b ✅ **built + probed** | The `openingTime` pass seeds where the clock *starts*. `GameState.startHour` (additive, save-only) feeds the `WorldCalendar` every reader already accepted, so Layer 0's seam is finally wired — from the save, not from the world. Behind `aiClock`. Prompt is preset-editable — Settings → Prompts → **Opening**. | ✅ See below |
 | 3 | Story-time decay in `memoryRelevance` | Its own A/B on real-session recall |
 | 4 | Validity intervals for durative facts | Only if 1–3 hold up |
+
+### Phase 2b — the opening hour (2026-07-26)
+
+Phase 2 made every *duration* right and left the *origin* at a hardcoded 08:00, so a world written to open at midnight was wrong from its first line and stayed wrong by a constant offset forever. Measured deltas can't fix a wrong start.
+
+**Probe** (`opening-time-probe.mjs`, cloud default, 12 runs × 11 cases × 2 arms, twice). The question was whether to let the pass answer `unstated` (arm A) or force a daypart (arm B).
+
+| | A hatch | B forced |
+|---|---|---|
+| Stated accuracy | 81% / 82% | 83% / 88% |
+| Declined (`unstated`) | **0 of 132, twice** | — |
+| Spread across 5 worlds | 3 / 3 | 4 / 3 |
+| Invalid replies | 10% → 1% | 2% → 0% |
+
+**Verdict: arm B.** Not because it is more accurate — the two runs disagree on the direction of that gap, so it is noise — but because **the hatch is never taken**. Offered an explicit "don't guess" option across 264 opportunities, the model declined zero times. Arm A is arm B plus a word that is never emitted, so B ships for the simpler contract.
+
+The load-bearing metric was **SPREAD**, not agreement. A model answering `morning` for every world scores perfect self-consistency while being byte-identical to the default it replaces. It did not: Sedge Landing → `evening` 12/12, Tempe → `afternoon` 12/12, Timbermaw → `morning` 12/12, Blackrue → `evening`, Vane Hollow → split. World-specific and stable across two independent runs.
+
+**Findings worth keeping:**
+
+- **No tracked test world states a time of day.** A sweep of every world in `testing/baseline/` found only ambient `lantern`/`lamp` and one `sundown` in a location nobody starts at. The real corpus is 100% unstated, which is why the stated cases had to be authored — and why the forced-pick arm is the one that matters.
+- **`"day"` was the single largest source of unparseable replies** until the prompt named it. One line ("a broad word like *day* is not one of the answers") took invalids from 10% to 1%. It is load-bearing; do not trim it.
+- **Closing that escape did not improve accuracy on `shift`** — it redirected those replies to `midday` instead of `afternoon`. The model is weakest where a scene states a time *relative to noon* rather than naming a daypart. Known, unfixed.
+- **`night` → 22:00, not 02:00.** Both are `night` to `daypart()`; 22:00 leaves a realistic stretch before dawn instead of sprinting into sunrise. A round-trip test pins `OPENING_HOURS` to `daypart()`'s bands so the two can't drift.
+
+**Not done, deliberately:** no retroactive ask when `aiClock` is switched on mid-story. The opening narration is long gone from context by then, and a late answer would re-date every stamp the player has already collected.
+
+**Cydonia arm not yet run** — needs LM Studio with only Cydonia resident.
 
 Phase 1 is independently shippable and needs no new AI call — worth doing first precisely because it isolates "does stamping help?" from "can the model measure time?".
 

@@ -37,6 +37,8 @@ export const PROMPT_TEXT_KEYS = [
   'nowLinePrompt',
   'timePassedPrompt',
   'timePassedUserPrompt',
+  'openingTimePrompt',
+  'openingTimeUserPrompt',
 ] as const;
 
 export type PromptTextKey = (typeof PROMPT_TEXT_KEYS)[number];

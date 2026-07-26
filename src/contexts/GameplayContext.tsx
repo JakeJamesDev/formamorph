@@ -13,6 +13,8 @@ import { matchChoicesToAction } from '../lib/choices';
 import { pageStatDeltas } from '../lib/statChanges';
 import { pageAssistantIndex, pageNextActionIndex, placeSnapshot } from '../lib/turnHistory';
 import { backfillGameStateStats } from '../lib/statBackfill';
+import { appendLogEntry, type LogKind } from '../lib/playLog';
+import type { WorldCalendar } from '../lib/gameClock';
 import type { MemoryPinMap } from '../lib/milestoneMemory';
 import type { MemoryEditMap, MemoryNote } from '../lib/memoryOverrides';
 import type {
@@ -49,7 +51,22 @@ function useProvideGameplay() {
   // Names the player deleted from the discovered cast; blocks re-discovery via every path.
   const [suppressedCharacterNames, setSuppressedCharacterNames] = useState<string[]>([]);
   const [logEntries, setLogEntries] = useState<LogEntry[]>([]);
+  // What the last real turn actually sent: the memories that made the digest band, and the ones sent as
+  // full prose instead. Derived from the request, so deliberately not persisted — a loaded save reports
+  // nothing until its first turn rather than replaying a stale band.
+  const [contextMemoryIds, setContextMemoryIds] = useState<string[]>([]);
+  const [rehydratedMemoryIds, setRehydratedMemoryIds] = useState<string[]>([]);
   const [gameTime, setGameTime] = useState(0);
+  // Hour of day the story opened at (see GameState.startHour). Null until the opening-time pass answers,
+  // and null forever for a game that started without it — both read as DEFAULT_START_HOUR downstream.
+  const [startHour, setStartHour] = useState<number | null>(null);
+  // The single object every clock reader passes to gameClock. Undefined while the story has no measured
+  // opening, which is what makes "never asked" and "asked before this feature existed" the same code path
+  // as the shipped default rather than a special case at each call site.
+  const calendar = useMemo<WorldCalendar | undefined>(
+    () => (startHour !== null ? { startHour } : undefined),
+    [startHour],
+  );
   const [currentLocation, setCurrentLocation] = useState<GameLocation | null>(null);
   const [playerStats, setPlayerStats] = useState<PlayerStat[]>([]);
   const [playerTraits, setPlayerTraits] = useState<Trait[]>([]);
@@ -117,23 +134,16 @@ function useProvideGameplay() {
 
   const logsEndRef = useRef<HTMLDivElement>(null);
 
-  const addLogEntry = useCallback((entry: string) => {
-    setLogEntries(prevEntries => {
-      if (prevEntries.length > 0 && prevEntries[prevEntries.length - 1].text === entry) {
-        // If the new entry matches the last entry, increment its repeat count — as a NEW object, since
-        // saved GameState snapshots hold these entries by reference and must not change retroactively.
-        const lastEntry = prevEntries[prevEntries.length - 1];
-        return [...prevEntries.slice(0, -1), { ...lastEntry, repeat: (lastEntry.repeat || 0) + 1 }];
-      } else {
-        // Otherwise, add a new entry with game time
-        return [...prevEntries, {
-          text: entry,
-          gameTime: gameTime,
-          repeat: 0
-        }];
-      }
-    });
+  const pushLogEntry = useCallback((entry: string, kind: LogKind) => {
+    setLogEntries(prev => appendLogEntry(prev, entry, gameTime, kind));
   }, [gameTime]);
+
+  /** Log something that happened in the story — it carries an in-world timestamp. */
+  const addLogEntry = useCallback((entry: string) => pushLogEntry(entry, 'world'), [pushLogEntry]);
+
+  /** Log something that happened to the app rather than in the story (saves, load failures, aborted
+   *  requests). Shown without a timestamp: story time has nothing to say about when you pressed save. */
+  const addSystemLogEntry = useCallback((entry: string) => pushLogEntry(entry, 'system'), [pushLogEntry]);
 
   const changeLocation = useCallback((newLocation: GameLocation) => {
     setCurrentLocation(newLocation);
@@ -157,6 +167,7 @@ function useProvideGameplay() {
       gameplayText: getGameplayText(),
       locationId: currentLocation?.id,
       gameTime,
+      ...(startHour !== null ? { startHour } : {}),
       fullMessageHistory,
       characterData,
       choices,
@@ -170,7 +181,7 @@ function useProvideGameplay() {
       stateVersion: 2
     };
   }, [playerStats, playerTraits, visibleEntities, discoveredEntities, suppressedCharacterNames, logEntries, currentLocation,
-      gameTime, fullMessageHistory, characterData, choices, isGameStarted, playerNotes, currentPage]);
+      gameTime, startHour, fullMessageHistory, characterData, choices, isGameStarted, playerNotes, currentPage]);
 
   /** Restore a `GameState` into the live gameplay state, resolving `locationId` against `locations` and
    *  recovering `playerNotes` from the newest nested state when the top-level field is absent (legacy saves).
@@ -186,6 +197,7 @@ function useProvideGameplay() {
       setLogEntries(gameState.logEntries);
       setGameplayText(gameState.gameplayText);
       setGameTime(gameState.gameTime);
+      setStartHour(gameState.startHour ?? null);
       // Rollback / re-generate keep the live narration + notes (they carry the player's post-turn edits) and
       // rewind the flat history themselves; the snapshot's frozen copies would revert those edits.
       if (!opts?.keepLiveHistory) {
@@ -229,10 +241,10 @@ function useProvideGameplay() {
     } catch (error) {
       console.error('Error loading game state:', error);
       toast.error('Failed to load game state');
-      addLogEntry('Failed to load game state');
+      addSystemLogEntry('Failed to load game state');
       return false;
     }
-  }, [addLogEntry]);
+  }, [addSystemLogEntry]);
 
   /** Persist the current turn to IndexedDB as a flat envelope (`currentState` + `stateHistory` +
    *  `APP_VERSION`), stamping `worldName`/`worldId` for per-world folders. A fresh `id` creates a new save;
@@ -270,18 +282,18 @@ function useProvideGameplay() {
       // Autosave is silent and doesn't become the "current slot": no prefill name, no log line, no toast.
       if (!isAutosave) {
         setLastSaveName(saveName);
-        addLogEntry(`Game saved as "${saveName}"`);
+        addSystemLogEntry(`Game saved as "${saveName}"`);
       }
       return true;
     } catch (error) {
       console.error('Error saving game:', error);
       if (!isAutosave) {
         toast.error('Failed to save game');
-        addLogEntry('Failed to save game');
+        addSystemLogEntry('Failed to save game');
       }
       return false;
     }
-  }, [saveCurrentGameState, gameStates, runtimeDictionaries, placeholderRolls, memoryPins, milestoneSelection, memoryEdits, memoryDeleted, memoryNotes, addLogEntry]);
+  }, [saveCurrentGameState, gameStates, runtimeDictionaries, placeholderRolls, memoryPins, milestoneSelection, memoryEdits, memoryDeleted, memoryNotes, addSystemLogEntry]);
 
   // Autosave has failed at least once this session — used to toast only once, re-armed on a later success.
   const autosaveFailedRef = useRef(false);
@@ -309,7 +321,7 @@ function useProvideGameplay() {
       const savedData = await getSaveRecord(saveId) as SaveObject | null;
 
       if (!savedData) {
-        addLogEntry('No save data found');
+        addSystemLogEntry('No save data found');
         return false;
       }
       const saveName = (savedData as SaveRecord).name ?? 'save';
@@ -341,7 +353,7 @@ function useProvideGameplay() {
           setMemoryEdits(migrated.memoryEdits ?? {});
           setMemoryDeleted(migrated.memoryDeleted ?? []);
           setMemoryNotes(migrated.memoryNotes ?? []);
-          addLogEntry(`Game loaded from "${saveName}"`);
+          addSystemLogEntry(`Game loaded from "${saveName}"`);
         }
         return success;
       }
@@ -381,12 +393,12 @@ function useProvideGameplay() {
               draggable: true
             });
 
-            addLogEntry('Old save format converted to new format successfully');
+            addSystemLogEntry('Old save format converted to new format successfully');
           }
 
           const success = loadGameState(backfillGameStateStats(migrateLegacySaveState(convertedData), worldStats), locations);
           if (success) {
-            addLogEntry(`Game loaded from "${saveName}"`);
+            addSystemLogEntry(`Game loaded from "${saveName}"`);
           }
           return success;
         } catch (error) {
@@ -400,19 +412,19 @@ function useProvideGameplay() {
             draggable: true
           });
 
-          addLogEntry('Failed to convert old save format');
+          addSystemLogEntry('Failed to convert old save format');
 
           // Try to load the save anyway (legacy shape, best-effort)
           try {
             const success = loadGameState(savedData as unknown as GameState, locations);
             if (success) {
-              addLogEntry(`Game loaded from "${saveName}" (with conversion errors)`);
+              addSystemLogEntry(`Game loaded from "${saveName}" (with conversion errors)`);
             }
             return success;
           } catch (loadError) {
             console.error('Error loading game after conversion failure:', loadError);
             toast.error('Failed to load game');
-            addLogEntry('Failed to load game');
+            addSystemLogEntry('Failed to load game');
             return false;
           }
         }
@@ -420,10 +432,10 @@ function useProvideGameplay() {
     } catch (error) {
       console.error('Error loading game:', error);
       toast.error('Failed to load game');
-      addLogEntry('Failed to load game');
+      addSystemLogEntry('Failed to load game');
       return false;
     }
-  }, [loadGameState, addLogEntry]);
+  }, [loadGameState, addSystemLogEntry]);
 
   // Cleanup web worker when component unmounts
   useEffect(() => {
@@ -518,8 +530,16 @@ function useProvideGameplay() {
     logEntries,
     setLogEntries,
     addLogEntry,
+    addSystemLogEntry,
+    contextMemoryIds,
+    setContextMemoryIds,
+    rehydratedMemoryIds,
+    setRehydratedMemoryIds,
     gameTime,
     setGameTime,
+    startHour,
+    setStartHour,
+    calendar,
     currentLocation,
     setCurrentLocation,
     changeLocation,

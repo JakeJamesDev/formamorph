@@ -63,6 +63,9 @@ export interface BandResult {
   /** The turn ids that survived into the digest band, chronological. Feed back as `stickyIds` next
    *  turn to give incumbents hysteresis. Empty when there is no band. */
   bandTurnIds: string[];
+  /** Turn ids sent as full original prose instead of a digest (semantic rehydration). Disjoint from
+   *  `bandTurnIds` — a rehydrated turn leaves the band. */
+  rehydratedTurnIds: string[];
   /** The summarized-older turns as a labeled recap block (empty when no band), for consumers that want just
    *  that context. It is NOT part of `messages` — there the band rides as the recap exchange; this is a
    *  separate newline-joined string only the precall planner uses. */
@@ -486,6 +489,7 @@ export function buildBandedHistory(args: {
   return {
     messages,
     bandTurnIds: bandTurns.map((t) => t.turnId).filter((id): id is string => !!id),
+    rehydratedTurnIds: rehydratedTurns.map((t) => t.turnId).filter((id): id is string => !!id),
     // The summarized-older turns as a labeled block (empty when there is no band), for consumers (the
     // precall planner) that want just that recap as context without walking the message pairs. This label
     // rides only the planner's own user message — it never appears in the narration history above.

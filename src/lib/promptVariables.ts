@@ -45,7 +45,7 @@ export interface PromptVariable {
 }
 
 /** Every prompt editor maps to one of these kinds (mirrors the Settings → System Prompts sub-tabs). */
-export type PromptKind = 'narration' | 'thinking' | 'choices' | 'statupdates' | 'location' | 'summary' | 'diary' | 'director' | 'character' | 'storyboard' | 'timepassed';
+export type PromptKind = 'narration' | 'thinking' | 'choices' | 'statupdates' | 'location' | 'summary' | 'diary' | 'director' | 'character' | 'storyboard' | 'timepassed' | 'timeopening';
 
 const SUMMARY_VARIANT: PromptVariant = {
   id: 'summary',
@@ -183,6 +183,7 @@ export const PROMPT_KIND_VARIABLES: Record<PromptKind, PromptVariable[]> = {
   character: [CHARACTER, ...CONTEXT_VARS],
   storyboard: [...CONTEXT_VARS],
   timepassed: [...CONTEXT_VARS],
+  timeopening: [...CONTEXT_VARS],
 };
 
 /** Variables offered by the editable user-message templates (the per-turn runtime values the code
@@ -196,6 +197,9 @@ export const PROMPT_KIND_USER_VARIABLES: Partial<Record<PromptKind, PromptVariab
   summary: [PLAYER_ACTION, NARRATION],
   director: [PLAYER_ACTION, NARRATION],
   timepassed: [PLAYER_ACTION, NARRATION],
+  // The opening pass runs on turn one, where the player's action is "start the game" — only the narration
+  // carries any time signal, so the action chip is deliberately not offered.
+  timeopening: [NARRATION],
 };
 
 const VAR_BY_BASE = new Map(ALL_PROMPT_VARIABLES.map((v) => [v.token, v]));

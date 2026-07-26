@@ -62,6 +62,27 @@ export function parseTimeDelta(reply: string): number | null {
   return hours <= MAX_TURN_HOURS ? hours : null;
 }
 
+/** The dayparts the opening-time pass may answer with — exactly the set `daypart()` emits, so the answer
+ *  round-trips back through it. `night` maps to late evening rather than the small hours: an opening that
+ *  reads as night is usually an evening still going, and seeding 22:00 leaves a realistic stretch before
+ *  dawn instead of sprinting into sunrise. */
+export const OPENING_HOURS: Record<string, number> = {
+  night: 22, dawn: 6, morning: 9, midday: 12, afternoon: 15, evening: 19,
+};
+
+/**
+ * Read the opening-time pass's reply into an hour of day. The pass picks a daypart word rather than a clock
+ * reading — a small model chooses from six words reliably and cannot do calendar arithmetic — and anything
+ * outside the set is rejected rather than coerced, so a garbled reply falls back to the shipped start hour
+ * instead of seeding a confident wrong time. Probed on the cloud tier: measured across two 12-run passes,
+ * the model never once declined to answer and resolved five test worlds to three or four distinct dayparts,
+ * so a forced pick carries real information rather than restating the default (opening-time-probe.mjs).
+ */
+export function parseOpeningDaypart(reply: string): number | null {
+  const m = (reply || '').toLowerCase().match(new RegExp(`\\b(${Object.keys(OPENING_HOURS).join('|')})\\b`));
+  return m ? OPENING_HOURS[m[1]] : null;
+}
+
 /** Elapsed hours at a message-history position under the flat clock. `pos` is the `BandTurn.index` /
  *  `MemoryNote.anchorTurn` domain: assistant messages sit at odd indices, so every two positions is one
  *  turn, and a note anchored mid-pair belongs to the turn that just closed. */

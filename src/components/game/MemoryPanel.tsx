@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { useDevRoute } from '@/lib/devRouter';
 import { useGameplay } from '@/contexts/GameplayContext';
 import { useSettings } from '@/contexts/SettingsContext';
-import { buildMemoryLedger } from '@/lib/memoryView';
+import { buildMemoryLedger, matchesMemoryFilter, MEMORY_FILTER_LABELS, MEMORY_FILTER_COUNT_LABELS, type MemoryFilter } from '@/lib/memoryView';
 import { MemoryManagerModal } from '@/components/modals/MemoryManagerModal';
 import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
@@ -18,6 +18,10 @@ import { cn } from '@/lib/utils';
  * Rewriting, deleting, regenerating and hand-writing memories live one click away in the Memory Manager
  * (`MemoryManagerModal`); both surfaces read the same ledger so they can't disagree.
  */
+
+/** Ordered by how present a memory is. The Manager carries the rest. */
+const PANEL_FILTERS: MemoryFilter[] = ['all', 'verbatim', 'summary', 'held', 'custom'];
+
 export const MemoryPanel = ({ onRegenerateMemory }: {
   onRegenerateMemory?: (turnId: string) => Promise<boolean>;
 }) => {
@@ -26,10 +30,14 @@ export const MemoryPanel = ({ onRegenerateMemory }: {
     memoryPins, setMemoryPins,
     milestoneSelection,
     memoryEdits, memoryDeleted, memoryNotes,
-    gameTime,
+    gameTime, calendar,
+    contextMemoryIds, rehydratedMemoryIds,
   } = useGameplay();
   const { memoryDigests, narrationVerbatimTurns, aiClock } = useSettings();
   const [managerOpen, setManagerOpen] = useState(false);
+  // A subset of the Manager's chips: the ones that answer "is this in the story right now", plus Custom.
+  // Editing states (Let Go, Edited, Deleted) belong to the Manager, where you can act on them.
+  const [filter, setFilter] = useState<MemoryFilter>('all');
 
   // DEV-only: land straight on the manager (`#dev?view=gameViewer&modal=memoryManager`).
   const devRoute = useDevRoute();
@@ -46,9 +54,10 @@ export const MemoryPanel = ({ onRegenerateMemory }: {
       selection: milestoneSelection,
       verbatimFloor: narrationVerbatimTurns,
       // Ages are shown only while the clock measures each turn; the flat hour would date them arbitrarily.
-      clock: aiClock ? { nowHours: gameTime } : undefined,
+      clock: aiClock ? { nowHours: gameTime, calendar } : undefined,
+      context: { bandIds: contextMemoryIds, rehydratedIds: rehydratedMemoryIds },
     }),
-    [fullMessageHistory, memoryEdits, memoryDeleted, memoryNotes, memoryPins, milestoneSelection, narrationVerbatimTurns, aiClock, gameTime],
+    [fullMessageHistory, memoryEdits, memoryDeleted, memoryNotes, memoryPins, milestoneSelection, narrationVerbatimTurns, aiClock, gameTime, calendar, contextMemoryIds, rehydratedMemoryIds],
   );
 
   const setPin = (id: string, pin: 'keep' | 'drop' | null) => {
@@ -69,9 +78,14 @@ export const MemoryPanel = ({ onRegenerateMemory }: {
     <MemoryManagerModal isOpen={managerOpen} onOpenChange={setManagerOpen} onRegenerate={onRegenerateMemory} />
   );
 
-  const rows = ledger.rows.filter((r) => !r.deleted);
+  const rows = ledger.rows.filter((r) => matchesMemoryFilter(r, filter));
+  // The divider marks a boundary in the full chronological list; under a filter it would point at nothing.
+  const dividerAt = filter === 'all' ? ledger.recentFrom : -1;
+  // The empty states below are about the ledger, not the filter — a chip that matches nothing must not
+  // read as "memory is off".
+  const anyRows = ledger.rows.some((r) => !r.deleted);
 
-  if (!memoryDigests && rows.length === 0) {
+  if (!memoryDigests && !anyRows) {
     return (
       <div className="space-y-2 p-2">
         <p className="text-sm text-muted-foreground">
@@ -83,7 +97,7 @@ export const MemoryPanel = ({ onRegenerateMemory }: {
       </div>
     );
   }
-  if (rows.length === 0) {
+  if (!anyRows) {
     return (
       <div className="space-y-2 p-2">
         <p className="text-sm text-muted-foreground">
@@ -102,25 +116,48 @@ export const MemoryPanel = ({ onRegenerateMemory }: {
         <div className="flex-shrink-0 space-y-1 border-b border-border p-2">
           {manageButton}
           <p className="text-xs text-muted-foreground">
-            {ledger.keptCount} of {ledger.totalCount} Moments Remembered
+            {filter === 'all'
+              ? `${ledger.totalCount} ${MEMORY_FILTER_COUNT_LABELS.all}`
+              : `${rows.length} of ${ledger.totalCount} ${MEMORY_FILTER_COUNT_LABELS[filter]}`}
           </p>
+          <div className="flex flex-wrap gap-1">
+            {PANEL_FILTERS.map((f) => (
+              <Button
+                key={f}
+                size="sm"
+                variant={filter === f ? 'default' : 'outline'}
+                className="h-5 px-1.5 text-[10px]"
+                onClick={() => setFilter(f)}
+              >
+                {MEMORY_FILTER_LABELS[f]}
+              </Button>
+            ))}
+          </div>
         </div>
         <ScrollArea className="min-h-0 flex-grow">
           <div className="p-2 space-y-1">
+            {rows.length === 0 && (
+              <p className="p-1 text-xs text-muted-foreground">No memories match that.</p>
+            )}
             {rows.map((row, i) => (
               <div key={row.id}>
-                {i === ledger.recentFrom && (
+                {i === dividerAt && (
                   <div className="flex items-center gap-2 py-1" aria-label="Recent Memories">
                     <div className="h-px flex-grow bg-border" />
                     <span className="text-[10px] uppercase tracking-wide text-muted-foreground">Recent</span>
                     <div className="h-px flex-grow bg-border" />
                   </div>
                 )}
+                {/* The accent marks the minority state — what actually reached the model last turn. In a
+                    long story most kept memories sit out any given turn, so marking those instead would
+                    fade the whole panel and leave the informative row unmarked. */}
                 <div
+                  title={row.asScene ? 'Sent as a full scene last turn' : row.inContext ? 'Sent to the story last turn' : undefined}
                   className={cn(
                     'group flex items-start gap-1 rounded border border-border p-2',
                     !row.kept && 'opacity-50',
                     row.isNote && 'border-primary/40',
+                    row.inContext && 'border-l-2 border-l-primary',
                   )}
                 >
                   <div className="flex-grow">

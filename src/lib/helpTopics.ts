@@ -108,6 +108,8 @@ As the story grows, older turns stop riding word-for-word and are carried as sho
 
 Memories under the **Recent** line are still fresh enough that the story has them word-for-word — your changes to them start mattering once they age out.
 
+**Kept isn't the same as sent.** A memory the story keeps still has to earn its place each turn — with **Semantic Memory** on, only the handful most relevant to what you just did actually rides. Rows with a **left accent bar** reached the story last turn; plain rows are remembered but sat this one out; struck-through rows are the ones it let go. A memory sent back as a full scene is marked **Scene**. The filter chips sort by the form the story has a memory in: **Verbatim** (its real text — a recent turn, or one recalled as a scene), **Summary** (the compressed line, sent last turn), **Held** (remembered, but not sent this turn).
+
 **When it happened.** With **Measured Clock** on, each memory carries its place in the story's time — *"Day 3, evening — two days ago"* — the same stamp the story itself reads. Without that setting every turn costs a flat hour whatever happened in it, so nothing is dated rather than dating it wrongly.`,
     wikiPage: 'Memory',
     wikiAnchor: 'when-each-memory-happened',
