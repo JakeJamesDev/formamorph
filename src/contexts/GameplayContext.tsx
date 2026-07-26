@@ -14,6 +14,7 @@ import { pageStatDeltas } from '../lib/statChanges';
 import { pageAssistantIndex, pageNextActionIndex, placeSnapshot } from '../lib/turnHistory';
 import { backfillGameStateStats } from '../lib/statBackfill';
 import type { MemoryPinMap } from '../lib/milestoneMemory';
+import type { MemoryEditMap, MemoryNote } from '../lib/memoryOverrides';
 import type {
   CharacterData,
   LogEntry,
@@ -45,6 +46,8 @@ function useProvideGameplay() {
   const [characterData, setCharacterData] = useState<CharacterData | null>(null);
   const [visibleEntities, setVisibleEntities] = useState<SceneEntity[]>([]);
   const [discoveredEntities, setDiscoveredEntities] = useState<DiscoveredEntity[]>([]);
+  // Names the player deleted from the discovered cast; blocks re-discovery via every path.
+  const [suppressedCharacterNames, setSuppressedCharacterNames] = useState<string[]>([]);
   const [logEntries, setLogEntries] = useState<LogEntry[]>([]);
   const [gameTime, setGameTime] = useState(0);
   const [currentLocation, setCurrentLocation] = useState<GameLocation | null>(null);
@@ -63,6 +66,12 @@ function useProvideGameplay() {
   // selector has judged and which it kept (`selected` null = a legacy malformed full-vote → keep
   // everything). Persisted in the save envelope so verdicts survive load.
   const [milestoneSelection, setMilestoneSelection] = useState<{ seen: string[]; selected: string[] | null } | null>(null);
+  // The player's memory override layer (see lib/memoryOverrides): rewrites, tombstones and hand-written
+  // memories. The AI's own summaries stay untouched on their turns, so every override is reversible.
+  // All three persist in the save envelope.
+  const [memoryEdits, setMemoryEdits] = useState<MemoryEditMap>({});
+  const [memoryDeleted, setMemoryDeleted] = useState<string[]>([]);
+  const [memoryNotes, setMemoryNotes] = useState<MemoryNote[]>([]);
   // Flattened enabled entries fed to the injection pipeline (mirrors GameData's old derived `dictionary`).
   const runtimeDictionary = useMemo(() => flattenEnabledBookEntries(runtimeDictionaries), [runtimeDictionaries]);
   const [recentStatChanges, setRecentStatChanges] = useState<Record<string, number>>({});
@@ -143,6 +152,7 @@ function useProvideGameplay() {
       playerTraits,
       visibleEntities,
       discoveredEntities,
+      suppressedCharacterNames,
       logEntries,
       gameplayText: getGameplayText(),
       locationId: currentLocation?.id,
@@ -159,7 +169,7 @@ function useProvideGameplay() {
       // Add a version flag for backward compatibility
       stateVersion: 2
     };
-  }, [playerStats, playerTraits, visibleEntities, discoveredEntities, logEntries, currentLocation,
+  }, [playerStats, playerTraits, visibleEntities, discoveredEntities, suppressedCharacterNames, logEntries, currentLocation,
       gameTime, fullMessageHistory, characterData, choices, isGameStarted, playerNotes, currentPage]);
 
   /** Restore a `GameState` into the live gameplay state, resolving `locationId` against `locations` and
@@ -172,6 +182,7 @@ function useProvideGameplay() {
       setPlayerTraits(gameState.playerTraits);
       setVisibleEntities(normalizeVisibleEntities(gameState.visibleEntities));
       setDiscoveredEntities(gameState.discoveredEntities ?? []);
+      setSuppressedCharacterNames(gameState.suppressedCharacterNames ?? []);
       setLogEntries(gameState.logEntries);
       setGameplayText(gameState.gameplayText);
       setGameTime(gameState.gameTime);
@@ -249,6 +260,9 @@ function useProvideGameplay() {
         ...(placeholderRolls.world || placeholderRolls.unique ? { placeholderRolls } : {}),
         ...(Object.keys(memoryPins).length ? { memoryPins } : {}),
         ...(milestoneSelection ? { milestoneSelection } : {}),
+        ...(Object.keys(memoryEdits).length ? { memoryEdits } : {}),
+        ...(memoryDeleted.length ? { memoryDeleted } : {}),
+        ...(memoryNotes.length ? { memoryNotes } : {}),
         ...(isAutosave ? { isAutosave: true } : {}),
       };
 
@@ -267,7 +281,7 @@ function useProvideGameplay() {
       }
       return false;
     }
-  }, [saveCurrentGameState, gameStates, runtimeDictionaries, placeholderRolls, memoryPins, milestoneSelection, addLogEntry]);
+  }, [saveCurrentGameState, gameStates, runtimeDictionaries, placeholderRolls, memoryPins, milestoneSelection, memoryEdits, memoryDeleted, memoryNotes, addLogEntry]);
 
   // Autosave has failed at least once this session — used to toast only once, re-armed on a later success.
   const autosaveFailedRef = useRef(false);
@@ -323,6 +337,10 @@ function useProvideGameplay() {
           // Restore accumulated verdicts (T4: sticky, never re-voted); older saves lack the field —
           // the loaded history is then judged fresh in one incremental batch on the next idle tick.
           setMilestoneSelection(migrated.milestoneSelection ?? null);
+          // The player's override layer; older saves lack all three ⇒ pure AI memory, unchanged behavior.
+          setMemoryEdits(migrated.memoryEdits ?? {});
+          setMemoryDeleted(migrated.memoryDeleted ?? []);
+          setMemoryNotes(migrated.memoryNotes ?? []);
           addLogEntry(`Game loaded from "${saveName}"`);
         }
         return success;
@@ -495,6 +513,8 @@ function useProvideGameplay() {
     setVisibleEntities,
     discoveredEntities,
     setDiscoveredEntities,
+    suppressedCharacterNames,
+    setSuppressedCharacterNames,
     logEntries,
     setLogEntries,
     addLogEntry,
@@ -516,6 +536,12 @@ function useProvideGameplay() {
     setMemoryPins,
     milestoneSelection,
     setMilestoneSelection,
+    memoryEdits,
+    setMemoryEdits,
+    memoryDeleted,
+    setMemoryDeleted,
+    memoryNotes,
+    setMemoryNotes,
     runtimeDictionary,
     recentStatChanges,
     setRecentStatChanges,

@@ -83,6 +83,26 @@ The rule of thumb: **[brackets] direct this one turn; Notes persist until you ch
       },
     ],
   },
+  'game.memoryManager': {
+    title: 'Memories',
+    body: `Everything the story remembers about what's already happened, and the place to change it.
+
+As the story grows, older turns stop riding word-for-word and are carried as short memories instead. The story picks which ones are worth keeping — faded, struck-through lines are the ones it let go.
+
+**What you can do to a memory**
+
+| | |
+|---|---|
+| ✏️ **Edit** | Rewrite it in your own words. An edited memory is always kept — you wrote it, so the story doesn't get to drop it. |
+| 🔄 **Rewrite** | Have the story summarize that turn again, in case the first attempt missed the point. |
+| 📌 **Pin / forget** | Force a memory to stay, or let one go, without changing its words. |
+| 🗑️ **Delete** | Remove it entirely. Nothing is really lost — switch the filter to **Deleted** to bring it back. |
+| ➕ **Add memory** | Write something the story should remember that never happened in a turn. Yours are always kept. |
+
+**Nothing you do here is permanent.** The story's own version is always kept underneath, so **Revert** restores the original wording and **Reset all my changes** puts everything back the way the story had it.
+
+Memories under the **Recent** line are still fresh enough that the story has them word-for-word — your changes to them start mattering once they age out.`,
+  },
   'worldEditor.locations': {
     title: 'Locations',
     wikiAnchor: 'locations',

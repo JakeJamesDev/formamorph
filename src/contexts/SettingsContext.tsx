@@ -1,6 +1,6 @@
 import { randomUUID } from "@/lib/uuid";
 import { createContext, useContext, useState, useEffect, useRef, useCallback, useMemo, type ReactNode } from 'react';
-import { defaultSystemPrompt, defaultNarrationUserPrompt, defaultRecapUserPrompt, defaultRehydrateUserPrompt, defaultOocDirectivePrompt, defaultChoicesPrompt, defaultStatUpdatesPrompt, defaultLocationChangePrompt, defaultThinkingPrompt, defaultSummaryPrompt, defaultChoicesUserPrompt, defaultStatUpdatesUserPrompt, defaultLocationChangeUserPrompt, defaultSummaryUserPrompt, defaultDiaryPrompt, defaultDirectorPrompt, defaultDirectorUserPrompt, defaultCharacterPrompt, defaultStoryboardPrompt } from '../components/game/GamePrompts';
+import { defaultSystemPrompt, defaultNarrationUserPrompt, defaultRecapUserPrompt, defaultRehydrateUserPrompt, defaultOocDirectivePrompt, defaultChoicesPrompt, defaultStatUpdatesPrompt, defaultLocationChangePrompt, defaultThinkingPrompt, defaultSummaryPrompt, defaultChoicesUserPrompt, defaultStatUpdatesUserPrompt, defaultLocationChangeUserPrompt, defaultSummaryUserPrompt, defaultDiaryPrompt, defaultDirectorPrompt, defaultDirectorUserPrompt, defaultCharacterPrompt, defaultStoryboardPrompt, defaultNowLinePrompt, defaultTimePassedPrompt, defaultTimePassedUserPrompt } from '../components/game/GamePrompts';
 import { DEFAULT_ENDPOINT, DEFAULT_API_TOKEN, DEFAULT_MODEL_NAME, DEFAULT_MAX_TOKENS, DEFAULT_CONTEXT_WINDOW, DEFAULT_LOCAL_CONTEXT_SIZE, DEFAULT_LOCAL_GPU_LAYERS, DEFAULT_LOCAL_FLASH_ATTENTION, DEFAULT_LOCAL_PARALLEL_REQUESTS, DEFAULT_GEN_TEMPERATURE, DEFAULT_GEN_TOP_P, DEFAULT_GEN_REPETITION_PENALTY, DEFAULT_GEN_TOP_K, DEFAULT_GEN_MIN_P, DEFAULT_THEME_COLOR, BASE_THEME_COLOR, THEME_COLORS, DEFAULT_FONT, FONT_OPTIONS, SYSTEM_FONT_STACK, DEFAULT_NARRATION_FONT, DEFAULT_NARRATION_SCALE, DEFAULT_NARRATION_LINE_HEIGHT, NARRATION_FONT_OPTIONS, fontStack, fontSizeAdjust, DEFAULT_UPDATE_CHANNEL, type ThemeColor, type FontChoice, type NarrationFont, type UpdateChannel } from './settingsDefaults';
 import { isDesktop } from '../lib/imageGen/desktop';
 import { DEFAULT_TAG_PROMPT } from '../lib/imagePrompt';
@@ -168,6 +168,9 @@ const PROMPT_TEXT_DEFAULTS: PromptValues = {
   statUpdatesUserPrompt: defaultStatUpdatesUserPrompt,
   locationChangeUserPrompt: defaultLocationChangeUserPrompt,
   summaryUserPrompt: defaultSummaryUserPrompt,
+  nowLinePrompt: defaultNowLinePrompt,
+  timePassedPrompt: defaultTimePassedPrompt,
+  timePassedUserPrompt: defaultTimePassedUserPrompt,
 };
 
 /** Each read-only built-in preset's values, its section style applied to the canonical text (markdown =
@@ -331,6 +334,16 @@ function useProvideSettings() {
   // pressure). usePersistentState stores the default on first mount, so the flip reaches fresh
   // installs only — existing installs keep their stored value.
   const [semanticBandCap, setSemanticBandCap] = usePersistentState<number>(`${APP_ID}_semanticBandCap`, 12, intCodec);
+  // EXPERIMENTAL in-world time labels: each remembered moment carries when it happened ("Day 3, evening —
+  // two days ago") and the recap's now-line states the present, so the model reads when before what.
+  // Default off — it changes the digest band's text, which needs probe evidence before defaulting on
+  // (docs-internal/time-system-design.md, phase 1).
+  const [timeContext, setTimeContext] = usePersistentState<boolean>(`${APP_ID}_timeContext`, false, boolCodec);
+  // EXPERIMENTAL measured clock: a silent post-narration pass measures how much in-world time the turn
+  // consumed, instead of the flat hour per action the game has always charged. Default off — it adds a
+  // request to every turn, and the measurement needs probe evidence before defaulting on
+  // (docs-internal/time-system-design.md, phase 2).
+  const [aiClock, setAiClock] = usePersistentState<boolean>(`${APP_ID}_aiClock`, false, boolCodec);
   // Fire the post-narration aux requests (choices + stat updates + location router) concurrently instead of
   // one after another. Default on: ~29% faster turns on a parallel-capable endpoint (LM Studio "Parallel",
   // Ollama), harmless on serial endpoints (they queue). Turn off if a VRAM-tight local engine slows or OOMs
@@ -342,6 +355,15 @@ function useProvideSettings() {
   // Write-side only for now (entries are stored + inspectable, not yet fed back into the character pass).
   // Default off: extra async requests (one per participant) that matter mostly on a local endpoint.
   const [characterDiaries, setCharacterDiaries] = usePersistentState<boolean>(`${APP_ID}_characterDiaries`, false, boolCodec);
+  // Write a description for a character the narration invented, promoting it to a persisted runtime
+  // entity. This setting governs the REQUEST only: finding the names is free (lib/characterCandidates
+  // — pure string work) and always on, so presence, the choices filter and participation recall never
+  // depend on a toggle. One request per newly named character is the entire cost, hence opt-in.
+  // Default SEEDED from characterDiaries: describing used to ride that setting, so a plain `false`
+  // would silently stop it for players who have diaries on today, and a plain `true` would hand
+  // everyone else a request they never opted into. usePersistentState only consults the default when
+  // the key is absent, so this is a one-time migration and the two are independent after.
+  const [describeCharacters, setDescribeCharacters] = usePersistentState<boolean>(`${APP_ID}_describeCharacters`, characterDiaries, boolCodec);
   // Reveal "silent" requests (e.g. the memory digest) in the status bar and AI-context viewer.
   // Default off: silent requests do their work without cluttering the UI; this is an inspection toggle.
   const [showSilentRequests, setShowSilentRequests] = usePersistentState<boolean>(`${APP_ID}_showSilentRequests`, false, boolCodec);
@@ -526,7 +548,7 @@ function useProvideSettings() {
   const {
     systemPrompt, narrationUserPrompt, recapUserPrompt, rehydrateUserPrompt, oocDirectivePrompt, choicesPrompt, statUpdatesPrompt, locationChangePromptText, thinkingPrompt, summaryPrompt,
     diaryPrompt, directorPrompt, directorUserPrompt, characterPrompt, storyboardPrompt,
-    choicesUserPrompt, statUpdatesUserPrompt, locationChangeUserPrompt, summaryUserPrompt,
+    choicesUserPrompt, statUpdatesUserPrompt, locationChangeUserPrompt, summaryUserPrompt, nowLinePrompt, timePassedPrompt, timePassedUserPrompt,
   } = promptValues;
   const setSystemPrompt = (v: string) => setPresetStore((s) => updateValue(s, 'systemPrompt', v));
   const setNarrationUserPrompt = (v: string) => setPresetStore((s) => updateValue(s, 'narrationUserPrompt', v));
@@ -547,6 +569,9 @@ function useProvideSettings() {
   const setStatUpdatesUserPrompt = (v: string) => setPresetStore((s) => updateValue(s, 'statUpdatesUserPrompt', v));
   const setLocationChangeUserPrompt = (v: string) => setPresetStore((s) => updateValue(s, 'locationChangeUserPrompt', v));
   const setSummaryUserPrompt = (v: string) => setPresetStore((s) => updateValue(s, 'summaryUserPrompt', v));
+  const setNowLinePrompt = (v: string) => setPresetStore((s) => updateValue(s, 'nowLinePrompt', v));
+  const setTimePassedPrompt = (v: string) => setPresetStore((s) => updateValue(s, 'timePassedPrompt', v));
+  const setTimePassedUserPrompt = (v: string) => setPresetStore((s) => updateValue(s, 'timePassedUserPrompt', v));
 
   // Preset-scoped tuning derives from the active preset (built-ins → empty → defaults); setters patch the
   // active preset and no-op under a built-in, mirroring the text setters above.
@@ -913,12 +938,18 @@ function useProvideSettings() {
     setSemanticDiaries,
     semanticBandCap,
     setSemanticBandCap,
+    timeContext,
+    setTimeContext,
+    aiClock,
+    setAiClock,
     concurrentTurnRequests,
     setConcurrentTurnRequests,
     autosaveEnabled,
     setAutosaveEnabled,
     characterDiaries,
     setCharacterDiaries,
+    describeCharacters,
+    setDescribeCharacters,
     showSilentRequests,
     setShowReasoning,
     showReasoning,
@@ -1054,6 +1085,12 @@ function useProvideSettings() {
     locationChangeUserPrompt,
     setLocationChangeUserPrompt,
     summaryUserPrompt,
+    nowLinePrompt,
+    setNowLinePrompt,
+    timePassedPrompt,
+    setTimePassedPrompt,
+    timePassedUserPrompt,
+    setTimePassedUserPrompt,
     setSummaryUserPrompt,
     promptPresets,
     builtinPresets,

@@ -207,7 +207,8 @@ describe('applyIncrementalVerdict', () => {
   it('adds kept fresh ids and forgets superseded old ids, preserving everything else', () => {
     const out = applyIncrementalVerdict(prev, ['t0', 't2'], ['t3', 't4'], {
       keepFresh: new Set([1]),
-      forgetOld: new Set([1]), // shown old index 1 = t2
+      forgetOld: new Set([1]),
+      weights: new Map(), // shown old index 1 = t2
     });
     expect(out.seen).toEqual(['t0', 't1', 't2', 't3', 't4']);
     expect(out.selected).toEqual(['t0', 't4']);
@@ -223,12 +224,13 @@ describe('applyIncrementalVerdict', () => {
     const out = applyIncrementalVerdict({ seen: ['t0', 't1'], selected: null }, ['t0', 't1'], ['t2'], {
       keepFresh: new Set([0]),
       forgetOld: new Set([0]),
+      weights: new Map(),
     });
     expect(out.selected).toEqual(['t1', 't2']);
   });
 
   it('starts from nothing: no prior selection, first batch judged', () => {
-    const out = applyIncrementalVerdict(null, [], ['t0', 't1'], { keepFresh: new Set([1]), forgetOld: new Set() });
+    const out = applyIncrementalVerdict(null, [], ['t0', 't1'], { keepFresh: new Set([1]), forgetOld: new Set(), weights: new Map() });
     expect(out.seen).toEqual(['t0', 't1']);
     expect(out.selected).toEqual(['t1']);
   });

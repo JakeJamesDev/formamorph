@@ -229,6 +229,17 @@ describe("navigableDestinations / buildDestinationsContext", () => {
   const hamlet: GameLocation = { id: "hamlet", name: "Hamlet", aiSummary: "A reed-thatched hamlet." };
   const nested = [hamlet, green, cottage, eelhouse, landing];
 
+  it("is empty for an unconnected top-level location, however many exist in the world", () => {
+    // The shape a real 50-turn session ran in: four top-level locations, none linked to any other.
+    // Every one is a dead end, so the location router's reply can never match anything — which is why
+    // GameViewer gates the request on this list rather than on `locations.length > 1`.
+    const a: GameLocation = { id: "a", name: "Office" };
+    const b: GameLocation = { id: "b", name: "Dorms" };
+    const c: GameLocation = { id: "c", name: "Academy" };
+    expect(navigableDestinations(a, [a, b, c])).toEqual([]);
+    expect(buildDestinationsContext(a, [a, b, c])).toBe(NONE_PLACEHOLDER);
+  });
+
   it("unions connections + sub-locations + reachable siblings, deduped, excluding self", () => {
     const names = navigableDestinations(green, locs).map((l) => l.name).sort();
     // Cottage is both a connection AND a reachable sibling → appears once; Eelhouse is a sibling; Landing is a connection.
@@ -358,5 +369,43 @@ describe("buildEntityContext", () => {
     expect(out).toContain("description: The matron.");
     expect(out).not.toContain("groupId");
     expect(out).not.toContain("order");
+  });
+});
+
+describe('name-only content variant', () => {
+  const here: GameLocation = {
+    id: 'l1', name: "Sarah's Place", description: '', aiDescription: 'A cramped flat above the laundromat.',
+    aiSummary: 'A cramped flat.', entities: ['e1', 'e2'],
+  } as GameLocation;
+  const cast: Entity[] = [
+    { id: 'e1', name: 'Sarah Jones', description: '', aiDescription: 'The tenant.' } as Entity,
+    { id: 'e2', name: 'Mira', description: '', aiDescription: 'A visitor.' } as Entity,
+  ];
+
+  it('returns the bare location name, with none of the description or field labels', () => {
+    const out = buildLocationContext(here, { nameOnly: true });
+    expect(out).toBe("Sarah's Place");
+    expect(out).not.toContain('name:');
+    expect(out).not.toContain('laundromat');
+  });
+
+  it('returns entity names as a plain comma-separated list', () => {
+    expect(buildEntityContext(here, cast, { nameOnly: true })).toBe('Sarah Jones, Mira');
+  });
+
+  it('ignores format, since a bare list has nothing to decorate', () => {
+    for (const format of ['simple', 'markdown', 'xml'] as const) {
+      expect(buildLocationContext(here, { nameOnly: true, format })).toBe("Sarah's Place");
+      expect(buildEntityContext(here, cast, { nameOnly: true, format })).toBe('Sarah Jones, Mira');
+    }
+  });
+
+  it('still returns the N/A placeholder when there is nothing to name', () => {
+    expect(buildEntityContext({ ...here, entities: [] }, cast, { nameOnly: true })).toBe(NONE_PLACEHOLDER);
+  });
+
+  it('leaves the full and summary variants untouched', () => {
+    expect(buildLocationContext(here, {})).toContain('laundromat');
+    expect(buildLocationContext(here, { preferSummary: true })).toContain('A cramped flat.');
   });
 });

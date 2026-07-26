@@ -63,6 +63,7 @@ Not from the literature — our own findings, working with the current test targ
 - **Per-prompt sampler pins** live in `promptSamplers.ts`; each AI call decides temp/penalty explicitly (narration's values don't transfer). Current pins (stats 0.2 / location 0.15 / summary 0 / planning 0.4) were derived on the *old* model pair and aren't re-benchmarked on the current one.
 - **Reasoning models can empty `content`** — some route output to a `reasoning` field and stall; probes/harness send `reasoning_effort: "none"`.
 - **Message shape is a prompt surface too.** How the player's action enters the conversation changed dialogue more than any wording edit: bare first-person user turns ("I sit beside her.") roughly doubled NPC speech versus the app's `Player action: X` wrapper, because the model then has a conversant rather than a report. Conversely, rebuilding the story into one user message (no assistant turns) **backfired** — the model copied its own prior narration near-verbatim. Test format before assuming a failure is a wording problem.
+- **A parameter you're testing may be silently ignored.** Before concluding "sampler X doesn't help", prove the endpoint honors it: same seed/temp at an extreme value should visibly change output. (LM Studio *does* honor `frequency_penalty` — 2.0 swaps word choice and breaks casing — but it still repeats a sentence verbatim ~3× before degrading, so it damages fluency before it touches phrase echo. Null at 0.3 and 0.6 on real repetition; wrong instrument, not too small a dose.)
 - **Failure modes are model-specific.** The dialogue collapse that motivated all of this reproduces on the cloud Gemma build and **not at all** on Cydonia (which never went silent on the same script, but repeats phrasing far more). Always ask "whose failure is this?" before generalizing a fix.
 
 ---
@@ -98,9 +99,14 @@ Tooling: `format-arms-probe.mjs` (session replay, `--arms` / `--ablate` / `--edi
 
 A prompt edit is not "done" on one good-looking output. Required evidence:
 
-- [ ] A/B probe on **both current test targets** — the cloud default endpoint and Cydonia 24B — **≥2 runs per case**.
+- [ ] A/B probe on **both current test targets** — the cloud default endpoint and Cydonia 24B.
+  **Cloud needs ~12 runs per arm; Cydonia 2–3 is fine.** The old "≥2 runs" bar is not enough: the
+  cloud endpoint is nondeterministic even at `temperature: 0`, and a same-prompt metric swings a
+  full 0.10 across repeated runs. Sample sizes per metric, and the measurement behind them, are in
+  [long-session-recall-findings](long-session-recall-findings.md) → "How many probe runs the cloud
+  tier needs". Compare arms with a confidence interval on the *difference*, not two point values.
 - [ ] Metrics quoted **before vs after**; regressions on the *other* metrics checked (fixing one thing must not break another).
-- [ ] The specific pathology reproduced in the probe corpus, not just generic turns.
+- [ ] The specific pathology reproduced in the probe corpus, not just generic turns. **Verify this with a number before running arms** — score the original failing session with the same metric and compare to your control arm. (2026-07-24: the real session's late turns ran echo5 35–63/100w; a clean replay of the same action script sat at ~1, because repetition is an in-context feedback loop you must *enter*, not replay into. A full cloud arm batch was run and discarded before this was checked. Seeding real history via `format-arms-probe --prefill N` reproduced it — but only on Cydonia, 24.7 vs cloud 0.5.)
 - [ ] Contract phrased positively, no parrotable values.
 
 Tooling: the `probe` skill and `testing/baseline/harness/*-probe.mjs`. One pretty completion is noise.

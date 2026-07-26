@@ -2,6 +2,9 @@
 
 - [🏠 Home](Home)
 
+**Playing**
+- [🧠 Story Memory](Memory)
+
 **Reference**
 - [🛠️ World Editor](WorldEditor)
 - [📐 World Format](WorldFormat)

@@ -43,7 +43,8 @@ export type AIRequestType =
   | 'summary'
   | 'milestoneSelect'
   | 'diary'
-  | 'discoverEntity';
+  | 'discoverEntity'
+  | 'timePassed';
 
 /**
  * Structured payload the game stores per turn (mirrors the JSON the app round-trips).
@@ -60,6 +61,11 @@ export interface AITurnResult {
   /** Names of the entities that took part in this turn (from the narration parse, plus staged ad-hoc
    *  characters confirmed by the narration). Drives the choices filter and participation rehydration. */
   entities?: string[];
+  /** How much the story turns on this turn, 1-3, as judged once by the memory selector when the digest
+   *  aged in. Ranks the digest band so a pivotal moment outbids a topical one. The scale is model-
+   *  relative, so consumers rank-normalize it rather than reading it directly. Absent on pre-weight
+   *  saves and whenever the model omitted a rating (~1 in 5) — absent means neutral, never zero. */
+  importance?: number;
   /** Lazily-generated per-character diary: character name → that character's first-person entry about
    *  this turn. Written for each participant as turns age out; a character's full diary is these across
    *  turns. Absent on pre-diary saves. */
@@ -70,6 +76,10 @@ export interface AITurnResult {
    *  so paging back shows (and can edit) that turn's notes. Absent on pre-per-turn-notes saves → the view
    *  falls back to the snapshot's global `playerNotes`. */
   notes?: string;
+  /** In-world hours this turn consumed, as measured by the clock pass ('timePassed'). Absent on saves
+   *  written before the clock, and whenever the pass was off or failed — absent reads as the flat one
+   *  hour the game has always charged, never as zero. */
+  timeDelta?: number;
   /** A reasoning model's (or inline-thinking) private scratchpad for this turn, shown as a collapsible aside
    *  above the narration. `ms` is the think duration. Absent when the model didn't reason / on pre-2.1.0 saves. */
   reasoning?: { text: string; ms: number };

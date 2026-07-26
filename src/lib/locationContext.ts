@@ -38,9 +38,12 @@ function appendAllowedFields<T>(
  *  sublocations / destinations / reachable builders, which differ only in which locations they pass. */
 function buildLocationList(
   items: GameLocation[],
-  opts: { preferSummary?: boolean; format?: ContextFormat } = {},
+  opts: { preferSummary?: boolean; format?: ContextFormat; nameOnly?: boolean } = {},
 ): string {
-  const { preferSummary = false, format = "simple" } = opts;
+  const { preferSummary = false, format = "simple", nameOnly = false } = opts;
+  // Names alone, for a chip used mid-sentence. Format is deliberately ignored: a bare list has no
+  // headings or fields to decorate, so all three styles would render identically anyway.
+  if (nameOnly) return items.map((i) => i.name).join(", ");
   let output = "";
   for (const item of items) {
     const desc = pickDescription(preferSummary, item.aiSummary, item.aiDescription);
@@ -69,11 +72,12 @@ function buildLocationList(
  */
 export function buildLocationContext(
   location: LocationWithEntities,
-  opts: { preferSummary?: boolean; format?: ContextFormat } = {},
+  opts: { preferSummary?: boolean; format?: ContextFormat; nameOnly?: boolean } = {},
 ): string {
   if (!location) return NONE_PLACEHOLDER;
 
-  const { preferSummary = false, format = "simple" } = opts;
+  const { preferSummary = false, format = "simple", nameOnly = false } = opts;
+  if (nameOnly) return location.name;
   const field = (key: string, value: string | number | boolean) =>
     format === "xml" ? `<${key}>${xmlEscape(String(value))}</${key}>\n`
     : format === "markdown" ? `- **${key}:** ${value}\n`
@@ -105,11 +109,17 @@ export function buildLocationContext(
 export function buildEntityContext(
   location: LocationWithEntities,
   entities: Entity[],
-  opts: { preferSummary?: boolean; format?: ContextFormat } = {},
+  opts: { preferSummary?: boolean; format?: ContextFormat; nameOnly?: boolean } = {},
 ): string {
   if (!location) return NONE_PLACEHOLDER;
 
-  const { preferSummary = false, format = "simple" } = opts;
+  const { preferSummary = false, format = "simple", nameOnly = false } = opts;
+  if (nameOnly) {
+    const names = (location.entities || location.entity || [])
+      .map((id: string) => entities.find((e) => e.id === id)?.name)
+      .filter(Boolean);
+    return names.length ? names.join(", ") : NONE_PLACEHOLDER;
+  }
   const md = format === "markdown";
   const xml = format === "xml";
   const head = (name: string) => (md ? `- **${name}**\n` : `${name}\n`);
@@ -159,7 +169,7 @@ export function buildEntityContext(
 export function buildSublocationsContext(
   current: LocationWithEntities,
   locations: GameLocation[],
-  opts: { preferSummary?: boolean; format?: ContextFormat } = {},
+  opts: { preferSummary?: boolean; format?: ContextFormat; nameOnly?: boolean } = {},
 ): string {
   if (!current) return NONE_PLACEHOLDER;
   const kids = locations.filter((l) => (l.parentId ?? null) === current.id);
@@ -185,7 +195,7 @@ export function buildSublocationEntitiesContext(
   current: LocationWithEntities,
   locations: GameLocation[],
   entities: Entity[],
-  opts: { preferSummary?: boolean; format?: ContextFormat; excludeIds?: string[] } = {},
+  opts: { preferSummary?: boolean; format?: ContextFormat; nameOnly?: boolean; excludeIds?: string[] } = {},
 ): string {
   if (!current) return NONE_PLACEHOLDER;
   const exclude = new Set(opts.excludeIds ?? []);
@@ -225,7 +235,7 @@ export function navigableDestinations(
 export function buildDestinationsContext(
   current: LocationWithEntities,
   locations: GameLocation[],
-  opts: { preferSummary?: boolean; format?: ContextFormat } = {},
+  opts: { preferSummary?: boolean; format?: ContextFormat; nameOnly?: boolean } = {},
 ): string {
   if (!current) return NONE_PLACEHOLDER;
   const dests = navigableDestinations(current, locations);
@@ -260,7 +270,7 @@ export function reachableEntityIds(current: LocationWithEntities, locations: Gam
 export function buildReachableLocationsContext(
   current: LocationWithEntities,
   locations: GameLocation[],
-  opts: { preferSummary?: boolean; format?: ContextFormat } = {},
+  opts: { preferSummary?: boolean; format?: ContextFormat; nameOnly?: boolean } = {},
 ): string {
   if (!current) return NONE_PLACEHOLDER;
   const reachable = reachableLocations(current, locations);
@@ -278,7 +288,7 @@ export function buildReachableEntitiesContext(
   current: LocationWithEntities,
   locations: GameLocation[],
   entities: Entity[],
-  opts: { preferSummary?: boolean; format?: ContextFormat; excludeIds?: string[] } = {},
+  opts: { preferSummary?: boolean; format?: ContextFormat; nameOnly?: boolean; excludeIds?: string[] } = {},
 ): string {
   if (!current) return NONE_PLACEHOLDER;
   const exclude = new Set(opts.excludeIds ?? []);

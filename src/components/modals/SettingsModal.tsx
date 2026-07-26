@@ -27,7 +27,7 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem, SelectSeparator } from "@/components/ui/select";
 import { Slider } from "@/components/ui/slider";
 import PromptField from '../prompt/PromptField';
-import { PROMPT_KIND_VARIABLES, PROMPT_KIND_USER_VARIABLES, SUBJECT } from '@/lib/promptVariables';
+import { PROMPT_KIND_VARIABLES, PROMPT_KIND_USER_VARIABLES, NOW_LINE_VARIABLES, SUBJECT } from '@/lib/promptVariables';
 import { defaultPromptSampler } from '@/lib/promptSamplers';
 import type { AIRequestType } from '@/types';
 import { ConfirmDialog } from '../ConfirmDialog';
@@ -35,7 +35,7 @@ import { toast } from 'react-toastify';
 import WorldStorageService from '@/services/WorldStorageService';
 import { DEFAULT_WORLDS, readDeletedDefaultWorlds, clearDeletedDefaultWorlds } from '@/lib/defaultWorlds';
 import { PresetNameDialog } from './PresetNameDialog';
-import { defaultSystemPrompt, defaultNarrationUserPrompt, defaultRecapUserPrompt, defaultRehydrateUserPrompt, defaultOocDirectivePrompt, defaultChoicesPrompt, defaultStatUpdatesPrompt, defaultLocationChangePrompt, defaultThinkingPrompt, defaultSummaryPrompt, defaultChoicesUserPrompt, defaultStatUpdatesUserPrompt, defaultLocationChangeUserPrompt, defaultSummaryUserPrompt, defaultDiaryPrompt, defaultDirectorPrompt, defaultDirectorUserPrompt, defaultCharacterPrompt, defaultStoryboardPrompt } from '../game/GamePrompts';
+import { defaultSystemPrompt, defaultNarrationUserPrompt, defaultRecapUserPrompt, defaultRehydrateUserPrompt, defaultOocDirectivePrompt, defaultChoicesPrompt, defaultStatUpdatesPrompt, defaultLocationChangePrompt, defaultThinkingPrompt, defaultSummaryPrompt, defaultChoicesUserPrompt, defaultStatUpdatesUserPrompt, defaultLocationChangeUserPrompt, defaultSummaryUserPrompt, defaultDiaryPrompt, defaultDirectorPrompt, defaultDirectorUserPrompt, defaultCharacterPrompt, defaultStoryboardPrompt, defaultNowLinePrompt, defaultTimePassedPrompt, defaultTimePassedUserPrompt } from '../game/GamePrompts';
 import { isDesktop } from '@/lib/imageGen/desktop';
 import { fetchComfyMeta, DEFAULT_COMFY_WORKFLOW, type ComfyMeta } from '@/lib/imageGen/comfyui';
 import { fetchInvokeMeta, type InvokeMeta } from '@/lib/imageGen/invokeai';
@@ -131,7 +131,7 @@ function VerbatimTurnsField({ id, value, onChange, disabled }: { id: string; val
 const TAB_TO_REQUEST: Record<string, AIRequestType> = {
   narration: 'narration', thinking: 'thinking', choices: 'choices', statupdates: 'statUpdates',
   location: 'locationChange', summary: 'summary', diary: 'diary', director: 'director',
-  character: 'character', storyboard: 'storyboard',
+  character: 'character', storyboard: 'storyboard', timepassed: 'timePassed',
 };
 
 /** One custom-sampler override row: a checkbox that enables the override, a slider, and a value readout that
@@ -391,6 +391,12 @@ export const SettingsModal = ({ isOpen, onOpenChange, previewValues, initialTab,
     locationChangeUserPrompt,
     setLocationChangeUserPrompt,
     summaryUserPrompt,
+    nowLinePrompt,
+    setNowLinePrompt,
+    timePassedPrompt,
+    setTimePassedPrompt,
+    timePassedUserPrompt,
+    setTimePassedUserPrompt,
     setSummaryUserPrompt,
     promptPresets,
     builtinPresets,
@@ -410,6 +416,10 @@ export const SettingsModal = ({ isOpen, onOpenChange, previewValues, initialTab,
     semanticLore,
     setSemanticLore,
     semanticRehydration,
+    timeContext,
+    setTimeContext,
+    aiClock,
+    setAiClock,
     setSemanticRehydration,
     semanticDiaries,
     setSemanticDiaries,
@@ -420,6 +430,8 @@ export const SettingsModal = ({ isOpen, onOpenChange, previewValues, initialTab,
     autosaveEnabled,
     setAutosaveEnabled,
     characterDiaries,
+    describeCharacters,
+    setDescribeCharacters,
     setCharacterDiaries,
     genTemperature,
     genRepetitionPenalty,
@@ -639,6 +651,7 @@ export const SettingsModal = ({ isOpen, onOpenChange, previewValues, initialTab,
     statupdates: { label: 'Stat Updates', reset: () => setStatUpdatesPrompt(defaultStatUpdatesPrompt) },
     location: { label: 'Location Change', reset: () => setLocationChangePromptText(defaultLocationChangePrompt) },
     summary: { label: 'Summary', reset: () => setSummaryPrompt(defaultSummaryPrompt) },
+    timepassed: { label: 'Clock', reset: () => setTimePassedPrompt(defaultTimePassedPrompt) },
     diary: { label: 'Diary', reset: () => setDiaryPrompt(defaultDiaryPrompt) },
     director: { label: 'Director', reset: () => setDirectorPrompt(defaultDirectorPrompt) },
     character: { label: 'Character', reset: () => setCharacterPrompt(defaultCharacterPrompt) },
@@ -648,7 +661,7 @@ export const SettingsModal = ({ isOpen, onOpenChange, previewValues, initialTab,
   // its governing setting for Thinking/Summary). If the open tab is no longer available (disabled since,
   // or on reopen), fall back to Narration so the panel isn't blank.
   const promptAvailable = computePromptTabAvailability({
-    thinkingMode, choicesEnabled, statUpdatesEnabled, locationChangeEnabled, memoryDigests, characterDiaries,
+    thinkingMode, choicesEnabled, statUpdatesEnabled, locationChangeEnabled, memoryDigests, characterDiaries, aiClock,
   });
   const activePromptTab = promptAvailable[promptTab] ? promptTab : 'narration';
   const selectedPrompt = promptResets[activePromptTab] ?? promptResets.narration;
@@ -668,6 +681,7 @@ export const SettingsModal = ({ isOpen, onOpenChange, previewValues, initialTab,
     statupdates: { value: statUpdatesUserPrompt, set: setStatUpdatesUserPrompt, reset: () => setStatUpdatesUserPrompt(defaultStatUpdatesUserPrompt), variables: PROMPT_KIND_USER_VARIABLES.statupdates ?? [] },
     location: { value: locationChangeUserPrompt, set: setLocationChangeUserPrompt, reset: () => setLocationChangeUserPrompt(defaultLocationChangeUserPrompt), variables: PROMPT_KIND_USER_VARIABLES.location ?? [] },
     summary: { value: summaryUserPrompt, set: setSummaryUserPrompt, reset: () => setSummaryUserPrompt(defaultSummaryUserPrompt), variables: PROMPT_KIND_USER_VARIABLES.summary ?? [] },
+    timepassed: { value: timePassedUserPrompt, set: setTimePassedUserPrompt, reset: () => setTimePassedUserPrompt(defaultTimePassedUserPrompt), variables: PROMPT_KIND_USER_VARIABLES.timepassed ?? [] },
     director: { value: directorUserPrompt, set: setDirectorUserPrompt, reset: () => setDirectorUserPrompt(defaultDirectorUserPrompt), variables: PROMPT_KIND_USER_VARIABLES.director ?? [] },
   };
   const activeUserPrompt = userPrompts[activePromptTab];
@@ -675,12 +689,14 @@ export const SettingsModal = ({ isOpen, onOpenChange, previewValues, initialTab,
   // The recap line rides the narration history only while Memory Digests is on; the editor lives on the
   // Narration tab and hides with the feature so an edit can't silently do nothing.
   const recapAvailable = activePromptTab === 'narration' && memoryDigests;
+  // The now-line closes the same recap reply, so it lives and hides with the recap itself.
+  const nowAvailable = recapAvailable;
   // The recall line rides only while Scene Recall is on — same hide-with-the-feature rule as the recap.
   const recallAvailable = activePromptTab === 'narration' && memoryDigests && semanticMemory && semanticRehydration;
   // The direction rider fires only on [bracket] turns with thinking off (same guard as the User template).
   const directionAvailable = activePromptTab === 'narration' && thinkingMode === 'off';
   // The Messages view stacks whichever of the conditional narration lines are live.
-  const messagesAvailable = recapAvailable || recallAvailable || directionAvailable;
+  const messagesAvailable = recapAvailable || nowAvailable || recallAvailable || directionAvailable;
   const showingMessages = promptView === 'messages' && messagesAvailable;
   // The stacked fields the Messages view renders — one per live line, each with its own reset.
   const messageFields = [
@@ -688,6 +704,12 @@ export const SettingsModal = ({ isOpen, onOpenChange, previewValues, initialTab,
       key: 'recap', label: 'Recap Message',
       hint: 'The question the story recap answers — older turns ride the narration history as this one exchange. Only used while Memory Summaries is on.',
       value: recapUserPrompt, set: setRecapUserPrompt, def: defaultRecapUserPrompt,
+    }] : []),
+    ...(nowAvailable ? [{
+      key: 'now', label: 'Now Message',
+      hint: 'Closes the recap with where things stand right now. Each chip carries its own clause and disappears when it has nothing to say, so any combination still reads as a sentence.',
+      value: nowLinePrompt, set: setNowLinePrompt, def: defaultNowLinePrompt,
+      variables: NOW_LINE_VARIABLES,
     }] : []),
     ...(recallAvailable ? [{
       key: 'recall', label: 'Recall Message',
@@ -1207,6 +1229,42 @@ Runs an extra request per turn; edit its prompt under **Prompts → Summary**.`}
                   </div>
                   </SubGroup>
                 )}
+                <div className="grid grid-cols-1 sm:grid-cols-[minmax(0,1fr)_minmax(0,3fr)] items-start gap-4">
+                  <RowLabel htmlFor="timeContext" info={
+                    <HintInfo>{`Each remembered moment carries **when** it happened — *"Day 3, evening — two days ago"* — and the recap states the present moment.
+
+- Without it the AI sees the story as an undated list and guesses at how long ago things were
+- Time of day is coarse (*morning*, *evening*), never a clock reading
+- Uses the game clock shown in the Log`}</HintInfo>
+                  }>Time in Memory</RowLabel>
+                  <div className="flex items-center gap-2">
+                    <Checkbox
+                      id="timeContext"
+                      checked={timeContext}
+                      onCheckedChange={(c) => setTimeContext(c === true)}
+                      className="shrink-0"
+                    />
+                    <span className="text-xs text-muted-foreground">Experimental. Tell the AI when each memory happened.</span>
+                  </div>
+                </div>
+                <div className="grid grid-cols-1 sm:grid-cols-[minmax(0,1fr)_minmax(0,3fr)] items-start gap-4">
+                  <RowLabel htmlFor="aiClock" info={
+                    <HintInfo>{`How long each turn takes is measured from what actually happened, instead of the flat **one hour per action** the game charges otherwise.
+
+- A few words spoken cost minutes; a night's rest costs hours; *"three weeks later"* costs three weeks
+- Adds one small request per turn, alongside choices and stat updates
+- Feeds the Log's clock, stat regeneration, and Time in Memory`}</HintInfo>
+                  }>Measured Clock</RowLabel>
+                  <div className="flex items-center gap-2">
+                    <Checkbox
+                      id="aiClock"
+                      checked={aiClock}
+                      onCheckedChange={(c) => setAiClock(c === true)}
+                      className="shrink-0"
+                    />
+                    <span className="text-xs text-muted-foreground">Experimental. Measure how long each turn takes instead of assuming an hour.</span>
+                  </div>
+                </div>
                 </SubGroup>
               )}
               <div className="grid grid-cols-1 sm:grid-cols-[minmax(0,1fr)_minmax(0,3fr)] items-start gap-4">
@@ -1251,6 +1309,23 @@ Runs an extra request per turn; edit its prompt under **Prompts → Summary**.`}
                   </div>
                 </div>
               )}
+              {/* Descriptions work from the narration alone, so unlike diaries this is offered in every mode. */}
+              <div className="grid grid-cols-1 sm:grid-cols-[minmax(0,1fr)_minmax(0,3fr)] items-start gap-4">
+                <RowLabel htmlFor="describeCharacters" info={
+                  <HintInfo>{`Characters the story invents already appear in the **Characters** panel on their own. Turn this on and each one also gets a written description, so you can open them like any authored character.
+
+Runs one extra request the first time each new character is named. Remove any you don't want from the **Characters** panel during play.`}</HintInfo>
+                }>Describe New Characters</RowLabel>
+                <div className="flex items-center gap-2">
+                  <Checkbox
+                    id="describeCharacters"
+                    checked={describeCharacters}
+                    onCheckedChange={(c) => setDescribeCharacters(c === true)}
+                    className="shrink-0"
+                  />
+                  <span className="text-xs text-muted-foreground">Write a description for each character the story invents.</span>
+                </div>
+              </div>
               {/* Diaries are only read by the staged character pass, so the option only appears in that mode. */}
               {thinkingMode === 'staged' && (
                 <>
@@ -1837,6 +1912,7 @@ An inspection aid for authoring and debugging; off by default.`}</HintInfo>
                 {statUpdatesEnabled && <TabsTrigger value="statupdates">Stat Updates</TabsTrigger>}
                 {locationChangeEnabled && <TabsTrigger value="location">Location Change</TabsTrigger>}
                 {memoryDigests && <TabsTrigger value="summary">Summary</TabsTrigger>}
+                {aiClock && <TabsTrigger value="timepassed">Clock</TabsTrigger>}
                 {promptAvailable.diary && <TabsTrigger value="diary">Diary</TabsTrigger>}
                 {thinkingMode === 'staged' && <TabsTrigger value="director">Director</TabsTrigger>}
                 {thinkingMode === 'staged' && <TabsTrigger value="character">Character</TabsTrigger>}
@@ -1893,7 +1969,7 @@ An inspection aid for authoring and debugging; off by default.`}</HintInfo>
                           <PromptField
                             value={f.value}
                             onChange={f.set}
-                            variables={[]}
+                            variables={f.variables ?? []}
                             previewValues={previewValues}
                             readOnly={activePresetIsBuiltIn}
                           />
@@ -1972,6 +2048,19 @@ An inspection aid for authoring and debugging; off by default.`}</HintInfo>
                     readOnly={activePresetIsBuiltIn}
                   />
                   <p className="text-xs text-muted-foreground flex-shrink-0">Condenses each turn into a short retelling for long-story memory. Only used when Memory Summaries is on.</p>
+                </TabsContent>
+              )}
+
+              {aiClock && (
+                <TabsContent value="timepassed" className="mt-4 flex-1 min-h-0 data-[state=active]:flex flex-col gap-1">
+                  <PromptField
+                    value={showingUser ? timePassedUserPrompt : timePassedPrompt}
+                    onChange={showingUser ? setTimePassedUserPrompt : setTimePassedPrompt}
+                    variables={showingUser ? (PROMPT_KIND_USER_VARIABLES.timepassed ?? []) : PROMPT_KIND_VARIABLES.timepassed}
+                    previewValues={previewValues}
+                    readOnly={activePresetIsBuiltIn}
+                  />
+                  <p className="text-xs text-muted-foreground flex-shrink-0">Measures how much in-world time each turn takes. Answer with a count and its unit (m, h, d, w). Only used when Measured Clock is on.</p>
                 </TabsContent>
               )}
 

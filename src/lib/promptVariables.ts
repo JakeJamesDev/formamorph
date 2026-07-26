@@ -38,7 +38,7 @@ export interface PromptVariable {
 }
 
 /** Every prompt editor maps to one of these kinds (mirrors the Settings → System Prompts sub-tabs). */
-export type PromptKind = 'narration' | 'thinking' | 'choices' | 'statupdates' | 'location' | 'summary' | 'diary' | 'director' | 'character' | 'storyboard';
+export type PromptKind = 'narration' | 'thinking' | 'choices' | 'statupdates' | 'location' | 'summary' | 'diary' | 'director' | 'character' | 'storyboard' | 'timepassed';
 
 const SUMMARY_VARIANT: PromptVariant = {
   id: 'summary',
@@ -53,7 +53,7 @@ const LOCATION_SCOPE_AXIS: PromptVariantAxis = {
   label: 'Scope',
   options: [
     { id: null, label: 'Current', help: 'The location the player is in right now.' },
-    { id: 'sublocations', label: 'Sub-locations', help: "The current location's direct sub-locations." },
+    { id: 'sublocations', label: 'Sub', help: "The current location's direct sub-locations." },
     { id: 'reachable', label: 'Reachable', help: 'The location that contains this one, plus its neighbors (same parent).' },
     { id: 'destinations', label: 'Destinations', help: 'Everywhere reachable from here — connections + sub-locations + the containing location and its neighbors.' },
   ],
@@ -75,6 +75,7 @@ const CONTENT_AXIS: PromptVariantAxis = {
   options: [
     { id: null, label: 'Full', help: 'Full detail for each item.' },
     SUMMARY_VARIANT,
+    { id: 'name', label: 'Name', help: 'Just the name (or a comma-separated list of names), with no description or labels — for use inside a sentence.' },
   ],
 };
 
@@ -140,9 +141,22 @@ const NARRATION: PromptVariable = { token: '<NARRATION>', label: 'Narration', co
 // here so the shared prompt parser/chip recognize it; it is never offered in a game prompt's toolbar.
 export const SUBJECT: PromptVariable = { token: '<SUBJECT>', label: 'Subject', color: HIGHLIGHT_PALETTE[12] };
 
+// The now-line's own pieces (Settings → Prompts → Narration → Messages); the location comes from the shared
+// `<LOCATION>` chip with Content set to Name. Each expands to its WHOLE clause, leading space included, and to
+// nothing when it has no value — so a scene with nobody present or no notes reads as a clean sentence instead
+// of leaving dangling words behind an empty token.
+const SCENE_CAST: PromptVariable = { token: '<SCENE CAST>', label: 'Who Is Present', color: HIGHLIGHT_PALETTE[8] };
+const SCENE_NOTES: PromptVariable = { token: '<SCENE NOTES>', label: 'Player Notes', color: HIGHLIGHT_PALETTE[4] };
+const SCENE_TIME: PromptVariable = { token: '<SCENE TIME>', label: 'Current Time', color: HIGHLIGHT_PALETTE[10] };
+
+/** The chips the now-line message offers. `<LOCATION>` carries its own axes — set Content to Name for the
+ *  bare name this sentence wants. */
+export const NOW_LINE_VARIABLES: PromptVariable[] = [LOCATION, SCENE_CAST, SCENE_NOTES, SCENE_TIME];
+
 /** All known variables — used by the parser to recognize any token regardless of which prompt it's in. */
 export const ALL_PROMPT_VARIABLES: PromptVariable[] = [
   WORLD, STATS, TRAITS, LOCATION, ENTITIES, NOTES, DICTIONARY, LENGTH, MARKDOWN, ACTIVE_CHARACTER, PLAYER_ACTION, NARRATION, CHARACTER, SUBJECT,
+  SCENE_CAST, SCENE_NOTES, SCENE_TIME,
 ];
 
 /** The context chips every system prompt can reference; GameViewer substitutes them uniformly. */
@@ -161,6 +175,7 @@ export const PROMPT_KIND_VARIABLES: Record<PromptKind, PromptVariable[]> = {
   director: [...CONTEXT_VARS, ACTIVE_CHARACTER],
   character: [CHARACTER, ...CONTEXT_VARS],
   storyboard: [...CONTEXT_VARS],
+  timepassed: [...CONTEXT_VARS],
 };
 
 /** Variables offered by the editable user-message templates (the per-turn runtime values the code
@@ -173,6 +188,7 @@ export const PROMPT_KIND_USER_VARIABLES: Partial<Record<PromptKind, PromptVariab
   location: [PLAYER_ACTION, NARRATION],
   summary: [PLAYER_ACTION, NARRATION],
   director: [PLAYER_ACTION, NARRATION],
+  timepassed: [PLAYER_ACTION, NARRATION],
 };
 
 const VAR_BY_BASE = new Map(ALL_PROMPT_VARIABLES.map((v) => [v.token, v]));

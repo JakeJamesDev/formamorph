@@ -138,6 +138,14 @@ Cloud, 4 runs/case (32 positive runs per arm):
 
 Cydonia, same cases, shipped prompt: **15/24** (expectant 7/9, engaged 5/6).
 
+Exact wordings tested (recorded here so they are not re-tried — the scratchpad copies are gone):
+- `initiative` replaced line 10's tail with: *"Their words respond to what the player just said or did -
+  and when the player says nothing to them, whoever is present still speaks first: a greeting, a
+  question, a demand, something they have been waiting to say."*
+- `userinit` replaced the voice clause (both locations) with: *"The reply on the page carries the voice of
+  whoever is present: their quoted sentences - answering the player if they were spoken to, and otherwise
+  speaking up on their own about what they want or notice."*
+
 Three phrasings × 96 cloud runs → exactly zero. An earlier small batch showed 2/15 and 1/15; that was
 noise, confirmed by the larger paired run. The disengagement confound is **disproven** — expectant
 cases scored the same hard zero as withdrawn ones, and only `dock-worker` was ever truly withdrawn.
@@ -193,8 +201,46 @@ was understood — discarded).
 | `freq03` (frequency_penalty 0.3) | 21.5 / 30.4 | 7/7 |
 
 Within-arm spread (σ≈5-6) exceeds every between-arm difference, so nothing is distinguishable at n=2.
-No arm harmed callbacks. **▶ Next: one large paired batch on Cydonia — 4 cells × 8+ runs × 7 turns,
-serial (~225 local calls).** Do not read the n=2 table as a result in either direction.
+
+**Large paired batch run 2026-07-24 (32 chains, 8/cell, Cydonia + prefill 38, 22 min).** Aggregated by
+the new `arms-aggregate.mjs` (mean±sd + Welch t vs control; validated by reproducing the n=2 means):
+
+| arm | echo5 mean±sd (n8) | vs control | callback | names/turn | dialogue |
+|---|---|---|---|---|---|
+| control | 26.2 ± 6.2 | — | 100% | 3.98 | 24.5% |
+| `antiecho` | 28.0 ± 10.3 | +1.8 (t=0.42) | 100% | 4.04 | 25.6% |
+| `payoff` | 25.3 ± 4.2 | -0.9 (t=-0.35) | 98% | 4.14 | 24.0% |
+| `freq03` | 24.4 ± 6.5 | -1.8 (t=-0.57) | 100% | 3.86 | 24.3% |
+
+**Verdict: none of the three levers moves repetition.** Every |t| < 0.6. Callbacks and dialogue are flat
+across all arms, so nothing regressed either — the arms simply do nothing. With σ≈6.2 at n=8 this batch
+rules out any effect larger than ~6 echo points (~24% relative); anything smaller isn't worth a prompt
+change. Every earlier hint (freq03 looking clean, antiecho looking harmful) was noise from n=2 and from
+the invalid clean-replay corpus — both are now explicitly disconfirmed.
+
+**`freq06` batch, paired fresh control (16 chains, 12 min):** `freq06` 24.6 ± 4.7 vs control 24.2 ± 6.6,
+**t=0.14** — null. Doubling the penalty changes nothing. Callback 100% both.
+
+**The parameter is genuinely honored — verified, not assumed.** Same seed/temp, `frequency_penalty` 0 vs
+2.0 on a deliberate repeat-this-sentence prompt: 0 repeats verbatim 5x; 2.0 swaps "red"→"crimson" and
+visibly breaks down ("cr Crimson Door Stood Out Against The..."). So the nulls are real. That test also
+shows **why**: even at 2.0 the model still repeats the sentence verbatim ~3x *before* degrading — token
+frequency penalties damage fluency before they touch phrase-level echo. Wrong instrument, not too small
+a dose. Consider the `frequency_penalty` family closed for this pathology.
+
+Control was 26.2 ± 6.2 and 24.2 ± 6.6 across two independent batches — the corpus is stable and Cydonia
+does not batch-drift the way cloud does, so pooled control ≈ 25.2 (n=16) is a usable reference.
+
+**Where that leaves item 5.** Adjacent-turn echo is what the real session showed (T44/T45 shared 50
+8-grams) and adjacent turns both sit *inside* the verbatim floor, so the digest band cannot reach them —
+not fixable by the memory layer either. Six cells now null (2 prompt arms, 2 sampler strengths, plus the
+earlier discarded cloud work). Remaining, all **non-prompt**:
+- app-side anti-echo over the *context*: condense or strip the immediately-prior narration's distinctive
+  phrases before resend — attacks the actual mechanism (the model imitating text in front of it);
+- app-side post-generation retry when a turn's n-gram overlap with the previous turn exceeds a threshold
+  (the metric already exists in the harness);
+- a `repetition_penalty` / top-p sweep — different mechanism from frequency/presence, untested.
+▶ Item 5 should not get more prompt-wording work; the evidence is now strongly against it.
 
 ### 5. Repetition / stalling in sustained scenes (original finding)
 close.json T38–45: "some part of you that no one else ever has" ×6, T44~T45 share 50 8-grams;

@@ -12,16 +12,21 @@ import { cosineSimilarity } from './memoryRelevance';
  * cross-stage consistency to protect). Pure module: embedding production lives with the caller.
  */
 
-/** Minimum cosine similarity for a semantic activation. Tuned by semantic-lore-probe.mjs against a
- *  20-entry fixture whose entries are deliberate near-neighbors, so a loose threshold shows up as a false
- *  fire. 0.44 is the lowest value scoring 100% precision on both populations — authored (name mirrors the
- *  keywords) and imported (distinct names) — at 65% / 61% recall; below it authored drops to 94%. Recall
- *  decays smoothly above, so the cost of being one step high is a missed activation, not bad lore.
- *  Held out under `--holdout` (2-fold, tune on one half of the cases and score the other): 0.44 keeps 100%
- *  precision on every held-out fold of both populations, while the tempting 0.42 falls to 89% — it is
- *  fitted to the cases it was picked on. Run `--matrix` / `--holdout` to reproduce. The remaining misses
- *  sit in MiniLM's noise band, not fixable by threshold. */
-export const SEMANTIC_LORE_THRESHOLD = 0.44;
+/**
+ * Minimum cosine similarity for a semantic activation. Tuned by `semantic-lore-probe.mjs` against the
+ * 45-entry Vane Hollow world (`--cases vane-hollow-lore-cases.json`), whose entries sit in five domains so
+ * near-neighbors can punish a loose threshold. 0.39 is the F1 peak on both populations — authored, where the
+ * name mirrors the keywords, scores 100% precision / 67% recall; imported, with distinct names, 92% / 64%.
+ * Both folds of `--holdout` pick 0.38-0.39, so the choice is not fitted to the cases it was picked on.
+ *
+ * Deliberately below the older, precision-first 0.44: `lore-noise-probe.mjs` measured what a wrong entry
+ * actually costs, and the answer is almost nothing. Injecting the entry the embedding really picks at this
+ * range, the narrator wrote it into the prose in 11% of runs on Cydonia 24B and 6% on the cloud default,
+ * against 75% / 47% for correct lore it was asked about directly — roughly a 7x asymmetry, with zero uptake
+ * in the no-injection guard across 72 runs. A false fire is mostly ignored; a miss is the feature not
+ * working, so recall is worth more here than the last few points of precision.
+ */
+export const SEMANTIC_LORE_THRESHOLD = 0.39;
 
 /** Most entries one action may semantically activate — keeps a lore-dense world from flooding the
  *  prompt when everything is topically "near" (keyword activations don't count against it). */
