@@ -4,7 +4,7 @@ All notable changes to Formamorph. This fork's first line is **2.0.0** — a ful
 
 > ✅ **2.0.0 – 2.6.0 are released** (collapsed below). New work lands under **🚧 In Progress** — an unnumbered section, so changes accumulate without pinning a version. When a batch earns a release its section is marked **Released** and collapsed, and a fresh In Progress opens. `package.json` reads **2.6.0** — the latest released version.
 
-Each release groups changes as **Major** / **Minor**, then **Added** / **Removed** / **Fixed**, and within those by audience: 👤 user-facing · 🛠️ developer tooling · ⚙️ backend / invisible.
+Each release groups changes as **Major** / **Minor**, then **Added** / **Removed** / **Fixed**, and within those by audience: 👤 user-facing · 🛠️ developer tooling · ⚙️ backend.
 
 ---
 
@@ -14,7 +14,7 @@ _Unreleased — new work accumulates here until it earns a version bump. The nex
 
 ### Minor Changes
 
-#### ✨ Added
+#### ➕ Added
 
 - **👤 User-facing**
   - **Stories no longer all begin at eight in the morning.** Every world opened at 08:00 regardless of what it was written to be — a midnight vigil, a supper table, a pre-dawn launch, all reported as morning, and every later reading inherited that error. With **Measured Clock** on, one small silent request now reads your opening scene and works out what time of day the story actually starts at, then sets the clock there. It answers with a time of day rather than a number, because that's what prose can support: *night, dawn, morning, midday, afternoon, evening*. Measured against the bundled test worlds, it reads each one differently — a river landing at evening, a college town in the afternoon, a forest at morning — rather than defaulting them all to the same answer. It costs one request per new game, runs alongside the rest of the opening turn, and falls back to the old 08:00 if it can't tell. **Existing saves are never re-dated:** a story already underway keeps the clock it has, since a retroactive answer would shift every memory stamp you've already collected. Re-rolling your opening scene re-reads it, so a rewritten opening can't contradict its own clock. The prompt is yours to edit under Settings → Prompts → **Opening**, beside Clock.
@@ -93,7 +93,7 @@ _Unreleased — new work accumulates here until it earns a version bump. The nex
   - **Settings tabs are grouped instead of one long list.** Presentation, Generation, Accessibility, and Image Gen now break into labeled sections — Appearance / Scene / Narration, Turn Extras / Reasoning / Memory / Performance / Inspection, Reading / Saves & Worlds, and Connection / Image — so a tab reads as a few named blocks rather than a wall of rows. Nothing was added, removed, or renamed — only regrouped, with Narration Reveal and AI Language moved down beside the other narration settings.
   - **The Endpoint and Image Gen tabs are now one — AI Endpoints.** The two endpoint tabs merged into a single tab with three sub-tabs: **Text** (your language-model endpoint), **Image** (the image-generation provider and its presets), and **Tag Prompt** (the booru-tag prompt). Every field and preset is exactly where it was, just under one roof — Settings now reads as five tabs instead of six, which also fits a phone better.
 
-- **⚙️ Backend / invisible**
+- **⚙️ Backend**
   - **Scene Recall cooldown.** A scene that just rode as a recalled memory sits out the next 2 turns before it can be recalled again, so the same moment no longer rides turn after turn while the story stalls. Re-rolling a turn reproduces its original recall exactly.
   - **Memory Cap on by default.** With Semantic Memory on, the story's long-term recap now keeps the 12 most relevant memories per turn by default instead of everything that fits (the number stays editable in Settings, 0 = uncapped). A 50-turn A/B showed uncapped recaps growing to ~48 memories with markedly more repeated narration; the cap cut request size ~40% on the local tier with recall of planted facts largely held. Fresh installs only — existing installs keep their stored value.
   - **Sticky memory verdicts.** The story's keep/let-go memory decisions are now made once, when a moment ages into long-term memory, instead of re-voting the whole list every turn — so memories no longer flip between kept and forgotten as the story grows. A kept memory changes only when a newly kept moment explicitly replaces it (a promise fulfilled supersedes the promise) or when you pin it. Verdicts are saved with your game, and the recurring memory-selection request shrinks to just the new moments.
@@ -130,7 +130,7 @@ _Unreleased — new work accumulates here until it earns a version bump. The nex
   - **Pasting a local server's address just works.** LM Studio's "Reachable at" chip copies `http://127.0.0.1:1234`, and most guides stop at `.../v1` — but the Endpoint URL field wanted the full `.../v1/chat/completions`, so the obvious paste failed with nothing explaining why. An address that's only a host and port, or that ends at `/v1`, now gets the rest filled in automatically, with a line under the field showing exactly where requests will go. Endpoints you've already set up are untouched, and an address with its own custom path is left exactly as you typed it.
   - **The Diary prompt is hidden unless Staged thinking is on.** Settings → Prompts only showed the **Diary** tab based on the Character Diaries toggle — but diaries are only used by Staged mode, so the tab could linger after switching thinking modes. It now appears only when both are active, matching the toggle that governs it.
 
-- **⚙️ Backend / invisible**
+- **⚙️ Backend**
   - **Image encoding runs in a Web Worker.** The decode → downscale → WebP re-encode pipeline (including the lossless WASM path and the image measuring/scanning step) moved into a dedicated worker with a main-thread fallback, and world-optimize reports per-image progress. Public `imageOptim` API is unchanged. Verified live: optimizing three ~30 MB images produced zero main-thread long tasks (previously 7–15 stutters of ~100 ms each).
   - **Workers now load correctly in dev.** The image-encode and save conversion/download workers are created as module workers — in dev, Vite serves their source with bare ESM imports, which a classic worker rejects, so they silently fell back to the main thread (or failed). Production builds were unaffected.
   - **One worker now handles every JSON file.** Save downloads used a worker of their own that built a base64 data URL; worlds, backups, and saves all share one JSON worker that hands back the file directly, so the extra encode step is gone. Downloaded files are byte-identical.
@@ -144,7 +144,7 @@ _Unreleased — new work accumulates here until it earns a version bump. The nex
 
 ### Minor Changes
 
-#### ✨ Added
+#### ➕ Added
 
 - **👤 User-facing**
   - **Milestone memory: the story now remembers what matters.** With Memory Digests on, older turns used to ride along as an ever-growing list of one-line summaries — most of them noise ("you walk the bridge road…") that crowded the story's context and, measurably, dragged characters toward silence. Now a silent AI pass reviews those older summaries each turn and keeps only real milestones — promises made, debts owed, wounds taken, things gained, how characters came to see you — while recent turns always stay. In testing this held dialogue as well as sending the full history at roughly a quarter of the context size, and it means long sessions stop growing their prompt every turn.
@@ -178,10 +178,10 @@ _Unreleased — new work accumulates here until it earns a version bump. The nex
   - **Your in-game body matches the customization screen.** Body Weight and Breasts Size were applied at double strength once you were in-game — so the model looked heavier/curvier than the preview you set it to. The in-game model now renders exactly what the customization screen shows.
   - **Customization now shows a slider for every body shape your model supports.** The body sliders used to be a fixed pair (Body Weight, Breasts) — so any other body morph a model exposed was unreachable. Customization now reads the loaded model and gives you one slider per body morph it actually has, labeled by name. Sliders run from -25% to 125% of the model's authored shape (0% = off, 100% = the shape as sculpted). Existing characters carry over unchanged.
 
-- **👤 User-facing** *(memory)*
+- **👤 User-facing**
   - **Long sessions no longer starve the narration.** With Memory Digests on, older turns used to ride the story's context as many one-line exchanges — and after enough of them, some models started imitating that brevity, collapsing narration from full paragraphs to a sentence or two that could even drop a character's reply mid-scene. Those digests now travel as a single recap exchange — the story asked "Recap the story so far." and answering in one block — which reads as a recap, not as how narration should look. Measured on a real collapsed turn: ~40 words and the NPC's answer lost 4 runs in 5 before, ~125 words and the answer present 5 for 5 after, with no change on models that never collapsed. The recap question itself is editable: Settings → Prompts → Narration → Recap Message.
 
-- **⚙️ Backend / invisible**
+- **⚙️ Backend**
   - **Prerelease updates past `.9` are offered correctly.** The update check compared prerelease versions as text, so a build like `beta.10` looked older than `beta.9` and was never offered. Numeric parts of a prerelease tag now compare numerically.
   - **Imported prompt-preset share codes are validated more strictly.** A hand-crafted share code could smuggle a non-numeric sampler value (e.g. a text temperature) into the AI request, making every call fail. Sampler settings from a share code are now validated and dropped if malformed, like the other tuning fields already were.
   - **Desktop app: tighter update and download hardening.** The auto-updater now refuses a payload it can't checksum (instead of trusting the connection alone) and the Windows launcher re-verifies the staged download's checksum before installing it; a disk-full or write error during a model/update download now surfaces a clean error instead of crashing the app; and the app window is pinned to its own origin so rendered content can't navigate it elsewhere. The `app://` file-serving path also got a stricter containment check.
@@ -216,7 +216,7 @@ _Unreleased — new work accumulates here until it earns a version bump. The nex
 
 ### Minor Changes
 
-#### ✨ Added
+#### ➕ Added
 
 - **👤 User-facing**
   - **The action box grows as you type — without shoving the game around.** Writing a longer action now expands the input upward into a floating popover instead of pushing the narration and buttons out of place. It grows to a comfortable maximum and then scrolls inside itself, and drops back to a single line when you click away (your text is kept). **Enter** still sends; **Shift+Enter** adds a new line for multi-line actions.
@@ -256,7 +256,7 @@ _Unreleased — new work accumulates here until it earns a version bump. The nex
 
 ### Minor Changes
 
-#### ✨ Added
+#### ➕ Added
 
 - **👤 User-facing**
   - **New built-in "XML" prompt preset.** Alongside Default (Markdown) and Simple, you can now switch the whole prompt set to an **XML** style — a format some models follow more reliably. It wraps each context section in tags (`<game_world>…</game_world>`) *and* renders each chip's contents as nested XML (stats, traits, location, and cast become `<stat>`, `<trait>`, `<entity>` elements with child tags). The chips' new **XML** format option is also selectable individually on any preset. Like the others the built-in is read-only; duplicate it to a preset of your own to edit.
@@ -280,7 +280,7 @@ _Unreleased — new work accumulates here until it earns a version bump. The nex
 
 ### Minor Changes
 
-#### ✨ Added
+#### ➕ Added
 
 - **👤 User-facing**
   - **Two more local models added, one for mid-range cards and one for the top end.** **Gemma-4 12B Uncensored** joins the ≤8GB tier as its strongest option yet — it edged out what was there on our tests, and fits comfortably on an 8GB card. **Gemma-4 26B StyleTune V2** joins the No-Limit tier as the second-strongest model overall, just behind MeroMero. Both are additions, not replacements — everything already in the list stays.
@@ -330,7 +330,7 @@ _Unreleased — new work accumulates here until it earns a version bump. The nex
   - **Deleting a bundled world now sticks.** City Rampage, Valentines Survival, and Reincarnated Drone came straight back the next time you returned to the main menu — Formamorph couldn't tell a world you'd deleted apart from one you'd never been given, so it helpfully re-created it. It now remembers that you deleted it and leaves it alone, including when that world's bundled copy is later updated. Changed your mind? **Settings → Accessibility → Restore default worlds** brings back everything you've deleted, at its latest version. Worlds you made or imported yourself were never affected.
   - **Auto response length no longer cuts turns short.** With Response Length set to Auto, Formamorph sizes each narration to your Max Output Tokens — but it had badly overestimated how much a paragraph costs, so it was telling the AI to stop after about a third of the room you'd actually given it. It now estimates paragraph length from real narration, so Auto turns fill the budget you set instead of ending early. Nothing changes if you pick a fixed paragraph length yourself; this only affects Auto.
 
-- **⚙️ Backend / invisible**
+- **⚙️ Backend**
   - **The world store no longer opens its database at import.** It opened IndexedDB in its constructor, which every operation already does lazily anyway — harmless in the app, but it surfaced as an unhandled error (and a red CI run) in test files that import the store without a database. Opening is now fully lazy.
 
 </details>
@@ -686,7 +686,7 @@ _Unreleased — new work accumulates here until it earns a version bump. The nex
 - **🛠️ Developer tooling**
   - **World Editor is now an in-place modal, not a top-level view.** It moved from an `App` `currentView` branch into a MainMenu-hosted full-screen `<Dialog>` (reusing Community Creations' classes) so the menu stays mounted and animates; a new `refreshWorlds` callback (mirroring `refreshDictionaries`/`refreshEntities`) refreshes just the world grid on close instead of remounting the menu. WorldEditor gained a `backButton` prop that decouples the header back arrow from `embedded` (GameViewer's embedded popup keeps its X; the menu modal shows the back arrow with no X, Esc/overlay blocked so the guarded back arrow is the sole exit). In the DEV dev-router, `worldEditor` moved from `DEV_VIEWS` to `DEV_MODALS` (reached via `#dev?modal=worldEditor`), and the drift-guard test was updated to match.
   - **List rows clip instead of overflowing (root cause + shared empty-state).** Two causes: a `flex-grow`/`flex-1` truncating child needs `min-w-0` to shrink, and Radix's ScrollArea wraps its viewport content in an inline `display:table` div that shrink-wraps to content width — overridden with `[&>div]:!block` on the shadcn `ScrollArea` viewport (safe: no horizontal ScrollArea exists anywhere). Dictionary row controls got `shrink-0` so the name (not the buttons) absorbs the truncation. The per-tab "nothing here yet" hint is unified into one shared `EmptyListHint` component reused by every list/tree tab.
-- **⚙️ Backend / invisible**
+- **⚙️ Backend**
   - **Imported multi-turn saves from v1.2 no longer corrupt their page history.** Converting an old (v1.2) save duplicated the opening page and dropped the current page from the turn history, so on a 3-turn save Re-generate and Rollback landed one turn too early (a page effectively vanished). Old saves stored their history as the prior pages only, with the current turn kept separately; the converter now appends the current turn as the final page (instead of a stale re-alignment that assumed the opposite) and stamps the newer `discoveredEntities` field onto every converted snapshot. Single-turn saves were unaffected and stay so. Already-imported broken saves aren't auto-repaired — re-import the original v1.2 file to fix them.
   - **Phantom "empty scene" cast bullets no longer become participants.** `isEmptyCastName` now also recognizes multi-word declarations like "no other characters present" / "no one else" (not only single-word sentinels such as "none"), so a planner or director that writes the empty scene as a cast bullet doesn't spawn a bogus participant. Affects both Planning and Staged.
   - **Cast names with a role/alias parenthetical now classify correctly.** Small models habitually gloss a cast line as `Bram (ferryman)` or `Maela (the hooded woman)`; the cast parser kept the whole `"Bram (ferryman"` as the name, so it no longer matched the "Bram" entity and misfiled as an invented character (losing the entity tie). `parseDirectorCast` now splits the name from the parenthetical (shared with the reveal sanitizer via `splitNameAlias`) and captures the alias on the cast member. Confirmed on a live 12B via a new real-parser probe (`harness/planning-parser-probe.test.ts`): misclassification dropped from 5/9 cases to 0. Affects Planning and Staged participation.
@@ -780,7 +780,7 @@ _Unreleased — new work accumulates here until it earns a version bump. The nex
   - **Entry-step character placement (runtime-only)** — the new enter-world character step is gated by `shouldShowCharacterStep` (`lib/characterSelection.ts`) and picked in `CharacterSelectionModal`. The chosen library characters thread MainMenu → `App` → `GameViewer` as an `initialCharacters` prop (mirroring `initialDictionaries`), and the init effect seeds them into `GameplayContext.discoveredEntities` anchored to the resolved starting location — reusing the existing runtime-character path (`allEntities` + `mergeDiscoveredIntoLocation`). So they show as present, persist in the save, and **never touch `GameData`** (the authored-world-immutable invariant). Fresh ids on selection; `loadGame` overrides on load.
   - **SillyTavern character PNG import** — `lib/tavernCard.ts` reads a Character-Card PNG (base64 JSON in the `ccv3`/`chara` text chunk, V1 flat / V2-V3 `data` envelope), reusing the now-exported `readPngTextChunks` from `sdMetadata.ts`. It maps only name + description/personality/scenario → `aiDescription` (macro substitution `{{char}}`/`{{user}}`), drops the chat-runtime fields, and hands any `character_book` to the existing `convertLorebook`. `entityFile.importCharacterFile(file)` is the unified import entry — WebP card *or* ST PNG — returning `{ entity, book }`; the main menu offers the book via a confirm dialog. The PNG's pixels become the portrait (re-encoded to WebP).
   - **Authored world is immutable during play** — the running session no longer writes runtime state back into the authored world (`GameDataContext`). The stat-change handler updates only `playerStats` (dropping the old `updateStat` write-back), and the per-run dictionary set lives in `GameplayContext`, threaded in from world entry as a `GameViewer` prop (mirroring `initialTraits`/`initialLocationId`). The mid-game **Edit World** tool edits the authored world directly; it persists only on **Save World**, and no longer opens pre-marked dirty. The now-unused flattened `dictionary` derivation was removed from `GameDataContext`.
-- **⚙️ Backend / invisible**
+- **⚙️ Backend**
   - **Design-token color pass** — the app's colors were migrated off hardcoded Tailwind palette classes (grays, plus inline reds / greens / ambers / blues for status) and stray hex onto CSS **design tokens** in `index.css`, so every surface now flips correctly between light/dark and swaps wholesale with the selected **theme color** with no per-component overrides. **Preset themes** ride on this: a `data-theme` attribute on `<html>` swaps a full token set, so a theme is authored purely as `.light[data-theme="…"]` / `.dark[data-theme="…"]` blocks in `index.css` — no per-component work. Eight ship (Blue, Purple, Rose, Bubble Gum, Forest, Graphite, Monochrome, High Contrast), each built by one recipe: pick a hue, **preserve each token's lightness** (so contrast holds), scale saturation by role, and leave the semantic status/chart tokens constant. The bare base and the first-run default are decoupled — `blue` lives in `:root` and applies with no attribute, while `graphite` is what a fresh install starts on. Monochrome and High Contrast communicate depth by an **elevation-by-lightness surface ramp** (true-black canvas → progressively lighter panels) rather than shadows, which don't read on black; High Contrast targets WCAG AAA (near-maximal text contrast, borders on every element, a yellow accent in dark / monochrome in light) and **auto-selects on first run when the OS sets `prefers-contrast: more`** (System mode only, and default-only — it never overrides a chosen theme). To make that outline-heavy theme complete, the button variants now **reserve a token-colored border** (`border border-transparent` in the base, `border-border` on secondary/ghost) — invisible-to-faint in the color themes, maximal in High Contrast, with no layout shift. This whole system replaces the earlier single-color accent picker (its `lib/color.ts` hex→HSL helper is removed). Added semantic `--success` / `--warning` / `--info` tokens (styled to match the existing `--destructive`), an `--overlay` scrim token for image and modal backdrops, and a **fill-vs-ink split** for destructive red: `--destructive` is tuned bright for text/icons/indicator bars (readable as its own color on a dark surface) while `--destructive-fill` stays deep for solid button/badge fills (where white text sits on top) — one token per role so red reads right in both. react-toastify's per-type accent variables now derive from these tokens too. Duplicated widgets were factored into a shared `WorldCardShell` (main-menu card frame) and `Dropzone` (dashed upload frame) so a shared color changes in one place. Decorative gradient buttons, scrim contrast text, and runtime/data-driven colors (entity chips, VRM appearance defaults, the categorical highlight palette) are intentionally left literal.
 
 #### 🐛 Fixed
@@ -829,7 +829,7 @@ Everything below is relative to the point this fork diverged from upstream.
   - **Desktop packaging** — a thin Electron shell (`electron/`) plus electron-builder config; `npm run desktop:build` produces a portable Windows exe from the same web build.
   - Project scaffolding: `.env.example`, `.nvmrc`, and a rewritten README.
   - This wiki, published automatically from `docs/` by a GitHub Action.
-- **⚙️ Backend / invisible**
+- **⚙️ Backend**
   - **Full JavaScript → TypeScript conversion** of the entire codebase (10 phases), finishing on **strict** mode with shared domain types under `src/types`.
   - **World & save versioning** — an `APP_VERSION` derived from `package.json`, idempotent import migration (`migrateWorld`) that upgrades legacy worlds at every import boundary, presence-based save-envelope detection, and version stamps on saves, exports, and the bundled worlds. (See the [World Format](WorldFormat) versioning notes.)
   - Heavy save conversion and serialization moved to **web workers** so the UI never freezes on large files.
@@ -842,7 +842,7 @@ Everything below is relative to the point this fork diverged from upstream.
   - The previous bundled example worlds (`slime`, `sugarscape`, `veilwood`), swapped for the current set.
 - **🛠️ Developer tooling**
   - In-repo planning notes and server stubs under `src/docs/` (publish-feature plan, server README, tags-implementation notes, server-worlds stub).
-- **⚙️ Backend / invisible**
+- **⚙️ Backend**
   - All legacy `.jsx` / `.js` sources, superseded by `.tsx` / `.ts` equivalents (views, contexts, workers, prompts, db & utils, UI primitives).
   - `jsconfig.json` (replaced by `tsconfig.json`) and a stray `Idle.fbx` animation file.
 
@@ -855,7 +855,7 @@ Everything below is relative to the point this fork diverged from upstream.
   - AI response parsing errors that could break choices and stat updates.
   - The Settings panel no longer jumps vertically when its contents change.
   - Unsaved world edits are detected on exit, with a confirmation prompt to prevent data loss.
-- **⚙️ Backend / invisible**
+- **⚙️ Backend**
   - Server-Sent Events streaming now handles chunk boundaries correctly — no dropped or garbled tokens mid-stream.
   - Removed side effects from the `setPlayerStats` state updater.
   - The recent-stat-change highlight timer is cleared properly, and streaming guards against a missing `response.body`.
@@ -903,7 +903,7 @@ Everything below is relative to the point this fork diverged from upstream.
   - **Duplicate button in the World Editor** — every list item (stats, entities, locations, traits, groups, dictionary entries) gains a duplicate button beside delete that makes a deep copy placed right below the original. Duplicating a trait keeps it in the same group; duplicating a group copies the whole nested subtree (subgroups and traits) with fresh ids in the exact same nesting. The copy's name gets a " (Copy)" suffix.
   - **Markdown toolbar for the world description** — the Edit tab gained a formatting toolbar (bold, italic, headings, lists, link, quote, inline code) plus **undo/redo** (buttons and Ctrl+Z / Ctrl+Y); the Preview still renders through the same engine as in-game narration.
   - **Trait groups (folders)** — the World Editor's Traits tab is now a foldering tree: the **+** opens a popout to *Add Group* or *Add Trait*, and traits/groups drag to reorder and nest — drag a row **right** to tuck it under the group above, **left** to pull it back out, with the row indenting live as you drag. New worlds start with **World** and **Player** groups. Traits and groups gain **Player-Facing** and **AI-Facing** descriptions, and traits gain an **Enabled by Default** flag. In play, the trait-selection popup is now tabbed by group (an implicit **General** tab holds ungrouped traits, nested groups add a tab row); default traits start checked, and the buttons are **Next** (walk the groups), **Skip** (start with the current selection), and **Abort** (cancel loading the world). A group's AI description is sent to the model as a header above its selected traits.
-- **⚙️ Backend / invisible**
+- **⚙️ Backend**
   - Shared hooks and helpers: a `createWorkerClient` worker factory, a single IndexedDB open/promisify helper (`idb`), `usePersistentState`, `useIsMobile`, and a cached-thumbnail hook.
   - The Community Creations browser was split out of `MainMenu` into its own `CommunityCreationsBrowser` view, with shared world-card/detail presentation helpers (`WorldDetails`).
   - **Trait group data model** — the world format gains a `traitGroups` array (`{ id, name, playerDescription?, aiDescription?, parentId, order }`); traits move from a single `description` to `playerDescription`/`aiDescription` and gain `groupId`, `isDefault`, and `order`. The tree, reordering, and AI trait-context builder live in pure, unit-tested helpers (`lib/traitTree.ts`); legacy v1.2 worlds rename their trait `description` → `playerDescription` on import.
@@ -911,7 +911,7 @@ Everything below is relative to the point this fork diverged from upstream.
 
 #### ➖ Removed
 
-- **⚙️ Backend / invisible**
+- **⚙️ Backend**
   - Dead code and noisy logging, including a leftover `bufferToSentence` helper and an auth-token console log.
 
 #### 🐛 Fixed
@@ -919,7 +919,7 @@ Everything below is relative to the point this fork diverged from upstream.
 - **👤 User-facing**
   - Mislabeled UI text and icons corrected.
   - The memory meter is now an accurate **token** gauge of the model's context window — prompt + (actually-sent) history + reserved output as a % of the window — fixing the old bar that mixed characters and tokens and counted the full untrimmed log.
-- **⚙️ Backend / invisible**
+- **⚙️ Backend**
   - Entity IDs now use `crypto.randomUUID()` instead of timestamp-based IDs, avoiding collisions.
   - **Cleaner AI prompts** — blank or unset author fields (an empty entity `type`, a missing description, etc.) are no longer padded into the location/entity/trait data sent to the model, and the editor-only starting-location flag is dropped from it. Empty fields previously leaked as blank lines or the literal text `undefined`, which could confuse smaller models.
   - **Stat code runs in a real sandbox** — world-authored stat formulas (which ride inside downloaded worlds) now execute in an isolated **QuickJS WebAssembly VM** instead of `new Function`, so they can no longer reach the page (`fetch`, `localStorage`, the DOM) — closing an untrusted-code hole. A runtime interrupt enforces the 1-second timeout, so a `while(true)` loop is actually killed instead of hanging the tab (the old after-the-fact check never fired), with memory and stack caps on top. Only whitelisted stat data crosses into the VM; the numeric result is read back and clamped exactly as before. The engine is lazily loaded on first use, so it doesn't affect page load.
