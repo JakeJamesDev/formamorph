@@ -3,6 +3,7 @@ import { restyle, buildStyledValues } from './sectionStyle';
 import { PROMPT_TEXT_KEYS, type PromptValues } from './promptPresets';
 import { defaultSystemPrompt, defaultDiscoverEntityPrompt } from '@/components/game/GamePrompts';
 import { parsePromptTemplate } from './promptTemplate';
+import { joinToken, splitToken } from './promptVariables';
 
 describe('restyle', () => {
   it('is identity for the markdown style', () => {
@@ -101,5 +102,42 @@ describe('buildStyledValues', () => {
       PROMPT_TEXT_KEYS.map((k) => [k, '<STATS DESCRIPTION|markdown>']),
     ) as PromptValues;
     expect(buildStyledValues(canonical, 'labels').systemPrompt).toBe('<STATS DESCRIPTION>');
+  });
+});
+
+describe('chip affixes survive a style downcast (gate 6)', () => {
+  // A downcast rebuilds every format-bearing token from its parts. Before affixes were carried through,
+  // this silently deleted the user's connective wording — no error, no undo.
+  const affixed = joinToken({ base: '<ENTITIES>', variantId: 'name', pre: ' with ', post: ' present' });
+  const template = `Now you are at <LOCATION|name>${affixed}; the scene is underway.`;
+
+  const values = (text: string): PromptValues =>
+    Object.fromEntries(PROMPT_TEXT_KEYS.map((k) => [k, text])) as PromptValues;
+
+  it('keeps both affixes through labels and xml', () => {
+    for (const style of ['labels', 'xml'] as const) {
+      const out = buildStyledValues(values(template), style).systemPrompt;
+      expect(out).toContain('pre=" with "');
+      expect(out).toContain('post=" present"');
+    }
+  });
+
+  it('survives a markdown → labels → xml → markdown cycle with the affixes intact', () => {
+    let text = template;
+    for (const style of ['labels', 'xml', 'markdown'] as const) {
+      text = buildStyledValues(values(text), style).systemPrompt;
+    }
+    const tokens = parsePromptTemplate(text).filter((s) => s.type === 'variable');
+    const entities = tokens.find((s) => s.type === 'variable' && s.token.startsWith('<ENTITIES'));
+    expect(entities && entities.type === 'variable' && splitToken(entities.token)).toMatchObject({
+      pre: ' with ', post: ' present',
+    });
+  });
+
+  it('still changes the format axis while preserving the affixes', () => {
+    const out = buildStyledValues(values(affixed), 'xml').systemPrompt;
+    const parts = splitToken(out)!;
+    expect(parts.variantId).toContain('xml');
+    expect(parts.pre).toBe(' with ');
   });
 });

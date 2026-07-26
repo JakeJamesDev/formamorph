@@ -1,5 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { parsePromptTemplate, serializeSegments, renderPromptTemplate } from './promptTemplate';
+import { joinToken } from './promptVariables';
 import {
   defaultNowLinePrompt,
   defaultSystemPrompt, defaultChoicesPrompt, defaultStatUpdatesPrompt,
@@ -216,5 +217,111 @@ describe('the default now-line template', () => {
       expect(out).not.toMatch(/\s;/);
       expect(out.startsWith("Now you are at Sarah's Place")).toBe(true);
     }
+  });
+});
+
+// ── Chip affixes (docs-internal/chip-affixes-design.md) ──────────────────────────────────────────────
+// Tests 1, 2 and 6 of the spec's gate are the load-bearing ones: they guard the round-trip, the
+// unchanged rendering of every shipped prompt, and survival through a style downcast.
+
+describe('affix grammar: round-trip (gate 1)', () => {
+  const SHIPPED = [
+    defaultSystemPrompt, defaultChoicesPrompt, defaultStatUpdatesPrompt, defaultLocationChangePrompt,
+    defaultThinkingPrompt, defaultSummaryPrompt, defaultDirectorPrompt, defaultCharacterPrompt,
+    defaultStoryboardPrompt, defaultDiaryPrompt, defaultNowLinePrompt,
+  ];
+
+  it('round-trips every shipped prompt byte-identically', () => {
+    for (const p of SHIPPED) expect(serializeSegments(parsePromptTemplate(p))).toBe(p);
+  });
+
+  it('round-trips a generated corpus of tokens, affixed and bare', () => {
+    const bases = ['<LOCATION>', '<ENTITIES>', '<NOTES>', '<WORLD DESCRIPTION>'];
+    const variants = [null, 'name', 'summary', 'markdown', 'reachable.summary.markdown'];
+    const affixes = ['', ' with ', ', inside ', '. It is now ', "the player's own: ", ' (', '|', '>'];
+    for (const base of bases) {
+      for (const variantId of variants) {
+        for (const pre of affixes) {
+          for (const post of affixes) {
+            const token = joinToken({ base, variantId, pre, post });
+            const template = `lead ${token} tail`;
+            expect(serializeSegments(parsePromptTemplate(template))).toBe(template);
+          }
+        }
+      }
+    }
+  });
+
+  it('has exactly one spelling per token, so parse never rewrites', () => {
+    // `pre=""` has no canonical form and must not parse at all — otherwise serialize would drop it and
+    // merely opening the editor would rewrite the stored prompt.
+    const template = '<LOCATION|name|pre="">';
+    expect(parsePromptTemplate(template)).toEqual([{ type: 'text', value: template }]);
+    expect(serializeSegments(parsePromptTemplate(template))).toBe(template);
+  });
+});
+
+describe('affix grammar: unaffixed rendering is unchanged (gate 2)', () => {
+  const values: Record<string, string> = {
+    '<LOCATION>': 'FULL-LOCATION', '<LOCATION|name>': "Sarah's Place", '<ENTITIES|name>': 'Mira',
+    '<NOTES>': 'my notes', '<WORLD DESCRIPTION>': 'WORLD', '<ENTITIES>': 'ENTITIES-BLOCK',
+  };
+
+  it('substitutes a bare token exactly as before', () => {
+    expect(renderPromptTemplate('at <LOCATION|name>.', values)).toBe("at Sarah's Place.");
+    expect(renderPromptTemplate('<WORLD DESCRIPTION>', values)).toBe('WORLD');
+  });
+
+  it('leaves an unknown token untouched', () => {
+    expect(renderPromptTemplate('<LOCATION|banana>', values)).toBe('<LOCATION|banana>');
+    expect(renderPromptTemplate('<LOCATION|name>', {})).toBe('<LOCATION|name>');
+  });
+
+  it('keeps N/A for an unaffixed chip — only affixed placements vanish', () => {
+    expect(renderPromptTemplate('<ENTITIES|name>', { '<ENTITIES|name>': 'N/A' })).toBe('N/A');
+  });
+});
+
+describe('affix rendering (gates 3-5)', () => {
+  const t = (pre: string, post: string) => joinToken({ base: '<ENTITIES>', variantId: 'name', pre, post });
+
+  it('wraps a present value in its affixes', () => {
+    expect(renderPromptTemplate(`at home${t(' with ', ' present')}.`, { '<ENTITIES|name>': 'Mira' }))
+      .toBe('at home with Mira present.');
+  });
+
+  it('renders nothing — value and both affixes — when the value is blank or N/A', () => {
+    for (const empty of ['', '   ', 'N/A']) {
+      expect(renderPromptTemplate(`at home${t(' with ', ' present')}.`, { '<ENTITIES|name>': empty }))
+        .toBe('at home.');
+    }
+  });
+
+  it('supports a prefix alone and a suffix alone', () => {
+    const v = { '<ENTITIES|name>': 'Mira' };
+    expect(renderPromptTemplate(t(', inside ', ''), v)).toBe(', inside Mira');
+    expect(renderPromptTemplate(t('', ' present'), v)).toBe('Mira present');
+  });
+
+  it('applies affixes to each placement independently', () => {
+    const template = `${t(' with ', ' here')} / ${t(' and ', ' there')}`;
+    expect(renderPromptTemplate(template, { '<ENTITIES|name>': 'Mira' }))
+      .toBe(' with Mira here /  and Mira there');
+  });
+});
+
+describe('affix grammar: malformed forms stay literal (gate 7)', () => {
+  const literal = (s: string) => expect(parsePromptTemplate(s)).toEqual([{ type: 'text', value: s }]);
+
+  it('rejects unquoted, reordered, and unknown-key affixes', () => {
+    literal('<LOCATION|name|pre=, inside >');
+    literal('<LOCATION|post=" x "|pre=" y ">'); // wrong order
+    literal('<LOCATION|name|mid=" x ">');
+  });
+
+  it('does not let a stray quote swallow the rest of the prompt', () => {
+    const out = parsePromptTemplate('<LOCATION|name|pre=" a> tail');
+    expect(serializeSegments(out)).toBe('<LOCATION|name|pre=" a> tail');
+    expect(out.every((s) => s.type === 'text')).toBe(true);
   });
 });

@@ -8,8 +8,52 @@ design record; the code is the source of truth.
 **Validated against both real sessions at implementation time, with the progressive known-set the
 app actually uses: recall 1.00 / precision 1.00 on each.** The fragment false positives predicted
 below (`Chen`, `Wolfram`, `Rainsley`) are absorbed exactly as designed once the full name is known.
-One rule was added during implementation that the prototype missed: **hyphens stay inside a token**,
-or `Demi-Human` splits and leaks a bare `Human` that no exclusion list would think to name.
+
+## Final rule set and measured precision
+
+The prototype below is the *starting* point. Everything after it came from running four real authored
+worlds through both model tiers — 36 sessions, 900 turns — via
+[`character-discovery-probe.mjs`](testing/baseline/harness/character-discovery-probe.mjs), scoring with
+[`disc-aggregate.mjs`](testing/baseline/harness/disc-aggregate.mjs), and re-scoring saved transcripts
+after each rule change with [`disc-rescore.mjs`](testing/baseline/harness/disc-rescore.mjs) (seconds,
+no model time).
+
+| corpus | sessions | promotions | real | precision |
+|---|---|---|---|---|
+| tuning (seeds 7, 21) | 16 | 9 | 9 | 1.00 |
+| held-out #1 (seeds 42, 99) | 12 | 9 | 9 | 1.00 |
+| held-out #2 (seeds 123, 777) | 8 | 5 | 5 | 1.00 |
+
+Before the last two rules the held-out sets read 0.90 and 0.71 — the overfit gradient was real and
+visible, which is the reason to keep re-running held-out seeds rather than trusting the tuning number.
+
+**Rules added after the prototype, each traced to a measured failure:**
+
+| rule | what it fixed |
+|---|---|
+| hyphens stay in a token | `Demi-Human` split and leaked a bare `Human` |
+| only `'s` may ride in a token | `I'm Doctor` matched as one run; rejecting it swallowed the title and left a bare `Vance` |
+| abbreviated titles normalized | the model writes `Dr. Vance`; the period faked a sentence end AND `dr` wasn't a title |
+| abbreviations expanded to full form | `Dr. Chen` and `Doctor Chen` became two entities |
+| up to three tokens per run | `Doctor Evelyn Rainsley` truncated to a name matching nobody |
+| surname collision, **people only** | that full name became a second `Professor Rainsley`; scoping it to characters avoided barring anything ending `office`/`demi-human`/`studio`/`skill` |
+| non-prose lines dropped | `**Professor Assignments:**` promoted as a titled character |
+| lone short all-caps rejected | `12:00 PM` promoted `PM` |
+| bracketed spans dropped | `Welcome to Praetoria Academy, [Player Name]` |
+| greeting stopwords | `"Hey"` shouted across a street, twice |
+| leading stopwords shed, not fatal | `And Alice said…` discarded the whole run — 1.33% of all runs |
+| **person signal required on repetition** | two thirds of repetition-path promotions were agencies, cafés, shows, weekdays, places |
+| `madame`; third-person naming | `her name is Madame Yuki` — a producer with 13 mentions, missed |
+| contraction stems dropped | `Don't` left a bare `Don` |
+| **must appear outside quoted speech** | an absent library patron (`"Ms Drake hasn't arrived yet"`) and a child's stuffed toy (`"Mr Rabbit approves of you"`) |
+
+**Known blind spot:** quoted signage is treated as dialogue, so a name that appears only as
+`a plaque reads "…"` needs a prose mention elsewhere. Cost nothing across 36 sessions, but it is a
+real limitation rather than a solved case.
+
+**Tier asymmetry:** the cloud endpoint promoted **nothing** across 8 sessions / 200 turns, and that
+is correct — it writes characters as "she" and "the woman in the white coat" and never names them.
+Every precision number above is therefore a Cydonia measurement.
 
 ## The problem in one line
 
