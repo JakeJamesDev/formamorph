@@ -2,7 +2,7 @@
 
 All notable changes to Formamorph. This fork's first line is **2.0.0** — a full TypeScript rebuild of the upstream JavaScript app ([FieryLionite's Formamorph](https://fierylion.itch.io/formamorph), ~v1.2) — with feature parity as the baseline plus new features on top.
 
-> ✅ **2.0.0 – 2.6.0 are released** (collapsed below). New work lands under **🚧 In Progress** — an unnumbered section, so changes accumulate without pinning a version. When a batch earns a release its section is marked **Released** and collapsed, and a fresh In Progress opens. `package.json` reads **2.6.0** — the latest released version.
+> ✅ **2.0.0 – 2.7.0-beta are released** (collapsed below). New work lands under **🚧 In Progress** — an unnumbered section, so changes accumulate without pinning a version. When a batch earns a release its section is marked **Released** and collapsed, and a fresh In Progress opens. `package.json` reads **2.7.0-beta** — the latest released version.
 
 Each release groups changes as **Major** / **Minor**, then **Added** / **Removed** / **Fixed**, and within those by audience: 👤 user-facing · 🛠️ developer tooling · ⚙️ backend.
 
@@ -10,7 +10,12 @@ Each release groups changes as **Major** / **Minor**, then **Added** / **Removed
 
 ## 🚧 In Progress
 
-_Unreleased — new work accumulates here until it earns a version bump. The next batch will pin its own version; `package.json` reads **2.6.0** (just released below)._
+_Unreleased — new work accumulates here until it earns a version bump. The next batch will pin its own version; `package.json` reads **2.7.0-beta** (just released below)._
+
+---
+
+<details>
+<summary><strong>✅ 2.7.0-beta — Released 2026-07-26</strong> — the memory and time release: memories you can rewrite, pin, delete or write yourself from a full Memory Manager, a measured story clock that reads how long each turn really takes and dates every memory by it, semantic memory that ranks what the story recalls against what you just did, characters the narrator invents becoming real cast members you can open and remove, prompt chips that carry their own wording, and a regrouped Settings with swappable text-endpoint presets — plus [square-bracket] authorial direction and a long tail of editor, save and 3D-model fixes (click to expand)</summary>
 
 ### Minor Changes
 
@@ -137,7 +142,7 @@ _Unreleased — new work accumulates here until it earns a version bump. The nex
   - **World and backup files are written and read off the main thread.** Exporting a world, saving a backup, and importing a world file each ran one long blocking call over the file's whole text — with images embedded as base64, that froze the UI for seconds on a large world. All three now run in a Web Worker.
   - **Model previews no longer stall on load.** The model viewer decoded a model's data by hand, one character at a time, before three.js ever saw it — a multi-second freeze and a large memory spike for a big VRM. It now hands the browser the decode, and cleans up correctly if the viewer closes mid-load.
 
----
+</details>
 
 <details>
 <summary><strong>✅ 2.6.0 — Released 2026-07-23</strong> — the memory release: a milestone system that keeps what actually matters with a Memory tab to pin or forget moments, digests that preserve names, places, and deadlines and travel as a single story recap ending with where things now stand, characters that engage you in dialogue several times more often, editable narration User and Recap Messages — plus a long tail of save, stat, model-viewer, and editor fixes (click to expand)</summary>
