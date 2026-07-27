@@ -49,3 +49,6 @@ testing/baseline/mothers-struggles.json
 
 # Real authored worlds used as extraction test corpora (large, and not ours to publish).
 testing/authored-worlds/
+
+# Real play-session exports used for debugging (large, contain user content).
+testing/real-sessions/

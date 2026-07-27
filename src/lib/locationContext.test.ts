@@ -3,7 +3,7 @@ import {
   buildLocationContext, buildEntityContext, buildSublocationsContext, buildSublocationEntitiesContext,
   buildReachableLocationsContext, buildReachableEntitiesContext,
   navigableDestinations, buildDestinationsContext, sublocationEntityIds, reachableEntityIds,
-  buildParentLocationContext, buildSceneEntitiesContext,
+  buildParentLocationContext, buildSceneEntitiesContext, scenePresentHere,
 } from "./locationContext";
 import { NONE_PLACEHOLDER } from "./promptFallbacks";
 import type { Entity, GameLocation } from "@/types";
@@ -470,5 +470,33 @@ describe('buildSceneEntitiesContext', () => {
   it('is N/A when nobody has taken part, so an affixed placement disappears', () => {
     expect(buildSceneEntitiesContext([], cast, { nameOnly: true })).toBe(NONE_PLACEHOLDER);
     expect(buildSceneEntitiesContext(['nobody known'], cast, {})).toBe(NONE_PLACEHOLDER);
+  });
+});
+
+describe('scenePresentHere (phantom-presence filter for the now-line)', () => {
+  const cast: Entity[] = [
+    { id: 'e1', name: 'Dean Wolfram' } as Entity,
+    { id: 'e2', name: 'Professor Serana' } as Entity,
+  ];
+
+  it('drops a defined entity whose home is elsewhere — the character the dialogue kept naming', () => {
+    expect(scenePresentHere(['Dean Wolfram', 'Professor Serana'], cast, ['e1'])).toEqual(['Dean Wolfram']);
+  });
+
+  it('keeps a defined entity present at this location', () => {
+    expect(scenePresentHere(['Professor Serana'], cast, ['e1', 'e2'])).toEqual(['Professor Serana']);
+  });
+
+  it('keeps a name no defined entity matches — ad-hoc and just-discovered characters', () => {
+    expect(scenePresentHere(['the ferryman'], cast, ['e1'])).toEqual(['the ferryman']);
+  });
+
+  it('matches names case-insensitively and tolerates surrounding space', () => {
+    expect(scenePresentHere([' dean wolfram '], cast, ['e1'])).toEqual([' dean wolfram ']);
+    expect(scenePresentHere([' dean wolfram '], cast, [])).toEqual([]);
+  });
+
+  it('with an empty location roster, only unresolvable names survive', () => {
+    expect(scenePresentHere(['Dean Wolfram', 'the ferryman'], cast, [])).toEqual(['the ferryman']);
   });
 });

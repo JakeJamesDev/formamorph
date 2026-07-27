@@ -293,6 +293,21 @@ export function buildSceneEntitiesContext(
   return buildEntityContext({ id: 'scene', name: 'scene', entities: ids }, entities, opts);
 }
 
+/**
+ * `names` minus the defined entities that belong somewhere other than `hereIds` — the phantom-presence
+ * filter for the now-line. A character the dialogue keeps naming is otherwise asserted present in a
+ * scene they were never in. A name matching no defined entity is kept: ad-hoc and just-discovered
+ * characters have no location membership to check against, and visitors already reach `hereIds` through
+ * the discovered-entity path.
+ */
+export function scenePresentHere(names: string[], entities: Entity[], hereIds: string[]): string[] {
+  const here = new Set(hereIds);
+  return names.filter((name) => {
+    const defined = entities.find((e) => e.name.trim().toLowerCase() === name.trim().toLowerCase());
+    return !defined || here.has(defined.id);
+  });
+}
+
 /** The deduped entity ids across the current location's reachable locations (parent + siblings). */
 export function reachableEntityIds(current: LocationWithEntities, locations: GameLocation[]): string[] {
   if (!current) return [];

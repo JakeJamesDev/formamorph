@@ -12,6 +12,16 @@ Each release groups changes as **Major** / **Minor**, then **Added** / **Removed
 
 _Unreleased — new work accumulates here until it earns a version bump. The next batch will pin its own version; `package.json` reads **2.7.0-beta** (just released below)._
 
+### Minor Changes
+
+#### 🐛 Fixed
+
+- **🛠️ Developer tooling**
+  - **`presence-probe.mjs`** — measures whether a character who was only ever *talked about* gets written into the scene, over chained turns rather than one. Two arms built by the real shipped parses (bundled from `src`, so it also fails if the call sites stop using them), across real test worlds, with the bring-them-over path wired in so the probe reproduces the actual mechanism. Carries both no-call controls: a second present character acting in prose must survive both arms, and a present character named only inside dialogue is reported as the measured cost rather than hidden. Cases live in `testing/baseline/presence-cases.json`.
+
+- **👤 User-facing**
+  - **Characters the dialogue talks about are no longer treated as standing in the room.** Whoever was named in a turn's narration counted as present — including someone another character merely *mentioned*. In a real 45-turn session that meant a professor who was never in the scene was reported present for 29 straight turns, purely because the dialogue kept referring to her; the story then wrote her in again, which named her again, which kept her present. Presence is now read from the narration's prose — what someone is shown doing — rather than from quoted speech, and a character who lives somewhere else is dropped from the scene line unless they've actually come over. Characters the story invents on the spot, and visitors who genuinely walked in, are unaffected — but a character who was only ever *talked about* no longer walks into the room and takes up residence there, which is how a passing mention used to become permanent. This also feeds the choices you're offered and which characters write diary entries, so those stop including people who aren't there. Stories running with **Staged** thinking already had this guard, since the planner decided the cast; it now holds in every mode.
+
 ---
 
 <details>
