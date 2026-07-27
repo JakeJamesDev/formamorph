@@ -1,0 +1,54 @@
+[
+  {
+    "id": "cottage",
+    "world": "sedge-landing.json",
+    "location": "Ferryman's Cottage",
+    "present": "Wick",
+    "offscene": "Bram",
+    "prior": "Wick sets the kettle back on its hook and wipes both hands down the front of his apron. The cottage smells of tar and wet rope.\n\n\"Bram won't take the ferry out in this,\" he says, nodding at the shutters. \"He'll tell you the same if you walk down and ask him. Sit a while.\"",
+    "action": "I ask him how long the weather usually lasts.",
+    "note": "phantom: Bram lives at Sedge Landing and is named only in Wick's speech"
+  },
+  {
+    "id": "jessicas",
+    "world": "mothers-struggles.json",
+    "location": "Jessica's Home",
+    "present": "Jessica Foster",
+    "offscene": "Sarah Jones",
+    "prior": "Jessica shuts the door behind you with her hip and drops her keys in the dish by the lamp, still in her work clothes.\n\n\"I ran into Sarah Jones at the store,\" she says, heading for the kitchen. \"She asked after you. Sit down, you look wrecked.\"",
+    "action": "I sit down and ask how she's been.",
+    "note": "phantom: Sarah Jones lives at Sarah's Place, a reachable sibling under Tempe, and is named in full inside Jessica's speech — the exact shape that fired the visitor pull in the reported session"
+  },
+  {
+    "id": "surgery",
+    "world": "vane-hollow.json",
+    "location": "Ilsa's Surgery",
+    "present": "Ilsa",
+    "offscene": "Bracken",
+    "prior": "Ilsa turns your wrist over under the lamp and holds it there, unhurried, reading the swelling rather than looking at your face.\n\n\"Bracken sent you up, I suppose,\" she says. \"He sends me everyone he can't shout back into working. Hold still.\"",
+    "action": "I ask her whether it's broken.",
+    "note": "phantom: Bracken works the Shaft Head and is named only in Ilsa's speech"
+  },
+  {
+    "id": "common-acting",
+    "control": "prose",
+    "world": "blackrue-waystation.json",
+    "location": "The Common Room",
+    "present": "Sable",
+    "alsoPresent": "Pell",
+    "prior": "Sable drags a bench closer to the fire with her boot and drops onto it. Across the room Pell stacks the last of the cups and comes over, drying her hands on a rag.\n\n\"Long road,\" Sable says. \"Longer than it looks on the map.\"",
+    "action": "I ask them both what the road ahead is like.",
+    "note": "control: Pell is present AND acting in prose — both arms must keep her, no calls spent"
+  },
+  {
+    "id": "common-spoken",
+    "control": "spoken-only",
+    "world": "blackrue-waystation.json",
+    "location": "The Common Room",
+    "present": "Sable",
+    "alsoPresent": "Pell",
+    "prior": "Sable drags a bench closer to the fire with her boot and drops onto it, stretching both legs toward the coals.\n\n\"Pell, bring the ledger over,\" she says. \"And something hot, if there's any left in the pot.\"",
+    "action": "I ask what the ledger says.",
+    "note": "control: Pell IS present but is named only inside dialogue — the known cost of prose-only presence, measured rather than hidden. In play the 3-turn presence window carries her; a single-turn probe has no window."
+  }
+]

@@ -98,6 +98,22 @@ function anyAliasMatches(text: string, aliases: string[] | undefined): boolean {
   return false;
 }
 
+// Straight or curly double-quoted spans. Single quotes are left alone — apostrophes make them
+// unreliable. A trailing unterminated opener runs to the end of the text.
+const QUOTED_SPEECH_RE = /["“][^"”]*(?:["”]|$)/g;
+
+/**
+ * The narrative prose of `text` with quoted speech removed — what a character is *doing* on the page,
+ * rather than what other characters say about them. Presence parses read this: a name that only ever
+ * appears inside quotation marks was talked about, not present. Mid-stream, an unterminated opening
+ * quote swallows the rest, so a partial narration errs toward "this is dialogue" and resolves on the
+ * next tick.
+ */
+export function stripQuotedSpeech(text: string): string {
+  if (!text || !/["“]/.test(text)) return text;
+  return text.replace(QUOTED_SPEECH_RE, ' ');
+}
+
 /**
  * The names of the defined entities that appear in `text`. An entity counts when its **name** matches
  * (via `matchNames`) OR any of its **aliases** matches (case-sensitive, word-bounded); either way the

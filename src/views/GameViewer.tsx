@@ -72,7 +72,7 @@ import { reasoningEffortBody, resolvePromptReasoning, reasoningBudgetBody } from
 import { splitSentenceSegments } from "../lib/ttsChunks";
 import { selectDueDigests, applyDigest, applyImportance, parseTurnContent, recentParticipants, selectDueDiaries, pendingDiaryNames, applyDiary } from "../lib/turnDigest";
 import { buildTraitContext } from "../lib/traitTree";
-import { buildLocationContext, buildEntityContext, buildSublocationsContext, buildSublocationEntitiesContext, buildReachableLocationsContext, buildReachableEntitiesContext, buildDestinationsContext, buildParentLocationContext, buildSceneEntitiesContext, navigableDestinations, sublocationEntityIds } from "../lib/locationContext";
+import { buildLocationContext, buildEntityContext, buildSublocationsContext, buildSublocationEntitiesContext, buildReachableLocationsContext, buildReachableEntitiesContext, buildDestinationsContext, buildParentLocationContext, buildSceneEntitiesContext, scenePresentHere, navigableDestinations, sublocationEntityIds } from "../lib/locationContext";
 import { primeRolls, resolvePlaceholders } from "@/lib/placeholders";
 import { resolveStartingLocation } from "../lib/startingLocation";
 import { NONE_PLACEHOLDER } from "../lib/promptFallbacks";
@@ -89,7 +89,7 @@ import { entryVectorKey, entryEmbedText, selectSemanticLore, applySemanticLore }
 import { selectSemanticRehydrations, rehydrationCooldownBlocked } from "../lib/semanticRehydration";
 import { embedTexts, isEmbeddingModelReady, loadEmbeddingModel } from "../lib/embeddingWorkerClient";
 import { getVectors, putVector } from "../lib/embeddingCache";
-import { findEntityNames, matchNames, matchNamesLoose, sameCharacterName } from "../lib/entityMatch";
+import { findEntityNames, matchNames, matchNamesLoose, sameCharacterName, stripQuotedSpeech } from "../lib/entityMatch";
 import { parseChoices } from "../lib/choices";
 import { setGameplayText } from "../lib/gameplayTextStore";
 import { useSentenceReveal } from "../lib/useSentenceReveal";
@@ -1237,9 +1237,14 @@ const GameViewer = ({
       "": (opts) => buildEntityContext(here, allEntities, opts),
       sublocations: (opts) => buildSublocationEntitiesContext(loc, locations, allEntities, { ...opts, excludeIds: presentIds }),
       reachable: (opts) => buildReachableEntitiesContext(loc, locations, allEntities, { ...opts, excludeIds: reachableExclude }),
-      // Who has actually taken part lately, wherever they came from — the roster a sentence about the
-      // present scene wants, as opposed to whoever the location happens to list.
-      inscene: (opts) => buildSceneEntitiesContext(recentParticipants(fullMessageHistory, CHOICES_PRESENCE_TURNS), allEntities, opts),
+      // Who has actually taken part lately, minus anyone the dialogue merely kept naming: an authored
+      // entity who lives elsewhere is dropped, while ad-hoc and just-arrived characters stay (visitors
+      // reach `presentIds` through the discovered-entity path).
+      inscene: (opts) => buildSceneEntitiesContext(
+        scenePresentHere(recentParticipants(fullMessageHistory, CHOICES_PRESENCE_TURNS), allEntities, presentIds),
+        allEntities,
+        opts,
+      ),
     };
 
     // Render each Stats token from its decoded pieces (Values/Status/Meaning) + format.
@@ -1697,14 +1702,19 @@ ${playerNotes || NONE_PLACEHOLDER}
       // having been discovered. Always on and never gated: it costs no request, and presence, the
       // choices filter and participation recall shouldn't depend on a toggle. Only the DESCRIPTION
       // that turns a name into a full entity costs anything, and that is what the setting governs.
+      // Presence comes from what the narration shows happening, not from who the dialogue talks about —
+      // a character named only inside quotes ("for Professor Serana's review") was mentioned, not present.
+      // The planner-confirmation sources below read the full text: a cast is an authoritative presence
+      // signal, not an inference from the page.
+      const narrationProse = stripQuotedSpeech(narrationResponse);
       const narratedNames = extractCharacterCandidates(
-        narrationResponse,
+        narrationProse,
         { ...characterExclusions, suppressed: suppressedCharacterNames },
         collectCandidateEvidence(priorNarration),
       );
       const turnParticipants = [
         ...new Set([
-          ...findEntityNames(narrationResponse, allEntities),
+          ...findEntityNames(narrationProse, allEntities),
           ...matchNamesLoose(narrationResponse, directorCandidates),
           ...matchNames(narrationResponse, adHocCandidates),
           ...narratedNames,
@@ -1730,8 +1740,12 @@ ${playerNotes || NONE_PLACEHOLDER}
       // rolls back with the turn. Affects the next turn's context (this turn's ctx already ran).
       // Fed by a stricter parse than `turnParticipants`: this path physically relocates an authored NPC, so
       // it takes full-name hits only — a loose single-word match must not teleport someone into the scene.
+      // Prose-only for the same reason presence is: `partial: false` bounds how loosely a name may match,
+      // not whether it was merely spoken about, and a full name inside dialogue still hits. Once someone is
+      // anchored here they count as present, so a dialogue-only mention would otherwise walk them into the
+      // scene permanently and past the now-line's location filter.
       if (turnLocation) {
-        const visitorParticipants = findEntityNames(narrationResponse, allEntities, { partial: false });
+        const visitorParticipants = findEntityNames(narrationProse, allEntities, { partial: false });
         const visitors = selectReachableVisitors(
           visitorParticipants, turnLocation, locations, entities,
           withDiscovered(turnLocation)?.entities ?? [],

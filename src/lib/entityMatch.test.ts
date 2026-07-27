@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { matchNames, findEntityNames, matchNamesLoose, sameCharacterName } from './entityMatch';
+import { matchNames, findEntityNames, matchNamesLoose, sameCharacterName, stripQuotedSpeech } from './entityMatch';
 import type { Entity } from '@/types';
 
 const ent = (name: string): Entity => ({ id: name, name });
@@ -196,5 +196,51 @@ describe('sameCharacterName (conservative de-dupe)', () => {
 
   it('is false when a name has no significant words to compare', () => {
     expect(sameCharacterName('', 'Mira')).toBe(false);
+  });
+});
+
+describe('stripQuotedSpeech (presence reads prose, not dialogue)', () => {
+  it('removes straight-quoted speech', () => {
+    expect(stripQuotedSpeech('"Serana will be pleased," she said.')).toBe('  she said.');
+  });
+
+  it('removes curly-quoted speech', () => {
+    expect(stripQuotedSpeech('\u201CSerana will be pleased,\u201D she said.')).toBe('  she said.');
+  });
+
+  it('swallows a trailing unterminated opener (mid-stream partial narration)', () => {
+    expect(stripQuotedSpeech('Wolfram leans in. "Serana told me')).toBe('Wolfram leans in.  ');
+  });
+
+  it('returns quote-free text untouched', () => {
+    const text = 'Wolfram leans across the desk.';
+    expect(stripQuotedSpeech(text)).toBe(text);
+  });
+
+  it('leaves apostrophes alone', () => {
+    expect(stripQuotedSpeech("Wolfram's desk is bare.")).toBe("Wolfram's desk is bare.");
+  });
+
+  it('handles empty input', () => {
+    expect(stripQuotedSpeech('')).toBe('');
+  });
+
+  it('drops a character only ever named inside dialogue, keeping the one acting on the page', () => {
+    const narration = '"Professor Serana will be pleased," she said. Wolfram leaned in.';
+    const entities = [ent('Professor Serana'), ent('Wolfram')];
+    // The bug this guards: the unstripped parse marks Serana present in a scene she is not in.
+    expect(findEntityNames(narration, entities)).toEqual(['Professor Serana', 'Wolfram']);
+    expect(findEntityNames(stripQuotedSpeech(narration), entities)).toEqual(['Wolfram']);
+  });
+});
+
+describe('stripQuotedSpeech + partial:false (the visitor-pull parse)', () => {
+  it('a full name spoken in dialogue does not survive the strict parse either', () => {
+    const narration = '"Professor Serana will review this," Wolfram said.';
+    const entities = [ent('Professor Serana'), ent('Wolfram')];
+    // `partial: false` bounds how loosely a name may match, not whether it was merely spoken about —
+    // the full name still hits the in-order pass, which would walk her into the scene as a visitor.
+    expect(findEntityNames(narration, entities, { partial: false })).toContain('Professor Serana');
+    expect(findEntityNames(stripQuotedSpeech(narration), entities, { partial: false })).toEqual(['Wolfram']);
   });
 });

@@ -2,7 +2,7 @@ import type { Entity, ChatMessage, AIRequestType, SceneEntity } from "@/types";
 import { renderPromptTemplate } from "./promptTemplate";
 import { collectCharacterDiary } from "./turnDigest";
 import { selectRelevantDiary } from "./semanticDiary";
-import { sameCharacterName, matchNames, findEntityNames } from "./entityMatch";
+import { sameCharacterName, matchNames, findEntityNames, stripQuotedSpeech } from "./entityMatch";
 import { escapeRegExp } from "./utils";
 import { NONE_PLACEHOLDER } from "./promptFallbacks";
 
@@ -223,8 +223,9 @@ export function classifyCast(
  * someone. Each present being resolves to its canonical entity name (so the portrait ties) or its ad-hoc
  * name, carries its alias, and is marked `revealed` once the real name has appeared in the narration
  * (`priorNarration` = all past turns, `narrationSoFar` = this turn so far, so reveal flips mid-stream).
- * With no planner (`cast` is null — Off/Inline modes), fall back to the narration parse: a named entity is
- * by definition already revealed.
+ * With no planner (`cast` is null — Off/Inline modes), fall back to the narration parse over prose only:
+ * a character the dialogue merely talks about isn't in the scene. A named entity is by definition already
+ * revealed.
  */
 export function buildSceneList(args: {
   cast: DirectorCastMember[] | null;
@@ -234,7 +235,7 @@ export function buildSceneList(args: {
 }): SceneEntity[] {
   const { cast, entities, narrationSoFar, priorNarration } = args;
   if (!cast) {
-    return findEntityNames(narrationSoFar, entities).map((name) => ({ name, revealed: true }));
+    return findEntityNames(stripQuotedSpeech(narrationSoFar), entities).map((name) => ({ name, revealed: true }));
   }
   const revealedIn = `${priorNarration}\n${narrationSoFar}`;
   const definedByLower = new Map(entities.map((e) => [e.name.trim().toLowerCase(), e.name]));
