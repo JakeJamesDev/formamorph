@@ -35,7 +35,7 @@ import { toast } from 'react-toastify';
 import WorldStorageService from '@/services/WorldStorageService';
 import { DEFAULT_WORLDS, readDeletedDefaultWorlds, clearDeletedDefaultWorlds } from '@/lib/defaultWorlds';
 import { PresetNameDialog } from './PresetNameDialog';
-import { defaultSystemPrompt, defaultNarrationUserPrompt, defaultRecapUserPrompt, defaultRehydrateUserPrompt, defaultOocDirectivePrompt, defaultChoicesPrompt, defaultStatUpdatesPrompt, defaultLocationChangePrompt, defaultThinkingPrompt, defaultSummaryPrompt, defaultChoicesUserPrompt, defaultStatUpdatesUserPrompt, defaultLocationChangeUserPrompt, defaultSummaryUserPrompt, defaultDiaryPrompt, defaultDirectorPrompt, defaultDirectorUserPrompt, defaultCharacterPrompt, defaultStoryboardPrompt, defaultNowLinePrompt, defaultTimePassedPrompt, defaultTimePassedUserPrompt, defaultOpeningTimePrompt, defaultOpeningTimeUserPrompt } from '../game/GamePrompts';
+import { defaultSystemPrompt, defaultNarrationUserPrompt, defaultRecapUserPrompt, defaultRehydrateUserPrompt, defaultOocDirectivePrompt, defaultChoicesPrompt, defaultStatUpdatesPrompt, defaultLocationChangePrompt, defaultThinkingPrompt, defaultSummaryPrompt, defaultChoicesUserPrompt, defaultStatUpdatesUserPrompt, defaultLocationChangeUserPrompt, defaultSummaryUserPrompt, defaultDiaryPrompt, defaultDirectorPrompt, defaultDirectorUserPrompt, defaultCharacterPrompt, defaultStoryboardPrompt, defaultNowLinePrompt, defaultTimePassedPrompt, defaultTimePassedUserPrompt, defaultOpeningTimePrompt, defaultOpeningTimeUserPrompt, defaultSceneTagsPrompt, defaultSceneTagsUserPrompt } from '../game/GamePrompts';
 import { isDesktop } from '@/lib/imageGen/desktop';
 import { fetchComfyMeta, DEFAULT_COMFY_WORKFLOW, type ComfyMeta } from '@/lib/imageGen/comfyui';
 import { fetchInvokeMeta, type InvokeMeta } from '@/lib/imageGen/invokeai';
@@ -64,6 +64,10 @@ const THINKING_OPTIONS: { value: ThinkingMode; label: string; help: string }[] =
   { value: 'precall', label: 'Planning', help: 'Recommended. A separate request is sent to plan narration before writing it. Most reliable for small models.' },
   { value: 'staged', label: 'Staged', help: 'Highest quality, slowest. A director picks the cast, each character plans its motivation, and a storyboarder writes the plan — several extra requests per turn.' },
 ];
+/** Sentinel for the InvokeAI "no board" choice — Radix Select rejects an empty-string item value, and the
+ *  stored setting is '' (Uncategorized). */
+const UNCATEGORIZED_BOARD = '__uncategorized__';
+
 /** A segmented option control that collapses to a dropdown on mobile: a full-width Select below `sm`, the
  *  tab row at `sm+`. Both drive the same value, so option help stacked beneath it (by the caller) is unaffected. */
 function OptionSwitcher({ value, onChange, options }: {
@@ -258,7 +262,7 @@ function PromptOptionsPanel({ verbatim, reasoning, reasoningBudget, samplers, di
   );
 }
 
-export const SettingsModal = ({ isOpen, onOpenChange, previewValues, initialTab, initialPromptTab, onWorldsRestored }: {
+export const SettingsModal = ({ isOpen, onOpenChange, previewValues, initialTab, initialEndpointTab, initialPromptTab, onWorldsRestored }: {
   isOpen: boolean;
   onOpenChange: (open: boolean) => void;
   /** Called after Restore Default Worlds re-seeds, so a world list on screen can refresh. */
@@ -267,10 +271,14 @@ export const SettingsModal = ({ isOpen, onOpenChange, previewValues, initialTab,
   previewValues?: Record<string, string>;
   /** DEV dev-router: open on this top-level tab instead of the default (see `devRouter.ts`). */
   initialTab?: string;
+  /** Which AI Endpoints sub-tab to open ('text-endpoint' | 'img-endpoint' | 'img-tagprompt'). Used by the
+   *  "Open Settings" shortcut in the image generation dialog to land straight on Image. */
+  initialEndpointTab?: string;
   /** DEV dev-router: which prompt under the Prompts tab to open (e.g. 'narration', 'thinking'). */
   initialPromptTab?: string;
 }) => {
   const [activeTab, setActiveTab] = useState<string>(initialTab ?? SETTINGS_TABS[0].value);
+  const [endpointTab, setEndpointTab] = useState<string>(initialEndpointTab ?? 'text-endpoint');
   // Deleted-default count, refreshed whenever the modal opens: localStorage isn't reactive, and the player
   // may have deleted a world since it last rendered.
   const [deletedDefaultCount, setDeletedDefaultCount] = useState(0);
@@ -290,6 +298,7 @@ export const SettingsModal = ({ isOpen, onOpenChange, previewValues, initialTab,
   };
   // Honor a later dev-router tab change while the modal stays open (a fresh __fmDev.goto).
   useEffect(() => { if (initialTab) setActiveTab(initialTab); }, [initialTab]);
+  useEffect(() => { if (initialEndpointTab) setEndpointTab(initialEndpointTab); }, [initialEndpointTab]);
   const {
     bgmEnabled,
     setBgmEnabled,
@@ -401,6 +410,12 @@ export const SettingsModal = ({ isOpen, onOpenChange, previewValues, initialTab,
     setOpeningTimePrompt,
     openingTimeUserPrompt,
     setOpeningTimeUserPrompt,
+    sceneTagsPrompt,
+    setSceneTagsPrompt,
+    sceneTagsUserPrompt,
+    setSceneTagsUserPrompt,
+    sceneImageAuto,
+    setSceneImageAuto,
     setSummaryUserPrompt,
     promptPresets,
     builtinPresets,
@@ -486,6 +501,8 @@ export const SettingsModal = ({ isOpen, onOpenChange, previewValues, initialTab,
     imageWorkflow,
     setImageWorkflow,
     imageInvokeEncoder,
+    imageInvokeBoard,
+    setImageInvokeBoard,
     setImageInvokeEncoder,
     imageInvokeVae,
     setImageInvokeVae,
@@ -657,6 +674,7 @@ export const SettingsModal = ({ isOpen, onOpenChange, previewValues, initialTab,
     summary: { label: 'Summary', reset: () => setSummaryPrompt(defaultSummaryPrompt) },
     timepassed: { label: 'Clock', reset: () => setTimePassedPrompt(defaultTimePassedPrompt) },
     timeopening: { label: 'Opening', reset: () => setOpeningTimePrompt(defaultOpeningTimePrompt) },
+    scenetags: { label: 'Scene Tags', reset: () => setSceneTagsPrompt(defaultSceneTagsPrompt) },
     diary: { label: 'Diary', reset: () => setDiaryPrompt(defaultDiaryPrompt) },
     director: { label: 'Director', reset: () => setDirectorPrompt(defaultDirectorPrompt) },
     character: { label: 'Character', reset: () => setCharacterPrompt(defaultCharacterPrompt) },
@@ -667,6 +685,7 @@ export const SettingsModal = ({ isOpen, onOpenChange, previewValues, initialTab,
   // or on reopen), fall back to Narration so the panel isn't blank.
   const promptAvailable = computePromptTabAvailability({
     thinkingMode, choicesEnabled, statUpdatesEnabled, locationChangeEnabled, memoryDigests, characterDiaries, aiClock,
+    sceneImages: !imageGenDisabled,
   });
   const activePromptTab = promptAvailable[promptTab] ? promptTab : 'narration';
   const selectedPrompt = promptResets[activePromptTab] ?? promptResets.narration;
@@ -689,6 +708,7 @@ export const SettingsModal = ({ isOpen, onOpenChange, previewValues, initialTab,
     timepassed: { value: timePassedUserPrompt, set: setTimePassedUserPrompt, reset: () => setTimePassedUserPrompt(defaultTimePassedUserPrompt), variables: PROMPT_KIND_USER_VARIABLES.timepassed ?? [] },
     timeopening: { value: openingTimeUserPrompt, set: setOpeningTimeUserPrompt, reset: () => setOpeningTimeUserPrompt(defaultOpeningTimeUserPrompt), variables: PROMPT_KIND_USER_VARIABLES.timeopening ?? [] },
     director: { value: directorUserPrompt, set: setDirectorUserPrompt, reset: () => setDirectorUserPrompt(defaultDirectorUserPrompt), variables: PROMPT_KIND_USER_VARIABLES.director ?? [] },
+    scenetags: { value: sceneTagsUserPrompt, set: setSceneTagsUserPrompt, reset: () => setSceneTagsUserPrompt(defaultSceneTagsUserPrompt), variables: PROMPT_KIND_USER_VARIABLES.scenetags ?? [] },
   };
   const activeUserPrompt = userPrompts[activePromptTab];
   const showingUser = promptView === 'user' && !!activeUserPrompt;
@@ -1040,6 +1060,28 @@ Works best when **Paragraph Limit** isn't set to *Single*.`}</HintInfo>
                   </label>
                 </div>
               </div>
+              {/* Scene images — a picture of each turn, drawn after its text is finished. Hidden entirely when
+                  image generation is switched off app-wide. */}
+              {!imageGenDisabled && (
+                <div className="grid grid-cols-1 sm:grid-cols-[minmax(0,1fr)_minmax(0,3fr)] items-start gap-4">
+                  <RowLabel htmlFor="sceneImageAuto" info={
+                    <HintInfo>{`Draws a picture of every turn without being asked.
+
+The image renders **after** the turn's text is done and holds your next action until it finishes — one graphics card can't run the artist and the writer at once. Expect each turn to take as long as your image server needs.
+
+You can always draw a single scene by hand from the button above the story instead.`}</HintInfo>
+                  }>Scene Images</RowLabel>
+                  <div className="flex items-center gap-2">
+                    <Checkbox
+                      id="sceneImageAuto"
+                      checked={sceneImageAuto}
+                      onCheckedChange={(c) => setSceneImageAuto(c === true)}
+                      className="shrink-0"
+                    />
+                    <span className="text-xs text-muted-foreground">Draw every turn automatically (slower turns).</span>
+                  </div>
+                </div>
+              )}
               {/* Auto-apply detected location changes — its own row, only shown while Location Change is on. */}
               {locationChangeEnabled && (
                 <SubGroup>
@@ -1435,7 +1477,7 @@ An inspection aid for authoring and debugging; off by default.`}</HintInfo>
           </TabsContent>
 
           <TabsContent value="endpoints" className="py-4 px-2 flex-1 min-h-0 data-[state=active]:flex flex-col">
-            <Tabs defaultValue="text-endpoint" className="flex flex-col flex-1 min-h-0">
+            <Tabs value={endpointTab} onValueChange={setEndpointTab} className="flex flex-col flex-1 min-h-0">
               <TabsList className="grid w-full grid-cols-3 flex-shrink-0">
                 <TabsTrigger value="text-endpoint">Text</TabsTrigger>
                 <TabsTrigger value="img-endpoint">Image</TabsTrigger>
@@ -1728,10 +1770,10 @@ An inspection aid for authoring and debugging; off by default.`}</HintInfo>
 
               <Section title="Image">
               <Row label="Prompt Prefix" htmlFor="imagePositivePrompt" hint="Prepended to every generated prompt (quality/style tags). Leave blank for none.">
-                <Input id="imagePositivePrompt" value={imagePositivePrompt} onChange={(e) => setImagePositivePrompt(e.target.value)} placeholder="e.g. masterpiece, best quality" />
+                <Textarea id="imagePositivePrompt" rows={3} value={imagePositivePrompt} onChange={(e) => setImagePositivePrompt(e.target.value)} placeholder="e.g. masterpiece, best quality" />
               </Row>
               <Row label="Negative Prompt" htmlFor="imageNegativePrompt">
-                <Input id="imageNegativePrompt" value={imageNegativePrompt} onChange={(e) => setImageNegativePrompt(e.target.value)} />
+                <Textarea id="imageNegativePrompt" rows={3} value={imageNegativePrompt} onChange={(e) => setImageNegativePrompt(e.target.value)} />
               </Row>
               <Row center label="Portrait (W × H)">
                 <div className="flex items-center gap-2">
@@ -1808,10 +1850,31 @@ An inspection aid for authoring and debugging; off by default.`}</HintInfo>
                   </div>
                 </Row>
               )}
+              {imageProvider === 'invokeai' && (
+                <Row label="Board" htmlFor="imageInvokeBoard" hint="Which InvokeAI gallery board generated images are filed under. Uncategorized is InvokeAI's default.">
+                  <Select
+                    value={imageInvokeBoard || UNCATEGORIZED_BOARD}
+                    onValueChange={(v) => setImageInvokeBoard(v === UNCATEGORIZED_BOARD ? '' : v)}
+                  >
+                    <SelectTrigger id="imageInvokeBoard"><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value={UNCATEGORIZED_BOARD}>Uncategorized</SelectItem>
+                      {(invokeMeta?.boards ?? []).map((b) => (
+                        <SelectItem key={b.board_id} value={b.board_id}>{b.board_name}</SelectItem>
+                      ))}
+                      {/* A board saved in this preset but missing from the server (deleted, or the list
+                          failed to load) still needs an item, or Radix would render an empty trigger. */}
+                      {imageInvokeBoard && !(invokeMeta?.boards ?? []).some((b) => b.board_id === imageInvokeBoard) && (
+                        <SelectItem value={imageInvokeBoard}>Unknown board (falls back to Uncategorized)</SelectItem>
+                      )}
+                    </SelectContent>
+                  </Select>
+                </Row>
+              )}
               {imageProvider === 'invokeai'
                 && invokeMeta?.models.find((m) => m.name === imageModel || m.key === imageModel)?.base === 'z-image' && (
                 <>
-                  <Row center label="Qwen3 Encoder" htmlFor="imageInvokeEncoder" hint="Z-Image needs a Qwen3 text encoder. Leave blank to auto-pick the first installed one.">
+                  <Row label="Qwen3 Encoder" htmlFor="imageInvokeEncoder" hint="Z-Image needs a Qwen3 text encoder. Leave blank to auto-pick the first installed one.">
                     <TokenAutocomplete
                       single
                       openOnFocus
@@ -1821,7 +1884,7 @@ An inspection aid for authoring and debugging; off by default.`}</HintInfo>
                       placeholder="(auto)"
                     />
                   </Row>
-                  <Row center label="Z-Image VAE" htmlFor="imageInvokeVae" hint="Z-Image needs a FLUX-type VAE (e.g. FLUX.1-schnell VAE). Leave blank to auto-pick.">
+                  <Row label="Z-Image VAE" htmlFor="imageInvokeVae" hint="Z-Image needs a FLUX-type VAE (e.g. FLUX.1-schnell VAE). Leave blank to auto-pick.">
                     <TokenAutocomplete
                       single
                       openOnFocus
@@ -1920,6 +1983,7 @@ An inspection aid for authoring and debugging; off by default.`}</HintInfo>
                 {memoryDigests && <TabsTrigger value="summary">Summary</TabsTrigger>}
                 {aiClock && <TabsTrigger value="timepassed">Clock</TabsTrigger>}
                 {aiClock && <TabsTrigger value="timeopening">Opening</TabsTrigger>}
+                {!imageGenDisabled && <TabsTrigger value="scenetags">Scene Tags</TabsTrigger>}
                 {promptAvailable.diary && <TabsTrigger value="diary">Diary</TabsTrigger>}
                 {thinkingMode === 'staged' && <TabsTrigger value="director">Director</TabsTrigger>}
                 {thinkingMode === 'staged' && <TabsTrigger value="character">Character</TabsTrigger>}
@@ -2081,6 +2145,19 @@ An inspection aid for authoring and debugging; off by default.`}</HintInfo>
                     readOnly={activePresetIsBuiltIn}
                   />
                   <p className="text-xs text-muted-foreground flex-shrink-0">Reads the opening scene once to work out what time of day the story starts at. Answer with one daypart: night, dawn, morning, midday, afternoon, evening. Only used when Measured Clock is on.</p>
+                </TabsContent>
+              )}
+
+              {!imageGenDisabled && (
+                <TabsContent value="scenetags" className="mt-4 flex-1 min-h-0 data-[state=active]:flex flex-col gap-1">
+                  <PromptField
+                    value={showingUser ? sceneTagsUserPrompt : sceneTagsPrompt}
+                    onChange={showingUser ? setSceneTagsUserPrompt : setSceneTagsPrompt}
+                    variables={showingUser ? (PROMPT_KIND_USER_VARIABLES.scenetags ?? []) : PROMPT_KIND_VARIABLES.scenetags}
+                    previewValues={previewValues}
+                    readOnly={activePresetIsBuiltIn}
+                  />
+                  <p className="text-xs text-muted-foreground flex-shrink-0">Writes the action tags for a scene image — what the people in frame are doing. Their appearance comes from their own image tags and the background from the location&rsquo;s, so this pass deliberately adds neither.</p>
                 </TabsContent>
               )}
 

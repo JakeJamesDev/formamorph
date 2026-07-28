@@ -45,7 +45,8 @@ export type AIRequestType =
   | 'diary'
   | 'discoverEntity'
   | 'timePassed'
-  | 'openingTime';
+  | 'openingTime'
+  | 'sceneTags';
 
 /**
  * Structured payload the game stores per turn (mirrors the JSON the app round-trips).
@@ -81,6 +82,12 @@ export interface AITurnResult {
    *  written before the clock, and whenever the pass was off or failed — absent reads as the flat one
    *  hour the game has always charged, never as zero. */
   timeDelta?: number;
+  /** Scene images generated for this turn, oldest first (data URLs). Held in memory during play and written
+   *  to a save only when the player opts in — one image is around a megabyte. Absent on every other save. */
+  sceneImages?: string[];
+  /** The booru tag line this turn's images were generated from, kept so the player's edits survive a reload
+   *  and a saved scene stays reproducible without carrying its pixels. Absent until a scene image is made. */
+  sceneTags?: string;
   /** A reasoning model's (or inline-thinking) private scratchpad for this turn, shown as a collapsible aside
    *  above the narration. `ms` is the think duration. Absent when the model didn't reason / on pre-2.1.0 saves. */
   reasoning?: { text: string; ms: number };

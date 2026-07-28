@@ -1,8 +1,17 @@
 import { randomUUID } from "@/lib/uuid";
 import { createContext, useContext, useState, useEffect, useRef, useCallback, useMemo, type ReactNode } from 'react';
-import { defaultSystemPrompt, defaultNarrationUserPrompt, defaultRecapUserPrompt, defaultRehydrateUserPrompt, defaultOocDirectivePrompt, defaultChoicesPrompt, defaultStatUpdatesPrompt, defaultLocationChangePrompt, defaultThinkingPrompt, defaultSummaryPrompt, defaultChoicesUserPrompt, defaultStatUpdatesUserPrompt, defaultLocationChangeUserPrompt, defaultSummaryUserPrompt, defaultDiaryPrompt, defaultDirectorPrompt, defaultDirectorUserPrompt, defaultCharacterPrompt, defaultStoryboardPrompt, defaultNowLinePrompt, defaultTimePassedPrompt, defaultTimePassedUserPrompt, defaultOpeningTimePrompt, defaultOpeningTimeUserPrompt } from '../components/game/GamePrompts';
+import { defaultSystemPrompt, defaultNarrationUserPrompt, defaultRecapUserPrompt, defaultRehydrateUserPrompt, defaultOocDirectivePrompt, defaultChoicesPrompt, defaultStatUpdatesPrompt, defaultLocationChangePrompt, defaultThinkingPrompt, defaultSummaryPrompt, defaultChoicesUserPrompt, defaultStatUpdatesUserPrompt, defaultLocationChangeUserPrompt, defaultSummaryUserPrompt, defaultDiaryPrompt, defaultDirectorPrompt, defaultDirectorUserPrompt, defaultCharacterPrompt, defaultStoryboardPrompt, defaultNowLinePrompt, defaultTimePassedPrompt, defaultTimePassedUserPrompt, defaultOpeningTimePrompt, defaultOpeningTimeUserPrompt, defaultSceneTagsPrompt, defaultSceneTagsUserPrompt } from '../components/game/GamePrompts';
 import { DEFAULT_ENDPOINT, DEFAULT_API_TOKEN, DEFAULT_MODEL_NAME, DEFAULT_MAX_TOKENS, DEFAULT_CONTEXT_WINDOW, DEFAULT_LOCAL_CONTEXT_SIZE, DEFAULT_LOCAL_GPU_LAYERS, DEFAULT_LOCAL_FLASH_ATTENTION, DEFAULT_LOCAL_PARALLEL_REQUESTS, DEFAULT_GEN_TEMPERATURE, DEFAULT_GEN_TOP_P, DEFAULT_GEN_REPETITION_PENALTY, DEFAULT_GEN_TOP_K, DEFAULT_GEN_MIN_P, DEFAULT_THEME_COLOR, BASE_THEME_COLOR, THEME_COLORS, DEFAULT_FONT, FONT_OPTIONS, SYSTEM_FONT_STACK, DEFAULT_NARRATION_FONT, DEFAULT_NARRATION_SCALE, DEFAULT_NARRATION_LINE_HEIGHT, NARRATION_FONT_OPTIONS, fontStack, fontSizeAdjust, DEFAULT_UPDATE_CHANNEL, type ThemeColor, type FontChoice, type NarrationFont, type UpdateChannel } from './settingsDefaults';
 import { isDesktop } from '../lib/imageGen/desktop';
+
+/** A request to open the Settings modal at a given tab (and, for `endpoints`, a given sub-tab). The nonce
+ *  distinguishes two identical requests so the second one still re-opens the modal. */
+export interface SettingsOpenRequest {
+  tab: string;
+  endpointTab?: string;
+  nonce: string;
+}
+
 import { DEFAULT_TAG_PROMPT } from '../lib/imagePrompt';
 import {
   imageEndpointPresetCodec, makeDefaultStore as makeImageStore, presetStoreFromEnv, DEFAULT_IMAGE_ENDPOINT_VALUES,
@@ -92,6 +101,7 @@ function seedImagePresetStore(): ImageEndpointPresetStore {
     workflow: d.workflow,
     invokeEncoder: d.invokeEncoder,
     invokeVae: d.invokeVae,
+    invokeBoard: d.invokeBoard,
   });
 }
 
@@ -173,6 +183,8 @@ const PROMPT_TEXT_DEFAULTS: PromptValues = {
   timePassedUserPrompt: defaultTimePassedUserPrompt,
   openingTimePrompt: defaultOpeningTimePrompt,
   openingTimeUserPrompt: defaultOpeningTimeUserPrompt,
+  sceneTagsPrompt: defaultSceneTagsPrompt,
+  sceneTagsUserPrompt: defaultSceneTagsUserPrompt,
 };
 
 /** Each read-only built-in preset's values, its section style applied to the canonical text (markdown =
@@ -551,7 +563,7 @@ function useProvideSettings() {
     systemPrompt, narrationUserPrompt, recapUserPrompt, rehydrateUserPrompt, oocDirectivePrompt, choicesPrompt, statUpdatesPrompt, locationChangePromptText, thinkingPrompt, summaryPrompt,
     diaryPrompt, directorPrompt, directorUserPrompt, characterPrompt, storyboardPrompt,
     choicesUserPrompt, statUpdatesUserPrompt, locationChangeUserPrompt, summaryUserPrompt, nowLinePrompt, timePassedPrompt, timePassedUserPrompt,
-    openingTimePrompt, openingTimeUserPrompt,
+    openingTimePrompt, openingTimeUserPrompt, sceneTagsPrompt, sceneTagsUserPrompt,
   } = promptValues;
   const setSystemPrompt = (v: string) => setPresetStore((s) => updateValue(s, 'systemPrompt', v));
   const setNarrationUserPrompt = (v: string) => setPresetStore((s) => updateValue(s, 'narrationUserPrompt', v));
@@ -577,6 +589,8 @@ function useProvideSettings() {
   const setTimePassedUserPrompt = (v: string) => setPresetStore((s) => updateValue(s, 'timePassedUserPrompt', v));
   const setOpeningTimePrompt = (v: string) => setPresetStore((s) => updateValue(s, 'openingTimePrompt', v));
   const setOpeningTimeUserPrompt = (v: string) => setPresetStore((s) => updateValue(s, 'openingTimeUserPrompt', v));
+  const setSceneTagsPrompt = (v: string) => setPresetStore((s) => updateValue(s, 'sceneTagsPrompt', v));
+  const setSceneTagsUserPrompt = (v: string) => setPresetStore((s) => updateValue(s, 'sceneTagsUserPrompt', v));
 
   // Preset-scoped tuning derives from the active preset (built-ins → empty → defaults); setters patch the
   // active preset and no-op under a built-in, mirroring the text setters above.
@@ -722,6 +736,10 @@ function useProvideSettings() {
   // Hide every "Generate with AI" image affordance app-wide. Global (not per-preset) so the user can turn
   // image generation off entirely without losing their endpoint configs.
   const [imageGenDisabled, setImageGenDisabled] = usePersistentState<boolean>(`${APP_ID}_imageGenDisabled`, false, boolCodec);
+  // Generate a scene image for every turn automatically. Off by default: the image renders after the turn's
+  // text is finished and blocks the next action while it runs (one GPU, and a diffusion pass alongside the
+  // language model spills it to CPU), so it is a deliberate opt-in rather than a default cost.
+  const [sceneImageAuto, setSceneImageAuto] = usePersistentState<boolean>(`${APP_ID}_sceneImageAuto`, false, boolCodec);
   // Image generation config (Settings → AI Endpoints → Image). Lives in named, freely-editable presets so
   // the user can keep several image-server configs. The active preset's values back the fields below; the
   // public getter/setter names are unchanged so consumers (GenerateImageButton) don't care about presets.
@@ -740,6 +758,7 @@ function useProvideSettings() {
     landscapeWidth: imageLandscapeWidth, landscapeHeight: imageLandscapeHeight,
     steps: imageSteps, cfg: imageCfg, sampler: imageSampler, adetailer: imageAdetailer,
     workflow: imageWorkflow, invokeEncoder: imageInvokeEncoder, invokeVae: imageInvokeVae,
+    invokeBoard: imageInvokeBoard,
   } = imageValues;
   const setImageProvider = patchImage('provider');
   const setImageEndpoint = patchImage('endpoint');
@@ -758,6 +777,7 @@ function useProvideSettings() {
   const setImageWorkflow = patchImage('workflow');
   const setImageInvokeEncoder = patchImage('invokeEncoder');
   const setImageInvokeVae = patchImage('invokeVae');
+  const setImageInvokeBoard = patchImage('invokeBoard');
   // DEV-only: let preview verification set Image Gen values in one call (`window.__fmDev.setImage({...})`)
   // instead of driving Radix dropdowns by hand. Tree-shaken from prod via the import.meta.env.DEV guard.
   useEffect(() => {
@@ -878,7 +898,19 @@ function useProvideSettings() {
   const [ttsSpeed, setTtsSpeed] = usePersistentState<number>(`${APP_ID}_ttsSpeed`, 1, floatCodec);
   const [ttsHighlight, setTtsHighlight] = usePersistentState<boolean>(`${APP_ID}_ttsHighlight`, true, boolCodec);
 
+  // A pending "open Settings here" request. Deep-nested surfaces (the image generation dialog) can't reach
+  // the modal — it's mounted by MainMenu/GameViewer — so they park a request here and the owning view acts
+  // on it. Not persisted; the nonce makes a repeat request for the same tab fire again.
+  const [settingsRequest, setSettingsRequest] = useState<SettingsOpenRequest | null>(null);
+  const requestSettings = useCallback((tab: string, endpointTab?: string) => {
+    setSettingsRequest({ tab, endpointTab, nonce: randomUUID() });
+  }, []);
+  const clearSettingsRequest = useCallback(() => setSettingsRequest(null), []);
+
   const value = {
+    settingsRequest,
+    requestSettings,
+    clearSettingsRequest,
     bgmEnabled,
     setBgmEnabled,
     themeColor,
@@ -1100,6 +1132,10 @@ function useProvideSettings() {
     setOpeningTimePrompt,
     openingTimeUserPrompt,
     setOpeningTimeUserPrompt,
+    sceneTagsPrompt,
+    setSceneTagsPrompt,
+    sceneTagsUserPrompt,
+    setSceneTagsUserPrompt,
     setSummaryUserPrompt,
     promptPresets,
     builtinPresets,
@@ -1115,6 +1151,8 @@ function useProvideSettings() {
     importPreset,
     imageGenDisabled,
     setImageGenDisabled,
+    sceneImageAuto,
+    setSceneImageAuto,
     imageProvider,
     setImageProvider,
     imageEndpoint,
@@ -1149,6 +1187,8 @@ function useProvideSettings() {
     setImageInvokeEncoder,
     imageInvokeVae,
     setImageInvokeVae,
+    imageInvokeBoard,
+    setImageInvokeBoard,
     imageEndpointPresets,
     activeImageEndpointPresetId,
     activeImageEndpointPresetName,

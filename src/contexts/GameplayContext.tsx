@@ -9,6 +9,7 @@ import { APP_VERSION, isSaveEnvelope, migrateSave, migrateLegacySaveState, strip
 import { flattenEnabledBookEntries } from '../lib/dictionaryUtils';
 import { getGameplayText, setGameplayText } from '../lib/gameplayTextStore';
 import { parseTurnContent, serializeTurnContent } from '../lib/turnDigest';
+import { stripSceneImages } from '../lib/sceneImages';
 import { matchChoicesToAction } from '../lib/choices';
 import { pageStatDeltas } from '../lib/statChanges';
 import { pageAssistantIndex, pageNextActionIndex, placeSnapshot } from '../lib/turnHistory';
@@ -253,8 +254,12 @@ function useProvideGameplay() {
   // used to prefill the Save dialog so re-saving over the same slot is one step. Cleared per fresh session.
   const [lastSaveName, setLastSaveName] = useState('');
 
-  const saveGame = useCallback(async (saveName: string, worldName: string, worldId?: string, saveId?: string, opts?: { isAutosave?: boolean }) => {
+  const saveGame = useCallback(async (saveName: string, worldName: string, worldId?: string, saveId?: string, opts?: { isAutosave?: boolean; includeSceneImages?: boolean }) => {
     const isAutosave = opts?.isAutosave ?? false;
+    // Scene images are stripped unless the player asked for them on this save (autosave never carries them):
+    // each is around a megabyte of base64, so a long illustrated session would otherwise write a save an
+    // order of magnitude larger than the story in it.
+    const keepSceneImages = !isAutosave && (opts?.includeSceneImages ?? false);
     try {
       const gameState = saveCurrentGameState();
       gameState.worldName = worldName;
@@ -264,7 +269,7 @@ function useProvideGameplay() {
         name: saveName,
         worldId,
         // The one canonical flat history; snapshots below are stripped of their own copies (O(N²) on disk).
-        messageHistory: gameState.fullMessageHistory ?? [],
+        messageHistory: keepSceneImages ? (gameState.fullMessageHistory ?? []) : stripSceneImages(gameState.fullMessageHistory ?? []),
         currentState: stripSnapshotHistory(gameState),
         stateHistory: gameStates.map(stripSnapshotHistory), // per-turn snapshots, history-free
         version: APP_VERSION, // stamp the current app version (legacy envelopes used numeric 2 ≙ v1.2)

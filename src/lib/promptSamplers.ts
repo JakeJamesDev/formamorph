@@ -17,6 +17,9 @@ export const PROMPT_SAMPLER_PINS: Partial<Record<AIRequestType, Partial<Record<P
   milestoneSelect: { temperature: 0 },
   timePassed: { temperature: 0 },
   openingTime: { temperature: 0 },
+  // The tag pass names what a scene shows. Not an extraction (0 gives the same five flat tags for any
+  // action) and not creative writing either, so it sits low but non-zero.
+  sceneTags: { temperature: 0.3 },
   thinking: { temperature: 0.4, repetitionPenalty: 1 },
 };
 

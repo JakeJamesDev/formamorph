@@ -2,7 +2,7 @@
 // exposure), so this always routes through the Electron desktop bridge (net-fetch in the main process).
 import type { ImageGenOpts, ImageGenParams, ImageProvider } from './types';
 import { desktopFetch } from './desktop';
-import { trimUrl, authHeaders } from './http';
+import { trimUrl, authHeaders, abortable } from './http';
 
 // OpenAI's Images API only accepts a fixed set of sizes; snap the requested dimensions to the nearest
 // by aspect ratio (square / portrait / landscape).
@@ -32,12 +32,14 @@ export const openaiProvider: ImageProvider = async (params: ImageGenParams, opts
     n: 1,
     size: nearestOpenAISize(params.width, params.height),
   };
-  const res = await desktopFetch({
+  // The IPC bridge takes no AbortSignal, so Cancel unblocks the UI while the request finishes unseen —
+  // a cloud generation can't be interrupted server-side anyway.
+  const res = await abortable(desktopFetch({
     url: `${trimUrl(opts.endpointUrl)}/v1/images/generations`,
     method: 'POST',
     headers: { 'Content-Type': 'application/json', ...authHeaders(opts.apiToken, 'Bearer') },
     body: JSON.stringify(body),
-  });
+  }), opts.signal);
   if (!res.ok) throw new Error(`HTTP ${res.status}`);
   return parseOpenAIResponse(JSON.parse(res.body));
 };

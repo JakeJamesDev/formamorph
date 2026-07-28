@@ -208,7 +208,7 @@ const WorldOverviewManager = () => {
         />
         <div className="flex justify-center">
           <GenerateImageButton
-            subject={{ name: worldOverview.name || '', description: worldOverview.description || worldOverview.systemPrompt || '', kind: 'world' }}
+            subject={{ description: worldOverview.description || worldOverview.systemPrompt || '', kind: 'world' }}
             cap={IMAGE_CAPS.thumbnail}
             onChange={(v) => updateWorldOverview({ thumbnail: v })}
           />

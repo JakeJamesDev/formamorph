@@ -1,5 +1,5 @@
-import { describe, it, expect } from 'vitest';
-import { normalizeBooruTags } from './imagePrompt';
+import { describe, it, expect, vi } from 'vitest';
+import { normalizeBooruTags, buildImagePrompt } from './imagePrompt';
 
 describe('normalizeBooruTags', () => {
   it('splits CamelCase/PascalCase joined tokens into spaced words', () => {
@@ -28,5 +28,27 @@ describe('normalizeBooruTags', () => {
 
   it('preserves count tags like 1girl', () => {
     expect(normalizeBooruTags('1girl, solo')).toBe('1girl, solo');
+  });
+});
+
+describe('buildImagePrompt user message', () => {
+  const capture = async (description: string) => {
+    let sent = '';
+    const fetchMock = vi.fn().mockImplementation((_url: string, init: { body: string }) => {
+      sent = (JSON.parse(init.body) as { messages: { role: string; content: string }[] })
+        .messages.find((m) => m.role === 'user')!.content;
+      return Promise.resolve({ ok: true, json: async () => ({ choices: [{ message: { content: 'a tag' } }] }) });
+    });
+    vi.stubGlobal('fetch', fetchMock);
+    await buildImagePrompt({ description, kind: 'character' }, { endpointUrl: 'http://x', apiToken: '', modelName: 'm' });
+    vi.unstubAllGlobals();
+    return sent;
+  };
+
+  it('sends the description alone, never the subject name', async () => {
+    // A name comes back as a tag ("dean wolfram"), which no image model knows.
+    const sent = await capture('a tall man in a grey coat');
+    expect(sent).toContain('a tall man in a grey coat');
+    expect(sent).not.toContain('Name:');
   });
 });

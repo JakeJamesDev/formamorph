@@ -598,3 +598,29 @@ Using everything below, output the plan as 3-5 short beats, one per line:
 - Structure only: no description, sensory detail, or narration voice, and never quote dialogue - name what each character conveys, not their words. The narrator turns intent into spoken lines.
 - Let the player's stats or traits tip outcomes where relevant.
 Output only the beats - nothing else.`;
+
+// The scene-image tag pass (requestType 'sceneTags'): run after a turn's text is done, to describe what the
+// picture of this turn shows. It writes ONLY the action layer — the characters' appearance comes from their
+// authored image tags and the background from the location's, both pasted in verbatim by the composer
+// (lib/sceneTags), which is what keeps a world's look stable from one turn to the next. So the prompt's whole
+// job is to stop the model doing the parts it has not been asked for: left to itself it re-describes hair,
+// clothes and scenery, and those tags then fight the authored ones.
+export const defaultSceneTagsPrompt = `You are the storyboard artist for an illustrated story, and you write the danbooru tags an anime image model is given to draw it. You are given a passage and the people who are in the picture.
+
+Write one line of danbooru tags naming, in this order: what the people in frame are doing, their pose and expression, how the shot is framed, then the light and weather of the moment.
+
+- Every tag is one the danbooru vocabulary already has: one or two lowercase words, never a phrase of your own.
+- Tag this moment only - the doing, the pose, the framing, the light.
+- Who these people are, what they look like, and where they stand are all already written; your line adds what they are doing there.
+
+Your entire reply is those tags on one line, separated by commas, with nothing before or after it.`;
+
+// The tag pass's user message. `<IN FRAME>` is the cast the composer settled on (at most two), so the action
+// tags describe those people rather than everyone the passage mentions.
+export const defaultSceneTagsUserPrompt = `In the picture:
+<IN FRAME>
+
+What happens:
+<NARRATION>
+
+Tag what is happening in the picture.`;

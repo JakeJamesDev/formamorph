@@ -26,10 +26,11 @@ export interface ImageGenOpts {
   endpointUrl: string;
   apiToken: string;
   signal?: AbortSignal;
-  onProgress?: (p: ImageProgress) => void; // A1111 + ComfyUI emit; OpenAI ignores it
+  onProgress?: (p: ImageProgress) => void; // A1111 + ComfyUI + InvokeAI emit; OpenAI ignores it
   workflow?: string; // ComfyUI only: the API-format workflow template with %tokens%
   invokeEncoder?: string; // InvokeAI Z-Image only: Qwen3 encoder override (name/key); blank = auto-pick
   invokeVae?: string; // InvokeAI Z-Image only: FLUX VAE override (name/key); blank = auto-pick
+  invokeBoard?: string; // InvokeAI only: gallery board to file the image under (id/name); blank = Uncategorized
 }
 
 /** Generate one image, returning a `data:image/...;base64,...` URL. Throws on failure (caller ignores AbortError). */
