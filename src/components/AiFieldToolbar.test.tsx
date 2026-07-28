@@ -17,7 +17,7 @@ function Harness({ initial = '' }: { initial?: string }) {
   const [value, setValue] = useState(initial);
   return (
     <>
-      <AiFieldToolbar mode="tags" source="a cat" value={value} onChange={setValue} name="Cat" kind="character" />
+      <AiFieldToolbar mode="tags" source="a cat" value={value} onChange={setValue} kind="character" />
       <textarea aria-label="field" value={value} onChange={(e) => setValue(e.target.value)} />
     </>
   );

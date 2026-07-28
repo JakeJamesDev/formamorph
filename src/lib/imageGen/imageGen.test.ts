@@ -2,6 +2,7 @@ import { describe, it, expect, vi, afterEach } from 'vitest';
 import { buildA1111Body, parseA1111Response, parseProgress, a1111Provider } from './a1111';
 import { nearestOpenAISize, parseOpenAIResponse } from './openai';
 import { generateImage, resolveImageEndpoint } from './index';
+import { abortable } from './http';
 import type { ImageGenParams } from './types';
 
 const params: ImageGenParams = {
@@ -105,6 +106,52 @@ describe('a1111Provider', () => {
   it('throws on a non-OK response', async () => {
     vi.stubGlobal('fetch', vi.fn().mockResolvedValue({ ok: false, status: 500 }));
     await expect(a1111Provider(params, { endpointUrl: 'http://x', apiToken: '' })).rejects.toThrow('HTTP 500');
+  });
+
+  it('interrupts the server when the run is aborted', async () => {
+    const controller = new AbortController();
+    const fetchMock = vi.fn().mockImplementation((url: string) => {
+      if (url.endsWith('/txt2img')) {
+        controller.abort(); // the request is in flight when Stop is pressed
+        return Promise.reject(new DOMException('Aborted', 'AbortError'));
+      }
+      return Promise.resolve({ ok: true, json: async () => ({}) });
+    });
+    vi.stubGlobal('fetch', fetchMock);
+    await expect(
+      a1111Provider(params, { endpointUrl: 'http://x', apiToken: 'pw', signal: controller.signal }),
+    ).rejects.toThrow('Aborted');
+    expect(fetchMock).toHaveBeenCalledWith('http://x/sdapi/v1/interrupt', {
+      method: 'POST',
+      headers: { Authorization: 'Basic pw' },
+    });
+  });
+
+  it('does not interrupt when the run completes normally', async () => {
+    const fetchMock = vi.fn().mockResolvedValue({ ok: true, json: async () => ({ images: ['QUJD'] }) });
+    vi.stubGlobal('fetch', fetchMock);
+    await a1111Provider(params, { endpointUrl: 'http://x', apiToken: '', signal: new AbortController().signal });
+    expect(fetchMock.mock.calls.map((c) => c[0])).not.toContain('http://x/sdapi/v1/interrupt');
+  });
+});
+
+describe('abortable', () => {
+  it('rejects with AbortError as soon as the signal fires, ignoring the pending result', async () => {
+    const controller = new AbortController();
+    const pending = abortable(new Promise<string>((r) => setTimeout(() => r('late'), 50)), controller.signal);
+    controller.abort();
+    await expect(pending).rejects.toThrow('Aborted');
+  });
+
+  it('rejects immediately when the signal is already aborted', async () => {
+    const controller = new AbortController();
+    controller.abort();
+    await expect(abortable(Promise.resolve('x'), controller.signal)).rejects.toThrow('Aborted');
+  });
+
+  it('passes the value through with no signal, or when nothing aborts', async () => {
+    await expect(abortable(Promise.resolve('x'))).resolves.toBe('x');
+    await expect(abortable(Promise.resolve('y'), new AbortController().signal)).resolves.toBe('y');
   });
 });
 

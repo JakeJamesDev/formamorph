@@ -20,7 +20,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { TokenAutocomplete } from "@/components/TokenAutocomplete";
 import { COMMON_LANGUAGES } from "@/lib/languages";
-import { Send, RefreshCw, Pencil, Languages, Loader2, Headphones, Square, ChevronUp, ChevronDown, X, Download, Trash2 } from "lucide-react";
+import { Send, RefreshCw, Pencil, Languages, Loader2, Headphones, Square, ChevronUp, ChevronDown, X, Download, Trash2, Image as ImageIcon, Dices } from "lucide-react";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Progress } from "@/components/ui/progress";
 import { Slider } from "@/components/ui/slider";
@@ -32,6 +32,7 @@ import VRMViewer from '@/views/VRMViewer';
 import { ImageZoomViewer } from '@/components/ImageZoomViewer';
 import TtsPlaybackBar from './TtsPlaybackBar';
 import { MemoryPanel } from './MemoryPanel';
+import { SceneImagePanel } from './SceneImagePanel';
 import { GAME_LEFT_PANEL_TABS } from './leftPanelTabs';
 import { useDevRoute } from '@/lib/devRouter';
 import type { TTSProgress } from './TTSModal';
@@ -440,6 +441,17 @@ export const MiddlePanel = ({
   handleRegenerateStats,
   abortGeneration,
   disabled,
+  sceneImages,
+  sceneTags,
+  sceneTurnReady,
+  sceneImageJob,
+  sceneImageProgress,
+  sceneImagePreview,
+  sceneImagesAvailable,
+  onSceneImage,
+  onSceneTags,
+  onCancelSceneImage,
+  onDeleteSceneImage,
   onTTSClick,
   onExportStory,
   onRegenerateTTS,
@@ -463,6 +475,24 @@ export const MiddlePanel = ({
   handleRegenerateStats: () => void;
   abortGeneration: () => void;
   disabled: boolean;
+  /** The viewed turn's scene images, oldest first. */
+  sceneImages: string[];
+  /** The tag line those images were drawn from. */
+  sceneTags: string;
+  /** The viewed page holds a committed turn, so there is something to draw or tag. */
+  sceneTurnReady: boolean;
+  /** Which half of the scene pipeline is running, or null. */
+  sceneImageJob: 'tags' | 'image' | null;
+  sceneImageProgress: number | null;
+  /** The provider's live in-progress frame, or null. */
+  sceneImagePreview: string | null;
+  /** False when image generation is switched off app-wide — the affordance disappears with it. */
+  sceneImagesAvailable: boolean;
+  onSceneImage: (tags?: string) => void;
+  /** Re-run the tag pass alone, no image. */
+  onSceneTags: () => void;
+  onCancelSceneImage: () => void;
+  onDeleteSceneImage: (index: number) => void;
   onTTSClick: () => void;
   onExportStory: () => void;
   onRegenerateTTS: () => Promise<void> | void;
@@ -593,6 +623,30 @@ export const MiddlePanel = ({
           )}
           <ScrollArea className={`narration-text flex-grow border border-border p-2 bg-muted/80 min-h-0 ${isFlashing ? 'flash-animation' : ''} relative`}>
             <div className="absolute top-2 right-2 z-10 flex gap-2">
+              {sceneImagesAvailable && (
+                <>
+                  {/* Tags first: it costs one small text request and no render, so it is the cheap way to
+                      see what this turn would be drawn as before spending a picture on it. */}
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    onClick={onSceneTags}
+                    disabled={sceneImageJob !== null || !sceneTurnReady}
+                    title="Write scene tags for this turn"
+                  >
+                    {sceneImageJob === 'tags' ? <Loader2 className="h-4 w-4 animate-spin" /> : <Dices className="h-4 w-4" />}
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    onClick={() => onSceneImage()}
+                    disabled={sceneImageJob !== null || !sceneTurnReady}
+                    title="Draw this scene"
+                  >
+                    {sceneImageJob === 'image' ? <Loader2 className="h-4 w-4 animate-spin" /> : <ImageIcon className="h-4 w-4" />}
+                  </Button>
+                </>
+              )}
               {!hasAudio && ttsLoaded && (
                 <Button
                   variant="ghost"
@@ -678,6 +732,20 @@ export const MiddlePanel = ({
               <div className="mb-2">
                 <ReasoningBlock text={liveReasoning.text} ms={liveReasoning.ms} active={liveReasoning.active} />
               </div>
+            )}
+            {sceneImagesAvailable && (
+              <SceneImagePanel
+                images={sceneImages}
+                tags={sceneTags}
+                ready={sceneTurnReady}
+                job={sceneImageJob}
+                progress={sceneImageProgress}
+                preview={sceneImagePreview}
+                onGenerate={onSceneImage}
+                onRegenerateTags={onSceneTags}
+                onCancel={onCancelSceneImage}
+                onDelete={onDeleteSceneImage}
+              />
             )}
             <div className="mt-4 flex flex-col gap-2">
                 {choices && choices.length > 0 && choices.map((choice, index) => {

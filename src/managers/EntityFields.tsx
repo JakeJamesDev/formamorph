@@ -115,7 +115,6 @@ const EntityFields = ({ value, onChange, placeholders = [], locationOptions, sel
         onImageChange={(file) => onChange('image', file)}
         imageId={`entity-image-${value.id}`}
         cap={IMAGE_CAPS.entity}
-        name={value.name}
         description={value.aiDescription || value.playerDescription}
         kind="character"
         tags={value.imageTags}

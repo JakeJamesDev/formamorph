@@ -31,6 +31,8 @@ export interface ImageEndpointValues {
   invokeEncoder: string;
   /** InvokeAI Z-Image only: FLUX VAE override (model name/key); blank = auto-pick. */
   invokeVae: string;
+  /** InvokeAI only: gallery board to file generated images under (board id); blank = Uncategorized. */
+  invokeBoard: string;
 }
 
 export type ImageEndpointValueKey = keyof ImageEndpointValues;
@@ -65,6 +67,7 @@ export const DEFAULT_IMAGE_ENDPOINT_VALUES: ImageEndpointValues = {
   workflow: DEFAULT_COMFY_WORKFLOW,
   invokeEncoder: '',
   invokeVae: '',
+  invokeBoard: '',
 };
 
 export const DEFAULT_IMAGE_PRESET_ID = 'default';
@@ -102,6 +105,7 @@ function coerceValues(rec: Record<string, unknown>): ImageEndpointValues {
     workflow: str('workflow', d.workflow),
     invokeEncoder: str('invokeEncoder', d.invokeEncoder),
     invokeVae: str('invokeVae', d.invokeVae),
+    invokeBoard: str('invokeBoard', d.invokeBoard),
   };
 }
 

@@ -53,10 +53,12 @@ interface ChatCompletion {
  * an empty/unparseable result; the caller surfaces failures (and ignores `AbortError`).
  */
 export async function buildImagePrompt(
-  subject: { name: string; description: string; kind: ImageSubjectKind },
+  subject: { description: string; kind: ImageSubjectKind },
   opts: { endpointUrl: string; apiToken: string; modelName: string; tagPrompt?: string; signal?: AbortSignal },
 ): Promise<string> {
-  const user = `Name: ${subject.name}\n\nDescription:\n${subject.description}`;
+  // The subject's name is deliberately not sent: models answer with it as a tag, and no image model knows
+  // a person's name. An author who wants one in the tags types it there.
+  const user = `Description:\n${subject.description}`;
   const res = await fetch(opts.endpointUrl, {
     method: 'POST',
     headers: {

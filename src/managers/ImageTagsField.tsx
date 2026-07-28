@@ -16,8 +16,8 @@ interface ImageTagsFieldProps {
   /** Stable id for the file input (must be unique per rendered subject). */
   imageId: string;
   cap: ImageCap;
-  /** Subject name + description feed the AI tag/prompt generators. */
-  name?: string;
+  /** The subject's description feeds the AI tag/prompt generators. Its name deliberately does not — a name
+   *  comes back as a tag no image model knows; an author who wants one types it into the tags. */
   description?: string;
   kind: ImageSubjectKind;
   tags?: string;
@@ -29,7 +29,7 @@ interface ImageTagsFieldProps {
  * Location and Entity editors. Owns the `pendingPrompt` handshake: an uploaded image's embedded SD prompt is
  * held until the user confirms using it as the Image Tags (which replaces the current tags).
  */
-const ImageTagsField = ({ label, image, onImageChange, imageId, cap, name, description, kind, tags, onTagsChange }: ImageTagsFieldProps) => {
+const ImageTagsField = ({ label, image, onImageChange, imageId, cap, description, kind, tags, onTagsChange }: ImageTagsFieldProps) => {
   // SD prompt pulled from an uploaded image, pending the user's OK to use it as Image Tags.
   const [pendingPrompt, setPendingPrompt] = useState<string | null>(null);
 
@@ -55,7 +55,6 @@ const ImageTagsField = ({ label, image, onImageChange, imageId, cap, name, descr
         <Label>Image Tags</Label>
         <AiFieldToolbar
           mode="tags"
-          name={name}
           kind={kind}
           source={description}
           value={tags}
@@ -68,7 +67,7 @@ const ImageTagsField = ({ label, image, onImageChange, imageId, cap, name, descr
         placeholder="booru tags, comma separated"
       />
       <GenerateImageButton
-        subject={{ name: name || '', description: description || '', kind }}
+        subject={{ description: description || '', kind }}
         cap={cap}
         onChange={onImageChange}
         tags={tags ?? ''}

@@ -45,7 +45,7 @@ export interface PromptVariable {
 }
 
 /** Every prompt editor maps to one of these kinds (mirrors the Settings → System Prompts sub-tabs). */
-export type PromptKind = 'narration' | 'thinking' | 'choices' | 'statupdates' | 'location' | 'summary' | 'diary' | 'director' | 'character' | 'storyboard' | 'timepassed' | 'timeopening';
+export type PromptKind = 'narration' | 'thinking' | 'choices' | 'statupdates' | 'location' | 'summary' | 'diary' | 'director' | 'character' | 'storyboard' | 'timepassed' | 'timeopening' | 'scenetags';
 
 const SUMMARY_VARIANT: PromptVariant = {
   id: 'summary',
@@ -156,6 +156,10 @@ export const SUBJECT: PromptVariable = { token: '<SUBJECT>', label: 'Subject', c
 // Time in Memory is off, so an affixed placement simply disappears rather than needing its own switch.
 const TIME: PromptVariable = { token: '<TIME>', label: 'Time', color: HIGHLIGHT_PALETTE[10], affixable: true };
 
+// Scene-image tag pass only: the characters the composer has put in frame, so the action tags describe
+// those people and no others. A value token like <NARRATION> — never a context block.
+const IN_FRAME: PromptVariable = { token: '<IN FRAME>', label: 'In Frame', color: HIGHLIGHT_PALETTE[8] };
+
 /** The chips the now-line message offers. All ordinary chips: the wording that used to be welded into
  *  bespoke `<SCENE …>` tokens now lives in each placement's prefix/suffix, so it can be reworded. */
 export const NOW_LINE_VARIABLES: PromptVariable[] = [LOCATION, ENTITIES, TIME, NOTES];
@@ -163,7 +167,7 @@ export const NOW_LINE_VARIABLES: PromptVariable[] = [LOCATION, ENTITIES, TIME, N
 /** All known variables — used by the parser to recognize any token regardless of which prompt it's in. */
 export const ALL_PROMPT_VARIABLES: PromptVariable[] = [
   WORLD, STATS, TRAITS, LOCATION, ENTITIES, NOTES, DICTIONARY, LENGTH, MARKDOWN, ACTIVE_CHARACTER, PLAYER_ACTION, NARRATION, CHARACTER, SUBJECT,
-  TIME,
+  TIME, IN_FRAME,
 ];
 
 /** The context chips every system prompt can reference; GameViewer substitutes them uniformly. */
@@ -184,6 +188,7 @@ export const PROMPT_KIND_VARIABLES: Record<PromptKind, PromptVariable[]> = {
   storyboard: [...CONTEXT_VARS],
   timepassed: [...CONTEXT_VARS],
   timeopening: [...CONTEXT_VARS],
+  scenetags: [...CONTEXT_VARS],
 };
 
 /** Variables offered by the editable user-message templates (the per-turn runtime values the code
@@ -200,6 +205,9 @@ export const PROMPT_KIND_USER_VARIABLES: Partial<Record<PromptKind, PromptVariab
   // The opening pass runs on turn one, where the player's action is "start the game" — only the narration
   // carries any time signal, so the action chip is deliberately not offered.
   timeopening: [NARRATION],
+  // The tag pass reads the prose of this turn and who the composer put in frame. The player's action is
+  // deliberately absent: what was attempted is not what the picture shows.
+  scenetags: [NARRATION, IN_FRAME],
 };
 
 const VAR_BY_BASE = new Map(ALL_PROMPT_VARIABLES.map((v) => [v.token, v]));

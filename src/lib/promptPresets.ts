@@ -11,7 +11,7 @@ export type ReasoningMap = Record<string, PromptReasoning>;
  *  its shipped default. Narration/choices only are user-editable. */
 export type ReasoningBudgetMap = Partial<Record<AIRequestType, number>>;
 
-/** The editable prompt-text values a preset captures: the 11 system-prompt bodies + 6 user-message
+/** The editable prompt-text values a preset captures: the system-prompt bodies + user-message
  *  templates + the memory-recap, scene-recall, and OOC-direction lines. Enable flags, verbatim-turns,
  *  and thinking mode are global and deliberately NOT included. */
 export const PROMPT_TEXT_KEYS = [
@@ -39,6 +39,8 @@ export const PROMPT_TEXT_KEYS = [
   'timePassedUserPrompt',
   'openingTimePrompt',
   'openingTimeUserPrompt',
+  'sceneTagsPrompt',
+  'sceneTagsUserPrompt',
 ] as const;
 
 export type PromptTextKey = (typeof PROMPT_TEXT_KEYS)[number];

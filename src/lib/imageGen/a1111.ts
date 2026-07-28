@@ -100,5 +100,9 @@ export const a1111Provider: ImageProvider = async (params: ImageGenParams, opts:
     return parseA1111Response(await res.json());
   } finally {
     poller?.stop();
+    // Best-effort interrupt so an aborted run doesn't keep cooking on the server.
+    if (opts.signal?.aborted) {
+      fetch(`${base}/sdapi/v1/interrupt`, { method: 'POST', headers: authHeaders(opts.apiToken, 'Basic') }).catch(() => {});
+    }
   }
 };

@@ -3,6 +3,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "
 import { Popover, PopoverTrigger, PopoverContent } from "@/components/ui/popover";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Checkbox } from "@/components/ui/checkbox";
 import { Menu, Save } from "lucide-react";
 import { ConfirmDialog } from '../ConfirmDialog';
 import { getAllSaveRecords } from './dbUtils';
@@ -10,11 +11,13 @@ import { useDevRoute } from '../../lib/devRouter';
 import { LoadGameDialog } from './LoadGameDialog';
 import { useGameplay } from '../../contexts/GameplayContext';
 import { useClosingSnapshot } from '@/lib/useClosingSnapshot';
+import { sceneImageWeight } from '@/lib/sceneImages';
+import { formatBytes } from '@/lib/imageOptim';
 import type { WorldOverview, SaveRecord } from "@/types";
 
 export const MenuModal = ({ onSettingsClick, onSave, onLoad, worldOverview, worldId, onExitToMenu, onEditWorld, onShowAiContext }: {
   onSettingsClick: () => void;
-  onSave: (saveName: string, opts?: { overwriteId?: string }) => Promise<unknown> | void;
+  onSave: (saveName: string, opts?: { overwriteId?: string; includeSceneImages?: boolean }) => Promise<unknown> | void;
   /** `worldId` set ⇒ the save belongs to a different (installed) world; the loader switches to it first. */
   onLoad: (saveId: string, worldId?: string) => Promise<unknown> | void;
   worldOverview?: WorldOverview;
@@ -42,7 +45,14 @@ export const MenuModal = ({ onSettingsClick, onSave, onLoad, worldOverview, worl
   const [records, setRecords] = React.useState<SaveRecord[]>([]);
   const [dupConflict, setDupConflict] = React.useState<{ name: string; existingId: string } | null>(null);
 
-  const { lastSaveName } = useGameplay();
+  const { lastSaveName, fullMessageHistory } = useGameplay();
+  // Scene images are dropped from a save unless asked for — they dwarf everything else in it. The row only
+  // appears once the session actually has some, with the real weight rather than a vague warning.
+  const [includeSceneImages, setIncludeSceneImages] = React.useState(false);
+  const sceneWeight = React.useMemo(
+    () => (showSaveDialog ? sceneImageWeight(fullMessageHistory) : { count: 0, bytes: 0 }),
+    [showSaveDialog, fullMessageHistory],
+  );
   // Hold the conflicting save's name while the "already exists" dialog fades out (dupConflict goes null on close).
   const shownDup = useClosingSnapshot(!!dupConflict, dupConflict);
 
@@ -63,7 +73,7 @@ export const MenuModal = ({ onSettingsClick, onSave, onLoad, worldOverview, worl
 
   const commitSave = async (name: string, overwriteId?: string) => {
     try {
-      await onSave(name, overwriteId ? { overwriteId } : undefined);
+      await onSave(name, { ...(overwriteId ? { overwriteId } : {}), includeSceneImages });
       // Don't clear the name here — the box would blank out as the dialog fades. The next open re-prefills it.
       setShowSaveDialog(false);
       setDupConflict(null);
@@ -118,17 +128,33 @@ export const MenuModal = ({ onSettingsClick, onSave, onLoad, worldOverview, worl
         title="Save Game"
         onPickSave={(row) => setSaveName(row.name)}
         topSlot={
-          <div className="flex gap-2">
-            <Input
-              placeholder="Enter save name"
-              value={saveName}
-              onChange={(e) => setSaveName(e.target.value)}
-              onKeyDown={(e) => { if (e.key === 'Enter') handleSaveClick(); }}
-            />
-            <Button onClick={handleSaveClick} className="flex items-center justify-center gap-2 shrink-0">
-              <Save className="h-4 w-4" />
-              <span>Save</span>
-            </Button>
+          <div className="flex flex-col gap-2">
+            <div className="flex gap-2">
+              <Input
+                placeholder="Enter save name"
+                value={saveName}
+                onChange={(e) => setSaveName(e.target.value)}
+                onKeyDown={(e) => { if (e.key === 'Enter') handleSaveClick(); }}
+              />
+              <Button onClick={handleSaveClick} className="flex items-center justify-center gap-2 shrink-0">
+                <Save className="h-4 w-4" />
+                <span>Save</span>
+              </Button>
+            </div>
+            {sceneWeight.count > 0 && (
+              <label htmlFor="includeSceneImages" className="flex items-start gap-2 text-sm cursor-pointer">
+                <Checkbox
+                  id="includeSceneImages"
+                  checked={includeSceneImages}
+                  onCheckedChange={(c) => setIncludeSceneImages(c === true)}
+                  className="shrink-0 mt-0.5"
+                />
+                <span>
+                  Save the {sceneWeight.count} scene image{sceneWeight.count === 1 ? '' : 's'} too
+                  <span className="text-muted-foreground"> — adds about {formatBytes(sceneWeight.bytes)} to this save. Left off, the story keeps its tags and the pictures are gone.</span>
+                </span>
+              </label>
+            )}
           </div>
         }
       />

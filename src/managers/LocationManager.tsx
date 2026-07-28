@@ -91,7 +91,6 @@ const LocationManager = ({ location }: { location: GameLocation }) => {
         onImageChange={(file) => handleChange('backgroundImage', file)}
         imageId={`location-image-${editingLocation.id}`}
         cap={IMAGE_CAPS.background}
-        name={editingLocation.name}
         description={editingLocation.aiDescription || editingLocation.playerDescription}
         kind="location"
         tags={editingLocation.imageTags}

@@ -9,6 +9,7 @@ const base: PromptTabFlags = {
   memoryDigests: false,
   characterDiaries: false,
   aiClock: false,
+  sceneImages: false,
 };
 
 describe('computePromptTabAvailability — Diary gating', () => {

@@ -9,6 +9,8 @@ export interface PromptTabFlags {
   memoryDigests: boolean;
   characterDiaries: boolean;
   aiClock: boolean;
+  /** Scene images are available at all — i.e. image generation isn't switched off wholesale. */
+  sceneImages: boolean;
 }
 
 /**
@@ -18,7 +20,7 @@ export interface PromptTabFlags {
  * persisted Character Diaries flag is on.
  */
 export function computePromptTabAvailability(flags: PromptTabFlags): Record<string, boolean> {
-  const { thinkingMode, choicesEnabled, statUpdatesEnabled, locationChangeEnabled, memoryDigests, characterDiaries, aiClock } = flags;
+  const { thinkingMode, choicesEnabled, statUpdatesEnabled, locationChangeEnabled, memoryDigests, characterDiaries, aiClock, sceneImages } = flags;
   return {
     narration: true,
     thinking: thinkingMode === 'precall',
@@ -32,5 +34,6 @@ export function computePromptTabAvailability(flags: PromptTabFlags): Record<stri
     storyboard: thinkingMode === 'staged',
     timepassed: aiClock,
     timeopening: aiClock,
+    scenetags: sceneImages,
   };
 }

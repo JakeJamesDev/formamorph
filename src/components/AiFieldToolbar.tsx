@@ -19,12 +19,11 @@ const COALESCE_MS = 500;
  * manual edits (a manual edit forgets the redo branch); the field value stays parent-owned, so manual
  * typing reaches the history through the `value` prop. `source` is the description fed in.
  */
-const AiFieldToolbar = ({ mode, source, value, onChange, name, kind }: {
+const AiFieldToolbar = ({ mode, source, value, onChange, kind }: {
   mode: 'summary' | 'tags';
   source: string | undefined;
   value: string | undefined;
   onChange: (v: string) => void;
-  name?: string;           // tags: subject name
   kind?: ImageSubjectKind; // tags: subject kind
 }) => {
   const { activeEndpointUrl, activeApiToken, activeModelName, imageTagPrompt } = useSettings();
@@ -73,7 +72,9 @@ const AiFieldToolbar = ({ mode, source, value, onChange, name, kind }: {
     try {
       const opts = { endpointUrl: activeEndpointUrl, apiToken: activeApiToken, modelName: activeModelName, signal: controller.signal };
       const result = mode === 'tags'
-        ? await buildImagePrompt({ name: name ?? '', description: text, kind: kind ?? 'character' }, { ...opts, tagPrompt: imageTagPrompt })
+        // The subject's name is deliberately not sent: models answer with it as a tag, and no image model
+        // knows a person's name. An author who wants one in the tags can type it.
+        ? await buildImagePrompt({ description: text, kind: kind ?? 'character' }, { ...opts, tagPrompt: imageTagPrompt })
         : await summarizeDescription(text, opts);
       commit(commitHistory(historyRef.current, snap(result), false)); // a generation is a discrete step
     } catch (error) {

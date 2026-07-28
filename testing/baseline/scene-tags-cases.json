@@ -1,0 +1,183 @@
+[
+  {
+    "id": "boat",
+    "why": "two characters, one plain physical action — the shape the feature was asked for",
+    "location": "the landing",
+    "locationTags": "no humans, wooden dock, river, moored boat, reeds, outdoors",
+    "inFrame": [
+      {
+        "name": "Odette",
+        "tags": "1girl, silver hair, braid, grey shawl, patched skirt"
+      },
+      {
+        "name": "Bram",
+        "tags": "1boy, bald, weathered face, rolled sleeves, canvas apron"
+      }
+    ],
+    "narration": "You follow them down the bank. Odette goes first, holding the shawl closed at her throat, and Bram comes behind with the rope coiled over one shoulder. The mud gives under your boots. At the water's edge the ferry sits low and patient, and the two of them stop together to look at it before either reaches for the line.",
+    "wantAny": [
+      [
+        "walk",
+        "stride",
+        "step",
+        "descend",
+        "approach",
+        "standing",
+        "stand"
+      ]
+    ],
+    "forbid": [
+      "sitting",
+      "lying",
+      "running",
+      "sleeping",
+      "eating"
+    ]
+  },
+  {
+    "id": "kitchen",
+    "why": "one character, seated and still — the contradiction guard; a model reaching for motion fails here",
+    "location": "the cottage",
+    "locationTags": "no humans, indoors, wooden table, hearth, iron pot, low ceiling",
+    "inFrame": [
+      {
+        "name": "Odette",
+        "tags": "1girl, silver hair, braid, grey shawl"
+      }
+    ],
+    "narration": "Odette sits at the table with her hands flat on the wood, not touching the cup someone has set in front of her. She does not look up when you come in. The fire has burned down to a red bed and nobody has put anything on it. After a while she turns the cup a quarter turn, and leaves it there.",
+    "wantAny": [
+      [
+        "sitting",
+        "sit",
+        "seated",
+        "hands on table",
+        "table"
+      ]
+    ],
+    "forbid": [
+      "walking",
+      "running",
+      "standing",
+      "outdoors",
+      "fighting"
+    ]
+  },
+  {
+    "id": "storm",
+    "why": "weather and time of day carried by the prose — the light slot, which this pass owns",
+    "location": "the green",
+    "locationTags": "no humans, village square, grass, stone well, outdoors",
+    "inFrame": [
+      {
+        "name": "Tomas",
+        "tags": "1boy, brown hair, oilskin coat, tall boots"
+      }
+    ],
+    "narration": "The rain came in off the water an hour ago and has not let up. Tomas has his collar turned against it, head down, crossing the green at an angle that says he has done this a hundred times. The light is nearly gone. Every window he passes is already shuttered, and the well stands alone in the middle of it with its bucket swinging.",
+    "wantAny": [
+      [
+        "rain",
+        "wet",
+        "storm"
+      ]
+    ],
+    "forbid": [
+      "sunny",
+      "clear sky",
+      "indoors",
+      "daylight"
+    ]
+  },
+  {
+    "id": "empty",
+    "why": "nobody in frame — the composer keeps 'no humans' here, and the pass must not invent people",
+    "location": "the eelhouse",
+    "locationTags": "no humans, indoors, smokehouse, hanging fish, dim lighting, wooden beams",
+    "inFrame": [],
+    "narration": "The eelhouse is empty when you push the door. Racks of fish hang in rows down the length of it, turning slowly where the draught catches them. Someone has banked the smoke and left. A knife lies on the block with the handle still damp.",
+    "wantAny": [
+      [
+        "smoke",
+        "empty",
+        "hanging",
+        "still life",
+        "scenery",
+        "dim"
+      ]
+    ],
+    "forbid": [
+      "1girl",
+      "1boy",
+      "smiling",
+      "talking"
+    ]
+  },
+  {
+    "id": "argument",
+    "why": "two characters, the beat is emotional rather than physical — expression and pose, not motion",
+    "location": "the common green",
+    "locationTags": "no humans, village square, grass, stone well, outdoors, overcast",
+    "inFrame": [
+      {
+        "name": "Bram",
+        "tags": "1boy, bald, weathered face, canvas apron"
+      },
+      {
+        "name": "Wick",
+        "tags": "1boy, red hair, freckles, short jacket"
+      }
+    ],
+    "narration": "Wick gets there first and says something you do not catch. Bram stops walking. He does not raise his voice — that is the part that lands — he just stands there with his arms at his sides and lets the boy finish, and when Wick runs out of words the silence is worse than shouting. Neither of them looks at you.",
+    "wantAny": [
+      [
+        "arguing",
+        "angry",
+        "confront",
+        "facing",
+        "talking",
+        "shouting",
+        "serious",
+        "listening",
+        "silent",
+        "stand"
+      ]
+    ],
+    "forbid": [
+      "smiling",
+      "laughing",
+      "hugging",
+      "sleeping"
+    ]
+  },
+  {
+    "id": "night-work",
+    "why": "one character, a hands-on task after dark — action plus a light source the location does not carry",
+    "location": "the ferry",
+    "locationTags": "no humans, wooden dock, river, moored boat, reeds, outdoors",
+    "inFrame": [
+      {
+        "name": "Bram",
+        "tags": "1boy, bald, weathered face, rolled sleeves, canvas apron"
+      }
+    ],
+    "narration": "Bram works by lantern light, crouched over the ferry's bow line with his sleeves pushed past the elbow. The knot has swollen with river water and he picks at it with a marlinspike, swearing under his breath at intervals. Out past the reeds the far bank is only a darker line. He does not ask for help and you do not offer.",
+    "wantAny": [
+      [
+        "crouch",
+        "kneel",
+        "holding",
+        "rope",
+        "working",
+        "untying",
+        "tying"
+      ]
+    ],
+    "forbid": [
+      "daylight",
+      "sunny",
+      "standing",
+      "crowd"
+    ]
+  }
+]
