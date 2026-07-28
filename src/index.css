@@ -450,6 +450,19 @@
   from { opacity: var(--rl-o, 1); transform: translate(var(--rl-x, 0), var(--rl-y, 0)) scale(var(--rl-sx, 1), var(--rl-sy, 1)); filter: blur(var(--rl-blur, 0)); }
   to   { opacity: 1; transform: translate(0, 0) scale(1, 1); filter: blur(0); }
 }
+/* Narration tool buttons sit over the text, so each fades back when idle and returns on its own hover or
+   keyboard focus. Gated on `hover: hover` because a touch device has no pointer to bring them back —
+   there they stay fully opaque. */
+.narration-tool { transition: opacity 150ms ease; }
+@media (hover: hover) {
+  .narration-tool[data-idle="true"] { opacity: 0.35; }
+  .narration-tool:hover,
+  .narration-tool:focus-visible { opacity: 1; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .narration-tool { transition: none; }
+}
+
 /* Streamdown animates each word in a bare inline <span>; transforms (move/scale) need a transformable
    box, so promote the animated words to inline-block within narration. Axis-scale anchors its growth
    to an edge via --rl-origin (set on the container); everything else uses center. */

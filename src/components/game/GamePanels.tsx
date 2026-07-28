@@ -20,7 +20,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { TokenAutocomplete } from "@/components/TokenAutocomplete";
 import { COMMON_LANGUAGES } from "@/lib/languages";
-import { Send, RefreshCw, Pencil, Languages, Loader2, Headphones, Square, ChevronUp, ChevronDown, X, Download, Trash2, Image as ImageIcon, Dices } from "lucide-react";
+import { Send, RefreshCw, Pencil, Languages, Loader2, Headphones, Square, ChevronUp, ChevronDown, X, Download, Trash2, Image as ImageIcon, Dices, MoreHorizontal } from "lucide-react";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Progress } from "@/components/ui/progress";
 import { Slider } from "@/components/ui/slider";
@@ -537,6 +537,7 @@ export const MiddlePanel = ({
   const canRegenChoices = choicesEnabled;
   const canRegenStats = statUpdatesEnabled && playerStats.length > 0;
   const [regenMenuOpen, setRegenMenuOpen] = useState(false);
+  const [toolMenuOpen, setToolMenuOpen] = useState(false);
 
   // Ctrl/Cmd+click or a touch long-press appends a choice as a new sentence; a plain tap replaces it.
   const appendChoice = (choice: string) =>
@@ -557,6 +558,10 @@ export const MiddlePanel = ({
 
   // Whether TTS has produced playable audio for the current text (drives the frozen top row).
   const hasAudio = ttsPlayback.duration > 0;
+
+  // A job whose progress spinner lives inside the collapsed narration menu; the trigger has to show it
+  // (and stay un-faded) or the work becomes invisible while the menu is closed.
+  const toolBusy = sceneImageJob !== null || ttsGenerating;
 
   // Karaoke highlighter: paint the spoken sentence in the current page's narration as audio plays.
   const narrationRef = useRef<HTMLDivElement>(null);
@@ -622,66 +627,91 @@ export const MiddlePanel = ({
             </div>
           )}
           <ScrollArea className={`narration-text flex-grow border border-border p-2 bg-muted/80 min-h-0 ${isFlashing ? 'flash-animation' : ''} relative`}>
-            <div className="absolute top-2 right-2 z-10 flex gap-2">
-              {sceneImagesAvailable && (
-                <>
-                  {/* Tags first: it costs one small text request and no render, so it is the cheap way to
-                      see what this turn would be drawn as before spending a picture on it. */}
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    onClick={onSceneTags}
-                    disabled={sceneImageJob !== null || !sceneTurnReady}
-                    title="Write scene tags for this turn"
-                  >
-                    {sceneImageJob === 'tags' ? <Loader2 className="h-4 w-4 animate-spin" /> : <Dices className="h-4 w-4" />}
-                  </Button>
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    onClick={() => onSceneImage()}
-                    disabled={sceneImageJob !== null || !sceneTurnReady}
-                    title="Draw this scene"
-                  >
-                    {sceneImageJob === 'image' ? <Loader2 className="h-4 w-4 animate-spin" /> : <ImageIcon className="h-4 w-4" />}
-                  </Button>
-                </>
-              )}
-              {!hasAudio && ttsLoaded && (
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  onClick={() => onRegenerateTTS()}
-                  disabled={ttsGenerating}
-                  title="Regenerate audio for current text"
-                >
-                  {ttsGenerating ? <Loader2 className="h-4 w-4 animate-spin" /> : <RefreshCw className="h-4 w-4" />}
-                </Button>
-              )}
-              {!hasAudio && (
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  onClick={onTTSClick}
-                >
-                  <Headphones className="h-4 w-4" />
-                </Button>
-              )}
+            {/* Edit stays inline as the one action about the text itself; everything else folds into the
+                overflow menu so this row can't grow back across the narration. Each button fades on its
+                own while idle — pointer devices only, see `.narration-tool` in index.css. */}
+            <div className="absolute top-2 right-2 z-10 flex gap-1">
               <Button
                 variant="ghost"
                 size="icon"
-                onClick={onExportStory}
-                title="Export story"
-              >
-                <Download className="h-4 w-4" />
-              </Button>
-              <Button
-                variant="ghost"
-                size="icon"
+                className="narration-tool h-8 w-8"
+                data-idle="true"
                 onClick={() => setIsEditMode(true)}
+                title="Edit text"
               >
                 <Pencil className="h-4 w-4" />
               </Button>
+              <Popover open={toolMenuOpen} onOpenChange={setToolMenuOpen}>
+                <PopoverTrigger asChild>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="narration-tool h-8 w-8"
+                    data-idle={toolMenuOpen || toolBusy ? undefined : "true"}
+                    aria-label="More narration options"
+                    title="More narration options"
+                  >
+                    {toolBusy ? <Loader2 className="h-4 w-4 animate-spin" /> : <MoreHorizontal className="h-4 w-4" />}
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent align="end" className="w-52 p-1">
+                  <div className="flex flex-col">
+                    {sceneImagesAvailable && (
+                      <>
+                        {/* Tags first: it costs one small text request and no render, so it is the cheap way to
+                            see what this turn would be drawn as before spending a picture on it. */}
+                        <Button
+                          variant="ghost"
+                          className="justify-start gap-2 text-xs h-8"
+                          onClick={() => { setToolMenuOpen(false); onSceneTags(); }}
+                          disabled={sceneImageJob !== null || !sceneTurnReady}
+                        >
+                          {sceneImageJob === 'tags' ? <Loader2 className="h-4 w-4 animate-spin" /> : <Dices className="h-4 w-4" />}
+                          Write Scene Tags
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          className="justify-start gap-2 text-xs h-8"
+                          onClick={() => { setToolMenuOpen(false); onSceneImage(); }}
+                          disabled={sceneImageJob !== null || !sceneTurnReady}
+                        >
+                          {sceneImageJob === 'image' ? <Loader2 className="h-4 w-4 animate-spin" /> : <ImageIcon className="h-4 w-4" />}
+                          Draw This Scene
+                        </Button>
+                      </>
+                    )}
+                    {!hasAudio && ttsLoaded && (
+                      <Button
+                        variant="ghost"
+                        className="justify-start gap-2 text-xs h-8"
+                        onClick={() => { setToolMenuOpen(false); onRegenerateTTS(); }}
+                        disabled={ttsGenerating}
+                      >
+                        {ttsGenerating ? <Loader2 className="h-4 w-4 animate-spin" /> : <RefreshCw className="h-4 w-4" />}
+                        Regenerate Audio
+                      </Button>
+                    )}
+                    {!hasAudio && (
+                      <Button
+                        variant="ghost"
+                        className="justify-start gap-2 text-xs h-8"
+                        onClick={() => { setToolMenuOpen(false); onTTSClick(); }}
+                      >
+                        <Headphones className="h-4 w-4" />
+                        Text to Speech
+                      </Button>
+                    )}
+                    <Button
+                      variant="ghost"
+                      className="justify-start gap-2 text-xs h-8"
+                      onClick={() => { setToolMenuOpen(false); onExportStory(); }}
+                    >
+                      <Download className="h-4 w-4" />
+                      Export Story
+                    </Button>
+                  </div>
+                </PopoverContent>
+              </Popover>
             </div>
             {commandPreview && (
               <div className="mb-3 p-2 border border-dashed border-primary/50 rounded relative">
