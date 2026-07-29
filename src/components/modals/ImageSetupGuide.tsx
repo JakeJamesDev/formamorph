@@ -58,6 +58,7 @@ const ImageSetupGuide = ({
             <ul className="list-disc list-inside text-muted-foreground space-y-0.5">
               <li>Default endpoint is <Code>http://127.0.0.1:9090</Code>. The Model list loads from the server automatically — pick an installed SDXL, SD1.5, or Z-Image model.</li>
               <li>Z-Image also needs a Qwen3 encoder and a FLUX-type VAE; Formamorph auto-picks installed ones (override in Settings if needed).</li>
+              <li><strong>Face Fix</strong> needs no extension, but the first image you generate with it on pauses while InvokeAI downloads its detector models (a few hundred MB, once).</li>
             </ul>
           </>
         )}

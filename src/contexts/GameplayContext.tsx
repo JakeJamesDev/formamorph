@@ -9,7 +9,7 @@ import { APP_VERSION, isSaveEnvelope, migrateSave, migrateLegacySaveState, strip
 import { flattenEnabledBookEntries } from '../lib/dictionaryUtils';
 import { getGameplayText, setGameplayText } from '../lib/gameplayTextStore';
 import { parseTurnContent, serializeTurnContent } from '../lib/turnDigest';
-import { stripSceneImages } from '../lib/sceneImages';
+import type { SceneImageMap } from '../lib/sceneImages';
 import { matchChoicesToAction } from '../lib/choices';
 import { pageStatDeltas } from '../lib/statChanges';
 import { pageAssistantIndex, pageNextActionIndex, placeSnapshot } from '../lib/turnHistory';
@@ -90,6 +90,10 @@ function useProvideGameplay() {
   const [memoryEdits, setMemoryEdits] = useState<MemoryEditMap>({});
   const [memoryDeleted, setMemoryDeleted] = useState<string[]>([]);
   const [memoryNotes, setMemoryNotes] = useState<MemoryNote[]>([]);
+  // Scene images by turn id. Held beside the history rather than inside the turns: everything that walks
+  // the message list parses it, and a megabyte of base64 in a turn made the narration reveal crawl for the
+  // rest of the session (see lib/sceneImages). Persisted only when the player opts in on the Save dialog.
+  const [sceneImages, setSceneImages] = useState<SceneImageMap>({});
   // Flattened enabled entries fed to the injection pipeline (mirrors GameData's old derived `dictionary`).
   const runtimeDictionary = useMemo(() => flattenEnabledBookEntries(runtimeDictionaries), [runtimeDictionaries]);
   const [recentStatChanges, setRecentStatChanges] = useState<Record<string, number>>({});
@@ -256,9 +260,9 @@ function useProvideGameplay() {
 
   const saveGame = useCallback(async (saveName: string, worldName: string, worldId?: string, saveId?: string, opts?: { isAutosave?: boolean; includeSceneImages?: boolean }) => {
     const isAutosave = opts?.isAutosave ?? false;
-    // Scene images are stripped unless the player asked for them on this save (autosave never carries them):
-    // each is around a megabyte of base64, so a long illustrated session would otherwise write a save an
-    // order of magnitude larger than the story in it.
+    // Scene images ride along only when the player asked for them on this save (autosave never carries
+    // them): each is around a megabyte of base64, so a long illustrated session would otherwise write a
+    // save an order of magnitude larger than the story in it.
     const keepSceneImages = !isAutosave && (opts?.includeSceneImages ?? false);
     try {
       const gameState = saveCurrentGameState();
@@ -269,7 +273,7 @@ function useProvideGameplay() {
         name: saveName,
         worldId,
         // The one canonical flat history; snapshots below are stripped of their own copies (O(N²) on disk).
-        messageHistory: keepSceneImages ? (gameState.fullMessageHistory ?? []) : stripSceneImages(gameState.fullMessageHistory ?? []),
+        messageHistory: gameState.fullMessageHistory ?? [],
         currentState: stripSnapshotHistory(gameState),
         stateHistory: gameStates.map(stripSnapshotHistory), // per-turn snapshots, history-free
         version: APP_VERSION, // stamp the current app version (legacy envelopes used numeric 2 ≙ v1.2)
@@ -280,6 +284,7 @@ function useProvideGameplay() {
         ...(Object.keys(memoryEdits).length ? { memoryEdits } : {}),
         ...(memoryDeleted.length ? { memoryDeleted } : {}),
         ...(memoryNotes.length ? { memoryNotes } : {}),
+        ...(keepSceneImages && Object.keys(sceneImages).length ? { sceneImages } : {}),
         ...(isAutosave ? { isAutosave: true } : {}),
       };
 
@@ -298,7 +303,7 @@ function useProvideGameplay() {
       }
       return false;
     }
-  }, [saveCurrentGameState, gameStates, runtimeDictionaries, placeholderRolls, memoryPins, milestoneSelection, memoryEdits, memoryDeleted, memoryNotes, addSystemLogEntry]);
+  }, [saveCurrentGameState, gameStates, runtimeDictionaries, placeholderRolls, memoryPins, milestoneSelection, memoryEdits, memoryDeleted, memoryNotes, sceneImages, addSystemLogEntry]);
 
   // Autosave has failed at least once this session — used to toast only once, re-armed on a later success.
   const autosaveFailedRef = useRef(false);
@@ -358,6 +363,9 @@ function useProvideGameplay() {
           setMemoryEdits(migrated.memoryEdits ?? {});
           setMemoryDeleted(migrated.memoryDeleted ?? []);
           setMemoryNotes(migrated.memoryNotes ?? []);
+          // Absent whenever the save was written without images — the story loads with its tag lines and
+          // no pictures, which is the default.
+          setSceneImages(migrated.sceneImages ?? {});
           addSystemLogEntry(`Game loaded from "${saveName}"`);
         }
         return success;
@@ -557,6 +565,8 @@ function useProvideGameplay() {
     setRuntimeDictionaries,
     placeholderRolls,
     setPlaceholderRolls,
+    sceneImages,
+    setSceneImages,
     memoryPins,
     setMemoryPins,
     milestoneSelection,

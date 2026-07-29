@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { addSceneImage, removeSceneImage, setSceneTags, sceneImagesAt, stripSceneImages, sceneImageWeight } from './sceneImages';
+import { addSceneImage, removeSceneImage, pruneSceneImages, sceneImageWeight, setSceneTags, type SceneImageMap } from './sceneImages';
 import { parseTurnContent, serializeTurnContent } from './turnDigest';
 import type { AITurnResult, ChatMessage } from '@/types';
 
@@ -18,61 +18,77 @@ const history = (): ChatMessage[] => [
   turn({ turnId: 't2' }),
 ];
 
-const imagesOf = (h: ChatMessage[], turnId: string) =>
-  h.map((m) => (m.role === 'assistant' ? parseTurnContent(m.content) : null)).find((t) => t?.turnId === turnId)?.sceneImages;
-
 describe('addSceneImage', () => {
-  it('appends to the matching turn only, newest last', () => {
-    const once = addSceneImage(history(), 't1', IMG)!;
-    const twice = addSceneImage(once, 't1', IMG2)!;
-    expect(imagesOf(twice, 't1')).toEqual([IMG, IMG2]);
-    expect(imagesOf(twice, 't2')).toBeUndefined();
+  it('appends to the turn, newest last, leaving other turns alone', () => {
+    const once = addSceneImage({}, 't1', IMG);
+    const twice = addSceneImage(once, 't1', IMG2);
+    expect(twice).toEqual({ t1: [IMG, IMG2] });
   });
 
-  it('stores the tag line alongside the image', () => {
-    const next = addSceneImage(history(), 't1', IMG, '1girl, dock')!;
-    expect(parseTurnContent(next[1].content)?.sceneTags).toBe('1girl, dock');
-  });
-
-  it('returns null when the turn is gone, so a late render is discarded', () => {
-    // The apply-guard: the turn was rolled back or re-generated while the image was rendering.
-    expect(addSceneImage(history(), 'rolled-back', IMG)).toBeNull();
-  });
-
-  it('leaves the turn\'s other fields intact', () => {
-    const next = addSceneImage([turn({ turnId: 't1', summary: 's', entities: ['Mira'] })], 't1', IMG)!;
-    const parsed = parseTurnContent(next[0].content)!;
-    expect(parsed.summary).toBe('s');
-    expect(parsed.entities).toEqual(['Mira']);
+  it('does not mutate the map it was given', () => {
+    const before: SceneImageMap = { t1: [IMG] };
+    addSceneImage(before, 't1', IMG2);
+    expect(before).toEqual({ t1: [IMG] });
   });
 });
 
 describe('removeSceneImage', () => {
   it('drops just the indexed image', () => {
-    const two = addSceneImage(addSceneImage(history(), 't1', IMG)!, 't1', IMG2)!;
-    expect(imagesOf(removeSceneImage(two, 't1', 0)!, 't1')).toEqual([IMG2]);
+    expect(removeSceneImage({ t1: [IMG, IMG2] }, 't1', 0)).toEqual({ t1: [IMG2] });
   });
 
-  it('removes the field entirely once the last image goes, keeping the tag line', () => {
-    const one = addSceneImage(history(), 't1', IMG, 'tags')!;
-    const empty = removeSceneImage(one, 't1', 0)!;
-    expect(parseTurnContent(empty[1].content)).not.toHaveProperty('sceneImages');
-    // The tag line survives the last deletion — it's what makes the scene reproducible.
-    expect(parseTurnContent(empty[1].content)?.sceneTags).toBe('tags');
+  it('leaves no entry behind once a turn loses its last image', () => {
+    expect(removeSceneImage({ t1: [IMG], t2: [IMG2] }, 't1', 0)).toEqual({ t2: [IMG2] });
   });
 
-  it('returns null for an out-of-range index or an unknown turn', () => {
-    const one = addSceneImage(history(), 't1', IMG)!;
-    expect(removeSceneImage(one, 't1', 5)).toBeNull();
-    expect(removeSceneImage(one, 't1', -1)).toBeNull();
-    expect(removeSceneImage(one, 'nope', 0)).toBeNull();
+  it('returns the map unchanged for an out-of-range index or unknown turn', () => {
+    const map = { t1: [IMG] };
+    expect(removeSceneImage(map, 't1', 5)).toBe(map);
+    expect(removeSceneImage(map, 't1', -1)).toBe(map);
+    expect(removeSceneImage(map, 'nope', 0)).toBe(map);
+  });
+});
+
+describe('pruneSceneImages', () => {
+  it('forgets images whose turn is gone from the history', () => {
+    // The rollback case: living beside the history rather than inside it, they have to be swept.
+    const map = { t1: [IMG], t2: [IMG2], rolledBack: [IMG] };
+    expect(pruneSceneImages(map, history())).toEqual({ t1: [IMG], t2: [IMG2] });
+  });
+
+  it('keeps the same object when nothing needs dropping, so React can skip the update', () => {
+    const map = { t1: [IMG] };
+    expect(pruneSceneImages(map, history())).toBe(map);
+  });
+
+  it('empties out against a history with no turns left', () => {
+    expect(pruneSceneImages({ t1: [IMG] }, [])).toEqual({});
+  });
+});
+
+describe('sceneImageWeight', () => {
+  it('counts the images and approximates their decoded size', () => {
+    // 400 base64 chars ≈ 300 bytes each, and the data: prefix is excluded.
+    expect(sceneImageWeight({ t1: [IMG], t2: [IMG2] })).toEqual({ count: 2, bytes: 600 });
+  });
+
+  it('is zero for an empty map', () => {
+    expect(sceneImageWeight({})).toEqual({ count: 0, bytes: 0 });
   });
 });
 
 describe('setSceneTags', () => {
-  it('writes the line without needing an image yet', () => {
+  it('writes the tag line into the turn, where it rides rollback with the story', () => {
     const next = setSceneTags(history(), 't2', 'no humans, rain')!;
     expect(parseTurnContent(next[3].content)?.sceneTags).toBe('no humans, rain');
+    expect(parseTurnContent(next[1].content)?.sceneTags).toBeUndefined();
+  });
+
+  it('keeps the turn\'s other fields', () => {
+    const next = setSceneTags([turn({ turnId: 't1', summary: 's', entities: ['Mira'] })], 't1', 'tags')!;
+    const parsed = parseTurnContent(next[0].content)!;
+    expect(parsed.summary).toBe('s');
+    expect(parsed.entities).toEqual(['Mira']);
   });
 
   it('returns null for an unknown turn', () => {
@@ -80,42 +96,10 @@ describe('setSceneTags', () => {
   });
 });
 
-describe('sceneImagesAt', () => {
-  it('reads a turn by its index in the flat history', () => {
-    const next = addSceneImage(history(), 't2', IMG)!;
-    expect(sceneImagesAt(next, 3)).toEqual([IMG]);
-    expect(sceneImagesAt(next, 1)).toEqual([]);
-    expect(sceneImagesAt(next, 0)).toEqual([]); // a user message
-    expect(sceneImagesAt(next, 99)).toEqual([]);
-  });
-});
-
-describe('stripSceneImages', () => {
-  it('removes every image but keeps the tags and the story', () => {
-    const withImages = addSceneImage(addSceneImage(history(), 't1', IMG, 'tags one')!, 't2', IMG2, 'tags two')!;
-    const stripped = stripSceneImages(withImages);
-    expect(sceneImageWeight(stripped)).toEqual({ count: 0, bytes: 0 });
-    expect(parseTurnContent(stripped[1].content)?.sceneTags).toBe('tags one');
-    expect(parseTurnContent(stripped[3].content)?.narration).toBe('n');
-    expect(stripped[0]).toEqual({ role: 'user', content: 'a' });
-  });
-
-  it('leaves an image-free history byte-identical, so an ordinary save is untouched', () => {
-    const plain = history();
-    expect(stripSceneImages(plain)).toEqual(plain);
-  });
-});
-
-describe('sceneImageWeight', () => {
-  it('counts the images and approximates their decoded size', () => {
-    const withImages = addSceneImage(addSceneImage(history(), 't1', IMG)!, 't2', IMG2)!;
-    const { count, bytes } = sceneImageWeight(withImages);
-    expect(count).toBe(2);
-    // 400 base64 chars ≈ 300 bytes each, and the data: prefix is excluded.
-    expect(bytes).toBe(600);
-  });
-
-  it('is zero for a history with none', () => {
-    expect(sceneImageWeight(history())).toEqual({ count: 0, bytes: 0 });
+describe('the history stays free of pixels', () => {
+  it('never writes an image into a message, whatever the map holds', () => {
+    // The whole point of the split: a megabyte in a turn is re-parsed by every history walk.
+    const tagged = setSceneTags(history(), 't1', 'tags')!;
+    for (const message of tagged) expect(message.content).not.toContain('data:image');
   });
 });

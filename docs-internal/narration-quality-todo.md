@@ -242,6 +242,62 @@ earlier discarded cloud work). Remaining, all **non-prompt**:
 - a `repetition_penalty` / top-p sweep — different mechanism from frequency/presence, untested.
 ▶ Item 5 should not get more prompt-wording work; the evidence is now strongly against it.
 
+**`repeat_penalty` sweep, 2026-07-28 — the first arm to move the needle, not yet conclusive.**
+
+First, a naming finding that invalidates any earlier assumption about this lever: **LM Studio honors
+`repeat_penalty` and silently ignores `repetition_penalty`** — and `repetition_penalty` is the name the app
+was sending ([GameViewer.tsx](../src/views/GameViewer.tsx) narration body), so the Repetition Penalty setting
+was a no-op on every LM Studio endpoint. Verified live (temp 0, seed 42, loaded Cydonia): `repeat_penalty` 2.0
+visibly destroys output, `repetition_penalty` 2.0 is byte-identical to a bogus-field control. Fixed by sending
+both spellings. **DRY is not reachable from LM Studio at all** — `dry_multiplier` up to 10 with
+`allowed_length` 1, in flat/camelCase/nested forms, on both `/v1` and `/api/v0`, all byte-identical to
+baseline; LM Studio's own `LLMPredictionConfigInput` lists no `dry*` field. Testing DRY means running the
+GGUF under `llama-server` instead.
+
+Batch: `--arms B --edit none,rep11,rep12,rep13 --runs 8 --turns 45 --prefill 38 --serial`, cydonia-lmstudio.
+`--serial` is now mandatory on this corpus — two concurrent chains split LM Studio's loaded context and every
+call 400s with "Context size has been exceeded".
+
+| arm | echo5 mean±sd (clean chains) | vs control | words/turn | callback | dialogue | failed turns |
+|---|---|---|---|---|---|---|
+| control | 27.8 ± 4.8 (n=8) | — | 140 | 7/7 every run | 20-27% | 0/56 |
+| `rep11` (1.1) | **22.7 ± 6.8 (n=8)** | **-5.1, t=-1.74** | 152 | 7/7 every run | 19-32% | 0/56 |
+| `rep12` (1.2) | 18.8 ± 5.7 (n=4) | -9.0, t=-2.70 | 190 | 6-7/7 | 8-26% | **13/56** |
+| `rep13` (1.3) | — (n=1 clean) | unusable | 238 | 1-7/7 | 0-14% | **28/56** |
+
+**rep11 is the only clean, undamaging arm, and it's the largest effect any lever has produced** (-18%
+relative, vs |t| < 0.6 for all four earlier arms). It is *not* significant at n=8 — one outlier run (37.2)
+carries most of its variance — but it sits right at the edge of the ~6-point resolution this corpus has at
+n=8. Callback holds 7/7 on every run and names/turn is flat (3.9 → 3.9), so nothing regressed.
+
+**Why 1.2 and 1.3 are invalid, and it's a finding rather than a harness bug:** the penalty inflates output
+length (140 → 152 → 190 → 238 words/turn), the longer history overruns the 12288-token loaded context, and
+turns start returning empty. The surviving chains are the ones that happened to write short — survivorship
+bias, so their echo numbers can't be read. The collateral damage is visible anyway and matches what
+`frequency_penalty` did: at 1.3 dialogue collapses (0-14% vs 20-27%), quoted turns drop to 0/7-3/7, and
+names/turn falls to 0.9-2.7. **Fluency breaks before echo does, again — the dose window is narrow and 1.1 is
+inside it.**
+
+**CONFIRMED at n=16 (2026-07-28, fresh paired batch, zero failed turns):**
+
+| arm | echo5 mean±sd | delta | t | words | names/turn | dialogue | callback |
+|---|---|---|---|---|---|---|---|
+| control | 28.8 ± 7.3 (n=16) | — | — | 149 | 3.88 | 23.4% | 100% |
+| `rep11` | **22.5 ± 4.8 (n=16)** | **-6.3 (-22%)** | **-2.88** | 153 | 4.01 | 23.1% | 100% |
+
+Pooled with the n=8 batch (control 28.5 ± 6.5, rep11 22.6 ± 5.4, n=24 each): **-5.9, t=-3.43**. Both batches'
+controls agree (27.8 / 28.8), confirming again that Cydonia doesn't batch-drift.
+
+**Every guard axis is flat.** Callback fires on 100% of turns in both arms (zero variance, so no t), names/turn
+3.88 → 4.01 (t=0.86), dialogue 23.4% → 23.1% (t=-0.23), words +7 (t=1.90, ns). So this is echo suppression
+without the callback/fluency cost that killed `frequency_penalty` and `rep13` — the first lever in this item
+that does anything, after six null cells.
+
+▶ **Item 5 has a local-tier answer: `repeat_penalty` 1.1 on Cydonia.** Ships as a documented local-model
+setting, NOT a default — cloud sits at echo5 ~0.5 and needs none of this. Still open: (1) reload Cydonia at
+≥24576 context so 1.2 is testable at all (12288 makes it blow up on output length alone); (2) the app-side
+levers stay unexplored and are the only route for models where the sampler isn't reachable.
+
 ### 5. Repetition / stalling in sustained scenes (original finding)
 close.json T38–45: "some part of you that no one else ever has" ×6, T44~T45 share 50 8-grams;
 scene stopped advancing (six turns of announced-but-never-arriving climax). Mechanism:

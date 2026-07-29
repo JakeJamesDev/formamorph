@@ -3,13 +3,20 @@ import {
   toInvokeScheduler,
   resolveInvokeSeed,
   findModel,
-  resolveZImageSubmodels,
+  resolveSubmodels,
+  encodersFor,
+  vaesFor,
   parseImageName,
   fetchInvokeMeta,
   invokeaiProvider,
   parseSocketFrame,
   readInvokeProgress,
   resolveBoardId,
+  pickDetailBox,
+  scaledSize,
+  zoomBox,
+  nodeImageName,
+  type BBox,
   type InvokeBoard,
   type InvokeModel,
 } from './invokeai';
@@ -18,7 +25,10 @@ import type { ImageGenParams } from './types';
 const sdxl: InvokeModel = { key: 'k-sdxl', hash: 'blake3:aa', name: 'My SDXL', base: 'sdxl', type: 'main' };
 const sd1: InvokeModel = { key: 'k-sd1', hash: 'blake3:bb', name: 'Photon', base: 'sd-1', type: 'main' };
 const zimg: InvokeModel = { key: 'k-z', hash: 'blake3:cc', name: 'Z Turbo', base: 'z-image', type: 'main' };
-const encoder: InvokeModel = { key: 'k-enc', hash: 'blake3:dd', name: 'Qwen3 Enc', base: 'any', type: 'qwen3_encoder' };
+const encoder: InvokeModel = { key: 'k-enc', hash: 'blake3:dd', name: 'Qwen3 Enc', base: 'any', type: 'qwen3_encoder', variant: 'qwen3_4b' };
+const anima: InvokeModel = { key: 'k-a', hash: 'blake3:a1', name: 'Anima Base', base: 'anima', type: 'main' };
+const animaEncoder: InvokeModel = { key: 'k-aenc', hash: 'blake3:a2', name: 'Anima Qwen3 0.6B', base: 'any', type: 'qwen3_encoder', variant: 'qwen3_06b' };
+const animaVae: InvokeModel = { key: 'k-avae', hash: 'blake3:a3', name: 'Anima QwenImage VAE', base: 'anima', type: 'vae' };
 const fluxVae: InvokeModel = { key: 'k-fvae', hash: 'blake3:ee', name: 'Flux VAE', base: 'flux', type: 'vae' };
 const sdxlVae: InvokeModel = { key: 'k-svae', hash: 'blake3:ff', name: 'SDXL VAE', base: 'sdxl', type: 'vae' };
 
@@ -73,21 +83,59 @@ describe('findModel', () => {
   });
 });
 
-describe('resolveZImageSubmodels', () => {
-  it('auto-picks the first Qwen3 encoder and a FLUX-type VAE', () => {
-    const { encoder: e, vae: v } = resolveZImageSubmodels([zimg, encoder, fluxVae, sdxlVae], '', '');
+describe('encodersFor', () => {
+  // Every Qwen3 encoder reports base "any", so variant is the only discriminator. A real install carries
+  // one per architecture, and taking the first would hand Z-Image an Anima encoder.
+  const all = [animaEncoder, { ...encoder, key: 'k-flux8', name: 'FLUX.2 Qwen3 8B', variant: 'qwen3_8b' }, encoder];
+
+  it('picks by variant rather than list order', () => {
+    expect(encodersFor(all, 'z-image').map((m) => m.key)).toEqual(['k-enc']);
+    expect(encodersFor(all, 'anima').map((m) => m.key)).toEqual(['k-aenc']);
+  });
+
+  it('keeps a variant-less record as a fallback instead of hiding it', () => {
+    const legacy = { ...encoder, key: 'k-old', variant: undefined };
+    expect(encodersFor([legacy], 'anima').map((m) => m.key)).toEqual(['k-old']);
+    expect(encodersFor([animaEncoder, legacy], 'anima').map((m) => m.key)).toEqual(['k-aenc', 'k-old']);
+  });
+});
+
+describe('vaesFor', () => {
+  it('prefers the architecture\'s own VAE and offers FLUX as the fallback', () => {
+    expect(vaesFor([sdxlVae, fluxVae, animaVae], 'anima').map((m) => m.key)).toEqual(['k-avae', 'k-fvae']);
+  });
+
+  it('leaves Z-Image on FLUX and never offers an unrelated VAE', () => {
+    expect(vaesFor([sdxlVae, fluxVae, animaVae], 'z-image').map((m) => m.key)).toEqual(['k-fvae']);
+  });
+});
+
+describe('resolveSubmodels', () => {
+  it('auto-picks the Z-Image encoder and a FLUX-type VAE', () => {
+    const { encoder: e, vae: v } = resolveSubmodels([zimg, encoder, fluxVae, sdxlVae], 'z-image', '', '');
     expect(e).toBe(encoder);
     expect(v).toBe(fluxVae); // FLUX vae, not the sdxl one
   });
+
+  it('auto-picks Anima\'s 0.6B encoder and its own VAE, past a Z-Image encoder listed first', () => {
+    const { encoder: e, vae: v } = resolveSubmodels([anima, encoder, fluxVae, animaEncoder, animaVae], 'anima', '', '');
+    expect(e).toBe(animaEncoder);
+    expect(v).toBe(animaVae);
+  });
+
   it('honors explicit overrides by name', () => {
-    const { vae: v } = resolveZImageSubmodels([encoder, fluxVae], '', 'Flux VAE');
+    const { vae: v } = resolveSubmodels([encoder, fluxVae], 'z-image', '', 'Flux VAE');
     expect(v).toBe(fluxVae);
   });
+
   it('throws a user-actionable error when the encoder is missing', () => {
-    expect(() => resolveZImageSubmodels([fluxVae], '', '')).toThrow(/Qwen3 text encoder/);
+    expect(() => resolveSubmodels([fluxVae], 'z-image', '', '')).toThrow(/Qwen3 4B text encoder/);
+    expect(() => resolveSubmodels([fluxVae], 'anima', '', '')).toThrow(/Qwen3 0\.6B text encoder/);
   });
-  it('throws a user-actionable error when a FLUX VAE is missing', () => {
-    expect(() => resolveZImageSubmodels([encoder, sdxlVae], '', '')).toThrow(/FLUX-type VAE/);
+
+  it('throws a user-actionable error when no usable VAE is installed', () => {
+    expect(() => resolveSubmodels([encoder, sdxlVae], 'z-image', '', '')).toThrow(/FLUX-type VAE/);
+    expect(() => resolveSubmodels([animaEncoder, sdxlVae], 'anima', '', '')).toThrow(/QwenImage\/Wan 2\.1 VAE/);
   });
 });
 
@@ -200,6 +248,31 @@ describe('invokeaiProvider', () => {
     expect(types).toContain('z_image_denoise');
     expect(nodes.loader.qwen3_encoder_model?.key).toBe('k-enc');
     expect(nodes.loader.vae_model?.key).toBe('k-fvae');
+  });
+
+  it('builds the Anima graph with its own node set and submodels', async () => {
+    const server = stubServer([anima, encoder, fluxVae, animaEncoder, animaVae]);
+    await invokeaiProvider({ ...params, model: 'Anima Base' }, { endpointUrl: 'http://127.0.0.1:9090', apiToken: '' });
+    const nodes = server.enqueued[0].batch.graph.nodes as Record<string, { type: string; qwen3_encoder_model?: { key: string }; vae_model?: { key: string } }>;
+    const types = Object.values(nodes).map((n) => n.type);
+    expect(types).toContain('anima_model_loader');
+    expect(types).toContain('anima_text_encoder');
+    expect(types).toContain('anima_denoise');
+    expect(types).toContain('anima_l2i');
+    expect(types).not.toContain('z_image_denoise');
+    // The Z-Image encoder and FLUX VAE are installed and listed first — Anima must still take its own.
+    expect(nodes.loader.qwen3_encoder_model?.key).toBe('k-aenc');
+    expect(nodes.loader.vae_model?.key).toBe('k-avae');
+  });
+
+  it('falls back to euler when the preset carries a sampler Anima rejects', async () => {
+    const server = stubServer([anima, animaEncoder, animaVae]);
+    await invokeaiProvider(
+      { ...params, model: 'Anima Base', sampler: 'DPM++ 2M Karras' },
+      { endpointUrl: 'http://127.0.0.1:9090', apiToken: '' },
+    );
+    const nodes = server.enqueued[0].batch.graph.nodes as Record<string, { scheduler?: string }>;
+    expect(nodes.denoise.scheduler).toBe('euler'); // dpmpp_2m_k is not in Anima's six
   });
 
   it('throws when the requested model is not installed', async () => {
@@ -419,18 +492,304 @@ describe('invokeaiProvider live progress', () => {
   });
 });
 
+describe('pickDetailBox', () => {
+  const face: BBox = { x_min: 300, y_min: 200, x_max: 600, y_max: 500, score: 0.62 };
+
+  it('takes the highest-scoring usable box', () => {
+    const other: BBox = { x_min: 0, y_min: 0, x_max: 200, y_max: 200, score: 0.41 };
+    expect(pickDetailBox([other, face], 832, 1216)).toBe(face);
+  });
+
+  it('rejects a whole-canvas detection even when it scores highest', () => {
+    // DINO's real failure mode: a box covering the whole image, returned with high confidence. Taking it
+    // would turn the face fix into a full-image img2img.
+    const canvasWide: BBox = { x_min: 0, y_min: 0, x_max: 832, y_max: 1216, score: 0.95 };
+    expect(pickDetailBox([canvasWide, face], 832, 1216)).toBe(face);
+    expect(pickDetailBox([canvasWide], 832, 1216)).toBeNull();
+  });
+
+  it('returns null for no detections, and ignores degenerate boxes', () => {
+    expect(pickDetailBox([], 832, 1216)).toBeNull();
+    expect(pickDetailBox([{ x_min: 40, y_min: 40, x_max: 40, y_max: 90, score: 0.9 }], 832, 1216)).toBeNull();
+  });
+
+  it('treats a missing score as the lowest rather than throwing it away', () => {
+    const noScore: BBox = { x_min: 10, y_min: 10, x_max: 60, y_max: 60 };
+    expect(pickDetailBox([noScore], 832, 1216)).toBe(noScore);
+    expect(pickDetailBox([noScore, face], 832, 1216)).toBe(face);
+  });
+});
+
+describe('scaledSize', () => {
+  it('leaves a crop that already sits on an SDXL training bucket alone', () => {
+    expect(scaledSize(832, 1216, 1024, 'sdxl')).toEqual([832, 1216]);
+    expect(scaledSize(1216, 832, 1024, 'sdxl')).toEqual([1216, 832]);
+  });
+
+  it('scales a small crop up to roughly the model\'s optimal AREA, not its long edge', () => {
+    const [w, h] = scaledSize(300, 400, 1024, 'sdxl');
+    expect(w * h).toBeGreaterThanOrEqual(1024 * 1024);
+    expect(Math.max(w, h)).toBeLessThan(1024 * 2); // long edge is NOT pinned to 1024
+    expect(w % 8).toBe(0);
+    expect(h % 8).toBe(0);
+    expect(w / h).toBeCloseTo(300 / 400, 1); // aspect preserved
+  });
+
+  it('renders an SD1.5 crop at its own training resolution instead of SDXL\'s', () => {
+    const [w, h] = scaledSize(300, 300, 512, 'sd-1');
+    expect([w, h]).toEqual([512, 512]);
+    // The SDXL bucket shortcut must not apply to a non-SDXL base.
+    expect(scaledSize(1024, 1024, 512, 'sd-1')).toEqual([1024, 1024]);
+  });
+
+  it('leaves a crop already past the target area alone', () => {
+    expect(scaledSize(1600, 1600, 1024, 'sd-1')).toEqual([1600, 1600]);
+  });
+});
+
+describe('zoomBox', () => {
+  it('grows the box about its center', () => {
+    expect(zoomBox({ x_min: 400, y_min: 400, x_max: 500, y_max: 500 }, 2, 832, 1216))
+      .toEqual({ x_min: 350, y_min: 350, x_max: 550, y_max: 550 });
+  });
+
+  it('clamps to the canvas instead of running off it', () => {
+    expect(zoomBox({ x_min: 10, y_min: 10, x_max: 110, y_max: 110 }, 4, 832, 1216))
+      .toEqual({ x_min: 0, y_min: 0, x_max: 260, y_max: 260 });
+  });
+});
+
+describe('nodeImageName', () => {
+  const item = {
+    session: {
+      results: { p: { type: 'image_output', image: { image_name: 'pasted.png' } }, b: { type: 'image_output', image: { image_name: 'blended.png' } } },
+      source_prepared_mapping: { paste: ['p'], blend: ['b'] },
+    },
+  };
+
+  it('picks the output of the named node, not just the first image', () => {
+    expect(nodeImageName(item, 'paste')).toBe('pasted.png');
+    expect(nodeImageName(item, 'blend')).toBe('blended.png');
+  });
+
+  it('throws when the node produced nothing', () => {
+    expect(() => nodeImageName(item, 'crop')).toThrow(/node "crop"/);
+  });
+});
+
+/** A face-sized detection inside the 832x1216 test canvas (~9% of it). */
+const faceBox: BBox = { x_min: 300, y_min: 200, x_max: 600, y_max: 500, score: 0.62 };
+/** What SAM's mask bounds come back as, once `margin` has been applied server-side. */
+const maskBounds: BBox = { x_min: 280, y_min: 180, x_max: 620, y_max: 520 };
+
+/** Route a mocked fetch for a multi-pass run, answering each enqueue according to the graph it received.
+ *  Records the graphs in order and the image the provider ultimately downloaded. */
+function stubDetailServer(
+  models: InvokeModel[],
+  o: { boxes?: BBox[]; bbox?: BBox | null; failPass?: number } = {},
+) {
+  const graphs: Array<{ nodes: Record<string, Record<string, unknown>>; edges: unknown[] }> = [];
+  const items = new Map<number, unknown>();
+  let nextId = 100;
+  let downloaded = '';
+
+  const completed = (results: Record<string, unknown>, mapping?: Record<string, string[]>) => ({
+    status: 'completed', session: { results, ...(mapping ? { source_prepared_mapping: mapping } : {}) },
+  });
+
+  const answer = (graph: { nodes: Record<string, Record<string, unknown>> }, pass: number) => {
+    if (o.failPass === pass) return { status: 'failed', error_message: 'detector exploded' };
+    const types = Object.values(graph.nodes).map((n) => n.type);
+    if (types.includes('grounding_dino')) {
+      return completed({ a: { type: 'bounding_box_collection_output', collection: o.boxes ?? [faceBox] } });
+    }
+    if (types.includes('segment_anything')) {
+      const bbox = o.bbox === undefined ? maskBounds : o.bbox;
+      return completed({
+        ...(bbox ? { a: { type: 'bounding_box_output', bounding_box: bbox } } : {}),
+        b: { type: 'image_output', image: { image_name: 'mask.png' } },
+      });
+    }
+    if (types.includes('img_paste')) {
+      // The blend's crop-sized output is listed FIRST: taking "the first image_output" would hand back
+      // the patch instead of the composite, and nothing about its shape would give that away.
+      return completed(
+        { q: { type: 'image_output', image: { image_name: 'blend.png' } }, p: { type: 'image_output', image: { image_name: 'fixed.png' } } },
+        { blend: ['q'], paste: ['p'] },
+      );
+    }
+    return completed({ r: { type: 'image_output', image: { image_name: 'base.png' } } });
+  };
+
+  vi.stubGlobal('fetch', vi.fn(async (url: string, init?: RequestInit) => {
+    if (url.endsWith('/api/v2/models/')) return { ok: true, json: async () => ({ models }) } as Response;
+    if (url.includes('/api/v1/boards/')) return { ok: true, json: async () => boards } as Response;
+    if (url.endsWith('/enqueue_batch')) {
+      const graph = JSON.parse(String(init?.body)).batch.graph;
+      graphs.push(graph);
+      const id = nextId++;
+      items.set(id, answer(graph, graphs.length));
+      return { ok: true, json: async () => ({ item_ids: [id] }) } as Response;
+    }
+    const queued = url.match(/\/queue\/default\/i\/(\d+)/);
+    if (queued) return { ok: true, json: async () => items.get(Number(queued[1])) } as Response;
+    if (url.includes('/images/i/')) {
+      downloaded = decodeURIComponent(url.split('/images/i/')[1].split('/full')[0]);
+      return {
+        ok: true,
+        headers: new Headers({ 'content-type': 'image/png' }),
+        arrayBuffer: async () => new Uint8Array([137, 80, 78, 71]).buffer,
+      } as unknown as Response;
+    }
+    throw new Error(`unexpected url ${url}`);
+  }));
+  FakeSocket.last = null;
+  vi.stubGlobal('WebSocket', FakeSocket);
+  return { graphs, downloaded: () => downloaded };
+}
+
+describe('invokeaiProvider detail pass', () => {
+  afterEach(() => vi.unstubAllGlobals());
+
+  const detailParams: ImageGenParams = { ...params, adetailer: true };
+  const endpoint = { endpointUrl: 'http://127.0.0.1:9090', apiToken: '' };
+  const typesOf = (g: { nodes: Record<string, Record<string, unknown>> }) => Object.values(g.nodes).map((n) => n.type as string);
+
+  it('detects, segments, re-renders and returns the pasted composite', async () => {
+    const server = stubDetailServer([sdxl]);
+    const progress: number[] = [];
+    const url = await invokeaiProvider(detailParams, { ...endpoint, onProgress: (p) => progress.push(p.progress) });
+
+    expect(url).toMatch(/^data:image\/png;base64,/);
+    expect(server.graphs).toHaveLength(4);
+    expect(typesOf(server.graphs[1])).toEqual(['grounding_dino']);
+    expect(typesOf(server.graphs[2])).toContain('segment_anything');
+
+    const detailTypes = typesOf(server.graphs[3]);
+    expect(detailTypes).toContain('create_gradient_mask');
+    expect(detailTypes).toContain('invokeai_img_blend');
+    expect(detailTypes).toContain('img_paste');
+    // The composite is what we hand back, not the blend that also comes out of that graph.
+    expect(server.downloaded()).toBe('fixed.png');
+    expect(progress.at(-1)).toBe(1);
+    expect(progress).toEqual([...progress].sort((a, b) => a - b));
+  });
+
+  it('masks the denoise in latent space rather than repairing the region afterwards', async () => {
+    const server = stubDetailServer([sdxl]);
+    await invokeaiProvider(detailParams, endpoint);
+    const edges = server.graphs[3].edges as Array<{ source: { node_id: string; field: string }; destination: { node_id: string; field: string } }>;
+    expect(edges).toContainEqual({
+      source: { node_id: 'grad', field: 'denoise_mask' },
+      destination: { node_id: 'denoise', field: 'denoise_mask' },
+    });
+    // img_paste must be given no mask — a mask there premultiplies and traces a dark halo on every edge.
+    expect(server.graphs[3].nodes.paste.mask).toBeUndefined();
+  });
+
+  it('renders the crop scaled up, then lays it back at the crop\'s own size', async () => {
+    const server = stubDetailServer([sdxl]);
+    await invokeaiProvider(detailParams, endpoint);
+    const n = server.graphs[3].nodes;
+    // zoom 2.2 about the mask bounds (280,180)-(620,520) wants 76..824 x -24..724; the top clamps to 0.
+    expect(n.down).toMatchObject({ width: 748, height: 724 });
+    expect((n.up as { width: number }).width).toBeGreaterThan(748); // scaled up to ~1MP for the render
+    expect(n.paste).toMatchObject({ x: 76, y: 0 });
+  });
+
+  it('carries the fp32 VAE flag from the model, since fp16 renders such a model black', async () => {
+    const fp32Model = { ...sdxl, default_settings: { vae_precision: 'fp32' } };
+    const server = stubDetailServer([fp32Model]);
+    await invokeaiProvider(detailParams, endpoint);
+    const n = server.graphs[3].nodes;
+    expect(n.i2l).toMatchObject({ fp32: true });
+    expect(n.l2i).toMatchObject({ fp32: true });
+    expect(n.grad).toMatchObject({ fp32: true });
+  });
+
+  it('files only the composite on the board, leaving the un-fixed base out of the gallery', async () => {
+    const server = stubDetailServer([sdxl]);
+    await invokeaiProvider(detailParams, { ...endpoint, invokeBoard: 'b-2' });
+    expect(server.graphs[0].nodes.l2i).toMatchObject({ is_intermediate: true });
+    expect(server.graphs[0].nodes.l2i.board).toBeUndefined();
+    expect(server.graphs[3].nodes.paste).toMatchObject({ board: { board_id: 'b-2' }, is_intermediate: false });
+  });
+
+  it('returns the base image untouched when no face is found', async () => {
+    const server = stubDetailServer([sdxl], { boxes: [] });
+    const progress: number[] = [];
+    const url = await invokeaiProvider(detailParams, { ...endpoint, onProgress: (p) => progress.push(p.progress) });
+    expect(url).toMatch(/^data:image\/png;base64,/);
+    expect(server.graphs).toHaveLength(2); // generation + detection, then it stops
+    expect(server.downloaded()).toBe('base.png');
+    expect(progress.at(-1)).toBe(1); // the bar still finishes rather than sticking mid-pass
+  });
+
+  it('stops before SAM when the only detection covers the whole canvas', async () => {
+    const server = stubDetailServer([sdxl], {
+      boxes: [{ x_min: 0, y_min: 0, x_max: 832, y_max: 1216, score: 0.95 }],
+    });
+    await invokeaiProvider(detailParams, endpoint);
+    expect(server.graphs).toHaveLength(2);
+    expect(server.downloaded()).toBe('base.png');
+  });
+
+  it('returns the base image when SAM produces an empty mask', async () => {
+    const server = stubDetailServer([sdxl], { bbox: null });
+    await invokeaiProvider(detailParams, endpoint);
+    expect(server.graphs).toHaveLength(3);
+    expect(server.downloaded()).toBe('base.png');
+  });
+
+  it('keeps the generation when the detail pass fails outright', async () => {
+    // A failed face fix must not lose an image that already rendered.
+    const server = stubDetailServer([sdxl], { failPass: 4 });
+    const url = await invokeaiProvider(detailParams, endpoint);
+    expect(url).toMatch(/^data:image\/png;base64,/);
+    expect(server.graphs).toHaveLength(4);
+    expect(server.downloaded()).toBe('base.png');
+  });
+
+  it('builds the SD1.5 detail graph with single-clip compel', async () => {
+    const server = stubDetailServer([sd1]);
+    await invokeaiProvider({ ...detailParams, model: 'Photon' }, endpoint);
+    const detailTypes = typesOf(server.graphs[3]);
+    expect(detailTypes).toContain('main_model_loader');
+    expect(detailTypes).toContain('compel');
+    expect(detailTypes).not.toContain('sdxl_compel_prompt');
+  });
+
+  it('skips the pass entirely for Z-Image, whose denoise node has no mask input', async () => {
+    const server = stubDetailServer([zimg, encoder, fluxVae]);
+    const url = await invokeaiProvider({ ...detailParams, model: 'Z Turbo' }, endpoint);
+    expect(url).toMatch(/^data:image\/png;base64,/);
+    expect(server.graphs).toHaveLength(1);
+    // Skipped, not degraded: the image still files on its board like any normal generation.
+    expect(server.graphs[0].nodes.l2i.is_intermediate).toBeUndefined();
+  });
+
+  it('leaves the single-pass flow alone when the setting is off', async () => {
+    const server = stubDetailServer([sdxl]);
+    await invokeaiProvider(params, endpoint);
+    expect(server.graphs).toHaveLength(1);
+    expect(server.downloaded()).toBe('base.png');
+  });
+});
+
 describe('fetchInvokeMeta', () => {
   afterEach(() => vi.unstubAllGlobals());
-  it('filters to supported main models, Qwen3 encoders, and FLUX VAEs', async () => {
-    const all = [sdxl, sd1, zimg, encoder, fluxVae, sdxlVae, { ...sdxl, key: 'flux1', name: 'Flux', base: 'flux', type: 'main' }];
+  it('filters main models to supported bases and passes submodels through for per-base narrowing', async () => {
+    const all = [sdxl, sd1, zimg, anima, encoder, animaEncoder, fluxVae, sdxlVae, animaVae, { ...sdxl, key: 'flux1', name: 'Flux', base: 'flux', type: 'main' }];
     vi.stubGlobal('fetch', vi.fn(async (url: string) => ({
       ok: true,
       json: async () => (url.includes('/boards/') ? boards : { models: all }),
     } as Response)));
     const meta = await fetchInvokeMeta('http://127.0.0.1:9090');
-    expect(meta.models.map((m) => m.name)).toEqual(['My SDXL', 'Photon', 'Z Turbo']); // flux main excluded
-    expect(meta.encoders).toEqual([encoder]);
-    expect(meta.vaes).toEqual([fluxVae]); // sdxl vae excluded
+    expect(meta.models.map((m) => m.name)).toEqual(['My SDXL', 'Photon', 'Z Turbo', 'Anima Base']); // flux main excluded
+    // Both lists stay whole here: which entries are usable depends on the selected model, so the
+    // Settings rows narrow them with encodersFor/vaesFor rather than this call guessing.
+    expect(meta.encoders).toEqual([encoder, animaEncoder]);
+    expect(meta.vaes).toEqual([fluxVae, sdxlVae, animaVae]);
     expect(meta.boards.map((b) => b.board_name)).toEqual(['Formamorph', 'Realism']); // archived excluded
   });
 

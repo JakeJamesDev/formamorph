@@ -13,20 +13,42 @@ import type { AITurnResult, ChatMessage } from '@/types';
  * This slice only *generates and stores* digests. Nothing consumes them yet (see Slice 2: banding).
  */
 
+// The history is walked repeatedly — the context meter alone re-derives on every sentence boundary of
+// every turn — and each walk parses every assistant message again. Cache by the exact content string, so
+// only a turn that actually changed is re-parsed. Bounded: an entry is dropped once the map outgrows a
+// long session's history, and a parse is cheap enough that a miss costs nothing.
+const PARSE_CACHE_LIMIT = 400;
+const parseCache = new Map<string, AITurnResult | null>();
+
 /** Parse an assistant turn's JSON content, or `null` if it doesn't parse. Legacy v1.2 / pre-release 2.0
  *  saves stored the narration under `game_text`; normalize that to `narration` on read (non-destructive
- *  — the field just moves), so every consumer can rely on `narration`. */
+ *  — the field just moves), so every consumer can rely on `narration`.
+ *
+ *  Native `JSON.parse` runs first: everything the app writes is strict JSON, and json5 is ~200x slower on
+ *  the same string. json5 stays as the fallback for legacy and model-authored content, which is the only
+ *  place its tolerance was ever needed. */
 export function parseTurnContent(content: string): AITurnResult | null {
+  const hit = parseCache.get(content);
+  if (hit !== undefined) return hit;
+
+  let parsed: (AITurnResult & { game_text?: string }) | null = null;
   try {
-    const parsed = json5.parse(content) as AITurnResult & { game_text?: string };
-    if (parsed && parsed.narration === undefined && typeof parsed.game_text === 'string') {
-      parsed.narration = parsed.game_text;
-      delete parsed.game_text;
-    }
-    return parsed;
+    parsed = JSON.parse(content) as AITurnResult & { game_text?: string };
   } catch {
-    return null;
+    try {
+      parsed = json5.parse(content) as AITurnResult & { game_text?: string };
+    } catch {
+      parsed = null;
+    }
   }
+  if (parsed && parsed.narration === undefined && typeof parsed.game_text === 'string') {
+    parsed.narration = parsed.game_text;
+    delete parsed.game_text;
+  }
+
+  if (parseCache.size >= PARSE_CACHE_LIMIT) parseCache.clear();
+  parseCache.set(content, parsed);
+  return parsed;
 }
 
 /** Serialize an assistant turn back to the stored JSON shape. */

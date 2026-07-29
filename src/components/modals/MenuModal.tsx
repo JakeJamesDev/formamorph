@@ -45,13 +45,13 @@ export const MenuModal = ({ onSettingsClick, onSave, onLoad, worldOverview, worl
   const [records, setRecords] = React.useState<SaveRecord[]>([]);
   const [dupConflict, setDupConflict] = React.useState<{ name: string; existingId: string } | null>(null);
 
-  const { lastSaveName, fullMessageHistory } = useGameplay();
+  const { lastSaveName, sceneImages } = useGameplay();
   // Scene images are dropped from a save unless asked for — they dwarf everything else in it. The row only
   // appears once the session actually has some, with the real weight rather than a vague warning.
   const [includeSceneImages, setIncludeSceneImages] = React.useState(false);
   const sceneWeight = React.useMemo(
-    () => (showSaveDialog ? sceneImageWeight(fullMessageHistory) : { count: 0, bytes: 0 }),
-    [showSaveDialog, fullMessageHistory],
+    () => (showSaveDialog ? sceneImageWeight(sceneImages) : { count: 0, bytes: 0 }),
+    [showSaveDialog, sceneImages],
   );
   // Hold the conflicting save's name while the "already exists" dialog fades out (dupConflict goes null on close).
   const shownDup = useClosingSnapshot(!!dupConflict, dupConflict);
