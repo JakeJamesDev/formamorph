@@ -288,7 +288,22 @@ They exist to give the story a memory with consequences. Prose alone drifts; a s
 - **Body Sliders** bind a body morph to the stat, so its value drives the slider from Min to Max.
 - **Dynamic Value Calculation** replaces the value with the result of a small script — see below.
 
-**Calculated stats.** A stat can compute itself from the others: write JavaScript that returns a number, and it recalculates each turn instead of using Initial Value. **Test Code** runs it right there. Your script sees a read-only copy of every stat (name, description, min, max, value, regen) and nothing else — it can't reach the page or the network. A calculated stat ignores the AI entirely: whatever it writes gets recomputed away, though it still *reads* the value.
+**Calculated stats.** A stat can compute itself from the others: write JavaScript that returns a number, and it recalculates each turn instead of using Initial Value. **Test Code** runs it right there, as a one-hour turn on day one. Your script sees a read-only copy of every stat (name, description, min, max, value, regen) and nothing else — it can't reach the page or the network. A calculated stat ignores the AI entirely: whatever it writes gets recomputed away, though it still *reads* the value.
+
+**Scripts can read the clock.** Alongside the stats, your script gets six values describing where the story stands in time:
+
+| | |
+|---|---|
+| \`deltaHours\` | Story hours **this** turn consumed |
+| \`elapsedHours\` | Total story hours so far, counting this turn |
+| \`day\` | Day number at the **end** of the turn |
+| \`daypart\` | Time of day at the **end** of the turn |
+| \`startDay\` | Day number at the **start** of the turn |
+| \`startDaypart\` | Time of day at the **start** of the turn |
+
+Both ends are given because a turn spans time: an eight-hour sleep begins in the afternoon and ends at night. Dayparts are \`night\`, \`dawn\`, \`morning\`, \`midday\`, \`afternoon\`, \`evening\`.
+
+That's what makes a per-hour drain (\`current + 2 * deltaHours\`) or a stat that only climbs after dark possible. With **Measured Clock** off, \`deltaHours\` is simply \`1\`. One catch: a script mentioning any of these re-runs **every** turn, since time passes every turn — scripts that don't keep re-running only when a stat changes.
 
 Start with two or three stats that the story would genuinely turn on. Every stat you add spends context on every turn, whether it matters to the scene or not.`,
   },

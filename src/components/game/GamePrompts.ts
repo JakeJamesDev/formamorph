@@ -50,7 +50,7 @@ export const defaultSystemPrompt = `You are the narrator stage of an interactive
 ## Foreground Lore
 <DICTIONARY>
 
-Output only the story prose - the events themselves, with no labels, no mention of being an AI, and nothing after the scene ends. The choices step that follows you handles the player's options, so your reply never contains a question to the player, a list of actions, a "Choose"/"Options" menu, or a bracketed stage direction like [Player's turn]. When the player's action speaks to a character, the reply on the page is that character's own voice: their quoted sentences, answering what was asked and adding something of their own. The player's words are already spoken by the player - yours to write is the world's answer.`;
+Output only the story prose - the events themselves, with no labels, no mention of being an AI, and nothing after the scene ends. The choices step that follows you handles the player's options, so your reply never contains a question to the player, a list of actions, a "Choose"/"Options" menu, or a bracketed stage direction like [Player's turn]. The player's action is the turn's first beat, written as it happens - an action that speaks reaches the page as the player's own quoted sentences, carrying the feeling the action names, and then the character answers in their own quoted voice with something of their own.`;
 
 const MARKDOWN_OFF = 'Write plain prose - no headings, lists, or tables.';
 
@@ -81,15 +81,20 @@ export function activeCharacterGuidance(enabled: boolean, limit: number): string
 export const OPENING_SCENE_CUE = `Begin the story: write the opening scene now. Establish where the player character is and what is happening around them, then stop on a concrete image, action, or line of dialogue. Do not ask the player what to do or list options - a separate step handles that.`;
 
 // The narration request's current-turn user message (thinking-off only; other modes send the bare
-// action). The voice clause riding after the action is the strongest dialogue lever ever measured on
-// the hold gate (cloud ~3× participation incl. the first full 50-turn hold; Cydonia 50/50) — the same
-// clause stays in the system prompt's closing contract for the thinking modes, and having it in both
-// places measured identical to user-slot-only. NOT every directive works here: the ending contract and
-// length guidance both measured WORSE moved to this slot — evidence before adding anything else.
+// action). The first-beat clause riding after the action does two jobs: the player's own action lands
+// as spoken words rather than a restatement, and the character answers in their own voice — the NPC half
+// is the strongest dialogue lever measured on the hold gate (cloud ~3× participation incl. the first
+// full 50-turn hold; Cydonia 50/50). The same clause stays in the system prompt's closing contract for
+// the thinking modes, and having it in both places measured identical to user-slot-only. Evidence bar:
+// action-enactment-probe.mjs. Naming quoted sentences as the shape is what carries it - asking for "the
+// actual words" was satisfied by a restatement, and saying "in quotation marks" outright measured WORSE
+// than either. Cloud at 36 runs/arm: player speaks 31→67%, NPC participation 72→75% (no cost).
+// NOT every directive works here: the ending contract and length guidance both measured WORSE moved to
+// this slot — evidence before adding anything else.
 // History always stores the bare action, so this text never accumulates.
 export const defaultNarrationUserPrompt = `<PLAYER ACTION>
 
-When the player's action speaks to a character, the reply on the page is that character's own voice: their quoted sentences, answering what was asked and adding something of their own. The player's words are already spoken by the player - yours to write is the world's answer.`;
+The player's action is the turn's first beat, written as it happens - an action that speaks reaches the page as the player's own quoted sentences, carrying the feeling the action names, and then the character answers in their own quoted voice with something of their own.`;
 
 // The OOC channel: square-bracketed text in the player's action is authorial direction, not in-fiction
 // speech. The convention is defined once in the system prompt's Guidelines; this rider re-states it in

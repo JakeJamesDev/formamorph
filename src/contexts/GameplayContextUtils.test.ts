@@ -38,3 +38,16 @@ describe('processStatCode reference identity', () => {
     expect(stats[0].value).toBe(10); // input not mutated
   });
 });
+
+describe('processStatCode clock passthrough', () => {
+  it('hands the turn clock to the sandbox so code can scale by it', async () => {
+    const stats = [makeStat({ id: 'a', value: 0, max: 1000, code: 'return elapsedHours * deltaHours;' })];
+    const out = await processStatCode(stats, { deltaHours: 8, elapsedHours: 30 });
+    expect(out[0].value).toBe(240);
+  });
+
+  it('falls back to a flat one-hour turn when no clock is passed', async () => {
+    const stats = [makeStat({ id: 'a', value: 0, max: 1000, code: 'return deltaHours;' })];
+    expect((await processStatCode(stats))[0].value).toBe(1);
+  });
+});

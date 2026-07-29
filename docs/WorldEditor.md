@@ -79,6 +79,14 @@ return (health + strength) / 2;
 
 Your code runs in an isolated sandbox with a time limit. It sees a read-only copy of every stat — `id`, `name`, `type`, `description`, `min`, `max`, `value`, `regen` — and nothing else: no other stat's code, no descriptors, no page, no network.
 
+**It can also read the story clock:** `deltaHours` (how long this turn took), `elapsedHours`, `day` / `daypart` at the end of the turn, and `startDay` / `startDaypart` at the start. With the clock off, `deltaHours` is `1`.
+
+```js
+// Thirst rises 2 per story hour
+const current = stats.find(s => s.name === 'Thirst')?.value || 0;
+return current + (2 * deltaHours);
+```
+
 **A calculated stat ignores the AI.** Its value is recomputed every turn, so anything the AI writes is overwritten. The AI still *reads* the value and description normally.
 
 > 📘 Full reference: [Stat Code Guide](StatCodeGuide).

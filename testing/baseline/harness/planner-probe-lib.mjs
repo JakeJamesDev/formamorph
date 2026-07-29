@@ -64,7 +64,7 @@ export function buildThinkingUser(recap, action) {
 }
 
 /** Fire an arbitrary message array at the model with the production thinking sampler pins. */
-export async function callMessages({ endpoint, model, token, maxTokens, seed, repPen = 1, temp = 0.4 }, messages) {
+export async function callMessages({ endpoint, model, token, maxTokens, seed, repPen = 1, temp = 0.4, extra }, messages) {
   const headers = { "Content-Type": "application/json" };
   if (token) headers.Authorization = `Bearer ${token}`;
   const res = await fetch(endpoint, {
@@ -78,6 +78,7 @@ export async function callMessages({ endpoint, model, token, maxTokens, seed, re
       seed,                      // LM Studio (llama.cpp) honors this → reproducible baselines
       reasoning_effort: "none",  // harmless on Cydonia; keeps parity with other probes
       stream: false,
+      ...extra,                  // extra sampler fields (top_p, min_p, presence/frequency_penalty)
     }),
   });
   if (!res.ok) throw new Error(`HTTP ${res.status}: ${(await res.text()).slice(0, 160)}`);

@@ -479,8 +479,21 @@ const StatManager = ({ stat }: { stat: Stat }) => {
         >
             <p className="text-sm text-muted-foreground">
               Write JavaScript code to dynamically calculate this stat&apos;s value
-              based on other stats. The code should return a number. You have
-              access to the &apos;stats&apos; array containing all stats.
+              based on other stats and the story clock. The code should return a number. You have
+              access to the &apos;stats&apos; array containing all stats, plus:
+            </p>
+
+            <ul className="text-xs text-muted-foreground space-y-1 pl-4">
+              <li><code>deltaHours</code> — story hours this turn took (1 with the in-world clock off)</li>
+              <li><code>elapsedHours</code> — total story hours so far, counting this turn</li>
+              <li><code>day</code> / <code>daypart</code> — where the story stands at the <em>end</em> of the turn</li>
+              <li><code>startDay</code> / <code>startDaypart</code> — where it stood at the <em>start</em></li>
+            </ul>
+
+            <p className="text-xs text-muted-foreground">
+              Dayparts are <code>night</code>, <code>dawn</code>, <code>morning</code>, <code>midday</code>,{" "}
+              <code>afternoon</code>, <code>evening</code>. Code that mentions any of these variables re-runs
+              every turn; other code only re-runs when a stat changes.
             </p>
 
             <Textarea
@@ -536,7 +549,8 @@ return (health + strength) / 2;"
             <p className="text-xs text-muted-foreground">
               Note: When code is provided, it will override the manual value
               setting. Leave empty to use the manual value. AI can&apos;t modify
-              stats with code (but it can see the stat value and desc).
+              stats with code (but it can see the stat value and desc). Test Code runs as a
+              one-hour turn on day one.
             </p>
         </CollapsibleSection>
       )}

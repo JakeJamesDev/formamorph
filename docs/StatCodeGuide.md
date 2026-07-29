@@ -10,13 +10,23 @@ The dynamic stat calculation feature allows you to write JavaScript code that au
 - **Compound stats** that combine multiple stats (e.g., defense calculated from armor + agility)
 - **Threshold effects** that change based on conditions (e.g., speed penalties when health is below 30%)
 - **Complex formulas** for game mechanics (e.g., damage calculations, regeneration rates)
+- **Time-based stats** that respond to how long a turn took or what time of day it is (see [The Story Clock](#the-story-clock))
 
 ## How It Works
 
 1. Each stat can have an optional JavaScript code snippet
 2. When stats are updated during gameplay, the code is executed in a safe environment
-3. The code has access to all current stats and must return a number
+3. The code has access to all current stats, the story clock, and must return a number
 4. The returned number becomes the new value of the stat (constrained by min/max)
+
+### When Your Code Runs
+
+| Your code… | Runs… |
+| --- | --- |
+| doesn't mention a clock variable | whenever a stat changes |
+| mentions any clock variable | **every turn**, whether or not a stat changed |
+
+Time passes on every turn, so code that reads the clock has to run on every turn — otherwise a time-based stat would only tick on the turns the AI happened to report a stat change. Code that doesn't read the clock keeps the original schedule.
 
 ## Writing Stat Code
 
@@ -55,6 +65,25 @@ Each stat in the `stats` array exposes the following properties:
 - `regen`: Regeneration rate
 
 > ℹ️ Only these fields are passed into the sandbox. A stat's own `code` and `descriptors` are **not** available from inside a snippet.
+
+### The Story Clock
+
+Six values describe where the story stands in time. They're plain variables — just use them by name.
+
+| Variable | What it is |
+| --- | --- |
+| `deltaHours` | Story hours **this turn** consumed |
+| `elapsedHours` | Total story hours so far, counting this turn |
+| `day` | Day number (1-based) at the **end** of the turn |
+| `daypart` | Time of day at the **end** of the turn |
+| `startDay` | Day number at the **start** of the turn |
+| `startDaypart` | Time of day at the **start** of the turn |
+
+`daypart` and `startDaypart` are one of six words: `night`, `dawn`, `morning`, `midday`, `afternoon`, `evening`.
+
+**Why start and end are both given.** A turn spans time. An eight-hour sleep that begins at 15:00 has `startDaypart === 'afternoon'` and `daypart === 'night'` — neither reading alone describes the turn.
+
+> ⚠️ **With the clock off, `deltaHours` is always `1`** and every turn advances the story by one hour. Your code works either way; it just gets a flat number instead of a measured one. The setting is **Measured Clock**, under Settings → Generation → Memory.
 
 ### Examples
 
@@ -147,6 +176,27 @@ if (agility <= 50) {
 return Math.min(dodgeChance, 75);
 ```
 
+#### Drain Per Hour
+
+Scale a change by how long the turn actually took, so a night's sleep costs more than a short conversation:
+
+```javascript
+// Thirst rises 2 per story hour
+const current = stats.find(s => s.name === 'Thirst')?.value || 0;
+return current + (2 * deltaHours);
+```
+
+#### Time of Day
+
+React to when the turn happened rather than to another stat:
+
+```javascript
+// A vampire's Power climbs at night and fades by day
+const current = stats.find(s => s.name === 'Power')?.value || 50;
+const rate = (daypart === 'night' || daypart === 'evening') ? 4 : -4;
+return current + (rate * deltaHours);
+```
+
 #### Resource Consumption
 
 Calculate resource consumption based on other stats:
@@ -168,6 +218,8 @@ const sizeFactor = size / 50;
 return baseRate * activityMultiplier * sizeFactor;
 ```
 
+> 💡 **Prefer the `regen` field for plain regeneration.** A stat that simply drifts at a fixed rate already scales with story hours without any code at all. Reach for `deltaHours` when the rate itself depends on something — the time of day, another stat, a threshold.
+
 ## Best Practices
 
 1. **Keep it simple**: Complex code can be hard to debug and may impact performance
@@ -183,6 +235,13 @@ return baseRate * activityMultiplier * sizeFactor;
 - The code cannot access external resources (network, files, etc.)
 - Circular dependencies between stats may cause unexpected behavior
 - The code runs in a sandboxed environment with limited JavaScript features
+- **Test Code** runs your snippet as a one-hour turn on day one, so it can't preview a long turn or a different daypart
+
+### A Note on Accumulating Stats
+
+Most stat code is a **formula**: it reads other stats and returns an answer, and running it twice gives the same result. Code that adds to its own current value (`return current + …`) is different — it's a **running total**, and it depends on running exactly once per turn.
+
+Formamorph runs it once per turn. But re-rolling a turn's stat changes re-runs it too, deliberately: the re-roll rebuilds the turn from the values it started with, so the total lands where it should instead of being counted twice. Just be aware that a running total is more fragile than a formula, and prefer a formula where one will do.
 
 ## Troubleshooting
 

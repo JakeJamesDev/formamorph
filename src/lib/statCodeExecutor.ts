@@ -1,6 +1,7 @@
 import type { Stat } from '@/types';
 import { getQuickJS, shouldInterruptAfterDeadline, type QuickJSWASMModule } from 'quickjs-emscripten';
 import { clamp } from './utils';
+import { dayAndHour, daypart, FLAT_HOURS_PER_TURN, type WorldCalendar } from './gameClock';
 
 // Stat `code` ships inside world definitions, and worlds are downloaded from the community server — treat it as
 // untrusted. It runs in an isolated QuickJS (WASM) VM: no page globals (window/fetch/localStorage),
@@ -14,13 +15,58 @@ const MAX_STACK_BYTES = 512 * 1024;
 let quickJSPromise: Promise<QuickJSWASMModule> | null = null;
 const loadQuickJS = () => (quickJSPromise ??= getQuickJS());
 
+/** Where the story's clock stands for one stat-code run. `elapsedHours` is the total as of the END of the
+ *  turn, so the turn's own duration is already included; the start-of-turn readings derive from it. */
+export interface StatClock {
+  /** Story hours this turn consumed. Defaults to the flat hour, which is also what a clock-off game charges. */
+  deltaHours?: number;
+  /** Total story hours at the end of this turn. Defaults to one turn's worth, so a clock-less caller reads
+   *  as the opening turn having just closed rather than as no time having passed at all. */
+  elapsedHours?: number;
+  calendar?: WorldCalendar;
+}
+
+/** The clock variable names stat code may read. Exported so the per-turn gate and the editor's help text
+ *  read from the same list rather than restating it. */
+export const STAT_CLOCK_VARS = [
+  'deltaHours', 'elapsedHours', 'day', 'daypart', 'startDay', 'startDaypart',
+] as const;
+
+const CLOCK_VAR_PATTERN = new RegExp(`\\b(${STAT_CLOCK_VARS.join('|')})\\b`);
+
+/** Whether a stat's code reads the clock, and so has to re-run every turn rather than only when another
+ *  stat moved. A plain source scan: over-matching (a mention in a comment) costs one harmless recompute,
+ *  and code that reaches the variable without naming it literally simply doesn't tick. */
+export const usesStatClock = (code?: string | null): boolean => !!code && CLOCK_VAR_PATTERN.test(code);
+
+/** The clock readings a run exposes, resolved from `clock` and its defaults. */
+const resolveClock = (clock?: StatClock) => {
+  const deltaHours = Math.max(0, clock?.deltaHours ?? FLAT_HOURS_PER_TURN);
+  const elapsedHours = Math.max(0, clock?.elapsedHours ?? deltaHours);
+  const end = dayAndHour(elapsedHours, clock?.calendar);
+  // A turn spans time, so its start can sit in a different day/daypart than its end — a long sleep begins
+  // in the afternoon and ends at night. Both readings are exposed; neither is derivable from the other.
+  const start = dayAndHour(Math.max(0, elapsedHours - deltaHours), clock?.calendar);
+  return {
+    deltaHours,
+    elapsedHours,
+    day: end.day,
+    daypart: daypart(end.hour, clock?.calendar),
+    startDay: start.day,
+    startDaypart: daypart(start.hour, clock?.calendar),
+  };
+};
+
 /** Run a stat's untrusted `code` in an isolated QuickJS (WASM) VM to compute `currentStat`'s value from
- *  the other stats, clamped to its `[min, max]`. A ~1s interrupt timeout, memory, and stack caps bound it;
- *  empty code yields `{value: null}` (keep the manual value), and any error/non-number surfaces in `error`. */
+ *  the other stats and the story clock, clamped to its `[min, max]`. A ~1s interrupt timeout, memory, and
+ *  stack caps bound it; empty code yields `{value: null}` (keep the manual value), and any error/non-number
+ *  surfaces in `error`. Omitting `clock` runs at the flat hour on day one, which is what the editor's
+ *  test button and any clock-less caller want. */
 export const executeStatCode = async (
   code: string,
   stats: Stat[],
   currentStat: Stat,
+  clock?: StatClock,
 ): Promise<{ value: number | null; error: string | null }> => {
   // If code is empty, return null (use the manually set value)
   if (!code || code.trim() === '') {
@@ -67,6 +113,7 @@ export const executeStatCode = async (
       const program = [
         `const stats = ${JSON.stringify(statsData)};`,
         `const currentStatId = ${JSON.stringify(String(currentStat.id))};`,
+        ...Object.entries(resolveClock(clock)).map(([name, value]) => `const ${name} = ${JSON.stringify(value)};`),
         `(function() {`,
         code,
         `})();`,
