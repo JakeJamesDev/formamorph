@@ -10,6 +10,15 @@
 import { readFile } from "node:fs/promises";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
+// Unpinned stage: the app sends no temperature here, so the endpoint's own value applies. --temp/--reppen
+// let a sweep set it explicitly; omitted, the request is byte-identical to before.
+const SAMPLER_EXTRA = {};
+{
+  const a = process.argv.slice(2);
+  const t = a.indexOf("--temp"); if (t >= 0) SAMPLER_EXTRA.temperature = Number(a[t + 1]);
+  const r = a.indexOf("--reppen"); if (r >= 0) SAMPLER_EXTRA.repetition_penalty = Number(a[r + 1]);
+}
+
 
 const HARNESS_DIR = path.dirname(fileURLToPath(import.meta.url));
 const REPO_ROOT = path.resolve(HARNESS_DIR, "../../..");
@@ -160,7 +169,7 @@ async function call(sys, messages) {
     method: "POST", headers,
     // reasoning_effort:"none" suppresses thinking on Ollama's /v1 for Gemma-4 models (meromero) — else it
     // spends the whole budget reasoning and returns empty content. Harmless/ignored on non-thinking models.
-    body: JSON.stringify({ model, messages: [{ role: "system", content: sys }, ...messages], max_tokens: maxTokens, reasoning_effort: "none", stream: false }),
+    body: JSON.stringify({ model, messages: [{ role: "system", content: sys }, ...messages], max_tokens: maxTokens, reasoning_effort: "none", stream: false, ...SAMPLER_EXTRA }),
   });
   if (!res.ok) throw new Error(`HTTP ${res.status}: ${(await res.text()).slice(0, 160)}`);
   const j = await res.json();

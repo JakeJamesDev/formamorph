@@ -5,6 +5,7 @@ import { useSettings } from "@/contexts/SettingsContext";
 import { useSettingsOpenRequest } from "@/lib/useSettingsOpenRequest";
 import { useGameplay } from "@/contexts/GameplayContext";
 import { processStatCode } from "@/contexts/GameplayContextUtils";
+import { usesStatClock, type StatClock } from "@/lib/statCodeExecutor";
 import { Button } from "@/components/ui/button";
 import {
   AlertDialog,
@@ -931,10 +932,17 @@ const GameViewer = ({
       // re-advancing game time. Not awaited, so regen stacks before stat code — the same order the live turn
       // uses. Without this the re-roll dropped the turn's regen and left stale held deltas on the bar.
       setHeldStatChanges({});
-      applyStatChanges(statChanges, null, applyAiMaxChanges(baseline, maxes));
-      // The turn's own measured duration, so a re-roll reproduces the regen the turn actually charged
-      // rather than a flat hour (unmeasured turns store nothing and fall back to that hour anyway).
-      applyRegenTick(prev.timeDelta ?? FLAT_HOURS_PER_TURN, baseline);
+      // The turn's own measured duration, so a re-roll reproduces the regen and stat code the turn actually
+      // charged rather than a flat hour (unmeasured turns store nothing and fall back to that hour anyway).
+      // `gameTime` already includes this turn — only the latest turn is ever re-rolled — so it is the
+      // end-of-turn elapsed the live pass used, and code re-derives the same value instead of drifting.
+      const turnHours = prev.timeDelta ?? FLAT_HOURS_PER_TURN;
+      applyStatChanges(statChanges, null, applyAiMaxChanges(baseline, maxes), {
+        deltaHours: turnHours,
+        elapsedHours: gameTime,
+        calendar,
+      });
+      applyRegenTick(turnHours, baseline);
       patchLatestTurn({ stat_changes: statChanges });
       armTurnSnapshot();
     });
@@ -2119,9 +2127,22 @@ ${playerNotes || NONE_PLACEHOLDER}
       // Reset the persistent bar deltas for this turn, then let stat changes + regen below re-fill them.
       setHeldStatChanges({});
 
+      // Where the story clock stands for this turn's stat code. `elapsedHours` is the END of the turn, so a
+      // long sleep that began in daylight reports `daypart: 'night'` — what the player just read. Computed
+      // rather than read back from state: setGameTime below is async and wouldn't land in time.
+      const turnClock: StatClock = {
+        deltaHours: turnHours,
+        elapsedHours: gameTime + turnHours,
+        calendar,
+      };
+
       // Apply stat changes
       if (statChanges.length > 0) {
-        applyStatChanges(statChanges);
+        applyStatChanges(statChanges, null, null, turnClock);
+      } else if (anyStatUsesClock) {
+        // Nothing moved, but time still passed — clock-reading code runs on its own so a time-based stat
+        // ticks every turn instead of only on turns the AI happened to report a stat change.
+        void runStatCode(playerStatsRef.current, turnClock);
       }
 
       // Advance the clock by what this turn actually took (the flat hour when unmeasured).
@@ -2258,11 +2279,53 @@ ${playerNotes || NONE_PLACEHOLDER}
     }
   }, [heldStatChanges, recentStatChanges, setHeldStatChanges, setDrainingStatChanges, setRecentStatChanges, setRecentStatFading]);
 
+  // Re-derive every code-driven stat from `base` and this turn's `clock`, folding whatever moved into the
+  // live delta feedback. Split out of applyStatChanges because clock-reading code has to run once per turn
+  // even when the AI moved no stat at all — time passes regardless of what the narration said.
+  const runStatCode = useCallback(
+    async (base: typeof playerStats, clock: StatClock) => {
+      try {
+        // processStatCode is typed over Stat[]; playerStats is the narrower PlayerStat[] (value: number).
+        const coded = (await processStatCode(base, clock)) as typeof playerStats;
+        const codeChanges = appliedStatDeltas(base, coded);
+        if (Object.keys(codeChanges).length === 0) return;
+        // Override only the stats the code actually moved, onto the LATEST stats — not a blanket
+        // `setPlayerStats(coded)`, whose `coded` is computed from the pre-`await` baseline and would clobber
+        // anything applied in the meantime (this turn's regen, or a re-generate that landed during the await).
+        const codedById = new Map(coded.map((s) => [s.id, s.value]));
+        setPlayerStats((prev) =>
+          prev.map((s) =>
+            codeChanges[s.name.toLowerCase()] !== undefined && codedById.has(s.id)
+              ? { ...s, value: codedById.get(s.id) as number }
+              : s,
+          ),
+        );
+        // Fold the code-derived movement into the live delta feedback, so a code stat's bar/text animates
+        // live — matching the history view (pageStatDeltas diffs the final, post-code snapshot).
+        setRecentStatChanges((prev) => normalizeStatChanges([prev, codeChanges]));
+        setHeldStatChanges((prev) => normalizeStatChanges([prev, codeChanges]));
+      } catch (error) {
+        console.error("Error processing stat code:", error);
+      }
+    },
+    [setPlayerStats, setRecentStatChanges, setHeldStatChanges],
+  );
+
+  // Whether any stat's code reads the clock, and so needs a per-turn run of its own on turns the AI
+  // changed nothing. False for every world authored before these variables existed, which keeps those
+  // worlds on exactly the run schedule they have always had.
+  const anyStatUsesClock = useMemo(() => playerStats.some((s) => usesStatClock(s.code)), [playerStats]);
+
   // Update the applyStatChanges function to handle specific stat updates
   const applyStatChanges = useCallback(
     // `base` overrides the starting stats (defaults to the live ref) — a stat re-generation applies the
     // fresh deltas onto the pre-turn baseline so repeated re-rolls don't stack on already-applied changes.
-    async (changes: Record<string, number>[], affectedStats: string[] | null = null, base: typeof playerStats | null = null) => {
+    async (
+      changes: Record<string, number>[],
+      affectedStats: string[] | null = null,
+      base: typeof playerStats | null = null,
+      clock: StatClock = {},
+    ) => {
       // Merge the AI's change objects into one normalized (name→delta) map.
       const normalizedChanges = normalizeStatChanges(changes);
 
@@ -2286,33 +2349,9 @@ ${playerNotes || NONE_PLACEHOLDER}
       setHeldStatChanges((prev) => ({ ...prev, ...actualChanges }));
 
       setPlayerStats(directApplied);
-      try {
-        // processStatCode is typed over Stat[]; playerStats is the narrower PlayerStat[] (value: number).
-        const coded = await processStatCode(directApplied);
-        const codedStats = coded as typeof playerStats;
-        const codeChanges = appliedStatDeltas(directApplied, codedStats);
-        if (Object.keys(codeChanges).length > 0) {
-          // Override only the stats the code actually moved, onto the LATEST stats — not a blanket
-          // `setPlayerStats(coded)`, whose `coded` is computed from the pre-`await` baseline and would clobber
-          // anything applied in the meantime (this turn's regen, or a re-generate that landed during the await).
-          const codedById = new Map(codedStats.map((s) => [s.id, s.value]));
-          setPlayerStats((prev) =>
-            prev.map((s) =>
-              codeChanges[s.name.toLowerCase()] !== undefined && codedById.has(s.id)
-                ? { ...s, value: codedById.get(s.id) as number }
-                : s,
-            ),
-          );
-          // Fold the code-derived movement into the live delta feedback, so a code stat's bar/text animates
-          // live — matching the history view (pageStatDeltas diffs the final, post-code snapshot).
-          setRecentStatChanges((prev) => normalizeStatChanges([prev, codeChanges]));
-          setHeldStatChanges((prev) => normalizeStatChanges([prev, codeChanges]));
-        }
-      } catch (error) {
-        console.error("Error processing stat code after changes:", error);
-      }
+      await runStatCode(directApplied, clock);
     },
-    [setPlayerStats, setRecentStatChanges, setHeldStatChanges],
+    [runStatCode, setPlayerStats, setRecentStatChanges, setHeldStatChanges],
   );
 
   // Discard a turn's dangling, unpaired user message. The failure exits (empty narration, request error)

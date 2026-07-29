@@ -160,14 +160,17 @@ const judge = async (system, user) =>
 // attribution first): asked cold, it happily rates narrated summary - "You lay out what you think" - as
 // register-matching, which scored the exact failure being measured as a pass.
 const TONE_SYS = "You are given a stage direction, the register it asks for, and the player character's own quoted words from a story passage. Answer with one word: MATCH if those quoted words carry the attitude the direction names, or MISMATCH if they carry a different one. Nothing else.";
-const OUTCOME_SYS = "You judge how an attempted action turned out in a story passage. Answer with one word: SUCCEED if the character achieves what they attempted, FAIL if they attempt it and it does not work, or PARTLY if it half-lands. Nothing else.";
+// succeed/partly/fail proved too coarse: a leap that lands short in the river and a hand that regrows an
+// arm both scored "partly". Each case now carries its own yes/no question about the specific impossible
+// outcome, so the metric asks whether the impossible thing HAPPENED, not how the beat felt.
+const ACHIEVED_SYS = "You answer one question about a story passage with a single word: YES if the passage shows what the question describes, or NO if it does not. Judge only what the passage actually depicts. Nothing else.";
 
 // Gated: no quoted player speech means ABSENT by attribution, never by the judge's opinion of the prose.
 const toneOf = (c, pcQuotes) =>
   pcQuotes.length
     ? judge(TONE_SYS, `Stage direction: ${c.action}\nRegister asked for: ${c.mood}\n\nThe player character's quoted words:\n${pcQuotes.map((q) => `"${q}"`).join("\n")}`)
     : Promise.resolve("absent");
-const outcomeOf = (c, out) => judge(OUTCOME_SYS, `Attempted action: ${c.action.replace(/^\[|\]$/g, "")}\n\nPassage:\n${out}`);
+const achievedOf = (c, out) => judge(ACHIEVED_SYS, `Question: ${c.achieved}\n\nPassage:\n${out}`);
 
 // ── Run ──
 console.log(`ACTION ENACTMENT · arm ${ARM} · "${opts.model}" · ${cases.length} case(s) × ${RUNS} run(s)${JUDGE ? ` · judge "${judgeOpts.model}"` : " · judges off"}\n`);
@@ -178,8 +181,8 @@ const dump = [];
 const agg = {
   enact: { n: 0, pc: 0, npc: 0, parrot: 0, match: 0, mismatch: 0, absent: 0 },
   silent: { n: 0, pc: 0, npc: 0 },
-  imp: { n: 0, fail: 0, partly: 0, succeed: 0 },
-  possible: { n: 0, succeed: 0, partly: 0, fail: 0 },
+  imp: { n: 0, blocked: 0, happened: 0 },
+  possible: { n: 0, happened: 0, blocked: 0 },
   bracket: { n: 0, ok: 0, leak: 0 },
 };
 
@@ -195,7 +198,7 @@ for (const c of cases) {
 
     let verdict = "";
     if (c.family === "enact" && !c.control && JUDGE) verdict = await toneOf(c, pc);
-    else if ((c.family === "plaus" || c.family === "bracket") && JUDGE) verdict = await outcomeOf(c, out);
+    else if ((c.family === "plaus" || c.family === "bracket") && JUDGE) verdict = await achievedOf(c, out);
     row.verdicts.push(verdict || (pc.length ? "pc-speech" : "silent"));
 
     if (c.family === "enact" && !c.control) {
@@ -208,15 +211,15 @@ for (const c of cases) {
     if (c.control === "silent") { agg.silent.n++; agg.silent.pc += pc.length ? 1 : 0; agg.silent.npc += npc.length ? 1 : 0; }
     if (c.family === "plaus" && c.expect === "fail") {
       agg.imp.n++;
-      if (verdict.startsWith("fail")) agg.imp.fail++; else if (verdict.startsWith("partly")) agg.imp.partly++; else agg.imp.succeed++;
+      if (verdict.startsWith("no")) agg.imp.blocked++; else agg.imp.happened++;
     }
     if (c.control === "possible") {
       agg.possible.n++;
-      if (verdict.startsWith("succeed")) agg.possible.succeed++; else if (verdict.startsWith("partly")) agg.possible.partly++; else agg.possible.fail++;
+      if (verdict.startsWith("yes")) agg.possible.happened++; else agg.possible.blocked++;
     }
     if (c.family === "bracket") {
       agg.bracket.n++; agg.bracket.leak += leak;
-      const want = c.expect === "succeed" ? verdict.startsWith("succeed") : verdict.startsWith("fail");
+      const want = c.expect === "succeed" ? verdict.startsWith("yes") : verdict.startsWith("no");
       if (want && !leak) agg.bracket.ok++;
     }
     if (verbose) console.log(`\n[${c.id} #${r + 1} · ${verdict}]\n${out}\n`);
@@ -233,8 +236,8 @@ const pct = (n, d) => (d ? `${Math.round((100 * n) / d)}%` : "n/a");
 console.log(`\n==== arm ${ARM} · ${opts.model} ====`);
 console.log(`L1 speech cases (${agg.enact.n}): player speaks ${pct(agg.enact.pc, agg.enact.n)} · NPC speaks ${pct(agg.enact.npc, agg.enact.n)} · parrot ${(agg.enact.parrot / Math.max(1, agg.enact.n)).toFixed(2)} · tone ${agg.enact.match} match / ${agg.enact.mismatch} mismatch / ${agg.enact.absent} absent`);
 console.log(`L1 GUARD silent cases (${agg.silent.n}): invented player speech ${pct(agg.silent.pc, agg.silent.n)} (want 0%) · NPC speaks ${pct(agg.silent.npc, agg.silent.n)}`);
-console.log(`L2 impossible (${agg.imp.n}): fail ${agg.imp.fail} · partly ${agg.imp.partly} · succeed ${agg.imp.succeed} (want all fail)`);
-console.log(`L2 GUARD possible (${agg.possible.n}): succeed ${agg.possible.succeed} · partly ${agg.possible.partly} · fail ${agg.possible.fail} (want all succeed)`);
+console.log(`L2 impossible (${agg.imp.n}): blocked ${agg.imp.blocked} · HAPPENED ${agg.imp.happened} — impossible thing blocked ${pct(agg.imp.blocked, agg.imp.n)} (want 100%)`);
+console.log(`L2 GUARD possible (${agg.possible.n}): happened ${agg.possible.happened} · blocked ${agg.possible.blocked} — ordinary action lands ${pct(agg.possible.happened, agg.possible.n)} (want 100%)`);
 console.log(`BRACKET (${agg.bracket.n}): as-directed ${pct(agg.bracket.ok, agg.bracket.n)} · bracket text leaked ${agg.bracket.leak}`);
 
 if (OUT) {

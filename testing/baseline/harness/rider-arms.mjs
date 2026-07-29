@@ -73,17 +73,32 @@ export function applyArm(sys, arm) {
 // kept verbatim. L2 gives the narrator the adjudication job the planner already hands it. BRACKET lets
 // authorial direction outrank L2, so an impossible action still happens when the author asks for it.
 
-/** The shipped voice rider — identical text in the system contract and the per-turn user message. */
-export const VOICE_SHIPPED =
+/** The pre-L1 voice rider, kept as the revert arm (`l1off`) so the win stays re-measurable. */
+export const VOICE_LEGACY =
   "When the player's action speaks to a character, the reply on the page is that character's own voice: their quoted sentences, answering what was asked and adding something of their own. The player's words are already spoken by the player - yours to write is the world's answer.";
 
-/** L1 — "first beat" (option B). */
+/** L1 first draft — superseded by VOICE_TIGHT1; kept as the `l1b` arm. */
 export const VOICE_FIRSTBEAT =
   "The player's action is the turn's first beat: put it on the page as it happens - when it speaks, give the player the actual words, carrying the feeling the action names, and let the character answer in their own quoted voice with something of their own.";
 
-/** L2 — "attempt + reach" (option C), appended as the last Guidelines bullet. */
+// SHIPPED. The first draft left a paraphrase loophole: "give the player the actual words" is satisfied by
+// a restatement ("You tell Bram exactly what you think of his ferry.") with nobody quoted. Naming quoted
+// sentences as the shape closed it (cloud 31→67% player speech at 36 runs/arm, no NPC cost). Saying it
+// outright instead - "in quotation marks", VOICE_TIGHT2 - measured WORSE than the draft on both models.
+export const VOICE_TIGHT1 =
+  "The player's action is the turn's first beat, written as it happens - an action that speaks reaches the page as the player's own quoted sentences, carrying the feeling the action names, and then the character answers in their own quoted voice with something of their own.";
+export const VOICE_TIGHT2 =
+  "The player's action is the turn's first beat: you write what it looks and sounds like. When the action speaks, you supply the words themselves in quotation marks, in the voice and temper the action names, and the character answers in their own quoted voice with something of their own.";
+
+/** L2 first attempt — "attempt + reach" as a Guidelines bullet. Measured null; kept as the `l2` arm. */
 export const ADJUDICATE =
   "- The player's action is what they attempt, and the world answers with what actually follows from it - an attempt beyond what this place allows still happens, and lands as the world would have it land.\n";
+
+// L2 round 2 isolates SLOT, not wording: one sentence in three positions. The round-1 bullet sat mid-list
+// among nine others, while L1 - the lever that works - rides the per-turn user message. If placement is
+// why L2 measured null, the same text in the recency slot moves and the bullet stays flat.
+export const ADJUDICATE_2 =
+  "The player chooses what to attempt; what comes of it is the world's answer - give the attempt what this place and this body can actually deliver, and let the people present respond to what they saw.";
 
 const BRACKET_SHIPPED_TAIL = "make this turn go the way it directs, and keep the story's prose free of it.";
 const BRACKET_LEVER_TAIL = "make this turn go the way it directs, whatever the world would otherwise allow, and keep the story's prose free of it.";
@@ -93,23 +108,39 @@ function swap(text, find, replace, label) {
   return text.replace(find, replace);
 }
 
+const ARMS = [
+  "shipped", "l1off", "l1b", "l1t2",           // L1: revert / first draft / rejected wording
+  "l1sysonly", "l1useronly",                   // L1: is the duplication load-bearing?
+  "l2", "l2bullet", "l2contract", "l2user",    // L2: round-1 bullet, then one sentence in three slots
+  "bracket", "all",
+];
+
 /**
  * Apply a lever arm to the narration system prompt, the per-turn user rider, and the OOC bracket rider.
- * Arms: `shipped` (untouched) · `l1` · `l2` · `bracket` · `all` (the proposed change as a whole).
+ * The L2 slot arms carry identical text so a difference between them is placement, not wording.
  */
 export function applyLevers(arm, { sys, userRider, oocRider }) {
   const on = (k) => arm === "all" || arm === k;
-  if (arm !== "shipped" && !["l1", "l2", "bracket", "all"].includes(arm)) {
-    throw new Error(`unknown lever arm "${arm}" (shipped | l1 | l2 | bracket | all)`);
-  }
+  // VOICE_TIGHT1 ships, so every voice arm swaps it out: `l1off` reverts to pre-L1, `l1b` to the first
+  // draft, `l1t2` to the rejected quotation-marks wording.
+  const VOICE_ARMS = { l1off: VOICE_LEGACY, l1b: VOICE_FIRSTBEAT, l1t2: VOICE_TIGHT2 };
+  if (!ARMS.includes(arm)) throw new Error(`unknown lever arm "${arm}" (${ARMS.join(" | ")})`);
   let s = sys, u = userRider, o = oocRider;
-  if (on("l1")) {
-    s = swap(s, VOICE_SHIPPED, VOICE_FIRSTBEAT, "l1/system");
-    u = swap(u, VOICE_SHIPPED, VOICE_FIRSTBEAT, "l1/user");
+  if (VOICE_ARMS[arm]) {
+    s = swap(s, VOICE_TIGHT1, VOICE_ARMS[arm], `${arm}/system`);
+    u = swap(u, VOICE_TIGHT1, VOICE_ARMS[arm], `${arm}/user`);
   }
+  // L1 ships in both slots. These drop one copy each, to find out whether the duplication earns itself.
+  // NOTE: the user rider is thinking-off only, so `l1useronly` is what the thinking modes already get.
+  if (arm === "l1sysonly") u = swap(u, `\n\n${VOICE_TIGHT1}`, "", "l1sysonly/user");
+  if (arm === "l1useronly") s = swap(s, ` ${VOICE_TIGHT1}`, "", "l1useronly/system");
   if (on("l2")) {
     s = swap(s, RIDERS.noTabulate, RIDERS.noTabulate + ADJUDICATE, "l2/guidelines");
   }
+  // Same sentence, three slots — the round-2 placement test.
+  if (arm === "l2bullet") s = swap(s, RIDERS.noTabulate, `${RIDERS.noTabulate}- ${ADJUDICATE_2}\n`, "l2bullet");
+  if (arm === "l2contract") s = `${s} ${ADJUDICATE_2}`;
+  if (arm === "l2user") u = `${u}\n\n${ADJUDICATE_2}`;
   if (on("bracket")) {
     s = swap(s, BRACKET_SHIPPED_TAIL, BRACKET_LEVER_TAIL, "bracket/system");
     o = swap(o, BRACKET_SHIPPED_TAIL, BRACKET_LEVER_TAIL, "bracket/ooc");

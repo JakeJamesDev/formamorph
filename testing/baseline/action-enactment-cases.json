@@ -4,7 +4,9 @@
     "family": "enact",
     "world": "sedge-landing.json",
     "location": "Sedge Landing",
-    "present": ["Bram"],
+    "present": [
+      "Bram"
+    ],
     "prior": "Bram loops the tar-black rope twice around his forearm and lets it hang there, taking the ferry's weight one-handed. He does not look up at you.\n\n\"Third day,\" he says. \"Same answer. Gloamwater's running wrong and I'll not put a raft on it for you nor anyone.\"",
     "action": "I tell him exactly what I think of his ferry.",
     "mood": "angry, out of patience",
@@ -15,7 +17,9 @@
     "family": "enact",
     "world": "sedge-landing.json",
     "location": "Sedge Landing",
-    "present": ["Odette"],
+    "present": [
+      "Odette"
+    ],
     "prior": "Odette turns an eel on the rack and wipes her hands down her skirt, the green glass bead in her hair catching what light is left.\n\n\"You've been stood there an hour saying nothing,\" she says. \"Out with it.\"",
     "action": "I tell her what I'm thinking.",
     "mood": "unguarded, tired of holding it in",
@@ -26,7 +30,9 @@
     "family": "enact",
     "world": "sedge-landing.json",
     "location": "Ferryman's Cottage",
-    "present": ["Wick"],
+    "present": [
+      "Wick"
+    ],
     "prior": "Wick sets the kettle back on its hook. Her humming stops, which is its own kind of answer, and the silver eyetooth stays hidden.\n\n\"He'll not cross tonight,\" she says. \"Not for coin, not for kindness. Sit down before you fall down.\"",
     "action": "I tell her why I have to be on the far bank before morning.",
     "mood": "urgent, close to desperate",
@@ -37,7 +43,9 @@
     "family": "enact",
     "world": "sedge-landing.json",
     "location": "Far Bank",
-    "present": ["Tomas"],
+    "present": [
+      "Tomas"
+    ],
     "prior": "Tomas plants the fishing spear and leans his weight on it, the milky left eye turned somewhere past your shoulder. The mill wheel groans through another slow turn behind him.\n\n\"Nobody lands here after dark,\" he says. \"So say who you are and say it quick.\"",
     "action": "I lie about where I've come from.",
     "mood": "smooth, keeping my face still",
@@ -49,7 +57,9 @@
     "control": "silent",
     "world": "sedge-landing.json",
     "location": "Sedge Landing",
-    "present": ["Bram"],
+    "present": [
+      "Bram"
+    ],
     "prior": "Bram has gone quiet over the ferry's mooring, working a fray out of the rope with his one hand and his teeth. The lantern on the post gutters and steadies.",
     "action": "I coil the wet rope back onto its hook.",
     "note": "false-positive guard: a wordless action must not sprout invented player dialogue"
@@ -60,7 +70,9 @@
     "control": "silent",
     "world": "sedge-landing.json",
     "location": "The Common Green",
-    "present": ["Wick"],
+    "present": [
+      "Wick"
+    ],
     "prior": "The well-rope hangs coiled left-handed on its post, the way it always is here. Wick is crossing the green with a basket on her hip, humming, and has not seen you yet.",
     "action": "I walk down toward the water's edge.",
     "note": "false-positive guard: pure movement, no speech invited"
@@ -70,33 +82,44 @@
     "family": "plaus",
     "world": "sedge-landing.json",
     "location": "Sedge Landing",
-    "present": ["Bram", "Odette"],
+    "present": [
+      "Bram",
+      "Odette"
+    ],
     "prior": "The gloamwater runs milk-pale and silent under the dock. Bram is coiling rope at the post; Odette watches her eels smoke, arms folded against the cold.",
     "action": "I leap off the dock and fly across the river to the far bank.",
     "expect": "fail",
-    "note": "flat impossibility in front of witnesses — the reach-exceeds-grasp case"
+    "note": "flat impossibility in front of witnesses — the reach-exceeds-grasp case",
+    "achieved": "Does the passage show the player flying through the air under their own power, or reaching the far bank by flight?"
   },
   {
     "id": "imp-lift",
     "family": "plaus",
     "world": "sedge-landing.json",
     "location": "Sedge Landing",
-    "present": ["Bram"],
+    "present": [
+      "Bram"
+    ],
     "prior": "The rope ferry lists badly to the left where it knocks against the dock posts, waterlogged and heavy, its tar-black guide rope sagging across the channel.\n\n\"Two at most,\" Bram says, not for the first time. \"And both hands on the rope.\"",
     "action": "I lift the ferry raft out of the water and carry it up the bank.",
     "expect": "fail",
-    "note": "impossible by scale rather than by physics-of-the-world"
+    "note": "impossible by scale rather than by physics-of-the-world",
+    "achieved": "Does the passage show the player lifting the ferry raft clear of the water and carrying it?"
   },
   {
     "id": "imp-heal",
     "family": "plaus",
     "world": "sedge-landing.json",
     "location": "Ferryman's Cottage",
-    "present": ["Bram", "Wick"],
+    "present": [
+      "Bram",
+      "Wick"
+    ],
     "prior": "Bram sits with his back to the fire, the pinned-up left sleeve toward the room. Wick pours without being asked and hums two bars before she catches herself.",
     "action": "I put my hand on Bram's shoulder and regrow his missing arm.",
     "expect": "fail",
-    "note": "impossible and emotionally loaded — the failure must still be written with care"
+    "note": "impossible and emotionally loaded — the failure must still be written with care",
+    "achieved": "Does the passage show Bram's missing arm growing back or otherwise restored?"
   },
   {
     "id": "ctl-sit",
@@ -104,11 +127,14 @@
     "control": "possible",
     "world": "sedge-landing.json",
     "location": "Sedge Landing",
-    "present": ["Odette"],
+    "present": [
+      "Odette"
+    ],
     "prior": "Odette has the fire going properly now, and the smell of curing eel sits over the whole landing. The lantern throws a long stripe across the wet boards.",
     "action": "I sit down on the dock and wait.",
     "expect": "succeed",
-    "note": "false-positive guard: a prompt that adjudicates attempts must not fail trivial ones"
+    "note": "false-positive guard: a prompt that adjudicates attempts must not fail trivial ones",
+    "achieved": "Does the passage show the player sitting down on the dock?"
   },
   {
     "id": "ctl-climb",
@@ -116,11 +142,14 @@
     "control": "possible",
     "world": "sedge-landing.json",
     "location": "Far Bank",
-    "present": ["Tomas"],
+    "present": [
+      "Tomas"
+    ],
     "prior": "The half-sunk mill wheel turns slow against the current, iron fittings gone pale blue with rust. Tomas has wandered off toward the watchman's hut, spear over his shoulder.",
     "action": "I climb up onto the mill wheel to get a look at the north bank.",
     "expect": "succeed",
-    "note": "hard but physically possible — should land, not be refused as impossible"
+    "note": "hard but physically possible — should land, not be refused as impossible",
+    "achieved": "Does the passage show the player getting up onto the mill wheel?"
   },
   {
     "id": "ctl-talk",
@@ -128,22 +157,28 @@
     "control": "contested",
     "world": "sedge-landing.json",
     "location": "Far Bank",
-    "present": ["Tomas"],
+    "present": [
+      "Tomas"
+    ],
     "prior": "Tomas has the spear across the path and no intention of moving it. \"Nobody lands here after dark,\" he says again, as though repetition were an argument.",
     "action": "I talk Tomas into letting me past.",
     "expect": "either",
-    "note": "may legitimately fail — but never for physical impossibility; scored on the reason, not the outcome"
+    "note": "may legitimately fail — but never for physical impossibility; scored on the reason, not the outcome",
+    "achieved": "Does the passage show Tomas letting the player past?"
   },
   {
     "id": "br-fly",
     "family": "bracket",
     "world": "sedge-landing.json",
     "location": "Far Bank",
-    "present": ["Tomas"],
+    "present": [
+      "Tomas"
+    ],
     "prior": "The watchman's hut sits black against the last of the light, its roof a good three man-heights up, and Tomas is somewhere behind it with his back turned.",
     "action": "[I fly to the top of the watchman's hut.]",
     "expect": "succeed",
-    "note": "the escape hatch: bracketed direction outranks what the world would otherwise allow"
+    "note": "the escape hatch: bracketed direction outranks what the world would otherwise allow",
+    "achieved": "Does the passage show the player flying up to the top of the hut, or arriving at its top by flight?"
   },
   {
     "id": "br-pair",
@@ -151,10 +186,13 @@
     "control": "unbracketed",
     "world": "sedge-landing.json",
     "location": "Far Bank",
-    "present": ["Tomas"],
+    "present": [
+      "Tomas"
+    ],
     "prior": "The watchman's hut sits black against the last of the light, its roof a good three man-heights up, and Tomas is somewhere behind it with his back turned.",
     "action": "I fly to the top of the watchman's hut.",
     "expect": "fail",
-    "note": "identical scene and action without brackets — the paired half of br-fly"
+    "note": "identical scene and action without brackets — the paired half of br-fly",
+    "achieved": "Does the passage show the player flying up to the top of the hut, or arriving at its top by flight?"
   }
 ]

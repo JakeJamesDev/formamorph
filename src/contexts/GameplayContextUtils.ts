@@ -1,10 +1,11 @@
-import { executeStatCode } from '../lib/statCodeExecutor';
+import { executeStatCode, type StatClock } from '../lib/statCodeExecutor';
 import type { Stat } from '@/types';
 
 /** Re-evaluate every stat that has `code`, running each in the sandboxed executor with the full stats
- *  array as context, and return a new array with recomputed values; stats without code pass through.
- *  Pure with respect to the input (works on a copy); executor errors are logged and leave the stat unchanged. */
-export const processStatCode = async (stats: Stat[]) => {
+ *  array and the turn's `clock` as context, and return a new array with recomputed values; stats without
+ *  code pass through. Pure with respect to the input (works on a copy); executor errors are logged and
+ *  leave the stat unchanged. */
+export const processStatCode = async (stats: Stat[], clock?: StatClock) => {
   if (!stats || !Array.isArray(stats)) {
     return stats;
   }
@@ -18,7 +19,7 @@ export const processStatCode = async (stats: Stat[]) => {
     .map(async (stat) => {
       try {
         // Execute the code with all stats as context
-        const result = await executeStatCode(stat.code!, updatedStats, stat);
+        const result = await executeStatCode(stat.code!, updatedStats, stat, clock);
 
         if (result.error) {
           console.error(`Error executing code for stat ${stat.name}:`, result.error);
