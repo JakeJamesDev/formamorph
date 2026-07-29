@@ -38,7 +38,7 @@ import { PresetNameDialog } from './PresetNameDialog';
 import { defaultSystemPrompt, defaultNarrationUserPrompt, defaultRecapUserPrompt, defaultRehydrateUserPrompt, defaultOocDirectivePrompt, defaultChoicesPrompt, defaultStatUpdatesPrompt, defaultLocationChangePrompt, defaultThinkingPrompt, defaultSummaryPrompt, defaultChoicesUserPrompt, defaultStatUpdatesUserPrompt, defaultLocationChangeUserPrompt, defaultSummaryUserPrompt, defaultDiaryPrompt, defaultDirectorPrompt, defaultDirectorUserPrompt, defaultCharacterPrompt, defaultStoryboardPrompt, defaultNowLinePrompt, defaultTimePassedPrompt, defaultTimePassedUserPrompt, defaultOpeningTimePrompt, defaultOpeningTimeUserPrompt, defaultSceneTagsPrompt, defaultSceneTagsUserPrompt } from '../game/GamePrompts';
 import { isDesktop } from '@/lib/imageGen/desktop';
 import { fetchComfyMeta, DEFAULT_COMFY_WORKFLOW, type ComfyMeta } from '@/lib/imageGen/comfyui';
-import { fetchInvokeMeta, type InvokeMeta } from '@/lib/imageGen/invokeai';
+import { fetchInvokeMeta, encodersFor, vaesFor, PREFIXED_BASES, type InvokeMeta } from '@/lib/imageGen/invokeai';
 import { DEFAULT_ENDPOINT_BY_PROVIDER, resolveImageEndpoint } from '@/lib/imageGen';
 import { TokenAutocomplete } from '@/components/TokenAutocomplete';
 import { COMMON_LANGUAGES } from '@/lib/languages';
@@ -634,7 +634,7 @@ export const SettingsModal = ({ isOpen, onOpenChange, previewValues, initialTab,
     return () => { cancelled = true; clearTimeout(t); };
   }, [imageProvider, imageEndpoint, imageApiToken]);
 
-  // InvokeAI model/submodel lists that back the Model + Z-Image override dropdowns. Auto-fetched from
+  // InvokeAI model/submodel lists that back the Model + encoder/VAE override dropdowns. Auto-fetched from
   // /api/v2/models/ whenever InvokeAI is the active provider (debounced); fails silently when unreachable.
   const [invokeMeta, setInvokeMeta] = useState<InvokeMeta | null>(null);
   const [invokeMetaError, setInvokeMetaError] = useState(false);
@@ -652,6 +652,12 @@ export const SettingsModal = ({ isOpen, onOpenChange, previewValues, initialTab,
     }, 300);
     return () => { cancelled = true; clearTimeout(t); };
   }, [imageProvider, imageEndpoint, imageApiToken]);
+  // The selected model's base when it's one that loads its own encoder + VAE (Z-Image, Anima), else ''.
+  // Drives whether those two override rows show at all, and what they offer.
+  const invokeSubmodelBase = (() => {
+    const base = invokeMeta?.models.find((m) => m.name === imageModel || m.key === imageModel)?.base ?? '';
+    return PREFIXED_BASES[base] ? base : '';
+  })();
   const handleImagePresetSelect = (v: string) => {
     if (v === IMG_ADD_PRESET_SENTINEL) setImagePresetDialog({ mode: 'add' });
     else selectImageEndpointPreset(v);
@@ -1811,13 +1817,15 @@ An inspection aid for authoring and debugging; off by default.`}</HintInfo>
                   <Input id="imageSampler" value={imageSampler} onChange={(e) => setImageSampler(e.target.value)} placeholder="Euler a" />
                 )}
               </Row>
-              {imageProvider === 'a1111' && (
+              {(imageProvider === 'a1111' || imageProvider === 'invokeai') && (
                 <CheckRow
-                  label="ADetailer"
+                  label="Face Fix"
                   htmlFor="imageAdetailer"
                   checked={imageAdetailer}
                   onChange={setImageAdetailer}
-                  hint="Run a second pass to auto-fix faces/hands. Requires the ADetailer extension installed on your A1111/Forge server."
+                  hint={imageProvider === 'a1111'
+                    ? 'Run a second pass to auto-fix faces/hands. Requires the ADetailer extension installed on your A1111/Forge server.'
+                    : 'Re-render the face at full resolution in a second pass. Roughly doubles generation time; SDXL and SD1.5 only.'}
                 />
               )}
               {imageProvider === 'comfyui' && (
@@ -1871,26 +1879,39 @@ An inspection aid for authoring and debugging; off by default.`}</HintInfo>
                   </Select>
                 </Row>
               )}
-              {imageProvider === 'invokeai'
-                && invokeMeta?.models.find((m) => m.name === imageModel || m.key === imageModel)?.base === 'z-image' && (
+              {/* Z-Image and Anima both load a Qwen3 encoder + VAE alongside the checkpoint; the options
+                  are narrowed to the ones that architecture can actually use. */}
+              {imageProvider === 'invokeai' && invokeSubmodelBase && (
                 <>
-                  <Row label="Qwen3 Encoder" htmlFor="imageInvokeEncoder" hint="Z-Image needs a Qwen3 text encoder. Leave blank to auto-pick the first installed one.">
+                  <Row
+                    label="Qwen3 Encoder"
+                    htmlFor="imageInvokeEncoder"
+                    hint={invokeSubmodelBase === 'anima'
+                      ? 'Anima needs a Qwen3 0.6B text encoder. Leave blank to auto-pick.'
+                      : 'Z-Image needs a Qwen3 4B text encoder. Leave blank to auto-pick.'}
+                  >
                     <TokenAutocomplete
                       single
                       openOnFocus
                       values={imageInvokeEncoder ? [imageInvokeEncoder] : []}
                       onChange={(v) => setImageInvokeEncoder(v[0] ?? '')}
-                      options={(invokeMeta?.encoders ?? []).map((m) => m.name)}
+                      options={encodersFor(invokeMeta?.encoders ?? [], invokeSubmodelBase).map((m) => m.name)}
                       placeholder="(auto)"
                     />
                   </Row>
-                  <Row label="Z-Image VAE" htmlFor="imageInvokeVae" hint="Z-Image needs a FLUX-type VAE (e.g. FLUX.1-schnell VAE). Leave blank to auto-pick.">
+                  <Row
+                    label={invokeSubmodelBase === 'anima' ? 'Anima VAE' : 'Z-Image VAE'}
+                    htmlFor="imageInvokeVae"
+                    hint={invokeSubmodelBase === 'anima'
+                      ? 'Anima needs a QwenImage/Wan 2.1 VAE (a FLUX VAE also works). Leave blank to auto-pick.'
+                      : 'Z-Image needs a FLUX-type VAE (e.g. FLUX.1-schnell VAE). Leave blank to auto-pick.'}
+                  >
                     <TokenAutocomplete
                       single
                       openOnFocus
                       values={imageInvokeVae ? [imageInvokeVae] : []}
                       onChange={(v) => setImageInvokeVae(v[0] ?? '')}
-                      options={(invokeMeta?.vaes ?? []).map((m) => m.name)}
+                      options={vaesFor(invokeMeta?.vaes ?? [], invokeSubmodelBase).map((m) => m.name)}
                       placeholder="(auto)"
                     />
                   </Row>

@@ -324,3 +324,35 @@ describe('v2.x per-playthrough dictionaries field', () => {
     expect(save.dictionaries[0].name).toBe('Lore');
   });
 });
+
+describe('scene images ride the envelope, not the turns', () => {
+  // The pixels were moved out of the messages because every history walk parses those (json5 took ~110ms on
+  // a turn carrying one image, which starved the narration reveal). migrateSave must carry the new
+  // top-level field through untouched, or a save written with images would load without them.
+  const withImages: SaveObject = {
+    ...(v12Save as unknown as SaveObject),
+    version: APP_VERSION,
+    messageHistory: [
+      { role: 'user', content: 'I look around.' },
+      { role: 'assistant', content: JSON.stringify({ narration: 'n', choices: [], stat_changes: [], turnId: 't1', sceneTags: '1girl, dock' }) },
+    ],
+    sceneImages: { t1: ['data:image/png;base64,AAA'] },
+  };
+
+  it('survives migration with its keys intact', () => {
+    const migrated = migrateSave(withImages);
+    expect(migrated.sceneImages).toEqual({ t1: ['data:image/png;base64,AAA'] });
+  });
+
+  it('leaves the messages free of pixels, keeping only the tag line', () => {
+    const migrated = migrateSave(withImages);
+    const assistant = (migrated.messageHistory ?? []).find((m) => m.role === 'assistant')!;
+    expect(assistant.content).not.toContain('data:image');
+    expect(JSON.parse(assistant.content).sceneTags).toBe('1girl, dock');
+  });
+
+  it('reads a save written without images as simply having none', () => {
+    const { sceneImages: _dropped, ...withoutImages } = withImages;
+    expect(migrateSave(withoutImages as SaveObject).sceneImages).toBeUndefined();
+  });
+});

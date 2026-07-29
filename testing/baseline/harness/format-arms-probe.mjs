@@ -127,6 +127,12 @@ const EDITS = {
   freq03: [],
   freq06: [],
   pres03: [],
+  // repeat_penalty sweep — a DIFFERENT mechanism from frequency/presence, and the only anti-repetition
+  // sampler LM Studio actually honors: `repetition_penalty` and every dry_* spelling are silently ignored
+  // there (verified 2026-07-28 against the loaded Cydonia; `repeat_penalty` 2.0 visibly destroys output).
+  rep11: [],
+  rep12: [],
+  rep13: [],
   // gm — opening paragraph rewritten to the goalmaster role (active scene-runner, NPC initiative,
   //      advancement as job description); the pipeline/choices sentence is deleted (closing contract owns it).
   gm: [
@@ -207,15 +213,20 @@ function applyPatterns(key, table, mode) {
 const systemFor = (key) => applyPatterns(key, EDIT ? EDITS : ABLATIONS, EDIT ? "edit" : "ablation");
 const FREQPEN = strArg("--freqpen", null);
 const PRESPEN = strArg("--prespen", null);
+const REPPEN = strArg("--reppen", null);
 const SAMPLER = {
   ...(FREQPEN != null ? { frequency_penalty: Number(FREQPEN) } : {}),
   ...(PRESPEN != null ? { presence_penalty: Number(PRESPEN) } : {}),
+  ...(REPPEN != null ? { repeat_penalty: Number(REPPEN) } : {}),
 };
-// Per-variant narration samplers, layered over the global --freqpen/--prespen.
+// Per-variant narration samplers, layered over the global --freqpen/--prespen/--reppen.
 const VARIANT_SAMPLERS = {
   freq03: { frequency_penalty: 0.3 },
   freq06: { frequency_penalty: 0.6 },
   pres03: { presence_penalty: 0.3 },
+  rep11: { repeat_penalty: 1.1 },
+  rep12: { repeat_penalty: 1.2 },
+  rep13: { repeat_penalty: 1.3 },
 };
 const ABLATE = strArg("--ablate", null)?.split(",").map((s) => s.trim()) ?? null;
 const EDIT = strArg("--edit", null)?.split(",").map((s) => s.trim()) ?? null;

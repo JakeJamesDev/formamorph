@@ -13,7 +13,9 @@ export interface ImageGenParams {
   sampler: string;
   seed: number; // -1 = random
   model: string; // provider-specific; '' means "server default"
-  adetailer?: boolean; // A1111 only: enable the ADetailer face/hand-fix pass
+  // Second-pass face fix. A1111 delegates to the ADetailer extension; InvokeAI builds the equivalent
+  // graph itself. Ignored by the providers that can't express it (OpenAI, ComfyUI, Z-Image/Anima models).
+  adetailer?: boolean;
 }
 
 /** Progress update during generation. `progress` is 0..1; `preview` is a live-frame data-URL. */

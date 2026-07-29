@@ -62,5 +62,29 @@
     "narration": "The road runs east and keeps running. You sleep the first night under a hedge and the second in a barn that costs you a coin and an hour of listening to a farmer's grievances. The country flattens, then rises. On the fourth morning the capital's smoke smudges the horizon ahead of you.",
     "min": 48,
     "max": 168
+  },
+  {
+    "id": "sleep-implied",
+    "min": 5,
+    "max": 12,
+    "action": "I go to sleep.",
+    "narration": "You pull the blanket up and let the dark have you. Somewhere past the wall a dog gives up barking. The shutters are grey when you next look at them, and the fire has gone to white ash in the grate.",
+    "note": "a full night, but the prose never says 'you slept' or names an hour - the passage of time is carried entirely by the shutters and the dead fire"
+  },
+  {
+    "id": "sleep-interrupted",
+    "min": 2,
+    "max": 8,
+    "action": "I lie down and try to rest.",
+    "narration": "Sleep comes slower than you would like. You surface twice - once at a sound that turns out to be nothing, once at the cold - and the second time you stay awake a while, listening. When you finally give up on it the sky outside has begun to lighten.",
+    "note": "broken sleep reaching dawn; the narration is about the interruptions rather than the duration"
+  },
+  {
+    "id": "sleep-onset",
+    "min": 0,
+    "max": 0.5,
+    "action": "I go to sleep.",
+    "narration": "You shake out the blanket, settle onto the cot, and let your eyes close. The straw shifts under you as you find a position that does not dig in.",
+    "note": "FALSE-POSITIVE GUARD: the player asked to sleep but the narration only reaches the moment of lying down. A near-zero answer is CORRECT here - a model that charges eight hours for this is reading the action, not the passage"
   }
 ]

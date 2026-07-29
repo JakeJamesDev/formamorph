@@ -1,56 +1,69 @@
-// Per-turn scene images: the pure history helpers that add, remove and strip them, plus the size readout
-// the save dialog uses. Images live inside the assistant turn they illustrate (`AITurnResult.sceneImages`),
-// addressed by `turnId` like every other derived turn field — so an image rolls back with its turn and a
-// result arriving after a rollback is discarded rather than landing on the wrong scene.
+// Per-turn scene images. They live in their OWN map keyed by turn id — deliberately not inside the
+// assistant message the way every other derived turn field does.
 //
-// They are deliberately NOT part of what a save carries by default: one image is around a megabyte of
-// base64 and a long session holds dozens (see stripSceneImages / the save dialog's opt-in).
+// One image is over a megabyte of base64, and the message JSON is parsed by everything that walks the
+// history (the context meter recomputes on every sentence boundary of every turn). Measured: json5 takes
+// ~110ms on a message carrying one image versus 0.07ms on an ordinary turn, which starved the narration
+// reveal for the rest of the session. Nothing that reads history needs the pixels — only the panel showing
+// the current turn and the save writer do — so they are kept beside it instead.
+//
+// The turn's `sceneTags` line stays in the message: it is a few dozen bytes, it makes a scene reproducible
+// without its pixels, and riding the message means it rolls back with the turn for free.
 
 import { parseTurnContent, serializeTurnContent } from './turnDigest';
 import type { ChatMessage } from '@/types';
 
-/** Patch a generated image onto the turn it illustrates, newest last. Returns `null` when no turn matches
- *  — the turn was rolled back or regenerated while the image was rendering (the apply-guard). */
-export function addSceneImage(history: ChatMessage[], turnId: string, dataUrl: string, tags?: string): ChatMessage[] | null {
-  let found = false;
-  const next = history.map((message) => {
-    if (message.role !== 'assistant') return message;
-    const parsed = parseTurnContent(message.content);
-    if (!parsed || parsed.turnId !== turnId) return message;
-    found = true;
-    return {
-      ...message,
-      content: serializeTurnContent({
-        ...parsed,
-        sceneImages: [...(parsed.sceneImages ?? []), dataUrl],
-        ...(tags !== undefined ? { sceneTags: tags } : {}),
-      }),
-    };
-  });
-  return found ? next : null;
+/** Scene images by turn id, oldest first within a turn. */
+export type SceneImageMap = Record<string, string[]>;
+
+/** Append an image to its turn. Pure — returns a new map. */
+export function addSceneImage(map: SceneImageMap, turnId: string, dataUrl: string): SceneImageMap {
+  return { ...map, [turnId]: [...(map[turnId] ?? []), dataUrl] };
 }
 
-/** Drop one of a turn's images by index. Returns `null` if the turn or the index isn't there. */
-export function removeSceneImage(history: ChatMessage[], turnId: string, index: number): ChatMessage[] | null {
-  let found = false;
-  const next = history.map((message) => {
-    if (message.role !== 'assistant') return message;
-    const parsed = parseTurnContent(message.content);
-    if (!parsed || parsed.turnId !== turnId) return message;
-    const images = parsed.sceneImages ?? [];
-    if (index < 0 || index >= images.length) return message;
-    found = true;
-    const remaining = images.filter((_, i) => i !== index);
-    const { sceneImages: _dropped, ...rest } = parsed;
-    return {
-      ...message,
-      content: serializeTurnContent(remaining.length ? { ...rest, sceneImages: remaining } : rest),
-    };
-  });
-  return found ? next : null;
+/** Drop one of a turn's images by index. Returns the map unchanged if the turn or index isn't there. */
+export function removeSceneImage(map: SceneImageMap, turnId: string, index: number): SceneImageMap {
+  const images = map[turnId];
+  if (!images || index < 0 || index >= images.length) return map;
+  const remaining = images.filter((_, i) => i !== index);
+  const next = { ...map };
+  if (remaining.length) next[turnId] = remaining;
+  else delete next[turnId]; // an empty turn leaves no entry behind
+  return next;
 }
 
-/** Store the tag line a turn's image was generated from, so the editable field survives a reload. */
+/**
+ * Forget images whose turn is no longer in the history — a rolled-back or re-generated turn. Living in the
+ * message used to make this free; keyed beside it, it has to be swept explicitly or the map grows forever
+ * holding pixels for scenes that no longer exist.
+ */
+export function pruneSceneImages(map: SceneImageMap, history: ChatMessage[]): SceneImageMap {
+  const live = new Set<string>();
+  for (const message of history) {
+    if (message.role !== 'assistant') continue;
+    const turnId = parseTurnContent(message.content)?.turnId;
+    if (turnId) live.add(turnId);
+  }
+  const kept = Object.keys(map).filter((id) => live.has(id));
+  if (kept.length === Object.keys(map).length) return map; // nothing to drop — keep the identity
+  return Object.fromEntries(kept.map((id) => [id, map[id]]));
+}
+
+/** How many images are held and roughly what they weigh, for the save dialog's warning. Base64 carries 3
+ *  bytes per 4 characters, which is close enough for a number the player only reads as a size. */
+export function sceneImageWeight(map: SceneImageMap): { count: number; bytes: number } {
+  let count = 0;
+  let bytes = 0;
+  for (const images of Object.values(map)) {
+    for (const image of images) {
+      count += 1;
+      bytes += Math.round((image.length - (image.indexOf(',') + 1)) * 0.75);
+    }
+  }
+  return { count, bytes };
+}
+
+/** Store the tag line a turn's image was generated from. This one DOES live in the message (see above). */
 export function setSceneTags(history: ChatMessage[], turnId: string, tags: string): ChatMessage[] | null {
   let found = false;
   const next = history.map((message) => {
@@ -61,38 +74,4 @@ export function setSceneTags(history: ChatMessage[], turnId: string, tags: strin
     return { ...message, content: serializeTurnContent({ ...parsed, sceneTags: tags }) };
   });
   return found ? next : null;
-}
-
-/** A turn's images, or `[]`. Reads by index in the flat history (the paged view addresses turns that way). */
-export function sceneImagesAt(history: ChatMessage[], index: number): string[] {
-  const message = history[index];
-  if (!message || message.role !== 'assistant') return [];
-  return parseTurnContent(message.content)?.sceneImages ?? [];
-}
-
-/** The history with every scene image removed — what a save writes unless the player opts in. The tag lines
- *  stay: they're a few dozen bytes and are what makes a saved scene reproducible. */
-export function stripSceneImages(history: ChatMessage[]): ChatMessage[] {
-  return history.map((message) => {
-    if (message.role !== 'assistant') return message;
-    const parsed = parseTurnContent(message.content);
-    if (!parsed?.sceneImages) return message;
-    const { sceneImages: _dropped, ...rest } = parsed;
-    return { ...message, content: serializeTurnContent(rest) };
-  });
-}
-
-/** How many images the history holds and roughly what they weigh, for the save dialog's warning. Base64
- *  carries 3 bytes per 4 characters, which is close enough for a number the player only reads as a size. */
-export function sceneImageWeight(history: ChatMessage[]): { count: number; bytes: number } {
-  let count = 0;
-  let bytes = 0;
-  for (const message of history) {
-    if (message.role !== 'assistant') continue;
-    for (const image of parseTurnContent(message.content)?.sceneImages ?? []) {
-      count += 1;
-      bytes += Math.round((image.length - (image.indexOf(',') + 1)) * 0.75);
-    }
-  }
-  return { count, bytes };
 }

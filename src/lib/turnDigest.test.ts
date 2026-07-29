@@ -291,3 +291,30 @@ describe('applyImportance', () => {
     expect(applyImportance(history, new Map())).toBe(history);
   });
 });
+
+describe('parseTurnContent — parser choice and caching', () => {
+  it('still reads the loose JSON a model writes (json5 fallback)', () => {
+    // Native JSON.parse runs first for speed; json5 is what makes an unquoted-key reply readable at all.
+    expect(parseTurnContent('{narration: "hi", choices: [], stat_changes: [],}')?.narration).toBe('hi');
+  });
+
+  it('returns null when neither parser can read it', () => {
+    expect(parseTurnContent('not json at all')).toBeNull();
+  });
+
+  it('still moves a legacy game_text onto narration', () => {
+    expect(parseTurnContent('{"game_text":"old","choices":[],"stat_changes":[]}')?.narration).toBe('old');
+  });
+
+  it('returns the same parse for the same content, so repeated history walks are free', () => {
+    const content = JSON.stringify({ narration: 'n', choices: [], stat_changes: [], turnId: 'cache-me' });
+    expect(parseTurnContent(content)).toBe(parseTurnContent(content));
+  });
+
+  it('parses a changed turn afresh rather than serving the old one', () => {
+    const before = JSON.stringify({ narration: 'before', choices: [], stat_changes: [], turnId: 't' });
+    const after = JSON.stringify({ narration: 'after', choices: [], stat_changes: [], turnId: 't' });
+    expect(parseTurnContent(before)?.narration).toBe('before');
+    expect(parseTurnContent(after)?.narration).toBe('after');
+  });
+});

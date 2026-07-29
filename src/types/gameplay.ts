@@ -193,6 +193,10 @@ export interface SaveObject {
    *  tombstone hides the memory and keeps it out of context everywhere, but the underlying summary
    *  survives, so it is restorable. Absent (or empty) on older saves ⇒ nothing deleted. */
   memoryDeleted?: string[];
+  /** Scene images by turn id (data URLs), written only when the player opts in on the Save dialog — one
+   *  image is over a megabyte. Kept out of the messages on purpose: everything that walks the history
+   *  parses those, and a megabyte in one made the narration reveal crawl (see lib/sceneImages). */
+  sceneImages?: Record<string, string[]>;
   /** v2.x memory editing: memories the player wrote by hand. `anchorTurn` is the message-history length
    *  at creation, which places the note chronologically among the digests. Never judged by the selector —
    *  a player-written memory rides until deleted. Absent (or empty) on older saves ⇒ none. */

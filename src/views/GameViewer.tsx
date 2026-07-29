@@ -103,7 +103,7 @@ import { normalizeStatChanges, applyAiStatChanges, applyTraitStatChanges, parseS
 import { resolvePromptSampler } from "../lib/promptSamplers";
 import { composeSceneTags, stripPlaces, splitTags, MAX_SCENE_CHARACTERS, type SceneCharacter } from "../lib/sceneTags";
 import { loadDanbooruTags } from "../lib/danbooruTags";
-import { addSceneImage, removeSceneImage, setSceneTags as patchSceneTags } from "../lib/sceneImages";
+import { addSceneImage, removeSceneImage, pruneSceneImages, setSceneTags as patchSceneTags } from "../lib/sceneImages";
 import { generateImage, buildImageRequest } from "../lib/imageGen";
 import { buildImagePrompt } from "../lib/imagePrompt";
 import { downloadBlob } from "../lib/downloadBlob";
@@ -190,6 +190,9 @@ const DIARY_MAX_TOKENS = 80;
 // A discovered character's reference description runs ~2 short paragraphs; the response is trimmed to
 // the last full sentence, so this cap just needs headroom to avoid a mid-word cut.
 const DISCOVER_MAX_TOKENS = 200;
+
+// A stable empty array for turns with no scene image, so the panel's prop identity doesn't churn.
+const EMPTY_IMAGES: string[] = [];
 
 // The scene-tag pass answers with one line of tags; enough for a rich action line, not for prose.
 const SCENE_TAGS_MAX_TOKENS = 120;
@@ -414,6 +417,8 @@ const GameViewer = ({
     setMemoryDeleted,
     memoryNotes,
     setMemoryNotes,
+    sceneImages,
+    setSceneImages,
   } = useGameplay();
 
   // Runtime characters (Slice 2): director-invented characters promoted to persisted entities this
@@ -729,7 +734,11 @@ const GameViewer = ({
     // edits. Narration is rewound by slicing the live flat history to the rolled-back page instead.
     const success = loadGameState(targetState, locations, { keepLiveHistory: true });
     if (!success) return;
-    setFullMessageHistory(sliceHistoryToPage(fullMessageHistory, currentPage, messagesPerPage));
+    const rewound = sliceHistoryToPage(fullMessageHistory, currentPage, messagesPerPage);
+    setFullMessageHistory(rewound);
+    // Scene images live beside the history now, so a rolled-away turn's pictures have to be swept
+    // explicitly — inside the message they used to go with it.
+    setSceneImages((prev) => pruneSceneImages(prev, rewound));
     setUserPage(null); // the rolled-back turn is now the latest — resume following it
     // Seed the live notes scratchpad from the rolled-back turn's own notes (per-turn notes live on the
     // message, and keepLiveHistory skips the snapshot's notes) so a later re-generate/action uses them.
@@ -817,7 +826,9 @@ const GameViewer = ({
     // Restore the prior turn's mechanical state but keep the live narration + notes (see handleRollback),
     // rewinding the flat history to just before the turn being re-rolled. The re-send appends a fresh turn.
     loadGameState(previousState, locations, { keepLiveHistory: true });
-    setFullMessageHistory(sliceHistoryToPage(fullMessageHistory, currentPage - 1, messagesPerPage));
+    const rewound = sliceHistoryToPage(fullMessageHistory, currentPage - 1, messagesPerPage);
+    setFullMessageHistory(rewound);
+    setSceneImages((prev) => pruneSceneImages(prev, rewound)); // the re-rolled turn's pictures go with it
     // Carry the re-rolled turn's own notes onto the fresh turn (per-turn notes live on the message; the live
     // scratchpad still holds the pre-rollback latest turn's notes, which would otherwise be frozen in).
     setPlayerNotes(parseTurnContent(fullMessageHistory[pageAssistantIndex(currentPage, messagesPerPage)]?.content ?? '')?.notes ?? '');
@@ -2452,8 +2463,11 @@ ${playerNotes || NONE_PLACEHOLDER}
           // Temperature and repetition penalty are resolved per prompt: a pinned/custom value goes to every
           // endpoint; an unpinned prompt sends the global value on the built-in engine but omits on a custom
           // endpoint (undefined → no field, so the endpoint's own value applies).
+          // The penalty ships under both spellings: `repetition_penalty` is what vLLM-family servers and the
+          // built-in engine read, `repeat_penalty` is what LM Studio reads (it silently ignores the other).
+          // Servers ignore the name they don't know, so sending both is what makes the control work everywhere.
           ...(resolvedTemperature !== undefined && { temperature: resolvedTemperature }),
-          ...(resolvedRepPenalty !== undefined && { repetition_penalty: resolvedRepPenalty }),
+          ...(resolvedRepPenalty !== undefined && { repetition_penalty: resolvedRepPenalty, repeat_penalty: resolvedRepPenalty }),
           // Reasoning is engine-split: the local engine caps the thought segment by a token budget
           // (thinking_budget_tokens, from the per-prompt %); external endpoints take the coarse reasoning_effort
           // hint. Guided modes / uncontrolled prompts resolve to 0 / none on each path.
@@ -2892,7 +2906,7 @@ ${playerNotes || NONE_PLACEHOLDER}
         },
       });
       if (signal.aborted) return;
-      setFullMessageHistory((prev) => addSceneImage(prev, turnId, dataUrl, line) ?? prev);
+      setSceneImages((prev) => addSceneImage(prev, turnId, dataUrl));
     } catch (error) {
       if ((error as Error).name === "AbortError") return;
       toast.error((error as Error).message || (args.tagsOnly ? "Couldn't write tags for this scene." : "Couldn't draw this scene."));
@@ -2946,7 +2960,7 @@ ${playerNotes || NONE_PLACEHOLDER}
   const handleDeleteSceneImage = (index: number) => {
     const turnId = parseTurnContent(fullMessageHistory[pageAssistantIndex(currentPage, messagesPerPage)]?.content ?? "")?.turnId;
     if (!turnId) return;
-    setFullMessageHistory((prev) => removeSceneImage(prev, turnId, index) ?? prev);
+    setSceneImages((prev) => removeSceneImage(prev, turnId, index));
   };
 
   // Replay a click that landed mid-turn, once the turn's requests are done (the VRAM rule).
@@ -3737,7 +3751,7 @@ ${playerNotes || NONE_PLACEHOLDER}
       abortGeneration={abortGeneration}
       // A scene render holds the next action too: the image has the graphics card until it's done.
       disabled={(isWaitingForAI && !choicesReady) || sceneImageJob !== null}
-      sceneImages={viewedTurn?.sceneImages ?? []}
+      sceneImages={(viewedTurn?.turnId && sceneImages[viewedTurn.turnId]) || EMPTY_IMAGES}
       sceneTags={viewedTurn?.sceneTags ?? ""}
       sceneTurnReady={!!viewedTurn?.turnId}
       sceneImageJob={sceneImageJob}
