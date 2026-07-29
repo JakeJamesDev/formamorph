@@ -744,8 +744,14 @@ export const invokeaiProvider: ImageProvider = async (params: ImageGenParams, op
     let consecutiveErrors = 0; // give up rather than poll a dead/erroring endpoint forever
     for (;;) {
       if (opts.signal?.aborted) throw new DOMException('Aborted', 'AbortError');
-      const poll = await fetch(`${base}/api/v1/queue/default/i/${itemId}`, { headers: auth, signal: opts.signal });
-      if (poll.ok) {
+      // A rejected fetch (connection reset while the GPU box is under load) counts like a bad status —
+      // the render is still running server-side, so one hiccup must not fail the whole generation.
+      const poll = await fetch(`${base}/api/v1/queue/default/i/${itemId}`, { headers: auth, signal: opts.signal })
+        .catch((error: unknown) => {
+          if ((error as Error).name === 'AbortError') throw error;
+          return null;
+        });
+      if (poll?.ok) {
         consecutiveErrors = 0;
         const item = (await poll.json()) as QueueItem;
         // Once the socket is feeding real per-step progress, the coarse status bar would only fight it —
@@ -757,7 +763,7 @@ export const invokeaiProvider: ImageProvider = async (params: ImageGenParams, op
         if (item.status === 'failed') throw new Error(`InvokeAI generation failed: ${item.error_message ?? 'unknown error'}`);
         if (item.status === 'canceled') throw new DOMException('Aborted', 'AbortError');
       } else if (++consecutiveErrors >= 5) {
-        throw new Error(`InvokeAI stopped responding while generating (HTTP ${poll.status}).`);
+        throw new Error(`InvokeAI stopped responding while generating${poll ? ` (HTTP ${poll.status})` : ''}.`);
       }
       // Abortable wait: resolve early the moment the run is canceled, so Stop doesn't hang for a poll cycle.
       await new Promise<void>((resolve) => {

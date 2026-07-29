@@ -735,6 +735,9 @@ const GameViewer = ({
     // edits. Narration is rewound by slicing the live flat history to the rolled-back page instead.
     const success = loadGameState(targetState, locations, { keepLiveHistory: true });
     if (!success) return;
+    // A render still in flight targets a turn this rollback discards — stop it, or its finished image
+    // would land back under the dead turn id (and ride into any opted-in save, invisible and unprunable).
+    cancelSceneImage();
     const rewound = sliceHistoryToPage(fullMessageHistory, currentPage, messagesPerPage);
     setFullMessageHistory(rewound);
     // Scene images live beside the history now, so a rolled-away turn's pictures have to be swept
@@ -827,6 +830,9 @@ const GameViewer = ({
     // Restore the prior turn's mechanical state but keep the live narration + notes (see handleRollback),
     // rewinding the flat history to just before the turn being re-rolled. The re-send appends a fresh turn.
     loadGameState(previousState, locations, { keepLiveHistory: true });
+    // Stop a render aimed at the turn being re-rolled: left running, it would finish into a dead turn id
+    // AND overlap the re-roll's language-model request on the one GPU.
+    cancelSceneImage();
     const rewound = sliceHistoryToPage(fullMessageHistory, currentPage - 1, messagesPerPage);
     setFullMessageHistory(rewound);
     setSceneImages((prev) => pruneSceneImages(prev, rewound)); // the re-rolled turn's pictures go with it
@@ -1091,7 +1097,7 @@ const GameViewer = ({
     } catch {
       return null;
     }
-  }, [semanticMemory, memoryDigests, semanticLore]);
+  }, [semanticMemory, memoryDigests, semanticLore, semanticDiaries, characterDiaries]);
 
   // Semantic memory: score every digest against the current action so band trimming can drop the least
   // relevant memory instead of the oldest. Null on ANY miss (feature off, no action vector, a digest
@@ -2161,13 +2167,23 @@ ${playerNotes || NONE_PLACEHOLDER}
       // awaited inside the turn on purpose — the input stays blocked until the picture is done, because a
       // diffusion pass running against the model on one graphics card spills both to system memory.
       if (sceneImageAuto && !imageGenDisabled) {
-        await runSceneImageRef.current({
-          turnId: currentTurnIdRef.current,
-          narration: narrationResponse,
-          participants: turnParticipants,
-          locationId: turnLocation?.id,
-          signal,
-        });
+        // Own controller, chained to the turn's signal: the panel's Stop aborts through
+        // `sceneImageAbortRef` while the main turn Stop still reaches the render via the chain.
+        const controller = new AbortController();
+        const onAbort = () => controller.abort();
+        if (signal.aborted) onAbort(); else signal.addEventListener('abort', onAbort, { once: true });
+        sceneImageAbortRef.current = controller;
+        try {
+          await runSceneImageRef.current({
+            turnId: currentTurnIdRef.current,
+            narration: narrationResponse,
+            participants: turnParticipants,
+            locationId: turnLocation?.id,
+            signal: controller.signal,
+          });
+        } finally {
+          signal.removeEventListener('abort', onAbort);
+        }
       }
     } catch (error) {
       const err = error as { response?: { status?: number }; message?: string; connectionHandled?: boolean };
@@ -2391,6 +2407,8 @@ ${playerNotes || NONE_PLACEHOLDER}
     if (!abortControllerRef.current) return;
     abortControllerRef.current.abort();
     abortControllerRef.current = null;
+    // A scene-image click queued behind this turn dies with it — Stop means stop, not "draw later".
+    pendingSceneImageRef.current = null;
 
     setIsWaitingForAI(false);
     setAiRequestType(null);
@@ -2424,8 +2442,9 @@ ${playerNotes || NONE_PLACEHOLDER}
 
   // Abort any in-flight AI request when GameViewer unmounts (e.g. exiting to the menu mid-turn), so the SSE
   // stream stops instead of a local model generating a whole narration into a torn-down provider. The
-  // turn's own `signal.aborted` checks then short-circuit its continuations.
-  useEffect(() => () => { abortControllerRef.current?.abort(); }, []);
+  // turn's own `signal.aborted` checks then short-circuit its continuations. A manual scene render runs on
+  // its own controller, so it gets the same treatment — otherwise it keeps the image server busy after exit.
+  useEffect(() => () => { abortControllerRef.current?.abort(); sceneImageAbortRef.current?.abort(); }, []);
 
   const makeAIRequest = async (
     systemPrompt: string,
@@ -2901,8 +2920,8 @@ ${playerNotes || NONE_PLACEHOLDER}
 
   /**
    * Draw one turn. `tags` skips the tag pass and renders that line verbatim — the path the editable tag
-   * field under an image uses. Writes through the turn-id apply-guard, so an image finishing after its turn
-   * was rolled back or re-generated is discarded instead of landing on someone else's scene.
+   * field under an image uses. Tag writes go through the turn-id apply-guard; the image write is guarded
+   * by the run's abort signal, which rollback / re-generate / load fire before discarding the turn.
    */
   const runSceneImage = async (args: {
     turnId: string;
@@ -3792,7 +3811,7 @@ ${playerNotes || NONE_PLACEHOLDER}
       disabled={(isWaitingForAI && !choicesReady) || sceneImageJob !== null}
       sceneImages={(viewedTurn?.turnId && sceneImages[viewedTurn.turnId]) || EMPTY_IMAGES}
       sceneTags={viewedTurn?.sceneTags ?? ""}
-      sceneTurnReady={!!viewedTurn?.turnId}
+      sceneTurnId={viewedTurn?.turnId}
       sceneImageJob={sceneImageJob}
       sceneImageProgress={sceneImageProgress}
       sceneImagePreview={sceneImagePreview}
@@ -3834,6 +3853,8 @@ ${playerNotes || NONE_PLACEHOLDER}
       includeSceneImages: opts?.includeSceneImages,
     });
   const handleMenuLoad = async (id: string, targetWorldId?: string) => {
+    // A render from the outgoing session must not finish into the loaded one under a dead turn id.
+    cancelSceneImage();
     // A save from another (installed) world: swap GameData to that world first, then restore the save against
     // its locations — otherwise the save would run inside the current world's shell.
     if (targetWorldId && targetWorldId !== (worldId ? String(worldId) : undefined)) {

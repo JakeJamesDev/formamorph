@@ -293,6 +293,14 @@ describe('invokeaiProvider', () => {
       .rejects.toThrow(/allow_origins/);
   });
 
+  it('rides out transient network errors while polling instead of failing the render', async () => {
+    // The server is still rendering; two polls dying mid-flight (not just non-OK) must not kill the run.
+    let polls = 0;
+    stubServer([sdxl], { beforePoll: () => { if (++polls <= 2) throw new TypeError('Failed to fetch'); } });
+    const url = await invokeaiProvider(params, { endpointUrl: 'http://127.0.0.1:9090', apiToken: '' });
+    expect(url).toMatch(/^data:image\/png;base64,/);
+  }, 10000);
+
   it('stops polling instead of hanging when the item endpoint keeps erroring', async () => {
     // enqueue succeeds, then every poll returns a non-OK response.
     vi.stubGlobal('fetch', vi.fn(async (url: string) => {

@@ -225,6 +225,19 @@ describe('stripQuotedSpeech (presence reads prose, not dialogue)', () => {
     expect(stripQuotedSpeech('')).toBe('');
   });
 
+  it('strips each paragraph of a continuing speech (re-opened quote, closed only at the end)', () => {
+    // Fiction convention: paragraph 1 leaves its quote open, paragraph 2 re-opens and closes.
+    const text = '"We should go now.\n\n"Professor Serana must die," he finished.';
+    const stripped = stripQuotedSpeech(text);
+    expect(stripped).not.toContain('Serana');
+    expect(stripped).toContain('he finished.');
+  });
+
+  it('keeps attribution after a curly multi-paragraph speech instead of swallowing it', () => {
+    const text = '“First part.\n\n“Second part,” she said, glancing at Mira.';
+    expect(stripQuotedSpeech(text)).toContain('she said, glancing at Mira.');
+  });
+
   it('drops a character only ever named inside dialogue, keeping the one acting on the page', () => {
     const narration = '"Professor Serana will be pleased," she said. Wolfram leaned in.';
     const entities = [ent('Professor Serana'), ent('Wolfram')];

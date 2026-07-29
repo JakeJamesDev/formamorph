@@ -303,7 +303,7 @@ They exist to give the story a memory with consequences. Prose alone drifts; a s
 
 Both ends are given because a turn spans time: an eight-hour sleep begins in the afternoon and ends at night. Dayparts are \`night\`, \`dawn\`, \`morning\`, \`midday\`, \`afternoon\`, \`evening\`.
 
-That's what makes a per-hour drain (\`current + 2 * deltaHours\`) or a stat that only climbs after dark possible. With **Measured Clock** off, \`deltaHours\` is simply \`1\`. One catch: a script mentioning any of these re-runs **every** turn, since time passes every turn — scripts that don't keep re-running only when a stat changes.
+That's what makes a per-hour drain (\`current + 2 * deltaHours\`) or a stat that only climbs after dark possible. With **Measured Clock** off, \`deltaHours\` is simply \`1\`. One catch: a script mentioning any of these re-runs **every** turn, since time passes every turn — a script that mentions none of them still runs only when a stat changes.
 
 Start with two or three stats that the story would genuinely turn on. Every stat you add spends context on every turn, whether it matters to the scene or not.`,
   },

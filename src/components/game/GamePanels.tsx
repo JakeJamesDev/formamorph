@@ -443,7 +443,7 @@ export const MiddlePanel = ({
   disabled,
   sceneImages,
   sceneTags,
-  sceneTurnReady,
+  sceneTurnId,
   sceneImageJob,
   sceneImageProgress,
   sceneImagePreview,
@@ -479,8 +479,9 @@ export const MiddlePanel = ({
   sceneImages: string[];
   /** The tag line those images were drawn from. */
   sceneTags: string;
-  /** The viewed page holds a committed turn, so there is something to draw or tag. */
-  sceneTurnReady: boolean;
+  /** The viewed page's committed turn id (undefined while none) — there is something to draw or tag,
+   *  and the scene panel is remounted per turn so its tag draft can't leak across page navigation. */
+  sceneTurnId?: string;
   /** Which half of the scene pipeline is running, or null. */
   sceneImageJob: 'tags' | 'image' | null;
   sceneImageProgress: number | null;
@@ -664,7 +665,7 @@ export const MiddlePanel = ({
                           variant="ghost"
                           className="justify-start gap-2 text-xs h-8"
                           onClick={() => { setToolMenuOpen(false); onSceneTags(); }}
-                          disabled={sceneImageJob !== null || !sceneTurnReady}
+                          disabled={sceneImageJob !== null || !sceneTurnId}
                         >
                           {sceneImageJob === 'tags' ? <Loader2 className="h-4 w-4 animate-spin" /> : <Dices className="h-4 w-4" />}
                           Write Scene Tags
@@ -673,7 +674,7 @@ export const MiddlePanel = ({
                           variant="ghost"
                           className="justify-start gap-2 text-xs h-8"
                           onClick={() => { setToolMenuOpen(false); onSceneImage(); }}
-                          disabled={sceneImageJob !== null || !sceneTurnReady}
+                          disabled={sceneImageJob !== null || !sceneTurnId}
                         >
                           {sceneImageJob === 'image' ? <Loader2 className="h-4 w-4 animate-spin" /> : <ImageIcon className="h-4 w-4" />}
                           Draw This Scene
@@ -765,9 +766,12 @@ export const MiddlePanel = ({
             )}
             {sceneImagesAvailable && (
               <SceneImagePanel
+                // Keyed by turn: paging to another turn remounts the panel, so the tag draft, image
+                // index, and open editor can't carry one turn's state onto another.
+                key={sceneTurnId}
                 images={sceneImages}
                 tags={sceneTags}
-                ready={sceneTurnReady}
+                ready={!!sceneTurnId}
                 job={sceneImageJob}
                 progress={sceneImageProgress}
                 preview={sceneImagePreview}

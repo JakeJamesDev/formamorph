@@ -67,9 +67,8 @@ describe('pruneSceneImages', () => {
 });
 
 describe('sceneImageWeight', () => {
-  it('counts the images and approximates their decoded size', () => {
-    // 400 base64 chars ≈ 300 bytes each, and the data: prefix is excluded.
-    expect(sceneImageWeight({ t1: [IMG], t2: [IMG2] })).toEqual({ count: 2, bytes: 600 });
+  it('counts the images and reports what the save actually grows by (the base64 string itself)', () => {
+    expect(sceneImageWeight({ t1: [IMG], t2: [IMG2] })).toEqual({ count: 2, bytes: IMG.length + IMG2.length });
   });
 
   it('is zero for an empty map', () => {
