@@ -59,12 +59,16 @@ describe('Input wheel stepping', () => {
     expect(wheelOn(input).defaultPrevented).toBe(false);
   });
 
-  it('unbinds on unmount', () => {
-    const { container, unmount } = render(<Input type="number" defaultValue={50} />);
+  it('unbinds when the type flips away from number', () => {
+    // The one case where only the effect cleanup detaches the stepper: the node stays mounted AND
+    // focused, so a leaked listener would keep numerically stepping a text field. (An unmount check
+    // can't catch a leak — unmounting drops focus, and the focus guard masks the listener.)
+    const { container, rerender } = render(<Input type="number" defaultValue={50} />);
     const input = container.querySelector('input')!;
     input.focus();
-    unmount();
+    rerender(<Input type="text" defaultValue={50} />);
     expect(wheelOn(input).defaultPrevented).toBe(false);
+    expect(input.value).toBe('50');
   });
 
   it('still hands the node to a forwarded ref', () => {

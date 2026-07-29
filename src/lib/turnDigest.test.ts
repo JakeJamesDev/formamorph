@@ -311,6 +311,15 @@ describe('parseTurnContent — parser choice and caching', () => {
     expect(parseTurnContent(content)).toBe(parseTurnContent(content));
   });
 
+  it('does not let failed parses (streaming partials) crowd real turns out of the cache', () => {
+    const content = JSON.stringify({ narration: 'n', choices: [], stat_changes: [], turnId: 'keep-me' });
+    const first = parseTurnContent(content);
+    // A streaming turn hands over hundreds of unparsable partial strings; past the cache cap they
+    // would wipe every cached turn. None of them may evict `content`.
+    for (let i = 0; i < 500; i++) parseTurnContent(`{"narration":"partial ${i}`);
+    expect(parseTurnContent(content)).toBe(first);
+  });
+
   it('parses a changed turn afresh rather than serving the old one', () => {
     const before = JSON.stringify({ narration: 'before', choices: [], stat_changes: [], turnId: 't' });
     const after = JSON.stringify({ narration: 'after', choices: [], stat_changes: [], turnId: 't' });

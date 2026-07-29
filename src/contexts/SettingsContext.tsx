@@ -1,17 +1,8 @@
 import { randomUUID } from "@/lib/uuid";
 import { createContext, useContext, useState, useEffect, useRef, useCallback, useMemo, type ReactNode } from 'react';
 import { defaultSystemPrompt, defaultNarrationUserPrompt, defaultRecapUserPrompt, defaultRehydrateUserPrompt, defaultOocDirectivePrompt, defaultChoicesPrompt, defaultStatUpdatesPrompt, defaultLocationChangePrompt, defaultThinkingPrompt, defaultSummaryPrompt, defaultChoicesUserPrompt, defaultStatUpdatesUserPrompt, defaultLocationChangeUserPrompt, defaultSummaryUserPrompt, defaultDiaryPrompt, defaultDirectorPrompt, defaultDirectorUserPrompt, defaultCharacterPrompt, defaultStoryboardPrompt, defaultNowLinePrompt, defaultTimePassedPrompt, defaultTimePassedUserPrompt, defaultOpeningTimePrompt, defaultOpeningTimeUserPrompt, defaultSceneTagsPrompt, defaultSceneTagsUserPrompt } from '../components/game/GamePrompts';
-import { DEFAULT_ENDPOINT, DEFAULT_API_TOKEN, DEFAULT_MODEL_NAME, DEFAULT_MAX_TOKENS, DEFAULT_CONTEXT_WINDOW, DEFAULT_LOCAL_CONTEXT_SIZE, DEFAULT_LOCAL_GPU_LAYERS, DEFAULT_LOCAL_FLASH_ATTENTION, DEFAULT_LOCAL_PARALLEL_REQUESTS, DEFAULT_GEN_TEMPERATURE, DEFAULT_GEN_TOP_P, DEFAULT_GEN_REPETITION_PENALTY, DEFAULT_GEN_TOP_K, DEFAULT_GEN_MIN_P, DEFAULT_THEME_COLOR, BASE_THEME_COLOR, THEME_COLORS, DEFAULT_FONT, FONT_OPTIONS, SYSTEM_FONT_STACK, DEFAULT_NARRATION_FONT, DEFAULT_NARRATION_SCALE, DEFAULT_NARRATION_LINE_HEIGHT, NARRATION_FONT_OPTIONS, fontStack, fontSizeAdjust, DEFAULT_UPDATE_CHANNEL, type ThemeColor, type FontChoice, type NarrationFont, type UpdateChannel } from './settingsDefaults';
+import { DEFAULT_ENDPOINT, DEFAULT_API_TOKEN, DEFAULT_MODEL_NAME, DEFAULT_MAX_TOKENS, DEFAULT_CONTEXT_WINDOW, DEFAULT_LOCAL_CONTEXT_SIZE, DEFAULT_LOCAL_GPU_LAYERS, DEFAULT_LOCAL_FLASH_ATTENTION, DEFAULT_LOCAL_PARALLEL_REQUESTS, DEFAULT_GEN_TEMPERATURE, DEFAULT_GEN_TOP_P, DEFAULT_GEN_REPETITION_PENALTY, DEFAULT_GEN_TOP_K, DEFAULT_GEN_MIN_P, DEFAULT_THEME_COLOR, BASE_THEME_COLOR, THEME_COLORS, DEFAULT_FONT, FONT_OPTIONS, SYSTEM_FONT_STACK, DEFAULT_NARRATION_FONT, DEFAULT_NARRATION_SCALE, DEFAULT_NARRATION_LINE_HEIGHT, NARRATION_FONT_OPTIONS, fontStack, fontSizeAdjust, DEFAULT_UPDATE_CHANNEL, DEFAULT_SCENE_IMAGE_AUTO, type ThemeColor, type FontChoice, type NarrationFont, type UpdateChannel } from './settingsDefaults';
 import { isDesktop } from '../lib/imageGen/desktop';
-
-/** A request to open the Settings modal at a given tab (and, for `endpoints`, a given sub-tab). The nonce
- *  distinguishes two identical requests so the second one still re-opens the modal. */
-export interface SettingsOpenRequest {
-  tab: string;
-  endpointTab?: string;
-  nonce: string;
-}
-
 import { DEFAULT_TAG_PROMPT } from '../lib/imagePrompt';
 import {
   imageEndpointPresetCodec, makeDefaultStore as makeImageStore, presetStoreFromEnv, DEFAULT_IMAGE_ENDPOINT_VALUES,
@@ -53,6 +44,14 @@ import { defaultPromptSampler, type PromptSamplerMap, type PromptSampler } from 
 import type { AIRequestType } from '../types';
 import type { ParagraphLimit } from '../lib/outputLength';
 import { detectSupportedReasoningEfforts, detectReasoningCapability, isReasoningEngaged, type ReasoningEffortField, type PromptReasoning } from '../lib/reasoningEffort';
+
+/** A request to open the Settings modal at a given tab (and, for `endpoints`, a given sub-tab). The nonce
+ *  distinguishes two identical requests so the second one still re-opens the modal. */
+export interface SettingsOpenRequest {
+  tab: string;
+  endpointTab?: string;
+  nonce: string;
+}
 
 /** Lifecycle of the context-window auto-detect probe; `error` is set only on a forced (manual) attempt. */
 export type DetectStatus = 'idle' | 'detecting' | 'success' | 'error';
@@ -739,7 +738,7 @@ function useProvideSettings() {
   // Generate a scene image for every turn automatically. Off by default: the image renders after the turn's
   // text is finished and blocks the next action while it runs (one GPU, and a diffusion pass alongside the
   // language model spills it to CPU), so it is a deliberate opt-in rather than a default cost.
-  const [sceneImageAuto, setSceneImageAuto] = usePersistentState<boolean>(`${APP_ID}_sceneImageAuto`, false, boolCodec);
+  const [sceneImageAuto, setSceneImageAuto] = usePersistentState<boolean>(`${APP_ID}_sceneImageAuto`, DEFAULT_SCENE_IMAGE_AUTO, boolCodec);
   // Image generation config (Settings → AI Endpoints → Image). Lives in named, freely-editable presets so
   // the user can keep several image-server configs. The active preset's values back the fields below; the
   // public getter/setter names are unchanged so consumers (GenerateImageButton) don't care about presets.

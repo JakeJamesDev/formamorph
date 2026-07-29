@@ -46,8 +46,13 @@ export function parseTurnContent(content: string): AITurnResult | null {
     delete parsed.game_text;
   }
 
-  if (parseCache.size >= PARSE_CACHE_LIMIT) parseCache.clear();
-  parseCache.set(content, parsed);
+  // Only successful parses are cached: a streaming turn hands every partial content string through here,
+  // and caching those misses would fill the map mid-turn until the cap wiped the whole history's parses.
+  // A failed parse exits fast, so re-failing on the next walk costs nothing.
+  if (parsed) {
+    if (parseCache.size >= PARSE_CACHE_LIMIT) parseCache.clear();
+    parseCache.set(content, parsed);
+  }
   return parsed;
 }
 

@@ -49,15 +49,16 @@ export function pruneSceneImages(map: SceneImageMap, history: ChatMessage[]): Sc
   return Object.fromEntries(kept.map((id) => [id, map[id]]));
 }
 
-/** How many images are held and roughly what they weigh, for the save dialog's warning. Base64 carries 3
- *  bytes per 4 characters, which is close enough for a number the player only reads as a size. */
+/** How many images are held and roughly what they weigh, for the save dialog's warning. The save stores
+ *  the base64 string itself, so the string's length IS the growth (ASCII → one byte per character) —
+ *  reporting decoded pixels would under-state the file by a quarter. */
 export function sceneImageWeight(map: SceneImageMap): { count: number; bytes: number } {
   let count = 0;
   let bytes = 0;
   for (const images of Object.values(map)) {
     for (const image of images) {
       count += 1;
-      bytes += Math.round((image.length - (image.indexOf(',') + 1)) * 0.75);
+      bytes += image.length;
     }
   }
   return { count, bytes };

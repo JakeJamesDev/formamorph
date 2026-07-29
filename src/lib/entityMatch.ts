@@ -111,7 +111,10 @@ const QUOTED_SPEECH_RE = /["“][^"”]*(?:["”]|$)/g;
  */
 export function stripQuotedSpeech(text: string): string {
   if (!text || !/["“]/.test(text)) return text;
-  return text.replace(QUOTED_SPEECH_RE, ' ');
+  // Per paragraph: continuing speech re-opens each paragraph and closes only the last, so a span never
+  // crosses a paragraph break — matching across one reads the next opener as a closer and leaks the
+  // second paragraph's speech into prose.
+  return text.split(/(\n\s*\n)/).map((part, i) => (i % 2 ? part : part.replace(QUOTED_SPEECH_RE, ' '))).join('');
 }
 
 /**
