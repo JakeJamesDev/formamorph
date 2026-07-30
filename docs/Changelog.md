@@ -2,7 +2,7 @@
 
 All notable changes to Formamorph. This fork's first line is **2.0.0** — a full TypeScript rebuild of the upstream JavaScript app ([FieryLionite's Formamorph](https://fierylion.itch.io/formamorph), ~v1.2) — with feature parity as the baseline plus new features on top.
 
-> ✅ **2.0.0 – 2.7.0-beta are released** (collapsed below). New work lands under **🚧 In Progress** — an unnumbered section, so changes accumulate without pinning a version. When a batch earns a release its section is marked **Released** and collapsed, and a fresh In Progress opens. `package.json` reads **2.7.0-beta** — the latest released version.
+> ✅ **2.0.0 – 2.8.0 are released** (collapsed below). New work lands under **🚧 In Progress** — an unnumbered section, so changes accumulate without pinning a version. When a batch earns a release its section is marked **Released** and collapsed, and a fresh In Progress opens. `package.json` reads **2.8.0** — the latest released version.
 
 Each release groups changes as **Major** / **Minor**, then **Added** / **Removed** / **Fixed**, and within those by audience: 👤 user-facing · 🛠️ developer tooling · ⚙️ backend.
 
@@ -10,7 +10,12 @@ Each release groups changes as **Major** / **Minor**, then **Added** / **Removed
 
 ## 🚧 In Progress
 
-_Unreleased — new work accumulates here until it earns a version bump. The next batch will pin its own version; `package.json` reads **2.7.0-beta** (just released below)._
+_Unreleased — new work accumulates here until it earns a version bump. The next batch will pin its own version; `package.json` reads **2.8.0** (just released below)._
+
+---
+
+<details>
+<summary><strong>✅ 2.8.0 — Released 2026-07-30</strong> — the pictures release: every turn can be drawn from your own character and location tags, InvokeAI gains Anima models, a Face Fix that needs nothing installed, live progress and board filing, your character finally speaks their own words when your action says something, characters who were only talked about stop moving into the room, stat code can read the story clock, and a Stop button for anything rendering (click to expand)</summary>
 
 ### Minor Changes
 
@@ -50,6 +55,8 @@ _Unreleased — new work accumulates here until it earns a version bump. The nex
   - **Repetition Penalty works on LM Studio now.** The setting was sent under the name `repetition_penalty`, which is what vLLM-style servers and Formamorph's own built-in engine read — but LM Studio reads `repeat_penalty` and silently ignores the other, so the slider did nothing there no matter where you set it. That also meant the planning prompt's built-in penalty of 1 (deliberate: a penalty above 1 suppresses the near-identical cast lines and quietly drops characters from a scene) never reached an LM Studio model. The value now goes out under both names; a server ignores the one it doesn't know, so every endpoint gets the setting it understands. If you had already compensated by turning the penalty up in LM Studio's own model settings, it will now actually apply on top of that — worth a look at your numbers.
   - **Stat numbers stop printing sixteen decimal places.** With **Measured Clock** on a turn can take any amount of time — thirty-five minutes, three hours — and both regen and stat code scale by it, so a stat gaining 1 per hour gained `0.5833333333333333` on a thirty-five-minute turn and the panel printed exactly that, wrapping the row onto two lines. Values and their maximums now read as whole numbers, and the +/− change beside them keeps a single decimal when it has one (`+0.6`, `−4.5`) — rounding a real sub-point gain to `+0` would have read as nothing having happened. The starvation log line reads to a tenth for the same reason. The stat keeps its full precision underneath, so fractions still accumulate into whole points across turns rather than being thrown away each turn. The AI is handed whole numbers too — a value that long is roughly seventeen wasted tokens on every single turn.
   - **The scroll wheel changes a number field in both directions now.** Click into a numeric box and the wheel nudges its value up and down — a quick way to dial in a stat's starting value, its regen, a threshold. It only half-worked: near the ends of a long list the value would go one way and refuse the other. At the top of the Stats page you could only count down, at the bottom only up, and it behaved properly solely in the middle, because the browser only let the wheel reach the field while the page still had somewhere left to scroll. The wheel now steps the field the same way wherever you are on the page. Nothing else changes: you still have to click into a box first, so scrolling past one you haven't touched can't alter it, and the field's own limits and increment are respected — a stat capped at 100 stops at 100, and a field that counts in halves still counts in halves. This applies to every numeric field in the app, not just the Stats screen.
+
+</details>
 
 ---
 
