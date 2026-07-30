@@ -3,6 +3,19 @@
 // value, it yields the accent-fill width plus the colored band's rectangle and direction. Keeping this
 // pure and tested is deliberate — the bar's live/history paths kept diverging when the math lived inline.
 
+/**
+ * A stat change as the player reads it. Regen and stat code scale by the turn's measured hours, so a change
+ * is often fractional — and a whole-number readout would print a real gain as `+0`. Fractions therefore show
+ * to one decimal (`+0.6`, `-4.5`) while exact changes stay bare (`-4`). Returns `null` for a change too small
+ * to reach a tenth, which the caller renders as no text at all; the colored band still moves.
+ */
+export function formatStatDelta(change: number): string | null {
+  const rounded = Math.round(change * 10) / 10;
+  if (rounded === 0) return null;
+  const body = Number.isInteger(rounded) ? String(rounded) : rounded.toFixed(1);
+  return rounded > 0 ? `+${body}` : body;
+}
+
 /** Clamp a raw stat value to a 0–100 fill percentage within its [min, max] range. */
 export function statPct(value: number, min: number, max: number): number {
   if (max <= min) return 0;

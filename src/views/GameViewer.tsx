@@ -857,7 +857,9 @@ const GameViewer = ({
   // Read the committed latest turn + its originating action, or null when a partial re-generate can't run
   // (busy, not on the latest page, or the turn can't be parsed).
   const partialRegenTarget = () => {
-    if (isWaitingForAI || !canRegenerate(currentPage, totalPages)) return null;
+    // A running scene render blocks these too: it holds the graphics card, and unlike rollback /
+    // re-generate these keep the turn, so its picture is still the correct one and must not be canceled.
+    if (isWaitingForAI || sceneImageJob !== null || !canRegenerate(currentPage, totalPages)) return null;
     const last = fullMessageHistory[fullMessageHistory.length - 1];
     if (!last || last.role !== "assistant") return null;
     const prev = parseTurnContent(last.content);
@@ -1178,7 +1180,9 @@ const GameViewer = ({
         if (hunger.value <= 20) {
           const healthLoss = 5 * hours;
           adjustStatByName("Health", -healthLoss);
-          addLogEntry(`You're starving! Lost ${healthLoss} health.`);
+          // The loss scales by the turn's measured hours, so it's usually fractional — the log reads to a
+          // tenth rather than printing the raw float. The stat still takes the exact amount.
+          addLogEntry(`You're starving! Lost ${Math.round(healthLoss * 10) / 10} health.`);
           // Add health loss to recent changes
           const applyLoss = (prev: Record<string, number>) => ({
             ...prev,
@@ -2074,8 +2078,9 @@ ${playerNotes || NONE_PLACEHOLDER}
       // Seed the story's opening hour. Only ever written on the opening turn, and only when the reply names
       // a daypart in the closed set — an unreadable answer leaves it null, which reads downstream as the
       // shipped DEFAULT_START_HOUR and so plays exactly like the game did before this pass existed.
+      let openingHour: number | null = null;
       if (isOpeningTurn) {
-        const openingHour = openingTimeResponse ? parseOpeningDaypart(openingTimeResponse) : null;
+        openingHour = openingTimeResponse ? parseOpeningDaypart(openingTimeResponse) : null;
         setStartHour(openingHour);
       }
 
@@ -2139,7 +2144,10 @@ ${playerNotes || NONE_PLACEHOLDER}
       const turnClock: StatClock = {
         deltaHours: turnHours,
         elapsedHours: gameTime + turnHours,
-        calendar,
+        // `setStartHour` above hasn't committed, so the closure's `calendar` still predates this turn —
+        // build the opening turn's own from the hour just measured. Without this the opening turn's stat
+        // code reads the default start hour, and an accumulating stat banks that wrong value for good.
+        calendar: openingHour !== null ? { startHour: openingHour } : calendar,
       };
 
       // Apply stat changes
@@ -2521,9 +2529,9 @@ ${playerNotes || NONE_PLACEHOLDER}
           // Temperature and repetition penalty are resolved per prompt: a pinned/custom value goes to every
           // endpoint; an unpinned prompt sends the global value on the built-in engine but omits on a custom
           // endpoint (undefined → no field, so the endpoint's own value applies).
-          // The penalty ships under both spellings: `repetition_penalty` is what vLLM-family servers and the
-          // built-in engine read, `repeat_penalty` is what LM Studio reads (it silently ignores the other).
-          // Servers ignore the name they don't know, so sending both is what makes the control work everywhere.
+          // The penalty ships under both spellings: `repetition_penalty` for vLLM-family servers and the
+          // built-in engine, `repeat_penalty` for LM Studio (which silently ignores the other). Both targets
+          // accept unknown body fields — measured, including a param nobody defines. A strict server would 400.
           ...(resolvedTemperature !== undefined && { temperature: resolvedTemperature }),
           ...(resolvedRepPenalty !== undefined && { repetition_penalty: resolvedRepPenalty, repeat_penalty: resolvedRepPenalty }),
           // Reasoning is engine-split: the local engine caps the thought segment by a token budget

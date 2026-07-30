@@ -62,6 +62,16 @@ describe('buildStatContext', () => {
       '<stat>\n  <name>H&lt;P &amp; M</name>\n</stat>',
     );
   });
+  it('rounds a time-scaled fractional value to a whole number', () => {
+    // Regen scaled by a measured 35-minute turn put 0.5833333333333333 straight into the prompt — a
+    // parrotable numeral the model echoes back, and pure token waste.
+    const charge = { ...vigor, name: 'Charge', value: 35 / 60 } as PlayerStat;
+    expect(buildStatContext([charge], { values: true, status: false, meaning: false })).toBe('Charge: 1/100');
+    const fractionalMax = { ...vigor, value: 85.5, max: 90.4 } as PlayerStat;
+    expect(buildStatContext([fractionalMax], { values: true, status: false, meaning: false })).toBe('Vigor: 86/90');
+    const pct = { ...focus, value: 40.6 } as PlayerStat;
+    expect(buildStatContext([pct], { values: true, status: false, meaning: false })).toBe('Focus: 41%');
+  });
   it('percentage stat renders its value as N%', () => {
     expect(buildStatContext([focus], { values: true, status: false, meaning: false })).toBe('Focus: 40%');
   });

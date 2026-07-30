@@ -35,7 +35,11 @@ export function buildStatContext(
       const descriptor = [...stat.descriptors]
         .sort((a, b) => a.threshold - b.threshold)
         .find((d) => percentage <= d.threshold);
-      const valueStr = stat.type === 'percentage' ? `${stat.value}%` : `${stat.value}/${stat.max}`;
+      // Whole numbers only: regen and stat code scale by the turn's measured hours, so a raw value can be
+      // `0.5833333333333333` — a parrotable numeral the model echoes into the prose, and pure token waste.
+      const valueStr = stat.type === 'percentage'
+        ? `${Math.round(stat.value)}%`
+        : `${Math.round(stat.value)}/${Math.round(stat.max)}`;
       if (format === 'xml') {
         const child = (tag: string, value: string | number) => `\n  <${tag}>${xmlEscape(String(value))}</${tag}>`;
         let inner = child('name', stat.name);

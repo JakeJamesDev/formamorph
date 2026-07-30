@@ -293,6 +293,35 @@ describe('invokeaiProvider', () => {
       .rejects.toThrow(/allow_origins/);
   });
 
+  it('blames the API token, not CORS, when the server rejects the request', async () => {
+    // The server IS reachable — it answered 401. Sending the user to allow_origins is the wrong fix.
+    vi.stubGlobal('fetch', vi.fn(async () => ({ ok: false, status: 401 } as Response)));
+    const run = invokeaiProvider(params, { endpointUrl: 'http://127.0.0.1:9090', apiToken: 'wrong' });
+    await expect(run).rejects.toThrow(/API Token/);
+    await expect(run).rejects.not.toThrow(/allow_origins/);
+  });
+
+  it('reports a server-side status rather than a connection problem', async () => {
+    vi.stubGlobal('fetch', vi.fn(async () => ({ ok: false, status: 500 } as Response)));
+    await expect(invokeaiProvider(params, { endpointUrl: 'http://127.0.0.1:9090', apiToken: '' }))
+      .rejects.toThrow(/HTTP 500/);
+  });
+
+  it('decodes through an fp32 VAE when the model\'s own defaults ask for it', async () => {
+    // A model whose defaults say fp32 renders solid black through an fp16 VAE — the detail pass already
+    // honored this; the base render hardcoded fp16 and produced the black image it exists to avoid.
+    const fp32Model: InvokeModel = { ...sdxl, default_settings: { vae_precision: 'fp32' } };
+    const server = stubServer([fp32Model]);
+    await invokeaiProvider(params, { endpointUrl: 'http://127.0.0.1:9090', apiToken: '' });
+    expect((server.enqueued[0].batch.graph.nodes.l2i as { fp32?: boolean }).fp32).toBe(true);
+  });
+
+  it('leaves fp16 alone for a model that does not ask for fp32', async () => {
+    const server = stubServer([sdxl]);
+    await invokeaiProvider(params, { endpointUrl: 'http://127.0.0.1:9090', apiToken: '' });
+    expect((server.enqueued[0].batch.graph.nodes.l2i as { fp32?: boolean }).fp32).toBe(false);
+  });
+
   it('rides out transient network errors while polling instead of failing the render', async () => {
     // The server is still rendering; two polls dying mid-flight (not just non-OK) must not kill the run.
     let polls = 0;
@@ -414,6 +443,13 @@ describe('readInvokeProgress', () => {
   it('clamps out-of-range percentages', () => {
     expect(readInvokeProgress({ item_id: 7, percentage: 1.4 }, 7, prev)?.progress).toBe(1);
     expect(readInvokeProgress({ item_id: 7, percentage: -0.2 }, 7, prev)?.progress).toBe(0);
+  });
+
+  it('ignores every event until the queue item id is known', () => {
+    // The watcher subscribes before enqueuing, so there is a window with no id to match on. Adopting
+    // whatever arrives there lets the InvokeAI GUI generating in another tab drive this run's bar.
+    expect(readInvokeProgress({ item_id: 9, percentage: 0.9 }, null, prev)).toBeNull();
+    expect(readInvokeProgress({ item_id: 9, percentage: 0.9, image: { dataURL: 'data:other' } }, null, prev)).toBeNull();
   });
 });
 
@@ -552,6 +588,14 @@ describe('scaledSize', () => {
 
   it('leaves a crop already past the target area alone', () => {
     expect(scaledSize(1600, 1600, 1024, 'sd-1')).toEqual([1600, 1600]);
+  });
+
+  it('returns instead of spinning on a crop that rounds to zero on an axis', () => {
+    // An axis under half the grid rounds to 0, leaving the aspect ratio non-finite and the growth loop
+    // unable to raise the area — it would hang the main thread rather than return a bad size.
+    expect(scaledSize(300, 3, 1024, 'sd-1')).toEqual([8, 8]);
+    expect(scaledSize(3, 300, 1024, 'sd-1')).toEqual([8, 8]);
+    expect(scaledSize(0, 0, 1024, 'sd-1')).toEqual([8, 8]);
   });
 });
 
