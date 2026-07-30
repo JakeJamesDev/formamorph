@@ -1,5 +1,29 @@
 import { describe, it, expect } from 'vitest';
-import { statPct, statBarFrame, bandOrigin } from './statBar';
+import { statPct, statBarFrame, bandOrigin, formatStatDelta } from './statBar';
+
+describe('formatStatDelta', () => {
+  it('signs an exact change without a decimal point', () => {
+    expect(formatStatDelta(4)).toBe('+4');
+    expect(formatStatDelta(-4)).toBe('-4');
+  });
+
+  it('keeps one decimal on a time-scaled fractional change', () => {
+    expect(formatStatDelta(-4.5)).toBe('-4.5');
+    // A 1/hour regen over a measured 35-minute turn — the case that printed 0.5833333333333333.
+    expect(formatStatDelta(35 / 60)).toBe('+0.6');
+  });
+
+  it('drops a change too small to reach a tenth rather than printing +0', () => {
+    expect(formatStatDelta(0.04)).toBeNull();
+    expect(formatStatDelta(-0.04)).toBeNull();
+    expect(formatStatDelta(0)).toBeNull();
+  });
+
+  it('never leaves a trailing zero from the rounding', () => {
+    expect(formatStatDelta(2.999)).toBe('+3');
+    expect(formatStatDelta(-0.96)).toBe('-1');
+  });
+});
 
 describe('statPct', () => {
   it('maps a value to its percentage within [min, max]', () => {

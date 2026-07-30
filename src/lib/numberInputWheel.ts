@@ -26,9 +26,11 @@ export function steppedValue(input: HTMLInputElement, deltaY: number): number {
 
   const min = input.min === '' ? -Infinity : Number(input.min);
   const max = input.max === '' ? Infinity : Number(input.max);
-  const clamped = Math.min(max, Math.max(min, next));
+  // Round before clamping: rounding afterwards can push the value back past a bound finer-grained than
+  // the step (max 0.05 with step 0.1 would round the clamped 0.05 up to 0.1, over the max).
+  const rounded = Number(next.toFixed(precisionOf(step)));
 
-  return Number(clamped.toFixed(precisionOf(step)));
+  return Math.min(max, Math.max(min, rounded));
 }
 
 /**

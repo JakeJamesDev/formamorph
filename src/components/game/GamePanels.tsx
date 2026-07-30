@@ -12,7 +12,7 @@ import { usePlayerModelUrl } from '@/lib/usePlayerModelUrl';
 import { mergeBodyMorphs } from '@/lib/bodyMorphs';
 import { useIsMobile } from '@/lib/useIsMobile';
 import { usePrefersReducedMotion } from '@/lib/usePrefersReducedMotion';
-import { statBarFrame, bandOrigin } from '@/lib/statBar';
+import { statBarFrame, bandOrigin, formatStatDelta } from '@/lib/statBar';
 import { MarkdownRenderer } from './MarkdownRenderer';
 import { ReasoningBlock } from './ReasoningBlock';
 import { useLiveReasoning } from '@/lib/reasoningStreamStore';
@@ -946,11 +946,14 @@ export const MiddlePanel = ({
                         </PopoverTrigger>
                         <PopoverContent side="top" align="end" className="w-48 p-1">
                           <div className="flex flex-col">
+                            {/* Held while a scene renders: these keep the turn, so the picture being drawn is
+                                still the right one for it — and one graphics card can't write and draw at once. */}
                             {canRegenStats && (
                               <Button
                                 variant="ghost"
                                 className="justify-start text-xs h-8"
                                 onClick={() => { setRegenMenuOpen(false); handleRegenerateStats(); }}
+                                disabled={sceneImageJob !== null}
                               >
                                 Re-generate Stats
                               </Button>
@@ -960,6 +963,7 @@ export const MiddlePanel = ({
                                 variant="ghost"
                                 className="justify-start text-xs h-8"
                                 onClick={() => { setRegenMenuOpen(false); handleRegenerateChoices(); }}
+                                disabled={sceneImageJob !== null}
                               >
                                 Re-generate Choices
                               </Button>
@@ -1146,25 +1150,31 @@ export const RightPanel = ({ onLocationClick, language, setLanguage }: {
               const statValue = stat.value as number;
               const isPercentage = stat.type === 'percentage';
               const change = recentStatChanges[stat.name.toLowerCase()] || 0;
+              // Regen and stat code scale by the turn's measured hours, so values and deltas are often
+              // fractional. The value reads whole; a change keeps a tenth when it has one, so a sub-point
+              // gain isn't printed as `+0`. The underlying value keeps its full precision either way.
+              const shownValue = Math.round(statValue);
+              const shownChange = formatStatDelta(change);
               return (
               <div key={index} className="mb-2">
                 <div className="flex justify-between items-center">
                   <span>{stat.name}</span>
                   <div className="flex items-center gap-2">
-                    {change !== 0 && (
+                    {shownChange && (
                       <span
                         key={`${currentPage}-${change}`}
                         className={`${isViewingPast ? 'stat-delta-text-in' : (recentStatFading ? 'stat-delta-text-out' : 'stat-delta-text')} text-sm ${change > 0 ? 'text-success' : 'text-destructive'}`}
                       >
-                        {change > 0 ? '+' : ''}{change}
+                        {shownChange}
                       </span>
                     )}
-                    <span>{isPercentage ? `${statValue}%` : `${statValue} / ${stat.max}`}</span>
+                    <span>{isPercentage ? `${shownValue}%` : `${shownValue} / ${Math.round(stat.max)}`}</span>
                   </div>
                 </div>
                 {isEditMode && !isViewingPast ? (
                   <Slider
-                    value={[statValue]}
+                    // Whole-step slider, so it tracks the rounded readout rather than a fractional value.
+                    value={[shownValue]}
                     min={stat.min}
                     max={stat.max}
                     step={1}

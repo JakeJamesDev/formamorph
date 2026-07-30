@@ -50,6 +50,10 @@ export function parseTurnContent(content: string): AITurnResult | null {
   // and caching those misses would fill the map mid-turn until the cap wiped the whole history's parses.
   // A failed parse exits fast, so re-failing on the next walk costs nothing.
   if (parsed) {
+    // Every consumer shares this one object, so an in-place write would corrupt the cache and every
+    // other reader at once. Frozen (shallowly — the hot path can't afford a deep walk) to make that
+    // mistake throw here rather than surface as a wrong turn somewhere else. Callers spread to modify.
+    Object.freeze(parsed);
     if (parseCache.size >= PARSE_CACHE_LIMIT) parseCache.clear();
     parseCache.set(content, parsed);
   }

@@ -36,6 +36,12 @@ describe('steppedValue', () => {
   it('treats a non-numeric step or empty value as 1 and 0', () => {
     expect(steppedValue(makeInput({ value: '', step: 'any' }), -120)).toBe(1);
   });
+
+  it('never returns a value past a bound finer-grained than the step', () => {
+    // Rounding after clamping pushed the clamped 0.05 back up to 0.1, over the max.
+    expect(steppedValue(makeInput({ value: '0', step: '0.1', max: '0.05' }), -120)).toBeLessThanOrEqual(0.05);
+    expect(steppedValue(makeInput({ value: '0', step: '0.1', min: '-0.05' }), 120)).toBeGreaterThanOrEqual(-0.05);
+  });
 });
 
 describe('setValueLikeUser', () => {

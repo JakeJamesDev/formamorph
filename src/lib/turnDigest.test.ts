@@ -311,6 +311,15 @@ describe('parseTurnContent — parser choice and caching', () => {
     expect(parseTurnContent(content)).toBe(parseTurnContent(content));
   });
 
+  it('hands back a frozen turn, so no consumer can corrupt the shared parse', () => {
+    const content = JSON.stringify({ narration: 'n', choices: [], stat_changes: [], turnId: 'frozen' });
+    const parsed = parseTurnContent(content)!;
+    expect(Object.isFrozen(parsed)).toBe(true);
+    // Writing in place would otherwise change what every other reader — and the cache — sees.
+    expect(() => { (parsed as { narration: string }).narration = 'clobbered'; }).toThrow();
+    expect(parseTurnContent(content)?.narration).toBe('n');
+  });
+
   it('does not let failed parses (streaming partials) crowd real turns out of the cache', () => {
     const content = JSON.stringify({ narration: 'n', choices: [], stat_changes: [], turnId: 'keep-me' });
     const first = parseTurnContent(content);

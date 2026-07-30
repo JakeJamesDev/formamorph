@@ -34,8 +34,9 @@ export interface InvokeModel {
   type: string;
   /** Distinguishes same-type encoders (`qwen3_06b` / `qwen3_4b` / `qwen3_8b`). Absent on most records. */
   variant?: string;
-  /** What the GUI applies client-side when the model is picked. Only `vae_precision` is read here, and
-   *  only by the detail pass: a model that wants fp32 renders solid black through an fp16 VAE. */
+  /** What the GUI applies client-side when the model is picked. Only `vae_precision` is read here: a
+   *  model that wants fp32 renders solid black through an fp16 VAE, in the base render and the detail
+   *  pass alike. */
   default_settings?: { vae_precision?: string };
 }
 
@@ -110,6 +111,9 @@ function buildLinearGraph(
   model: InvokeModel, params: ImageGenParams, seed: number, boardId: string, intermediate = false,
 ): Graph {
   const isXL = model.base === 'sdxl';
+  // The model's own declared VAE precision, the same field the GUI applies and the detail pass reads —
+  // a model whose defaults say fp32 decodes to solid black through an fp16 VAE.
+  const fp32 = model.default_settings?.vae_precision === 'fp32';
   const loaderType = isXL ? 'sdxl_model_loader' : 'main_model_loader';
   const compelType = isXL ? 'sdxl_compel_prompt' : 'compel';
   const clip2 = isXL ? [edge('loader', 'clip2', 'pos', 'clip2'), edge('loader', 'clip2', 'neg', 'clip2')] : [];
@@ -126,8 +130,8 @@ function buildLinearGraph(
         denoising_start: 0, denoising_end: 1, scheduler: toInvokeScheduler(params.sampler),
       },
       l2i: intermediate
-        ? { id: 'l2i', type: 'l2i', fp32: false, is_intermediate: true }
-        : { id: 'l2i', type: 'l2i', fp32: false, ...boardField(boardId) },
+        ? { id: 'l2i', type: 'l2i', fp32, is_intermediate: true }
+        : { id: 'l2i', type: 'l2i', fp32, ...boardField(boardId) },
     },
     edges: [
       edge('loader', 'clip', 'pos', 'clip'), edge('loader', 'clip', 'neg', 'clip'), ...clip2,
@@ -246,6 +250,10 @@ export function scaledSize(w: number, h: number, optimal: number, base: string, 
   }
   const rw = roundToMultiple(w, grid);
   const rh = roundToMultiple(h, grid);
+  // A crop thin enough to round to zero on either axis leaves the aspect ratio non-finite and the growth
+  // loop unable to raise the area at all — it would spin the main thread forever. Everything below this
+  // guard has both axes positive and finite, so the area grows every pass and the loop terminates.
+  if (rw <= 0 || rh <= 0) return [grid, grid];
   let sw = rw;
   let sh = rh;
   const target = optimal * optimal;
@@ -461,11 +469,38 @@ export function resolveSubmodels(
   return { encoder, vae };
 }
 
+/**
+ * An InvokeAI endpoint that answered with a non-OK status. Worth its own type because the two failure
+ * modes need opposite advice: a status means the server is reachable and talking (a rejected token, a
+ * server-side fault), while an unreachable or CORS-blocked host arrives as a bare `TypeError`.
+ */
+export class InvokeHttpError extends Error {
+  readonly status: number;
+  constructor(status: number) {
+    super(`HTTP ${status}`);
+    this.name = 'InvokeHttpError';
+    this.status = status;
+  }
+}
+
+/** Player-facing advice for a failed InvokeAI request, shared by the generation path and the Settings
+ *  model list so the same failure never gets two different explanations. */
+export function invokeConnectionMessage(error: unknown, endpointUrl: string): string {
+  const base = trimUrl(endpointUrl);
+  if (error instanceof InvokeHttpError) {
+    if (error.status === 401 || error.status === 403) {
+      return `InvokeAI rejected the request (HTTP ${error.status}). Check the API Token in Settings → AI Endpoints → Image.`;
+    }
+    return `InvokeAI answered with HTTP ${error.status} at ${base}. Check the server and its logs.`;
+  }
+  return `Couldn't reach InvokeAI at ${base}. Check it's running and that the app's origin is in its allow_origins (Settings → How to Set Up).`;
+}
+
 /** Fetch the model list from /api/v2/models/. */
 export async function fetchInvokeModels(endpointUrl: string, apiToken?: string): Promise<InvokeModel[]> {
   const base = trimUrl(endpointUrl);
   const res = await fetch(`${base}/api/v2/models/`, { headers: authHeaders(apiToken, 'Bearer') });
-  if (!res.ok) throw new Error(`HTTP ${res.status}`);
+  if (!res.ok) throw new InvokeHttpError(res.status);
   const body = (await res.json()) as { models?: InvokeModel[] };
   return body.models ?? [];
 }
@@ -481,7 +516,7 @@ export interface InvokeBoard {
 export async function fetchInvokeBoards(endpointUrl: string, apiToken?: string): Promise<InvokeBoard[]> {
   const base = trimUrl(endpointUrl);
   const res = await fetch(`${base}/api/v1/boards/?all=true`, { headers: authHeaders(apiToken, 'Bearer') });
-  if (!res.ok) throw new Error(`HTTP ${res.status}`);
+  if (!res.ok) throw new InvokeHttpError(res.status);
   const body = (await res.json()) as InvokeBoard[] | { items?: InvokeBoard[] };
   return Array.isArray(body) ? body : (body.items ?? []);
 }
@@ -617,7 +652,9 @@ export function readInvokeProgress(
   prev: InvokeProgressState,
 ): InvokeProgressState | null {
   const event = payload as { item_id?: number; percentage?: number | null; image?: { dataURL?: string } | null };
-  if (itemId != null && event.item_id !== itemId) return null;
+  // Before the enqueue returns an id there is nothing to match against, so events are dropped rather
+  // than adopted — otherwise the InvokeAI GUI rendering in another tab moves this run's bar.
+  if (itemId == null || event.item_id !== itemId) return null;
   const percentage = typeof event.percentage === 'number' ? Math.min(1, Math.max(0, event.percentage)) : undefined;
   const dataURL = typeof event.image?.dataURL === 'string' ? event.image.dataURL : undefined;
   if (percentage === undefined && !dataURL) return null;
@@ -680,8 +717,8 @@ export const invokeaiProvider: ImageProvider = async (params: ImageGenParams, op
     models = await fetchInvokeModels(opts.endpointUrl, opts.apiToken);
   } catch (error) {
     if ((error as Error).name === 'AbortError') throw error;
-    // A network/CORS failure surfaces as a bare TypeError ("Failed to fetch") — make it actionable.
-    throw new Error(`Couldn't reach InvokeAI at ${base}. Check it's running and that the app's origin is in its allow_origins (Settings → How to Set Up).`);
+    // A rejected token and an unreachable host both land here and need opposite advice.
+    throw new Error(invokeConnectionMessage(error, opts.endpointUrl));
   }
   const model = findModel(models, params.model);
   if (!model) {

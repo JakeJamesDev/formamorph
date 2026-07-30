@@ -38,7 +38,7 @@ import { PresetNameDialog } from './PresetNameDialog';
 import { defaultSystemPrompt, defaultNarrationUserPrompt, defaultRecapUserPrompt, defaultRehydrateUserPrompt, defaultOocDirectivePrompt, defaultChoicesPrompt, defaultStatUpdatesPrompt, defaultLocationChangePrompt, defaultThinkingPrompt, defaultSummaryPrompt, defaultChoicesUserPrompt, defaultStatUpdatesUserPrompt, defaultLocationChangeUserPrompt, defaultSummaryUserPrompt, defaultDiaryPrompt, defaultDirectorPrompt, defaultDirectorUserPrompt, defaultCharacterPrompt, defaultStoryboardPrompt, defaultNowLinePrompt, defaultTimePassedPrompt, defaultTimePassedUserPrompt, defaultOpeningTimePrompt, defaultOpeningTimeUserPrompt, defaultSceneTagsPrompt, defaultSceneTagsUserPrompt } from '../game/GamePrompts';
 import { isDesktop } from '@/lib/imageGen/desktop';
 import { fetchComfyMeta, DEFAULT_COMFY_WORKFLOW, type ComfyMeta } from '@/lib/imageGen/comfyui';
-import { fetchInvokeMeta, encodersFor, vaesFor, PREFIXED_BASES, type InvokeMeta } from '@/lib/imageGen/invokeai';
+import { fetchInvokeMeta, invokeConnectionMessage, encodersFor, vaesFor, PREFIXED_BASES, type InvokeMeta } from '@/lib/imageGen/invokeai';
 import { DEFAULT_ENDPOINT_BY_PROVIDER, resolveImageEndpoint } from '@/lib/imageGen';
 import { TokenAutocomplete } from '@/components/TokenAutocomplete';
 import { COMMON_LANGUAGES } from '@/lib/languages';
@@ -637,17 +637,20 @@ export const SettingsModal = ({ isOpen, onOpenChange, previewValues, initialTab,
   // InvokeAI model/submodel lists that back the Model + encoder/VAE override dropdowns. Auto-fetched from
   // /api/v2/models/ whenever InvokeAI is the active provider (debounced); fails silently when unreachable.
   const [invokeMeta, setInvokeMeta] = useState<InvokeMeta | null>(null);
-  const [invokeMetaError, setInvokeMetaError] = useState(false);
+  const [invokeMetaError, setInvokeMetaError] = useState<string | null>(null);
   useEffect(() => {
     if (imageProvider !== 'invokeai') return;
     let cancelled = false;
     const t = setTimeout(async () => {
+      const endpoint = resolveImageEndpoint(imageProvider, imageEndpoint);
       try {
-        const meta = await fetchInvokeMeta(resolveImageEndpoint(imageProvider, imageEndpoint), imageApiToken);
-        if (!cancelled) { setInvokeMeta(meta); setInvokeMetaError(false); }
-      } catch {
-        // Unreachable / CORS-blocked — show a hint under the Model field (the fields still take free text).
-        if (!cancelled) { setInvokeMeta(null); setInvokeMetaError(true); }
+        const meta = await fetchInvokeMeta(endpoint, imageApiToken);
+        if (!cancelled) { setInvokeMeta(meta); setInvokeMetaError(null); }
+      } catch (error) {
+        // Show what actually failed under the Model field (the fields still take free text): a rejected
+        // token reads nothing like an unreachable server, and blaming CORS for a 401 sends the user away
+        // from the one field that would fix it.
+        if (!cancelled) { setInvokeMeta(null); setInvokeMetaError(invokeConnectionMessage(error, endpoint)); }
       }
     }, 300);
     return () => { cancelled = true; clearTimeout(t); };
@@ -1763,9 +1766,7 @@ An inspection aid for authoring and debugging; off by default.`}</HintInfo>
                       placeholder="Pick an installed model"
                     />
                     {invokeMetaError && (
-                      <p className="text-xs text-destructive">
-                        Couldn’t load models from InvokeAI. Check it’s running and the app’s origin is in its <code>allow_origins</code> (see How to Set Up), then reopen this tab.
-                      </p>
+                      <p className="text-xs text-destructive">{invokeMetaError}</p>
                     )}
                   </div>
                 ) : (
@@ -1870,10 +1871,13 @@ An inspection aid for authoring and debugging; off by default.`}</HintInfo>
                       {(invokeMeta?.boards ?? []).map((b) => (
                         <SelectItem key={b.board_id} value={b.board_id}>{b.board_name}</SelectItem>
                       ))}
-                      {/* A board saved in this preset but missing from the server (deleted, or the list
-                          failed to load) still needs an item, or Radix would render an empty trigger. */}
+                      {/* A board saved in this preset but missing from the server still needs an item, or
+                          Radix would render an empty trigger. Only call it unknown once the list actually
+                          arrived — while it's loading or unreachable, the board is probably fine. */}
                       {imageInvokeBoard && !(invokeMeta?.boards ?? []).some((b) => b.board_id === imageInvokeBoard) && (
-                        <SelectItem value={imageInvokeBoard}>Unknown board (falls back to Uncategorized)</SelectItem>
+                        <SelectItem value={imageInvokeBoard}>
+                          {invokeMeta ? 'Unknown board (falls back to Uncategorized)' : 'Saved board (list unavailable)'}
+                        </SelectItem>
                       )}
                     </SelectContent>
                   </Select>
