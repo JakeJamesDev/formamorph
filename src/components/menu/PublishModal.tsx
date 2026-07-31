@@ -15,7 +15,10 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import WorldStorageService from "@/services/WorldStorageService";
 import { type WorldRecord } from "@/components/WorldDetails";
 import { KIND_LABELS } from "@/lib/catalogKinds";
-import type { PublishPayload } from "@/lib/publishPayload";
+import { PolicyDialog } from "@/components/menu/PolicyDialog";
+import { usePublishPolicies } from "@/lib/usePublishPolicies";
+import PolicyService, { TERMS_REQUIRED } from "@/services/PolicyService";
+import { publishTags, type PublishPayload } from "@/lib/publishPayload";
 
 interface PublishModalProps {
   open: boolean;
@@ -37,6 +40,13 @@ export function PublishModal({ open, onOpenChange, isAuthenticated, payload }: P
   const [selectedWorldToOverride, setSelectedWorldToOverride] = useState<string | null>(null);
   const [isPublishing, setIsPublishing] = useState(false);
   const [publishError, setPublishError] = useState('');
+
+  const policies = usePublishPolicies(open, isAuthenticated);
+  // Which popup is in the way, and what the publish was going to do once it clears.
+  const [pendingTarget, setPendingTarget] = useState<string | null>(null);
+  const [showGate, setShowGate] = useState(false);
+  const [tagNoticeOpen, setTagNoticeOpen] = useState(false);
+  const [isAccepting, setIsAccepting] = useState(false);
 
   const kind = payload?.kind ?? 'world';
   const noun = KIND_LABELS[kind].one.toLowerCase();
@@ -76,14 +86,74 @@ export function PublishModal({ open, onOpenChange, isAuthenticated, payload }: P
       onOpenChange(false);
       toast.success(`${KIND_LABELS[kind].one} ${targetId ? 'updated' : 'published'} successfully!`);
     } catch (error) {
+      // The gate can be raised, or an acceptance reset, after this modal read its policy state. The
+      // server is the authority, so its refusal reopens the popup rather than showing a dead error.
+      if ((error as { code?: string }).code === TERMS_REQUIRED) {
+        await policies.refresh();
+        policies.reopen();
+        setPendingTarget(targetId);
+        setShowGate(true);
+        return;
+      }
+
       setPublishError((error as Error).message || `Failed to publish ${noun}`);
     } finally {
       setIsPublishing(false);
     }
   };
 
-  const handlePublish = () =>
-    publish(selectedWorldToOverride && selectedWorldToOverride !== 'new' ? selectedWorldToOverride : null);
+  /**
+   * Everything between pressing Publish and the upload: the gate first if it applies, then the tag
+   * notice, then the publish itself.
+   */
+  const withTagNotice = async (targetId: string | null) => {
+    if (!payload || !policies.tagNotice) return publish(targetId);
+
+    try {
+      const matched = await PolicyService.matchTags(publishTags(payload));
+      if (matched.length > 0) {
+        setPendingTarget(targetId);
+        setTagNoticeOpen(true);
+        return;
+      }
+    } catch (error) {
+      // Advisory only — a failed check must never stop a publish the server would have allowed.
+      console.error('Failed to check publish tags:', error);
+    }
+
+    return publish(targetId);
+  };
+
+  const handlePublish = () => {
+    const targetId = selectedWorldToOverride && selectedWorldToOverride !== 'new' ? selectedWorldToOverride : null;
+
+    if (policies.gateBlocks) {
+      setPendingTarget(targetId);
+      setShowGate(true);
+      return;
+    }
+
+    return withTagNotice(targetId);
+  };
+
+  const handleGateAccept = async () => {
+    setIsAccepting(true);
+    try {
+      await policies.accept();
+      setShowGate(false);
+      await withTagNotice(pendingTarget);
+    } catch (error) {
+      setPublishError((error as Error).message || 'Failed to record your acceptance');
+      setShowGate(false);
+    } finally {
+      setIsAccepting(false);
+    }
+  };
+
+  const handleGateDecline = () => {
+    policies.decline();
+    setShowGate(false);
+  };
 
   // Load the user's listings when the publish modal is opened, or when the kind changes under it.
   useEffect(() => {
@@ -101,6 +171,7 @@ export function PublishModal({ open, onOpenChange, isAuthenticated, payload }: P
   }, [open, isAuthenticated, kind]);
 
   return (
+    <>
     <Dialog open={open} onOpenChange={onOpenChange}>
       {/* Bounded height + a scrolling middle: the list grows with every world the author has published,
           and an unbounded dialog would grow out of the viewport (it's centered) taking the Publish button
@@ -118,6 +189,22 @@ export function PublishModal({ open, onOpenChange, isAuthenticated, payload }: P
             {publishError && (
               <div className="mb-4 p-3 bg-destructive/10 border border-destructive/30 rounded-md text-sm text-destructive">
                 {publishError}
+              </div>
+            )}
+
+            {policies.showBlockedNotice && (
+              <div className="mb-4 p-3 bg-muted border rounded-md text-sm">
+                <p className="font-medium">{policies.gate?.title}</p>
+                <p className="text-muted-foreground mt-1">
+                  You declined these terms, so publishing is unavailable.
+                </p>
+                <Button
+                  variant="link"
+                  className="px-0 h-auto mt-1"
+                  onClick={() => { policies.reopen(); setShowGate(true); }}
+                >
+                  Review the terms
+                </Button>
               </div>
             )}
 
@@ -178,12 +265,42 @@ export function PublishModal({ open, onOpenChange, isAuthenticated, payload }: P
 
           <Button
             onClick={handlePublish}
-            disabled={isPublishing || !payload}
+            disabled={isPublishing || !payload || policies.showBlockedNotice}
           >
             {isPublishing ? 'Publishing...' : 'Publish'}
           </Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>
+
+      {/* Siblings of the publish dialog, not children of it. Nested inside its root, a closed popup
+          never finished unmounting — both dialogs sat at `data-state="closed"` and stayed on screen. */}
+      {policies.gate && (
+        <PolicyDialog
+          open={showGate}
+          title={policies.gate.title}
+          body={policies.gate.body}
+          confirmLabel="Accept"
+          cancelLabel="Decline"
+          busy={isAccepting}
+          onConfirm={handleGateAccept}
+          onCancel={handleGateDecline}
+        />
+      )}
+
+      {policies.tagNotice && (
+        <PolicyDialog
+          open={tagNoticeOpen}
+          title={policies.tagNotice.title}
+          body={policies.tagNotice.body}
+          confirmLabel="Continue"
+          cancelLabel="Cancel"
+          busy={isPublishing}
+          onConfirm={() => { setTagNoticeOpen(false); publish(pendingTarget); }}
+          // Backing out abandons this upload only — nothing is blocked and the acceptance stands.
+          onCancel={() => setTagNoticeOpen(false)}
+        />
+      )}
+    </>
   );
 }

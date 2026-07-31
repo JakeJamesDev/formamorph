@@ -502,7 +502,11 @@ class WorldStorageService {
 
       if (!response.ok) {
         const errorData = await response.json();
-        throw new Error(errorData.message || errorData.error || 'Failed to publish');
+        // The refusal carries a `code` when a policy blocked it; attach it so the caller can open the
+        // right dialog instead of matching on error text.
+        const failure = new Error(errorData.message || errorData.error || 'Failed to publish') as Error & { code?: string };
+        if (errorData.code) failure.code = errorData.code;
+        throw failure;
       }
 
       return await response.json();

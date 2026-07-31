@@ -24,7 +24,7 @@ export function SentMessagesDialog({ open, onOpenChange, userId, username, refre
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-[720px] max-h-[85dvh] overflow-y-auto">
         <DialogHeader>
-          <DialogTitle>{username ? `Messages to ${username}` : 'Sent Messages'}</DialogTitle>
+          <DialogTitle>{username ? `Messages to ${username}` : 'All Messages'}</DialogTitle>
           <DialogDescription>
             Direct messages, including recalled ones. Broadcasts are under the Broadcasts tab.
           </DialogDescription>

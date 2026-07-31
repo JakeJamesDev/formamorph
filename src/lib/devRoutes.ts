@@ -39,7 +39,9 @@ export const DEV_MODAL_TABS = {
   // The account dialog: admin messages, and the password/logout controls it has always held.
   profile: ['messages', 'manage'],
   // The admin tools: user accounts, and broadcasts to everyone.
-  adminPanel: ['users', 'broadcasts'],
+  adminPanel: ['users', 'broadcasts', 'policies'],
+  // Admin Panel → Policies has a second level, one sub-tab per authored popup, reached with `subtab=…`.
+  adminPanelPolicies: ['uploadGate', 'tagNotice'],
   // MainMenu's library card-type switcher. Not a modal: reached with `tab=…` and no `modal=…`, i.e.
   // `#dev?view=mainMenu&tab=models`. Listed here so the same drift guard covers it.
   mainMenu: ['worlds', 'entities', 'dictionaries', 'models'],
@@ -50,4 +52,5 @@ export const DEV_MODAL_TABS = {
 
 // Settings → Prompts exposes a second level reached via `subtab=…` (narration/thinking/choices/…). Those
 // triggers render conditionally (thinking mode, enabled features), so they're not guarded as a fixed list.
+// Admin Panel → Policies uses the same `subtab=…` slot, and its two are fixed, so they are guarded above.
 // Mid-game boot fixtures live in `devFixtures.ts` (`DEV_FIXTURES`); reached via `bootFixture(name)`.

@@ -8,6 +8,7 @@ import { MAIN_MENU_CARD_TABS } from '@/views/mainMenuTabs';
 import { GAME_LEFT_PANEL_TABS } from '@/components/game/leftPanelTabs';
 import { PROFILE_TABS } from '@/components/menu/profileTabs';
 import { ADMIN_PANEL_TABS } from '@/components/menu/adminPanelTabs';
+import { POLICIES_TABS } from '@/components/menu/policiesTabs';
 import { isSaveEnvelope } from './version';
 import whiteRoomWorld from './devFixtures/whiteRoomWorld.json';
 import whiteRoomSave from './devFixtures/whiteRoomSave.json';
@@ -79,6 +80,10 @@ describe('dev-router coverage guard', () => {
 
   it('ledger lists exactly the game side panel tabs', () => {
     expect([...DEV_MODAL_TABS.gameViewer]).toEqual([...GAME_LEFT_PANEL_TABS]);
+  });
+
+  it('ledger lists exactly the Policies sub-tabs the surface renders', () => {
+    expect([...DEV_MODAL_TABS.adminPanelPolicies]).toEqual([...POLICIES_TABS]);
   });
 
   it('ledger lists exactly the profile dialog tabs', () => {

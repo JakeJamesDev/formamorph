@@ -1,15 +1,18 @@
 import { useState, useEffect, useRef } from "react";
 import { toast } from "react-toastify";
-import { History, Mail, Search } from "lucide-react";
+import { ArrowDown, ArrowUp, ArrowUpDown, ChevronDown, History, Mail, RotateCcw, Search } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
+import { Popover, PopoverClose, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Skeleton } from "@/components/ui/skeleton";
 import { ConfirmDialog } from "@/components/ConfirmDialog";
 import { MessageComposerDialog, type ComposerTarget } from "@/components/menu/MessageComposerDialog";
 import { SentMessagesDialog } from "@/components/menu/SentMessagesDialog";
+import PolicyService from "@/services/PolicyService";
 import WorldStorageService from "@/services/WorldStorageService";
 import AuthService from "@/services/AuthService";
+import MessageService from "@/services/MessageService";
 import { type WorldRecord } from "@/components/WorldDetails";
 
 /** Prefill offered after a suspension, so the user learns why without the admin retyping it. */
@@ -17,6 +20,31 @@ const SUSPENSION_TEMPLATE = {
   subject: 'Your account has been suspended',
   body: 'Your account has been suspended.\n\n**Reason:** ',
 } as const;
+
+/** How each answer to the upload gate reads in the table. */
+const TERMS_LABELS = {
+  unanswered: { label: 'Not Seen', className: 'text-muted-foreground' },
+  declined: { label: 'Declined', className: 'text-destructive' },
+  accepted: { label: 'Accepted', className: 'text-success' },
+} as const;
+
+type TermsResponse = keyof typeof TERMS_LABELS;
+
+/** A row's answer, defaulting anything unrecognized to unanswered rather than showing nothing. */
+const termsResponseOf = (user: WorldRecord): TermsResponse =>
+  user.termsResponse in TERMS_LABELS ? (user.termsResponse as TermsResponse) : 'unanswered';
+
+/** Sortable columns, in table order. Actions holds controls rather than data, so it isn't one. */
+const SORT_COLUMNS = [
+  { key: 'username', label: 'Username' },
+  { key: 'email', label: 'Email' },
+  { key: 'type', label: 'Type' },
+  { key: 'status', label: 'Status' },
+  { key: 'terms', label: 'Terms' },
+] as const;
+
+type SortKey = (typeof SORT_COLUMNS)[number]['key'];
+type SortOrder = 'asc' | 'desc';
 
 interface ManageUsersTabProps {
   /** Whether the tab is visible; drives the fetch so a hidden tab isn't loading users. */
@@ -33,6 +61,12 @@ export function ManageUsersTab({ active }: ManageUsersTabProps) {
   const [userTotalPages, setUserTotalPages] = useState(1);
   // Bumped to (re)run a search even when the page is already 1 (where a page reset wouldn't change state).
   const [searchNonce, setSearchNonce] = useState(0);
+  // Sorting is server-side: the table is paged, so ordering the rows in hand would sort one page.
+  // Null means the server's own default, newest signup first.
+  const [sort, setSort] = useState<SortKey | null>(null);
+  const [sortOrder, setSortOrder] = useState<SortOrder>('asc');
+  // Every direct message ever sent, for the All Messages button — not just this page's worth.
+  const [directTotal, setDirectTotal] = useState(0);
   // Tokens each fetch so a stale one can't overwrite the table (page change / re-search mid-flight).
   const fetchReqRef = useRef(0);
 
@@ -48,6 +82,8 @@ export function ManageUsersTab({ active }: ManageUsersTabProps) {
   const [historyUser, setHistoryUser] = useState<{ id: string; username: string } | null>(null);
   // Bumped after a send so an open sent list picks the new message up.
   const [sentNonce, setSentNonce] = useState(0);
+  // Set to the user whose upload-terms acceptance is about to be cleared.
+  const [pendingTermsReset, setPendingTermsReset] = useState<WorldRecord | null>(null);
 
   const adminUsername = String(AuthService.getCurrentUser()?.username || 'Admin');
 
@@ -77,6 +113,11 @@ export function ManageUsersTab({ active }: ManageUsersTabProps) {
 
   const selectedRecipients = [...selected].map(([id, username]) => ({ id, username }));
 
+  // Nothing on screen yet, so there is nothing to dim — the skeleton is the only thing to show.
+  const isFirstLoad = isLoadingUsers && users.length === 0;
+  // A reload of rows already on screen: dim them in place instead.
+  const isRefreshing = isLoadingUsers && users.length > 0;
+
   // Fetch users from the server
   const fetchUsers = async () => {
     if (!active) return;
@@ -87,6 +128,10 @@ export function ManageUsersTab({ active }: ManageUsersTabProps) {
     try {
       // Fetch users from the API. Encode the query so a term with & or # can't break the URL.
       const query = new URLSearchParams({ page: String(userCurrentPage), limit: '10', search: userSearchQuery });
+      if (sort) {
+        query.set('sort', sort);
+        query.set('order', sortOrder);
+      }
       const response = await fetch(`${WorldStorageService.API_URL}/users?${query}`, {
         headers: {
           'Authorization': `Bearer ${AuthService.token}`
@@ -174,7 +219,43 @@ export function ManageUsersTab({ active }: ManageUsersTabProps) {
       fetchUsers();
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [active, userCurrentPage, searchNonce]);
+  }, [active, userCurrentPage, searchNonce, sort, sortOrder]);
+
+  // The count on the All Messages button. Refreshed after a send, and cheap: one row is asked for and
+  // only the total read off it.
+  useEffect(() => {
+    if (!active) return;
+
+    let cancelled = false;
+    MessageService.fetchSent({ page: 1, limit: 1, audience: 'direct' })
+      .then((result) => { if (!cancelled) setDirectTotal(result.total); })
+      // A missing count leaves the button unlabeled rather than breaking the tab.
+      .catch((error) => console.error('Failed to count sent messages:', error));
+
+    return () => { cancelled = true; };
+  }, [active, sentNonce]);
+
+  /** Take over a column, or flip it when it is already the one being sorted by. */
+  const sortBy = (key: SortKey) => {
+    setSortOrder((prev) => (sort === key && prev === 'asc' ? 'desc' : 'asc'));
+    setSort(key);
+    // The rows on page three of a name sort are not the rows on page three of a status sort.
+    setUserCurrentPage(1);
+  };
+
+  /** Clear one user's acceptance, so the gate is shown to them again on their next publish. */
+  const resetTerms = async (user: WorldRecord) => {
+    try {
+      await PolicyService.resetUploadGate(userIdOf(user));
+      // Reflect it in the row rather than waiting for a refetch, so the reset button disables itself.
+      setUsers((prev) => prev.map((row) =>
+        userIdOf(row) === userIdOf(user) ? { ...row, termsResponse: 'unanswered' } : row
+      ));
+      toast.success(`${usernameOf(user)} will be asked to accept the terms again`);
+    } catch (error) {
+      toast.error((error as Error).message || 'Failed to reset the terms');
+    }
+  };
 
   const runSearch = () => {
     setUserCurrentPage(1);
@@ -227,7 +308,7 @@ export function ManageUsersTab({ active }: ManageUsersTabProps) {
               size="sm"
               onClick={() => { setHistoryUser(null); setShowSentMessages(true); }}
             >
-              <History className="mr-2 h-4 w-4" /> Sent Messages
+              <History className="mr-2 h-4 w-4" /> All Messages ({directTotal})
             </Button>
 
             {selected.size > 0 && (
@@ -249,25 +330,42 @@ export function ManageUsersTab({ active }: ManageUsersTabProps) {
                       aria-label="Select all users on this page"
                     />
                   </th>
-                  <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">
-                    Username
-                  </th>
-                  <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">
-                    Email
-                  </th>
-                  <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">
-                    Account Type
-                  </th>
-                  <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">
-                    Status
-                  </th>
+                  {SORT_COLUMNS.map((column) => (
+                    <th
+                      key={column.key}
+                      scope="col"
+                      className="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider"
+                      // Tells a screen reader which way the table is ordered, and by which column.
+                      aria-sort={sort === column.key ? (sortOrder === 'asc' ? 'ascending' : 'descending') : 'none'}
+                    >
+                      <button
+                        type="button"
+                        className="flex items-center gap-1 uppercase tracking-wider hover:text-foreground"
+                        onClick={() => sortBy(column.key)}
+                      >
+                        {column.label}
+                        {sort === column.key
+                          ? (sortOrder === 'asc' ? <ArrowUp className="h-3 w-3" /> : <ArrowDown className="h-3 w-3" />)
+                          : <ArrowUpDown className="h-3 w-3 opacity-40" />}
+                      </button>
+                    </th>
+                  ))}
                   <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">
                     Actions
                   </th>
                 </tr>
               </thead>
-              <tbody className="bg-background divide-y divide-border">
-                {isLoadingUsers ? (
+              {/* A refetch dims the rows in place rather than swapping them for a skeleton: the
+                  skeleton is a different height and a fixed five rows, so sorting or paging a full page
+                  collapsed the table and sprang it back. The skeleton is only for the first load, when
+                  there is nothing to dim. */}
+              <tbody
+                className={`bg-background divide-y divide-border transition-opacity${
+                  isRefreshing ? ' opacity-50 pointer-events-none' : ''
+                }`}
+                aria-busy={isLoadingUsers}
+              >
+                {isFirstLoad ? (
                   Array(5).fill(0).map((_, index) => (
                     <tr key={index}>
                       <td className="px-4 py-4">
@@ -286,13 +384,16 @@ export function ManageUsersTab({ active }: ManageUsersTabProps) {
                         <Skeleton className="h-4 w-20" />
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap">
+                        <Skeleton className="h-4 w-20" />
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap">
                         <Skeleton className="h-8 w-20" />
                       </td>
                     </tr>
                   ))
                 ) : users.length === 0 ? (
                   <tr>
-                    <td colSpan={6} className="px-6 py-4 text-center text-muted-foreground">
+                    <td colSpan={7} className="px-6 py-4 text-center text-muted-foreground">
                       No users found.
                     </td>
                   </tr>
@@ -338,32 +439,77 @@ export function ManageUsersTab({ active }: ManageUsersTabProps) {
                             {user.status || "active"}
                           </span>
                         </td>
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          {/* Only an answer given against the current wording counts, so someone whose
+                              acceptance a change invalidated reads as Not Seen — which is what the gate
+                              will treat them as. Nothing to reset unless they answered. */}
+                          <div className="flex items-center gap-1">
+                            <span className={`text-sm ${TERMS_LABELS[termsResponseOf(user)].className}`}>
+                              {TERMS_LABELS[termsResponseOf(user)].label}
+                            </span>
+                            <Button
+                              size="icon"
+                              variant="ghost"
+                              className="h-7 w-7"
+                              title="Reset terms"
+                              aria-label={`Reset terms for ${usernameOf(user)}`}
+                              disabled={termsResponseOf(user) === 'unanswered'}
+                              onClick={() => setPendingTermsReset(user)}
+                            >
+                              <RotateCcw className="h-3.5 w-3.5" />
+                            </Button>
+                          </div>
+                        </td>
                         <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
                           <div className="flex flex-wrap gap-2">
-                            <Button
-                              size="sm"
-                              variant="outline"
-                              onClick={() => {
-                                setComposerPrefill(null);
-                                setComposerTarget({
-                                  broadcast: false,
-                                  recipients: [{ id: userId, username: usernameOf(user) }],
-                                });
-                              }}
-                            >
-                              <Mail className="mr-1 h-3 w-3" /> Message
-                            </Button>
-
-                            <Button
-                              size="sm"
-                              variant="outline"
-                              onClick={() => {
-                                setHistoryUser({ id: userId, username: usernameOf(user) });
-                                setShowSentMessages(true);
-                              }}
-                            >
-                              <History className="mr-1 h-3 w-3" /> History
-                            </Button>
+                            {/* Split button, as the in-game Re-generate one: the common action on the
+                                left, the rarer one behind the caret, for one button's worth of row width. */}
+                            <div className="flex">
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                className="rounded-r-none"
+                                aria-label={`Message ${usernameOf(user)}`}
+                                onClick={() => {
+                                  setComposerPrefill(null);
+                                  setComposerTarget({
+                                    broadcast: false,
+                                    recipients: [{ id: userId, username: usernameOf(user) }],
+                                  });
+                                }}
+                              >
+                                <Mail className="mr-1 h-3 w-3" /> Message
+                              </Button>
+                              <Popover>
+                                <PopoverTrigger asChild>
+                                  <Button
+                                    size="sm"
+                                    variant="outline"
+                                    className="rounded-l-none border-l-0 px-2"
+                                    aria-label={`More message options for ${usernameOf(user)}`}
+                                  >
+                                    <ChevronDown className="h-3 w-3" />
+                                  </Button>
+                                </PopoverTrigger>
+                                {/* `PopoverClose`: the action opens a dialog, and a popover left open
+                                    behind it would still be there when the dialog closes. */}
+                                <PopoverContent align="start" className="w-40 p-1">
+                                  <PopoverClose asChild>
+                                    <Button
+                                      size="sm"
+                                      variant="ghost"
+                                      className="w-full justify-start"
+                                      onClick={() => {
+                                        setHistoryUser({ id: userId, username: usernameOf(user) });
+                                        setShowSentMessages(true);
+                                      }}
+                                    >
+                                      <History className="mr-2 h-3.5 w-3.5" /> History ({Number(user.messageCount) || 0})
+                                    </Button>
+                                  </PopoverClose>
+                                </PopoverContent>
+                              </Popover>
+                            </div>
 
                             {user.status !== "normal" && (
                               <Button
@@ -396,9 +542,14 @@ export function ManageUsersTab({ active }: ManageUsersTabProps) {
             </table>
           </div>
 
-          {/* Pagination */}
-          {!isLoadingUsers && users.length > 0 && (
-            <div className="flex justify-center gap-2 mt-6">
+          {/* Pagination. Kept mounted through a reload and dimmed with the rows — unmounting it on every
+              refetch took the whole row out of the layout and put it back, which read as a flash. */}
+          {users.length > 0 && (
+            <div
+              className={`flex justify-center gap-2 mt-6 transition-opacity${
+                isRefreshing ? ' opacity-50 pointer-events-none' : ''
+              }`}
+            >
               <Button
                 variant="outline"
                 size="sm"
@@ -450,6 +601,18 @@ export function ManageUsersTab({ active }: ManageUsersTabProps) {
       userId={historyUser?.id}
       username={historyUser?.username}
       refreshNonce={sentNonce}
+    />
+
+    <ConfirmDialog
+      open={pendingTermsReset !== null}
+      onOpenChange={(isOpen) => { if (!isOpen) setPendingTermsReset(null); }}
+      title="Ask this user to accept the terms again?"
+      description={`${pendingTermsReset ? usernameOf(pendingTermsReset) : ''} will have to accept the upload gate before publishing anything again, including updates to work they already published.`}
+      onConfirm={() => {
+        if (pendingTermsReset) resetTerms(pendingTermsReset);
+        setPendingTermsReset(null);
+      }}
+      onCancel={() => setPendingTermsReset(null)}
     />
 
     <ConfirmDialog

@@ -67,3 +67,19 @@ export function dictionaryPublishPayload(book: Dictionary): PublishPayload {
     contentData: book,
   };
 }
+
+/**
+ * The tags a listing will publish with.
+ *
+ * Only worlds carry any: the server reads a listing's tags from `contentData.worldOverview.tags`, and
+ * characters and dictionaries have no equivalent field, so they always publish untagged.
+ *
+ * @param payload - A ready publish payload
+ * @returns Its tags, or an empty array for a kind that has none
+ */
+export function publishTags(payload: PublishPayload): string[] {
+  if (payload.kind !== 'world') return [];
+
+  const overview = (payload.contentData as { worldOverview?: { tags?: unknown } })?.worldOverview;
+  return Array.isArray(overview?.tags) ? overview.tags.filter((tag): tag is string => typeof tag === 'string') : [];
+}
