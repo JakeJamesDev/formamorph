@@ -9,6 +9,7 @@ import { Globe, Columns2, RectangleVertical } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useCachedThumbnail } from "@/lib/useCachedThumbnail";
 import { WorldDetailsColumn, DateTimeText, splitColumnClasses, type WorldRecord } from "@/components/WorldDetails";
+import { formatServerDateTime } from "@/lib/serverDate";
 import { type DownloadState } from "@/lib/downloadState";
 import { KIND_LABELS, kindOf } from "@/lib/catalogKinds";
 import WorldStorageService from "@/services/WorldStorageService";
@@ -230,7 +231,7 @@ export function RemoteWorldDetailsModal({
                     <div className="flex items-center justify-between gap-2">
                       <span className="font-medium">{c.author?.username || 'Unknown'}</span>
                       <span className="text-xs text-muted-foreground">
-                        {c.created_at ? new Date(c.created_at).toLocaleString() : ''}
+                        {c.created_at ? formatServerDateTime(c.created_at) : ''}
                       </span>
                     </div>
                     <p className="text-muted-foreground whitespace-pre-wrap mt-1">{c.content}</p>

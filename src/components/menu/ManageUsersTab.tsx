@@ -1,28 +1,31 @@
 import { useState, useEffect, useRef } from "react";
 import { toast } from "react-toastify";
-import { Search } from "lucide-react";
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogDescription,
-} from "@/components/ui/dialog";
+import { History, Mail, Search } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
+import { Checkbox } from "@/components/ui/checkbox";
 import { Skeleton } from "@/components/ui/skeleton";
+import { ConfirmDialog } from "@/components/ConfirmDialog";
+import { MessageComposerDialog, type ComposerTarget } from "@/components/menu/MessageComposerDialog";
+import { SentMessagesDialog } from "@/components/menu/SentMessagesDialog";
 import WorldStorageService from "@/services/WorldStorageService";
 import AuthService from "@/services/AuthService";
 import { type WorldRecord } from "@/components/WorldDetails";
 
-interface ManageUsersDialogProps {
-  open: boolean;
-  onOpenChange: (open: boolean) => void;
+/** Prefill offered after a suspension, so the user learns why without the admin retyping it. */
+const SUSPENSION_TEMPLATE = {
+  subject: 'Your account has been suspended',
+  body: 'Your account has been suspended.\n\n**Reason:** ',
+} as const;
+
+interface ManageUsersTabProps {
+  /** Whether the tab is visible; drives the fetch so a hidden tab isn't loading users. */
+  active: boolean;
 }
 
-/** Admin dialog for listing and activating/suspending user accounts. Owns its own paging/search state;
- *  the parent only controls whether it is open. Refetches when opened or when the page changes. */
-export function ManageUsersDialog({ open, onOpenChange }: ManageUsersDialogProps) {
+/** Admin Panel → Users. Lists accounts, activates/suspends them, and sends direct messages. Owns its own
+ *  paging/search state; broadcasts live in their own tab. */
+export function ManageUsersTab({ active }: ManageUsersTabProps) {
   const [users, setUsers] = useState<WorldRecord[]>([]);
   const [isLoadingUsers, setIsLoadingUsers] = useState(false);
   const [userSearchQuery, setUserSearchQuery] = useState('');
@@ -33,9 +36,50 @@ export function ManageUsersDialog({ open, onOpenChange }: ManageUsersDialogProps
   // Tokens each fetch so a stale one can't overwrite the table (page change / re-search mid-flight).
   const fetchReqRef = useRef(0);
 
+  // Selection carries id → username rather than ids alone: it survives paging and re-searching, and a
+  // user picked on an earlier page is no longer on screen to look their name up from at send time.
+  const [selected, setSelected] = useState<Map<string, string>>(new Map());
+  const [composerTarget, setComposerTarget] = useState<ComposerTarget | null>(null);
+  const [composerPrefill, setComposerPrefill] = useState<{ subject: string; body: string } | null>(null);
+  // Offered after a suspension lands; declining leaves the suspension in place either way.
+  const [suspendedUser, setSuspendedUser] = useState<WorldRecord | null>(null);
+  // The sent list serves both entry points: unfiltered, or narrowed to one user via `historyUser`.
+  const [showSentMessages, setShowSentMessages] = useState(false);
+  const [historyUser, setHistoryUser] = useState<{ id: string; username: string } | null>(null);
+  // Bumped after a send so an open sent list picks the new message up.
+  const [sentNonce, setSentNonce] = useState(0);
+
+  const adminUsername = String(AuthService.getCurrentUser()?.username || 'Admin');
+
+  const userIdOf = (user: WorldRecord) => String(user._id || user.id);
+  const usernameOf = (user: WorldRecord) => String(user.username || 'user');
+
+  const toggleSelected = (user: WorldRecord) => {
+    const userId = userIdOf(user);
+    setSelected((prev) => {
+      const next = new Map(prev);
+      if (next.has(userId)) next.delete(userId);
+      else next.set(userId, usernameOf(user));
+      return next;
+    });
+  };
+
+  const allOnPageSelected = users.length > 0 && users.every((user) => selected.has(userIdOf(user)));
+
+  const togglePage = () => {
+    setSelected((prev) => {
+      const next = new Map(prev);
+      if (allOnPageSelected) users.forEach((user) => next.delete(userIdOf(user)));
+      else users.forEach((user) => next.set(userIdOf(user), usernameOf(user)));
+      return next;
+    });
+  };
+
+  const selectedRecipients = [...selected].map(([id, username]) => ({ id, username }));
+
   // Fetch users from the server
   const fetchUsers = async () => {
-    if (!open) return;
+    if (!active) return;
 
     const reqId = ++fetchReqRef.current;
     setIsLoadingUsers(true);
@@ -96,16 +140,26 @@ export function ManageUsersDialog({ open, onOpenChange }: ManageUsersDialogProps
       });
 
       if (!response.ok) {
+        // This API answers with `error`, not `message`.
         const errorData = await response.json();
-        throw new Error(errorData.message || `Failed to ${newStatus === "normal" ? "activate" : "suspend"} user`);
+        throw new Error(errorData.error || errorData.message || `Failed to ${newStatus === "normal" ? "activate" : "suspend"} user`);
       }
 
-      // Update the user in the list
+      // Update the user in the list. Matched through `userIdOf`, not `user._id` alone: this endpoint
+      // returns `id`, so an `_id`-only comparison never matched and the row's buttons kept showing the
+      // old status until a search refetched the table.
       setUsers(prev => prev.map(user =>
-        user._id === userId ? { ...user, status: newStatus } : user
+        userIdOf(user) === userId ? { ...user, status: newStatus } : user
       ));
 
       toast.success(`User ${newStatus === "normal" ? "activated" : "suspended"} successfully`);
+
+      // The suspension itself has already landed; the notice is an optional follow-up so the user
+      // learns why. Declining leaves them suspended and simply unexplained.
+      if (newStatus === "suspended") {
+        const suspended = users.find((user) => userIdOf(user) === userId);
+        if (suspended) setSuspendedUser(suspended);
+      }
     } catch (error) {
       console.error('Error updating user status:', error);
       toast.error((error as Error).message || `Failed to ${newStatus === "normal" ? "activate" : "suspend"} user`);
@@ -116,11 +170,11 @@ export function ManageUsersDialog({ open, onOpenChange }: ManageUsersDialogProps
   // through state (not a direct call) means one fetch with the current page/query — no stale-page double
   // fetch. React batches the page-reset + nonce bump into a single render, so this fires exactly once.
   useEffect(() => {
-    if (open) {
+    if (active) {
       fetchUsers();
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [open, userCurrentPage, searchNonce]);
+  }, [active, userCurrentPage, searchNonce]);
 
   const runSearch = () => {
     setUserCurrentPage(1);
@@ -128,16 +182,8 @@ export function ManageUsersDialog({ open, onOpenChange }: ManageUsersDialogProps
   };
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[800px] h-[85dvh] overflow-y-auto flex flex-col items-start">
-        <DialogHeader>
-          <DialogTitle>Manage Users</DialogTitle>
-          <DialogDescription>
-            View and manage user accounts.
-          </DialogDescription>
-        </DialogHeader>
-
-        <div className="py-4 w-full">
+    <>
+      <div className="py-4 w-full min-w-0">
           {/* Search controls */}
           <div className="flex flex-col sm:flex-row gap-4 mb-6">
             <div className="relative flex-grow">
@@ -164,11 +210,45 @@ export function ManageUsersDialog({ open, onOpenChange }: ManageUsersDialogProps
             </Button>
           </div>
 
+          {/* Message actions: the current selection, or the direct-message history. */}
+          <div className="flex flex-wrap gap-2 mb-6">
+            <Button
+              variant="outline"
+              size="sm"
+              disabled={selected.size === 0}
+              onClick={() => { setComposerPrefill(null); setComposerTarget({ broadcast: false, recipients: selectedRecipients }); }}
+            >
+              <Mail className="mr-2 h-4 w-4" />
+              Message Selected{selected.size > 0 ? ` (${selected.size})` : ''}
+            </Button>
+
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => { setHistoryUser(null); setShowSentMessages(true); }}
+            >
+              <History className="mr-2 h-4 w-4" /> Sent Messages
+            </Button>
+
+            {selected.size > 0 && (
+              <Button variant="ghost" size="sm" onClick={() => setSelected(new Map())}>
+                Clear Selection
+              </Button>
+            )}
+          </div>
+
           {/* Users table */}
           <div className="w-full overflow-hidden border rounded-lg">
             <table className="w-full divide-y divide-border">
               <thead className="bg-muted">
                 <tr>
+                  <th scope="col" className="px-4 py-3 w-10">
+                    <Checkbox
+                      checked={allOnPageSelected}
+                      onCheckedChange={togglePage}
+                      aria-label="Select all users on this page"
+                    />
+                  </th>
                   <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">
                     Username
                   </th>
@@ -190,6 +270,9 @@ export function ManageUsersDialog({ open, onOpenChange }: ManageUsersDialogProps
                 {isLoadingUsers ? (
                   Array(5).fill(0).map((_, index) => (
                     <tr key={index}>
+                      <td className="px-4 py-4">
+                        <Skeleton className="h-4 w-4" />
+                      </td>
                       <td className="px-6 py-4 whitespace-nowrap">
                         <Skeleton className="h-4 w-24" />
                       </td>
@@ -209,7 +292,7 @@ export function ManageUsersDialog({ open, onOpenChange }: ManageUsersDialogProps
                   ))
                 ) : users.length === 0 ? (
                   <tr>
-                    <td colSpan={5} className="px-6 py-4 text-center text-muted-foreground">
+                    <td colSpan={6} className="px-6 py-4 text-center text-muted-foreground">
                       No users found.
                     </td>
                   </tr>
@@ -228,6 +311,13 @@ export function ManageUsersDialog({ open, onOpenChange }: ManageUsersDialogProps
 
                     return (
                       <tr key={userId}>
+                        <td className="px-4 py-4">
+                          <Checkbox
+                            checked={selected.has(userId)}
+                            onCheckedChange={() => toggleSelected(user)}
+                            aria-label={`Select ${user.username}`}
+                          />
+                        </td>
                         <td className="px-6 py-4 whitespace-nowrap">
                           <div className="text-sm font-medium text-foreground">
                             {user.username}
@@ -249,7 +339,32 @@ export function ManageUsersDialog({ open, onOpenChange }: ManageUsersDialogProps
                           </span>
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                          <div className="flex gap-2">
+                          <div className="flex flex-wrap gap-2">
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              onClick={() => {
+                                setComposerPrefill(null);
+                                setComposerTarget({
+                                  broadcast: false,
+                                  recipients: [{ id: userId, username: usernameOf(user) }],
+                                });
+                              }}
+                            >
+                              <Mail className="mr-1 h-3 w-3" /> Message
+                            </Button>
+
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              onClick={() => {
+                                setHistoryUser({ id: userId, username: usernameOf(user) });
+                                setShowSentMessages(true);
+                              }}
+                            >
+                              <History className="mr-1 h-3 w-3" /> History
+                            </Button>
+
                             {user.status !== "normal" && (
                               <Button
                                 size="sm"
@@ -313,8 +428,47 @@ export function ManageUsersDialog({ open, onOpenChange }: ManageUsersDialogProps
               </Button>
             </div>
           )}
-        </div>
-      </DialogContent>
-    </Dialog>
+      </div>
+
+      {composerTarget && (
+      <MessageComposerDialog
+        open
+        onOpenChange={(isOpen) => { if (!isOpen) { setComposerTarget(null); setComposerPrefill(null); } }}
+        target={composerTarget}
+        adminUsername={adminUsername}
+        initialSubject={composerPrefill?.subject}
+        initialBody={composerPrefill?.body}
+        initialSeverity={composerPrefill ? 'urgent' : 'info'}
+        initialScope={composerPrefill ? 'pinned' : 'existing'}
+        onSent={() => setSentNonce((n) => n + 1)}
+      />
+    )}
+
+    <SentMessagesDialog
+      open={showSentMessages}
+      onOpenChange={setShowSentMessages}
+      userId={historyUser?.id}
+      username={historyUser?.username}
+      refreshNonce={sentNonce}
+    />
+
+    <ConfirmDialog
+      open={suspendedUser !== null}
+      onOpenChange={(isOpen) => { if (!isOpen) setSuspendedUser(null); }}
+      title="Send a suspension notice?"
+      description={`${suspendedUser?.username} has been suspended. Send them a message explaining why?`}
+      onConfirm={() => {
+        if (suspendedUser) {
+          setComposerPrefill({ ...SUSPENSION_TEMPLATE });
+          setComposerTarget({
+            broadcast: false,
+            recipients: [{ id: userIdOf(suspendedUser), username: usernameOf(suspendedUser) }],
+          });
+        }
+        setSuspendedUser(null);
+      }}
+      onCancel={() => setSuspendedUser(null)}
+    />
+    </>
   );
 }

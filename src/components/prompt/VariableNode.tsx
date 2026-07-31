@@ -8,7 +8,7 @@ import {
 import { useLexicalComposerContext } from '@lexical/react/LexicalComposerContext';
 import { Chip } from '@/components/Chip';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
-import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Input } from '@/components/ui/input';
 import { AFFIX_MAX_LENGTH, AFFIX_FORBIDDEN, isValidAffix } from '@/lib/promptVariables';
@@ -21,7 +21,7 @@ export const PromptDragContext = createContext<{ current: string | null }>({ cur
 
 export type SerializedVariableNode = Spread<{ token: string }, SerializedLexicalNode>;
 
-const FULL = 'full'; // Tabs value sentinel for the default variant (null id)
+const FULL = 'full'; // switcher value sentinel for the default variant (null id)
 
 /** One affix field: the connective words that wrap a chip's value, stored literally. Leading and trailing
  *  spaces matter here and an input hides them, so the Preview tab is where you confirm the spacing. */
@@ -165,24 +165,27 @@ function VariableChip({ nodeKey, token }: { nodeKey: NodeKey; token: string }) {
                 <div key={axis.id} className="space-y-2">
                   {/* One heading per axis (its own label when multi-axis, else the chip name). */}
                   <p className="text-xs font-medium">{axes.length > 1 ? axis.label : `${vocab.label(token)} mode`}</p>
-                  <Tabs value={active} onValueChange={(v) => setAxis(axis.id, v === FULL ? null : v)}>
-                    {/* `columns` wraps a long option list onto rows of that width, centered — so a final
-                        short row sits under the middle of the one above rather than hanging off the left. */}
-                    <TabsList
-                      className={cn('grid w-full', axis.columns && 'flex flex-wrap justify-center gap-1 h-auto')}
-                      style={axis.columns ? undefined : { gridTemplateColumns: `repeat(${axis.options.length}, minmax(0, 1fr))` }}
-                    >
-                      {axis.options.map((opt) => (
-                        <TabsTrigger
-                          key={opt.id ?? FULL}
-                          value={opt.id ?? FULL}
-                          disabled={!editable}
-                          className="text-xs px-1.5"
-                          style={axis.columns ? { flexBasis: `calc((100% - ${(axis.columns - 1) * 0.25}rem) / ${axis.columns})` } : undefined}
-                        >{opt.label}</TabsTrigger>
-                      ))}
-                    </TabsList>
-                  </Tabs>
+                  {/* `columns` wraps a long option list onto rows of that width, centered — so a final
+                      short row sits under the middle of the one above rather than hanging off the left. */}
+                  <ToggleGroup
+                    type="single"
+                    value={active}
+                    // A single ToggleGroup clears its value when the active item is clicked again; an axis
+                    // always has a mode, so an empty result is ignored rather than stored.
+                    onValueChange={(v) => { if (v) setAxis(axis.id, v === FULL ? null : v); }}
+                    className={cn('grid w-full', axis.columns && 'flex flex-wrap justify-center gap-1 h-auto')}
+                    style={axis.columns ? undefined : { gridTemplateColumns: `repeat(${axis.options.length}, minmax(0, 1fr))` }}
+                  >
+                    {axis.options.map((opt) => (
+                      <ToggleGroupItem
+                        key={opt.id ?? FULL}
+                        value={opt.id ?? FULL}
+                        disabled={!editable}
+                        className="text-xs px-1.5"
+                        style={axis.columns ? { flexBasis: `calc((100% - ${(axis.columns - 1) * 0.25}rem) / ${axis.columns})` } : undefined}
+                      >{opt.label}</ToggleGroupItem>
+                    ))}
+                  </ToggleGroup>
                   {/* Help lines stacked in one cell so the pop-out doesn't reflow when switching modes. */}
                   <div className="grid">
                     {axis.options.map((opt) => (

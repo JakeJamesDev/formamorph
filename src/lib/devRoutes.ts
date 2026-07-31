@@ -23,8 +23,10 @@ export type DevView = (typeof DEV_VIEWS)[number];
  *  open on a blank draft, so they're reachable without any stored data. `modelDetails` is the exception to
  *  that: a VRM preview has nothing to show without a stored model, so it opens the library's first model and
  *  does nothing on an empty library. `community` opens Community Creations from MainMenu. `memoryManager` is
- *  in-game (GameViewer) and opens on an empty ledger before any turn has been summarized. */
-export const DEV_MODALS = ['settings', 'entity', 'export', 'menu', 'worldEditor', 'intro', 'avatar', 'backup', 'aiSetup', 'entityEditor', 'dictionaryEditor', 'modelDetails', 'community', 'memoryManager'] as const;
+ *  in-game (GameViewer) and opens on an empty ledger before any turn has been summarized. `profile` opens
+ *  the account dialog (Messages/Manage) and `adminPanel` the admin tools (Users/Broadcasts); both need a
+ *  signed-in session, and `adminPanel` an admin one, so they open empty otherwise rather than failing. */
+export const DEV_MODALS = ['settings', 'entity', 'export', 'menu', 'worldEditor', 'intro', 'avatar', 'backup', 'aiSetup', 'entityEditor', 'dictionaryEditor', 'modelDetails', 'community', 'memoryManager', 'profile', 'adminPanel'] as const;
 export type DevModal = (typeof DEV_MODALS)[number];
 
 /** Coverage ledger: tabbed surface → the sub-tabs the router can target (via `tab=…`). Kept in lockstep
@@ -34,6 +36,10 @@ export const DEV_MODAL_TABS = {
   worldEditor: ['overview', 'stats', 'entities', 'locations', 'traits', 'dictionary', 'placeholders'],
   // Community Creations browses one kind per tab; these are the server's kinds (see lib/catalogKinds).
   community: ['world', 'entity', 'dictionary'],
+  // The account dialog: admin messages, and the password/logout controls it has always held.
+  profile: ['messages', 'manage'],
+  // The admin tools: user accounts, and broadcasts to everyone.
+  adminPanel: ['users', 'broadcasts'],
   // MainMenu's library card-type switcher. Not a modal: reached with `tab=…` and no `modal=…`, i.e.
   // `#dev?view=mainMenu&tab=models`. Listed here so the same drift guard covers it.
   mainMenu: ['worlds', 'entities', 'dictionaries', 'models'],

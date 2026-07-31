@@ -23,6 +23,7 @@ import { Label } from "@/components/ui/label";
 import { Progress } from "@/components/ui/progress";
 import { loadEmbeddingModel, disposeEmbeddingModel, type EmbeddingLoadProgress } from '@/lib/embeddingWorkerClient';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem, SelectSeparator } from "@/components/ui/select";
 import { Slider } from "@/components/ui/slider";
@@ -83,11 +84,19 @@ function OptionSwitcher({ value, onChange, options }: {
           {options.map((o) => <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>)}
         </SelectContent>
       </Select>
-      <Tabs value={value} onValueChange={onChange} className="hidden sm:block">
-        <TabsList className="grid w-full" style={{ gridTemplateColumns: `repeat(${options.length}, minmax(0, 1fr))` }}>
-          {options.map((o) => <TabsTrigger key={o.value} value={o.value}>{o.label}</TabsTrigger>)}
-        </TabsList>
-      </Tabs>
+      <div className="hidden sm:block">
+        <ToggleGroup
+          type="single"
+          value={value}
+          // A single ToggleGroup clears its value when the active item is clicked again; every caller's
+          // setting is required, so an empty result is ignored rather than stored.
+          onValueChange={(v) => { if (v) onChange(v); }}
+          className="grid w-full"
+          style={{ gridTemplateColumns: `repeat(${options.length}, minmax(0, 1fr))` }}
+        >
+          {options.map((o) => <ToggleGroupItem key={o.value} value={o.value}>{o.label}</ToggleGroupItem>)}
+        </ToggleGroup>
+      </div>
     </>
   );
 }
@@ -196,13 +205,19 @@ function PromptReasoningField({ value, tabs, onChange, disabled }: {
   return (
     <div className="flex flex-col gap-1">
       <label className="text-sm">Native Reasoning</label>
-      <Tabs value={value} onValueChange={(v) => onChange(v as PromptReasoning)}>
-        <TabsList className="grid w-full" style={{ gridTemplateColumns: `repeat(${tabs.length}, minmax(0, 1fr))` }}>
-          {tabs.map((t) => (
-            <TabsTrigger key={t.value} value={t.value} disabled={disabled}>{t.label}</TabsTrigger>
-          ))}
-        </TabsList>
-      </Tabs>
+      <ToggleGroup
+        type="single"
+        value={value}
+        // A single ToggleGroup clears its value when the active item is clicked again; the override always
+        // has a level (Global included), so an empty result is ignored rather than stored.
+        onValueChange={(v) => { if (v) onChange(v as PromptReasoning); }}
+        className="grid w-full"
+        style={{ gridTemplateColumns: `repeat(${tabs.length}, minmax(0, 1fr))` }}
+      >
+        {tabs.map((t) => (
+          <ToggleGroupItem key={t.value} value={t.value} disabled={disabled}>{t.label}</ToggleGroupItem>
+        ))}
+      </ToggleGroup>
       <span className="text-xs text-muted-foreground">
         Global follows Settings → Generation → Native Reasoning. Only applies to models with native reasoning.
       </span>
@@ -857,13 +872,18 @@ export const SettingsModal = ({ isOpen, onOpenChange, previewValues, initialTab,
               <div className="grid grid-cols-1 sm:grid-cols-[minmax(0,1fr)_minmax(0,3fr)] items-start gap-4">
                 <RowLabel top>Theme</RowLabel>
                 <div>
-                  <Tabs value={theme} onValueChange={(v) => setTheme(v as 'light' | 'dark' | 'system')}>
-                    <TabsList className="grid w-full grid-cols-3">
-                      {THEME_OPTIONS.map((o) => (
-                        <TabsTrigger key={o.value} value={o.value}>{o.label}</TabsTrigger>
-                      ))}
-                    </TabsList>
-                  </Tabs>
+                  <ToggleGroup
+                    type="single"
+                    value={theme}
+                    // A single ToggleGroup clears its value when the active item is clicked again; a theme
+                    // is always set, so an empty result is ignored rather than stored.
+                    onValueChange={(v) => { if (v) setTheme(v as 'light' | 'dark' | 'system'); }}
+                    className="grid w-full grid-cols-3"
+                  >
+                    {THEME_OPTIONS.map((o) => (
+                      <ToggleGroupItem key={o.value} value={o.value}>{o.label}</ToggleGroupItem>
+                    ))}
+                  </ToggleGroup>
                   {/* Help texts stacked in one cell so switching options doesn't reflow the layout. */}
                   <div className="grid mt-2">
                     {THEME_OPTIONS.map((o) => (
@@ -989,13 +1009,18 @@ Pick a suggestion, type your own, or even a **style** — like *formal English* 
               <div className="grid grid-cols-1 sm:grid-cols-[minmax(0,1fr)_minmax(0,3fr)] items-start gap-4">
                 <RowLabel top>Paragraph Limit</RowLabel>
                 <div>
-                  <Tabs value={paragraphLimit} onValueChange={(v) => setParagraphLimit(v as ParagraphLimit)}>
-                    <TabsList className="grid w-full grid-cols-3">
-                      {PARAGRAPH_LIMIT_OPTIONS.map((o) => (
-                        <TabsTrigger key={o.value} value={o.value}>{o.label}</TabsTrigger>
-                      ))}
-                    </TabsList>
-                  </Tabs>
+                  <ToggleGroup
+                    type="single"
+                    value={paragraphLimit}
+                    // A single ToggleGroup clears its value when the active item is clicked again; the limit
+                    // always has a setting, so an empty result is ignored rather than stored.
+                    onValueChange={(v) => { if (v) setParagraphLimit(v as ParagraphLimit); }}
+                    className="grid w-full grid-cols-3"
+                  >
+                    {PARAGRAPH_LIMIT_OPTIONS.map((o) => (
+                      <ToggleGroupItem key={o.value} value={o.value}>{o.label}</ToggleGroupItem>
+                    ))}
+                  </ToggleGroup>
                   {/* All option texts stacked in one grid cell so the block is always as tall as the
                       longest — switching options shows the active one without reflowing the layout. */}
                   <div className="grid mt-2">
