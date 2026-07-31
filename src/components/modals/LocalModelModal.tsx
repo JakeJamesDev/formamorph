@@ -15,7 +15,7 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } f
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Button } from '@/components/ui/button';
 import { Progress } from '@/components/ui/progress';
-import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
 import { ConfirmDialog } from '@/components/ConfirmDialog';
 import { LOCAL_MODELS, VRAM_TIERS, formatModelSize, formatReleased, formatDownloads, repoOf, tierForVram, type LocalModelInfo, type VramTier } from '@/lib/localModels';
 import { useCatalogDownloads } from '@/lib/useCatalogDownloads';
@@ -229,12 +229,17 @@ export function LocalModelModal({ open, onOpenChange }: { open: boolean; onOpenC
         <GpuMemoryBox stats={vram} className="shrink-0" {...resolveOwnVram(vram, engine.engineVramMB)} />
 
         {/* Top-level view: what's installed vs. what we suggest. */}
-        <Tabs value={view} onValueChange={(v) => setView(v as 'installed' | 'recommended')} className="shrink-0">
-          <TabsList className="grid w-full grid-cols-2">
-            <TabsTrigger value="installed">Installed</TabsTrigger>
-            <TabsTrigger value="recommended">Recommended</TabsTrigger>
-          </TabsList>
-        </Tabs>
+        <ToggleGroup
+          type="single"
+          value={view}
+          // A single ToggleGroup clears its value when the active item is clicked again; one of the two
+          // views is always showing, so an empty result is ignored rather than stored.
+          onValueChange={(v) => { if (v) setView(v as 'installed' | 'recommended'); }}
+          className="shrink-0 grid w-full grid-cols-2"
+        >
+          <ToggleGroupItem value="installed">Installed</ToggleGroupItem>
+          <ToggleGroupItem value="recommended">Recommended</ToggleGroupItem>
+        </ToggleGroup>
 
         {error && <div className="shrink-0 text-xs text-destructive">{error}</div>}
 
@@ -280,11 +285,16 @@ export function LocalModelModal({ open, onOpenChange }: { open: boolean; onOpenC
         ) : (
           <>
             {/* VRAM tier tabs (auto-selected from the GPU). */}
-            <Tabs value={tier} onValueChange={(v) => setTier(v as VramTier)} className="shrink-0">
-              <TabsList className="grid w-full grid-cols-4">
-                {VRAM_TIERS.map((t) => <TabsTrigger key={t.value} value={t.value} className="text-xs">{t.label}</TabsTrigger>)}
-              </TabsList>
-            </Tabs>
+            <ToggleGroup
+              type="single"
+              value={tier}
+              // A single ToggleGroup clears its value when the active item is clicked again; a tier is always
+              // selected, so an empty result is ignored rather than stored.
+              onValueChange={(v) => { if (v) setTier(v as VramTier); }}
+              className="shrink-0 grid w-full grid-cols-4"
+            >
+              {VRAM_TIERS.map((t) => <ToggleGroupItem key={t.value} value={t.value} className="text-xs">{t.label}</ToggleGroupItem>)}
+            </ToggleGroup>
 
             <ScrollArea className="min-h-0 flex-1">
               <div className="space-y-3">

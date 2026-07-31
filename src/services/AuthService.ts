@@ -198,8 +198,10 @@ class AuthService {
       });
 
       if (!response.ok) {
+        // This API answers with `error`; a suspended account's rejection lands here and is worth
+        // showing verbatim rather than as a generic failure.
         const errorData = await response.json();
-        throw new Error(errorData.message || 'Failed to change password');
+        throw new Error(errorData.error || errorData.message || 'Failed to change password');
       }
 
       return true;

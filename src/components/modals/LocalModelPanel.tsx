@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
-import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Row, ValueSlider, CheckRow } from '@/components/SettingsRows';
 import { useSettings } from '@/contexts/SettingsContext';
@@ -97,12 +97,19 @@ export function LocalModelPanel() {
       <ScrollArea className="min-h-0 flex-1">
       <div className="grid content-start gap-4 pb-4">
       {/* Detail-level toggle: Advanced reveals the extra rows below the always-visible simple ones. */}
-      <Tabs value={advancedMode ? 'advanced' : 'simple'} onValueChange={(v) => setAdvancedMode(v === 'advanced')} className="flex justify-center">
-        <TabsList className="h-auto">
-          <TabsTrigger value="simple" className="text-xs">Simple</TabsTrigger>
-          <TabsTrigger value="advanced" className="text-xs">Advanced</TabsTrigger>
-        </TabsList>
-      </Tabs>
+      <div className="flex justify-center">
+        <ToggleGroup
+          type="single"
+          value={advancedMode ? 'advanced' : 'simple'}
+          // A single ToggleGroup clears its value when the active item is clicked again; one of the two
+          // detail levels is always in force, so an empty result is ignored rather than applied.
+          onValueChange={(v) => { if (v) setAdvancedMode(v === 'advanced'); }}
+          className="h-auto"
+        >
+          <ToggleGroupItem value="simple" className="text-xs">Simple</ToggleGroupItem>
+          <ToggleGroupItem value="advanced" className="text-xs">Advanced</ToggleGroupItem>
+        </ToggleGroup>
+      </div>
 
       {/* GPU memory + engine status, shared with the model-manager popup. */}
       <GpuMemoryBox stats={vram} {...resolveOwnVram(vram, engine.engineVramMB)} />
@@ -124,13 +131,17 @@ export function LocalModelPanel() {
       {advancedMode ? (
         <>
           <Row label="GPU Layers" htmlFor="localGpuMode" hint="How much of the model runs on the GPU. Auto fits as many layers as your VRAM allows; Max offloads the whole model (needed for large models / multi-GPU, can run out of VRAM); Custom pins an exact count. Applies on reload.">
-            <Tabs value={gpuMode} onValueChange={setGpuMode}>
-              <TabsList>
-                <TabsTrigger value="auto">Auto</TabsTrigger>
-                <TabsTrigger value="max">Max</TabsTrigger>
-                <TabsTrigger value="custom">Custom</TabsTrigger>
-              </TabsList>
-            </Tabs>
+            <ToggleGroup
+              type="single"
+              value={gpuMode}
+              // A single ToggleGroup clears its value when the active item is clicked again; a GPU mode is
+              // always set, so an empty result is ignored rather than stored.
+              onValueChange={(v) => { if (v) setGpuMode(v); }}
+            >
+              <ToggleGroupItem value="auto">Auto</ToggleGroupItem>
+              <ToggleGroupItem value="max">Max</ToggleGroupItem>
+              <ToggleGroupItem value="custom">Custom</ToggleGroupItem>
+            </ToggleGroup>
           </Row>
           {gpuMode === 'custom' && (
             <Row label="Layers" htmlFor="localGpuLayers" hint="Number of model layers to offload. 0 = CPU-only. Applies on reload.">

@@ -9,10 +9,14 @@ import {
   DialogDescription,
   DialogFooter,
 } from "@/components/ui/dialog";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
+import { MessagesTab } from "@/components/menu/MessagesTab";
+import { type ProfileTab } from "@/components/menu/profileTabs";
 import AuthService from "@/services/AuthService";
 import { useResetOnOpen } from "@/lib/useResetOnOpen";
+import { parseServerDate } from "@/lib/serverDate";
 import { type WorldRecord } from "@/components/WorldDetails";
 
 interface AuthModalsProps {
@@ -26,6 +30,10 @@ interface AuthModalsProps {
   onAuthenticated: () => void;
   /** Full logout (clears the parent's auth state); the header uses the same handler. */
   onLogout: () => void;
+  /** Reports the reader's unread count so the footer badge stays in step with the inbox. */
+  onUnreadChange?: (unread: number) => void;
+  /** Tab to open on; the dev-router uses this to land on either half directly. */
+  initialTab?: ProfileTab;
 }
 
 /** The login/register dialog and the user-profile (change password / logout) dialog. Owns all auth
@@ -34,8 +42,20 @@ export function AuthModals({
   showAuthDialog, setShowAuthDialog,
   showProfileDialog, setShowProfileDialog,
   currentUser, userInitial, onAuthenticated, onLogout,
+  onUnreadChange, initialTab = 'messages',
 }: AuthModalsProps) {
   const [authMode, setAuthMode] = useState('login'); // 'login' or 'register'
+  const [profileTab, setProfileTab] = useState<ProfileTab>(initialTab);
+
+  // A suspended account can sign in and read (that is how it reaches its suspension notice), but the
+  // server refuses every write it could make from here.
+  const isSuspended = currentUser?.status === 'suspended';
+
+  // `createdAt` is a server timestamp (UTC, no zone marker); falls back to today for an account whose
+  // profile hasn't been fetched yet.
+  const memberSince = (
+    parseServerDate(String(currentUser?.createdAt ?? '')) ?? new Date()
+  ).toLocaleDateString();
   const [authError, setAuthError] = useState('');
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
@@ -55,7 +75,10 @@ export function AuthModals({
   // Reset the forms when a dialog opens, not when it closes — clearing on close blanks the still-visible
   // fields for a frame or two during the fade-out.
   useResetOnOpen(showAuthDialog, resetAuthForms);
-  useResetOnOpen(showProfileDialog, resetAuthForms);
+  useResetOnOpen(showProfileDialog, () => {
+    resetAuthForms();
+    setProfileTab(initialTab);
+  });
 
   const handleLogin = async () => {
     setAuthError('');
@@ -210,12 +233,15 @@ export function AuthModals({
 
       {/* Profile Dialog */}
       <Dialog open={showProfileDialog} onOpenChange={setShowProfileDialog}>
-        <DialogContent className="sm:max-w-[425px]">
+        <DialogContent className="sm:max-w-[480px] max-h-[85dvh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>User Profile</DialogTitle>
           </DialogHeader>
 
-          <div className="py-4">
+          {/* `min-w-0`: DialogContent is a grid, and a grid item's `min-width: auto` lets it grow past
+              the dialog's max width — a long message subject widened the whole dialog and added a
+              horizontal scrollbar instead of ellipsing. */}
+          <div className="py-4 min-w-0">
             <div className="flex items-center gap-4 mb-6">
               <div className="w-16 h-16 rounded-full bg-secondary flex items-center justify-center text-secondary-foreground text-2xl font-bold">
                 {userInitial}
@@ -224,57 +250,81 @@ export function AuthModals({
                 <h3 className="text-lg font-semibold">
                   {currentUser?.username || 'User'}
                 </h3>
-                <p className="text-sm text-muted-foreground">Member since {new Date(currentUser?.createdAt || Date.now()).toLocaleDateString()}</p>
+                <p className="text-sm text-muted-foreground">Member since {memberSince}</p>
               </div>
             </div>
 
-            {currentUser?.status === "suspended" && (
+            {isSuspended && (
               <div className="mb-4 p-3 bg-destructive/10 border border-destructive/30 rounded-md flex items-start">
                 <AlertTriangle className="h-5 w-5 text-destructive mr-2 flex-shrink-0 mt-0.5" />
-                <div className="text-sm text-destructive">
-                  <p className="font-medium">Account Suspended</p>
-                  <p>Your account has been suspended. Please contact an administrator for assistance.</p>
+                <div className="text-sm">
+                  <p className="font-bold text-destructive">Account Suspended</p>
+                  <p className="text-muted-foreground">Check your messages for details.</p>
                 </div>
               </div>
             )}
 
-            <div className="space-y-4 border-t pt-4">
-              <h4 className="font-medium flex items-center gap-2">
-                <Key className="h-4 w-4" /> Change Password
-              </h4>
+            <Tabs value={profileTab} onValueChange={(value) => setProfileTab(value as ProfileTab)}>
+              <TabsList className="grid w-full grid-cols-2">
+                <TabsTrigger value="messages">Messages</TabsTrigger>
+                <TabsTrigger value="manage">Manage</TabsTrigger>
+              </TabsList>
 
-              {authError && (
-                <div className="text-sm text-destructive p-2 bg-destructive/10 rounded-md">
-                  {authError}
+              <TabsContent value="messages">
+                {/* Mounted only while selected, so opening the tab is what triggers the fetch. */}
+                <MessagesTab active={showProfileDialog && profileTab === 'messages'} onUnreadChange={onUnreadChange} />
+              </TabsContent>
+
+              <TabsContent value="manage">
+                <div className="space-y-4 py-4">
+                  <h4 className="font-medium flex items-center gap-2">
+                    <Key className="h-4 w-4" /> Change Password
+                  </h4>
+
+                  {/* A suspended account can sign in and read, but the server refuses every write —
+                      saying so here beats letting them fill the form and be rejected on submit. */}
+                  {isSuspended && (
+                    <p className="text-sm text-muted-foreground">
+                      Your password can&rsquo;t be changed while your account is suspended.
+                    </p>
+                  )}
+
+                  {authError && (
+                    <div className="text-sm text-destructive p-2 bg-destructive/10 rounded-md">
+                      {authError}
+                    </div>
+                  )}
+
+                  <div className="space-y-2">
+                    <label htmlFor="currentPassword" className="text-sm font-medium">Current Password</label>
+                    <Input
+                      id="currentPassword"
+                      type="password"
+                      value={currentPassword}
+                      onChange={(e) => setCurrentPassword(e.target.value)}
+                      placeholder="Enter current password"
+                      disabled={isSuspended}
+                    />
+                  </div>
+
+                  <div className="space-y-2">
+                    <label htmlFor="newPassword" className="text-sm font-medium">New Password</label>
+                    <Input
+                      id="newPassword"
+                      type="password"
+                      value={newPassword}
+                      onChange={(e) => setNewPassword(e.target.value)}
+                      placeholder="Enter new password"
+                      disabled={isSuspended}
+                    />
+                  </div>
+
+                  <Button onClick={handleChangePassword} className="w-full" disabled={isSuspended}>
+                    Update Password
+                  </Button>
                 </div>
-              )}
-
-              <div className="space-y-2">
-                <label htmlFor="currentPassword" className="text-sm font-medium">Current Password</label>
-                <Input
-                  id="currentPassword"
-                  type="password"
-                  value={currentPassword}
-                  onChange={(e) => setCurrentPassword(e.target.value)}
-                  placeholder="Enter current password"
-                />
-              </div>
-
-              <div className="space-y-2">
-                <label htmlFor="newPassword" className="text-sm font-medium">New Password</label>
-                <Input
-                  id="newPassword"
-                  type="password"
-                  value={newPassword}
-                  onChange={(e) => setNewPassword(e.target.value)}
-                  placeholder="Enter new password"
-                />
-              </div>
-
-              <Button onClick={handleChangePassword} className="w-full">
-                Update Password
-              </Button>
-            </div>
+              </TabsContent>
+            </Tabs>
           </div>
 
           <DialogFooter>

@@ -10,9 +10,9 @@ import { toast } from 'react-toastify';
 import { ThemedToastContainer } from '@/components/ThemedToastContainer';
 import 'react-toastify/dist/ReactToastify.css';
 import { Button } from "@/components/ui/button";
-import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import {ConfirmDialog} from "@/components/ConfirmDialog";
-import {FilePlus2, DoorOpen, Pencil, Github, AlertTriangle, Code, User, Import, Globe, LayoutGrid, GalleryThumbnails, Columns2, RectangleVertical, Menu, Earth, BookOpen, Upload, ChevronLast, MoreHorizontal, PersonStanding, type LucideIcon } from "lucide-react";
+import {FilePlus2, DoorOpen, Pencil, Github, AlertTriangle, Code, User, Shield, Import, Globe, LayoutGrid, GalleryThumbnails, Columns2, RectangleVertical, Menu, Earth, BookOpen, Upload, ChevronLast, MoreHorizontal, PersonStanding, type LucideIcon } from "lucide-react";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { ImageZoomViewer } from "@/components/ImageZoomViewer";
 import { cn } from "@/lib/utils";
@@ -77,7 +77,10 @@ import SortableWorldCard from "@/components/SortableWorldCard";
 import DictionaryEditorModal from "@/components/modals/DictionaryEditorModal";
 import EntityEditorModal from "@/components/modals/EntityEditorModal";
 import { ModelDetailsModal } from "@/components/modals/ModelDetailsModal";
-import { ManageUsersDialog } from "@/components/menu/ManageUsersDialog";
+import { AdminPanelDialog } from "@/components/menu/AdminPanelDialog";
+import { type ProfileTab } from "@/components/menu/profileTabs";
+import { type AdminPanelTab } from "@/components/menu/adminPanelTabs";
+import MessageService from "@/services/MessageService";
 import { AuthModals } from "@/components/menu/AuthModals";
 import { PublishModal } from "@/components/menu/PublishModal";
 import { worldPublishPayload, entityPublishPayload, dictionaryPublishPayload, type PublishPayload } from "@/lib/publishPayload";
@@ -215,6 +218,8 @@ const MainMenu = ({ onStartGame, onLoadSaveGame, onReplayIntro, introActive = fa
     if (devRoute?.modal === 'menu') setShowLoadDialog(true);
     if (devRoute?.modal === 'backup') setShowBackup(true);
     if (devRoute?.modal === 'community') setShowCommunityBrowser(true);
+    if (devRoute?.modal === 'profile') setShowProfileDialog(true);
+    if (devRoute?.modal === 'adminPanel') setShowAdminPanel(true);
     if (devRoute?.modal === 'worldEditor') setShowWorldEditor(true);
     if (devRoute?.modal === 'avatar') setShowCharacterCustomization(true);
     if (devRoute?.modal === 'aiSetup') setGate({ reason: 'firstRun' });
@@ -226,8 +231,8 @@ const MainMenu = ({ onStartGame, onLoadSaveGame, onReplayIntro, introActive = fa
       setCardType('models');
       ModelStorageService.getModelMetadata().then(([first]) => first && setPreviewModelId(first.id));
     }
-    // With no modal named, `tab` selects the library's card type — the switcher is a Radix Tabs list, which
-    // doesn't answer synthetic clicks, so this is the only way to reach a grid from a preview.
+    // With no modal named, `tab` selects the library's card type — set here rather than by clicking the
+    // switcher, so landing on a grid doesn't depend on that control's markup.
     if (!devRoute?.modal && devRoute?.tab && (MAIN_MENU_CARD_TABS as readonly string[]).includes(devRoute.tab)) {
       setCardType(devRoute.tab as typeof cardType);
     }
@@ -337,7 +342,11 @@ const MainMenu = ({ onStartGame, onLoadSaveGame, onReplayIntro, introActive = fa
   };
 
   // Admin "Manage Users" dialog: open state here; its list/paging/fetch live in the dialog component.
-  const [showManageUsersDialog, setShowManageUsersDialog] = useState(false);
+  const [showAdminPanel, setShowAdminPanel] = useState(false);
+  const [unreadMessages, setUnreadMessages] = useState(0);
+  // One announcement per session: the count is refetched whenever auth changes, and re-toasting the
+  // same backlog on every refresh would be noise.
+  const announcedUnreadRef = useRef(false);
 
   // Check authentication status on component mount (skipped when community features are disabled — the
   // hosted build never contacts the auth server).
@@ -900,12 +909,41 @@ const MainMenu = ({ onStartGame, onLoadSaveGame, onReplayIntro, introActive = fa
     }
   };
 
+  // Pull the admin-message badge whenever the session changes: on mount for an already-signed-in user,
+  // and again right after a login. The first count of a session also raises a toast, so a message sent
+  // while the player was away is noticed without opening the profile dialog.
+  useEffect(() => {
+    if (!COMMUNITY_ENABLED || !isAuthenticated) {
+      setUnreadMessages(0);
+      announcedUnreadRef.current = false;
+      return;
+    }
+
+    let current = true;
+
+    MessageService.fetchUnreadCount()
+      .then((unread) => {
+        if (!current) return;
+        setUnreadMessages(unread);
+
+        if (unread > 0 && !announcedUnreadRef.current) {
+          announcedUnreadRef.current = true;
+          toast.info(unread === 1 ? 'You have a new message' : `You have ${unread} unread messages`);
+        }
+      })
+      // The badge is not worth a toast of its own when the community server is unreachable.
+      .catch((error) => console.error('Failed to load unread message count:', error));
+
+    return () => { current = false; };
+  }, [isAuthenticated]);
+
   // Handle logout
   const handleLogout = () => {
     AuthService.logout();
     setIsAuthenticated(false);
     setCurrentUser(null);
     setShowProfileDialog(false);
+    setUnreadMessages(0);
     toast.success('Logged out successfully');
   };
 
@@ -1008,9 +1046,9 @@ const MainMenu = ({ onStartGame, onLoadSaveGame, onReplayIntro, introActive = fa
       {isAuthenticated && currentUser?.accountType === "admin" && (
         <Button
           className="bg-gradient-to-r from-purple-200 to-pink-200 hover:from-purple-300 hover:to-pink-300 text-black font-bold"
-          onClick={() => setShowManageUsersDialog(true)}
+          onClick={() => setShowAdminPanel(true)}
         >
-          <User className="mr-2 h-4 w-4" /> Manage Users
+          <Shield className="mr-2 h-4 w-4" /> Admin Panel
         </Button>
       )}
     </>
@@ -1050,16 +1088,20 @@ const MainMenu = ({ onStartGame, onLoadSaveGame, onReplayIntro, introActive = fa
             where the bottom tab bar takes over (adding a 4th tab left the top row too cramped in portrait).
             No min-w-0: the cell keeps its real width so it never overflows onto the centered buttons. */}
         <div className="flex-1 hidden md:flex items-center justify-start">
-          <Tabs value={cardType} onValueChange={(v) => setCardType(v as typeof cardType)}>
-            <TabsList>
-              {CARD_TABS.map(({ value, label, Icon }) => (
-                <TabsTrigger key={value} value={value} aria-label={label} title={label}>
-                  <Icon className="h-5 w-5 min-[1100px]:hidden" />
-                  <span className="hidden min-[1100px]:inline">{label}</span>
-                </TabsTrigger>
-              ))}
-            </TabsList>
-          </Tabs>
+          <ToggleGroup
+            type="single"
+            value={cardType}
+            // A single ToggleGroup clears its value when the active item is clicked again; a card type is
+            // always required, so an empty result is ignored rather than stored.
+            onValueChange={(v) => { if (v) setCardType(v as typeof cardType); }}
+          >
+            {CARD_TABS.map(({ value, label, Icon }) => (
+              <ToggleGroupItem key={value} value={value} aria-label={label} title={label}>
+                <Icon className="h-5 w-5 min-[1100px]:hidden" />
+                <span className="hidden min-[1100px]:inline">{label}</span>
+              </ToggleGroupItem>
+            ))}
+          </ToggleGroup>
         </div>
 
         {/* Action buttons — full row on wide viewports, collapsed into a hamburger below 1000px. Auto width so
@@ -1090,16 +1132,19 @@ const MainMenu = ({ onStartGame, onLoadSaveGame, onReplayIntro, introActive = fa
 
         {/* Grid/detailed view toggle + settings (cog stays right-most) */}
         <div className="flex-1 flex items-center justify-end gap-2">
-          <Tabs value={layoutMode} onValueChange={(v) => setLayoutMode(v as 'grid' | 'detailed')}>
-            <TabsList>
-              <TabsTrigger value="grid" aria-label="Grid view" title="Grid view">
-                <LayoutGrid className="h-5 w-5" />
-              </TabsTrigger>
-              <TabsTrigger value="detailed" aria-label="Detailed view" title="Detailed view">
-                <GalleryThumbnails className="h-5 w-5" />
-              </TabsTrigger>
-            </TabsList>
-          </Tabs>
+          <ToggleGroup
+            type="single"
+            value={layoutMode}
+            // Clicking the active item again would otherwise clear the layout mode, which has no empty state.
+            onValueChange={(v) => { if (v) setLayoutMode(v as 'grid' | 'detailed'); }}
+          >
+            <ToggleGroupItem value="grid" aria-label="Grid view" title="Grid view">
+              <LayoutGrid className="h-5 w-5" />
+            </ToggleGroupItem>
+            <ToggleGroupItem value="detailed" aria-label="Detailed view" title="Detailed view">
+              <GalleryThumbnails className="h-5 w-5" />
+            </ToggleGroupItem>
+          </ToggleGroup>
           {/* Right menu — hidden below 1000px, where its items fold into the center hamburger; the view toggle
               then becomes the right-most control. */}
           <div className="hidden min-[1000px]:block">
@@ -1363,9 +1408,13 @@ const MainMenu = ({ onStartGame, onLoadSaveGame, onReplayIntro, introActive = fa
         <div className="flex-1 flex items-center justify-start gap-2">
           {COMMUNITY_ENABLED && (
             <button
-              className="p-3 bg-secondary text-secondary-foreground rounded-full shadow-lg hover:bg-secondary/80 transition-colors"
+              className="relative p-3 bg-secondary text-secondary-foreground rounded-full shadow-lg hover:bg-secondary/80 transition-colors"
               onClick={() => isAuthenticated ? setShowProfileDialog(true) : setShowAuthDialog(true)}
-              aria-label={isAuthenticated ? "User Profile" : "Login"}
+              aria-label={
+                isAuthenticated
+                  ? unreadMessages > 0 ? `User Profile (${unreadMessages} unread)` : "User Profile"
+                  : "Login"
+              }
             >
               {isAuthenticated ? (
                 <div className="w-6 h-6 flex items-center justify-center font-semibold">
@@ -1373,6 +1422,13 @@ const MainMenu = ({ onStartGame, onLoadSaveGame, onReplayIntro, introActive = fa
                 </div>
               ) : (
                 <User className="h-6 w-6" />
+              )}
+
+              {/* Unread badge. Capped at 9+ so a long backlog can't stretch the circle. */}
+              {isAuthenticated && unreadMessages > 0 && (
+                <span className="absolute -top-0.5 -right-0.5 min-w-5 h-5 px-1 flex items-center justify-center rounded-full bg-destructive text-destructive-foreground text-[10px] font-bold">
+                  {unreadMessages > 9 ? '9+' : unreadMessages}
+                </span>
               )}
             </button>
           )}
@@ -1860,6 +1916,8 @@ const MainMenu = ({ onStartGame, onLoadSaveGame, onReplayIntro, introActive = fa
             userInitial={getUserInitial()}
             onAuthenticated={() => { setIsAuthenticated(true); setCurrentUser(AuthService.getCurrentUser()); }}
             onLogout={handleLogout}
+            onUnreadChange={setUnreadMessages}
+            initialTab={devRoute?.modal === 'profile' ? (devRoute.tab as ProfileTab | undefined) : undefined}
           />
 
           {/* Publish Modal — form/handlers live in the component */}
@@ -1913,8 +1971,12 @@ const MainMenu = ({ onStartGame, onLoadSaveGame, onReplayIntro, introActive = fa
         src={viewerImage.src}
       />
 
-      {/* Manage Users Dialog — list/paging/fetch live in the component */}
-      <ManageUsersDialog open={showManageUsersDialog} onOpenChange={setShowManageUsersDialog} />
+      {/* Admin Panel — user management and broadcasts; each tab owns its own fetching */}
+      <AdminPanelDialog
+        open={showAdminPanel}
+        onOpenChange={setShowAdminPanel}
+        initialTab={devRoute?.modal === 'adminPanel' ? (devRoute.tab as AdminPanelTab | undefined) : undefined}
+      />
     </div>
   );
 };

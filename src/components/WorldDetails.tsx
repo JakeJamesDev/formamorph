@@ -1,6 +1,7 @@
 /* eslint-disable react-refresh/only-export-components -- shared world-detail module: exports the
    WorldRecord type and the splitColumnClasses helper alongside its presentation components. */
 import React, { useState, useRef, useEffect, useLayoutEffect } from 'react';
+import { parseServerDate } from "@/lib/serverDate"
 import { cn } from "@/lib/utils";
 import { CHIP_BASE } from "@/components/Chip";
 import { MarkdownRenderer } from "@/components/game/MarkdownRenderer";
@@ -14,7 +15,9 @@ export type WorldRecord = Record<string, any>;
  *  Falls back to a dash when there's no value. */
 export function DateTimeText({ value }: { value?: string }) {
   if (!value) return <>-</>;
-  const d = new Date(value);
+  // Server timestamps are UTC without a zone marker; locally-written ISO strings pass through as-is.
+  const d = parseServerDate(value);
+  if (!d) return <>-</>;
   return (
     <>
       {d.toLocaleDateString()}{' '}

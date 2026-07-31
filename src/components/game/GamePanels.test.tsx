@@ -154,6 +154,24 @@ describe('LeftPanel', () => {
     fireEvent.change(screen.getByPlaceholderText(/Add notes here/), { target: { value: 'the dock is rotten' } });
     expect(view.gameplay().playerNotes).toBe('the dock is rotten');
   });
+
+  // The Player/Entities swap picks which view shows; it never switched a tab panel, so it's a radio group.
+  // Re-clicking the active one must be a no-op — a single toggle group otherwise clears its own value.
+  it('swaps between the player model and the entity list without ever clearing the choice', () => {
+    renderLeftPanel({}, { seed: (gameplay) => gameplay.setCharacterData({ bodyMorphs: {}, currentHairStyle: 'long', hairLength: 0.5 }) });
+
+    const swap = screen.getByRole('radiogroup');
+    const player = within(swap).getByRole('radio', { name: 'Player' });
+    const entities = within(swap).getByRole('radio', { name: 'Entities' });
+    expect(player).toHaveAttribute('data-state', 'on');
+
+    fireEvent.click(entities);
+    expect(entities).toHaveAttribute('data-state', 'on');
+    expect(player).toHaveAttribute('data-state', 'off');
+
+    fireEvent.click(entities);
+    expect(entities).toHaveAttribute('data-state', 'on');
+  });
 });
 
 describe('MiddlePanel — editing a turn\'s narration', () => {

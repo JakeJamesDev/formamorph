@@ -26,6 +26,7 @@ import { Progress } from "@/components/ui/progress";
 import { Slider } from "@/components/ui/slider";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Pager } from "@/components/ui/pagination";
 import VRMViewer from '@/views/VRMViewer';
@@ -193,12 +194,17 @@ export const LeftPanel = ({ entities, onEntityClick, onRegenerateMemory }: {
           <div className="relative flex items-center justify-center min-h-10">
             {/* Only worlds with a player model offer the Player/Entities swap. */}
             {characterData && (
-              <Tabs value={modelTab} onValueChange={setModelTab}>
-                <TabsList className="flex justify-center">
-                  <TabsTrigger value="player">Player</TabsTrigger>
-                  <TabsTrigger value="entities">Entities</TabsTrigger>
-                </TabsList>
-              </Tabs>
+              <ToggleGroup
+                type="single"
+                value={modelTab}
+                // A single ToggleGroup clears its value when the active item is clicked again; one of the two
+                // is always shown, so an empty result is ignored rather than stored.
+                onValueChange={(v) => { if (v) setModelTab(v); }}
+                className="flex justify-center"
+              >
+                <ToggleGroupItem value="player">Player</ToggleGroupItem>
+                <ToggleGroupItem value="entities">Entities</ToggleGroupItem>
+              </ToggleGroup>
             )}
             <Button
               variant="ghost"

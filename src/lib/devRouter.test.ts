@@ -6,6 +6,8 @@ import { SETTINGS_TABS } from '@/components/modals/settingsTabs';
 import { WORLD_EDITOR_TABS } from '@/views/worldEditorTabs';
 import { MAIN_MENU_CARD_TABS } from '@/views/mainMenuTabs';
 import { GAME_LEFT_PANEL_TABS } from '@/components/game/leftPanelTabs';
+import { PROFILE_TABS } from '@/components/menu/profileTabs';
+import { ADMIN_PANEL_TABS } from '@/components/menu/adminPanelTabs';
 import { isSaveEnvelope } from './version';
 import whiteRoomWorld from './devFixtures/whiteRoomWorld.json';
 import whiteRoomSave from './devFixtures/whiteRoomSave.json';
@@ -79,11 +81,19 @@ describe('dev-router coverage guard', () => {
     expect([...DEV_MODAL_TABS.gameViewer]).toEqual([...GAME_LEFT_PANEL_TABS]);
   });
 
+  it('ledger lists exactly the profile dialog tabs', () => {
+    expect([...DEV_MODAL_TABS.profile]).toEqual([...PROFILE_TABS]);
+  });
+
+  it('ledger lists exactly the Admin Panel tabs', () => {
+    expect([...DEV_MODAL_TABS.adminPanel]).toEqual([...ADMIN_PANEL_TABS]);
+  });
+
   it('registers the modals the router opens', () => {
     // localModel is deliberately excluded (it lives inside Settings, not as a standalone modal). worldEditor
     // is an in-place MainMenu modal (no longer a top-level view).
     expect(DEV_MODALS).toEqual([
-      'settings', 'entity', 'export', 'menu', 'worldEditor', 'intro', 'avatar', 'backup', 'aiSetup', 'entityEditor', 'dictionaryEditor', 'modelDetails', 'community', 'memoryManager',
+      'settings', 'entity', 'export', 'menu', 'worldEditor', 'intro', 'avatar', 'backup', 'aiSetup', 'entityEditor', 'dictionaryEditor', 'modelDetails', 'community', 'memoryManager', 'profile', 'adminPanel',
     ]);
   });
 });
