@@ -15,7 +15,7 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { MessagesTab } from "@/components/menu/MessagesTab";
 import { type ProfileTab } from "@/components/menu/profileTabs";
-import { MyBugsTab } from "@/components/menu/MyBugsTab";
+import { MyFeedbackTab } from "@/components/menu/MyFeedbackTab";
 import { TermsTab } from "@/components/menu/TermsTab";
 import PolicyService from "@/services/PolicyService";
 import AuthService from "@/services/AuthService";
@@ -36,7 +36,7 @@ interface AuthModalsProps {
   onLogout: () => void;
   /** Reports the reader's unread count so the footer badge stays in step with the inbox. */
   onUnreadChange?: (unread: number) => void;
-  /** Fired when a bug thread is read or replied to, so the host can re-read its bug badge count. */
+  /** Fired when a feedback thread is read or replied to, so the host can re-read its badge count. */
   onBugsChange?: () => void;
   /** Tab to open on; the dev-router uses this to land on either half directly. */
   initialTab?: ProfileTab;
@@ -112,6 +112,10 @@ export function AuthModals({
     resetAuthForms();
     setProfileTab(initialTab);
   });
+
+  // Also honor a *change* of `initialTab` while the dialog is already open — the dev-router points at a
+  // tab by changing this prop, and without it a second `goto` at an open dialog is silently ignored.
+  useEffect(() => { setProfileTab(initialTab); }, [initialTab]);
 
   const handleLogin = async () => {
     setAuthError('');
@@ -315,9 +319,10 @@ export function AuthModals({
             className="w-full min-w-0 flex flex-col flex-1 min-h-0"
           >
             {/* The terms tab is absent until an admin has authored a gate, so most installs see two. */}
-            <TabsList className={`grid w-full flex-shrink-0 ${hasTerms ? 'grid-cols-3' : 'grid-cols-2'}`}>
+            <TabsList className={`grid w-full flex-shrink-0 ${hasTerms ? 'grid-cols-4' : 'grid-cols-3'}`}>
               <TabsTrigger value="messages">Messages</TabsTrigger>
               <TabsTrigger value="bugs">Bugs</TabsTrigger>
+              <TabsTrigger value="suggestions">Suggestions</TabsTrigger>
               {hasTerms && <TabsTrigger value="terms">Terms</TabsTrigger>}
             </TabsList>
 
@@ -332,7 +337,13 @@ export function AuthModals({
             <TabsContent value="bugs" className="flex-1 min-h-0 data-[state=active]:flex flex-col">
               <ScrollArea className="flex-1 min-h-0 px-1">
                 {/* Reading a thread clears its share of the badge, so the count outside is re-read. */}
-                <MyBugsTab active={showProfileDialog && profileTab === 'bugs'} onChanged={onBugsChange} />
+                <MyFeedbackTab active={showProfileDialog && profileTab === 'bugs'} type="bug" onChanged={onBugsChange} />
+              </ScrollArea>
+            </TabsContent>
+
+            <TabsContent value="suggestions" className="flex-1 min-h-0 data-[state=active]:flex flex-col">
+              <ScrollArea className="flex-1 min-h-0 px-1">
+                <MyFeedbackTab active={showProfileDialog && profileTab === 'suggestions'} type="suggestion" onChanged={onBugsChange} />
               </ScrollArea>
             </TabsContent>
 

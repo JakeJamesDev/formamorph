@@ -6,6 +6,7 @@ import {
   DialogDescription,
 } from "@/components/ui/dialog";
 import { SentMessageList } from "@/components/menu/SentMessageList";
+import type { SentMessage } from "@/types";
 
 interface SentMessagesDialogProps {
   open: boolean;
@@ -16,10 +17,12 @@ interface SentMessagesDialogProps {
   username?: string;
   /** Bumped by the parent after a send, to pull the new message into an already-open list. */
   refreshNonce?: number;
+  /** Opens the edit form for a message. Omit to hide the action. */
+  onEdit?: (message: SentMessage) => void;
 }
 
 /** One user's direct-message history, opened from a row in the Users tab. Broadcasts have their own tab. */
-export function SentMessagesDialog({ open, onOpenChange, userId, username, refreshNonce = 0 }: SentMessagesDialogProps) {
+export function SentMessagesDialog({ open, onOpenChange, userId, username, refreshNonce = 0, onEdit }: SentMessagesDialogProps) {
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-[720px] max-h-[85dvh] overflow-y-auto">
@@ -33,7 +36,7 @@ export function SentMessagesDialog({ open, onOpenChange, userId, username, refre
         {/* `min-w-0`: DialogContent is a grid, and a grid item's `min-width: auto` lets a long subject
             widen the dialog past its max width instead of ellipsing. */}
         <div className="py-2 min-w-0">
-          <SentMessageList audience="direct" userId={userId} refreshNonce={refreshNonce} />
+          <SentMessageList audience="direct" userId={userId} refreshNonce={refreshNonce} onEdit={onEdit} />
         </div>
       </DialogContent>
     </Dialog>

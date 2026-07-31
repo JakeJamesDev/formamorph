@@ -14,6 +14,7 @@ import WorldStorageService from "@/services/WorldStorageService";
 import AuthService from "@/services/AuthService";
 import MessageService from "@/services/MessageService";
 import { type WorldRecord } from "@/components/WorldDetails";
+import type { SentMessage } from "@/types";
 
 /** Prefill offered after a suspension, so the user learns why without the admin retyping it. */
 const SUSPENSION_TEMPLATE = {
@@ -79,6 +80,8 @@ export function ManageUsersTab({ active }: ManageUsersTabProps) {
   // The sent list serves both entry points: unfiltered, or narrowed to one user via `historyUser`.
   const [showSentMessages, setShowSentMessages] = useState(false);
   const [historyUser, setHistoryUser] = useState<{ id: string; username: string } | null>(null);
+  // Set to the sent message being rewritten; the composer serves both send and edit.
+  const [editingMessage, setEditingMessage] = useState<SentMessage | null>(null);
   // Bumped after a send so an open sent list picks the new message up.
   const [sentNonce, setSentNonce] = useState(0);
   // Set to the user whose upload-terms acceptance is about to be cleared.
@@ -592,7 +595,25 @@ export function ManageUsersTab({ active }: ManageUsersTabProps) {
       userId={historyUser?.id}
       username={historyUser?.username}
       refreshNonce={sentNonce}
+      onEdit={setEditingMessage}
     />
+
+    {/* An edit reuses the composer, addressed to whoever the message went to. */}
+    {editingMessage && (
+      <MessageComposerDialog
+        open
+        onOpenChange={(isOpen) => { if (!isOpen) setEditingMessage(null); }}
+        target={{
+          broadcast: false,
+          recipients: editingMessage.recipient
+            ? [{ id: editingMessage.recipient.id, username: editingMessage.recipient.username ?? 'user' }]
+            : [],
+        }}
+        adminUsername={adminUsername}
+        editing={editingMessage}
+        onSent={() => setSentNonce((n) => n + 1)}
+      />
+    )}
 
     <ConfirmDialog
       open={pendingTermsReset !== null}

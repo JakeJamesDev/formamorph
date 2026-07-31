@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Shield } from "lucide-react";
 import {
   Dialog,
@@ -11,7 +11,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { ManageUsersTab } from "@/components/menu/ManageUsersTab";
 import { BroadcastsTab } from "@/components/menu/BroadcastsTab";
 import { PoliciesTab } from "@/components/menu/PoliciesTab";
-import { BugsTab } from "@/components/menu/BugsTab";
+import { FeedbackQueueTab } from "@/components/menu/FeedbackQueueTab";
 import { useResetOnOpen } from "@/lib/useResetOnOpen";
 import { type AdminPanelTab } from "@/components/menu/adminPanelTabs";
 import { type PoliciesTab as PoliciesSubTab } from "@/components/menu/policiesTabs";
@@ -25,11 +25,15 @@ interface AdminPanelDialogProps {
   initialPoliciesTab?: PoliciesSubTab;
 }
 
-/** Admin tools behind one dialog: user accounts, and broadcasts to everyone. */
+/** Admin tools behind one dialog: accounts, broadcasts, the publish policies, and both feedback queues. */
 export function AdminPanelDialog({ open, onOpenChange, initialTab = 'users', initialPoliciesTab }: AdminPanelDialogProps) {
   const [tab, setTab] = useState<AdminPanelTab>(initialTab);
 
   useResetOnOpen(open, () => setTab(initialTab));
+
+  // Also honor a *change* of `initialTab` while the dialog is already open — the dev-router points at a
+  // tab by changing this prop, and without it a second `goto` at an open panel is silently ignored.
+  useEffect(() => { if (initialTab) setTab(initialTab); }, [initialTab]);
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -47,11 +51,12 @@ export function AdminPanelDialog({ open, onOpenChange, initialTab = 'users', ini
           onValueChange={(value) => setTab(value as AdminPanelTab)}
           className="w-full min-w-0 flex flex-col flex-1 min-h-0"
         >
-          <TabsList className="grid w-full grid-cols-4 flex-shrink-0">
+          <TabsList className="grid w-full grid-cols-5 flex-shrink-0">
             <TabsTrigger value="users">Users</TabsTrigger>
             <TabsTrigger value="broadcasts">Broadcasts</TabsTrigger>
             <TabsTrigger value="policies">Policies</TabsTrigger>
             <TabsTrigger value="bugs">Bugs</TabsTrigger>
+            <TabsTrigger value="suggestions">Suggestions</TabsTrigger>
           </TabsList>
 
           {/* Only the panel body scrolls; the title and tab strip stay put. */}
@@ -76,7 +81,13 @@ export function AdminPanelDialog({ open, onOpenChange, initialTab = 'users', ini
 
           <TabsContent value="bugs" className="flex-1 min-h-0 data-[state=active]:flex flex-col">
             <ScrollArea className="flex-1 min-h-0 px-1">
-              <BugsTab active={open && tab === 'bugs'} />
+              <FeedbackQueueTab active={open && tab === 'bugs'} type="bug" />
+            </ScrollArea>
+          </TabsContent>
+
+          <TabsContent value="suggestions" className="flex-1 min-h-0 data-[state=active]:flex flex-col">
+            <ScrollArea className="flex-1 min-h-0 px-1">
+              <FeedbackQueueTab active={open && tab === 'suggestions'} type="suggestion" />
             </ScrollArea>
           </TabsContent>
         </Tabs>

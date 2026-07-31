@@ -4,7 +4,7 @@ import { Popover, PopoverTrigger, PopoverContent } from "@/components/ui/popover
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Checkbox } from "@/components/ui/checkbox";
-import { Menu, Save, FolderOpen, SquarePen, Braces, Settings, Bug, DoorOpen } from "lucide-react";
+import { Menu, Save, FolderOpen, SquarePen, Braces, Settings, MessageSquarePlus, DoorOpen } from "lucide-react";
 import { ConfirmDialog } from '../ConfirmDialog';
 import { getAllSaveRecords } from './dbUtils';
 import { useDevRoute } from '../../lib/devRouter';
@@ -17,7 +17,7 @@ import type { WorldOverview, SaveRecord } from "@/types";
 
 export const MenuModal = ({ onSettingsClick, onReportBug, onSave, onLoad, worldOverview, worldId, onExitToMenu, onEditWorld, onShowAiContext }: {
   onSettingsClick: () => void;
-  /** Opens the bug report form. Omitted when the community server is off or nobody is signed in. */
+  /** Opens the feedback form. Omitted when the community server is off or nobody is signed in. */
   onReportBug?: () => void;
   onSave: (saveName: string, opts?: { overwriteId?: string; includeSceneImages?: boolean }) => Promise<unknown> | void;
   /** `worldId` set ⇒ the save belongs to a different (installed) world; the loader switches to it first. */
@@ -123,10 +123,10 @@ export const MenuModal = ({ onSettingsClick, onReportBug, onSave, onLoad, worldO
             <Button variant="ghost" className="w-full justify-start" onClick={() => { setMenuOpen(false); onSettingsClick(); }}>
               <Settings className="mr-2 h-4 w-4" /> Settings
             </Button>
-            {/* Filed from here so a bug can be reported where it happened, rather than backing out first. */}
+            {/* Opened from here so a bug can be reported where it happened, rather than backing out first. */}
             {onReportBug && (
               <Button variant="ghost" className="w-full justify-start" onClick={() => { setMenuOpen(false); onReportBug(); }}>
-                <Bug className="mr-2 h-4 w-4" /> Report a Bug
+                <MessageSquarePlus className="mr-2 h-4 w-4" /> Send Feedback
               </Button>
             )}
             <Button variant="ghost" className="w-full justify-start" onClick={() => { setMenuOpen(false); setShowExitConfirm(true); }}>

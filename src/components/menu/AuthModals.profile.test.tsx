@@ -10,7 +10,9 @@ vi.mock('react-toastify', () => ({ toast: { error: vi.fn(), success: vi.fn(), in
 
 // The tab panels have their own coverage; stubbing them keeps this file about the dialog's own shell.
 vi.mock('./MessagesTab', () => ({ MessagesTab: () => <div data-testid="messages" /> }));
-vi.mock('./MyBugsTab', () => ({ MyBugsTab: () => <div data-testid="bugs" /> }));
+vi.mock('./MyFeedbackTab', () => ({
+  MyFeedbackTab: ({ type }: { type: string }) => <div data-testid={type === 'bug' ? 'bugs' : 'suggestions'} />,
+}));
 vi.mock('./TermsTab', () => ({ TermsTab: () => <div data-testid="terms" /> }));
 
 const WITH_GATE: PolicyState = {
@@ -143,6 +145,43 @@ describe('the terms tab', () => {
     await screen.findByRole('tab', { name: 'Terms' });
 
     expect(screen.getByTestId('messages')).toBeTruthy();
+  });
+});
+
+describe('landing on a tab while already open', () => {
+  it('follows a second request rather than ignoring it', async () => {
+    // The dev-router points at a tab by changing this prop. Applying it only on open meant a `goto` at
+    // an already-open dialog silently left the reader wherever they were.
+    const { rerender } = render(
+      <AuthModals
+        showAuthDialog={false}
+        setShowAuthDialog={() => {}}
+        showProfileDialog
+        setShowProfileDialog={() => {}}
+        currentUser={user()}
+        userInitial="F"
+        onAuthenticated={() => {}}
+        onLogout={() => {}}
+        initialTab="messages"
+      />
+    );
+    await screen.findByTestId('messages');
+
+    rerender(
+      <AuthModals
+        showAuthDialog={false}
+        setShowAuthDialog={() => {}}
+        showProfileDialog
+        setShowProfileDialog={() => {}}
+        currentUser={user()}
+        userInitial="F"
+        onAuthenticated={() => {}}
+        onLogout={() => {}}
+        initialTab="suggestions"
+      />
+    );
+
+    expect(await screen.findByTestId('suggestions')).toBeTruthy();
   });
 });
 

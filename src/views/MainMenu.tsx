@@ -12,7 +12,7 @@ import 'react-toastify/dist/ReactToastify.css';
 import { Button } from "@/components/ui/button";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import {ConfirmDialog} from "@/components/ConfirmDialog";
-import {FilePlus2, DoorOpen, Pencil, Github, AlertTriangle, Code, User, Shield, Import, Globe, LayoutGrid, GalleryThumbnails, Columns2, RectangleVertical, Menu, Earth, BookOpen, Upload, ChevronLast, MoreHorizontal, PersonStanding, Bug, FolderOpen, Archive, Settings, type LucideIcon } from "lucide-react";
+import {FilePlus2, DoorOpen, Pencil, Github, AlertTriangle, Code, User, Shield, Import, Globe, LayoutGrid, GalleryThumbnails, Columns2, RectangleVertical, Menu, Earth, BookOpen, Upload, ChevronLast, MoreHorizontal, PersonStanding, MessageSquarePlus, FolderOpen, Archive, Settings, type LucideIcon } from "lucide-react";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { ImageZoomViewer } from "@/components/ImageZoomViewer";
 import { cn } from "@/lib/utils";
@@ -82,8 +82,8 @@ import { type ProfileTab } from "@/components/menu/profileTabs";
 import { type AdminPanelTab } from "@/components/menu/adminPanelTabs";
 import { type PoliciesTab as PoliciesSubTab } from "@/components/menu/policiesTabs";
 import MessageService from "@/services/MessageService";
-import BugService from "@/services/BugService";
-import { BugReportDialog } from "@/components/menu/BugReportDialog";
+import FeedbackService from "@/services/FeedbackService";
+import { FeedbackDialog } from "@/components/menu/FeedbackDialog";
 import { AuthModals } from "@/components/menu/AuthModals";
 import { PublishModal } from "@/components/menu/PublishModal";
 import { worldPublishPayload, entityPublishPayload, dictionaryPublishPayload, type PublishPayload } from "@/lib/publishPayload";
@@ -347,8 +347,8 @@ const MainMenu = ({ onStartGame, onLoadSaveGame, onReplayIntro, introActive = fa
   // Admin "Manage Users" dialog: open state here; its list/paging/fetch live in the dialog component.
   const [showAdminPanel, setShowAdminPanel] = useState(false);
   const [unreadMessages, setUnreadMessages] = useState(0);
-  // Bug threads with a reply the user hasn't seen. Shown in the same badge as messages: one count means
-  // "something is waiting for you", wherever it came from.
+  // Feedback threads — bugs and suggestions both — with a reply the user hasn't seen. Shown in the same
+  // badge as messages: one count means "something is waiting for you", wherever it came from.
   const [unreadBugs, setUnreadBugs] = useState(0);
   // Bumped to re-read the bug count after a thread is opened or replied to.
   const [bugCountNonce, setBugCountNonce] = useState(0);
@@ -948,7 +948,7 @@ const MainMenu = ({ onStartGame, onLoadSaveGame, onReplayIntro, introActive = fa
     return () => { current = false; };
   }, [isAuthenticated]);
 
-  // The bug half of the badge. Separate from messages because reading a thread changes it, so it is
+  // The feedback half of the badge. Separate from messages because reading a thread changes it, so it is
   // re-read on demand rather than only when auth changes.
   useEffect(() => {
     if (!COMMUNITY_ENABLED || !isAuthenticated) {
@@ -958,9 +958,9 @@ const MainMenu = ({ onStartGame, onLoadSaveGame, onReplayIntro, introActive = fa
 
     let current = true;
 
-    BugService.fetchUnreadCount()
+    FeedbackService.fetchUnreadCount()
       .then((unread) => { if (current) setUnreadBugs(unread); })
-      .catch((error) => console.error('Failed to load unread bug count:', error));
+      .catch((error) => console.error('Failed to load unread feedback count:', error));
 
     return () => { current = false; };
   }, [isAuthenticated, bugCountNonce]);
@@ -1479,10 +1479,10 @@ const MainMenu = ({ onStartGame, onLoadSaveGame, onReplayIntro, introActive = fa
             <button
               className="p-3 bg-secondary text-secondary-foreground rounded-full shadow-lg hover:bg-secondary/80 transition-colors"
               onClick={() => setShowBugReport(true)}
-              title="Report a Bug"
-              aria-label="Report a Bug"
+              title="Send Feedback"
+              aria-label="Send Feedback"
             >
-              <Bug className="h-6 w-6" />
+              <MessageSquarePlus className="h-6 w-6" />
             </button>
           )}
           {!isMobile && (isDesktop() ? <UpdateVersionControl /> : <WebVersionChangelog />)}
@@ -2026,7 +2026,7 @@ const MainMenu = ({ onStartGame, onLoadSaveGame, onReplayIntro, introActive = fa
       />
 
       {/* Admin Panel — user management and broadcasts; each tab owns its own fetching */}
-      <BugReportDialog
+      <FeedbackDialog
         open={showBugReport}
         onOpenChange={setShowBugReport}
         onFiled={() => setBugCountNonce((n) => n + 1)}

@@ -1,13 +1,25 @@
-import { render, screen, fireEvent, cleanup, waitFor } from '@testing-library/react';
+import { render, screen, fireEvent, cleanup, waitFor, act } from '@testing-library/react';
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { ManageUsersTab } from './ManageUsersTab';
 import MessageService from '@/services/MessageService';
+import type { SentMessage } from '@/types';
 
 vi.mock('react-toastify', () => ({ toast: { error: vi.fn(), success: vi.fn(), info: vi.fn() } }));
 
 // The composer and sent list have their own coverage; stubbing them keeps this file about the table.
-vi.mock('./MessageComposerDialog', () => ({ MessageComposerDialog: () => null }));
-vi.mock('./SentMessagesDialog', () => ({ SentMessagesDialog: () => null }));
+// The stubs record their props, which is how the wiring between them is asserted — an editable message
+// only reaches the composer if the history dialog was handed an `onEdit` to call.
+const dialogProps = vi.hoisted(() => ({
+  history: null as Record<string, unknown> | null,
+  composer: null as Record<string, unknown> | null,
+}));
+
+vi.mock('./MessageComposerDialog', () => ({
+  MessageComposerDialog: (props: Record<string, unknown>) => { dialogProps.composer = props; return null; },
+}));
+vi.mock('./SentMessagesDialog', () => ({
+  SentMessagesDialog: (props: Record<string, unknown>) => { dialogProps.history = props; return null; },
+}));
 
 vi.mock('@/services/AuthService', () => ({
   default: { token: 'test-token', getCurrentUser: () => ({ username: 'root-admin' }) },
@@ -55,6 +67,8 @@ const stubFetch = (rows: Record<string, unknown>[]) =>
 const lastQuery = () => new URLSearchParams(userQueries[userQueries.length - 1].split('?')[1]);
 
 beforeEach(() => {
+  dialogProps.history = null;
+  dialogProps.composer = null;
   userQueries = [];
   vi.spyOn(console, 'error').mockImplementation(() => {});
 });
@@ -486,5 +500,51 @@ describe('selection', () => {
     fireEvent.click(screen.getByLabelText('Select alice'));
 
     await waitFor(() => expect(screen.getByRole('button', { name: /Message Selected \(1\)/ })).toBeTruthy());
+  });
+});
+
+describe('editing a sent message', () => {
+  const openHistory = async () => {
+    render(<ManageUsersTab active />);
+    await screen.findByText('alice');
+    return dialogProps.history as { onEdit?: (m: SentMessage) => void };
+  };
+
+  const sent = (over: Partial<SentMessage> = {}): SentMessage => ({
+    id: 'msg1',
+    subject: 'A notice',
+    body: 'The body.',
+    severity: 'info',
+    senderAs: 'team',
+    senderName: null,
+    broadcast: false,
+    scope: 'existing',
+    createdAt: '2026-07-30 12:00:00',
+    editedAt: null,
+    recalledAt: null,
+    recipient: { id: 'u1', username: 'alice', readAt: null, dismissedAt: null },
+    readCount: null,
+    eligibleCount: null,
+    ...over,
+  });
+
+  it('hands the history list a way to open the editor', async () => {
+    // Without this the Edit button never renders, and a direct message can only be recalled and resent.
+    stubFetch([userRow({ username: 'alice' })]);
+
+    expect(typeof (await openHistory()).onEdit).toBe('function');
+  });
+
+  it('opens the composer on the message, addressed to whoever got it', async () => {
+    stubFetch([userRow({ username: 'alice' })]);
+    const history = await openHistory();
+
+    const message = sent();
+    act(() => history.onEdit!(message));
+
+    expect(dialogProps.composer).toMatchObject({
+      editing: message,
+      target: { broadcast: false, recipients: [{ id: 'u1', username: 'alice' }] },
+    });
   });
 });

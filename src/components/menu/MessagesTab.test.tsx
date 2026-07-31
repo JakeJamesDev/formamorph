@@ -232,3 +232,55 @@ describe('edited messages', () => {
     expect(screen.queryByText(/Edited/)).toBeNull();
   });
 });
+
+describe('a truncated inbox', () => {
+  /** An inbox holding more than this page carries. */
+  const stubTruncated = (messages: InboxMessage[], total: number) =>
+    vi.spyOn(MessageService, 'fetchInbox').mockResolvedValue({
+      messages,
+      total,
+      unread: messages.filter((m) => !m.readAt).length,
+    });
+
+  it('says how much of it is on screen', async () => {
+    // The fetch is capped; without this the oldest messages simply do not exist as far as the reader knows.
+    stubTruncated([message()], 63);
+
+    render(<MessagesTab active />);
+
+    expect(await screen.findByText(/Showing 1 of 63/)).toBeTruthy();
+  });
+
+  it('says nothing when everything fits', async () => {
+    stubInbox([message()]);
+
+    render(<MessagesTab active />);
+    await screen.findByText('A notice');
+
+    expect(screen.queryByText(/Showing/)).toBeNull();
+  });
+
+  it('pulls the next message in when one is dismissed', async () => {
+    // Otherwise the list says "showing 1 of 63" and then shrinks to nothing.
+    const fetchInbox = stubTruncated([message()], 63);
+    vi.spyOn(MessageService, 'dismiss').mockResolvedValue(undefined);
+    fetchInbox.mockResolvedValueOnce({ messages: [message()], total: 63, unread: 1 })
+      .mockResolvedValueOnce({ messages: [message({ id: 'm2', subject: 'An older notice' })], total: 62, unread: 1 });
+
+    render(<MessagesTab active />);
+    fireEvent.click(await screen.findByRole('button', { name: /Dismiss A notice/ }));
+
+    expect(await screen.findByText('An older notice')).toBeTruthy();
+  });
+
+  it('does not refetch when the whole inbox is already listed', async () => {
+    const fetchInbox = stubInbox([message(), message({ id: 'm2', subject: 'Another' })]);
+    vi.spyOn(MessageService, 'dismiss').mockResolvedValue(undefined);
+
+    render(<MessagesTab active />);
+    fireEvent.click(await screen.findByRole('button', { name: /Dismiss A notice/ }));
+
+    await waitFor(() => expect(screen.queryByText('A notice')).toBeNull());
+    expect(fetchInbox).toHaveBeenCalledTimes(1);
+  });
+});
