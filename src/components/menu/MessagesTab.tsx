@@ -22,6 +22,8 @@ export function MessagesTab({ active, onUnreadChange }: MessagesTabProps) {
   const [isLoading, setIsLoading] = useState(false);
   const [loadError, setLoadError] = useState('');
   const [expandedId, setExpandedId] = useState<string | null>(null);
+  // Everything visible on the server, which is more than the page holds once the limit bites.
+  const [total, setTotal] = useState(0);
 
   const publishUnread = useCallback((list: InboxMessage[]) => {
     onUnreadChange?.(list.filter((message) => !message.readAt).length);
@@ -38,6 +40,7 @@ export function MessagesTab({ active, onUnreadChange }: MessagesTabProps) {
       .then((result) => {
         if (!current) return;
         setMessages(result.messages);
+        setTotal(result.total);
         onUnreadChange?.(result.unread);
       })
       .catch((error: unknown) => {
@@ -77,11 +80,23 @@ export function MessagesTab({ active, onUnreadChange }: MessagesTabProps) {
   const dismiss = async (message: InboxMessage) => {
     try {
       await MessageService.dismiss(message.id);
+
+      // Truncated: dismissing frees a slot, so pull the next one in rather than leaving a list that
+      // says "showing 50 of 63" and shrinks to 49.
+      if (total > messages.length) {
+        const result = await MessageService.fetchInbox();
+        setMessages(result.messages);
+        setTotal(result.total);
+        onUnreadChange?.(result.unread);
+        return;
+      }
+
       setMessages((prev) => {
         const next = prev.filter((m) => m.id !== message.id);
         publishUnread(next);
         return next;
       });
+      setTotal((prev) => Math.max(prev - 1, 0));
     } catch (error) {
       toast.error((error as Error).message || 'Failed to dismiss the message');
     }
@@ -116,6 +131,13 @@ export function MessagesTab({ active, onUnreadChange }: MessagesTabProps) {
 
   return (
     <div className="space-y-2 py-4">
+      {/* The fetch is capped, so say so rather than letting the oldest quietly not exist. */}
+      {total > messages.length && (
+        <p className="pb-1 text-xs text-muted-foreground">
+          Showing {messages.length} of {total}. Dismiss one and the next appears.
+        </p>
+      )}
+
       {messages.map((message) => {
         const style = MESSAGE_SEVERITY_STYLES[message.severity];
         const Icon = style.icon;

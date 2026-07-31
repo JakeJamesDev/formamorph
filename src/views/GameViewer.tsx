@@ -35,7 +35,7 @@ import { useReadmeVisibility } from "@/lib/useReadmeVisibility";
 import { EntityModal } from "../components/modals/EntityModal";
 import { LocationModal } from "../components/modals/LocationModal";
 import { SettingsModal } from "../components/modals/SettingsModal";
-import { BugReportDialog } from "@/components/menu/BugReportDialog";
+import { FeedbackDialog } from "@/components/menu/FeedbackDialog";
 import { COMMUNITY_ENABLED } from "@/lib/featureFlags";
 import AuthService from "@/services/AuthService";
 import { useDevRoute } from "../lib/devRouter";
@@ -4590,7 +4590,7 @@ ${playerNotes || NONE_PLACEHOLDER}
         onLoadedChange={setTtsLoaded}
       />
 
-      <BugReportDialog open={showBugReport} onOpenChange={setShowBugReport} />
+      <FeedbackDialog open={showBugReport} onOpenChange={setShowBugReport} />
 
       <SettingsModal
         isOpen={isSettingsOpen}
