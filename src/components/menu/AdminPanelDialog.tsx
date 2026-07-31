@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { Shield } from "lucide-react";
 import {
   Dialog,
   DialogContent,
@@ -10,6 +11,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { ManageUsersTab } from "@/components/menu/ManageUsersTab";
 import { BroadcastsTab } from "@/components/menu/BroadcastsTab";
 import { PoliciesTab } from "@/components/menu/PoliciesTab";
+import { BugsTab } from "@/components/menu/BugsTab";
 import { useResetOnOpen } from "@/lib/useResetOnOpen";
 import { type AdminPanelTab } from "@/components/menu/adminPanelTabs";
 import { type PoliciesTab as PoliciesSubTab } from "@/components/menu/policiesTabs";
@@ -35,7 +37,7 @@ export function AdminPanelDialog({ open, onOpenChange, initialTab = 'users', ini
           Radix's opt-out, otherwise it warns about the missing one. */}
       <DialogContent aria-describedby={undefined} className="sm:max-w-[900px] h-[90dvh] flex flex-col overflow-hidden">
         <DialogHeader className="flex-shrink-0">
-          <DialogTitle>Admin Panel</DialogTitle>
+          <DialogTitle className="flex items-center gap-2"><Shield className="h-4 w-4" /> Admin Panel</DialogTitle>
         </DialogHeader>
 
         {/* `min-w-0`: DialogContent is a grid, and a grid item's `min-width: auto` lets wide content
@@ -45,10 +47,11 @@ export function AdminPanelDialog({ open, onOpenChange, initialTab = 'users', ini
           onValueChange={(value) => setTab(value as AdminPanelTab)}
           className="w-full min-w-0 flex flex-col flex-1 min-h-0"
         >
-          <TabsList className="grid w-full grid-cols-3 flex-shrink-0">
+          <TabsList className="grid w-full grid-cols-4 flex-shrink-0">
             <TabsTrigger value="users">Users</TabsTrigger>
             <TabsTrigger value="broadcasts">Broadcasts</TabsTrigger>
             <TabsTrigger value="policies">Policies</TabsTrigger>
+            <TabsTrigger value="bugs">Bugs</TabsTrigger>
           </TabsList>
 
           {/* Only the panel body scrolls; the title and tab strip stay put. */}
@@ -68,6 +71,12 @@ export function AdminPanelDialog({ open, onOpenChange, initialTab = 'users', ini
           <TabsContent value="policies" className="flex-1 min-h-0 data-[state=active]:flex flex-col">
             <ScrollArea className="flex-1 min-h-0 px-1">
               <PoliciesTab active={open && tab === 'policies'} initialTab={initialPoliciesTab} />
+            </ScrollArea>
+          </TabsContent>
+
+          <TabsContent value="bugs" className="flex-1 min-h-0 data-[state=active]:flex flex-col">
+            <ScrollArea className="flex-1 min-h-0 px-1">
+              <BugsTab active={open && tab === 'bugs'} />
             </ScrollArea>
           </TabsContent>
         </Tabs>

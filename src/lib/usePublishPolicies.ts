@@ -1,25 +1,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import PolicyService from '@/services/PolicyService';
+import { isUploadTermsDeclined, setUploadTermsDeclined } from '@/lib/uploadTermsDeclined';
 import type { PolicyState } from '@/types';
-
-/** Declining is remembered locally as well as on the server, so the short blocked notice survives a
- *  reload even if the server call didn't land. */
-const DECLINED_KEY = 'FORMAMORPH_uploadTermsDeclined';
-
-const readDeclined = (): boolean => {
-  try {
-    return localStorage.getItem(DECLINED_KEY) === '1';
-  } catch {
-    return false; // private mode — just don't remember it
-  }
-};
-
-const writeDeclined = (declined: boolean) => {
-  try {
-    if (declined) localStorage.setItem(DECLINED_KEY, '1');
-    else localStorage.removeItem(DECLINED_KEY);
-  } catch { /* private mode — the dialog simply reappears next time */ }
-};
 
 /**
  * Policy state for the publish flow: whether a gate applies, whether this user has cleared it, and the
@@ -34,7 +16,7 @@ const writeDeclined = (declined: boolean) => {
  */
 export function usePublishPolicies(open: boolean, isAuthenticated: boolean) {
   const [policies, setPolicies] = useState<PolicyState | null>(null);
-  const [declined, setDeclined] = useState(readDeclined);
+  const [declined, setDeclined] = useState(isUploadTermsDeclined);
 
   const refresh = useCallback(async () => {
     if (!isAuthenticated) {
@@ -63,13 +45,13 @@ export function usePublishPolicies(open: boolean, isAuthenticated: boolean) {
   const accept = useCallback(async () => {
     await PolicyService.acceptUploadGate();
     setDeclined(false);
-    writeDeclined(false);
+    setUploadTermsDeclined(false);
     setPolicies((prev) => (prev?.uploadGate ? { ...prev, uploadGate: { ...prev.uploadGate, accepted: true } } : prev));
   }, []);
 
   const decline = useCallback(async () => {
     setDeclined(true);
-    writeDeclined(true);
+    setUploadTermsDeclined(true);
 
     // The refusal is only a record for the admin table — an unanswered gate blocks just the same — so a
     // failure here must not stop the local state from taking effect.
@@ -83,7 +65,7 @@ export function usePublishPolicies(open: boolean, isAuthenticated: boolean) {
   /** Clear the local refusal so the gate is offered again rather than the blocked notice. */
   const reopen = useCallback(() => {
     setDeclined(false);
-    writeDeclined(false);
+    setUploadTermsDeclined(false);
   }, []);
 
   return {

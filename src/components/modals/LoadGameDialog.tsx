@@ -3,7 +3,7 @@ import { downloadBlob } from "@/lib/downloadBlob";
 import React from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
-import { Download, Import, Loader2, X, GripVertical, Folder, ChevronLeft } from "lucide-react";
+import { Download, Import, Loader2, X, GripVertical, Folder, FolderOpen, ChevronLeft } from "lucide-react";
 import {
   DndContext, closestCenter, PointerSensor, KeyboardSensor, useSensor, useSensors, type DragEndEvent,
 } from '@dnd-kit/core';
@@ -206,13 +206,15 @@ function SortableFolderRow({ folder, onOpen }: { folder: SaveFolder; onOpen: (f:
  * - `current` omitted (main menu — no world loaded): root lists every world with saves; loading an installed
  *   world's save cold-starts it (`onLoad` with its worldId, no confirm); an uninstalled world is blocked.
  */
-export function LoadGameDialog({ open, onOpenChange, current, onLoad, title, onPickSave, topSlot }: {
+export function LoadGameDialog({ open, onOpenChange, current, onLoad, title, icon, onPickSave, topSlot }: {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   current?: { id: string; name: string };
   onLoad: (saveId: string, targetWorldId?: string) => Promise<unknown> | void;
   /** Dialog title; defaults to "Load Game". */
   title?: string;
+  /** Icon beside the title, matching the menu item that opened this; defaults to the Load Game folder. */
+  icon?: React.ReactNode;
   /** Pick mode (Save dialog): clicking a save row calls this with the row instead of loading it, and the
    *  cross-world/blocked-load confirms never fire. */
   onPickSave?: (row: SaveRow) => void;
@@ -467,9 +469,11 @@ export function LoadGameDialog({ open, onOpenChange, current, onLoad, title, onP
       />
 
       <Dialog open={open} onOpenChange={onOpenChange}>
-        <DialogContent className="sm:max-w-[425px] max-h-[90dvh] flex flex-col">
+        <DialogContent className="sm:max-w-[560px] max-h-[90dvh] flex flex-col">
           <DialogHeader className="flex-shrink-0">
-            <DialogTitle>{title ?? 'Load Game'}</DialogTitle>
+            <DialogTitle className="flex items-center gap-2">
+              {icon ?? <FolderOpen className="h-4 w-4" />} {title ?? 'Load Game'}
+            </DialogTitle>
           </DialogHeader>
           <div className="flex flex-col py-4">
             {topSlot && <div className="mb-3">{topSlot}</div>}

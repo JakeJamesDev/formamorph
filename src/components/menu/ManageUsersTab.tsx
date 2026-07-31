@@ -37,7 +37,6 @@ const termsResponseOf = (user: WorldRecord): TermsResponse =>
 /** Sortable columns, in table order. Actions holds controls rather than data, so it isn't one. */
 const SORT_COLUMNS = [
   { key: 'username', label: 'Username' },
-  { key: 'email', label: 'Email' },
   { key: 'type', label: 'Type' },
   { key: 'status', label: 'Status' },
   { key: 'terms', label: 'Terms' },
@@ -375,9 +374,6 @@ export function ManageUsersTab({ active }: ManageUsersTabProps) {
                         <Skeleton className="h-4 w-24" />
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap">
-                        <Skeleton className="h-4 w-32" />
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap">
                         <Skeleton className="h-4 w-16" />
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap">
@@ -393,7 +389,7 @@ export function ManageUsersTab({ active }: ManageUsersTabProps) {
                   ))
                 ) : users.length === 0 ? (
                   <tr>
-                    <td colSpan={7} className="px-6 py-4 text-center text-muted-foreground">
+                    <td colSpan={6} className="px-6 py-4 text-center text-muted-foreground">
                       No users found.
                     </td>
                   </tr>
@@ -422,11 +418,6 @@ export function ManageUsersTab({ active }: ManageUsersTabProps) {
                         <td className="px-6 py-4 whitespace-nowrap">
                           <div className="text-sm font-medium text-foreground">
                             {user.username}
-                          </div>
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap">
-                          <div className="text-sm text-muted-foreground">
-                            {user.email || "N/A"}
                           </div>
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap">

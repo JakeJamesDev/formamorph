@@ -35,6 +35,30 @@ afterEach(() => {
   vi.restoreAllMocks();
 });
 
+describe('the body field', () => {
+  it('is the markdown editor, not a bare textarea', async () => {
+    // Readers see this rendered, so it is authored the way the world editor's prose is.
+    stubPolicies();
+
+    render(<PoliciesTab active />);
+    await screen.findByRole('heading', { name: 'Upload Gate' });
+
+    expect(screen.getByRole('tab', { name: 'Preview' })).toBeTruthy();
+    expect(screen.getByLabelText('Bold')).toBeTruthy();
+    expect(screen.getByLabelText('Upload Gate body')).toBeTruthy();
+  });
+
+  it('gives the tag notice its own editor too', async () => {
+    stubPolicies();
+
+    render(<PoliciesTab active />);
+    await screen.findByRole('heading', { name: 'Upload Gate' });
+    selectTab('Tag Notice');
+
+    expect(await screen.findByLabelText('Tag Notice body')).toBeTruthy();
+  });
+});
+
 describe('the policy sub-tabs', () => {
   it('opens on the upload gate and shows only its editor', async () => {
     stubPolicies();

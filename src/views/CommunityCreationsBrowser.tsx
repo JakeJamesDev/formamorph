@@ -7,7 +7,7 @@ import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
 import {
   Search, RotateCcw, ArrowDownWideNarrow, ArrowUpNarrowWide, ArrowLeft, X, SlidersHorizontal, ChevronDown,
-  Earth, User, BookOpen,
+  Earth, User, BookOpen, Globe,
 } from "lucide-react";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { KIND_LABELS, kindOf, type CatalogKind } from "@/lib/catalogKinds";
@@ -29,6 +29,8 @@ import DictionaryStorageService from "@/services/DictionaryStorageService";
 import type { Entity, Dictionary, EntityMetadata, DictionaryMetadata } from "@/types";
 import { useClosingSnapshot } from "@/lib/useClosingSnapshot";
 import { useCommunityBrowserFilters } from "@/lib/useCommunityBrowserFilters";
+import { MessageComposerDialog } from "@/components/menu/MessageComposerDialog";
+import { takedownTargetFor, takedownTemplate, type TakedownTarget } from "@/lib/takedownNotice";
 import {
   Dialog,
   DialogContent,
@@ -80,6 +82,10 @@ const CommunityCreationsBrowser = ({
   // Catalog fetch/cache/sync (loads on open, refreshes in the background).
   const { remoteWorlds, setRemoteWorlds, isLoadingRemoteWorlds, isSyncingCatalog, loadCatalog } = useCatalogSync(open);
   const [remoteWorldToDelete, setRemoteWorldToDelete] = useState<string | null>(null);
+  // Set once someone else's item has been deleted, offering to tell its author why. The takedown itself
+  // has already landed — declining leaves it removed and simply unexplained, as suspending does.
+  const [takedown, setTakedown] = useState<TakedownTarget | null>(null);
+  const [notifyAuthor, setNotifyAuthor] = useState<TakedownTarget | null>(null);
   const [selectedRemoteWorld, setSelectedRemoteWorld] = useState<WorldRecord | null>(null);
   const [showRemoteWorldDetailsModal, setShowRemoteWorldDetailsModal] = useState(false);
   // Offer to downscale oversized images right after a world is downloaded/overwritten.
@@ -182,7 +188,8 @@ const CommunityCreationsBrowser = ({
 
   const handleRemoteWorldDelete = async (worldId: string) => {
     // Every kind is served by the /worlds route; only the wording differs, so name it from the record.
-    const noun = KIND_LABELS[kindOf(remoteWorlds.find((w) => (w._id || w.id) === worldId) ?? {})].one;
+    const record = remoteWorlds.find((w) => (w._id || w.id) === worldId) ?? {};
+    const noun = KIND_LABELS[kindOf(record)].one;
     try {
       const response = await fetch(`${WorldStorageService.API_URL}/worlds/${worldId}`, {
         method: 'DELETE',
@@ -199,6 +206,9 @@ const CommunityCreationsBrowser = ({
       setRemoteWorlds(prev => prev.filter(w => (w._id || w.id) !== worldId));
       setRemoteWorldToDelete(null);
       toast.success(`${noun} deleted successfully`);
+
+      // Someone else's work: offer to tell them why it went. Their own needs no explanation.
+      setTakedown(takedownTargetFor(record, currentUser?.id));
     } catch (error) {
       console.error('Error deleting remote item:', error);
       toast.error((error as Error).message || `Failed to delete ${noun.toLowerCase()}`);
@@ -387,7 +397,7 @@ const CommunityCreationsBrowser = ({
                 <Button variant="ghost" size="icon" className="shrink-0" onClick={() => onOpenChange(false)} aria-label="Back">
                   <ArrowLeft className="h-5 w-5" />
                 </Button>
-                <DialogTitle className="whitespace-nowrap mr-2">Community Creations</DialogTitle>
+                <DialogTitle className="flex items-center gap-2 whitespace-nowrap mr-2"><Globe className="h-4 w-4 shrink-0" /> Community Creations</DialogTitle>
                 {kindTabs}
                 {searchControl}
                 {refreshControl}
@@ -577,6 +587,33 @@ const CommunityCreationsBrowser = ({
         description={`Are you sure you want to delete this published ${KIND_LABELS[browseKind].one.toLowerCase()}? This will remove it from the server and it will no longer be available to other users. This action cannot be undone.`}
         onConfirm={() => handleRemoteWorldDelete(remoteWorldToDelete!)}
       />
+
+      {/* The takedown has already landed; the notice is an optional follow-up so the author learns why.
+          Declining leaves the item removed and simply unexplained, exactly as suspending does. */}
+      <ConfirmDialog
+        open={takedown !== null}
+        onOpenChange={(o) => { if (!o) setTakedown(null); }}
+        title="Send a takedown notice?"
+        description={takedown
+          ? `${takedown.author.username}'s ${KIND_LABELS[takedown.kind].one.toLowerCase()} "${takedown.name}" has been removed. Send them a message explaining why?`
+          : ''}
+        onConfirm={() => { setNotifyAuthor(takedown); setTakedown(null); }}
+        onCancel={() => setTakedown(null)}
+      />
+
+      {notifyAuthor && (
+        <MessageComposerDialog
+          open
+          onOpenChange={(o) => { if (!o) setNotifyAuthor(null); }}
+          target={{ broadcast: false, recipients: [notifyAuthor.author] }}
+          adminUsername={String(currentUser?.username || 'Admin')}
+          initialSubject={takedownTemplate(notifyAuthor).subject}
+          initialBody={takedownTemplate(notifyAuthor).body}
+          // A one-off moderation event, not a standing rule: they read it and clear it.
+          initialSeverity="warning"
+          initialScope="existing"
+        />
+      )}
     </>
   );
 };

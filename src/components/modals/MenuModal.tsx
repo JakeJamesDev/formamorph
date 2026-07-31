@@ -4,7 +4,7 @@ import { Popover, PopoverTrigger, PopoverContent } from "@/components/ui/popover
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Checkbox } from "@/components/ui/checkbox";
-import { Menu, Save } from "lucide-react";
+import { Menu, Save, FolderOpen, SquarePen, Braces, Settings, Bug, DoorOpen } from "lucide-react";
 import { ConfirmDialog } from '../ConfirmDialog';
 import { getAllSaveRecords } from './dbUtils';
 import { useDevRoute } from '../../lib/devRouter';
@@ -15,8 +15,10 @@ import { sceneImageWeight } from '@/lib/sceneImages';
 import { formatBytes } from '@/lib/imageOptim';
 import type { WorldOverview, SaveRecord } from "@/types";
 
-export const MenuModal = ({ onSettingsClick, onSave, onLoad, worldOverview, worldId, onExitToMenu, onEditWorld, onShowAiContext }: {
+export const MenuModal = ({ onSettingsClick, onReportBug, onSave, onLoad, worldOverview, worldId, onExitToMenu, onEditWorld, onShowAiContext }: {
   onSettingsClick: () => void;
+  /** Opens the bug report form. Omitted when the community server is off or nobody is signed in. */
+  onReportBug?: () => void;
   onSave: (saveName: string, opts?: { overwriteId?: string; includeSceneImages?: boolean }) => Promise<unknown> | void;
   /** `worldId` set ⇒ the save belongs to a different (installed) world; the loader switches to it first. */
   onLoad: (saveId: string, worldId?: string) => Promise<unknown> | void;
@@ -98,14 +100,38 @@ export const MenuModal = ({ onSettingsClick, onSave, onLoad, worldOverview, worl
             <Menu className="h-5 w-5" />
           </Button>
         </PopoverTrigger>
-        <PopoverContent align="end" className="w-48 p-1">
+        {/* Wide enough for `Exit to Main Menu` plus its icon with room to spare — at w-48 it had 14px. */}
+        <PopoverContent align="end" className="w-60 p-1">
           <div className="flex flex-col">
-            <Button variant="ghost" className="w-full justify-start" onClick={() => { setMenuOpen(false); setShowSaveDialog(true); }}>Save Game</Button>
-            <Button variant="ghost" className="w-full justify-start" onClick={() => { setMenuOpen(false); setShowLoadDialog(true); }}>Load Game</Button>
-            {onEditWorld && <Button variant="ghost" className="w-full justify-start" onClick={() => { setMenuOpen(false); onEditWorld(); }}>Edit World</Button>}
-            {onShowAiContext && <Button variant="ghost" className="w-full justify-start" onClick={() => { setMenuOpen(false); onShowAiContext(); }}>AI Context</Button>}
-            <Button variant="ghost" className="w-full justify-start" onClick={() => { setMenuOpen(false); onSettingsClick(); }}>Settings</Button>
-            <Button variant="ghost" className="w-full justify-start" onClick={() => { setMenuOpen(false); setShowExitConfirm(true); }}>Exit to Main Menu</Button>
+            <Button variant="ghost" className="w-full justify-start" onClick={() => { setMenuOpen(false); setShowSaveDialog(true); }}>
+              <Save className="mr-2 h-4 w-4" /> Save Game
+            </Button>
+            <Button variant="ghost" className="w-full justify-start" onClick={() => { setMenuOpen(false); setShowLoadDialog(true); }}>
+              <FolderOpen className="mr-2 h-4 w-4" /> Load Game
+            </Button>
+            {onEditWorld && (
+              <Button variant="ghost" className="w-full justify-start" onClick={() => { setMenuOpen(false); onEditWorld(); }}>
+                {/* Matches the header's Edit World button, which this folds into on mobile. */}
+                <SquarePen className="mr-2 h-4 w-4" /> Edit World
+              </Button>
+            )}
+            {onShowAiContext && (
+              <Button variant="ghost" className="w-full justify-start" onClick={() => { setMenuOpen(false); onShowAiContext(); }}>
+                <Braces className="mr-2 h-4 w-4" /> AI Context
+              </Button>
+            )}
+            <Button variant="ghost" className="w-full justify-start" onClick={() => { setMenuOpen(false); onSettingsClick(); }}>
+              <Settings className="mr-2 h-4 w-4" /> Settings
+            </Button>
+            {/* Filed from here so a bug can be reported where it happened, rather than backing out first. */}
+            {onReportBug && (
+              <Button variant="ghost" className="w-full justify-start" onClick={() => { setMenuOpen(false); onReportBug(); }}>
+                <Bug className="mr-2 h-4 w-4" /> Report a Bug
+              </Button>
+            )}
+            <Button variant="ghost" className="w-full justify-start" onClick={() => { setMenuOpen(false); setShowExitConfirm(true); }}>
+              <DoorOpen className="mr-2 h-4 w-4" /> Exit to Main Menu
+            </Button>
           </div>
         </PopoverContent>
       </Popover>
@@ -114,6 +140,7 @@ export const MenuModal = ({ onSettingsClick, onSave, onLoad, worldOverview, worl
         open={showExitConfirm}
         onOpenChange={setShowExitConfirm}
         title="Exit to Main Menu"
+        icon={<DoorOpen className="h-4 w-4" />}
         description="Are you sure you want to exit to the main menu? Any unsaved progress will be lost."
         onConfirm={onExitToMenu}
       />
@@ -126,6 +153,7 @@ export const MenuModal = ({ onSettingsClick, onSave, onLoad, worldOverview, worl
         current={current}
         onLoad={() => {}}
         title="Save Game"
+        icon={<Save className="h-4 w-4" />}
         onPickSave={(row) => setSaveName(row.name)}
         topSlot={
           <div className="flex flex-col gap-2">

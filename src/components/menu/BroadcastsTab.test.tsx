@@ -6,6 +6,14 @@ import type { SentMessage } from '@/types';
 
 vi.mock('react-toastify', () => ({ toast: { error: vi.fn(), success: vi.fn(), info: vi.fn() } }));
 
+// jsdom can't drive a real Lexical selection, and these cover the composer's own logic rather than the
+// editor's. The stub keeps the body a plain textarea so a value can be set; PromptField has its own tests.
+vi.mock('@/components/prompt/PromptField', () => ({
+  default: ({ value, onChange, ariaLabel }: { value: string; onChange: (v: string) => void; ariaLabel?: string }) => (
+    <textarea id="messageBody" aria-label={ariaLabel} value={value} onChange={(e) => onChange(e.target.value)} />
+  ),
+}));
+
 vi.mock('@/components/game/MarkdownRenderer', () => ({
   MarkdownRenderer: ({ text }: { text: string }) => <div data-testid="markdown">{text}</div>,
 }));
