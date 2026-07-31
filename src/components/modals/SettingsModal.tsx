@@ -196,9 +196,9 @@ function SamplerControl({ id, label, hint, custom, value, defaultValue, min, max
 
 /** A prompt's Native Reasoning override: `Global | None | <levels>`, shown only for narration/choices under
  *  Native mode. `Global` follows the endpoint-wide level; the rest override this prompt alone. */
-function PromptReasoningField({ value, tabs, onChange, disabled }: {
+function PromptReasoningField({ value, options, onChange, disabled }: {
   value: PromptReasoning;
-  tabs: { value: PromptReasoning; label: string }[];
+  options: { value: PromptReasoning; label: string }[];
   onChange: (v: PromptReasoning) => void;
   disabled?: boolean;
 }) {
@@ -212,9 +212,9 @@ function PromptReasoningField({ value, tabs, onChange, disabled }: {
         // has a level (Global included), so an empty result is ignored rather than stored.
         onValueChange={(v) => { if (v) onChange(v as PromptReasoning); }}
         className="grid w-full"
-        style={{ gridTemplateColumns: `repeat(${tabs.length}, minmax(0, 1fr))` }}
+        style={{ gridTemplateColumns: `repeat(${options.length}, minmax(0, 1fr))` }}
       >
-        {tabs.map((t) => (
+        {options.map((t) => (
           <ToggleGroupItem key={t.value} value={t.value} disabled={disabled}>{t.label}</ToggleGroupItem>
         ))}
       </ToggleGroup>
@@ -261,7 +261,7 @@ function PromptReasoningBudgetField({ value, onChange, disabled }: {
  *  `disabled` locks every control when the active prompt preset is built-in (Default/Simple). */
 function PromptOptionsPanel({ verbatim, reasoning, reasoningBudget, samplers, disabled }: {
   verbatim: { value: number; set: (n: number) => void } | null;
-  reasoning: { value: PromptReasoning; tabs: { value: PromptReasoning; label: string }[]; set: (v: PromptReasoning) => void } | null;
+  reasoning: { value: PromptReasoning; options: { value: PromptReasoning; label: string }[]; set: (v: PromptReasoning) => void } | null;
   reasoningBudget: { value: number; set: (v: number) => void } | null;
   samplers: SamplerControlProps[];
   disabled: boolean;
@@ -270,7 +270,7 @@ function PromptOptionsPanel({ verbatim, reasoning, reasoningBudget, samplers, di
     // px-3 keeps the slider thumb off the scroll frame's edges (the thumb overflows the track ends at 0/max).
     <div className="space-y-5 px-3 py-3">
       {verbatim && <VerbatimTurnsField id="promptVerbatim" value={verbatim.value} onChange={verbatim.set} disabled={disabled} />}
-      {reasoning && <PromptReasoningField value={reasoning.value} tabs={reasoning.tabs} onChange={reasoning.set} disabled={disabled} />}
+      {reasoning && <PromptReasoningField value={reasoning.value} options={reasoning.options} onChange={reasoning.set} disabled={disabled} />}
       {reasoningBudget && <PromptReasoningBudgetField value={reasoningBudget.value} onChange={reasoningBudget.set} disabled={disabled} />}
       {samplers.map((s) => <SamplerControl key={s.id} {...s} disabled={disabled} />)}
     </div>
@@ -828,7 +828,7 @@ export const SettingsModal = ({ isOpen, onOpenChange, previewValues, initialTab,
   const reasoningControl = reasoningApplicable && !localModelActive && !reasoningUnsupported
     ? {
         value: promptReasoning[activeKind] ?? defaultPromptReasoning(activeKind),
-        tabs: reasoningPromptTabs(supportedReasoningEfforts),
+        options: reasoningPromptTabs(supportedReasoningEfforts),
         set: (v: PromptReasoning) => setPromptReasoning(activeKind, v),
       }
     : null;

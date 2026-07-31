@@ -59,6 +59,12 @@ export function SentMessageList({ audience, userId, refreshNonce = 0, emptyLabel
 
   const totalPages = Math.max(Math.ceil(total / PAGE_SIZE), 1);
 
+  // Nothing on screen to dim, so the skeleton is the only thing to show.
+  const isFirstLoad = isLoading && messages.length === 0;
+  // A reload of messages already on screen: dim them in place instead of swapping in the skeleton,
+  // which is a fixed three rows and collapses a full page of twenty on every page change.
+  const isRefreshing = isLoading && messages.length > 0;
+
   const load = useCallback(async () => {
     setIsLoading(true);
 
@@ -93,8 +99,11 @@ export function SentMessageList({ audience, userId, refreshNonce = 0, emptyLabel
 
   return (
     <>
-      <div className="space-y-2 min-w-0">
-        {isLoading ? (
+      <div
+        className={`space-y-2 min-w-0 transition-opacity${isRefreshing ? ' opacity-50 pointer-events-none' : ''}`}
+        aria-busy={isLoading}
+      >
+        {isFirstLoad ? (
           Array(3).fill(0).map((_, index) => <Skeleton key={index} className="h-16 w-full" />)
         ) : messages.length === 0 ? (
           <p className="py-8 text-center text-sm text-muted-foreground">{emptyLabel}</p>
@@ -185,8 +194,14 @@ export function SentMessageList({ audience, userId, refreshNonce = 0, emptyLabel
         )}
       </div>
 
-      {!isLoading && total > PAGE_SIZE && (
-        <div className="flex justify-center items-center gap-2 mt-4">
+      {/* Kept mounted through a reload and dimmed with the list — unmounting it took the whole row out
+          of the layout and put it back. */}
+      {total > PAGE_SIZE && (
+        <div
+          className={`flex justify-center items-center gap-2 mt-4 transition-opacity${
+            isRefreshing ? ' opacity-50 pointer-events-none' : ''
+          }`}
+        >
           <Button
             variant="outline"
             size="sm"
