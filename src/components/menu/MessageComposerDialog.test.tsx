@@ -5,6 +5,17 @@ import MessageService from '@/services/MessageService';
 
 vi.mock('react-toastify', () => ({ toast: { error: vi.fn(), success: vi.fn(), info: vi.fn() } }));
 
+// jsdom can't drive a real Lexical selection, and these cover the composer's own logic rather than the
+// editor's. The stub keeps the body a plain textarea so a value can be set; PromptField has its own tests.
+const fieldProps = vi.hoisted(() => ({ last: null as Record<string, unknown> | null }));
+
+vi.mock('@/components/prompt/PromptField', () => ({
+  default: (props: { value: string; onChange: (v: string) => void; ariaLabel?: string }) => {
+    fieldProps.last = props;
+    return <textarea id="messageBody" aria-label={props.ariaLabel} value={props.value} onChange={(e) => props.onChange(e.target.value)} />;
+  },
+}));
+
 const BROADCAST = { broadcast: true, recipients: [] };
 const DIRECT = { broadcast: false, recipients: [{ id: 'u1', username: 'alice' }] };
 
@@ -28,6 +39,25 @@ beforeEach(() => {
 afterEach(() => {
   cleanup();
   vi.restoreAllMocks();
+});
+
+describe('the message body field', () => {
+  it('is the markdown editor, named for a screen reader', () => {
+    // Readers see the message rendered, so it is authored the way the world editor's prose is. Lexical
+    // renders a div, so `ariaLabel` is what a label would otherwise have done.
+    render(<MessageComposerDialog open onOpenChange={() => {}} target={DIRECT} adminUsername="root-admin" />);
+
+    expect(fieldProps.last).toMatchObject({ markdown: true, ariaLabel: 'Message' });
+  });
+
+  it('holds the body to the length the server accepts', () => {
+    // PromptField has no maxLength of its own, so the cap the textarea used to enforce is applied here.
+    render(<MessageComposerDialog open onOpenChange={() => {}} target={DIRECT} adminUsername="root-admin" />);
+
+    setField('messageBody', 'x'.repeat(5000));
+
+    expect(String((fieldProps.last as { value: string }).value)).toHaveLength(4000);
+  });
 });
 
 describe('scope control', () => {

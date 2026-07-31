@@ -3,3 +3,4 @@ export * from './ai';
 export * from './gameplay';
 export * from './messages';
 export * from './policies';
+export * from './bugs';

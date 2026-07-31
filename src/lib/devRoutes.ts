@@ -36,10 +36,11 @@ export const DEV_MODAL_TABS = {
   worldEditor: ['overview', 'stats', 'entities', 'locations', 'traits', 'dictionary', 'placeholders'],
   // Community Creations browses one kind per tab; these are the server's kinds (see lib/catalogKinds).
   community: ['world', 'entity', 'dictionary'],
-  // The account dialog: admin messages, and the password/logout controls it has always held.
-  profile: ['messages', 'manage'],
+  // The account dialog: admin messages, the reader's own bug threads, and the contributor terms.
+  // Password and logout are header buttons rather than tabs, so neither is routable.
+  profile: ['messages', 'bugs', 'terms'],
   // The admin tools: user accounts, and broadcasts to everyone.
-  adminPanel: ['users', 'broadcasts', 'policies'],
+  adminPanel: ['users', 'broadcasts', 'policies', 'bugs'],
   // Admin Panel → Policies has a second level, one sub-tab per authored popup, reached with `subtab=…`.
   adminPanelPolicies: ['uploadGate', 'tagNotice'],
   // MainMenu's library card-type switcher. Not a modal: reached with `tab=…` and no `modal=…`, i.e.

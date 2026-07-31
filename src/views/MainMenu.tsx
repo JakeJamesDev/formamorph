@@ -12,7 +12,7 @@ import 'react-toastify/dist/ReactToastify.css';
 import { Button } from "@/components/ui/button";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import {ConfirmDialog} from "@/components/ConfirmDialog";
-import {FilePlus2, DoorOpen, Pencil, Github, AlertTriangle, Code, User, Shield, Import, Globe, LayoutGrid, GalleryThumbnails, Columns2, RectangleVertical, Menu, Earth, BookOpen, Upload, ChevronLast, MoreHorizontal, PersonStanding, type LucideIcon } from "lucide-react";
+import {FilePlus2, DoorOpen, Pencil, Github, AlertTriangle, Code, User, Shield, Import, Globe, LayoutGrid, GalleryThumbnails, Columns2, RectangleVertical, Menu, Earth, BookOpen, Upload, ChevronLast, MoreHorizontal, PersonStanding, Bug, FolderOpen, Archive, Settings, type LucideIcon } from "lucide-react";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { ImageZoomViewer } from "@/components/ImageZoomViewer";
 import { cn } from "@/lib/utils";
@@ -82,6 +82,8 @@ import { type ProfileTab } from "@/components/menu/profileTabs";
 import { type AdminPanelTab } from "@/components/menu/adminPanelTabs";
 import { type PoliciesTab as PoliciesSubTab } from "@/components/menu/policiesTabs";
 import MessageService from "@/services/MessageService";
+import BugService from "@/services/BugService";
+import { BugReportDialog } from "@/components/menu/BugReportDialog";
 import { AuthModals } from "@/components/menu/AuthModals";
 import { PublishModal } from "@/components/menu/PublishModal";
 import { worldPublishPayload, entityPublishPayload, dictionaryPublishPayload, type PublishPayload } from "@/lib/publishPayload";
@@ -345,6 +347,14 @@ const MainMenu = ({ onStartGame, onLoadSaveGame, onReplayIntro, introActive = fa
   // Admin "Manage Users" dialog: open state here; its list/paging/fetch live in the dialog component.
   const [showAdminPanel, setShowAdminPanel] = useState(false);
   const [unreadMessages, setUnreadMessages] = useState(0);
+  // Bug threads with a reply the user hasn't seen. Shown in the same badge as messages: one count means
+  // "something is waiting for you", wherever it came from.
+  const [unreadBugs, setUnreadBugs] = useState(0);
+  // Bumped to re-read the bug count after a thread is opened or replied to.
+  const [bugCountNonce, setBugCountNonce] = useState(0);
+  const [showBugReport, setShowBugReport] = useState(false);
+  // One badge for both channels: the user checks one place to find what is waiting.
+  const unreadWaiting = unreadMessages + unreadBugs;
   // One announcement per session: the count is refetched whenever auth changes, and re-toasting the
   // same backlog on every refresh would be noise.
   const announcedUnreadRef = useRef(false);
@@ -938,6 +948,23 @@ const MainMenu = ({ onStartGame, onLoadSaveGame, onReplayIntro, introActive = fa
     return () => { current = false; };
   }, [isAuthenticated]);
 
+  // The bug half of the badge. Separate from messages because reading a thread changes it, so it is
+  // re-read on demand rather than only when auth changes.
+  useEffect(() => {
+    if (!COMMUNITY_ENABLED || !isAuthenticated) {
+      setUnreadBugs(0);
+      return;
+    }
+
+    let current = true;
+
+    BugService.fetchUnreadCount()
+      .then((unread) => { if (current) setUnreadBugs(unread); })
+      .catch((error) => console.error('Failed to load unread bug count:', error));
+
+    return () => { current = false; };
+  }, [isAuthenticated, bugCountNonce]);
+
   // Handle logout
   const handleLogout = () => {
     AuthService.logout();
@@ -1121,12 +1148,18 @@ const MainMenu = ({ onStartGame, onLoadSaveGame, onReplayIntro, introActive = fa
                 <Menu className="h-5 w-5" />
               </Button>
             </PopoverTrigger>
-            <PopoverContent align="center" className="flex flex-col gap-2 w-64 [&>button]:w-full [&_svg]:shrink-0">
+            <PopoverContent align="center" className="flex flex-col gap-2 w-72 [&>button]:w-full [&_svg]:shrink-0">
               {actionButtons}
               <div className="h-px bg-border my-1" />
-              <Button variant="ghost" className="justify-start" onClick={() => setShowLoadDialog(true)}>Load Game</Button>
-              <Button variant="ghost" className="justify-start" onClick={() => setShowBackup(true)}>Backup &amp; Restore</Button>
-              <Button variant="ghost" className="justify-start" onClick={() => setShowSettings(true)}>Settings</Button>
+              <Button variant="ghost" className="justify-start" onClick={() => setShowLoadDialog(true)}>
+                <FolderOpen className="mr-2 h-4 w-4" /> Load Game
+              </Button>
+              <Button variant="ghost" className="justify-start" onClick={() => setShowBackup(true)}>
+                <Archive className="mr-2 h-4 w-4" /> Backup &amp; Restore
+              </Button>
+              <Button variant="ghost" className="justify-start" onClick={() => setShowSettings(true)}>
+                <Settings className="mr-2 h-4 w-4" /> Settings
+              </Button>
             </PopoverContent>
           </Popover>
         </div>
@@ -1159,11 +1192,18 @@ const MainMenu = ({ onStartGame, onLoadSaveGame, onReplayIntro, introActive = fa
                   <Menu className="h-6 w-6" />
                 </button>
               </PopoverTrigger>
-              <PopoverContent align="end" className="w-48 p-1">
+              {/* Sized for `Backup & Restore` plus its icon; w-48 left it scrunched. */}
+              <PopoverContent align="end" className="w-60 p-1">
                 <div className="flex flex-col">
-                  <Button variant="ghost" className="w-full justify-start" onClick={() => setShowLoadDialog(true)}>Load Game</Button>
-                  <Button variant="ghost" className="w-full justify-start" onClick={() => setShowBackup(true)}>Backup &amp; Restore</Button>
-                  <Button variant="ghost" className="w-full justify-start" onClick={() => setShowSettings(true)}>Settings</Button>
+                  <Button variant="ghost" className="w-full justify-start" onClick={() => setShowLoadDialog(true)}>
+                    <FolderOpen className="mr-2 h-4 w-4" /> Load Game
+                  </Button>
+                  <Button variant="ghost" className="w-full justify-start" onClick={() => setShowBackup(true)}>
+                    <Archive className="mr-2 h-4 w-4" /> Backup &amp; Restore
+                  </Button>
+                  <Button variant="ghost" className="w-full justify-start" onClick={() => setShowSettings(true)}>
+                    <Settings className="mr-2 h-4 w-4" /> Settings
+                  </Button>
                 </div>
               </PopoverContent>
             </Popover>
@@ -1413,7 +1453,7 @@ const MainMenu = ({ onStartGame, onLoadSaveGame, onReplayIntro, introActive = fa
               onClick={() => isAuthenticated ? setShowProfileDialog(true) : setShowAuthDialog(true)}
               aria-label={
                 isAuthenticated
-                  ? unreadMessages > 0 ? `User Profile (${unreadMessages} unread)` : "User Profile"
+                  ? unreadWaiting > 0 ? `User Profile (${unreadWaiting} unread)` : "User Profile"
                   : "Login"
               }
             >
@@ -1425,12 +1465,24 @@ const MainMenu = ({ onStartGame, onLoadSaveGame, onReplayIntro, introActive = fa
                 <User className="h-6 w-6" />
               )}
 
-              {/* Unread badge. Capped at 9+ so a long backlog can't stretch the circle. */}
-              {isAuthenticated && unreadMessages > 0 && (
+              {/* Unread badge: messages and bug replies together. Capped at 9+ so a long backlog can't
+                  stretch the circle. */}
+              {isAuthenticated && unreadWaiting > 0 && (
                 <span className="absolute -top-0.5 -right-0.5 min-w-5 h-5 px-1 flex items-center justify-center rounded-full bg-destructive text-destructive-foreground text-[10px] font-bold">
-                  {unreadMessages > 9 ? '9+' : unreadMessages}
+                  {unreadWaiting > 9 ? '9+' : unreadWaiting}
                 </span>
               )}
+            </button>
+          )}
+          {/* Filing needs an account, so this only appears once signed in — the server refuses otherwise. */}
+          {COMMUNITY_ENABLED && isAuthenticated && (
+            <button
+              className="p-3 bg-secondary text-secondary-foreground rounded-full shadow-lg hover:bg-secondary/80 transition-colors"
+              onClick={() => setShowBugReport(true)}
+              title="Report a Bug"
+              aria-label="Report a Bug"
+            >
+              <Bug className="h-6 w-6" />
             </button>
           )}
           {!isMobile && (isDesktop() ? <UpdateVersionControl /> : <WebVersionChangelog />)}
@@ -1918,6 +1970,7 @@ const MainMenu = ({ onStartGame, onLoadSaveGame, onReplayIntro, introActive = fa
             onAuthenticated={() => { setIsAuthenticated(true); setCurrentUser(AuthService.getCurrentUser()); }}
             onLogout={handleLogout}
             onUnreadChange={setUnreadMessages}
+            onBugsChange={() => setBugCountNonce((n) => n + 1)}
             initialTab={devRoute?.modal === 'profile' ? (devRoute.tab as ProfileTab | undefined) : undefined}
           />
 
@@ -1973,6 +2026,12 @@ const MainMenu = ({ onStartGame, onLoadSaveGame, onReplayIntro, introActive = fa
       />
 
       {/* Admin Panel — user management and broadcasts; each tab owns its own fetching */}
+      <BugReportDialog
+        open={showBugReport}
+        onOpenChange={setShowBugReport}
+        onFiled={() => setBugCountNonce((n) => n + 1)}
+      />
+
       <AdminPanelDialog
         open={showAdminPanel}
         onOpenChange={setShowAdminPanel}

@@ -388,7 +388,7 @@ function MarkdownPreviewPane({ value, previewValues, vocab, scrollRef, onScroll 
  * With `markdown`, it also gains a formatting toolbar and its Preview renders markdown instead of tinting
  * chips — for author-facing prose fields (world description, readme) that the player reads as markdown.
  */
-const PromptField = ({ value, onChange, variables = [], vocabulary, previewValues, onPreviewOpen, markdown = false, resizable = false, placeholder, className, readOnly = false }: {
+const PromptField = ({ value, onChange, variables = [], vocabulary, previewValues, onPreviewOpen, markdown = false, resizable = false, placeholder, className, readOnly = false, ariaLabel }: {
   value: string;
   onChange: (v: string) => void;
   /** Prompt-variable palette (used when no explicit `vocabulary` is given — the default prompt family). */
@@ -407,6 +407,8 @@ const PromptField = ({ value, onChange, variables = [], vocabulary, previewValue
   placeholder?: string;
   className?: string;
   readOnly?: boolean;
+  /** Names the editor for a screen reader. Lexical renders a `div`, so a `<label htmlFor>` cannot reach it. */
+  ariaLabel?: string;
 }) => {
   const vocab = useMemo(() => vocabulary ?? promptVocabulary(variables), [vocabulary, variables]);
   const dragKey = useRef<string | null>(null);
@@ -494,7 +496,7 @@ const PromptField = ({ value, onChange, variables = [], vocabulary, previewValue
   const editorSurface = (
     <div className={cn('relative flex-1 min-h-0', !showTabs && resizeClass)}>
       <PlainTextPlugin
-        contentEditable={<ContentEditable ref={editScrollRef} onScroll={handleScroll} className={EDITOR_CLASS} />}
+        contentEditable={<ContentEditable ref={editScrollRef} onScroll={handleScroll} className={EDITOR_CLASS} aria-label={ariaLabel} />}
         placeholder={
           <div className="pointer-events-none absolute left-3 top-2 text-sm text-muted-foreground">
             {placeholder ?? 'Empty prompt'}

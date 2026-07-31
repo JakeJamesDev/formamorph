@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { toast } from "react-toastify";
 import { Send } from "lucide-react";
 import {
@@ -10,7 +10,8 @@ import {
   DialogFooter,
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
-import { Textarea } from "@/components/ui/textarea";
+import PromptField from "@/components/prompt/PromptField";
+import { plainVocabulary } from "@/lib/chipVocabulary";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import {
@@ -92,6 +93,8 @@ export function MessageComposerDialog({
   // Opt-in: most edits are typo fixes, and re-badging everyone for one would be noise.
   const [renotify, setRenotify] = useState(false);
   const [isSending, setIsSending] = useState(false);
+  // No chip family: a message is prose, and an authored world's placeholders mean nothing to a reader.
+  const plainVocab = useMemo(() => plainVocabulary(), []);
 
   // Reset on open rather than on close, so the fields don't blank out during the fade-out.
   useResetOnOpen(open, () => {
@@ -160,7 +163,7 @@ export function MessageComposerDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[560px]">
+      <DialogContent className="sm:max-w-[720px]">
         <DialogHeader>
           <DialogTitle>{title}</DialogTitle>
           <DialogDescription>
@@ -184,16 +187,19 @@ export function MessageComposerDialog({
 
           <div className="space-y-2">
             <div className="flex items-baseline justify-between">
-              <label htmlFor="messageBody" className="text-sm font-medium">Message</label>
+              <span className="text-sm font-medium">Message</span>
               <span className="text-xs text-muted-foreground">{body.length} / {BODY_MAX}</span>
             </div>
-            <Textarea
-              id="messageBody"
+            {/* Readers see this rendered, so it is authored the same way the world editor's prose is.
+                No placeholders here: any `{{ph…}}` stays inert text, exactly as it would read. */}
+            <PromptField
               value={body}
-              maxLength={BODY_MAX}
-              onChange={(e) => setBody(e.target.value)}
+              onChange={(next) => setBody(next.slice(0, BODY_MAX))}
+              vocabulary={plainVocab}
+              markdown
+              ariaLabel="Message"
               placeholder="What you want them to know"
-              className="min-h-[180px]"
+              className="h-[280px]"
             />
           </div>
 

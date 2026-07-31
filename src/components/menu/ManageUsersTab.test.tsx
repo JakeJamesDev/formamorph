@@ -462,6 +462,17 @@ describe('sorting', () => {
     const actions = screen.getByRole('columnheader', { name: 'Actions' });
     expect(actions.querySelector('button')).toBeNull();
   });
+
+  it('shows no email column', async () => {
+    // Nothing in the app collects an address, so the column was always "N/A" taking up room.
+    stubFetch([userRow({ username: 'alice', email: 'alice@example.com' })]);
+
+    render(<ManageUsersTab active />);
+    await screen.findByText('alice');
+
+    expect(screen.queryByRole('columnheader', { name: /Email/ })).toBeNull();
+    expect(screen.queryByText('alice@example.com')).toBeNull();
+  });
 });
 
 describe('selection', () => {

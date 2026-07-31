@@ -1021,7 +1021,8 @@ export const MiddlePanel = ({
                 <Button
                   onClick={abortGeneration}
                   variant="destructive"
-                  className="border-dashed border-2 w-32"
+                  aria-label="Stop generating"
+                  className="border-dashed border-2 w-12 sm:w-32"
                 >
                   <Square className="h-4 w-4" />
                 </Button>
@@ -1029,7 +1030,8 @@ export const MiddlePanel = ({
                 <Button
                   onClick={handleSendAction}
                   disabled={disabled}
-                  className="border-dashed border-2 w-32"
+                  aria-label="Send"
+                  className="border-dashed border-2 w-12 sm:w-32"
                 >
                   <Send className="h-4 w-4" />
                 </Button>

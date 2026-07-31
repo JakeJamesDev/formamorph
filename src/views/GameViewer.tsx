@@ -22,7 +22,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Collapsible, CollapsibleTrigger, CollapsibleContent } from "@/components/ui/collapsible";
 import { Pager } from "@/components/ui/pagination";
-import { Music, SquarePen, Database, ScrollText, ChevronDown, ChevronRight, ChevronsDownUp, ChevronsUpDown, Search, Eye, EyeOff, Download } from "lucide-react";
+import { Music, SquarePen, Database, ScrollText, ChevronDown, ChevronRight, ChevronsDownUp, ChevronsUpDown, Search, Eye, EyeOff, Download, Braces } from "lucide-react";
 import IndeterminateProgress from "../components/ui/indeterminate-progress";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
@@ -35,6 +35,9 @@ import { useReadmeVisibility } from "@/lib/useReadmeVisibility";
 import { EntityModal } from "../components/modals/EntityModal";
 import { LocationModal } from "../components/modals/LocationModal";
 import { SettingsModal } from "../components/modals/SettingsModal";
+import { BugReportDialog } from "@/components/menu/BugReportDialog";
+import { COMMUNITY_ENABLED } from "@/lib/featureFlags";
+import AuthService from "@/services/AuthService";
 import { useDevRoute } from "../lib/devRouter";
 import { loadDevFixture } from "../lib/devFixtures";
 import { putSaveRecord } from "../components/modals/dbUtils";
@@ -612,6 +615,9 @@ const GameViewer = ({
   const [isEntityModalOpen, setIsEntityModalOpen] = useState(false);
   const [ambientSound, setAmbientSound] = useState<MediaAsset | null>(null);
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
+  // Filing needs an account, so the in-game entry point is only offered to someone signed in.
+  const [showBugReport, setShowBugReport] = useState(false);
+  const canReportBug = COMMUNITY_ENABLED && Boolean(AuthService.token);
   const [settingsTab, setSettingsTab] = useState<string | undefined>(undefined);
   const [settingsEndpointTab, setSettingsEndpointTab] = useState<string | undefined>(undefined);
   useSettingsOpenRequest((tab, endpointTab) => {
@@ -3883,6 +3889,7 @@ ${playerNotes || NONE_PLACEHOLDER}
   const menuModal = (extra?: { onEditWorld?: () => void; onShowAiContext?: () => void }) => (
     <MenuModal
       onSettingsClick={() => setIsSettingsOpen(true)}
+      onReportBug={canReportBug ? () => setShowBugReport(true) : undefined}
       onSave={handleMenuSave}
       onLoad={handleMenuLoad}
       worldOverview={worldOverview}
@@ -4275,7 +4282,7 @@ ${playerNotes || NONE_PLACEHOLDER}
               <>
                 <DialogHeader className="flex-shrink-0">
                   <div className="flex items-center justify-between gap-2 pr-8">
-                    <DialogTitle>AI context</DialogTitle>
+                    <DialogTitle className="flex items-center gap-2"><Braces className="h-4 w-4" /> AI context</DialogTitle>
                     <Button
                       variant="outline"
                       size="sm"
@@ -4582,6 +4589,8 @@ ${playerNotes || NONE_PLACEHOLDER}
         onOpenChange={setIsTTSModalOpen}
         onLoadedChange={setTtsLoaded}
       />
+
+      <BugReportDialog open={showBugReport} onOpenChange={setShowBugReport} />
 
       <SettingsModal
         isOpen={isSettingsOpen}

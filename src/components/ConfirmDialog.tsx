@@ -19,6 +19,7 @@ import { useClosingSnapshot } from "@/lib/useClosingSnapshot"
 export function ConfirmDialog({
   title = "Are you sure?",
   description = "This action cannot be undone.",
+  icon,
   onConfirm,
   onCancel,
   children,
@@ -27,6 +28,8 @@ export function ConfirmDialog({
 }: {
   title?: ReactNode
   description?: ReactNode
+  /** Icon beside the title, matching the menu item that opened this. */
+  icon?: ReactNode
   onConfirm?: () => void
   onCancel?: () => void
   children?: ReactNode
@@ -43,14 +46,16 @@ export function ConfirmDialog({
 
   // Hold the title/description shown while open so a controlled dialog keeps them through its fade-out, even
   // as the parent clears the state that drove them (e.g. `pendingDelete?.name` going undefined on close).
-  const shown = useClosingSnapshot(open, { title, description })
+  const shown = useClosingSnapshot(open, { title, description, icon })
 
   return (
     <AlertDialog open={open} onOpenChange={onOpenChange}>
       {children && <AlertDialogTrigger asChild>{children}</AlertDialogTrigger>}
       <AlertDialogContent>
         <AlertDialogHeader>
-          <AlertDialogTitle>{shown.title}</AlertDialogTitle>
+          <AlertDialogTitle className={shown.icon ? "flex items-center gap-2" : undefined}>
+            {shown.icon}{shown.title}
+          </AlertDialogTitle>
           <AlertDialogDescription>
             {shown.description}
           </AlertDialogDescription>

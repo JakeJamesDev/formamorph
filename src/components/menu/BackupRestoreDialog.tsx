@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import { useResetOnOpen } from '@/lib/useResetOnOpen';
 import { filesFrom } from '@/lib/importFiles';
 import { toast } from 'react-toastify';
+import { Archive } from 'lucide-react';
 import {
   Dialog,
   DialogContent,
@@ -300,7 +301,7 @@ export function BackupRestoreDialog({ open, onOpenChange }: { open: boolean; onO
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-lg">
         <DialogHeader>
-          <DialogTitle>Backup &amp; Restore</DialogTitle>
+          <DialogTitle className="flex items-center gap-2"><Archive className="h-4 w-4" /> Backup &amp; Restore</DialogTitle>
           <DialogDescription>
             {step === 'home' &&
               'Save your worlds, saves, characters, and dictionaries to a file, or restore them from one. Back up before updating, especially in the itch app.'}

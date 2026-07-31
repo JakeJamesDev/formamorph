@@ -1,8 +1,9 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { toast } from "react-toastify";
 import { RotateCcw, Save } from "lucide-react";
 import { Input } from "@/components/ui/input";
-import { Textarea } from "@/components/ui/textarea";
+import PromptField from "@/components/prompt/PromptField";
+import { plainVocabulary } from "@/lib/chipVocabulary";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -45,6 +46,8 @@ function PolicyEditor({
   heading, description, draft, onChange, onSave, saving, showTags, reaccept, onReacceptChange,
 }: PolicyEditorProps) {
   const idBase = heading.replace(/\s+/g, '-').toLowerCase();
+  // No chip family: a policy is prose, and an authored world's placeholders mean nothing to a reader.
+  const plainVocab = useMemo(() => plainVocabulary(), []);
 
   return (
     <section className="space-y-3 border rounded-md p-4 min-w-0">
@@ -80,16 +83,18 @@ function PolicyEditor({
 
       <div className="space-y-2">
         <div className="flex items-baseline justify-between">
-          <label htmlFor={`${idBase}-body`} className="text-sm font-medium">Body</label>
+          <span className="text-sm font-medium">Body</span>
           <span className="text-xs text-muted-foreground">{draft.body.length} / {BODY_MAX}</span>
         </div>
-        <Textarea
-          id={`${idBase}-body`}
+        {/* Readers see this rendered, so it is authored the same way the world editor's prose is. */}
+        <PromptField
           value={draft.body}
-          maxLength={BODY_MAX}
-          onChange={(e) => onChange({ ...draft, body: e.target.value })}
+          onChange={(body) => onChange({ ...draft, body: body.slice(0, BODY_MAX) })}
+          vocabulary={plainVocab}
+          markdown
+          ariaLabel={`${heading} body`}
           placeholder="Markdown is supported"
-          className="min-h-[140px]"
+          className="h-[280px]"
         />
       </div>
 
