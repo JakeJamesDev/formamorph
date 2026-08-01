@@ -3,10 +3,11 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { FeedbackList } from "@/components/menu/FeedbackList";
 import { FeedbackThreadView } from "@/components/menu/FeedbackThreadView";
 import {
-  ANY_STATUS, FEEDBACK_SORTS, SORT_LABELS, STATUS_OPTIONS, statusFilterValue,
+  ANY_CATEGORY, ANY_STATUS, CATEGORY_OPTIONS, FEEDBACK_SORTS, SORT_LABELS, STATUS_OPTIONS,
+  categoryFilterValue, statusFilterValue,
 } from "@/lib/feedbackPresentation";
 import type { FeedbackSort } from "@/lib/feedbackPresentation";
-import type { FeedbackStatus, FeedbackType } from "@/types";
+import type { FeedbackCategory, FeedbackStatus, FeedbackType } from "@/types";
 
 interface FeedbackQueueTabProps {
   /** Whether the tab is visible; the list only fetches while it is. */
@@ -15,16 +16,14 @@ interface FeedbackQueueTabProps {
   type: FeedbackType;
 }
 
-/** What each queue says it is, and what it opens on. */
-const COPY: Record<FeedbackType, { blurb: string; empty: string; initialStatus: FeedbackStatus | typeof ANY_STATUS }> = {
+/** What each queue opens on, and what it says when nothing matches. */
+const COPY: Record<FeedbackType, { empty: string; initialStatus: FeedbackStatus | typeof ANY_STATUS }> = {
   bug: {
-    blurb: 'Reports filed by users. Open one to answer it or move it through triage.',
     empty: 'No reports match this filter.',
     // Opens on the work: a queue of everything ever resolved is not a queue.
     initialStatus: 'open',
   },
   suggestion: {
-    blurb: 'Everything users have suggested. Open one to answer it or move it through triage.',
     empty: 'No suggestions match this filter.',
     // Opens on everything: what matters here is what is most wanted, whatever state it is in.
     initialStatus: ANY_STATUS,
@@ -37,6 +36,7 @@ const COPY: Record<FeedbackType, { blurb: string; empty: string; initialStatus: 
  */
 export function FeedbackQueueTab({ active, type }: FeedbackQueueTabProps) {
   const [status, setStatus] = useState<FeedbackStatus | typeof ANY_STATUS>(COPY[type].initialStatus);
+  const [category, setCategory] = useState<FeedbackCategory | typeof ANY_CATEGORY>(ANY_CATEGORY);
   const [sort, setSort] = useState<FeedbackSort>(type === 'suggestion' ? 'votes' : 'newest');
   const [openId, setOpenId] = useState<string | null>(null);
   // Bumped after anything that changes a thread, so the list behind it picks it up.
@@ -57,10 +57,9 @@ export function FeedbackQueueTab({ active, type }: FeedbackQueueTabProps) {
 
   return (
     <div className="py-4 min-w-0">
-      <div className="flex items-center justify-between gap-4 mb-4">
-        <p className="text-sm text-muted-foreground">{COPY[type].blurb}</p>
-
-        <div className="flex shrink-0 items-center gap-2">
+      {/* The controls carry the whole row: a sentence saying what the tab is would leave no room for
+          them, and the tab's own label already says it. */}
+      <div className="flex flex-wrap items-center justify-end gap-2 mb-4">
           {/* Suggestions are ranked; a bug queue has nothing to rank by. */}
           {type === 'suggestion' && (
             <Select value={sort} onValueChange={(value) => setSort(value as FeedbackSort)}>
@@ -73,6 +72,16 @@ export function FeedbackQueueTab({ active, type }: FeedbackQueueTabProps) {
             </Select>
           )}
 
+          <Select value={category} onValueChange={(value) => setCategory(value as FeedbackCategory | typeof ANY_CATEGORY)}>
+            <SelectTrigger className="w-44" aria-label="Filter by category"><SelectValue /></SelectTrigger>
+            <SelectContent>
+              <SelectItem value={ANY_CATEGORY}>All categories</SelectItem>
+              {CATEGORY_OPTIONS[type].map((option) => (
+                <SelectItem key={option.value} value={option.value}>{option.label}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+
           <Select value={status} onValueChange={(value) => setStatus(value as FeedbackStatus | typeof ANY_STATUS)}>
             <SelectTrigger className="w-40" aria-label="Filter by status"><SelectValue /></SelectTrigger>
             <SelectContent>
@@ -82,7 +91,6 @@ export function FeedbackQueueTab({ active, type }: FeedbackQueueTabProps) {
               ))}
             </SelectContent>
           </Select>
-        </div>
       </div>
 
       <FeedbackList
@@ -90,6 +98,7 @@ export function FeedbackQueueTab({ active, type }: FeedbackQueueTabProps) {
         type={type}
         scope="all"
         status={statusFilterValue(status)}
+        category={categoryFilterValue(category)}
         sort={sort}
         refreshNonce={nonce}
         onOpen={setOpenId}

@@ -12,6 +12,7 @@ import { ManageUsersTab } from "@/components/menu/ManageUsersTab";
 import { BroadcastsTab } from "@/components/menu/BroadcastsTab";
 import { PoliciesTab } from "@/components/menu/PoliciesTab";
 import { FeedbackQueueTab } from "@/components/menu/FeedbackQueueTab";
+import { AuditLogTab } from "@/components/menu/AuditLogTab";
 import { useResetOnOpen } from "@/lib/useResetOnOpen";
 import { type AdminPanelTab } from "@/components/menu/adminPanelTabs";
 import { type PoliciesTab as PoliciesSubTab } from "@/components/menu/policiesTabs";
@@ -25,7 +26,8 @@ interface AdminPanelDialogProps {
   initialPoliciesTab?: PoliciesSubTab;
 }
 
-/** Admin tools behind one dialog: accounts, broadcasts, the publish policies, and both feedback queues. */
+/** Admin tools behind one dialog: accounts, broadcasts, the publish policies, both feedback queues, and
+ *  the record of what was done. */
 export function AdminPanelDialog({ open, onOpenChange, initialTab = 'users', initialPoliciesTab }: AdminPanelDialogProps) {
   const [tab, setTab] = useState<AdminPanelTab>(initialTab);
 
@@ -51,12 +53,13 @@ export function AdminPanelDialog({ open, onOpenChange, initialTab = 'users', ini
           onValueChange={(value) => setTab(value as AdminPanelTab)}
           className="w-full min-w-0 flex flex-col flex-1 min-h-0"
         >
-          <TabsList className="grid w-full grid-cols-5 flex-shrink-0">
+          <TabsList className="grid w-full grid-cols-6 flex-shrink-0">
             <TabsTrigger value="users">Users</TabsTrigger>
             <TabsTrigger value="broadcasts">Broadcasts</TabsTrigger>
             <TabsTrigger value="policies">Policies</TabsTrigger>
             <TabsTrigger value="bugs">Bugs</TabsTrigger>
             <TabsTrigger value="suggestions">Suggestions</TabsTrigger>
+            <TabsTrigger value="log">Log</TabsTrigger>
           </TabsList>
 
           {/* Only the panel body scrolls; the title and tab strip stay put. */}
@@ -88,6 +91,12 @@ export function AdminPanelDialog({ open, onOpenChange, initialTab = 'users', ini
           <TabsContent value="suggestions" className="flex-1 min-h-0 data-[state=active]:flex flex-col">
             <ScrollArea className="flex-1 min-h-0 px-1">
               <FeedbackQueueTab active={open && tab === 'suggestions'} type="suggestion" />
+            </ScrollArea>
+          </TabsContent>
+
+          <TabsContent value="log" className="flex-1 min-h-0 data-[state=active]:flex flex-col">
+            <ScrollArea className="flex-1 min-h-0 px-1">
+              <AuditLogTab active={open && tab === 'log'} />
             </ScrollArea>
           </TabsContent>
         </Tabs>

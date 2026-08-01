@@ -8,6 +8,7 @@ vi.mock('react-toastify', () => ({ toast: { error: vi.fn(), success: vi.fn(), in
 vi.mock('./ManageUsersTab', () => ({ ManageUsersTab: () => <div data-testid="users" /> }));
 vi.mock('./BroadcastsTab', () => ({ BroadcastsTab: () => <div data-testid="broadcasts" /> }));
 vi.mock('./PoliciesTab', () => ({ PoliciesTab: () => <div data-testid="policies" /> }));
+vi.mock('./AuditLogTab', () => ({ AuditLogTab: () => <div data-testid="log" /> }));
 vi.mock('./FeedbackQueueTab', () => ({
   FeedbackQueueTab: ({ type }: { type: string }) => <div data-testid={`queue-${type}`} />,
 }));
@@ -36,6 +37,13 @@ describe('the tab strip', () => {
     render(<AdminPanelDialog open onOpenChange={() => {}} initialTab="suggestions" />);
 
     expect(screen.getByTestId('queue-suggestion')).toBeTruthy();
+  });
+
+  it('carries the record of what was done', () => {
+    render(<AdminPanelDialog open onOpenChange={() => {}} initialTab="log" />);
+
+    expect(screen.getByRole('tab', { name: 'Log' })).toBeTruthy();
+    expect(screen.getByTestId('log')).toBeTruthy();
   });
 
   it('opens on Users by default', () => {

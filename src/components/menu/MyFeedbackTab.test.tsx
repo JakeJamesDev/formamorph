@@ -113,6 +113,40 @@ describe('the file button', () => {
   });
 });
 
+describe('the category filter', () => {
+  it('is offered on both branches', async () => {
+    stubList();
+
+    render(<MyFeedbackTab active type="bug" />);
+    expect(await screen.findByLabelText('Filter by category')).toBeTruthy();
+
+    cleanup();
+    stubList();
+    render(<MyFeedbackTab active type="suggestion" />);
+    expect(await screen.findByLabelText('Filter by category')).toBeTruthy();
+  });
+
+  it('opens on every category', async () => {
+    stubList();
+
+    render(<MyFeedbackTab active type="bug" />);
+
+    await waitFor(() => expect(firstQuery()).toMatchObject({ category: undefined }));
+  });
+});
+
+describe('what the tab does not say', () => {
+  it('drops the blurb, so the controls have the row to themselves', async () => {
+    // The tab's own label already says what it is; the sentence was costing the filters their space.
+    stubList();
+
+    render(<MyFeedbackTab active type="bug" />);
+    await screen.findByRole('button', { name: /Report a Bug/ });
+
+    expect(screen.queryByText(/Bugs you.ve reported/)).toBeNull();
+  });
+});
+
 describe('the sort control', () => {
   it('is offered on a board of everyone’s suggestions', async () => {
     stubList();

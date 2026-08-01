@@ -2,6 +2,7 @@ import { render, screen, cleanup, fireEvent, waitFor } from '@testing-library/re
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { FeedbackQueueTab } from './FeedbackQueueTab';
 import FeedbackService from '@/services/FeedbackService';
+import { ANY_CATEGORY, CATEGORY_OPTIONS, categoryFilterValue } from '@/lib/feedbackPresentation';
 import type { FeedbackThread } from '@/types';
 
 vi.mock('react-toastify', () => ({ toast: { error: vi.fn(), success: vi.fn(), info: vi.fn() } }));
@@ -60,6 +61,40 @@ describe('the admin queue', () => {
     fireEvent.click(await screen.findByText('Save button does nothing'));
 
     expect(threadProps.last).toMatchObject({ isAdmin: true, showTriage: true });
+  });
+});
+
+describe('the category filter', () => {
+  it('opens on every category', async () => {
+    render(<FeedbackQueueTab active type="bug" />);
+
+    await waitFor(() => expect(firstQuery()).toMatchObject({ category: undefined }));
+  });
+
+  it('offers the categories of its own branch', async () => {
+    // 'Crash or freeze' is not a thing to suggest, and 'Interface' is not a thing to crash.
+    render(<FeedbackQueueTab active type="bug" />);
+
+    expect(await screen.findByLabelText('Filter by category')).toBeTruthy();
+    expect(CATEGORY_OPTIONS.bug.map((o) => o.value)).toContain('crash');
+    expect(CATEGORY_OPTIONS.suggestion.map((o) => o.value)).not.toContain('crash');
+  });
+
+  // Radix's Select cannot be opened in jsdom, so the mapping it drives is asserted directly; the wiring
+  // from the dropdown to the list is one expression on each side of `categoryFilterValue`.
+  it('maps its choice to what the list asks the server for', () => {
+    expect(categoryFilterValue(ANY_CATEGORY)).toBeUndefined();
+    expect(categoryFilterValue('crash')).toBe('crash');
+  });
+});
+
+describe('what the tab does not say', () => {
+  it('drops the blurb, so the controls have the row to themselves', async () => {
+    // The tab's own label already says what it is; the sentence was costing the filters their space.
+    render(<FeedbackQueueTab active type="bug" />);
+    await screen.findByText('Save button does nothing');
+
+    expect(screen.queryByText(/Reports filed by users/)).toBeNull();
   });
 });
 
