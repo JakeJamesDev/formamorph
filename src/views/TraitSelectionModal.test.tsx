@@ -37,14 +37,14 @@ describe('TraitSelectionModal', () => {
     render(<Harness />);
     expect(screen.getByText('General')).toBeInTheDocument();
     expect(screen.getByText('Loner')).toBeInTheDocument(); // ungrouped under General
-    await user.click(screen.getByRole('tab', { name: 'World' }));
+    await user.click(screen.getByRole('radio', { name: 'World' }));
     expect(screen.getByText('Stormtouched')).toBeInTheDocument();
   });
 
   it('pre-checks Enabled-by-Default traits', async () => {
     const user = userEvent.setup();
     render(<Harness />);
-    await user.click(screen.getByRole('tab', { name: 'Player' }));
+    await user.click(screen.getByRole('radio', { name: 'Player' }));
     expect(screen.getByRole('checkbox')).toBeChecked(); // Quick is the only trait here, default on
   });
 
@@ -71,8 +71,8 @@ describe('TraitSelectionModal', () => {
         onAbort={() => {}}
       />,
     );
-    expect(screen.queryByRole('tab', { name: 'General' })).toBeNull();
-    expect(screen.getByRole('tab', { name: 'World' })).toBeInTheDocument();
+    expect(screen.queryByRole('radio', { name: 'General' })).toBeNull();
+    expect(screen.getByRole('radio', { name: 'World' })).toBeInTheDocument();
     expect(screen.getByText('Stormtouched')).toBeInTheDocument(); // first section is the first group
   });
 
@@ -89,8 +89,8 @@ describe('TraitSelectionModal', () => {
         onAbort={() => {}}
       />,
     );
-    expect(screen.queryByRole('tab', { name: 'Empty' })).toBeNull();
-    expect(screen.getByRole('tab', { name: 'World' })).toBeInTheDocument();
+    expect(screen.queryByRole('radio', { name: 'Empty' })).toBeNull();
+    expect(screen.getByRole('radio', { name: 'World' })).toBeInTheDocument();
   });
 
   it('auto-drills to the first nested group when a container is selected', async () => {
@@ -114,10 +114,10 @@ describe('TraitSelectionModal', () => {
       />,
     );
     // On open it drills World -> Clans, so the nested trait is already visible.
-    expect(screen.getByRole('tab', { name: 'World' })).toBeInTheDocument();
-    expect(screen.getByRole('tab', { name: 'Clans' })).toBeInTheDocument();
+    expect(screen.getByRole('radio', { name: 'World' })).toBeInTheDocument();
+    expect(screen.getByRole('radio', { name: 'Clans' })).toBeInTheDocument();
     expect(screen.getByText('Stormtouched')).toBeInTheDocument();
-    await user.click(screen.getByRole('tab', { name: 'World' })); // still resolves to Clans
+    await user.click(screen.getByRole('radio', { name: 'World' })); // still resolves to Clans
     expect(screen.getByText('Stormtouched')).toBeInTheDocument();
   });
 
@@ -143,12 +143,12 @@ describe('TraitSelectionModal', () => {
       />,
     );
     // World has its own trait + a subgroup → child row shows a General tab, selected by default.
-    expect(screen.getByRole('tab', { name: 'General' })).toBeInTheDocument();
-    expect(screen.getByRole('tab', { name: 'Clans' })).toBeInTheDocument();
+    expect(screen.getByRole('radio', { name: 'General' })).toBeInTheDocument();
+    expect(screen.getByRole('radio', { name: 'Clans' })).toBeInTheDocument();
     expect(screen.getByText('WorldTrait')).toBeInTheDocument(); // General (World's own) shown first
-    await user.click(screen.getByRole('tab', { name: 'Clans' }));
+    await user.click(screen.getByRole('radio', { name: 'Clans' }));
     expect(screen.getByText('ClanTrait')).toBeInTheDocument();
-    await user.click(screen.getByRole('tab', { name: 'General' }));
+    await user.click(screen.getByRole('radio', { name: 'General' }));
     expect(screen.getByText('WorldTrait')).toBeInTheDocument();
   });
 
@@ -172,7 +172,7 @@ describe('TraitSelectionModal', () => {
     // Both descriptions are in the DOM (height reserved); on open General is active so neither is shown.
     expect(screen.getByText('Your homeland.').className).toContain('invisible');
     expect(screen.getByText('About you.').className).toContain('invisible');
-    await user.click(screen.getByRole('tab', { name: 'World' }));
+    await user.click(screen.getByRole('radio', { name: 'World' }));
     expect(screen.getByText('Your homeland.').className).not.toContain('invisible');
     expect(screen.getByText('About you.').className).toContain('invisible');
   });
