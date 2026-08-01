@@ -139,7 +139,7 @@ function CategoryTree({
 }
 
 /**
- * Backup & Restore wizard. Backup: choose which individual worlds/saves/characters/dictionaries to
+ * Backup & Restore wizard. Backup: choose which individual worlds/saves/entities/dictionaries to
  * include (grouped, per-item), then save to a file (native picker, download fallback). Restore: pick a
  * file, then choose which items to bring back — items that already exist are tagged, and each group's
  * "Overwrite existing" decides whether those are replaced.
@@ -263,7 +263,7 @@ export function BackupRestoreDialog({ open, onOpenChange }: { open: boolean; onO
     if (!plans) return;
     setBusy(true);
     try {
-      // Optimize/downscale a world or character record's images in place before it's written (no-op for 'off').
+      // Optimize/downscale a world or entity record's images in place before it's written (no-op for 'off').
       const optimize = async (category: BackupCategory, rec: { id: string; [k: string]: unknown }) => {
         if (category === 'worlds' && worldOpt !== 'off') {
           const data = await applyWorldOptimize(rec.data as World, worldOpt);
@@ -304,7 +304,7 @@ export function BackupRestoreDialog({ open, onOpenChange }: { open: boolean; onO
           <DialogTitle className="flex items-center gap-2"><Archive className="h-4 w-4" /> Backup &amp; Restore</DialogTitle>
           <DialogDescription>
             {step === 'home' &&
-              'Save your worlds, saves, characters, and dictionaries to a file, or restore them from one. Back up before updating, especially in the itch app.'}
+              'Save your worlds, saves, entities, and dictionaries to a file, or restore them from one. Back up before updating, especially in the itch app.'}
             {step.startsWith('backup') && 'Backup'}
             {step.startsWith('restore') && 'Restore'}
           </DialogDescription>
@@ -366,7 +366,7 @@ export function BackupRestoreDialog({ open, onOpenChange }: { open: boolean; onO
                       <OptimizeSelect label="World" value={worldOpt} onChange={setWorldOpt} />
                     )}
                     {restoreGroups.some((g) => g.category === 'entities') && (
-                      <OptimizeSelect label="Character" value={entityOpt} onChange={setEntityOpt} />
+                      <OptimizeSelect label="Entity" value={entityOpt} onChange={setEntityOpt} />
                     )}
                   </div>
                 )}

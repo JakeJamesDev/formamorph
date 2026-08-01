@@ -17,11 +17,15 @@ const profile = (over: Record<string, unknown> = {}) => ({
   avatarUrl: null,
   createdAt: '2026-03-14T00:00:00.000Z',
   followers: 0,
+  likes: 0,
+  downloads: 0,
   ...over,
 });
 
 beforeEach(() => {
   vi.spyOn(console, 'error').mockImplementation(() => {});
+  // The Creations tab fetches as soon as the dialog opens; these cases are about the header above it.
+  vi.spyOn(UserService, 'fetchCreations').mockResolvedValue([]);
 });
 
 afterEach(() => {
@@ -103,6 +107,46 @@ describe('opening somebody’s profile', () => {
   });
 });
 
+describe('what their work has earned', () => {
+  it('says the likes and downloads their listings have between them', async () => {
+    vi.spyOn(UserService, 'fetchProfile').mockResolvedValue(profile({ likes: 41, downloads: 108 }));
+
+    render(<UserProfileDialog userId="u1" onOpenChange={() => {}} />);
+
+    expect(await screen.findByTitle('41 likes')).toBeTruthy();
+    expect(screen.getByTitle('108 downloads')).toBeTruthy();
+  });
+
+  it('counts one of each in the singular', async () => {
+    vi.spyOn(UserService, 'fetchProfile').mockResolvedValue(profile({ likes: 1, downloads: 1 }));
+
+    render(<UserProfileDialog userId="u1" onOpenChange={() => {}} />);
+
+    expect(await screen.findByTitle('1 like')).toBeTruthy();
+    expect(screen.getByTitle('1 download')).toBeTruthy();
+  });
+
+  it('shows zeros rather than vanishing for somebody who has published nothing', async () => {
+    // The row always renders, so the dialog keeps its shape whoever is in it.
+    vi.spyOn(UserService, 'fetchProfile').mockResolvedValue(profile());
+
+    render(<UserProfileDialog userId="u1" onOpenChange={() => {}} />);
+
+    expect(await screen.findByTitle('0 likes')).toBeTruthy();
+    expect(screen.getByTitle('0 downloads')).toBeTruthy();
+  });
+
+  it('says nothing at all when the account could not be read', async () => {
+    // Zeros beside an error would read as a real answer about somebody the server never found.
+    vi.spyOn(UserService, 'fetchProfile').mockRejectedValue(new Error('User not found'));
+
+    render(<UserProfileDialog userId="u1" onOpenChange={() => {}} />);
+    await screen.findByText('User not found');
+
+    expect(screen.queryByTitle(/likes|downloads/)).toBeNull();
+  });
+});
+
 describe('the follow button', () => {
   it('says how many follow them', async () => {
     signedInAs('me');
@@ -110,7 +154,7 @@ describe('the follow button', () => {
 
     render(<UserProfileDialog userId="u1" onOpenChange={() => {}} />);
 
-    expect(await screen.findByText(/12 followers/)).toBeTruthy();
+    expect(await screen.findByTitle('12 followers')).toBeTruthy();
   });
 
   it('counts one follower in the singular', async () => {
@@ -119,7 +163,7 @@ describe('the follow button', () => {
 
     render(<UserProfileDialog userId="u1" onOpenChange={() => {}} />);
 
-    expect(await screen.findByText(/1 follower(?!s)/)).toBeTruthy();
+    expect(await screen.findByTitle('1 follower')).toBeTruthy();
   });
 
   it('is offered to a signed-in reader', async () => {
@@ -172,7 +216,7 @@ describe('the follow button', () => {
     fireEvent.click(await screen.findByRole('button', { name: 'Follow' }));
 
     await waitFor(() => expect(screen.getByRole('button', { name: 'Following' })).toBeTruthy());
-    expect(screen.getByText(/5 followers/)).toBeTruthy();
+    expect(screen.getByTitle('5 followers')).toBeTruthy();
     expect(setFollowing).toHaveBeenCalledWith('u1', true);
   });
 
@@ -185,6 +229,6 @@ describe('the follow button', () => {
     fireEvent.click(await screen.findByRole('button', { name: 'Follow' }));
 
     await waitFor(() => expect(screen.getByRole('button', { name: 'Follow' })).toBeTruthy());
-    expect(screen.getByText(/4 followers/)).toBeTruthy();
+    expect(screen.getByTitle('4 followers')).toBeTruthy();
   });
 });

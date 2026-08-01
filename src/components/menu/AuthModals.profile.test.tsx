@@ -12,9 +12,9 @@ vi.mock('react-toastify', () => ({ toast: { error: vi.fn(), success: vi.fn(), in
 vi.mock('./MessagesTab', () => ({ MessagesTab: () => <div data-testid="messages" /> }));
 vi.mock('./TermsTab', () => ({ TermsTab: () => <div data-testid="terms" /> }));
 vi.mock('./NotificationsTab', () => ({ NotificationsTab: () => <div data-testid="notifications" /> }));
-// The follower count on the header comes from the same public profile route everybody else's does.
+// The header's numbers come from the same public profile route everybody else's do.
 vi.mock('@/services/UserService', () => ({
-  default: { fetchProfile: vi.fn(async () => ({ id: 'u1', username: 'me', avatarUrl: null, createdAt: '2026-01-01T00:00:00.000Z', followers: 3 })) },
+  default: { fetchProfile: vi.fn(async () => ({ id: 'u1', username: 'me', avatarUrl: null, createdAt: '2026-01-01T00:00:00.000Z', followers: 3, likes: 41, downloads: 108 })) },
 }));
 
 const WITH_GATE: PolicyState = {
@@ -234,5 +234,17 @@ describe('the password popup', () => {
 
     expect(screen.getByText(/can’t be changed while your account is suspended/)).toBeTruthy();
     expect(screen.getByRole('button', { name: 'Update Password' }).hasAttribute('disabled')).toBe(true);
+  });
+});
+
+describe('your own numbers on the account dialog', () => {
+  it('reads the same row a stranger sees on your profile popup', async () => {
+    // Two places showing one account must not become two answers to the same question.
+    // Needs an id: the header reads the public profile route, which is keyed on one.
+    renderProfile({ currentUser: user({ id: 'u1' }) });
+
+    expect(await screen.findByTitle('3 followers')).toBeTruthy();
+    expect(screen.getByTitle('41 likes')).toBeTruthy();
+    expect(screen.getByTitle('108 downloads')).toBeTruthy();
   });
 });

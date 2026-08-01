@@ -4,10 +4,11 @@ import { Search } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
+import { RoleBadge } from "@/components/RoleBadge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import {
   ANY_ACTION, AUDIT_ACTION_LABELS, AUDIT_ACTION_OPTIONS, AUDIT_ACTION_STYLES,
-  actionFilterValue, describeAuditEntry, formatAuditDate,
+  actionFilterValue, auditActorName, auditPredicate, formatAuditDate,
 } from "@/lib/auditPresentation";
 import AuditService from "@/services/AuditService";
 import { cn } from "@/lib/utils";
@@ -123,7 +124,21 @@ export function AuditLogTab({ active }: AuditLogTabProps) {
             entries.map((entry) => (
               <div key={entry.id} className="rounded-md border p-3 min-w-0">
                 <div className="flex flex-wrap items-baseline justify-between gap-2">
-                  <p className="text-sm min-w-0">{describeAuditEntry(entry)}</p>
+                  {/* The actor is rendered apart from the sentence so the badge can sit against the
+                      name. It says what they were *then* — the log is a record of who acted under whose
+                      authority, so a promotion since must not restate it. */}
+                  <p className="text-sm min-w-0">
+                    {auditActorName(entry) && (
+                      <>
+                        <span className="font-medium">{auditActorName(entry)}</span>
+                        <RoleBadge role={entry.actor.role} className="ml-1 align-[0.05em]" />
+                        {/* Explicit: JSX drops the newline between the name and the rest, and an
+                            ordinary actor has no badge in between to space them apart. */}
+                        {' '}
+                      </>
+                    )}
+                    {auditPredicate(entry)}
+                  </p>
                   <span className={cn(
                     'px-2 shrink-0 inline-flex text-xs leading-5 font-semibold rounded-full',
                     AUDIT_ACTION_STYLES[entry.action],

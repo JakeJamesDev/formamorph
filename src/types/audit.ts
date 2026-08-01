@@ -23,6 +23,11 @@ export interface AuditActor {
   username: string | null;
   /** Whether they were an admin when they did it — an account demoted since still acted as one then. */
   wasAdmin: boolean;
+  /**
+   * What they were, which `wasAdmin` cannot say for a mod or a dev. Null for an ordinary account, and on
+   * an entry recorded before the role was kept — there is no way to know what anybody was then.
+   */
+  role?: string | null;
 }
 
 /** One recorded event. Every name is a snapshot, so an entry reads after its subject is gone. */

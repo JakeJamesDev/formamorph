@@ -60,6 +60,8 @@ module.exports = {
           DEFAULT: "hsl(var(--info))",
           foreground: "hsl(var(--info-foreground))",
         },
+        // The filled heart on a liked listing. Deliberately one pink across every theme — see index.css.
+        like: "hsl(var(--like))",
         overlay: "hsl(var(--overlay))",
         muted: {
           DEFAULT: "hsl(var(--muted))",

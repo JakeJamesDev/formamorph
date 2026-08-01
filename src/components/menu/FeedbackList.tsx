@@ -130,6 +130,9 @@ export function FeedbackList({
                     variant="ghost"
                     className={cn(
                       'h-auto shrink-0 flex-col gap-0 rounded-r-none border-r px-3 py-2',
+                      // Weight and fill move with the tint rather than the tint alone: on a light theme
+                      // --primary is a pale mint against a near-white card, so a color change by itself
+                      // was invisible in the list even though the thread it opens said Voted plainly.
                       thread.voted && 'text-primary'
                     )}
                     aria-label={thread.voted ? `Remove your vote for ${thread.title}` : `Vote for ${thread.title}`}
@@ -137,8 +140,10 @@ export function FeedbackList({
                     disabled={voting.has(thread.id)}
                     onClick={() => toggleVote(thread)}
                   >
-                    <ChevronUp className="h-4 w-4" />
-                    <span className="text-xs tabular-nums">{thread.votes}</span>
+                    {/* Filled once it is yours: the outline chevron closes into a solid arrowhead, which
+                        reads at a glance down a column of rows in a way a hue change does not. */}
+                    <ChevronUp className={cn('h-4 w-4', thread.voted && 'fill-current')} />
+                    <span className={cn('text-xs tabular-nums', thread.voted && 'font-bold')}>{thread.votes}</span>
                   </Button>
                 )}
 

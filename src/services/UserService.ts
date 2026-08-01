@@ -1,5 +1,26 @@
-import type { FeedItem, FollowedUser, PublicProfile } from '@/types';
+import type { FeedItem, FollowedUser, ProfileCreation, PublicProfile } from '@/types';
+import { kindOf } from '@/lib/catalogKinds';
 import AuthService from '@/services/AuthService';
+
+/**
+ * A catalog row as the server sends it, narrowed to the fields a profile listing reads.
+ *
+ * Snake_case because that is the table's vocabulary, and `_id` alongside `id` because rows have carried
+ * both since the store the catalog was moved off of.
+ */
+interface RawCreation {
+  _id?: string;
+  id?: string;
+  name: string;
+  kind?: string;
+  thumbnail_file?: string | null;
+  downloads?: number;
+  comment_count?: number;
+  likes?: number;
+  updated_at: string;
+  created_at: string;
+  quarantined_at?: string | null;
+}
 
 /**
  * The public face of an account: what a stranger sees when they click a name.
@@ -43,6 +64,42 @@ class UserService {
     }
 
     return body.data as PublicProfile;
+  }
+
+  /**
+   * What somebody has published, newest first.
+   *
+   * Asks for every kind in one request and lets the caller split it: three requests to fill one list
+   * would be three round trips to draw the same rows, and the counts beside the kind filter need the
+   * whole set anyway.
+   *
+   * The token is sent when there is one, and it is what decides whether a quarantined listing comes
+   * back at all — an author looking at their own profile, and the staff, see them; nobody else does.
+   *
+   * @param userId - Whose work to list
+   * @returns Their listings, newest first
+   */
+  async fetchCreations(userId: string): Promise<ProfileCreation[]> {
+    const response = await fetch(
+      `${this.apiUrl}/users/${encodeURIComponent(userId)}/worlds?kind=all`,
+      { headers: this.authHeaders() }
+    );
+    const body = await this.unwrap<{ data: RawCreation[] }>(response, 'Failed to load their creations');
+
+    return body.data.map((row) => ({
+      id: String(row._id ?? row.id ?? ''),
+      name: row.name,
+      kind: kindOf(row),
+      thumbnailFile: row.thumbnail_file ?? null,
+      downloads: Number(row.downloads) || 0,
+      commentCount: Number(row.comment_count) || 0,
+      likes: Number(row.likes) || 0,
+      updatedAt: row.updated_at,
+      createdAt: row.created_at,
+      // A timestamp on the row is the whole signal; the server has already decided whether this reader
+      // may see the row at all.
+      quarantined: Boolean(row.quarantined_at),
+    }));
   }
 
   /** A bearer header for the signed-in reader. */

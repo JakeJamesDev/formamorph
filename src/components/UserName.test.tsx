@@ -7,7 +7,7 @@ afterEach(cleanup);
 
 const show = (props: Record<string, unknown>, openProfile = vi.fn()) => {
   render(
-    <UserProfileContext.Provider value={{ openProfile }}>
+    <UserProfileContext.Provider value={{ openProfile, setListingOpener: () => {} }}>
       <UserName {...props} />
     </UserProfileContext.Provider>
   );
@@ -27,7 +27,7 @@ describe('a name with an account behind it', () => {
     // These names live in cards and rows that are themselves clickable.
     const onRowClick = vi.fn();
     render(
-      <UserProfileContext.Provider value={{ openProfile: vi.fn() }}>
+      <UserProfileContext.Provider value={{ openProfile: vi.fn(), setListingOpener: () => {} }}>
         <button onClick={onRowClick}>
           <UserName userId="u1" username="wren_hallow" />
         </button>

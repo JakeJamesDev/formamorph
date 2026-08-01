@@ -4,6 +4,7 @@ import IndeterminateProgress from "@/components/ui/indeterminate-progress";
 import { cn } from "@/lib/utils";
 import { CachedThumbnail } from "@/lib/useCachedThumbnail";
 import { CardTags, type WorldRecord } from "@/components/WorldDetails";
+import { LikeButton } from "@/components/community/LikeButton";
 import { WorldCardShell } from "@/components/WorldCardShell";
 import { type DownloadState } from "@/lib/downloadState";
 import { KIND_LABELS, kindOf } from "@/lib/catalogKinds";
@@ -27,6 +28,8 @@ interface RemoteWorldCardProps {
   onHideTag: (tag: string) => void;
   onContextualDownload: (world: WorldRecord, state: DownloadState) => void;
   onDelete: (worldId: string) => void;
+  /** Records a like. Absent leaves the heart a plain count. */
+  onLike?: (world: WorldRecord, liked: boolean) => Promise<void>;
   /** Opens the quarantine dialog. Admin surfaces only. */
   onQuarantine?: (world: WorldRecord) => void;
   /** Lifts a quarantine. Admin surfaces only. */
@@ -37,7 +40,7 @@ interface RemoteWorldCardProps {
  *  description, author, counts, tags, and (for owners/admins) a delete control. */
 export function RemoteWorldCard({
   world, downloadState: dlState, downloadProgress, isAuthenticated, currentUser,
-  onView, onHideWorld, onHideAuthor, onHideTag, onContextualDownload, onDelete, onQuarantine, onRelease,
+  onView, onHideWorld, onHideAuthor, onHideTag, onContextualDownload, onDelete, onLike, onQuarantine, onRelease,
 }: RemoteWorldCardProps) {
   // Get the world ID (server uses _id)
   const worldId = world._id || world.id;
@@ -146,11 +149,21 @@ export function RemoteWorldCard({
         </span>
       )}
     >
-      <div className="flex items-center justify-between text-xs text-muted-foreground mb-2">
-        <span className="flex items-center gap-1" title="Downloads">
+      {/* Three counts across the row: likes take the left where downloads used to sit, and downloads move
+          to the middle rather than shrinking — three evenly spread numbers read as one set. */}
+      <div className="grid grid-cols-3 items-center text-xs text-muted-foreground mb-2">
+        <LikeButton
+          likes={world.likes || 0}
+          liked={world.liked}
+          // Static on your own listing, which the server refuses: liking it would make the count say how
+          // much somebody has published rather than how many people liked it.
+          onToggle={onLike && isAuthenticated && !isOwnedByUser ? (next) => onLike(world, next) : undefined}
+          className="justify-self-start"
+        />
+        <span className="flex items-center gap-1 justify-self-center" title="Downloads">
           <Download className="h-3 w-3" /> {world.downloads || 0}
         </span>
-        <span className="flex items-center gap-1" title="Comments">
+        <span className="flex items-center gap-1 justify-self-end" title="Comments">
           <MessageSquare className="h-3 w-3" /> {world.comment_count || 0}
         </span>
       </div>

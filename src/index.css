@@ -37,6 +37,10 @@
     --warning-foreground: 38 92% 12%;
     --info: 217 84% 56%;
     --info-foreground: 210 40% 98%;
+    /* The filled heart on a listing you like. Set once and never per theme: the heart is pink everywhere,
+       the way it is in every app that has one, and a Rose or Bubble Gum theme recoloring it would leave
+       the liked and unliked states indistinguishable. Mid-toned so it reads on light and dark alike. */
+    --like: 340 75% 55%;
     /* Theme-independent dark scrim for overlays on imagery + modal backdrops (light text must stay readable). */
     --overlay: 0 0% 0%;
     --border: 214.3 31.8% 91.4%;

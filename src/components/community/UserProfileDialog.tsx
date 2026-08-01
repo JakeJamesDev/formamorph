@@ -8,6 +8,8 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Button } from "@/components/ui/button";
 import { UserAvatar } from "@/components/UserAvatar";
 import { RoleBadge } from "@/components/RoleBadge";
+import { UserCreationsTab } from "@/components/community/UserCreationsTab";
+import { ProfileStats } from "@/components/community/ProfileStats";
 import { parseServerDate } from "@/lib/serverDate";
 import UserService from "@/services/UserService";
 import AuthService from "@/services/AuthService";
@@ -19,6 +21,8 @@ interface UserProfileDialogProps {
   onOpenChange: (open: boolean) => void;
   /** The name already on screen, shown while the fetch is in flight so the dialog opens with something. */
   fallbackUsername?: string | null;
+  /** Opens one of their listings in Community Creations. Absent leaves the rows as plain text. */
+  onOpenListing?: (listing: { id: string; kind: string }) => void;
 }
 
 /**
@@ -27,7 +31,7 @@ interface UserProfileDialogProps {
  * Fetched on open rather than carried by the thing that was clicked: a name on a listing, a comment and a
  * reply are three different shapes, and none of them should have to grow a signup date to make this work.
  */
-export function UserProfileDialog({ userId, onOpenChange, fallbackUsername }: UserProfileDialogProps) {
+export function UserProfileDialog({ userId, onOpenChange, fallbackUsername, onOpenListing }: UserProfileDialogProps) {
   const [profile, setProfile] = useState<PublicProfile | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
@@ -77,7 +81,7 @@ export function UserProfileDialog({ userId, onOpenChange, fallbackUsername }: Us
   return (
     <Dialog open={userId !== null} onOpenChange={onOpenChange}>
       {/* No description: a profile is the person, and a line explaining that would say nothing. */}
-      <DialogContent aria-describedby={undefined} className="sm:max-w-[380px]">
+      <DialogContent aria-describedby={undefined} className="sm:max-w-[460px]">
         <DialogHeader className="sr-only">
           <DialogTitle>{name || 'Profile'}</DialogTitle>
         </DialogHeader>
@@ -103,15 +107,15 @@ export function UserProfileDialog({ userId, onOpenChange, fallbackUsername }: Us
             {error ? (
               <p className="text-sm text-destructive">{error}</p>
             ) : memberSince ? (
-              <p className="text-sm text-muted-foreground">
-                Member since {memberSince}
-                {' · '}
-                {profile?.followers} {profile?.followers === 1 ? 'follower' : 'followers'}
-              </p>
+              <p className="text-sm text-muted-foreground">Member since {memberSince}</p>
             ) : (
               <Skeleton className="mx-auto h-5 w-32" />
             )}
           </div>
+
+          {/* Followers, and what their work has earned. Always rendered once the profile lands, zeros
+              included, so the dialog keeps its shape whoever is in it. */}
+          {profile && <ProfileStats profile={profile} className="justify-center" />}
 
           {canFollow && (
             <Button
@@ -127,6 +131,10 @@ export function UserProfileDialog({ userId, onOpenChange, fallbackUsername }: Us
             </Button>
           )}
         </div>
+
+        {/* Straight under the header rather than behind a tab: there is only one thing to show, and a bar
+            with a single trigger on it costs a row of the dialog to say so. */}
+        <UserCreationsTab userId={userId} username={name} onOpenListing={onOpenListing} />
       </DialogContent>
     </Dialog>
   );

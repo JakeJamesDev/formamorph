@@ -65,7 +65,7 @@ interface CommunityCreationsBrowserProps {
   // Local world list (drives download-state) + setter (download/overwrite add or update local copies).
   worlds: WorldRecord[];
   setWorlds: React.Dispatch<React.SetStateAction<WorldRecord[]>>;
-  // The character/dictionary libraries drive their tabs' download-state; refreshing re-reads them after a
+  // The entity/dictionary libraries drive their tabs' download-state; refreshing re-reads them after a
   // download lands (unlike worlds, these are stored by their own service rather than set here).
   entities: EntityMetadata[];
   dictionaries: DictionaryMetadata[];
@@ -126,7 +126,7 @@ const CommunityCreationsBrowser = ({
   // Which kind is being browsed. The catalog holds all three; the pipeline below scopes to this one.
   const [browseKind, setBrowseKind] = useState<CatalogKind>(initialKind ?? 'world');
 
-  // Characters and dictionaries download into their own libraries, one copy per listing. Worlds keep the
+  // Entities and dictionaries download into their own libraries, one copy per listing. Worlds keep the
   // coordinator's multi-copy flow (see useLibraryDownload for why the two differ).
   const entityDownload = useLibraryDownload<Entity>({
     kind: 'entity',
@@ -285,6 +285,26 @@ const CommunityCreationsBrowser = ({
     }
   };
 
+  /**
+   * Record a like, taking the count from the server's own answer.
+   *
+   * Patched in place rather than re-synced, like a quarantine: the catalog arrives as one big request, and
+   * refetching it to learn one number would blank the grid — and re-sort it under the pointer when the
+   * reader is sorting by likes.
+   */
+  const handleLike = async (world: WorldRecord, liked: boolean) => {
+    const worldId = String(world._id || world.id);
+    const state = await WorldStorageService.setRemoteWorldLiked(worldId, liked);
+
+    setRemoteWorlds((prev) => prev.map((w) => ((w._id || w.id) === worldId
+      ? { ...w, liked: state.liked, likes: state.likes }
+      : w)));
+    // The open details modal holds its own copy of the record, so it needs the same patch to agree.
+    setSelectedRemoteWorld((prev) => (prev && (prev._id || prev.id) === worldId
+      ? { ...prev, liked: state.liked, likes: state.likes }
+      : prev));
+  };
+
   const handleRelease = async (world: WorldRecord) => {
     const worldId = String(world._id || world.id);
     const noun = KIND_LABELS[kindOf(world)].one;
@@ -380,6 +400,7 @@ const CommunityCreationsBrowser = ({
           <SelectItem value="updated_at">Last Updated</SelectItem>
           <SelectItem value="created_at">Creation Date</SelectItem>
           <SelectItem value="downloads">Downloads</SelectItem>
+          <SelectItem value="likes">Likes</SelectItem>
         </SelectContent>
       </Select>
       <Button
@@ -478,13 +499,13 @@ const CommunityCreationsBrowser = ({
     <>
       {downscaleDialog}
 
-      {/* Updating a character/dictionary replaces the single local copy, so an edited one asks first —
+      {/* Updating an entity/dictionary replaces the single local copy, so an edited one asks first —
           there's no second copy for the edits to survive in (unlike worlds). ConfirmDialog holds its text
           while fading out, so the name doesn't vanish mid-animation. */}
       <ConfirmDialog
         open={!!entityDownload.dirtyConfirm}
         onOpenChange={(v) => { if (!v) entityDownload.setDirtyConfirm(null); }}
-        title="Replace your edited character?"
+        title="Replace your edited entity?"
         description={`You've edited your copy of "${entityDownload.dirtyConfirm?.name ?? ''}". Downloading again replaces it with the published version, and your changes are lost.`}
         onConfirm={entityDownload.confirmDirtyDownload}
       />
@@ -595,6 +616,7 @@ const CommunityCreationsBrowser = ({
                       onHideTag={hideRemoteTag}
                       onContextualDownload={handleCardDownload}
                       onDelete={setRemoteWorldToDelete}
+                      onLike={handleLike}
                       onQuarantine={setQuarantining}
                       onRelease={handleRelease}
                     />
@@ -627,6 +649,8 @@ const CommunityCreationsBrowser = ({
         downloadStateForWorld={downloadStateForRecord}
         downloadProgress={allDownloadProgress}
         onContextualDownload={handleCardDownload}
+        currentUser={currentUser}
+        onLike={handleLike}
       />
 
       {/* Refresh/Update decision: download a separate copy vs overwrite an existing local copy */}

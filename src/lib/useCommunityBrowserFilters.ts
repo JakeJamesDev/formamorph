@@ -36,7 +36,7 @@ export function useCommunityBrowserFilters(
   const [authorFilter, setAuthorFilter] = useState<string[]>([]);
   const [tagFilter, setTagFilter] = useState<string[]>([]);
   const [tagMode, setTagMode] = useState<'any' | 'all'>('any');
-  const [sortField, setSortField] = useState('updated_at'); // updated_at | created_at | downloads
+  const [sortField, setSortField] = useState('updated_at'); // updated_at | created_at | downloads | likes
   const [sortOrder, setSortOrder] = useState('desc'); // asc | desc
   const [sortUpdatesFirst, setSortUpdatesFirst] = useState(true); // float worlds with an update to the front
   const [currentPage, setCurrentPage] = useState(1);
@@ -161,6 +161,8 @@ export function useCommunityBrowserFilters(
         const bu = downloadStateOf(b) === 'update' ? 1 : 0;
         if (au !== bu) return bu - au; // updates first, regardless of sort direction
       }
+      // Dates parse to an epoch; the counts (downloads, likes) pass through `toEpoch` as the numbers they
+      // already are, missing ones included, so both kinds of field compare on one line.
       const av = sortField === 'downloads' ? (a.downloads || 0) : toEpoch(a[sortField]);
       const bv = sortField === 'downloads' ? (b.downloads || 0) : toEpoch(b[sortField]);
       return (av - bv) * dir;

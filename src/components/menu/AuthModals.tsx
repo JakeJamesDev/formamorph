@@ -24,6 +24,8 @@ import UserService from "@/services/UserService";
 import { useResetOnOpen } from "@/lib/useResetOnOpen";
 import { parseServerDate } from "@/lib/serverDate";
 import { type WorldRecord } from "@/components/WorldDetails";
+import type { PublicProfile } from "@/types";
+import { ProfileStats } from "@/components/community/ProfileStats";
 
 interface AuthModalsProps {
   showAuthDialog: boolean;
@@ -59,9 +61,9 @@ export function AuthModals({
   // Held locally as well as on the host: the header has to change the moment the crop is saved, and the
   // host's copy arrives a render later.
   const [avatarUrl, setAvatarUrl] = useState<string | null>((currentUser?.avatarUrl as string | null) ?? null);
-  // Your own follower count. Read from the same public profile route everybody else's comes from, so
-  // there is one answer to the question rather than two that can disagree.
-  const [followers, setFollowers] = useState<number | null>(null);
+  // Your own numbers. Read from the same public profile route everybody else's comes from, so what you
+  // see here is what a stranger clicking your name sees, rather than a second answer to one question.
+  const [profileStats, setProfileStats] = useState<PublicProfile | null>(null);
 
   // Follow the host when it hands over a different account — a login while this was mounted would
   // otherwise leave the previous reader's face in the header.
@@ -110,9 +112,9 @@ export function AuthModals({
 
     let cancelled = false;
     UserService.fetchProfile(id)
-      .then((p) => { if (!cancelled) setFollowers(p.followers); })
-      // Silent: a follower count is not worth a toast, and the line simply stays absent.
-      .catch(() => { if (!cancelled) setFollowers(null); });
+      .then((p) => { if (!cancelled) setProfileStats(p); })
+      // Silent: these numbers are not worth a toast, and the row simply stays absent.
+      .catch(() => { if (!cancelled) setProfileStats(null); });
 
     return () => { cancelled = true; };
   }, [showProfileDialog, currentUser]);
@@ -316,14 +318,13 @@ export function AuthModals({
                 onChanged={(url) => { setAvatarUrl(url); onAvatarChanged?.(url); }}
                 disabled={isSuspended}
               />
-              <div className="min-w-0">
+              <div className="min-w-0 space-y-1">
                 <h3 className="text-lg font-semibold truncate">
                   {currentUser?.username || 'User'}
                 </h3>
-                <p className="text-sm text-muted-foreground">
-                  Member since {memberSince}
-                  {followers !== null && ` · ${followers} ${followers === 1 ? 'follower' : 'followers'}`}
-                </p>
+                <p className="text-sm text-muted-foreground">Member since {memberSince}</p>
+                {/* The same row a stranger reads on your profile popup. */}
+                {profileStats && <ProfileStats profile={profileStats} />}
               </div>
 
               <div className="ml-auto flex flex-wrap justify-end gap-2">

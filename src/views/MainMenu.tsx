@@ -2,6 +2,7 @@ import { randomUUID } from "@/lib/uuid";
 import { DEFAULT_WORLDS, isDefaultWorldId } from "@/lib/defaultWorlds";
 import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { useGameData } from '../contexts/GameDataContext';
+import { useUserProfile } from '../contexts/userProfileStore';
 import { useDevRoute } from '../lib/devRouter';
 import { MAIN_MENU_CARD_TABS, type MainMenuCardTab } from './mainMenuTabs';
 import { findSavesUsingModel } from '@/lib/modelUsage';
@@ -357,8 +358,18 @@ const MainMenu = ({ onStartGame, onLoadSaveGame, onReplayIntro, introActive = fa
   const handleOpenListing = useCallback((listing: { id: string; kind: string }) => {
     setShowProfileDialog(false);
     setPendingListing(listing);
+    // A no-op when the request came from a profile opened inside the browser: it is already open, and the
+    // listing it was handed is what it reacts to either way.
     setShowCommunityBrowser(true);
   }, []);
+
+  // Lend the same jump to the profile dialog, which lives at the app root and cannot reach any of this.
+  const { setListingOpener } = useUserProfile();
+  useEffect(() => {
+    setListingOpener(handleOpenListing);
+
+    return () => setListingOpener(null);
+  }, [setListingOpener, handleOpenListing]);
 
   const openImageViewer = (src: string | undefined, alt: string | undefined) => {
     if (!src) return;
