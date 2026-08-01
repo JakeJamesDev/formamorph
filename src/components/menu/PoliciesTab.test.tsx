@@ -120,3 +120,66 @@ describe('the policy sub-tabs', () => {
     await waitFor(() => expect(screen.getByRole('heading', { name: 'Upload Gate' })).toBeTruthy());
   });
 });
+
+describe('the tag field', () => {
+  /** The Tag Notice panel, loaded and on screen. */
+  const openTagNotice = async () => {
+    stubPolicies();
+    render(<PoliciesTab active initialTab="tagNotice" />);
+    return screen.findByLabelText('Tags');
+  };
+
+  it('shows what is already there as chips, not as a comma-separated line', async () => {
+    // It was one text input joined with ", ", which made a tag containing a comma unwritable.
+    await openTagNotice();
+
+    expect(screen.getByText('isekai')).toBeTruthy();
+    expect(screen.queryByDisplayValue('isekai')).toBeNull();
+  });
+
+  it('commits on Enter, the way a world is tagged', async () => {
+    const input = await openTagNotice();
+
+    // A tag no suggestion matches: with one highlighted, Enter takes the suggestion instead, which is
+    // the world editor's behavior and the whole point of sharing the field.
+    fireEvent.change(input, { target: { value: 'zzz-not-a-danbooru-tag' } });
+    fireEvent.keyDown(input, { key: 'Enter' });
+
+    expect(screen.getByText('zzz-not-a-danbooru-tag')).toBeTruthy();
+    // The buffer clears, so the next tag starts empty rather than appending to the last.
+    expect((input as HTMLInputElement).value).toBe('');
+  });
+
+  it('sends the chips to the server as the list they are', async () => {
+    const save = vi.spyOn(PolicyService, 'save').mockResolvedValue(policy({ tags: ['isekai', 'mature'] }));
+    const input = await openTagNotice();
+
+    fireEvent.change(input, { target: { value: 'zzz-not-a-danbooru-tag' } });
+    fireEvent.keyDown(input, { key: 'Enter' });
+    fireEvent.click(screen.getByRole('button', { name: /Save/ }));
+
+    await waitFor(() => expect(save).toHaveBeenCalledWith(
+      'tag_notice',
+      expect.objectContaining({ tags: ['isekai', 'zzz-not-a-danbooru-tag'] })
+    ));
+  });
+
+  it('autocompletes against the same list a world is tagged from', async () => {
+    // The point of sharing the field: what an administrator names here and what an author tags with
+    // come from one vocabulary, so the notice cannot be written against a tag nobody can apply.
+    const input = await openTagNotice();
+
+    fireEvent.change(input, { target: { value: 'matur' } });
+
+    // Scoped to the suggestion buttons: the help text under the field also says 'mature'.
+    await waitFor(() => expect(screen.getAllByRole('button', { name: /^mature/ }).length).toBeGreaterThan(0));
+  });
+
+  it('drops one without going through the text', async () => {
+    await openTagNotice();
+
+    fireEvent.click(screen.getByRole('button', { name: /Remove isekai/i }));
+
+    expect(screen.queryByText('isekai')).toBeNull();
+  });
+});

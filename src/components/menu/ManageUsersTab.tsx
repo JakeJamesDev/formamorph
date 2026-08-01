@@ -1,12 +1,13 @@
 import { useState, useEffect, useRef } from "react";
 import { toast } from "react-toastify";
-import { ArrowDown, ArrowUp, ArrowUpDown, ChevronDown, History, Mail, RotateCcw, Search } from "lucide-react";
+import { ArrowDown, ArrowUp, ArrowUpDown, ChevronDown, History, ImageOff, Mail, RotateCcw, Search } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Popover, PopoverClose, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Skeleton } from "@/components/ui/skeleton";
 import { ConfirmDialog } from "@/components/ConfirmDialog";
+import { UserAvatar } from "@/components/UserAvatar";
 import { MessageComposerDialog, type ComposerTarget } from "@/components/menu/MessageComposerDialog";
 import { SentMessagesDialog } from "@/components/menu/SentMessagesDialog";
 import PolicyService from "@/services/PolicyService";
@@ -20,6 +21,12 @@ import type { SentMessage } from "@/types";
 const SUSPENSION_TEMPLATE = {
   subject: 'Your account has been suspended',
   body: 'Your account has been suspended.\n\n**Reason:** ',
+} as const;
+
+/** Prefill offered after clearing somebody's picture, so they learn why rather than just finding it gone. */
+const AVATAR_REMOVAL_TEMPLATE = {
+  subject: 'Your profile image has been removed',
+  body: 'Your profile image has been removed from Formamorph. You can upload a new one from your profile at any time.\n\n**Reason:** ',
 } as const;
 
 /** How each answer to the upload gate reads in the table. */
@@ -80,6 +87,10 @@ export function ManageUsersTab({ active }: ManageUsersTabProps) {
   // The sent list serves both entry points: unfiltered, or narrowed to one user via `historyUser`.
   const [showSentMessages, setShowSentMessages] = useState(false);
   const [historyUser, setHistoryUser] = useState<{ id: string; username: string } | null>(null);
+  // Confirmed before it happens, then offered as a notice afterwards — the same two beats a suspension
+  // and a takedown already have.
+  const [pendingAvatarRemoval, setPendingAvatarRemoval] = useState<WorldRecord | null>(null);
+  const [avatarRemovedFrom, setAvatarRemovedFrom] = useState<WorldRecord | null>(null);
   // Set to the sent message being rewritten; the composer serves both send and edit.
   const [editingMessage, setEditingMessage] = useState<SentMessage | null>(null);
   // Bumped after a send so an open sent list picks the new message up.
@@ -259,6 +270,21 @@ export function ManageUsersTab({ active }: ManageUsersTabProps) {
     }
   };
 
+  /** Clear one user's profile image, then offer to tell them why. */
+  const removeAvatar = async (user: WorldRecord) => {
+    try {
+      await AuthService.removeUserAvatar(userIdOf(user));
+      // Cleared in the row rather than refetched, so the control disappears with the picture.
+      setUsers((prev) => prev.map((row) =>
+        userIdOf(row) === userIdOf(user) ? { ...row, avatarUrl: null } : row
+      ));
+      toast.success(`Removed the profile image of ${usernameOf(user)}`);
+      setAvatarRemovedFrom(user);
+    } catch (error) {
+      toast.error((error as Error).message || 'Failed to remove the profile image');
+    }
+  };
+
   const runSearch = () => {
     setUserCurrentPage(1);
     setSearchNonce((n) => n + 1);
@@ -419,7 +445,12 @@ export function ManageUsersTab({ active }: ManageUsersTabProps) {
                           />
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap">
-                          <div className="text-sm font-medium text-foreground">
+                          <div className="flex items-center gap-2 text-sm font-medium text-foreground">
+                            <UserAvatar
+                              username={user.username as string | undefined}
+                              avatarUrl={user.avatarUrl as string | null | undefined}
+                              size="sm"
+                            />
                             {user.username}
                           </div>
                         </td>
@@ -501,6 +532,21 @@ export function ManageUsersTab({ active }: ManageUsersTabProps) {
                                       <History className="mr-2 h-3.5 w-3.5" /> History ({Number(user.messageCount) || 0})
                                     </Button>
                                   </PopoverClose>
+
+                                  {/* Only when there is one: an inert row would read as a missing permission. */}
+                                  {user.avatarUrl ? (
+                                    <PopoverClose asChild>
+                                      <Button
+                                        size="sm"
+                                        variant="ghost"
+                                        className="w-full justify-start text-destructive hover:text-destructive"
+                                        aria-label={`Remove the profile image of ${usernameOf(user)}`}
+                                        onClick={() => setPendingAvatarRemoval(user)}
+                                      >
+                                        <ImageOff className="mr-2 h-3.5 w-3.5" /> Remove Image
+                                      </Button>
+                                    </PopoverClose>
+                                  ) : null}
                                 </PopoverContent>
                               </Popover>
                             </div>
@@ -643,6 +689,36 @@ export function ManageUsersTab({ active }: ManageUsersTabProps) {
         setSuspendedUser(null);
       }}
       onCancel={() => setSuspendedUser(null)}
+    />
+
+    <ConfirmDialog
+      open={pendingAvatarRemoval !== null}
+      onOpenChange={(isOpen) => { if (!isOpen) setPendingAvatarRemoval(null); }}
+      title="Remove this profile image?"
+      description={`${pendingAvatarRemoval ? usernameOf(pendingAvatarRemoval) : ''} will go back to a plain initial, and can upload a new picture at any time. This is recorded in the log.`}
+      onConfirm={() => {
+        if (pendingAvatarRemoval) removeAvatar(pendingAvatarRemoval);
+        setPendingAvatarRemoval(null);
+      }}
+      onCancel={() => setPendingAvatarRemoval(null)}
+    />
+
+    <ConfirmDialog
+      open={avatarRemovedFrom !== null}
+      onOpenChange={(isOpen) => { if (!isOpen) setAvatarRemovedFrom(null); }}
+      title="Say why?"
+      description={`${avatarRemovedFrom ? usernameOf(avatarRemovedFrom) : ''} has had their profile image removed. Send them a message explaining why?`}
+      onConfirm={() => {
+        if (avatarRemovedFrom) {
+          setComposerPrefill({ ...AVATAR_REMOVAL_TEMPLATE });
+          setComposerTarget({
+            broadcast: false,
+            recipients: [{ id: userIdOf(avatarRemovedFrom), username: usernameOf(avatarRemovedFrom) }],
+          });
+        }
+        setAvatarRemovedFrom(null);
+      }}
+      onCancel={() => setAvatarRemovedFrom(null)}
     />
     </>
   );

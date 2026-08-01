@@ -9,6 +9,7 @@ import { MarkdownRenderer } from "@/components/game/MarkdownRenderer";
 import PromptField from "@/components/prompt/PromptField";
 import { plainVocabulary } from "@/lib/chipVocabulary";
 import { DIAGNOSTIC_LABELS } from "@/lib/bugDiagnostics";
+import { UserAvatar } from "@/components/UserAvatar";
 import {
   FEEDBACK_CATEGORY_LABELS, FEEDBACK_STATUS_STYLES, STATUS_OPTIONS, formatFeedbackDate,
 } from "@/lib/feedbackPresentation";
@@ -318,7 +319,11 @@ export function FeedbackThreadView({
                 )}
               >
                 <div className="flex items-start justify-between gap-2">
-                  <p className="text-xs text-muted-foreground">
+                  <p className="flex items-center gap-1.5 text-xs text-muted-foreground">
+                    {/* The team signs as the team, so a moderator's own face would be the wrong name's. */}
+                    {!comment.author.isAdmin && (
+                      <UserAvatar username={comment.author.username} avatarUrl={comment.author.avatarUrl} size="xs" />
+                    )}
                     {comment.author.isAdmin ? 'Formamorph Team' : comment.author.username || 'Unknown'}
                     {' · '}{formatFeedbackDate(comment.createdAt)}
                     {/* Said plainly, so the other reader can tell a reply changed after they read it. */}

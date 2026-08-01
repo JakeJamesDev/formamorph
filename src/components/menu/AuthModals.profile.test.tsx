@@ -37,7 +37,6 @@ const renderProfile = (over: Record<string, unknown> = {}) =>
       showProfileDialog
       setShowProfileDialog={() => {}}
       currentUser={user()}
-      userInitial="F"
       onAuthenticated={() => {}}
       onLogout={() => {}}
       {...over}
@@ -159,7 +158,6 @@ describe('landing on a tab while already open', () => {
         showProfileDialog
         setShowProfileDialog={() => {}}
         currentUser={user()}
-        userInitial="F"
         onAuthenticated={() => {}}
         onLogout={() => {}}
         initialTab="messages"
@@ -174,7 +172,6 @@ describe('landing on a tab while already open', () => {
         showProfileDialog
         setShowProfileDialog={() => {}}
         currentUser={user()}
-        userInitial="F"
         onAuthenticated={() => {}}
         onLogout={() => {}}
         initialTab="suggestions"

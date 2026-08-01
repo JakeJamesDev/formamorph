@@ -13,6 +13,7 @@ export const AUDIT_ACTION_LABELS: Record<AuditAction, string> = {
   quarantine_updated: 'Quarantine updated',
   quarantine_released: 'Released',
   quarantine_expired: 'Quarantine expired',
+  avatar_removed: 'Image removed',
 };
 
 /** The tint each action carries, so a scan down the list separates removals from the rest. */
@@ -29,6 +30,7 @@ export const AUDIT_ACTION_STYLES: Record<AuditAction, string> = {
   quarantine_updated: 'bg-info/10 text-info',
   quarantine_released: 'bg-success/10 text-success',
   quarantine_expired: 'bg-destructive/10 text-destructive',
+  avatar_removed: 'bg-destructive/10 text-destructive',
 };
 
 /** The filter's options, in the order the server declares them. */
@@ -114,6 +116,10 @@ export function describeAuditEntry(entry: AuditEntry): string {
       return target
         ? `The quarantine ran out on ${name ? `the ${noun ?? 'listing'} “${name}”` : `a ${noun ?? 'listing'}`} by ${target}, and it was deleted`
         : `The quarantine ran out on ${name ? `the ${noun ?? 'listing'} “${name}”` : `a ${noun ?? 'listing'}`}, and it was deleted`;
+    case 'avatar_removed':
+      return target
+        ? `${actor} removed the profile image of ${target}`
+        : `${actor} removed their own profile image`;
     default:
       return `${actor} did something the app does not recognize`;
   }

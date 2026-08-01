@@ -211,6 +211,83 @@ class AuthService {
     }
   }
 
+  /**
+   * Replace the signed-in account's profile image and adopt the new URL locally.
+   *
+   * The cached user is updated in place rather than re-fetched: every surface reads the avatar from its
+   * own DTO, and the one thing that must change immediately is the reader's own face in the header.
+   *
+   * @param image - A `data:image/(webp|png);base64,...` URI from the crop step
+   * @returns The new avatar URL
+   */
+  async setAvatar(image: string): Promise<string | null> {
+    if (!this.token) throw new Error('Not authenticated');
+
+    const response = await fetch(`${this.API_URL}/users/me/avatar`, {
+      method: 'PUT',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${this.token}`
+      },
+      body: JSON.stringify({ image })
+    });
+
+    const data = await response.json();
+    if (!response.ok) {
+      // A suspended account's refusal lands here and is worth showing verbatim.
+      throw new Error(data.error || data.message || 'Failed to save the profile image');
+    }
+
+    const avatarUrl: string | null = data.data?.avatarUrl ?? null;
+    this.applyAvatar(avatarUrl);
+
+    return avatarUrl;
+  }
+
+  /** Remove the signed-in account's profile image. */
+  async removeAvatar(): Promise<void> {
+    if (!this.token) throw new Error('Not authenticated');
+
+    const response = await fetch(`${this.API_URL}/users/me/avatar`, {
+      method: 'DELETE',
+      headers: { 'Authorization': `Bearer ${this.token}` }
+    });
+
+    if (!response.ok) {
+      const data = await response.json().catch(() => ({}));
+      throw new Error(data.error || data.message || 'Failed to remove the profile image');
+    }
+
+    this.applyAvatar(null);
+  }
+
+  /**
+   * Clear somebody else's profile image. Admins only; the server records it in the audit log.
+   *
+   * @param userId - Whose image to remove
+   */
+  async removeUserAvatar(userId: string): Promise<void> {
+    if (!this.token) throw new Error('Not authenticated');
+
+    const response = await fetch(`${this.API_URL}/users/${userId}/avatar`, {
+      method: 'DELETE',
+      headers: { 'Authorization': `Bearer ${this.token}` }
+    });
+
+    if (!response.ok) {
+      const data = await response.json().catch(() => ({}));
+      throw new Error(data.error || data.message || 'Failed to remove the profile image');
+    }
+  }
+
+  /** Write an avatar URL into the cached user, so the header changes without a round trip. */
+  applyAvatar(avatarUrl: string | null) {
+    if (!this.currentUser) return;
+
+    this.currentUser = { ...this.currentUser, avatarUrl };
+    localStorage.setItem(this.userKey, JSON.stringify(this.currentUser));
+  }
+
   /** Loose format check for the optional registration email. */
   isValidEmail(email: string) {
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;

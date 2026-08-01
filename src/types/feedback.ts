@@ -36,6 +36,8 @@ export interface BugDiagnostics {
 export interface FeedbackReporter {
   id: string | null;
   username: string | null;
+  /** Their profile image, or null when they have none. Root-relative; see `avatarSrc`. */
+  avatarUrl?: string | null;
 }
 
 /** One piece of feedback — a bug report or a suggestion — as any reader of it sees it. */
@@ -70,6 +72,8 @@ export interface FeedbackComment {
   author: {
     id: string | null;
     username: string | null;
+    /** Their profile image, or null when they have none. Root-relative; see `avatarSrc`. */
+    avatarUrl?: string | null;
     /** Drives how the thread styles it — a reply from the team reads differently from anyone else's. */
     isAdmin: boolean;
   };

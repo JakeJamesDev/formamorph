@@ -14,6 +14,7 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { MessagesTab } from "@/components/menu/MessagesTab";
+import { ProfileAvatarEditor } from "@/components/menu/ProfileAvatarEditor";
 import { type ProfileTab } from "@/components/menu/profileTabs";
 import { MyFeedbackTab } from "@/components/menu/MyFeedbackTab";
 import { TermsTab } from "@/components/menu/TermsTab";
@@ -29,7 +30,6 @@ interface AuthModalsProps {
   showProfileDialog: boolean;
   setShowProfileDialog: (open: boolean) => void;
   currentUser: WorldRecord | null;
-  userInitial: string;
   /** Called after a successful login/register so the parent can refresh its auth identity. */
   onAuthenticated: () => void;
   /** Full logout (clears the parent's auth state); the header uses the same handler. */
@@ -40,6 +40,8 @@ interface AuthModalsProps {
   onBugsChange?: () => void;
   /** Tab to open on; the dev-router uses this to land on either half directly. */
   initialTab?: ProfileTab;
+  /** Fired when the reader changes their own profile image, so the host's header follows it. */
+  onAvatarChanged?: (avatarUrl: string | null) => void;
 }
 
 /** The login/register dialog and the user-profile (change password / logout) dialog. Owns all auth
@@ -47,9 +49,18 @@ interface AuthModalsProps {
 export function AuthModals({
   showAuthDialog, setShowAuthDialog,
   showProfileDialog, setShowProfileDialog,
-  currentUser, userInitial, onAuthenticated, onLogout,
-  onUnreadChange, onBugsChange, initialTab = 'messages',
+  currentUser, onAuthenticated, onLogout,
+  onUnreadChange, onBugsChange, onAvatarChanged, initialTab = 'messages',
 }: AuthModalsProps) {
+  // Held locally as well as on the host: the header has to change the moment the crop is saved, and the
+  // host's copy arrives a render later.
+  const [avatarUrl, setAvatarUrl] = useState<string | null>((currentUser?.avatarUrl as string | null) ?? null);
+
+  // Follow the host when it hands over a different account — a login while this was mounted would
+  // otherwise leave the previous reader's face in the header.
+  useEffect(() => {
+    setAvatarUrl((currentUser?.avatarUrl as string | null) ?? null);
+  }, [currentUser]);
   const [authMode, setAuthMode] = useState('login'); // 'login' or 'register'
   const [profileTab, setProfileTab] = useState<ProfileTab>(initialTab);
   const [showPasswordDialog, setShowPasswordDialog] = useState(false);
@@ -279,9 +290,12 @@ export function AuthModals({
               not to whichever tab is open, and the banner is state rather than content. */}
           <div className="flex-shrink-0 min-w-0">
             <div className="flex items-center gap-4 mb-4">
-              <div className="w-16 h-16 shrink-0 rounded-full bg-secondary flex items-center justify-center text-secondary-foreground text-2xl font-bold">
-                {userInitial}
-              </div>
+              <ProfileAvatarEditor
+                username={currentUser?.username as string | undefined}
+                avatarUrl={avatarUrl}
+                onChanged={(url) => { setAvatarUrl(url); onAvatarChanged?.(url); }}
+                disabled={isSuspended}
+              />
               <div className="min-w-0">
                 <h3 className="text-lg font-semibold truncate">
                   {currentUser?.username || 'User'}
