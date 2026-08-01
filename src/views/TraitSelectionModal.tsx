@@ -3,7 +3,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Checkbox } from "@/components/ui/checkbox";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import type { Trait, TraitGroup, Stat } from "@/types";
 
 const GENERAL = 'general';
@@ -121,17 +121,22 @@ const TraitSelectionModal = ({
             const describedGroups = visibleChildren(row.parentId).filter((g) => g.playerDescription?.trim());
             return (
               <div key={i}>
-                <Tabs value={row.active || undefined} onValueChange={goToValue}>
-                  <TabsList className="h-auto flex-wrap justify-start">
-                    {((row.parentId === null && hasUngrouped) ||
-                      (row.parentId !== null && directTraits(row.parentId).length > 0)) && (
-                      <TabsTrigger value={generalValue(row.parentId)}>General</TabsTrigger>
-                    )}
-                    {visibleChildren(row.parentId).map((g) => (
-                      <TabsTrigger key={g.id} value={g.id}>{g.name}</TabsTrigger>
-                    ))}
-                  </TabsList>
-                </Tabs>
+                <ToggleGroup
+                  type="single"
+                  value={row.active || ''}
+                  // A single ToggleGroup clears its value when the active item is clicked again; a row always
+                  // has a group selected, so an empty result is ignored rather than navigated to.
+                  onValueChange={(value) => { if (value) goToValue(value); }}
+                  className="h-auto flex-wrap justify-start"
+                >
+                  {((row.parentId === null && hasUngrouped) ||
+                    (row.parentId !== null && directTraits(row.parentId).length > 0)) && (
+                    <ToggleGroupItem value={generalValue(row.parentId)}>General</ToggleGroupItem>
+                  )}
+                  {visibleChildren(row.parentId).map((g) => (
+                    <ToggleGroupItem key={g.id} value={g.id}>{g.name}</ToggleGroupItem>
+                  ))}
+                </ToggleGroup>
                 {describedGroups.length > 0 && (
                   <div className="grid mt-1">
                     {describedGroups.map((g) => (

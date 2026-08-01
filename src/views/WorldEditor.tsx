@@ -1,5 +1,5 @@
 import { randomUUID } from "@/lib/uuid";
-import { useState, useEffect, useMemo, useRef, type ChangeEvent } from 'react';
+import { useState, useEffect, useMemo, useRef, type ChangeEvent, type ReactNode } from 'react';
 import { useGameData } from '@/contexts/GameDataContext';
 import { useDevRoute } from '@/lib/devRouter';
 import { WORLD_EDITOR_TABS } from './worldEditorTabs';
@@ -9,7 +9,7 @@ import { worldEditorTopicId } from '@/lib/helpTopics';
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
-import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Download, Plus, ArrowLeft, Save, FolderPlus, FilePlus, ImageDown, BookPlus, UserPlus, Loader2 } from "lucide-react";
 import { Panel, PanelGroup, PanelResizeHandle } from 'react-resizable-panels';
@@ -552,6 +552,13 @@ const WorldEditor = ({ onClose, embedded = false, backButton }: {
       ))}
     </TabsList>
   );
+  // One panel per tab so every trigger's `aria-controls` resolves. Only the active tab has a body, so the
+  // rest render empty; `contents` keeps that body a direct flex child of the tab root, as it was unwrapped.
+  const tabPanels = (body: ReactNode) => WORLD_EDITOR_TABS.map((t) => (
+    <TabsContent key={t.value} value={t.value} className="contents">
+      {t.value === activeTab ? body : null}
+    </TabsContent>
+  ));
   // The active tab's help topic, when it has copy yet — drives the `?` beside the search box.
   const helpTopicId = worldEditorTopicId(activeTab);
   const addSearchBar = activeTab !== "overview" && (
@@ -661,7 +668,7 @@ const WorldEditor = ({ onClose, embedded = false, backButton }: {
                   {/* The eight tabs don't fit a phone, so the strip scrolls horizontally. */}
                   <div className="overflow-x-auto flex-shrink-0">{tabsList}</div>
                   {addSearchBar}
-                  {activeTab === "overview" ? (
+                  {tabPanels(activeTab === "overview" ? (
                     // Overview isn't master-detail — stack its two forms.
                     <ScrollArea className="flex-grow min-h-0 mt-4">
                       {listContent}
@@ -676,7 +683,7 @@ const WorldEditor = ({ onClose, embedded = false, backButton }: {
                       list={<div className="h-full" onClick={() => setSelectedItemId(null)}>{listContent}</div>}
                       detail={detailContent}
                     />
-                  )}
+                  ))}
                 </Tabs>
               </CardContent>
               {footerBar}
@@ -692,9 +699,13 @@ const WorldEditor = ({ onClose, embedded = false, backButton }: {
                     <Tabs value={activeTab} onValueChange={setActiveTab} className="flex-grow flex flex-col min-h-0">
                       {tabsList}
                       {addSearchBar}
-                      <div className="flex-grow min-h-0 mt-4" onClick={() => setSelectedItemId(null)}>
-                        <ScrollArea className="h-full">{listContent}</ScrollArea>
-                      </div>
+                      {/* The detail pane is the other half of a master-detail split, in its own resizable
+                          panel outside the tab root — the tab's own content is this list. */}
+                      {tabPanels(
+                        <div className="flex-grow min-h-0 mt-4" onClick={() => setSelectedItemId(null)}>
+                          <ScrollArea className="h-full">{listContent}</ScrollArea>
+                        </div>
+                      )}
                     </Tabs>
                   </CardContent>
                   {footerBar}

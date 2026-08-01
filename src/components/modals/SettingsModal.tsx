@@ -2041,20 +2041,24 @@ An inspection aid for authoring and debugging; off by default.`}</HintInfo>
                 {thinkingMode === 'staged' && <TabsTrigger value="storyboard">Storyboard</TabsTrigger>}
               </TabsList>
 
-              {/* System prompt · (aux only) user-message template · Options — a tab bar like the row above,
-                  kept at text-xs. User Message shows only when the prompt has a user template. */}
-              <Tabs
-                value={promptView}
-                onValueChange={(v) => setPromptView(v as 'system' | 'user' | 'messages' | 'options')}
-                className="flex justify-center mt-3 flex-shrink-0"
-              >
-                <TabsList className="h-auto">
-                  <TabsTrigger value="system" className="text-xs">System Prompt</TabsTrigger>
-                  {activeUserPrompt && <TabsTrigger value="user" className="text-xs">User Message</TabsTrigger>}
-                  {messagesAvailable && <TabsTrigger value="messages" className="text-xs">Messages</TabsTrigger>}
-                  <TabsTrigger value="options" className="text-xs">Options</TabsTrigger>
-                </TabsList>
-              </Tabs>
+              {/* System prompt · (aux only) user-message template · Options — which part of the selected
+                  prompt is on show, kept at text-xs. A second axis over the tab panel above rather than a
+                  tab set of its own. User Message shows only when the prompt has a user template. */}
+              <div className="flex justify-center mt-3 flex-shrink-0">
+                <ToggleGroup
+                  type="single"
+                  value={promptView}
+                  // A single ToggleGroup clears its value when the active item is clicked again; some part of
+                  // the prompt is always on show, so an empty result is ignored rather than stored.
+                  onValueChange={(v) => { if (v) setPromptView(v as 'system' | 'user' | 'messages' | 'options'); }}
+                  className="h-auto"
+                >
+                  <ToggleGroupItem value="system" className="text-xs">System Prompt</ToggleGroupItem>
+                  {activeUserPrompt && <ToggleGroupItem value="user" className="text-xs">User Message</ToggleGroupItem>}
+                  {messagesAvailable && <ToggleGroupItem value="messages" className="text-xs">Messages</ToggleGroupItem>}
+                  <ToggleGroupItem value="options" className="text-xs">Options</ToggleGroupItem>
+                </ToggleGroup>
+              </div>
 
               {showingOptions && (
                 <ScrollArea className="mt-4 flex-1 min-h-0">
