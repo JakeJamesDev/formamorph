@@ -10,6 +10,7 @@ import { PROFILE_TABS } from '@/components/menu/profileTabs';
 import { ADMIN_PANEL_TABS } from '@/components/menu/adminPanelTabs';
 import { POLICIES_TABS } from '@/components/menu/policiesTabs';
 import { FEEDBACK_TABS } from '@/components/menu/feedbackTabs';
+import { MY_FEEDBACK_TABS } from '@/components/menu/myFeedbackTabs';
 import { isSaveEnvelope } from './version';
 import whiteRoomWorld from './devFixtures/whiteRoomWorld.json';
 import whiteRoomSave from './devFixtures/whiteRoomSave.json';
@@ -91,6 +92,10 @@ describe('dev-router coverage guard', () => {
     expect([...DEV_MODAL_TABS.adminPanelFeedback]).toEqual([...FEEDBACK_TABS]);
   });
 
+  it('ledger lists exactly the Feedback dialog tabs the surface renders', () => {
+    expect([...DEV_MODAL_TABS.feedbackHub]).toEqual([...MY_FEEDBACK_TABS]);
+  });
+
   it('ledger lists exactly the profile dialog tabs', () => {
     expect([...DEV_MODAL_TABS.profile]).toEqual([...PROFILE_TABS]);
   });
@@ -103,7 +108,7 @@ describe('dev-router coverage guard', () => {
     // localModel is deliberately excluded (it lives inside Settings, not as a standalone modal). worldEditor
     // is an in-place MainMenu modal (no longer a top-level view).
     expect(DEV_MODALS).toEqual([
-      'settings', 'entity', 'export', 'menu', 'worldEditor', 'intro', 'avatar', 'backup', 'aiSetup', 'entityEditor', 'dictionaryEditor', 'modelDetails', 'community', 'memoryManager', 'profile', 'adminPanel',
+      'settings', 'entity', 'export', 'menu', 'worldEditor', 'intro', 'avatar', 'backup', 'aiSetup', 'entityEditor', 'dictionaryEditor', 'modelDetails', 'community', 'memoryManager', 'profile', 'feedbackHub', 'adminPanel',
     ]);
   });
 });

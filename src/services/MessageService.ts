@@ -59,14 +59,26 @@ class MessageService {
     return { messages: body.data, total: body.total, unread: body.unread };
   }
 
-  /** The current user's unread count. Backs the footer badge, so it stays a single cheap call. */
-  async fetchUnreadCount(): Promise<number> {
+  /**
+   * The current user's unread count, and how loud the loudest of them is.
+   *
+   * Both in one call because the badge is colored by the severity and sized by the count: asking
+   * separately would leave a moment where the number and the color disagree.
+   *
+   * @returns The count, and the top severity — null when nothing is unread
+   */
+  async fetchUnreadCount(): Promise<{ unread: number; topSeverity: string | null }> {
     const response = await fetch(`${this.apiUrl}/messages/unread-count`, {
       headers: this.authHeaders(),
     });
 
-    const body = await this.unwrap<{ unread: number }>(response, 'Failed to load unread count');
-    return body.unread;
+    const body = await this.unwrap<{ unread: number; topSeverity?: string | null }>(
+      response,
+      'Failed to load unread count'
+    );
+
+    // Absent from a server that predates the severity: a count with no color is the old behavior.
+    return { unread: body.unread, topSeverity: body.topSeverity ?? null };
   }
 
   /** Mark a message read. Idempotent — the server keeps the first timestamp. */

@@ -2780,8 +2780,8 @@ ${playerNotes || NONE_PLACEHOLDER}
       console.error("Error in makeAIRequest:", error);
       // A failed silent request (the digest) is non-fatal — let the drainer swallow it without a toast.
       if (silent) throw error;
-      // A browser-build network failure (server off / wrong URL / CORS disabled) is opaque and unactionable
-      // from the generic toast — offer the connection guide instead, and tag the error so the outer handler
+      // A network failure (server off / wrong URL / CORS disabled) is opaque and unactionable from the
+      // generic toast — offer the connection guide instead, and tag the error so the outer handler
       // in sendGameAction doesn't stack its own toast on top.
       if (isLikelyConnectionError(error)) {
         (error as { connectionHandled?: boolean }).connectionHandled = true;

@@ -1,15 +1,22 @@
-import { render, screen, cleanup, waitFor } from '@testing-library/react';
+import { render, screen, cleanup, fireEvent, waitFor } from '@testing-library/react';
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { UserProfileDialog } from './UserProfileDialog';
 import UserService from '@/services/UserService';
+import AuthService from '@/services/AuthService';
 
 vi.mock('@/services/WorldStorageService', () => ({ default: { API_URL: 'https://server.test/api' } }));
+vi.mock('react-toastify', () => ({ toast: { error: vi.fn(), success: vi.fn(), info: vi.fn() } }));
+
+/** Sign in as somebody, so the follow control has a reader to be offered to. */
+const signedInAs = (id: string | null) =>
+  vi.spyOn(AuthService, 'getCurrentUser').mockReturnValue(id ? { id, username: 'reader' } : null);
 
 const profile = (over: Record<string, unknown> = {}) => ({
   id: 'u1',
   username: 'wren_hallow',
   avatarUrl: null,
   createdAt: '2026-03-14T00:00:00.000Z',
+  followers: 0,
   ...over,
 });
 
@@ -68,6 +75,23 @@ describe('opening somebody’s profile', () => {
     expect(await screen.findByText('User not found')).toBeTruthy();
   });
 
+  it('wears their staff badge, so it agrees with the name that was clicked', async () => {
+    vi.spyOn(UserService, 'fetchProfile').mockResolvedValue(profile({ role: 'admin' }));
+
+    render(<UserProfileDialog userId="u1" onOpenChange={() => {}} />);
+
+    expect(await screen.findByText('Admin')).toBeTruthy();
+  });
+
+  it('wears none for an ordinary account', async () => {
+    vi.spyOn(UserService, 'fetchProfile').mockResolvedValue(profile({ role: null }));
+
+    render(<UserProfileDialog userId="u1" onOpenChange={() => {}} />);
+    await screen.findByText(/Member since/);
+
+    expect(screen.queryByText(/^(Mod|Dev|Admin)$/)).toBeNull();
+  });
+
   it('falls back to the letter circle for somebody with no picture', async () => {
     vi.spyOn(UserService, 'fetchProfile').mockResolvedValue(profile());
 
@@ -76,5 +100,91 @@ describe('opening somebody’s profile', () => {
 
     expect(screen.queryByRole('img')).toBeNull();
     expect(screen.getByText('W')).toBeTruthy();
+  });
+});
+
+describe('the follow button', () => {
+  it('says how many follow them', async () => {
+    signedInAs('me');
+    vi.spyOn(UserService, 'fetchProfile').mockResolvedValue(profile({ followers: 12 }));
+
+    render(<UserProfileDialog userId="u1" onOpenChange={() => {}} />);
+
+    expect(await screen.findByText(/12 followers/)).toBeTruthy();
+  });
+
+  it('counts one follower in the singular', async () => {
+    signedInAs('me');
+    vi.spyOn(UserService, 'fetchProfile').mockResolvedValue(profile({ followers: 1 }));
+
+    render(<UserProfileDialog userId="u1" onOpenChange={() => {}} />);
+
+    expect(await screen.findByText(/1 follower(?!s)/)).toBeTruthy();
+  });
+
+  it('is offered to a signed-in reader', async () => {
+    signedInAs('me');
+    vi.spyOn(UserService, 'fetchProfile').mockResolvedValue(profile({ following: false }));
+
+    render(<UserProfileDialog userId="u1" onOpenChange={() => {}} />);
+
+    expect(await screen.findByRole('button', { name: 'Follow' })).toBeTruthy();
+  });
+
+  it('reads as Following once they do', async () => {
+    signedInAs('me');
+    vi.spyOn(UserService, 'fetchProfile').mockResolvedValue(profile({ following: true }));
+
+    render(<UserProfileDialog userId="u1" onOpenChange={() => {}} />);
+
+    expect(await screen.findByRole('button', { name: 'Following' })).toBeTruthy();
+  });
+
+  it('is absent for a signed-out visitor', async () => {
+    // They can read the count; there is nothing for them to press.
+    signedInAs(null);
+    vi.spyOn(UserService, 'fetchProfile').mockResolvedValue(profile());
+
+    render(<UserProfileDialog userId="u1" onOpenChange={() => {}} />);
+    await screen.findByText(/Member since/);
+
+    expect(screen.queryByRole('button', { name: /Follow/ })).toBeNull();
+  });
+
+  it('is absent on your own profile', async () => {
+    // Following yourself would put your own work in your own news, and the server refuses it.
+    signedInAs('u1');
+    vi.spyOn(UserService, 'fetchProfile').mockResolvedValue(profile({ id: 'u1' }));
+
+    render(<UserProfileDialog userId="u1" onOpenChange={() => {}} />);
+    await screen.findByText(/Member since/);
+
+    expect(screen.queryByRole('button', { name: /Follow/ })).toBeNull();
+  });
+
+  it('moves the count with the button, from the server’s own answer', async () => {
+    // Counting locally would drift the moment two readers followed at once.
+    signedInAs('me');
+    vi.spyOn(UserService, 'fetchProfile').mockResolvedValue(profile({ followers: 4, following: false }));
+    const setFollowing = vi.spyOn(UserService, 'setFollowing').mockResolvedValue({ following: true, followers: 5 });
+
+    render(<UserProfileDialog userId="u1" onOpenChange={() => {}} />);
+    fireEvent.click(await screen.findByRole('button', { name: 'Follow' }));
+
+    await waitFor(() => expect(screen.getByRole('button', { name: 'Following' })).toBeTruthy());
+    expect(screen.getByText(/5 followers/)).toBeTruthy();
+    expect(setFollowing).toHaveBeenCalledWith('u1', true);
+  });
+
+  it('leaves the button alone when the server refuses', async () => {
+    signedInAs('me');
+    vi.spyOn(UserService, 'fetchProfile').mockResolvedValue(profile({ followers: 4, following: false }));
+    vi.spyOn(UserService, 'setFollowing').mockRejectedValue(new Error('Your account has been suspended'));
+
+    render(<UserProfileDialog userId="u1" onOpenChange={() => {}} />);
+    fireEvent.click(await screen.findByRole('button', { name: 'Follow' }));
+
+    await waitFor(() => expect(screen.getByRole('button', { name: 'Follow' })).toBeTruthy());
+    expect(screen.getByText(/4 followers/)).toBeTruthy();
   });
 });

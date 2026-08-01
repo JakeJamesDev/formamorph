@@ -24,9 +24,10 @@ export type DevView = (typeof DEV_VIEWS)[number];
  *  that: a VRM preview has nothing to show without a stored model, so it opens the library's first model and
  *  does nothing on an empty library. `community` opens Community Creations from MainMenu. `memoryManager` is
  *  in-game (GameViewer) and opens on an empty ledger before any turn has been summarized. `profile` opens
- *  the account dialog (Messages/Manage) and `adminPanel` the admin tools (Users/Broadcasts); both need a
- *  signed-in session, and `adminPanel` an admin one, so they open empty otherwise rather than failing. */
-export const DEV_MODALS = ['settings', 'entity', 'export', 'menu', 'worldEditor', 'intro', 'avatar', 'backup', 'aiSetup', 'entityEditor', 'dictionaryEditor', 'modelDetails', 'community', 'memoryManager', 'profile', 'adminPanel'] as const;
+ *  the account dialog (Messages/Manage), `feedbackHub` the reader's side of bugs and suggestions, and
+ *  `adminPanel` the admin tools (Users/Broadcasts). All three need a signed-in session, and `adminPanel`
+ *  an admin one, so they open empty otherwise rather than failing. */
+export const DEV_MODALS = ['settings', 'entity', 'export', 'menu', 'worldEditor', 'intro', 'avatar', 'backup', 'aiSetup', 'entityEditor', 'dictionaryEditor', 'modelDetails', 'community', 'memoryManager', 'profile', 'feedbackHub', 'adminPanel'] as const;
 export type DevModal = (typeof DEV_MODALS)[number];
 
 /** Coverage ledger: tabbed surface → the sub-tabs the router can target (via `tab=…`). Kept in lockstep
@@ -36,9 +37,11 @@ export const DEV_MODAL_TABS = {
   worldEditor: ['overview', 'stats', 'entities', 'locations', 'traits', 'dictionary', 'placeholders'],
   // Community Creations browses one kind per tab; these are the server's kinds (see lib/catalogKinds).
   community: ['world', 'entity', 'dictionary'],
-  // The account dialog: admin messages, both feedback branches, and the contributor terms.
-  // Password and logout are header buttons rather than tabs, so neither is routable.
-  profile: ['messages', 'bugs', 'suggestions', 'terms'],
+  // The account dialog: admin messages, the follow feed, and the terms. Password and logout are header
+  // buttons rather than tabs, so neither is routable.
+  profile: ['messages', 'notifications', 'terms'],
+  // The reader's side of feedback, behind the main menu's Feedback button; one tab per branch.
+  feedbackHub: ['bugs', 'suggestions'],
   // The admin tools: accounts, broadcasts, the publish policies, the feedback queues, and the log.
   adminPanel: ['users', 'broadcasts', 'policies', 'feedback', 'log'],
   // Admin Panel → Policies has a second level, one sub-tab per authored popup, reached with `subtab=…`.

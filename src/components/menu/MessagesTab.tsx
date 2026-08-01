@@ -1,8 +1,11 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { toast } from "react-toastify";
 import { ChevronDown, Inbox, Megaphone, Pin, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
+import { UnreadDot } from "@/components/UnreadDot";
+import { UnreadEdge } from "@/components/UnreadEdge";
+import { kindOfSeverity } from "@/lib/unreadSeverity";
 import { MarkdownRenderer } from "@/components/game/MarkdownRenderer";
 import { MESSAGE_SEVERITY_STYLES, formatMessageDate } from "@/lib/messageSeverity";
 import MessageService from "@/services/MessageService";
@@ -25,9 +28,15 @@ export function MessagesTab({ active, onUnreadChange }: MessagesTabProps) {
   // Everything visible on the server, which is more than the page holds once the limit bites.
   const [total, setTotal] = useState(0);
 
+  // Held in a ref rather than closed over: a host passing an inline arrow hands back a new identity on
+  // every render, and anything that both depends on this and moves the host's state is a fetch loop.
+  // (The notification feed shipped exactly that and hammered the server until it fell over.)
+  const onUnreadChangeRef = useRef(onUnreadChange);
+  useEffect(() => { onUnreadChangeRef.current = onUnreadChange; });
+
   const publishUnread = useCallback((list: InboxMessage[]) => {
-    onUnreadChange?.(list.filter((message) => !message.readAt).length);
-  }, [onUnreadChange]);
+    onUnreadChangeRef.current?.(list.filter((message) => !message.readAt).length);
+  }, []);
 
   useEffect(() => {
     if (!active) return;
@@ -41,7 +50,7 @@ export function MessagesTab({ active, onUnreadChange }: MessagesTabProps) {
         if (!current) return;
         setMessages(result.messages);
         setTotal(result.total);
-        onUnreadChange?.(result.unread);
+        onUnreadChangeRef.current?.(result.unread);
       })
       .catch((error: unknown) => {
         // Inline rather than a toast: the server being unreachable is the common case here, and a
@@ -53,9 +62,6 @@ export function MessagesTab({ active, onUnreadChange }: MessagesTabProps) {
       });
 
     return () => { current = false; };
-    // `onUnreadChange` is deliberately not a dependency — a parent passing an inline callback would
-    // otherwise refetch on every render.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [active]);
 
   /** Open a message, marking it read the first time. A failed mark leaves it unread to retry. */
@@ -144,7 +150,8 @@ export function MessagesTab({ active, onUnreadChange }: MessagesTabProps) {
         const isExpanded = expandedId === message.id;
 
         return (
-          <div key={message.id} className={cn('border rounded-md', style.card)}>
+          <div key={message.id} className={cn('relative border rounded-md', style.card)}>
+            {!message.readAt && <UnreadEdge kind={kindOfSeverity(message.severity)} />}
             <div className="flex items-start gap-2 p-3">
               <button
                 type="button"
@@ -166,7 +173,7 @@ export function MessagesTab({ active, onUnreadChange }: MessagesTabProps) {
                       {message.subject}
                     </span>
                     {!message.readAt && (
-                      <span className="h-2 w-2 rounded-full bg-primary shrink-0" aria-label="Unread" />
+                      <UnreadDot label="Unread" kind={kindOfSeverity(message.severity)} />
                     )}
                   </span>
 

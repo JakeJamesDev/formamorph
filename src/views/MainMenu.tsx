@@ -81,12 +81,15 @@ import { AdminPanelDialog } from "@/components/menu/AdminPanelDialog";
 import { type ProfileTab } from "@/components/menu/profileTabs";
 import { UserAvatar } from "@/components/UserAvatar";
 import { UserName } from "@/components/UserName";
+import { badgeKind, UNREAD_MARK_STYLES } from "@/lib/unreadSeverity";
+import UserService from "@/services/UserService";
+import { type MyFeedbackTabKey } from "@/components/menu/myFeedbackTabs";
 import { type AdminPanelTab } from "@/components/menu/adminPanelTabs";
 import { type PoliciesTab as PoliciesSubTab } from "@/components/menu/policiesTabs";
 import { type FeedbackTab as FeedbackSubTab } from "@/components/menu/feedbackTabs";
 import MessageService from "@/services/MessageService";
 import FeedbackService from "@/services/FeedbackService";
-import { FeedbackDialog } from "@/components/menu/FeedbackDialog";
+import { FeedbackHubDialog } from "@/components/menu/FeedbackHubDialog";
 import { AuthModals } from "@/components/menu/AuthModals";
 import { PublishModal } from "@/components/menu/PublishModal";
 import { worldPublishPayload, entityPublishPayload, dictionaryPublishPayload, type PublishPayload } from "@/lib/publishPayload";
@@ -225,6 +228,7 @@ const MainMenu = ({ onStartGame, onLoadSaveGame, onReplayIntro, introActive = fa
     if (devRoute?.modal === 'backup') setShowBackup(true);
     if (devRoute?.modal === 'community') setShowCommunityBrowser(true);
     if (devRoute?.modal === 'profile') setShowProfileDialog(true);
+    if (devRoute?.modal === 'feedbackHub') setShowFeedback(true);
     if (devRoute?.modal === 'adminPanel') setShowAdminPanel(true);
     if (devRoute?.modal === 'worldEditor') setShowWorldEditor(true);
     if (devRoute?.modal === 'avatar') setShowCharacterCustomization(true);
@@ -334,6 +338,10 @@ const MainMenu = ({ onStartGame, onLoadSaveGame, onReplayIntro, introActive = fa
   };
   const [showBackup, setShowBackup] = useState(false);
 
+  // A listing the reader asked for from somewhere else — a notification feed row. Held here because the
+  // jump crosses two dialogs: the profile closes, the browser opens, and the browser opens the details.
+  const [pendingListing, setPendingListing] = useState<{ id: string; kind: string } | null>(null);
+
   // Community Creations browser open state (the browser itself lives in <CommunityCreationsBrowser>).
   const [showCommunityBrowser, setShowCommunityBrowser] = useState(false);
 
@@ -341,6 +349,17 @@ const MainMenu = ({ onStartGame, onLoadSaveGame, onReplayIntro, introActive = fa
   const [imageViewerOpen, setImageViewerOpen] = useState(false);
   // Source for the shared pan/zoom viewer, set by whichever modal's thumbnail was clicked.
   const [viewerImage, setViewerImage] = useState<{ src: string; alt: string }>({ src: '', alt: '' });
+  const handleListingOpened = useCallback(() => setPendingListing(null), []);
+  // Stable identities: each of these is handed to a tab that fetches, and an inline arrow would give a
+  // new one on every render. The tabs guard themselves too, but a caller should not be the hazard.
+  const handleNotificationsRead = useCallback(() => setFollowCountNonce((n) => n + 1), []);
+  const handleBugsChange = useCallback(() => setBugCountNonce((n) => n + 1), []);
+  const handleOpenListing = useCallback((listing: { id: string; kind: string }) => {
+    setShowProfileDialog(false);
+    setPendingListing(listing);
+    setShowCommunityBrowser(true);
+  }, []);
+
   const openImageViewer = (src: string | undefined, alt: string | undefined) => {
     if (!src) return;
     setViewerImage({ src, alt: alt || 'World image' });
@@ -350,14 +369,29 @@ const MainMenu = ({ onStartGame, onLoadSaveGame, onReplayIntro, introActive = fa
   // Admin "Manage Users" dialog: open state here; its list/paging/fetch live in the dialog component.
   const [showAdminPanel, setShowAdminPanel] = useState(false);
   const [unreadMessages, setUnreadMessages] = useState(0);
-  // Feedback threads — bugs and suggestions both — with a reply the user hasn't seen. Shown in the same
-  // badge as messages: one count means "something is waiting for you", wherever it came from.
+  // The loudest unread message, which is what colors the badge. Null when the inbox holds nothing new.
+  const [messageSeverity, setMessageSeverity] = useState<string | null>(null);
+  // Feedback threads — bugs and suggestions both — with a reply the user hasn't seen. Badged on the
+  // Feedback button rather than the profile circle: that is where the threads are now, and a count is
+  // easiest to act on sitting on the thing it is about.
   const [unreadBugs, setUnreadBugs] = useState(0);
   // Bumped to re-read the bug count after a thread is opened or replied to.
   const [bugCountNonce, setBugCountNonce] = useState(0);
-  const [showBugReport, setShowBugReport] = useState(false);
-  // One badge for both channels: the user checks one place to find what is waiting.
-  const unreadWaiting = unreadMessages + unreadBugs;
+  const [showFeedback, setShowFeedback] = useState(false);
+  // New work from the accounts this reader follows. Re-read on demand like the feedback half, since
+  // opening the feed is what clears it.
+  const [unreadFollows, setUnreadFollows] = useState(0);
+  const [followCountNonce, setFollowCountNonce] = useState(0);
+  // What the profile circle counts: the two channels that live behind it. Feedback replies are not in
+  // it — they are behind their own button, wearing their own count.
+  const unreadWaiting = unreadMessages + unreadFollows;
+  // ...and it takes the color of the loudest thing in it, so a suspension notice does not arrive looking
+  // like a bug reply. Only channels with something waiting are offered; the rest are simply absent.
+  const unreadKind = badgeKind({
+    messages: unreadMessages,
+    messageSeverity,
+    follows: unreadFollows,
+  });
   // One announcement per session: the count is refetched whenever auth changes, and re-toasting the
   // same backlog on every refresh would be noise.
   const announcedUnreadRef = useRef(false);
@@ -929,6 +963,7 @@ const MainMenu = ({ onStartGame, onLoadSaveGame, onReplayIntro, introActive = fa
   useEffect(() => {
     if (!COMMUNITY_ENABLED || !isAuthenticated) {
       setUnreadMessages(0);
+      setMessageSeverity(null);
       announcedUnreadRef.current = false;
       return;
     }
@@ -936,9 +971,10 @@ const MainMenu = ({ onStartGame, onLoadSaveGame, onReplayIntro, introActive = fa
     let current = true;
 
     MessageService.fetchUnreadCount()
-      .then((unread) => {
+      .then(({ unread, topSeverity }) => {
         if (!current) return;
         setUnreadMessages(unread);
+        setMessageSeverity(topSeverity);
 
         if (unread > 0 && !announcedUnreadRef.current) {
           announcedUnreadRef.current = true;
@@ -967,6 +1003,22 @@ const MainMenu = ({ onStartGame, onLoadSaveGame, onReplayIntro, introActive = fa
 
     return () => { current = false; };
   }, [isAuthenticated, bugCountNonce]);
+
+  // The follow half of the badge. Same shape as the feedback one: reading the feed changes it.
+  useEffect(() => {
+    if (!COMMUNITY_ENABLED || !isAuthenticated) {
+      setUnreadFollows(0);
+      return;
+    }
+
+    let current = true;
+
+    UserService.fetchNotificationCount()
+      .then((unread) => { if (current) setUnreadFollows(unread); })
+      .catch((error) => console.error('Failed to load unread notification count:', error));
+
+    return () => { current = false; };
+  }, [isAuthenticated, followCountNonce]);
 
   // Handle logout
   const handleLogout = () => {
@@ -1458,21 +1510,33 @@ const MainMenu = ({ onStartGame, onLoadSaveGame, onReplayIntro, introActive = fa
               {/* Unread badge: messages and bug replies together. Capped at 9+ so a long backlog can't
                   stretch the circle. */}
               {isAuthenticated && unreadWaiting > 0 && (
-                <span className="absolute -top-0.5 -right-0.5 min-w-5 h-5 px-1 flex items-center justify-center rounded-full bg-destructive text-destructive-foreground text-[10px] font-bold">
+                <span className={cn(
+                  'absolute -top-0.5 -right-0.5 min-w-5 h-5 px-1 flex items-center justify-center rounded-full text-[10px] font-bold',
+                  UNREAD_MARK_STYLES[unreadKind ?? 'feedback'].badge
+                )}>
                   {unreadWaiting > 9 ? '9+' : unreadWaiting}
                 </span>
               )}
             </button>
           )}
-          {/* Filing needs an account, so this only appears once signed in — the server refuses otherwise. */}
+          {/* Reading the queue needs an account as much as filing does, so this only appears once signed
+              in — the server refuses either way. */}
           {COMMUNITY_ENABLED && isAuthenticated && (
             <button
-              className="p-3 bg-secondary text-secondary-foreground rounded-full shadow-lg hover:bg-secondary/80 transition-colors"
-              onClick={() => setShowBugReport(true)}
-              title="Send Feedback"
-              aria-label="Send Feedback"
+              className="relative p-3 bg-secondary text-secondary-foreground rounded-full shadow-lg hover:bg-secondary/80 transition-colors"
+              onClick={() => setShowFeedback(true)}
+              title={unreadBugs > 0 ? `Feedback (${unreadBugs} unread)` : "Feedback"}
+              aria-label={unreadBugs > 0 ? `Feedback (${unreadBugs} unread)` : "Feedback"}
             >
               <MessageSquarePlus className="h-6 w-6" />
+              {unreadBugs > 0 && (
+                <span className={cn(
+                  'absolute -top-0.5 -right-0.5 min-w-5 h-5 px-1 flex items-center justify-center rounded-full text-[10px] font-bold',
+                  UNREAD_MARK_STYLES.feedback.badge
+                )}>
+                  {unreadBugs > 9 ? '9+' : unreadBugs}
+                </span>
+              )}
             </button>
           )}
           {!isMobile && (isDesktop() ? <UpdateVersionControl /> : <WebVersionChangelog />)}
@@ -1965,7 +2029,8 @@ const MainMenu = ({ onStartGame, onLoadSaveGame, onReplayIntro, introActive = fa
             onAvatarChanged={() => setCurrentUser(AuthService.getCurrentUser())}
             onLogout={handleLogout}
             onUnreadChange={setUnreadMessages}
-            onBugsChange={() => setBugCountNonce((n) => n + 1)}
+            onNotificationsRead={handleNotificationsRead}
+            onOpenListing={handleOpenListing}
             initialTab={devRoute?.modal === 'profile' ? (devRoute.tab as ProfileTab | undefined) : undefined}
           />
 
@@ -1991,6 +2056,8 @@ const MainMenu = ({ onStartGame, onLoadSaveGame, onReplayIntro, introActive = fa
             currentUser={currentUser}
             openImageViewer={openImageViewer}
             initialKind={devRoute?.modal === 'community' ? (devRoute.tab as CatalogKind | undefined) : undefined}
+            openListing={pendingListing}
+            onListingOpened={handleListingOpened}
           />
         </>
       )}
@@ -2021,10 +2088,11 @@ const MainMenu = ({ onStartGame, onLoadSaveGame, onReplayIntro, introActive = fa
       />
 
       {/* Admin Panel — user management and broadcasts; each tab owns its own fetching */}
-      <FeedbackDialog
-        open={showBugReport}
-        onOpenChange={setShowBugReport}
-        onFiled={() => setBugCountNonce((n) => n + 1)}
+      <FeedbackHubDialog
+        open={showFeedback}
+        onOpenChange={setShowFeedback}
+        initialTab={devRoute?.modal === 'feedbackHub' ? (devRoute.tab as MyFeedbackTabKey | undefined) : undefined}
+        onChanged={handleBugsChange}
       />
 
       <AdminPanelDialog

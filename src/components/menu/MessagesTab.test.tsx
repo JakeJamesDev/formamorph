@@ -52,6 +52,31 @@ describe('loading', () => {
     expect(fetchInbox).not.toHaveBeenCalled();
   });
 
+  it('fetches once, however often the host re-renders', async () => {
+    // The shape that took the notification feed down: a host passing an inline callback hands back a
+    // new identity every render, and a fetch that depends on it never stops.
+    const fetchInbox = stubInbox([]);
+    const { rerender } = render(<MessagesTab active onUnreadChange={() => {}} />);
+    await waitFor(() => expect(fetchInbox).toHaveBeenCalledTimes(1));
+
+    for (let i = 0; i < 5; i++) {
+      rerender(<MessagesTab active onUnreadChange={() => {}} />);
+    }
+
+    await waitFor(() => expect(fetchInbox).toHaveBeenCalledTimes(1));
+  });
+
+  it('still reports the unread count to whoever is listening now', async () => {
+    // The ref must not go stale: a host that swaps its callback gets the new one, not the first.
+    stubInbox([]);
+    const later = vi.fn();
+    const { rerender } = render(<MessagesTab active={false} onUnreadChange={() => {}} />);
+
+    rerender(<MessagesTab active onUnreadChange={later} />);
+
+    await waitFor(() => expect(later).toHaveBeenCalledWith(0));
+  });
+
   it('shows the empty state when there is nothing to read', async () => {
     stubInbox([]);
 
@@ -67,6 +92,25 @@ describe('loading', () => {
     render(<MessagesTab active onUnreadChange={onUnreadChange} />);
 
     await waitFor(() => expect(onUnreadChange).toHaveBeenCalledWith(1));
+  });
+
+  it('rails an unread row down its left edge', async () => {
+    // The dot sits at the end of a truncating subject; the rail is what makes the list scannable.
+    stubInbox([message()]);
+
+    const { container } = render(<MessagesTab active />);
+    await screen.findByLabelText('Unread');
+
+    expect(container.querySelector('[aria-hidden="true"].absolute')).toBeTruthy();
+  });
+
+  it('leaves a read row unrailed', async () => {
+    stubInbox([message({ readAt: '2026-07-30T13:00:00Z' })]);
+
+    const { container } = render(<MessagesTab active />);
+    await screen.findByText('A notice');
+
+    expect(container.querySelector('[aria-hidden="true"].absolute')).toBeNull();
   });
 
   it('shows the failure inline rather than as a toast', async () => {

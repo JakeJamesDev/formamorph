@@ -183,7 +183,7 @@ export function RemoteWorldDetailsModal({
                       <h3 className="text-sm font-semibold text-muted-foreground">Author</h3>
                       <p className="flex items-center gap-2 min-w-0">
                         <UserAvatar username={world.author?.username} avatarUrl={world.author?.avatarUrl} size="sm" />
-                        <UserName userId={world.author?.id} username={world.author?.username} />
+                        <UserName userId={world.author?.id} username={world.author?.username} role={world.author?.role} />
                       </p>
                     </div>
 
@@ -236,7 +236,7 @@ export function RemoteWorldDetailsModal({
                     <div className="flex items-center justify-between gap-2">
                       <span className="flex items-center gap-1.5 min-w-0 font-medium">
                         <UserAvatar username={c.author?.username} avatarUrl={c.author?.avatarUrl} size="xs" />
-                        <UserName userId={c.author?.id} username={c.author?.username} />
+                        <UserName userId={c.author?.id} username={c.author?.username} role={c.author?.role} />
                       </span>
                       <span className="text-xs text-muted-foreground">
                         {c.created_at ? formatServerDateTime(c.created_at) : ''}

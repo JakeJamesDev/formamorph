@@ -1602,18 +1602,16 @@ An inspection aid for authoring and debugging; off by default.`}</HintInfo>
                   )}
                 </div>
               </Row>
-              {!desktop && (
-                <div className="grid grid-cols-1 sm:grid-cols-[minmax(0,1fr)_minmax(0,3fr)] gap-4">
-                  <div className="hidden sm:block" />
-                  <button
-                    type="button"
-                    className="justify-self-start text-xs text-muted-foreground underline hover:text-foreground"
-                    onClick={() => setConnectionGuideOpen(true)}
-                  >
-                    Trouble connecting?
-                  </button>
-                </div>
-              )}
+              <div className="grid grid-cols-1 sm:grid-cols-[minmax(0,1fr)_minmax(0,3fr)] gap-4">
+                <div className="hidden sm:block" />
+                <button
+                  type="button"
+                  className="justify-self-start text-xs text-muted-foreground underline hover:text-foreground"
+                  onClick={() => setConnectionGuideOpen(true)}
+                >
+                  Trouble connecting?
+                </button>
+              </div>
               <Row center label="API Token" htmlFor="apiToken">
                 <Input
                   id="apiToken"
