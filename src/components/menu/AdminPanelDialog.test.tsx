@@ -4,6 +4,11 @@ import { AdminPanelDialog } from './AdminPanelDialog';
 
 vi.mock('react-toastify', () => ({ toast: { error: vi.fn(), success: vi.fn(), info: vi.fn() } }));
 
+// Which tabs exist depends on the viewer's role: Broadcasts and Policies are an administrator's.
+vi.mock('@/services/AuthService', () => ({
+  default: { token: 't', getCurrentUser: () => ({ id: 'a1', username: 'root-admin', accountType: 'admin' }) },
+}));
+
 // The panels have their own coverage; stubbing them keeps this file about the dialog's own shell.
 // `FeedbackTab` is left real: its sub-tabs are part of the strip this file is about.
 vi.mock('./ManageUsersTab', () => ({ ManageUsersTab: () => <div data-testid="users" /> }));
@@ -73,6 +78,32 @@ describe('the tab strip', () => {
     render(<AdminPanelDialog open onOpenChange={() => {}} initialTab="feedback" />);
 
     expect(activeTab()).toBe('Feedback');
+  });
+});
+
+describe('what a moderator sees', () => {
+  it('is the everyday work, without the two an administrator owns', async () => {
+    // Speaking to everyone at once and writing what the site requires are not moderation.
+    const AuthService = (await import('@/services/AuthService')).default;
+    vi.spyOn(AuthService, 'getCurrentUser').mockReturnValue({ id: 'm1', username: 'a-mod', accountType: 'mod' });
+
+    render(<AdminPanelDialog open onOpenChange={() => {}} />);
+
+    expect(screen.getByRole('tab', { name: 'Users' })).toBeTruthy();
+    expect(screen.getByRole('tab', { name: 'Feedback' })).toBeTruthy();
+    expect(screen.getByRole('tab', { name: 'Log' })).toBeTruthy();
+    expect(screen.queryByRole('tab', { name: 'Broadcasts' })).toBeNull();
+    expect(screen.queryByRole('tab', { name: 'Policies' })).toBeNull();
+  });
+
+  it('lands on Users when pointed at a tab they cannot see', async () => {
+    // The dev-router, or a panel left open through a demotion, would otherwise show an empty dialog.
+    const AuthService = (await import('@/services/AuthService')).default;
+    vi.spyOn(AuthService, 'getCurrentUser').mockReturnValue({ id: 'm1', username: 'a-mod', accountType: 'mod' });
+
+    render(<AdminPanelDialog open onOpenChange={() => {}} initialTab="policies" />);
+
+    expect(activeTab()).toBe('Users');
   });
 });
 

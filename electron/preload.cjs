@@ -7,8 +7,8 @@ contextBridge.exposeInMainWorld('formamorphDesktop', {
   fetch: (req) => ipcRenderer.invoke('net-fetch', req),
   vramStats: () => ipcRenderer.invoke('vram-stats'),
   // Local LLM engine: stop/load a GGUF served on a localhost OpenAI endpoint, read its status, learn
-  // where models live, and subscribe to status changes (auto-start, load progress, errors). Loading is
-  // filename-only (`load`), confined to the models dir — no arbitrary-path start is exposed.
+  // where models live, and subscribe to status changes (auto-start, load progress, errors). Loading takes a
+  // ref (`load`), which main resolves inside a searched folder — no arbitrary-path start is exposed.
   llm: {
     stop: () => ipcRenderer.invoke('llm-stop'),
     status: () => ipcRenderer.invoke('llm-status'),
@@ -21,7 +21,21 @@ contextBridge.exposeInMainWorld('formamorphDesktop', {
     // Model management: list installed GGUFs, download a catalog model (with progress), cancel, delete.
     listModels: () => ipcRenderer.invoke('llm-list-models'),
     listInstalled: () => ipcRenderer.invoke('llm-list-installed'),
-    load: (fileName) => ipcRenderer.invoke('llm-load', fileName),
+    load: (ref) => ipcRenderer.invoke('llm-load', ref),
+    // Searched folders: where downloads land plus one optional external library (e.g. LM Studio's).
+    getLocations: () => ipcRenderer.invoke('llm-get-locations'),
+    setLocations: (opts) => ipcRenderer.invoke('llm-set-locations', opts),
+    pickFolder: (title) => ipcRenderer.invoke('llm-pick-folder', title),
+    freeSpace: (dir) => ipcRenderer.invoke('llm-free-space', dir),
+    // Moving models after the download folder changes, with per-file progress.
+    countMovable: (dir) => ipcRenderer.invoke('llm-count-movable', dir),
+    moveModels: (opts) => ipcRenderer.invoke('llm-move-models', opts),
+    cancelMove: () => ipcRenderer.invoke('llm-move-cancel'),
+    onMoveProgress: (cb) => {
+      const handler = (_event, p) => cb(p);
+      ipcRenderer.on('llm-move-progress', handler);
+      return () => ipcRenderer.removeListener('llm-move-progress', handler);
+    },
     setOptions: (opts) => ipcRenderer.invoke('llm-set-options', opts),
     download: (opts) => ipcRenderer.invoke('llm-download', opts),
     cancelDownload: () => ipcRenderer.invoke('llm-download-cancel'),

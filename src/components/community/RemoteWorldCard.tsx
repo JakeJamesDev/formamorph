@@ -10,6 +10,7 @@ import { KIND_LABELS, kindOf } from "@/lib/catalogKinds";
 import { isQuarantined, quarantineDaysLeft, quarantineDeadline } from "@/lib/quarantine";
 import WorldStorageService from "@/services/WorldStorageService";
 import { UserAvatar } from "@/components/UserAvatar";
+import { canModerate, isStaff } from "@/lib/roles";
 
 interface RemoteWorldCardProps {
   world: WorldRecord;
@@ -44,14 +45,20 @@ export function RemoteWorldCard({
   // Entity art is almost always a portrait; anchor it to the top so faces aren't cropped out by centering.
   const thumbClass = cn("w-full h-full object-cover", kindOf(world) === 'entity' && "object-top");
 
-  const isAdmin = currentUser?.accountType === 'admin';
-  // Quarantined listings only reach a card at all for their author or an admin — the server hides them
+  // Whether to offer the moderation controls at all. What the server will actually allow is narrower —
+  // staff moderate the room, not each other — and is checked per listing below.
+  const viewerIsStaff = isStaff(currentUser);
+  // Quarantined listings only reach a card at all for their author or a moderator — the server hides them
   // from everyone else — so the badge is always addressed to somebody who can act on it.
   const quarantined = isQuarantined(world);
   const deadline = quarantineDeadline(world);
   const daysLeft = quarantineDaysLeft(world);
 
   // Check if the world is owned by the current user
+  // Staff moderate the room, not each other: whether these controls do anything depends on who published
+  // it, so the decision is per listing rather than per viewer.
+  const mayModerate = viewerIsStaff && canModerate(currentUser, world.author);
+
   const isOwnedByUser = isAuthenticated &&
     world.author &&
     currentUser &&
@@ -166,10 +173,10 @@ export function RemoteWorldCard({
         </div>
       )}
 
-      {(isOwnedByUser || isAdmin) && (
+      {(isOwnedByUser || mayModerate) && (
         <div className="mt-auto pt-1 flex justify-end gap-1">
           {/* Quarantine is the gentler half of the same job as Delete, so it sits beside it. */}
-          {isAdmin && !quarantined && onQuarantine && (
+          {mayModerate && !quarantined && onQuarantine && (
             <button
               className="p-1 text-warning hover:text-warning/80"
               onClick={(e) => { e.stopPropagation(); onQuarantine(world); }}
@@ -179,7 +186,7 @@ export function RemoteWorldCard({
               <ShieldAlert className="h-5 w-5" />
             </button>
           )}
-          {isAdmin && quarantined && onRelease && (
+          {mayModerate && quarantined && onRelease && (
             <button
               className="p-1 text-success hover:text-success/80"
               onClick={(e) => { e.stopPropagation(); onRelease(world); }}

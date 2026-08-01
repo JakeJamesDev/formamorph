@@ -156,6 +156,28 @@ describe('what each entry reads as', () => {
     for (const text of lines) expect(text).not.toContain('’s ');
   });
 
+  it('names whose report was rewritten', () => {
+    // Only recorded when somebody other than the reporter changed it, so there is always a `by`.
+    expect(line({ action: 'feedback_edited', target: { kind: 'bug', name: 'Save button spins' } }))
+      .toBe('root-admin edited the bug report “Save button spins” by trouble');
+  });
+
+  it('names the role somebody was given', () => {
+    expect(line({ action: 'role_changed', target: { kind: 'account', name: 'trouble' }, snippet: 'normal to mod' }))
+      .toBe('root-admin made trouble a mod');
+  });
+
+  it('reads a demotion as one, rather than as being made a normal', () => {
+    expect(line({ action: 'role_changed', target: { kind: 'account', name: 'trouble' }, snippet: 'mod to normal' }))
+      .toBe('root-admin returned trouble to a normal account');
+  });
+
+  it('still says something when the snippet is missing', () => {
+    // An entry has to read after its subject is gone, and a malformed one must not read as nonsense.
+    expect(line({ action: 'role_changed', snippet: null }))
+      .toBe('root-admin changed what trouble is');
+  });
+
   it('says whose picture was cleared', () => {
     expect(line({ action: 'avatar_removed', target: { kind: 'account', name: 'trouble' } }))
       .toBe('root-admin removed the profile image of trouble');

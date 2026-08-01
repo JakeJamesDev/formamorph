@@ -53,6 +53,8 @@ export interface FeedbackThread {
   diagnostics: BugDiagnostics;
   /** Whether an admin has closed it to further replies. */
   locked: boolean;
+  /** Set once it has been rewritten, so the thread can say "edited" beside the date. */
+  editedAt?: string | null;
   /** Suggestions only; a bug is never voted for. */
   votes: number;
   /** Whether the vote count includes this reader's. */
@@ -74,8 +76,13 @@ export interface FeedbackComment {
     username: string | null;
     /** Their profile image, or null when they have none. Root-relative; see `avatarSrc`. */
     avatarUrl?: string | null;
-    /** Drives how the thread styles it — a reply from the team reads differently from anyone else's. */
-    isAdmin: boolean;
+    /**
+     * What they were when they wrote it, which is what the badge says. Null for an ordinary reply.
+     *
+     * A snapshot rather than a live lookup, so a later promotion or demotion cannot rewrite the
+     * signature on replies somebody has already read.
+     */
+    role?: string | null;
   };
 }
 

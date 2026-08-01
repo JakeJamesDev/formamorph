@@ -7,6 +7,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import { cn } from "@/lib/utils";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { ManageUsersTab } from "@/components/menu/ManageUsersTab";
 import { BroadcastsTab } from "@/components/menu/BroadcastsTab";
@@ -17,6 +18,8 @@ import { useResetOnOpen } from "@/lib/useResetOnOpen";
 import { type AdminPanelTab } from "@/components/menu/adminPanelTabs";
 import { type PoliciesTab as PoliciesSubTab } from "@/components/menu/policiesTabs";
 import { type FeedbackTab as FeedbackSubTab } from "@/components/menu/feedbackTabs";
+import { isAdmin } from "@/lib/roles";
+import AuthService from "@/services/AuthService";
 
 interface AdminPanelDialogProps {
   open: boolean;
@@ -34,6 +37,10 @@ interface AdminPanelDialogProps {
 export function AdminPanelDialog({
   open, onOpenChange, initialTab = 'users', initialPoliciesTab, initialFeedbackTab,
 }: AdminPanelDialogProps) {
+  // Broadcasts and Policies are an administrator's: speaking to everyone at once and writing what the
+  // site requires are not moderation. The rest of the panel is the everyday work, open to any staff.
+  const owner = isAdmin(AuthService.getCurrentUser());
+
   const [tab, setTab] = useState<AdminPanelTab>(initialTab);
 
   useResetOnOpen(open, () => setTab(initialTab));
@@ -41,6 +48,12 @@ export function AdminPanelDialog({
   // Also honor a *change* of `initialTab` while the dialog is already open — the dev-router points at a
   // tab by changing this prop, and without it a second `goto` at an open panel is silently ignored.
   useEffect(() => { if (initialTab) setTab(initialTab); }, [initialTab]);
+
+  // A moderator pointed at a tab they cannot see — by the dev-router, or by a panel left open through a
+  // demotion — lands on Users rather than on an empty dialog.
+  useEffect(() => {
+    if (!owner && (tab === 'broadcasts' || tab === 'policies')) setTab('users');
+  }, [owner, tab]);
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -58,10 +71,10 @@ export function AdminPanelDialog({
           onValueChange={(value) => setTab(value as AdminPanelTab)}
           className="w-full min-w-0 flex flex-col flex-1 min-h-0"
         >
-          <TabsList className="grid w-full grid-cols-5 flex-shrink-0">
+          <TabsList className={cn('grid w-full flex-shrink-0', owner ? 'grid-cols-5' : 'grid-cols-3')}>
             <TabsTrigger value="users">Users</TabsTrigger>
-            <TabsTrigger value="broadcasts">Broadcasts</TabsTrigger>
-            <TabsTrigger value="policies">Policies</TabsTrigger>
+            {owner && <TabsTrigger value="broadcasts">Broadcasts</TabsTrigger>}
+            {owner && <TabsTrigger value="policies">Policies</TabsTrigger>}
             <TabsTrigger value="feedback">Feedback</TabsTrigger>
             <TabsTrigger value="log">Log</TabsTrigger>
           </TabsList>
@@ -74,17 +87,21 @@ export function AdminPanelDialog({
             </ScrollArea>
           </TabsContent>
 
-          <TabsContent value="broadcasts" className="flex-1 min-h-0 data-[state=active]:flex flex-col">
-            <ScrollArea className="flex-1 min-h-0 px-1">
-              <BroadcastsTab active={open && tab === 'broadcasts'} />
-            </ScrollArea>
-          </TabsContent>
+          {owner && (
+            <TabsContent value="broadcasts" className="flex-1 min-h-0 data-[state=active]:flex flex-col">
+              <ScrollArea className="flex-1 min-h-0 px-1">
+                <BroadcastsTab active={open && tab === 'broadcasts'} />
+              </ScrollArea>
+            </TabsContent>
+          )}
 
-          <TabsContent value="policies" className="flex-1 min-h-0 data-[state=active]:flex flex-col">
-            <ScrollArea className="flex-1 min-h-0 px-1">
-              <PoliciesTab active={open && tab === 'policies'} initialTab={initialPoliciesTab} />
-            </ScrollArea>
-          </TabsContent>
+          {owner && (
+            <TabsContent value="policies" className="flex-1 min-h-0 data-[state=active]:flex flex-col">
+              <ScrollArea className="flex-1 min-h-0 px-1">
+                <PoliciesTab active={open && tab === 'policies'} initialTab={initialPoliciesTab} />
+              </ScrollArea>
+            </TabsContent>
+          )}
 
           <TabsContent value="feedback" className="flex-1 min-h-0 data-[state=active]:flex flex-col">
             <ScrollArea className="flex-1 min-h-0 px-1">

@@ -4,7 +4,7 @@ import {
   isDesktop,
   setLocalLlmOptions,
   localLlmStatus,
-  listLocalModels,
+  listLocalInstalled,
   loadLocalModel,
   stopLocalLlm,
 } from '@/lib/imageGen/desktop';
@@ -31,9 +31,11 @@ export function LocalEngineManager() {
       if (cancelled) return;
       const st = await localLlmStatus().catch(() => null);
       if (cancelled || !st || st.status !== 'stopped') return;
-      const models = await listLocalModels().catch(() => [] as string[]);
+      const models = await listLocalInstalled().catch(() => []);
       if (cancelled || !models.length) return;
-      await loadLocalModel(models[0]).catch(() => { /* ignore */ });
+      // Prefer a model in our own folder — an external library is a bonus, not the auto-start default.
+      const pick = models.find((m) => m.source === 'root') ?? models[0];
+      await loadLocalModel(pick.id).catch(() => { /* ignore */ });
     })();
     return () => { cancelled = true; };
     // eslint-disable-next-line react-hooks/exhaustive-deps -- setting changes apply via Save & Reload, not here

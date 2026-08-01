@@ -80,6 +80,7 @@ import { ModelDetailsModal } from "@/components/modals/ModelDetailsModal";
 import { AdminPanelDialog } from "@/components/menu/AdminPanelDialog";
 import { type ProfileTab } from "@/components/menu/profileTabs";
 import { UserAvatar } from "@/components/UserAvatar";
+import { UserName } from "@/components/UserName";
 import { type AdminPanelTab } from "@/components/menu/adminPanelTabs";
 import { type PoliciesTab as PoliciesSubTab } from "@/components/menu/policiesTabs";
 import { type FeedbackTab as FeedbackSubTab } from "@/components/menu/feedbackTabs";
@@ -1430,7 +1431,12 @@ const MainMenu = ({ onStartGame, onLoadSaveGame, onReplayIntro, introActive = fa
         <div className="flex-1 flex items-center justify-start gap-2">
           {COMMUNITY_ENABLED && (
             <button
-              className="relative p-3 bg-secondary text-secondary-foreground rounded-full shadow-lg hover:bg-secondary/80 transition-colors"
+              // A picture fills the circle edge to edge; an icon needs the padding around it. Both come
+              // out 48px, so the footer doesn't shift when somebody signs in.
+              className={cn(
+                'relative bg-secondary text-secondary-foreground rounded-full shadow-lg hover:bg-secondary/80 transition-colors',
+                isAuthenticated ? 'p-0' : 'p-3'
+              )}
               onClick={() => isAuthenticated ? setShowProfileDialog(true) : setShowAuthDialog(true)}
               aria-label={
                 isAuthenticated
@@ -1442,7 +1448,8 @@ const MainMenu = ({ onStartGame, onLoadSaveGame, onReplayIntro, introActive = fa
                 <UserAvatar
                   username={(currentUser?.username as string | undefined) ?? (currentUser?.name as string | undefined)}
                   avatarUrl={currentUser?.avatarUrl as string | null | undefined}
-                  size="sm"
+                  size="lg"
+                  className="h-12 w-12 text-lg"
                 />
               ) : (
                 <User className="h-6 w-6" />
@@ -1614,7 +1621,12 @@ const MainMenu = ({ onStartGame, onLoadSaveGame, onReplayIntro, introActive = fa
                 <div className="grid grid-cols-2 gap-4">
                   <div className="col-span-2">
                     <h3 className="text-sm font-semibold text-muted-foreground">Author</h3>
-                    <p>{selectedWorld?.data?.worldOverview?.author || "Unknown"}</p>
+                    <p>
+                      <UserName
+                        userId={selectedWorld?.sourceAuthorId}
+                        username={selectedWorld?.data?.worldOverview?.author as string | undefined}
+                      />
+                    </p>
                   </div>
 
                   {/* Origin date, dynamic by how the world arrived: downloaded > imported > created.

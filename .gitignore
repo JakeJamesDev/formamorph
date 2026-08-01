@@ -35,6 +35,7 @@ desktop.ini
 # Baseline test harness: local run outputs + machine-specific config
 testing/baseline/runs/
 testing/baseline/harness/profiles.json
+testing/baseline/harness/profiles.json.*
 testing/baseline/harness/Modelfile.*
 
 # Graphify knowledge-graph output (trial). Un-ignore if you adopt the team-commit workflow.

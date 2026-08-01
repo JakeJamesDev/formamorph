@@ -34,6 +34,7 @@ import { takedownTargetFor, takedownTemplate, type TakedownTarget } from "@/lib/
 import {
   isQuarantined, quarantineTargetFor, quarantineTemplate, type QuarantineTarget,
 } from "@/lib/quarantine";
+import { isStaff } from "@/lib/roles";
 import { QuarantineDialog } from "@/components/community/QuarantineDialog";
 import {
   Dialog,
@@ -178,7 +179,8 @@ const CommunityCreationsBrowser = ({
   };
 
   // Browse pipeline: search/author/tag/sort filters, hide preferences, and responsive pagination.
-  const isAdmin = currentUser?.accountType === 'admin';
+  // Moderation controls are offered to any staff account; the server narrows it per listing.
+  const viewerIsStaff = isStaff(currentUser);
 
   // Narrowed before paging, not after: filtering the page in hand would leave the pager counting pages
   // that are mostly empty. The catalog is one request that already carries every quarantined listing this
@@ -199,7 +201,7 @@ const CommunityCreationsBrowser = ({
 
   // Admin-only, and only once something is actually quarantined: a toggle that can only ever show an
   // empty list is a control that teaches nothing.
-  const quarantineControl = isAdmin && quarantinedCount > 0 ? (
+  const quarantineControl = viewerIsStaff && quarantinedCount > 0 ? (
     <Button
       variant={quarantinedOnly ? 'default' : 'outline'}
       size="sm"

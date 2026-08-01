@@ -33,11 +33,57 @@ export interface LocalPartial {
   received: number;
 }
 
-/** An installed GGUF in the models folder (any source, not just our downloader). */
+/** An installed GGUF in one of the searched folders (any source, not just our downloader). */
 export interface LocalInstalledModel {
+  /** Stable ref used to load, delete, and order this model. Root models use their bare filename; models in
+   *  the external folder use `ext:<path relative to that folder>`. */
+  id: string;
   fileName: string;
+  /** Containing folder relative to its search root (`publisher/repo`), or '' at the top level. */
+  subpath: string;
   /** On-disk size in bytes. */
   size: number;
+  /** Absolute path — lets the UI match the loaded model even when two folders share a filename. */
+  path: string;
+  /** Which folder it came from. `external` models are read-only: loadable, never deleted by us. */
+  source: 'root' | 'external';
+}
+
+/** Progress of an in-flight model move, in bytes across the whole batch. */
+export interface LocalMoveProgress {
+  /** File currently being moved. */
+  file: string;
+  movedBytes: number;
+  totalBytes: number;
+}
+
+/** What a finished move did. `skipped` accounts for every file that stayed behind, and why. */
+export interface LocalMoveResult {
+  moved: string[];
+  skipped: { file: string; reason: string }[];
+  canceled: boolean;
+}
+
+/** The folders searched for models, plus what the folder picker should suggest. */
+export interface LocalModelLocations {
+  /** Where downloads land and where deleting is allowed — the user's choice, or the built-in default. */
+  rootDir: string;
+  /** The built-in `models` folder beside the app, for the "Use Default" button. */
+  defaultDir: string;
+  /** True when rootDir is still the built-in default (nothing custom chosen). */
+  isDefaultDir: boolean;
+  /** True when the download folder isn't reachable right now — downloads refuse until it's back. */
+  downloadDirMissing: boolean;
+  /** Free bytes on the download folder's volume, or null when it can't be read. */
+  freeBytes: number | null;
+  /** The user's extra library, or null when unset. */
+  externalDir: string | null;
+  /** Whether the external folder is searched recursively (LM Studio nests publisher/repo/file). */
+  searchSubfolders: boolean;
+  /** True when a configured external folder isn't there right now (unplugged drive, moved library). */
+  externalMissing: boolean;
+  /** Detected LM Studio library for the quick-pick button, or null when it isn't installed. */
+  lmStudioDir: string | null;
 }
 
 /** Thrown message the downloader uses when a download is paused (user aborted). Not a real error. */
@@ -83,10 +129,26 @@ declare global {
         onStatus: (cb: (state: LocalLlmState) => void) => () => void;
         /** Installed GGUF filenames in the models folder. */
         listModels: () => Promise<string[]>;
-        /** Installed GGUFs with their on-disk sizes. */
+        /** Installed GGUFs with their sizes and provenance. */
         listInstalled: () => Promise<LocalInstalledModel[]>;
-        /** Load an installed model by filename. */
-        load: (fileName: string) => Promise<LocalLlmState>;
+        /** Load an installed model by its ref. */
+        load: (ref: string) => Promise<LocalLlmState>;
+        /** The folders searched for models. */
+        getLocations: () => Promise<LocalModelLocations>;
+        /** Set any subset of the folder settings; returns the updated locations. */
+        setLocations: (opts: Partial<{ downloadDir: string | null; externalDir: string | null; searchSubfolders: boolean }>) => Promise<LocalModelLocations>;
+        /** Native folder picker; resolves null when canceled. */
+        pickFolder: (title?: string) => Promise<string | null>;
+        /** Free bytes on a folder's volume, or null when unreadable. */
+        freeSpace: (dir?: string) => Promise<number | null>;
+        /** Models and resumable partials a move would carry out of a folder. */
+        countMovable: (dir: string) => Promise<{ count: number; bytes: number }>;
+        /** Move models between folders; the loaded one is unloaded and reloaded around the move. */
+        moveModels: (opts: { from: string; to: string }) => Promise<LocalMoveResult>;
+        /** Stop a move after the current file. */
+        cancelMove: () => Promise<boolean>;
+        /** Subscribe to move progress; returns an unsubscribe fn. */
+        onMoveProgress: (cb: (p: LocalMoveProgress) => void) => () => void;
         /** Set engine load options (context size / GPU layers / flash attention); reloads if changed. */
         setOptions: (opts: { contextSize: number; gpuLayers: number; flashAttention: boolean; parallelRequests: number }) => Promise<LocalLlmState>;
         /** Download a GGUF from Hugging Face, then load it; resolves with the saved path. */
@@ -176,8 +238,38 @@ export const listLocalModels = (): Promise<string[]> => requireLlm().listModels(
 /** Installed GGUFs with their on-disk sizes (any source, not just our downloader). */
 export const listLocalInstalled = (): Promise<LocalInstalledModel[]> => requireLlm().listInstalled();
 
-/** Load an installed model by filename; resolves with the engine state. */
-export const loadLocalModel = (fileName: string): Promise<LocalLlmState> => requireLlm().load(fileName);
+/** Load an installed model by its ref; resolves with the engine state. */
+export const loadLocalModel = (ref: string): Promise<LocalLlmState> => requireLlm().load(ref);
+
+/** The folders searched for models (root plus the optional external library). */
+export const localModelLocations = (): Promise<LocalModelLocations> => requireLlm().getLocations();
+
+/** Set any subset of the model folder settings; resolves with the updated locations. */
+export const setLocalModelLocations = (opts: Partial<{ downloadDir: string | null; externalDir: string | null; searchSubfolders: boolean }>): Promise<LocalModelLocations> =>
+  requireLlm().setLocations(opts);
+
+/** Open the native folder picker (null when canceled). */
+export const pickLocalModelFolder = (title?: string): Promise<string | null> => requireLlm().pickFolder(title);
+
+/** Free bytes on a folder's volume, or null when it can't be read. */
+export const localModelFreeSpace = (dir?: string): Promise<number | null> => requireLlm().freeSpace(dir);
+
+/** Models and resumable partials a move would carry out of `dir`. */
+export const countMovableModels = (dir: string): Promise<{ count: number; bytes: number }> =>
+  requireLlm().countMovable(dir);
+
+/** Move downloaded models from one folder to another; resolves with what moved and what didn't. */
+export const moveLocalModels = (opts: { from: string; to: string }): Promise<LocalMoveResult> =>
+  requireLlm().moveModels(opts);
+
+/** Stop an in-flight move after the current file. */
+export const cancelLocalModelMove = (): Promise<boolean> => requireLlm().cancelMove();
+
+/** Subscribe to move progress; returns an unsubscribe fn (a no-op off desktop). */
+export function subscribeLocalMove(cb: (p: LocalMoveProgress) => void): () => void {
+  const llm = typeof window !== 'undefined' ? window.formamorphDesktop?.llm : undefined;
+  return llm?.onMoveProgress ? llm.onMoveProgress(cb) : () => {};
+}
 
 /** Set engine load options (context size / GPU layers / flash attention); reloads if they changed. */
 export const setLocalLlmOptions = (opts: { contextSize: number; gpuLayers: number; flashAttention: boolean; parallelRequests: number }): Promise<LocalLlmState> =>

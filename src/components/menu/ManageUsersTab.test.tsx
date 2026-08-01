@@ -22,7 +22,7 @@ vi.mock('./SentMessagesDialog', () => ({
 }));
 
 vi.mock('@/services/AuthService', () => ({
-  default: { token: 'test-token', getCurrentUser: () => ({ username: 'root-admin' }) },
+  default: { token: 'test-token', getCurrentUser: () => ({ id: 'a1', username: 'root-admin', accountType: 'admin' }) },
 }));
 
 vi.mock('@/services/WorldStorageService', () => ({
@@ -546,5 +546,71 @@ describe('editing a sent message', () => {
       editing: message,
       target: { broadcast: false, recipients: [{ id: 'u1', username: 'alice' }] },
     });
+  });
+});
+
+describe('the role column', () => {
+  it('badges a staff account beside their name', async () => {
+    // Two matches by design: the badge in the name cell, and the role dropdown's own displayed value.
+    stubFetch([userRow({ accountType: 'mod' })]);
+
+    render(<ManageUsersTab active />);
+    await screen.findByText('someone');
+
+    expect(screen.getAllByText('Mod').length).toBeGreaterThan(0);
+  });
+
+  it('offers an administrator the roles they may set', async () => {
+    stubFetch([userRow()]);
+
+    render(<ManageUsersTab active />);
+
+    expect(await screen.findByLabelText('Role for someone')).toBeTruthy();
+  });
+
+  it('offers nothing on an administrator’s row', async () => {
+    // One is made by hand on the server and nowhere else, so there is nothing to offer.
+    stubFetch([userRow({ accountType: 'admin' })]);
+
+    render(<ManageUsersTab active />);
+    await screen.findByText('someone');
+
+    expect(screen.queryByLabelText('Role for someone')).toBeNull();
+  });
+
+  it('offers nothing to a moderator, who changes nobody', async () => {
+    const AuthService = (await import('@/services/AuthService')).default;
+    vi.spyOn(AuthService, 'getCurrentUser').mockReturnValue({ id: 'm1', username: 'a-mod', accountType: 'mod' });
+    stubFetch([userRow()]);
+
+    render(<ManageUsersTab active />);
+    await screen.findByText('someone');
+
+    expect(screen.queryByLabelText('Role for someone')).toBeNull();
+  });
+
+  it('hides the moderation controls on a row this viewer may not touch', async () => {
+    // Staff moderate the room, not each other. The server refuses either way; offering a button that
+    // always fails is worse than not offering it.
+    const AuthService = (await import('@/services/AuthService')).default;
+    vi.spyOn(AuthService, 'getCurrentUser').mockReturnValue({ id: 'm1', username: 'a-mod', accountType: 'mod' });
+    stubFetch([userRow({ accountType: 'dev', status: 'normal' })]);
+
+    render(<ManageUsersTab active />);
+    await screen.findByText('someone');
+
+    expect(screen.queryByRole('button', { name: 'Suspend' })).toBeNull();
+  });
+
+  it('still offers them on an ordinary row', async () => {
+    // The case that isolates the check above: without it, the control is absent for the wrong reason.
+    const AuthService = (await import('@/services/AuthService')).default;
+    vi.spyOn(AuthService, 'getCurrentUser').mockReturnValue({ id: 'm1', username: 'a-mod', accountType: 'mod' });
+    stubFetch([userRow({ status: 'normal' })]);
+
+    render(<ManageUsersTab active />);
+    await screen.findByText('someone');
+
+    expect(screen.getByRole('button', { name: 'Suspend' })).toBeTruthy();
   });
 });

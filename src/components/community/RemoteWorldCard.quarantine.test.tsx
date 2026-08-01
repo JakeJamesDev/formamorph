@@ -23,6 +23,7 @@ const world = (over: Record<string, unknown> = {}): WorldRecord => ({
 }) as unknown as WorldRecord;
 
 const admin = { id: 'a1', username: 'root-admin', accountType: 'admin' } as unknown as WorldRecord;
+const moderator = { id: 'm1', username: 'a-mod', accountType: 'mod' } as unknown as WorldRecord;
 const author = { id: 'u1', username: 'wren_hallow', accountType: 'normal' } as unknown as WorldRecord;
 
 const quarantined = (over: Record<string, unknown> = {}) => world({
@@ -110,6 +111,30 @@ describe('the admin controls', () => {
 
     expect(screen.queryByLabelText('Quarantine Sedge Landing')).toBeNull();
     expect(screen.queryByLabelText('Release Sedge Landing')).toBeNull();
+  });
+
+  it('offers them to a moderator too, not only to an administrator', () => {
+    show(world(), moderator, { onQuarantine: () => {}, onRelease: () => {} });
+
+    expect(screen.getByLabelText('Quarantine Sedge Landing')).toBeTruthy();
+  });
+
+  it('offers a moderator nothing on another moderator’s listing', () => {
+    // Staff moderate the room, not each other. The server refuses either way; a button that always
+    // fails is worse than no button.
+    const byStaff = world({ author: { id: 'd1', username: 'a-dev', accountType: 'dev' } });
+
+    show(byStaff, moderator, { onQuarantine: () => {}, onRelease: () => {} });
+
+    expect(screen.queryByLabelText('Quarantine Sedge Landing')).toBeNull();
+  });
+
+  it('lets an administrator act on a moderator’s listing', () => {
+    const byStaff = world({ author: { id: 'd1', username: 'a-dev', accountType: 'dev' } });
+
+    show(byStaff, admin, { onQuarantine: () => {}, onRelease: () => {} });
+
+    expect(screen.getByLabelText('Quarantine Sedge Landing')).toBeTruthy();
   });
 
   it('hands the whole listing to the caller, not just its id', async () => {

@@ -4,6 +4,7 @@ import { useDevRoute, installDevRouter } from './lib/devRouter';
 import { type DevView } from './lib/devRoutes';
 import { DevFixtureLoader } from './components/DevFixtureLoader';
 import { GameDataProvider } from './contexts/GameDataContext';
+import { UserProfileProvider } from './contexts/UserProfileContext';
 import { SettingsProvider } from './contexts/SettingsContext';
 import { GameplayProvider } from './contexts/GameplayContext';
 import { LocalEngineManager } from './components/LocalEngineManager';
@@ -88,6 +89,9 @@ function App() {
       <SettingsProvider>
         <LocalEngineManager />
         <GameDataProvider>
+          {/* One profile dialog for the whole app: names are clicked from inside other dialogs, and a
+              nested one would inherit their scroll lock and their width. */}
+          <UserProfileProvider>
           <DevFixtureLoader />
           {currentView === 'mainMenu' && (
             <MainMenu
@@ -113,6 +117,7 @@ function App() {
               />
             </GameplayProvider>
           )}
+          </UserProfileProvider>
         </GameDataProvider>
       </SettingsProvider>
     </ThemeProvider>

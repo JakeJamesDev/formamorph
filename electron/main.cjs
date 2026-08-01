@@ -1,13 +1,16 @@
 // Electron main process: thin desktop shell around the built web app (dist/).
 // Loads the SPA from a privileged custom scheme so module workers, WASM, WebGPU,
 // and fetch behave like a normal web origin (raw file:// gives a null origin and breaks them).
-const { app, BrowserWindow, protocol, net, ipcMain, session, shell } = require('electron');
+const { app, BrowserWindow, protocol, net, ipcMain, session, shell, dialog } = require('electron');
 const path = require('node:path');
 const fs = require('node:fs');
+const os = require('node:os');
 const { pathToFileURL } = require('node:url');
 const { collect: collectVram } = require('./vramCollect.cjs');
 const llmEngine = require('./llmEngine.cjs');
 const modelDownload = require('./modelDownload.cjs');
+const { scanModels, resolveModelRef, isRootRef } = require('./modelScan.cjs');
+const modelMove = require('./modelMove.cjs');
 const { portableUserDataDir, migratePersistentStores } = require('./portableProfile.cjs');
 const { withCorsHeaders } = require('./corsShim.cjs');
 const updater = require('./updater.cjs');
@@ -49,9 +52,63 @@ function appBaseDir() {
   if (!app.isPackaged) return app.getAppPath();
   return app.getPath('userData');
 }
-const modelsDir = () => path.join(appBaseDir(), 'models');
-// Ensure the models folder exists so the picker/downloader have somewhere to land files.
+// The built-in default. Kept as the fallback rather than baked into the saved settings so a portable
+// install that never changes it still resolves relative to wherever the folder was copied to.
+const defaultModelsDir = () => path.join(appBaseDir(), 'models');
+
+// Where downloads land and where we're allowed to delete: the user's chosen folder, or the default.
+const modelsDir = () => modelLocations.downloadDir || defaultModelsDir();
+
+// Model folders. downloadDir null = the built-in default. externalDir is an optional extra folder to look
+// in (a user's existing LM Studio / Ollama library), read-only. Lives in userData — which portable builds
+// redirect beside the exe — and is read in main because main is where the load path gets confined.
+const locationsFile = () => path.join(app.getPath('userData'), 'model-locations.json');
+let modelLocations = { downloadDir: null, externalDir: null, searchSubfolders: true };
+try {
+  const saved = JSON.parse(fs.readFileSync(locationsFile(), 'utf8'));
+  modelLocations = {
+    downloadDir: typeof saved.downloadDir === 'string' && saved.downloadDir ? saved.downloadDir : null,
+    externalDir: typeof saved.externalDir === 'string' && saved.externalDir ? saved.externalDir : null,
+    searchSubfolders: saved.searchSubfolders !== false,
+  };
+} catch { /* no saved locations yet */ }
+
+// Ensure the download folder exists so the picker/downloader have somewhere to land files.
 try { fs.mkdirSync(modelsDir(), { recursive: true }); } catch { /* ignore */ }
+
+const scanOptions = () => ({ rootDir: modelsDir(), externalDir: modelLocations.externalDir, searchSubfolders: modelLocations.searchSubfolders });
+
+/** Persist the current folder settings; a failed write only costs the setting on next launch. */
+function saveLocations() {
+  try {
+    fs.mkdirSync(path.dirname(locationsFile()), { recursive: true });
+    fs.writeFileSync(locationsFile(), JSON.stringify(modelLocations, null, 2));
+  } catch { /* ignore */ }
+}
+
+/** The full folder picture the renderer renders, including whether each folder is reachable right now. */
+const locationsPayload = () => ({
+  rootDir: modelsDir(),
+  defaultDir: defaultModelsDir(),
+  isDefaultDir: !modelLocations.downloadDir,
+  downloadDirMissing: !fs.existsSync(modelsDir()),
+  freeBytes: modelMove.freeSpace(modelsDir()),
+  externalDir: modelLocations.externalDir,
+  searchSubfolders: modelLocations.searchSubfolders,
+  externalMissing: !!modelLocations.externalDir && !fs.existsSync(modelLocations.externalDir),
+  lmStudioDir: detectLmStudioDir(),
+});
+
+// Where LM Studio keeps its library, newest layout first. Probed (not assumed) so the quick-pick button
+// only appears when there's really something to point at.
+function detectLmStudioDir() {
+  const home = os.homedir();
+  const candidates = [
+    path.join(home, '.lmstudio', 'models'),
+    path.join(home, '.cache', 'lm-studio', 'models'),
+  ];
+  return candidates.find((dir) => { try { return fs.statSync(dir).isDirectory(); } catch { return false; } }) ?? null;
+}
 
 // Push every engine status change to the renderer (it also polls once on mount via 'llm-status').
 llmEngine.onStatus((state) => {
@@ -141,10 +198,13 @@ ipcMain.handle('vram-stats', async () => {
 // Desktop-only local LLM: load a GGUF and serve an OpenAI-compatible endpoint on localhost. The renderer
 // then points its normal OpenAI endpoint at it. Handlers return the engine's serializable state. Loading
 // is filename-only and confined to the models folder — no arbitrary-path start is exposed over IPC.
-// Load an installed model by filename (resolves it inside the models folder), using the current options.
-ipcMain.handle('llm-load', async (_event, fileName) => {
+// Load an installed model by ref (a bare filename in the models folder, or 'ext:<relative path>' in the
+// user's external folder), using the current options. resolveModelRef confines the result to that folder.
+ipcMain.handle('llm-load', async (_event, ref) => {
+  const modelPath = resolveModelRef(ref, scanOptions());
+  if (!modelPath) throw new Error('That model is no longer in a searched folder.');
   await llmEngine.stop();
-  return llmEngine.start({ modelPath: path.join(modelsDir(), path.basename(fileName)), ...engineOptions });
+  return llmEngine.start({ modelPath, ...engineOptions });
 });
 ipcMain.handle('llm-stop', () => llmEngine.stop());
 ipcMain.handle('llm-status', () => llmEngine.getState());
@@ -172,36 +232,96 @@ ipcMain.handle('llm-set-options', async (_event, opts) => {
   return llmEngine.getState();
 });
 
-// Installed GGUF filenames in the models folder.
-ipcMain.handle('llm-list-models', () => {
-  try {
-    return fs.readdirSync(modelsDir()).filter((f) => f.toLowerCase().endsWith('.gguf')).sort();
-  } catch {
-    return [];
+// Installed GGUF filenames across every searched folder (used where only names matter).
+ipcMain.handle('llm-list-models', () => scanModels(scanOptions()).map((m) => m.fileName));
+
+// Installed GGUFs with sizes and provenance, as [{ id, fileName, subpath, size, path, source }] — any GGUF
+// in the models folder or the user's external folder, not just ones from our downloader.
+ipcMain.handle('llm-list-installed', () => scanModels(scanOptions()));
+
+// The searched folders: where downloads land (ours — deletable) and the user's optional extra library
+// (read-only). lmStudioDir is a suggestion for the quick-pick button, null when LM Studio isn't installed.
+ipcMain.handle('llm-get-locations', () => locationsPayload());
+
+// Set the download folder and/or the external search folder, and persist the choice. A folder that doesn't
+// exist is rejected here; one that disappears later is kept (an unmounted drive shouldn't wipe the setting).
+// Only the keys present in `opts` change, so the UI can set one without restating the other.
+ipcMain.handle('llm-set-locations', (_event, opts) => {
+  const asFolder = (value, label) => {
+    if (!value) return null;
+    const dir = String(value);
+    let ok = false;
+    try { ok = fs.statSync(dir).isDirectory(); } catch { /* not a folder */ }
+    if (!ok) throw new Error(`${label} isn't a folder: ${dir}`);
+    return dir;
+  };
+
+  const next = { ...modelLocations };
+  if ('downloadDir' in opts) {
+    next.downloadDir = asFolder(opts.downloadDir, 'Download folder');
+    // A download folder we can't write to would fail later, at the least recoverable moment.
+    if (next.downloadDir) {
+      try { fs.accessSync(next.downloadDir, fs.constants.W_OK); } catch {
+        throw new Error(`Can't write to that folder: ${next.downloadDir}`);
+      }
+    }
   }
+  if ('externalDir' in opts) next.externalDir = asFolder(opts.externalDir, 'Search folder');
+  if ('searchSubfolders' in opts) next.searchSubfolders = opts.searchSubfolders !== false;
+
+  modelLocations = next;
+  saveLocations();
+  try { fs.mkdirSync(modelsDir(), { recursive: true }); } catch { /* ignore */ }
+  return locationsPayload();
 });
 
-// Installed GGUFs with their on-disk sizes, as [{ fileName, size }] — any GGUF in the folder, not just
-// ones from our downloader.
-ipcMain.handle('llm-list-installed', () => {
-  try {
-    const dir = modelsDir();
-    return fs.readdirSync(dir)
-      .filter((f) => f.toLowerCase().endsWith('.gguf'))
-      .map((f) => {
-        let size = 0;
-        try { size = fs.statSync(path.join(dir, f)).size; } catch { /* ignore */ }
-        return { fileName: f, size };
-      })
-      .sort((a, b) => a.fileName.localeCompare(b.fileName));
-  } catch {
-    return [];
-  }
+// Native folder picker; resolves null when the user cancels. `title` distinguishes the two pickers.
+ipcMain.handle('llm-pick-folder', async (_event, title) => {
+  const opts = { properties: ['openDirectory', 'createDirectory'], title: title || 'Choose a folder' };
+  const res = mainWindow && !mainWindow.isDestroyed()
+    ? await dialog.showOpenDialog(mainWindow, opts)
+    : await dialog.showOpenDialog(opts);
+  return res.canceled ? null : (res.filePaths[0] ?? null);
 });
+
+// What a move would carry: models plus resumable partials, so the prompt can state a count and a size.
+ipcMain.handle('llm-count-movable', (_event, dir) => modelMove.countMovable(dir));
+
+// Move downloaded models between folders after the download folder changes. The loaded model is unloaded
+// first (to release its file lock) and reloaded afterwards from wherever it ended up, so a move that fails
+// for that one file doesn't leave the engine stopped.
+ipcMain.handle('llm-move-models', async (_event, { from, to }) => {
+  const loadedBefore = llmEngine.getState().modelPath;
+  const wasInSource = loadedBefore && path.dirname(path.resolve(loadedBefore)) === path.resolve(from);
+  if (wasInSource) await llmEngine.stop();
+
+  const result = await modelMove.moveModels({ from, to }, (p) => {
+    if (mainWindow && !mainWindow.isDestroyed()) mainWindow.webContents.send('llm-move-progress', p);
+  });
+
+  if (wasInSource) {
+    const name = path.basename(loadedBefore);
+    // Reload from the new folder if it made the trip, otherwise from where it stayed.
+    const back = result.moved.includes(name) ? path.join(to, name) : loadedBefore;
+    if (fs.existsSync(back)) await llmEngine.start({ modelPath: back, ...engineOptions });
+  }
+  return result;
+});
+
+ipcMain.handle('llm-move-cancel', () => { modelMove.cancel(); return true; });
+
+// Free bytes on the volume holding a folder, for the "won't fit" warning. null when it can't be read.
+ipcMain.handle('llm-free-space', (_event, dir) => modelMove.freeSpace(dir || modelsDir()));
 
 // Download a catalog model from Hugging Face, then load it. Progress streams to the renderer.
 ipcMain.handle('llm-download', async (_event, { url, fileName }) => {
-  const finalPath = await modelDownload.download({ url, fileName, destDir: modelsDir() }, (p) => {
+  // Refuse rather than silently redirecting to the default folder: a model landing somewhere the user
+  // didn't choose can quietly fill the drive they moved downloads off in the first place.
+  const dest = modelsDir();
+  if (!fs.existsSync(dest)) {
+    throw new Error(`The download folder isn't available:\n${dest}\n\nReconnect it or choose a new one.`);
+  }
+  const finalPath = await modelDownload.download({ url, fileName, destDir: dest }, (p) => {
     if (mainWindow && !mainWindow.isDestroyed()) mainWindow.webContents.send('llm-download-progress', p);
   });
   await llmEngine.stop();
@@ -217,7 +337,9 @@ ipcMain.handle('llm-discard-partial', (_event, fileName) => modelDownload.discar
 
 // Delete an installed model (stopping the engine first if it's the loaded one, to release the file lock).
 // Also clears any leftover .part for that model.
+// Deleting is root-only: models found in the user's external folder belong to whatever app put them there.
 ipcMain.handle('llm-delete-model', async (_event, fileName) => {
+  if (!isRootRef(fileName)) return false;
   const target = path.join(modelsDir(), path.basename(fileName));
   if (llmEngine.getState().modelPath === target) await llmEngine.stop();
   modelDownload.discardPartial(modelsDir(), fileName);

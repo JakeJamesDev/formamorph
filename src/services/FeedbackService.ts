@@ -143,6 +143,32 @@ class FeedbackService {
     return body.data;
   }
 
+  /**
+   * Rewrite a report.
+   *
+   * Every field is optional and only what is passed is written. Who may change what is the server's
+   * call — a bug's words are the team's to make useful, a suggestion's stay its author's, and the filing
+   * is triage either way — so this sends what was asked for and surfaces a refusal verbatim.
+   *
+   * @param id - The thread
+   * @param fields - `{ title, body, category, type }`, any subset. A type change must carry a category
+   *   from the new type's own list.
+   * @returns The thread as it now reads
+   */
+  async update(
+    id: string,
+    fields: { title?: string; body?: string; category?: FeedbackCategory; type?: FeedbackType }
+  ): Promise<FeedbackThread> {
+    const response = await fetch(`${this.apiUrl}/feedback/${id}`, {
+      method: 'PUT',
+      headers: this.authHeaders(true),
+      body: JSON.stringify(fields),
+    });
+
+    const body = await this.unwrap<{ data: FeedbackThread }>(response, 'Failed to save the changes');
+    return body.data;
+  }
+
   /** Move a thread through triage (admin only). */
   async setStatus(id: string, status: FeedbackStatus): Promise<FeedbackThread> {
     const response = await fetch(`${this.apiUrl}/feedback/${id}/status`, {

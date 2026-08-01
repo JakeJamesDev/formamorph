@@ -30,6 +30,10 @@ export interface StoredWorldRecord {
   /** The server world's `updated_at` captured at (re)download — i.e. the source version we hold.
    *  Compared against the server's live `updated_at` to detect refresh vs update. Sticky; local-only. */
   sourceUpdatedAt?: string;
+  /** The account that published the listing this copy came from, captured at (re)download. Lets the
+   *  author line open their profile — the authored `author` string is free text and names nobody in
+   *  particular, while this is exactly who put it on Community Creations. Sticky; local-only. */
+  sourceAuthorId?: string;
   /** Bundled defaults only: a hash of the bundle's raw JSON this copy was seeded from, so a later launch can
    *  tell whether the shipped content actually changed. Derived (never hand-written) and local-only, so it
    *  isn't exported and needs no version bump. Absent on copies seeded before hashing existed. */
@@ -125,6 +129,7 @@ class WorldStorageService {
       editedAt: world.editedAt,
       downloadedAt: world.downloadedAt,
       sourceUpdatedAt: world.sourceUpdatedAt,
+      sourceAuthorId: world.sourceAuthorId,
       createdAt: world.createdAt,
       lastAccessed: world.lastAccessed
     }));
@@ -236,6 +241,7 @@ class WorldStorageService {
           editedAt: world.editedAt ?? existing?.editedAt,
           downloadedAt: world.downloadedAt ?? existing?.downloadedAt,
           sourceUpdatedAt: world.sourceUpdatedAt ?? existing?.sourceUpdatedAt,
+          sourceAuthorId: world.sourceAuthorId ?? existing?.sourceAuthorId,
           sourceHash: world.sourceHash ?? existing?.sourceHash,
           data: world.data,
           // createdAt is sticky: stamped once on first store, preserved across later saves.
