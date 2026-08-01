@@ -395,6 +395,32 @@ class WorldStorageService {
   }
 
   /**
+   * Like a listing, or take the like back.
+   *
+   * Answers with the count as well as the state, so the heart and the number beside it can never disagree
+   * about what just happened — the same reason following does.
+   *
+   * @param worldId - The listing's server id
+   * @param liked - True to like it, false to take it back
+   * @returns The new state and count
+   */
+  async setRemoteWorldLiked(worldId: string, liked: boolean) {
+    const response = await fetch(`${this.API_URL}/worlds/${worldId}/like`, {
+      method: 'PUT',
+      headers: {
+        'Authorization': `Bearer ${AuthService.token}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ liked }),
+    });
+
+    const body = await response.json().catch(() => ({}));
+    if (!response.ok) throw new Error(body.error || body.message || 'Failed to change that');
+
+    return body.data as { liked: boolean; likes: number };
+  }
+
+  /**
    * Put a published listing into quarantine: out of the catalog for everyone but its author, and deleted
    * when the deadline passes unless an admin releases it first. Admin only.
    *

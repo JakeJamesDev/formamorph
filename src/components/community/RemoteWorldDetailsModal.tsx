@@ -15,6 +15,7 @@ import { KIND_LABELS, kindOf } from "@/lib/catalogKinds";
 import WorldStorageService from "@/services/WorldStorageService";
 import { UserAvatar } from "@/components/UserAvatar";
 import { UserName } from "@/components/UserName";
+import { LikeButton } from "@/components/community/LikeButton";
 
 interface RemoteWorldDetailsModalProps {
   open: boolean;
@@ -28,6 +29,10 @@ interface RemoteWorldDetailsModalProps {
   downloadStateForWorld: (world: WorldRecord) => DownloadState;
   downloadProgress: Record<string, number>;
   onContextualDownload: (world: WorldRecord, state: DownloadState) => void;
+  /** Who is reading, so the heart is a control only for somebody who could press it. */
+  currentUser?: WorldRecord | null;
+  /** Records a like. Absent leaves the heart a plain count. */
+  onLike?: (world: WorldRecord, liked: boolean) => Promise<void>;
 }
 
 /** The remote-world details modal: metadata + download action (left) and comments (right). Owns its own
@@ -35,6 +40,7 @@ interface RemoteWorldDetailsModalProps {
 export function RemoteWorldDetailsModal({
   open, onOpenChange, world, collapsed, onToggleCollapsed,
   isAuthenticated, openImageViewer, downloadStateForWorld, downloadProgress, onContextualDownload,
+  currentUser, onLike,
 }: RemoteWorldDetailsModalProps) {
   const [comments, setComments] = useState<WorldRecord[]>([]);
   const [commentsTotal, setCommentsTotal] = useState(0);
@@ -99,6 +105,13 @@ export function RemoteWorldDetailsModal({
   // Resolve through the same blob cache the card thumbnails use, so the zoom gets a same-origin object URL
   // rather than the raw cross-origin server URL (which CORP blocks from an <img> load, breaking the viewer).
   const { src: thumbSrc } = useCachedThumbnail(thumbFile, thumbUrl, world?.updated_at);
+
+  // Matched on either id or name, the same pair the card uses — a catalog row and the signed-in user come
+  // from different endpoints and have disagreed on which one is populated before.
+  const isOwnListing = Boolean(
+    world?.author && currentUser &&
+    (world.author.id === currentUser.id || world.author.username === currentUser.username)
+  );
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -179,7 +192,9 @@ export function RemoteWorldDetailsModal({
                 })()}
                 meta={
                   <div className="grid grid-cols-2 gap-4">
-                    <div>
+                    {/* Full width so the two counts below pair off on a row of their own — they are the
+                        comparison the pair exists to make. */}
+                    <div className="col-span-2">
                       <h3 className="text-sm font-semibold text-muted-foreground">Author</h3>
                       <p className="flex items-center gap-2 min-w-0">
                         <UserAvatar username={world.author?.username} avatarUrl={world.author?.avatarUrl} size="sm" />
@@ -190,6 +205,17 @@ export function RemoteWorldDetailsModal({
                     <div>
                       <h3 className="text-sm font-semibold text-muted-foreground">Downloads</h3>
                       <p>{world.downloads || 0}</p>
+                    </div>
+
+                    <div>
+                      <h3 className="text-sm font-semibold text-muted-foreground">Likes</h3>
+                      <LikeButton
+                        likes={world.likes || 0}
+                        liked={world.liked}
+                        size="md"
+                        // Static on your own listing, which the server refuses.
+                        onToggle={onLike && isAuthenticated && !isOwnListing ? (next) => onLike(world, next) : undefined}
+                      />
                     </div>
 
                     <div>

@@ -1,5 +1,8 @@
 import { createContext, useContext } from 'react';
 
+/** Shows one published listing, wherever the catalog browser happens to live. */
+export type ListingOpener = (listing: { id: string; kind: string }) => void;
+
 export interface UserProfileContextValue {
   /**
    * Show somebody's profile.
@@ -9,6 +12,14 @@ export interface UserProfileContextValue {
    * @param username - The name already on screen, so the dialog opens with something in it
    */
   openProfile: (userId: string | null | undefined, username?: string | null) => void;
+  /**
+   * Lend the dialog a way to open a listing, or take it back with null.
+   *
+   * Registered rather than passed down: the dialog sits at the root so it can open over anything, and
+   * the catalog browser it hands off to is owned much further in. Whoever owns the browser lends this
+   * while it is mounted, and the rows are plain text whenever nobody has.
+   */
+  setListingOpener: (open: ListingOpener | null) => void;
 }
 
 /** Separate from the provider so that file exports a component and nothing else, which is what keeps
@@ -23,4 +34,4 @@ export const UserProfileContext = createContext<UserProfileContextValue | null>(
  * that will not mount.
  */
 export const useUserProfile = (): UserProfileContextValue =>
-  useContext(UserProfileContext) ?? { openProfile: () => {} };
+  useContext(UserProfileContext) ?? { openProfile: () => {}, setListingOpener: () => {} };

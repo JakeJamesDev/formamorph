@@ -1,5 +1,5 @@
 /**
- * Full-library backup bundle: export every world, save, library character (entity), and library
+ * Full-library backup bundle: export every world, save, library entity, and library
  * dictionary into one self-contained `.json`, and restore it later. Images are already base64-embedded
  * in these records, so the bundle is offline-safe and portable across origins — the fix for itch/web
  * users whose origin-scoped IndexedDB is orphaned when a hosted build updates.
@@ -37,7 +37,7 @@ export interface BackupBundle {
 export const CATEGORY_LABELS: Record<BackupCategory, string> = {
   worlds: 'Worlds',
   saves: 'Saves',
-  entities: 'Characters',
+  entities: 'Entities',
   dictionaries: 'Dictionaries',
 };
 

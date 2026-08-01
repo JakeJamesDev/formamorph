@@ -2,7 +2,8 @@ import { render, screen, cleanup, fireEvent, waitFor } from '@testing-library/re
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { AuditLogTab } from './AuditLogTab';
 import AuditService from '@/services/AuditService';
-import { describeAuditEntry, actionFilterValue, ANY_ACTION } from '@/lib/auditPresentation';
+import { describeAuditEntry, auditActorName, auditPredicate, actionFilterValue, ANY_ACTION } from '@/lib/auditPresentation';
+import { RoleBadge } from '@/components/RoleBadge';
 import type { AuditEntry } from '@/types';
 
 vi.mock('react-toastify', () => ({ toast: { error: vi.fn(), success: vi.fn(), info: vi.fn() } }));
@@ -20,6 +21,12 @@ const entry = (over: Partial<AuditEntry> = {}): AuditEntry => ({
 
 const stubLog = (entries: AuditEntry[], total = entries.length) =>
   vi.spyOn(AuditService, 'list').mockResolvedValue({ entries, total });
+
+/**
+ * The one entry line on screen. Matched by its container rather than by its text: the actor's name is
+ * its own element now, so the sentence spans children and an exact-text query would miss it.
+ */
+const findEntryLine = async () => (await screen.findByText(/suspended/)).closest('p') as HTMLElement;
 
 /** What the log was asked for on its most recent fetch. */
 const lastQuery = () => {
@@ -42,7 +49,7 @@ describe('reading the log', () => {
 
     render(<AuditLogTab active />);
 
-    expect(await screen.findByText('root-admin suspended trouble')).toBeTruthy();
+    expect((await findEntryLine()).textContent).toBe('root-admin suspended trouble');
   });
 
   it('shows what was removed, when the entry kept it', async () => {
@@ -87,7 +94,7 @@ describe('reading the log', () => {
     stubLog([entry()]);
 
     render(<AuditLogTab active />);
-    await screen.findByText('root-admin suspended trouble');
+    await findEntryLine();
 
     for (const name of [/delete/i, /clear/i, /edit/i, /remove/i]) {
       expect(screen.queryByRole('button', { name })).toBeNull();
@@ -101,7 +108,7 @@ describe('narrowing the log', () => {
     stubLog([entry()]);
 
     render(<AuditLogTab active />);
-    await screen.findByText('root-admin suspended trouble');
+    await findEntryLine();
     fireEvent.change(screen.getByLabelText('Search the log'), { target: { value: 'trouble' } });
 
     expect(vi.mocked(AuditService.list)).toHaveBeenCalledTimes(1);
@@ -203,11 +210,11 @@ describe('what each entry reads as', () => {
     })).toBe('root-admin deleted their own world “Sedge Landing”');
   });
 
-  it('calls an entity a character, the way the rest of the app does', () => {
+  it('calls an entity an entity — they can be objects or plants, not only people', () => {
     expect(line({
       action: 'listing_deleted',
       target: { kind: 'entity', name: 'Ilsa' },
-    })).toContain('character “Ilsa”');
+    })).toContain('entity “Ilsa”');
   });
 
   it('names the listing a deleted comment was on', () => {
@@ -275,5 +282,91 @@ describe('what each entry reads as', () => {
   it('does not invent a name for a listing that had none', () => {
     expect(line({ action: 'listing_deleted', target: { kind: 'world', name: null } }))
       .toBe('root-admin deleted a world by trouble');
+  });
+});
+
+describe('who acted, and what they were', () => {
+  it('names the actor apart from the sentence, so a badge can sit against the name', () => {
+    expect(auditActorName(entry({ actor: { id: 'u1', username: 'wren_hallow', wasAdmin: false } })))
+      .toBe('wren_hallow');
+    expect(auditPredicate(entry({ action: 'terms_reset_all' })))
+      .toBe('asked everyone to accept the terms again');
+  });
+
+  it('names nobody when nobody chose it', () => {
+    // A quarantine deadline passing is the clock, not a person — badging one would invent an actor.
+    expect(auditActorName(entry({ action: 'quarantine_expired' }))).toBeNull();
+    expect(auditPredicate(entry({ action: 'quarantine_expired' }))).toMatch(/^The quarantine ran out/);
+  });
+
+  it('falls back to Someone for an entry whose actor has no name left', () => {
+    expect(auditActorName(entry({ actor: { id: null, username: null, wasAdmin: false } }))).toBe('Someone');
+  });
+
+  it('still reads as one sentence when the two are joined', () => {
+    // `describeAuditEntry` is the same string it always was; the split must not have moved a space.
+    expect(describeAuditEntry(entry({ action: 'terms_reset_all' })))
+      .toBe('root-admin asked everyone to accept the terms again');
+    expect(describeAuditEntry(entry({ action: 'quarantine_expired', target: { kind: 'world', name: 'Sedge Landing' } })))
+      .toBe('The quarantine ran out on the world “Sedge Landing” by trouble, and it was deleted');
+  });
+
+  it('badges the role recorded on the entry, not the one the account holds now', () => {
+    const row = render(
+      <p>
+        {auditActorName(entry({ actor: { id: 'u1', username: 'wren_hallow', wasAdmin: false, role: 'mod' } }))}
+        <RoleBadge role="mod" />
+      </p>
+    );
+
+    expect(row.container.textContent).toContain('Mod');
+    row.unmount();
+  });
+
+  it('badges nothing for an ordinary account', () => {
+    const row = render(<RoleBadge role={null} />);
+
+    expect(row.container.textContent).toBe('');
+    row.unmount();
+  });
+});
+
+describe('the rendered line', () => {
+  it('reads with a single space when the actor carries no badge', async () => {
+    // JSX drops the newline between the name element and the rest, so an unbadged actor ran straight
+    // into the verb: "root-adminsuspended trouble".
+    stubLog([entry({ actor: { id: 'a1', username: 'root-admin', wasAdmin: false, role: null } })]);
+
+    render(<AuditLogTab active />);
+
+    expect((await findEntryLine()).textContent).toBe('root-admin suspended trouble');
+  });
+
+  it('shows what the actor was at the time', async () => {
+    stubLog([entry({ actor: { id: 'u1', username: 'wren_hallow', wasAdmin: false, role: 'mod' } })]);
+
+    render(<AuditLogTab active />);
+
+    expect((await findEntryLine()).textContent).toContain('Mod');
+  });
+
+  it('still reads as a sentence around the badge', async () => {
+    // No space between the name and the badge: that gap is the badge's own margin, not text. The one
+    // that has to be text is the one after it, or the badge runs into the verb.
+    stubLog([entry({ actor: { id: 'u1', username: 'wren_hallow', wasAdmin: false, role: 'mod' } })]);
+
+    render(<AuditLogTab active />);
+
+    expect((await findEntryLine()).textContent).toBe('wren_hallowMod suspended trouble');
+  });
+
+  it('badges nobody on an entry nobody chose', async () => {
+    // A quarantine running out has no actor; a badge there would invent one.
+    stubLog([entry({ action: 'quarantine_expired', target: { kind: 'world', name: 'Sedge Landing' } })]);
+
+    render(<AuditLogTab active />);
+
+    const line = (await screen.findByText(/quarantine ran out/)).closest('p') as HTMLElement;
+    expect(line.textContent).toBe('The quarantine ran out on the world “Sedge Landing” by trouble, and it was deleted');
   });
 });

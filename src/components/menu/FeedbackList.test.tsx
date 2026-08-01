@@ -253,6 +253,29 @@ describe('votes on the list', () => {
     expect(button.getAttribute('aria-pressed')).toBe('true');
   });
 
+  it('shows it without needing the thread opened', async () => {
+    // Found live: the only thing that changed was a tint, and on a light theme --primary is a pale mint
+    // on a near-white card — 1.5:1, so a voted row was indistinguishable until you clicked into it. The
+    // arrow fills and the count thickens, neither of which relies on the color being legible.
+    stubList([suggestion({ votes: 1, voted: true })]);
+
+    render(<FeedbackList type="suggestion" active onOpen={() => {}} />);
+
+    const button = await screen.findByRole('button', { name: /Remove your vote/ });
+    expect(button.querySelector('svg')?.getAttribute('class')).toContain('fill-current');
+    expect(button.querySelector('span')?.getAttribute('class')).toContain('font-bold');
+  });
+
+  it('leaves an unvoted one outlined and light', async () => {
+    stubList([suggestion({ votes: 1, voted: false })]);
+
+    render(<FeedbackList type="suggestion" active onOpen={() => {}} />);
+
+    const button = await screen.findByRole('button', { name: /^Vote for/ });
+    expect(button.querySelector('svg')?.getAttribute('class')).not.toContain('fill-current');
+    expect(button.querySelector('span')?.getAttribute('class')).not.toContain('font-bold');
+  });
+
   it('sends the vote and patches the row in place', async () => {
     // Patched rather than reloaded: re-sorting the board under a click would move the row out from
     // under the pointer.
