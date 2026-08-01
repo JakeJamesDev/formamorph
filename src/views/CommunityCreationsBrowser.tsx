@@ -1,4 +1,4 @@
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useEffect } from 'react';
 import { toast } from 'react-toastify';
 import { Button } from "@/components/ui/button";
 import { ConfirmDialog } from "@/components/ConfirmDialog";
@@ -76,13 +76,17 @@ interface CommunityCreationsBrowserProps {
   openImageViewer: (src: string | undefined, alt: string | undefined) => void;
   /** DEV dev-router: the kind tab to open on (`#dev?modal=community&tab=entity`). */
   initialKind?: CatalogKind;
+  /** A listing to open the details for, arriving from somewhere else — a notification feed row. */
+  openListing?: { id: string; kind: string } | null;
+  /** Fired once that listing has been opened, or found to be gone, so the host can clear its request. */
+  onListingOpened?: () => void;
 }
 
 // The Community Creations browser: browse/search/filter/sort the published catalog, view world details
 // and comments, and download/refresh/update copies to the local library.
 const CommunityCreationsBrowser = ({
   open, onOpenChange, worlds, setWorlds, entities, dictionaries, refreshEntities, refreshDictionaries,
-  isAuthenticated, currentUser, openImageViewer, initialKind,
+  isAuthenticated, currentUser, openImageViewer, initialKind, openListing, onListingOpened,
 }: CommunityCreationsBrowserProps) => {
   // Catalog fetch/cache/sync (loads on open, refreshes in the background).
   const { remoteWorlds, setRemoteWorlds, isLoadingRemoteWorlds, isSyncingCatalog, loadCatalog } = useCatalogSync(open);
@@ -302,6 +306,27 @@ const CommunityCreationsBrowser = ({
     setShowRemoteWorldDetailsModal(true);
   };
 
+  // A listing named from outside — a notification feed row. The catalog is one request for every kind, so
+  // there is nothing to fetch: switch to its tab and open it once the catalog is in hand. Waiting for the
+  // load rather than looking immediately is what makes this work on a cold open of the browser.
+  useEffect(() => {
+    if (!open || !openListing || isLoadingRemoteWorlds) return;
+
+    const found = remoteWorlds.find((w) => (w._id || w.id) === openListing.id);
+    if (found) {
+      setBrowseKind(kindOf(found));
+      // Set directly rather than through the click handler, which is rebuilt every render and would
+      // make this effect chase its own identity.
+      setSelectedRemoteWorld(found);
+      setShowRemoteWorldDetailsModal(true);
+    } else {
+      // Deleted or quarantined between the feed being read and the row being clicked.
+      toast.info('That listing is no longer in Community Creations');
+    }
+
+    onListingOpened?.();
+  }, [open, openListing, isLoadingRemoteWorlds, remoteWorlds, onListingOpened]);
+
   // Header control fragments — reused across the mobile (collapsible) and desktop (inline) header layouts.
   // Mirrors the local library's tabs (MainMenu's `cardType`) so the same three kinds read the same way
   // in both places — icons below the label breakpoint, matching that header.
@@ -398,7 +423,16 @@ const CommunityCreationsBrowser = ({
           Hidden{hiddenWorldIds.length + hiddenTags.length + hiddenAuthors.length > 0 ? ` (${hiddenWorldIds.length + hiddenTags.length + hiddenAuthors.length})` : ''}
         </Button>
       </PopoverTrigger>
-      <PopoverContent portal={false} align="start" side="bottom" className="w-80 space-y-3">
+      {/* Radix focuses the first thing it finds on open, which here is a field that opens its suggestion
+          list on focus — so the panel arrived with its own contents covered. Opening it is a request to
+          see what is hidden, not to start typing; focus stays on the trigger and Tab reaches the fields. */}
+      <PopoverContent
+        portal={false}
+        align="start"
+        side="bottom"
+        className="w-80 space-y-3"
+        onOpenAutoFocus={(event) => event.preventDefault()}
+      >
         {/* Type to hide tags/authors (autocompletes over the catalog); chips are the hidden items. */}
         <div className="space-y-1">
           <span className="text-xs font-medium text-muted-foreground">Tags</span>

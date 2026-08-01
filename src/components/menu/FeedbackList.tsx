@@ -1,8 +1,10 @@
 import { useCallback, useEffect, useState } from "react";
 import { toast } from "react-toastify";
-import { ChevronUp, Lock } from "lucide-react";
+import { ChevronUp, Lock, MessageSquare } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
+import { UnreadDot } from "@/components/UnreadDot";
+import { UnreadEdge } from "@/components/UnreadEdge";
 import {
   FEEDBACK_CATEGORY_LABELS, FEEDBACK_STATUS_STYLES, formatFeedbackDate,
 } from "@/lib/feedbackPresentation";
@@ -115,9 +117,12 @@ export function FeedbackList({
         ) : (
           threads.map((thread) => {
             const style = FEEDBACK_STATUS_STYLES[thread.status];
+            // Absent from a server that predates the count, which is not the same as a thread with none.
+            const replies = thread.commentCount ?? 0;
 
             return (
-              <div key={thread.id} className="flex items-stretch gap-2 rounded-md border min-w-0">
+              <div key={thread.id} className="relative flex items-stretch gap-2 rounded-md border min-w-0">
+                {thread.unread && <UnreadEdge kind="feedback" />}
                 {/* Suggestions only. A bug is not a popularity contest — one person hitting it is
                     reason enough to fix it. */}
                 {thread.type === 'suggestion' && (
@@ -143,12 +148,16 @@ export function FeedbackList({
                   className="flex flex-1 items-start gap-2 p-3 text-left hover:bg-accent/50 min-w-0"
                 >
                   <div className="flex-1 min-w-0">
-                    <p className="flex items-center gap-2 text-sm font-medium">
-                      <span className="truncate">{thread.title}</span>
+                    <p className="flex items-center gap-2 text-sm">
+                      {/* Weight as well as the dot, the way the inbox does it: color alone excludes
+                          anybody whose vision does not separate these hues. */}
+                      <span className={cn('truncate', thread.unread ? 'font-semibold' : 'font-medium')}>
+                        {thread.title}
+                      </span>
                       {/* A dot rather than a count: a thread is read as a whole, so the number of new
                           replies in it is not something the reader acts on differently. */}
                       {thread.unread && (
-                        <span className="h-2 w-2 shrink-0 rounded-full bg-primary" aria-label="New replies" />
+                        <UnreadDot label="New replies" kind="feedback" />
                       )}
                       {thread.locked && <Lock className="h-3 w-3 shrink-0 text-muted-foreground" aria-label="Locked" />}
                     </p>
@@ -158,8 +167,21 @@ export function FeedbackList({
                       {' · '}{formatFeedbackDate(thread.createdAt)}
                     </p>
                   </div>
-                  <span className={cn('px-2 shrink-0 inline-flex text-xs leading-5 font-semibold rounded-full', style.badge)}>
-                    {style.label}
+                  <span className="shrink-0 flex flex-col items-end gap-1">
+                    <span className={cn('px-2 inline-flex text-xs leading-5 font-semibold rounded-full', style.badge)}>
+                      {style.label}
+                    </span>
+                    {/* Hidden at zero: the point of the number is that there is activity, and a column
+                        of "0" beside every untouched row says only that the feature exists. */}
+                    {replies > 0 && (
+                      <span
+                        className="inline-flex items-center gap-1 pr-0.5 text-xs text-muted-foreground"
+                        aria-label={replies === 1 ? '1 reply' : `${replies} replies`}
+                      >
+                        <MessageSquare className="h-3 w-3" aria-hidden="true" />
+                        <span className="tabular-nums">{replies}</span>
+                      </span>
+                    )}
                   </span>
                 </button>
               </div>

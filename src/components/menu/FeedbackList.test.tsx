@@ -71,6 +71,43 @@ describe('the list', () => {
     expect(await screen.findByLabelText('New replies')).toBeTruthy();
   });
 
+  it('weights an unread title as well as dotting it', async () => {
+    // The dot is a color, and color alone excludes anybody whose vision does not separate these hues.
+    stubList([report({ unread: true })]);
+
+    render(<FeedbackList type="bug" active onOpen={() => {}} />);
+
+    expect((await screen.findByText('Save button does nothing')).className).toContain('font-semibold');
+  });
+
+  it('leaves a read title at the ordinary weight, or the weight says nothing', async () => {
+    stubList([report({ unread: false })]);
+
+    render(<FeedbackList type="bug" active onOpen={() => {}} />);
+
+    expect((await screen.findByText('Save button does nothing')).className).not.toContain('font-semibold');
+  });
+
+  it('rails the whole unread row, not just its title', async () => {
+    // Scanning a long list should not mean hunting for dots at the end of each title.
+    stubList([report({ unread: true })]);
+
+    const { container } = render(<FeedbackList type="bug" active onOpen={() => {}} />);
+    await screen.findByText('Save button does nothing');
+
+    const row = container.querySelector('.relative.flex.items-stretch');
+    expect(row?.querySelector('[aria-hidden="true"].absolute')).toBeTruthy();
+  });
+
+  it('leaves a read row unrailed', async () => {
+    stubList([report({ unread: false })]);
+
+    const { container } = render(<FeedbackList type="bug" active onOpen={() => {}} />);
+    await screen.findByText('Save button does nothing');
+
+    expect(container.querySelector('[aria-hidden="true"].absolute')).toBeNull();
+  });
+
   it('leaves a read thread unflagged', async () => {
     stubList([report({ unread: false })]);
 
@@ -291,5 +328,62 @@ describe('what the list asks for', () => {
     render(<FeedbackList type="bug" active onOpen={() => {}} />);
 
     expect(await screen.findByLabelText('Locked')).toBeTruthy();
+  });
+});
+
+describe('the reply count', () => {
+  it('says how many, so a busy thread reads as busy from the list', async () => {
+    stubList([report({ commentCount: 4 })]);
+
+    render(<FeedbackList type="bug" active onOpen={() => {}} />);
+
+    expect((await screen.findByLabelText('4 replies')).textContent).toContain('4');
+  });
+
+  it('is worded singular for one, since the glyph does not carry the number', async () => {
+    stubList([report({ commentCount: 1 })]);
+
+    render(<FeedbackList type="bug" active onOpen={() => {}} />);
+
+    expect(await screen.findByLabelText('1 reply')).toBeTruthy();
+  });
+
+  it('is absent on a thread nobody has replied to', async () => {
+    // A column of zeroes down an untouched queue says only that the feature exists.
+    stubList([report({ commentCount: 0 })]);
+
+    render(<FeedbackList type="bug" active onOpen={() => {}} />);
+
+    await screen.findByText('Save button does nothing');
+    expect(screen.queryByLabelText(/repl/)).toBeNull();
+  });
+
+  it('is absent when the server never sent one', async () => {
+    // An older server omits the field; that is not the same as a thread with no replies, and showing a
+    // zero would state something this build does not know.
+    stubList([report()]);
+
+    render(<FeedbackList type="bug" active onOpen={() => {}} />);
+
+    await screen.findByText('Save button does nothing');
+    expect(screen.queryByLabelText(/repl/)).toBeNull();
+  });
+
+  it('sits under the status rather than beside the title', async () => {
+    // Both are per-thread facts about where it stands; splitting them puts one at each end of the row.
+    stubList([report({ commentCount: 2 })]);
+
+    render(<FeedbackList type="bug" active onOpen={() => {}} />);
+
+    const count = await screen.findByLabelText('2 replies');
+    expect(count.parentElement?.textContent).toContain('Open');
+  });
+
+  it('counts on a suggestion too, where a vote already competes for the eye', async () => {
+    stubList([report({ type: 'suggestion', category: 'gameplay', status: 'open', votes: 7, commentCount: 3 })]);
+
+    render(<FeedbackList type="suggestion" active onOpen={() => {}} />);
+
+    expect(await screen.findByLabelText('3 replies')).toBeTruthy();
   });
 });

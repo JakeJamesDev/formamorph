@@ -16,10 +16,11 @@ import { Button } from "@/components/ui/button";
 import { MessagesTab } from "@/components/menu/MessagesTab";
 import { ProfileAvatarEditor } from "@/components/menu/ProfileAvatarEditor";
 import { type ProfileTab } from "@/components/menu/profileTabs";
-import { MyFeedbackTab } from "@/components/menu/MyFeedbackTab";
+import { NotificationsTab } from "@/components/menu/NotificationsTab";
 import { TermsTab } from "@/components/menu/TermsTab";
 import PolicyService from "@/services/PolicyService";
 import AuthService from "@/services/AuthService";
+import UserService from "@/services/UserService";
 import { useResetOnOpen } from "@/lib/useResetOnOpen";
 import { parseServerDate } from "@/lib/serverDate";
 import { type WorldRecord } from "@/components/WorldDetails";
@@ -36,12 +37,14 @@ interface AuthModalsProps {
   onLogout: () => void;
   /** Reports the reader's unread count so the footer badge stays in step with the inbox. */
   onUnreadChange?: (unread: number) => void;
-  /** Fired when a feedback thread is read or replied to, so the host can re-read its badge count. */
-  onBugsChange?: () => void;
   /** Tab to open on; the dev-router uses this to land on either half directly. */
   initialTab?: ProfileTab;
   /** Fired when the reader changes their own profile image, so the host's header follows it. */
   onAvatarChanged?: (avatarUrl: string | null) => void;
+  /** Fired once the notification feed has been read, so the badge outside drops its share. */
+  onNotificationsRead?: () => void;
+  /** Opens a listing from the feed; the host closes this dialog and takes them to it. */
+  onOpenListing?: (listing: { id: string; kind: string }) => void;
 }
 
 /** The login/register dialog and the user-profile (change password / logout) dialog. Owns all auth
@@ -50,11 +53,15 @@ export function AuthModals({
   showAuthDialog, setShowAuthDialog,
   showProfileDialog, setShowProfileDialog,
   currentUser, onAuthenticated, onLogout,
-  onUnreadChange, onBugsChange, onAvatarChanged, initialTab = 'messages',
+  onUnreadChange, onAvatarChanged, onNotificationsRead, onOpenListing,
+  initialTab = 'messages',
 }: AuthModalsProps) {
   // Held locally as well as on the host: the header has to change the moment the crop is saved, and the
   // host's copy arrives a render later.
   const [avatarUrl, setAvatarUrl] = useState<string | null>((currentUser?.avatarUrl as string | null) ?? null);
+  // Your own follower count. Read from the same public profile route everybody else's comes from, so
+  // there is one answer to the question rather than two that can disagree.
+  const [followers, setFollowers] = useState<number | null>(null);
 
   // Follow the host when it hands over a different account — a login while this was mounted would
   // otherwise leave the previous reader's face in the header.
@@ -97,6 +104,19 @@ export function AuthModals({
 
   // `createdAt` is a server timestamp (UTC, no zone marker); falls back to today for an account whose
   // profile hasn't been fetched yet.
+  useEffect(() => {
+    const id = currentUser?.id as string | undefined;
+    if (!showProfileDialog || !id) return;
+
+    let cancelled = false;
+    UserService.fetchProfile(id)
+      .then((p) => { if (!cancelled) setFollowers(p.followers); })
+      // Silent: a follower count is not worth a toast, and the line simply stays absent.
+      .catch(() => { if (!cancelled) setFollowers(null); });
+
+    return () => { cancelled = true; };
+  }, [showProfileDialog, currentUser]);
+
   const memberSince = (
     parseServerDate(String(currentUser?.createdAt ?? '')) ?? new Date()
   ).toLocaleDateString();
@@ -300,7 +320,10 @@ export function AuthModals({
                 <h3 className="text-lg font-semibold truncate">
                   {currentUser?.username || 'User'}
                 </h3>
-                <p className="text-sm text-muted-foreground">Member since {memberSince}</p>
+                <p className="text-sm text-muted-foreground">
+                  Member since {memberSince}
+                  {followers !== null && ` · ${followers} ${followers === 1 ? 'follower' : 'followers'}`}
+                </p>
               </div>
 
               <div className="ml-auto flex flex-wrap justify-end gap-2">
@@ -333,10 +356,9 @@ export function AuthModals({
             className="w-full min-w-0 flex flex-col flex-1 min-h-0"
           >
             {/* The terms tab is absent until an admin has authored a gate, so most installs see two. */}
-            <TabsList className={`grid w-full flex-shrink-0 ${hasTerms ? 'grid-cols-4' : 'grid-cols-3'}`}>
+            <TabsList className={`grid w-full flex-shrink-0 ${hasTerms ? 'grid-cols-3' : 'grid-cols-2'}`}>
               <TabsTrigger value="messages">Messages</TabsTrigger>
-              <TabsTrigger value="bugs">Bugs</TabsTrigger>
-              <TabsTrigger value="suggestions">Suggestions</TabsTrigger>
+              <TabsTrigger value="notifications">Notifications</TabsTrigger>
               {hasTerms && <TabsTrigger value="terms">Terms</TabsTrigger>}
             </TabsList>
 
@@ -348,16 +370,14 @@ export function AuthModals({
               </ScrollArea>
             </TabsContent>
 
-            <TabsContent value="bugs" className="flex-1 min-h-0 data-[state=active]:flex flex-col">
+            <TabsContent value="notifications" className="flex-1 min-h-0 data-[state=active]:flex flex-col">
               <ScrollArea className="flex-1 min-h-0 px-1">
-                {/* Reading a thread clears its share of the badge, so the count outside is re-read. */}
-                <MyFeedbackTab active={showProfileDialog && profileTab === 'bugs'} type="bug" onChanged={onBugsChange} />
-              </ScrollArea>
-            </TabsContent>
-
-            <TabsContent value="suggestions" className="flex-1 min-h-0 data-[state=active]:flex flex-col">
-              <ScrollArea className="flex-1 min-h-0 px-1">
-                <MyFeedbackTab active={showProfileDialog && profileTab === 'suggestions'} type="suggestion" onChanged={onBugsChange} />
+                {/* Opening it reads the feed, and reading it is what marks it read. */}
+                <NotificationsTab
+                  active={showProfileDialog && profileTab === 'notifications'}
+                  onRead={onNotificationsRead}
+                  onOpenListing={onOpenListing && ((item) => onOpenListing({ id: item.id, kind: item.kind }))}
+                />
               </ScrollArea>
             </TabsContent>
 

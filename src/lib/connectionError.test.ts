@@ -20,8 +20,8 @@ describe('isLikelyConnectionError', () => {
     expect(isLikelyConnectionError(new DOMException('aborted', 'AbortError'))).toBe(false);
   });
 
-  it('never fires on the desktop build (CORS is shimmed there)', () => {
+  it('fires on the desktop build too (server-off/wrong-URL failures are identical there)', () => {
     (window as { formamorphDesktop?: unknown }).formamorphDesktop = {};
-    expect(isLikelyConnectionError(new TypeError('Failed to fetch'))).toBe(false);
+    expect(isLikelyConnectionError(new TypeError('Failed to fetch'))).toBe(true);
   });
 });

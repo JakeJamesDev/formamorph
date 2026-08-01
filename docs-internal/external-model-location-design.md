@@ -15,7 +15,7 @@ nests models as `publisher/repo/file.gguf`).
 | Question | Decision |
 |---|---|
 | How many extra locations | **One** external folder (extend to a list later if asked) |
-| Config UI lives | **Local Models modal → Installed tab**, a "Search Locations" section |
+| Config UI lives | **Local Models modal → Options tab** (a third tab beside Installed and Recommended; first shipped as a section on the Installed tab, moved once it grew a download-folder section too) |
 | External model operations | **Load only — read-only.** No delete button on external models; downloads, partials, and deletes stay root-only |
 | LM Studio quick-pick | ✅ One-click button fills in the detected LM Studio models path |
 | Origin visibility | ✅ External models show their subpath/badge in the Installed list |

@@ -63,6 +63,35 @@ describe('a name with nothing behind it', () => {
   });
 });
 
+describe('the staff badge', () => {
+  it('says they are on the team', () => {
+    show({ userId: 'u1', username: 'wren_hallow', role: 'mod' });
+
+    expect(screen.getByText('Mod')).toBeTruthy();
+  });
+
+  it('is absent for an ordinary account', () => {
+    show({ userId: 'u1', username: 'wren_hallow', role: null });
+
+    expect(screen.queryByText(/^(Mod|Dev|Admin)$/)).toBeNull();
+  });
+
+  it('stays outside the control, so the label is only where the click goes', () => {
+    // "Mod View wren_hallow's profile" is one thing said by a screen reader, and it is two things.
+    show({ userId: 'u1', username: 'wren_hallow', role: 'admin' });
+
+    expect(screen.getByRole('button').textContent).toBe('wren_hallow');
+    expect(screen.getByText('Admin')).toBeTruthy();
+  });
+
+  it('shows on a name with no account behind it', () => {
+    // Staff leave replies that outlive their accounts; the badge is about the words, not the link.
+    show({ userId: null, username: 'osk_tinder', role: 'dev' });
+
+    expect(screen.getByText('Dev')).toBeTruthy();
+  });
+});
+
 describe('outside a provider', () => {
   it('still renders, and clicking it does nothing', () => {
     // A panel rendered in isolation should mount; a name that opens no dialog is the smaller failure.

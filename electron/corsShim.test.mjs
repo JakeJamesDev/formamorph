@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import corsShim from './corsShim.cjs';
 
-const { withCorsHeaders, unionAllow, REQUIRED_METHODS } = corsShim;
+const { withCorsHeaders, corsResponse, unionAllow, REQUIRED_METHODS } = corsShim;
 
 /** Parse an Electron-shaped allow header value back into a lowercase token set. */
 const tokens = (value) =>
@@ -83,6 +83,37 @@ describe('withCorsHeaders: origin and passthrough', () => {
   it('passes app:// asset responses through completely untouched', () => {
     const assets = { 'Content-Type': ['text/html'] };
     expect(withCorsHeaders('app://local/index.html', assets)).toBe(assets);
+  });
+});
+
+describe('corsResponse: preflight status forcing', () => {
+  // The regression this exists for: LM Studio with CORS off answers OPTIONS with a 400 from its chat
+  // handler. Headers alone can't save a preflight whose status isn't ok, so desktop failed with
+  // "Failed to fetch" until the user enabled CORS server-side.
+  it('forces an ok status onto an external OPTIONS response, whatever the server said', () => {
+    const out = corsResponse({
+      url: 'http://localhost:1234/v1/chat/completions',
+      method: 'OPTIONS',
+      responseHeaders: { 'Content-Type': ['application/json'] },
+    });
+    expect(out.statusLine).toBe('HTTP/1.1 204 No Content');
+    expect(out.responseHeaders['Access-Control-Allow-Origin']).toEqual(['*']);
+  });
+
+  it('leaves the status of non-OPTIONS responses alone', () => {
+    const out = corsResponse({
+      url: 'http://localhost:1234/v1/chat/completions',
+      method: 'POST',
+      responseHeaders: { 'Content-Type': ['application/json'] },
+    });
+    expect(out.statusLine).toBeUndefined();
+  });
+
+  it('leaves app:// responses alone entirely', () => {
+    const assets = { 'Content-Type': ['text/html'] };
+    const out = corsResponse({ url: 'app://local/index.html', method: 'OPTIONS', responseHeaders: assets });
+    expect(out.statusLine).toBeUndefined();
+    expect(out.responseHeaders).toBe(assets);
   });
 });
 

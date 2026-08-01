@@ -73,6 +73,58 @@ describe('fetchUserProfile', () => {
   });
 });
 
+describe('changePassword', () => {
+  it('adopts the replacement token the server issues', async () => {
+    // The server retires every token signed under the old password, this session's included. Keeping the
+    // old one would 401 the very next request the user made.
+    AuthService.token = 'old-tok';
+    localStorage.setItem('authToken', 'old-tok');
+    vi.mocked(fetch).mockResolvedValue(res({ success: true, token: 'new-tok' }));
+
+    await AuthService.changePassword('old-pw', 'new-pw');
+
+    expect(AuthService.token).toBe('new-tok');
+    expect(localStorage.getItem('authToken')).toBe('new-tok');
+  });
+
+  it('keeps the held token when the server sends none', async () => {
+    // A server predating the replacement token leaves the session valid, so there is nothing to swap.
+    AuthService.token = 'old-tok';
+    localStorage.setItem('authToken', 'old-tok');
+    vi.mocked(fetch).mockResolvedValue(res({ success: true }));
+
+    await AuthService.changePassword('old-pw', 'new-pw');
+
+    expect(AuthService.token).toBe('old-tok');
+  });
+
+  it('keeps the held token when the body is not JSON at all', async () => {
+    AuthService.token = 'old-tok';
+    vi.mocked(fetch).mockResolvedValue({
+      ok: true,
+      status: 200,
+      json: async () => { throw new Error('not json'); }
+    } as unknown as Response);
+
+    await expect(AuthService.changePassword('old-pw', 'new-pw')).resolves.toBe(true);
+    expect(AuthService.token).toBe('old-tok');
+  });
+
+  it('leaves the token alone when the change is refused', async () => {
+    AuthService.token = 'old-tok';
+    vi.mocked(fetch).mockResolvedValue(res({ error: 'Current password is incorrect' }, false, 400));
+
+    await expect(AuthService.changePassword('wrong', 'new-pw')).rejects.toThrow(/incorrect/);
+    expect(AuthService.token).toBe('old-tok');
+  });
+
+  it('makes no request without a token', async () => {
+    AuthService.token = null;
+    await expect(AuthService.changePassword('a', 'b')).rejects.toThrow(/Not authenticated/);
+    expect(fetch).not.toHaveBeenCalled();
+  });
+});
+
 describe('logout', () => {
   it('clears token, user, and storage', () => {
     AuthService.token = 'tok';

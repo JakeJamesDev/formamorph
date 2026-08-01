@@ -10,10 +10,12 @@ vi.mock('react-toastify', () => ({ toast: { error: vi.fn(), success: vi.fn(), in
 
 // The tab panels have their own coverage; stubbing them keeps this file about the dialog's own shell.
 vi.mock('./MessagesTab', () => ({ MessagesTab: () => <div data-testid="messages" /> }));
-vi.mock('./MyFeedbackTab', () => ({
-  MyFeedbackTab: ({ type }: { type: string }) => <div data-testid={type === 'bug' ? 'bugs' : 'suggestions'} />,
-}));
 vi.mock('./TermsTab', () => ({ TermsTab: () => <div data-testid="terms" /> }));
+vi.mock('./NotificationsTab', () => ({ NotificationsTab: () => <div data-testid="notifications" /> }));
+// The follower count on the header comes from the same public profile route everybody else's does.
+vi.mock('@/services/UserService', () => ({
+  default: { fetchProfile: vi.fn(async () => ({ id: 'u1', username: 'me', avatarUrl: null, createdAt: '2026-01-01T00:00:00.000Z', followers: 3 })) },
+}));
 
 const WITH_GATE: PolicyState = {
   uploadGate: { title: 'Contributor Terms', body: 'Be excellent.', tags: [], accepted: false },
@@ -174,11 +176,11 @@ describe('landing on a tab while already open', () => {
         currentUser={user()}
         onAuthenticated={() => {}}
         onLogout={() => {}}
-        initialTab="suggestions"
+        initialTab="notifications"
       />
     );
 
-    expect(await screen.findByTestId('suggestions')).toBeTruthy();
+    expect(await screen.findByTestId('notifications')).toBeTruthy();
   });
 });
 

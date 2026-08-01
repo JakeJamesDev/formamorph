@@ -59,6 +59,8 @@ export interface FeedbackThread {
   votes: number;
   /** Whether the vote count includes this reader's. */
   voted: boolean;
+  /** Replies on it, both branches. Absent from a server that predates it. */
+  commentCount?: number;
   createdAt: string;
   updatedAt: string;
   /** Whether this reader has a comment on it they haven't seen. */

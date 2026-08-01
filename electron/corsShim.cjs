@@ -62,4 +62,17 @@ function withCorsHeaders(url, responseHeaders = {}) {
   return out;
 }
 
-module.exports = { withCorsHeaders, unionAllow, REQUIRED_METHODS, REQUIRED_HEADERS };
+/**
+ * Full onHeadersReceived callback payload: the header transform, plus an ok status forced onto external
+ * OPTIONS responses. A CORS preflight requires an ok status no matter what headers it carries, and some
+ * servers 4xx their OPTIONS route — LM Studio with CORS off answers it 400 from the chat handler, which
+ * is why enabling CORS there "fixed" desktop. A preflight response's body is ignored by the browser and
+ * the app never sends its own OPTIONS requests, so the override is safe.
+ */
+function corsResponse({ url, method, responseHeaders }) {
+  const out = { responseHeaders: withCorsHeaders(url, responseHeaders) };
+  if (method === 'OPTIONS' && /^https?:/i.test(String(url))) out.statusLine = 'HTTP/1.1 204 No Content';
+  return out;
+}
+
+module.exports = { withCorsHeaders, corsResponse, unionAllow, REQUIRED_METHODS, REQUIRED_HEADERS };

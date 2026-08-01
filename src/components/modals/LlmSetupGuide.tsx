@@ -13,9 +13,10 @@ const baseOf = (url?: string): string | null => {
   }
 };
 
-/** Shown after a browser build can't reach the configured AI server. The failure is opaque in-page (a
- *  server that's off, a wrong URL, and CORS-disabled all look identical), so this walks the three causes in
- *  likelihood order rather than asserting one. Web-only: the desktop build proxies past browser CORS. */
+/** Shown after the app can't reach the configured AI server. The failure is opaque in-page (a server
+ *  that's off, a wrong URL, and CORS-disabled all look identical), so this walks the three causes in
+ *  likelihood order rather than asserting one. Shown on desktop too — the CORS shim should make step 3
+ *  moot there, but users still report CORS-shaped desktop failures. */
 const LlmSetupGuide = ({
   open,
   onOpenChange,

@@ -10,6 +10,7 @@ import { KIND_LABELS, kindOf } from "@/lib/catalogKinds";
 import { isQuarantined, quarantineDaysLeft, quarantineDeadline } from "@/lib/quarantine";
 import WorldStorageService from "@/services/WorldStorageService";
 import { UserAvatar } from "@/components/UserAvatar";
+import { RoleBadge } from "@/components/RoleBadge";
 import { canModerate, isStaff } from "@/lib/roles";
 
 interface RemoteWorldCardProps {
@@ -141,6 +142,7 @@ export function RemoteWorldCard({
           >
             By {world.author?.username || "Unknown"}
           </span>
+          <RoleBadge role={world.author?.role} />
         </span>
       )}
     >

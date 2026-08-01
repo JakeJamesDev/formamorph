@@ -183,7 +183,9 @@ class AuthService {
     }
   }
 
-  /** Change the password for the held token; throws if unauthenticated or the request fails. */
+  /** Change the password for the held token, adopting the replacement token the server issues; throws if
+   *  unauthenticated or the request fails. Changing the password retires every token signed under the old
+   *  one, this session's included — without adopting the replacement the next request would 401. */
   async changePassword(currentPassword: string, newPassword: string) {
     try {
       if (!this.token) throw new Error('Not authenticated');
@@ -202,6 +204,14 @@ class AuthService {
         // showing verbatim rather than as a generic failure.
         const errorData = await response.json();
         throw new Error(errorData.error || errorData.message || 'Failed to change password');
+      }
+
+      // Tolerated as absent so an app pointed at a server predating the replacement token keeps working:
+      // that session stays valid there, because nothing retired it.
+      const data = await response.json().catch(() => ({}));
+      if (data.token) {
+        this.token = data.token;
+        localStorage.setItem(this.tokenKey, data.token);
       }
 
       return true;

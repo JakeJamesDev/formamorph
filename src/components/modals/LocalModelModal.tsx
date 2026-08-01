@@ -16,7 +16,7 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { Button } from '@/components/ui/button';
 import { Progress } from '@/components/ui/progress';
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
-import { Checkbox } from '@/components/ui/checkbox';
+import { Section, RowLabel, CheckRow, HintInfo } from '@/components/SettingsRows';
 import { ConfirmDialog } from '@/components/ConfirmDialog';
 import { LOCAL_MODELS, VRAM_TIERS, formatModelSize, formatReleased, formatDownloads, repoOf, tierForVram, type LocalModelInfo, type VramTier } from '@/lib/localModels';
 import { useCatalogDownloads } from '@/lib/useCatalogDownloads';
@@ -134,6 +134,9 @@ function InstalledRow({ item, engine, busyFile, onLoad, onUnload, onDelete }: {
     </div>
   );
 }
+
+/** Top-level view of the local model manager. */
+type ModelView = 'installed' | 'recommended' | 'options';
 
 /** The move-on-folder-change flow, in the one state it's currently in. */
 type MoveFlow =
@@ -259,9 +262,9 @@ function MoveModelsDialog({ flow, onMove, onSkip, onCancel, onDone }: {
 }
 
 /**
- * Folder controls above the Installed list: the app's own models folder (fixed — downloads land there) and
- * one optional extra folder to search, so a library downloaded for another app shows up without copying it.
- * Subfolder search is on by default because LM Studio nests models as publisher/repo/file.
+ * The Options tab: where models are downloaded to, and one optional extra folder to search so a library
+ * downloaded for another app shows up without copying it. Subfolder search is on by default because LM
+ * Studio nests models as publisher/repo/file.
  */
 function SearchLocations({ locations, onChange, onChangeDownloadDir }: {
   locations: LocalModelLocations | null;
@@ -275,118 +278,134 @@ function SearchLocations({ locations, onChange, onChangeDownloadDir }: {
   } = locations;
 
   return (
-    <div className="shrink-0 space-y-2 rounded-md border border-border p-3 text-xs">
-      <div className="font-medium">Search Locations</div>
-
-      <div className="flex items-center gap-2">
-        <span className="shrink-0 text-muted-foreground">Downloads</span>
-        <span className="min-w-0 flex-grow truncate font-mono" title={rootDir}>{rootDir}</span>
-        {freeBytes !== null && (
-          <span className="shrink-0 tabular-nums text-muted-foreground">{formatModelSize(freeBytes)} free</span>
-        )}
-        <Button
-          size="sm"
-          variant="outline"
-          className="h-7 shrink-0"
-          onClick={async () => {
-            const dir = await pickLocalModelFolder('Choose where to download models');
-            if (dir && dir !== rootDir) onChangeDownloadDir(dir);
-          }}
-        >
-          Change…
-        </Button>
-        {!isDefaultDir && (
-          <Button
-            size="sm"
-            variant="ghost"
-            className="h-7 shrink-0"
-            onClick={() => onChangeDownloadDir(null)}
-          >
-            Use Default
-          </Button>
-        )}
-      </div>
-      {downloadDirMissing && (
-        <div className="text-destructive">
-          That folder isn&apos;t available right now — downloads are paused until it&apos;s back or you choose another.
+    <div className="grid gap-6 py-4 pr-2">
+      <Section title="Download Folder" hint="Where models you download are saved.">
+        <div className="grid grid-cols-1 sm:grid-cols-[minmax(0,1fr)_minmax(0,3fr)] items-start gap-4">
+          <RowLabel top>Folder</RowLabel>
+          <div className="space-y-2">
+            {/* The path gets its own line above the buttons: these run long, and truncating one to make
+                room for controls hides the part that identifies the folder. */}
+            <div className="flex items-baseline gap-2">
+              <span className="min-w-0 flex-grow truncate font-mono text-xs" title={rootDir}>{rootDir}</span>
+              {freeBytes !== null && (
+                <span className="shrink-0 text-xs tabular-nums text-muted-foreground">
+                  {formatModelSize(freeBytes)} free
+                </span>
+              )}
+            </div>
+            <div className="flex items-center gap-2">
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={async () => {
+                  const dir = await pickLocalModelFolder('Choose where to download models');
+                  if (dir && dir !== rootDir) onChangeDownloadDir(dir);
+                }}
+              >
+                Change…
+              </Button>
+              {!isDefaultDir && (
+                <Button type="button" variant="ghost" size="sm" onClick={() => onChangeDownloadDir(null)}>
+                  Use Default
+                </Button>
+              )}
+            </div>
+            {downloadDirMissing && (
+              <p className="text-xs text-destructive">
+                That folder isn&apos;t available right now — downloads are paused until it&apos;s back or you choose another.
+              </p>
+            )}
+            {!isDefaultDir && (
+              <p className="text-xs text-muted-foreground">
+                Models live outside the app folder now, so copying the app folder won&apos;t bring them along.
+                The default is <span className="font-mono">{defaultDir}</span>.
+              </p>
+            )}
+          </div>
         </div>
-      )}
-      {!isDefaultDir && (
-        <div className="text-muted-foreground">
-          Models live outside the app folder now, so copying the app folder won&apos;t bring them along.
-          The default is <span className="font-mono">{defaultDir}</span>.
-        </div>
-      )}
+      </Section>
 
-      <div className="flex items-center gap-2">
-        <span className="shrink-0 text-muted-foreground">Also search</span>
-        {externalDir ? (
-          <span className="min-w-0 flex-grow truncate font-mono" title={externalDir}>{externalDir}</span>
-        ) : (
-          <span className="min-w-0 flex-grow text-muted-foreground">Not set</span>
-        )}
-        {!externalDir && lmStudioDir && (
-          <Button
-            size="sm"
-            variant="outline"
-            className="h-7 shrink-0"
-            onClick={() => onChange({ externalDir: lmStudioDir, searchSubfolders: true })}
+      <Section title="Additional Search Folder" hint="Already have models for another app? Point us at them and they'll show up in your list.">
+        <div className="grid grid-cols-1 sm:grid-cols-[minmax(0,1fr)_minmax(0,3fr)] items-start gap-4">
+          <RowLabel
+            top
+            info={<HintInfo>{'Models found in this folder are **read-only**.\n\n- They can be loaded like any other model\n- They are never deleted from here — they belong to whichever app downloaded them\n- Downloads always land in your download folder, not this one'}</HintInfo>}
           >
-            Use LM Studio
-          </Button>
-        )}
-        <Button
-          size="sm"
-          variant="outline"
-          className="h-7 shrink-0"
-          onClick={async () => {
-            const dir = await pickLocalModelFolder('Choose a folder to search for models');
-            if (dir) onChange({ externalDir: dir, searchSubfolders });
-          }}
-        >
-          Browse…
-        </Button>
+            Folder
+          </RowLabel>
+          <div className="space-y-2">
+            <div className="min-w-0 truncate text-xs" title={externalDir ?? undefined}>
+              {externalDir
+                ? <span className="font-mono">{externalDir}</span>
+                : <span className="text-muted-foreground">Not set</span>}
+            </div>
+            <div className="flex items-center gap-2">
+              {!externalDir && lmStudioDir && (
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={() => onChange({ externalDir: lmStudioDir, searchSubfolders: true })}
+                >
+                  Use LM Studio
+                </Button>
+              )}
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={async () => {
+                  const dir = await pickLocalModelFolder('Choose a folder to search for models');
+                  if (dir) onChange({ externalDir: dir, searchSubfolders });
+                }}
+              >
+                Browse…
+              </Button>
+              {externalDir && (
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => onChange({ externalDir: null, searchSubfolders })}
+                >
+                  <X className="mr-1 h-3.5 w-3.5" />Clear
+                </Button>
+              )}
+            </div>
+            {externalMissing && (
+              <p className="text-xs text-warning">
+                That folder isn&apos;t available right now — its models are hidden until it&apos;s back.
+              </p>
+            )}
+          </div>
+        </div>
+
         {externalDir && (
-          <Button
-            size="icon"
-            variant="ghost"
-            className="h-7 w-7 shrink-0"
-            onClick={() => onChange({ externalDir: null, searchSubfolders })}
-            aria-label="Clear the extra search folder"
-          >
-            <X className="h-4 w-4" />
-          </Button>
-        )}
-      </div>
-
-      {externalDir && (
-        <label className="flex items-center gap-2">
-          <Checkbox
+          <CheckRow
+            label="Search Subfolders"
+            htmlFor="modelSearchSubfolders"
             checked={searchSubfolders}
-            onCheckedChange={(v) => onChange({ externalDir, searchSubfolders: v === true })}
+            onChange={(v) => onChange({ externalDir, searchSubfolders: v })}
+            hint="Look inside folders within that folder. Needed for LM Studio, which files models under a publisher and a repository."
           />
-          <span>Search Subfolders</span>
-          <span className="text-muted-foreground">— needed for LM Studio, which nests models in folders.</span>
-        </label>
-      )}
-
-      {externalMissing && (
-        <div className="text-warning">That folder isn&apos;t available right now — its models are hidden until it&apos;s back.</div>
-      )}
+        )}
+      </Section>
     </div>
   );
 }
 
 /**
- * Desktop-only local model manager. Two tabs: Installed (every GGUF in the searched folders — reorderable,
- * loadable, deletable) and Recommended (a curated catalog grouped by VRAM tier, with resumable downloads).
+ * Desktop-only local model manager. Three tabs: Installed (every GGUF in the searched folders —
+ * reorderable, loadable, deletable), Recommended (a curated catalog grouped by VRAM tier, with resumable
+ * downloads), and Options (which folders are downloaded to and searched).
  * A freshly downloaded model auto-loads, and the default endpoint points at it.
  */
 export function LocalModelModal({ open, onOpenChange }: { open: boolean; onOpenChange: (v: boolean) => void }) {
   const engine = useLocalLlmStatus();
   // Desktop reads VRAM over the IPC bridge (no helper URL). Only poll while the popup is open.
   const vram = useVramStats('', { enabled: open });
-  const [view, setView] = useState<'installed' | 'recommended'>('installed');
+  const [view, setView] = useState<ModelView>('installed');
   const [installed, setInstalled] = useState<LocalInstalledModel[]>([]);
   // Paused/interrupted downloads: target filename → bytes already on disk.
   const [partials, setPartials] = useState<Record<string, number>>({});
@@ -554,7 +573,8 @@ export function LocalModelModal({ open, onOpenChange }: { open: boolean; onOpenC
         <DialogHeader className="shrink-0">
           <DialogTitle>Local model</DialogTitle>
           <DialogDescription>
-            Download a model to run Formamorph fully offline — no endpoint setup. Files are saved next to the app.
+            Download a model to run Formamorph fully offline — no endpoint setup. Options sets where models
+            are saved and which folders are searched.
           </DialogDescription>
         </DialogHeader>
 
@@ -562,30 +582,34 @@ export function LocalModelModal({ open, onOpenChange }: { open: boolean; onOpenC
         <EngineStatusLine engine={engine} className="shrink-0" />
         <GpuMemoryBox stats={vram} className="shrink-0" {...resolveOwnVram(vram, engine.engineVramMB)} />
 
-        {/* Top-level view: what's installed vs. what we suggest. */}
+        {/* Top-level view: what's installed, what we suggest, and where all of it lives. */}
         <ToggleGroup
           type="single"
           value={view}
-          // A single ToggleGroup clears its value when the active item is clicked again; one of the two
+          // A single ToggleGroup clears its value when the active item is clicked again; one of the
           // views is always showing, so an empty result is ignored rather than stored.
-          onValueChange={(v) => { if (v) setView(v as 'installed' | 'recommended'); }}
-          className="shrink-0 grid w-full grid-cols-2"
+          onValueChange={(v) => { if (v) setView(v as ModelView); }}
+          className="shrink-0 grid w-full grid-cols-3"
         >
           <ToggleGroupItem value="installed">Installed</ToggleGroupItem>
           <ToggleGroupItem value="recommended">Recommended</ToggleGroupItem>
+          <ToggleGroupItem value="options">Options</ToggleGroupItem>
         </ToggleGroup>
 
         {error && <div className="shrink-0 text-xs text-destructive">{error}</div>}
 
-        {view === 'installed' ? (
+        {view === 'options' ? (
+          <ScrollArea className="min-h-0 flex-1">
+            <SearchLocations locations={locations} onChange={changeLocations} onChangeDownloadDir={changeDownloadDir} />
+          </ScrollArea>
+        ) : view === 'installed' ? (
           <>
-          <SearchLocations locations={locations} onChange={changeLocations} onChangeDownloadDir={changeDownloadDir} />
           <ScrollArea className="min-h-0 flex-1">
             <div className="space-y-2">
             {installed.length === 0 ? (
               <div className="pt-8 text-center text-sm text-muted-foreground">
-                No models installed. Grab one from the Recommended tab, drop a `.gguf` into the app folder, or
-                point us at a folder you already keep models in.
+                No models installed. Grab one from the Recommended tab, drop a `.gguf` into your download
+                folder, or point us at a folder you already keep models in from the Options tab.
               </div>
             ) : (
               <DndContext
