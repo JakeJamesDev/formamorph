@@ -156,6 +156,17 @@ describe('what each entry reads as', () => {
     for (const text of lines) expect(text).not.toContain('’s ');
   });
 
+  it('says whose picture was cleared', () => {
+    expect(line({ action: 'avatar_removed', target: { kind: 'account', name: 'trouble' } }))
+      .toBe('root-admin removed the profile image of trouble');
+  });
+
+  it('names nobody twice when an admin clears their own picture', () => {
+    // The actor already reads as the person; naming them again would say it twice in one sentence.
+    expect(line({ action: 'avatar_removed', targetUser: null, target: { kind: 'account', name: 'root-admin' } }))
+      .toBe('root-admin removed their own profile image');
+  });
+
   it('separates a takedown from somebody deleting their own', () => {
     // Same disappearance to anyone asking where it went; the log says which it was.
     expect(line({

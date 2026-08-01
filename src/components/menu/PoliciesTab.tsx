@@ -8,6 +8,8 @@ import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { TokenAutocomplete } from "@/components/TokenAutocomplete";
+import { useDanbooruTags } from "@/lib/useDanbooruTags";
 import { ConfirmDialog } from "@/components/ConfirmDialog";
 import PolicyService from "@/services/PolicyService";
 import { type PoliciesTab as PoliciesSubTab } from "@/components/menu/policiesTabs";
@@ -46,6 +48,8 @@ function PolicyEditor({
   heading, description, draft, onChange, onSave, saving, showTags, reaccept, onReacceptChange,
 }: PolicyEditorProps) {
   const idBase = heading.replace(/\s+/g, '-').toLowerCase();
+  // The world editor's tag options, so the notice is written against the same vocabulary authors tag with.
+  const tagOptions = useDanbooruTags(showTags === true);
   // No chip family: a policy is prose, and an authored world's placeholders mean nothing to a reader.
   const plainVocab = useMemo(() => plainVocabulary(), []);
 
@@ -100,15 +104,21 @@ function PolicyEditor({
 
       {showTags && (
         <div className="space-y-2">
-          <label htmlFor={`${idBase}-tags`} className="text-sm font-medium">Tags</label>
-          <Input
-            id={`${idBase}-tags`}
-            value={draft.tags.join(', ')}
-            onChange={(e) => onChange({ ...draft, tags: e.target.value.split(',').map((t) => t.trim()).filter(Boolean) })}
-            placeholder="mature, gore"
+          <span className="text-sm font-medium">Tags</span>
+          {/* The same chip field, options and Enter-to-commit as a world's own tags, so what is typed
+              here and what an author tags with are written the same way. */}
+          <TokenAutocomplete
+            values={draft.tags}
+            onChange={(tags) => onChange({ ...draft, tags })}
+            options={tagOptions}
+            preserveOrder
+            reorderable
+            editable
+            ariaLabel="Tags"
+            placeholder="Add tags..."
           />
           <p className="text-xs text-muted-foreground">
-            Comma separated. Matched whole and ignoring case, so <code>mature</code> catches
+            Matched whole and ignoring case, so <code>mature</code> catches
             {' '}<code>Mature</code> but not <code>mature themes</code> — list each wording you mean.
           </p>
         </div>

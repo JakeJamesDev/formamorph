@@ -9,6 +9,7 @@ import { type DownloadState } from "@/lib/downloadState";
 import { KIND_LABELS, kindOf } from "@/lib/catalogKinds";
 import { isQuarantined, quarantineDaysLeft, quarantineDeadline } from "@/lib/quarantine";
 import WorldStorageService from "@/services/WorldStorageService";
+import { UserAvatar } from "@/components/UserAvatar";
 
 interface RemoteWorldCardProps {
   world: WorldRecord;
@@ -124,12 +125,15 @@ export function RemoteWorldCard({
         />
       ) : undefined}
       author={(
-        <span
-          onClick={(e) => { e.stopPropagation(); if (world.author?.username) onHideAuthor(world.author.username); }}
-          title={world.author?.username ? `Hide all worlds by ${world.author.username}` : undefined}
-          className={world.author?.username ? "cursor-pointer hover:line-through" : ""}
-        >
-          By {world.author?.username || "Unknown"}
+        <span className="inline-flex items-center gap-1.5 min-w-0">
+          <UserAvatar username={world.author?.username} avatarUrl={world.author?.avatarUrl} size="xs" />
+          <span
+            onClick={(e) => { e.stopPropagation(); if (world.author?.username) onHideAuthor(world.author.username); }}
+            title={world.author?.username ? `Hide all worlds by ${world.author.username}` : undefined}
+            className={world.author?.username ? "cursor-pointer hover:line-through truncate" : "truncate"}
+          >
+            By {world.author?.username || "Unknown"}
+          </span>
         </span>
       )}
     >

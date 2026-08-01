@@ -33,12 +33,14 @@ const SUGGESTION_LIMIT = 50;
  *   alphabetically — for ranked lists like the Danbooru tags.
  * - `editable`: double-click a chip to edit it in place (with autocomplete when `options` are present). Multi
  *   mode only.
+ * - `ariaLabel`: names the input for a caller whose own `<Label>` has no control to point at.
  */
-export function TokenAutocomplete({ values, onChange, options, placeholder, openOnFocus = false, reorderable = false, single = false, preserveOrder = false, editable = false }: {
+export function TokenAutocomplete({ values, onChange, options, placeholder, ariaLabel, openOnFocus = false, reorderable = false, single = false, preserveOrder = false, editable = false }: {
   values: string[];
   onChange: (values: string[]) => void;
   options: string[];
   placeholder?: string;
+  ariaLabel?: string;
   openOnFocus?: boolean;
   reorderable?: boolean;
   single?: boolean;
@@ -188,6 +190,7 @@ export function TokenAutocomplete({ values, onChange, options, placeholder, open
           onChange={(e) => (single ? handleSingleInput(e.target.value) : handleInput(e.target.value))}
           onKeyDown={onKeyDown}
           onPaste={handlePaste}
+          aria-label={ariaLabel}
           enterKeyHint="enter"
           onFocus={() => setOpen(true)}
           onBlur={() => setTimeout(() => setOpen(false), 100)}

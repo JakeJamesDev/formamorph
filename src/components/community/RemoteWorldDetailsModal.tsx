@@ -13,6 +13,7 @@ import { formatServerDateTime } from "@/lib/serverDate";
 import { type DownloadState } from "@/lib/downloadState";
 import { KIND_LABELS, kindOf } from "@/lib/catalogKinds";
 import WorldStorageService from "@/services/WorldStorageService";
+import { UserAvatar } from "@/components/UserAvatar";
 
 interface RemoteWorldDetailsModalProps {
   open: boolean;
@@ -179,7 +180,10 @@ export function RemoteWorldDetailsModal({
                   <div className="grid grid-cols-2 gap-4">
                     <div>
                       <h3 className="text-sm font-semibold text-muted-foreground">Author</h3>
-                      <p>{world.author?.username || "Unknown"}</p>
+                      <p className="flex items-center gap-2 min-w-0">
+                        <UserAvatar username={world.author?.username} avatarUrl={world.author?.avatarUrl} size="sm" />
+                        <span className="truncate">{world.author?.username || "Unknown"}</span>
+                      </p>
                     </div>
 
                     <div>
@@ -229,7 +233,10 @@ export function RemoteWorldDetailsModal({
                 {comments.map((c) => (
                   <div key={c.id} className="text-sm border-b border-border/50 pb-2 last:border-0">
                     <div className="flex items-center justify-between gap-2">
-                      <span className="font-medium">{c.author?.username || 'Unknown'}</span>
+                      <span className="flex items-center gap-1.5 min-w-0 font-medium">
+                        <UserAvatar username={c.author?.username} avatarUrl={c.author?.avatarUrl} size="xs" />
+                        <span className="truncate">{c.author?.username || 'Unknown'}</span>
+                      </span>
                       <span className="text-xs text-muted-foreground">
                         {c.created_at ? formatServerDateTime(c.created_at) : ''}
                       </span>

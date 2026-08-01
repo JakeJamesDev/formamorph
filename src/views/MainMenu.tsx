@@ -79,6 +79,7 @@ import EntityEditorModal from "@/components/modals/EntityEditorModal";
 import { ModelDetailsModal } from "@/components/modals/ModelDetailsModal";
 import { AdminPanelDialog } from "@/components/menu/AdminPanelDialog";
 import { type ProfileTab } from "@/components/menu/profileTabs";
+import { UserAvatar } from "@/components/UserAvatar";
 import { type AdminPanelTab } from "@/components/menu/adminPanelTabs";
 import { type PoliciesTab as PoliciesSubTab } from "@/components/menu/policiesTabs";
 import { type FeedbackTab as FeedbackSubTab } from "@/components/menu/feedbackTabs";
@@ -976,27 +977,6 @@ const MainMenu = ({ onStartGame, onLoadSaveGame, onReplayIntro, introActive = fa
     toast.success('Logged out successfully');
   };
 
-  // Get user initial for the avatar button
-  const getUserInitial = () => {
-    if (!currentUser) return 'U';
-
-    // Handle different possible user object structures
-    if (typeof currentUser === 'string') {
-      return (currentUser as string).charAt(0).toUpperCase();
-    }
-
-    if (currentUser.username) {
-      return currentUser.username.charAt(0).toUpperCase();
-    }
-
-    if (currentUser.name) {
-      return currentUser.name.charAt(0).toUpperCase();
-    }
-
-    // No recognizable username property — fall back to a default initial.
-    return 'U';
-  };
-
   // Mouse drags immediately (8px); touch requires a short press-and-hold so a swipe scrolls the grid instead
   // of grabbing a card (no scroll wheel on mobile). Shared by the worlds, dictionary, and entity grids.
   const worldSensors = useSensors(
@@ -1459,9 +1439,11 @@ const MainMenu = ({ onStartGame, onLoadSaveGame, onReplayIntro, introActive = fa
               }
             >
               {isAuthenticated ? (
-                <div className="w-6 h-6 flex items-center justify-center font-semibold">
-                  {getUserInitial()}
-                </div>
+                <UserAvatar
+                  username={(currentUser?.username as string | undefined) ?? (currentUser?.name as string | undefined)}
+                  avatarUrl={currentUser?.avatarUrl as string | null | undefined}
+                  size="sm"
+                />
               ) : (
                 <User className="h-6 w-6" />
               )}
@@ -1967,8 +1949,8 @@ const MainMenu = ({ onStartGame, onLoadSaveGame, onReplayIntro, introActive = fa
             showProfileDialog={showProfileDialog}
             setShowProfileDialog={setShowProfileDialog}
             currentUser={currentUser}
-            userInitial={getUserInitial()}
             onAuthenticated={() => { setIsAuthenticated(true); setCurrentUser(AuthService.getCurrentUser()); }}
+            onAvatarChanged={() => setCurrentUser(AuthService.getCurrentUser())}
             onLogout={handleLogout}
             onUnreadChange={setUnreadMessages}
             onBugsChange={() => setBugCountNonce((n) => n + 1)}
