@@ -1,7 +1,7 @@
 import { useState, type ReactNode } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
-import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Download, Save, Upload } from 'lucide-react';
 import { UnsavedChangesDialog } from '@/components/UnsavedChangesDialog';
 
@@ -45,42 +45,50 @@ const EditorModalShell = ({
     <>
       <Dialog open={open} onOpenChange={(o) => { if (!o) attemptClose(); }}>
         <DialogContent className={contentClassName}>
-          <DialogHeader className="px-4 py-3 border-b shrink-0 flex-row items-center gap-3">
-            <DialogTitle className="truncate flex-1">{title}</DialogTitle>
-            {!loading && (
-              <Tabs value={tab} onValueChange={onTabChange}>
+          {/* The switcher sits in the header and the body below it, so one root spans both. `contents` on the
+              root and each panel keeps the body a direct flex child of the dialog, as it was unwrapped. */}
+          <Tabs value={tab} onValueChange={onTabChange} className="contents">
+            <DialogHeader className="px-4 py-3 border-b shrink-0 flex-row items-center gap-3">
+              <DialogTitle className="truncate flex-1">{title}</DialogTitle>
+              {!loading && (
                 <TabsList>
                   {tabs.map((t) => (
                     <TabsTrigger key={t.value} value={t.value}>{t.label}</TabsTrigger>
                   ))}
                 </TabsList>
-              </Tabs>
-            )}
-            <div className="flex-1" />
-          </DialogHeader>
-          {loading ? (
-            <div className="flex-1 flex items-center justify-center text-sm text-muted-foreground">Loading…</div>
-          ) : (
-            <>
-              {children}
-              <div className="px-4 py-3 border-t shrink-0 flex justify-between gap-2">
-                <Button variant="outline" size="sm" onClick={onDownload}>
-                  <Download className="h-4 w-4 mr-2" /> Download
-                </Button>
-                <div className="flex gap-2">
-                  {onPublish && (
-                    // Publishes what's on screen, saved or not — the same thing Save would write.
-                    <Button variant="outline" size="sm" onClick={onPublish}>
-                      <Upload className="h-4 w-4 mr-2" /> Publish
-                    </Button>
-                  )}
-                  <Button size="sm" onClick={onSave} disabled={!hasUnsavedChanges}>
-                    <Save className="h-4 w-4 mr-2" /> Save
+              )}
+              <div className="flex-1" />
+            </DialogHeader>
+            {loading ? (
+              <div className="flex-1 flex items-center justify-center text-sm text-muted-foreground">Loading…</div>
+            ) : (
+              <>
+                {/* A panel per tab so every trigger's `aria-controls` resolves; the caller hands us only the
+                    active tab's body, so the rest render empty. */}
+                {tabs.map((t) => (
+                  <TabsContent key={t.value} value={t.value} className="contents">
+                    {t.value === tab ? children : null}
+                  </TabsContent>
+                ))}
+                <div className="px-4 py-3 border-t shrink-0 flex justify-between gap-2">
+                  <Button variant="outline" size="sm" onClick={onDownload}>
+                    <Download className="h-4 w-4 mr-2" /> Download
                   </Button>
+                  <div className="flex gap-2">
+                    {onPublish && (
+                      // Publishes what's on screen, saved or not — the same thing Save would write.
+                      <Button variant="outline" size="sm" onClick={onPublish}>
+                        <Upload className="h-4 w-4 mr-2" /> Publish
+                      </Button>
+                    )}
+                    <Button size="sm" onClick={onSave} disabled={!hasUnsavedChanges}>
+                      <Save className="h-4 w-4 mr-2" /> Save
+                    </Button>
+                  </div>
                 </div>
-              </div>
-            </>
-          )}
+              </>
+            )}
+          </Tabs>
         </DialogContent>
       </Dialog>
       <UnsavedChangesDialog

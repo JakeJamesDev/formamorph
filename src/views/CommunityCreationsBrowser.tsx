@@ -9,8 +9,8 @@ import {
   Search, RotateCcw, ArrowDownWideNarrow, ArrowUpNarrowWide, ArrowLeft, X, SlidersHorizontal, ChevronDown,
   Earth, User, BookOpen, Globe,
 } from "lucide-react";
-import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { KIND_LABELS, kindOf, type CatalogKind } from "@/lib/catalogKinds";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { CATALOG_KINDS, KIND_LABELS, kindOf, type CatalogKind } from "@/lib/catalogKinds";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Pager } from "@/components/ui/pagination";
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -225,22 +225,20 @@ const CommunityCreationsBrowser = ({
   // Mirrors the local library's tabs (MainMenu's `cardType`) so the same three kinds read the same way
   // in both places — icons below the label breakpoint, matching that header.
   const kindTabs = (
-    <Tabs value={browseKind} onValueChange={(v) => setBrowseKind(v as CatalogKind)}>
-      <TabsList>
-        <TabsTrigger value="world" aria-label="Worlds" title="Worlds">
-          <Earth className="h-5 w-5 min-[1040px]:hidden" />
-          <span className="hidden min-[1040px]:inline">Worlds</span>
-        </TabsTrigger>
-        <TabsTrigger value="entity" aria-label="Entities" title="Entities">
-          <User className="h-5 w-5 min-[1040px]:hidden" />
-          <span className="hidden min-[1040px]:inline">Entities</span>
-        </TabsTrigger>
-        <TabsTrigger value="dictionary" aria-label="Dictionaries" title="Dictionaries">
-          <BookOpen className="h-5 w-5 min-[1040px]:hidden" />
-          <span className="hidden min-[1040px]:inline">Dictionaries</span>
-        </TabsTrigger>
-      </TabsList>
-    </Tabs>
+    <TabsList>
+      <TabsTrigger value="world" aria-label="Worlds" title="Worlds">
+        <Earth className="h-5 w-5 min-[1040px]:hidden" />
+        <span className="hidden min-[1040px]:inline">Worlds</span>
+      </TabsTrigger>
+      <TabsTrigger value="entity" aria-label="Entities" title="Entities">
+        <User className="h-5 w-5 min-[1040px]:hidden" />
+        <span className="hidden min-[1040px]:inline">Entities</span>
+      </TabsTrigger>
+      <TabsTrigger value="dictionary" aria-label="Dictionaries" title="Dictionaries">
+        <BookOpen className="h-5 w-5 min-[1040px]:hidden" />
+        <span className="hidden min-[1040px]:inline">Dictionaries</span>
+      </TabsTrigger>
+    </TabsList>
   );
 
   const searchControl = (
@@ -389,6 +387,9 @@ const CommunityCreationsBrowser = ({
           hideClose
           className="max-w-none w-screen h-dvh sm:max-w-none left-0 top-0 translate-x-0 translate-y-0 rounded-none sm:rounded-none p-0 gap-0 flex flex-col data-[state=open]:!slide-in-from-top-0 data-[state=open]:!slide-in-from-left-0 data-[state=closed]:!slide-out-to-top-0 data-[state=closed]:!slide-out-to-left-0"
         >
+          {/* The kind switcher lives in the header and its results below it, so one root spans both.
+              `contents` on the root and each panel leaves the dialog's own flex column untouched. */}
+          <Tabs value={browseKind} onValueChange={(v) => setBrowseKind(v as CatalogKind)} className="contents">
           {/* Header: back · title · search · refresh always visible. On mobile the sort/filter controls
               collapse behind a "Filters" toggle; on desktop they stay inline. */}
           <Collapsible open={filtersOpen} onOpenChange={setFiltersOpen} className="shrink-0 border-b">
@@ -433,7 +434,14 @@ const CommunityCreationsBrowser = ({
             </div>
           </Collapsible>
 
+          {/* A panel per kind so every trigger's `aria-controls` resolves; one grid serves whichever kind is
+              showing, so the other two render empty. */}
+          {CATALOG_KINDS.filter((k) => k !== browseKind).map((k) => (
+            <TabsContent key={k} value={k} className="contents" />
+          ))}
+
           {/* Scrollable results */}
+          <TabsContent value={browseKind} className="contents">
           <ScrollArea className="flex-1 min-h-0">
             {/* World grid */}
             <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4 px-6 py-4">
@@ -475,6 +483,7 @@ const CommunityCreationsBrowser = ({
               )}
             </div>
           </ScrollArea>
+          </TabsContent>
 
           {/* Frozen footer: pagination */}
           <div className="shrink-0 border-t px-6 py-3">
@@ -482,6 +491,7 @@ const CommunityCreationsBrowser = ({
               <Pager page={currentPage} pageCount={totalPages} onPageChange={setCurrentPage} />
             )}
           </div>
+          </Tabs>
         </DialogContent>
       </Dialog>
 
