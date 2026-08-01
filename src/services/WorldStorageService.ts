@@ -388,6 +388,47 @@ class WorldStorageService {
     }
   }
 
+  /**
+   * Put a published listing into quarantine: out of the catalog for everyone but its author, and deleted
+   * when the deadline passes unless an admin releases it first. Admin only.
+   *
+   * @param worldId - The listing's server id
+   * @param days - How long the author has, in whole days
+   * @returns The new quarantine state
+   */
+  async quarantineRemoteWorld(worldId: string, days: number) {
+    const response = await fetch(`${this.API_URL}/worlds/${worldId}/quarantine`, {
+      method: 'PUT',
+      headers: {
+        'Authorization': `Bearer ${AuthService.token}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ days }),
+    });
+
+    const body = await response.json().catch(() => ({}));
+    if (!response.ok) throw new Error(body.error || body.message || 'Failed to quarantine this');
+
+    return body.data as { quarantinedAt: string; quarantineExpiresAt: string; quarantineExtended: boolean };
+  }
+
+  /**
+   * Lift a quarantine, returning the listing to the catalog exactly as it was. Admin only.
+   *
+   * @param worldId - The listing's server id
+   */
+  async releaseRemoteWorld(worldId: string) {
+    const response = await fetch(`${this.API_URL}/worlds/${worldId}/quarantine`, {
+      method: 'DELETE',
+      headers: { 'Authorization': `Bearer ${AuthService.token}` },
+    });
+
+    if (!response.ok) {
+      const body = await response.json().catch(() => ({}));
+      throw new Error(body.error || body.message || 'Failed to release this');
+    }
+  }
+
   /** Fetch a page of comments for a published world; auth is optional. Never throws — errors resolve to
    *  a `{success:false}` shape. */
   async fetchComments(worldId: string, page = 1, limit = 20) {

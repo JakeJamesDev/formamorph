@@ -7,7 +7,7 @@ import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
 import {
   Search, RotateCcw, ArrowDownWideNarrow, ArrowUpNarrowWide, ArrowLeft, X, SlidersHorizontal, ChevronDown,
-  Earth, User, BookOpen, Globe,
+  Earth, User, BookOpen, Globe, ShieldAlert,
 } from "lucide-react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { CATALOG_KINDS, KIND_LABELS, kindOf, type CatalogKind } from "@/lib/catalogKinds";
@@ -31,6 +31,10 @@ import { useClosingSnapshot } from "@/lib/useClosingSnapshot";
 import { useCommunityBrowserFilters } from "@/lib/useCommunityBrowserFilters";
 import { MessageComposerDialog } from "@/components/menu/MessageComposerDialog";
 import { takedownTargetFor, takedownTemplate, type TakedownTarget } from "@/lib/takedownNotice";
+import {
+  isQuarantined, quarantineTargetFor, quarantineTemplate, type QuarantineTarget,
+} from "@/lib/quarantine";
+import { QuarantineDialog } from "@/components/community/QuarantineDialog";
 import {
   Dialog,
   DialogContent,
@@ -86,6 +90,13 @@ const CommunityCreationsBrowser = ({
   // has already landed — declining leaves it removed and simply unexplained, as suspending does.
   const [takedown, setTakedown] = useState<TakedownTarget | null>(null);
   const [notifyAuthor, setNotifyAuthor] = useState<TakedownTarget | null>(null);
+  // The listing an admin is about to quarantine, and the one whose author is about to be written to.
+  const [quarantining, setQuarantining] = useState<WorldRecord | null>(null);
+  const [isQuarantiningNow, setIsQuarantiningNow] = useState(false);
+  const [quarantineNotice, setQuarantineNotice] = useState<QuarantineTarget | null>(null);
+  // Admin-only view of just what is hidden — the whole catalog is already in memory, so this is a filter
+  // over it rather than another request.
+  const [quarantinedOnly, setQuarantinedOnly] = useState(false);
   const [selectedRemoteWorld, setSelectedRemoteWorld] = useState<WorldRecord | null>(null);
   const [showRemoteWorldDetailsModal, setShowRemoteWorldDetailsModal] = useState(false);
   // Offer to downscale oversized images right after a world is downloaded/overwritten.
@@ -167,6 +178,14 @@ const CommunityCreationsBrowser = ({
   };
 
   // Browse pipeline: search/author/tag/sort filters, hide preferences, and responsive pagination.
+  const isAdmin = currentUser?.accountType === 'admin';
+
+  // Narrowed before paging, not after: filtering the page in hand would leave the pager counting pages
+  // that are mostly empty. The catalog is one request that already carries every quarantined listing this
+  // account may see, so this is a filter over it rather than another fetch — the same as search and tags.
+  const catalogInView = quarantinedOnly ? remoteWorlds.filter(isQuarantined) : remoteWorlds;
+  const quarantinedCount = remoteWorlds.filter(isQuarantined).length;
+
   const {
     searchQuery, setSearchQuery, authorFilter, setAuthorFilter, tagFilter, setTagFilter,
     tagMode, setTagMode, sortField, setSortField, sortOrder, setSortOrder,
@@ -176,7 +195,23 @@ const CommunityCreationsBrowser = ({
     setHiddenTagsList, setHiddenAuthorsList,
     resetHiddenWorlds, unhideWorld, hiddenWorldName,
     allAuthors, allTags, filteredRemoteWorlds, totalPages, pagedRemoteWorlds,
-  } = useCommunityBrowserFilters(remoteWorlds, downloadStateForRecord, open, browseKind);
+  } = useCommunityBrowserFilters(catalogInView, downloadStateForRecord, open, browseKind);
+
+  // Admin-only, and only once something is actually quarantined: a toggle that can only ever show an
+  // empty list is a control that teaches nothing.
+  const quarantineControl = isAdmin && quarantinedCount > 0 ? (
+    <Button
+      variant={quarantinedOnly ? 'default' : 'outline'}
+      size="sm"
+      className="shrink-0 gap-1"
+      aria-pressed={quarantinedOnly}
+      onClick={() => setQuarantinedOnly((prev) => !prev)}
+      title="Show only what is hidden pending changes"
+    >
+      <ShieldAlert className="h-4 w-4" />
+      Quarantined ({quarantinedCount})
+    </Button>
+  ) : null;
 
   // On mobile the sort/filter controls collapse behind a "Filters" toggle; on desktop they stay inline.
   const isMobile = useIsMobile();
@@ -212,6 +247,50 @@ const CommunityCreationsBrowser = ({
     } catch (error) {
       console.error('Error deleting remote item:', error);
       toast.error((error as Error).message || `Failed to delete ${noun.toLowerCase()}`);
+    }
+  };
+
+  const handleQuarantine = async (days: number) => {
+    if (!quarantining) return;
+    const worldId = String(quarantining._id || quarantining.id);
+    const noun = KIND_LABELS[kindOf(quarantining)].one;
+
+    setIsQuarantiningNow(true);
+    try {
+      const state = await WorldStorageService.quarantineRemoteWorld(worldId, days);
+      // Patched in place rather than re-synced: the catalog is one big request, and re-fetching it to
+      // learn one field would blank the grid the admin is working in.
+      const updated = {
+        ...quarantining,
+        quarantined_at: state.quarantinedAt,
+        quarantine_expires_at: state.quarantineExpiresAt,
+        quarantine_extended: state.quarantineExtended ? 1 : 0,
+      };
+      setRemoteWorlds((prev) => prev.map((w) => ((w._id || w.id) === worldId ? updated : w)));
+      setQuarantining(null);
+      toast.success(`${noun} quarantined`);
+
+      // Someone else's work: they are owed an explanation of what to fix, and by when.
+      setQuarantineNotice(quarantineTargetFor(updated, currentUser?.id));
+    } catch (error) {
+      toast.error((error as Error).message || `Failed to quarantine the ${noun.toLowerCase()}`);
+    } finally {
+      setIsQuarantiningNow(false);
+    }
+  };
+
+  const handleRelease = async (world: WorldRecord) => {
+    const worldId = String(world._id || world.id);
+    const noun = KIND_LABELS[kindOf(world)].one;
+
+    try {
+      await WorldStorageService.releaseRemoteWorld(worldId);
+      setRemoteWorlds((prev) => prev.map((w) => ((w._id || w.id) === worldId
+        ? { ...w, quarantined_at: null, quarantine_expires_at: null, quarantine_extended: 0 }
+        : w)));
+      toast.success(`${noun} released`);
+    } catch (error) {
+      toast.error((error as Error).message || `Failed to release the ${noun.toLowerCase()}`);
     }
   };
 
@@ -401,6 +480,7 @@ const CommunityCreationsBrowser = ({
                 <DialogTitle className="flex items-center gap-2 whitespace-nowrap mr-2"><Globe className="h-4 w-4 shrink-0" /> Community Creations</DialogTitle>
                 {kindTabs}
                 {searchControl}
+                {quarantineControl}
                 {refreshControl}
                 {isMobile ? (
                   <CollapsibleTrigger asChild>
@@ -456,9 +536,11 @@ const CommunityCreationsBrowser = ({
                 ))
               ) : filteredRemoteWorlds.length === 0 ? (
                 <div className="col-span-full text-center py-12 text-muted-foreground">
-                  {searchQuery ?
-                    `No ${KIND_LABELS[browseKind].many.toLowerCase()} found matching your criteria.` :
-                    `No ${KIND_LABELS[browseKind].many.toLowerCase()} available. Be the first to publish one!`}
+                  {quarantinedOnly ?
+                    `No ${KIND_LABELS[browseKind].many.toLowerCase()} are quarantined.` :
+                    searchQuery ?
+                      `No ${KIND_LABELS[browseKind].many.toLowerCase()} found matching your criteria.` :
+                      `No ${KIND_LABELS[browseKind].many.toLowerCase()} available. Be the first to publish one!`}
                 </div>
               ) : (
                 pagedRemoteWorlds.map((world) => {
@@ -477,6 +559,8 @@ const CommunityCreationsBrowser = ({
                       onHideTag={hideRemoteTag}
                       onContextualDownload={handleCardDownload}
                       onDelete={setRemoteWorldToDelete}
+                      onQuarantine={setQuarantining}
+                      onRelease={handleRelease}
                     />
                   );
                 })
@@ -610,6 +694,33 @@ const CommunityCreationsBrowser = ({
         onConfirm={() => { setNotifyAuthor(takedown); setTakedown(null); }}
         onCancel={() => setTakedown(null)}
       />
+
+      <QuarantineDialog
+        open={quarantining !== null}
+        onOpenChange={(o) => { if (!o) setQuarantining(null); }}
+        what={quarantining
+          ? `The ${KIND_LABELS[kindOf(quarantining)].one.toLowerCase()} “${quarantining.name}”`
+          : ''}
+        willNotifyAuthor={Boolean(quarantining && quarantining.author?.id !== currentUser?.id)}
+        busy={isQuarantiningNow}
+        onConfirm={handleQuarantine}
+      />
+
+      {/* Unlike a takedown there is something the author can still do, so the notice leads with the
+          deadline. Opened straight away rather than behind a "send one?" prompt: a quarantine nobody
+          explained is a listing that quietly dies. */}
+      {quarantineNotice && (
+        <MessageComposerDialog
+          open
+          onOpenChange={(o) => { if (!o) setQuarantineNotice(null); }}
+          target={{ broadcast: false, recipients: [quarantineNotice.author] }}
+          adminUsername={String(currentUser?.username || 'Admin')}
+          initialSubject={quarantineTemplate(quarantineNotice).subject}
+          initialBody={quarantineTemplate(quarantineNotice).body}
+          initialSeverity="warning"
+          initialScope="existing"
+        />
+      )}
 
       {notifyAuthor && (
         <MessageComposerDialog

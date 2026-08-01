@@ -39,10 +39,12 @@ export const DEV_MODAL_TABS = {
   // The account dialog: admin messages, both feedback branches, and the contributor terms.
   // Password and logout are header buttons rather than tabs, so neither is routable.
   profile: ['messages', 'bugs', 'suggestions', 'terms'],
-  // The admin tools: accounts, broadcasts, the publish policies, both feedback queues, and the log.
-  adminPanel: ['users', 'broadcasts', 'policies', 'bugs', 'suggestions', 'log'],
+  // The admin tools: accounts, broadcasts, the publish policies, the feedback queues, and the log.
+  adminPanel: ['users', 'broadcasts', 'policies', 'feedback', 'log'],
   // Admin Panel → Policies has a second level, one sub-tab per authored popup, reached with `subtab=…`.
   adminPanelPolicies: ['uploadGate', 'tagNotice'],
+  // Admin Panel → Feedback uses the same `subtab=…` slot, one per branch.
+  adminPanelFeedback: ['bugs', 'suggestions'],
   // MainMenu's library card-type switcher. Not a modal: reached with `tab=…` and no `modal=…`, i.e.
   // `#dev?view=mainMenu&tab=models`. Listed here so the same drift guard covers it.
   mainMenu: ['worlds', 'entities', 'dictionaries', 'models'],
