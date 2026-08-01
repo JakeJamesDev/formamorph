@@ -39,8 +39,8 @@ export const DEV_MODAL_TABS = {
   // The account dialog: admin messages, both feedback branches, and the contributor terms.
   // Password and logout are header buttons rather than tabs, so neither is routable.
   profile: ['messages', 'bugs', 'suggestions', 'terms'],
-  // The admin tools: accounts, broadcasts, the publish policies, and both feedback queues.
-  adminPanel: ['users', 'broadcasts', 'policies', 'bugs', 'suggestions'],
+  // The admin tools: accounts, broadcasts, the publish policies, both feedback queues, and the log.
+  adminPanel: ['users', 'broadcasts', 'policies', 'bugs', 'suggestions', 'log'],
   // Admin Panel → Policies has a second level, one sub-tab per authored popup, reached with `subtab=…`.
   adminPanelPolicies: ['uploadGate', 'tagNotice'],
   // MainMenu's library card-type switcher. Not a modal: reached with `tab=…` and no `modal=…`, i.e.

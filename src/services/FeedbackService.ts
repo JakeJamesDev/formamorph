@@ -1,7 +1,8 @@
 import AuthService from './AuthService';
 import { collectDiagnostics } from '@/lib/bugDiagnostics';
 import type {
-  FeedbackComment, FeedbackDetail, FeedbackDraft, FeedbackStatus, FeedbackThread, FeedbackType,
+  FeedbackCategory, FeedbackComment, FeedbackDetail, FeedbackDraft, FeedbackStatus, FeedbackThread,
+  FeedbackType,
 } from '@/types';
 
 /** Server error envelope: this API answers with `error`, older handlers elsewhere read `message`. */
@@ -67,16 +68,18 @@ class FeedbackService {
    *
    * @param options - `scope: 'all'` asks for everyone's; omit for the caller's own
    */
-  async list({ type, page = 1, limit = 20, status, scope, sort }: {
+  async list({ type, page = 1, limit = 20, status, category, scope, sort }: {
     type: FeedbackType;
     page?: number;
     limit?: number;
     status?: FeedbackStatus;
+    category?: FeedbackCategory;
     scope?: 'all';
     sort?: string;
   }): Promise<FeedbackPage> {
     const query = new URLSearchParams({ type, page: String(page), limit: String(limit) });
     if (status) query.set('status', status);
+    if (category) query.set('category', category);
     if (scope) query.set('scope', scope);
     if (sort) query.set('sort', sort);
 

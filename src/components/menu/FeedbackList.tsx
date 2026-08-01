@@ -8,7 +8,7 @@ import {
 } from "@/lib/feedbackPresentation";
 import FeedbackService from "@/services/FeedbackService";
 import { cn } from "@/lib/utils";
-import type { FeedbackStatus, FeedbackThread, FeedbackType } from "@/types";
+import type { FeedbackCategory, FeedbackStatus, FeedbackThread, FeedbackType } from "@/types";
 
 const PAGE_SIZE = 10;
 
@@ -21,6 +21,8 @@ interface FeedbackListProps {
   scope?: 'all';
   /** Narrow to one triage state. */
   status?: FeedbackStatus;
+  /** Narrow to one area of the app. */
+  category?: FeedbackCategory;
   /** How to order the list. The server's default is newest first. */
   sort?: string;
   /** Bumped by the parent after something changes a thread, to pull the change in. */
@@ -36,7 +38,7 @@ interface FeedbackListProps {
  * public suggestion board and the Admin Panel's queues — which differ only in what they ask for.
  */
 export function FeedbackList({
-  active, type, scope, status, sort, refreshNonce = 0, onOpen, emptyLabel = 'Nothing here yet.',
+  active, type, scope, status, category, sort, refreshNonce = 0, onOpen, emptyLabel = 'Nothing here yet.',
 }: FeedbackListProps) {
   const [threads, setThreads] = useState<FeedbackThread[]>([]);
   const [isLoading, setIsLoading] = useState(false);
@@ -58,7 +60,7 @@ export function FeedbackList({
 
     setIsLoading(true);
     try {
-      const result = await FeedbackService.list({ type, page, limit: PAGE_SIZE, scope, status, sort });
+      const result = await FeedbackService.list({ type, page, limit: PAGE_SIZE, scope, status, category, sort });
       setThreads(result.threads);
       setTotal(result.total);
     } catch (error) {
@@ -67,12 +69,12 @@ export function FeedbackList({
     } finally {
       setIsLoading(false);
     }
-  }, [active, type, page, scope, status, sort]);
+  }, [active, type, page, scope, status, category, sort]);
 
   useEffect(() => { load(); }, [load, refreshNonce]);
 
   // A filter change would otherwise land on whatever page the previous list was showing.
-  useEffect(() => { setPage(1); }, [type, status, scope, sort]);
+  useEffect(() => { setPage(1); }, [type, status, category, scope, sort]);
 
   const toggleVote = async (thread: FeedbackThread) => {
     if (voting.has(thread.id)) return;

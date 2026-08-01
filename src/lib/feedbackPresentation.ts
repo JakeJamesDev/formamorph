@@ -60,6 +60,9 @@ export const DEFAULT_CATEGORY: Record<FeedbackType, FeedbackCategory> = {
 /** The status filter's "no filter" value. A `Select` cannot hold an empty string as an item value. */
 export const ANY_STATUS = 'any';
 
+/** The category filter's "no filter" value, for the same reason. */
+export const ANY_CATEGORY = 'any';
+
 /**
  * The status filter as the list wants it: a real status, or nothing at all.
  *
@@ -68,6 +71,15 @@ export const ANY_STATUS = 'any';
  */
 export const statusFilterValue = (value: FeedbackStatus | typeof ANY_STATUS): FeedbackStatus | undefined =>
   (value === ANY_STATUS ? undefined : value);
+
+/**
+ * The category filter as the list wants it: a real category, or nothing at all.
+ *
+ * @param value - The dropdown's current value
+ * @returns The category to filter by, or undefined for every category
+ */
+export const categoryFilterValue = (value: FeedbackCategory | typeof ANY_CATEGORY): FeedbackCategory | undefined =>
+  (value === ANY_CATEGORY ? undefined : value);
 
 /** Which threads a profile tab is showing. */
 export const FEEDBACK_SCOPES = ['mine', 'all'] as const;
