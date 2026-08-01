@@ -42,7 +42,7 @@ const comment = (over: Partial<FeedbackComment> = {}): FeedbackComment => ({
   body: 'Which version?',
   createdAt: '2026-07-01T01:00:00.000Z',
   editedAt: null,
-  author: { id: 'a1', username: 'root-admin', isAdmin: true },
+  author: { id: 'a1', username: 'root-admin', role: 'admin' },
   ...over,
 });
 
@@ -83,25 +83,42 @@ describe('the thread', () => {
     expect(screen.getByText('Looking into it.')).toBeTruthy();
   });
 
-  it('signs a team reply as the team, not by username', async () => {
-    // The reporter is answered by Formamorph, not by whichever admin happened to pick it up.
+  it('signs a staff reply with their name and a badge, not as the team', async () => {
+    // "Formamorph Team" in place of a username hid who was actually speaking, and was derived from the
+    // account's *current* type — so a demotion rewrote every reply somebody had ever left.
     stubThread({ comments: [comment()] });
 
     render(<FeedbackThreadView threadId="b1" onBack={() => {}} />);
 
-    expect(await screen.findByText(/Formamorph Team/)).toBeTruthy();
-    expect(screen.queryByText(/root-admin/)).toBeNull();
+    expect(await screen.findByText(/root-admin/)).toBeTruthy();
+    expect(screen.getByText('Admin')).toBeTruthy();
+    expect(screen.queryByText(/Formamorph Team/)).toBeNull();
   });
 
-  it('signs the reporter’s own reply with their name', async () => {
-    stubThread({ comments: [comment({ author: { id: 'u1', username: 'finder', isAdmin: false } })] });
+  it('badges each staff role apart', async () => {
+    stubThread({
+      comments: [
+        comment({ id: 'c1', author: { id: 'a1', username: 'a-mod', role: 'mod' } }),
+        comment({ id: 'c2', author: { id: 'a2', username: 'a-dev', role: 'dev' } }),
+      ],
+    });
+
+    render(<FeedbackThreadView threadId="b1" onBack={() => {}} />);
+
+    expect(await screen.findByText('Mod')).toBeTruthy();
+    expect(screen.getByText('Dev')).toBeTruthy();
+  });
+
+  it('signs the reporter’s own reply with their name and no badge', async () => {
+    stubThread({ comments: [comment({ author: { id: 'u1', username: 'finder', role: null } })] });
 
     render(<FeedbackThreadView threadId="b1" onBack={() => {}} />);
     await screen.findByText('Save button does nothing');
 
-    // The report header names the reporter too, so match the comment's own byline.
-    expect(screen.getByText(/^finder ·/)).toBeTruthy();
-    expect(screen.queryByText(/Formamorph Team/)).toBeNull();
+    // The report header names the reporter too, and both are now clickable, so there are two.
+    expect(screen.getAllByRole('button', { name: "View finder's profile" }).length).toBe(2);
+    expect(screen.queryByText('Admin')).toBeNull();
+    expect(screen.queryByText('Mod')).toBeNull();
   });
 
   it('shows what the reporter filed with it', async () => {
@@ -607,5 +624,58 @@ describe('the lock control', () => {
 
     // The status badge and the closed Select both render the label; the Select is the one under test.
     expect(screen.getByLabelText('Status').textContent).toContain('Considering');
+  });
+});
+
+describe('editing the report itself', () => {
+  it('offers the reporter an edit control on their own', async () => {
+    const AuthService = (await import('@/services/AuthService')).default;
+    vi.spyOn(AuthService, 'getCurrentUser').mockReturnValue({ id: 'u1', username: 'finder', accountType: 'normal' });
+    stubThread({ thread: report({ reporter: { id: 'u1', username: 'finder' } }) });
+
+    render(<FeedbackThreadView threadId="b1" onBack={() => {}} />);
+
+    expect(await screen.findByLabelText('Edit this report')).toBeTruthy();
+  });
+
+  it('offers nothing to a passing reader', async () => {
+    // The case that isolates the check: on their own report the control is there for a different reason.
+    const AuthService = (await import('@/services/AuthService')).default;
+    vi.spyOn(AuthService, 'getCurrentUser').mockReturnValue({ id: 'u9', username: 'stranger', accountType: 'normal' });
+    stubThread({ thread: report({ reporter: { id: 'u1', username: 'finder' } }) });
+
+    render(<FeedbackThreadView threadId="b1" onBack={() => {}} />);
+    await screen.findByText('Save button does nothing');
+
+    expect(screen.queryByLabelText('Edit this report')).toBeNull();
+  });
+
+  it('offers it to the team on a bug', async () => {
+    const AuthService = (await import('@/services/AuthService')).default;
+    vi.spyOn(AuthService, 'getCurrentUser').mockReturnValue({ id: 'm1', username: 'a-mod', accountType: 'mod' });
+    stubThread({ thread: report({ type: 'bug', reporter: { id: 'u1', username: 'finder' } }) });
+
+    render(<FeedbackThreadView threadId="b1" onBack={() => {}} />);
+
+    expect(await screen.findByLabelText('Edit this report')).toBeTruthy();
+  });
+
+  it('says when a report has been rewritten', async () => {
+    // Somebody may already have read the earlier wording.
+    stubThread({ thread: report({ editedAt: '2026-08-02T00:00:00.000Z' }) });
+
+    render(<FeedbackThreadView threadId="b1" onBack={() => {}} />);
+    await screen.findByText('Save button does nothing');
+
+    expect(screen.getAllByText(/edited/).length).toBeGreaterThan(0);
+  });
+
+  it('says nothing on one that has not been', async () => {
+    stubThread();
+
+    render(<FeedbackThreadView threadId="b1" onBack={() => {}} />);
+    await screen.findByText('Save button does nothing');
+
+    expect(screen.queryByText(/· edited/)).toBeNull();
   });
 });

@@ -1,4 +1,5 @@
 import { AUDIT_ACTIONS, type AuditAction, type AuditEntry } from '@/types';
+import { ROLE_LABELS, type Role } from '@/lib/roles';
 
 /** How each action reads in the filter and on an entry. */
 export const AUDIT_ACTION_LABELS: Record<AuditAction, string> = {
@@ -14,6 +15,8 @@ export const AUDIT_ACTION_LABELS: Record<AuditAction, string> = {
   quarantine_released: 'Released',
   quarantine_expired: 'Quarantine expired',
   avatar_removed: 'Image removed',
+  role_changed: 'Role changed',
+  feedback_edited: 'Feedback edited',
 };
 
 /** The tint each action carries, so a scan down the list separates removals from the rest. */
@@ -31,6 +34,8 @@ export const AUDIT_ACTION_STYLES: Record<AuditAction, string> = {
   quarantine_released: 'bg-success/10 text-success',
   quarantine_expired: 'bg-destructive/10 text-destructive',
   avatar_removed: 'bg-destructive/10 text-destructive',
+  role_changed: 'bg-info/10 text-info',
+  feedback_edited: 'bg-info/10 text-info',
 };
 
 /** The filter's options, in the order the server declares them. */
@@ -120,6 +125,22 @@ export function describeAuditEntry(entry: AuditEntry): string {
       return target
         ? `${actor} removed the profile image of ${target}`
         : `${actor} removed their own profile image`;
+    // The snippet carries both ends as "from to", since "made a mod" reads differently depending on
+    // what they were before.
+    case 'role_changed': {
+      const to = entry.snippet ? entry.snippet.split(' to ')[1] : null;
+      const who = target || 'an account';
+      if (!to) return `${actor} changed what ${who} is`;
+
+      return to === 'normal'
+        ? `${actor} returned ${who} to a normal account`
+        : `${actor} made ${who} a ${ROLE_LABELS[to as Role]?.toLowerCase() ?? to}`;
+    }
+    // Only recorded when somebody other than the reporter changed it, so there is always a `by`.
+    case 'feedback_edited':
+      return target
+        ? `${actor} edited the ${noun ?? 'thread'}${name ? ` “${name}”` : ''} by ${target}`
+        : `${actor} edited a ${noun ?? 'thread'}${name ? ` “${name}”` : ''}`;
     default:
       return `${actor} did something the app does not recognize`;
   }

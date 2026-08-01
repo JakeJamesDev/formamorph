@@ -26,7 +26,7 @@ const useHarness = (initial: WorldRecord[]) => {
 describe('useDownloadCoordinator', () => {
   beforeEach(() => vi.clearAllMocks());
 
-  const remote: WorldRecord = { _id: 'remote-1', name: 'Remote', updated_at: 'T2', author: { username: 'bob' } };
+  const remote: WorldRecord = { _id: 'remote-1', name: 'Remote', updated_at: 'T2', author: { id: 'u-bob', username: 'bob' } };
 
   it('handleDownloadWorld appends a new local record (isLoading:false, fresh id)', async () => {
     const { result } = renderHook(() => useHarness([]));
@@ -39,6 +39,28 @@ describe('useDownloadCoordinator', () => {
     expect(added.isLoading).toBe(false);
     expect(added.tags).toEqual(['t']);
     expect(storeWorld).toHaveBeenCalled();
+  });
+
+  it('remembers who published it, not just what they are called', async () => {
+    // The author line on a local copy is free text somebody typed in the editor and names no account;
+    // this is the one thing that can open the right profile.
+    const { result } = renderHook(() => useHarness([]));
+    await act(async () => { await result.current.coord.handleDownloadWorld(remote); });
+
+    await waitFor(() => expect(result.current.worlds).toHaveLength(1));
+    expect(result.current.worlds[0].sourceAuthorId).toBe('u-bob');
+    expect(storeWorld).toHaveBeenCalledWith(expect.objectContaining({ sourceAuthorId: 'u-bob' }));
+  });
+
+  it('carries no publisher for a listing that names none', async () => {
+    // A listing whose author has been deleted: the name is still shown, but there is nobody to open.
+    const orphan: WorldRecord = { _id: 'remote-2', name: 'Orphan', updated_at: 'T2', author: { username: 'gone' } };
+    const { result } = renderHook(() => useHarness([]));
+
+    await act(async () => { await result.current.coord.handleDownloadWorld(orphan); });
+
+    await waitFor(() => expect(result.current.worlds).toHaveLength(1));
+    expect(result.current.worlds[0].sourceAuthorId).toBeUndefined();
   });
 
   it('overwriteWorld replaces the existing copy in place (same id, no duplicate)', async () => {

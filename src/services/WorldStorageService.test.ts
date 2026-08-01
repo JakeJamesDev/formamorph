@@ -227,7 +227,7 @@ describe('local world storage (IndexedDB)', () => {
     await WorldStorageService.deleteWorld('keep-1');
   });
 
-  it('keeps sourceId/downloadedAt/sourceUpdatedAt sticky across a save that omits them', async () => {
+  it('keeps the source fields sticky across a save that omits them', async () => {
     await WorldStorageService.storeWorld({
       ...validWorld,
       id: 'sticky-1',
@@ -235,6 +235,7 @@ describe('local world storage (IndexedDB)', () => {
       dirty: false,
       downloadedAt: '2026-01-01T00:00:00.000Z',
       sourceUpdatedAt: '2026-01-01T00:00:00.000Z',
+      sourceAuthorId: 'u-publisher',
     });
 
     // Simulate an editor save: same id, no source fields, just flips dirty.
@@ -246,6 +247,8 @@ describe('local world storage (IndexedDB)', () => {
     expect(stored?.dirty).toBe(true);
     expect(stored?.downloadedAt).toBe('2026-01-01T00:00:00.000Z');
     expect(stored?.sourceUpdatedAt).toBe('2026-01-01T00:00:00.000Z');
+    // Whoever published it does not stop being who published it because the reader edited their copy.
+    expect(stored?.sourceAuthorId).toBe('u-publisher');
 
     await WorldStorageService.deleteWorld('sticky-1');
   });

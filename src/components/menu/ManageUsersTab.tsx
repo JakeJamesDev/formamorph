@@ -8,6 +8,9 @@ import { Popover, PopoverClose, PopoverContent, PopoverTrigger } from "@/compone
 import { Skeleton } from "@/components/ui/skeleton";
 import { ConfirmDialog } from "@/components/ConfirmDialog";
 import { UserAvatar } from "@/components/UserAvatar";
+import { RoleBadge } from "@/components/RoleBadge";
+import { ASSIGNABLE_ROLES, ROLE_LABELS, canModerate, isAdmin, roleOf, type Role } from "@/lib/roles";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { MessageComposerDialog, type ComposerTarget } from "@/components/menu/MessageComposerDialog";
 import { SentMessagesDialog } from "@/components/menu/SentMessagesDialog";
 import PolicyService from "@/services/PolicyService";
@@ -99,6 +102,11 @@ export function ManageUsersTab({ active }: ManageUsersTabProps) {
   const [pendingTermsReset, setPendingTermsReset] = useState<WorldRecord | null>(null);
 
   const adminUsername = String(AuthService.getCurrentUser()?.username || 'Admin');
+  // Changing what somebody *is* belongs to an administrator; the rest of this table is any staff's.
+  const viewer = AuthService.getCurrentUser();
+  const viewerIsAdmin = isAdmin(viewer);
+  /** Whether the signed-in account may act on this row at all — staff moderate the room, not each other. */
+  const mayModerate = (user: WorldRecord) => canModerate(viewer, user);
 
   const userIdOf = (user: WorldRecord) => String(user._id || user.id);
   const usernameOf = (user: WorldRecord) => String(user.username || 'user');
@@ -254,6 +262,45 @@ export function ManageUsersTab({ active }: ManageUsersTabProps) {
     setSort(key);
     // The rows on page three of a name sort are not the rows on page three of a status sort.
     setUserCurrentPage(1);
+  };
+
+  /**
+   * Promote or demote one account.
+   *
+   * Administrators are deliberately absent from both ends: one is made by hand on the server, and an
+   * existing one cannot be changed from here, so the dropdown never offers either.
+   */
+  const changeRole = async (user: WorldRecord, accountType: Role) => {
+    const previous = roleOf(user);
+    if (accountType === previous) return;
+
+    try {
+      const response = await fetch(`${WorldStorageService.API_URL}/users/${userIdOf(user)}/status`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${AuthService.token}`
+        },
+        body: JSON.stringify({ accountType }),
+      });
+
+      const data = await response.json();
+      if (!response.ok) {
+        throw new Error(data.error || data.message || 'Failed to change the account type');
+      }
+
+      // Written into the row rather than refetched, so the badge and the moderation controls on it
+      // follow immediately — a demoted moderator becomes actionable in place.
+      setUsers((prev) => prev.map((row) =>
+        userIdOf(row) === userIdOf(user) ? { ...row, accountType } : row
+      ));
+
+      toast.success(accountType === 'normal'
+        ? `${usernameOf(user)} is a normal account again`
+        : `${usernameOf(user)} is now a ${ROLE_LABELS[accountType].toLowerCase()}`);
+    } catch (error) {
+      toast.error((error as Error).message || 'Failed to change the account type');
+    }
   };
 
   /** Clear one user's acceptance, so the gate is shown to them again on their next publish. */
@@ -451,13 +498,32 @@ export function ManageUsersTab({ active }: ManageUsersTabProps) {
                               avatarUrl={user.avatarUrl as string | null | undefined}
                               size="sm"
                             />
-                            {user.username}
+                            <span className="truncate">{user.username}</span>
+                            <RoleBadge role={user.accountType as string | null | undefined} />
                           </div>
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap">
-                          <div className="text-sm text-muted-foreground">
-                            {user.accountType || "user"}
-                          </div>
+                          {viewerIsAdmin && roleOf(user) !== 'admin' ? (
+                            <Select
+                              value={roleOf(user)}
+                              onValueChange={(value) => changeRole(user, value as Role)}
+                            >
+                              <SelectTrigger className="h-8 w-[110px]" aria-label={`Role for ${usernameOf(user)}`}>
+                                <SelectValue />
+                              </SelectTrigger>
+                              <SelectContent>
+                                {ASSIGNABLE_ROLES.map((role) => (
+                                  <SelectItem key={role} value={role}>{ROLE_LABELS[role]}</SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
+                          ) : (
+                            /* An administrator is made on the server and nowhere else, so there is nothing
+                               to offer here — and a moderator changes nobody. */
+                            <div className="text-sm text-muted-foreground">
+                              {ROLE_LABELS[roleOf(user)]}
+                            </div>
+                          )}
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap">
                           <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${statusBadgeClass}`}>
@@ -478,7 +544,7 @@ export function ManageUsersTab({ active }: ManageUsersTabProps) {
                               className="h-7 w-7"
                               title="Reset terms"
                               aria-label={`Reset terms for ${usernameOf(user)}`}
-                              disabled={termsResponseOf(user) === 'unanswered'}
+                              disabled={termsResponseOf(user) === 'unanswered' || !mayModerate(user)}
                               onClick={() => setPendingTermsReset(user)}
                             >
                               <RotateCcw className="h-3.5 w-3.5" />
@@ -533,8 +599,9 @@ export function ManageUsersTab({ active }: ManageUsersTabProps) {
                                     </Button>
                                   </PopoverClose>
 
-                                  {/* Only when there is one: an inert row would read as a missing permission. */}
-                                  {user.avatarUrl ? (
+                                  {/* Only when there is one, and only on somebody this viewer may act on:
+                                      an inert row would read as a missing permission. */}
+                                  {user.avatarUrl && mayModerate(user) ? (
                                     <PopoverClose asChild>
                                       <Button
                                         size="sm"
@@ -551,7 +618,7 @@ export function ManageUsersTab({ active }: ManageUsersTabProps) {
                               </Popover>
                             </div>
 
-                            {user.status !== "normal" && (
+                            {user.status !== "normal" && mayModerate(user) && (
                               <Button
                                 size="sm"
                                 variant="outline"
@@ -562,7 +629,7 @@ export function ManageUsersTab({ active }: ManageUsersTabProps) {
                               </Button>
                             )}
 
-                            {user.status !== "suspended" && (
+                            {user.status !== "suspended" && mayModerate(user) && (
                               <Button
                                 size="sm"
                                 variant="outline"

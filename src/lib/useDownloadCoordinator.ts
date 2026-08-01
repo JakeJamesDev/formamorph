@@ -98,6 +98,9 @@ export function useDownloadCoordinator(
       const meta = {
         name, description, thumbnail: thumbnailUrl, author,
         sourceId: worldId, dirty: false, downloadedAt: now, sourceUpdatedAt: world.updated_at,
+        // Kept alongside the name so the author line can open their profile: `author` above is only a
+        // name, and a name is not an account.
+        sourceAuthorId: world.author?.id,
       };
 
       // Sanitize at the download boundary so the stored copy is already current. Same local id ⇒ storeWorld

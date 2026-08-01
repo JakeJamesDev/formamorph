@@ -10,6 +10,11 @@ import PromptField from "@/components/prompt/PromptField";
 import { plainVocabulary } from "@/lib/chipVocabulary";
 import { DIAGNOSTIC_LABELS } from "@/lib/bugDiagnostics";
 import { UserAvatar } from "@/components/UserAvatar";
+import { RoleBadge } from "@/components/RoleBadge";
+import { UserName } from "@/components/UserName";
+import { FeedbackEditDialog } from "@/components/menu/FeedbackEditDialog";
+import { mayEditProse, mayRefile } from "@/lib/feedbackEditing";
+import { badgeRole } from "@/lib/roles";
 import {
   FEEDBACK_CATEGORY_LABELS, FEEDBACK_STATUS_STYLES, STATUS_OPTIONS, formatFeedbackDate,
 } from "@/lib/feedbackPresentation";
@@ -74,11 +79,13 @@ export function FeedbackThreadView({
   const [isSavingEdit, setIsSavingEdit] = useState(false);
   const [pendingCommentDelete, setPendingCommentDelete] = useState<string | null>(null);
   const [isVoting, setIsVoting] = useState(false);
+  const [editingThread, setEditingThread] = useState(false);
 
   const plainVocab = useMemo(() => plainVocabulary(), []);
   // Author-owned, not admin-owned: moderation stops at rewriting somebody else's words, and the server
   // refuses it either way.
   const myId = String(AuthService.getCurrentUser()?.id ?? '');
+  const viewer = AuthService.getCurrentUser();
 
   const load = useCallback(async () => {
     setIsLoading(true);
@@ -212,6 +219,10 @@ export function FeedbackThreadView({
   const { thread, comments } = detail;
   const status = FEEDBACK_STATUS_STYLES[thread.status];
   const isSuggestion = thread.type === 'suggestion';
+  // Who owns which part of a report: a bug's words are the team's to make useful, a suggestion's stay
+  // its author's, and the filing is triage either way. The server decides the same thing again.
+  const canEditProse = mayEditProse(thread, viewer);
+  const canRefile = mayRefile(viewer);
   // Who may write: an admin anywhere, anyone on an open suggestion, the reporter on their own bug. A lock
   // closes it to everyone but the admins. The server enforces the same rules — this only keeps a box off
   // screen that would be refused.
@@ -271,11 +282,28 @@ export function FeedbackThreadView({
             <span className={cn('px-2 inline-flex text-xs leading-5 font-semibold rounded-full', status.badge)}>
               {status.label}
             </span>
+            {/* Only when there is something this reader may change: an inert control reads as a
+                permission they have lost rather than as one they never had. */}
+            {(canEditProse || canRefile) && (
+              <Button
+                variant="ghost"
+                size="icon"
+                className="h-7 w-7"
+                aria-label="Edit this report"
+                title="Edit this report"
+                onClick={() => setEditingThread(true)}
+              >
+                <Pencil className="h-4 w-4" />
+              </Button>
+            )}
           </div>
         </div>
         <p className="text-xs text-muted-foreground">
-          {FEEDBACK_CATEGORY_LABELS[thread.category]} · {thread.reporter.username || 'Unknown'} ·{' '}
+          {FEEDBACK_CATEGORY_LABELS[thread.category]} ·{' '}
+          <UserName userId={thread.reporter.id} username={thread.reporter.username} /> ·{' '}
           {formatFeedbackDate(thread.createdAt)}
+          {/* Said plainly: somebody may already have read the earlier wording. */}
+          {thread.editedAt && <span className="italic"> · edited</span>}
         </p>
         <div className="text-sm min-w-0"><MarkdownRenderer text={thread.body} /></div>
 
@@ -315,16 +343,15 @@ export function FeedbackThreadView({
                 // A reply from the team is tinted so it reads as an answer rather than another thread.
                 className={cn(
                   'rounded-md border p-3 min-w-0',
-                  comment.author.isAdmin && 'border-primary/40 bg-primary/5'
+                  badgeRole(comment.author.role) && 'border-primary/40 bg-primary/5'
                 )}
               >
                 <div className="flex items-start justify-between gap-2">
                   <p className="flex items-center gap-1.5 text-xs text-muted-foreground">
-                    {/* The team signs as the team, so a moderator's own face would be the wrong name's. */}
-                    {!comment.author.isAdmin && (
-                      <UserAvatar username={comment.author.username} avatarUrl={comment.author.avatarUrl} size="xs" />
-                    )}
-                    {comment.author.isAdmin ? 'Formamorph Team' : comment.author.username || 'Unknown'}
+                    {/* Everyone signs with their own name and face; the badge says who they answer for. */}
+                    <UserAvatar username={comment.author.username} avatarUrl={comment.author.avatarUrl} size="xs" />
+                    <UserName userId={comment.author.id} username={comment.author.username} />
+                    <RoleBadge role={comment.author.role} />
                     {' · '}{formatFeedbackDate(comment.createdAt)}
                     {/* Said plainly, so the other reader can tell a reply changed after they read it. */}
                     {comment.editedAt && <span className="italic"> · edited</span>}
@@ -427,6 +454,20 @@ export function FeedbackThreadView({
           if (commentId) void removeCommentById(commentId);
         }}
         onCancel={() => setPendingCommentDelete(null)}
+      />
+
+      <FeedbackEditDialog
+        open={editingThread}
+        onOpenChange={setEditingThread}
+        thread={thread}
+        mayEditProse={canEditProse}
+        mayRefile={canRefile}
+        onSaved={(saved) => {
+          // Written in rather than refetched, so a type move's new status and cleared diagnostics land
+          // at once; the list behind it is told separately.
+          setDetail((prev) => (prev ? { ...prev, thread: saved } : prev));
+          onChanged?.();
+        }}
       />
 
       <ConfirmDialog

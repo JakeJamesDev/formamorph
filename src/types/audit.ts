@@ -12,6 +12,8 @@ export const AUDIT_ACTIONS = [
   'quarantine_released',
   'quarantine_expired',
   'avatar_removed',
+  'role_changed',
+  'feedback_edited',
 ] as const;
 export type AuditAction = (typeof AUDIT_ACTIONS)[number];
 

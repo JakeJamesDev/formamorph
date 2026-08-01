@@ -304,6 +304,9 @@ export interface CommunityLink {
   downloadedAt?: string;
   /** The listing's `updated_at` captured at download — the source version this copy holds. */
   sourceUpdatedAt?: string;
+  /** The account that published the listing, captured at download. The authored `author` string is free
+   *  text and names nobody in particular; this is who actually put it on Community Creations. */
+  sourceAuthorId?: string;
 }
 
 export interface WorldMetadata extends CommunityLink {
