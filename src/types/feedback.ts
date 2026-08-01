@@ -38,6 +38,13 @@ export interface FeedbackReporter {
   username: string | null;
   /** Their profile image, or null when they have none. Root-relative; see `avatarSrc`. */
   avatarUrl?: string | null;
+  /**
+   * Their staff role when they filed it, or null for an ordinary account.
+   *
+   * A snapshot, like a reply's — a thread is a record of who said something at a moment, so being
+   * promoted or demoted later never restyles a report already sent.
+   */
+  role?: string | null;
 }
 
 /** One piece of feedback — a bug report or a suggestion — as any reader of it sees it. */

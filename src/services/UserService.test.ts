@@ -49,6 +49,26 @@ describe('reading a profile', () => {
     expect(vi.mocked(globalThis.fetch)).toHaveBeenCalled();
   });
 
+  it('reads the counts a profile draws', async () => {
+    signedIn(null);
+    respondWith({ id: 'u1', username: 'wren_hallow', followers: 3, likes: 41, downloads: 108 });
+
+    const result = await UserService.fetchProfile('u1');
+
+    expect(result).toMatchObject({ followers: 3, likes: 41, downloads: 108 });
+  });
+
+  it('zeroes counts a server that predates them never sent', async () => {
+    // The client can reach people before the server it talks to is updated, and the profile row renders
+    // these straight onto the screen — a missing number would draw an icon beside nothing.
+    signedIn(null);
+    respondWith({ id: 'u1', username: 'wren_hallow' });
+
+    const result = await UserService.fetchProfile('u1');
+
+    expect(result).toMatchObject({ followers: 0, likes: 0, downloads: 0 });
+  });
+
   it('throws the server’s own wording when the account cannot be read', async () => {
     signedIn(null);
     vi.spyOn(globalThis, 'fetch').mockResolvedValue(

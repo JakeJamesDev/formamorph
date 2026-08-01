@@ -1,10 +1,12 @@
 import { useEffect, useMemo, useRef, useState, type SetStateAction } from 'react';
 import { toast } from 'react-toastify';
 import { ListDetail } from '@/components/ui/list-detail';
+import { ScrollArea } from '@/components/ui/scroll-area';
 import EditorModalShell from './EditorModalShell';
 import { DictionaryStoreProvider, useDictionaryStoreState } from '@/contexts/DictionaryStoreContext';
 import DictionaryTree from '@/managers/DictionaryTree';
 import DictionaryBookManager from '@/managers/DictionaryBookManager';
+import DictionaryOverviewManager from '@/managers/DictionaryOverviewManager';
 import DictionaryManager from '@/managers/DictionaryManager';
 import PlaceholderEditor from '@/managers/PlaceholderEditor';
 import { placeholderStore, PlaceholderStoreProvider } from '@/contexts/PlaceholderStoreContext';
@@ -14,7 +16,13 @@ import { memoStringify } from '@/lib/memoStringify';
 import DictionaryStorageService from '@/services/DictionaryStorageService';
 import type { Dictionary, Placeholder } from '@/types';
 
-const TABS = [{ value: 'dictionary', label: 'Dictionary' }, { value: 'placeholders', label: 'Placeholders' }];
+const TABS = [
+  { value: 'overview', label: 'Overview' },
+  { value: 'dictionary', label: 'Dictionary' },
+  { value: 'placeholders', label: 'Placeholders' },
+];
+
+type DictionaryTab = (typeof TABS)[number]['value'];
 
 /**
  * Edit a single library dictionary in place. Reuses the World Editor's dictionary widgets, but binds them
@@ -32,7 +40,8 @@ const DictionaryEditorModal = ({ dictionaryId, draft, onClose, onPublish }: {
   const { dictionaries, setDictionaries } = store;
   const [book, setBook] = useState<Dictionary | null>(null);
   const [selectedId, setSelectedId] = useState<string | null>(null);
-  const [tab, setTab] = useState<'dictionary' | 'placeholders'>('dictionary');
+  // Opens on Dictionary: the entries are the work, the Overview is set once.
+  const [tab, setTab] = useState<DictionaryTab>('dictionary');
   const baselineRef = useRef('');
   // Reuses cached serialization for unedited entries on each keystroke; matches the JSON.stringify baseline.
   const stringifyCache = useRef(new WeakMap<object, string>());
@@ -105,7 +114,7 @@ const DictionaryEditorModal = ({ dictionaryId, draft, onClose, onPublish }: {
       loading={!book}
       tabs={TABS}
       tab={tab}
-      onTabChange={(v) => setTab(v as 'dictionary' | 'placeholders')}
+      onTabChange={(v) => setTab(v as DictionaryTab)}
       hasUnsavedChanges={hasUnsavedChanges}
       onSave={handleSave}
       onClose={onClose}
@@ -113,7 +122,13 @@ const DictionaryEditorModal = ({ dictionaryId, draft, onClose, onPublish }: {
       onPublish={onPublish ? () => { if (dictionaries[0]) onPublish(dictionaries[0]); } : undefined}
     >
       <DictionaryStoreProvider value={store}>
-        {tab === 'placeholders' ? (
+        {tab === 'overview' ? (
+          <ScrollArea className="flex-1 min-h-0">
+            <div className="p-4">
+              {dictionaries[0] && <DictionaryOverviewManager book={dictionaries[0]} />}
+            </div>
+          </ScrollArea>
+        ) : tab === 'placeholders' ? (
           <PlaceholderStoreProvider value={phStore}>
             <PlaceholderEditor />
           </PlaceholderStoreProvider>

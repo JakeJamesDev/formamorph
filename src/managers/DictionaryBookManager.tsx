@@ -6,7 +6,11 @@ import { Checkbox } from '@/components/ui/checkbox';
 import type { Dictionary } from '@/types';
 
 /** Right-panel editor for a selected book (dictionary): rename + enable toggle. Entry editing is the
- *  DictionaryManager's job; add/delete entries from the tree on the left. */
+ *  DictionaryManager's job; add/delete entries from the tree on the left.
+ *
+ *  What the book *is*. What it looks like as a listing — its tags and cover — is the library editor's
+ *  Overview tab (see DictionaryOverviewManager); those are set once on the way out, these are what you
+ *  reach for while writing entries. */
 const DictionaryBookManager = ({ book }: { book: Dictionary }) => {
   const { updateDictionary } = useDictionaryStore();
   return (

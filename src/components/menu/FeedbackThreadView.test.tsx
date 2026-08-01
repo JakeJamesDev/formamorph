@@ -679,3 +679,28 @@ describe('editing the report itself', () => {
     expect(screen.queryByText(/· edited/)).toBeNull();
   });
 });
+
+/**
+ * The badge on the opening post.
+ *
+ * A thread showed badged replies underneath an unbadged report by the same team, because the reporter DTO
+ * carried no role at all.
+ */
+describe('the reporter’s badge on the thread', () => {
+  it('badges a report filed by the team', async () => {
+    stubThread({ thread: report({ reporter: { id: 'u1', username: 'finder', role: 'mod' } }) });
+
+    render(<FeedbackThreadView threadId="b1" onBack={() => {}} />);
+
+    expect(await screen.findByText('Mod')).toBeTruthy();
+  });
+
+  it('leaves an ordinary reporter unbadged', async () => {
+    stubThread({ thread: report({ reporter: { id: 'u1', username: 'finder', role: null } }) });
+
+    render(<FeedbackThreadView threadId="b1" onBack={() => {}} />);
+    await screen.findByText('Save button does nothing');
+
+    expect(screen.queryByText(/^(Mod|Dev|Admin)$/)).toBeNull();
+  });
+});

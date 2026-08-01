@@ -3,6 +3,7 @@ import { toast } from 'react-toastify';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import EditorModalShell from './EditorModalShell';
 import EntityFields from '@/managers/EntityFields';
+import { TagsField } from '@/components/TagsField';
 import PlaceholderEditor from '@/managers/PlaceholderEditor';
 import { placeholderStore, PlaceholderStoreProvider } from '@/contexts/PlaceholderStoreContext';
 import { exportEntityCard } from '@/lib/entityFile';
@@ -11,7 +12,13 @@ import { memoStringify } from '@/lib/memoStringify';
 import EntityStorageService from '@/services/EntityStorageService';
 import type { Entity, Placeholder } from '@/types';
 
-const TABS = [{ value: 'entity', label: 'Character' }, { value: 'placeholders', label: 'Placeholders' }];
+const TABS = [
+  { value: 'overview', label: 'Overview' },
+  { value: 'entity', label: 'Character' },
+  { value: 'placeholders', label: 'Placeholders' },
+];
+
+type EntityTab = (typeof TABS)[number]['value'];
 
 /**
  * Edit a single library character in place, bound to ISOLATED state (never the world store). Opens on an
@@ -26,7 +33,9 @@ const EntityEditorModal = ({ entityId, draft, onClose, onPublish }: {
   onPublish?: (entity: Entity) => void;
 }) => {
   const [entity, setEntity] = useState<Entity | null>(null);
-  const [tab, setTab] = useState<'entity' | 'placeholders'>('entity');
+  // Opens on Character rather than Overview: tags are the thing you set once, the descriptions are
+  // what you come back to edit.
+  const [tab, setTab] = useState<EntityTab>('entity');
   const baselineRef = useRef('');
   // Reuses cached serialization for the entity's unchanged base64 image/model on each keystroke; matches
   // the JSON.stringify baseline byte-for-byte.
@@ -104,14 +113,20 @@ const EntityEditorModal = ({ entityId, draft, onClose, onPublish }: {
       loading={!entity}
       tabs={TABS}
       tab={tab}
-      onTabChange={(v) => setTab(v as 'entity' | 'placeholders')}
+      onTabChange={(v) => setTab(v as EntityTab)}
       hasUnsavedChanges={hasUnsavedChanges}
       onSave={handleSave}
       onClose={onClose}
       onDownload={handleDownload}
       onPublish={onPublish && entity ? () => onPublish(entity) : undefined}
     >
-      {entity && tab === 'entity' ? (
+      {entity && tab === 'overview' ? (
+        <ScrollArea className="flex-1 min-h-0">
+          <div className="p-4">
+            <TagsField values={entity.tags} onChange={(tags) => handleChange('tags', tags)} />
+          </div>
+        </ScrollArea>
+      ) : entity && tab === 'entity' ? (
         <ScrollArea className="flex-1 min-h-0">
           <div className="p-4">
             <EntityFields value={entity} onChange={handleChange} placeholders={entity.placeholders ?? []} />

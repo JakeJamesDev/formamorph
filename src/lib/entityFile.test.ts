@@ -111,3 +111,42 @@ describe('embed → read → parse chain', () => {
     expect(parsed.id).not.toBe('orig-id');
   });
 });
+
+/**
+ * Listing tags on a character card.
+ *
+ * The card payload is an allowlist, not a spread — a field nobody adds to it is silently dropped on
+ * export, which is exactly how somebody loses their tags by round-tripping a character through a file.
+ */
+describe('a character card’s tags', () => {
+  it('travels with the card', () => {
+    const built = buildEntityCardData({ ...entity, tags: ['npc', 'guide'] });
+
+    expect(built.tags).toEqual(['npc', 'guide']);
+    expect(parseEntityCardData(built).tags).toEqual(['npc', 'guide']);
+  });
+
+  it('is left off entirely when there are none', () => {
+    // Absent rather than an empty array, like every other optional field on the card.
+    expect(buildEntityCardData(entity)).not.toHaveProperty('tags');
+    expect(parseEntityCardData(buildEntityCardData(entity))).not.toHaveProperty('tags');
+  });
+
+  it('stays separate from the image tags', () => {
+    // `imageTags` is a booru string for the generator; these are what the catalog filters on. Reading one
+    // as the other would tag a character with its own portrait prompt.
+    const built = buildEntityCardData({ ...entity, tags: ['npc'] });
+
+    expect(built.imageTags).toBe('woman, cloak, reeds');
+    expect(built.tags).toEqual(['npc']);
+  });
+
+  it('drops junk in the list rather than importing it', () => {
+    const parsed = parseEntityCardData({
+      formamorphKind: ENTITY_FILE_KIND, version: '2.8.0', name: 'Wren',
+      tags: ['npc', 7, '', null, '  '],
+    });
+
+    expect(parsed.tags).toEqual(['npc']);
+  });
+});

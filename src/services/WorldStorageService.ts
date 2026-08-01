@@ -569,7 +569,10 @@ class WorldStorageService {
             thumbnail: payload.thumbnail
           },
           contentData: payload.contentData,
-          kind: payload.kind
+          kind: payload.kind,
+          // Sent top-level because only a world keeps a copy inside its content, where the server looks
+          // first. A character or a book has nowhere in its own shape to hide these.
+          tags: payload.tags ?? []
         })
       });
 

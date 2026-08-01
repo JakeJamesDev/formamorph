@@ -21,6 +21,8 @@ export interface EntityCardData {
   playerDescription?: string;
   aiDescription?: string;
   aiSummary?: string;
+  /** Listing tags. Distinct from `imageTags`, which is the booru string for the image generator. */
+  tags?: string[];
   imageTags?: string;
   /** Placeholder defs used by this entity's chips, so they resolve after import (see lib/placeholders). */
   placeholders?: Placeholder[];
@@ -40,6 +42,7 @@ export function buildEntityCardData(entity: Entity, available: Placeholder[] = e
     ...(entity.playerDescription ? { playerDescription: entity.playerDescription } : {}),
     ...(entity.aiDescription ? { aiDescription: entity.aiDescription } : {}),
     ...(entity.aiSummary ? { aiSummary: entity.aiSummary } : {}),
+    ...(entity.tags?.length ? { tags: entity.tags } : {}),
     ...(entity.imageTags ? { imageTags: entity.imageTags } : {}),
     ...(used.length ? { placeholders: used } : {}),
   };
@@ -61,6 +64,9 @@ export function parseEntityCardData(raw: unknown): Entity {
   const aliases = Array.isArray(obj.aliases)
     ? (obj.aliases as unknown[]).filter((a): a is string => typeof a === 'string' && !!a.trim())
     : [];
+  const tags = Array.isArray(obj.tags)
+    ? (obj.tags as unknown[]).filter((t): t is string => typeof t === 'string' && !!t.trim())
+    : [];
   return {
     id: randomUUID(),
     name: typeof obj.name === 'string' && obj.name ? obj.name : 'Imported Character',
@@ -69,6 +75,7 @@ export function parseEntityCardData(raw: unknown): Entity {
     ...(typeof obj.playerDescription === 'string' && obj.playerDescription ? { playerDescription: obj.playerDescription } : {}),
     ...(typeof obj.aiDescription === 'string' && obj.aiDescription ? { aiDescription: obj.aiDescription } : {}),
     ...(typeof obj.aiSummary === 'string' && obj.aiSummary ? { aiSummary: obj.aiSummary } : {}),
+    ...(tags.length ? { tags } : {}),
     ...(typeof obj.imageTags === 'string' && obj.imageTags ? { imageTags: obj.imageTags } : {}),
     // Carried placeholder defs ride along; absorbed into World.placeholders when this entity is added to a world.
     ...(Array.isArray(obj.placeholders) ? { placeholders: obj.placeholders as Placeholder[] } : {}),

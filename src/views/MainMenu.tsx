@@ -154,6 +154,8 @@ const gridColsClass = (base: number, sm: number, lg: number) =>
 // Entities grid fits twice as many (`× 2`).
 const WORLD_GRID_COLS = { base: 1, sm: 2, lg: 3 };
 const ENTITY_GRID_CLASS = gridColsClass(WORLD_GRID_COLS.base * 2, WORLD_GRID_COLS.sm * 2, WORLD_GRID_COLS.lg * 2);
+/** Columns for the detailed (community-card) layout — the wide card needs the same room a world's does. */
+const DETAILED_GRID_CLASS = gridColsClass(WORLD_GRID_COLS.base, WORLD_GRID_COLS.sm, 4);
 const LAYOUT_MODE_KEY = 'FORMAMORPH_layoutMode';
 // Persisted preference to force the local world modal's single-column (portrait) layout at any width.
 const WORLD_MODAL_COLLAPSED_KEY = 'FORMAMORPH_worldModalCollapsed';
@@ -178,18 +180,30 @@ const MainMenu = ({ onStartGame, onLoadSaveGame, onReplayIntro, introActive = fa
   const { showReadme, setShowReadme } = useReadmeVisibility();
   const { promptWorldsBatch, promptImagesBatch, promptImage, dialog: downscaleDialog } = useDownscalePrompt();
   const [selectedWorld, setSelectedWorld] = useState<WorldRecord | null>(null);
-  // Local-world grid layout: "grid" (default compact cards) or "detailed" (community-browser-style card + info
-  // beneath). Persisted across sessions in localStorage.
-  const [layoutMode, setLayoutMode] = usePersistentState<'grid' | 'detailed'>(
-    LAYOUT_MODE_KEY, 'grid',
-    { parse: (r) => (r === 'detailed' ? 'detailed' : 'grid'), serialize: (v) => v },
-  );
+  // Library grid layout: "grid" (compact cards) or "detailed" (community-browser-style card + info
+  // beneath). Kept per tab and persisted: the four libraries hold different-shaped things, and wanting
+  // worlds as big cards says nothing about wanting the same of a hundred characters. Worlds keep the
+  // original key, so an existing preference carries over rather than resetting to the default.
+  const layoutCodec = { parse: (r: string) => (r === 'detailed' ? 'detailed' as const : 'grid' as const), serialize: (v: 'grid' | 'detailed') => v };
+  const [worldsLayout, setWorldsLayout] = usePersistentState<'grid' | 'detailed'>(LAYOUT_MODE_KEY, 'grid', layoutCodec);
+  const [entitiesLayout, setEntitiesLayout] = usePersistentState<'grid' | 'detailed'>(`${LAYOUT_MODE_KEY}_entities`, 'grid', layoutCodec);
+  const [dictionariesLayout, setDictionariesLayout] = usePersistentState<'grid' | 'detailed'>(`${LAYOUT_MODE_KEY}_dictionaries`, 'grid', layoutCodec);
+  const [modelsLayout, setModelsLayout] = usePersistentState<'grid' | 'detailed'>(`${LAYOUT_MODE_KEY}_models`, 'grid', layoutCodec);
   // Per-modal "collapse to single column" preference, persisted across sessions.
   const [worldModalCollapsed, setWorldModalCollapsed] = usePersistentState(
     WORLD_MODAL_COLLAPSED_KEY, false, boolCodec,
   );
   // Which content library the menu shows. Only "worlds" is populated for now; the rest swap to an empty view.
   const [cardType, setCardType] = useState<MainMenuCardTab>('worlds');
+  // The toggle drives whichever library is on screen; the other three keep theirs.
+  const layoutMode = cardType === 'entities' ? entitiesLayout
+    : cardType === 'dictionaries' ? dictionariesLayout
+    : cardType === 'models' ? modelsLayout
+    : worldsLayout;
+  const setLayoutMode = cardType === 'entities' ? setEntitiesLayout
+    : cardType === 'dictionaries' ? setDictionariesLayout
+    : cardType === 'models' ? setModelsLayout
+    : setWorldsLayout;
   const toggleWorldModalCollapsed = () => setWorldModalCollapsed((prev) => !prev);
   const [showWorldModal, setShowWorldModal] = useState(false);
   // World Editor as an in-place modal (keeps MainMenu mounted so it animates and only the world grid
@@ -1366,7 +1380,7 @@ const MainMenu = ({ onStartGame, onLoadSaveGame, onReplayIntro, introActive = fa
               </p>
             </div>
           ) : (
-            <div className={`grid ${ENTITY_GRID_CLASS} gap-4`}>
+            <div className={`grid ${layoutMode === 'detailed' ? DETAILED_GRID_CLASS : ENTITY_GRID_CLASS} gap-4`}>
               <DndContext
                 sensors={worldSensors}
                 collisionDetection={closestCenter}
@@ -1378,8 +1392,8 @@ const MainMenu = ({ onStartGame, onLoadSaveGame, onReplayIntro, introActive = fa
                   {entities.map((entity) => (
                     <SortableWorldCard
                       key={entity.id}
-                      world={{ id: entity.id, name: entity.name, thumbnail: entity.image }}
-                      layout="grid"
+                      world={{ id: entity.id, name: entity.name, description: entity.description, thumbnail: entity.image, tags: entity.tags }}
+                      layout={layoutMode}
                       aspect="portrait"
                       onSelect={setEditingEntityId}
                       onDelete={setEntityToDelete}
@@ -1399,7 +1413,7 @@ const MainMenu = ({ onStartGame, onLoadSaveGame, onReplayIntro, introActive = fa
               </p>
             </div>
           ) : (
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+            <div className={`grid ${layoutMode === 'detailed' ? DETAILED_GRID_CLASS : gridColsClass(WORLD_GRID_COLS.base, WORLD_GRID_COLS.sm, WORLD_GRID_COLS.lg)} gap-4`}>
               <DndContext
                 sensors={worldSensors}
                 collisionDetection={closestCenter}
@@ -1412,7 +1426,7 @@ const MainMenu = ({ onStartGame, onLoadSaveGame, onReplayIntro, introActive = fa
                     <SortableWorldCard
                       key={dictionary.id}
                       world={dictionary}
-                      layout="grid"
+                      layout={layoutMode}
                       onSelect={setEditingDictionaryId}
                       onDelete={setDictionaryToDelete}
                     />

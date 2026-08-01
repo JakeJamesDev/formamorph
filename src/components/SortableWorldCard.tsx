@@ -2,6 +2,7 @@ import React from "react";
 import { useSortable } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 import { Trash2 } from "lucide-react";
+import { cn } from "@/lib/utils";
 import { CardTags, type WorldRecord } from "@/components/WorldDetails";
 import { WorldCardShell } from "@/components/WorldCardShell";
 
@@ -46,9 +47,23 @@ function SortableWorldCard({ world, onSelect, onDelete, layout, aspect = 'landsc
         onClick={() => onSelect?.(world.id)}
         name={world.name}
         description={world.description}
-        author={`By ${world.author || "Unknown"}`}
+        // Omitted rather than "By Unknown" when there is none: a character or a book in your own library
+        // has no byline to print, and the shell drops the line entirely when it gets nothing.
+        author={world.author ? `By ${world.author}` : undefined}
         thumbnail={world.thumbnail
-          ? <img src={world.thumbnail} alt={world.name} className="w-full h-full object-cover select-none pointer-events-none" />
+          ? (
+            <img
+              src={world.thumbnail}
+              alt={world.name}
+              // Character art is almost always a portrait, and this frame is landscape — anchored to the
+              // top so the crop takes the face rather than the middle of the torso. Same rule the
+              // community browser's cards use.
+              className={cn(
+                'w-full h-full object-cover select-none pointer-events-none',
+                aspect === 'portrait' && 'object-top',
+              )}
+            />
+          )
           : undefined}
         cornerAction={(
           <button
@@ -87,7 +102,12 @@ function SortableWorldCard({ world, onSelect, onDelete, layout, aspect = 'landsc
         <img
           src={world.thumbnail}
           alt={world.name}
-          className={`w-full ${aspect === 'portrait' ? 'aspect-[2/3]' : 'h-48'} object-cover select-none pointer-events-none`}
+          // Top-anchored for character art, as in the detailed card and the community browser: even a 2:3
+          // frame crops a portrait, and the face is the part worth keeping.
+          className={cn(
+            'w-full object-cover select-none pointer-events-none',
+            aspect === 'portrait' ? 'aspect-[2/3] object-top' : 'h-48',
+          )}
         />
       ) : (
         <div className={`w-full ${aspect === 'portrait' ? 'aspect-[2/3]' : 'h-48'} bg-muted`} />

@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { UnreadDot } from "@/components/UnreadDot";
 import { UnreadEdge } from "@/components/UnreadEdge";
+import { RoleBadge } from "@/components/RoleBadge";
 import {
   FEEDBACK_CATEGORY_LABELS, FEEDBACK_STATUS_STYLES, formatFeedbackDate,
 } from "@/lib/feedbackPresentation";
@@ -168,7 +169,14 @@ export function FeedbackList({
                     </p>
                     <p className="text-xs text-muted-foreground truncate">
                       {FEEDBACK_CATEGORY_LABELS[thread.category]}
-                      {scope === 'all' && ` · ${thread.reporter.username || 'Unknown'}`}
+                      {scope === 'all' && (
+                        <>
+                          {' · '}{thread.reporter.username || 'Unknown'}
+                          {/* The badge alone, not `UserName`: the whole row is already a button that opens
+                              the thread, and a name-button inside it would be a button within a button. */}
+                          <RoleBadge role={thread.reporter.role} className="ml-1 align-middle" />
+                        </>
+                      )}
                       {' · '}{formatFeedbackDate(thread.createdAt)}
                     </p>
                   </div>
