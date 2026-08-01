@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { worldPublishPayload, entityPublishPayload, dictionaryPublishPayload } from './publishPayload';
+import { worldPublishPayload, entityPublishPayload, dictionaryPublishPayload, publishTags } from './publishPayload';
 import type { World, Entity, Dictionary, Placeholder } from '@/types';
 import { encodePlaceholderToken } from './placeholders';
 
@@ -117,12 +117,75 @@ describe('dictionaryPublishPayload', () => {
     expect(payload.description).toBe('Lore of the {First Age|Long Thaw}');
   });
 
-  it('never sends a thumbnail — a dictionary has no art', () => {
+  it('sends no thumbnail when the book has no cover', () => {
     expect(dictionaryPublishPayload(book()).thumbnail).toBeUndefined();
+  });
+
+  it('sends the cover when it has one', () => {
+    expect(dictionaryPublishPayload(book({ thumbnail: 'data:image/webp;base64,AAAA' })).thumbnail)
+      .toBe('data:image/webp;base64,AAAA');
   });
 
   it('publishes the book itself as the content', () => {
     const b = book();
     expect(dictionaryPublishPayload(b).contentData).toBe(b);
+  });
+});
+
+/**
+ * Tags on a listing, whatever kind it is.
+ *
+ * A world keeps them inside `worldOverview`, where the server already looks. A character and a book have
+ * nowhere in their own shape to put them, so the payload carries them itself — and `publishTags` reads
+ * that rather than digging through the content.
+ */
+describe('the tags a listing publishes with', () => {
+  it('carries a world’s', () => {
+    const payload = worldPublishPayload(world({ tags: ['gothic', 'marsh'] }));
+
+    expect(payload.tags).toEqual(['gothic', 'marsh']);
+    expect(publishTags(payload)).toEqual(['gothic', 'marsh']);
+  });
+
+  it('carries a character’s', () => {
+    const payload = entityPublishPayload(entity({ tags: ['npc', 'guide'] }));
+
+    expect(payload.tags).toEqual(['npc', 'guide']);
+    expect(publishTags(payload)).toEqual(['npc', 'guide']);
+  });
+
+  it('carries a book’s', () => {
+    const payload = dictionaryPublishPayload(book({ tags: ['lore'] }));
+
+    expect(payload.tags).toEqual(['lore']);
+    expect(publishTags(payload)).toEqual(['lore']);
+  });
+
+  it('is empty for anything untagged', () => {
+    expect(publishTags(entityPublishPayload(entity()))).toEqual([]);
+    expect(publishTags(dictionaryPublishPayload(book()))).toEqual([]);
+  });
+
+  it('never confuses a character’s image tags for listing tags', () => {
+    // `imageTags` is a comma-separated booru string for the image generator; these are what the catalog
+    // filters on. Publishing one as the other would tag every character with its own portrait's prompt.
+    const payload = entityPublishPayload(entity({ imageTags: 'woman, cloak, reeds' }));
+
+    expect(publishTags(payload)).toEqual([]);
+  });
+
+  it('still finds a world’s tags in the content when the payload omits them', () => {
+    // A payload built by older code has no `tags` of its own; the world keeps a copy where the server
+    // has always read it, so it must not come back untagged.
+    const payload = worldPublishPayload(world({ tags: ['gothic'] }));
+    delete payload.tags;
+
+    expect(publishTags(payload)).toEqual(['gothic']);
+  });
+
+  it('drops anything in the list that is not a string', () => {
+    const payload = entityPublishPayload(entity({ tags: ['npc', 7, null] as unknown as string[] }));
+
+    expect(publishTags(payload)).toEqual(['npc']);
   });
 });

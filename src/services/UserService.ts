@@ -63,7 +63,18 @@ class UserService {
       throw new Error(body?.error || 'Failed to load this profile');
     }
 
-    return body.data as PublicProfile;
+    const profile = body.data as PublicProfile;
+
+    // The three counts are read straight onto the screen, so they are coerced here rather than defaulted
+    // at each of the two places that draw them. A server that predates them sends none — the client can
+    // reach people before the server it talks to is updated — and a missing number would render as an
+    // icon beside nothing.
+    return {
+      ...profile,
+      followers: Number(profile.followers) || 0,
+      likes: Number(profile.likes) || 0,
+      downloads: Number(profile.downloads) || 0,
+    };
   }
 
   /**

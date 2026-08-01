@@ -410,3 +410,39 @@ describe('the reply count', () => {
     expect(await screen.findByLabelText('3 replies')).toBeTruthy();
   });
 });
+
+/**
+ * The badge beside the name on a report.
+ *
+ * The list carried the reporter's name as plain text, so a mod's report read exactly like anybody's —
+ * while every reply inside the thread was badged. Same person, two answers.
+ */
+describe('the reporter’s badge', () => {
+  it('shows on a staff member’s report', async () => {
+    stubList([report({ reporter: { id: 'u9', username: 'wren_hallow', role: 'mod' } })]);
+
+    render(<FeedbackList type="bug" active scope="all" onOpen={() => {}} />);
+
+    expect(await screen.findByText('Mod')).toBeTruthy();
+  });
+
+  it('shows none for an ordinary account', async () => {
+    stubList([report({ reporter: { id: 'u9', username: 'wren_hallow', role: null } })]);
+
+    render(<FeedbackList type="bug" active scope="all" onOpen={() => {}} />);
+    await screen.findByText(/wren_hallow/);
+
+    expect(screen.queryByText(/^(Mod|Dev|Admin)$/)).toBeNull();
+  });
+
+  it('is a plain badge, not a second button inside the row', async () => {
+    // The whole row is a button that opens the thread; a name-button within it would be invalid markup
+    // and would swallow the click that opens the thread.
+    stubList([report({ reporter: { id: 'u9', username: 'wren_hallow', role: 'admin' } })]);
+
+    render(<FeedbackList type="bug" active scope="all" onOpen={() => {}} />);
+    await screen.findByText('Admin');
+
+    expect(screen.queryByRole('button', { name: /View wren_hallow/ })).toBeNull();
+  });
+});

@@ -15,7 +15,9 @@ class EntityStorageService {
     toMetadata: (record) => ({
       id: record.id,
       name: record.name,
+      description: record.data?.playerDescription,
       image: record.data?.image,
+      tags: record.data?.tags ?? [],
       createdAt: record.createdAt,
       lastAccessed: record.lastAccessed,
       // The community link travels with the metadata: the library grid never shows it, but the download flow

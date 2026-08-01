@@ -14,6 +14,10 @@ export interface DictionaryFile {
   name: string;
   description?: string;
   enabled?: boolean;
+  /** Listing tags, as the catalog filters on. */
+  tags?: string[];
+  /** Cover art, inline. Absent when the book has none, which is what keeps a text-only book text-sized. */
+  thumbnail?: string;
   entries: DictionaryEntry[];
   /** Placeholder defs used by this book's entries, so their chips resolve after import (see lib/placeholders). */
   placeholders?: Placeholder[];
@@ -29,6 +33,8 @@ export function buildDictionaryFile(book: Dictionary, available: Placeholder[] =
     name: book.name,
     ...(book.description ? { description: book.description } : {}),
     ...(book.enabled === false ? { enabled: false } : {}),
+    ...(book.tags?.length ? { tags: book.tags } : {}),
+    ...(book.thumbnail ? { thumbnail: book.thumbnail } : {}),
     entries: book.entries,
     ...(used.length ? { placeholders: used } : {}),
   };
@@ -48,11 +54,16 @@ export function parseDictionaryFile(raw: unknown): Dictionary {
     throw new Error('This file is not a dictionary. Import worlds from the main menu.');
   }
   const entries = Array.isArray(obj.entries) ? (obj.entries as DictionaryEntry[]) : [];
+  const tags = Array.isArray(obj.tags)
+    ? (obj.tags as unknown[]).filter((t): t is string => typeof t === 'string' && !!t.trim())
+    : [];
   return {
     id: randomUUID(),
     name: typeof obj.name === 'string' && obj.name ? obj.name : 'Imported Dictionary',
     ...(typeof obj.description === 'string' && obj.description ? { description: obj.description } : {}),
     ...(obj.enabled === false ? { enabled: false } : {}),
+    ...(tags.length ? { tags } : {}),
+    ...(typeof obj.thumbnail === 'string' && obj.thumbnail ? { thumbnail: obj.thumbnail } : {}),
     entries: entries.map((e) => migrateEntryKeys({ ...e, id: randomUUID() })),
     // Carried placeholder defs ride along; absorbed into World.placeholders when this book is added to a world.
     ...(Array.isArray(obj.placeholders) ? { placeholders: obj.placeholders as Placeholder[] } : {}),

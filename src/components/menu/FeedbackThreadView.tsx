@@ -300,7 +300,7 @@ export function FeedbackThreadView({
         </div>
         <p className="text-xs text-muted-foreground">
           {FEEDBACK_CATEGORY_LABELS[thread.category]} ·{' '}
-          <UserName userId={thread.reporter.id} username={thread.reporter.username} /> ·{' '}
+          <UserName userId={thread.reporter.id} username={thread.reporter.username} role={thread.reporter.role} /> ·{' '}
           {formatFeedbackDate(thread.createdAt)}
           {/* Said plainly: somebody may already have read the earlier wording. */}
           {thread.editedAt && <span className="italic"> · edited</span>}

@@ -93,3 +93,36 @@ describe('parseDictionaryImport', () => {
     expect(() => parseDictionaryImport({ foo: 'bar' })).toThrow(/Unrecognized/);
   });
 });
+
+/**
+ * A book's listing tags and cover.
+ *
+ * Same allowlist hazard as the character card: a field the build/parse pair does not name is dropped on
+ * the way through a file, without anything saying so.
+ */
+describe('a dictionary’s tags and cover', () => {
+  it('carries both through a round trip', () => {
+    const book = { id: 'd1', name: 'Fen Cant', entries: [], tags: ['lore', 'marsh'], thumbnail: 'data:image/webp;base64,AAAA' };
+
+    const parsed = parseDictionaryFile(buildDictionaryFile(book));
+
+    expect(parsed.tags).toEqual(['lore', 'marsh']);
+    expect(parsed.thumbnail).toBe('data:image/webp;base64,AAAA');
+  });
+
+  it('leaves both off a book that has neither', () => {
+    const file = buildDictionaryFile({ id: 'd1', name: 'Plain', entries: [] });
+
+    expect(file).not.toHaveProperty('tags');
+    expect(file).not.toHaveProperty('thumbnail');
+  });
+
+  it('drops junk in the tag list', () => {
+    const parsed = parseDictionaryFile({
+      formamorphKind: DICTIONARY_FILE_KIND, version: '2.8.0', name: 'Fen Cant', entries: [],
+      tags: ['lore', 3, '  ', null],
+    });
+
+    expect(parsed.tags).toEqual(['lore']);
+  });
+});

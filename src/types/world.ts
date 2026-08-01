@@ -112,6 +112,13 @@ export interface Entity {
   /** Short description sent to the AI where the full one is too long. */
   aiSummary?: string;
   image?: Base64Data;
+  /**
+   * Listing tags, the same kind a world carries — how somebody browsing Community Creations finds this.
+   *
+   * Not to be confused with `imageTags` below, which is a comma-separated booru string for the image
+   * generator. These are semantic and player-facing; those describe a picture.
+   */
+  tags?: string[];
   /** Booru tags used for AI image generation; editor-only, not sent to the narrative AI. */
   imageTags?: string;
   sound?: MediaAsset;
@@ -233,6 +240,10 @@ export interface Dictionary {
   description?: string;
   /** `false` mutes the whole book (all entries); absent/`true` = active. */
   enabled?: boolean;
+  /** Listing tags, the same kind a world carries — how somebody browsing Community Creations finds this. */
+  tags?: string[];
+  /** Cover art for the listing. Decorative only; a book with none publishes with the server's stand-in. */
+  thumbnail?: Base64Data | null;
   entries: DictionaryEntry[];
   /** Placeholder defs this standalone/library book carries so its entries' `{{ph…}}` chips resolve after
    *  import (see lib/placeholders). Off-world only; absorbed into `World.placeholders` on import to a world. */
@@ -324,16 +335,26 @@ export interface WorldMetadata extends CommunityLink {
 export interface DictionaryMetadata extends CommunityLink {
   id: string;
   name: string;
+  /** The book's note, shown on the detailed library card. */
+  description?: string;
+  /** Cover art for the library card. Absent for a book that has none, which draws the empty tile. */
+  thumbnail?: Base64Data;
   entryCount?: number;
   createdAt?: string;
   lastAccessed?: string;
+  /** Listing tags, shown on the library card the way a world's are. */
+  tags?: string[];
 }
 
 /** Lightweight preview record used by the main-menu character-library grid; `image` is the card portrait. */
 export interface EntityMetadata extends CommunityLink {
   id: string;
   name: string;
+  /** The player-facing blurb, shown on the detailed library card — the same one a listing publishes. */
+  description?: string;
   image?: Base64Data;
   createdAt?: string;
   lastAccessed?: string;
+  /** Listing tags, shown on the library card the way a world's are. */
+  tags?: string[];
 }

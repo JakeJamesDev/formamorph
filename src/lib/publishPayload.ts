@@ -16,6 +16,11 @@ export interface PublishPayload {
   thumbnail?: string;
   /** The item itself, stored verbatim and handed back on download. */
   contentData: unknown;
+  /**
+   * Listing tags. Sent alongside the content rather than dug out of it, because only a world keeps them
+   * somewhere the server already knows to look.
+   */
+  tags?: string[];
 }
 
 /**
@@ -36,6 +41,7 @@ export function worldPublishPayload(world: World): PublishPayload {
     description: describePlaceholders(overview.description || '', world.placeholders),
     thumbnail: overview.thumbnail || undefined,
     contentData: { ...world, worldOverview: { ...overview, tags: overview.tags ?? [] } },
+    tags: overview.tags ?? [],
   };
 }
 
@@ -54,6 +60,7 @@ export function entityPublishPayload(entity: Entity): PublishPayload {
     description: describePlaceholders(entity.playerDescription || entity.aiSummary || '', entity.placeholders),
     thumbnail: entity.image || undefined, // optional; the server supplies stand-in art
     contentData: entity,
+    tags: entity.tags ?? [],
   };
 }
 
@@ -64,22 +71,25 @@ export function dictionaryPublishPayload(book: Dictionary): PublishPayload {
     kind: 'dictionary',
     name: book.name || 'Untitled Dictionary',
     description: describePlaceholders(book.description || '', book.placeholders),
+    thumbnail: book.thumbnail || undefined, // optional; the server supplies stand-in art
     contentData: book,
+    tags: book.tags ?? [],
   };
 }
 
 /**
  * The tags a listing will publish with.
  *
- * Only worlds carry any: the server reads a listing's tags from `contentData.worldOverview.tags`, and
- * characters and dictionaries have no equivalent field, so they always publish untagged.
+ * Read off the payload's own `tags` rather than out of its content: every kind carries them now, and only
+ * a world keeps a copy inside `worldOverview` where the server already looks. The content is still the
+ * fallback so a payload built by older code is not silently untagged.
  *
  * @param payload - A ready publish payload
- * @returns Its tags, or an empty array for a kind that has none
+ * @returns Its tags, or an empty array for one that has none
  */
 export function publishTags(payload: PublishPayload): string[] {
-  if (payload.kind !== 'world') return [];
-
   const overview = (payload.contentData as { worldOverview?: { tags?: unknown } })?.worldOverview;
-  return Array.isArray(overview?.tags) ? overview.tags.filter((tag): tag is string => typeof tag === 'string') : [];
+  const tags = payload.tags ?? overview?.tags;
+
+  return Array.isArray(tags) ? tags.filter((tag): tag is string => typeof tag === 'string') : [];
 }

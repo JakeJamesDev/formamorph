@@ -95,6 +95,31 @@ describe('DictionaryStorageService', () => {
     expect(stored?.lastAccessed).not.toBe('2020-01-01T00:00:00.000Z');
   });
 
+  it('exposes the cover and tags the library card draws', async () => {
+    // The card renders from the metadata alone, so a field left out of the projection is a book that
+    // shows a blank tile no matter what cover it carries.
+    await DictionaryStorageService.storeDictionary({
+      id: 'd2',
+      name: 'Fen Cant',
+      data: { id: 'd2', name: 'Fen Cant', entries: [], description: 'Marsh terms.', tags: ['lore'], thumbnail: 'data:image/webp;base64,AAAA' },
+    });
+
+    const meta = (await DictionaryStorageService.getDictionaryMetadata()).find((m) => m.id === 'd2');
+    expect(meta).toMatchObject({
+      thumbnail: 'data:image/webp;base64,AAAA',
+      tags: ['lore'],
+      description: 'Marsh terms.',
+    });
+  });
+
+  it('leaves the cover off a book without one, so the card draws its empty tile', async () => {
+    await DictionaryStorageService.storeDictionary(record('d3'));
+
+    const meta = (await DictionaryStorageService.getDictionaryMetadata()).find((m) => m.id === 'd3');
+    expect(meta?.thumbnail).toBeUndefined();
+    expect(meta?.tags).toEqual([]);
+  });
+
   it('exposes the community link on the metadata the download flow reads', async () => {
     // Not just stored — readable via the getter. Without these, getDownloadState sees no held version and
     // silently never offers an update for a book you already have.
