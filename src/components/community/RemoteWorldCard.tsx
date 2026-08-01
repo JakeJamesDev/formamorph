@@ -1,4 +1,4 @@
-import { EyeOff, Download, MessageSquare, RefreshCw, CircleArrowUp, Trash2 } from "lucide-react";
+import { EyeOff, Download, MessageSquare, RefreshCw, CircleArrowUp, Trash2, ShieldAlert, ShieldCheck } from "lucide-react";
 import { Progress } from "@/components/ui/progress";
 import IndeterminateProgress from "@/components/ui/indeterminate-progress";
 import { cn } from "@/lib/utils";
@@ -7,6 +7,7 @@ import { CardTags, type WorldRecord } from "@/components/WorldDetails";
 import { WorldCardShell } from "@/components/WorldCardShell";
 import { type DownloadState } from "@/lib/downloadState";
 import { KIND_LABELS, kindOf } from "@/lib/catalogKinds";
+import { isQuarantined, quarantineDaysLeft, quarantineDeadline } from "@/lib/quarantine";
 import WorldStorageService from "@/services/WorldStorageService";
 
 interface RemoteWorldCardProps {
@@ -23,13 +24,17 @@ interface RemoteWorldCardProps {
   onHideTag: (tag: string) => void;
   onContextualDownload: (world: WorldRecord, state: DownloadState) => void;
   onDelete: (worldId: string) => void;
+  /** Opens the quarantine dialog. Admin surfaces only. */
+  onQuarantine?: (world: WorldRecord) => void;
+  /** Lifts a quarantine. Admin surfaces only. */
+  onRelease?: (world: WorldRecord) => void;
 }
 
 /** A single card in the community browser grid: thumbnail with a contextual download/hide overlay, plus title,
  *  description, author, counts, tags, and (for owners/admins) a delete control. */
 export function RemoteWorldCard({
   world, downloadState: dlState, downloadProgress, isAuthenticated, currentUser,
-  onView, onHideWorld, onHideAuthor, onHideTag, onContextualDownload, onDelete,
+  onView, onHideWorld, onHideAuthor, onHideTag, onContextualDownload, onDelete, onQuarantine, onRelease,
 }: RemoteWorldCardProps) {
   // Get the world ID (server uses _id)
   const worldId = world._id || world.id;
@@ -37,6 +42,13 @@ export function RemoteWorldCard({
   const noun = KIND_LABELS[kindOf(world)].one.toLowerCase();
   // Entity art is almost always a portrait; anchor it to the top so faces aren't cropped out by centering.
   const thumbClass = cn("w-full h-full object-cover", kindOf(world) === 'entity' && "object-top");
+
+  const isAdmin = currentUser?.accountType === 'admin';
+  // Quarantined listings only reach a card at all for their author or an admin — the server hides them
+  // from everyone else — so the badge is always addressed to somebody who can act on it.
+  const quarantined = isQuarantined(world);
+  const deadline = quarantineDeadline(world);
+  const daysLeft = quarantineDaysLeft(world);
 
   // Check if the world is owned by the current user
   const isOwnedByUser = isAuthenticated &&
@@ -135,8 +147,44 @@ export function RemoteWorldCard({
         <CardTags tags={world.tags || []} onHide={onHideTag} />
       </div>
 
-      {(isOwnedByUser || currentUser?.accountType === "admin") && (
-        <div className="mt-auto pt-1 flex justify-end">
+      {/* Only its author and the admins ever see this card, so the deadline is said plainly rather than
+          hinted at — the author has something to do about it and a date by which to do it. */}
+      {quarantined && (
+        <div className="mb-2 rounded-md border border-warning/40 bg-warning/10 px-2 py-1 text-xs">
+          <p className="flex items-center gap-1 font-medium text-warning">
+            <ShieldAlert className="h-3 w-3 shrink-0" /> Quarantined
+          </p>
+          {deadline && (
+            <p className="text-muted-foreground">
+              Deleted on {deadline}{daysLeft !== null && ` — ${daysLeft} day${daysLeft === 1 ? '' : 's'} left`}
+            </p>
+          )}
+        </div>
+      )}
+
+      {(isOwnedByUser || isAdmin) && (
+        <div className="mt-auto pt-1 flex justify-end gap-1">
+          {/* Quarantine is the gentler half of the same job as Delete, so it sits beside it. */}
+          {isAdmin && !quarantined && onQuarantine && (
+            <button
+              className="p-1 text-warning hover:text-warning/80"
+              onClick={(e) => { e.stopPropagation(); onQuarantine(world); }}
+              aria-label={`Quarantine ${world.name || noun}`}
+              title="Hide it while the author fixes it"
+            >
+              <ShieldAlert className="h-5 w-5" />
+            </button>
+          )}
+          {isAdmin && quarantined && onRelease && (
+            <button
+              className="p-1 text-success hover:text-success/80"
+              onClick={(e) => { e.stopPropagation(); onRelease(world); }}
+              aria-label={`Release ${world.name || noun}`}
+              title="Put it back in Community Creations"
+            >
+              <ShieldCheck className="h-5 w-5" />
+            </button>
+          )}
           <button
             className="p-1 text-destructive hover:text-destructive/80"
             onClick={(e) => { e.stopPropagation(); onDelete(worldId); }}

@@ -81,6 +81,7 @@ import { AdminPanelDialog } from "@/components/menu/AdminPanelDialog";
 import { type ProfileTab } from "@/components/menu/profileTabs";
 import { type AdminPanelTab } from "@/components/menu/adminPanelTabs";
 import { type PoliciesTab as PoliciesSubTab } from "@/components/menu/policiesTabs";
+import { type FeedbackTab as FeedbackSubTab } from "@/components/menu/feedbackTabs";
 import MessageService from "@/services/MessageService";
 import FeedbackService from "@/services/FeedbackService";
 import { FeedbackDialog } from "@/components/menu/FeedbackDialog";
@@ -2037,6 +2038,7 @@ const MainMenu = ({ onStartGame, onLoadSaveGame, onReplayIntro, introActive = fa
         onOpenChange={setShowAdminPanel}
         initialTab={devRoute?.modal === 'adminPanel' ? (devRoute.tab as AdminPanelTab | undefined) : undefined}
         initialPoliciesTab={devRoute?.modal === 'adminPanel' ? (devRoute.subtab as PoliciesSubTab | undefined) : undefined}
+        initialFeedbackTab={devRoute?.modal === 'adminPanel' ? (devRoute.subtab as FeedbackSubTab | undefined) : undefined}
       />
     </div>
   );

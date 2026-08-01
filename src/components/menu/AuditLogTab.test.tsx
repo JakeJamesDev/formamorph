@@ -148,6 +148,9 @@ describe('what each entry reads as', () => {
       line({ action: 'listing_deleted', target: { kind: 'world', name: null } }),
       line({ action: 'comment_deleted', target: { kind: 'comment', name: 'Sedge Landing' } }),
       line({ action: 'feedback_deleted', target: { kind: 'bug', name: 'Save button spins' } }),
+      line({ action: 'listing_quarantined', target: { kind: 'world', name: 'Sedge Landing' } }),
+      line({ action: 'quarantine_released', target: { kind: 'world', name: 'Sedge Landing' } }),
+      line({ action: 'quarantine_expired', target: { kind: 'world', name: 'Sedge Landing' } }),
     ];
 
     for (const text of lines) expect(text).not.toContain('’s ');
@@ -192,6 +195,37 @@ describe('what each entry reads as', () => {
       action: 'feedback_deleted',
       target: { kind: 'suggestion', name: 'Let me rename a save' },
     })).toBe('root-admin deleted the suggestion “Let me rename a save” by trouble');
+  });
+
+  it('reads the whole arc of a quarantine', () => {
+    expect(line({
+      action: 'listing_quarantined',
+      target: { kind: 'world', name: 'Sedge Landing' },
+    })).toBe('root-admin quarantined the world “Sedge Landing” by trouble');
+
+    expect(line({
+      action: 'quarantine_released',
+      target: { kind: 'world', name: 'Sedge Landing' },
+    })).toBe('root-admin released the world “Sedge Landing” by trouble');
+  });
+
+  it('names the author as the one who updated their quarantined listing', () => {
+    // The actor here is the author answering the notice, not an admin doing something to them.
+    expect(line({
+      action: 'quarantine_updated',
+      actor: { id: 'u1', username: 'wren_hallow', wasAdmin: false },
+      targetUser: null,
+      target: { kind: 'world', name: 'Sedge Landing' },
+    })).toBe('wren_hallow updated their quarantined world “Sedge Landing”');
+  });
+
+  it('blames nobody for an expiry, because nobody chose it', () => {
+    // The server deleted it when the clock ran out; naming an actor would invent a decision.
+    expect(line({
+      action: 'quarantine_expired',
+      actor: { id: null, username: null, wasAdmin: false },
+      target: { kind: 'world', name: 'Sedge Landing' },
+    })).toBe('The quarantine ran out on the world “Sedge Landing” by trouble, and it was deleted');
   });
 
   it('reads a reset of everyone as one event, not one per account', () => {

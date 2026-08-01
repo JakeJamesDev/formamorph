@@ -11,11 +11,12 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { ManageUsersTab } from "@/components/menu/ManageUsersTab";
 import { BroadcastsTab } from "@/components/menu/BroadcastsTab";
 import { PoliciesTab } from "@/components/menu/PoliciesTab";
-import { FeedbackQueueTab } from "@/components/menu/FeedbackQueueTab";
+import { FeedbackTab } from "@/components/menu/FeedbackTab";
 import { AuditLogTab } from "@/components/menu/AuditLogTab";
 import { useResetOnOpen } from "@/lib/useResetOnOpen";
 import { type AdminPanelTab } from "@/components/menu/adminPanelTabs";
 import { type PoliciesTab as PoliciesSubTab } from "@/components/menu/policiesTabs";
+import { type FeedbackTab as FeedbackSubTab } from "@/components/menu/feedbackTabs";
 
 interface AdminPanelDialogProps {
   open: boolean;
@@ -24,11 +25,15 @@ interface AdminPanelDialogProps {
   initialTab?: AdminPanelTab;
   /** Policies sub-tab to open on, when `initialTab` is `policies`. */
   initialPoliciesTab?: PoliciesSubTab;
+  /** Feedback sub-tab to open on, when `initialTab` is `feedback`. */
+  initialFeedbackTab?: FeedbackSubTab;
 }
 
 /** Admin tools behind one dialog: accounts, broadcasts, the publish policies, both feedback queues, and
  *  the record of what was done. */
-export function AdminPanelDialog({ open, onOpenChange, initialTab = 'users', initialPoliciesTab }: AdminPanelDialogProps) {
+export function AdminPanelDialog({
+  open, onOpenChange, initialTab = 'users', initialPoliciesTab, initialFeedbackTab,
+}: AdminPanelDialogProps) {
   const [tab, setTab] = useState<AdminPanelTab>(initialTab);
 
   useResetOnOpen(open, () => setTab(initialTab));
@@ -53,12 +58,11 @@ export function AdminPanelDialog({ open, onOpenChange, initialTab = 'users', ini
           onValueChange={(value) => setTab(value as AdminPanelTab)}
           className="w-full min-w-0 flex flex-col flex-1 min-h-0"
         >
-          <TabsList className="grid w-full grid-cols-6 flex-shrink-0">
+          <TabsList className="grid w-full grid-cols-5 flex-shrink-0">
             <TabsTrigger value="users">Users</TabsTrigger>
             <TabsTrigger value="broadcasts">Broadcasts</TabsTrigger>
             <TabsTrigger value="policies">Policies</TabsTrigger>
-            <TabsTrigger value="bugs">Bugs</TabsTrigger>
-            <TabsTrigger value="suggestions">Suggestions</TabsTrigger>
+            <TabsTrigger value="feedback">Feedback</TabsTrigger>
             <TabsTrigger value="log">Log</TabsTrigger>
           </TabsList>
 
@@ -82,15 +86,9 @@ export function AdminPanelDialog({ open, onOpenChange, initialTab = 'users', ini
             </ScrollArea>
           </TabsContent>
 
-          <TabsContent value="bugs" className="flex-1 min-h-0 data-[state=active]:flex flex-col">
+          <TabsContent value="feedback" className="flex-1 min-h-0 data-[state=active]:flex flex-col">
             <ScrollArea className="flex-1 min-h-0 px-1">
-              <FeedbackQueueTab active={open && tab === 'bugs'} type="bug" />
-            </ScrollArea>
-          </TabsContent>
-
-          <TabsContent value="suggestions" className="flex-1 min-h-0 data-[state=active]:flex flex-col">
-            <ScrollArea className="flex-1 min-h-0 px-1">
-              <FeedbackQueueTab active={open && tab === 'suggestions'} type="suggestion" />
+              <FeedbackTab active={open && tab === 'feedback'} initialTab={initialFeedbackTab} />
             </ScrollArea>
           </TabsContent>
 

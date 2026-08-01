@@ -665,7 +665,7 @@ const WorldEditor = ({ onClose, embedded = false, backButton }: {
               <CardHeader className="space-y-0 pb-2 px-2">{headerBar}</CardHeader>
               <CardContent className="flex-grow flex flex-col overflow-hidden px-2 pt-2">
                 <Tabs value={activeTab} onValueChange={setActiveTab} className="flex-grow flex flex-col min-h-0">
-                  {/* The eight tabs don't fit a phone, so the strip scrolls horizontally. */}
+                  {/* The tab strip doesn't fit a phone, so it scrolls horizontally. */}
                   <div className="overflow-x-auto flex-shrink-0">{tabsList}</div>
                   {addSearchBar}
                   {tabPanels(activeTab === "overview" ? (

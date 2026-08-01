@@ -9,6 +9,10 @@ export const AUDIT_ACTION_LABELS: Record<AuditAction, string> = {
   listing_deleted: 'Listing deleted',
   comment_deleted: 'Comment deleted',
   feedback_deleted: 'Feedback deleted',
+  listing_quarantined: 'Quarantined',
+  quarantine_updated: 'Quarantine updated',
+  quarantine_released: 'Released',
+  quarantine_expired: 'Quarantine expired',
 };
 
 /** The tint each action carries, so a scan down the list separates removals from the rest. */
@@ -20,6 +24,11 @@ export const AUDIT_ACTION_STYLES: Record<AuditAction, string> = {
   listing_deleted: 'bg-destructive/10 text-destructive',
   comment_deleted: 'bg-destructive/10 text-destructive',
   feedback_deleted: 'bg-destructive/10 text-destructive',
+  listing_quarantined: 'bg-warning/10 text-warning',
+  // The author answering the notice — the one hopeful thing that happens inside a quarantine.
+  quarantine_updated: 'bg-info/10 text-info',
+  quarantine_released: 'bg-success/10 text-success',
+  quarantine_expired: 'bg-destructive/10 text-destructive',
 };
 
 /** The filter's options, in the order the server declares them. */
@@ -89,6 +98,22 @@ export function describeAuditEntry(entry: AuditEntry): string {
       return target
         ? `${actor} deleted ${name ? `the ${noun ?? 'thread'} “${name}”` : `a ${noun ?? 'thread'}`} by ${target}`
         : `${actor} deleted their own ${noun ?? 'thread'}${name ? ` “${name}”` : ''}`;
+    case 'listing_quarantined':
+      return target
+        ? `${actor} quarantined ${name ? `the ${noun ?? 'listing'} “${name}”` : `a ${noun ?? 'listing'}`} by ${target}`
+        : `${actor} quarantined their own ${noun ?? 'listing'}${name ? ` “${name}”` : ''}`;
+    case 'quarantine_updated':
+      // The actor here is the author, working on what they were asked to fix.
+      return `${actor} updated their quarantined ${noun ?? 'listing'}${name ? ` “${name}”` : ''}`;
+    case 'quarantine_released':
+      return target
+        ? `${actor} released ${name ? `the ${noun ?? 'listing'} “${name}”` : `a ${noun ?? 'listing'}`} by ${target}`
+        : `${actor} released their own ${noun ?? 'listing'}${name ? ` “${name}”` : ''}`;
+    // Nobody chose this in the moment, so nobody is named for it.
+    case 'quarantine_expired':
+      return target
+        ? `The quarantine ran out on ${name ? `the ${noun ?? 'listing'} “${name}”` : `a ${noun ?? 'listing'}`} by ${target}, and it was deleted`
+        : `The quarantine ran out on ${name ? `the ${noun ?? 'listing'} “${name}”` : `a ${noun ?? 'listing'}`}, and it was deleted`;
     default:
       return `${actor} did something the app does not recognize`;
   }
