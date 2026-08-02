@@ -49,7 +49,7 @@ export const DEFAULT_GEN_MIN_P = 0;
 
 // Image generation defaults. There's no shared hosted image server, so these describe a local
 // A1111/Forge instance the user runs. Neutral fallbacks keep the built exe generic.
-export const DEFAULT_IMAGE_PROVIDER = import.meta.env.VITE_DEFAULT_IMAGE_PROVIDER || 'a1111';
+export const DEFAULT_IMAGE_PROVIDER = import.meta.env.VITE_DEFAULT_IMAGE_PROVIDER || 'comfyui';
 // Blank by default: a blank endpoint falls back to the selected provider's default at call time
 // (see resolveImageEndpoint / DEFAULT_ENDPOINT_BY_PROVIDER in lib/imageGen).
 export const DEFAULT_IMAGE_ENDPOINT = import.meta.env.VITE_DEFAULT_IMAGE_ENDPOINT || '';

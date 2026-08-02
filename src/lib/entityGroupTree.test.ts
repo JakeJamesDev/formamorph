@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import {
   buildEntityTree, isDescendantGroup, flattenEntityTree, removeChildrenOf,
-  getEntityDropProjection, applyEntityDrop, duplicateEntityNode,
+  getEntityDropProjection, applyEntityDrop, duplicateEntityNode, entitiesInTreeOrder,
 } from './entityGroupTree';
 import type { Entity, EntityGroup } from '@/types';
 
@@ -122,5 +122,22 @@ describe('getEntityDropProjection / applyEntityDrop', () => {
     const groups = [group('races', null, 0), group('elves', 'races', 0)];
     const out = applyEntityDrop(groups, [], [], 'races', 'elves', 30, 24);
     expect(out.groups).toBe(groups);
+  });
+});
+
+describe('entitiesInTreeOrder', () => {
+  it('returns entities in tab order (group nesting + `order`), not raw array order', () => {
+    const groups = [group('races', null, 0), group('items', null, 1)];
+    const entities = [
+      entity('loner', null, 2),      // created first, but sorts last
+      entity('sting', 'items', 0),
+      entity('synthia', 'races', 0),
+    ];
+    expect(entitiesInTreeOrder(groups, entities).map((e) => e.id)).toEqual(['synthia', 'sting', 'loner']);
+  });
+
+  it('keeps every entity when groups are missing', () => {
+    const entities = [entity('b', 'gone', 1), entity('a', null, 0)];
+    expect(entitiesInTreeOrder([], entities).map((e) => e.id)).toEqual(['a', 'b']);
   });
 });

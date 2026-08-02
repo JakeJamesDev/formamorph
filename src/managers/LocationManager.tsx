@@ -1,5 +1,6 @@
 import { useEditingDraft } from '@/lib/useEditingDraft';
 import { useGameData } from '@/contexts/GameDataContext';
+import { entitiesInTreeOrder } from '@/lib/entityGroupTree';
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -12,7 +13,7 @@ import ImageTagsField from './ImageTagsField';
 import type { GameLocation } from '@/types';
 
 const LocationManager = ({ location }: { location: GameLocation }) => {
-  const { updateLocation, entities, placeholders } = useGameData();
+  const { updateLocation, entities, entityGroups, placeholders } = useGameData();
   const { draft: editingLocation, setField: handleChange } = useEditingDraft(location, updateLocation);
 
   if (!editingLocation) return null;
@@ -78,7 +79,7 @@ const LocationManager = ({ location }: { location: GameLocation }) => {
         <Label>Entities</Label>
         <MultiSelect
           key={editingLocation.id}
-          options={entities.map((e) => ({ label: e.name, value: e.id }))}
+          options={entitiesInTreeOrder(entityGroups, entities).map((e) => ({ label: e.name, value: e.id }))}
           defaultValue={editingLocation.entities ?? []}
           onValueChange={(v) => handleChange('entities', v)}
           placeholder="Select entities"

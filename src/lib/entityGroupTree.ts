@@ -23,6 +23,12 @@ export const isDescendantGroup = (groups: EntityGroup[], ancestorId: string, can
 /** Depth-first flatten of the tree, tagging each node with its parent and indentation depth. */
 export const flattenEntityTree = (tree: EntityTreeNode[]): FlatEntityNode[] => flattenTree(tree);
 
+/** Entities in the order the Entities tab shows them (group nesting + `order`), for pickers elsewhere. */
+export const entitiesInTreeOrder = (groups: EntityGroup[], entities: Entity[]): Entity[] =>
+  flattenEntityTree(buildEntityTree(groups, entities))
+    .map((n) => n.leaf)
+    .filter((e): e is Entity => !!e);
+
 /** Drop every node that descends from any id in `ids` (collapsed groups, the dragged subtree). */
 export const removeChildrenOf = (items: FlatEntityNode[], ids: Iterable<string>): FlatEntityNode[] =>
   removeChildrenOfGeneric(items, ids);

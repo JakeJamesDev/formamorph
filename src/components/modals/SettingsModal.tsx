@@ -1743,9 +1743,9 @@ An inspection aid for authoring and debugging; off by default.`}</HintInfo>
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="a1111">Automatic1111 / Forge (local)</SelectItem>
                     <SelectItem value="comfyui">ComfyUI (local)</SelectItem>
                     <SelectItem value="invokeai">InvokeAI (local)</SelectItem>
+                    <SelectItem value="a1111">Automatic1111 / Forge (local)</SelectItem>
                     <SelectItem value="openai" disabled={!desktop}>
                       OpenAI-compatible (cloud){desktop ? '' : ' — desktop app only'}
                     </SelectItem>
