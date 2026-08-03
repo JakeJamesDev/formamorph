@@ -23,6 +23,9 @@ interface SentMessageListProps {
   refreshNonce?: number;
   /** Shown in place of the list when nothing matches. */
   emptyLabel?: string;
+  /** Whether the surface holding this list is on screen; it only fetches while it is. Defaults to on, so
+   *  a caller that is only ever mounted when visible needs no flag. */
+  active?: boolean;
 }
 
 /** Read-state summary for one sent message: one recipient's receipt, or a broadcast's tally. */
@@ -49,7 +52,7 @@ function Receipt({ message }: { message: SentMessage }) {
  * Paged list of sent messages with read receipts and recall. Shared by the Users tab's per-user history
  * and the Broadcasts tab, which differ only by which half of the history they ask for.
  */
-export function SentMessageList({ audience, userId, refreshNonce = 0, emptyLabel = 'Nothing sent yet.', onEdit }: SentMessageListProps) {
+export function SentMessageList({ audience, userId, refreshNonce = 0, emptyLabel = 'Nothing sent yet.', onEdit, active = true }: SentMessageListProps) {
   const [messages, setMessages] = useState<SentMessage[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [page, setPage] = useState(1);
@@ -66,6 +69,7 @@ export function SentMessageList({ audience, userId, refreshNonce = 0, emptyLabel
   const isRefreshing = isLoading && messages.length > 0;
 
   const load = useCallback(async () => {
+    if (!active) return;
     setIsLoading(true);
 
     try {
@@ -78,7 +82,7 @@ export function SentMessageList({ audience, userId, refreshNonce = 0, emptyLabel
     } finally {
       setIsLoading(false);
     }
-  }, [page, userId, audience]);
+  }, [page, userId, audience, active]);
 
   useEffect(() => { load(); }, [load, refreshNonce]);
 

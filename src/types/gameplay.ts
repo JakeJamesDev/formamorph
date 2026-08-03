@@ -158,6 +158,10 @@ export interface GameState {
   gameStates?: GameState[];
 }
 
+/** Which picture the player would rather open an entity on, keyed by entity id. Only meaningful for an
+ *  entity carrying both an image and a 3D model; no entry means the image, as it always has. */
+export type EntityVisualPreference = Record<string, 'model' | 'image'>;
+
 /** Versioned save-file envelope persisted to IndexedDB (version 2). */
 export interface SaveObject {
   currentState: GameState;
@@ -182,6 +186,11 @@ export interface SaveObject {
    *  digest in long-term memory, 'drop' force-removes it. Absent (or empty) on older saves ⇒ no pins;
    *  the AI selection itself is derived state and is never persisted. */
   memoryPins?: Record<string, 'keep' | 'drop'>;
+  /** Which of an entity's two pictures the player would rather look at, keyed by entity id. Only set for
+   *  entities carrying both an image and a 3D model, and only where the player asked; an entity with no
+   *  entry falls back to the image. A viewing preference rather than story state, so it sits on the
+   *  envelope beside the memory maps and does not rewind with an undo. */
+  entityVisualPreference?: EntityVisualPreference;
   /** v2.x incremental milestone memory: the selector's accumulated verdicts — which candidate turn
    *  ids it has judged (`seen`) and which of those it kept (`selected`; null = a legacy malformed
    *  full-vote, treated as keep-everything-seen). Absent on older saves ⇒ the loaded history is

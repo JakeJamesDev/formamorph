@@ -34,6 +34,7 @@ import type {
   Dictionary,
   PlaceholderRolls,
   SceneEntity,
+  EntityVisualPreference,
 } from '@/types';
 
 /** Normalize a snapshot's `visibleEntities`: legacy saves stored a bare `string[]` of names; those become
@@ -83,6 +84,10 @@ function useProvideGameplay() {
   // Milestone-memory player pins, keyed by turn id ('keep' resurrects a dropped digest, 'drop' removes a
   // kept one). Persisted in the save envelope.
   const [memoryPins, setMemoryPins] = useState<MemoryPinMap>({});
+  // Which of an entity's two pictures the player would rather open on, keyed by entity id. A viewing
+  // preference, not story state, so it lives here rather than in the per-turn snapshot and an undo leaves
+  // it alone. Persisted in the save envelope.
+  const [entityVisualPreference, setEntityVisualPreference] = useState<EntityVisualPreference>({});
   // The accumulated milestone verdicts (T4: incremental, sticky): which candidate turn ids the
   // selector has judged and which it kept (`selected` null = a legacy malformed full-vote → keep
   // everything). Persisted in the save envelope so verdicts survive load.
@@ -285,6 +290,7 @@ function useProvideGameplay() {
         dictionaries: runtimeDictionaries, // the player's per-playthrough dictionary set, restored on load
         ...(placeholderRolls.world || placeholderRolls.unique ? { placeholderRolls } : {}),
         ...(Object.keys(memoryPins).length ? { memoryPins } : {}),
+        ...(Object.keys(entityVisualPreference).length ? { entityVisualPreference } : {}),
         ...(milestoneSelection ? { milestoneSelection } : {}),
         ...(Object.keys(memoryEdits).length ? { memoryEdits } : {}),
         ...(memoryDeleted.length ? { memoryDeleted } : {}),
@@ -308,7 +314,7 @@ function useProvideGameplay() {
       }
       return false;
     }
-  }, [saveCurrentGameState, gameStates, runtimeDictionaries, placeholderRolls, memoryPins, milestoneSelection, memoryEdits, memoryDeleted, memoryNotes, sceneImages, addSystemLogEntry]);
+  }, [saveCurrentGameState, gameStates, runtimeDictionaries, placeholderRolls, memoryPins, entityVisualPreference, milestoneSelection, memoryEdits, memoryDeleted, memoryNotes, sceneImages, addSystemLogEntry]);
 
   // Autosave has failed at least once this session — used to toast only once, re-armed on a later success.
   const autosaveFailedRef = useRef(false);
@@ -361,6 +367,8 @@ function useProvideGameplay() {
           if (Array.isArray(migrated.dictionaries)) setRuntimeDictionaries(migrated.dictionaries);
           setPlaceholderRolls(migrated.placeholderRolls ?? {});
           setMemoryPins(migrated.memoryPins ?? {});
+          // Absent on saves written before the preference existed ⇒ every entity opens on its image.
+          setEntityVisualPreference(migrated.entityVisualPreference ?? {});
           // Restore accumulated verdicts (T4: sticky, never re-voted); older saves lack the field —
           // the loaded history is then judged fresh in one incremental batch on the next idle tick.
           setMilestoneSelection(migrated.milestoneSelection ?? null);
@@ -577,6 +585,8 @@ function useProvideGameplay() {
     setSceneImages,
     memoryPins,
     setMemoryPins,
+    entityVisualPreference,
+    setEntityVisualPreference,
     milestoneSelection,
     setMilestoneSelection,
     memoryEdits,

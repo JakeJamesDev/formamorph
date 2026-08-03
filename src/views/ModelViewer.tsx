@@ -4,14 +4,19 @@ import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
 import { FBXLoader } from 'three/examples/jsm/loaders/FBXLoader.js';
 import { OBJLoader } from 'three/examples/jsm/loaders/OBJLoader.js';
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
+import { cn } from '@/lib/utils';
 import type { MediaAsset } from '@/types';
 
 interface ModelViewerProps {
   model: Partial<MediaAsset>;
   modelType: string;
+  className?: string;
 }
 
-const ModelViewer = ({ model, modelType }: ModelViewerProps) => {
+/** Square fallback for the frames before layout has measured the container (and for jsdom, which reports 0). */
+const FALLBACK_SIZE = 400;
+
+const ModelViewer = ({ model, modelType, className }: ModelViewerProps) => {
   const mountRef = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
@@ -22,11 +27,29 @@ const ModelViewer = ({ model, modelType }: ModelViewerProps) => {
 
     const camera = new THREE.PerspectiveCamera(75, 1, 0.1, 1000);
     const renderer = new THREE.WebGLRenderer({ alpha: true }); // Enable transparency
-    renderer.setSize(400, 400);
     renderer.setClearColor(0x000000, 0); // Set clear color to transparent
 
     const mount = mountRef.current;
     mount?.appendChild(renderer.domElement);
+
+    // Fill whatever box the viewer is placed in — a dialog, or an entity panel's image slot — rather than a
+    // fixed square. The canvas is stretched by CSS so a resize redraws immediately, before the observer fires.
+    renderer.domElement.style.width = '100%';
+    renderer.domElement.style.height = '100%';
+    renderer.domElement.style.display = 'block';
+
+    const resize = () => {
+      const width = mount?.clientWidth || FALLBACK_SIZE;
+      const height = mount?.clientHeight || FALLBACK_SIZE;
+      renderer.setSize(width, height, false);
+      camera.aspect = width / height;
+      camera.updateProjectionMatrix();
+    };
+    resize();
+
+    // Guarded: jsdom has no ResizeObserver, and the viewer is exercised there.
+    const observer = typeof ResizeObserver === 'undefined' ? null : new ResizeObserver(resize);
+    if (mount) observer?.observe(mount);
 
     const controls = new OrbitControls(camera, renderer.domElement);
     controls.enableDamping = true;
@@ -96,12 +119,14 @@ const ModelViewer = ({ model, modelType }: ModelViewerProps) => {
       const size = box.getSize(new THREE.Vector3());
 
       const maxDim = Math.max(size.x, size.y, size.z);
-      const fov = 60;
-      const cameraZ = Math.abs(maxDim / 2 / Math.tan((fov / 2) * Math.PI / 180));
+      const cameraZ = Math.abs(maxDim / 2 / Math.tan((camera.fov / 2) * Math.PI / 180));
+      // The camera's fov is vertical, so a container narrower than it is tall would crop the model's sides;
+      // pulling back by the aspect ratio in that case keeps it framed.
+      const fit = cameraZ * Math.max(1, 1 / camera.aspect);
 
-      camera.position.z = cameraZ * 1.5;
+      camera.position.z = fit * 1.5;
       const minZ = box.min.z;
-      const cameraToFarEdge = (cameraZ - minZ) * 3;
+      const cameraToFarEdge = (fit - minZ) * 3;
       camera.far = cameraToFarEdge;
       camera.updateProjectionMatrix();
 
@@ -127,6 +152,7 @@ const ModelViewer = ({ model, modelType }: ModelViewerProps) => {
 
     return () => {
       disposed = true;
+      observer?.disconnect();
       cancelAnimationFrame(animationFrameId);
       mixer?.stopAllAction();
       mixer = null;
@@ -153,7 +179,7 @@ const ModelViewer = ({ model, modelType }: ModelViewerProps) => {
     };
   }, [model, modelType]);
 
-  return <div ref={mountRef} />;
+  return <div ref={mountRef} className={cn('w-full h-full min-h-0', className)} />;
 };
 
 export default ModelViewer;

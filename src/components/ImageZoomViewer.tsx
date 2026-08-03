@@ -69,12 +69,16 @@ function ZoomControls() {
 /**
  * Full-screen pan/zoom image viewer. Wraps react-zoom-pan-pinch in our own Dialog + Button/Slider
  * chrome so it matches the app theme (the library itself is unstyled — just transforms).
+ *
+ * `footer` hangs a caller's own control under the zoom bar. Opt-in, so the viewer stays bare everywhere
+ * it shows a picture that has nothing to decide about it.
  */
-export function ImageZoomViewer({ src, alt, open, onOpenChange }: {
+export function ImageZoomViewer({ src, alt, open, onOpenChange, footer }: {
   src: string;
   alt: string;
   open: boolean;
   onOpenChange: (open: boolean) => void;
+  footer?: React.ReactNode;
 }) {
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -86,11 +90,14 @@ export function ImageZoomViewer({ src, alt, open, onOpenChange }: {
             minScale={MIN_SCALE}
             maxScale={MAX_SCALE}
             centerOnInit
-            centerZoomedOut
+            // Free panning: bounds clamp the picture to the viewport, which leaves nothing to drag at fit
+            // scale and stops you pulling a zoomed detail out to the edge to compare it against something.
+            // Double-click is the way back, so there is no way to lose the image off-screen.
+            limitToBounds={false}
             // The post-wheel bounds "settle" animation collides with subsequent wheel events at a
             // steady cadence and locks the zoom — disable it.
             autoAlignment={{ disabled: true }}
-            doubleClick={{ mode: "toggle" }}
+            doubleClick={{ mode: "reset" }}
           >
             <>
               <ZoomControls />
@@ -102,6 +109,11 @@ export function ImageZoomViewer({ src, alt, open, onOpenChange }: {
               </TransformComponent>
             </>
           </TransformWrapper>
+        )}
+        {footer && (
+          // Below the zoom bar rather than beside it: the bar is centered and sized to its own controls,
+          // and widening it would shift the zoom slider around depending on who is hosting the viewer.
+          <div className="absolute bottom-20 left-1/2 -translate-x-1/2 z-10">{footer}</div>
         )}
       </DialogContent>
     </Dialog>

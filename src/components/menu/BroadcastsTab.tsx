@@ -33,14 +33,16 @@ export function BroadcastsTab({ active }: BroadcastsTabProps) {
         </Button>
       </div>
 
-      {active && (
-        <SentMessageList
-          audience="broadcast"
-          refreshNonce={sentNonce}
-          emptyLabel="No broadcasts sent yet."
-          onEdit={setEditing}
-        />
-      )}
+      {/* Always mounted, with `active` gating the fetch instead: the Admin Panel plays a close animation,
+          and unmounting the list the moment `active` goes false empties the dialog while it is still on
+          screen. Same reason the other tabs pass `active` down rather than rendering on it. */}
+      <SentMessageList
+        active={active}
+        audience="broadcast"
+        refreshNonce={sentNonce}
+        emptyLabel="No broadcasts sent yet."
+        onEdit={setEditing}
+      />
 
       {composing && (
         <MessageComposerDialog
