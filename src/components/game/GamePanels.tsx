@@ -31,7 +31,8 @@ import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Pager } from "@/components/ui/pagination";
 import VRMViewer from '@/views/VRMViewer';
-import { ImageZoomViewer } from '@/components/ImageZoomViewer';
+import { EntityVisual, hasEntityVisual } from './EntityVisual';
+import { useEntityVisualPreference } from '@/lib/useEntityVisualPreference';
 import TtsPlaybackBar from './TtsPlaybackBar';
 import { MemoryPanel } from './MemoryPanel';
 import { SceneImagePanel } from './SceneImagePanel';
@@ -100,24 +101,25 @@ export const LeftPanel = ({ entities, onEntityClick, onRegenerateMemory }: {
     setPendingRemoval(null);
   };
   const { url: playerModelUrl, resolving: modelResolving } = usePlayerModelUrl(characterData?.playerModelId);
-  // First present entity that has an image — shown in the model section's Entities view (the portrait shows
-  // whether or not the name is revealed yet).
-  const firstEntityImage = visibleEntities
+  // First present entity with something to show — an image, or failing that a 3D model — displayed in the
+  // model section's Entities view (the portrait shows whether or not the name is revealed yet).
+  const firstShowableEntity = visibleEntities
     .map((se) => entities.find((f) =>
       f.name.toLowerCase().includes(se.name.toLowerCase()) ||
       se.name.toLowerCase().includes(f.name.toLowerCase()),
     ))
-    .find((e) => e?.image)?.image;
+    .find((e) => hasEntityVisual(e));
   const isMobile = useIsMobile();
   const [showModel, setShowModel] = React.useState(true);
-  // Landscape model viewer view: the player VRM vs. the detected-entity image view.
+  // Landscape model viewer view: the player VRM vs. the detected-entity view.
   const [modelTab, setModelTab] = React.useState("player");
-  const [entityZoomOpen, setEntityZoomOpen] = React.useState(false);
-  // Entity image picked from the list; falls back to the first detected entity's image.
-  const [selectedEntityImage, setSelectedEntityImage] = React.useState<string | undefined>(undefined);
+  // Entity picked from the list; falls back to the first detected showable entity.
+  const [selectedEntityName, setSelectedEntityName] = React.useState<string | undefined>(undefined);
   const [leftTab, setLeftTab] = React.useState(isMobile ? "model" : "notes");
 
-  const entityViewImage = selectedEntityImage ?? firstEntityImage;
+  const entityViewEntity =
+    entities.find((e) => e.name === selectedEntityName) ?? firstShowableEntity;
+  const entityViewPreference = useEntityVisualPreference(entityViewEntity?.id);
 
   // Clicking an entity swaps the in-section image when the viewer is open; otherwise it opens the
   // entity popup (collapsed, on mobile, the entity has no image, or it's already the shown entity). A
@@ -131,9 +133,9 @@ export const LeftPanel = ({ entities, onEntityClick, onRegenerateMemory }: {
     if (!match) return; // un-named (ad-hoc) participant — nothing to show
 
     const entitiesViewActive = !characterData || modelTab === "entities";
-    const alreadyShown = entitiesViewActive && !!match?.image && match.image === entityViewImage;
-    if (!isMobile && showModel && match?.image && !alreadyShown) {
-      setSelectedEntityImage(match.image);
+    const alreadyShown = entitiesViewActive && match === entityViewEntity;
+    if (!isMobile && showModel && hasEntityVisual(match) && !alreadyShown) {
+      setSelectedEntityName(match.name);
       setModelTab("entities");
     } else if (se.revealed) {
       onEntityClick(match.name);
@@ -221,21 +223,14 @@ export const LeftPanel = ({ entities, onEntityClick, onRegenerateMemory }: {
             // No model ⇒ always the Entities view (there's no Player to swap to).
             characterData && modelTab === "player"
               ? modelViewer
-              : entityViewImage && (
+              : entityViewEntity && (
                   <div className="w-full relative" style={{ paddingTop: '120%' }}>
                     <div className="absolute top-0 left-0 w-full h-full flex items-center justify-center">
-                      <img
-                        src={entityViewImage}
-                        alt=""
-                        className="max-w-full max-h-full object-contain cursor-zoom-in"
-                        title="Click to enlarge"
-                        onClick={() => setEntityZoomOpen(true)}
-                      />
-                      <ImageZoomViewer
-                        src={entityViewImage}
-                        alt=""
-                        open={entityZoomOpen}
-                        onOpenChange={setEntityZoomOpen}
+                      <EntityVisual
+                        key={entityViewEntity.id}
+                        entity={entityViewEntity}
+                        preference={entityViewPreference.preference}
+                        onPreferenceChange={entityViewPreference.onPreferenceChange}
                       />
                     </div>
                   </div>

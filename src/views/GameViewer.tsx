@@ -421,6 +421,7 @@ const GameViewer = ({
     setPlaceholderRolls,
     memoryPins,
     setMemoryPins,
+    setEntityVisualPreference,
     milestoneSelection,
     setMilestoneSelection,
     memoryEdits,
@@ -3632,6 +3633,7 @@ ${playerNotes || NONE_PLACEHOLDER}
 
       // Fresh playthrough: no memory pins, selection or player overrides yet. loadGame overrides.
       setMemoryPins({});
+      setEntityVisualPreference({});
       setMilestoneSelection(null);
       setMemoryEdits({});
       setMemoryDeleted([]);
@@ -3669,6 +3671,7 @@ ${playerNotes || NONE_PLACEHOLDER}
     setDiscoveredEntities,
     setPlayerInput,
     setMemoryPins,
+    setEntityVisualPreference,
     setMilestoneSelection,
     setMemoryEdits,
     setMemoryDeleted,

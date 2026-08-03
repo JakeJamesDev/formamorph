@@ -1,12 +1,9 @@
-import { useState } from "react";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { Button } from "@/components/ui/button";
-import { ImageZoomViewer } from "@/components/ImageZoomViewer";
-import { resolveModelType } from '../../lib/UtilityComponents';
-import ModelViewer from '../../views/ModelViewer';
+import { EntityVisual, hasEntityVisual } from '../game/EntityVisual';
 import AudioPlayer from '../game/AudioPlayer';
 import { usePlaceholderResolver } from "@/lib/usePlaceholderResolver";
+import { useEntityVisualPreference } from "@/lib/useEntityVisualPreference";
 import type { Entity } from "@/types";
 
 export const EntityModal = ({ entity, isOpen, onOpenChange }: {
@@ -14,9 +11,8 @@ export const EntityModal = ({ entity, isOpen, onOpenChange }: {
   isOpen: boolean;
   onOpenChange: (open: boolean) => void;
 }) => {
-  // Shared pan/zoom viewer for the entity image (same as world thumbnails).
-  const [zoomOpen, setZoomOpen] = useState(false);
   const resolvePH = usePlaceholderResolver();
+  const { preference, onPreferenceChange } = useEntityVisualPreference(entity?.id);
 
   if (!entity) return null;
 
@@ -27,21 +23,13 @@ export const EntityModal = ({ entity, isOpen, onOpenChange }: {
           <DialogTitle>{entity.name}</DialogTitle>
         </DialogHeader>
         <div className="flex-grow min-h-0 flex flex-col gap-4 p-4">
-          {/* Image takes 3/4 of the body height (aspect ratio preserved); description fills the rest. */}
-          {entity.image && (
+          {/* Picture takes 3/4 of the body height (aspect ratio preserved); description fills the rest. */}
+          {hasEntityVisual(entity) && (
             <div className="flex-[3] min-h-0 flex items-center justify-center">
-              <img
-                src={entity.image}
-                alt={entity.name}
-                className="max-h-full max-w-full object-contain cursor-zoom-in"
-                title="Click to enlarge"
-                onClick={() => setZoomOpen(true)}
-              />
-              <ImageZoomViewer
-                src={entity.image}
-                alt={entity.name}
-                open={zoomOpen}
-                onOpenChange={setZoomOpen}
+              <EntityVisual
+                entity={entity}
+                preference={preference}
+                onPreferenceChange={onPreferenceChange}
               />
             </div>
           )}
@@ -57,19 +45,6 @@ export const EntityModal = ({ entity, isOpen, onOpenChange }: {
               )}
               {entity.sound && (
                 <AudioPlayer src={entity.sound.data} className="w-full" />
-              )}
-              {entity.model && (
-                <Dialog>
-                  <DialogTrigger asChild>
-                    <Button>View 3D Model</Button>
-                  </DialogTrigger>
-                  <DialogContent className="sm:max-w-[425px] max-h-[90dvh] overflow-hidden flex flex-col">
-                    <DialogHeader>
-                      <DialogTitle>3D Model Viewer</DialogTitle>
-                    </DialogHeader>
-                    <ModelViewer model={entity.model} modelType={resolveModelType(entity.model)} />
-                  </DialogContent>
-                </Dialog>
               )}
               </div>
             </div>
