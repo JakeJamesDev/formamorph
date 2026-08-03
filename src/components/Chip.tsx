@@ -44,8 +44,10 @@ export function replaceChipValue(list: string[], old: string, next: string): str
 
 /** A removable rounded-square chip. Neutral by default; pass `className` for a semantic color.
  *  Omit `onRemove` to render a non-removable chip (e.g. inside a read-only prompt editor). */
-export function Chip({ label, onRemove, className, innerRef, style, dragProps, grabbable }: {
+export function Chip({ label, removeLabel, onRemove, className, innerRef, style, dragProps, grabbable }: {
   label: string;
+  /** The value handed to `onRemove`, when the visible `label` is decorated (e.g. carries a percentage). */
+  removeLabel?: string;
   onRemove?: (label: string) => void;
   className?: string;
   innerRef?: (node: HTMLElement | null) => void;
@@ -70,9 +72,9 @@ export function Chip({ label, onRemove, className, innerRef, style, dragProps, g
         <button
           type="button"
           onPointerDown={(e) => e.stopPropagation()}
-          onClick={() => onRemove(label)}
+          onClick={() => onRemove(removeLabel ?? label)}
           className="hover:text-destructive"
-          aria-label={`Remove ${label}`}
+          aria-label={`Remove ${removeLabel ?? label}`}
         >
           <X className="h-3 w-3" />
         </button>

@@ -108,17 +108,20 @@ export function applyAiMaxChanges(
  *
  * Min is bounded below by the stat's authored floor: traits can raise it and undo each other's raises, but
  * none can take a stat below the range its author designed. Max has no such limit and moves either way.
+ *
+ * Pass `authoredMins` (statId → the world's own Min) whenever changes are applied across several calls —
+ * one per trait, or a switch-off reversing an earlier one. Without it the floor is read from the incoming
+ * stats, which by then already carry the raise being undone, so the min would never come back down.
  */
 export function applyTraitStatChanges(
   stats: PlayerStat[],
   changes: StatChange[],
+  authoredMins?: Record<string, number>,
 ): { stats: PlayerStat[]; changedIds: Set<string> } {
   const updated = stats.map((s) => ({ ...s }));
   const changedIds = new Set<string>();
   const valueAdjustments = new Map<string, number>();
-  // The floor each stat was authored with. Changes apply in sequence, so `stat.min` already carries any
-  // earlier trait's raise — this keeps the original as the hard limit no trait may dig below.
-  const authoredMin = new Map(stats.map((s) => [s.id, s.min]));
+  const authoredMin = new Map(stats.map((s) => [s.id, authoredMins?.[s.id] ?? s.min]));
 
   // First pass: bounds + regen, collecting value adjustments.
   changes.forEach((change) => {

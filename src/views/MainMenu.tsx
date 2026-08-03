@@ -54,6 +54,7 @@ import StartingLocationModal from './StartingLocationModal';
 import DictionarySelectionModal from './DictionarySelectionModal';
 import CharacterSelectionModal from './CharacterSelectionModal';
 import { startingLocations } from '@/lib/startingLocation';
+import { exclusiveSiblings } from '@/lib/traitEffects';
 import { shouldShowDictionaryStep } from '@/lib/dictionarySelection';
 import { shouldShowCharacterStep } from '@/lib/characterSelection';
 import WorldStorageService from '../services/WorldStorageService';
@@ -174,7 +175,7 @@ const applyWorldOrder = <T extends { id: string }>(list: T[], order: string[]): 
 
 const MainMenu = ({ onStartGame, onLoadSaveGame, onReplayIntro, introActive = false }: MainMenuProps) => {
   const {
-    traits, traitGroups, stats, locations, loadWorldData,
+    traits, traitGroups, stats, locations, placeholders, loadWorldData,
     dictionaries: worldBooks,
   } = useGameData();
   const { showReadme, setShowReadme } = useReadmeVisibility();
@@ -785,12 +786,15 @@ const MainMenu = ({ onStartGame, onLoadSaveGame, onReplayIntro, introActive = fa
     setDraftDictionary({ id: randomUUID(), name: 'New Dictionary', enabled: true, entries: [] });
   };
 
+  // Toggle a trait in the starting selection. Picking one from an exclusive group retires its siblings,
+  // which is what makes that group read (and behave) as a set of radio buttons.
   const handleTraitSelection = (traitId: string) => {
-    setSelectedTraits(prev =>
-      prev.includes(traitId)
-        ? prev.filter(id => id !== traitId)
-        : [...prev, traitId]
-    );
+    const trait = traits.find(t => t.id === traitId);
+    setSelectedTraits(prev => {
+      if (prev.includes(traitId)) return prev.filter(id => id !== traitId);
+      const retire = trait ? new Set(exclusiveSiblings(trait, traits, traitGroups)) : new Set<string>();
+      return [...prev.filter(id => !retire.has(id)), traitId];
+    });
   };
 
   // Start the world: the custom-character step first for 3D worlds, otherwise straight into the game. The
@@ -1960,6 +1964,7 @@ const MainMenu = ({ onStartGame, onLoadSaveGame, onReplayIntro, introActive = fa
           traits={traits}
           traitGroups={traitGroups}
           stats={stats}
+          placeholders={placeholders}
           selectedTraits={selectedTraits}
           onTraitSelect={handleTraitSelection}
           onAbort={() => {

@@ -71,6 +71,9 @@ function useProvideGameplay() {
   const [currentLocation, setCurrentLocation] = useState<GameLocation | null>(null);
   const [playerStats, setPlayerStats] = useState<PlayerStat[]>([]);
   const [playerTraits, setPlayerTraits] = useState<Trait[]>([]);
+  // Chosen traits the player has switched off mid-play. Kept as ids so `playerTraits` stays the full chosen
+  // set and a trait can go back on; snapshotted per turn, so a rewind restores the switch positions too.
+  const [disabledTraitIds, setDisabledTraitIds] = useState<string[]>([]);
   // Per-playthrough dictionary set chosen at world entry (or restored from a save). Runtime-only: the
   // authored world's books live in GameDataContext and are never mutated by gameplay.
   const [runtimeDictionaries, setRuntimeDictionaries] = useState<Dictionary[]>([]);
@@ -165,6 +168,7 @@ function useProvideGameplay() {
     return {
       playerStats,
       playerTraits,
+      ...(disabledTraitIds.length ? { disabledTraitIds } : {}),
       visibleEntities,
       discoveredEntities,
       suppressedCharacterNames,
@@ -185,7 +189,7 @@ function useProvideGameplay() {
       // Add a version flag for backward compatibility
       stateVersion: 2
     };
-  }, [playerStats, playerTraits, visibleEntities, discoveredEntities, suppressedCharacterNames, logEntries, currentLocation,
+  }, [playerStats, playerTraits, disabledTraitIds, visibleEntities, discoveredEntities, suppressedCharacterNames, logEntries, currentLocation,
       gameTime, startHour, fullMessageHistory, characterData, choices, isGameStarted, playerNotes, currentPage]);
 
   /** Restore a `GameState` into the live gameplay state, resolving `locationId` against `locations` and
@@ -196,6 +200,7 @@ function useProvideGameplay() {
       // Restore all state
       setPlayerStats(gameState.playerStats);
       setPlayerTraits(gameState.playerTraits);
+      setDisabledTraitIds(gameState.disabledTraitIds ?? []);
       setVisibleEntities(normalizeVisibleEntities(gameState.visibleEntities));
       setDiscoveredEntities(gameState.discoveredEntities ?? []);
       setSuppressedCharacterNames(gameState.suppressedCharacterNames ?? []);
@@ -470,6 +475,7 @@ function useProvideGameplay() {
   const isViewingPast = viewedSnapshot !== null;
   const viewStats = viewedSnapshot?.playerStats ?? playerStats;
   const viewTraits = viewedSnapshot?.playerTraits ?? playerTraits;
+  const viewDisabledTraitIds = viewedSnapshot ? (viewedSnapshot.disabledTraitIds ?? []) : disabledTraitIds;
   const viewCharacterData = viewedSnapshot?.characterData ?? characterData;
   const viewVisibleEntities = viewedSnapshot
     ? normalizeVisibleEntities(viewedSnapshot.visibleEntities)
@@ -561,6 +567,8 @@ function useProvideGameplay() {
     commitManualStatEdit,
     playerTraits,
     setPlayerTraits,
+    disabledTraitIds,
+    setDisabledTraitIds,
     runtimeDictionaries,
     setRuntimeDictionaries,
     placeholderRolls,
@@ -614,6 +622,7 @@ function useProvideGameplay() {
     isViewingPast,
     viewStats,
     viewTraits,
+    viewDisabledTraitIds,
     viewCharacterData,
     viewVisibleEntities,
     viewGameTime,

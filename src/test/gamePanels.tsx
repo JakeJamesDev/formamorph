@@ -327,7 +327,12 @@ export function renderRightPanel(
   overrides: Partial<RightPanelProps> = {},
   options: PanelHarnessOptions = {},
 ): PanelHarness<RightPanelProps> {
-  const defaults: RightPanelProps = { onLocationClick: vi.fn(), language: '', setLanguage: vi.fn() };
+  const defaults: RightPanelProps = {
+    onLocationClick: vi.fn(),
+    onToggleTrait: vi.fn(),
+    language: '',
+    setLanguage: vi.fn(),
+  };
   return renderPanel(defaults, overrides, options, (props) => <RightPanel {...props} />);
 }
 

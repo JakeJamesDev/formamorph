@@ -7,6 +7,10 @@ const Popover = PopoverPrimitive.Root
 
 const PopoverTrigger = PopoverPrimitive.Trigger
 
+/** Positions the content against an element other than the trigger — for one popover shared by many
+ *  candidate anchors (e.g. a list of chips). */
+const PopoverAnchor = PopoverPrimitive.Anchor
+
 const PopoverContent = React.forwardRef<
   React.ElementRef<typeof PopoverPrimitive.Content>,
   // `portal={false}` renders inline instead of portaling to <body> — needed inside a modal Dialog,
@@ -30,4 +34,4 @@ PopoverContent.displayName = PopoverPrimitive.Content.displayName
 
 const PopoverClose = PopoverPrimitive.Close
 
-export { Popover, PopoverTrigger, PopoverContent, PopoverClose }
+export { Popover, PopoverTrigger, PopoverAnchor, PopoverContent, PopoverClose }

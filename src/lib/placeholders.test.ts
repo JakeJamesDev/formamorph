@@ -12,6 +12,9 @@ import {
   absorbPlaceholders,
   buildPlaceholderPreview,
   describePlaceholders,
+  placeholderWeight,
+  placeholderChances,
+  isWeighted,
 } from './placeholders';
 
 const P = (id: string, values: string[]): Placeholder => ({ id, name: id, values });
@@ -265,5 +268,105 @@ describe('resolvePlaceholders', () => {
       setRoll,
     });
     expect(out).toBe(`X ${inner} Y`); // the inner token is left literal
+  });
+});
+
+describe('value weights', () => {
+  const W = (values: string[], weights?: Record<string, number>): Placeholder =>
+    ({ id: 'p', name: 'p', values, ...(weights ? { weights } : {}) });
+
+  it('defaults every value to weight 1 and treats a negative as benched', () => {
+    const ph = W(['a', 'b'], { b: -5 });
+    expect(placeholderWeight(ph, 'a')).toBe(1);
+    expect(placeholderWeight(ph, 'b')).toBe(0);
+  });
+
+  it('only reports weighted once a value carries a non-default weight', () => {
+    expect(isWeighted(W(['a', 'b']))).toBe(false);
+    expect(isWeighted(W(['a', 'b'], { a: 1 }))).toBe(false);
+    expect(isWeighted(W(['a', 'b'], { a: 3 }))).toBe(true);
+  });
+
+  it('turns weights into percentages that sum to 100', () => {
+    const chances = placeholderChances(W(['a', 'b', 'c'], { a: 2 }));
+    expect(chances).toEqual({ a: 50, b: 25, c: 25 });
+  });
+
+  it('shows a benched value at 0% while the rest split the pool', () => {
+    expect(placeholderChances(W(['a', 'b'], { b: 0 }))).toEqual({ a: 100, b: 0 });
+  });
+
+  it('falls back to uniform when every value is benched, matching what the roll does', () => {
+    expect(placeholderChances(W(['a', 'b'], { a: 0, b: 0 }))).toEqual({ a: 50, b: 50 });
+  });
+
+  it('draws in proportion to the weights', () => {
+    const ph = W(['rare', 'common'], { rare: 1, common: 9 });
+    const text = tok('p', 'world', 'x');
+    let common = 0;
+    for (let i = 0; i < 2000; i++) {
+      const { rolls, setRoll } = collector();
+      if (resolvePlaceholders(text, { placeholders: [ph], rolls, setRoll }) === 'common') common++;
+    }
+    expect(common / 2000).toBeGreaterThan(0.8);
+    expect(common / 2000).toBeLessThan(0.97);
+  });
+
+  it('never draws a benched value', () => {
+    const ph = W(['never', 'always'], { never: 0 });
+    const text = tok('p', 'world', 'x');
+    for (let i = 0; i < 200; i++) {
+      const { rolls, setRoll } = collector();
+      expect(resolvePlaceholders(text, { placeholders: [ph], rolls, setRoll })).toBe('always');
+    }
+  });
+
+  it('rolls uniformly when everything is benched rather than resolving to nothing', () => {
+    const ph = W(['a', 'b'], { a: 0, b: 0 });
+    const { rolls, setRoll } = collector();
+    expect(['a', 'b']).toContain(resolvePlaceholders(tok('p', 'world', 'x'), { placeholders: [ph], rolls, setRoll }));
+  });
+
+  it('keeps differently-weighted defs apart when absorbing an import', () => {
+    const host = [{ id: 'h', name: 'Hair', values: ['red', 'brown'], weights: { red: 3 } }];
+    const sameWeights = absorbPlaceholders(
+      [{ id: 'c', name: 'Hair', values: ['red', 'brown'], weights: { red: 3 } }],
+      host,
+    );
+    expect(sameWeights.toAdd).toEqual([]);
+    expect(sameWeights.idMap.c).toBe('h');
+
+    const differentWeights = absorbPlaceholders(
+      [{ id: 'c', name: 'Hair', values: ['red', 'brown'], weights: { red: 9 } }],
+      host,
+    );
+    expect(differentWeights.toAdd).toHaveLength(1);
+    expect(differentWeights.toAdd[0].weights).toEqual({ red: 9 });
+    expect(differentWeights.idMap.c).not.toBe('h');
+  });
+});
+
+describe('trait pins', () => {
+  const ph = P('hair', ['red', 'brown', 'black']);
+
+  it('masks the roll without touching it, for World and Unique chips alike', () => {
+    const rolls: PlaceholderRolls = { world: { hair: 'brown' }, unique: { u1: 'black' } };
+    const text = `${tok('hair', 'world', 'w1')} / ${tok('hair', 'unique', 'u1')}`;
+    expect(resolvePlaceholders(text, { placeholders: [ph], rolls, pins: { hair: 'fiery red' } }))
+      .toBe('fiery red / fiery red');
+    // The stored rolls are untouched, so dropping the pin reveals them again.
+    expect(rolls).toEqual({ world: { hair: 'brown' }, unique: { u1: 'black' } });
+    expect(resolvePlaceholders(text, { placeholders: [ph], rolls })).toBe('brown / black');
+  });
+
+  it('overrides a single-value Variable too', () => {
+    const fixed = P('eye', ['Blue']);
+    expect(resolvePlaceholders(tok('eye', 'world', 'w1'), { placeholders: [fixed], rolls: {}, pins: { eye: 'Gold' } }))
+      .toBe('Gold');
+  });
+
+  it('leaves a chip whose placeholder was deleted resolving to nothing', () => {
+    expect(resolvePlaceholders(tok('gone', 'world', 'w1'), { placeholders: [ph], rolls: {}, pins: { gone: 'x' } }))
+      .toBe('');
   });
 });
