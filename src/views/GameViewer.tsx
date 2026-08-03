@@ -940,7 +940,7 @@ const GameViewer = ({
   // (not the current, already-changed stats), so repeated re-rolls don't stack.
   const handleRegenerateStats = () => {
     const target = partialRegenTarget();
-    if (!target || !statUpdatesEnabled || playerStats.length === 0) return;
+    if (!target || !statUpdatesEnabled || activeStats.length === 0) return;
     const baseline = regenerateState(gameStates, initialStateRef.current, currentPage)?.playerStats;
     if (!baseline) return;
     const { prev, action } = target;
@@ -959,7 +959,7 @@ const GameViewer = ({
       // `gameTime` already includes this turn — only the latest turn is ever re-rolled — so it is the
       // end-of-turn elapsed the live pass used, and code re-derives the same value instead of drifting.
       const turnHours = prev.timeDelta ?? FLAT_HOURS_PER_TURN;
-      applyStatChanges(statChanges, null, applyAiMaxChanges(baseline, maxes), {
+      applyStatChanges(statChanges, null, applyAiMaxChanges(baseline, liveStatChanges(baseline, maxes)), {
         deltaHours: turnHours,
         elapsedHours: gameTime,
         calendar,
@@ -1131,6 +1131,12 @@ const GameViewer = ({
   // their own inputs and must not re-create every time a trait switches something on or off.
   const statEnabledRef = useRef<Record<string, boolean>>({});
 
+  // Drop AI deltas (keyed by lowercased name) aimed at stats that aren't live.
+  const liveStatChanges = useCallback((base: PlayerStat[], deltas: Record<string, number>) => {
+    const live = new Set(enabledStats(base, statEnabledRef.current).map((st) => st.name.toLowerCase()));
+    return Object.fromEntries(Object.entries(deltas).filter(([name]) => live.has(name)));
+  }, []);
+
   // --- Active traits and what they switch on ------------------------------------------------------------
   // A chosen trait the player has switched off contributes nothing: no AI text, no stat toggle, no pin. Its
   // stat *changes* were reversed at the moment it was switched off (see toggleTrait), so they aren't
@@ -1225,7 +1231,10 @@ const GameViewer = ({
 
       const health = thresholdStats.find((s) => s.name === "Health");
       const hunger = thresholdStats.find((s) => s.name === "Hunger");
-      if (health && hunger) {
+      // Both stats must be live: a disabled Hunger frozen at a low value must not silently drain a Health
+      // the player can see — or a hidden Health at all.
+      const starvationOn = (s?: PlayerStat) => !!s && statEnabledRef.current[s.id] !== false;
+      if (starvationOn(health) && starvationOn(hunger) && health && hunger) {
         // This turn's AI changes and the regen above are both still queued, so the penalty subtracts via an
         // updater, which lands on the regenerated Health rather than overwriting it. The threshold reads the
         // pre-turn Hunger (thresholdStats), which the caller passes explicitly.
@@ -1898,7 +1907,7 @@ ${playerNotes || NONE_PLACEHOLDER}
 
       // Only make stat updates request if enabled and the world actually defines stats (otherwise the model
       // hallucinates stat names that match nothing).
-      const statsActive = statUpdatesEnabled && playerStats.length > 0;
+      const statsActive = statUpdatesEnabled && activeStats.length > 0;
       const runStats = (quiet: boolean): Promise<string> =>
         statsActive
           ? requestStats(ctx, effectiveAction, narrationResponse, signal, quiet)
@@ -2113,8 +2122,9 @@ ${playerNotes || NONE_PLACEHOLDER}
         const { values, maxes } = parseStatUpdates(statUpdatesResponse);
         statChanges = Object.entries(values).map(([k, v]) => ({ [k]: v }));
         if (Object.keys(maxes).length > 0) {
-          // Max changes re-clamp the current value into the new range (lib handles the guards).
-          setPlayerStats((prevStats) => applyAiMaxChanges(prevStats, maxes));
+          // Max changes re-clamp the current value into the new range (lib handles the guards). Restricted
+          // to live stats like the value deltas — a disabled stat's cap must not move off a name collision.
+          setPlayerStats((prevStats) => applyAiMaxChanges(prevStats, liveStatChanges(prevStats, maxes)));
         }
       }
 
