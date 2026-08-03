@@ -49,6 +49,9 @@ export interface Stat {
   code?: string;
   /** Body-mesh morph target names this stat drives; stat [min,max] maps linearly to influence [0,1]. */
   morphBindings?: string[];
+  /** `false` starts the stat inert — hidden from the player and the AI, regen and code paused — until a
+   *  trait switches it on. Absent = enabled. */
+  enabled?: boolean;
   /** Editor flags that stop the AI from changing this stat in a given direction. */
   noIncrease?: boolean;
   noIncreaseMax?: boolean;
@@ -66,6 +69,18 @@ export interface StatChange {
   interval?: string;
 }
 
+/** A stat this trait switches on or off while active; overrides the stat's own `enabled` default. */
+export interface TraitStatToggle {
+  statId: string;
+  enabled: boolean;
+}
+
+/** A placeholder this trait forces to a fixed value while active, masking that playthrough's roll. */
+export interface TraitPlaceholderPin {
+  placeholderId: string;
+  value: string;
+}
+
 /** A folder grouping traits in the editor and the selection screen; nestable via `parentId`. */
 export interface TraitGroup {
   id: string;
@@ -78,6 +93,8 @@ export interface TraitGroup {
   parentId: string | null;
   /** Sibling order among items sharing the same parent. */
   order?: number;
+  /** At most one trait in this group may be active — rendered as radio buttons rather than checkboxes. */
+  exclusive?: boolean;
 }
 
 /** A selectable character trait that applies `statChanges` and adds AI context when chosen at game start. */
@@ -95,6 +112,12 @@ export interface Trait {
   isDefault?: boolean;
   /** Sibling order among items sharing the same parent/group. */
   order?: number;
+  /** The player may switch this trait on and off during play, not only at game start. */
+  playerToggle?: boolean;
+  /** Stats forced on or off while this trait is active. */
+  statToggles?: TraitStatToggle[];
+  /** Placeholders held at a fixed value while this trait is active. */
+  placeholderPins?: TraitPlaceholderPin[];
 }
 
 /** A character or object in the world, with separate player-facing and AI-facing descriptions plus optional media. */
@@ -296,6 +319,9 @@ export interface Placeholder {
   id: string;
   name: string;
   values: string[];
+  /** Relative draw weight per value; a value absent from the map weighs 1. Weight 0 benches a value without
+   *  deleting it. Absent map (or all-1 weights) = a uniform draw. */
+  weights?: Record<string, number>;
 }
 
 /** Lightweight preview record used by the main-menu world grid. */

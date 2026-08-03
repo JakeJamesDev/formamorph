@@ -14,6 +14,10 @@ import type { PromptSegment } from './promptTemplate';
 
 export type PlaceholderMode = 'world' | 'unique';
 
+/** Chooses one of a Wildcard's values. `weights` is the def's per-value weight map (see `placeholderWeight`);
+ *  tests pass a deterministic chooser that ignores it. */
+export type PlaceholderPick = (values: string[], weights?: Record<string, number>) => string;
+
 /** A decoded in-text chip: which placeholder, the roll mode, and the per-placement id (keys Unique rolls). */
 export interface PlaceholderToken {
   id: string; // Placeholder.id
@@ -88,19 +92,20 @@ export function primeRolls(
   placeholders: Placeholder[],
   texts: string[],
   existing: PlaceholderRolls = {},
-  pick: (values: string[]) => string = uniform,
+  pick: PlaceholderPick = weightedPick,
 ): PlaceholderRolls {
   const byId = new Map(placeholders.map((p) => [p.id, p]));
   const isWild = (id: string) => (byId.get(id)?.values.length ?? 0) >= 2;
+  const roll = (id: string) => { const p = byId.get(id)!; return pick(p.values, p.weights); };
   const { worldIds, unique } = collectPlaceholderPlacements(texts);
 
   const world = { ...(existing.world ?? {}) };
   for (const id of worldIds) {
-    if (isWild(id) && world[id] == null) world[id] = pick(byId.get(id)!.values);
+    if (isWild(id) && world[id] == null) world[id] = roll(id);
   }
   const uniqueRolls = { ...(existing.unique ?? {}) };
   for (const { id, placementId } of unique) {
-    if (isWild(id) && uniqueRolls[placementId] == null) uniqueRolls[placementId] = pick(byId.get(id)!.values);
+    if (isWild(id) && uniqueRolls[placementId] == null) uniqueRolls[placementId] = roll(id);
   }
   return { world, unique: uniqueRolls };
 }
@@ -140,17 +145,26 @@ export function absorbPlaceholders(
   worldPlaceholders: Placeholder[],
 ): { toAdd: Placeholder[]; idMap: Record<string, string> } {
   const sameValues = (a: string[], b: string[]) => a.length === b.length && a.every((v, i) => v === b[i]);
+  // Two defs sharing a name and values but weighted differently are different defs — matching on values
+  // alone would silently re-point the import's chips at the host world's distribution.
+  const sameWeights = (a: Placeholder, b: Placeholder) =>
+    a.values.every((v) => placeholderWeight(a, v) === placeholderWeight(b, v));
   const toAdd: Placeholder[] = [];
   const idMap: Record<string, string> = {};
   // Match against the world's list plus anything added so far this pass (so two carried copies of the same def
   // collapse to one).
   const pool = [...worldPlaceholders];
   for (const c of carried) {
-    const match = pool.find((p) => p.name === c.name && sameValues(p.values, c.values));
+    const match = pool.find((p) => p.name === c.name && sameValues(p.values, c.values) && sameWeights(p, c));
     if (match) {
       idMap[c.id] = match.id;
     } else {
-      const fresh: Placeholder = { id: randomUUID(), name: c.name, values: [...c.values] };
+      const fresh: Placeholder = {
+        id: randomUUID(),
+        name: c.name,
+        values: [...c.values],
+        ...(c.weights ? { weights: { ...c.weights } } : {}),
+      };
       toAdd.push(fresh);
       pool.push(fresh);
       idMap[c.id] = fresh.id;
@@ -168,7 +182,7 @@ export function absorbPlaceholders(
 export function buildPlaceholderPreview(
   text: string,
   placeholders: Placeholder[],
-  pick: (values: string[]) => string = uniform,
+  pick: PlaceholderPick = weightedPick,
 ): Record<string, string> {
   const out: Record<string, string> = {};
   if (!text || !hasPlaceholders(text)) return out;
@@ -215,11 +229,55 @@ export interface ResolveOptions {
   /** Persist a freshly-minted Wildcard roll (`world` keyed by placeholder id, `unique` by placement id).
    *  Omit in read-only/design-time contexts; then a not-yet-rolled Wildcard picks a value without persisting. */
   setRoll?: (scope: PlaceholderMode, key: string, value: string) => void;
-  /** Injectable chooser (tests pass a deterministic pick). Defaults to a uniform random draw. */
-  pick?: (values: string[]) => string;
+  /** Injectable chooser (tests pass a deterministic pick). Defaults to a weighted random draw. */
+  pick?: PlaceholderPick;
+  /** Placeholder id → value forced by an active trait. Masks the roll for as long as the trait is on; the
+   *  roll itself is never overwritten, so switching the trait off reveals it again. */
+  pins?: Record<string, string>;
 }
 
-const uniform = (values: string[]): string => values[Math.floor(Math.random() * values.length)];
+/** A value's relative draw weight — 1 unless the author set one. Negatives are treated as 0 (benched). */
+export function placeholderWeight(ph: Placeholder, value: string): number {
+  const w = ph.weights?.[value];
+  return typeof w === 'number' && Number.isFinite(w) ? Math.max(0, w) : 1;
+}
+
+/** True if any value carries a non-default weight — what gates the editor's percentage reveal. */
+export function isWeighted(ph: Placeholder): boolean {
+  return ph.values.some((v) => placeholderWeight(ph, v) !== 1);
+}
+
+/**
+ * Each value's chance of being drawn, as a percentage keyed by value. Mirrors {@link weightedPick} exactly,
+ * including its all-zero fallback to a uniform draw, so the editor's reveal never disagrees with the roll.
+ */
+export function placeholderChances(ph: Placeholder): Record<string, number> {
+  const out: Record<string, number> = {};
+  const total = ph.values.reduce((sum, v) => sum + placeholderWeight(ph, v), 0);
+  for (const v of ph.values) {
+    out[v] = total > 0 ? (placeholderWeight(ph, v) / total) * 100 : 100 / ph.values.length;
+  }
+  return out;
+}
+
+/** Draw a value honoring per-value weights. Weights that sum to 0 (every value benched) fall back to a
+ *  uniform draw rather than resolving to nothing — an author zeroing everything still gets a value. */
+const weightedPick = (values: string[], weights?: Record<string, number>): string => {
+  const uniform = () => values[Math.floor(Math.random() * values.length)];
+  if (!weights) return uniform();
+  const w = values.map((v) => {
+    const n = weights[v];
+    return typeof n === 'number' && Number.isFinite(n) ? Math.max(0, n) : 1;
+  });
+  const total = w.reduce((a, b) => a + b, 0);
+  if (total <= 0) return uniform();
+  let r = Math.random() * total;
+  for (let i = 0; i < values.length; i++) {
+    r -= w[i];
+    if (r < 0) return values[i];
+  }
+  return values[values.length - 1];
+};
 
 /**
  * Replace every placeholder chip in `text` with its resolved value. Single pass — a resolved value is never
@@ -228,7 +286,7 @@ const uniform = (values: string[]): string => values[Math.floor(Math.random() * 
  */
 export function resolvePlaceholders(text: string, opts: ResolveOptions): string {
   if (!text || !hasPlaceholders(text)) return text;
-  const { placeholders, rolls, setRoll, pick = uniform } = opts;
+  const { placeholders, rolls, setRoll, pick = weightedPick, pins } = opts;
   const byId = new Map(placeholders.map((p) => [p.id, p]));
   // Rolls minted during THIS pass — so two chips sharing a key agree even before `setRoll`'s (async) state
   // update lands back in `rolls`.
@@ -237,7 +295,12 @@ export function resolvePlaceholders(text: string, opts: ResolveOptions): string 
   TOKEN_RE.lastIndex = 0;
   return text.replace(TOKEN_RE, (_full, id: string, mode: string, placementId: string) => {
     const ph = byId.get(id);
-    if (!ph || ph.values.length === 0) return ''; // missing or empty → nothing
+    if (!ph) return ''; // missing → nothing
+    // An active trait's pin masks every chip of this placeholder, Unique ones included — the intent is a
+    // fact about the character, not about one sentence.
+    const pinned = pins?.[id];
+    if (pinned != null) return pinned;
+    if (ph.values.length === 0) return ''; // empty → nothing
     if (ph.values.length === 1) return ph.values[0]; // Variable (fixed)
 
     // Wildcard: World shares one value per placeholder id; Unique rolls per placement id.
@@ -246,7 +309,7 @@ export function resolvePlaceholders(text: string, opts: ResolveOptions): string 
     const existing = rolls[scope]?.[key] ?? minted[scope][key];
     if (existing != null) return existing;
 
-    const rolled = pick(ph.values);
+    const rolled = pick(ph.values, ph.weights);
     minted[scope][key] = rolled;
     setRoll?.(scope, key, rolled);
     return rolled;

@@ -195,6 +195,20 @@ const StatManager = ({ stat }: { stat: Stat }) => {
           onChange={(e) => handleChange("description", e.target.value)}
         />
       </div>
+      <div className="space-y-2">
+        <Label>Availability</Label>
+        <label className="flex items-center space-x-2 cursor-pointer">
+          <Checkbox
+            checked={editingStat.enabled !== false}
+            onCheckedChange={(c) => handleChange("enabled", c !== false)}
+          />
+          <span>Enabled</span>
+        </label>
+        <p className="text-sm text-muted-foreground">
+          Turn this off to keep the stat hidden until a trait switches it on. A disabled stat is invisible
+          to the player and the AI, and its regen and code pause.
+        </p>
+      </div>
       {isNumeric && (
         <div className="flex flex-col gap-4">
           {isPercentage ? (

@@ -4,7 +4,9 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Checkbox } from "@/components/ui/checkbox";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
-import type { Trait, TraitGroup, Stat } from "@/types";
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
+import { describePlaceholders } from "@/lib/placeholders";
+import type { Trait, TraitGroup, Stat, Placeholder } from "@/types";
 
 const GENERAL = 'general';
 
@@ -19,6 +21,7 @@ const TraitSelectionModal = ({
   traits,
   traitGroups,
   stats,
+  placeholders = [],
   selectedTraits,
   onTraitSelect,
   onAbort,
@@ -29,6 +32,9 @@ const TraitSelectionModal = ({
   traits: Trait[];
   traitGroups: TraitGroup[];
   stats: Stat[];
+  /** The world's placeholder defs. Nothing has rolled yet at this point in the flow, so a chip in a trait
+   *  description shows its options rather than a value. */
+  placeholders?: Placeholder[];
   selectedTraits: string[];
   onTraitSelect: (traitId: string) => void;
   onAbort: () => void;
@@ -39,6 +45,9 @@ const TraitSelectionModal = ({
   confirmLabel?: string;
 }) => {
   const getStatName = (statId: string) => stats.find((s) => s.id === statId)?.name ?? statId;
+  // Rolls are primed at game start, after this screen — so a Wildcard reads as `{red|brown|black}` here
+  // rather than committing to a value the pins might override a moment later.
+  const describe = (text: string) => describePlaceholders(text, placeholders);
 
   const directTraits = (groupId: string | null) =>
     traits.filter((t) => (t.groupId ?? null) === groupId).sort((a, b) => (a.order ?? 0) - (b.order ?? 0));
@@ -83,6 +92,47 @@ const TraitSelectionModal = ({
   if (!current) return null;
 
   const sectionTraits = directTraits(current.id);
+  const isExclusive = !!current.group?.exclusive;
+  const exclusiveValue = sectionTraits.find((t) => selectedTraits.includes(t.id))?.id ?? '';
+
+  const traitRows = sectionTraits.map((trait) => (
+    <div key={trait.id} className="mb-2 sm:mb-4 p-2 border rounded">
+      <div className="flex items-center space-x-2 mb-2">
+        {isExclusive ? (
+          // Radio look and keyboard behavior, but clicking the chosen one clears it — a group
+          // holds *at most* one trait, so "none of these" stays reachable.
+          <RadioGroupItem
+            id={`trait-${trait.id}`}
+            value={trait.id}
+            onClick={() => { if (selectedTraits.includes(trait.id)) onTraitSelect(trait.id); }}
+          />
+        ) : (
+          <Checkbox
+            id={`trait-${trait.id}`}
+            checked={selectedTraits.includes(trait.id)}
+            onCheckedChange={() => onTraitSelect(trait.id)}
+          />
+        )}
+        <label htmlFor={`trait-${trait.id}`} className="font-semibold">{trait.name}</label>
+      </div>
+      {trait.playerDescription?.trim() && (
+        <p className="text-xs sm:text-sm mb-2">{describe(trait.playerDescription)}</p>
+      )}
+      {trait.statChanges.length > 0 && (
+        <div className="text-xs sm:text-sm">
+          <strong>Stat Changes:</strong>
+          <ul className="list-disc list-inside">
+            {trait.statChanges.map((change, idx) => (
+              <li key={idx}>
+                {getStatName(change.statId)}: {change.value > 0 ? '+' : ''}{change.value} ({change.type})
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
+    </div>
+  ));
+
 
   // Tab rows: row 0 = (General if ungrouped) + top groups; each ancestor with visible children adds a
   // row of its children, prefixed by a General tab when that ancestor also has its own direct traits.
@@ -146,7 +196,7 @@ const TraitSelectionModal = ({
                           g.id === row.active ? '' : 'invisible'
                         }`}
                       >
-                        {g.playerDescription}
+                        {describe(g.playerDescription ?? '')}
                       </p>
                     ))}
                   </div>
@@ -159,34 +209,12 @@ const TraitSelectionModal = ({
         <ScrollArea className="flex-1 mb-4">
           {sectionTraits.length === 0 ? (
             <p className="text-sm text-muted-foreground p-2">No traits in this section.</p>
+          ) : isExclusive ? (
+            <RadioGroup value={exclusiveValue} onValueChange={onTraitSelect}>
+              {traitRows}
+            </RadioGroup>
           ) : (
-            sectionTraits.map((trait) => (
-              <div key={trait.id} className="mb-2 sm:mb-4 p-2 border rounded">
-                <div className="flex items-center space-x-2 mb-2">
-                  <Checkbox
-                    id={`trait-${trait.id}`}
-                    checked={selectedTraits.includes(trait.id)}
-                    onCheckedChange={() => onTraitSelect(trait.id)}
-                  />
-                  <label htmlFor={`trait-${trait.id}`} className="font-semibold">{trait.name}</label>
-                </div>
-                {trait.playerDescription?.trim() && (
-                  <p className="text-xs sm:text-sm mb-2">{trait.playerDescription}</p>
-                )}
-                {trait.statChanges.length > 0 && (
-                  <div className="text-xs sm:text-sm">
-                    <strong>Stat Changes:</strong>
-                    <ul className="list-disc list-inside">
-                      {trait.statChanges.map((change, idx) => (
-                        <li key={idx}>
-                          {getStatName(change.statId)}: {change.value > 0 ? '+' : ''}{change.value} ({change.type})
-                        </li>
-                      ))}
-                    </ul>
-                  </div>
-                )}
-              </div>
-            ))
+            traitRows
           )}
         </ScrollArea>
 

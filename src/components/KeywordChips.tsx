@@ -1,4 +1,4 @@
-import { useState, type ChangeEvent, type ClipboardEvent, type KeyboardEvent } from 'react';
+import { useState, type ChangeEvent, type ClipboardEvent, type KeyboardEvent, type ReactNode } from 'react';
 import {
   DndContext,
   closestCenter,
@@ -31,11 +31,21 @@ export function KeywordChips({
   onChange,
   placeholder = 'e.g. dragon',
   offerCommaSplit = true,
+  onChipClick,
+  chipSuffix,
+  renderChip,
 }: {
   keywords: string[];
   onChange: (keywords: string[]) => void;
   placeholder?: string;
   offerCommaSplit?: boolean;
+  /** Claims the single click/tap on a chip (rename moves to double-click). Pair with `renderChip` to hang
+   *  a popover off it. */
+  onChipClick?: (value: string) => void;
+  /** Trailing decoration inside the chip, e.g. a rolled percentage. */
+  chipSuffix?: (value: string) => string | undefined;
+  /** Wrap each rendered chip — the host's hook for anchoring per-chip UI. */
+  renderChip?: (chip: ReactNode, value: string) => ReactNode;
 }) {
   const [inputValue, setInputValue] = useState('');
   // The last committed chip that reads like a comma-separated list, with the segments it would become.
@@ -132,15 +142,20 @@ export function KeywordChips({
               case-sensitive (unlike TokenAutocomplete) because dictionary keyword matching supports a
               per-entry caseSensitive mode, so distinct-case keywords can be meaningful. */}
           <SortableContext items={keywords} strategy={rectSortingStrategy}>
-            {keywords.map((kw) => (
-              <EditableChip
-                key={kw}
-                value={kw}
-                sortable
-                onRemove={removeKeyword}
-                onCommit={(next) => { onChange(replaceChipValue(keywords, kw, next)); setSplitOffer(null); }}
-              />
-            ))}
+            {keywords.map((kw) => {
+              const chip = (
+                <EditableChip
+                  key={kw}
+                  value={kw}
+                  sortable
+                  suffix={chipSuffix?.(kw)}
+                  onActivate={onChipClick}
+                  onRemove={removeKeyword}
+                  onCommit={(next) => { onChange(replaceChipValue(keywords, kw, next)); setSplitOffer(null); }}
+                />
+              );
+              return renderChip ? <span key={kw}>{renderChip(chip, kw)}</span> : chip;
+            })}
           </SortableContext>
         </DndContext>
         <input

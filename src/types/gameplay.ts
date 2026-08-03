@@ -120,6 +120,9 @@ export interface ModelMetadata {
 export interface GameState {
   playerStats: PlayerStat[];
   playerTraits: Trait[];
+  /** Ids of chosen traits the player has switched off during play. They stay in `playerTraits` so the
+   *  switch can go back on; everything trait-driven reads the difference. Absent ⇒ all active. */
+  disabledTraitIds?: string[];
   /** The live scene list — who is physically present this turn, with alias/reveal state for the tab. Legacy
    *  saves stored a bare `string[]` of names; those are normalized to `{ name, revealed: true }` on load. */
   visibleEntities: SceneEntity[];

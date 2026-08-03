@@ -11,13 +11,18 @@ import { SuggestionList } from "./SuggestionList";
  * clearing the text removes it (via `onRemove`). Editing replaces the chip in place, so order is kept.
  * Pass `getSuggestions` (query is pre-lowercased) to show an autocomplete dropdown while editing; omit it
  * for a plain text edit (e.g. dictionary keywords). Render inside a dnd-kit `SortableContext` when `sortable`.
+ *
+ * `onActivate` claims the single click/tap for the host (a per-chip popover); text editing then stays on
+ * double-click, so the popover must offer its own way to rename on touch. `suffix` trails the label.
  */
-export function EditableChip({ value, onCommit, onRemove, sortable = false, getSuggestions }: {
+export function EditableChip({ value, onCommit, onRemove, sortable = false, getSuggestions, onActivate, suffix }: {
   value: string;
   onCommit: (next: string) => void;
   onRemove: (value: string) => void;
   sortable?: boolean;
   getSuggestions?: (query: string) => string[];
+  onActivate?: (value: string) => void;
+  suffix?: string;
 }) {
   const [editing, setEditing] = useState(false);
   const [text, setText] = useState(value);
@@ -88,7 +93,8 @@ export function EditableChip({ value, onCommit, onRemove, sortable = false, getS
 
   return (
     <Chip
-      label={value}
+      label={suffix ? `${value} ${suffix}` : value}
+      removeLabel={value}
       onRemove={onRemove}
       innerRef={sortable ? setNodeRef : undefined}
       style={sortable ? {
@@ -110,10 +116,11 @@ export function EditableChip({ value, onCommit, onRemove, sortable = false, getS
         // Touch has no double-click, so a plain tap edits; a mouse click still does nothing (it would
         // fight drag-to-reorder). A tap that moved far enough became a drag and never reaches click.
         onClick: (e: React.MouseEvent) => {
+          if (onActivate) { onActivate(value); return; }
           const kind = pointerType.current ?? (e.nativeEvent as PointerEvent).pointerType;
           if (kind === "touch" || kind === "pen") startEdit();
         },
-        title: "Tap or double-click to edit",
+        title: onActivate ? "Click to open, double-click to rename" : "Tap or double-click to edit",
       }}
       grabbable={sortable}
     />

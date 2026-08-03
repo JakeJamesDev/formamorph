@@ -13,6 +13,7 @@ import { mergeBodyMorphs } from '@/lib/bodyMorphs';
 import { useIsMobile } from '@/lib/useIsMobile';
 import { usePrefersReducedMotion } from '@/lib/usePrefersReducedMotion';
 import { statBarFrame, bandOrigin, formatStatDelta } from '@/lib/statBar';
+import { traitOrderIndex, inAuthoredOrder, activeStatEnabled } from '@/lib/traitEffects';
 import { MarkdownRenderer } from './MarkdownRenderer';
 import { ReasoningBlock } from './ReasoningBlock';
 import { useLiveReasoning } from '@/lib/reasoningStreamStore';
@@ -1090,8 +1091,10 @@ const StatBar = ({ value, min, max, delta, draining, animKey }: {
   );
 };
 
-export const RightPanel = ({ onLocationClick, language, setLanguage }: {
+export const RightPanel = ({ onLocationClick, onToggleTrait, language, setLanguage }: {
   onLocationClick: () => void;
+  /** Switch a chosen trait on or off mid-play; owned by GameViewer, which reverses its stat changes. */
+  onToggleTrait: (traitId: string, enabled: boolean) => void;
   language: string;
   setLanguage: (value: string) => void;
 }) => {
@@ -1111,14 +1114,30 @@ export const RightPanel = ({ onLocationClick, language, setLanguage }: {
     viewStats: playerStats,
     commitManualStatEdit,
     viewTraits: playerTraits,
+    viewDisabledTraitIds,
     viewStatChanges: recentStatChanges,
     recentStatFading,
     heldStatChanges,
     drainingStatChanges
   } = useGameplay();
-  const { locations } = useGameData();
+  const { locations, traits, traitGroups } = useGameData();
   const resolvePH = usePlaceholderResolver();
   const [isEditMode, setIsEditMode] = React.useState(false);
+  // The traits actually in force on the viewed turn, and the stats they leave live. A switched-off trait
+  // keeps its row (so it can be switched back on) but stops contributing anything.
+  const disabledTraits = React.useMemo(() => new Set(viewDisabledTraitIds), [viewDisabledTraitIds]);
+  const activeTraits = React.useMemo(
+    () => inAuthoredOrder(playerTraits.filter((t) => !disabledTraits.has(t.id)), traitOrderIndex(traits, traitGroups)),
+    [playerTraits, disabledTraits, traits, traitGroups],
+  );
+  const statEnabled = React.useMemo(
+    () => activeStatEnabled(playerStats, activeTraits),
+    [playerStats, activeTraits],
+  );
+  // Filtered for display but carrying each stat's index in the full array, which the edit slider writes back to.
+  const visibleStats = playerStats
+    .map((stat, index) => ({ stat, index }))
+    .filter(({ stat }) => statEnabled[stat.id] !== false);
   // On a past page show the viewed turn's location (Location tab); live otherwise.
   const displayLocation = isViewingPast
     ? (locations.find((l) => l.id === viewLocationId) ?? currentLocation)
@@ -1154,7 +1173,7 @@ export const RightPanel = ({ onLocationClick, language, setLanguage }: {
         </TabsList>
         <TabsContent value="stats" className="flex-grow overflow-hidden">
           <ScrollArea className="h-[calc(100%-1rem)] relative">
-            {playerStats.map((stat, index) => {
+            {visibleStats.map(({ stat, index }) => {
               const statValue = stat.value as number;
               const isPercentage = stat.type === 'percentage';
               const change = recentStatChanges[stat.name.toLowerCase()] || 0;
@@ -1230,11 +1249,26 @@ export const RightPanel = ({ onLocationClick, language, setLanguage }: {
         <TabsContent value="traits" className="flex-grow overflow-hidden">
           <ScrollArea className="h-[calc(100%-1rem)]">
             {playerTraits.length > 0 ? (
-              playerTraits.map((trait, index) => (
-                <div key={index} className="mb-1">
-                  <span>{trait.name}{trait.playerDescription ? `: ${resolvePH(trait.playerDescription)}` : ''}</span>
-                </div>
-              ))
+              playerTraits.map((trait) => {
+                const off = disabledTraits.has(trait.id);
+                // Only traits the author marked switchable get a control; the rest read as before. A
+                // switched-off trait stays listed, dimmed, so it can be switched back on.
+                const switchable = !!trait.playerToggle && !isViewingPast;
+                return (
+                  <div key={trait.id} className={`mb-1 flex items-start gap-2 ${off ? 'opacity-50' : ''}`}>
+                    {trait.playerToggle && (
+                      <Checkbox
+                        className="mt-1"
+                        checked={!off}
+                        disabled={!switchable}
+                        aria-label={`${off ? 'Switch on' : 'Switch off'} ${trait.name}`}
+                        onCheckedChange={(c) => onToggleTrait(trait.id, c === true)}
+                      />
+                    )}
+                    <span>{trait.name}{trait.playerDescription ? `: ${resolvePH(trait.playerDescription)}` : ''}</span>
+                  </div>
+                );
+              })
             ) : (
               <p>No traits acquired.</p>
             )}

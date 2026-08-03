@@ -115,6 +115,10 @@ import { matchLocationResponse } from "../lib/locationMatch";
 import { rollbackState, regenerateState, canRegenerate, lastTurnAction, markRegeneratedTurn, markPrunedTurns, snapshotPageIndex, placeSnapshot, sliceHistoryToPage, pageAssistantIndex } from "../lib/turnHistory";
 import { useDeferredSnapshot } from "../lib/useDeferredSnapshot";
 import { statMorphMap } from "../lib/bodyMorphs";
+import {
+  traitOrderIndex, inAuthoredOrder, activeStatEnabled, enabledStats, activePlaceholderPins,
+  invertStatChanges, exclusiveSiblings,
+} from "../lib/traitEffects";
 import { extractCharacterCandidates, collectCandidateEvidence } from "../lib/characterCandidates";
 import { explainActivation, buildDictionaryContext, parseKeywords, locateMatches, type EntryActivation, type ScanSource, type MatchHit, type MatchRule } from "../lib/dictionaryUtils";
 import { buildScanCorpus } from "../lib/dictionaryScan";
@@ -360,6 +364,8 @@ const GameViewer = ({
     setPlayerStats,
     playerTraits,
     setPlayerTraits,
+    disabledTraitIds,
+    setDisabledTraitIds,
     recentStatChanges,
     setRecentStatChanges,
     setRecentStatFading,
@@ -393,6 +399,8 @@ const GameViewer = ({
     totalPages,
     isViewingPast,
     viewStats,
+    viewTraits,
+    viewDisabledTraitIds,
     viewLocationId,
     gameStates,
     setGameStates,
@@ -1119,9 +1127,47 @@ const GameViewer = ({
   // Drive body morphs from the viewed stats (live on the latest page, the paged turn's when viewing the
   // past): each stat's bound sliders track its value (min→max → 0→1 influence), so the avatar re-morphs to
   // match whatever turn is on screen.
+  // The live stat-enabled map, read by the turn callbacks below. A ref because they are memoized against
+  // their own inputs and must not re-create every time a trait switches something on or off.
+  const statEnabledRef = useRef<Record<string, boolean>>({});
+
+  // --- Active traits and what they switch on ------------------------------------------------------------
+  // A chosen trait the player has switched off contributes nothing: no AI text, no stat toggle, no pin. Its
+  // stat *changes* were reversed at the moment it was switched off (see toggleTrait), so they aren't
+  // recomputed here. Authored order decides precedence when two active traits target the same thing.
+  const traitOrder = useMemo(() => traitOrderIndex(traits, traitGroups), [traits, traitGroups]);
+  const activeTraits = useMemo(() => {
+    const off = new Set(disabledTraitIds);
+    return inAuthoredOrder(playerTraits.filter((t) => !off.has(t.id)), traitOrder);
+  }, [playerTraits, disabledTraitIds, traitOrder]);
+
+  // A stat is live unless its author started it off or an active trait switched it off. Disabled stats keep
+  // their value in `playerStats` — they are filtered out of everything that reads or moves them instead, so
+  // switching the trait back on resumes exactly where the stat left off.
+  const statEnabled = useMemo(() => activeStatEnabled(playerStats, activeTraits), [playerStats, activeTraits]);
+  const activeStats = useMemo(() => enabledStats(playerStats, statEnabled), [playerStats, statEnabled]);
+  statEnabledRef.current = statEnabled;
+  const traitPins = useMemo(() => activePlaceholderPins(activeTraits), [activeTraits]);
+
+  // The same derivation for a paged-back turn, so history shows the stats that were live on that turn.
+  const viewActiveStats = useMemo(() => {
+    const off = new Set(viewDisabledTraitIds);
+    const active = inAuthoredOrder(viewTraits.filter((t) => !off.has(t.id)), traitOrder);
+    return enabledStats(viewStats, activeStatEnabled(viewStats, active));
+  }, [viewStats, viewTraits, viewDisabledTraitIds, traitOrder]);
+
+  // The six shared context chips every system prompt can reference, resolved from current state. Each
+  // request spreads these as its base, then layers on its own tokens (length/markdown, scene entities, etc.).
+  // Replace placeholder chips in authored text with their frozen per-playthrough values (pure lookup — rolls
+  // are primed below, so no side effects). Applied at every boundary that emits authored text to the AI.
+  const resolvePH = useCallback(
+    (text: string) => resolvePlaceholders(text, { placeholders, rolls: placeholderRolls, pins: traitPins }),
+    [placeholders, placeholderRolls, traitPins],
+  );
+
   useEffect(() => {
-    setBodyMorphValues(statMorphMap(viewStats));
-  }, [viewStats, setBodyMorphValues]);
+    setBodyMorphValues(statMorphMap(viewActiveStats));
+  }, [viewActiveStats, setBodyMorphValues]);
 
   // Ambient audio follows the viewed location (the paged turn's when browsing history, the live one
   // otherwise). Centralizing it here also fixes the load/rollback gap where `loadGameState` set the
@@ -1146,7 +1192,7 @@ const GameViewer = ({
 
       setPlayerStats((prevStats) =>
         prevStats.map((stat) => {
-          if (stat.regen) {
+          if (stat.regen && statEnabledRef.current[stat.id] !== false) {
             const baseRegenAmount = stat.regen * hours;
             const newValue = Math.max(
               stat.min,
@@ -1214,22 +1260,15 @@ const GameViewer = ({
   const getEndpointUrl = () => endpointUrl;
 
   const generateTraitDescriptions = useCallback((format: 'simple' | 'markdown' | 'xml' = 'simple') => {
-    if (!playerTraits.length) {
+    if (!activeTraits.length) {
       return NONE_PLACEHOLDER;
     }
     // Group-aware: each selected trait's group emits its AI header above its traits (blank → omitted).
-    return buildTraitContext(playerTraits.map((t) => t.id), playerTraits, traitGroups, format);
-  }, [playerTraits, traitGroups]);
+    // Resolved like every other authored surface, so a chip in a trait description reads the same value the
+    // player sees in the Traits panel.
+    return resolvePH(buildTraitContext(activeTraits.map((t) => t.id), activeTraits, traitGroups, format));
+  }, [activeTraits, traitGroups, resolvePH]);
 
-
-  // The six shared context chips every system prompt can reference, resolved from current state. Each
-  // request spreads these as its base, then layers on its own tokens (length/markdown, scene entities, etc.).
-  // Replace placeholder chips in authored text with their frozen per-playthrough values (pure lookup — rolls
-  // are primed below, so no side effects). Applied at every boundary that emits authored text to the AI.
-  const resolvePH = useCallback(
-    (text: string) => resolvePlaceholders(text, { placeholders, rolls: placeholderRolls }),
-    [placeholders, placeholderRolls],
-  );
 
   // Scene-roster override for the entity chips. Choices/re-roll prompts must see only who is actually in the
   // scene, not the whole location roster — so replace EVERY unscoped <ENTITIES> variant (full/summary × the
@@ -1264,9 +1303,11 @@ const GameViewer = ({
       ...entities.flatMap((e) => [e.playerDescription, e.aiDescription, e.aiSummary]),
       ...locations.flatMap((l) => [l.playerDescription, l.aiDescription, l.aiSummary, l.description]),
       ...dictionaries.flatMap((b) => b.entries.map((en) => en.value)),
+      ...traits.flatMap((t) => [t.playerDescription, t.aiDescription]),
+      ...traitGroups.flatMap((g) => [g.playerDescription, g.aiDescription]),
     ].filter((t): t is string => !!t);
     setPlaceholderRolls((prev) => primeRolls(placeholders, texts, prev));
-  }, [isGameStarted, placeholders, entities, locations, dictionaries, worldOverview, setPlaceholderRolls]);
+  }, [isGameStarted, placeholders, entities, locations, dictionaries, traits, traitGroups, worldOverview, setPlaceholderRolls]);
 
   // True while the story's opening hour is still unmeasured and about to be asked for — i.e. the clock is on
   // and the opening turn hasn't committed. A game that started with the clock off keeps `startHour` null
@@ -1315,7 +1356,7 @@ const GameViewer = ({
       STATS_TOKENS.map((tok) => {
         const sel = decodeVariant(STATS_VARIABLE, tokenVariant(tok));
         return [tok, buildStatContext(
-          playerStats,
+          activeStats,
           { values: sel.numbers != null, status: sel.descriptions != null, meaning: sel.meaning != null },
           sel.format === 'markdown' ? 'markdown' : sel.format === 'xml' ? 'xml' : 'simple',
         )];
@@ -1367,7 +1408,7 @@ const GameViewer = ({
     for (const k in values) values[k] = resolvePH(values[k]);
     return values;
   }, [
-    worldOverview, playerStats, generateTraitDescriptions,
+    worldOverview, activeStats, generateTraitDescriptions,
     currentLocation, locations, withDiscovered, allEntities, playerNotes, resolvePH,
     fullMessageHistory, timeContext, gameTime, calendar, openingHourPending,
   ]);
@@ -1653,7 +1694,7 @@ ${playerNotes || NONE_PLACEHOLDER}
           // Parse the planner's cast so it drives participation exactly like the staged director does:
           // defined entities confirm loosely, invented names strictly, both gated by the narration below.
           const { cast } = parseDirectorCast(plan);
-          const classified = classifyCast(cast, allEntities, playerTraits.map((t) => t.name));
+          const classified = classifyCast(cast, allEntities, activeTraits.map((t) => t.name));
           directorCandidates.push(...classified.directorCandidates);
           adHocCandidates.push(...classified.adHocCandidates);
           sceneCast = classified.npcCast;
@@ -1682,7 +1723,7 @@ ${playerNotes || NONE_PLACEHOLDER}
           lastStory,
           entities: allEntities,
           presentEntityIds: withDiscovered(turnLocation)?.entities || [],
-          playerNames: playerTraits.map((t) => t.name),
+          playerNames: activeTraits.map((t) => t.name),
           characterDiaries,
           concurrentCharacters: concurrentTurnRequests,
           fullMessageHistory,
@@ -2316,8 +2357,10 @@ ${playerNotes || NONE_PLACEHOLDER}
     async (base: typeof playerStats, clock: StatClock) => {
       try {
         // processStatCode is typed over Stat[]; playerStats is the narrower PlayerStat[] (value: number).
-        const coded = (await processStatCode(base, clock)) as typeof playerStats;
-        const codeChanges = appliedStatDeltas(base, coded);
+        // Disabled stats are inert: their own code never runs, and they aren't exposed to anyone else's.
+        const live = enabledStats(base, statEnabledRef.current);
+        const coded = (await processStatCode(live, clock)) as typeof playerStats;
+        const codeChanges = appliedStatDeltas(live, coded);
         if (Object.keys(codeChanges).length === 0) return;
         // Override only the stats the code actually moved, onto the LATEST stats — not a blanket
         // `setPlayerStats(coded)`, whose `coded` is computed from the pre-`await` baseline and would clobber
@@ -2344,7 +2387,7 @@ ${playerNotes || NONE_PLACEHOLDER}
   // Whether any stat's code reads the clock, and so needs a per-turn run of its own on turns the AI
   // changed nothing. False for every world authored before these variables existed, which keeps those
   // worlds on exactly the run schedule they have always had.
-  const anyStatUsesClock = useMemo(() => playerStats.some((s) => usesStatClock(s.code)), [playerStats]);
+  const anyStatUsesClock = useMemo(() => activeStats.some((s) => usesStatClock(s.code)), [activeStats]);
 
   // Update the applyStatChanges function to handle specific stat updates
   const applyStatChanges = useCallback(
@@ -2362,7 +2405,14 @@ ${playerNotes || NONE_PLACEHOLDER}
       // Apply the AI's direct changes, then derive any code-based stats from that result. Both run
       // outside the state updater (updaters must stay pure), reading the latest stats via the ref.
       const baseStats = base ?? playerStatsRef.current;
-      const directApplied = applyAiStatChanges(baseStats, normalizedChanges, affectedStats);
+      // A disabled stat isn't in the prompt, but a name collision could still land on it — restrict the
+      // apply to the live set rather than trusting that.
+      const live = enabledStats(baseStats, statEnabledRef.current).map((s) => s.name);
+      const directApplied = applyAiStatChanges(
+        baseStats,
+        normalizedChanges,
+        affectedStats ? affectedStats.filter((n) => live.includes(n)) : live,
+      );
 
       // Show the *actual* applied change (clamped to min/max and honoring noIncrease/noDecrease), not the
       // raw request — so a stat pinned at its cap shows no delta, and the live bar/text match the history
@@ -3455,12 +3505,19 @@ ${playerNotes || NONE_PLACEHOLDER}
     }
   };
 
+  // Each stat's authored Min — the floor no trait may dig below. Traits apply one call at a time, so the
+  // live stats already carry earlier raises and can't serve as the reference.
+  const authoredMins = useMemo(
+    () => Object.fromEntries(stats.map((s) => [s.id, s.min])),
+    [stats],
+  );
+
   const handleStatChanges = useCallback(
     (statChanges: StatChange[]) => {
       // Runtime-only: apply to playerStats. The authored world (GameData.stats) is never mutated by play.
-      setPlayerStats((prevStats) => applyTraitStatChanges(prevStats, statChanges).stats);
+      setPlayerStats((prevStats) => applyTraitStatChanges(prevStats, statChanges, authoredMins).stats);
     },
-    [setPlayerStats],
+    [setPlayerStats, authoredMins],
   );
 
   const applyTrait = useCallback(
@@ -3470,6 +3527,39 @@ ${playerNotes || NONE_PLACEHOLDER}
       addLogEntry(`Applied trait: ${trait.name}`);
     },
     [handleStatChanges, addLogEntry, setPlayerTraits],
+  );
+
+  /**
+   * Switch a chosen trait on or off mid-play. Stat changes reverse symmetrically — switching off applies the
+   * negated changes, switching on re-applies the originals — so a trait can go back and forth without drift.
+   * Everything else it does (AI text, stat availability, placeholder pins) is derived from the active set and
+   * simply follows. Turning on a trait in an exclusive group retires its siblings first.
+   */
+  const toggleTrait = useCallback(
+    (traitId: string, enabled: boolean) => {
+      const trait = playerTraits.find((t) => t.id === traitId);
+      if (!trait) return;
+      const retire = enabled
+        ? exclusiveSiblings(trait, traits, traitGroups).filter((id) => !disabledTraitIds.includes(id))
+        : [];
+      for (const id of retire) {
+        const sibling = playerTraits.find((t) => t.id === id);
+        if (sibling) {
+          handleStatChanges(invertStatChanges(sibling.statChanges));
+          addLogEntry(`Trait switched off: ${sibling.name}`);
+        }
+      }
+      handleStatChanges(enabled ? trait.statChanges : invertStatChanges(trait.statChanges));
+      setDisabledTraitIds((prev) => {
+        const off = new Set(prev);
+        for (const id of retire) off.add(id);
+        if (enabled) off.delete(traitId);
+        else off.add(traitId);
+        return [...off];
+      });
+      addLogEntry(`Trait switched ${enabled ? 'on' : 'off'}: ${trait.name}`);
+    },
+    [playerTraits, traits, traitGroups, disabledTraitIds, handleStatChanges, addLogEntry, setDisabledTraitIds],
   );
 
   const changeLocation = useCallback(
@@ -3513,12 +3603,11 @@ ${playerNotes || NONE_PLACEHOLDER}
         }),
       );
 
-      initialTraits.forEach((traitId) => {
-        const trait = traits.find((t) => t.id === traitId);
-        if (trait) {
-          applyTrait(trait);
-        }
-      });
+      // Authored order, not click order: stat changes apply in sequence, so a deterministic order is what
+      // makes two players who picked the same traits end up with the same stats.
+      const chosen = new Set(initialTraits);
+      inAuthoredOrder(traits.filter((t) => chosen.has(t.id)), traitOrderIndex(traits, traitGroups))
+        .forEach(applyTrait);
 
       // Use the player's chosen starting location, else a random starting point (fallback: any location).
       const location = resolveStartingLocation(locations, initialLocationId);
@@ -3558,6 +3647,7 @@ ${playerNotes || NONE_PLACEHOLDER}
     initialCharacters,
     dictionaries,
     traits,
+    traitGroups,
     locations,
     worldId,
     stats,
@@ -3851,6 +3941,7 @@ ${playerNotes || NONE_PLACEHOLDER}
   const rightPanel = (
     <RightPanel
       onLocationClick={() => setIsLocationModalOpen(true)}
+      onToggleTrait={toggleTrait}
       language={language}
       setLanguage={setLanguage}
     />

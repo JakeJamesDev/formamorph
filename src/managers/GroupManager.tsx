@@ -2,12 +2,13 @@ import { useEditingDraft } from '@/lib/useEditingDraft';
 import { useGameData } from '@/contexts/GameDataContext';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Textarea } from '@/components/ui/textarea';
+import { Checkbox } from '@/components/ui/checkbox';
+import PlaceholderField from '@/components/prompt/PlaceholderField';
 import type { TraitGroup } from '@/types';
 
 /** Right-panel editor for a trait group: name + audience-split descriptions (blank-friendly). */
 const GroupManager = ({ group }: { group: TraitGroup }) => {
-  const { updateTraitGroup } = useGameData();
+  const { updateTraitGroup, placeholders } = useGameData();
   const { draft: editingGroup, setField: handleChange } = useEditingDraft(group, updateTraitGroup);
 
   if (!editingGroup) return null;
@@ -23,18 +24,30 @@ const GroupManager = ({ group }: { group: TraitGroup }) => {
       </div>
       <div className="space-y-2">
         <Label>Player-Facing Description</Label>
-        <Textarea
+        <PlaceholderField
           value={editingGroup.playerDescription || ''}
-          onChange={(e) => handleChange('playerDescription', e.target.value)}
+          onChange={(v) => handleChange('playerDescription', v)}
+          placeholders={placeholders}
+          resizable
         />
       </div>
       <div className="space-y-2">
         <Label>AI-Facing Description</Label>
-        <Textarea
+        <PlaceholderField
           value={editingGroup.aiDescription || ''}
-          onChange={(e) => handleChange('aiDescription', e.target.value)}
+          onChange={(v) => handleChange('aiDescription', v)}
+          placeholders={placeholders}
+          resizable
         />
       </div>
+      <label className="flex items-center gap-2 cursor-pointer">
+        <Checkbox
+          checked={!!editingGroup.exclusive}
+          onCheckedChange={(c) => handleChange('exclusive', c === true)}
+        />
+        <span>Exclusive</span>
+        <span className="text-xs text-muted-foreground">(at most one trait here; picked as radio buttons)</span>
+      </label>
     </div>
   );
 };
