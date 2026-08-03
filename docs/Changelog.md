@@ -2,7 +2,7 @@
 
 All notable changes to Formamorph. This fork's first line is **2.0.0** — a full TypeScript rebuild of the upstream JavaScript app ([FieryLionite's Formamorph](https://fierylion.itch.io/formamorph), ~v1.2) — with feature parity as the baseline plus new features on top.
 
-> ✅ **2.0.0 – 2.8.0 are released** (collapsed below). New work lands under **🚧 In Progress** — an unnumbered section, so changes accumulate without pinning a version. When a batch earns a release its section is marked **Released** and collapsed, and a fresh In Progress opens. `package.json` reads **2.8.0** — the latest released version.
+> ✅ **2.0.0 – 2.9.0 are released** (collapsed below). New work lands under **🚧 In Progress** — an unnumbered section, so changes accumulate without pinning a version. When a batch earns a release its section is marked **Released** and collapsed, and a fresh In Progress opens. `package.json` reads **2.9.0** — the latest released version.
 
 Each release groups changes as **Major** / **Minor**, then **Added** / **Removed** / **Fixed**, and within those by audience: 👤 user-facing · 🛠️ developer tooling · ⚙️ backend.
 
@@ -10,7 +10,12 @@ Each release groups changes as **Major** / **Minor**, then **Added** / **Removed
 
 ## 🚧 In Progress
 
-_Unreleased — new work accumulates here until it earns a version bump. The next batch will pin its own version; `package.json` reads **2.8.0** (just released below)._
+_Unreleased — new work accumulates here until it earns a version bump. The next batch will pin its own version; `package.json` reads **2.9.0** (just released below)._
+
+---
+
+<details>
+<summary><strong>✅ 2.9.0 — Released 2026-08-03</strong> — the community release: bugs and suggestions become a board you can read, vote on and reply to, profiles gain faces, follows, likes and a record of what you've made, a mod team with badges and an audit log behind it, quarantine instead of deletion, admin messages that reach you in app, traits that switch on and off mid-story with exclusive groups and hidden stats, weighted placeholder values, an entity's 3D model reachable in game, and a desktop app that no longer needs CORS on your AI server (click to expand)</summary>
 
 ### Minor Changes
 
@@ -97,6 +102,8 @@ _Unreleased — new work accumulates here until it earns a version bump. The nex
 - **🛠️ Developer tooling**
   - **Fourteen option switchers announce themselves correctly to screen readers.** Several of the game's segmented controls were built out of tab components, but they don't switch a tab panel — they pick a value, and whatever they change is rendered somewhere else entirely. A screen reader was told otherwise: each button claimed to be a tab controlling a panel that was never on the page, so it announced "tab, 1 of 4" and pointed at an element that didn't exist. Fourteen of them are now segmented controls (a radio group), which is what they always were: the main menu's card-type switcher and its grid/detailed view toggle, Theme and Paragraph Limit, Thinking mode and Native Reasoning, the local model panel's Simple/Advanced and GPU Layers rows, the model manager's Installed/Recommended and VRAM tier rows, the variable chip pop-out's format and scope options, the in-game Player/Entities model swap, the System Prompt / User Message / Messages / Options row under each prompt, and the group rows in Select Starting Traits. Nothing moves, resizes or recolors — the replacement is styled to match to the pixel, right down to the ones that lay their options out in even columns or wrap them onto a second row. The switchers that really do drive a panel (the Settings sections, the World Editor, the prompt list) stay tabs.
   - **The real tab sets finally point at their own contents.** The library's entity and dictionary editors, Community Creations' Worlds / Characters / Dictionaries switcher, and the World Editor's seven tabs are genuine tabs — but their contents were rendered outside the tab set, so each button still pointed at a panel the page didn't have. The panel is now part of the tab set proper, which is what a screen reader needs to follow the switch and announce what it landed on. Nothing about the layout changes, and the tabs behave exactly as before. In the World Editor's side-by-side layout the tab owns its list; the detail pane beside it is the other half of a master-detail split, so it stays its own region.
+
+</details>
 
 ---
 
