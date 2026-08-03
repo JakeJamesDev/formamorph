@@ -54,7 +54,7 @@ import StartingLocationModal from './StartingLocationModal';
 import DictionarySelectionModal from './DictionarySelectionModal';
 import CharacterSelectionModal from './CharacterSelectionModal';
 import { startingLocations } from '@/lib/startingLocation';
-import { exclusiveSiblings } from '@/lib/traitEffects';
+import { exclusiveSiblings, collapseExclusiveDefaults } from '@/lib/traitEffects';
 import { shouldShowDictionaryStep } from '@/lib/dictionarySelection';
 import { shouldShowCharacterStep } from '@/lib/characterSelection';
 import WorldStorageService from '../services/WorldStorageService';
@@ -1763,8 +1763,10 @@ const MainMenu = ({ onStartGame, onLoadSaveGame, onReplayIntro, introActive = fa
                     <Button
                       className="w-2/3 bg-gradient-to-r from-sky-200 to-cyan-200 hover:from-sky-300 hover:to-cyan-300 text-black font-bold rounded-r-none"
                       onClick={() => {
-                        // Pre-check "Enabled by Default" traits for the selection screen.
-                        const defaults = traits.filter((t) => t.isDefault).map((t) => t.id);
+                        // Pre-check "Enabled by Default" traits for the selection screen (one per
+                        // exclusive group — the radio can only show one anyway).
+                        const defaults = collapseExclusiveDefaults(
+                          traits.filter((t) => t.isDefault).map((t) => t.id), traits, traitGroups);
                         setSelectedTraits(defaults);
                         setShowWorldModal(false);
                         // No traits to choose — skip the selection menu entirely.
@@ -1784,7 +1786,8 @@ const MainMenu = ({ onStartGame, onLoadSaveGame, onReplayIntro, introActive = fa
                         // For uploaded worlds, use the worldData from context
                         const currentWorldData = selectedWorld!.data;
                         // Skip the setup steps but honor the author's default trait choices.
-                        const defaults = traits.filter((t) => t.isDefault).map((t) => t.id);
+                        const defaults = collapseExclusiveDefaults(
+                          traits.filter((t) => t.isDefault).map((t) => t.id), traits, traitGroups);
                         setSelectedTraits(defaults);
                         onStartGame(defaults, currentWorldData.worldOverview?.use3DModel ? defaultCharacterData : null, true);
                       }}

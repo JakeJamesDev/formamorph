@@ -80,6 +80,31 @@ export function exclusiveSiblings(trait: Trait, traits: Trait[], groups: TraitGr
   return traits.filter((t) => (t.groupId ?? null) === groupId && t.id !== trait.id).map((t) => t.id);
 }
 
+/**
+ * Collapse a default-trait selection so each exclusive group contributes at most one id — the first in
+ * authored order, matching the radio the selection screen shows checked. An author can mark two exclusive
+ * siblings default; without this both would silently apply on Enter World / Quick Start.
+ */
+export function collapseExclusiveDefaults(ids: string[], traits: Trait[], groups: TraitGroup[]): string[] {
+  const byId = new Map(traits.map((t) => [t.id, t]));
+  const order = traitOrderIndex(traits, groups);
+  const exclusive = new Set(groups.filter((g) => g.exclusive).map((g) => g.id));
+  const takenGroup = new Set<string>();
+  const out: string[] = [];
+  const sorted = [...ids].sort(
+    (a, b) => (order.get(a) ?? Number.MAX_SAFE_INTEGER) - (order.get(b) ?? Number.MAX_SAFE_INTEGER),
+  );
+  for (const id of sorted) {
+    const groupId = byId.get(id)?.groupId ?? null;
+    if (groupId !== null && exclusive.has(groupId)) {
+      if (takenGroup.has(groupId)) continue;
+      takenGroup.add(groupId);
+    }
+    out.push(id);
+  }
+  return out;
+}
+
 /** Another trait claiming the same target, and which of the two the precedence rule picks. */
 export interface TraitConflict {
   /** Names of the other traits targeting this, in authored order. */

@@ -9,6 +9,7 @@ import {
   activePlaceholderPins,
   exclusiveSiblings,
   traitConflicts,
+  collapseExclusiveDefaults,
 } from './traitEffects';
 import { applyTraitStatChanges } from './statChanges';
 
@@ -176,5 +177,22 @@ describe('conflict detection', () => {
     const a = T('a', { name: 'A', statToggles: [{ statId: '', enabled: true }] });
     const b = T('b', { name: 'B', statToggles: [{ statId: '', enabled: false }] });
     expect(traitConflicts(a, [a, b], [])).toEqual({ stats: {}, placeholders: {} });
+  });
+});
+
+describe('collapseExclusiveDefaults', () => {
+  const groups = [G('excl', { exclusive: true, order: 0 }), G('plain', { order: 1 })];
+  const traits = [
+    T('a', { groupId: 'excl', order: 0 }), T('b', { groupId: 'excl', order: 1 }),
+    T('c', { groupId: 'plain', order: 0 }), T('d', { groupId: 'plain', order: 1 }),
+    T('loose'),
+  ];
+
+  it('keeps only the first authored default per exclusive group', () => {
+    expect(collapseExclusiveDefaults(['b', 'a', 'loose'], traits, groups)).toEqual(['a', 'loose']);
+  });
+
+  it('leaves non-exclusive groups and ungrouped traits alone', () => {
+    expect(collapseExclusiveDefaults(['c', 'd', 'loose'], traits, groups)).toEqual(['c', 'd', 'loose']);
   });
 });

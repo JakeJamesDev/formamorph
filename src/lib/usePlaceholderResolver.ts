@@ -15,12 +15,14 @@ import { activePlaceholderPins, inAuthoredOrder, traitOrderIndex } from '@/lib/t
  */
 export function usePlaceholderResolver(): (text: string) => string {
   const { placeholders, traits, traitGroups } = useGameData();
-  const { placeholderRolls, playerTraits, disabledTraitIds } = useGameplay();
+  // View-aliased (equal to live on the latest page): a past page resolves with the pins that were in
+  // force on that turn, not whatever the player has toggled since.
+  const { placeholderRolls, viewTraits, viewDisabledTraitIds } = useGameplay();
   const pins = useMemo(() => {
-    const off = new Set(disabledTraitIds);
-    const active = inAuthoredOrder(playerTraits.filter((t) => !off.has(t.id)), traitOrderIndex(traits, traitGroups));
+    const off = new Set(viewDisabledTraitIds);
+    const active = inAuthoredOrder(viewTraits.filter((t) => !off.has(t.id)), traitOrderIndex(traits, traitGroups));
     return activePlaceholderPins(active);
-  }, [playerTraits, disabledTraitIds, traits, traitGroups]);
+  }, [viewTraits, viewDisabledTraitIds, traits, traitGroups]);
   return useCallback(
     (text: string) => resolvePlaceholders(text, { placeholders, rolls: placeholderRolls, pins }),
     [placeholders, placeholderRolls, pins],
