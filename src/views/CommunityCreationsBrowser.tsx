@@ -388,7 +388,8 @@ const CommunityCreationsBrowser = ({
       disabled={isSyncingCatalog}
       onClick={() => loadCatalog(true)}
     >
-      <RotateCcw className={`h-4 w-4 ${isSyncingCatalog ? 'animate-spin' : ''}`} />
+      {/* Reversed spin: animate-spin turns clockwise, but this glyph's arrow points counterclockwise. */}
+      <RotateCcw className={`h-4 w-4 ${isSyncingCatalog ? 'animate-spin [animation-direction:reverse]' : ''}`} />
     </Button>
   );
 
