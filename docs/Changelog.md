@@ -2,7 +2,7 @@
 
 All notable changes to Formamorph. This fork's first line is **2.0.0** — a full TypeScript rebuild of the upstream JavaScript app ([FieryLionite's Formamorph](https://fierylion.itch.io/formamorph), ~v1.2) — with feature parity as the baseline plus new features on top.
 
-> ✅ **2.0.0 – 2.9.0 are released** (collapsed below). New work lands under **🚧 In Progress** — an unnumbered section, so changes accumulate without pinning a version. When a batch earns a release its section is marked **Released** and collapsed, and a fresh In Progress opens. `package.json` reads **2.9.0** — the latest released version.
+> ✅ **2.0.0 – 2.9.1 are released** (collapsed below). New work lands under **🚧 In Progress** — an unnumbered section, so changes accumulate without pinning a version. When a batch earns a release its section is marked **Released** and collapsed, and a fresh In Progress opens. `package.json` reads **2.9.1** — the latest released version.
 
 Each release groups changes as **Major** / **Minor**, then **Added** / **Removed** / **Fixed**, and within those by audience: 👤 user-facing · 🛠️ developer tooling · ⚙️ backend.
 
@@ -10,7 +10,12 @@ Each release groups changes as **Major** / **Minor**, then **Added** / **Removed
 
 ## 🚧 In Progress
 
-_Unreleased — new work accumulates here until it earns a version bump. The next batch will pin its own version; `package.json` reads **2.9.0** (just released below)._
+_Unreleased — new work accumulates here until it earns a version bump. The next batch will pin its own version; `package.json` reads **2.9.1** (just released below)._
+
+---
+
+<details>
+<summary><strong>✅ 2.9.1 — Released 2026-08-04</strong> — the housekeeping release: paging back through the story shows that turn's narration again, mods and devs can reach the tools built for them, every dialog announces itself to a screen reader, and the console stops filling with errors that were never problems (click to expand)</summary>
 
 ### Minor Changes
 
@@ -24,6 +29,8 @@ _Unreleased — new work accumulates here until it earns a version bump. The nex
   - **Expected endpoint probes stop repeating their console errors.** Finding out whether an AI server is LM Studio means asking for lists only LM Studio has, and on any other endpoint the browser prints each of those 404s as though something broke — several times per session, since reachability, context length, and reasoning detection each asked on their own. A 404 is now remembered for the session the first time any of them sees it, so the question is asked once per endpoint and the console shows at most one such line per list instead of a stream. Pointing at an actual LM Studio is unaffected.
   - **The Community Creations refresh arrow spins the way it points.** The sync button's arrow is drawn counterclockwise but rotated clockwise while a refresh ran, so the icon appeared to spin against itself. It now rotates in the direction of its own arrow. The app's only other spinners are direction-neutral loading arcs, checked in the same pass.
   - **A mod or dev answering feedback from their own profile is treated as staff.** Opening a thread from Profile → Feedback gave the team's reply box to administrators only, so a mod or a dev reading the same thread there was told replies were somebody else's business — even though the same account gets the controls everywhere else. All three staff roles now answer from wherever they found the thread. Triage stays in the Admin Panel, as before.
+
+</details>
 
 ---
 
