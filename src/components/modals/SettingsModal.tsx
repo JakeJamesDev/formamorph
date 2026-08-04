@@ -355,6 +355,8 @@ export const SettingsModal = ({ isOpen, onOpenChange, previewValues, initialTab,
     locationChangePromptText,
     setLocationChangePromptText,
     choicesEnabled,
+    continueChoiceEnabled,
+    setContinueChoiceEnabled,
     setChoicesEnabled,
     statUpdatesEnabled,
     setStatUpdatesEnabled,
@@ -2383,6 +2385,16 @@ Includes faces tuned for **dyslexia**, **low vision**, and reading.`}</HintInfo>
                   </ConfirmDialog>
                 </div>
               </div>
+              </Section>
+
+              <Section title="Choices">
+              <CheckRow
+                label="Offer “Continue the Story”"
+                htmlFor="continueChoiceEnabled"
+                checked={continueChoiceEnabled}
+                onChange={setContinueChoiceEnabled}
+                hint="Adds a “[Continue the Story]” button under the generated choices. Clicking it fills the action box with that text so you can send the turn without writing anything — useful when you'd rather watch the story move than decide. It costs no extra AI request, and the story treats it as a nudge to keep going rather than something your character does."
+              />
               </Section>
 
               <Section title="Saves & Worlds">

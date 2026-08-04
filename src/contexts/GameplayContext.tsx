@@ -10,7 +10,7 @@ import { flattenEnabledBookEntries } from '../lib/dictionaryUtils';
 import { getGameplayText, setGameplayText } from '../lib/gameplayTextStore';
 import { parseTurnContent, serializeTurnContent } from '../lib/turnDigest';
 import type { SceneImageMap } from '../lib/sceneImages';
-import { matchChoicesToAction } from '../lib/choices';
+import { matchChoicesToAction, CONTINUE_CHOICE } from '../lib/choices';
 import { pageStatDeltas } from '../lib/statChanges';
 import { pageAssistantIndex, pageNextActionIndex, placeSnapshot } from '../lib/turnHistory';
 import { backfillGameStateStats } from '../lib/statBackfill';
@@ -520,6 +520,11 @@ function useProvideGameplay() {
       : EMPTY_INDICES),
     [viewedSnapshot, fullMessageHistory, currentPage, messagesPerPage, viewChoices],
   );
+  // Whether the action taken from a past page was the hard-coded continue pseudo-choice, so that page can
+  // show it back as the picked option. An exact match, unlike the fuzzy choice inference above.
+  const viewContinueUsed = viewedSnapshot
+    ? (fullMessageHistory[pageNextActionIndex(currentPage, messagesPerPage)]?.content ?? '').includes(CONTINUE_CHOICE)
+    : false;
   // Stat deltas: while live, the animated last-turn changes; while viewing the past, the change this turn
   // made — vs the previous page's stats, or (on the opening turn, which has no predecessor) vs each stat's
   // starting value, so turn 1 still shows its deltas.
@@ -660,6 +665,7 @@ function useProvideGameplay() {
     viewLocationId,
     viewChoices,
     viewSelectedChoice,
+    viewContinueUsed,
     viewStatChanges,
     viewNotes,
     setViewNotes,

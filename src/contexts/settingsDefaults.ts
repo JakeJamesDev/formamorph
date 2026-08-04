@@ -74,6 +74,10 @@ export const DEFAULT_IMAGE_ADETAILER = import.meta.env.VITE_DEFAULT_IMAGE_ADETAI
 // action (one GPU). No VITE_DEFAULT_* override — a per-player toggle, not a deployment knob.
 export const DEFAULT_SCENE_IMAGE_AUTO = false;
 
+// Offer the hard-coded "[Continue the Story]" pseudo-choice beneath the generated ones. On because it's
+// an accessibility affordance. No VITE_DEFAULT_* override — a per-player toggle, not a deployment knob.
+export const DEFAULT_CONTINUE_CHOICE = true;
+
 // Preset color themes. Each (except the base) is a full set of token overrides in index.css keyed by a
 // `data-theme` attribute on <html>. Adding a theme = a new value here + a matching
 // `.light[data-theme="…"]` / `.dark[data-theme="…"]` block in index.css.

@@ -3,6 +3,10 @@
 // (so a "- Fire..." line can't carry the dash into the chosen action) — no preamble/colon dropping,
 // quote stripping, or de-duping, which could mangle legitimately-authored choices.
 
+/** The hard-coded pseudo-choice: no AI request, it just stages this literal text in the input box.
+ *  Bracketed so the OOC direction channel carries it as an authorial "keep going" instruction. */
+export const CONTINUE_CHOICE = '[Continue the Story]';
+
 /** Leading ordered/unordered list markers to peel off the front of a choice line. */
 const LEADING_MARKER = /^\s*(?:[-*•]|\d+[.)])\s+/;
 

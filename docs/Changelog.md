@@ -12,6 +12,13 @@ Each release groups changes as **Major** / **Minor**, then **Added** / **Removed
 
 _Unreleased — new work accumulates here until it earns a version bump. The next batch will pin its own version; `package.json` reads **2.9.1** (just released below)._
 
+### Minor Changes
+
+#### ➕ Added
+
+- **👤 User-facing**
+  - **A "Continue the Story" button under the choices.** Sometimes the answer to "what do you do?" is *nothing in particular* — you'd rather watch the scene keep moving than invent an action for it. A **[Continue the Story]** button now sits below the generated choices and fills the action box with that text, so the turn can be sent without writing anything. It costs no extra AI request of its own, and the story reads it as a nudge to carry on rather than as something your character did. It's offered even on a turn that came back with no choices at all, which is exactly when there's least to go on. Paging back through the story shows it again on the turns you actually used it for. Switch it off under **Settings → Accessibility → Choices** if you'd rather not see it.
+
 ---
 
 <details>
