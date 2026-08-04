@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useSettings, type ThinkingMode, type ReasoningEffort, type ParagraphLimit } from '@/contexts/SettingsContext';
-import { DEFAULT_ENDPOINT, DEFAULT_API_TOKEN, DEFAULT_MODEL_NAME, DEFAULT_MAX_TOKENS, THEME_COLORS, FONT_OPTIONS, NARRATION_FONT_OPTIONS, DEFAULT_NARRATION_SCALE, DEFAULT_NARRATION_LINE_HEIGHT, type ThemeColor, type FontChoice, type NarrationFont } from '@/contexts/settingsDefaults';
+import { DEFAULT_ENDPOINT, DEFAULT_API_TOKEN, DEFAULT_MODEL_NAME, DEFAULT_MAX_TOKENS, THEME_COLORS, FONT_OPTIONS, NARRATION_FONT_OPTIONS, DEFAULT_NARRATION_SCALE, DEFAULT_NARRATION_LINE_HEIGHT, CONTINUE_CHOICE_MODES, type ContinueChoiceMode, type ThemeColor, type FontChoice, type NarrationFont } from '@/contexts/settingsDefaults';
 import { useTheme } from '../theme-provider';
 import { ThemePreviewButton } from '@/components/ThemePreviewDialog';
 import { LocalModelPanel } from '@/components/modals/LocalModelPanel';
@@ -355,8 +355,8 @@ export const SettingsModal = ({ isOpen, onOpenChange, previewValues, initialTab,
     locationChangePromptText,
     setLocationChangePromptText,
     choicesEnabled,
-    continueChoiceEnabled,
-    setContinueChoiceEnabled,
+    continueChoiceMode,
+    setContinueChoiceMode,
     setChoicesEnabled,
     statUpdatesEnabled,
     setStatUpdatesEnabled,
@@ -2388,13 +2388,20 @@ Includes faces tuned for **dyslexia**, **low vision**, and reading.`}</HintInfo>
               </Section>
 
               <Section title="Choices">
-              <CheckRow
-                label="Offer “Continue the Story”"
-                htmlFor="continueChoiceEnabled"
-                checked={continueChoiceEnabled}
-                onChange={setContinueChoiceEnabled}
-                hint="Adds a “[Continue the Story]” button under the generated choices. Clicking it fills the action box with that text so you can send the turn without writing anything — useful when you'd rather watch the story move than decide. It costs no extra AI request, and the story treats it as a nudge to keep going rather than something your character does."
-              />
+              <div className="grid grid-cols-1 sm:grid-cols-[minmax(0,1fr)_minmax(0,3fr)] items-center gap-4">
+                <RowLabel info={
+                  <HintInfo>{`Adds a **[Continue the Story]** button under the generated choices. Clicking it fills the action box with that text so you can send the turn without writing anything — useful when you'd rather watch the story move than decide.
+
+It costs no extra AI request, and the story treats it as a nudge to keep going rather than something your character does.
+
+**Always** keeps the button even with the Choices request switched off, where it's the only one left.`}</HintInfo>
+                }>Continue the Story</RowLabel>
+                <OptionSwitcher
+                  value={continueChoiceMode}
+                  onChange={(v) => setContinueChoiceMode(v as ContinueChoiceMode)}
+                  options={CONTINUE_CHOICE_MODES}
+                />
+              </div>
               </Section>
 
               <Section title="Saves & Worlds">

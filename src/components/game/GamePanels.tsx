@@ -532,7 +532,7 @@ export const MiddlePanel = ({
     viewContinueUsed
   } = useGameplay();
   const gameplayText = useGameplayText();
-  const { ttsHighlight, choicesEnabled, setChoicesEnabled, continueChoiceEnabled, statUpdatesEnabled, revealSpec, revealEasing, showReasoning, memoryDigests, setMemoryDigests } = useSettings();
+  const { ttsHighlight, choicesEnabled, setChoicesEnabled, continueChoiceMode, statUpdatesEnabled, revealSpec, revealEasing, showReasoning, memoryDigests, setMemoryDigests } = useSettings();
   const liveReasoning = useLiveReasoning();
   // Per-word reveal: any enabled effect ⇒ animate (composed keyframe + CSS vars on the container);
   // nothing enabled ⇒ smooth crawl. The keyframe name feeds Streamdown, the amounts ride as CSS vars.
@@ -562,13 +562,15 @@ export const MiddlePanel = ({
     longPress.current.timer = null;
   };
 
-  // The hard-coded continue pseudo-choice. Live: offered whenever choices are on and nothing is generating,
-  // even with zero generated choices (it's the escape hatch for a turn that returned none). Past: shown only
-  // when that turn's action actually was it, so history still reads as the record of what was picked.
+  // The hard-coded continue pseudo-choice. 'always' keeps it even with the choices request switched off,
+  // where it stands alone. Live: shown once nothing is generating, even with zero generated choices (it's
+  // the escape hatch for a turn that returned none). Past: shown only when that turn's action actually was
+  // it, so history still reads as the record of what was picked.
   const continueSelected = isViewingPast ? viewContinueUsed : playerInput.includes(CONTINUE_CHOICE);
   // Nothing to continue before the opening scene lands, so it waits on a turn existing at all.
   const storyStarted = displayedMessages.some((m) => m.role === 'assistant');
-  const showContinue = continueChoiceEnabled && choicesEnabled && (isViewingPast ? viewContinueUsed : storyStarted && !disabled);
+  const continueOffered = continueChoiceMode === 'always' || (continueChoiceMode === 'on' && choicesEnabled);
+  const showContinue = continueOffered && (isViewingPast ? viewContinueUsed : storyStarted && !disabled);
 
   // Whether TTS has produced playable audio for the current text (drives the frozen top row).
   const hasAudio = ttsPlayback.duration > 0;
