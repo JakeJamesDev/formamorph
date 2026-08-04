@@ -12,6 +12,15 @@ Each release groups changes as **Major** / **Minor**, then **Added** / **Removed
 
 _Unreleased — new work accumulates here until it earns a version bump. The next batch will pin its own version; `package.json` reads **2.9.0** (just released below)._
 
+### Minor Changes
+
+#### 🔧 Fixed
+
+- **👤 User-facing**
+  - **Paging back through the story shows that turn's narration again.** Stepping back with **Previous** moved the choices, the stats and the location to the turn you'd paged to, but the narration itself stayed on the turn you started from — so a past page read as the newest scene above an older set of choices. The narration now repaints with everything else, on every page and in both directions. Two separate faults were behind it: paging back also started an endless re-render that never settled on its own, and the markdown renderer decided a replacement paragraph was "unchanged" whenever it happened to occupy the same span as the one before it, so it left the old words on screen.
+  - **Mods and devs can reach the Admin Panel.** The panel was built for the whole team — Users, Feedback and the Log are everyday moderation work, with only Broadcasts and Policies held back for an administrator — but the button that opens it asked for an administrator too, so a mod or a dev had no way in. It now shows for any staff account, and the two administrator-only tabs stay hidden as they were meant to.
+  - **A mod or dev answering feedback from their own profile is treated as staff.** Opening a thread from Profile → Feedback gave the team's reply box to administrators only, so a mod or a dev reading the same thread there was told replies were somebody else's business — even though the same account gets the controls everywhere else. All three staff roles now answer from wherever they found the thread. Triage stays in the Admin Panel, as before.
+
 ---
 
 <details>
