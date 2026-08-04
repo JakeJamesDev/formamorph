@@ -21,7 +21,9 @@ export const MarkdownPanel = forwardRef<HTMLDivElement, {
     <ScrollArea className={cn('rounded-md border bg-muted/30 text-sm', className)}>
       <div ref={ref} className="p-3 [&_:first-child]:mt-0">
         {text
-          ? <MarkdownRenderer text={text} />
+          // Keyed by content: Streamdown memoizes on source position, so replacing the text in place
+          // keeps any same-span node's old render (same fix as the narration key in GamePanels).
+          ? <MarkdownRenderer key={text} text={text} />
           : placeholder
             ? <span className="text-muted-foreground">{placeholder}</span>
             : null}
