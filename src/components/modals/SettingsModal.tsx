@@ -2390,11 +2390,9 @@ Includes faces tuned for **dyslexia**, **low vision**, and reading.`}</HintInfo>
               <Section title="Choices">
               <div className="grid grid-cols-1 sm:grid-cols-[minmax(0,1fr)_minmax(0,3fr)] items-center gap-4">
                 <RowLabel info={
-                  <HintInfo>{`Adds a **[Continue the Story]** button under the generated choices. Clicking it fills the action box with that text so you can send the turn without writing anything — useful when you'd rather watch the story move than decide.
+                  <HintInfo>{`Adds a **[Continue the Story]** button under the choices. It fills the action box with that text, so you can take a turn without writing anything — the story reads it as a nudge to keep going rather than something your character does.
 
-It costs no extra AI request, and the story treats it as a nudge to keep going rather than something your character does.
-
-**Always** keeps the button even with the Choices request switched off, where it's the only one left.`}</HintInfo>
+**Always** keeps the button even with the Choices request switched off.`}</HintInfo>
                 }>Continue the Story</RowLabel>
                 <OptionSwitcher
                   value={continueChoiceMode}
