@@ -23,6 +23,8 @@ import { TokenAutocomplete } from "@/components/TokenAutocomplete";
 import { COMMON_LANGUAGES } from "@/lib/languages";
 import { Send, RefreshCw, Pencil, Languages, Loader2, Headphones, Square, ChevronUp, ChevronDown, X, Download, Trash2, Image as ImageIcon, Dices, MoreHorizontal } from "lucide-react";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import { Separator } from "@/components/ui/separator";
+import { CONTINUE_CHOICE } from "@/lib/choices";
 import { Progress } from "@/components/ui/progress";
 import { Slider } from "@/components/ui/slider";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -526,10 +528,11 @@ export const MiddlePanel = ({
     playerStats,
     isViewingPast,
     viewChoices: choices,
-    viewSelectedChoice
+    viewSelectedChoice,
+    viewContinueUsed
   } = useGameplay();
   const gameplayText = useGameplayText();
-  const { ttsHighlight, choicesEnabled, setChoicesEnabled, statUpdatesEnabled, revealSpec, revealEasing, showReasoning, memoryDigests, setMemoryDigests } = useSettings();
+  const { ttsHighlight, choicesEnabled, setChoicesEnabled, continueChoiceEnabled, statUpdatesEnabled, revealSpec, revealEasing, showReasoning, memoryDigests, setMemoryDigests } = useSettings();
   const liveReasoning = useLiveReasoning();
   // Per-word reveal: any enabled effect ⇒ animate (composed keyframe + CSS vars on the container);
   // nothing enabled ⇒ smooth crawl. The keyframe name feeds Streamdown, the amounts ride as CSS vars.
@@ -558,6 +561,12 @@ export const MiddlePanel = ({
     if (longPress.current.timer) clearTimeout(longPress.current.timer);
     longPress.current.timer = null;
   };
+
+  // The hard-coded continue pseudo-choice. Live: offered whenever choices are on and nothing is generating,
+  // even with zero generated choices (it's the escape hatch for a turn that returned none). Past: shown only
+  // when that turn's action actually was it, so history still reads as the record of what was picked.
+  const continueSelected = isViewingPast ? viewContinueUsed : playerInput.includes(CONTINUE_CHOICE);
+  const showContinue = continueChoiceEnabled && choicesEnabled && (isViewingPast ? viewContinueUsed : !disabled);
 
   // Whether TTS has produced playable audio for the current text (drives the frozen top row).
   const hasAudio = ttsPlayback.duration > 0;
@@ -832,6 +841,32 @@ export const MiddlePanel = ({
                     </Button>
                   );
                 })}
+                {showContinue && (
+                  <>
+                    {choices && choices.length > 0 && <Separator className="my-1" />}
+                    <Button
+                      // Same click contract as a generated choice: plain tap replaces the input, Ctrl/Cmd+click
+                      // (or a long-press) appends. Never submits — the player still presses send.
+                      onClick={(e) => {
+                        if (longPress.current.fired) { longPress.current.fired = false; return; }
+                        if (e.ctrlKey || e.metaKey) appendChoice(CONTINUE_CHOICE); else setPlayerInput(CONTINUE_CHOICE);
+                      }}
+                      onPointerDown={() => startLongPress(CONTINUE_CHOICE)}
+                      onPointerUp={cancelLongPress}
+                      onPointerLeave={cancelLongPress}
+                      onPointerCancel={cancelLongPress}
+                      disabled={disabled || isViewingPast}
+                      variant={continueSelected ? "default" : "outline"}
+                      className={`w-full transition-all duration-200 h-auto min-h-[3rem] whitespace-normal
+                        ${continueSelected
+                          ? "bg-primary text-primary-foreground font-bold shadow-lg"
+                          : "border-primary hover:bg-accent hover:text-accent-foreground"
+                        }`}
+                    >
+                      {CONTINUE_CHOICE}
+                    </Button>
+                  </>
+                )}
             </div>
           </ScrollArea>
           <EditTextModal

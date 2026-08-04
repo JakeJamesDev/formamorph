@@ -1,6 +1,7 @@
 import { describe, it, expect, vi, afterEach } from 'vitest';
 import { screen, fireEvent, act, within } from '@testing-library/react';
 import { getGameplayText } from '@/lib/gameplayTextStore';
+import { CONTINUE_CHOICE } from '@/lib/choices';
 import { readTurn, renderLeftPanel, renderMiddlePanel, renderRightPanel, statFixture, type PanelHarness, type TurnFixture } from '@/test/gamePanels';
 import { resetTtsPlayback, setTtsPlayback } from '@/test/stubs/ttsPlayback';
 import { lastVrmViewerProps, resetVrmViewerStub } from '@/test/stubs/vrmViewer';
@@ -322,5 +323,69 @@ describe('MiddlePanel — paging repaints the narration', () => {
     expect(narrationText()).toContain('gutters once');
     expect(screen.getByRole('button', { name: 'Left' })).toBeInTheDocument();
     expect(screen.queryByRole('button', { name: 'Right' })).toBeNull();
+  });
+});
+
+describe('MiddlePanel — the continue pseudo-choice', () => {
+  const continueButton = () => screen.queryByRole('button', { name: CONTINUE_CHOICE });
+
+  it('stages its own text in the action box instead of asking the AI for anything', () => {
+    const view = renderMiddlePanel({}, { turns: TURNS });
+
+    fireEvent.click(continueButton()!);
+    expect(view.gameplay().playerInput).toBe(CONTINUE_CHOICE);
+    // The whole point is that it costs no request — sending stays the player's move.
+    expect(view.props.handleSendAction).not.toHaveBeenCalled();
+    expect(view.props.handleRegenerateChoices).not.toHaveBeenCalled();
+  });
+
+  it('appends after a typed action on ctrl+click, the way a generated choice does', () => {
+    const view = renderMiddlePanel({}, { turns: TURNS });
+    act(() => { view.gameplay().setPlayerInput('I check the rope'); });
+
+    fireEvent.click(continueButton()!, { ctrlKey: true });
+    expect(view.gameplay().playerInput).toBe(`I check the rope. ${CONTINUE_CHOICE}`);
+  });
+
+  it('is offered on a turn that came back with no choices at all', () => {
+    // The case it exists for: nothing to click and no idea what to type.
+    renderMiddlePanel({}, { turns: [{ action: 'wait', narration: 'The dock creaks.', choices: [] }] });
+    expect(continueButton()).toBeInTheDocument();
+  });
+
+  it('goes away when the player switches it off', () => {
+    renderMiddlePanel({}, { turns: TURNS, settings: (s) => s.setContinueChoiceEnabled(false) });
+    expect(continueButton()).toBeNull();
+    expect(screen.getByRole('button', { name: 'Keep walking' })).toBeInTheDocument();
+  });
+
+  it('goes away with the rest of the choices when choices are switched off', () => {
+    renderMiddlePanel({}, { turns: TURNS, settings: (s) => s.setChoicesEnabled(false) });
+    expect(continueButton()).toBeNull();
+  });
+
+  it('is withheld while a turn is still being generated', () => {
+    // Staging an action mid-request would submit into a turn that hasn't landed.
+    renderMiddlePanel({ disabled: true }, { turns: TURNS });
+    expect(continueButton()).toBeNull();
+  });
+
+  it('shows on a past page only when it was the action that turn took', () => {
+    // Each turn's `action` is what was sent *from the previous page*, so page 1 is the one answered
+    // with the continue and page 2 is the one answered by typing.
+    const PAST = [
+      { action: 'walk the dock', narration: 'The tide comes in.', choices: ['Wait'] },
+      { action: CONTINUE_CHOICE, narration: 'The dock creaks.', choices: ['Keep walking'] },
+      { action: 'wait', narration: 'Gulls settle on the piling.', choices: ['Watch'] },
+    ];
+    const view = renderMiddlePanel({}, { turns: PAST });
+
+    // Page 1's action was the continue — it reads back as the picked option.
+    act(() => { view.gameplay().setUserPage(1); });
+    expect(continueButton()).toBeInTheDocument();
+
+    // Page 2's was a typed action, so a live-only affordance has no business appearing there.
+    act(() => { view.gameplay().setUserPage(2); });
+    expect(continueButton()).toBeNull();
   });
 });
