@@ -100,6 +100,7 @@ import { worldPublishPayload, entityPublishPayload, dictionaryPublishPayload, ty
 import { type CatalogKind } from "@/lib/catalogKinds";
 import { BackupRestoreDialog } from "@/components/menu/BackupRestoreDialog";
 import { COMMUNITY_ENABLED } from "@/lib/featureFlags";
+import { isStaff } from "@/lib/roles";
 import { Checkbox } from "@/components/ui/checkbox";
 import { useReadmeVisibility } from "@/lib/useReadmeVisibility";
 import PatreonIcon from "@/components/PatreonIcon";
@@ -1150,7 +1151,7 @@ const MainMenu = ({ onStartGame, onLoadSaveGame, onReplayIntro, introActive = fa
         <Import className="mr-2 h-4 w-4" /> Import {cardNoun}
       </Button>
 
-      {isAuthenticated && currentUser?.accountType === "admin" && (
+      {isAuthenticated && isStaff(currentUser) && (
         <Button
           className="bg-gradient-to-r from-purple-200 to-pink-200 hover:from-purple-300 hover:to-pink-300 text-black font-bold"
           onClick={() => setShowAdminPanel(true)}

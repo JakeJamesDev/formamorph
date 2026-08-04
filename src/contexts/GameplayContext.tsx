@@ -37,6 +37,12 @@ import type {
   EntityVisualPreference,
 } from '@/types';
 
+// Frozen empties for the `view*` fallbacks: a literal `[]` there is a new identity per render, which
+// leaks into consumers' dependency arrays and can drive a render loop while viewing a past page.
+const EMPTY_IDS: string[] = [];
+const EMPTY_CHOICES: Choice[] = [];
+const EMPTY_INDICES: number[] = [];
+
 /** Normalize a snapshot's `visibleEntities`: legacy saves stored a bare `string[]` of names; those become
  *  `{ name, revealed: true }` (a name that was in the old list had, by construction, been shown already). */
 function normalizeVisibleEntities(raw: unknown): SceneEntity[] {
@@ -488,31 +494,46 @@ function useProvideGameplay() {
   const isViewingPast = viewedSnapshot !== null;
   const viewStats = viewedSnapshot?.playerStats ?? playerStats;
   const viewTraits = viewedSnapshot?.playerTraits ?? playerTraits;
-  const viewDisabledTraitIds = viewedSnapshot ? (viewedSnapshot.disabledTraitIds ?? []) : disabledTraitIds;
+  // Every `view*` below must keep a STABLE identity across renders while the viewed page doesn't change.
+  // A fresh `[]` (or a fresh derived array) on each render propagates into consumers' useMemo/useEffect
+  // deps — `viewDisabledTraitIds` feeds GameViewer's `viewActiveStats`, whose effect writes state, which
+  // re-renders this provider and mints the next fresh array: an unbreakable render loop that only exists
+  // on a past page, since the live branch returns the state values themselves.
+  const viewDisabledTraitIds = viewedSnapshot ? (viewedSnapshot.disabledTraitIds ?? EMPTY_IDS) : disabledTraitIds;
   const viewCharacterData = viewedSnapshot?.characterData ?? characterData;
-  const viewVisibleEntities = viewedSnapshot
-    ? normalizeVisibleEntities(viewedSnapshot.visibleEntities)
-    : visibleEntities;
+  const viewVisibleEntities = useMemo(
+    () => (viewedSnapshot ? normalizeVisibleEntities(viewedSnapshot.visibleEntities) : visibleEntities),
+    [viewedSnapshot, visibleEntities],
+  );
   const viewGameTime = viewedSnapshot?.gameTime ?? gameTime;
   const viewLocationId = viewedSnapshot?.locationId ?? currentLocation?.id;
   // Parse the paged turn's assistant message once — choices and notes both live on it.
-  const viewedTurn = viewedSnapshot
-    ? parseTurnContent(fullMessageHistory[pageAssistantIndex(currentPage, messagesPerPage)]?.content ?? '')
-    : null;
+  const viewedTurn = useMemo(
+    () => (viewedSnapshot
+      ? parseTurnContent(fullMessageHistory[pageAssistantIndex(currentPage, messagesPerPage)]?.content ?? '')
+      : null),
+    [viewedSnapshot, fullMessageHistory, currentPage, messagesPerPage],
+  );
   // Choices already live on each turn's message JSON; read the paged turn's, else the live choices.
-  const viewChoices: Choice[] = viewedSnapshot ? (viewedTurn?.choices ?? []) : choices;
+  const viewChoices: Choice[] = viewedSnapshot ? (viewedTurn?.choices ?? EMPTY_CHOICES) : choices;
   // On a past page, infer which of that turn's choices the player acted on by fuzzy-matching the next
   // turn's action (the user message right after this page) against the choice list; [] = custom action.
   // Multiple indices when the action stacked several choices (shift+click).
-  const viewSelectedChoice = viewedSnapshot
-    ? matchChoicesToAction(fullMessageHistory[pageNextActionIndex(currentPage, messagesPerPage)]?.content ?? '', viewChoices)
-    : [];
+  const viewSelectedChoice = useMemo(
+    () => (viewedSnapshot
+      ? matchChoicesToAction(fullMessageHistory[pageNextActionIndex(currentPage, messagesPerPage)]?.content ?? '', viewChoices)
+      : EMPTY_INDICES),
+    [viewedSnapshot, fullMessageHistory, currentPage, messagesPerPage, viewChoices],
+  );
   // Stat deltas: while live, the animated last-turn changes; while viewing the past, the change this turn
   // made — vs the previous page's stats, or (on the opening turn, which has no predecessor) vs each stat's
   // starting value, so turn 1 still shows its deltas.
-  const viewStatChanges: Record<string, number> = viewedSnapshot
-    ? pageStatDeltas(viewStats, gameStates[currentPage - 2]?.playerStats)
-    : recentStatChanges;
+  const viewStatChanges: Record<string, number> = useMemo(
+    () => (viewedSnapshot
+      ? pageStatDeltas(viewStats, gameStates[currentPage - 2]?.playerStats)
+      : recentStatChanges),
+    [viewedSnapshot, viewStats, gameStates, currentPage, recentStatChanges],
+  );
   // Per-turn player notes: on the current page the live scratchpad; on a past page that turn's frozen notes
   // (from its assistant message), falling back to the snapshot's global notes for pre-per-turn-notes saves.
   const viewNotes = viewedSnapshot

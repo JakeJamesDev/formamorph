@@ -11,6 +11,7 @@ import {
 } from "@/lib/feedbackPresentation";
 import type { FeedbackScope, FeedbackSort } from "@/lib/feedbackPresentation";
 import AuthService from "@/services/AuthService";
+import { isStaff } from "@/lib/roles";
 import type { FeedbackCategory, FeedbackType } from "@/types";
 
 interface MyFeedbackTabProps {
@@ -59,9 +60,9 @@ export function MyFeedbackTab({ active, type, onChanged }: MyFeedbackTabProps) {
   // Bumped after filing or replying, so the list picks the change up.
   const [nonce, setNonce] = useState(0);
 
-  // An admin who finds a thread here is still the team, so they answer from here rather than being told
+  // Staff who find a thread here are still the team, so they answer from here rather than being told
   // replies are somebody else's business. Triage stays in the Admin Panel.
-  const isAdmin = AuthService.getCurrentUser()?.accountType === 'admin';
+  const viewerIsStaff = isStaff(AuthService.getCurrentUser());
 
   const changed = () => {
     setNonce((n) => n + 1);
@@ -72,7 +73,7 @@ export function MyFeedbackTab({ active, type, onChanged }: MyFeedbackTabProps) {
     return (
       <FeedbackThreadView
         threadId={openId}
-        isAdmin={isAdmin}
+        isAdmin={viewerIsStaff}
         onBack={() => setOpenId(null)}
         onChanged={changed}
       />

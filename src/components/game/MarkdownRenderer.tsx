@@ -49,6 +49,10 @@ export const MarkdownRenderer = memo(function MarkdownRenderer(
         remarkPlugins={REMARK_PLUGINS}
         components={COMPONENTS}
         controls={false}
+        // Committed text renders straight from the parsed blocks. Streamdown's `streaming` mode routes
+        // them through state committed in a transition, which leaves finished text a render behind —
+        // visible when paging history, where nothing follows to flush it.
+        mode={animate ? 'streaming' : 'static'}
         animated={animate ? { animation, sep: 'word', easing, ...getRevealTiming() } : false}
         isAnimating={animate}
       >

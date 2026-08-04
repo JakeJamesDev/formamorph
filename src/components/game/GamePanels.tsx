@@ -746,7 +746,7 @@ export const MiddlePanel = ({
                   {message.role === 'user' ? (
                     <div className="whitespace-pre-wrap">{message.content}</div>
                   ) : (
-                    <div ref={narrationRef} style={revealStyle}>
+                    <div ref={narrationRef} data-testid="narration" style={revealStyle}>
                       {/* The turn's reasoning aside, above the narration: live for the streaming latest turn
                           on the current page, otherwise this turn's saved scratchpad. */}
                       {showReasoning && (() => {
@@ -757,7 +757,23 @@ export const MiddlePanel = ({
                       {/* Show the live reveal only while THIS turn's narration is actually streaming and we're
                           on the current page; during setup/thinking (or after), or while viewing history, show
                           the committed text so stale/other-turn text can't animate all at once. */}
-                      <MarkdownRenderer text={showLiveReveal ? gameplayText : parseAssistantMessage(message.content)} animate={showLiveReveal && revealOn} animation={revealAnim} easing={revealEasing} />
+                      {(() => {
+                        const narrationText = showLiveReveal ? gameplayText : parseAssistantMessage(message.content);
+                        // Streamdown memoizes its element components on the markdown node's source POSITION,
+                        // never its text, so swapping in another turn's narration of the same shape reads as
+                        // "unchanged" and the old text stays painted. Keying committed text by its content
+                        // remounts whenever it actually differs; the live stream keeps one key so it still
+                        // animates token by token instead of remounting per chunk.
+                        return (
+                          <MarkdownRenderer
+                            key={showLiveReveal ? 'live' : `committed:${narrationText}`}
+                            text={narrationText}
+                            animate={showLiveReveal && revealOn}
+                            animation={revealAnim}
+                            easing={revealEasing}
+                          />
+                        );
+                      })()}
                     </div>
                   )}
                 </div>
