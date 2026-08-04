@@ -19,6 +19,11 @@ _Unreleased — new work accumulates here until it earns a version bump. The nex
 - **👤 User-facing**
   - **A "Continue the Story" button under the choices.** Sometimes the answer to "what do you do?" is *nothing in particular* — you'd rather watch the scene keep moving than invent an action for it. A **[Continue the Story]** button now sits below the generated choices and fills the action box with that text, so the turn can be sent without writing anything. It costs no extra AI request of its own, and the story reads it as a nudge to carry on rather than as something your character did. It's offered even on a turn that came back with no choices at all, which is exactly when there's least to go on. Paging back through the story shows it again on the turns you actually used it for. **Settings → Accessibility → Choices** sets it to **Off**, **On**, or **Always** — where Always keeps the button even with the choices request itself switched off, so a playthrough that generates no choices at all still has one way to take a turn without typing.
 
+#### 🔧 Fixed
+
+- **👤 User-facing**
+  - **Traits you can switch on and off now work in saves you already had.** A playthrough kept its own copy of each trait you chose, frozen as the world stood when you started — so a trait the author made switchable *after* that never got its checkbox, and switching it was possible only in a brand-new game. A chosen trait now reads its author's latest version: the switch appears where it should, along with any renaming, rewritten description, stat it turns on, or placeholder it pins that has been added since. **Your numbers are left exactly where they are.** What a trait did to your stats was settled on turn 1, and re-running it against edited values would only make them drift, so switching a trait off still takes back precisely what it gave. A trait the author has since deleted stays in your playthrough rather than vanishing from it.
+
 ---
 
 <details>

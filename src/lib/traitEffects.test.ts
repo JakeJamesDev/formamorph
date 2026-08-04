@@ -10,6 +10,7 @@ import {
   exclusiveSiblings,
   traitConflicts,
   collapseExclusiveDefaults,
+  refreshChosenTraits,
 } from './traitEffects';
 import { applyTraitStatChanges } from './statChanges';
 
@@ -42,6 +43,46 @@ describe('authored order', () => {
   it('sorts traits missing from the world last rather than dropping them', () => {
     const order = traitOrderIndex([T('a')], []);
     expect(inAuthoredOrder([T('gone'), T('a')], order).map((t) => t.id)).toEqual(['a', 'gone']);
+  });
+});
+
+describe('re-reading chosen traits from the world', () => {
+  it('gives a playthrough the switch on a trait made switchable after it began', () => {
+    // The bug this exists for: the save froze the trait before the author marked it switchable, and the
+    // panel reads playerToggle off that frozen copy, so no control was ever rendered.
+    const saved = [T('brave', { name: 'Brave' })];
+    const authored = [T('brave', { name: 'Brave', playerToggle: true })];
+    expect(refreshChosenTraits(saved, authored)[0].playerToggle).toBe(true);
+  });
+
+  it('picks up renamed text, stat toggles and pins the author has added since', () => {
+    const saved = [T('brave', { name: 'Brave', aiDescription: 'old' })];
+    const authored = [T('brave', {
+      name: 'Bold',
+      aiDescription: 'new',
+      statToggles: [{ statId: 'rage', enabled: true }],
+      placeholderPins: [{ placeholderId: 'hair', value: 'red' }],
+    })];
+    const [t] = refreshChosenTraits(saved, authored);
+    expect(t.name).toBe('Bold');
+    expect(t.aiDescription).toBe('new');
+    expect(t.statToggles).toEqual([{ statId: 'rage', enabled: true }]);
+    expect(t.placeholderPins).toEqual([{ placeholderId: 'hair', value: 'red' }]);
+  });
+
+  it('keeps the stat changes that were actually applied, not the ones the author now says', () => {
+    // Switching the trait off negates these. Adopting an edited value would un-apply something that was
+    // never applied and leave the stat permanently adrift.
+    const saved = [T('brave', { statChanges: [{ statId: 'vigor', value: 10, type: 'max' }] })];
+    const authored = [T('brave', { statChanges: [{ statId: 'vigor', value: 25, type: 'max' }] })];
+    expect(refreshChosenTraits(saved, authored)[0].statChanges).toEqual([{ statId: 'vigor', value: 10, type: 'max' }]);
+  });
+
+  it('leaves a trait the world no longer has exactly as the save had it', () => {
+    // Deleting and re-creating a trait mints a new id, so an unmatched trait is not reliably a deletion —
+    // dropping it would strip it, and its effects, from every existing save.
+    const saved = [T('gone', { name: 'Gone', aiDescription: 'still here' })];
+    expect(refreshChosenTraits(saved, [])).toEqual(saved);
   });
 });
 

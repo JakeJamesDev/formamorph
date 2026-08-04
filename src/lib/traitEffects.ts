@@ -25,6 +25,24 @@ export function inAuthoredOrder(active: Trait[], order: Map<string, number>): Tr
 }
 
 /**
+ * Re-read each chosen trait's authoring from the world, so a playthrough started before the author's latest
+ * edit still gets them — a trait made switchable, renamed, re-described, or given stat toggles and pins.
+ * A save stores whole trait objects, which makes its copy a snapshot of the world as it stood on turn 1.
+ *
+ * `statChanges` deliberately stay the saved copy: they are the record of what was actually applied to the
+ * player's numbers, and switching the trait off has to negate that rather than whatever the author now says.
+ * A trait the world no longer has keeps its saved copy and stays active — deleting and re-creating a trait
+ * mints a new id, so dropping unmatched traits would strip them from every existing save.
+ */
+export function refreshChosenTraits(chosen: Trait[], authored: Trait[]): Trait[] {
+  const byId = new Map(authored.map((t) => [t.id, t]));
+  return chosen.map((t) => {
+    const current = byId.get(t.id);
+    return current ? { ...current, statChanges: t.statChanges } : t;
+  });
+}
+
+/**
  * The stat changes that undo `changes`. Reversal is negation, not a recompute: `applyTraitStatChanges` is
  * already built to let traits cancel each other's bound raises (and floors a min at the stat's authored
  * value), so feeding it the negated deltas restores the stat to where it stood.

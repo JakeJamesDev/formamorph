@@ -281,6 +281,38 @@ describe('RightPanel', () => {
   });
 });
 
+describe('RightPanel — the traits tab against an edited world', () => {
+  /** A save whose frozen trait predates the author marking it switchable — the shape the bug lived in. */
+  const renderTraits = (authoredToggle: boolean) => {
+    const view = renderRightPanel({}, {
+      turns: TURNS,
+      world: { traits: [{ id: 't-brave', name: 'Brave', statChanges: [], playerToggle: authoredToggle }] },
+      seed: (gameplay) => {
+        gameplay.setPlayerTraits([{ id: 't-brave', name: 'Brave', statChanges: [] }]);
+        gameplay.setActiveTab('traits');
+      },
+    });
+    return view;
+  };
+
+  it('offers the switch a playthrough started before the trait was switchable', () => {
+    const view = renderTraits(true);
+
+    const box = screen.getByRole('checkbox', { name: 'Switch off Brave' });
+    expect(box).toBeEnabled();
+
+    fireEvent.click(box);
+    expect(view.props.onToggleTrait).toHaveBeenCalledWith('t-brave', false);
+  });
+
+  it('offers no switch when the author has not marked it switchable', () => {
+    // The other half: the control has to follow the world, not appear for every trait.
+    renderTraits(false);
+    expect(screen.queryByRole('checkbox')).toBeNull();
+    expect(screen.getByText(/Brave/)).toBeInTheDocument();
+  });
+});
+
 describe('MiddlePanel — paging repaints the narration', () => {
   // Both turns are the SAME markdown shape and length, so every mdast node lands at an identical source
   // position. Streamdown memoizes its element components on that position rather than on the text, so a
