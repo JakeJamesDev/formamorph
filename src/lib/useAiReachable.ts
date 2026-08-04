@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState } from 'react';
 import { useSettings } from '@/contexts/SettingsContext';
 import { useLocalLlmStatus } from '@/lib/useLocalLlmStatus';
 import { deriveModelsUrls } from '@/lib/contextLength';
+import { probeKnownAbsent, recordProbeStatus } from '@/lib/probeMemo';
 import { isDesktop, listLocalModels, localLlmStatus } from '@/lib/imageGen/desktop';
 
 /** Which AI the app is pointed at: the desktop's bundled engine, or any user-configured endpoint. */
@@ -59,17 +60,21 @@ export async function probeEndpoint(
   const headers: Record<string, string> = apiToken ? { Authorization: `Bearer ${apiToken}` } : {};
 
   // LM Studio's native list first — it carries `state`, which is what makes the one provable call provable.
-  try {
-    const res = await fetch(urls.lmstudio, { headers });
-    if (res.ok) {
-      const rows = modelRows(await res.json().catch(() => null));
-      const loaded = rows.some((m) => m.state === 'loaded');
-      const known = rows.some((m) => m.id === modelName);
-      // A loaded model answers to any name; an unloaded one still loads on demand if we name it.
-      return loaded || known || !rows.length ? 'ok' : 'unknownModel';
+  // Skipped once this session has seen it 404 (probeMemo), so a hosted endpoint isn't re-asked on every check.
+  if (!probeKnownAbsent(urls.lmstudio)) {
+    try {
+      const res = await fetch(urls.lmstudio, { headers });
+      recordProbeStatus(urls.lmstudio, res.status);
+      if (res.ok) {
+        const rows = modelRows(await res.json().catch(() => null));
+        const loaded = rows.some((m) => m.state === 'loaded');
+        const known = rows.some((m) => m.id === modelName);
+        // A loaded model answers to any name; an unloaded one still loads on demand if we name it.
+        return loaded || known || !rows.length ? 'ok' : 'unknownModel';
+      }
+    } catch {
+      // not LM Studio — fall through to the generic list
     }
-  } catch {
-    // not LM Studio — fall through to the generic list
   }
 
   // Any other server: reaching the list is all we can honestly conclude.

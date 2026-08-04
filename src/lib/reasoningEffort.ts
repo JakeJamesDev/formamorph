@@ -1,5 +1,6 @@
 import type { ThinkingMode, ReasoningEffort } from '@/contexts/SettingsContext';
 import type { AIRequestType } from '@/types';
+import { probeKnownAbsent, recordProbeStatus } from '@/lib/probeMemo';
 
 /** The `reasoning_effort` values a chat-completions endpoint may accept as a passthrough hint. `auto` is
  *  deliberately absent — it isn't a wire value; the UI's "Default" maps to sending nothing. */
@@ -155,11 +156,16 @@ export async function detectReasoningCapability(
   } catch {
     return null;
   }
+  // Skipped once this session has seen the native list 404 (probeMemo) — not LM Studio, and that won't
+  // change without an endpoint change.
+  const nativeUrl = `${origin}/api/v1/models`;
+  if (probeKnownAbsent(nativeUrl)) return null;
   try {
-    const res = await fetch(`${origin}/api/v1/models`, {
+    const res = await fetch(nativeUrl, {
       headers: token ? { Authorization: `Bearer ${token}` } : {},
       signal,
     });
+    recordProbeStatus(nativeUrl, res.status);
     if (!res.ok) return null;
     const json: unknown = await res.json();
     const models = (json as { models?: unknown }).models;
