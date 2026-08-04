@@ -310,6 +310,13 @@ Deeper stalling fix is the planner (thinking modes) — out of scope for the raw
 
 ## Parked / smaller
 
+- **OOC-only actions feed an empty `<PLAYER ACTION>` to the digest + time-passed writers** (found
+  2026-08-04, shipping the Continue button). `stripOocDirectives('[Continue the Story]')` → `""`,
+  so `defaultSummaryUserPrompt` renders `The player's action this turn:` with nothing after the
+  colon. Pre-existed for any bracket-only action, but the Continue pseudo-choice makes it the
+  common case. Candidate fix: code-side substitution when the strip empties the action — e.g.
+  "(the player let the scene continue)" — but the wording is a prompt surface, so A/B probe the
+  digest quality on Continue turns (both tiers) before shipping any phrasing.
 - **Cloud never says "nothing notable"** on idle turns (summary probe missedIdle=3 before AND
   after the fact fix). Digest noise reduction candidate.
 - **Q-run C1 reader-side**: T21 had compass in context and narrated a vague inventory —

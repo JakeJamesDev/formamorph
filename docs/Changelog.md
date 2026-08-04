@@ -2,7 +2,7 @@
 
 All notable changes to Formamorph. This fork's first line is **2.0.0** — a full TypeScript rebuild of the upstream JavaScript app ([FieryLionite's Formamorph](https://fierylion.itch.io/formamorph), ~v1.2) — with feature parity as the baseline plus new features on top.
 
-> ✅ **2.0.0 – 2.9.1 are released** (collapsed below). New work lands under **🚧 In Progress** — an unnumbered section, so changes accumulate without pinning a version. When a batch earns a release its section is marked **Released** and collapsed, and a fresh In Progress opens. `package.json` reads **2.9.1** — the latest released version.
+> ✅ **2.0.0 – 2.9.2 are released** (collapsed below). New work lands under **🚧 In Progress** — an unnumbered section, so changes accumulate without pinning a version. When a batch earns a release its section is marked **Released** and collapsed, and a fresh In Progress opens. `package.json` reads **2.9.2** — the latest released version.
 
 Each release groups changes as **Major** / **Minor**, then **Added** / **Removed** / **Fixed**, and within those by audience: 👤 user-facing · 🛠️ developer tooling · ⚙️ backend.
 
@@ -10,7 +10,12 @@ Each release groups changes as **Major** / **Minor**, then **Added** / **Removed
 
 ## 🚧 In Progress
 
-_Unreleased — new work accumulates here until it earns a version bump. The next batch will pin its own version; `package.json` reads **2.9.1** (just released below)._
+_Unreleased — new work accumulates here until it earns a version bump. The next batch will pin its own version; `package.json` reads **2.9.2** (just released below)._
+
+---
+
+<details>
+<summary><strong>✅ 2.9.2 — Released 2026-08-04</strong> — the little-conveniences release: a "Continue the Story" button for the turns you'd rather watch than write, and switchable traits finally working in the saves you already had (click to expand)</summary>
 
 ### Minor Changes
 
@@ -23,6 +28,8 @@ _Unreleased — new work accumulates here until it earns a version bump. The nex
 
 - **👤 User-facing**
   - **Traits you can switch on and off now work in saves you already had.** A playthrough kept its own copy of each trait you chose, frozen as the world stood when you started — so a trait the author made switchable *after* that never got its checkbox, and switching it was possible only in a brand-new game. A chosen trait now reads its author's latest version: the switch appears where it should, along with any renaming, rewritten description, stat it turns on, or placeholder it pins that has been added since. **Your numbers are left exactly where they are.** What a trait did to your stats was settled on turn 1, and re-running it against edited values would only make them drift, so switching a trait off still takes back precisely what it gave. A trait the author has since deleted stays in your playthrough rather than vanishing from it.
+
+</details>
 
 ---
 
