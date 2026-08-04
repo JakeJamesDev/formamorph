@@ -1,6 +1,7 @@
-import type { World } from '@/types';
+import type { Entity, World } from '@/types';
 import { dataUrlMime, fitWithin } from './imageBytes';
 import { encodeInWorker, measureInWorker } from './imageOptimWorkerClient';
+import { entityImages } from './entityImages';
 
 // Re-exported so existing importers (character cards, image-gen providers, tests) keep their `@/lib/imageOptim`
 // import paths — the pure helpers now live in the DOM-free leaf module `imageBytes`.
@@ -100,13 +101,17 @@ function worldImageSlots(world: World): ImageSlot[] {
   const thumb = world.worldOverview?.thumbnail;
   if (thumb) slots.push({ url: thumb, cap: IMAGE_CAPS.thumbnail, path: 'thumbnail' });
   for (const e of world.entities ?? []) {
-    if (e.image) slots.push({ url: e.image, cap: IMAGE_CAPS.entity, path: `entity:${e.id}` });
+    // Every picture in the gallery counts, so a world's second and third portraits are budgeted like the first.
+    entityImages(e).forEach((url, i) => slots.push({ url, cap: IMAGE_CAPS.entity, path: `entity:${e.id}:${i}` }));
   }
   for (const l of world.locations ?? []) {
     if (l.backgroundImage) slots.push({ url: l.backgroundImage, cap: IMAGE_CAPS.background, path: `location:${l.id}` });
   }
   return slots;
 }
+
+/** How many image-bearing slots a world has — the `total` of an optimize run's progress. */
+export const countWorldImages = (world: World): number => worldImageSlots(world).length;
 
 /** Scan a world for images exceeding their budget. Returns only the oversized ones plus their total bytes. */
 export async function scanWorldImages(world: World): Promise<{ items: OversizedImage[]; totalBytes: number }> {
@@ -162,6 +167,25 @@ export async function applyImageOptimize(
 }
 
 /**
+ * Apply an optimize mode across one entity's whole gallery, so a second or third picture is re-encoded on the
+ * same terms as its primary. `onImage` fires per picture for progress; a no-op mode ticks nothing and returns
+ * the entity untouched.
+ */
+export async function applyEntityImagesOptimize(
+  entity: Entity,
+  mode: OptimizeMode,
+  onImage?: () => void,
+): Promise<Entity> {
+  if (mode === 'off') return entity;
+  const images: string[] = [];
+  for (const url of entityImages(entity)) {
+    images.push((await applyImageOptimize(url, mode, IMAGE_CAPS.entity)) ?? url);
+    onImage?.();
+  }
+  return images.length ? { ...entity, images } : entity;
+}
+
+/**
  * Return a new world with every oversized image re-encoded in place (shape-preserving — still a data-URL). Only
  * the three image fields are touched; all other data is passed through untouched. `onProgress(done, total)` fires
  * once per image-bearing slot as it resolves (monotonic; within-budget slots tick too so the bar still fills).
@@ -177,10 +201,7 @@ export async function downscaleWorldImages(
   onProgress?: (done: number, total: number) => void,
   signal?: AbortSignal,
 ): Promise<World> {
-  const total =
-    (world.worldOverview?.thumbnail ? 1 : 0) +
-    (world.entities ?? []).filter((e) => e.image).length +
-    (world.locations ?? []).filter((l) => l.backgroundImage).length;
+  const total = countWorldImages(world);
   let done = 0;
   onProgress?.(0, total);
   const opt = async (url: string | undefined | null, cap: ImageCap): Promise<string | undefined | null> => {
@@ -194,7 +215,9 @@ export async function downscaleWorldImages(
   const thumbnail = await opt(world.worldOverview?.thumbnail, IMAGE_CAPS.thumbnail);
   const entities: World['entities'] = [];
   for (const e of world.entities ?? []) {
-    entities.push({ ...e, image: (await opt(e.image, IMAGE_CAPS.entity)) ?? undefined });
+    const images: string[] = [];
+    for (const url of entityImages(e)) images.push((await opt(url, IMAGE_CAPS.entity)) ?? url);
+    entities.push({ ...e, images });
   }
   const locations: World['locations'] = [];
   for (const l of world.locations ?? []) {

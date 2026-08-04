@@ -4,6 +4,7 @@ import { EntityVisual, hasEntityVisual } from '../game/EntityVisual';
 import AudioPlayer from '../game/AudioPlayer';
 import { usePlaceholderResolver } from "@/lib/usePlaceholderResolver";
 import { useEntityVisualPreference } from "@/lib/useEntityVisualPreference";
+import { useEntityGallery } from "@/lib/useEntityGallery";
 import type { Entity } from "@/types";
 
 export const EntityModal = ({ entity, isOpen, onOpenChange }: {
@@ -13,6 +14,7 @@ export const EntityModal = ({ entity, isOpen, onOpenChange }: {
 }) => {
   const resolvePH = usePlaceholderResolver();
   const { preference, onPreferenceChange } = useEntityVisualPreference(entity?.id);
+  const { imageIndex, onImageStep } = useEntityGallery(entity);
 
   if (!entity) return null;
 
@@ -30,6 +32,8 @@ export const EntityModal = ({ entity, isOpen, onOpenChange }: {
                 entity={entity}
                 preference={preference}
                 onPreferenceChange={onPreferenceChange}
+                imageIndex={imageIndex}
+                onImageStep={onImageStep}
               />
             </div>
           )}

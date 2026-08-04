@@ -4,6 +4,7 @@ import { normalizeCustomVRM } from './worldImport';
 import { autoBindLegacyBodyStats } from './bodyMorphs';
 import { appendCurrentToHistory } from './turnHistory';
 import { DEFAULT_MODEL_ID, LEGACY_DEFAULT_MODEL_SENTINEL } from './defaultModel';
+import { migrateEntityImages } from './entityImages';
 
 /** Current app version, derived from package.json (see vite.config.js `define`). User-managed. */
 export const APP_VERSION = __APP_VERSION__;
@@ -78,6 +79,18 @@ function foldDictionaryIntoBooks(world: Record<string, unknown>): void {
   delete world.dictionary;
 }
 
+/**
+ * Fold every entity's legacy single `image` into the `images` gallery. Deliberately NOT version-gated, for
+ * the same reason as `foldDictionaryIntoBooks`: shipped 2.x worlds carry `version === APP_VERSION` yet
+ * predate the gallery, so this must also run on already-current worlds.
+ */
+function migrateEntityGalleries(world: Record<string, unknown>): void {
+  if (!Array.isArray(world.entities)) return;
+  world.entities = world.entities.map((e) =>
+    e && typeof e === 'object' ? migrateEntityImages(e as Record<string, unknown>) : e,
+  );
+}
+
 /** Split a legacy comma-joined keyword string into the array shape. */
 function splitLegacyKeys(raw: unknown): string[] {
   if (Array.isArray(raw)) return raw.map((k) => String(k)).filter(Boolean);
@@ -117,8 +130,8 @@ function migrateDictionaryKeys(world: Record<string, unknown>): void {
 
 /**
  * Bring an imported world up to the current format and stamp it with `APP_VERSION`. The dictionary→books
- * fold and the keyword-array migration run unconditionally (they aren't version-gated — see
- * `foldDictionaryIntoBooks`); the rest is skipped for a world already at `APP_VERSION`. Moves the legacy root `customPlayerVRM` bare data-URL into
+ * fold, the keyword-array migration and the entity-gallery fold run unconditionally (they aren't
+ * version-gated — see `foldDictionaryIntoBooks`); the rest is skipped for a world already at `APP_VERSION`. Moves the legacy root `customPlayerVRM` bare data-URL into
  * `worldOverview.customPlayerVRM` as a `MediaAsset`, auto-binds legacy body stats to body morphs, and
  * renames v1.2 description keys on entities/locations/traits to the audience-based keys. Remaining field
  * defaults are left to `loadWorldData`. Add further 2.0 → 2.x steps here when the shape changes — a version
@@ -129,6 +142,7 @@ export function migrateWorld(raw: unknown): World {
   const world = { ...(raw as Record<string, unknown>) };
   foldDictionaryIntoBooks(world);
   migrateDictionaryKeys(world);
+  migrateEntityGalleries(world);
   if (world.version === APP_VERSION) return world as unknown as World;
 
   const overview = { ...((world.worldOverview as Record<string, unknown>) ?? {}) };

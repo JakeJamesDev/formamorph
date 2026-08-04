@@ -27,6 +27,28 @@ describe('APP_VERSION', () => {
   });
 });
 
+describe('migrateWorld — entity galleries', () => {
+  it('folds a pre-gallery portrait into the gallery', () => {
+    const out = migrateWorld({ worldOverview: {}, entities: [{ id: 'e', name: 'Wren', image: 'a' }] });
+    expect(out.entities[0].images).toEqual(['a']);
+    expect('image' in out.entities[0]).toBe(false);
+  });
+
+  it('folds even a world already stamped at the current version, which can still predate the gallery', () => {
+    const out = migrateWorld({
+      version: APP_VERSION,
+      worldOverview: {},
+      entities: [{ id: 'e', name: 'Wren', image: 'a' }],
+    });
+    expect(out.entities[0].images).toEqual(['a']);
+  });
+
+  it('leaves an authored gallery alone', () => {
+    const out = migrateWorld({ worldOverview: {}, entities: [{ id: 'e', name: 'Wren', images: ['a', 'b'] }] });
+    expect(out.entities[0].images).toEqual(['a', 'b']);
+  });
+});
+
 describe('migrateWorld', () => {
   const vrmUrl = 'data:application/octet-stream;base64,Z2xURgIAAAD45iEB';
 

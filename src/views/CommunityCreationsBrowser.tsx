@@ -23,7 +23,6 @@ import { useCatalogSync } from "@/lib/useCatalogSync";
 import { useDownloadCoordinator } from "@/lib/useDownloadCoordinator";
 import { useLibraryDownload } from "@/lib/useLibraryDownload";
 import { useDownscalePrompt } from "@/lib/useDownscalePrompt";
-import { IMAGE_CAPS } from "@/lib/imageOptim";
 import EntityStorageService from "@/services/EntityStorageService";
 import DictionaryStorageService from "@/services/DictionaryStorageService";
 import type { Entity, Dictionary, EntityMetadata, DictionaryMetadata } from "@/types";
@@ -105,7 +104,7 @@ const CommunityCreationsBrowser = ({
   const [selectedRemoteWorld, setSelectedRemoteWorld] = useState<WorldRecord | null>(null);
   const [showRemoteWorldDetailsModal, setShowRemoteWorldDetailsModal] = useState(false);
   // Offer to downscale oversized images right after a world is downloaded/overwritten.
-  const { promptWorld, promptImage, dialog: downscaleDialog } = useDownscalePrompt();
+  const { promptWorld, promptEntity, dialog: downscaleDialog } = useDownscalePrompt();
   // Download flow: per-world progress, the copy-vs-overwrite decision state, and the fetch/store handlers.
   const {
     downloadProgress, contextualAction, setContextualAction,
@@ -135,12 +134,8 @@ const CommunityCreationsBrowser = ({
       await EntityStorageService.storeEntity({ id, name: entity.name, data: entity, ...link });
     },
     refresh: refreshEntities,
-    // Offer to shrink an oversized portrait before it lands, as worlds do for their images.
-    onFetched: async (entity) => {
-      if (!entity.image) return entity;
-      const image = await promptImage(entity.image, IMAGE_CAPS.entity);
-      return image === entity.image ? entity : { ...entity, image };
-    },
+    // Offer to shrink oversized portraits before they land, as worlds do for their images.
+    onFetched: (entity) => promptEntity(entity),
   });
 
   const dictionaryDownload = useLibraryDownload<Dictionary>({

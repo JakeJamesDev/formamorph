@@ -88,6 +88,10 @@ function useProvideGameplay() {
   // preference, not story state, so it lives here rather than in the per-turn snapshot and an undo leaves
   // it alone. Persisted in the save envelope.
   const [entityVisualPreference, setEntityVisualPreference] = useState<EntityVisualPreference>({});
+  // Which picture of each entity's gallery is on screen, keyed by entity id. Runtime-only and deliberately
+  // absent from the save envelope: where you had paged to is a property of looking at something, not of the
+  // playthrough, so a load starts every entity back at its primary.
+  const [entityImageIndex, setEntityImageIndex] = useState<Record<string, number>>({});
   // The accumulated milestone verdicts (T4: incremental, sticky): which candidate turn ids the
   // selector has judged and which it kept (`selected` null = a legacy malformed full-vote → keep
   // everything). Persisted in the save envelope so verdicts survive load.
@@ -369,6 +373,7 @@ function useProvideGameplay() {
           setMemoryPins(migrated.memoryPins ?? {});
           // Absent on saves written before the preference existed ⇒ every entity opens on its image.
           setEntityVisualPreference(migrated.entityVisualPreference ?? {});
+          setEntityImageIndex({});
           // Restore accumulated verdicts (T4: sticky, never re-voted); older saves lack the field —
           // the loaded history is then judged fresh in one incremental batch on the next idle tick.
           setMilestoneSelection(migrated.milestoneSelection ?? null);
@@ -587,6 +592,8 @@ function useProvideGameplay() {
     setMemoryPins,
     entityVisualPreference,
     setEntityVisualPreference,
+    entityImageIndex,
+    setEntityImageIndex,
     milestoneSelection,
     setMilestoneSelection,
     memoryEdits,
