@@ -279,3 +279,48 @@ describe('RightPanel', () => {
     expect(screen.queryByText(/Viewing turn/)).toBeNull();
   });
 });
+
+describe('MiddlePanel — paging repaints the narration', () => {
+  // Both turns are the SAME markdown shape and length, so every mdast node lands at an identical source
+  // position. Streamdown memoizes its element components on that position rather than on the text, so a
+  // swap like this is the exact case that silently kept the previous turn's words on screen.
+  const PAGED = [
+    // Identical length as well as shape — the memo compares end column, so equal-length text is what
+    // actually collides.
+    { action: 'go left', narration: 'The lantern gutters once in the hall.', choices: ['Left'] },
+    { action: 'go right', narration: 'The lantern steadies then dims again.', choices: ['Right'] },
+  ];
+
+  /** Page the panel to `page` the way GameViewer does: pin the page, then re-slice displayedMessages. */
+  const goToPage = (view: PanelHarness<unknown>, page: number) => {
+    act(() => {
+      const gameplay = view.gameplay();
+      gameplay.setUserPage(page >= PAGED.length ? null : page);
+      gameplay.setDisplayedMessages(gameplay.fullMessageHistory.slice((page - 1) * 2, page * 2));
+    });
+  };
+
+  const narrationText = () => screen.getByTestId('narration').textContent ?? '';
+
+  it('shows the paged turn narration, not the one it was already displaying', () => {
+    const view = renderMiddlePanel({}, { turns: PAGED, stats: STATS });
+    expect(narrationText()).toContain('steadies');
+
+    goToPage(view as PanelHarness<unknown>, 1);
+    expect(narrationText()).toContain('gutters once');
+    expect(narrationText()).not.toContain('steadies');
+
+    goToPage(view as PanelHarness<unknown>, 2);
+    expect(narrationText()).toContain('steadies');
+    expect(narrationText()).not.toContain('gutters once');
+  });
+
+  it('keeps the narration and the choices on the same turn', () => {
+    const view = renderMiddlePanel({}, { turns: PAGED, stats: STATS });
+    goToPage(view as PanelHarness<unknown>, 1);
+
+    expect(narrationText()).toContain('gutters once');
+    expect(screen.getByRole('button', { name: 'Left' })).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Right' })).toBeNull();
+  });
+});

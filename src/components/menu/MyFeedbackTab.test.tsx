@@ -181,6 +181,13 @@ describe('opening a thread from the profile', () => {
     expect(await openFirst()).toMatchObject({ isAdmin: true });
   });
 
+  it.each(['mod', 'dev'])('gives a %s the same reply box an admin gets', async (accountType) => {
+    // The three staff roles are peers here: answering a thread is moderation, not administration.
+    vi.mocked(AuthService.getCurrentUser).mockReturnValue({ id: 's1', username: 'helper', accountType });
+
+    expect(await openFirst()).toMatchObject({ isAdmin: true });
+  });
+
   it('keeps triage out of the profile', async () => {
     // Answering is fine here; moving something through the queue is an Admin Panel action.
     vi.mocked(AuthService.getCurrentUser).mockReturnValue({ id: 'a1', username: 'root-admin', accountType: 'admin' });
