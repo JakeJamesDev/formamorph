@@ -354,7 +354,7 @@ describe('MiddlePanel — the continue pseudo-choice', () => {
   });
 
   it('goes away when the player switches it off', () => {
-    renderMiddlePanel({}, { turns: TURNS, settings: (s) => s.setContinueChoiceEnabled(false) });
+    renderMiddlePanel({}, { turns: TURNS, settings: (s) => s.setContinueChoiceMode('off') });
     expect(continueButton()).toBeNull();
     expect(screen.getByRole('button', { name: 'Keep walking' })).toBeInTheDocument();
   });
@@ -362,6 +362,13 @@ describe('MiddlePanel — the continue pseudo-choice', () => {
   it('goes away with the rest of the choices when choices are switched off', () => {
     renderMiddlePanel({}, { turns: TURNS, settings: (s) => s.setChoicesEnabled(false) });
     expect(continueButton()).toBeNull();
+  });
+
+  it('stays on its own with choices switched off when set to Always', () => {
+    // The whole point of the third setting: no choices request, but still a way to take a turn without typing.
+    // No choices come back at all with the request off, so it's the only button the panel has.
+    renderMiddlePanel({}, { turns: [{ ...TURNS[0], choices: [] }], settings: (s) => { s.setChoicesEnabled(false); s.setContinueChoiceMode('always'); } });
+    expect(continueButton()).toBeInTheDocument();
   });
 
   it('is withheld before the opening scene has landed', () => {
