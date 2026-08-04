@@ -82,7 +82,7 @@ export function ImageZoomViewer({ src, alt, open, onOpenChange, footer }: {
 }) {
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-[95vw] w-[95vw] h-[90dvh] p-0 overflow-hidden bg-background/95">
+      <DialogContent aria-describedby={undefined} className="max-w-[95vw] w-[95vw] h-[90dvh] p-0 overflow-hidden bg-background/95">
         <DialogTitle className="sr-only">{alt || "Image viewer"}</DialogTitle>
         {src && (
           <TransformWrapper

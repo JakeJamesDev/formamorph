@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { Box, Check, Image as ImageIcon } from 'lucide-react';
-import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { ImageZoomViewer } from '@/components/ImageZoomViewer';
 import { resolveModelType } from '@/lib/UtilityComponents';
@@ -92,6 +92,7 @@ export const EntityVisual = ({ entity, className, preference, onPreferenceChange
         <DialogContent className="sm:max-w-[600px] h-[80dvh] flex flex-col">
           <DialogHeader className="flex-shrink-0">
             <DialogTitle>{entity.name} — 3D Model</DialogTitle>
+          <DialogDescription className="sr-only">Interactive 3D model. Drag to rotate, scroll to zoom.</DialogDescription>
           </DialogHeader>
           {/* Mounted plainly, not gated on `modelOpen`: the dialog animates out over 200ms, and dropping the
               viewer the moment it closes empties the window mid-animation. Radix unmounts the content once

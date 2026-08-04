@@ -10,7 +10,7 @@ export const LocationModal = ({ isOpen, onOpenChange, locations, changeLocation 
 }) => {
   return (
     <Dialog open={isOpen} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[425px] max-h-[90dvh] flex flex-col">
+      <DialogContent aria-describedby={undefined} className="sm:max-w-[425px] max-h-[90dvh] flex flex-col">
         <DialogHeader>
           <DialogTitle>Change Location</DialogTitle>
         </DialogHeader>

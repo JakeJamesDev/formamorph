@@ -4156,7 +4156,8 @@ ${playerNotes || NONE_PLACEHOLDER}
           else setIsEditingWorld(false);
         }}
       >
-        <DialogContent className="max-w-[95vw] w-[95vw] h-[90dvh] p-0 overflow-hidden">
+        <DialogContent aria-describedby={undefined} className="max-w-[95vw] w-[95vw] h-[90dvh] p-0 overflow-hidden">
+          <DialogTitle className="sr-only">World Editor</DialogTitle>
           <WorldEditor embedded onClose={() => setIsEditingWorld(false)} />
         </DialogContent>
       </Dialog>
@@ -4169,7 +4170,7 @@ ${playerNotes || NONE_PLACEHOLDER}
 
       {/* Full AI context sent each turn, paginated by turn */}
       <Dialog open={isDebugOpen} onOpenChange={setIsDebugOpen}>
-        <DialogContent className="max-w-[90vw] w-[90vw] h-[85dvh] flex flex-col overflow-hidden">
+        <DialogContent aria-describedby={undefined} className="max-w-[90vw] w-[90vw] h-[85dvh] flex flex-col overflow-hidden">
           {(() => {
             const palette = HIGHLIGHT_PALETTE;
             // Stable per-entry color + name lookups (by the live dictionary's order), shared by the legend,

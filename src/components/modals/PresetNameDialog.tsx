@@ -37,7 +37,7 @@ export const PresetNameDialog = ({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[400px]">
+      <DialogContent aria-describedby={undefined} className="sm:max-w-[400px]">
         <DialogHeader>
           <DialogTitle>{shownMode === 'add' ? 'New Preset' : 'Rename Preset'}</DialogTitle>
         </DialogHeader>

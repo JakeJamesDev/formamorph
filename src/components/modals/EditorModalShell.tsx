@@ -44,7 +44,7 @@ const EditorModalShell = ({
   return (
     <>
       <Dialog open={open} onOpenChange={(o) => { if (!o) attemptClose(); }}>
-        <DialogContent className={contentClassName}>
+        <DialogContent aria-describedby={undefined} className={contentClassName}>
           {/* The switcher sits in the header and the body below it, so one root spans both. `contents` on the
               root and each panel keeps the body a direct flex child of the dialog, as it was unwrapped. */}
           <Tabs value={tab} onValueChange={onTabChange} className="contents">

@@ -21,7 +21,7 @@ const ImageSetupGuide = ({
   onOpenChange: (open: boolean) => void;
 }) => (
   <Dialog open={open} onOpenChange={onOpenChange}>
-    <DialogContent className="sm:max-w-[560px]">
+    <DialogContent aria-describedby={undefined} className="sm:max-w-[560px]">
       <DialogHeader>
         <DialogTitle>{TITLES[provider]}</DialogTitle>
       </DialogHeader>

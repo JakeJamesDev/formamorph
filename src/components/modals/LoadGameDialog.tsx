@@ -1,7 +1,7 @@
 import { randomUUID } from "@/lib/uuid";
 import { downloadBlob } from "@/lib/downloadBlob";
 import React from 'react';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Download, Import, Loader2, X, GripVertical, Folder, FolderOpen, ChevronLeft } from "lucide-react";
 import {
@@ -449,10 +449,10 @@ export function LoadGameDialog({ open, onOpenChange, current, onLoad, title, ico
           <DialogHeader>
             <DialogTitle>World not installed</DialogTitle>
           </DialogHeader>
-          <p className="text-sm text-muted-foreground py-2">
+          <DialogDescription className="py-2">
             This save belongs to “{shownBlocked?.worldName ?? 'a world'}”, which is not installed. Import or
             download that world first to play its saves. You can still download or delete this save.
-          </p>
+          </DialogDescription>
           <DialogFooter>
             <Button onClick={() => setBlockedLoad(null)}>OK</Button>
           </DialogFooter>
@@ -474,6 +474,7 @@ export function LoadGameDialog({ open, onOpenChange, current, onLoad, title, ico
             <DialogTitle className="flex items-center gap-2">
               {icon ?? <FolderOpen className="h-4 w-4" />} {title ?? 'Load Game'}
             </DialogTitle>
+            <DialogDescription className="sr-only">Load a saved game, import a save file, or manage this world&apos;s saves.</DialogDescription>
           </DialogHeader>
           <div className="flex flex-col py-4">
             {topSlot && <div className="mb-3">{topSlot}</div>}

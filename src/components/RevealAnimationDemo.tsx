@@ -126,6 +126,7 @@ function RevealAnimationDialog({ open, onOpenChange }: { open: boolean; onOpenCh
       <DialogContent className="max-w-2xl h-[705px] max-h-[90dvh] flex flex-col">
         <DialogHeader className="shrink-0">
           <DialogTitle>Narration reveal</DialogTitle>
+          <DialogDescription className="sr-only">Preview the narration reveal and tune its animation.</DialogDescription>
         </DialogHeader>
 
         {/* Frozen live preview */}
