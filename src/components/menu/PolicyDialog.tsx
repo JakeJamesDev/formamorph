@@ -32,7 +32,7 @@ export function PolicyDialog({
 }: PolicyDialogProps) {
   return (
     <Dialog open={open}>
-      <DialogContent
+      <DialogContent aria-describedby={undefined}
         className="sm:max-w-[560px] max-h-[85dvh] overflow-y-auto"
         hideClose
         onEscapeKeyDown={(e) => e.preventDefault()}
