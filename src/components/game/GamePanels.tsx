@@ -13,7 +13,7 @@ import { mergeBodyMorphs } from '@/lib/bodyMorphs';
 import { useIsMobile } from '@/lib/useIsMobile';
 import { usePrefersReducedMotion } from '@/lib/usePrefersReducedMotion';
 import { statBarFrame, bandOrigin, formatStatDelta } from '@/lib/statBar';
-import { traitOrderIndex, inAuthoredOrder, activeStatEnabled } from '@/lib/traitEffects';
+import { traitOrderIndex, inAuthoredOrder, activeStatEnabled, refreshChosenTraits } from '@/lib/traitEffects';
 import { MarkdownRenderer } from './MarkdownRenderer';
 import { ReasoningBlock } from './ReasoningBlock';
 import { useLiveReasoning } from '@/lib/reasoningStreamStore';
@@ -1163,7 +1163,7 @@ export const RightPanel = ({ onLocationClick, onToggleTrait, language, setLangua
     setActiveTab,
     viewStats: playerStats,
     commitManualStatEdit,
-    viewTraits: playerTraits,
+    viewTraits: savedTraits,
     viewDisabledTraitIds,
     viewStatChanges: recentStatChanges,
     recentStatFading,
@@ -1176,6 +1176,9 @@ export const RightPanel = ({ onLocationClick, onToggleTrait, language, setLangua
   // The traits actually in force on the viewed turn, and the stats they leave live. A switched-off trait
   // keeps its row (so it can be switched back on) but stops contributing anything.
   const disabledTraits = React.useMemo(() => new Set(viewDisabledTraitIds), [viewDisabledTraitIds]);
+  // The save froze each chosen trait as the world stood on turn 1, so its authoring is re-read from the
+  // world — otherwise a trait made switchable after this playthrough began would never get its control.
+  const playerTraits = React.useMemo(() => refreshChosenTraits(savedTraits, traits), [savedTraits, traits]);
   const activeTraits = React.useMemo(
     () => inAuthoredOrder(playerTraits.filter((t) => !disabledTraits.has(t.id)), traitOrderIndex(traits, traitGroups)),
     [playerTraits, disabledTraits, traits, traitGroups],
