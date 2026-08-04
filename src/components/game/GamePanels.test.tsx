@@ -364,6 +364,12 @@ describe('MiddlePanel — the continue pseudo-choice', () => {
     expect(continueButton()).toBeNull();
   });
 
+  it('is withheld before the opening scene has landed', () => {
+    // Nothing has happened yet, so there is nothing to continue.
+    renderMiddlePanel({}, { turns: [] });
+    expect(continueButton()).toBeNull();
+  });
+
   it('is withheld while a turn is still being generated', () => {
     // Staging an action mid-request would submit into a turn that hasn't landed.
     renderMiddlePanel({ disabled: true }, { turns: TURNS });

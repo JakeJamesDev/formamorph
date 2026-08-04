@@ -566,7 +566,9 @@ export const MiddlePanel = ({
   // even with zero generated choices (it's the escape hatch for a turn that returned none). Past: shown only
   // when that turn's action actually was it, so history still reads as the record of what was picked.
   const continueSelected = isViewingPast ? viewContinueUsed : playerInput.includes(CONTINUE_CHOICE);
-  const showContinue = continueChoiceEnabled && choicesEnabled && (isViewingPast ? viewContinueUsed : !disabled);
+  // Nothing to continue before the opening scene lands, so it waits on a turn existing at all.
+  const storyStarted = displayedMessages.some((m) => m.role === 'assistant');
+  const showContinue = continueChoiceEnabled && choicesEnabled && (isViewingPast ? viewContinueUsed : storyStarted && !disabled);
 
   // Whether TTS has produced playable audio for the current text (drives the frozen top row).
   const hasAudio = ttsPlayback.duration > 0;
