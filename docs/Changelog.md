@@ -14,6 +14,16 @@ _Unreleased — new work accumulates here until it earns a version bump. The nex
 
 ### Minor Changes
 
+#### ➕ Added
+
+- **🛠️ Developer tooling**
+  - **World authoring from outside the app.** The dev-only `window.__fmDev` helper gained `listWorlds`, `getWorld`, `putWorld`, and `editWorld` — enough to write an exported world straight into local storage, read one back out, and open the World Editor on a world that's already stored (the existing `worldEditor` route only ever opened a blank draft). Authoring a large world no longer means a manual export/import cycle per revision. Dev builds only; tree-shaken out of production like the rest of the dev router.
+
+#### ➖ Removed
+
+- **⚙️ Backend**
+  - **The unreachable "list" stat type is gone.** Inherited from the upstream codebase, a third stat type held a list of items instead of a number — but it was commented out of the editor's type dropdown before this fork began, so no world could ever contain one, and no part of gameplay knew how to read it: its items never reached the AI, no descriptor could describe it, and the first turn's arithmetic turned it into a broken value. Removed along with its editor. A world from an older upstream build that somehow carries one now loads it as an ordinary number stat starting at its minimum. Nothing you could see or author changes. The idea behind it — a real inventory — is worth having and is written up separately as its own feature rather than a stat type.
+
 #### 🔧 Fixed
 
 - **👤 User-facing**

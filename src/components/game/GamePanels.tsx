@@ -1227,7 +1227,7 @@ export const RightPanel = ({ onLocationClick, onToggleTrait, language, setLangua
         <TabsContent value="stats" className="flex-grow overflow-hidden">
           <ScrollArea className="h-[calc(100%-1rem)] relative">
             {visibleStats.map(({ stat, index }) => {
-              const statValue = stat.value as number;
+              const statValue = stat.value;
               const isPercentage = stat.type === 'percentage';
               const change = recentStatChanges[stat.name.toLowerCase()] || 0;
               // Regen and stat code scale by the turn's measured hours, so values and deltas are often

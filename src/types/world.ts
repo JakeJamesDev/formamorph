@@ -12,23 +12,14 @@ export interface MediaAsset {
   size?: number;
 }
 
-/** A scalar `number` stat, a `percentage` stat (a number pinned to 0–100, displayed as `N%`), or a `list`
- *  stat whose value is an array of items. */
-export type StatType = 'number' | 'percentage' | 'list';
+/** A scalar `number` stat, or a `percentage` stat (a number pinned to 0–100, displayed as `N%`). */
+export type StatType = 'number' | 'percentage';
 
 /** A text label surfaced to the AI once the stat's value crosses `threshold`. */
 export interface StatDescriptor {
   id: string | number;
   threshold: number;
   description: string;
-}
-
-/** An item in a `type: 'list'` stat's value array. */
-export interface StatListItem {
-  id: string | number;
-  name: string;
-  description: string;
-  number: number;
 }
 
 /** A world-defined stat: its schema (type, range, descriptors) plus its live/starting value. */
@@ -41,8 +32,8 @@ export interface Stat {
   max: number;
   /** Initial value at game start (definition-side). */
   starting?: number;
-  /** Live value: a number for 'number' stats, items for 'list' stats. */
-  value?: number | StatListItem[];
+  /** Live value. */
+  value?: number;
   regen: number;
   descriptors: StatDescriptor[];
   /** Optional JS executed to derive this stat's value from others. */
