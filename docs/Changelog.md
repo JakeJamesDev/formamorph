@@ -22,7 +22,7 @@ _Unreleased — new work accumulates here until it earns a version bump. The nex
 #### ➖ Removed
 
 - **⚙️ Backend**
-  - **The unreachable "list" stat type is gone.** Inherited from the upstream codebase, a third stat type held a list of items instead of a number — but it was commented out of the editor's type dropdown before this fork began, so no world could ever contain one, and no part of gameplay knew how to read it: its items never reached the AI, no descriptor could describe it, and the first turn's arithmetic turned it into a broken value. Removed along with its editor. A world from an older upstream build that somehow carries one now loads it as an ordinary number stat starting at its minimum. Nothing you could see or author changes. The idea behind it — a real inventory — is worth having and is written up separately as its own feature rather than a stat type.
+  - **The unreachable "list" stat type is gone.** Inherited from the upstream codebase, a third stat type held a list of items instead of a number — but it was commented out of the editor's type dropdown before this fork began, so no world could ever contain one, and no part of gameplay knew how to read it: its items never reached the AI, no descriptor could describe it, and the first turn's arithmetic turned it into a broken value. Removed along with its editor. A world from an older upstream build that somehow carries one now loads it as an ordinary number stat starting at its minimum. Nothing you could see or author changes. Tracking a set of things — a herd, a crew, a collection — is still a real gap, but the answer isn't a stat holding a list; it's state that belongs to the entities themselves, which is being designed separately.
 
 #### 🔧 Fixed
 
