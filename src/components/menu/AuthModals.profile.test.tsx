@@ -248,3 +248,28 @@ describe('your own numbers on the account dialog', () => {
     expect(screen.getByTitle('108 downloads')).toBeTruthy();
   });
 });
+
+describe('Member since', () => {
+  // The login reply carries id/username/status but NOT createdAt (only GET /auth/me does), and the
+  // cached currentUser is built from that reply — so the date has to come off the profile fetch.
+  const LOGIN_SHAPE = { id: 'u1', username: 'me', status: 'normal', createdAt: undefined };
+
+  it('shows the join date from the profile, not today, for a login-cached user', async () => {
+    renderProfile({ currentUser: LOGIN_SHAPE as unknown as WorldRecord });
+
+    const expected = new Date('2026-01-01T00:00:00.000Z').toLocaleDateString();
+    expect(await screen.findByText(`Member since ${expected}`)).toBeTruthy();
+    // The bug: an unparseable date silently became today, which reads as a real join date.
+    expect(screen.queryByText(`Member since ${new Date().toLocaleDateString()}`)).toBeNull();
+  });
+
+  it('says nothing at all rather than guessing when no date is reachable', async () => {
+    const { default: UserService } = await import('@/services/UserService');
+    vi.mocked(UserService.fetchProfile).mockRejectedValueOnce(new Error('offline'));
+
+    renderProfile({ currentUser: LOGIN_SHAPE as unknown as WorldRecord });
+
+    await screen.findByText('me');
+    await waitFor(() => expect(screen.queryByText(/Member since/)).toBeNull());
+  });
+});
