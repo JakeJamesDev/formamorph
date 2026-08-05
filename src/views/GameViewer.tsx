@@ -3612,7 +3612,7 @@ ${playerNotes || NONE_PLACEHOLDER}
       // with / clobber a loaded save (which returns above).
       setPlayerStats(
         stats.map((stat) => {
-          const value = (stat.value as number) || stat.min || 0;
+          const value = stat.value || stat.min || 0;
           return { ...stat, value, starting: stat.starting ?? value };
         }),
       );

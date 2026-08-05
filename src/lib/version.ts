@@ -116,6 +116,19 @@ function migrateDictionaryKeys(world: Record<string, unknown>): void {
 }
 
 /**
+ * Retype a stat carrying the removed `list` type as a plain number. Upstream v1.1 defined the type but no
+ * runtime path ever consumed it — its array `value` reached gameplay as `NaN` — so the items are dropped
+ * and the stat starts at its floor. Idempotent; returns the same reference for anything already numeric.
+ */
+function coerceLegacyListStats(stats: readonly Stat[]): Stat[] {
+  return stats.map((stat) => {
+    const isList = (stat.type as string) === 'list' || Array.isArray(stat.value);
+    if (!isList) return stat;
+    return { ...stat, type: 'number', value: stat.min ?? 0 };
+  });
+}
+
+/**
  * Bring an imported world up to the current format and stamp it with `APP_VERSION`. The dictionary→books
  * fold and the keyword-array migration run unconditionally (they aren't version-gated — see
  * `foldDictionaryIntoBooks`); the rest is skipped for a world already at `APP_VERSION`. Moves the legacy root `customPlayerVRM` bare data-URL into
@@ -137,7 +150,7 @@ export function migrateWorld(raw: unknown): World {
   delete world.customPlayerVRM; // drop the stray v1.2 root key
 
   if (Array.isArray(world.stats)) {
-    world.stats = autoBindLegacyBodyStats(world.stats as Stat[]);
+    world.stats = autoBindLegacyBodyStats(coerceLegacyListStats(world.stats as Stat[]));
   }
 
   // v1.2 used `inGameDescription`/`detailedDescription`; rename to the audience-based keys.
