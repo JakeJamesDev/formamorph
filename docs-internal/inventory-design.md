@@ -2,6 +2,8 @@
 
 **Status:** design proposal, nothing implemented. Supersedes the removed `list` stat type. Needs a user decision on export-shape versioning before any code lands.
 
+**Tracked from:** the Parked list in [narration-quality-todo.md](docs-internal/narration-quality-todo.md), where it's the structural answer to the "possessions established in passing" and "vague inventory" findings.
+
 **Problem:** there is no structured record of what the player carries. Items live only in narration prose, so the model re-infers them every turn from whatever text survives in context — and gets them wrong. [semantic-memory-roadmap.md:133](docs-internal/semantic-memory-roadmap.md:133) already reaches for "a keyed inventory the narration model can see"; `src/notes/TODOOLD.md:11` lists it bare.
 
 ---
