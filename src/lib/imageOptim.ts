@@ -1,5 +1,5 @@
 import type { Entity, World } from '@/types';
-import { dataUrlMime, fitWithin } from './imageBytes';
+import { dataUrlMime, fitWithin, isRemoteImage } from './imageBytes';
 import { encodeInWorker, measureInWorker } from './imageOptimWorkerClient';
 import { entityImages } from './entityImages';
 
@@ -34,6 +34,9 @@ export const measureDataUrl = (url: string): Promise<{ w: number; h: number; byt
  * Every scan/check below goes through this, so the rule can't drift between call sites.
  */
 async function oversizedItem(url: string, cap: ImageCap, path: string): Promise<OversizedImage | null> {
+  // A linked image contributes no bytes to the world, so no budget applies — and the worker's fetch of a
+  // cross-origin URL would only fail into the catch below anyway.
+  if (isRemoteImage(url)) return null;
   try {
     const { w, h, bytes } = await measureDataUrl(url);
     if (Math.max(w, h) > cap.maxDim || bytes > cap.maxBytes) return { path, cap, w, h, bytes, mime: dataUrlMime(url) };

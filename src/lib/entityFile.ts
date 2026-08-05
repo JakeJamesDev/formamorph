@@ -8,6 +8,7 @@ import { embedEntityCard, readEntityCard } from './entityCard';
 import { readTavernCard } from './tavernCard';
 import { IMAGE_CAPS, bytesToDataUrl, dataUrlMime, measureDataUrl, optimizeImageDataUrl, optimizeToWebpDataUrl } from './imageOptim';
 import { entityImages, primaryImage } from './entityImages';
+import { fetchAsDataUrl, isRemoteImage } from './imageSource';
 
 /** Discriminator identifying a standalone character card (vs. a world, save, or dictionary file). */
 export const ENTITY_FILE_KIND = 'entity' as const;
@@ -120,6 +121,9 @@ async function placeholderPortrait(name: string): Promise<string> {
  */
 export async function exportEntityCard(entity: Entity, available?: Placeholder[]): Promise<Blob> {
   let imageUrl = primaryImage(entity) || (await placeholderPortrait(entity.name || 'Character'));
+  // A card is its pixels, so a linked portrait has to be downloaded here. Deliberately not falling back to
+  // the generated placeholder: shipping a card with the wrong face is worse than a failure the author can act on.
+  if (isRemoteImage(imageUrl)) imageUrl = await fetchAsDataUrl(imageUrl, IMAGE_CAPS.entity);
   // Force WebP even if it comes out larger than the source: the card embeds its metadata in a WebP chunk, so
   // a PNG/JPEG portrait (which the size-optimizing path would keep for an already-small image) is unusable.
   if (dataUrlMime(imageUrl) !== 'image/webp') imageUrl = await optimizeToWebpDataUrl(imageUrl, IMAGE_CAPS.entity);

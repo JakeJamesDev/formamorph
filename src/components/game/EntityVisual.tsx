@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { RemoteImg } from '@/lib/useRemoteImage';
 import { Box, Check, Image as ImageIcon } from 'lucide-react';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
@@ -156,7 +157,7 @@ const Picture = ({ images, index, gallery, name, onZoom }: {
 }) => {
   if (!gallery) {
     return (
-      <img
+      <RemoteImg
         src={images[index]}
         alt={name}
         className="max-w-full max-h-full object-contain cursor-zoom-in"

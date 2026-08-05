@@ -37,3 +37,19 @@ export function dataUrlBytes(url: string): number {
 export function dataUrlMime(url: string): string {
   return /^data:([^;,]+)/.exec(url)?.[1] ?? '';
 }
+
+/**
+ * True when a stored image value points at a remote host rather than carrying its own bytes. Lives in this
+ * leaf module so the optimize pipeline can ask without importing the fetch/DOM side of `imageSource`.
+ */
+export const isRemoteImage = (url: string | null | undefined): boolean =>
+  typeof url === 'string' && /^https?:\/\//i.test(url.trim());
+
+/** The host an author would recognize, for failure messages. Falls back to the raw value if unparseable. */
+export const imageHost = (url: string): string => {
+  try {
+    return new URL(url).host;
+  } catch {
+    return url;
+  }
+};

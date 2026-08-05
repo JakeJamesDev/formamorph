@@ -1,4 +1,5 @@
 import { useCallback, useRef, useState } from "react";
+import { RemoteImg } from '@/lib/useRemoteImage';
 import {
   TransformWrapper,
   TransformComponent,
@@ -109,7 +110,7 @@ export function ImageZoomViewer({ src, alt, open, onOpenChange, footer, gallery 
                 wrapperClass="!w-full !h-full"
                 contentClass="!w-full !h-full flex items-center justify-center"
               >
-                <img src={src} alt={alt} className="max-w-full max-h-full object-contain select-none" />
+                <RemoteImg src={src} alt={alt} className="max-w-full max-h-full object-contain select-none" />
               </TransformComponent>
             </>
           </TransformWrapper>

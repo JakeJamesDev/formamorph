@@ -189,3 +189,32 @@ describe('the tags a listing publishes with', () => {
     expect(publishTags(payload)).toEqual(['npc']);
   });
 });
+
+// The whole reason an author can link an image instead of uploading it: a published world must carry the
+// link, never the bytes. If anything ever resolves an image before publishing, these fail.
+describe('linked images survive publishing', () => {
+  it('publishes a world’s linked thumbnail as the link itself', () => {
+    const payload = worldPublishPayload(world({ thumbnail: 'https://files.example/cover.png' }));
+
+    expect(payload.thumbnail).toBe('https://files.example/cover.png');
+    expect((payload.contentData as World).worldOverview.thumbnail).toBe('https://files.example/cover.png');
+  });
+
+  it('publishes an entity’s linked portrait as the link itself', () => {
+    const payload = entityPublishPayload(entity({ images: ['https://files.example/mara.png'] }));
+
+    expect(payload.thumbnail).toBe('https://files.example/mara.png');
+    expect((payload.contentData as Entity).images).toEqual(['https://files.example/mara.png']);
+  });
+
+  it('leaves a world’s linked entity and location images alone in the published content', () => {
+    const payload = worldPublishPayload(world({}, {
+      entities: [{ id: 'e1', name: 'Mara', images: ['https://files.example/a.png'] }],
+      locations: [{ id: 'l1', name: 'Fen', backgroundImage: 'https://files.example/bg.png' }],
+    }));
+    const content = payload.contentData as World;
+
+    expect(content.entities[0].images).toEqual(['https://files.example/a.png']);
+    expect(content.locations[0].backgroundImage).toBe('https://files.example/bg.png');
+  });
+});

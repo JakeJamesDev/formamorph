@@ -1,4 +1,5 @@
 import { useRef, useState, type PointerEvent as ReactPointerEvent } from 'react';
+import { RemoteImg } from '@/lib/useRemoteImage';
 
 /** Past this fraction of the picture's width, letting go commits the swipe instead of springing back. */
 const COMMIT_FRACTION = 0.25;
@@ -88,7 +89,7 @@ export function SwipeImage({ images, index, onStep, alt, onZoom, className }: {
         }}
         onTransitionEnd={onSettled}
       >
-        <img
+        <RemoteImg
           src={at(0)}
           alt={alt}
           className="max-w-full max-h-full object-contain cursor-zoom-in select-none"
@@ -97,7 +98,7 @@ export function SwipeImage({ images, index, onStep, alt, onZoom, className }: {
           onClick={() => { if (dx === 0) onZoom(); }}
         />
         {incoming !== null && (
-          <img
+          <RemoteImg
             src={at(incoming)}
             alt=""
             aria-hidden

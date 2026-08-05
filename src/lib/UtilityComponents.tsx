@@ -1,8 +1,8 @@
-import { useCallback, useState, type ChangeEvent, type MouseEvent, type ReactNode } from 'react';
+import { useCallback, useEffect, useState, type ChangeEvent, type MouseEvent, type ReactNode } from 'react';
 import { cn } from "@/lib/utils";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { ImagePlus, Box as LucideBox, Music, X } from "lucide-react";
+import { ImagePlus, Link as LucideLink, Box as LucideBox, Music, X } from "lucide-react";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import ModelViewer from '../views/ModelViewer';
@@ -11,6 +11,8 @@ import { useDownscalePrompt } from './useDownscalePrompt';
 import { ImageZoomViewer } from '../components/ImageZoomViewer';
 import type { ImageCap } from './imageOptim';
 import { readSdPromptFromFile } from './sdMetadata';
+import { isRemoteImage } from './imageSource';
+import { useRemoteImage } from './useRemoteImage';
 import type { MediaAsset } from '@/types';
 
 /** An uploaded media file, base64-encoded as a data URL. */
@@ -109,6 +111,26 @@ export const ImageUpload = ({ onChange, id, value, cap, previewClassName, object
 }) => {
   const { promptImage, dialog } = useDownscalePrompt();
   const [zoomOpen, setZoomOpen] = useState(false);
+  const [urlDraft, setUrlDraft] = useState('');
+  const [urlError, setUrlError] = useState<string | null>(null);
+  const [loadFailed, setLoadFailed] = useState(false);
+  const remote = isRemoteImage(value);
+  // Cached blob when there is one, live URL otherwise; an embedded value passes through untouched.
+  const displaySrc = useRemoteImage(value);
+
+  // A pasted link is stored verbatim — no downscale pass, since a remote image costs the payload nothing.
+  const commitUrl = useCallback(() => {
+    const trimmed = urlDraft.trim();
+    if (!trimmed) return;
+    if (!isRemoteImage(trimmed)) {
+      setUrlError('Enter a link starting with http:// or https://');
+      return;
+    }
+    setUrlError(null);
+    setUrlDraft('');
+    onChange(trimmed);
+  }, [urlDraft, onChange]);
+
   const handleImageChange = useCallback((e: ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
@@ -139,10 +161,32 @@ export const ImageUpload = ({ onChange, id, value, cap, previewClassName, object
   // Clicking an uploaded image opens the shared pan/zoom viewer instead of re-triggering the file picker.
   const openZoom = (e: MouseEvent) => { e.preventDefault(); e.stopPropagation(); setZoomOpen(true); };
 
+  // A new value gets a fresh chance to load — otherwise one bad link poisons the slot after it's replaced.
+  useEffect(() => { setLoadFailed(false); }, [value]);
+
+  // Marks a filled slot as pointing somewhere rather than carrying its own bytes.
+  const remoteBadge = remote && (
+    <span
+      className="absolute top-1 left-1 rounded-full bg-overlay/60 p-1 text-white"
+      title={value ?? ''}
+      aria-label="Linked image"
+    >
+      <LucideLink className="h-3 w-3" />
+    </span>
+  );
+
+  // A dead link is worth showing at authoring time rather than letting it surface mid-play.
+  const brokenFrame = (
+    <div className="absolute inset-0 flex flex-col items-center justify-center gap-1 p-2 text-center text-muted-foreground">
+      <span className="text-sm">Couldn&apos;t load this image</span>
+      <span className="max-w-full truncate text-xs opacity-70">{value}</span>
+    </div>
+  );
+
   return (
-    <div>
+    <div className="space-y-1">
       {dialog}
-      {value && <ImageZoomViewer src={value} alt="" open={zoomOpen} onOpenChange={setZoomOpen} />}
+      {value && <ImageZoomViewer src={displaySrc} alt="" open={zoomOpen} onOpenChange={setZoomOpen} />}
       <Input
         type="file"
         accept="image/*"
@@ -154,12 +198,16 @@ export const ImageUpload = ({ onChange, id, value, cap, previewClassName, object
         {previewClassName ? (
           value ? (
             <>
-              <img
-                src={value}
-                alt="Uploaded"
-                onClick={openZoom}
-                className={`absolute inset-0 w-full h-full rounded-md ${objectFit === 'cover' ? 'object-cover' : 'object-contain'}`}
-              />
+              {loadFailed ? brokenFrame : (
+                <img
+                  src={displaySrc}
+                  alt="Uploaded"
+                  onClick={openZoom}
+                  onError={() => setLoadFailed(true)}
+                  className={`absolute inset-0 w-full h-full rounded-md ${objectFit === 'cover' ? 'object-cover' : 'object-contain'}`}
+                />
+              )}
+              {remoteBadge}
               {removeButton}
             </>
           ) : (
@@ -170,7 +218,18 @@ export const ImageUpload = ({ onChange, id, value, cap, previewClassName, object
         ) : (
           value ? (
             <div className="relative">
-              <img src={value} alt="Uploaded" onClick={openZoom} className="max-w-full max-h-32 object-contain" />
+              {loadFailed ? (
+                <div className="flex h-32 w-48 items-center justify-center">{brokenFrame}</div>
+              ) : (
+                <img
+                  src={displaySrc}
+                  alt="Uploaded"
+                  onClick={openZoom}
+                  onError={() => setLoadFailed(true)}
+                  className="max-w-full max-h-32 object-contain"
+                />
+              )}
+              {remoteBadge}
               {removeButton}
             </div>
           ) : (
@@ -181,6 +240,26 @@ export const ImageUpload = ({ onChange, id, value, cap, previewClassName, object
           )
         )}
       </Dropzone>
+      {/* Only offered on an empty slot: a filled one is changed by removing it first, as it always was. */}
+      {!value && (
+        <div className="space-y-1">
+          <div className="flex items-center gap-2">
+            <Input
+              type="url"
+              value={urlDraft}
+              onChange={(e) => { setUrlDraft(e.target.value); setUrlError(null); }}
+              onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); commitUrl(); } }}
+              placeholder="Or paste an image URL"
+              aria-label="Image URL"
+              className="h-8 text-sm"
+            />
+            <Button type="button" variant="outline" size="sm" className="h-8 shrink-0" onClick={commitUrl}>
+              Use
+            </Button>
+          </div>
+          {urlError && <p className="text-xs text-destructive">{urlError}</p>}
+        </div>
+      )}
     </div>
   );
 };

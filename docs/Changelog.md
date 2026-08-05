@@ -16,6 +16,9 @@ _Unreleased — new work accumulates here until it earns a version bump. The nex
 
 #### ➕ Added
 
+- **👤 User-facing**
+  - **Point an image at a link instead of uploading it.** Every image field — entity pictures, the world cover, location backgrounds, dictionary covers — now takes a web address as well as a file. Paste one into the **Or paste an image URL** box under the upload area and the picture is used without its bytes being stored in the world, which keeps a published world small no matter how many pictures it carries. A linked slot is marked with a small link icon, and a link that doesn't resolve says so right there in the editor rather than turning up blank mid-story. Linked pictures are downloaded to your device the first time you see them, so a world you've played stays viewable offline; **Settings → Saves & Worlds** shows how much space that's using and clears it. Exporting a world asks whether to keep the links (small file) or download the pictures into it (works anywhere), and exporting a character card always downloads the portrait, since a card is the picture. A site that refuses to hand its images to other programs can still be shown, just not downloaded — the desktop app has no such limit.
+
 - **🛠️ Developer tooling**
   - **World authoring from outside the app.** The dev-only `window.__fmDev` helper gained `listWorlds`, `getWorld`, `putWorld`, and `editWorld` — enough to write an exported world straight into local storage, read one back out, and open the World Editor on a world that's already stored (the existing `worldEditor` route only ever opened a blank draft). Authoring a large world no longer means a manual export/import cycle per revision. Dev builds only; tree-shaken out of production like the rest of the dev router.
 
