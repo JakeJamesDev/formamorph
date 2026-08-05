@@ -3,7 +3,7 @@ import { DEFAULT_WORLDS, isDefaultWorldId } from "@/lib/defaultWorlds";
 import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { useGameData } from '../contexts/GameDataContext';
 import { useUserProfile } from '../contexts/userProfileStore';
-import { useDevRoute } from '../lib/devRouter';
+import { useDevRoute, registerDevHook } from '../lib/devRouter';
 import { MAIN_MENU_CARD_TABS, type MainMenuCardTab } from './mainMenuTabs';
 import { findSavesUsingModel } from '@/lib/modelUsage';
 import { DEFAULT_MODEL_URL } from '@/lib/defaultModel';
@@ -265,6 +265,14 @@ const MainMenu = ({ onStartGame, onLoadSaveGame, onReplayIntro, introActive = fa
       setCardType(devRoute.tab as typeof cardType);
     }
   }, [devRoute?.modal, devRoute?.tab]);
+
+  // DEV: open the World Editor on a *stored* world. The `worldEditor` modal route opens a blank draft, so
+  // authoring an existing world otherwise means clicking through the library grid.
+  useEffect(() => registerDevHook('editWorld', async (id: string) => {
+    const world = await WorldStorageService.getWorldData(id) as World;
+    loadWorldData(world);
+    setShowWorldEditor(true);
+  }), [loadWorldData]);
 
   // --- AI setup gate -------------------------------------------------------------------------------
   // Only the first-run nudge lives here. Launching is never blocked: the unreachable-AI warning is raised in
