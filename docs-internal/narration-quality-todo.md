@@ -310,10 +310,18 @@ Deeper stalling fix is the planner (thinking modes) — out of scope for the raw
 
 ## Parked / smaller
 
+- **OOC-only actions feed an empty `<PLAYER ACTION>` to the digest + time-passed writers** (found
+  2026-08-04, shipping the Continue button). `stripOocDirectives('[Continue the Story]')` → `""`,
+  so `defaultSummaryUserPrompt` renders `The player's action this turn:` with nothing after the
+  colon. Pre-existed for any bracket-only action, but the Continue pseudo-choice makes it the
+  common case. Candidate fix: code-side substitution when the strip empties the action — e.g.
+  "(the player let the scene continue)" — but the wording is a prompt surface, so A/B probe the
+  digest quality on Continue turns (both tiers) before shipping any phrasing.
 - **Cloud never says "nothing notable"** on idle turns (summary probe missedIdle=3 before AND
   after the fact fix). Digest noise reduction candidate.
 - **Q-run C1 reader-side**: T21 had compass in context and narrated a vague inventory —
-  narration-prompt question (deploying available recap facts), judge-bar call.
+  narration-prompt question (deploying available recap facts), judge-bar call. Prompt-side fix
+  only; see the structural note below.
 - **T5 `*thwuck*` markdown tic** — recurring on markdown-off runs (2 of 3 Q runs).
 - **Markdown-off heading sanitizer** — Cydonia Q run: a one-off `# Sedge Landing` heading at T22
   self-perpetuated through the verbatim floor (T23–25 all copied it); replaying the same context
@@ -324,6 +332,14 @@ Deeper stalling fix is the planner (thinking modes) — out of scope for the raw
   the writer but reads as a completed event, so the selector defensibly drops it; "a thing gained
   and kept" doesn't cover things already owned. Candidates: a possessions clause in the now-line,
   or a selector keep-category — but the example holds ~two lessons max, so probe carefully.
+- **Structured state the model can read** — the standing answer to both possessions items above and
+  the C1 vague-inventory read: they drift because what's true about a character or a possession
+  exists only as prose the model re-infers each turn. A general inventory system was **rejected** as
+  the wrong frame (§1 of [world-authoring-feature-notes.md](docs-internal/world-authoring-feature-notes.md));
+  the live direction is **per-entity runtime fields**, tracked there, not here — it's a product
+  feature with an export-shape decision attached, not a narration-quality fix. What belongs on this
+  list is only the cheap prompt-side half above. Background on the dead end:
+  [list-stat-removal.md](docs-internal/list-stat-removal.md).
 - **Wine→beer drift** (close.json T1→T11) — minor world-fact continuity, single instance.
 - **Structural rut**: most turns end with a question/demand from the NPC; reads engaged early,
   mechanical by T30. Needs a measurement before any prompt work.

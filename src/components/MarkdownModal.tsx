@@ -22,7 +22,7 @@ export function MarkdownModal({ open, onOpenChange, title, text, tabs, footer }:
 }) {
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-3xl">
+      <DialogContent aria-describedby={undefined} className="max-w-3xl">
         <DialogHeader>
           <DialogTitle>{title}</DialogTitle>
         </DialogHeader>

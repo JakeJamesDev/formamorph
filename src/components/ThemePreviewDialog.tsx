@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState, type CSSProperties, type ReactNode } from
 import {
   Dialog,
   DialogContent,
+  DialogDescription,
   DialogFooter,
   DialogHeader,
   DialogTitle,
@@ -289,6 +290,7 @@ function ThemePreviewDialog({ open, onOpenChange }: { open: boolean; onOpenChang
       <DialogContent className="w-[min(96vw,1080px)] max-w-none h-[640px] max-h-[90dvh] flex flex-col">
         <DialogHeader className="shrink-0">
           <DialogTitle>Theme preview</DialogTitle>
+          <DialogDescription className="sr-only">Edit theme colors and preview them on sample interface elements.</DialogDescription>
         </DialogHeader>
 
         <div className="flex flex-1 min-h-0 gap-4">

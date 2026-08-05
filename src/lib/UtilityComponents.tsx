@@ -3,7 +3,7 @@ import { cn } from "@/lib/utils";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { ImagePlus, Box as LucideBox, Music, X } from "lucide-react";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import ModelViewer from '../views/ModelViewer';
 import AudioPlayer from '../components/game/AudioPlayer';
@@ -257,6 +257,7 @@ export const ModelUpload = ({ model, onModelChange, uniqueId }: {
             <DialogContent className="sm:max-w-[425px]">
               <DialogHeader>
                 <DialogTitle>3D Model Viewer</DialogTitle>
+              <DialogDescription className="sr-only">Interactive 3D model. Drag to rotate, scroll to zoom.</DialogDescription>
               </DialogHeader>
               <ModelViewer model={model} modelType={resolveModelType(model)} />
             </DialogContent>

@@ -104,8 +104,6 @@ export function AuthModals({
     if (hasTerms === false && profileTab === 'terms') setProfileTab('messages');
   }, [hasTerms, profileTab]);
 
-  // `createdAt` is a server timestamp (UTC, no zone marker); falls back to today for an account whose
-  // profile hasn't been fetched yet.
   useEffect(() => {
     const id = currentUser?.id as string | undefined;
     if (!showProfileDialog || !id) return;
@@ -119,9 +117,12 @@ export function AuthModals({
     return () => { cancelled = true; };
   }, [showProfileDialog, currentUser]);
 
-  const memberSince = (
-    parseServerDate(String(currentUser?.createdAt ?? '')) ?? new Date()
-  ).toLocaleDateString();
+  // `createdAt` is a server timestamp (UTC, no zone marker). It rides the profile fetch, not the login
+  // reply, so it's absent until that resolves — and the login-cached user never carries it at all.
+  // Absent renders nothing: a date that silently defaults reads as a real join date.
+  const memberSince = parseServerDate(
+    String(profileStats?.createdAt ?? currentUser?.createdAt ?? ''),
+  )?.toLocaleDateString();
   const [authError, setAuthError] = useState('');
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
@@ -303,7 +304,7 @@ export function AuthModals({
 
       {/* Profile Dialog */}
       <Dialog open={showProfileDialog} onOpenChange={setShowProfileDialog}>
-        <DialogContent className="sm:max-w-[900px] h-[90dvh] flex flex-col overflow-hidden">
+        <DialogContent aria-describedby={undefined} className="sm:max-w-[900px] h-[90dvh] flex flex-col overflow-hidden">
           <DialogHeader className="flex-shrink-0">
             <DialogTitle>User Profile</DialogTitle>
           </DialogHeader>
@@ -322,7 +323,7 @@ export function AuthModals({
                 <h3 className="text-lg font-semibold truncate">
                   {currentUser?.username || 'User'}
                 </h3>
-                <p className="text-sm text-muted-foreground">Member since {memberSince}</p>
+                {memberSince && <p className="text-sm text-muted-foreground">Member since {memberSince}</p>}
                 {/* The same row a stranger reads on your profile popup. */}
                 {profileStats && <ProfileStats profile={profileStats} />}
               </div>

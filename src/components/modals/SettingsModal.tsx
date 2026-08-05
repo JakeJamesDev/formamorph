@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useSettings, type ThinkingMode, type ReasoningEffort, type ParagraphLimit } from '@/contexts/SettingsContext';
-import { DEFAULT_ENDPOINT, DEFAULT_API_TOKEN, DEFAULT_MODEL_NAME, DEFAULT_MAX_TOKENS, THEME_COLORS, FONT_OPTIONS, NARRATION_FONT_OPTIONS, DEFAULT_NARRATION_SCALE, DEFAULT_NARRATION_LINE_HEIGHT, type ThemeColor, type FontChoice, type NarrationFont } from '@/contexts/settingsDefaults';
+import { DEFAULT_ENDPOINT, DEFAULT_API_TOKEN, DEFAULT_MODEL_NAME, DEFAULT_MAX_TOKENS, THEME_COLORS, FONT_OPTIONS, NARRATION_FONT_OPTIONS, DEFAULT_NARRATION_SCALE, DEFAULT_NARRATION_LINE_HEIGHT, CONTINUE_CHOICE_MODES, type ContinueChoiceMode, type ThemeColor, type FontChoice, type NarrationFont } from '@/contexts/settingsDefaults';
 import { useTheme } from '../theme-provider';
 import { ThemePreviewButton } from '@/components/ThemePreviewDialog';
 import { LocalModelPanel } from '@/components/modals/LocalModelPanel';
@@ -355,6 +355,8 @@ export const SettingsModal = ({ isOpen, onOpenChange, previewValues, initialTab,
     locationChangePromptText,
     setLocationChangePromptText,
     choicesEnabled,
+    continueChoiceMode,
+    setContinueChoiceMode,
     setChoicesEnabled,
     statUpdatesEnabled,
     setStatUpdatesEnabled,
@@ -632,12 +634,13 @@ export const SettingsModal = ({ isOpen, onOpenChange, previewValues, initialTab,
 
   // ComfyUI checkpoint/sampler lists that back the Model/Sampler autocompletes. Auto-fetched from
   // /object_info whenever ComfyUI is the active provider (debounced on endpoint edits); fails silently
-  // when the server isn't up (it's fast and optional — free text still works).
+  // when the server isn't up (it's fast and optional — free text still works). Gated on the modal being
+  // open, same as the InvokeAI fetch below: the lists only feed this modal's fields.
   const [comfyMeta, setComfyMeta] = useState<ComfyMeta | null>(null);
   const [showImageSetup, setShowImageSetup] = useState(false);
   const [showComfyWorkflow, setShowComfyWorkflow] = useState(false);
   useEffect(() => {
-    if (imageProvider !== 'comfyui') return;
+    if (!isOpen || imageProvider !== 'comfyui') return;
     let cancelled = false;
     const t = setTimeout(async () => {
       try {
@@ -648,14 +651,16 @@ export const SettingsModal = ({ isOpen, onOpenChange, previewValues, initialTab,
       }
     }, 300);
     return () => { cancelled = true; clearTimeout(t); };
-  }, [imageProvider, imageEndpoint, imageApiToken]);
+  }, [isOpen, imageProvider, imageEndpoint, imageApiToken]);
 
   // InvokeAI model/submodel lists that back the Model + encoder/VAE override dropdowns. Auto-fetched from
   // /api/v2/models/ whenever InvokeAI is the active provider (debounced); fails silently when unreachable.
+  // Gated on the modal being open: the component stays mounted while closed, and the lists only feed the
+  // modal's own dropdowns — probing on page load just spams the console when InvokeAI isn't running.
   const [invokeMeta, setInvokeMeta] = useState<InvokeMeta | null>(null);
   const [invokeMetaError, setInvokeMetaError] = useState<string | null>(null);
   useEffect(() => {
-    if (imageProvider !== 'invokeai') return;
+    if (!isOpen || imageProvider !== 'invokeai') return;
     let cancelled = false;
     const t = setTimeout(async () => {
       const endpoint = resolveImageEndpoint(imageProvider, imageEndpoint);
@@ -670,7 +675,7 @@ export const SettingsModal = ({ isOpen, onOpenChange, previewValues, initialTab,
       }
     }, 300);
     return () => { cancelled = true; clearTimeout(t); };
-  }, [imageProvider, imageEndpoint, imageApiToken]);
+  }, [isOpen, imageProvider, imageEndpoint, imageApiToken]);
   // The selected model's base when it's one that loads its own encoder + VAE (Z-Image, Anima), else ''.
   // Drives whether those two override rows show at all, and what they offer.
   const invokeSubmodelBase = (() => {
@@ -843,7 +848,7 @@ export const SettingsModal = ({ isOpen, onOpenChange, previewValues, initialTab,
   return (
     <>
     <Dialog open={isOpen} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[800px] h-[90dvh] flex flex-col overflow-hidden">
+      <DialogContent aria-describedby={undefined} className="sm:max-w-[800px] h-[90dvh] flex flex-col overflow-hidden">
         <DialogHeader className="flex-shrink-0">
           <DialogTitle className="flex items-center gap-2"><Settings className="h-4 w-4" /> Settings</DialogTitle>
         </DialogHeader>
@@ -2379,6 +2384,21 @@ Includes faces tuned for **dyslexia**, **low vision**, and reading.`}</HintInfo>
                     </Button>
                   </ConfirmDialog>
                 </div>
+              </div>
+              </Section>
+
+              <Section title="Choices">
+              <div className="grid grid-cols-1 sm:grid-cols-[minmax(0,1fr)_minmax(0,3fr)] items-center gap-4">
+                <RowLabel info={
+                  <HintInfo>{`Adds a **[Continue the Story]** button under the choices. It fills the action box with that text, so you can take a turn without writing anything — the story reads it as a nudge to keep going rather than something your character does.
+
+**Always** keeps the button even with the Choices request switched off.`}</HintInfo>
+                }>Continue the Story</RowLabel>
+                <OptionSwitcher
+                  value={continueChoiceMode}
+                  onChange={(v) => setContinueChoiceMode(v as ContinueChoiceMode)}
+                  options={CONTINUE_CHOICE_MODES}
+                />
               </div>
               </Section>
 

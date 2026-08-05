@@ -2,6 +2,8 @@
 // The OpenAI spec doesn't include it, but several servers do: LM Studio (`/api/v0/models` →
 // loaded_context_length), OpenRouter (`context_length`), etc. We probe and fall back to manual entry.
 
+import { probeKnownAbsent, recordProbeStatus } from '@/lib/probeMemo';
+
 /** Derive the model-list URLs from a configured chat-completions endpoint. */
 export function deriveModelsUrls(endpointUrl: string): { openai: string; lmstudio: string } | null {
   try {
@@ -64,10 +66,13 @@ export async function fetchContextLength(
   const headers: Record<string, string> = apiToken ? { Authorization: `Bearer ${apiToken}` } : {};
 
   // LM Studio's native endpoint first — it reports the loaded (currently-set) length; the OpenAI
-  // list usually only carries the model's max. Non-LM-Studio servers 404 the native path and fall through.
+  // list usually only carries the model's max. Non-LM-Studio servers 404 the native path and fall
+  // through — remembered per session (probeMemo) so the 404 isn't repeated on every lookup.
   for (const url of [urls.lmstudio, urls.openai]) {
+    if (probeKnownAbsent(url)) continue;
     try {
       const res = await fetch(url, { headers });
+      recordProbeStatus(url, res.status);
       if (!res.ok) continue;
       const value = parseContextLength(await res.json(), modelName);
       if (value !== null) return value;

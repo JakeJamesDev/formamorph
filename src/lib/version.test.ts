@@ -81,6 +81,19 @@ describe('migrateWorld', () => {
     expect(migrateWorld(once)).toEqual(once);
   });
 
+  it('retypes an upstream `list` stat as a number seeded at its floor', () => {
+    const legacy = {
+      worldOverview: { name: 'W' },
+      stats: [
+        { name: 'Pack', type: 'list', min: 2, max: 10, value: [{ id: 'i1', name: 'Rope', description: '', number: 1 }] },
+        { name: 'Health', type: 'number', min: 0, max: 100, value: 80 },
+      ],
+    };
+    const out = migrateWorld(legacy) as unknown as { stats: { type: string; value: number }[] };
+    expect(out.stats[0]).toMatchObject({ type: 'number', value: 2 });
+    expect(out.stats[1]).toMatchObject({ type: 'number', value: 80 }); // numeric stats untouched
+  });
+
   it('auto-binds legacy body stats (Stomach/Fatness/Breastsize) to their morphs', () => {
     const legacy = {
       worldOverview: { name: 'W' },

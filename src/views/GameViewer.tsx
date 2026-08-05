@@ -116,7 +116,7 @@ import { rollbackState, regenerateState, canRegenerate, lastTurnAction, markRege
 import { useDeferredSnapshot } from "../lib/useDeferredSnapshot";
 import { statMorphMap } from "../lib/bodyMorphs";
 import {
-  traitOrderIndex, inAuthoredOrder, activeStatEnabled, enabledStats, activePlaceholderPins,
+  traitOrderIndex, inAuthoredOrder, refreshChosenTraits, activeStatEnabled, enabledStats, activePlaceholderPins,
   invertStatChanges, exclusiveSiblings,
 } from "../lib/traitEffects";
 import { extractCharacterCandidates, collectCandidateEvidence } from "../lib/characterCandidates";
@@ -1144,10 +1144,13 @@ const GameViewer = ({
   // stat *changes* were reversed at the moment it was switched off (see toggleTrait), so they aren't
   // recomputed here. Authored order decides precedence when two active traits target the same thing.
   const traitOrder = useMemo(() => traitOrderIndex(traits, traitGroups), [traits, traitGroups]);
+  // The save froze each chosen trait as the world stood on turn 1; the world owns its authoring, so read it
+  // back before anything derives from it.
+  const chosenTraits = useMemo(() => refreshChosenTraits(playerTraits, traits), [playerTraits, traits]);
   const activeTraits = useMemo(() => {
     const off = new Set(disabledTraitIds);
-    return inAuthoredOrder(playerTraits.filter((t) => !off.has(t.id)), traitOrder);
-  }, [playerTraits, disabledTraitIds, traitOrder]);
+    return inAuthoredOrder(chosenTraits.filter((t) => !off.has(t.id)), traitOrder);
+  }, [chosenTraits, disabledTraitIds, traitOrder]);
 
   // A stat is live unless its author started it off or an active trait switched it off. Disabled stats keep
   // their value in `playerStats` — they are filtered out of everything that reads or moves them instead, so
@@ -1160,9 +1163,9 @@ const GameViewer = ({
   // The same derivation for a paged-back turn, so history shows the stats that were live on that turn.
   const viewActiveStats = useMemo(() => {
     const off = new Set(viewDisabledTraitIds);
-    const active = inAuthoredOrder(viewTraits.filter((t) => !off.has(t.id)), traitOrder);
+    const active = inAuthoredOrder(refreshChosenTraits(viewTraits, traits).filter((t) => !off.has(t.id)), traitOrder);
     return enabledStats(viewStats, activeStatEnabled(viewStats, active));
-  }, [viewStats, viewTraits, viewDisabledTraitIds, traitOrder]);
+  }, [viewStats, viewTraits, viewDisabledTraitIds, traitOrder, traits]);
 
   // The six shared context chips every system prompt can reference, resolved from current state. Each
   // request spreads these as its base, then layers on its own tokens (length/markdown, scene entities, etc.).
@@ -3549,13 +3552,13 @@ ${playerNotes || NONE_PLACEHOLDER}
    */
   const toggleTrait = useCallback(
     (traitId: string, enabled: boolean) => {
-      const trait = playerTraits.find((t) => t.id === traitId);
+      const trait = chosenTraits.find((t) => t.id === traitId);
       if (!trait) return;
       const retire = enabled
         ? exclusiveSiblings(trait, traits, traitGroups).filter((id) => !disabledTraitIds.includes(id))
         : [];
       for (const id of retire) {
-        const sibling = playerTraits.find((t) => t.id === id);
+        const sibling = chosenTraits.find((t) => t.id === id);
         if (sibling) {
           handleStatChanges(invertStatChanges(sibling.statChanges));
           addLogEntry(`Trait switched off: ${sibling.name}`);
@@ -3571,7 +3574,7 @@ ${playerNotes || NONE_PLACEHOLDER}
       });
       addLogEntry(`Trait switched ${enabled ? 'on' : 'off'}: ${trait.name}`);
     },
-    [playerTraits, traits, traitGroups, disabledTraitIds, handleStatChanges, addLogEntry, setDisabledTraitIds],
+    [chosenTraits, traits, traitGroups, disabledTraitIds, handleStatChanges, addLogEntry, setDisabledTraitIds],
   );
 
   const changeLocation = useCallback(
@@ -3610,7 +3613,7 @@ ${playerNotes || NONE_PLACEHOLDER}
       // with / clobber a loaded save (which returns above).
       setPlayerStats(
         stats.map((stat) => {
-          const value = (stat.value as number) || stat.min || 0;
+          const value = stat.value || stat.min || 0;
           return { ...stat, value, starting: stat.starting ?? value };
         }),
       );
@@ -4159,7 +4162,8 @@ ${playerNotes || NONE_PLACEHOLDER}
           else setIsEditingWorld(false);
         }}
       >
-        <DialogContent className="max-w-[95vw] w-[95vw] h-[90dvh] p-0 overflow-hidden">
+        <DialogContent aria-describedby={undefined} className="max-w-[95vw] w-[95vw] h-[90dvh] p-0 overflow-hidden">
+          <DialogTitle className="sr-only">World Editor</DialogTitle>
           <WorldEditor embedded onClose={() => setIsEditingWorld(false)} />
         </DialogContent>
       </Dialog>
@@ -4172,7 +4176,7 @@ ${playerNotes || NONE_PLACEHOLDER}
 
       {/* Full AI context sent each turn, paginated by turn */}
       <Dialog open={isDebugOpen} onOpenChange={setIsDebugOpen}>
-        <DialogContent className="max-w-[90vw] w-[90vw] h-[85dvh] flex flex-col overflow-hidden">
+        <DialogContent aria-describedby={undefined} className="max-w-[90vw] w-[90vw] h-[85dvh] flex flex-col overflow-hidden">
           {(() => {
             const palette = HIGHLIGHT_PALETTE;
             // Stable per-entry color + name lookups (by the live dictionary's order), shared by the legend,

@@ -383,7 +383,8 @@ const CommunityCreationsBrowser = ({
       disabled={isSyncingCatalog}
       onClick={() => loadCatalog(true)}
     >
-      <RotateCcw className={`h-4 w-4 ${isSyncingCatalog ? 'animate-spin' : ''}`} />
+      {/* Reversed spin: animate-spin turns clockwise, but this glyph's arrow points counterclockwise. */}
+      <RotateCcw className={`h-4 w-4 ${isSyncingCatalog ? 'animate-spin [animation-direction:reverse]' : ''}`} />
     </Button>
   );
 
@@ -514,7 +515,7 @@ const CommunityCreationsBrowser = ({
       />
       {/* Community Creations browser dialog */}
       <Dialog open={open} onOpenChange={onOpenChange}>
-        <DialogContent
+        <DialogContent aria-describedby={undefined}
           hideClose
           className="max-w-none w-screen h-dvh sm:max-w-none left-0 top-0 translate-x-0 translate-y-0 rounded-none sm:rounded-none p-0 gap-0 flex flex-col data-[state=open]:!slide-in-from-top-0 data-[state=open]:!slide-in-from-left-0 data-[state=closed]:!slide-out-to-top-0 data-[state=closed]:!slide-out-to-left-0"
         >

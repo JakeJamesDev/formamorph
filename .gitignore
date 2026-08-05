@@ -53,3 +53,6 @@ testing/authored-worlds/
 
 # Real play-session exports used for debugging (large, contain user content).
 testing/real-sessions/
+
+# Worlds being authored/reworked locally (large exports, not published from the repo).
+worlds-wip/

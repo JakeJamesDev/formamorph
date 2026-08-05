@@ -7,7 +7,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
-import { Trash2, Plus, Code } from "lucide-react";
+import { Trash2, Code } from "lucide-react";
 import {
   Select,
   SelectContent,
@@ -21,7 +21,7 @@ import { MultiSelect } from "@/components/ui/multi-select";
 import { useBodyMorphSources } from "@/lib/useBodyMorphNames";
 import { boundMorphNamesExcluding, buildMorphGroups } from "@/lib/bodyMorphs";
 import { clamp } from "@/lib/utils";
-import type { Stat, StatDescriptor, StatListItem, StatType } from "@/types";
+import type { Stat, StatDescriptor, StatType } from "@/types";
 
 /** The stat being edited — a loose, partial Stat while fields are filled in. */
 type EditingStat = Partial<Stat>;
@@ -38,11 +38,6 @@ const StatManager = ({ stat }: { stat: Stat }) => {
   const [newDescriptor, setNewDescriptor] = useState<{ threshold: number | string; description: string }>({
     threshold: "",
     description: "",
-  });
-  const [newListItem, setNewListItem] = useState<{ name: string; description: string; number: number }>({
-    name: "",
-    description: "",
-    number: 0,
   });
   const [codeOpen, setCodeOpen] = useState(stat?.code ? true : false);
   const [codeResult, setCodeResult] = useState<number | null>(null);
@@ -77,10 +72,6 @@ const StatManager = ({ stat }: { stat: Stat }) => {
   };
 
   const handleTypeChange = (value: StatType) => {
-    if (value === "list") {
-      apply({ type: value, value: editingStat.value || [] });
-      return;
-    }
     const raw = typeof editingStat.value === "number" ? editingStat.value : 0;
     // Percentage stats are pinned to 0–100: clamp the value and force the bounds so display and math agree.
     if (value === "percentage") {
@@ -126,35 +117,6 @@ const StatManager = ({ stat }: { stat: Stat }) => {
     handleChange("descriptors", updatedDescriptors);
   };
 
-  const handleAddListItem = () => {
-    if (newListItem.name && editingStat.type === "list") {
-      const updatedValue = [
-        ...((editingStat.value as StatListItem[]) || []),
-        { ...newListItem, id: randomUUID() },
-      ];
-      handleChange("value", updatedValue);
-      setNewListItem({ name: "", description: "", number: 0 });
-    }
-  };
-
-  const handleRemoveListItem = (itemId: string | number) => {
-    if (editingStat.type === "list") {
-      const updatedValue = (editingStat.value as StatListItem[]).filter(
-        (item) => item.id !== itemId,
-      );
-      handleChange("value", updatedValue);
-    }
-  };
-
-  const handleListItemChange = (itemId: string | number, field: string, value: string | number) => {
-    if (editingStat.type === "list") {
-      const updatedValue = (editingStat.value as StatListItem[]).map((item) =>
-        item.id === itemId ? { ...item, [field]: value } : item,
-      );
-      handleChange("value", updatedValue);
-    }
-  };
-
   if (!editingStat) return null;
 
   const statType = editingStat.type?.toLowerCase();
@@ -184,7 +146,6 @@ const StatManager = ({ stat }: { stat: Stat }) => {
           <SelectContent>
             <SelectItem value="number">Number</SelectItem>
             <SelectItem value="percentage">Percentage</SelectItem>
-            {/* <SelectItem value="list">List</SelectItem> */}
           </SelectContent>
         </Select>
       </div>
@@ -337,88 +298,6 @@ const StatManager = ({ stat }: { stat: Stat }) => {
         </div>
       )}
 
-      {editingStat.type?.toLowerCase() === "list" && (
-        <div className="space-y-2">
-          <Label>Items</Label>
-          {editingStat.value &&
-            (editingStat.value as StatListItem[]).map((item) => (
-              <div key={item.id} className="space-y-2 border p-2 rounded">
-                <div className="flex items-center space-x-2">
-                  <Input
-                    value={item.name}
-                    onChange={(e) =>
-                      handleListItemChange(item.id, "name", e.target.value)
-                    }
-                    placeholder="Item name"
-                    className="flex-grow"
-                  />
-                  <Input
-                    type="number"
-                    value={item.number}
-                    onChange={(e) =>
-                      handleListItemChange(
-                        item.id,
-                        "number",
-                        Number(e.target.value),
-                      )
-                    }
-                    placeholder="Quantity"
-                    className="w-24"
-                  />
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    onClick={() => handleRemoveListItem(item.id)}
-                  >
-                    <Trash2 className="h-4 w-4" />
-                  </Button>
-                </div>
-                <Input
-                  value={item.description}
-                  onChange={(e) =>
-                    handleListItemChange(item.id, "description", e.target.value)
-                  }
-                  placeholder="Item description"
-                />
-              </div>
-            ))}
-          <div className="space-y-2 border p-2 rounded">
-            <div className="flex items-center space-x-2">
-              <Input
-                value={newListItem.name}
-                onChange={(e) =>
-                  setNewListItem({ ...newListItem, name: e.target.value })
-                }
-                placeholder="New item name"
-                className="flex-grow"
-              />
-              <Input
-                type="number"
-                value={newListItem.number}
-                onChange={(e) =>
-                  setNewListItem({
-                    ...newListItem,
-                    number: Number(e.target.value),
-                  })
-                }
-                placeholder="Quantity"
-                className="w-24"
-              />
-            </div>
-            <Input
-              value={newListItem.description}
-              onChange={(e) =>
-                setNewListItem({ ...newListItem, description: e.target.value })
-              }
-              placeholder="New item description"
-            />
-            <Button onClick={handleAddListItem} className="w-full">
-              <Plus className="h-4 w-4 mr-2" />
-              Add Item
-            </Button>
-          </div>
-        </div>
-      )}
       <div className="space-y-2">
         <Label>Stat Descriptors</Label>
         {editingStat.descriptors &&

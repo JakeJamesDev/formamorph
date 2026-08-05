@@ -2,7 +2,7 @@
 
 All notable changes to Formamorph. This fork's first line is **2.0.0** — a full TypeScript rebuild of the upstream JavaScript app ([FieryLionite's Formamorph](https://fierylion.itch.io/formamorph), ~v1.2) — with feature parity as the baseline plus new features on top.
 
-> ✅ **2.0.0 – 2.9.0 are released** (collapsed below). New work lands under **🚧 In Progress** — an unnumbered section, so changes accumulate without pinning a version. When a batch earns a release its section is marked **Released** and collapsed, and a fresh In Progress opens. `package.json` reads **2.9.0** — the latest released version.
+> ✅ **2.0.0 – 2.9.2 are released** (collapsed below). New work lands under **🚧 In Progress** — an unnumbered section, so changes accumulate without pinning a version. When a batch earns a release its section is marked **Released** and collapsed, and a fresh In Progress opens. `package.json` reads **2.9.2** — the latest released version.
 
 Each release groups changes as **Major** / **Minor**, then **Added** / **Removed** / **Fixed**, and within those by audience: 👤 user-facing · 🛠️ developer tooling · ⚙️ backend.
 
@@ -10,7 +10,49 @@ Each release groups changes as **Major** / **Minor**, then **Added** / **Removed
 
 ## 🚧 In Progress
 
-_Unreleased — new work accumulates here until it earns a version bump. The next batch will pin its own version; `package.json` reads **2.9.0** (just released below)._
+_Unreleased — new work accumulates here until it earns a version bump. The next batch will pin its own version; `package.json` reads **2.9.2** (just released below)._
+
+### Minor Changes
+
+#### ➕ Added
+
+- **🛠️ Developer tooling**
+  - **World authoring from outside the app.** The dev-only `window.__fmDev` helper gained `listWorlds`, `getWorld`, `putWorld`, and `editWorld` — enough to write an exported world straight into local storage, read one back out, and open the World Editor on a world that's already stored (the existing `worldEditor` route only ever opened a blank draft). Authoring a large world no longer means a manual export/import cycle per revision. Dev builds only; tree-shaken out of production like the rest of the dev router.
+
+#### ➖ Removed
+
+- **⚙️ Backend**
+  - **The unreachable "list" stat type is gone.** Inherited from the upstream codebase, a third stat type held a list of items instead of a number — but it was commented out of the editor's type dropdown before this fork began, so no world could ever contain one, and no part of gameplay knew how to read it: its items never reached the AI, no descriptor could describe it, and the first turn's arithmetic turned it into a broken value. Removed along with its editor. A world from an older upstream build that somehow carries one now loads it as an ordinary number stat starting at its minimum. Nothing you could see or author changes. Tracking a set of things — a herd, a crew, a collection — is still a real gap, but the answer isn't a stat holding a list; it's state that belongs to the entities themselves, which is being designed separately.
+
+#### 🔧 Fixed
+
+- **👤 User-facing**
+  - **Your own profile shows the day you actually joined.** "Member since" on your profile read today's date, every day, for everyone — while the same line on anybody else's profile was correct. Signing in hands the app your account without its join date (only a full profile fetch carries it), and the missing date quietly fell back to today rather than showing nothing, so it looked like a real answer. It now reads the date the rest of the app uses, and says nothing at all on the rare occasion it can't be reached.
+  - **The update window stops mixing two versions' release notes together.** When a new release came out while the update window was open — or its notes refreshed behind it — the freshly fetched changelog could keep pieces of the old one: a heading still reading the previous version number over the new version's items, an "Added" label stuck saying "Fixed". The renderer considered a replacement line "unchanged" whenever it happened to occupy the same position as the old one, the same fault fixed for story paging in 2.9.1 — now fixed for the changelog box, world Readmes, and the help pop-outs, which all share that panel.
+
+---
+
+<details>
+<summary><strong>✅ 2.9.2 — Released 2026-08-04</strong> — the little-conveniences release: a "Continue the Story" button for the turns you'd rather watch than write, and switchable traits finally working in the saves you already had (click to expand)</summary>
+
+### Minor Changes
+
+#### ➕ Added
+
+- **👤 User-facing**
+  - **A "Continue the Story" button under the choices.** Sometimes the answer to "what do you do?" is *nothing in particular* — you'd rather watch the scene keep moving than invent an action for it. A **[Continue the Story]** button now sits below the generated choices and fills the action box with that text, so the turn can be sent without writing anything. It costs no extra AI request of its own, and the story reads it as a nudge to carry on rather than as something your character did. It's offered even on a turn that came back with no choices at all, which is exactly when there's least to go on. Paging back through the story shows it again on the turns you actually used it for. **Settings → Accessibility → Choices** sets it to **Off**, **On**, or **Always** — where Always keeps the button even with the choices request itself switched off, so a playthrough that generates no choices at all still has one way to take a turn without typing.
+
+#### 🔧 Fixed
+
+- **👤 User-facing**
+  - **Traits you can switch on and off now work in saves you already had.** A playthrough kept its own copy of each trait you chose, frozen as the world stood when you started — so a trait the author made switchable *after* that never got its checkbox, and switching it was possible only in a brand-new game. A chosen trait now reads its author's latest version: the switch appears where it should, along with any renaming, rewritten description, stat it turns on, or placeholder it pins that has been added since. **Your numbers are left exactly where they are.** What a trait did to your stats was settled on turn 1, and re-running it against edited values would only make them drift, so switching a trait off still takes back precisely what it gave. A trait the author has since deleted stays in your playthrough rather than vanishing from it.
+
+</details>
+
+---
+
+<details>
+<summary><strong>✅ 2.9.1 — Released 2026-08-04</strong> — the housekeeping release: paging back through the story shows that turn's narration again, mods and devs can reach the tools built for them, every dialog announces itself to a screen reader, and the console stops filling with errors that were never problems (click to expand)</summary>
 
 ### Minor Changes
 
@@ -19,7 +61,13 @@ _Unreleased — new work accumulates here until it earns a version bump. The nex
 - **👤 User-facing**
   - **Paging back through the story shows that turn's narration again.** Stepping back with **Previous** moved the choices, the stats and the location to the turn you'd paged to, but the narration itself stayed on the turn you started from — so a past page read as the newest scene above an older set of choices. The narration now repaints with everything else, on every page and in both directions. Two separate faults were behind it: paging back also started an endless re-render that never settled on its own, and the markdown renderer decided a replacement paragraph was "unchanged" whenever it happened to occupy the same span as the one before it, so it left the old words on screen.
   - **Mods and devs can reach the Admin Panel.** The panel was built for the whole team — Users, Feedback and the Log are everyday moderation work, with only Broadcasts and Policies held back for an administrator — but the button that opens it asked for an administrator too, so a mod or a dev had no way in. It now shows for any staff account, and the two administrator-only tabs stay hidden as they were meant to.
+  - **Image servers are only asked for their model lists while Settings is open.** With InvokeAI or ComfyUI selected as the image provider, the app used to fetch its model/sampler lists on every page load — the lists only fill fields inside Settings, so when the server wasn't running this just put connection errors in the console at startup. The fetch now waits until the Settings window is actually open, where a failure behaves as before (InvokeAI shows its message under the Model field; ComfyUI falls back to free text).
+  - **Every dialog now tells a screen reader what it is.** An audit of all 55 dialogs found 29 with no accessible description wired up, which also printed a warning to the console each time one opened. Dialogs whose body text was already the explanation (duplicate-save, world-not-installed, custom-code) now announce that text properly; viewers like the 3D model and theme preview gained short hidden descriptions; the rest declare explicitly that their title says it all. Two dialogs (the in-game World Editor and the command palette) were also missing their accessible titles and got hidden ones.
+  - **Expected endpoint probes stop repeating their console errors.** Finding out whether an AI server is LM Studio means asking for lists only LM Studio has, and on any other endpoint the browser prints each of those 404s as though something broke — several times per session, since reachability, context length, and reasoning detection each asked on their own. A 404 is now remembered for the session the first time any of them sees it, so the question is asked once per endpoint and the console shows at most one such line per list instead of a stream. Pointing at an actual LM Studio is unaffected.
+  - **The Community Creations refresh arrow spins the way it points.** The sync button's arrow is drawn counterclockwise but rotated clockwise while a refresh ran, so the icon appeared to spin against itself. It now rotates in the direction of its own arrow. The app's only other spinners are direction-neutral loading arcs, checked in the same pass.
   - **A mod or dev answering feedback from their own profile is treated as staff.** Opening a thread from Profile → Feedback gave the team's reply box to administrators only, so a mod or a dev reading the same thread there was told replies were somebody else's business — even though the same account gets the controls everywhere else. All three staff roles now answer from wherever they found the thread. Triage stays in the Admin Panel, as before.
+
+</details>
 
 ---
 

@@ -1,5 +1,5 @@
 import React from 'react';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Popover, PopoverTrigger, PopoverContent } from "@/components/ui/popover";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -193,9 +193,9 @@ export const MenuModal = ({ onSettingsClick, onReportBug, onSave, onLoad, worldO
           <DialogHeader>
             <DialogTitle>Save already exists</DialogTitle>
           </DialogHeader>
-          <p className="text-sm text-muted-foreground py-2">
+          <DialogDescription className="py-2">
             A save named “{shownDup?.name}” already exists in this world. Overwrite it, or keep both?
-          </p>
+          </DialogDescription>
           <DialogFooter className="gap-2 sm:gap-2">
             <Button variant="outline" onClick={() => setDupConflict(null)}>Cancel</Button>
             <Button variant="secondary" onClick={() => dupConflict && commitSave(dupConflict.name)}>Keep both</Button>

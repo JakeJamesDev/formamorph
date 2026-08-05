@@ -1,6 +1,7 @@
 import { describe, it, expect, vi, afterEach } from 'vitest';
 import { screen, fireEvent, act, within } from '@testing-library/react';
 import { getGameplayText } from '@/lib/gameplayTextStore';
+import { CONTINUE_CHOICE } from '@/lib/choices';
 import { readTurn, renderLeftPanel, renderMiddlePanel, renderRightPanel, statFixture, type PanelHarness, type TurnFixture } from '@/test/gamePanels';
 import { resetTtsPlayback, setTtsPlayback } from '@/test/stubs/ttsPlayback';
 import { lastVrmViewerProps, resetVrmViewerStub } from '@/test/stubs/vrmViewer';
@@ -280,6 +281,38 @@ describe('RightPanel', () => {
   });
 });
 
+describe('RightPanel — the traits tab against an edited world', () => {
+  /** A save whose frozen trait predates the author marking it switchable — the shape the bug lived in. */
+  const renderTraits = (authoredToggle: boolean) => {
+    const view = renderRightPanel({}, {
+      turns: TURNS,
+      world: { traits: [{ id: 't-brave', name: 'Brave', statChanges: [], playerToggle: authoredToggle }] },
+      seed: (gameplay) => {
+        gameplay.setPlayerTraits([{ id: 't-brave', name: 'Brave', statChanges: [] }]);
+        gameplay.setActiveTab('traits');
+      },
+    });
+    return view;
+  };
+
+  it('offers the switch a playthrough started before the trait was switchable', () => {
+    const view = renderTraits(true);
+
+    const box = screen.getByRole('checkbox', { name: 'Switch off Brave' });
+    expect(box).toBeEnabled();
+
+    fireEvent.click(box);
+    expect(view.props.onToggleTrait).toHaveBeenCalledWith('t-brave', false);
+  });
+
+  it('offers no switch when the author has not marked it switchable', () => {
+    // The other half: the control has to follow the world, not appear for every trait.
+    renderTraits(false);
+    expect(screen.queryByRole('checkbox')).toBeNull();
+    expect(screen.getByText(/Brave/)).toBeInTheDocument();
+  });
+});
+
 describe('MiddlePanel — paging repaints the narration', () => {
   // Both turns are the SAME markdown shape and length, so every mdast node lands at an identical source
   // position. Streamdown memoizes its element components on that position rather than on the text, so a
@@ -322,5 +355,82 @@ describe('MiddlePanel — paging repaints the narration', () => {
     expect(narrationText()).toContain('gutters once');
     expect(screen.getByRole('button', { name: 'Left' })).toBeInTheDocument();
     expect(screen.queryByRole('button', { name: 'Right' })).toBeNull();
+  });
+});
+
+describe('MiddlePanel — the continue pseudo-choice', () => {
+  const continueButton = () => screen.queryByRole('button', { name: CONTINUE_CHOICE });
+
+  it('stages its own text in the action box instead of asking the AI for anything', () => {
+    const view = renderMiddlePanel({}, { turns: TURNS });
+
+    fireEvent.click(continueButton()!);
+    expect(view.gameplay().playerInput).toBe(CONTINUE_CHOICE);
+    // The whole point is that it costs no request — sending stays the player's move.
+    expect(view.props.handleSendAction).not.toHaveBeenCalled();
+    expect(view.props.handleRegenerateChoices).not.toHaveBeenCalled();
+  });
+
+  it('appends after a typed action on ctrl+click, the way a generated choice does', () => {
+    const view = renderMiddlePanel({}, { turns: TURNS });
+    act(() => { view.gameplay().setPlayerInput('I check the rope'); });
+
+    fireEvent.click(continueButton()!, { ctrlKey: true });
+    expect(view.gameplay().playerInput).toBe(`I check the rope. ${CONTINUE_CHOICE}`);
+  });
+
+  it('is offered on a turn that came back with no choices at all', () => {
+    // The case it exists for: nothing to click and no idea what to type.
+    renderMiddlePanel({}, { turns: [{ action: 'wait', narration: 'The dock creaks.', choices: [] }] });
+    expect(continueButton()).toBeInTheDocument();
+  });
+
+  it('goes away when the player switches it off', () => {
+    renderMiddlePanel({}, { turns: TURNS, settings: (s) => s.setContinueChoiceMode('off') });
+    expect(continueButton()).toBeNull();
+    expect(screen.getByRole('button', { name: 'Keep walking' })).toBeInTheDocument();
+  });
+
+  it('goes away with the rest of the choices when choices are switched off', () => {
+    renderMiddlePanel({}, { turns: TURNS, settings: (s) => s.setChoicesEnabled(false) });
+    expect(continueButton()).toBeNull();
+  });
+
+  it('stays on its own with choices switched off when set to Always', () => {
+    // The whole point of the third setting: no choices request, but still a way to take a turn without typing.
+    // No choices come back at all with the request off, so it's the only button the panel has.
+    renderMiddlePanel({}, { turns: [{ ...TURNS[0], choices: [] }], settings: (s) => { s.setChoicesEnabled(false); s.setContinueChoiceMode('always'); } });
+    expect(continueButton()).toBeInTheDocument();
+  });
+
+  it('is withheld before the opening scene has landed', () => {
+    // Nothing has happened yet, so there is nothing to continue.
+    renderMiddlePanel({}, { turns: [] });
+    expect(continueButton()).toBeNull();
+  });
+
+  it('is withheld while a turn is still being generated', () => {
+    // Staging an action mid-request would submit into a turn that hasn't landed.
+    renderMiddlePanel({ disabled: true }, { turns: TURNS });
+    expect(continueButton()).toBeNull();
+  });
+
+  it('shows on a past page only when it was the action that turn took', () => {
+    // Each turn's `action` is what was sent *from the previous page*, so page 1 is the one answered
+    // with the continue and page 2 is the one answered by typing.
+    const PAST = [
+      { action: 'walk the dock', narration: 'The tide comes in.', choices: ['Wait'] },
+      { action: CONTINUE_CHOICE, narration: 'The dock creaks.', choices: ['Keep walking'] },
+      { action: 'wait', narration: 'Gulls settle on the piling.', choices: ['Watch'] },
+    ];
+    const view = renderMiddlePanel({}, { turns: PAST });
+
+    // Page 1's action was the continue — it reads back as the picked option.
+    act(() => { view.gameplay().setUserPage(1); });
+    expect(continueButton()).toBeInTheDocument();
+
+    // Page 2's was a typed action, so a live-only affordance has no business appearing there.
+    act(() => { view.gameplay().setUserPage(2); });
+    expect(continueButton()).toBeNull();
   });
 });

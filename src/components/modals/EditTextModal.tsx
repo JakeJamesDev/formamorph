@@ -28,7 +28,7 @@ export const EditTextModal = ({
 
   return (
     <Dialog open={isOpen} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[600px] max-h-[80dvh] flex flex-col">
+      <DialogContent aria-describedby={undefined} className="sm:max-w-[600px] max-h-[80dvh] flex flex-col">
         <DialogHeader>
           <DialogTitle>Edit Text</DialogTitle>
         </DialogHeader>

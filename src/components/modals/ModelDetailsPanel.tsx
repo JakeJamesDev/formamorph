@@ -152,7 +152,7 @@ export function ModelDetailsPanel({ open, name, url, license, size, failed = fal
 
   return (
     <Dialog open={open} onOpenChange={(next) => !next && onClose()}>
-      <DialogContent className="max-w-[900px] w-[95vw] h-[85dvh] flex flex-col p-0 gap-0 overflow-hidden">
+      <DialogContent aria-describedby={undefined} className="max-w-[900px] w-[95vw] h-[85dvh] flex flex-col p-0 gap-0 overflow-hidden">
         <DialogHeader className="px-4 py-3 border-b">
           <DialogTitle className="truncate">{name}</DialogTitle>
         </DialogHeader>

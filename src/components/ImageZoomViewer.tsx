@@ -84,7 +84,7 @@ export function ImageZoomViewer({ src, alt, open, onOpenChange, footer, gallery 
 }) {
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="group max-w-[95vw] w-[95vw] h-[90dvh] p-0 overflow-hidden bg-background/95">
+      <DialogContent aria-describedby={undefined} className="group max-w-[95vw] w-[95vw] h-[90dvh] p-0 overflow-hidden bg-background/95">
         {/* Chevrons rather than swipe: a horizontal drag here is a pan, which the viewer exists for. */}
         {gallery && gallery.count > 1 && <GalleryControls {...gallery} counterClassName="top-2" />}
         <DialogTitle className="sr-only">{alt || "Image viewer"}</DialogTitle>

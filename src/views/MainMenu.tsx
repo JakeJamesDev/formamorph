@@ -3,7 +3,7 @@ import { DEFAULT_WORLDS, isDefaultWorldId } from "@/lib/defaultWorlds";
 import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { useGameData } from '../contexts/GameDataContext';
 import { useUserProfile } from '../contexts/userProfileStore';
-import { useDevRoute } from '../lib/devRouter';
+import { useDevRoute, registerDevHook } from '../lib/devRouter';
 import { MAIN_MENU_CARD_TABS, type MainMenuCardTab } from './mainMenuTabs';
 import { findSavesUsingModel } from '@/lib/modelUsage';
 import { DEFAULT_MODEL_URL } from '@/lib/defaultModel';
@@ -21,6 +21,7 @@ import { usePersistentState, boolCodec } from "@/lib/usePersistentState";
 import {
   Dialog,
   DialogContent,
+  DialogDescription,
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
@@ -266,6 +267,14 @@ const MainMenu = ({ onStartGame, onLoadSaveGame, onReplayIntro, introActive = fa
       setCardType(devRoute.tab as typeof cardType);
     }
   }, [devRoute?.modal, devRoute?.tab]);
+
+  // DEV: open the World Editor on a *stored* world. The `worldEditor` modal route opens a blank draft, so
+  // authoring an existing world otherwise means clicking through the library grid.
+  useEffect(() => registerDevHook('editWorld', async (id: string) => {
+    const world = await WorldStorageService.getWorldData(id) as World;
+    loadWorldData(world);
+    setShowWorldEditor(true);
+  }), [loadWorldData]);
 
   // --- AI setup gate -------------------------------------------------------------------------------
   // Only the first-run nudge lives here. Launching is never blocked: the unreachable-AI warning is raised in
@@ -1681,7 +1690,7 @@ const MainMenu = ({ onStartGame, onLoadSaveGame, onReplayIntro, introActive = fa
       </footer>
 
       <Dialog open={showWorldModal} onOpenChange={setShowWorldModal}>
-        <DialogContent className={cn("h-[85dvh] flex flex-col overflow-x-hidden", worldModalCollapsed ? "sm:max-w-[600px]" : "sm:max-w-[1200px]")}>
+        <DialogContent aria-describedby={undefined} className={cn("h-[85dvh] flex flex-col overflow-x-hidden", worldModalCollapsed ? "sm:max-w-[600px]" : "sm:max-w-[1200px]")}>
           <DialogHeader className="shrink-0">
             <DialogTitle className="flex items-center gap-2">
               <span className="truncate">{selectedWorld?.name}</span>
@@ -1954,9 +1963,9 @@ const MainMenu = ({ onStartGame, onLoadSaveGame, onReplayIntro, introActive = fa
           </DialogHeader>
 
           <div className="mt-4">
-            <p className="text-sm text-muted-foreground mb-4">
+            <DialogDescription className="mb-4">
               This world contains the following custom code in its stats:
-            </p>
+            </DialogDescription>
 
             <div className="bg-muted p-4 rounded-md overflow-auto">
               <pre className="text-sm font-mono whitespace-pre-wrap">
@@ -2118,7 +2127,7 @@ const MainMenu = ({ onStartGame, onLoadSaveGame, onReplayIntro, introActive = fa
           arrow means the editor's guarded back arrow is the sole exit; Esc/overlay are blocked so they can't
           bypass the dirty prompt. */}
       <Dialog open={showWorldEditor} onOpenChange={(open) => { if (open) setShowWorldEditor(true); }}>
-        <DialogContent
+        <DialogContent aria-describedby={undefined}
           hideClose
           onEscapeKeyDown={(e) => e.preventDefault()}
           onInteractOutside={(e) => e.preventDefault()}

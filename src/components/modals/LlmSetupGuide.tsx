@@ -30,7 +30,7 @@ const LlmSetupGuide = ({
   const modelsUrl = base ? `${base}/v1/models` : null;
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[560px]">
+      <DialogContent aria-describedby={undefined} className="sm:max-w-[560px]">
         <DialogHeader>
           <DialogTitle>Can&apos;t reach your AI server</DialogTitle>
         </DialogHeader>
