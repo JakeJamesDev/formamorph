@@ -95,6 +95,37 @@ export function installDevRouter(): () => void {
     clear() {
       window.location.hash = '';
     },
+    /** List stored worlds as `{ id, name }`, so a world can be looked up by name before get/put. */
+    async listWorlds() {
+      const { default: svc } = await import('@/services/WorldStorageService');
+      return (await svc.getWorldMetadata()).map(({ id, name }) => ({ id, name }));
+    },
+    /** Read a stored world's authored data — the same shape an export writes. */
+    async getWorld(id: string) {
+      const { default: svc } = await import('@/services/WorldStorageService');
+      return svc.getWorldData(id);
+    },
+    /** Write an exported world straight into storage, replacing any world with the same id. Mirrors the
+     *  import path: migrate first, then derive the record's metadata from the migrated overview. */
+    async putWorld(world: unknown) {
+      const [{ default: svc }, { migrateWorld }] = await Promise.all([
+        import('@/services/WorldStorageService'),
+        import('@/lib/version'),
+      ]);
+      const data = migrateWorld(world);
+      const id = (world as { id?: string }).id ?? crypto.randomUUID();
+      await svc.storeWorld({
+        id,
+        name: data.worldOverview?.name || 'Untitled',
+        description: data.worldOverview?.description || '',
+        author: data.worldOverview?.author || '',
+        thumbnail: data.worldOverview?.thumbnail || '',
+        dirty: true,
+        data: data as unknown as { worldOverview: unknown; stats: unknown[]; locations: unknown[];
+          entities: unknown[]; traits: unknown[]; statUpdates: unknown[] },
+      });
+      return id;
+    },
   });
   return () => {
     delete (w as { __fmDev?: unknown }).__fmDev;
