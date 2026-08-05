@@ -27,6 +27,7 @@ _Unreleased — new work accumulates here until it earns a version bump. The nex
 #### 🔧 Fixed
 
 - **👤 User-facing**
+  - **Your own profile shows the day you actually joined.** "Member since" on your profile read today's date, every day, for everyone — while the same line on anybody else's profile was correct. Signing in hands the app your account without its join date (only a full profile fetch carries it), and the missing date quietly fell back to today rather than showing nothing, so it looked like a real answer. It now reads the date the rest of the app uses, and says nothing at all on the rare occasion it can't be reached.
   - **The update window stops mixing two versions' release notes together.** When a new release came out while the update window was open — or its notes refreshed behind it — the freshly fetched changelog could keep pieces of the old one: a heading still reading the previous version number over the new version's items, an "Added" label stuck saying "Fixed". The renderer considered a replacement line "unchanged" whenever it happened to occupy the same position as the old one, the same fault fixed for story paging in 2.9.1 — now fixed for the changelog box, world Readmes, and the help pop-outs, which all share that panel.
 
 ---
