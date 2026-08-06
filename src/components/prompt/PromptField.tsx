@@ -528,7 +528,7 @@ const PromptField = ({ value, onChange, variables = [], vocabulary, previewValue
   const isMobile = useIsMobile();
   // Fullscreen measures the viewport, not the inline slot it was opened from.
   const effectiveWidth = fullscreen ? (typeof window !== 'undefined' ? window.innerWidth - 48 : 0) : containerWidth;
-  const layout = resolveLayout(splitMode, effectiveWidth, showTabs);
+  const layout = resolveLayout(splitMode, effectiveWidth, showTabs, fullscreen);
   const split = layout === 'split';
   // Scroll containers for each tab (only one is mounted at a time). ContentEditable forwards its ref to
   // the editable <div>, which is the Edit-mode scroller (overflow-auto via EDITOR_CLASS).
@@ -711,7 +711,7 @@ const PromptField = ({ value, onChange, variables = [], vocabulary, previewValue
         <VariableToolbar vocab={vocab} interactive={!readOnly && (split || !showTabs || tab === 'edit')} />
       </div>
       <div className="flex flex-shrink-0 items-center gap-1">
-        {showTabs && effectiveWidth - 12 >= MIN_PANE_WIDTH * 2 && (
+        {showTabs && fullscreen && effectiveWidth - 12 >= MIN_PANE_WIDTH * 2 && (
           <button
             type="button"
             onClick={() => setSplitMode(split ? 'tabs' : 'split')}

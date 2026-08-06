@@ -19,11 +19,20 @@ export const MIN_PANE_WIDTH = 420;
 const SPLIT_GUTTER = 12;
 
 /**
- * The layout for a field of `containerWidth`. `hasPreview` is false for fields with nothing to preview
- * (no preview values and not markdown), which can never split however wide they get.
+ * The layout for a field of `containerWidth`.
+ *
+ * Splitting is a full-screen affair. Inline, a field is one column of a panel that has other things to
+ * show — the world editor's is 545px of a form — so halving it produces two columns too narrow to read
+ * and takes the width from whichever one you were actually using. `hasPreview` is false for fields with
+ * nothing to preview, which can never split however wide they get.
  */
-export function resolveLayout(mode: PromptSplitMode, containerWidth: number, hasPreview: boolean): PromptLayout {
-  if (!hasPreview) return 'tabs';
+export function resolveLayout(
+  mode: PromptSplitMode,
+  containerWidth: number,
+  hasPreview: boolean,
+  fullscreen: boolean,
+): PromptLayout {
+  if (!hasPreview || !fullscreen) return 'tabs';
   if (mode === 'split') return 'split';
   if (mode === 'tabs') return 'tabs';
   return (containerWidth - SPLIT_GUTTER) / 2 >= MIN_PANE_WIDTH ? 'split' : 'tabs';
