@@ -118,7 +118,9 @@ export function RemoteWorldDetailsModal({
       <DialogContent aria-describedby={undefined} className={cn("h-[85dvh] flex flex-col", collapsed ? "sm:max-w-[600px]" : "sm:max-w-[1200px]")}>
         <DialogHeader className="shrink-0">
           <DialogTitle className="flex items-center gap-2">
-            <span className="truncate">{world?.name || 'World Details'}</span>
+            {/* `leading-normal` overrides DialogTitle's `leading-none`, whose one-em line box crops
+                descenders under `truncate`'s overflow clip. Fits the row's existing height. */}
+            <span className="truncate leading-normal">{world?.name || 'World Details'}</span>
             <Button
               variant="ghost"
               size="icon"

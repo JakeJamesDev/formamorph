@@ -210,4 +210,19 @@ describe('loadWorldData', () => {
     act(() => { result.current.loadWorldData(world('a', { readme: '# Hello' })); });
     expect(result.current.isWorldDirty).toBe(false);
   });
+
+  it("carries the world's narration prompt override through the load", () => {
+    // The normalizer is an allowlist, so a field it forgets is dropped here and the loss is written back
+    // by the next saveWorld — the author's prompt would vanish from their own world on reopening it.
+    const { result } = renderHook(() => useGameData(), { wrapper });
+    act(() => { result.current.loadWorldData(world('a', { promptOverrides: { systemPrompt: 'tell it slant' } })); });
+    expect(result.current.worldOverview.promptOverrides?.systemPrompt).toBe('tell it slant');
+  });
+
+  it("does not leak one world's narration prompt into the next", () => {
+    const { result } = renderHook(() => useGameData(), { wrapper });
+    act(() => { result.current.loadWorldData(world('a', { promptOverrides: { systemPrompt: 'A prompt' } })); });
+    act(() => { result.current.loadWorldData(world('b', {})); });
+    expect(result.current.worldOverview.promptOverrides).toBeUndefined();
+  });
 });

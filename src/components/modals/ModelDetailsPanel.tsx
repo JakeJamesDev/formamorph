@@ -154,7 +154,9 @@ export function ModelDetailsPanel({ open, name, url, license, size, failed = fal
     <Dialog open={open} onOpenChange={(next) => !next && onClose()}>
       <DialogContent aria-describedby={undefined} className="max-w-[900px] w-[95vw] h-[85dvh] flex flex-col p-0 gap-0 overflow-hidden">
         <DialogHeader className="px-4 py-3 border-b">
-          <DialogTitle className="truncate">{name}</DialogTitle>
+          {/* `leading-normal` replaces DialogTitle's `leading-none`, whose one-em line box crops
+              descenders under `truncate`'s overflow clip. */}
+          <DialogTitle className="truncate leading-normal">{name}</DialogTitle>
         </DialogHeader>
 
         <div className="flex-1 min-h-0 flex flex-row">
