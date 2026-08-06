@@ -83,6 +83,10 @@ import { selectDueDigests, applyDigest, applyImportance, parseTurnContent, recen
 import { buildTraitContext } from "../lib/traitTree";
 import { buildLocationContext, buildEntityContext, buildSublocationsContext, buildSublocationEntitiesContext, buildReachableLocationsContext, buildReachableEntitiesContext, buildDestinationsContext, buildParentLocationContext, buildSceneEntitiesContext, scenePresentHere, navigableDestinations, sublocationEntityIds, expandScopedTokens } from "../lib/locationContext";
 import { primeRolls, resolvePlaceholders } from "@/lib/placeholders";
+import {
+  resolveEntityNames, resolveLocationNames, resolveStatNames, resolveTraitNames, resolveTraitGroupNames,
+  resolveDictionaryEntryNames,
+} from "@/lib/resolveWorldNames";
 import { resolveStartingLocation } from "../lib/startingLocation";
 import { NONE_PLACEHOLDER } from "../lib/promptFallbacks";
 import { buildStatContext } from "../lib/statContext";
@@ -245,12 +249,15 @@ const GameViewer = ({
 }: GameViewerProps) => {
   // AbortController reference for canceling AI requests
   const abortControllerRef = useRef<AbortController | null>(null);
+  // Authored, chip-bearing originals. Everything below reads the name-resolved copies derived from these
+  // (see the resolution block after useGameplay); the raw values are only for priming rolls, which has to
+  // see the chips themselves.
   const {
-    stats,
-    locations,
-    entities,
-    traits,
-    traitGroups,
+    stats: rawStats,
+    locations: rawLocations,
+    entities: rawEntities,
+    traits: rawTraits,
+    traitGroups: rawTraitGroups,
     dictionaries,
     placeholders,
     worldOverview,
@@ -384,7 +391,7 @@ const GameViewer = ({
     setVisibleEntities,
     currentLocation,
     setCurrentLocation,
-    playerStats,
+    playerStats: rawPlayerStats,
     setPlayerStats,
     playerTraits,
     setPlayerTraits,
@@ -422,7 +429,7 @@ const GameViewer = ({
     setUserPage,
     totalPages,
     isViewingPast,
-    viewStats,
+    viewStats: rawViewStats,
     viewTraits,
     viewDisabledTraitIds,
     viewLocationId,
@@ -439,7 +446,7 @@ const GameViewer = ({
     discoveredEntities,
     setDiscoveredEntities,
     suppressedCharacterNames,
-    runtimeDictionary: dictionary,
+    runtimeDictionary: rawDictionary,
     setRuntimeDictionaries,
     placeholderRolls,
     setPlaceholderRolls,
@@ -459,9 +466,57 @@ const GameViewer = ({
     setSceneImages,
   } = useGameplay();
 
+  // --- Placeholder resolution, before anything reads a name ---------------------------------------------
+  // Trait order and the active set are decided by id, so they can be derived from the authored traits before
+  // resolution exists — which is what breaks the cycle, since the pins those traits carry are an input to
+  // resolution itself. Only the *names* on the resolved copies below differ.
+  const traitOrder = useMemo(() => traitOrderIndex(rawTraits, rawTraitGroups), [rawTraits, rawTraitGroups]);
+  const traitPins = useMemo(() => {
+    const off = new Set(disabledTraitIds);
+    const active = inAuthoredOrder(refreshChosenTraits(playerTraits, rawTraits).filter((t) => !off.has(t.id)), traitOrder);
+    return activePlaceholderPins(active);
+  }, [playerTraits, disabledTraitIds, rawTraits, traitOrder]);
+
+  // Replace placeholder chips in authored text with their frozen per-playthrough values (pure lookup — rolls
+  // are primed below, so no side effects). Applied at every boundary that emits authored text to the AI.
+  const resolvePH = useCallback(
+    (text: string) => resolvePlaceholders(text, { placeholders, rolls: placeholderRolls, pins: traitPins }),
+    [placeholders, placeholderRolls, traitPins],
+  );
+
+  // Names resolve here, at the top of the view, rather than at each of the many places one is read. Below
+  // this line an entity/location/stat/trait/dictionary name is a plain string with no chips left in it, so
+  // matching against AI prose, keying deltas, and showing the player all agree by construction. A world
+  // without placeholders gets the very same array references back, so nothing downstream re-renders.
+  const entities = useMemo(() => resolveEntityNames(rawEntities, resolvePH), [rawEntities, resolvePH]);
+  const locations = useMemo(() => resolveLocationNames(rawLocations, resolvePH), [rawLocations, resolvePH]);
+  const stats = useMemo(() => resolveStatNames(rawStats, resolvePH), [rawStats, resolvePH]);
+  const traits = useMemo(() => resolveTraitNames(rawTraits, resolvePH), [rawTraits, resolvePH]);
+  const traitGroups = useMemo(() => resolveTraitGroupNames(rawTraitGroups, resolvePH), [rawTraitGroups, resolvePH]);
+  const dictionary = useMemo(() => resolveDictionaryEntryNames(rawDictionary, resolvePH), [rawDictionary, resolvePH]);
+  // The save's own stats carry a copy of each authored name, and every stat delta the AI sends is matched by
+  // name — so these resolve alongside the authored list rather than being left as the one place a chip
+  // survives into a comparison. Resolved on the way out of state (not on the way in) so the world stays the
+  // authority: re-rolled or re-authored values reach an existing save on its next load.
+  const playerStats = useMemo(() => resolveStatNames(rawPlayerStats, resolvePH), [rawPlayerStats, resolvePH]);
+  const viewStats = useMemo(() => resolveStatNames(rawViewStats, resolvePH), [rawViewStats, resolvePH]);
+
+  // --- Active traits and what they switch on ------------------------------------------------------------
+  // A chosen trait the player has switched off contributes nothing: no AI text, no stat toggle, no pin. Its
+  // stat *changes* were reversed at the moment it was switched off (see toggleTrait), so they aren't
+  // recomputed here. Authored order decides precedence when two active traits target the same thing.
+  // The save froze each chosen trait as the world stood on turn 1; the world owns its authoring, so read it
+  // back before anything derives from it.
+  const chosenTraits = useMemo(() => refreshChosenTraits(playerTraits, traits), [playerTraits, traits]);
+  const activeTraits = useMemo(() => {
+    const off = new Set(disabledTraitIds);
+    return inAuthoredOrder(chosenTraits.filter((t) => !off.has(t.id)), traitOrder);
+  }, [chosenTraits, disabledTraitIds, traitOrder]);
+
   // Runtime characters (Slice 2): director-invented characters promoted to persisted entities this
   // playthrough behave like authored ones — union them into the AI-pipeline roster, and inject those
   // anchored to a location into that location's roster so the location-scoped context includes them.
+  // Discovered entities are minted at runtime from AI prose, so their names never carry chips.
   const allEntities = useMemo(
     () => [...entities, ...discoveredEntities.map((d) => d.entity)],
     [entities, discoveredEntities],
@@ -1163,26 +1218,12 @@ const GameViewer = ({
     return Object.fromEntries(Object.entries(deltas).filter(([name]) => live.has(name)));
   }, []);
 
-  // --- Active traits and what they switch on ------------------------------------------------------------
-  // A chosen trait the player has switched off contributes nothing: no AI text, no stat toggle, no pin. Its
-  // stat *changes* were reversed at the moment it was switched off (see toggleTrait), so they aren't
-  // recomputed here. Authored order decides precedence when two active traits target the same thing.
-  const traitOrder = useMemo(() => traitOrderIndex(traits, traitGroups), [traits, traitGroups]);
-  // The save froze each chosen trait as the world stood on turn 1; the world owns its authoring, so read it
-  // back before anything derives from it.
-  const chosenTraits = useMemo(() => refreshChosenTraits(playerTraits, traits), [playerTraits, traits]);
-  const activeTraits = useMemo(() => {
-    const off = new Set(disabledTraitIds);
-    return inAuthoredOrder(chosenTraits.filter((t) => !off.has(t.id)), traitOrder);
-  }, [chosenTraits, disabledTraitIds, traitOrder]);
-
   // A stat is live unless its author started it off or an active trait switched it off. Disabled stats keep
   // their value in `playerStats` — they are filtered out of everything that reads or moves them instead, so
   // switching the trait back on resumes exactly where the stat left off.
   const statEnabled = useMemo(() => activeStatEnabled(playerStats, activeTraits), [playerStats, activeTraits]);
   const activeStats = useMemo(() => enabledStats(playerStats, statEnabled), [playerStats, statEnabled]);
   statEnabledRef.current = statEnabled;
-  const traitPins = useMemo(() => activePlaceholderPins(activeTraits), [activeTraits]);
 
   // The same derivation for a paged-back turn, so history shows the stats that were live on that turn.
   const viewActiveStats = useMemo(() => {
@@ -1191,18 +1232,11 @@ const GameViewer = ({
     return enabledStats(viewStats, activeStatEnabled(viewStats, active));
   }, [viewStats, viewTraits, viewDisabledTraitIds, traitOrder, traits]);
 
-  // The six shared context chips every system prompt can reference, resolved from current state. Each
-  // request spreads these as its base, then layers on its own tokens (length/markdown, scene entities, etc.).
-  // Replace placeholder chips in authored text with their frozen per-playthrough values (pure lookup — rolls
-  // are primed below, so no side effects). Applied at every boundary that emits authored text to the AI.
-  const resolvePH = useCallback(
-    (text: string) => resolvePlaceholders(text, { placeholders, rolls: placeholderRolls, pins: traitPins }),
-    [placeholders, placeholderRolls, traitPins],
-  );
-
   useEffect(() => {
-    setBodyMorphValues(statMorphMap(viewActiveStats));
-  }, [viewActiveStats, setBodyMorphValues]);
+    // Authored stats anchor the morph scale, so a max the AI raised grows the shape key rather than
+    // shrinking every point below it.
+    setBodyMorphValues(statMorphMap(viewActiveStats, stats));
+  }, [viewActiveStats, stats, setBodyMorphValues]);
 
   // Ambient audio follows the viewed location (the paged turn's when browsing history, the live one
   // otherwise). Centralizing it here also fixes the load/rollback gap where `loadGameState` set the
@@ -1335,17 +1369,21 @@ const GameViewer = ({
   // freeze it into the save (a loaded save's existing rolls are kept). Resolution then stays a pure lookup.
   useEffect(() => {
     if (!isGameStarted || placeholders.length === 0) return;
+    // The authored originals, not the resolved copies — priming has to see the chips it is rolling for.
+    // Names are primed alongside descriptions so a name's Wildcard is frozen into the save like any other;
+    // a name resolved from an unprimed roll would be re-drawn on every render.
     const texts = [
       worldOverview.systemPrompt || "",
       worldOverview.readme || "",
-      ...entities.flatMap((e) => [e.playerDescription, e.aiDescription, e.aiSummary]),
-      ...locations.flatMap((l) => [l.playerDescription, l.aiDescription, l.aiSummary, l.description]),
-      ...dictionaries.flatMap((b) => b.entries.map((en) => en.value)),
-      ...traits.flatMap((t) => [t.playerDescription, t.aiDescription]),
-      ...traitGroups.flatMap((g) => [g.playerDescription, g.aiDescription]),
+      ...rawEntities.flatMap((e) => [e.name, ...(e.aliases ?? []), e.playerDescription, e.aiDescription, e.aiSummary]),
+      ...rawLocations.flatMap((l) => [l.name, ...(l.connections ?? []), l.playerDescription, l.aiDescription, l.aiSummary, l.description]),
+      ...dictionaries.flatMap((b) => b.entries.flatMap((en) => [en.name, ...(en.key ?? []), ...(en.secondaryKeys ?? []), en.value])),
+      ...rawStats.map((s) => s.name),
+      ...rawTraits.flatMap((t) => [t.name, t.playerDescription, t.aiDescription]),
+      ...rawTraitGroups.flatMap((g) => [g.name, g.playerDescription, g.aiDescription]),
     ].filter((t): t is string => !!t);
     setPlaceholderRolls((prev) => primeRolls(placeholders, texts, prev));
-  }, [isGameStarted, placeholders, entities, locations, dictionaries, traits, traitGroups, worldOverview, setPlaceholderRolls]);
+  }, [isGameStarted, placeholders, rawEntities, rawLocations, dictionaries, rawStats, rawTraits, rawTraitGroups, worldOverview, setPlaceholderRolls]);
 
   // True while the story's opening hour is still unmeasured and about to be asked for — i.e. the clock is on
   // and the opening turn hasn't committed. A game that started with the clock off keeps `startHour` null
