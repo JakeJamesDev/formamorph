@@ -109,6 +109,23 @@ describe('cleanDiscoveredDescription', () => {
     );
   });
 
+  it('strips a leading "Character name: X" echo instead of discarding the whole reply', () => {
+    // The label-cut runs over the whole reply, so a leading echo used to truncate at index 0 and
+    // throw the description away — the character then stayed due and was re-described from scratch.
+    expect(cleanDiscoveredDescription('Character name: Mira\nA quiet healer with steady hands.', 'Mira')).toBe(
+      'A quiet healer with steady hands.',
+    );
+  });
+
+  it('still cuts a "Character name:" echo that comes AFTER the description', () => {
+    const raw = 'A quiet healer with steady hands.\n\nCharacter name: Mira\nThe passage they appeared in: ...';
+    expect(cleanDiscoveredDescription(raw, 'Mira')).toBe('A quiet healer with steady hands.');
+  });
+
+  it('strips both echo forms when the model stacks them', () => {
+    expect(cleanDiscoveredDescription('Character name: Mira\nMira: A quiet healer.', 'Mira')).toBe('A quiet healer.');
+  });
+
   it('strips a <think> block', () => {
     expect(cleanDiscoveredDescription('<think>who is this?</think>A stoic guard.', 'Guard')).toBe('A stoic guard.');
   });

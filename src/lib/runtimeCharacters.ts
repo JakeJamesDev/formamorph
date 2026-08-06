@@ -62,15 +62,16 @@ export function materializeDiscoveredEntity(name: string, aiDescription: string)
  */
 export function cleanDiscoveredDescription(raw: string, name: string, extraLabels: string[] = []): string {
   let out = stripReasoning(raw || '');
+  // Strip a leading "Character name: Name" / "Name:" echo FIRST. The label cut below truncates from
+  // wherever a label appears, so a leading one would cut at index 0 and discard the whole reply.
+  out = out
+    .replace(new RegExp(`^\\s*${escapeRegExp(DISCOVER_NAME_LABEL)}\\s*${escapeRegExp(name.trim())}\\s*`, 'i'), '')
+    .replace(new RegExp(`^\\s*${escapeRegExp(name.trim())}\\s*:\\s*`, 'i'), '');
   // Cut from the first echoed scaffold label onward (the model repeating the prompt structure).
   for (const label of [...extraLabels, DISCOVER_PASSAGE_LABEL, DISCOVER_NAME_LABEL]) {
     const at = out.indexOf(label);
     if (at !== -1) out = out.slice(0, at);
   }
-  // Strip a leading "Name:" / "Character name: Name" echo before the description proper.
-  out = out
-    .replace(new RegExp(`^\\s*${escapeRegExp(DISCOVER_NAME_LABEL)}\\s*${escapeRegExp(name.trim())}\\s*`, 'i'), '')
-    .replace(new RegExp(`^\\s*${escapeRegExp(name.trim())}\\s*:\\s*`, 'i'), '');
   return trimToLastSentence(out).trim();
 }
 
