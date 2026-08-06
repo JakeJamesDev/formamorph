@@ -15,10 +15,11 @@ import { LexicalErrorBoundary } from '@lexical/react/LexicalErrorBoundary';
 import { useLexicalComposerContext } from '@lexical/react/LexicalComposerContext';
 import {
   Bold, Italic, Heading1, Heading2, List, ListOrdered, Link2, Quote, Code, Undo2, Redo2,
-  Maximize2, Minimize2, Columns2, Square,
+  Maximize2, Minimize2, Columns2, Square, Lock, Copy,
 } from 'lucide-react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Dialog, DialogContent } from '@/components/ui/dialog';
+import { Button } from '@/components/ui/button';
 import { CHIP_BASE } from '@/components/Chip';
 import { MarkdownRenderer } from '@/components/game/MarkdownRenderer';
 import { type MarkdownAction } from '@/lib/markdownToolbar';
@@ -392,7 +393,7 @@ function MarkdownPreviewPane({ value, previewValues, vocab, scrollRef, onScroll 
  * With `markdown`, it also gains a formatting toolbar and its Preview renders markdown instead of tinting
  * chips — for author-facing prose fields (world description, readme) that the player reads as markdown.
  */
-const PromptField = ({ value, onChange, variables = [], vocabulary, previewValues, onPreviewOpen, markdown = false, resizable = false, placeholder, className, readOnly = false, ariaLabel }: {
+const PromptField = ({ value, onChange, variables = [], vocabulary, previewValues, onPreviewOpen, markdown = false, resizable = false, placeholder, className, readOnly = false, ariaLabel, sampleData = false, onRequestEdit, readOnlyReason }: {
   value: string;
   onChange: (v: string) => void;
   /** Prompt-variable palette (used when no explicit `vocabulary` is given — the default prompt family). */
@@ -411,6 +412,12 @@ const PromptField = ({ value, onChange, variables = [], vocabulary, previewValue
   placeholder?: string;
   className?: string;
   readOnly?: boolean;
+  /** Badge the Preview as stand-in content — set when `previewValues` are samples, not a live game's. */
+  sampleData?: boolean;
+  /** Offered alongside the read-only notice: what to do about it (duplicate the preset and edit the copy). */
+  onRequestEdit?: () => void;
+  /** What is read-only, named in the notice (e.g. a built-in preset's name). */
+  readOnlyReason?: string;
   /** Names the editor for a screen reader. Lexical renders a `div`, so a `<label htmlFor>` cannot reach it. */
   ariaLabel?: string;
 }) => {
@@ -557,10 +564,20 @@ const PromptField = ({ value, onChange, variables = [], vocabulary, previewValue
     </div>
   );
 
-  const previewSurface = markdown ? (
-    <MarkdownPreviewPane value={value} previewValues={previewValues} vocab={vocab} scrollRef={previewScrollRef} onScroll={handleScroll} />
-  ) : (
-    <PreviewPane value={value} previewValues={previewValues ?? {}} vocab={vocab} scrollRef={previewScrollRef} onScroll={handleScroll} />
+  const previewSurface = (
+    <div className="relative flex flex-1 min-h-0 flex-col">
+      {markdown ? (
+        <MarkdownPreviewPane value={value} previewValues={previewValues} vocab={vocab} scrollRef={previewScrollRef} onScroll={handleScroll} />
+      ) : (
+        <PreviewPane value={value} previewValues={previewValues ?? {}} vocab={vocab} scrollRef={previewScrollRef} onScroll={handleScroll} />
+      )}
+      {/* Stand-in content, not this player's world — say so on the pane rather than in a tooltip nobody opens. */}
+      {sampleData && (
+        <span className="pointer-events-none absolute right-2 top-2 rounded bg-background/90 px-1.5 py-0.5 text-[10px] font-medium text-muted-foreground ring-1 ring-border">
+          Sample data
+        </span>
+      )}
+    </div>
   );
 
   // Swipe between panes when they can't sit side by side and the screen is the whole surface — the
@@ -643,9 +660,24 @@ const PromptField = ({ value, onChange, variables = [], vocabulary, previewValue
     editorSurface
   );
 
+  // A read-only editor looks broken rather than protected — the caret simply does nothing — and that reads
+  // worst at full screen, where the field is the whole window. Say why, and offer the way out.
+  const readOnlyNotice = readOnly && readOnlyReason && (
+    <div className="flex flex-shrink-0 flex-wrap items-center gap-2 rounded-md border border-border bg-muted/50 px-2 py-1.5 text-xs text-muted-foreground">
+      <Lock className="h-3.5 w-3.5 shrink-0" />
+      <span className="min-w-0 flex-1">{readOnlyReason}</span>
+      {onRequestEdit && (
+        <Button variant="outline" size="sm" className="h-7 shrink-0 px-2" onClick={onRequestEdit}>
+          <Copy className="mr-1 h-3.5 w-3.5" /> Duplicate &amp; Edit
+        </Button>
+      )}
+    </div>
+  );
+
   const body = (
     <div ref={measureRef} className={cn('flex flex-col flex-1 min-h-0 gap-2', className)}>
       {chrome}
+      {readOnlyNotice}
       {markdown && <MarkdownToolbar parse={vocab.parse} disabled={readOnly || (!split && showTabs && tab !== 'edit')} />}
       {panes}
     </div>

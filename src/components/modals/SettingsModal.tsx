@@ -13,9 +13,11 @@ import { type SharedPreset } from '@/lib/promptPresetShare';
 import { APP_VERSION } from '@/lib/version';
 import { normalizeEndpointUrl, endpointUrlWasCompleted } from '@/lib/endpointUrl';
 import { computePromptTabAvailability } from '@/lib/promptTabAvailability';
+import { visibleGroups, SURFACE_LABELS, type PromptSurface } from '@/lib/promptGroups';
 import { Settings } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { cn } from "@/lib/utils";
+import { SAMPLE_PREVIEW_VALUES } from "@/lib/samplePreviewValues";
 import { Button } from "@/components/ui/button";
 import { RevealAnimationDemoButton } from "@/components/RevealAnimationDemo";
 import { Input } from "@/components/ui/input";
@@ -27,7 +29,7 @@ import { loadEmbeddingModel, disposeEmbeddingModel, type EmbeddingLoadProgress }
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem, SelectSeparator } from "@/components/ui/select";
+import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem, SelectSeparator, SelectGroup, SelectLabel } from "@/components/ui/select";
 import { Slider } from "@/components/ui/slider";
 import PromptField from '../prompt/PromptField';
 import { PROMPT_KIND_VARIABLES, PROMPT_KIND_USER_VARIABLES, NOW_LINE_VARIABLES, SUBJECT } from '@/lib/promptVariables';
@@ -632,6 +634,12 @@ export const SettingsModal = ({ isOpen, onOpenChange, previewValues, initialTab,
     if (presetDialog?.mode === 'add') addPreset(name);
     else if (presetDialog?.mode === 'rename') renamePreset(activePresetId, name);
   };
+  // A built-in can't be edited, so the way forward is a copy of it. `addPreset` already clones the active
+  // values and selects the result, so this is the whole gesture — no dialog in the way.
+  const duplicateForEditing = () => addPreset(`${activePresetName} (copy)`);
+  const readOnlyReason = activePresetIsBuiltIn
+    ? `${activePresetName} is a built-in preset, so its prompts can't be edited.`
+    : undefined;
 
   // AI Endpoints → Image preset name dialog (mirrors the prompt preset one; all presets editable).
   const [imagePresetDialog, setImagePresetDialog] = useState<{ mode: 'add' | 'rename' } | null>(null);
@@ -708,6 +716,13 @@ export const SettingsModal = ({ isOpen, onOpenChange, previewValues, initialTab,
     else if (imagePresetDialog?.mode === 'rename') renameImageEndpointPreset(activeImageEndpointPresetId, name);
   };
 
+  // Preview needs values to swap the chips for, and a game supplies them. Without one the pane (and the
+  // side-by-side split that depends on it) had nothing to show, so writing a prompt meant loading a world
+  // first. Falling back to samples makes the editor usable from the main menu; `sampleData` badges the pane
+  // so the stand-in content is never mistaken for the player's own world.
+  const usingSampleValues = !previewValues;
+  const effectivePreviewValues = previewValues ?? SAMPLE_PREVIEW_VALUES;
+
   // The selected prompt sub-tab, so the Reset button can target just that prompt.
   const [promptTab, setPromptTab] = useState(initialPromptTab ?? 'narration');
   // DEV dev-router: honor a requested prompt sub-tab (a `subtab=…` in the hash).
@@ -744,6 +759,8 @@ export const SettingsModal = ({ isOpen, onOpenChange, previewValues, initialTab,
   // `promptView` resets to System on every tab change.
   const [promptView, setPromptView] = useState<'system' | 'user' | 'messages' | 'options'>('system');
   const selectPromptTab = (t: string) => { setPromptTab(t); setPromptView('system'); };
+  // The rail's groups, with prompts whose feature is off already removed.
+  const railGroups = visibleGroups(promptAvailable);
   const userPrompts: Record<string, { value: string; set: (s: string) => void; reset: () => void; variables: typeof PROMPT_KIND_VARIABLES.choices }> = {
     // Narration's user template applies only with thinking off (GameViewer guard); hide the editor
     // in other modes so a change there can't silently do nothing.
@@ -794,6 +811,13 @@ export const SettingsModal = ({ isOpen, onOpenChange, previewValues, initialTab,
       hint: 'Rides with your action whenever it contains [square brackets] — tells the AI the bracketed text is you directing the scene as the author, not something your character says.',
       value: oocDirectivePrompt, set: setOocDirectivePrompt, def: defaultOocDirectivePrompt,
     }] : []),
+  ];
+  // Which parts the open prompt actually has — the rail lists exactly these under it.
+  const activeSurfaces: PromptSurface[] = [
+    'system',
+    ...(activeUserPrompt ? ['user' as const] : []),
+    ...(messagesAvailable ? ['messages' as const] : []),
+    'options',
   ];
   const showingOptions = promptView === 'options';
   // The Reset button targets whichever template is on screen. `label` is the full noun ("Narration Prompt"
@@ -872,7 +896,9 @@ export const SettingsModal = ({ isOpen, onOpenChange, previewValues, initialTab,
         aria-describedby={undefined}
         className={cn(
           'h-[90dvh] flex flex-col overflow-hidden',
-          activeTab === 'prompts' ? 'sm:max-w-[1100px]' : 'sm:max-w-[800px]',
+          // Near-full width on Prompts: the rail costs ~190px, and a fixed 1100px left the editor column
+          // just short of fitting two panes — so the split silently never appeared on a 1280px screen.
+          activeTab === 'prompts' ? 'sm:max-w-[min(1500px,95vw)]' : 'sm:max-w-[800px]',
         )}
       >
         <DialogHeader className="flex-shrink-0">
@@ -2060,42 +2086,95 @@ An inspection aid for authoring and debugging; off by default.`}</HintInfo>
                 Your usual preset is unaffected and comes back when you leave.
               </p>
             )}
-            {/* Nested tab bar — one prompt per tab; only the selected prompt shows. */}
-            <Tabs value={activePromptTab} onValueChange={selectPromptTab} className="w-full flex flex-col flex-1 min-h-0">
-              <TabsList className="flex flex-wrap h-auto justify-center gap-1 flex-shrink-0">
-                <TabsTrigger value="narration">Narration</TabsTrigger>
-                {thinkingMode === 'precall' && <TabsTrigger value="thinking">Planning</TabsTrigger>}
-                {choicesEnabled && <TabsTrigger value="choices">Choices</TabsTrigger>}
-                {statUpdatesEnabled && <TabsTrigger value="statupdates">Stat Updates</TabsTrigger>}
-                {locationChangeEnabled && <TabsTrigger value="location">Location Change</TabsTrigger>}
-                {memoryDigests && <TabsTrigger value="summary">Summary</TabsTrigger>}
-                {aiClock && <TabsTrigger value="timepassed">Clock</TabsTrigger>}
-                {aiClock && <TabsTrigger value="timeopening">Opening</TabsTrigger>}
-                {!imageGenDisabled && <TabsTrigger value="scenetags">Scene Tags</TabsTrigger>}
-                {promptAvailable.diary && <TabsTrigger value="diary">Diary</TabsTrigger>}
-                {thinkingMode === 'staged' && <TabsTrigger value="director">Director</TabsTrigger>}
-                {thinkingMode === 'staged' && <TabsTrigger value="character">Character</TabsTrigger>}
-                {thinkingMode === 'staged' && <TabsTrigger value="storyboard">Storyboard</TabsTrigger>}
-              </TabsList>
-
-              {/* System prompt · (aux only) user-message template · Options — which part of the selected
-                  prompt is on show, kept at text-xs. A second axis over the tab panel above rather than a
-                  tab set of its own. User Message shows only when the prompt has a user template. */}
-              <div className="flex justify-center mt-3 flex-shrink-0">
-                <ToggleGroup
-                  type="single"
-                  value={promptView}
-                  // A single ToggleGroup clears its value when the active item is clicked again; some part of
-                  // the prompt is always on show, so an empty result is ignored rather than stored.
-                  onValueChange={(v) => { if (v) setPromptView(v as 'system' | 'user' | 'messages' | 'options'); }}
-                  className="h-auto"
+            {/* Rail + panel. The rail replaces both the thirteen wrapped prompt tabs and the
+                System/User/Messages/Options row: two rows of chrome the editor gets back, and a list that
+                says what each prompt is for. `Tabs` still owns the panel switching — only its list is gone. */}
+            <Tabs value={activePromptTab} onValueChange={selectPromptTab} className="w-full flex flex-1 min-h-0 gap-4 flex-col md:flex-row">
+              {/* Narrow: one dropdown carrying prompt + surface, since a rail and an editor can't share
+                  a phone's width. Same collapse the top-level Settings tabs already do. */}
+              <div className="md:hidden flex-shrink-0">
+                {/* Prompt and surface entries live in one list but must not share a value string, or
+                    Radix matches both and renders their labels concatenated. */}
+                <Select
+                  value={`surface:${promptView}`}
+                  onValueChange={(v) => {
+                    const [kind, id] = v.split(':');
+                    if (kind === 'prompt') selectPromptTab(id);
+                    else setPromptView(id as PromptSurface);
+                  }}
                 >
-                  <ToggleGroupItem value="system" className="text-xs">System Prompt</ToggleGroupItem>
-                  {activeUserPrompt && <ToggleGroupItem value="user" className="text-xs">User Message</ToggleGroupItem>}
-                  {messagesAvailable && <ToggleGroupItem value="messages" className="text-xs">Messages</ToggleGroupItem>}
-                  <ToggleGroupItem value="options" className="text-xs">Options</ToggleGroupItem>
-                </ToggleGroup>
+                  {/* Named outright rather than via SelectValue: the value tracks only the surface, and
+                      the reader needs to see which prompt they're in. */}
+                  <SelectTrigger>
+                    <span className="truncate leading-normal">{selectedPrompt.label} &middot; {SURFACE_LABELS[promptView]}</span>
+                  </SelectTrigger>
+                  <SelectContent>
+                    {railGroups.map((g) => (
+                      <SelectGroup key={g.label}>
+                        <SelectLabel>{g.label}</SelectLabel>
+                        {g.tabs.map((t) => (
+                          <SelectItem key={t} value={`prompt:${t}`}>{promptResets[t]?.label ?? t}</SelectItem>
+                        ))}
+                      </SelectGroup>
+                    ))}
+                    <SelectSeparator />
+                    <SelectGroup>
+                      <SelectLabel>{selectedPrompt.label}</SelectLabel>
+                      {activeSurfaces.map((s) => (
+                        <SelectItem key={s} value={`surface:${s}`}>{SURFACE_LABELS[s]}</SelectItem>
+                      ))}
+                    </SelectGroup>
+                  </SelectContent>
+                </Select>
               </div>
+
+              <ScrollArea className="hidden md:block w-[190px] flex-shrink-0 border-r pr-2">
+                <div className="flex flex-col gap-0.5 pb-2">
+                  {railGroups.map((g) => (
+                    <div key={g.label} className="flex flex-col gap-0.5">
+                      <span className="px-2 pt-2 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+                        {g.label}
+                      </span>
+                      {g.tabs.map((t) => {
+                        const selected = t === activePromptTab;
+                        return (
+                          <div key={t} className="flex flex-col">
+                            <button
+                              type="button"
+                              onClick={() => selectPromptTab(t)}
+                              aria-current={selected ? 'true' : undefined}
+                              className={cn(
+                                'rounded px-2 py-1 text-left text-sm',
+                                selected ? 'bg-accent font-medium text-accent-foreground' : 'text-muted-foreground hover:bg-accent/50',
+                              )}
+                            >
+                              {promptResets[t]?.label ?? t}
+                            </button>
+                            {/* Only the open prompt lists its parts — expanding all of them would just be
+                                the old flat wall of buttons with extra steps. */}
+                            {selected && activeSurfaces.map((s) => (
+                              <button
+                                key={s}
+                                type="button"
+                                onClick={() => setPromptView(s)}
+                                aria-current={promptView === s ? 'true' : undefined}
+                                className={cn(
+                                  'ml-2 rounded px-2 py-0.5 text-left text-xs',
+                                  promptView === s ? 'text-primary font-medium' : 'text-muted-foreground hover:bg-accent/50',
+                                )}
+                              >
+                                {SURFACE_LABELS[s]}
+                              </button>
+                            ))}
+                          </div>
+                        );
+                      })}
+                    </div>
+                  ))}
+                </div>
+              </ScrollArea>
+
+              <div className="flex flex-1 min-w-0 min-h-0 flex-col">
 
               {showingOptions && (
                 <ScrollArea className="mt-4 flex-1 min-h-0">
@@ -2133,7 +2212,10 @@ An inspection aid for authoring and debugging; off by default.`}</HintInfo>
                             value={f.value}
                             onChange={f.set}
                             variables={f.variables ?? []}
-                            previewValues={previewValues}
+                            previewValues={effectivePreviewValues}
+                    sampleData={usingSampleValues}
+                    readOnlyReason={readOnlyReason}
+                    onRequestEdit={duplicateForEditing}
                             readOnly={activePresetIsBuiltIn}
                           />
                           <p className="text-xs text-muted-foreground">{f.hint}</p>
@@ -2146,7 +2228,10 @@ An inspection aid for authoring and debugging; off by default.`}</HintInfo>
                     value={showingUser ? narrationUserPrompt : systemPrompt}
                     onChange={showingUser ? setNarrationUserPrompt : setSystemPrompt}
                     variables={showingUser ? (PROMPT_KIND_USER_VARIABLES.narration ?? []) : PROMPT_KIND_VARIABLES.narration}
-                    previewValues={previewValues}
+                    previewValues={effectivePreviewValues}
+                    sampleData={usingSampleValues}
+                    readOnlyReason={readOnlyReason}
+                    onRequestEdit={duplicateForEditing}
                     readOnly={activePresetIsBuiltIn}
                   />
                 )}
@@ -2158,7 +2243,10 @@ An inspection aid for authoring and debugging; off by default.`}</HintInfo>
                     value={thinkingPrompt}
                     onChange={setThinkingPrompt}
                     variables={PROMPT_KIND_VARIABLES.thinking}
-                    previewValues={previewValues}
+                    previewValues={effectivePreviewValues}
+                    sampleData={usingSampleValues}
+                    readOnlyReason={readOnlyReason}
+                    onRequestEdit={duplicateForEditing}
                     readOnly={activePresetIsBuiltIn}
                   />
                 </TabsContent>
@@ -2170,7 +2258,10 @@ An inspection aid for authoring and debugging; off by default.`}</HintInfo>
                     value={showingUser ? choicesUserPrompt : choicesPrompt}
                     onChange={showingUser ? setChoicesUserPrompt : setChoicesPrompt}
                     variables={showingUser ? (PROMPT_KIND_USER_VARIABLES.choices ?? []) : PROMPT_KIND_VARIABLES.choices}
-                    previewValues={previewValues}
+                    previewValues={effectivePreviewValues}
+                    sampleData={usingSampleValues}
+                    readOnlyReason={readOnlyReason}
+                    onRequestEdit={duplicateForEditing}
                     readOnly={activePresetIsBuiltIn}
                   />
                 </TabsContent>
@@ -2182,7 +2273,10 @@ An inspection aid for authoring and debugging; off by default.`}</HintInfo>
                     value={showingUser ? statUpdatesUserPrompt : statUpdatesPrompt}
                     onChange={showingUser ? setStatUpdatesUserPrompt : setStatUpdatesPrompt}
                     variables={showingUser ? (PROMPT_KIND_USER_VARIABLES.statupdates ?? []) : PROMPT_KIND_VARIABLES.statupdates}
-                    previewValues={previewValues}
+                    previewValues={effectivePreviewValues}
+                    sampleData={usingSampleValues}
+                    readOnlyReason={readOnlyReason}
+                    onRequestEdit={duplicateForEditing}
                     readOnly={activePresetIsBuiltIn}
                   />
                 </TabsContent>
@@ -2194,7 +2288,10 @@ An inspection aid for authoring and debugging; off by default.`}</HintInfo>
                     value={showingUser ? locationChangeUserPrompt : locationChangePromptText}
                     onChange={showingUser ? setLocationChangeUserPrompt : setLocationChangePromptText}
                     variables={showingUser ? (PROMPT_KIND_USER_VARIABLES.location ?? []) : PROMPT_KIND_VARIABLES.location}
-                    previewValues={previewValues}
+                    previewValues={effectivePreviewValues}
+                    sampleData={usingSampleValues}
+                    readOnlyReason={readOnlyReason}
+                    onRequestEdit={duplicateForEditing}
                     readOnly={activePresetIsBuiltIn}
                   />
                   <p className="text-xs text-muted-foreground flex-shrink-0">Lets the AI move the player between locations.</p>
@@ -2207,7 +2304,10 @@ An inspection aid for authoring and debugging; off by default.`}</HintInfo>
                     value={showingUser ? summaryUserPrompt : summaryPrompt}
                     onChange={showingUser ? setSummaryUserPrompt : setSummaryPrompt}
                     variables={showingUser ? (PROMPT_KIND_USER_VARIABLES.summary ?? []) : PROMPT_KIND_VARIABLES.summary}
-                    previewValues={previewValues}
+                    previewValues={effectivePreviewValues}
+                    sampleData={usingSampleValues}
+                    readOnlyReason={readOnlyReason}
+                    onRequestEdit={duplicateForEditing}
                     readOnly={activePresetIsBuiltIn}
                   />
                   <p className="text-xs text-muted-foreground flex-shrink-0">Condenses each turn into a short retelling for long-story memory. Only used when Memory Summaries is on.</p>
@@ -2220,7 +2320,10 @@ An inspection aid for authoring and debugging; off by default.`}</HintInfo>
                     value={showingUser ? timePassedUserPrompt : timePassedPrompt}
                     onChange={showingUser ? setTimePassedUserPrompt : setTimePassedPrompt}
                     variables={showingUser ? (PROMPT_KIND_USER_VARIABLES.timepassed ?? []) : PROMPT_KIND_VARIABLES.timepassed}
-                    previewValues={previewValues}
+                    previewValues={effectivePreviewValues}
+                    sampleData={usingSampleValues}
+                    readOnlyReason={readOnlyReason}
+                    onRequestEdit={duplicateForEditing}
                     readOnly={activePresetIsBuiltIn}
                   />
                   <p className="text-xs text-muted-foreground flex-shrink-0">Measures how much in-world time each turn takes. Answer with a count and its unit (m, h, d, w). Only used when Measured Clock is on.</p>
@@ -2233,7 +2336,10 @@ An inspection aid for authoring and debugging; off by default.`}</HintInfo>
                     value={showingUser ? openingTimeUserPrompt : openingTimePrompt}
                     onChange={showingUser ? setOpeningTimeUserPrompt : setOpeningTimePrompt}
                     variables={showingUser ? (PROMPT_KIND_USER_VARIABLES.timeopening ?? []) : PROMPT_KIND_VARIABLES.timeopening}
-                    previewValues={previewValues}
+                    previewValues={effectivePreviewValues}
+                    sampleData={usingSampleValues}
+                    readOnlyReason={readOnlyReason}
+                    onRequestEdit={duplicateForEditing}
                     readOnly={activePresetIsBuiltIn}
                   />
                   <p className="text-xs text-muted-foreground flex-shrink-0">Reads the opening scene once to work out what time of day the story starts at. Answer with one daypart: night, dawn, morning, midday, afternoon, evening. Only used when Measured Clock is on.</p>
@@ -2246,7 +2352,10 @@ An inspection aid for authoring and debugging; off by default.`}</HintInfo>
                     value={showingUser ? sceneTagsUserPrompt : sceneTagsPrompt}
                     onChange={showingUser ? setSceneTagsUserPrompt : setSceneTagsPrompt}
                     variables={showingUser ? (PROMPT_KIND_USER_VARIABLES.scenetags ?? []) : PROMPT_KIND_VARIABLES.scenetags}
-                    previewValues={previewValues}
+                    previewValues={effectivePreviewValues}
+                    sampleData={usingSampleValues}
+                    readOnlyReason={readOnlyReason}
+                    onRequestEdit={duplicateForEditing}
                     readOnly={activePresetIsBuiltIn}
                   />
                   <p className="text-xs text-muted-foreground flex-shrink-0">Writes the action tags for a scene image — what the people in frame are doing. Their appearance comes from their own image tags and the background from the location&rsquo;s, so this pass deliberately adds neither.</p>
@@ -2259,7 +2368,10 @@ An inspection aid for authoring and debugging; off by default.`}</HintInfo>
                     value={diaryPrompt}
                     onChange={setDiaryPrompt}
                     variables={PROMPT_KIND_VARIABLES.diary}
-                    previewValues={previewValues}
+                    previewValues={effectivePreviewValues}
+                    sampleData={usingSampleValues}
+                    readOnlyReason={readOnlyReason}
+                    onRequestEdit={duplicateForEditing}
                     readOnly={activePresetIsBuiltIn}
                   />
                   <p className="text-xs text-muted-foreground flex-shrink-0">Each participating character records a first-person diary entry per turn. Only used when Character Diaries is on.</p>
@@ -2272,7 +2384,10 @@ An inspection aid for authoring and debugging; off by default.`}</HintInfo>
                     value={showingUser ? directorUserPrompt : directorPrompt}
                     onChange={showingUser ? setDirectorUserPrompt : setDirectorPrompt}
                     variables={showingUser ? (PROMPT_KIND_USER_VARIABLES.director ?? []) : PROMPT_KIND_VARIABLES.director}
-                    previewValues={previewValues}
+                    previewValues={effectivePreviewValues}
+                    sampleData={usingSampleValues}
+                    readOnlyReason={readOnlyReason}
+                    onRequestEdit={duplicateForEditing}
                     readOnly={activePresetIsBuiltIn}
                   />
                   <p className="text-xs text-muted-foreground flex-shrink-0">Stages each turn: picks the cast and scene. Only used when Thinking is set to Staged.</p>
@@ -2285,7 +2400,10 @@ An inspection aid for authoring and debugging; off by default.`}</HintInfo>
                     value={characterPrompt}
                     onChange={setCharacterPrompt}
                     variables={PROMPT_KIND_VARIABLES.character}
-                    previewValues={previewValues}
+                    previewValues={effectivePreviewValues}
+                    sampleData={usingSampleValues}
+                    readOnlyReason={readOnlyReason}
+                    onRequestEdit={duplicateForEditing}
                     readOnly={activePresetIsBuiltIn}
                   />
                   <p className="text-xs text-muted-foreground flex-shrink-0">Each cast member states its own motivation in the first person. Only used when Thinking is set to Staged.</p>
@@ -2298,7 +2416,10 @@ An inspection aid for authoring and debugging; off by default.`}</HintInfo>
                     value={storyboardPrompt}
                     onChange={setStoryboardPrompt}
                     variables={PROMPT_KIND_VARIABLES.storyboard}
-                    previewValues={previewValues}
+                    previewValues={effectivePreviewValues}
+                    sampleData={usingSampleValues}
+                    readOnlyReason={readOnlyReason}
+                    onRequestEdit={duplicateForEditing}
                     readOnly={activePresetIsBuiltIn}
                   />
                   <p className="text-xs text-muted-foreground flex-shrink-0">Reconciles the cast&apos;s intentions into the turn&apos;s beat plan. Only used when Thinking is set to Staged.</p>
@@ -2306,6 +2427,7 @@ An inspection aid for authoring and debugging; off by default.`}</HintInfo>
               )}
               </>
               )}
+              </div>
             </Tabs>
 
             {/* Reset targets the on-screen template; hidden on the Options sub-tab (edits no template)
