@@ -113,12 +113,15 @@ function SortableWorldCard({ world, onSelect, onDelete, layout, aspect = 'landsc
         <div className={`w-full ${aspect === 'portrait' ? 'aspect-[2/3]' : 'h-48'} bg-muted`} />
       )}
       {badge && <div className="absolute top-1 left-1 z-10">{badge}</div>}
-      <div className="absolute bottom-0 left-0 right-0 bg-overlay/50 p-2">
-        <h3 className="text-white font-semibold">{world.name}</h3>
+      {/* Flex row, not an absolute corner button: the trash keeps its own column so a long name wraps
+          beside it instead of running underneath, and it bottom-aligns with the last line of the name. */}
+      <div className="absolute bottom-0 left-0 right-0 bg-overlay/50 p-2 flex items-end gap-2">
+        <h3 className="min-w-0 flex-1 break-words text-white font-semibold">{world.name}</h3>
         <button
-          className="absolute top-2 right-2 p-1 text-destructive hover:text-destructive/80"
+          className="shrink-0 p-1 text-destructive hover:text-destructive/80"
           onPointerDown={(e) => e.stopPropagation()}
           onClick={handleDelete}
+          aria-label="Delete world"
         >
           <Trash2 className="h-5 w-5" />
         </button>
