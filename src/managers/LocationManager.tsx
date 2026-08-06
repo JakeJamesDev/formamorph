@@ -1,12 +1,11 @@
 import { useEditingDraft } from '@/lib/useEditingDraft';
 import { useGameData } from '@/contexts/GameDataContext';
 import { entitiesInTreeOrder } from '@/lib/entityGroupTree';
-import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
 import { MultiSelect } from "@/components/ui/multi-select";
 import AiFieldToolbar from "@/components/AiFieldToolbar";
-import PlaceholderField from "@/components/prompt/PlaceholderField";
+import PlaceholderField, { PlaceholderNameField } from "@/components/prompt/PlaceholderField";
 import { SoundUpload } from '../lib/UtilityComponents';
 import { IMAGE_CAPS } from '../lib/imageOptim';
 import ImageTagsField from './ImageTagsField';
@@ -22,9 +21,11 @@ const LocationManager = ({ location }: { location: GameLocation }) => {
     <div className="space-y-4">
       <div className="space-y-2">
         <Label>Name</Label>
-        <Input
+        <PlaceholderNameField
           value={editingLocation.name || ''}
-          onChange={(e) => handleChange('name', e.target.value)}
+          onChange={(v) => handleChange('name', v)}
+          placeholders={placeholders}
+          ariaLabel="Name"
         />
       </div>
       <div className="flex items-center space-x-2">

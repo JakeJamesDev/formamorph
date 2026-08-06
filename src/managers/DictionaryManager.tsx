@@ -4,7 +4,7 @@ import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { Checkbox } from "@/components/ui/checkbox";
 import { KeywordChips } from "@/components/KeywordChips";
-import PlaceholderField from "@/components/prompt/PlaceholderField";
+import PlaceholderField, { PlaceholderNameField } from "@/components/prompt/PlaceholderField";
 import type { DictionaryEntry, Placeholder } from '@/types';
 
 /** A compact labeled checkbox for the lorebook options grid. */
@@ -49,10 +49,12 @@ const DictionaryManager = ({ entry, placeholders = [] }: { entry: DictionaryEntr
     <div className="space-y-4">
       <div className="space-y-2">
         <Label>Name</Label>
-        <Input
+        <PlaceholderNameField
           value={editingEntry.name ?? ''}
-          onChange={(e) => handleChange('name', e.target.value)}
+          onChange={(v) => handleChange('name', v)}
+          placeholders={placeholders}
           placeholder="e.g. Hostile Forces"
+          ariaLabel="Name"
         />
         <p className="text-xs text-muted-foreground">
           Labels this entry in the list, and prefixes its value in the AI prompt. Falls back to the first

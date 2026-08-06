@@ -18,6 +18,7 @@ import {
 import { CollapsibleSection } from "@/components/ui/collapsible-section";
 import { executeStatCode } from "@/lib/statCodeExecutor";
 import { MultiSelect } from "@/components/ui/multi-select";
+import { PlaceholderNameField } from "@/components/prompt/PlaceholderField";
 import { useBodyMorphSources } from "@/lib/useBodyMorphNames";
 import { boundMorphNamesExcluding, buildMorphGroups } from "@/lib/bodyMorphs";
 import { clamp } from "@/lib/utils";
@@ -34,7 +35,7 @@ const normalizeStat = (stat: EditingStat): EditingStat => ({
 });
 
 const StatManager = ({ stat }: { stat: Stat }) => {
-  const { updateStat, stats } = useGameData();
+  const { updateStat, stats, placeholders } = useGameData();
   const [newDescriptor, setNewDescriptor] = useState<{ threshold: number | string; description: string }>({
     threshold: "",
     description: "",
@@ -129,9 +130,11 @@ const StatManager = ({ stat }: { stat: Stat }) => {
     <div className="space-y-4">
       <div className="space-y-2">
         <Label>Name</Label>
-        <Input
+        <PlaceholderNameField
           value={editingStat.name || ""}
-          onChange={(e) => handleChange("name", e.target.value)}
+          onChange={(v) => handleChange("name", v)}
+          placeholders={placeholders}
+          ariaLabel="Name"
         />
       </div>
       <div className="space-y-2">

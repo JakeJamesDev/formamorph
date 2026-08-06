@@ -1,8 +1,10 @@
 import { useMemo, useState } from 'react';
 import PromptField from './PromptField';
+import ChipInput from './ChipInput';
 import { placeholderVocabulary } from '@/lib/chipVocabulary';
 import { buildPlaceholderPreview } from '@/lib/placeholders';
 import type { Placeholder } from '@/types';
+import { PLACEHOLDER_TRIGGER, placeholderHint } from '@/lib/placeholderInsert';
 
 /**
  * A chip editor for world text that can embed placeholders. Reuses the prompt chip editor with the
@@ -48,8 +50,42 @@ const PlaceholderField = ({ value, onChange, placeholders, markdown = false, res
       placeholder={placeholder}
       className={className}
       readOnly={readOnly}
+      insertTrigger={PLACEHOLDER_TRIGGER}
     />
   );
 };
 
 export default PlaceholderField;
+
+/**
+ * The name-field form: one line, shaped like an ordinary input, chips inline. A name is a label a few words
+ * long, so it gets none of the prose editor's tabs, toolbars or preview pane — the typeahead and the panel's
+ * shared palette are the whole insert story.
+ *
+ * With no placeholders defined this is a plain text box: the vocabulary has nothing to offer, so the hint
+ * and the menu both stay away.
+ */
+export const PlaceholderNameField = ({ value, onChange, placeholders, placeholder, ariaLabel, className, readOnly = false }: {
+  value: string;
+  onChange: (v: string) => void;
+  placeholders: Placeholder[];
+  placeholder?: string;
+  ariaLabel?: string;
+  className?: string;
+  readOnly?: boolean;
+}) => {
+  const vocab = useMemo(() => placeholderVocabulary(placeholders), [placeholders]);
+  const enabled = placeholders.length > 0 && !readOnly;
+  return (
+    <ChipInput
+      value={value}
+      onChange={onChange}
+      vocabulary={vocab}
+      placeholder={placeholderHint(placeholder, enabled)}
+      ariaLabel={ariaLabel}
+      className={className}
+      readOnly={readOnly}
+      trigger={enabled ? PLACEHOLDER_TRIGGER : undefined}
+    />
+  );
+};

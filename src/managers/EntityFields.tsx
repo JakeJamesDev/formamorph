@@ -4,7 +4,7 @@ import { MultiSelect } from "@/components/ui/multi-select";
 import { KeywordChips } from "@/components/KeywordChips";
 import { HelpButton } from "@/components/HelpButton";
 import AiFieldToolbar from "@/components/AiFieldToolbar";
-import PlaceholderField from "@/components/prompt/PlaceholderField";
+import PlaceholderField, { PlaceholderNameField } from "@/components/prompt/PlaceholderField";
 import { ModelUpload } from '../lib/UtilityComponents';
 import { IMAGE_CAPS } from '../lib/imageOptim';
 import { ENTITY_EMBEDDED_IMAGE_LIMIT, entityImages } from '../lib/entityImages';
@@ -31,9 +31,11 @@ const EntityFields = ({ value, onChange, placeholders = [], locationOptions, sel
     <div className="space-y-4">
       <div className="space-y-2">
         <Label>Name</Label>
-        <Input
+        <PlaceholderNameField
           value={value.name || ''}
-          onChange={(e) => onChange('name', e.target.value)}
+          onChange={(v) => onChange('name', v)}
+          placeholders={placeholders}
+          ariaLabel="Name"
         />
       </div>
       <div className="space-y-2">

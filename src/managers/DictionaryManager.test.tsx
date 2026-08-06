@@ -7,8 +7,21 @@ const updateDictionaryEntry = vi.fn();
 vi.mock('@/contexts/DictionaryStoreContext', () => ({
   useDictionaryStore: () => ({ updateDictionaryEntry }),
 }));
-// PlaceholderField is a Lexical editor; the value body isn't under test here.
-vi.mock('@/components/prompt/PlaceholderField', () => ({ default: () => <div /> }));
+// Both fields are Lexical editors, which jsdom can't run. The value body isn't under test here, but the
+// name field is — so it stands in as a real controlled input, keeping the typing these tests do genuine.
+vi.mock('@/components/prompt/PlaceholderField', () => ({
+  default: () => <div />,
+  PlaceholderNameField: ({ value, onChange, placeholder, ariaLabel }: {
+    value: string; onChange: (v: string) => void; placeholder?: string; ariaLabel?: string;
+  }) => (
+    <input
+      aria-label={ariaLabel}
+      placeholder={placeholder}
+      value={value}
+      onChange={(e) => onChange(e.target.value)}
+    />
+  ),
+}));
 
 const entry = (over: Partial<DictionaryEntry> = {}): DictionaryEntry => ({
   id: 'e1',

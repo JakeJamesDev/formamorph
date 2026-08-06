@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Trash2 } from "lucide-react";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import PlaceholderField from '@/components/prompt/PlaceholderField';
+import PlaceholderField, { PlaceholderNameField } from '@/components/prompt/PlaceholderField';
 import { traitConflicts, type TraitConflict } from '@/lib/traitEffects';
 import type { Trait, StatChange, TraitStatToggle, TraitPlaceholderPin } from '@/types';
 
@@ -65,9 +65,11 @@ const TraitManager = ({ trait }: { trait: Trait }) => {
     <div className="space-y-4">
        <div className="space-y-2">
         <Label>Name</Label>
-        <Input
+        <PlaceholderNameField
           value={editingTrait.name || ''}
-          onChange={(e) => handleChange('name', e.target.value)}
+          onChange={(v) => handleChange('name', v)}
+          placeholders={placeholders}
+          ariaLabel="Name"
         />
       </div>
       <div className="space-y-2">
