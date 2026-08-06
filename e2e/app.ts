@@ -3,6 +3,8 @@ import type { Page } from '@playwright/test';
 /** Dev-router surface installed by `src/lib/devRouter.ts` (DEV builds only). */
 interface DevRouter {
   goto(view?: string, opts?: { modal?: string; tab?: string; subtab?: string; fixture?: string }): void;
+  listWorlds(): Promise<{ id: string; name: string }[]>;
+  editWorld(id: string): Promise<void>;
 }
 
 /**
@@ -77,3 +79,27 @@ export const chrome = {
   editTab: (page: Page) => page.getByRole('tab', { name: 'Edit' }),
   previewTab: (page: Page) => page.getByRole('tab', { name: 'Preview' }),
 };
+
+/**
+ * Open the World Editor on a stored world with its Custom Narration Prompt switched on — the editor's
+ * only prompt field, and the one whose parent writes each keystroke through to GameDataContext.
+ */
+export async function openWorldNarrationPrompt(page: Page): Promise<void> {
+  await openWorldEditor(page);
+  const toggle = page.getByRole('checkbox', { name: 'Custom Narration Prompt' });
+  if ((await toggle.getAttribute('data-state')) !== 'checked') await toggle.click();
+  await page.getByLabel('World narration prompt').waitFor();
+}
+
+/** Open the World Editor on a stored world, without touching its narration prompt. */
+export async function openWorldEditor(page: Page): Promise<void> {
+  // The bundled worlds are seeded into IndexedDB after the menu mounts, and that seeding re-renders the
+  // menu — opening the editor mid-seed gets it closed again. Wait for the library to settle first.
+  await page.getByText('Loaded default worlds').waitFor({ state: 'visible' });
+  await page.evaluate(async () => {
+    const dev = (window as unknown as { __fmDev: DevRouter }).__fmDev;
+    const worlds = await dev.listWorlds();
+    await dev.editWorld(worlds[0].id);
+  });
+  await page.getByRole('checkbox', { name: 'Custom Narration Prompt' }).waitFor();
+}
