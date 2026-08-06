@@ -15,6 +15,7 @@ import { normalizeEndpointUrl, endpointUrlWasCompleted } from '@/lib/endpointUrl
 import { computePromptTabAvailability } from '@/lib/promptTabAvailability';
 import { Settings } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { RevealAnimationDemoButton } from "@/components/RevealAnimationDemo";
 import { Input } from "@/components/ui/input";
@@ -864,7 +865,16 @@ export const SettingsModal = ({ isOpen, onOpenChange, previewValues, initialTab,
   return (
     <>
     <Dialog open={isOpen} onOpenChange={onOpenChange}>
-      <DialogContent aria-describedby={undefined} className="sm:max-w-[800px] h-[90dvh] flex flex-col overflow-hidden">
+      {/* Prompts get a wider dialog than the rest of Settings: they're the only tab holding a document
+          rather than a list of controls, and the extra width is what lets the editor show edit and
+          preview side by side instead of one at a time. */}
+      <DialogContent
+        aria-describedby={undefined}
+        className={cn(
+          'h-[90dvh] flex flex-col overflow-hidden',
+          activeTab === 'prompts' ? 'sm:max-w-[1100px]' : 'sm:max-w-[800px]',
+        )}
+      >
         <DialogHeader className="flex-shrink-0">
           <DialogTitle className="flex items-center gap-2"><Settings className="h-4 w-4" /> Settings</DialogTitle>
         </DialogHeader>

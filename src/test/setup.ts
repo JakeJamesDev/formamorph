@@ -12,6 +12,22 @@ if (typeof globalThis.ResizeObserver === 'undefined') {
   };
 }
 
+// jsdom doesn't implement matchMedia either; anything reading a media query (useIsMobile, the theme's
+// contrast check) needs it just to render. Reports "no match", i.e. the desktop/light branch — a test that
+// cares about the other branch stubs its own, which still overrides this.
+if (typeof window !== 'undefined' && typeof window.matchMedia === 'undefined') {
+  window.matchMedia = ((query: string) => ({
+    matches: false,
+    media: query,
+    onchange: null,
+    addListener: () => {},
+    removeListener: () => {},
+    addEventListener: () => {},
+    removeEventListener: () => {},
+    dispatchEvent: () => false,
+  })) as unknown as typeof window.matchMedia;
+}
+
 // jsdom's Blob predates `arrayBuffer()` and doesn't implement it; every browser we target (and Electron's
 // Chromium) has had it since 2019. FileReader is jsdom's supported path to the same bytes.
 if (typeof Blob !== 'undefined' && typeof Blob.prototype.arrayBuffer === 'undefined') {

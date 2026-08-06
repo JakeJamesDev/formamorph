@@ -1,0 +1,84 @@
+import { useState, useEffect, useCallback } from 'react';
+
+const STORAGE_KEY = 'FORMAMORPH_promptSplitMode';
+
+/** What the author asked for. `auto` lets the field's own width decide; the others pin it. */
+export type PromptSplitMode = 'auto' | 'split' | 'tabs';
+
+/** How a prompt field is actually laid out this render. */
+export type PromptLayout = 'split' | 'tabs';
+
+/**
+ * Narrowest a single pane may get before the split stops earning its width. Below this the two panes
+ * wrap prompt text so hard that one wider pane reads better — which is also what makes phones and
+ * shrunken desktop windows fall back on their own, with no device check involved.
+ */
+export const MIN_PANE_WIDTH = 420;
+
+/** Gap + borders between the two panes; excluded before the width is halved. */
+const SPLIT_GUTTER = 12;
+
+/**
+ * The layout for a field of `containerWidth`. `hasPreview` is false for fields with nothing to preview
+ * (no preview values and not markdown), which can never split however wide they get.
+ */
+export function resolveLayout(mode: PromptSplitMode, containerWidth: number, hasPreview: boolean): PromptLayout {
+  if (!hasPreview) return 'tabs';
+  if (mode === 'split') return 'split';
+  if (mode === 'tabs') return 'tabs';
+  return (containerWidth - SPLIT_GUTTER) / 2 >= MIN_PANE_WIDTH ? 'split' : 'tabs';
+}
+
+/** Read a stored mode, treating anything unrecognized as `auto`. */
+export function parseSplitMode(raw: string | null): PromptSplitMode {
+  return raw === 'split' || raw === 'tabs' ? raw : 'auto';
+}
+
+/**
+ * The author's split preference, shared by every prompt field: this is a statement about how they like to
+ * edit, not a per-field setting. Persisted so it survives a reload; `auto` until they touch the toggle.
+ */
+export function usePromptSplitMode(): [PromptSplitMode, (m: PromptSplitMode) => void] {
+  const [mode, setMode] = useState<PromptSplitMode>(() => {
+    try {
+      return parseSplitMode(localStorage.getItem(STORAGE_KEY));
+    } catch {
+      return 'auto';
+    }
+  });
+
+  // Other fields on screen share the preference, so a change in one has to reach the rest.
+  useEffect(() => {
+    const onChange = (e: Event) => setMode((e as CustomEvent<PromptSplitMode>).detail);
+    window.addEventListener('fm-prompt-split-mode', onChange);
+    return () => window.removeEventListener('fm-prompt-split-mode', onChange);
+  }, []);
+
+  const update = useCallback((m: PromptSplitMode) => {
+    setMode(m);
+    try {
+      localStorage.setItem(STORAGE_KEY, m);
+    } catch {
+      // A blocked localStorage costs only persistence; this session still honors the choice.
+    }
+    window.dispatchEvent(new CustomEvent('fm-prompt-split-mode', { detail: m }));
+  }, []);
+
+  return [mode, update];
+}
+
+/** The element's live content width, measured rather than assumed so a resized window re-decides. */
+export function useContainerWidth(): [(el: HTMLElement | null) => void, number] {
+  const [width, setWidth] = useState(0);
+  const [node, setNode] = useState<HTMLElement | null>(null);
+
+  useEffect(() => {
+    if (!node) return;
+    setWidth(node.getBoundingClientRect().width);
+    const ro = new ResizeObserver((entries) => setWidth(entries[0].contentRect.width));
+    ro.observe(node);
+    return () => ro.disconnect();
+  }, [node]);
+
+  return [setNode, width];
+}
