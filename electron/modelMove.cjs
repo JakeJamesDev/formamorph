@@ -52,28 +52,36 @@ function freeSpace(dir) {
  */
 async function copyAcrossVolumes(src, dest, onChunk) {
   const tmp = dest + TEMP_SUFFIX;
-  await new Promise((resolve, reject) => {
-    const read = fs.createReadStream(src);
-    const write = fs.createWriteStream(tmp);
-    const fail = (e) => { read.destroy(); write.destroy(); reject(e); };
-    read.on('error', fail);
-    write.on('error', fail);
-    read.on('data', (chunk) => {
-      if (canceled) { fail(new Error('MOVE_CANCELED')); return; }
-      onChunk(chunk.length);
+  try {
+    await new Promise((resolve, reject) => {
+      const read = fs.createReadStream(src);
+      const write = fs.createWriteStream(tmp);
+      const fail = (e) => { read.destroy(); write.destroy(); reject(e); };
+      read.on('error', fail);
+      write.on('error', fail);
+      read.on('data', (chunk) => {
+        if (canceled) { fail(new Error('MOVE_CANCELED')); return; }
+        onChunk(chunk.length);
+      });
+      write.on('finish', resolve);
+      read.pipe(write);
     });
-    write.on('finish', resolve);
-    read.pipe(write);
-  }).catch((e) => {
+
+    // Force the bytes to disk before the source goes away — a rename is not a durability barrier.
+    const fd = fs.openSync(tmp, 'r+');
+    try { fs.fsyncSync(fd); } finally { fs.closeSync(fd); }
+
+    fs.renameSync(tmp, dest);
+  } catch (e) {
+    // Covers the fsync and rename too, not just the stream. `isMovable` ignores `.moving`, so a temp
+    // orphaned here would never be moved, counted, or cleaned up again — it would sit at multi-GB size
+    // in the user's folder forever.
     try { fs.unlinkSync(tmp); } catch { /* nothing to clean */ }
     throw e;
-  });
+  }
 
-  // Force the bytes to disk before the source goes away — a rename is not a durability barrier.
-  const fd = fs.openSync(tmp, 'r+');
-  try { fs.fsyncSync(fd); } finally { fs.closeSync(fd); }
-
-  fs.renameSync(tmp, dest);
+  // Outside the try: once the destination exists, a failure here must not delete it. The source simply
+  // stays put and the file reports as skipped.
   fs.unlinkSync(src); // only now is the copy safe to lose the original
 }
 
