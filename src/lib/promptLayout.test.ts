@@ -6,30 +6,44 @@ import { resolveLayout, parseSplitMode, usePromptSplitMode, MIN_PANE_WIDTH } fro
 const FITS = MIN_PANE_WIDTH * 2 + 12;
 const SHORT = FITS - 1;
 
+describe('resolveLayout: splitting is a full-screen affair', () => {
+  it('never splits inline, however wide the field is', () => {
+    // A field inline is one column of a panel with other things to show. Halving it gives two columns
+    // too narrow to read and steals the width from whichever one was being used.
+    expect(resolveLayout('auto', 2000, true, false)).toBe('tabs');
+    expect(resolveLayout('split', 2000, true, false)).toBe('tabs'); // an explicit pin does not override
+  });
+
+  it('splits the same width once full screen', () => {
+    expect(resolveLayout('auto', FITS, true, false)).toBe('tabs');
+    expect(resolveLayout('auto', FITS, true, true)).toBe('split');
+  });
+});
+
 describe('resolveLayout: when the split earns its width', () => {
   it('splits on auto once both panes clear the minimum', () => {
-    expect(resolveLayout('auto', FITS, true)).toBe('split');
+    expect(resolveLayout('auto', FITS, true, true)).toBe('split');
   });
 
   it('falls back to tabs one pixel short, so a shrunken window is never two slivers', () => {
-    expect(resolveLayout('auto', SHORT, true)).toBe('tabs');
+    expect(resolveLayout('auto', SHORT, true, true)).toBe('tabs');
   });
 
   it('treats a phone-width field as tabs without asking what device it is', () => {
-    expect(resolveLayout('auto', 359, true)).toBe('tabs');
-    expect(resolveLayout('auto', 0, true)).toBe('tabs'); // before the first measurement lands
+    expect(resolveLayout('auto', 359, true, true)).toBe('tabs');
+    expect(resolveLayout('auto', 0, true, true)).toBe('tabs'); // before the first measurement lands
   });
 
   it('never splits a field with nothing to preview, however wide', () => {
     // A plain chip field with no preview values has only one pane to show; splitting would leave a
     // dead half. This also covers the world editor's description/readme before a playthrough exists.
-    expect(resolveLayout('auto', 2000, false)).toBe('tabs');
-    expect(resolveLayout('split', 2000, false)).toBe('tabs'); // an explicit pin cannot conjure a pane
+    expect(resolveLayout('auto', 2000, false, true)).toBe('tabs');
+    expect(resolveLayout('split', 2000, false, true)).toBe('tabs'); // an explicit pin cannot conjure a pane
   });
 
   it('honors an explicit pin over the measurement, in both directions', () => {
-    expect(resolveLayout('tabs', FITS, true)).toBe('tabs');
-    expect(resolveLayout('split', SHORT, true)).toBe('split');
+    expect(resolveLayout('tabs', FITS, true, true)).toBe('tabs');
+    expect(resolveLayout('split', SHORT, true, true)).toBe('split');
   });
 });
 

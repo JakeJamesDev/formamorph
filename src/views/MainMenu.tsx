@@ -13,7 +13,7 @@ import 'react-toastify/dist/ReactToastify.css';
 import { Button } from "@/components/ui/button";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import {ConfirmDialog} from "@/components/ConfirmDialog";
-import {FilePlus2, DoorOpen, Pencil, Github, AlertTriangle, Code, User, Shield, Import, Globe, LayoutGrid, GalleryThumbnails, Columns2, RectangleVertical, Menu, Earth, BookOpen, Upload, ChevronLast, MoreHorizontal, PersonStanding, MessageSquarePlus, FolderOpen, Archive, Settings, CloudDownload, ScrollText, type LucideIcon } from "lucide-react";
+import {FilePlus2, DoorOpen, Pencil, Github, AlertTriangle, Code, User, Shield, Import, Globe, LayoutGrid, GalleryThumbnails, Columns2, RectangleVertical, Menu, Earth, BookOpen, Upload, ChevronLast, MoreHorizontal, PersonStanding, MessageSquarePlus, Download, FolderOpen, Archive, Settings, CloudDownload, ScrollText, type LucideIcon } from "lucide-react";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { ImageZoomViewer } from "@/components/ImageZoomViewer";
 import { cn } from "@/lib/utils";
@@ -74,6 +74,7 @@ import { WebVersionChangelog } from '@/components/menu/WebVersionChangelog';
 import { parseDictionaryImport } from '@/lib/dictionaryFile';
 import { importCharacterFile } from '@/lib/entityFile';
 import { useDownscalePrompt } from '@/lib/useDownscalePrompt';
+import { useWorldExport } from '@/lib/useWorldExport';
 import { IMAGE_CAPS, applyWorldOptimize, applyEntityImagesOptimize, countWorldImages } from '@/lib/imageOptim';
 import { entityImages, primaryImage } from '@/lib/entityImages';
 import { withOptimizeProgress } from '@/lib/optimizeProgress';
@@ -229,7 +230,8 @@ const MainMenu = ({ onStartGame, onLoadSaveGame, onReplayIntro, introActive = fa
   const { worldPreset, setWorldPreset } = useWorldPromptPresets();
   // Only the preset list is needed here; the pin is applied by GameViewer when the world opens.
   const { builtinPresets, promptPresets } = useSettings();
-  const { promptWorldsBatch, promptImagesBatch, promptEntity, dialog: downscaleDialog } = useDownscalePrompt();
+  const { promptWorld, promptWorldsBatch, promptImagesBatch, promptEntity, dialog: downscaleDialog } = useDownscalePrompt();
+  const { exportWorld, dialog: worldExportDialog } = useWorldExport(promptWorld);
   const [selectedWorld, setSelectedWorld] = useState<WorldRecord | null>(null);
   // Library grid layout: "grid" (compact cards) or "detailed" (community-browser-style card + info
   // beneath). Kept per tab and persisted: the four libraries hold different-shaped things, and wanting
@@ -1268,6 +1270,7 @@ const MainMenu = ({ onStartGame, onLoadSaveGame, onReplayIntro, introActive = fa
   return (
     <div className="pt-[calc(5rem+env(safe-area-inset-top))] relative flex flex-col h-[100dvh] overflow-hidden">
       {downscaleDialog}
+      {worldExportDialog}
       <ThemedToastContainer />
 
       {/* Top control bar: card-type switcher (left) + action buttons/hamburger (center) + view toggle &
@@ -1889,6 +1892,13 @@ const MainMenu = ({ onStartGame, onLoadSaveGame, onReplayIntro, introActive = fa
                     onClick={() => handleDuplicateWorld()}
                   >
                     <FilePlus2 className="mr-2 h-4 w-4" /> Duplicate World
+                  </Button>
+
+                  <Button
+                    className="w-full bg-gradient-to-r from-emerald-100 to-emerald-200 hover:from-emerald-200 hover:to-emerald-300 text-black font-bold"
+                    onClick={() => { if (selectedWorld) void exportWorld(selectedWorld.data); }}
+                  >
+                    <Download className="mr-2 h-4 w-4" /> Download World
                   </Button>
 
                   {/* Only worth offering for a world that links its pictures — one storing its own has nothing

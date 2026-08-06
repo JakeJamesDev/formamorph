@@ -929,13 +929,12 @@ export const SettingsModal = ({ isOpen, onOpenChange, previewValues, initialTab,
           preview side by side instead of one at a time. */}
       <DialogContent
         aria-describedby={undefined}
+        // One width for every tab, matching the Feedback hub — Prompts wanted a wider window only to fit
+        // the side-by-side panes, and those now belong to full screen.
         className={cn(
-          'flex flex-col overflow-hidden',
+          'flex flex-col overflow-hidden sm:max-w-[900px]',
           // A phone has no room to spend on the frame around a settings panel — fill the screen.
           'max-sm:h-[100dvh] max-sm:w-screen max-sm:max-w-none max-sm:rounded-none max-sm:border-0 sm:h-[90dvh]',
-          // Near-full width on Prompts: the rail costs ~190px, and a fixed 1100px left the editor column
-          // just short of fitting two panes — so the split silently never appeared on a 1280px screen.
-          activeTab === 'prompts' ? 'sm:max-w-[min(1500px,95vw)]' : 'sm:max-w-[800px]',
         )}
       >
         <DialogHeader className="flex-shrink-0">
