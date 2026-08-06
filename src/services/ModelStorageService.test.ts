@@ -112,7 +112,7 @@ describe('deleteModel', () => {
 
   it('refuses to delete the last model, so the player always has one to be', async () => {
     const only = await ModelStorageService.addModel(new File([blob()], 'only.vrm', { type: 'model/vrm' }));
-    await expect(ModelStorageService.deleteModel(only.id)).rejects.toThrow('Cannot delete the last model');
+    await expect(ModelStorageService.deleteModel(only.id)).rejects.toThrow('Cannot delete the last player avatar');
     await expect(ModelStorageService.getModelData(only.id)).resolves.toBeDefined();
   });
 
@@ -131,7 +131,7 @@ describe('deleteModel', () => {
 });
 
 describe('seedDefaultModel', () => {
-  const vrmUrl = './default-model.vrm';
+  const vrmUrl = './default-avatar.vrm';
   const serve = (blob: Blob) => vi.stubGlobal('fetch', vi.fn().mockResolvedValue({ blob: async () => blob }));
 
   afterEach(() => vi.unstubAllGlobals());

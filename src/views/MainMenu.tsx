@@ -6,7 +6,7 @@ import { useUserProfile } from '../contexts/userProfileStore';
 import { useDevRoute, registerDevHook } from '../lib/devRouter';
 import { MAIN_MENU_CARD_TABS, type MainMenuCardTab } from './mainMenuTabs';
 import { findSavesUsingModel } from '@/lib/modelUsage';
-import { DEFAULT_MODEL_URL } from '@/lib/defaultModel';
+import { DEFAULT_AVATAR_URL } from '@/lib/defaultAvatar';
 import { toast } from 'react-toastify';
 import { ThemedToastContainer } from '@/components/ThemedToastContainer';
 import 'react-toastify/dist/ReactToastify.css';
@@ -138,7 +138,7 @@ const CARD_TABS: { value: MainMenuCardTab; label: string; Icon: LucideIcon }[] =
   { value: 'worlds', label: 'Worlds', Icon: Earth },
   { value: 'entities', label: 'Entities', Icon: User },
   { value: 'dictionaries', label: 'Dictionaries', Icon: BookOpen },
-  { value: 'models', label: 'Models', Icon: PersonStanding },
+  { value: 'models', label: 'Avatars', Icon: PersonStanding },
 ];
 
 /** Name the affected saves in a prompt, capping the list so a big library doesn't produce a wall of text. */
@@ -587,7 +587,7 @@ const MainMenu = ({ onStartGame, onLoadSaveGame, onReplayIntro, introActive = fa
   const refreshModels = useCallback(async () => {
     try {
       await ModelStorageService.initialize();
-      await ModelStorageService.seedDefaultModel(DEFAULT_MODEL_URL);
+      await ModelStorageService.seedDefaultModel(DEFAULT_AVATAR_URL);
       const metadata = await ModelStorageService.getModelMetadata();
       setModels(applyWorldOrder(metadata, loadOrder(MODEL_ORDER_KEY)));
     } catch (error) {
@@ -847,7 +847,7 @@ const MainMenu = ({ onStartGame, onLoadSaveGame, onReplayIntro, introActive = fa
       }
     }
     await refreshModels();
-    importSummaryToast(stored, skipped, { one: 'model', many: 'models' });
+    importSummaryToast(stored, skipped, { one: 'player avatar', many: 'player avatars' });
   };
 
   // Open the editor on a blank character DRAFT — nothing is stored until the user hits Save in the editor.
@@ -1193,7 +1193,7 @@ const MainMenu = ({ onStartGame, onLoadSaveGame, onReplayIntro, introActive = fa
   // The singular noun for the selected card type — drives the contextual New/Import button labels.
   const cardNoun = cardType === 'worlds' ? 'World'
     : cardType === 'entities' ? 'Entity'
-    : cardType === 'models' ? 'Model'
+    : cardType === 'models' ? 'Avatar'
     : 'Dictionary';
 
   // The menu's action buttons, shared between the full landscape row and the portrait hamburger popover.
@@ -1438,7 +1438,7 @@ const MainMenu = ({ onStartGame, onLoadSaveGame, onReplayIntro, introActive = fa
           {!isLoadingModels && models.length === 0 ? (
             <div className="flex items-center justify-center py-16 px-4 select-none">
               <p className="max-w-md text-center text-sm text-muted-foreground">
-                No models yet — use <span className="font-semibold">Import Model</span> to add a .vrm.
+                No player avatars yet — use <span className="font-semibold">Import Avatar</span> to add a .vrm.
               </p>
             </div>
           ) : (
@@ -2057,20 +2057,20 @@ const MainMenu = ({ onStartGame, onLoadSaveGame, onReplayIntro, introActive = fa
       <ConfirmDialog
         open={!!modelToDelete}
         onOpenChange={(open) => !open && setModelToDelete(null)}
-        title="Delete Model"
+        title="Delete Player Avatar"
         description={
           modelUsage === null
-            ? 'Checking which saves use this model…'
+            ? 'Checking which saves use this player avatar…'
             : modelUsage.length === 0
-              ? 'Are you sure you want to delete this model? This action cannot be undone.'
-              : `${modelUsage.length === 1 ? 'One save uses' : `${modelUsage.length} saves use`} this model — ${listSaves(modelUsage)}. ${modelUsage.length === 1 ? 'It' : 'They'} will fall back to the default model. This action cannot be undone.`
+              ? 'Are you sure you want to delete this player avatar? This action cannot be undone.'
+              : `${modelUsage.length === 1 ? 'One save uses' : `${modelUsage.length} saves use`} this player avatar — ${listSaves(modelUsage)}. ${modelUsage.length === 1 ? 'It' : 'They'} will fall back to the default avatar. This action cannot be undone.`
         }
         onConfirm={async () => {
           try {
             await ModelStorageService.deleteModel(modelToDelete!);
             setModels(prev => prev.filter(m => m.id !== modelToDelete));
           } catch (error) {
-            // The library refuses to drop its last model; tell the player why rather than failing silently.
+            // The library refuses to drop its last avatar; tell the player why rather than failing silently.
             toast.error((error as Error).message);
           } finally {
             setModelToDelete(null);

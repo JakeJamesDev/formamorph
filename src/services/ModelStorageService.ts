@@ -4,7 +4,7 @@ import { blobHash } from '@/lib/blobHash';
 import { readVrmMeta } from '@/lib/vrmMeta';
 import { optimizeImageDataUrl, IMAGE_CAPS } from '@/lib/imageOptim';
 import { renderVrmThumbnail } from '@/lib/vrmThumbnail';
-import { DEFAULT_MODEL_ID } from '@/lib/defaultModel';
+import { DEFAULT_AVATAR_ID } from '@/lib/defaultAvatar';
 import { LibraryStore, type StoredRecord } from './LibraryStore';
 import type { ModelMetadata, VrmData } from '@/types';
 
@@ -189,7 +189,7 @@ class ModelStorageService {
       if (localStorage.getItem(SEEDED_KEY)) return;
       // Already present (flag lost, or a prior run seeded then the flag was cleared): mark it and stop, no
       // needless re-fetch. The flag is only ever set once the record is known to exist — see below.
-      if (await this.getRecord(DEFAULT_MODEL_ID)) {
+      if (await this.getRecord(DEFAULT_AVATAR_ID)) {
         localStorage.setItem(SEEDED_KEY, '1');
         return;
       }
@@ -197,8 +197,8 @@ class ModelStorageService {
       const blob = await (await fetch(url)).blob();
       const [hash, { license, thumbnail }] = await Promise.all([blobHash(blob), readVrmMeta(blob)]);
       await this.store.store({
-        id: DEFAULT_MODEL_ID,
-        name: license.title?.trim() || 'Default Model',
+        id: DEFAULT_AVATAR_ID,
+        name: license.title?.trim() || 'Default Avatar',
         data: {
           type: blob.type || 'model/vrm',
           blob,
@@ -308,7 +308,7 @@ class ModelStorageService {
         const getReq = store.get(id);
         getReq.onsuccess = () => {
           if (total <= 1 && getReq.result) {
-            return reject(new Error('Cannot delete the last model: the library must always have at least one.'));
+            return reject(new Error('Cannot delete the last player avatar: the library must always have at least one.'));
           }
           const del = store.delete(id);
           del.onsuccess = () => resolve();

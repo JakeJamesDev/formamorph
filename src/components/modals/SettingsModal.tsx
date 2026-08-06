@@ -17,7 +17,7 @@ import { visibleGroups, SURFACE_LABELS, type PromptSurface } from '@/lib/promptG
 import { Settings } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { cn } from "@/lib/utils";
-import { SAMPLE_PREVIEW_VALUES } from "@/lib/samplePreviewValues";
+import { composePreviewValues } from "@/lib/previewValuePool";
 import { Button } from "@/components/ui/button";
 import { RevealAnimationDemoButton } from "@/components/RevealAnimationDemo";
 import { Input } from "@/components/ui/input";
@@ -283,6 +283,34 @@ function PromptOptionsPanel({ verbatim, reasoning, reasoningBudget, samplers, di
   );
 }
 
+/**
+ * The Prompts panel, either in place or filling the screen. Fullscreen is owned here rather than by
+ * PromptField so the rail comes with it — the editor alone in a full-screen window loses the very
+ * navigation that makes a long prompt findable.
+ *
+ * Toggling re-parents the panel into the overlay, so the editor is rebuilt from its value: the text is
+ * safe (it is controlled) but the undo stack starts fresh on either side of the toggle.
+ */
+function PromptsShell({ fullscreen, onClose, children }: {
+  fullscreen: boolean;
+  onClose: () => void;
+  children: React.ReactNode;
+}) {
+  if (!fullscreen) return <>{children}</>;
+  return (
+    <Dialog open onOpenChange={(o) => { if (!o) onClose(); }}>
+      <DialogContent
+        hideClose
+        aria-describedby={undefined}
+        aria-label="Prompts"
+        className="flex h-[100dvh] w-screen max-w-none flex-col gap-4 rounded-none border-0 p-4 sm:rounded-none"
+      >
+        {children}
+      </DialogContent>
+    </Dialog>
+  );
+}
+
 export const SettingsModal = ({ isOpen, onOpenChange, previewValues, initialTab, initialEndpointTab, initialPromptTab, onWorldsRestored }: {
   isOpen: boolean;
   onOpenChange: (open: boolean) => void;
@@ -456,6 +484,7 @@ export const SettingsModal = ({ isOpen, onOpenChange, previewValues, initialTab,
     promptPresets,
     builtinPresets,
     activePresetId,
+    activeSectionStyle,
     presetPinnedToWorld,
     activePresetIsBuiltIn,
     selectPreset,
@@ -720,8 +749,13 @@ export const SettingsModal = ({ isOpen, onOpenChange, previewValues, initialTab,
   // side-by-side split that depends on it) had nothing to show, so writing a prompt meant loading a world
   // first. Falling back to samples makes the editor usable from the main menu; `sampleData` badges the pane
   // so the stand-in content is never mistaken for the player's own world.
+  // Guidance follows the player's own settings and is real either way; only the world-state tokens are
+  // stand-ins, which is what the badge speaks to.
   const usingSampleValues = !previewValues;
-  const effectivePreviewValues = previewValues ?? SAMPLE_PREVIEW_VALUES;
+  const effectivePreviewValues = composePreviewValues(
+    { paragraphLimit, maxTokens, markdownOutput, sectionStyle: activeSectionStyle, limitActiveCharacters, activeCharacterLimit },
+    previewValues,
+  );
 
   // The selected prompt sub-tab, so the Reset button can target just that prompt.
   const [promptTab, setPromptTab] = useState(initialPromptTab ?? 'narration');
@@ -758,6 +792,8 @@ export const SettingsModal = ({ isOpen, onOpenChange, previewValues, initialTab,
   // A System | User | Messages | Options toggle swaps between them (User/Messages only where they exist).
   // `promptView` resets to System on every tab change.
   const [promptView, setPromptView] = useState<'system' | 'user' | 'messages' | 'options'>('system');
+  // Fullscreen for the whole Prompts panel (rail included), not for one field — see PromptsShell.
+  const [promptsFullscreen, setPromptsFullscreen] = useState(false);
   const selectPromptTab = (t: string) => { setPromptTab(t); setPromptView('system'); };
   // The rail's groups, with prompts whose feature is off already removed.
   const railGroups = visibleGroups(promptAvailable);
@@ -2035,6 +2071,7 @@ An inspection aid for authoring and debugging; off by default.`}</HintInfo>
           </TabsContent>
 
           <TabsContent value="prompts" className="pt-4 px-2 pb-4 flex-1 min-h-0 data-[state=active]:flex flex-col gap-4">
+            <PromptsShell fullscreen={promptsFullscreen} onClose={() => setPromptsFullscreen(false)}>
             {/* Preset selector: the whole prompt set switches together. Built-in presets (Default, Simple)
                 are read-only and differ only in section-header style. */}
             <div className="flex items-center gap-2 flex-shrink-0">
@@ -2132,9 +2169,14 @@ An inspection aid for authoring and debugging; off by default.`}</HintInfo>
                 <div className="flex flex-col gap-0.5 pb-2">
                   {railGroups.map((g) => (
                     <div key={g.label} className="flex flex-col gap-0.5">
-                      <span className="px-2 pt-2 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
-                        {g.label}
-                      </span>
+                      {/* A divider, not an entry: styled like the items it heads, it invited clicks and
+                          ignored them. The rule is what says "structure" without adding a control. */}
+                      <div className="flex items-center gap-2 px-2 pb-1 pt-4 first:pt-1">
+                        <span className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground/70">
+                          {g.label}
+                        </span>
+                        <span className="h-px flex-1 bg-border" aria-hidden />
+                      </div>
                       {g.tabs.map((t) => {
                         const selected = t === activePromptTab;
                         return (
@@ -2216,6 +2258,8 @@ An inspection aid for authoring and debugging; off by default.`}</HintInfo>
                     sampleData={usingSampleValues}
                     readOnlyReason={readOnlyReason}
                     onRequestEdit={duplicateForEditing}
+                    fullscreen={promptsFullscreen}
+                    onRequestFullscreen={() => setPromptsFullscreen((f) => !f)}
                             readOnly={activePresetIsBuiltIn}
                           />
                           <p className="text-xs text-muted-foreground">{f.hint}</p>
@@ -2232,6 +2276,8 @@ An inspection aid for authoring and debugging; off by default.`}</HintInfo>
                     sampleData={usingSampleValues}
                     readOnlyReason={readOnlyReason}
                     onRequestEdit={duplicateForEditing}
+                    fullscreen={promptsFullscreen}
+                    onRequestFullscreen={() => setPromptsFullscreen((f) => !f)}
                     readOnly={activePresetIsBuiltIn}
                   />
                 )}
@@ -2247,6 +2293,8 @@ An inspection aid for authoring and debugging; off by default.`}</HintInfo>
                     sampleData={usingSampleValues}
                     readOnlyReason={readOnlyReason}
                     onRequestEdit={duplicateForEditing}
+                    fullscreen={promptsFullscreen}
+                    onRequestFullscreen={() => setPromptsFullscreen((f) => !f)}
                     readOnly={activePresetIsBuiltIn}
                   />
                 </TabsContent>
@@ -2262,6 +2310,8 @@ An inspection aid for authoring and debugging; off by default.`}</HintInfo>
                     sampleData={usingSampleValues}
                     readOnlyReason={readOnlyReason}
                     onRequestEdit={duplicateForEditing}
+                    fullscreen={promptsFullscreen}
+                    onRequestFullscreen={() => setPromptsFullscreen((f) => !f)}
                     readOnly={activePresetIsBuiltIn}
                   />
                 </TabsContent>
@@ -2277,6 +2327,8 @@ An inspection aid for authoring and debugging; off by default.`}</HintInfo>
                     sampleData={usingSampleValues}
                     readOnlyReason={readOnlyReason}
                     onRequestEdit={duplicateForEditing}
+                    fullscreen={promptsFullscreen}
+                    onRequestFullscreen={() => setPromptsFullscreen((f) => !f)}
                     readOnly={activePresetIsBuiltIn}
                   />
                 </TabsContent>
@@ -2292,6 +2344,8 @@ An inspection aid for authoring and debugging; off by default.`}</HintInfo>
                     sampleData={usingSampleValues}
                     readOnlyReason={readOnlyReason}
                     onRequestEdit={duplicateForEditing}
+                    fullscreen={promptsFullscreen}
+                    onRequestFullscreen={() => setPromptsFullscreen((f) => !f)}
                     readOnly={activePresetIsBuiltIn}
                   />
                   <p className="text-xs text-muted-foreground flex-shrink-0">Lets the AI move the player between locations.</p>
@@ -2308,6 +2362,8 @@ An inspection aid for authoring and debugging; off by default.`}</HintInfo>
                     sampleData={usingSampleValues}
                     readOnlyReason={readOnlyReason}
                     onRequestEdit={duplicateForEditing}
+                    fullscreen={promptsFullscreen}
+                    onRequestFullscreen={() => setPromptsFullscreen((f) => !f)}
                     readOnly={activePresetIsBuiltIn}
                   />
                   <p className="text-xs text-muted-foreground flex-shrink-0">Condenses each turn into a short retelling for long-story memory. Only used when Memory Summaries is on.</p>
@@ -2324,6 +2380,8 @@ An inspection aid for authoring and debugging; off by default.`}</HintInfo>
                     sampleData={usingSampleValues}
                     readOnlyReason={readOnlyReason}
                     onRequestEdit={duplicateForEditing}
+                    fullscreen={promptsFullscreen}
+                    onRequestFullscreen={() => setPromptsFullscreen((f) => !f)}
                     readOnly={activePresetIsBuiltIn}
                   />
                   <p className="text-xs text-muted-foreground flex-shrink-0">Measures how much in-world time each turn takes. Answer with a count and its unit (m, h, d, w). Only used when Measured Clock is on.</p>
@@ -2340,6 +2398,8 @@ An inspection aid for authoring and debugging; off by default.`}</HintInfo>
                     sampleData={usingSampleValues}
                     readOnlyReason={readOnlyReason}
                     onRequestEdit={duplicateForEditing}
+                    fullscreen={promptsFullscreen}
+                    onRequestFullscreen={() => setPromptsFullscreen((f) => !f)}
                     readOnly={activePresetIsBuiltIn}
                   />
                   <p className="text-xs text-muted-foreground flex-shrink-0">Reads the opening scene once to work out what time of day the story starts at. Answer with one daypart: night, dawn, morning, midday, afternoon, evening. Only used when Measured Clock is on.</p>
@@ -2356,6 +2416,8 @@ An inspection aid for authoring and debugging; off by default.`}</HintInfo>
                     sampleData={usingSampleValues}
                     readOnlyReason={readOnlyReason}
                     onRequestEdit={duplicateForEditing}
+                    fullscreen={promptsFullscreen}
+                    onRequestFullscreen={() => setPromptsFullscreen((f) => !f)}
                     readOnly={activePresetIsBuiltIn}
                   />
                   <p className="text-xs text-muted-foreground flex-shrink-0">Writes the action tags for a scene image — what the people in frame are doing. Their appearance comes from their own image tags and the background from the location&rsquo;s, so this pass deliberately adds neither.</p>
@@ -2372,6 +2434,8 @@ An inspection aid for authoring and debugging; off by default.`}</HintInfo>
                     sampleData={usingSampleValues}
                     readOnlyReason={readOnlyReason}
                     onRequestEdit={duplicateForEditing}
+                    fullscreen={promptsFullscreen}
+                    onRequestFullscreen={() => setPromptsFullscreen((f) => !f)}
                     readOnly={activePresetIsBuiltIn}
                   />
                   <p className="text-xs text-muted-foreground flex-shrink-0">Each participating character records a first-person diary entry per turn. Only used when Character Diaries is on.</p>
@@ -2388,6 +2452,8 @@ An inspection aid for authoring and debugging; off by default.`}</HintInfo>
                     sampleData={usingSampleValues}
                     readOnlyReason={readOnlyReason}
                     onRequestEdit={duplicateForEditing}
+                    fullscreen={promptsFullscreen}
+                    onRequestFullscreen={() => setPromptsFullscreen((f) => !f)}
                     readOnly={activePresetIsBuiltIn}
                   />
                   <p className="text-xs text-muted-foreground flex-shrink-0">Stages each turn: picks the cast and scene. Only used when Thinking is set to Staged.</p>
@@ -2404,6 +2470,8 @@ An inspection aid for authoring and debugging; off by default.`}</HintInfo>
                     sampleData={usingSampleValues}
                     readOnlyReason={readOnlyReason}
                     onRequestEdit={duplicateForEditing}
+                    fullscreen={promptsFullscreen}
+                    onRequestFullscreen={() => setPromptsFullscreen((f) => !f)}
                     readOnly={activePresetIsBuiltIn}
                   />
                   <p className="text-xs text-muted-foreground flex-shrink-0">Each cast member states its own motivation in the first person. Only used when Thinking is set to Staged.</p>
@@ -2420,6 +2488,8 @@ An inspection aid for authoring and debugging; off by default.`}</HintInfo>
                     sampleData={usingSampleValues}
                     readOnlyReason={readOnlyReason}
                     onRequestEdit={duplicateForEditing}
+                    fullscreen={promptsFullscreen}
+                    onRequestFullscreen={() => setPromptsFullscreen((f) => !f)}
                     readOnly={activePresetIsBuiltIn}
                   />
                   <p className="text-xs text-muted-foreground flex-shrink-0">Reconciles the cast&apos;s intentions into the turn&apos;s beat plan. Only used when Thinking is set to Staged.</p>
@@ -2464,6 +2534,7 @@ An inspection aid for authoring and debugging; off by default.`}</HintInfo>
               existingUserNames={promptPresets}
               onImport={(imported, opts) => { const id = importPreset(imported, opts); selectPreset(id); }}
             />
+            </PromptsShell>
           </TabsContent>
 
           <TabsContent value="accessibility" className="px-2 flex-1 min-h-0 data-[state=active]:flex flex-col">

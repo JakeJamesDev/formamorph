@@ -369,7 +369,7 @@ export const ModelUpload = ({ model, onModelChange, uniqueId }: {
           <span className="truncate">{model.name ?? '3D model'}</span>
           <Dialog open={isModelViewerOpen} onOpenChange={setIsModelViewerOpen}>
             <DialogTrigger asChild>
-              <Button variant="outline">View Model</Button>
+              <Button variant="outline">View 3D Model</Button>
             </DialogTrigger>
             <DialogContent className="sm:max-w-[425px]">
               <DialogHeader>
