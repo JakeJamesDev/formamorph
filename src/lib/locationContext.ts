@@ -348,3 +348,40 @@ export function buildReachableEntitiesContext(
   if (ids.length === 0) return NONE_PLACEHOLDER;
   return buildEntityContext({ id: current.id, name: current.name, entities: ids }, entities, opts);
 }
+
+/** The axes a scoped context chip carries, as the builders take them. */
+export type ContextOpts = { preferSummary?: boolean; nameOnly?: boolean; format?: ContextFormat };
+
+/**
+ * Every concrete token one scoped chip family produces — scope × content (full/summary/name) × format —
+ * mapped to its built value. The id order (scope.content.format) mirrors the chip's own axis order, so the
+ * tokens match what `encodeVariant` emits.
+ *
+ * Shared so the live game and the world editor's preview enumerate the same set: a variant only one of them
+ * generates renders as a raw `<TOKEN>` wherever it was missed.
+ */
+export function expandScopedTokens(
+  base: string,
+  scopes: Record<string, (opts: ContextOpts) => string>,
+): Record<string, string> {
+  const formats: { id: string; format: ContextFormat }[] = [
+    { id: "", format: "simple" },
+    { id: "markdown", format: "markdown" },
+    { id: "xml", format: "xml" },
+  ];
+  const contents: { id: string; opts: ContextOpts }[] = [
+    { id: "", opts: {} },
+    { id: "summary", opts: { preferSummary: true } },
+    { id: "name", opts: { nameOnly: true } },
+  ];
+  const values: Record<string, string> = {};
+  for (const [scope, build] of Object.entries(scopes)) {
+    for (const { id: contentId, opts: contentOpts } of contents) {
+      for (const { id: fmtId, format } of formats) {
+        const id = [scope, contentId, fmtId].filter(Boolean).join(".");
+        values[id ? `${base.slice(0, -1)}|${id}>` : base] = build({ ...contentOpts, format });
+      }
+    }
+  }
+  return values;
+}

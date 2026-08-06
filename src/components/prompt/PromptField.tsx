@@ -490,8 +490,9 @@ const PromptField = ({ value, onChange, variables = [], vocabulary, previewValue
   placeholder?: string;
   className?: string;
   readOnly?: boolean;
-  /** Badge the Preview as stand-in content — set when `previewValues` are samples, not a live game's. */
-  sampleData?: boolean;
+  /** Badge the Preview when some of it is stand-in content. `true` uses the default wording; a string names
+   *  what is real and what isn't, for a pane that mixes the two. */
+  sampleData?: boolean | string;
   /** Offered alongside the read-only notice: what to do about it (duplicate the preset and edit the copy). */
   onRequestEdit?: () => void;
   /** What is read-only, named in the notice (e.g. a built-in preset's name). */
@@ -681,7 +682,7 @@ const PromptField = ({ value, onChange, variables = [], vocabulary, previewValue
       {/* Stand-in content, not this player's world — say so on the pane rather than in a tooltip nobody opens. */}
       {sampleData && (
         <span className="pointer-events-none absolute right-2 top-2 rounded bg-background/90 px-1.5 py-0.5 text-[10px] font-medium text-muted-foreground ring-1 ring-border">
-          Sample data
+          {typeof sampleData === 'string' ? sampleData : 'Sample data'}
         </span>
       )}
     </div>
