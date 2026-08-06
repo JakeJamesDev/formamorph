@@ -103,6 +103,15 @@ describe('ImageTagsField embedded allowance', () => {
     expect(emptyRow()?.getAttribute('data-allow-upload')).toBe('false');
   });
 
+  it('keeps every picture of an import that already exceeds the allowance', () => {
+    // Import deliberately does not truncate, so the editor has to show what it was handed rather than
+    // silently dropping the tail — it just refuses to add more bytes on top.
+    const DATA_C = 'data:image/webp;base64,CCCC';
+    gallery([DATA_A, DATA_B, DATA_C, LINK_A]);
+    expect(screen.getAllByTestId('slot').filter((s) => s.getAttribute('data-value'))).toHaveLength(4);
+    expect(emptyRow()?.getAttribute('data-allow-upload')).toBe('false');
+  });
+
   it('withdraws Generate when it would spend an allowance that is gone', () => {
     // Primary is a link, so generating would add a third set of bytes rather than replace one.
     gallery([LINK_A, DATA_A, DATA_B]);
