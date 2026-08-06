@@ -9,11 +9,16 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
-import type { World } from '@/types';
+import type { Entity, World } from '@/types';
 import { useClosingSnapshot } from './useClosingSnapshot';
+import { withOptimizeProgress } from './optimizeProgress';
+import { entityImages } from './entityImages';
 import {
+  applyEntityImagesOptimize,
   applyImageOptimize,
   applyWorldOptimize,
+  IMAGE_CAPS,
+  countWorldImages,
   estimateEncodedBytes,
   formatBytes,
   scanImages,
@@ -130,13 +135,15 @@ export function useDownscalePrompt() {
         description: `This image is ${formatBytes(s.totalBytes)} (${item.w}×${item.h}). ` + optimizeTail(s, false),
         cancelLabel: 'Keep original',
       }));
-      return mode === 'off' ? url : (await applyImageOptimize(url, mode, cap)) ?? url;
+      if (mode === 'off') return url;
+      return withOptimizeProgress(1, async () => (await applyImageOptimize(url, mode, cap)) ?? url);
     },
     [promptOptimizeChoice],
   );
 
   /** Offer to shrink one world's oversized images. Returns the new world, or null when nothing changed.
-   *  `onProgress(done, total)` fires per image once the user picks a re-encoding mode. An aborted `signal`
+   *  `onProgress(done, total)` fires per image once the user picks a re-encoding mode; a caller passing it
+   *  owns the progress UI, otherwise the shared progress toast shows. An aborted `signal`
    *  (e.g. the caller unmounted mid-run) resolves to null — a canceled run is just "nothing changed". */
   const promptWorld = useCallback(
     async (world: World, onProgress?: (done: number, total: number) => void, signal?: AbortSignal): Promise<World | null> => {
@@ -150,11 +157,35 @@ export function useDownscalePrompt() {
       }));
       if (mode === 'off') return null;
       try {
-        return await applyWorldOptimize(world, mode, onProgress, signal);
+        if (onProgress) return await applyWorldOptimize(world, mode, onProgress, signal);
+        return await withOptimizeProgress(countWorldImages(world), (tick) =>
+          applyWorldOptimize(world, mode, (done) => tick(done), signal),
+        );
       } catch (error) {
         if ((error as DOMException).name === 'AbortError') return null;
         throw error;
       }
+    },
+    [promptOptimizeChoice],
+  );
+
+  /** Offer to shrink one entity's whole gallery in a single prompt (e.g. before publishing or after a
+   *  download). Returns the entity — the same reference when nothing was re-encoded. */
+  const promptEntity = useCallback(
+    async (entity: Entity): Promise<Entity> => {
+      const images = entityImages(entity);
+      const mode = await promptOptimizeChoice(await scanImages(images, IMAGE_CAPS.entity), (s) => ({
+        title: s.n > 1 ? 'Optimize character images?' : 'Large image',
+        description:
+          `This character has ${s.n} image${s.n > 1 ? 's' : ''} larger than recommended (${formatBytes(s.totalBytes)} total). ` +
+          optimizeTail(s, s.n > 1),
+        cancelLabel: 'Keep as-is',
+      }));
+      if (mode === 'off') return entity;
+      return withOptimizeProgress(images.length, (tick) => {
+        let done = 0;
+        return applyEntityImagesOptimize(entity, mode, () => tick(++done));
+      });
     },
     [promptOptimizeChoice],
   );
@@ -223,5 +254,5 @@ export function useDownscalePrompt() {
     </AlertDialog>
   );
 
-  return { promptImage, promptWorld, promptWorldsBatch, promptImagesBatch, dialog };
+  return { promptImage, promptEntity, promptWorld, promptWorldsBatch, promptImagesBatch, dialog };
 }

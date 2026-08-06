@@ -1,6 +1,7 @@
 import type { World, Entity, Dictionary } from '@/types';
 import type { CatalogKind } from '@/lib/catalogKinds';
 import { describePlaceholders } from '@/lib/placeholders';
+import { primaryImage } from '@/lib/entityImages';
 
 /**
  * What a publish request carries, whatever kind it is. The server takes the same body for all three; only
@@ -58,7 +59,7 @@ export function entityPublishPayload(entity: Entity): PublishPayload {
     kind: 'entity',
     name: entity.name || 'Unnamed Character',
     description: describePlaceholders(entity.playerDescription || entity.aiSummary || '', entity.placeholders),
-    thumbnail: entity.image || undefined, // optional; the server supplies stand-in art
+    thumbnail: primaryImage(entity), // optional; the server supplies stand-in art
     contentData: entity,
     tags: entity.tags ?? [],
   };

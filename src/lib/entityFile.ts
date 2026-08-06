@@ -7,6 +7,8 @@ import type { Dictionary } from '@/types';
 import { embedEntityCard, readEntityCard } from './entityCard';
 import { readTavernCard } from './tavernCard';
 import { IMAGE_CAPS, bytesToDataUrl, dataUrlMime, measureDataUrl, optimizeImageDataUrl, optimizeToWebpDataUrl } from './imageOptim';
+import { entityImages, primaryImage } from './entityImages';
+import { fetchAsDataUrl, isRemoteImage } from './imageSource';
 
 /** Discriminator identifying a standalone character card (vs. a world, save, or dictionary file). */
 export const ENTITY_FILE_KIND = 'entity' as const;
@@ -24,15 +26,20 @@ export interface EntityCardData {
   /** Listing tags. Distinct from `imageTags`, which is the booru string for the image generator. */
   tags?: string[];
   imageTags?: string;
+  /** Gallery slots past the first, as data-URLs. The primary is the card's own pixels, so only these need
+   *  carrying in the text — which is also why a multi-picture card is a much bigger file. */
+  extraImages?: string[];
   /** Placeholder defs used by this entity's chips, so they resolve after import (see lib/placeholders). */
   placeholders?: Placeholder[];
 }
 
-/** The card's text fields, stamped with the current app version. `image`/`model`/`sound` are intentionally
- *  dropped. `available` is the placeholder pool to resolve the entity's used chips from — the world's list
+/** The card's text fields, stamped with the current app version. `model`/`sound` are intentionally dropped;
+ *  of the gallery only the slots past the primary are carried, the primary being the card's own pixels.
+ *  `available` is the placeholder pool to resolve the entity's used chips from — the world's list
  *  for a world entity, or the entity's own carried `placeholders` for a library one. */
 export function buildEntityCardData(entity: Entity, available: Placeholder[] = entity.placeholders ?? []): EntityCardData {
   const used = collectUsedPlaceholders([entity.playerDescription, entity.aiDescription, entity.aiSummary].filter((t): t is string => !!t), available);
+  const extras = entityImages(entity).slice(1);
   return {
     formamorphKind: ENTITY_FILE_KIND,
     version: APP_VERSION,
@@ -44,14 +51,15 @@ export function buildEntityCardData(entity: Entity, available: Placeholder[] = e
     ...(entity.aiSummary ? { aiSummary: entity.aiSummary } : {}),
     ...(entity.tags?.length ? { tags: entity.tags } : {}),
     ...(entity.imageTags ? { imageTags: entity.imageTags } : {}),
+    ...(extras.length ? { extraImages: extras } : {}),
     ...(used.length ? { placeholders: used } : {}),
   };
 }
 
 /**
  * Parse an embedded card payload into a NEW entity (fresh id, so importing the same card twice never collides).
- * `image` is left undefined here — the importer fills it from the card's own pixels. Rejects world/save/dictionary
- * payloads with a targeted message.
+ * The gallery comes back holding only the carried extras — the importer unshifts the card's own pixels onto the
+ * front as the primary. Rejects world/save/dictionary payloads with a targeted message.
  */
 export function parseEntityCardData(raw: unknown): Entity {
   if (!raw || typeof raw !== 'object') throw new Error('Not a valid character card.');
@@ -67,6 +75,9 @@ export function parseEntityCardData(raw: unknown): Entity {
   const tags = Array.isArray(obj.tags)
     ? (obj.tags as unknown[]).filter((t): t is string => typeof t === 'string' && !!t.trim())
     : [];
+  const extras = Array.isArray(obj.extraImages)
+    ? (obj.extraImages as unknown[]).filter((u): u is string => typeof u === 'string' && !!u)
+    : [];
   return {
     id: randomUUID(),
     name: typeof obj.name === 'string' && obj.name ? obj.name : 'Imported Character',
@@ -77,6 +88,7 @@ export function parseEntityCardData(raw: unknown): Entity {
     ...(typeof obj.aiSummary === 'string' && obj.aiSummary ? { aiSummary: obj.aiSummary } : {}),
     ...(tags.length ? { tags } : {}),
     ...(typeof obj.imageTags === 'string' && obj.imageTags ? { imageTags: obj.imageTags } : {}),
+    ...(extras.length ? { images: extras } : {}),
     // Carried placeholder defs ride along; absorbed into World.placeholders when this entity is added to a world.
     ...(Array.isArray(obj.placeholders) ? { placeholders: obj.placeholders as Placeholder[] } : {}),
   };
@@ -108,7 +120,10 @@ async function placeholderPortrait(name: string): Promise<string> {
  * Entities without a portrait get a generated placeholder so export always yields a valid image.
  */
 export async function exportEntityCard(entity: Entity, available?: Placeholder[]): Promise<Blob> {
-  let imageUrl = entity.image || (await placeholderPortrait(entity.name || 'Character'));
+  let imageUrl = primaryImage(entity) || (await placeholderPortrait(entity.name || 'Character'));
+  // A card is its pixels, so a linked portrait has to be downloaded here. Deliberately not falling back to
+  // the generated placeholder: shipping a card with the wrong face is worse than a failure the author can act on.
+  if (isRemoteImage(imageUrl)) imageUrl = await fetchAsDataUrl(imageUrl, IMAGE_CAPS.entity);
   // Force WebP even if it comes out larger than the source: the card embeds its metadata in a WebP chunk, so
   // a PNG/JPEG portrait (which the size-optimizing path would keep for an already-small image) is unusable.
   if (dataUrlMime(imageUrl) !== 'image/webp') imageUrl = await optimizeToWebpDataUrl(imageUrl, IMAGE_CAPS.entity);
@@ -131,7 +146,7 @@ export async function importEntityCard(file: File): Promise<Entity> {
     throw new Error('This character card is corrupted.');
   }
   const entity = parseEntityCardData(raw);
-  entity.image = bytesToDataUrl(bytes, 'image/webp');
+  entity.images = [bytesToDataUrl(bytes, 'image/webp'), ...(entity.images ?? [])];
   return entity;
 }
 
@@ -152,14 +167,14 @@ export async function importCharacterFile(file: File): Promise<{ entity: Entity;
       throw new Error('This character card is corrupted.');
     }
     const entity = parseEntityCardData(raw);
-    entity.image = bytesToDataUrl(bytes, 'image/webp');
+    entity.images = [bytesToDataUrl(bytes, 'image/webp'), ...(entity.images ?? [])];
     return { entity, book: null };
   }
 
   const tavern = readTavernCard(bytes);
   if (tavern) {
     // The PNG's pixels are the portrait; re-encode to WebP to match how entity images are stored.
-    tavern.entity.image = await optimizeImageDataUrl(bytesToDataUrl(bytes, 'image/png'), IMAGE_CAPS.entity);
+    tavern.entity.images = [await optimizeImageDataUrl(bytesToDataUrl(bytes, 'image/png'), IMAGE_CAPS.entity)];
     return tavern;
   }
 

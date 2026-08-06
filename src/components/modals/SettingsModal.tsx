@@ -35,6 +35,8 @@ import type { AIRequestType } from '@/types';
 import { ConfirmDialog } from '../ConfirmDialog';
 import { toast } from 'react-toastify';
 import WorldStorageService from '@/services/WorldStorageService';
+import { cachedImageBytes, clearCachedImages } from '@/lib/remoteImageCache';
+import { formatBytes } from '@/lib/imageOptim';
 import { DEFAULT_WORLDS, readDeletedDefaultWorlds, clearDeletedDefaultWorlds } from '@/lib/defaultWorlds';
 import { PresetNameDialog } from './PresetNameDialog';
 import { defaultSystemPrompt, defaultNarrationUserPrompt, defaultRecapUserPrompt, defaultRehydrateUserPrompt, defaultOocDirectivePrompt, defaultChoicesPrompt, defaultStatUpdatesPrompt, defaultLocationChangePrompt, defaultThinkingPrompt, defaultSummaryPrompt, defaultChoicesUserPrompt, defaultStatUpdatesUserPrompt, defaultLocationChangeUserPrompt, defaultSummaryUserPrompt, defaultDiaryPrompt, defaultDirectorPrompt, defaultDirectorUserPrompt, defaultCharacterPrompt, defaultStoryboardPrompt, defaultNowLinePrompt, defaultTimePassedPrompt, defaultTimePassedUserPrompt, defaultOpeningTimePrompt, defaultOpeningTimeUserPrompt, defaultSceneTagsPrompt, defaultSceneTagsUserPrompt } from '../game/GamePrompts';
@@ -299,6 +301,19 @@ export const SettingsModal = ({ isOpen, onOpenChange, previewValues, initialTab,
   // may have deleted a world since it last rendered.
   const [deletedDefaultCount, setDeletedDefaultCount] = useState(0);
   useEffect(() => { if (isOpen) setDeletedDefaultCount(readDeletedDefaultWorlds().size); }, [isOpen]);
+  // Same reasoning for the linked-image cache: it grows during play, so re-measure on open rather than once.
+  const [cachedBytes, setCachedBytes] = useState(0);
+  useEffect(() => { if (isOpen) cachedImageBytes().then(setCachedBytes).catch(() => setCachedBytes(0)); }, [isOpen]);
+
+  const clearImageCache = async () => {
+    try {
+      await clearCachedImages();
+      setCachedBytes(0);
+      toast.success('Cached images cleared');
+    } catch {
+      toast.error('Could not clear the cached images');
+    }
+  };
 
   const restoreDefaultWorlds = async () => {
     clearDeletedDefaultWorlds();
@@ -2426,6 +2441,25 @@ Includes faces tuned for **dyslexia**, **low vision**, and reading.`}</HintInfo>
                     {deletedDefaultCount === 0
                       ? "You haven't deleted any of the bundled worlds."
                       : `Re-creates ${deletedDefaultCount} deleted bundled world${deletedDefaultCount > 1 ? 's' : ''} at their latest version.`}
+                  </p>
+                </div>
+              </div>
+              <div className="grid grid-cols-1 sm:grid-cols-[minmax(0,1fr)_minmax(0,3fr)] gap-4">
+                <div className="hidden sm:block" />
+                <div>
+                  <ConfirmDialog
+                    title="Clear cached images"
+                    description="Delete the downloaded copies of images that worlds link to rather than store? They'll be downloaded again next time you're online. Nothing in your worlds or saves is affected."
+                    onConfirm={clearImageCache}
+                  >
+                    <Button variant="outline" size="sm" disabled={cachedBytes === 0}>
+                      Clear cached images
+                    </Button>
+                  </ConfirmDialog>
+                  <p className="text-xs text-muted-foreground mt-1">
+                    {cachedBytes === 0
+                      ? 'No linked images have been cached yet.'
+                      : `${formatBytes(cachedBytes)} of linked images kept on this device so they work offline.`}
                   </p>
                 </div>
               </div>

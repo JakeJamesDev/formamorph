@@ -37,3 +37,30 @@ export function dataUrlBytes(url: string): number {
 export function dataUrlMime(url: string): string {
   return /^data:([^;,]+)/.exec(url)?.[1] ?? '';
 }
+
+/**
+ * True when a stored image value points at a remote host rather than carrying its own bytes. Lives in this
+ * leaf module so the optimize pipeline can ask without importing the fetch/DOM side of `imageSource`.
+ */
+export const isRemoteImage = (url: string | null | undefined): boolean =>
+  typeof url === 'string' && /^https?:\/\//i.test(url.trim());
+
+/**
+ * True for a link that will stop resolving on its own. Discord signs attachment URLs with `ex`/`is`/`hm`
+ * params and drops them when `ex` passes, so a picture an author checked today is gone later.
+ *
+ * Matched on the path, not the host: Discord's other CDN endpoints — avatars, emojis, guild and app icons —
+ * are unsigned and permanent, and flagging those would nag authors using a link that is actually fine.
+ */
+export const isExpiringImageHost = (url: string | null | undefined): boolean =>
+  typeof url === 'string'
+  && /^https?:\/\/(cdn\.discordapp\.com|media\.discordapp\.net)\/attachments\//i.test(url.trim());
+
+/** The host an author would recognize, for failure messages. Falls back to the raw value if unparseable. */
+export const imageHost = (url: string): string => {
+  try {
+    return new URL(url).host;
+  } catch {
+    return url;
+  }
+};

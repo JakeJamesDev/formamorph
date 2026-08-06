@@ -152,6 +152,27 @@ Folders for your own sanity. Nesting and order are editor-only and **never reach
 
 The image and 3D model are for the player's screen. **Image Tags** are booru tags used only for AI image generation — the ✨ toolbar can draft them from the description, and uploading an image with an embedded prompt offers to use it. None of this reaches the narrator.
 
+#### Upload or link
+
+Every image field takes either an uploaded file or a web address pasted into the **Or paste an image URL** box. The difference is where the picture lives:
+
+| | Uploaded | Linked |
+|---|---|---|
+| Stored in your world | Yes — full size counts toward the file | No — just the address |
+| Works offline | Always | After you've seen it once, or via **Make Available Offline** |
+| Survives the host going away | Always | No |
+
+**Link when your world has a lot of pictures** — a published world stays small no matter how many it carries. **Upload when it matters that the picture can't disappear.**
+
+A linked slot shows a 🔗 marker. Two of them are warnings worth reading:
+
+- **Expiring link** — Discord *attachment* links stop working after a while, so the picture will vanish for anyone playing later. Discord's permanent addresses (avatars, emojis, server icons) are fine.
+- **Display only** — that site won't let Formamorph download the picture. It shows normally online, but can't be saved for offline use or put into a character card. Uploading the file instead is the fix.
+
+> 💡 **Make Available Offline** in a world's details window downloads all its linked pictures at once, so the world is ready before you lose your connection.
+
+Exporting a world with linked pictures asks whether to keep the links (small file) or download them into it (works anywhere). Exporting a **character card** always downloads the portrait, because the card *is* the picture.
+
 ### Getting started
 
 Write the AI-Facing Description first — it's the one that does the work, and it's safe to put things there the player shouldn't know yet. Add a Summary only if the entity turns up in reachable locations. Reach for the Player-Facing Description when you want the player to read something the AI has no use for.

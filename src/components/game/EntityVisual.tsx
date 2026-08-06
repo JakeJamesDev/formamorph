@@ -1,19 +1,23 @@
 import { useState } from 'react';
+import { RemoteImg } from '@/lib/useRemoteImage';
 import { Box, Check, Image as ImageIcon } from 'lucide-react';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { ImageZoomViewer } from '@/components/ImageZoomViewer';
+import { GalleryControls, type GalleryControlsProps } from '@/components/GalleryControls';
 import { resolveModelType } from '@/lib/UtilityComponents';
+import { entityImages } from '@/lib/entityImages';
 import ModelViewer from '@/views/ModelViewer';
+import { SwipeImage } from './SwipeImage';
 import type { Entity } from '@/types';
 
 /** The visual an entity can be shown by, if it has one at all. */
-export type EntityVisualSource = Pick<Entity, 'id' | 'name' | 'image' | 'model'>;
+export type EntityVisualSource = Pick<Entity, 'id' | 'name' | 'images' | 'model'>;
 
-/** Whether this entity has anything to show — an image or a 3D model. */
+/** Whether this entity has anything to show — a picture or a 3D model. */
 // eslint-disable-next-line react-refresh/only-export-components
 export const hasEntityVisual = (entity?: EntityVisualSource | null): boolean =>
-  !!(entity?.image || entity?.model?.data);
+  !!(entityImages(entity).length || entity?.model?.data);
 
 /** The button both viewers carry, reading as pressed once this is the picture the entity opens on. */
 const DefaultToggle = ({ active, onClick }: { active: boolean; onClick: () => void }) => (
@@ -24,54 +28,77 @@ const DefaultToggle = ({ active, onClick }: { active: boolean; onClick: () => vo
 );
 
 /**
- * An entity's picture wherever one is shown in game. An entity carrying both an image and a 3D model shows
- * one with a button in the corner opening the other, and each of those viewers offers to make what it is
- * showing the one this save opens on. With only a model, the model takes the image's place and is orbited in
- * situ, since there is nothing for a corner button to sit on top of.
+ * An entity's picture wherever one is shown in game. An entity carrying more than one pages between them —
+ * chevrons on a pointer device, a swipe on touch — and the zoom viewer stays on whichever is showing. An
+ * entity carrying both a picture and a 3D model shows one with a button in the corner opening the other, and
+ * each of those viewers offers to make what it is showing the one this save opens on. With only a model, the
+ * model takes the picture's place and is orbited in situ, since there is nothing for a corner button to sit
+ * on top of.
  *
- * `onPreferenceChange` is what makes the preference offerable at all: without it (the World Editor's preview,
- * which has no save to write to) the viewers are plain.
+ * `onPreferenceChange` is what makes the preference offerable at all, and `onImageStep` what makes the gallery
+ * pageable: without them (the World Editor's preview, which has no playthrough to hold either in) this shows
+ * the primary picture plainly. Both live in gameplay state, so the host supplies them — see
+ * `useEntityVisualPreference` and `useEntityGallery`.
  *
  * Fills its container, so the caller owns the sizing.
  */
-export const EntityVisual = ({ entity, className, preference, onPreferenceChange }: {
+export const EntityVisual = ({ entity, className, preference, onPreferenceChange, imageIndex = 0, onImageStep }: {
   entity: EntityVisualSource;
   className?: string;
   preference?: 'model' | 'image';
   onPreferenceChange?: (next: 'model' | 'image' | undefined) => void;
+  imageIndex?: number;
+  onImageStep?: (by: number) => void;
 }) => {
   const [zoomOpen, setZoomOpen] = useState(false);
   const [modelOpen, setModelOpen] = useState(false);
 
+  const images = entityImages(entity);
+  // A held index outlives the gallery it was taken from (an edited world, a reused panel), so clamp it here
+  // rather than trusting it to still point at a picture.
+  const index = images.length ? Math.min(imageIndex, images.length - 1) : 0;
+  const current = images[index];
+  const step = onImageStep;
   const model = entity.model?.data ? entity.model : undefined;
-  const image = entity.image;
+  const gallery = step && images.length > 1 ? { count: images.length, index, onStep: step } : undefined;
 
-  if (!image) {
+  if (!current) {
     return model ? (
       <ModelViewer model={model} modelType={resolveModelType(model)} className={className} />
     ) : null;
   }
+
+  const picture = (
+    <Picture images={images} index={index} gallery={gallery} name={entity.name} onZoom={() => setZoomOpen(true)} />
+  );
+  const zoomViewer = (footer?: React.ReactNode) => (
+    <ImageZoomViewer
+      src={current}
+      alt={entity.name}
+      open={zoomOpen}
+      onOpenChange={setZoomOpen}
+      gallery={gallery}
+      footer={footer}
+    />
+  );
+
   if (!model) {
     return (
       <Slot className={className}>
-        <Picture image={image} name={entity.name} onZoom={() => setZoomOpen(true)} />
-        <ImageZoomViewer src={image} alt={entity.name} open={zoomOpen} onOpenChange={setZoomOpen} />
+        {picture}
+        {zoomViewer()}
       </Slot>
     );
   }
 
-  // Both exist: the image wins unless the player said otherwise for this entity.
+  // Both exist: the picture wins unless the player said otherwise for this entity.
   const showingModel = preference === 'model';
   const toggle = (side: 'model' | 'image') => () =>
     onPreferenceChange?.(preference === side ? undefined : side);
 
   return (
     <Slot className={className} fill={showingModel}>
-      {showingModel ? (
-        <ModelViewer model={model} modelType={resolveModelType(model)} />
-      ) : (
-        <Picture image={image} name={entity.name} onZoom={() => setZoomOpen(true)} />
-      )}
+      {showingModel ? <ModelViewer model={model} modelType={resolveModelType(model)} /> : picture}
       <CornerButton
         label={showingModel ? 'View image' : 'View 3D model'}
         onClick={() => (showingModel ? setZoomOpen(true) : setModelOpen(true))}
@@ -79,15 +106,9 @@ export const EntityVisual = ({ entity, className, preference, onPreferenceChange
         {showingModel ? <ImageIcon className="h-4 w-4" /> : <Box className="h-4 w-4" />}
       </CornerButton>
 
-      <ImageZoomViewer
-        src={image}
-        alt={entity.name}
-        open={zoomOpen}
-        onOpenChange={setZoomOpen}
-        footer={onPreferenceChange && (
-          <DefaultToggle active={preference === 'image'} onClick={toggle('image')} />
-        )}
-      />
+      {zoomViewer(onPreferenceChange && (
+        <DefaultToggle active={preference === 'image'} onClick={toggle('image')} />
+      ))}
       <Dialog open={modelOpen} onOpenChange={setModelOpen}>
         <DialogContent className="sm:max-w-[600px] h-[80dvh] flex flex-col">
           <DialogHeader className="flex-shrink-0">
@@ -126,15 +147,33 @@ const Slot = ({ className, fill, children }: {
   </div>
 );
 
-const Picture = ({ image, name, onZoom }: { image: string; name: string; onZoom: () => void }) => (
-  <img
-    src={image}
-    alt={name}
-    className="max-w-full max-h-full object-contain cursor-zoom-in"
-    title="Click to enlarge"
-    onClick={onZoom}
-  />
-);
+/** The showing picture plus, when there is a pageable gallery behind it, the controls to move through it. */
+const Picture = ({ images, index, gallery, name, onZoom }: {
+  images: string[];
+  index: number;
+  gallery?: GalleryControlsProps;
+  name: string;
+  onZoom: () => void;
+}) => {
+  if (!gallery) {
+    return (
+      <RemoteImg
+        src={images[index]}
+        alt={name}
+        className="max-w-full max-h-full object-contain cursor-zoom-in"
+        title="Click to enlarge"
+        onClick={onZoom}
+      />
+    );
+  }
+  return (
+    // `group` so the controls fade in from a hover over the picture rather than the whole slot.
+    <div className="group relative inline-flex max-w-full max-h-full">
+      <SwipeImage images={images} index={index} onStep={gallery.onStep} alt={name} onZoom={onZoom} />
+      <GalleryControls {...gallery} />
+    </div>
+  );
+};
 
 const CornerButton = ({ label, onClick, children }: {
   label: string;

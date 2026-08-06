@@ -232,7 +232,9 @@ Book order sets injection order; within a book, an entry's `position` picks the 
 
 ## 🎞️ Media fields
 
-Images (`thumbnail`, `bgm`, location `backgroundImage`, entity `image`) are stored as **base64 data-URL strings**, e.g. `data:image/png;base64,...`.
+Images (`thumbnail`, `bgm`, location `backgroundImage`, entity `images`) are stored as **base64 data-URL strings**, e.g. `data:image/png;base64,...`.
+
+An image field may instead hold an **`http(s)` URL**, which points at a picture rather than carrying it. The two are told apart by the value's own prefix — there is no separate field — so any image field accepts either form, and a world written before linked images existed reads identically. A reader that doesn't know about links will simply fail to load those pictures; nothing else about the file changes.
 
 Uploaded audio/model assets (`customPlayerVRM`, location `ambientSound`, entity `sound`/`model`) are a **`MediaAsset`** object that pairs the data with its MIME type:
 

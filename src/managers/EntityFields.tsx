@@ -7,6 +7,7 @@ import AiFieldToolbar from "@/components/AiFieldToolbar";
 import PlaceholderField from "@/components/prompt/PlaceholderField";
 import { ModelUpload } from '../lib/UtilityComponents';
 import { IMAGE_CAPS } from '../lib/imageOptim';
+import { ENTITY_IMAGE_SLOTS, entityImages } from '../lib/entityImages';
 import ImageTagsField from './ImageTagsField';
 import type { Entity, Placeholder } from '@/types';
 
@@ -111,8 +112,9 @@ const EntityFields = ({ value, onChange, placeholders = [], locationOptions, sel
       )}
       <ImageTagsField
         label="Image"
-        image={value.image}
-        onImageChange={(file) => onChange('image', file)}
+        images={entityImages(value)}
+        onImagesChange={(list) => onChange('images', list)}
+        slots={ENTITY_IMAGE_SLOTS}
         imageId={`entity-image-${value.id}`}
         cap={IMAGE_CAPS.entity}
         description={value.aiDescription || value.playerDescription}
