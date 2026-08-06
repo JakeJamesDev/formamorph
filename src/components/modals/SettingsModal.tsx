@@ -666,9 +666,8 @@ export const SettingsModal = ({ isOpen, onOpenChange, previewValues, initialTab,
   // A built-in can't be edited, so the way forward is a copy of it. `addPreset` already clones the active
   // values and selects the result, so this is the whole gesture — no dialog in the way.
   const duplicateForEditing = () => addPreset(`${activePresetName} (copy)`);
-  const readOnlyReason = activePresetIsBuiltIn
-    ? `${activePresetName} is a built-in preset, so its prompts can't be edited.`
-    : undefined;
+  // Short enough for one line on a phone; the notice puts the whole sentence on hover.
+  const readOnlyReason = activePresetIsBuiltIn ? `${activePresetName} is read-only` : undefined;
 
   // AI Endpoints → Image preset name dialog (mirrors the prompt preset one; all presets editable).
   const [imagePresetDialog, setImagePresetDialog] = useState<{ mode: 'add' | 'rename' } | null>(null);
@@ -931,7 +930,9 @@ export const SettingsModal = ({ isOpen, onOpenChange, previewValues, initialTab,
       <DialogContent
         aria-describedby={undefined}
         className={cn(
-          'h-[90dvh] flex flex-col overflow-hidden',
+          'flex flex-col overflow-hidden',
+          // A phone has no room to spend on the frame around a settings panel — fill the screen.
+          'max-sm:h-[100dvh] max-sm:w-screen max-sm:max-w-none max-sm:rounded-none max-sm:border-0 sm:h-[90dvh]',
           // Near-full width on Prompts: the rail costs ~190px, and a fixed 1100px left the editor column
           // just short of fitting two panes — so the split silently never appeared on a 1280px screen.
           activeTab === 'prompts' ? 'sm:max-w-[min(1500px,95vw)]' : 'sm:max-w-[800px]',
@@ -2095,7 +2096,7 @@ An inspection aid for authoring and debugging; off by default.`}</HintInfo>
                 </ConfirmDialog>
               )}
               <Select value={activePresetId} onValueChange={handlePresetSelect}>
-                <SelectTrigger className="flex-1 min-w-0">
+                <SelectTrigger aria-label="Preset" className="flex-1 min-w-0">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>

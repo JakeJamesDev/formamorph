@@ -204,8 +204,10 @@ function VariableToolbar({ vocab, interactive }: {
   };
 
   return (
-    <div className="flex flex-wrap items-center gap-1 flex-shrink-0">
-      <span className="text-xs text-muted-foreground mr-1">Insert:</span>
+    // Narrow: one row that scrolls sideways rather than three that stack — the palette is reference
+    // material while reading a prompt, and three rows of it cost more screen than the editor can spare.
+    <div className="flex items-center gap-1 flex-shrink-0 overflow-x-auto sm:flex-wrap sm:overflow-visible [scrollbar-width:none] [&::-webkit-scrollbar]{display:none}">
+      <span className="text-xs text-muted-foreground mr-1 flex-shrink-0">Insert:</span>
       {items.map((v) => (
         <button
           key={v.token}
@@ -213,7 +215,7 @@ function VariableToolbar({ vocab, interactive }: {
           disabled={!interactive}
           onClick={interactive ? () => insert(v.token) : undefined}
           title={interactive ? `Insert ${v.label}` : v.label}
-          className={cn(CHIP_BASE, 'border', interactive ? 'cursor-pointer hover:brightness-95' : 'cursor-default')}
+          className={cn(CHIP_BASE, 'border flex-shrink-0', interactive ? 'cursor-pointer hover:brightness-95' : 'cursor-default')}
           style={{ backgroundColor: v.color, color: '#000' }}
         >
           {v.label}
@@ -415,7 +417,7 @@ function PreviewPane({ value, previewValues, vocab, scrollRef, onScroll }: {
   onScroll?: React.UIEventHandler<HTMLDivElement>;
 }) {
   return (
-    <div ref={scrollRef} onScroll={onScroll} className="h-full min-h-[160px] overflow-auto rounded-md border border-input bg-muted/40 px-3 py-2 text-sm whitespace-pre-wrap">
+    <div ref={scrollRef} onScroll={onScroll} data-testid="prompt-preview" className="h-full min-h-[160px] overflow-auto rounded-md border border-input bg-muted/40 px-3 py-2 text-sm whitespace-pre-wrap">
       {vocab.parse(value).map((seg, i) => {
         if (seg.type === 'text') return <span key={i}>{seg.value}</span>;
         const color = vocab.color(seg.token);
@@ -454,7 +456,7 @@ function MarkdownPreviewPane({ value, previewValues, vocab, scrollRef, onScroll 
     .map((seg) => (seg.type === 'text' ? seg.value : resolveToken(seg.token, previewValues ?? {}) ?? previewValues?.[seg.token] ?? seg.token))
     .join('');
   return (
-    <div ref={scrollRef} onScroll={onScroll} className="h-full min-h-[160px] overflow-auto rounded-md border border-input bg-muted/40 px-3 py-2 text-sm">
+    <div ref={scrollRef} onScroll={onScroll} data-testid="prompt-preview" className="h-full min-h-[160px] overflow-auto rounded-md border border-input bg-muted/40 px-3 py-2 text-sm">
       <MarkdownRenderer text={resolved} />
     </div>
   );
@@ -768,9 +770,13 @@ const PromptField = ({ value, onChange, variables = [], vocabulary, previewValue
   // A read-only editor looks broken rather than protected — the caret simply does nothing — and that reads
   // worst at full screen, where the field is the whole window. Say why, and offer the way out.
   const readOnlyNotice = readOnly && readOnlyReason && (
-    <div className="flex flex-shrink-0 flex-wrap items-center gap-2 rounded-md border border-border bg-muted/50 px-2 py-1.5 text-xs text-muted-foreground">
+    <div
+      className="flex flex-shrink-0 items-center gap-2 rounded-md border border-border bg-muted/50 px-2 py-1 text-xs text-muted-foreground"
+      title={readOnlyReason}
+    >
       <Lock className="h-3.5 w-3.5 shrink-0" />
-      <span className="min-w-0 flex-1">{readOnlyReason}</span>
+      {/* One line, never wrapped: at phone width the full sentence took two rows off the editor. */}
+      <span className="min-w-0 flex-1 truncate">{readOnlyReason}</span>
       {onRequestEdit && (
         <Button variant="outline" size="sm" className="h-7 shrink-0 px-2" onClick={onRequestEdit}>
           <Copy className="mr-1 h-3.5 w-3.5" /> Duplicate &amp; Edit
