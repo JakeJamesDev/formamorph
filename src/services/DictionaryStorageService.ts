@@ -1,5 +1,6 @@
 import { LibraryStore, type StoredRecord } from './LibraryStore';
 import { migrateEntryKeys } from '@/lib/version';
+import { describePlaceholders } from '@/lib/placeholders';
 import type { Dictionary, DictionaryMetadata } from '@/types';
 
 /** A locally-stored dictionary ("book") plus its library timestamps, and (via `StoredRecord`) the
@@ -17,7 +18,9 @@ class DictionaryStorageService {
     toMetadata: (record) => ({
       id: record.id,
       name: record.name,
-      description: record.data?.description,
+      // Display-only chip rendering: a library card has no world or rolls behind it, so the book's own
+      // carried defs are all there is — same treatment its community listing gets.
+      description: describePlaceholders(record.data?.description ?? '', record.data?.placeholders) || undefined,
       thumbnail: record.data?.thumbnail ?? undefined,
       entryCount: record.data?.entries?.length ?? 0,
       tags: record.data?.tags ?? [],

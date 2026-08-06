@@ -2,6 +2,7 @@
 import 'fake-indexeddb/auto';
 import { describe, it, expect, beforeEach } from 'vitest';
 import DictionaryStorageService, { type StoredDictionaryRecord } from './DictionaryStorageService';
+import { encodePlaceholderToken } from '@/lib/placeholders';
 
 const record = (id: string, name = 'Lore'): StoredDictionaryRecord => ({
   id, name, data: { id, name, entries: [] },
@@ -110,6 +111,25 @@ describe('DictionaryStorageService', () => {
       tags: ['lore'],
       description: 'Marsh terms.',
     });
+  });
+
+  it('renders placeholder chips in the blurb the library card draws', async () => {
+    // No world stands behind a library card, so an unrendered chip reaches the player as raw token text.
+    const token = encodePlaceholderToken({ id: 'fen', mode: 'world', placementId: 'p1' });
+    await DictionaryStorageService.storeDictionary({
+      id: 'd4',
+      name: 'Fen Cant',
+      data: {
+        id: 'd4',
+        name: 'Fen Cant',
+        entries: [],
+        description: `Words of the ${token}.`,
+        placeholders: [{ id: 'fen', name: 'fen', values: ['Sedge Fen'] }],
+      },
+    });
+
+    const meta = (await DictionaryStorageService.getDictionaryMetadata()).find((m) => m.id === 'd4');
+    expect(meta?.description).toBe('Words of the Sedge Fen.');
   });
 
   it('leaves the cover off a book without one, so the card draws its empty tile', async () => {

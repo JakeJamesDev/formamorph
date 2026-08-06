@@ -4,8 +4,9 @@ import type { PublishPayload } from '@/lib/publishPayload';
 import { openDatabase, promisifyRequest } from '@/lib/idb';
 import { migrateWorld } from '@/lib/version';
 import { contentHash } from '@/lib/contentHash';
+import { describePlaceholders } from '@/lib/placeholders';
 import { readDeletedDefaultWorlds, tombstoneDefaultWorld, type DefaultWorldSeed } from '@/lib/defaultWorlds';
-import type { WorldMetadata } from '@/types';
+import type { Placeholder, WorldMetadata } from '@/types';
 
 /** A locally-stored world record (metadata + nested world `data`). Inner fields stay loose since
  *  they round-trip through IndexedDB/JSON and aren't read field-by-field here. */
@@ -115,7 +116,9 @@ class WorldStorageService {
     return worlds.map(world => ({
       id: world.id,
       name: world.name,
-      description: world.description,
+      // The stored blurb keeps its raw chips; the card renders them display-only against the world's defs,
+      // since a library card has no playthrough whose rolls it could read.
+      description: describePlaceholders(world.description ?? '', world.data?.placeholders as Placeholder[] | undefined),
       author: world.author || '',
       // A remote (http) thumbnail can't render offline and is blocked cross-origin by the server's CORP
       // header, so prefer the world's own embedded thumbnail (base64) when the stored one is a URL. New

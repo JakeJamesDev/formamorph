@@ -2,6 +2,7 @@
 import 'fake-indexeddb/auto';
 import { describe, it, expect, beforeEach } from 'vitest';
 import EntityStorageService, { type StoredEntityRecord } from './EntityStorageService';
+import { encodePlaceholderToken } from '@/lib/placeholders';
 
 const record = (id: string, name = 'Mara'): StoredEntityRecord => ({ id, name, data: { id, name } });
 
@@ -105,6 +106,25 @@ describe('EntityStorageService', () => {
       downloadedAt: '2026-07-01T00:00:00.000Z',
       sourceUpdatedAt: '2026-07-01T00:00:00.000Z',
     });
+  });
+
+  it('renders placeholder chips in the blurb the library card draws', async () => {
+    // The card has no world or playthrough behind it, so an unrendered chip reaches the player as raw
+    // `{{ph…}}` token text.
+    const token = encodePlaceholderToken({ id: 'eye', mode: 'world', placementId: 'p1' });
+    await EntityStorageService.storeEntity({
+      id: 'e1',
+      name: 'Mara',
+      data: {
+        id: 'e1',
+        name: 'Mara',
+        playerDescription: `Her ${token} eyes.`,
+        placeholders: [{ id: 'eye', name: 'eye', values: ['amber'] }],
+      },
+    });
+
+    const meta = (await EntityStorageService.getEntityMetadata()).find((m) => m.id === 'e1');
+    expect(meta?.description).toBe('Her amber eyes.');
   });
 
   it('rejects a character missing required fields', async () => {
