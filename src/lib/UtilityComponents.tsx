@@ -137,6 +137,8 @@ export const ImageUpload = ({ onChange, id, value, cap, previewClassName, object
 
   const handleImageChange = useCallback((e: ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
+    // Clear the input so re-selecting the same file fires change again (a remove-then-reupload otherwise no-ops).
+    e.target.value = '';
     if (file) {
       // Parse the raw file for an embedded SD prompt before the FileReader/optimize path re-encodes it.
       if (onPromptExtracted) void readSdPromptFromFile(file).then((p) => { if (p) onPromptExtracted(p); });
@@ -165,8 +167,10 @@ export const ImageUpload = ({ onChange, id, value, cap, previewClassName, object
   // Clicking an uploaded image opens the shared pan/zoom viewer instead of re-triggering the file picker.
   const openZoom = (e: MouseEvent) => { e.preventDefault(); e.stopPropagation(); setZoomOpen(true); };
 
-  // A new value gets a fresh chance to load — otherwise one bad link poisons the slot after it's replaced.
-  useEffect(() => { setLoadFailed(false); }, [value]);
+  // A new resolved src gets a fresh chance to load — otherwise one bad link poisons the slot after it's
+  // replaced. Keyed on displaySrc (not value): it lags value by a render, so a value-keyed reset can run
+  // before a stale-src error lands and the failure would latch.
+  useEffect(() => { setLoadFailed(false); }, [displaySrc]);
 
   // Marks a filled slot as pointing somewhere rather than carrying its own bytes, and says when that link
   // comes with a catch. An expiring host outranks an unreadable one: it breaks everything, just later.
@@ -224,7 +228,8 @@ export const ImageUpload = ({ onChange, id, value, cap, previewClassName, object
         {previewClassName ? (
           value ? (
             <>
-              {loadFailed ? brokenFrame : (
+              {/* displaySrc lags value by a render; an <img src=""> fires error and would latch the broken frame. */}
+              {loadFailed ? brokenFrame : displaySrc ? (
                 <img
                   src={displaySrc}
                   alt="Uploaded"
@@ -232,7 +237,7 @@ export const ImageUpload = ({ onChange, id, value, cap, previewClassName, object
                   onError={() => setLoadFailed(true)}
                   className={`absolute inset-0 w-full h-full rounded-md ${objectFit === 'cover' ? 'object-cover' : 'object-contain'}`}
                 />
-              )}
+              ) : null}
               {remoteBadge}
               {removeButton}
             </>
@@ -246,7 +251,7 @@ export const ImageUpload = ({ onChange, id, value, cap, previewClassName, object
             <div className="relative">
               {loadFailed ? (
                 <div className="flex h-32 w-48 items-center justify-center">{brokenFrame}</div>
-              ) : (
+              ) : displaySrc ? (
                 <img
                   src={displaySrc}
                   alt="Uploaded"
@@ -254,7 +259,7 @@ export const ImageUpload = ({ onChange, id, value, cap, previewClassName, object
                   onError={() => setLoadFailed(true)}
                   className="max-w-full max-h-32 object-contain"
                 />
-              )}
+              ) : null}
               {remoteBadge}
               {removeButton}
             </div>
