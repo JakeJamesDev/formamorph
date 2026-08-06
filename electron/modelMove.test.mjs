@@ -143,6 +143,25 @@ describe('moveModels: the source file survives anything going wrong', () => {
     expect(fs.readdirSync(to()).some((f) => f.endsWith(TEMP_SUFFIX))).toBe(false);
   });
 
+  it('cleans up the temp when the copy lands but the final rename fails', async () => {
+    // The copy itself succeeds here — no stream error — so the failure lands on the rename that gives the
+    // temp its real name. Nothing else ever collects a stranded `.moving`: isMovable excludes it, so an
+    // orphan would sit at full model size in the destination forever.
+    write(path.join(from(), 'a.gguf'), 500);
+    vi.spyOn(fs, 'renameSync').mockImplementation(() => {
+      const e = new Error('EXDEV');
+      e.code = 'EXDEV';
+      throw e;
+    });
+
+    const res = await moveModels({ from: from(), to: to() });
+
+    expect(res.moved).toEqual([]);
+    expect(res.skipped.map((s) => s.file)).toEqual(['a.gguf']);
+    expect(fs.readdirSync(to())).toEqual([]);
+    expect(fs.existsSync(path.join(from(), 'a.gguf'))).toBe(true); // source never at risk
+  });
+
   it('skips a file whose name is already taken in the destination, keeping both', async () => {
     write(path.join(from(), 'a.gguf'), 10);
     write(path.join(to(), 'a.gguf'), 20);
