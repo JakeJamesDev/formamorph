@@ -56,3 +56,8 @@ testing/real-sessions/
 
 # Worlds being authored/reworked locally (large exports, not published from the repo).
 worlds-wip/
+
+# Playwright browser-test output (traces/screenshots from a failed run).
+test-results/
+playwright-report/
+.playwright/

@@ -51,6 +51,9 @@ export default defineConfig({
         }),
   },
   test: {
+    // e2e/ is Playwright's, and its specs match Vitest's default glob. Left in, `vitest run` would load
+    // them into jsdom and fail on the first browser API they reach.
+    exclude: ['**/node_modules/**', '**/dist/**', 'e2e/**'],
     environment: 'jsdom',
     setupFiles: ['./src/test/setup.ts'],
     css: false,
