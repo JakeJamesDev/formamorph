@@ -30,6 +30,8 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import CharacterCustomization, { defaultCharacterData } from './CharacterCustomization';
 import { SettingsModal } from '../components/modals/SettingsModal';
 import { useSettingsOpenRequest } from '@/lib/useSettingsOpenRequest';
+import { useSettings } from "@/contexts/SettingsContext";
+import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from "@/components/ui/select";
 import { AiSetupGate, type GateReason } from '../components/AiSetupGate';
 import { useAiReachable } from '@/lib/useAiReachable';
 import { LoadGameDialog } from '../components/modals/LoadGameDialog';
@@ -107,6 +109,7 @@ import { isStaff } from "@/lib/roles";
 import { Checkbox } from "@/components/ui/checkbox";
 import { useReadmeVisibility } from "@/lib/useReadmeVisibility";
 import { hasWorldNarrationPrompt, worldNarrationPrompt, useWorldPromptOptOut } from "@/lib/worldPrompt";
+import { useWorldPromptPresets, GLOBAL_PRESET_VALUE } from "@/lib/worldPromptPreset";
 import PatreonIcon from "@/components/PatreonIcon";
 
 interface MainMenuProps {
@@ -223,6 +226,9 @@ const MainMenu = ({ onStartGame, onLoadSaveGame, onReplayIntro, introActive = fa
   } = useGameData();
   const { showReadme, setShowReadme } = useReadmeVisibility();
   const { applyWorldPrompt, setApplyWorldPrompt } = useWorldPromptOptOut();
+  const { worldPreset, setWorldPreset } = useWorldPromptPresets();
+  // Only the preset list is needed here; the pin is applied by GameViewer when the world opens.
+  const { builtinPresets, promptPresets } = useSettings();
   const { promptWorldsBatch, promptImagesBatch, promptEntity, dialog: downscaleDialog } = useDownscalePrompt();
   const [selectedWorld, setSelectedWorld] = useState<WorldRecord | null>(null);
   // Library grid layout: "grid" (compact cards) or "detailed" (community-browser-style card + info
@@ -1941,32 +1947,54 @@ const MainMenu = ({ onStartGame, onLoadSaveGame, onReplayIntro, introActive = fa
             )}
           </div>
 
-          {/* Per-world local preferences, anchored bottom-left of the popup. Neither is ever exported. */}
-          <div className="shrink-0 flex flex-wrap items-center gap-x-6 gap-y-2 pt-2 empty:pt-0">
-            {/* Same flag the in-game "Don't Show This Again" writes (inverse). */}
-            {selectedWorld?.data?.worldOverview?.readme?.trim() && (
-              <div className="flex items-center gap-2">
-                <Checkbox
-                  id="show-readme"
-                  checked={showReadme(selectedWorld.id)}
-                  onCheckedChange={(c) => setShowReadme(selectedWorld.id, c === true)}
-                />
-                <label htmlFor="show-readme" className="text-sm cursor-pointer">Show Readme on entry</label>
-              </div>
-            )}
+          {/* Per-world local preferences, below the panels. None of these is ever exported or published:
+              the preset pin picks which prompts this world runs on, the checkboxes are entry options. */}
+          <div className="shrink-0 flex flex-wrap items-center gap-x-6 gap-y-2 pt-2">
+            <div className="flex items-center gap-2">
+              <label htmlFor="world-preset" className="text-sm text-muted-foreground">Prompts</label>
+              <Select
+                value={(selectedWorld && worldPreset(selectedWorld.id)) || GLOBAL_PRESET_VALUE}
+                onValueChange={(v) =>
+                  setWorldPreset(selectedWorld?.id, v === GLOBAL_PRESET_VALUE ? null : v)
+                }
+              >
+                <SelectTrigger id="world-preset" className="h-8 w-[210px]"><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value={GLOBAL_PRESET_VALUE}>Use global preset</SelectItem>
+                  {[...builtinPresets, ...promptPresets].map((p) => (
+                    <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
 
-            {hasWorldNarrationPrompt(selectedWorld?.data?.worldOverview) && selectedWorld && (
-              <div className="flex items-center gap-2">
-                <Checkbox
-                  id="use-world-narration-prompt"
-                  checked={applyWorldPrompt(selectedWorld.id)}
-                  onCheckedChange={(c) => setApplyWorldPrompt(selectedWorld.id, c === true)}
-                />
-                <label htmlFor="use-world-narration-prompt" className="text-sm cursor-pointer">
-                  Use this world&apos;s narration prompt
-                </label>
-              </div>
-            )}
+            {/* Entry options sit opposite the pin so the two kinds of control stay visually separate. */}
+            <div className="ml-auto flex flex-wrap items-center gap-x-6 gap-y-2">
+              {hasWorldNarrationPrompt(selectedWorld?.data?.worldOverview) && selectedWorld && (
+                <div className="flex items-center gap-2">
+                  <Checkbox
+                    id="use-world-narration-prompt"
+                    checked={applyWorldPrompt(selectedWorld.id)}
+                    onCheckedChange={(c) => setApplyWorldPrompt(selectedWorld.id, c === true)}
+                  />
+                  <label htmlFor="use-world-narration-prompt" className="text-sm cursor-pointer">
+                    Use this world&apos;s narration prompt
+                  </label>
+                </div>
+              )}
+
+              {/* Same flag the in-game "Don't Show This Again" writes (inverse). */}
+              {selectedWorld?.data?.worldOverview?.readme?.trim() && (
+                <div className="flex items-center gap-2">
+                  <Checkbox
+                    id="show-readme"
+                    checked={showReadme(selectedWorld.id)}
+                    onCheckedChange={(c) => setShowReadme(selectedWorld.id, c === true)}
+                  />
+                  <label htmlFor="show-readme" className="text-sm cursor-pointer">Show Readme on entry</label>
+                </div>
+              )}
+            </div>
           </div>
         </DialogContent>
       </Dialog>

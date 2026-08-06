@@ -39,6 +39,7 @@ import {
   type PromptPresetStore, type PromptValues, type VerbatimMap, type PromptPreset,
 } from '../lib/promptPresets';
 import { buildSharedPreset, type SharedPreset, type ImportedPreset } from '../lib/promptPresetShare';
+import { resolvePinnedPreset } from '../lib/worldPromptPreset';
 import { buildStyledValues } from '../lib/sectionStyle';
 import { defaultPromptSampler, type PromptSamplerMap, type PromptSampler } from '../lib/promptSamplers';
 import type { AIRequestType } from '../types';
@@ -556,8 +557,42 @@ function useProvideSettings() {
   // The 15 editable prompt strings live in named presets (one localStorage key). Each keeps its original
   // context field + setter name; values derive from the active preset (Default = read-only shipped text),
   // and setters patch the active preset (a no-op under Default). See src/lib/promptPresets.ts.
-  const [presetStore, setPresetStore] = usePersistentState<PromptPresetStore>(`${APP_ID}_promptPresets`, emptyStore, presetStoreCodec);
-  const promptValues = useMemo(() => activeValues(presetStore, BUILTIN_VALUES), [presetStore]);
+  const [presetStore, setRawPresetStore] = usePersistentState<PromptPresetStore>(`${APP_ID}_promptPresets`, emptyStore, presetStoreCodec);
+
+  // A world can be pinned to a preset for the duration of play (see lib/worldPromptPreset). GameViewer sets
+  // this on load and clears it on unmount; it is session state, never persisted — the player's global
+  // selection must survive a pinned world untouched. A pin naming a deleted preset resolves back to global.
+  const [sessionPresetId, setSessionPresetId] = useState<string | null>(null);
+  // Set by whoever opened the pinned world, so re-pinning from Settings is written back to that world.
+  const persistPinRef = useRef<((id: string | null) => void) | null>(null);
+  const beginSessionPreset = useCallback((presetId: string | null, persist?: (id: string | null) => void) => {
+    setSessionPresetId(presetId);
+    persistPinRef.current = persist ?? null;
+  }, []);
+  const endSessionPreset = useCallback(() => {
+    setSessionPresetId(null);
+    persistPinRef.current = null;
+  }, []);
+  const pinnedPresetId = resolvePinnedPreset(sessionPresetId ?? undefined, presetStore);
+  /** The store as every reader below should see it: the pinned preset standing in as the active one. */
+  const effectiveStore = useMemo(
+    () => (pinnedPresetId ? { ...presetStore, activeId: pinnedPresetId } : presetStore),
+    [presetStore, pinnedPresetId],
+  );
+  /**
+   * Apply a preset-store operation against the *effective* preset, then put the real `activeId` back. The
+   * ops key off `activeId`, so without the swap a pinned world's edits would land on the global preset —
+   * and without the restore, the pin would be written into the global selection.
+   */
+  const setPresetStore = useCallback((fn: (s: PromptPresetStore) => PromptPresetStore) => {
+    setRawPresetStore((s) => {
+      const pinned = resolvePinnedPreset(sessionPresetId ?? undefined, s);
+      if (!pinned) return fn(s);
+      return { ...fn({ ...s, activeId: pinned }), activeId: s.activeId };
+    });
+  }, [setRawPresetStore, sessionPresetId]);
+
+  const promptValues = useMemo(() => activeValues(effectiveStore, BUILTIN_VALUES), [effectiveStore]);
   const {
     systemPrompt, narrationUserPrompt, recapUserPrompt, rehydrateUserPrompt, oocDirectivePrompt, choicesPrompt, statUpdatesPrompt, locationChangePromptText, thinkingPrompt, summaryPrompt,
     diaryPrompt, directorPrompt, directorUserPrompt, characterPrompt, storyboardPrompt,
@@ -593,9 +628,9 @@ function useProvideSettings() {
 
   // Preset-scoped tuning derives from the active preset (built-ins → empty → defaults); setters patch the
   // active preset and no-op under a built-in, mirroring the text setters above.
-  const promptSamplers = useMemo(() => activeSamplers(presetStore), [presetStore]);
-  const promptReasoning = useMemo(() => activeReasoning(presetStore), [presetStore]);
-  const promptReasoningBudget = useMemo(() => activeReasoningBudget(presetStore), [presetStore]);
+  const promptSamplers = useMemo(() => activeSamplers(effectiveStore), [effectiveStore]);
+  const promptReasoning = useMemo(() => activeReasoning(effectiveStore), [effectiveStore]);
+  const promptReasoningBudget = useMemo(() => activeReasoningBudget(effectiveStore), [effectiveStore]);
 
   // Reasoning is "engaged" only when the user has opted into it somewhere — a Thinking mode, a global native
   // effort, or a per-prompt positive level. When it isn't, the app sends no `reasoning_effort` at all (so a
@@ -642,7 +677,7 @@ function useProvideSettings() {
     }, 1200);
     return () => { cancelled = true; clearTimeout(id); };
   }, [activeEndpointUrl, activeApiToken, activeModelName, setReasoningSupportCache]);
-  const verbatimMap = useMemo(() => activeVerbatim(presetStore), [presetStore]);
+  const verbatimMap = useMemo(() => activeVerbatim(effectiveStore), [effectiveStore]);
   const globalForSampler = useCallback(
     (sampler: PromptSampler) => (sampler === 'temperature' ? genTemperature : genRepetitionPenalty),
     [genTemperature, genRepetitionPenalty],
@@ -668,15 +703,34 @@ function useProvideSettings() {
   }, [setPresetStore]);
 
   // Preset management (Settings → System Prompts selector).
-  const activePresetId = presetStore.activeId;
-  const activePresetIsBuiltIn = isBuiltInActive(presetStore);
-  const activeSectionStyle = activeStyle(presetStore);
+  const activePresetId = effectiveStore.activeId;
+  const activePresetIsBuiltIn = isBuiltInActive(effectiveStore);
+  const activeSectionStyle = activeStyle(effectiveStore);
   const builtinPresets = BUILTIN_PRESETS.map(({ id, name }) => ({ id, name }));
   const promptPresets = presetStore.presets.map((p) => ({ id: p.id, name: p.name }));
-  const selectPreset = (id: string) => setPresetStore((s) => setActivePreset(s, id));
+  // While a world is pinned, choosing a preset re-pins that world rather than moving the global selection —
+  // otherwise the selector would look dead, since the pin keeps winning. `persistPin` is registered by
+  // GameViewer, which owns the world id the pin is stored under.
+  const selectPreset = (id: string) => {
+    if (pinnedPresetId) {
+      setSessionPresetId(id);
+      persistPinRef.current?.(id);
+      return;
+    }
+    setRawPresetStore((s) => setActivePreset(s, id));
+  };
   const addPreset = (name: string) => {
     const id = randomUUID();
-    setPresetStore((s) => addPresetOp(s, id, name, activeValues(s, BUILTIN_VALUES), activeStyle(s)));
+    // Built from the effective values, so "save as new" while pinned copies what is actually running.
+    setRawPresetStore((s) => {
+      const from = pinnedPresetId ? { ...s, activeId: pinnedPresetId } : s;
+      const next = addPresetOp(from, id, name, activeValues(from, BUILTIN_VALUES), activeStyle(from));
+      return pinnedPresetId ? { ...next, activeId: s.activeId } : next;
+    });
+    if (pinnedPresetId) {
+      setSessionPresetId(id);
+      persistPinRef.current?.(id);
+    }
     return id;
   };
   const renamePreset = (id: string, name: string) => setPresetStore((s) => renamePresetOp(s, id, name));
@@ -687,8 +741,8 @@ function useProvideSettings() {
   });
   // Share (export/import). Export materializes the selected preset (built-ins → concrete text, empty tuning);
   // import adds a new preset or overwrites one by id, optionally including the shared tuning.
-  const activePresetName = BUILTIN_PRESETS.find((b) => b.id === presetStore.activeId)?.name
-    ?? presetStore.presets.find((p) => p.id === presetStore.activeId)?.name ?? 'Preset';
+  const activePresetName = BUILTIN_PRESETS.find((b) => b.id === effectiveStore.activeId)?.name
+    ?? effectiveStore.presets.find((p) => p.id === effectiveStore.activeId)?.name ?? 'Preset';
   const exportActivePreset = (appVersion: string): SharedPreset =>
     buildSharedPreset({ name: activePresetName, style: activeSectionStyle, values: promptValues, samplers: promptSamplers, reasoning: promptReasoning, reasoningBudget: promptReasoningBudget, verbatim: verbatimMap }, appVersion);
   const importPreset = (imported: ImportedPreset, opts: { includeTuning: boolean; name: string; overwriteId?: string }): string => {
@@ -1154,6 +1208,10 @@ function useProvideSettings() {
     activePresetId,
     activePresetIsBuiltIn,
     activeSectionStyle,
+    beginSessionPreset,
+    endSessionPreset,
+    /** True while the open world is pinned to a preset — Settings uses it to explain the selector's scope. */
+    presetPinnedToWorld: pinnedPresetId !== null,
     selectPreset,
     addPreset,
     renamePreset,

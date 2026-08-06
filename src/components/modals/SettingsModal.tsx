@@ -453,6 +453,7 @@ export const SettingsModal = ({ isOpen, onOpenChange, previewValues, initialTab,
     promptPresets,
     builtinPresets,
     activePresetId,
+    presetPinnedToWorld,
     activePresetIsBuiltIn,
     selectPreset,
     addPreset,
@@ -2041,6 +2042,14 @@ An inspection aid for authoring and debugging; off by default.`}</HintInfo>
               )}
               <Button variant="outline" size="sm" onClick={() => setExportShared(exportActivePreset(APP_VERSION))}>Export</Button>
             </div>
+            {/* While a pinned world is open the selector edits that world's pin, not the global choice —
+                say so, or picking a preset here looks like it silently did nothing to the rest of the app. */}
+            {presetPinnedToWorld && (
+              <p className="-mt-2 flex-shrink-0 text-xs text-muted-foreground">
+                The world you&apos;re playing is pinned to this preset, so changing it here re-pins this world.
+                Your usual preset is unaffected and comes back when you leave.
+              </p>
+            )}
             {/* Nested tab bar — one prompt per tab; only the selected prompt shows. */}
             <Tabs value={activePromptTab} onValueChange={selectPromptTab} className="w-full flex flex-col flex-1 min-h-0">
               <TabsList className="flex flex-wrap h-auto justify-center gap-1 flex-shrink-0">

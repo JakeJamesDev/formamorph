@@ -33,6 +33,7 @@ import TTSModal, { type TTSModalHandle, type TTSProgress } from "../components/g
 import ReadmeModal from "../components/game/ReadmeModal";
 import { useReadmeVisibility } from "@/lib/useReadmeVisibility";
 import { resolveNarrationPrompt, useWorldPromptOptOut } from "@/lib/worldPrompt";
+import { useWorldPromptPresets } from "@/lib/worldPromptPreset";
 import { EntityModal } from "../components/modals/EntityModal";
 import { LocationModal } from "../components/modals/LocationModal";
 import { SettingsModal } from "../components/modals/SettingsModal";
@@ -270,6 +271,18 @@ const GameViewer = ({
   // The whole settings bag is kept as well as the destructured fields: buildImageRequest reads the image
   // preset off it, so the scene path and the editor's dialog cannot drift apart on request shape.
   const settings = useSettings();
+
+  // A world may also be pinned to a prompt preset. Held for as long as this view is mounted — covering a
+  // new game and a loaded save alike — so every prompt resolves against it without touching the player's
+  // global selection. Re-pinning from Settings writes back through `setWorldPreset`.
+  const { worldPreset, setWorldPreset } = useWorldPromptPresets();
+  const { beginSessionPreset, endSessionPreset } = settings;
+  useEffect(() => {
+    beginSessionPreset(worldPreset(worldId) ?? null, (id) => setWorldPreset(worldId, id));
+    return () => endSessionPreset();
+    // Re-runs only when the world changes; `worldPreset`/`setWorldPreset` are recreated every render.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [worldId, beginSessionPreset, endSessionPreset]);
   const {
     bgmEnabled,
     setBgmEnabled,
