@@ -3,7 +3,7 @@ import type { World, SaveObject, Stat, GameState, Trait, PlayerStat } from '@/ty
 import { normalizeCustomVRM } from './worldImport';
 import { autoBindLegacyBodyStats } from './bodyMorphs';
 import { appendCurrentToHistory } from './turnHistory';
-import { DEFAULT_AVATAR_ID, LEGACY_DEFAULT_AVATAR_SENTINEL } from './defaultAvatar';
+import { DEFAULT_AVATAR_ID, LEGACY_DEFAULT_AVATAR_ID, LEGACY_DEFAULT_AVATAR_SENTINEL } from './defaultAvatar';
 import { migrateEntityImages } from './entityImages';
 
 /** Current app version, derived from package.json (see vite.config.js `define`). User-managed. */
@@ -222,13 +222,17 @@ export function stripSnapshotHistory(state: GameState): GameState {
 }
 
 /**
- * Point a snapshot's player model at the seeded library record instead of the old `'default'` sentinel. The
- * bundled model is an ordinary library entry now, so the sentinel has no referent; every other value —
- * a library id, `'world'`, or unset — is already meaningful and passes through.
+ * Point a snapshot's player avatar at the seeded library record, from either older value: the pre-library
+ * `'default'` sentinel, which has no referent now that the bundled avatar is an ordinary library entry, and
+ * the `'default-model'` id it was seeded under before the library was renamed to avatars. Every other
+ * value — a library id, `'world'`, or unset — is already meaningful and passes through.
  */
-function migrateDefaultModelId(state: GameState): GameState {
+const LEGACY_DEFAULT_AVATAR_VALUES: readonly string[] = [LEGACY_DEFAULT_AVATAR_SENTINEL, LEGACY_DEFAULT_AVATAR_ID];
+
+function migrateDefaultAvatarId(state: GameState): GameState {
   const character = state?.characterData;
-  if (!character || character.playerModelId !== LEGACY_DEFAULT_AVATAR_SENTINEL) return state;
+  const current = character?.playerModelId;
+  if (!character || !current || !LEGACY_DEFAULT_AVATAR_VALUES.includes(current)) return state;
   return { ...state, characterData: { ...character, playerModelId: DEFAULT_AVATAR_ID } };
 }
 
@@ -297,7 +301,7 @@ export function migrateSave(save: SaveObject): SaveObject {
   const migratedHistory = isLegacy ? save.stateHistory.map(migrateLegacySaveState) : save.stateHistory;
   // Canonical flat history: an already-hoisted top-level copy, else the current snapshot's own copy.
   const messageHistory = save.messageHistory ?? migratedCurrent.fullMessageHistory ?? [];
-  const normalizeSnapshot = (s: GameState) => migrateBodyMorphs(migrateDefaultModelId(s));
+  const normalizeSnapshot = (s: GameState) => migrateBodyMorphs(migrateDefaultAvatarId(s));
   const currentState = normalizeSnapshot(stripSnapshotHistory(migratedCurrent));
   const history = isLegacy
     ? appendCurrentToHistory(migratedHistory.map(stripSnapshotHistory), currentState)

@@ -13,7 +13,7 @@ import { type SharedPreset } from '@/lib/promptPresetShare';
 import { APP_VERSION } from '@/lib/version';
 import { normalizeEndpointUrl, endpointUrlWasCompleted } from '@/lib/endpointUrl';
 import { computePromptTabAvailability } from '@/lib/promptTabAvailability';
-import { visibleGroups, SURFACE_LABELS, type PromptSurface } from '@/lib/promptGroups';
+import { visibleGroups, SURFACE_LABELS, PROMPT_DESCRIPTIONS, type PromptSurface } from '@/lib/promptGroups';
 import { Settings } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { cn } from "@/lib/utils";
@@ -2216,7 +2216,13 @@ An inspection aid for authoring and debugging; off by default.`}</HintInfo>
                 </div>
               </ScrollArea>
 
-              <div className="flex flex-1 min-w-0 min-h-0 flex-col">
+              <div className="flex flex-1 min-w-0 min-h-0 flex-col gap-2">
+
+              {/* What this prompt is for, above it rather than beneath: at the bottom of a full-height
+                  editor it sat below the fold, which is the one place a description is no use. */}
+              <p className="flex-shrink-0 text-xs text-muted-foreground">
+                {PROMPT_DESCRIPTIONS[activePromptTab]}
+              </p>
 
               {showingOptions && (
                 <ScrollArea className="mt-4 flex-1 min-h-0">
@@ -2348,7 +2354,6 @@ An inspection aid for authoring and debugging; off by default.`}</HintInfo>
                     onRequestFullscreen={() => setPromptsFullscreen((f) => !f)}
                     readOnly={activePresetIsBuiltIn}
                   />
-                  <p className="text-xs text-muted-foreground flex-shrink-0">Lets the AI move the player between locations.</p>
                 </TabsContent>
               )}
 
@@ -2366,7 +2371,6 @@ An inspection aid for authoring and debugging; off by default.`}</HintInfo>
                     onRequestFullscreen={() => setPromptsFullscreen((f) => !f)}
                     readOnly={activePresetIsBuiltIn}
                   />
-                  <p className="text-xs text-muted-foreground flex-shrink-0">Condenses each turn into a short retelling for long-story memory. Only used when Memory Summaries is on.</p>
                 </TabsContent>
               )}
 
@@ -2384,7 +2388,6 @@ An inspection aid for authoring and debugging; off by default.`}</HintInfo>
                     onRequestFullscreen={() => setPromptsFullscreen((f) => !f)}
                     readOnly={activePresetIsBuiltIn}
                   />
-                  <p className="text-xs text-muted-foreground flex-shrink-0">Measures how much in-world time each turn takes. Answer with a count and its unit (m, h, d, w). Only used when Measured Clock is on.</p>
                 </TabsContent>
               )}
 
@@ -2402,7 +2405,6 @@ An inspection aid for authoring and debugging; off by default.`}</HintInfo>
                     onRequestFullscreen={() => setPromptsFullscreen((f) => !f)}
                     readOnly={activePresetIsBuiltIn}
                   />
-                  <p className="text-xs text-muted-foreground flex-shrink-0">Reads the opening scene once to work out what time of day the story starts at. Answer with one daypart: night, dawn, morning, midday, afternoon, evening. Only used when Measured Clock is on.</p>
                 </TabsContent>
               )}
 
@@ -2420,7 +2422,6 @@ An inspection aid for authoring and debugging; off by default.`}</HintInfo>
                     onRequestFullscreen={() => setPromptsFullscreen((f) => !f)}
                     readOnly={activePresetIsBuiltIn}
                   />
-                  <p className="text-xs text-muted-foreground flex-shrink-0">Writes the action tags for a scene image — what the people in frame are doing. Their appearance comes from their own image tags and the background from the location&rsquo;s, so this pass deliberately adds neither.</p>
                 </TabsContent>
               )}
 
@@ -2438,7 +2439,6 @@ An inspection aid for authoring and debugging; off by default.`}</HintInfo>
                     onRequestFullscreen={() => setPromptsFullscreen((f) => !f)}
                     readOnly={activePresetIsBuiltIn}
                   />
-                  <p className="text-xs text-muted-foreground flex-shrink-0">Each participating character records a first-person diary entry per turn. Only used when Character Diaries is on.</p>
                 </TabsContent>
               )}
 
@@ -2456,7 +2456,6 @@ An inspection aid for authoring and debugging; off by default.`}</HintInfo>
                     onRequestFullscreen={() => setPromptsFullscreen((f) => !f)}
                     readOnly={activePresetIsBuiltIn}
                   />
-                  <p className="text-xs text-muted-foreground flex-shrink-0">Stages each turn: picks the cast and scene. Only used when Thinking is set to Staged.</p>
                 </TabsContent>
               )}
 
@@ -2474,7 +2473,6 @@ An inspection aid for authoring and debugging; off by default.`}</HintInfo>
                     onRequestFullscreen={() => setPromptsFullscreen((f) => !f)}
                     readOnly={activePresetIsBuiltIn}
                   />
-                  <p className="text-xs text-muted-foreground flex-shrink-0">Each cast member states its own motivation in the first person. Only used when Thinking is set to Staged.</p>
                 </TabsContent>
               )}
 
@@ -2492,7 +2490,6 @@ An inspection aid for authoring and debugging; off by default.`}</HintInfo>
                     onRequestFullscreen={() => setPromptsFullscreen((f) => !f)}
                     readOnly={activePresetIsBuiltIn}
                   />
-                  <p className="text-xs text-muted-foreground flex-shrink-0">Reconciles the cast&apos;s intentions into the turn&apos;s beat plan. Only used when Thinking is set to Staged.</p>
                 </TabsContent>
               )}
               </>

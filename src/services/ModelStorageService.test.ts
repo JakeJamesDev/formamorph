@@ -93,6 +93,53 @@ describe('legacy flat-record migration', () => {
   });
 });
 
+describe('default-avatar rekey', () => {
+  const seeded = (id: string, name = 'Default Model'): StoredModelRecord => ({
+    id,
+    name,
+    createdAt: '2026-07-18T00:00:00.000Z',
+    lastAccessed: '2026-07-18T00:00:00.000Z',
+    data: { type: 'model/vrm', blob: blob(), size: 7 },
+  });
+
+  it("moves a library seeded under the old 'default-model' id onto 'default-avatar'", async () => {
+    await putRaw(seeded('default-model'));
+
+    // A save migrated to the new id looks the avatar up by it — unrekeyed, this resolves to nothing.
+    const data = await ModelStorageService.getModelData('default-avatar');
+    expect(data).toMatchObject({ type: 'model/vrm', size: 7 });
+    expect(await getRaw('default-model')).toBeUndefined();
+  });
+
+  it('carries the record across whole, rather than reseeding a fresh one', async () => {
+    await putRaw(seeded('default-model', 'Renamed By Hand'));
+    const [meta] = await ModelStorageService.getModelMetadata();
+    expect(meta).toMatchObject({ id: 'default-avatar', name: 'Renamed By Hand', createdAt: '2026-07-18T00:00:00.000Z' });
+  });
+
+  it('drops the legacy copy when both ids are present, keeping the current one', async () => {
+    await putRaw(seeded('default-model', 'Old Copy'));
+    await putRaw(seeded('default-avatar', 'Current'));
+
+    const meta = await ModelStorageService.getModelMetadata();
+    expect(meta).toHaveLength(1);
+    expect(meta[0]).toMatchObject({ id: 'default-avatar', name: 'Current' });
+  });
+
+  it('leaves a library that never held the legacy id alone', async () => {
+    await putRaw(seeded('default-avatar', 'Current'));
+    await putRaw({ id: 'mine', name: 'Mine', createdAt: '2026-08-01T00:00:00.000Z', data: { type: 'model/vrm', blob: blob(), size: 1 } });
+
+    expect((await ModelStorageService.getModelMetadata()).map((m) => m.id)).toEqual(['mine', 'default-avatar']);
+  });
+
+  it('does not resurrect a default the player deleted', async () => {
+    // Nothing under either id: the deletion already happened, and the rekey has nothing to move.
+    await putRaw({ id: 'mine', name: 'Mine', createdAt: '2026-08-01T00:00:00.000Z', data: { type: 'model/vrm', blob: blob(), size: 1 } });
+    expect((await ModelStorageService.getModelMetadata()).map((m) => m.id)).toEqual(['mine']);
+  });
+});
+
 describe('getModelMetadata', () => {
   it('sorts newest first', async () => {
     await putRaw({ id: 'a', name: 'Older', createdAt: '2025-01-01T00:00:00.000Z', data: { type: 'model/vrm', blob: blob(), size: 1 } });
@@ -137,25 +184,25 @@ describe('seedDefaultModel', () => {
   afterEach(() => vi.unstubAllGlobals());
 
   it('seeds the bundled model under a stable id, named from its own title', async () => {
-    serve(await makeVrm1({ name: 'Default Model' }));
+    serve(await makeVrm1({ name: 'Default Avatar' }));
     await ModelStorageService.seedDefaultModel(vrmUrl);
     const [meta] = await ModelStorageService.getModelMetadata();
-    expect(meta).toMatchObject({ id: 'default-model', name: 'Default Model' });
+    expect(meta).toMatchObject({ id: 'default-avatar', name: 'Default Avatar' });
   });
 
   it('only seeds once, so a deleted default stays deleted', async () => {
-    serve(await makeVrm1({ name: 'Default Model' }));
+    serve(await makeVrm1({ name: 'Default Avatar' }));
     await ModelStorageService.seedDefaultModel(vrmUrl);
     await ModelStorageService.addModel(new File([blob('other')], 'Other.vrm', { type: 'model/vrm' }));
-    await ModelStorageService.deleteModel('default-model');
+    await ModelStorageService.deleteModel('default-avatar');
 
     await ModelStorageService.seedDefaultModel(vrmUrl);
     const names = (await ModelStorageService.getModelMetadata()).map((m) => m.id);
-    expect(names).not.toContain('default-model');
+    expect(names).not.toContain('default-avatar');
   });
 
   it('does not re-fetch on a later launch', async () => {
-    serve(await makeVrm1({ name: 'Default Model' }));
+    serve(await makeVrm1({ name: 'Default Avatar' }));
     await ModelStorageService.seedDefaultModel(vrmUrl);
     await ModelStorageService.seedDefaultModel(vrmUrl);
     expect(vi.mocked(fetch)).toHaveBeenCalledTimes(1);
@@ -171,12 +218,12 @@ describe('seedDefaultModel', () => {
     // A transient failure must not set the seeded flag, or the default could never appear.
     vi.stubGlobal('fetch', vi.fn().mockRejectedValueOnce(new Error('offline')));
     await ModelStorageService.seedDefaultModel(vrmUrl);
-    expect((await ModelStorageService.getModelMetadata()).map((m) => m.id)).not.toContain('default-model');
+    expect((await ModelStorageService.getModelMetadata()).map((m) => m.id)).not.toContain('default-avatar');
 
     // Next launch: fetch works, and because the flag was never set, it seeds now.
-    serve(await makeVrm1({ name: 'Default Model' }));
+    serve(await makeVrm1({ name: 'Default Avatar' }));
     await ModelStorageService.seedDefaultModel(vrmUrl);
-    expect((await ModelStorageService.getModelMetadata()).map((m) => m.id)).toContain('default-model');
+    expect((await ModelStorageService.getModelMetadata()).map((m) => m.id)).toContain('default-avatar');
   });
 });
 
