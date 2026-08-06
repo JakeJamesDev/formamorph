@@ -21,7 +21,7 @@ interface EditorModalShellProps {
   /** Persist; resolves `true` on success so save-and-exit only closes when the write succeeded. */
   onSave: () => Promise<boolean>;
   onClose: () => void;
-  onDownload: () => void;
+  onExport: () => void;
   /** When provided (signed in), renders a Publish button wired to this handler. */
   onPublish?: () => void;
   /** The loaded editor body (already tab-switched and, for dictionaries, store-wrapped by the caller). */
@@ -30,13 +30,13 @@ interface EditorModalShellProps {
 
 /**
  * Shared chrome for the library entity/dictionary editors: the dialog surface, a title + two-tab header,
- * the Download / Publish / Save footer, and the unsaved-changes-on-close handshake. The concrete editor
+ * the Export / Publish / Save footer, and the unsaved-changes-on-close handshake. The concrete editor
  * supplies the tab labels, the loaded body, and the save/download/publish handlers; everything data-model
  * specific stays in the caller.
  */
 const EditorModalShell = ({
   open, title, contentClassName, loading, tabs, tab, onTabChange,
-  hasUnsavedChanges, onSave, onClose, onDownload, onPublish, children,
+  hasUnsavedChanges, onSave, onClose, onExport, onPublish, children,
 }: EditorModalShellProps) => {
   const [showUnsaved, setShowUnsaved] = useState(false);
   const attemptClose = () => { if (hasUnsavedChanges) setShowUnsaved(true); else onClose(); };
@@ -73,8 +73,8 @@ const EditorModalShell = ({
                   </TabsContent>
                 ))}
                 <div className="px-4 py-3 border-t shrink-0 flex justify-between gap-2">
-                  <Button variant="outline" size="sm" onClick={onDownload}>
-                    <Download className="h-4 w-4 mr-2" /> Download
+                  <Button variant="outline" size="sm" onClick={onExport}>
+                    <Download className="h-4 w-4 mr-2" /> Export
                   </Button>
                   <div className="flex gap-2">
                     {onPublish && (

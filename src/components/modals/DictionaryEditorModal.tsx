@@ -99,7 +99,7 @@ const DictionaryEditorModal = ({ dictionaryId, draft, onClose, onPublish }: {
     }
   };
 
-  const handleDownload = () => {
+  const handleExport = () => {
     const current = dictionaries[0];
     if (!current) return;
     const blob = new Blob([JSON.stringify(buildDictionaryFile(current), null, 2)], { type: 'application/json' });
@@ -118,7 +118,7 @@ const DictionaryEditorModal = ({ dictionaryId, draft, onClose, onPublish }: {
       hasUnsavedChanges={hasUnsavedChanges}
       onSave={handleSave}
       onClose={onClose}
-      onDownload={handleDownload}
+      onExport={handleExport}
       onPublish={onPublish ? () => { if (dictionaries[0]) onPublish(dictionaries[0]); } : undefined}
     >
       <DictionaryStoreProvider value={store}>

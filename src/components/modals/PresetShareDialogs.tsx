@@ -36,7 +36,7 @@ export function ExportPresetDialog({ open, onOpenChange, shared }: {
           className="w-full h-24 resize-none rounded-md border bg-muted/40 p-2 font-mono text-xs"
         />
         <div className="flex justify-end gap-2">
-          <Button variant="outline" onClick={download}>Download .json</Button>
+          <Button variant="outline" onClick={download}>Export .json</Button>
           <Button onClick={copy}>Copy code</Button>
         </div>
       </DialogContent>

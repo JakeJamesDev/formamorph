@@ -147,17 +147,17 @@ const WorldEditor = ({ onClose, embedded = false, backButton }: {
   const [showAddDictionary, setShowAddDictionary] = useState(false);
   const [showAddEntity, setShowAddEntity] = useState(false);
 
-  const downloadWorld = () => exportWorld(buildCurrentWorld());
+  const exportCurrentWorld = () => exportWorld(buildCurrentWorld());
 
   // Export one book to its own standalone `.json` (no image downscale — dictionaries are text only).
-  const downloadDictionary = (book: Dictionary) => {
+  const exportDictionary = (book: Dictionary) => {
     // Bundle the world placeholders this book's entries use, so its chips resolve after import elsewhere.
     const jsonData = JSON.stringify(buildDictionaryFile(book, placeholders), null, 2);
     downloadBlob(new Blob([jsonData], { type: 'application/json' }), `${book.name || 'Dictionary'}.json`);
   };
 
   // Export one entity as a shareable WebP character card (its portrait carrying the text fields).
-  const downloadEntity = async (entity: Entity) => {
+  const exportEntity = async (entity: Entity) => {
     try {
       downloadBlob(await exportEntityCard(entity, placeholders), `${entity.name || 'Character'}.webp`);
     } catch (error) {
@@ -353,14 +353,14 @@ const WorldEditor = ({ onClose, embedded = false, backButton }: {
   const selectedEntry = dictionaries.flatMap(b => b.entries).find(e => e.id === selectedItemId);
   const selectedPlaceholder = placeholders.find(p => p.id === selectedItemId);
 
-  // Contextual footer actions. Download shows on Overview/Entities/Dictionary; only "Download World"
+  // Contextual footer actions. Export shows on Overview/Entities/Dictionary; only "Export World"
   // is wired up (entity/dictionary export is a stub). Import shows on Entities (when one is selected)
   // and Dictionary, and does nothing yet.
-  const downloadContext =
-    activeTab === 'overview' ? { label: 'Download World', disabled: false, onClick: () => { downloadWorld(); } }
-    : activeTab === 'entities' ? { label: `Download ${selectedItem?.name ?? 'Entity'}`, disabled: !selectedItem, onClick: () => { if (selectedItem) downloadEntity(selectedItem as Entity); } }
+  const exportContext =
+    activeTab === 'overview' ? { label: 'Export World', disabled: false, onClick: () => { exportCurrentWorld(); } }
+    : activeTab === 'entities' ? { label: `Export ${selectedItem?.name ?? 'Entity'}`, disabled: !selectedItem, onClick: () => { if (selectedItem) exportEntity(selectedItem as Entity); } }
     : activeTab === 'dictionary'
-      ? { label: `Download ${selectedBook?.name ?? 'Dictionary'}`, disabled: !selectedBook, onClick: () => { if (selectedBook) downloadDictionary(selectedBook); } }
+      ? { label: `Export ${selectedBook?.name ?? 'Dictionary'}`, disabled: !selectedBook, onClick: () => { if (selectedBook) exportDictionary(selectedBook); } }
     : null;
   // "Add" opens the add-from-library picker (characters on Entities, books on Dictionary).
   const showImport = activeTab === 'entities' || activeTab === 'dictionary';
@@ -596,10 +596,10 @@ const WorldEditor = ({ onClose, embedded = false, backButton }: {
     <div className="p-4 border-t flex flex-wrap gap-2 justify-between">
       {downscaleDialog}
       <div className="flex gap-2">
-        {downloadContext && (
-          <Button variant="outline" size="sm" onClick={downloadContext.onClick} disabled={downloadContext.disabled}>
+        {exportContext && (
+          <Button variant="outline" size="sm" onClick={exportContext.onClick} disabled={exportContext.disabled}>
             <Download className="h-4 w-4 mr-2 shrink-0" />
-            <span className="truncate max-w-[14rem]">{downloadContext.label}</span>
+            <span className="truncate max-w-[14rem]">{exportContext.label}</span>
           </Button>
         )}
         {showImport && (

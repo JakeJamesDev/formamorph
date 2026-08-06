@@ -15,7 +15,7 @@ const baseProps = {
   hasUnsavedChanges: false,
   onSave: async () => true,
   onClose: () => {},
-  onDownload: () => {},
+  onExport: () => {},
 };
 
 describe('EditorModalShell', () => {
@@ -32,7 +32,7 @@ describe('EditorModalShell', () => {
     expect(screen.getByText('My Record')).toBeTruthy();
     expect(screen.getByText('Alpha')).toBeTruthy();
     expect(screen.getByText('body')).toBeTruthy();
-    expect(screen.getByText('Download')).toBeTruthy();
+    expect(screen.getByText('Export')).toBeTruthy();
     expect(screen.getByText('Save')).toBeTruthy();
   });
 
