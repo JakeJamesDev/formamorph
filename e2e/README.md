@@ -63,8 +63,19 @@ is stripped from production builds, which is why these tests need `npm run dev` 
 
 ## Coverage today
 
-[prompt-editor.spec.ts](e2e/prompt-editor.spec.ts) — the prompt editor's layout, chrome gating and
-caret. Each guard was verified by putting its bug back and watching the test go red.
+[prompt-editor.spec.ts](e2e/prompt-editor.spec.ts) — the prompt editor's layout, chrome gating, caret,
+focus behavior, and dropdown scrolling. Each guard was verified by putting its bug back and watching the
+test go red.
+
+Two caveats worth knowing:
+
+- **Focus, not the keyboard.** There is no soft keyboard to drive, so the specs measure what *summons*
+  one: who holds focus, and whether that opens or re-opens full screen. The keyboard-stuck-open loop
+  itself is still only reachable on a real phone.
+- **Wheel events, not `scrollTop`.** Radix drives its dropdown chevrons off its own scroll handling.
+  Setting `scrollTop` from a script leaves exactly one chevron mounted and reproduces nothing;
+  `mouse.wheel` reproduces the reflow (the list jumped 334 → 358px before the fix). Any future scroll
+  spec has to use real input.
 
 ## CI
 
