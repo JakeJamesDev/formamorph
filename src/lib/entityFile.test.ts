@@ -72,6 +72,22 @@ describe('buildEntityCardData', () => {
     expect(parsed.placeholders).toEqual([eye]);
     expect(parsed.aiDescription).toContain('{{ph:eye:world:p1}}');
   });
+
+  it('bundles the placeholders a name or an alias uses, not only the descriptions', () => {
+    const town = { id: 'town', name: 'Town', values: ['Sedge', 'Marrow'] };
+    const beast = { id: 'beast', name: 'Beast', values: ['Wolf'] };
+    const unused = { id: 'unused', name: 'Weather', values: ['Rain'] };
+    // Nothing here has a description — without the name and alias being scanned, the card would carry
+    // no defs and its chips would arrive pointing at ids the receiving world never had.
+    const named: Entity = {
+      id: 'z',
+      name: 'Keeper {{ph:town:world:p1}}',
+      aliases: ['the {{ph:beast:world:p2}}'],
+    };
+    const card = buildEntityCardData(named, [town, beast, unused]);
+    expect(card.placeholders).toEqual([town, beast]);
+    expect(parseEntityCardData(card).name).toContain('{{ph:town:world:p1}}');
+  });
 });
 
 describe('parseEntityCardData', () => {

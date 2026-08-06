@@ -38,7 +38,11 @@ export interface EntityCardData {
  *  `available` is the placeholder pool to resolve the entity's used chips from — the world's list
  *  for a world entity, or the entity's own carried `placeholders` for a library one. */
 export function buildEntityCardData(entity: Entity, available: Placeholder[] = entity.placeholders ?? []): EntityCardData {
-  const used = collectUsedPlaceholders([entity.playerDescription, entity.aiDescription, entity.aiSummary].filter((t): t is string => !!t), available);
+  const used = collectUsedPlaceholders(
+    [entity.name, ...(entity.aliases ?? []), entity.playerDescription, entity.aiDescription, entity.aiSummary]
+      .filter((t): t is string => !!t),
+    available,
+  );
   const extras = entityImages(entity).slice(1);
   return {
     formamorphKind: ENTITY_FILE_KIND,

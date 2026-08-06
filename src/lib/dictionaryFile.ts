@@ -26,7 +26,10 @@ export interface DictionaryFile {
 /** Serialize one book to the standalone file shape, stamped with the current app version. `available` is the
  *  placeholder pool to resolve the book's used chips from — the world's list, or the book's own carried defs. */
 export function buildDictionaryFile(book: Dictionary, available: Placeholder[] = book.placeholders ?? []): DictionaryFile {
-  const used = collectUsedPlaceholders(book.entries.map((e) => e.value ?? ''), available);
+  const used = collectUsedPlaceholders(
+    book.entries.flatMap((e) => [e.name ?? '', ...(e.key ?? []), ...(e.secondaryKeys ?? []), e.value ?? '']),
+    available,
+  );
   return {
     formamorphKind: DICTIONARY_FILE_KIND,
     version: APP_VERSION,

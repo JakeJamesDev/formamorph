@@ -15,7 +15,7 @@ import { SuggestionList } from "./SuggestionList";
  * `onActivate` claims the single click/tap for the host (a per-chip popover); text editing then stays on
  * double-click, so the popover must offer its own way to rename on touch. `suffix` trails the label.
  */
-export function EditableChip({ value, onCommit, onRemove, sortable = false, getSuggestions, onActivate, suffix }: {
+export function EditableChip({ value, onCommit, onRemove, sortable = false, getSuggestions, onActivate, suffix, label, editable = true }: {
   value: string;
   onCommit: (next: string) => void;
   onRemove: (value: string) => void;
@@ -23,6 +23,11 @@ export function EditableChip({ value, onCommit, onRemove, sortable = false, getS
   getSuggestions?: (query: string) => string[];
   onActivate?: (value: string) => void;
   suffix?: string;
+  /** What to show, when the stored value isn't readable as-is (a value holding placeholder tokens). */
+  label?: string;
+  /** False for a value the plain text editor can't represent — removing and re-adding is the way to change
+   *  it, rather than exposing raw tokens in a text box. */
+  editable?: boolean;
 }) {
   const [editing, setEditing] = useState(false);
   const [text, setText] = useState(value);
@@ -45,7 +50,7 @@ export function EditableChip({ value, onCommit, onRemove, sortable = false, getS
     if (editing && inputRef.current) { inputRef.current.focus(); inputRef.current.select(); }
   }, [editing]);
 
-  const startEdit = () => { setText(value); setActive(0); setEditing(true); };
+  const startEdit = () => { if (!editable) return; setText(value); setActive(0); setEditing(true); };
   const cancel = () => { setEditing(false); setText(value); };
   const finish = (raw: string) => {
     setEditing(false);
@@ -70,6 +75,8 @@ export function EditableChip({ value, onCommit, onRemove, sortable = false, getS
     }
   };
 
+  const shown = label ?? value;
+
   if (editing) {
     return (
       <span className="relative inline-flex max-w-full">
@@ -93,7 +100,7 @@ export function EditableChip({ value, onCommit, onRemove, sortable = false, getS
 
   return (
     <Chip
-      label={suffix ? `${value} ${suffix}` : value}
+      label={suffix ? `${shown} ${suffix}` : shown}
       removeLabel={value}
       onRemove={onRemove}
       innerRef={sortable ? setNodeRef : undefined}
@@ -120,7 +127,9 @@ export function EditableChip({ value, onCommit, onRemove, sortable = false, getS
           const kind = pointerType.current ?? (e.nativeEvent as PointerEvent).pointerType;
           if (kind === "touch" || kind === "pen") startEdit();
         },
-        title: onActivate ? "Click to open, double-click to rename" : "Tap or double-click to edit",
+        title: !editable
+          ? "Holds a placeholder — remove and re-add to change it"
+          : onActivate ? "Click to open, double-click to rename" : "Tap or double-click to edit",
       }}
       grabbable={sortable}
     />

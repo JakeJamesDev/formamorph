@@ -46,6 +46,7 @@ const EntityFields = ({ value, onChange, placeholders = [], locationOptions, sel
         <KeywordChips
           keywords={value.aliases ?? []}
           onChange={(aliases) => onChange('aliases', aliases)}
+          placeholders={placeholders}
           placeholder="e.g. Liz — press Enter for each"
         />
         <p className="text-sm text-muted-foreground">
