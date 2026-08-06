@@ -43,4 +43,19 @@ describe('PromptField (markdown wiring)', () => {
     expect(screen.getByLabelText('Undo')).toBeDisabled();
     expect(screen.getByLabelText('Redo')).toBeDisabled();
   });
+
+  it('offers undo/redo on a plain prompt field too, not only a markdown one', () => {
+    // The keyboard shortcuts always worked here; without buttons nothing said so.
+    render(<Harness />);
+    expect(screen.getByLabelText('Undo')).toBeInTheDocument();
+    expect(screen.getByLabelText('Redo')).toBeInTheDocument();
+    expect(screen.queryByLabelText('Bold')).not.toBeInTheDocument();
+  });
+
+  it('shows exactly one undo and one redo button on a markdown field', () => {
+    // They used to live inside the markdown toolbar; moving them to the chrome row must not leave a pair.
+    render(<Harness markdown />);
+    expect(screen.getAllByLabelText('Undo')).toHaveLength(1);
+    expect(screen.getAllByLabelText('Redo')).toHaveLength(1);
+  });
 });
