@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type MouseEvent as ReactMouseEvent } from 'react';
 import {
   $getRoot, $getNodeByKey, $getSelection, $isRangeSelection, $createRangeSelection, $setSelection,
   $insertNodes, $createParagraphNode,
@@ -45,12 +45,13 @@ const MARKDOWN_TOOLBAR: { action: MarkdownAction; Icon: typeof Bold; title: stri
 ];
 
 
-/** Markdown formatting toolbar. Reads the editor as a flat string, applies the pure transform, rebuilds,
- *  then restores the selection the transform asked for. Editing the tree directly (rather than routing
- *  through `onChange`) keeps ValueSyncPlugin's external-value path — and its scroll reset — out of it. */
-function MarkdownToolbar({ parse, disabled }: { parse: ChipVocabulary['parse']; disabled: boolean }) {
+const TOOLBAR_BTN = 'rounded p-1.5 text-muted-foreground hover:bg-accent hover:text-foreground disabled:pointer-events-none disabled:opacity-50';
+
+/** Undo/redo for the editor, on every prompt field rather than only the markdown ones — the keyboard
+ *  shortcuts always worked, but a field with no buttons gives no sign that they would. History lives in
+ *  Lexical's HistoryPlugin; this mirrors its can-undo/redo so the buttons disable when there is nothing to do. */
+function HistoryButtons({ disabled }: { disabled: boolean }) {
   const [editor] = useLexicalComposerContext();
-  // History lives in Lexical's HistoryPlugin; mirror its can-undo/redo so the buttons disable like the rest.
   const [canUndo, setCanUndo] = useState(false);
   const [canRedo, setCanRedo] = useState(false);
   useEffect(() => mergeRegister(
@@ -58,34 +59,52 @@ function MarkdownToolbar({ parse, disabled }: { parse: ChipVocabulary['parse']; 
     editor.registerCommand(CAN_REDO_COMMAND, (v: boolean) => { setCanRedo(v); return false; }, COMMAND_PRIORITY_LOW),
   ), [editor]);
 
+  // Pressing the button must not take focus off the editor: the selection goes with it, and Lexical then
+  // has no range to restore the undone state into — the command runs and nothing visibly changes.
+  const run = (command: typeof UNDO_COMMAND) => (event: ReactMouseEvent) => {
+    event.preventDefault();
+    editor.dispatchCommand(command, undefined);
+    editor.focus();
+  };
+
+  return (
+    <>
+      <button
+        type="button" title="Undo" aria-label="Undo" className={TOOLBAR_BTN}
+        disabled={disabled || !canUndo}
+        onMouseDown={run(UNDO_COMMAND)}
+      >
+        <Undo2 className="h-4 w-4" />
+      </button>
+      <button
+        type="button" title="Redo" aria-label="Redo" className={TOOLBAR_BTN}
+        disabled={disabled || !canRedo}
+        onMouseDown={run(REDO_COMMAND)}
+      >
+        <Redo2 className="h-4 w-4" />
+      </button>
+    </>
+  );
+}
+
+/** Markdown formatting toolbar. Reads the editor as a flat string, applies the pure transform, rebuilds,
+ *  then restores the selection the transform asked for. Editing the tree directly (rather than routing
+ *  through `onChange`) keeps ValueSyncPlugin's external-value path — and its scroll reset — out of it. */
+function MarkdownToolbar({ parse, disabled }: { parse: ChipVocabulary['parse']; disabled: boolean }) {
+  const [editor] = useLexicalComposerContext();
+
   const apply = (action: MarkdownAction) => {
     editor.update(() => $applyMarkdownAction(parse, action));
     editor.focus();
   };
 
-  const btn = 'rounded p-1.5 text-muted-foreground hover:bg-accent hover:text-foreground disabled:pointer-events-none disabled:opacity-50';
   return (
     <div className="flex flex-wrap gap-1">
       {MARKDOWN_TOOLBAR.map(({ action, Icon, title }) => (
-        <button key={action} type="button" title={title} aria-label={title} disabled={disabled} onClick={() => apply(action)} className={btn}>
+        <button key={action} type="button" title={title} aria-label={title} disabled={disabled} onClick={() => apply(action)} className={TOOLBAR_BTN}>
           <Icon className="h-4 w-4" />
         </button>
       ))}
-      <span className="mx-1 w-px self-stretch bg-border" />
-      <button
-        type="button" title="Undo" aria-label="Undo" className={btn}
-        disabled={disabled || !canUndo}
-        onClick={() => editor.dispatchCommand(UNDO_COMMAND, undefined)}
-      >
-        <Undo2 className="h-4 w-4" />
-      </button>
-      <button
-        type="button" title="Redo" aria-label="Redo" className={btn}
-        disabled={disabled || !canRedo}
-        onClick={() => editor.dispatchCommand(REDO_COMMAND, undefined)}
-      >
-        <Redo2 className="h-4 w-4" />
-      </button>
     </div>
   );
 }
@@ -704,6 +723,9 @@ const PromptField = ({ value, onChange, variables = [], vocabulary, previewValue
     },
   } : {};
 
+  // Nothing to type into: read-only, or the preview pane is the one showing.
+  const editingDisabled = readOnly || (!split && showTabs && tab !== 'edit');
+
   const chrome = (
     // The chip palette is many chips wide and wraps; it must be allowed to shrink (`min-w-0`) or its
     // intrinsic width shoves the buttons off the side of a phone instead of wrapping.
@@ -712,6 +734,8 @@ const PromptField = ({ value, onChange, variables = [], vocabulary, previewValue
         <VariableToolbar vocab={vocab} interactive={!readOnly && (split || !showTabs || tab === 'edit')} />
       </div>
       <div className="flex flex-shrink-0 items-center gap-1">
+        <HistoryButtons disabled={editingDisabled} />
+        <span className="mx-0.5 w-px self-stretch bg-border" />
         {showTabs && fullscreen && effectiveWidth - 12 >= MIN_PANE_WIDTH * 2 && (
           <button
             type="button"
@@ -790,7 +814,7 @@ const PromptField = ({ value, onChange, variables = [], vocabulary, previewValue
     <div ref={measureRef} className={cn('flex flex-col flex-1 min-h-0 gap-2', className)}>
       {chrome}
       {readOnlyNotice}
-      {markdown && <MarkdownToolbar parse={vocab.parse} disabled={readOnly || (!split && showTabs && tab !== 'edit')} />}
+      {markdown && <MarkdownToolbar parse={vocab.parse} disabled={editingDisabled} />}
       {panes}
     </div>
   );
