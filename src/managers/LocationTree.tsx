@@ -7,10 +7,11 @@ import {
 } from '@/lib/locationTree';
 import { SortableTree, TREE_INDENT, type SortableTreeAdapter } from './SortableTree';
 import { EmptyListHint } from '@/components/EmptyListHint';
+import { labelPlaceholders } from '@/lib/placeholders';
 
 /** The Locations tab's sub-location tree: a flat sortable list where horizontal drag sets nesting depth. */
 const LocationTree = ({ selectedId, onSelect }: { selectedId: string | null; onSelect: (id: string) => void }) => {
-  const { locations, setLocations } = useGameData();
+  const { locations, setLocations, placeholders } = useGameData();
 
   // Ids that are a parent of at least one location — drives the chevron (from the full list, so a
   // collapsed node still shows its expand chevron).
@@ -31,7 +32,7 @@ const LocationTree = ({ selectedId, onSelect }: { selectedId: string | null; onS
       // Every location can hold children, so non-parents reserve the chevron slot for alignment.
       lead: parentIds.has(node.id) ? 'chevron' : 'spacer',
       collapseLabels: ['Expand sub-locations', 'Collapse sub-locations'],
-      label: node.location.name,
+      label: labelPlaceholders(node.location.name, placeholders),
       remove: () => setLocations(removeLocationPromotingChildren(locations, node.id)),
       duplicate: () => {
         const index = locations.findIndex((l) => l.id === node.id);

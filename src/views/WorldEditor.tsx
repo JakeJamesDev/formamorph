@@ -47,7 +47,7 @@ import { parseJsonText, terminateWorker as terminateJsonWorker } from '@/lib/jso
 import AddDictionaryModal from '@/components/modals/AddDictionaryModal';
 import AddEntityModal from '@/components/modals/AddEntityModal';
 import { exportEntityCard } from '@/lib/entityFile';
-import { absorbPlaceholders, remapPlaceholderIds } from '@/lib/placeholders';
+import { absorbPlaceholders, remapPlaceholderIds, labelPlaceholders } from '@/lib/placeholders';
 import {
   DndContext,
   closestCenter,
@@ -347,10 +347,12 @@ const WorldEditor = ({ onClose, embedded = false, backButton }: {
       activeTab === "traits" ? traits :
       activeTab === "statUpdates" ? statUpdates : [];
 
+    // Search what the author reads. A name holding a chip is stored as a token, so matching the raw value
+    // would mean typing a UUID to find it.
     return itemsToFilter.filter(item =>
-      item.name.toLowerCase().includes(searchTerm.toLowerCase())
+      labelPlaceholders(item.name, placeholders).toLowerCase().includes(searchTerm.toLowerCase())
     );
-  }, [activeTab, stats, entities, locations, traits, statUpdates, searchTerm]);
+  }, [activeTab, stats, entities, locations, traits, statUpdates, searchTerm, placeholders]);
 
   const selectedItem = filteredItems.find(item => item.id === selectedItemId);
   // Traits tab can select either a trait or a group (the right panel branches on which).
@@ -470,7 +472,7 @@ const WorldEditor = ({ onClose, embedded = false, backButton }: {
           {items.map((item) => (
             <SortableRow
               key={item.id}
-              item={item}
+              item={{ ...item, name: labelPlaceholders(item.name, placeholders) }}
               selected={selectedItemId === item.id}
               onSelect={setSelectedItemId}
               onRemove={removeItem}

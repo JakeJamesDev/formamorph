@@ -6,10 +6,11 @@ import {
 } from '@/lib/traitTree';
 import { SortableTree, TREE_INDENT, type SortableTreeAdapter } from './SortableTree';
 import { EmptyListHint } from '@/components/EmptyListHint';
+import { labelPlaceholders } from '@/lib/placeholders';
 
 /** The Traits tab's folder tree: a flat sortable list where horizontal drag sets nesting depth. */
 const TraitTree = ({ selectedId, onSelect }: { selectedId: string | null; onSelect: (id: string) => void }) => {
-  const { traits, traitGroups, setTraits, setTraitGroups, removeTrait, removeTraitGroup } = useGameData();
+  const { traits, traitGroups, setTraits, setTraitGroups, removeTrait, removeTraitGroup, placeholders } = useGameData();
 
   const adapter: SortableTreeAdapter<FlatTraitNode> = {
     getVisible: (collapsed) => removeChildrenOf(flattenTraitTree(buildTraitTree(traitGroups, traits)), collapsed),
@@ -27,7 +28,7 @@ const TraitTree = ({ selectedId, onSelect }: { selectedId: string | null; onSele
         lead: isGroup ? 'chevron' : 'none',
         collapseLabels: ['Expand group', 'Collapse group'],
         icon: isGroup ? <Folder className="h-4 w-4 shrink-0" /> : undefined,
-        label: isGroup ? node.group?.name : node.leaf?.name,
+        label: labelPlaceholders(isGroup ? node.group?.name ?? '' : node.leaf?.name ?? '', placeholders),
         labelClass: isGroup ? 'font-medium' : undefined,
         remove: () => { if (isGroup) removeTraitGroup(node.id); else removeTrait(node.id); },
         duplicate: () => {
