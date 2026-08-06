@@ -8,6 +8,7 @@ import PromptField from "@/components/prompt/PromptField";
 import PlaceholderField from "@/components/prompt/PlaceholderField";
 import { plainVocabulary } from "@/lib/chipVocabulary";
 import { PROMPT_KIND_VARIABLES } from "@/lib/promptVariables";
+import { authoredPreviewValues } from "@/lib/authoredPreviewValues";
 import { composePreviewValues } from "@/lib/previewValuePool";
 import { storedNarrationPrompt } from "@/lib/worldPrompt";
 import { defaultSystemPrompt } from "@/components/game/GamePrompts";
@@ -20,18 +21,30 @@ import { useDanbooruTags } from "@/lib/useDanbooruTags";
  * running on the player's own preset.
  */
 const NarrationPromptField = () => {
-  const { worldOverview, updateWorldOverview } = useGameData();
+  const {
+    worldOverview, updateWorldOverview, stats, locations, entities, traits, traitGroups, dictionaries,
+    placeholders,
+  } = useGameData();
   const {
     paragraphLimit, maxTokens, markdownOutput, activeSectionStyle, limitActiveCharacters, activeCharacterLimit,
   } = useSettings();
-  // The same stand-in context Settings previews its prompts against — no playthrough exists in the editor,
-  // and without values to swap the chips for there is nothing to preview and no split view to earn.
+  // The world being edited, previewed as its own opening scene — the author reads their entities and their
+  // location, not a stand-in's. Tokens only a turn can fill (the action, the narration, who is speaking)
+  // fall through to the shared samples, exactly as they do for a live game between turns.
   const previewValues = useMemo(
-    () => composePreviewValues({
-      paragraphLimit, maxTokens, markdownOutput, sectionStyle: activeSectionStyle,
-      limitActiveCharacters, activeCharacterLimit,
-    }),
-    [paragraphLimit, maxTokens, markdownOutput, activeSectionStyle, limitActiveCharacters, activeCharacterLimit],
+    () => composePreviewValues(
+      {
+        paragraphLimit, maxTokens, markdownOutput, sectionStyle: activeSectionStyle,
+        limitActiveCharacters, activeCharacterLimit,
+      },
+      authoredPreviewValues({
+        worldOverview, stats, locations, entities, traits, traitGroups, dictionaries, placeholders,
+      }),
+    ),
+    [
+      paragraphLimit, maxTokens, markdownOutput, activeSectionStyle, limitActiveCharacters, activeCharacterLimit,
+      worldOverview, stats, locations, entities, traits, traitGroups, dictionaries, placeholders,
+    ],
   );
   const stored = storedNarrationPrompt(worldOverview);
   const enabled = typeof stored === 'string' && worldOverview.promptOverrides?.systemPromptEnabled !== false;
@@ -61,7 +74,7 @@ const NarrationPromptField = () => {
             onChange={(systemPrompt) => updateWorldOverview({ promptOverrides: { ...worldOverview.promptOverrides, systemPrompt } })}
             variables={PROMPT_KIND_VARIABLES.narration}
             previewValues={previewValues}
-            sampleData
+            sampleData="Your world, sample turn"
             ariaLabel="World narration prompt"
             resizable
           />

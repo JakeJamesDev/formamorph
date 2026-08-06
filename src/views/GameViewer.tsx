@@ -79,7 +79,7 @@ import { reasoningEffortBody, resolvePromptReasoning, reasoningBudgetBody } from
 import { splitSentenceSegments } from "../lib/ttsChunks";
 import { selectDueDigests, applyDigest, applyImportance, parseTurnContent, recentParticipants, selectDueDiaries, pendingDiaryNames, applyDiary } from "../lib/turnDigest";
 import { buildTraitContext } from "../lib/traitTree";
-import { buildLocationContext, buildEntityContext, buildSublocationsContext, buildSublocationEntitiesContext, buildReachableLocationsContext, buildReachableEntitiesContext, buildDestinationsContext, buildParentLocationContext, buildSceneEntitiesContext, scenePresentHere, navigableDestinations, sublocationEntityIds } from "../lib/locationContext";
+import { buildLocationContext, buildEntityContext, buildSublocationsContext, buildSublocationEntitiesContext, buildReachableLocationsContext, buildReachableEntitiesContext, buildDestinationsContext, buildParentLocationContext, buildSceneEntitiesContext, scenePresentHere, navigableDestinations, sublocationEntityIds, expandScopedTokens } from "../lib/locationContext";
 import { primeRolls, resolvePlaceholders } from "@/lib/placeholders";
 import { resolveStartingLocation } from "../lib/startingLocation";
 import { NONE_PLACEHOLDER } from "../lib/promptFallbacks";
@@ -1413,32 +1413,10 @@ const GameViewer = ({
       "<TIME>": timeContext && !openingHourPending ? formatAbsolute(gameTime, calendar) : NONE_PLACEHOLDER,
     };
 
-    // Generate every scope × content (full/summary/name) × format (simple/markdown/xml) variant token. The id order
-    // (scope.content.format) mirrors the chip's axis order, so tokens match what encodeVariant produces.
-    const formats: { id: string; format: CtxOpts["format"] }[] = [
-      { id: "", format: "simple" },
-      { id: "markdown", format: "markdown" },
-      { id: "xml", format: "xml" },
-    ];
-    // The content axis is three-way: full detail, the short AI summary, or bare names for use mid-sentence.
-    const contents: { id: string; opts: CtxOpts }[] = [
-      { id: "", opts: {} },
-      { id: "summary", opts: { preferSummary: true } },
-      { id: "name", opts: { nameOnly: true } },
-    ];
-    const addScoped = (base: string, scopes: Record<string, (opts: CtxOpts) => string>) => {
-      for (const [scope, build] of Object.entries(scopes)) {
-        for (const { id: contentId, opts: contentOpts } of contents) {
-          for (const { id: fmtId, format } of formats) {
-            const id = [scope, contentId, fmtId].filter(Boolean).join(".");
-            const token = id ? `${base.slice(0, -1)}|${id}>` : base;
-            values[token] = build({ ...contentOpts, format });
-          }
-        }
-      }
-    };
-    addScoped("<LOCATION>", locationScopes);
-    addScoped("<ENTITIES>", entityScopes);
+    // Every scope × content × format variant, enumerated by the shared expander so the editor's preview
+    // covers exactly the same token set.
+    Object.assign(values, expandScopedTokens("<LOCATION>", locationScopes));
+    Object.assign(values, expandScopedTokens("<ENTITIES>", entityScopes));
 
     // Resolve placeholder chips in every assembled value before it's folded into a prompt.
     for (const k in values) values[k] = resolvePH(values[k]);
