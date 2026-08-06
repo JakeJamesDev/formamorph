@@ -15,8 +15,10 @@ import { LexicalErrorBoundary } from '@lexical/react/LexicalErrorBoundary';
 import { useLexicalComposerContext } from '@lexical/react/LexicalComposerContext';
 import {
   Bold, Italic, Heading1, Heading2, List, ListOrdered, Link2, Quote, Code, Undo2, Redo2,
+  Maximize2, Minimize2, Columns2, Square,
 } from 'lucide-react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Dialog, DialogContent } from '@/components/ui/dialog';
 import { CHIP_BASE } from '@/components/Chip';
 import { MarkdownRenderer } from '@/components/game/MarkdownRenderer';
 import { type MarkdownAction } from '@/lib/markdownToolbar';
@@ -24,6 +26,8 @@ import { type PromptVariable } from '@/lib/promptVariables';
 import { resolveToken } from '@/lib/promptTemplate';
 import { ChipVocabularyContext, promptVocabulary, type ChipVocabulary } from '@/lib/chipVocabulary';
 import { cn } from '@/lib/utils';
+import { useIsMobile } from '@/lib/useIsMobile';
+import { resolveLayout, usePromptSplitMode, useContainerWidth, MIN_PANE_WIDTH } from '@/lib/promptLayout';
 import { VariableNode, $createVariableNode, $isVariableNode, PromptDragContext } from './VariableNode';
 import { buildEditorState, serializeRoot, $applyMarkdownAction } from './promptFieldState';
 
@@ -416,6 +420,17 @@ const PromptField = ({ value, onChange, variables = [], vocabulary, previewValue
   // A markdown field always has something to preview (the rendered prose); a plain chip field only earns
   // the toggle once there are values to swap in.
   const showTabs = markdown || !!previewValues;
+
+  // Layout: the field measures itself rather than asking the device, so a shrunken desktop window falls
+  // back to tabs and phones never reach the split threshold — no breakpoint to keep in sync.
+  const [measureRef, containerWidth] = useContainerWidth();
+  const [splitMode, setSplitMode] = usePromptSplitMode();
+  const [fullscreen, setFullscreen] = useState(false);
+  const isMobile = useIsMobile();
+  // Fullscreen measures the viewport, not the inline slot it was opened from.
+  const effectiveWidth = fullscreen ? (typeof window !== 'undefined' ? window.innerWidth - 48 : 0) : containerWidth;
+  const layout = resolveLayout(splitMode, effectiveWidth, showTabs);
+  const split = layout === 'split';
   // Scroll containers for each tab (only one is mounted at a time). ContentEditable forwards its ref to
   // the editable <div>, which is the Edit-mode scroller (overflow-auto via EDITOR_CLASS).
   const editScrollRef = useRef<HTMLDivElement | null>(null);
@@ -427,11 +442,31 @@ const PromptField = ({ value, onChange, variables = [], vocabulary, previewValue
   // True while we're programmatically scrolling, so our own scroll events don't clobber the proxy.
   const applying = useRef(false);
 
+  // Re-open the gate once the scroll event our own `applyAnchor` provoked has been and gone. rAF alone
+  // would strand it: a hidden or non-compositing tab stops firing frames, and a gate that never re-opens
+  // kills scroll sync for the rest of the session. The timer is the one that always arrives.
+  const releaseApplying = () => {
+    const open = () => { applying.current = false; };
+    requestAnimationFrame(open);
+    setTimeout(open, 50);
+  };
+
   // A real user scroll on the visible pane refreshes the proxy from that pane (currentTarget is the
   // scroller). Our own apply-driven scrolls are gated out via `applying`.
+  //
+  // With both panes on screen the same proxy drives the other pane live: the anchor was always a
+  // pane-independent position, so keeping two panes together is the same mapping a tab switch made once.
   const handleScroll = (e: React.UIEvent<HTMLDivElement>) => {
     if (applying.current) return;
-    proxyAnchor.current = captureAnchor(e.currentTarget, tab);
+    const from = e.currentTarget === editScrollRef.current ? 'edit' : 'preview';
+    const anchor = captureAnchor(e.currentTarget, from);
+    proxyAnchor.current = anchor;
+    if (!split || !anchor) return;
+    const target = from === 'edit' ? previewScrollRef.current : editScrollRef.current;
+    if (!target) return;
+    applying.current = true;
+    applyAnchor(target, from === 'edit' ? 'preview' : 'edit', anchor);
+    releaseApplying();
   };
 
   // On an external value change (Reset / template swap), snap both panes back to the top — the browser keeps
@@ -443,7 +478,7 @@ const PromptField = ({ value, onChange, variables = [], vocabulary, previewValue
     requestAnimationFrame(() => {
       if (editScrollRef.current) editScrollRef.current.scrollTop = 0;
       if (previewScrollRef.current) previewScrollRef.current.scrollTop = 0;
-      requestAnimationFrame(() => { applying.current = false; });
+      releaseApplying();
     });
   };
 
@@ -492,11 +527,26 @@ const PromptField = ({ value, onChange, variables = [], vocabulary, previewValue
   // unmounts the inactive pane) and would size Edit without Preview. `h-full` panes then fill the new height.
   // `flex-none` is what makes the drag take: as a flex-1 item, flex owns the main size and the height a
   // resize writes is ignored. Unset, it sizes to content (floored at min-h) exactly as before.
-  const resizeClass = resizable && 'flex-none resize-y overflow-hidden min-h-[160px]';
+  // A dragged height only makes sense inline: fullscreen owns its own height.
+  const resizeClass = resizable && !fullscreen && 'flex-none resize-y overflow-hidden min-h-[160px]';
   const editorSurface = (
-    <div className={cn('relative flex-1 min-h-0', !showTabs && resizeClass)}>
+    <div
+      className={cn('relative flex-1 min-h-0', !showTabs && resizeClass)}
+      // On a phone the inline field is ~225px tall against a prompt many screens long, so editing there is
+      // the cramped case this whole feature exists to fix — go straight to the full screen. The handler
+      // sits on this wrapper because Lexical's ContentEditable doesn't forward arbitrary DOM props;
+      // focus bubbles here as focusin, which is what React's onFocus listens for anyway.
+      onFocus={isMobile && !fullscreen ? () => setFullscreen(true) : undefined}
+    >
       <PlainTextPlugin
-        contentEditable={<ContentEditable ref={editScrollRef} onScroll={handleScroll} className={EDITOR_CLASS} aria-label={ariaLabel} />}
+        contentEditable={
+          <ContentEditable
+            ref={editScrollRef}
+            onScroll={handleScroll}
+            className={EDITOR_CLASS}
+            aria-label={ariaLabel}
+          />
+        }
         placeholder={
           <div className="pointer-events-none absolute left-3 top-2 text-sm text-muted-foreground">
             {placeholder ?? 'Empty prompt'}
@@ -507,34 +557,122 @@ const PromptField = ({ value, onChange, variables = [], vocabulary, previewValue
     </div>
   );
 
+  const previewSurface = markdown ? (
+    <MarkdownPreviewPane value={value} previewValues={previewValues} vocab={vocab} scrollRef={previewScrollRef} onScroll={handleScroll} />
+  ) : (
+    <PreviewPane value={value} previewValues={previewValues ?? {}} vocab={vocab} scrollRef={previewScrollRef} onScroll={handleScroll} />
+  );
+
+  // Swipe between panes when they can't sit side by side and the screen is the whole surface — the
+  // mobile expression of the split, landing on the same content position via the shared anchor.
+  const swipeable = fullscreen && !split && showTabs;
+  const touchX = useRef<number | null>(null);
+  const swipeHandlers = swipeable ? {
+    onTouchStart: (e: React.TouchEvent) => { touchX.current = e.touches[0].clientX; },
+    onTouchEnd: (e: React.TouchEvent) => {
+      if (touchX.current === null) return;
+      const dx = e.changedTouches[0].clientX - touchX.current;
+      touchX.current = null;
+      if (Math.abs(dx) < 60) return;
+      const next = dx < 0 ? 'preview' : 'edit';
+      if (next !== tab) { setTab(next); if (next === 'preview') onPreviewOpen?.(); }
+    },
+  } : {};
+
+  const chrome = (
+    // The chip palette is many chips wide and wraps; it must be allowed to shrink (`min-w-0`) or its
+    // intrinsic width shoves the buttons off the side of a phone instead of wrapping.
+    <div className="flex items-start gap-1 flex-shrink-0">
+      <div className="min-w-0 flex-1">
+        <VariableToolbar vocab={vocab} interactive={!readOnly && (split || !showTabs || tab === 'edit')} />
+      </div>
+      <div className="flex flex-shrink-0 items-center gap-1">
+        {showTabs && !fullscreen && containerWidth - 12 >= MIN_PANE_WIDTH * 2 && (
+          <button
+            type="button"
+            onClick={() => setSplitMode(split ? 'tabs' : 'split')}
+            title={split ? 'Show one pane at a time' : 'Show edit and preview side by side'}
+            aria-label={split ? 'Show one pane at a time' : 'Show edit and preview side by side'}
+            className="rounded p-1.5 text-muted-foreground hover:bg-accent hover:text-foreground"
+          >
+            {split ? <Square className="h-4 w-4" /> : <Columns2 className="h-4 w-4" />}
+          </button>
+        )}
+        <button
+          type="button"
+          onClick={() => setFullscreen((f) => !f)}
+          title={fullscreen ? 'Exit full screen' : 'Edit full screen'}
+          aria-label={fullscreen ? 'Exit full screen' : 'Edit full screen'}
+          className="rounded p-1.5 text-muted-foreground hover:bg-accent hover:text-foreground"
+        >
+          {fullscreen ? <Minimize2 className="h-4 w-4" /> : <Maximize2 className="h-4 w-4" />}
+        </button>
+      </div>
+    </div>
+  );
+
+  const panes = split ? (
+    <div className="flex flex-1 min-h-0 gap-3">
+      <div className="flex-1 min-w-0 flex flex-col">{editorSurface}</div>
+      <div className="flex-1 min-w-0 flex flex-col">{previewSurface}</div>
+    </div>
+  ) : showTabs ? (
+    <Tabs value={tab} onValueChange={(v) => { setTab(v); if (v === 'preview') onPreviewOpen?.(); }} className={cn('flex flex-col flex-1 min-h-0', resizeClass)}>
+      {swipeable ? (
+        // Dots, not tab buttons: the gesture is the control, and a full-width tab bar on a phone spends
+        // height the editor just got back.
+        <div className="flex justify-center gap-1.5 py-1 flex-shrink-0" aria-hidden>
+          {['edit', 'preview'].map((t) => (
+            <span key={t} className={cn('h-1.5 w-1.5 rounded-full', tab === t ? 'bg-primary' : 'bg-muted-foreground/40')} />
+          ))}
+        </div>
+      ) : (
+        <TabsList className="grid w-full grid-cols-2 flex-shrink-0">
+          <TabsTrigger value="edit">Edit</TabsTrigger>
+          <TabsTrigger value="preview">Preview</TabsTrigger>
+        </TabsList>
+      )}
+      <TabsContent value="edit" className="mt-2 flex-1 min-h-0 data-[state=active]:flex flex-col" {...swipeHandlers}>
+        {editorSurface}
+      </TabsContent>
+      <TabsContent value="preview" className="mt-2 flex-1 min-h-0 data-[state=active]:flex flex-col" {...swipeHandlers}>
+        {previewSurface}
+      </TabsContent>
+    </Tabs>
+  ) : (
+    editorSurface
+  );
+
+  const body = (
+    <div ref={measureRef} className={cn('flex flex-col flex-1 min-h-0 gap-2', className)}>
+      {chrome}
+      {markdown && <MarkdownToolbar parse={vocab.parse} disabled={readOnly || (!split && showTabs && tab !== 'edit')} />}
+      {panes}
+    </div>
+  );
+
   return (
     <LexicalComposer initialConfig={initialConfig}>
       <ChipVocabularyContext.Provider value={vocab}>
       <PromptDragContext.Provider value={dragKey}>
-        <div className={cn('flex flex-col flex-1 min-h-0 gap-2', className)}>
-          <VariableToolbar vocab={vocab} interactive={!readOnly && (!showTabs || tab === 'edit')} />
-          {markdown && <MarkdownToolbar parse={vocab.parse} disabled={readOnly || tab !== 'edit'} />}
-          {showTabs ? (
-            <Tabs value={tab} onValueChange={(v) => { setTab(v); if (v === 'preview') onPreviewOpen?.(); }} className={cn('flex flex-col flex-1 min-h-0', resizeClass)}>
-              <TabsList className="grid w-full grid-cols-2 flex-shrink-0">
-                <TabsTrigger value="edit">Edit</TabsTrigger>
-                <TabsTrigger value="preview">Preview</TabsTrigger>
-              </TabsList>
-              <TabsContent value="edit" className="mt-2 flex-1 min-h-0 data-[state=active]:flex flex-col">
-                {editorSurface}
-              </TabsContent>
-              <TabsContent value="preview" className="mt-2 flex-1 min-h-0 data-[state=active]:flex flex-col">
-                {markdown ? (
-                  <MarkdownPreviewPane value={value} previewValues={previewValues} vocab={vocab} scrollRef={previewScrollRef} onScroll={handleScroll} />
-                ) : (
-                  <PreviewPane value={value} previewValues={previewValues ?? {}} vocab={vocab} scrollRef={previewScrollRef} onScroll={handleScroll} />
-                )}
-              </TabsContent>
-            </Tabs>
-          ) : (
-            editorSurface
-          )}
-        </div>
+        {/* A real (nested) dialog rather than a hand-rolled overlay: most of these fields live inside the
+            Settings dialog, and Radix parks `pointer-events: none` on the body while one is open — a
+            plain portaled div inherits that and renders dead, under Radix's own overlay. Letting Radix
+            own the stack also gives the fullscreen its focus trap and Escape for free. */}
+        {fullscreen ? (
+          <Dialog open onOpenChange={(o) => { if (!o) setFullscreen(false); }}>
+            <DialogContent
+              hideClose
+              aria-describedby={undefined}
+              aria-label={ariaLabel ?? 'Prompt editor'}
+              className="flex h-[100dvh] w-screen max-w-none flex-col gap-2 rounded-none border-0 p-4 sm:rounded-none"
+            >
+              {body}
+            </DialogContent>
+          </Dialog>
+        ) : (
+          body
+        )}
         <HistoryPlugin />
         <ValueSyncPlugin value={value} onChange={onChange} parse={vocab.parse} onExternalValue={resetScroll} />
         <EditablePlugin readOnly={readOnly} />
