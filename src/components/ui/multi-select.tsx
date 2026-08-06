@@ -813,7 +813,7 @@ export const MultiSelect = React.forwardRef<MultiSelectRef, MultiSelectProps>(
 								getAllOptions().length
 							} options selected. ${placeholder}`}
 							className={cn(
-								"flex p-1 rounded-md border border-input bg-background ring-offset-background min-h-10 h-auto items-center justify-between hover:bg-background focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 [&_svg]:pointer-events-auto",
+								"flex p-1 rounded-md border border-input bg-background min-h-10 h-auto items-center justify-between hover:bg-background focus:outline-none focus:ring-2 focus:ring-ring focus:ring-inset [&_svg]:pointer-events-auto",
 								autoSize ? "w-auto" : "w-full",
 								responsiveSettings.compactMode && "min-h-8 text-sm",
 								screenSize === "mobile" && "min-h-12 text-base",
@@ -981,7 +981,7 @@ export const MultiSelect = React.forwardRef<MultiSelectRef, MultiSelectProps>(
 												}
 											}}
 											aria-label={`Clear all ${selectedValues.length} selected options`}
-											className="flex items-center justify-center h-4 w-4 mx-2 cursor-pointer text-muted-foreground hover:text-foreground focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-1 rounded-sm">
+											className="flex items-center justify-center h-4 w-4 mx-2 cursor-pointer text-muted-foreground hover:text-foreground focus:outline-none focus:ring-2 focus:ring-ring focus:ring-inset rounded-sm">
 											<XIcon className="h-4 w-4" />
 										</div>
 										<Separator
