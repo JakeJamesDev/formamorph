@@ -45,7 +45,7 @@ const PlayerVrmPreview = ({ data, open, onClose }: { data: string; open: boolean
   return (
     <ModelDetailsPanel
       open={open}
-      name="Player Model"
+      name="Player Avatar"
       url={url}
       license={meta.license}
       size={meta.size}
@@ -109,7 +109,7 @@ const WorldOverviewManager = () => {
           });
         } catch (error) {
           console.error('Error processing VRM:', error);
-          toast.error('Error processing VRM. Please try again.');
+          toast.error('Error processing player avatar. Please try again.');
         }
       };
       reader.onerror = () => {
@@ -149,11 +149,11 @@ const WorldOverviewManager = () => {
           checked={worldOverview.use3DModel}
           onCheckedChange={(checked) => updateWorldOverview({ use3DModel: checked === true })}
         />
-        <Label htmlFor="use3DModel">Enable 3D Character Model (also allow the player to customize it)</Label>
+        <Label htmlFor="use3DModel">Enable 3D Player Avatar (also allow the player to customize it)</Label>
       </div>
       {worldOverview.use3DModel && (
         <div className="space-y-2">
-          <Label htmlFor="customVRM">Custom Player Model (VRM)</Label>
+          <Label htmlFor="customVRM">Custom Player Avatar (VRM)</Label>
           <input
             ref={vrmInputRef}
             id="customVRM"
@@ -168,7 +168,7 @@ const WorldOverviewManager = () => {
               onClick={handleVRMClick}
               className="flex-1"
             >
-              {worldOverview.customPlayerVRM ? "Change Player VRM" : "Add Player VRM"}
+              {worldOverview.customPlayerVRM ? "Change Player Avatar" : "Add Player Avatar"}
             </Button>
             {worldOverview.customPlayerVRM && (
               <>

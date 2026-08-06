@@ -15,7 +15,7 @@ import type { CharacterData, ModelMetadata } from '@/types';
 import ModelStorageService from '@/services/ModelStorageService';
 import { usePlayerModelUrl } from '@/lib/usePlayerModelUrl';
 import { useVrmCustomization } from '@/lib/useVrmCustomization';
-import { DEFAULT_MODEL_ID, DEFAULT_MODEL_URL } from '@/lib/defaultModel';
+import { DEFAULT_AVATAR_ID, DEFAULT_AVATAR_URL } from '@/lib/defaultAvatar';
 import { toast } from 'react-toastify';
 
 const CharacterCustomization = ({ onCharacterCustomized, onBack, onAbort }: {
@@ -31,15 +31,15 @@ const CharacterCustomization = ({ onCharacterCustomized, onBack, onAbort }: {
   const { setCaps, vrmViewerRef, viewerProps, controls, characterData } = useVrmCustomization();
 
   // Player model selection + local model library (per-browser, persisted in IndexedDB).
-  const [selectedModelId, setSelectedModelId] = useState<string>(worldOverview?.customPlayerVRM ? 'world' : DEFAULT_MODEL_ID);
+  const [selectedModelId, setSelectedModelId] = useState<string>(worldOverview?.customPlayerVRM ? 'world' : DEFAULT_AVATAR_ID);
   const [libraryModels, setLibraryModels] = useState<ModelMetadata[]>([]);
   const { url: resolvedModelUrl, resolving: resolvingModel } = usePlayerModelUrl(selectedModelId);
   const refreshLibrary = () => ModelStorageService.getModelMetadata().then(setLibraryModels);
   // Seed the bundled default before listing, so the picker isn't blank if this screen is reached before
-  // MainMenu has seeded (its default selection is DEFAULT_MODEL_ID, which must exist to show as selected).
+  // MainMenu has seeded (its default selection is DEFAULT_AVATAR_ID, which must exist to show as selected).
   // Seeding is idempotent — a no-op once done.
   useEffect(() => {
-    ModelStorageService.seedDefaultModel(DEFAULT_MODEL_URL).finally(refreshLibrary);
+    ModelStorageService.seedDefaultModel(DEFAULT_AVATAR_URL).finally(refreshLibrary);
   }, []);
 
   const handleModelUpload = async (e: ChangeEvent<HTMLInputElement>) => {
@@ -52,7 +52,7 @@ const CharacterCustomization = ({ onCharacterCustomized, onBack, onAbort }: {
       setSelectedModelId(model.id);
     } catch (err) {
       console.error('Failed to add model', err);
-      toast.error('Could not save that model (storage may be full).');
+      toast.error('Could not save that player avatar (storage may be full).');
     }
   };
 
@@ -60,11 +60,11 @@ const CharacterCustomization = ({ onCharacterCustomized, onBack, onAbort }: {
     try {
       await ModelStorageService.deleteModel(id);
     } catch (err) {
-      // The library refuses to drop its last model; surface why rather than failing the click silently.
+      // The library refuses to drop its last avatar; surface why rather than failing the click silently.
       toast.error((err as Error).message);
       return;
     }
-    if (selectedModelId === id) setSelectedModelId(worldOverview?.customPlayerVRM ? 'world' : DEFAULT_MODEL_ID);
+    if (selectedModelId === id) setSelectedModelId(worldOverview?.customPlayerVRM ? 'world' : DEFAULT_AVATAR_ID);
     await refreshLibrary();
   };
 
@@ -112,15 +112,15 @@ const CharacterCustomization = ({ onCharacterCustomized, onBack, onAbort }: {
           </div>
 
           <div className="space-y-2">
-            <h3 className="text-lg font-semibold">Character Model</h3>
+            <h3 className="text-lg font-semibold">Player Avatar</h3>
             <Select value={selectedModelId} onValueChange={setSelectedModelId}>
               <SelectTrigger>
-                <SelectValue placeholder="Select a model" />
+                <SelectValue placeholder="Select a Player Avatar" />
               </SelectTrigger>
               <SelectContent>
                 {/* No hardcoded "Default" entry: the bundled model is seeded into the library, so it lists
                     itself below. Two entries for one file would be the same model twice. */}
-                {worldOverview?.customPlayerVRM && <SelectItem value="world">World model</SelectItem>}
+                {worldOverview?.customPlayerVRM && <SelectItem value="world">World Avatar</SelectItem>}
                 {libraryModels.map((m) => (
                   <SelectItem key={m.id} value={m.id}>{m.name}</SelectItem>
                 ))}

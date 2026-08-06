@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import ModelStorageService from '@/services/ModelStorageService';
 import { useGameData } from '@/contexts/GameDataContext';
-import { LEGACY_DEFAULT_MODEL_SENTINEL } from '@/lib/defaultModel';
+import { LEGACY_DEFAULT_AVATAR_SENTINEL } from '@/lib/defaultAvatar';
 
 /**
  * Resolve a `characterData.playerModelId` into a URL for `VRMViewer.modelUrl`.
@@ -25,7 +25,7 @@ export function usePlayerModelUrl(playerModelId?: string): { url: string | undef
   const [resolving, setResolving] = useState(false);
 
   const isLibraryId = !!playerModelId
-    && playerModelId !== LEGACY_DEFAULT_MODEL_SENTINEL
+    && playerModelId !== LEGACY_DEFAULT_AVATAR_SENTINEL
     && playerModelId !== 'world';
 
   useEffect(() => {
@@ -53,7 +53,7 @@ export function usePlayerModelUrl(playerModelId?: string): { url: string | undef
     };
   }, [playerModelId, isLibraryId]);
 
-  const url = playerModelId === LEGACY_DEFAULT_MODEL_SENTINEL ? undefined
+  const url = playerModelId === LEGACY_DEFAULT_AVATAR_SENTINEL ? undefined
     : isLibraryId ? libraryUrl
     : worldUrl;
   return { url, resolving };

@@ -218,7 +218,7 @@ export const LeftPanel = ({ entities, onEntityClick, onRegenerateMemory }: {
               size="icon"
               className="absolute right-0"
               onClick={() => setShowModel((s) => !s)}
-              title={showModel ? "Hide model" : "Show model"}
+              title={showModel ? "Hide Player Avatar" : "Show Player Avatar"}
             >
               {showModel ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
             </Button>
@@ -247,7 +247,7 @@ export const LeftPanel = ({ entities, onEntityClick, onRegenerateMemory }: {
 
       <Tabs value={leftTab} onValueChange={setLeftTab} className="w-full flex-grow flex flex-col overflow-hidden">
         <TabsList className="flex-shrink-0">
-          {isMobile && <TabsTrigger value="model">Model</TabsTrigger>}
+          {isMobile && <TabsTrigger value="model">Avatar</TabsTrigger>}
           <TabsTrigger value="entities">Entities</TabsTrigger>
           <TabsTrigger value="notes">Notes</TabsTrigger>
           <TabsTrigger value="memory">Memory</TabsTrigger>

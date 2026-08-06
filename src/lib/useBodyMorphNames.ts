@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useGameData } from "@/contexts/GameDataContext";
-import { DEFAULT_MODEL_ID } from "./defaultModel";
+import { DEFAULT_AVATAR_ID } from "./defaultAvatar";
 import { loadBodyMorphNames } from "./vrmMorphLoader";
 import ModelStorageService from "@/services/ModelStorageService";
 import type { MorphSource } from "./bodyMorphs";
@@ -67,7 +67,7 @@ export function useBodyMorphSources(): { sources: MorphSource[]; loading: boolea
       const models = await ModelStorageService.getModelMetadata();
       const ordered = customUrl
         ? models
-        : [...models].sort((a, b) => (a.id === DEFAULT_MODEL_ID ? -1 : b.id === DEFAULT_MODEL_ID ? 1 : 0));
+        : [...models].sort((a, b) => (a.id === DEFAULT_AVATAR_ID ? -1 : b.id === DEFAULT_AVATAR_ID ? 1 : 0));
       for (const model of ordered) {
         const morphs = await morphsForModel(model.id);
         if (morphs.length) built.push({ heading: model.name, morphs });

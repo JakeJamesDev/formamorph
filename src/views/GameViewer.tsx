@@ -1452,18 +1452,11 @@ const GameViewer = ({
 
   // Live variable values for the Settings prompt-editor Preview tab (full-description variant, like the
   // game-text request). Only meaningful in-game, which is the only place this modal receives them.
-  const promptPreviewValues = useMemo<Record<string, string>>(() => ({
-    ...buildContextValues(),
-    "<LENGTH GUIDANCE>": lengthGuidance(paragraphLimit, maxTokens),
-    "<MARKDOWN GUIDANCE>": restyle(markdownGuidance(markdownOutput), activeSectionStyle),
-    "<ACTIVE CHARACTER GUIDANCE>": activeCharacterGuidance(limitActiveCharacters, activeCharacterLimit),
-    "<DICTIONARY>": "keyword-triggered lore active this turn (or N/A)",
-    "<DICTIONARY|before>": "background lore active this turn (or N/A)",
-    // Illustrative placeholders for the aux user-message templates (real values are per-turn at runtime).
-    "<PLAYER ACTION>": "the player's latest action",
-    "<NARRATION>": "the most recent narration",
-    "<CHARACTER NAME>": "the speaking character",
-  }), [buildContextValues, paragraphLimit, maxTokens, markdownOutput, activeSectionStyle, limitActiveCharacters, activeCharacterLimit]);
+  // What this playthrough can actually answer for. The lore blocks and the per-turn value tokens
+  // (action / narration / speaking character) are assembled fresh per request, so there is nothing live to
+  // show between turns — those fall through to the shared pool's samples rather than to a second set of
+  // placeholder strings kept here, which is how the two copies used to drift.
+  const promptPreviewValues = useMemo<Record<string, string>>(() => buildContextValues(), [buildContextValues]);
 
   const sendGameAction = async (action: string) => {
     // The opening turn is simply any action taken before the game has started (the player submits the

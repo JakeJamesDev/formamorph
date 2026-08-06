@@ -3,7 +3,7 @@ import type { World, SaveObject, Stat, GameState, Trait, PlayerStat } from '@/ty
 import { normalizeCustomVRM } from './worldImport';
 import { autoBindLegacyBodyStats } from './bodyMorphs';
 import { appendCurrentToHistory } from './turnHistory';
-import { DEFAULT_MODEL_ID, LEGACY_DEFAULT_MODEL_SENTINEL } from './defaultModel';
+import { DEFAULT_AVATAR_ID, LEGACY_DEFAULT_AVATAR_SENTINEL } from './defaultAvatar';
 import { migrateEntityImages } from './entityImages';
 
 /** Current app version, derived from package.json (see vite.config.js `define`). User-managed. */
@@ -228,8 +228,8 @@ export function stripSnapshotHistory(state: GameState): GameState {
  */
 function migrateDefaultModelId(state: GameState): GameState {
   const character = state?.characterData;
-  if (!character || character.playerModelId !== LEGACY_DEFAULT_MODEL_SENTINEL) return state;
-  return { ...state, characterData: { ...character, playerModelId: DEFAULT_MODEL_ID } };
+  if (!character || character.playerModelId !== LEGACY_DEFAULT_AVATAR_SENTINEL) return state;
+  return { ...state, characterData: { ...character, playerModelId: DEFAULT_AVATAR_ID } };
 }
 
 /** The legacy fixed body fields, before they were folded into the generic `bodyMorphs` map. */

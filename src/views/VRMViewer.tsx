@@ -8,7 +8,7 @@ import { FBXLoader } from 'three/examples/jsm/loaders/FBXLoader.js';
 import type { GLTF } from 'three/examples/jsm/loaders/GLTFLoader.js';
 import type { VRM, VRMHumanBoneName } from '@pixiv/three-vrm';
 import type { HairTypeDef } from '@/types';
-import { DEFAULT_MODEL_URL } from '@/lib/defaultModel';
+import { DEFAULT_AVATAR_URL } from '@/lib/defaultAvatar';
 
 // VRM/MToon material: the base three Material plus the standard/MToon fields the color code touches.
 type VrmMaterial = THREE.Material & {
@@ -131,7 +131,7 @@ const VRMViewer = forwardRef<VRMViewerHandle, VRMViewerProps>(({
   skinColor,
   currentHairStyle,
   hairLength,
-  modelUrl = DEFAULT_MODEL_URL,
+  modelUrl = DEFAULT_AVATAR_URL,
   animationFiles = ['./idle.fbx', './bashful.fbx', './idle_dwarf.fbx'],
   extraColors,
   onCapabilities,

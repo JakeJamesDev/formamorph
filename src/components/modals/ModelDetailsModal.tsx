@@ -50,7 +50,7 @@ export function ModelDetailsModal({ model, onClose }: {
     // A file with no VRM data is a plain glTF; name it for what it is rather than trusting the reported MIME,
     // which browsers often leave empty for .vrm.
     const extension = model.license?.metaVersion === null ? 'glb' : 'vrm';
-    downloadBlob(blob, `${model.name || 'Model'}.${extension}`);
+    downloadBlob(blob, `${model.name || 'Avatar'}.${extension}`);
   };
 
   return (
@@ -64,7 +64,7 @@ export function ModelDetailsModal({ model, onClose }: {
       onClose={onClose}
       footer={
         <Button variant="outline" size="sm" className="w-full" onClick={handleExport} disabled={!blob}>
-          <Download className="mr-2 h-4 w-4" /> Export Model
+          <Download className="mr-2 h-4 w-4" /> Export Avatar
         </Button>
       }
     />

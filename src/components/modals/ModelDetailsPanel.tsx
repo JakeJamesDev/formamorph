@@ -80,13 +80,13 @@ export function ModelDetailsPanel({ open, name, url, license, size, failed = fal
   // Keyed on the url so switching models rebuilds the scene rather than reusing the old one.
   const preview = failed ? (
     <div className="h-full flex items-center justify-center p-4">
-      <p className="text-sm text-muted-foreground text-center">This model couldn&apos;t be loaded.</p>
+      <p className="text-sm text-muted-foreground text-center">This player avatar couldn&apos;t be loaded.</p>
     </div>
   ) : url ? (
     <VRMViewer key={url} ref={vrmViewerRef} {...viewerProps} modelUrl={url} onCapabilities={setCaps} />
   ) : (
     <div className="h-full flex items-center justify-center">
-      <p className="text-sm text-muted-foreground">Loading model…</p>
+      <p className="text-sm text-muted-foreground">Loading Player Avatar…</p>
     </div>
   );
 

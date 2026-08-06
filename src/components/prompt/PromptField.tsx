@@ -1,9 +1,9 @@
-import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import {
   $getRoot, $getNodeByKey, $getSelection, $isRangeSelection, $createRangeSelection, $setSelection,
   $insertNodes, $createParagraphNode,
   $isElementNode,
-  COMMAND_PRIORITY_LOW, COMMAND_PRIORITY_HIGH, DRAGOVER_COMMAND, DROP_COMMAND,
+  COMMAND_PRIORITY_LOW, COMMAND_PRIORITY_HIGH, DRAGOVER_COMMAND, DROP_COMMAND, SELECTION_CHANGE_COMMAND,
   UNDO_COMMAND, REDO_COMMAND, CAN_UNDO_COMMAND, CAN_REDO_COMMAND,
 } from 'lexical';
 import { mergeRegister } from '@lexical/utils';
@@ -142,6 +142,26 @@ function ValueSyncPlugin({ value, onChange, parse, onExternalValue }: {
     }),
     [editor],
   );
+  return null;
+}
+
+/**
+ * Keeps the preview on the line being written. Every selection change (and the edit that follows it) reports
+ * the caret, and the field scrolls the other pane to match — so with both panes on screen the resolved text
+ * beside the cursor is the text the cursor is in, rather than whatever happens to be mid-view.
+ *
+ * Only reports while the editor holds focus: once the reader is scrolling instead of typing, the centre-based
+ * sync should own the panes again, and a stale caret would keep yanking them back.
+ */
+function CaretFollowPlugin({ onCaret }: { onCaret: () => void }) {
+  const [editor] = useLexicalComposerContext();
+  useEffect(() => {
+    const report = () => { if (editor.getRootElement()?.contains(document.activeElement)) onCaret(); };
+    return mergeRegister(
+      editor.registerUpdateListener(report),
+      editor.registerCommand(SELECTION_CHANGE_COMMAND, () => { report(); return false; }, COMMAND_PRIORITY_LOW),
+    );
+  }, [editor, onCaret]);
   return null;
 }
 
@@ -307,14 +327,70 @@ function anchorPositions(el: HTMLElement, tab: string): number[] {
   return [0, ...tops, el.scrollHeight];
 }
 
+/**
+ * The anchor for one position in the pane's content, measured in px from the content's top. Scrolling
+ * passes the viewport centre; the caret passes its own offset, which is what makes the preview follow the
+ * line being written rather than the middle of the view.
+ */
+function anchorAt(el: HTMLElement, tab: string, offset: number): ScrollAnchor {
+  const pos = anchorPositions(el, tab);
+  if (pos.length <= 2) return { frac: offset / el.scrollHeight }; // no chips → whole-document fraction
+  let seg = 0;
+  while (seg < pos.length - 2 && offset >= pos[seg + 1]) seg++;
+  return { seg, t: (offset - pos[seg]) / (pos[seg + 1] - pos[seg] || 1) };
+}
+
 function captureAnchor(el: HTMLElement | null, tab: string): ScrollAnchor | null {
   if (!el || el.scrollHeight <= el.clientHeight) return null;
-  const center = el.scrollTop + el.clientHeight / 2;
-  const pos = anchorPositions(el, tab);
-  if (pos.length <= 2) return { frac: center / el.scrollHeight }; // no chips → whole-document fraction
-  let seg = 0;
-  while (seg < pos.length - 2 && center >= pos[seg + 1]) seg++;
-  return { seg, t: (center - pos[seg]) / (pos[seg + 1] - pos[seg] || 1) };
+  return anchorAt(el, tab, el.scrollTop + el.clientHeight / 2);
+}
+
+/** Where the caret sits in the editor's content, or null when there is no collapsed caret to read. */
+/** The top of one node's box, measuring a text node through a range since only elements have rects. */
+function nodeTop(node: Node): number | null {
+  if (node.nodeType === Node.ELEMENT_NODE) {
+    const r = (node as Element).getBoundingClientRect();
+    return r.height ? r.top : null;
+  }
+  const r = document.createRange();
+  r.selectNodeContents(node);
+  const box = r.getBoundingClientRect();
+  return box.height ? box.top : null;
+}
+
+/** Viewport y of the caret, or null when nothing measurable can be found. */
+function caretTop(range: Range): number | null {
+  // A collapsed range inside text has zero width but a real line height — that is the good case.
+  const rect = range.getBoundingClientRect();
+  if (rect.height) return rect.top;
+
+  // Beside a chip there is no text box to measure: the chip is a Lexical decorator (an element), so a
+  // caret placed against it collapses to an empty rect. Measure the node the caret sits against instead —
+  // without this the caret reads as position zero and the preview jumps to the top instead of following.
+  const { startContainer, startOffset } = range;
+  if (startContainer.nodeType === Node.ELEMENT_NODE) {
+    const kids = (startContainer as Element).childNodes;
+    for (const neighbor of [kids[startOffset], kids[startOffset - 1]]) {
+      const top = neighbor ? nodeTop(neighbor) : null;
+      if (top !== null) return top;
+    }
+  }
+
+  // Last resort: the element the caret is in. Coarse, but never wrong by more than its own height.
+  const host = startContainer.nodeType === Node.ELEMENT_NODE
+    ? (startContainer as Element)
+    : startContainer.parentElement;
+  return host ? nodeTop(host) : null;
+}
+
+function caretOffset(el: HTMLElement): number | null {
+  const sel = window.getSelection();
+  if (!sel || sel.rangeCount === 0) return null;
+  const range = sel.getRangeAt(0);
+  if (!el.contains(range.startContainer)) return null;
+  const top = caretTop(range);
+  if (top === null) return null;
+  return top - (el.getBoundingClientRect().top - el.scrollTop);
 }
 
 function applyAnchor(el: HTMLElement | null, tab: string, anchor: ScrollAnchor): void {
@@ -393,7 +469,7 @@ function MarkdownPreviewPane({ value, previewValues, vocab, scrollRef, onScroll 
  * With `markdown`, it also gains a formatting toolbar and its Preview renders markdown instead of tinting
  * chips — for author-facing prose fields (world description, readme) that the player reads as markdown.
  */
-const PromptField = ({ value, onChange, variables = [], vocabulary, previewValues, onPreviewOpen, markdown = false, resizable = false, placeholder, className, readOnly = false, ariaLabel, sampleData = false, onRequestEdit, readOnlyReason }: {
+const PromptField = ({ value, onChange, variables = [], vocabulary, previewValues, onPreviewOpen, markdown = false, resizable = false, placeholder, className, readOnly = false, ariaLabel, sampleData = false, onRequestEdit, readOnlyReason, onRequestFullscreen, fullscreen: fullscreenProp }: {
   value: string;
   onChange: (v: string) => void;
   /** Prompt-variable palette (used when no explicit `vocabulary` is given — the default prompt family). */
@@ -418,6 +494,16 @@ const PromptField = ({ value, onChange, variables = [], vocabulary, previewValue
   onRequestEdit?: () => void;
   /** What is read-only, named in the notice (e.g. a built-in preset's name). */
   readOnlyReason?: string;
+  /**
+   * Hand fullscreen to the caller. Given this, the field stops rendering its own overlay and just reports
+   * the request — which is how Settings gets the prompt rail into the full screen alongside the editor,
+   * since the rail lives a level above this component and could never be pulled down into its overlay.
+   * Call sites with no chrome of their own (world editor, dictionary entries) omit it and keep the
+   * self-managed overlay.
+   */
+  onRequestFullscreen?: () => void;
+  /** Whether the caller's overlay is open — only read when `onRequestFullscreen` is given. */
+  fullscreen?: boolean;
   /** Names the editor for a screen reader. Lexical renders a `div`, so a `<label htmlFor>` cannot reach it. */
   ariaLabel?: string;
 }) => {
@@ -432,7 +518,11 @@ const PromptField = ({ value, onChange, variables = [], vocabulary, previewValue
   // back to tabs and phones never reach the split threshold — no breakpoint to keep in sync.
   const [measureRef, containerWidth] = useContainerWidth();
   const [splitMode, setSplitMode] = usePromptSplitMode();
-  const [fullscreen, setFullscreen] = useState(false);
+  // Fullscreen is either ours or the caller's; `hostedFullscreen` means the caller renders the overlay.
+  const hostedFullscreen = !!onRequestFullscreen;
+  const [ownFullscreen, setOwnFullscreen] = useState(false);
+  const fullscreen = hostedFullscreen ? !!fullscreenProp : ownFullscreen;
+  const toggleFullscreen = () => (onRequestFullscreen ? onRequestFullscreen() : setOwnFullscreen((f) => !f));
   const isMobile = useIsMobile();
   // Fullscreen measures the viewport, not the inline slot it was opened from.
   const effectiveWidth = fullscreen ? (typeof window !== 'undefined' ? window.innerWidth - 48 : 0) : containerWidth;
@@ -448,6 +538,21 @@ const PromptField = ({ value, onChange, variables = [], vocabulary, previewValue
   const proxyAnchor = useRef<ScrollAnchor | null>(null);
   // True while we're programmatically scrolling, so our own scroll events don't clobber the proxy.
   const applying = useRef(false);
+
+  // Scroll the preview to wherever the caret is. Shares the `applying` gate with the scroll sync, so the
+  // preview's resulting scroll event is never mistaken for the reader scrolling it themselves.
+  const followCaret = useCallback(() => {
+    const edit = editScrollRef.current;
+    const target = previewScrollRef.current;
+    if (!split || !edit || !target) return;
+    const offset = caretOffset(edit);
+    if (offset === null) return;
+    const anchor = anchorAt(edit, 'edit', offset);
+    proxyAnchor.current = anchor;
+    applying.current = true;
+    applyAnchor(target, 'preview', anchor);
+    releaseApplying();
+  }, [split]);
 
   // Re-open the gate once the scroll event our own `applyAnchor` provoked has been and gone. rAF alone
   // would strand it: a hidden or non-compositing tab stops firing frames, and a gate that never re-opens
@@ -543,7 +648,7 @@ const PromptField = ({ value, onChange, variables = [], vocabulary, previewValue
       // the cramped case this whole feature exists to fix — go straight to the full screen. The handler
       // sits on this wrapper because Lexical's ContentEditable doesn't forward arbitrary DOM props;
       // focus bubbles here as focusin, which is what React's onFocus listens for anyway.
-      onFocus={isMobile && !fullscreen ? () => setFullscreen(true) : undefined}
+      onFocus={isMobile && !fullscreen ? toggleFullscreen : undefined}
     >
       <PlainTextPlugin
         contentEditable={
@@ -582,7 +687,7 @@ const PromptField = ({ value, onChange, variables = [], vocabulary, previewValue
 
   // Swipe between panes when they can't sit side by side and the screen is the whole surface — the
   // mobile expression of the split, landing on the same content position via the shared anchor.
-  const swipeable = fullscreen && !split && showTabs;
+  const swipeable = isMobile && fullscreen && !split && showTabs;
   const touchX = useRef<number | null>(null);
   const swipeHandlers = swipeable ? {
     onTouchStart: (e: React.TouchEvent) => { touchX.current = e.touches[0].clientX; },
@@ -604,7 +709,7 @@ const PromptField = ({ value, onChange, variables = [], vocabulary, previewValue
         <VariableToolbar vocab={vocab} interactive={!readOnly && (split || !showTabs || tab === 'edit')} />
       </div>
       <div className="flex flex-shrink-0 items-center gap-1">
-        {showTabs && !fullscreen && containerWidth - 12 >= MIN_PANE_WIDTH * 2 && (
+        {showTabs && effectiveWidth - 12 >= MIN_PANE_WIDTH * 2 && (
           <button
             type="button"
             onClick={() => setSplitMode(split ? 'tabs' : 'split')}
@@ -617,7 +722,7 @@ const PromptField = ({ value, onChange, variables = [], vocabulary, previewValue
         )}
         <button
           type="button"
-          onClick={() => setFullscreen((f) => !f)}
+          onClick={toggleFullscreen}
           title={fullscreen ? 'Exit full screen' : 'Edit full screen'}
           aria-label={fullscreen ? 'Exit full screen' : 'Edit full screen'}
           className="rounded p-1.5 text-muted-foreground hover:bg-accent hover:text-foreground"
@@ -691,8 +796,8 @@ const PromptField = ({ value, onChange, variables = [], vocabulary, previewValue
             Settings dialog, and Radix parks `pointer-events: none` on the body while one is open — a
             plain portaled div inherits that and renders dead, under Radix's own overlay. Letting Radix
             own the stack also gives the fullscreen its focus trap and Escape for free. */}
-        {fullscreen ? (
-          <Dialog open onOpenChange={(o) => { if (!o) setFullscreen(false); }}>
+        {fullscreen && !hostedFullscreen ? (
+          <Dialog open onOpenChange={(o) => { if (!o) setOwnFullscreen(false); }}>
             <DialogContent
               hideClose
               aria-describedby={undefined}
@@ -709,6 +814,7 @@ const PromptField = ({ value, onChange, variables = [], vocabulary, previewValue
         <ValueSyncPlugin value={value} onChange={onChange} parse={vocab.parse} onExternalValue={resetScroll} />
         <EditablePlugin readOnly={readOnly} />
         <ChipDragPlugin dragKey={dragKey} />
+        <CaretFollowPlugin onCaret={followCaret} />
       </PromptDragContext.Provider>
       </ChipVocabularyContext.Provider>
     </LexicalComposer>

@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { APP_VERSION, isSaveEnvelope, migrateLegacySaveState, migrateSave } from './version';
-import { DEFAULT_MODEL_ID } from './defaultModel';
+import { DEFAULT_AVATAR_ID } from './defaultAvatar';
 import { parseNarration } from './aiResponse';
 import { appendCurrentToHistory, rollbackState } from './turnHistory';
 import type { GameState, SaveObject } from '@/types';
@@ -172,13 +172,13 @@ describe('migrateSave (shared import + load path)', () => {
 
     it("rewrites the 'default' sentinel to the seeded model's library id", () => {
       const out = migrateSave(envelope('default'));
-      expect(out.currentState.characterData?.playerModelId).toBe(DEFAULT_MODEL_ID);
+      expect(out.currentState.characterData?.playerModelId).toBe(DEFAULT_AVATAR_ID);
     });
 
     it('rewrites the sentinel in every history snapshot, not just the current one', () => {
       const out = migrateSave(envelope('default', ['default', 'other-model']));
       expect(out.stateHistory.map((s) => s.characterData?.playerModelId))
-        .toEqual([DEFAULT_MODEL_ID, 'other-model']);
+        .toEqual([DEFAULT_AVATAR_ID, 'other-model']);
     });
 
     it('leaves a real library id alone', () => {
@@ -199,7 +199,7 @@ describe('migrateSave (shared import + load path)', () => {
     it('is idempotent — a migrated save is unchanged by a second pass', () => {
       const once = migrateSave(envelope('default'));
       const twice = migrateSave(once);
-      expect(twice.currentState.characterData?.playerModelId).toBe(DEFAULT_MODEL_ID);
+      expect(twice.currentState.characterData?.playerModelId).toBe(DEFAULT_AVATAR_ID);
     });
   });
 

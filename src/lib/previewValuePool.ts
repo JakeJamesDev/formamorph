@@ -1,3 +1,7 @@
+import { lengthGuidance, type ParagraphLimit } from './outputLength';
+import { restyle } from './sectionStyle';
+import { type SectionStyle } from './promptPresets';
+import { markdownGuidance, activeCharacterGuidance } from '@/components/game/GamePrompts';
 import {
   ALL_PROMPT_VARIABLES,
   variableVariantIds,
@@ -8,17 +12,21 @@ import {
 } from './promptVariables';
 
 /**
- * Stand-in context for the prompt editor's Preview when no game is running.
+ * The one pool the prompt editor's Preview draws on, in two layers.
  *
- * Editing a prompt used to mean loading a world first: Preview substitutes each chip for its live value, and
- * outside a playthrough there are no values, so the pane (and with it the side-by-side split) had nothing to
- * show. These samples give every chip something representative to render, so a prompt can be written and read
- * from the main menu.
+ * **Derived** values are computed from the player's own settings and are therefore real wherever they are
+ * shown — the length, markdown and cast-size guidance a prompt would actually receive. They need no game.
  *
- * Deliberately generic — "Sample Town", "Traveler" — rather than lifted from a bundled world: a preview that
- * looked like real content would be mistaken for the player's own, and the pane is badged as sample data.
- * Nothing here reaches a model; it is display-only.
+ * **Sample** values stand in for what only a playthrough can supply: the world, its stats, places, people,
+ * lore and clock. Deliberately generic ("Sample Town") rather than lifted from a bundled world, since a
+ * preview that looked like real content would be taken for the player's own; the pane badges them.
+ *
+ * Both the in-game path and the Settings fallback compose from here — previously each carried its own
+ * placeholder strings, which could only drift apart. Nothing here reaches a model; it is display-only.
  */
+
+/** Which tokens the derived layer owns — real settings values, never sampled. */
+export const DERIVED_TOKENS = ['<LENGTH GUIDANCE>', '<MARKDOWN GUIDANCE>', '<ACTIVE CHARACTER GUIDANCE>'];
 
 const WORLD = `A quiet stretch of coast where the tide leaves more behind than it takes. People here trade in
 salvage and rumor, and nobody asks where either came from.`;
@@ -150,12 +158,6 @@ function sampleFor(variable: PromptVariable, variantId: string | null): string {
       return TIME;
     case '<DICTIONARY>':
       return variantId === 'before' ? DICTIONARY_BEFORE : DICTIONARY_AFTER;
-    case '<LENGTH GUIDANCE>':
-      return 'Keep it to about three paragraphs.';
-    case '<MARKDOWN GUIDANCE>':
-      return 'Write immersive, flowing prose - never a list, menu, or table.';
-    case '<ACTIVE CHARACTER GUIDANCE>':
-      return 'Keep the cast small, usually one to three besides the player.';
     case '<PLAYER ACTION>':
       return 'I ask her who else has been down here tonight.';
     case '<NARRATION>':
@@ -178,10 +180,47 @@ against her shoulder. Out past the pilings something knocks twice against stone,
  * with no value and render as raw `<TOKEN>` in a preview.
  */
 export const SAMPLE_PREVIEW_VALUES: Record<string, string> = Object.fromEntries(
-  ALL_PROMPT_VARIABLES.flatMap((variable) =>
-    [null, ...variableVariantIds(variable)].map((id) => [
-      withVariant(baseToken(variable.token), id),
-      sampleFor(variable, id),
-    ]),
-  ),
+  ALL_PROMPT_VARIABLES
+    // The derived layer owns these; a sample here would shadow the player's real setting.
+    .filter((variable) => !DERIVED_TOKENS.includes(variable.token))
+    .flatMap((variable) =>
+      [null, ...variableVariantIds(variable)].map((id) => [
+        withVariant(baseToken(variable.token), id),
+        sampleFor(variable, id),
+      ]),
+    ),
 );
+
+
+/** Settings the derived layer reads. Exactly the inputs the real guidance functions take. */
+export interface DerivedPreviewSettings {
+  paragraphLimit: ParagraphLimit;
+  maxTokens: number;
+  markdownOutput: boolean;
+  sectionStyle: SectionStyle;
+  limitActiveCharacters: boolean;
+  activeCharacterLimit: number;
+}
+
+/**
+ * The tokens whose real value follows from settings alone, so a preview shows what the model would truly be
+ * told rather than a stand-in. Kept out of the sample layer — a sample here would quietly shadow the truth.
+ */
+export function derivedPreviewValues(s: DerivedPreviewSettings): Record<string, string> {
+  return {
+    '<LENGTH GUIDANCE>': lengthGuidance(s.paragraphLimit, s.maxTokens),
+    '<MARKDOWN GUIDANCE>': restyle(markdownGuidance(s.markdownOutput), s.sectionStyle),
+    '<ACTIVE CHARACTER GUIDANCE>': activeCharacterGuidance(s.limitActiveCharacters, s.activeCharacterLimit),
+  };
+}
+
+/**
+ * The values a Preview should use: samples underneath, real settings-derived guidance over them, and a live
+ * game's own context over that. Callers pass `live` only when a playthrough is running.
+ */
+export function composePreviewValues(
+  settings: DerivedPreviewSettings,
+  live?: Record<string, string>,
+): Record<string, string> {
+  return { ...SAMPLE_PREVIEW_VALUES, ...derivedPreviewValues(settings), ...(live ?? {}) };
+}
