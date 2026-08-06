@@ -6,11 +6,12 @@ import {
 } from '@/lib/entityGroupTree';
 import { SortableTree, TREE_INDENT, type SortableTreeAdapter } from './SortableTree';
 import { EmptyListHint } from '@/components/EmptyListHint';
+import { labelPlaceholders } from '@/lib/placeholders';
 
 /** The Entities tab's folder tree: a flat sortable list where horizontal drag sets nesting depth. Groups are
  *  editor-only folders (never sent to the AI); entities are leaves. Mirrors the Traits tab. */
 const EntityTree = ({ selectedId, onSelect }: { selectedId: string | null; onSelect: (id: string) => void }) => {
-  const { entities, entityGroups, setEntities, setEntityGroups, removeEntity, removeEntityGroup } = useGameData();
+  const { entities, entityGroups, setEntities, setEntityGroups, removeEntity, removeEntityGroup, placeholders } = useGameData();
 
   const adapter: SortableTreeAdapter<FlatEntityNode> = {
     getVisible: (collapsed) => removeChildrenOf(flattenEntityTree(buildEntityTree(entityGroups, entities)), collapsed),
@@ -28,7 +29,7 @@ const EntityTree = ({ selectedId, onSelect }: { selectedId: string | null; onSel
         lead: isGroup ? 'chevron' : 'none',
         collapseLabels: ['Expand group', 'Collapse group'],
         icon: isGroup ? <Folder className="h-4 w-4 shrink-0" /> : undefined,
-        label: isGroup ? node.group?.name : node.leaf?.name,
+        label: labelPlaceholders(isGroup ? node.group?.name ?? '' : node.leaf?.name ?? '', placeholders),
         labelClass: isGroup ? 'font-medium' : undefined,
         remove: () => { if (isGroup) removeEntityGroup(node.id); else removeEntity(node.id); },
         duplicate: () => {

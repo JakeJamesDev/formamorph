@@ -1,6 +1,7 @@
 import { randomUUID } from "@/lib/uuid";
 import { useState } from 'react';
 import { useDictionaryStore } from '@/contexts/DictionaryStoreContext';
+import { usePlaceholderStore } from '@/contexts/PlaceholderStoreContext';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
 import { ConfirmDialog } from '@/components/ConfirmDialog';
@@ -17,6 +18,7 @@ import { restrictToVerticalAxis, restrictToFirstScrollableAncestor } from '@dnd-
 import { reorderBooks, moveEntryInBooks, duplicateEntryInBooks } from '@/lib/dictionaryTree';
 import { EmptyListHint } from '@/components/EmptyListHint';
 import type { Dictionary, DictionaryEntry } from '@/types';
+import { labelPlaceholders } from '@/lib/placeholders';
 
 /** One entry ("page") row inside a book zone: grip handle + enabled toggle + name + duplicate/delete. */
 function EntryRow({ entry, selected, onSelect, onToggleEnabled, onDuplicate, onRemove }: {
@@ -27,6 +29,7 @@ function EntryRow({ entry, selected, onSelect, onToggleEnabled, onDuplicate, onR
   onDuplicate: (id: string) => void;
   onRemove: (id: string) => void;
 }) {
+  const { placeholders } = usePlaceholderStore();
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: entry.id });
   const faded = entry.enabled === false;
   const style = {
@@ -60,7 +63,7 @@ function EntryRow({ entry, selected, onSelect, onToggleEnabled, onDuplicate, onR
         className="mx-1 shrink-0"
         title={entry.enabled === false ? 'Disabled — click to enable' : 'Enabled — click to disable'}
       />
-      <span className="min-w-0 flex-grow truncate">{entry.name || entry.key?.[0] || 'Untitled'}</span>
+      <span className="min-w-0 flex-grow truncate">{labelPlaceholders(entry.name || entry.key?.[0] || 'Untitled', placeholders)}</span>
       <Button variant="ghost" size="icon" className={`shrink-0 ${selected ? 'text-primary-foreground' : 'text-muted-foreground'}`}
         onClick={(e) => { e.stopPropagation(); onDuplicate(entry.id); }} title="Duplicate">
         <Copy className="h-4 w-4" />
