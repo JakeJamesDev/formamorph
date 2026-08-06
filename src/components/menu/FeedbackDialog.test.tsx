@@ -40,6 +40,8 @@ const send = () => fireEvent.click(screen.getByRole('button', { name: /Send (Rep
 beforeEach(() => {
   vi.spyOn(console, 'error').mockImplementation(() => {});
   fieldProps.last = null;
+  // Unsent writing now survives between openings, so it survives between tests too unless cleared.
+  localStorage.clear();
 });
 
 afterEach(() => {
@@ -164,15 +166,74 @@ describe('the diagnostics panel', () => {
 });
 
 describe('reopening', () => {
-  it('starts blank rather than holding the last report', async () => {
-    const { rerender } = render(<FeedbackDialog open={false} onOpenChange={() => {}} />);
-    rerender(<FeedbackDialog open onOpenChange={() => {}} />);
-    setField('feedbackTitle', 'First go');
+  const reopen = (rerender: (ui: React.ReactElement) => void, props = {}) => {
+    rerender(<FeedbackDialog open={false} onOpenChange={() => {}} {...props} />);
+    rerender(<FeedbackDialog open onOpenChange={() => {}} {...props} />);
+  };
+  const titleValue = () => (document.getElementById('feedbackTitle') as HTMLInputElement).value;
+  const bodyValue = () => (document.getElementById('feedbackBody') as HTMLTextAreaElement).value;
 
-    rerender(<FeedbackDialog open={false} onOpenChange={() => {}} />);
-    rerender(<FeedbackDialog open onOpenChange={() => {}} />);
+  it('holds an unsent report so it can be closed to check something in game', async () => {
+    const { rerender } = render(<FeedbackDialog open onOpenChange={() => {}} />);
+    fillDraft();
 
-    expect((document.getElementById('feedbackTitle') as HTMLInputElement).value).toBe('');
+    reopen(rerender);
+
+    expect(titleValue()).toBe('Save button does nothing');
+    expect(bodyValue()).toBe('Pressing save just spins.');
+    expect(screen.getByText(/Picked up where you left off/)).toBeInTheDocument();
+  });
+
+  it('holds it across a reload, not just a close', async () => {
+    const { rerender } = render(<FeedbackDialog open onOpenChange={() => {}} />);
+    fillDraft();
+    // A fresh mount with nothing carried in memory is what a reload leaves behind.
+    cleanup();
+    void rerender;
+    render(<FeedbackDialog open onOpenChange={() => {}} />);
+
+    expect(titleValue()).toBe('Save button does nothing');
+  });
+
+  it('reopens on the branch that was being written, not the caller’s default', async () => {
+    const { rerender } = render(<FeedbackDialog open onOpenChange={() => {}} initialType="suggestion" />);
+    fillDraft();
+
+    reopen(rerender, { initialType: 'bug' });
+
+    expect(screen.getByRole('tab', { name: 'Suggestion' }).getAttribute('data-state')).toBe('active');
+    expect(titleValue()).toBe('Save button does nothing');
+  });
+
+  it('starts blank again once the draft is discarded', async () => {
+    const { rerender } = render(<FeedbackDialog open onOpenChange={() => {}} />);
+    fillDraft();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Discard Draft' }));
+    expect(titleValue()).toBe('');
+    expect(screen.queryByText(/Picked up where you left off/)).not.toBeInTheDocument();
+
+    reopen(rerender);
+    expect(titleValue()).toBe('');
+  });
+
+  it('starts blank after the report is filed', async () => {
+    vi.spyOn(FeedbackService, 'file').mockResolvedValue({} as never);
+    const { rerender } = render(<FeedbackDialog open onOpenChange={() => {}} />);
+    fillDraft();
+    send();
+    await waitFor(() => expect(FeedbackService.file).toHaveBeenCalled());
+
+    reopen(rerender);
+
+    expect(titleValue()).toBe('');
+    expect(screen.queryByText(/Picked up where you left off/)).not.toBeInTheDocument();
+  });
+
+  it('offers nothing to discard on a blank form', async () => {
+    render(<FeedbackDialog open onOpenChange={() => {}} />);
+
+    expect(screen.getByRole('button', { name: 'Discard Draft' })).toBeDisabled();
   });
 });
 

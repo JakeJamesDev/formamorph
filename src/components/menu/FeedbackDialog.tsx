@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "react-toastify";
 import { MessageSquarePlus } from "lucide-react";
 import {
@@ -11,6 +11,9 @@ import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import PromptField from "@/components/prompt/PromptField";
 import { plainVocabulary } from "@/lib/chipVocabulary";
 import { useResetOnOpen } from "@/lib/useResetOnOpen";
+import {
+  clearFeedbackDraft, hasDraftContent, loadFeedbackDraft, saveFeedbackDraft,
+} from "@/lib/feedbackDraft";
 import { collectDiagnostics, DIAGNOSTIC_LABELS } from "@/lib/bugDiagnostics";
 import { CATEGORY_OPTIONS, DEFAULT_CATEGORY, FEEDBACK_TYPE_LABELS } from "@/lib/feedbackPresentation";
 import FeedbackService from "@/services/FeedbackService";
@@ -91,20 +94,48 @@ export function FeedbackDialog({ open, onOpenChange, initialType = 'bug', onFile
   const [category, setCategory] = useState<FeedbackCategory>(DEFAULT_CATEGORY[initialType]);
   const [body, setBody] = useState('');
   const [isSending, setIsSending] = useState(false);
+  // Set when this opening started from stored writing rather than a blank form, so the dialog can say so.
+  const [restored, setRestored] = useState(false);
 
   // No chip family: this is prose, and an authored world's placeholders mean nothing here.
   const plainVocab = useMemo(() => plainVocabulary(), []);
   // Read once per opening: the build and platform cannot change while the dialog is up.
   const [diagnostics, setDiagnostics] = useState<BugDiagnostics>({});
 
+  // Muted once the report is away, so the mirror below can't re-save what was just sent.
+  const filedRef = useRef(false);
+
+  // An unsent report outranks the caller's requested branch: it opens on whatever was being written,
+  // announced and one click from gone, rather than the writing being silently dropped.
   useResetOnOpen(open, () => {
-    setType(initialType);
-    setTitle('');
-    setCategory(DEFAULT_CATEGORY[initialType]);
-    setBody('');
+    const draft = loadFeedbackDraft();
+    const startType = draft?.type ?? initialType;
+    setType(startType);
+    setTitle(draft?.title ?? '');
+    // A stored category from an older build's list would be refused by the server, so it's only taken
+    // when the live options still offer it.
+    const known = CATEGORY_OPTIONS[startType].some((option) => option.value === draft?.category);
+    setCategory(known && draft ? draft.category : DEFAULT_CATEGORY[startType]);
+    setBody(draft?.body ?? '');
     setIsSending(false);
+    setRestored(draft !== null);
+    filedRef.current = false;
     setDiagnostics(collectDiagnostics());
   });
+
+  // Mirror the form to storage as it's written, so closing the dialog — or reloading to reproduce the bug
+  // being reported — costs nothing. Only while open: the reset above would otherwise write back its blanks.
+  useEffect(() => {
+    if (open && !filedRef.current) saveFeedbackDraft({ type, title, category, body });
+  }, [open, type, title, category, body]);
+
+  const discardDraft = () => {
+    clearFeedbackDraft();
+    setTitle('');
+    setCategory(DEFAULT_CATEGORY[type]);
+    setBody('');
+    setRestored(false);
+  };
 
   /** Switching branch keeps what has been written but resets the category — the two lists share no
    *  values a draft could carry across, and a stale one would be refused by the server. */
@@ -128,6 +159,10 @@ export function FeedbackDialog({ open, onOpenChange, initialType = 'bug', onFile
     setIsSending(true);
     try {
       await FeedbackService.file({ type, title: title.trim(), category, body: body.trim() });
+      // Filed, so it is no longer unsent writing. The form itself is left alone — blanking it here would
+      // show through the dialog's fade-out — and the mirror is muted so it can't write the sent text back.
+      filedRef.current = true;
+      clearFeedbackDraft();
       toast.success(copy.sent);
       onFiled?.();
       onOpenChange(false);
@@ -151,6 +186,12 @@ export function FeedbackDialog({ open, onOpenChange, initialType = 'bug', onFile
         </DialogHeader>
 
         <div className="space-y-4 min-w-0">
+          {restored && (
+            <p className="rounded-md border bg-muted/40 px-3 py-2 text-xs text-muted-foreground">
+              Picked up where you left off — this was still unsent. Discard it below to start fresh.
+            </p>
+          )}
+
           <Tabs value={type} onValueChange={(value) => switchType(value as FeedbackType)}>
             <TabsList className="grid w-full grid-cols-2">
               {FEEDBACK_TYPES.map((value) => (
@@ -203,9 +244,21 @@ export function FeedbackDialog({ open, onOpenChange, initialType = 'bug', onFile
           {type === 'bug' && <DiagnosticsPanel diagnostics={diagnostics} />}
         </div>
 
-        <DialogFooter>
-          <Button variant="outline" onClick={() => onOpenChange(false)} disabled={isSending}>Cancel</Button>
-          <Button onClick={submit} disabled={isSending}>{isSending ? 'Sending…' : copy.submit}</Button>
+        {/* Closing keeps the writing, so the footer says "Close" and discarding is its own deliberate
+            button — offered only when there is something to lose. */}
+        <DialogFooter className="sm:justify-between">
+          <Button
+            variant="ghost"
+            className={hasDraftContent({ title, body }) ? 'text-destructive hover:text-destructive' : 'invisible'}
+            onClick={discardDraft}
+            disabled={isSending || !hasDraftContent({ title, body })}
+          >
+            Discard Draft
+          </Button>
+          <div className="flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
+            <Button variant="outline" onClick={() => onOpenChange(false)} disabled={isSending}>Close</Button>
+            <Button onClick={submit} disabled={isSending}>{isSending ? 'Sending…' : copy.submit}</Button>
+          </div>
         </DialogFooter>
       </DialogContent>
     </Dialog>
