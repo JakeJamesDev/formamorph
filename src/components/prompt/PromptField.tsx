@@ -646,11 +646,11 @@ const PromptField = ({ value, onChange, variables = [], vocabulary, previewValue
   const editorSurface = (
     <div
       className={cn('relative flex-1 min-h-0', !showTabs && resizeClass)}
-      // On a phone the inline field is ~225px tall against a prompt many screens long, so editing there is
-      // the cramped case this whole feature exists to fix — go straight to the full screen. The handler
-      // sits on this wrapper because Lexical's ContentEditable doesn't forward arbitrary DOM props;
-      // focus bubbles here as focusin, which is what React's onFocus listens for anyway.
-      onFocus={isMobile && !fullscreen ? toggleFullscreen : undefined}
+      // On a phone the inline field is ~225px tall against a prompt many screens long, so tapping into it
+      // opens the full screen instead. Deliberately a tap and not a focus event: focus also arrives when a
+      // closing dialog hands it back, and reacting to that re-opened the full screen the player had just
+      // left — with the keyboard, over and over. A restored focus never comes with a click.
+      onClick={isMobile && !fullscreen ? toggleFullscreen : undefined}
     >
       <PlainTextPlugin
         contentEditable={
@@ -808,6 +808,10 @@ const PromptField = ({ value, onChange, variables = [], vocabulary, previewValue
               hideClose
               aria-describedby={undefined}
               aria-label={ariaLabel ?? 'Prompt editor'}
+              // Focusing the editor on open (or restoring focus to it on close) raises the soft keyboard
+              // uninvited, and on close it lands the caret back in the field the player was leaving.
+              onOpenAutoFocus={(e) => e.preventDefault()}
+              onCloseAutoFocus={(e) => e.preventDefault()}
               className="flex h-[100dvh] w-screen max-w-none flex-col gap-2 rounded-none border-0 p-4 sm:rounded-none"
             >
               {body}
