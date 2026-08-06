@@ -4,7 +4,7 @@ import { blobHash } from '@/lib/blobHash';
 import { readVrmMeta } from '@/lib/vrmMeta';
 import { optimizeImageDataUrl, IMAGE_CAPS } from '@/lib/imageOptim';
 import { renderVrmThumbnail } from '@/lib/vrmThumbnail';
-import { DEFAULT_AVATAR_ID } from '@/lib/defaultAvatar';
+import { DEFAULT_AVATAR_ID, LEGACY_DEFAULT_AVATAR_ID } from '@/lib/defaultAvatar';
 import { LibraryStore, type StoredRecord } from './LibraryStore';
 import type { ModelMetadata, VrmData } from '@/types';
 
@@ -24,7 +24,8 @@ interface FlatModelRecord {
   addedAt?: string;
 }
 
-/** Set once the bundled model has been offered; a later delete is the player's business, not a gap to refill. */
+/** Set once the bundled avatar has been offered; a later delete is the player's business, not a gap to refill.
+ *  The key keeps its pre-rename spelling: rewording it would read as never-seeded and refill that delete. */
 const SEEDED_KEY = 'FORMAMORPH_defaultModelSeeded';
 
 const isFlat = (record: unknown): record is FlatModelRecord =>
@@ -120,8 +121,9 @@ class ModelStorageService {
   }
 
   /**
-   * Fold any pre-library flat records into the wrapped shape, in place. Runs before every operation because
-   * a flat record has no `data` and would otherwise read as missing.
+   * Fold any pre-library flat records into the wrapped shape, in place, then move the seeded default onto its
+   * current id. Runs before every operation because a flat record has no `data` and would otherwise read as
+   * missing, and because a save migrated to the new default id must find a record waiting under it.
    */
   private async ensureMigrated(): Promise<void> {
     this.migration ??= (async () => {
@@ -131,23 +133,43 @@ class ModelStorageService {
         db.transaction(['models'], 'readonly').objectStore('models').getAll(),
       );
       const flat = raw.filter(isFlat);
-      if (!flat.length) return;
-      const write = db.transaction(['models'], 'readwrite').objectStore('models');
-      await Promise.all(
-        flat.map((record) =>
-          promisifyRequest(
-            write.put({
-              id: record.id,
-              name: record.name,
-              createdAt: record.addedAt,
-              lastAccessed: record.addedAt,
-              data: { type: record.type ?? 'model/vrm', blob: record.blob!, size: record.size ?? 0 },
-            } satisfies StoredModelRecord),
+      if (flat.length) {
+        const write = db.transaction(['models'], 'readwrite').objectStore('models');
+        await Promise.all(
+          flat.map((record) =>
+            promisifyRequest(
+              write.put({
+                id: record.id,
+                name: record.name,
+                createdAt: record.addedAt,
+                lastAccessed: record.addedAt,
+                data: { type: record.type ?? 'model/vrm', blob: record.blob!, size: record.size ?? 0 },
+              } satisfies StoredModelRecord),
+            ),
           ),
-        ),
-      );
+        );
+      }
+      await this.rekeyLegacyDefault();
     })();
     return this.migration;
+  }
+
+  /**
+   * Move the seeded default from its pre-rename id to the current one. An IndexedDB key can't be edited, so
+   * this is a delete plus a re-put of the same record — done in one readwrite transaction so a reload
+   * mid-migration can't lose the avatar. A record already sitting at the current id wins and the legacy copy
+   * is simply dropped, which is what a library holding both would mean: the same file stored twice.
+   */
+  private async rekeyLegacyDefault(): Promise<void> {
+    const legacy = await this.getRecord(LEGACY_DEFAULT_AVATAR_ID);
+    if (!legacy) return;
+    const occupied = !!(await this.getRecord(DEFAULT_AVATAR_ID));
+    await this.store.ensureInitialized();
+    const store = this.store.db!.transaction(['models'], 'readwrite').objectStore('models');
+    await Promise.all([
+      promisifyRequest(store.delete(LEGACY_DEFAULT_AVATAR_ID)),
+      occupied ? Promise.resolve() : promisifyRequest(store.put({ ...legacy, id: DEFAULT_AVATAR_ID })),
+    ]);
   }
 
   /**

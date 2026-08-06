@@ -181,6 +181,12 @@ describe('migrateSave (shared import + load path)', () => {
         .toEqual([DEFAULT_AVATAR_ID, 'other-model']);
     });
 
+    it("rewrites the pre-rename 'default-model' id onto the current default", () => {
+      const out = migrateSave(envelope('default-model', ['default-model']));
+      expect(out.currentState.characterData?.playerModelId).toBe(DEFAULT_AVATAR_ID);
+      expect(out.stateHistory.map((s) => s.characterData?.playerModelId)).toEqual([DEFAULT_AVATAR_ID]);
+    });
+
     it('leaves a real library id alone', () => {
       const out = migrateSave(envelope('some-uploaded-model'));
       expect(out.currentState.characterData?.playerModelId).toBe('some-uploaded-model');

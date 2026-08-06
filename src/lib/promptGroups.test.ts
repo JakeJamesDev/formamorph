@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { PROMPT_GROUPS, visibleGroups, allGroupedTabs } from './promptGroups';
+import { PROMPT_GROUPS, visibleGroups, allGroupedTabs, PROMPT_DESCRIPTIONS } from './promptGroups';
 import { computePromptTabAvailability } from './promptTabAvailability';
 
 const everyFeature = {
@@ -60,5 +60,31 @@ describe('visibleGroups', () => {
 
   it('survives an availability map that knows nothing', () => {
     expect(visibleGroups({})).toEqual([]);
+  });
+});
+
+describe('PROMPT_DESCRIPTIONS', () => {
+  it('describes every prompt, so none reaches the panel unexplained', () => {
+    const undescribed = allGroupedTabs().filter((t) => !PROMPT_DESCRIPTIONS[t]?.trim());
+    expect(undescribed).toEqual([]);
+  });
+
+  it('describes nothing that is not a prompt', () => {
+    expect(Object.keys(PROMPT_DESCRIPTIONS).sort()).toEqual([...allGroupedTabs()].sort());
+  });
+
+  it('stays to a single line the reader will actually read', () => {
+    for (const [tab, text] of Object.entries(PROMPT_DESCRIPTIONS)) {
+      expect(text.length, tab).toBeLessThanOrEqual(140);
+      expect(text, tab).not.toContain(String.fromCharCode(10));
+    }
+  });
+
+  it('drops the "only used when X is on" caveat', () => {
+    // A prompt whose feature is off never reaches the list, so the clause was only ever shown on
+    // prompts it was untrue of.
+    for (const [tab, text] of Object.entries(PROMPT_DESCRIPTIONS)) {
+      expect(text.toLowerCase(), tab).not.toContain('only used when');
+    }
   });
 });
