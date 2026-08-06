@@ -13,7 +13,7 @@ import 'react-toastify/dist/ReactToastify.css';
 import { Button } from "@/components/ui/button";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import {ConfirmDialog} from "@/components/ConfirmDialog";
-import {FilePlus2, DoorOpen, Pencil, Github, AlertTriangle, Code, User, Shield, Import, Globe, LayoutGrid, GalleryThumbnails, Columns2, RectangleVertical, Menu, Earth, BookOpen, Upload, ChevronLast, MoreHorizontal, PersonStanding, MessageSquarePlus, FolderOpen, Archive, Settings, CloudDownload, type LucideIcon } from "lucide-react";
+import {FilePlus2, DoorOpen, Pencil, Github, AlertTriangle, Code, User, Shield, Import, Globe, LayoutGrid, GalleryThumbnails, Columns2, RectangleVertical, Menu, Earth, BookOpen, Upload, ChevronLast, MoreHorizontal, PersonStanding, MessageSquarePlus, FolderOpen, Archive, Settings, CloudDownload, ScrollText, type LucideIcon } from "lucide-react";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { ImageZoomViewer } from "@/components/ImageZoomViewer";
 import { cn } from "@/lib/utils";
@@ -106,6 +106,7 @@ import { COMMUNITY_ENABLED } from "@/lib/featureFlags";
 import { isStaff } from "@/lib/roles";
 import { Checkbox } from "@/components/ui/checkbox";
 import { useReadmeVisibility } from "@/lib/useReadmeVisibility";
+import { hasWorldNarrationPrompt, worldNarrationPrompt, useWorldPromptOptOut } from "@/lib/worldPrompt";
 import PatreonIcon from "@/components/PatreonIcon";
 
 interface MainMenuProps {
@@ -179,12 +180,49 @@ const applyWorldOrder = <T extends { id: string }>(list: T[], order: string[]): 
 };
 
 
+/**
+ * One line of the world modal's notice strip: what the player should know about this world before
+ * entering, with the affordance that inspects it. Sits below the detail panels so a notice never
+ * steals height from them. `tone` picks trust-relevant amber vs neutral disclosure.
+ */
+const WorldNotice = ({ tone, icon: Icon, children, actionLabel, actionIcon: ActionIcon, onAction }: {
+  tone: 'warning' | 'info';
+  icon: LucideIcon;
+  children: React.ReactNode;
+  actionLabel: string;
+  actionIcon: LucideIcon;
+  onAction: () => void;
+}) => (
+  <div
+    className={cn(
+      'flex items-center gap-2 rounded-md border px-2 py-1.5 text-sm',
+      tone === 'warning' ? 'border-warning/30 bg-warning/10 text-warning' : 'border-border bg-muted/50 text-muted-foreground',
+    )}
+  >
+    <Icon className="h-4 w-4 shrink-0" />
+    <span className="min-w-0 flex-1">{children}</span>
+    <Button
+      variant="outline"
+      size="sm"
+      className={cn(
+        'h-7 shrink-0 px-2',
+        tone === 'warning' && 'border-warning/30 bg-warning/20 text-warning hover:bg-warning/30',
+      )}
+      onClick={(e) => { e.stopPropagation(); onAction(); }}
+    >
+      <ActionIcon className="mr-1 h-4 w-4" />
+      {actionLabel}
+    </Button>
+  </div>
+);
+
 const MainMenu = ({ onStartGame, onLoadSaveGame, onReplayIntro, introActive = false }: MainMenuProps) => {
   const {
     traits, traitGroups, stats, locations, placeholders, loadWorldData,
     dictionaries: worldBooks,
   } = useGameData();
   const { showReadme, setShowReadme } = useReadmeVisibility();
+  const { applyWorldPrompt, setApplyWorldPrompt } = useWorldPromptOptOut();
   const { promptWorldsBatch, promptImagesBatch, promptEntity, dialog: downscaleDialog } = useDownscalePrompt();
   const [selectedWorld, setSelectedWorld] = useState<WorldRecord | null>(null);
   // Library grid layout: "grid" (compact cards) or "detailed" (community-browser-style card + info
@@ -230,6 +268,7 @@ const MainMenu = ({ onStartGame, onLoadSaveGame, onReplayIntro, introActive = fa
   // The library characters chosen at the entry step to place in the starting location; null = none/skipped.
   const [selectedCharacters, setSelectedCharacters] = useState<Entity[] | null>(null);
   const [showCodeModal, setShowCodeModal] = useState(false);
+  const [showNarrationPrompt, setShowNarrationPrompt] = useState(false);
   const [showSettings, setShowSettings] = useState(false);
   // Forces Settings to a specific tab when something deep-links into it (the AI setup gate → Endpoint).
   // Cleared on close so the next deep-link re-triggers the modal's initialTab effect.
@@ -1723,11 +1762,13 @@ const MainMenu = ({ onStartGame, onLoadSaveGame, onReplayIntro, introActive = fa
         <DialogContent aria-describedby={undefined} className={cn("h-[85dvh] flex flex-col overflow-x-hidden", worldModalCollapsed ? "sm:max-w-[600px]" : "sm:max-w-[1200px]")}>
           <DialogHeader className="shrink-0">
             <DialogTitle className="flex items-center gap-2">
-              <span className="truncate">{selectedWorld?.name}</span>
+              {/* `truncate` clips to the line box, and DialogTitle's `leading-none` leaves it exactly one
+                  em tall — descenders fall outside and crop. Fits within the row's existing height. */}
+              <span className="truncate leading-normal">{selectedWorld?.name}</span>
               <Button
                 variant="ghost"
                 size="icon"
-                className="ml-auto mr-8 shrink-0 hidden md:inline-flex"
+                className="ml-auto mr-8 h-8 w-8 shrink-0 hidden md:inline-flex"
                 onClick={toggleWorldModalCollapsed}
                 title={worldModalCollapsed ? "Expand to two columns" : "Collapse to single column"}
                 aria-label={worldModalCollapsed ? "Expand to two columns" : "Collapse to single column"}
@@ -1737,30 +1778,7 @@ const MainMenu = ({ onStartGame, onLoadSaveGame, onReplayIntro, introActive = fa
             </DialogTitle>
           </DialogHeader>
 
-          <div className="mt-4 flex-1 min-h-0 flex flex-col">
-            {/* Trust a pristine bundled default (id is unspoofable — imports/downloads always re-mint ids),
-                so our own example worlds don't warn. An edited default (`dirty`) forfeits that trust. */}
-            {hasStatWithCode(stats) && !(isDefaultWorldId(selectedWorld?.id ?? '') && !selectedWorld?.dirty) && (
-              <div className="mb-4 shrink-0 p-3 bg-warning/10 border border-warning/30 rounded-md flex items-start">
-                <AlertTriangle className="h-5 w-5 text-warning mr-2 flex-shrink-0 mt-0.5" />
-                <div className="text-sm text-warning flex-grow">
-                  <p className="font-medium">Warning</p>
-                  <p>This world contains stats with custom code execution. Please ensure you trust the source of this world.</p>
-                </div>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  className="ml-2 bg-warning/20 border-warning/30 text-warning hover:bg-warning/30"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    setShowCodeModal(true);
-                  }}
-                >
-                  <Code className="h-4 w-4 mr-1" />
-                  Examine Code
-                </Button>
-              </div>
-            )}
+          <div className="flex-1 min-h-0 flex flex-col">
             <WorldDetailsColumn
               split
               collapsed={worldModalCollapsed}
@@ -1892,18 +1910,64 @@ const MainMenu = ({ onStartGame, onLoadSaveGame, onReplayIntro, introActive = fa
             />
           </div>
 
-          {/* Per-world README toggle, anchored bottom-left of the popup — same flag the in-game
-              "Don't Show This Again" writes (inverse). */}
-          {selectedWorld?.data?.worldOverview?.readme?.trim() && (
-            <div className="shrink-0 flex items-center gap-2 pt-2">
-              <Checkbox
-                id="show-readme"
-                checked={showReadme(selectedWorld.id)}
-                onCheckedChange={(c) => setShowReadme(selectedWorld.id, c === true)}
-              />
-              <label htmlFor="show-readme" className="text-sm cursor-pointer">Show Readme on entry</label>
-            </div>
-          )}
+          {/* Notices about this world, below the panels so they never squeeze the detail columns. */}
+          <div className="shrink-0 space-y-1.5 pt-3 empty:pt-0">
+            {/* Trust a pristine bundled default (id is unspoofable — imports/downloads always re-mint ids),
+                so our own example worlds don't warn. An edited default (`dirty`) forfeits that trust. */}
+            {hasStatWithCode(stats) && !(isDefaultWorldId(selectedWorld?.id ?? '') && !selectedWorld?.dirty) && (
+              <WorldNotice
+                tone="warning"
+                icon={AlertTriangle}
+                actionLabel="Examine Code"
+                actionIcon={Code}
+                onAction={() => setShowCodeModal(true)}
+              >
+                Contains stats with custom code execution — be sure you trust this world&apos;s source.
+              </WorldNotice>
+            )}
+
+            {/* A downloaded world rewriting how the story is told should say so rather than only showing
+                up as different prose, so the text is readable here and the player can decline it. */}
+            {hasWorldNarrationPrompt(selectedWorld?.data?.worldOverview) && (
+              <WorldNotice
+                tone="info"
+                icon={ScrollText}
+                actionLabel="View"
+                actionIcon={BookOpen}
+                onAction={() => setShowNarrationPrompt(true)}
+              >
+                This world uses a custom narration prompt.
+              </WorldNotice>
+            )}
+          </div>
+
+          {/* Per-world local preferences, anchored bottom-left of the popup. Neither is ever exported. */}
+          <div className="shrink-0 flex flex-wrap items-center gap-x-6 gap-y-2 pt-2 empty:pt-0">
+            {/* Same flag the in-game "Don't Show This Again" writes (inverse). */}
+            {selectedWorld?.data?.worldOverview?.readme?.trim() && (
+              <div className="flex items-center gap-2">
+                <Checkbox
+                  id="show-readme"
+                  checked={showReadme(selectedWorld.id)}
+                  onCheckedChange={(c) => setShowReadme(selectedWorld.id, c === true)}
+                />
+                <label htmlFor="show-readme" className="text-sm cursor-pointer">Show Readme on entry</label>
+              </div>
+            )}
+
+            {hasWorldNarrationPrompt(selectedWorld?.data?.worldOverview) && selectedWorld && (
+              <div className="flex items-center gap-2">
+                <Checkbox
+                  id="use-world-narration-prompt"
+                  checked={applyWorldPrompt(selectedWorld.id)}
+                  onCheckedChange={(c) => setApplyWorldPrompt(selectedWorld.id, c === true)}
+                />
+                <label htmlFor="use-world-narration-prompt" className="text-sm cursor-pointer">
+                  Use this world&apos;s narration prompt
+                </label>
+              </div>
+            )}
+          </div>
         </DialogContent>
       </Dialog>
 
@@ -2020,6 +2084,31 @@ const MainMenu = ({ onStartGame, onLoadSaveGame, onReplayIntro, introActive = fa
                 Close
               </Button>
             </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Read-only view of the world's narration prompt. Chips are shown as their raw tokens: this is the
+          text as authored, not a per-turn render, and the AI-context viewer already shows the filled one. */}
+      <Dialog open={showNarrationPrompt} onOpenChange={setShowNarrationPrompt}>
+        <DialogContent className="sm:max-w-[700px] h-[85dvh] flex flex-col">
+          <DialogHeader className="shrink-0">
+            <DialogTitle className="leading-normal">Custom Narration Prompt</DialogTitle>
+          </DialogHeader>
+
+          <DialogDescription className="shrink-0">
+            This world tells its story with the prompt below in place of yours. Uncheck &ldquo;Use this
+            world&apos;s narration prompt&rdquo; in the world&apos;s window to use your own instead.
+          </DialogDescription>
+
+          <div className="flex-1 min-h-0 overflow-auto rounded-md bg-muted p-4">
+            <pre className="text-sm font-mono whitespace-pre-wrap">
+              {worldNarrationPrompt(selectedWorld?.data?.worldOverview) ?? ''}
+            </pre>
+          </div>
+
+          <div className="shrink-0 flex justify-end">
+            <Button onClick={() => setShowNarrationPrompt(false)}>Close</Button>
           </div>
         </DialogContent>
       </Dialog>

@@ -267,6 +267,23 @@ export interface Dictionary {
   placeholders?: Placeholder[];
 }
 
+/**
+ * Prompt text a world supplies in place of the player's own. Only the narration system prompt is honored;
+ * the other AI passes (choices, planning, stats, memory, the clock) always come from the player's preset,
+ * so a world can restyle the storytelling without being able to break the machinery around it.
+ *
+ * An object rather than a bare string so later keys need no further export-shape change. The player can
+ * decline it per world — see `lib/useWorldPromptOptOut`.
+ */
+export interface WorldPromptOverrides {
+  /** Replaces the active preset's narration system prompt, chips and all, while playing this world. */
+  systemPrompt?: string;
+  /** `false` keeps the authored `systemPrompt` on the world without applying it, so switching the editor's
+   *  toggle off is not what destroys the text. Absent/`true` = applied, so a world authored before this
+   *  flag existed still uses its prompt. */
+  systemPromptEnabled?: boolean;
+}
+
 /** World-level metadata and global settings (system prompt, media, 3D toggle) shared across all saves. */
 export interface WorldOverview {
   name: string;
@@ -281,6 +298,8 @@ export interface WorldOverview {
   customPlayerVRM?: MediaAsset | null;
   /** Optional markdown shown to the player on entering the world (per-world "Show Readme" toggle). */
   readme?: string;
+  /** Prompt text this world supplies in place of the player's preset. Absent = the player's preset alone. */
+  promptOverrides?: WorldPromptOverrides;
 }
 
 /** A complete authored world: overview plus all stats, locations, entities, traits, and updates. */

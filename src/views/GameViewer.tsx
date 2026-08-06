@@ -32,6 +32,7 @@ import "react-toastify/dist/ReactToastify.css";
 import TTSModal, { type TTSModalHandle, type TTSProgress } from "../components/game/TTSModal";
 import ReadmeModal from "../components/game/ReadmeModal";
 import { useReadmeVisibility } from "@/lib/useReadmeVisibility";
+import { resolveNarrationPrompt, useWorldPromptOptOut } from "@/lib/worldPrompt";
 import { EntityModal } from "../components/modals/EntityModal";
 import { LocationModal } from "../components/modals/LocationModal";
 import { SettingsModal } from "../components/modals/SettingsModal";
@@ -262,6 +263,10 @@ const GameViewer = ({
   const readmeText = worldOverview?.readme?.trim() ?? "";
   const [showReadmeModal, setShowReadmeModal] = useState(() => !!readmeText && showReadme(worldId));
 
+  // A world may supply its own narration system prompt; the player can decline it per world from the
+  // main-menu details popup. Resolved below, after the preset's own prompt is destructured.
+  const { applyWorldPrompt } = useWorldPromptOptOut();
+
   // The whole settings bag is kept as well as the destructured fields: buildImageRequest reads the image
   // preset off it, so the scene path and the editor's dialog cannot drift apart on request shape.
   const settings = useSettings();
@@ -287,7 +292,7 @@ const GameViewer = ({
     genTopK,
     genMinP,
     promptSamplers,
-    systemPrompt,
+    systemPrompt: presetSystemPrompt,
     choicesPrompt,
     statUpdatesPrompt,
     locationChangePromptText,
@@ -354,6 +359,10 @@ const GameViewer = ({
     locationBackground,
     backgroundOverlay,
   } = settings;
+
+  // The narration prompt this world actually runs on. Every reference below is the resolved value, so the
+  // opening scene and every later turn agree; the other passes keep reading their preset fields directly.
+  const systemPrompt = resolveNarrationPrompt(worldOverview, presetSystemPrompt, !applyWorldPrompt(worldId));
 
   const {
     setCharacterData,

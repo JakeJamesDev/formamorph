@@ -49,7 +49,9 @@ const EditorModalShell = ({
               root and each panel keeps the body a direct flex child of the dialog, as it was unwrapped. */}
           <Tabs value={tab} onValueChange={onTabChange} className="contents">
             <DialogHeader className="px-4 py-3 border-b shrink-0 flex-row items-center gap-3">
-              <DialogTitle className="truncate flex-1">{title}</DialogTitle>
+              {/* `leading-normal` replaces DialogTitle's `leading-none`, whose one-em line box crops
+                  descenders under `truncate`'s overflow clip. */}
+              <DialogTitle className="truncate flex-1 leading-normal">{title}</DialogTitle>
               {!loading && (
                 <TabsList>
                   {tabs.map((t) => (

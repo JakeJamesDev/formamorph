@@ -285,7 +285,10 @@ function useProvideGameData() {
       use3DModel: typeof overview.use3DModel === 'boolean' ? overview.use3DModel : defaultOverview.use3DModel,
       tags: Array.isArray(overview.tags) ? overview.tags : defaultOverview.tags,
       customPlayerVRM: overview.customPlayerVRM || defaultOverview.customPlayerVRM,
-      readme: overview.readme || defaultOverview.readme
+      readme: overview.readme || defaultOverview.readme,
+      // Allowlisted like everything above — omitting it here would silently drop a world's authored
+      // narration prompt on load, and the next saveWorld would write the loss back to disk.
+      ...(overview.promptOverrides ? { promptOverrides: overview.promptOverrides } : {})
     };
     // Replace, never merge: a merge lets a field the normalizer doesn't set survive from the previously
     // loaded world, leaking it into this one and into the next saveWorld.
