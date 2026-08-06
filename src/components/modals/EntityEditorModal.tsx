@@ -5,6 +5,8 @@ import EditorModalShell from './EditorModalShell';
 import EntityFields from '@/managers/EntityFields';
 import { TagsField } from '@/components/TagsField';
 import PlaceholderEditor from '@/managers/PlaceholderEditor';
+import PlaceholderPaletteBar from '@/components/prompt/PlaceholderPaletteBar';
+import { ChipInsertTargetProvider } from '@/components/prompt/ChipInsertTarget';
 import { placeholderStore, PlaceholderStoreProvider } from '@/contexts/PlaceholderStoreContext';
 import { exportEntityCard } from '@/lib/entityFile';
 import { downloadBlob } from '@/lib/downloadBlob';
@@ -129,7 +131,10 @@ const EntityEditorModal = ({ entityId, draft, onClose, onPublish }: {
       ) : entity && tab === 'entity' ? (
         <ScrollArea className="flex-1 min-h-0">
           <div className="p-4">
-            <EntityFields value={entity} onChange={handleChange} placeholders={entity.placeholders ?? []} />
+            <ChipInsertTargetProvider>
+              <PlaceholderPaletteBar placeholders={entity.placeholders ?? []} />
+              <EntityFields value={entity} onChange={handleChange} placeholders={entity.placeholders ?? []} />
+            </ChipInsertTargetProvider>
           </div>
         </ScrollArea>
       ) : (

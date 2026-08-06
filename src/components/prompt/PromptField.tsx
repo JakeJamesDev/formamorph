@@ -31,6 +31,8 @@ import { useIsMobile } from '@/lib/useIsMobile';
 import { resolveLayout, usePromptSplitMode, useContainerWidth, MIN_PANE_WIDTH } from '@/lib/promptLayout';
 import { VariableNode, $createVariableNode, $isVariableNode, PromptDragContext } from './VariableNode';
 import { buildEditorState, serializeRoot, $applyMarkdownAction } from './promptFieldState';
+import { ChipTypeaheadPlugin } from './ChipTypeahead';
+import { ChipInsertTargetPlugin } from './ChipInsertTarget';
 
 const MARKDOWN_TOOLBAR: { action: MarkdownAction; Icon: typeof Bold; title: string }[] = [
   { action: 'bold', Icon: Bold, title: 'Bold' },
@@ -490,7 +492,7 @@ function MarkdownPreviewPane({ value, previewValues, vocab, scrollRef, onScroll 
  * With `markdown`, it also gains a formatting toolbar and its Preview renders markdown instead of tinting
  * chips — for author-facing prose fields (world description, readme) that the player reads as markdown.
  */
-const PromptField = ({ value, onChange, variables = [], vocabulary, previewValues, onPreviewOpen, markdown = false, resizable = false, placeholder, className, readOnly = false, ariaLabel, sampleData = false, onRequestEdit, readOnlyReason, onRequestFullscreen, fullscreen: fullscreenProp }: {
+const PromptField = ({ value, onChange, variables = [], vocabulary, previewValues, onPreviewOpen, markdown = false, resizable = false, placeholder, className, readOnly = false, ariaLabel, sampleData = false, onRequestEdit, readOnlyReason, onRequestFullscreen, fullscreen: fullscreenProp, insertTrigger }: {
   value: string;
   onChange: (v: string) => void;
   /** Prompt-variable palette (used when no explicit `vocabulary` is given — the default prompt family). */
@@ -528,6 +530,12 @@ const PromptField = ({ value, onChange, variables = [], vocabulary, previewValue
   fullscreen?: boolean;
   /** Names the editor for a screen reader. Lexical renders a `div`, so a `<label htmlFor>` cannot reach it. */
   ariaLabel?: string;
+  /**
+   * Switches the field to the shared-palette insert model: its own Insert row is dropped, typing this
+   * character opens the insert menu at the caret, and the field claims the panel's palette while focused.
+   * Placeholder fields pass `{`; prompt fields omit it and keep their per-field row.
+   */
+  insertTrigger?: string;
 }) => {
   const vocab = useMemo(() => vocabulary ?? promptVocabulary(variables), [vocabulary, variables]);
   const dragKey = useRef<string | null>(null);
@@ -731,7 +739,9 @@ const PromptField = ({ value, onChange, variables = [], vocabulary, previewValue
     // intrinsic width shoves the buttons off the side of a phone instead of wrapping.
     <div className="flex items-start gap-1 flex-shrink-0">
       <div className="min-w-0 flex-1">
-        <VariableToolbar vocab={vocab} interactive={!readOnly && (split || !showTabs || tab === 'edit')} />
+        {/* With a shared palette the per-field row would repeat the same chips above every field on the
+            panel — the whole reason the palette was hoisted out. */}
+        {!insertTrigger && <VariableToolbar vocab={vocab} interactive={!readOnly && (split || !showTabs || tab === 'edit')} />}
       </div>
       <div className="flex flex-shrink-0 items-center gap-1">
         <HistoryButtons disabled={editingDisabled} />
@@ -846,6 +856,12 @@ const PromptField = ({ value, onChange, variables = [], vocabulary, previewValue
         <EditablePlugin readOnly={readOnly} />
         <ChipDragPlugin dragKey={dragKey} />
         <CaretFollowPlugin onCaret={followCaret} />
+        {insertTrigger && !readOnly && (
+          <>
+            <ChipTypeaheadPlugin trigger={insertTrigger} vocab={vocab} />
+            <ChipInsertTargetPlugin vocab={vocab} />
+          </>
+        )}
       </PromptDragContext.Provider>
       </ChipVocabularyContext.Provider>
     </LexicalComposer>

@@ -9,6 +9,8 @@ import DictionaryBookManager from '@/managers/DictionaryBookManager';
 import DictionaryOverviewManager from '@/managers/DictionaryOverviewManager';
 import DictionaryManager from '@/managers/DictionaryManager';
 import PlaceholderEditor from '@/managers/PlaceholderEditor';
+import PlaceholderPaletteBar from '@/components/prompt/PlaceholderPaletteBar';
+import { ChipInsertTargetProvider } from '@/components/prompt/ChipInsertTarget';
 import { placeholderStore, PlaceholderStoreProvider } from '@/contexts/PlaceholderStoreContext';
 import { buildDictionaryFile } from '@/lib/dictionaryFile';
 import { downloadBlob } from '@/lib/downloadBlob';
@@ -147,7 +149,10 @@ const DictionaryEditorModal = ({ dictionaryId, draft, onClose, onPublish }: {
                 {selectedBook ? (
                   <DictionaryBookManager key={selectedBook.id} book={selectedBook} />
                 ) : selectedEntry ? (
-                  <DictionaryManager key={selectedEntry.id} entry={selectedEntry} placeholders={bookPlaceholders} />
+                  <ChipInsertTargetProvider>
+                    <PlaceholderPaletteBar placeholders={bookPlaceholders} />
+                    <DictionaryManager key={selectedEntry.id} entry={selectedEntry} placeholders={bookPlaceholders} />
+                  </ChipInsertTargetProvider>
                 ) : (
                   <p className="text-sm text-muted-foreground">Select the dictionary or an entry to edit it.</p>
                 )}

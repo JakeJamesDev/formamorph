@@ -34,6 +34,8 @@ import StatUpdatesManager from '../managers/StatUpdatesManager';
 import WorldOverviewManager from '../managers/WorldOverviewManager';
 import WorldDetailsManager from '../managers/WorldDetailsManager';
 import DictionaryManager from '../managers/DictionaryManager';
+import PlaceholderPaletteBar from '@/components/prompt/PlaceholderPaletteBar';
+import { ChipInsertTargetProvider } from '@/components/prompt/ChipInsertTarget';
 import PlaceholderManager from '../managers/PlaceholderManager';
 import PlaceholderList from '../managers/PlaceholderList';
 import DictionaryTree from '../managers/DictionaryTree';
@@ -488,7 +490,13 @@ const WorldEditor = ({ onClose, embedded = false, backButton }: {
     </>
   );
   const detailContent = (
+    <ChipInsertTargetProvider>
     <div className="p-6">
+      {/* One palette for the whole panel. Not on the Placeholders tab itself: a placeholder's own values
+          are plain text, since a chip inside one would never be expanded (resolution is single-pass). */}
+      {activeTab !== "placeholders" && (
+        <PlaceholderPaletteBar placeholders={placeholders} className="-mx-6 -mt-6 mb-4 px-6" />
+      )}
       {activeTab === "overview" && (
         <WorldDetailsManager />
       )}
@@ -523,6 +531,7 @@ const WorldEditor = ({ onClose, embedded = false, backButton }: {
         <PlaceholderManager key={selectedPlaceholder.id} placeholder={selectedPlaceholder} />
       )}
     </div>
+    </ChipInsertTargetProvider>
   );
 
   // Shared chrome — reused by the desktop resizable split and the mobile single-panel layout.
