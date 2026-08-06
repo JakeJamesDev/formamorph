@@ -13,7 +13,7 @@ import 'react-toastify/dist/ReactToastify.css';
 import { Button } from "@/components/ui/button";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import {ConfirmDialog} from "@/components/ConfirmDialog";
-import {FilePlus2, DoorOpen, Pencil, Github, AlertTriangle, Code, User, Shield, Import, Globe, LayoutGrid, GalleryThumbnails, Columns2, RectangleVertical, Menu, Earth, BookOpen, Upload, ChevronLast, MoreHorizontal, PersonStanding, MessageSquarePlus, FolderOpen, Archive, Settings, type LucideIcon } from "lucide-react";
+import {FilePlus2, DoorOpen, Pencil, Github, AlertTriangle, Code, User, Shield, Import, Globe, LayoutGrid, GalleryThumbnails, Columns2, RectangleVertical, Menu, Earth, BookOpen, Upload, ChevronLast, MoreHorizontal, PersonStanding, MessageSquarePlus, FolderOpen, Archive, Settings, CloudDownload, type LucideIcon } from "lucide-react";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { ImageZoomViewer } from "@/components/ImageZoomViewer";
 import { cn } from "@/lib/utils";
@@ -72,7 +72,11 @@ import { WebVersionChangelog } from '@/components/menu/WebVersionChangelog';
 import { parseDictionaryImport } from '@/lib/dictionaryFile';
 import { importCharacterFile } from '@/lib/entityFile';
 import { useDownscalePrompt } from '@/lib/useDownscalePrompt';
-import { IMAGE_CAPS, applyWorldOptimize, applyImageOptimize } from '@/lib/imageOptim';
+import { IMAGE_CAPS, applyWorldOptimize, applyEntityImagesOptimize, countWorldImages } from '@/lib/imageOptim';
+import { entityImages, primaryImage } from '@/lib/entityImages';
+import { withOptimizeProgress } from '@/lib/optimizeProgress';
+import { remoteWorldImages } from '@/lib/embedRemoteImages';
+import { warmCachedImages } from '@/lib/remoteImageCache';
 import { filesFrom, importSummaryToast } from '@/lib/importFiles';
 import CommunityCreationsBrowser from './CommunityCreationsBrowser';
 import { WorldDetailsColumn, DateTimeText, type WorldRecord } from "@/components/WorldDetails";
@@ -181,7 +185,7 @@ const MainMenu = ({ onStartGame, onLoadSaveGame, onReplayIntro, introActive = fa
     dictionaries: worldBooks,
   } = useGameData();
   const { showReadme, setShowReadme } = useReadmeVisibility();
-  const { promptWorldsBatch, promptImagesBatch, promptImage, dialog: downscaleDialog } = useDownscalePrompt();
+  const { promptWorldsBatch, promptImagesBatch, promptEntity, dialog: downscaleDialog } = useDownscalePrompt();
   const [selectedWorld, setSelectedWorld] = useState<WorldRecord | null>(null);
   // Library grid layout: "grid" (compact cards) or "detailed" (community-browser-style card + info
   // beneath). Kept per tab and persisted: the four libraries hold different-shaped things, and wanting
@@ -213,6 +217,7 @@ const MainMenu = ({ onStartGame, onLoadSaveGame, onReplayIntro, introActive = fa
   // refreshes on close). The editor's own back arrow + unsaved-changes prompt handle the dirty guard.
   const [showWorldEditor, setShowWorldEditor] = useState(false);
   const [worldToDelete, setWorldToDelete] = useState<string | null>(null);
+  const [warmingOffline, setWarmingOffline] = useState(false);
   const [showCharacterCustomization, setShowCharacterCustomization] = useState(false);
   const [showTraitSelection, setShowTraitSelection] = useState(false);
   const [showLocationSelection, setShowLocationSelection] = useState(false);
@@ -359,8 +364,7 @@ const MainMenu = ({ onStartGame, onLoadSaveGame, onReplayIntro, introActive = fa
    * side already offers this choice; the publish side is where the big image actually comes from.
    */
   const publishEntity = async (entity: Entity) => {
-    const image = entity.image ? await promptImage(entity.image, IMAGE_CAPS.entity) : entity.image;
-    openPublish(entityPublishPayload(image === entity.image ? entity : { ...entity, image }));
+    openPublish(entityPublishPayload(await promptEntity(entity)));
   };
   const [showBackup, setShowBackup] = useState(false);
 
@@ -668,24 +672,33 @@ const MainMenu = ({ onStartGame, onLoadSaveGame, onReplayIntro, introActive = fa
     if (parsed.length) {
       const mode = await promptWorldsBatch(parsed.map((p) => p.world));
       const now = new Date().toISOString();
-      let last: { id: string; data: World } | null = null;
-      for (const { world, id } of parsed) {
-        // Storing is guarded per world: `storeWorld` rejects a shape `migrateWorld` can't complete (no
-        // `statUpdates`, say), and one such file must not abort the rest of the batch.
-        try {
-          const data = mode === 'off' ? world : await applyWorldOptimize(world, mode);
-          data.id = id;
-          const name = data.worldOverview?.name || 'Uploaded World';
-          const description = data.worldOverview?.description || 'Custom uploaded world';
-          await WorldStorageService.storeWorld({ id, name, description, thumbnail: data.worldOverview?.thumbnail ?? undefined, data });
-          setWorlds(prev => [...prev, { id, name, description, thumbnail: data.worldOverview?.thumbnail, tags: data.worldOverview?.tags || [], createdAt: now, lastAccessed: now, isLoading: false }]);
-          stored++;
-          last = { id, data };
-        } catch (error) {
-          console.error('Error storing world:', world.worldOverview?.name, error);
-          skipped++;
+      // Progress is counted in images across the whole batch, ticked as each world's slots encode.
+      const totals = parsed.map((p) => (mode === 'off' ? 0 : countWorldImages(p.world)));
+      const grandTotal = totals.reduce((a, b) => a + b, 0);
+      const storeAll = async (tick: (done: number) => void) => {
+        let last: { id: string; data: World } | null = null;
+        let base = 0;
+        for (const [i, { world, id }] of parsed.entries()) {
+          // Storing is guarded per world: `storeWorld` rejects a shape `migrateWorld` can't complete (no
+          // `statUpdates`, say), and one such file must not abort the rest of the batch.
+          try {
+            const data = mode === 'off' ? world : await applyWorldOptimize(world, mode, (done) => tick(base + done));
+            data.id = id;
+            const name = data.worldOverview?.name || 'Uploaded World';
+            const description = data.worldOverview?.description || 'Custom uploaded world';
+            await WorldStorageService.storeWorld({ id, name, description, thumbnail: data.worldOverview?.thumbnail ?? undefined, data });
+            setWorlds(prev => [...prev, { id, name, description, thumbnail: data.worldOverview?.thumbnail, tags: data.worldOverview?.tags || [], createdAt: now, lastAccessed: now, isLoading: false }]);
+            stored++;
+            last = { id, data };
+          } catch (error) {
+            console.error('Error storing world:', world.worldOverview?.name, error);
+            skipped++;
+          }
+          base += totals[i];
         }
-      }
+        return last;
+      };
+      const last = grandTotal ? await withOptimizeProgress(grandTotal, storeAll) : await storeAll(() => {});
       // A lone import opens the world's details; a batch just lands the cards.
       if (files.length === 1 && last) {
         const d = last.data;
@@ -732,27 +745,33 @@ const MainMenu = ({ onStartGame, onLoadSaveGame, onReplayIntro, introActive = fa
     }
 
     if (parsed.length) {
-      const mode = await promptImagesBatch(parsed.map((p) => p.entity.image).filter(Boolean) as string[], IMAGE_CAPS.entity);
+      const mode = await promptImagesBatch(parsed.flatMap((p) => entityImages(p.entity)), IMAGE_CAPS.entity);
       const now = new Date().toISOString();
       let lorebooks = 0;
       let stored = 0;
-      for (const { entity, book } of parsed) {
-        // Guarded per card: a portrait can blow the storage quota mid-batch, and that must not drop the rest.
-        try {
-          if (mode !== 'off' && entity.image) entity.image = (await applyImageOptimize(entity.image, mode, IMAGE_CAPS.entity)) ?? entity.image;
-          await EntityStorageService.storeEntity({ id: entity.id, name: entity.name, createdAt: now, lastAccessed: now, data: entity });
-          setEntities(prev => [...prev, { id: entity.id, name: entity.name, image: entity.image, createdAt: now, lastAccessed: now }]);
-          stored++;
-        } catch (err) {
-          console.error('Error storing character:', entity.name, err);
-          skipped++;
-          continue; // the card never landed, so its lorebook has nothing to attach to
+      const total = mode === 'off' ? 0 : parsed.reduce((n, p) => n + entityImages(p.entity).length, 0);
+      const storeAll = async (tick: (done: number) => void) => {
+        let done = 0;
+        for (const { entity, book } of parsed) {
+          // Guarded per card: a portrait can blow the storage quota mid-batch, and that must not drop the rest.
+          try {
+            const record = await applyEntityImagesOptimize(entity, mode, () => tick(++done));
+            await EntityStorageService.storeEntity({ id: record.id, name: record.name, createdAt: now, lastAccessed: now, data: record });
+            setEntities(prev => [...prev, { id: record.id, name: record.name, image: primaryImage(record), createdAt: now, lastAccessed: now }]);
+            stored++;
+          } catch (err) {
+            console.error('Error storing character:', entity.name, err);
+            skipped++;
+            continue; // the card never landed, so its lorebook has nothing to attach to
+          }
+          if (book) {
+            try { await addDictionaryToLibrary(book); lorebooks++; }
+            catch (err) { console.error('Error adding lorebook for:', entity.name, err); } // the card still landed
+          }
         }
-        if (book) {
-          try { await addDictionaryToLibrary(book); lorebooks++; }
-          catch (err) { console.error('Error adding lorebook for:', entity.name, err); } // the card still landed
-        }
-      }
+      };
+      if (total) await withOptimizeProgress(total, storeAll);
+      else await storeAll(() => {});
       importSummaryToast(stored, skipped, { one: 'character', many: 'characters' },
         lorebooks ? `, ${lorebooks} lorebook${lorebooks === 1 ? '' : 's'}` : '');
     } else if (skipped) {
@@ -898,6 +917,33 @@ const MainMenu = ({ onStartGame, onLoadSaveGame, onReplayIntro, introActive = fa
     const steps = enterFlowSteps();
     const idx = steps.indexOf(step);
     return idx > 0 ? () => showEnterStep(steps[idx - 1]) : undefined;
+  };
+
+  /**
+   * Download this world's linked pictures into the on-device cache so it stays viewable without a connection.
+   * Nothing is written back into the world — the cache is keyed by URL and read only when rendering.
+   */
+  const handleMakeAvailableOffline = async () => {
+    if (!selectedWorld) return;
+    const urls = remoteWorldImages(selectedWorld.data);
+    setWarmingOffline(true);
+    try {
+      const { cached, failed } = await withOptimizeProgress(
+        urls.length,
+        (tick) => warmCachedImages(urls, (done) => tick(done)),
+        'Saving images for offline',
+      );
+      if (failed) {
+        // Named as the host's choice rather than a fault of the world: the pictures still show online.
+        toast.warning(`${cached} of ${urls.length} images saved. ${failed} couldn't be downloaded — those need a connection.`);
+      } else {
+        toast.success(`This world's ${cached} linked image${cached === 1 ? '' : 's'} are available offline.`);
+      }
+    } catch {
+      toast.error('Could not save the images for offline use');
+    } finally {
+      setWarmingOffline(false);
+    }
   };
 
   const handleDuplicateWorld = async () => {
@@ -1820,6 +1866,18 @@ const MainMenu = ({ onStartGame, onLoadSaveGame, onReplayIntro, introActive = fa
                   >
                     <FilePlus2 className="mr-2 h-4 w-4" /> Duplicate World
                   </Button>
+
+                  {/* Only worth offering for a world that links its pictures — one storing its own has nothing
+                      to download. */}
+                  {selectedWorld && remoteWorldImages(selectedWorld.data).length > 0 && (
+                    <Button
+                      className="w-full bg-gradient-to-r from-sky-100 to-sky-200 hover:from-sky-200 hover:to-sky-300 text-black font-bold"
+                      disabled={warmingOffline}
+                      onClick={() => handleMakeAvailableOffline()}
+                    >
+                      <CloudDownload className="mr-2 h-4 w-4" /> Make Available Offline
+                    </Button>
+                  )}
 
                   {isAuthenticated && (
                     <Button

@@ -125,7 +125,10 @@ export interface Entity {
   aiDescription?: string;
   /** Short description sent to the AI where the full one is too long. */
   aiSummary?: string;
-  image?: Base64Data;
+  /** The entity's gallery, in author order. Slot 0 is the primary — the one picture shown wherever only one
+   *  fits (library grid, listing art, character-card pixels) — and in game the player pages through the rest.
+   *  Read it through `lib/entityImages`, which also covers records written before the gallery. */
+  images?: Base64Data[];
   /**
    * Listing tags, the same kind a world carries — how somebody browsing Community Creations finds this.
    *

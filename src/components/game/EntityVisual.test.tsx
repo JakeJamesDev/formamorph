@@ -19,7 +19,7 @@ const entity = (extra: Partial<Entity>): Entity =>
 
 describe('hasEntityVisual', () => {
   it('accepts an image or a model and rejects an entity with neither', () => {
-    expect(hasEntityVisual(entity({ image: IMAGE }))).toBe(true);
+    expect(hasEntityVisual(entity({ images: [IMAGE] }))).toBe(true);
     expect(hasEntityVisual(entity({ model: MODEL }))).toBe(true);
     expect(hasEntityVisual(entity({}))).toBe(false);
     expect(hasEntityVisual(undefined)).toBe(false);
@@ -32,7 +32,7 @@ describe('hasEntityVisual', () => {
 
 describe('EntityVisual', () => {
   it('shows the image with a button to the model when the entity has both', async () => {
-    render(<EntityVisual entity={entity({ image: IMAGE, model: MODEL })} />);
+    render(<EntityVisual entity={entity({ images: [IMAGE], model: MODEL })} />);
 
     expect(screen.getByAltText('Sedge')).toBeInTheDocument();
     // Inline would cover the image; the model waits behind the button until asked for.
@@ -43,7 +43,7 @@ describe('EntityVisual', () => {
   });
 
   it('offers no model button for an image-only entity', () => {
-    render(<EntityVisual entity={entity({ image: IMAGE })} />);
+    render(<EntityVisual entity={entity({ images: [IMAGE] })} />);
     expect(screen.getByAltText('Sedge')).toBeInTheDocument();
     expect(screen.queryByRole('button', { name: 'View 3D model' })).not.toBeInTheDocument();
   });
@@ -63,7 +63,7 @@ describe('EntityVisual', () => {
 });
 
 describe('EntityVisual — display by default', () => {
-  const both = () => entity({ image: IMAGE, model: MODEL });
+  const both = () => entity({ images: [IMAGE], model: MODEL });
 
   it('opens on the model, offering the image behind the corner button, once model is preferred', () => {
     render(<EntityVisual entity={both()} preference="model" onPreferenceChange={() => {}} />);
@@ -117,8 +117,47 @@ describe('EntityVisual — display by default', () => {
   });
 
   it('ignores a preference for an entity that has only one of the two', () => {
-    render(<EntityVisual entity={entity({ image: IMAGE })} preference="model" onPreferenceChange={() => {}} />);
+    render(<EntityVisual entity={entity({ images: [IMAGE] })} preference="model" onPreferenceChange={() => {}} />);
     // Nothing to switch to — a stale preference must not blank the picture.
     expect(screen.getByAltText('Sedge')).toBeInTheDocument();
+  });
+});
+
+describe('EntityVisual — gallery', () => {
+  const IMAGE_B = 'data:image/webp;base64,BBBB';
+  const two = () => entity({ images: [IMAGE, IMAGE_B] });
+
+  it('pages with the chevrons and counts the position', async () => {
+    const onImageStep = vi.fn();
+    render(<EntityVisual entity={two()} imageIndex={0} onImageStep={onImageStep} />);
+
+    expect(screen.getByText('1/2')).toBeTruthy();
+    await userEvent.click(screen.getByLabelText('Next image'));
+    expect(onImageStep).toHaveBeenCalledWith(1);
+    await userEvent.click(screen.getByLabelText('Previous image'));
+    expect(onImageStep).toHaveBeenCalledWith(-1);
+  });
+
+  it('shows the picture at the given index', () => {
+    const { container } = render(<EntityVisual entity={two()} imageIndex={1} onImageStep={() => {}} />);
+    expect(container.querySelector('img')?.getAttribute('src')).toBe(IMAGE_B);
+  });
+
+  it('clamps an index left over from a longer gallery instead of showing nothing', () => {
+    const { container } = render(<EntityVisual entity={two()} imageIndex={9} onImageStep={() => {}} />);
+    expect(container.querySelector('img')?.getAttribute('src')).toBe(IMAGE_B);
+    expect(screen.getByText('2/2')).toBeTruthy();
+  });
+
+  it('stays plain for a single-picture entity — nothing to page', () => {
+    render(<EntityVisual entity={entity({ images: [IMAGE] })} imageIndex={0} onImageStep={() => {}} />);
+    expect(screen.queryByLabelText('Next image')).toBeNull();
+    expect(screen.queryByText('1/1')).toBeNull();
+  });
+
+  it('stays plain without a host to page it (the editor preview)', () => {
+    render(<EntityVisual entity={two()} />);
+    expect(screen.queryByLabelText('Next image')).toBeNull();
+    expect(screen.queryByText('1/2')).toBeNull();
   });
 });

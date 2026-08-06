@@ -18,7 +18,8 @@ const setup = () => {
   render(
     <ImageTagsField
       label="Image"
-      onImageChange={() => {}}
+      images={[]}
+      onImagesChange={() => {}}
       imageId="x"
       cap={IMAGE_CAPS.entity}
       kind="character"

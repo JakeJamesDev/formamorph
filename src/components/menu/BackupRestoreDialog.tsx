@@ -27,7 +27,9 @@ import {
   type BackupItem,
   type CategoryPlan,
 } from '@/lib/backup';
-import { applyWorldOptimize, applyImageOptimize, type OptimizeMode } from '@/lib/imageOptim';
+import { applyWorldOptimize, applyEntityImagesOptimize, countWorldImages, type OptimizeMode } from '@/lib/imageOptim';
+import { entityImages } from '@/lib/entityImages';
+import { withOptimizeProgress } from '@/lib/optimizeProgress';
 import type { World, Entity } from '@/types';
 
 const OPTIMIZE_MODES: { value: OptimizeMode; label: string }[] = [
@@ -263,31 +265,47 @@ export function BackupRestoreDialog({ open, onOpenChange }: { open: boolean; onO
     if (!plans) return;
     setBusy(true);
     try {
-      // Optimize/downscale a world or entity record's images in place before it's written (no-op for 'off').
-      const optimize = async (category: BackupCategory, rec: { id: string; [k: string]: unknown }) => {
-        if (category === 'worlds' && worldOpt !== 'off') {
-          const data = await applyWorldOptimize(rec.data as World, worldOpt);
-          return { ...rec, data, thumbnail: data.worldOverview?.thumbnail ?? (rec as { thumbnail?: string }).thumbnail };
+      // How many images the chosen modes will touch across the ticked items, for the progress dialog.
+      const ticked = (p: CategoryPlan) => [...p.fresh, ...p.conflicts].filter((r) => restoreSel[p.category].has(r.id));
+      const totalImages = plans.reduce((n, p) => {
+        if (p.category === 'worlds' && worldOpt !== 'off')
+          return n + ticked(p).reduce((m, r) => m + countWorldImages(r.data as World), 0);
+        if (p.category === 'entities' && entityOpt !== 'off')
+          return n + ticked(p).reduce((m, r) => m + entityImages(r.data as Entity).length, 0);
+        return n;
+      }, 0);
+
+      // Restore only the ticked items; overwrite still gates whether a ticked conflict replaces the existing
+      // one. Sequential (not Promise.all) so the progress ticks stay monotonic — the encode worker
+      // serializes the images anyway.
+      const restore = async (tick: (done: number) => void) => {
+        let done = 0;
+        // Optimize/downscale a world or entity record's images in place before it's written (no-op for 'off').
+        const optimize = async (category: BackupCategory, rec: { id: string; [k: string]: unknown }) => {
+          if (category === 'worlds' && worldOpt !== 'off') {
+            const world = rec.data as World;
+            const data = await applyWorldOptimize(world, worldOpt, (d) => tick(done + d));
+            done += countWorldImages(world);
+            return { ...rec, data, thumbnail: data.worldOverview?.thumbnail ?? (rec as { thumbnail?: string }).thumbnail };
+          }
+          if (category === 'entities' && entityOpt !== 'off') {
+            const data = await applyEntityImagesOptimize(rec.data as Entity, entityOpt, () => tick(++done));
+            return { ...rec, data };
+          }
+          return rec;
+        };
+        const filtered: CategoryPlan[] = [];
+        for (const p of plans) {
+          const rows = async (list: CategoryPlan['fresh']) => {
+            const out: CategoryPlan['fresh'] = [];
+            for (const r of list.filter((r) => restoreSel[p.category].has(r.id))) out.push(await optimize(p.category, r));
+            return out;
+          };
+          filtered.push({ category: p.category, fresh: await rows(p.fresh), conflicts: await rows(p.conflicts) });
         }
-        if (category === 'entities' && entityOpt !== 'off') {
-          const data = rec.data as Entity;
-          const image = await applyImageOptimize(data.image, entityOpt);
-          return { ...rec, data: { ...data, image: image ?? undefined } };
-        }
-        return rec;
+        return filtered;
       };
-      // Restore only the ticked items; overwrite still gates whether a ticked conflict replaces the existing one.
-      const filtered = await Promise.all(
-        plans.map(async (p) => ({
-          category: p.category,
-          fresh: await Promise.all(
-            p.fresh.filter((r) => restoreSel[p.category].has(r.id)).map((r) => optimize(p.category, r)),
-          ),
-          conflicts: await Promise.all(
-            p.conflicts.filter((r) => restoreSel[p.category].has(r.id)).map((r) => optimize(p.category, r)),
-          ),
-        })),
-      );
+      const filtered = totalImages ? await withOptimizeProgress(totalImages, restore) : await restore(() => {});
       await applyBackup(filtered, overwrite);
       setStep('restore-done');
       setTimeout(() => window.location.reload(), 900);

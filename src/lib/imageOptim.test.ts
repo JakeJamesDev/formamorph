@@ -58,8 +58,8 @@ describe('downscaleWorldImages', () => {
       { id: 'l2', name: 'Loc2' },
     ],
     entities: [
-      { id: 'e1', name: 'Ent1', image: 'BIG-e' },
-      { id: 'e2', name: 'Ent2', image: 'small-e' },
+      { id: 'e1', name: 'Ent1', images: ['BIG-e', 'BIG-e2'] },
+      { id: 'e2', name: 'Ent2', images: ['small-e'] },
     ],
     traits: [],
     traitGroups: [],
@@ -77,8 +77,9 @@ describe('downscaleWorldImages', () => {
     expect(out.worldOverview.thumbnail).toBe('OPT:BIG-thumb');
     expect(out.locations[0].backgroundImage).toBe('OPT:BIG-bg');
     expect(out.locations[1].backgroundImage).toBeUndefined();
-    expect(out.entities[0].image).toBe('OPT:BIG-e');
-    expect(out.entities[1].image).toBe('small-e'); // within cap → untouched
+    // Every slot in a gallery is visited, not just the primary.
+    expect(out.entities[0].images).toEqual(['OPT:BIG-e', 'OPT:BIG-e2']);
+    expect(out.entities[1].images).toEqual(['small-e']); // within cap → untouched
     // Non-image data is preserved.
     expect(out.entities[0].name).toBe('Ent1');
     expect(out.id).toBe('w1');
@@ -92,17 +93,17 @@ describe('downscaleWorldImages', () => {
     const out = await downscaleWorldImages(world, reencodeDeps);
     expect(out.worldOverview.thumbnail).toBe('WEBP:BIG-thumb');
     expect(out.locations[0].backgroundImage).toBe('WEBP:BIG-bg');
-    expect(out.entities[0].image).toBe('WEBP:BIG-e');
-    expect(out.entities[1].image).toBe('small-e'); // within cap → untouched
+    expect(out.entities[0].images).toEqual(['WEBP:BIG-e', 'WEBP:BIG-e2']);
+    expect(out.entities[1].images).toEqual(['small-e']); // within cap → untouched
   });
 
   it('reports monotonic progress that ticks once per image-bearing slot (skipped ones included)', async () => {
     const calls: { done: number; total: number }[] = [];
     await downscaleWorldImages(world, deps, (done, total) => calls.push({ done, total }));
-    // 4 image slots: thumbnail, 1 background (l2 has none), 2 entity images. `total` is constant.
-    expect(calls.every((c) => c.total === 4)).toBe(true);
-    // First call is the 0/total prime; then done climbs 1→4, never repeating or skipping.
-    expect(calls.map((c) => c.done)).toEqual([0, 1, 2, 3, 4]);
+    // 5 image slots: thumbnail, 1 background (l2 has none), and 3 across the two galleries. `total` is constant.
+    expect(calls.every((c) => c.total === 5)).toBe(true);
+    // First call is the 0/total prime; then done climbs 1→5, never repeating or skipping.
+    expect(calls.map((c) => c.done)).toEqual([0, 1, 2, 3, 4, 5]);
   });
 
   it('an aborted signal stops the run before the next image and rejects with AbortError', async () => {

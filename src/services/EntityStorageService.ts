@@ -1,4 +1,5 @@
 import { LibraryStore, type StoredRecord } from './LibraryStore';
+import { primaryImage } from '@/lib/entityImages';
 import type { Entity, EntityMetadata } from '@/types';
 
 /** A locally-stored character ("entity") plus its library timestamps, and (via `StoredRecord`) the
@@ -16,7 +17,7 @@ class EntityStorageService {
       id: record.id,
       name: record.name,
       description: record.data?.playerDescription,
-      image: record.data?.image,
+      image: primaryImage(record.data),
       tags: record.data?.tags ?? [],
       createdAt: record.createdAt,
       lastAccessed: record.lastAccessed,

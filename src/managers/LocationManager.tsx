@@ -88,8 +88,8 @@ const LocationManager = ({ location }: { location: GameLocation }) => {
       </div>
       <ImageTagsField
         label="Background Image"
-        image={editingLocation.backgroundImage}
-        onImageChange={(file) => handleChange('backgroundImage', file)}
+        images={editingLocation.backgroundImage ? [editingLocation.backgroundImage] : []}
+        onImagesChange={(list) => handleChange('backgroundImage', list[0] ?? '')}
         imageId={`location-image-${editingLocation.id}`}
         cap={IMAGE_CAPS.background}
         description={editingLocation.aiDescription || editingLocation.playerDescription}

@@ -11,6 +11,7 @@ import { Input } from "@/components/ui/input";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Download, Plus, ArrowLeft, Save, FolderPlus, FilePlus, ImageDown, BookPlus, UserPlus, Loader2 } from "lucide-react";
 import { Panel, PanelGroup, PanelResizeHandle } from 'react-resizable-panels';
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -69,6 +70,7 @@ import { UnsavedChangesDialog } from "@/components/UnsavedChangesDialog";
 import { APP_VERSION, WORLD_FILE_KIND } from '@/lib/version';
 import type { Stat, Entity, GameLocation, StatUpdate, Dictionary, World } from '@/types';
 import { useDownscalePrompt } from '@/lib/useDownscalePrompt';
+import { embedWorldRemoteImages, remoteWorldImages } from '@/lib/embedRemoteImages';
 import { SortableRow, type SortableListItem } from '@/components/SortableList';
 
 /** The fields a reorderable list row needs (every editor item has these). */
@@ -106,6 +108,9 @@ const WorldEditor = ({ onClose, embedded = false, backButton }: {
   };
   // null = idle; 'scanning' = measuring before the choice dialog; then the live per-image encode progress.
   const [optimizeProgress, setOptimizeProgress] = useState<{ done: number; total: number } | 'scanning' | null>(null);
+  // The world waiting on the author's keep-links-or-embed choice, and the download progress once embedding.
+  const [pendingExport, setPendingExport] = useState<World | null>(null);
+  const [embedding, setEmbedding] = useState<{ done: number; total: number } | null>(null);
   // Cancels an in-flight optimize when the editor closes: without it the orphaned run keeps the shared encode
   // worker busy for the whole world and then writes its stale click-time snapshot back into GameDataContext,
   // clobbering any edits made after re-entering.
@@ -145,17 +150,41 @@ const WorldEditor = ({ onClose, embedded = false, backButton }: {
   const [showAddDictionary, setShowAddDictionary] = useState(false);
   const [showAddEntity, setShowAddEntity] = useState(false);
 
+  /** Write a world out, whatever choices were made about its images first. */
+  const writeWorldFile = async (w: World) => {
+    // `w` is buildCurrentWorld() (possibly downscaled/embedded), already the full canonical payload via getWorldData().
+    const { id: _id, ...worldFields } = w;
+    const worldData = { formamorphKind: WORLD_FILE_KIND, ...worldFields };
+    // Serialized off-thread: a world's embedded base64 images make this stringify a multi-second main-thread stall.
+    downloadBlob(await serializeJsonBlob(worldData, 2), `${worldOverview.name || 'rpg_world'}.json`);
+  };
+
   const downloadWorld = async () => {
     // Offer to downscale oversized images BEFORE writing the file so the download itself is the smaller size.
     // This affects only the exported file — the editor state and the stored world are left untouched.
     const current = buildCurrentWorld();
     const downscaled = await promptWorld(current);
     const w = downscaled ?? current;
-    // `w` is buildCurrentWorld() (possibly downscaled), already the full canonical payload via getWorldData().
-    const { id: _id, ...worldFields } = w;
-    const worldData = { formamorphKind: WORLD_FILE_KIND, ...worldFields };
-    // Serialized off-thread: a world's embedded base64 images make this stringify a multi-second main-thread stall.
-    downloadBlob(await serializeJsonBlob(worldData, 2), `${worldOverview.name || 'rpg_world'}.json`);
+    // A world with linked images has a choice to make first; one without exports straight through as before.
+    if (remoteWorldImages(w).length) { setPendingExport(w); return; }
+    await writeWorldFile(w);
+  };
+
+  /** "Download and embed": fetch every linked image into the exported copy, then report what failed. */
+  const exportEmbedded = async (w: World) => {
+    setEmbedding({ done: 0, total: remoteWorldImages(w).length });
+    try {
+      const { world: embedded, failures } = await embedWorldRemoteImages(w, (done, total) => setEmbedding({ done, total }));
+      if (failures.length) {
+        toast.warning(`${failures.length} image${failures.length > 1 ? 's' : ''} couldn't be downloaded and stayed linked.`);
+      }
+      await writeWorldFile(embedded);
+    } catch (error) {
+      toast.error((error as Error).message);
+    } finally {
+      setEmbedding(null);
+      setPendingExport(null);
+    }
   };
 
   // Export one book to its own standalone `.json` (no image downscale — dictionaries are text only).
@@ -733,6 +762,30 @@ const WorldEditor = ({ onClose, embedded = false, backButton }: {
         // back — closing alone would keep them live for the next time this world is opened.
         onExit={() => { discardChanges(); onClose(); }}
       />
+      <Dialog open={pendingExport !== null} onOpenChange={(o) => { if (!o && !embedding) setPendingExport(null); }}>
+        <DialogContent className="sm:max-w-[460px]">
+          <DialogHeader>
+            <DialogTitle>Linked Images</DialogTitle>
+            <DialogDescription>
+              {pendingExport && `This world links to ${remoteWorldImages(pendingExport).length} image${remoteWorldImages(pendingExport).length > 1 ? 's' : ''} instead of storing them. How should the exported file handle them?`}
+            </DialogDescription>
+          </DialogHeader>
+          {embedding ? (
+            <p className="text-sm text-muted-foreground">
+              Downloading images… {embedding.done} of {embedding.total}
+            </p>
+          ) : (
+            <DialogFooter className="flex-col gap-2 sm:flex-col">
+              <Button className="w-full" onClick={async () => { const w = pendingExport; setPendingExport(null); if (w) await writeWorldFile(w); }}>
+                Keep Links — Smaller File
+              </Button>
+              <Button variant="outline" className="w-full" onClick={() => { if (pendingExport) void exportEmbedded(pendingExport); }}>
+                Download and Embed — Works Offline
+              </Button>
+            </DialogFooter>
+          )}
+        </DialogContent>
+      </Dialog>
       <AddDictionaryModal
         open={showAddDictionary}
         onOpenChange={setShowAddDictionary}

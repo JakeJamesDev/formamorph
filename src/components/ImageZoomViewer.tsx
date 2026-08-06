@@ -1,4 +1,5 @@
 import { useCallback, useRef, useState } from "react";
+import { RemoteImg } from '@/lib/useRemoteImage';
 import {
   TransformWrapper,
   TransformComponent,
@@ -10,6 +11,7 @@ import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Slider } from "@/components/ui/slider";
 import { ZoomIn, ZoomOut, Maximize } from "lucide-react";
+import { GalleryControls, type GalleryControlsProps } from "./GalleryControls";
 
 const MIN_SCALE = 1;
 const MAX_SCALE = 8;
@@ -73,16 +75,19 @@ function ZoomControls() {
  * `footer` hangs a caller's own control under the zoom bar. Opt-in, so the viewer stays bare everywhere
  * it shows a picture that has nothing to decide about it.
  */
-export function ImageZoomViewer({ src, alt, open, onOpenChange, footer }: {
+export function ImageZoomViewer({ src, alt, open, onOpenChange, footer, gallery }: {
   src: string;
   alt: string;
   open: boolean;
   onOpenChange: (open: boolean) => void;
   footer?: React.ReactNode;
+  gallery?: GalleryControlsProps;
 }) {
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent aria-describedby={undefined} className="max-w-[95vw] w-[95vw] h-[90dvh] p-0 overflow-hidden bg-background/95">
+      <DialogContent aria-describedby={undefined} className="group max-w-[95vw] w-[95vw] h-[90dvh] p-0 overflow-hidden bg-background/95">
+        {/* Chevrons rather than swipe: a horizontal drag here is a pan, which the viewer exists for. */}
+        {gallery && gallery.count > 1 && <GalleryControls {...gallery} counterClassName="top-2" />}
         <DialogTitle className="sr-only">{alt || "Image viewer"}</DialogTitle>
         {src && (
           <TransformWrapper
@@ -105,7 +110,7 @@ export function ImageZoomViewer({ src, alt, open, onOpenChange, footer }: {
                 wrapperClass="!w-full !h-full"
                 contentClass="!w-full !h-full flex items-center justify-center"
               >
-                <img src={src} alt={alt} className="max-w-full max-h-full object-contain select-none" />
+                <RemoteImg src={src} alt={alt} className="max-w-full max-h-full object-contain select-none" />
               </TransformComponent>
             </>
           </TransformWrapper>

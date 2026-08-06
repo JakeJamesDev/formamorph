@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useMemo, useRef } from "react";
 import { toast } from "react-toastify";
 import {
   Dialog,
@@ -19,6 +19,9 @@ import { PolicyDialog } from "@/components/menu/PolicyDialog";
 import { usePublishPolicies } from "@/lib/usePublishPolicies";
 import PolicyService, { TERMS_REQUIRED } from "@/services/PolicyService";
 import { publishTags, type PublishPayload } from "@/lib/publishPayload";
+import { remoteImagesInContent } from "@/lib/embedRemoteImages";
+import { isExpiringImageHost } from "@/lib/imageBytes";
+import { AlertTriangle } from "lucide-react";
 
 interface PublishModalProps {
   open: boolean;
@@ -49,6 +52,11 @@ export function PublishModal({ open, onOpenChange, isAuthenticated, payload }: P
   const [isAccepting, setIsAccepting] = useState(false);
 
   const kind = payload?.kind ?? 'world';
+  // Pure inspection of the payload — no request, so this is right the moment the modal opens.
+  const expiringCount = useMemo(
+    () => (payload ? remoteImagesInContent(payload.contentData).filter(isExpiringImageHost).length : 0),
+    [payload],
+  );
   const noun = KIND_LABELS[kind].one.toLowerCase();
   // What's open right now, readable from inside an async callback that captured an older `kind`.
   const kindRef = useRef(kind);
@@ -257,6 +265,18 @@ export function PublishModal({ open, onOpenChange, isAuthenticated, payload }: P
             </div>
           </div>
         </ScrollArea>
+
+        {/* Warn, don't block: the author may know, or may be publishing a draft. But this is the one moment
+            the breakage lands on other people, so it says so plainly rather than only badging the editor. */}
+        {expiringCount > 0 && (
+          <div className="flex items-start gap-2 rounded-md border border-amber-500/50 bg-amber-500/10 p-3 text-sm">
+            <AlertTriangle className="mt-0.5 h-4 w-4 flex-shrink-0 text-amber-600 dark:text-amber-500" />
+            <p>
+              {expiringCount === 1 ? 'One image uses' : `${expiringCount} images use`} a Discord link that will
+              stop working. Anyone who downloads this will see {expiringCount === 1 ? 'it' : 'them'} disappear.
+            </p>
+          </div>
+        )}
 
         <DialogFooter className="flex flex-col sm:flex-row gap-2">
           <Button variant="outline" onClick={() => onOpenChange(false)} disabled={isPublishing}>
