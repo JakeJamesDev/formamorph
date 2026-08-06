@@ -59,6 +59,7 @@ import {
   activeCharacterGuidance,
   planDirective,
   defaultDiscoverEntityPrompt,
+  defaultRegenEntityPrompt,
   OPENING_SCENE_CUE,
   hasOocDirective,
   stripOocDirectives,
@@ -74,10 +75,11 @@ import {
   type DirectorCastMember,
 } from "../lib/stagedPlanning";
 import { selectDueDiscovery, materializeDiscoveredEntity, mergeDiscoveredIntoLocation, cleanDiscoveredDescription, selectReachableVisitors, DISCOVER_NAME_LABEL, DISCOVER_PASSAGE_LABEL } from "../lib/runtimeCharacters";
+import { selectRegenSource, buildRegenContext, buildRegenUserMessage, REGEN_LABELS } from "../lib/discoveredRegen";
 import { lengthGuidance, trimToLastSentence } from "../lib/outputLength";
 import { reasoningEffortBody, resolvePromptReasoning, reasoningBudgetBody } from "../lib/reasoningEffort";
 import { splitSentenceSegments } from "../lib/ttsChunks";
-import { selectDueDigests, applyDigest, applyImportance, parseTurnContent, recentParticipants, selectDueDiaries, pendingDiaryNames, applyDiary } from "../lib/turnDigest";
+import { selectDueDigests, applyDigest, applyImportance, parseTurnContent, recentParticipants, selectDueDiaries, pendingDiaryNames, applyDiary, collectCharacterDiary } from "../lib/turnDigest";
 import { buildTraitContext } from "../lib/traitTree";
 import { buildLocationContext, buildEntityContext, buildSublocationsContext, buildSublocationEntitiesContext, buildReachableLocationsContext, buildReachableEntitiesContext, buildDestinationsContext, buildParentLocationContext, buildSceneEntitiesContext, scenePresentHere, navigableDestinations, sublocationEntityIds, expandScopedTokens } from "../lib/locationContext";
 import { primeRolls, resolvePlaceholders } from "@/lib/placeholders";
@@ -3493,6 +3495,74 @@ ${playerNotes || NONE_PLACEHOLDER}
     })();
   }, [describeCharacters, isWaitingForAI, digestActive, diaryActive, fullMessageHistory, allEntities, suppressedCharacterNames, currentLocation, setDiscoveredEntities]);
 
+  // --- Discovered-character description: player edit + regenerate -----------------------------------
+  // A discovered character's description is minted from the single passage that introduced them, so it
+  // ages badly (and a bad first roll has no recovery). These two write through to `discoveredEntities`,
+  // which is per-save state — the authored world is never touched.
+
+  /** Overwrite a discovered character's stored description. */
+  const updateDiscoveredDescription = useCallback((entityId: string, text: string) => {
+    const next = text.trim();
+    if (!next) return;
+    setDiscoveredEntities((prev) => prev.map((d) =>
+      d.entity.id === entityId ? { ...d, entity: { ...d.entity, aiDescription: next } } : d,
+    ));
+  }, [setDiscoveredEntities]);
+
+  /** Any AI work that a regeneration must wait behind — the same gates the discover drainer respects,
+   *  so a manual regen never contends with narration for a single local GPU. */
+  const regenBusy = isWaitingForAI || digestActive || diaryActive || discoverActive || sceneImageJob !== null;
+
+  /**
+   * Rewrite a discovered character's description from everything the story has shown of them since.
+   * The supplemental context comes from exactly one source, picked by the memory settings; see
+   * lib/discoveredRegen. Resolves to the new text, or null when nothing usable came back.
+   */
+  const regenerateDiscoveredDescription = useCallback(async (entity: Entity, signal: AbortSignal): Promise<string | null> => {
+    const record = discoveredEntities.find((d) => d.entity.id === entity.id);
+    const name = entity.name;
+    const source = selectRegenSource({ semanticMemory, characterDiaries, memoryDigests });
+
+    // The semantic tier ranks this character's digests against who they are now. Bounded like every
+    // other embedding call here (a wedged worker must not hang the button), and null on any miss so
+    // buildRegenContext falls to the next source.
+    let semantic: { queryVec: Float32Array; vectorsByKey: Map<string, Float32Array> } | null = null;
+    if (source === 'semantic' && isEmbeddingModelReady()) {
+      try {
+        const query = `${name}. ${entity.aiDescription ?? ''}`.trim();
+        const vecs = await Promise.race([
+          embedTexts([query]),
+          new Promise<null>((resolve) => setTimeout(() => resolve(null), 2000)),
+        ]);
+        if (vecs && vecs.length > 0) semantic = { queryVec: vecs[0], vectorsByKey: embedVectorsRef.current };
+      } catch {
+        semantic = null;
+      }
+    }
+    if (signal.aborted) return null;
+
+    const context = buildRegenContext({
+      history: fullMessageHistory,
+      name,
+      sourceTurnId: record?.sourceTurnId,
+      source,
+      diaryEntries: source === 'diary' ? collectCharacterDiary(fullMessageHistory, name, -1) : undefined,
+      semantic,
+    });
+
+    const response = await makeAIRequestRef.current(
+      defaultRegenEntityPrompt,
+      [{ role: "user", content: buildRegenUserMessage(name, context) }],
+      "discoverEntity",
+      DISCOVER_MAX_TOKENS,
+      signal,
+      true, // silent: surfaces only when "Show Silent Requests" is on
+      record?.sourceTurnId,
+    );
+    if (signal.aborted) return null;
+    return cleanDiscoveredDescription(response ?? "", name, REGEN_LABELS) || null;
+  }, [discoveredEntities, semanticMemory, characterDiaries, memoryDigests, fullMessageHistory]);
+
   const handleSendAction = () => {
     const input = playerInput.trim();
     // A scene render holds the turn as well as the input: the model and the image server share one card.
@@ -4118,24 +4188,31 @@ ${playerNotes || NONE_PLACEHOLDER}
         />
       )}
 
-      {selectedEntity && (
-        <EntityModal
-          // A runtime-discovered character only ever gets the one generated description, stored as the
-          // AI-facing field, so show that as its player description or the modal reads "No description
-          // provided". Scoped to discovered characters: an authored entity's aiDescription is author-only
-          // notes and must never surface to the player.
-          entity={(() => {
-            const found = allEntities.find((f) => f.name === selectedEntity);
-            if (!found) return null;
-            const isDiscovered = discoveredEntities.some((d) => d.entity.name === found.name);
-            return isDiscovered && !found.playerDescription?.trim()
-              ? { ...found, playerDescription: found.aiDescription }
-              : found;
-          })()}
-          isOpen={isEntityModalOpen}
-          onOpenChange={setIsEntityModalOpen}
-        />
-      )}
+      {selectedEntity && (() => {
+        // A runtime-discovered character only ever gets the one generated description, stored as the
+        // AI-facing field, so show that as its player description or the modal reads "No description
+        // provided". Scoped to discovered characters: an authored entity's aiDescription is author-only
+        // notes and must never surface to the player.
+        const found = allEntities.find((f) => f.name === selectedEntity) ?? null;
+        const isDiscovered = !!found && discoveredEntities.some((d) => d.entity.name === found.name);
+        const shown = found && isDiscovered && !found.playerDescription?.trim()
+          ? { ...found, playerDescription: found.aiDescription }
+          : found;
+        return (
+          <EntityModal
+            entity={shown}
+            isOpen={isEntityModalOpen}
+            onOpenChange={setIsEntityModalOpen}
+            // Edit + regenerate are offered for discovered characters only; an authored entity belongs to
+            // the world, which play never writes.
+            editing={found && isDiscovered ? {
+              busy: regenBusy,
+              onSave: (text) => updateDiscoveredDescription(found.id, text),
+              onRegenerate: (signal) => regenerateDiscoveredDescription(found, signal),
+            } : undefined}
+          />
+        );
+      })()}
 
       <LocationModal
         isOpen={isLocationModalOpen}

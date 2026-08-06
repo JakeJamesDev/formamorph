@@ -58,11 +58,12 @@ export function materializeDiscoveredEntity(name: string, aiDescription: string)
  * mid-word — so drop reasoning blocks, cut anything from an echoed label onward, strip a leading
  * "<name>:" / "Character name:" prefix, and trim a dangling final fragment to the last full sentence.
  * Returns '' when nothing usable remains (caller leaves the character due and retries).
+ * `extraLabels` covers callers whose message carries additional sections (the regeneration path).
  */
-export function cleanDiscoveredDescription(raw: string, name: string): string {
+export function cleanDiscoveredDescription(raw: string, name: string, extraLabels: string[] = []): string {
   let out = stripReasoning(raw || '');
   // Cut from the first echoed scaffold label onward (the model repeating the prompt structure).
-  for (const label of [DISCOVER_PASSAGE_LABEL, DISCOVER_NAME_LABEL]) {
+  for (const label of [...extraLabels, DISCOVER_PASSAGE_LABEL, DISCOVER_NAME_LABEL]) {
     const at = out.indexOf(label);
     if (at !== -1) out = out.slice(0, at);
   }
