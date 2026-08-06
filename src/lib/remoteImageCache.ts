@@ -64,6 +64,42 @@ export const clearCachedImages = async (): Promise<void> => {
   await promisifyRequest(db.transaction([STORE_NAME], 'readwrite').objectStore(STORE_NAME).clear());
 };
 
+/**
+ * Download every linked image in a list into the cache so they're there without a connection.
+ *
+ * Already-cached images are skipped, so running this twice is cheap and a partly-played world only fetches
+ * what it's missing. Failures are counted rather than thrown: one host refusing must not abandon the rest,
+ * and the caller reports the tally.
+ */
+export async function warmCachedImages(
+  urls: string[],
+  onProgress?: (done: number, total: number) => void,
+  signal?: AbortSignal,
+): Promise<{ cached: number; failed: number }> {
+  let cached = 0;
+  let failed = 0;
+  let done = 0;
+  onProgress?.(0, urls.length);
+
+  for (const url of urls) {
+    if (signal?.aborted) throw new DOMException('Canceled', 'AbortError');
+    try {
+      if (await getCachedImage(url)) {
+        cached++;
+      } else {
+        const response = await fetch(url);
+        if (!response.ok) throw new Error(String(response.status));
+        await putCachedImage(url, await response.blob());
+        cached++;
+      }
+    } catch {
+      failed++; // unreachable, non-2xx, or a host that won't hand its bytes to another program
+    }
+    onProgress?.(++done, urls.length);
+  }
+  return { cached, failed };
+}
+
 /** Drop least-recently-cached entries until the store fits the byte cap. */
 export const pruneCachedImages = async (maxBytes = MAX_BYTES): Promise<void> => {
   const db = await openDB();

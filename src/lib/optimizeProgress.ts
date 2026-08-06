@@ -9,8 +9,9 @@ import { toast } from 'react-toastify';
 export async function withOptimizeProgress<T>(
   total: number,
   fn: (tick: (done: number) => void) => Promise<T>,
+  label = 'Optimizing images',
 ): Promise<T> {
-  const render = (done: number) => `Optimizing images… ${done}/${total}`;
+  const render = (done: number) => `${label}… ${done}/${total}`;
   const id = toast(render(0), { autoClose: false, progress: 0 });
   try {
     return await fn((done) => toast.update(id, { render: render(done), progress: done / total }));

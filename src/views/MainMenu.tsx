@@ -13,7 +13,7 @@ import 'react-toastify/dist/ReactToastify.css';
 import { Button } from "@/components/ui/button";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import {ConfirmDialog} from "@/components/ConfirmDialog";
-import {FilePlus2, DoorOpen, Pencil, Github, AlertTriangle, Code, User, Shield, Import, Globe, LayoutGrid, GalleryThumbnails, Columns2, RectangleVertical, Menu, Earth, BookOpen, Upload, ChevronLast, MoreHorizontal, PersonStanding, MessageSquarePlus, FolderOpen, Archive, Settings, type LucideIcon } from "lucide-react";
+import {FilePlus2, DoorOpen, Pencil, Github, AlertTriangle, Code, User, Shield, Import, Globe, LayoutGrid, GalleryThumbnails, Columns2, RectangleVertical, Menu, Earth, BookOpen, Upload, ChevronLast, MoreHorizontal, PersonStanding, MessageSquarePlus, FolderOpen, Archive, Settings, CloudDownload, type LucideIcon } from "lucide-react";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { ImageZoomViewer } from "@/components/ImageZoomViewer";
 import { cn } from "@/lib/utils";
@@ -75,6 +75,8 @@ import { useDownscalePrompt } from '@/lib/useDownscalePrompt';
 import { IMAGE_CAPS, applyWorldOptimize, applyEntityImagesOptimize, countWorldImages } from '@/lib/imageOptim';
 import { entityImages, primaryImage } from '@/lib/entityImages';
 import { withOptimizeProgress } from '@/lib/optimizeProgress';
+import { remoteWorldImages } from '@/lib/embedRemoteImages';
+import { warmCachedImages } from '@/lib/remoteImageCache';
 import { filesFrom, importSummaryToast } from '@/lib/importFiles';
 import CommunityCreationsBrowser from './CommunityCreationsBrowser';
 import { WorldDetailsColumn, DateTimeText, type WorldRecord } from "@/components/WorldDetails";
@@ -215,6 +217,7 @@ const MainMenu = ({ onStartGame, onLoadSaveGame, onReplayIntro, introActive = fa
   // refreshes on close). The editor's own back arrow + unsaved-changes prompt handle the dirty guard.
   const [showWorldEditor, setShowWorldEditor] = useState(false);
   const [worldToDelete, setWorldToDelete] = useState<string | null>(null);
+  const [warmingOffline, setWarmingOffline] = useState(false);
   const [showCharacterCustomization, setShowCharacterCustomization] = useState(false);
   const [showTraitSelection, setShowTraitSelection] = useState(false);
   const [showLocationSelection, setShowLocationSelection] = useState(false);
@@ -914,6 +917,33 @@ const MainMenu = ({ onStartGame, onLoadSaveGame, onReplayIntro, introActive = fa
     const steps = enterFlowSteps();
     const idx = steps.indexOf(step);
     return idx > 0 ? () => showEnterStep(steps[idx - 1]) : undefined;
+  };
+
+  /**
+   * Download this world's linked pictures into the on-device cache so it stays viewable without a connection.
+   * Nothing is written back into the world — the cache is keyed by URL and read only when rendering.
+   */
+  const handleMakeAvailableOffline = async () => {
+    if (!selectedWorld) return;
+    const urls = remoteWorldImages(selectedWorld.data);
+    setWarmingOffline(true);
+    try {
+      const { cached, failed } = await withOptimizeProgress(
+        urls.length,
+        (tick) => warmCachedImages(urls, (done) => tick(done)),
+        'Saving images for offline',
+      );
+      if (failed) {
+        // Named as the host's choice rather than a fault of the world: the pictures still show online.
+        toast.warning(`${cached} of ${urls.length} images saved. ${failed} couldn't be downloaded — those need a connection.`);
+      } else {
+        toast.success(`This world's ${cached} linked image${cached === 1 ? '' : 's'} are available offline.`);
+      }
+    } catch {
+      toast.error('Could not save the images for offline use');
+    } finally {
+      setWarmingOffline(false);
+    }
   };
 
   const handleDuplicateWorld = async () => {
@@ -1836,6 +1866,18 @@ const MainMenu = ({ onStartGame, onLoadSaveGame, onReplayIntro, introActive = fa
                   >
                     <FilePlus2 className="mr-2 h-4 w-4" /> Duplicate World
                   </Button>
+
+                  {/* Only worth offering for a world that links its pictures — one storing its own has nothing
+                      to download. */}
+                  {selectedWorld && remoteWorldImages(selectedWorld.data).length > 0 && (
+                    <Button
+                      className="w-full bg-gradient-to-r from-sky-100 to-sky-200 hover:from-sky-200 hover:to-sky-300 text-black font-bold"
+                      disabled={warmingOffline}
+                      onClick={() => handleMakeAvailableOffline()}
+                    >
+                      <CloudDownload className="mr-2 h-4 w-4" /> Make Available Offline
+                    </Button>
+                  )}
 
                   {isAuthenticated && (
                     <Button
