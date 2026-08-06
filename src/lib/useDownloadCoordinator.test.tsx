@@ -4,7 +4,11 @@ import { useState } from 'react';
 import type { WorldRecord } from '@/components/WorldDetails';
 
 const storeWorld = vi.fn(async (_r: unknown) => {});
-const fetchCatalogContent = vi.fn(async (..._a: unknown[]) => ({ worldOverview: { tags: ['t'], thumbnail: 'data:img' } }));
+// Widened so individual tests can vary the world content they hand back (author, thumbnail, …).
+type CatalogContent = { worldOverview: { tags?: string[]; thumbnail?: string; author?: string } };
+const fetchCatalogContent = vi.fn(
+  async (..._a: unknown[]): Promise<CatalogContent> => ({ worldOverview: { tags: ['t'], thumbnail: 'data:img' } }),
+);
 
 vi.mock('@/services/WorldStorageService', () => ({
   default: { storeWorld: (r: unknown) => storeWorld(r), API_URL: 'http://x' },
@@ -61,6 +65,45 @@ describe('useDownloadCoordinator', () => {
 
     await waitFor(() => expect(result.current.worlds).toHaveLength(1));
     expect(result.current.worlds[0].sourceAuthorId).toBeUndefined();
+  });
+
+  // The stored world's own author line, as opposed to the catalog metadata alongside it.
+  const storedAuthor = () =>
+    (storeWorld.mock.calls.at(-1)?.[0] as { data: { worldOverview: { author?: string } } })
+      .data.worldOverview.author;
+
+  it('credits the uploader when the world names no author', async () => {
+    // Somebody who published without filling the field in the editor still made the world.
+    fetchCatalogContent.mockResolvedValueOnce({ worldOverview: { tags: ['t'], author: '   ' } });
+    const { result } = renderHook(() => useHarness([]));
+
+    await act(async () => { await result.current.coord.handleDownloadWorld(remote); });
+
+    await waitFor(() => expect(result.current.worlds).toHaveLength(1));
+    expect(storedAuthor()).toBe('bob');
+  });
+
+  it('leaves an authored name alone, even when it differs from the account', async () => {
+    // A pen name is a deliberate choice; the account name must not overwrite it.
+    fetchCatalogContent.mockResolvedValueOnce({ worldOverview: { tags: ['t'], author: 'The Cartographer' } });
+    const { result } = renderHook(() => useHarness([]));
+
+    await act(async () => { await result.current.coord.handleDownloadWorld(remote); });
+
+    await waitFor(() => expect(result.current.worlds).toHaveLength(1));
+    expect(storedAuthor()).toBe('The Cartographer');
+  });
+
+  it('leaves the author empty when the listing names no uploader either', async () => {
+    // An anonymous upload has no name to borrow; inventing one would credit the wrong person.
+    fetchCatalogContent.mockResolvedValueOnce({ worldOverview: { tags: ['t'], author: '' } });
+    const anon: WorldRecord = { _id: 'remote-3', name: 'Anon', updated_at: 'T2' };
+    const { result } = renderHook(() => useHarness([]));
+
+    await act(async () => { await result.current.coord.handleDownloadWorld(anon); });
+
+    await waitFor(() => expect(result.current.worlds).toHaveLength(1));
+    expect(storedAuthor()).toBe('');
   });
 
   it('overwriteWorld replaces the existing copy in place (same id, no duplicate)', async () => {

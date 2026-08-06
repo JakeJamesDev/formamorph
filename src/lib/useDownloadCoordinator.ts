@@ -58,6 +58,13 @@ export function useDownloadCoordinator(
 
     const migrated = migrateWorld(contentData);
 
+    // An author who never filled the field still made the world, so credit the uploader's account name.
+    // Only when it is genuinely blank — any authored text, including a pen name, is left alone.
+    const uploaderName = typeof world.author?.username === 'string' ? world.author.username.trim() : '';
+    if (migrated.worldOverview && !migrated.worldOverview.author?.trim() && uploaderName) {
+      migrated.worldOverview.author = uploaderName;
+    }
+
     // Prefer the world's own embedded thumbnail (base64, already in the downloaded content) so the local
     // copy is self-contained and renders offline. A cross-origin server URL would also be blocked from
     // embedding by the thumbnail response's `Cross-Origin-Resource-Policy: same-origin` header. Fall back to
