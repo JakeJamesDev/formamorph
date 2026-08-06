@@ -90,19 +90,25 @@ export const resolveModelType = (model: Partial<MediaAsset>): ModelType => {
 /** The shared dashed "click to upload" frame for the media uploaders (image / sound / 3D model). Pass
  *  `frameClassName` to give it a fixed size (e.g. the thumbnail crop); without it the box is compact and
  *  auto-sized. The dashed look lives here so every uploader stays in sync. */
-const Dropzone = ({ htmlFor, frameClassName, children }: { htmlFor: string; frameClassName?: string; children: ReactNode }) => (
-  <Label htmlFor={htmlFor} className="cursor-pointer">
+const Dropzone = ({ htmlFor, frameClassName, children }: { htmlFor?: string; frameClassName?: string; children: ReactNode }) => {
+  const frame = (
     <div className={cn('border-2 border-dashed border-border rounded-md', frameClassName ?? 'flex items-center justify-center p-4')}>
       {children}
     </div>
-  </Label>
-);
+  );
+  // No target input (upload withheld) ⇒ a plain box: a Label pointing nowhere would still read as clickable.
+  return htmlFor ? <Label htmlFor={htmlFor} className="cursor-pointer">{frame}</Label> : frame;
+};
 
-export const ImageUpload = ({ onChange, id, value, cap, previewClassName, objectFit = 'contain', onPromptExtracted }: {
+export const ImageUpload = ({ onChange, id, value, cap, previewClassName, objectFit = 'contain', onPromptExtracted, allowUpload = true, uploadBlockedNote }: {
   onChange: (value: string) => void;
   id: string | number;
   value?: string | null;
   cap?: ImageCap;
+  // False withdraws the file picker from an empty slot while leaving the URL box — the caller has spent its
+  // allowance for pictures carrying their own bytes. `uploadBlockedNote` says why, in the picker's place.
+  allowUpload?: boolean;
+  uploadBlockedNote?: string;
   // Optional fixed-size preview box (e.g. the 4:3 thumbnail crop). When set, replaces the default dashed box.
   previewClassName?: string;
   objectFit?: 'contain' | 'cover';
@@ -217,14 +223,16 @@ export const ImageUpload = ({ onChange, id, value, cap, previewClassName, object
     <div className="space-y-1">
       {dialog}
       {value && <ImageZoomViewer src={displaySrc} alt="" open={zoomOpen} onOpenChange={setZoomOpen} />}
-      <Input
-        type="file"
-        accept="image/*"
-        onChange={handleImageChange}
-        className="hidden"
-        id={`image-upload-${id}`}
-      />
-      <Dropzone htmlFor={`image-upload-${id}`} frameClassName={previewClassName}>
+      {allowUpload && (
+        <Input
+          type="file"
+          accept="image/*"
+          onChange={handleImageChange}
+          className="hidden"
+          id={`image-upload-${id}`}
+        />
+      )}
+      <Dropzone htmlFor={allowUpload ? `image-upload-${id}` : undefined} frameClassName={previewClassName}>
         {previewClassName ? (
           value ? (
             <>
@@ -242,8 +250,8 @@ export const ImageUpload = ({ onChange, id, value, cap, previewClassName, object
               {removeButton}
             </>
           ) : (
-            <div className="absolute inset-0 flex items-center justify-center text-muted-foreground">
-              Click to upload image
+            <div className="absolute inset-0 flex items-center justify-center p-2 text-center text-muted-foreground">
+              {allowUpload ? 'Click to upload image' : uploadBlockedNote}
             </div>
           )
         ) : (
@@ -264,10 +272,14 @@ export const ImageUpload = ({ onChange, id, value, cap, previewClassName, object
               {removeButton}
             </div>
           ) : (
-            <>
-              <ImagePlus className="mr-2" />
-              <span>Add Image</span>
-            </>
+            allowUpload ? (
+              <>
+                <ImagePlus className="mr-2" />
+                <span>Add Image</span>
+              </>
+            ) : (
+              <span className="text-center text-sm text-muted-foreground">{uploadBlockedNote}</span>
+            )
           )
         )}
       </Dropzone>

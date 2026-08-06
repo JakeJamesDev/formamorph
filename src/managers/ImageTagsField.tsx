@@ -6,6 +6,7 @@ import AiFieldToolbar from "@/components/AiFieldToolbar";
 import { TagAutocomplete } from "@/components/TagAutocomplete";
 import { ConfirmDialog } from "@/components/ConfirmDialog";
 import { ImageUpload } from '../lib/UtilityComponents';
+import { isRemoteImage } from '@/lib/imageBytes';
 import { GenerateImageButton } from '../components/GenerateImageButton';
 import type { ImageCap } from '../lib/imageOptim';
 import type { ImageSubjectKind } from '@/lib/imagePrompt';
@@ -16,8 +17,11 @@ interface ImageTagsFieldProps {
   /** The pictures this subject carries, in order; slot 0 is the primary. */
   images: string[];
   onImagesChange: (next: string[]) => void;
-  /** How many pictures may be held. One (the default) renders as a plain single upload with no gallery chrome. */
+  /** How many pictures may be held. One (the default) renders as a plain single upload with no gallery chrome.
+   *  Pass Infinity for a gallery bounded only by `embeddedLimit`. */
   slots?: number;
+  /** How many of those may carry their own bytes. Defaults to `slots`, i.e. no separate allowance for links. */
+  embeddedLimit?: number;
   /** Stable id for the file input (must be unique per rendered subject). */
   imageId: string;
   cap: ImageCap;
@@ -38,13 +42,19 @@ interface ImageTagsFieldProps {
  * carrying the control that promotes it to primary. Tag generation and image generation always act on the
  * primary — they describe the subject, not one picture of it.
  */
-const ImageTagsField = ({ label, images, onImagesChange, slots = 1, imageId, cap, description, kind, tags, onTagsChange }: ImageTagsFieldProps) => {
+const ImageTagsField = ({ label, images, onImagesChange, slots = 1, embeddedLimit = slots, imageId, cap, description, kind, tags, onTagsChange }: ImageTagsFieldProps) => {
   // SD prompt pulled from an uploaded image, pending the user's OK to use it as Image Tags.
   const [pendingPrompt, setPendingPrompt] = useState<string | null>(null);
 
   // Filled slots, plus a trailing empty one to upload into while there is room.
   const shown = images.slice(0, slots);
   const rows = shown.length < slots ? [...shown, ''] : shown;
+
+  // Only pictures carrying their own bytes count against the allowance; links are free to the payload.
+  const embedded = shown.filter((url) => url && !isRemoteImage(url)).length;
+  const canEmbed = embedded < embeddedLimit;
+  // Generating writes over the primary, so it only adds bytes when that slot isn't already carrying some.
+  const canGenerate = canEmbed || !!(shown[0] && !isRemoteImage(shown[0]));
 
   /** Write one slot; an emptied slot drops out rather than leaving a hole for the next one to fall into. */
   const setSlot = (index: number, value: string) => {
@@ -70,6 +80,10 @@ const ImageTagsField = ({ label, images, onImagesChange, slots = 1, imageId, cap
             id={i === 0 ? imageId : `${imageId}-${i}`}
             value={url}
             cap={cap}
+            // Spent allowance closes the file picker on empty slots; the URL box stays, so a gallery can
+            // still grow with links. A filled slot ignores this — it is changed by removing it first.
+            allowUpload={canEmbed}
+            uploadBlockedNote={`${embeddedLimit} uploaded picture${embeddedLimit === 1 ? '' : 's'} is the limit — add more as links instead.`}
             // Only the primary offers its embedded prompt as the tags: the tags describe the subject, and a
             // later slot overwriting them would undo the choice made for the picture that represents it.
             onPromptExtracted={i === 0 ? setPendingPrompt : undefined}
@@ -111,13 +125,16 @@ const ImageTagsField = ({ label, images, onImagesChange, slots = 1, imageId, cap
         onChange={onTagsChange}
         placeholder="booru tags, comma separated"
       />
-      <GenerateImageButton
-        subject={{ description: description || '', kind }}
-        cap={cap}
-        onChange={(value) => setSlot(0, value)}
-        tags={tags ?? ''}
-        onTagsChange={onTagsChange}
-      />
+      {/* A generated picture lands in the primary slot as bytes, so it answers to the same allowance. */}
+      {canGenerate && (
+        <GenerateImageButton
+          subject={{ description: description || '', kind }}
+          cap={cap}
+          onChange={(value) => setSlot(0, value)}
+          tags={tags ?? ''}
+          onTagsChange={onTagsChange}
+        />
+      )}
     </div>
   );
 };

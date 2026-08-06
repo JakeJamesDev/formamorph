@@ -8,11 +8,11 @@ type ImageBearing = Pick<Entity, 'images'> & {
 };
 
 /**
- * How many pictures one entity may carry. Two in a shipped build; four in development so the gallery's
- * wrap-around has enough slots to exercise. Authoring is capped by this — nothing enforces it on import,
- * where an over-long list is kept rather than silently truncated.
+ * How many pictures one entity may carry *as its own bytes*. Linked pictures are unlimited: they cost the
+ * world nothing to ship, so only embedded ones are worth rationing. Authoring is capped by this — nothing
+ * enforces it on import, where an over-long list is kept rather than silently truncated.
  */
-export const ENTITY_IMAGE_SLOTS = import.meta.env.DEV ? 4 : 2;
+export const ENTITY_EMBEDDED_IMAGE_LIMIT = 2;
 
 /**
  * One entity's pictures, oldest shape included. Always an array, always free of blanks — every reader can
