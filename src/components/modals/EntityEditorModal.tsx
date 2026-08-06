@@ -22,7 +22,7 @@ type EntityTab = (typeof TABS)[number]['value'];
 
 /**
  * Edit a single library character in place, bound to ISOLATED state (never the world store). Opens on an
- * existing `entityId` (loaded from storage) or a `draft` (a brand-new character not yet stored). Download
+ * existing `entityId` (loaded from storage) or a `draft` (a brand-new character not yet stored). Export
  * exports a `.webp` card; Save writes to `EntityStorageService` — a draft isn't persisted until then.
  * `onPublish` (when the user is signed in) hands the character up to the publish dialog.
  */
@@ -95,7 +95,7 @@ const EntityEditorModal = ({ entityId, draft, onClose, onPublish }: {
     }
   };
 
-  const handleDownload = async () => {
+  const handleExport = async () => {
     if (!entity) return;
     try {
       const blob = await exportEntityCard(entity);
@@ -117,7 +117,7 @@ const EntityEditorModal = ({ entityId, draft, onClose, onPublish }: {
       hasUnsavedChanges={hasUnsavedChanges}
       onSave={handleSave}
       onClose={onClose}
-      onDownload={handleDownload}
+      onExport={handleExport}
       onPublish={onPublish && entity ? () => onPublish(entity) : undefined}
     >
       {entity && tab === 'overview' ? (

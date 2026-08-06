@@ -1898,7 +1898,7 @@ const MainMenu = ({ onStartGame, onLoadSaveGame, onReplayIntro, introActive = fa
                     className="w-full bg-gradient-to-r from-emerald-100 to-emerald-200 hover:from-emerald-200 hover:to-emerald-300 text-black font-bold"
                     onClick={() => { if (selectedWorld) void exportWorld(selectedWorld.data); }}
                   >
-                    <Download className="mr-2 h-4 w-4" /> Download World
+                    <Download className="mr-2 h-4 w-4" /> Export World
                   </Button>
 
                   {/* Only worth offering for a world that links its pictures — one storing its own has nothing

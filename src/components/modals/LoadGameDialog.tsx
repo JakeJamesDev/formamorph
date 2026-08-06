@@ -16,7 +16,7 @@ import { ConfirmDialog } from '../ConfirmDialog';
 import {
   getAllSaveRecords, deleteSaveRecord, putSaveRecord, migrateLegacySaves, getOrder, setOrder,
 } from './dbUtils';
-import { serializeJsonBlob, terminateWorker as terminateDownloadWorker } from '../../lib/jsonFileWorkerUtils';
+import { serializeJsonBlob, terminateWorker as terminateExportWorker } from '../../lib/jsonFileWorkerUtils';
 import { APP_VERSION, isSaveEnvelope, migrateSave, SAVE_FILE_KIND } from '../../lib/version';
 import { cn } from "@/lib/utils";
 import { useClosingSnapshot } from "@/lib/useClosingSnapshot";
@@ -55,12 +55,12 @@ const recordToRow = (r: SaveRecord): SaveRow => ({
 
 // --- One save row (draggable) --------------------------------------------------------------------
 
-function SortableSaveRow({ row, disabled, busy, onLoad, onDownload, onDelete }: {
+function SortableSaveRow({ row, disabled, busy, onLoad, onExport, onDelete }: {
   row: SaveRow;
   disabled: boolean;
   busy: boolean;
   onLoad: (row: SaveRow) => void;
-  onDownload: (row: SaveRow) => void;
+  onExport: (row: SaveRow) => void;
   onDelete: (row: SaveRow) => void;
 }) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: row.id });
@@ -107,14 +107,14 @@ function SortableSaveRow({ row, disabled, busy, onLoad, onDownload, onDelete }: 
         </div>
       </div>
 
-      {/* Download then Delete — right-anchored */}
+      {/* Export then Delete — right-anchored */}
       <Button
         variant="ghost"
         size="sm"
         className="h-7 w-7 p-0 shrink-0"
         disabled={busy}
-        title="Download save"
-        onClick={(e) => { e.stopPropagation(); onDownload(row); }}
+        title="Export save"
+        onClick={(e) => { e.stopPropagation(); onExport(row); }}
       >
         <Download className="h-3.5 w-3.5" />
       </Button>
@@ -199,7 +199,7 @@ function SortableFolderRow({ folder, onOpen }: { folder: SaveFolder; onOpen: (f:
 
 /**
  * The Load Game dialog: per-world save folders with a root/folder breadcrumb, drag-reorder, import, and
- * per-save download/delete. Shared by the in-game menu and the main menu.
+ * per-save export/delete. Shared by the in-game menu and the main menu.
  *
  * - `current` set (in-game): that world's folder is pinned first; loading another *installed* world confirms
  *   and switches; loading an *uninstalled* world's save warns and loads in place (`onLoad` with no worldId).
@@ -231,8 +231,8 @@ export function LoadGameDialog({ open, onOpenChange, current, onLoad, title, ico
 
   const [isLoading, setIsLoading] = React.useState(false);
   const [loadingMessage, setLoadingMessage] = React.useState('');
-  const [isDownloading, setIsDownloading] = React.useState(false);
-  const [downloadingSaveName, setDownloadingSaveName] = React.useState('');
+  const [isExporting, setIsExporting] = React.useState(false);
+  const [exportingSaveName, setExportingSaveName] = React.useState('');
   const [pendingDelete, setPendingDelete] = React.useState<SaveRow | null>(null);
   // In-game cross-world confirm. `targetWorldId` set ⇒ installed world, we'll switch; absent ⇒ warn + load in place.
   const [pendingLoad, setPendingLoad] = React.useState<{ row: SaveRow; targetWorldId?: string } | null>(null);
@@ -243,7 +243,7 @@ export function LoadGameDialog({ open, onOpenChange, current, onLoad, title, ico
     useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates }),
   );
 
-  React.useEffect(() => () => { terminateDownloadWorker(); }, []);
+  React.useEffect(() => () => { terminateExportWorker(); }, []);
 
   const loadData = React.useCallback(async () => {
     try {
@@ -343,21 +343,21 @@ export function LoadGameDialog({ open, onOpenChange, current, onLoad, title, ico
     }
   };
 
-  const doDownload = async (row: SaveRow) => {
+  const doExport = async (row: SaveRow) => {
     try {
-      setIsDownloading(true);
-      setDownloadingSaveName(row.name);
-      setLoadingMessage(`Preparing ${row.name} for download...`);
-      // Strip device-local fields from the export: the record id and the autosave marker (a downloaded
+      setIsExporting(true);
+      setExportingSaveName(row.name);
+      setLoadingMessage(`Preparing ${row.name} for export...`);
+      // Strip device-local fields from the export: the record id and the autosave marker (an exported
       // autosave re-imports as an ordinary manual save).
       const { id: _id, isAutosave: _auto, ...fileData } = row.record;
       const blob = await serializeJsonBlob({ formamorphKind: SAVE_FILE_KIND, ...fileData }, 2);
       downloadBlob(blob, `${fileData.name || 'save'}.json`);
     } catch (error) {
-      console.error('Error downloading save:', error);
+      console.error('Error exporting save:', error);
     } finally {
-      setIsDownloading(false);
-      setDownloadingSaveName('');
+      setIsExporting(false);
+      setExportingSaveName('');
       setLoadingMessage('');
     }
   };
@@ -425,7 +425,7 @@ export function LoadGameDialog({ open, onOpenChange, current, onLoad, title, ico
     if (ok || skipped) importSummaryToast(ok, skipped, { one: 'save', many: 'saves' });
   };
 
-  const busy = isLoading || isDownloading;
+  const busy = isLoading || isExporting;
   const rootEmpty = atRoot && !currentFolder && listFolders.length === 0;
   // Hold the blocked save's world name while its "not installed" dialog fades out (blockedLoad nulls on close).
   const shownBlocked = useClosingSnapshot(!!blockedLoad, blockedLoad);
@@ -451,7 +451,7 @@ export function LoadGameDialog({ open, onOpenChange, current, onLoad, title, ico
           </DialogHeader>
           <DialogDescription className="py-2">
             This save belongs to “{shownBlocked?.worldName ?? 'a world'}”, which is not installed. Import or
-            download that world first to play its saves. You can still download or delete this save.
+            download that world first to play its saves. You can still export or delete this save.
           </DialogDescription>
           <DialogFooter>
             <Button onClick={() => setBlockedLoad(null)}>OK</Button>
@@ -544,7 +544,7 @@ export function LoadGameDialog({ open, onOpenChange, current, onLoad, title, ico
                           disabled={isLoading}
                           busy={busy}
                           onLoad={onPickSave ?? requestLoad}
-                          onDownload={(r) => void doDownload(r)}
+                          onExport={(r) => void doExport(r)}
                           onDelete={(r) => setPendingDelete(r)}
                         />
                       ))}
@@ -557,8 +557,8 @@ export function LoadGameDialog({ open, onOpenChange, current, onLoad, title, ico
                     <Loader2 className="h-6 w-6 animate-spin" />
                     <div className="text-sm">{loadingMessage || 'Processing...'}</div>
                     <div className="text-xs text-warning max-w-xs">
-                      {isDownloading
-                        ? `Please wait while the save file "${downloadingSaveName}" is being prepared for download. For large save files, this may take a moment.`
+                      {isExporting
+                        ? `Please wait while the save file "${exportingSaveName}" is being prepared for export. For large save files, this may take a moment.`
                         : 'Please wait while the save file is being processed. For large save files, this may take a moment. Do not attempt to load another save until this process completes.'}
                     </div>
                   </div>
