@@ -51,7 +51,7 @@ function Flag({ value, yes, no }: {
  * A model's 3D preview and everything its file says about itself, in the layout both VRM surfaces share: the
  * library's details modal and the World Editor's player-model preview. Read-only — it's a details panel rather
  * than an editor. The caller owns where the bytes come from and passes a ready object/data URL; anything extra
- * that belongs to one surface only (the library's Export button) goes in `footer`.
+ * that varies per surface (each one's Export button, which resolves its bytes differently) goes in `footer`.
  *
  * Portrait/narrow: the model fills the screen and its info + controls move into a bottom sheet, mirroring the
  * character-customization step. A standalone full-screen overlay (not a nested Dialog) keeps the vaul drawer

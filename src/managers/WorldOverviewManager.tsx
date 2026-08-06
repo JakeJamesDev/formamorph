@@ -11,6 +11,8 @@ import { IMAGE_CAPS } from '../lib/imageOptim';
 import { GenerateImageButton } from '../components/GenerateImageButton';
 import { ModelDetailsPanel } from '../components/modals/ModelDetailsPanel';
 import { readVrmMeta } from '../lib/vrmMeta';
+import { downloadBlob } from '@/lib/downloadBlob';
+import { Download } from 'lucide-react';
 import type { VrmLicense } from '@/types';
 
 /**
@@ -18,8 +20,9 @@ import type { VrmLicense } from '@/types';
  * inline as a data URL rather than as a library record, so the bytes are decoded here and its license is read
  * from the file itself. Its own component so the work happens only while the preview is open.
  */
-const PlayerVrmPreview = ({ data, open, onClose }: { data: string; open: boolean; onClose: () => void }) => {
+const PlayerVrmPreview = ({ data, fileName, open, onClose }: { data: string; fileName?: string; open: boolean; onClose: () => void }) => {
   const [url, setUrl] = useState<string | undefined>();
+  const [blob, setBlob] = useState<Blob | null>(null);
   const [meta, setMeta] = useState<{ license?: VrmLicense; size?: number }>({});
   const [failed, setFailed] = useState(false);
 
@@ -28,19 +31,29 @@ const PlayerVrmPreview = ({ data, open, onClose }: { data: string; open: boolean
     let objectUrl: string | undefined;
     fetch(data)
       .then((r) => r.blob())
-      .then(async (blob) => {
+      .then(async (loaded) => {
         if (cancelled) return;
-        objectUrl = URL.createObjectURL(blob);
+        objectUrl = URL.createObjectURL(loaded);
         setUrl(objectUrl);
-        const { license } = await readVrmMeta(blob);
-        if (!cancelled) setMeta({ license, size: blob.size });
+        setBlob(loaded);
+        const { license } = await readVrmMeta(loaded);
+        if (!cancelled) setMeta({ license, size: loaded.size });
       })
       .catch(() => { if (!cancelled) setFailed(true); });
     return () => {
       cancelled = true;
       if (objectUrl) URL.revokeObjectURL(objectUrl);
+      setBlob(null);
     };
   }, [data]);
+
+  /** Save the stored bytes back out untouched, so the file's own metadata and license travel with it. */
+  const handleExport = () => {
+    if (!blob) return;
+    // The uploaded filename is the best name available; falling back, a file with no VRM data is a plain glTF.
+    const fallback = `Player Avatar.${meta.license?.metaVersion === null ? 'glb' : 'vrm'}`;
+    downloadBlob(blob, fileName || fallback);
+  };
 
   return (
     <ModelDetailsPanel
@@ -51,6 +64,11 @@ const PlayerVrmPreview = ({ data, open, onClose }: { data: string; open: boolean
       size={meta.size}
       failed={failed}
       onClose={onClose}
+      footer={
+        <Button variant="outline" size="sm" className="w-full" onClick={handleExport} disabled={!blob}>
+          <Download className="mr-2 h-4 w-4" /> Export Avatar
+        </Button>
+      }
     />
   );
 };
@@ -105,7 +123,9 @@ const WorldOverviewManager = () => {
       reader.onload = (e) => {
         try {
           updateWorldOverview({
-            customPlayerVRM: { data: e.target?.result as string, type: file.type || 'model/vrm' },
+            // Keep the filename: browsers report an empty MIME for .vrm, so it's the only format hint, and
+            // it's the name the avatar is exported back out under.
+            customPlayerVRM: { data: e.target?.result as string, type: file.type || 'model/vrm', name: file.name },
           });
         } catch (error) {
           console.error('Error processing VRM:', error);
@@ -187,6 +207,7 @@ const WorldOverviewManager = () => {
           {worldOverview.customPlayerVRM?.data && vrmPreviewMounted && (
             <PlayerVrmPreview
               data={worldOverview.customPlayerVRM.data}
+              fileName={worldOverview.customPlayerVRM.name}
               open={vrmPreviewOpen}
               onClose={() => setVrmPreviewOpen(false)}
             />
