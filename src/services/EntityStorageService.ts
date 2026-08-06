@@ -1,5 +1,6 @@
 import { LibraryStore, type StoredRecord } from './LibraryStore';
 import { primaryImage } from '@/lib/entityImages';
+import { describePlaceholders } from '@/lib/placeholders';
 import type { Entity, EntityMetadata } from '@/types';
 
 /** A locally-stored character ("entity") plus its library timestamps, and (via `StoredRecord`) the
@@ -16,7 +17,9 @@ class EntityStorageService {
     toMetadata: (record) => ({
       id: record.id,
       name: record.name,
-      description: record.data?.playerDescription,
+      // Library cards have no world or playthrough behind them, so chips render display-only against the
+      // defs the standalone character carries — same treatment its community listing gets.
+      description: describePlaceholders(record.data?.playerDescription ?? '', record.data?.placeholders) || undefined,
       image: primaryImage(record.data),
       tags: record.data?.tags ?? [],
       createdAt: record.createdAt,

@@ -3,6 +3,7 @@ import 'fake-indexeddb/auto';
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import WorldStorageService, { type StoredWorldRecord } from './WorldStorageService';
 import { clearDeletedDefaultWorlds } from '@/lib/defaultWorlds';
+import { encodePlaceholderToken } from '@/lib/placeholders';
 import AuthService from './AuthService';
 
 const res = (body: unknown, ok = true, status = 200): Response =>
@@ -225,6 +226,22 @@ describe('local world storage (IndexedDB)', () => {
     expect(meta.find((m) => m.id === 'keep-1')?.thumbnail).toBe('data:image/jpeg;base64,BBB');
 
     await WorldStorageService.deleteWorld('keep-1');
+  });
+
+  it('renders placeholder chips in the blurb the library card draws', async () => {
+    // The card has no playthrough behind it, so an unrendered chip reaches the player as raw token text.
+    const token = encodePlaceholderToken({ id: 'fen', mode: 'world', placementId: 'p1' });
+    await WorldStorageService.storeWorld({
+      ...validWorld,
+      id: 'ph-1',
+      description: `Adrift in the ${token}.`,
+      data: { ...validWorld.data, placeholders: [{ id: 'fen', name: 'fen', values: ['Sedge Fen'] }] },
+    });
+
+    const meta = await WorldStorageService.getWorldMetadata();
+    expect(meta.find((m) => m.id === 'ph-1')?.description).toBe('Adrift in the Sedge Fen.');
+
+    await WorldStorageService.deleteWorld('ph-1');
   });
 
   it('keeps the source fields sticky across a save that omits them', async () => {
