@@ -69,6 +69,6 @@ Fetched live 2026-08-05 from the SillyTavern docs (`SillyTavern/SillyTavern-Docs
 
 ## Prerequisites before the world is buildable
 
-1. **Per-world custom narration prompt** — next up; scope undefined. Open questions: full replacement vs template override, which of the seven prompt surfaces it covers, interaction with the user's Settings → Prompts presets, export shape.
+1. **Per-world custom narration prompt** — speced, see `world-narration-prompt-spec.md`.
 2. Likely: greeting/example-dialogue import decisions above.
 3. Possibly: persona guidance (surfacing Player Notes as the {{persona}} equivalent).
