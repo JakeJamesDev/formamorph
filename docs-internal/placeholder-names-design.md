@@ -64,6 +64,22 @@ Names are compared as raw strings all over gameplay. Every matching/consumption 
 3. **Tag lists**: mixed-inline chips in `KeywordChips` (aliases, keywords).
 4. **Author-time tools**: activation tester + AI-context highlighting on preview rolls; export/import scanning.
 
+## What shipped (2026-08-06)
+
+All four slices are in, four gates green. Deviations from the spec above, and why:
+
+| Spec said | Shipped | Why |
+|---|---|---|
+| Editor lists show an **author preview** (resolved values) | Lists/trees/search show `Keeper{Town}` — the placeholder **by name** | A Wildcard preview re-rolls per call, so two rows of one list would disagree; and a resolved value is indistinguishable from a literal name. Braces say "decided at play time". |
+| Palette chips **click or drag** into a field | Click only | Dragging in from outside would need cross-component plumbing through `PromptDragContext`, which currently only relocates a chip *within* one editor. |
+| Tag chips edit inline | Token-bearing tags are remove-and-re-add | A plain text input can't represent a chip; showing the raw token invites hand-editing a UUID. Plain tags still rename inline. |
+| Author-time activation tester uses preview rolls | Not needed | No such surface exists — `activation-tester-spec.md` is an unbuilt spec. `explainActivation` runs only in `GameViewer`, which is resolved. |
+| — | Regex keyword fields opt out of chips | `{` is already a quantifier in a pattern. |
+
+Runtime resolution landed as `src/lib/resolveWorldNames.ts` + one block at the top of `GameViewer`; the raw sources are read **only** by roll priming and the resolution memos, which is what makes the ~80 downstream sites correct by construction.
+
+**Still open:** the linter that warns about a deleted placeholder leaving a nameless entity, and about two entities that can resolve to the same name. Both were deferred by decision, not overlooked.
+
 ## Open questions
 
 - Discovered/runtime entities (`runtimeCharacters.ts`) keep plain-string names — no tokens ever minted at runtime. (Assumed; flag if wrong.)
