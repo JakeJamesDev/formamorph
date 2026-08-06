@@ -75,14 +75,16 @@ export function SwipeImage({ images, index, onStep, alt, onZoom, className }: {
   return (
     <div
       ref={frame}
-      className={`relative touch-pan-y ${className ?? ''}`}
+      // inline-flex + max-h-full on both wrappers keeps the host's height cap flowing down to the img —
+      // unconstrained wrappers would let a tall picture render at natural height and overflow the panel.
+      className={`relative touch-pan-y inline-flex max-w-full max-h-full ${className ?? ''}`}
       onPointerDown={onPointerDown}
       onPointerMove={onPointerMove}
       onPointerUp={onPointerUp}
       onPointerCancel={onPointerUp}
     >
       <div
-        className="relative"
+        className="relative inline-flex max-w-full max-h-full"
         style={{
           transform: `translateX(${dx}px)`,
           transition: settling !== null ? `transform ${SETTLE_MS}ms ease-out` : undefined,

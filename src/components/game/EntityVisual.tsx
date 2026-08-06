@@ -168,7 +168,9 @@ const Picture = ({ images, index, gallery, name, onZoom }: {
   }
   return (
     // `group` so the controls fade in from a hover over the picture rather than the whole slot.
-    <div className="group relative inline-flex max-w-full max-h-full">
+    // justify-center: this box's width comes from the picture's intrinsic width (clamped to the slot), but a
+    // height-constrained picture shrink-wraps narrower inside it and would otherwise sit flush left.
+    <div className="group relative inline-flex max-w-full max-h-full justify-center">
       <SwipeImage images={images} index={index} onStep={gallery.onStep} alt={name} onZoom={onZoom} />
       <GalleryControls {...gallery} />
     </div>
