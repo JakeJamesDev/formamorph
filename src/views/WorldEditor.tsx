@@ -176,6 +176,8 @@ const WorldEditor = ({ onClose, embedded = false, backButton }: {
     const remap = (t?: string) => (t ? remapPlaceholderIds(t, idMap) : t);
     return {
       ...entity,
+      name: remap(entity.name) ?? entity.name,
+      aliases: entity.aliases?.map((a) => remapPlaceholderIds(a, idMap)),
       playerDescription: remap(entity.playerDescription),
       aiDescription: remap(entity.aiDescription),
       aiSummary: remap(entity.aiSummary),
@@ -188,7 +190,13 @@ const WorldEditor = ({ onClose, embedded = false, backButton }: {
     toAdd.forEach(addPlaceholder);
     return {
       ...book,
-      entries: book.entries.map((e) => (e.value ? { ...e, value: remapPlaceholderIds(e.value, idMap) } : e)),
+      entries: book.entries.map((e) => ({
+        ...e,
+        name: e.name ? remapPlaceholderIds(e.name, idMap) : e.name,
+        key: e.key?.map((k) => remapPlaceholderIds(k, idMap)) ?? e.key,
+        secondaryKeys: e.secondaryKeys?.map((k) => remapPlaceholderIds(k, idMap)),
+        value: e.value ? remapPlaceholderIds(e.value, idMap) : e.value,
+      })),
       placeholders: undefined,
     };
   };

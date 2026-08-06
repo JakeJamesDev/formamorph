@@ -29,6 +29,10 @@ const DictionaryManager = ({ entry, placeholders = [] }: { entry: DictionaryEntr
 
   if (!editingEntry) return null;
 
+  // A regex keyword uses braces as quantifiers (`\d{2}`), so the `{` typeahead would fire mid-pattern.
+  // Regex entries keep literal keyword fields; a pattern built out of a placeholder isn't a combination
+  // worth trading that for.
+  const chipPlaceholders = editingEntry.useRegex ? undefined : placeholders;
   const keywords = editingEntry.key ?? [];
   // Secondary keywords share the trigger-keyword chip UI and the same array shape; empty clears the field.
   const secondaryKeywords = editingEntry.secondaryKeys ?? [];
@@ -63,7 +67,7 @@ const DictionaryManager = ({ entry, placeholders = [] }: { entry: DictionaryEntr
       </div>
       <div className="space-y-2">
         <Label>Trigger Keywords (Key)</Label>
-        <KeywordChips keywords={keywords} onChange={(key) => handleChange('key', key)} offerCommaSplit={!editingEntry.useRegex} />
+        <KeywordChips keywords={keywords} onChange={(key) => handleChange('key', key)} placeholders={chipPlaceholders} offerCommaSplit={!editingEntry.useRegex} />
         <p className="text-xs text-muted-foreground">
           Type a keyword and press Enter to add it. Tap (or double-click) to edit, drag to reorder, click the × to remove.
           The value below is injected into the AI prompt only when one of these appears in play.
@@ -84,7 +88,7 @@ const DictionaryManager = ({ entry, placeholders = [] }: { entry: DictionaryEntr
         </div>
         <div className="space-y-1">
           <Label className="text-xs text-muted-foreground">Secondary Keywords</Label>
-          <KeywordChips keywords={secondaryKeywords} onChange={handleSecondaryChange} placeholder="e.g. red" offerCommaSplit={!editingEntry.useRegex} />
+          <KeywordChips keywords={secondaryKeywords} onChange={handleSecondaryChange} placeholders={chipPlaceholders} placeholder="e.g. red" offerCommaSplit={!editingEntry.useRegex} />
           <div className="flex flex-wrap gap-x-4 gap-y-1 pt-1">
             <CheckRow label="Require all" checked={!!editingEntry.secondaryAll} onChange={(v) => handleChange('secondaryAll', v)} />
             <CheckRow label="Exclude (activate when absent)" checked={!!editingEntry.secondaryExclude} onChange={(v) => handleChange('secondaryExclude', v)} />

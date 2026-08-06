@@ -1,4 +1,4 @@
-import { useState, type ChangeEvent, type ClipboardEvent, type KeyboardEvent, type ReactNode } from 'react';
+import { useMemo, useState, type ChangeEvent, type ClipboardEvent, type KeyboardEvent, type ReactNode } from 'react';
 import {
   DndContext,
   closestCenter,
@@ -16,6 +16,11 @@ import {
 } from '@dnd-kit/sortable';
 import { commaSplitCandidate, splitPastedChips, replaceChipValue } from '@/components/Chip';
 import { EditableChip } from '@/components/EditableChip';
+import ChipInput from '@/components/prompt/ChipInput';
+import { placeholderVocabulary } from '@/lib/chipVocabulary';
+import { hasPlaceholders, labelPlaceholders } from '@/lib/placeholders';
+import { PLACEHOLDER_TRIGGER, placeholderHint } from '@/lib/placeholderInsert';
+import type { Placeholder } from '@/types';
 
 /**
  * An Enter-separated tag input: values render as editable, drag-reorderable chips; Backspace on an empty
@@ -25,6 +30,11 @@ import { EditableChip } from '@/components/EditableChip';
  * still adds one chip per line. With `offerCommaSplit` (default on, off for regex entries), committing a
  * chip that reads like a list offers a one-shot button to split it; it is never automatic, so a pattern or
  * a comma-bearing name is only ever split on purpose.
+ *
+ * Given `placeholders`, a tag may mix text and chips (an "Old \{Town\} keeper" alias): the entry field becomes a chip
+ * editor with the same `{` typeahead as every other placeholder field, and a committed tag shows its chips
+ * by name. Omit the prop for lists that must stay literal — placeholder values themselves, since resolution
+ * is single-pass and a chip inside one would never expand.
  */
 export function KeywordChips({
   keywords,
@@ -34,11 +44,14 @@ export function KeywordChips({
   onChipClick,
   chipSuffix,
   renderChip,
+  placeholders,
 }: {
   keywords: string[];
   onChange: (keywords: string[]) => void;
   placeholder?: string;
   offerCommaSplit?: boolean;
+  /** The world's placeholders, when tags may embed them. Absent ⇒ a plain literal tag list. */
+  placeholders?: Placeholder[];
   /** Claims the single click/tap on a chip (rename moves to double-click). Pair with `renderChip` to hang
    *  a popover off it. */
   onChipClick?: (value: string) => void;
@@ -48,6 +61,8 @@ export function KeywordChips({
   renderChip?: (chip: ReactNode, value: string) => ReactNode;
 }) {
   const [inputValue, setInputValue] = useState('');
+  const chipsEnabled = !!placeholders?.length;
+  const vocab = useMemo(() => placeholderVocabulary(placeholders ?? []), [placeholders]);
   // The last committed chip that reads like a comma-separated list, with the segments it would become.
   const [splitOffer, setSplitOffer] = useState<{ chip: string; parts: string[] } | null>(null);
   const sensors = useSensors(
@@ -135,7 +150,7 @@ export function KeywordChips({
 
   return (
     <div className="space-y-1">
-      <div className="flex flex-wrap items-center gap-1 rounded-md border border-border bg-background/80 p-2">
+      <div className="flex flex-wrap items-center gap-1 rounded-md border border-border bg-background/80 p-2 [&_[contenteditable]]:min-w-[8rem]">
         <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd} autoScroll={false}>
           {/* rectSortingStrategy (2D), not horizontalListSortingStrategy: the container is flex-wrap, so chips
               span multiple rows — a single-row strategy mispositions drags once they wrap. Dedup stays
@@ -148,6 +163,8 @@ export function KeywordChips({
                   key={kw}
                   value={kw}
                   sortable
+                  label={hasPlaceholders(kw) ? labelPlaceholders(kw, placeholders ?? []) : undefined}
+                  editable={!hasPlaceholders(kw)}
                   suffix={chipSuffix?.(kw)}
                   onActivate={onChipClick}
                   onRemove={removeKeyword}
@@ -158,21 +175,36 @@ export function KeywordChips({
             })}
           </SortableContext>
         </DndContext>
-        <input
-          value={inputValue}
-          onChange={handleChange}
-          onKeyDown={handleKeyDown}
-          onPaste={handlePaste}
-          onBlur={() => {
-            if (inputValue.trim()) {
-              addKeyword(inputValue);
-              setInputValue('');
-            }
-          }}
-          enterKeyHint="enter"
-          placeholder={keywords.length === 0 ? placeholder : 'Add keyword...'}
-          className="flex-grow min-w-[8rem] bg-transparent text-sm outline-none"
-        />
+        {chipsEnabled ? (
+          <ChipInput
+            value={inputValue}
+            onChange={(v) => { setInputValue(v); setSplitOffer(null); }}
+            vocabulary={vocab}
+            trigger={PLACEHOLDER_TRIGGER}
+            onSubmit={() => { addKeyword(inputValue); setInputValue(''); }}
+            onBlur={() => { if (inputValue.trim()) { addKeyword(inputValue); setInputValue(''); } }}
+            placeholder={placeholderHint(keywords.length === 0 ? placeholder : 'Add keyword...', true)}
+            ariaLabel={keywords.length === 0 ? placeholder : 'Add keyword'}
+            // Sits inside the chip box, so it drops the bordered-input shell and just claims the free width.
+            className="min-h-0 flex-grow border-0 bg-transparent px-0 py-0 focus-visible:ring-0"
+          />
+        ) : (
+          <input
+            value={inputValue}
+            onChange={handleChange}
+            onKeyDown={handleKeyDown}
+            onPaste={handlePaste}
+            onBlur={() => {
+              if (inputValue.trim()) {
+                addKeyword(inputValue);
+                setInputValue('');
+              }
+            }}
+            enterKeyHint="enter"
+            placeholder={keywords.length === 0 ? placeholder : 'Add keyword...'}
+            className="flex-grow min-w-[8rem] bg-transparent text-sm outline-none"
+          />
+        )}
       </div>
       {splitOffer && (
         <button

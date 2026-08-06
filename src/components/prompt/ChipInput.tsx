@@ -66,14 +66,17 @@ function ValueSyncPlugin({ value, onChange, parse }: {
   return null;
 }
 
-/** Keeps the field to one line: Enter does nothing, and any line break that arrives by paste or by the
- *  external value becomes a space. */
-function SingleLinePlugin() {
+/** Keeps the field to one line: Enter never breaks the line, and any line break that arrives by paste or
+ *  by the external value becomes a space. A host that wants Enter to mean something (a tag input, where it
+ *  commits the tag) gets it through `onSubmit`. */
+function SingleLinePlugin({ onSubmit }: { onSubmit?: () => void }) {
   const [editor] = useLexicalComposerContext();
+  const submitRef = useRef(onSubmit);
+  submitRef.current = onSubmit;
   useEffect(() => {
     const stopEnter = editor.registerCommand(
       KEY_ENTER_COMMAND,
-      (event) => { event?.preventDefault(); return true; },
+      (event) => { event?.preventDefault(); submitRef.current?.(); return true; },
       // Below the typeahead's HIGH so its Enter-to-insert still wins while its menu is open.
       COMMAND_PRIORITY_LOW,
     );
@@ -82,6 +85,20 @@ function SingleLinePlugin() {
     });
     return () => { stopEnter(); flatten(); };
   }, [editor]);
+  return null;
+}
+
+/** Reports focus leaving the editor. A DOM listener on the root rather than Lexical's BLUR_COMMAND, for the
+ *  same reason the insert-target plugin uses focusin: the command does not cover every route out. */
+function BlurPlugin({ onBlur }: { onBlur: () => void }) {
+  const [editor] = useLexicalComposerContext();
+  const ref = useRef(onBlur);
+  ref.current = onBlur;
+  useEffect(() => editor.registerRootListener((root, prevRoot) => {
+    const fire = () => ref.current();
+    prevRoot?.removeEventListener('focusout', fire);
+    root?.addEventListener('focusout', fire);
+  }), [editor]);
   return null;
 }
 
@@ -123,7 +140,7 @@ function Surface({ placeholder, ariaLabel, className }: {
   );
 }
 
-const ChipInput = ({ value, onChange, vocabulary, placeholder, ariaLabel, className, readOnly = false, trigger = '{' }: {
+const ChipInput = ({ value, onChange, vocabulary, placeholder, ariaLabel, className, readOnly = false, trigger = '{', onSubmit, onBlur }: {
   value: string;
   onChange: (v: string) => void;
   vocabulary: ChipVocabulary;
@@ -134,6 +151,10 @@ const ChipInput = ({ value, onChange, vocabulary, placeholder, ariaLabel, classN
   readOnly?: boolean;
   /** Character that opens the insert menu; pass `undefined` to leave typing untouched. */
   trigger?: string;
+  /** Enter, once the insert menu is not the one consuming it. For tag inputs, where Enter commits. */
+  onSubmit?: () => void;
+  /** Focus leaving the field — a tag input commits a half-typed tag on the way out. */
+  onBlur?: () => void;
 }) => {
   const dragKey = useRef<string | null>(null);
   const initialConfig = useMemo(
@@ -155,7 +176,8 @@ const ChipInput = ({ value, onChange, vocabulary, placeholder, ariaLabel, classN
           <Surface placeholder={placeholder} ariaLabel={ariaLabel} className={className} />
           <HistoryPlugin />
           <ValueSyncPlugin value={value} onChange={onChange} parse={vocabulary.parse} />
-          <SingleLinePlugin />
+          <SingleLinePlugin onSubmit={onSubmit} />
+          {onBlur && <BlurPlugin onBlur={onBlur} />}
           <EditablePlugin readOnly={readOnly} />
           <ChipInsertTargetPlugin vocab={vocabulary} />
           {trigger && !readOnly && <ChipTypeaheadPlugin trigger={trigger} vocab={vocabulary} />}
