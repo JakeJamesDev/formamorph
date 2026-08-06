@@ -1,7 +1,7 @@
 // Electron main process: thin desktop shell around the built web app (dist/).
 // Loads the SPA from a privileged custom scheme so module workers, WASM, WebGPU,
 // and fetch behave like a normal web origin (raw file:// gives a null origin and breaks them).
-const { app, BrowserWindow, protocol, net, ipcMain, session, shell, dialog } = require('electron');
+const { app, BrowserWindow, Menu, protocol, net, ipcMain, session, shell, dialog } = require('electron');
 const path = require('node:path');
 const fs = require('node:fs');
 const os = require('node:os');
@@ -13,6 +13,7 @@ const { scanModels, resolveModelRef, isRootRef } = require('./modelScan.cjs');
 const modelMove = require('./modelMove.cjs');
 const { portableUserDataDir, migratePersistentStores } = require('./portableProfile.cjs');
 const { corsResponse } = require('./corsShim.cjs');
+const { contextMenuTemplate } = require('./contextMenu.cjs');
 const updater = require('./updater.cjs');
 
 // Portable/AppImage builds keep their whole profile (settings, saves, worlds, library) beside the exe so
@@ -137,6 +138,15 @@ function createWindow() {
   win.webContents.setWindowOpenHandler(({ url }) => {
     if (/^https?:\/\//.test(url)) shell.openExternal(url);
     return { action: 'deny' };
+  });
+
+  // Spellcheck suggestions and clipboard actions. See contextMenu.cjs.
+  win.webContents.on('context-menu', (_event, params) => {
+    const template = contextMenuTemplate(params, {
+      replaceMisspelling: (word) => win.webContents.replaceMisspelling(word),
+      addToDictionary: (word) => win.webContents.session.addWordToSpellCheckerDictionary(word),
+    });
+    if (template.length) Menu.buildFromTemplate(template).popup({ window: win });
   });
 
   // Keep the window on its own origin. An in-window navigation away from app://local (or the dev server) —
