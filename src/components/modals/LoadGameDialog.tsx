@@ -156,7 +156,7 @@ function PinnedFolderRow({ folder, onOpen }: { folder: SaveFolder; onOpen: (f: S
     <div
       role="button"
       tabIndex={0}
-      className="flex items-center gap-2 w-full rounded-md border border-input bg-background px-3 py-2 text-left text-sm cursor-pointer transition-colors hover:bg-accent hover:text-accent-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+      className="flex items-center gap-2 w-full rounded-md border border-input bg-background px-3 py-2 text-left text-sm cursor-pointer transition-colors hover:bg-accent hover:text-accent-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset"
       onClick={() => onOpen(folder)}
       onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onOpen(folder); } }}
     >
