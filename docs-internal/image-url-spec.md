@@ -4,7 +4,7 @@
 published world's payload stays small. Remote images render as-is during play; the bytes are fetched
 and embedded only at the moments where a file has to be self-contained.
 
-**Status:** spec, not built.
+**Status:** SHIPPED — 240f15f (links), 3d48acc (offline button). Kept as the design record.
 
 ---
 
@@ -193,7 +193,7 @@ character cards download the picture when you export one.
 
 # Part 2 — Link health at authoring time
 
-**Status:** spec, not built. Follows the shipped Part 1 above.
+**Status:** SHIPPED — 5fb5b8c. Publish warns rather than blocks, per review.
 
 **The problem this solves:** every failure mode of a linked image currently surfaces *late* — at card
 export, on a plane, or in someone else's download of a published world. The author's own editor shows
