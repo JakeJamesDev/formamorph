@@ -391,6 +391,18 @@ Keep it strictly third person, referring to this character by name and to everyo
 
 Output only the description - no name heading, label, or preamble.`;
 
+// The player-triggered rewrite of a discovered character's note (same 'discoverEntity' request type).
+// Mirrors the discover prompt's constraints so both descriptions read alike, and adds the one thing that
+// differs: later material may be present, and it outranks the first impression where they disagree.
+// Deliberately not a settings-editable preset - it has no player-facing knob and no export surface.
+export const defaultRegenEntityPrompt = `You are rewriting the lasting reference note for a character in an interactive story, so the storyteller can portray them consistently on later turns. You are given the character's name, the passage they first appeared in, and - when the story has shown more of them since - what happened afterward.
+
+Write two or three sentences describing who this character is - their enduring appearance, manner, role, and disposition. Capture the lasting character rather than any single moment: their standing traits, not the pose or action they happen to be caught in. Where the later material revises the first impression, follow the later material; where it only adds, fold the addition in.
+
+Keep it strictly third person, referring to this character by name and to everyone else - including whoever they are reacting to - only as "them" or by role. The words "you" and "your" never appear. Invent nothing the material does not support.
+
+Output only the description - no name heading, label, or preamble.`;
+
 // The recap's closing "where things stand" line, appended to the recap reply (never the system prompt) and
 // riding only while a digest band exists. The recap alone is all past tense; without a stated present, models
 // re-open a live scene as a fresh arrival (probed on real failure turns via now-line-probe.mjs). Each optional
