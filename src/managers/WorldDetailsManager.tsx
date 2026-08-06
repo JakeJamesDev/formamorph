@@ -1,5 +1,6 @@
 import { useMemo } from 'react';
 import { useGameData } from '@/contexts/GameDataContext';
+import { useSettings } from '@/contexts/SettingsContext';
 import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
 import { TokenAutocomplete } from "@/components/TokenAutocomplete";
@@ -7,6 +8,7 @@ import PromptField from "@/components/prompt/PromptField";
 import PlaceholderField from "@/components/prompt/PlaceholderField";
 import { plainVocabulary } from "@/lib/chipVocabulary";
 import { PROMPT_KIND_VARIABLES } from "@/lib/promptVariables";
+import { composePreviewValues } from "@/lib/previewValuePool";
 import { storedNarrationPrompt } from "@/lib/worldPrompt";
 import { defaultSystemPrompt } from "@/components/game/GamePrompts";
 import { useDanbooruTags } from "@/lib/useDanbooruTags";
@@ -19,6 +21,18 @@ import { useDanbooruTags } from "@/lib/useDanbooruTags";
  */
 const NarrationPromptField = () => {
   const { worldOverview, updateWorldOverview } = useGameData();
+  const {
+    paragraphLimit, maxTokens, markdownOutput, activeSectionStyle, limitActiveCharacters, activeCharacterLimit,
+  } = useSettings();
+  // The same stand-in context Settings previews its prompts against — no playthrough exists in the editor,
+  // and without values to swap the chips for there is nothing to preview and no split view to earn.
+  const previewValues = useMemo(
+    () => composePreviewValues({
+      paragraphLimit, maxTokens, markdownOutput, sectionStyle: activeSectionStyle,
+      limitActiveCharacters, activeCharacterLimit,
+    }),
+    [paragraphLimit, maxTokens, markdownOutput, activeSectionStyle, limitActiveCharacters, activeCharacterLimit],
+  );
   const stored = storedNarrationPrompt(worldOverview);
   const enabled = typeof stored === 'string' && worldOverview.promptOverrides?.systemPromptEnabled !== false;
   const value = stored ?? '';
@@ -46,6 +60,8 @@ const NarrationPromptField = () => {
             value={value}
             onChange={(systemPrompt) => updateWorldOverview({ promptOverrides: { ...worldOverview.promptOverrides, systemPrompt } })}
             variables={PROMPT_KIND_VARIABLES.narration}
+            previewValues={previewValues}
+            sampleData
             ariaLabel="World narration prompt"
             resizable
           />
