@@ -808,10 +808,6 @@ const PromptField = ({ value, onChange, variables = [], vocabulary, previewValue
               hideClose
               aria-describedby={undefined}
               aria-label={ariaLabel ?? 'Prompt editor'}
-              // Focusing the editor on open (or restoring focus to it on close) raises the soft keyboard
-              // uninvited, and on close it lands the caret back in the field the player was leaving.
-              onOpenAutoFocus={(e) => e.preventDefault()}
-              onCloseAutoFocus={(e) => e.preventDefault()}
               className="flex h-[100dvh] w-screen max-w-none flex-col gap-2 rounded-none border-0 p-4 sm:rounded-none"
             >
               {body}

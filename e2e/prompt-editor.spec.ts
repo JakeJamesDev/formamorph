@@ -141,3 +141,120 @@ test.describe('the preview follows the caret', () => {
       .toBeGreaterThan(0);
   });
 });
+
+test.describe('focus never opens or re-opens full screen by itself', () => {
+  // A phone raises its keyboard whenever the caret lands in the editor, so anything that moves focus
+  // there without being asked raises it too. There is no soft keyboard to drive in a browser test, so
+  // these measure the mechanism instead: who holds focus, and what that does to the full-screen state.
+  // Together they are the loop that made the keyboard impossible to dismiss — each link, not the symptom.
+
+  test('focus alone does not open full screen', async ({ page }, testInfo) => {
+    test.skip(testInfo.project.name !== MOBILE, 'only phones auto-open');
+    await openApp(page);
+    await openPromptEditor(page);
+    const editor = page.locator('[contenteditable]').first();
+
+    // Focus without a tap is what a closing dialog hands back. Opening on it made leaving full screen
+    // re-enter it immediately, so the reader could never get out.
+    await editor.focus();
+    await expect(page.getByRole('dialog', { name: 'Prompts' })).toHaveCount(0);
+  });
+
+  test('a tap still opens full screen', async ({ page }, testInfo) => {
+    test.skip(testInfo.project.name !== MOBILE, 'only phones auto-open');
+    await openApp(page);
+    await openPromptEditor(page);
+
+    // The other half: distinguishing tap from focus must not cost the feature itself.
+    await page.locator('[contenteditable]').first().click();
+    await expect(page.getByRole('dialog', { name: 'Prompts' })).toBeVisible();
+  });
+
+  test('opening full screen leaves the caret out of the editor', async ({ page }) => {
+    await openApp(page);
+    await openPromptEditor(page);
+    await chrome.enterFullscreen(page).click();
+    await expect(page.getByRole('dialog', { name: 'Prompts' })).toBeVisible();
+
+    // Radix focuses a dialog's first focusable on open. Landing in the editor raises a phone's keyboard
+    // before the reader has asked to type anything.
+    const inEditor = await page.evaluate(() => !!document.activeElement?.hasAttribute('contenteditable'));
+    expect(inEditor).toBe(false);
+  });
+
+  test('leaving full screen does not hand focus back to the editor', async ({ page }) => {
+    await openApp(page);
+    await openPromptEditor(page);
+    await chrome.enterFullscreen(page).click();
+
+    // Type first, so focus is genuinely in the editor — the state a reader is in when they go to leave.
+    const editor = page.locator('[contenteditable]').first();
+    await editor.click();
+    await expect(async () => {
+      expect(await page.evaluate(() => !!document.activeElement?.hasAttribute('contenteditable'))).toBe(true);
+    }).toPass();
+
+    await chrome.exitFullscreen(page).click();
+    await expect(page.getByRole('dialog', { name: 'Prompts' })).toHaveCount(0);
+
+    // Radix restores focus on close to whatever held it — here, the editor being left. That refocus
+    // raises the keyboard again, and used to re-trigger full screen along with it.
+    const backInEditor = await page.evaluate(() => !!document.activeElement?.hasAttribute('contenteditable'));
+    expect(backInEditor).toBe(false);
+    await expect(page.getByRole('dialog', { name: 'Prompts' })).toHaveCount(0);
+  });
+});
+
+test.describe('a dropdown does not resize as you scroll it', () => {
+  test('reaching either end leaves every option where it was', async ({ page }, testInfo) => {
+    test.skip(testInfo.project.name !== MOBILE, 'the prompt picker is the phone-width control');
+    await openApp(page);
+    await openPromptEditor(page);
+
+    // The prompt picker is the one list long enough to scroll at this width.
+    await page.getByRole('combobox').filter({ hasText: '·' }).click();
+    const viewport = page.locator('[data-radix-select-viewport]');
+    await viewport.waitFor();
+
+    // Radix mounts each scroll chevron only while there is somewhere to scroll that way. In normal flow
+    // that made arriving at an end delete a row, moving every option — including the one under the
+    // finger. Real wheel events, because Radix drives these off its own scroll handling and a scripted
+    // scrollTop does not reproduce the state changes.
+    const layout = () =>
+      page.$$eval('[role="option"]', (opts) => opts.map((o) => (o as HTMLElement).offsetTop).join(','));
+    const height = () => viewport.evaluate((el) => Math.round(el.clientHeight));
+
+    const atTop = { layout: await layout(), height: await height() };
+
+    await viewport.hover();
+    await page.mouse.wheel(0, 600); // hard to the bottom
+    await page.waitForTimeout(250);
+    const atBottom = { layout: await layout(), height: await height() };
+
+    await page.mouse.wheel(0, -600); // and back
+    await page.waitForTimeout(250);
+    const backAtTop = { layout: await layout(), height: await height() };
+
+    expect(atBottom.layout).toBe(atTop.layout);
+    expect(backAtTop.layout).toBe(atTop.layout);
+    expect(atBottom.height).toBe(atTop.height);
+    expect(backAtTop.height).toBe(atTop.height);
+  });
+
+  test('the chevrons sit over the list rather than inside it', async ({ page }, testInfo) => {
+    test.skip(testInfo.project.name !== MOBILE, 'same control as above');
+    await openApp(page);
+    await openPromptEditor(page);
+    await page.getByRole('combobox').filter({ hasText: '·' }).click();
+    const viewport = page.locator('[data-radix-select-viewport]');
+    await viewport.waitFor();
+
+    // The mechanism behind the case above, asserted directly: a chevron in flow is what lets its
+    // mounting move anything. Out of flow, it cannot.
+    const inFlow = await viewport.evaluate((vp) =>
+      [...(vp.parentElement?.children ?? [])]
+        .filter((c) => c !== vp && c.querySelector('svg'))
+        .some((c) => getComputedStyle(c).position !== 'absolute'));
+    expect(inFlow).toBe(false);
+  });
+});

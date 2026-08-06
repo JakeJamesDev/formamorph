@@ -303,10 +303,6 @@ function PromptsShell({ fullscreen, onClose, children }: {
         hideClose
         aria-describedby={undefined}
         aria-label="Prompts"
-        // Same reason as the field's own overlay: neither opening nor closing may put the caret in the
-        // editor by itself, or a phone's keyboard comes up unbidden and will not stay down.
-        onOpenAutoFocus={(e) => e.preventDefault()}
-        onCloseAutoFocus={(e) => e.preventDefault()}
         className="flex h-[100dvh] w-screen max-w-none flex-col gap-4 rounded-none border-0 p-4 sm:rounded-none"
       >
         {children}
