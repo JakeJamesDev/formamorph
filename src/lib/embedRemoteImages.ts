@@ -28,6 +28,20 @@ export function remoteWorldImages(world: World): string[] {
 }
 
 /**
+ * Every linked image in anything publishable — a world, a single entity, or a dictionary. Shapes are probed
+ * rather than switched on `kind` so one function covers all three publish payloads.
+ */
+export function remoteImagesInContent(content: unknown): string[] {
+  const item = (content ?? {}) as Partial<World> & { images?: unknown; thumbnail?: unknown };
+  const urls = remoteWorldImages(item as World);
+  // A character card publishes the entity itself, whose pictures aren't under `entities`.
+  if (Array.isArray(item.images)) urls.push(...entityImages(item as { images?: string[] }).filter(isRemoteImage));
+  // A dictionary's cover sits at the top level rather than under `worldOverview`.
+  if (isRemoteImage(item.thumbnail as string)) urls.push(item.thumbnail as string);
+  return urls;
+}
+
+/**
  * Download every linked image and return a world carrying the bytes instead. Images that cannot be downloaded
  * keep their link and are reported, so the author decides whether to export anyway rather than getting a file
  * that is quietly missing pictures.

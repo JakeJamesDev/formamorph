@@ -9,14 +9,19 @@ const promptImage = vi.fn(async (url: string) => url);
 vi.mock('./useDownscalePrompt', () => ({
   useDownscalePrompt: () => ({ promptImage: (url: string) => promptImage(url), dialog: null, promptWorld: vi.fn() }),
 }));
+// Lets a test choose what the cache reported back without standing up IndexedDB.
+const statusForTest = { current: 'cached' as string };
 vi.mock('./useRemoteImage', async (importOriginal) => ({
   ...(await importOriginal<typeof import('./useRemoteImage')>()),
   // Bypass the IndexedDB cache: these tests are about the authoring UI, not the cache.
-  useRemoteImage: (url: string) => url || '',
+  useRemoteImage: (url: string) => ({
+    src: url || '',
+    status: url?.startsWith('http') ? statusForTest.current : 'embedded',
+  }),
   RemoteImg: ({ src, ...rest }: { src?: string }) => <img src={src} {...rest} />,
 }));
 
-beforeEach(() => { promptImage.mockClear(); });
+beforeEach(() => { promptImage.mockClear(); statusForTest.current = 'cached'; });
 
 const urlBox = () => screen.getByLabelText('Image URL');
 
@@ -95,5 +100,53 @@ describe('ImageUpload URL entry', () => {
     rerender(<ImageUpload id="t" value="https://files.example/good.png" onChange={vi.fn()} cap={IMAGE_CAPS.entity} />);
 
     await waitFor(() => expect(screen.queryByText(/Couldn't load this image/i)).toBeNull());
+  });
+});
+
+describe('ImageUpload link warnings', () => {
+  it('warns about an expiring Discord link with no network involved at all', () => {
+    render(
+      <ImageUpload
+        id="t"
+        value="https://cdn.discordapp.com/attachments/1/2/pic.png?ex=65d903de"
+        onChange={vi.fn()}
+        cap={IMAGE_CAPS.entity}
+      />,
+    );
+
+    expect(screen.getByLabelText('Expiring link')).toBeTruthy();
+    expect(screen.getByText(/will stop working/i)).toBeTruthy();
+  });
+
+  it('leaves a permanent Discord link unwarned', () => {
+    render(
+      <ImageUpload id="t" value="https://cdn.discordapp.com/embed/avatars/0.png" onChange={vi.fn()} cap={IMAGE_CAPS.entity} />,
+    );
+
+    expect(screen.queryByLabelText('Expiring link')).toBeNull();
+    expect(screen.queryByText(/will stop working/i)).toBeNull();
+    expect(screen.getByLabelText('Linked image')).toBeTruthy();
+  });
+});
+
+describe('ImageUpload unreadable-host badge', () => {
+  it('says the host will not hand the picture over, naming it', () => {
+    statusForTest.current = 'unreadable';
+
+    render(<ImageUpload id="t" value="https://files.catbox.moe/a.png" onChange={vi.fn()} cap={IMAGE_CAPS.entity} />);
+
+    const badge = screen.getByLabelText('Linked image, display only');
+    expect(badge.getAttribute('title')).toMatch(/files\.catbox\.moe/);
+  });
+
+  it('an expiring link outranks an unreadable one — it breaks everything, just later', () => {
+    statusForTest.current = 'unreadable';
+
+    render(
+      <ImageUpload id="t" value="https://cdn.discordapp.com/attachments/1/2/p.png" onChange={vi.fn()} cap={IMAGE_CAPS.entity} />,
+    );
+
+    expect(screen.getByLabelText('Expiring link')).toBeTruthy();
+    expect(screen.queryByLabelText('Linked image, display only')).toBeNull();
   });
 });

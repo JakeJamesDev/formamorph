@@ -188,3 +188,119 @@ progress-UI job of its own and offline works without it after a normal playthrou
 One 👤 user-facing **Added** entry under 🚧 In Progress. The framing that matters to an author:
 paste a link instead of uploading, keeps published worlds small, needs a connection to view, and
 character cards download the picture when you export one.
+
+---
+
+# Part 2 — Link health at authoring time
+
+**Status:** spec, not built. Follows the shipped Part 1 above.
+
+**The problem this solves:** every failure mode of a linked image currently surfaces *late* — at card
+export, on a plane, or in someone else's download of a published world. The author's own editor shows
+a working picture the whole time. This moves the bad news to the moment the link is pasted.
+
+## 9. Three conditions, not one
+
+They have different causes, different detection, and different severity. Collapsing them into one
+"bad link" warning would be wrong.
+
+| # | Condition | Detected by | What still works | Severity |
+|---|---|---|---|---|
+| A | **Will expire** — a Discord `/attachments/` link | Static pattern, no network | Everything, *for now* | **Highest** — it rots silently after the author has moved on |
+| B | **Can't be read** — host sends no CORS (catbox) | The fetch attempt itself | Display, online only | Medium — no offline, no card export, no embed-on-export |
+| C | **Doesn't load** — 404, typo, dead host | `<img>` `onError` | Nothing | Obvious, already handled in Part 1 |
+
+C already ships. This part adds A and B.
+
+## 10. Detection
+
+### A — expiring links: static, exact, free
+
+```ts
+// cdn.discordapp.com/attachments/… and media.discordapp.net/attachments/… carry signed `ex`/`is`/`hm`
+// params and stop resolving when `ex` passes. The non-attachment CDN paths (avatars, emojis, icons)
+// are unsigned and permanent, so match the path, never just the host.
+export const isExpiringImageHost = (url: string): boolean =>
+  /^https?:\/\/(cdn\.discordapp\.com|media\.discordapp\.net)\/attachments\//i.test(url.trim());
+```
+
+Verified against [Discord's reference](https://discord.com/developers/docs/reference#signed-attachment-cdn-urls):
+attachment URLs are signed with a preset expiry; the standard CDN endpoints explicitly "will not
+expire." Window is undocumented — reported as 24h at rollout, and the doc's own example computes to
+14 days. Either way, too short to build a world on.
+
+> This is the one check that is **certain and immediate**. It needs no request, can't produce a false
+> negative from a flaky network, and is the failure most likely to generate a bug report months later.
+
+### B — unreadable hosts: reuse the fetch we already make
+
+**No new probe request.** `useRemoteImage` already fetches a remote image on a cache miss; whether
+that fetch succeeded is exactly the signal. Extend the hook to report it:
+
+```ts
+type RemoteStatus = 'embedded' | 'pending' | 'cached' | 'unreadable';
+export function useRemoteImage(url): { src: string; status: RemoteStatus }
+```
+
+- `cached` — the bytes are ours; offline, card export, and embed all work.
+- `unreadable` — the fetch settled and failed while the `<img>` renders fine → condition B.
+
+Two properties that make this better than a probe-on-paste: it costs nothing extra, and it
+**re-evaluates on every mount**, so a link that starts working (or stops) corrects itself instead of
+showing a verdict frozen at paste time.
+
+`RemoteImg` returns only `src` today; it grows an optional `onStatus` callback rather than changing
+its signature at every call site.
+
+## 11. What the author sees
+
+In `ImageUpload`, the existing corner badge gains state. Badge only — no dialog, and **the paste is
+never blocked**. The picture works; the author is being informed, not stopped.
+
+| Status | Badge | Tooltip |
+|---|---|---|
+| `cached` | link icon, muted | *Linked image — saved on this device.* |
+| `unreadable` | link icon, **amber** | *`<host>` won't let Formamorph download this picture. It shows online, but won't work offline and can't be put into a character card.* |
+| expiring (A) | **alert icon, amber** | *Discord links like this one stop working after a while. Use a permanent host so the picture doesn't disappear later.* |
+
+A carries no probe, so its badge appears the instant the link is pasted. B's resolves when the
+fetch settles.
+
+Condition A also gets **one inline line under the field**, not just a tooltip — a hover-only warning
+for the failure mode with the longest fuse is not enough.
+
+## 12. Publish — the higher-stakes moment
+
+An expiring link in a *published* world breaks for everyone who downloads it, long after the author
+could notice. The publish flow should say so.
+
+**Proposed:** `PublishModal` runs `isExpiringImageHost` over `remoteWorldImages(world)` and, on a
+hit, shows a non-blocking warning naming the count — *"3 images use Discord links that will stop
+working. Publish anyway?"*
+
+> ⚠️ **Open question for review — should this block?** My recommendation is **warn, don't block**:
+> blocking publish on a heuristic is heavy-handed, and the author may be publishing a draft. But this
+> is the one place the damage lands on other people, so it's a reasonable place to be strict. Your call.
+
+Condition B deliberately gets **no** publish warning — a published world with catbox links is fine
+for everyone online, which is the normal case.
+
+## 13. Out of scope
+
+- **Re-checking a whole world's links on demand** (a "check my links" pass). The per-slot badges cover
+  authoring; a bulk audit belongs with the World Doctor, not here.
+- **Refreshing Discord signatures** via the unofficial `attachments/refresh-urls` endpoint. Not in
+  Discord's docs, and building on an undocumented endpoint to prop up a host we're advising against
+  is backwards.
+- **A host allowlist.** Advising good hosts in copy is fine; enforcing a list would age badly.
+
+## 14. Tests
+
+- `isExpiringImageHost`: both attachment hosts match, with and without query params; **avatars,
+  emojis, guild icons, and app icons do NOT match** (the false-positive that would nag authors using
+  permanent Discord links); non-Discord hosts don't match.
+- `useRemoteImage` reports `cached` on a successful fetch and `unreadable` when the fetch rejects
+  while `src` still holds the live URL — both directions, since a status that never says `unreadable`
+  passes a one-sided test trivially.
+- `ImageUpload` renders the amber badge for an expiring link with no network involved at all.
+- Publish warning fires on an expiring link and stays silent for a plain remote one.

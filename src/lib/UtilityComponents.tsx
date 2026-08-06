@@ -2,7 +2,7 @@ import { useCallback, useEffect, useState, type ChangeEvent, type MouseEvent, ty
 import { cn } from "@/lib/utils";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { ImagePlus, Link as LucideLink, Box as LucideBox, Music, X } from "lucide-react";
+import { AlertTriangle, ImagePlus, Link as LucideLink, Box as LucideBox, Music, X } from "lucide-react";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import ModelViewer from '../views/ModelViewer';
@@ -11,7 +11,8 @@ import { useDownscalePrompt } from './useDownscalePrompt';
 import { ImageZoomViewer } from '../components/ImageZoomViewer';
 import type { ImageCap } from './imageOptim';
 import { readSdPromptFromFile } from './sdMetadata';
-import { isRemoteImage } from './imageSource';
+import { imageHost, isRemoteImage } from './imageSource';
+import { isExpiringImageHost } from './imageBytes';
 import { useRemoteImage } from './useRemoteImage';
 import type { MediaAsset } from '@/types';
 
@@ -116,7 +117,10 @@ export const ImageUpload = ({ onChange, id, value, cap, previewClassName, object
   const [loadFailed, setLoadFailed] = useState(false);
   const remote = isRemoteImage(value);
   // Cached blob when there is one, live URL otherwise; an embedded value passes through untouched.
-  const displaySrc = useRemoteImage(value);
+  // `status` is what tells the author this host won't hand its bytes over.
+  const { src: displaySrc, status } = useRemoteImage(value);
+  // Known before any request, so this shows the instant the link is pasted.
+  const expiring = isExpiringImageHost(value);
 
   // A pasted link is stored verbatim — no downscale pass, since a remote image costs the payload nothing.
   const commitUrl = useCallback(() => {
@@ -164,14 +168,36 @@ export const ImageUpload = ({ onChange, id, value, cap, previewClassName, object
   // A new value gets a fresh chance to load — otherwise one bad link poisons the slot after it's replaced.
   useEffect(() => { setLoadFailed(false); }, [value]);
 
-  // Marks a filled slot as pointing somewhere rather than carrying its own bytes.
+  // Marks a filled slot as pointing somewhere rather than carrying its own bytes, and says when that link
+  // comes with a catch. An expiring host outranks an unreadable one: it breaks everything, just later.
+  const badge = expiring
+    ? {
+        label: 'Expiring link',
+        title: `Discord links like this one stop working after a while. Use a permanent host so the picture doesn't disappear later.\n${value ?? ''}`,
+        className: 'bg-amber-500/90',
+        icon: <AlertTriangle className="h-3 w-3" />,
+      }
+    : status === 'unreadable'
+      ? {
+          label: 'Linked image, display only',
+          title: `${imageHost(value ?? '')} won't let Formamorph download this picture. It shows online, but won't work offline and can't be put into a character card.\n${value ?? ''}`,
+          className: 'bg-amber-500/90',
+          icon: <LucideLink className="h-3 w-3" />,
+        }
+      : {
+          label: 'Linked image',
+          title: value ?? '',
+          className: 'bg-overlay/60',
+          icon: <LucideLink className="h-3 w-3" />,
+        };
+
   const remoteBadge = remote && (
     <span
-      className="absolute top-1 left-1 rounded-full bg-overlay/60 p-1 text-white"
-      title={value ?? ''}
-      aria-label="Linked image"
+      className={cn('absolute top-1 left-1 rounded-full p-1 text-white', badge.className)}
+      title={badge.title}
+      aria-label={badge.label}
     >
-      <LucideLink className="h-3 w-3" />
+      {badge.icon}
     </span>
   );
 
@@ -240,6 +266,13 @@ export const ImageUpload = ({ onChange, id, value, cap, previewClassName, object
           )
         )}
       </Dropzone>
+      {/* The longest-fuse failure gets a line of its own, not just a tooltip — by the time it bites, the
+          author is long past hovering this slot. */}
+      {expiring && (
+        <p className="text-xs text-amber-600 dark:text-amber-500">
+          This Discord link will stop working. Re-upload the picture or use a permanent host.
+        </p>
+      )}
       {/* Only offered on an empty slot: a filled one is changed by removing it first, as it always was. */}
       {!value && (
         <div className="space-y-1">

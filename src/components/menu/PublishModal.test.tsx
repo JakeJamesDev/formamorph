@@ -111,3 +111,52 @@ describe('PublishModal target selection', () => {
     expect(screen.queryByText(/Existing World/)).not.toBeInTheDocument();
   });
 });
+
+// Warn, never block: a publish carrying an expiring link must still be publishable — the author may know,
+// or may be publishing a draft. This is the one place the breakage lands on other people, so it says so.
+describe('PublishModal expiring-link warning', () => {
+  const withImages = (contentData: unknown): PublishPayload =>
+    ({ kind: 'world', name: 'W', description: '', contentData });
+
+  beforeEach(() => { vi.spyOn(WorldStorageService, 'getUserWorlds').mockResolvedValue([]); });
+
+  it('warns when a world links a Discord attachment', async () => {
+    view({ open: true, payload: withImages({
+      worldOverview: { thumbnail: 'https://cdn.discordapp.com/attachments/1/2/a.png' },
+    }) });
+
+    expect(await screen.findByText(/stop working/i)).toBeTruthy();
+  });
+
+  it('counts every expiring link, across entities and locations', async () => {
+    view({ open: true, payload: withImages({
+      worldOverview: { thumbnail: 'https://cdn.discordapp.com/attachments/1/2/a.png' },
+      entities: [{ id: 'e', name: 'E', images: ['https://cdn.discordapp.com/attachments/1/2/b.png'] }],
+      locations: [{ id: 'l', name: 'L', backgroundImage: 'https://media.discordapp.net/attachments/1/2/c.png' }],
+    }) });
+
+    expect(await screen.findByText(/3 images use/i)).toBeTruthy();
+  });
+
+  it('stays silent for an ordinary linked image', async () => {
+    view({ open: true, payload: withImages({
+      worldOverview: { thumbnail: 'https://files.catbox.moe/a.png' },
+    }) });
+
+    await screen.findByRole('button', { name: 'Publish' });
+    expect(screen.queryByText(/stop working/i)).toBeNull();
+  });
+
+  it('still lets the publish through', async () => {
+    view({ open: true, payload: withImages({
+      worldOverview: { thumbnail: 'https://cdn.discordapp.com/attachments/1/2/a.png' },
+    }) });
+    await screen.findByText(/stop working/i);
+
+    const publish = screen.getByRole('button', { name: 'Publish' });
+    expect(publish.hasAttribute('disabled')).toBe(false);
+    await userEvent.click(publish);
+
+    expect(WorldStorageService.publishItem).toHaveBeenCalled();
+  });
+});

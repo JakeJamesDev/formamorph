@@ -28,7 +28,7 @@ describe('useRemoteImage', () => {
   it('passes an embedded value straight through without touching the cache', async () => {
     const { result } = renderHook(() => useRemoteImage('data:image/webp;base64,AAAA'));
 
-    expect(result.current).toBe('data:image/webp;base64,AAAA');
+    expect(result.current.src).toBe('data:image/webp;base64,AAAA');
     expect(getCachedImage).not.toHaveBeenCalled();
   });
 
@@ -38,7 +38,7 @@ describe('useRemoteImage', () => {
 
     const { result } = renderHook(() => useRemoteImage('https://host/a.png'));
 
-    await waitFor(() => expect(result.current).toBe('blob:cached'));
+    await waitFor(() => expect(result.current.src).toBe('blob:cached'));
     expect(fetch).not.toHaveBeenCalled();
   });
 
@@ -48,7 +48,7 @@ describe('useRemoteImage', () => {
     const { result } = renderHook(() => useRemoteImage('https://host/a.png'));
 
     await waitFor(() => expect(putCachedImage).toHaveBeenCalledWith('https://host/a.png', expect.anything()));
-    expect(result.current).toBe('blob:cached');
+    expect(result.current.src).toBe('blob:cached');
   });
 
   it('renders the live link when caching is impossible, so a CORS-blocked host still shows', async () => {
@@ -57,9 +57,9 @@ describe('useRemoteImage', () => {
     const { result } = renderHook(() => useRemoteImage('https://blocked.host/a.png'));
 
     // Set synchronously before the fetch is attempted, and left standing when it fails.
-    expect(result.current).toBe('https://blocked.host/a.png');
+    expect(result.current.src).toBe('https://blocked.host/a.png');
     await waitFor(() => expect(putCachedImage).not.toHaveBeenCalled());
-    expect(result.current).toBe('https://blocked.host/a.png');
+    expect(result.current.src).toBe('https://blocked.host/a.png');
   });
 
   it('revokes its object URL on unmount', async () => {
@@ -67,9 +67,44 @@ describe('useRemoteImage', () => {
     vi.stubGlobal('fetch', vi.fn());
 
     const { result, unmount } = renderHook(() => useRemoteImage('https://host/a.png'));
-    await waitFor(() => expect(result.current).toBe('blob:cached'));
+    await waitFor(() => expect(result.current.src).toBe('blob:cached'));
     unmount();
 
     expect(revokeObjectURL).toHaveBeenCalledWith('blob:cached');
+  });
+});
+
+// Both directions: a status that never reports 'unreadable' would pass a one-sided test trivially, and
+// 'unreadable' is the whole signal the editor's warning badge reads.
+describe('useRemoteImage status', () => {
+  it('reports embedded for a value that carries its own bytes', () => {
+    const { result } = renderHook(() => useRemoteImage('data:image/webp;base64,AAAA'));
+
+    expect(result.current.status).toBe('embedded');
+  });
+
+  it('reports cached once the bytes are ours', async () => {
+    vi.stubGlobal('fetch', vi.fn(async () => ({ ok: true, blob: async () => new Blob(['x']) })));
+
+    const { result } = renderHook(() => useRemoteImage('https://host/ok.png'));
+
+    await waitFor(() => expect(result.current.status).toBe('cached'));
+  });
+
+  it('reports unreadable when the host refuses, while the picture still shows', async () => {
+    vi.stubGlobal('fetch', vi.fn(async () => { throw new TypeError('Failed to fetch'); }));
+
+    const { result } = renderHook(() => useRemoteImage('https://blocked.host/a.png'));
+
+    await waitFor(() => expect(result.current.status).toBe('unreadable'));
+    expect(result.current.src).toBe('https://blocked.host/a.png');
+  });
+
+  it('reports unreadable on a non-2xx too, not just a thrown fetch', async () => {
+    vi.stubGlobal('fetch', vi.fn(async () => ({ ok: false, status: 404, blob: async () => new Blob([]) })));
+
+    const { result } = renderHook(() => useRemoteImage('https://host/gone.png'));
+
+    await waitFor(() => expect(result.current.status).toBe('unreadable'));
   });
 });
