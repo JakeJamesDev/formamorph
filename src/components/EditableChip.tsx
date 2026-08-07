@@ -20,7 +20,7 @@ import type { Placeholder } from "@/types";
  * `onActivate` claims the single click/tap for the host (a per-chip popover); text editing then stays on
  * double-click, so the popover must offer its own way to rename on touch. `suffix` trails the label.
  */
-export function EditableChip({ value, onCommit, onRemove, sortable = false, getSuggestions, onActivate, suffix, label, editable = true, placeholders }: {
+export function EditableChip({ value, onCommit, onRemove, sortable = false, getSuggestions, onActivate, suffix, label, placeholders }: {
   value: string;
   onCommit: (next: string) => void;
   onRemove: (value: string) => void;
@@ -31,8 +31,6 @@ export function EditableChip({ value, onCommit, onRemove, sortable = false, getS
   /** What to show, when the stored value isn't readable as-is (a value holding placeholder tokens). A node,
    *  so the placeholders inside it can be drawn as chips; `value` still names the chip for a screen reader. */
   label?: ReactNode;
-  /** False to make the chip read-only. */
-  editable?: boolean;
   /** Given these, editing opens a chip editor instead of a text input, so a value holding placeholders can
    *  be edited in place — and its chips keep their World/Unique pop-out while it is open. */
   placeholders?: Placeholder[];
@@ -58,7 +56,7 @@ export function EditableChip({ value, onCommit, onRemove, sortable = false, getS
     if (editing && inputRef.current) { inputRef.current.focus(); inputRef.current.select(); }
   }, [editing]);
 
-  const startEdit = () => { if (!editable) return; setText(value); setActive(0); setEditing(true); };
+  const startEdit = () => { setText(value); setActive(0); setEditing(true); };
   const cancel = () => { setEditing(false); setText(value); };
   const finish = (raw: string) => {
     setEditing(false);

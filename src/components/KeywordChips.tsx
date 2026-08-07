@@ -33,8 +33,8 @@ import PlaceholderText from '@/components/prompt/PlaceholderText';
  * a comma-bearing name is only ever split on purpose.
  *
  * Given `placeholders`, a tag may mix text and chips (an "Old \{Town\} keeper" alias): the entry field becomes a chip
- * editor with the same `{` typeahead as every other placeholder field, and a committed tag shows its chips
- * by name. Omit the prop for lists that must stay literal — placeholder values themselves, since resolution
+ * editor with the same `{` typeahead as every other placeholder field, and a committed tag draws its chips
+ * as pills (double-click to edit it in place). Omit the prop for lists that must stay literal — placeholder values themselves, since resolution
  * is single-pass and a chip inside one would never expand.
  */
 export function KeywordChips({

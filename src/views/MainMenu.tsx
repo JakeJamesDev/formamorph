@@ -112,6 +112,7 @@ import { useReadmeVisibility } from "@/lib/useReadmeVisibility";
 import { hasWorldNarrationPrompt, worldNarrationPrompt, useWorldPromptOptOut } from "@/lib/worldPrompt";
 import { useWorldPromptPresets, GLOBAL_PRESET_VALUE } from "@/lib/worldPromptPreset";
 import PatreonIcon from "@/components/PatreonIcon";
+import { describePlaceholders } from '@/lib/placeholders';
 
 interface MainMenuProps {
   onStartGame: (traits: string[], characterData: CharacterData | null, isNewGame?: boolean, startingLocationId?: string | null, dictionaries?: Dictionary[] | null, characters?: Entity[] | null) => void;
@@ -662,7 +663,7 @@ const MainMenu = ({ onStartGame, onLoadSaveGame, onReplayIntro, introActive = fa
     const statsWithCode = getStatsWithCode(statsArray);
 
     return statsWithCode.map(stat => (
-      `# ${stat.name || 'Unnamed Stat'}\n${stat.code}`
+      `# ${describePlaceholders(stat.name, placeholders) || 'Unnamed Stat'}\n${stat.code}`
     )).join('\n\n----\n\n');
   };
 

@@ -2,7 +2,6 @@ import React, { useRef, useState } from 'react';
 import { useGameplay } from '@/contexts/GameplayContext';
 import { useGameplayText, setGameplayText } from '@/lib/gameplayTextStore';
 import { revealActive, revealAnimName, revealVars } from '@/lib/narrationRevealConfig';
-import { useGameData } from '@/contexts/GameDataContext';
 import { usePlaceholderResolver } from '@/lib/usePlaceholderResolver';
 import { useSettings } from '@/contexts/SettingsContext';
 import { useSentenceHighlight } from '@/lib/useSentenceHighlight';
@@ -49,6 +48,7 @@ import type { Entity, SceneEntity } from '@/types';
 import { formatAbsolute, formatClock } from '@/lib/gameClock';
 import { logKind } from '@/lib/playLog';
 import { cn } from "@/lib/utils";
+import { useResolvedWorld } from '@/lib/useResolvedWorld';
 
 /** A committed turn's saved reasoning (from its assistant-message JSON), or null. */
 function parseSavedReasoning(content: string): { text: string; ms: number } | null {
@@ -67,7 +67,9 @@ export const LeftPanel = ({ entities, onEntityClick, onRegenerateMemory }: {
   // Import systemPrompt from settings context
   const { systemPrompt } = useSettings();
   // The authored cast, separate from the `entities` prop (authored + runtime-discovered).
-  const { entities: authoredEntities } = useGameData();
+  // Resolved, not the authored context: a chip-bearing name compared against a resolved scene name would
+  // read as a character the world never defined.
+  const { entities: authoredEntities } = useResolvedWorld();
   const {
     // Aliased to the viewed-page values so paging back shows that turn's appearance + scene (they equal
     // the live values on the latest page). Body morphs still ride live `bodyMorphValues`, which the
@@ -514,7 +516,8 @@ export const MiddlePanel = ({
   commandPreview: boolean;
   onDismissCommandPreview: () => void;
 }) => {
-  const { entities } = useGameData();
+  // Resolved: narration is matched against these names, and a chip can never appear in AI prose.
+  const { entities } = useResolvedWorld();
   const {
     displayedMessages,
     setDisplayedMessages,
@@ -1165,7 +1168,6 @@ export const RightPanel = ({ onLocationClick, onToggleTrait, language, setLangua
     totalPages,
     activeTab,
     setActiveTab,
-    viewStats: playerStats,
     commitManualStatEdit,
     viewTraits: savedTraits,
     viewDisabledTraitIds,
@@ -1174,7 +1176,7 @@ export const RightPanel = ({ onLocationClick, onToggleTrait, language, setLangua
     heldStatChanges,
     drainingStatChanges
   } = useGameplay();
-  const { locations, traits, traitGroups } = useGameData();
+  const { locations, traits, traitGroups, viewStats: playerStats } = useResolvedWorld();
   const resolvePH = usePlaceholderResolver();
   const [isEditMode, setIsEditMode] = React.useState(false);
   // The traits actually in force on the viewed turn, and the stats they leave live. A switched-off trait

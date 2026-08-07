@@ -16,7 +16,7 @@ import { $createVariableNode } from './VariableNode';
  */
 
 /** Drop a fresh chip at the caret, or at the end of the field when it has no selection yet. */
-export function insertChipAtCaret(editor: LexicalEditor, vocab: ChipVocabulary, paletteToken: string): void {
+function insertChipAtCaret(editor: LexicalEditor, vocab: ChipVocabulary, paletteToken: string): void {
   editor.update(() => {
     const node = $createVariableNode(vocab.freshInsertToken(paletteToken));
     const selection = $getSelection();

@@ -173,7 +173,7 @@ const TraitManager = ({ trait }: { trait: Trait }) => {
               </SelectTrigger>
               <SelectContent>
                 {stats.map((stat) => (
-                  <SelectItem key={stat.id} value={stat.id}>{stat.name}</SelectItem>
+                  <SelectItem key={stat.id} value={stat.id}>{describePlaceholders(stat.name, placeholders)}</SelectItem>
                 ))}
               </SelectContent>
             </Select>

@@ -278,7 +278,6 @@ function captureAnchor(el: HTMLElement | null, tab: string): ScrollAnchor | null
   return anchorAt(el, tab, el.scrollTop + el.clientHeight / 2);
 }
 
-/** Where the caret sits in the editor's content, or null when there is no collapsed caret to read. */
 /** The top of one node's box, measuring a text node through a range since only elements have rects. */
 function nodeTop(node: Node): number | null {
   if (node.nodeType === Node.ELEMENT_NODE) {
