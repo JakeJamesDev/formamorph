@@ -1,6 +1,7 @@
 import type { Codec } from './usePersistentState';
 import type { AIRequestType } from '@/types';
 import type { PromptSamplerMap } from './promptSamplers';
+import type { PromptEndpointMap } from './promptEndpoints';
 import type { PromptReasoning } from './reasoningEffort';
 
 /** Per-request verbatim-turn overrides carried on a preset; a missing kind uses its shipped default. */
@@ -62,6 +63,9 @@ export interface PromptPreset {
   reasoning?: ReasoningMap;
   reasoningBudget?: ReasoningBudgetMap;
   verbatim?: VerbatimMap;
+  /** Per-prompt endpoint routing. Preset-scoped like the tuning above, but deliberately excluded from
+   *  sharing: it names endpoint presets, whose ids mean nothing on another machine. */
+  promptEndpoints?: PromptEndpointMap;
 }
 
 /** The persisted preset state: the currently selected preset plus every user-saved one (built-ins are virtual). */
@@ -195,6 +199,12 @@ export function activeVerbatim(store: PromptPresetStore): VerbatimMap {
   return store.presets.find((p) => p.id === store.activeId)?.verbatim ?? {};
 }
 
+/** The active preset's endpoint routing (empty for a built-in, so every prompt follows the active endpoint). */
+export function activePromptEndpoints(store: PromptPresetStore): PromptEndpointMap {
+  if (isBuiltInActive(store)) return {};
+  return store.presets.find((p) => p.id === store.activeId)?.promptEndpoints ?? {};
+}
+
 /** The active preset's reasoning-budget overrides (empty for a built-in). */
 export function activeReasoningBudget(store: PromptPresetStore): ReasoningBudgetMap {
   if (isBuiltInActive(store)) return {};
@@ -220,6 +230,11 @@ export function updateReasoning(store: PromptPresetStore, kind: AIRequestType, v
 /** Set one kind's verbatim-turn count on the active preset. No-op under a built-in. */
 export function updateVerbatim(store: PromptPresetStore, kind: AIRequestType, value: number): PromptPresetStore {
   return patchActivePreset(store, (p) => ({ ...p, verbatim: { ...(p.verbatim ?? {}), [kind]: value } }));
+}
+
+/** Replace the active preset's endpoint routing via a transform. No-op under a built-in. */
+export function updatePromptEndpoints(store: PromptPresetStore, fn: (m: PromptEndpointMap) => PromptEndpointMap): PromptPresetStore {
+  return patchActivePreset(store, (p) => ({ ...p, promptEndpoints: fn(p.promptEndpoints ?? {}) }));
 }
 
 /** Set one kind's reasoning-budget percent on the active preset. No-op under a built-in. */

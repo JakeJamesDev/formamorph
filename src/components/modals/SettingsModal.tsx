@@ -246,13 +246,15 @@ function EndpointReachabilityBadge({ target }: { target: { url: string; apiToken
   );
 }
 
-function PromptEndpointField({ value, activeName, presets, onChange, target }: {
+function PromptEndpointField({ value, activeName, presets, onChange, target, disabled }: {
   value: string | null;
   activeName: string;
   presets: { id: string; name: string }[];
   onChange: (id: string | null) => void;
   /** The routed target to probe. `enabled` is false for an unpinned prompt, which shows no badge. */
   target: { url: string; apiToken: string; model: string; enabled: boolean };
+  /** Read-only under a built-in prompt preset, which carries no routing (same rule as the tuning below). */
+  disabled?: boolean;
 }) {
   return (
     <div className="flex flex-col gap-1">
@@ -260,6 +262,7 @@ function PromptEndpointField({ value, activeName, presets, onChange, target }: {
       <Select
         value={value ?? FOLLOW_ACTIVE}
         onValueChange={(v) => onChange(v === FOLLOW_ACTIVE ? null : v)}
+        disabled={disabled}
       >
         <SelectTrigger><SelectValue /></SelectTrigger>
         <SelectContent>
@@ -359,8 +362,7 @@ function PromptOptionsPanel({ endpoint, verbatim, reasoning, reasoningBudget, sa
   return (
     // px-3 keeps the slider thumb off the scroll frame's edges (the thumb overflows the track ends at 0/max).
     <div className="space-y-5 px-3 py-3">
-      {/* Not gated on `disabled`: routing is global, not part of the prompt preset the flag guards. */}
-      <PromptEndpointField {...endpoint} />
+      <PromptEndpointField {...endpoint} disabled={disabled} />
       {verbatim && <VerbatimTurnsField id="promptVerbatim" value={verbatim.value} onChange={verbatim.set} disabled={disabled} />}
       {reasoning && <PromptReasoningField value={reasoning.value} options={reasoning.options} onChange={reasoning.set} disabled={disabled} />}
       {reasoningBudget && <PromptReasoningBudgetField value={reasoningBudget.value} onChange={reasoningBudget.set} disabled={disabled} />}

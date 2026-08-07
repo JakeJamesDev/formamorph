@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import {
-  resolvePromptEndpoint, routedPresetId, isRoutableId, dropPreset, setPromptEndpoint,
-  promptEndpointMapCodec, endpointSignature, toDebugEndpoint,
+  resolvePromptEndpoint, routedPresetId, isRoutableId, setPromptEndpoint,
+  endpointSignature, toDebugEndpoint,
   type PromptEndpointMap, type ActiveEndpointState,
 } from './promptEndpoints';
 import { DEFAULT_TEXT_PRESET_ID, DEFAULT_TEXT_ENDPOINT_VALUES, type TextEndpointPresetStore } from './textEndpointPresets';
@@ -98,28 +98,10 @@ describe('resolvePromptEndpoint', () => {
 });
 
 describe('map edits', () => {
-  it('clears every kind that pointed at a deleted preset and leaves the rest', () => {
-    const map: PromptEndpointMap = { narration: 'p1', summary: 'p2', choices: 'p1' };
-    expect(dropPreset(map, 'p1')).toEqual({ summary: 'p2' });
-  });
-
   it('pins and unpins a kind', () => {
     const pinned = setPromptEndpoint({}, 'diary', 'p1');
     expect(pinned.diary).toBe('p1');
     expect(setPromptEndpoint(pinned, 'diary', null)).toEqual({});
-  });
-});
-
-describe('codec', () => {
-  it('round-trips a map', () => {
-    const map: PromptEndpointMap = { narration: 'p1', summary: DEFAULT_TEXT_PRESET_ID };
-    expect(promptEndpointMapCodec.parse(promptEndpointMapCodec.serialize(map))).toEqual(map);
-  });
-
-  it('falls back to an empty map on malformed or wrongly-typed storage', () => {
-    expect(promptEndpointMapCodec.parse('not json')).toEqual({});
-    expect(promptEndpointMapCodec.parse('[1,2]')).toEqual({});
-    expect(promptEndpointMapCodec.parse('{"narration":42}')).toEqual({});
   });
 });
 

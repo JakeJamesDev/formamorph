@@ -1,5 +1,4 @@
 import type { AIRequestType } from '@/types';
-import type { Codec } from './usePersistentState';
 import {
   DEFAULT_TEXT_PRESET_ID, DEFAULT_TEXT_ENDPOINT_VALUES,
   type TextEndpointPresetStore, type TextEndpointValues,
@@ -7,9 +6,9 @@ import {
 
 /**
  * Which text-endpoint preset each prompt kind sends to, keyed by request type. A kind with no entry
- * follows whatever preset is globally active, which is how every prompt behaved before routing existed.
- * Persisted globally rather than inside a prompt preset: presets are shareable, and a shared one naming
- * the author's endpoint presets would mean nothing on the recipient's machine.
+ * follows whatever endpoint preset is active, which is how every prompt behaved before routing existed.
+ * Carried on a prompt preset (see `PromptPreset.promptEndpoints`) but never shared with one: the ids name
+ * endpoint presets, which mean nothing on the recipient's machine.
  */
 export type PromptEndpointMap = Partial<Record<AIRequestType, string>>;
 
@@ -139,15 +138,6 @@ export function endpointSignature(endpoint: string, model: string): string {
   return `${endpoint}|${model}`;
 }
 
-/** Drop entries pointing at `id`, so deleting a preset leaves the kinds that used it on Follow Active. */
-export function dropPreset(map: PromptEndpointMap, id: string): PromptEndpointMap {
-  const next: PromptEndpointMap = {};
-  for (const [kind, presetId] of Object.entries(map) as [AIRequestType, string][]) {
-    if (presetId !== id) next[kind] = presetId;
-  }
-  return next;
-}
-
 /** Pin a kind to a preset, or clear it back to Follow Active with a null id. */
 export function setPromptEndpoint(map: PromptEndpointMap, kind: AIRequestType, id: string | null): PromptEndpointMap {
   if (id === null) {
@@ -158,20 +148,3 @@ export function setPromptEndpoint(map: PromptEndpointMap, kind: AIRequestType, i
   return { ...map, [kind]: id };
 }
 
-/** localStorage codec; malformed storage falls back to an empty map (every kind follows the active preset). */
-export const promptEndpointMapCodec: Codec<PromptEndpointMap> = {
-  parse: (raw) => {
-    try {
-      const parsed: unknown = JSON.parse(raw);
-      if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) return {};
-      const out: PromptEndpointMap = {};
-      for (const [kind, id] of Object.entries(parsed)) {
-        if (typeof id === 'string' && id) out[kind as AIRequestType] = id;
-      }
-      return out;
-    } catch {
-      return {};
-    }
-  },
-  serialize: (v) => JSON.stringify(v),
-};

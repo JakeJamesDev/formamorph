@@ -3,6 +3,7 @@ import { renderHook, act, waitFor } from '@testing-library/react';
 import type { ReactNode } from 'react';
 import { SettingsProvider, useSettings } from './SettingsContext';
 import { textEndpointPresetCodec, DEFAULT_TEXT_ENDPOINT_VALUES, type TextEndpointPresetStore } from '@/lib/textEndpointPresets';
+import { presetStoreCodec, type PromptPresetStore } from '@/lib/promptPresets';
 
 // The provider probes endpoints for reasoning support; keep the network out of it. `detectSupported…` is
 // the one routing calls lazily, so it stays a spy the cases below assert against.
@@ -32,8 +33,11 @@ beforeEach(() => {
   })) as unknown as typeof window.matchMedia;
 });
 
+/** An endpoint-preset id that cannot occur naturally in prompt text, for the leak probes. */
+const SENTINEL_ID = 'zzz-endpoint-leak-canary-9x7q';
+
 const ENDPOINTS_KEY = 'FORMAMORPH_textEndpointPresets';
-const ROUTING_KEY = 'FORMAMORPH_promptEndpoints';
+const PROMPTS_KEY = 'FORMAMORPH_promptPresets';
 const wrapper = ({ children }: { children: ReactNode }) => <SettingsProvider>{children}</SettingsProvider>;
 
 /** Two endpoint presets with the big one active — the arrangement each case routes away from. */
@@ -43,10 +47,29 @@ function seedEndpoints() {
     presets: [
       { id: 'big', name: 'Big Model', values: { endpoint: 'http://big.test/v1', apiToken: 'big-key', model: 'big-24b', contextWindowOverride: 16384, maxTokens: 900 } },
       { id: 'small', name: 'Small Model', values: { endpoint: 'http://small.test/v1', apiToken: 'small-key', model: 'small-1b', contextWindowOverride: 4096, maxTokens: 200 } },
+      // Distinctive id for the export/import leak checks: ordinary words like "small" occur in the shipped
+      // prompt text a shared preset legitimately carries, so a substring probe needs something unmistakable.
+      { id: SENTINEL_ID, name: 'Sentinel', values: { endpoint: 'http://sentinel.test/v1', apiToken: '', model: 'sentinel-m', contextWindowOverride: 2048, maxTokens: 100 } },
     ],
   };
   localStorage.setItem(ENDPOINTS_KEY, textEndpointPresetCodec.serialize(store));
 }
+
+/** Two user prompt presets, the first selected. Routing is preset-scoped, so a user preset must be active
+ *  for it to be settable at all — the built-in case is its own test below. */
+function seedPromptPresets(activeId = 'mine') {
+  const store: PromptPresetStore = {
+    activeId,
+    presets: [
+      { id: 'mine', name: 'Mine', values: { systemPrompt: 'A' } as never, style: 'markdown' },
+      { id: 'other', name: 'Other', values: { systemPrompt: 'B' } as never, style: 'markdown' },
+    ],
+  };
+  localStorage.setItem(PROMPTS_KEY, presetStoreCodec.serialize(store));
+}
+
+const storedRouting = (id: string) =>
+  presetStoreCodec.parse(localStorage.getItem(PROMPTS_KEY)!).presets.find((p) => p.id === id)?.promptEndpoints;
 
 describe('SettingsContext: per-prompt endpoint routing', () => {
   beforeEach(() => {
@@ -54,6 +77,7 @@ describe('SettingsContext: per-prompt endpoint routing', () => {
     detectEfforts.mockClear();
     fetchContextLength.mockClear();
     seedEndpoints();
+    seedPromptPresets();
   });
 
   it('sends every prompt to the active endpoint until something is routed', () => {
@@ -64,7 +88,6 @@ describe('SettingsContext: per-prompt endpoint routing', () => {
       expect(r.model).toBe('big-24b');
       expect(r.apiToken).toBe('big-key');
     }
-    expect(result.current.hasRoutedPrompts).toBe(false);
   });
 
   it('routes only the pinned prompt and leaves the rest on the active endpoint', () => {
@@ -81,12 +104,43 @@ describe('SettingsContext: per-prompt endpoint routing', () => {
     const narration = result.current.resolveEndpointForKind('narration');
     expect(narration.model).toBe('big-24b');
     expect(narration.url).toContain('big.test');
-
-    expect(result.current.hasRoutedPrompts).toBe(true);
-    expect(JSON.parse(localStorage.getItem(ROUTING_KEY)!)).toEqual({ summary: 'small' });
   });
 
-  it('pins a prompt to the built-in Default even while a user preset is active', () => {
+  it('stores routing on the active prompt preset, not globally', () => {
+    const { result } = renderHook(() => useSettings(), { wrapper });
+    act(() => result.current.setPromptEndpoint('summary', 'small'));
+
+    expect(storedRouting('mine')).toEqual({ summary: 'small' });
+    expect(storedRouting('other')).toBeUndefined();
+    // The standalone key the pre-preset version used must not come back.
+    expect(localStorage.getItem('FORMAMORPH_promptEndpoints')).toBeNull();
+  });
+
+  it('gives each prompt preset its own routing', () => {
+    const { result } = renderHook(() => useSettings(), { wrapper });
+    act(() => result.current.setPromptEndpoint('summary', 'small'));
+    expect(result.current.resolveEndpointForKind('summary').model).toBe('small-1b');
+
+    // Switching preset switches the routing with it.
+    act(() => result.current.selectPreset('other'));
+    expect(result.current.resolveEndpointForKind('summary').model).toBe('big-24b');
+
+    act(() => result.current.selectPreset('mine'));
+    expect(result.current.resolveEndpointForKind('summary').model).toBe('small-1b');
+  });
+
+  it('carries no routing under a built-in preset, and refuses to set any', () => {
+    seedPromptPresets('default'); // the read-only built-in
+    const { result } = renderHook(() => useSettings(), { wrapper });
+
+    act(() => result.current.setPromptEndpoint('summary', 'small'));
+
+    expect(result.current.promptEndpoints).toEqual({});
+    expect(result.current.resolveEndpointForKind('summary').model).toBe('big-24b');
+    expect(storedRouting('mine')).toBeUndefined();
+  });
+
+  it('pins a prompt to the built-in Default endpoint even while a user endpoint is active', () => {
     const { result } = renderHook(() => useSettings(), { wrapper });
     act(() => result.current.setPromptEndpoint('sceneTags', 'default'));
 
@@ -103,11 +157,10 @@ describe('SettingsContext: per-prompt endpoint routing', () => {
     act(() => result.current.setPromptEndpoint('summary', null));
 
     expect(result.current.resolveEndpointForKind('summary').model).toBe('big-24b');
-    expect(result.current.hasRoutedPrompts).toBe(false);
-    expect(JSON.parse(localStorage.getItem(ROUTING_KEY)!)).toEqual({});
+    expect(storedRouting('mine')).toEqual({});
   });
 
-  it('falls back to the active endpoint — and forgets the route — when the routed preset is deleted', () => {
+  it('falls back to the active endpoint when the routed endpoint preset is deleted', () => {
     const { result } = renderHook(() => useSettings(), { wrapper });
     act(() => result.current.setPromptEndpoint('summary', 'small'));
 
@@ -116,7 +169,6 @@ describe('SettingsContext: per-prompt endpoint routing', () => {
     const r = result.current.resolveEndpointForKind('summary');
     expect(r.presetId).toBeNull();
     expect(r.model).toBe('big-24b');
-    expect(JSON.parse(localStorage.getItem(ROUTING_KEY)!)).toEqual({});
   });
 
   it("uses the routed preset's own context window rather than the active endpoint's", () => {
@@ -124,6 +176,30 @@ describe('SettingsContext: per-prompt endpoint routing', () => {
     act(() => result.current.setPromptEndpoint('summary', 'small'));
     // The preset carries a manual override, which beats any probe.
     expect(result.current.resolveEndpointForKind('summary').contextWindow).toBe(4096);
+  });
+
+  // Routing now lives ON the preset object, so the export path is one careless spread away from shipping
+  // someone's endpoint ids (and the preset names they imply) to whoever they share with.
+  it('never exports routing with a shared preset', () => {
+    const { result } = renderHook(() => useSettings(), { wrapper });
+    act(() => result.current.setPromptEndpoint('summary', SENTINEL_ID));
+    expect(storedRouting('mine')).toEqual({ summary: SENTINEL_ID });
+
+    const shared = result.current.exportActivePreset('2.9.2') as unknown as Record<string, unknown>;
+
+    expect(shared.promptEndpoints).toBeUndefined();
+    expect(JSON.stringify(shared)).not.toContain(SENTINEL_ID);
+  });
+
+  it('never adopts routing from an imported preset', () => {
+    const { result } = renderHook(() => useSettings(), { wrapper });
+    // A crafted payload claiming routing — the parser drops unknown keys, and the importer never reads it.
+    const crafted = { name: 'Gift', style: 'markdown' as const, values: { systemPrompt: 'X' } as never, promptEndpoints: { narration: SENTINEL_ID } };
+    let id = '';
+    act(() => { id = result.current.importPreset(crafted, { includeTuning: true, name: 'Gift' }); });
+
+    expect(storedRouting(id)).toBeUndefined();
+    expect(result.current.resolveEndpointForKind('narration').model).toBe('big-24b');
   });
 
   it('probes a routed endpoint once and then serves the detected window', async () => {
