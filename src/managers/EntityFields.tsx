@@ -125,6 +125,7 @@ const EntityFields = ({ value, onChange, placeholders = [], locationOptions, sel
         kind="character"
         tags={value.imageTags}
         onTagsChange={(t) => onChange('imageTags', t)}
+        placeholders={placeholders}
       />
       <div className="space-y-2">
         <Label>3D Model</Label>

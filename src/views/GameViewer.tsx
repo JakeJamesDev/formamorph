@@ -1375,8 +1375,8 @@ const GameViewer = ({
     const texts = [
       worldOverview.systemPrompt || "",
       worldOverview.readme || "",
-      ...rawEntities.flatMap((e) => [e.name, ...(e.aliases ?? []), e.playerDescription, e.aiDescription, e.aiSummary]),
-      ...rawLocations.flatMap((l) => [l.name, ...(l.connections ?? []), l.playerDescription, l.aiDescription, l.aiSummary, l.description]),
+      ...rawEntities.flatMap((e) => [e.name, ...(e.aliases ?? []), e.playerDescription, e.aiDescription, e.aiSummary, e.imageTags]),
+      ...rawLocations.flatMap((l) => [l.name, ...(l.connections ?? []), l.playerDescription, l.aiDescription, l.aiSummary, l.description, l.imageTags]),
       ...dictionaries.flatMap((b) => b.entries.flatMap((en) => [en.name, ...(en.key ?? []), ...(en.secondaryKeys ?? []), en.value])),
       ...rawStats.map((s) => s.name),
       ...rawTraits.flatMap((t) => [t.name, t.playerDescription, t.aiDescription]),
@@ -2944,7 +2944,9 @@ ${playerNotes || NONE_PLACEHOLDER}
      *  player asking for a different one — without this, only the action layer could ever change. */
     fresh = false,
   ): Promise<string> => {
-    const authored = (subject.imageTags ?? "").trim();
+    // Authored tags are world text like any other: a chip here is how an author randomizes what the
+    // generator draws, so it resolves against the same frozen rolls the narration uses.
+    const authored = resolvePH(subject.imageTags ?? "").trim();
     if (authored) return authored;
     const cached = derivedTagsRef.current.get(subject.id);
     if (cached !== undefined && !fresh) return cached;

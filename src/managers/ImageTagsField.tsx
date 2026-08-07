@@ -4,12 +4,14 @@ import { Button } from "@/components/ui/button";
 import { Star } from "lucide-react";
 import AiFieldToolbar from "@/components/AiFieldToolbar";
 import { TagAutocomplete } from "@/components/TagAutocomplete";
+import TagChipField from "@/components/prompt/TagChipField";
 import { ConfirmDialog } from "@/components/ConfirmDialog";
 import { ImageUpload } from '../lib/UtilityComponents';
 import { isRemoteImage } from '@/lib/imageBytes';
 import { GenerateImageButton } from '../components/GenerateImageButton';
 import type { ImageCap } from '../lib/imageOptim';
 import type { ImageSubjectKind } from '@/lib/imagePrompt';
+import type { Placeholder } from '@/types';
 
 interface ImageTagsFieldProps {
   /** Field label above the upload — "Background Image" for locations, "Image" for entities. */
@@ -31,6 +33,9 @@ interface ImageTagsFieldProps {
   kind: ImageSubjectKind;
   tags?: string;
   onTagsChange: (value: string) => void;
+  /** The world's (or the standalone item's) placeholders. Given any, the tags become a chip field so a tag
+   *  can be a placeholder; with none it stays the plain autocomplete textarea. */
+  placeholders?: Placeholder[];
 }
 
 /**
@@ -42,7 +47,7 @@ interface ImageTagsFieldProps {
  * carrying the control that promotes it to primary. Tag generation and image generation always act on the
  * primary — they describe the subject, not one picture of it.
  */
-const ImageTagsField = ({ label, images, onImagesChange, slots = 1, embeddedLimit = slots, imageId, cap, description, kind, tags, onTagsChange }: ImageTagsFieldProps) => {
+const ImageTagsField = ({ label, images, onImagesChange, slots = 1, embeddedLimit = slots, imageId, cap, description, kind, tags, onTagsChange, placeholders = [] }: ImageTagsFieldProps) => {
   // SD prompt pulled from an uploaded image, pending the user's OK to use it as Image Tags.
   const [pendingPrompt, setPendingPrompt] = useState<string | null>(null);
 
@@ -120,11 +125,21 @@ const ImageTagsField = ({ label, images, onImagesChange, slots = 1, embeddedLimi
           onChange={onTagsChange}
         />
       </div>
-      <TagAutocomplete
-        value={tags || ''}
-        onChange={onTagsChange}
-        placeholder="booru tags, comma separated"
-      />
+      {placeholders.length > 0 ? (
+        <TagChipField
+          value={tags || ''}
+          onChange={onTagsChange}
+          placeholders={placeholders}
+          placeholder="booru tags, comma separated"
+          ariaLabel="Image Tags"
+        />
+      ) : (
+        <TagAutocomplete
+          value={tags || ''}
+          onChange={onTagsChange}
+          placeholder="booru tags, comma separated"
+        />
+      )}
       {/* A generated picture lands in the primary slot as bytes, so it answers to the same allowance. */}
       {canGenerate && (
         <GenerateImageButton

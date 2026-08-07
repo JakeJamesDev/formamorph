@@ -38,7 +38,9 @@ export function insertChipAtCaret(editor: LexicalEditor, vocab: ChipVocabulary, 
 
 interface TargetState {
   insert: ((paletteToken: string) => void) | null;
-  claim: (key: symbol, fn: (paletteToken: string) => void) => void;
+  /** `root` is the field's editable element, used to tell focus moving *within* the field from focus
+   *  leaving it for something that can't take a chip. */
+  claim: (key: symbol, fn: (paletteToken: string) => void, root: HTMLElement | null) => void;
   /** Drops the claim only if `key` still holds it, so a field unmounting can't steal focus from its successor. */
   release: (key: symbol) => void;
 }
@@ -53,16 +55,42 @@ export function useChipInsertTarget(): TargetState {
 export function ChipInsertTargetProvider({ children }: { children: ReactNode }) {
   const [target, setTarget] = useState<{ key: symbol; insert: (t: string) => void } | null>(null);
   const holder = useRef<symbol | null>(null);
+  const holderRoot = useRef<HTMLElement | null>(null);
 
-  const claim = useCallback((key: symbol, insert: (t: string) => void) => {
+  const claim = useCallback((key: symbol, insert: (t: string) => void, root: HTMLElement | null) => {
     holder.current = key;
+    holderRoot.current = root;
     setTarget({ key, insert });
   }, []);
 
   const release = useCallback((key: symbol) => {
     if (holder.current !== key) return;
     holder.current = null;
+    holderRoot.current = null;
     setTarget(null);
+  }, []);
+
+  // Drop the claim when the author moves to something a chip can't go into — a plain input, a textarea, a
+  // number box. Without this the palette stays lit after clicking into an ordinary field and its chips would
+  // land back in whichever chip field was focused last, which is not where the author is looking.
+  //
+  // Only a focused *editable* releases: clicking a button, a tab or the palette itself must not, since
+  // reaching the palette necessarily moves focus off the field it is about to insert into.
+  useEffect(() => {
+    const onFocusIn = (e: FocusEvent) => {
+      const el = e.target as HTMLElement | null;
+      if (!el || !holder.current) return;
+      if (holderRoot.current?.contains(el)) return; // still inside the claiming field
+      const editable = el.isContentEditable
+        || el.tagName === 'INPUT'
+        || el.tagName === 'TEXTAREA';
+      if (!editable) return;
+      holder.current = null;
+      holderRoot.current = null;
+      setTarget(null);
+    };
+    document.addEventListener('focusin', onFocusIn);
+    return () => document.removeEventListener('focusin', onFocusIn);
   }, []);
 
   const value = useMemo<TargetState>(
@@ -76,7 +104,8 @@ export function ChipInsertTargetProvider({ children }: { children: ReactNode }) 
 /**
  * Claims the shared insert target for this editor while it holds focus. Deliberately does not release on
  * blur — the palette lives outside the field, so clicking it necessarily blurs; keeping the claim is what
- * makes the click land. The claim is only dropped when the field unmounts.
+ * makes the click land. The claim is dropped when the field unmounts, or when the provider sees focus land
+ * in an ordinary text field that cannot hold a chip.
  */
 export function ChipInsertTargetPlugin({ vocab }: { vocab: ChipVocabulary }) {
   const [editor] = useLexicalComposerContext();
@@ -87,7 +116,7 @@ export function ChipInsertTargetPlugin({ vocab }: { vocab: ChipVocabulary }) {
   vocabRef.current = vocab;
 
   useEffect(() => {
-    const take = () => claim(key, (token) => insertChipAtCaret(editor, vocabRef.current, token));
+    const take = () => claim(key, (token) => insertChipAtCaret(editor, vocabRef.current, token), editor.getRootElement());
     // A DOM focusin listener on the root rather than Lexical's FOCUS_COMMAND: the command is dispatched by
     // the text plugin's own handler and does not fire for every route into the field (a programmatic focus,
     // or a click that lands on a chip decorator rather than the text). focusin bubbles from all of them.

@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { rankTagSuggestions } from './tagSuggest';
+import { rankTagSuggestions, activeTagToken, replaceActiveTag } from './tagSuggest';
 
 // Options in popularity order (most-used first), as the shipped list is.
 const OPTIONS = ['long hair', 'blush', 'blonde hair', 'blue eyes', 'black hair', 'long sleeves'];
@@ -24,5 +24,41 @@ describe('rankTagSuggestions', () => {
 
   it('returns nothing when no option matches', () => {
     expect(rankTagSuggestions(OPTIONS, 'zzz', 10)).toEqual([]);
+  });
+});
+
+describe('activeTagToken', () => {
+  it('bounds the tag the caret sits in, matching only on what is left of the caret', () => {
+    const v = 'red ribbon, blue dress';
+    // Caret inside "blue dress", after "blue d".
+    expect(activeTagToken(v, 18)).toEqual({ start: 12, end: 22, token: 'blue d' });
+  });
+
+  it('skips the space after a comma, so the separator is not part of the tag', () => {
+    expect(activeTagToken('1girl, solo', 8).start).toBe(7);
+  });
+
+  it('treats a newline as a separator too', () => {
+    expect(activeTagToken('1girl\nsolo', 10)).toEqual({ start: 6, end: 10, token: 'solo' });
+  });
+});
+
+describe('replaceActiveTag', () => {
+  it('appends a separator when completing the last tag, so the next one can be typed', () => {
+    expect(replaceActiveTag('1girl, blon', 11, 'blonde hair'))
+      .toEqual({ value: '1girl, blonde hair, ', caret: 20 });
+  });
+
+  it('keeps the existing separator when completing a tag mid-list', () => {
+    const { value, caret } = replaceActiveTag('1girl, blon, solo', 11, 'blonde hair');
+    expect(value).toBe('1girl, blonde hair, solo');
+    // Caret lands after the completion, not at the end of the field.
+    expect(value.slice(0, caret)).toBe('1girl, blonde hair');
+  });
+
+  it('leaves a placeholder token elsewhere in the value untouched', () => {
+    const token = '{{ph:hair:world:p1}}';
+    const { value } = replaceActiveTag(`1girl, ${token}, blon`, `1girl, ${token}, blon`.length, 'blonde hair');
+    expect(value).toBe(`1girl, ${token}, blonde hair, `);
   });
 });

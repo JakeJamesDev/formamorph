@@ -112,3 +112,33 @@ export function $applyMarkdownAction(parse: ChipVocabulary['parse'], action: Mar
   range.focus.set(to.key, to.offset, to.type);
   $setSelection(range);
 }
+
+/** The caret's offset within `serializeRoot()`'s flat string, or null when there is no range selection.
+ *  Must run inside `editor.read`/`editor.update`. */
+export function $flatCaret(): number | null {
+  const selection = $getSelection();
+  const para = $getRoot().getFirstChild();
+  if (!$isRangeSelection(selection) || !$isElementNode(para)) return null;
+  return flatOffsetOf(para, selection.anchor.getNode(), selection.anchor.offset, selection.anchor.type);
+}
+
+/**
+ * Replace `[start, end)` of the flat string with `insert` and leave the caret after it. Rebuilds the tree the
+ * same way the markdown toolbar does, so chips outside the replaced range keep their exact tokens. Must run
+ * inside `editor.update`.
+ */
+export function $replaceFlatRange(
+  parse: ChipVocabulary['parse'], start: number, end: number, insert: string,
+): void {
+  const para = $getRoot().getFirstChild();
+  if (!$isElementNode(para)) return;
+  const value = serializeRoot();
+  buildEditorState(value.slice(0, start) + insert + value.slice(end), parse);
+  const rebuilt = $getRoot().getFirstChild();
+  if (!$isElementNode(rebuilt)) return;
+  const point = pointAtOffset(rebuilt, start + insert.length);
+  const range = $createRangeSelection();
+  range.anchor.set(point.key, point.offset, point.type);
+  range.focus.set(point.key, point.offset, point.type);
+  $setSelection(range);
+}

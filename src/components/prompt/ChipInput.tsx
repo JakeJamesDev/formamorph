@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef } from 'react';
+import { useEffect, useMemo, useRef, type ReactNode } from 'react';
 import {
   $getRoot, $createTextNode, LineBreakNode,
   KEY_ENTER_COMMAND, COMMAND_PRIORITY_LOW,
@@ -140,7 +140,7 @@ function Surface({ placeholder, ariaLabel, className }: {
   );
 }
 
-const ChipInput = ({ value, onChange, vocabulary, placeholder, ariaLabel, className, readOnly = false, trigger = '{', onSubmit, onBlur }: {
+const ChipInput = ({ value, onChange, vocabulary, placeholder, ariaLabel, className, readOnly = false, trigger = '{', onSubmit, onBlur, multiline = false, children }: {
   value: string;
   onChange: (v: string) => void;
   vocabulary: ChipVocabulary;
@@ -155,6 +155,10 @@ const ChipInput = ({ value, onChange, vocabulary, placeholder, ariaLabel, classN
   onSubmit?: () => void;
   /** Focus leaving the field — a tag input commits a half-typed tag on the way out. */
   onBlur?: () => void;
+  /** Let the value wrap onto real lines. The tag field wants this; a name never does. */
+  multiline?: boolean;
+  /** Extra Lexical plugins, rendered inside this field's composer (e.g. the tag autocomplete). */
+  children?: ReactNode;
 }) => {
   const dragKey = useRef<string | null>(null);
   const initialConfig = useMemo(
@@ -176,11 +180,12 @@ const ChipInput = ({ value, onChange, vocabulary, placeholder, ariaLabel, classN
           <Surface placeholder={placeholder} ariaLabel={ariaLabel} className={className} />
           <HistoryPlugin />
           <ValueSyncPlugin value={value} onChange={onChange} parse={vocabulary.parse} />
-          <SingleLinePlugin onSubmit={onSubmit} />
+          {!multiline && <SingleLinePlugin onSubmit={onSubmit} />}
           {onBlur && <BlurPlugin onBlur={onBlur} />}
           <EditablePlugin readOnly={readOnly} />
           <ChipInsertTargetPlugin vocab={vocabulary} />
           {trigger && !readOnly && <ChipTypeaheadPlugin trigger={trigger} vocab={vocabulary} />}
+          {children}
         </PromptDragContext.Provider>
       </ChipVocabularyContext.Provider>
     </LexicalComposer>

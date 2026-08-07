@@ -98,6 +98,7 @@ const LocationManager = ({ location }: { location: GameLocation }) => {
         kind="location"
         tags={editingLocation.imageTags}
         onTagsChange={(t) => handleChange('imageTags', t)}
+        placeholders={placeholders}
       />
       <div className="space-y-2">
         <Label>Ambient Sound</Label>
