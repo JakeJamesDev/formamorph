@@ -452,9 +452,9 @@ function useProvideSettings() {
   const textIsBuiltInActive = isTextBuiltInActive(textPresetStore);
 
   // The bundled engine is an endpoint preset now, not a mode, so "am I on my own endpoint" is simply
-  // "is a user preset selected". The old `useCustomEndpoint` checkbox is gone; `migrateEngineToPreset`
-  // (above) turns whatever it was set to into the equivalent preset selection, once.
-  const useCustomEndpoint = !textIsBuiltInActive;
+  // "is a user preset selected" — no separate flag. The old `useCustomEndpoint` checkbox is gone;
+  // `migrateEngineToPreset` (above) turns whatever it was set to into the equivalent preset selection, once.
+  const onUserEndpoint = !textIsBuiltInActive;
 
   // Desktop bundled-engine output cap — kept separate from the preset-scoped custom-endpoint maxTokens so
   // switching endpoints never disturbs the local engine. Seeded from the legacy shared key on first run.
@@ -510,7 +510,7 @@ function useProvideSettings() {
   // value, falling back to the built-in default.
   const contextWindow = localModelActive
     ? localContextSize
-    : useCustomEndpoint
+    : onUserEndpoint
     ? (contextWindowOverride ?? detectedContextWindow ?? DEFAULT_CONTEXT_WINDOW)
     : DEFAULT_CONTEXT_WINDOW;
 
@@ -533,10 +533,10 @@ function useProvideSettings() {
 
   // Auto-detect on connect (custom endpoint only); debounced so editing the URL doesn't fire per keystroke.
   useEffect(() => {
-    if (!useCustomEndpoint) return;
+    if (!onUserEndpoint) return;
     const id = setTimeout(() => { void detectContextWindow(false); }, 1000);
     return () => clearTimeout(id);
-  }, [useCustomEndpoint, detectContextWindow]);
+  }, [onUserEndpoint, detectContextWindow]);
 
   // Which reasoning_effort levels each endpoint+model accepts, probed once and remembered per `endpoint|model`
   // so flipping between endpoints (or swapping the model on one) doesn't re-probe. A missing key means "not yet
@@ -1194,7 +1194,6 @@ function useProvideSettings() {
     setMaxTokens,
     localMaxTokens,
     setLocalMaxTokens,
-    useCustomEndpoint,
     engineWanted,
     builtinTextEndpointPresets,
     textEndpointPresets,

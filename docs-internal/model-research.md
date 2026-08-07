@@ -4,7 +4,7 @@
 > baseline instead of re-deriving (and getting different answers each time). When asked for model info,
 > **read this first, refresh only what's stale, then update this doc** with the new numbers + date.
 
-**Last updated:** 2026-07-22 (per-model behavior findings from the dialogue-collapse investigation: memory-shape sensitivity, the recency-slot lever, measurement gotchas)
+**Last updated:** 2026-08-07 (harness debt: the engine is an endpoint preset now, so the seeded `useCustomEndpoint` flag is dead — see *Harness debt*)
 
 ---
 
@@ -221,10 +221,14 @@ are the *reference test tiers*, not catalog entries.
 The entire 15-model catalog has now been through the gate (scores in the catalog table above). Getting there
 required three harness fixes — all landed, all in `run.mjs` / `screenScore.mjs` / `electron/llmEngine.cjs`:
 
-- **Engine driven as the desktop build** — the harness fakes `window.formamorphDesktop` and turns
-  `useCustomEndpoint` off, so an engine model takes the real `localModelActive` path and gets
+- **Engine driven as the desktop build** — the harness fakes `window.formamorphDesktop` and puts the app on
+  the bundled engine, so an engine model takes the real `localModelActive` path and gets
   `thinking_budget_tokens` (not the coarse `reasoning_effort` the engine ignores). Without this a reasoning
   model spends the whole narration inside `<think>` and stalls — Anko was unscreenable until this landed.
+  <br>**Mechanism changed 2026-08-07:** engine mode was a `useCustomEndpoint` flag; the engine is now an
+  endpoint preset, so "engine mode" means selecting `builtin-engine`. The harness still seeds the old flag
+  and currently works only because the one-time `migrateEngineToPreset` converts it — see the note under
+  *Harness debt* below.
 - **`fitContext` on model load** — `llmEngine.start()` now loads with `gpuLayers:{fitContext:{contextSize}}`,
   so auto layer-fit reserves KV room. Prior behavior over-offloaded and failed to load 19GB-class models on a
   24GB card — and got *worse* the more VRAM was free.
@@ -290,3 +294,18 @@ per-model `endpointUrl` (cloud); it is gitignored, so this is local machine conf
 - **Voice-clause user-slot ship validated on 2 of the catalog's model classes only** (cloud + Cydonia-class,
   2026-07-22). The 12B/8B tiers and reasoning models are unmeasured on the new default narration user
   template — worth a screen pass before assuming the 3× transfers down-tier.
+
+## Harness debt
+
+- **The harness seeds a flag the app no longer reads** (2026-08-07). `buildSeed` in `run.mjs` writes
+  `FORMAMORPH_useCustomEndpoint: "false"` for engine models and `"true"` for Ollama, plus the pre-preset
+  `FORMAMORPH_endpointUrl` / `apiToken` / `modelName` keys. The bundled engine is an endpoint preset now
+  (`builtin-engine`), so nothing reads that flag at runtime — engine runs land on the engine only because
+  the one-time `migrateEngineToPreset` converts the flag on first boot, and Ollama runs work only because
+  `seedTextPresetStore` still folds the legacy URL keys into a "Custom" preset.
+  <br>Both paths are migrations kept for real users' upgrades, not setup mechanisms; whenever they're
+  retired the harness silently starts screening every engine model against the *hosted* endpoint, which
+  would look like a mysterious across-the-board score change rather than a config break.
+  <br>**Fix:** seed `FORMAMORPH_textEndpointPresets` directly — `{activeId:'builtin-engine',presets:[]}`
+  for engine models, `{activeId:'<id>',presets:[{…}]}` for Ollama — and drop the three legacy keys.
+  Not urgent (runs are correct today), but do it before deleting either migration.
