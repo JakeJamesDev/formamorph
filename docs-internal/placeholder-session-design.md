@@ -119,6 +119,29 @@ row moves.
    time**. Outside a session it resolves with empty rolls, so a missing `beginSession` shows as
    unrolled text rather than as a fresh roll on every render.
 
+## Walked live (2026-08-08)
+
+The three lifecycle cases tests alone cannot fully close, against the stress world
+(`build-demo-world.mjs` in the session scratchpad — 8 placeholders, 56 chips, 13 traits, 13 pins):
+
+| Case | Result |
+|---|---|
+| Abort and re-enter | No session before entry. Enter → `Turning`/`Marrow` + 6 unique rolls. Back *within* the flow → identical. Abort → inactive, rolls dropped. Re-enter → re-rolled (`Frostfall`/`Sedge`) |
+| Mid-game toggles | Two Metal-pinning traits: both on → `Iron Temper` (later wins) · Ironblood off → `Copper` · both off → `Brass` (the frozen roll, intact) · back on → `Iron`. `Marrow Standing` never moved — the control |
+| Save → load | Rolls persisted in the envelope. Exit → session inactive, rolls dropped. Cold-load → all 4 world + 6 unique rolls restored key-for-key, zero diffs; panel identical to pre-save |
+
+Two limits on that evidence, so it is not over-read later:
+
+- **No CDP input was available** (the pane reports viewport 0×0, so `read_page`/`computer` see an empty
+  tree). Pickers were driven with DOM clicks; in-game steps called the real handlers off the React fiber
+  (`setDisabledTraitIds`, `saveGame`, `onExitToMenu`, `onLoadSaveGame`). Real code paths and real renders —
+  but **not** click-level wiring.
+- The save was written via the context rather than through GameViewer, so it carried `worldId: null` and the
+  load ran with the world already resident. The **world-fetch half of cold-load is still unwalked.**
+
+Also worth knowing for any future pane session: the app picks its layout at mount, so a 0×0 pane mounts the
+**mobile** layout and the desktop panels never render. Resize before loading, not after.
+
 ## The self-pin display rule (added 2026-08-08)
 
 Live testing surfaced a confusion the session made visible: picking "Native of {Town}" renamed **every**
