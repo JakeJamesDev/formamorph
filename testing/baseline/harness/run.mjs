@@ -131,26 +131,57 @@ async function warmUp(cfg, model) {
 }
 
 function buildSeed(cfg, model, profile, preset) {
-  // An engine model is driven exactly as the desktop build drives it: custom-endpoint OFF, so the app
-  // resolves its own `localModelActive` path — desktop sampler block (top_p/top_k/min_p) and, crucially,
-  // `thinking_budget_tokens` instead of the coarse `reasoning_effort`. That reasoning-budget cap is the only
-  // way a reasoning model's thought segment gets bounded; without it the model can spend an entire narration
-  // inside <think> and emit nothing. Turning the flag on requires faking the desktop bridge (see
-  // desktopBridgeScript) AND that the engine sits on the app's hard-coded local port.
+  // An engine model is driven exactly as the desktop build drives it: the bundled engine is the SELECTED
+  // endpoint preset, so the app resolves its own `localModelActive` path — desktop sampler block
+  // (top_p/top_k/min_p) and, crucially, `thinking_budget_tokens` instead of the coarse `reasoning_effort`.
+  // That reasoning-budget cap is the only way a reasoning model's thought segment gets bounded; without it
+  // the model can spend an entire narration inside <think> and emit nothing. It also needs the faked desktop
+  // bridge (see below) AND the engine sitting on the app's hard-coded local port.
   const asDesktop = Boolean(model.modelPath);
   if (asDesktop && (model.enginePort ?? ENGINE_PORT) !== ENGINE_PORT) {
     throw new Error(`engine model ${model.label} must use port ${ENGINE_PORT}: the desktop path targets a hard-coded ${ENGINE_PORT}`);
   }
+
+  // Endpoint-preset ids, mirroring src/lib/textEndpointPresets.ts (the source of truth).
+  const BUILTIN_ENGINE_ID = "builtin-engine";
+  const HARNESS_PRESET_ID = "harness";
+
+  // These two are endpoint-preset values, not flat settings, so they're pulled out of the pass-through
+  // below. Omitted when a profile doesn't set them, letting the app's own defaults layer underneath.
+  const settings = { ...(profile.settings ?? {}) };
+  const { maxTokens, contextWindowOverride } = settings;
+  delete settings.maxTokens;
+  delete settings.contextWindowOverride;
+
   const seed = {
-    // Custom endpoint OFF for engine models → the desktop local-model path (endpoint hard-codes localhost:8977,
-    // where the engine runs). Ollama models keep it ON and point at their own URL.
-    FORMAMORPH_useCustomEndpoint: asDesktop ? "false" : "true",
-    FORMAMORPH_endpointUrl: modelEndpoint(cfg, model),
-    FORMAMORPH_apiToken: modelToken(cfg, model),
-    // The built-in engine serves the model under its GGUF basename, so an engine model needs no modelName.
-    FORMAMORPH_modelName: model.modelPath ? path.basename(model.modelPath) : model.modelName,
+    // Seed the preset store directly. The old `useCustomEndpoint` + endpointUrl/apiToken/modelName keys are
+    // no longer read at runtime — they only still worked through two one-time upgrade migrations, so a run
+    // depended on migration code that exists to be deleted. Retiring either would have quietly pointed every
+    // engine screen at the hosted endpoint and read as a across-the-board score change, not a config break.
+    FORMAMORPH_textEndpointPresets: JSON.stringify(
+      asDesktop
+        ? { activeId: BUILTIN_ENGINE_ID, presets: [] }
+        : {
+            activeId: HARNESS_PRESET_ID,
+            presets: [{
+              id: HARNESS_PRESET_ID,
+              name: "Harness",
+              values: {
+                endpoint: modelEndpoint(cfg, model),
+                apiToken: modelToken(cfg, model),
+                model: model.modelName,
+                ...(contextWindowOverride === undefined ? {} : { contextWindowOverride }),
+                ...(maxTokens === undefined ? {} : { maxTokens }),
+              },
+            }],
+          },
+    ),
+    // The seed above IS the end state, so the upgrade migration must not second-guess it.
+    FORMAMORPH_engineIsPresetMigrated: "1",
   };
-  for (const [k, v] of Object.entries(profile.settings ?? {})) {
+  // The engine reads its cap from its own setting rather than a preset value.
+  if (asDesktop && maxTokens !== undefined) seed.FORMAMORPH_localMaxTokens = serialize(maxTokens);
+  for (const [k, v] of Object.entries(settings)) {
     seed[`FORMAMORPH_${k}`] = serialize(v);
   }
   // Activate a prompt preset when the profile asked for one (neutral B-arm, or a named preset file such as
@@ -186,8 +217,9 @@ async function runOne(browser, cfg, model, profile) {
   // For engine models, present a desktop build to the app: `isDesktop()` keys off window.formamorphDesktop,
   // and the local-model path only reports reachable if the `.llm` bridge says a model is loaded. The real
   // engine runs Node-side (startEngine) and serves HTTP on 8977; this bridge just reports 'ready' so the app
-  // unblocks and takes its desktop request path. Injected before any app module evaluates (addInitScript), so
-  // DEFAULT_ENDPOINT — computed from isDesktop() at import time — resolves to the local engine.
+  // unblocks and takes its desktop request path. Injected before any app module evaluates (addInitScript),
+  // since the Built-In Engine preset only exists on the platform list when isDesktop() is true — and the
+  // bridge's reported `modelId` is the name requests are sent under.
   if (model.modelPath) {
     const modelId = path.basename(model.modelPath);
     await context.addInitScript(({ modelId, port }) => {
