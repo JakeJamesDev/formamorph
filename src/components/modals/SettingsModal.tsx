@@ -35,6 +35,7 @@ import PromptField from '../prompt/PromptField';
 import { PROMPT_KIND_VARIABLES, PROMPT_KIND_USER_VARIABLES, NOW_LINE_VARIABLES, SUBJECT } from '@/lib/promptVariables';
 import { defaultPromptSampler } from '@/lib/promptSamplers';
 import { useEndpointReachable } from '@/lib/useEndpointReachable';
+import { ReadOnlyNotice } from '@/components/prompt/ReadOnlyNotice';
 import type { AIRequestType } from '@/types';
 import { ConfirmDialog } from '../ConfirmDialog';
 import { toast } from 'react-toastify';
@@ -351,23 +352,35 @@ function PromptReasoningBudgetField({ value, onChange, disabled }: {
  *  them), the per-prompt Native Reasoning override (narration/choices under Native only — the effort level on
  *  external endpoints, or the token budget on the local engine), plus one override row per tunable sampler.
  *  `disabled` locks every control when the active prompt preset is built-in (Default/Simple). */
-function PromptOptionsPanel({ endpoint, verbatim, reasoning, reasoningBudget, samplers, disabled }: {
+function PromptOptionsPanel({ endpoint, verbatim, reasoning, reasoningBudget, samplers, disabled, readOnlyReason, onRequestEdit }: {
   endpoint: React.ComponentProps<typeof PromptEndpointField>;
   verbatim: { value: number; set: (n: number) => void } | null;
   reasoning: { value: PromptReasoning; options: { value: PromptReasoning; label: string }[]; set: (v: PromptReasoning) => void } | null;
   reasoningBudget: { value: number; set: (v: number) => void } | null;
   samplers: SamplerControlProps[];
   disabled: boolean;
+  /** What is read-only, named in the notice. Absent on an editable preset. */
+  readOnlyReason?: string;
+  onRequestEdit?: () => void;
 }) {
   return (
-    // px-3 keeps the slider thumb off the scroll frame's edges (the thumb overflows the track ends at 0/max).
-    <div className="space-y-5 px-3 py-3">
-      <PromptEndpointField {...endpoint} disabled={disabled} />
-      {verbatim && <VerbatimTurnsField id="promptVerbatim" value={verbatim.value} onChange={verbatim.set} disabled={disabled} />}
-      {reasoning && <PromptReasoningField value={reasoning.value} options={reasoning.options} onChange={reasoning.set} disabled={disabled} />}
-      {reasoningBudget && <PromptReasoningBudgetField value={reasoningBudget.value} onChange={reasoningBudget.set} disabled={disabled} />}
-      {samplers.map((s) => <SamplerControl key={s.id} {...s} disabled={disabled} />)}
-    </div>
+    <>
+      {/* Same notice the editor carries: every control below is inert under a built-in, and a panel of dead
+          checkboxes and sliders reads as broken rather than protected unless it says why. Outside the padded
+          box so it lands at the same height as the editor's — inside, the panel's own top padding nudged it
+          down and it visibly shifted when moving between a prompt's sub-tabs. */}
+      {disabled && readOnlyReason && (
+        <ReadOnlyNotice reason={readOnlyReason} onRequestEdit={onRequestEdit} className="mx-3" />
+      )}
+      {/* px-3 keeps the slider thumb off the scroll frame's edges (the thumb overflows the track ends at 0/max). */}
+      <div className="space-y-5 px-3 py-3">
+        <PromptEndpointField {...endpoint} disabled={disabled} />
+        {verbatim && <VerbatimTurnsField id="promptVerbatim" value={verbatim.value} onChange={verbatim.set} disabled={disabled} />}
+        {reasoning && <PromptReasoningField value={reasoning.value} options={reasoning.options} onChange={reasoning.set} disabled={disabled} />}
+        {reasoningBudget && <PromptReasoningBudgetField value={reasoningBudget.value} onChange={reasoningBudget.set} disabled={disabled} />}
+        {samplers.map((s) => <SamplerControl key={s.id} {...s} disabled={disabled} />)}
+      </div>
+    </>
   );
 }
 
@@ -2347,6 +2360,8 @@ An inspection aid for authoring and debugging; off by default.`}</HintInfo>
                     reasoningBudget={reasoningBudgetControl}
                     samplers={samplerControls}
                     disabled={activePresetIsBuiltIn}
+                    readOnlyReason={readOnlyReason}
+                    onRequestEdit={duplicateForEditing}
                   />
                 </ScrollArea>
               )}
