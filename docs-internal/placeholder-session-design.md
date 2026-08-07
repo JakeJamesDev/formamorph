@@ -119,6 +119,34 @@ row moves.
    time**. Outside a session it resolves with empty rolls, so a missing `beginSession` shows as
    unrolled text rather than as a fresh roll on every render.
 
+## The self-pin display rule (added 2026-08-08)
+
+Live testing surfaced a confusion the session made visible: picking "Native of {Town}" renamed **every**
+Town chip — including the *other* origin trait's card — so "Sworn to {Town}" read "Sworn to Sedge" the
+moment Native was ticked. The card was reporting what the selection made true instead of advertising what
+picking it does.
+
+**Rule: a trait's own text resolves with its own pins layered over the active ones** (`traitScopedPins` in
+`traitEffects.ts`). Its name (via the resolved collection), its descriptions, and the stat names printed on
+its card all read the trait's own value, whatever else is ticked. Everything outside a card — stat bars,
+locations, narration, group headings — keeps the active pins. Agreed decisions:
+
+- **One rule everywhere**: AI-facing trait text (`aiDescription`, the trait context) self-pins too, so the
+  AI reads the same words the player's card shows.
+- **Conflicting non-exclusive pins accepted**: with Tarnished (Copper) and Ironblood (Iron) both active the
+  world shows Iron and the Tarnished card keeps saying Copper. Each card describes its own pin; the world
+  shows the winner.
+- **Group headings cannot self-pin** — a group has no pins — so they follow the active selection. Authors
+  putting a pinnable placeholder in a group heading accept that flicker; future linter material.
+- The picker takes **authored stats** for the card stat lines: a pre-resolved name has no token left, so a
+  per-trait resolution over it is impossible (the same trap as the playerStats seeding bug).
+
+**Known adjacent bug, named not fixed:** the init effect logs "Starting in location: X" and stores a
+resolved location NAME into `currentLocation` before the applied traits' pins have landed in state — so the
+log and any `currentLocation.name` read (the AI context among them) can carry the rolled town while every
+other surface shows the pinned one. Pre-existing; the clean fix is storing the authored location in
+gameplay state and resolving on read, which touches every `currentLocation.name` site.
+
 ## Deliberately unchanged
 
 - **Save envelope / export shape** — rolls already live there. No shape change.

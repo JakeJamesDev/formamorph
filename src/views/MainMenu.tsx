@@ -226,7 +226,7 @@ const WorldNotice = ({ tone, icon: Icon, children, actionLabel, actionIcon: Acti
 
 const MainMenu = ({ onStartGame, onLoadSaveGame, onReplayIntro, introActive = false }: MainMenuProps) => {
   const {
-    traits: rawTraits, traitGroups: rawTraitGroups, placeholders, loadWorldData,
+    traits: rawTraits, traitGroups: rawTraitGroups, stats: rawStats, placeholders, loadWorldData,
     dictionaries: worldBooks,
   } = useGameData();
   const { beginSession, endSession } = usePlaceholderSession();
@@ -289,7 +289,7 @@ const MainMenu = ({ onStartGame, onLoadSaveGame, onReplayIntro, introActive = fa
     const chosen = rawTraits.filter((t) => selectedTraits.includes(t.id));
     return activePlaceholderPins(inAuthoredOrder(chosen, traitOrderIndex(rawTraits, rawTraitGroups)));
   }, [selectedTraits, rawTraits, rawTraitGroups]);
-  const { traits, traitGroups, stats, locations, resolvePH } = useResolvedAuthoredWorld(draftPins);
+  const { traits, traitGroups, stats, locations, resolvePH, resolveTraitText } = useResolvedAuthoredWorld(draftPins);
 
   const [showCodeModal, setShowCodeModal] = useState(false);
   const [showNarrationPrompt, setShowNarrationPrompt] = useState(false);
@@ -2187,8 +2187,9 @@ const MainMenu = ({ onStartGame, onLoadSaveGame, onReplayIntro, introActive = fa
         <TraitSelectionModal
           traits={traits}
           traitGroups={traitGroups}
-          stats={stats}
+          stats={rawStats}
           resolveText={resolvePH}
+          resolveTraitText={resolveTraitText}
           selectedTraits={selectedTraits}
           onTraitSelect={handleTraitSelection}
           onAbort={() => {

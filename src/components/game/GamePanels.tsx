@@ -1176,7 +1176,7 @@ export const RightPanel = ({ onLocationClick, onToggleTrait, language, setLangua
     heldStatChanges,
     drainingStatChanges
   } = useGameplay();
-  const { locations, traits, traitGroups, viewStats: playerStats } = useResolvedWorld();
+  const { locations, traits, traitGroups, viewStats: playerStats, resolveTraitText } = useResolvedWorld();
   const resolvePH = usePlaceholderResolver();
   const [isEditMode, setIsEditMode] = React.useState(false);
   // The traits actually in force on the viewed turn, and the stats they leave live. A switched-off trait
@@ -1324,7 +1324,9 @@ export const RightPanel = ({ onLocationClick, onToggleTrait, language, setLangua
                         onCheckedChange={(c) => onToggleTrait(trait.id, c === true)}
                       />
                     )}
-                    <span>{trait.name}{trait.playerDescription ? `: ${resolvePH(trait.playerDescription)}` : ''}</span>
+                    {/* A trait's own text self-pins (name already did, via the resolved collection), so a
+                        pinning trait's row reads its own value whatever else is switched on. */}
+                    <span>{trait.name}{trait.playerDescription ? `: ${resolveTraitText(trait, trait.playerDescription)}` : ''}</span>
                   </div>
                 );
               })

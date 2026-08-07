@@ -86,6 +86,16 @@ export function activePlaceholderPins(activeInOrder: Trait[]): Record<string, st
   return out;
 }
 
+/** The pins for a trait's OWN text: its pins over the active ones. A pinning trait's card always reads its
+ *  own value — "Sworn to Marrow" stays "Sworn to Marrow" whatever else is ticked — because the card
+ *  advertises what picking the trait does, not what the current selection happens to have made true.
+ *  Everything outside the card (stat bars, locations, narration) keeps the active pins. Returns `activePins`
+ *  itself when the trait pins nothing, so pin-less traits keep resolver identity. */
+export function traitScopedPins(trait: Trait, activePins: Record<string, string>): Record<string, string> {
+  const own = activePlaceholderPins([trait]);
+  return Object.keys(own).length ? { ...activePins, ...own } : activePins;
+}
+
 /**
  * The traits a player toggle switches off alongside the one being switched on: an exclusive group holds at
  * most one active trait, so enabling a member retires its active siblings. Nesting doesn't cascade — only

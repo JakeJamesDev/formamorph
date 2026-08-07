@@ -8,6 +8,7 @@ import type { Trait, TraitGroup } from '@/types';
 // These cases cover the picker's grouping and selection wiring, not placeholders; the real resolver — and
 // the draft pins it carries — is exercised in MainMenu.
 const identity = (t: string) => t;
+const traitIdentity = (_trait: Trait, t: string) => t;
 
 const groups: TraitGroup[] = [
   { id: 'world', name: 'World', parentId: null, order: 0 },
@@ -28,6 +29,7 @@ function Harness({ onConfirm = () => {}, onAbort = () => {} }: { onConfirm?: () 
       traitGroups={groups}
       stats={[]}
       resolveText={identity}
+      resolveTraitText={traitIdentity}
       selectedTraits={selected}
       onTraitSelect={(id) => setSelected((p) => (p.includes(id) ? p.filter((x) => x !== id) : [...p, id]))}
       onConfirm={onConfirm}
@@ -71,6 +73,7 @@ describe('TraitSelectionModal', () => {
         traitGroups={groups}
         stats={[]}
       resolveText={identity}
+      resolveTraitText={traitIdentity}
         selectedTraits={[]}
         onTraitSelect={() => {}}
         onConfirm={() => {}}
@@ -90,6 +93,7 @@ describe('TraitSelectionModal', () => {
         traitGroups={withEmpty}
         stats={[]}
       resolveText={identity}
+      resolveTraitText={traitIdentity}
         selectedTraits={[]}
         onTraitSelect={() => {}}
         onConfirm={() => {}}
@@ -115,6 +119,7 @@ describe('TraitSelectionModal', () => {
         traitGroups={nested}
         stats={[]}
       resolveText={identity}
+      resolveTraitText={traitIdentity}
         selectedTraits={[]}
         onTraitSelect={() => {}}
         onConfirm={() => {}}
@@ -145,6 +150,7 @@ describe('TraitSelectionModal', () => {
         traitGroups={mixed}
         stats={[]}
       resolveText={identity}
+      resolveTraitText={traitIdentity}
         selectedTraits={[]}
         onTraitSelect={() => {}}
         onConfirm={() => {}}
@@ -173,6 +179,7 @@ describe('TraitSelectionModal', () => {
         traitGroups={described}
         stats={[]}
       resolveText={identity}
+      resolveTraitText={traitIdentity}
         selectedTraits={[]}
         onTraitSelect={() => {}}
         onConfirm={() => {}}

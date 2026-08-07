@@ -493,4 +493,47 @@ describe('placeholder names reach the panels resolved', () => {
     expect(screen.getByText('Marrow Standing')).toBeInTheDocument();
     expect(container.textContent).not.toContain('Sedge');
   });
+
+  // The self-pin display rule: a pinning trait's OWN text reads its own pin, while everything outside the
+  // card (here the stat bar) follows the winning active pin. This is the confusion it exists to remove —
+  // "Native of X" flipping to the other trait's town the moment that one was ticked.
+  it("keeps each pinning trait's own text on its own pin while the stat bar follows the winner", () => {
+    const WILD = { id: 'ph-town', name: 'Town', values: ['Sedge', 'Marrow'] };
+    const NATIVE = {
+      id: 't-native', name: `Native of ${CHIP}`, statChanges: [],
+      playerDescription: `Home is ${encodePlaceholderToken({ id: 'ph-town', mode: 'world', placementId: 'p2' })}.`,
+      placeholderPins: [{ placeholderId: 'ph-town', value: 'Sedge' }],
+    };
+    const SWORN = {
+      id: 't-sworn', name: `Sworn to ${encodePlaceholderToken({ id: 'ph-town', mode: 'world', placementId: 'p3' })}`,
+      statChanges: [], order: 1,
+      placeholderPins: [{ placeholderId: 'ph-town', value: 'Marrow' }],
+    };
+    const view = renderRightPanel({}, {
+      turns: TURNS,
+      stats: [statFixture(`${encodePlaceholderToken({ id: 'ph-town', mode: 'world', placementId: 'p4' })} Standing`, 50, { id: 'standing' })],
+      world: { placeholders: [WILD], traits: [NATIVE, SWORN] },
+      seed: (gameplay) => {
+        // Freeze the roll, as a real session would have: the toggle-off step below reads it.
+        gameplay.setPlaceholderRolls({ world: { 'ph-town': 'Sedge' }, unique: {} });
+        gameplay.setPlayerTraits([NATIVE, SWORN]);
+      },
+    });
+
+    // Both active, Sworn later in authored order → the world's town is Marrow (the stat tab is the default)…
+    expect(screen.getByText('Marrow Standing')).toBeInTheDocument();
+    // …but on the Traits tab each card still names its own pin, name and description alike.
+    act(() => { view.gameplay().setActiveTab('traits'); });
+    expect(screen.getByText(/Native of Sedge/)).toBeInTheDocument();
+    expect(screen.getByText(/Home is Sedge\./)).toBeInTheDocument();
+    expect(screen.getByText(/Sworn to Marrow/)).toBeInTheDocument();
+
+    // Switching both pinning traits off mid-game releases their pins: the stat bar falls back to the
+    // frozen roll (Sedge here — sourced from the roll, since no pin is left active).
+    act(() => { view.gameplay().setDisabledTraitIds(['t-sworn', 't-native']); view.gameplay().setActiveTab('stats'); });
+    expect(screen.getByText('Sedge Standing')).toBeInTheDocument();
+    // And back on brings the winning pin back — the roll underneath was never overwritten.
+    act(() => { view.gameplay().setDisabledTraitIds([]); });
+    expect(screen.getByText('Marrow Standing')).toBeInTheDocument();
+  });
 });

@@ -53,8 +53,21 @@ describe('resolveWorldNames', () => {
   it('resolves trait and trait-group names', () => {
     const traits = [{ id: 't1', name: `Friend of ${tok(KEEPER.id, 'p7')}` }] as Trait[];
     const groups = [{ id: 'g1', name: `${tok(TOWN.id, 'p8')} Origins` }] as TraitGroup[];
-    expect(resolveTraitNames(traits, resolve)[0].name).toBe('Friend of Vera');
+    expect(resolveTraitNames(traits, () => resolve)[0].name).toBe('Friend of Vera');
     expect(resolveTraitGroupNames(groups, resolve)[0].name).toBe('Sedge Origins');
+  });
+
+  it("resolves each trait's name with that trait's own resolver", () => {
+    // The self-pin display rule: a Town-pinning trait's name reads its own pin even while the active
+    // selection pins Town elsewhere. The per-trait resolver is what carries it.
+    const traits = [
+      { id: 't-sedge', name: `Native of ${tok(TOWN.id, 'p20')}` },
+      { id: 't-marrow', name: `Sworn to ${tok(TOWN.id, 'p21')}` },
+    ] as Trait[];
+    const pinTo = (value: string) => (text: string) =>
+      resolvePlaceholders(text, { placeholders: PLACEHOLDERS, rolls: {}, pins: { [TOWN.id]: value } });
+    const out = resolveTraitNames(traits, (t) => pinTo(t.id === 't-sedge' ? 'Sedge' : 'Marrow'));
+    expect(out.map((t) => t.name)).toEqual(['Native of Sedge', 'Sworn to Marrow']);
   });
 
   it('resolves a dictionary entry name and both keyword arrays', () => {
@@ -103,7 +116,7 @@ describe('resolveWorldNames', () => {
       const entries = [{ id: 'd1', name: 'Guard', key: ['guard'], value: '' }] as DictionaryEntry[];
       expect(resolveLocationNames(locations, resolve)).toBe(locations);
       expect(resolveStatNames(stats, resolve)).toBe(stats);
-      expect(resolveTraitNames(traits, resolve)).toBe(traits);
+      expect(resolveTraitNames(traits, () => resolve)).toBe(traits);
       expect(resolveDictionaryEntryNames(entries, resolve)).toBe(entries);
     });
   });

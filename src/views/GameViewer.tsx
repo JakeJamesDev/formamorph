@@ -461,7 +461,7 @@ const GameViewer = ({
   // values above stay untouched for roll priming, which has to see the chips it is rolling for.
   const {
     entities, locations, stats, traits, traitGroups, dictionary, playerStats, viewStats,
-    traitOrder, resolvePH,
+    traitOrder, resolvePH, resolveTraitText,
   } = useResolvedWorld();
 
   // --- Active traits and what they switch on ------------------------------------------------------------
@@ -1299,10 +1299,14 @@ const GameViewer = ({
       return NONE_PLACEHOLDER;
     }
     // Group-aware: each selected trait's group emits its AI header above its traits (blank → omitted).
-    // Resolved like every other authored surface, so a chip in a trait description reads the same value the
-    // player sees in the Traits panel.
-    return resolvePH(buildTraitContext(activeTraits.map((t) => t.id), activeTraits, traitGroups, format));
-  }, [activeTraits, traitGroups, resolvePH]);
+    // A trait's own description resolves with its own pins (names already did, via the collection), so the
+    // AI reads the same words the player's card shows. The outer pass resolves the group headers; trait
+    // text is token-free by then, so it passes through untouched.
+    const selfResolved = activeTraits.map((t) =>
+      t.aiDescription ? { ...t, aiDescription: resolveTraitText(t, t.aiDescription) } : t,
+    );
+    return resolvePH(buildTraitContext(selfResolved.map((t) => t.id), selfResolved, traitGroups, format));
+  }, [activeTraits, traitGroups, resolvePH, resolveTraitText]);
 
 
   // Scene-roster override for the entity chips. Choices/re-roll prompts must see only who is actually in the
@@ -3585,9 +3589,11 @@ ${playerNotes || NONE_PLACEHOLDER}
     (trait: Trait) => {
       handleStatChanges(trait.statChanges);
       setPlayerTraits((prevTraits) => [...prevTraits, trait]);
-      addLogEntry(`Applied trait: ${trait.name}`);
+      // Logs are write-time strings shown raw, and `trait` here is authored (chips intact) — resolve now,
+      // with the trait's own pins so the entry names what the player picked.
+      addLogEntry(`Applied trait: ${resolveTraitText(trait, trait.name)}`);
     },
-    [handleStatChanges, addLogEntry, setPlayerTraits],
+    [handleStatChanges, addLogEntry, setPlayerTraits, resolveTraitText],
   );
 
   /**

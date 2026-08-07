@@ -64,9 +64,11 @@ export function resolveStatNames<T extends { name: string }>(stats: T[], resolve
   });
 }
 
-export function resolveTraitNames(traits: Trait[], resolve: ResolveText): Trait[] {
+/** Per-trait resolver: a pinning trait's own name resolves with its own pins layered over the active ones
+ *  (see `traitScopedPins`), so its card reads the same whatever else is ticked. */
+export function resolveTraitNames(traits: Trait[], resolveFor: (trait: Trait) => ResolveText): Trait[] {
   return mapPreservingIdentity(traits, (t) => {
-    const name = one(t.name, resolve);
+    const name = one(t.name, resolveFor(t));
     return name === t.name ? t : { ...t, name: name ?? '' };
   });
 }

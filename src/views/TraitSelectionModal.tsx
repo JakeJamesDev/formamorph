@@ -21,6 +21,7 @@ const TraitSelectionModal = ({
   traitGroups,
   stats,
   resolveText,
+  resolveTraitText,
   selectedTraits,
   onTraitSelect,
   onAbort,
@@ -30,10 +31,15 @@ const TraitSelectionModal = ({
 }: {
   traits: Trait[];
   traitGroups: TraitGroup[];
+  /** AUTHORED stats, chips intact — each card resolves stat names through its own trait's pins, which a
+   *  pre-resolved name (token already gone) could never honor. */
   stats: Stat[];
   /** Resolves a chip to this playthrough's value, with the pins the ticked traits impose already applied.
-   *  Names arrive resolved; descriptions are resolved here. */
+   *  Names arrive resolved; group descriptions are resolved here. */
   resolveText: (text: string) => string;
+  /** Resolves a trait's OWN text — its pins over the active ones — so a pinning trait's card reads its own
+   *  value whatever else is ticked. Used for everything printed inside a card. */
+  resolveTraitText: (trait: Trait, text: string) => string;
   selectedTraits: string[];
   onTraitSelect: (traitId: string) => void;
   onAbort: () => void;
@@ -43,7 +49,12 @@ const TraitSelectionModal = ({
   /** Label for the confirm button — names the next step in the flow (e.g. "Location", "Avatar", "Start"). */
   confirmLabel?: string;
 }) => {
-  const getStatName = (statId: string) => stats.find((s) => s.id === statId)?.name ?? statId;
+  // Stat names inside a card go through the card's trait, so "X Standing" on a Town-pinning trait reads
+  // that trait's town even while another selection holds a different one.
+  const getStatName = (trait: Trait, statId: string) => {
+    const stat = stats.find((s) => s.id === statId);
+    return stat ? resolveTraitText(trait, stat.name) : statId;
+  };
   const describe = resolveText;
 
   const directTraits = (groupId: string | null) =>
@@ -110,10 +121,11 @@ const TraitSelectionModal = ({
             onCheckedChange={() => onTraitSelect(trait.id)}
           />
         )}
+        {/* The name arrived self-pinned via the resolved collection; describe() is a token-free no-op. */}
         <label htmlFor={`trait-${trait.id}`} className="font-semibold">{describe(trait.name)}</label>
       </div>
       {trait.playerDescription?.trim() && (
-        <p className="text-xs sm:text-sm mb-2">{describe(trait.playerDescription)}</p>
+        <p className="text-xs sm:text-sm mb-2">{resolveTraitText(trait, trait.playerDescription)}</p>
       )}
       {trait.statChanges.length > 0 && (
         <div className="text-xs sm:text-sm">
@@ -121,7 +133,7 @@ const TraitSelectionModal = ({
           <ul className="list-disc list-inside">
             {trait.statChanges.map((change, idx) => (
               <li key={idx}>
-                {getStatName(change.statId)}: {change.value > 0 ? '+' : ''}{change.value} ({change.type})
+                {getStatName(trait, change.statId)}: {change.value > 0 ? '+' : ''}{change.value} ({change.type})
               </li>
             ))}
           </ul>
