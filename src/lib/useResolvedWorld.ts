@@ -3,7 +3,7 @@ import { useGameData } from '@/contexts/GameDataContext';
 import { useGameplay } from '@/contexts/GameplayContext';
 import { usePlaceholderSession } from '@/contexts/PlaceholderSessionContext';
 import { resolvePlaceholders } from '@/lib/placeholders';
-import { activePlaceholderPins, inAuthoredOrder, refreshChosenTraits, traitOrderIndex } from '@/lib/traitEffects';
+import { activePlaceholderPins, inAuthoredOrder, refreshChosenTraits, traitOrderIndex, traitScopedPins } from '@/lib/traitEffects';
 import {
   resolveEntityNames, resolveLocationNames, resolveStatNames, resolveTraitNames, resolveTraitGroupNames,
   resolveDictionaryEntryNames,
@@ -42,6 +42,9 @@ export interface ResolvedWorld {
   traitPins: ReturnType<typeof activePlaceholderPins>;
   /** Resolve any authored string with the same rolls and pins these collections used. */
   resolvePH: (text: string) => string;
+  /** Resolve a TRAIT'S OWN text (description, its card's stat names): its pins over the active ones, so a
+   *  pinning trait reads its own value whatever else is ticked. Trait names in `traits` already use this. */
+  resolveTraitText: (trait: Trait, text: string) => string;
 }
 
 /**
@@ -67,16 +70,24 @@ export function useResolvedAuthoredWorld(pins: Record<string, string> = NO_PINS)
     (text: string) => resolvePlaceholders(text, { placeholders, rolls, pins }),
     [placeholders, rolls, pins],
   );
+  const resolveTraitText = useCallback(
+    (trait: Trait, text: string) =>
+      resolvePlaceholders(text, { placeholders, rolls, pins: traitScopedPins(trait, pins) }),
+    [placeholders, rolls, pins],
+  );
 
   // Each mapper hands back the original array when nothing held a chip, so a world without placeholders
   // produces no new identities and nothing downstream re-renders for this.
   const entities = useMemo(() => resolveEntityNames(rawEntities, resolvePH), [rawEntities, resolvePH]);
   const locations = useMemo(() => resolveLocationNames(rawLocations, resolvePH), [rawLocations, resolvePH]);
   const stats = useMemo(() => resolveStatNames(rawStats, resolvePH), [rawStats, resolvePH]);
-  const traits = useMemo(() => resolveTraitNames(rawTraits, resolvePH), [rawTraits, resolvePH]);
+  const traits = useMemo(
+    () => resolveTraitNames(rawTraits, (t) => (text) => resolveTraitText(t, text)),
+    [rawTraits, resolveTraitText],
+  );
   const traitGroups = useMemo(() => resolveTraitGroupNames(rawTraitGroups, resolvePH), [rawTraitGroups, resolvePH]);
 
-  return { entities, locations, stats, traits, traitGroups, resolvePH };
+  return { entities, locations, stats, traits, traitGroups, resolvePH, resolveTraitText };
 }
 
 const NO_PINS: Record<string, string> = {};
@@ -95,7 +106,7 @@ export function useResolvedWorld(): ResolvedWorld {
     return activePlaceholderPins(active);
   }, [playerTraits, disabledTraitIds, rawTraits, traitOrder]);
 
-  const { entities, locations, stats, traits, traitGroups, resolvePH } = useResolvedAuthoredWorld(traitPins);
+  const { entities, locations, stats, traits, traitGroups, resolvePH, resolveTraitText } = useResolvedAuthoredWorld(traitPins);
 
   const dictionary = useMemo(() => resolveDictionaryEntryNames(rawDictionary, resolvePH), [rawDictionary, resolvePH]);
   // The save's own stats carry a copy of each authored name, and every stat delta the AI sends is matched by
@@ -106,6 +117,6 @@ export function useResolvedWorld(): ResolvedWorld {
 
   return {
     entities, locations, stats, traits, traitGroups, dictionary,
-    playerStats, viewStats, traitOrder, traitPins, resolvePH,
+    playerStats, viewStats, traitOrder, traitPins, resolvePH, resolveTraitText,
   };
 }
