@@ -2,7 +2,7 @@ import { randomUUID } from "@/lib/uuid";
 import type { Entity, Placeholder } from '@/types';
 import { APP_VERSION, WORLD_FILE_KIND, SAVE_FILE_KIND } from './version';
 import { DICTIONARY_FILE_KIND } from './dictionaryFile';
-import { collectUsedPlaceholders } from './placeholders';
+import { collectUsedPlaceholders, describePlaceholders } from './placeholders';
 import type { Dictionary } from '@/types';
 import { embedEntityCard, readEntityCard } from './entityCard';
 import { readTavernCard } from './tavernCard';
@@ -124,7 +124,9 @@ async function placeholderPortrait(name: string): Promise<string> {
  * Entities without a portrait get a generated placeholder so export always yields a valid image.
  */
 export async function exportEntityCard(entity: Entity, available?: Placeholder[]): Promise<Blob> {
-  let imageUrl = primaryImage(entity) || (await placeholderPortrait(entity.name || 'Character'));
+  // The generated portrait draws initials from the name, so a chip left raw is baked into the shipped image.
+  let imageUrl = primaryImage(entity)
+    || (await placeholderPortrait(describePlaceholders(entity.name, available ?? entity.placeholders) || 'Character'));
   // A card is its pixels, so a linked portrait has to be downloaded here. Deliberately not falling back to
   // the generated placeholder: shipping a card with the wrong face is worse than a failure the author can act on.
   if (isRemoteImage(imageUrl)) imageUrl = await fetchAsDataUrl(imageUrl, IMAGE_CAPS.entity);

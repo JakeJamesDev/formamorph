@@ -4,7 +4,8 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import type { GameLocation } from "@/types";
+import type { GameLocation, Placeholder } from "@/types";
+import { describePlaceholders } from "@/lib/placeholders";
 
 const RANDOM = "random";
 
@@ -13,12 +14,15 @@ const RANDOM = "random";
  *  world has more than one starting location. */
 const StartingLocationModal = ({
   locations,
+  placeholders = [],
   onConfirm,
   onAbort,
   onBack,
   confirmLabel = 'Start',
 }: {
   locations: GameLocation[];
+  /** The world's placeholder defs, so a chip in a location name renders instead of showing its token. */
+  placeholders?: Placeholder[];
   onConfirm: (locationId: string | null) => void;
   onAbort: () => void;
   /** Step back in the enter-world flow. Undefined on the flow's first step (the Back button then fades). */
@@ -59,7 +63,9 @@ const StartingLocationModal = ({
                   <RadioGroupItem value={location.id} id={`start-loc-${location.id}`} className="mt-1" />
                   <div>
                     <Label htmlFor={`start-loc-${location.id}`} className="font-semibold cursor-pointer">
-                      {location.name}
+                      {/* Rolls are primed at game start, after this screen, so a Wildcard reads as its
+                          options rather than committing to a value here. */}
+                      {describePlaceholders(location.name, placeholders)}
                     </Label>
                     {description && <p className="text-xs sm:text-sm">{description}</p>}
                   </div>

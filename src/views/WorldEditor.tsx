@@ -371,7 +371,7 @@ const WorldEditor = ({ onClose, embedded = false, backButton }: {
   // and Dictionary, and does nothing yet.
   const exportContext =
     activeTab === 'overview' ? { label: 'Export World', disabled: false, onClick: () => { exportCurrentWorld(); } }
-    : activeTab === 'entities' ? { label: `Export ${selectedItem?.name ?? 'Entity'}`, disabled: !selectedItem, onClick: () => { if (selectedItem) exportEntity(selectedItem as Entity); } }
+    : activeTab === 'entities' ? { label: `Export ${selectedItem ? labelPlaceholders(selectedItem.name, placeholders) : 'Entity'}`, disabled: !selectedItem, onClick: () => { if (selectedItem) exportEntity(selectedItem as Entity); } }
     : activeTab === 'dictionary'
       ? { label: `Export ${selectedBook?.name ?? 'Dictionary'}`, disabled: !selectedBook, onClick: () => { if (selectedBook) exportDictionary(selectedBook); } }
     : null;

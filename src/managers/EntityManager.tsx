@@ -3,6 +3,7 @@ import { useGameData } from '../contexts/GameDataContext';
 import EntityFields from './EntityFields';
 import { useEditingDraft } from '@/lib/useEditingDraft';
 import type { Entity } from '@/types';
+import { labelPlaceholders } from '@/lib/placeholders';
 
 const EntityManager = ({ entity }: { entity: Entity }) => {
   const { updateEntity, locations, updateLocation, placeholders } = useGameData();
@@ -35,7 +36,7 @@ const EntityManager = ({ entity }: { entity: Entity }) => {
       value={editingEntity}
       onChange={handleChange}
       placeholders={placeholders}
-      locationOptions={locations.map((l) => ({ label: l.name, value: l.id }))}
+      locationOptions={locations.map((l) => ({ label: labelPlaceholders(l.name, placeholders), value: l.id }))}
       selectedLocationIds={selectedLocationIds}
       onLocationsChange={handleLocationsChange}
     />
