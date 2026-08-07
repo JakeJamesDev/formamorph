@@ -184,7 +184,10 @@ function SamplerControl({ id, label, hint, custom, value, defaultValue, min, max
         <label htmlFor={id} className="text-sm">{label}</label>
         <span className="hidden sm:inline text-xs text-muted-foreground">{hint}</span>
       </div>
-      <div className="flex items-center gap-3">
+      {/* pl-2.5 is the thumb's own overhang: it centers on the value, so at `min` it reaches 10px left of
+          the track and would be clipped by the scroll frame. Only the left needs it — the readout and its
+          gap already clear the right — so everything else in the panel stays flush with the editor. */}
+      <div className="flex items-center gap-3 pl-2.5">
         <Slider
           className={`flex-grow${custom && !disabled ? '' : ' opacity-60'}`}
           value={[shown]}
@@ -332,7 +335,8 @@ function PromptReasoningBudgetField({ value, onChange, disabled }: {
         <label className="text-sm">Reasoning Budget</label>
         <span className="hidden sm:inline text-xs text-muted-foreground">share of Max Output Tokens the model may think for; 0% = no reasoning</span>
       </div>
-      <div className="flex items-center gap-3">
+      {/* pl-2.5 for the thumb's overhang at 0 — see SamplerControl. */}
+      <div className="flex items-center gap-3 pl-2.5">
         <Slider
           className={`flex-grow${disabled ? ' opacity-60' : ''}`}
           value={[value]}
@@ -370,10 +374,11 @@ function PromptOptionsPanel({ endpoint, verbatim, reasoning, reasoningBudget, sa
           box so it lands at the same height as the editor's — inside, the panel's own top padding nudged it
           down and it visibly shifted when moving between a prompt's sub-tabs. */}
       {disabled && readOnlyReason && (
-        <ReadOnlyNotice reason={readOnlyReason} onRequestEdit={onRequestEdit} className="mx-3" />
+        <ReadOnlyNotice reason={readOnlyReason} onRequestEdit={onRequestEdit} />
       )}
-      {/* px-3 keeps the slider thumb off the scroll frame's edges (the thumb overflows the track ends at 0/max). */}
-      <div className="space-y-5 px-3 py-3">
+      {/* Flush with the editor beside it. The slider thumb's clearance is on the slider rows themselves, so
+          it no longer narrows the whole panel; the scroll frame supplies the right-hand gutter. */}
+      <div className="space-y-5 py-3">
         <PromptEndpointField {...endpoint} disabled={disabled} />
         {verbatim && <VerbatimTurnsField id="promptVerbatim" value={verbatim.value} onChange={verbatim.set} disabled={disabled} />}
         {reasoning && <PromptReasoningField value={reasoning.value} options={reasoning.options} onChange={reasoning.set} disabled={disabled} />}
