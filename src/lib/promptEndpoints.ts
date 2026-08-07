@@ -109,6 +109,31 @@ export function resolvePromptEndpoint(
   };
 }
 
+/** How a request's endpoint is described in the AI-context viewer. Carries no credential by construction. */
+export interface DebugEndpointInfo {
+  /** The endpoint preset this resolved to, pinned or followed. */
+  preset: string;
+  /** True when the prompt was pinned rather than following the active selection. */
+  routed: boolean;
+  model: string;
+  url: string;
+}
+
+/**
+ * Describe a resolved target for the AI-context viewer. Takes the whole resolved target — token included —
+ * and deliberately drops the token: the viewer exports this structure as JSON for bug reports, so the
+ * omission is the point of the function rather than an accident of the call site.
+ */
+export function toDebugEndpoint(target: {
+  presetId: string | null;
+  presetName: string;
+  model: string;
+  url: string;
+  apiToken: string;
+}): DebugEndpointInfo {
+  return { preset: target.presetName, routed: target.presetId !== null, model: target.model, url: target.url };
+}
+
 /** Cache/probe key for a resolved target, matching the `endpoint|model` signature the reasoning cache uses. */
 export function endpointSignature(endpoint: string, model: string): string {
   return `${endpoint}|${model}`;

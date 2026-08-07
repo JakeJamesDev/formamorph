@@ -929,6 +929,8 @@ function useProvideSettings() {
   const resolveEndpointForKind = useCallback((kind: AIRequestType): ResolvedPromptEndpoint & {
     /** Chat-completions URL, normalized the same way the active endpoint is. */
     url: string;
+    /** Display name of the preset this resolved to, whether pinned or followed. */
+    presetName: string;
     contextWindow: number;
     supportedReasoningEfforts: ReasoningEffortField[] | null;
   } => {
@@ -936,8 +938,13 @@ function useProvideSettings() {
       values: textValues, isBuiltIn: textIsBuiltInActive, localEngine: localModelActive, maxTokens: activeMaxTokens,
     });
     const url = normalizeEndpointUrl(resolved.endpoint);
+    const presetName = resolved.presetId === null
+      ? activeTextEndpointPresetName
+      : resolved.presetId === DEFAULT_TEXT_PRESET_ID
+        ? 'Default'
+        : textPresetStore.presets.find((p) => p.id === resolved.presetId)?.name ?? 'Default';
     if (resolved.presetId === null) {
-      return { ...resolved, url, contextWindow, supportedReasoningEfforts };
+      return { ...resolved, url, presetName, contextWindow, supportedReasoningEfforts };
     }
     const sig = endpointSignature(url, resolved.model);
     // Probe a routed target's real window once per signature. Fire-and-forget: this turn uses the preset's
@@ -970,6 +977,7 @@ function useProvideSettings() {
     return {
       ...resolved,
       url,
+      presetName,
       // A manual override on the preset always beats the probe; the local engine uses its own window.
       contextWindow: resolved.localEngine
         ? localContextSize
@@ -979,7 +987,7 @@ function useProvideSettings() {
   }, [
     promptEndpoints, textPresetStore, textValues, textIsBuiltInActive, localModelActive, activeMaxTokens,
     contextWindow, supportedReasoningEfforts, routedContextCache, reasoningSupportCache, localContextSize,
-    setRoutedContextCache, setReasoningSupportCache,
+    activeTextEndpointPresetName, setRoutedContextCache, setReasoningSupportCache,
   ]);
 
   // User-editable prompt that turns a subject's description into booru tags (Settings → AI Endpoints → Tag Prompt).
