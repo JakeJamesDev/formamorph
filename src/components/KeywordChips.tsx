@@ -18,7 +18,7 @@ import { commaSplitCandidate, splitPastedChips, replaceChipValue } from '@/compo
 import { EditableChip } from '@/components/EditableChip';
 import ChipInput from '@/components/prompt/ChipInput';
 import { placeholderVocabulary } from '@/lib/chipVocabulary';
-import { hasPlaceholders, labelPlaceholders } from '@/lib/placeholders';
+import { hasPlaceholders, describePlaceholders } from '@/lib/placeholders';
 import { PLACEHOLDER_TRIGGER, placeholderHint } from '@/lib/placeholderInsert';
 import type { Placeholder } from '@/types';
 
@@ -163,7 +163,7 @@ export function KeywordChips({
                   key={kw}
                   value={kw}
                   sortable
-                  label={hasPlaceholders(kw) ? labelPlaceholders(kw, placeholders ?? []) : undefined}
+                  label={hasPlaceholders(kw) ? describePlaceholders(kw, placeholders ?? []) : undefined}
                   placeholders={placeholders}
                   suffix={chipSuffix?.(kw)}
                   onActivate={onChipClick}

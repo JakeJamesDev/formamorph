@@ -15,6 +15,7 @@ import { VariableNode, PromptDragContext } from './VariableNode';
 import { buildEditorState, serializeRoot } from './promptFieldState';
 import { ChipTypeaheadPlugin } from './ChipTypeahead';
 import { ChipInsertTargetPlugin } from './ChipInsertTarget';
+import { ChipDragPlugin } from './ChipDrag';
 
 /**
  * A one-line chip editor shaped like an ordinary text input — for name fields, where the full prompt editor's
@@ -217,6 +218,7 @@ const ChipInput = ({ value, onChange, vocabulary, placeholder, ariaLabel, classN
           {onCancel && <CancelPlugin onCancel={onCancel} />}
           <EditablePlugin readOnly={readOnly} />
           <ChipInsertTargetPlugin vocab={vocabulary} />
+          <ChipDragPlugin dragKey={dragKey} vocab={readOnly ? undefined : vocabulary} />
           {trigger && !readOnly && <ChipTypeaheadPlugin trigger={trigger} vocab={vocabulary} />}
           {children}
         </PromptDragContext.Provider>

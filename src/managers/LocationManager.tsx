@@ -6,7 +6,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { MultiSelect } from "@/components/ui/multi-select";
 import AiFieldToolbar from "@/components/AiFieldToolbar";
 import PlaceholderField, { PlaceholderNameField } from "@/components/prompt/PlaceholderField";
-import { labelPlaceholders } from '@/lib/placeholders';
+import { describePlaceholders } from '@/lib/placeholders';
 import { SoundUpload } from '../lib/UtilityComponents';
 import { IMAGE_CAPS } from '../lib/imageOptim';
 import ImageTagsField from './ImageTagsField';
@@ -81,7 +81,7 @@ const LocationManager = ({ location }: { location: GameLocation }) => {
         <Label>Entities</Label>
         <MultiSelect
           key={editingLocation.id}
-          options={entitiesInTreeOrder(entityGroups, entities).map((e) => ({ label: labelPlaceholders(e.name, placeholders), value: e.id }))}
+          options={entitiesInTreeOrder(entityGroups, entities).map((e) => ({ label: describePlaceholders(e.name, placeholders), value: e.id }))}
           defaultValue={editingLocation.entities ?? []}
           onValueChange={(v) => handleChange('entities', v)}
           placeholder="Select entities"

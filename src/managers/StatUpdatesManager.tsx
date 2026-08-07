@@ -8,7 +8,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Plus, X } from "lucide-react";
 import type { StatUpdate, ChatMessage } from '@/types';
-import { labelPlaceholders } from '@/lib/placeholders';
+import { describePlaceholders } from '@/lib/placeholders';
 
 const StatUpdatesManager = ({ statUpdate }: { statUpdate: StatUpdate }) => {
   const { stats, updateStatUpdate, placeholders } = useGameData();
@@ -70,7 +70,7 @@ const StatUpdatesManager = ({ statUpdate }: { statUpdate: StatUpdate }) => {
                 onCheckedChange={() => handleStatToggle(stat.name)}
               />
               {/* Label only — the checkbox still keys off the raw `stat.name`, which is what gets stored. */}
-              <label htmlFor={`stat-${stat.id}`} className="cursor-pointer">{labelPlaceholders(stat.name, placeholders)}</label>
+              <label htmlFor={`stat-${stat.id}`} className="cursor-pointer">{describePlaceholders(stat.name, placeholders)}</label>
             </div>
           ))}
         </ScrollArea>

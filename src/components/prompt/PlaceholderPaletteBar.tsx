@@ -6,6 +6,7 @@ import { usePaletteCollapsed } from '@/lib/usePaletteCollapsed';
 import { cn } from '@/lib/utils';
 import type { Placeholder } from '@/types';
 import { useChipInsertTarget } from './ChipInsertTarget';
+import { CHIP_DRAG_MIME } from './ChipDrag';
 
 /**
  * One palette of the world's placeholders for a whole editor panel, rather than an insert row on every
@@ -45,14 +46,23 @@ const PlaceholderPaletteBar = ({ placeholders, className }: {
               <button
                 key={item.token}
                 type="button"
-                disabled={!insert}
+                // Draggable even with no claimed field: dropping into one is its own way in, and needs no
+                // prior focus. Clicking still needs a target, so only that is disabled.
+                draggable
+                onDragStart={(e) => {
+                  e.dataTransfer.setData(CHIP_DRAG_MIME, item.token);
+                  e.dataTransfer.effectAllowed = 'copy';
+                }}
+                // Not `disabled`: that would block the drag too. Clicking is what needs a claimed field, so
+                // only clicking goes inert — dimmed to say so, while the chip stays draggable.
+                aria-disabled={!insert}
                 // Keep the target field's focus and selection: the insert reads its caret to know where to land.
                 onMouseDown={(e) => { e.preventDefault(); insert?.(item.token); }}
-                title={insert ? `Insert ${item.label}` : 'Click into a text field first'}
+                title={insert ? `Insert ${item.label}, or drag it into a field` : `Drag ${item.label} into a field, or click into one first`}
                 className={cn(
                   CHIP_BASE,
                   'border',
-                  insert ? 'cursor-pointer hover:brightness-95' : 'cursor-default opacity-50',
+                  insert ? 'cursor-pointer hover:brightness-95' : 'cursor-grab opacity-50',
                 )}
                 style={{ backgroundColor: item.color, color: '#000' }}
               >
