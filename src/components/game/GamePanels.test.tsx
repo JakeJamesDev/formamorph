@@ -471,4 +471,26 @@ describe('placeholder names reach the panels resolved', () => {
     expect(screen.getByText(/Sedge Native/)).toBeInTheDocument();
     expect(container.textContent).not.toContain('{{ph:');
   });
+
+  // A pin has to reach the panels, not just the pre-game pickers: stat deltas are matched by resolved name,
+  // so a stat bar showing the roll while the AI is told the pinned name would silently stop matching.
+  it('renders a stat name under the pin an active trait imposes, not the rolled value', () => {
+    const WILD = { id: 'ph-town', name: 'Town', values: ['Sedge', 'Marrow'] };
+    const PINNER = {
+      id: 't-sworn', name: 'Sworn', statChanges: [],
+      placeholderPins: [{ placeholderId: 'ph-town', value: 'Marrow' }],
+    };
+    const { container } = renderRightPanel({}, {
+      turns: TURNS,
+      stats: [statFixture(`${CHIP} Standing`, 50, { id: 'standing' })],
+      world: { placeholders: [WILD], traits: [PINNER] },
+      seed: (gameplay) => {
+        gameplay.setPlaceholderRolls({ world: { 'ph-town': 'Sedge' }, unique: {} });
+        gameplay.setPlayerTraits([PINNER]);
+      },
+    });
+
+    expect(screen.getByText('Marrow Standing')).toBeInTheDocument();
+    expect(container.textContent).not.toContain('Sedge');
+  });
 });
