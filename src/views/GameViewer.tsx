@@ -245,9 +245,13 @@ const GameViewer = ({
 }: GameViewerProps) => {
   // AbortController reference for canceling AI requests
   const abortControllerRef = useRef<AbortController | null>(null);
-  // Only the world's non-name data. Every collection whose names can hold chips is read through
-  // `useResolvedWorld()` below, which is what keeps a name from resolving differently per use site.
+  // Names are read through `useResolvedWorld()` below — that is what keeps one name from resolving
+  // differently per use site. The two `authored*` collections are the exception, and only for *seeding
+  // state*: a resolved name stored in state stops being resolvable, so it would freeze the pins that
+  // happened to be active when the game started.
   const {
+    stats: authoredStats,
+    traits: authoredTraits,
     dictionaries,
     placeholders,
     worldOverview,
@@ -3645,7 +3649,7 @@ ${playerNotes || NONE_PLACEHOLDER}
       // Cold-load from the main menu: restore the save instead of starting a fresh game. Its world is
       // already in GameData (loaded before this view mounted), so `locations` here are the right ones.
       if (initialSaveId) {
-        void loadGame(initialSaveId, locations, stats);
+        void loadGame(initialSaveId, locations, authoredStats);
         return;
       }
 
@@ -3653,17 +3657,21 @@ ${playerNotes || NONE_PLACEHOLDER}
       // (`starting`) so the opening turn's deltas read from the world value, not 0/min. Seeding lives here —
       // not in a reactive effect on `stats` — so it runs exactly once for a fresh game and can never race
       // with / clobber a loaded save (which returns above).
+      // Seeded from the AUTHORED stats, chips and all: names resolve on the way out of state, never in, so
+      // a resolved name written in here would freeze whatever pins happened to be active at game start and
+      // no later pin could ever move it.
       setPlayerStats(
-        stats.map((stat) => {
+        authoredStats.map((stat) => {
           const value = stat.value || stat.min || 0;
           return { ...stat, value, starting: stat.starting ?? value };
         }),
       );
 
       // Authored order, not click order: stat changes apply in sequence, so a deterministic order is what
-      // makes two players who picked the same traits end up with the same stats.
+      // makes two players who picked the same traits end up with the same stats. Authored traits for the
+      // same reason as the stats above.
       const chosen = new Set(initialTraits);
-      inAuthoredOrder(traits.filter((t) => chosen.has(t.id)), traitOrder)
+      inAuthoredOrder(authoredTraits.filter((t) => chosen.has(t.id)), traitOrder)
         .forEach(applyTrait);
 
       // Use the player's chosen starting location, else a random starting point (fallback: any location).
@@ -3705,12 +3713,12 @@ ${playerNotes || NONE_PLACEHOLDER}
     initialDictionaries,
     initialCharacters,
     dictionaries,
-    traits,
+    authoredTraits,
     traitGroups,
     traitOrder,
     locations,
     worldId,
-    stats,
+    authoredStats,
     setPlayerStats,
     applyTrait,
     changeLocation,
