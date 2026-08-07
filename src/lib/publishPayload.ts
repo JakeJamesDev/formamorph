@@ -57,7 +57,7 @@ export function worldPublishPayload(world: World): PublishPayload {
 export function entityPublishPayload(entity: Entity): PublishPayload {
   return {
     kind: 'entity',
-    name: entity.name || 'Unnamed Character',
+    name: describePlaceholders(entity.name, entity.placeholders) || 'Unnamed Character',
     description: describePlaceholders(entity.playerDescription || entity.aiSummary || '', entity.placeholders),
     thumbnail: primaryImage(entity), // optional; the server supplies stand-in art
     contentData: entity,

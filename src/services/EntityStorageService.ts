@@ -16,9 +16,10 @@ class EntityStorageService {
     noun: 'Entity',
     toMetadata: (record) => ({
       id: record.id,
-      name: record.name,
       // Library cards have no world or playthrough behind them, so chips render display-only against the
-      // defs the standalone character carries — same treatment its community listing gets.
+      // defs the standalone character carries — same treatment its community listing gets. The name goes
+      // through it too: a card titled with a chip would otherwise read as a raw placement id.
+      name: describePlaceholders(record.name, record.data?.placeholders),
       description: describePlaceholders(record.data?.playerDescription ?? '', record.data?.placeholders) || undefined,
       image: primaryImage(record.data),
       tags: record.data?.tags ?? [],

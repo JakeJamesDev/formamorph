@@ -47,7 +47,7 @@ import { parseJsonText, terminateWorker as terminateJsonWorker } from '@/lib/jso
 import AddDictionaryModal from '@/components/modals/AddDictionaryModal';
 import AddEntityModal from '@/components/modals/AddEntityModal';
 import { exportEntityCard } from '@/lib/entityFile';
-import { absorbPlaceholders, remapPlaceholderIds, labelPlaceholders } from '@/lib/placeholders';
+import { absorbPlaceholders, remapPlaceholderIds, labelPlaceholders, describePlaceholders } from '@/lib/placeholders';
 import {
   DndContext,
   closestCenter,
@@ -161,7 +161,8 @@ const WorldEditor = ({ onClose, embedded = false, backButton }: {
   // Export one entity as a shareable WebP character card (its portrait carrying the text fields).
   const exportEntity = async (entity: Entity) => {
     try {
-      downloadBlob(await exportEntityCard(entity, placeholders), `${entity.name || 'Character'}.webp`);
+      // The card's own data keeps the chips; only the filename is flattened, since a placement id is not a name.
+      downloadBlob(await exportEntityCard(entity, placeholders), `${describePlaceholders(entity.name, placeholders) || 'Character'}.webp`);
     } catch (error) {
       toast.error((error as Error).message);
     }
