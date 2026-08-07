@@ -121,7 +121,7 @@ import { useDeferredSnapshot } from "../lib/useDeferredSnapshot";
 import { statMorphMap } from "../lib/bodyMorphs";
 import {
   inAuthoredOrder, refreshChosenTraits, activeStatEnabled, enabledStats,
-  invertStatChanges, exclusiveSiblings,
+  invertStatChanges, exclusiveSiblings, activePlaceholderPins,
 } from "../lib/traitEffects";
 import { extractCharacterCandidates, collectCandidateEvidence } from "../lib/characterCandidates";
 import { explainActivation, buildDictionaryContext, parseKeywords, locateMatches, type EntryActivation, type ScanSource, type MatchHit, type MatchRule } from "../lib/dictionaryUtils";
@@ -252,6 +252,7 @@ const GameViewer = ({
   const {
     stats: authoredStats,
     traits: authoredTraits,
+    locations: authoredLocations,
     dictionaries,
     placeholders,
     worldOverview,
@@ -383,7 +384,6 @@ const GameViewer = ({
   const {
     setCharacterData,
     setVisibleEntities,
-    currentLocation,
     setCurrentLocation,
     setPlayerStats,
     playerTraits,
@@ -461,7 +461,7 @@ const GameViewer = ({
   // values above stay untouched for roll priming, which has to see the chips it is rolling for.
   const {
     entities, locations, stats, traits, traitGroups, dictionary, playerStats, viewStats,
-    traitOrder, resolvePH, resolveTraitText,
+    currentLocation, traitOrder, resolvePH, resolveWith, resolveTraitText,
   } = useResolvedWorld();
 
   // --- Active traits and what they switch on ------------------------------------------------------------
@@ -3677,14 +3677,17 @@ ${playerNotes || NONE_PLACEHOLDER}
       // makes two players who picked the same traits end up with the same stats. Authored traits for the
       // same reason as the stats above.
       const chosen = new Set(initialTraits);
-      inAuthoredOrder(authoredTraits.filter((t) => chosen.has(t.id)), traitOrder)
-        .forEach(applyTrait);
+      const chosenList = inAuthoredOrder(authoredTraits.filter((t) => chosen.has(t.id)), traitOrder);
+      chosenList.forEach(applyTrait);
 
       // Use the player's chosen starting location, else a random starting point (fallback: any location).
       const location = resolveStartingLocation(locations, initialLocationId);
       if (location) {
         changeLocation(location);
-        addLogEntry(`Starting in location: ${location.name}`);
+        // A log line is frozen the moment it is written, and the traits just applied are not in state yet —
+        // so resolve against the pins they are about to impose rather than the (empty) ones still in force.
+        const authored = authoredLocations.find((l) => l.id === location.id) ?? location;
+        addLogEntry(`Starting in location: ${resolveWith(activePlaceholderPins(chosenList), authored.name)}`);
       }
 
       // Seed the per-playthrough dictionary set: the entry-step selection, or the world's authored books
@@ -3720,11 +3723,13 @@ ${playerNotes || NONE_PLACEHOLDER}
     initialCharacters,
     dictionaries,
     authoredTraits,
+    authoredLocations,
     traitGroups,
     traitOrder,
     locations,
     worldId,
     authoredStats,
+    resolveWith,
     setPlayerStats,
     applyTrait,
     changeLocation,
