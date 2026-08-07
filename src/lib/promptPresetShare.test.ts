@@ -106,3 +106,21 @@ describe('sanitize / compat', () => {
     expect(r.preset!.samplers).toEqual({ statUpdates: { temperature: { custom: true, value: 0.3 } } });
   });
 });
+
+// Per-prompt endpoint routing is stored globally, outside the preset store, precisely so a shared preset
+// never carries endpoint ids (or tokens) that mean nothing — or something wrong — on another machine.
+describe('endpoint routing is never shared', () => {
+  it('omits routing from the exported artifact even when the caller passes one', () => {
+    const withRouting = { ...base, promptEndpoints: { narration: 'some-preset-id' } };
+    const shared = buildSharedPreset(withRouting, APP) as unknown as Record<string, unknown>;
+    expect(shared.promptEndpoints).toBeUndefined();
+    expect(JSON.stringify(shared)).not.toContain('some-preset-id');
+  });
+
+  it('drops a routing field crafted into an imported preset', () => {
+    const crafted = JSON.stringify({ ...buildSharedPreset(base, APP), promptEndpoints: { narration: 'attacker-id' } });
+    const r = parseSharedJson(crafted, APP);
+    expect(r.ok).toBe(true);
+    expect((r.preset as unknown as Record<string, unknown>).promptEndpoints).toBeUndefined();
+  });
+});
