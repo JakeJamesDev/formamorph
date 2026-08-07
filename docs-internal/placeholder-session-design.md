@@ -141,11 +141,22 @@ locations, narration, group headings — keeps the active pins. Agreed decisions
 - The picker takes **authored stats** for the card stat lines: a pre-resolved name has no token left, so a
   per-trait resolution over it is impossible (the same trap as the playerStats seeding bug).
 
-**Known adjacent bug, named not fixed:** the init effect logs "Starting in location: X" and stores a
-resolved location NAME into `currentLocation` before the applied traits' pins have landed in state — so the
-log and any `currentLocation.name` read (the AI context among them) can carry the rolled town while every
-other surface shows the pinned one. Pre-existing; the clean fix is storing the authored location in
-gameplay state and resolving on read, which touches every `currentLocation.name` site.
+### The write-time freeze, and the two shapes it takes
+
+Every bug in this area is the same one: **a resolved name written into state or a string is frozen at the
+pins of that instant.** It has shown up three times — `playerStats` seeding, the "Applied trait" log, and
+`currentLocation`. Two distinct fixes, depending on what is being written:
+
+- **Stored objects → resolve on read.** `currentLocation` holds a whole location, so the copy gameplay keeps
+  is a snapshot of how the name read on arrival. `useResolvedWorld` now re-derives it by looking the id up
+  in the resolved `locations` (falling back to the stored copy if the world no longer has it), so a pin
+  switched on later moves the name everywhere — the Location tab, the AI context, scene matching. Consumers
+  take `currentLocation` from `useResolvedWorld()`, never from `useGameplay()`.
+- **Log lines → resolve at the write, with the pins about to apply.** A log entry is a frozen string by
+  design, so it must be resolved when written. The catch: the init effect applies the chosen traits and
+  writes the location log in the same synchronous pass, and `setPlayerTraits` has not landed, so `resolvePH`
+  there still carries the *old* (empty) pins. Hence `resolveWith(extraPins, text)` — resolve against pins
+  that are not in state yet. The trait log uses `resolveTraitText` for the same reason.
 
 ## Deliberately unchanged
 

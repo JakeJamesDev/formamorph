@@ -536,4 +536,35 @@ describe('placeholder names reach the panels resolved', () => {
     act(() => { view.gameplay().setDisabledTraitIds([]); });
     expect(screen.getByText('Marrow Standing')).toBeInTheDocument();
   });
+
+  // Gameplay stores the whole location object, so the copy it holds froze how the name read on arrival.
+  // Reading it back out of the resolved world is what lets a pin switched on later move it.
+  it('re-reads the current location, so a pin switched on after arrival moves its name', () => {
+    const WILD = { id: 'ph-town', name: 'Town', values: ['Sedge', 'Marrow'] };
+    const tok = (p: string) => encodePlaceholderToken({ id: 'ph-town', mode: 'world', placementId: p });
+    const SWORN = {
+      id: 't-sworn', name: 'Sworn', statChanges: [], playerToggle: true,
+      placeholderPins: [{ placeholderId: 'ph-town', value: 'Marrow' }],
+    };
+    const HERE = { id: 'l1', name: `${tok('p5')} Square`, isStarting: true };
+
+    const view = renderRightPanel({}, {
+      turns: TURNS,
+      stats: STATS,
+      world: { placeholders: [WILD], traits: [SWORN], locations: [HERE] },
+      seed: (gameplay) => {
+        gameplay.setPlaceholderRolls({ world: { 'ph-town': 'Sedge' }, unique: {} });
+        // Arrived before the trait was on — this is the stale copy the panel used to render.
+        gameplay.setCurrentLocation({ ...HERE, name: 'Sedge Square' });
+        gameplay.setPlayerTraits([SWORN]);
+        gameplay.setActiveTab('location');
+      },
+    });
+
+    expect(screen.getByText(/Current Location: Marrow Square/)).toBeInTheDocument();
+
+    // Switch the pin off and it follows back to the roll, rather than to the arrival snapshot.
+    act(() => { view.gameplay().setDisabledTraitIds(['t-sworn']); });
+    expect(screen.getByText(/Current Location: Sedge Square/)).toBeInTheDocument();
+  });
 });

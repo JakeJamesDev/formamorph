@@ -1161,7 +1161,6 @@ export const RightPanel = ({ onLocationClick, onToggleTrait, language, setLangua
     // snapshot — the edit control is disabled while viewing the past, so it only runs on the latest page.
     viewGameTime: gameTime,
     calendar,
-    currentLocation,
     viewLocationId,
     isViewingPast,
     currentPage,
@@ -1176,7 +1175,7 @@ export const RightPanel = ({ onLocationClick, onToggleTrait, language, setLangua
     heldStatChanges,
     drainingStatChanges
   } = useGameplay();
-  const { locations, traits, traitGroups, viewStats: playerStats, resolveTraitText } = useResolvedWorld();
+  const { locations, traits, traitGroups, viewStats: playerStats, currentLocation, resolveTraitText } = useResolvedWorld();
   const resolvePH = usePlaceholderResolver();
   const [isEditMode, setIsEditMode] = React.useState(false);
   // The traits actually in force on the viewed turn, and the stats they leave live. A switched-off trait
