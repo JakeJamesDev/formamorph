@@ -151,7 +151,7 @@ export function KeywordChips({
 
   return (
     <div className="space-y-1">
-      <div className="flex flex-wrap items-center gap-1 rounded-md border border-border bg-background/80 p-2 [&_[contenteditable]]:min-w-[8rem]">
+      <div className="flex flex-wrap items-center gap-1 rounded-md border border-border bg-background/80 p-2">
         <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd} autoScroll={false}>
           {/* rectSortingStrategy (2D), not horizontalListSortingStrategy: the container is flex-wrap, so chips
               span multiple rows — a single-row strategy mispositions drags once they wrap. Dedup stays
@@ -187,7 +187,7 @@ export function KeywordChips({
             placeholder={placeholderHint(keywords.length === 0 ? placeholder : 'Add keyword...', true)}
             ariaLabel={keywords.length === 0 ? placeholder : 'Add keyword'}
             // Sits inside the chip box, so it drops the bordered-input shell and just claims the free width.
-            className="min-h-0 flex-grow border-0 bg-transparent px-0 py-0 focus-visible:ring-0"
+            className="min-h-0 min-w-[8rem] flex-grow border-0 bg-transparent px-0 py-0 focus-visible:ring-0"
           />
         ) : (
           <input
