@@ -23,6 +23,8 @@ export interface DevRoute {
   subtab?: string;
   /** Canned world+save to boot mid-game (see `devFixtures.ts`). */
   fixture?: string;
+  /** On-screen diagnostic overlay to pin over the app — `viewport` is the only one so far. */
+  probe?: string;
 }
 
 /** Parse the current hash into a DevRoute, or null when it isn't a `#dev` hash. */
@@ -35,6 +37,8 @@ function parseHash(hash: string): DevRoute | null {
   const tab = params.get('tab');
   const subtab = params.get('subtab');
   const fixture = params.get('fixture');
+  const probe = params.get('probe');
+  if (probe) route.probe = probe;
   if (view) route.view = view;
   if (modal) route.modal = modal;
   if (tab) route.tab = tab;
@@ -77,13 +81,24 @@ export function installDevRouter(): () => void {
   // SettingsContext) survive regardless of effect order — child effects run before this parent effect.
   w.__fmDev = Object.assign(w.__fmDev ?? {}, {
     /** Jump to a screen/modal/tab in one call — sets the `#dev` hash the consumers react to. */
-    goto(view?: string, opts?: { modal?: string; tab?: string; subtab?: string; fixture?: string }) {
+    goto(view?: string, opts?: { modal?: string; tab?: string; subtab?: string; fixture?: string; probe?: string }) {
       const params = new URLSearchParams();
       if (view) params.set('view', view);
       if (opts?.modal) params.set('modal', opts.modal);
       if (opts?.tab) params.set('tab', opts.tab);
       if (opts?.subtab) params.set('subtab', opts.subtab);
       if (opts?.fixture) params.set('fixture', opts.fixture);
+      // A probe outlives the screen it was turned on over, so it carries across a goto unless replaced.
+      const probe = opts?.probe ?? getDevRoute()?.probe;
+      if (probe) params.set('probe', probe);
+      const qs = params.toString();
+      window.location.hash = qs ? `#dev?${qs}` : '#dev';
+    },
+    /** Pin a diagnostic overlay over whatever is on screen (`'viewport'`), or drop it with no argument. */
+    probe(name?: string) {
+      const params = new URLSearchParams(window.location.hash.replace(/^#dev\??/, ''));
+      if (name) params.set('probe', name);
+      else params.delete('probe');
       const qs = params.toString();
       window.location.hash = qs ? `#dev?${qs}` : '#dev';
     },

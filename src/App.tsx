@@ -1,8 +1,10 @@
 import { useEffect, useState } from 'react';
 import { ThemeProvider } from "./components/theme-provider";
-import { useDevRoute, installDevRouter } from './lib/devRouter';
+import { useDevRoute, installDevRouter, registerDevHook } from './lib/devRouter';
+import { installViewportHeightVar, APP_HEIGHT_VAR } from './lib/viewportHeight';
 import { type DevView } from './lib/devRoutes';
 import { DevFixtureLoader } from './components/DevFixtureLoader';
+import { ViewportReadout } from './components/ViewportReadout';
 import { GameDataProvider } from './contexts/GameDataContext';
 import { UserProfileProvider } from './contexts/UserProfileContext';
 import { SettingsProvider } from './contexts/SettingsContext';
@@ -49,6 +51,16 @@ function AppViews() {
   // DEV dev-router: install `window.__fmDev` and let a `#dev?view=…` hash drive the top-level screen so
   // preview verification can land in one call (see `devRouter.ts`). No-op / tree-shaken in production.
   useEffect(() => installDevRouter(), []);
+
+  // Track the visual viewport into `--app-h` so full-height screens shrink for the on-screen keyboard
+  // (see `viewportHeight.ts`). The DEV hook fakes the iOS case — a keyboard the layout viewport doesn't
+  // know about — so the layout side is verifiable without a device; clearing it is what Chrome looks like.
+  useEffect(() => installViewportHeightVar(), []);
+  useEffect(() => registerDevHook('simulateKeyboard', ((px: number) => {
+    const style = document.documentElement.style;
+    if (px > 0) style.setProperty(APP_HEIGHT_VAR, `${document.documentElement.clientHeight - px}px`);
+    else installViewportHeightVar();
+  }) as (...args: never[]) => unknown), []);
   useEffect(() => {
     if (import.meta.env.DEV && devRoute?.view) setCurrentView(devRoute.view as DevView);
   }, [devRoute?.view]);
@@ -99,6 +111,7 @@ function AppViews() {
   return (
     <>
       <DevFixtureLoader />
+      {import.meta.env.DEV && devRoute?.probe === 'viewport' && <ViewportReadout />}
       {currentView === 'mainMenu' && (
             <MainMenu
               onStartGame={handleStartGame}

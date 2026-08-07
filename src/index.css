@@ -427,6 +427,30 @@
   body {
     @apply bg-background text-foreground;
   }
+  /* Give the root its own background so body's stops propagating to the canvas and body paints itself.
+     It matters under the Fullscreen API: fullscreen forces the element to the screen's height while the
+     canvas still only covers the layout viewport, so a body that paints nothing leaves the strip the
+     on-screen keyboard shrank away showing the UA's black `::backdrop`. The backdrop is colored too,
+     for the frame between the two and for any element fullscreened that isn't body. */
+  html {
+    @apply bg-background;
+  }
+  :fullscreen::backdrop {
+    @apply bg-background;
+  }
+}
+
+/* The app's frame: exactly the area the user can see, measured rather than inferred from a viewport
+   unit (see `viewportHeight.ts` for why units don't survive the keyboard and the Fullscreen API).
+   Fixed, so it is unaffected by how tall the document or a fullscreened body happens to be, and
+   offset by the visual viewport's own position so it follows an engine that pans instead of resizing.
+   Every variable falls back to the whole viewport, which is the pre-keyboard behavior. */
+.app-viewport {
+  position: fixed;
+  top: var(--app-top, 0px);
+  left: var(--app-left, 0px);
+  width: var(--app-w, 100vw);
+  height: var(--app-h, 100dvh);
 }
 
 /* Narration reading pane (Settings → Accessibility). Scoped here so the rest of the app is untouched;

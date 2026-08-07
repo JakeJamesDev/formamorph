@@ -657,7 +657,7 @@ const WorldEditor = ({ onClose, embedded = false, backButton }: {
   );
 
   return (
-    <div className={`${embedded ? "h-full" : "h-[100dvh]"} flex flex-col overflow-hidden`}>
+    <div className={`${embedded ? "h-full" : "app-viewport"} flex flex-col overflow-hidden`}>
       {!embedded && (
         <ThemedToastContainer
           position="top-right"

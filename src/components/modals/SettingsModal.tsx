@@ -15,7 +15,7 @@ import { normalizeEndpointUrl, endpointUrlWasCompleted } from '@/lib/endpointUrl
 import { computePromptTabAvailability } from '@/lib/promptTabAvailability';
 import { visibleGroups, SURFACE_LABELS, PROMPT_DESCRIPTIONS, type PromptSurface } from '@/lib/promptGroups';
 import { Settings } from "lucide-react";
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, dialogFullHeight, dialogFullHeightMobile } from "@/components/ui/dialog";
 import { cn } from "@/lib/utils";
 import { composePreviewValues } from "@/lib/previewValuePool";
 import { Button } from "@/components/ui/button";
@@ -303,7 +303,7 @@ function PromptsShell({ fullscreen, onClose, children }: {
         hideClose
         aria-describedby={undefined}
         aria-label="Prompts"
-        className="flex h-[100dvh] w-screen max-w-none flex-col gap-4 rounded-none border-0 p-4 sm:rounded-none"
+        className={cn(dialogFullHeight, 'flex w-screen max-w-none flex-col gap-4 rounded-none border-0 p-4 sm:rounded-none')}
       >
         {children}
       </DialogContent>
@@ -934,7 +934,8 @@ export const SettingsModal = ({ isOpen, onOpenChange, previewValues, initialTab,
         className={cn(
           'flex flex-col overflow-hidden sm:max-w-[900px]',
           // A phone has no room to spend on the frame around a settings panel — fill the screen.
-          'max-sm:h-[100dvh] max-sm:w-screen max-sm:max-w-none max-sm:rounded-none max-sm:border-0 sm:h-[90dvh]',
+          dialogFullHeightMobile,
+          'max-sm:w-screen max-sm:max-w-none max-sm:rounded-none max-sm:border-0 sm:h-[90dvh]',
         )}
       >
         <DialogHeader className="flex-shrink-0">

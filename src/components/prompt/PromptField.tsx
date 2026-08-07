@@ -17,7 +17,7 @@ import {
   Maximize2, Minimize2, Columns2, Square, Lock, Copy,
 } from 'lucide-react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Dialog, DialogContent } from '@/components/ui/dialog';
+import { Dialog, DialogContent, dialogFullHeight } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { CHIP_BASE } from '@/components/Chip';
 import { MarkdownRenderer } from '@/components/game/MarkdownRenderer';
@@ -752,7 +752,7 @@ const PromptField = ({ value, onChange, variables = [], vocabulary, previewValue
               hideClose
               aria-describedby={undefined}
               aria-label={ariaLabel ?? 'Prompt editor'}
-              className="flex h-[100dvh] w-screen max-w-none flex-col gap-2 rounded-none border-0 p-4 sm:rounded-none"
+              className={cn(dialogFullHeight, 'flex w-screen max-w-none flex-col gap-2 rounded-none border-0 p-4 sm:rounded-none')}
             >
               {body}
             </DialogContent>

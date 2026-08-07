@@ -568,3 +568,51 @@ describe('placeholder names reach the panels resolved', () => {
     expect(screen.getByText(/Current Location: Sedge Square/)).toBeInTheDocument();
   });
 });
+
+describe('the action input grows in flow, not over the panel', () => {
+  /** Fake the content height jsdom never computes, so the grow path has something to measure. */
+  const withScrollHeight = (px: number, run: () => void) => {
+    const proto = window.HTMLTextAreaElement.prototype;
+    const original = Object.getOwnPropertyDescriptor(proto, 'scrollHeight');
+    Object.defineProperty(proto, 'scrollHeight', { configurable: true, get: () => px });
+    try { run(); } finally {
+      if (original) Object.defineProperty(proto, 'scrollHeight', original);
+      else delete (proto as unknown as Record<string, unknown>).scrollHeight;
+    }
+  };
+
+  const focusAndType = (text: string) => {
+    const box = screen.getByPlaceholderText(/Type your action/);
+    fireEvent.focus(box);
+    fireEvent.change(box, { target: { value: text } });
+    return box;
+  };
+
+  it('lifts its wrapper to the grown height so the content above is pushed up', () => {
+    renderMiddlePanel({}, { turns: TURNS, stats: STATS });
+    const wrap = screen.getByTestId('action-input-wrap');
+    expect(wrap.style.height).toBe('40px');
+
+    // A multi-line action: the box grows, and the wrapper has to grow with it or the box just
+    // overlays the narration and stays under the keyboard.
+    withScrollHeight(120, () => { focusAndType('a\nb\nc'); });
+    expect(wrap.style.height).toBe('120px');
+  });
+
+  it('caps the wrapper at the scroll ceiling instead of eating the panel', () => {
+    renderMiddlePanel({}, { turns: TURNS, stats: STATS });
+    withScrollHeight(900, () => { focusAndType('long'); });
+    expect(screen.getByTestId('action-input-wrap').style.height).toBe('240px');
+  });
+
+  it('collapses back to one line on blur', () => {
+    renderMiddlePanel({}, { turns: TURNS, stats: STATS });
+    const wrap = screen.getByTestId('action-input-wrap');
+    withScrollHeight(120, () => {
+      const box = focusAndType('a\nb\nc');
+      expect(wrap.style.height).toBe('120px');
+      fireEvent.blur(box);
+    });
+    expect(wrap.style.height).toBe('40px');
+  });
+});

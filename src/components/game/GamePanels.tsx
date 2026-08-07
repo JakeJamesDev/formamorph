@@ -397,6 +397,9 @@ const ActionInput = ({
 }) => {
   const ref = useRef<HTMLTextAreaElement>(null);
   const [focused, setFocused] = useState(false);
+  // The wrapper mirrors the grown height so the box is real layout, not an overlay: the row above it moves
+  // up instead of being covered, which is what lets it clear the on-screen keyboard.
+  const [height, setHeight] = useState(ACTION_INPUT_LINE_H);
 
   // Size the textarea to its content while focused (bounded, then scroll); reset to the one-line anchor when
   // blurred. Runs on every value/focus change so growth tracks typing.
@@ -406,16 +409,18 @@ const ActionInput = ({
     if (!focused) {
       el.style.height = "";
       el.style.overflowY = "hidden";
+      setHeight(ACTION_INPUT_LINE_H);
       return;
     }
     el.style.height = "auto";
     const h = Math.min(Math.max(el.scrollHeight, ACTION_INPUT_LINE_H), ACTION_INPUT_MAX_H);
     el.style.height = `${h}px`;
     el.style.overflowY = el.scrollHeight > ACTION_INPUT_MAX_H ? "auto" : "hidden";
+    setHeight(h);
   }, [value, focused]);
 
   return (
-    <div className="relative flex-grow mr-2" style={{ height: ACTION_INPUT_LINE_H }}>
+    <div className="relative flex-grow mr-2 flex-shrink-0" style={{ height }} data-testid="action-input-wrap">
       <textarea
         ref={ref}
         rows={1}
