@@ -297,15 +297,18 @@ per-model `endpointUrl` (cloud); it is gitignored, so this is local machine conf
 
 ## Harness debt
 
-- **The harness seeds a flag the app no longer reads** (2026-08-07). `buildSeed` in `run.mjs` writes
-  `FORMAMORPH_useCustomEndpoint: "false"` for engine models and `"true"` for Ollama, plus the pre-preset
-  `FORMAMORPH_endpointUrl` / `apiToken` / `modelName` keys. The bundled engine is an endpoint preset now
-  (`builtin-engine`), so nothing reads that flag at runtime — engine runs land on the engine only because
-  the one-time `migrateEngineToPreset` converts the flag on first boot, and Ollama runs work only because
-  `seedTextPresetStore` still folds the legacy URL keys into a "Custom" preset.
-  <br>Both paths are migrations kept for real users' upgrades, not setup mechanisms; whenever they're
-  retired the harness silently starts screening every engine model against the *hosted* endpoint, which
-  would look like a mysterious across-the-board score change rather than a config break.
-  <br>**Fix:** seed `FORMAMORPH_textEndpointPresets` directly — `{activeId:'builtin-engine',presets:[]}`
-  for engine models, `{activeId:'<id>',presets:[{…}]}` for Ollama — and drop the three legacy keys.
-  Not urgent (runs are correct today), but do it before deleting either migration.
+- **Endpoint seeding — FIXED 2026-08-07.** `buildSeed` in `run.mjs` used to write
+  `FORMAMORPH_useCustomEndpoint` plus the pre-preset `endpointUrl` / `apiToken` / `modelName` keys. None of
+  those are read at runtime any more: engine runs only landed on the engine because the one-time
+  `migrateEngineToPreset` converted the flag, and Ollama runs only worked because `seedTextPresetStore`
+  folded the legacy URL keys into a "Custom" preset. Both are upgrade migrations kept for real users, not
+  setup mechanisms — deleting either would have silently screened every engine model against the *hosted*
+  endpoint, reading as an across-the-board score change rather than a config break.
+  <br>`buildSeed` now writes `FORMAMORPH_textEndpointPresets` directly:
+  `{activeId:'builtin-engine',presets:[]}` for engine models, a single `harness` preset for external ones,
+  and sets the migration marker so the seed is authoritative. `maxTokens` / `contextWindowOverride` moved
+  out of the flat settings pass-through into the preset's values (omitted unless a profile sets them, so
+  the app's defaults layer underneath).
+  <br>**Still unguarded:** `run.mjs` calls `main()` at import, so `buildSeed` can't be imported by a test.
+  Extracting it into a module (as `screenScore.mjs` already is) would let a test assert engine models select
+  `builtin-engine` and that no legacy keys are emitted. Worth doing next time the harness is touched.
