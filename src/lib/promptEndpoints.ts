@@ -40,6 +40,10 @@ export interface ActiveEndpointState {
   maxTokens: number;
   /** The bundled engine's own output cap, used whenever the engine is the resolved target. */
   engineMaxTokens: number;
+  /** The GGUF the engine currently has loaded, or '' when it isn't running. The engine serves whatever is
+   *  loaded regardless of the name asked for, but sending the real id keeps `/models` probes and the
+   *  AI-context viewer honest about which model actually answered. */
+  engineModelId: string;
 }
 
 /**
@@ -81,7 +85,8 @@ export function resolvePromptEndpoint(
       presetId: routed,
       endpoint: e.endpoint,
       apiToken: e.apiToken,
-      model: e.model,
+      // The loaded GGUF's own id when the engine is up; the nominal name only while it isn't.
+      model: active.engineModelId || e.model,
       // The engine's own cap, whether it was pinned to or merely selected.
       maxTokens: active.engineMaxTokens,
       contextWindowOverride: e.contextWindowOverride,

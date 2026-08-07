@@ -3,6 +3,7 @@ import { createContext, useContext, useState, useEffect, useRef, useCallback, us
 import { defaultSystemPrompt, defaultNarrationUserPrompt, defaultRecapUserPrompt, defaultRehydrateUserPrompt, defaultOocDirectivePrompt, defaultChoicesPrompt, defaultStatUpdatesPrompt, defaultLocationChangePrompt, defaultThinkingPrompt, defaultSummaryPrompt, defaultChoicesUserPrompt, defaultStatUpdatesUserPrompt, defaultLocationChangeUserPrompt, defaultSummaryUserPrompt, defaultDiaryPrompt, defaultDirectorPrompt, defaultDirectorUserPrompt, defaultCharacterPrompt, defaultStoryboardPrompt, defaultNowLinePrompt, defaultTimePassedPrompt, defaultTimePassedUserPrompt, defaultOpeningTimePrompt, defaultOpeningTimeUserPrompt, defaultSceneTagsPrompt, defaultSceneTagsUserPrompt } from '../components/game/GamePrompts';
 import { DEFAULT_ENDPOINT, DEFAULT_API_TOKEN, DEFAULT_MODEL_NAME, DEFAULT_MAX_TOKENS, DEFAULT_CONTEXT_WINDOW, DEFAULT_LOCAL_CONTEXT_SIZE, DEFAULT_LOCAL_GPU_LAYERS, DEFAULT_LOCAL_FLASH_ATTENTION, DEFAULT_LOCAL_PARALLEL_REQUESTS, DEFAULT_GEN_TEMPERATURE, DEFAULT_GEN_TOP_P, DEFAULT_GEN_REPETITION_PENALTY, DEFAULT_GEN_TOP_K, DEFAULT_GEN_MIN_P, DEFAULT_THEME_COLOR, BASE_THEME_COLOR, THEME_COLORS, DEFAULT_FONT, FONT_OPTIONS, SYSTEM_FONT_STACK, DEFAULT_NARRATION_FONT, DEFAULT_NARRATION_SCALE, DEFAULT_NARRATION_LINE_HEIGHT, NARRATION_FONT_OPTIONS, fontStack, fontSizeAdjust, DEFAULT_UPDATE_CHANNEL, DEFAULT_SCENE_IMAGE_AUTO, DEFAULT_CONTINUE_CHOICE, CONTINUE_CHOICE_MODES, type ContinueChoiceMode, type ThemeColor, type FontChoice, type NarrationFont, type UpdateChannel } from './settingsDefaults';
 import { isDesktop } from '../lib/imageGen/desktop';
+import { useLocalLlmStatus } from '../lib/useLocalLlmStatus';
 import { DEFAULT_TAG_PROMPT } from '../lib/imagePrompt';
 import {
   imageEndpointPresetCodec, makeDefaultStore as makeImageStore, presetStoreFromEnv, DEFAULT_IMAGE_ENDPOINT_VALUES,
@@ -488,6 +489,9 @@ function useProvideSettings() {
   const [disableThinking, setDisableThinking] = usePersistentState<boolean>(`${APP_ID}_disableThinking`, false, boolCodec);
   // The engine is the active endpoint — a property of the selection now, not a separate mode.
   const localModelActive = isTextEngineActive(textPresetStore);
+  // Live engine state, so a request to the engine names the GGUF actually loaded rather than a nominal
+  // placeholder — which is what a `/models` probe compares against.
+  const engineState = useLocalLlmStatus();
   // Honor the desktop local engine's own cap when it's active; otherwise the active endpoint preset's cap
   // (the Default preset holds DEFAULT_MAX_TOKENS, so a Default selection matches the shared-endpoint cap).
   const activeMaxTokens = localModelActive ? localMaxTokens : maxTokens;
@@ -942,7 +946,7 @@ function useProvideSettings() {
     const resolved = resolvePromptEndpoint(kind, promptEndpoints, textPresetStore, {
       activeId: textPresetStore.activeId,
       values: textValues, isBuiltIn: textIsBuiltInActive, localEngine: localModelActive,
-      maxTokens: activeMaxTokens, engineMaxTokens: localMaxTokens,
+      maxTokens: activeMaxTokens, engineMaxTokens: localMaxTokens, engineModelId: engineState.modelId ?? '',
     });
     const url = normalizeEndpointUrl(resolved.endpoint);
     const presetName = resolved.presetId === null
@@ -994,7 +998,7 @@ function useProvideSettings() {
   }, [
     promptEndpoints, textPresetStore, textValues, textIsBuiltInActive, localModelActive, activeMaxTokens,
     contextWindow, supportedReasoningEfforts, routedContextCache, reasoningSupportCache, localContextSize,
-    localMaxTokens, activeTextEndpointPresetName, setRoutedContextCache, setReasoningSupportCache,
+    localMaxTokens, engineState.modelId, activeTextEndpointPresetName, setRoutedContextCache, setReasoningSupportCache,
   ]);
 
   /**
