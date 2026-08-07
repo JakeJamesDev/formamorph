@@ -122,7 +122,9 @@ row moves.
 ## Walked live (2026-08-08)
 
 The three lifecycle cases tests alone cannot fully close, against the stress world
-(`build-demo-world.mjs` in the session scratchpad — 8 placeholders, 56 chips, 13 traits, 13 pins):
+`testing/baseline/placeholder-stress.json` — 8 placeholders, 56 chips, 13 traits, 13 pins. Import it, or
+regenerate with `node testing/baseline/harness/build-placeholder-stress.mjs testing/baseline/placeholder-stress.json`;
+its readme is the hand-test checklist.
 
 | Case | Result |
 |---|---|
