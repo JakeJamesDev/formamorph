@@ -146,7 +146,7 @@ const CharacterCustomization = ({ onCharacterCustomized, onBack, onAbort }: {
 
   if (isMobile) {
     return (
-      <div className="relative flex h-[100dvh] flex-col pt-[env(safe-area-inset-top)]">
+      <div className="relative flex app-viewport flex-col pt-[env(safe-area-inset-top)]">
         {viewer}
         <MobileControlsDrawer title="Character Customization">{panel}</MobileControlsDrawer>
       </div>
@@ -154,7 +154,7 @@ const CharacterCustomization = ({ onCharacterCustomized, onBack, onAbort }: {
   }
 
   return (
-    <div className="flex h-[100dvh]">
+    <div className="flex app-viewport">
       {viewer}
       <Card className="w-1/3 m-4 flex flex-col overflow-hidden">
         <ScrollArea className="flex-1 min-h-0">

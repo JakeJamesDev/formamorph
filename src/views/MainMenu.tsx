@@ -1291,7 +1291,7 @@ const MainMenu = ({ onStartGame, onLoadSaveGame, onReplayIntro, introActive = fa
   }
 
   return (
-    <div className="pt-[calc(5rem+env(safe-area-inset-top))] relative flex flex-col h-[100dvh] overflow-hidden">
+    <div className="pt-[calc(5rem+env(safe-area-inset-top))] relative flex flex-col app-viewport overflow-hidden">
       {downscaleDialog}
       {worldExportDialog}
       <ThemedToastContainer />

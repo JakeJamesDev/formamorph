@@ -26,6 +26,17 @@ const DialogOverlay = React.forwardRef<
 ))
 DialogOverlay.displayName = DialogPrimitive.Overlay.displayName
 
+/**
+ * Shell classes for a dialog that fills the viewport. It anchors to the top rather than the center a
+ * normal dialog uses: a full-height shell is already flush with both edges, and centering means the
+ * on-screen keyboard shrinking the viewport slides the header down and back as it opens and closes.
+ * Height tracks the keyboard-aware `--app-h` (see `viewportHeight.ts`).
+ */
+export const dialogFullHeight = 'top-[var(--app-top,0px)] translate-y-0 h-[var(--app-h,100dvh)]';
+
+/** The same, applied only below the `sm` breakpoint — for dialogs that keep a window on wider screens. */
+export const dialogFullHeightMobile = 'max-sm:top-[var(--app-top,0px)] max-sm:translate-y-0 max-sm:h-[var(--app-h,100dvh)]';
+
 const DialogContent = React.forwardRef<
   React.ElementRef<typeof DialogPrimitive.Content>,
   React.ComponentPropsWithoutRef<typeof DialogPrimitive.Content> & { hideClose?: boolean }
