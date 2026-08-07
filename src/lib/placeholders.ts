@@ -214,12 +214,17 @@ export function describePlaceholders(text: string, placeholders: Placeholder[] =
   const byId = new Map(placeholders.map((p) => [p.id, p]));
   TOKEN_RE.lastIndex = 0;
   return text.replace(TOKEN_RE, (_full, id: string) => {
-    const values = byId.get(id)?.values ?? [];
-    if (values.length === 0) return '';
-    if (values.length === 1) return values[0];
-    const shown = values.slice(0, 3).join('|');
-    return `{${shown}${values.length > 3 ? '|…' : ''}}`;
+    const ph = byId.get(id);
+    if (!ph || ph.values.length === 0) return '';
+    return ph.values.length === 1 ? ph.values[0] : `{${placeholderValueSummary(ph)}}`;
   });
+}
+
+/** A Wildcard's options as one short line — first three, then `…`. The shared form behind the braces in
+ *  {@link describePlaceholders}, the label on an in-editor chip, and the tooltip on a read-only one. */
+export function placeholderValueSummary(ph: Placeholder): string {
+  const shown = ph.values.slice(0, 3).join('|');
+  return ph.values.length > 3 ? `${shown}|…` : shown;
 }
 
 export interface ResolveOptions {

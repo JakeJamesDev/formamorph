@@ -42,9 +42,22 @@ describe('placeholderVocabulary', () => {
     ]);
   });
 
-  it('labels a chip by the placeholder name, and marks a deleted one', () => {
-    expect(v.label(tok('eye', 'world'))).toBe('name-eye');
+  // Inside an open field the chip shows what it will BECOME; the placeholder it came from is still
+  // reachable, via `identity`, which names the pop-out and the chip's tooltip.
+  it('labels a chip by its values, and marks a deleted one', () => {
+    expect(v.label(tok('eye', 'world'))).toBe('Red|Blue|Green');
+    expect(v.label(tok('king', 'world'))).toBe('Aldric'); // a Variable is just its value
     expect(v.label(tok('ghost', 'world'))).toBe('(missing)');
+  });
+
+  it('still identifies which placeholder a chip is, whatever its label shows', () => {
+    expect(v.identity?.(tok('eye', 'world'))).toBe('name-eye');
+    expect(v.identity?.(tok('ghost', 'world'))).toBe('(missing)');
+  });
+
+  it('falls back to the name when a placeholder has no values to show', () => {
+    const empty = placeholderVocabulary([P('blank', [])]);
+    expect(empty.label(tok('blank', 'world'))).toBe('name-blank');
   });
 
   it('shows the World/Unique axis only for a Wildcard (2+ values)', () => {

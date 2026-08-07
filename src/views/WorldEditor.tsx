@@ -73,6 +73,7 @@ import { APP_VERSION } from '@/lib/version';
 import type { Stat, Entity, GameLocation, StatUpdate, Dictionary, World } from '@/types';
 import { useDownscalePrompt } from '@/lib/useDownscalePrompt';
 import { SortableRow, type SortableListItem } from '@/components/SortableList';
+import PlaceholderText from '@/components/prompt/PlaceholderText';
 
 /** The fields a reorderable list row needs (every editor item has these). */
 type ListItem = SortableListItem;
@@ -473,7 +474,8 @@ const WorldEditor = ({ onClose, embedded = false, backButton }: {
           {items.map((item) => (
             <SortableRow
               key={item.id}
-              item={{ ...item, name: describePlaceholders(item.name, placeholders) }}
+              item={item}
+              label={<PlaceholderText text={item.name} placeholders={placeholders} />}
               selected={selectedItemId === item.id}
               onSelect={setSelectedItemId}
               onRemove={removeItem}
