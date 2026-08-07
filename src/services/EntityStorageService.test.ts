@@ -127,6 +127,27 @@ describe('EntityStorageService', () => {
     expect(meta?.description).toBe('Her amber eyes.');
   });
 
+  it('renders chips in the card title too, not only the blurb', async () => {
+    // Names take placeholders as of the name-fields work; the card is the same world-less surface the
+    // blurb is, so a chip left raw here shows the player a placement UUID where a name should be.
+    const token = encodePlaceholderToken({ id: 'town', mode: 'world', placementId: 'p1' });
+    await EntityStorageService.storeEntity({
+      id: 'e2',
+      name: `Keeper of ${token}`,
+      data: {
+        id: 'e2',
+        name: `Keeper of ${token}`,
+        placeholders: [{ id: 'town', name: 'Town', values: ['Sedge', 'Marrow'] }],
+      },
+    });
+
+    const meta = (await EntityStorageService.getEntityMetadata()).find((m) => m.id === 'e2');
+    // A Wildcard has no roll off-world, so it reads as its options — the same treatment the blurb gets.
+    expect(meta?.name).toBe('Keeper of {Sedge|Marrow}');
+    // The stored record keeps the real token; only the display metadata is flattened.
+    expect((await readRaw('e2'))?.name).toContain('{{ph:town:');
+  });
+
   it('rejects a character missing required fields', async () => {
     await expect(
       EntityStorageService.storeEntity({ id: 'e1' } as unknown as StoredEntityRecord),

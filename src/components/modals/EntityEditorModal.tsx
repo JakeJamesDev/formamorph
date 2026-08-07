@@ -6,6 +6,7 @@ import EntityFields from '@/managers/EntityFields';
 import { TagsField } from '@/components/TagsField';
 import PlaceholderEditor from '@/managers/PlaceholderEditor';
 import PlaceholderPaletteBar from '@/components/prompt/PlaceholderPaletteBar';
+import { describePlaceholders } from '@/lib/placeholders';
 import { ChipInsertTargetProvider } from '@/components/prompt/ChipInsertTarget';
 import { placeholderStore, PlaceholderStoreProvider } from '@/contexts/PlaceholderStoreContext';
 import { exportEntityCard } from '@/lib/entityFile';
@@ -101,7 +102,8 @@ const EntityEditorModal = ({ entityId, draft, onClose, onPublish }: {
     if (!entity) return;
     try {
       const blob = await exportEntityCard(entity);
-      downloadBlob(blob, `${entity.name || 'Character'}.webp`);
+      // A chip in the name would otherwise put a raw placement id in the filename.
+      downloadBlob(blob, `${describePlaceholders(entity.name, entity.placeholders) || 'Character'}.webp`);
     } catch (error) {
       toast.error((error as Error).message);
     }
