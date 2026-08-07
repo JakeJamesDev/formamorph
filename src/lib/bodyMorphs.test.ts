@@ -28,15 +28,20 @@ describe("normalizeStat", () => {
     expect(normalizeStat(0, 0, 100)).toBe(0);
     expect(normalizeStat(100, 0, 100)).toBe(1);
   });
-  it("clamps values outside the range", () => {
+  it("clamps below the floor but not above the top", () => {
     expect(normalizeStat(-20, 0, 100)).toBe(0);
-    expect(normalizeStat(180, 0, 100)).toBe(1);
+    expect(normalizeStat(180, 0, 100)).toBe(1.8);
   });
   it("handles a non-zero-based range", () => {
     expect(normalizeStat(15, 10, 20)).toBe(0.5);
   });
-  it("returns 0 when min === max (no range to scale across)", () => {
+  it("returns 0 when min === refMax (no range to scale across)", () => {
     expect(normalizeStat(5, 5, 5)).toBe(0);
+  });
+  it("scales against refMax, so a raised max grows the influence past 1", () => {
+    // Authored max 50; play raised it to 100 and the stat climbed with it.
+    expect(normalizeStat(50, 0, 100, 50)).toBe(1);
+    expect(normalizeStat(100, 0, 100, 50)).toBe(2);
   });
 });
 
@@ -58,6 +63,22 @@ describe("statMorphMap", () => {
       stat({ id: "b", name: "B", value: 10, min: 0, max: 20, morphBindings: ["Breasts"] }),
     ];
     expect(statMorphMap(stats)).toEqual({ Belly: 1, Breasts: 0.5 });
+  });
+  it("anchors the scale to the authored max, so a raised max drives the morph past 1", () => {
+    const authored = [stat({ id: "a", name: "A", max: 50, morphBindings: ["Belly"] })];
+    const live = [stat({ id: "a", name: "A", max: 100, value: 100, morphBindings: ["Belly"] })];
+    expect(statMorphMap(live, authored)).toEqual({ Belly: 2 });
+  });
+  it("keeps a percentage stat capped at 1", () => {
+    const authored = [stat({ id: "a", name: "A", type: "percentage", max: 50, morphBindings: ["Belly"] })];
+    const live = [
+      stat({ id: "a", name: "A", type: "percentage", max: 100, value: 100, morphBindings: ["Belly"] }),
+    ];
+    expect(statMorphMap(live, authored)).toEqual({ Belly: 1 });
+  });
+  it("falls back to the live max for a stat absent from the authored world", () => {
+    const live = [stat({ id: "runtime", name: "R", max: 20, value: 10, morphBindings: ["Fat"] })];
+    expect(statMorphMap(live, [])).toEqual({ Fat: 0.5 });
   });
 });
 

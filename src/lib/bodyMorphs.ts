@@ -1,5 +1,5 @@
-// Pure helpers behind stat-bound VRM body sliders. A stat's live value (clamped to [min,max]) maps
-// linearly to a morph influence in [0,1]; several stats compose into one morph map that VRMViewer applies.
+// Pure helpers behind stat-bound VRM body sliders. A stat's live value maps linearly to a morph
+// influence, scaled against its authored max; several stats compose into one map VRMViewer applies.
 // Kept free of React/three so the (off-by-one- and clamp-prone) math is unit-testable.
 
 import type { Stat } from "@/types";
@@ -12,20 +12,33 @@ export const LEGACY_BODY_BINDINGS: Record<string, string[]> = {
   Breastsize: ["Breasts"],
 };
 
-/** Map a stat value to a morph influence in [0,1], linearly across the stat's range. */
-export function normalizeStat(value: number, min: number, max: number): number {
-  if (max === min) return 0;
-  const t = (value - min) / (max - min);
-  return Math.min(1, Math.max(0, t));
+/**
+ * Map a stat value to a morph influence, linearly across the stat's range. `refMax` is the scale
+ * anchor — the authored max, so a max raised during play extends the morph past 1 instead of
+ * rescaling every point down. Only the floor is clamped; the caller caps the top if it wants one.
+ */
+export function normalizeStat(value: number, min: number, max: number, refMax: number = max): number {
+  if (refMax === min) return 0;
+  const t = (value - min) / (refMax - min);
+  return Math.max(0, t);
 }
 
-/** Build the morph influences driven by stats: every number stat with bindings contributes its
- *  normalized value to each morph name it's bound to. Stats without bindings are ignored. */
-export function statMorphMap(stats: readonly Stat[]): Record<string, number> {
+/**
+ * Build the morph influences driven by stats: every number stat with bindings contributes its
+ * normalized value to each morph name it's bound to. Stats without bindings are ignored.
+ * `authored` supplies each stat's authored max as the scale anchor; a stat missing from it falls
+ * back to its own live max. Percentage stats stay capped at 1 — 100 is their definitional ceiling.
+ */
+export function statMorphMap(
+  stats: readonly Stat[],
+  authored: readonly Stat[] = [],
+): Record<string, number> {
+  const refMax = new Map(authored.map((s) => [s.id, s.max]));
   const map: Record<string, number> = {};
   for (const stat of stats) {
     if (!stat.morphBindings?.length || typeof stat.value !== "number") continue;
-    const influence = normalizeStat(stat.value, stat.min, stat.max);
+    let influence = normalizeStat(stat.value, stat.min, stat.max, refMax.get(stat.id) ?? stat.max);
+    if (stat.type === "percentage") influence = Math.min(1, influence);
     for (const name of stat.morphBindings) map[name] = influence;
   }
   return map;
