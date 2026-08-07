@@ -5,6 +5,10 @@ import userEvent from '@testing-library/user-event';
 import TraitSelectionModal from './TraitSelectionModal';
 import type { Trait, TraitGroup } from '@/types';
 
+// These cases cover the picker's grouping and selection wiring, not placeholders; the real resolver — and
+// the draft pins it carries — is exercised in MainMenu.
+const identity = (t: string) => t;
+
 const groups: TraitGroup[] = [
   { id: 'world', name: 'World', parentId: null, order: 0 },
   { id: 'player', name: 'Player', parentId: null, order: 1 },
@@ -23,6 +27,7 @@ function Harness({ onConfirm = () => {}, onAbort = () => {} }: { onConfirm?: () 
       traits={traits}
       traitGroups={groups}
       stats={[]}
+      resolveText={identity}
       selectedTraits={selected}
       onTraitSelect={(id) => setSelected((p) => (p.includes(id) ? p.filter((x) => x !== id) : [...p, id]))}
       onConfirm={onConfirm}
@@ -65,6 +70,7 @@ describe('TraitSelectionModal', () => {
         traits={grouped}
         traitGroups={groups}
         stats={[]}
+      resolveText={identity}
         selectedTraits={[]}
         onTraitSelect={() => {}}
         onConfirm={() => {}}
@@ -83,6 +89,7 @@ describe('TraitSelectionModal', () => {
         traits={traits}
         traitGroups={withEmpty}
         stats={[]}
+      resolveText={identity}
         selectedTraits={[]}
         onTraitSelect={() => {}}
         onConfirm={() => {}}
@@ -107,6 +114,7 @@ describe('TraitSelectionModal', () => {
         traits={nestedTraits}
         traitGroups={nested}
         stats={[]}
+      resolveText={identity}
         selectedTraits={[]}
         onTraitSelect={() => {}}
         onConfirm={() => {}}
@@ -136,6 +144,7 @@ describe('TraitSelectionModal', () => {
         traits={mixedTraits}
         traitGroups={mixed}
         stats={[]}
+      resolveText={identity}
         selectedTraits={[]}
         onTraitSelect={() => {}}
         onConfirm={() => {}}
@@ -163,6 +172,7 @@ describe('TraitSelectionModal', () => {
         traits={traits}
         traitGroups={described}
         stats={[]}
+      resolveText={identity}
         selectedTraits={[]}
         onTraitSelect={() => {}}
         onConfirm={() => {}}

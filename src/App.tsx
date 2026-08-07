@@ -7,6 +7,7 @@ import { GameDataProvider } from './contexts/GameDataContext';
 import { UserProfileProvider } from './contexts/UserProfileContext';
 import { SettingsProvider } from './contexts/SettingsContext';
 import { GameplayProvider } from './contexts/GameplayContext';
+import { PlaceholderSessionProvider, usePlaceholderSession } from './contexts/PlaceholderSessionContext';
 import { LocalEngineManager } from './components/LocalEngineManager';
 import { IntroSequence } from './components/IntroSequence';
 import GameViewer from './views/GameViewer';
@@ -16,9 +17,11 @@ import type { CharacterData, Dictionary, Entity } from '@/types';
 /** Set once the first-run welcome intro has played, so it never auto-plays again on this device. */
 const INTRO_SEEN_KEY = 'FORMAMORPH_introSeen';
 
-function App() {
+/** The view switch and the enter-world handoff. Inside the providers, so it can drive the world session. */
+function AppViews() {
   const [currentView, setCurrentView] = useState<DevView>('mainMenu');
   const devRoute = useDevRoute();
+  const { beginSession, endSession } = usePlaceholderSession();
 
   // First-run welcome intro: cinematic on the first ever launch (kicker + slow reveal), snappy on replay.
   // Suppressed when a dev-router hash is steering the app somewhere specific, so verification isn't blocked.
@@ -70,6 +73,9 @@ function App() {
     setInitialDictionaries(dictionaries ?? null);
     setInitialCharacters(characters ?? null);
     setInitialSaveId(null); // a fresh game, not a cold-loaded save
+    // Quick Start reaches here without passing through the enter-world flow, so it opens the session itself.
+    // Already-open is a no-op that keeps the flow's rolls, which is what makes the normal path idempotent.
+    beginSession();
     setCurrentView('gameViewer');
   };
 
@@ -77,23 +83,23 @@ function App() {
   // enter the game view with the save id so GameViewer restores it on mount instead of starting fresh.
   const handleLoadSaveGame = (saveId: string) => {
     setInitialSaveId(saveId);
+    // The save's own rolls arrive with the restore, a beat later. Opening empty is right: priming preserves
+    // whatever rolls exist, so the restored values win and are then topped up with any placement the save
+    // predates.
+    beginSession();
     setCurrentView('gameViewer');
   };
 
   const handleExitToMenu = () => {
+    // Ends the playthrough's rolls too — the next world entry draws its own.
+    endSession();
     setCurrentView('mainMenu');
   };
 
   return (
-    <ThemeProvider defaultTheme="system" storageKey="vite-ui-theme">
-      <SettingsProvider>
-        <LocalEngineManager />
-        <GameDataProvider>
-          {/* One profile dialog for the whole app: names are clicked from inside other dialogs, and a
-              nested one would inherit their scroll lock and their width. */}
-          <UserProfileProvider>
-          <DevFixtureLoader />
-          {currentView === 'mainMenu' && (
+    <>
+      <DevFixtureLoader />
+      {currentView === 'mainMenu' && (
             <MainMenu
               onStartGame={handleStartGame}
               onLoadSaveGame={handleLoadSaveGame}
@@ -115,9 +121,27 @@ function App() {
                 initialSaveId={initialSaveId}
                 onExitToMenu={handleExitToMenu}
               />
-            </GameplayProvider>
-          )}
-          </UserProfileProvider>
+        </GameplayProvider>
+      )}
+    </>
+  );
+}
+
+function App() {
+  return (
+    <ThemeProvider defaultTheme="system" storageKey="vite-ui-theme">
+      <SettingsProvider>
+        <LocalEngineManager />
+        <GameDataProvider>
+          {/* Above the view switch: a playthrough's placeholder rolls are drawn in the enter-world flow,
+              which the main menu owns, and read again by the game view. */}
+          <PlaceholderSessionProvider>
+            {/* One profile dialog for the whole app: names are clicked from inside other dialogs, and a
+                nested one would inherit their scroll lock and their width. */}
+            <UserProfileProvider>
+              <AppViews />
+            </UserProfileProvider>
+          </PlaceholderSessionProvider>
         </GameDataProvider>
       </SettingsProvider>
     </ThemeProvider>

@@ -5,8 +5,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
-import { describePlaceholders } from "@/lib/placeholders";
-import type { Trait, TraitGroup, Stat, Placeholder } from "@/types";
+import type { Trait, TraitGroup, Stat } from "@/types";
 
 const GENERAL = 'general';
 
@@ -21,7 +20,7 @@ const TraitSelectionModal = ({
   traits,
   traitGroups,
   stats,
-  placeholders = [],
+  resolveText,
   selectedTraits,
   onTraitSelect,
   onAbort,
@@ -32,9 +31,9 @@ const TraitSelectionModal = ({
   traits: Trait[];
   traitGroups: TraitGroup[];
   stats: Stat[];
-  /** The world's placeholder defs. Nothing has rolled yet at this point in the flow, so a chip in a trait
-   *  description shows its options rather than a value. */
-  placeholders?: Placeholder[];
+  /** Resolves a chip to this playthrough's value, with the pins the ticked traits impose already applied.
+   *  Names arrive resolved; descriptions are resolved here. */
+  resolveText: (text: string) => string;
   selectedTraits: string[];
   onTraitSelect: (traitId: string) => void;
   onAbort: () => void;
@@ -44,13 +43,8 @@ const TraitSelectionModal = ({
   /** Label for the confirm button — names the next step in the flow (e.g. "Location", "Avatar", "Start"). */
   confirmLabel?: string;
 }) => {
-  const getStatName = (statId: string) => {
-    const stat = stats.find((s) => s.id === statId);
-    return stat ? describePlaceholders(stat.name, placeholders) : statId;
-  };
-  // Rolls are primed at game start, after this screen — so a Wildcard reads as `{red|brown|black}` here
-  // rather than committing to a value the pins might override a moment later.
-  const describe = (text: string) => describePlaceholders(text, placeholders);
+  const getStatName = (statId: string) => stats.find((s) => s.id === statId)?.name ?? statId;
+  const describe = resolveText;
 
   const directTraits = (groupId: string | null) =>
     traits.filter((t) => (t.groupId ?? null) === groupId).sort((a, b) => (a.order ?? 0) - (b.order ?? 0));

@@ -82,7 +82,6 @@ import { splitSentenceSegments } from "../lib/ttsChunks";
 import { selectDueDigests, applyDigest, applyImportance, parseTurnContent, recentParticipants, selectDueDiaries, pendingDiaryNames, applyDiary, collectCharacterDiary } from "../lib/turnDigest";
 import { buildTraitContext } from "../lib/traitTree";
 import { buildLocationContext, buildEntityContext, buildSublocationsContext, buildSublocationEntitiesContext, buildReachableLocationsContext, buildReachableEntitiesContext, buildDestinationsContext, buildParentLocationContext, buildSceneEntitiesContext, scenePresentHere, navigableDestinations, sublocationEntityIds, expandScopedTokens } from "../lib/locationContext";
-import { primeRolls } from "@/lib/placeholders";
 import { useResolvedWorld } from "@/lib/useResolvedWorld";
 import { resolveStartingLocation } from "../lib/startingLocation";
 import { NONE_PLACEHOLDER } from "../lib/promptFallbacks";
@@ -246,15 +245,9 @@ const GameViewer = ({
 }: GameViewerProps) => {
   // AbortController reference for canceling AI requests
   const abortControllerRef = useRef<AbortController | null>(null);
-  // Authored, chip-bearing originals. Everything below reads the name-resolved copies derived from these
-  // (see the resolution block after useGameplay); the raw values are only for priming rolls, which has to
-  // see the chips themselves.
+  // Only the world's non-name data. Every collection whose names can hold chips is read through
+  // `useResolvedWorld()` below, which is what keeps a name from resolving differently per use site.
   const {
-    stats: rawStats,
-    locations: rawLocations,
-    entities: rawEntities,
-    traits: rawTraits,
-    traitGroups: rawTraitGroups,
     dictionaries,
     placeholders,
     worldOverview,
@@ -442,7 +435,6 @@ const GameViewer = ({
     setDiscoveredEntities,
     suppressedCharacterNames,
     setRuntimeDictionaries,
-    setPlaceholderRolls,
     memoryPins,
     setMemoryPins,
     setEntityVisualPreference,
@@ -1331,26 +1323,6 @@ const GameViewer = ({
 
   // The README is authored text shown to the player, so its chips resolve like any other.
   const readmeResolved = useMemo(() => resolvePH(readmeText), [resolvePH, readmeText]);
-
-  // Eager priming: once a save is active, roll every Wildcard placement across the world's authored text and
-  // freeze it into the save (a loaded save's existing rolls are kept). Resolution then stays a pure lookup.
-  useEffect(() => {
-    if (!isGameStarted || placeholders.length === 0) return;
-    // The authored originals, not the resolved copies — priming has to see the chips it is rolling for.
-    // Names are primed alongside descriptions so a name's Wildcard is frozen into the save like any other;
-    // a name resolved from an unprimed roll would be re-drawn on every render.
-    const texts = [
-      worldOverview.systemPrompt || "",
-      worldOverview.readme || "",
-      ...rawEntities.flatMap((e) => [e.name, ...(e.aliases ?? []), e.playerDescription, e.aiDescription, e.aiSummary, e.imageTags]),
-      ...rawLocations.flatMap((l) => [l.name, ...(l.connections ?? []), l.playerDescription, l.aiDescription, l.aiSummary, l.description, l.imageTags]),
-      ...dictionaries.flatMap((b) => b.entries.flatMap((en) => [en.name, ...(en.key ?? []), ...(en.secondaryKeys ?? []), en.value])),
-      ...rawStats.map((s) => s.name),
-      ...rawTraits.flatMap((t) => [t.name, t.playerDescription, t.aiDescription]),
-      ...rawTraitGroups.flatMap((g) => [g.name, g.playerDescription, g.aiDescription]),
-    ].filter((t): t is string => !!t);
-    setPlaceholderRolls((prev) => primeRolls(placeholders, texts, prev));
-  }, [isGameStarted, placeholders, rawEntities, rawLocations, dictionaries, rawStats, rawTraits, rawTraitGroups, worldOverview, setPlaceholderRolls]);
 
   // True while the story's opening hour is still unmeasured and about to be asked for — i.e. the clock is on
   // and the opening turn hasn't committed. A game that started with the clock off keeps `startHour` null

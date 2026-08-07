@@ -8,6 +8,7 @@ import { useTtsPlayback } from '../lib/useTtsPlayback';
 import { APP_VERSION, isSaveEnvelope, migrateSave, migrateLegacySaveState, stripSnapshotHistory } from '../lib/version';
 import { flattenEnabledBookEntries } from '../lib/dictionaryUtils';
 import { getGameplayText, setGameplayText } from '../lib/gameplayTextStore';
+import { usePlaceholderSession } from './PlaceholderSessionContext';
 import { parseTurnContent, serializeTurnContent } from '../lib/turnDigest';
 import type { SceneImageMap } from '../lib/sceneImages';
 import { matchChoicesToAction, CONTINUE_CHOICE } from '../lib/choices';
@@ -32,7 +33,6 @@ import type {
   Choice,
   DiscoveredEntity,
   Dictionary,
-  PlaceholderRolls,
   SceneEntity,
   EntityVisualPreference,
 } from '@/types';
@@ -84,9 +84,10 @@ function useProvideGameplay() {
   // Per-playthrough dictionary set chosen at world entry (or restored from a save). Runtime-only: the
   // authored world's books live in GameDataContext and are never mutated by gameplay.
   const [runtimeDictionaries, setRuntimeDictionaries] = useState<Dictionary[]>([]);
-  // Frozen placeholder rolls for this playthrough (see lib/placeholders). Primed once when a save becomes
-  // active, then a pure lookup everywhere. Persisted in the save envelope.
-  const [placeholderRolls, setPlaceholderRolls] = useState<PlaceholderRolls>({});
+  // Frozen placeholder rolls for this playthrough (see lib/placeholders). Owned by the world session, which
+  // opens before this provider mounts so the pre-game pickers share these values; re-exposed here because
+  // the save envelope carries them and every gameplay reader already goes through this context.
+  const { rolls: placeholderRolls, setRolls: setPlaceholderRolls } = usePlaceholderSession();
   // Milestone-memory player pins, keyed by turn id ('keep' resurrects a dropped digest, 'drop' removes a
   // kept one). Persisted in the save envelope.
   const [memoryPins, setMemoryPins] = useState<MemoryPinMap>({});
@@ -472,7 +473,7 @@ function useProvideGameplay() {
       addSystemLogEntry('Failed to load game');
       return false;
     }
-  }, [loadGameState, addSystemLogEntry]);
+  }, [loadGameState, addSystemLogEntry, setPlaceholderRolls]);
 
   // Cleanup web worker when component unmounts
   useEffect(() => {

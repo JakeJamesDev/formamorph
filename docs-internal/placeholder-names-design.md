@@ -83,17 +83,22 @@ Where a placeholder is visible, exactly one of four treatments applies:
 | Gameplay | the real rolled value | `resolvePH` / `usePlaceholderResolver`, via the resolved collections |
 
 That last row is the widest: editor dropdowns (MultiSelect matches its own search against the label string),
-the editor search box, export filenames, `alt`/`title`/aria text, the pre-game trait and starting-location
-pickers, library card titles, and community listings. A pill cannot go in any of them.
+the editor search box, export filenames, `alt`/`title`/aria text, library card titles, and community
+listings. A pill cannot go in any of them.
+
+**The pre-game pickers left that row.** Rolls now open with the world session rather than at game start, so
+the trait and starting-location screens resolve like gameplay does — see
+`docs-internal/placeholder-session-design.md`.
 
 A placeholder whose definition was deleted renders a red `?` pill in the editor, and resolves to `""`
 everywhere else.
 
 ### Other decisions that stuck
 
-- **Runtime resolution** is `src/lib/resolveWorldNames.ts` plus one block at the top of `GameViewer`. The raw
-  sources (`rawEntities`, `rawLocations`, …) are read **only** by roll priming and the resolution memos —
-  that invariant is what makes the ~80 downstream sites correct by construction, so keep it true.
+- **Runtime resolution** is `src/lib/resolveWorldNames.ts` behind `useResolvedWorld()` /
+  `useResolvedAuthoredWorld()`. The raw sources are now read **only** by the session's roll priming — the
+  invariant that makes the ~80 downstream sites correct by construction, and total since `GameViewer`
+  stopped destructuring them.
 - **Insert paths**: `{` typeahead, click a palette chip, or drag one in (`ChipDrag.tsx`, private MIME type).
   The palette chip is `aria-disabled`, never `disabled`, because a disabled button cannot start a drag.
 - **Tag lists** edit in place: double-click opens a chip editor on the tag, so a placement's World/Unique

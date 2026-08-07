@@ -1,7 +1,10 @@
 import { randomUUID } from "@/lib/uuid";
 import { DEFAULT_WORLDS, isDefaultWorldId } from "@/lib/defaultWorlds";
-import React, { useState, useRef, useEffect, useCallback } from 'react';
+import React, { useState, useRef, useEffect, useCallback, useMemo } from 'react';
 import { useGameData } from '../contexts/GameDataContext';
+import { usePlaceholderSession } from '../contexts/PlaceholderSessionContext';
+import { useResolvedAuthoredWorld } from '@/lib/useResolvedWorld';
+import { activePlaceholderPins, inAuthoredOrder, traitOrderIndex } from '@/lib/traitEffects';
 import { useUserProfile } from '../contexts/userProfileStore';
 import { useDevRoute, registerDevHook } from '../lib/devRouter';
 import { MAIN_MENU_CARD_TABS, type MainMenuCardTab } from './mainMenuTabs';
@@ -223,9 +226,10 @@ const WorldNotice = ({ tone, icon: Icon, children, actionLabel, actionIcon: Acti
 
 const MainMenu = ({ onStartGame, onLoadSaveGame, onReplayIntro, introActive = false }: MainMenuProps) => {
   const {
-    traits, traitGroups, stats, locations, placeholders, loadWorldData,
+    traits: rawTraits, traitGroups: rawTraitGroups, placeholders, loadWorldData,
     dictionaries: worldBooks,
   } = useGameData();
+  const { beginSession, endSession } = usePlaceholderSession();
   const { showReadme, setShowReadme } = useReadmeVisibility();
   const { applyWorldPrompt, setApplyWorldPrompt } = useWorldPromptOptOut();
   const { worldPreset, setWorldPreset } = useWorldPromptPresets();
@@ -276,6 +280,17 @@ const MainMenu = ({ onStartGame, onLoadSaveGame, onReplayIntro, introActive = fa
   const [selectedDictionaries, setSelectedDictionaries] = useState<Dictionary[] | null>(null);
   // The library characters chosen at the entry step to place in the starting location; null = none/skipped.
   const [selectedCharacters, setSelectedCharacters] = useState<Entity[] | null>(null);
+
+  // The pins the *draft* trait selection would impose. A trait can pin a placeholder, and the trait picker is
+  // where traits are chosen — so these screens resolve against the boxes ticked so far, and a pinned name
+  // changes the moment its trait is ticked. Pins mask the roll rather than replacing it, so unticking the
+  // trait brings the rolled value back.
+  const draftPins = useMemo(() => {
+    const chosen = rawTraits.filter((t) => selectedTraits.includes(t.id));
+    return activePlaceholderPins(inAuthoredOrder(chosen, traitOrderIndex(rawTraits, rawTraitGroups)));
+  }, [selectedTraits, rawTraits, rawTraitGroups]);
+  const { traits, traitGroups, stats, locations, resolvePH } = useResolvedAuthoredWorld(draftPins);
+
   const [showCodeModal, setShowCodeModal] = useState(false);
   const [showNarrationPrompt, setShowNarrationPrompt] = useState(false);
   const [showSettings, setShowSettings] = useState(false);
@@ -942,6 +957,16 @@ const MainMenu = ({ onStartGame, onLoadSaveGame, onReplayIntro, introActive = fa
     enterWorld(selectedTraits, selectedLocationId, selectedCharacters, finalDicts);
   };
 
+  // Back out of the enter-world flow entirely: drop the draft choices and close the world session, so the
+  // next entry rolls its placeholders fresh rather than reusing the values these screens were showing.
+  const abandonEnterFlow = () => {
+    setSelectedTraits([]);
+    setSelectedLocationId(null);
+    setSelectedCharacters(null);
+    setSelectedDictionaries(null);
+    endSession();
+  };
+
   // The enter-world steps actually shown for this world + library, in flow order — drives the Back button.
   type EnterStep = 'traits' | 'location' | 'characters' | 'dictionaries' | 'avatar';
   const enterFlowSteps = (): EnterStep[] => {
@@ -1259,10 +1284,7 @@ const MainMenu = ({ onStartGame, onLoadSaveGame, onReplayIntro, introActive = fa
         onBack={backFrom('avatar')}
         onAbort={() => {
           setShowCharacterCustomization(false);
-          setSelectedTraits([]);
-          setSelectedLocationId(null);
-          setSelectedCharacters(null);
-          setSelectedDictionaries(null);
+          abandonEnterFlow();
         }}
       />
     );
@@ -1853,6 +1875,9 @@ const MainMenu = ({ onStartGame, onLoadSaveGame, onReplayIntro, introActive = fa
                           traits.filter((t) => t.isDefault).map((t) => t.id), traits, traitGroups);
                         setSelectedTraits(defaults);
                         setShowWorldModal(false);
+                        // Roll this playthrough's placeholders now, so the picker screens show the names the
+                        // game will actually use instead of every option they could have taken.
+                        beginSession();
                         // No traits to choose — skip the selection menu entirely.
                         if (traits.length === 0) {
                           proceedFromTraits(defaults);
@@ -2163,12 +2188,12 @@ const MainMenu = ({ onStartGame, onLoadSaveGame, onReplayIntro, introActive = fa
           traits={traits}
           traitGroups={traitGroups}
           stats={stats}
-          placeholders={placeholders}
+          resolveText={resolvePH}
           selectedTraits={selectedTraits}
           onTraitSelect={handleTraitSelection}
           onAbort={() => {
             setShowTraitSelection(false);
-            setSelectedTraits([]);
+            abandonEnterFlow();
           }}
           onConfirm={() => proceedFromTraits(selectedTraits)}
           onBack={backFrom('traits')}
@@ -2189,13 +2214,12 @@ const MainMenu = ({ onStartGame, onLoadSaveGame, onReplayIntro, introActive = fa
       {showLocationSelection && (
         <StartingLocationModal
           locations={startingLocations(locations)}
-          placeholders={placeholders}
+          resolveText={resolvePH}
           onConfirm={proceedFromLocation}
           onBack={backFrom('location')}
           onAbort={() => {
             setShowLocationSelection(false);
-            setSelectedTraits([]);
-            setSelectedLocationId(null);
+            abandonEnterFlow();
           }}
           confirmLabel={
             charStepVisible
@@ -2216,9 +2240,7 @@ const MainMenu = ({ onStartGame, onLoadSaveGame, onReplayIntro, introActive = fa
           onBack={backFrom('characters')}
           onAbort={() => {
             setShowCharacterSelection(false);
-            setSelectedTraits([]);
-            setSelectedLocationId(null);
-            setSelectedCharacters(null);
+            abandonEnterFlow();
           }}
           confirmLabel={
             dictStepVisible
@@ -2238,8 +2260,7 @@ const MainMenu = ({ onStartGame, onLoadSaveGame, onReplayIntro, introActive = fa
           onBack={backFrom('dictionaries')}
           onAbort={() => {
             setShowDictionarySelection(false);
-            setSelectedTraits([]);
-            setSelectedLocationId(null);
+            abandonEnterFlow();
           }}
           confirmLabel={selectedWorld?.data.worldOverview?.use3DModel ? 'Avatar' : 'Start'}
         />
