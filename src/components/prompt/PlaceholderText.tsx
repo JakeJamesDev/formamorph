@@ -44,17 +44,17 @@ const PlaceholderText = ({ text, placeholders, className }: {
             </span>
           );
         }
-        // The name, so a row stays the same width whatever the value list does. What it becomes is one
-        // hover away, in the same form the chips inside a field use.
-        const values = ph.values.length ? placeholderValueSummary(ph) : 'no values';
+        // Values, not the name: a row is showing what this thing will be called, so the pill previews it.
+        // A placeholder with nothing to draw from falls back to its name, since an empty pill says nothing.
+        const values = ph.values.length ? placeholderValueSummary(ph) : ph.name;
         return (
           <span
             key={i}
-            title={`${ph.name} — ${values}${decoded.mode === 'unique' ? ' (Unique)' : ''}`}
+            title={`${ph.name}${ph.values.length ? '' : ' — no values'}${decoded.mode === 'unique' ? ' (Unique)' : ''}`}
             className={cn('mx-0.5 rounded px-1 text-[0.85em] font-medium', className)}
             style={{ backgroundColor: vocab.color(seg.token), color: '#000' }}
           >
-            {ph.name}
+            {values}
           </span>
         );
       })}
