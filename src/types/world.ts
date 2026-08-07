@@ -38,7 +38,8 @@ export interface Stat {
   descriptors: StatDescriptor[];
   /** Optional JS executed to derive this stat's value from others. */
   code?: string;
-  /** Body-mesh morph target names this stat drives; stat [min,max] maps linearly to influence [0,1]. */
+  /** Body-mesh morph target names this stat drives; the value maps linearly across [min, authored max],
+   *  so a max raised in play pushes the influence past 1. */
   morphBindings?: string[];
   /** `false` starts the stat inert — hidden from the player and the AI, regen and code paused — until a
    *  trait switches it on. Absent = enabled. */
