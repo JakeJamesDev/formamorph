@@ -487,7 +487,6 @@ export const SettingsModal = ({ isOpen, onOpenChange, previewValues, initialTab,
     detectedContextWindow,
     detectStatus,
     detectContextWindow,
-    useCustomEndpoint,
     localModelActive,
     builtinTextEndpointPresets,
     textEndpointPresets,
@@ -2801,7 +2800,7 @@ Includes faces tuned for **dyslexia**, **low vision**, and reading.`}</HintInfo>
     <LlmSetupGuide
       open={connectionGuideOpen}
       onOpenChange={setConnectionGuideOpen}
-      endpointUrl={useCustomEndpoint ? endpointUrl : DEFAULT_ENDPOINT}
+      endpointUrl={endpointUrl}
     />
     </>
   );
