@@ -2,23 +2,10 @@ import { useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { Textarea } from '@/components/ui/textarea';
 import { SuggestionList } from '@/components/SuggestionList';
 import { useDanbooruTags } from '@/lib/useDanbooruTags';
-import { rankTagSuggestions } from '@/lib/tagSuggest';
+import { rankTagSuggestions, activeTagToken, replaceActiveTag } from '@/lib/tagSuggest';
 
 const SUGGESTION_LIMIT = 10;
 const MIN_QUERY = 1; // require at least one typed character before suggesting (an empty tag shows nothing)
-
-// The tag the caret sits in. `start`/`end` bound the whole tag (last comma/newline before, spaces skipped →
-// next comma/newline) so a selection replaces all of it; `token` is only the part left of the caret, which is
-// what we match on (so `red r|ibbon` still suggests from `red r`, matching what the user sees while typing).
-function activeToken(value: string, caret: number): { start: number; end: number; token: string } {
-  const before = value.slice(0, caret);
-  const boundary = Math.max(before.lastIndexOf(','), before.lastIndexOf('\n'));
-  let start = boundary + 1;
-  while (start < caret && value[start] === ' ') start++;
-  const rel = value.slice(caret).search(/[,\n]/);
-  const end = rel === -1 ? value.length : caret + rel;
-  return { start, end, token: value.slice(start, caret) };
-}
 
 /**
  * Image-Tags textarea with inline Danbooru autocomplete. As you type a tag (the token after the last
@@ -42,7 +29,7 @@ export function TagAutocomplete({ value, onChange, placeholder, id, rows }: {
 
   const suggestions = useMemo(() => {
     if (!options.length) return [];
-    const q = activeToken(value, caret).token.trim().toLowerCase();
+    const q = activeTagToken(value, caret).token.trim().toLowerCase();
     if (q.length < MIN_QUERY) return []; // empty token ⇒ nothing until a character is typed
     return rankTagSuggestions(options, q, SUGGESTION_LIMIT);
   }, [options, value, caret]);
@@ -60,12 +47,7 @@ export function TagAutocomplete({ value, onChange, placeholder, id, rows }: {
   const select = (tag: string) => {
     const node = textareaRef.current;
     const at = node?.selectionStart ?? value.length;
-    const { start, end } = activeToken(value, at);
-    // Replace the whole tag. Append ", " only when it's the last tag; otherwise keep the existing separator.
-    const isLast = end >= value.length;
-    const insert = isLast ? `${tag}, ` : tag;
-    const next = value.slice(0, start) + insert + value.slice(end);
-    const caret = start + insert.length;
+    const { value: next, caret } = replaceActiveTag(value, at, tag);
     pendingSelectionRef.current = { start: caret, end: caret };
     onChange(next);
     setCaret(caret);
