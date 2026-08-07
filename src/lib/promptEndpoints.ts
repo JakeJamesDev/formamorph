@@ -1,6 +1,7 @@
 import type { AIRequestType } from '@/types';
 import {
-  DEFAULT_TEXT_PRESET_ID, DEFAULT_TEXT_ENDPOINT_VALUES,
+  DEFAULT_TEXT_PRESET_ID, BUILTIN_ENGINE_PRESET_ID, BUILTIN_ENGINE_VALUES,
+  isBuiltInPresetId, valuesForId,
   type TextEndpointPresetStore, type TextEndpointValues,
 } from './textEndpointPresets';
 
@@ -30,11 +31,15 @@ export interface ResolvedPromptEndpoint {
 
 /** The globally-active endpoint state an unpinned kind resolves to. */
 export interface ActiveEndpointState {
+  /** The active preset's id, so an unpinned kind reports what it actually resolved to. */
+  activeId: string;
   values: TextEndpointValues;
   isBuiltIn: boolean;
   localEngine: boolean;
   /** The active max-output cap, which honors the desktop engine's separate local cap. */
   maxTokens: number;
+  /** The bundled engine's own output cap, used whenever the engine is the resolved target. */
+  engineMaxTokens: number;
 }
 
 /**
@@ -43,7 +48,7 @@ export interface ActiveEndpointState {
  */
 export function isRoutableId(store: TextEndpointPresetStore, id: string | undefined): boolean {
   if (!id) return false;
-  return id === DEFAULT_TEXT_PRESET_ID || store.presets.some((p) => p.id === id);
+  return isBuiltInPresetId(id) || store.presets.some((p) => p.id === id);
 }
 
 /** The preset a kind routes to, or null for Use Active Endpoint. Ghost ids (deleted preset) read as unpinned. */
@@ -57,9 +62,8 @@ export function routedPresetId(kind: AIRequestType, map: PromptEndpointMap, stor
  * untouched, so nothing about the pre-routing path changes. A pinned kind returns its preset's values
  * layered over the shipped defaults, so a preset stored before a new field existed still resolves.
  *
- * `localEngine` stays false for a user preset — pinning to one is by definition pointing at an outside
- * server, even on desktop with the bundled engine running. Pinning to Default keeps the global flag,
- * because on desktop the Default endpoint *is* the bundled engine.
+ * `localEngine` is a property of the RESOLVED target, not a global mode: it is true exactly when the target
+ * is the bundled-engine preset. That is what lets one prompt run on the engine while the rest go outward.
  */
 export function resolvePromptEndpoint(
   kind: AIRequestType,
@@ -67,8 +71,25 @@ export function resolvePromptEndpoint(
   store: TextEndpointPresetStore,
   active: ActiveEndpointState,
 ): ResolvedPromptEndpoint {
-  const id = routedPresetId(kind, map, store);
-  if (id === null) {
+  const routed = routedPresetId(kind, map, store);
+  // An unpinned kind resolves to whatever the active selection is, reported under that preset's own id.
+  const id = routed ?? active.activeId;
+
+  if (id === BUILTIN_ENGINE_PRESET_ID) {
+    const e = BUILTIN_ENGINE_VALUES;
+    return {
+      presetId: routed,
+      endpoint: e.endpoint,
+      apiToken: e.apiToken,
+      model: e.model,
+      // The engine's own cap, whether it was pinned to or merely selected.
+      maxTokens: active.engineMaxTokens,
+      contextWindowOverride: e.contextWindowOverride,
+      isBuiltIn: true,
+      localEngine: true,
+    };
+  }
+  if (routed === null) {
     return {
       presetId: null,
       endpoint: active.values.endpoint,
@@ -77,33 +98,18 @@ export function resolvePromptEndpoint(
       maxTokens: active.maxTokens,
       contextWindowOverride: active.values.contextWindowOverride,
       isBuiltIn: active.isBuiltIn,
-      localEngine: active.localEngine,
+      localEngine: false,
     };
   }
-  if (id === DEFAULT_TEXT_PRESET_ID) {
-    const d = DEFAULT_TEXT_ENDPOINT_VALUES;
-    return {
-      presetId: id,
-      endpoint: d.endpoint,
-      apiToken: d.apiToken,
-      model: d.model,
-      // The desktop engine's own output cap wins whenever it is the thing being addressed.
-      maxTokens: active.localEngine ? active.maxTokens : d.maxTokens,
-      contextWindowOverride: d.contextWindowOverride,
-      isBuiltIn: true,
-      localEngine: active.localEngine,
-    };
-  }
-  const preset = store.presets.find((p) => p.id === id);
-  const values: TextEndpointValues = { ...DEFAULT_TEXT_ENDPOINT_VALUES, ...preset?.values };
+  const values = valuesForId(store, routed);
   return {
-    presetId: id,
+    presetId: routed,
     endpoint: values.endpoint,
     apiToken: values.apiToken,
     model: values.model,
     maxTokens: values.maxTokens,
     contextWindowOverride: values.contextWindowOverride,
-    isBuiltIn: false,
+    isBuiltIn: routed === DEFAULT_TEXT_PRESET_ID,
     localEngine: false,
   };
 }

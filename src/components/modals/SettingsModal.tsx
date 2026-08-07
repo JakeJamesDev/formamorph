@@ -486,7 +486,7 @@ export const SettingsModal = ({ isOpen, onOpenChange, previewValues, initialTab,
     detectStatus,
     detectContextWindow,
     useCustomEndpoint,
-    setUseCustomEndpoint,
+    localModelActive,
     builtinTextEndpointPresets,
     textEndpointPresets,
     activeTextEndpointPresetId,
@@ -1743,32 +1743,10 @@ An inspection aid for authoring and debugging; off by default.`}</HintInfo>
                 <TabsTrigger value="img-tagprompt">Tag Prompt</TabsTrigger>
               </TabsList>
               <TabsContent value="text-endpoint" className="flex-1 min-h-0 data-[state=active]:flex flex-col">
-            {/* Desktop: a checkbox gates the bundled local engine vs a custom endpoint. Web has no local
-                engine, so there's no checkbox — the preset picker's immutable "Default" entry is "our endpoint". */}
-            {desktop && (
-              <div className="shrink-0 grid grid-cols-1 sm:grid-cols-[minmax(0,1fr)_minmax(0,3fr)] sm:items-center gap-4 py-4">
-                <RowLabel htmlFor="useCustomEndpoint">Use My Own Endpoint</RowLabel>
-                <div className="flex items-center gap-3">
-                  <Checkbox
-                    id="useCustomEndpoint"
-                    checked={useCustomEndpoint}
-                    onCheckedChange={(c) => setUseCustomEndpoint(c === true)}
-                  />
-                  {!useCustomEndpoint && (
-                    <span className="text-xs text-muted-foreground">Off: run a model on this PC. On: point at your own API.</span>
-                  )}
-                </div>
-              </div>
-            )}
-
-            {/* Desktop + local model: model + runtime settings (with their own pinned footer). Otherwise the
-                preset selector + scrollable endpoint fields. */}
-            {desktop && !useCustomEndpoint ? (
-              <LocalModelPanel />
-            ) : (
-              <>
-              {/* Preset selector: swaps the whole endpoint field set. The immutable "Default" preset (the
-                  shared endpoint) is read-only; user presets are freely editable. */}
+              {/* Preset selector: swaps the whole endpoint field set. The read-only built-ins are the shared
+                  endpoint ("Default") and, on desktop, the bundled engine — which is a preset rather than a
+                  mode precisely so a single prompt can be routed to it while the rest go elsewhere. The
+                  selector stays visible for every preset, including the engine, or there'd be no way back. */}
               <div className="flex items-center gap-2 flex-shrink-0 pt-4">
                 <span className="text-sm text-muted-foreground">Preset</span>
                 {!activeTextEndpointPresetIsBuiltIn && (
@@ -1808,6 +1786,9 @@ An inspection aid for authoring and debugging; off by default.`}</HintInfo>
                   <Button variant="outline" size="sm" onClick={() => setTextPresetDialog({ mode: 'rename' })}>Rename</Button>
                 )}
               </div>
+              {/* The engine has no URL or token to edit — its runtime panel stands in for the field set. */}
+              {localModelActive ? <LocalModelPanel /> : (
+              <>
               <ScrollArea className="flex-1 min-h-0">
                 <div className="grid gap-4 py-4">
               <Row center label="Endpoint URL" htmlFor="endpointUrl">

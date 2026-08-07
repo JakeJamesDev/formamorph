@@ -10,20 +10,23 @@ import {
 } from '@/lib/imageGen/desktop';
 
 /**
- * Drives the desktop local-LLM engine lifecycle by mode. When the local model is active it applies the
- * saved load options and loads a model if none is running; when a custom endpoint is on it stops the
- * engine to free VRAM. Runs on mount and whenever the mode flips. Setting *changes* are applied by the
- * panel's Save & Reload button, not here — so dragging a slider doesn't reload the model. No-op off
- * desktop; renders nothing. Mount once near the app root (inside SettingsProvider).
+ * Drives the desktop local-LLM engine lifecycle. The engine runs whenever anything references it — it's the
+ * selected endpoint, or some prompt is routed to it — and stops otherwise, to free VRAM. Keying off
+ * "referenced" rather than "selected" is what lets one prompt run on the engine while the rest go outward;
+ * keyed off the selection alone, such a prompt would fire at a port this manager had just stopped.
+ *
+ * Runs on mount and whenever that changes. Setting *changes* are applied by the panel's Save & Reload
+ * button, not here — so dragging a slider doesn't reload the model. No-op off desktop; renders nothing.
+ * Mount once near the app root (inside SettingsProvider).
  */
 export function LocalEngineManager() {
-  const { localModelActive, localContextSize, localGpuLayers, localFlashAttention, localParallelRequests } = useSettings();
+  const { engineWanted, localContextSize, localGpuLayers, localFlashAttention, localParallelRequests } = useSettings();
 
   useEffect(() => {
     if (!isDesktop()) return;
     let cancelled = false;
     (async () => {
-      if (!localModelActive) {
+      if (!engineWanted) {
         await stopLocalLlm().catch(() => { /* ignore */ });
         return;
       }
@@ -39,7 +42,7 @@ export function LocalEngineManager() {
     })();
     return () => { cancelled = true; };
     // eslint-disable-next-line react-hooks/exhaustive-deps -- setting changes apply via Save & Reload, not here
-  }, [localModelActive]);
+  }, [engineWanted]);
 
   return null;
 }
