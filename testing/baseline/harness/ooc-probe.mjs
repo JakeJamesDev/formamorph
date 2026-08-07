@@ -6,12 +6,14 @@
 // Arms (all three run by default, so one invocation is the full A/B):
 //   base  — the pre-change prompt: the OOC guideline stripped from the system prompt, no rider
 //   sys   — the system-prompt guideline only (arm A)
-//   rider — guideline + OOC_DIRECTIVE appended to the bracket turn's user message (arm B, ships)
+//   rider — guideline + OOC_DIRECTIVE appended AFTER the action in the bracket turn's user message
+//   pre   — same rider placed BEFORE the action
 //
 // Metrics per run: COMPLY (directed outcome appears), DEFY (the braked/undirected outcome appears),
-// LEAK (bracket chars or author-meta words in the prose). Controls report bracket/meta only.
+// LEAK (bracket chars or author-meta words in the prose), ADDRESS (breaking frame to talk to the player
+// about the convention, e.g. "go ahead and send a [] action"). Controls report bracket/meta/address.
 //
-// Usage:  node ooc-probe.mjs [--endpoint URL] [--model default] [--runs 3] [--max 380] [--only mount] [--arm rider]
+// Usage:  node ooc-probe.mjs [--endpoint URL] [--model default] [--runs 3] [--max 380] [--only mount] [--arm rider,pre]
 
 import { readFile } from "node:fs/promises";
 import path from "node:path";
@@ -129,9 +131,10 @@ const renderSys = (sysText, c) =>
 const ARMS = {
   base: { sys: SYS_BASE, rider: false },
   sys: { sys: SYS, rider: false },
-  rider: { sys: SYS, rider: true },
+  rider: { sys: SYS, rider: "after" },
+  pre: { sys: SYS, rider: "before" },
 };
-const armNames = armPick ? [armPick] : Object.keys(ARMS);
+const armNames = armPick ? armPick.split(",") : Object.keys(ARMS);
 if (armNames.some((a) => !ARMS[a])) throw new Error(`unknown arm; expected one of ${Object.keys(ARMS).join("/")}`);
 
 async function call(messages, seed) {
@@ -148,7 +151,10 @@ async function call(messages, seed) {
 }
 
 const BRACKET_RE = /[\[\]]/;
-const META_RE = /\b(author\w*|out-of-character|OOC)\b/;
+// Narrow, not author\w* - that also matches "authority", ordinary prose in this genre.
+const META_RE = /\b(author|authors|author'?s|authorial|out-of-character|OOC)\b/i;
+// Breaking frame to talk to the player about the convention instead of narrating the turn.
+const ADDRESS_RE = /\b(go ahead and|feel free to|let me know|just (send|tell|give)|you can (send|use|give|tell)|i'?ll (act|play|write|narrate)|ready when you are|square[- ]bracket)\b/i;
 const hasBracket = (c) => /\[[^\]]+\]/.test(c.action);
 // Leak of the direction's own distinctive wording into the prose (quoted or narrated as speech).
 const bracketPhrase = (c) => (c.action.match(/\[([^\]]+)\]/) || [])[1] ?? "";
@@ -159,14 +165,18 @@ await call([{ role: "system", content: renderSys(SYS, pick[0]) }, { role: "user"
 
 for (const armName of armNames) {
   const arm = ARMS[armName];
-  const T = { bRuns: 0, comply: 0, defy: 0, leak: 0, cRuns: 0, cBracket: 0, cMeta: 0 };
+  const T = { bRuns: 0, comply: 0, defy: 0, leak: 0, addr: 0, cRuns: 0, cBracket: 0, cMeta: 0, cAddr: 0 };
   console.log(`\n======== arm: ${armName} ========`);
   for (const c of pick) {
     const bracketed = hasBracket(c);
     console.log(`\n#### ${c.name}${bracketed ? "" : " (control)"}`);
     for (let r = 0; r < runs; r++) {
       // Production shape: bare action as the user turn; the rider arm appends OOC_DIRECTIVE on bracket turns.
-      const userContent = bracketed && arm.rider ? `${c.action}\n\n${OOC_DIRECTIVE}` : c.action;
+      const userContent = !bracketed || !arm.rider
+        ? c.action
+        : arm.rider === "before"
+          ? `${OOC_DIRECTIVE}\n\n${c.action}`
+          : `${c.action}\n\n${OOC_DIRECTIVE}`;
       let out, err = null;
       try {
         out = await call([
@@ -185,16 +195,19 @@ for (const armName of armNames) {
         if (comply) T.comply++;
         if (defy) T.defy++;
         if (leak) T.leak++;
-        console.log(`  #${r + 1} ${comply ? "COMPLY" : "no-comply"}${defy ? " · DEFY" : ""}${leak ? " · LEAK" : ""}`);
+        const addr = ADDRESS_RE.test(out);
+        if (addr) T.addr++;
+        console.log(`  #${r + 1} ${comply ? "COMPLY" : "no-comply"}${defy ? " · DEFY" : ""}${leak ? " · LEAK" : ""}${addr ? " · ADDRESS" : ""}`);
       } else {
         T.cRuns++;
-        const b = BRACKET_RE.test(out), m = META_RE.test(out);
+        const b = BRACKET_RE.test(out), m = META_RE.test(out), a = ADDRESS_RE.test(out);
         if (b) T.cBracket++;
         if (m) T.cMeta++;
-        console.log(`  #${r + 1} ${b || m ? `GUARD-HIT${b ? " bracket" : ""}${m ? " meta" : ""}` : "clean"}`);
+        if (a) T.cAddr++;
+        console.log(`  #${r + 1} ${b || m || a ? `GUARD-HIT${b ? " bracket" : ""}${m ? " meta" : ""}${a ? " address" : ""}` : "clean"}`);
       }
       console.log(out.split("\n").filter(Boolean).map((l) => "      " + l).join("\n"));
     }
   }
-  console.log(`\n==== arm ${armName} · bracket turns: comply ${T.comply}/${T.bRuns} · defy ${T.defy}/${T.bRuns} · leak ${T.leak}/${T.bRuns} · controls: bracket ${T.cBracket}/${T.cRuns} · meta ${T.cMeta}/${T.cRuns} ====`);
+  console.log(`\n==== arm ${armName} · bracket turns: comply ${T.comply}/${T.bRuns} · defy ${T.defy}/${T.bRuns} · leak ${T.leak}/${T.bRuns} · address ${T.addr}/${T.bRuns} · controls: bracket ${T.cBracket}/${T.cRuns} · meta ${T.cMeta}/${T.cRuns} · address ${T.cAddr}/${T.cRuns} ====`);
 }
