@@ -72,7 +72,7 @@ All four slices are in, four gates green. Deviations from the spec above, and wh
 |---|---|---|
 | Editor lists show an **author preview** (resolved values) | Lists/trees/search show `Keeper{Town}` — the placeholder **by name** | A Wildcard preview re-rolls per call, so two rows of one list would disagree; and a resolved value is indistinguishable from a literal name. Braces say "decided at play time". |
 | Palette chips **click or drag** into a field | Click only | Dragging in from outside would need cross-component plumbing through `PromptDragContext`, which currently only relocates a chip *within* one editor. |
-| Tag chips edit inline | Token-bearing tags are remove-and-re-add | A plain text input can't represent a chip; showing the raw token invites hand-editing a UUID. Plain tags still rename inline. |
+| Tag chips edit inline | ~~Token-bearing tags are remove-and-re-add~~ **Corrected 2026-08-07** — double-click now opens a chip editor on the tag, so it edits in place and its chips keep their World/Unique pop-out. The original deviation was wrong: it read as a dead double-click, and it made a placement's mode unreachable once committed. |
 | Author-time activation tester uses preview rolls | Not needed | No such surface exists — `activation-tester-spec.md` is an unbuilt spec. `explainActivation` runs only in `GameViewer`, which is resolved. |
 | — | Regex keyword fields opt out of chips | `{` is already a quantifier in a pattern. |
 

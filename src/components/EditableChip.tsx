@@ -4,6 +4,11 @@ import { CSS } from "@dnd-kit/utilities";
 import { cn } from "@/lib/utils";
 import { Chip, CHIP_BASE } from "./Chip";
 import { SuggestionList } from "./SuggestionList";
+import ChipInput from "@/components/prompt/ChipInput";
+import { placeholderVocabulary } from "@/lib/chipVocabulary";
+import { hasPlaceholders } from "@/lib/placeholders";
+import { PLACEHOLDER_TRIGGER } from "@/lib/placeholderInsert";
+import type { Placeholder } from "@/types";
 
 /**
  * A chip that becomes an inline text field on double-click (single tap on touch, where there is no
@@ -15,7 +20,7 @@ import { SuggestionList } from "./SuggestionList";
  * `onActivate` claims the single click/tap for the host (a per-chip popover); text editing then stays on
  * double-click, so the popover must offer its own way to rename on touch. `suffix` trails the label.
  */
-export function EditableChip({ value, onCommit, onRemove, sortable = false, getSuggestions, onActivate, suffix, label, editable = true }: {
+export function EditableChip({ value, onCommit, onRemove, sortable = false, getSuggestions, onActivate, suffix, label, editable = true, placeholders }: {
   value: string;
   onCommit: (next: string) => void;
   onRemove: (value: string) => void;
@@ -25,9 +30,11 @@ export function EditableChip({ value, onCommit, onRemove, sortable = false, getS
   suffix?: string;
   /** What to show, when the stored value isn't readable as-is (a value holding placeholder tokens). */
   label?: string;
-  /** False for a value the plain text editor can't represent — removing and re-adding is the way to change
-   *  it, rather than exposing raw tokens in a text box. */
+  /** False to make the chip read-only. */
   editable?: boolean;
+  /** Given these, editing opens a chip editor instead of a text input, so a value holding placeholders can
+   *  be edited in place — and its chips keep their World/Unique pop-out while it is open. */
+  placeholders?: Placeholder[];
 }) {
   const [editing, setEditing] = useState(false);
   const [text, setText] = useState(value);
@@ -76,6 +83,30 @@ export function EditableChip({ value, onCommit, onRemove, sortable = false, getS
   };
 
   const shown = label ?? value;
+
+  // A plain text input cannot represent a chip, so a value that holds one (or a list that may gain one)
+  // edits in the chip editor instead. Same commit/cancel contract: Enter or blur commits, Escape abandons,
+  // emptying it removes the chip.
+  const chipEditing = !!placeholders?.length || hasPlaceholders(value);
+
+  if (editing && chipEditing) {
+    return (
+      <span className="relative inline-flex max-w-full min-w-[8rem] align-middle">
+        <ChipInput
+          value={text}
+          onChange={setText}
+          vocabulary={placeholderVocabulary(placeholders ?? [])}
+          trigger={PLACEHOLDER_TRIGGER}
+          autoFocus
+          onSubmit={() => finish(text)}
+          onBlur={() => finish(text)}
+          onCancel={cancel}
+          ariaLabel={`Edit ${label ?? value}`}
+          className="min-h-0 rounded border bg-secondary px-1.5 py-0.5 text-xs"
+        />
+      </span>
+    );
+  }
 
   if (editing) {
     return (
@@ -127,9 +158,7 @@ export function EditableChip({ value, onCommit, onRemove, sortable = false, getS
           const kind = pointerType.current ?? (e.nativeEvent as PointerEvent).pointerType;
           if (kind === "touch" || kind === "pen") startEdit();
         },
-        title: !editable
-          ? "Holds a placeholder — remove and re-add to change it"
-          : onActivate ? "Click to open, double-click to rename" : "Tap or double-click to edit",
+        title: onActivate ? "Click to open, double-click to rename" : "Tap or double-click to edit",
       }}
       grabbable={sortable}
     />

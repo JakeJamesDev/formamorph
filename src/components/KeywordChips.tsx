@@ -164,7 +164,7 @@ export function KeywordChips({
                   value={kw}
                   sortable
                   label={hasPlaceholders(kw) ? labelPlaceholders(kw, placeholders ?? []) : undefined}
-                  editable={!hasPlaceholders(kw)}
+                  placeholders={placeholders}
                   suffix={chipSuffix?.(kw)}
                   onActivate={onChipClick}
                   onRemove={removeKeyword}
