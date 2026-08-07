@@ -16,6 +16,7 @@ import {
 } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
 import { restrictToVerticalAxis, restrictToFirstScrollableAncestor } from '@dnd-kit/modifiers';
+import { type ReactNode } from 'react';
 import { GripVertical, Copy, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
@@ -29,6 +30,7 @@ export interface SortableListItem {
  *  optional enabled checkbox). Shared by the World Editor's item lists and the standalone placeholder editor. */
 export function SortableRow({
   item,
+  label,
   selected,
   onSelect,
   onRemove,
@@ -37,6 +39,9 @@ export function SortableRow({
   onToggleEnabled,
 }: {
   item: SortableListItem;
+  /** Overrides the rendered name — a node, so a name holding a placeholder can draw it as a chip. The
+   *  plain `item.name` still names the row for screen readers and the delete confirmation. */
+  label?: ReactNode;
   selected: boolean;
   onSelect: (id: string) => void;
   onRemove: (id: string) => void;
@@ -79,7 +84,7 @@ export function SortableRow({
           title={enabled === false ? 'Disabled — click to enable' : 'Enabled — click to disable'}
         />
       )}
-      <span className="flex-grow">{item.name}</span>
+      <span className="flex-grow">{label ?? item.name}</span>
       <Button
         variant="ghost"
         size="icon"

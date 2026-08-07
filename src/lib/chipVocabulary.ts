@@ -10,7 +10,7 @@ import {
   type PromptVariable, type PromptVariantAxis,
 } from './promptVariables';
 import {
-  parsePlaceholderText, decodePlaceholderToken, encodePlaceholderToken,
+  parsePlaceholderText, decodePlaceholderToken, encodePlaceholderToken, placeholderValueSummary,
 } from './placeholders';
 
 /**
@@ -25,6 +25,9 @@ export interface ChipVocabulary {
   isKnown(token: string): boolean;
   /** Friendly chip label. */
   label(token: string): string;
+  /** What the chip *is*, when its label shows something else (a placeholder chip labels itself with its
+   *  values). Names the pop-out and the chip's tooltip. Defaults to `label`. */
+  identity?(token: string): string;
   /** The active non-default mode label shown in parens on the chip, or null. */
   variantLabel(token: string): string | null;
   /** Accent color, or undefined. */
@@ -137,10 +140,18 @@ export function placeholderVocabulary(placeholders: Placeholder[]): ChipVocabula
   return {
     parse: parsePlaceholderText,
     isKnown: (t) => decodePlaceholderToken(t) != null,
+    // Values, not the name: inside an open field the useful thing is what the chip will become. The
+    // placeholder it came from stays one hover (or one click, in the pop-out) away — see `identity`.
     label: (t) => {
       const d = decodePlaceholderToken(t);
       if (!d) return t;
-      return byId.get(d.id)?.name ?? '(missing)';
+      const ph = byId.get(d.id);
+      if (!ph) return '(missing)';
+      return ph.values.length ? placeholderValueSummary(ph) : ph.name;
+    },
+    identity: (t) => {
+      const d = decodePlaceholderToken(t);
+      return (d && byId.get(d.id)?.name) || '(missing)';
     },
     variantLabel: (t) => (decodePlaceholderToken(t)?.mode === 'unique' ? 'Unique' : null),
     color: (t) => {

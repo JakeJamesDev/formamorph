@@ -1,4 +1,4 @@
-import { useLayoutEffect, useMemo, useRef, useState } from "react";
+import { useLayoutEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { useSortable } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 import { cn } from "@/lib/utils";
@@ -28,8 +28,9 @@ export function EditableChip({ value, onCommit, onRemove, sortable = false, getS
   getSuggestions?: (query: string) => string[];
   onActivate?: (value: string) => void;
   suffix?: string;
-  /** What to show, when the stored value isn't readable as-is (a value holding placeholder tokens). */
-  label?: string;
+  /** What to show, when the stored value isn't readable as-is (a value holding placeholder tokens). A node,
+   *  so the placeholders inside it can be drawn as chips; `value` still names the chip for a screen reader. */
+  label?: ReactNode;
   /** False to make the chip read-only. */
   editable?: boolean;
   /** Given these, editing opens a chip editor instead of a text input, so a value holding placeholders can
@@ -83,6 +84,8 @@ export function EditableChip({ value, onCommit, onRemove, sortable = false, getS
   };
 
   const shown = label ?? value;
+  // A node label carries no readable text, so the stored value names the remove button and the edit field.
+  const accessibleName = typeof shown === 'string' ? shown : value;
 
   // A plain text input cannot represent a chip, so a value that holds one (or a list that may gain one)
   // edits in the chip editor instead. Same commit/cancel contract: Enter or blur commits, Escape abandons,
@@ -101,7 +104,7 @@ export function EditableChip({ value, onCommit, onRemove, sortable = false, getS
           onSubmit={() => finish(text)}
           onBlur={() => finish(text)}
           onCancel={cancel}
-          ariaLabel={`Edit ${label ?? value}`}
+          ariaLabel={`Edit ${accessibleName}`}
           className="min-h-0 rounded border bg-secondary px-1.5 py-0.5 text-xs"
         />
       </span>
@@ -120,7 +123,7 @@ export function EditableChip({ value, onCommit, onRemove, sortable = false, getS
           // Grows with the text, but never past the field — a long keyword would otherwise run off a phone screen.
           style={{ width: `${Math.max(text.length + 1, 3)}ch`, maxWidth: "100%" }}
           className={cn(CHIP_BASE, "border bg-secondary text-secondary-foreground outline-none ring-1 ring-ring")}
-          aria-label={`Edit ${value}`}
+          aria-label={`Edit ${accessibleName}`}
         />
         {suggestions.length > 0 && (
           <SuggestionList items={suggestions} active={active} onPick={finish} onHover={setActive} className="left-0 top-full min-w-[160px]" />
@@ -131,7 +134,7 @@ export function EditableChip({ value, onCommit, onRemove, sortable = false, getS
 
   return (
     <Chip
-      label={suffix ? `${shown} ${suffix}` : shown}
+      label={suffix ? <>{shown} {suffix}</> : shown}
       removeLabel={value}
       onRemove={onRemove}
       innerRef={sortable ? setNodeRef : undefined}

@@ -1,6 +1,6 @@
 /* eslint-disable react-refresh/only-export-components -- this module intentionally exports the chip
    components alongside the shared CHIP_BASE constant and paste helpers. */
-import { type CSSProperties } from "react";
+import { type CSSProperties, type ReactNode } from "react";
 import { X } from "lucide-react";
 import { useSortable } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
@@ -44,9 +44,11 @@ export function replaceChipValue(list: string[], old: string, next: string): str
 
 /** A removable rounded-square chip. Neutral by default; pass `className` for a semantic color.
  *  Omit `onRemove` to render a non-removable chip (e.g. inside a read-only prompt editor). */
-export function Chip({ label, removeLabel, onRemove, className, innerRef, style, dragProps, grabbable }: {
-  label: string;
-  /** The value handed to `onRemove`, when the visible `label` is decorated (e.g. carries a percentage). */
+export function Chip({ label, removeLabel, onRemove, className, innerRef, style, dragProps, grabbable, title }: {
+  /** A node, not just text, so a chip can hold a nested chip (a placeholder inside a name). */
+  label: ReactNode;
+  /** The value handed to `onRemove`, and the accessible name when `label` is decorated (it carries a
+   *  percentage) or is a node with no readable text of its own. */
   removeLabel?: string;
   onRemove?: (label: string) => void;
   className?: string;
@@ -54,11 +56,16 @@ export function Chip({ label, removeLabel, onRemove, className, innerRef, style,
   style?: CSSProperties;
   dragProps?: Record<string, unknown>;
   grabbable?: boolean;
+  /** Hover text — what the chip is, when its label shows something else. */
+  title?: string;
 }) {
+  // A node label has no string form to name the remove button with, so `removeLabel` carries it.
+  const name = removeLabel ?? (typeof label === 'string' ? label : '');
   return (
     <span
       ref={innerRef}
       style={style}
+      title={title}
       {...dragProps}
       className={cn(
         CHIP_BASE,
@@ -72,9 +79,9 @@ export function Chip({ label, removeLabel, onRemove, className, innerRef, style,
         <button
           type="button"
           onPointerDown={(e) => e.stopPropagation()}
-          onClick={() => onRemove(removeLabel ?? label)}
+          onClick={() => onRemove(name)}
           className="hover:text-destructive"
-          aria-label={`Remove ${removeLabel ?? label}`}
+          aria-label={`Remove ${name}`}
         >
           <X className="h-3 w-3" />
         </button>

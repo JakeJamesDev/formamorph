@@ -18,9 +18,10 @@ import { commaSplitCandidate, splitPastedChips, replaceChipValue } from '@/compo
 import { EditableChip } from '@/components/EditableChip';
 import ChipInput from '@/components/prompt/ChipInput';
 import { placeholderVocabulary } from '@/lib/chipVocabulary';
-import { hasPlaceholders, describePlaceholders } from '@/lib/placeholders';
+import { hasPlaceholders } from '@/lib/placeholders';
 import { PLACEHOLDER_TRIGGER, placeholderHint } from '@/lib/placeholderInsert';
 import type { Placeholder } from '@/types';
+import PlaceholderText from '@/components/prompt/PlaceholderText';
 
 /**
  * An Enter-separated tag input: values render as editable, drag-reorderable chips; Backspace on an empty
@@ -163,7 +164,7 @@ export function KeywordChips({
                   key={kw}
                   value={kw}
                   sortable
-                  label={hasPlaceholders(kw) ? describePlaceholders(kw, placeholders ?? []) : undefined}
+                  label={hasPlaceholders(kw) ? <PlaceholderText text={kw} placeholders={placeholders ?? []} /> : undefined}
                   placeholders={placeholders}
                   suffix={chipSuffix?.(kw)}
                   onActivate={onChipClick}

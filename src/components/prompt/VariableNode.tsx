@@ -64,6 +64,8 @@ function VariableChip({ nodeKey, token }: { nodeKey: NodeKey; token: string }) {
   // Reflect the mode in the chip text so it's readable at a glance, not only in the pop-out.
   const variantLabel = vocab.variantLabel(token);
   const label = variantLabel ? `${vocab.label(token)} (${variantLabel})` : vocab.label(token);
+  // What the chip is, when its label shows something else (a placeholder chip labels itself with its values).
+  const identity = vocab.identity?.(token) ?? vocab.label(token);
 
   const axes = known ? vocab.axes(token) : [];
   const selection = known ? vocab.selection(token) : {};
@@ -123,6 +125,8 @@ function VariableChip({ nodeKey, token }: { nodeKey: NodeKey; token: string }) {
         <span draggable={editable} onDragStart={editable ? handleDragStart : undefined} className="inline-block align-baseline">
           <Chip
             label={label}
+            removeLabel={identity}
+            title={identity}
             onRemove={editable ? remove : undefined}
             grabbable={editable}
             style={color ? { backgroundColor: color, color: '#000' } : undefined}
@@ -164,7 +168,7 @@ function VariableChip({ nodeKey, token }: { nodeKey: NodeKey; token: string }) {
               return (
                 <div key={axis.id} className="space-y-2">
                   {/* One heading per axis (its own label when multi-axis, else the chip name). */}
-                  <p className="text-xs font-medium">{axes.length > 1 ? axis.label : `${vocab.label(token)} mode`}</p>
+                  <p className="text-xs font-medium">{axes.length > 1 ? axis.label : `${identity} mode`}</p>
                   {/* `columns` wraps a long option list onto rows of that width, centered — so a final
                       short row sits under the middle of the one above rather than hanging off the left. */}
                   <ToggleGroup
