@@ -26,6 +26,7 @@ const active: ActiveEndpointState = {
   localEngine: false,
   maxTokens: 700,
   engineMaxTokens: 512,
+  engineModelId: 'my-loaded.gguf',
 };
 
 describe('routing lookup', () => {
@@ -72,7 +73,7 @@ describe('resolvePromptEndpoint', () => {
     const builtInActive: ActiveEndpointState = {
       activeId: DEFAULT_TEXT_PRESET_ID,
       values: DEFAULT_TEXT_ENDPOINT_VALUES, isBuiltIn: true, localEngine: false,
-      maxTokens: DEFAULT_TEXT_ENDPOINT_VALUES.maxTokens, engineMaxTokens: 512,
+      maxTokens: DEFAULT_TEXT_ENDPOINT_VALUES.maxTokens, engineMaxTokens: 512, engineModelId: 'my-loaded.gguf',
     };
     const r = resolvePromptEndpoint('statUpdates', { statUpdates: 'p1' }, store, builtInActive);
     expect(r.endpoint).toBe(userPreset.values.endpoint);
@@ -99,7 +100,7 @@ describe('resolvePromptEndpoint', () => {
     const engineActive: ActiveEndpointState = {
       activeId: BUILTIN_ENGINE_PRESET_ID,
       values: BUILTIN_ENGINE_VALUES, isBuiltIn: true, localEngine: true,
-      maxTokens: 512, engineMaxTokens: 512,
+      maxTokens: 512, engineMaxTokens: 512, engineModelId: 'my-loaded.gguf',
     };
 
     beforeEach(() => { (window as unknown as { formamorphDesktop?: unknown }).formamorphDesktop = {}; });
@@ -129,6 +130,18 @@ describe('resolvePromptEndpoint', () => {
 
     // Default used to BE the engine on desktop; it is the hosted endpoint on both platforms now, so a
     // Default-pinned prompt must leave the machine rather than quietly hitting localhost.
+    // A request naming a placeholder made /models probes report "reachable, but no such model" even with a
+    // GGUF loaded, because the engine lists it under its real id.
+    it('names the GGUF the engine actually has loaded', () => {
+      expect(resolvePromptEndpoint('narration', {}, store, engineActive).model).toBe('my-loaded.gguf');
+      expect(resolvePromptEndpoint('summary', { summary: BUILTIN_ENGINE_PRESET_ID }, store, active).model).toBe('my-loaded.gguf');
+    });
+
+    it('falls back to the nominal name while the engine has nothing loaded', () => {
+      const stopped: ActiveEndpointState = { ...engineActive, engineModelId: '' };
+      expect(resolvePromptEndpoint('narration', {}, store, stopped).model).toBe(BUILTIN_ENGINE_VALUES.model);
+    });
+
     it('treats Default as the hosted endpoint, not the engine', () => {
       const r = resolvePromptEndpoint('narration', { narration: DEFAULT_TEXT_PRESET_ID }, store, engineActive);
       expect(r.localEngine).toBe(false);

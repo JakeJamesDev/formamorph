@@ -221,7 +221,18 @@ async function router(req, res) {
   if (req.method === 'OPTIONS') { cors(res); res.writeHead(204); return res.end(); }
   const url = new URL(req.url, 'http://localhost');
   if (req.method === 'GET' && url.pathname.endsWith('/models')) {
-    return sendJson(res, 200, { object: 'list', data: [{ id: state.modelId, object: 'model', owned_by: 'formamorph' }] });
+    // This matches ANY */models path, including LM Studio's native /api/v0/models — which callers probe
+    // first and read `state` from. Reporting it keeps a reachability check honest about a loaded model
+    // whatever name the request asks for; without it a probe reads "reachable, but no such model".
+    return sendJson(res, 200, {
+      object: 'list',
+      data: [{
+        id: state.modelId,
+        object: 'model',
+        owned_by: 'formamorph',
+        state: state.status === 'ready' ? 'loaded' : 'not-loaded',
+      }],
+    });
   }
   if (req.method === 'POST' && url.pathname.endsWith('/chat/completions')) {
     return handleChatCompletion(req, res);
