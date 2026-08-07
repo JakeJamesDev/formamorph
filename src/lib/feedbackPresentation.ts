@@ -60,17 +60,42 @@ export const DEFAULT_CATEGORY: Record<FeedbackType, FeedbackCategory> = {
 /** The status filter's "no filter" value. A `Select` cannot hold an empty string as an item value. */
 export const ANY_STATUS = 'any';
 
+/** The status filter's "still needs looking at" value — every state that isn't a closed one. */
+export const UNRESOLVED_STATUS = 'unresolved';
+
+/**
+ * The states that still want attention, per branch: everything a thread can sit in short of being
+ * closed. A bug is closed by being fixed or turned down; a suggestion by being built or turned down.
+ */
+export const UNRESOLVED_STATUSES: Record<FeedbackType, FeedbackStatus[]> = {
+  bug: BUG_STATUSES.filter((value) => value !== 'resolved' && value !== 'wontfix'),
+  suggestion: SUGGESTION_STATUSES.filter((value) => value !== 'done' && value !== 'declined'),
+};
+
+/** How the unresolved filter reads over each branch — a suggestion is never "unresolved". */
+export const UNRESOLVED_LABELS: Record<FeedbackType, string> = {
+  bug: 'Unresolved',
+  suggestion: 'Still Open',
+};
+
 /** The category filter's "no filter" value, for the same reason. */
 export const ANY_CATEGORY = 'any';
 
 /**
- * The status filter as the list wants it: a real status, or nothing at all.
+ * The status filter as the list wants it: one real status, the set that is still open, or nothing at all.
  *
  * @param value - The dropdown's current value
- * @returns The status to filter by, or undefined for every status
+ * @param type - Which branch is being filtered, which decides what counts as closed
+ * @returns The status or statuses to filter by, or undefined for every status
  */
-export const statusFilterValue = (value: FeedbackStatus | typeof ANY_STATUS): FeedbackStatus | undefined =>
-  (value === ANY_STATUS ? undefined : value);
+export const statusFilterValue = (
+  value: FeedbackStatus | typeof ANY_STATUS | typeof UNRESOLVED_STATUS,
+  type: FeedbackType,
+): FeedbackStatus | FeedbackStatus[] | undefined => {
+  if (value === ANY_STATUS) return undefined;
+  if (value === UNRESOLVED_STATUS) return UNRESOLVED_STATUSES[type];
+  return value;
+};
 
 /**
  * The category filter as the list wants it: a real category, or nothing at all.

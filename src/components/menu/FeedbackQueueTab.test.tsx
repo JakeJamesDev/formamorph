@@ -100,10 +100,11 @@ describe('what the tab does not say', () => {
 
 describe('what each queue opens on', () => {
   it('shows the bug queue the open work', async () => {
-    // A queue of everything ever resolved is not a queue.
+    // A queue of everything ever resolved is not a queue — but nor is one that hides a report waiting
+    // on its reporter, or one already reproduced. Both are still somebody's to finish.
     render(<FeedbackQueueTab active type="bug" />);
 
-    await waitFor(() => expect(firstQuery()).toMatchObject({ status: 'open' }));
+    await waitFor(() => expect(firstQuery()).toMatchObject({ status: ['open', 'need_info', 'confirmed'] }));
   });
 
   it('shows the suggestion queue everything, ranked', async () => {

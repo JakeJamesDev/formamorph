@@ -15,7 +15,25 @@ interface ErrorBody {
 export interface FeedbackPage {
   threads: FeedbackThread[];
   total: number;
+  /**
+   * Set when a multi-status page could not be assembled in full because the server returned fewer rows
+   * than asked for. The page shown is short, so the reader has to be told rather than left to assume it
+   * is the whole of it.
+   */
+  truncated?: boolean;
 }
+
+/**
+ * The server's own ordering, reproduced so separately-fetched lists can be merged back into one.
+ *
+ * @param sort - The sort asked of the server; anything but `votes` is newest first, its default
+ * @returns A comparator over two threads
+ */
+const compareThreads = (sort?: string) => (a: FeedbackThread, b: FeedbackThread): number => {
+  // Most-voted ties are broken by date, so equal-vote rows keep a stable, meaningful order.
+  if (sort === 'votes' && a.votes !== b.votes) return b.votes - a.votes;
+  return Date.parse(b.createdAt) - Date.parse(a.createdAt);
+};
 
 /**
  * User-filed feedback: bug reports and suggestions, and the comment thread on each.
@@ -72,11 +90,15 @@ class FeedbackService {
     type: FeedbackType;
     page?: number;
     limit?: number;
-    status?: FeedbackStatus;
+    status?: FeedbackStatus | FeedbackStatus[];
     category?: FeedbackCategory;
     scope?: 'all';
     sort?: string;
   }): Promise<FeedbackPage> {
+    if (Array.isArray(status)) {
+      return this.listAcrossStatuses({ type, page, limit, statuses: status, category, scope, sort });
+    }
+
     const query = new URLSearchParams({ type, page: String(page), limit: String(limit) });
     if (status) query.set('status', status);
     if (category) query.set('category', category);
@@ -87,6 +109,39 @@ class FeedbackService {
     const body = await this.unwrap<{ data: FeedbackThread[]; total: number }>(response, 'Failed to load these');
 
     return { threads: body.data, total: body.total };
+  }
+
+  /**
+   * A page spanning several statuses at once, assembled from one request per status.
+   *
+   * The API takes a single status, so a filter like "everything not closed" has to be asked for as its
+   * parts. The parts are disjoint — a thread sits in exactly one status — so the totals sum without
+   * double counting, and each part comes back ordered by the same key. Taking the first `page * limit`
+   * of every part therefore guarantees the requested page is somewhere in the merge: no row that
+   * belongs on it can be sitting further down a list than that.
+   *
+   * @param options - As `list`, with the statuses to span in place of the one
+   */
+  private async listAcrossStatuses({ type, page, limit, statuses, category, scope, sort }: {
+    type: FeedbackType;
+    page: number;
+    limit: number;
+    statuses: FeedbackStatus[];
+    category?: FeedbackCategory;
+    scope?: 'all';
+    sort?: string;
+  }): Promise<FeedbackPage> {
+    const reach = page * limit;
+    const parts = await Promise.all(statuses.map((status) =>
+      this.list({ type, page: 1, limit: reach, status, category, scope, sort })));
+
+    const total = parts.reduce((sum, part) => sum + part.total, 0);
+    // A part that came back shorter than both the reach and its own total means the server capped the
+    // page size, so the merge is missing rows it should have had.
+    const truncated = parts.some((part) => part.threads.length < Math.min(reach, part.total));
+
+    const merged = parts.flatMap((part) => part.threads).sort(compareThreads(sort));
+    return { threads: merged.slice((page - 1) * limit, page * limit), total, truncated };
   }
 
   /** One thread with its comments. Reading marks it seen for anyone it badges. */

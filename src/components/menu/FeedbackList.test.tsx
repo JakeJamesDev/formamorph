@@ -3,7 +3,7 @@ import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { FeedbackList } from './FeedbackList';
 import { FeedbackQueueTab } from './FeedbackQueueTab';
 import { MyFeedbackTab } from './MyFeedbackTab';
-import { ANY_STATUS, statusFilterValue } from '@/lib/feedbackPresentation';
+import { ANY_STATUS, UNRESOLVED_STATUS, statusFilterValue } from '@/lib/feedbackPresentation';
 import FeedbackService from '@/services/FeedbackService';
 import type { FeedbackThread } from '@/types';
 
@@ -164,22 +164,30 @@ describe('the list', () => {
 });
 
 describe('the admin queue', () => {
-  it('asks for everyone’s reports, open ones first', async () => {
-    // The default filter is the queue that needs work, not the whole archive.
+  it('asks for everyone’s reports, unresolved ones first', async () => {
+    // The default filter is the queue that needs work, not the whole archive — and a report waiting on
+    // its reporter or already reproduced is work nobody has done yet.
     const list = stubList([report()]);
 
     render(<FeedbackQueueTab type="bug" active />);
 
     await waitFor(() => expect(list).toHaveBeenCalledWith(
-      expect.objectContaining({ scope: 'all', status: 'open' })
+      expect.objectContaining({ scope: 'all', status: ['open', 'need_info', 'confirmed'] })
     ));
   });
 
   it('drops the filter when All statuses is chosen', () => {
     // Sent as nothing rather than the sentinel, which the server would ignore as an unknown status —
     // right by accident, and wrong the moment it starts rejecting them instead.
-    expect(statusFilterValue(ANY_STATUS)).toBeUndefined();
-    expect(statusFilterValue('resolved')).toBe('resolved');
+    expect(statusFilterValue(ANY_STATUS, 'bug')).toBeUndefined();
+    expect(statusFilterValue('resolved', 'bug')).toBe('resolved');
+  });
+
+  it('asks for every state short of closed when Unresolved is chosen', () => {
+    // The closed pair differs per branch: a bug is fixed or turned down, a suggestion built or turned
+    // down. Naming them here means a new status added later is treated as open until somebody says so.
+    expect(statusFilterValue(UNRESOLVED_STATUS, 'bug')).toEqual(['open', 'need_info', 'confirmed']);
+    expect(statusFilterValue(UNRESOLVED_STATUS, 'suggestion')).toEqual(['open', 'considering', 'planned']);
   });
 
   it('passes a chosen status straight through to the list', async () => {
