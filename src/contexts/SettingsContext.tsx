@@ -34,7 +34,8 @@ import {
 import {
   emptyStore, presetStoreCodec, activeValues, isBuiltInActive, activeStyle, BUILTIN_PRESETS,
   setActive as setActivePreset, addPreset as addPresetOp, renamePreset as renamePresetOp, deletePreset as deletePresetOp, resetPreset as resetPresetOp, updateValue,
-  activeSamplers, activeReasoning, activeReasoningBudget, activeVerbatim, updateSamplers, updateReasoning, updateReasoningBudget, updateVerbatim, foldTuningIntoUserPresets,
+  activeSamplers, activeReasoning, activeReasoningBudget, activeVerbatim, activePromptEndpoints,
+  updateSamplers, updateReasoning, updateReasoningBudget, updateVerbatim, updatePromptEndpoints, foldTuningIntoUserPresets,
   addFullPreset, replacePreset,
   type PromptPresetStore, type PromptValues, type VerbatimMap, type PromptPreset,
 } from '../lib/promptPresets';
@@ -43,9 +44,9 @@ import { resolvePinnedPreset } from '../lib/worldPromptPreset';
 import { buildStyledValues } from '../lib/sectionStyle';
 import { defaultPromptSampler, type PromptSamplerMap, type PromptSampler } from '../lib/promptSamplers';
 import {
-  promptEndpointMapCodec, resolvePromptEndpoint, routedPresetId, endpointSignature,
-  dropPreset as dropRoutedPreset, setPromptEndpoint as setRoutedEndpoint,
-  type PromptEndpointMap, type ResolvedPromptEndpoint,
+  resolvePromptEndpoint, endpointSignature,
+  setPromptEndpoint as setRoutedEndpoint,
+  type ResolvedPromptEndpoint,
 } from '../lib/promptEndpoints';
 import type { AIRequestType } from '../types';
 import type { ParagraphLimit } from '../lib/outputLength';
@@ -636,6 +637,12 @@ function useProvideSettings() {
   const promptSamplers = useMemo(() => activeSamplers(effectiveStore), [effectiveStore]);
   const promptReasoning = useMemo(() => activeReasoning(effectiveStore), [effectiveStore]);
   const promptReasoningBudget = useMemo(() => activeReasoningBudget(effectiveStore), [effectiveStore]);
+  const promptEndpoints = useMemo(() => activePromptEndpoints(effectiveStore), [effectiveStore]);
+  const setPromptEndpoint = useCallback(
+    (kind: AIRequestType, id: string | null) =>
+      setPresetStore((s) => updatePromptEndpoints(s, (m) => setRoutedEndpoint(m, kind, id))),
+    [setPresetStore],
+  );
 
   // Reasoning is "engaged" only when the user has opted into it somewhere — a Thinking mode, a global native
   // effort, or a per-prompt positive level. When it isn't, the app sends no `reasoning_effort` at all (so a
@@ -888,28 +895,15 @@ function useProvideSettings() {
     return id;
   };
   const renameTextEndpointPreset = (id: string, name: string) => setTextPresetStore((s) => textRenamePreset(s, id, name));
-  const deleteTextEndpointPreset = (id: string) => {
-    setTextPresetStore((s) => textDeletePreset(s, id));
-    // Drop the routes that named it. Resolution already treats a ghost id as Follow Active, so this only
-    // keeps the stored map honest — and stops a recycled id from silently re-adopting an old route.
-    setPromptEndpoints((m) => dropRoutedPreset(m, id));
-  };
+  // Routes naming the deleted preset are left alone rather than swept out of every prompt preset: a ghost id
+  // already resolves as Follow Active wherever it's read, and ids are UUIDs, so none is ever recycled.
+  const deleteTextEndpointPreset = (id: string) => setTextPresetStore((s) => textDeletePreset(s, id));
   const resetTextEndpointPreset = (id: string) => setTextPresetStore((s) => textResetPreset(s, id));
 
-  // Per-prompt endpoint routing: which text-endpoint preset each prompt kind sends to. Global (not folded
-  // into prompt presets, which are shareable and would carry endpoint ids that mean nothing elsewhere).
-  // A kind with no entry follows the active preset, which is how every prompt behaved before routing.
-  const [promptEndpoints, setPromptEndpoints] = usePersistentState<PromptEndpointMap>(
-    `${APP_ID}_promptEndpoints`, {}, promptEndpointMapCodec,
-  );
-  const setPromptEndpoint = useCallback(
-    (kind: AIRequestType, id: string | null) => setPromptEndpoints((m) => setRoutedEndpoint(m, kind, id)),
-    [setPromptEndpoints],
-  );
-  /** Whether any kind is routed away from the active preset — drives the "some prompts are routed" cue. */
-  const hasRoutedPrompts = Object.keys(promptEndpoints).some(
-    (k) => routedPresetId(k as AIRequestType, promptEndpoints, textPresetStore) !== null,
-  );
+  // Per-prompt endpoint routing, scoped to the active prompt preset (declared below) like the samplers and
+  // reasoning overrides. A kind with no entry follows the active endpoint, which is how every prompt behaved
+  // before routing existed — and a built-in prompt preset carries none, so its prompts all follow.
+  // Deliberately excluded from preset sharing: it names endpoint presets, whose ids mean nothing elsewhere.
 
   // Context windows for routed endpoints, keyed by the same `endpoint|model` signature the reasoning-support
   // cache uses. The active endpoint has its own detect effect; a routed one is probed lazily on first use.
@@ -1221,7 +1215,6 @@ function useProvideSettings() {
     setPromptSamplerValue,
     promptEndpoints,
     setPromptEndpoint,
-    hasRoutedPrompts,
     resolveEndpointForKind,
     systemPrompt,
     setSystemPrompt,
