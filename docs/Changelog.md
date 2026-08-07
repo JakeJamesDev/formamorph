@@ -2,7 +2,7 @@
 
 All notable changes to Formamorph. This fork's first line is **2.0.0** — a full TypeScript rebuild of the upstream JavaScript app ([FieryLionite's Formamorph](https://fierylion.itch.io/formamorph), ~v1.2) — with feature parity as the baseline plus new features on top.
 
-> ✅ **2.0.0 – 2.9.2 are released** (collapsed below). New work lands under **🚧 In Progress** — an unnumbered section, so changes accumulate without pinning a version. When a batch earns a release its section is marked **Released** and collapsed, and a fresh In Progress opens. `package.json` reads **2.9.2** — the latest released version.
+> ✅ **2.0.0 – 2.10.0 are released** (collapsed below). New work lands under **🚧 In Progress** — an unnumbered section, so changes accumulate without pinning a version. When a batch earns a release its section is marked **Released** and collapsed, and a fresh In Progress opens. `package.json` reads **2.10.0** — the latest released version.
 
 Each release groups changes as **Major** / **Minor**, then **Added** / **Removed** / **Fixed**, and within those by audience: 👤 user-facing · 🛠️ developer tooling · ⚙️ backend.
 
@@ -10,7 +10,12 @@ Each release groups changes as **Major** / **Minor**, then **Added** / **Removed
 
 ## 🚧 In Progress
 
-_Unreleased — new work accumulates here until it earns a version bump. The next batch will pin its own version; `package.json` reads **2.9.2** (just released below)._
+_Unreleased — new work accumulates here until it earns a version bump. The next batch will pin its own version; `package.json` reads **2.10.0** (just released below)._
+
+---
+
+<details>
+<summary><strong>✅ 2.10.0 — Released 2026-08-07</strong> — the routing release: every prompt can send to its own AI endpoint, with linked images, placeholders in names, and a prompt editor you can actually work in (click to expand)</summary>
 
 ### Minor Changes
 
@@ -83,6 +88,8 @@ _Unreleased — new work accumulates here until it earns a version bump. The nex
   - **Moving your models between folders no longer strands a half-copied file.** In the desktop app, changing where models are downloaded offers to carry the existing ones across. When the new folder is on a different drive each model is copied under a temporary name and renamed into place at the end — but if that final step failed, the temporary file was left behind. It was invisible to the app: it isn't recognized as a model, so it never appeared in your library, was never counted, and would never be moved or cleaned up again, quietly holding on to several gigabytes. The leftover is now removed whenever any part of the move fails. Your original file was never at risk before and still isn't — it's only deleted once the copy has completely and verifiably landed.
   - **Right-clicking a misspelled word in the desktop app now offers corrections.** The desktop app underlined your typos but there was nothing behind the underline — right-clicking one did nothing, because the window had no right-click menu at all. It has one now: a misspelled word offers up to five suggestions and **Add To Dictionary** for the ones that aren't mistakes, and the menu also carries **Cut / Copy / Paste / Select All**, which the desktop app had never had anywhere outside the keyboard shortcuts. Right-clicking selected story text offers **Copy**. Unaffected in the browser, which has always had its own.
   - **The update window stops mixing two versions' release notes together.** When a new release came out while the update window was open — or its notes refreshed behind it — the freshly fetched changelog could keep pieces of the old one: a heading still reading the previous version number over the new version's items, an "Added" label stuck saying "Fixed". The renderer considered a replacement line "unchanged" whenever it happened to occupy the same position as the old one, the same fault fixed for story paging in 2.9.1 — now fixed for the changelog box, world Readmes, and the help pop-outs, which all share that panel.
+
+</details>
 
 ---
 
