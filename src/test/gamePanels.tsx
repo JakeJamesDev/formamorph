@@ -7,6 +7,7 @@ import { vi } from 'vitest';
 import { SettingsProvider, useSettings } from '@/contexts/SettingsContext';
 import { GameDataProvider, useGameData } from '@/contexts/GameDataContext';
 import { GameplayProvider, useGameplay } from '@/contexts/GameplayContext';
+import { PlaceholderSessionProvider } from '@/contexts/PlaceholderSessionContext';
 import { setGameplayText } from '@/lib/gameplayTextStore';
 import { pageAssistantIndex } from '@/lib/turnHistory';
 import { LeftPanel, MiddlePanel, RightPanel } from '@/components/game/GamePanels';
@@ -223,11 +224,14 @@ function renderPanel<P extends object>(
   const tree = () => (
     <SettingsProvider>
       <GameDataProvider>
+        {/* Gameplay reads the playthrough's placeholder rolls from the session, same as in the app. */}
+        <PlaceholderSessionProvider>
         <GameplayProvider>
           <Stage options={options} stats={stats} expose={(c) => { contexts = c; }}>
             {panel(props)}
           </Stage>
         </GameplayProvider>
+        </PlaceholderSessionProvider>
       </GameDataProvider>
     </SettingsProvider>
   );

@@ -3,6 +3,10 @@ import { render, screen, fireEvent } from '@testing-library/react';
 import StartingLocationModal from './StartingLocationModal';
 import type { GameLocation } from '@/types';
 
+// These cases are about the picker's list and confirm wiring, not placeholders; the real resolver is
+// exercised in MainMenu.
+const identity = (t: string) => t;
+
 const locations: GameLocation[] = [
   { id: 'harbor', name: 'Harbor', isStarting: true, playerDescription: 'A salty dock.' },
   { id: 'keep', name: 'Old Keep', isStarting: true },
@@ -10,7 +14,7 @@ const locations: GameLocation[] = [
 
 describe('StartingLocationModal', () => {
   it('lists Random plus each starting location', () => {
-    render(<StartingLocationModal locations={locations} onConfirm={() => {}} onAbort={() => {}} />);
+    render(<StartingLocationModal locations={locations} resolveText={identity} onConfirm={() => {}} onAbort={() => {}} />);
     expect(screen.getByText('Random')).toBeTruthy();
     expect(screen.getByText('Harbor')).toBeTruthy();
     expect(screen.getByText('Old Keep')).toBeTruthy();
@@ -19,14 +23,14 @@ describe('StartingLocationModal', () => {
 
   it('confirms with null when Random (the default) is chosen', () => {
     const onConfirm = vi.fn();
-    render(<StartingLocationModal locations={locations} onConfirm={onConfirm} onAbort={() => {}} />);
+    render(<StartingLocationModal locations={locations} resolveText={identity} onConfirm={onConfirm} onAbort={() => {}} />);
     fireEvent.click(screen.getByText('Start'));
     expect(onConfirm).toHaveBeenCalledWith(null);
   });
 
   it('confirms with the location id when one is picked', () => {
     const onConfirm = vi.fn();
-    render(<StartingLocationModal locations={locations} onConfirm={onConfirm} onAbort={() => {}} />);
+    render(<StartingLocationModal locations={locations} resolveText={identity} onConfirm={onConfirm} onAbort={() => {}} />);
     fireEvent.click(screen.getByText('Old Keep'));
     fireEvent.click(screen.getByText('Start'));
     expect(onConfirm).toHaveBeenCalledWith('keep');
@@ -34,7 +38,7 @@ describe('StartingLocationModal', () => {
 
   it('aborts via the Abort button', () => {
     const onAbort = vi.fn();
-    render(<StartingLocationModal locations={locations} onConfirm={() => {}} onAbort={onAbort} />);
+    render(<StartingLocationModal locations={locations} resolveText={identity} onConfirm={() => {}} onAbort={onAbort} />);
     fireEvent.click(screen.getByText('Abort'));
     expect(onAbort).toHaveBeenCalled();
   });

@@ -1,6 +1,7 @@
 import { useCallback, useMemo } from 'react';
 import { useGameData } from '@/contexts/GameDataContext';
 import { useGameplay } from '@/contexts/GameplayContext';
+import { usePlaceholderSession } from '@/contexts/PlaceholderSessionContext';
 import { resolvePlaceholders } from '@/lib/placeholders';
 import { activePlaceholderPins, inAuthoredOrder, refreshChosenTraits, traitOrderIndex } from '@/lib/traitEffects';
 import {
@@ -43,26 +44,28 @@ export interface ResolvedWorld {
   resolvePH: (text: string) => string;
 }
 
-export function useResolvedWorld(): ResolvedWorld {
+/**
+ * The authored world resolved against the session's rolls — available anywhere under
+ * `PlaceholderSessionProvider`, which is to say from the enter-world flow onward, not just in gameplay.
+ *
+ * `pins` are the caller's, because the pins that apply differ by screen: in play they come from the active
+ * traits, while the trait picker feeds it the *draft* selection so a pinned value updates as the player
+ * checks boxes. Pins mask a roll and never overwrite it, so the roll underneath survives an unchecked box.
+ *
+ * Outside a session the rolls are empty and a Wildcard resolves to nothing. That is deliberate: rolling
+ * lazily here would draw a different value on every render, so a missing `beginSession` must show up rather
+ * than quietly work.
+ */
+export function useResolvedAuthoredWorld(pins: Record<string, string> = NO_PINS) {
   const {
     stats: rawStats, locations: rawLocations, entities: rawEntities,
     traits: rawTraits, traitGroups: rawTraitGroups, placeholders,
   } = useGameData();
-  const {
-    playerStats: rawPlayerStats, viewStats: rawViewStats, runtimeDictionary: rawDictionary,
-    placeholderRolls, playerTraits, disabledTraitIds,
-  } = useGameplay();
-
-  const traitOrder = useMemo(() => traitOrderIndex(rawTraits, rawTraitGroups), [rawTraits, rawTraitGroups]);
-  const traitPins = useMemo(() => {
-    const off = new Set(disabledTraitIds);
-    const active = inAuthoredOrder(refreshChosenTraits(playerTraits, rawTraits).filter((t) => !off.has(t.id)), traitOrder);
-    return activePlaceholderPins(active);
-  }, [playerTraits, disabledTraitIds, rawTraits, traitOrder]);
+  const { rolls } = usePlaceholderSession();
 
   const resolvePH = useCallback(
-    (text: string) => resolvePlaceholders(text, { placeholders, rolls: placeholderRolls, pins: traitPins }),
-    [placeholders, placeholderRolls, traitPins],
+    (text: string) => resolvePlaceholders(text, { placeholders, rolls, pins }),
+    [placeholders, rolls, pins],
   );
 
   // Each mapper hands back the original array when nothing held a chip, so a world without placeholders
@@ -72,6 +75,28 @@ export function useResolvedWorld(): ResolvedWorld {
   const stats = useMemo(() => resolveStatNames(rawStats, resolvePH), [rawStats, resolvePH]);
   const traits = useMemo(() => resolveTraitNames(rawTraits, resolvePH), [rawTraits, resolvePH]);
   const traitGroups = useMemo(() => resolveTraitGroupNames(rawTraitGroups, resolvePH), [rawTraitGroups, resolvePH]);
+
+  return { entities, locations, stats, traits, traitGroups, resolvePH };
+}
+
+const NO_PINS: Record<string, string> = {};
+
+export function useResolvedWorld(): ResolvedWorld {
+  const { traits: rawTraits, traitGroups: rawTraitGroups } = useGameData();
+  const {
+    playerStats: rawPlayerStats, viewStats: rawViewStats, runtimeDictionary: rawDictionary,
+    playerTraits, disabledTraitIds,
+  } = useGameplay();
+
+  const traitOrder = useMemo(() => traitOrderIndex(rawTraits, rawTraitGroups), [rawTraits, rawTraitGroups]);
+  const traitPins = useMemo(() => {
+    const off = new Set(disabledTraitIds);
+    const active = inAuthoredOrder(refreshChosenTraits(playerTraits, rawTraits).filter((t) => !off.has(t.id)), traitOrder);
+    return activePlaceholderPins(active);
+  }, [playerTraits, disabledTraitIds, rawTraits, traitOrder]);
+
+  const { entities, locations, stats, traits, traitGroups, resolvePH } = useResolvedAuthoredWorld(traitPins);
+
   const dictionary = useMemo(() => resolveDictionaryEntryNames(rawDictionary, resolvePH), [rawDictionary, resolvePH]);
   // The save's own stats carry a copy of each authored name, and every stat delta the AI sends is matched by
   // name. Resolved on the way out of state, never in, so the world stays the authority: a re-rolled or
