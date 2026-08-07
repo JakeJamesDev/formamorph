@@ -205,12 +205,12 @@ function SamplerControl({ id, label, hint, custom, value, defaultValue, min, max
   );
 }
 
-/** Sentinel for the Follow Active row — Radix Select cannot hold an empty-string value, and "unpinned" is
+/** Sentinel for the Use Active Endpoint row — Radix Select cannot hold an empty-string value, and "unpinned" is
  *  stored as an absent map entry rather than an id. */
 const FOLLOW_ACTIVE = '__follow__';
 
 /**
- * Which endpoint preset this prompt sends to. Follow Active (the default) means the prompt goes wherever the
+ * Which endpoint preset this prompt sends to. Use Active Endpoint (the default) means the prompt goes wherever the
  * globally-selected preset points, as it did before routing existed; any other choice pins this prompt alone.
  * Unlike the rest of this panel it is NOT preset-scoped — endpoint routing is global, so it stays editable
  * under a built-in prompt preset and is never carried by a shared one.
@@ -270,14 +270,13 @@ function PromptEndpointField({ value, activeName, presets, onChange, target, dis
       >
         <SelectTrigger><SelectValue /></SelectTrigger>
         <SelectContent>
-          <SelectItem value={FOLLOW_ACTIVE}>Follow Active ({activeName})</SelectItem>
+          <SelectItem value={FOLLOW_ACTIVE}>Use Active Endpoint ({activeName})</SelectItem>
+          {/* A bare divider rather than a group heading: the two halves still read apart, without a row
+              that looks selectable and isn't. */}
           <SelectSeparator />
-          <SelectGroup>
-            <SelectLabel>Send This Prompt To</SelectLabel>
-            {presets.map((p) => (
-              <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>
-            ))}
-          </SelectGroup>
+          {presets.map((p) => (
+            <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>
+          ))}
         </SelectContent>
       </Select>
       <EndpointReachabilityBadge target={target} />
@@ -987,7 +986,7 @@ export const SettingsModal = ({ isOpen, onOpenChange, previewValues, initialTab,
   // sampler (a non-pinned prompt on a custom endpoint) — the panel then shows "Endpoint default".
   const activeKind = TAB_TO_REQUEST[activePromptTab] ?? 'narration';
   const activeSamplers = promptSamplers[activeKind];
-  // Endpoint routing for this prompt. A pin naming a preset that no longer exists shows as Follow Active —
+  // Endpoint routing for this prompt. A pin naming a preset that no longer exists shows as Use Active Endpoint —
   // the same thing it actually resolves to at request time.
   const routableEndpoints = [...builtinTextEndpointPresets, ...textEndpointPresets];
   const pinnedEndpointId = promptEndpoints[activeKind];

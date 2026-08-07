@@ -28,7 +28,7 @@ export interface ResolvedPromptEndpoint {
   localEngine: boolean;
 }
 
-/** The globally-active endpoint state a Follow-Active kind resolves to. */
+/** The globally-active endpoint state an unpinned kind resolves to. */
 export interface ActiveEndpointState {
   values: TextEndpointValues;
   isBuiltIn: boolean;
@@ -39,14 +39,14 @@ export interface ActiveEndpointState {
 
 /**
  * Whether `id` names a preset this store can route to. The built-in Default always resolves; a user preset
- * only while it exists, so an id left behind by a deleted preset falls back to Follow Active.
+ * only while it exists, so an id left behind by a deleted preset falls back to Use Active Endpoint.
  */
 export function isRoutableId(store: TextEndpointPresetStore, id: string | undefined): boolean {
   if (!id) return false;
   return id === DEFAULT_TEXT_PRESET_ID || store.presets.some((p) => p.id === id);
 }
 
-/** The preset a kind routes to, or null for Follow Active. Ghost ids (deleted preset) read as unpinned. */
+/** The preset a kind routes to, or null for Use Active Endpoint. Ghost ids (deleted preset) read as unpinned. */
 export function routedPresetId(kind: AIRequestType, map: PromptEndpointMap, store: TextEndpointPresetStore): string | null {
   const id = map[kind];
   return isRoutableId(store, id) ? (id as string) : null;
@@ -138,7 +138,7 @@ export function endpointSignature(endpoint: string, model: string): string {
   return `${endpoint}|${model}`;
 }
 
-/** Pin a kind to a preset, or clear it back to Follow Active with a null id. */
+/** Pin a kind to a preset, or clear it back to Use Active Endpoint with a null id. */
 export function setPromptEndpoint(map: PromptEndpointMap, kind: AIRequestType, id: string | null): PromptEndpointMap {
   if (id === null) {
     const next = { ...map };
