@@ -34,6 +34,7 @@ import { Slider } from "@/components/ui/slider";
 import PromptField from '../prompt/PromptField';
 import { PROMPT_KIND_VARIABLES, PROMPT_KIND_USER_VARIABLES, NOW_LINE_VARIABLES, SUBJECT } from '@/lib/promptVariables';
 import { defaultPromptSampler } from '@/lib/promptSamplers';
+import { useEndpointReachable } from '@/lib/useEndpointReachable';
 import type { AIRequestType } from '@/types';
 import { ConfirmDialog } from '../ConfirmDialog';
 import { toast } from 'react-toastify';
@@ -210,11 +211,48 @@ const FOLLOW_ACTIVE = '__follow__';
  * Unlike the rest of this panel it is NOT preset-scoped — endpoint routing is global, so it stays editable
  * under a built-in prompt preset and is never carried by a shared one.
  */
-function PromptEndpointField({ value, activeName, presets, onChange }: {
+/**
+ * Whether a routed prompt's endpoint is actually answering. Only rendered for a pinned prompt: an unpinned
+ * one uses the active endpoint, whose reachability the setup gate already reports. `unknownModel` is a
+ * reachable server that can't serve the configured model, so it reads as a warning rather than an outage.
+ */
+function EndpointReachabilityBadge({ target }: { target: { url: string; apiToken: string; model: string; enabled: boolean } }) {
+  const { status, checking, recheck } = useEndpointReachable(target.url, target.apiToken, target.model, target.enabled);
+  if (!target.enabled) return null;
+
+  const state = checking
+    ? { dot: 'bg-muted-foreground animate-pulse', text: 'Checking…', tone: 'text-muted-foreground' }
+    : status === 'ok'
+      ? { dot: 'bg-success', text: 'Reachable', tone: 'text-muted-foreground' }
+      : status === 'unknownModel'
+        ? { dot: 'bg-warning', text: `Reachable, but no "${target.model}"`, tone: 'text-warning' }
+        : status === 'unreachable'
+          ? { dot: 'bg-destructive', text: "Didn't answer", tone: 'text-destructive' }
+          : { dot: 'bg-muted-foreground', text: 'Not checked', tone: 'text-muted-foreground' };
+
+  return (
+    <div className="flex items-center gap-2 text-xs">
+      <span aria-hidden className={cn('size-2 shrink-0 rounded-full', state.dot)} />
+      <span className={state.tone}>{state.text}</span>
+      <button
+        type="button"
+        onClick={recheck}
+        disabled={checking}
+        className="text-muted-foreground underline underline-offset-2 hover:text-foreground disabled:opacity-50"
+      >
+        Recheck
+      </button>
+    </div>
+  );
+}
+
+function PromptEndpointField({ value, activeName, presets, onChange, target }: {
   value: string | null;
   activeName: string;
   presets: { id: string; name: string }[];
   onChange: (id: string | null) => void;
+  /** The routed target to probe. `enabled` is false for an unpinned prompt, which shows no badge. */
+  target: { url: string; apiToken: string; model: string; enabled: boolean };
 }) {
   return (
     <div className="flex flex-col gap-1">
@@ -235,6 +273,7 @@ function PromptEndpointField({ value, activeName, presets, onChange }: {
           </SelectGroup>
         </SelectContent>
       </Select>
+      <EndpointReachabilityBadge target={target} />
       <span className="text-xs text-muted-foreground">
         {value === null
           ? 'Follows the preset selected under AI Endpoints.'
@@ -932,18 +971,25 @@ export const SettingsModal = ({ isOpen, onOpenChange, previewValues, initialTab,
   // the same thing it actually resolves to at request time.
   const routableEndpoints = [...builtinTextEndpointPresets, ...textEndpointPresets];
   const pinnedEndpointId = promptEndpoints[activeKind];
-  const endpointControl = {
-    value: pinnedEndpointId && routableEndpoints.some((p) => p.id === pinnedEndpointId) ? pinnedEndpointId : null,
-    activeName: activeTextEndpointPresetName,
-    presets: routableEndpoints,
-    onChange: (id: string | null) => setPromptEndpoint(activeKind, id),
-  };
   // The rest of the panel describes what this prompt will actually send, so its engine flag and reasoning
   // support come from the routed target — a prompt pinned off the bundled engine gets the external-endpoint
   // controls even while the engine is running, and vice versa.
   const promptTarget = resolveEndpointForKind(activeKind);
   const promptLocalEngine = promptTarget.localEngine;
   const promptReasoningEfforts = promptTarget.supportedReasoningEfforts;
+  const endpointControl = {
+    value: pinnedEndpointId && routableEndpoints.some((p) => p.id === pinnedEndpointId) ? pinnedEndpointId : null,
+    activeName: activeTextEndpointPresetName,
+    presets: routableEndpoints,
+    onChange: (id: string | null) => setPromptEndpoint(activeKind, id),
+    // Probed only while pinned — an unpinned prompt uses the active endpoint, which the setup gate covers.
+    target: {
+      url: promptTarget.url,
+      apiToken: promptTarget.apiToken,
+      model: promptTarget.model,
+      enabled: promptTarget.presetId !== null,
+    },
+  };
   const samplerControls: SamplerControlProps[] = [
     {
       id: 'customTemp', label: 'Custom Temperature', hint: "override this prompt's sampling temperature",
