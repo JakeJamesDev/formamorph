@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, type ReactNode } from 'react';
 import {
-  $getRoot, $createTextNode, LineBreakNode,
-  KEY_ENTER_COMMAND, COMMAND_PRIORITY_LOW,
+  $getRoot, $createTextNode, $selectAll, LineBreakNode,
+  KEY_ENTER_COMMAND, KEY_ESCAPE_COMMAND, COMMAND_PRIORITY_LOW,
 } from 'lexical';
 import { LexicalComposer } from '@lexical/react/LexicalComposer';
 import { PlainTextPlugin } from '@lexical/react/LexicalPlainTextPlugin';
@@ -102,6 +102,33 @@ function BlurPlugin({ onBlur }: { onBlur: () => void }) {
   return null;
 }
 
+/** Focus the field on mount with everything selected, so an inline edit behaves like the text input it
+ *  replaces: start typing and the old value goes. */
+function AutoFocusPlugin() {
+  const [editor] = useLexicalComposerContext();
+  useEffect(() => {
+    // $selectAll, not a root select(0, n): the latter addresses child indices, which for a value that is a
+    // single paragraph selects nothing useful.
+    editor.update(() => { $selectAll(); });
+    editor.focus();
+  }, [editor]);
+  return null;
+}
+
+/** Escape, once the insert menu is not the one consuming it — an inline edit uses it to abandon the change. */
+function CancelPlugin({ onCancel }: { onCancel: () => void }) {
+  const [editor] = useLexicalComposerContext();
+  const ref = useRef(onCancel);
+  ref.current = onCancel;
+  useEffect(() => editor.registerCommand(
+    KEY_ESCAPE_COMMAND,
+    () => { ref.current(); return true; },
+    // Below the typeahead's HIGH, so Escape first dismisses its menu and only then abandons the edit.
+    COMMAND_PRIORITY_LOW,
+  ), [editor]);
+  return null;
+}
+
 /** Reflects `readOnly` into editability (initialConfig only applies it at mount). */
 function EditablePlugin({ readOnly }: { readOnly: boolean }) {
   const [editor] = useLexicalComposerContext();
@@ -140,7 +167,7 @@ function Surface({ placeholder, ariaLabel, className }: {
   );
 }
 
-const ChipInput = ({ value, onChange, vocabulary, placeholder, ariaLabel, className, readOnly = false, trigger = '{', onSubmit, onBlur, multiline = false, children }: {
+const ChipInput = ({ value, onChange, vocabulary, placeholder, ariaLabel, className, readOnly = false, trigger = '{', onSubmit, onBlur, multiline = false, children, autoFocus = false, onCancel }: {
   value: string;
   onChange: (v: string) => void;
   vocabulary: ChipVocabulary;
@@ -159,6 +186,10 @@ const ChipInput = ({ value, onChange, vocabulary, placeholder, ariaLabel, classN
   multiline?: boolean;
   /** Extra Lexical plugins, rendered inside this field's composer (e.g. the tag autocomplete). */
   children?: ReactNode;
+  /** Take focus on mount, selecting the current value. For a field that replaces a chip on double-click. */
+  autoFocus?: boolean;
+  /** Escape pressed with no menu open — abandon the edit. */
+  onCancel?: () => void;
 }) => {
   const dragKey = useRef<string | null>(null);
   const initialConfig = useMemo(
@@ -182,6 +213,8 @@ const ChipInput = ({ value, onChange, vocabulary, placeholder, ariaLabel, classN
           <ValueSyncPlugin value={value} onChange={onChange} parse={vocabulary.parse} />
           {!multiline && <SingleLinePlugin onSubmit={onSubmit} />}
           {onBlur && <BlurPlugin onBlur={onBlur} />}
+          {autoFocus && <AutoFocusPlugin />}
+          {onCancel && <CancelPlugin onCancel={onCancel} />}
           <EditablePlugin readOnly={readOnly} />
           <ChipInsertTargetPlugin vocab={vocabulary} />
           {trigger && !readOnly && <ChipTypeaheadPlugin trigger={trigger} vocab={vocabulary} />}
