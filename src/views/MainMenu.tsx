@@ -2188,6 +2188,7 @@ const MainMenu = ({ onStartGame, onLoadSaveGame, onReplayIntro, introActive = fa
       {showLocationSelection && (
         <StartingLocationModal
           locations={startingLocations(locations)}
+          placeholders={placeholders}
           onConfirm={proceedFromLocation}
           onBack={backFrom('location')}
           onAbort={() => {

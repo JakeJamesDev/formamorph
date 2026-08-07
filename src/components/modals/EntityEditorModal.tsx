@@ -112,7 +112,9 @@ const EntityEditorModal = ({ entityId, draft, onClose, onPublish }: {
   return (
     <EditorModalShell
       open={isOpen}
-      title={entity?.name || 'Character'}
+      // A library character has no world behind it, so its own carried defs render the chips — the same
+      // treatment its card and its listing get.
+      title={describePlaceholders(entity?.name ?? '', entity?.placeholders) || 'Character'}
       contentClassName="max-w-[800px] w-[95vw] h-[85dvh] flex flex-col p-0 gap-0 overflow-hidden"
       loading={!entity}
       tabs={TABS}

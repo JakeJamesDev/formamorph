@@ -44,7 +44,10 @@ const TraitSelectionModal = ({
   /** Label for the confirm button — names the next step in the flow (e.g. "Location", "Avatar", "Start"). */
   confirmLabel?: string;
 }) => {
-  const getStatName = (statId: string) => stats.find((s) => s.id === statId)?.name ?? statId;
+  const getStatName = (statId: string) => {
+    const stat = stats.find((s) => s.id === statId);
+    return stat ? describePlaceholders(stat.name, placeholders) : statId;
+  };
   // Rolls are primed at game start, after this screen — so a Wildcard reads as `{red|brown|black}` here
   // rather than committing to a value the pins might override a moment later.
   const describe = (text: string) => describePlaceholders(text, placeholders);
@@ -113,7 +116,7 @@ const TraitSelectionModal = ({
             onCheckedChange={() => onTraitSelect(trait.id)}
           />
         )}
-        <label htmlFor={`trait-${trait.id}`} className="font-semibold">{trait.name}</label>
+        <label htmlFor={`trait-${trait.id}`} className="font-semibold">{describe(trait.name)}</label>
       </div>
       {trait.playerDescription?.trim() && (
         <p className="text-xs sm:text-sm mb-2">{describe(trait.playerDescription)}</p>
@@ -184,7 +187,7 @@ const TraitSelectionModal = ({
                     <ToggleGroupItem value={generalValue(row.parentId)}>General</ToggleGroupItem>
                   )}
                   {visibleChildren(row.parentId).map((g) => (
-                    <ToggleGroupItem key={g.id} value={g.id}>{g.name}</ToggleGroupItem>
+                    <ToggleGroupItem key={g.id} value={g.id}>{describe(g.name)}</ToggleGroupItem>
                   ))}
                 </ToggleGroup>
                 {describedGroups.length > 0 && (
