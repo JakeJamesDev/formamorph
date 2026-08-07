@@ -109,6 +109,7 @@ import { MARKDOWN_SAMPLE } from "../lib/markdownSample";
 import { parseSlashCommand } from "../lib/slashCommands";
 import { normalizeStatChanges, applyAiStatChanges, applyTraitStatChanges, parseStatUpdates, applyAiMaxChanges, appliedStatDeltas } from "../lib/statChanges";
 import { resolvePromptSampler } from "../lib/promptSamplers";
+import { toDebugEndpoint, type DebugEndpointInfo } from "../lib/promptEndpoints";
 import { composeSceneTags, stripPlaces, splitTags, MAX_SCENE_CHARACTERS, type SceneCharacter } from "../lib/sceneTags";
 import { loadDanbooruTags } from "../lib/danbooruTags";
 import { addSceneImage, removeSceneImage, pruneSceneImages, setSceneTags as patchSceneTags } from "../lib/sceneImages";
@@ -166,6 +167,8 @@ interface DebugRequest {
   type: string;
   messages: ChatMessage[];
   response?: string;
+  /** Which endpoint served this request — absent on turns captured before routing existed. */
+  endpoint?: DebugEndpointInfo;
   // Correlates a captured request to its own response, so concurrent same-type calls (the staged character
   // pass, parallel diaries) each land on the right entry instead of overwriting by (type + empty-response).
   id?: string;
@@ -2533,6 +2536,13 @@ ${playerNotes || NONE_PLACEHOLDER}
     // appended to the system prompt so it applies to every request type (and shows in the AI-context viewer).
     if (disableThinking) systemPrompt = `${systemPrompt}\n\n/no_think`;
 
+    // Where this prompt sends: its pinned preset, or the active endpoint when it follows the selection.
+    // Every engine-shaped decision below reads the resolved target rather than the global one, so a
+    // prompt routed off the built-in engine stops being sent that engine's body fields. Resolved up here
+    // because the capture below records it too.
+    const target = resolveEndpointForKind(requestType);
+    const targetIsLocalEngine = target.localEngine;
+
     // Silent requests are only captured into the AI-context viewer when the inspection toggle is on.
     const captureSilent = silent && showSilentRequests && attachTurnId !== undefined;
     // Unique id tying this call's captured request to its response (concurrent same-type calls otherwise
@@ -2551,7 +2561,13 @@ ${playerNotes || NONE_PLACEHOLDER}
         ...next[idx],
         requests: [
           ...next[idx].requests,
-          { type: requestType, messages: [{ role: "system", content: systemPrompt }, ...messages], id: captureId, dictionary },
+          {
+            type: requestType,
+            messages: [{ role: "system", content: systemPrompt }, ...messages],
+            id: captureId,
+            dictionary,
+            endpoint: toDebugEndpoint(target),
+          },
         ],
       };
       return next;
@@ -2564,11 +2580,6 @@ ${playerNotes || NONE_PLACEHOLDER}
       // Capture the exact payload into the AI-context viewer.
       if (!silent || captureSilent) captureRequest();
 
-      // Where this prompt sends: its pinned preset, or the active endpoint when it follows the selection.
-      // Every engine-shaped decision below reads the resolved target rather than the global one, so a
-      // prompt routed off the built-in engine stops being sent that engine's body fields.
-      const target = resolveEndpointForKind(requestType);
-      const targetIsLocalEngine = target.localEngine;
       const resolvedTemperature = resolvePromptSampler(requestType, "temperature", promptSamplers, genTemperature, targetIsLocalEngine);
       const resolvedRepPenalty = resolvePromptSampler(requestType, "repetitionPenalty", promptSamplers, genRepetitionPenalty, targetIsLocalEngine);
       const targetMaxTokens = maxTokensOverride ?? target.maxTokens;
@@ -4667,7 +4678,26 @@ ${playerNotes || NONE_PLACEHOLDER}
                             >
                               <CollapsibleTrigger asChild>
                                 <button className="flex w-full items-center justify-between gap-2 p-2 text-left font-semibold">
-                                  <span>Request {i + 1}: {req.type}</span>
+                                  <span className="flex flex-wrap items-baseline gap-x-2 gap-y-1">
+                                    <span>Request {i + 1}: {req.type}</span>
+                                    {/* Which endpoint served it. A routed prompt is called out; one following
+                                        the active preset is shown quietly, since that is the norm. */}
+                                    {req.endpoint && (
+                                      <span
+                                        // The routed chip is marked by a tinted border + the arrow, not by
+                                        // colored text: `primary` is a pale accent that all but vanishes as
+                                        // text on a light surface (measured 1.24:1).
+                                        className={`rounded px-1.5 py-0.5 text-xs font-normal ${
+                                          req.endpoint.routed
+                                            ? "border border-primary/60 bg-primary/15 text-foreground"
+                                            : "bg-muted text-muted-foreground"
+                                        }`}
+                                        title={`${req.endpoint.model} · ${req.endpoint.url}`}
+                                      >
+                                        {req.endpoint.routed ? "→ " : ""}{req.endpoint.preset} · {req.endpoint.model}
+                                      </span>
+                                    )}
+                                  </span>
                                   {groupOpen ? (
                                     <ChevronDown className="h-4 w-4 flex-shrink-0" />
                                   ) : (

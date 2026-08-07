@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import {
   resolvePromptEndpoint, routedPresetId, isRoutableId, dropPreset, setPromptEndpoint,
-  promptEndpointMapCodec, endpointSignature,
+  promptEndpointMapCodec, endpointSignature, toDebugEndpoint,
   type PromptEndpointMap, type ActiveEndpointState,
 } from './promptEndpoints';
 import { DEFAULT_TEXT_PRESET_ID, DEFAULT_TEXT_ENDPOINT_VALUES, type TextEndpointPresetStore } from './textEndpointPresets';
@@ -120,6 +120,34 @@ describe('codec', () => {
     expect(promptEndpointMapCodec.parse('not json')).toEqual({});
     expect(promptEndpointMapCodec.parse('[1,2]')).toEqual({});
     expect(promptEndpointMapCodec.parse('{"narration":42}')).toEqual({});
+  });
+});
+
+describe('toDebugEndpoint', () => {
+  const target = {
+    presetId: 'p1',
+    presetName: 'Cydonia 24B',
+    model: 'cydonia',
+    url: 'http://localhost:1234/v1/chat/completions',
+    apiToken: 'sk-super-secret-value',
+  };
+
+  it('never carries the API token into the exported debug shape', () => {
+    const debug = toDebugEndpoint(target);
+    expect(JSON.stringify(debug)).not.toContain('sk-super-secret-value');
+    expect(Object.keys(debug).sort()).toEqual(['model', 'preset', 'routed', 'url']);
+  });
+
+  it('marks a pinned prompt as routed and an unpinned one as not', () => {
+    expect(toDebugEndpoint(target).routed).toBe(true);
+    expect(toDebugEndpoint({ ...target, presetId: null }).routed).toBe(false);
+  });
+
+  it('records the preset name and model the request actually used', () => {
+    const debug = toDebugEndpoint(target);
+    expect(debug.preset).toBe('Cydonia 24B');
+    expect(debug.model).toBe('cydonia');
+    expect(debug.url).toBe(target.url);
   });
 });
 
