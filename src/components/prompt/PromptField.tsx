@@ -14,11 +14,11 @@ import { LexicalErrorBoundary } from '@lexical/react/LexicalErrorBoundary';
 import { useLexicalComposerContext } from '@lexical/react/LexicalComposerContext';
 import {
   Bold, Italic, Heading1, Heading2, List, ListOrdered, Link2, Quote, Code, Undo2, Redo2,
-  Maximize2, Minimize2, Columns2, Square, Lock, Copy,
+  Maximize2, Minimize2, Columns2, Square,
 } from 'lucide-react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Dialog, DialogContent, dialogFullHeight } from '@/components/ui/dialog';
-import { Button } from '@/components/ui/button';
+import { ReadOnlyNotice } from './ReadOnlyNotice';
 import { CHIP_BASE } from '@/components/Chip';
 import { MarkdownRenderer } from '@/components/game/MarkdownRenderer';
 import { type MarkdownAction } from '@/lib/markdownToolbar';
@@ -714,25 +714,15 @@ const PromptField = ({ value, onChange, variables = [], vocabulary, previewValue
   // A read-only editor looks broken rather than protected — the caret simply does nothing — and that reads
   // worst at full screen, where the field is the whole window. Say why, and offer the way out.
   const readOnlyNotice = readOnly && readOnlyReason && (
-    <div
-      className="flex flex-shrink-0 items-center gap-2 rounded-md border border-border bg-muted/50 px-2 py-1 text-xs text-muted-foreground"
-      title={readOnlyReason}
-    >
-      <Lock className="h-3.5 w-3.5 shrink-0" />
-      {/* One line, never wrapped: at phone width the full sentence took two rows off the editor. */}
-      <span className="min-w-0 flex-1 truncate">{readOnlyReason}</span>
-      {onRequestEdit && (
-        <Button variant="outline" size="sm" className="h-7 shrink-0 px-2" onClick={onRequestEdit}>
-          <Copy className="mr-1 h-3.5 w-3.5" /> Duplicate &amp; Edit
-        </Button>
-      )}
-    </div>
+    <ReadOnlyNotice reason={readOnlyReason} onRequestEdit={onRequestEdit} />
   );
 
   const body = (
     <div ref={measureRef} className={cn('flex flex-col flex-1 min-h-0 gap-2', className)}>
-      {chrome}
+      {/* Above the chrome, not below it: the Options panel shows the same notice with nothing above it, so
+          anywhere else here makes it jump as you move between a prompt's sub-tabs. */}
       {readOnlyNotice}
+      {chrome}
       {markdown && <MarkdownToolbar parse={vocab.parse} disabled={editingDisabled} />}
       {panes}
     </div>
