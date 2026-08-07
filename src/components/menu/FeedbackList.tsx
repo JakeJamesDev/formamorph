@@ -22,8 +22,8 @@ interface FeedbackListProps {
   type: FeedbackType;
   /** `all` asks for everyone's — the admin queue, and the public board. Omit for the caller's own. */
   scope?: 'all';
-  /** Narrow to one triage state. */
-  status?: FeedbackStatus;
+  /** Narrow to one triage state, or to a set of them. */
+  status?: FeedbackStatus | FeedbackStatus[];
   /** Narrow to one area of the app. */
   category?: FeedbackCategory;
   /** How to order the list. The server's default is newest first. */
@@ -47,6 +47,8 @@ export function FeedbackList({
   const [isLoading, setIsLoading] = useState(false);
   const [page, setPage] = useState(1);
   const [total, setTotal] = useState(0);
+  // Set when a multi-status page came back short, so the list can say so instead of looking complete.
+  const [truncated, setTruncated] = useState(false);
   // Ids with a vote in flight, so a double click can't send two of the same request.
   const [voting, setVoting] = useState<Set<string>>(new Set());
 
@@ -58,26 +60,36 @@ export function FeedbackList({
   // it back, which is what swapping in a fixed-height skeleton did.
   const isRefreshing = isLoading && threads.length > 0;
 
+  // The filter as a plain string, so a caller passing a fresh array each render cannot make every
+  // render look like a filter change and refetch forever. The request is rebuilt from it.
+  const statusKey = Array.isArray(status) ? status.join(',') : status ?? '';
+
   const load = useCallback(async () => {
     if (!active) return;
 
+    const asked = statusKey ? (statusKey.split(',') as FeedbackStatus[]) : [];
+    const statusArg = asked.length > 1 ? asked : asked[0];
+
     setIsLoading(true);
     try {
-      const result = await FeedbackService.list({ type, page, limit: PAGE_SIZE, scope, status, category, sort });
+      const result = await FeedbackService.list({
+        type, page, limit: PAGE_SIZE, scope, status: statusArg, category, sort,
+      });
       setThreads(result.threads);
       setTotal(result.total);
+      setTruncated(result.truncated ?? false);
     } catch (error) {
       toast.error((error as Error).message || 'Failed to load these');
       setThreads([]);
     } finally {
       setIsLoading(false);
     }
-  }, [active, type, page, scope, status, category, sort]);
+  }, [active, type, page, scope, statusKey, category, sort]);
 
   useEffect(() => { load(); }, [load, refreshNonce]);
 
   // A filter change would otherwise land on whatever page the previous list was showing.
-  useEffect(() => { setPage(1); }, [type, status, category, scope, sort]);
+  useEffect(() => { setPage(1); }, [type, statusKey, category, scope, sort]);
 
   const toggleVote = async (thread: FeedbackThread) => {
     if (voting.has(thread.id)) return;
@@ -109,6 +121,13 @@ export function FeedbackList({
 
   return (
     <>
+      {truncated && (
+        <p role="status" className="mb-2 rounded-md bg-warning/10 px-3 py-2 text-xs text-warning">
+          This page is incomplete — the server returned fewer rows than were asked for. Filter by a single
+          status to see all of them.
+        </p>
+      )}
+
       <div
         className={`space-y-2 min-w-0 transition-opacity${isRefreshing ? ' opacity-50 pointer-events-none' : ''}`}
         aria-busy={isLoading}
