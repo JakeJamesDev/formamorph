@@ -896,7 +896,7 @@ function useProvideSettings() {
   };
   const renameTextEndpointPreset = (id: string, name: string) => setTextPresetStore((s) => textRenamePreset(s, id, name));
   // Routes naming the deleted preset are left alone rather than swept out of every prompt preset: a ghost id
-  // already resolves as Follow Active wherever it's read, and ids are UUIDs, so none is ever recycled.
+  // already resolves as Use Active Endpoint wherever it's read, and ids are UUIDs, so none is ever recycled.
   const deleteTextEndpointPreset = (id: string) => setTextPresetStore((s) => textDeletePreset(s, id));
   const resetTextEndpointPreset = (id: string) => setTextPresetStore((s) => textResetPreset(s, id));
 

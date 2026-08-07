@@ -23,11 +23,11 @@ const active: ActiveEndpointState = {
 };
 
 describe('routing lookup', () => {
-  it('treats an absent entry as Follow Active', () => {
+  it('treats an absent entry as Use Active Endpoint', () => {
     expect(routedPresetId('narration', {}, store)).toBeNull();
   });
 
-  it('treats an id with no surviving preset as Follow Active', () => {
+  it('treats an id with no surviving preset as Use Active Endpoint', () => {
     expect(routedPresetId('narration', { narration: 'deleted-id' }, store)).toBeNull();
   });
 
