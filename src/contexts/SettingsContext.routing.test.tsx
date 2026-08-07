@@ -1,8 +1,8 @@
-import { describe, it, expect, beforeEach, vi } from 'vitest';
+import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { renderHook, act, waitFor } from '@testing-library/react';
 import type { ReactNode } from 'react';
 import { SettingsProvider, useSettings } from './SettingsContext';
-import { textEndpointPresetCodec, DEFAULT_TEXT_ENDPOINT_VALUES, type TextEndpointPresetStore } from '@/lib/textEndpointPresets';
+import { textEndpointPresetCodec, DEFAULT_TEXT_ENDPOINT_VALUES, BUILTIN_ENGINE_PRESET_ID, type TextEndpointPresetStore } from '@/lib/textEndpointPresets';
 import { presetStoreCodec, type PromptPresetStore } from '@/lib/promptPresets';
 
 // The provider probes endpoints for reasoning support; keep the network out of it. `detectSupported…` is
@@ -225,5 +225,76 @@ describe('SettingsContext: per-prompt endpoint routing', () => {
     expect(routedProbes).toHaveLength(1);
     // The capability probe rides the same lazy path, keyed to the routed target.
     expect(detectEfforts.mock.calls.some((c) => String(c[0]).includes('new.test'))).toBe(true);
+  });
+});
+
+// The bundled engine is an endpoint preset, not a mode. These cover the two things that follow from that:
+// the old desktop checkbox becoming a selection, and the engine running whenever anything references it.
+describe('SettingsContext: the bundled engine as an endpoint', () => {
+  const asDesktop = () => { (window as unknown as { formamorphDesktop?: unknown }).formamorphDesktop = {}; };
+
+  beforeEach(() => {
+    localStorage.clear();
+    detectEfforts.mockClear();
+    fetchContextLength.mockClear();
+    asDesktop();
+    seedEndpoints();
+    seedPromptPresets();
+  });
+  afterEach(() => { delete (window as unknown as { formamorphDesktop?: unknown }).formamorphDesktop; });
+
+  it('keeps an engine-mode desktop user on the engine instead of moving them to the hosted endpoint', () => {
+    // Pre-upgrade state: the checkbox was off, meaning "run the bundled engine".
+    localStorage.setItem('FORMAMORPH_useCustomEndpoint', 'false');
+    localStorage.setItem(ENDPOINTS_KEY, textEndpointPresetCodec.serialize({ activeId: 'default', presets: [] }));
+
+    const { result } = renderHook(() => useSettings(), { wrapper });
+
+    expect(result.current.localModelActive).toBe(true);
+    expect(result.current.resolveEndpointForKind('narration').localEngine).toBe(true);
+    // The checkbox is retired, not left behind to disagree with the selection.
+    expect(localStorage.getItem('FORMAMORPH_useCustomEndpoint')).toBeNull();
+  });
+
+  it('leaves a desktop user who was on their own endpoint where they were', () => {
+    localStorage.setItem('FORMAMORPH_useCustomEndpoint', 'true');
+    localStorage.setItem(ENDPOINTS_KEY, textEndpointPresetCodec.serialize({
+      activeId: 'small',
+      presets: [{ id: 'small', name: 'Small Model', values: { endpoint: 'http://small.test/v1', apiToken: '', model: 'small-1b', contextWindowOverride: 4096, maxTokens: 200 } }],
+    }));
+
+    const { result } = renderHook(() => useSettings(), { wrapper });
+
+    expect(result.current.localModelActive).toBe(false);
+    expect(result.current.resolveEndpointForKind('narration').model).toBe('small-1b');
+  });
+
+  // These two are about the lifecycle after upgrading, so the migration is already done — otherwise it
+  // claims the fresh-install default (engine selected) and there is no "active endpoint is elsewhere" to test.
+  it('wants the engine running when a prompt is routed to it, even from another active endpoint', () => {
+    localStorage.setItem('FORMAMORPH_engineIsPresetMigrated', '1');
+    const { result } = renderHook(() => useSettings(), { wrapper });
+    // Active endpoint is the user's "Big Model" — before, this stopped the engine outright.
+    expect(result.current.localModelActive).toBe(false);
+    expect(result.current.engineWanted).toBe(false);
+
+    act(() => result.current.setPromptEndpoint('summary', BUILTIN_ENGINE_PRESET_ID));
+
+    expect(result.current.engineWanted).toBe(true);
+    const summary = result.current.resolveEndpointForKind('summary');
+    expect(summary.localEngine).toBe(true);
+    expect(summary.url).toContain('8977');
+    // Everything else still goes to the active endpoint.
+    expect(result.current.resolveEndpointForKind('narration').localEngine).toBe(false);
+  });
+
+  it('stops wanting the engine once nothing references it', () => {
+    localStorage.setItem('FORMAMORPH_engineIsPresetMigrated', '1');
+    const { result } = renderHook(() => useSettings(), { wrapper });
+    act(() => result.current.setPromptEndpoint('summary', BUILTIN_ENGINE_PRESET_ID));
+    expect(result.current.engineWanted).toBe(true);
+
+    act(() => result.current.setPromptEndpoint('summary', null));
+    expect(result.current.engineWanted).toBe(false);
   });
 });

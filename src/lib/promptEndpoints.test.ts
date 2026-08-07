@@ -1,10 +1,14 @@
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import {
   resolvePromptEndpoint, routedPresetId, isRoutableId, setPromptEndpoint,
   endpointSignature, toDebugEndpoint,
   type PromptEndpointMap, type ActiveEndpointState,
 } from './promptEndpoints';
-import { DEFAULT_TEXT_PRESET_ID, DEFAULT_TEXT_ENDPOINT_VALUES, type TextEndpointPresetStore } from './textEndpointPresets';
+import {
+  DEFAULT_TEXT_PRESET_ID, DEFAULT_TEXT_ENDPOINT_VALUES,
+  BUILTIN_ENGINE_PRESET_ID, BUILTIN_ENGINE_VALUES,
+  type TextEndpointPresetStore,
+} from './textEndpointPresets';
 
 const userPreset = {
   id: 'p1',
@@ -16,10 +20,12 @@ const store: TextEndpointPresetStore = { activeId: 'p1', presets: [userPreset] }
 
 /** Active state standing in for "a user preset is globally selected on the web build". */
 const active: ActiveEndpointState = {
+  activeId: 'p1',
   values: userPreset.values,
   isBuiltIn: false,
   localEngine: false,
   maxTokens: 700,
+  engineMaxTokens: 512,
 };
 
 describe('routing lookup', () => {
@@ -64,7 +70,9 @@ describe('resolvePromptEndpoint', () => {
 
   it('pins to a user preset even when the built-in Default is globally active', () => {
     const builtInActive: ActiveEndpointState = {
-      values: DEFAULT_TEXT_ENDPOINT_VALUES, isBuiltIn: true, localEngine: false, maxTokens: DEFAULT_TEXT_ENDPOINT_VALUES.maxTokens,
+      activeId: DEFAULT_TEXT_PRESET_ID,
+      values: DEFAULT_TEXT_ENDPOINT_VALUES, isBuiltIn: true, localEngine: false,
+      maxTokens: DEFAULT_TEXT_ENDPOINT_VALUES.maxTokens, engineMaxTokens: 512,
     };
     const r = resolvePromptEndpoint('statUpdates', { statUpdates: 'p1' }, store, builtInActive);
     expect(r.endpoint).toBe(userPreset.values.endpoint);
@@ -85,15 +93,48 @@ describe('resolvePromptEndpoint', () => {
     expect(r.maxTokens).toBe(DEFAULT_TEXT_ENDPOINT_VALUES.maxTokens);
   });
 
-  it('keeps the local engine flag off for a user preset even while the bundled engine runs', () => {
-    const desktop: ActiveEndpointState = {
-      values: DEFAULT_TEXT_ENDPOINT_VALUES, isBuiltIn: true, localEngine: true, maxTokens: 512,
+  // `localEngine` is a property of the resolved target, not a global mode — that is the whole reason one
+  // prompt can run on the bundled engine while the rest go outward.
+  describe('the bundled engine as a target (desktop)', () => {
+    const engineActive: ActiveEndpointState = {
+      activeId: BUILTIN_ENGINE_PRESET_ID,
+      values: BUILTIN_ENGINE_VALUES, isBuiltIn: true, localEngine: true,
+      maxTokens: 512, engineMaxTokens: 512,
     };
-    expect(resolvePromptEndpoint('narration', { narration: 'p1' }, store, desktop).localEngine).toBe(false);
-    // Default-pinned still addresses the bundled engine, so it keeps the flag and the engine's own cap.
-    const def = resolvePromptEndpoint('narration', { narration: DEFAULT_TEXT_PRESET_ID }, store, desktop);
-    expect(def.localEngine).toBe(true);
-    expect(def.maxTokens).toBe(512);
+
+    beforeEach(() => { (window as unknown as { formamorphDesktop?: unknown }).formamorphDesktop = {}; });
+    afterEach(() => { delete (window as unknown as { formamorphDesktop?: unknown }).formamorphDesktop; });
+
+    it('sends an unpinned prompt to the engine when the engine is the active endpoint', () => {
+      const r = resolvePromptEndpoint('narration', {}, store, engineActive);
+      expect(r.localEngine).toBe(true);
+      expect(r.endpoint).toBe(BUILTIN_ENGINE_VALUES.endpoint);
+      expect(r.maxTokens).toBe(512);
+    });
+
+    it('runs a prompt pinned to the engine on it while the rest go to the active endpoint', () => {
+      const r = resolvePromptEndpoint('summary', { summary: BUILTIN_ENGINE_PRESET_ID }, store, active);
+      expect(r.localEngine).toBe(true);
+      expect(r.endpoint).toBe(BUILTIN_ENGINE_VALUES.endpoint);
+      expect(r.maxTokens).toBe(512); // the engine's own cap, not the active preset's 700
+      // ...and the unpinned one is untouched.
+      expect(resolvePromptEndpoint('narration', { summary: BUILTIN_ENGINE_PRESET_ID }, store, active).localEngine).toBe(false);
+    });
+
+    it('sends a prompt pinned away from the engine outward, even while the engine is selected', () => {
+      const r = resolvePromptEndpoint('narration', { narration: 'p1' }, store, engineActive);
+      expect(r.localEngine).toBe(false);
+      expect(r.endpoint).toBe(userPreset.values.endpoint);
+    });
+
+    // Default used to BE the engine on desktop; it is the hosted endpoint on both platforms now, so a
+    // Default-pinned prompt must leave the machine rather than quietly hitting localhost.
+    it('treats Default as the hosted endpoint, not the engine', () => {
+      const r = resolvePromptEndpoint('narration', { narration: DEFAULT_TEXT_PRESET_ID }, store, engineActive);
+      expect(r.localEngine).toBe(false);
+      expect(r.endpoint).toBe(DEFAULT_TEXT_ENDPOINT_VALUES.endpoint);
+      expect(r.endpoint).not.toBe(BUILTIN_ENGINE_VALUES.endpoint);
+    });
   });
 });
 

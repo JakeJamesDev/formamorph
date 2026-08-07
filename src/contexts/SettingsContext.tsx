@@ -13,8 +13,9 @@ import {
 } from '../lib/imageEndpointPresets';
 import {
   textEndpointPresetCodec, emptyStore as emptyTextStore, presetStoreFromEnv as textPresetStoreFromEnv,
-  DEFAULT_TEXT_PRESET_ID,
-  activeValues as textActiveValues, isBuiltInActive as isTextBuiltInActive, setActive as textSetActive,
+  DEFAULT_TEXT_PRESET_ID, BUILTIN_ENGINE_PRESET_ID, builtinTextPresets,
+  activeValues as textActiveValues, isBuiltInActive as isTextBuiltInActive,
+  isEngineActive as isTextEngineActive, setActive as textSetActive,
   addPreset as textAddPreset, renamePreset as textRenamePreset, deletePreset as textDeletePreset,
   resetPreset as textResetPreset, updateValue as textUpdateValue,
   type TextEndpointPresetStore, type TextEndpointValues, type TextEndpointValueKey,
@@ -44,7 +45,7 @@ import { resolvePinnedPreset } from '../lib/worldPromptPreset';
 import { buildStyledValues } from '../lib/sectionStyle';
 import { defaultPromptSampler, type PromptSamplerMap, type PromptSampler } from '../lib/promptSamplers';
 import {
-  resolvePromptEndpoint, endpointSignature,
+  resolvePromptEndpoint, endpointSignature, routedPresetId,
   setPromptEndpoint as setRoutedEndpoint,
   type ResolvedPromptEndpoint,
 } from '../lib/promptEndpoints';
@@ -231,6 +232,33 @@ function migratePromptTuning() {
   localStorage.setItem(MARK, '1');
 }
 
+/**
+ * One-time migration of the desktop "Use Custom Endpoint" checkbox into an endpoint-preset selection.
+ *
+ * The bundled engine used to be a mode: the checkbox chose it, and the Default preset's URL happened to be
+ * the engine's port on desktop. It is now its own read-only preset, so both of those become one selection.
+ * Desktop only — the web build never had the checkbox and its Default already meant the hosted endpoint.
+ *
+ * Engine-mode users (checkbox off, or on but still sitting on Default, which pointed at the engine either
+ * way) land on Built-In Engine. Anyone on a user preset keeps it. Without this they would silently move to
+ * the hosted endpoint, since Default no longer means the engine anywhere.
+ */
+function migrateEngineToPreset() {
+  const MARK = `${APP_ID}_engineIsPresetMigrated`;
+  if (localStorage.getItem(MARK)) return;
+  if (!isDesktop()) { localStorage.setItem(MARK, '1'); return; }
+  const raw = localStorage.getItem(`${APP_ID}_textEndpointPresets`);
+  const store = raw ? textEndpointPresetCodec.parse(raw) : emptyTextStore;
+  const toggle = localStorage.getItem(`${APP_ID}_useCustomEndpoint`);
+  const wasCustom = toggle === null ? false : toggle === 'true';
+  const onAUserPreset = store.presets.some((p) => p.id === store.activeId);
+  if (!wasCustom || !onAUserPreset) {
+    localStorage.setItem(`${APP_ID}_textEndpointPresets`, textEndpointPresetCodec.serialize({ ...store, activeId: BUILTIN_ENGINE_PRESET_ID }));
+  }
+  localStorage.removeItem(`${APP_ID}_useCustomEndpoint`);
+  localStorage.setItem(MARK, '1');
+}
+
 /** One-time migration of the legacy "type DISABLED into the prompt body" hack to per-prompt Enabled
  *  flags. A prompt whose stored body is exactly "DISABLED" is turned off and its body reset to default. */
 function migrateDisabledPrompts() {
@@ -252,6 +280,7 @@ function useProvideSettings() {
   if (!migrated.current) {
     migrateDisabledPrompts(); // runs before the prompt/flag state below seeds from localStorage
     migratePromptTuning(); // folds legacy global tuning onto user presets before presetStore seeds
+    migrateEngineToPreset(); // turns the desktop engine checkbox into a preset selection, before the store seeds
     migrated.current = true;
   }
 
@@ -421,29 +450,10 @@ function useProvideSettings() {
   const setMaxTokens = useMemo(() => patchText('maxTokens'), [patchText]);
   const textIsBuiltInActive = isTextBuiltInActive(textPresetStore);
 
-  // Desktop checkbox: local bundled engine (off) vs a custom endpoint (on). Fresh installs default off;
-  // existing users who had a custom endpoint default on. On the web there's no local engine, so the toggle
-  // is instead derived from the preset selection (Default built-in = "our endpoint" = off).
-  const [customEndpointToggle, setCustomEndpointToggle] = useState<boolean>(() => {
-    const saved = localStorage.getItem(`${APP_ID}_useCustomEndpoint`);
-    if (saved !== null) {
-      try {
-        return JSON.parse(saved);
-      } catch {
-        /* fall through to the non-default detection below */
-      }
-    }
-    return (
-      normalizeEndpointUrl(localStorage.getItem(`${APP_ID}_endpointUrl`) ?? DEFAULT_ENDPOINT) !== normalizeEndpointUrl(DEFAULT_ENDPOINT) ||
-      (localStorage.getItem(`${APP_ID}_apiToken`) ?? DEFAULT_API_TOKEN) !== DEFAULT_API_TOKEN ||
-      (localStorage.getItem(`${APP_ID}_modelName`) ?? DEFAULT_MODEL_NAME) !== DEFAULT_MODEL_NAME
-    );
-  });
-  useEffect(() => {
-    localStorage.setItem(`${APP_ID}_useCustomEndpoint`, JSON.stringify(customEndpointToggle));
-  }, [customEndpointToggle]);
-  const useCustomEndpoint = isDesktop() ? customEndpointToggle : !textIsBuiltInActive;
-  const setUseCustomEndpoint = setCustomEndpointToggle;
+  // The bundled engine is an endpoint preset now, not a mode, so "am I on my own endpoint" is simply
+  // "is a user preset selected". The old `useCustomEndpoint` checkbox is gone; `migrateEngineToPreset`
+  // (above) turns whatever it was set to into the equivalent preset selection, once.
+  const useCustomEndpoint = !textIsBuiltInActive;
 
   // Desktop bundled-engine output cap — kept separate from the preset-scoped custom-endpoint maxTokens so
   // switching endpoints never disturbs the local engine. Seeded from the legacy shared key on first run.
@@ -476,7 +486,8 @@ function useProvideSettings() {
   const [advancedMode, setAdvancedMode] = usePersistentState<boolean>(`${APP_ID}_advancedMode`, false, boolCodec);
   // Append a `/no_think` directive to requests so reasoning models skip their scratchpad (faster).
   const [disableThinking, setDisableThinking] = usePersistentState<boolean>(`${APP_ID}_disableThinking`, false, boolCodec);
-  const localModelActive = isDesktop() && !useCustomEndpoint;
+  // The engine is the active endpoint — a property of the selection now, not a separate mode.
+  const localModelActive = isTextEngineActive(textPresetStore);
   // Honor the desktop local engine's own cap when it's active; otherwise the active endpoint preset's cap
   // (the Default preset holds DEFAULT_MAX_TOKENS, so a Default selection matches the shared-endpoint cap).
   const activeMaxTokens = localModelActive ? localMaxTokens : maxTokens;
@@ -491,12 +502,12 @@ function useProvideSettings() {
   // Per-prompt tuning (samplers/reasoning/verbatim) is preset-scoped — derived from the active preset and
   // set through it, below where `presetStore` is declared.
 
-  // Context window: a custom endpoint uses its detected/override value; the local engine uses the context
-  // size the user set (same number); otherwise the built-in default.
-  const contextWindow = useCustomEndpoint
-    ? (contextWindowOverride ?? detectedContextWindow ?? DEFAULT_CONTEXT_WINDOW)
-    : localModelActive
+  // Context window: the engine uses the size the user loaded it at; anything else uses its detected/override
+  // value, falling back to the built-in default.
+  const contextWindow = localModelActive
     ? localContextSize
+    : useCustomEndpoint
+    ? (contextWindowOverride ?? detectedContextWindow ?? DEFAULT_CONTEXT_WINDOW)
     : DEFAULT_CONTEXT_WINDOW;
 
   const detectReqRef = useRef(0);
@@ -881,7 +892,7 @@ function useProvideSettings() {
 
   // Preset management (Settings → AI Endpoints → Text selector). The immutable "Default" built-in is virtual
   // (never stored) and read-only; user presets are freely editable. Mirrors the prompt-preset UX.
-  const builtinTextEndpointPresets = [{ id: DEFAULT_TEXT_PRESET_ID, name: 'Default' }];
+  const builtinTextEndpointPresets = builtinTextPresets();
   const textEndpointPresets = textPresetStore.presets.map((p) => ({ id: p.id, name: p.name }));
   const activeTextEndpointPresetId = textPresetStore.activeId;
   const activeTextEndpointPresetIsBuiltIn = textIsBuiltInActive;
@@ -929,7 +940,9 @@ function useProvideSettings() {
     supportedReasoningEfforts: ReasoningEffortField[] | null;
   } => {
     const resolved = resolvePromptEndpoint(kind, promptEndpoints, textPresetStore, {
-      values: textValues, isBuiltIn: textIsBuiltInActive, localEngine: localModelActive, maxTokens: activeMaxTokens,
+      activeId: textPresetStore.activeId,
+      values: textValues, isBuiltIn: textIsBuiltInActive, localEngine: localModelActive,
+      maxTokens: activeMaxTokens, engineMaxTokens: localMaxTokens,
     });
     const url = normalizeEndpointUrl(resolved.endpoint);
     const presetName = resolved.presetId === null
@@ -981,8 +994,20 @@ function useProvideSettings() {
   }, [
     promptEndpoints, textPresetStore, textValues, textIsBuiltInActive, localModelActive, activeMaxTokens,
     contextWindow, supportedReasoningEfforts, routedContextCache, reasoningSupportCache, localContextSize,
-    activeTextEndpointPresetName, setRoutedContextCache, setReasoningSupportCache,
+    localMaxTokens, activeTextEndpointPresetName, setRoutedContextCache, setReasoningSupportCache,
   ]);
+
+  /**
+   * Whether the bundled engine should be running: it's the active endpoint, or some prompt is routed to it.
+   * The lifecycle used to key off the old mode flag alone, so a prompt pinned to the engine while the active
+   * endpoint was elsewhere fired at a port the manager had deliberately stopped.
+   */
+  const engineWanted = isDesktop() && (
+    localModelActive ||
+    Object.keys(promptEndpoints).some(
+      (k) => routedPresetId(k as AIRequestType, promptEndpoints, textPresetStore) === BUILTIN_ENGINE_PRESET_ID,
+    )
+  );
 
   // User-editable prompt that turns a subject's description into booru tags (Settings → AI Endpoints → Tag Prompt).
   const [imageTagPrompt, setImageTagPrompt] = usePersistentState<string>(`${APP_ID}_imageTagPrompt`, DEFAULT_TAG_PROMPT, stringCodec);
@@ -1166,7 +1191,7 @@ function useProvideSettings() {
     localMaxTokens,
     setLocalMaxTokens,
     useCustomEndpoint,
-    setUseCustomEndpoint,
+    engineWanted,
     builtinTextEndpointPresets,
     textEndpointPresets,
     activeTextEndpointPresetId,

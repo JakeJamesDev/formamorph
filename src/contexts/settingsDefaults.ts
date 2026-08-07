@@ -1,13 +1,10 @@
-// Built-in endpoint defaults, used when "Use Custom Endpoint" is off. Each honors its VITE_DEFAULT_* override.
+// Built-in endpoint defaults, behind the read-only "Default" preset. Each honors its VITE_DEFAULT_* override.
 // Kept out of SettingsContext so that file only exports components/hooks (react-refresh).
-import { isDesktop, DEFAULT_LOCAL_LLM_ENDPOINT } from '@/lib/imageGen/desktop';
-// Desktop always defaults to the bundled local engine — VITE_DEFAULT_ENDPOINT is a web/cloud default and
-// is deliberately ignored there (so a .env.local set for web testing doesn't leak into desktop builds).
-// The web build uses the override when set, else the hosted endpoint. Written as a base URL (normalizeEndpointUrl
-// completes it), matching the shape every server's setup docs hand out.
-export const DEFAULT_ENDPOINT = isDesktop()
-  ? DEFAULT_LOCAL_LLM_ENDPOINT
-  : (import.meta.env.VITE_DEFAULT_ENDPOINT || 'https://api.lyonade.net/v1');
+// The hosted endpoint behind the "Default" preset, on both platforms. Desktop used to point this at the
+// bundled engine instead; the engine is now its own preset (BUILTIN_ENGINE_PRESET_ID), so "Default" can mean
+// one thing everywhere and a desktop install can route some prompts to the engine and others to the cloud.
+// Written as a base URL (normalizeEndpointUrl completes it), matching the shape every server's docs hand out.
+export const DEFAULT_ENDPOINT = import.meta.env.VITE_DEFAULT_ENDPOINT || 'https://api.lyonade.net/v1';
 export const DEFAULT_API_TOKEN = import.meta.env.VITE_DEFAULT_API_TOKEN || '';
 export const DEFAULT_MODEL_NAME = import.meta.env.VITE_DEFAULT_MODEL_NAME || 'default';
 export const DEFAULT_MAX_TOKENS = parseInt(import.meta.env.VITE_DEFAULT_MAX_TOKENS) || 1024;

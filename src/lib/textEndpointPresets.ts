@@ -1,5 +1,6 @@
 import { randomUUID } from '@/lib/uuid';
 import type { Codec } from './usePersistentState';
+import { isDesktop, DEFAULT_LOCAL_LLM_ENDPOINT } from '@/lib/imageGen/desktop';
 import { DEFAULT_ENDPOINT, DEFAULT_API_TOKEN, DEFAULT_MODEL_NAME, DEFAULT_MAX_TOKENS } from '../contexts/settingsDefaults';
 
 /** The custom text-endpoint fields a preset captures. Everything desktop-local (GPU layers, sampling, the
@@ -30,6 +31,36 @@ export interface TextEndpointPresetStore {
 
 /** The read-only "Default" preset — the shipped/embedded shared endpoint. Selecting it = "use our endpoint". */
 export const DEFAULT_TEXT_PRESET_ID = 'default';
+
+/**
+ * The desktop bundled engine, as an endpoint like any other. Modeling it as a preset rather than a mode is
+ * what lets a single prompt be routed to it while the rest go elsewhere — a mode is global by construction.
+ * Desktop only; absent from the list on web, where there is no engine to run.
+ */
+export const BUILTIN_ENGINE_PRESET_ID = 'builtin-engine';
+
+/** The engine's fixed connection. Its context window and output cap are NOT here: they're the engine's own
+ *  load settings (localContextSize / localMaxTokens), supplied by the caller at resolve time. The model name
+ *  is nominal — the engine serves whatever GGUF is loaded regardless of what the request asks for. */
+export const BUILTIN_ENGINE_VALUES: TextEndpointValues = {
+  endpoint: DEFAULT_LOCAL_LLM_ENDPOINT,
+  apiToken: '',
+  model: 'default',
+  contextWindowOverride: null,
+  maxTokens: DEFAULT_MAX_TOKENS,
+};
+
+/** The read-only presets available on this platform, in dropdown order. */
+export function builtinTextPresets(): { id: string; name: string }[] {
+  return isDesktop()
+    ? [{ id: BUILTIN_ENGINE_PRESET_ID, name: 'Built-In Engine' }, { id: DEFAULT_TEXT_PRESET_ID, name: 'Default' }]
+    : [{ id: DEFAULT_TEXT_PRESET_ID, name: 'Default' }];
+}
+
+/** Whether `id` is one of the read-only built-ins on this platform. */
+export function isBuiltInPresetId(id: string): boolean {
+  return builtinTextPresets().some((b) => b.id === id);
+}
 
 /** The Default preset's values: the built-in shared endpoint (honors VITE_DEFAULT_* via settingsDefaults). */
 export const DEFAULT_TEXT_ENDPOINT_VALUES: TextEndpointValues = {
@@ -102,18 +133,29 @@ export const textEndpointPresetCodec: Codec<TextEndpointPresetStore> = {
   serialize: (v) => JSON.stringify(v),
 };
 
-/** The Default built-in is active when the id is 'default', or when it's a ghost id (no matching user
- *  preset) — a defensive fallback. Built-ins are read-only. */
+/** A built-in is active when the id names one, or when it's a ghost id (no matching user preset) — a
+ *  defensive fallback. Built-ins are read-only. */
 export function isBuiltInActive(store: TextEndpointPresetStore): boolean {
-  return store.activeId === DEFAULT_TEXT_PRESET_ID || !store.presets.some((p) => p.id === store.activeId);
+  return isBuiltInPresetId(store.activeId) || !store.presets.some((p) => p.id === store.activeId);
 }
 
-/** The active preset's values. The Default built-in (or a ghost id) resolves to the shipped defaults; a
- *  user preset returns its stored snapshot layered over the defaults so a missing future key falls back. */
-export function activeValues(store: TextEndpointPresetStore): TextEndpointValues {
-  if (isBuiltInActive(store)) return DEFAULT_TEXT_ENDPOINT_VALUES;
-  const preset = store.presets.find((p) => p.id === store.activeId);
+/** Whether the bundled desktop engine is the active endpoint. */
+export function isEngineActive(store: TextEndpointPresetStore): boolean {
+  return store.activeId === BUILTIN_ENGINE_PRESET_ID && isDesktop();
+}
+
+/** The values behind a preset id: either built-in, or a user preset layered over the shipped defaults so a
+ *  preset missing a future key falls back cleanly. An unknown id resolves to Default. */
+export function valuesForId(store: TextEndpointPresetStore, id: string): TextEndpointValues {
+  if (id === BUILTIN_ENGINE_PRESET_ID) return BUILTIN_ENGINE_VALUES;
+  if (id === DEFAULT_TEXT_PRESET_ID) return DEFAULT_TEXT_ENDPOINT_VALUES;
+  const preset = store.presets.find((p) => p.id === id);
   return preset ? { ...DEFAULT_TEXT_ENDPOINT_VALUES, ...preset.values } : DEFAULT_TEXT_ENDPOINT_VALUES;
+}
+
+/** The active preset's values. A ghost id lands on Default, the same defensive fallback as before. */
+export function activeValues(store: TextEndpointPresetStore): TextEndpointValues {
+  return valuesForId(store, store.activeId);
 }
 
 export function setActive(store: TextEndpointPresetStore, id: string): TextEndpointPresetStore {
