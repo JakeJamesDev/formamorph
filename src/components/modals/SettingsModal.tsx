@@ -280,10 +280,12 @@ function PromptEndpointField({ value, activeName, presets, onChange, target, dis
         </SelectContent>
       </Select>
       <EndpointReachabilityBadge target={target} />
+      {/* Name the target rather than saying "the active preset": this panel sits under a *prompt* preset,
+          so "active preset" reads as that one, not the endpoint. */}
       <span className="text-xs text-muted-foreground">
         {value === null
-          ? 'Follows the preset selected under AI Endpoints.'
-          : 'Pinned — this prompt ignores the active preset. Sampling and reasoning below apply to this endpoint.'}
+          ? 'Goes wherever AI Endpoints is pointed. Switch endpoints there and this prompt follows.'
+          : `Always goes to ${presets.find((p) => p.id === value)?.name ?? 'this endpoint'}, even when you switch endpoints elsewhere.`}
       </span>
     </div>
   );
