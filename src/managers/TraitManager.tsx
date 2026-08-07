@@ -8,7 +8,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Trash2 } from "lucide-react";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import PlaceholderField, { PlaceholderNameField } from '@/components/prompt/PlaceholderField';
-import { labelPlaceholders } from '@/lib/placeholders';
+import { describePlaceholders } from '@/lib/placeholders';
 import { traitConflicts, type TraitConflict } from '@/lib/traitEffects';
 import type { Trait, StatChange, TraitStatToggle, TraitPlaceholderPin } from '@/types';
 
@@ -122,7 +122,7 @@ const TraitManager = ({ trait }: { trait: Trait }) => {
               <SelectContent>
                 {stats.map((stat) => (
                   <SelectItem key={stat.id} value={stat.id}>
-                    {labelPlaceholders(stat.name, placeholders)}
+                    {describePlaceholders(stat.name, placeholders)}
                   </SelectItem>
                 ))}
               </SelectContent>

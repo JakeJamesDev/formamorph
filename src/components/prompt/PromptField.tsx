@@ -1,9 +1,8 @@
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type MouseEvent as ReactMouseEvent } from 'react';
 import {
-  $getRoot, $getNodeByKey, $getSelection, $isRangeSelection, $createRangeSelection, $setSelection,
-  $insertNodes, $createParagraphNode,
+  $getRoot, $getSelection, $isRangeSelection, $createParagraphNode,
   $isElementNode,
-  COMMAND_PRIORITY_LOW, COMMAND_PRIORITY_HIGH, DRAGOVER_COMMAND, DROP_COMMAND, SELECTION_CHANGE_COMMAND,
+  COMMAND_PRIORITY_LOW, SELECTION_CHANGE_COMMAND,
   UNDO_COMMAND, REDO_COMMAND, CAN_UNDO_COMMAND, CAN_REDO_COMMAND,
 } from 'lexical';
 import { mergeRegister } from '@lexical/utils';
@@ -29,10 +28,11 @@ import { ChipVocabularyContext, promptVocabulary, type ChipVocabulary } from '@/
 import { cn } from '@/lib/utils';
 import { useIsMobile } from '@/lib/useIsMobile';
 import { resolveLayout, usePromptSplitMode, useContainerWidth, MIN_PANE_WIDTH } from '@/lib/promptLayout';
-import { VariableNode, $createVariableNode, $isVariableNode, PromptDragContext } from './VariableNode';
+import { VariableNode, $createVariableNode, PromptDragContext } from './VariableNode';
 import { buildEditorState, serializeRoot, $applyMarkdownAction } from './promptFieldState';
 import { ChipTypeaheadPlugin } from './ChipTypeahead';
 import { ChipInsertTargetPlugin } from './ChipInsertTarget';
+import { ChipDragPlugin } from './ChipDrag';
 
 const MARKDOWN_TOOLBAR: { action: MarkdownAction; Icon: typeof Bold; title: string }[] = [
   { action: 'bold', Icon: Bold, title: 'Bold' },
@@ -109,20 +109,6 @@ function MarkdownToolbar({ parse, disabled }: { parse: ChipVocabulary['parse']; 
       ))}
     </div>
   );
-}
-
-function caretRangeFromPoint(x: number, y: number): Range | null {
-  const doc = document as Document & {
-    caretRangeFromPoint?: (x: number, y: number) => Range | null;
-    caretPositionFromPoint?: (x: number, y: number) => { offsetNode: Node; offset: number } | null;
-  };
-  if (doc.caretRangeFromPoint) return doc.caretRangeFromPoint(x, y);
-  const pos = doc.caretPositionFromPoint?.(x, y);
-  if (!pos) return null;
-  const range = document.createRange();
-  range.setStart(pos.offsetNode, pos.offset);
-  range.collapse(true);
-  return range;
 }
 
 // --- plugins ---
@@ -244,82 +230,6 @@ function VariableToolbar({ vocab, interactive }: {
       ))}
     </div>
   );
-}
-
-/** Lets a chip be dragged to a new caret position within the prompt. The dragged node's key is parked
- *  in PromptDragContext on dragstart; on drop we resolve the caret and relocate the node. */
-function ChipDragPlugin({ dragKey }: { dragKey: { current: string | null } }) {
-  const [editor] = useLexicalComposerContext();
-  useEffect(() => {
-    // Browsers don't render a native drop caret when dragging our contenteditable=false chip, so we draw our
-    // own: a thin vertical line positioned at the drop caret during dragover, hidden on drop / drag end.
-    const caret = document.createElement('div');
-    caret.style.cssText =
-      'position:fixed;width:2px;pointer-events:none;z-index:60;background:hsl(var(--foreground));display:none';
-    document.body.appendChild(caret);
-    const hideCaret = () => { caret.style.display = 'none'; };
-    const showCaretAt = (x: number, y: number) => {
-      const range = caretRangeFromPoint(x, y);
-      const rect = range?.getBoundingClientRect();
-      if (!rect) return hideCaret();
-      caret.style.left = `${rect.left}px`;
-      caret.style.top = `${rect.top}px`;
-      caret.style.height = `${rect.height || 18}px`;
-      caret.style.display = 'block';
-    };
-
-    const removeOver = editor.registerCommand(
-      DRAGOVER_COMMAND,
-      (event: DragEvent) => {
-        if (!dragKey.current) return false;
-        event.preventDefault(); // allow the drop
-        if (event.dataTransfer) event.dataTransfer.dropEffect = 'move';
-        showCaretAt(event.clientX, event.clientY);
-        return true;
-      },
-      COMMAND_PRIORITY_LOW,
-    );
-    const removeDrop = editor.registerCommand(
-      DROP_COMMAND,
-      (event: DragEvent) => {
-        const key = dragKey.current;
-        if (!key) return false;
-        event.preventDefault();
-        dragKey.current = null;
-        hideCaret();
-        const range = caretRangeFromPoint(event.clientX, event.clientY);
-        if (!range) return true;
-        editor.update(() => {
-          const node = $getNodeByKey(key);
-          if (!$isVariableNode(node)) return;
-          const token = node.getToken();
-          const selection = $createRangeSelection();
-          selection.applyDOMRange(range);
-          if (selection.anchor.getNode().getKey() === key) return; // dropped onto itself
-          node.remove();
-          $setSelection(selection);
-          $insertNodes([$createVariableNode(token)]);
-        });
-        return true;
-      },
-      COMMAND_PRIORITY_HIGH,
-    );
-    // dragend fires even when the drag is canceled or dropped outside the editor, so the caret never lingers.
-    // Clear the parked node key too, or a canceled/outside drop leaves it set and the next unrelated drag
-    // (text, a file) satisfies the dragover guard and gets treated as a continued chip move.
-    const onDragEnd = () => {
-      hideCaret();
-      dragKey.current = null;
-    };
-    document.addEventListener('dragend', onDragEnd);
-    return () => {
-      removeOver();
-      removeDrop();
-      document.removeEventListener('dragend', onDragEnd);
-      caret.remove();
-    };
-  }, [editor, dragKey]);
-  return null;
 }
 
 // --- editor + field ---
@@ -854,7 +764,7 @@ const PromptField = ({ value, onChange, variables = [], vocabulary, previewValue
         <HistoryPlugin />
         <ValueSyncPlugin value={value} onChange={onChange} parse={vocab.parse} onExternalValue={resetScroll} />
         <EditablePlugin readOnly={readOnly} />
-        <ChipDragPlugin dragKey={dragKey} />
+        <ChipDragPlugin dragKey={dragKey} vocab={insertTrigger ? vocab : undefined} />
         <CaretFollowPlugin onCaret={followCaret} />
         {insertTrigger && !readOnly && (
           <>

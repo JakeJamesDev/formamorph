@@ -222,19 +222,6 @@ export function describePlaceholders(text: string, placeholders: Placeholder[] =
   });
 }
 
-/**
- * Author-facing rendering of chip tokens as `{PlaceholderName}` — for compact surfaces that must show a
- * token-bearing string but have no room for a real chip editor (a tag chip, a list row). Unlike
- * {@link describePlaceholders} this names the placeholder rather than showing its values, because the
- * author is looking at what they inserted, not at what a player will read. A deleted one reads `{?}`.
- */
-export function labelPlaceholders(text: string, placeholders: Placeholder[] = []): string {
-  if (!text || !hasPlaceholders(text)) return text;
-  const byId = new Map(placeholders.map((p) => [p.id, p]));
-  TOKEN_RE.lastIndex = 0;
-  return text.replace(TOKEN_RE, (_full, id: string) => `{${byId.get(id)?.name ?? '?'}}`);
-}
-
 export interface ResolveOptions {
   placeholders: Placeholder[];
   /** Frozen rolls for this playthrough. Not mutated — new rolls are reported via `setRoll`. */

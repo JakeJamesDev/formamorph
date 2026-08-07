@@ -47,7 +47,7 @@ import { parseJsonText, terminateWorker as terminateJsonWorker } from '@/lib/jso
 import AddDictionaryModal from '@/components/modals/AddDictionaryModal';
 import AddEntityModal from '@/components/modals/AddEntityModal';
 import { exportEntityCard } from '@/lib/entityFile';
-import { absorbPlaceholders, remapPlaceholderIds, labelPlaceholders, describePlaceholders } from '@/lib/placeholders';
+import { absorbPlaceholders, remapPlaceholderIds, describePlaceholders } from '@/lib/placeholders';
 import {
   DndContext,
   closestCenter,
@@ -351,7 +351,7 @@ const WorldEditor = ({ onClose, embedded = false, backButton }: {
     // Search what the author reads. A name holding a chip is stored as a token, so matching the raw value
     // would mean typing a UUID to find it.
     return itemsToFilter.filter(item =>
-      labelPlaceholders(item.name, placeholders).toLowerCase().includes(searchTerm.toLowerCase())
+      describePlaceholders(item.name, placeholders).toLowerCase().includes(searchTerm.toLowerCase())
     );
   }, [activeTab, stats, entities, locations, traits, statUpdates, searchTerm, placeholders]);
 
@@ -371,7 +371,7 @@ const WorldEditor = ({ onClose, embedded = false, backButton }: {
   // and Dictionary, and does nothing yet.
   const exportContext =
     activeTab === 'overview' ? { label: 'Export World', disabled: false, onClick: () => { exportCurrentWorld(); } }
-    : activeTab === 'entities' ? { label: `Export ${selectedItem ? labelPlaceholders(selectedItem.name, placeholders) : 'Entity'}`, disabled: !selectedItem, onClick: () => { if (selectedItem) exportEntity(selectedItem as Entity); } }
+    : activeTab === 'entities' ? { label: `Export ${selectedItem ? describePlaceholders(selectedItem.name, placeholders) : 'Entity'}`, disabled: !selectedItem, onClick: () => { if (selectedItem) exportEntity(selectedItem as Entity); } }
     : activeTab === 'dictionary'
       ? { label: `Export ${selectedBook?.name ?? 'Dictionary'}`, disabled: !selectedBook, onClick: () => { if (selectedBook) exportDictionary(selectedBook); } }
     : null;
@@ -473,7 +473,7 @@ const WorldEditor = ({ onClose, embedded = false, backButton }: {
           {items.map((item) => (
             <SortableRow
               key={item.id}
-              item={{ ...item, name: labelPlaceholders(item.name, placeholders) }}
+              item={{ ...item, name: describePlaceholders(item.name, placeholders) }}
               selected={selectedItemId === item.id}
               onSelect={setSelectedItemId}
               onRemove={removeItem}
