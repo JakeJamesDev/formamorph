@@ -200,6 +200,50 @@ function SamplerControl({ id, label, hint, custom, value, defaultValue, min, max
   );
 }
 
+/** Sentinel for the Follow Active row — Radix Select cannot hold an empty-string value, and "unpinned" is
+ *  stored as an absent map entry rather than an id. */
+const FOLLOW_ACTIVE = '__follow__';
+
+/**
+ * Which endpoint preset this prompt sends to. Follow Active (the default) means the prompt goes wherever the
+ * globally-selected preset points, as it did before routing existed; any other choice pins this prompt alone.
+ * Unlike the rest of this panel it is NOT preset-scoped — endpoint routing is global, so it stays editable
+ * under a built-in prompt preset and is never carried by a shared one.
+ */
+function PromptEndpointField({ value, activeName, presets, onChange }: {
+  value: string | null;
+  activeName: string;
+  presets: { id: string; name: string }[];
+  onChange: (id: string | null) => void;
+}) {
+  return (
+    <div className="flex flex-col gap-1">
+      <label className="text-sm">Endpoint</label>
+      <Select
+        value={value ?? FOLLOW_ACTIVE}
+        onValueChange={(v) => onChange(v === FOLLOW_ACTIVE ? null : v)}
+      >
+        <SelectTrigger><SelectValue /></SelectTrigger>
+        <SelectContent>
+          <SelectItem value={FOLLOW_ACTIVE}>Follow Active ({activeName})</SelectItem>
+          <SelectSeparator />
+          <SelectGroup>
+            <SelectLabel>Send This Prompt To</SelectLabel>
+            {presets.map((p) => (
+              <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>
+            ))}
+          </SelectGroup>
+        </SelectContent>
+      </Select>
+      <span className="text-xs text-muted-foreground">
+        {value === null
+          ? 'Follows the preset selected under AI Endpoints.'
+          : 'Pinned — this prompt ignores the active preset. Sampling and reasoning below apply to this endpoint.'}
+      </span>
+    </div>
+  );
+}
+
 /** A prompt's Native Reasoning override: `Global | None | <levels>`, shown only for narration/choices under
  *  Native mode. `Global` follows the endpoint-wide level; the rest override this prompt alone. */
 function PromptReasoningField({ value, options, onChange, disabled }: {
@@ -265,7 +309,8 @@ function PromptReasoningBudgetField({ value, onChange, disabled }: {
  *  them), the per-prompt Native Reasoning override (narration/choices under Native only — the effort level on
  *  external endpoints, or the token budget on the local engine), plus one override row per tunable sampler.
  *  `disabled` locks every control when the active prompt preset is built-in (Default/Simple). */
-function PromptOptionsPanel({ verbatim, reasoning, reasoningBudget, samplers, disabled }: {
+function PromptOptionsPanel({ endpoint, verbatim, reasoning, reasoningBudget, samplers, disabled }: {
+  endpoint: React.ComponentProps<typeof PromptEndpointField>;
   verbatim: { value: number; set: (n: number) => void } | null;
   reasoning: { value: PromptReasoning; options: { value: PromptReasoning; label: string }[]; set: (v: PromptReasoning) => void } | null;
   reasoningBudget: { value: number; set: (v: number) => void } | null;
@@ -275,6 +320,8 @@ function PromptOptionsPanel({ verbatim, reasoning, reasoningBudget, samplers, di
   return (
     // px-3 keeps the slider thumb off the scroll frame's edges (the thumb overflows the track ends at 0/max).
     <div className="space-y-5 px-3 py-3">
+      {/* Not gated on `disabled`: routing is global, not part of the prompt preset the flag guards. */}
+      <PromptEndpointField {...endpoint} />
       {verbatim && <VerbatimTurnsField id="promptVerbatim" value={verbatim.value} onChange={verbatim.set} disabled={disabled} />}
       {reasoning && <PromptReasoningField value={reasoning.value} options={reasoning.options} onChange={reasoning.set} disabled={disabled} />}
       {reasoningBudget && <PromptReasoningBudgetField value={reasoningBudget.value} onChange={reasoningBudget.set} disabled={disabled} />}
@@ -520,10 +567,12 @@ export const SettingsModal = ({ isOpen, onOpenChange, previewValues, initialTab,
     setCharacterDiaries,
     genTemperature,
     genRepetitionPenalty,
-    localModelActive,
     promptSamplers,
     setPromptSamplerCustom,
     setPromptSamplerValue,
+    promptEndpoints,
+    setPromptEndpoint,
+    resolveEndpointForKind,
     showSilentRequests,
     setShowSilentRequests,
     showReasoning,
@@ -879,13 +928,29 @@ export const SettingsModal = ({ isOpen, onOpenChange, previewValues, initialTab,
   // sampler (a non-pinned prompt on a custom endpoint) — the panel then shows "Endpoint default".
   const activeKind = TAB_TO_REQUEST[activePromptTab] ?? 'narration';
   const activeSamplers = promptSamplers[activeKind];
+  // Endpoint routing for this prompt. A pin naming a preset that no longer exists shows as Follow Active —
+  // the same thing it actually resolves to at request time.
+  const routableEndpoints = [...builtinTextEndpointPresets, ...textEndpointPresets];
+  const pinnedEndpointId = promptEndpoints[activeKind];
+  const endpointControl = {
+    value: pinnedEndpointId && routableEndpoints.some((p) => p.id === pinnedEndpointId) ? pinnedEndpointId : null,
+    activeName: activeTextEndpointPresetName,
+    presets: routableEndpoints,
+    onChange: (id: string | null) => setPromptEndpoint(activeKind, id),
+  };
+  // The rest of the panel describes what this prompt will actually send, so its engine flag and reasoning
+  // support come from the routed target — a prompt pinned off the bundled engine gets the external-endpoint
+  // controls even while the engine is running, and vice versa.
+  const promptTarget = resolveEndpointForKind(activeKind);
+  const promptLocalEngine = promptTarget.localEngine;
+  const promptReasoningEfforts = promptTarget.supportedReasoningEfforts;
   const samplerControls: SamplerControlProps[] = [
     {
       id: 'customTemp', label: 'Custom Temperature', hint: "override this prompt's sampling temperature",
       min: 0, max: 2, step: 0.05,
       custom: activeSamplers?.temperature?.custom ?? false,
-      value: activeSamplers?.temperature?.value ?? defaultPromptSampler(activeKind, 'temperature', genTemperature, localModelActive) ?? genTemperature,
-      defaultValue: defaultPromptSampler(activeKind, 'temperature', genTemperature, localModelActive),
+      value: activeSamplers?.temperature?.value ?? defaultPromptSampler(activeKind, 'temperature', genTemperature, promptLocalEngine) ?? genTemperature,
+      defaultValue: defaultPromptSampler(activeKind, 'temperature', genTemperature, promptLocalEngine),
       onCustomChange: (c) => setPromptSamplerCustom(activeKind, 'temperature', c),
       onValueChange: (v) => setPromptSamplerValue(activeKind, 'temperature', v),
     },
@@ -893,8 +958,8 @@ export const SettingsModal = ({ isOpen, onOpenChange, previewValues, initialTab,
       id: 'customRepPen', label: 'Custom Repetition Penalty', hint: "override this prompt's repetition penalty",
       min: 1, max: 1.5, step: 0.02,
       custom: activeSamplers?.repetitionPenalty?.custom ?? false,
-      value: activeSamplers?.repetitionPenalty?.value ?? defaultPromptSampler(activeKind, 'repetitionPenalty', genRepetitionPenalty, localModelActive) ?? genRepetitionPenalty,
-      defaultValue: defaultPromptSampler(activeKind, 'repetitionPenalty', genRepetitionPenalty, localModelActive),
+      value: activeSamplers?.repetitionPenalty?.value ?? defaultPromptSampler(activeKind, 'repetitionPenalty', genRepetitionPenalty, promptLocalEngine) ?? genRepetitionPenalty,
+      defaultValue: defaultPromptSampler(activeKind, 'repetitionPenalty', genRepetitionPenalty, promptLocalEngine),
       onCustomChange: (c) => setPromptSamplerCustom(activeKind, 'repetitionPenalty', c),
       onValueChange: (v) => setPromptSamplerValue(activeKind, 'repetitionPenalty', v),
     },
@@ -905,16 +970,16 @@ export const SettingsModal = ({ isOpen, onOpenChange, previewValues, initialTab,
   // shows per engine (the other is inert there).
   // A probed-but-empty support list means the active endpoint rejects every reasoning_effort literal (even
   // `none`) — a conclusively non-reasoning model. `null`/undefined = not yet probed, so keep showing controls.
-  const reasoningUnsupported = Array.isArray(supportedReasoningEfforts) && supportedReasoningEfforts.length === 0;
+  const reasoningUnsupported = Array.isArray(promptReasoningEfforts) && promptReasoningEfforts.length === 0;
   const reasoningApplicable = thinkingMode === 'off' && REASONING_CONTROL_KINDS.includes(activeKind);
-  const reasoningControl = reasoningApplicable && !localModelActive && !reasoningUnsupported
+  const reasoningControl = reasoningApplicable && !promptLocalEngine && !reasoningUnsupported
     ? {
         value: promptReasoning[activeKind] ?? defaultPromptReasoning(activeKind),
-        options: reasoningPromptTabs(supportedReasoningEfforts),
+        options: reasoningPromptTabs(promptReasoningEfforts),
         set: (v: PromptReasoning) => setPromptReasoning(activeKind, v),
       }
     : null;
-  const reasoningBudgetControl = reasoningApplicable && localModelActive
+  const reasoningBudgetControl = reasoningApplicable && promptLocalEngine
     ? {
         value: promptReasoningBudget[activeKind] ?? defaultReasoningBudgetPct(activeKind),
         set: (v: number) => setPromptReasoningBudget(activeKind, v),
@@ -2228,6 +2293,7 @@ An inspection aid for authoring and debugging; off by default.`}</HintInfo>
               {showingOptions && (
                 <ScrollArea className="mt-4 flex-1 min-h-0">
                   <PromptOptionsPanel
+                    endpoint={endpointControl}
                     verbatim={verbatimApplicable ? activeVerbatimEntry : null}
                     reasoning={reasoningControl}
                     reasoningBudget={reasoningBudgetControl}

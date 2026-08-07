@@ -299,9 +299,9 @@ const GameViewer = ({
     activeEndpointUrl: endpointUrl,
     activeApiToken: apiToken,
     activeModelName: modelName,
-    activeMaxTokens: maxTokens,
-    contextWindow,
-    localModelActive,
+    // Per-prompt endpoint routing: every AI call resolves its own target, so a prompt pinned to another
+    // preset sends there. An unpinned prompt resolves to the active endpoint, i.e. the values above.
+    resolveEndpointForKind,
     disableThinking,
     genTemperature,
     genTopP,
@@ -324,7 +324,6 @@ const GameViewer = ({
     thinkingVerbatimTurns,
     thinkingMode,
     reasoningEffort,
-    supportedReasoningEfforts,
     reasoningEngaged,
     promptReasoning,
     promptReasoningBudget,
@@ -1066,6 +1065,13 @@ const GameViewer = ({
   // builder reaches it through a ref rather than the closure — same dodge as makeAIRequestRef.
   const buildContextValuesRef = useRef<(loc?: GameLocation | null) => Record<string, string>>(() => ({}));
 
+  // Narration's resolved target backs every budget the story history is trimmed against — the window and the
+  // reserved output belong to whichever endpoint narration actually sends to, not the globally-selected one.
+  // The planner resolves its own below, since routing may point the two at very differently-sized models.
+  const narrationEndpoint = useMemo(() => resolveEndpointForKind('narration'), [resolveEndpointForKind]);
+  const contextWindow = narrationEndpoint.contextWindow;
+  const maxTokens = narrationEndpoint.maxTokens;
+
   const getTrimmedMessageHistory = useCallback((promptTokens = 0, action = "", relevanceScores: Map<string, number> | null = null, actionVec: Float32Array | null = null, liveRecall = false) => {
     const turns = parseEffectiveTurns(fullMessageHistory);
     if (memoryDigests) {
@@ -1654,7 +1660,8 @@ ${playerNotes || NONE_PLACEHOLDER}
           const plannerTurns = parseEffectiveTurns(fullMessageHistory);
           const planner = buildBandedHistory({
             turns: plannerTurns,
-            contextWindow,
+            // The planner's own endpoint: routing it to a smaller model must shrink its band, not narration's.
+            contextWindow: resolveEndpointForKind('thinking').contextWindow,
             promptTokens: estimateTokens(thinkPrompt.length),
             maxTokens: 256,
             verbatimFloor: thinkingVerbatimTurns,
@@ -2557,22 +2564,28 @@ ${playerNotes || NONE_PLACEHOLDER}
       // Capture the exact payload into the AI-context viewer.
       if (!silent || captureSilent) captureRequest();
 
-      const resolvedTemperature = resolvePromptSampler(requestType, "temperature", promptSamplers, genTemperature, localModelActive);
-      const resolvedRepPenalty = resolvePromptSampler(requestType, "repetitionPenalty", promptSamplers, genRepetitionPenalty, localModelActive);
+      // Where this prompt sends: its pinned preset, or the active endpoint when it follows the selection.
+      // Every engine-shaped decision below reads the resolved target rather than the global one, so a
+      // prompt routed off the built-in engine stops being sent that engine's body fields.
+      const target = resolveEndpointForKind(requestType);
+      const targetIsLocalEngine = target.localEngine;
+      const resolvedTemperature = resolvePromptSampler(requestType, "temperature", promptSamplers, genTemperature, targetIsLocalEngine);
+      const resolvedRepPenalty = resolvePromptSampler(requestType, "repetitionPenalty", promptSamplers, genRepetitionPenalty, targetIsLocalEngine);
+      const targetMaxTokens = maxTokensOverride ?? target.maxTokens;
 
-      const response = await fetch(getEndpointUrl(), {
+      const response = await fetch(target.url, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-          Authorization: `Bearer ${apiToken}`,
+          Authorization: `Bearer ${target.apiToken}`,
         },
         body: JSON.stringify({
-          model: modelName,
+          model: target.model,
           messages: [{ role: "system", content: systemPrompt }, ...messages],
-          max_tokens: maxTokensOverride ?? maxTokens,
+          max_tokens: targetMaxTokens,
           stream: true,
           // top_p/top_k/min_p apply to the built-in engine only (a custom endpoint keeps its own).
-          ...(localModelActive && {
+          ...(targetIsLocalEngine && {
             top_p: genTopP,
             top_k: genTopK,
             min_p: genMinP,
@@ -2588,12 +2601,13 @@ ${playerNotes || NONE_PLACEHOLDER}
           // Reasoning is engine-split: the local engine caps the thought segment by a token budget
           // (thinking_budget_tokens, from the per-prompt %); external endpoints take the coarse reasoning_effort
           // hint. Guided modes / uncontrolled prompts resolve to 0 / none on each path.
-          ...(localModelActive
-            ? reasoningBudgetBody(thinkingMode, requestType, promptReasoningBudget, maxTokensOverride ?? maxTokens)
+          ...(targetIsLocalEngine
+            ? reasoningBudgetBody(thinkingMode, requestType, promptReasoningBudget, targetMaxTokens)
             // Only send `reasoning_effort` to an external endpoint when reasoning is actually engaged; otherwise
-            // omit it entirely so a plain endpoint (e.g. LM Studio) isn't sent fields it rejects.
+            // omit it entirely so a plain endpoint (e.g. LM Studio) isn't sent fields it rejects. The support
+            // list is the routed target's, so a level the pinned endpoint rejects is never sent to it.
             : reasoningEngaged
-              ? reasoningEffortBody(thinkingMode, resolvePromptReasoning(requestType, promptReasoning, reasoningEffort), supportedReasoningEfforts)
+              ? reasoningEffortBody(thinkingMode, resolvePromptReasoning(requestType, promptReasoning, reasoningEffort), target.supportedReasoningEfforts)
               : {}),
           // Single-paragraph stop, but not in inline-thinking mode — the <think> block needs newlines.
           ...(requestType === "narration" && paragraphLimit === "single" && thinkingMode !== "inline" && { stop: ["\n"] }),

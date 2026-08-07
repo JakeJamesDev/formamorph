@@ -42,6 +42,11 @@ import { buildSharedPreset, type SharedPreset, type ImportedPreset } from '../li
 import { resolvePinnedPreset } from '../lib/worldPromptPreset';
 import { buildStyledValues } from '../lib/sectionStyle';
 import { defaultPromptSampler, type PromptSamplerMap, type PromptSampler } from '../lib/promptSamplers';
+import {
+  promptEndpointMapCodec, resolvePromptEndpoint, routedPresetId, endpointSignature,
+  dropPreset as dropRoutedPreset, setPromptEndpoint as setRoutedEndpoint,
+  type PromptEndpointMap, type ResolvedPromptEndpoint,
+} from '../lib/promptEndpoints';
 import type { AIRequestType } from '../types';
 import type { ParagraphLimit } from '../lib/outputLength';
 import { detectSupportedReasoningEfforts, detectReasoningCapability, isReasoningEngaged, type ReasoningEffortField, type PromptReasoning } from '../lib/reasoningEffort';
@@ -883,8 +888,99 @@ function useProvideSettings() {
     return id;
   };
   const renameTextEndpointPreset = (id: string, name: string) => setTextPresetStore((s) => textRenamePreset(s, id, name));
-  const deleteTextEndpointPreset = (id: string) => setTextPresetStore((s) => textDeletePreset(s, id));
+  const deleteTextEndpointPreset = (id: string) => {
+    setTextPresetStore((s) => textDeletePreset(s, id));
+    // Drop the routes that named it. Resolution already treats a ghost id as Follow Active, so this only
+    // keeps the stored map honest — and stops a recycled id from silently re-adopting an old route.
+    setPromptEndpoints((m) => dropRoutedPreset(m, id));
+  };
   const resetTextEndpointPreset = (id: string) => setTextPresetStore((s) => textResetPreset(s, id));
+
+  // Per-prompt endpoint routing: which text-endpoint preset each prompt kind sends to. Global (not folded
+  // into prompt presets, which are shareable and would carry endpoint ids that mean nothing elsewhere).
+  // A kind with no entry follows the active preset, which is how every prompt behaved before routing.
+  const [promptEndpoints, setPromptEndpoints] = usePersistentState<PromptEndpointMap>(
+    `${APP_ID}_promptEndpoints`, {}, promptEndpointMapCodec,
+  );
+  const setPromptEndpoint = useCallback(
+    (kind: AIRequestType, id: string | null) => setPromptEndpoints((m) => setRoutedEndpoint(m, kind, id)),
+    [setPromptEndpoints],
+  );
+  /** Whether any kind is routed away from the active preset — drives the "some prompts are routed" cue. */
+  const hasRoutedPrompts = Object.keys(promptEndpoints).some(
+    (k) => routedPresetId(k as AIRequestType, promptEndpoints, textPresetStore) !== null,
+  );
+
+  // Context windows for routed endpoints, keyed by the same `endpoint|model` signature the reasoning-support
+  // cache uses. The active endpoint has its own detect effect; a routed one is probed lazily on first use.
+  const [routedContextCache, setRoutedContextCache] = usePersistentState<Record<string, number>>(
+    `${APP_ID}_routedContextWindows`, {}, {
+      parse: (r) => { try { const o = JSON.parse(r); return o && typeof o === 'object' && !Array.isArray(o) && Object.values(o).every((v) => typeof v === 'number') ? o : {}; } catch { return {}; } },
+      serialize: (v) => JSON.stringify(v),
+    });
+  // Signatures already probed this session, so a miss fires one probe rather than one per request.
+  const routedProbedRef = useRef<Set<string>>(new Set());
+
+  /**
+   * Everything one prompt kind needs to build its request. An unpinned kind returns exactly the active
+   * endpoint state, so the pre-routing path is untouched; a pinned one resolves its preset and looks up
+   * that target's cached capabilities, kicking off a probe the first time a signature is unknown.
+   */
+  const resolveEndpointForKind = useCallback((kind: AIRequestType): ResolvedPromptEndpoint & {
+    /** Chat-completions URL, normalized the same way the active endpoint is. */
+    url: string;
+    contextWindow: number;
+    supportedReasoningEfforts: ReasoningEffortField[] | null;
+  } => {
+    const resolved = resolvePromptEndpoint(kind, promptEndpoints, textPresetStore, {
+      values: textValues, isBuiltIn: textIsBuiltInActive, localEngine: localModelActive, maxTokens: activeMaxTokens,
+    });
+    const url = normalizeEndpointUrl(resolved.endpoint);
+    if (resolved.presetId === null) {
+      return { ...resolved, url, contextWindow, supportedReasoningEfforts };
+    }
+    const sig = endpointSignature(url, resolved.model);
+    // Probe a routed target's real window once per signature. Fire-and-forget: this turn uses the preset's
+    // override (or the shipped default) and the detected value applies from the next request on.
+    if (!routedProbedRef.current.has(sig)) {
+      routedProbedRef.current.add(sig);
+      if (routedContextCache[sig] === undefined) {
+        void fetchContextLength(url, resolved.apiToken, resolved.model).then((detected) => {
+          if (detected === null) return;
+          setRoutedContextCache((prev) => {
+            const next = { ...prev, [sig]: detected };
+            const keys = Object.keys(next);
+            if (keys.length > REASONING_CACHE_CAP) delete next[keys[0]];
+            return next;
+          });
+        }).catch(() => { /* an unreachable routed endpoint surfaces as a request failure, not here */ });
+      }
+      if (reasoningSupportCache[sig] === undefined) {
+        void detectSupportedReasoningEfforts(url, resolved.apiToken, resolved.model).then((efforts) => {
+          if (!efforts) return;
+          setReasoningSupportCache((prev) => {
+            const next = { ...prev, [sig]: efforts };
+            const keys = Object.keys(next);
+            if (keys.length > REASONING_CACHE_CAP) delete next[keys[0]];
+            return next;
+          });
+        }).catch(() => { /* same: capability probes fail quietly, the request itself reports */ });
+      }
+    }
+    return {
+      ...resolved,
+      url,
+      // A manual override on the preset always beats the probe; the local engine uses its own window.
+      contextWindow: resolved.localEngine
+        ? localContextSize
+        : resolved.contextWindowOverride ?? routedContextCache[sig] ?? DEFAULT_CONTEXT_WINDOW,
+      supportedReasoningEfforts: reasoningSupportCache[sig] ?? null,
+    };
+  }, [
+    promptEndpoints, textPresetStore, textValues, textIsBuiltInActive, localModelActive, activeMaxTokens,
+    contextWindow, supportedReasoningEfforts, routedContextCache, reasoningSupportCache, localContextSize,
+    setRoutedContextCache, setReasoningSupportCache,
+  ]);
 
   // User-editable prompt that turns a subject's description into booru tags (Settings → AI Endpoints → Tag Prompt).
   const [imageTagPrompt, setImageTagPrompt] = usePersistentState<string>(`${APP_ID}_imageTagPrompt`, DEFAULT_TAG_PROMPT, stringCodec);
@@ -1115,6 +1211,10 @@ function useProvideSettings() {
     promptSamplers,
     setPromptSamplerCustom,
     setPromptSamplerValue,
+    promptEndpoints,
+    setPromptEndpoint,
+    hasRoutedPrompts,
+    resolveEndpointForKind,
     systemPrompt,
     setSystemPrompt,
     narrationUserPrompt,
