@@ -1,6 +1,6 @@
 # Placeholders in Names — Design Memo
 
-Extension of the Placeholders feature (`docs-internal/placeholders-design.md`): placeholder chips become legal inside **name fields**, not just description/prompt text. Spec agreed 2026-08-06; no code yet.
+Extension of the Placeholders feature (`docs-internal/placeholders-design.md`): placeholder chips become legal inside **name fields**, not just description/prompt text. Spec agreed 2026-08-06; **shipped**. Several display decisions were reversed in review — the **What shipped** section below is the authority, not the spec that precedes it.
 
 ## Scope — the seven name surfaces
 
@@ -25,9 +25,9 @@ Extension of the Placeholders feature (`docs-internal/placeholders-design.md`): 
 
 ## Editor UI
 
-- **Single-line chip field**: a new variant of `PlaceholderField` (`src/components/prompt/PromptField.tsx` under the hood) — chips inline, Enter/newline disabled, no toolbar, no Edit/Preview tabs. Replaces the plain `Input` on all seven surfaces.
+- **Single-line chip field**: *shipped as its own component,* `src/components/prompt/ChipInput.tsx` (not a `PromptField` variant — that component's tabs/fullscreen chrome had nothing to give a one-line field). Exposed as `PlaceholderNameField`.
 - **Tag lists** (`src/components/KeywordChips.tsx`, used by aliases + dictionary keywords + placeholder values): each tag's input becomes the single-line chip field too, so a tag can mix text and chips ("Old {TavernName} keeper"). Heaviest UI slice. Placeholder *values* themselves stay plain (no nesting — unchanged rule).
-- **Editor lists, dropdowns, trait tree, search show author preview** — resolved names (Variable→value, Wildcard→preview roll), same spirit as the Preview pane. Includes `WorldEditor.tsx` item search (`src/views/WorldEditor.tsx:341`), stat pickers (`src/managers/TraitManager.tsx`, `StatUpdatesManager.tsx`), and anywhere else a raw `item.name` renders in the editor.
+- **Editor lists, dropdowns, trait tree, search show author preview** — *superseded; see the display matrix under “What shipped”.* Lists and trees ended up as coloured pills, and only the surfaces that cannot render a node spell the values out.
 
 ## Insert UX — typeahead + editor-level palette
 
@@ -37,7 +37,7 @@ Decided from an interactive mock-up (2026-08-06). The per-field always-visible I
 
 **D — editor-level palette (visible companion):** ONE sticky strip at the top of each manager panel (right-hand editing pane in WorldEditor tabs; modal body in the library editors) listing all the world's placeholder chips — not repeated per field. Click a chip → insert at the caret of the last-focused chip field; drag-into-field also works. Wraps to extra lines when the list is long. Collapsible to a single "Placeholders ▸" button; collapsed state is a **global editor preference** (localStorage), one setting across the world editor. The strip doubles as at-a-glance documentation of what placeholders exist while authoring.
 
-Panels with no chip-capable field focused yet default the palette's target to the first chip field; the focused target is visually indicated. If the world defines zero placeholders, neither the strip nor the hint renders (matches the existing `hasPlaceholders` gating in `PlaceholderField.tsx`).
+*Not shipped as written:* there is no default target and no focused-field indicator. With nothing claimed the palette chips are dimmed (`aria-disabled`) and can still be dragged; clicking one needs a field. If the world defines zero placeholders, neither the strip nor the hint renders.
 
 ## Runtime — the real work
 
@@ -64,21 +64,49 @@ Names are compared as raw strings all over gameplay. Every matching/consumption 
 3. **Tag lists**: mixed-inline chips in `KeywordChips` (aliases, keywords).
 4. **Author-time tools**: activation tester + AI-context highlighting on preview rolls; export/import scanning.
 
-## What shipped (2026-08-06)
+## What shipped
 
-All four slices are in, four gates green. Deviations from the spec above, and why:
+All four slices are in. The spec above is the original agreement; several display decisions were reversed
+during review, so **this section is the authority** on what the code does — read it, not the spec, when in
+doubt.
 
-| Spec said | Shipped | Why |
+### Display matrix (settled 2026-08-07)
+
+Where a placeholder is visible, exactly one of four treatments applies:
+
+| Surface | Shows | How |
 |---|---|---|
-| Editor lists show an **author preview** (resolved values) | ~~By name~~ **Corrected 2026-08-07** — lists/trees/search/dropdowns show values via `describePlaceholders`: `Keeper of {Sedge\|Marrow}`. Stable across rows (it never rolls), so the objection that drove the deviation did not apply. `labelPlaceholders` is deleted. |
-| Palette chips **click or drag** into a field | ~~Click only~~ **Corrected 2026-08-07** — the drop plugin moved to `ChipDrag.tsx` and now also accepts a palette token carried on the drag (`application/x-formamorph-chip`), so any chip field takes a drop. Works with no field focused, which is why the palette chip is `aria-disabled` rather than `disabled`. |
-| Tag chips edit inline | ~~Token-bearing tags are remove-and-re-add~~ **Corrected 2026-08-07** — double-click now opens a chip editor on the tag, so it edits in place and its chips keep their World/Unique pop-out. The original deviation was wrong: it read as a dead double-click, and it made a placement's mode unreachable once committed. |
-| Author-time activation tester uses preview rolls | Not needed | No such surface exists — `activation-tester-spec.md` is an unbuilt spec. `explainActivation` runs only in `GameViewer`, which is resolved. |
-| — | Regex keyword fields opt out of chips | `{` is already a quantifier in a pattern. |
+| Inside an open editor field | placeholder **name**, values in the tooltip | the Lexical chip (`VariableNode` + `placeholderVocabulary`; `label` = name, `hint` = values) |
+| Editor trees, item rows, committed alias/keyword tags | **values**, name in the tooltip | `<PlaceholderText>` — a coloured pill |
+| Palette strip, `{` typeahead menu | placeholder **name** | `vocab.palette()` |
+| Everything that cannot render a node | **values in braces** | `describePlaceholders` |
+| Gameplay | the real rolled value | `resolvePH` / `usePlaceholderResolver`, via the resolved collections |
 
-Runtime resolution landed as `src/lib/resolveWorldNames.ts` + one block at the top of `GameViewer`; the raw sources are read **only** by roll priming and the resolution memos, which is what makes the ~80 downstream sites correct by construction.
+That last row is the widest: editor dropdowns (MultiSelect matches its own search against the label string),
+the editor search box, export filenames, `alt`/`title`/aria text, the pre-game trait and starting-location
+pickers, library card titles, and community listings. A pill cannot go in any of them.
 
-**Still open:** the linter that warns about a deleted placeholder leaving a nameless entity, and about two entities that can resolve to the same name. Both were deferred by decision, not overlooked.
+A placeholder whose definition was deleted renders a red `?` pill in the editor, and resolves to `""`
+everywhere else.
+
+### Other decisions that stuck
+
+- **Runtime resolution** is `src/lib/resolveWorldNames.ts` plus one block at the top of `GameViewer`. The raw
+  sources (`rawEntities`, `rawLocations`, …) are read **only** by roll priming and the resolution memos —
+  that invariant is what makes the ~80 downstream sites correct by construction, so keep it true.
+- **Insert paths**: `{` typeahead, click a palette chip, or drag one in (`ChipDrag.tsx`, private MIME type).
+  The palette chip is `aria-disabled`, never `disabled`, because a disabled button cannot start a drag.
+- **Tag lists** edit in place: double-click opens a chip editor on the tag, so a placement's World/Unique
+  pop-out stays reachable after it is committed. Regex keyword fields opt out of chips (`{` is a quantifier).
+- **Image tags** (the booru box, not the Overview tags) take chips; the Danbooru autocomplete runs alongside
+  the placeholder typeahead off the same flat token-string.
+- **Placeholder values** themselves stay literal — resolution is single-pass, so a chip inside one would
+  never expand.
+- The author-time activation tester in the spec **does not exist** to fix; `activation-tester-spec.md` is
+  unbuilt, and `explainActivation` runs only in `GameViewer`, which is resolved.
+
+**Still open:** the linter that warns about a deleted placeholder leaving a nameless entity, and about two
+entities that can resolve to the same name. Both deferred by decision, not overlooked.
 
 ## Open questions
 

@@ -8,9 +8,12 @@ import type { Placeholder } from '@/types';
  * Authored text with its placeholders drawn as chips rather than spelled out — for the read-only surfaces
  * that show a name: the editor trees, the flat item lists, and a committed alias or keyword.
  *
- * A pill names the placeholder and carries the values on hover, which is the opposite of an *open* field:
- * there the chip shows what it will become, because you are looking at the sentence it lands in. Colors are
- * the same per-placeholder accents the palette uses, so a pill and the chip you dragged in match.
+ * A pill shows what the name will become and carries the placeholder's own name on hover — the opposite of
+ * a chip in an *open* field, which names the placeholder so it stays one word wide inside a sentence.
+ * Colors are the same per-placeholder accents the palette uses, so a pill and the chip you inserted match.
+ *
+ * A chip whose definition was deleted renders a red `?`. Deliberately unlike {@link describePlaceholders},
+ * which resolves the same case to `''` because a text surface has nowhere to hang the explanation.
  *
  * Text with no chips renders as plain text and costs one regex test, so this is safe to use for every row.
  */

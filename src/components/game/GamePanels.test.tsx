@@ -2,6 +2,7 @@ import { describe, it, expect, vi, afterEach } from 'vitest';
 import { screen, fireEvent, act, within } from '@testing-library/react';
 import { getGameplayText } from '@/lib/gameplayTextStore';
 import { CONTINUE_CHOICE } from '@/lib/choices';
+import { encodePlaceholderToken } from '@/lib/placeholders';
 import { readTurn, renderLeftPanel, renderMiddlePanel, renderRightPanel, statFixture, type PanelHarness, type TurnFixture } from '@/test/gamePanels';
 import { resetTtsPlayback, setTtsPlayback } from '@/test/stubs/ttsPlayback';
 import { lastVrmViewerProps, resetVrmViewerStub } from '@/test/stubs/vrmViewer';
@@ -432,5 +433,42 @@ describe('MiddlePanel — the continue pseudo-choice', () => {
     // Page 2's was a typed action, so a live-only affordance has no business appearing there.
     act(() => { view.gameplay().setUserPage(2); });
     expect(continueButton()).toBeNull();
+  });
+});
+
+describe('placeholder names reach the panels resolved', () => {
+  // A one-value placeholder is a Variable: it resolves from its own value with no roll, so the assertion is
+  // deterministic without seeding a save's rolls. The chip is the real stored token, not a stand-in.
+  const TOWN = { id: 'ph-town', name: 'Town', values: ['Sedge'] };
+  const CHIP = encodePlaceholderToken({ id: 'ph-town', mode: 'world', placementId: 'p1' });
+
+  it('renders a stat whose name holds a chip by its value, never the raw token', () => {
+    const { container } = renderRightPanel({}, {
+      turns: TURNS,
+      stats: [statFixture(`${CHIP} Standing`, 50, { id: 'standing' })],
+      world: { placeholders: [TOWN] },
+    });
+
+    // The panel reads the world through its own hook, so this is what catches it reaching past resolution.
+    expect(screen.getByText('Sedge Standing')).toBeInTheDocument();
+    expect(container.textContent).not.toContain('{{ph:');
+  });
+
+  it('renders a trait whose name holds a chip by its value', () => {
+    const { container } = renderRightPanel({}, {
+      turns: TURNS,
+      stats: STATS,
+      world: {
+        placeholders: [TOWN],
+        traits: [{ id: 't-native', name: `${CHIP} Native`, statChanges: [] }],
+      },
+      seed: (gameplay) => {
+        gameplay.setPlayerTraits([{ id: 't-native', name: `${CHIP} Native`, statChanges: [] }]);
+        gameplay.setActiveTab('traits'); // traits live behind their own tab, as in the app
+      },
+    });
+
+    expect(screen.getByText(/Sedge Native/)).toBeInTheDocument();
+    expect(container.textContent).not.toContain('{{ph:');
   });
 });

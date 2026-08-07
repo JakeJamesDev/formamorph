@@ -82,11 +82,8 @@ import { splitSentenceSegments } from "../lib/ttsChunks";
 import { selectDueDigests, applyDigest, applyImportance, parseTurnContent, recentParticipants, selectDueDiaries, pendingDiaryNames, applyDiary, collectCharacterDiary } from "../lib/turnDigest";
 import { buildTraitContext } from "../lib/traitTree";
 import { buildLocationContext, buildEntityContext, buildSublocationsContext, buildSublocationEntitiesContext, buildReachableLocationsContext, buildReachableEntitiesContext, buildDestinationsContext, buildParentLocationContext, buildSceneEntitiesContext, scenePresentHere, navigableDestinations, sublocationEntityIds, expandScopedTokens } from "../lib/locationContext";
-import { primeRolls, resolvePlaceholders } from "@/lib/placeholders";
-import {
-  resolveEntityNames, resolveLocationNames, resolveStatNames, resolveTraitNames, resolveTraitGroupNames,
-  resolveDictionaryEntryNames,
-} from "@/lib/resolveWorldNames";
+import { primeRolls } from "@/lib/placeholders";
+import { useResolvedWorld } from "@/lib/useResolvedWorld";
 import { resolveStartingLocation } from "../lib/startingLocation";
 import { NONE_PLACEHOLDER } from "../lib/promptFallbacks";
 import { buildStatContext } from "../lib/statContext";
@@ -124,7 +121,7 @@ import { rollbackState, regenerateState, canRegenerate, lastTurnAction, markRege
 import { useDeferredSnapshot } from "../lib/useDeferredSnapshot";
 import { statMorphMap } from "../lib/bodyMorphs";
 import {
-  traitOrderIndex, inAuthoredOrder, refreshChosenTraits, activeStatEnabled, enabledStats, activePlaceholderPins,
+  inAuthoredOrder, refreshChosenTraits, activeStatEnabled, enabledStats,
   invertStatChanges, exclusiveSiblings,
 } from "../lib/traitEffects";
 import { extractCharacterCandidates, collectCandidateEvidence } from "../lib/characterCandidates";
@@ -391,7 +388,6 @@ const GameViewer = ({
     setVisibleEntities,
     currentLocation,
     setCurrentLocation,
-    playerStats: rawPlayerStats,
     setPlayerStats,
     playerTraits,
     setPlayerTraits,
@@ -429,7 +425,6 @@ const GameViewer = ({
     setUserPage,
     totalPages,
     isViewingPast,
-    viewStats: rawViewStats,
     viewTraits,
     viewDisabledTraitIds,
     viewLocationId,
@@ -446,9 +441,7 @@ const GameViewer = ({
     discoveredEntities,
     setDiscoveredEntities,
     suppressedCharacterNames,
-    runtimeDictionary: rawDictionary,
     setRuntimeDictionaries,
-    placeholderRolls,
     setPlaceholderRolls,
     memoryPins,
     setMemoryPins,
@@ -467,39 +460,13 @@ const GameViewer = ({
   } = useGameplay();
 
   // --- Placeholder resolution, before anything reads a name ---------------------------------------------
-  // Trait order and the active set are decided by id, so they can be derived from the authored traits before
-  // resolution exists — which is what breaks the cycle, since the pins those traits carry are an input to
-  // resolution itself. Only the *names* on the resolved copies below differ.
-  const traitOrder = useMemo(() => traitOrderIndex(rawTraits, rawTraitGroups), [rawTraits, rawTraitGroups]);
-  const traitPins = useMemo(() => {
-    const off = new Set(disabledTraitIds);
-    const active = inAuthoredOrder(refreshChosenTraits(playerTraits, rawTraits).filter((t) => !off.has(t.id)), traitOrder);
-    return activePlaceholderPins(active);
-  }, [playerTraits, disabledTraitIds, rawTraits, traitOrder]);
-
-  // Replace placeholder chips in authored text with their frozen per-playthrough values (pure lookup — rolls
-  // are primed below, so no side effects). Applied at every boundary that emits authored text to the AI.
-  const resolvePH = useCallback(
-    (text: string) => resolvePlaceholders(text, { placeholders, rolls: placeholderRolls, pins: traitPins }),
-    [placeholders, placeholderRolls, traitPins],
-  );
-
-  // Names resolve here, at the top of the view, rather than at each of the many places one is read. Below
-  // this line an entity/location/stat/trait/dictionary name is a plain string with no chips left in it, so
-  // matching against AI prose, keying deltas, and showing the player all agree by construction. A world
-  // without placeholders gets the very same array references back, so nothing downstream re-renders.
-  const entities = useMemo(() => resolveEntityNames(rawEntities, resolvePH), [rawEntities, resolvePH]);
-  const locations = useMemo(() => resolveLocationNames(rawLocations, resolvePH), [rawLocations, resolvePH]);
-  const stats = useMemo(() => resolveStatNames(rawStats, resolvePH), [rawStats, resolvePH]);
-  const traits = useMemo(() => resolveTraitNames(rawTraits, resolvePH), [rawTraits, resolvePH]);
-  const traitGroups = useMemo(() => resolveTraitGroupNames(rawTraitGroups, resolvePH), [rawTraitGroups, resolvePH]);
-  const dictionary = useMemo(() => resolveDictionaryEntryNames(rawDictionary, resolvePH), [rawDictionary, resolvePH]);
-  // The save's own stats carry a copy of each authored name, and every stat delta the AI sends is matched by
-  // name — so these resolve alongside the authored list rather than being left as the one place a chip
-  // survives into a comparison. Resolved on the way out of state (not on the way in) so the world stays the
-  // authority: re-rolled or re-authored values reach an existing save on its next load.
-  const playerStats = useMemo(() => resolveStatNames(rawPlayerStats, resolvePH), [rawPlayerStats, resolvePH]);
-  const viewStats = useMemo(() => resolveStatNames(rawViewStats, resolvePH), [rawViewStats, resolvePH]);
+  // One hook, shared with the gameplay panels, so the two cannot resolve a name differently. Below this line
+  // an entity/location/stat/trait/dictionary name is a plain string with no chips left in it. The `raw*`
+  // values above stay untouched for roll priming, which has to see the chips it is rolling for.
+  const {
+    entities, locations, stats, traits, traitGroups, dictionary, playerStats, viewStats,
+    traitOrder, resolvePH,
+  } = useResolvedWorld();
 
   // --- Active traits and what they switch on ------------------------------------------------------------
   // A chosen trait the player has switched off contributes nothing: no AI text, no stat toggle, no pin. Its
@@ -3724,7 +3691,7 @@ ${playerNotes || NONE_PLACEHOLDER}
       // Authored order, not click order: stat changes apply in sequence, so a deterministic order is what
       // makes two players who picked the same traits end up with the same stats.
       const chosen = new Set(initialTraits);
-      inAuthoredOrder(traits.filter((t) => chosen.has(t.id)), traitOrderIndex(traits, traitGroups))
+      inAuthoredOrder(traits.filter((t) => chosen.has(t.id)), traitOrder)
         .forEach(applyTrait);
 
       // Use the player's chosen starting location, else a random starting point (fallback: any location).
@@ -3768,6 +3735,7 @@ ${playerNotes || NONE_PLACEHOLDER}
     dictionaries,
     traits,
     traitGroups,
+    traitOrder,
     locations,
     worldId,
     stats,

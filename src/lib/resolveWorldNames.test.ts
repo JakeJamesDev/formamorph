@@ -1,9 +1,9 @@
 import { describe, it, expect } from 'vitest';
-import type { Dictionary, DictionaryEntry, Entity, GameLocation, PlayerStat, Stat, Trait, TraitGroup } from '@/types';
+import type { DictionaryEntry, Entity, GameLocation, PlayerStat, Stat, Trait, TraitGroup } from '@/types';
 import { encodePlaceholderToken, resolvePlaceholders } from './placeholders';
 import {
   resolveEntityNames, resolveLocationNames, resolveStatNames, resolveTraitNames, resolveTraitGroupNames,
-  resolveDictionaryEntryNames, resolveDictionaryNames,
+  resolveDictionaryEntryNames,
 } from './resolveWorldNames';
 
 // Real defs + tokens rather than a stub replacer, so these also pin the codec the editor writes.
@@ -69,15 +69,6 @@ describe('resolveWorldNames', () => {
     expect(en.name).toBe('Sedge Guard');
     expect(en.key).toEqual(['Sedge Guard', 'watchmen']);
     expect(en.secondaryKeys).toEqual(['Vera']);
-  });
-
-  it('resolves entries inside dictionary books', () => {
-    const books = [{
-      id: 'b1',
-      name: 'Book',
-      entries: [{ id: 'd1', name: `${tok(KEEPER.id, 'p12')}`, key: [], value: '' }],
-    }] as Dictionary[];
-    expect(resolveDictionaryNames(books, resolve)[0].entries[0].name).toBe('Vera');
   });
 
   it('resolves a missing placeholder to nothing, matching every other field', () => {

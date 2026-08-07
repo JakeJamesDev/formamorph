@@ -1,4 +1,4 @@
-import type { Dictionary, DictionaryEntry, Entity, GameLocation, Trait, TraitGroup } from '@/types';
+import type { DictionaryEntry, Entity, GameLocation, Trait, TraitGroup } from '@/types';
 import { hasPlaceholders } from './placeholders';
 
 /**
@@ -91,11 +91,3 @@ export function resolveDictionaryEntryNames(entries: DictionaryEntry[], resolve:
   });
 }
 
-/** Dictionary books, entry by entry. The book's own name is organizational — it never reaches the player
- *  or the AI — so it is left alone. */
-export function resolveDictionaryNames(dictionaries: Dictionary[], resolve: ResolveText): Dictionary[] {
-  return mapPreservingIdentity(dictionaries, (book) => {
-    const entries = resolveDictionaryEntryNames(book.entries, resolve);
-    return entries === book.entries ? book : { ...book, entries };
-  });
-}

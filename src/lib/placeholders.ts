@@ -221,7 +221,7 @@ export function describePlaceholders(text: string, placeholders: Placeholder[] =
 }
 
 /** A Wildcard's options as one short line — first three, then `…`. The shared form behind the braces in
- *  {@link describePlaceholders}, the label on an in-editor chip, and the tooltip on a read-only one. */
+ *  {@link describePlaceholders}, the *tooltip* of an in-editor chip, and the *label* of a read-only pill. */
 export function placeholderValueSummary(ph: Placeholder): string {
   const shown = ph.values.slice(0, 3).join('|');
   return ph.values.length > 3 ? `${shown}|…` : shown;
