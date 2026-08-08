@@ -108,15 +108,13 @@ const DictionaryManager = ({ entry, placeholders = [] }: { entry: DictionaryEntr
         </div>
         )}
       </div>
-      <div className="space-y-2">
-        <Label>Value (injected on keyword match)</Label>
-        <PlaceholderField
-          value={editingEntry.value || ''}
-          onChange={(v) => handleChange('value', v)}
-          placeholders={placeholders}
-          resizable
-        />
-      </div>
+      <PlaceholderField
+        label="Value (injected on keyword match)"
+        value={editingEntry.value || ''}
+        onChange={(v) => handleChange('value', v)}
+        placeholders={placeholders}
+        resizable
+      />
     </div>
   );
 };

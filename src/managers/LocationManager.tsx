@@ -41,36 +41,32 @@ const LocationManager = ({ location }: { location: GameLocation }) => {
           Starting location (new games may begin here)
         </Label>
       </div>
-      <div className="space-y-2">
-        <Label>Player-Facing Description</Label>
-        <PlaceholderField
-          value={editingLocation.playerDescription || ''}
-          onChange={(v) => handleChange('playerDescription', v)}
-          placeholders={placeholders}
-          resizable
-        />
-      </div>
-      <div className="space-y-2">
-        <Label>AI-Facing Description</Label>
-        <PlaceholderField
-          value={editingLocation.aiDescription || ''}
-          onChange={(v) => handleChange('aiDescription', v)}
-          placeholders={placeholders}
-          resizable
-        />
-      </div>
+      <PlaceholderField
+        label="Player-Facing Description"
+        value={editingLocation.playerDescription || ''}
+        onChange={(v) => handleChange('playerDescription', v)}
+        placeholders={placeholders}
+        resizable
+      />
+      <PlaceholderField
+        label="AI-Facing Description"
+        value={editingLocation.aiDescription || ''}
+        onChange={(v) => handleChange('aiDescription', v)}
+        placeholders={placeholders}
+        resizable
+      />
       {advanced && (
       <div className="space-y-2">
-        <div className="flex items-center justify-between">
-          <Label>AI-Facing Summary</Label>
-          <AiFieldToolbar
-            mode="summary"
-            source={editingLocation.aiDescription}
-            value={editingLocation.aiSummary}
-            onChange={(s) => handleChange('aiSummary', s)}
-          />
-        </div>
         <PlaceholderField
+          label="AI-Facing Summary"
+          labelAside={(
+            <AiFieldToolbar
+              mode="summary"
+              source={editingLocation.aiDescription}
+              value={editingLocation.aiSummary}
+              onChange={(s) => handleChange('aiSummary', s)}
+            />
+          )}
           value={editingLocation.aiSummary || ''}
           onChange={(v) => handleChange('aiSummary', v)}
           placeholders={placeholders}

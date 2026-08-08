@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useMemo, useState, type ReactNode } from 'react';
 import PromptField from './PromptField';
 import ChipInput from './ChipInput';
 import { placeholderVocabulary } from '@/lib/chipVocabulary';
@@ -15,10 +15,14 @@ import { PLACEHOLDER_TRIGGER, placeholderHint } from '@/lib/placeholderInsert';
  * Wildcard → a random pick (World shared per placeholder, Unique per placement) — re-rolled each time the
  * tab is opened. The resolved text is tinted the chip's own color, like the prompt previews.
  */
-const PlaceholderField = ({ value, onChange, placeholders, markdown = false, resizable = false, placeholder, className, readOnly = false }: {
+const PlaceholderField = ({ value, onChange, placeholders, markdown = false, resizable = false, placeholder, className, readOnly = false, label, labelAside }: {
   value: string;
   onChange: (v: string) => void;
   placeholders: Placeholder[];
+  /** The field's caption, rendered by the field itself so it can share a row (see `PromptField`). */
+  label?: ReactNode;
+  /** Rendered at the end of the caption's row. Needs `label`. */
+  labelAside?: ReactNode;
   /** Prose field: adds a markdown toolbar and renders the Preview as markdown (see `PromptField`). */
   markdown?: boolean;
   /** Let the author drag the field taller/shorter (see `PromptField`). */
@@ -45,6 +49,8 @@ const PlaceholderField = ({ value, onChange, placeholders, markdown = false, res
       vocabulary={vocab}
       previewValues={hasPlaceholders ? previewValues : undefined}
       onPreviewOpen={hasPlaceholders ? () => setRollNonce((n) => n + 1) : undefined}
+      label={label}
+      labelAside={labelAside}
       markdown={markdown}
       resizable={resizable}
       placeholder={placeholder}
