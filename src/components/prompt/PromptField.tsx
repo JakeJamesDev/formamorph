@@ -13,9 +13,12 @@ import { HistoryPlugin } from '@lexical/react/LexicalHistoryPlugin';
 import { LexicalErrorBoundary } from '@lexical/react/LexicalErrorBoundary';
 import { useLexicalComposerContext } from '@lexical/react/LexicalComposerContext';
 import {
-  Bold, Italic, Heading1, Heading2, List, ListOrdered, Link2, Quote, Code, Undo2, Redo2,
+  Bold, Italic, Strikethrough, Heading1, Heading2, Heading3, Heading4,
+  List, ListOrdered, ListChecks, Link2, Image, Table, SquareCode, Minus, Subscript, Superscript,
+  Quote, Code, Undo2, Redo2, ChevronDown,
   Maximize2, Minimize2, Columns2, Square,
 } from 'lucide-react';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Label } from '@/components/ui/label';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Dialog, DialogContent, dialogFullHeight } from '@/components/ui/dialog';
@@ -35,16 +38,40 @@ import { ChipTypeaheadPlugin } from './ChipTypeahead';
 import { ChipInsertTargetPlugin } from './ChipInsertTarget';
 import { ChipDragPlugin } from './ChipDrag';
 
-const MARKDOWN_TOOLBAR: { action: MarkdownAction; Icon: typeof Bold; title: string }[] = [
+interface ToolbarItem { action: MarkdownAction; Icon: typeof Bold; title: string }
+
+// Always visible: the formatting an author reaches for mid-sentence.
+const MARKDOWN_TOOLBAR: ToolbarItem[] = [
   { action: 'bold', Icon: Bold, title: 'Bold' },
   { action: 'italic', Icon: Italic, title: 'Italic' },
+  { action: 'strike', Icon: Strikethrough, title: 'Strikethrough' },
+  { action: 'code', Icon: Code, title: 'Inline code' },
+  { action: 'quote', Icon: Quote, title: 'Blockquote' },
+];
+
+// Everything else groups behind a split button: its face applies the last action picked from the group,
+// its chevron opens the rest. Nine buttons of markdown on one row read as a wall; three do not.
+const HEADING_ITEMS: ToolbarItem[] = [
   { action: 'h1', Icon: Heading1, title: 'Heading 1' },
   { action: 'h2', Icon: Heading2, title: 'Heading 2' },
+  { action: 'h3', Icon: Heading3, title: 'Heading 3' },
+  { action: 'h4', Icon: Heading4, title: 'Heading 4' },
+];
+
+const LIST_ITEMS: ToolbarItem[] = [
   { action: 'ul', Icon: List, title: 'Bullet list' },
   { action: 'ol', Icon: ListOrdered, title: 'Numbered list' },
+  { action: 'task', Icon: ListChecks, title: 'Task list' },
+];
+
+const INSERT_ITEMS: ToolbarItem[] = [
   { action: 'link', Icon: Link2, title: 'Link' },
-  { action: 'quote', Icon: Quote, title: 'Blockquote' },
-  { action: 'code', Icon: Code, title: 'Inline code' },
+  { action: 'image', Icon: Image, title: 'Image' },
+  { action: 'table', Icon: Table, title: 'Table' },
+  { action: 'codeblock', Icon: SquareCode, title: 'Code block' },
+  { action: 'rule', Icon: Minus, title: 'Horizontal rule' },
+  { action: 'sub', Icon: Subscript, title: 'Subscript' },
+  { action: 'sup', Icon: Superscript, title: 'Superscript' },
 ];
 
 
@@ -90,6 +117,71 @@ function HistoryButtons({ disabled }: { disabled: boolean }) {
   );
 }
 
+/**
+ * A group of related actions as one control: the face applies whichever the author picked last, the
+ * chevron beside it opens the rest. The two halves highlight separately and carry a divider, since one
+ * hover state across both reads as a single button that then does two different things.
+ *
+ * Presses prevent their mousedown default so focus — and with it the selection the transform needs —
+ * never leaves the editor. The chevron leaves *opening* to the trigger's own click handler: toggling on
+ * mousedown as well made the menu open on press and close again on release, which on a touch screen is
+ * a menu that only exists while a finger is held down.
+ */
+function SplitButton({ items, label, disabled, apply }: {
+  items: ToolbarItem[]; label: string; disabled: boolean; apply: (action: MarkdownAction) => void;
+}) {
+  const [current, setCurrent] = useState(items[0]);
+  const [open, setOpen] = useState(false);
+  const { Icon, title } = current;
+
+  const press = (item: ToolbarItem) => (event: ReactMouseEvent) => {
+    event.preventDefault();
+    setCurrent(item);
+    setOpen(false);
+    apply(item.action);
+  };
+
+  return (
+    <span className="flex items-center">
+      <button
+        type="button" title={title} aria-label={title} disabled={disabled}
+        onMouseDown={press(current)}
+        className={cn(TOOLBAR_BTN, 'rounded-r-none pr-1')}
+      >
+        <Icon className="h-4 w-4" />
+      </button>
+      <span className="h-4 w-px bg-border" aria-hidden />
+      <Popover open={open} onOpenChange={setOpen}>
+        <PopoverTrigger asChild>
+          <button
+            type="button" title={label} aria-label={label} disabled={disabled}
+            onMouseDown={(event) => event.preventDefault()}
+            className={cn(TOOLBAR_BTN, 'rounded-l-none px-1 py-2 data-[state=open]:bg-accent data-[state=open]:text-foreground')}
+          >
+            <ChevronDown className="h-3 w-3" />
+          </button>
+        </PopoverTrigger>
+        <PopoverContent
+          align="start" className="w-auto p-1"
+          onOpenAutoFocus={(event) => event.preventDefault()}
+        >
+          <div className="flex flex-col">
+            {items.map((item) => (
+              <button
+                key={item.action} type="button" onMouseDown={press(item)}
+                className="flex items-center gap-2 rounded px-2 py-1.5 text-sm text-muted-foreground hover:bg-accent hover:text-foreground"
+              >
+                <item.Icon className="h-4 w-4" />
+                {item.title}
+              </button>
+            ))}
+          </div>
+        </PopoverContent>
+      </Popover>
+    </span>
+  );
+}
+
 /** Markdown formatting toolbar. Reads the editor as a flat string, applies the pure transform, rebuilds,
  *  then restores the selection the transform asked for. Editing the tree directly (rather than routing
  *  through `onChange`) keeps ValueSyncPlugin's external-value path — and its scroll reset — out of it. */
@@ -102,12 +194,19 @@ function MarkdownToolbar({ parse, disabled }: { parse: ChipVocabulary['parse']; 
   };
 
   return (
-    <div className="flex flex-wrap gap-1">
+    <div className="flex flex-wrap items-center gap-1">
       {MARKDOWN_TOOLBAR.map(({ action, Icon, title }) => (
-        <button key={action} type="button" title={title} aria-label={title} disabled={disabled} onClick={() => apply(action)} className={TOOLBAR_BTN}>
+        <button
+          key={action} type="button" title={title} aria-label={title} disabled={disabled}
+          onMouseDown={(event) => { event.preventDefault(); apply(action); }}
+          className={TOOLBAR_BTN}
+        >
           <Icon className="h-4 w-4" />
         </button>
       ))}
+      <SplitButton items={HEADING_ITEMS} label="Heading level" disabled={disabled} apply={apply} />
+      <SplitButton items={LIST_ITEMS} label="List type" disabled={disabled} apply={apply} />
+      <SplitButton items={INSERT_ITEMS} label="Insert" disabled={disabled} apply={apply} />
     </div>
   );
 }

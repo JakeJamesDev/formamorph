@@ -27,6 +27,77 @@ describe('applyMarkdownAction — inline wrap', () => {
   });
 });
 
+describe('applyMarkdownAction — inline toggle off', () => {
+  it('removes the markers when the selection sits inside them', () => {
+    const r = run('a **brave** hero', 4, 9, 'bold');
+    expect(r.value).toBe('a brave hero');
+    expect(r.selected).toBe('brave');
+  });
+
+  it('removes the markers when the selection covers them', () => {
+    const r = run('a **brave** hero', 2, 11, 'bold');
+    expect(r.value).toBe('a brave hero');
+    expect(r.selected).toBe('brave');
+  });
+
+  it('does not treat the inner half of a bold pair as italic', () => {
+    const r = run('a **brave** hero', 4, 9, 'italic');
+    expect(r.value).toBe('a ***brave*** hero');
+  });
+
+  it('toggles inline code off', () => {
+    const r = run('run `npm test` now', 5, 13, 'code');
+    expect(r.value).toBe('run npm test now');
+  });
+});
+
+describe('applyMarkdownAction — added inline actions', () => {
+  it('wraps and unwraps strikethrough', () => {
+    const on = run('a bad idea', 2, 5, 'strike');
+    expect(on.value).toBe('a ~~bad~~ idea');
+    expect(run(on.value, 4, 7, 'strike').value).toBe('a bad idea');
+  });
+
+  it('does not treat the inner half of a strikethrough pair as subscript', () => {
+    const r = run('a ~~bad~~ idea', 4, 7, 'sub');
+    expect(r.value).toBe('a ~~~bad~~~ idea');
+  });
+
+  it('wraps subscript and superscript with the Pandoc delimiters', () => {
+    expect(run('H2O', 1, 2, 'sub').value).toBe('H~2~O');
+    expect(run('x2', 1, 2, 'sup').value).toBe('x^2^');
+  });
+});
+
+describe('applyMarkdownAction — inserts', () => {
+  it('inserts an image with the alt text selected', () => {
+    const r = run('', 0, 0, 'image');
+    expect(r.value).toBe('![alt](url)');
+    expect(r.selected).toBe('alt');
+  });
+
+  it('uses the selection as alt text and selects the url', () => {
+    const r = run('a crest here', 2, 7, 'image');
+    expect(r.value).toBe('a ![crest](url) here');
+    expect(r.selected).toBe('url');
+  });
+
+  it('fences the selection as a code block on its own lines', () => {
+    const r = run('run this', 4, 8, 'codeblock');
+    expect(r.value).toBe('run \n```\nthis\n```');
+  });
+
+  it('inserts a rule without doubling existing blank lines', () => {
+    const r = run('a\n', 2, 2, 'rule');
+    expect(r.value).toBe('a\n---');
+  });
+
+  it('inserts a table skeleton', () => {
+    const r = run('', 0, 0, 'table');
+    expect(r.value).toBe('| Column | Column |\n| --- | --- |\n| Cell | Cell |');
+  });
+});
+
 describe('applyMarkdownAction — link', () => {
   it('uses the selection as link text and selects the url', () => {
     const r = run('see docs here', 4, 8, 'link');
@@ -65,5 +136,61 @@ describe('applyMarkdownAction — line prefixes', () => {
     // selection starts inside "first" and ends inside "second"
     const r = run(value, 2, 8, 'quote');
     expect(r.value).toBe('> first\n> second');
+  });
+});
+
+describe('applyMarkdownAction — line prefix toggle and replace', () => {
+  it('removes the heading when it is already applied', () => {
+    const r = run('## Title', 4, 4, 'h2');
+    expect(r.value).toBe('Title');
+  });
+
+  it('replaces a heading of another level rather than stacking', () => {
+    const r = run('## Title', 4, 4, 'h1');
+    expect(r.value).toBe('# Title');
+  });
+
+  it('replaces a bullet list with a numbered one', () => {
+    const value = '- one\n- two';
+    const r = run(value, 0, value.length, 'ol');
+    expect(r.value).toBe('1. one\n2. two');
+  });
+
+  it('removes the bullets when every line already has one', () => {
+    const value = '- one\n- two';
+    const r = run(value, 0, value.length, 'ul');
+    expect(r.value).toBe('one\ntwo');
+  });
+
+  it('bullets the remaining lines when only some already have one', () => {
+    const value = '- one\ntwo';
+    const r = run(value, 0, value.length, 'ul');
+    expect(r.value).toBe('- one\n- two');
+  });
+
+  it('unquotes a quoted block', () => {
+    const value = '> first\n> second';
+    const r = run(value, 0, value.length, 'quote');
+    expect(r.value).toBe('first\nsecond');
+  });
+
+  it('converts a bullet to a task and back', () => {
+    const task = run('- one', 3, 3, 'task');
+    expect(task.value).toBe('- [ ] one');
+    expect(run(task.value, 7, 7, 'ul').value).toBe('- one');
+  });
+
+  it('clears a task line when task is applied again, keeping a checked box', () => {
+    expect(run('- [x] done', 7, 7, 'task').value).toBe('done');
+  });
+
+  it('applies deeper heading levels', () => {
+    expect(run('Title', 0, 0, 'h4').value).toBe('#### Title');
+    expect(run('#### Title', 6, 6, 'h3').value).toBe('### Title');
+  });
+
+  it('bullets inside a quote without unquoting the line', () => {
+    const r = run('> a note', 4, 4, 'ul');
+    expect(r.value).toBe('> - a note');
   });
 });
