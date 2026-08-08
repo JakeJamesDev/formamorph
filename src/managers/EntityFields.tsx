@@ -58,36 +58,32 @@ const EntityFields = ({ value, onChange, placeholders = [], locationOptions, sel
         </p>
       </div>
       )}
-      <div className="space-y-2">
-        <Label>Player-Facing Description</Label>
-        <PlaceholderField
-          value={value.playerDescription || ''}
-          onChange={(v) => onChange('playerDescription', v)}
-          placeholders={placeholders}
-          resizable
-        />
-      </div>
-      <div className="space-y-2">
-        <Label>AI-Facing Description</Label>
-        <PlaceholderField
-          value={value.aiDescription || ''}
-          onChange={(v) => onChange('aiDescription', v)}
-          placeholders={placeholders}
-          resizable
-        />
-      </div>
+      <PlaceholderField
+        label="Player-Facing Description"
+        value={value.playerDescription || ''}
+        onChange={(v) => onChange('playerDescription', v)}
+        placeholders={placeholders}
+        resizable
+      />
+      <PlaceholderField
+        label="AI-Facing Description"
+        value={value.aiDescription || ''}
+        onChange={(v) => onChange('aiDescription', v)}
+        placeholders={placeholders}
+        resizable
+      />
       {advanced && (
       <div className="space-y-2">
-        <div className="flex items-center justify-between">
-          <Label>AI-Facing Summary</Label>
-          <AiFieldToolbar
-            mode="summary"
-            source={value.aiDescription}
-            value={value.aiSummary}
-            onChange={(s) => onChange('aiSummary', s)}
-          />
-        </div>
         <PlaceholderField
+          label="AI-Facing Summary"
+          labelAside={(
+            <AiFieldToolbar
+              mode="summary"
+              source={value.aiDescription}
+              value={value.aiSummary}
+              onChange={(s) => onChange('aiSummary', s)}
+            />
+          )}
           value={value.aiSummary || ''}
           onChange={(v) => onChange('aiSummary', v)}
           placeholders={placeholders}

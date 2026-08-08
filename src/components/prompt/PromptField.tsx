@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type MouseEvent as ReactMouseEvent } from 'react';
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type MouseEvent as ReactMouseEvent, type ReactNode } from 'react';
 import {
   $getRoot, $getSelection, $isRangeSelection, $createParagraphNode,
   $isElementNode,
@@ -16,6 +16,7 @@ import {
   Bold, Italic, Heading1, Heading2, List, ListOrdered, Link2, Quote, Code, Undo2, Redo2,
   Maximize2, Minimize2, Columns2, Square,
 } from 'lucide-react';
+import { Label } from '@/components/ui/label';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Dialog, DialogContent, dialogFullHeight } from '@/components/ui/dialog';
 import { ReadOnlyNotice } from './ReadOnlyNotice';
@@ -401,7 +402,7 @@ function MarkdownPreviewPane({ value, previewValues, vocab, scrollRef, onScroll 
  * With `markdown`, it also gains a formatting toolbar and its Preview renders markdown instead of tinting
  * chips — for author-facing prose fields (world description, readme) that the player reads as markdown.
  */
-const PromptField = ({ value, onChange, variables = [], vocabulary, previewValues, onPreviewOpen, markdown = false, resizable = false, placeholder, className, readOnly = false, ariaLabel, sampleData = false, onRequestEdit, readOnlyReason, onRequestFullscreen, fullscreen: fullscreenProp, insertTrigger }: {
+const PromptField = ({ value, onChange, variables = [], vocabulary, previewValues, onPreviewOpen, markdown = false, resizable = false, placeholder, className, readOnly = false, ariaLabel, sampleData = false, onRequestEdit, readOnlyReason, onRequestFullscreen, fullscreen: fullscreenProp, insertTrigger, label, labelAside }: {
   value: string;
   onChange: (v: string) => void;
   /** Prompt-variable palette (used when no explicit `vocabulary` is given — the default prompt family). */
@@ -411,6 +412,12 @@ const PromptField = ({ value, onChange, variables = [], vocabulary, previewValue
   previewValues?: Record<string, string>;
   /** Fired when the Preview tab is opened — lets a caller re-derive `previewValues` (e.g. re-roll Wildcards). */
   onPreviewOpen?: () => void;
+  /** The field's caption. Given one, the field owns it: a plain field puts it on the button row, and a
+   *  markdown field keeps it on its own line and puts the formatting buttons on the button row instead —
+   *  either way one row shorter than a caption stacked above the chrome. */
+  label?: ReactNode;
+  /** Rendered at the end of the caption's row (an AI generate/undo toolbar, say). Needs `label`. */
+  labelAside?: ReactNode;
   /** Prose field: adds a markdown formatting toolbar and renders the Preview as markdown. */
   markdown?: boolean;
   /** Let the author drag the field taller/shorter. Only for fields in a content-height container (the
@@ -646,13 +653,16 @@ const PromptField = ({ value, onChange, variables = [], vocabulary, previewValue
   const chrome = (
     // The chip palette is many chips wide and wraps; it must be allowed to shrink (`min-w-0`) or its
     // intrinsic width shoves the buttons off the side of a phone instead of wrapping.
-    <div className="flex items-start gap-1 flex-shrink-0">
-      <div className="min-w-0 flex-1">
+    <div className="flex items-center gap-1 flex-shrink-0">
+      <div className="min-w-0 flex-1 flex flex-wrap items-center gap-x-2 gap-y-1">
+        {label && !markdown && <Label className="leading-none">{label}</Label>}
+        {markdown && <MarkdownToolbar parse={vocab.parse} disabled={editingDisabled} />}
         {/* With a shared palette the per-field row would repeat the same chips above every field on the
             panel — the whole reason the palette was hoisted out. */}
         {!insertTrigger && <VariableToolbar vocab={vocab} interactive={!readOnly && (split || !showTabs || tab === 'edit')} />}
       </div>
       <div className="flex flex-shrink-0 items-center gap-1">
+        {label && !markdown && labelAside}
         <HistoryButtons disabled={editingDisabled} />
         <span className="mx-0.5 w-px self-stretch bg-border" />
         {showTabs && fullscreen && effectiveWidth - 12 >= MIN_PANE_WIDTH * 2 && (
@@ -722,8 +732,13 @@ const PromptField = ({ value, onChange, variables = [], vocabulary, previewValue
       {/* Above the chrome, not below it: the Options panel shows the same notice with nothing above it, so
           anywhere else here makes it jump as you move between a prompt's sub-tabs. */}
       {readOnlyNotice}
+      {label && markdown && (
+        <div className="flex items-center justify-between gap-2 flex-shrink-0">
+          <Label className="leading-none">{label}</Label>
+          {labelAside}
+        </div>
+      )}
       {chrome}
-      {markdown && <MarkdownToolbar parse={vocab.parse} disabled={editingDisabled} />}
       {panes}
     </div>
   );

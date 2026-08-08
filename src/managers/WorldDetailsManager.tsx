@@ -106,8 +106,8 @@ const WorldDetailsManager = () => {
   return (
     <div className="space-y-6">
       <div className="space-y-2">
-        <Label>World Description</Label>
         <PromptField
+          label="World Description"
           value={worldOverview.description}
           onChange={(description) => updateWorldOverview({ description })}
           vocabulary={plainVocab}
@@ -118,8 +118,8 @@ const WorldDetailsManager = () => {
       </div>
 
       <div className="space-y-2">
-        <Label htmlFor="systemPrompt">System Prompt Addition</Label>
         <PlaceholderField
+          label="System Prompt Addition"
           value={worldOverview.systemPrompt || ''}
           onChange={(systemPrompt) => updateWorldOverview({ systemPrompt })}
           placeholders={placeholders}
@@ -130,9 +130,9 @@ const WorldDetailsManager = () => {
       <NarrationPromptField />
 
       <div className="space-y-2">
-        <Label>Readme</Label>
         {/* Shown on entry, so a playthrough's rolls exist by then — placeholders resolve here. */}
         <PlaceholderField
+          label="Readme"
           value={worldOverview.readme ?? ''}
           onChange={(readme) => updateWorldOverview({ readme })}
           placeholders={placeholders}
