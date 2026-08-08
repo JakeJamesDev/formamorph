@@ -13,6 +13,7 @@ import { composePreviewValues } from "@/lib/previewValuePool";
 import { storedNarrationPrompt } from "@/lib/worldPrompt";
 import { defaultSystemPrompt } from "@/components/game/GamePrompts";
 import { useDanbooruTags } from "@/lib/useDanbooruTags";
+import { useEditorMode } from "@/lib/editorMode";
 
 /**
  * Optional per-world replacement for the player's narration system prompt. Off by default: turning it on
@@ -47,6 +48,7 @@ const NarrationPromptField = () => {
     ],
   );
   const stored = storedNarrationPrompt(worldOverview);
+  const { advanced } = useEditorMode();
   const enabled = typeof stored === 'string' && worldOverview.promptOverrides?.systemPromptEnabled !== false;
   const value = stored ?? '';
 
@@ -60,6 +62,8 @@ const NarrationPromptField = () => {
         systemPromptEnabled: on,
       },
     });
+
+  if (!advanced) return null;
 
   return (
     <div className="space-y-2">
@@ -97,6 +101,7 @@ const NarrationPromptField = () => {
  *  column on the Overview tab. Identity/media fields live in WorldOverviewManager (left column). */
 const WorldDetailsManager = () => {
   const { worldOverview, updateWorldOverview, placeholders } = useGameData();
+  const { advanced } = useEditorMode();
   const tagOptions = useDanbooruTags();
   // The description shows in the library, before a playthrough exists — so placeholders can never be rolled
   // for it. No chip family here: any `{{ph…}}` an old world carries stays inert text, exactly as it'd read.
@@ -141,6 +146,7 @@ const WorldDetailsManager = () => {
 
       <NarrationPromptField />
 
+      {advanced && (
       <div className="space-y-2">
         <Label>Readme</Label>
         {/* Shown on entry, so a playthrough's rolls exist by then — placeholders resolve here. */}
@@ -153,6 +159,7 @@ const WorldDetailsManager = () => {
           resizable
         />
       </div>
+      )}
     </div>
   );
 };

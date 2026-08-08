@@ -10,11 +10,13 @@ import { describePlaceholders } from '@/lib/placeholders';
 import { SoundUpload } from '../lib/UtilityComponents';
 import { IMAGE_CAPS } from '../lib/imageOptim';
 import ImageTagsField from './ImageTagsField';
+import { useEditorMode } from '@/lib/editorMode';
 import type { GameLocation } from '@/types';
 
 const LocationManager = ({ location }: { location: GameLocation }) => {
   const { updateLocation, entities, entityGroups, placeholders } = useGameData();
   const { draft: editingLocation, setField: handleChange } = useEditingDraft(location, updateLocation);
+  const { advanced } = useEditorMode();
 
   if (!editingLocation) return null;
 
@@ -57,6 +59,7 @@ const LocationManager = ({ location }: { location: GameLocation }) => {
           resizable
         />
       </div>
+      {advanced && (
       <div className="space-y-2">
         <div className="flex items-center justify-between">
           <Label>AI-Facing Summary</Label>
@@ -77,6 +80,7 @@ const LocationManager = ({ location }: { location: GameLocation }) => {
           A one-line version used where the full description is too long — keep it brief.
         </p>
       </div>
+      )}
       <div className="space-y-2">
         <Label>Entities</Label>
         <MultiSelect
@@ -100,14 +104,16 @@ const LocationManager = ({ location }: { location: GameLocation }) => {
         onTagsChange={(t) => handleChange('imageTags', t)}
         placeholders={placeholders}
       />
-      <div className="space-y-2">
-        <Label>Ambient Sound</Label>
-        <SoundUpload
-          onChange={(file) => handleChange('ambientSound', file)}
-          id={`location-sound-${editingLocation.id}`}
-          value={editingLocation.ambientSound}
-        />
-      </div>
+      {advanced && (
+        <div className="space-y-2">
+          <Label>Ambient Sound</Label>
+          <SoundUpload
+            onChange={(file) => handleChange('ambientSound', file)}
+            id={`location-sound-${editingLocation.id}`}
+            value={editingLocation.ambientSound}
+          />
+        </div>
+      )}
     </div>
   );
 };

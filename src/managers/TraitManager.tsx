@@ -10,6 +10,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import PlaceholderField, { PlaceholderNameField } from '@/components/prompt/PlaceholderField';
 import { describePlaceholders } from '@/lib/placeholders';
 import { traitConflicts, type TraitConflict } from '@/lib/traitEffects';
+import { useEditorMode } from '@/lib/editorMode';
 import type { Trait, StatChange, TraitStatToggle, TraitPlaceholderPin } from '@/types';
 
 /** Names another trait that claims the same target, and says which way the tie falls. Silent when nothing
@@ -59,6 +60,8 @@ const TraitManager = ({ trait }: { trait: Trait }) => {
   const setPins = (next: TraitPlaceholderPin[]) => apply({ placeholderPins: next.length ? next : undefined });
   const updatePin = (index: number, patch: Partial<TraitPlaceholderPin>) =>
     setPins(pins.map((p, i) => (i === index ? { ...p, ...patch } : p)));
+
+  const { advanced } = useEditorMode();
 
   if (!editingTrait) return null;
 
@@ -158,6 +161,7 @@ const TraitManager = ({ trait }: { trait: Trait }) => {
         <Button onClick={handleStatChangeAdd}>Add Stat Change</Button>
       </div>
 
+      {advanced && (
       <div className="space-y-2">
         <Label className="block">Stat Availability</Label>
         <p className="text-xs text-muted-foreground">
@@ -202,7 +206,9 @@ const TraitManager = ({ trait }: { trait: Trait }) => {
           Add Stat Availability
         </Button>
       </div>
+      )}
 
+      {advanced && (
       <div className="space-y-2">
         <Label className="block">Placeholder Pins</Label>
         <p className="text-xs text-muted-foreground">
@@ -248,6 +254,7 @@ const TraitManager = ({ trait }: { trait: Trait }) => {
         ))}
         <Button onClick={() => setPins([...pins, { placeholderId: '', value: '' }])}>Add Placeholder Pin</Button>
       </div>
+      )}
     </div>
   );
 };

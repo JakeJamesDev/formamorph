@@ -9,6 +9,7 @@ import { ModelUpload } from '../lib/UtilityComponents';
 import { IMAGE_CAPS } from '../lib/imageOptim';
 import { ENTITY_EMBEDDED_IMAGE_LIMIT, entityImages } from '../lib/entityImages';
 import ImageTagsField from './ImageTagsField';
+import { useEditorMode } from '@/lib/editorMode';
 import type { Entity, Placeholder } from '@/types';
 
 interface EntityFieldsProps {
@@ -27,6 +28,7 @@ interface EntityFieldsProps {
  * bound to the world store) and the library `EntityEditorModal` (locations hidden, bound to isolated state).
  */
 const EntityFields = ({ value, onChange, placeholders = [], locationOptions, selectedLocationIds, onLocationsChange }: EntityFieldsProps) => {
+  const { advanced } = useEditorMode();
   return (
     <div className="space-y-4">
       <div className="space-y-2">
@@ -38,6 +40,7 @@ const EntityFields = ({ value, onChange, placeholders = [], locationOptions, sel
           ariaLabel="Name"
         />
       </div>
+      {advanced && (
       <div className="space-y-2">
         <div className="flex items-center gap-2">
           <Label>Aliases</Label>
@@ -54,6 +57,7 @@ const EntityFields = ({ value, onChange, placeholders = [], locationOptions, sel
           Press Enter after each one; an alias may contain commas.
         </p>
       </div>
+      )}
       <div className="space-y-2">
         <Label>Player-Facing Description</Label>
         <PlaceholderField
@@ -72,6 +76,7 @@ const EntityFields = ({ value, onChange, placeholders = [], locationOptions, sel
           resizable
         />
       </div>
+      {advanced && (
       <div className="space-y-2">
         <div className="flex items-center justify-between">
           <Label>AI-Facing Summary</Label>
@@ -92,14 +97,17 @@ const EntityFields = ({ value, onChange, placeholders = [], locationOptions, sel
           A one-line version used where the full description is too long — keep it brief.
         </p>
       </div>
-      <div className="space-y-2">
-        <Label>Type</Label>
-        <Input
-          value={value.type || ''}
-          onChange={(e) => onChange('type', e.target.value)}
-          placeholder="Enter entity type"
-        />
-      </div>
+      )}
+      {advanced && (
+        <div className="space-y-2">
+          <Label>Type</Label>
+          <Input
+            value={value.type || ''}
+            onChange={(e) => onChange('type', e.target.value)}
+            placeholder="Enter entity type"
+          />
+        </div>
+      )}
       {locationOptions && (
         <div className="space-y-2">
           <Label>Locations</Label>
@@ -127,14 +135,16 @@ const EntityFields = ({ value, onChange, placeholders = [], locationOptions, sel
         onTagsChange={(t) => onChange('imageTags', t)}
         placeholders={placeholders}
       />
-      <div className="space-y-2">
-        <Label>3D Model</Label>
-        <ModelUpload
-          model={value.model}
-          onModelChange={(model) => onChange('model', model)}
-          uniqueId={`entity-${value.id}`}
-        />
-      </div>
+      {advanced && (
+        <div className="space-y-2">
+          <Label>3D Model</Label>
+          <ModelUpload
+            model={value.model}
+            onModelChange={(model) => onChange('model', model)}
+            uniqueId={`entity-${value.id}`}
+          />
+        </div>
+      )}
     </div>
   );
 };
