@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { describe, it, expect, vi } from 'vitest';
-import { render, screen } from '@testing-library/react';
+import { render, screen, waitFor } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
 import PromptField from './PromptField';
 import { plainVocabulary } from '@/lib/chipVocabulary';
 
@@ -20,10 +21,27 @@ describe('PromptField (markdown wiring)', () => {
   it('shows the formatting toolbar only when markdown is on', () => {
     const { unmount } = render(<Harness markdown />);
     expect(screen.getByLabelText('Bold')).toBeInTheDocument();
-    expect(screen.getByLabelText('Heading 2')).toBeInTheDocument();
+    // Headings/lists/inserts sit behind split buttons: the face is the group's default action.
+    expect(screen.getByLabelText('Heading 1')).toBeInTheDocument();
+    expect(screen.getByLabelText('Heading level')).toBeInTheDocument();
+    expect(screen.queryByLabelText('Heading 2')).not.toBeInTheDocument();
     unmount();
     render(<Harness />);
     expect(screen.queryByLabelText('Bold')).not.toBeInTheDocument();
+  });
+
+  it('opens a split-button menu on click and keeps it open after the press ends', async () => {
+    // It used to toggle on mousedown as well as the trigger's own click, so it opened on press and
+    // closed on release — a menu that only exists while a finger is held down.
+    const user = userEvent.setup();
+    render(<Harness markdown />);
+    const chevron = screen.getByLabelText('Heading level');
+
+    await user.click(chevron);
+    expect(await screen.findByText('Heading 3')).toBeInTheDocument();
+
+    await user.click(chevron);
+    await waitFor(() => expect(screen.queryByText('Heading 3')).not.toBeInTheDocument());
   });
 
   it('offers a Preview tab even with no placeholders to resolve', () => {
