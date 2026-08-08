@@ -177,7 +177,7 @@ export function TokenAutocomplete({ values, onChange, options, placeholder, aria
     <div className="relative">
       {/* Single mode matches the shadcn Input (h-10 px-3 text-sm) so it lines up with sibling fields;
           multi mode stays compact (px-2 py-1, text-xs) for chips. */}
-      <div className={`flex flex-wrap items-center gap-1 rounded-md border border-input bg-background min-w-[180px] ${single ? "px-3 h-10" : "px-2 py-1"}`}>
+      <div className={`flex flex-wrap items-center gap-1 rounded-md border border-input bg-background min-w-[180px] ${single ? "px-3 h-10" : "px-2 py-1 min-h-10"}`}>
         {!single && (reorderable ? (
           <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
             <SortableContext items={values} strategy={rectSortingStrategy}>
@@ -195,7 +195,7 @@ export function TokenAutocomplete({ values, onChange, options, placeholder, aria
           onFocus={() => setOpen(true)}
           onBlur={() => setTimeout(() => setOpen(false), 100)}
           placeholder={single ? placeholder : (values.length ? "" : placeholder)}
-          className={`flex-1 min-w-[80px] bg-transparent outline-none ${single ? "text-sm" : "text-xs py-0.5"}`}
+          className={`flex-1 min-w-[80px] bg-transparent outline-none placeholder:text-muted-foreground ${single ? "text-sm" : "text-xs py-0.5"}`}
         />
       </div>
       {open && suggestions.length > 0 && (

@@ -3,7 +3,6 @@ import { useGameData } from '@/contexts/GameDataContext';
 import { useSettings } from '@/contexts/SettingsContext';
 import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
-import { TokenAutocomplete } from "@/components/TokenAutocomplete";
 import PromptField from "@/components/prompt/PromptField";
 import PlaceholderField from "@/components/prompt/PlaceholderField";
 import { plainVocabulary } from "@/lib/chipVocabulary";
@@ -12,7 +11,6 @@ import { authoredPreviewValues } from "@/lib/authoredPreviewValues";
 import { composePreviewValues } from "@/lib/previewValuePool";
 import { storedNarrationPrompt } from "@/lib/worldPrompt";
 import { defaultSystemPrompt } from "@/components/game/GamePrompts";
-import { useDanbooruTags } from "@/lib/useDanbooruTags";
 import { useEditorMode } from "@/lib/editorMode";
 
 /**
@@ -97,12 +95,10 @@ const NarrationPromptField = () => {
   );
 };
 
-/** The AI-facing world content fields (description, tags, system prompt), shown in the editor's right
- *  column on the Overview tab. Identity/media fields live in WorldOverviewManager (left column). */
+/** The AI-facing world content fields (description, system prompt, readme), shown in the editor's right
+ *  column on the Overview tab. Identity/listing fields live in WorldOverviewManager (left column). */
 const WorldDetailsManager = () => {
   const { worldOverview, updateWorldOverview, placeholders } = useGameData();
-  const { advanced } = useEditorMode();
-  const tagOptions = useDanbooruTags();
   // The description shows in the library, before a playthrough exists — so placeholders can never be rolled
   // for it. No chip family here: any `{{ph…}}` an old world carries stays inert text, exactly as it'd read.
   const plainVocab = useMemo(() => plainVocabulary(), []);
@@ -122,19 +118,6 @@ const WorldDetailsManager = () => {
       </div>
 
       <div className="space-y-2">
-        <Label>Tags</Label>
-        <TokenAutocomplete
-          values={worldOverview.tags || []}
-          onChange={(tags) => updateWorldOverview({ tags })}
-          options={tagOptions}
-          preserveOrder
-          reorderable
-          editable
-          placeholder="Add tags..."
-        />
-      </div>
-
-      <div className="space-y-2">
         <Label htmlFor="systemPrompt">System Prompt Addition</Label>
         <PlaceholderField
           value={worldOverview.systemPrompt || ''}
@@ -146,7 +129,6 @@ const WorldDetailsManager = () => {
 
       <NarrationPromptField />
 
-      {advanced && (
       <div className="space-y-2">
         <Label>Readme</Label>
         {/* Shown on entry, so a playthrough's rolls exist by then — placeholders resolve here. */}
@@ -159,7 +141,6 @@ const WorldDetailsManager = () => {
           resizable
         />
       </div>
-      )}
     </div>
   );
 };

@@ -24,7 +24,7 @@ Everything not listed stays visible in Simple mode.
 
 | Tab | Hidden in Simple |
 |---|---|
-| **Overview** | Custom Narration Prompt · Readme |
+| **Overview** | Custom Narration Prompt |
 | **Stats** | Stat Code + Test Code · Stat Descriptors · Prevent AI Changes |
 | **Entities** | Aliases · AI-Facing Summary · Type · 3D Model · Image Tags |
 | **Locations** | AI-Facing Summary · Ambient Sound · Image Tags |

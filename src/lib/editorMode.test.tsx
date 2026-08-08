@@ -71,7 +71,6 @@ describe('worldUsesAdvancedFeatures', () => {
     ['an alias', { entities: [{ ...emptyWorld.entities[0], aliases: ['Roz'] }] }],
     ['an entity summary', { entities: [{ ...emptyWorld.entities[0], aiSummary: 'Keeps the lamp.' }] }],
     ['entity image tags', { entities: [{ ...emptyWorld.entities[0], imageTags: '1girl, lamp' }] }],
-    ['a world readme', { worldOverview: { ...emptyWorld.worldOverview, readme: 'Welcome to the coast.' } as unknown as WorldOverview }],
     ['a location summary', { locations: [{ ...emptyWorld.locations[0], aiSummary: 'Rotting boards.' }] }],
     ['a trait stat toggle', { traits: [{ ...emptyWorld.traits[0], statToggles: [{ statId: 's1', enabled: false }] }] }],
     ['a narration override', { worldOverview: { ...emptyWorld.worldOverview, promptOverrides: { systemPrompt: 'You narrate.' } } as unknown as WorldOverview }],

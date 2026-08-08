@@ -23,7 +23,7 @@ export function worldUsesAdvancedFeatures(w: AdvancedDataInput): boolean {
   if (w.dictionaries.some((d) => d.enabled === false || d.entries.some((e) =>
     e.enabled === false || e.constant || e.useRegex || e.recursive ||
     hasValue(e.scanDepth) || hasValue(e.secondaryKeys)))) return true;
-  if (hasValue(w.worldOverview.promptOverrides?.systemPrompt) || hasValue(w.worldOverview.readme)) return true;
+  if (hasValue(w.worldOverview.promptOverrides?.systemPrompt)) return true;
   if (w.stats.some((s) =>
     hasValue(s.code) || hasValue(s.descriptors) ||
     s.noIncrease || s.noIncreaseMax || s.noDecrease || s.noDecreaseMax)) return true;
