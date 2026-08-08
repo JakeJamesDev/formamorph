@@ -13,7 +13,7 @@ vi.mock('../lib/UtilityComponents', () => ({
   ),
 }));
 vi.mock('../components/GenerateImageButton', () => ({ GenerateImageButton: () => <div>generate</div> }));
-vi.mock('@/components/AiFieldToolbar', () => ({ default: () => <div /> }));
+vi.mock('@/components/AiGenerateButton', () => ({ default: () => <div /> }));
 vi.mock('@/components/TagAutocomplete', () => ({ TagAutocomplete: () => <div /> }));
 
 const setup = () => {

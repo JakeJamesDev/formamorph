@@ -2,7 +2,9 @@ import { useState } from 'react';
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { Star } from "lucide-react";
-import AiFieldToolbar from "@/components/AiFieldToolbar";
+import AiGenerateButton from "@/components/AiGenerateButton";
+import TagHistoryButtons from "@/components/TagHistoryButtons";
+import { useTagHistory } from "@/lib/useTagHistory";
 import { TagAutocomplete } from "@/components/TagAutocomplete";
 import TagChipField from "@/components/prompt/TagChipField";
 import { ConfirmDialog } from "@/components/ConfirmDialog";
@@ -53,6 +55,9 @@ const ImageTagsField = ({ label, images, onImagesChange, slots = 1, embeddedLimi
   const [pendingPrompt, setPendingPrompt] = useState<string | null>(null);
   // Booru tags are Advanced-only; so is the offer to adopt an uploaded image's embedded prompt as them.
   const { advanced } = useEditorMode();
+  // The tag inputs are plain controlled fields with no history of their own, so it lives here — stepped by
+  // tag, with a generation (or an adopted embedded prompt) as one step.
+  const tagHistory = useTagHistory(tags ?? '', onTagsChange);
 
   // Filled slots, plus a trailing empty one to upload into while there is room.
   const shown = images.slice(0, slots);
@@ -121,14 +126,11 @@ const ImageTagsField = ({ label, images, onImagesChange, slots = 1, embeddedLimi
       {advanced && (
       <>
       <div className="flex items-center justify-between">
-        <Label>Image Tags</Label>
-        <AiFieldToolbar
-          mode="tags"
-          kind={kind}
-          source={description}
-          value={tags}
-          onChange={onTagsChange}
-        />
+        <Label className="leading-none">Image Tags</Label>
+        <div className="flex items-center gap-1">
+          <TagHistoryButtons history={tagHistory} />
+          <AiGenerateButton mode="tags" kind={kind} source={description} onChange={onTagsChange} />
+        </div>
       </div>
       {placeholders.length > 0 ? (
         <TagChipField

@@ -4,7 +4,7 @@ import { entitiesInTreeOrder } from '@/lib/entityGroupTree';
 import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
 import { MultiSelect } from "@/components/ui/multi-select";
-import AiFieldToolbar from "@/components/AiFieldToolbar";
+import AiGenerateButton from "@/components/AiGenerateButton";
 import PlaceholderField, { PlaceholderNameField } from "@/components/prompt/PlaceholderField";
 import { describePlaceholders } from '@/lib/placeholders';
 import { SoundUpload } from '../lib/UtilityComponents';
@@ -60,10 +60,9 @@ const LocationManager = ({ location }: { location: GameLocation }) => {
         <PlaceholderField
           label="AI-Facing Summary"
           labelAside={(
-            <AiFieldToolbar
+            <AiGenerateButton
               mode="summary"
               source={editingLocation.aiDescription}
-              value={editingLocation.aiSummary}
               onChange={(s) => handleChange('aiSummary', s)}
             />
           )}
