@@ -37,6 +37,7 @@ import { buildEditorState, serializeRoot, $applyMarkdownAction } from './promptF
 import { ChipTypeaheadPlugin } from './ChipTypeahead';
 import { ChipInsertTargetPlugin } from './ChipInsertTarget';
 import { ChipDragPlugin } from './ChipDrag';
+import { TOOLBAR_BTN } from './toolbarStyles';
 
 interface ToolbarItem { action: MarkdownAction; Icon: typeof Bold; title: string }
 
@@ -75,7 +76,6 @@ const INSERT_ITEMS: ToolbarItem[] = [
 ];
 
 
-const TOOLBAR_BTN = 'rounded p-1.5 text-muted-foreground hover:bg-accent hover:text-foreground disabled:pointer-events-none disabled:opacity-50';
 
 /** Undo/redo for the editor, on every prompt field rather than only the markdown ones — the keyboard
  *  shortcuts always worked, but a field with no buttons gives no sign that they would. History lives in

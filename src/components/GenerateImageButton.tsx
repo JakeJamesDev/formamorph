@@ -1,4 +1,4 @@
-import { useRef, useState } from 'react';
+import { useCallback, useRef, useState } from 'react';
 import { toast } from 'react-toastify';
 import { Sparkles, Loader2, SlidersHorizontal, Square } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -8,7 +8,9 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Progress } from '@/components/ui/progress';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from '@/components/ui/dialog';
 import { ImageZoomViewer } from '@/components/ImageZoomViewer';
-import AiFieldToolbar from '@/components/AiFieldToolbar';
+import AiGenerateButton from '@/components/AiGenerateButton';
+import TagHistoryButtons from '@/components/TagHistoryButtons';
+import { useTagHistory } from '@/lib/useTagHistory';
 import { TagAutocomplete } from '@/components/TagAutocomplete';
 import { useSettings } from '@/contexts/SettingsContext';
 import { type ImageSubjectKind } from '@/lib/imagePrompt';
@@ -68,7 +70,8 @@ export function GenerateImageButton({ subject, cap, onChange, tags, onTagsChange
   };
 
   // Prompt edits write back to the authored tags field when wired; otherwise stay local (world thumbnail).
-  const handlePrompt = (t: string) => { setPrompt(t); onTagsChange?.(t); };
+  const handlePrompt = useCallback((t: string) => { setPrompt(t); onTagsChange?.(t); }, [onTagsChange]);
+  const promptHistory = useTagHistory(prompt, handlePrompt);
 
   const generate = async () => {
     if (!prompt.trim()) { toast.info('Enter a prompt first.'); return; }
@@ -161,7 +164,10 @@ export function GenerateImageButton({ subject, cap, onChange, tags, onTagsChange
             <div className="grid gap-1.5">
               <div className="flex items-center justify-between">
                 <Label htmlFor="gen-prompt">Prompt</Label>
-                <AiFieldToolbar mode="tags" kind={subject.kind} source={subject.description} value={prompt} onChange={handlePrompt} />
+                <div className="flex items-center gap-1">
+                  <TagHistoryButtons history={promptHistory} />
+                  <AiGenerateButton mode="tags" kind={subject.kind} source={subject.description} onChange={handlePrompt} />
+                </div>
               </div>
               {/* The placeholder is the preset's own prefix, so an empty field reads as "this is what you
                   already get" rather than "nothing is being sent". */}

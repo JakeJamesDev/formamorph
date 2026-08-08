@@ -3,7 +3,7 @@ import { Label } from "@/components/ui/label";
 import { MultiSelect } from "@/components/ui/multi-select";
 import { KeywordChips } from "@/components/KeywordChips";
 import { HelpButton } from "@/components/HelpButton";
-import AiFieldToolbar from "@/components/AiFieldToolbar";
+import AiGenerateButton from "@/components/AiGenerateButton";
 import PlaceholderField, { PlaceholderNameField } from "@/components/prompt/PlaceholderField";
 import { ModelUpload } from '../lib/UtilityComponents';
 import { IMAGE_CAPS } from '../lib/imageOptim';
@@ -77,10 +77,9 @@ const EntityFields = ({ value, onChange, placeholders = [], locationOptions, sel
         <PlaceholderField
           label="AI-Facing Summary"
           labelAside={(
-            <AiFieldToolbar
+            <AiGenerateButton
               mode="summary"
               source={value.aiDescription}
-              value={value.aiSummary}
               onChange={(s) => onChange('aiSummary', s)}
             />
           )}
