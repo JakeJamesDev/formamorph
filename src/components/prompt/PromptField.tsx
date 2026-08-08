@@ -9,7 +9,7 @@ import { mergeRegister } from '@lexical/utils';
 import { LexicalComposer } from '@lexical/react/LexicalComposer';
 import { PlainTextPlugin } from '@lexical/react/LexicalPlainTextPlugin';
 import { ContentEditable } from '@lexical/react/LexicalContentEditable';
-import { HistoryPlugin } from '@lexical/react/LexicalHistoryPlugin';
+import { HistoryPlugin, createEmptyHistoryState } from '@lexical/react/LexicalHistoryPlugin';
 import { LexicalErrorBoundary } from '@lexical/react/LexicalErrorBoundary';
 import { useLexicalComposerContext } from '@lexical/react/LexicalComposerContext';
 import {
@@ -270,6 +270,28 @@ function CaretFollowPlugin({ onCaret }: { onCaret: () => void }) {
     );
   }, [editor, onCaret]);
   return null;
+}
+
+/**
+ * HistoryPlugin, given a baseline entry to undo *to*.
+ *
+ * It records a change by pushing the entry it was already holding, and starts holding none — so the
+ * first change after mount becomes the baseline instead of an undo step. Typing hides that (the second
+ * keystroke is undoable), but a field whose first change is a whole-value replace — Generate on an
+ * untouched summary, a Reset, a template swap — had nothing to undo at all.
+ */
+function SeededHistoryPlugin() {
+  const [editor] = useLexicalComposerContext();
+  const historyState = useMemo(() => createEmptyHistoryState(), []);
+
+  // In an effect, not in render: during render the initial state is still pending, so what's readable
+  // is the bare root — and `setEditorState` rejects an empty state, which makes undoing to it a silent
+  // no-op rather than an error.
+  useEffect(() => {
+    historyState.current ??= { editor, editorState: editor.getEditorState() };
+  }, [editor, historyState]);
+
+  return <HistoryPlugin externalHistoryState={historyState} />;
 }
 
 /** Reflects `readOnly` into the editor's editability (initialConfig only applies it at mount). */
@@ -864,7 +886,7 @@ const PromptField = ({ value, onChange, variables = [], vocabulary, previewValue
         ) : (
           body
         )}
-        <HistoryPlugin />
+        <SeededHistoryPlugin />
         <ValueSyncPlugin value={value} onChange={onChange} parse={vocab.parse} onExternalValue={resetScroll} />
         <EditablePlugin readOnly={readOnly} />
         <ChipDragPlugin dragKey={dragKey} vocab={insertTrigger ? vocab : undefined} />

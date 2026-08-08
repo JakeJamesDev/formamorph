@@ -41,5 +41,16 @@ if (typeof Blob !== 'undefined' && typeof Blob.prototype.arrayBuffer === 'undefi
   };
 }
 
+// jsdom implements no layout, so Range has no `getBoundingClientRect` (browsers do). Lexical measures the
+// selection range to scroll it into view after restoring a history entry, and the miss surfaces as an
+// unhandled error *after* the test that caused it — a real failure elsewhere would be lost in that noise.
+if (typeof Range !== 'undefined' && typeof Range.prototype.getBoundingClientRect === 'undefined') {
+  const emptyRect = () => ({
+    x: 0, y: 0, top: 0, left: 0, right: 0, bottom: 0, width: 0, height: 0, toJSON: () => ({}),
+  }) as DOMRect;
+  Range.prototype.getBoundingClientRect = emptyRect;
+  Range.prototype.getClientRects = () => Object.assign([], { item: () => null }) as unknown as DOMRectList;
+}
+
 // Unmount anything React Testing Library rendered between tests.
 afterEach(() => cleanup());
