@@ -85,8 +85,10 @@ switch is right there.
 
 On **Entities** and **Dictionary**, the two buttons split by mode: Simple offers **Add** only
 (bringing a character or lorebook in from your library is beginner authoring), Advanced offers
-**Export** alongside it (handing one to somebody else is not). Export World, Optimize Images and
-Save are unchanged.
+**Export** alongside it (handing one to somebody else is not). **Optimize Images** is Advanced-only:
+an oversized upload is already offered Optimize/Downscale as it lands (the trigger is the field's
+size cap, not the file format), so the footer button only adds the bulk pass over an already-large
+world. Export World and Save are unchanged.
 
 ## Mobile
 
