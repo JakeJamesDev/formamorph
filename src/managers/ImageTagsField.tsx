@@ -5,7 +5,6 @@ import { Star } from "lucide-react";
 import AiGenerateButton from "@/components/AiGenerateButton";
 import TagHistoryButtons from "@/components/TagHistoryButtons";
 import { useTagHistory } from "@/lib/useTagHistory";
-import { TagAutocomplete } from "@/components/TagAutocomplete";
 import TagChipField from "@/components/prompt/TagChipField";
 import { ConfirmDialog } from "@/components/ConfirmDialog";
 import { ImageUpload } from '../lib/UtilityComponents';
@@ -36,8 +35,8 @@ interface ImageTagsFieldProps {
   kind: ImageSubjectKind;
   tags?: string;
   onTagsChange: (value: string) => void;
-  /** The world's (or the standalone item's) placeholders. Given any, the tags become a chip field so a tag
-   *  can be a placeholder; with none it stays the plain autocomplete textarea. */
+  /** The world's (or the standalone item's) placeholders, so a tag can be one. None simply means no chip
+   *  is ever drawn — the field is the same either way. */
   placeholders?: Placeholder[];
 }
 
@@ -133,21 +132,13 @@ const ImageTagsField = ({ label, images, onImagesChange, slots = 1, embeddedLimi
           <TagHistoryButtons history={tagHistory} />
         </div>
       </div>
-      {placeholders.length > 0 ? (
-        <TagChipField
-          value={tags || ''}
-          onChange={onTagsChange}
-          placeholders={placeholders}
-          placeholder="booru tags, comma separated"
-          ariaLabel="Image Tags"
-        />
-      ) : (
-        <TagAutocomplete
-          value={tags || ''}
-          onChange={onTagsChange}
-          placeholder="booru tags, comma separated"
-        />
-      )}
+      <TagChipField
+        value={tags || ''}
+        onChange={onTagsChange}
+        placeholders={placeholders}
+        placeholder="booru tags, comma separated"
+        ariaLabel="Image Tags"
+      />
       </>
       )}
       {/* A generated picture lands in the primary slot as bytes, so it answers to the same allowance. */}

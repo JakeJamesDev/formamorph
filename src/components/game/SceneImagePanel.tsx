@@ -3,7 +3,7 @@ import { ChevronLeft, ChevronRight, Dices, Loader2, Square, Trash2, Sparkles } f
 import { Button } from '@/components/ui/button';
 import { Progress } from '@/components/ui/progress';
 import { Label } from '@/components/ui/label';
-import { TagAutocomplete } from '@/components/TagAutocomplete';
+import TagChipField from '@/components/prompt/TagChipField';
 import { ImageZoomViewer } from '@/components/ImageZoomViewer';
 
 /**
@@ -154,8 +154,15 @@ export const SceneImagePanel = ({
         <div className="flex flex-col gap-1">
           {/* The same Danbooru autocomplete the editor's Image Tags field uses — this is where tags get
               hand-fixed, so it is exactly where completion is worth having. */}
-          <Label htmlFor="scene-tags" className="sr-only">Scene tags</Label>
-          <TagAutocomplete id="scene-tags" rows={3} value={draft} onChange={setDraft} placeholder="comma-separated tags…" />
+          <Label className="sr-only">Scene tags</Label>
+          <TagChipField
+            value={draft}
+            onChange={setDraft}
+            placeholders={[]}
+            ariaLabel="Scene tags"
+            className="min-h-20 items-start"
+            placeholder="comma-separated tags…"
+          />
           <div className="flex items-center gap-2">
             {/* Re-rolling the tags costs one small text request and no render — the loop for judging whether
                 the tags themselves are any good, before spending a picture on them. */}

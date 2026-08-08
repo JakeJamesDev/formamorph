@@ -11,7 +11,7 @@ import { ImageZoomViewer } from '@/components/ImageZoomViewer';
 import AiGenerateButton from '@/components/AiGenerateButton';
 import TagHistoryButtons from '@/components/TagHistoryButtons';
 import { useTagHistory } from '@/lib/useTagHistory';
-import { TagAutocomplete } from '@/components/TagAutocomplete';
+import TagChipField from '@/components/prompt/TagChipField';
 import { useSettings } from '@/contexts/SettingsContext';
 import { type ImageSubjectKind } from '@/lib/imagePrompt';
 import { generateImage, buildImageRequest } from '@/lib/imageGen';
@@ -163,7 +163,8 @@ export function GenerateImageButton({ subject, cap, onChange, tags, onTagsChange
             </div>
             <div className="grid gap-1.5">
               <div className="flex items-center justify-between">
-                <Label htmlFor="gen-prompt">Prompt</Label>
+                {/* No `htmlFor`: the field is a contenteditable, which a label cannot point at. */}
+                <Label>Prompt</Label>
                 <div className="flex items-center gap-1">
                   <AiGenerateButton mode="tags" kind={subject.kind} source={subject.description} onChange={handlePrompt} />
                   <span className="mx-0.5 h-4 w-px bg-border" aria-hidden />
@@ -172,11 +173,12 @@ export function GenerateImageButton({ subject, cap, onChange, tags, onTagsChange
               </div>
               {/* The placeholder is the preset's own prefix, so an empty field reads as "this is what you
                   already get" rather than "nothing is being sent". */}
-              <TagAutocomplete
-                id="gen-prompt"
-                rows={3}
+              <TagChipField
                 value={prompt}
                 onChange={handlePrompt}
+                placeholders={[]}
+                ariaLabel="Prompt"
+                className="min-h-20 items-start"
                 placeholder={imagePositivePrompt.trim() || 'comma-separated visual tags…'}
               />
             </div>

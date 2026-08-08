@@ -10,6 +10,13 @@ import { lastVrmViewerProps, resetVrmViewerStub } from '@/test/stubs/vrmViewer';
 // three.js needs a WebGL context and the TTS engine a Web Audio graph; jsdom has neither.
 vi.mock('@/views/VRMViewer', () => import('@/test/stubs/vrmViewer'));
 vi.mock('@/lib/useTtsPlayback', () => import('@/test/stubs/ttsPlayback'));
+// Stubbed for the same reason as the VRM view: it is a Lexical editor whose caret jsdom cannot drive, and
+// these cases are about panel state per turn. The field itself: prompt/TagChipField.test.tsx.
+vi.mock('@/components/prompt/TagChipField', () => ({
+  default: ({ value, onChange, ariaLabel }: { value: string; onChange: (v: string) => void; ariaLabel?: string }) => (
+    <textarea aria-label={ariaLabel} value={value} onChange={(e) => onChange(e.target.value)} />
+  ),
+}));
 
 afterEach(() => {
   resetTtsPlayback();
