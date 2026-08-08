@@ -116,7 +116,7 @@ export function GenerateImageButton({ subject, cap, onChange, tags, onTagsChange
     setOpen(o);
   };
 
-  // Settings → AI Endpoints → Image → "Disable Image Generation" hides the affordance everywhere at once.
+  // Settings → AI Endpoints → Image → "Enable Image Generation" hides the affordance everywhere at once.
   if (imageGenDisabled) return null;
 
   return (

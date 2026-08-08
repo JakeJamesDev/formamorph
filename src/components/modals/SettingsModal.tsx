@@ -891,6 +891,8 @@ export const SettingsModal = ({ isOpen, onOpenChange, previewValues, initialTab,
     sceneImages: !imageGenDisabled,
   });
   const activePromptTab = promptAvailable[promptTab] ? promptTab : 'narration';
+  // Tag Prompt only exists while image generation is on; fall back to Image so the panel is never blank.
+  const activeEndpointTab = imageGenDisabled && endpointTab === 'img-tagprompt' ? 'img-endpoint' : endpointTab;
   const selectedPrompt = promptResets[activePromptTab] ?? promptResets.narration;
 
   // Each prompt has a System editor, an Options sub-tab, and — for the aux prompts — a User-message editor.
@@ -1320,28 +1322,6 @@ Works best when **Paragraph Limit** isn't set to *Single*.`}</HintInfo>
                   </label>
                 </div>
               </div>
-              {/* Scene images — a picture of each turn, drawn after its text is finished. Hidden entirely when
-                  image generation is switched off app-wide. */}
-              {!imageGenDisabled && (
-                <div className="grid grid-cols-1 sm:grid-cols-[minmax(0,1fr)_minmax(0,3fr)] items-start gap-4">
-                  <RowLabel htmlFor="sceneImageAuto" info={
-                    <HintInfo>{`Draws a picture of every turn without being asked.
-
-The image renders **after** the turn's text is done and holds your next action until it finishes — one graphics card can't run the artist and the writer at once. Expect each turn to take as long as your image server needs.
-
-You can always draw a single scene by hand from the button above the story instead.`}</HintInfo>
-                  }>Scene Images</RowLabel>
-                  <div className="flex items-center gap-2">
-                    <Checkbox
-                      id="sceneImageAuto"
-                      checked={sceneImageAuto}
-                      onCheckedChange={(c) => setSceneImageAuto(c === true)}
-                      className="shrink-0"
-                    />
-                    <span className="text-xs text-muted-foreground">Draw every turn automatically (slower turns).</span>
-                  </div>
-                </div>
-              )}
               {/* Auto-apply detected location changes — its own row, only shown while Location Change is on. */}
               {locationChangeEnabled && (
                 <SubGroup>
@@ -1737,11 +1717,11 @@ An inspection aid for authoring and debugging; off by default.`}</HintInfo>
           </TabsContent>
 
           <TabsContent value="endpoints" className="py-4 px-2 flex-1 min-h-0 data-[state=active]:flex flex-col">
-            <Tabs value={endpointTab} onValueChange={setEndpointTab} className="flex flex-col flex-1 min-h-0">
-              <TabsList className="grid w-full grid-cols-3 flex-shrink-0">
+            <Tabs value={activeEndpointTab} onValueChange={setEndpointTab} className="flex flex-col flex-1 min-h-0">
+              <TabsList className={`grid w-full flex-shrink-0 ${imageGenDisabled ? 'grid-cols-2' : 'grid-cols-3'}`}>
                 <TabsTrigger value="text-endpoint">Text</TabsTrigger>
                 <TabsTrigger value="img-endpoint">Image</TabsTrigger>
-                <TabsTrigger value="img-tagprompt">Tag Prompt</TabsTrigger>
+                {!imageGenDisabled && <TabsTrigger value="img-tagprompt">Tag Prompt</TabsTrigger>}
               </TabsList>
               <TabsContent value="text-endpoint" className="flex-1 min-h-0 data-[state=active]:flex flex-col">
               {/* Preset selector: swaps the whole endpoint field set. The read-only built-ins are the shared
@@ -1929,16 +1909,32 @@ An inspection aid for authoring and debugging; off by default.`}</HintInfo>
               </Select>
               <Button variant="outline" size="sm" onClick={() => setImagePresetDialog({ mode: 'rename' })}>Rename</Button>
             </div>
-            {/* Global kill switch: hides every "Generate with AI" image button without touching the presets. */}
+            {/* Global kill switch: hides every "Generate with AI" image button, and everything below it here. */}
             <div className="flex items-center gap-2 flex-shrink-0">
               <Checkbox
-                id="imageGenDisabled"
-                checked={imageGenDisabled}
-                onCheckedChange={(c) => setImageGenDisabled(c === true)}
+                id="imageGenEnabled"
+                checked={!imageGenDisabled}
+                onCheckedChange={(c) => setImageGenDisabled(c !== true)}
                 className="shrink-0"
               />
-              <Label htmlFor="imageGenDisabled" className="text-sm font-normal">Disable Image Generation</Label>
-              <span className="text-xs text-muted-foreground">Hides the &ldquo;Generate with AI&rdquo; buttons.</span>
+              <Label htmlFor="imageGenEnabled" className="text-sm font-normal">Enable Image Generation</Label>
+              <span className="text-xs text-muted-foreground">Shows the &ldquo;Generate with AI&rdquo; buttons.</span>
+            </div>
+            {!imageGenDisabled && (<>
+            <div className="flex items-center gap-2 flex-shrink-0">
+              <Checkbox
+                id="sceneImageAuto"
+                checked={sceneImageAuto}
+                onCheckedChange={(c) => setSceneImageAuto(c === true)}
+                className="shrink-0"
+              />
+              <Label htmlFor="sceneImageAuto" className="text-sm font-normal">Scene Images</Label>
+              <HintInfo>{`Draws a picture of every turn without being asked.
+
+The image renders **after** the turn's text is done and holds your next action until it finishes — one graphics card can't run the artist and the writer at once. Expect each turn to take as long as your image server needs.
+
+You can always draw a single scene by hand from the button above the story instead.`}</HintInfo>
+              <span className="text-xs text-muted-foreground">Draw every turn automatically (slower turns).</span>
             </div>
             <ScrollArea className="flex-1 min-h-0">
             <div className="grid gap-6">
@@ -2154,7 +2150,9 @@ An inspection aid for authoring and debugging; off by default.`}</HintInfo>
               </Section>
             </div>
             </ScrollArea>
+            </>)}
               </TabsContent>
+              {!imageGenDisabled && (
               <TabsContent value="img-tagprompt" className="pt-4 flex-1 min-h-0 data-[state=active]:flex flex-col gap-2">
                 <p className="text-xs text-muted-foreground flex-shrink-0">
                   The prompt sent to your text model to turn a subject’s description into booru tags. The
@@ -2173,6 +2171,7 @@ An inspection aid for authoring and debugging; off by default.`}</HintInfo>
                   </ConfirmDialog>
                 </div>
               </TabsContent>
+              )}
             </Tabs>
             <PresetNameDialog
               open={imagePresetDialog !== null}
