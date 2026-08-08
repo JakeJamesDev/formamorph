@@ -165,8 +165,9 @@ export function GenerateImageButton({ subject, cap, onChange, tags, onTagsChange
               <div className="flex items-center justify-between">
                 <Label htmlFor="gen-prompt">Prompt</Label>
                 <div className="flex items-center gap-1">
-                  <TagHistoryButtons history={promptHistory} />
                   <AiGenerateButton mode="tags" kind={subject.kind} source={subject.description} onChange={handlePrompt} />
+                  <span className="mx-0.5 h-4 w-px bg-border" aria-hidden />
+                  <TagHistoryButtons history={promptHistory} />
                 </div>
               </div>
               {/* The placeholder is the preset's own prefix, so an empty field reads as "this is what you

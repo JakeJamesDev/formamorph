@@ -128,8 +128,9 @@ const ImageTagsField = ({ label, images, onImagesChange, slots = 1, embeddedLimi
       <div className="flex items-center justify-between">
         <Label className="leading-none">Image Tags</Label>
         <div className="flex items-center gap-1">
-          <TagHistoryButtons history={tagHistory} />
           <AiGenerateButton mode="tags" kind={kind} source={description} onChange={onTagsChange} />
+          <span className="mx-0.5 h-4 w-px bg-border" aria-hidden />
+          <TagHistoryButtons history={tagHistory} />
         </div>
       </div>
       {placeholders.length > 0 ? (
