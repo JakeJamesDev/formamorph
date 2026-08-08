@@ -1,6 +1,6 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { describe, it, expect, vi } from 'vitest';
-import { render, screen } from '@testing-library/react';
+import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import PromptField from './PromptField';
 import { plainVocabulary } from '@/lib/chipVocabulary';
@@ -38,6 +38,22 @@ describe('PromptField history', () => {
       expect(screen.getByTestId('value').textContent).toBe(initial);
     },
   );
+
+  it('does not offer to undo a value that arrived on its own', async () => {
+    // A world still loading (or a draft resolving) hands the field its text a tick after mount. Counting
+    // that as an edit put an enabled Undo on a freshly opened editor that wiped the field when pressed.
+    function Hydrating() {
+      const [value, setValue] = useState('');
+      useEffect(() => { setValue('authored text'); }, []);
+      return <PromptField value={value} onChange={setValue} vocabulary={plainVocabulary()} />;
+    }
+
+    render(<Hydrating />);
+    await waitFor(() => expect(
+      (document.querySelector('[contenteditable="true"]') as HTMLElement).textContent,
+    ).toBe('authored text'));
+    expect(screen.getByLabelText('Undo')).toBeDisabled();
+  });
 
   it('still undoes typing', async () => {
     // The seeded baseline must not swallow ordinary edits: an empty field typed into and undone comes

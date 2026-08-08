@@ -231,10 +231,30 @@ function ValueSyncPlugin({ value, onChange, parse, onExternalValue }: {
   const onExternalRef = useRef(onExternalValue);
   onExternalRef.current = onExternalValue;
 
+  // Whether a person has done anything since this field mounted. A value that arrives on its own — a world
+  // still loading, a draft resolving — is not an edit and must not become an undo step, or a freshly opened
+  // editor offers to "undo" back to the empty field it rendered for one tick. A generation, a Reset or a
+  // template swap all follow a click, which is what tells them apart: by shape they are the same change.
+  const userActed = useRef(false);
+  useEffect(() => {
+    const mark = () => { userActed.current = true; };
+    const doc = editor.getRootElement()?.ownerDocument ?? document;
+    doc.addEventListener('pointerdown', mark, { capture: true });
+    doc.addEventListener('keydown', mark, { capture: true });
+    return () => {
+      doc.removeEventListener('pointerdown', mark, { capture: true });
+      doc.removeEventListener('keydown', mark, { capture: true });
+    };
+  }, [editor]);
+
   useEffect(() => {
     if (value === expected.current) return;
     expected.current = value;
-    editor.update(() => buildEditorState(value, parseRef.current));
+    // `history-merge` folds the rebuild into the current history entry instead of pushing one.
+    editor.update(
+      () => buildEditorState(value, parseRef.current),
+      userActed.current ? undefined : { tag: 'history-merge' },
+    );
     onExternalRef.current?.();
   }, [value, editor]);
 
@@ -783,7 +803,14 @@ const PromptField = ({ value, onChange, variables = [], vocabulary, previewValue
         {!insertTrigger && <VariableToolbar vocab={vocab} interactive={!readOnly && (split || !showTabs || tab === 'edit')} />}
       </div>
       <div className="flex flex-shrink-0 items-center gap-1">
-        {label && !markdown && labelAside}
+        {/* Contributed buttons (an AI generate, say) lead, divided from the field's own history the same
+            way history is divided from the view controls — three groups, two rules. */}
+        {label && !markdown && labelAside && (
+          <>
+            {labelAside}
+            <span className="mx-0.5 w-px self-stretch bg-border" />
+          </>
+        )}
         <HistoryButtons disabled={editingDisabled} />
         <span className="mx-0.5 w-px self-stretch bg-border" />
         {showTabs && fullscreen && effectiveWidth - 12 >= MIN_PANE_WIDTH * 2 && (
