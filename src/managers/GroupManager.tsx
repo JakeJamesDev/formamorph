@@ -23,24 +23,20 @@ const GroupManager = ({ group }: { group: TraitGroup }) => {
           ariaLabel="Group Name"
         />
       </div>
-      <div className="space-y-2">
-        <Label>Player-Facing Description</Label>
-        <PlaceholderField
-          value={editingGroup.playerDescription || ''}
-          onChange={(v) => handleChange('playerDescription', v)}
-          placeholders={placeholders}
-          resizable
-        />
-      </div>
-      <div className="space-y-2">
-        <Label>AI-Facing Description</Label>
-        <PlaceholderField
-          value={editingGroup.aiDescription || ''}
-          onChange={(v) => handleChange('aiDescription', v)}
-          placeholders={placeholders}
-          resizable
-        />
-      </div>
+      <PlaceholderField
+        label="Player-Facing Description"
+        value={editingGroup.playerDescription || ''}
+        onChange={(v) => handleChange('playerDescription', v)}
+        placeholders={placeholders}
+        resizable
+      />
+      <PlaceholderField
+        label="AI-Facing Description"
+        value={editingGroup.aiDescription || ''}
+        onChange={(v) => handleChange('aiDescription', v)}
+        placeholders={placeholders}
+        resizable
+      />
       <label className="flex items-center gap-2 cursor-pointer">
         <Checkbox
           checked={!!editingGroup.exclusive}
