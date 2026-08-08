@@ -17,10 +17,11 @@ vi.mock('@/contexts/SettingsContext', () => ({
 vi.mock('@/lib/useDownscalePrompt', () => ({
   useDownscalePrompt: () => ({ promptImage: async (url: string) => url, dialog: null }),
 }));
-// The autocomplete pulls a tag dictionary it doesn't need for these assertions.
-vi.mock('@/components/TagAutocomplete', () => ({
-  TagAutocomplete: ({ id, value, onChange }: { id: string; value: string; onChange: (v: string) => void }) => (
-    <textarea id={id} aria-label="prompt" value={value} onChange={(e) => onChange(e.target.value)} />
+// The prompt field is a Lexical chip editor that pulls a tag dictionary these assertions don't need, and
+// whose caret jsdom cannot drive. Its own behavior is covered by prompt/TagChipField.test.tsx.
+vi.mock('@/components/prompt/TagChipField', () => ({
+  default: ({ value, onChange, ariaLabel }: { value: string; onChange: (v: string) => void; ariaLabel?: string }) => (
+    <textarea aria-label={ariaLabel} value={value} onChange={(e) => onChange(e.target.value)} />
   ),
 }));
 
@@ -67,7 +68,7 @@ describe('GenerateImageButton cancel', () => {
     expect(seen?.aborted).toBe(true);
     // The dialog stays open and offers a retry rather than closing out from under the user.
     await waitFor(() => expect(screen.getByRole('button', { name: /^Generate$/ })).toBeEnabled());
-    expect(screen.getByLabelText('prompt')).toBeInTheDocument();
+    expect(screen.getByLabelText('Prompt')).toBeInTheDocument();
   });
 
   it('shows a busy indicator for providers that report no progress', async () => {
