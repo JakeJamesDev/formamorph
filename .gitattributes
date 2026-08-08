@@ -1,0 +1,11 @@
+# Line endings are LF everywhere — in the repository and in the working tree, on every platform.
+# Without this, a Windows clone converts on checkout and back on commit, which leaves files with
+# mixed endings and makes exact-match tooling (and diffs) depend on who checked the file out.
+* text=auto eol=lf
+
+# Binary assets: never converted, never diffed as text.
+*.png binary
+*.webp binary
+*.vrm binary
+*.fbx binary
+*.gguf binary
