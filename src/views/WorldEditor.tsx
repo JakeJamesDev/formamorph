@@ -664,6 +664,9 @@ const WorldEditorInner = ({ onClose, embedded = false, backButton }: {
         )}
       </div>
       <div className="flex gap-2">
+        {/* Advanced-only: an oversized upload is already offered Optimize/Downscale as it lands, so what
+            this adds is the bulk pass over a world that is already large. */}
+        {advanced && (
         <Button variant="outline" size="sm" onClick={optimizeImages} disabled={optimizeProgress !== null} title="Downscale oversized images to conserve file size">
           {optimizeProgress !== null ? (
             <>
@@ -677,6 +680,7 @@ const WorldEditorInner = ({ onClose, embedded = false, backButton }: {
             </>
           )}
         </Button>
+        )}
         <Button size="sm" onClick={saveWorld} disabled={!isWorldDirty}>
           <Save className="h-4 w-4 mr-2" />
           Save
