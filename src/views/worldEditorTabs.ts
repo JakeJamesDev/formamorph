@@ -8,5 +8,10 @@ export const WORLD_EDITOR_TABS = [
   { value: 'locations', label: 'Locations' },
   { value: 'traits', label: 'Traits' },
   { value: 'dictionary', label: 'Dictionary' },
-  { value: 'placeholders', label: 'Placeholders' },
+  { value: 'placeholders', label: 'Placeholders', advancedOnly: true },
 ] as const;
+
+/** The tabs one editor mode shows. Simple drops the `advancedOnly` ones. */
+export function editorTabsFor(advanced: boolean) {
+  return WORLD_EDITOR_TABS.filter((t) => advanced || !('advancedOnly' in t && t.advancedOnly));
+}

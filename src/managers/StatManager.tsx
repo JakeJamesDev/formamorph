@@ -22,6 +22,7 @@ import { PlaceholderNameField } from "@/components/prompt/PlaceholderField";
 import { useBodyMorphSources } from "@/lib/useBodyMorphNames";
 import { boundMorphNamesExcluding, buildMorphGroups } from "@/lib/bodyMorphs";
 import { clamp } from "@/lib/utils";
+import { useEditorMode } from '@/lib/editorMode';
 import type { Stat, StatDescriptor, StatType } from "@/types";
 
 /** The stat being edited — a loose, partial Stat while fields are filled in. */
@@ -117,6 +118,8 @@ const StatManager = ({ stat }: { stat: Stat }) => {
     );
     handleChange("descriptors", updatedDescriptors);
   };
+
+  const { advanced } = useEditorMode();
 
   if (!editingStat) return null;
 
@@ -257,6 +260,7 @@ const StatManager = ({ stat }: { stat: Stat }) => {
               maxCount={6}
             />
           </div>
+          {advanced && (
           <div className="space-y-2">
             <Label>Prevent AI Changes</Label>
             <p className="text-sm text-muted-foreground">Stop the AI from changing this stat in a given direction.</p>
@@ -298,9 +302,11 @@ const StatManager = ({ stat }: { stat: Stat }) => {
               )}
             </div>
           </div>
+          )}
         </div>
       )}
 
+      {advanced && (
       <div className="space-y-2">
         <Label>Stat Descriptors</Label>
         {editingStat.descriptors &&
@@ -364,9 +370,10 @@ const StatManager = ({ stat }: { stat: Stat }) => {
           <Button onClick={handleAddDescriptor}>Add</Button>
         </div>
       </div>
+      )}
 
       {/* Code Section */}
-      {isNumeric && (
+      {isNumeric && advanced && (
         <CollapsibleSection
           open={codeOpen}
           onOpenChange={setCodeOpen}

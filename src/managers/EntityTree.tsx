@@ -5,6 +5,7 @@ import {
   duplicateEntityNode, type FlatEntityNode,
 } from '@/lib/entityGroupTree';
 import { SortableTree, TREE_INDENT, type SortableTreeAdapter } from './SortableTree';
+import { useEditorMode } from '@/lib/editorMode';
 import { EmptyListHint } from '@/components/EmptyListHint';
 import PlaceholderText from '@/components/prompt/PlaceholderText';
 
@@ -12,6 +13,7 @@ import PlaceholderText from '@/components/prompt/PlaceholderText';
  *  editor-only folders (never sent to the AI); entities are leaves. Mirrors the Traits tab. */
 const EntityTree = ({ selectedId, onSelect }: { selectedId: string | null; onSelect: (id: string) => void }) => {
   const { entities, entityGroups, setEntities, setEntityGroups, removeEntity, removeEntityGroup, placeholders } = useGameData();
+  const { advanced } = useEditorMode();
 
   const adapter: SortableTreeAdapter<FlatEntityNode> = {
     getVisible: (collapsed) => removeChildrenOf(flattenEntityTree(buildEntityTree(entityGroups, entities)), collapsed),
@@ -43,7 +45,8 @@ const EntityTree = ({ selectedId, onSelect }: { selectedId: string | null; onSel
   };
 
   if (!entities.length && !entityGroups.length) {
-    return <EmptyListHint noun="entities" action="add a group or entity" />;
+    // Simple mode has no groups, so its + adds the item directly.
+    return <EmptyListHint noun="entities" action={advanced ? "add a group or entity" : "add one"} />;
   }
 
   return <SortableTree adapter={adapter} selectedId={selectedId} onSelect={onSelect} />;

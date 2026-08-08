@@ -162,6 +162,8 @@ What nesting decides is where *the story* can take them. When the AI reads an ac
 
 The background image, image tags and ambient sound are for the player's screen — the narrator never sees them.
 
+**Simple mode hides** AI-Facing Summary, Ambient Sound and Image Tags. Switch the editor to Advanced to use them.
+
 Write the AI-Facing Description first; it's the one doing the work. Reach for nesting when you want the story to move the player on its own.`,
   },
   'worldEditor.entities': {
@@ -187,6 +189,8 @@ They exist to give the AI a cast it can't lose track of. Left to itself the narr
 **Groups** are organizational. Nesting and order are editor-only and never reach the AI, so grouping never changes the story.
 
 Image, Image Tags and the 3D model are for the player's screen and for image generation — the narrator never sees them.
+
+**Simple mode hides** Aliases, AI-Facing Summary, Type, Image Tags and the 3D model, and adds entities without groups. Switch the editor to Advanced to use them.
 
 Give a location the two or three entities the scene genuinely turns on. Everything at the player's location is sent every turn, so a crowded location is a permanent context bill.`,
   },
@@ -238,6 +242,8 @@ A trait is a durable fact about the character. Stats move constantly and the sto
 
 **Groups** organize the list, and they also speak to the AI: give a group an AI-Facing Description and it becomes a header above its chosen traits, letting you frame a whole set at once (*"Origin: where this life began"*). A group with nothing chosen inside it is skipped entirely.
 
+**Simple mode hides** Stat Availability and Placeholder Pins, and adds traits without groups. Switch the editor to Advanced to use them.
+
 Write the AI-Facing Description as a fact about the character the narrator can act on, not a stat note. *"Flinches at open water"* beats *"-20 swimming"*.`,
   },
   'worldEditor.placeholders': {
@@ -261,6 +267,8 @@ They exist so a world can vary without being rewritten. Author *"the {{Eye Color
 **The roll is frozen for the playthrough.** A Wildcard is rolled once, when a game begins, and stored in that save. The stranger who had gray eyes on turn one still has them on turn ninety — reload the save and nothing shifts. A new game rolls fresh.
 
 **Where chips work.** Anywhere with the chip picker: entity, location and dictionary descriptions, the readme, the system prompt addition. They resolve both in what the AI reads and in what the player sees. The **World Description is the exception** — it's read in the library before any game exists, so there are no rolls yet, and it takes no chips.
+
+**Placeholders are Advanced-only** — the editor's mode switch has to be on Advanced for this tab and the chip palette to appear.
 
 Define a placeholder here, then place its chip from any field that offers them. A placeholder with no values resolves to nothing, so give it at least one.`,
   },
@@ -305,6 +313,8 @@ Both ends are given because a turn spans time: an eight-hour sleep begins in the
 
 That's what makes a per-hour drain (\`current + 2 * deltaHours\`) or a stat that only climbs after dark possible. With **Measured Clock** off, \`deltaHours\` is simply \`1\`. One catch: a script mentioning any of these re-runs **every** turn, since time passes every turn — a script that mentions none of them still runs only when a stat changes.
 
+**Simple mode hides** Stat Descriptors, Prevent AI Changes and Dynamic Value Calculation. Switch the editor to Advanced to use them.
+
 Start with two or three stats that the story would genuinely turn on. Every stat you add spends context on every turn, whether it matters to the scene or not.`,
   },
   'worldEditor.dictionary': {
@@ -331,6 +341,8 @@ Text that's present every single turn is deliberately left out — your world de
 - **Background** and **Foreground** are two separate lore blocks placed in the system prompt; drag an entry between a book's two groups to move it. By default, Background comes earlier than Foreground.
 - **Recursive** entries can also be fired by the content of entries that already activated, not just by the scene.
 - **Books** group related entries: their order sets injection order, and disabling one mutes everything in it. Players may override those toggles before starting.
+
+**Simple mode hides** Always inject, Regex, Recursive, Scan depth and Secondary Keywords, along with the Background/Foreground split and the enable toggles. Switch the editor to Advanced to use them.
 
 Start with one book and a few entries. Reach for the extra controls only when an entry fires when it shouldn't.`,
   },

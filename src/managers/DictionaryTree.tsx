@@ -19,6 +19,7 @@ import { reorderBooks, moveEntryInBooks, duplicateEntryInBooks } from '@/lib/dic
 import { EmptyListHint } from '@/components/EmptyListHint';
 import type { Dictionary, DictionaryEntry } from '@/types';
 import PlaceholderText from '@/components/prompt/PlaceholderText';
+import { useEditorMode } from '@/lib/editorMode';
 
 /** One entry ("page") row inside a book zone: grip handle + enabled toggle + name + duplicate/delete. */
 function EntryRow({ entry, selected, onSelect, onToggleEnabled, onDuplicate, onRemove }: {
@@ -30,6 +31,7 @@ function EntryRow({ entry, selected, onSelect, onToggleEnabled, onDuplicate, onR
   onRemove: (id: string) => void;
 }) {
   const { placeholders } = usePlaceholderStore();
+  const { advanced } = useEditorMode();
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: entry.id });
   const faded = entry.enabled === false;
   const style = {
@@ -56,13 +58,15 @@ function EntryRow({ entry, selected, onSelect, onToggleEnabled, onDuplicate, onR
       >
         <GripVertical className="h-4 w-4" />
       </span>
-      <Checkbox
-        checked={entry.enabled !== false}
-        onCheckedChange={(v) => onToggleEnabled(entry, v === true)}
-        onClick={(e) => e.stopPropagation()}
-        className="mx-1 shrink-0"
-        title={entry.enabled === false ? 'Disabled — click to enable' : 'Enabled — click to disable'}
-      />
+      {advanced && (
+        <Checkbox
+          checked={entry.enabled !== false}
+          onCheckedChange={(v) => onToggleEnabled(entry, v === true)}
+          onClick={(e) => e.stopPropagation()}
+          className="mx-1 shrink-0"
+          title={entry.enabled === false ? 'Disabled — click to enable' : 'Enabled — click to disable'}
+        />
+      )}
       <span className="min-w-0 flex-grow truncate"><PlaceholderText text={entry.name || entry.key?.[0] || 'Untitled'} placeholders={placeholders} /></span>
       <Button variant="ghost" size="icon" className={`shrink-0 ${selected ? 'text-primary-foreground' : 'text-muted-foreground'}`}
         onClick={(e) => { e.stopPropagation(); onDuplicate(entry.id); }} title="Duplicate">
@@ -76,10 +80,14 @@ function EntryRow({ entry, selected, onSelect, onToggleEnabled, onDuplicate, onR
   );
 }
 
-/** One droppable, collapsible zone (Background/Foreground) within a book; empty zones still accept a drop. */
-function DictZone({ bookId, position, entries, collapsed, onToggleCollapse, selectedId, onSelectEntry, onToggleEntryEnabled, onDuplicateEntry, onRemoveEntry }: {
+/** One droppable, collapsible zone (Background/Foreground) within a book; empty zones still accept a drop.
+ *  `flat` (Simple mode) drops the heading and the dashed frame so a book's two zones read as one list —
+ *  each zone still owns its own drops, so an entry never silently changes where it sits in the prompt. */
+function DictZone({ bookId, position, entries, collapsed, onToggleCollapse, flat, selectedId, onSelectEntry, onToggleEntryEnabled, onDuplicateEntry, onRemoveEntry }: {
   bookId: string;
   position: 'before' | 'after';
+  /** Simple mode: render as part of one flat list rather than a labeled zone. */
+  flat?: boolean;
   entries: DictionaryEntry[];
   collapsed: boolean;
   onToggleCollapse: () => void;
@@ -90,8 +98,11 @@ function DictZone({ bookId, position, entries, collapsed, onToggleCollapse, sele
   onRemoveEntry: (id: string) => void;
 }) {
   const { setNodeRef, isOver } = useDroppable({ id: `zone:${bookId}:${position}` });
+  // An empty zone is a drop target only; with no heading to explain it there is nothing to show.
+  if (flat && entries.length === 0) return null;
   return (
     <div>
+      {!flat && (
       <button
         type="button"
         onClick={(e) => { e.stopPropagation(); onToggleCollapse(); }}
@@ -103,13 +114,16 @@ function DictZone({ bookId, position, entries, collapsed, onToggleCollapse, sele
         </span>
         <span className="text-[0.65rem]">({entries.length})</span>
       </button>
-      {!collapsed && (
+      )}
+      {(flat || !collapsed) && (
         <SortableContext items={entries.map((e) => e.id)} strategy={verticalListSortingStrategy}>
           <div
             ref={setNodeRef}
-            className={`flex flex-col gap-1 rounded-md border border-dashed p-1 min-h-[2.5rem] transition-colors ${
-              isOver ? 'border-primary bg-secondary/40' : 'border-border/50'
-            }`}
+            className={flat
+              ? 'flex flex-col gap-1'
+              : `flex flex-col gap-1 rounded-md border border-dashed p-1 min-h-[2.5rem] transition-colors ${
+                  isOver ? 'border-primary bg-secondary/40' : 'border-border/50'
+                }`}
           >
             {entries.map((entry) => (
               <EntryRow
@@ -122,7 +136,7 @@ function DictZone({ bookId, position, entries, collapsed, onToggleCollapse, sele
                 onRemove={onRemoveEntry}
               />
             ))}
-            {entries.length === 0 && <p className="px-2 py-1 text-xs text-muted-foreground">Drag entries here.</p>}
+            {!flat && entries.length === 0 && <p className="px-2 py-1 text-xs text-muted-foreground">Drag entries here.</p>}
           </div>
         </SortableContext>
       )}
@@ -149,6 +163,7 @@ function BookRow({ book, collapsed, collapsedZones, selectedId, onToggleCollapse
     onRemoveEntry: (id: string) => void;
   };
 }) {
+  const { advanced } = useEditorMode();
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: book.id });
   // Translate (not Transform): Transform bakes in a scale that resizes the dragged row to the target slot.
   const style = { transform: CSS.Translate.toString(transform), transition, opacity: isDragging ? 0.5 : 1, zIndex: isDragging ? 1 : undefined };
@@ -182,19 +197,21 @@ function BookRow({ book, collapsed, collapsedZones, selectedId, onToggleCollapse
         >
           <GripVertical className="h-4 w-4" />
         </span>
-        <Checkbox
-          checked={book.enabled !== false}
-          onCheckedChange={(v) => onToggleEnabled(book, v === true)}
-          onClick={(e) => e.stopPropagation()}
-          className="mx-1 shrink-0"
-          title={book.enabled === false ? 'Disabled — click to enable' : 'Enabled — click to disable'}
-        />
+        {advanced && (
+          <Checkbox
+            checked={book.enabled !== false}
+            onCheckedChange={(v) => onToggleEnabled(book, v === true)}
+            onClick={(e) => e.stopPropagation()}
+            className="mx-1 shrink-0"
+            title={book.enabled === false ? 'Disabled — click to enable' : 'Enabled — click to disable'}
+          />
+        )}
         <span className="min-w-0 flex-grow truncate font-medium">{book.name}</span>
         <span
           className={`shrink-0 text-xs mr-1 ${selected ? 'text-primary-foreground/80' : 'text-muted-foreground'}`}
-          title="Enabled entries / total entries"
+          title={advanced ? 'Enabled entries / total entries' : 'Entries'}
         >
-          {enabledCount}/{book.entries.length}
+          {advanced ? `${enabledCount}/${book.entries.length}` : book.entries.length}
         </span>
         <Button variant="ghost" size="icon" className={`shrink-0 ${selected ? 'text-primary-foreground' : 'text-muted-foreground'}`}
           onClick={(e) => { e.stopPropagation(); onAddEntry(book.id); }} title="Add entry">
@@ -208,12 +225,12 @@ function BookRow({ book, collapsed, collapsedZones, selectedId, onToggleCollapse
       {!collapsed && (
         <div className="p-2 pl-6 flex flex-col gap-2">
           <DictZone
-            bookId={book.id} position="before" entries={before}
+            bookId={book.id} position="before" entries={before} flat={!advanced}
             collapsed={collapsedZones.has(`${book.id}:before`)} onToggleCollapse={() => onToggleZone(`${book.id}:before`)}
             selectedId={selectedId} {...entryHandlers}
           />
           <DictZone
-            bookId={book.id} position="after" entries={after}
+            bookId={book.id} position="after" entries={after} flat={!advanced}
             collapsed={collapsedZones.has(`${book.id}:after`)} onToggleCollapse={() => onToggleZone(`${book.id}:after`)}
             selectedId={selectedId} {...entryHandlers}
           />

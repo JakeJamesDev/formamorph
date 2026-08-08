@@ -3,6 +3,7 @@ import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Checkbox } from '@/components/ui/checkbox';
+import { useEditorMode } from '@/lib/editorMode';
 import type { Dictionary } from '@/types';
 
 /** Right-panel editor for a selected book (dictionary): rename + enable toggle. Entry editing is the
@@ -13,6 +14,7 @@ import type { Dictionary } from '@/types';
  *  reach for while writing entries. */
 const DictionaryBookManager = ({ book }: { book: Dictionary }) => {
   const { updateDictionary } = useDictionaryStore();
+  const { advanced } = useEditorMode();
   return (
     <div className="space-y-4">
       <div className="space-y-2">
@@ -28,16 +30,19 @@ const DictionaryBookManager = ({ book }: { book: Dictionary }) => {
           rows={3}
         />
       </div>
-      <label className="flex items-center gap-2 text-sm">
-        <Checkbox
-          checked={book.enabled !== false}
-          onCheckedChange={(v) => updateDictionary({ ...book, enabled: v === true })}
-        />
-        Enabled — inject entries from this dictionary
-      </label>
+      {advanced && (
+        <label className="flex items-center gap-2 text-sm">
+          <Checkbox
+            checked={book.enabled !== false}
+            onCheckedChange={(v) => updateDictionary({ ...book, enabled: v === true })}
+          />
+          Enabled — inject entries from this dictionary
+        </label>
+      )}
       <p className="text-xs text-muted-foreground">
         {book.entries.length} {book.entries.length === 1 ? 'entry' : 'entries'}. Use the + on this dictionary
-        (left) to add one, then select an entry to edit it. Disabling mutes every entry in this book at once.
+        (left) to add one, then select an entry to edit it.
+        {advanced && ' Disabling mutes every entry in this book at once.'}
       </p>
     </div>
   );

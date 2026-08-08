@@ -2,7 +2,11 @@ import { randomUUID } from "@/lib/uuid";
 import { useState, useEffect, useMemo, useRef, type ChangeEvent, type ReactNode } from 'react';
 import { useGameData } from '@/contexts/GameDataContext';
 import { useDevRoute } from '@/lib/devRouter';
-import { WORLD_EDITOR_TABS } from './worldEditorTabs';
+import { editorTabsFor } from './worldEditorTabs';
+import { useEditorMode, type EditorMode } from '@/lib/editorMode';
+import { EditorModeProvider } from '@/components/EditorModeProvider';
+import { worldUsesAdvancedFeatures } from '@/lib/editorAdvancedData';
+import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import { EmptyListHint } from '@/components/EmptyListHint';
 import { HelpButton } from '@/components/HelpButton';
 import { worldEditorTopicId } from '@/lib/helpTopics';
@@ -11,7 +15,7 @@ import { Input } from "@/components/ui/input";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { Download, Plus, ArrowLeft, Save, FolderPlus, FilePlus, ImageDown, BookPlus, UserPlus, Loader2 } from "lucide-react";
+import { Download, Plus, ArrowLeft, Save, FolderPlus, FilePlus, ImageDown, BookPlus, UserPlus, Loader2, Info } from "lucide-react";
 import { Panel, PanelGroup, PanelResizeHandle } from 'react-resizable-panels';
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { ListDetail } from "@/components/ui/list-detail";
@@ -78,7 +82,7 @@ import PlaceholderText from '@/components/prompt/PlaceholderText';
 /** The fields a reorderable list row needs (every editor item has these). */
 type ListItem = SortableListItem;
 
-const WorldEditor = ({ onClose, embedded = false, backButton }: {
+const WorldEditorInner = ({ onClose, embedded = false, backButton }: {
   onClose: () => void;
   embedded?: boolean;
   /** Force the header back arrow on/off independent of `embedded`. Defaults to `!embedded`: a full-screen
@@ -136,7 +140,13 @@ const WorldEditor = ({ onClose, embedded = false, backButton }: {
     }
   };
 
+  const { mode, advanced, setMode } = useEditorMode();
+  const visibleTabs = useMemo(() => editorTabsFor(advanced), [advanced]);
   const [activeTab, setActiveTab] = useState("overview");
+  // Switching to Simple while standing on a hidden tab would blank the panel with no way back to it.
+  useEffect(() => {
+    if (!visibleTabs.some((t) => t.value === activeTab)) setActiveTab('overview');
+  }, [visibleTabs, activeTab]);
   // DEV dev-router: jump to a specific editor tab via `#dev?modal=worldEditor&tab=…`. Tree-shaken in prod.
   const devRoute = useDevRoute();
   useEffect(() => {
@@ -367,13 +377,12 @@ const WorldEditor = ({ onClose, embedded = false, backButton }: {
   const selectedEntry = dictionaries.flatMap(b => b.entries).find(e => e.id === selectedItemId);
   const selectedPlaceholder = placeholders.find(p => p.id === selectedItemId);
 
-  // Contextual footer actions. Export shows on Overview/Entities/Dictionary; only "Export World"
-  // is wired up (entity/dictionary export is a stub). Import shows on Entities (when one is selected)
-  // and Dictionary, and does nothing yet.
+  // Contextual footer actions. Simple authoring is bringing a character or lorebook in from your library;
+  // handing one out is an Advanced move, so Entities/Dictionary offer Add in both modes, Export in Advanced.
   const exportContext =
     activeTab === 'overview' ? { label: 'Export World', disabled: false, onClick: () => { exportCurrentWorld(); } }
-    : activeTab === 'entities' ? { label: `Export ${selectedItem ? describePlaceholders(selectedItem.name, placeholders) : 'Entity'}`, disabled: !selectedItem, onClick: () => { if (selectedItem) exportEntity(selectedItem as Entity); } }
-    : activeTab === 'dictionary'
+    : activeTab === 'entities' && advanced ? { label: `Export ${selectedItem ? describePlaceholders(selectedItem.name, placeholders) : 'Entity'}`, disabled: !selectedItem, onClick: () => { if (selectedItem) exportEntity(selectedItem as Entity); } }
+    : activeTab === 'dictionary' && advanced
       ? { label: `Export ${selectedBook?.name ?? 'Dictionary'}`, disabled: !selectedBook, onClick: () => { if (selectedBook) exportDictionary(selectedBook); } }
     : null;
   // "Add" opens the add-from-library picker (characters on Entities, books on Dictionary).
@@ -507,7 +516,7 @@ const WorldEditor = ({ onClose, embedded = false, backButton }: {
     <div className="p-6">
       {/* One palette for the whole panel. Not on the Placeholders tab itself: a placeholder's own values
           are plain text, since a chip inside one would never be expanded (resolution is single-pass). */}
-      {activeTab !== "placeholders" && (
+      {advanced && activeTab !== "placeholders" && (
         <PlaceholderPaletteBar placeholders={placeholders} className="-mx-6 -mt-6 mb-4 px-6" />
       )}
       {activeTab === "overview" && (
@@ -548,26 +557,47 @@ const WorldEditor = ({ onClose, embedded = false, backButton }: {
   );
 
   // Shared chrome — reused by the desktop resizable split and the mobile single-panel layout.
+  // Only meaningful in Simple mode, where something in this world is out of sight.
+  const hasHiddenData = !advanced && worldUsesAdvancedFeatures({
+    worldOverview: getWorldData().worldOverview, stats, entities, locations, traits, dictionaries, placeholders,
+  });
   const headerBar = (
-    <div className="flex items-center space-x-4">
+    <div className="flex items-center gap-4">
       {showBackButton && (
         <Button variant="ghost" size="icon" onClick={() => (isWorldDirty ? setShowExitPrompt(true) : onClose())}>
           <ArrowLeft className="h-4 w-4" />
         </Button>
       )}
       <CardTitle>World Editor</CardTitle>
+      {/* An icon rather than a line of text: the header is one row on both layouts, and a sentence that
+          appears only for some worlds would push the tabs down as soon as it did. */}
+      {hasHiddenData && (
+        <span className="ml-auto text-muted-foreground" title="This world uses advanced features. Switch to Advanced to see them.">
+          <Info className="h-4 w-4" aria-label="This world uses advanced features" />
+        </span>
+      )}
+      <ToggleGroup
+        type="single"
+        value={mode}
+        onValueChange={(v) => { if (v) setMode(v as EditorMode); }}
+        aria-label="Editor mode"
+        className={`${isMobile ? "h-8" : ""} ${hasHiddenData ? "" : "ml-auto"}`.trim() || undefined}
+      >
+        <ToggleGroupItem value="simple" className={isMobile ? "px-2 py-1" : undefined}>Simple</ToggleGroupItem>
+        <ToggleGroupItem value="advanced" className={isMobile ? "px-2 py-1" : undefined}>Advanced</ToggleGroupItem>
+      </ToggleGroup>
     </div>
   );
   const tabsList = (
     <TabsList className="flex-shrink-0">
-      {WORLD_EDITOR_TABS.map((t) => (
+      {visibleTabs.map((t) => (
         <TabsTrigger key={t.value} value={t.value}>{t.label}</TabsTrigger>
       ))}
     </TabsList>
   );
   // One panel per tab so every trigger's `aria-controls` resolves. Only the active tab has a body, so the
   // rest render empty; `contents` keeps that body a direct flex child of the tab root, as it was unwrapped.
-  const tabPanels = (body: ReactNode) => WORLD_EDITOR_TABS.map((t) => (
+  const tabPanels = (body: ReactNode) => visibleTabs.map((t) => (
     <TabsContent key={t.value} value={t.value} className="contents">
       {t.value === activeTab ? body : null}
     </TabsContent>
@@ -576,7 +606,7 @@ const WorldEditor = ({ onClose, embedded = false, backButton }: {
   const helpTopicId = worldEditorTopicId(activeTab);
   const addSearchBar = activeTab !== "overview" && (
     <div className="flex space-x-2 flex-shrink-0 mt-4">
-      {activeTab === "traits" || activeTab === "entities" ? (
+      {advanced && (activeTab === "traits" || activeTab === "entities") ? (
         <Popover open={addMenuOpen} onOpenChange={setAddMenuOpen}>
           <PopoverTrigger asChild>
             <Button size="icon">
@@ -601,7 +631,7 @@ const WorldEditor = ({ onClose, embedded = false, backButton }: {
           </PopoverContent>
         </Popover>
       ) : (
-        <Button onClick={activeTab === "dictionary" ? handleAddBook : activeTab === "placeholders" ? handleAddPlaceholder : addItem} size="icon">
+        <Button onClick={activeTab === "dictionary" ? handleAddBook : activeTab === "placeholders" ? handleAddPlaceholder : activeTab === "traits" ? handleAddTrait : addItem} size="icon">
           <Plus className="h-4 w-4" />
         </Button>
       )}
@@ -764,6 +794,28 @@ const WorldEditor = ({ onClose, embedded = false, backButton }: {
         }}
       />
     </div>
+  );
+};
+
+/** Wraps the editor in its Simple/Advanced mode preference. The DEV dev-router's `mode` param seeds it,
+ *  so verification can land in either mode without touching localStorage first. */
+const WorldEditor = (props: Parameters<typeof WorldEditorInner>[0]) => {
+  const devRoute = useDevRoute();
+  const forcedMode = import.meta.env.DEV && (devRoute?.mode === 'simple' || devRoute?.mode === 'advanced')
+    ? devRoute.mode
+    : undefined;
+  // Each parsed route is a fresh object, so this counts navigations — a `goto` with the same mode still
+  // re-applies it, which a mount-time seed alone would miss once the switch had been clicked.
+  const nonce = useRef(0);
+  const lastRoute = useRef(devRoute);
+  if (lastRoute.current !== devRoute) {
+    lastRoute.current = devRoute;
+    nonce.current += 1;
+  }
+  return (
+    <EditorModeProvider forcedMode={forcedMode} forcedNonce={nonce.current}>
+      <WorldEditorInner {...props} />
+    </EditorModeProvider>
   );
 };
 

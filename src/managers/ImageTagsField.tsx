@@ -11,6 +11,7 @@ import { isRemoteImage } from '@/lib/imageBytes';
 import { GenerateImageButton } from '../components/GenerateImageButton';
 import type { ImageCap } from '../lib/imageOptim';
 import type { ImageSubjectKind } from '@/lib/imagePrompt';
+import { useEditorMode } from '@/lib/editorMode';
 import type { Placeholder } from '@/types';
 
 interface ImageTagsFieldProps {
@@ -50,6 +51,8 @@ interface ImageTagsFieldProps {
 const ImageTagsField = ({ label, images, onImagesChange, slots = 1, embeddedLimit = slots, imageId, cap, description, kind, tags, onTagsChange, placeholders = [] }: ImageTagsFieldProps) => {
   // SD prompt pulled from an uploaded image, pending the user's OK to use it as Image Tags.
   const [pendingPrompt, setPendingPrompt] = useState<string | null>(null);
+  // Booru tags are Advanced-only; so is the offer to adopt an uploaded image's embedded prompt as them.
+  const { advanced } = useEditorMode();
 
   // Filled slots, plus a trailing empty one to upload into while there is room.
   const shown = images.slice(0, slots);
@@ -91,7 +94,7 @@ const ImageTagsField = ({ label, images, onImagesChange, slots = 1, embeddedLimi
             uploadBlockedNote={`${embeddedLimit} uploaded picture${embeddedLimit === 1 ? '' : 's'} is the limit — add more as links instead.`}
             // Only the primary offers its embedded prompt as the tags: the tags describe the subject, and a
             // later slot overwriting them would undo the choice made for the picture that represents it.
-            onPromptExtracted={i === 0 ? setPendingPrompt : undefined}
+            onPromptExtracted={i === 0 && advanced ? setPendingPrompt : undefined}
           />
           {slots > 1 && url && (
             <div className="flex items-center gap-2">
@@ -115,6 +118,8 @@ const ImageTagsField = ({ label, images, onImagesChange, slots = 1, embeddedLimi
         onConfirm={() => { if (pendingPrompt) onTagsChange(pendingPrompt); setPendingPrompt(null); }}
         onCancel={() => setPendingPrompt(null)}
       />
+      {advanced && (
+      <>
       <div className="flex items-center justify-between">
         <Label>Image Tags</Label>
         <AiFieldToolbar
@@ -139,6 +144,8 @@ const ImageTagsField = ({ label, images, onImagesChange, slots = 1, embeddedLimi
           onChange={onTagsChange}
           placeholder="booru tags, comma separated"
         />
+      )}
+      </>
       )}
       {/* A generated picture lands in the primary slot as bytes, so it answers to the same allowance. */}
       {canGenerate && (

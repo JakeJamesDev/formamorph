@@ -5,12 +5,14 @@ import {
   duplicateTraitNode, type FlatTraitNode,
 } from '@/lib/traitTree';
 import { SortableTree, TREE_INDENT, type SortableTreeAdapter } from './SortableTree';
+import { useEditorMode } from '@/lib/editorMode';
 import { EmptyListHint } from '@/components/EmptyListHint';
 import PlaceholderText from '@/components/prompt/PlaceholderText';
 
 /** The Traits tab's folder tree: a flat sortable list where horizontal drag sets nesting depth. */
 const TraitTree = ({ selectedId, onSelect }: { selectedId: string | null; onSelect: (id: string) => void }) => {
   const { traits, traitGroups, setTraits, setTraitGroups, removeTrait, removeTraitGroup, placeholders } = useGameData();
+  const { advanced } = useEditorMode();
 
   const adapter: SortableTreeAdapter<FlatTraitNode> = {
     getVisible: (collapsed) => removeChildrenOf(flattenTraitTree(buildTraitTree(traitGroups, traits)), collapsed),
@@ -42,7 +44,8 @@ const TraitTree = ({ selectedId, onSelect }: { selectedId: string | null; onSele
   };
 
   if (!traits.length && !traitGroups.length) {
-    return <EmptyListHint noun="traits" action="add a group or trait" />;
+    // Simple mode has no groups, so its + adds the item directly.
+    return <EmptyListHint noun="traits" action={advanced ? "add a group or trait" : "add one"} />;
   }
 
   return <SortableTree adapter={adapter} selectedId={selectedId} onSelect={onSelect} />;

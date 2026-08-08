@@ -25,6 +25,8 @@ export interface DevRoute {
   fixture?: string;
   /** On-screen diagnostic overlay to pin over the app — `viewport` is the only one so far. */
   probe?: string;
+  /** World Editor chrome mode — `simple` or `advanced`. */
+  mode?: string;
 }
 
 /** Parse the current hash into a DevRoute, or null when it isn't a `#dev` hash. */
@@ -38,7 +40,9 @@ function parseHash(hash: string): DevRoute | null {
   const subtab = params.get('subtab');
   const fixture = params.get('fixture');
   const probe = params.get('probe');
+  const mode = params.get('mode');
   if (probe) route.probe = probe;
+  if (mode) route.mode = mode;
   if (view) route.view = view;
   if (modal) route.modal = modal;
   if (tab) route.tab = tab;
@@ -81,12 +85,13 @@ export function installDevRouter(): () => void {
   // SettingsContext) survive regardless of effect order — child effects run before this parent effect.
   w.__fmDev = Object.assign(w.__fmDev ?? {}, {
     /** Jump to a screen/modal/tab in one call — sets the `#dev` hash the consumers react to. */
-    goto(view?: string, opts?: { modal?: string; tab?: string; subtab?: string; fixture?: string; probe?: string }) {
+    goto(view?: string, opts?: { modal?: string; tab?: string; subtab?: string; fixture?: string; probe?: string; mode?: string }) {
       const params = new URLSearchParams();
       if (view) params.set('view', view);
       if (opts?.modal) params.set('modal', opts.modal);
       if (opts?.tab) params.set('tab', opts.tab);
       if (opts?.subtab) params.set('subtab', opts.subtab);
+      if (opts?.mode) params.set('mode', opts.mode);
       if (opts?.fixture) params.set('fixture', opts.fixture);
       // A probe outlives the screen it was turned on over, so it carries across a goto unless replaced.
       const probe = opts?.probe ?? getDevRoute()?.probe;

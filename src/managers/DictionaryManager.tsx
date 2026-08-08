@@ -5,6 +5,7 @@ import { Input } from "@/components/ui/input";
 import { Checkbox } from "@/components/ui/checkbox";
 import { KeywordChips } from "@/components/KeywordChips";
 import PlaceholderField, { PlaceholderNameField } from "@/components/prompt/PlaceholderField";
+import { useEditorMode } from '@/lib/editorMode';
 import type { DictionaryEntry, Placeholder } from '@/types';
 
 /** A compact labeled checkbox for the lorebook options grid. */
@@ -20,6 +21,7 @@ function CheckRow({ label, checked, onChange }: { label: string; checked: boolea
 const DictionaryManager = ({ entry, placeholders = [] }: { entry: DictionaryEntry; placeholders?: Placeholder[] }) => {
   const { updateDictionaryEntry } = useDictionaryStore();
   const { draft: editingEntry, setField: handleChange } = useEditingDraft<DictionaryEntry>(entry, updateDictionaryEntry);
+  const { advanced } = useEditorMode();
 
   // Store a numeric field, clearing it (undefined) when the input is blank or not a number.
   const handleNumber = (field: 'scanDepth', raw: string) => {
@@ -76,16 +78,25 @@ const DictionaryManager = ({ entry, placeholders = [] }: { entry: DictionaryEntr
       <div className="space-y-2">
         <Label>Options</Label>
         <div className="flex flex-wrap gap-x-4 gap-y-2">
-          <CheckRow label="Always inject" checked={!!editingEntry.constant} onChange={(v) => handleChange('constant', v)} />
-          <CheckRow label="Regex" checked={!!editingEntry.useRegex} onChange={(v) => handleChange('useRegex', v)} />
+          {advanced && (
+            <>
+              <CheckRow label="Always inject" checked={!!editingEntry.constant} onChange={(v) => handleChange('constant', v)} />
+              <CheckRow label="Regex" checked={!!editingEntry.useRegex} onChange={(v) => handleChange('useRegex', v)} />
+            </>
+          )}
           <CheckRow label="Whole words" checked={!!editingEntry.matchWholeWords} onChange={(v) => handleChange('matchWholeWords', v)} />
           <CheckRow label="Case-sensitive" checked={!!editingEntry.caseSensitive} onChange={(v) => handleChange('caseSensitive', v)} />
-          <CheckRow label="Recursive" checked={!!editingEntry.recursive} onChange={(v) => handleChange('recursive', v)} />
+          {advanced && (
+            <CheckRow label="Recursive" checked={!!editingEntry.recursive} onChange={(v) => handleChange('recursive', v)} />
+          )}
         </div>
+        {advanced && (
         <div className="space-y-1">
           <Label className="text-xs text-muted-foreground">Scan depth (messages)</Label>
           <Input type="number" min={0} value={editingEntry.scanDepth ?? ''} onChange={(e) => handleNumber('scanDepth', e.target.value)} placeholder="all history" />
         </div>
+        )}
+        {advanced && (
         <div className="space-y-1">
           <Label className="text-xs text-muted-foreground">Secondary Keywords</Label>
           <KeywordChips keywords={secondaryKeywords} onChange={handleSecondaryChange} placeholders={chipPlaceholders} placeholder="e.g. red" offerCommaSplit={!editingEntry.useRegex} />
@@ -95,6 +106,7 @@ const DictionaryManager = ({ entry, placeholders = [] }: { entry: DictionaryEntr
           </div>
           <p className="text-[0.7rem] text-muted-foreground">{secondaryHint}</p>
         </div>
+        )}
       </div>
       <div className="space-y-2">
         <Label>Value (injected on keyword match)</Label>
