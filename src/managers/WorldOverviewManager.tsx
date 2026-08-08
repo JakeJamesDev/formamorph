@@ -3,6 +3,8 @@ import { useGameData } from '@/contexts/GameDataContext';
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { Checkbox } from "@/components/ui/checkbox";
+import { TokenAutocomplete } from "@/components/TokenAutocomplete";
+import { useDanbooruTags } from "@/lib/useDanbooruTags";
 import { Button } from "@/components/ui/button";
 import { toast } from 'react-toastify';
 import AudioPlayer from '../components/game/AudioPlayer';
@@ -75,6 +77,7 @@ const PlayerVrmPreview = ({ data, fileName, open, onClose }: { data: string; fil
 
 const WorldOverviewManager = () => {
   const { worldOverview, updateWorldOverview } = useGameData();
+  const tagOptions = useDanbooruTags();
   const bgmInputRef = useRef<HTMLInputElement>(null);
   const vrmInputRef = useRef<HTMLInputElement>(null);
   const [vrmPreviewOpen, setVrmPreviewOpen] = useState(false);
@@ -161,6 +164,18 @@ const WorldOverviewManager = () => {
           value={worldOverview.author}
           onChange={(e) => updateWorldOverview({ author: e.target.value })}
           placeholder="Enter author name..."
+        />
+      </div>
+      <div className="space-y-2">
+        <Label>Tags</Label>
+        <TokenAutocomplete
+          values={worldOverview.tags || []}
+          onChange={(tags) => updateWorldOverview({ tags })}
+          options={tagOptions}
+          preserveOrder
+          reorderable
+          editable
+          placeholder="Add tags..."
         />
       </div>
       <div className="flex items-center space-x-2">
