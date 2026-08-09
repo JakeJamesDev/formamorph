@@ -185,7 +185,7 @@ export function RemoteWorldDetailsModal({
                     : `Download ${noun}`;
                   return (
                     <Button
-                      className="w-full bg-gradient-to-r from-sky-200 to-cyan-200 hover:from-sky-300 hover:to-cyan-300 text-black font-bold"
+                      className="w-full text-body bg-gradient-to-r from-sky-200 to-cyan-200 hover:from-sky-300 hover:to-cyan-300 text-black font-bold"
                       onClick={() => onContextualDownload(world, dlState)}
                     >
                       {label}
