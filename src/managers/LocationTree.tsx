@@ -5,7 +5,8 @@ import {
   buildLocationTree, flattenLocationTree, removeCollapsedChildren, getLocationDropProjection,
   applyLocationDrop, removeLocationPromotingChildren, type FlatLocationNode,
 } from '@/lib/locationTree';
-import { SortableTree, TREE_INDENT, type SortableTreeAdapter } from './SortableTree';
+import { SortableTree, type SortableTreeAdapter } from './SortableTree';
+import { TREE_INDENT } from '@/components/EditorRow';
 import { EmptyListHint } from '@/components/EmptyListHint';
 import PlaceholderText from '@/components/prompt/PlaceholderText';
 

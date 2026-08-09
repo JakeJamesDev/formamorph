@@ -4,6 +4,17 @@ import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
 import { cn } from '@/lib/utils';
 
+/** px of indent per nesting level — also the horizontal drag distance that changes a row's depth. */
+export const TREE_INDENT = 24;
+
+/** The row's own left padding, in px. Nesting adds to it rather than replacing it, so a top-level tree row
+ *  and a flat-list row start their content at the same place. Keep in step with `EDITOR_ROW_PADDING`. */
+const ROW_PADDING_X = 8;
+
+/** Padding and floor height, shared so a row is the same size whichever list drew it. The floor keeps a row
+ *  with no actions as tall as one with them, rather than letting the icon buttons decide the height. */
+const EDITOR_ROW_PADDING = 'p-2 min-h-14';
+
 /** One trailing icon button on a row (duplicate, delete, add-entry…). */
 export interface EditorRowAction {
   icon: ReactNode;
@@ -15,8 +26,10 @@ export interface EditorRowAction {
 export interface EditorRowProps {
   /** From the caller's `useSortable`. Dragging stays with the caller; this component only draws. */
   setNodeRef?: (el: HTMLElement | null) => void;
-  /** Transform, transition, drag opacity, and any depth indent the caller computes. */
+  /** Transform, transition, and drag opacity. Indent comes from `depth`, not from here. */
   style?: CSSProperties;
+  /** Nesting level, for trees. Indents the row on top of its shared padding. */
+  depth?: number;
   /** `{...attributes, ...listeners}` — applied to the grip, so only the grip starts a drag. */
   gripProps?: HTMLAttributes<HTMLElement>;
   /** Each surface words its drag affordance differently (reorder / nest / move between books). */
@@ -59,6 +72,7 @@ export interface EditorRowProps {
 export function EditorRow({
   setNodeRef,
   style,
+  depth = 0,
   gripProps,
   gripTitle = 'Drag to reorder',
   selected,
@@ -82,10 +96,11 @@ export function EditorRow({
   return (
     <div
       ref={setNodeRef}
-      style={style}
+      style={depth ? { ...style, paddingLeft: ROW_PADDING_X + depth * TREE_INDENT } : style}
       onClick={(e) => { e.stopPropagation(); onSelect(); }}
       className={cn(
-        'p-2 cursor-pointer transition-colors flex items-center gap-1',
+        EDITOR_ROW_PADDING,
+        'cursor-pointer transition-colors flex items-center gap-1',
         attached ? 'rounded-t-md' : 'rounded-md',
         selected ? 'bg-primary text-primary-foreground' : 'hover:bg-secondary',
         className,

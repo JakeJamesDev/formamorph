@@ -4,7 +4,8 @@ import {
   buildEntityTree, flattenEntityTree, removeChildrenOf, getEntityDropProjection, applyEntityDrop,
   duplicateEntityNode, type FlatEntityNode,
 } from '@/lib/entityGroupTree';
-import { SortableTree, TREE_INDENT, type SortableTreeAdapter } from './SortableTree';
+import { SortableTree, type SortableTreeAdapter } from './SortableTree';
+import { TREE_INDENT } from '@/components/EditorRow';
 import { useEditorMode } from '@/lib/editorMode';
 import { EmptyListHint } from '@/components/EmptyListHint';
 import PlaceholderText from '@/components/prompt/PlaceholderText';
