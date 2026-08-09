@@ -1,11 +1,7 @@
-import { describe, it, expect, vi } from 'vitest';
+import { describe, it, expect } from 'vitest';
 import { render, screen } from '@testing-library/react';
 import { ImageConvertOverlay } from './ImageConvertOverlay';
 
-// Bypasses the IndexedDB cache only; like the real one, it passes the rest of the props to the <img>.
-vi.mock('@/lib/useRemoteImage', () => ({
-  RemoteImg: ({ src, ...rest }: { src?: string }) => <img src={src} alt="" {...rest} />,
-}));
 
 const THUMB = 'data:image/webp;base64,AAAA';
 

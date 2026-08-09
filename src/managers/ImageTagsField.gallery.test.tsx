@@ -200,6 +200,11 @@ describe('ImageTagsField gallery', () => {
 
     expect(await screen.findByRole('status', { name: 'Converting image 1 of 2' })).toBeTruthy();
     expect(tile('Primary picture').closest('div')!.className).toMatch(/pointer-events-none/);
+    // From the dropped file, not the data URL it encodes to — a base64 string that size blocks the main
+    // thread for long enough that this overlay never reaches the screen while the work is happening.
+    const src = screen.getByRole('status').querySelector('img')!.getAttribute('src')!;
+    expect(src.startsWith('data:')).toBe(false);
+    expect(src.startsWith('blob:')).toBe(true);
 
     release[0]();
     expect(await screen.findByRole('status', { name: 'Converting image 2 of 2' })).toBeTruthy();

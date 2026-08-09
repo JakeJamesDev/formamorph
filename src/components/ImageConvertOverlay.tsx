@@ -1,5 +1,4 @@
 import { Progress } from '@/components/ui/progress';
-import { RemoteImg } from '@/lib/useRemoteImage';
 import { cn } from '@/lib/utils';
 
 /**
@@ -10,7 +9,9 @@ import { cn } from '@/lib/utils';
  * worker call that reports nothing in between, so a percentage there would be invented.
  */
 export const ImageConvertOverlay = ({ thumb, done, total, objectFit = 'contain', className }: {
-  /** The picture being converted, shown dimmed. */
+  /** The picture being converted, shown dimmed. Must be an object URL, never the data URL being encoded:
+   *  handing an `<img>` a multi-megabyte base64 string costs a long main-thread block, which delayed this
+   *  very overlay by ~380ms — long enough that the encode looked like a frozen frame instead. */
   thumb: string;
   /** How many are finished. Ignored when `total` is 1. */
   done: number;
@@ -25,7 +26,7 @@ export const ImageConvertOverlay = ({ thumb, done, total, objectFit = 'contain',
     aria-live="polite"
     aria-label={total > 1 ? `Converting image ${done + 1} of ${total}` : 'Converting image'}
   >
-    <RemoteImg
+    <img
       src={thumb}
       alt=""
       className={cn(

@@ -52,5 +52,13 @@ if (typeof Range !== 'undefined' && typeof Range.prototype.getBoundingClientRect
   Range.prototype.getClientRects = () => Object.assign([], { item: () => null }) as unknown as DOMRectList;
 }
 
+// jsdom has no object-URL store. The upload path makes one to show the file being converted without handing
+// an <img> the multi-megabyte data URL, so without these the whole flow throws.
+if (typeof URL.createObjectURL === 'undefined') {
+  let n = 0;
+  URL.createObjectURL = () => `blob:formamorph/${++n}`;
+  URL.revokeObjectURL = () => {};
+}
+
 // Unmount anything React Testing Library rendered between tests.
 afterEach(() => cleanup());

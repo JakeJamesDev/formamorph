@@ -157,13 +157,16 @@ const ImageTagsField = ({ label, images, onImagesChange, slots = 1, embeddedLimi
       // One at a time, so "3 of 5" counts something real. They share one worker anyway, so running them
       // together would only make the bar jump from nothing to done.
       stored = [];
+      // Shown from the files themselves; the data URLs they encode to are far too large to hand an <img>.
+      const thumbs = accepted.map((f) => URL.createObjectURL(f));
       try {
         for (const [k, url] of urls.entries()) {
-          setBatch({ thumb: url, done: k, total: urls.length });
+          setBatch({ thumb: thumbs[k], done: k, total: urls.length });
           stored.push((await applyImageOptimize(url, mode, cap)) ?? url);
         }
       } finally {
         setBatch(null);
+        thumbs.forEach(URL.revokeObjectURL);
       }
     }
     const next = [...shown];
