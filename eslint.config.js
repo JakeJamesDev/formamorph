@@ -5,6 +5,26 @@ import reactHooks from 'eslint-plugin-react-hooks'
 import reactRefresh from 'eslint-plugin-react-refresh'
 import tseslint from 'typescript-eslint'
 import tsdoc from 'eslint-plugin-tsdoc'
+import { TYPOGRAPHY_LEGACY } from './eslint.typography-legacy.js'
+
+// Raw Tailwind size utilities say how big text is, never what it is — so `text-xs` reads the same on a
+// hint and on a deliberately compact control, and the two can't be told apart or retuned separately.
+// The role-named scale in tailwind.config.js replaces them; density lives on a control's `size` variant.
+const RAW_TEXT_SIZE = String.raw`\btext-(xs|sm|base|lg|[2-9]?xl)\b`
+const RAW_TEXT_SIZE_MESSAGE =
+  'Raw Tailwind text sizes are not allowed here. Use a role token (text-body/label/helper/meta/title/heading/display), or a control size variant (e.g. <Input size="sm">) when the intent is density.'
+
+const noRawTextSize = [
+  'error',
+  {
+    selector: `JSXAttribute[name.name="className"] Literal[value=/${RAW_TEXT_SIZE}/]`,
+    message: RAW_TEXT_SIZE_MESSAGE,
+  },
+  {
+    selector: `JSXAttribute[name.name="className"] TemplateElement[value.raw=/${RAW_TEXT_SIZE}/]`,
+    message: RAW_TEXT_SIZE_MESSAGE,
+  },
+]
 
 export default tseslint.config(
   { ignores: ['dist', 'coverage', 'release', 'electron', 'docs-api'] },
@@ -56,6 +76,13 @@ export default tseslint.config(
       // Validate TSDoc microsyntax only — does not require docs, so prose-only blocks pass clean.
       'tsdoc/syntax': 'warn',
     },
+  },
+  {
+    // The shadcn primitives are where a size may legitimately be spelled out — they define the tokens'
+    // rendered result. TYPOGRAPHY_LEGACY is the not-yet-swept remainder and only ever shrinks.
+    files: ['src/**/*.tsx'],
+    ignores: ['src/components/ui/**', ...TYPOGRAPHY_LEGACY],
+    rules: { 'no-restricted-syntax': noRawTextSize },
   },
   {
     // Tests carry non-TSDoc block comments (e.g. the `@vitest-environment` pragma) — skip tsdoc there.
