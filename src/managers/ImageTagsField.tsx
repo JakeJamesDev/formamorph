@@ -290,7 +290,9 @@ const ImageTagsField = ({ label, images, onImagesChange, slots = 1, embeddedLimi
             // Spent allowance closes the file picker on empty slots; the URL box stays, so a gallery can
             // still grow with links. A filled slot ignores this — it is changed by removing it first.
             allowUpload={canEmbed}
-            uploadBlockedNote={`${embeddedLimit} uploaded image${embeddedLimit === 1 ? '' : 's'} is the limit — add more as links instead.`}
+            // Short enough for one line, like the prompt it replaces. What to do instead needs no sentence:
+            // the link field sits directly beneath it in the same frame.
+            uploadBlockedNote={`Upload limit reached (${embeddedLimit})`}
             // Only the primary offers its embedded prompt as the tags: the tags describe the subject, and a
             // later slot overwriting them would undo the choice made for the picture that represents it.
             onPromptExtracted={i === 0 && advanced ? setPendingPrompt : undefined}
