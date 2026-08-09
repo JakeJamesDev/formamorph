@@ -2,7 +2,6 @@ import { useCallback, useRef, useState } from 'react';
 import { toast } from 'react-toastify';
 import { Sparkles, Loader2, SlidersHorizontal, Square } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Progress } from '@/components/ui/progress';
@@ -72,6 +71,7 @@ export function GenerateImageButton({ subject, cap, onChange, tags, onTagsChange
   // Prompt edits write back to the authored tags field when wired; otherwise stay local (world thumbnail).
   const handlePrompt = useCallback((t: string) => { setPrompt(t); onTagsChange?.(t); }, [onTagsChange]);
   const promptHistory = useTagHistory(prompt, handlePrompt);
+  const negativeHistory = useTagHistory(negative, setNegative);
 
   const generate = async () => {
     if (!prompt.trim()) { toast.info('Enter a prompt first.'); return; }
@@ -182,12 +182,18 @@ export function GenerateImageButton({ subject, cap, onChange, tags, onTagsChange
               />
             </div>
             <div className="grid gap-1.5">
-              <Label htmlFor="gen-negative">Negative prompt</Label>
-              <Textarea
-                id="gen-negative"
-                rows={3}
+              <div className="flex items-center justify-between">
+                {/* No `htmlFor`: the field is a contenteditable, which a label cannot point at. */}
+                <Label>Negative prompt</Label>
+                {/* No generate button: the model writes what a picture should contain, never what it
+                    shouldn't — that list is the author's taste and the preset's shared negatives. */}
+                <TagHistoryButtons history={negativeHistory} />
+              </div>
+              <TagChipField
                 value={negative}
-                onChange={(e) => setNegative(e.target.value)}
+                onChange={setNegative}
+                placeholders={[]}
+                ariaLabel="Negative prompt"
                 placeholder={imageNegativePrompt.trim() || 'tags to avoid…'}
               />
             </div>
