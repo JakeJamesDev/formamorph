@@ -147,10 +147,11 @@ function useFocusEnd() {
   };
 }
 
-function Surface({ placeholder, ariaLabel, className }: {
+function Surface({ placeholder, ariaLabel, className, multiline }: {
   placeholder?: string;
   ariaLabel?: string;
   className?: string;
+  multiline?: boolean;
 }) {
   const focusEnd = useFocusEnd();
   return (
@@ -158,7 +159,12 @@ function Surface({ placeholder, ariaLabel, className }: {
       <PlainTextPlugin
         contentEditable={<ContentEditable className={cn(INPUT_CLASS, className)} aria-label={ariaLabel} />}
         placeholder={
-          <div className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 truncate text-sm text-muted-foreground">
+          // A one-line field centres its hint against the box; a taller one sits it where the caret is,
+          // top-left and free to wrap, the way every other multi-line field's hint does.
+          <div className={cn(
+            'pointer-events-none absolute left-3 text-sm text-muted-foreground',
+            multiline ? 'top-2 right-3' : 'top-1/2 -translate-y-1/2 truncate',
+          )}>
             {placeholder}
           </div>
         }
@@ -209,7 +215,7 @@ const ChipInput = ({ value, onChange, vocabulary, placeholder, ariaLabel, classN
     <LexicalComposer initialConfig={initialConfig}>
       <ChipVocabularyContext.Provider value={vocabulary}>
         <PromptDragContext.Provider value={dragKey}>
-          <Surface placeholder={placeholder} ariaLabel={ariaLabel} className={className} />
+          <Surface placeholder={placeholder} ariaLabel={ariaLabel} className={className} multiline={multiline} />
           <HistoryPlugin />
           <ValueSyncPlugin value={value} onChange={onChange} parse={vocabulary.parse} />
           {!multiline && <SingleLinePlugin onSubmit={onSubmit} />}
