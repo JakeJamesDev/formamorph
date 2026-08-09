@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState, type ChangeEvent, type DragEvent, type MouseEvent, type ReactNode } from 'react';
+import { useCallback, useEffect, useState, type ChangeEvent, type MouseEvent, type ReactNode } from 'react';
 import { cn } from "@/lib/utils";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -14,7 +14,8 @@ import { readSdPromptFromFile } from './sdMetadata';
 import { imageHost, isRemoteImage } from './imageSource';
 import { isExpiringImageHost } from './imageBytes';
 import { useRemoteImage } from './useRemoteImage';
-import { canDropImage, fileToDataUrl, imageDropPayload } from './imageDrop';
+import { fileToDataUrl } from './imageDrop';
+import { useImageDropTarget } from './useImageDropTarget';
 import type { MediaAsset } from '@/types';
 
 /** An uploaded media file, base64-encoded as a data URL. */
@@ -137,7 +138,6 @@ export const ImageUpload = ({ onChange, id, value, cap, previewClassName, object
   const [urlDraft, setUrlDraft] = useState('');
   const [urlError, setUrlError] = useState<string | null>(null);
   const [loadFailed, setLoadFailed] = useState(false);
-  const [dragOver, setDragOver] = useState(false);
   const remote = isRemoteImage(value);
   // Cached blob when there is one, live URL otherwise; an embedded value passes through untouched.
   // `status` is what tells the author this host won't hand its bytes over.
@@ -176,29 +176,19 @@ export const ImageUpload = ({ onChange, id, value, cap, previewClassName, object
     else void takeFile(files[0]);
   }, [takeFile, onFiles]);
 
+  const takeDropped = useCallback((files: File[]) => {
+    if (files.length > 1 && onFiles) onFiles(files);
+    else void takeFile(files[0]);
+  }, [onFiles, takeFile]);
+
   // A filled slot never takes a drop: it is changed by removing it first, exactly as the URL box already
   // works. Dropping onto a picture and silently replacing it is the hard gesture to take back.
-  const droppable = !value;
-
-  const handleDrop = useCallback((e: DragEvent<HTMLDivElement>) => {
-    setDragOver(false);
-    if (!droppable) return;
-    const payload = imageDropPayload(e.dataTransfer);
-    if (!payload) return;
-    e.preventDefault();
-    // A link costs the payload nothing, so it lands even when the upload allowance is spent.
-    if (payload.kind === 'url') { onChange(payload.url); return; }
-    if (!allowUpload) return;
-    if (payload.files.length > 1 && onFiles) onFiles(payload.files);
-    else void takeFile(payload.files[0]);
-  }, [droppable, allowUpload, onChange, onFiles, takeFile]);
-
-  const handleDragOver = useCallback((e: DragEvent<HTMLDivElement>) => {
-    if (!droppable || !canDropImage(e.dataTransfer)) return;
-    e.preventDefault(); // without this the browser navigates to the dropped file instead
-    e.dataTransfer.dropEffect = 'copy';
-    setDragOver(true);
-  }, [droppable]);
+  const { dragOver, dropProps } = useImageDropTarget({
+    enabled: !value,
+    allowFiles: allowUpload,
+    onUrl: onChange,
+    onFiles: takeDropped,
+  });
 
   const removeButton = (
     <button
@@ -277,11 +267,7 @@ export const ImageUpload = ({ onChange, id, value, cap, previewClassName, object
       )}
       {/* Wrapped rather than handled inside Dropzone: the frame is a Label when it is clickable, and a drop
           on a label's own child would otherwise re-open the file picker on the way through. */}
-      <div
-        onDragOver={handleDragOver}
-        onDragLeave={() => setDragOver(false)}
-        onDrop={handleDrop}
-      >
+      <div {...dropProps}>
       <Dropzone htmlFor={allowUpload ? `image-upload-${id}` : undefined} frameClassName={previewClassName} dragOver={dragOver}>
         {previewClassName ? (
           value ? (
