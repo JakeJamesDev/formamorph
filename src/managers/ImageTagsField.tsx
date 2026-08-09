@@ -1,6 +1,12 @@
 import { useState } from 'react';
+import {
+  DndContext, closestCenter, PointerSensor, KeyboardSensor, useSensor, useSensors, type DragEndEvent,
+} from '@dnd-kit/core';
+import {
+  SortableContext, useSortable, arrayMove, rectSortingStrategy, sortableKeyboardCoordinates,
+} from '@dnd-kit/sortable';
+import { CSS } from '@dnd-kit/utilities';
 import { Label } from "@/components/ui/label";
-import { Button } from "@/components/ui/button";
 import { Plus, Star } from "lucide-react";
 import AiGenerateButton from "@/components/AiGenerateButton";
 import TagHistoryButtons from "@/components/TagHistoryButtons";
@@ -10,6 +16,8 @@ import { ConfirmDialog } from "@/components/ConfirmDialog";
 import { ImageUpload } from '../lib/UtilityComponents';
 import { isRemoteImage } from '@/lib/imageBytes';
 import { fileToDataUrl } from '@/lib/imageDrop';
+import { followReorder } from '@/lib/imageGalleryOrder';
+import { useStableIds } from '@/lib/useStableIds';
 import { useImageDropTarget } from '@/lib/useImageDropTarget';
 import { RemoteImg } from '@/lib/useRemoteImage';
 import { ImageConvertOverlay } from '@/components/ImageConvertOverlay';
@@ -58,6 +66,47 @@ const FRAME_CLASS = {
  *  picture rather than the whole column. */
 const FRAME_WIDTH = { portrait: 'mx-auto max-w-[300px]', landscape: 'mx-auto max-w-[400px]' };
 
+/** One picture in the strip. Click frames it; drag reorders it — position 0 is what stands in wherever a
+ *  single picture is shown, so dragging to the front is the whole promote gesture. */
+const PictureTile = ({ id, url, index, framed, onSelect }: {
+  id: string;
+  url: string;
+  index: number;
+  framed: boolean;
+  onSelect: () => void;
+}) => {
+  const { setNodeRef, transform, transition, isDragging, attributes, listeners } = useSortable({ id });
+  const primary = index === 0;
+  return (
+    <button
+      ref={setNodeRef}
+      type="button"
+      // Translate, not Transform: the latter bakes in dnd-kit's slot-fit scale and resizes the dragged tile.
+      style={{ transform: CSS.Translate.toString(transform), transition }}
+      {...attributes}
+      {...listeners}
+      onClick={onSelect}
+      title={primary
+        ? 'Primary — stands in wherever one picture is shown. Drag to reorder.'
+        : `Picture ${index + 1} — drag to reorder.`}
+      aria-label={primary ? 'Primary picture' : `Picture ${index + 1}`}
+      aria-pressed={framed}
+      className={cn(
+        'relative h-14 w-14 shrink-0 overflow-hidden rounded-md border-2 touch-none',
+        framed ? 'border-primary' : 'border-border hover:border-muted-foreground',
+        isDragging && 'opacity-50',
+      )}
+    >
+      <RemoteImg src={url} alt="" className="h-full w-full object-cover" />
+      {primary && (
+        <span className="absolute bottom-0 right-0 rounded-tl bg-overlay/70 p-0.5 text-white">
+          <Star className="h-2.5 w-2.5 fill-current" />
+        </span>
+      )}
+    </button>
+  );
+};
+
 /** The strip's trailing tile: press it to add, or drop onto it. A label when the file picker is available,
  *  so one press opens it; a plain button once the upload allowance is spent, where it only reveals the URL
  *  box in the frame above. */
@@ -94,9 +143,9 @@ const AddTile = ({ htmlFor, selected, onSelect, onUrl, onFiles, allowFiles }: {
  * held until the user confirms using it as the Image Tags (which replaces the current tags).
  *
  * With more than one slot it authors a gallery: one framed picture with a strip of tiles beneath it, the
- * last tile adding. Selecting a tile only changes which picture is framed; promoting one to primary is its
- * own press. Tag generation and image generation always act on the primary — they describe the subject, not
- * one picture of it.
+ * last tile adding. Clicking a tile frames it; dragging reorders, which is also how the stand-in picture is
+ * chosen, since that is simply the first. Tag generation and image generation always act on the first — they
+ * describe the subject, not one picture of it.
  */
 const ImageTagsField = ({ label, images, onImagesChange, slots = 1, embeddedLimit = slots, imageId, cap, description, kind, tags, onTagsChange, placeholders = [] }: ImageTagsFieldProps) => {
   // SD prompt pulled from an uploaded image, pending the user's OK to use it as Image Tags.
@@ -189,11 +238,27 @@ const ImageTagsField = ({ label, images, onImagesChange, slots = 1, embeddedLimi
   });
   const paneProps = gallery ? pane.dropProps : {};
 
-  /** Swap a slot into the primary position, which is what makes it the entity's one-picture stand-in. */
-  const makePrimary = (index: number) => {
-    const next = [...shown];
-    [next[0], next[index]] = [next[index], next[0]];
-    onImagesChange(next.filter(Boolean));
+  // Ids that follow the picture, not the position. Keyed by position, React rewrites each tile's contents
+  // instead of moving any node, so on drop the dragged tile snapped back before the new order appeared.
+  // The picture itself can't be the id: it is a data URL megabytes long, and two copies of one picture
+  // would collide into a single id.
+  const tileIds = useStableIds(shown);
+  const sensors = useSensors(
+    // A press only becomes a drag after 5px, so a tap still frames the picture instead of nudging it.
+    useSensor(PointerSensor, { activationConstraint: { distance: 5 } }),
+    useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates }),
+  );
+
+  /** Reordering is the whole promote gesture: slot 0 is what stands in wherever one picture is shown, and
+   *  the order is the order the game shows them in. */
+  const handleReorder = ({ active, over }: DragEndEvent) => {
+    if (!over || active.id === over.id) return;
+    const from = tileIds.indexOf(String(active.id));
+    const to = tileIds.indexOf(String(over.id));
+    if (from === -1 || to === -1) return;
+    onImagesChange(arrayMove(shown, from, to).filter(Boolean));
+    // Follow the picture, not the position — otherwise dragging the framed one leaves the frame behind.
+    setSelected(followReorder(showing, from, to));
   };
 
   return (
@@ -235,58 +300,39 @@ const ImageTagsField = ({ label, images, onImagesChange, slots = 1, embeddedLimi
       </div>
 
       {gallery && (
-        <>
-          {/* One tile per slot, the last being the one to add into. Selecting a tile only changes which
-              picture is on show — promoting one is the separate, deliberate press below. */}
-          {/* Frozen while a batch converts: the slots the pictures are landing in are still being written,
-              so reframing or promoting one mid-run would act on a list about to change under it. */}
-          <div className={cn('flex flex-wrap items-center gap-2', batch && 'pointer-events-none opacity-50')}>
-            {rows.map((url, i) => (url ? (
-              <button
-                key={i}
-                type="button"
-                onClick={() => setShowing(i)}
-                title={i === 0 ? 'Primary picture' : `Picture ${i + 1}`}
-                aria-label={i === 0 ? 'Primary picture' : `Picture ${i + 1}`}
-                aria-pressed={i === showing}
-                className={cn(
-                  'relative h-14 w-14 shrink-0 overflow-hidden rounded-md border-2',
-                  i === showing ? 'border-primary' : 'border-border hover:border-muted-foreground',
-                )}
-              >
-                <RemoteImg src={url} alt="" className="h-full w-full object-cover" />
-                {i === 0 && (
-                  <span className="absolute bottom-0 right-0 rounded-tl bg-overlay/70 p-0.5 text-white">
-                    <Star className="h-2.5 w-2.5 fill-current" />
-                  </span>
-                )}
-              </button>
-            ) : (
-              <AddTile
-                key={i}
-                htmlFor={canEmbed ? `image-upload-${slotId(i)}` : undefined}
-                selected={i === showing}
-                onSelect={() => setShowing(i)}
-                onUrl={(dropped) => setSlot(i, dropped)}
-                onFiles={(files) => void takeFiles(i, files)}
-                allowFiles={canEmbed}
-              />
-            )))}
-          </div>
-
-          {/* Only for the picture being shown: promoting whichever tile is under the cursor would make the
-              star a hover-target race, and this is the one action that reorders stored data. */}
-          {rows[showing] && (
-            showing === 0 ? (
-              <span className="text-xs text-muted-foreground">Primary — shown wherever one picture fits.</span>
-            ) : (
-              <Button type="button" variant="ghost" size="sm" className="h-7 px-2" onClick={() => makePrimary(showing)}>
-                <Star className="mr-1 h-3 w-3" />
-                Make Primary
-              </Button>
-            )
+        // Frozen while a batch converts: the slots the pictures are landing in are still being written, so
+        // reframing or reordering mid-run would act on a list about to change under it.
+        <div className={cn('flex flex-wrap items-center gap-2', batch && 'pointer-events-none opacity-50')}>
+          {/* `autoScroll={false}` and `closestCenter`, matching KeywordChips: this strip sits inside the
+              entity editor's ScrollArea, where dnd-kit's auto-scroll chases the dragged item into empty
+              space and an empty collision result flips the sort gap every frame. */}
+          <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleReorder} autoScroll={false}>
+            {/* rectSortingStrategy (2D), not a single-row one: the strip wraps once there are enough. */}
+            <SortableContext items={tileIds} strategy={rectSortingStrategy}>
+              {shown.map((url, i) => (
+                <PictureTile
+                  key={tileIds[i]}
+                  id={tileIds[i]}
+                  url={url}
+                  index={i}
+                  framed={i === showing}
+                  onSelect={() => setShowing(i)}
+                />
+              ))}
+            </SortableContext>
+          </DndContext>
+          {/* Outside the sortable set: dropping a picture onto "add" would mean nothing. */}
+          {openSlot !== -1 && (
+            <AddTile
+              htmlFor={canEmbed ? `image-upload-${slotId(openSlot)}` : undefined}
+              selected={openSlot === showing}
+              onSelect={() => setShowing(openSlot)}
+              onUrl={(dropped) => setSlot(openSlot, dropped)}
+              onFiles={(files) => void takeFiles(openSlot, files)}
+              allowFiles={canEmbed}
+            />
           )}
-        </>
+        </div>
       )}
       <ConfirmDialog
         open={pendingPrompt !== null}

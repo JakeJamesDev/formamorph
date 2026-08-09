@@ -83,23 +83,22 @@ describe('ImageTagsField gallery', () => {
     expect(slotWrapper(A).className).toMatch(/hidden/);
   });
 
-  it('offers Make Primary only for a framed picture that is not already primary', () => {
-    setup([A, B]);
+  it('marks the first picture as the one that stands in, and offers no promote button', () => {
+    setup([A, B, C]);
 
-    expect(screen.queryByText('Make Primary')).toBeNull();
-    expect(screen.getByText(/^Primary —/)).toBeTruthy();
-
-    fireEvent.click(tile('Picture 2'));
-    expect(screen.getByText('Make Primary')).toBeTruthy();
+    // Order is the whole mechanism now: position 0 is the stand-in, so there is nothing to press.
+    expect(screen.queryByText(/Make Primary/)).toBeNull();
+    expect(tile('Primary picture').querySelector('svg')).toBeTruthy();
+    expect(tile('Picture 2').querySelector('svg')).toBeNull();
   });
 
-  it('swaps the framed picture into the primary slot', () => {
-    const { onImagesChange } = setup([A, B, C]);
+  it('says a tile can be dragged, and lets a press through as a plain click', () => {
+    setup([A, B]);
 
-    fireEvent.click(tile('Picture 3'));
-    fireEvent.click(screen.getByText('Make Primary'));
-
-    expect(onImagesChange).toHaveBeenCalledWith([C, B, A]);
+    expect(tile('Primary picture').getAttribute('title')).toMatch(/Drag to reorder/);
+    // The 5px activation constraint is what keeps this working; a tap must still frame the picture.
+    fireEvent.click(tile('Picture 2'));
+    expect(slotWrapper(B).className).not.toMatch(/hidden/);
   });
 
   it('keeps the frame in range when the pictures behind it are removed', () => {
@@ -205,7 +204,7 @@ describe('ImageTagsField gallery', () => {
     expect(visible.map((n) => n.getAttribute('data-value'))).toEqual(['']);
 
     release[0]();
-    await waitFor(() => expect(screen.queryByRole('status')).toBeNull());
+    await waitFor(() => expect(screen.queryByRole('status', { name: /^Converting/ })).toBeNull());
   });
 
   it('counts the batch over the frame while it converts, and freezes the strip', async () => {
@@ -226,7 +225,7 @@ describe('ImageTagsField gallery', () => {
     expect(tile('Primary picture').closest('div')!.className).toMatch(/pointer-events-none/);
     // From the dropped file, not the data URL it encodes to — a base64 string that size blocks the main
     // thread for long enough that this overlay never reaches the screen while the work is happening.
-    const src = screen.getByRole('status').querySelector('img')!.getAttribute('src')!;
+    const src = screen.getByRole('status', { name: /^Converting/ }).querySelector('img')!.getAttribute('src')!;
     expect(src.startsWith('data:')).toBe(false);
     expect(src.startsWith('blob:')).toBe(true);
 
@@ -234,7 +233,7 @@ describe('ImageTagsField gallery', () => {
     expect(await screen.findByRole('status', { name: 'Converting image 2 of 2' })).toBeTruthy();
 
     release[1]();
-    await waitFor(() => expect(screen.queryByRole('status')).toBeNull());
+    await waitFor(() => expect(screen.queryByRole('status', { name: /^Converting/ })).toBeNull());
     expect(tile('Primary picture').closest('div')!.className).not.toMatch(/pointer-events-none/);
   });
 
@@ -247,7 +246,7 @@ describe('ImageTagsField gallery', () => {
     });
 
     await waitFor(() => expect(onImagesChange).toHaveBeenCalled());
-    expect(screen.queryByRole('status')).toBeNull();
+    expect(screen.queryByRole('status', { name: /^Converting/ })).toBeNull();
     expect(applyImageOptimize).not.toHaveBeenCalled();
   });
 
