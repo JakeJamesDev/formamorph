@@ -8,7 +8,7 @@ import type { LocalLlmState } from '@/lib/imageGen/desktop';
  */
 export function EngineStatusLine({ engine, className }: { engine: LocalLlmState; className?: string }) {
   return (
-    <div className={`text-xs text-muted-foreground ${className ?? ''}`}>
+    <div className={`text-meta text-muted-foreground ${className ?? ''}`}>
       Engine:{' '}
       {engine.status === 'ready' ? <span className="text-success">ready — {engine.modelId}</span>
         : engine.status === 'loading' ? <span className="text-warning">loading {engine.modelId}…</span>
@@ -35,7 +35,7 @@ export function GpuMemoryBox({
 }) {
   return (
     <div className={`rounded-md border border-border p-3 ${className ?? ''}`}>
-      <div className="mb-2 text-xs font-semibold text-muted-foreground">GPU memory</div>
+      <div className="mb-2 text-meta font-semibold text-muted-foreground">GPU memory</div>
       <VramReadout stats={stats} ownUsedMB={ownUsedMB} ownEstimated={ownEstimated} />
     </div>
   );

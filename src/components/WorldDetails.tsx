@@ -61,7 +61,7 @@ export function WorldDetailsColumn({ thumbnail, actions, description, tags, meta
   const info = (
     <div className="space-y-4">
       <div>
-        <h3 className="text-lg font-semibold">Description</h3>
+        <h3 className="text-title font-semibold">Description</h3>
         <div className="text-muted-foreground mt-1">
           <MarkdownRenderer text={description || "No description available."} />
         </div>
@@ -69,7 +69,7 @@ export function WorldDetailsColumn({ thumbnail, actions, description, tags, meta
       {meta}
       {tags && (
         <div>
-          <h3 className="text-sm font-semibold text-muted-foreground">Tags</h3>
+          <h3 className="text-helper font-semibold text-muted-foreground">Tags</h3>
           <div className="flex flex-wrap gap-2 mt-1">
             {tags.length > 0 ? (
               tags.map((tag, index) => (
@@ -81,7 +81,7 @@ export function WorldDetailsColumn({ thumbnail, actions, description, tags, meta
                 </span>
               ))
             ) : (
-              <span className="text-muted-foreground text-sm">No tags</span>
+              <span className="text-muted-foreground text-helper">No tags</span>
             )}
           </div>
         </div>
@@ -156,7 +156,7 @@ export function CardTags({ tags, onHide }: { tags: string[]; onHide?: (tag: stri
   }, [count, tags]);
 
   if (!tags || tags.length === 0) {
-    return <span className="text-muted-foreground text-xs italic">No tags</span>;
+    return <span className="text-muted-foreground text-meta italic">No tags</span>;
   }
 
   const chip = (tag: string, i: number) => (
@@ -187,7 +187,7 @@ export function CardTags({ tags, onHide }: { tags: string[]; onHide?: (tag: stri
       <div ref={ref} className="flex flex-wrap gap-1 max-h-[48px] overflow-hidden">
         {tags.slice(0, count).map(chip)}
         {truncated && (
-          <span className="self-center whitespace-nowrap px-1 text-xs font-medium text-primary">
+          <span className="self-center whitespace-nowrap px-1 text-meta font-medium text-primary">
             (Show More)
           </span>
         )}

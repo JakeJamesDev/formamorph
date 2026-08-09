@@ -22,7 +22,7 @@ export function ReasoningBlock({ text, ms, active }: { text: string; ms: number;
 
   return (
     <Collapsible open={open} onOpenChange={(o) => { userToggled.current = true; setOpen(o); }} className="mb-2">
-      <CollapsibleTrigger className="flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground">
+      <CollapsibleTrigger className="flex items-center gap-1.5 text-meta text-muted-foreground hover:text-foreground">
         <ChevronRight className={`h-3.5 w-3.5 transition-transform motion-reduce:transition-none ${open ? 'rotate-90' : ''}`} />
         {active ? (
           <span className="inline-flex items-center gap-1.5">
@@ -34,7 +34,7 @@ export function ReasoningBlock({ text, ms, active }: { text: string; ms: number;
         )}
       </CollapsibleTrigger>
       <CollapsibleContent>
-        <div className="mt-1 border-l-2 border-border pl-3 text-sm leading-snug text-muted-foreground [&_h1]:text-sm [&_h2]:text-sm [&_h3]:text-sm [&_h1]:font-semibold [&_h2]:font-semibold [&_h3]:font-semibold [&_p]:my-1 [&_ul]:my-1 [&_ol]:my-1">
+        <div className="mt-1 border-l-2 border-border pl-3 text-helper leading-snug text-muted-foreground [&_h1]:text-helper [&_h2]:text-helper [&_h3]:text-helper [&_h1]:font-semibold [&_h2]:font-semibold [&_h3]:font-semibold [&_p]:my-1 [&_ul]:my-1 [&_ol]:my-1">
           <MarkdownRenderer text={text} />
         </div>
       </CollapsibleContent>

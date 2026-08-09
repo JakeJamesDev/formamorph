@@ -66,7 +66,7 @@ function DiagnosticsPanel({ diagnostics }: { diagnostics: BugDiagnostics }) {
     .filter(([, value]) => Boolean(value));
 
   return (
-    <div className="rounded-md border bg-muted/40 px-3 py-2 text-xs text-muted-foreground min-w-0">
+    <div className="rounded-md border bg-muted/40 px-3 py-2 text-meta text-muted-foreground min-w-0">
       <p className="font-medium text-foreground">Sent with your report</p>
       <dl className="mt-1 grid grid-cols-[auto_minmax(0,1fr)] gap-x-3">
         {rows.map(([label, value]) => (
@@ -187,7 +187,7 @@ export function FeedbackDialog({ open, onOpenChange, initialType = 'bug', onFile
 
         <div className="space-y-4 min-w-0">
           {restored && (
-            <p className="rounded-md border bg-muted/40 px-3 py-2 text-xs text-muted-foreground">
+            <p className="rounded-md border bg-muted/40 px-3 py-2 text-meta text-muted-foreground">
               Picked up where you left off — this was still unsent. Discard it below to start fresh.
             </p>
           )}
@@ -201,7 +201,7 @@ export function FeedbackDialog({ open, onOpenChange, initialType = 'bug', onFile
           </Tabs>
 
           <div className="space-y-2">
-            <label htmlFor="feedbackTitle" className="text-sm font-medium">Title</label>
+            <label htmlFor="feedbackTitle" className="text-label font-medium">Title</label>
             <Input
               id="feedbackTitle"
               value={title}
@@ -212,7 +212,7 @@ export function FeedbackDialog({ open, onOpenChange, initialType = 'bug', onFile
           </div>
 
           <div className="space-y-2">
-            <label className="text-sm font-medium">Category</label>
+            <label className="text-label font-medium">Category</label>
             <Select value={category} onValueChange={(value) => setCategory(value as FeedbackCategory)}>
               <SelectTrigger aria-label="Category"><SelectValue /></SelectTrigger>
               <SelectContent>
@@ -225,8 +225,8 @@ export function FeedbackDialog({ open, onOpenChange, initialType = 'bug', onFile
 
           <div className="space-y-2">
             <div className="flex items-baseline justify-between">
-              <span className="text-sm font-medium">{copy.bodyLabel}</span>
-              <span className="text-xs text-muted-foreground">{body.length} / {BODY_MAX}</span>
+              <span className="text-label font-medium">{copy.bodyLabel}</span>
+              <span className="text-meta text-muted-foreground">{body.length} / {BODY_MAX}</span>
             </div>
             <PromptField
               value={body}

@@ -19,7 +19,7 @@ const ConflictNote = ({ conflict }: { conflict?: TraitConflict }) => {
   if (!conflict) return null;
   const others = conflict.others.join(', ');
   return (
-    <p className="text-xs text-muted-foreground pl-1">
+    <p className="text-meta text-muted-foreground pl-1">
       Also set by {others}. {conflict.winsHere ? 'This trait' : others} wins — the lower trait in the list does.
     </p>
   );
@@ -96,7 +96,7 @@ const TraitManager = ({ trait }: { trait: Trait }) => {
           onCheckedChange={(c) => handleChange('isDefault', c === true)}
         />
         <span>Enabled by Default</span>
-        <span className="text-xs text-muted-foreground">(pre-checked in the trait-selection screen)</span>
+        <span className="text-meta text-muted-foreground">(pre-checked in the trait-selection screen)</span>
       </label>
       <label className="flex items-center gap-2 cursor-pointer">
         <Checkbox
@@ -104,7 +104,7 @@ const TraitManager = ({ trait }: { trait: Trait }) => {
           onCheckedChange={(c) => handleChange('playerToggle', c === true)}
         />
         <span>Player Can Toggle In-Game</span>
-        <span className="text-xs text-muted-foreground">(switchable from the Traits panel during play)</span>
+        <span className="text-meta text-muted-foreground">(switchable from the Traits panel during play)</span>
       </label>
       <div className="space-y-2">
         {/* block so the Add button below always wraps to its own line, even with no rows yet */}
@@ -160,7 +160,7 @@ const TraitManager = ({ trait }: { trait: Trait }) => {
       {advanced && (
       <div className="space-y-2">
         <Label className="block">Stat Availability</Label>
-        <p className="text-xs text-muted-foreground">
+        <p className="text-meta text-muted-foreground">
           Switches a stat on or off while this trait is active, overriding the stat&apos;s own default. A stat that
           is off is hidden from the player and the AI, and its regen and code pause.
         </p>
@@ -207,7 +207,7 @@ const TraitManager = ({ trait }: { trait: Trait }) => {
       {advanced && (
       <div className="space-y-2">
         <Label className="block">Placeholder Pins</Label>
-        <p className="text-xs text-muted-foreground">
+        <p className="text-meta text-muted-foreground">
           Holds a placeholder at a fixed value while this trait is active. The playthrough&apos;s own roll is kept
           underneath and returns if the trait is switched off.
         </p>

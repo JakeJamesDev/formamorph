@@ -120,7 +120,7 @@ export function MessagesTab({ active, onUnreadChange }: MessagesTabProps) {
 
   if (loadError) {
     return (
-      <div className="py-8 text-center text-sm text-muted-foreground">
+      <div className="py-8 text-center text-helper text-muted-foreground">
         <p>{loadError}</p>
       </div>
     );
@@ -130,7 +130,7 @@ export function MessagesTab({ active, onUnreadChange }: MessagesTabProps) {
     return (
       <div className="py-10 flex flex-col items-center gap-2 text-muted-foreground">
         <Inbox className="h-8 w-8" />
-        <p className="text-sm">No messages.</p>
+        <p className="text-label">No messages.</p>
       </div>
     );
   }
@@ -139,7 +139,7 @@ export function MessagesTab({ active, onUnreadChange }: MessagesTabProps) {
     <div className="space-y-2 py-4">
       {/* The fetch is capped, so say so rather than letting the oldest quietly not exist. */}
       {total > messages.length && (
-        <p className="pb-1 text-xs text-muted-foreground">
+        <p className="pb-1 text-meta text-muted-foreground">
           Showing {messages.length} of {total}. Dismiss one and the next appears.
         </p>
       )}
@@ -167,7 +167,7 @@ export function MessagesTab({ active, onUnreadChange }: MessagesTabProps) {
                       text a long subject widens the dialog instead of ellipsing. */}
                   <span className="flex items-center gap-2 min-w-0">
                     <span
-                      className={cn('text-sm truncate min-w-0', message.readAt ? 'font-normal' : 'font-semibold')}
+                      className={cn('text-label truncate min-w-0', message.readAt ? 'font-normal' : 'font-semibold')}
                       title={message.subject}
                     >
                       {message.subject}
@@ -177,7 +177,7 @@ export function MessagesTab({ active, onUnreadChange }: MessagesTabProps) {
                     )}
                   </span>
 
-                  <span className="flex flex-wrap items-center gap-x-2 text-xs text-muted-foreground">
+                  <span className="flex flex-wrap items-center gap-x-2 text-meta text-muted-foreground">
                     <span className="truncate min-w-0">{message.senderAs === 'username' && message.senderName ? message.senderName : 'Formamorph Team'}</span>
                     <span>·</span>
                     <span>{formatMessageDate(message.createdAt)}</span>
@@ -219,7 +219,7 @@ export function MessagesTab({ active, onUnreadChange }: MessagesTabProps) {
             </div>
 
             {isExpanded && (
-              <div className="px-3 pb-3 pl-9 text-sm">
+              <div className="px-3 pb-3 pl-9 text-label">
                 <MarkdownRenderer text={message.body} />
               </div>
             )}

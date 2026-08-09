@@ -131,7 +131,7 @@ function RevealAnimationDialog({ open, onOpenChange }: { open: boolean; onOpenCh
 
         {/* Frozen live preview */}
         <div
-          className="shrink-0 narration-text rounded-md border border-border bg-muted/80 p-4 text-base leading-relaxed min-h-[8rem]"
+          className="shrink-0 narration-text rounded-md border border-border bg-muted/80 p-4 text-body leading-relaxed min-h-[8rem]"
           style={containerVars}
         >
           {!active ? (
@@ -171,14 +171,14 @@ function RevealAnimationDialog({ open, onOpenChange }: { open: boolean; onOpenCh
         {/* Effects */}
         <div className="space-y-3">
           {/* Fade */}
-          <label className="flex items-center gap-2 text-sm">
+          <label className="flex items-center gap-2 text-label">
             <Checkbox checked={revealFade} onCheckedChange={(c) => setRevealFade(c === true)} />
             <span className="font-medium">Fade</span>
-            <span className="text-xs text-muted-foreground">opacity 0 → 1</span>
+            <span className="text-meta text-muted-foreground">opacity 0 → 1</span>
           </label>
 
           {prefersReducedMotion && (
-            <p className="text-xs text-warning">
+            <p className="text-meta text-warning">
               Your system’s <strong>Reduce Motion</strong> setting is on, so <strong>Move</strong> and{' '}
               <strong>Scale</strong> are disabled to respect it. Fade and Blur still apply. Turn it off in
               your OS accessibility settings to use them.
@@ -187,18 +187,18 @@ function RevealAnimationDialog({ open, onOpenChange }: { open: boolean; onOpenCh
 
           {/* Move */}
           <div className={`space-y-2 ${prefersReducedMotion ? 'opacity-50' : ''}`}>
-            <label className="flex items-center gap-2 text-sm">
+            <label className="flex items-center gap-2 text-label">
               <Checkbox checked={revealMove} disabled={prefersReducedMotion} onCheckedChange={(c) => setRevealMove(c === true)} />
               <span className="font-medium">Move in</span>
-              <span className="text-xs text-muted-foreground">slides in from a direction</span>
+              <span className="text-meta text-muted-foreground">slides in from a direction</span>
             </label>
             {revealMove && !prefersReducedMotion && (
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pl-6">
-                <label className="flex flex-col gap-1 text-sm">
+                <label className="flex flex-col gap-1 text-label">
                   <span className="text-muted-foreground">Direction</span>
                   <DirectionSelect value={revealMoveDirection} onChange={setRevealMoveDirection} />
                 </label>
-                <label className="flex flex-col gap-1 text-sm">
+                <label className="flex flex-col gap-1 text-label">
                   <span className="text-muted-foreground">Distance: {revealMoveDistance.toFixed(2)}em</span>
                   <Slider value={[revealMoveDistance]} min={0.1} max={2} step={0.05} onValueChange={(v) => setRevealMoveDistance(v[0])} />
                 </label>
@@ -208,14 +208,14 @@ function RevealAnimationDialog({ open, onOpenChange }: { open: boolean; onOpenCh
 
           {/* Scale */}
           <div className={`space-y-2 ${prefersReducedMotion ? 'opacity-50' : ''}`}>
-            <label className="flex items-center gap-2 text-sm">
+            <label className="flex items-center gap-2 text-label">
               <Checkbox checked={revealScale} disabled={prefersReducedMotion} onCheckedChange={(c) => setRevealScale(c === true)} />
               <span className="font-medium">Scale</span>
-              <span className="text-xs text-muted-foreground">grows into place</span>
+              <span className="text-meta text-muted-foreground">grows into place</span>
             </label>
             {revealScale && !prefersReducedMotion && (
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pl-6">
-                <label className="flex flex-col gap-1 text-sm">
+                <label className="flex flex-col gap-1 text-label">
                   <span className="text-muted-foreground">Mode</span>
                   <Select value={revealScaleMode} onValueChange={(v) => setRevealScaleMode(v as RevealScaleMode)}>
                     <SelectTrigger><SelectValue /></SelectTrigger>
@@ -225,12 +225,12 @@ function RevealAnimationDialog({ open, onOpenChange }: { open: boolean; onOpenCh
                   </Select>
                 </label>
                 {revealScaleMode === 'axis' && (
-                  <label className="flex flex-col gap-1 text-sm">
+                  <label className="flex flex-col gap-1 text-label">
                     <span className="text-muted-foreground">Direction</span>
                     <DirectionSelect value={revealScaleDirection} onChange={setRevealScaleDirection} />
                   </label>
                 )}
-                <label className="flex flex-col gap-1 text-sm">
+                <label className="flex flex-col gap-1 text-label">
                   <span className="text-muted-foreground">Start scale: {revealScaleAmount.toFixed(2)}</span>
                   <Slider value={[revealScaleAmount]} min={0.05} max={0.9} step={0.05} onValueChange={(v) => setRevealScaleAmount(v[0])} />
                 </label>
@@ -240,14 +240,14 @@ function RevealAnimationDialog({ open, onOpenChange }: { open: boolean; onOpenCh
 
           {/* Blur */}
           <div className="space-y-2">
-            <label className="flex items-center gap-2 text-sm">
+            <label className="flex items-center gap-2 text-label">
               <Checkbox checked={revealBlur} onCheckedChange={(c) => setRevealBlur(c === true)} />
               <span className="font-medium">Blur</span>
-              <span className="text-xs text-muted-foreground">sharpens into focus</span>
+              <span className="text-meta text-muted-foreground">sharpens into focus</span>
             </label>
             {revealBlur && (
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pl-6">
-                <label className="flex flex-col gap-1 text-sm">
+                <label className="flex flex-col gap-1 text-label">
                   <span className="text-muted-foreground">Amount: {revealBlurAmount}px</span>
                   <Slider value={[revealBlurAmount]} min={1} max={12} step={1} onValueChange={(v) => setRevealBlurAmount(v[0])} />
                 </label>
@@ -258,7 +258,7 @@ function RevealAnimationDialog({ open, onOpenChange }: { open: boolean; onOpenCh
 
         {/* Shared easing */}
         {active && (
-          <label className="flex flex-col gap-1 text-sm sm:max-w-xs">
+          <label className="flex flex-col gap-1 text-label sm:max-w-xs">
             <span className="text-muted-foreground">Easing (all effects)</span>
             <Select value={revealEasing} onValueChange={setRevealEasing}>
               <SelectTrigger><SelectValue /></SelectTrigger>
@@ -272,22 +272,22 @@ function RevealAnimationDialog({ open, onOpenChange }: { open: boolean; onOpenCh
         {/* Minimum speed — floors the in-game reveal so a fast model stays readable; 0 = unlimited. */}
         {active && (
           <div className="rounded-md border border-dashed border-border p-3 space-y-3">
-            <div className="text-xs text-muted-foreground">
+            <div className="text-meta text-muted-foreground">
               <span className="font-medium text-foreground">Minimum speed.</span> In game the pace follows the
               model’s tokens/sec, but never goes faster than these floors. 0 = no limit. The preview above runs
               at your minimum (or a default when unlimited).
             </div>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              <label className="flex flex-col gap-1 text-sm">
+              <label className="flex flex-col gap-1 text-label">
                 <span className="text-muted-foreground">Min fade duration: {revealMinDuration === 0 ? 'Unlimited' : `${revealMinDuration}ms`}</span>
                 <Slider value={[revealMinDuration]} min={0} max={1400} step={50} onValueChange={(v) => setRevealMinDuration(v[0])} />
               </label>
-              <label className="flex flex-col gap-1 text-sm">
+              <label className="flex flex-col gap-1 text-label">
                 <span className="text-muted-foreground">Min word stagger: {revealMinStagger === 0 ? 'Unlimited' : `${revealMinStagger}ms`}</span>
                 <Slider value={[revealMinStagger]} min={0} max={150} step={5} onValueChange={(v) => setRevealMinStagger(v[0])} />
               </label>
             </div>
-            <label className="flex items-center gap-2 text-sm text-muted-foreground">
+            <label className="flex items-center gap-2 text-helper text-muted-foreground">
               <Checkbox checked={loop} onCheckedChange={(c) => setLoop(c === true)} />
               Loop preview
             </label>

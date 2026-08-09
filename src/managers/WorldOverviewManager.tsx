@@ -227,7 +227,7 @@ const WorldOverviewManager = () => {
               onClose={() => setVrmPreviewOpen(false)}
             />
           )}
-          <p className="text-xs text-muted-foreground">
+          <p className="text-meta text-muted-foreground">
             Overrides the default 3D player model.
           </p>
         </div>

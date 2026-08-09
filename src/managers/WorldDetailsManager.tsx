@@ -80,13 +80,13 @@ const NarrationPromptField = () => {
             ariaLabel="World narration prompt"
             resizable
           />
-          <p className="text-xs text-muted-foreground">
+          <p className="text-meta text-muted-foreground">
             Replaces the player&apos;s narration prompt while they play this world. They can decline it from the
             world&apos;s details window. Choices, planning, stats, and memory always use the player&apos;s own prompts.
           </p>
         </>
       ) : (
-        <p className="text-xs text-muted-foreground">
+        <p className="text-meta text-muted-foreground">
           This world uses whichever narration prompt the player has set. Turn this on to write your own.
           {stored !== undefined && ' Your prompt is kept and comes back when you switch this on again.'}
         </p>

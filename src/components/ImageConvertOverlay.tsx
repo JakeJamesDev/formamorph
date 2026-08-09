@@ -43,7 +43,7 @@ export const ImageConvertOverlay = ({ thumb, done, total, objectFit = 'contain',
           <div className="h-full w-full animate-pulse bg-primary motion-reduce:animate-none" />
         </div>
       )}
-      <span className="mt-1 block text-center text-xs text-white drop-shadow">
+      <span className="mt-1 block text-center text-meta text-white drop-shadow">
         {total > 1 ? `Converting ${done + 1} of ${total}…` : 'Converting…'}
       </span>
     </div>

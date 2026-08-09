@@ -34,7 +34,7 @@ const StartingLocationModal = ({
   return (
     <Card className="fixed inset-0 m-auto w-[95%] max-w-[600px] h-[90dvh] max-h-[800px] z-50">
       <CardContent className="p-3 sm:p-6 h-full flex flex-col">
-        <h2 className="text-lg sm:text-xl font-semibold mb-3">Choose Starting Location</h2>
+        <h2 className="text-title sm:text-heading font-semibold mb-3">Choose Starting Location</h2>
 
         <ScrollArea className="flex-1 mb-4">
           <RadioGroup value={selected} onValueChange={setSelected} className="pr-2">
@@ -45,7 +45,7 @@ const StartingLocationModal = ({
               <RadioGroupItem value={RANDOM} id="start-loc-random" className="mt-1" />
               <div>
                 <span className="font-semibold">Random</span>
-                <p className="text-xs sm:text-sm text-muted-foreground">
+                <p className="text-meta sm:text-helper text-muted-foreground">
                   Begin somewhere random among the starting locations for this world.
                 </p>
               </div>
@@ -65,7 +65,7 @@ const StartingLocationModal = ({
                     <Label htmlFor={`start-loc-${location.id}`} className="font-semibold cursor-pointer">
                       {location.name}
                     </Label>
-                    {description && <p className="text-xs sm:text-sm">{description}</p>}
+                    {description && <p className="text-meta sm:text-label">{description}</p>}
                   </div>
                 </label>
               );

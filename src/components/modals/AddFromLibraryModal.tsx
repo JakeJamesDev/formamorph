@@ -82,9 +82,9 @@ function AddFromLibraryModal<TMeta extends { id: string }, TFull, TItem>({
           <DialogDescription>{description}</DialogDescription>
         </DialogHeader>
         {loading ? (
-          <p className="py-6 text-center text-sm text-muted-foreground">Loading…</p>
+          <p className="py-6 text-center text-helper text-muted-foreground">Loading…</p>
         ) : list.length === 0 ? (
-          <p className="py-6 text-center text-sm text-muted-foreground">{emptyMessage}</p>
+          <p className="py-6 text-center text-helper text-muted-foreground">{emptyMessage}</p>
         ) : (
           <ScrollArea className="max-h-[50dvh] pr-2">
             <div className="space-y-1">

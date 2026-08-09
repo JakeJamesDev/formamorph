@@ -179,13 +179,13 @@ export function useVrmCustomization(includeAnimateToggle = true): VrmCustomizati
       {includeAnimateToggle && (
         <label className="flex items-center gap-2 cursor-pointer">
           <Checkbox checked={animate} onCheckedChange={(v) => setAnimate(v === true)} />
-          <span className="text-sm font-medium">Animate character</span>
+          <span className="text-label font-medium">Animate character</span>
         </label>
       )}
 
       {(visibleHairStyles.length > 1 || caps?.hairLength) && (
         <div className="space-y-4">
-          <h3 className="text-lg font-semibold">Hair</h3>
+          <h3 className="text-title font-semibold">Hair</h3>
           {visibleHairStyles.length > 1 && (
             <Select onValueChange={setCurrentHairStyle} value={currentHairStyle}>
               <SelectTrigger>
@@ -202,7 +202,7 @@ export function useVrmCustomization(includeAnimateToggle = true): VrmCustomizati
             <div className="space-y-2">
               <Label htmlFor="hair-length">Hair Length</Label>
               <Slider id="hair-length" min={0} max={2} step={0.1} value={[hairLength]} onValueChange={([v]) => setHairLength(v)} />
-              <span className="text-sm text-muted-foreground">{hairLength.toFixed(1)}</span>
+              <span className="text-helper text-muted-foreground">{hairLength.toFixed(1)}</span>
             </div>
           )}
         </div>
@@ -210,7 +210,7 @@ export function useVrmCustomization(includeAnimateToggle = true): VrmCustomizati
 
       {bodyMorphSliders.length > 0 && (
         <div className="space-y-4">
-          <h3 className="text-lg font-semibold">Initial Body Features</h3>
+          <h3 className="text-title font-semibold">Initial Body Features</h3>
           {bodyMorphSliders.map((morph) => {
             const value = bodyMorphs[morph] ?? 0;
             return (
@@ -224,7 +224,7 @@ export function useVrmCustomization(includeAnimateToggle = true): VrmCustomizati
                   value={[value]}
                   onValueChange={([v]) => setBodyMorph(morph, v)}
                 />
-                <span className="text-sm text-muted-foreground">{value.toFixed(2)}</span>
+                <span className="text-helper text-muted-foreground">{value.toFixed(2)}</span>
               </div>
             );
           })}
@@ -232,7 +232,7 @@ export function useVrmCustomization(includeAnimateToggle = true): VrmCustomizati
       )}
 
       <div className="space-y-4">
-        <h3 className="text-lg font-semibold">Colors</h3>
+        <h3 className="text-title font-semibold">Colors</h3>
         {([
           { label: 'Hair Color', channel: 'hair' as const, value: hairColor },
           { label: 'Eye Color', channel: 'eye' as const, value: eyeColor },

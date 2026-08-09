@@ -33,7 +33,7 @@ export function MarkdownModal({ open, onOpenChange, title, text, tabs, footer }:
                 centers the triggers within it (which is what tidies the wrapped row). */}
             <TabsList className="flex flex-wrap h-auto justify-center gap-1 self-center">
               {tabs.map((t) => (
-                <TabsTrigger key={t.label} value={t.label} className="text-xs">{t.label}</TabsTrigger>
+                <TabsTrigger key={t.label} value={t.label} className="text-meta">{t.label}</TabsTrigger>
               ))}
             </TabsList>
             {tabs.map((t) => (

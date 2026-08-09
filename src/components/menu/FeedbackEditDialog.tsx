@@ -98,7 +98,7 @@ export function FeedbackEditDialog({
           {mayEditProse && (
             <>
               <div className="space-y-2">
-                <label htmlFor="feedback-edit-title" className="text-sm font-medium">Title</label>
+                <label htmlFor="feedback-edit-title" className="text-label font-medium">Title</label>
                 <Input
                   id="feedback-edit-title"
                   value={draft.title}
@@ -109,8 +109,8 @@ export function FeedbackEditDialog({
 
               <div className="space-y-2">
                 <div className="flex items-baseline justify-between">
-                  <span className="text-sm font-medium">Description</span>
-                  <span className="text-xs text-muted-foreground">{draft.body.length} / {BODY_MAX}</span>
+                  <span className="text-label font-medium">Description</span>
+                  <span className="text-meta text-muted-foreground">{draft.body.length} / {BODY_MAX}</span>
                 </div>
                 <PromptField
                   value={draft.body}
@@ -127,7 +127,7 @@ export function FeedbackEditDialog({
           {mayRefile && (
             <div className="flex flex-wrap gap-4">
               <div className="space-y-2 min-w-[160px] flex-1">
-                <span className="text-sm font-medium">Kind</span>
+                <span className="text-label font-medium">Kind</span>
                 <Select value={draft.type} onValueChange={pickType}>
                   <SelectTrigger aria-label="Kind"><SelectValue /></SelectTrigger>
                   <SelectContent>
@@ -139,7 +139,7 @@ export function FeedbackEditDialog({
               </div>
 
               <div className="space-y-2 min-w-[160px] flex-1">
-                <span className="text-sm font-medium">Category</span>
+                <span className="text-label font-medium">Category</span>
                 <Select
                   value={draft.category}
                   onValueChange={(category) => setDraft((prev) => ({ ...prev, category }))}
@@ -158,7 +158,7 @@ export function FeedbackEditDialog({
           {/* Said before it happens, not discovered after: a move costs the reporter's machine details
               and puts the thread back at the start of triage. */}
           {draft.type !== thread.type && (
-            <p className="rounded-md border border-warning/40 bg-warning/5 p-3 text-xs text-muted-foreground">
+            <p className="rounded-md border border-warning/40 bg-warning/5 p-3 text-meta text-muted-foreground">
               Moving this to a {FEEDBACK_TYPE_LABELS[draft.type as FeedbackType].one.toLowerCase()} sets its status
               back to Open{thread.type === 'bug' ? ', and deletes the version and platform it was filed with' : ''}.
               Its replies and votes stay.

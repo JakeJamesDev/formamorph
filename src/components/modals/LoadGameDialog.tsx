@@ -72,7 +72,7 @@ function SortableSaveRow({ row, disabled, busy, onLoad, onExport, onDelete }: {
       ref={setNodeRef}
       style={style}
       className={cn(
-        "flex items-center gap-1 w-full rounded-md border border-input bg-background pr-1 text-left text-sm transition-colors",
+        "flex items-center gap-1 w-full rounded-md border border-input bg-background pr-1 text-left text-label transition-colors",
         disabled ? "pointer-events-none opacity-50" : "hover:bg-accent hover:text-accent-foreground",
       )}
     >
@@ -102,7 +102,7 @@ function SortableSaveRow({ row, disabled, busy, onLoad, onExport, onDelete }: {
             </span>
           )}
         </div>
-        <div className="text-xs opacity-70">
+        <div className="text-meta opacity-70">
           {formatStamp(row.timestamp)} - Game Time: {formatGameTime(row.gameTime)}
         </div>
       </div>
@@ -139,9 +139,9 @@ function FolderRowBody({ folder, pinned }: { folder: SaveFolder; pinned: boolean
       <Folder className="h-4 w-4 shrink-0 text-muted-foreground" />
       <div className="flex-1 min-w-0">
         <div className="break-words font-medium">
-          {folder.worldName}{pinned && <span className="ml-2 text-xs text-muted-foreground">(current)</span>}
+          {folder.worldName}{pinned && <span className="ml-2 text-meta text-muted-foreground">(current)</span>}
         </div>
-        <div className="text-xs opacity-70">
+        <div className="text-meta opacity-70">
           {folder.saves.length} save{folder.saves.length === 1 ? '' : 's'}
           {folder.lastPlayed > 0 && <> · Last played {formatStamp(folder.lastPlayed)}</>}
         </div>
@@ -156,7 +156,7 @@ function PinnedFolderRow({ folder, onOpen }: { folder: SaveFolder; onOpen: (f: S
     <div
       role="button"
       tabIndex={0}
-      className="flex items-center gap-2 w-full rounded-md border border-input bg-background px-3 py-2 text-left text-sm cursor-pointer transition-colors hover:bg-accent hover:text-accent-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset"
+      className="flex items-center gap-2 w-full rounded-md border border-input bg-background px-3 py-2 text-left text-label cursor-pointer transition-colors hover:bg-accent hover:text-accent-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset"
       onClick={() => onOpen(folder)}
       onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onOpen(folder); } }}
     >
@@ -174,7 +174,7 @@ function SortableFolderRow({ folder, onOpen }: { folder: SaveFolder; onOpen: (f:
     <div
       ref={setNodeRef}
       style={style}
-      className="flex items-center gap-1 w-full rounded-md border border-input bg-background pr-3 text-left text-sm transition-colors hover:bg-accent hover:text-accent-foreground"
+      className="flex items-center gap-1 w-full rounded-md border border-input bg-background pr-3 text-left text-label transition-colors hover:bg-accent hover:text-accent-foreground"
     >
       <span
         {...attributes}
@@ -502,7 +502,7 @@ export function LoadGameDialog({ open, onOpenChange, current, onLoad, title, ico
                 <ChevronLeft className="h-4 w-4" />
                 <span>Back</span>
               </Button>
-              <div className="flex-1 text-center text-sm font-medium truncate px-2">
+              <div className="flex-1 text-center text-label font-medium truncate px-2">
                 {atRoot ? 'Saves' : `Saves / ${activeFolder?.worldName ?? ''}`}
               </div>
               <div className="w-[68px] shrink-0" aria-hidden />
@@ -555,8 +555,8 @@ export function LoadGameDialog({ open, onOpenChange, current, onLoad, title, ico
                 {busy && (
                   <div className="text-center py-4 flex flex-col items-center space-y-2">
                     <Loader2 className="h-6 w-6 animate-spin" />
-                    <div className="text-sm">{loadingMessage || 'Processing...'}</div>
-                    <div className="text-xs text-warning max-w-xs">
+                    <div className="text-label">{loadingMessage || 'Processing...'}</div>
+                    <div className="text-meta text-warning max-w-xs">
                       {isExporting
                         ? `Please wait while the save file "${exportingSaveName}" is being prepared for export. For large save files, this may take a moment.`
                         : 'Please wait while the save file is being processed. For large save files, this may take a moment. Do not attempt to load another save until this process completes.'}
@@ -565,10 +565,10 @@ export function LoadGameDialog({ open, onOpenChange, current, onLoad, title, ico
                 )}
 
                 {!busy && rootEmpty && (
-                  <div className="text-center py-6 opacity-70 text-sm">No saved games found.</div>
+                  <div className="text-center py-6 opacity-70 text-label">No saved games found.</div>
                 )}
                 {!busy && !atRoot && shownSaves.length === 0 && (
-                  <div className="text-center py-6 opacity-70 text-sm">No saves for this world yet.</div>
+                  <div className="text-center py-6 opacity-70 text-label">No saves for this world yet.</div>
                 )}
               </div>
             </div>

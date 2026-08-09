@@ -203,7 +203,7 @@ export function KeywordChips({
             }}
             enterKeyHint="enter"
             placeholder={keywords.length === 0 ? placeholder : 'Add keyword...'}
-            className="flex-grow min-w-[8rem] bg-transparent text-sm outline-none"
+            className="flex-grow min-w-[8rem] bg-transparent text-label outline-none"
           />
         )}
       </div>
@@ -212,7 +212,7 @@ export function KeywordChips({
           type="button"
           // Handle on mousedown: clicking blurs the input, which would commit and re-render first.
           onMouseDown={(e) => { e.preventDefault(); acceptSplit(); }}
-          className="text-xs text-muted-foreground underline underline-offset-2 hover:text-foreground"
+          className="text-meta text-muted-foreground underline underline-offset-2 hover:text-foreground"
           aria-label={`Split “${splitOffer.chip}” into ${splitOffer.parts.length} keywords`}
         >
           Split “{splitOffer.chip}” into {splitOffer.parts.length}?

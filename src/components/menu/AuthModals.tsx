@@ -243,13 +243,13 @@ export function AuthModals({
 
           <div className="space-y-4 py-4">
             {authError && (
-              <div className="text-sm text-destructive p-2 bg-destructive/10 rounded-md">
+              <div className="text-label text-destructive p-2 bg-destructive/10 rounded-md">
                 {authError}
               </div>
             )}
 
             <div className="space-y-2">
-              <label htmlFor="username" className="text-sm font-medium">Username</label>
+              <label htmlFor="username" className="text-label font-medium">Username</label>
               <Input
                 id="username"
                 value={username}
@@ -259,7 +259,7 @@ export function AuthModals({
             </div>
 
             <div className="space-y-2">
-              <label htmlFor="password" className="text-sm font-medium">Password</label>
+              <label htmlFor="password" className="text-label font-medium">Password</label>
               <Input
                 id="password"
                 type="password"
@@ -271,7 +271,7 @@ export function AuthModals({
 
             {authMode === 'register' && (
               <div className="space-y-2">
-                <label htmlFor="confirmPassword" className="text-sm font-medium">Confirm Password</label>
+                <label htmlFor="confirmPassword" className="text-label font-medium">Confirm Password</label>
                 <Input
                   id="confirmPassword"
                   type="password"
@@ -320,10 +320,10 @@ export function AuthModals({
                 disabled={isSuspended}
               />
               <div className="min-w-0 space-y-1">
-                <h3 className="text-lg font-semibold truncate">
+                <h3 className="text-title font-semibold truncate">
                   {currentUser?.username || 'User'}
                 </h3>
-                {memberSince && <p className="text-sm text-muted-foreground">Member since {memberSince}</p>}
+                {memberSince && <p className="text-helper text-muted-foreground">Member since {memberSince}</p>}
                 {/* The same row a stranger reads on your profile popup. */}
                 {profileStats && <ProfileStats profile={profileStats} />}
               </div>
@@ -341,7 +341,7 @@ export function AuthModals({
             {isSuspended && (
               <div className="mb-4 p-3 bg-destructive/10 border border-destructive/30 rounded-md flex items-start">
                 <AlertTriangle className="h-5 w-5 text-destructive mr-2 flex-shrink-0 mt-0.5" />
-                <div className="text-sm">
+                <div className="text-label">
                   <p className="font-bold text-destructive">Account Suspended</p>
                   <p className="text-muted-foreground">Check your messages for details.</p>
                 </div>
@@ -409,19 +409,19 @@ export function AuthModals({
             {/* A suspended account can sign in and read, but the server refuses every write —
                 saying so here beats letting them fill the form and be rejected on submit. */}
             {isSuspended && (
-              <p className="text-sm text-muted-foreground">
+              <p className="text-helper text-muted-foreground">
                 Your password can&rsquo;t be changed while your account is suspended.
               </p>
             )}
 
             {authError && (
-              <div className="text-sm text-destructive p-2 bg-destructive/10 rounded-md">
+              <div className="text-label text-destructive p-2 bg-destructive/10 rounded-md">
                 {authError}
               </div>
             )}
 
             <div className="space-y-2">
-              <label htmlFor="currentPassword" className="text-sm font-medium">Current Password</label>
+              <label htmlFor="currentPassword" className="text-label font-medium">Current Password</label>
               <Input
                 id="currentPassword"
                 type="password"
@@ -433,7 +433,7 @@ export function AuthModals({
             </div>
 
             <div className="space-y-2">
-              <label htmlFor="newPassword" className="text-sm font-medium">New Password</label>
+              <label htmlFor="newPassword" className="text-label font-medium">New Password</label>
               <Input
                 id="newPassword"
                 type="password"

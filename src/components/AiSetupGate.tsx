@@ -132,27 +132,27 @@ export function AiSetupGate({ open, reason, mode, blocker, reachable, recheck, o
           <DialogDescription>{description}</DialogDescription>
         </DialogHeader>
 
-        {error && <p className="text-xs text-destructive">{error}</p>}
+        {error && <p className="text-meta text-destructive">{error}</p>}
 
         {downloading ? (
           <div className="space-y-2">
             <Progress value={pct} />
-            <div className="flex items-center justify-between text-xs text-muted-foreground">
+            <div className="flex items-center justify-between text-meta text-muted-foreground">
               <span>
                 {formatModelSize(progress.received)} / {formatModelSize(progress.total)} ({pct}%)
               </span>
               <Button size="sm" variant="ghost" onClick={() => cancelLocalDownload()}>Pause</Button>
             </div>
-            <p className="text-xs text-muted-foreground">
+            <p className="text-meta text-muted-foreground">
               You can keep browsing while this downloads — the game starts on its own once it’s ready.
             </p>
           </div>
         ) : blocker === 'unknownModel' ? (
-          <p className="text-xs text-muted-foreground">
+          <p className="text-meta text-muted-foreground">
             Load a model in LM Studio and this continues on its own — no need to reload.
           </p>
         ) : custom ? (
-          <p className="text-xs text-muted-foreground">
+          <p className="text-meta text-muted-foreground">
             Start your server and this will continue on its own — no need to reload.
           </p>
         ) : blocker === 'engineDown' ? null : (
@@ -161,18 +161,18 @@ export function AiSetupGate({ open, reason, mode, blocker, reachable, recheck, o
               <div className="space-y-2 rounded-md border border-border p-3">
                 <div className="font-medium">
                   {recommended.name}{' '}
-                  <span className="text-xs text-muted-foreground">
+                  <span className="text-meta text-muted-foreground">
                     {recommended.params} · {recommended.quant} · {formatModelSize(recommended.sizeBytes)}
                   </span>
                 </div>
-                <p className="text-xs text-muted-foreground">{recommended.note}</p>
+                <p className="text-meta text-muted-foreground">{recommended.note}</p>
                 <Button onClick={() => startDownload(recommended)}>
                   Download ({formatModelSize(recommended.sizeBytes)})
                 </Button>
               </div>
             )}
             {!showAll ? (
-              <Button variant="link" className="h-auto p-0 text-xs" onClick={() => setShowAll(true)}>
+              <Button variant="link" className="h-auto p-0 text-meta" onClick={() => setShowAll(true)}>
                 Show all models
               </Button>
             ) : (
@@ -180,8 +180,8 @@ export function AiSetupGate({ open, reason, mode, blocker, reachable, recheck, o
                 {LOCAL_MODELS.filter((m) => m.id !== recommended?.id).map((m) => (
                   <div key={m.id} className="flex items-center justify-between gap-2 rounded-md border border-border p-2">
                     <div className="min-w-0">
-                      <div className="truncate text-sm font-medium">{m.name}</div>
-                      <div className="text-xs text-muted-foreground">{m.params} · {formatModelSize(m.sizeBytes)}</div>
+                      <div className="truncate text-label font-medium">{m.name}</div>
+                      <div className="text-meta text-muted-foreground">{m.params} · {formatModelSize(m.sizeBytes)}</div>
                     </div>
                     <Button size="sm" variant="outline" className="shrink-0" onClick={() => startDownload(m)}>
                       Download

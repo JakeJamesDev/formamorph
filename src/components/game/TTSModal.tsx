@@ -306,12 +306,12 @@ const TTSModal = forwardRef<TTSModalHandle, {
         ) : tts ? (
           <div className="py-4 space-y-4">
             {actualUsedMB != null && (
-              <p className="text-xs text-muted-foreground">
+              <p className="text-meta text-muted-foreground">
                 Kokoro is using ~{actualUsedMB} MB of VRAM.
               </p>
             )}
             <div className="flex flex-col gap-2">
-              <label className="text-sm font-medium mb-2">Voice Selection</label>
+              <label className="text-label font-medium mb-2">Voice Selection</label>
               <Select value={selectedVoice} onValueChange={setSelectedVoice}>
                 <SelectTrigger>
                   <SelectValue placeholder="Select a voice" />
@@ -328,7 +328,7 @@ const TTSModal = forwardRef<TTSModalHandle, {
               </Select>
             </div>
             <div className="flex flex-col gap-2">
-              <label className="text-sm font-medium flex items-center justify-between">
+              <label className="text-label font-medium flex items-center justify-between">
                 <span>Speed</span>
                 <span className="text-muted-foreground tabular-nums">{ttsSpeed.toFixed(1)}×</span>
               </label>
@@ -339,7 +339,7 @@ const TTSModal = forwardRef<TTSModalHandle, {
                 step={0.1}
                 onValueChange={(v) => setTtsSpeed(v[0])}
               />
-              <p className="text-xs text-muted-foreground">
+              <p className="text-meta text-muted-foreground">
                 Applies to newly generated audio — use the regenerate button (↻) to re-speak the current text.
               </p>
             </div>
@@ -350,7 +350,7 @@ const TTSModal = forwardRef<TTSModalHandle, {
                 onCheckedChange={(c) => setStreamNarrationAudio(c === true)}
                 className="mt-0.5 shrink-0"
               />
-              <label htmlFor="streamNarrationAudio" className="text-xs text-muted-foreground leading-4">
+              <label htmlFor="streamNarrationAudio" className="text-meta text-muted-foreground leading-4">
                 <span className="font-medium text-foreground">Stream narration audio.</span> Start speaking each
                 sentence as soon as it finishes streaming, instead of after the whole story. Lower latency, but TTS
                 runs alongside the model — may compete for the GPU if your LLM is on the same machine.
@@ -363,7 +363,7 @@ const TTSModal = forwardRef<TTSModalHandle, {
                 onCheckedChange={(c) => setTtsHighlight(c === true)}
                 className="mt-0.5 shrink-0"
               />
-              <label htmlFor="ttsHighlight" className="text-xs text-muted-foreground leading-4">
+              <label htmlFor="ttsHighlight" className="text-meta text-muted-foreground leading-4">
                 <span className="font-medium text-foreground">Highlight while speaking.</span> Highlight the
                 sentence being narrated and follow the playhead when you scrub. Falls back gracefully on browsers
                 without highlight support.
@@ -384,7 +384,7 @@ const TTSModal = forwardRef<TTSModalHandle, {
             {isPlaying && genProgress && (
               <div className="space-y-1">
                 <Progress value={(genProgress.done / genProgress.total) * 100} className="h-2" />
-                <p className="text-xs text-muted-foreground text-center">
+                <p className="text-meta text-muted-foreground text-center">
                   Generating sentence {Math.min(genProgress.done + 1, genProgress.total)} of {genProgress.total}…
                 </p>
               </div>
@@ -407,22 +407,22 @@ const TTSModal = forwardRef<TTSModalHandle, {
                   natively and the web build has no source, so this only matters in dev. */}
               {import.meta.env.DEV && (
                 <div className="flex items-center gap-2">
-                  <label htmlFor="vramHelperUrl" className="text-xs text-muted-foreground whitespace-nowrap">VRAM helper URL</label>
+                  <label htmlFor="vramHelperUrl" className="text-meta text-muted-foreground whitespace-nowrap">VRAM helper URL</label>
                   <Input
                     id="vramHelperUrl"
                     value={vramHelperUrl}
                     onChange={(e) => setVramHelperUrl(e.target.value)}
-                    className="h-8 text-xs"
+                    className="h-8 text-meta"
                   />
                 </div>
               )}
               {!webGPUSupported && (
-                <div className="text-sm text-destructive">
+                <div className="text-label text-destructive">
                   WebGPU is not supported in your browser. Please use a WebGPU-enabled browser like Chrome Canary or Edge Canary.
                 </div>
               )}
               {lowVram && (
-                <div className="text-sm text-destructive whitespace-nowrap">
+                <div className="text-label text-destructive whitespace-nowrap">
                   Low VRAM: ~{KOKORO_VRAM_ESTIMATE_MB} MB needed, only {minFreeMB} MB free — loading may fail or fall back to CPU.
                 </div>
               )}

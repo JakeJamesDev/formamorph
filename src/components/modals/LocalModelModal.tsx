@@ -93,18 +93,18 @@ function InstalledRow({ item, engine, busyFile, onLoad, onUnload, onDelete }: {
         <GripVertical className="h-4 w-4" />
       </span>
       <div className="min-w-0 flex-grow">
-        <div className="flex items-center gap-2 truncate text-sm font-medium">
+        <div className="flex items-center gap-2 truncate text-label font-medium">
           {name}
-          {isLoaded && <span className="rounded bg-success px-1.5 py-0.5 text-xs text-success-foreground">Loaded</span>}
+          {isLoaded && <span className="rounded bg-success px-1.5 py-0.5 text-meta text-success-foreground">Loaded</span>}
         </div>
-        {known && <div className="truncate text-xs text-muted-foreground">{item.fileName}</div>}
+        {known && <div className="truncate text-meta text-muted-foreground">{item.fileName}</div>}
         {external && (
-          <div className="truncate text-xs text-muted-foreground" title={item.path}>
+          <div className="truncate text-meta text-muted-foreground" title={item.path}>
             {item.subpath ? `From ${item.subpath}` : 'From your other folder'}
           </div>
         )}
       </div>
-      <span className="shrink-0 text-xs tabular-nums text-muted-foreground">{formatModelSize(item.size)}</span>
+      <span className="shrink-0 text-meta tabular-nums text-muted-foreground">{formatModelSize(item.size)}</span>
       {/* One fixed-width toggle so Load / Unload / Loading… never change the row's button size. */}
       <Button
         size="sm"
@@ -177,7 +177,7 @@ function MoveModelsDialog({ flow, onMove, onSkip, onCancel, onDone }: {
                 old download folder. Moving them can take a while for large files on another drive.
               </DialogDescription>
             </DialogHeader>
-            <div className="space-y-2 text-xs">
+            <div className="space-y-2 text-meta">
               <div className="truncate font-mono text-muted-foreground" title={flow.from}>From {flow.from}</div>
               <div className="truncate font-mono text-muted-foreground" title={flow.to}>To {flow.to}</div>
               <p className="text-warning">
@@ -207,7 +207,7 @@ function MoveModelsDialog({ flow, onMove, onSkip, onCancel, onDone }: {
             </DialogHeader>
             <div className="space-y-2">
               <Progress value={flow.progress?.totalBytes ? Math.round((flow.progress.movedBytes / flow.progress.totalBytes) * 100) : 0} />
-              <div className="flex items-center justify-between text-xs text-muted-foreground">
+              <div className="flex items-center justify-between text-meta text-muted-foreground">
                 <span className="truncate">{flow.progress?.file ?? 'Starting…'}</span>
                 {flow.progress && (
                   <span className="shrink-0 tabular-nums">
@@ -231,7 +231,7 @@ function MoveModelsDialog({ flow, onMove, onSkip, onCancel, onDone }: {
               </DialogDescription>
             </DialogHeader>
             {flow.result.skipped.length > 0 && (
-              <div className="space-y-2 text-xs">
+              <div className="space-y-2 text-meta">
                 <div>
                   Still in <span className="font-mono">{flow.from}</span>, which is no longer searched:
                 </div>
@@ -286,9 +286,9 @@ function SearchLocations({ locations, onChange, onChangeDownloadDir }: {
             {/* The path gets its own line above the buttons: these run long, and truncating one to make
                 room for controls hides the part that identifies the folder. */}
             <div className="flex items-baseline gap-2">
-              <span className="min-w-0 flex-grow truncate font-mono text-xs" title={rootDir}>{rootDir}</span>
+              <span className="min-w-0 flex-grow truncate font-mono text-meta" title={rootDir}>{rootDir}</span>
               {freeBytes !== null && (
-                <span className="shrink-0 text-xs tabular-nums text-muted-foreground">
+                <span className="shrink-0 text-meta tabular-nums text-muted-foreground">
                   {formatModelSize(freeBytes)} free
                 </span>
               )}
@@ -312,12 +312,12 @@ function SearchLocations({ locations, onChange, onChangeDownloadDir }: {
               )}
             </div>
             {downloadDirMissing && (
-              <p className="text-xs text-destructive">
+              <p className="text-meta text-destructive">
                 That folder isn&apos;t available right now — downloads are paused until it&apos;s back or you choose another.
               </p>
             )}
             {!isDefaultDir && (
-              <p className="text-xs text-muted-foreground">
+              <p className="text-meta text-muted-foreground">
                 Models live outside the app folder now, so copying the app folder won&apos;t bring them along.
                 The default is <span className="font-mono">{defaultDir}</span>.
               </p>
@@ -335,7 +335,7 @@ function SearchLocations({ locations, onChange, onChangeDownloadDir }: {
             Folder
           </RowLabel>
           <div className="space-y-2">
-            <div className="min-w-0 truncate text-xs" title={externalDir ?? undefined}>
+            <div className="min-w-0 truncate text-meta" title={externalDir ?? undefined}>
               {externalDir
                 ? <span className="font-mono">{externalDir}</span>
                 : <span className="text-muted-foreground">Not set</span>}
@@ -374,7 +374,7 @@ function SearchLocations({ locations, onChange, onChangeDownloadDir }: {
               )}
             </div>
             {externalMissing && (
-              <p className="text-xs text-warning">
+              <p className="text-meta text-warning">
                 That folder isn&apos;t available right now — its models are hidden until it&apos;s back.
               </p>
             )}
@@ -596,7 +596,7 @@ export function LocalModelModal({ open, onOpenChange }: { open: boolean; onOpenC
           <ToggleGroupItem value="options">Options</ToggleGroupItem>
         </ToggleGroup>
 
-        {error && <div className="shrink-0 text-xs text-destructive">{error}</div>}
+        {error && <div className="shrink-0 text-meta text-destructive">{error}</div>}
 
         {view === 'options' ? (
           <ScrollArea className="min-h-0 flex-1">
@@ -607,7 +607,7 @@ export function LocalModelModal({ open, onOpenChange }: { open: boolean; onOpenC
           <ScrollArea className="min-h-0 flex-1">
             <div className="space-y-2">
             {installed.length === 0 ? (
-              <div className="pt-8 text-center text-sm text-muted-foreground">
+              <div className="pt-8 text-center text-helper text-muted-foreground">
                 No models installed. Grab one from the Recommended tab, drop a `.gguf` into your download
                 folder, or point us at a folder you already keep models in from the Options tab.
               </div>
@@ -655,7 +655,7 @@ export function LocalModelModal({ open, onOpenChange }: { open: boolean; onOpenC
               onValueChange={(v) => { if (v) setTier(v as VramTier); }}
               className="shrink-0 grid w-full grid-cols-4"
             >
-              {VRAM_TIERS.map((t) => <ToggleGroupItem key={t.value} value={t.value} className="text-xs">{t.label}</ToggleGroupItem>)}
+              {VRAM_TIERS.map((t) => <ToggleGroupItem key={t.value} value={t.value} className="text-meta">{t.label}</ToggleGroupItem>)}
             </ToggleGroup>
 
             <ScrollArea className="min-h-0 flex-1">
@@ -680,22 +680,22 @@ export function LocalModelModal({ open, onOpenChange }: { open: boolean; onOpenC
                     <div className="flex items-start justify-between gap-2">
                       <div>
                         <div className="font-medium">
-                          {m.name} <span className="text-xs text-muted-foreground">{m.params} · {m.quant} · {formatModelSize(m.sizeBytes)}</span>
+                          {m.name} <span className="text-meta text-muted-foreground">{m.params} · {m.quant} · {formatModelSize(m.sizeBytes)}</span>
                           {m.reasoning && <span className="ml-1.5 rounded bg-info/15 px-1.5 py-0.5 align-middle text-[10px] font-medium text-info">Reasoning</span>}
                         </div>
-                        <div className="text-xs text-muted-foreground">{m.note}</div>
-                        <div className="text-xs text-muted-foreground">License: {m.license}</div>
+                        <div className="text-meta text-muted-foreground">{m.note}</div>
+                        <div className="text-meta text-muted-foreground">License: {m.license}</div>
                       </div>
                       <div className="flex shrink-0 flex-col items-end gap-1">
-                        <span className="text-xs text-muted-foreground">Released {formatReleased(m.released)}</span>
-                        {isLoaded && <span className="rounded bg-success px-2 py-0.5 text-xs text-success-foreground">Loaded</span>}
+                        <span className="text-meta text-muted-foreground">Released {formatReleased(m.released)}</span>
+                        {isLoaded && <span className="rounded bg-success px-2 py-0.5 text-meta text-success-foreground">Loaded</span>}
                       </div>
                     </div>
 
                     {thisDownloading ? (
                       <div className="space-y-1">
                         <Progress value={pct} />
-                        <div className="flex items-center justify-between text-xs text-muted-foreground">
+                        <div className="flex items-center justify-between text-meta text-muted-foreground">
                           <span>{formatModelSize(progress.received)} / {formatModelSize(progress.total || m.sizeBytes)} ({pct}%)</span>
                           <Button size="sm" variant="ghost" onClick={() => cancelLocalDownload()}>Pause</Button>
                         </div>
@@ -722,7 +722,7 @@ export function LocalModelModal({ open, onOpenChange }: { open: boolean; onOpenC
                               Resume ({partialPct}%)
                             </Button>
                             <Button size="sm" variant="outline" onClick={() => discardPartial(m)} disabled={busy || downloading}>Discard</Button>
-                            <span className="text-xs text-muted-foreground">
+                            <span className="text-meta text-muted-foreground">
                               {formatModelSize(partialBytes)} / {formatModelSize(m.sizeBytes)}
                             </span>
                           </>
@@ -731,7 +731,7 @@ export function LocalModelModal({ open, onOpenChange }: { open: boolean; onOpenC
                             <Button size="sm" onClick={() => startDownload(m)} disabled={downloading}>
                               Download ({formatModelSize(m.sizeBytes)})
                             </Button>
-                            <span className="text-xs text-muted-foreground">{downloadsLabel}</span>
+                            <span className="text-meta text-muted-foreground">{downloadsLabel}</span>
                           </>
                         )}
                       </div>

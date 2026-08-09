@@ -151,7 +151,7 @@ export function RemoteWorldCard({
     >
       {/* Three counts across the row: likes take the left where downloads used to sit, and downloads move
           to the middle rather than shrinking — three evenly spread numbers read as one set. */}
-      <div className="grid grid-cols-3 items-center text-xs text-muted-foreground mb-2">
+      <div className="grid grid-cols-3 items-center text-meta text-muted-foreground mb-2">
         <LikeButton
           likes={world.likes || 0}
           liked={world.liked}
@@ -176,7 +176,7 @@ export function RemoteWorldCard({
       {/* Only its author and the admins ever see this card, so the deadline is said plainly rather than
           hinted at — the author has something to do about it and a date by which to do it. */}
       {quarantined && (
-        <div className="mb-2 rounded-md border border-warning/40 bg-warning/10 px-2 py-1 text-xs">
+        <div className="mb-2 rounded-md border border-warning/40 bg-warning/10 px-2 py-1 text-meta">
           <p className="flex items-center gap-1 font-medium text-warning">
             <ShieldAlert className="h-3 w-3 shrink-0" /> Quarantined
           </p>

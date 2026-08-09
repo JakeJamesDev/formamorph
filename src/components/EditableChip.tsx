@@ -106,7 +106,7 @@ export function EditableChip({ value, onCommit, onRemove, sortable = false, getS
           // `w-auto` beats ChipInput's own `w-full`: this one sits inline among chips and should be as wide
           // as what is in it. The 3ch floor is the same one the plain text input it replaces used, so an
           // empty field is still big enough to click into.
-          className="min-h-0 w-auto min-w-[3ch] max-w-full rounded border bg-secondary px-1.5 py-0.5 text-xs"
+          className="min-h-0 w-auto min-w-[3ch] max-w-full rounded border bg-secondary px-1.5 py-0.5 text-meta"
         />
       </span>
     );

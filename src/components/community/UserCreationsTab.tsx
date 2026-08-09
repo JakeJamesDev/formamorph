@@ -80,14 +80,14 @@ export function UserCreationsTab({ userId, username, onOpenListing }: UserCreati
   }
 
   if (error) {
-    return <p className="py-6 text-center text-sm text-destructive">{error}</p>;
+    return <p className="py-6 text-center text-label text-destructive">{error}</p>;
   }
 
   // Said once for the whole account rather than per kind, so somebody who has published nothing isn't
   // asked to click through three empty filters to find that out.
   if (creations.length === 0) {
     return (
-      <p className="py-6 text-center text-sm text-muted-foreground">
+      <p className="py-6 text-center text-helper text-muted-foreground">
         {username || 'They'} hasn&apos;t published anything yet.
       </p>
     );
@@ -120,7 +120,7 @@ export function UserCreationsTab({ userId, username, onOpenListing }: UserCreati
                 title={KIND_LABELS[k].many}
               >
                 <Icon className="h-4 w-4" />
-                <span className="text-xs tabular-nums">{counts[k]}</span>
+                <span className="text-meta tabular-nums">{counts[k]}</span>
               </ToggleGroupItem>
             );
           })}
@@ -154,16 +154,16 @@ export function UserCreationsTab({ userId, username, onOpenListing }: UserCreati
                   <button
                     type="button"
                     onClick={() => onOpenListing({ id: item.id, kind: item.kind })}
-                    className="block w-full truncate text-left text-sm font-medium underline-offset-2 hover:underline focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring rounded-sm"
+                    className="block w-full truncate text-left text-label font-medium underline-offset-2 hover:underline focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring rounded-sm"
                     aria-label={`Open ${item.name} in Community Creations`}
                   >
                     {item.name}
                   </button>
                 ) : (
-                  <span className="block truncate text-sm font-medium">{item.name}</span>
+                  <span className="block truncate text-label font-medium">{item.name}</span>
                 )}
 
-                <p className="flex items-center gap-3 text-xs text-muted-foreground">
+                <p className="flex items-center gap-3 text-meta text-muted-foreground">
                   <LikeButton likes={item.likes} />
                   <span className="inline-flex items-center gap-1">
                     <Download className="h-3 w-3" aria-hidden />

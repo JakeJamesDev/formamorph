@@ -174,7 +174,7 @@ export function ChipTypeaheadPlugin({ trigger, vocab }: {
             onMouseDown={(e) => { e.preventDefault(); insert(item.token); }}
             onMouseEnter={() => setIndex(i)}
             className={cn(
-              'flex w-full items-center gap-2 rounded px-1.5 py-1 text-left text-sm',
+              'flex w-full items-center gap-2 rounded px-1.5 py-1 text-left text-label',
               i === index && 'bg-accent',
             )}
           >

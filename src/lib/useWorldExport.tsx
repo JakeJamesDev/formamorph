@@ -79,7 +79,7 @@ export function useWorldExport(promptWorld: (world: World) => Promise<World | nu
           </DialogDescription>
         </DialogHeader>
         {embedding ? (
-          <p className="text-sm text-muted-foreground">
+          <p className="text-helper text-muted-foreground">
             Downloading images… {embedding.done} of {embedding.total}
           </p>
         ) : (

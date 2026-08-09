@@ -44,7 +44,7 @@ export function PolicyDialog({
 
         {/* `min-w-0`: DialogContent is a grid, and a grid item's `min-width: auto` lets long authored
             text widen the dialog past its max width. */}
-        <div className="py-2 text-sm min-w-0">
+        <div className="py-2 text-label min-w-0">
           <MarkdownRenderer text={body} />
         </div>
 

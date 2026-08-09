@@ -34,7 +34,7 @@ const PlaceholderPaletteBar = ({ placeholders, className }: {
           type="button"
           onClick={() => setCollapsed(!collapsed)}
           aria-expanded={!collapsed}
-          className="flex flex-shrink-0 items-center gap-1 rounded px-1 py-0.5 text-xs text-muted-foreground hover:bg-accent hover:text-foreground"
+          className="flex flex-shrink-0 items-center gap-1 rounded px-1 py-0.5 text-meta text-muted-foreground hover:bg-accent hover:text-foreground"
         >
           {collapsed ? <ChevronRight className="h-3.5 w-3.5" /> : <ChevronDown className="h-3.5 w-3.5" />}
           Placeholders

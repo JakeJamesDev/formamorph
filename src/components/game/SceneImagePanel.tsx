@@ -71,14 +71,14 @@ export const SceneImagePanel = ({
       {busy && (
         <div className="flex items-center gap-2">
           {job === 'tags' || progress === null ? (
-            <span className="flex items-center gap-2 text-xs text-muted-foreground">
+            <span className="flex items-center gap-2 text-meta text-muted-foreground">
               <Loader2 className="h-4 w-4 animate-spin" />
               {job === 'tags' ? 'Writing tags…' : 'Drawing this scene…'}
             </span>
           ) : (
             <>
               <Progress value={progress * 100} className="h-1.5 flex-1" />
-              <span className="text-xs text-muted-foreground whitespace-nowrap">{Math.round(progress * 100)}%</span>
+              <span className="text-meta text-muted-foreground whitespace-nowrap">{Math.round(progress * 100)}%</span>
             </>
           )}
           <Button variant="destructive" size="icon" className="h-7 w-7 shrink-0" onClick={onCancel} title="Stop">
@@ -118,7 +118,7 @@ export const SceneImagePanel = ({
             >
               <ChevronLeft className="h-4 w-4" />
             </Button>
-            <span className="text-xs text-muted-foreground tabular-nums">{Math.min(index, images.length - 1) + 1}/{images.length}</span>
+            <span className="text-meta text-muted-foreground tabular-nums">{Math.min(index, images.length - 1) + 1}/{images.length}</span>
             <Button
               variant="ghost"
               size="icon"
@@ -133,7 +133,7 @@ export const SceneImagePanel = ({
           </>
         )}
         <div className="flex-1" />
-        <Button variant="ghost" size="sm" className="text-xs" onClick={() => setShowTags((v) => !v)}>
+        <Button variant="ghost" size="sm" className="text-meta" onClick={() => setShowTags((v) => !v)}>
           {showTags ? 'Hide tags' : 'Tags'}
         </Button>
         {current && (

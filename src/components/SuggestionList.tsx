@@ -23,7 +23,7 @@ export function SuggestionList({ items, active, onPick, onHover, className }: {
           key={s}
           onMouseDown={(e) => { e.preventDefault(); onPick(s); }}
           onMouseEnter={() => onHover(i)}
-          className={cn("flex w-full items-center rounded-sm px-2 py-1.5 text-sm text-left", i === active && "bg-accent text-accent-foreground")}
+          className={cn("flex w-full items-center rounded-sm px-2 py-1.5 text-label text-left", i === active && "bg-accent text-accent-foreground")}
         >
           {s}
         </button>

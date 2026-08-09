@@ -136,7 +136,7 @@ function DictZone({ bookId, position, entries, collapsed, onToggleCollapse, flat
                 onRemove={onRemoveEntry}
               />
             ))}
-            {!flat && entries.length === 0 && <p className="px-2 py-1 text-xs text-muted-foreground">Drag entries here.</p>}
+            {!flat && entries.length === 0 && <p className="px-2 py-1 text-meta text-muted-foreground">Drag entries here.</p>}
           </div>
         </SortableContext>
       )}
@@ -208,7 +208,7 @@ function BookRow({ book, collapsed, collapsedZones, selectedId, onToggleCollapse
         )}
         <span className="min-w-0 flex-grow truncate font-medium">{book.name}</span>
         <span
-          className={`shrink-0 text-xs mr-1 ${selected ? 'text-primary-foreground/80' : 'text-muted-foreground'}`}
+          className={`shrink-0 text-meta mr-1 ${selected ? 'text-primary-foreground/80' : 'text-muted-foreground'}`}
           title={advanced ? 'Enabled entries / total entries' : 'Entries'}
         >
           {advanced ? `${enabledCount}/${book.entries.length}` : book.entries.length}

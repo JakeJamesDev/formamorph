@@ -18,7 +18,7 @@ export const MarkdownPanel = forwardRef<HTMLDivElement, {
   className?: string;
 }>(function MarkdownPanel({ text, placeholder, className }, ref) {
   return (
-    <ScrollArea className={cn('rounded-md border bg-muted/30 text-sm', className)}>
+    <ScrollArea className={cn('rounded-md border bg-muted/30 text-label', className)}>
       <div ref={ref} className="p-3 [&_:first-child]:mt-0">
         {text
           // Keyed by content: Streamdown memoizes on source position, so replacing the text in place

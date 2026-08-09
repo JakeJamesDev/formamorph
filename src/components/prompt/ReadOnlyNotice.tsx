@@ -17,7 +17,7 @@ export function ReadOnlyNotice({ reason, onRequestEdit, className }: {
   return (
     <div
       className={cn(
-        'flex flex-shrink-0 items-center gap-2 rounded-md border border-border bg-muted/50 px-2 py-1 text-xs text-muted-foreground',
+        'flex flex-shrink-0 items-center gap-2 rounded-md border border-border bg-muted/50 px-2 py-1 text-meta text-muted-foreground',
         className,
       )}
       title={reason}

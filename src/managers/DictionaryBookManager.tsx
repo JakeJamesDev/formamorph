@@ -31,7 +31,7 @@ const DictionaryBookManager = ({ book }: { book: Dictionary }) => {
         />
       </div>
       {advanced && (
-        <label className="flex items-center gap-2 text-sm">
+        <label className="flex items-center gap-2 text-label">
           <Checkbox
             checked={book.enabled !== false}
             onCheckedChange={(v) => updateDictionary({ ...book, enabled: v === true })}
@@ -39,7 +39,7 @@ const DictionaryBookManager = ({ book }: { book: Dictionary }) => {
           Enabled — inject entries from this dictionary
         </label>
       )}
-      <p className="text-xs text-muted-foreground">
+      <p className="text-meta text-muted-foreground">
         {book.entries.length} {book.entries.length === 1 ? 'entry' : 'entries'}. Use the + on this dictionary
         (left) to add one, then select an entry to edit it.
         {advanced && ' Disabling mutes every entry in this book at once.'}

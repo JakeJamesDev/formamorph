@@ -30,11 +30,11 @@ export default function VramReadout({
         : stats.status === "no-gpu"
           ? "No NVIDIA GPU detected."
           : "VRAM helper not running — start it with npm run vram-helper.";
-    return <p className="text-xs text-muted-foreground">{msg}</p>;
+    return <p className="text-meta text-muted-foreground">{msg}</p>;
   }
 
   return (
-    <div className="space-y-3 text-xs">
+    <div className="space-y-3 text-meta">
       {stats.gpus.map((gpu, i) => {
         const usedPct =
           gpu.totalMB && gpu.usedMB != null ? (gpu.usedMB / gpu.totalMB) * 100 : 0;

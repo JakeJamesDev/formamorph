@@ -171,7 +171,7 @@ const StatManager = ({ stat }: { stat: Stat }) => {
           />
           <span>Enabled</span>
         </label>
-        <p className="text-sm text-muted-foreground">
+        <p className="text-helper text-muted-foreground">
           Turn this off to keep the stat hidden until a trait switches it on. A disabled stat is invisible
           to the player and the AI, and its regen and code pause.
         </p>
@@ -245,7 +245,7 @@ const StatManager = ({ stat }: { stat: Stat }) => {
           )}
           <div>
             <Label>Body Sliders</Label>
-            <p className="py-2 text-sm text-muted-foreground">
+            <p className="py-2 text-helper text-muted-foreground">
               Bind body morph sliders to this stat — its value (min→max) drives each slider.
             </p>
             <MultiSelect
@@ -263,7 +263,7 @@ const StatManager = ({ stat }: { stat: Stat }) => {
           {advanced && (
           <div className="space-y-2">
             <Label>Prevent AI Changes</Label>
-            <p className="text-sm text-muted-foreground">Stop the AI from changing this stat in a given direction.</p>
+            <p className="text-helper text-muted-foreground">Stop the AI from changing this stat in a given direction.</p>
             <div className="grid grid-cols-2 gap-2">
               <label className="flex items-center space-x-2 cursor-pointer">
                 <Checkbox
@@ -380,20 +380,20 @@ const StatManager = ({ stat }: { stat: Stat }) => {
           icon={<Code className="h-4 w-4" />}
           title="Dynamic Value Calculation (Optional)"
         >
-            <p className="text-sm text-muted-foreground">
+            <p className="text-helper text-muted-foreground">
               Write JavaScript code to dynamically calculate this stat&apos;s value
               based on other stats and the story clock. The code should return a number. You have
               access to the &apos;stats&apos; array containing all stats, plus:
             </p>
 
-            <ul className="text-xs text-muted-foreground space-y-1 pl-4">
+            <ul className="text-meta text-muted-foreground space-y-1 pl-4">
               <li><code>deltaHours</code> — story hours this turn took (1 with the in-world clock off)</li>
               <li><code>elapsedHours</code> — total story hours so far, counting this turn</li>
               <li><code>day</code> / <code>daypart</code> — where the story stands at the <em>end</em> of the turn</li>
               <li><code>startDay</code> / <code>startDaypart</code> — where it stood at the <em>start</em></li>
             </ul>
 
-            <p className="text-xs text-muted-foreground">
+            <p className="text-meta text-muted-foreground">
               Dayparts are <code>night</code>, <code>dawn</code>, <code>morning</code>, <code>midday</code>,{" "}
               <code>afternoon</code>, <code>evening</code>. Code that mentions any of these variables re-runs
               every turn; other code only re-runs when a stat changes.
@@ -406,7 +406,7 @@ const StatManager = ({ stat }: { stat: Stat }) => {
 const health = stats.find(s => s.name === 'Health')?.value || 0;
 const strength = stats.find(s => s.name === 'Strength')?.value || 0;
 return (health + strength) / 2;"
-              className="font-mono text-sm"
+              className="font-mono text-label"
               rows={6}
             />
 
@@ -445,11 +445,11 @@ return (health + strength) / 2;"
               )}
 
               {codeError && (
-                <div className="text-destructive text-sm">Error: {codeError}</div>
+                <div className="text-destructive text-label">Error: {codeError}</div>
               )}
             </div>
 
-            <p className="text-xs text-muted-foreground">
+            <p className="text-meta text-muted-foreground">
               Note: When code is provided, it will override the manual value
               setting. Leave empty to use the manual value. AI can&apos;t modify
               stats with code (but it can see the stat value and desc). Test Code runs as a

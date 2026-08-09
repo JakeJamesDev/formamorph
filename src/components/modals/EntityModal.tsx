@@ -142,7 +142,7 @@ export const EntityModal = ({ entity, isOpen, onOpenChange, editing }: {
                 </div>
               ) : mode === 'preview' ? (
                 <div className="flex flex-col gap-2">
-                  <p className="text-xs uppercase tracking-wide text-muted-foreground">New Description</p>
+                  <p className="text-meta uppercase tracking-wide text-muted-foreground">New Description</p>
                   <p>{preview}</p>
                   <div className="flex gap-2 justify-end">
                     <Button variant="ghost" size="sm" onClick={discardPreview}>Discard</Button>
@@ -159,7 +159,7 @@ export const EntityModal = ({ entity, isOpen, onOpenChange, editing }: {
                   {editing && (
                     <div className="flex gap-2 justify-end items-center">
                       {regenError && (
-                        <span className="text-xs text-muted-foreground mr-auto">Nothing usable came back. Try again.</span>
+                        <span className="text-meta text-muted-foreground mr-auto">Nothing usable came back. Try again.</span>
                       )}
                       <Button variant="ghost" size="sm" onClick={startEdit} disabled={regenerating}>
                         <Pencil className="h-4 w-4 mr-1" /> Edit

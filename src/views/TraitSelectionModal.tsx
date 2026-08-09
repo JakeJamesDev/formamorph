@@ -125,10 +125,10 @@ const TraitSelectionModal = ({
         <label htmlFor={`trait-${trait.id}`} className="font-semibold">{describe(trait.name)}</label>
       </div>
       {trait.playerDescription?.trim() && (
-        <p className="text-xs sm:text-sm mb-2">{resolveTraitText(trait, trait.playerDescription)}</p>
+        <p className="text-meta sm:text-label mb-2">{resolveTraitText(trait, trait.playerDescription)}</p>
       )}
       {trait.statChanges.length > 0 && (
-        <div className="text-xs sm:text-sm">
+        <div className="text-meta sm:text-label">
           <strong>Stat Changes:</strong>
           <ul className="list-disc list-inside">
             {trait.statChanges.map((change, idx) => (
@@ -170,7 +170,7 @@ const TraitSelectionModal = ({
   return (
     <Card className="fixed inset-0 m-auto w-[95%] max-w-[600px] h-[90dvh] max-h-[800px] z-50">
       <CardContent className="p-3 sm:p-6 h-full flex flex-col">
-        <h2 className="text-lg sm:text-xl font-semibold mb-3">Select Starting Traits</h2>
+        <h2 className="text-title sm:text-heading font-semibold mb-3">Select Starting Traits</h2>
 
         {/* Tab rows — one per nesting level, styled like the editor/settings tabs. The active group's
             player description sits under its own row; the row reserves the height of its tallest
@@ -201,7 +201,7 @@ const TraitSelectionModal = ({
                     {describedGroups.map((g) => (
                       <p
                         key={g.id}
-                        className={`col-start-1 row-start-1 text-sm text-muted-foreground ${
+                        className={`col-start-1 row-start-1 text-helper text-muted-foreground ${
                           g.id === row.active ? '' : 'invisible'
                         }`}
                       >
@@ -217,7 +217,7 @@ const TraitSelectionModal = ({
 
         <ScrollArea className="flex-1 mb-4">
           {sectionTraits.length === 0 ? (
-            <p className="text-sm text-muted-foreground p-2">No traits in this section.</p>
+            <p className="text-helper text-muted-foreground p-2">No traits in this section.</p>
           ) : isExclusive ? (
             <RadioGroup value={exclusiveValue} onValueChange={onTraitSelect}>
               {traitRows}

@@ -45,11 +45,11 @@ export const WorldCardShell = forwardRef<HTMLDivElement, WorldCardShellProps>(fu
         )}
       </div>
       <div className="p-4 flex flex-col flex-grow">
-        <h3 className="font-semibold text-lg mb-1">{name}</h3>
-        <div className="text-sm text-muted-foreground mb-2 max-h-20 overflow-hidden">
+        <h3 className="font-semibold text-title mb-1">{name}</h3>
+        <div className="text-helper text-muted-foreground mb-2 max-h-20 overflow-hidden">
           <MarkdownRenderer text={description || 'No description available.'} />
         </div>
-        {author != null && <div className="text-xs text-muted-foreground mb-1">{author}</div>}
+        {author != null && <div className="text-meta text-muted-foreground mb-1">{author}</div>}
         {children}
       </div>
     </div>

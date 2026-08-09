@@ -114,9 +114,9 @@ function readTokens(): Record<string, string> {
 function Row({ label, hint, children }: { label: string; hint?: string; children: ReactNode }) {
   return (
     <div className="grid grid-cols-1 sm:grid-cols-3 items-start gap-2">
-      <div className="text-sm">
+      <div className="text-label">
         <div>{label}</div>
-        {hint && <div className="text-xs text-muted-foreground">{hint}</div>}
+        {hint && <div className="text-meta text-muted-foreground">{hint}</div>}
       </div>
       <div className="sm:col-span-2">{children}</div>
     </div>
@@ -142,8 +142,8 @@ function PreviewPanel() {
   return (
     <div className="space-y-5 rounded-md border border-border bg-background p-5 text-foreground">
       <div>
-        <h3 className="text-lg font-semibold">Lorem ipsum dolor</h3>
-        <p className="text-sm text-muted-foreground">
+        <h3 className="text-title font-semibold">Lorem ipsum dolor</h3>
+        <p className="text-helper text-muted-foreground">
           Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt.
         </p>
       </div>
@@ -157,15 +157,15 @@ function PreviewPanel() {
 
         <TabsContent value="general" className="space-y-4 pt-3">
           <Row label="Enable feature" hint="A checkbox with helper text.">
-            <label className="flex items-center gap-2 text-sm">
+            <label className="flex items-center gap-2 text-label">
               <Checkbox defaultChecked /> Consectetur adipiscing
             </label>
           </Row>
 
           <Row label="Mode" hint="Pick one option.">
             <RadioGroup defaultValue="a" className="gap-1">
-              <label className="flex items-center gap-2 text-sm"><RadioGroupItem value="a" /> Tempor incididunt</label>
-              <label className="flex items-center gap-2 text-sm"><RadioGroupItem value="b" /> Labore et dolore</label>
+              <label className="flex items-center gap-2 text-label"><RadioGroupItem value="a" /> Tempor incididunt</label>
+              <label className="flex items-center gap-2 text-label"><RadioGroupItem value="b" /> Labore et dolore</label>
             </RadioGroup>
           </Row>
 
@@ -202,10 +202,10 @@ function PreviewPanel() {
           </Row>
         </TabsContent>
 
-        <TabsContent value="appearance" className="pt-3 text-sm text-muted-foreground">
+        <TabsContent value="appearance" className="pt-3 text-helper text-muted-foreground">
           Lorem ipsum dolor sit amet — switch tabs to see the active-tab treatment.
         </TabsContent>
-        <TabsContent value="advanced" className="pt-3 text-sm text-muted-foreground">
+        <TabsContent value="advanced" className="pt-3 text-helper text-muted-foreground">
           Consectetur adipiscing elit, sed do eiusmod tempor.
         </TabsContent>
       </Tabs>
@@ -230,7 +230,7 @@ function PreviewPanel() {
           return (
             <div key={row} className={`p-2 rounded-md flex items-center gap-1 ${selected ? 'bg-primary text-primary-foreground' : 'hover:bg-secondary'}`}>
               <span className={`px-1 ${selected ? 'text-primary-foreground' : 'text-muted-foreground'}`}><GripVertical className="h-4 w-4" /></span>
-              <span className="flex-grow text-sm">{row}</span>
+              <span className="flex-grow text-label">{row}</span>
               <Button variant="ghost" size="icon" className={selected ? 'text-primary-foreground' : 'text-muted-foreground'}><Copy className="h-4 w-4" /></Button>
               <Button variant="ghost" size="icon" className={selected ? 'text-primary-foreground' : 'text-muted-foreground'}><X className="h-4 w-4" /></Button>
             </div>
@@ -239,9 +239,9 @@ function PreviewPanel() {
       </div>
 
       <div className="flex flex-wrap gap-2">
-        <span className="rounded px-2 py-0.5 text-xs font-medium bg-success text-success-foreground">Success</span>
-        <span className="rounded px-2 py-0.5 text-xs font-medium bg-warning text-warning-foreground">Warning</span>
-        <span className="rounded px-2 py-0.5 text-xs font-medium bg-info text-info-foreground">Info</span>
+        <span className="rounded px-2 py-0.5 text-meta font-medium bg-success text-success-foreground">Success</span>
+        <span className="rounded px-2 py-0.5 text-meta font-medium bg-warning text-warning-foreground">Warning</span>
+        <span className="rounded px-2 py-0.5 text-meta font-medium bg-info text-info-foreground">Info</span>
       </div>
 
       <Alert variant="destructive">
@@ -299,12 +299,12 @@ function ThemePreviewDialog({ open, onOpenChange }: { open: boolean; onOpenChang
             <div className="space-y-4">
             {TOKEN_GROUPS.map((group) => (
               <div key={group.title} className="space-y-1.5">
-                <div className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">{group.title}</div>
+                <div className="text-meta font-semibold uppercase tracking-wide text-muted-foreground">{group.title}</div>
                 {group.tokens.map(({ token, label }) => {
                   const value = values[token] ?? '';
                   const hex = value ? hslTripleToHex(value) : '#000000';
                   return (
-                    <label key={token} className="flex items-center gap-2 text-sm">
+                    <label key={token} className="flex items-center gap-2 text-label">
                       <input
                         type="color"
                         value={hex}
@@ -328,7 +328,7 @@ function ThemePreviewDialog({ open, onOpenChange }: { open: boolean; onOpenChang
         </div>
 
         <DialogFooter className="shrink-0 flex-row items-center justify-between sm:justify-between">
-          <span className="text-xs text-muted-foreground">
+          <span className="text-meta text-muted-foreground">
             Live viewer — nothing is saved. Seeded from your current theme ({resolvedTheme}); edits reset on reopen.
           </span>
           <div className="flex items-center gap-2">

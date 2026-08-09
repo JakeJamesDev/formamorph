@@ -50,7 +50,7 @@ export function FullChangelogLink() {
       href={WIKI_CHANGELOG_URL}
       target="_blank"
       rel="noopener noreferrer"
-      className="text-xs text-muted-foreground hover:text-foreground hover:underline"
+      className="text-meta text-muted-foreground hover:text-foreground hover:underline"
     >
       Full changelog →
     </a>

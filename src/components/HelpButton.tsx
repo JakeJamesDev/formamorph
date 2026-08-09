@@ -63,7 +63,7 @@ export function HelpButton({ topicId, className, tabExtras }: { topicId: string;
             href={wikiUrl}
             target="_blank"
             rel="noopener noreferrer"
-            className="text-xs text-muted-foreground hover:text-foreground hover:underline"
+            className="text-meta text-muted-foreground hover:text-foreground hover:underline"
           >
             Learn more →
           </a>

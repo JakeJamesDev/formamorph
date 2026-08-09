@@ -40,7 +40,7 @@ export function GalleryControls({ count, index, onStep, counterClassName = 'bott
       <div
         // Not a live region: it narrates the arrows, which already say what they do.
         aria-hidden
-        className={`absolute ${counterClassName} left-1/2 -translate-x-1/2 z-10 rounded-full bg-overlay/50 px-2 py-0.5 text-xs text-white ${FADE}`}
+        className={`absolute ${counterClassName} left-1/2 -translate-x-1/2 z-10 rounded-full bg-overlay/50 px-2 py-0.5 text-meta text-white ${FADE}`}
       >
         {index + 1}/{count}
       </div>

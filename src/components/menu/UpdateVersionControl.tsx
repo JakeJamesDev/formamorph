@@ -22,7 +22,7 @@ export function UpdateVersionControl() {
       <button
         type="button"
         onClick={() => setDialogOpen(true)}
-        className="text-xs text-muted-foreground/60 select-none cursor-pointer hover:text-muted-foreground transition-colors"
+        className="text-meta text-muted-foreground/60 select-none cursor-pointer hover:text-muted-foreground transition-colors"
         title="Check for updates"
       >
         v{APP_VERSION}{BUILD_TAG && ` · ${BUILD_TAG}`}
@@ -39,7 +39,7 @@ export function UpdateVersionControl() {
       )}
 
       {state.phase === 'downloaded' && (
-        <Button size="sm" variant="outline" className="h-6 px-2 text-xs" onClick={applyAndRestart}>
+        <Button size="sm" variant="outline" className="h-6 px-2 text-meta" onClick={applyAndRestart}>
           Update &amp; Restart
         </Button>
       )}

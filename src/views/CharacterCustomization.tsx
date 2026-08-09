@@ -112,7 +112,7 @@ const CharacterCustomization = ({ onCharacterCustomized, onBack, onAbort }: {
           </div>
 
           <div className="space-y-2">
-            <h3 className="text-lg font-semibold">Player Avatar</h3>
+            <h3 className="text-title font-semibold">Player Avatar</h3>
             <Select value={selectedModelId} onValueChange={setSelectedModelId}>
               <SelectTrigger>
                 <SelectValue placeholder="Select a Player Avatar" />
@@ -127,7 +127,7 @@ const CharacterCustomization = ({ onCharacterCustomized, onBack, onAbort }: {
               </SelectContent>
             </Select>
             <div className="flex items-center gap-3">
-              <Label htmlFor="model-upload" className="cursor-pointer text-sm text-primary underline">
+              <Label htmlFor="model-upload" className="cursor-pointer text-label text-primary underline">
                 Add .vrm
               </Label>
               <Input id="model-upload" type="file" accept=".vrm,.glb" onChange={handleModelUpload} className="hidden" />

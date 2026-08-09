@@ -79,31 +79,31 @@ export function TermsTab({ active, onAnswered }: TermsTabProps) {
   }
 
   if (!gate) {
-    return <p className="py-8 text-center text-sm text-muted-foreground">There are no terms to show.</p>;
+    return <p className="py-8 text-center text-helper text-muted-foreground">There are no terms to show.</p>;
   }
 
   return (
     <div className="py-4 space-y-4 min-w-0">
       <div>
         <h3 className="font-medium">{gate.title}</h3>
-        {gate.accepted && <p className="text-xs text-success">You have accepted these terms.</p>}
+        {gate.accepted && <p className="text-meta text-success">You have accepted these terms.</p>}
       </div>
 
-      <div className="text-sm min-w-0"><MarkdownRenderer text={gate.body} /></div>
+      <div className="text-label min-w-0"><MarkdownRenderer text={gate.body} /></div>
 
       {gate.accepted ? (
-        <p className="text-sm text-muted-foreground">
+        <p className="text-helper text-muted-foreground">
           Publishing is open to you. If the terms change you&apos;ll be asked to accept the new wording.
         </p>
       ) : (
         <div className="space-y-3 rounded-md border p-4">
           {justDeclined ? (
-            <p className="text-sm text-muted-foreground">
+            <p className="text-helper text-muted-foreground">
               You declined these terms, so publishing stays unavailable. You can accept them here whenever
               you change your mind &mdash; nothing else about your account is affected.
             </p>
           ) : (
-            <p className="text-sm text-muted-foreground">
+            <p className="text-helper text-muted-foreground">
               Accepting is only needed to publish worlds, characters or dictionaries. Everything else works
               either way.
             </p>

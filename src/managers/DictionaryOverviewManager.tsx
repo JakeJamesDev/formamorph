@@ -31,7 +31,7 @@ const DictionaryOverviewManager = ({ book }: { book: Dictionary }) => {
           objectFit="cover"
           previewClassName="w-full max-w-[400px] aspect-video relative rounded-md hover:border-muted-foreground transition-colors"
         />
-        <p className="text-xs text-muted-foreground">
+        <p className="text-meta text-muted-foreground">
           Optional. A dictionary published without one gets a stand-in cover.
         </p>
       </div>

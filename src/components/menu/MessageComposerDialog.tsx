@@ -175,7 +175,7 @@ export function MessageComposerDialog({
 
         <div className="space-y-4 py-2">
           <div className="space-y-2">
-            <label htmlFor="messageSubject" className="text-sm font-medium">Subject</label>
+            <label htmlFor="messageSubject" className="text-label font-medium">Subject</label>
             <Input
               id="messageSubject"
               value={subject}
@@ -187,8 +187,8 @@ export function MessageComposerDialog({
 
           <div className="space-y-2">
             <div className="flex items-baseline justify-between">
-              <span className="text-sm font-medium">Message</span>
-              <span className="text-xs text-muted-foreground">{body.length} / {BODY_MAX}</span>
+              <span className="text-label font-medium">Message</span>
+              <span className="text-meta text-muted-foreground">{body.length} / {BODY_MAX}</span>
             </div>
             {/* Readers see this rendered, so it is authored the same way the world editor's prose is.
                 No placeholders here: any `{{ph…}}` stays inert text, exactly as it would read. */}
@@ -207,7 +207,7 @@ export function MessageComposerDialog({
             <div className="space-y-2">
               {/* "Severity", not "Type": this only sets how loudly the message is styled, and a label
                   naming an action read as though choosing it performed one. */}
-              <label className="text-sm font-medium">Severity</label>
+              <label className="text-label font-medium">Severity</label>
               <Select value={severity} onValueChange={(value) => setSeverity(value as MessageSeverity)}>
                 <SelectTrigger><SelectValue /></SelectTrigger>
                 <SelectContent>
@@ -219,7 +219,7 @@ export function MessageComposerDialog({
             </div>
 
             <div className="space-y-2">
-              <label className="text-sm font-medium">Send As</label>
+              <label className="text-label font-medium">Send As</label>
               <Select value={senderAs} onValueChange={(value) => setSenderAs(value as MessageSenderMode)}>
                 <SelectTrigger><SelectValue /></SelectTrigger>
                 <SelectContent>
@@ -233,7 +233,7 @@ export function MessageComposerDialog({
           {/* Reach and permanence are one escalating choice, since pinning always means everyone gets
               it. A direct message has no audience to widen, so it gets the permanence half only. */}
           <div className="space-y-2">
-            <label className="text-sm font-medium">Who Sees This</label>
+            <label className="text-label font-medium">Who Sees This</label>
 
             <ToggleGroup
               type="single"
@@ -251,12 +251,12 @@ export function MessageComposerDialog({
             </ToggleGroup>
 
             {/* Two lines are reserved so switching options can't shift the fields below. */}
-            <p className="text-xs text-muted-foreground min-h-8">{activeHint}</p>
+            <p className="text-meta text-muted-foreground min-h-8">{activeHint}</p>
           </div>
 
           {/* Editing only. Off by default because most edits are typo fixes. */}
           {editing && (
-            <label className="flex items-start gap-2 text-sm">
+            <label className="flex items-start gap-2 text-label">
               <Checkbox
                 checked={renotify}
                 onCheckedChange={(checked) => setRenotify(checked === true)}
@@ -264,7 +264,7 @@ export function MessageComposerDialog({
               />
               <span>
                 Mark unread again
-                <span className="block text-xs text-muted-foreground">
+                <span className="block text-meta text-muted-foreground">
                   Re-badges everyone, restarts the read count, and returns it to anyone who dismissed it.
                 </span>
               </span>
