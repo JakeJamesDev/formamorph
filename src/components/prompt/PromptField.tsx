@@ -355,7 +355,9 @@ function VariableToolbar({ vocab, interactive }: {
   return (
     // Narrow: one row that scrolls sideways rather than three that stack — the palette is reference
     // material while reading a prompt, and three rows of it cost more screen than the editor can spare.
-    <div className="flex items-center gap-1 flex-shrink-0 overflow-x-auto sm:flex-wrap sm:overflow-visible [scrollbar-width:none] [&::-webkit-scrollbar]{display:none}">
+    // `min-w-0` lets the strip size to its parent rather than to its chips; both halves of that need it,
+    // since a flex item stuck at content width has nothing to scroll within and nothing to wrap into.
+    <div className="flex items-center gap-1 min-w-0 overflow-x-auto sm:flex-wrap sm:overflow-visible [scrollbar-width:none] [&::-webkit-scrollbar]{display:none}">
       <span className="text-meta text-muted-foreground mr-1 flex-shrink-0">Insert:</span>
       {items.map((v) => (
         <button
