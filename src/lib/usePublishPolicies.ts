@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import PolicyService from '@/services/PolicyService';
 import { isUploadTermsDeclined, setUploadTermsDeclined } from '@/lib/uploadTermsDeclined';
 import type { PolicyState } from '@/types';
@@ -18,23 +18,36 @@ export function usePublishPolicies(open: boolean, isAuthenticated: boolean) {
   const [policies, setPolicies] = useState<PolicyState | null>(null);
   const [declined, setDeclined] = useState(isUploadTermsDeclined);
 
+  // Counts reads so a reply that arrives after a newer one started, or after the modal closed, is
+  // dropped rather than applied: the modal refetches every time it opens, so closing and reopening
+  // leaves two in flight, and whichever lands last would otherwise win regardless of which is current.
+  const readId = useRef(0);
+
   const refresh = useCallback(async () => {
+    const read = (readId.current += 1);
+    const apply = (next: PolicyState | null) => {
+      if (read === readId.current) setPolicies(next);
+    };
+
     if (!isAuthenticated) {
-      setPolicies(null);
+      apply(null);
       return;
     }
 
     try {
-      setPolicies(await PolicyService.fetchPolicies());
+      apply(await PolicyService.fetchPolicies());
     } catch (error) {
       // Fail open: no policy state means nothing to show, and the server still refuses if it must.
       console.error('Failed to load publish policies:', error);
-      setPolicies(null);
+      apply(null);
     }
   }, [isAuthenticated]);
 
   useEffect(() => {
     if (open) refresh();
+    // Retires the in-flight read on close and on unmount — the latter is what keeps a late reply from
+    // setting state on a torn-down component.
+    return () => { readId.current += 1; };
   }, [open, refresh]);
 
   const gate = policies?.uploadGate ?? null;
