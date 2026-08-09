@@ -16,11 +16,18 @@ vi.mock('../components/GenerateImageButton', () => ({ GenerateImageButton: () =>
 vi.mock('@/components/AiGenerateButton', () => ({ default: () => <div /> }));
 vi.mock('@/lib/useRemoteImage', () => ({ RemoteImg: ({ src }: { src?: string }) => <img src={src} alt="" /> }));
 
-// A batch drop asks once and is answered "keep as-is", so the stored URLs are the dropped ones untouched —
-// this test is about which slots get filled, not about re-encoding.
-const promptImagesBatch = vi.fn(async () => 'off' as const);
+// Answered "keep as-is" by default, so the stored URLs are the dropped ones untouched — most of these tests
+// are about which slots get filled, not about re-encoding. The conversion tests choose a real mode.
+const promptImagesBatch = vi.fn(async () => 'off' as unknown as 'off' | 'downscale');
 vi.mock('@/lib/useDownscalePrompt', () => ({
   useDownscalePrompt: () => ({ promptImagesBatch, dialog: null }),
+}));
+
+// Gate the encode so the overlay can be inspected mid-run.
+const applyImageOptimize = vi.fn(async (url: string) => url);
+vi.mock('@/lib/imageOptim', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@/lib/imageOptim')>()),
+  applyImageOptimize: (url: string) => applyImageOptimize(url),
 }));
 
 const A = 'data:image/webp;base64,AAAA';
@@ -51,7 +58,11 @@ const slotWrapper = (value: string) =>
 const tile = (name: string) => screen.getByRole('button', { name });
 
 describe('ImageTagsField gallery', () => {
-  beforeEach(() => vi.clearAllMocks());
+  beforeEach(() => {
+    vi.clearAllMocks();
+    // clearAllMocks leaves implementations in place, so the held-open encode is put back per test.
+    applyImageOptimize.mockImplementation(async (url: string) => url);
+  });
 
   it('frames the primary and puts a tile for every picture beneath it, plus one to add', () => {
     setup([A, B]);
@@ -130,6 +141,44 @@ describe('ImageTagsField gallery', () => {
     await waitFor(() => expect(onImagesChange).toHaveBeenCalled());
     expect(promptImagesBatch).toHaveBeenCalledTimes(1);
     expect(onImagesChange.mock.calls[0][0]).toHaveLength(3);
+  });
+
+  it('counts the batch over the frame while it converts, and freezes the strip', async () => {
+    promptImagesBatch.mockResolvedValueOnce('downscale');
+    // Both encodes are held, so the counter has to actually advance between them — releasing only the first
+    // would let a counter stuck at 0 pass, since the run would finish before the second could be read.
+    const release: Array<() => void> = [];
+    applyImageOptimize.mockImplementation((url: string) =>
+      new Promise<string>((resolve) => { release.push(() => resolve(url)); }));
+    setup([A]);
+    const files = [new File(['1'], 'b.png', { type: 'image/png' }), new File(['2'], 'c.png', { type: 'image/png' })];
+
+    fireEvent.drop(screen.getByLabelText('Add a picture'), {
+      dataTransfer: { files, types: ['Files'], getData: () => '' },
+    });
+
+    expect(await screen.findByRole('status', { name: 'Converting image 1 of 2' })).toBeTruthy();
+    expect(tile('Primary picture').closest('div')!.className).toMatch(/pointer-events-none/);
+
+    release[0]();
+    expect(await screen.findByRole('status', { name: 'Converting image 2 of 2' })).toBeTruthy();
+
+    release[1]();
+    await waitFor(() => expect(screen.queryByRole('status')).toBeNull());
+    expect(tile('Primary picture').closest('div')!.className).not.toMatch(/pointer-events-none/);
+  });
+
+  it('shows no bar when the batch is kept at full size — nothing is being converted', async () => {
+    const { onImagesChange } = setup([A]);
+    const files = [new File(['1'], 'b.png', { type: 'image/png' })];
+
+    fireEvent.drop(screen.getByLabelText('Add a picture'), {
+      dataTransfer: { files, types: ['Files'], getData: () => '' },
+    });
+
+    await waitFor(() => expect(onImagesChange).toHaveBeenCalled());
+    expect(screen.queryByRole('status')).toBeNull();
+    expect(applyImageOptimize).not.toHaveBeenCalled();
   });
 
   it('leaves a single-slot subject as the plain uploader, with no strip', () => {

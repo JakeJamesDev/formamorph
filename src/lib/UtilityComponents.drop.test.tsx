@@ -5,9 +5,13 @@ import { IMAGE_CAPS } from './imageOptim';
 
 // The downscale prompt owns a canvas encode jsdom can't run; these tests are about which payload reaches
 // the slot, not about re-encoding, so it passes the URL straight through.
-const promptImage = vi.fn(async (url: string) => url);
+const promptImage = vi.fn(async (url: string, _cap: unknown, onEncoding?: () => void) => { onEncoding?.(); return url; });
 vi.mock('./useDownscalePrompt', () => ({
-  useDownscalePrompt: () => ({ promptImage: (url: string) => promptImage(url), dialog: null, promptWorld: vi.fn() }),
+  useDownscalePrompt: () => ({
+    promptImage: (url: string, cap: unknown, onEncoding?: () => void) => promptImage(url, cap, onEncoding),
+    dialog: null,
+    promptWorld: vi.fn(),
+  }),
 }));
 vi.mock('./useRemoteImage', async (importOriginal) => ({
   ...(await importOriginal<typeof import('./useRemoteImage')>()),
@@ -121,6 +125,55 @@ describe('ImageUpload drag and drop', () => {
 
     fireEvent.dragLeave(zone());
     expect(frame().className).not.toMatch(/border-primary/);
+  });
+
+  it('covers the slot while the picture is re-encoding, and uncovers when it is stored', async () => {
+    let release!: (url: string) => void;
+    promptImage.mockImplementationOnce((url: string, _cap: unknown, onEncoding?: () => void) => {
+      onEncoding?.();
+      return new Promise<string>((resolve) => { release = () => resolve(url); });
+    });
+    render(<ImageUpload id="t" onChange={vi.fn()} cap={IMAGE_CAPS.entity} />);
+
+    fireEvent.drop(zone(), { dataTransfer: transfer({ files: [file('a.png')] }) });
+
+    expect(await screen.findByRole('status', { name: 'Converting image' })).toBeTruthy();
+    release('data:image/webp;base64,AAAA');
+    await waitFor(() => expect(screen.queryByRole('status')).toBeNull());
+  });
+
+  it('covers the slot with the same crop the slot itself uses', async () => {
+    promptImage.mockImplementationOnce((url: string, _cap: unknown, onEncoding?: () => void) => {
+      onEncoding?.();
+      return new Promise<string>(() => {}); // held open: the overlay is the subject, not the result
+    });
+    // objectFit only reaches the picture in a sized preview frame, which is also the only place a crop can
+    // differ from the whole image — so this is the shape the overlay has to match.
+    const { container } = render(
+      <ImageUpload id="t" onChange={vi.fn()} cap={IMAGE_CAPS.entity} objectFit="cover" previewClassName="relative h-40 w-40" />,
+    );
+    const frame = screen.getByText('Click to upload image').closest('[class*="border-dashed"]')!.parentElement!;
+
+    fireEvent.drop(frame, { dataTransfer: transfer({ files: [file('a.png')] }) });
+
+    await screen.findByRole('status');
+    const thumb = container.querySelector('[role="status"] img')!;
+    expect(thumb.className).toMatch(/object-cover/);
+  });
+
+  it('stays uncovered while the consent dialog is still up', async () => {
+    let release!: (url: string) => void;
+    // The prompt has not called back yet — the user is still reading the dialog, and nothing is encoding.
+    promptImage.mockImplementationOnce(() => new Promise<string>((resolve) => { release = () => resolve('kept'); }));
+    const onChange = vi.fn();
+    render(<ImageUpload id="t" onChange={onChange} cap={IMAGE_CAPS.entity} />);
+
+    fireEvent.drop(zone(), { dataTransfer: transfer({ files: [file('a.png')] }) });
+
+    await waitFor(() => expect(promptImage).toHaveBeenCalled());
+    expect(screen.queryByRole('status')).toBeNull();
+    release('kept');
+    await waitFor(() => expect(onChange).toHaveBeenCalledWith('kept'));
   });
 
   it('does not mark the frame for a drag it could not take', () => {
