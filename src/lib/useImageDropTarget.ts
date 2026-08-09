@@ -6,13 +6,17 @@ import { canDropImage, imageDropPayload } from './imageDrop';
  * behave identically — a drop that works on one and not the other is the kind of inconsistency nobody
  * reports, they just stop trying.
  */
-export function useImageDropTarget({ enabled, allowFiles, onUrl, onFiles }: {
+export function useImageDropTarget({ enabled, allowFiles, onUrl, onFiles, onTargeted }: {
   /** False for a slot that has nothing to accept — a filled one, which is changed by removing it first. */
   enabled: boolean;
   /** False once the embedded-bytes allowance is spent. Links stay welcome: they cost the payload nothing. */
   allowFiles: boolean;
   onUrl: (url: string) => void;
   onFiles: (files: File[]) => void;
+  /** This target is the one a droppable drag is aimed at. Lets a gallery bring the slot being filled into
+   *  view, so the picture doesn't land somewhere the author can't see — and isn't drawn over a different
+   *  one meanwhile. Fires on drop too, not only dragover, so the destination is right either way. */
+  onTargeted?: () => void;
 }) {
   const [dragOver, setDragOver] = useState(false);
 
@@ -24,7 +28,8 @@ export function useImageDropTarget({ enabled, allowFiles, onUrl, onFiles }: {
     e.stopPropagation();
     e.dataTransfer.dropEffect = 'copy';
     setDragOver(true);
-  }, [enabled]);
+    onTargeted?.();
+  }, [enabled, onTargeted]);
 
   const onDrop = useCallback((e: DragEvent<HTMLElement>) => {
     setDragOver(false);
@@ -33,9 +38,10 @@ export function useImageDropTarget({ enabled, allowFiles, onUrl, onFiles }: {
     if (!payload) return;
     e.preventDefault();
     e.stopPropagation();
+    onTargeted?.();
     if (payload.kind === 'url') return onUrl(payload.url);
     if (allowFiles) onFiles(payload.files);
-  }, [enabled, allowFiles, onUrl, onFiles]);
+  }, [enabled, allowFiles, onUrl, onFiles, onTargeted]);
 
   return {
     dragOver,

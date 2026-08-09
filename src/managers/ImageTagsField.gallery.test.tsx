@@ -184,6 +184,30 @@ describe('ImageTagsField gallery', () => {
     expect(onImagesChange).not.toHaveBeenCalled();
   });
 
+  it('frames the slot being filled when the drop lands on the add tile', async () => {
+    // One picture, framed as the primary — the state where converting over the top of it is most obviously
+    // wrong, because the picture under the bar is not the picture being converted.
+    promptImagesBatch.mockResolvedValueOnce('downscale');
+    const release: Array<() => void> = [];
+    applyImageOptimize.mockImplementation((url: string) =>
+      new Promise<string>((resolve) => { release.push(() => resolve(url)); }));
+    setup([A]);
+    expect(slotWrapper(A).className).not.toMatch(/hidden/);
+
+    fireEvent.drop(screen.getByLabelText('Add a picture'), {
+      dataTransfer: { files: [new File(['1'], 'b.png', { type: 'image/png' })], types: ['Files'], getData: () => '' },
+    });
+
+    await screen.findByRole('status', { name: 'Converting image' });
+    // The empty slot is framed, so the bar covers the picture actually being worked on.
+    expect(slotWrapper(A).className).toMatch(/hidden/);
+    const visible = screen.getAllByTestId('slot').filter((n) => !n.parentElement!.className.includes('hidden'));
+    expect(visible.map((n) => n.getAttribute('data-value'))).toEqual(['']);
+
+    release[0]();
+    await waitFor(() => expect(screen.queryByRole('status')).toBeNull());
+  });
+
   it('counts the batch over the frame while it converts, and freezes the strip', async () => {
     promptImagesBatch.mockResolvedValueOnce('downscale');
     // Both encodes are held, so the counter has to actually advance between them — releasing only the first
