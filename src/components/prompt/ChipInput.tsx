@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, type ReactNode } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import {
   $getRoot, $createTextNode, $selectAll, LineBreakNode,
   KEY_ENTER_COMMAND, KEY_ESCAPE_COMMAND, COMMAND_PRIORITY_LOW,
@@ -154,17 +154,56 @@ function Surface({ placeholder, ariaLabel, className, multiline }: {
   multiline?: boolean;
 }) {
   const focusEnd = useFocusEnd();
+  // The hint is drawn over the field rather than in it, so it adds no height of its own — a long one (an
+  // image preset's whole prompt prefix) spilled out of the bottom of the box. Measuring it gives the box a
+  // floor tall enough to hold it, without letting that floor drop below the height the caller asked for.
+  const editableRef = useRef<HTMLDivElement | null>(null);
+  const cssFloor = useRef<number | null>(null);
+  const [hintFloor, setHintFloor] = useState<number | null>(null);
+
+  const measure = useCallback((hint: HTMLDivElement | null) => {
+    const editable = editableRef.current;
+    if (!hint || !editable) return setHintFloor(null);
+    if (cssFloor.current === null) cssFloor.current = parseFloat(getComputedStyle(editable).minHeight) || 0;
+    const style = getComputedStyle(editable);
+    const padding = (parseFloat(style.paddingTop) || 0) + (parseFloat(style.paddingBottom) || 0);
+    setHintFloor(Math.max(cssFloor.current, hint.scrollHeight + padding));
+  }, []);
+
+  // Re-measure on width changes: the same hint wraps to more lines in a narrower box. The observer is held
+  // rather than returned as ref cleanup — React 18 callback refs don't take one.
+  const observerRef = useRef<ResizeObserver | null>(null);
+  const hintRef = useCallback((node: HTMLDivElement | null) => {
+    observerRef.current?.disconnect();
+    observerRef.current = null;
+    measure(node);
+    if (!node) return;
+    observerRef.current = new ResizeObserver(() => measure(node));
+    observerRef.current.observe(node);
+  }, [measure]);
+  useEffect(() => () => observerRef.current?.disconnect(), []);
+
   return (
     <div className="relative" onMouseDown={(e) => { if (e.target === e.currentTarget) { e.preventDefault(); focusEnd(); } }}>
       <PlainTextPlugin
-        contentEditable={<ContentEditable className={cn(INPUT_CLASS, className)} aria-label={ariaLabel} />}
+        contentEditable={(
+          <ContentEditable
+            ref={editableRef}
+            className={cn(INPUT_CLASS, className)}
+            aria-label={ariaLabel}
+            style={multiline && hintFloor ? { minHeight: hintFloor } : undefined}
+          />
+        )}
         placeholder={
           // A one-line field centres its hint against the box; a taller one sits it where the caret is,
           // top-left and free to wrap, the way every other multi-line field's hint does.
-          <div className={cn(
-            'pointer-events-none absolute left-3 text-sm text-muted-foreground',
-            multiline ? 'top-2 right-3' : 'top-1/2 -translate-y-1/2 truncate',
-          )}>
+          <div
+            ref={multiline ? hintRef : undefined}
+            className={cn(
+              'pointer-events-none absolute left-3 text-sm text-muted-foreground',
+              multiline ? 'top-2 right-3' : 'top-1/2 -translate-y-1/2 truncate',
+            )}
+          >
             {placeholder}
           </div>
         }
