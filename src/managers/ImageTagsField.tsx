@@ -1,4 +1,4 @@
-import { useState, type DragEvent } from 'react';
+import { useState } from 'react';
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { Plus, Star } from "lucide-react";
@@ -69,7 +69,9 @@ const AddTile = ({ htmlFor, selected, onSelect, onUrl, onFiles, allowFiles }: {
   onFiles: (files: File[]) => void;
   allowFiles: boolean;
 }) => {
-  const { dragOver, dropProps } = useImageDropTarget({ enabled: true, allowFiles, onUrl, onFiles });
+  // Targeting this tile frames the slot it fills, so the picture doesn't convert on top of whichever one
+  // happened to be on show — and the frame is already on the new picture when it lands.
+  const { dragOver, dropProps } = useImageDropTarget({ enabled: true, allowFiles, onUrl, onFiles, onTargeted: onSelect });
   const body = (
     <span
       className={cn(
@@ -183,14 +185,9 @@ const ImageTagsField = ({ label, images, onImagesChange, slots = 1, embeddedLimi
     allowFiles: canEmbed,
     onUrl: (url) => setSlot(openSlot, url),
     onFiles: (files) => void takeFiles(openSlot, files),
+    onTargeted: () => setShowing(openSlot),
   });
-  const paneProps = gallery ? {
-    ...pane.dropProps,
-    onDragOver: (e: DragEvent<HTMLDivElement>) => {
-      if (openSlot !== -1 && !batch) setShowing(openSlot);
-      pane.dropProps.onDragOver(e);
-    },
-  } : {};
+  const paneProps = gallery ? pane.dropProps : {};
 
   /** Swap a slot into the primary position, which is what makes it the entity's one-picture stand-in. */
   const makePrimary = (index: number) => {
