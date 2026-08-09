@@ -112,15 +112,6 @@ const Dropzone = ({ htmlFor, frameClassName, dragOver, overlay, children }: {
       )}
     >
       {children}
-      {/* Says what the drop will do, over the picture rather than only at the border — a filled slot's
-          picture covers the frame, so a border change alone is most of it invisible. */}
-      {dragOver && (
-        <div className="pointer-events-none absolute inset-0 z-20 flex items-center justify-center rounded-md bg-primary/20">
-          <span className="rounded-md bg-primary px-2 py-1 text-xs font-medium text-primary-foreground shadow">
-            Drop to add
-          </span>
-        </div>
-      )}
       {/* Inside the label, so a click on it would otherwise re-open the file picker mid-encode. */}
       {overlay && <div onClick={(e) => { e.preventDefault(); e.stopPropagation(); }}>{overlay}</div>}
     </div>
@@ -315,7 +306,7 @@ export const ImageUpload = ({ onChange, id, value, cap, previewClassName, object
             </>
           ) : (
             <div className="absolute inset-0 flex items-center justify-center p-2 text-center text-muted-foreground">
-              {allowUpload ? 'Click to upload image' : uploadBlockedNote}
+              {dragOver ? 'Drop to add' : allowUpload ? 'Click to upload image' : uploadBlockedNote}
             </div>
           )
         ) : (
@@ -339,7 +330,7 @@ export const ImageUpload = ({ onChange, id, value, cap, previewClassName, object
             allowUpload ? (
               <>
                 <ImagePlus className="mr-2" />
-                <span>Add Image</span>
+                <span>{dragOver ? 'Drop to add' : 'Add Image'}</span>
               </>
             ) : (
               <span className="text-center text-sm text-muted-foreground">{uploadBlockedNote}</span>

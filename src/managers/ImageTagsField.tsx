@@ -203,7 +203,13 @@ const ImageTagsField = ({ label, images, onImagesChange, slots = 1, embeddedLimi
       {/* Every slot is rendered and only the shown one is visible, rather than mounting the selected slot
           alone: the add tile is a label pointing at the empty slot's file input, which has to exist for the
           click to reach it, and a remounting uploader would lose a half-typed URL on every tile press. */}
-      <div className={cn('relative', gallery && FRAME_WIDTH[shape])} {...paneProps}>
+      {/* The pane rings itself on the very first dragover, which is the one that swaps the frame — the slot
+          it swapped to only learns about the drag on the next event, ~a third of a second later. The wrapper
+          is the frame's own box, so the ring lands in the same place either way. */}
+      <div
+        className={cn('relative rounded-md', gallery && FRAME_WIDTH[shape], pane.dragOver && 'ring-2 ring-primary')}
+        {...paneProps}
+      >
       {rows.map((url, i) => (
         <div key={i} className={cn('space-y-1', gallery && i !== showing && 'hidden')}>
           <ImageUpload
