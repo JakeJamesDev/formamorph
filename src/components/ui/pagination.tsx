@@ -120,7 +120,7 @@ function JumpToPageForm({ page, pageCount, onSubmit }: {
   }
   return (
     <div className="flex items-center gap-2">
-      <span className="whitespace-nowrap text-xs text-muted-foreground">Page (1–{pageCount})</span>
+      <span className="whitespace-nowrap text-meta text-muted-foreground">Page (1–{pageCount})</span>
       <Input
         type="number"
         min={1}
