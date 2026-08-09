@@ -114,6 +114,7 @@ Assignment to a location is the entire gate: an entity in no location never reac
 | Field | Sent? |
 |---|---|
 | **Name** | Always |
+| **Aliases** | Yes — as "also known as" |
 | **AI-Facing Description** | Yes — the main thing the AI knows |
 | **AI-Facing Summary** | Only in prompt slots that ask for the short form |
 | **Type** | Yes, as a plain field |
@@ -131,6 +132,23 @@ Three description fields, with distinct jobs:
 - **AI-Facing Summary** — a one-line version for slots where the full description is too long. **Blank is fine** — it falls back to the full description. The default prompt uses summaries for entities in *reachable* locations, and full descriptions for the player's current location.
 
 The **✨ toolbar** beside AI-Facing Summary can draft it from your AI-Facing Description.
+
+### Aliases
+
+Other names the entity goes by — a title, a nickname, an epithet. They do two jobs: the AI is told them as *"also known as"*, and the story parser counts the entity as **present** when the narration uses one, not just when it uses the real name.
+
+| | |
+|---|---|
+| **Case-sensitive** | `Matron` matches "the Matron" and misses "the matron". Add every casing narration is likely to write. |
+| **Plural-aware** | `wolf` also matches "wolves", the same as names. |
+| **Whole words** | `Em` won't fire inside "System". |
+
+> ⚠️ **Never start an alias with "the".** Narration puts a title at the start of a sentence constantly, and "The alpha…" won't match an alias written `the alpha`. Drop the article — `alpha` matches both positions.
+
+Two more worth knowing:
+
+- **Skip generic job titles.** `knight`, `alchemist`, `apprentice` will fire on any passing character of that trade and pull the wrong entity into the scene.
+- **Don't alias a role the story uses for someone off-page.** Quoted dialogue is excluded from presence detection, but plain narration isn't — so if the prose says *"she was sent by the Warchief"*, an alias of `Warchief` marks the Warchief present in a scene she isn't in.
 
 ### Locations
 
@@ -219,7 +237,9 @@ If the AI's answer doesn't match a connected place, it's discarded and nothing i
 | **Player-Facing Description** | **Never** |
 | Background image, Image Tags, ambient sound, starting flag, nesting | Never |
 
-The default prompt gives the AI the **current location** in full, and its **sub-locations** and **reachable** places as summaries.
+The default prompt gives the **narrator** the current location in full, and its sub-locations and reachable places as summaries.
+
+> ⚠️ **Only the narrator gets the full description.** The other steps — the choice writer, the continuity planner, the location router — are sent the **summary** of the current location too. So anything the AI must act on that lives *only* in the full description (a random-event list, a rule about the place) reaches the narrator and nobody else. Writing a summary is what switches those steps over: leave it blank and they fall back to the full text.
 
 > 💡 **The two descriptions are disjoint.** The player only ever sees the Player-Facing one; the AI only ever sees the AI-Facing one — so the AI-Facing Description is where a secret lives.
 
@@ -292,6 +312,12 @@ Min and Max are deliberately asymmetric: a trait can take the ceiling anywhere, 
 ### Groups
 
 Groups organize the list — and unlike organizational folders elsewhere, a trait group also **speaks to the AI**. Give a group an **AI-Facing Description** and it becomes a header above its chosen traits, letting you frame a whole set at once (*"Origin: where this life began"*). A group with no chosen traits inside it is skipped entirely.
+
+#### Exclusive
+
+Tick **Exclusive** when the group is a choice between options rather than a list to tick — a species, an origin, a starting class. It renders as radio buttons and holds the group to at most one trait: picking one drops the one you had. Clicking the trait you already chose clears it, so "none of these" stays reachable. In-game it works the same for switchable traits — turning one on retires its siblings.
+
+> 💡 **Give an exclusive group a default.** Mark one trait *Enabled by Default* so there's always a valid answer; without one, "nothing selected" is a state the AI has to interpret. If you mark two, the first in the list wins.
 
 ### Getting started
 
@@ -394,6 +420,8 @@ A **Wildcard** chip chooses how its roll is shared, per placement:
 |---|---|
 | **World** | Every World chip of this placeholder shows the **same** rolled value everywhere — one town name, used consistently. |
 | **Unique** | Each placement rolls on its own — ten Unique *Eye Color* chips give ten independent eyes. |
+
+> ⚠️ **Independent doesn't mean different.** Each Unique placement draws on its own, so two of them can land on the same value — three chips from a ten-value list show a repeat about a third of the time. Where two chips *must* differ (two towns that can't share a name), give each its own placeholder with values the other doesn't have.
 
 A **Variable** ignores this — it's the same single value no matter what.
 

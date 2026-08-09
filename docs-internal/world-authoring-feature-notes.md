@@ -57,7 +57,7 @@ Three features are fully implemented with the entry point disabled. All three tr
 |---|---|---|
 | **Trait-gated content** | Sarah's Office is reachable playing the breeder. Worked around by writing "the door doesn't lock" — a hook, but a cover story | `requiresTrait` on locations/entities |
 | **Time-of-day availability** | Bramble "only appears at night" is *prose the AI may ignore*, not a rule | daypart gating on presence |
-| **Chips in `aliases`** | A wildcard-named character can't have aliases that track her rolled name. Worked around by listing **all six possible names** as aliases | scan `aliases` like other text fields |
+| ~~**Chips in `aliases`**~~ | ~~A wildcard-named character can't have aliases that track her rolled name~~ | ✅ **Shipped 2.10.0** — names, aliases and dictionary keywords all resolve chips |
 | **Stat-driven availability** | Bramble appearing only while Suspicion is low; tours only above a Reputation floor | threshold conditions on presence |
 | **`starting` beyond numbers** | `Stat.starting` is `number`-only | widen the type |
 
@@ -81,7 +81,7 @@ Nearly every defect that survived into a "finished" world was **mechanical and d
 - **An alias collision that made a character undetectable by her own alias** (Bramble's `the visitor` lost to Farm Visitors' `visitors` under plural-tolerant matching).
 - **An entity in zero locations** — Farm Visitors could never be present anywhere.
 - **A stat whose starting value contradicted its own descriptor** — *Mares Bred* started at 1 while its active descriptor read "No mares carrying yet."
-- Orphaned entity references, an entity name colliding with a wildcard value pool, and placeholder chips proposed for fields that are never scanned.
+- Orphaned entity references, an entity name colliding with a wildcard value pool, and placeholder chips proposed for fields the resolver didn't scan *(aliases, at the time — they resolve now; stat descriptions still don't)*.
 
 Every one of those is a rule a linter can hold. None was visible in the editor.
 
@@ -97,7 +97,7 @@ Every one of those is a rule a linter can hold. None was visible in the editor.
 | **Entity coverage warning** | "Appears in 0 locations" should be visible, not discoverable by script |
 | **Cross-world find/replace** | Every sweep here ran through Node; renaming the serum everywhere is manual today |
 | **Context budget indicator** | 14 entities and 9 lore entries — an author has no idea what that costs per turn |
-| **Which fields resolve chips** | The scanned set is real but undiscoverable ([GameViewer.tsx:1313](../src/views/GameViewer.tsx:1313)). Stat text and aliases are *not* scanned; nothing says so |
+| **Which fields resolve chips** | The scanned set is real but undiscoverable ([GameViewer.tsx:1418](../src/views/GameViewer.tsx:1418)). **Stat descriptions** are still not scanned; nothing says so. Aliases and names now are |
 
 ---
 
@@ -109,11 +109,55 @@ Every one of those is a rule a linter can hold. None was visible in the editor.
 4. **Per-entity runtime fields** (§1) — the real answer to the herd problem; needs a version decision first
 5. **Trait-gated content** — the one structural gap the world genuinely wanted
 
+> 📌 **Revised after the second world (§7–§9).** The order still holds, with two changes: **trait-gated content moves up** — two worlds have now worked around it — and **"which AI call sees which field" (§9)** slots in beside the Doctor, since it prevents the same class of error rather than reporting it.
+
 ---
 
 ## 6. Authoring lessons worth keeping
 
 - **Only demonstrate what an author can reproduce in the editor.** A feature reachable solely by hand-editing JSON teaches a dead end.
 - **Spatial relationships go in prose.** `parentId` is editor-only and `connections` is unreachable, so the AI's map is whatever the descriptions say.
-- **Aliases are matched, not rendered** — so they take no chips, and they collide with each other across entities.
+- **Aliases collide with each other across entities**, and matching is case-sensitive, so a title needs every casing narration writes. *(They do take chips — that shipped in 2.10.0.)*
 - **Guards where they're honest.** `noIncrease`/`noDecrease` belong on derived stats only; putting them everywhere teaches the wrong habit.
+
+---
+
+# Second world — Fantasy Futanari
+
+Notes from the **Fantasy Futanari** pass (see `worlds-wip/Fantasy Futanari — rework plan.md`). A different shape of world: not a minimal one being built out, but a large, already-well-authored one — 24 entities, 24 locations, existing stat code — brought up to the current feature set. Nothing here is unverified; every item is something that actually bit.
+
+## 7. What the second world confirmed
+
+Three items from §3/§4 hit again, independently, which is the argument for building them:
+
+- **Trait-gated content** — the genitalia group is meaningless unless you picked Futanari. Worked around with a "Human Genitalia" default trait, the same shape as Centaur Breeder's locked-door cover story. **This is now the twice-wanted feature, and it wants to extend to traits, not just locations and entities.**
+- **The Doctor's alias rules** — 14 `the `-prefixed aliases there; here, every alias needed hand-written case variants and one still matched nothing. Same rule class, second world.
+- **Entities in zero locations / locations with no entities** — seven empty rooms here, several of which had random events written for a cast that could never be present.
+
+## 8. New wants
+
+| Want | Concrete case | Rough shape |
+|---|---|---|
+| **Random events as a real feature** | The largest gap. This world hand-authored weighted per-location events (*"Mak'gora (Uncommon - 20%)"*) — but the AI cannot roll, so the percentages were decoration. Rebuilt as a stat with a `Math.random()` roll and four descriptor bands, with the events relabeled to match. It works, and it is entirely a workaround | `location.events[]` carrying weight + text; the engine rolls and injects only the one that fired |
+| **Stat code can see the character** | Fertility's `code` recovers toward a hardcoded number, which healed away every race's Fertility penalty within two turns. Fixing it meant encoding each race's resting value in `max` and computing `max * 0.25` — legible only to whoever wrote it | expose the active trait ids/names to the sandbox |
+| **Draw without replacement** | Three `Unique` chips from one pool repeat ~30% of the time — two "unique" district trees sharing a name. Forcing distinctness cost **27 placeholders instead of 9**, one disjoint sub-pool per chip slot | a `distinct` mode, or "same placeholder, different placement ⇒ never repeat" |
+| **Case-insensitive aliases** | Every alias was authored 2–3 times for casing, and all the variants then render into the prompt as noise (`also known as: orcs, Orcs`) | a per-alias or per-world toggle |
+| **A stat that runs every turn** | The Weave must reroll each turn, but stat code only runs when the AI reported a stat change unless *something* reads the clock. The fix is to reference `elapsedHours` in a roll that doesn't otherwise need it | an explicit `runEveryTurn` flag, so the clock reference isn't load-bearing trivia |
+
+## 9. The editor tweak that outranks the rest
+
+**Show which AI call sees which field.** Not a lint — a legend in the editor.
+
+Most of this pass's mistakes trace to one root: nothing tells the author that `aiDescription` reaches the **narrator only**, that `aiSummary` is what the choice writer, continuity planner and location router get, that `playerDescription` reaches nobody, and — the sharp edge — that **filling in a summary redirects four of the six AI calls away from the full description**.
+
+That last one caused a real regression here: adding summaries to every location silently hid the random-event tables from the planner and the choice writer. It was invisible until the behavior was traced by hand.
+
+§4.3 already asks for a "which fields resolve chips" indicator. This is the same request one level up, and it's worth more.
+
+## 10. Lessons worth keeping
+
+- **Read `docs/` before reverse-engineering `src/`.** Two things this pass "discovered" were already documented correctly: the stat-code run schedule ([StatCodeGuide.md](../docs/StatCodeGuide.md)) and the starting-location table ([WorldEditor.md](../docs/WorldEditor.md)).
+- **A `max` delta moves the value; don't pair it with a `starting` delta.** Raising a full stat's ceiling fills it, lowering one below the value clamps it — so pairing double-counts.
+- **Writing an `aiSummary` is a behavior change**, not just a context saving.
+- **Verify intent against the engine, not against the design.** The pass that checked *"does the world work the way it's written"* found more than any section's own verification did — an entire subsystem that would have silently never run.
+- **Measure voice against the author's own text in the same field**, not against a style memo. Their trait descriptions open uncontracted; their entity descriptions run 0.40 uncontracted-per-contraction. Both are conventions, and only measurement told them apart from drift.

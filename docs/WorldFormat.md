@@ -115,6 +115,21 @@ Selectable characteristics that adjust stats at character creation.
 | `groupId` | String \| null | Owning `traitGroups` folder; null/absent = ungrouped |
 | `isDefault` | Boolean | Pre-checked in the selection screen |
 | `order` | Number | Sibling order among items sharing the same group |
+| `playerToggle` | Boolean | The player may switch this trait on and off during play, not only at character creation |
+| `statToggles` | `{ statId, enabled }[]` | Stats forced on or off while this trait is active — how a stat authored `enabled: false` becomes visible for one kind of character |
+| `placeholderPins` | `{ placeholderId, value }[]` | Placeholder values this trait fixes, overriding the roll |
+
+#### Trait groups
+
+| Field | Type | Description |
+|---|---|---|
+| `id` | String | Unique identifier |
+| `name` | String | Display name |
+| `playerDescription` | String | Shown above the group on the selection screen |
+| `aiDescription` | String | Becomes a header above this group's chosen traits in the AI prompt |
+| `parentId` | String \| null | Parent group `id` for nesting; null = top-level |
+| `order` | Number | Sibling order |
+| `exclusive` | Boolean | At most one trait in the group may be active — renders as radio buttons. Mark one member `isDefault` so there is always a valid answer; if two are marked, the first in order wins |
 
 #### Stat changes
 
@@ -153,7 +168,7 @@ Optional folders that organize traits in the editor and the trait-selection scre
 | `ambientSound` | [MediaAsset](#-media-fields) | Looping ambient audio |
 | `entities` | String[] | `id`s of entities present here |
 | `connections` | String[] | Names of connected locations (shown in the location panel) |
-| `isStarting` | Boolean | A candidate start location — one is chosen at random on a new game |
+| `isStarting` | Boolean | A candidate start location. One flagged = every game starts there; several = the player picks between them; none = a random location of any kind |
 | `parentId` | String \| null | Parent location `id` for sub-location nesting; null/absent = top-level (editor-only, not sent to the AI) |
 
 ### 👥 `entities`
@@ -164,14 +179,17 @@ Characters or objects in the world.
 |---|---|---|
 | `id` | String | Unique identifier |
 | `name` | String | Display name |
+| `aliases` | String[] | Other names this entity answers to. Sent to the AI as "also known as", and matched in the story text to detect that the entity is present — **case-sensitive**, whole-word, plural-aware |
 | `type` | String | Optional category label |
 | `playerDescription` | String | Shown to the player in-game |
 | `aiDescription` | String | Full description sent to the AI |
 | `aiSummary` | String | Short description sent to the AI where the full one is too long |
-| `image` | String | Data-URL portrait |
+| `images` | String[] | Data-URL portraits. A legacy singular `image` is still read as a one-item fallback |
 | `imageTags` | String | Booru tags for AI image generation (editor-only; not sent to the narrative AI) |
 | `sound` | [MediaAsset](#-media-fields) | Associated sound |
 | `model` | [MediaAsset](#-media-fields) | Associated 3D model |
+| `groupId` | String \| null | Parent entity-group `id`; null/absent = ungrouped (editor-only, not sent to the AI) |
+| `order` | Number | Sibling order within its group (editor-only) |
 
 ### 🔄 `statUpdates`
 
