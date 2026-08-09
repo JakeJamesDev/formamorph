@@ -88,6 +88,7 @@ import CommunityCreationsBrowser from './CommunityCreationsBrowser';
 import { WorldDetailsColumn, DateTimeText, type WorldRecord } from "@/components/WorldDetails";
 import SortableWorldCard from "@/components/SortableWorldCard";
 import { WorldActionButton } from "@/components/WorldActionButton";
+import { GradientButton } from "@/components/GradientButton";
 import DictionaryEditorModal from "@/components/modals/DictionaryEditorModal";
 import EntityEditorModal from "@/components/modals/EntityEditorModal";
 import { ModelDetailsModal } from "@/components/modals/ModelDetailsModal";
@@ -1230,18 +1231,18 @@ const MainMenu = ({ onStartGame, onLoadSaveGame, onReplayIntro, introActive = fa
   const actionButtons = (
     <>
       {COMMUNITY_ENABLED && (
-        <Button
-          className="bg-gradient-to-r from-indigo-200 to-blue-200 hover:from-indigo-300 hover:to-blue-300 text-black font-bold"
+        <GradientButton
+          tone="indigo"
           onClick={() => setShowCommunityBrowser(true)}
         >
           <Globe className="mr-2 h-4 w-4" /> Community Creations
-        </Button>
+        </GradientButton>
       )}
 
       {/* Models are import-only: a VRM is authored in modelling software, so there's nothing to create here. */}
       {cardType !== 'models' && (
-        <Button
-          className="bg-gradient-to-r from-amber-200 to-yellow-200 hover:from-amber-300 hover:to-yellow-300 text-black font-bold"
+        <GradientButton
+          tone="amber"
           onClick={() => {
             if (cardType === 'worlds') handleCreateNewWorld();
             else if (cardType === 'entities') handleCreateNewEntity();
@@ -1249,11 +1250,11 @@ const MainMenu = ({ onStartGame, onLoadSaveGame, onReplayIntro, introActive = fa
           }}
         >
           <FilePlus2 className="mr-2 h-4 w-4" /> New {cardNoun}
-        </Button>
+        </GradientButton>
       )}
 
-      <Button
-        className="bg-gradient-to-r from-green-200 to-emerald-200 hover:from-green-300 hover:to-emerald-300 text-black font-bold"
+      <GradientButton
+        tone="green"
         onClick={() => {
           if (cardType === 'worlds') fileInputRef.current?.click();
           else if (cardType === 'dictionaries') dictionaryImportRef.current?.click();
@@ -1262,15 +1263,15 @@ const MainMenu = ({ onStartGame, onLoadSaveGame, onReplayIntro, introActive = fa
         }}
       >
         <Import className="mr-2 h-4 w-4" /> Import {cardNoun}
-      </Button>
+      </GradientButton>
 
       {isAuthenticated && isStaff(currentUser) && (
-        <Button
-          className="bg-gradient-to-r from-purple-200 to-pink-200 hover:from-purple-300 hover:to-pink-300 text-black font-bold"
+        <GradientButton
+          tone="purple"
           onClick={() => setShowAdminPanel(true)}
         >
           <Shield className="mr-2 h-4 w-4" /> Admin Panel
-        </Button>
+        </GradientButton>
       )}
     </>
   );
@@ -1332,12 +1333,12 @@ const MainMenu = ({ onStartGame, onLoadSaveGame, onReplayIntro, introActive = fa
         <div className="flex min-[1000px]:hidden">
           <Popover>
             <PopoverTrigger asChild>
-              <Button
-                className="bg-gradient-to-r from-purple-200 to-pink-200 hover:from-purple-300 hover:to-pink-300 text-black font-bold"
+              <GradientButton
+                tone="purple"
                 aria-label="Menu"
               >
                 <Menu className="h-5 w-5" />
-              </Button>
+              </GradientButton>
             </PopoverTrigger>
             <PopoverContent align="center" className="flex flex-col gap-2 w-72 [&>button]:w-full [&_svg]:shrink-0">
               {actionButtons}
@@ -1868,7 +1869,7 @@ const MainMenu = ({ onStartGame, onLoadSaveGame, onReplayIntro, introActive = fa
                 <div className="space-y-2">
                   <div className="flex">
                     <WorldActionButton
-                      tone="enter"
+                      tone="sky"
                       className="w-2/3 rounded-r-none"
                       onClick={() => {
                         // Pre-check "Enabled by Default" traits for the selection screen (one per
@@ -1892,7 +1893,7 @@ const MainMenu = ({ onStartGame, onLoadSaveGame, onReplayIntro, introActive = fa
                     </WorldActionButton>
 
                     <WorldActionButton
-                      tone="quickStart"
+                      tone="amberSoft"
                       className="w-1/3 rounded-l-none"
                       onClick={() => {
                         // For uploaded worlds, use the worldData from context
@@ -1910,21 +1911,21 @@ const MainMenu = ({ onStartGame, onLoadSaveGame, onReplayIntro, introActive = fa
                   </div>
 
                   <WorldActionButton
-                    tone="edit"
+                    tone="orangeSoft"
                     onClick={() => setShowWorldEditor(true)}
                   >
                     <Pencil className="mr-2 h-4 w-4" /> Edit World
                   </WorldActionButton>
 
                   <WorldActionButton
-                    tone="duplicate"
+                    tone="purpleSoft"
                     onClick={() => handleDuplicateWorld()}
                   >
                     <FilePlus2 className="mr-2 h-4 w-4" /> Duplicate World
                   </WorldActionButton>
 
                   <WorldActionButton
-                    tone="export"
+                    tone="emeraldSoft"
                     onClick={() => { if (selectedWorld) void exportWorld(selectedWorld.data); }}
                   >
                     <Download className="mr-2 h-4 w-4" /> Export World
@@ -1934,7 +1935,7 @@ const MainMenu = ({ onStartGame, onLoadSaveGame, onReplayIntro, introActive = fa
                       to download. */}
                   {selectedWorld && remoteWorldImages(selectedWorld.data).length > 0 && (
                     <WorldActionButton
-                      tone="offline"
+                      tone="skySoft"
                       disabled={warmingOffline}
                       onClick={() => handleMakeAvailableOffline()}
                     >
@@ -1944,7 +1945,7 @@ const MainMenu = ({ onStartGame, onLoadSaveGame, onReplayIntro, introActive = fa
 
                   {isAuthenticated && (
                     <WorldActionButton
-                      tone="publish"
+                      tone="redSoft"
                       onClick={() => selectedWorld && openPublish(worldPublishPayload(selectedWorld.data))}
                     >
                       <Upload className="mr-2 h-4 w-4" /> Publish World

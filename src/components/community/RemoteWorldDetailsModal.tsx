@@ -186,7 +186,7 @@ export function RemoteWorldDetailsModal({
                     : `Download ${noun}`;
                   return (
                     <WorldActionButton
-                      tone="enter"
+                      tone="sky"
                       onClick={() => onContextualDownload(world, dlState)}
                     >
                       {label}
