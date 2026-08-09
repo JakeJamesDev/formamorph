@@ -1,4 +1,5 @@
 import { type ComponentProps, type CSSProperties } from "react";
+import { createPortal } from "react-dom";
 import { ToastContainer, type ToastClassName } from "react-toastify";
 import { useTheme } from "./theme-provider";
 
@@ -35,15 +36,19 @@ const withBorder = (caller?: ToastClassName): ToastClassName =>
 /**
  * A `ToastContainer` whose theme tracks the app's resolved light/dark theme (so toasts don't stay dark on a
  * light app) and whose panel and accents come from our design tokens. Forwards any other props.
+ *
+ * Portaled to `body` so it shares the root stacking context with Radix's dialog portals — rendered inside a
+ * view's own tree, its z-index is trapped below them and toasts hide behind full-screen dialogs.
  */
 export function ThemedToastContainer(props: ComponentProps<typeof ToastContainer>) {
   const { resolvedTheme } = useTheme();
-  return (
+  return createPortal(
     <ToastContainer
       {...props}
       theme={resolvedTheme}
       style={{ ...props.style, ...TOAST_TOKEN_VARS }}
       toastClassName={withBorder(props.toastClassName)}
-    />
+    />,
+    document.body,
   );
 }
