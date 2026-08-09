@@ -1867,7 +1867,7 @@ const MainMenu = ({ onStartGame, onLoadSaveGame, onReplayIntro, introActive = fa
                 <div className="space-y-2">
                   <div className="flex">
                     <Button
-                      className="w-2/3 bg-gradient-to-r from-sky-200 to-cyan-200 hover:from-sky-300 hover:to-cyan-300 text-black font-bold rounded-r-none"
+                      className="w-2/3 text-body bg-gradient-to-r from-sky-200 to-cyan-200 hover:from-sky-300 hover:to-cyan-300 text-black font-bold rounded-r-none"
                       onClick={() => {
                         // Pre-check "Enabled by Default" traits for the selection screen (one per
                         // exclusive group — the radio can only show one anyway).
@@ -1890,7 +1890,7 @@ const MainMenu = ({ onStartGame, onLoadSaveGame, onReplayIntro, introActive = fa
                     </Button>
 
                     <Button
-                      className="w-1/3 bg-gradient-to-r from-amber-100 to-yellow-100 hover:from-amber-200 hover:to-yellow-200 text-black font-bold rounded-l-none"
+                      className="w-1/3 text-body bg-gradient-to-r from-amber-100 to-yellow-100 hover:from-amber-200 hover:to-yellow-200 text-black font-bold rounded-l-none"
                       onClick={() => {
                         // For uploaded worlds, use the worldData from context
                         const currentWorldData = selectedWorld!.data;
@@ -1907,21 +1907,21 @@ const MainMenu = ({ onStartGame, onLoadSaveGame, onReplayIntro, introActive = fa
                   </div>
 
                   <Button
-                    className="w-full bg-gradient-to-r from-orange-100 to-orange-200 hover:from-orange-200 hover:to-orange-300 text-black font-bold"
+                    className="w-full text-body bg-gradient-to-r from-orange-100 to-orange-200 hover:from-orange-200 hover:to-orange-300 text-black font-bold"
                     onClick={() => setShowWorldEditor(true)}
                   >
                     <Pencil className="mr-2 h-4 w-4" /> Edit World
                   </Button>
 
                   <Button
-                    className="w-full bg-gradient-to-r from-purple-100 to-purple-200 hover:from-purple-200 hover:to-purple-300 text-black font-bold"
+                    className="w-full text-body bg-gradient-to-r from-purple-100 to-purple-200 hover:from-purple-200 hover:to-purple-300 text-black font-bold"
                     onClick={() => handleDuplicateWorld()}
                   >
                     <FilePlus2 className="mr-2 h-4 w-4" /> Duplicate World
                   </Button>
 
                   <Button
-                    className="w-full bg-gradient-to-r from-emerald-100 to-emerald-200 hover:from-emerald-200 hover:to-emerald-300 text-black font-bold"
+                    className="w-full text-body bg-gradient-to-r from-emerald-100 to-emerald-200 hover:from-emerald-200 hover:to-emerald-300 text-black font-bold"
                     onClick={() => { if (selectedWorld) void exportWorld(selectedWorld.data); }}
                   >
                     <Download className="mr-2 h-4 w-4" /> Export World
@@ -1931,7 +1931,7 @@ const MainMenu = ({ onStartGame, onLoadSaveGame, onReplayIntro, introActive = fa
                       to download. */}
                   {selectedWorld && remoteWorldImages(selectedWorld.data).length > 0 && (
                     <Button
-                      className="w-full bg-gradient-to-r from-sky-100 to-sky-200 hover:from-sky-200 hover:to-sky-300 text-black font-bold"
+                      className="w-full text-body bg-gradient-to-r from-sky-100 to-sky-200 hover:from-sky-200 hover:to-sky-300 text-black font-bold"
                       disabled={warmingOffline}
                       onClick={() => handleMakeAvailableOffline()}
                     >
@@ -1941,7 +1941,7 @@ const MainMenu = ({ onStartGame, onLoadSaveGame, onReplayIntro, introActive = fa
 
                   {isAuthenticated && (
                     <Button
-                      className="w-full bg-gradient-to-r from-red-100 to-red-200 hover:from-purple-200 hover:to-indigo-300 text-black font-bold"
+                      className="w-full text-body bg-gradient-to-r from-red-100 to-red-200 hover:from-purple-200 hover:to-indigo-300 text-black font-bold"
                       onClick={() => selectedWorld && openPublish(worldPublishPayload(selectedWorld.data))}
                     >
                       <Upload className="mr-2 h-4 w-4" /> Publish World
