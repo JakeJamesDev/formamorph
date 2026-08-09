@@ -12,6 +12,13 @@ vi.mock('@/views/VRMViewer', () => import('@/test/stubs/vrmViewer'));
 vi.mock('@/lib/useTtsPlayback', () => import('@/test/stubs/ttsPlayback'));
 // Stubbed for the same reason as the VRM view: it is a Lexical editor whose caret jsdom cannot drive, and
 // these cases are about panel state per turn. The field itself: prompt/TagChipField.test.tsx.
+// Same reason, for the Edit Text modal's editor: these cases are about what saving an edit does to the
+// turn, not about the field. Its own behavior: prompt/PromptField.markdown.test.tsx.
+vi.mock('@/components/prompt/PromptField', () => ({
+  default: ({ value, onChange, ariaLabel }: { value: string; onChange: (v: string) => void; ariaLabel?: string }) => (
+    <textarea aria-label={ariaLabel} value={value} onChange={(e) => onChange(e.target.value)} />
+  ),
+}));
 vi.mock('@/components/prompt/TagChipField', () => ({
   default: ({ value, onChange, ariaLabel }: { value: string; onChange: (v: string) => void; ariaLabel?: string }) => (
     <textarea aria-label={ariaLabel} value={value} onChange={(e) => onChange(e.target.value)} />
@@ -164,13 +171,13 @@ describe('LeftPanel', () => {
     expect(view.gameplay().playerNotes).toBe('the dock is rotten');
   });
 
-  // The Player/Entities swap picks which view shows; it never switched a tab panel, so it's a radio group.
+  // The Avatar/Entities swap picks which view shows; it never switched a tab panel, so it's a radio group.
   // Re-clicking the active one must be a no-op — a single toggle group otherwise clears its own value.
-  it('swaps between the player model and the entity list without ever clearing the choice', () => {
+  it('swaps between the avatar and the entity list without ever clearing the choice', () => {
     renderLeftPanel({}, { seed: (gameplay) => gameplay.setCharacterData({ bodyMorphs: {}, currentHairStyle: 'long', hairLength: 0.5 }) });
 
     const swap = screen.getByRole('radiogroup');
-    const player = within(swap).getByRole('radio', { name: 'Player' });
+    const player = within(swap).getByRole('radio', { name: 'Avatar' });
     const entities = within(swap).getByRole('radio', { name: 'Entities' });
     expect(player).toHaveAttribute('data-state', 'on');
 
@@ -363,6 +370,24 @@ describe('MiddlePanel — paging repaints the narration', () => {
     expect(narrationText()).toContain('gutters once');
     expect(screen.getByRole('button', { name: 'Left' })).toBeInTheDocument();
     expect(screen.queryByRole('button', { name: 'Right' })).toBeNull();
+  });
+});
+
+describe('MiddlePanel — the player\'s own action', () => {
+  it('renders as markdown, like the narration it sits among', () => {
+    renderMiddlePanel({}, { turns: [{ action: 'I shout **stop** and _step back_', narration: 'The dock creaks.' }] });
+
+    // Streamdown renders bold as a marked span rather than a <strong>, so match on its own marker.
+    const you = screen.getByText('You:').parentElement!;
+    expect(within(you).getByText('stop').closest('[data-streamdown="strong"]')).not.toBeNull();
+    expect(within(you).getByText('step back').closest('em')).not.toBeNull();
+  });
+
+  it('keeps a typed line break', () => {
+    renderMiddlePanel({}, { turns: [{ action: 'I wait.\nThen I knock.', narration: 'The dock creaks.' }] });
+
+    const you = screen.getByText('You:').parentElement!;
+    expect(you.querySelector('br')).not.toBeNull();
   });
 });
 

@@ -117,7 +117,7 @@ export const LeftPanel = ({ entities, onEntityClick, onRegenerateMemory }: {
   const isMobile = useIsMobile();
   const [showModel, setShowModel] = React.useState(true);
   // Landscape model viewer view: the player VRM vs. the detected-entity view.
-  const [modelTab, setModelTab] = React.useState("player");
+  const [modelTab, setModelTab] = React.useState("avatar");
   // Entity picked from the list; falls back to the first detected showable entity.
   const [selectedEntityName, setSelectedEntityName] = React.useState<string | undefined>(undefined);
   const [leftTab, setLeftTab] = React.useState(isMobile ? "model" : "notes");
@@ -201,7 +201,7 @@ export const LeftPanel = ({ entities, onEntityClick, onRegenerateMemory }: {
       {!isMobile && (
         <div className="mb-2">
           <div className="relative flex items-center justify-center min-h-10">
-            {/* Only worlds with a player model offer the Player/Entities swap. */}
+            {/* Only worlds with a player model offer the Avatar/Entities swap. */}
             {characterData && (
               <ToggleGroup
                 type="single"
@@ -209,9 +209,8 @@ export const LeftPanel = ({ entities, onEntityClick, onRegenerateMemory }: {
                 // A single ToggleGroup clears its value when the active item is clicked again; one of the two
                 // is always shown, so an empty result is ignored rather than stored.
                 onValueChange={(v) => { if (v) setModelTab(v); }}
-                className="flex justify-center"
               >
-                <ToggleGroupItem value="player">Player</ToggleGroupItem>
+                <ToggleGroupItem value="avatar">Avatar</ToggleGroupItem>
                 <ToggleGroupItem value="entities">Entities</ToggleGroupItem>
               </ToggleGroup>
             )}
@@ -220,14 +219,14 @@ export const LeftPanel = ({ entities, onEntityClick, onRegenerateMemory }: {
               size="icon"
               className="absolute right-0"
               onClick={() => setShowModel((s) => !s)}
-              title={showModel ? "Hide Player Avatar" : "Show Player Avatar"}
+              title={showModel ? "Hide Avatar" : "Show Avatar"}
             >
               {showModel ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
             </Button>
           </div>
           {showModel && (
-            // No model ⇒ always the Entities view (there's no Player to swap to).
-            characterData && modelTab === "player"
+            // No model ⇒ always the Entities view (there's no Avatar to swap to).
+            characterData && modelTab === "avatar"
               ? modelViewer
               : entityViewEntity && (
                   <div className="w-full relative" style={{ paddingTop: '120%' }}>
@@ -765,7 +764,10 @@ export const MiddlePanel = ({
                 <div key={index} className={`mb-2 ${message.role === 'user' ? 'text-warning' : ''}`}>
                   <strong>{message.role === 'user' ? 'You:' : 'Event:'}</strong>
                   {message.role === 'user' ? (
-                    <div className="whitespace-pre-wrap">{message.content}</div>
+                    // Markdown like the narration it sits among — `remarkBreaks` keeps the typed line breaks
+                    // the plain-text render used to hold. Never animated: the player's own text is committed
+                    // the moment it appears.
+                    <MarkdownRenderer text={message.content} />
                   ) : (
                     <div ref={narrationRef} data-testid="narration" style={revealStyle}>
                       {/* The turn's reasoning aside, above the narration: live for the streaming latest turn
@@ -983,7 +985,7 @@ export const MiddlePanel = ({
                     description="Are you sure you want to rollback to the previous state? This action cannot be undone."
                     onConfirm={handleRollback}
                   >
-                    <Button variant="outline" className="text-meta gap-1 w-32" disabled={isWaitingForAI}>
+                    <Button variant="outline" className="gap-1 w-32" disabled={isWaitingForAI}>
                       <RefreshCw className="h-3 w-3" />
                       Rollback
                     </Button>
@@ -994,7 +996,7 @@ export const MiddlePanel = ({
                     <Button
                       variant="outline"
                       aria-label="Re-generate"
-                      className={`text-meta gap-1 ${canRegenChoices || canRegenStats ? "rounded-r-none md:w-28" : "md:w-32"}`}
+                      className={`gap-1 ${canRegenChoices || canRegenStats ? "rounded-r-none md:w-28" : "md:w-32"}`}
                       onClick={handleRegenerate}
                       disabled={isWaitingForAI}
                     >
