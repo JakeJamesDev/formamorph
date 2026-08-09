@@ -8,7 +8,7 @@ const buttonVariants = cva(
   // `border border-transparent` in the base reserves a 1px border on every variant (no layout shift) that
   // themes color via `--border`; it's faint in the color themes and maximal in High Contrast. Filled
   // variants keep it transparent; secondary/ghost opt into `border-border` so they're outlined too.
-  "inline-flex items-center justify-center whitespace-nowrap rounded-md border border-transparent text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset disabled:pointer-events-none disabled:opacity-50",
+  "inline-flex items-center justify-center whitespace-nowrap rounded-md border border-transparent text-label font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset disabled:pointer-events-none disabled:opacity-50",
   {
     variants: {
       variant: {
