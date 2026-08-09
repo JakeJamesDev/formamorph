@@ -29,11 +29,14 @@ export interface GradientButtonProps extends ButtonProps {
   tone: GradientTone;
 }
 
-/** A pastel action button: black bold label over one of the shared gradients. */
+/**
+ * A pastel action button: black bold label at reading size over one of the shared gradients.
+ * These are the menu's primary actions, so they read a step above Button's own label size.
+ */
 export function GradientButton({ tone, className, ...props }: GradientButtonProps) {
   return (
     <Button
-      className={cn('bg-gradient-to-r text-black font-bold', GRADIENT_TONES[tone], className)}
+      className={cn('bg-gradient-to-r text-body text-black font-bold', GRADIENT_TONES[tone], className)}
       {...props}
     />
   );
