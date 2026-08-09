@@ -9,6 +9,7 @@ import remarkGfm from 'remark-gfm';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Slider } from '@/components/ui/slider';
 import { Popover, PopoverTrigger, PopoverContent } from '@/components/ui/popover';
+import { Hint } from '@/components/ui/typography';
 import 'streamdown/styles.css';
 
 /** An `ⓘ` button that reveals its full explanation in a popover, so a setting row can show a terse lead
@@ -32,7 +33,7 @@ export function HintInfo({ children }: { children: string }) {
       <PopoverContent
         align="center"
         collisionPadding={12}
-        className="w-80 max-w-[calc(100vw-2rem)] text-meta leading-relaxed text-muted-foreground [&_p]:my-0 [&_*+p]:mt-2 [&_ul]:my-0 [&_*+ul]:mt-1.5 [&_ul]:list-disc [&_ul]:list-outside [&_ul]:pl-5 [&_li]:mt-0.5 [&_li]:pl-0.5 [&_strong]:font-medium [&_strong]:text-foreground [&_code]:text-[0.9em]"
+        className="w-80 max-w-[calc(100vw-2rem)] text-helper leading-relaxed text-muted-foreground [&_p]:my-0 [&_*+p]:mt-2 [&_ul]:my-0 [&_*+ul]:mt-1.5 [&_ul]:list-disc [&_ul]:list-outside [&_ul]:pl-5 [&_li]:mt-0.5 [&_li]:pl-0.5 [&_strong]:font-medium [&_strong]:text-foreground [&_code]:text-[0.9em]"
       >
         <Streamdown remarkPlugins={[remarkGfm]} controls={false}>{children}</Streamdown>
       </PopoverContent>
@@ -50,7 +51,7 @@ export function Section({ title, hint, children }: { title: string; hint?: strin
           <h3 className="text-meta font-semibold uppercase tracking-wider text-muted-foreground">{title}</h3>
           <div className="h-px flex-1 bg-border" />
         </div>
-        {hint && <p className="text-meta text-muted-foreground">{hint}</p>}
+        {hint && <Hint>{hint}</Hint>}
       </div>
       {children}
     </section>
@@ -97,7 +98,7 @@ export function Row({ label, htmlFor, children, hint, center }: {
       <label htmlFor={htmlFor} className={center ? 'text-left sm:text-right' : 'text-left sm:text-right pt-1'}>{label}</label>
       <div className="space-y-1">
         {children}
-        {hint && <p className="text-meta text-muted-foreground">{hint}</p>}
+        {hint && <Hint>{hint}</Hint>}
       </div>
     </div>
   );
@@ -124,7 +125,7 @@ export function CheckRow({ label, htmlFor, checked, onChange, hint }: {
       <label htmlFor={htmlFor} className="text-left sm:text-right leading-4">{label}</label>
       <div className="flex items-start gap-2">
         <Checkbox id={htmlFor} checked={checked} onCheckedChange={(c) => onChange(c === true)} className="shrink-0" />
-        <span className="text-meta text-muted-foreground">{hint}</span>
+        <Hint as="span">{hint}</Hint>
       </div>
     </div>
   );

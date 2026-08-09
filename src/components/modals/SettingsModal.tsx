@@ -143,7 +143,7 @@ function VerbatimTurnsField({ id, value, onChange, disabled }: { id: string; val
         onChange={(e) => onChange(Math.max(0, Math.floor(Number(e.target.value)) || 0))}
         className="w-20"
       />
-      <span className="hidden sm:inline text-meta text-muted-foreground">recent turns kept in full before older ones are summarized</span>
+      <span className="hidden sm:inline text-helper text-muted-foreground">recent turns kept in full before older ones are summarized</span>
     </div>
   );
 }
@@ -182,7 +182,7 @@ function SamplerControl({ id, label, hint, custom, value, defaultValue, min, max
       <div className="flex items-center gap-2">
         <Checkbox id={id} checked={custom} disabled={disabled} onCheckedChange={(c) => onCustomChange(c === true)} />
         <label htmlFor={id} className="text-label">{label}</label>
-        <span className="hidden sm:inline text-meta text-muted-foreground">{hint}</span>
+        <span className="hidden sm:inline text-helper text-muted-foreground">{hint}</span>
       </div>
       {/* pl-2.5 is the thumb's own overhang: it centers on the value, so at `min` it reaches 10px left of
           the track and would be clipped by the scroll frame. Only the left needs it — the readout and its
@@ -282,7 +282,7 @@ function PromptEndpointField({ value, activeName, presets, onChange, target, dis
       <EndpointReachabilityBadge target={target} />
       {/* Name the target rather than saying "the active preset": this panel sits under a *prompt* preset,
           so "active preset" reads as that one, not the endpoint. */}
-      <span className="text-meta text-muted-foreground">
+      <span className="text-helper text-muted-foreground">
         {value === null
           ? 'Goes wherever AI Endpoints is pointed. Switch endpoints there and this prompt follows.'
           : `Always goes to ${presets.find((p) => p.id === value)?.name ?? 'this endpoint'}, even when you switch endpoints elsewhere.`}
@@ -315,7 +315,7 @@ function PromptReasoningField({ value, options, onChange, disabled }: {
           <ToggleGroupItem key={t.value} value={t.value} disabled={disabled}>{t.label}</ToggleGroupItem>
         ))}
       </ToggleGroup>
-      <span className="text-meta text-muted-foreground">
+      <span className="text-helper text-muted-foreground">
         Global follows Settings → Generation → Native Reasoning. Only applies to models with native reasoning.
       </span>
     </div>
@@ -334,7 +334,7 @@ function PromptReasoningBudgetField({ value, onChange, disabled }: {
     <div className="space-y-2">
       <div className="flex items-center gap-2">
         <label className="text-label">Reasoning Budget</label>
-        <span className="hidden sm:inline text-meta text-muted-foreground">share of Max Output Tokens the model may think for; 0% = no reasoning</span>
+        <span className="hidden sm:inline text-helper text-muted-foreground">share of Max Output Tokens the model may think for; 0% = no reasoning</span>
       </div>
       {/* pl-2.5 for the thumb's overhang at 0 — see SamplerControl. */}
       <div className="flex items-center gap-3 pl-2.5">
@@ -1117,7 +1117,7 @@ export const SettingsModal = ({ isOpen, onOpenChange, previewValues, initialTab,
                     {THEME_OPTIONS.map((o) => (
                       <p
                         key={o.value}
-                        className={`col-start-1 row-start-1 text-meta text-muted-foreground${o.value === theme ? '' : ' invisible'}`}
+                        className={`col-start-1 row-start-1 text-helper text-muted-foreground${o.value === theme ? '' : ' invisible'}`}
                       >
                         {o.help}
                       </p>
@@ -1139,7 +1139,7 @@ export const SettingsModal = ({ isOpen, onOpenChange, previewValues, initialTab,
                     </SelectContent>
                   </Select>
                   <ThemePreviewButton />
-                  <span className="text-meta text-muted-foreground">Recolors the whole app; applies to both light and dark.</span>
+                  <span className="text-helper text-muted-foreground">Recolors the whole app; applies to both light and dark.</span>
                 </div>
               </div>
               <div className="grid grid-cols-1 sm:grid-cols-[minmax(0,1fr)_minmax(0,3fr)] items-center gap-4">
@@ -1157,7 +1157,7 @@ export const SettingsModal = ({ isOpen, onOpenChange, previewValues, initialTab,
                       ))}
                     </SelectContent>
                   </Select>
-                  <span className="text-meta text-muted-foreground">The typeface for the whole app.</span>
+                  <span className="text-helper text-muted-foreground">The typeface for the whole app.</span>
                 </div>
               </div>
               </Section>
@@ -1181,7 +1181,7 @@ export const SettingsModal = ({ isOpen, onOpenChange, previewValues, initialTab,
                     checked={locationBackground}
                     onCheckedChange={(c) => setLocationBackground(c === true)}
                   />
-                  <span className="text-meta text-muted-foreground">Show the location image behind the game. Off uses a blank themed background.</span>
+                  <span className="text-helper text-muted-foreground">Show the location image behind the game. Off uses a blank themed background.</span>
                 </div>
               </div>
               {locationBackground && (
@@ -1201,7 +1201,7 @@ export const SettingsModal = ({ isOpen, onOpenChange, previewValues, initialTab,
                       {Math.round(backgroundOverlay * 100)}%
                     </span>
                   </div>
-                  <p className="text-meta text-muted-foreground sm:col-start-2">
+                  <p className="text-helper text-muted-foreground sm:col-start-2">
                     Fades the location image toward the background color for readability. 0% shows the full image.
                   </p>
                 </div>
@@ -1214,7 +1214,7 @@ export const SettingsModal = ({ isOpen, onOpenChange, previewValues, initialTab,
                 <RowLabel>Narration Reveal</RowLabel>
                 <div className="flex items-center gap-2">
                   <RevealAnimationDemoButton />
-                  <span className="text-meta text-muted-foreground">How each sentence appears as it streams.</span>
+                  <span className="text-helper text-muted-foreground">How each sentence appears as it streams.</span>
                 </div>
               </div>
               <div className="grid grid-cols-1 sm:grid-cols-[minmax(0,1fr)_minmax(0,3fr)] items-start gap-4">
@@ -1255,7 +1255,7 @@ Pick a suggestion, type your own, or even a **style** — like *formal English* 
                     {PARAGRAPH_LIMIT_OPTIONS.map((o) => (
                       <p
                         key={o.value}
-                        className={`col-start-1 row-start-1 text-meta text-muted-foreground${o.value === paragraphLimit ? '' : ' invisible'}`}
+                        className={`col-start-1 row-start-1 text-helper text-muted-foreground${o.value === paragraphLimit ? '' : ' invisible'}`}
                       >
                         {o.help}
                       </p>
@@ -1276,7 +1276,7 @@ Works best when **Paragraph Limit** isn't set to *Single*.`}</HintInfo>
                     onCheckedChange={(c) => setMarkdownOutput(c === true)}
                     className="shrink-0"
                   />
-                  <span className="text-meta text-muted-foreground">Let the AI use bold, lists, and tables.</span>
+                  <span className="text-helper text-muted-foreground">Let the AI use bold, lists, and tables.</span>
                 </div>
               </div>
               </Section>
@@ -1338,7 +1338,7 @@ Skips the "Move to…?" confirmation.`}</HintInfo>
                       onCheckedChange={(c) => setLocationAutoApply(c === true)}
                       className="shrink-0"
                     />
-                    <span className="text-meta text-muted-foreground">Resolve the move before the scene is written.</span>
+                    <span className="text-helper text-muted-foreground">Resolve the move before the scene is written.</span>
                   </div>
                 </div>
                 </SubGroup>
@@ -1355,7 +1355,7 @@ Skips the "Move to…?" confirmation.`}</HintInfo>
                     {THINKING_OPTIONS.map((o) => (
                       <p
                         key={o.value}
-                        className={`col-start-1 row-start-1 text-meta text-muted-foreground${o.value === thinkingMode ? '' : ' invisible'}`}
+                        className={`col-start-1 row-start-1 text-helper text-muted-foreground${o.value === thinkingMode ? '' : ' invisible'}`}
                       >
                         {o.help}
                       </p>
@@ -1389,7 +1389,7 @@ Skips the "Move to…?" confirmation.`}</HintInfo>
                         className="w-20"
                       />
                     </div>
-                    <span className="text-meta text-muted-foreground">Cap characters the director stages per turn.</span>
+                    <span className="text-helper text-muted-foreground">Cap characters the director stages per turn.</span>
                   </div>
                 </div>
                 </SubGroup>
@@ -1401,7 +1401,7 @@ Skips the "Move to…?" confirmation.`}</HintInfo>
                 <div className="grid grid-cols-1 sm:grid-cols-[minmax(0,1fr)_minmax(0,3fr)] items-start gap-4">
                   <RowLabel top muted>Native Reasoning</RowLabel>
                   <div className="pt-2">
-                    <span className="text-meta text-muted-foreground">This model doesn&apos;t support reasoning, so there&apos;s nothing to configure.</span>
+                    <span className="text-helper text-muted-foreground">This model doesn&apos;t support reasoning, so there&apos;s nothing to configure.</span>
                   </div>
                 </div>
                 </SubGroup>
@@ -1418,7 +1418,7 @@ Skips the "Move to…?" confirmation.`}</HintInfo>
                         {reasoningOptions.map((o) => (
                           <p
                             key={o.value}
-                            className={`col-start-1 row-start-1 text-meta text-muted-foreground${o.value === reasoningEffort ? '' : ' invisible'}`}
+                            className={`col-start-1 row-start-1 text-helper text-muted-foreground${o.value === reasoningEffort ? '' : ' invisible'}`}
                           >
                             {REASONING_EFFORT_HELP[o.value]}
                           </p>
@@ -1445,7 +1445,7 @@ Runs an extra request per turn; edit its prompt under **Prompts → Summary**.`}
                     onCheckedChange={(c) => setMemoryDigests(c === true)}
                     className="shrink-0"
                   />
-                  <span className="text-meta text-muted-foreground">Condense older turns so long stories stay coherent.</span>
+                  <span className="text-helper text-muted-foreground">Condense older turns so long stories stay coherent.</span>
                 </div>
               </div>
               {memoryDigests && (
@@ -1465,7 +1465,7 @@ Runs an extra request per turn; edit its prompt under **Prompts → Summary**.`}
                       onCheckedChange={(c) => handleSemanticMemoryToggle(c === true)}
                       className="shrink-0"
                     />
-                    <span className="text-meta text-muted-foreground">Experimental. Keep the memories most relevant to your action, not just the newest.</span>
+                    <span className="text-helper text-muted-foreground">Experimental. Keep the memories most relevant to your action, not just the newest.</span>
                   </div>
                 </div>
                 {semanticMemory && (
@@ -1494,7 +1494,7 @@ Runs an extra request per turn; edit its prompt under **Prompts → Summary**.`}
                         className="w-20"
                       />
                     </div>
-                    <span className="text-meta text-muted-foreground">Cap how many memories ride along each turn.</span>
+                    <span className="text-helper text-muted-foreground">Cap how many memories ride along each turn.</span>
                   </div>
                   </div>
                   <div className="grid grid-cols-1 sm:grid-cols-[minmax(0,1fr)_minmax(0,3fr)] items-start gap-4">
@@ -1512,7 +1512,7 @@ Runs an extra request per turn; edit its prompt under **Prompts → Summary**.`}
                       onCheckedChange={(c) => setSemanticRehydration(c === true)}
                       className="shrink-0"
                     />
-                    <span className="text-meta text-muted-foreground">Experimental. Recall a full past scene when your action returns to it.</span>
+                    <span className="text-helper text-muted-foreground">Experimental. Recall a full past scene when your action returns to it.</span>
                   </div>
                   </div>
                   </SubGroup>
@@ -1532,7 +1532,7 @@ Runs an extra request per turn; edit its prompt under **Prompts → Summary**.`}
                       onCheckedChange={(c) => setTimeContext(c === true)}
                       className="shrink-0"
                     />
-                    <span className="text-meta text-muted-foreground">Experimental. Tell the AI when each memory happened.</span>
+                    <span className="text-helper text-muted-foreground">Experimental. Tell the AI when each memory happened.</span>
                   </div>
                 </div>
                 <div className="grid grid-cols-1 sm:grid-cols-[minmax(0,1fr)_minmax(0,3fr)] items-start gap-4">
@@ -1550,7 +1550,7 @@ Runs an extra request per turn; edit its prompt under **Prompts → Summary**.`}
                       onCheckedChange={(c) => setAiClock(c === true)}
                       className="shrink-0"
                     />
-                    <span className="text-meta text-muted-foreground">Experimental. Measure how long each turn takes instead of assuming an hour.</span>
+                    <span className="text-helper text-muted-foreground">Experimental. Measure how long each turn takes instead of assuming an hour.</span>
                   </div>
                 </div>
                 </SubGroup>
@@ -1569,7 +1569,7 @@ Runs an extra request per turn; edit its prompt under **Prompts → Summary**.`}
                     onCheckedChange={(c) => handleSemanticLoreToggle(c === true)}
                     className="shrink-0"
                   />
-                  <span className="text-meta text-muted-foreground">Experimental. Activate dictionary entries by meaning, not just keywords.</span>
+                  <span className="text-helper text-muted-foreground">Experimental. Activate dictionary entries by meaning, not just keywords.</span>
                 </div>
               </div>
               {embedLoading && (
@@ -1592,7 +1592,7 @@ Runs an extra request per turn; edit its prompt under **Prompts → Summary**.`}
                 <div className="grid grid-cols-1 sm:grid-cols-[minmax(0,1fr)_minmax(0,3fr)] items-center gap-4">
                   <span />
                   <div className="flex items-center gap-2">
-                    <span className="text-meta text-destructive">Model download failed: {embedError}</span>
+                    <span className="text-helper text-destructive">Model download failed: {embedError}</span>
                     <Button variant="outline" size="sm" onClick={startEmbeddingDownload}>Retry</Button>
                   </div>
                 </div>
@@ -1611,7 +1611,7 @@ Runs one extra request the first time each new character is named. Remove any yo
                     onCheckedChange={(c) => setDescribeCharacters(c === true)}
                     className="shrink-0"
                   />
-                  <span className="text-meta text-muted-foreground">Write a description for each character the story invents.</span>
+                  <span className="text-helper text-muted-foreground">Write a description for each character the story invents.</span>
                 </div>
               </div>
               {/* Diaries are only read by the staged character pass, so the option only appears in that mode. */}
@@ -1630,7 +1630,7 @@ Runs an extra request per participant; edit its prompt under **Prompts → Diary
                       onCheckedChange={(c) => setCharacterDiaries(c === true)}
                       className="shrink-0"
                     />
-                    <span className="text-meta text-muted-foreground">Characters keep diaries that shape their motivation.</span>
+                    <span className="text-helper text-muted-foreground">Characters keep diaries that shape their motivation.</span>
                   </div>
                 </div>
                 {characterDiaries && semanticMemory && (
@@ -1649,7 +1649,7 @@ Runs an extra request per participant; edit its prompt under **Prompts → Diary
                       onCheckedChange={(c) => setSemanticDiaries(c === true)}
                       className="shrink-0"
                     />
-                    <span className="text-meta text-muted-foreground">Experimental. Characters also recall older, relevant diary entries.</span>
+                    <span className="text-helper text-muted-foreground">Experimental. Characters also recall older, relevant diary entries.</span>
                   </div>
                   </div>
                   </SubGroup>
@@ -1673,7 +1673,7 @@ Runs an extra request per participant; edit its prompt under **Prompts → Diary
                     onCheckedChange={(c) => setConcurrentTurnRequests(c === true)}
                     className="shrink-0"
                   />
-                  <span className="text-meta text-muted-foreground">Fetch post-narration requests in parallel.</span>
+                  <span className="text-helper text-muted-foreground">Fetch post-narration requests in parallel.</span>
                 </div>
               </div>
               </Section>
@@ -1692,7 +1692,7 @@ Captured and saved either way, so turning it on reveals it on past turns too.`}<
                     onCheckedChange={(c) => setShowReasoning(c === true)}
                     className="shrink-0"
                   />
-                  <span className="text-meta text-muted-foreground">Show the model&apos;s private reasoning above each turn.</span>
+                  <span className="text-helper text-muted-foreground">Show the model&apos;s private reasoning above each turn.</span>
                 </div>
               </div>
               <div className="grid grid-cols-1 sm:grid-cols-[minmax(0,1fr)_minmax(0,3fr)] items-start gap-4">
@@ -1708,7 +1708,7 @@ An inspection aid for authoring and debugging; off by default.`}</HintInfo>
                     onCheckedChange={(c) => setShowSilentRequests(c === true)}
                     className="shrink-0"
                   />
-                  <span className="text-meta text-muted-foreground">Surface background requests for inspection.</span>
+                  <span className="text-helper text-muted-foreground">Surface background requests for inspection.</span>
                 </div>
               </div>
               </Section>
@@ -1782,7 +1782,7 @@ An inspection aid for authoring and debugging; off by default.`}</HintInfo>
                     className={activeTextEndpointPresetIsBuiltIn ? 'opacity-60 cursor-not-allowed' : undefined}
                   />
                   {endpointUrlWasCompleted(endpointUrl) && (
-                    <p className="text-meta text-muted-foreground">
+                    <p className="text-helper text-muted-foreground">
                       Requests go to <span className="font-mono break-all">{normalizeEndpointUrl(endpointUrl)}</span>
                     </p>
                   )}
@@ -1792,7 +1792,7 @@ An inspection aid for authoring and debugging; off by default.`}</HintInfo>
                 <div className="hidden sm:block" />
                 <button
                   type="button"
-                  className="justify-self-start text-meta text-muted-foreground underline hover:text-foreground"
+                  className="justify-self-start text-helper text-muted-foreground underline hover:text-foreground"
                   onClick={() => setConnectionGuideOpen(true)}
                 >
                   Trouble connecting?
@@ -1838,7 +1838,7 @@ An inspection aid for authoring and debugging; off by default.`}</HintInfo>
               </Row>
               <div className="grid grid-cols-1 sm:grid-cols-[minmax(0,1fr)_minmax(0,3fr)] gap-4">
                 <div className="hidden sm:block" />
-                <div className={contextStatus.red ? 'text-meta text-destructive' : 'text-meta text-muted-foreground'}>
+                <div className={contextStatus.red ? 'text-helper text-destructive' : 'text-helper text-muted-foreground'}>
                   {contextStatus.text}
                 </div>
               </div>
@@ -1918,7 +1918,7 @@ An inspection aid for authoring and debugging; off by default.`}</HintInfo>
                 className="shrink-0"
               />
               <Label htmlFor="imageGenEnabled" className="text-label font-normal">Enable Image Generation</Label>
-              <span className="text-meta text-muted-foreground">Shows the &ldquo;Generate with AI&rdquo; buttons.</span>
+              <span className="text-helper text-muted-foreground">Shows the &ldquo;Generate with AI&rdquo; buttons.</span>
             </div>
             {!imageGenDisabled && (<>
             <div className="flex items-center gap-2 flex-shrink-0">
@@ -1934,7 +1934,7 @@ An inspection aid for authoring and debugging; off by default.`}</HintInfo>
 The image renders **after** the turn's text is done and holds your next action until it finishes — one graphics card can't run the artist and the writer at once. Expect each turn to take as long as your image server needs.
 
 You can always draw a single scene by hand from the button above the story instead.`}</HintInfo>
-              <span className="text-meta text-muted-foreground">Draw every turn automatically (slower turns).</span>
+              <span className="text-helper text-muted-foreground">Draw every turn automatically (slower turns).</span>
             </div>
             <ScrollArea className="flex-1 min-h-0">
             <div className="grid gap-6">
@@ -1992,7 +1992,7 @@ You can always draw a single scene by hand from the button above the story inste
                       placeholder="Pick an installed model"
                     />
                     {invokeMetaError && (
-                      <p className="text-meta text-destructive">{invokeMetaError}</p>
+                      <p className="text-helper text-destructive">{invokeMetaError}</p>
                     )}
                   </div>
                 ) : (
@@ -2013,7 +2013,7 @@ You can always draw a single scene by hand from the button above the story inste
                   <Input aria-label="Portrait width" type="number" min={64} step={64} value={imagePortraitWidth} onChange={(e) => setImagePortraitWidth(numInput(e.target.value, 64))} className="w-28" />
                   <span className="text-muted-foreground">×</span>
                   <Input aria-label="Portrait height" type="number" min={64} step={64} value={imagePortraitHeight} onChange={(e) => setImagePortraitHeight(numInput(e.target.value, 64))} className="w-28" />
-                  <span className="text-meta text-muted-foreground">entity portraits</span>
+                  <span className="text-helper text-muted-foreground">entity portraits</span>
                 </div>
               </Row>
               <Row center label="Landscape (W × H)">
@@ -2021,7 +2021,7 @@ You can always draw a single scene by hand from the button above the story inste
                   <Input aria-label="Landscape width" type="number" min={64} step={64} value={imageLandscapeWidth} onChange={(e) => setImageLandscapeWidth(numInput(e.target.value, 64))} className="w-28" />
                   <span className="text-muted-foreground">×</span>
                   <Input aria-label="Landscape height" type="number" min={64} step={64} value={imageLandscapeHeight} onChange={(e) => setImageLandscapeHeight(numInput(e.target.value, 64))} className="w-28" />
-                  <span className="text-meta text-muted-foreground">locations &amp; thumbnail</span>
+                  <span className="text-helper text-muted-foreground">locations &amp; thumbnail</span>
                 </div>
               </Row>
               <Row center label="Steps / CFG">
@@ -2077,7 +2077,7 @@ You can always draw a single scene by hand from the button above the story inste
                       </ConfirmDialog>
                       <Button variant="outline" size="sm" onClick={() => setShowComfyWorkflow(true)}>How to get this</Button>
                     </div>
-                    <p className="text-meta text-muted-foreground">
+                    <p className="text-helper text-muted-foreground">
                       Tokens Formamorph fills in:
                       {' '}<code>%prompt%</code> <code>%negative%</code> <code>%ckpt%</code> <code>%width%</code>{' '}
                       <code>%height%</code> <code>%steps%</code> <code>%cfg%</code> <code>%seed%</code> <code>%sampler%</code>.
@@ -2154,7 +2154,7 @@ You can always draw a single scene by hand from the button above the story inste
               </TabsContent>
               {!imageGenDisabled && (
               <TabsContent value="img-tagprompt" className="pt-4 flex-1 min-h-0 data-[state=active]:flex flex-col gap-2">
-                <p className="text-meta text-muted-foreground flex-shrink-0">
+                <p className="text-helper text-muted-foreground flex-shrink-0">
                   The prompt sent to your text model to turn a subject’s description into booru tags. The
                   <span className="mx-1 font-medium">Subject</span>chip expands per kind — character: “{SUBJECT_GUIDANCE.character}”; location: “{SUBJECT_GUIDANCE.location}”; world: “{SUBJECT_GUIDANCE.world}”.
                 </p>
@@ -2230,7 +2230,7 @@ You can always draw a single scene by hand from the button above the story inste
             {/* While a pinned world is open the selector edits that world's pin, not the global choice —
                 say so, or picking a preset here looks like it silently did nothing to the rest of the app. */}
             {presetPinnedToWorld && (
-              <p className="-mt-2 flex-shrink-0 text-meta text-muted-foreground">
+              <p className="-mt-2 flex-shrink-0 text-helper text-muted-foreground">
                 The world you&apos;re playing is pinned to this preset, so changing it here re-pins this world.
                 Your usual preset is unaffected and comes back when you leave.
               </p>
@@ -2332,7 +2332,7 @@ You can always draw a single scene by hand from the button above the story inste
 
               {/* What this prompt is for, above it rather than beneath: at the bottom of a full-height
                   editor it sat below the fold, which is the one place a description is no use. */}
-              <p className="flex-shrink-0 text-meta text-muted-foreground">
+              <p className="flex-shrink-0 text-helper text-muted-foreground">
                 {PROMPT_DESCRIPTIONS[activePromptTab]}
               </p>
 
@@ -2383,7 +2383,7 @@ You can always draw a single scene by hand from the button above the story inste
                     onRequestFullscreen={() => setPromptsFullscreen((f) => !f)}
                             readOnly={activePresetIsBuiltIn}
                           />
-                          <p className="text-meta text-muted-foreground">{f.hint}</p>
+                          <p className="text-helper text-muted-foreground">{f.hint}</p>
                         </div>
                       ))}
                     </div>
@@ -2761,7 +2761,7 @@ Includes faces tuned for **dyslexia**, **low vision**, and reading.`}</HintInfo>
                       Restore default worlds
                     </Button>
                   </ConfirmDialog>
-                  <p className="text-meta text-muted-foreground mt-1">
+                  <p className="text-helper text-muted-foreground mt-1">
                     {deletedDefaultCount === 0
                       ? "You haven't deleted any of the bundled worlds."
                       : `Re-creates ${deletedDefaultCount} deleted bundled world${deletedDefaultCount > 1 ? 's' : ''} at their latest version.`}
@@ -2780,7 +2780,7 @@ Includes faces tuned for **dyslexia**, **low vision**, and reading.`}</HintInfo>
                       Clear cached images
                     </Button>
                   </ConfirmDialog>
-                  <p className="text-meta text-muted-foreground mt-1">
+                  <p className="text-helper text-muted-foreground mt-1">
                     {cachedBytes === 0
                       ? 'No linked images have been cached yet.'
                       : `${formatBytes(cachedBytes)} of linked images kept on this device so they work offline.`}

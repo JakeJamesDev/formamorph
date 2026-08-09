@@ -312,12 +312,12 @@ function SearchLocations({ locations, onChange, onChangeDownloadDir }: {
               )}
             </div>
             {downloadDirMissing && (
-              <p className="text-meta text-destructive">
+              <p className="text-helper text-destructive">
                 That folder isn&apos;t available right now — downloads are paused until it&apos;s back or you choose another.
               </p>
             )}
             {!isDefaultDir && (
-              <p className="text-meta text-muted-foreground">
+              <p className="text-helper text-muted-foreground">
                 Models live outside the app folder now, so copying the app folder won&apos;t bring them along.
                 The default is <span className="font-mono">{defaultDir}</span>.
               </p>
@@ -374,7 +374,7 @@ function SearchLocations({ locations, onChange, onChangeDownloadDir }: {
               )}
             </div>
             {externalMissing && (
-              <p className="text-meta text-warning">
+              <p className="text-helper text-warning">
                 That folder isn&apos;t available right now — its models are hidden until it&apos;s back.
               </p>
             )}

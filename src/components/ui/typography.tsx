@@ -17,18 +17,17 @@ const textVariants = cva("", {
   defaultVariants: { role: "hint" },
 })
 
-type TextProps<E extends React.ElementType> = {
-  as?: E
-} & VariantProps<typeof textVariants> &
-  Omit<React.ComponentPropsWithoutRef<E>, "role">
+/** `as` swaps the tag without restating the styling — a hint sitting inline beside a checkbox wants a
+ *  `span`, the same hint under a field wants the default `p`. */
+type TextProps = React.HTMLAttributes<HTMLElement> & { as?: React.ElementType }
 
-function makeText<E extends React.ElementType>(
-  defaultTag: E,
+function makeText(
+  defaultTag: React.ElementType,
   role: NonNullable<VariantProps<typeof textVariants>["role"]>,
   displayName: string,
 ) {
-  const Component = ({ as, className, ...props }: TextProps<E>) => {
-    const Tag = (as ?? defaultTag) as React.ElementType
+  const Component = ({ as, className, ...props }: TextProps) => {
+    const Tag = as ?? defaultTag
     return <Tag className={cn(textVariants({ role }), className)} {...props} />
   }
   Component.displayName = displayName
