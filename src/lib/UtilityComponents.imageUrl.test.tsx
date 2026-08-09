@@ -150,3 +150,50 @@ describe('ImageUpload unreadable-host badge', () => {
     expect(screen.queryByLabelText('Linked image, display only')).toBeNull();
   });
 });
+
+describe('ImageUpload link field placement', () => {
+  const SIZED = 'relative h-40 w-40';
+  const frame = () => document.querySelector('[class*="border-dashed"]') as HTMLElement;
+
+  it('sits inside a sized frame, so bringing an empty slot into view moves nothing below it', () => {
+    render(<ImageUpload id="t" onChange={vi.fn()} cap={IMAGE_CAPS.entity} previewClassName={SIZED} />);
+
+    expect(frame().contains(screen.getByLabelText('Image URL'))).toBe(true);
+  });
+
+  it('sits below a compact box, which has no room inside it', () => {
+    render(<ImageUpload id="t" onChange={vi.fn()} cap={IMAGE_CAPS.entity} />);
+
+    expect(frame().contains(screen.getByLabelText('Image URL'))).toBe(false);
+  });
+
+  it('does not open the file picker when the link box is clicked around its controls', () => {
+    render(<ImageUpload id="t" onChange={vi.fn()} cap={IMAGE_CAPS.entity} previewClassName={SIZED} />);
+    const picker = vi.fn();
+    document.getElementById('image-upload-t')!.addEventListener('click', picker);
+    const box = screen.getByLabelText('Image URL').closest('.space-y-1')!;
+
+    // The input and the button are exempt on their own — a label never activates for a click on interactive
+    // content. Its dead space is not: the gap between them, and the line held for an error message.
+    fireEvent.click(box.querySelector('p')!);
+    expect(picker).not.toHaveBeenCalled();
+
+    // The control: the frame is a label, so its own text still opens the picker — without this the test
+    // above would pass just as well against a frame that never forwarded a click to begin with.
+    fireEvent.click(screen.getByText('Click to upload image'));
+    expect(picker).toHaveBeenCalled();
+  });
+
+  it('holds the error line whether or not it says anything', () => {
+    render(<ImageUpload id="t" onChange={vi.fn()} cap={IMAGE_CAPS.entity} previewClassName={SIZED} />);
+    const line = () => screen.getByLabelText('Image URL').closest('.space-y-1')!.querySelector('p')!;
+
+    expect(line().textContent).toBe('');
+    expect(line().className).toMatch(/min-h-4/);
+
+    fireEvent.change(screen.getByLabelText('Image URL'), { target: { value: 'not-a-url' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Use' }));
+
+    expect(line().textContent).toMatch(/http/);
+  });
+});

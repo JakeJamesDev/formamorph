@@ -223,6 +223,32 @@ export const ImageUpload = ({ onChange, id, value, cap, previewClassName, object
   // Clicking an uploaded image opens the shared pan/zoom viewer instead of re-triggering the file picker.
   const openZoom = (e: MouseEvent) => { e.preventDefault(); e.stopPropagation(); setZoomOpen(true); };
 
+  /** Only offered on an empty slot: a filled one is changed by removing it first, as it always was. */
+  const urlBox = (
+    // Sited inside the frame, this sits within the Label. preventDefault, not stopPropagation: opening the
+    // picker is the label's default action for the click, so halting the React event does not cancel it.
+    // The input and the button are exempt already — a label never activates for interactive content — but
+    // the gap between them and the line held for an error are not.
+    <div className="w-full space-y-1" onClick={(e) => e.preventDefault()}>
+      <div className="flex items-center gap-2">
+        <Input
+          type="url"
+          value={urlDraft}
+          onChange={(e) => { setUrlDraft(e.target.value); setUrlError(null); }}
+          onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); commitUrl(); } }}
+          placeholder="Or paste an image URL"
+          aria-label="Image URL"
+          className="h-8 text-sm"
+        />
+        <Button type="button" variant="outline" size="sm" className="h-8 shrink-0" onClick={commitUrl}>
+          Use
+        </Button>
+      </div>
+      {/* The line is held whether or not it says anything, so a rejected link doesn't shift the box either. */}
+      <p className="min-h-4 text-xs text-destructive">{urlError}</p>
+    </div>
+  );
+
   // A new resolved src gets a fresh chance to load — otherwise one bad link poisons the slot after it's
   // replaced. Keyed on displaySrc (not value): it lags value by a render, so a value-keyed reset can run
   // before a stale-src error lands and the failure would latch.
@@ -309,8 +335,13 @@ export const ImageUpload = ({ onChange, id, value, cap, previewClassName, object
               {removeButton}
             </>
           ) : (
-            <div className="absolute inset-0 flex items-center justify-center p-2 text-center text-muted-foreground">
-              {dragOver ? 'Drop to add' : allowUpload ? 'Click to upload image' : uploadBlockedNote}
+            // The link field lives in the empty frame rather than under it: the frame is already this tall,
+            // so nothing below the slot moves when an empty one comes into view.
+            <div className="absolute inset-0 flex flex-col items-center justify-center gap-2 p-3 text-center text-muted-foreground">
+              <span className="text-sm">
+                {dragOver ? 'Drop to add' : allowUpload ? 'Click to upload image' : uploadBlockedNote}
+              </span>
+              <div className="w-full max-w-[280px]">{urlBox}</div>
             </div>
           )
         ) : (
@@ -347,29 +378,11 @@ export const ImageUpload = ({ onChange, id, value, cap, previewClassName, object
           author is long past hovering this slot. */}
       {expiring && (
         <p className="text-xs text-amber-600 dark:text-amber-500">
-          This Discord link will stop working. Re-upload the picture or use a permanent host.
+          This Discord link will stop working. Re-upload the image or use a permanent host.
         </p>
       )}
-      {/* Only offered on an empty slot: a filled one is changed by removing it first, as it always was. */}
-      {!value && (
-        <div className="space-y-1">
-          <div className="flex items-center gap-2">
-            <Input
-              type="url"
-              value={urlDraft}
-              onChange={(e) => { setUrlDraft(e.target.value); setUrlError(null); }}
-              onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); commitUrl(); } }}
-              placeholder="Or paste an image URL"
-              aria-label="Image URL"
-              className="h-8 text-sm"
-            />
-            <Button type="button" variant="outline" size="sm" className="h-8 shrink-0" onClick={commitUrl}>
-              Use
-            </Button>
-          </div>
-          {urlError && <p className="text-xs text-destructive">{urlError}</p>}
-        </div>
-      )}
+      {/* A frame sized by its caller holds this inside itself; a compact box has no room, so it sits below. */}
+      {!value && !previewClassName && urlBox}
     </div>
   );
 };
