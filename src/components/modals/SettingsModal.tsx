@@ -1263,22 +1263,16 @@ Pick a suggestion, type your own, or even a **style** — like *formal English* 
                   </div>
                 </div>
               </div>
-              <div className="grid grid-cols-1 sm:grid-cols-[minmax(0,1fr)_minmax(0,3fr)] items-start gap-4">
-                <RowLabel htmlFor="markdownOutput" info={
-                  <HintInfo>{`Let the AI format narration with **bold/italics**, lists, and tables.
+              <CheckRow
+                label="Markdown Formatting"
+                htmlFor="markdownOutput"
+                checked={markdownOutput}
+                onChange={setMarkdownOutput}
+                hint="Let the AI use bold, lists, and tables."
+                info={<HintInfo>{`Let the AI format narration with **bold/italics**, lists, and tables.
 
-Works best when **Paragraph Limit** isn't set to *Single*.`}</HintInfo>
-                }>Markdown Formatting</RowLabel>
-                <div className="flex items-center gap-2">
-                  <Checkbox
-                    id="markdownOutput"
-                    checked={markdownOutput}
-                    onCheckedChange={(c) => setMarkdownOutput(c === true)}
-                    className="shrink-0"
-                  />
-                  <span className="text-helper text-muted-foreground">Let the AI use bold, lists, and tables.</span>
-                </div>
-              </div>
+Works best when **Paragraph Limit** isn't set to *Single*.`}</HintInfo>}
+              />
               </Section>
             </div>
             </ScrollArea>
@@ -1325,22 +1319,16 @@ Works best when **Paragraph Limit** isn't set to *Single*.`}</HintInfo>
               {/* Auto-apply detected location changes — its own row, only shown while Location Change is on. */}
               {locationChangeEnabled && (
                 <SubGroup>
-                <div className="grid grid-cols-1 sm:grid-cols-[minmax(0,1fr)_minmax(0,3fr)] items-start gap-4">
-                  <RowLabel htmlFor="locationAutoApply" info={
-                    <HintInfo>{`Resolves the move from your action **before** the scene is written, so it's narrated in the new location.
+                <CheckRow
+                  label="Move Automatically"
+                  htmlFor="locationAutoApply"
+                  checked={locationAutoApply}
+                  onChange={setLocationAutoApply}
+                  hint="Resolve the move before the scene is written."
+                  info={<HintInfo>{`Resolves the move from your action **before** the scene is written, so it's narrated in the new location.
 
-Skips the "Move to…?" confirmation.`}</HintInfo>
-                  }>Move Automatically</RowLabel>
-                  <div className="flex items-center gap-2">
-                    <Checkbox
-                      id="locationAutoApply"
-                      checked={locationAutoApply}
-                      onCheckedChange={(c) => setLocationAutoApply(c === true)}
-                      className="shrink-0"
-                    />
-                    <span className="text-helper text-muted-foreground">Resolve the move before the scene is written.</span>
-                  </div>
-                </div>
+Skips the "Move to…?" confirmation.`}</HintInfo>}
+                />
                 </SubGroup>
               )}
               </Section>
@@ -1432,42 +1420,30 @@ Skips the "Move to…?" confirmation.`}</HintInfo>
               </Section>
 
               <Section title="Memory" hint="What the AI carries forward from earlier turns.">
-              <div className="grid grid-cols-1 sm:grid-cols-[minmax(0,1fr)_minmax(0,3fr)] items-start gap-4">
-                <RowLabel htmlFor="memoryDigests" info={
-                  <HintInfo>{`Condenses older turns while keeping recent ones **word-for-word**, so long stories stay coherent without bloating each request.
+              <CheckRow
+                label="Memory Summaries"
+                htmlFor="memoryDigests"
+                checked={memoryDigests}
+                onChange={setMemoryDigests}
+                hint="Condense older turns so long stories stay coherent."
+                info={<HintInfo>{`Condenses older turns while keeping recent ones **word-for-word**, so long stories stay coherent without bloating each request.
 
-Runs an extra request per turn; edit its prompt under **Prompts → Summary**.`}</HintInfo>
-                }>Memory Summaries</RowLabel>
-                <div className="flex items-center gap-2">
-                  <Checkbox
-                    id="memoryDigests"
-                    checked={memoryDigests}
-                    onCheckedChange={(c) => setMemoryDigests(c === true)}
-                    className="shrink-0"
-                  />
-                  <span className="text-helper text-muted-foreground">Condense older turns so long stories stay coherent.</span>
-                </div>
-              </div>
+Runs an extra request per turn; edit its prompt under **Prompts → Summary**.`}</HintInfo>}
+              />
               {memoryDigests && (
                 <SubGroup>
-                <div className="grid grid-cols-1 sm:grid-cols-[minmax(0,1fr)_minmax(0,3fr)] items-start gap-4">
-                  <RowLabel htmlFor="semanticMemory" info={
-                    <HintInfo>{`When memories no longer all fit, keeps the ones most **relevant to your current action** instead of just dropping the oldest.
+                <CheckRow
+                  label="Semantic Memory"
+                  htmlFor="semanticMemory"
+                  checked={semanticMemory}
+                  onChange={handleSemanticMemoryToggle}
+                  hint="Experimental. Keep the memories most relevant to your action, not just the newest."
+                  info={<HintInfo>{`When memories no longer all fit, keeps the ones most **relevant to your current action** instead of just dropping the oldest.
 
 - Runs a small model **on your device**
 - One-time **~23 MB** download when enabled
-- Nothing about your story leaves your machine`}</HintInfo>
-                  }>Semantic Memory</RowLabel>
-                  <div className="flex items-center gap-2">
-                    <Checkbox
-                      id="semanticMemory"
-                      checked={semanticMemory}
-                      onCheckedChange={(c) => handleSemanticMemoryToggle(c === true)}
-                      className="shrink-0"
-                    />
-                    <span className="text-helper text-muted-foreground">Experimental. Keep the memories most relevant to your action, not just the newest.</span>
-                  </div>
-                </div>
+- Nothing about your story leaves your machine`}</HintInfo>}
+                />
                 {semanticMemory && (
                   <SubGroup>
                   {/* Always-on top-K cap: derived checkbox (cap > 0), enabling seeds a sensible default. */}
@@ -1497,81 +1473,57 @@ Runs an extra request per turn; edit its prompt under **Prompts → Summary**.`}
                     <span className="text-helper text-muted-foreground">Cap how many memories ride along each turn.</span>
                   </div>
                   </div>
-                  <div className="grid grid-cols-1 sm:grid-cols-[minmax(0,1fr)_minmax(0,3fr)] items-start gap-4">
-                    <RowLabel htmlFor="semanticRehydration" info={
-                      <HintInfo>{`When your action returns to an old moment — going back to someone you made a promise to — the full original scene is recalled for the AI, word for word, clearly marked as the past.
+                  <CheckRow
+                    label="Scene Recall"
+                    htmlFor="semanticRehydration"
+                    checked={semanticRehydration}
+                    onChange={setSemanticRehydration}
+                    hint="Experimental. Recall a full past scene when your action returns to it."
+                    info={<HintInfo>{`When your action returns to an old moment — going back to someone you made a promise to — the full original scene is recalled for the AI, word for word, clearly marked as the past.
 
 - At most **two scenes** per turn
 - Never near-duplicates of each other or of recent turns
-- Uses Semantic Memory's model and memories`}</HintInfo>
-                    }>Scene Recall</RowLabel>
-                  <div className="flex items-center gap-2">
-                    <Checkbox
-                      id="semanticRehydration"
-                      checked={semanticRehydration}
-                      onCheckedChange={(c) => setSemanticRehydration(c === true)}
-                      className="shrink-0"
-                    />
-                    <span className="text-helper text-muted-foreground">Experimental. Recall a full past scene when your action returns to it.</span>
-                  </div>
-                  </div>
+- Uses Semantic Memory's model and memories`}</HintInfo>}
+                  />
                   </SubGroup>
                 )}
-                <div className="grid grid-cols-1 sm:grid-cols-[minmax(0,1fr)_minmax(0,3fr)] items-start gap-4">
-                  <RowLabel htmlFor="timeContext" info={
-                    <HintInfo>{`Each memory carries **when** it happened — *"Day 3, evening — two days ago"* — and the recap states the present moment.
+                <CheckRow
+                  label="Time in Memory"
+                  htmlFor="timeContext"
+                  checked={timeContext}
+                  onChange={setTimeContext}
+                  hint="Experimental. Tell the AI when each memory happened."
+                  info={<HintInfo>{`Each memory carries **when** it happened — *"Day 3, evening — two days ago"* — and the recap states the present moment.
 
 - Without it the AI sees the story as an undated list and guesses at how long ago things were
 - Time of day is coarse (*morning*, *evening*), never a clock reading
-- Uses the game clock shown in the Log`}</HintInfo>
-                  }>Time in Memory</RowLabel>
-                  <div className="flex items-center gap-2">
-                    <Checkbox
-                      id="timeContext"
-                      checked={timeContext}
-                      onCheckedChange={(c) => setTimeContext(c === true)}
-                      className="shrink-0"
-                    />
-                    <span className="text-helper text-muted-foreground">Experimental. Tell the AI when each memory happened.</span>
-                  </div>
-                </div>
-                <div className="grid grid-cols-1 sm:grid-cols-[minmax(0,1fr)_minmax(0,3fr)] items-start gap-4">
-                  <RowLabel htmlFor="aiClock" info={
-                    <HintInfo>{`How long each turn takes is measured from what actually happened, instead of the flat **one hour per action** the game charges otherwise.
+- Uses the game clock shown in the Log`}</HintInfo>}
+                />
+                <CheckRow
+                  label="Measured Clock"
+                  htmlFor="aiClock"
+                  checked={aiClock}
+                  onChange={setAiClock}
+                  hint="Experimental. Measure how long each turn takes instead of assuming an hour."
+                  info={<HintInfo>{`How long each turn takes is measured from what actually happened, instead of the flat **one hour per action** the game charges otherwise.
 
 - A few words spoken cost minutes; a night's rest costs hours; *"three weeks later"* costs three weeks
 - Adds one small request per turn, alongside choices and stat updates
-- Feeds the Log's clock, stat regeneration, and Time in Memory`}</HintInfo>
-                  }>Measured Clock</RowLabel>
-                  <div className="flex items-center gap-2">
-                    <Checkbox
-                      id="aiClock"
-                      checked={aiClock}
-                      onCheckedChange={(c) => setAiClock(c === true)}
-                      className="shrink-0"
-                    />
-                    <span className="text-helper text-muted-foreground">Experimental. Measure how long each turn takes instead of assuming an hour.</span>
-                  </div>
-                </div>
+- Feeds the Log's clock, stat regeneration, and Time in Memory`}</HintInfo>}
+                />
                 </SubGroup>
               )}
-              <div className="grid grid-cols-1 sm:grid-cols-[minmax(0,1fr)_minmax(0,3fr)] items-start gap-4">
-                <RowLabel htmlFor="semanticLore" info={
-                  <HintInfo>{`Dictionary entries also activate when your action's **meaning** matches them, even with none of their keywords — "the ruined tower" can wake an *Old Beacon* entry.
+              <CheckRow
+                label="Semantic Lore"
+                htmlFor="semanticLore"
+                checked={semanticLore}
+                onChange={handleSemanticLoreToggle}
+                hint="Experimental. Activate dictionary entries by meaning, not just keywords."
+                info={<HintInfo>{`Dictionary entries also activate when your action's **meaning** matches them, even with none of their keywords — "the ruined tower" can wake an *Old Beacon* entry.
 
 - Keyword activation is unchanged; this only **adds** entries
-- Uses the same on-device model as Semantic Memory (~23 MB on first enable)`}</HintInfo>
-                }>Semantic Lore</RowLabel>
-                <div className="flex items-center gap-2">
-                  <Checkbox
-                    id="semanticLore"
-                    checked={semanticLore}
-                    onCheckedChange={(c) => handleSemanticLoreToggle(c === true)}
-                    className="shrink-0"
-                  />
-                  <span className="text-helper text-muted-foreground">Experimental. Activate dictionary entries by meaning, not just keywords.</span>
-                </div>
-              </div>
+- Uses the same on-device model as Semantic Memory (~23 MB on first enable)`}</HintInfo>}
+              />
               {embedLoading && (
                 <div className="grid grid-cols-1 sm:grid-cols-[minmax(0,1fr)_minmax(0,3fr)] items-center gap-4">
                   <span />
@@ -1598,60 +1550,42 @@ Runs an extra request per turn; edit its prompt under **Prompts → Summary**.`}
                 </div>
               )}
               {/* Descriptions work from the narration alone, so unlike diaries this is offered in every mode. */}
-              <div className="grid grid-cols-1 sm:grid-cols-[minmax(0,1fr)_minmax(0,3fr)] items-start gap-4">
-                <RowLabel htmlFor="describeCharacters" info={
-                  <HintInfo>{`Characters the story invents already appear in the **Characters** panel on their own. Turn this on and each one also gets a written description, so you can open them like any authored character.
+              <CheckRow
+                label="Describe New Characters"
+                htmlFor="describeCharacters"
+                checked={describeCharacters}
+                onChange={setDescribeCharacters}
+                hint="Write a description for each character the story invents."
+                info={<HintInfo>{`Characters the story invents already appear in the **Characters** panel on their own. Turn this on and each one also gets a written description, so you can open them like any authored character.
 
-Runs one extra request the first time each new character is named. Remove any you don't want from the **Characters** panel during play.`}</HintInfo>
-                }>Describe New Characters</RowLabel>
-                <div className="flex items-center gap-2">
-                  <Checkbox
-                    id="describeCharacters"
-                    checked={describeCharacters}
-                    onCheckedChange={(c) => setDescribeCharacters(c === true)}
-                    className="shrink-0"
-                  />
-                  <span className="text-helper text-muted-foreground">Write a description for each character the story invents.</span>
-                </div>
-              </div>
+Runs one extra request the first time each new character is named. Remove any you don't want from the **Characters** panel during play.`}</HintInfo>}
+              />
               {/* Diaries are only read by the staged character pass, so the option only appears in that mode. */}
               {thinkingMode === 'staged' && (
                 <>
-                <div className="grid grid-cols-1 sm:grid-cols-[minmax(0,1fr)_minmax(0,3fr)] items-start gap-4">
-                  <RowLabel htmlFor="characterDiaries" info={
-                    <HintInfo>{`Each character present in a turn records a **first-person diary entry** as turns age out, and its recent entries feed back into that character's motivation.
+                <CheckRow
+                  label="Character Diaries"
+                  htmlFor="characterDiaries"
+                  checked={characterDiaries}
+                  onChange={setCharacterDiaries}
+                  hint="Characters keep diaries that shape their motivation."
+                  info={<HintInfo>{`Each character present in a turn records a **first-person diary entry** as turns age out, and its recent entries feed back into that character's motivation.
 
-Runs an extra request per participant; edit its prompt under **Prompts → Diary**.`}</HintInfo>
-                  }>Character Diaries</RowLabel>
-                  <div className="flex items-center gap-2">
-                    <Checkbox
-                      id="characterDiaries"
-                      checked={characterDiaries}
-                      onCheckedChange={(c) => setCharacterDiaries(c === true)}
-                      className="shrink-0"
-                    />
-                    <span className="text-helper text-muted-foreground">Characters keep diaries that shape their motivation.</span>
-                  </div>
-                </div>
+Runs an extra request per participant; edit its prompt under **Prompts → Diary**.`}</HintInfo>}
+                />
                 {characterDiaries && semanticMemory && (
                   <SubGroup>
-                  <div className="grid grid-cols-1 sm:grid-cols-[minmax(0,1fr)_minmax(0,3fr)] items-start gap-4">
-                    <RowLabel htmlFor="semanticDiaries" info={
-                      <HintInfo>{`Instead of only their newest diary entries, characters also recall the older ones most relevant to what you're doing — she remembers the last time you drew a blade.
+                  <CheckRow
+                    label="Diary Recall"
+                    htmlFor="semanticDiaries"
+                    checked={semanticDiaries}
+                    onChange={setSemanticDiaries}
+                    hint="Experimental. Characters also recall older, relevant diary entries."
+                    info={<HintInfo>{`Instead of only their newest diary entries, characters also recall the older ones most relevant to what you're doing — she remembers the last time you drew a blade.
 
 - Same total entry count, so it costs **nothing extra**
-- Uses Semantic Memory's model`}</HintInfo>
-                    }>Diary Recall</RowLabel>
-                  <div className="flex items-center gap-2">
-                    <Checkbox
-                      id="semanticDiaries"
-                      checked={semanticDiaries}
-                      onCheckedChange={(c) => setSemanticDiaries(c === true)}
-                      className="shrink-0"
-                    />
-                    <span className="text-helper text-muted-foreground">Experimental. Characters also recall older, relevant diary entries.</span>
-                  </div>
-                  </div>
+- Uses Semantic Memory's model`}</HintInfo>}
+                  />
                   </SubGroup>
                 )}
                 </>
@@ -1659,58 +1593,40 @@ Runs an extra request per participant; edit its prompt under **Prompts → Diary
               </Section>
 
               <Section title="Performance">
-              <div className="grid grid-cols-1 sm:grid-cols-[minmax(0,1fr)_minmax(0,3fr)] items-start gap-4">
-                <RowLabel htmlFor="concurrentTurnRequests" info={
-                  <HintInfo>{`Fetches choices, stat updates, and location changes **at the same time** instead of one after another.
+              <CheckRow
+                label="Concurrent Requests"
+                htmlFor="concurrentTurnRequests"
+                checked={concurrentTurnRequests}
+                onChange={setConcurrentTurnRequests}
+                hint="Fetch post-narration requests in parallel."
+                info={<HintInfo>{`Fetches choices, stat updates, and location changes **at the same time** instead of one after another.
 
 - Faster turns on endpoints that handle parallel requests (e.g. LM Studio's **Parallel** setting)
-- Turn off if a memory-tight local model slows down under the load`}</HintInfo>
-                }>Concurrent Requests</RowLabel>
-                <div className="flex items-center gap-2">
-                  <Checkbox
-                    id="concurrentTurnRequests"
-                    checked={concurrentTurnRequests}
-                    onCheckedChange={(c) => setConcurrentTurnRequests(c === true)}
-                    className="shrink-0"
-                  />
-                  <span className="text-helper text-muted-foreground">Fetch post-narration requests in parallel.</span>
-                </div>
-              </div>
+- Turn off if a memory-tight local model slows down under the load`}</HintInfo>}
+              />
               </Section>
 
               <Section title="Inspection" hint="Surfaces work that normally happens out of sight.">
-              <div className="grid grid-cols-1 sm:grid-cols-[minmax(0,1fr)_minmax(0,3fr)] items-start gap-4">
-                <RowLabel htmlFor="showReasoning" info={
-                  <HintInfo>{`Shows a reasoning model's (or the Inline mode's) private scratchpad as a collapsible **"Thinking…"** note above each turn's narration.
+              <CheckRow
+                label="Show Reasoning"
+                htmlFor="showReasoning"
+                checked={showReasoning}
+                onChange={setShowReasoning}
+                hint="Show the model&apos;s private reasoning above each turn."
+                info={<HintInfo>{`Shows a reasoning model's (or the Inline mode's) private scratchpad as a collapsible **"Thinking…"** note above each turn's narration.
 
-Captured and saved either way, so turning it on reveals it on past turns too.`}</HintInfo>
-                }>Show Reasoning</RowLabel>
-                <div className="flex items-center gap-2">
-                  <Checkbox
-                    id="showReasoning"
-                    checked={showReasoning}
-                    onCheckedChange={(c) => setShowReasoning(c === true)}
-                    className="shrink-0"
-                  />
-                  <span className="text-helper text-muted-foreground">Show the model&apos;s private reasoning above each turn.</span>
-                </div>
-              </div>
-              <div className="grid grid-cols-1 sm:grid-cols-[minmax(0,1fr)_minmax(0,3fr)] items-start gap-4">
-                <RowLabel htmlFor="showSilentRequests" info={
-                  <HintInfo>{`Surfaces requests that normally run quietly — **memory summaries**, **character diaries**, and new-character notes — in the status bar and the AI context viewer.
+Captured and saved either way, so turning it on reveals it on past turns too.`}</HintInfo>}
+              />
+              <CheckRow
+                label="Show Silent Requests"
+                htmlFor="showSilentRequests"
+                checked={showSilentRequests}
+                onChange={setShowSilentRequests}
+                hint="Surface background requests for inspection."
+                info={<HintInfo>{`Surfaces requests that normally run quietly — **memory summaries**, **character diaries**, and new-character notes — in the status bar and the AI context viewer.
 
-An inspection aid for authoring and debugging; off by default.`}</HintInfo>
-                }>Show Silent Requests</RowLabel>
-                <div className="flex items-center gap-2">
-                  <Checkbox
-                    id="showSilentRequests"
-                    checked={showSilentRequests}
-                    onCheckedChange={(c) => setShowSilentRequests(c === true)}
-                    className="shrink-0"
-                  />
-                  <span className="text-helper text-muted-foreground">Surface background requests for inspection.</span>
-                </div>
-              </div>
+An inspection aid for authoring and debugging; off by default.`}</HintInfo>}
+              />
               </Section>
             </div>
             </ScrollArea>
