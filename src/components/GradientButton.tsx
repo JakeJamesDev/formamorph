@@ -1,3 +1,5 @@
+import { forwardRef } from 'react';
+
 import { Button, type ButtonProps } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 
@@ -32,12 +34,16 @@ export interface GradientButtonProps extends ButtonProps {
 /**
  * A pastel action button: black bold label at reading size over one of the shared gradients.
  * These are the menu's primary actions, so they read a step above Button's own label size.
+ *
+ * Forwards its ref so it can stand as a Radix `asChild` trigger — the hamburger menu is one.
  */
-export function GradientButton({ tone, className, ...props }: GradientButtonProps) {
-  return (
+export const GradientButton = forwardRef<HTMLButtonElement, GradientButtonProps>(
+  ({ tone, className, ...props }, ref) => (
     <Button
+      ref={ref}
       className={cn('bg-gradient-to-r text-body text-black font-bold', GRADIENT_TONES[tone], className)}
       {...props}
     />
-  );
-}
+  ),
+);
+GradientButton.displayName = 'GradientButton';
