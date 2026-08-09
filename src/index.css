@@ -407,6 +407,16 @@
     scrollbar-width: thin;
     scrollbar-color: hsl(var(--border)) transparent;
   }
+  /* The UA stylesheet styles form controls with the `font` shorthand, which resets font-size-adjust to
+     `none` — and Tailwind's preflight restores family and size but not that. So every input, textarea and
+     button escaped the app-wide x-height normalization above and rendered larger than the text beside it,
+     while contenteditable editors (plain divs) obeyed it. */
+  input,
+  textarea,
+  select,
+  button {
+    font-size-adjust: inherit;
+  }
   /* WebKit/Blink: thin, rounded, border-colored thumb on a transparent track. */
   *::-webkit-scrollbar {
     width: 10px;
