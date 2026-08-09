@@ -9,6 +9,9 @@ import TagChipField from "@/components/prompt/TagChipField";
 import { ConfirmDialog } from "@/components/ConfirmDialog";
 import { ImageUpload } from '../lib/UtilityComponents';
 import { isRemoteImage } from '@/lib/imageBytes';
+import { fileToDataUrl } from '@/lib/imageDrop';
+import { useDownscalePrompt } from '@/lib/useDownscalePrompt';
+import { applyImageOptimize } from '@/lib/imageOptim';
 import { GenerateImageButton } from '../components/GenerateImageButton';
 import type { ImageCap } from '../lib/imageOptim';
 import type { ImageSubjectKind } from '@/lib/imagePrompt';
@@ -57,6 +60,8 @@ const ImageTagsField = ({ label, images, onImagesChange, slots = 1, embeddedLimi
   // The tag inputs are plain controlled fields with no history of their own, so it lives here — stepped by
   // tag, with a generation (or an adopted embedded prompt) as one step.
   const tagHistory = useTagHistory(tags ?? '', onTagsChange);
+  // The batch consent prompt for a multi-file drop. Each ImageUpload still owns the single-file one.
+  const { promptImagesBatch, dialog: batchDialog } = useDownscalePrompt();
 
   // Filled slots, plus a trailing empty one to upload into while there is room.
   const shown = images.slice(0, slots);
@@ -75,6 +80,21 @@ const ImageTagsField = ({ label, images, onImagesChange, slots = 1, embeddedLimi
     onImagesChange(next.filter(Boolean));
   };
 
+  /** Several pictures dropped at once: they fill this slot and the ones after it, with a single consent
+   *  prompt for the batch — a five-file drop raising five modals would be a worse gesture than five clicks.
+   *  Files past the slot count or the embedded allowance are simply not taken. */
+  const takeFiles = async (index: number, files: File[]) => {
+    const room = Math.min(slots - index, embeddedLimit - embedded);
+    const accepted = files.slice(0, Math.max(0, room));
+    if (!accepted.length) return;
+    const urls = await Promise.all(accepted.map(fileToDataUrl));
+    const mode = await promptImagesBatch(urls, cap);
+    const stored = await Promise.all(urls.map(async (url) => (await applyImageOptimize(url, mode, cap)) ?? url));
+    const next = [...shown];
+    stored.forEach((url, k) => { next[index + k] = url; });
+    onImagesChange(next.filter(Boolean));
+  };
+
   /** Swap a slot into the primary position, which is what makes it the entity's one-picture stand-in. */
   const makePrimary = (index: number) => {
     const next = [...shown];
@@ -84,6 +104,7 @@ const ImageTagsField = ({ label, images, onImagesChange, slots = 1, embeddedLimi
 
   return (
     <div className="space-y-2">
+      {batchDialog}
       <Label>{label}</Label>
       {rows.map((url, i) => (
         <div key={i} className="space-y-1">
@@ -99,6 +120,8 @@ const ImageTagsField = ({ label, images, onImagesChange, slots = 1, embeddedLimi
             // Only the primary offers its embedded prompt as the tags: the tags describe the subject, and a
             // later slot overwriting them would undo the choice made for the picture that represents it.
             onPromptExtracted={i === 0 && advanced ? setPendingPrompt : undefined}
+            // Only a gallery can take several at once; a single-slot subject keeps the first file.
+            onFiles={slots > 1 ? (files) => void takeFiles(i, files) : undefined}
           />
           {slots > 1 && url && (
             <div className="flex items-center gap-2">

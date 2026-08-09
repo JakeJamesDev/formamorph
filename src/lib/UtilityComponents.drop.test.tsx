@@ -1,0 +1,133 @@
+import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { render, screen, fireEvent, waitFor } from '@testing-library/react';
+import { ImageUpload } from './UtilityComponents';
+import { IMAGE_CAPS } from './imageOptim';
+
+// The downscale prompt owns a canvas encode jsdom can't run; these tests are about which payload reaches
+// the slot, not about re-encoding, so it passes the URL straight through.
+const promptImage = vi.fn(async (url: string) => url);
+vi.mock('./useDownscalePrompt', () => ({
+  useDownscalePrompt: () => ({ promptImage: (url: string) => promptImage(url), dialog: null, promptWorld: vi.fn() }),
+}));
+vi.mock('./useRemoteImage', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('./useRemoteImage')>()),
+  useRemoteImage: (url: string) => ({ src: url || '', status: url?.startsWith('http') ? 'cached' : 'embedded' }),
+  RemoteImg: ({ src, ...rest }: { src?: string }) => <img src={src} {...rest} />,
+}));
+
+beforeEach(() => { promptImage.mockClear(); });
+
+const file = (name: string, type = 'image/png') => new File(['bytes'], name, { type });
+
+/** jsdom has no DataTransfer constructor; a drop only ever reads these three members. */
+const transfer = (opts: { files?: File[]; data?: Record<string, string> }) => ({
+  files: opts.files ?? [],
+  types: [...(opts.files?.length ? ['Files'] : []), ...Object.keys(opts.data ?? {})],
+  getData: (t: string) => opts.data?.[t] ?? '',
+});
+
+/** The dashed frame is the drop target — reached through the "Add Image" prompt inside it. */
+const zone = () => screen.getByText('Add Image').closest('[class*="border-dashed"]')!.parentElement!.parentElement!;
+
+describe('ImageUpload drag and drop', () => {
+  it('stores a dropped file', async () => {
+    const onChange = vi.fn();
+    render(<ImageUpload id="t" onChange={onChange} cap={IMAGE_CAPS.entity} />);
+
+    fireEvent.drop(zone(), { dataTransfer: transfer({ files: [file('a.png')] }) });
+
+    await waitFor(() => expect(onChange).toHaveBeenCalled());
+    expect(onChange.mock.calls[0][0]).toMatch(/^data:image\/png;base64,/);
+  });
+
+  it('stores a picture dragged out of a browser tab as a link, with no re-encode', async () => {
+    const onChange = vi.fn();
+    render(<ImageUpload id="t" onChange={onChange} cap={IMAGE_CAPS.entity} />);
+
+    fireEvent.drop(zone(), { dataTransfer: transfer({ data: { 'text/uri-list': 'https://files.example/a.png' } }) });
+
+    await waitFor(() => expect(onChange).toHaveBeenCalledWith('https://files.example/a.png'));
+    expect(promptImage).not.toHaveBeenCalled();
+  });
+
+  it('ignores a drag carrying nothing usable', () => {
+    const onChange = vi.fn();
+    render(<ImageUpload id="t" onChange={onChange} cap={IMAGE_CAPS.entity} />);
+
+    fireEvent.drop(zone(), { dataTransfer: transfer({ data: { 'text/plain': 'just some words' } }) });
+
+    expect(onChange).not.toHaveBeenCalled();
+  });
+
+  it('leaves a filled slot alone — replacing means removing first', () => {
+    const onChange = vi.fn();
+    const { container } = render(
+      <ImageUpload id="t" value="https://files.example/held.png" onChange={onChange} cap={IMAGE_CAPS.entity} />,
+    );
+
+    fireEvent.drop(container.querySelector('[class*="border-dashed"]')!.parentElement!, {
+      dataTransfer: transfer({ data: { 'text/uri-list': 'https://files.example/new.png' } }),
+    });
+
+    expect(onChange).not.toHaveBeenCalled();
+  });
+
+  it('hands a multi-file drop to the caller that has room for them', () => {
+    const onChange = vi.fn();
+    const onFiles = vi.fn();
+    render(<ImageUpload id="t" onChange={onChange} onFiles={onFiles} cap={IMAGE_CAPS.entity} />);
+
+    fireEvent.drop(zone(), { dataTransfer: transfer({ files: [file('a.png'), file('b.png')] }) });
+
+    expect(onFiles).toHaveBeenCalledWith([
+      expect.objectContaining({ name: 'a.png' }),
+      expect.objectContaining({ name: 'b.png' }),
+    ]);
+    expect(onChange).not.toHaveBeenCalled();
+  });
+
+  it('takes only the first file when the caller holds one slot', async () => {
+    const onChange = vi.fn();
+    render(<ImageUpload id="t" onChange={onChange} cap={IMAGE_CAPS.entity} />);
+
+    fireEvent.drop(zone(), { dataTransfer: transfer({ files: [file('a.png'), file('b.png')] }) });
+
+    await waitFor(() => expect(onChange).toHaveBeenCalledTimes(1));
+  });
+
+  it('refuses dropped bytes once the embedded allowance is spent, but still takes a link', async () => {
+    const onChange = vi.fn();
+    render(
+      <ImageUpload id="t" onChange={onChange} cap={IMAGE_CAPS.entity} allowUpload={false} uploadBlockedNote="no room" />,
+    );
+    const frame = screen.getByText('no room').closest('[class*="border-dashed"]')!.parentElement!;
+
+    fireEvent.drop(frame, { dataTransfer: transfer({ files: [file('a.png')] }) });
+    // The link is dropped second and awaited, so the file's own async read has had every chance to land
+    // by the time the count is checked — asserting on it straight after the drop could never fail.
+    fireEvent.drop(frame, { dataTransfer: transfer({ data: { 'text/uri-list': 'https://files.example/a.png' } }) });
+
+    await waitFor(() => expect(onChange).toHaveBeenCalledWith('https://files.example/a.png'));
+    expect(onChange).toHaveBeenCalledTimes(1);
+  });
+
+  it('marks the frame while a droppable drag is over it, and unmarks on leave', () => {
+    render(<ImageUpload id="t" onChange={vi.fn()} cap={IMAGE_CAPS.entity} />);
+    const frame = () => screen.getByText('Add Image').closest('[class*="border-dashed"]')!;
+
+    expect(frame().className).not.toMatch(/border-primary/);
+    fireEvent.dragOver(zone(), { dataTransfer: transfer({ files: [file('a.png')] }) });
+    expect(frame().className).toMatch(/border-primary/);
+
+    fireEvent.dragLeave(zone());
+    expect(frame().className).not.toMatch(/border-primary/);
+  });
+
+  it('does not mark the frame for a drag it could not take', () => {
+    render(<ImageUpload id="t" onChange={vi.fn()} cap={IMAGE_CAPS.entity} />);
+
+    fireEvent.dragOver(zone(), { dataTransfer: { files: [], types: ['application/x-chip'], getData: () => '' } });
+
+    expect(screen.getByText('Add Image').closest('[class*="border-dashed"]')!.className).not.toMatch(/border-primary/);
+  });
+});

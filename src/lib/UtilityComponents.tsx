@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState, type ChangeEvent, type MouseEvent, type ReactNode } from 'react';
+import { useCallback, useEffect, useState, type ChangeEvent, type DragEvent, type MouseEvent, type ReactNode } from 'react';
 import { cn } from "@/lib/utils";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -14,6 +14,7 @@ import { readSdPromptFromFile } from './sdMetadata';
 import { imageHost, isRemoteImage } from './imageSource';
 import { isExpiringImageHost } from './imageBytes';
 import { useRemoteImage } from './useRemoteImage';
+import { canDropImage, fileToDataUrl, imageDropPayload } from './imageDrop';
 import type { MediaAsset } from '@/types';
 
 /** An uploaded media file, base64-encoded as a data URL. */
@@ -90,9 +91,21 @@ export const resolveModelType = (model: Partial<MediaAsset>): ModelType => {
 /** The shared dashed "click to upload" frame for the media uploaders (image / sound / 3D model). Pass
  *  `frameClassName` to give it a fixed size (e.g. the thumbnail crop); without it the box is compact and
  *  auto-sized. The dashed look lives here so every uploader stays in sync. */
-const Dropzone = ({ htmlFor, frameClassName, children }: { htmlFor?: string; frameClassName?: string; children: ReactNode }) => {
+const Dropzone = ({ htmlFor, frameClassName, dragOver, children }: {
+  htmlFor?: string;
+  frameClassName?: string;
+  /** A droppable drag is overhead — the frame says so rather than leaving the gesture to guesswork. */
+  dragOver?: boolean;
+  children: ReactNode;
+}) => {
   const frame = (
-    <div className={cn('border-2 border-dashed border-border rounded-md', frameClassName ?? 'flex items-center justify-center p-4')}>
+    <div
+      className={cn(
+        'border-2 border-dashed border-border rounded-md',
+        frameClassName ?? 'flex items-center justify-center p-4',
+        dragOver && 'border-primary bg-primary/5',
+      )}
+    >
       {children}
     </div>
   );
@@ -100,8 +113,11 @@ const Dropzone = ({ htmlFor, frameClassName, children }: { htmlFor?: string; fra
   return htmlFor ? <Label htmlFor={htmlFor} className="cursor-pointer">{frame}</Label> : frame;
 };
 
-export const ImageUpload = ({ onChange, id, value, cap, previewClassName, objectFit = 'contain', onPromptExtracted, allowUpload = true, uploadBlockedNote }: {
+export const ImageUpload = ({ onChange, id, value, cap, previewClassName, objectFit = 'contain', onPromptExtracted, onFiles, allowUpload = true, uploadBlockedNote }: {
   onChange: (value: string) => void;
+  // Several pictures arriving at once (a multi-file drop). A caller holding more than one slot takes them
+  // all; without this the first file is used and the rest are ignored, which is right for a single slot.
+  onFiles?: (files: File[]) => void;
   id: string | number;
   value?: string | null;
   cap?: ImageCap;
@@ -121,6 +137,7 @@ export const ImageUpload = ({ onChange, id, value, cap, previewClassName, object
   const [urlDraft, setUrlDraft] = useState('');
   const [urlError, setUrlError] = useState<string | null>(null);
   const [loadFailed, setLoadFailed] = useState(false);
+  const [dragOver, setDragOver] = useState(false);
   const remote = isRemoteImage(value);
   // Cached blob when there is one, live URL otherwise; an embedded value passes through untouched.
   // `status` is what tells the author this host won't hand its bytes over.
@@ -141,22 +158,47 @@ export const ImageUpload = ({ onChange, id, value, cap, previewClassName, object
     onChange(trimmed);
   }, [urlDraft, onChange]);
 
+  /** Store one picked or dropped file into this slot. */
+  const takeFile = useCallback(async (file: File) => {
+    // Parse the raw file for an embedded SD prompt before the FileReader/optimize path re-encodes it.
+    if (onPromptExtracted) void readSdPromptFromFile(file).then((p) => { if (p) onPromptExtracted(p); });
+    const dataUrl = await fileToDataUrl(file);
+    // Offer to downscale before storing when the image exceeds its budget (no-op if within cap or no cap).
+    onChange(cap ? await promptImage(dataUrl, cap) : dataUrl);
+  }, [onChange, cap, promptImage, onPromptExtracted]);
+
   const handleImageChange = useCallback((e: ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
+    const files = Array.from(e.target.files ?? []);
     // Clear the input so re-selecting the same file fires change again (a remove-then-reupload otherwise no-ops).
     e.target.value = '';
-    if (file) {
-      // Parse the raw file for an embedded SD prompt before the FileReader/optimize path re-encodes it.
-      if (onPromptExtracted) void readSdPromptFromFile(file).then((p) => { if (p) onPromptExtracted(p); });
-      const reader = new FileReader();
-      reader.onloadend = async () => {
-        const base64String = reader.result as string;
-        // Offer to downscale before storing when the image exceeds its budget (no-op if within cap or no cap).
-        onChange(cap ? await promptImage(base64String, cap) : base64String);
-      };
-      reader.readAsDataURL(file);
-    }
-  }, [onChange, cap, promptImage, onPromptExtracted]);
+    if (!files.length) return;
+    if (files.length > 1 && onFiles) onFiles(files);
+    else void takeFile(files[0]);
+  }, [takeFile, onFiles]);
+
+  // A filled slot never takes a drop: it is changed by removing it first, exactly as the URL box already
+  // works. Dropping onto a picture and silently replacing it is the hard gesture to take back.
+  const droppable = !value;
+
+  const handleDrop = useCallback((e: DragEvent<HTMLDivElement>) => {
+    setDragOver(false);
+    if (!droppable) return;
+    const payload = imageDropPayload(e.dataTransfer);
+    if (!payload) return;
+    e.preventDefault();
+    // A link costs the payload nothing, so it lands even when the upload allowance is spent.
+    if (payload.kind === 'url') { onChange(payload.url); return; }
+    if (!allowUpload) return;
+    if (payload.files.length > 1 && onFiles) onFiles(payload.files);
+    else void takeFile(payload.files[0]);
+  }, [droppable, allowUpload, onChange, onFiles, takeFile]);
+
+  const handleDragOver = useCallback((e: DragEvent<HTMLDivElement>) => {
+    if (!droppable || !canDropImage(e.dataTransfer)) return;
+    e.preventDefault(); // without this the browser navigates to the dropped file instead
+    e.dataTransfer.dropEffect = 'copy';
+    setDragOver(true);
+  }, [droppable]);
 
   const removeButton = (
     <button
@@ -227,12 +269,20 @@ export const ImageUpload = ({ onChange, id, value, cap, previewClassName, object
         <Input
           type="file"
           accept="image/*"
+          multiple={!!onFiles}
           onChange={handleImageChange}
           className="hidden"
           id={`image-upload-${id}`}
         />
       )}
-      <Dropzone htmlFor={allowUpload ? `image-upload-${id}` : undefined} frameClassName={previewClassName}>
+      {/* Wrapped rather than handled inside Dropzone: the frame is a Label when it is clickable, and a drop
+          on a label's own child would otherwise re-open the file picker on the way through. */}
+      <div
+        onDragOver={handleDragOver}
+        onDragLeave={() => setDragOver(false)}
+        onDrop={handleDrop}
+      >
+      <Dropzone htmlFor={allowUpload ? `image-upload-${id}` : undefined} frameClassName={previewClassName} dragOver={dragOver}>
         {previewClassName ? (
           value ? (
             <>
@@ -283,6 +333,7 @@ export const ImageUpload = ({ onChange, id, value, cap, previewClassName, object
           )
         )}
       </Dropzone>
+      </div>
       {/* The longest-fuse failure gets a line of its own, not just a tooltip — by the time it bites, the
           author is long past hovering this slot. */}
       {expiring && (
