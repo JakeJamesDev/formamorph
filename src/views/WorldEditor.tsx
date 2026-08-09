@@ -1,10 +1,12 @@
 import { randomUUID } from "@/lib/uuid";
-import { useState, useEffect, useMemo, useRef, type ChangeEvent, type ReactNode } from 'react';
+import { useState, useEffect, useMemo, useCallback, useRef, type ChangeEvent, type ReactNode } from 'react';
 import { useGameData } from '@/contexts/GameDataContext';
 import { useDevRoute } from '@/lib/devRouter';
 import { editorTabsFor } from './worldEditorTabs';
 import { useEditorMode, type EditorMode } from '@/lib/editorMode';
 import { EditorModeProvider } from '@/components/EditorModeProvider';
+import { TutorialPopover } from '@/components/TutorialPopover';
+import { useTutorial } from '@/lib/tutorials';
 import { worldUsesAdvancedFeatures } from '@/lib/editorAdvancedData';
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import { EmptyListHint } from '@/components/EmptyListHint';
@@ -142,6 +144,8 @@ const WorldEditorInner = ({ onClose, embedded = false, backButton }: {
   };
 
   const { mode, advanced, setMode } = useEditorMode();
+  const { active: tutorial, dismiss } = useTutorial('worldEditor');
+  const dismissTutorial = useCallback(() => { if (tutorial) dismiss(tutorial.id); }, [tutorial, dismiss]);
   const visibleTabs = useMemo(() => editorTabsFor(advanced), [advanced]);
   const [activeTab, setActiveTab] = useState("overview");
   // Switching to Simple while standing on a hidden tab would blank the panel with no way back to it.
@@ -577,16 +581,19 @@ const WorldEditorInner = ({ onClose, embedded = false, backButton }: {
           <Info className="h-4 w-4" aria-label="This world uses advanced features" />
         </span>
       )}
-      <ToggleGroup
-        type="single"
-        value={mode}
-        onValueChange={(v) => { if (v) setMode(v as EditorMode); }}
-        aria-label="Editor mode"
-        className={`${isMobile ? "h-8" : ""} ${hasHiddenData ? "" : "ml-auto"}`.trim() || undefined}
-      >
-        <ToggleGroupItem value="simple" className={isMobile ? "px-2 py-1" : undefined}>Simple</ToggleGroupItem>
-        <ToggleGroupItem value="advanced" className={isMobile ? "px-2 py-1" : undefined}>Advanced</ToggleGroupItem>
-      </ToggleGroup>
+      <TutorialPopover entry={tutorial} onDismiss={dismissTutorial}>
+        <ToggleGroup
+          type="single"
+          value={mode}
+          // Using the switch is itself the lesson, so it retires the tutorial as surely as the button does.
+          onValueChange={(v) => { if (v) { dismissTutorial(); setMode(v as EditorMode); } }}
+          aria-label="Editor mode"
+          className={`${isMobile ? "h-8" : ""} ${hasHiddenData ? "" : "ml-auto"}`.trim() || undefined}
+        >
+          <ToggleGroupItem value="simple" className={isMobile ? "px-2 py-1" : undefined}>Simple</ToggleGroupItem>
+          <ToggleGroupItem value="advanced" className={isMobile ? "px-2 py-1" : undefined}>Advanced</ToggleGroupItem>
+        </ToggleGroup>
+      </TutorialPopover>
     </div>
   );
   const tabsList = (
