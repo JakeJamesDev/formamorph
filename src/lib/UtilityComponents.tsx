@@ -2,7 +2,7 @@ import { useCallback, useEffect, useState, type ChangeEvent, type MouseEvent, ty
 import { cn } from "@/lib/utils";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { AlertTriangle, ImagePlus, Link as LucideLink, Box as LucideBox, Music, X } from "lucide-react";
+import { AlertTriangle, CornerDownLeft, ImagePlus, Link as LucideLink, Box as LucideBox, Music, X } from "lucide-react";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import ModelViewer from '../views/ModelViewer';
@@ -153,6 +153,9 @@ export const ImageUpload = ({ onChange, id, value, cap, previewClassName, object
   // Known before any request, so this shows the instant the link is pasted.
   const expiring = isExpiringImageHost(value);
 
+  // Whether the draft is something the slot could take, which lights the commit button.
+  const urlCommittable = isRemoteImage(urlDraft.trim());
+
   // A pasted link is stored verbatim — no downscale pass, since a remote image costs the payload nothing.
   const commitUrl = useCallback(() => {
     const trimmed = urlDraft.trim();
@@ -230,7 +233,10 @@ export const ImageUpload = ({ onChange, id, value, cap, previewClassName, object
     // The input and the button are exempt already — a label never activates for interactive content — but
     // the gap between them and the line held for an error are not.
     <div className="w-full space-y-1" onClick={(e) => e.preventDefault()}>
-      <div className="flex items-center gap-2">
+      {/* Field and button are one widget: the button fills the field's right edge, divided from it by a
+          border rather than a gap, so it reads as a second cell and not a second control. `pr-10` keeps
+          typed text clear of it. */}
+      <div className="group relative">
         <Input
           type="url"
           value={urlDraft}
@@ -239,10 +245,39 @@ export const ImageUpload = ({ onChange, id, value, cap, previewClassName, object
           // "Or" only while uploading is still on offer; with the allowance spent this is the way in.
           placeholder={allowUpload ? 'Or paste an image URL' : 'Paste an image URL'}
           aria-label="Image URL"
+          // The focus ring is drawn by the overlay below instead, so it lands over both cells rather than
+          // being covered by the button along the edge they share.
+          className="pr-10 focus-visible:ring-0"
         />
-        <Button type="button" variant="outline" className="shrink-0" onClick={commitUrl}>
-          Use
+        {/* Icon-only: the label was the width of the word for an action the Enter key already performs, and
+            the icon says so. Lit only once the draft is a link it can take — until then it's inert, so the
+            cell says whether pressing it would do anything. */}
+        <Button
+          type="button"
+          variant="ghost"
+          size="icon"
+          disabled={!urlCommittable}
+          className={cn(
+            // Only the divider edge is bordered, so the cell shares the field's own frame on its other three
+            // sides. `disabled:opacity-100` keeps that divider at full strength while inert — the muted
+            // foreground carries the off state on its own.
+            'absolute inset-y-0 right-0 h-auto w-10 rounded-l-none border-y-0 border-r-0 border-l border-l-input disabled:opacity-100',
+            urlCommittable
+              ? 'bg-primary text-primary-foreground hover:bg-primary/90'
+              : 'bg-transparent text-muted-foreground',
+          )}
+          onClick={commitUrl}
+          title="Use this image URL"
+          aria-label="Use this image URL"
+        >
+          <CornerDownLeft className="h-4 w-4" />
         </Button>
+        {/* Last child, so the focus ring paints over the button cell too and reads as one widget's glow
+            rather than stopping at the divider. Inert to the pointer, so it never eats a click. */}
+        <span
+          aria-hidden
+          className="pointer-events-none absolute inset-0 rounded-md ring-ring ring-inset group-focus-within:ring-2"
+        />
       </div>
       {/* The line is held whether or not it says anything, so a rejected link doesn't shift the box either. */}
       <p className="min-h-4 text-meta text-destructive">{urlError}</p>

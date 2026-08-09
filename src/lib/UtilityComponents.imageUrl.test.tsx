@@ -31,7 +31,7 @@ describe('ImageUpload URL entry', () => {
     render(<ImageUpload id="t" onChange={onChange} cap={IMAGE_CAPS.entity} />);
 
     fireEvent.change(urlBox(), { target: { value: 'https://files.example/a.png' } });
-    fireEvent.click(screen.getByRole('button', { name: 'Use' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Use this image URL' }));
 
     expect(onChange).toHaveBeenCalledWith('https://files.example/a.png');
   });
@@ -50,7 +50,7 @@ describe('ImageUpload URL entry', () => {
     render(<ImageUpload id="t" onChange={vi.fn()} cap={IMAGE_CAPS.entity} />);
 
     fireEvent.change(urlBox(), { target: { value: 'https://files.example/a.png' } });
-    fireEvent.click(screen.getByRole('button', { name: 'Use' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Use this image URL' }));
 
     expect(promptImage).not.toHaveBeenCalled();
   });
@@ -59,11 +59,26 @@ describe('ImageUpload URL entry', () => {
     const onChange = vi.fn();
     render(<ImageUpload id="t" onChange={onChange} cap={IMAGE_CAPS.entity} />);
 
+    // Enter, not the button: a draft this shape leaves the button inert (asserted below), so the keyboard
+    // is what still reaches the rejection.
     fireEvent.change(urlBox(), { target: { value: 'mara.png' } });
-    fireEvent.click(screen.getByRole('button', { name: 'Use' }));
+    fireEvent.keyDown(urlBox(), { key: 'Enter' });
 
     expect(await screen.findByText(/starting with http/i)).toBeTruthy();
     expect(onChange).not.toHaveBeenCalled();
+  });
+
+  it('lights the commit button only once the draft is a link it can take', () => {
+    render(<ImageUpload id="t" onChange={vi.fn()} cap={IMAGE_CAPS.entity} />);
+    const useButton = () => screen.getByRole('button', { name: 'Use this image URL' }) as HTMLButtonElement;
+
+    expect(useButton().disabled).toBe(true);
+
+    fireEvent.change(urlBox(), { target: { value: 'mara.png' } });
+    expect(useButton().disabled).toBe(true);
+
+    fireEvent.change(urlBox(), { target: { value: 'https://files.example/a.png' } });
+    expect(useButton().disabled).toBe(false);
   });
 
   it('offers the box only on an empty slot — a filled one is replaced by removing it first', () => {
@@ -192,7 +207,7 @@ describe('ImageUpload link field placement', () => {
     expect(line().className).toMatch(/min-h-4/);
 
     fireEvent.change(screen.getByLabelText('Image URL'), { target: { value: 'not-a-url' } });
-    fireEvent.click(screen.getByRole('button', { name: 'Use' }));
+    fireEvent.keyDown(screen.getByLabelText('Image URL'), { key: 'Enter' });
 
     expect(line().textContent).toMatch(/http/);
   });
