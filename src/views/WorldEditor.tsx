@@ -77,6 +77,7 @@ import { APP_VERSION } from '@/lib/version';
 import type { Stat, Entity, GameLocation, StatUpdate, Dictionary, World } from '@/types';
 import { useDownscalePrompt } from '@/lib/useDownscalePrompt';
 import { SortableRow, type SortableListItem } from '@/components/SortableList';
+import { EditorRowList } from '@/components/EditorRow';
 import PlaceholderText from '@/components/prompt/PlaceholderText';
 
 /** The fields a reorderable list row needs (every editor item has these). */
@@ -479,7 +480,7 @@ const WorldEditorInner = ({ onClose, embedded = false, backButton }: {
         items={items.map((i) => i.id)}
         strategy={verticalListSortingStrategy}
       >
-        <div className="flex flex-col gap-2">
+        <EditorRowList>
           {items.map((item) => (
             <SortableRow
               key={item.id}
@@ -491,7 +492,7 @@ const WorldEditorInner = ({ onClose, embedded = false, backButton }: {
               onDuplicate={duplicateItem}
             />
           ))}
-        </div>
+        </EditorRowList>
       </SortableContext>
     </DndContext>
     );

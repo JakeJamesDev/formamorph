@@ -1,6 +1,6 @@
 import { render, fireEvent, cleanup, screen } from '@testing-library/react';
 import { describe, it, expect, afterEach, vi } from 'vitest';
-import { EditorRow, TREE_INDENT } from './EditorRow';
+import { EditorRow, EditorRowList, TREE_INDENT } from './EditorRow';
 
 afterEach(cleanup);
 
@@ -118,6 +118,28 @@ describe('EditorRow', () => {
     cleanup();
     const bare = render(<EditorRow selected={false} onSelect={() => {}} label="A" />);
     expect((bare.container.firstElementChild as HTMLElement).className).toContain('min-h-14');
+  });
+
+  it('spaces its rows the same whether or not the list adds classes of its own', () => {
+    // A tree used to render rows with no wrapper (flush) while a flat list wrapped them in gap-2, so the
+    // same row read as a different height per tab. Both go through EditorRowList now.
+    const plain = render(<EditorRowList><span>row</span></EditorRowList>);
+    const plainEl = plain.container.firstElementChild as HTMLElement;
+    expect(plainEl.className).toContain('gap-1');
+    expect(plainEl.className).toContain('flex-col');
+    cleanup();
+
+    // The Dictionary's zones are also drop targets, so they add a border and take a ref.
+    const zone = render(<EditorRowList className="border border-dashed"><span>row</span></EditorRowList>);
+    const zoneEl = zone.container.firstElementChild as HTMLElement;
+    expect(zoneEl.className).toContain('gap-1');
+    expect(zoneEl.className).toContain('border-dashed');
+  });
+
+  it('forwards its ref, so a list can be a drop target', () => {
+    const ref = { current: null as HTMLDivElement | null };
+    render(<EditorRowList ref={ref}><span>row</span></EditorRowList>);
+    expect(ref.current).toBeInstanceOf(HTMLElement);
   });
 
   it('rounds only its top corners when a body is attached below it', () => {

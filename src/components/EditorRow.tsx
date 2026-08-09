@@ -1,4 +1,4 @@
-import { type CSSProperties, type HTMLAttributes, type ReactNode } from 'react';
+import { forwardRef, type CSSProperties, type HTMLAttributes, type ReactNode } from 'react';
 import { GripVertical, ChevronRight, ChevronDown } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
@@ -14,6 +14,10 @@ const ROW_PADDING_X = 8;
 /** Padding and floor height, shared so a row is the same size whichever list drew it. The floor keeps a row
  *  with no actions as tall as one with them, rather than letting the icon buttons decide the height. */
 const EDITOR_ROW_PADDING = 'p-2 min-h-14';
+
+/** The space between rows. Read as row height by anyone comparing two tabs, so it belongs with the row's
+ *  own metrics rather than with each list that happens to draw one. */
+const EDITOR_ROW_GAP = 'flex flex-col gap-1';
 
 /** One trailing icon button on a row (duplicate, delete, add-entry…). */
 export interface EditorRowAction {
@@ -161,3 +165,16 @@ export function EditorRow({
     </div>
   );
 }
+
+/**
+ * The column an editor list's rows sit in. Trees used to render their rows with no wrapper at all, so they
+ * were flush while the flat lists were spaced 8px apart — the same row read as a different height depending
+ * on the tab. Wrapping both in this keeps one answer.
+ */
+export const EditorRowList = forwardRef<HTMLDivElement, HTMLAttributes<HTMLDivElement>>(
+  // The ref is forwarded because a list can also be a drop target (the Dictionary's zones).
+  ({ children, className, ...props }, ref) => (
+    <div ref={ref} className={cn(EDITOR_ROW_GAP, className)} {...props}>{children}</div>
+  ),
+);
+EditorRowList.displayName = 'EditorRowList';
