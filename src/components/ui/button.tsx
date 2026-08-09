@@ -26,6 +26,8 @@ const buttonVariants = cva(
       },
       size: {
         default: "h-10 px-4 py-2",
+        // The rung dense rows were reaching for by hand as `text-xs h-8`.
+        xs: "h-8 rounded-md px-2 text-meta",
         sm: "h-9 rounded-md px-3",
         lg: "h-11 rounded-md px-8",
         icon: "h-10 w-10",
