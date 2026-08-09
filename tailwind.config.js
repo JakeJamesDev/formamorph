@@ -27,6 +27,20 @@ module.exports = {
       fontFamily: {
         sans: ['var(--app-font)', 'sans-serif'],
       },
+      // Role-named type scale. A class says what the text *is*, not how big it is, so a size can be
+      // retuned in one place and helper text is distinguishable from a deliberately compact control
+      // (density lives on the control's `size` variant instead — see button/input). Values match the
+      // stock Tailwind sizes already in use, so naming a role never moves a pixel.
+      // tailwind-merge must be taught these keys too, or it files them under text-color (see lib/utils).
+      fontSize: {
+        display: ["1.5rem", { lineHeight: "2rem" }],      // card titles, page headers
+        heading: ["1.25rem", { lineHeight: "1.75rem" }],  // section headers
+        title: ["1.125rem", { lineHeight: "1.75rem" }],   // dialog/modal titles
+        body: ["1rem", { lineHeight: "1.5rem" }],         // reading copy
+        label: ["0.875rem", { lineHeight: "1.25rem" }],   // form controls and their labels
+        helper: ["0.875rem", { lineHeight: "1.25rem" }],  // descriptions, hints, inline errors
+        meta: ["0.75rem", { lineHeight: "1rem" }],        // counts, timestamps, badges
+      },
       colors: {
         border: "hsl(var(--border))",
         input: "hsl(var(--input))",
