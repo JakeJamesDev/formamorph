@@ -17,7 +17,9 @@ export function ReadOnlyNotice({ reason, onRequestEdit, className }: {
   return (
     <div
       className={cn(
-        'flex flex-shrink-0 items-center gap-2 rounded-md border border-border bg-muted/50 px-2 py-1 text-meta text-muted-foreground',
+        // Stays at meta on a phone: the line never wraps, and at helper size even the shortest reason
+        // ("Default is read-only") loses its last characters to the ellipsis.
+        'flex flex-shrink-0 items-center gap-2 rounded-md border border-border bg-muted/50 px-2 py-1 text-meta sm:text-helper text-muted-foreground',
         className,
       )}
       title={reason}
