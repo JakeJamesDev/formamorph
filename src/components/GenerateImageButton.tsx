@@ -17,6 +17,11 @@ import { generateImage, buildImageRequest } from '@/lib/imageGen';
 import { type ImageCap } from '@/lib/imageOptim';
 import { useDownscalePrompt } from '@/lib/useDownscalePrompt';
 
+/** The preset's own prefix as hint text. Labelled, because an empty box showing tags reads as "nothing is
+ *  being sent" rather than "this is what you already get on top of whatever you type". */
+const alwaysSent = (presetPrompt: string) =>
+  (presetPrompt.trim() ? `Always Sent: ${presetPrompt.trim()}` : undefined);
+
 /**
  * "Generate with AI" affordance shown beside an ImageUpload. Opens a dialog that prefills an SD-style
  * prompt from the subject's description (via the text model), lets the user tweak it, generates an image
@@ -178,7 +183,7 @@ export function GenerateImageButton({ subject, cap, onChange, tags, onTagsChange
                 onChange={handlePrompt}
                 placeholders={[]}
                 ariaLabel="Prompt"
-                placeholder={imagePositivePrompt.trim() || 'comma-separated visual tags…'}
+                placeholder={alwaysSent(imagePositivePrompt) ?? 'comma-separated visual tags…'}
               />
             </div>
             <div className="grid gap-1.5">
@@ -187,14 +192,16 @@ export function GenerateImageButton({ subject, cap, onChange, tags, onTagsChange
                 <Label>Negative prompt</Label>
                 {/* No generate button: the model writes what a picture should contain, never what it
                     shouldn't — that list is the author's taste and the preset's shared negatives. */}
-                <TagHistoryButtons history={negativeHistory} />
+                <div className="flex items-center gap-1">
+                  <TagHistoryButtons history={negativeHistory} />
+                </div>
               </div>
               <TagChipField
                 value={negative}
                 onChange={setNegative}
                 placeholders={[]}
                 ariaLabel="Negative prompt"
-                placeholder={imageNegativePrompt.trim() || 'tags to avoid…'}
+                placeholder={alwaysSent(imageNegativePrompt) ?? 'tags to avoid…'}
               />
             </div>
 
