@@ -68,7 +68,7 @@ const FRAME_WIDTH = { portrait: 'mx-auto max-w-[300px]', landscape: 'mx-auto max
 
 /** One picture in the strip. Click frames it; drag reorders it — position 0 is what stands in wherever a
  *  single picture is shown, so dragging to the front is the whole promote gesture. */
-const PictureTile = ({ id, url, index, framed, onSelect }: {
+const ImageTile = ({ id, url, index, framed, onSelect }: {
   id: string;
   url: string;
   index: number;
@@ -87,9 +87,9 @@ const PictureTile = ({ id, url, index, framed, onSelect }: {
       {...listeners}
       onClick={onSelect}
       title={primary
-        ? 'Primary — stands in wherever one picture is shown. Drag to reorder.'
-        : `Picture ${index + 1} — drag to reorder.`}
-      aria-label={primary ? 'Primary picture' : `Picture ${index + 1}`}
+        ? 'Primary — stands in wherever one image is shown. Drag to reorder.'
+        : `Image ${index + 1} — drag to reorder.`}
+      aria-label={primary ? 'Primary image' : `Image ${index + 1}`}
       aria-pressed={framed}
       className={cn(
         'relative h-14 w-14 shrink-0 overflow-hidden rounded-md border-2 touch-none',
@@ -131,7 +131,7 @@ const AddTile = ({ htmlFor, selected, onSelect, onUrl, onFiles, allowFiles }: {
       <Plus className="h-5 w-5 text-muted-foreground" />
     </span>
   );
-  const shared = { ...dropProps, onClick: onSelect, title: 'Add a picture', 'aria-label': 'Add a picture' };
+  const shared = { ...dropProps, onClick: onSelect, title: 'Add an image', 'aria-label': 'Add an image' };
   return htmlFor
     ? <Label htmlFor={htmlFor} className="cursor-pointer" {...shared}>{body}</Label>
     : <button type="button" {...shared}>{body}</button>;
@@ -275,8 +275,11 @@ const ImageTagsField = ({ label, images, onImagesChange, slots = 1, embeddedLimi
         className={cn('relative rounded-md', gallery && FRAME_WIDTH[shape], pane.dragOver && 'ring-2 ring-primary')}
         {...paneProps}
       >
+      {/* Keyed by the image, not the position. Keyed by position, a reorder hands each slot a different
+          value instead of moving it — and an uploader's resolved src lags its value by a render, so the
+          newly framed slot showed the previous image for a frame before swapping. */}
       {rows.map((url, i) => (
-        <div key={i} className={cn('space-y-1', gallery && i !== showing && 'hidden')}>
+        <div key={url ? tileIds[i] : 'empty-slot'} className={cn('space-y-1', gallery && i !== showing && 'hidden')}>
           <ImageUpload
             onChange={(value) => setSlot(i, value)}
             id={slotId(i)}
@@ -287,7 +290,7 @@ const ImageTagsField = ({ label, images, onImagesChange, slots = 1, embeddedLimi
             // Spent allowance closes the file picker on empty slots; the URL box stays, so a gallery can
             // still grow with links. A filled slot ignores this — it is changed by removing it first.
             allowUpload={canEmbed}
-            uploadBlockedNote={`${embeddedLimit} uploaded picture${embeddedLimit === 1 ? '' : 's'} is the limit — add more as links instead.`}
+            uploadBlockedNote={`${embeddedLimit} uploaded image${embeddedLimit === 1 ? '' : 's'} is the limit — add more as links instead.`}
             // Only the primary offers its embedded prompt as the tags: the tags describe the subject, and a
             // later slot overwriting them would undo the choice made for the picture that represents it.
             onPromptExtracted={i === 0 && advanced ? setPendingPrompt : undefined}
@@ -310,7 +313,7 @@ const ImageTagsField = ({ label, images, onImagesChange, slots = 1, embeddedLimi
             {/* rectSortingStrategy (2D), not a single-row one: the strip wraps once there are enough. */}
             <SortableContext items={tileIds} strategy={rectSortingStrategy}>
               {shown.map((url, i) => (
-                <PictureTile
+                <ImageTile
                   key={tileIds[i]}
                   id={tileIds[i]}
                   url={url}
