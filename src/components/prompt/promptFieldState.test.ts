@@ -45,6 +45,10 @@ describe('promptFieldState', () => {
     it.each([
       ['plain text', 'brave hero', false],
       ['multi-line text', 'line one\nline two', false],
+      // Narration is markdown prose, where the blank line between paragraphs is what separates them: lose
+      // it and the whole turn re-renders as one block.
+      ['markdown paragraphs', 'The dock creaks.\n\nMarrow turns.\n\n> "You came."\n\n- one\n- two', false],
+      ['a trailing blank line', 'The dock creaks.\n\n', false],
       ['text around a chip', `before ${TOKEN} after`, true],
       ['a chip alone', TOKEN, true],
       ['empty', '', false],
