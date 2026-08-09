@@ -9,8 +9,8 @@
 // `restrictYToScrollAncestor` below does — it's why these trees can live in a ScrollArea without the
 // auto-scroll running away, while other lists (which don't need free X) use the stock both-axis modifiers.
 import { useState, type ReactNode } from 'react';
-import { Button } from '@/components/ui/button';
-import { X, GripVertical, ChevronRight, ChevronDown, Copy } from 'lucide-react';
+import { EditorRow } from '@/components/EditorRow';
+import { X, Copy } from 'lucide-react';
 import {
   DndContext, pointerWithin, closestCenter, PointerSensor, KeyboardSensor, useSensor, useSensors,
   type CollisionDetection, type Modifier,
@@ -97,54 +97,26 @@ function TreeRow({ id, depth, spec, selected, onSelect, isCollapsed, toggleColla
     paddingLeft: depth * TREE_INDENT,
     opacity: isDragging ? 0.5 : 1,
   };
-  const rowClass = `p-2 cursor-pointer rounded-md transition-colors flex items-center gap-1
-    ${selected ? 'bg-primary text-primary-foreground' : 'hover:bg-secondary'}`;
-  const [expandLabel, collapseLabel] = spec.collapseLabels ?? ['Expand', 'Collapse'];
-
   return (
-    <div ref={setNodeRef} style={style} onClick={(e) => { e.stopPropagation(); onSelect(id); }} className={rowClass}>
-      {spec.lead === 'chevron' ? (
-        <button
-          type="button"
-          onClick={(e) => { e.stopPropagation(); toggleCollapse(id); }}
-          className="shrink-0"
-          aria-label={isCollapsed ? expandLabel : collapseLabel}
-        >
-          {isCollapsed ? <ChevronRight className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
-        </button>
-      ) : spec.lead === 'spacer' ? (
-        <span className="w-4 shrink-0" aria-hidden="true" />
-      ) : null}
-      <span
-        {...attributes}
-        {...listeners}
-        onClick={(e) => e.stopPropagation()}
-        className={`cursor-grab touch-none px-1 ${selected ? 'text-primary-foreground' : 'text-muted-foreground'}`}
-        title="Drag to reorder or nest"
-      >
-        <GripVertical className="h-4 w-4" />
-      </span>
-      {spec.icon}
-      <span className={`flex-grow ${spec.labelClass ?? ''}`}>{spec.label}</span>
-      <Button
-        variant="ghost"
-        size="icon"
-        className={selected ? 'text-primary-foreground' : 'text-muted-foreground'}
-        onClick={(e) => { e.stopPropagation(); spec.duplicate(); }}
-        title="Duplicate"
-      >
-        <Copy className="h-4 w-4" />
-      </Button>
-      <Button
-        variant="ghost"
-        size="icon"
-        className={selected ? 'text-primary-foreground' : 'text-muted-foreground'}
-        onClick={(e) => { e.stopPropagation(); spec.remove(); }}
-        title="Delete"
-      >
-        <X className="h-4 w-4" />
-      </Button>
-    </div>
+    <EditorRow
+      setNodeRef={setNodeRef}
+      style={style}
+      gripProps={{ ...attributes, ...listeners }}
+      gripTitle="Drag to reorder or nest"
+      selected={selected}
+      onSelect={() => onSelect(id)}
+      lead={spec.lead === 'none' ? undefined : spec.lead}
+      collapsed={isCollapsed}
+      onToggleCollapse={() => toggleCollapse(id)}
+      collapseLabels={spec.collapseLabels}
+      icon={spec.icon}
+      label={spec.label}
+      labelClass={spec.labelClass}
+      actions={[
+        { icon: <Copy className="h-4 w-4" />, title: 'Duplicate', onClick: spec.duplicate },
+        { icon: <X className="h-4 w-4" />, title: 'Delete', onClick: spec.remove },
+      ]}
+    />
   );
 }
 
