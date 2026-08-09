@@ -119,12 +119,18 @@ describe('ImageUpload drag and drop', () => {
     render(<ImageUpload id="t" onChange={vi.fn()} cap={IMAGE_CAPS.entity} />);
     const frame = () => screen.getByText('Add Image').closest('[class*="border-dashed"]')!;
 
-    expect(frame().className).not.toMatch(/border-primary/);
+    expect(frame().className).not.toMatch(/ring-primary/);
+    expect(screen.queryByText('Drop to add')).toBeNull();
+
     fireEvent.dragOver(zone(), { dataTransfer: transfer({ files: [file('a.png')] }) });
-    expect(frame().className).toMatch(/border-primary/);
+    // The border alone is most of it hidden behind a filled slot's picture, so the state has to say so
+    // over the frame as well.
+    expect(frame().className).toMatch(/ring-primary/);
+    expect(screen.getByText('Drop to add')).toBeTruthy();
 
     fireEvent.dragLeave(zone());
-    expect(frame().className).not.toMatch(/border-primary/);
+    expect(frame().className).not.toMatch(/ring-primary/);
+    expect(screen.queryByText('Drop to add')).toBeNull();
   });
 
   it('covers the slot while the picture is re-encoding, and uncovers when it is stored', async () => {
@@ -181,6 +187,7 @@ describe('ImageUpload drag and drop', () => {
 
     fireEvent.dragOver(zone(), { dataTransfer: { files: [], types: ['application/x-chip'], getData: () => '' } });
 
-    expect(screen.getByText('Add Image').closest('[class*="border-dashed"]')!.className).not.toMatch(/border-primary/);
+    expect(screen.getByText('Add Image').closest('[class*="border-dashed"]')!.className).not.toMatch(/ring-primary/);
+    expect(screen.queryByText('Drop to add')).toBeNull();
   });
 });

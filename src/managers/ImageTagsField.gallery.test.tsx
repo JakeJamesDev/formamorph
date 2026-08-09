@@ -143,6 +143,41 @@ describe('ImageTagsField gallery', () => {
     expect(onImagesChange.mock.calls[0][0]).toHaveLength(3);
   });
 
+  it('brings the open slot into the frame when a drag arrives over a filled one', () => {
+    setup([A, B]);
+    const pane = slotWrapper(A).parentElement!;
+    expect(slotWrapper(A).className).not.toMatch(/hidden/);
+
+    fireEvent.dragOver(pane, { dataTransfer: { files: [], types: ['Files'], getData: () => '' } });
+
+    // The empty slot is framed, so the drop's destination is what's on screen rather than a picture it was
+    // never going to replace.
+    const visible = screen.getAllByTestId('slot').filter((n) => !n.parentElement!.className.includes('hidden'));
+    expect(visible.map((n) => n.getAttribute('data-value'))).toEqual(['']);
+  });
+
+  it('drops onto the open slot when the drag never reaches a slot of its own', async () => {
+    const { onImagesChange } = setup([A, B]);
+    const pane = slotWrapper(A).parentElement!;
+
+    fireEvent.drop(pane, {
+      dataTransfer: { files: [], types: ['text/uri-list'], getData: (t: string) => (t === 'text/uri-list' ? 'https://files.example/c.png' : '') },
+    });
+
+    await waitFor(() => expect(onImagesChange).toHaveBeenCalledWith([A, B, 'https://files.example/c.png']));
+  });
+
+  it('takes no drop once every slot is full', () => {
+    const { onImagesChange } = setup([A, B, C], 3);
+    const pane = slotWrapper(A).parentElement!;
+
+    fireEvent.drop(pane, {
+      dataTransfer: { files: [], types: ['text/uri-list'], getData: (t: string) => (t === 'text/uri-list' ? 'https://files.example/d.png' : '') },
+    });
+
+    expect(onImagesChange).not.toHaveBeenCalled();
+  });
+
   it('counts the batch over the frame while it converts, and freezes the strip', async () => {
     promptImagesBatch.mockResolvedValueOnce('downscale');
     // Both encodes are held, so the counter has to actually advance between them — releasing only the first

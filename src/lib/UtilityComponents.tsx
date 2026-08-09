@@ -108,10 +108,19 @@ const Dropzone = ({ htmlFor, frameClassName, dragOver, overlay, children }: {
       className={cn(
         'relative border-2 border-dashed border-border rounded-md',
         frameClassName ?? 'flex items-center justify-center p-4',
-        dragOver && 'border-primary bg-primary/5',
+        dragOver && 'border-primary ring-2 ring-primary',
       )}
     >
       {children}
+      {/* Says what the drop will do, over the picture rather than only at the border — a filled slot's
+          picture covers the frame, so a border change alone is most of it invisible. */}
+      {dragOver && (
+        <div className="pointer-events-none absolute inset-0 z-20 flex items-center justify-center rounded-md bg-primary/20">
+          <span className="rounded-md bg-primary px-2 py-1 text-xs font-medium text-primary-foreground shadow">
+            Drop to add
+          </span>
+        </div>
+      )}
       {/* Inside the label, so a click on it would otherwise re-open the file picker mid-encode. */}
       {overlay && <div onClick={(e) => { e.preventDefault(); e.stopPropagation(); }}>{overlay}</div>}
     </div>
