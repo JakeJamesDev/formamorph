@@ -30,8 +30,9 @@ const transfer = (opts: { files?: File[]; data?: Record<string, string> }) => ({
   getData: (t: string) => opts.data?.[t] ?? '',
 });
 
-/** The dashed frame is the drop target — reached through the "Add Image" prompt inside it. */
-const zone = () => screen.getByText('Add Image').closest('[class*="border-dashed"]')!.parentElement!.parentElement!;
+/** The dashed frame. Not found by its label, which changes while a drag is overhead — and firing on it is
+ *  enough, since the handlers sit on the wrapper it bubbles to. */
+const zone = () => document.querySelector('[class*="border-dashed"]') as HTMLElement;
 
 describe('ImageUpload drag and drop', () => {
   it('stores a dropped file', async () => {
@@ -65,11 +66,9 @@ describe('ImageUpload drag and drop', () => {
 
   it('leaves a filled slot alone — replacing means removing first', () => {
     const onChange = vi.fn();
-    const { container } = render(
-      <ImageUpload id="t" value="https://files.example/held.png" onChange={onChange} cap={IMAGE_CAPS.entity} />,
-    );
+    render(<ImageUpload id="t" value="https://files.example/held.png" onChange={onChange} cap={IMAGE_CAPS.entity} />);
 
-    fireEvent.drop(container.querySelector('[class*="border-dashed"]')!.parentElement!, {
+    fireEvent.drop(zone(), {
       dataTransfer: transfer({ data: { 'text/uri-list': 'https://files.example/new.png' } }),
     });
 
@@ -104,12 +103,12 @@ describe('ImageUpload drag and drop', () => {
     render(
       <ImageUpload id="t" onChange={onChange} cap={IMAGE_CAPS.entity} allowUpload={false} uploadBlockedNote="no room" />,
     );
-    const frame = screen.getByText('no room').closest('[class*="border-dashed"]')!.parentElement!;
+    const frame = zone;
 
-    fireEvent.drop(frame, { dataTransfer: transfer({ files: [file('a.png')] }) });
+    fireEvent.drop(frame(), { dataTransfer: transfer({ files: [file('a.png')] }) });
     // The link is dropped second and awaited, so the file's own async read has had every chance to land
     // by the time the count is checked — asserting on it straight after the drop could never fail.
-    fireEvent.drop(frame, { dataTransfer: transfer({ data: { 'text/uri-list': 'https://files.example/a.png' } }) });
+    fireEvent.drop(frame(), { dataTransfer: transfer({ data: { 'text/uri-list': 'https://files.example/a.png' } }) });
 
     await waitFor(() => expect(onChange).toHaveBeenCalledWith('https://files.example/a.png'));
     expect(onChange).toHaveBeenCalledTimes(1);
@@ -117,20 +116,28 @@ describe('ImageUpload drag and drop', () => {
 
   it('marks the frame while a droppable drag is over it, and unmarks on leave', () => {
     render(<ImageUpload id="t" onChange={vi.fn()} cap={IMAGE_CAPS.entity} />);
-    const frame = () => screen.getByText('Add Image').closest('[class*="border-dashed"]')!;
+    const frame = zone;
 
     expect(frame().className).not.toMatch(/ring-primary/);
     expect(screen.queryByText('Drop to add')).toBeNull();
 
     fireEvent.dragOver(zone(), { dataTransfer: transfer({ files: [file('a.png')] }) });
-    // The border alone is most of it hidden behind a filled slot's picture, so the state has to say so
-    // over the frame as well.
+    // The slot's own prompt says what the drop will do, rather than the border carrying it alone.
     expect(frame().className).toMatch(/ring-primary/);
     expect(screen.getByText('Drop to add')).toBeTruthy();
 
     fireEvent.dragLeave(zone());
     expect(frame().className).not.toMatch(/ring-primary/);
     expect(screen.queryByText('Drop to add')).toBeNull();
+  });
+
+  it('changes a sized slot\'s prompt too, not only the compact one', () => {
+    render(<ImageUpload id="t" onChange={vi.fn()} cap={IMAGE_CAPS.entity} previewClassName="relative h-40 w-40" />);
+    expect(screen.getByText('Click to upload image')).toBeTruthy();
+
+    fireEvent.dragOver(zone(), { dataTransfer: transfer({ files: [file('a.png')] }) });
+
+    expect(screen.getByText('Drop to add')).toBeTruthy();
   });
 
   it('covers the slot while the picture is re-encoding, and uncovers when it is stored', async () => {
@@ -158,9 +165,8 @@ describe('ImageUpload drag and drop', () => {
     const { container } = render(
       <ImageUpload id="t" onChange={vi.fn()} cap={IMAGE_CAPS.entity} objectFit="cover" previewClassName="relative h-40 w-40" />,
     );
-    const frame = screen.getByText('Click to upload image').closest('[class*="border-dashed"]')!.parentElement!;
 
-    fireEvent.drop(frame, { dataTransfer: transfer({ files: [file('a.png')] }) });
+    fireEvent.drop(zone(), { dataTransfer: transfer({ files: [file('a.png')] }) });
 
     await screen.findByRole('status');
     const thumb = container.querySelector('[role="status"] img')!;
@@ -187,7 +193,7 @@ describe('ImageUpload drag and drop', () => {
 
     fireEvent.dragOver(zone(), { dataTransfer: { files: [], types: ['application/x-chip'], getData: () => '' } });
 
-    expect(screen.getByText('Add Image').closest('[class*="border-dashed"]')!.className).not.toMatch(/ring-primary/);
+    expect(zone().className).not.toMatch(/ring-primary/);
     expect(screen.queryByText('Drop to add')).toBeNull();
   });
 });

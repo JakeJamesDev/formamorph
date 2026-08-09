@@ -154,6 +154,12 @@ describe('ImageTagsField gallery', () => {
     // never going to replace.
     const visible = screen.getAllByTestId('slot').filter((n) => !n.parentElement!.className.includes('hidden'));
     expect(visible.map((n) => n.getAttribute('data-value'))).toEqual(['']);
+    // Marked on this first event, which is the one that swaps: the slot it swapped to won't hear about the
+    // drag until the next one, and an unmarked frame in between reads as nothing having happened.
+    expect(pane.className).toMatch(/ring-primary/);
+
+    fireEvent.dragLeave(pane);
+    expect(pane.className).not.toMatch(/ring-primary/);
   });
 
   it('drops onto the open slot when the drag never reaches a slot of its own', async () => {
