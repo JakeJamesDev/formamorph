@@ -815,8 +815,8 @@ export const MultiSelect = React.forwardRef<MultiSelectRef, MultiSelectProps>(
 							className={cn(
 								"flex p-1 rounded-md border border-input bg-background min-h-10 h-auto items-center justify-between hover:bg-background focus:outline-none focus:ring-2 focus:ring-ring focus:ring-inset [&_svg]:pointer-events-auto",
 								autoSize ? "w-auto" : "w-full",
-								responsiveSettings.compactMode && "min-h-8 text-sm",
-								screenSize === "mobile" && "min-h-12 text-base",
+								responsiveSettings.compactMode && "min-h-8 text-label",
+								screenSize === "mobile" && "min-h-12 text-body",
 								disabled && "opacity-50 cursor-not-allowed",
 								className
 							)}
@@ -869,7 +869,7 @@ export const MultiSelect = React.forwardRef<MultiSelectRef, MultiSelectProps>(
 															customStyle?.gradient &&
 																"text-white border-transparent",
 															responsiveSettings.compactMode &&
-																"text-xs px-1.5 py-0.5",
+																"text-meta px-1.5 py-0.5",
 															screenSize === "mobile" &&
 																"max-w-[120px] truncate",
 															singleLine && "flex-shrink-0 whitespace-nowrap",
@@ -939,7 +939,7 @@ export const MultiSelect = React.forwardRef<MultiSelectRef, MultiSelectProps>(
 													getBadgeAnimationClass(),
 													multiSelectVariants({ variant }),
 													responsiveSettings.compactMode &&
-														"text-xs px-1.5 py-0.5",
+														"text-meta px-1.5 py-0.5",
 													singleLine && "flex-shrink-0 whitespace-nowrap",
 													"[&>svg]:pointer-events-auto"
 												)}
@@ -996,7 +996,7 @@ export const MultiSelect = React.forwardRef<MultiSelectRef, MultiSelectProps>(
 								</div>
 							) : (
 								<div className="flex items-center justify-between w-full mx-auto">
-									<span className="text-sm text-muted-foreground mx-3">
+									<span className="text-helper text-muted-foreground mx-3">
 										{placeholder}
 									</span>
 									<ChevronDown className="h-4 cursor-pointer text-muted-foreground mx-2" />

@@ -78,10 +78,11 @@ export default tseslint.config(
     },
   },
   {
-    // The shadcn primitives are where a size may legitimately be spelled out — they define the tokens'
-    // rendered result. TYPOGRAPHY_LEGACY is the not-yet-swept remainder and only ever shrinks.
+    // The primitives are tokenized too, so nothing is exempt: sizes live in tailwind.config.js alone,
+    // and retuning a role reaches every control. TYPOGRAPHY_LEGACY is the not-yet-swept remainder and
+    // only ever shrinks; it is empty.
     files: ['src/**/*.tsx'],
-    ignores: ['src/components/ui/**', ...TYPOGRAPHY_LEGACY],
+    ignores: [...TYPOGRAPHY_LEGACY],
     rules: { 'no-restricted-syntax': noRawTextSize },
   },
   {

@@ -34,7 +34,7 @@ export function CollapsibleSection({
           type="button"
           className="flex w-full items-center justify-between text-left"
         >
-          <span className="flex items-center gap-2 text-sm font-medium">
+          <span className="flex items-center gap-2 text-label font-medium">
             {icon}
             {title}
           </span>
