@@ -236,11 +236,11 @@ export const ImageUpload = ({ onChange, id, value, cap, previewClassName, object
           value={urlDraft}
           onChange={(e) => { setUrlDraft(e.target.value); setUrlError(null); }}
           onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); commitUrl(); } }}
-          placeholder="Or paste an image URL"
+          // "Or" only while uploading is still on offer; with the allowance spent this is the way in.
+          placeholder={allowUpload ? 'Or paste an image URL' : 'Paste an image URL'}
           aria-label="Image URL"
-          className="h-8 text-sm"
         />
-        <Button type="button" variant="outline" size="sm" className="h-8 shrink-0" onClick={commitUrl}>
+        <Button type="button" variant="outline" className="shrink-0" onClick={commitUrl}>
           Use
         </Button>
       </div>
