@@ -337,12 +337,15 @@ export const ImageUpload = ({ onChange, id, value, cap, previewClassName, object
           ) : (
             // The link field lives in the empty frame rather than under it: the frame is already this tall,
             // so nothing below the slot moves when an empty one comes into view.
-            <div className="absolute inset-0 flex flex-col items-center justify-center gap-2 p-3 text-center text-muted-foreground">
-              <span className="text-sm">
-                {dragOver ? 'Drop to add' : allowUpload ? 'Click to upload image' : uploadBlockedNote}
-              </span>
-              <div className="w-full max-w-[280px]">{urlBox}</div>
-            </div>
+            // The overlay's thumbnail is dimmed rather than opaque, so anything left underneath shows through it.
+            encoding ? null : (
+              <div className="absolute inset-0 flex flex-col items-center justify-center gap-2 p-3 text-center text-muted-foreground">
+                <span className="text-sm">
+                  {dragOver ? 'Drop to add' : allowUpload ? 'Click to upload image' : uploadBlockedNote}
+                </span>
+                <div className="w-full max-w-[280px]">{urlBox}</div>
+              </div>
+            )
           )
         ) : (
           value ? (
@@ -362,7 +365,7 @@ export const ImageUpload = ({ onChange, id, value, cap, previewClassName, object
               {removeButton}
             </div>
           ) : (
-            allowUpload ? (
+            encoding ? null : allowUpload ? (
               <>
                 <ImagePlus className="mr-2" />
                 <span>{dragOver ? 'Drop to add' : 'Add Image'}</span>
@@ -382,7 +385,7 @@ export const ImageUpload = ({ onChange, id, value, cap, previewClassName, object
         </p>
       )}
       {/* A frame sized by its caller holds this inside itself; a compact box has no room, so it sits below. */}
-      {!value && !previewClassName && urlBox}
+      {!value && !previewClassName && !encoding && urlBox}
     </div>
   );
 };
