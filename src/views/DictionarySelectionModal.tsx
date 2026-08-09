@@ -62,10 +62,10 @@ function SelectionRow({ item, onToggle }: {
           </span>
         </div>
         {item.book.description && (
-          <p className="text-xs text-muted-foreground truncate">{item.book.description}</p>
+          <p className="text-meta text-muted-foreground truncate">{item.book.description}</p>
         )}
       </div>
-      <span className="text-xs text-muted-foreground shrink-0" title="Enabled entries / total entries">
+      <span className="text-meta text-muted-foreground shrink-0" title="Enabled entries / total entries">
         {enabledEntries}/{item.entryCount}
       </span>
     </div>
@@ -143,8 +143,8 @@ const DictionarySelectionModal = ({
   return (
     <Card className="fixed inset-0 m-auto w-[95%] max-w-[600px] h-[90dvh] max-h-[800px] z-50">
       <CardContent className="p-3 sm:p-6 h-full flex flex-col">
-        <h2 className="text-lg sm:text-xl font-semibold mb-1">Choose Dictionaries</h2>
-        <p className="text-xs sm:text-sm text-muted-foreground mb-3">
+        <h2 className="text-title sm:text-heading font-semibold mb-1">Choose Dictionaries</h2>
+        <p className="text-meta sm:text-helper text-muted-foreground mb-3">
           Enable, disable, and reorder the dictionaries for this playthrough. Order sets injection order;
           world dictionaries appear first, your library below.
         </p>

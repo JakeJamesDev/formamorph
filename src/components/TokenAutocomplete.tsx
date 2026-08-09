@@ -175,7 +175,7 @@ export function TokenAutocomplete({ values, onChange, options, placeholder, aria
 
   return (
     <div className="relative">
-      {/* Single mode matches the shadcn Input (h-10 px-3 text-sm) so it lines up with sibling fields;
+      {/* Single mode matches the shadcn Input (h-10 px-3 text-label) so it lines up with sibling fields;
           multi mode keeps the tighter padding the chips need, but types at the same size — a hint a step
           smaller than every other field's read as a different kind of control. */}
       <div className={`flex flex-wrap items-center gap-1 rounded-md border border-input bg-background min-w-[180px] ${single ? "px-3 h-10" : "px-2 py-1 min-h-10"}`}>
@@ -196,7 +196,7 @@ export function TokenAutocomplete({ values, onChange, options, placeholder, aria
           onFocus={() => setOpen(true)}
           onBlur={() => setTimeout(() => setOpen(false), 100)}
           placeholder={single ? placeholder : (values.length ? "" : placeholder)}
-          className={`flex-1 min-w-[80px] bg-transparent text-sm outline-none placeholder:text-muted-foreground ${single ? "" : "py-0.5"}`}
+          className={`flex-1 min-w-[80px] bg-transparent text-helper outline-none placeholder:text-muted-foreground ${single ? "" : "py-0.5"}`}
         />
       </div>
       {open && suggestions.length > 0 && (

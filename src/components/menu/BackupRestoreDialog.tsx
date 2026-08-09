@@ -41,7 +41,7 @@ const OPTIMIZE_MODES: { value: OptimizeMode; label: string }[] = [
 /** Compact 3-way image-handling selector for a data type on restore. */
 function OptimizeSelect({ label, value, onChange }: { label: string; value: OptimizeMode; onChange: (m: OptimizeMode) => void }) {
   return (
-    <div className="flex items-center justify-between gap-2 text-sm">
+    <div className="flex items-center justify-between gap-2 text-label">
       <span className="text-muted-foreground">{label} images</span>
       <div className="flex rounded-md border p-0.5">
         {OPTIMIZE_MODES.map((m) => (
@@ -49,7 +49,7 @@ function OptimizeSelect({ label, value, onChange }: { label: string; value: Opti
             key={m.value}
             type="button"
             onClick={() => onChange(m.value)}
-            className={`rounded px-2 py-0.5 text-xs ${value === m.value ? 'bg-primary text-primary-foreground' : 'text-muted-foreground hover:text-foreground'}`}
+            className={`rounded px-2 py-0.5 text-meta ${value === m.value ? 'bg-primary text-primary-foreground' : 'text-muted-foreground hover:text-foreground'}`}
           >
             {m.label}
           </button>
@@ -103,7 +103,7 @@ function CategoryTree({
         return (
           <div key={category} className="rounded-md border">
             <div className="flex items-center justify-between gap-2 border-b p-2">
-              <label className="flex items-center gap-2 text-sm font-medium">
+              <label className="flex items-center gap-2 text-label font-medium">
                 <Checkbox checked={parent} onCheckedChange={(v) => onToggleAll(category, v === true)} />
                 {CATEGORY_LABELS[category]}
                 <span className="font-normal text-muted-foreground">
@@ -111,7 +111,7 @@ function CategoryTree({
                 </span>
               </label>
               {overwrite && onToggleOverwrite && hasConflicts && (
-                <label className="flex items-center gap-1.5 text-xs">
+                <label className="flex items-center gap-1.5 text-meta">
                   <Checkbox
                     checked={overwrite[category]}
                     onCheckedChange={(v) => onToggleOverwrite(category, v === true)}
@@ -122,7 +122,7 @@ function CategoryTree({
             </div>
             <div className="flex flex-col p-1">
               {rows.map((r) => (
-                <label key={r.id} className="flex items-center gap-2 rounded px-2 py-1 text-sm hover:bg-muted/50">
+                <label key={r.id} className="flex items-center gap-2 rounded px-2 py-1 text-label hover:bg-muted/50">
                   <Checkbox checked={sel.has(r.id)} onCheckedChange={(v) => onToggleItem(category, r.id, v === true)} />
                   <span className="truncate">{r.label}</span>
                   {r.exists && (
@@ -342,12 +342,12 @@ export function BackupRestoreDialog({ open, onOpenChange }: { open: boolean; onO
 
           {step === 'backup-what' &&
             (items === null ? (
-              <p className="text-sm text-muted-foreground">Checking your library…</p>
+              <p className="text-helper text-muted-foreground">Checking your library…</p>
             ) : exportGroups.length === 0 ? (
-              <p className="text-sm text-muted-foreground">Nothing to back up yet.</p>
+              <p className="text-helper text-muted-foreground">Nothing to back up yet.</p>
             ) : (
               <div className="flex flex-col gap-2">
-                <p className="text-sm text-muted-foreground">Select what to back up:</p>
+                <p className="text-helper text-muted-foreground">Select what to back up:</p>
                 <CategoryTree
                   groups={exportGroups}
                   selected={exportSel}
@@ -358,15 +358,15 @@ export function BackupRestoreDialog({ open, onOpenChange }: { open: boolean; onO
             ))}
 
           {step === 'backup-done' && (
-            <p className="text-sm text-muted-foreground">Backup saved. Keep the file somewhere safe.</p>
+            <p className="text-helper text-muted-foreground">Backup saved. Keep the file somewhere safe.</p>
           )}
 
           {step === 'restore-what' &&
             (restoreGroups.length === 0 ? (
-              <p className="text-sm text-muted-foreground">This backup is empty — nothing to restore.</p>
+              <p className="text-helper text-muted-foreground">This backup is empty — nothing to restore.</p>
             ) : (
               <div className="flex flex-col gap-2">
-                <p className="text-sm text-muted-foreground">
+                <p className="text-helper text-muted-foreground">
                   Select what to restore. Items tagged <span className="uppercase">exists</span> already exist —
                   turn on Overwrite for a group to replace those.
                 </p>
@@ -391,7 +391,7 @@ export function BackupRestoreDialog({ open, onOpenChange }: { open: boolean; onO
               </div>
             ))}
 
-          {step === 'restore-done' && <p className="text-sm text-muted-foreground">Backup restored. Reloading…</p>}
+          {step === 'restore-done' && <p className="text-helper text-muted-foreground">Backup restored. Reloading…</p>}
         </div>
 
         <DialogFooter>

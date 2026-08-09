@@ -52,7 +52,7 @@ const EntityFields = ({ value, onChange, placeholders = [], locationOptions, sel
           placeholders={placeholders}
           placeholder="e.g. Liz — press Enter for each"
         />
-        <p className="text-sm text-muted-foreground">
+        <p className="text-helper text-muted-foreground">
           Other names this entity is called — detected in narration and shared with the AI. Case-sensitive.
           Press Enter after each one; an alias may contain commas.
         </p>
@@ -88,7 +88,7 @@ const EntityFields = ({ value, onChange, placeholders = [], locationOptions, sel
           placeholders={placeholders}
           resizable
         />
-        <p className="text-sm text-muted-foreground">
+        <p className="text-helper text-muted-foreground">
           A one-line version used where the full description is too long — keep it brief.
         </p>
       </div>

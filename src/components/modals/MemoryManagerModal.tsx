@@ -195,7 +195,7 @@ export const MemoryManagerModal = ({
         </DialogHeader>
 
         {!memoryDigests && (
-          <p className="rounded border border-border bg-muted/40 p-2 text-xs text-muted-foreground">
+          <p className="rounded border border-border bg-muted/40 p-2 text-meta text-muted-foreground">
             Memory Summaries are off, so the story isn&apos;t building its own memories — but anything you
             write here still rides with the story.
           </p>
@@ -206,7 +206,7 @@ export const MemoryManagerModal = ({
             value={query}
             onChange={(e) => setQuery(e.target.value)}
             placeholder="Search memories…"
-            className="h-8 flex-grow min-w-[140px] text-xs"
+            className="h-8 flex-grow min-w-[140px] text-meta"
           />
           <Button size="sm" variant="outline" className="h-8" onClick={() => { setAdding(true); setEditingId(null); setDraft(''); }}>
             <Plus className="mr-1 h-3.5 w-3.5" /> Add Memory
@@ -233,7 +233,7 @@ export const MemoryManagerModal = ({
               value={draft}
               onChange={(e) => setDraft(e.target.value)}
               placeholder="Something the story should remember…"
-              className="min-h-[80px] text-xs"
+              className="min-h-[80px] text-meta"
             />
             <div className="flex items-center justify-between">
               {counter}
@@ -248,7 +248,7 @@ export const MemoryManagerModal = ({
         <ScrollArea className="flex-grow min-h-0 -mx-1 px-1">
           <div className="space-y-1 pb-2">
             {visible.length === 0 && (
-              <p className="p-2 text-xs text-muted-foreground">
+              <p className="p-2 text-meta text-muted-foreground">
                 {ledger.totalCount === 0
                   ? 'Nothing here yet — memories appear as each turn is summarized.'
                   : 'No memories match that.'}
@@ -283,7 +283,7 @@ export const MemoryManagerModal = ({
                           autoFocus
                           value={draft}
                           onChange={(e) => setDraft(e.target.value)}
-                          className="min-h-[80px] text-xs"
+                          className="min-h-[80px] text-meta"
                         />
                         <div className="flex items-center justify-between">
                           {counter}
@@ -300,7 +300,7 @@ export const MemoryManagerModal = ({
                     ) : (
                       <>
                         <div className="flex items-start gap-2">
-                          <p className={cn('flex-grow text-xs', !row.kept && 'line-through')}>{row.text}</p>
+                          <p className={cn('flex-grow text-meta', !row.kept && 'line-through')}>{row.text}</p>
                           <div className="flex flex-shrink-0 items-center gap-0.5">
                             {row.deleted ? (
                               <Button variant="ghost" size="icon" className="h-6 w-6" title="Restore This Memory" onClick={() => restore(row)}>
@@ -388,7 +388,7 @@ export const MemoryManagerModal = ({
         </ScrollArea>
 
         <div className="flex justify-end border-t border-border pt-2">
-          <Button size="sm" variant="ghost" className="h-7 text-xs text-muted-foreground" disabled={!hasChanges} onClick={() => setConfirmReset(true)}>
+          <Button size="sm" variant="ghost" className="h-7 text-meta text-muted-foreground" disabled={!hasChanges} onClick={() => setConfirmReset(true)}>
             Reset All My Changes
           </Button>
         </div>

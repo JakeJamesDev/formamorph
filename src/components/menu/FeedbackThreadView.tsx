@@ -50,7 +50,7 @@ function Diagnostics({ diagnostics }: { diagnostics: BugDiagnostics }) {
   if (!rows.length) return null;
 
   return (
-    <dl className="grid grid-cols-[auto_minmax(0,1fr)] gap-x-3 rounded-md border bg-muted/40 px-3 py-2 text-xs text-muted-foreground">
+    <dl className="grid grid-cols-[auto_minmax(0,1fr)] gap-x-3 rounded-md border bg-muted/40 px-3 py-2 text-meta text-muted-foreground">
       {rows.map(([label, value]) => (
         <div key={label} className="contents">
           <dt>{label}</dt>
@@ -211,7 +211,7 @@ export function FeedbackThreadView({
     return (
       <div className="py-4 space-y-3">
         <Button variant="ghost" size="sm" onClick={onBack}><ArrowLeft className="mr-2 h-4 w-4" /> Back</Button>
-        <p className="text-sm text-muted-foreground">This could not be loaded.</p>
+        <p className="text-helper text-muted-foreground">This could not be loaded.</p>
       </div>
     );
   }
@@ -275,11 +275,11 @@ export function FeedbackThreadView({
           <h3 className="font-medium">{thread.title}</h3>
           <div className="flex items-center gap-2">
             {thread.locked && (
-              <span className="inline-flex items-center gap-1 text-xs text-muted-foreground">
+              <span className="inline-flex items-center gap-1 text-meta text-muted-foreground">
                 <Lock className="h-3 w-3" /> Locked
               </span>
             )}
-            <span className={cn('px-2 inline-flex text-xs leading-5 font-semibold rounded-full', status.badge)}>
+            <span className={cn('px-2 inline-flex text-meta leading-5 font-semibold rounded-full', status.badge)}>
               {status.label}
             </span>
             {/* Only when there is something this reader may change: an inert control reads as a
@@ -298,14 +298,14 @@ export function FeedbackThreadView({
             )}
           </div>
         </div>
-        <p className="text-xs text-muted-foreground">
+        <p className="text-meta text-muted-foreground">
           {FEEDBACK_CATEGORY_LABELS[thread.category]} ·{' '}
           <UserName userId={thread.reporter.id} username={thread.reporter.username} role={thread.reporter.role} /> ·{' '}
           {formatFeedbackDate(thread.createdAt)}
           {/* Said plainly: somebody may already have read the earlier wording. */}
           {thread.editedAt && <span className="italic"> · edited</span>}
         </p>
-        <div className="text-sm min-w-0"><MarkdownRenderer text={thread.body} /></div>
+        <div className="text-label min-w-0"><MarkdownRenderer text={thread.body} /></div>
 
         {/* Suggestions only, and votable even when locked: closing a discussion doesn't make the idea
             less wanted. */}
@@ -328,7 +328,7 @@ export function FeedbackThreadView({
 
       <div className="space-y-2 min-w-0">
         {comments.length === 0 ? (
-          <p className="py-4 text-center text-sm text-muted-foreground">No replies yet.</p>
+          <p className="py-4 text-center text-helper text-muted-foreground">No replies yet.</p>
         ) : (
           comments.map((comment) => {
             // Admins may remove anyone's comment — the only lever there is when an open thread goes bad
@@ -347,7 +347,7 @@ export function FeedbackThreadView({
                 )}
               >
                 <div className="flex items-start justify-between gap-2">
-                  <p className="flex items-center gap-1.5 text-xs text-muted-foreground">
+                  <p className="flex items-center gap-1.5 text-meta text-muted-foreground">
                     {/* Everyone signs with their own name and face; the badge says who they answer for. */}
                     <UserAvatar username={comment.author.username} avatarUrl={comment.author.avatarUrl} size="xs" />
                     <UserName userId={comment.author.id} username={comment.author.username} />
@@ -402,13 +402,13 @@ export function FeedbackThreadView({
                       <Button variant="ghost" size="sm" onClick={() => setEditingId(null)}>
                         <X className="mr-2 h-4 w-4" /> Cancel
                       </Button>
-                      <span className="ml-auto text-xs text-muted-foreground">
+                      <span className="ml-auto text-meta text-muted-foreground">
                         {editDraft.length} / {COMMENT_MAX}
                       </span>
                     </div>
                   </div>
                 ) : (
-                  <div className="mt-1 text-sm min-w-0"><MarkdownRenderer text={comment.body} /></div>
+                  <div className="mt-1 text-label min-w-0"><MarkdownRenderer text={comment.body} /></div>
                 )}
               </div>
             );
@@ -419,14 +419,14 @@ export function FeedbackThreadView({
       {!canWrite ? (
         // The server refuses the post either way, so an empty box here would just be an error waiting
         // to happen.
-        <p className="rounded-md border border-dashed p-3 text-center text-sm text-muted-foreground">
+        <p className="rounded-md border border-dashed p-3 text-center text-helper text-muted-foreground">
           {closedReason}
         </p>
       ) : (
       <div className="space-y-2 min-w-0">
         <div className="flex items-baseline justify-between">
-          <span className="text-sm font-medium">Reply</span>
-          <span className="text-xs text-muted-foreground">{reply.length} / {COMMENT_MAX}</span>
+          <span className="text-label font-medium">Reply</span>
+          <span className="text-meta text-muted-foreground">{reply.length} / {COMMENT_MAX}</span>
         </div>
         <PromptField
           value={reply}

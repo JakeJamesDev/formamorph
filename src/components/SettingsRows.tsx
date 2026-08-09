@@ -32,7 +32,7 @@ export function HintInfo({ children }: { children: string }) {
       <PopoverContent
         align="center"
         collisionPadding={12}
-        className="w-80 max-w-[calc(100vw-2rem)] text-xs leading-relaxed text-muted-foreground [&_p]:my-0 [&_*+p]:mt-2 [&_ul]:my-0 [&_*+ul]:mt-1.5 [&_ul]:list-disc [&_ul]:list-outside [&_ul]:pl-5 [&_li]:mt-0.5 [&_li]:pl-0.5 [&_strong]:font-medium [&_strong]:text-foreground [&_code]:text-[0.9em]"
+        className="w-80 max-w-[calc(100vw-2rem)] text-meta leading-relaxed text-muted-foreground [&_p]:my-0 [&_*+p]:mt-2 [&_ul]:my-0 [&_*+ul]:mt-1.5 [&_ul]:list-disc [&_ul]:list-outside [&_ul]:pl-5 [&_li]:mt-0.5 [&_li]:pl-0.5 [&_strong]:font-medium [&_strong]:text-foreground [&_code]:text-[0.9em]"
       >
         <Streamdown remarkPlugins={[remarkGfm]} controls={false}>{children}</Streamdown>
       </PopoverContent>
@@ -47,10 +47,10 @@ export function Section({ title, hint, children }: { title: string; hint?: strin
     <section className="grid gap-4">
       <div className="space-y-1">
         <div className="flex items-baseline gap-3">
-          <h3 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">{title}</h3>
+          <h3 className="text-meta font-semibold uppercase tracking-wider text-muted-foreground">{title}</h3>
           <div className="h-px flex-1 bg-border" />
         </div>
-        {hint && <p className="text-xs text-muted-foreground">{hint}</p>}
+        {hint && <p className="text-meta text-muted-foreground">{hint}</p>}
       </div>
       {children}
     </section>
@@ -97,7 +97,7 @@ export function Row({ label, htmlFor, children, hint, center }: {
       <label htmlFor={htmlFor} className={center ? 'text-left sm:text-right' : 'text-left sm:text-right pt-1'}>{label}</label>
       <div className="space-y-1">
         {children}
-        {hint && <p className="text-xs text-muted-foreground">{hint}</p>}
+        {hint && <p className="text-meta text-muted-foreground">{hint}</p>}
       </div>
     </div>
   );
@@ -110,7 +110,7 @@ export function ValueSlider({ id, value, onChange, min, max, step, format }: {
   return (
     <div className="flex items-center gap-3">
       <Slider id={id} className="flex-grow" value={[value]} min={min} max={max} step={step} onValueChange={(v) => onChange(v[0])} />
-      <span className="w-24 text-right text-sm tabular-nums">{format(value)}</span>
+      <span className="w-24 text-right text-label tabular-nums">{format(value)}</span>
     </div>
   );
 }
@@ -124,7 +124,7 @@ export function CheckRow({ label, htmlFor, checked, onChange, hint }: {
       <label htmlFor={htmlFor} className="text-left sm:text-right leading-4">{label}</label>
       <div className="flex items-start gap-2">
         <Checkbox id={htmlFor} checked={checked} onCheckedChange={(c) => onChange(c === true)} className="shrink-0" />
-        <span className="text-xs text-muted-foreground">{hint}</span>
+        <span className="text-meta text-muted-foreground">{hint}</span>
       </div>
     </div>
   );

@@ -30,7 +30,7 @@ const ReadmeModal = ({
           checked={!show}
           onCheckedChange={(c) => onShowChange(c !== true)}
         />
-        <label htmlFor="readme-dont-show" className="text-sm cursor-pointer">Don&apos;t Show This Again</label>
+        <label htmlFor="readme-dont-show" className="text-label cursor-pointer">Don&apos;t Show This Again</label>
       </div>
     }
   />

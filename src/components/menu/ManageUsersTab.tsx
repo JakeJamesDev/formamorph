@@ -409,7 +409,7 @@ export function ManageUsersTab({ active }: ManageUsersTabProps) {
                     <th
                       key={column.key}
                       scope="col"
-                      className="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider"
+                      className="px-6 py-3 text-left text-meta font-medium text-muted-foreground uppercase tracking-wider"
                       // Tells a screen reader which way the table is ordered, and by which column.
                       aria-sort={sort === column.key ? (sortOrder === 'asc' ? 'ascending' : 'descending') : 'none'}
                     >
@@ -425,7 +425,7 @@ export function ManageUsersTab({ active }: ManageUsersTabProps) {
                       </button>
                     </th>
                   ))}
-                  <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">
+                  <th scope="col" className="px-6 py-3 text-left text-meta font-medium text-muted-foreground uppercase tracking-wider">
                     Actions
                   </th>
                 </tr>
@@ -492,7 +492,7 @@ export function ManageUsersTab({ active }: ManageUsersTabProps) {
                           />
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap">
-                          <div className="flex items-center gap-2 text-sm font-medium text-foreground">
+                          <div className="flex items-center gap-2 text-label font-medium text-foreground">
                             <UserAvatar
                               username={user.username as string | undefined}
                               avatarUrl={user.avatarUrl as string | null | undefined}
@@ -520,13 +520,13 @@ export function ManageUsersTab({ active }: ManageUsersTabProps) {
                           ) : (
                             /* An administrator is made on the server and nowhere else, so there is nothing
                                to offer here — and a moderator changes nobody. */
-                            <div className="text-sm text-muted-foreground">
+                            <div className="text-helper text-muted-foreground">
                               {ROLE_LABELS[roleOf(user)]}
                             </div>
                           )}
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap">
-                          <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${statusBadgeClass}`}>
+                          <span className={`px-2 inline-flex text-meta leading-5 font-semibold rounded-full ${statusBadgeClass}`}>
                             {user.status || "active"}
                           </span>
                         </td>
@@ -535,7 +535,7 @@ export function ManageUsersTab({ active }: ManageUsersTabProps) {
                               acceptance a change invalidated reads as Not Seen — which is what the gate
                               will treat them as. Nothing to reset unless they answered. */}
                           <div className="flex items-center gap-1">
-                            <span className={`text-sm ${TERMS_LABELS[termsResponseOf(user)].className}`}>
+                            <span className={`text-label ${TERMS_LABELS[termsResponseOf(user)].className}`}>
                               {TERMS_LABELS[termsResponseOf(user)].label}
                             </span>
                             <Button
@@ -551,7 +551,7 @@ export function ManageUsersTab({ active }: ManageUsersTabProps) {
                             </Button>
                           </div>
                         </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
+                        <td className="px-6 py-4 whitespace-nowrap text-label font-medium">
                           <div className="flex flex-wrap gap-2">
                             {/* Split button, as the in-game Re-generate one: the common action on the
                                 left, the rarer one behind the caret, for one button's worth of row width. */}
@@ -669,7 +669,7 @@ export function ManageUsersTab({ active }: ManageUsersTabProps) {
                 Previous
               </Button>
 
-              <span className="px-4 py-2 text-sm">
+              <span className="px-4 py-2 text-label">
                 Page {userCurrentPage} of {userTotalPages}
               </span>
 

@@ -29,7 +29,7 @@ const AddDictionaryModal = ({ open, onOpenChange, onAdd }: {
     renderRow={(d) => (
       <>
         <span className="min-w-0 flex-grow truncate">{d.name}</span>
-        <span className="text-xs text-muted-foreground shrink-0">
+        <span className="text-meta text-muted-foreground shrink-0">
           {d.entryCount ?? 0} {d.entryCount === 1 ? 'entry' : 'entries'}
         </span>
       </>

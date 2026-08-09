@@ -8,7 +8,7 @@ import { cn } from "@/lib/utils";
 
 /** Single source for the rounded-square chip shape + aspect ratio (matches the AI Context popup's
  *  keyword chips). Colored chips layer their bg/text on top via `className`. */
-export const CHIP_BASE = "inline-flex items-center gap-1 rounded px-1.5 py-0.5 text-xs";
+export const CHIP_BASE = "inline-flex items-center gap-1 rounded px-1.5 py-0.5 text-meta";
 
 /** The separator the comma-split offer looks for. Comma+space, not a bare comma, so a `{2,3}` quantifier
  *  or a compact `a,b` list is left alone — only human-formatted lists are candidates. */

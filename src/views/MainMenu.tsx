@@ -203,7 +203,7 @@ const WorldNotice = ({ tone, icon: Icon, children, actionLabel, actionIcon: Acti
 }) => (
   <div
     className={cn(
-      'flex items-center gap-2 rounded-md border px-2 py-1.5 text-sm',
+      'flex items-center gap-2 rounded-md border px-2 py-1.5 text-label',
       tone === 'warning' ? 'border-warning/30 bg-warning/10 text-warning' : 'border-border bg-muted/50 text-muted-foreground',
     )}
   >
@@ -1463,7 +1463,7 @@ const MainMenu = ({ onStartGame, onLoadSaveGame, onReplayIntro, introActive = fa
         <ScrollArea className="flex-1 min-h-0 container mx-auto px-4">
           {!isLoadingModels && models.length === 0 ? (
             <div className="flex items-center justify-center py-16 px-4 select-none">
-              <p className="max-w-md text-center text-sm text-muted-foreground">
+              <p className="max-w-md text-center text-helper text-muted-foreground">
                 No player avatars yet — use <span className="font-semibold">Import Avatar</span> to add a .vrm.
               </p>
             </div>
@@ -1506,7 +1506,7 @@ const MainMenu = ({ onStartGame, onLoadSaveGame, onReplayIntro, introActive = fa
         <ScrollArea className="flex-1 min-h-0 container mx-auto px-4">
           {!isLoadingEntities && entities.length === 0 ? (
             <div className="flex items-center justify-center py-16 px-4 select-none">
-              <p className="max-w-md text-center text-sm text-muted-foreground">
+              <p className="max-w-md text-center text-helper text-muted-foreground">
                 No characters yet — use <span className="font-semibold">New Entity</span> or <span className="font-semibold">Import Entity</span> to add one.
               </p>
             </div>
@@ -1539,7 +1539,7 @@ const MainMenu = ({ onStartGame, onLoadSaveGame, onReplayIntro, introActive = fa
         <ScrollArea className="flex-1 min-h-0 container mx-auto px-4">
           {!isLoadingDictionaries && dictionaries.length === 0 ? (
             <div className="flex items-center justify-center py-16 px-4 select-none">
-              <p className="max-w-md text-center text-sm text-muted-foreground">
+              <p className="max-w-md text-center text-helper text-muted-foreground">
                 No dictionaries yet — use <span className="font-semibold">New Dictionary</span> or <span className="font-semibold">Import Dictionary</span> to add one.
               </p>
             </div>
@@ -1657,7 +1657,7 @@ const MainMenu = ({ onStartGame, onLoadSaveGame, onReplayIntro, introActive = fa
                   username={(currentUser?.username as string | undefined) ?? (currentUser?.name as string | undefined)}
                   avatarUrl={currentUser?.avatarUrl as string | null | undefined}
                   size="lg"
-                  className="h-12 w-12 text-lg"
+                  className="h-12 w-12 text-title"
                 />
               ) : (
                 <User className="h-6 w-6" />
@@ -1700,7 +1700,7 @@ const MainMenu = ({ onStartGame, onLoadSaveGame, onReplayIntro, introActive = fa
 
         {/* Center: copyright + origin credit (original is MIT — see THIRD-PARTY-NOTICES / legal/). The
             "Based on…" line collapses into the ⋯ menu on mobile; the © stays (it replays the intro). */}
-        <div className="text-center text-xs text-muted-foreground/60 whitespace-nowrap leading-tight">
+        <div className="text-center text-meta text-muted-foreground/60 whitespace-nowrap leading-tight">
           <button
             type="button"
             onClick={() => onReplayIntro?.()}
@@ -1743,7 +1743,7 @@ const MainMenu = ({ onStartGame, onLoadSaveGame, onReplayIntro, introActive = fa
                   href="https://www.patreon.com/JakeJamesNSFW"
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="flex items-center gap-2 rounded px-2 py-1.5 text-sm hover:bg-accent"
+                  className="flex items-center gap-2 rounded px-2 py-1.5 text-label hover:bg-accent"
                 >
                   <PatreonIcon className="h-4 w-4" /> Patreon
                 </a>
@@ -1751,7 +1751,7 @@ const MainMenu = ({ onStartGame, onLoadSaveGame, onReplayIntro, introActive = fa
                   href="https://github.com/JakeJamesDev/formamorph"
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="flex items-center gap-2 rounded px-2 py-1.5 text-sm hover:bg-accent"
+                  className="flex items-center gap-2 rounded px-2 py-1.5 text-label hover:bg-accent"
                 >
                   <Github className="h-4 w-4" /> GitHub
                 </a>
@@ -1759,7 +1759,7 @@ const MainMenu = ({ onStartGame, onLoadSaveGame, onReplayIntro, introActive = fa
                   href="https://github.com/FieryLionite/formamorph"
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="rounded px-2 py-1.5 text-xs text-muted-foreground hover:bg-accent"
+                  className="rounded px-2 py-1.5 text-meta text-muted-foreground hover:bg-accent"
                 >
                   Based on Formamorph by FieryLionite
                 </a>
@@ -1819,7 +1819,7 @@ const MainMenu = ({ onStartGame, onLoadSaveGame, onReplayIntro, introActive = fa
               meta={
                 <div className="grid grid-cols-2 gap-4">
                   <div className="col-span-2">
-                    <h3 className="text-sm font-semibold text-muted-foreground">Author</h3>
+                    <h3 className="text-helper font-semibold text-muted-foreground">Author</h3>
                     <p>
                       <UserName
                         userId={selectedWorld?.sourceAuthorId}
@@ -1838,14 +1838,14 @@ const MainMenu = ({ onStartGame, onLoadSaveGame, onReplayIntro, introActive = fa
                     const value = isDefault ? undefined : (selectedWorld?.downloadedAt ?? selectedWorld?.createdAt);
                     return (
                       <div>
-                        <h3 className="text-sm font-semibold text-muted-foreground">{label}</h3>
+                        <h3 className="text-helper font-semibold text-muted-foreground">{label}</h3>
                         <p><DateTimeText value={value} /></p>
                       </div>
                     );
                   })()}
 
                   <div>
-                    <h3 className="text-sm font-semibold text-muted-foreground">Edited</h3>
+                    <h3 className="text-helper font-semibold text-muted-foreground">Edited</h3>
                     <p><DateTimeText value={selectedWorld?.editedAt} /></p>
                   </div>
                 </div>
@@ -1987,7 +1987,7 @@ const MainMenu = ({ onStartGame, onLoadSaveGame, onReplayIntro, introActive = fa
               the preset pin picks which prompts this world runs on, the checkboxes are entry options. */}
           <div className="shrink-0 flex flex-wrap items-center gap-x-6 gap-y-2 pt-2">
             <div className="flex items-center gap-2">
-              <label htmlFor="world-preset" className="text-sm text-muted-foreground">Prompts</label>
+              <label htmlFor="world-preset" className="text-helper text-muted-foreground">Prompts</label>
               <Select
                 value={(selectedWorld && worldPreset(selectedWorld.id)) || GLOBAL_PRESET_VALUE}
                 onValueChange={(v) =>
@@ -2013,7 +2013,7 @@ const MainMenu = ({ onStartGame, onLoadSaveGame, onReplayIntro, introActive = fa
                     checked={applyWorldPrompt(selectedWorld.id)}
                     onCheckedChange={(c) => setApplyWorldPrompt(selectedWorld.id, c === true)}
                   />
-                  <label htmlFor="use-world-narration-prompt" className="text-sm cursor-pointer">
+                  <label htmlFor="use-world-narration-prompt" className="text-label cursor-pointer">
                     Use this world&apos;s narration prompt
                   </label>
                 </div>
@@ -2027,7 +2027,7 @@ const MainMenu = ({ onStartGame, onLoadSaveGame, onReplayIntro, introActive = fa
                     checked={showReadme(selectedWorld.id)}
                     onCheckedChange={(c) => setShowReadme(selectedWorld.id, c === true)}
                   />
-                  <label htmlFor="show-readme" className="text-sm cursor-pointer">Show Readme on entry</label>
+                  <label htmlFor="show-readme" className="text-label cursor-pointer">Show Readme on entry</label>
                 </div>
               )}
             </div>
@@ -2138,7 +2138,7 @@ const MainMenu = ({ onStartGame, onLoadSaveGame, onReplayIntro, introActive = fa
             </DialogDescription>
 
             <div className="bg-muted p-4 rounded-md overflow-auto">
-              <pre className="text-sm font-mono whitespace-pre-wrap">
+              <pre className="text-label font-mono whitespace-pre-wrap">
                 {generateConcatenatedCode(stats)}
               </pre>
             </div>
@@ -2166,7 +2166,7 @@ const MainMenu = ({ onStartGame, onLoadSaveGame, onReplayIntro, introActive = fa
           </DialogDescription>
 
           <div className="flex-1 min-h-0 overflow-auto rounded-md bg-muted p-4">
-            <pre className="text-sm font-mono whitespace-pre-wrap">
+            <pre className="text-label font-mono whitespace-pre-wrap">
               {worldNarrationPrompt(selectedWorld?.data?.worldOverview) ?? ''}
             </pre>
           </div>

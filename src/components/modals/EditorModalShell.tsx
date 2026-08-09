@@ -62,7 +62,7 @@ const EditorModalShell = ({
               <div className="flex-1" />
             </DialogHeader>
             {loading ? (
-              <div className="flex-1 flex items-center justify-center text-sm text-muted-foreground">Loading…</div>
+              <div className="flex-1 flex items-center justify-center text-helper text-muted-foreground">Loading…</div>
             ) : (
               <>
                 {/* A panel per tab so every trigger's `aria-controls` resolves; the caller hands us only the

@@ -330,7 +330,7 @@ export const LeftPanel = ({ entities, onEntityClick, onRegenerateMemory }: {
         <TabsContent value="notes" className="flex-grow overflow-hidden min-h-[100px]">
           <div className="h-full p-2 flex flex-col">
             {!systemPrompt.includes('<NOTES>') && (
-              <div className="mb-2 p-2 bg-warning/20 border border-warning rounded  text-sm">
+              <div className="mb-2 p-2 bg-warning/20 border border-warning rounded  text-label">
                 Warning: The current system prompt does not include the &lt;NOTES&gt; placeholder!
               </div>
             )}
@@ -434,7 +434,7 @@ const ActionInput = ({
         className={cn(
           // ring-inset (no ring-offset): the focus glow draws inside the box so the overflow-hidden panel
           // walls can't clip it (the box sits flush against them).
-          "absolute inset-x-0 bottom-0 w-full resize-none rounded-md border border-input bg-background px-3 py-2 text-sm leading-normal placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50",
+          "absolute inset-x-0 bottom-0 w-full resize-none rounded-md border border-input bg-background px-3 py-2 text-helper leading-normal placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50",
           focused
             ? "z-20 shadow-lg whitespace-pre-wrap"
             : "h-10 overflow-hidden whitespace-nowrap",
@@ -622,7 +622,7 @@ export const MiddlePanel = ({
         {ttsGenerating && ttsProgress && (
           <div className="flex items-center gap-2 px-1 pb-1">
             <Progress value={(ttsProgress.done / ttsProgress.total) * 100} className="h-1.5 flex-1" />
-            <span className="text-xs text-muted-foreground whitespace-nowrap">
+            <span className="text-meta text-muted-foreground whitespace-nowrap">
               Narrating {Math.min(ttsProgress.done + 1, ttsProgress.total)}/{ttsProgress.total}
             </span>
           </div>
@@ -690,7 +690,7 @@ export const MiddlePanel = ({
                             see what this turn would be drawn as before spending a picture on it. */}
                         <Button
                           variant="ghost"
-                          className="justify-start gap-2 text-xs h-8"
+                          className="justify-start gap-2 text-meta h-8"
                           onClick={() => { setToolMenuOpen(false); onSceneTags(); }}
                           disabled={sceneImageJob !== null || !sceneTurnId}
                         >
@@ -699,7 +699,7 @@ export const MiddlePanel = ({
                         </Button>
                         <Button
                           variant="ghost"
-                          className="justify-start gap-2 text-xs h-8"
+                          className="justify-start gap-2 text-meta h-8"
                           onClick={() => { setToolMenuOpen(false); onSceneImage(); }}
                           disabled={sceneImageJob !== null || !sceneTurnId}
                         >
@@ -711,7 +711,7 @@ export const MiddlePanel = ({
                     {!hasAudio && ttsLoaded && (
                       <Button
                         variant="ghost"
-                        className="justify-start gap-2 text-xs h-8"
+                        className="justify-start gap-2 text-meta h-8"
                         onClick={() => { setToolMenuOpen(false); onRegenerateTTS(); }}
                         disabled={ttsGenerating}
                       >
@@ -722,7 +722,7 @@ export const MiddlePanel = ({
                     {!hasAudio && (
                       <Button
                         variant="ghost"
-                        className="justify-start gap-2 text-xs h-8"
+                        className="justify-start gap-2 text-meta h-8"
                         onClick={() => { setToolMenuOpen(false); onTTSClick(); }}
                       >
                         <Headphones className="h-4 w-4" />
@@ -731,7 +731,7 @@ export const MiddlePanel = ({
                     )}
                     <Button
                       variant="ghost"
-                      className="justify-start gap-2 text-xs h-8"
+                      className="justify-start gap-2 text-meta h-8"
                       onClick={() => { setToolMenuOpen(false); onExportStory(); }}
                     >
                       <Download className="h-4 w-4" />
@@ -744,7 +744,7 @@ export const MiddlePanel = ({
             {commandPreview && (
               <div className="mb-3 p-2 border border-dashed border-primary/50 rounded relative">
                 <div className="flex items-center justify-between mb-1">
-                  <span className="text-xs text-muted-foreground">Markdown preview (/markdown test)</span>
+                  <span className="text-meta text-muted-foreground">Markdown preview (/markdown test)</span>
                   <Button variant="ghost" size="icon" className="h-6 w-6" onClick={onDismissCommandPreview} title="Dismiss preview">
                     <X className="h-4 w-4" />
                   </Button>
@@ -983,7 +983,7 @@ export const MiddlePanel = ({
                     description="Are you sure you want to rollback to the previous state? This action cannot be undone."
                     onConfirm={handleRollback}
                   >
-                    <Button variant="outline" className="text-xs gap-1 w-32" disabled={isWaitingForAI}>
+                    <Button variant="outline" className="text-meta gap-1 w-32" disabled={isWaitingForAI}>
                       <RefreshCw className="h-3 w-3" />
                       Rollback
                     </Button>
@@ -994,7 +994,7 @@ export const MiddlePanel = ({
                     <Button
                       variant="outline"
                       aria-label="Re-generate"
-                      className={`text-xs gap-1 ${canRegenChoices || canRegenStats ? "rounded-r-none md:w-28" : "md:w-32"}`}
+                      className={`text-meta gap-1 ${canRegenChoices || canRegenStats ? "rounded-r-none md:w-28" : "md:w-32"}`}
                       onClick={handleRegenerate}
                       disabled={isWaitingForAI}
                     >
@@ -1020,7 +1020,7 @@ export const MiddlePanel = ({
                             {canRegenStats && (
                               <Button
                                 variant="ghost"
-                                className="justify-start text-xs h-8"
+                                className="justify-start text-meta h-8"
                                 onClick={() => { setRegenMenuOpen(false); handleRegenerateStats(); }}
                                 disabled={sceneImageJob !== null}
                               >
@@ -1030,7 +1030,7 @@ export const MiddlePanel = ({
                             {canRegenChoices && (
                               <Button
                                 variant="ghost"
-                                className="justify-start text-xs h-8"
+                                className="justify-start text-meta h-8"
                                 onClick={() => { setRegenMenuOpen(false); handleRegenerateChoices(); }}
                                 disabled={sceneImageJob !== null}
                               >
@@ -1061,7 +1061,7 @@ export const MiddlePanel = ({
                 className="mr-2"
                 tabExtras={{
                   Choices: (
-                    <label className="flex items-center gap-3 rounded-md border p-3 text-sm flex-shrink-0 cursor-pointer">
+                    <label className="flex items-center gap-3 rounded-md border p-3 text-label flex-shrink-0 cursor-pointer">
                       <Checkbox checked={choicesEnabled} onCheckedChange={(c: boolean | 'indeterminate') => setChoicesEnabled(c === true)} />
                       <span>
                         <span className="font-medium">Choices</span>
@@ -1070,7 +1070,7 @@ export const MiddlePanel = ({
                     </label>
                   ),
                   'Memory & Notes': (
-                    <label className="flex items-center gap-3 rounded-md border p-3 text-sm flex-shrink-0 cursor-pointer">
+                    <label className="flex items-center gap-3 rounded-md border p-3 text-label flex-shrink-0 cursor-pointer">
                       <Checkbox checked={memoryDigests} onCheckedChange={(c: boolean | 'indeterminate') => setMemoryDigests(c === true)} />
                       <span>
                         <span className="font-medium">Memory Summaries</span>
@@ -1253,7 +1253,7 @@ export const RightPanel = ({ onLocationClick, onToggleTrait, language, setLangua
                     {shownChange && (
                       <span
                         key={`${currentPage}-${change}`}
-                        className={`${isViewingPast ? 'stat-delta-text-in' : (recentStatFading ? 'stat-delta-text-out' : 'stat-delta-text')} text-sm ${change > 0 ? 'text-success' : 'text-destructive'}`}
+                        className={`${isViewingPast ? 'stat-delta-text-in' : (recentStatFading ? 'stat-delta-text-out' : 'stat-delta-text')} text-label ${change > 0 ? 'text-success' : 'text-destructive'}`}
                       >
                         {shownChange}
                       </span>
@@ -1348,11 +1348,11 @@ export const RightPanel = ({ onLocationClick, onToggleTrait, language, setLangua
               {displayLocation && (
                 <div className="space-y-2">
                   <p className="font-semibold">Description:</p>
-                  <p className="text-sm">{resolvePH(displayLocation.playerDescription || displayLocation.description || '')}</p>
+                  <p className="text-label">{resolvePH(displayLocation.playerDescription || displayLocation.description || '')}</p>
                   {displayLocation.connections && displayLocation.connections.length > 0 && (
                     <>
                       <p className="font-semibold mt-4">Connected Locations:</p>
-                      <ul className="list-disc list-inside text-sm">
+                      <ul className="list-disc list-inside text-label">
                         {displayLocation.connections.map((connection, index) => (
                           <li key={index}>{connection}</li>
                         ))}
@@ -1366,7 +1366,7 @@ export const RightPanel = ({ onLocationClick, onToggleTrait, language, setLangua
         </TabsContent>
       </Tabs>
       {isViewingPast && (
-        <p className="text-center text-xs font-medium text-primary bg-primary/10 rounded py-0.5 mt-2 flex-shrink-0">
+        <p className="text-center text-meta font-medium text-primary bg-primary/10 rounded py-0.5 mt-2 flex-shrink-0">
           Viewing turn {currentPage} of {totalPages} — history
         </p>
       )}

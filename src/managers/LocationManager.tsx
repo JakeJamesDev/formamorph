@@ -71,7 +71,7 @@ const LocationManager = ({ location }: { location: GameLocation }) => {
           placeholders={placeholders}
           resizable
         />
-        <p className="text-sm text-muted-foreground">
+        <p className="text-helper text-muted-foreground">
           A one-line version used where the full description is too long — keep it brief.
         </p>
       </div>

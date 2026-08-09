@@ -110,7 +110,7 @@ export function SentMessageList({ audience, userId, refreshNonce = 0, emptyLabel
         {isFirstLoad ? (
           Array(3).fill(0).map((_, index) => <Skeleton key={index} className="h-16 w-full" />)
         ) : messages.length === 0 ? (
-          <p className="py-8 text-center text-sm text-muted-foreground">{emptyLabel}</p>
+          <p className="py-8 text-center text-helper text-muted-foreground">{emptyLabel}</p>
         ) : (
           messages.map((message) => {
             const style = MESSAGE_SEVERITY_STYLES[message.severity];
@@ -136,7 +136,7 @@ export function SentMessageList({ audience, userId, refreshNonce = 0, emptyLabel
                           instead of ellipsing — a flex child won't shrink below its content. */}
                       <span className="flex items-center gap-2 min-w-0">
                         <span
-                          className={cn('text-sm truncate min-w-0', message.recalledAt && 'line-through')}
+                          className={cn('text-label truncate min-w-0', message.recalledAt && 'line-through')}
                           title={message.subject}
                         >
                           {message.subject}
@@ -146,7 +146,7 @@ export function SentMessageList({ audience, userId, refreshNonce = 0, emptyLabel
                         {message.scope === 'new' && <Users className="h-3 w-3 shrink-0" aria-label="Also reaches new accounts" />}
                       </span>
 
-                      <span className="flex flex-wrap items-center gap-x-2 text-xs text-muted-foreground">
+                      <span className="flex flex-wrap items-center gap-x-2 text-meta text-muted-foreground">
                         <span>{message.broadcast ? 'Everyone' : message.recipient?.username ?? 'Unknown'}</span>
                         <span>·</span>
                         <span>{formatMessageDate(message.createdAt)}</span>
@@ -188,7 +188,7 @@ export function SentMessageList({ audience, userId, refreshNonce = 0, emptyLabel
                 </div>
 
                 {isExpanded && (
-                  <div className="px-3 pb-3 pl-9 text-sm">
+                  <div className="px-3 pb-3 pl-9 text-label">
                     <MarkdownRenderer text={message.body} />
                   </div>
                 )}
@@ -215,7 +215,7 @@ export function SentMessageList({ audience, userId, refreshNonce = 0, emptyLabel
             Previous
           </Button>
 
-          <span className="px-2 text-sm">Page {page} of {totalPages}</span>
+          <span className="px-2 text-label">Page {page} of {totalPages}</span>
 
           <Button
             variant="outline"

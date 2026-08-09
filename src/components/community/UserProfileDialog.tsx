@@ -94,20 +94,22 @@ export function UserProfileDialog({ userId, onOpenChange, fallbackUsername, onOp
               username={name}
               avatarUrl={profile?.avatarUrl}
               size="xl"
+              // An avatar's initial scales with its circle, not with the type scale, so no role fits.
+              // eslint-disable-next-line no-restricted-syntax
               className="h-24 w-24 text-4xl"
             />
           )}
 
           <div className="min-w-0 space-y-1">
             <div className="flex items-center justify-center gap-2 min-w-0">
-              <h3 className="text-lg font-semibold truncate">{name || 'Unknown'}</h3>
+              <h3 className="text-title font-semibold truncate">{name || 'Unknown'}</h3>
               <RoleBadge role={profile?.role} />
             </div>
 
             {error ? (
-              <p className="text-sm text-destructive">{error}</p>
+              <p className="text-label text-destructive">{error}</p>
             ) : memberSince ? (
-              <p className="text-sm text-muted-foreground">Member since {memberSince}</p>
+              <p className="text-helper text-muted-foreground">Member since {memberSince}</p>
             ) : (
               <Skeleton className="mx-auto h-5 w-32" />
             )}

@@ -12,7 +12,7 @@ const ComfyWorkflowGuide = ({ open, onOpenChange }: { open: boolean; onOpenChang
       </DialogHeader>
 
       <ScrollArea className="flex-1 min-h-0 pr-3">
-        <div className="space-y-3 text-sm">
+        <div className="space-y-3 text-label">
           <p className="text-muted-foreground">
             The Workflow field is a ComfyUI graph in <strong>API format</strong> with <Code>%tokens%</Code>{" "}
             marking the values Formamorph fills in on each generation. To adapt one of your own workflows:

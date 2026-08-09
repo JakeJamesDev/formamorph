@@ -30,7 +30,7 @@ export function UpdateDialog({ open, onOpenChange, state, onCheck, onDownload }:
       <DialogContent aria-describedby={undefined} className="max-w-3xl">
         <DialogHeader><DialogTitle>{title}</DialogTitle></DialogHeader>
 
-        <div className="flex items-center justify-between text-sm">
+        <div className="flex items-center justify-between text-label">
           <span className="text-muted-foreground">Release channel</span>
           <Select value={state.channel} onValueChange={(v) => setUpdateChannel(v as UpdateChannel)}>
             <SelectTrigger className="w-40"><SelectValue /></SelectTrigger>
@@ -42,7 +42,7 @@ export function UpdateDialog({ open, onOpenChange, state, onCheck, onDownload }:
         </div>
 
         {state.phase === 'error' ? (
-          <p className="text-sm text-destructive">{state.error}</p>
+          <p className="text-label text-destructive">{state.error}</p>
         ) : (
           <ChangelogBody
             text={state.changelog}

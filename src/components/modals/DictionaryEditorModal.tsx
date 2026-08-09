@@ -154,7 +154,7 @@ const DictionaryEditorModal = ({ dictionaryId, draft, onClose, onPublish }: {
                     <DictionaryManager key={selectedEntry.id} entry={selectedEntry} placeholders={bookPlaceholders} />
                   </ChipInsertTargetProvider>
                 ) : (
-                  <p className="text-sm text-muted-foreground">Select the dictionary or an entry to edit it.</p>
+                  <p className="text-helper text-muted-foreground">Select the dictionary or an entry to edit it.</p>
                 )}
               </div>
             }

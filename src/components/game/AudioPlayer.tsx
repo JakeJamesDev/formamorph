@@ -68,7 +68,7 @@ export default function AudioPlayer({ src, autoPlay = false, className }: {
         onValueChange={seek}
         className="flex-grow"
       />
-      <span className="text-xs text-muted-foreground whitespace-nowrap shrink-0">
+      <span className="text-meta text-muted-foreground whitespace-nowrap shrink-0">
         {formatMMSS(currentTime)} / {formatMMSS(duration)}
       </span>
       <Button variant="ghost" size="icon" onClick={toggleMute} className="shrink-0" title="Mute / unmute">

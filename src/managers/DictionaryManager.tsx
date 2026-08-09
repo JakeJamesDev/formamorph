@@ -11,7 +11,7 @@ import type { DictionaryEntry, Placeholder } from '@/types';
 /** A compact labeled checkbox for the lorebook options grid. */
 function CheckRow({ label, checked, onChange }: { label: string; checked: boolean; onChange: (v: boolean) => void }) {
   return (
-    <label className="flex items-center gap-2 text-sm">
+    <label className="flex items-center gap-2 text-label">
       <Checkbox checked={checked} onCheckedChange={(v) => onChange(v === true)} />
       {label}
     </label>
@@ -62,7 +62,7 @@ const DictionaryManager = ({ entry, placeholders = [] }: { entry: DictionaryEntr
           placeholder="e.g. Hostile Forces"
           ariaLabel="Name"
         />
-        <p className="text-xs text-muted-foreground">
+        <p className="text-meta text-muted-foreground">
           Labels this entry in the list, and prefixes its value in the AI prompt. Falls back to the first
           keyword when blank.
         </p>
@@ -70,7 +70,7 @@ const DictionaryManager = ({ entry, placeholders = [] }: { entry: DictionaryEntr
       <div className="space-y-2">
         <Label>Trigger Keywords (Key)</Label>
         <KeywordChips keywords={keywords} onChange={(key) => handleChange('key', key)} placeholders={chipPlaceholders} offerCommaSplit={!editingEntry.useRegex} />
-        <p className="text-xs text-muted-foreground">
+        <p className="text-meta text-muted-foreground">
           Type a keyword and press Enter to add it. Tap (or double-click) to edit, drag to reorder, click the × to remove.
           The value below is injected into the AI prompt only when one of these appears in play.
         </p>
@@ -92,13 +92,13 @@ const DictionaryManager = ({ entry, placeholders = [] }: { entry: DictionaryEntr
         </div>
         {advanced && (
         <div className="space-y-1">
-          <Label className="text-xs text-muted-foreground">Scan depth (messages)</Label>
+          <Label className="text-meta text-muted-foreground">Scan depth (messages)</Label>
           <Input type="number" min={0} value={editingEntry.scanDepth ?? ''} onChange={(e) => handleNumber('scanDepth', e.target.value)} placeholder="all history" />
         </div>
         )}
         {advanced && (
         <div className="space-y-1">
-          <Label className="text-xs text-muted-foreground">Secondary Keywords</Label>
+          <Label className="text-meta text-muted-foreground">Secondary Keywords</Label>
           <KeywordChips keywords={secondaryKeywords} onChange={handleSecondaryChange} placeholders={chipPlaceholders} placeholder="e.g. red" offerCommaSplit={!editingEntry.useRegex} />
           <div className="flex flex-wrap gap-x-4 gap-y-1 pt-1">
             <CheckRow label="Require all" checked={!!editingEntry.secondaryAll} onChange={(v) => handleChange('secondaryAll', v)} />

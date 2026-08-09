@@ -462,7 +462,7 @@ const WorldEditorInner = ({ onClose, embedded = false, backButton }: {
       const q = searchTerm.trim();
       // Same empty-state hint the trees show (unified), or a "no matches" note when filtering.
       return q
-        ? <p className="text-sm text-muted-foreground p-2">No {activeTab} match &ldquo;{q}&rdquo;.</p>
+        ? <p className="text-helper text-muted-foreground p-2">No {activeTab} match &ldquo;{q}&rdquo;.</p>
         : <EmptyListHint noun={activeTab} />;
     }
     return (
@@ -616,14 +616,14 @@ const WorldEditorInner = ({ onClose, embedded = false, backButton }: {
           <PopoverContent side="bottom" align="start" className="w-44 p-1">
             <button
               type="button"
-              className="flex w-full items-center gap-2 rounded-sm px-2 py-1.5 text-sm hover:bg-accent"
+              className="flex w-full items-center gap-2 rounded-sm px-2 py-1.5 text-label hover:bg-accent"
               onClick={() => { (activeTab === "entities" ? handleAddEntityGroup : handleAddGroup)(); setAddMenuOpen(false); }}
             >
               <FolderPlus className="h-4 w-4" /> Add Group
             </button>
             <button
               type="button"
-              className="flex w-full items-center gap-2 rounded-sm px-2 py-1.5 text-sm hover:bg-accent"
+              className="flex w-full items-center gap-2 rounded-sm px-2 py-1.5 text-label hover:bg-accent"
               onClick={() => { (activeTab === "entities" ? addItem : handleAddTrait)(); setAddMenuOpen(false); }}
             >
               <FilePlus className="h-4 w-4" /> {activeTab === "entities" ? "Add Entity" : "Add Trait"}

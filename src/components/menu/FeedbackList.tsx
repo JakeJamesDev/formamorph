@@ -122,7 +122,7 @@ export function FeedbackList({
   return (
     <>
       {truncated && (
-        <p role="status" className="mb-2 rounded-md bg-warning/10 px-3 py-2 text-xs text-warning">
+        <p role="status" className="mb-2 rounded-md bg-warning/10 px-3 py-2 text-meta text-warning">
           This page is incomplete — the server returned fewer rows than were asked for. Filter by a single
           status to see all of them.
         </p>
@@ -133,7 +133,7 @@ export function FeedbackList({
         aria-busy={isLoading}
       >
         {threads.length === 0 ? (
-          <p className="py-8 text-center text-sm text-muted-foreground">{emptyLabel}</p>
+          <p className="py-8 text-center text-helper text-muted-foreground">{emptyLabel}</p>
         ) : (
           threads.map((thread) => {
             const style = FEEDBACK_STATUS_STYLES[thread.status];
@@ -163,7 +163,7 @@ export function FeedbackList({
                     {/* Filled once it is yours: the outline chevron closes into a solid arrowhead, which
                         reads at a glance down a column of rows in a way a hue change does not. */}
                     <ChevronUp className={cn('h-4 w-4', thread.voted && 'fill-current')} />
-                    <span className={cn('text-xs tabular-nums', thread.voted && 'font-bold')}>{thread.votes}</span>
+                    <span className={cn('text-meta tabular-nums', thread.voted && 'font-bold')}>{thread.votes}</span>
                   </Button>
                 )}
 
@@ -173,7 +173,7 @@ export function FeedbackList({
                   className="flex flex-1 items-start gap-2 p-3 text-left hover:bg-accent/50 min-w-0"
                 >
                   <div className="flex-1 min-w-0">
-                    <p className="flex items-center gap-2 text-sm">
+                    <p className="flex items-center gap-2 text-label">
                       {/* Weight as well as the dot, the way the inbox does it: color alone excludes
                           anybody whose vision does not separate these hues. */}
                       <span className={cn('truncate', thread.unread ? 'font-semibold' : 'font-medium')}>
@@ -186,7 +186,7 @@ export function FeedbackList({
                       )}
                       {thread.locked && <Lock className="h-3 w-3 shrink-0 text-muted-foreground" aria-label="Locked" />}
                     </p>
-                    <p className="text-xs text-muted-foreground truncate">
+                    <p className="text-meta text-muted-foreground truncate">
                       {FEEDBACK_CATEGORY_LABELS[thread.category]}
                       {scope === 'all' && (
                         <>
@@ -200,14 +200,14 @@ export function FeedbackList({
                     </p>
                   </div>
                   <span className="shrink-0 flex flex-col items-end gap-1">
-                    <span className={cn('px-2 inline-flex text-xs leading-5 font-semibold rounded-full', style.badge)}>
+                    <span className={cn('px-2 inline-flex text-meta leading-5 font-semibold rounded-full', style.badge)}>
                       {style.label}
                     </span>
                     {/* Hidden at zero: the point of the number is that there is activity, and a column
                         of "0" beside every untouched row says only that the feature exists. */}
                     {replies > 0 && (
                       <span
-                        className="inline-flex items-center gap-1 pr-0.5 text-xs text-muted-foreground"
+                        className="inline-flex items-center gap-1 pr-0.5 text-meta text-muted-foreground"
                         aria-label={replies === 1 ? '1 reply' : `${replies} replies`}
                       >
                         <MessageSquare className="h-3 w-3" aria-hidden="true" />
@@ -232,7 +232,7 @@ export function FeedbackList({
           <Button variant="outline" size="sm" onClick={() => setPage((p) => Math.max(p - 1, 1))} disabled={page <= 1}>
             Previous
           </Button>
-          <span className="px-2 text-sm">Page {page} of {totalPages}</span>
+          <span className="px-2 text-label">Page {page} of {totalPages}</span>
           <Button
             variant="outline"
             size="sm"

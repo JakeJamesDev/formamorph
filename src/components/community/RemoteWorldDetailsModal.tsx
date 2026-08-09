@@ -197,7 +197,7 @@ export function RemoteWorldDetailsModal({
                     {/* Full width so the two counts below pair off on a row of their own — they are the
                         comparison the pair exists to make. */}
                     <div className="col-span-2">
-                      <h3 className="text-sm font-semibold text-muted-foreground">Author</h3>
+                      <h3 className="text-helper font-semibold text-muted-foreground">Author</h3>
                       <p className="flex items-center gap-2 min-w-0">
                         <UserAvatar username={world.author?.username} avatarUrl={world.author?.avatarUrl} size="sm" />
                         <UserName userId={world.author?.id} username={world.author?.username} role={world.author?.role} />
@@ -205,12 +205,12 @@ export function RemoteWorldDetailsModal({
                     </div>
 
                     <div>
-                      <h3 className="text-sm font-semibold text-muted-foreground">Downloads</h3>
+                      <h3 className="text-helper font-semibold text-muted-foreground">Downloads</h3>
                       <p>{world.downloads || 0}</p>
                     </div>
 
                     <div>
-                      <h3 className="text-sm font-semibold text-muted-foreground">Likes</h3>
+                      <h3 className="text-helper font-semibold text-muted-foreground">Likes</h3>
                       <LikeButton
                         likes={world.likes || 0}
                         liked={world.liked}
@@ -221,12 +221,12 @@ export function RemoteWorldDetailsModal({
                     </div>
 
                     <div>
-                      <h3 className="text-sm font-semibold text-muted-foreground">Created</h3>
+                      <h3 className="text-helper font-semibold text-muted-foreground">Created</h3>
                       <p>{world.created_at ? <DateTimeText value={world.created_at} /> : "Unknown"}</p>
                     </div>
 
                     <div>
-                      <h3 className="text-sm font-semibold text-muted-foreground">Updated</h3>
+                      <h3 className="text-helper font-semibold text-muted-foreground">Updated</h3>
                       <p>{world.updated_at ? <DateTimeText value={world.updated_at} /> : "Unknown"}</p>
                     </div>
                   </div>
@@ -236,7 +236,7 @@ export function RemoteWorldDetailsModal({
 
             {/* Right column: comments */}
             <div className={cn(splitColumnClasses(collapsed).right, "space-y-3")}>
-              <h3 className="text-sm font-semibold text-muted-foreground">Comments ({commentsTotal})</h3>
+              <h3 className="text-helper font-semibold text-muted-foreground">Comments ({commentsTotal})</h3>
 
               {isAuthenticated ? (
                 <div className="space-y-2">
@@ -255,18 +255,18 @@ export function RemoteWorldDetailsModal({
                   </Button>
                 </div>
               ) : (
-                <p className="text-sm text-muted-foreground">Log in to leave a comment.</p>
+                <p className="text-helper text-muted-foreground">Log in to leave a comment.</p>
               )}
 
               <div className="space-y-3">
                 {comments.map((c) => (
-                  <div key={c.id} className="text-sm border-b border-border/50 pb-2 last:border-0">
+                  <div key={c.id} className="text-label border-b border-border/50 pb-2 last:border-0">
                     <div className="flex items-center justify-between gap-2">
                       <span className="flex items-center gap-1.5 min-w-0 font-medium">
                         <UserAvatar username={c.author?.username} avatarUrl={c.author?.avatarUrl} size="xs" />
                         <UserName userId={c.author?.id} username={c.author?.username} role={c.author?.role} />
                       </span>
-                      <span className="text-xs text-muted-foreground">
+                      <span className="text-meta text-muted-foreground">
                         {c.created_at ? formatServerDateTime(c.created_at) : ''}
                       </span>
                     </div>
@@ -274,7 +274,7 @@ export function RemoteWorldDetailsModal({
                   </div>
                 ))}
                 {comments.length === 0 && !commentsLoading && (
-                  <p className="text-sm text-muted-foreground">No comments yet.</p>
+                  <p className="text-helper text-muted-foreground">No comments yet.</p>
                 )}
                 {commentsHasMore && (
                   <Button

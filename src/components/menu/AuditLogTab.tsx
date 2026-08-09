@@ -74,7 +74,7 @@ export function AuditLogTab({ active }: AuditLogTabProps) {
   return (
     <div className="py-4 min-w-0">
       <div className="flex flex-wrap items-center justify-between gap-2 mb-4">
-        <p className="text-sm text-muted-foreground">
+        <p className="text-helper text-muted-foreground">
           What was done to accounts and to published work. Entries are kept for good and cannot be edited.
         </p>
 
@@ -117,7 +117,7 @@ export function AuditLogTab({ active }: AuditLogTabProps) {
           aria-busy={isLoading}
         >
           {entries.length === 0 ? (
-            <p className="py-8 text-center text-sm text-muted-foreground">
+            <p className="py-8 text-center text-helper text-muted-foreground">
               {search || action !== ANY_ACTION ? 'Nothing matches this filter.' : 'Nothing has been recorded yet.'}
             </p>
           ) : (
@@ -127,7 +127,7 @@ export function AuditLogTab({ active }: AuditLogTabProps) {
                   {/* The actor is rendered apart from the sentence so the badge can sit against the
                       name. It says what they were *then* — the log is a record of who acted under whose
                       authority, so a promotion since must not restate it. */}
-                  <p className="text-sm min-w-0">
+                  <p className="text-label min-w-0">
                     {auditActorName(entry) && (
                       <>
                         <span className="font-medium">{auditActorName(entry)}</span>
@@ -140,19 +140,19 @@ export function AuditLogTab({ active }: AuditLogTabProps) {
                     {auditPredicate(entry)}
                   </p>
                   <span className={cn(
-                    'px-2 shrink-0 inline-flex text-xs leading-5 font-semibold rounded-full',
+                    'px-2 shrink-0 inline-flex text-meta leading-5 font-semibold rounded-full',
                     AUDIT_ACTION_STYLES[entry.action],
                   )}>
                     {AUDIT_ACTION_LABELS[entry.action]}
                   </span>
                 </div>
 
-                <p className="text-xs text-muted-foreground">{formatAuditDate(entry.createdAt)}</p>
+                <p className="text-meta text-muted-foreground">{formatAuditDate(entry.createdAt)}</p>
 
                 {/* What was removed, as far as it was kept. Quoted so it reads as somebody's words rather
                     than as the log's own. */}
                 {entry.snippet && (
-                  <p className="mt-1 border-l-2 pl-2 text-xs text-muted-foreground italic break-words">
+                  <p className="mt-1 border-l-2 pl-2 text-meta text-muted-foreground italic break-words">
                     {entry.snippet}
                   </p>
                 )}
@@ -172,7 +172,7 @@ export function AuditLogTab({ active }: AuditLogTabProps) {
           <Button variant="outline" size="sm" onClick={() => setPage((p) => Math.max(p - 1, 1))} disabled={page <= 1}>
             Previous
           </Button>
-          <span className="px-2 text-sm">Page {page} of {totalPages}</span>
+          <span className="px-2 text-label">Page {page} of {totalPages}</span>
           <Button
             variant="outline"
             size="sm"

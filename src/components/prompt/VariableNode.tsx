@@ -41,7 +41,7 @@ function AffixInput({ label, value, disabled, onChange }: {
         // The quote delimits the affix inside the token, so it's the one character that can't appear.
         // Stripped on entry rather than rejected, so typing never silently does nothing.
         onChange={(e) => onChange(e.target.value.split(AFFIX_FORBIDDEN).join(''))}
-        className="h-7 text-xs font-mono"
+        className="h-7 text-meta font-mono"
       />
     </label>
   );
@@ -157,7 +157,7 @@ function VariableChip({ nodeKey, token }: { nodeKey: NodeKey; token: string }) {
                       className="mt-0.5"
                     />
                     <span>
-                      <span className="text-xs font-medium">{axis.label}</span>
+                      <span className="text-meta font-medium">{axis.label}</span>
                       {axis.help && <p className="text-[11px] text-muted-foreground">{axis.help}</p>}
                     </span>
                   </label>
@@ -167,7 +167,7 @@ function VariableChip({ nodeKey, token }: { nodeKey: NodeKey; token: string }) {
               return (
                 <div key={axis.id} className="space-y-2">
                   {/* One heading per axis (its own label when multi-axis, else the chip name). */}
-                  <p className="text-xs font-medium">{axes.length > 1 ? axis.label : `${vocab.label(token)} mode`}</p>
+                  <p className="text-meta font-medium">{axes.length > 1 ? axis.label : `${vocab.label(token)} mode`}</p>
                   {/* `columns` wraps a long option list onto rows of that width, centered — so a final
                       short row sits under the middle of the one above rather than hanging off the left. */}
                   <ToggleGroup
@@ -184,7 +184,7 @@ function VariableChip({ nodeKey, token }: { nodeKey: NodeKey; token: string }) {
                         key={opt.id ?? FULL}
                         value={opt.id ?? FULL}
                         disabled={!editable}
-                        className="text-xs px-1.5"
+                        className="text-meta px-1.5"
                         style={axis.columns ? { flexBasis: `calc((100% - ${(axis.columns - 1) * 0.25}rem) / ${axis.columns})` } : undefined}
                       >{opt.label}</ToggleGroupItem>
                     ))}
@@ -208,11 +208,11 @@ function VariableChip({ nodeKey, token }: { nodeKey: NodeKey; token: string }) {
             })}
           </div>
         ) : (
-          !affixes && <p className="text-xs text-muted-foreground">No options for this variable.</p>
+          !affixes && <p className="text-meta text-muted-foreground">No options for this variable.</p>
         )}
         {affixes && (
           <div className={cn('space-y-2', axes.length && 'mt-4 pt-3 border-t')}>
-            <p className="text-xs font-medium">Prepend / Append</p>
+            <p className="text-meta font-medium">Prepend / Append</p>
             <p className="text-[11px] text-muted-foreground">
               Wraps the value, and vanishes with it. Spaces count — check Preview.
             </p>

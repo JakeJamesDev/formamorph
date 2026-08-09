@@ -24,7 +24,7 @@ export default function TtsPlaybackBar({ className }: { className?: string }) {
         onValueChange={(v) => seek(v[0])}
         className="flex-grow"
       />
-      <span className="text-xs text-muted-foreground whitespace-nowrap shrink-0">
+      <span className="text-meta text-muted-foreground whitespace-nowrap shrink-0">
         {formatMMSS(position)} / {formatMMSS(duration)}
       </span>
       <Button variant="ghost" size="icon" onClick={toggleMute} className="shrink-0" title="Mute / unmute">

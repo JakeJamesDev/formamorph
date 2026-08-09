@@ -35,7 +35,7 @@ const LlmSetupGuide = ({
           <DialogTitle>Can&apos;t reach your AI server</DialogTitle>
         </DialogHeader>
 
-        <div className="space-y-3 text-sm">
+        <div className="space-y-3 text-label">
           <p className="text-muted-foreground">
             The browser can&apos;t tell exactly why, so check all three:
           </p>

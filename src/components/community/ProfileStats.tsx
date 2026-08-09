@@ -34,7 +34,7 @@ export function ProfileStats({ profile, className }: {
   className?: string;
 }) {
   return (
-    <div className={cn('flex items-center gap-5 text-sm text-muted-foreground', className)}>
+    <div className={cn('flex items-center gap-5 text-helper text-muted-foreground', className)}>
       <ProfileStat
         icon={Users}
         value={profile.followers}

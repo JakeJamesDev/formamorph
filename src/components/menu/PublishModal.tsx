@@ -195,13 +195,13 @@ export function PublishModal({ open, onOpenChange, isAuthenticated, payload }: P
         <ScrollArea className="flex-1 min-h-0">
           <div className="py-4 pr-3">
             {publishError && (
-              <div className="mb-4 p-3 bg-destructive/10 border border-destructive/30 rounded-md text-sm text-destructive">
+              <div className="mb-4 p-3 bg-destructive/10 border border-destructive/30 rounded-md text-label text-destructive">
                 {publishError}
               </div>
             )}
 
             {policies.showBlockedNotice && (
-              <div className="mb-4 p-3 bg-muted border rounded-md text-sm">
+              <div className="mb-4 p-3 bg-muted border rounded-md text-label">
                 <p className="font-medium">{policies.gate?.title}</p>
                 <p className="text-muted-foreground mt-1">
                   You declined these terms, so publishing is unavailable.
@@ -217,7 +217,7 @@ export function PublishModal({ open, onOpenChange, isAuthenticated, payload }: P
             )}
 
             <div className="space-y-4">
-              <h3 className="text-sm font-medium">Select Publish Option</h3>
+              <h3 className="text-label font-medium">Select Publish Option</h3>
 
               <RadioGroup value={selectedWorldToOverride ?? undefined} onValueChange={setSelectedWorldToOverride}>
                 {/* Publish as new option */}
@@ -232,7 +232,7 @@ export function PublishModal({ open, onOpenChange, isAuthenticated, payload }: P
                 {userWorlds.length > 0 && (
                   <>
                     <div className="mt-4 mb-2">
-                      <h4 className="text-sm font-medium">Or update existing {noun}:</h4>
+                      <h4 className="text-label font-medium">Or update existing {noun}:</h4>
                     </div>
 
                     {userWorlds.map(world => {
@@ -269,7 +269,7 @@ export function PublishModal({ open, onOpenChange, isAuthenticated, payload }: P
         {/* Warn, don't block: the author may know, or may be publishing a draft. But this is the one moment
             the breakage lands on other people, so it says so plainly rather than only badging the editor. */}
         {expiringCount > 0 && (
-          <div className="flex items-start gap-2 rounded-md border border-amber-500/50 bg-amber-500/10 p-3 text-sm">
+          <div className="flex items-start gap-2 rounded-md border border-amber-500/50 bg-amber-500/10 p-3 text-label">
             <AlertTriangle className="mt-0.5 h-4 w-4 flex-shrink-0 text-amber-600 dark:text-amber-500" />
             <p>
               {expiringCount === 1 ? 'One image uses' : `${expiringCount} images use`} a Discord link that will

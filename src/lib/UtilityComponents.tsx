@@ -245,7 +245,7 @@ export const ImageUpload = ({ onChange, id, value, cap, previewClassName, object
         </Button>
       </div>
       {/* The line is held whether or not it says anything, so a rejected link doesn't shift the box either. */}
-      <p className="min-h-4 text-xs text-destructive">{urlError}</p>
+      <p className="min-h-4 text-meta text-destructive">{urlError}</p>
     </div>
   );
 
@@ -290,8 +290,8 @@ export const ImageUpload = ({ onChange, id, value, cap, previewClassName, object
   // A dead link is worth showing at authoring time rather than letting it surface mid-play.
   const brokenFrame = (
     <div className="absolute inset-0 flex flex-col items-center justify-center gap-1 p-2 text-center text-muted-foreground">
-      <span className="text-sm">Couldn&apos;t load this image</span>
-      <span className="max-w-full truncate text-xs opacity-70">{value}</span>
+      <span className="text-label">Couldn&apos;t load this image</span>
+      <span className="max-w-full truncate text-meta opacity-70">{value}</span>
     </div>
   );
 
@@ -340,7 +340,7 @@ export const ImageUpload = ({ onChange, id, value, cap, previewClassName, object
             // The overlay's thumbnail is dimmed rather than opaque, so anything left underneath shows through it.
             encoding ? null : (
               <div className="absolute inset-0 flex flex-col items-center justify-center gap-2 p-3 text-center text-muted-foreground">
-                <span className="text-sm">
+                <span className="text-label">
                   {dragOver ? 'Drop to add' : allowUpload ? 'Click to upload image' : uploadBlockedNote}
                 </span>
                 <div className="w-full max-w-[280px]">{urlBox}</div>
@@ -371,7 +371,7 @@ export const ImageUpload = ({ onChange, id, value, cap, previewClassName, object
                 <span>{dragOver ? 'Drop to add' : 'Add Image'}</span>
               </>
             ) : (
-              <span className="text-center text-sm text-muted-foreground">{uploadBlockedNote}</span>
+              <span className="text-center text-helper text-muted-foreground">{uploadBlockedNote}</span>
             )
           )
         )}
@@ -380,7 +380,7 @@ export const ImageUpload = ({ onChange, id, value, cap, previewClassName, object
       {/* The longest-fuse failure gets a line of its own, not just a tooltip — by the time it bites, the
           author is long past hovering this slot. */}
       {expiring && (
-        <p className="text-xs text-amber-600 dark:text-amber-500">
+        <p className="text-meta text-amber-600 dark:text-amber-500">
           This Discord link will stop working. Re-upload the image or use a permanent host.
         </p>
       )}
@@ -414,7 +414,7 @@ export const SoundUpload = ({ onChange, id, value }: {
           <div className="w-full" onClick={(e) => e.preventDefault()}>
             <AudioPlayer src={value.data} className="w-full" />
             <div className="flex items-center justify-between gap-2 mt-2">
-              <p className="text-sm text-muted-foreground truncate">{value.name}</p>
+              <p className="text-helper text-muted-foreground truncate">{value.name}</p>
               <Button
                 type="button"
                 variant="ghost"

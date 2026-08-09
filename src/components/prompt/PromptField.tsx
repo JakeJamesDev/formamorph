@@ -169,7 +169,7 @@ function SplitButton({ items, label, disabled, apply }: {
             {items.map((item) => (
               <button
                 key={item.action} type="button" onMouseDown={press(item)}
-                className="flex items-center gap-2 rounded px-2 py-1.5 text-sm text-muted-foreground hover:bg-accent hover:text-foreground"
+                className="flex items-center gap-2 rounded px-2 py-1.5 text-helper text-muted-foreground hover:bg-accent hover:text-foreground"
               >
                 <item.Icon className="h-4 w-4" />
                 {item.title}
@@ -356,7 +356,7 @@ function VariableToolbar({ vocab, interactive }: {
     // Narrow: one row that scrolls sideways rather than three that stack — the palette is reference
     // material while reading a prompt, and three rows of it cost more screen than the editor can spare.
     <div className="flex items-center gap-1 flex-shrink-0 overflow-x-auto sm:flex-wrap sm:overflow-visible [scrollbar-width:none] [&::-webkit-scrollbar]{display:none}">
-      <span className="text-xs text-muted-foreground mr-1 flex-shrink-0">Insert:</span>
+      <span className="text-meta text-muted-foreground mr-1 flex-shrink-0">Insert:</span>
       {items.map((v) => (
         <button
           key={v.token}
@@ -378,7 +378,7 @@ function VariableToolbar({ vocab, interactive }: {
 
 const EDITOR_CLASS =
   'h-full min-h-[160px] w-full overflow-auto rounded-md border border-input bg-background px-3 py-2 ' +
-  'text-sm outline-none whitespace-pre-wrap';
+  'text-label outline-none whitespace-pre-wrap';
 
 // --- edit <-> preview scroll sync ---
 // The two panes have very different heights (a chip is one short token; its expanded value can be many
@@ -489,7 +489,7 @@ function PreviewPane({ value, previewValues, vocab, scrollRef, onScroll }: {
   onScroll?: React.UIEventHandler<HTMLDivElement>;
 }) {
   return (
-    <div ref={scrollRef} onScroll={onScroll} data-testid="prompt-preview" className="h-full min-h-[160px] overflow-auto rounded-md border border-input bg-muted/40 px-3 py-2 text-sm whitespace-pre-wrap">
+    <div ref={scrollRef} onScroll={onScroll} data-testid="prompt-preview" className="h-full min-h-[160px] overflow-auto rounded-md border border-input bg-muted/40 px-3 py-2 text-label whitespace-pre-wrap">
       {vocab.parse(value).map((seg, i) => {
         if (seg.type === 'text') return <span key={i}>{seg.value}</span>;
         const color = vocab.color(seg.token);
@@ -528,7 +528,7 @@ function MarkdownPreviewPane({ value, previewValues, vocab, scrollRef, onScroll 
     .map((seg) => (seg.type === 'text' ? seg.value : resolveToken(seg.token, previewValues ?? {}) ?? previewValues?.[seg.token] ?? seg.token))
     .join('');
   return (
-    <div ref={scrollRef} onScroll={onScroll} data-testid="prompt-preview" className="h-full min-h-[160px] overflow-auto rounded-md border border-input bg-muted/40 px-3 py-2 text-sm">
+    <div ref={scrollRef} onScroll={onScroll} data-testid="prompt-preview" className="h-full min-h-[160px] overflow-auto rounded-md border border-input bg-muted/40 px-3 py-2 text-label">
       <MarkdownRenderer text={resolved} />
     </div>
   );
@@ -747,7 +747,7 @@ const PromptField = ({ value, onChange, variables = [], vocabulary, previewValue
           />
         }
         placeholder={
-          <div className="pointer-events-none absolute left-3 top-2 text-sm text-muted-foreground">
+          <div className="pointer-events-none absolute left-3 top-2 text-helper text-muted-foreground">
             {placeholder ?? 'Empty prompt'}
           </div>
         }

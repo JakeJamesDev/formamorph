@@ -42,7 +42,7 @@ const PlaceholderEditor = () => {
           {selected ? (
             <PlaceholderManager key={selected.id} placeholder={selected} />
           ) : (
-            <p className="text-sm text-muted-foreground">Select a placeholder to edit it, or add one.</p>
+            <p className="text-helper text-muted-foreground">Select a placeholder to edit it, or add one.</p>
           )}
         </div>
       }

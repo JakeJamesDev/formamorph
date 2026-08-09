@@ -84,7 +84,7 @@ export function NotificationsTab({ active, onRead, onOpenListing }: Notification
         <button
           type="button"
           onClick={() => setShowFollowing((open) => !open)}
-          className="flex w-full items-center gap-2 px-3 py-2 text-sm font-medium hover:bg-muted/50"
+          className="flex w-full items-center gap-2 px-3 py-2 text-label font-medium hover:bg-muted/50"
           aria-expanded={showFollowing}
         >
           {showFollowing ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
@@ -94,7 +94,7 @@ export function NotificationsTab({ active, onRead, onOpenListing }: Notification
         {showFollowing && (
           <div className="border-t p-2 space-y-1">
             {following.length === 0 ? (
-              <p className="px-1 py-2 text-sm text-muted-foreground">
+              <p className="px-1 py-2 text-helper text-muted-foreground">
                 You don&apos;t follow anyone yet. Click a name in Community Creations to see their profile.
               </p>
             ) : following.map((user) => (
@@ -103,7 +103,7 @@ export function NotificationsTab({ active, onRead, onOpenListing }: Notification
                 {/* The stretch lives out here: the name is wrapped alongside its badge, so growing the
                     name itself would push the badge off the end of the row instead of filling it. */}
                 <div className="flex-1 min-w-0">
-                  <UserName userId={user.id} username={user.username} role={user.role} className="text-sm text-left" />
+                  <UserName userId={user.id} username={user.username} role={user.role} className="text-label text-left" />
                 </div>
                 <Button
                   variant="ghost"
@@ -127,7 +127,7 @@ export function NotificationsTab({ active, onRead, onOpenListing }: Notification
           <Skeleton className="h-14 w-full" />
         </div>
       ) : items.length === 0 ? (
-        <p className="py-6 text-center text-sm text-muted-foreground">
+        <p className="py-6 text-center text-helper text-muted-foreground">
           {following.length === 0
             ? 'Follow someone and their new work will show up here.'
             : 'Nothing new from anyone you follow.'}
@@ -138,7 +138,7 @@ export function NotificationsTab({ active, onRead, onOpenListing }: Notification
             <li key={item.id} className="flex items-start gap-2 rounded-md border p-3 min-w-0">
               <UserAvatar username={item.author.username} avatarUrl={item.author.avatarUrl} size="sm" />
               <div className="min-w-0 flex-1">
-                <p className="text-sm min-w-0">
+                <p className="text-label min-w-0">
                   <UserName userId={item.author.id} username={item.author.username} role={item.author.role} className="font-medium" />
                   {' '}{describe(item)}{' '}
                   {onOpenListing ? (
@@ -154,7 +154,7 @@ export function NotificationsTab({ active, onRead, onOpenListing }: Notification
                     <span className="font-medium">&ldquo;{item.name}&rdquo;</span>
                   )}
                 </p>
-                <p className="text-xs text-muted-foreground">{formatServerDateTime(item.at)}</p>
+                <p className="text-meta text-muted-foreground">{formatServerDateTime(item.at)}</p>
               </div>
             </li>
           ))}

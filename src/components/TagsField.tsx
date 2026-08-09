@@ -28,7 +28,7 @@ export function TagsField({ values, onChange, label = 'Tags' }: {
         editable
         placeholder="Add tags..."
       />
-      <p className="text-xs text-muted-foreground">
+      <p className="text-meta text-muted-foreground">
         Shown on the listing in Community Creations, and what people filter by when browsing.
       </p>
     </div>

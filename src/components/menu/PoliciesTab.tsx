@@ -57,10 +57,10 @@ function PolicyEditor({
     <section className="space-y-3 border rounded-md p-4 min-w-0">
       <div>
         <h3 className="font-medium">{heading}</h3>
-        <p className="text-xs text-muted-foreground">{description}</p>
+        <p className="text-meta text-muted-foreground">{description}</p>
       </div>
 
-      <label className="flex items-start gap-2 text-sm">
+      <label className="flex items-start gap-2 text-label">
         <Checkbox
           checked={draft.enabled}
           onCheckedChange={(checked) => onChange({ ...draft, enabled: checked === true })}
@@ -68,14 +68,14 @@ function PolicyEditor({
         />
         <span>
           Enabled
-          <span className="block text-xs text-muted-foreground">
+          <span className="block text-meta text-muted-foreground">
             Off keeps the wording saved without showing it to anyone.
           </span>
         </span>
       </label>
 
       <div className="space-y-2">
-        <label htmlFor={`${idBase}-title`} className="text-sm font-medium">Title</label>
+        <label htmlFor={`${idBase}-title`} className="text-label font-medium">Title</label>
         <Input
           id={`${idBase}-title`}
           value={draft.title}
@@ -87,8 +87,8 @@ function PolicyEditor({
 
       <div className="space-y-2">
         <div className="flex items-baseline justify-between">
-          <span className="text-sm font-medium">Body</span>
-          <span className="text-xs text-muted-foreground">{draft.body.length} / {BODY_MAX}</span>
+          <span className="text-label font-medium">Body</span>
+          <span className="text-meta text-muted-foreground">{draft.body.length} / {BODY_MAX}</span>
         </div>
         {/* Readers see this rendered, so it is authored the same way the world editor's prose is. */}
         <PromptField
@@ -104,7 +104,7 @@ function PolicyEditor({
 
       {showTags && (
         <div className="space-y-2">
-          <span className="text-sm font-medium">Tags</span>
+          <span className="text-label font-medium">Tags</span>
           {/* The same chip field, options and Enter-to-commit as a world's own tags, so what is typed
               here and what an author tags with are written the same way. */}
           <TokenAutocomplete
@@ -117,7 +117,7 @@ function PolicyEditor({
             ariaLabel="Tags"
             placeholder="Add tags..."
           />
-          <p className="text-xs text-muted-foreground">
+          <p className="text-meta text-muted-foreground">
             Matched whole and ignoring case, so <code>mature</code> catches
             {' '}<code>Mature</code> but not <code>mature themes</code> — list each wording you mean.
           </p>
@@ -125,7 +125,7 @@ function PolicyEditor({
       )}
 
       {onReacceptChange && (
-        <label className="flex items-start gap-2 text-sm">
+        <label className="flex items-start gap-2 text-label">
           <Checkbox
             checked={reaccept}
             onCheckedChange={(checked) => onReacceptChange(checked === true)}
@@ -133,7 +133,7 @@ function PolicyEditor({
           />
           <span>
             Require everyone to accept again
-            <span className="block text-xs text-muted-foreground">
+            <span className="block text-meta text-muted-foreground">
               For a real change to the terms. A typo fix should leave this off.
             </span>
           </span>
@@ -243,7 +243,7 @@ export function PoliciesTab({ active, initialTab = 'uploadGate' }: PoliciesTabPr
 
           {/* Only the gate is ever accepted, so its reset belongs with it rather than above both. */}
           <div className="flex items-center justify-between gap-4 border rounded-md p-4">
-            <p className="text-sm text-muted-foreground">
+            <p className="text-helper text-muted-foreground">
               Ask every account to accept the gate again. Reset one person from the Users tab instead.
             </p>
             <Button

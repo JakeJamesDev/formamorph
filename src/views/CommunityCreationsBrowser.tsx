@@ -452,16 +452,16 @@ const CommunityCreationsBrowser = ({
       >
         {/* Type to hide tags/authors (autocompletes over the catalog); chips are the hidden items. */}
         <div className="space-y-1">
-          <span className="text-xs font-medium text-muted-foreground">Tags</span>
+          <span className="text-meta font-medium text-muted-foreground">Tags</span>
           <TokenAutocomplete values={hiddenTags} onChange={setHiddenTagsList} options={allTags} placeholder="tag…" openOnFocus />
         </div>
         <div className="space-y-1">
-          <span className="text-xs font-medium text-muted-foreground">Authors</span>
+          <span className="text-meta font-medium text-muted-foreground">Authors</span>
           <TokenAutocomplete values={hiddenAuthors} onChange={setHiddenAuthorsList} options={allAuthors} placeholder="author…" openOnFocus />
         </div>
         {hiddenWorldIds.length > 0 && (
           <div className="space-y-1">
-            <span className="text-xs font-medium text-muted-foreground">Worlds</span>
+            <span className="text-meta font-medium text-muted-foreground">Worlds</span>
             <div className="flex flex-wrap gap-1">
               {hiddenWorldIds.map((id) => (
                 <span key={`w-${id}`} className={cn(CHIP_BASE, "bg-secondary text-secondary-foreground")}>
@@ -473,7 +473,7 @@ const CommunityCreationsBrowser = ({
           </div>
         )}
         {hiddenWorldIds.length + hiddenTags.length + hiddenAuthors.length > 0 && (
-          <Button variant="ghost" size="sm" className="h-7 px-2 text-xs" onClick={resetHiddenWorlds}>
+          <Button variant="ghost" size="sm" className="h-7 px-2 text-meta" onClick={resetHiddenWorlds}>
             <RotateCcw className="h-3 w-3 mr-1" /> Reset all
           </Button>
         )}
@@ -482,7 +482,7 @@ const CommunityCreationsBrowser = ({
   );
 
   const updatesControl = (
-    <label className="ml-auto flex items-center gap-2 shrink-0 cursor-pointer text-sm select-none">
+    <label className="ml-auto flex items-center gap-2 shrink-0 cursor-pointer text-label select-none">
       <Checkbox
         checked={sortUpdatesFirst}
         onCheckedChange={(c) => { setSortUpdatesFirst(c === true); setCurrentPage(1); }}
@@ -708,7 +708,7 @@ const CommunityCreationsBrowser = ({
                         {upToDate && <span className="ml-2 font-normal text-success">• up to date</span>}
                         {copy.dirty && <span className="ml-2 font-normal text-warning">• edited</span>}
                       </span>
-                      <span className="text-xs text-muted-foreground">Last edited: {edited}</span>
+                      <span className="text-meta text-muted-foreground">Last edited: {edited}</span>
                     </Label>
                   </div>
                 );

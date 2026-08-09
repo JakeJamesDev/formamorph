@@ -14,8 +14,8 @@ import type { VrmLicense } from '@/types';
 function Row({ label, children }: { label: string; children: ReactNode }) {
   return (
     <div className="grid grid-cols-[7rem_1fr] gap-2 py-1.5 border-b border-border/50 last:border-0">
-      <span className="text-xs font-medium text-muted-foreground">{label}</span>
-      <span className="text-xs min-w-0">{children}</span>
+      <span className="text-meta font-medium text-muted-foreground">{label}</span>
+      <span className="text-meta min-w-0">{children}</span>
     </div>
   );
 }
@@ -80,13 +80,13 @@ export function ModelDetailsPanel({ open, name, url, license, size, failed = fal
   // Keyed on the url so switching models rebuilds the scene rather than reusing the old one.
   const preview = failed ? (
     <div className="h-full flex items-center justify-center p-4">
-      <p className="text-sm text-muted-foreground text-center">This player avatar couldn&apos;t be loaded.</p>
+      <p className="text-helper text-muted-foreground text-center">This player avatar couldn&apos;t be loaded.</p>
     </div>
   ) : url ? (
     <VRMViewer key={url} ref={vrmViewerRef} {...viewerProps} modelUrl={url} onCapabilities={setCaps} />
   ) : (
     <div className="h-full flex items-center justify-center">
-      <p className="text-sm text-muted-foreground">Loading Player Avatar…</p>
+      <p className="text-helper text-muted-foreground">Loading Player Avatar…</p>
     </div>
   );
 
@@ -135,7 +135,7 @@ export function ModelDetailsPanel({ open, name, url, license, size, failed = fal
     return (
       <div className="fixed inset-0 z-50 bg-background flex flex-col">
         <div className="flex items-center justify-between border-b px-4 py-3 pt-[calc(0.75rem+env(safe-area-inset-top))]">
-          <h2 className="truncate text-lg font-semibold">{name}</h2>
+          <h2 className="truncate text-title font-semibold">{name}</h2>
           <Button variant="ghost" size="icon" aria-label="Close" onClick={onClose}>
             <X className="h-5 w-5" />
           </Button>

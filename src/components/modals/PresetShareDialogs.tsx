@@ -28,12 +28,12 @@ export function ExportPresetDialog({ open, onOpenChange, shared }: {
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent aria-describedby={undefined}>
         <DialogHeader><DialogTitle>Export “{shared.name}”</DialogTitle></DialogHeader>
-        <p className="text-sm text-muted-foreground">Share this preset as a code to paste, or a file to send.</p>
+        <p className="text-helper text-muted-foreground">Share this preset as a code to paste, or a file to send.</p>
         <textarea
           readOnly
           value={code}
           onFocus={(e) => e.currentTarget.select()}
-          className="w-full h-24 resize-none rounded-md border bg-muted/40 p-2 font-mono text-xs"
+          className="w-full h-24 resize-none rounded-md border bg-muted/40 p-2 font-mono text-meta"
         />
         <div className="flex justify-end gap-2">
           <Button variant="outline" onClick={download}>Export .json</Button>
@@ -89,35 +89,35 @@ export function ImportPresetDialog({ open, onOpenChange, currentAppVersion, exis
         <input ref={fileRef} type="file" accept=".json,application/json" className="hidden" onChange={onFile} />
         <div className="flex items-center gap-2">
           <Button variant="outline" size="sm" onClick={() => fileRef.current?.click()}>Choose file…</Button>
-          <span className="text-xs text-muted-foreground">or paste a share code below</span>
+          <span className="text-meta text-muted-foreground">or paste a share code below</span>
         </div>
         <textarea
           placeholder="FMPRESET1:…"
           onChange={(e) => ingest(e.target.value)}
-          className="w-full h-20 resize-none rounded-md border bg-muted/40 p-2 font-mono text-xs"
+          className="w-full h-20 resize-none rounded-md border bg-muted/40 p-2 font-mono text-meta"
         />
 
-        {parsed && !parsed.ok && <p className="text-sm text-destructive">{parsed.error}</p>}
+        {parsed && !parsed.ok && <p className="text-label text-destructive">{parsed.error}</p>}
 
         {parsed?.ok && (
           <div className="flex flex-col gap-3">
             {parsed.warnings.map((w, i) => (
-              <p key={i} className="text-xs text-amber-600 dark:text-amber-500">⚠ {w}</p>
+              <p key={i} className="text-meta text-amber-600 dark:text-amber-500">⚠ {w}</p>
             ))}
-            <label className="flex flex-col gap-1 text-sm">
+            <label className="flex flex-col gap-1 text-label">
               Name
               <Input value={name} onChange={(e) => { setName(e.target.value); setOverwrite(false); }} />
             </label>
             {hasTuning && (
               <label className="flex items-start gap-2">
                 <Checkbox checked={includeTuning} onCheckedChange={(c) => setIncludeTuning(c === true)} className="mt-0.5 shrink-0" />
-                <span className="text-xs text-muted-foreground">Include the preset&apos;s tuning (per-prompt samplers, reasoning, and verbatim turns). Uncheck to import the prompt text only.</span>
+                <span className="text-meta text-muted-foreground">Include the preset&apos;s tuning (per-prompt samplers, reasoning, and verbatim turns). Uncheck to import the prompt text only.</span>
               </label>
             )}
             {collision && (
               <label className="flex items-start gap-2">
                 <Checkbox checked={overwrite} onCheckedChange={(c) => setOverwrite(c === true)} className="mt-0.5 shrink-0" />
-                <span className="text-xs text-muted-foreground">A preset named “{collision.name}” already exists. Overwrite it — otherwise a separate copy is added.</span>
+                <span className="text-meta text-muted-foreground">A preset named “{collision.name}” already exists. Overwrite it — otherwise a separate copy is added.</span>
               </label>
             )}
           </div>

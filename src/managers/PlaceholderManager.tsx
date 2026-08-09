@@ -104,8 +104,8 @@ const PlaceholderManager = ({ placeholder }: { placeholder: Placeholder }) => {
           <PopoverContent className="w-60 space-y-2" align="start">
             {openValue !== null && (
               <>
-                <p className="truncate text-sm font-medium">{openValue}</p>
-                <Label className="text-xs text-muted-foreground">Draw Weight</Label>
+                <p className="truncate text-label font-medium">{openValue}</p>
+                <Label className="text-meta text-muted-foreground">Draw Weight</Label>
                 <Input
                   type="number"
                   min={0}
@@ -114,7 +114,7 @@ const PlaceholderManager = ({ placeholder }: { placeholder: Placeholder }) => {
                   value={placeholderWeight(editing, openValue)}
                   onChange={(e) => setWeight(openValue, Math.max(0, Math.round(Number(e.target.value) || 0)))}
                 />
-                <p className="text-xs text-muted-foreground">
+                <p className="text-meta text-muted-foreground">
                   {(chances[openValue] ?? 0) === 0
                     ? 'Benched — never rolled, but kept in the list.'
                     : `Rolls ${pct(openValue)} of the time. Weights are relative: 2 is twice as likely as 1.`}
@@ -123,7 +123,7 @@ const PlaceholderManager = ({ placeholder }: { placeholder: Placeholder }) => {
             )}
           </PopoverContent>
         </Popover>
-        <p className="text-sm text-muted-foreground">{hint}</p>
+        <p className="text-helper text-muted-foreground">{hint}</p>
       </div>
     </div>
   );

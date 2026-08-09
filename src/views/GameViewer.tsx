@@ -2858,7 +2858,7 @@ ${playerNotes || NONE_PLACEHOLDER}
         toast.error(
           <div className="flex flex-col items-start gap-1">
             <span>Couldn&apos;t reach your AI server.</span>
-            <button type="button" className="text-xs underline" onClick={() => setConnectionGuideOpen(true)}>
+            <button type="button" className="text-meta underline" onClick={() => setConnectionGuideOpen(true)}>
               Fix connection →
             </button>
           </div>,
@@ -3828,7 +3828,7 @@ ${playerNotes || NONE_PLACEHOLDER}
       const label = aiRequestType ? labels[aiRequestType] : "Response";
       return (
         <div className="flex items-center gap-2 mb-1">
-          <span className="text-xs text-muted-foreground whitespace-nowrap">
+          <span className="text-meta text-muted-foreground whitespace-nowrap">
             Generating {label}…
           </span>
           <div className="flex-grow">
@@ -3840,7 +3840,7 @@ ${playerNotes || NONE_PLACEHOLDER}
     if (digestActive && showSilentRequests) {
       return (
         <div className="flex items-center gap-2 mb-1">
-          <span className="text-xs text-muted-foreground whitespace-nowrap">
+          <span className="text-meta text-muted-foreground whitespace-nowrap">
             Summarizing turn…
           </span>
           <div className="flex-grow">
@@ -3852,7 +3852,7 @@ ${playerNotes || NONE_PLACEHOLDER}
     if (milestoneActive && showSilentRequests) {
       return (
         <div className="flex items-center gap-2 mb-1">
-          <span className="text-xs text-muted-foreground whitespace-nowrap">
+          <span className="text-meta text-muted-foreground whitespace-nowrap">
             Selecting memories…
           </span>
           <div className="flex-grow">
@@ -3864,7 +3864,7 @@ ${playerNotes || NONE_PLACEHOLDER}
     if (diaryActive && showSilentRequests) {
       return (
         <div className="flex items-center gap-2 mb-1">
-          <span className="text-xs text-muted-foreground whitespace-nowrap">
+          <span className="text-meta text-muted-foreground whitespace-nowrap">
             Writing diary…
           </span>
           <div className="flex-grow">
@@ -3920,7 +3920,7 @@ ${playerNotes || NONE_PLACEHOLDER}
               <Database className="h-4 w-4" />
             </button>
           </PopoverTrigger>
-          <PopoverContent align="start" className="w-64 text-xs space-y-1">
+          <PopoverContent align="start" className="w-64 text-meta space-y-1">
             <div className="font-semibold">Context window: {windowTokens.toLocaleString()} tok</div>
             {row("Prompt", promptTokens)}
             {row("History", historyTokens)}
@@ -3965,7 +3965,7 @@ ${playerNotes || NONE_PLACEHOLDER}
 
   // AI location-change suggestion (rendered at the bottom of the center panel, above pagination).
   const locationSuggestion = suggestedLocation ? (
-    <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 z-30 flex items-center justify-center gap-2 whitespace-nowrap rounded-md border bg-background px-3 py-2 text-sm shadow-lg">
+    <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 z-30 flex items-center justify-center gap-2 whitespace-nowrap rounded-md border bg-background px-3 py-2 text-label shadow-lg">
       <span>
         Move to <b>{suggestedLocation.name}</b>?
       </span>
@@ -4098,7 +4098,7 @@ ${playerNotes || NONE_PLACEHOLDER}
 
   return (
     <div
-      className={`flex ${isMobile ? "flex-col" : "p-4"} app-viewport text-sm md:text-base bg-background bg-cover bg-center overflow-hidden`}
+      className={`flex ${isMobile ? "flex-col" : "p-4"} app-viewport text-label md:text-body bg-background bg-cover bg-center overflow-hidden`}
       style={{
         // A background-colored overlay composited over the image fades it toward the theme background.
         // Dropped while the UI is hidden, so the eye toggle reveals the raw image.
@@ -4123,7 +4123,7 @@ ${playerNotes || NONE_PLACEHOLDER}
             <button
               key={t.key}
               onClick={() => setMobilePanel(t.key)}
-              className={`flex-1 min-w-0 rounded py-2 text-sm ${
+              className={`flex-1 min-w-0 rounded py-2 text-helper ${
                 mobilePanel === t.key
                   ? "bg-primary text-primary-foreground"
                   : "bg-muted text-muted-foreground"
@@ -4402,7 +4402,7 @@ ${playerNotes || NONE_PLACEHOLDER}
                           {seg.text}
                         </mark>
                       </PopoverTrigger>
-                      <PopoverContent align="start" className="w-72 text-xs">
+                      <PopoverContent align="start" className="w-72 text-meta">
                         {renderReason(seg.chip)}
                       </PopoverContent>
                     </Popover>
@@ -4501,7 +4501,7 @@ ${playerNotes || NONE_PLACEHOLDER}
                     </Button>
                   </div>
                 </DialogHeader>
-                <div className="flex flex-wrap items-center gap-2 flex-shrink-0 text-xs">
+                <div className="flex flex-wrap items-center gap-2 flex-shrink-0 text-meta">
                   {/* Highlight-mode toggle: dictionary entries vs the per-turn rehydration signal. */}
                   <div className="inline-flex flex-shrink-0 overflow-hidden rounded border border-border">
                     {(["dictionary", "hydrations"] as const).map((m) => (
@@ -4597,7 +4597,7 @@ ${playerNotes || NONE_PLACEHOLDER}
                       value={debugSearch}
                       onChange={(e) => setDebugSearch(e.target.value)}
                       placeholder="Search lines (space-separated terms)…"
-                      className="pl-8 h-8 text-xs"
+                      className="pl-8 h-8 text-meta"
                     />
                   </div>
                   <Button
@@ -4615,7 +4615,7 @@ ${playerNotes || NONE_PLACEHOLDER}
                     )}
                     {allCollapsed ? "Expand all" : "Collapse all"}
                   </Button>
-                  <label className="flex flex-shrink-0 items-center gap-1.5 text-xs text-muted-foreground cursor-pointer select-none">
+                  <label className="flex flex-shrink-0 items-center gap-1.5 text-meta text-muted-foreground cursor-pointer select-none">
                     <Checkbox
                       checked={debugCurrentContextOnly}
                       onCheckedChange={(checked) => setDebugCurrentContextOnly(checked === true)}
@@ -4624,7 +4624,7 @@ ${playerNotes || NONE_PLACEHOLDER}
                   </label>
                 </div>
                 {currentTurn && (
-                  <div className="flex-shrink-0 text-xs text-muted-foreground truncate">
+                  <div className="flex-shrink-0 text-meta text-muted-foreground truncate">
                     <span className={currentTurn.regenerated || currentTurn.pruned ? "line-through" : ""}>
                       Turn {pageIndex + 1} of {totalDebugPages}
                       {currentTurn.action ? ` — "${currentTurn.action}"` : ""}
@@ -4637,14 +4637,14 @@ ${playerNotes || NONE_PLACEHOLDER}
                   </div>
                 )}
                 {showSilentRequests && currentSummary && (
-                  <div className="flex-shrink-0 rounded-md border border-border bg-muted/40 p-2 text-xs">
+                  <div className="flex-shrink-0 rounded-md border border-border bg-muted/40 p-2 text-meta">
                     <div className="mb-1 font-semibold text-muted-foreground">Memory summary</div>
                     <pre className="whitespace-pre-wrap break-words">{currentSummary}</pre>
                   </div>
                 )}
                 <div className="flex-grow min-h-0">
                   <ScrollArea className="h-full">
-                    <div className="space-y-4 text-xs">
+                    <div className="space-y-4 text-meta">
                       {totalDebugPages === 0 ? (
                         <p className="text-muted-foreground">
                           {debugCurrentContextOnly && debugTurns.length > 0
@@ -4687,7 +4687,7 @@ ${playerNotes || NONE_PLACEHOLDER}
                                         // The routed chip is marked by a tinted border + the arrow, not by
                                         // colored text: `primary` is a pale accent that all but vanishes as
                                         // text on a light surface (measured 1.24:1).
-                                        className={`rounded px-1.5 py-0.5 text-xs font-normal ${
+                                        className={`rounded px-1.5 py-0.5 text-meta font-normal ${
                                           req.endpoint.routed
                                             ? "border border-primary/60 bg-primary/15 text-foreground"
                                             : "bg-muted text-muted-foreground"

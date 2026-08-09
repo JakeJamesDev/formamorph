@@ -32,7 +32,7 @@ export function WebVersionChangelog() {
       <button
         type="button"
         onClick={openDialog}
-        className="text-xs text-muted-foreground/60 select-none cursor-pointer hover:text-muted-foreground transition-colors"
+        className="text-meta text-muted-foreground/60 select-none cursor-pointer hover:text-muted-foreground transition-colors"
         title="What’s new"
       >
         v{APP_VERSION}{BUILD_TAG && ` · ${BUILD_TAG}`}

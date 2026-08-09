@@ -26,7 +26,7 @@ const ImageSetupGuide = ({
         <DialogTitle>{TITLES[provider]}</DialogTitle>
       </DialogHeader>
 
-      <div className="space-y-2 text-sm">
+      <div className="space-y-2 text-label">
         {provider !== "openai" && (
           <p className="text-muted-foreground">Assumes it&apos;s already installed.</p>
         )}

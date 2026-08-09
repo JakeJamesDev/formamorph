@@ -48,7 +48,7 @@ export function QuarantineDialog({
         </DialogHeader>
 
         <div className="space-y-2 py-2">
-          <label className="text-sm font-medium">Delete it after</label>
+          <label className="text-label font-medium">Delete it after</label>
           <Select value={String(days)} onValueChange={(value) => setDays(Number(value))}>
             <SelectTrigger aria-label="Quarantine length"><SelectValue /></SelectTrigger>
             <SelectContent>
@@ -59,7 +59,7 @@ export function QuarantineDialog({
               ))}
             </SelectContent>
           </Select>
-          <p className="text-xs text-muted-foreground">
+          <p className="text-meta text-muted-foreground">
             {willNotifyAuthor
               ? 'You’ll write to the author next, so they know what to fix. Nothing is deleted before the deadline.'
               : 'Nothing is deleted before the deadline, and you can release it at any point.'}

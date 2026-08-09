@@ -207,7 +207,7 @@ export function GenerateImageButton({ subject, cap, onChange, tags, onTagsChange
 
             {/* Providers that don't report progress (OpenAI) still need to look busy. */}
             {generating && progress === null && (
-              <div className="flex items-center gap-2 text-xs text-muted-foreground">
+              <div className="flex items-center gap-2 text-meta text-muted-foreground">
                 <Loader2 className="h-4 w-4 animate-spin" /> Generating…
               </div>
             )}
@@ -215,7 +215,7 @@ export function GenerateImageButton({ subject, cap, onChange, tags, onTagsChange
             {generating && progress !== null && (
               <div className="grid gap-1">
                 <Progress value={progress * 100} />
-                <span className="text-xs text-muted-foreground text-right">{Math.round(progress * 100)}%</span>
+                <span className="text-meta text-muted-foreground text-right">{Math.round(progress * 100)}%</span>
               </div>
             )}
             {/* Live in-progress frame until the final image arrives. */}

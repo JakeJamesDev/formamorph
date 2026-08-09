@@ -170,7 +170,7 @@ export const MenuModal = ({ onSettingsClick, onReportBug, onSave, onLoad, worldO
               </Button>
             </div>
             {sceneWeight.count > 0 && (
-              <label htmlFor="includeSceneImages" className="flex items-start gap-2 text-sm cursor-pointer">
+              <label htmlFor="includeSceneImages" className="flex items-start gap-2 text-label cursor-pointer">
                 <Checkbox
                   id="includeSceneImages"
                   checked={includeSceneImages}

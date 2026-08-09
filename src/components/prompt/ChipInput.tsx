@@ -31,7 +31,7 @@ import { ChipDragPlugin } from './ChipDrag';
 // long enough to wrap grows the box instead of hiding its own end.
 const INPUT_CLASS =
   'flex min-h-10 w-full flex-wrap items-center gap-y-0.5 rounded-md border border-input bg-background ' +
-  'px-3 py-2 text-sm outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset ' +
+  'px-3 py-2 text-label outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset ' +
   'disabled:cursor-not-allowed disabled:opacity-50';
 
 /** Two-way sync between the controlled string and the editor state (the single-line twin of PromptField's). */
@@ -200,7 +200,7 @@ function Surface({ placeholder, ariaLabel, className, multiline }: {
           <div
             ref={multiline ? hintRef : undefined}
             className={cn(
-              'pointer-events-none absolute left-3 text-sm text-muted-foreground',
+              'pointer-events-none absolute left-3 text-helper text-muted-foreground',
               multiline ? 'top-2 right-3' : 'top-1/2 -translate-y-1/2 truncate',
             )}
           >

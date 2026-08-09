@@ -156,7 +156,7 @@ export function AvatarCropDialog({ open, onOpenChange, file, onCropped, busy = f
             className="h-64 w-64 rounded-full border-2 border-border bg-muted touch-none cursor-grab active:cursor-grabbing"
           >
             {loading && (
-              <span className="flex h-full w-full items-center justify-center text-sm text-muted-foreground">
+              <span className="flex h-full w-full items-center justify-center text-helper text-muted-foreground">
                 Loading…
               </span>
             )}
