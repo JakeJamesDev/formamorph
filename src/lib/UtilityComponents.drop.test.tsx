@@ -190,6 +190,36 @@ describe('ImageUpload drag and drop', () => {
     expect(thumb.className).toMatch(/object-cover/);
   });
 
+  it('takes the link field out from under the overlay, whose thumbnail is see-through', async () => {
+    promptImage.mockImplementationOnce((url: string, _cap: unknown, onEncoding?: () => void) => {
+      onEncoding?.();
+      return new Promise<string>(() => {}); // held open: what is on screen mid-encode is the subject
+    });
+    render(<ImageUpload id="t" onChange={vi.fn()} cap={IMAGE_CAPS.entity} previewClassName="relative h-40 w-40" />);
+    expect(screen.getByLabelText('Image URL')).toBeTruthy();
+
+    fireEvent.drop(zone(), { dataTransfer: transfer({ files: [file('a.png')] }) });
+
+    await screen.findByRole('status', { name: /^Converting/ });
+    expect(screen.queryByLabelText('Image URL')).toBeNull();
+    expect(screen.queryByText('Click to upload image')).toBeNull();
+  });
+
+  it('takes the compact box\'s link field, which sits below the frame, out of the way too', async () => {
+    promptImage.mockImplementationOnce((url: string, _cap: unknown, onEncoding?: () => void) => {
+      onEncoding?.();
+      return new Promise<string>(() => {});
+    });
+    render(<ImageUpload id="t" onChange={vi.fn()} cap={IMAGE_CAPS.entity} />);
+    expect(screen.getByLabelText('Image URL')).toBeTruthy();
+
+    fireEvent.drop(zone(), { dataTransfer: transfer({ files: [file('a.png')] }) });
+
+    await screen.findByRole('status', { name: /^Converting/ });
+    expect(screen.queryByLabelText('Image URL')).toBeNull();
+    expect(screen.queryByText('Add Image')).toBeNull();
+  });
+
   it('stays uncovered while the consent dialog is still up', async () => {
     let release!: (url: string) => void;
     // The prompt has not called back yet — the user is still reading the dialog, and nothing is encoding.
