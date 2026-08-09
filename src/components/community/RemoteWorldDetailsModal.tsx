@@ -16,6 +16,7 @@ import WorldStorageService from "@/services/WorldStorageService";
 import { UserAvatar } from "@/components/UserAvatar";
 import { UserName } from "@/components/UserName";
 import { LikeButton } from "@/components/community/LikeButton";
+import { WorldActionButton } from "@/components/WorldActionButton";
 
 interface RemoteWorldDetailsModalProps {
   open: boolean;
@@ -184,12 +185,12 @@ export function RemoteWorldDetailsModal({
                     : dlState === 'refresh' ? `Re-download ${noun}`
                     : `Download ${noun}`;
                   return (
-                    <Button
-                      className="w-full text-body bg-gradient-to-r from-sky-200 to-cyan-200 hover:from-sky-300 hover:to-cyan-300 text-black font-bold"
+                    <WorldActionButton
+                      tone="enter"
                       onClick={() => onContextualDownload(world, dlState)}
                     >
                       {label}
-                    </Button>
+                    </WorldActionButton>
                   );
                 })()}
                 meta={
