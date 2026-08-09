@@ -12,6 +12,7 @@ import { isRemoteImage } from '@/lib/imageBytes';
 import { fileToDataUrl } from '@/lib/imageDrop';
 import { useImageDropTarget } from '@/lib/useImageDropTarget';
 import { RemoteImg } from '@/lib/useRemoteImage';
+import { ImageConvertOverlay } from '@/components/ImageConvertOverlay';
 import { cn } from '@/lib/utils';
 import { useDownscalePrompt } from '@/lib/useDownscalePrompt';
 import { applyImageOptimize } from '@/lib/imageOptim';
@@ -49,9 +50,13 @@ interface ImageTagsFieldProps {
 /** The big frame the gallery shows its picture in. A character is drawn portrait, a place landscape — the
  *  same split the image generator already uses when it picks dimensions. */
 const FRAME_CLASS = {
-  portrait: 'relative mx-auto aspect-[3/4] w-full max-w-[300px] rounded-md',
-  landscape: 'relative mx-auto aspect-video w-full max-w-[400px] rounded-md',
+  portrait: 'aspect-[3/4] w-full rounded-md',
+  landscape: 'aspect-video w-full rounded-md',
 };
+
+/** The width cap lives on the wrapper, not the frame, so the batch overlay anchored to it covers exactly the
+ *  picture rather than the whole column. */
+const FRAME_WIDTH = { portrait: 'mx-auto max-w-[300px]', landscape: 'mx-auto max-w-[400px]' };
 
 /** The strip's trailing tile: press it to add, or drop onto it. A label when the file picker is available,
  *  so one press opens it; a plain button once the upload allowance is spent, where it only reveals the URL
@@ -107,6 +112,11 @@ const ImageTagsField = ({ label, images, onImagesChange, slots = 1, embeddedLimi
   const rows = shown.length < slots ? [...shown, ''] : shown;
   // One slot renders as the plain uploader it always was; several earn the frame-and-strip pane.
   const gallery = slots > 1;
+  // A character is drawn portrait, a place landscape — the same split the image generator uses for its dimensions.
+  const shape = kind === 'character' ? 'portrait' : 'landscape';
+
+  // The batch of dropped pictures being re-encoded, covering the frame while it runs.
+  const [batch, setBatch] = useState<{ thumb: string; done: number; total: number } | null>(null);
 
   // Which slot the big frame is showing. Stays in range as pictures are added and removed — a removed last
   // picture would otherwise leave the frame pointing past the end and showing nothing at all.
@@ -139,7 +149,20 @@ const ImageTagsField = ({ label, images, onImagesChange, slots = 1, embeddedLimi
     if (!accepted.length) return;
     const urls = await Promise.all(accepted.map(fileToDataUrl));
     const mode = await promptImagesBatch(urls, cap);
-    const stored = await Promise.all(urls.map(async (url) => (await applyImageOptimize(url, mode, cap)) ?? url));
+    let stored = urls;
+    if (mode !== 'off') {
+      // One at a time, so "3 of 5" counts something real. They share one worker anyway, so running them
+      // together would only make the bar jump from nothing to done.
+      stored = [];
+      try {
+        for (const [k, url] of urls.entries()) {
+          setBatch({ thumb: url, done: k, total: urls.length });
+          stored.push((await applyImageOptimize(url, mode, cap)) ?? url);
+        }
+      } finally {
+        setBatch(null);
+      }
+    }
     const next = [...shown];
     stored.forEach((url, k) => { next[index + k] = url; });
     onImagesChange(next.filter(Boolean));
@@ -159,6 +182,7 @@ const ImageTagsField = ({ label, images, onImagesChange, slots = 1, embeddedLimi
       {/* Every slot is rendered and only the shown one is visible, rather than mounting the selected slot
           alone: the add tile is a label pointing at the empty slot's file input, which has to exist for the
           click to reach it, and a remounting uploader would lose a half-typed URL on every tile press. */}
+      <div className={cn('relative', gallery && FRAME_WIDTH[shape])}>
       {rows.map((url, i) => (
         <div key={i} className={cn('space-y-1', gallery && i !== showing && 'hidden')}>
           <ImageUpload
@@ -167,7 +191,7 @@ const ImageTagsField = ({ label, images, onImagesChange, slots = 1, embeddedLimi
             value={url}
             cap={cap}
             // The gallery gives the picture a frame worth looking at; a single slot keeps its compact box.
-            previewClassName={gallery ? FRAME_CLASS[kind === 'character' ? 'portrait' : 'landscape'] : undefined}
+            previewClassName={gallery ? FRAME_CLASS[shape] : undefined}
             // Spent allowance closes the file picker on empty slots; the URL box stays, so a gallery can
             // still grow with links. A filled slot ignores this — it is changed by removing it first.
             allowUpload={canEmbed}
@@ -180,12 +204,16 @@ const ImageTagsField = ({ label, images, onImagesChange, slots = 1, embeddedLimi
           />
         </div>
       ))}
+      {batch && <ImageConvertOverlay thumb={batch.thumb} done={batch.done} total={batch.total} />}
+      </div>
 
       {gallery && (
         <>
           {/* One tile per slot, the last being the one to add into. Selecting a tile only changes which
               picture is on show — promoting one is the separate, deliberate press below. */}
-          <div className="flex flex-wrap items-center gap-2">
+          {/* Frozen while a batch converts: the slots the pictures are landing in are still being written,
+              so reframing or promoting one mid-run would act on a list about to change under it. */}
+          <div className={cn('flex flex-wrap items-center gap-2', batch && 'pointer-events-none opacity-50')}>
             {rows.map((url, i) => (url ? (
               <button
                 key={i}

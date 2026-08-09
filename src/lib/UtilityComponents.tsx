@@ -9,6 +9,7 @@ import ModelViewer from '../views/ModelViewer';
 import AudioPlayer from '../components/game/AudioPlayer';
 import { useDownscalePrompt } from './useDownscalePrompt';
 import { ImageZoomViewer } from '../components/ImageZoomViewer';
+import { ImageConvertOverlay } from '../components/ImageConvertOverlay';
 import type { ImageCap } from './imageOptim';
 import { readSdPromptFromFile } from './sdMetadata';
 import { imageHost, isRemoteImage } from './imageSource';
@@ -92,22 +93,27 @@ export const resolveModelType = (model: Partial<MediaAsset>): ModelType => {
 /** The shared dashed "click to upload" frame for the media uploaders (image / sound / 3D model). Pass
  *  `frameClassName` to give it a fixed size (e.g. the thumbnail crop); without it the box is compact and
  *  auto-sized. The dashed look lives here so every uploader stays in sync. */
-const Dropzone = ({ htmlFor, frameClassName, dragOver, children }: {
+const Dropzone = ({ htmlFor, frameClassName, dragOver, overlay, children }: {
   htmlFor?: string;
   frameClassName?: string;
   /** A droppable drag is overhead — the frame says so rather than leaving the gesture to guesswork. */
   dragOver?: boolean;
+  /** Covers the frame edge to edge. Anchored here rather than outside, because a caller's own
+   *  `frameClassName` may centre and cap the frame's width — anchoring further out spills past the picture. */
+  overlay?: ReactNode;
   children: ReactNode;
 }) => {
   const frame = (
     <div
       className={cn(
-        'border-2 border-dashed border-border rounded-md',
+        'relative border-2 border-dashed border-border rounded-md',
         frameClassName ?? 'flex items-center justify-center p-4',
         dragOver && 'border-primary bg-primary/5',
       )}
     >
       {children}
+      {/* Inside the label, so a click on it would otherwise re-open the file picker mid-encode. */}
+      {overlay && <div onClick={(e) => { e.preventDefault(); e.stopPropagation(); }}>{overlay}</div>}
     </div>
   );
   // No target input (upload withheld) ⇒ a plain box: a Label pointing nowhere would still read as clickable.
@@ -138,6 +144,8 @@ export const ImageUpload = ({ onChange, id, value, cap, previewClassName, object
   const [urlDraft, setUrlDraft] = useState('');
   const [urlError, setUrlError] = useState<string | null>(null);
   const [loadFailed, setLoadFailed] = useState(false);
+  // The picture currently being re-encoded, shown dimmed under a bar. Null whenever nothing is converting.
+  const [encoding, setEncoding] = useState<string | null>(null);
   const remote = isRemoteImage(value);
   // Cached blob when there is one, live URL otherwise; an embedded value passes through untouched.
   // `status` is what tells the author this host won't hand its bytes over.
@@ -163,8 +171,14 @@ export const ImageUpload = ({ onChange, id, value, cap, previewClassName, object
     // Parse the raw file for an embedded SD prompt before the FileReader/optimize path re-encodes it.
     if (onPromptExtracted) void readSdPromptFromFile(file).then((p) => { if (p) onPromptExtracted(p); });
     const dataUrl = await fileToDataUrl(file);
-    // Offer to downscale before storing when the image exceeds its budget (no-op if within cap or no cap).
-    onChange(cap ? await promptImage(dataUrl, cap) : dataUrl);
+    if (!cap) { onChange(dataUrl); return; }
+    try {
+      // Offer to downscale before storing when the image exceeds its budget. The overlay is raised from
+      // inside the prompt, once a choice is made — not here, or it would sit behind the consent dialog.
+      onChange(await promptImage(dataUrl, cap, () => setEncoding(dataUrl)));
+    } finally {
+      setEncoding(null);
+    }
   }, [onChange, cap, promptImage, onPromptExtracted]);
 
   const handleImageChange = useCallback((e: ChangeEvent<HTMLInputElement>) => {
@@ -267,8 +281,13 @@ export const ImageUpload = ({ onChange, id, value, cap, previewClassName, object
       )}
       {/* Wrapped rather than handled inside Dropzone: the frame is a Label when it is clickable, and a drop
           on a label's own child would otherwise re-open the file picker on the way through. */}
-      <div {...dropProps}>
-      <Dropzone htmlFor={allowUpload ? `image-upload-${id}` : undefined} frameClassName={previewClassName} dragOver={dragOver}>
+      <div {...dropProps} className="relative">
+      <Dropzone
+        htmlFor={allowUpload ? `image-upload-${id}` : undefined}
+        frameClassName={previewClassName}
+        dragOver={dragOver}
+        overlay={encoding && <ImageConvertOverlay thumb={encoding} done={0} total={1} objectFit={objectFit} />}
+      >
         {previewClassName ? (
           value ? (
             <>

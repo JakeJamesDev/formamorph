@@ -125,9 +125,13 @@ export function useDownscalePrompt() {
     [close],
   );
 
-  /** Offer to shrink one oversized image (e.g. an upload). Returns the chosen URL — the original when kept. */
+  /** Offer to shrink one oversized image (e.g. an upload). Returns the chosen URL — the original when kept.
+   *  `onEncoding` fires once the user has chosen and the re-encode actually starts, so a caller can show the
+   *  work in place; passing it takes over from the shared progress toast, as `promptWorld` does. It does not
+   *  fire when there is nothing to re-encode, which is what keeps a bar off the screen while the consent
+   *  dialog is still up. */
   const promptImage = useCallback(
-    async (url: string, cap: ImageCap): Promise<string> => {
+    async (url: string, cap: ImageCap, onEncoding?: () => void): Promise<string> => {
       const [item] = await scanImages([url], cap);
       if (!item) return url;
       const mode = await promptOptimizeChoice([item], (s) => ({
@@ -136,6 +140,10 @@ export function useDownscalePrompt() {
         cancelLabel: 'Keep original',
       }));
       if (mode === 'off') return url;
+      if (onEncoding) {
+        onEncoding();
+        return (await applyImageOptimize(url, mode, cap)) ?? url;
+      }
       return withOptimizeProgress(1, async () => (await applyImageOptimize(url, mode, cap)) ?? url);
     },
     [promptOptimizeChoice],
