@@ -155,6 +155,23 @@ describe('ImageUpload drag and drop', () => {
     await waitFor(() => expect(screen.queryByRole('status')).toBeNull());
   });
 
+  it('shows the file itself, never the data URL being encoded', async () => {
+    promptImage.mockImplementationOnce((url: string, _cap: unknown, onEncoding?: () => void) => {
+      onEncoding?.();
+      return new Promise<string>(() => {});
+    });
+    const { container } = render(<ImageUpload id="t" onChange={vi.fn()} cap={IMAGE_CAPS.entity} />);
+
+    fireEvent.drop(zone(), { dataTransfer: transfer({ files: [file('a.png')] }) });
+
+    await screen.findByRole('status');
+    // Handing an <img> the multi-megabyte base64 string blocks the main thread for long enough that the
+    // overlay lands only once the encode is nearly over — the frozen frame this whole overlay exists to fix.
+    const src = container.querySelector('[role="status"] img')!.getAttribute('src')!;
+    expect(src.startsWith('data:')).toBe(false);
+    expect(src.startsWith('blob:')).toBe(true);
+  });
+
   it('covers the slot with the same crop the slot itself uses', async () => {
     promptImage.mockImplementationOnce((url: string, _cap: unknown, onEncoding?: () => void) => {
       onEncoding?.();

@@ -172,12 +172,16 @@ export const ImageUpload = ({ onChange, id, value, cap, previewClassName, object
     if (onPromptExtracted) void readSdPromptFromFile(file).then((p) => { if (p) onPromptExtracted(p); });
     const dataUrl = await fileToDataUrl(file);
     if (!cap) { onChange(dataUrl); return; }
+    // The overlay shows the file itself, not the data URL about to be encoded — an <img> given a
+    // multi-megabyte base64 string blocks the main thread long enough to swallow the overlay whole.
+    const thumb = URL.createObjectURL(file);
     try {
       // Offer to downscale before storing when the image exceeds its budget. The overlay is raised from
       // inside the prompt, once a choice is made — not here, or it would sit behind the consent dialog.
-      onChange(await promptImage(dataUrl, cap, () => setEncoding(dataUrl)));
+      onChange(await promptImage(dataUrl, cap, () => setEncoding(thumb)));
     } finally {
       setEncoding(null);
+      URL.revokeObjectURL(thumb);
     }
   }, [onChange, cap, promptImage, onPromptExtracted]);
 
