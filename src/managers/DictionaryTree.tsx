@@ -2,10 +2,9 @@ import { randomUUID } from "@/lib/uuid";
 import { useState } from 'react';
 import { useDictionaryStore } from '@/contexts/DictionaryStoreContext';
 import { usePlaceholderStore } from '@/contexts/PlaceholderStoreContext';
-import { Button } from '@/components/ui/button';
-import { Checkbox } from '@/components/ui/checkbox';
 import { ConfirmDialog } from '@/components/ConfirmDialog';
-import { X, GripVertical, ChevronRight, ChevronDown, Copy, FilePlus } from 'lucide-react';
+import { EditorRow } from '@/components/EditorRow';
+import { X, ChevronRight, ChevronDown, Copy, FilePlus } from 'lucide-react';
 import {
   DndContext, closestCorners, PointerSensor, KeyboardSensor, useSensor, useSensors, useDroppable,
   MeasuringStrategy, type DragEndEvent, type DragStartEvent,
@@ -42,41 +41,20 @@ function EntryRow({ entry, selected, onSelect, onToggleEnabled, onDuplicate, onR
     zIndex: isDragging ? 1 : undefined,
   };
   return (
-    <div
-      ref={setNodeRef}
+    <EditorRow
+      setNodeRef={setNodeRef}
       style={style}
-      onClick={(e) => { e.stopPropagation(); onSelect(entry.id); }}
-      className={`p-2 cursor-pointer rounded-md transition-colors flex items-center gap-1
-        ${selected ? 'bg-primary text-primary-foreground' : 'hover:bg-secondary'}`}
-    >
-      <span
-        {...attributes}
-        {...listeners}
-        onClick={(e) => e.stopPropagation()}
-        className={`shrink-0 cursor-grab touch-none px-1 ${selected ? 'text-primary-foreground' : 'text-muted-foreground'}`}
-        title="Drag to reorder, re-place, or move to another dictionary"
-      >
-        <GripVertical className="h-4 w-4" />
-      </span>
-      {advanced && (
-        <Checkbox
-          checked={entry.enabled !== false}
-          onCheckedChange={(v) => onToggleEnabled(entry, v === true)}
-          onClick={(e) => e.stopPropagation()}
-          className="mx-1 shrink-0"
-          title={entry.enabled === false ? 'Disabled — click to enable' : 'Enabled — click to disable'}
-        />
-      )}
-      <span className="min-w-0 flex-grow truncate"><PlaceholderText text={entry.name || entry.key?.[0] || 'Untitled'} placeholders={placeholders} /></span>
-      <Button variant="ghost" size="icon" className={`shrink-0 ${selected ? 'text-primary-foreground' : 'text-muted-foreground'}`}
-        onClick={(e) => { e.stopPropagation(); onDuplicate(entry.id); }} title="Duplicate">
-        <Copy className="h-4 w-4" />
-      </Button>
-      <Button variant="ghost" size="icon" className={`shrink-0 ${selected ? 'text-primary-foreground' : 'text-muted-foreground'}`}
-        onClick={(e) => { e.stopPropagation(); onRemove(entry.id); }} title="Delete">
-        <X className="h-4 w-4" />
-      </Button>
-    </div>
+      gripProps={{ ...attributes, ...listeners }}
+      gripTitle="Drag to reorder, re-place, or move to another dictionary"
+      selected={selected}
+      onSelect={() => onSelect(entry.id)}
+      checkbox={advanced ? { checked: entry.enabled !== false, onChange: (v) => onToggleEnabled(entry, v) } : undefined}
+      label={<PlaceholderText text={entry.name || entry.key?.[0] || 'Untitled'} placeholders={placeholders} />}
+      actions={[
+        { icon: <Copy className="h-4 w-4" />, title: 'Duplicate', onClick: () => onDuplicate(entry.id) },
+        { icon: <X className="h-4 w-4" />, title: 'Delete', onClick: () => onRemove(entry.id) },
+      ]}
+    />
   );
 }
 
@@ -175,53 +153,27 @@ function BookRow({ book, collapsed, collapsedZones, selectedId, onToggleCollapse
 
   return (
     <div ref={setNodeRef} style={style} className="rounded-md border border-border/60">
-      <div
-        onClick={(e) => { e.stopPropagation(); onSelect(book.id); }}
-        className={`p-2 cursor-pointer rounded-t-md transition-colors flex items-center gap-1
-          ${selected ? 'bg-primary text-primary-foreground' : 'hover:bg-secondary'} ${faded ? 'opacity-50' : ''}`}
-      >
-        <button
-          type="button"
-          onClick={(e) => { e.stopPropagation(); onToggleCollapse(book.id); }}
-          className="shrink-0"
-          aria-label={collapsed ? 'Expand dictionary' : 'Collapse dictionary'}
-        >
-          {collapsed ? <ChevronRight className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
-        </button>
-        <span
-          {...attributes}
-          {...listeners}
-          onClick={(e) => e.stopPropagation()}
-          className={`shrink-0 cursor-grab touch-none px-1 ${selected ? 'text-primary-foreground' : 'text-muted-foreground'}`}
-          title="Drag to reorder dictionaries"
-        >
-          <GripVertical className="h-4 w-4" />
-        </span>
-        {advanced && (
-          <Checkbox
-            checked={book.enabled !== false}
-            onCheckedChange={(v) => onToggleEnabled(book, v === true)}
-            onClick={(e) => e.stopPropagation()}
-            className="mx-1 shrink-0"
-            title={book.enabled === false ? 'Disabled — click to enable' : 'Enabled — click to disable'}
-          />
-        )}
-        <span className="min-w-0 flex-grow truncate font-medium">{book.name}</span>
-        <span
-          className={`shrink-0 text-meta mr-1 ${selected ? 'text-primary-foreground/80' : 'text-muted-foreground'}`}
-          title={advanced ? 'Enabled entries / total entries' : 'Entries'}
-        >
-          {advanced ? `${enabledCount}/${book.entries.length}` : book.entries.length}
-        </span>
-        <Button variant="ghost" size="icon" className={`shrink-0 ${selected ? 'text-primary-foreground' : 'text-muted-foreground'}`}
-          onClick={(e) => { e.stopPropagation(); onAddEntry(book.id); }} title="Add entry">
-          <FilePlus className="h-4 w-4" />
-        </Button>
-        <Button variant="ghost" size="icon" className={`shrink-0 ${selected ? 'text-primary-foreground' : 'text-muted-foreground'}`}
-          onClick={(e) => { e.stopPropagation(); onDeleteBook(book.id); }} title="Delete dictionary">
-          <X className="h-4 w-4" />
-        </Button>
-      </div>
+      <EditorRow
+        attached
+        className={faded ? 'opacity-50' : undefined}
+        gripProps={{ ...attributes, ...listeners }}
+        gripTitle="Drag to reorder dictionaries"
+        selected={selected}
+        onSelect={() => onSelect(book.id)}
+        lead="chevron"
+        collapsed={collapsed}
+        onToggleCollapse={() => onToggleCollapse(book.id)}
+        collapseLabels={['Expand dictionary', 'Collapse dictionary']}
+        checkbox={advanced ? { checked: book.enabled !== false, onChange: (v) => onToggleEnabled(book, v) } : undefined}
+        label={book.name}
+        labelClass="font-medium"
+        meta={advanced ? `${enabledCount}/${book.entries.length}` : book.entries.length}
+        metaTitle={advanced ? 'Enabled entries / total entries' : 'Entries'}
+        actions={[
+          { icon: <FilePlus className="h-4 w-4" />, title: 'Add entry', onClick: () => onAddEntry(book.id) },
+          { icon: <X className="h-4 w-4" />, title: 'Delete dictionary', onClick: () => onDeleteBook(book.id) },
+        ]}
+      />
       {!collapsed && (
         <div className="p-2 pl-6 flex flex-col gap-2">
           <DictZone

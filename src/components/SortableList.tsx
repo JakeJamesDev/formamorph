@@ -17,9 +17,8 @@ import {
 import { CSS } from '@dnd-kit/utilities';
 import { restrictToVerticalAxis, restrictToFirstScrollableAncestor } from '@dnd-kit/modifiers';
 import { type ReactNode } from 'react';
-import { GripVertical, Copy, X } from 'lucide-react';
-import { Button } from '@/components/ui/button';
-import { Checkbox } from '@/components/ui/checkbox';
+import { Copy, X } from 'lucide-react';
+import { EditorRow } from '@/components/EditorRow';
 
 export interface SortableListItem {
   id: string;
@@ -59,51 +58,19 @@ export function SortableRow({
     zIndex: isDragging ? 1 : undefined,
   };
   return (
-    <div
-      ref={setNodeRef}
+    <EditorRow
+      setNodeRef={setNodeRef}
       style={style}
-      onClick={(e) => { e.stopPropagation(); onSelect(item.id); }}
-      className={`p-2 cursor-pointer rounded-md transition-colors flex justify-between items-center
-        ${selected ? 'bg-primary text-primary-foreground' : 'hover:bg-secondary'}`}
-    >
-      <span
-        {...attributes}
-        {...listeners}
-        onClick={(e) => e.stopPropagation()}
-        className={`cursor-grab touch-none px-1 ${selected ? 'text-primary-foreground' : 'text-muted-foreground'}`}
-        title="Drag to reorder"
-      >
-        <GripVertical className="h-4 w-4" />
-      </span>
-      {onToggleEnabled && (
-        <Checkbox
-          checked={enabled !== false}
-          onCheckedChange={(v) => onToggleEnabled(item.id, v === true)}
-          onClick={(e) => e.stopPropagation()}
-          className="mx-1 shrink-0"
-          title={enabled === false ? 'Disabled — click to enable' : 'Enabled — click to disable'}
-        />
-      )}
-      <span className="flex-grow">{label ?? item.name}</span>
-      <Button
-        variant="ghost"
-        size="icon"
-        onClick={(e) => { e.stopPropagation(); onDuplicate(item.id); }}
-        className={selected ? 'text-primary-foreground' : 'text-muted-foreground'}
-        title="Duplicate"
-      >
-        <Copy className="h-4 w-4" />
-      </Button>
-      <Button
-        variant="ghost"
-        size="icon"
-        onClick={(e) => { e.stopPropagation(); onRemove(item.id); }}
-        className={selected ? 'text-primary-foreground' : 'text-muted-foreground'}
-        title="Delete"
-      >
-        <X className="h-4 w-4" />
-      </Button>
-    </div>
+      gripProps={{ ...attributes, ...listeners }}
+      selected={selected}
+      onSelect={() => onSelect(item.id)}
+      checkbox={onToggleEnabled ? { checked: enabled !== false, onChange: (v) => onToggleEnabled(item.id, v) } : undefined}
+      label={label ?? item.name}
+      actions={[
+        { icon: <Copy className="h-4 w-4" />, title: 'Duplicate', onClick: () => onDuplicate(item.id) },
+        { icon: <X className="h-4 w-4" />, title: 'Delete', onClick: () => onRemove(item.id) },
+      ]}
+    />
   );
 }
 
