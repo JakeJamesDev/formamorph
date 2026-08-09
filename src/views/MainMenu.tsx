@@ -87,6 +87,7 @@ import { filesFrom, importSummaryToast } from '@/lib/importFiles';
 import CommunityCreationsBrowser from './CommunityCreationsBrowser';
 import { WorldDetailsColumn, DateTimeText, type WorldRecord } from "@/components/WorldDetails";
 import SortableWorldCard from "@/components/SortableWorldCard";
+import { WorldActionButton } from "@/components/WorldActionButton";
 import DictionaryEditorModal from "@/components/modals/DictionaryEditorModal";
 import EntityEditorModal from "@/components/modals/EntityEditorModal";
 import { ModelDetailsModal } from "@/components/modals/ModelDetailsModal";
@@ -1866,8 +1867,9 @@ const MainMenu = ({ onStartGame, onLoadSaveGame, onReplayIntro, introActive = fa
               actions={
                 <div className="space-y-2">
                   <div className="flex">
-                    <Button
-                      className="w-2/3 text-body bg-gradient-to-r from-sky-200 to-cyan-200 hover:from-sky-300 hover:to-cyan-300 text-black font-bold rounded-r-none"
+                    <WorldActionButton
+                      tone="enter"
+                      className="w-2/3 rounded-r-none"
                       onClick={() => {
                         // Pre-check "Enabled by Default" traits for the selection screen (one per
                         // exclusive group — the radio can only show one anyway).
@@ -1887,10 +1889,11 @@ const MainMenu = ({ onStartGame, onLoadSaveGame, onReplayIntro, introActive = fa
                       }}
                     >
                       <DoorOpen className="mr-2 h-4 w-4" /> Enter World
-                    </Button>
+                    </WorldActionButton>
 
-                    <Button
-                      className="w-1/3 text-body bg-gradient-to-r from-amber-100 to-yellow-100 hover:from-amber-200 hover:to-yellow-200 text-black font-bold rounded-l-none"
+                    <WorldActionButton
+                      tone="quickStart"
+                      className="w-1/3 rounded-l-none"
                       onClick={() => {
                         // For uploaded worlds, use the worldData from context
                         const currentWorldData = selectedWorld!.data;
@@ -1903,49 +1906,49 @@ const MainMenu = ({ onStartGame, onLoadSaveGame, onReplayIntro, introActive = fa
                     >
                       <ChevronLast className="h-4 w-4 landscape:mr-2" />
                       <span className="hidden landscape:inline">Quick Start</span>
-                    </Button>
+                    </WorldActionButton>
                   </div>
 
-                  <Button
-                    className="w-full text-body bg-gradient-to-r from-orange-100 to-orange-200 hover:from-orange-200 hover:to-orange-300 text-black font-bold"
+                  <WorldActionButton
+                    tone="edit"
                     onClick={() => setShowWorldEditor(true)}
                   >
                     <Pencil className="mr-2 h-4 w-4" /> Edit World
-                  </Button>
+                  </WorldActionButton>
 
-                  <Button
-                    className="w-full text-body bg-gradient-to-r from-purple-100 to-purple-200 hover:from-purple-200 hover:to-purple-300 text-black font-bold"
+                  <WorldActionButton
+                    tone="duplicate"
                     onClick={() => handleDuplicateWorld()}
                   >
                     <FilePlus2 className="mr-2 h-4 w-4" /> Duplicate World
-                  </Button>
+                  </WorldActionButton>
 
-                  <Button
-                    className="w-full text-body bg-gradient-to-r from-emerald-100 to-emerald-200 hover:from-emerald-200 hover:to-emerald-300 text-black font-bold"
+                  <WorldActionButton
+                    tone="export"
                     onClick={() => { if (selectedWorld) void exportWorld(selectedWorld.data); }}
                   >
                     <Download className="mr-2 h-4 w-4" /> Export World
-                  </Button>
+                  </WorldActionButton>
 
                   {/* Only worth offering for a world that links its pictures — one storing its own has nothing
                       to download. */}
                   {selectedWorld && remoteWorldImages(selectedWorld.data).length > 0 && (
-                    <Button
-                      className="w-full text-body bg-gradient-to-r from-sky-100 to-sky-200 hover:from-sky-200 hover:to-sky-300 text-black font-bold"
+                    <WorldActionButton
+                      tone="offline"
                       disabled={warmingOffline}
                       onClick={() => handleMakeAvailableOffline()}
                     >
                       <CloudDownload className="mr-2 h-4 w-4" /> Make Available Offline
-                    </Button>
+                    </WorldActionButton>
                   )}
 
                   {isAuthenticated && (
-                    <Button
-                      className="w-full text-body bg-gradient-to-r from-red-100 to-red-200 hover:from-purple-200 hover:to-indigo-300 text-black font-bold"
+                    <WorldActionButton
+                      tone="publish"
                       onClick={() => selectedWorld && openPublish(worldPublishPayload(selectedWorld.data))}
                     >
                       <Upload className="mr-2 h-4 w-4" /> Publish World
-                    </Button>
+                    </WorldActionButton>
                   )}
                 </div>
               }
