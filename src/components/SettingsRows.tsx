@@ -116,13 +116,16 @@ export function ValueSlider({ id, value, onChange, min, max, step, format }: {
   );
 }
 
-/** A checkbox row matching the settings tabs: right-anchored label + checkbox + secondary text beside it. */
-export function CheckRow({ label, htmlFor, checked, onChange, hint }: {
+/** A checkbox row matching the settings tabs: right-anchored label + checkbox + secondary text beside it.
+ *  `info` takes an affordance (e.g. `HintInfo`) rendered at the label boundary, so a row wanting the long
+ *  explanation on demand doesn't have to be hand-built to get it. */
+export function CheckRow({ label, htmlFor, checked, onChange, hint, info }: {
   label: string; htmlFor: string; checked: boolean; onChange: (v: boolean) => void; hint: string;
+  info?: ReactNode;
 }) {
   return (
     <div className="grid grid-cols-1 sm:grid-cols-[minmax(0,1fr)_minmax(0,3fr)] items-start gap-4">
-      <label htmlFor={htmlFor} className="text-left sm:text-right leading-4">{label}</label>
+      <RowLabel htmlFor={htmlFor} info={info}>{label}</RowLabel>
       <div className="flex items-start gap-2">
         <Checkbox id={htmlFor} checked={checked} onCheckedChange={(c) => onChange(c === true)} className="shrink-0" />
         <Hint as="span">{hint}</Hint>
