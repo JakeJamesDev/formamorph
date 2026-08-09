@@ -1,5 +1,5 @@
 import { describe, it, expect, vi } from 'vitest';
-import { createRef, useState } from 'react';
+import { createRef, useState, type ReactElement } from 'react';
 import { render, screen } from '@testing-library/react';
 import { Input } from './input';
 
@@ -81,5 +81,29 @@ describe('Input wheel stepping', () => {
     let seen: HTMLInputElement | null = null;
     render(<Input type="text" ref={(node) => { seen = node; }} />);
     expect(seen).toBeInstanceOf(HTMLInputElement);
+  });
+});
+
+// Density is the control's own property. If `sm` stops carrying its own metrics, call sites go back
+// to hand-shrinking with `text-xs h-8` — which is indistinguishable from secondary-text styling.
+describe('Input density', () => {
+  const classesOf = (markup: ReactElement) =>
+    render(markup).container.querySelector('input')!.className;
+
+  it('defaults to the full-height control at label size', () => {
+    const className = classesOf(<Input />);
+    expect(className).toContain('h-10');
+    expect(className).toContain('text-label');
+  });
+
+  it('shrinks both height and type at size="sm"', () => {
+    const className = classesOf(<Input size="sm" />);
+    expect(className).toContain('h-8');
+    expect(className).toContain('text-meta');
+    expect(className).not.toContain('h-10');
+  });
+
+  it('lets a caller override the variant metrics from className', () => {
+    expect(classesOf(<Input size="sm" className="h-7" />)).toContain('h-7');
   });
 });
