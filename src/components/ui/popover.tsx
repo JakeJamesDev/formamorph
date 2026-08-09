@@ -34,4 +34,24 @@ PopoverContent.displayName = PopoverPrimitive.Content.displayName
 
 const PopoverClose = PopoverPrimitive.Close
 
-export { Popover, PopoverTrigger, PopoverAnchor, PopoverContent, PopoverClose }
+/** Radix's default arrow strokes all three sides, so its base draws a line across the popover's own
+ *  border and the arrow reads as a separate shape stuck to the edge. This one strokes only the two
+ *  slanted sides and sits a pixel into the popover, so its fill hides the border segment behind it and
+ *  the outline runs continuously around the whole bubble. */
+const PopoverArrow = React.forwardRef<
+  React.ElementRef<typeof PopoverPrimitive.Arrow>,
+  React.ComponentPropsWithoutRef<typeof PopoverPrimitive.Arrow>
+>(({ className, width = 20, height = 10, ...props }, ref) => (
+  <PopoverPrimitive.Arrow ref={ref} asChild width={width} height={height} {...props}>
+    {/* overflow-visible keeps the stroked tip from clipping against the viewBox edge. */}
+    {/* Shifted a pixel into the popover so the fill hides the border segment behind the base, and the
+        two strokes cross that border line rather than stopping short of it. */}
+    <svg viewBox="0 0 20 10" className={cn("overflow-visible -translate-y-px", className)}>
+      <polygon points="0,0 20,0 10,10" className="fill-popover" />
+      <path d="M0 0 L10 10 L20 0" className="fill-none stroke-border" strokeWidth={1} />
+    </svg>
+  </PopoverPrimitive.Arrow>
+))
+PopoverArrow.displayName = PopoverPrimitive.Arrow.displayName
+
+export { Popover, PopoverTrigger, PopoverAnchor, PopoverContent, PopoverClose, PopoverArrow }

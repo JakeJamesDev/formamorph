@@ -54,6 +54,7 @@ import { COMMON_LANGUAGES } from '@/lib/languages';
 import ImageSetupGuide from './ImageSetupGuide';
 import ComfyWorkflowGuide from './ComfyWorkflowGuide';
 import { DEFAULT_TAG_PROMPT, SUBJECT_GUIDANCE } from '@/lib/imagePrompt';
+import { resetTutorials, useSeenTutorialCount } from '@/lib/tutorials';
 
 // Segmented-control options: a short tab label plus the helper text shown below the selected one.
 const THEME_OPTIONS: { value: 'light' | 'dark' | 'system'; label: string; help: string }[] = [
@@ -441,6 +442,7 @@ export const SettingsModal = ({ isOpen, onOpenChange, previewValues, initialTab,
   useEffect(() => { if (isOpen) setDeletedDefaultCount(readDeletedDefaultWorlds().size); }, [isOpen]);
   // Same reasoning for the linked-image cache: it grows during play, so re-measure on open rather than once.
   const [cachedBytes, setCachedBytes] = useState(0);
+  const seenTutorialCount = useSeenTutorialCount();
   useEffect(() => { if (isOpen) cachedImageBytes().then(setCachedBytes).catch(() => setCachedBytes(0)); }, [isOpen]);
 
   const clearImageCache = async () => {
@@ -2700,6 +2702,28 @@ Includes faces tuned for **dyslexia**, **low vision**, and reading.`}</HintInfo>
                     {cachedBytes === 0
                       ? 'No linked images have been cached yet.'
                       : `${formatBytes(cachedBytes)} of linked images kept on this device so they work offline.`}
+                  </p>
+                </div>
+              </div>
+              </Section>
+
+              <Section title="Help">
+              <div className="grid grid-cols-1 sm:grid-cols-[minmax(0,1fr)_minmax(0,3fr)] gap-4">
+                <div className="hidden sm:block" />
+                <div>
+                  <ConfirmDialog
+                    title="Reset tutorials"
+                    description="Show the one-time tutorial popovers again? They explain a screen's controls the first time you meet them. Nothing in your worlds or saves is affected."
+                    onConfirm={resetTutorials}
+                  >
+                    <Button variant="outline" size="sm" disabled={seenTutorialCount === 0}>
+                      Reset tutorials
+                    </Button>
+                  </ConfirmDialog>
+                  <p className="text-helper text-muted-foreground mt-1">
+                    {seenTutorialCount === 0
+                      ? 'No tutorials have been dismissed yet.'
+                      : `Brings back ${seenTutorialCount} dismissed tutorial${seenTutorialCount > 1 ? 's' : ''}.`}
                   </p>
                 </div>
               </div>
