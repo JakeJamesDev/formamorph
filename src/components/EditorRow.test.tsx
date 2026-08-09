@@ -1,6 +1,6 @@
 import { render, fireEvent, cleanup, screen } from '@testing-library/react';
 import { describe, it, expect, afterEach, vi } from 'vitest';
-import { EditorRow } from './EditorRow';
+import { EditorRow, TREE_INDENT } from './EditorRow';
 
 afterEach(cleanup);
 
@@ -93,6 +93,31 @@ describe('EditorRow', () => {
     expect(label.className).toContain('min-w-0');
     expect(label.className).toContain('truncate');
     expect(screen.getByTitle('Delete').className).toContain('shrink-0');
+  });
+
+  it('indents a nested row on top of the padding every row shares, not instead of it', () => {
+    const flat = render(<EditorRow selected={false} onSelect={() => {}} label="Root" />);
+    const flatRow = flat.container.firstElementChild as HTMLElement;
+    // A tree row used to set paddingLeft outright, which wiped the left padding at depth 0 and left
+    // top-level tree rows starting 8px further left than the flat lists' rows.
+    expect(flatRow.style.paddingLeft).toBe('');
+    expect(flatRow.className).toContain('p-2');
+
+    cleanup();
+    const nested = render(<EditorRow selected={false} onSelect={() => {}} label="Child" depth={2} />);
+    const nestedRow = nested.container.firstElementChild as HTMLElement;
+    expect(nestedRow.style.paddingLeft).toBe(`${8 + 2 * TREE_INDENT}px`);
+    expect(nestedRow.className).toContain('p-2');
+  });
+
+  it('holds a floor height so a row without actions is as tall as one with them', () => {
+    const withActions = render(
+      <EditorRow selected={false} onSelect={() => {}} label="A" actions={[{ icon: <span>x</span>, title: 'Delete', onClick: () => {} }]} />,
+    );
+    expect((withActions.container.firstElementChild as HTMLElement).className).toContain('min-h-14');
+    cleanup();
+    const bare = render(<EditorRow selected={false} onSelect={() => {}} label="A" />);
+    expect((bare.container.firstElementChild as HTMLElement).className).toContain('min-h-14');
   });
 
   it('rounds only its top corners when a body is attached below it', () => {

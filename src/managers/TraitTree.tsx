@@ -4,7 +4,8 @@ import {
   buildTraitTree, flattenTraitTree, removeChildrenOf, getTraitDropProjection, applyTraitDrop,
   duplicateTraitNode, type FlatTraitNode,
 } from '@/lib/traitTree';
-import { SortableTree, TREE_INDENT, type SortableTreeAdapter } from './SortableTree';
+import { SortableTree, type SortableTreeAdapter } from './SortableTree';
+import { TREE_INDENT } from '@/components/EditorRow';
 import { useEditorMode } from '@/lib/editorMode';
 import { EmptyListHint } from '@/components/EmptyListHint';
 import PlaceholderText from '@/components/prompt/PlaceholderText';

@@ -45,7 +45,6 @@ import {
 } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
 
-export const TREE_INDENT = 24; // px per nesting level — also the horizontal drag distance to change depth
 
 /** Presentation + actions for one row, produced by the tree's adapter. */
 export interface TreeRowSpec {
@@ -94,13 +93,13 @@ function TreeRow({ id, depth, spec, selected, onSelect, isCollapsed, toggleColla
     // Translate (not Transform): Transform bakes in a scale that resizes the dragged row to the target slot.
     transform: CSS.Translate.toString(rowTransform),
     transition,
-    paddingLeft: depth * TREE_INDENT,
     opacity: isDragging ? 0.5 : 1,
   };
   return (
     <EditorRow
       setNodeRef={setNodeRef}
       style={style}
+      depth={depth}
       gripProps={{ ...attributes, ...listeners }}
       gripTitle="Drag to reorder or nest"
       selected={selected}
