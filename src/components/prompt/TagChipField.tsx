@@ -129,7 +129,12 @@ function DanbooruTagPlugin({ parse }: { parse: ChipVocabulary['parse'] }) {
   if (!state) return null;
   // Portaled and fixed to the field's own box, so a suggestion list inside a scrolling editor pane isn't clipped.
   return createPortal(
-    <div className="fixed z-[70]" style={{ left: state.rect.left, top: state.rect.bottom + 2, width: state.rect.width }}>
+    // `pointer-events-auto`: a modal Radix dialog sets `pointer-events: none` on the body, so anything
+    // portaled out of its content is visible but unclickable.
+    <div
+      className="pointer-events-auto fixed z-[70]"
+      style={{ left: state.rect.left, top: state.rect.bottom + 2, width: state.rect.width }}
+    >
       <SuggestionList items={state.items} active={active} onPick={select} onHover={setActive} className="w-full" />
     </div>,
     document.body,

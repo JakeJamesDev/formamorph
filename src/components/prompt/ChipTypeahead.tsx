@@ -157,7 +157,9 @@ export function ChipTypeaheadPlugin({ trigger, vocab }: {
   return createPortal(
     <div
       data-testid="chip-typeahead"
-      className="fixed z-[70] w-56 rounded-md border border-border bg-popover p-1 shadow-md"
+      // `pointer-events-auto`: a modal Radix dialog sets `pointer-events: none` on the body, so anything
+      // portaled out of its content is visible but unclickable.
+      className="pointer-events-auto fixed z-[70] w-56 rounded-md border border-border bg-popover p-1 shadow-md"
       style={{
         left: Math.min(match.rect.left, window.innerWidth - 240),
         ...(below ? { top: match.rect.bottom + 4 } : { bottom: window.innerHeight - match.rect.top + 4 }),
