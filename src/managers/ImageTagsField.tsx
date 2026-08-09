@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, type DragEvent } from 'react';
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { Plus, Star } from "lucide-react";
@@ -133,6 +133,9 @@ const ImageTagsField = ({ label, images, onImagesChange, slots = 1, embeddedLimi
   // Generating writes over the primary, so it only adds bytes when that slot isn't already carrying some.
   const canGenerate = canEmbed || !!(shown[0] && !isRemoteImage(shown[0]));
 
+  /** The slot a drop lands in: the trailing empty one, or none once the gallery is full. */
+  const openSlot = rows.findIndex((url) => !url);
+
   /** Write one slot; an emptied slot drops out rather than leaving a hole for the next one to fall into. */
   const setSlot = (index: number, value: string) => {
     const next = [...shown];
@@ -168,6 +171,24 @@ const ImageTagsField = ({ label, images, onImagesChange, slots = 1, embeddedLimi
     onImagesChange(next.filter(Boolean));
   };
 
+  // The pane behind the framed picture. A framed picture refuses drops itself, so without this a drag over
+  // the gallery matched nothing at all — no highlight anywhere, and the dragged thumbnail hanging over a
+  // picture it was never going to replace. Bringing the open slot into the frame on the way in shows where
+  // the drop is actually going; the slot then handles the drag itself, and stops it reaching here again.
+  const pane = useImageDropTarget({
+    enabled: gallery && openSlot !== -1 && !batch,
+    allowFiles: canEmbed,
+    onUrl: (url) => setSlot(openSlot, url),
+    onFiles: (files) => void takeFiles(openSlot, files),
+  });
+  const paneProps = gallery ? {
+    ...pane.dropProps,
+    onDragOver: (e: DragEvent<HTMLDivElement>) => {
+      if (openSlot !== -1 && !batch) setShowing(openSlot);
+      pane.dropProps.onDragOver(e);
+    },
+  } : {};
+
   /** Swap a slot into the primary position, which is what makes it the entity's one-picture stand-in. */
   const makePrimary = (index: number) => {
     const next = [...shown];
@@ -182,7 +203,7 @@ const ImageTagsField = ({ label, images, onImagesChange, slots = 1, embeddedLimi
       {/* Every slot is rendered and only the shown one is visible, rather than mounting the selected slot
           alone: the add tile is a label pointing at the empty slot's file input, which has to exist for the
           click to reach it, and a remounting uploader would lose a half-typed URL on every tile press. */}
-      <div className={cn('relative', gallery && FRAME_WIDTH[shape])}>
+      <div className={cn('relative', gallery && FRAME_WIDTH[shape])} {...paneProps}>
       {rows.map((url, i) => (
         <div key={i} className={cn('space-y-1', gallery && i !== showing && 'hidden')}>
           <ImageUpload

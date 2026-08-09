@@ -16,9 +16,12 @@ export function useImageDropTarget({ enabled, allowFiles, onUrl, onFiles }: {
 }) {
   const [dragOver, setDragOver] = useState(false);
 
+  // Both handlers stop propagation once they take the event, so these targets can nest: a slot inside a pane
+  // handles its own drag, and the pane only sees the ones its slots turned down.
   const onDragOver = useCallback((e: DragEvent<HTMLElement>) => {
     if (!enabled || !canDropImage(e.dataTransfer)) return;
     e.preventDefault(); // without this the browser navigates to the dropped file instead
+    e.stopPropagation();
     e.dataTransfer.dropEffect = 'copy';
     setDragOver(true);
   }, [enabled]);
@@ -29,6 +32,7 @@ export function useImageDropTarget({ enabled, allowFiles, onUrl, onFiles }: {
     const payload = imageDropPayload(e.dataTransfer);
     if (!payload) return;
     e.preventDefault();
+    e.stopPropagation();
     if (payload.kind === 'url') return onUrl(payload.url);
     if (allowFiles) onFiles(payload.files);
   }, [enabled, allowFiles, onUrl, onFiles]);
