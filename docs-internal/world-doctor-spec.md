@@ -70,7 +70,7 @@ Severity model:
 | ⚠ | Alias begins with `the ` — case-sensitive matching makes it miss at sentence start | **Yes — 14 of them** |
 | ⚠ | Two entities can match the same text (alias/name overlap, accounting for plural tolerance) | **Yes — Bramble vs Farm Visitors** |
 | ⚠ | Entity appears in **zero** locations | **Yes — Farm Visitors** |
-| ✖ | Placeholder chip in `aliases` — that field is never scanned, so it can never resolve | Nearly authored |
+| ℹ | Lowercase multi-word alias with no capitalized twin — case-sensitive matching misses the form narration usually writes (`matron of Teldorill`) | **Yes — matched nothing until fixed** |
 | ⚠ | Entity name collides with a value in a Wildcard's pool — a rolled generic can shadow a real character | Checked manually for Bramble and Cass |
 | ℹ | Alias duplicates the entity's own name (redundant) | **Yes — Sarah** |
 | ℹ | No `playerDescription` or no `aiDescription` | **Yes — two inherited entities** |
@@ -84,7 +84,8 @@ Severity model:
 | ✖ | `parentId` references a location that doesn't exist | |
 | ✖ | **No location is flagged `isStarting`** | **Yes — after the legacy field was ignored** |
 | ⚠ | Legacy `isStartLocation` present (dead since the TS rebuild) | **Yes** |
-| ℹ | Location with no entities | |
+| ℹ | Location with no entities | **Yes — seven of them, including rooms whose own events needed a cast** |
+| ℹ | Location or entity has an `aiSummary`, so only the narrator sees its full description — everything else is sent the summary | **Yes — adding summaries hid the event tables from the planner and choice writer** |
 
 ### Stats
 
@@ -97,6 +98,9 @@ Severity model:
 | ⚠ | No descriptor covers the starting value's band, or the active-at-start descriptor is the `@0` one while `starting > 0` | **Yes — Mares Bred** |
 | ⚠ | Duplicate or unordered descriptor thresholds | |
 | ⚠ | `percentage` stat whose `min`/`max` aren't 0/100 | |
+| ⚠ | **A stat has `code` but no stat in the world reads a clock variable** — code then runs only on turns the AI reported a stat change, so a "every turn" stat silently doesn't | **Yes — a pregnancy timer stalled and a per-turn roll held its value** |
+| ⚠ | A trait's negative `starting` delta lands on a stat already sitting at its floor — the clamp swallows it | **Yes — a race's Virility penalty vanished** |
+| ⚠ | A trait sets a stat below a value the stat's own `code` raises it back to — the trait's effect erases itself within a turn or two | **Yes — five of nine race Fertility values were fiction** |
 | ℹ | AI-change locks on a stat with no `code` (usually a misunderstanding) | |
 
 ### Traits
@@ -113,7 +117,8 @@ Severity model:
 | Sev | Rule | |
 |---|---|---|
 | ✖ | A chip in world text references an undefined placeholder id | |
-| ✖ | A chip sits in a field the resolver never scans (stat text, aliases) — [the scanned set](../src/views/GameViewer.tsx:1313) | |
+| ✖ | A chip sits in a field the resolver never scans — **stat descriptions and descriptors**. Names, aliases and dictionary keywords resolve since 2.10.0 ([the scanned set](../src/views/GameViewer.tsx:1418)) | |
+| ⚠ | Several `Unique` chips share one placeholder with few values — independent draws repeat (3 chips over 10 values ≈ 30% of the time) | **Yes — two "unique" towns shared a name** |
 | ⚠ | `weights` names a value that isn't in `values` | |
 | ℹ | Placeholder defined but never used in any text | |
 | ℹ | Wildcard with a single value (it's a Variable) | |

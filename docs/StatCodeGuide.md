@@ -148,6 +148,8 @@ const randomFactor = 0.8 + (Math.random() * 0.4);
 return baseDamage * skillMultiplier * randomFactor;
 ```
 
+> ⚠️ **`Math.random()` is reseeded from the clock each time your code runs.** Two stats' code running in the same turn draw the **same** first value, and a stat whose value you re-check within the same instant gets the same number back. Turns are far enough apart in real play that a once-per-turn roll varies fine — but if you need two independent rolls, or a roll that visibly moves on demand, mix a clock variable in: `(Math.random() * 100 + elapsedHours) % 100` stays evenly spread and advances on its own.
+
 #### Diminishing Returns
 
 Implement diminishing returns for stat scaling:
