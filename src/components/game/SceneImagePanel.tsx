@@ -160,7 +160,6 @@ export const SceneImagePanel = ({
             onChange={setDraft}
             placeholders={[]}
             ariaLabel="Scene tags"
-            className="min-h-20 items-start"
             placeholder="comma-separated tags…"
           />
           <div className="flex items-center gap-2">

@@ -11,6 +11,7 @@ import { useDanbooruTags } from '@/lib/useDanbooruTags';
 import { rankTagSuggestions, activeTagToken } from '@/lib/tagSuggest';
 import { placeholderVocabulary, type ChipVocabulary } from '@/lib/chipVocabulary';
 import { PLACEHOLDER_TRIGGER, placeholderHint } from '@/lib/placeholderInsert';
+import { cn } from '@/lib/utils';
 import type { Placeholder } from '@/types';
 import ChipInput from './ChipInput';
 import { $flatCaret, $replaceFlatRange, serializeRoot } from './promptFieldState';
@@ -141,6 +142,10 @@ function DanbooruTagPlugin({ parse }: { parse: ChipVocabulary['parse'] }) {
   );
 }
 
+// A tag line is a paragraph's worth of text in practice, so the field is sized and dragged like the other
+// multi-line ones rather than like a name field: three rows to start, top-aligned, resizable by the corner.
+const TAG_FIELD_CLASS = 'min-h-20 items-start resize-y overflow-auto';
+
 const TagChipField = ({ value, onChange, placeholders, placeholder, ariaLabel, className }: {
   value: string;
   onChange: (v: string) => void;
@@ -158,7 +163,7 @@ const TagChipField = ({ value, onChange, placeholders, placeholder, ariaLabel, c
       multiline
       placeholder={placeholderHint(placeholder, placeholders.length > 0)}
       ariaLabel={ariaLabel}
-      className={className}
+      className={cn(TAG_FIELD_CLASS, className)}
       trigger={placeholders.length ? PLACEHOLDER_TRIGGER : undefined}
     >
       <DanbooruTagPlugin parse={vocab.parse} />

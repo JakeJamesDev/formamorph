@@ -178,7 +178,6 @@ export function GenerateImageButton({ subject, cap, onChange, tags, onTagsChange
                 onChange={handlePrompt}
                 placeholders={[]}
                 ariaLabel="Prompt"
-                className="min-h-20 items-start"
                 placeholder={imagePositivePrompt.trim() || 'comma-separated visual tags…'}
               />
             </div>
