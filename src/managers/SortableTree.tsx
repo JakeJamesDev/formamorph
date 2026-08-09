@@ -9,7 +9,7 @@
 // `restrictYToScrollAncestor` below does — it's why these trees can live in a ScrollArea without the
 // auto-scroll running away, while other lists (which don't need free X) use the stock both-axis modifiers.
 import { useState, type ReactNode } from 'react';
-import { EditorRow } from '@/components/EditorRow';
+import { EditorRow, EditorRowList } from '@/components/EditorRow';
 import { X, Copy } from 'lucide-react';
 import {
   DndContext, pointerWithin, closestCenter, PointerSensor, KeyboardSensor, useSensor, useSensors,
@@ -171,6 +171,7 @@ export function SortableTree<N extends { id: string; depth: number }>({ adapter,
       onDragCancel={reset}
     >
       <SortableContext items={visible.map((n) => n.id)} strategy={verticalListSortingStrategy}>
+        <EditorRowList>
         {visible.map((node) => (
           <TreeRow
             key={node.id}
@@ -183,6 +184,7 @@ export function SortableTree<N extends { id: string; depth: number }>({ adapter,
             toggleCollapse={toggleCollapse}
           />
         ))}
+        </EditorRowList>
       </SortableContext>
     </DndContext>
   );

@@ -3,7 +3,7 @@ import { useState } from 'react';
 import { useDictionaryStore } from '@/contexts/DictionaryStoreContext';
 import { usePlaceholderStore } from '@/contexts/PlaceholderStoreContext';
 import { ConfirmDialog } from '@/components/ConfirmDialog';
-import { EditorRow } from '@/components/EditorRow';
+import { EditorRow, EditorRowList } from '@/components/EditorRow';
 import { X, ChevronRight, ChevronDown, Copy, FilePlus } from 'lucide-react';
 import {
   DndContext, closestCorners, PointerSensor, KeyboardSensor, useSensor, useSensors, useDroppable,
@@ -95,11 +95,11 @@ function DictZone({ bookId, position, entries, collapsed, onToggleCollapse, flat
       )}
       {(flat || !collapsed) && (
         <SortableContext items={entries.map((e) => e.id)} strategy={verticalListSortingStrategy}>
-          <div
+          <EditorRowList
             ref={setNodeRef}
             className={flat
-              ? 'flex flex-col gap-1'
-              : `flex flex-col gap-1 rounded-md border border-dashed p-1 min-h-[2.5rem] transition-colors ${
+              ? undefined
+              : `rounded-md border border-dashed p-1 min-h-[2.5rem] transition-colors ${
                   isOver ? 'border-primary bg-secondary/40' : 'border-border/50'
                 }`}
           >
@@ -115,7 +115,7 @@ function DictZone({ bookId, position, entries, collapsed, onToggleCollapse, flat
               />
             ))}
             {!flat && entries.length === 0 && <p className="px-2 py-1 text-meta text-muted-foreground">Drag entries here.</p>}
-          </div>
+          </EditorRowList>
         </SortableContext>
       )}
     </div>

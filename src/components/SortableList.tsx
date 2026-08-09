@@ -18,7 +18,7 @@ import { CSS } from '@dnd-kit/utilities';
 import { restrictToVerticalAxis, restrictToFirstScrollableAncestor } from '@dnd-kit/modifiers';
 import { type ReactNode } from 'react';
 import { Copy, X } from 'lucide-react';
-import { EditorRow } from '@/components/EditorRow';
+import { EditorRow, EditorRowList } from '@/components/EditorRow';
 
 export interface SortableListItem {
   id: string;
@@ -117,7 +117,7 @@ export function SortableList<T extends SortableListItem>({
       }}
     >
       <SortableContext items={items.map((i) => i.id)} strategy={verticalListSortingStrategy}>
-        <div className="flex flex-col gap-2">
+        <EditorRowList>
           {items.map((item) => (
             <SortableRow
               key={item.id}
@@ -128,7 +128,7 @@ export function SortableList<T extends SortableListItem>({
               onDuplicate={onDuplicate}
             />
           ))}
-        </div>
+        </EditorRowList>
       </SortableContext>
     </DndContext>
   );
