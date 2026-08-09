@@ -116,7 +116,7 @@ function Row({ label, hint, children }: { label: string; hint?: string; children
     <div className="grid grid-cols-1 sm:grid-cols-3 items-start gap-2">
       <div className="text-label">
         <div>{label}</div>
-        {hint && <div className="text-meta text-muted-foreground">{hint}</div>}
+        {hint && <div className="text-helper text-muted-foreground">{hint}</div>}
       </div>
       <div className="sm:col-span-2">{children}</div>
     </div>
@@ -328,7 +328,7 @@ function ThemePreviewDialog({ open, onOpenChange }: { open: boolean; onOpenChang
         </div>
 
         <DialogFooter className="shrink-0 flex-row items-center justify-between sm:justify-between">
-          <span className="text-meta text-muted-foreground">
+          <span className="text-helper text-muted-foreground">
             Live viewer — nothing is saved. Seeded from your current theme ({resolvedTheme}); edits reset on reopen.
           </span>
           <div className="flex items-center gap-2">

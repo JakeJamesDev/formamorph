@@ -132,7 +132,7 @@ export function AiSetupGate({ open, reason, mode, blocker, reachable, recheck, o
           <DialogDescription>{description}</DialogDescription>
         </DialogHeader>
 
-        {error && <p className="text-meta text-destructive">{error}</p>}
+        {error && <p className="text-helper text-destructive">{error}</p>}
 
         {downloading ? (
           <div className="space-y-2">
@@ -143,16 +143,16 @@ export function AiSetupGate({ open, reason, mode, blocker, reachable, recheck, o
               </span>
               <Button size="sm" variant="ghost" onClick={() => cancelLocalDownload()}>Pause</Button>
             </div>
-            <p className="text-meta text-muted-foreground">
+            <p className="text-helper text-muted-foreground">
               You can keep browsing while this downloads — the game starts on its own once it’s ready.
             </p>
           </div>
         ) : blocker === 'unknownModel' ? (
-          <p className="text-meta text-muted-foreground">
+          <p className="text-helper text-muted-foreground">
             Load a model in LM Studio and this continues on its own — no need to reload.
           </p>
         ) : custom ? (
-          <p className="text-meta text-muted-foreground">
+          <p className="text-helper text-muted-foreground">
             Start your server and this will continue on its own — no need to reload.
           </p>
         ) : blocker === 'engineDown' ? null : (
@@ -165,14 +165,14 @@ export function AiSetupGate({ open, reason, mode, blocker, reachable, recheck, o
                     {recommended.params} · {recommended.quant} · {formatModelSize(recommended.sizeBytes)}
                   </span>
                 </div>
-                <p className="text-meta text-muted-foreground">{recommended.note}</p>
+                <p className="text-helper text-muted-foreground">{recommended.note}</p>
                 <Button onClick={() => startDownload(recommended)}>
                   Download ({formatModelSize(recommended.sizeBytes)})
                 </Button>
               </div>
             )}
             {!showAll ? (
-              <Button variant="link" className="h-auto p-0 text-meta" onClick={() => setShowAll(true)}>
+              <Button variant="link" className="h-auto p-0 text-helper" onClick={() => setShowAll(true)}>
                 Show all models
               </Button>
             ) : (

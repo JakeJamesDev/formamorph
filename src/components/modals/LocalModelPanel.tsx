@@ -222,7 +222,7 @@ export function LocalModelPanel() {
       <div className="flex shrink-0 flex-col gap-2 pt-3">
         {/* After a failed load, point at the settings that fix an out-of-VRAM error and enable the retry. */}
         {loadFailed && (
-          <p className="text-meta text-muted-foreground">
+          <p className="text-helper text-muted-foreground">
             The model didn’t fit in VRAM at these settings. Lower <strong>Context Size</strong>
             {advancedMode ? <> or <strong>GPU Layers</strong></> : <> (or turn on <strong>Advanced</strong> to lower GPU Layers)</>},
             then reload.

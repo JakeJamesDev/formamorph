@@ -178,7 +178,7 @@ function RevealAnimationDialog({ open, onOpenChange }: { open: boolean; onOpenCh
           </label>
 
           {prefersReducedMotion && (
-            <p className="text-meta text-warning">
+            <p className="text-helper text-warning">
               Your system’s <strong>Reduce Motion</strong> setting is on, so <strong>Move</strong> and{' '}
               <strong>Scale</strong> are disabled to respect it. Fade and Blur still apply. Turn it off in
               your OS accessibility settings to use them.
@@ -272,7 +272,7 @@ function RevealAnimationDialog({ open, onOpenChange }: { open: boolean; onOpenCh
         {/* Minimum speed — floors the in-game reveal so a fast model stays readable; 0 = unlimited. */}
         {active && (
           <div className="rounded-md border border-dashed border-border p-3 space-y-3">
-            <div className="text-meta text-muted-foreground">
+            <div className="text-helper text-muted-foreground">
               <span className="font-medium text-foreground">Minimum speed.</span> In game the pace follows the
               model’s tokens/sec, but never goes faster than these floors. 0 = no limit. The preview above runs
               at your minimum (or a default when unlimited).
