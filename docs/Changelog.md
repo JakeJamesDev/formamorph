@@ -2,7 +2,7 @@
 
 All notable changes to Formamorph. This fork's first line is **2.0.0** — a full TypeScript rebuild of the upstream JavaScript app ([FieryLionite's Formamorph](https://fierylion.itch.io/formamorph), ~v1.2) — with feature parity as the baseline plus new features on top.
 
-> ✅ **2.0.0 – 2.11.0 are released** (collapsed below). New work lands under **🚧 In Progress** — an unnumbered section, so changes accumulate without pinning a version. When a batch earns a release its section is marked **Released** and collapsed, and a fresh In Progress opens. `package.json` reads **2.11.0** — the latest released version.
+> ✅ **2.0.0 – 2.11.1 are released** (collapsed below). New work lands under **🚧 In Progress** — an unnumbered section, so changes accumulate without pinning a version. When a batch earns a release its section is marked **Released** and collapsed, and a fresh In Progress opens. `package.json` reads **2.11.1** — the latest released version.
 
 Each release groups changes as **Major** / **Minor**, then **Added** / **Removed** / **Fixed**, and within those by audience: 👤 user-facing · 🛠️ developer tooling · ⚙️ backend.
 
@@ -10,7 +10,12 @@ Each release groups changes as **Major** / **Minor**, then **Added** / **Removed
 
 ## 🚧 In Progress
 
-_Unreleased — new work accumulates here until it earns a version bump. The next batch will pin its own version; `package.json` reads **2.11.0** (just released below)._
+_Unreleased — new work accumulates here until it earns a version bump. The next batch will pin its own version; `package.json` reads **2.11.1** (just released below)._
+
+---
+
+<details>
+<summary><strong>✅ 2.11.1 — Released 2026-08-10</strong> — find and replace across every field a world holds text in, placeholder chips renamed everywhere at once, and a round of editor polish (click to expand)</summary>
 
 ### Minor Changes
 
@@ -29,6 +34,8 @@ _Unreleased — new work accumulates here until it earns a version bump. The nex
   - **A chip keeps its width when you double-click it to edit.** Placeholder values and world tags visibly shrank the moment they became a text box, so the row of chips shifted under the cursor mid-edit.
   - **Clicking a placeholder value a second time closes its Draw Weight box.** It reopened instead, leaving no way to dismiss it except clicking something else entirely.
   - **Player notes survive Re-generate.** Re-generating a turn you had stopped mid-generation wiped the Notes panel; notes now carry through Re-generate unchanged, and rolling back to a stopped turn restores its notes instead of clearing them.
+
+</details>
 
 ---
 
