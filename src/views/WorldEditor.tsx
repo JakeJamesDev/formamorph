@@ -187,8 +187,10 @@ const WorldEditorInner = ({ onClose, embedded = false, backButton }: {
       event.preventDefault();
       openFind(key === 'h');
     };
-    window.addEventListener('keydown', onKey);
-    return () => window.removeEventListener('keydown', onKey);
+    // Capture: a Lexical field stops keydown from bubbling, so a listener waiting on the way up never runs
+    // and the browser's own find opens alongside this one.
+    window.addEventListener('keydown', onKey, true);
+    return () => window.removeEventListener('keydown', onKey, true);
   }, [openFind]);
   // A hit on a tab this mode hides has nowhere to navigate to, so it isn't a hit.
   const searchTargets = useMemo(() => {

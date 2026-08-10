@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import { Eye, EyeOff } from 'lucide-react';
 import { useEditingDraft } from '@/lib/useEditingDraft';
 import { Input } from '@/components/ui/input';
@@ -38,6 +38,11 @@ const PlaceholderManager = ({ placeholder }: { placeholder: Placeholder }) => {
   const { draft: editing, apply } = useEditingDraft(placeholder, updatePlaceholder);
   const [openValue, setOpenValue] = useState<string | null>(null);
   const [showChances, setShowChances] = useState(false);
+  // The weight pop-out hangs off whichever chip was clicked, tracked by element rather than by wrapping the
+  // open one: a wrapper that appears on click replaces the chip's DOM node mid-gesture, and the second
+  // click of a double-click then lands on a different element, so double-click-to-rename never fired.
+  const chipEls = useRef(new Map<string, HTMLElement>());
+  const anchor = useRef<HTMLElement | null>(null);
 
   const count = editing.values.length;
   const weighted = isWeighted(editing);
@@ -87,19 +92,23 @@ const PlaceholderManager = ({ placeholder }: { placeholder: Placeholder }) => {
           )}
         </div>
         <Popover open={openValue !== null} onOpenChange={(o) => !o && setOpenValue(null)}>
+          <PopoverAnchor virtualRef={anchor} />
           <KeywordChips
             keywords={editing.values}
             onChange={setValues}
             placeholder="e.g. Red — press Enter for each"
-            onChipClick={count > 1 ? setOpenValue : undefined}
+            onChipClick={count > 1 ? (v) => { anchor.current = chipEls.current.get(v) ?? null; setOpenValue(v); } : undefined}
             chipSuffix={showChances ? (v) => `(${pct(v)})` : undefined}
-            // The anchor needs a ref, and EditableChip isn't a forwardRef — so anchor to a wrapper element
-            // around it rather than to the component itself.
-            renderChip={(chip, v) =>
-              openValue === v
-                ? <PopoverAnchor asChild><span className="inline-flex">{chip}</span></PopoverAnchor>
-                : chip
-            }
+            // Every chip gets the same wrapper whether or not it is the open one, so its DOM node survives
+            // the click that opens the pop-out.
+            renderChip={(chip, v) => (
+              <span
+                className="inline-flex"
+                ref={(el) => { if (el) chipEls.current.set(v, el); else chipEls.current.delete(v); }}
+              >
+                {chip}
+              </span>
+            )}
           />
           <PopoverContent className="w-60 space-y-2" align="start">
             {openValue !== null && (

@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { CaseSensitive, ChevronDown, ChevronUp, Plus, Replace, ReplaceAll, Type, WholeWord, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -7,7 +7,7 @@ import {
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription,
   AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
-import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
+import { cn } from '@/lib/utils';
 import { encodePlaceholderToken } from '@/lib/placeholders';
 import { randomUUID } from '@/lib/uuid';
 import { findMatches, replaceAll, spliceText } from '@/lib/worldSearch';
@@ -34,6 +34,30 @@ interface EditorFindBarProps {
   onClose: () => void;
 }
 
+/** One half of the match-options split button: primary while its option is on. */
+function MatchToggle({ on, onClick, label, children }: {
+  on: boolean;
+  onClick: () => void;
+  label: string;
+  children: ReactNode;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      aria-pressed={on}
+      aria-label={label}
+      title={label}
+      className={cn(
+        'flex h-8 w-8 items-center justify-center transition-colors',
+        on ? 'bg-primary text-primary-foreground' : 'text-muted-foreground hover:bg-accent hover:text-foreground',
+      )}
+    >
+      {children}
+    </button>
+  );
+}
+
 export default function EditorFindBar({
   targets, placeholders, allowPlaceholderReplace, startWithReplace, onNavigate, onAddPlaceholder, onClose,
 }: EditorFindBarProps) {
@@ -48,6 +72,7 @@ export default function EditorFindBar({
   const [chipId, setChipId] = useState<string | null>(null);
   const [pickerOpen, setPickerOpen] = useState(false);
   const [confirmAll, setConfirmAll] = useState(false);
+  const [notice, setNotice] = useState<string | null>(null);
   const searchRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => { searchRef.current?.focus(); }, []);
@@ -66,11 +91,16 @@ export default function EditorFindBar({
   // A replace shortens or lengthens the list under the cursor; clamping keeps the counter honest.
   const current = matches.length ? matches[Math.min(index, matches.length - 1)] : null;
   useEffect(() => { setIndex(0); }, [debounced, matchCase, wholeWord]);
+  // The matched run is part of the identity, not just where it starts: extending a query leaves the start
+  // where it was, so without it the marker would keep the previous word's length and never redraw.
+  const revealKey = current
+    ? `${current.target.itemId}|${current.target.fieldKey}|${current.start}|${current.target.value.slice(current.start, current.end)}`
+    : null;
   useEffect(() => {
     if (current) onNavigate(current);
     // Navigating is a response to the cursor moving, not to the world changing underneath it.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [current?.target.fieldKey, current?.target.itemId, current?.start]);
+  }, [revealKey]);
 
   const step = useCallback((delta: number) => {
     if (!matches.length) return;
@@ -92,7 +122,12 @@ export default function EditorFindBar({
   const replaceCurrent = () => {
     if (!current) return;
     const insert = insertFor(current.target);
-    if (insert === null) { step(1); return; }
+    if (insert === null) {
+      // Stepping past in silence reads as a dead button, and with a single match nothing moves at all.
+      setNotice(`${current.target.fieldLabel} can't hold a chip — skipped.`);
+      step(1);
+      return;
+    }
     current.target.write(spliceText(current.target.value, current.start, current.end, insert));
     // The rescan runs off the rewritten world; holding the index leaves the cursor on what is now next.
   };
@@ -105,7 +140,6 @@ export default function EditorFindBar({
       : '';
     setNotice(`Replaced ${summary.replaced} match${summary.replaced === 1 ? '' : 'es'} across ${summary.fields} field${summary.fields === 1 ? '' : 's'}.${skipped}`);
   };
-  const [notice, setNotice] = useState<string | null>(null);
   useEffect(() => { if (notice) { const t = setTimeout(() => setNotice(null), 6000); return () => clearTimeout(t); } }, [notice]);
 
   const createPlaceholder = () => {
@@ -147,28 +181,17 @@ export default function EditorFindBar({
           placeholder="Find in world"
           className="h-8"
         />
-        <ToggleGroup type="multiple" className="shrink-0" aria-label="Match options">
-          <ToggleGroupItem
-            value="case"
-            data-state={matchCase ? 'on' : 'off'}
-            onClick={() => setMatchCase((v) => !v)}
-            aria-label="Match case"
-            title="Match case"
-            className="h-8 w-8 p-0"
-          >
+        {/* One bordered control split in two rather than a ToggleGroup: the group owns its items' pressed
+            state, so a pair driven by their own booleans rendered permanently unpressed. */}
+        <div className="flex shrink-0 items-center overflow-hidden rounded-md border" role="group" aria-label="Match options">
+          <MatchToggle on={matchCase} onClick={() => setMatchCase((v) => !v)} label="Match case">
             <CaseSensitive className="h-4 w-4" />
-          </ToggleGroupItem>
-          <ToggleGroupItem
-            value="word"
-            data-state={wholeWord ? 'on' : 'off'}
-            onClick={() => setWholeWord((v) => !v)}
-            aria-label="Match whole word"
-            title="Match whole word"
-            className="h-8 w-8 p-0"
-          >
+          </MatchToggle>
+          <span className="h-8 w-px shrink-0 bg-border" aria-hidden />
+          <MatchToggle on={wholeWord} onClick={() => setWholeWord((v) => !v)} label="Match whole word">
             <WholeWord className="h-4 w-4" />
-          </ToggleGroupItem>
-        </ToggleGroup>
+          </MatchToggle>
+        </div>
         <span className="w-20 shrink-0 text-center text-caption text-muted-foreground" aria-live="polite">
           {debounced ? (matches.length ? `${Math.min(index, matches.length - 1) + 1} / ${matches.length}` : 'No results') : ''}
         </span>

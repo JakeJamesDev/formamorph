@@ -1,7 +1,7 @@
 import { useMemo, useState, type ReactNode } from 'react';
 import PromptField from './PromptField';
 import ChipInput from './ChipInput';
-import { placeholderVocabulary } from '@/lib/chipVocabulary';
+import { usePlaceholderChipVocabulary } from '@/lib/chipVocabulary';
 import { buildPlaceholderPreview } from '@/lib/placeholders';
 import type { Placeholder } from '@/types';
 import { PLACEHOLDER_TRIGGER, placeholderHint } from '@/lib/placeholderInsert';
@@ -31,7 +31,7 @@ const PlaceholderField = ({ value, onChange, placeholders, markdown = false, res
   className?: string;
   readOnly?: boolean;
 }) => {
-  const vocab = useMemo(() => placeholderVocabulary(placeholders), [placeholders]);
+  const vocab = usePlaceholderChipVocabulary(placeholders);
   // Bumped on each Preview open to re-roll Wildcards.
   const [rollNonce, setRollNonce] = useState(0);
   const previewValues = useMemo(
@@ -80,7 +80,7 @@ export const PlaceholderNameField = ({ value, onChange, placeholders, placeholde
   className?: string;
   readOnly?: boolean;
 }) => {
-  const vocab = useMemo(() => placeholderVocabulary(placeholders), [placeholders]);
+  const vocab = usePlaceholderChipVocabulary(placeholders);
   const enabled = placeholders.length > 0 && !readOnly;
   return (
     <ChipInput
