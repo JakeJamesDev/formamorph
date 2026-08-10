@@ -48,10 +48,11 @@ let marked: Element | null = null;
  * draw it. The mirror copies the styles that position glyphs, renders the same string with the match
  * wrapped, and hides everything but that mark.
  */
-let mirror: { el: HTMLElement; host: HTMLElement; hadPosition: string } | null = null;
+let mirror: { el: HTMLElement; host: HTMLElement; hadPosition: string; sync: () => void; detach: () => void } | null = null;
 
 function clearMirror() {
   if (!mirror) return;
+  mirror.detach();
   mirror.el.remove();
   mirror.host.style.position = mirror.hadPosition;
   mirror = null;
@@ -61,15 +62,18 @@ function clearMirror() {
  * Lay a mirror over `field` with `[at, at + length)` marked.
  *
  * It lives in the field's own wrapper, which is made a containing block for the purpose, so the editor's
- * panels carry it as they scroll and resize with no listener to keep in sync — which also means it cannot
- * drift while the tab is in the background and frames stop being produced. Anchoring to whatever
- * `offsetParent` happens to be is not enough: that ancestor is often outside the scrolling viewport, and an
- * absolute child resolves against its containing block rather than its DOM parent, so the mirror would sit
- * still while the field scrolled away from it.
+ * panels carry it as they scroll and resize without anything having to keep the two in step. Anchoring to
+ * whatever `offsetParent` happens to be is not enough: that ancestor is often outside the scrolling
+ * viewport, and an absolute child resolves against its containing block rather than its DOM parent, so the
+ * mirror would sit still while the field scrolled away from it.
+ *
+ * The field scrolling its *own* text is the one case position cannot answer, so that one is listened for.
+ *
+ * Returns the mark, so the caller can bring it into view inside the field.
  */
-function drawMirror(field: HTMLInputElement | HTMLTextAreaElement, at: number, length: number) {
+function drawMirror(field: HTMLInputElement | HTMLTextAreaElement, at: number, length: number): HTMLElement | null {
   const host = field.parentElement;
-  if (!host) return;
+  if (!host) return null;
   const hadPosition = host.style.position;
   if (getComputedStyle(host).position === 'static') host.style.position = 'relative';
 
@@ -97,10 +101,17 @@ function drawMirror(field: HTMLInputElement | HTMLTextAreaElement, at: number, l
   const origin = el.getBoundingClientRect();
   el.style.top = `${target.top - origin.top}px`;
   el.style.left = `${target.left - origin.left}px`;
-  // A field scrolled off its own start would otherwise paint the mark where the text no longer is.
-  el.scrollTop = field.scrollTop;
-  el.scrollLeft = field.scrollLeft;
-  mirror = { el, host, hadPosition };
+  // A field scrolled off its own start would otherwise paint the mark where the text no longer is. Kept in
+  // step rather than copied once: the field's text moves under the mirror whenever it scrolls its own
+  // content — when the author drags through a long value, and while this reveal animates one into view.
+  const sync = () => {
+    el.scrollTop = field.scrollTop;
+    el.scrollLeft = field.scrollLeft;
+  };
+  sync();
+  field.addEventListener('scroll', sync);
+  mirror = { el, host, hadPosition, sync, detach: () => field.removeEventListener('scroll', sync) };
+  return mark;
 }
 
 /** Registry access, absent on browsers without the Highlight API. */
@@ -234,21 +245,76 @@ export function revealEditorMatch(root: HTMLElement | null, hit: MatchLocation, 
   }
   const { field, at } = found;
   clearMarker();
-  // Instant, not smoothed: a smooth scroll is animated, so it does nothing at all in a tab that is not
-  // producing frames — and stepping through matches wants the jump anyway, not a glide that lags behind
-  // the next press. Instant is also what reduced-motion would have asked for.
-  field.scrollIntoView({ block: 'center', behavior: 'auto' });
   field.classList.add(RING_CLASS);
   marked = field;
   if (isTextControl(field)) {
     // Invisible while the field is unfocused, but it puts the caret on the hit the moment it is clicked.
     field.setSelectionRange(at, at + hit.matchText.length);
-    drawMirror(field, at, hit.matchText.length);
+    const mark = drawMirror(field, at, hit.matchText.length);
+    if (mark) scrollWithinField(field, mark);
+    revealRect(field, (mark ?? field).getBoundingClientRect());
     return;
   }
   const registry = highlights();
   const range = rangeAt(field, at, hit.matchText.length);
-  if (registry && range) registry.set(HIGHLIGHT_NAME, new Highlight(range));
+  if (!range) {
+    revealRect(field, field.getBoundingClientRect());
+    return;
+  }
+  if (registry) registry.set(HIGHLIGHT_NAME, new Highlight(range));
+  revealRect(field, range.getBoundingClientRect());
+}
+
+/** Instant only where motion is unwelcome — the scroll is how the author follows where they were taken. */
+const scrollBehavior = (): ScrollBehavior =>
+  (window.matchMedia?.('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth');
+
+/** The nearest ancestor that actually scrolls `el` — the panel the field sits in, in practice. */
+function scrollerFor(el: HTMLElement): HTMLElement | null {
+  for (let node = el.parentElement; node; node = node.parentElement) {
+    const overflow = getComputedStyle(node).overflowY;
+    if ((overflow === 'auto' || overflow === 'scroll') && node.scrollHeight > node.clientHeight) return node;
+  }
+  return null;
+}
+
+/**
+ * Put a form control's own text at the hit.
+ *
+ * A control scrolls its content rather than growing, and it holds no focus here, so nothing moves it on its
+ * own — the mirror's mark is the only handle on where the hit sits in that content. Instant, because the
+ * rect measured straight after has to be where the mark has already landed.
+ */
+function scrollWithinField(field: HTMLInputElement | HTMLTextAreaElement, mark: HTMLElement): void {
+  if (field.scrollHeight > field.clientHeight) {
+    field.scrollTop = Math.max(0, mark.offsetTop - (field.clientHeight - mark.offsetHeight) / 2);
+  }
+  if (field.scrollWidth > field.clientWidth) {
+    field.scrollLeft = Math.max(0, mark.offsetLeft - (field.clientWidth - mark.offsetWidth) / 2);
+  }
+  // Straight away, rather than waiting on the field's scroll event: that is dispatched with the next frame,
+  // and the rect measured on the very next line has to be where the mark has already landed.
+  mirror?.sync();
+}
+
+/**
+ * Bring `rect` — where the hit actually is — to the middle of the panel.
+ *
+ * Not `field.scrollIntoView`: a prose field grows to fit its text rather than scrolling it, so a long one
+ * is taller than the panel, and centering *it* puts its midpoint on screen and the hit anywhere but. The
+ * author saw a ringed field scrolled to the wrong part of itself. Centering the hit's own rect is the
+ * thing that was meant all along; with no scrolling ancestor there is nothing to move and the field's own
+ * position has to do.
+ */
+function revealRect(field: Field, rect: DOMRect): void {
+  const scroller = scrollerFor(field);
+  if (!scroller) {
+    field.scrollIntoView({ block: 'center', behavior: scrollBehavior() });
+    return;
+  }
+  const box = scroller.getBoundingClientRect();
+  const delta = (rect.top - box.top) - (scroller.clientHeight - rect.height) / 2;
+  if (Math.abs(delta) > 1) scroller.scrollBy({ top: delta, behavior: scrollBehavior() });
 }
 
 /** Drop the marker — the find bar closing, or a search that no longer matches anything. */
@@ -269,5 +335,5 @@ export function revealSelectedRow(root: HTMLElement | null, attempt = 0): void {
     if (root && attempt < RETRY_LIMIT) setTimeout(() => revealSelectedRow(root, attempt + 1), RETRY_MS);
     return;
   }
-  row.scrollIntoView({ block: 'nearest', behavior: 'auto' });
+  row.scrollIntoView({ block: 'nearest', behavior: scrollBehavior() });
 }
