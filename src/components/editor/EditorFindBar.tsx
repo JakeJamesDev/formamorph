@@ -186,7 +186,8 @@ export default function EditorFindBar({
   return (
     <div
       // Left, not right: the detail pane holds most of what a search finds, and it is the right-hand half.
-      className="absolute left-4 top-2 z-20 w-[min(30rem,calc(100%-2rem))] rounded-md border bg-popover p-2 shadow-lg"
+      // Inset equally on both edges, so the bar's corner sits exactly on the panel's corner beneath it.
+      className="absolute left-4 top-4 z-20 w-[min(30rem,calc(100%-2rem))] rounded-md border bg-popover p-2 shadow-lg"
       data-editor-find-skip
       onKeyDown={onKeyDown}
       role="search"
@@ -314,8 +315,11 @@ export default function EditorFindBar({
         )}
       </div>
 
+      {/* On a phone this line carries the count, so it takes the bar's own width and the editbox's text
+          size — it is reading matter there, not a caption under a control. On desktop it stays indented to
+          line up with the field it describes. */}
       {(current || (isMobile && counter)) && (
-        <p className="mt-1 truncate pl-8 text-muted-foreground">
+        <p className={cn('mt-1 truncate text-muted-foreground', isMobile ? 'text-label' : 'pl-8')}>
           {isMobile && counter && (
             <span className={matches.length ? undefined : 'text-destructive'} aria-live="polite">{counter}</span>
           )}
@@ -323,7 +327,7 @@ export default function EditorFindBar({
           {current && `${current.target.itemLabel} · ${current.target.fieldLabel}`}
         </p>
       )}
-      {notice && <p className="mt-1 pl-8 text-muted-foreground">{notice}</p>}
+      {notice && <p className={cn('mt-1 text-muted-foreground', isMobile ? 'text-label' : 'pl-8')}>{notice}</p>}
 
       <AlertDialog open={confirmAll} onOpenChange={setConfirmAll}>
         <AlertDialogContent>

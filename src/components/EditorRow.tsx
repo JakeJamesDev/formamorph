@@ -102,6 +102,9 @@ export function EditorRow({
       ref={setNodeRef}
       style={depth ? { ...style, paddingLeft: ROW_PADDING_X + depth * TREE_INDENT } : style}
       onClick={(e) => { e.stopPropagation(); onSelect(); }}
+      // Marks the row for anything that has to bring the selection on screen without owning the list —
+      // the find bar selects an item in a tree it never rendered.
+      data-editor-row-selected={selected || undefined}
       className={cn(
         EDITOR_ROW_PADDING,
         'cursor-pointer transition-colors flex items-center gap-1',

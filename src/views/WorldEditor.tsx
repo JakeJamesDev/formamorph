@@ -21,7 +21,7 @@ import { Download, Plus, ArrowLeft, Save, FolderPlus, FilePlus, ImageDown, BookP
 import { cn } from "@/lib/utils";
 import EditorFindBar from '@/components/editor/EditorFindBar';
 import { collectSearchTargets, type SearchMatch } from '@/lib/worldSearch';
-import { revealEditorMatch, clearEditorMatch } from '@/lib/editorFieldFocus';
+import { revealEditorMatch, clearEditorMatch, revealSelectedRow } from '@/lib/editorFieldFocus';
 import { Panel, PanelGroup, PanelResizeHandle } from 'react-resizable-panels';
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { ListDetail } from "@/components/ui/list-detail";
@@ -216,7 +216,12 @@ const WorldEditorInner = ({ onClose, embedded = false, backButton }: {
       fieldLabel: match.target.fieldLabel,
       inChipList: match.target.inChipList,
     };
-    setTimeout(() => revealEditorMatch(editorRootRef.current, hit), 0);
+    setTimeout(() => {
+      revealEditorMatch(editorRootRef.current, hit);
+      // The list is the other half of "go to this hit": without it the detail pane jumps and the tree
+      // stays wherever it was, with the selected row off screen.
+      revealSelectedRow(editorRootRef.current);
+    }, 0);
   }, []);
   useEffect(() => clearEditorMatch, []);
   const isMobile = useIsMobile();
@@ -633,7 +638,9 @@ const WorldEditorInner = ({ onClose, embedded = false, backButton }: {
           <ArrowLeft className="h-4 w-4" />
         </Button>
       )}
-      <CardTitle>World Editor</CardTitle>
+      {/* A phone has just come from tapping this world open, and the row needs every pixel for the controls
+          that do something — so the heading is read out but not drawn there. */}
+      <CardTitle className={isMobile ? 'sr-only' : undefined}>World Editor</CardTitle>
       <Button
         variant="ghost"
         size="icon"
