@@ -352,7 +352,7 @@ export default function EditorFindBar({
       {/* A phone gets the count alone: where the hit is takes more width than the row has, and a truncated
           "Assault Chas… · AI-Facing De…" tells the author less than nothing. */}
       {isMobile && counter && (
-        <p className="mt-1 truncate pl-8 text-muted-foreground">
+        <p className="mt-1 truncate pl-8 text-label text-muted-foreground">
           <span className={matches.length ? undefined : 'text-destructive'} aria-live="polite">{counter}</span>
         </p>
       )}
