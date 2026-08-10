@@ -17,7 +17,8 @@ import { Input } from "@/components/ui/input";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { Download, Plus, ArrowLeft, Save, FolderPlus, FilePlus, ImageDown, BookPlus, UserPlus, Loader2, Info, Search } from "lucide-react";
+import { Download, Plus, ArrowLeft, Save, FolderPlus, FilePlus, ImageDown, BookPlus, UserPlus, Loader2, Search } from "lucide-react";
+import { cn } from "@/lib/utils";
 import EditorFindBar from '@/components/editor/EditorFindBar';
 import { collectSearchTargets, type SearchMatch } from '@/lib/worldSearch';
 import { revealEditorMatch, clearEditorMatch } from '@/lib/editorFieldFocus';
@@ -633,17 +634,10 @@ const WorldEditorInner = ({ onClose, embedded = false, backButton }: {
         </Button>
       )}
       <CardTitle>World Editor</CardTitle>
-      {/* An icon rather than a line of text: the header is one row on both layouts, and a sentence that
-          appears only for some worlds would push the tabs down as soon as it did. */}
-      {hasHiddenData && (
-        <span className="ml-auto text-muted-foreground" title="This world uses advanced features. Switch to Advanced to see them.">
-          <Info className="h-4 w-4" aria-label="This world uses advanced features" />
-        </span>
-      )}
       <Button
         variant="ghost"
         size="icon"
-        className={hasHiddenData ? undefined : 'ml-auto'}
+        className="ml-auto"
         onClick={() => openFind(false)}
         aria-label="Find and replace"
         title="Find and replace (Ctrl+F)"
@@ -660,7 +654,22 @@ const WorldEditorInner = ({ onClose, embedded = false, backButton }: {
           className={isMobile ? "h-8" : undefined}
         >
           <ToggleGroupItem value="simple" className={isMobile ? "px-2 py-1" : undefined}>Simple</ToggleGroupItem>
-          <ToggleGroupItem value="advanced" className={isMobile ? "px-2 py-1" : undefined}>Advanced</ToggleGroupItem>
+          <ToggleGroupItem
+            value="advanced"
+            className={cn('relative', isMobile && 'px-2 py-1')}
+            // The marker rides the switch that acts on it rather than sitting beside it as its own icon:
+            // it says "there is more through here", which is exactly what this control does, and a row on a
+            // phone has no room for a second thing saying so.
+            title={hasHiddenData ? 'This world uses advanced features. Switch to Advanced to see them.' : undefined}
+          >
+            Advanced
+            {hasHiddenData && (
+              <span
+                aria-label="This world uses advanced features"
+                className="absolute right-0.5 top-0.5 h-1.5 w-1.5 rounded-full bg-primary"
+              />
+            )}
+          </ToggleGroupItem>
         </ToggleGroup>
       </TutorialPopover>
     </div>

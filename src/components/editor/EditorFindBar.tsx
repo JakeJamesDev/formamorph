@@ -8,6 +8,7 @@ import {
   AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
 import { cn } from '@/lib/utils';
+import { useIsMobile } from '@/lib/useIsMobile';
 import { encodePlaceholderToken } from '@/lib/placeholders';
 import { randomUUID } from '@/lib/uuid';
 import { findMatches, replaceAll, spliceText } from '@/lib/worldSearch';
@@ -97,6 +98,7 @@ export default function EditorFindBar({
   const [confirmAll, setConfirmAll] = useState(false);
   const [notice, setNotice] = useState<string | null>(null);
   const searchRef = useRef<HTMLInputElement>(null);
+  const isMobile = useIsMobile();
 
   useEffect(() => { searchRef.current?.focus(); }, []);
   useEffect(() => { if (startWithReplace) setShowReplace(true); }, [startWithReplace]);
@@ -126,6 +128,8 @@ export default function EditorFindBar({
     // Navigating is a response to the cursor moving, not to the world changing underneath it.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [revealKey]);
+
+  const counter = debounced ? (matches.length ? `${Math.min(index, matches.length - 1) + 1} / ${matches.length}` : 'No results') : '';
 
   const step = useCallback((delta: number) => {
     if (!matches.length) return;
@@ -222,12 +226,16 @@ export default function EditorFindBar({
           </div>
         </FieldWithTrailing>
         <div className="flex items-center gap-1">
-          <span
-            className={cn('w-20 text-center text-meta', matches.length || !debounced ? 'text-muted-foreground' : 'text-destructive')}
-            aria-live="polite"
-          >
-            {debounced ? (matches.length ? `${Math.min(index, matches.length - 1) + 1} / ${matches.length}` : 'No results') : ''}
-          </span>
+          {/* On a phone the count moves down to the result line instead: a slot wide enough for "No results"
+              is a fifth of the row there, and it is the editbox that pays for it. */}
+          {!isMobile && (
+            <span
+              className={cn('w-20 text-center text-meta', matches.length || !debounced ? 'text-muted-foreground' : 'text-destructive')}
+              aria-live="polite"
+            >
+              {counter}
+            </span>
+          )}
           <Button variant="ghost" size="icon" className="h-7 w-7 shrink-0" onClick={() => step(-1)} disabled={!matches.length} aria-label="Previous match">
             <ChevronUp className="h-4 w-4" />
           </Button>
@@ -306,12 +314,16 @@ export default function EditorFindBar({
         )}
       </div>
 
-      {current && (
-        <p className="mt-1 truncate pl-8 text-meta text-muted-foreground">
-          {current.target.itemLabel} · {current.target.fieldLabel}
+      {(current || (isMobile && counter)) && (
+        <p className="mt-1 truncate pl-8 text-muted-foreground">
+          {isMobile && counter && (
+            <span className={matches.length ? undefined : 'text-destructive'} aria-live="polite">{counter}</span>
+          )}
+          {isMobile && counter && current && ' · '}
+          {current && `${current.target.itemLabel} · ${current.target.fieldLabel}`}
         </p>
       )}
-      {notice && <p className="mt-1 pl-8 text-meta text-muted-foreground">{notice}</p>}
+      {notice && <p className="mt-1 pl-8 text-muted-foreground">{notice}</p>}
 
       <AlertDialog open={confirmAll} onOpenChange={setConfirmAll}>
         <AlertDialogContent>
