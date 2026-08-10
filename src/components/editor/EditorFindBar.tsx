@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
-import { CaseSensitive, ChevronDown, ChevronUp, Plus, Replace, ReplaceAll, Type, WholeWord, X } from 'lucide-react';
+import { CaseSensitive, ChevronDown, ChevronRight, ChevronUp, Crosshair, Plus, Replace, ReplaceAll, Type, WholeWord, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
@@ -9,6 +9,7 @@ import {
 } from '@/components/ui/alert-dialog';
 import { cn } from '@/lib/utils';
 import { useIsMobile } from '@/lib/useIsMobile';
+import { WORLD_EDITOR_TABS } from '@/views/worldEditorTabs';
 import { encodePlaceholderToken } from '@/lib/placeholders';
 import { randomUUID } from '@/lib/uuid';
 import { findMatches, replaceAll, spliceText } from '@/lib/worldSearch';
@@ -52,6 +53,10 @@ function FieldWithTrailing({ children }: { children: ReactNode }) {
     </div>
   );
 }
+
+/** A tab's caption, for the breadcrumb — the value a target carries is the tab's id, not its name. */
+const tabLabel = (value: string) =>
+  WORLD_EDITOR_TABS.find((t) => t.value === value)?.label ?? value;
 
 /** The shape of a cell sharing a field's right edge, divided from what precedes it. */
 const FIELD_CELL = 'flex h-8 w-8 items-center justify-center border-l border-l-input transition-colors';
@@ -278,8 +283,14 @@ export default function EditorFindBar({
               {placeholderMode ? (
                 <Popover open={pickerOpen} onOpenChange={setPickerOpen}>
                   <PopoverTrigger asChild>
-                    <Button variant="outline" size="sm" className={cn('h-8 w-full justify-start font-normal focus-visible:ring-0', allowPlaceholderReplace && 'pr-10')}>
-                      {chip ? chip.name : 'Choose a placeholder'}
+                    {/* Muted until one is picked, so an empty picker doesn't read like a name already sitting
+                        in the box — the same way a placeholder attribute reads against real input. */}
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className={cn('h-8 w-full justify-start font-normal focus-visible:ring-0', allowPlaceholderReplace && 'pr-10', !chip && 'text-muted-foreground')}
+                    >
+                      {chip ? chip.name : 'Choose Placeholder'}
                     </Button>
                   </PopoverTrigger>
                   <PopoverContent align="start" className="w-64 p-1">
@@ -338,17 +349,27 @@ export default function EditorFindBar({
         )}
       </div>
 
-      {/* A phone gets the count alone. Where the hit is takes more width than the row has, and a truncated
-          "Assault Chas… · AI-Facing De…" tells the author less than nothing. Both forms sit under the
-          editbox, lined up with it. */}
-      {(isMobile ? !!counter : !!current) && (
+      {/* A phone gets the count alone: where the hit is takes more width than the row has, and a truncated
+          "Assault Chas… · AI-Facing De…" tells the author less than nothing. */}
+      {isMobile && counter && (
         <p className="mt-1 truncate pl-8 text-muted-foreground">
-          {isMobile ? (
-            <span className={matches.length ? undefined : 'text-destructive'} aria-live="polite">{counter}</span>
-          ) : (
-            `${current?.target.itemLabel} · ${current?.target.fieldLabel}`
-          )}
+          <span className={matches.length ? undefined : 'text-destructive'} aria-live="polite">{counter}</span>
         </p>
+      )}
+      {/* Elsewhere, a breadcrumb: one object rather than a loose line of text, which read as debug output
+          under a dense control and was indistinguishable from the notice below it. The tab leads, since a
+          search crosses all of them and which one a hit is on is the first thing to know. */}
+      {!isMobile && current && (
+        <div className="mt-1 flex pl-8">
+          <span className="inline-flex min-w-0 items-center gap-1 rounded border bg-secondary/50 px-2 py-0.5 text-meta text-muted-foreground">
+            <Crosshair className="h-3 w-3 shrink-0" />
+            <span className="shrink-0">{tabLabel(current.target.tab)}</span>
+            <ChevronRight className="h-3 w-3 shrink-0 opacity-60" />
+            <span className="truncate">{current.target.itemLabel}</span>
+            <ChevronRight className="h-3 w-3 shrink-0 opacity-60" />
+            <span className="truncate">{current.target.fieldLabel}</span>
+          </span>
+        </div>
       )}
       {notice && <p className="mt-1 pl-8 text-muted-foreground">{notice}</p>}
 
