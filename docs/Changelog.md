@@ -2,7 +2,7 @@
 
 All notable changes to Formamorph. This fork's first line is **2.0.0** — a full TypeScript rebuild of the upstream JavaScript app ([FieryLionite's Formamorph](https://fierylion.itch.io/formamorph), ~v1.2) — with feature parity as the baseline plus new features on top.
 
-> ✅ **2.0.0 – 2.10.0 are released** (collapsed below). New work lands under **🚧 In Progress** — an unnumbered section, so changes accumulate without pinning a version. When a batch earns a release its section is marked **Released** and collapsed, and a fresh In Progress opens. `package.json` reads **2.10.0** — the latest released version.
+> ✅ **2.0.0 – 2.11.0 are released** (collapsed below). New work lands under **🚧 In Progress** — an unnumbered section, so changes accumulate without pinning a version. When a batch earns a release its section is marked **Released** and collapsed, and a fresh In Progress opens. `package.json` reads **2.11.0** — the latest released version.
 
 Each release groups changes as **Major** / **Minor**, then **Added** / **Removed** / **Fixed**, and within those by audience: 👤 user-facing · 🛠️ developer tooling · ⚙️ backend.
 
@@ -10,7 +10,12 @@ Each release groups changes as **Major** / **Minor**, then **Added** / **Removed
 
 ## 🚧 In Progress
 
-_Unreleased — new work accumulates here until it earns a version bump. The next batch will pin its own version; `package.json` reads **2.10.0** (just released below)._
+_Unreleased — new work accumulates here until it earns a version bump. The next batch will pin its own version; `package.json` reads **2.11.0** (just released below)._
+
+---
+
+<details>
+<summary><strong>✅ 2.11.0 — Released 2026-08-09</strong> — the authoring release: the World Editor opens simple and grows on demand, images drag in and share one pane, and either description can be written from the other (click to expand)</summary>
 
 ### Minor Changes
 
@@ -55,6 +60,8 @@ _Unreleased — new work accumulates here until it earns a version bump. The nex
   - **The World Editor guide documents entity aliases, exclusive trait groups, unique-placeholder collisions, and which AI steps are sent a location's full description.** Entity **Aliases** had shipped without a section anywhere in the guide, so the rules that decide whether one fires were undocumented: they match **case-sensitively**, meaning an alias written `matron` never catches "the Matron", and an alias beginning with "the" misses at the start of a sentence — exactly where narration puts a title. Both are written down now, with the two kinds of alias worth avoiding: a generic job title, which fires on any passing character of that trade, and a role the story uses for someone off-page, which marks that character present in scenes they aren't in. **Exclusive** trait groups had the same gap — the guide covered groups without mentioning the checkbox that turns one into a pick-one, or that an exclusive group wants a default so "nothing selected" never reaches the AI. The **Locations** page said the AI is given the current location in full, when only the *narrator* is; the choice writer, the continuity planner and the location router are all sent the summary, so anything living only in the full description reaches one step and no other. And **Unique** placeholders were described as rolling independently without noting that independent draws can land on the same value — which is how two "unique" towns end up sharing a name.
   - **The stat code guide explains that `Math.random()` is reseeded on every run, so two stats in the same turn draw the same number.** It used a random factor in a worked example without the caveat. A once-per-turn roll is unaffected in real play; the note covers when the repeat does bite, and how mixing in a clock variable gives an independent one.
   - **The world format reference lists the entity, trait and trait-group fields the app actually writes.** The entity table was missing `aliases`, `groupId` and `order`, and listed a singular `image` where the app writes an array of `images` — the singular survives only as a legacy fallback. Trait groups had no field table at all, leaving `exclusive` undocumented, and traits were missing `playerToggle`, `statToggles` and `placeholderPins`. `isStarting` claimed a start location is always picked at random, when flagging several lets the player choose between them.
+
+</details>
 
 ---
 
