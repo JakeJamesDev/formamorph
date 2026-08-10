@@ -25,6 +25,7 @@ _Unreleased — new work accumulates here until it earns a version bump. The nex
 
 - **👤 User-facing**
   - **The Placeholders strip inserts into the field your cursor is in, and is greyed out when it isn't in one.** It used to insert into whichever field you had typed in most recently, however long ago you left it, so a click meant for something else could drop a chip into a field elsewhere on the panel. Dragging a placeholder into a field is unchanged and still needs no cursor.
+  - **The sign that a world uses hidden advanced features now sits on the Advanced switch itself, as a dot.** It was a separate ℹ️ beside the switch, which on a phone cost room the editor's own controls needed. Hovering the switch still explains it.
   - **A chip keeps its width when you double-click it to edit.** Placeholder values and world tags visibly shrank the moment they became a text box, so the row of chips shifted under the cursor mid-edit.
   - **Clicking a placeholder value a second time closes its Draw Weight box.** It reopened instead, leaving no way to dismiss it except clicking something else entirely.
   - **Player notes survive Re-generate.** Re-generating a turn you had stopped mid-generation wiped the Notes panel; notes now carry through Re-generate unchanged, and rolling back to a stopped turn restores its notes instead of clearing them.
