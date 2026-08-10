@@ -605,7 +605,7 @@ const PromptField = ({ value, onChange, variables = [], vocabulary, previewValue
   const showTabs = markdown || !!previewValues;
 
   // Layout: the field measures itself rather than asking the device, so a shrunken desktop window falls
-  // back to tabs and phones never reach the split threshold — no breakpoint to keep in sync.
+  // back to tabs and mobile never reaches the split threshold — no breakpoint to keep in sync.
   const [measureRef, containerWidth] = useContainerWidth();
   const [splitMode, setSplitMode] = usePromptSplitMode();
   // Fullscreen is either ours or the caller's; `hostedFullscreen` means the caller renders the overlay.
@@ -734,7 +734,7 @@ const PromptField = ({ value, onChange, variables = [], vocabulary, previewValue
   const editorSurface = (
     <div
       className={cn('relative flex-1 min-h-0', !showTabs && resizeClass)}
-      // On a phone the inline field is ~225px tall against a prompt many screens long, so tapping into it
+      // On mobile the inline field is ~225px tall against a prompt many screens long, so tapping into it
       // opens the full screen instead. Deliberately a tap and not a focus event: focus also arrives when a
       // closing dialog hands it back, and reacting to that re-opened the full screen the player had just
       // left — with the keyboard, over and over. A restored focus never comes with a click.
@@ -796,7 +796,7 @@ const PromptField = ({ value, onChange, variables = [], vocabulary, previewValue
 
   const chrome = (
     // The chip palette is many chips wide and wraps; it must be allowed to shrink (`min-w-0`) or its
-    // intrinsic width shoves the buttons off the side of a phone instead of wrapping.
+    // intrinsic width shoves the buttons off the side of a mobile screen instead of wrapping.
     <div className="flex items-center gap-1 flex-shrink-0">
       <div className="min-w-0 flex-1 flex flex-wrap items-center gap-x-2 gap-y-1">
         {label && !markdown && <Label className="leading-none">{label}</Label>}
@@ -848,7 +848,7 @@ const PromptField = ({ value, onChange, variables = [], vocabulary, previewValue
   ) : showTabs ? (
     <Tabs value={tab} onValueChange={(v) => { setTab(v); if (v === 'preview') onPreviewOpen?.(); }} className={cn('flex flex-col flex-1 min-h-0', resizeClass)}>
       {swipeable ? (
-        // Dots, not tab buttons: the gesture is the control, and a full-width tab bar on a phone spends
+        // Dots, not tab buttons: the gesture is the control, and a full-width tab bar on mobile spends
         // height the editor just got back.
         <div className="flex justify-center gap-1.5 py-1 flex-shrink-0" aria-hidden>
           {['edit', 'preview'].map((t) => (

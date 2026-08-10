@@ -255,7 +255,7 @@ export default function EditorFindBar({
           </div>
         </FieldWithTrailing>
         <div className="flex items-center gap-1">
-          {/* On a phone the count moves down to the result line instead: a slot wide enough for "No results"
+          {/* On mobile the count moves down to the result line instead: a slot wide enough for "No results"
               is a fifth of the row there, and it is the editbox that pays for it. */}
           {!isMobile && (
             <span
@@ -349,7 +349,7 @@ export default function EditorFindBar({
         )}
       </div>
 
-      {/* A phone gets the count alone: where the hit is takes more width than the row has, and a truncated
+      {/* Mobile gets the count alone: where the hit is takes more width than the row has, and a truncated
           "Assault Chas… · AI-Facing De…" tells the author less than nothing. */}
       {isMobile && counter && (
         <p className="mt-1 truncate pl-8 text-label text-muted-foreground">

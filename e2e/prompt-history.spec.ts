@@ -14,10 +14,10 @@ import { openApp, openPromptEditor, openWorldEditor, openWorldNarrationPrompt } 
 
 const MARKER = 'ZZMARKER';
 
-/** On a phone, tapping a prompt opens it full screen straight away, so the field being typed into is the
+/** On mobile, tapping a prompt opens it full screen straight away, so the field being typed into is the
  *  overlay's rather than the inline one — that hand-off is its own spec's subject, and it would be the
- *  thing failing here rather than the history. Phone undo/redo stays uncovered. */
-const PHONE_SKIP = 'phone opens the editor full screen on tap';
+ *  thing failing here rather than the history. Mobile undo/redo stays uncovered. */
+const MOBILE_SKIP = 'mobile opens the editor full screen on tap';
 
 interface Surface {
   name: string;
@@ -56,9 +56,9 @@ const SURFACES: Surface[] = [
 
 for (const surface of SURFACES) {
   test.describe(`undo and redo (${surface.name})`, () => {
-    // Desktop only. On a phone, tapping a prompt opens it full screen straight away, so the field being
+    // Desktop only. On mobile, tapping a prompt opens it full screen straight away, so the field being
     // typed into is the overlay's rather than the inline one — that hand-off is its own spec's subject,
-    // and it would be the thing failing here, not the history. Phone undo/redo is uncovered.
+    // and it would be the thing failing here, not the history. Mobile undo/redo is uncovered.
 
     /** Open the host, type the marker, and hand back the editor plus its two buttons. */
     const arrange = async (page: Page) => {
@@ -76,7 +76,7 @@ for (const surface of SURFACES) {
     };
 
     test('undo takes back what was typed', async ({ page }, testInfo) => {
-      test.skip(testInfo.project.name !== 'desktop', PHONE_SKIP);
+      test.skip(testInfo.project.name !== 'desktop', MOBILE_SKIP);
       const { editor, undo } = await arrange(page);
 
       await expect(undo).toBeEnabled();
@@ -86,7 +86,7 @@ for (const surface of SURFACES) {
     });
 
     test('redo puts back what undo took, and the button says so', async ({ page }, testInfo) => {
-      test.skip(testInfo.project.name !== 'desktop', PHONE_SKIP);
+      test.skip(testInfo.project.name !== 'desktop', MOBILE_SKIP);
       const { editor, undo, redo } = await arrange(page);
       await undo.click();
       await expect(editor).not.toContainText(MARKER);
@@ -99,7 +99,7 @@ for (const surface of SURFACES) {
     });
 
     test('the keyboard shortcuts do the same as the buttons', async ({ page }, testInfo) => {
-      test.skip(testInfo.project.name !== 'desktop', PHONE_SKIP);
+      test.skip(testInfo.project.name !== 'desktop', MOBILE_SKIP);
       const { editor } = await arrange(page);
 
       await page.keyboard.press('Control+z');

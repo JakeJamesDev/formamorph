@@ -10,7 +10,7 @@ export type PromptLayout = 'split' | 'tabs';
 
 /**
  * Narrowest a single pane may get before the split stops earning its width. Below this the two panes
- * wrap prompt text so hard that one wider pane reads better — which is also what makes phones and
+ * wrap prompt text so hard that one wider pane reads better — which is also what makes mobile and
  * shrunken desktop windows fall back on their own, with no device check involved.
  */
 export const MIN_PANE_WIDTH = 420;

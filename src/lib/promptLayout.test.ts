@@ -29,7 +29,7 @@ describe('resolveLayout: when the split earns its width', () => {
     expect(resolveLayout('auto', SHORT, true, true)).toBe('tabs');
   });
 
-  it('treats a phone-width field as tabs without asking what device it is', () => {
+  it('treats a mobile-width field as tabs without asking what device it is', () => {
     expect(resolveLayout('auto', 359, true, true)).toBe('tabs');
     expect(resolveLayout('auto', 0, true, true)).toBe('tabs'); // before the first measurement lands
   });
