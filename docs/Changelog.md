@@ -12,6 +12,13 @@ Each release groups changes as **Major** / **Minor**, then **Added** / **Removed
 
 _Unreleased — new work accumulates here until it earns a version bump. The next batch will pin its own version; `package.json` reads **2.11.1** (just released below)._
 
+### Minor Changes
+
+#### 🔧 Fixed
+
+- **👤 User-facing**
+  - **A generated image goes into an empty slot instead of over the picture already there.** Generating for an entity that already had a portrait wrote straight over it, so the only way to add a second was to upload one. It now fills the first free slot and frames it. When there is no free slot — an entity is allowed two images of its own — it asks which picture it should take the place of, showing each one to pick from, and starts on whichever you were looking at. **Cancel** leaves everything as it was and hands you back to the generate window with your image still there, so nothing is lost to a misclick. Slots holding a linked image aren't offered, since replacing a link with a generated picture would put the entity over its allowance.
+
 ---
 
 <details>

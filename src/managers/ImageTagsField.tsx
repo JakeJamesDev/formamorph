@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import {
   DndContext, closestCenter, PointerSensor, KeyboardSensor, useSensor, useSensors, type DragEndEvent,
 } from '@dnd-kit/core';
@@ -7,6 +7,11 @@ import {
 } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
 import { Label } from "@/components/ui/label";
+import { Button } from "@/components/ui/button";
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
+import {
+  Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter,
+} from "@/components/ui/dialog";
 import { Plus, Star } from "lucide-react";
 import AiGenerateButton from "@/components/AiGenerateButton";
 import TagHistoryButtons from "@/components/TagHistoryButtons";
@@ -144,12 +149,18 @@ const AddTile = ({ htmlFor, selected, onSelect, onUrl, onFiles, allowFiles }: {
  *
  * With more than one slot it authors a gallery: one framed picture with a strip of tiles beneath it, the
  * last tile adding. Clicking a tile frames it; dragging reorders, which is also how the stand-in picture is
- * chosen, since that is simply the first. Tag generation and image generation always act on the first — they
- * describe the subject, not one picture of it.
+ * chosen, since that is simply the first. Tag generation acts on the subject as a whole rather than on any one
+ * slot; a generated picture fills a free slot, and asks which one it replaces when there is none.
  */
 const ImageTagsField = ({ label, images, onImagesChange, slots = 1, embeddedLimit = slots, imageId, cap, description, kind, tags, onTagsChange, placeholders = [] }: ImageTagsFieldProps) => {
   // SD prompt pulled from an uploaded image, pending the user's OK to use it as Image Tags.
   const [pendingPrompt, setPendingPrompt] = useState<string | null>(null);
+  // A generated picture with nowhere free to go, held while the user picks the slot it replaces.
+  const [pendingGenerated, setPendingGenerated] = useState<string | null>(null);
+  const [overwriteSlot, setOverwriteSlot] = useState(0);
+  // Answers the generate dialog's accept: it stays open on its preview until this settles, so a cancelled
+  // pick comes back to the picture rather than throwing it away.
+  const settlePlacement = useRef<((placed: boolean) => void) | null>(null);
   // Booru tags are Advanced-only; so is the offer to adopt an uploaded image's embedded prompt as them.
   const { advanced } = useEditorMode();
   // The tag inputs are plain controlled fields with no history of their own, so it lives here — stepped by
@@ -181,17 +192,50 @@ const ImageTagsField = ({ label, images, onImagesChange, slots = 1, embeddedLimi
   // Only pictures carrying their own bytes count against the allowance; links are free to the payload.
   const embedded = shown.filter((url) => url && !isRemoteImage(url)).length;
   const canEmbed = embedded < embeddedLimit;
-  // Generating writes over the primary, so it only adds bytes when that slot isn't already carrying some.
-  const canGenerate = canEmbed || !!(shown[0] && !isRemoteImage(shown[0]));
 
   /** The slot a drop lands in: the trailing empty one, or none once the gallery is full. */
   const openSlot = rows.findIndex((url) => !url);
+
+  /** Where a generated picture goes without asking: the first empty slot, while there is room for its bytes. */
+  const generateTarget = canEmbed ? openSlot : -1;
+  /** The slots it may be put over instead. Once the embedded allowance is spent only the slots already
+   *  carrying bytes qualify — replacing a link with bytes would put the subject over that allowance. */
+  const overwritable = shown
+    .map((_url, i) => i)
+    .filter((i) => shown[i] && (canEmbed || !isRemoteImage(shown[i])));
+  // Somewhere legal to put it — an empty slot, or a filled one worth offering to replace.
+  const canGenerate = generateTarget !== -1 || overwritable.length > 0;
 
   /** Write one slot; an emptied slot drops out rather than leaving a hole for the next one to fall into. */
   const setSlot = (index: number, value: string) => {
     const next = [...shown];
     next[index] = value;
     onImagesChange(next.filter(Boolean));
+  };
+
+  /** Take a generated picture. It fills the open slot where there is one, and otherwise asks which picture it
+   *  replaces, resolving false if the author decides it replaces none of them. */
+  const placeGenerated = (url: string) => {
+    if (generateTarget !== -1) {
+      setSlot(generateTarget, url);
+      setShowing(generateTarget);
+      return true;
+    }
+    // Start on the framed picture: the one being looked at is the one the author means to replace.
+    setOverwriteSlot(overwritable.includes(showing) ? showing : overwritable[0]);
+    setPendingGenerated(url);
+    return new Promise<boolean>((resolve) => { settlePlacement.current = resolve; });
+  };
+
+  /** Settle the pick, writing the slot only when one was confirmed. */
+  const closeOverwrite = (confirmed: boolean) => {
+    if (confirmed && pendingGenerated) {
+      setSlot(overwriteSlot, pendingGenerated);
+      setShowing(overwriteSlot);
+    }
+    setPendingGenerated(null);
+    settlePlacement.current?.(confirmed);
+    settlePlacement.current = null;
   };
 
   /** Several pictures dropped at once: they fill this slot and the ones after it, with a single consent
@@ -366,16 +410,44 @@ const ImageTagsField = ({ label, images, onImagesChange, slots = 1, embeddedLimi
       />
       </>
       )}
-      {/* A generated picture lands in the primary slot as bytes, so it answers to the same allowance. */}
+      {/* A generated picture always arrives as bytes, so it answers to the embedded allowance: it fills a free
+          slot, and once there is none it replaces one the author picks. */}
       {canGenerate && (
         <GenerateImageButton
           subject={{ description: description || '', kind }}
           cap={cap}
-          onChange={(value) => setSlot(0, value)}
+          onChange={placeGenerated}
           tags={tags ?? ''}
           onTagsChange={onTagsChange}
         />
       )}
+      <Dialog open={pendingGenerated !== null} onOpenChange={(o) => { if (!o) closeOverwrite(false); }}>
+        <DialogContent className="sm:max-w-[420px]">
+          <DialogHeader>
+            <DialogTitle>Replace which image?</DialogTitle>
+            <DialogDescription>
+              There is no free slot for the generated image. Choose the one it takes the place of.
+            </DialogDescription>
+          </DialogHeader>
+          <RadioGroup value={String(overwriteSlot)} onValueChange={(v) => setOverwriteSlot(Number(v))}>
+            {overwritable.map((i) => (
+              <Label
+                key={i}
+                htmlFor={`${imageId}-overwrite-${i}`}
+                className="flex cursor-pointer items-center gap-3 rounded-md border p-2 hover:border-muted-foreground"
+              >
+                <RadioGroupItem value={String(i)} id={`${imageId}-overwrite-${i}`} />
+                <RemoteImg src={shown[i]} alt="" className="h-12 w-12 rounded object-cover" />
+                <span>{i === 0 ? 'Primary' : `Image ${i + 1}`}</span>
+              </Label>
+            ))}
+          </RadioGroup>
+          <DialogFooter className="flex flex-col sm:flex-row gap-2">
+            <Button type="button" variant="outline" onClick={() => closeOverwrite(false)}>Cancel</Button>
+            <Button type="button" onClick={() => closeOverwrite(true)}>Replace</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };
