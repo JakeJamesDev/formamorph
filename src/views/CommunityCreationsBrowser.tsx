@@ -374,7 +374,7 @@ const CommunityCreationsBrowser = ({
       {/* `author:`/`tag:`/`status:` typed here become filter chips — see the hook's applySearchInput.
           Enter finishes the token under the cursor, a space finishes it as you keep typing. */}
       <Input
-        // The prefix hint is desktop-only: on a phone it outruns the field and hides the word "Search".
+        // The prefix hint is desktop-only: on mobile it outruns the field and hides the word "Search".
         placeholder={isMobile
           ? `Search ${KIND_LABELS[browseKind].many.toLowerCase()}…`
           : `Search ${KIND_LABELS[browseKind].many.toLowerCase()}… or type author:, tag:, status:`}
@@ -544,7 +544,7 @@ const CommunityCreationsBrowser = ({
           <Collapsible open={filtersOpen} onOpenChange={setFiltersOpen} className="shrink-0 border-b">
             <div className="px-6 py-4 space-y-4">
               {isMobile ? (
-                // Two rows on a phone, not four. The title goes screen-reader-only the way the World
+                // Two rows on mobile, not four. The title goes screen-reader-only the way the World
                 // Editor's does — the header it names is the only thing on screen — which frees its row
                 // for the search box, and the kind tabs drop to share a row with the Filters toggle.
                 <>
