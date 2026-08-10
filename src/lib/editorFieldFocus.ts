@@ -234,8 +234,10 @@ export function revealEditorMatch(root: HTMLElement | null, hit: MatchLocation, 
   }
   const { field, at } = found;
   clearMarker();
-  const reduced = window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
-  field.scrollIntoView({ block: 'center', behavior: reduced ? 'auto' : 'smooth' });
+  // Instant, not smoothed: a smooth scroll is animated, so it does nothing at all in a tab that is not
+  // producing frames — and stepping through matches wants the jump anyway, not a glide that lags behind
+  // the next press. Instant is also what reduced-motion would have asked for.
+  field.scrollIntoView({ block: 'center', behavior: 'auto' });
   field.classList.add(RING_CLASS);
   marked = field;
   if (isTextControl(field)) {
@@ -252,4 +254,20 @@ export function revealEditorMatch(root: HTMLElement | null, hit: MatchLocation, 
 /** Drop the marker — the find bar closing, or a search that no longer matches anything. */
 export function clearEditorMatch(): void {
   clearMarker();
+}
+
+/**
+ * Bring the selected tree row on screen.
+ *
+ * Selecting an item from the find bar sets the id the tree reads, but nothing scrolls the list to it, so a
+ * hit far down a long tree left the list sitting wherever it was — the detail pane moved and the list did
+ * not. Retried on the same budget as the field lookup, since the row appears with the tree's next render.
+ */
+export function revealSelectedRow(root: HTMLElement | null, attempt = 0): void {
+  const row = root?.querySelector<HTMLElement>('[data-editor-row-selected]');
+  if (!row) {
+    if (root && attempt < RETRY_LIMIT) setTimeout(() => revealSelectedRow(root, attempt + 1), RETRY_MS);
+    return;
+  }
+  row.scrollIntoView({ block: 'nearest', behavior: 'auto' });
 }
