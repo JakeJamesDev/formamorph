@@ -50,12 +50,8 @@ const EntityFields = ({ value, onChange, placeholders = [], locationOptions, sel
           keywords={value.aliases ?? []}
           onChange={(aliases) => onChange('aliases', aliases)}
           placeholders={placeholders}
-          placeholder="e.g. Liz — press Enter for each"
+          placeholder="press Enter after each · case-sensitive"
         />
-        <p className="text-helper text-muted-foreground">
-          Other names this entity is called — detected in narration and shared with the AI. Case-sensitive.
-          Press Enter after each one; an alias may contain commas.
-        </p>
       </div>
       )}
       <PlaceholderField
