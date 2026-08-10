@@ -19,6 +19,16 @@
 
 const RING_CLASS = 'editor-find-target';
 const HIGHLIGHT_NAME = 'editor-find-match';
+const MIRROR_CLASS = 'editor-find-mirror';
+
+/** Styles that decide where each glyph lands, copied so the mirror's text sits exactly over the real text. */
+const MIRRORED_STYLES = [
+  'fontFamily', 'fontSize', 'fontWeight', 'fontStyle', 'fontStretch', 'fontVariant', 'fontSizeAdjust',
+  'letterSpacing', 'wordSpacing', 'lineHeight', 'textIndent', 'textTransform', 'textAlign', 'direction',
+  'paddingTop', 'paddingRight', 'paddingBottom', 'paddingLeft',
+  'borderTopWidth', 'borderRightWidth', 'borderBottomWidth', 'borderLeftWidth', 'borderStyle',
+  'boxSizing', 'tabSize',
+] as const;
 
 type Field = HTMLInputElement | HTMLTextAreaElement | HTMLElement;
 
@@ -30,6 +40,69 @@ const contentOf = (el: Field): string => (isTextControl(el) ? el.value : el.text
 
 let marked: Element | null = null;
 
+/**
+ * The mirror: a copy of a form control's text laid over it with the matched run marked.
+ *
+ * A browser paints a selection only in the focused control and `::highlight()` cannot reach inside an
+ * `<input>`, so the only way to show *where* in a plain field the hit is — without stealing focus — is to
+ * draw it. The mirror copies the styles that position glyphs, renders the same string with the match
+ * wrapped, and hides everything but that mark.
+ */
+let mirror: { el: HTMLElement; host: HTMLElement; hadPosition: string } | null = null;
+
+function clearMirror() {
+  if (!mirror) return;
+  mirror.el.remove();
+  mirror.host.style.position = mirror.hadPosition;
+  mirror = null;
+}
+
+/**
+ * Lay a mirror over `field` with `[at, at + length)` marked.
+ *
+ * It lives in the field's own wrapper, which is made a containing block for the purpose, so the editor's
+ * panels carry it as they scroll and resize with no listener to keep in sync — which also means it cannot
+ * drift while the tab is in the background and frames stop being produced. Anchoring to whatever
+ * `offsetParent` happens to be is not enough: that ancestor is often outside the scrolling viewport, and an
+ * absolute child resolves against its containing block rather than its DOM parent, so the mirror would sit
+ * still while the field scrolled away from it.
+ */
+function drawMirror(field: HTMLInputElement | HTMLTextAreaElement, at: number, length: number) {
+  const host = field.parentElement;
+  if (!host) return;
+  const hadPosition = host.style.position;
+  if (getComputedStyle(host).position === 'static') host.style.position = 'relative';
+
+  const el = document.createElement('div');
+  el.className = MIRROR_CLASS;
+  el.setAttribute('aria-hidden', 'true');
+  const from = getComputedStyle(field);
+  for (const key of MIRRORED_STYLES) el.style[key] = from[key];
+  el.style.top = '0px';
+  el.style.left = '0px';
+  el.style.width = `${field.offsetWidth}px`;
+  el.style.height = `${field.offsetHeight}px`;
+  const multiline = field instanceof HTMLTextAreaElement;
+  el.style.whiteSpace = multiline ? 'pre-wrap' : 'pre';
+  el.style.overflowWrap = multiline ? 'break-word' : 'normal';
+
+  const text = field.value;
+  const mark = document.createElement('mark');
+  mark.textContent = text.slice(at, at + length);
+  el.append(text.slice(0, at), mark, text.slice(at + length));
+  host.append(el);
+  // Placed by measuring from a zero origin rather than by trusting `offsetTop`, so a padded or bordered
+  // wrapper needs no special case.
+  const target = field.getBoundingClientRect();
+  const origin = el.getBoundingClientRect();
+  el.style.top = `${target.top - origin.top}px`;
+  el.style.left = `${target.left - origin.left}px`;
+  // A field scrolled off its own start would otherwise paint the mark where the text no longer is.
+  el.scrollTop = field.scrollTop;
+  el.scrollLeft = field.scrollLeft;
+  mirror = { el, host, hadPosition };
+}
+
 /** Registry access, absent on browsers without the Highlight API. */
 const highlights = (): HighlightRegistry | null =>
   typeof CSS !== 'undefined' && 'highlights' in CSS ? CSS.highlights : null;
@@ -38,6 +111,7 @@ function clearMarker() {
   marked?.classList.remove(RING_CLASS);
   marked = null;
   highlights()?.delete(HIGHLIGHT_NAME);
+  clearMirror();
 }
 
 /**
@@ -119,8 +193,8 @@ function rangeAt(field: HTMLElement, at: number, length: number): Range | null {
   return null;
 }
 
-/** Retry budget: a switch between tabs remounts a whole panel, which can take a good many ticks. */
-const RETRY_LIMIT = 12;
+/** Retry budget: the first hit after opening a tab waits on that panel's first mount, the slowest case. */
+const RETRY_LIMIT = 30;
 const RETRY_MS = 40;
 
 /** Mark the field under `root` holding `hit` and bring it on screen. */
@@ -148,6 +222,7 @@ export function revealEditorMatch(root: HTMLElement | null, hit: MatchLocation, 
   if (isTextControl(field)) {
     // Invisible while the field is unfocused, but it puts the caret on the hit the moment it is clicked.
     field.setSelectionRange(at, at + hit.matchText.length);
+    drawMirror(field, at, hit.matchText.length);
     return;
   }
   const registry = highlights();

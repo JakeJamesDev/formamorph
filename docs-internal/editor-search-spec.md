@@ -71,6 +71,10 @@ Three things the spec got wrong, found by verifying in the live editor:
 1. **The marker can't be a text selection.** A browser paints a selection only in the *focused* control, so highlighting the match meant focusing the field — which redirected the author's typing out of the search box on every keystroke. The hit is now marked without taking focus: an amber ring on the field, plus a `::highlight()` range inside prose fields (the Highlight API reaches contenteditable text nodes; it cannot reach an `<input>`'s internals).
 2. **The field lookup needs the field's whole value, not the matched word.** Several fields on one panel routinely contain the same word, so matching on the word alone always marked whichever rendered first. Candidates are now scored by how much of their text matches the target's, with an exact match winning outright.
 3. **Replace All has to merge per record.** Every updater replaces the whole object, so two matches in two fields of one entity, written separately, each undid the other — one edit silently lost. Edits now fold onto a single copy of each record and commit once. Guarded by a test.
+4. **The ring has to be inset.** An `outline` sits outside the box, where the panels' ScrollArea `overflow: hidden` clips it — so it showed only on fields that already had a border of their own. It's `box-shadow: inset` now, which nothing can clip and which needs no border on the field.
+5. **Plain fields get a mirror.** `::highlight()` reaches contenteditable text nodes but not an `<input>`'s internals, so a copy of the control's text is laid over it with the match marked and everything else transparent. It is anchored in the field's **own wrapper**, made a containing block for the purpose: `offsetParent` is frequently outside the scrolling viewport, and an absolute child follows its containing block rather than its DOM parent, so anchoring there left the mark behind whenever the panel scrolled.
+
+The bar sits at the **top left** of the editor area — the detail pane holds most of what a search finds and it is the right-hand half.
 
 ## Settled Calls
 
