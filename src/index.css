@@ -619,3 +619,17 @@
   content: ' (New!)';
   font-weight: 400;
 }
+
+/* World Editor find & replace — the current hit. Focus stays in the find bar, so a field can't paint a
+   selection; the ring marks which field holds the hit and the highlight marks where inside a prose one.
+   Amber rather than the primary: primary is a near-neutral that reads as an ordinary focus ring, and this
+   has to say "the thing you searched for is here" at a glance in either theme. */
+.editor-find-target {
+  outline: 2px solid hsl(var(--warning));
+  outline-offset: 1px;
+  border-radius: calc(var(--radius) - 2px);
+}
+::highlight(editor-find-match) {
+  background-color: hsl(var(--warning) / 0.4);
+  color: hsl(var(--foreground));
+}
