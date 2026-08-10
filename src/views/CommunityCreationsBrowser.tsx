@@ -374,7 +374,10 @@ const CommunityCreationsBrowser = ({
       {/* `author:`/`tag:`/`status:` typed here become filter chips — see the hook's applySearchInput.
           Enter finishes the token under the cursor, a space finishes it as you keep typing. */}
       <Input
-        placeholder={`Search ${KIND_LABELS[browseKind].many.toLowerCase()}… or type author:, tag:, status:`}
+        // The prefix hint is desktop-only: on a phone it outruns the field and hides the word "Search".
+        placeholder={isMobile
+          ? `Search ${KIND_LABELS[browseKind].many.toLowerCase()}…`
+          : `Search ${KIND_LABELS[browseKind].many.toLowerCase()}… or type author:, tag:, status:`}
         className="pl-8"
         value={searchQuery}
         onChange={(e) => applySearchInput(e.target.value)}
@@ -540,27 +543,44 @@ const CommunityCreationsBrowser = ({
               collapse behind a "Filters" toggle; on desktop they stay inline. */}
           <Collapsible open={filtersOpen} onOpenChange={setFiltersOpen} className="shrink-0 border-b">
             <div className="px-6 py-4 space-y-4">
-              <div className="flex flex-wrap items-center gap-2 sm:gap-4">
-                <Button variant="ghost" size="icon" className="shrink-0" onClick={() => onOpenChange(false)} aria-label="Back">
-                  <ArrowLeft className="h-5 w-5" />
-                </Button>
-                <DialogTitle className="flex items-center gap-2 whitespace-nowrap mr-2"><Globe className="h-4 w-4 shrink-0" /> Community Creations</DialogTitle>
-                {kindTabs}
-                {searchControl}
-                {quarantineControl}
-                {refreshControl}
-                {isMobile ? (
-                  <CollapsibleTrigger asChild>
-                    <Button variant="outline" size="sm" className="shrink-0 gap-1">
-                      <SlidersHorizontal className="h-4 w-4" />
-                      Filters{activeFilterCount > 0 ? ` (${activeFilterCount})` : ''}
-                      <ChevronDown className={`h-4 w-4 transition-transform ${filtersOpen ? 'rotate-180' : ''}`} />
+              {isMobile ? (
+                // Two rows on a phone, not four. The title goes screen-reader-only the way the World
+                // Editor's does — the header it names is the only thing on screen — which frees its row
+                // for the search box, and the kind tabs drop to share a row with the Filters toggle.
+                <>
+                  <div className="flex items-center gap-2">
+                    <Button variant="ghost" size="icon" className="shrink-0" onClick={() => onOpenChange(false)} aria-label="Back">
+                      <ArrowLeft className="h-5 w-5" />
                     </Button>
-                  </CollapsibleTrigger>
-                ) : (
-                  sortControl
-                )}
-              </div>
+                    <DialogTitle className="sr-only">Community Creations</DialogTitle>
+                    {searchControl}
+                    {refreshControl}
+                  </div>
+                  <div className="flex items-center gap-2">
+                    {kindTabs}
+                    {quarantineControl}
+                    <CollapsibleTrigger asChild>
+                      <Button variant="outline" size="sm" className="ml-auto shrink-0 gap-1">
+                        <SlidersHorizontal className="h-4 w-4" />
+                        Filters{activeFilterCount > 0 ? ` (${activeFilterCount})` : ''}
+                        <ChevronDown className={`h-4 w-4 transition-transform ${filtersOpen ? 'rotate-180' : ''}`} />
+                      </Button>
+                    </CollapsibleTrigger>
+                  </div>
+                </>
+              ) : (
+                <div className="flex flex-wrap items-center gap-2 sm:gap-4">
+                  <Button variant="ghost" size="icon" className="shrink-0" onClick={() => onOpenChange(false)} aria-label="Back">
+                    <ArrowLeft className="h-5 w-5" />
+                  </Button>
+                  <DialogTitle className="flex items-center gap-2 whitespace-nowrap mr-2"><Globe className="h-4 w-4 shrink-0" /> Community Creations</DialogTitle>
+                  {kindTabs}
+                  {searchControl}
+                  {quarantineControl}
+                  {refreshControl}
+                  {sortControl}
+                </div>
+              )}
 
               {isMobile ? (
                 <CollapsibleContent className="space-y-3">
