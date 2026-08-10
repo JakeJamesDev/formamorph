@@ -53,12 +53,15 @@ function FieldWithTrailing({ children }: { children: ReactNode }) {
   );
 }
 
-/** A cell along a field's right edge: primary while its option is on, divided from what precedes it. */
-function MatchToggle({ on, onClick, label, className, last, children }: {
+/** The shape of a cell sharing a field's right edge, divided from what precedes it. */
+const FIELD_CELL = 'flex h-8 w-8 items-center justify-center border-l border-l-input transition-colors';
+const FIELD_CELL_IDLE = 'text-muted-foreground hover:bg-accent hover:text-foreground';
+
+/** A cell for an option that is on or off: filled while it is on, so the state reads at a glance. */
+function MatchToggle({ on, onClick, label, last, children }: {
   on: boolean;
   onClick: () => void;
   label: string;
-  className?: string;
   /** Rounds the outer corners to sit flush in the field's own frame. */
   last?: boolean;
   children: ReactNode;
@@ -70,12 +73,32 @@ function MatchToggle({ on, onClick, label, className, last, children }: {
       aria-pressed={on}
       aria-label={label}
       title={label}
-      className={cn(
-        'flex h-8 w-8 items-center justify-center border-l border-l-input transition-colors',
-        last && 'rounded-r-md',
-        on ? 'bg-primary text-primary-foreground' : 'text-muted-foreground hover:bg-accent hover:text-foreground',
-        className,
-      )}
+      className={cn(FIELD_CELL, last && 'rounded-r-md', on ? 'bg-primary text-primary-foreground' : FIELD_CELL_IDLE)}
+    >
+      {children}
+    </button>
+  );
+}
+
+/**
+ * A cell that swaps between two modes rather than switching one on.
+ *
+ * Deliberately never fills: a filled cell reads as "this option is on", and neither of these modes is the
+ * off one — the icon and the control beside it already say which is running.
+ */
+function ModeSwap({ onClick, label, last, children }: {
+  onClick: () => void;
+  label: string;
+  last?: boolean;
+  children: ReactNode;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      aria-label={label}
+      title={label}
+      className={cn(FIELD_CELL, last && 'rounded-r-md', FIELD_CELL_IDLE)}
     >
       {children}
     </button>
@@ -292,15 +315,15 @@ export default function EditorFindBar({
               )}
               {/* Which kind of thing a replacement is, parked in the box it applies to. */}
               {allowPlaceholderReplace && (
-                <MatchToggle
-                  on={placeholderMode}
-                  onClick={() => setMode((m) => (m === 'text' ? 'placeholder' : 'text'))}
-                  label={mode === 'text' ? 'Replace with a placeholder instead' : 'Replace with text instead'}
-                  className="absolute inset-y-0 right-0"
-                  last
-                >
-                  {mode === 'text' ? <Type className="h-4 w-4" /> : <span className="text-meta font-semibold">{'{}'}</span>}
-                </MatchToggle>
+                <span className="absolute inset-y-0 right-0 flex items-center">
+                  <ModeSwap
+                    onClick={() => setMode((m) => (m === 'text' ? 'placeholder' : 'text'))}
+                    label={mode === 'text' ? 'Replace with a placeholder instead' : 'Replace with text instead'}
+                    last
+                  >
+                    {mode === 'text' ? <Type className="h-4 w-4" /> : <span className="text-meta font-semibold">{'{}'}</span>}
+                  </ModeSwap>
+                </span>
               )}
             </FieldWithTrailing>
             <div className="flex items-center gap-1">
@@ -315,19 +338,19 @@ export default function EditorFindBar({
         )}
       </div>
 
-      {/* On a phone this line carries the count, so it takes the bar's own width and the editbox's text
-          size — it is reading matter there, not a caption under a control. On desktop it stays indented to
-          line up with the field it describes. */}
-      {(current || (isMobile && counter)) && (
-        <p className={cn('mt-1 truncate text-muted-foreground', isMobile ? 'text-label' : 'pl-8')}>
-          {isMobile && counter && (
+      {/* A phone gets the count alone. Where the hit is takes more width than the row has, and a truncated
+          "Assault Chas… · AI-Facing De…" tells the author less than nothing. Both forms sit under the
+          editbox, lined up with it. */}
+      {(isMobile ? !!counter : !!current) && (
+        <p className="mt-1 truncate pl-8 text-muted-foreground">
+          {isMobile ? (
             <span className={matches.length ? undefined : 'text-destructive'} aria-live="polite">{counter}</span>
+          ) : (
+            `${current?.target.itemLabel} · ${current?.target.fieldLabel}`
           )}
-          {isMobile && counter && current && ' · '}
-          {current && `${current.target.itemLabel} · ${current.target.fieldLabel}`}
         </p>
       )}
-      {notice && <p className={cn('mt-1 text-muted-foreground', isMobile ? 'text-label' : 'pl-8')}>{notice}</p>}
+      {notice && <p className="mt-1 pl-8 text-muted-foreground">{notice}</p>}
 
       <AlertDialog open={confirmAll} onOpenChange={setConfirmAll}>
         <AlertDialogContent>
