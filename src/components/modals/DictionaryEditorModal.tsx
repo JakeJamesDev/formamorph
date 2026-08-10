@@ -14,9 +14,13 @@ import { ChipInsertTargetProvider } from '@/components/prompt/ChipInsertTarget';
 import { placeholderStore, PlaceholderStoreProvider } from '@/contexts/PlaceholderStoreContext';
 import { buildDictionaryFile } from '@/lib/dictionaryFile';
 import { downloadBlob } from '@/lib/downloadBlob';
-import { memoStringify } from '@/lib/memoStringify';
+import { canonicalStringify } from '@/lib/canonicalStringify';
 import DictionaryStorageService from '@/services/DictionaryStorageService';
 import type { Dictionary, Placeholder } from '@/types';
+
+/** The baseline in the same canonical form the live value is compared in — a fresh cache each time, since
+ *  a baseline is taken once and the graph it describes is about to be edited. */
+const canon = (v: unknown) => canonicalStringify(v, new WeakMap()) ?? '';
 
 const TABS = [
   { value: 'overview', label: 'Overview' },
@@ -54,7 +58,7 @@ const DictionaryEditorModal = ({ dictionaryId, draft, onClose, onPublish }: {
 
   // Seed the isolated store from the draft, or load a stored book; clear when closed.
   useEffect(() => {
-    const seed = (b: Dictionary) => { setDictionaries([b]); setBook(b); setSelectedId(b.id); baselineRef.current = JSON.stringify([b]); };
+    const seed = (b: Dictionary) => { setDictionaries([b]); setBook(b); setSelectedId(b.id); baselineRef.current = canon([b]); };
     if (draft) { seed(draft); return; }
     if (dictionaryId === null) { setBook(null); return; }
     let cancelled = false;
@@ -64,7 +68,7 @@ const DictionaryEditorModal = ({ dictionaryId, draft, onClose, onPublish }: {
     return () => { cancelled = true; };
   }, [dictionaryId, draft, setDictionaries]);
 
-  const hasUnsavedChanges = book != null && memoStringify(dictionaries, stringifyCache.current) !== baselineRef.current;
+  const hasUnsavedChanges = book != null && canonicalStringify(dictionaries, stringifyCache.current) !== baselineRef.current;
   const selectedBook = dictionaries.find((b) => b.id === selectedId);
   const selectedEntry = dictionaries.flatMap((b) => b.entries).find((e) => e.id === selectedId);
   // The book's carried placeholders live on the sole book (index 0); its entries' chips resolve against them.
@@ -92,7 +96,7 @@ const DictionaryEditorModal = ({ dictionaryId, draft, onClose, onPublish }: {
         dirty: true, editedAt: new Date().toISOString(),
       });
       setDictionaries(normalized);
-      baselineRef.current = JSON.stringify(normalized);
+      baselineRef.current = canon(normalized);
       toast.success('Dictionary saved!');
       return true;
     } catch {

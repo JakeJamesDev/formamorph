@@ -1,7 +1,7 @@
 import { randomUUID } from "@/lib/uuid";
 import { createContext, useContext, useState, useCallback, useMemo, useEffect, useRef, type ReactNode } from 'react';
 import WorldStorageService from '../services/WorldStorageService';
-import { memoStringify } from '@/lib/memoStringify';
+import { canonicalStringify } from '@/lib/canonicalStringify';
 import { migrateWorld, APP_VERSION } from '@/lib/version';
 import { useDictionaryStoreState, DictionaryStoreProvider } from '@/contexts/DictionaryStoreContext';
 import { placeholderStore, PlaceholderStoreProvider } from '@/contexts/PlaceholderStoreContext';
@@ -331,13 +331,22 @@ function useProvideGameData() {
     [worldOverview, stats, locations, entities, entityGroups, traits, traitGroups, statUpdates, dictionaries, placeholders],
   );
 
-  // Per-keystroke dirty check over image-heavy world data: memoStringify reuses cached serialization for
-  // unedited records (their base64 isn't re-serialized), and matches JSON.stringify byte-for-byte so the
-  // comparison against the JSON.stringify baseline holds.
+  // Per-keystroke dirty check over image-heavy world data: canonicalStringify caches by identity, so an
+  // edit re-serializes only that record and its ancestors and the base64 elsewhere is left alone.
+  //
+  // Both sides go through the same canonical form rather than raw JSON, because raw JSON called a world
+  // changed over things no author did: a record rebuilt with its keys in another order, and an optional
+  // field that keeps an empty `[]` once it has been filled in and cleared again.
   const stringifyCache = useRef(new WeakMap<object, string>());
+  // Derived from the stored snapshot rather than captured beside it, so the baseline cannot be built by a
+  // different route than the value it is compared against. Recomputed only on load and save.
+  const savedCanonical = useMemo(
+    () => (savedSnapshot ? canonicalStringify(JSON.parse(savedSnapshot), new WeakMap()) : ''),
+    [savedSnapshot],
+  );
   const isWorldDirty = useMemo(
-    () => memoStringify(getWorldData(), stringifyCache.current) !== savedSnapshot,
-    [getWorldData, savedSnapshot],
+    () => !!savedSnapshot && canonicalStringify(getWorldData(), stringifyCache.current) !== savedCanonical,
+    [getWorldData, savedCanonical, savedSnapshot],
   );
 
   /**

@@ -11,9 +11,13 @@ import { ChipInsertTargetProvider } from '@/components/prompt/ChipInsertTarget';
 import { placeholderStore, PlaceholderStoreProvider } from '@/contexts/PlaceholderStoreContext';
 import { exportEntityCard } from '@/lib/entityFile';
 import { downloadBlob } from '@/lib/downloadBlob';
-import { memoStringify } from '@/lib/memoStringify';
+import { canonicalStringify } from '@/lib/canonicalStringify';
 import EntityStorageService from '@/services/EntityStorageService';
 import type { Entity, Placeholder } from '@/types';
+
+/** The baseline in the same canonical form the live value is compared in — a fresh cache each time, since
+ *  a baseline is taken once and the graph it describes is about to be edited. */
+const canon = (v: unknown) => canonicalStringify(v, new WeakMap()) ?? '';
 
 const TABS = [
   { value: 'overview', label: 'Overview' },
@@ -50,20 +54,20 @@ const EntityEditorModal = ({ entityId, draft, onClose, onPublish }: {
 
   // Seed from the draft, or load the character from storage; clear when closed.
   useEffect(() => {
-    if (draft) { setEntity(draft); baselineRef.current = JSON.stringify(draft); return; }
+    if (draft) { setEntity(draft); baselineRef.current = canon(draft); return; }
     if (entityId === null) { setEntity(null); return; }
     let cancelled = false;
     EntityStorageService.getEntityData(entityId)
       .then((e) => {
         if (cancelled) return;
         setEntity(e);
-        baselineRef.current = JSON.stringify(e);
+        baselineRef.current = canon(e);
       })
       .catch(() => { if (!cancelled) { toast.error('Could not load character.'); onCloseRef.current(); } });
     return () => { cancelled = true; };
   }, [entityId, draft]);
 
-  const hasUnsavedChanges = entity != null && memoStringify(entity, stringifyCache.current) !== baselineRef.current;
+  const hasUnsavedChanges = entity != null && canonicalStringify(entity, stringifyCache.current) !== baselineRef.current;
 
   const handleChange = (field: string, value: unknown) => {
     setEntity((prev) => (prev ? ({ ...prev, [field]: value } as Entity) : prev));
@@ -89,7 +93,7 @@ const EntityEditorModal = ({ entityId, draft, onClose, onPublish }: {
         id, name: normalized.name, data: normalized, dirty: true, editedAt: new Date().toISOString(),
       });
       setEntity(normalized);
-      baselineRef.current = JSON.stringify(normalized);
+      baselineRef.current = canon(normalized);
       toast.success('Character saved!');
       return true;
     } catch {

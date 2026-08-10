@@ -76,6 +76,42 @@ describe('discardChanges', () => {
     entities: [{ id: 'e1', name: 'Sedge' }],
   } as unknown as World);
 
+  it('goes clean again when an edit is undone by hand', () => {
+    const { result } = renderHook(() => useGameData(), { wrapper });
+    act(() => { result.current.loadWorldData(worldWithEntity()); });
+
+    act(() => { result.current.updateEntity({ id: 'e1', name: 'Sedgewick' } as never); });
+    expect(result.current.isWorldDirty).toBe(true);
+
+    // Typing the old name back is the revert most authors reach for, and it has to count as one.
+    act(() => { result.current.updateEntity({ id: 'e1', name: 'Sedge' } as never); });
+    expect(result.current.isWorldDirty).toBe(false);
+  });
+
+  it('goes clean again when a field that was never there is filled in and emptied', () => {
+    const { result } = renderHook(() => useGameData(), { wrapper });
+    act(() => { result.current.loadWorldData(worldWithEntity()); });
+
+    // `aliases` is absent on the loaded entity; adding one puts the key there for good.
+    act(() => { result.current.updateEntity({ id: 'e1', name: 'Sedge', aliases: ['Sedgy'] } as never); });
+    expect(result.current.isWorldDirty).toBe(true);
+
+    act(() => { result.current.updateEntity({ id: 'e1', name: 'Sedge', aliases: [] } as never); });
+    expect(result.current.isWorldDirty).toBe(false);
+  });
+
+  it('stays clean when a record is rewritten with its keys in another order', () => {
+    const { result } = renderHook(() => useGameData(), { wrapper });
+    act(() => { result.current.loadWorldData({
+      ...world('w', {}),
+      entities: [{ id: 'e1', name: 'Sedge', type: 'fisher' }],
+    } as unknown as World); });
+
+    // Same entity, written the way a manager that rebuilds the record would write it.
+    act(() => { result.current.updateEntity({ type: 'fisher', name: 'Sedge', id: 'e1' } as never); });
+    expect(result.current.isWorldDirty).toBe(false);
+  });
+
   it('rolls the world back to the last load and clears the dirty flag', () => {
     const { result } = renderHook(() => useGameData(), { wrapper });
     act(() => { result.current.loadWorldData(worldWithEntity()); });
