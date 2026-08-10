@@ -127,15 +127,22 @@ function locate(root: HTMLElement, hit: MatchLocation): { field: Field; at: numb
   // Which occurrence within its own field this hit is, so the marker lands on the right one of several.
   const nth = countBefore(hit.value, hit.matchText, hit.start);
   let best: { field: Field; at: number; score: number } | null = null;
-  for (const field of root.querySelectorAll<HTMLElement>('input, textarea, [contenteditable="true"]')) {
+  // Chips are values too — a placeholder's values and a dictionary entry's keywords are edited as chips
+  // rather than as a text box, and so hold text no form control ever will.
+  for (const field of root.querySelectorAll<HTMLElement>('input, textarea, [contenteditable="true"], [data-chip]')) {
     if (field.closest('[data-editor-find-skip]')) continue;
     if (field instanceof HTMLInputElement && field.type !== 'text' && field.type !== 'search') continue;
     const content = contentOf(field);
     if (!content.includes(hit.matchText)) continue;
     const shown = loose(content);
-    // Exact beats near, near beats merely containing the word. A prose field can only ever be near: it
-    // renders markdown and chips rather than the source, so its text runs a little short of the stored value.
-    const score = shown === wanted ? Number.MAX_SAFE_INTEGER : commonPrefix(shown, wanted);
+    // The caption wins outright where a field carries one: two fields on a panel holding identical text is
+    // ordinary (an AI description seeded from the player-facing one), and no reading of the text can tell
+    // those apart. Otherwise exact text beats near, and near beats merely containing the word — a prose
+    // field can only ever be near, rendering markdown and chips rather than the source it stores.
+    const captioned = field.closest('[data-find-field]')?.getAttribute('data-find-field');
+    const score = captioned && hit.fieldLabel && captioned.startsWith(hit.fieldLabel) ? Number.MAX_SAFE_INTEGER
+      : shown === wanted ? Number.MAX_SAFE_INTEGER - 1
+      : commonPrefix(shown, wanted);
     if (best && score <= best.score) continue;
     const at = nthIndexOf(content, hit.matchText, nth);
     best = { field, at: at >= 0 ? at : content.indexOf(hit.matchText), score };
@@ -165,11 +172,13 @@ function nthIndexOf(haystack: string, needle: string, nth: number): number {
   return at;
 }
 
-/** Where a hit sits: the field's stored value, the matched run, and its offset into that value. */
+/** Where a hit sits: the field's stored value, the matched run, its offset into that value, and the
+ *  field's caption — which is the only thing telling two fields with identical text apart. */
 export interface MatchLocation {
   value: string;
   matchText: string;
   start: number;
+  fieldLabel?: string;
 }
 
 /** A Range over `[at, at + length)` of a prose field, walking its text nodes to the offset. */

@@ -66,6 +66,9 @@ export function Chip({ label, removeLabel, onRemove, className, innerRef, style,
       ref={innerRef}
       style={style}
       title={title}
+      // A chip is a value, not decoration: it is where a keyword or placeholder value is shown, so the
+      // World Editor's find bar has to be able to reach it the way it reaches a text field.
+      data-chip=""
       {...dragProps}
       className={cn(
         CHIP_BASE,

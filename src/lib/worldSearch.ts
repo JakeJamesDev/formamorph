@@ -90,8 +90,9 @@ const untitled = (name: string | undefined, fallback: string) => name?.trim() ||
  * Every authored string the editor can navigate to, in tab order.
  *
  * Deliberately absent: ids and id-arrays, image/media payloads, enum-ish fields, stat `code`, and anything
- * with no editor field to jump to (legacy `GameLocation.description`, `Entity.tags`, the unreachable
- * Stat Updates tab).
+ * with no editor field to jump to — legacy `GameLocation.description`, `Entity.tags`, `Dictionary.tags`,
+ * `GameLocation.connections` (authored nowhere; only the in-game panel reads it), and the Stat Updates
+ * tab, which no tab entry renders.
  */
 export function collectSearchTargets(src: SearchSources): SearchTarget[] {
   const targets: SearchTarget[] = [];
@@ -145,8 +146,8 @@ export function collectSearchTargets(src: SearchSources): SearchTarget[] {
     add({ ...ovWhere, chipCapable: false }, 'name', 'World Name', ov.name, (r, v) => ({ ...r, name: v }));
     add({ ...ovWhere, chipCapable: false }, 'author', 'Author', ov.author, (r, v) => ({ ...r, author: v }));
     // Uses the plain prompt vocabulary rather than the placeholder one, so a chip here stays inert text.
-    add({ ...ovWhere, chipCapable: false }, 'description', 'Description', ov.description, (r, v) => ({ ...r, description: v }));
-    add({ ...ovWhere, chipCapable: true }, 'systemPrompt', 'System Prompt', ov.systemPrompt, (r, v) => ({ ...r, systemPrompt: v }));
+    add({ ...ovWhere, chipCapable: false }, 'description', 'World Description', ov.description, (r, v) => ({ ...r, description: v }));
+    add({ ...ovWhere, chipCapable: true }, 'systemPrompt', 'System Prompt Addition', ov.systemPrompt, (r, v) => ({ ...r, systemPrompt: v }));
     add({ ...ovWhere, chipCapable: true }, 'readme', 'Readme', ov.readme, (r, v) => ({ ...r, readme: v }));
     addEach({ ...ovWhere, chipCapable: false }, 'tags', 'Tags', ov.tags, (r, v) => ({ ...r, tags: v }), (r) => r.tags ?? []);
   }
@@ -170,9 +171,9 @@ export function collectSearchTargets(src: SearchSources): SearchTarget[] {
     add({ ...where, chipCapable: true }, 'name', 'Name', entity.name, (r, v) => ({ ...r, name: v }));
     addEach({ ...where, chipCapable: true }, 'aliases', 'Aliases', entity.aliases, (r, v) => ({ ...r, aliases: v }), (r) => r.aliases ?? []);
     add({ ...where, chipCapable: false }, 'type', 'Type', entity.type, (r, v) => ({ ...r, type: v }));
-    add({ ...where, chipCapable: true }, 'playerDescription', 'Player Description', entity.playerDescription, (r, v) => ({ ...r, playerDescription: v }));
-    add({ ...where, chipCapable: true }, 'aiDescription', 'AI Description', entity.aiDescription, (r, v) => ({ ...r, aiDescription: v }));
-    add({ ...where, chipCapable: true }, 'aiSummary', 'AI Summary', entity.aiSummary, (r, v) => ({ ...r, aiSummary: v }));
+    add({ ...where, chipCapable: true }, 'playerDescription', 'Player-Facing Description', entity.playerDescription, (r, v) => ({ ...r, playerDescription: v }));
+    add({ ...where, chipCapable: true }, 'aiDescription', 'AI-Facing Description', entity.aiDescription, (r, v) => ({ ...r, aiDescription: v }));
+    add({ ...where, chipCapable: true }, 'aiSummary', 'AI-Facing Summary', entity.aiSummary, (r, v) => ({ ...r, aiSummary: v }));
     add({ ...where, chipCapable: false }, 'imageTags', 'Image Tags', entity.imageTags, (r, v) => ({ ...r, imageTags: v }));
   });
   src.entityGroups.forEach((group) => {
@@ -184,15 +185,12 @@ export function collectSearchTargets(src: SearchSources): SearchTarget[] {
   // ── Locations ─────────────────────────────────────────────────────────────
   src.locations.forEach((location) => {
     const where = { tab: 'locations', itemId: location.id, itemLabel: untitled(location.name, 'Location') };
-    const { add, addEach } = bind(`location:${location.id}`, location, src.updateLocation);
+    const { add } = bind(`location:${location.id}`, location, src.updateLocation);
     add({ ...where, chipCapable: true }, 'name', 'Name', location.name, (r, v) => ({ ...r, name: v }));
-    add({ ...where, chipCapable: true }, 'playerDescription', 'Player Description', location.playerDescription, (r, v) => ({ ...r, playerDescription: v }));
-    add({ ...where, chipCapable: true }, 'aiDescription', 'AI Description', location.aiDescription, (r, v) => ({ ...r, aiDescription: v }));
-    add({ ...where, chipCapable: true }, 'aiSummary', 'AI Summary', location.aiSummary, (r, v) => ({ ...r, aiSummary: v }));
+    add({ ...where, chipCapable: true }, 'playerDescription', 'Player-Facing Description', location.playerDescription, (r, v) => ({ ...r, playerDescription: v }));
+    add({ ...where, chipCapable: true }, 'aiDescription', 'AI-Facing Description', location.aiDescription, (r, v) => ({ ...r, aiDescription: v }));
+    add({ ...where, chipCapable: true }, 'aiSummary', 'AI-Facing Summary', location.aiSummary, (r, v) => ({ ...r, aiSummary: v }));
     add({ ...where, chipCapable: false }, 'imageTags', 'Image Tags', location.imageTags, (r, v) => ({ ...r, imageTags: v }));
-    // Connections name other locations; a rename here has to be paired with one there to stay linked.
-    addEach({ ...where, chipCapable: false }, 'connections', 'Connections', location.connections,
-      (r, v) => ({ ...r, connections: v }), (r) => r.connections ?? []);
   });
 
   // ── Traits ────────────────────────────────────────────────────────────────
@@ -200,8 +198,8 @@ export function collectSearchTargets(src: SearchSources): SearchTarget[] {
     const where = { tab: 'traits', itemId: trait.id, itemLabel: untitled(trait.name, 'Trait') };
     const { add } = bind(`trait:${trait.id}`, trait, src.updateTrait);
     add({ ...where, chipCapable: true }, 'name', 'Name', trait.name, (r, v) => ({ ...r, name: v }));
-    add({ ...where, chipCapable: true }, 'playerDescription', 'Player Description', trait.playerDescription, (r, v) => ({ ...r, playerDescription: v }));
-    add({ ...where, chipCapable: true }, 'aiDescription', 'AI Description', trait.aiDescription, (r, v) => ({ ...r, aiDescription: v }));
+    add({ ...where, chipCapable: true }, 'playerDescription', 'Player-Facing Description', trait.playerDescription, (r, v) => ({ ...r, playerDescription: v }));
+    add({ ...where, chipCapable: true }, 'aiDescription', 'AI-Facing Description', trait.aiDescription, (r, v) => ({ ...r, aiDescription: v }));
     trait.placeholderPins?.forEach((pin, i) => {
       add({ ...where, chipCapable: false }, `placeholderPins[${i}].value`, 'Pinned Value', pin.value,
         (r, v) => ({ ...r, placeholderPins: r.placeholderPins?.map((x, j) => (j === i ? { ...x, value: v } : x)) }));
@@ -211,15 +209,15 @@ export function collectSearchTargets(src: SearchSources): SearchTarget[] {
     const where = { tab: 'traits', itemId: group.id, itemLabel: untitled(group.name, 'Group') };
     const { add } = bind(`traitGroup:${group.id}`, group, src.updateTraitGroup);
     add({ ...where, chipCapable: true }, 'name', 'Group Name', group.name, (r, v) => ({ ...r, name: v }));
-    add({ ...where, chipCapable: true }, 'playerDescription', 'Player Description', group.playerDescription, (r, v) => ({ ...r, playerDescription: v }));
-    add({ ...where, chipCapable: true }, 'aiDescription', 'AI Description', group.aiDescription, (r, v) => ({ ...r, aiDescription: v }));
+    add({ ...where, chipCapable: true }, 'playerDescription', 'Player-Facing Description', group.playerDescription, (r, v) => ({ ...r, playerDescription: v }));
+    add({ ...where, chipCapable: true }, 'aiDescription', 'AI-Facing Description', group.aiDescription, (r, v) => ({ ...r, aiDescription: v }));
   });
 
   // ── Dictionaries ──────────────────────────────────────────────────────────
   src.dictionaries.forEach((book) => {
     const bookWhere = { tab: 'dictionary', itemId: book.id, itemLabel: untitled(book.name, 'Dictionary') };
     const { add: addBook } = bind(`book:${book.id}`, book, src.updateDictionary);
-    addBook({ ...bookWhere, chipCapable: false }, 'name', 'Name', book.name, (r, v) => ({ ...r, name: v }));
+    addBook({ ...bookWhere, chipCapable: false }, 'name', 'Dictionary Name', book.name, (r, v) => ({ ...r, name: v }));
     addBook({ ...bookWhere, chipCapable: false }, 'description', 'Description', book.description, (r, v) => ({ ...r, description: v }));
     book.entries.forEach((entry) => {
       // A regex entry drops the chip vocabulary, so its keys and value can't take a chip replacement.
@@ -227,10 +225,10 @@ export function collectSearchTargets(src: SearchSources): SearchTarget[] {
       const where = { tab: 'dictionary', itemId: entry.id, itemLabel: untitled(entry.name, 'Entry') };
       const { add, addEach } = bind(`entry:${entry.id}`, entry, src.updateDictionaryEntry);
       add({ ...where, chipCapable: chip }, 'name', 'Name', entry.name, (r, v) => ({ ...r, name: v }));
-      addEach({ ...where, chipCapable: chip }, 'key', 'Keywords', entry.key, (r, v) => ({ ...r, key: v }), (r) => r.key ?? []);
+      addEach({ ...where, chipCapable: chip }, 'key', 'Trigger Keywords', entry.key, (r, v) => ({ ...r, key: v }), (r) => r.key ?? []);
       addEach({ ...where, chipCapable: chip }, 'secondaryKeys', 'Secondary Keywords', entry.secondaryKeys,
         (r, v) => ({ ...r, secondaryKeys: v }), (r) => r.secondaryKeys ?? []);
-      add({ ...where, chipCapable: chip }, 'value', 'Content', entry.value, (r, v) => ({ ...r, value: v }));
+      add({ ...where, chipCapable: chip }, 'value', 'Value', entry.value, (r, v) => ({ ...r, value: v }));
     });
   });
 

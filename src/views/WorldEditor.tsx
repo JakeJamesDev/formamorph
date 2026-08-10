@@ -209,6 +209,7 @@ const WorldEditorInner = ({ onClose, embedded = false, backButton }: {
       value: match.target.value,
       matchText: match.target.value.slice(match.start, match.end),
       start: match.start,
+      fieldLabel: match.target.fieldLabel,
     };
     setTimeout(() => revealEditorMatch(editorRootRef.current, hit), 0);
   }, []);
