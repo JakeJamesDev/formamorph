@@ -36,9 +36,14 @@ It is a *linter*, not a critic. It never comments on writing quality, tone, or c
 
 ## 3. Placement
 
-**A second tab in the editor dock**, beside the Activation Tester, with a **badge in the editor header** carrying the current error/warning counts.
+**A count badge in the editor header, opening the findings panel.** Note the Activation Tester's dock does not exist yet — nothing to "land beside", so the badge is the anchor, not an addition to a dock.
 
-The badge is the real surface. An author who never opens the panel still sees `⚠ 3` appear the moment they create a problem, which is most of the value.
+- **Desktop:** the badge opens the panel as a resizable side panel (the editor already uses `react-resizable-panels`). If the Activation Tester's dock exists by then, the Doctor is a tab in it; otherwise it is that dock's first occupant.
+- **Mobile:** the badge opens a **full-height Sheet**. No dock — the mobile editor is a single-column `ListDetail` layout with no horizontal room, and a Sheet matches its established push-and-back idiom. A finding's **Open** action closes the Sheet and sets `activeTab` + `selectedItemId`, landing in `ListDetail`'s detail pane — the normal mobile navigation path, no new machinery.
+
+The badge is the real surface. An author who never opens the panel still sees `⚠ 3` appear the moment they create a problem, which is most of the value. **On mobile the badge is effectively the whole feature** — a phone author will rarely sit in the panel — which makes the new-vs-seen distinction (§9) load-bearing there: a permanently-lit badge on a cramped header is worse than none.
+
+The badge itself is icon-sized, precedent being the `hasHiddenData` info icon in the same header ([WorldEditor.tsx:577](../src/views/WorldEditor.tsx:577)): conditional header content must not reflow the row or push the tabs down. With zero findings (or nothing new and infos only), it stays quiet. It sits beside the Simple/Advanced toggle; the mobile header row is already tight, so it renders as a compact count chip (`⚠ 3`), never text.
 
 Findings are recomputed on world change (debounced). Everything except stat-code execution is pure object inspection over an already-in-memory world — cheap enough to run on every keystroke without ceremony.
 
