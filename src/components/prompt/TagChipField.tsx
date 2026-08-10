@@ -8,7 +8,7 @@ import { mergeRegister } from '@lexical/utils';
 import { useLexicalComposerContext } from '@lexical/react/LexicalComposerContext';
 import { SuggestionList } from '@/components/SuggestionList';
 import { useDanbooruTags } from '@/lib/useDanbooruTags';
-import { rankTagSuggestions, activeTagToken } from '@/lib/tagSuggest';
+import { rankTagSuggestions, activeTagToken, needsTrailingSeparator } from '@/lib/tagSuggest';
 import { placeholderVocabulary, type ChipVocabulary } from '@/lib/chipVocabulary';
 import { PLACEHOLDER_TRIGGER, placeholderHint } from '@/lib/placeholderInsert';
 import { cn } from '@/lib/utils';
@@ -52,7 +52,7 @@ function DanbooruTagPlugin({ parse }: { parse: ChipVocabulary['parse'] }) {
       // Replace only the tag under the caret, so chips elsewhere in the value keep their exact tokens and
       // the caret lands after the completion rather than at the end of the field.
       const { start, end } = activeTagToken(value, caret);
-      $replaceFlatRange(parse, start, end, end >= value.length ? `${tag}, ` : tag);
+      $replaceFlatRange(parse, start, end, needsTrailingSeparator(value, end) ? `${tag}, ` : tag);
     });
     close();
     editor.focus();
