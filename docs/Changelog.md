@@ -12,6 +12,13 @@ Each release groups changes as **Major** / **Minor**, then **Added** / **Removed
 
 _Unreleased — new work accumulates here until it earns a version bump. The next batch will pin its own version; `package.json` reads **2.11.0** (just released below)._
 
+### Minor Changes
+
+#### 🔧 Fixed
+
+- **👤 User-facing**
+  - **Player notes survive Re-generate.** Re-generating a turn you had stopped mid-generation wiped the Notes panel; notes now carry through Re-generate unchanged, and rolling back to a stopped turn restores its notes instead of clearing them.
+
 ---
 
 <details>

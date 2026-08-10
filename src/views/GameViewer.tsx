@@ -806,7 +806,9 @@ const GameViewer = ({
     setUserPage(null); // the rolled-back turn is now the latest — resume following it
     // Seed the live notes scratchpad from the rolled-back turn's own notes (per-turn notes live on the
     // message, and keepLiveHistory skips the snapshot's notes) so a later re-generate/action uses them.
-    setPlayerNotes(parseTurnContent(fullMessageHistory[pageAssistantIndex(currentPage, messagesPerPage)]?.content ?? '')?.notes ?? '');
+    // A turn that froze no notes (empty at finalize, or a stopped turn) falls back to the snapshot's
+    // scratchpad — same resolution the paged view uses (viewNotes).
+    setPlayerNotes(parseTurnContent(fullMessageHistory[pageAssistantIndex(currentPage, messagesPerPage)]?.content ?? '')?.notes ?? targetState.playerNotes ?? '');
     addSystemLogEntry("Rolled back to previous game state");
     // Mark the AI-context entries for the turns this rollback discarded (those after the page we
     // rolled back to). States after the current page are kept, allowing future "redo" functionality.
@@ -896,9 +898,9 @@ const GameViewer = ({
     const rewound = sliceHistoryToPage(fullMessageHistory, currentPage - 1, messagesPerPage);
     setFullMessageHistory(rewound);
     setSceneImages((prev) => pruneSceneImages(prev, rewound)); // the re-rolled turn's pictures go with it
-    // Carry the re-rolled turn's own notes onto the fresh turn (per-turn notes live on the message; the live
-    // scratchpad still holds the pre-rollback latest turn's notes, which would otherwise be frozen in).
-    setPlayerNotes(parseTurnContent(fullMessageHistory[pageAssistantIndex(currentPage, messagesPerPage)]?.content ?? '')?.notes ?? '');
+    // The notes scratchpad is left alone: regen only targets the latest page, where the live scratchpad is
+    // always at least as fresh as the message's frozen notes (a stopped turn freezes none at all —
+    // re-seeding from the message here wiped the player's notes).
     // Mark the current turn's AI-context entry as superseded; sendGameAction appends a fresh one.
     setDebugTurns((prev) => markRegeneratedTurn(prev));
     // Re-generating the opening (page 1) returns to the not-started state and re-fills the box with the
