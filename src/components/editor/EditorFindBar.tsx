@@ -29,7 +29,8 @@ interface EditorFindBarProps {
   allowPlaceholderReplace: boolean;
   /** Open with the replace row expanded (Ctrl+H). */
   startWithReplace: boolean;
-  onNavigate: (match: SearchMatch) => void;
+  /** Called with the hit to reveal, or `null` when there is none left to show. */
+  onNavigate: (match: SearchMatch | null) => void;
   onAddPlaceholder: (placeholder: Placeholder) => void;
   onClose: () => void;
 }
@@ -119,7 +120,9 @@ export default function EditorFindBar({
     ? `${current.target.itemId}|${current.target.fieldKey}|${current.start}|${current.target.value.slice(current.start, current.end)}`
     : null;
   useEffect(() => {
-    if (current) onNavigate(current);
+    // `null` when nothing matches, so emptying the box takes the marker with it — deleting the last
+    // character is as much a change of what is found as typing one.
+    onNavigate(current);
     // Navigating is a response to the cursor moving, not to the world changing underneath it.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [revealKey]);

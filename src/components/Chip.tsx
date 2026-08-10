@@ -10,6 +10,11 @@ import { cn } from "@/lib/utils";
  *  keyword chips). Colored chips layer their bg/text on top via `className`. */
 export const CHIP_BASE = "inline-flex items-center gap-1 rounded px-1.5 py-0.5 text-meta";
 
+/** Right padding that stands in for a chip's remove (×) — `gap-1` plus the icon, on top of `px-1.5`. An
+ *  editor that has no × of its own uses it to land exactly the width of the chip it replaced, so the row
+ *  never reflows on the way into edit mode. */
+export const CHIP_REMOVE_RESERVE = "pr-[1.375rem]";
+
 /** The separator the comma-split offer looks for. Comma+space, not a bare comma, so a `{2,3}` quantifier
  *  or a compact `a,b` list is left alone — only human-formatted lists are candidates. */
 export const CHIP_SPLIT_SEPARATOR = ", ";
@@ -93,18 +98,48 @@ export function Chip({ label, removeLabel, onRemove, className, innerRef, style,
   );
 }
 
-/** A draggable chip (only valid inside a SortableContext). The chip's `id` is its label. */
+/**
+ * Sizes a chip-shaped field to exactly the text in it, by laying an invisible twin of that text in the same
+ * box underneath it and letting the twin set the width.
+ *
+ * A character count cannot do this: `ch` is the width of one `0`, and chip labels are proportional text, so
+ * anything counting characters lands narrower than the label it replaces and the chip visibly shrinks the
+ * moment it becomes editable. The twin carries the same classes as the field, so the two agree by
+ * construction rather than by arithmetic that has to be kept in sync with the styling.
+ *
+ * Wrap a field in it and give that field `col-start-1 row-start-1 w-full`.
+ */
+export function ChipFieldSizer({ text, withRemove, children }: {
+  text: string;
+  /** Set when the chip being replaced carries a remove (×), so the twin reserves that room and the field
+   *  lands exactly the chip's width rather than the chip's width less a button. */
+  withRemove?: boolean;
+  children: ReactNode;
+}) {
+  return (
+    <span className="relative inline-grid max-w-full align-middle">
+      <span aria-hidden className={cn(CHIP_BASE, 'invisible col-start-1 row-start-1 min-w-[3ch] border whitespace-pre')}>
+        {text || ' '}
+        {withRemove && <span className="h-3 w-3" />}
+      </span>
+      {children}
+    </span>
+  );
+}
+
 /**
  * A chip that has become a text box: same size and colors, so renaming happens in place rather than in a
  * dialog. Enter or blur commits, Escape abandons, and an empty value is treated as abandoning — a chip
  * labels itself with its name, so committing nothing would leave nothing to grab hold of.
  */
-export function ChipRenameInput({ value, onCommit, onCancel, ariaLabel, style }: {
+export function ChipRenameInput({ value, onCommit, onCancel, ariaLabel, style, withRemove }: {
   value: string;
   onCommit: (next: string) => void;
   onCancel: () => void;
   ariaLabel: string;
   style?: CSSProperties;
+  /** See {@link ChipFieldSizer}. */
+  withRemove?: boolean;
 }) {
   const [text, setText] = useState(value);
   const done = useRef(false);
@@ -116,26 +151,30 @@ export function ChipRenameInput({ value, onCommit, onCancel, ariaLabel, style }:
     else onCancel();
   };
   return (
-    <input
-      autoFocus
-      value={text}
-      aria-label={ariaLabel}
-      style={style}
-      onChange={(e) => setText(e.target.value)}
-      onFocus={(e) => e.currentTarget.select()}
-      onBlur={() => finish(text)}
-      onKeyDown={(e) => {
-        e.stopPropagation();
-        if (e.key === 'Enter') { e.preventDefault(); finish(text); }
-        if (e.key === 'Escape') { e.preventDefault(); done.current = true; onCancel(); }
-      }}
-      // Sized to its content so the row doesn't jump when a chip becomes a field.
-      size={Math.max(text.length, 3)}
-      className={cn(CHIP_BASE, 'min-w-[3ch] max-w-full rounded border bg-secondary text-secondary-foreground outline-none ring-1 ring-ring')}
-    />
+    <ChipFieldSizer text={text} withRemove={withRemove}>
+      <input
+        autoFocus
+        // The twin sets the width; an input's own intrinsic size is 20 characters, which would
+        // otherwise be what the grid track measures.
+        size={1}
+        value={text}
+        aria-label={ariaLabel}
+        style={style}
+        onChange={(e) => setText(e.target.value)}
+        onFocus={(e) => e.currentTarget.select()}
+        onBlur={() => finish(text)}
+        onKeyDown={(e) => {
+          e.stopPropagation();
+          if (e.key === 'Enter') { e.preventDefault(); finish(text); }
+          if (e.key === 'Escape') { e.preventDefault(); done.current = true; onCancel(); }
+        }}
+        className={cn(CHIP_BASE, 'col-start-1 row-start-1 w-full min-w-0 rounded border bg-secondary text-secondary-foreground outline-none ring-1 ring-ring')}
+      />
+    </ChipFieldSizer>
   );
 }
 
+/** A draggable chip (only valid inside a SortableContext). The chip's `id` is its label. */
 export function SortableChip({ id, onRemove }: { id: string; onRemove: (label: string) => void }) {
   const { setNodeRef, transform, transition, isDragging, attributes, listeners } = useSortable({ id });
   return (
