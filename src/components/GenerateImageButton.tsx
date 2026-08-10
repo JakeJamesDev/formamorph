@@ -8,9 +8,7 @@ import { Progress } from '@/components/ui/progress';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from '@/components/ui/dialog';
 import { ImageZoomViewer } from '@/components/ImageZoomViewer';
 import AiGenerateButton from '@/components/AiGenerateButton';
-import TagHistoryButtons from '@/components/TagHistoryButtons';
-import { useTagHistory } from '@/lib/useTagHistory';
-import TagChipField from '@/components/prompt/TagChipField';
+import TagField from '@/components/prompt/TagField';
 import { useSettings } from '@/contexts/SettingsContext';
 import { type ImageSubjectKind } from '@/lib/imagePrompt';
 import { generateImage, buildImageRequest } from '@/lib/imageGen';
@@ -81,8 +79,6 @@ export function GenerateImageButton({ subject, cap, onChange, tags, onTagsChange
 
   // Prompt edits write back to the authored tags field when wired; otherwise stay local (world thumbnail).
   const handlePrompt = useCallback((t: string) => { setPrompt(t); onTagsChange?.(t); }, [onTagsChange]);
-  const promptHistory = useTagHistory(prompt, handlePrompt);
-  const negativeHistory = useTagHistory(negative, setNegative);
 
   const generate = async () => {
     if (!prompt.trim()) { toast.info('Enter a prompt first.'); return; }
@@ -179,44 +175,23 @@ export function GenerateImageButton({ subject, cap, onChange, tags, onTagsChange
                 </SelectContent>
               </Select>
             </div>
-            <div className="grid gap-1.5">
-              <div className="flex items-center justify-between">
-                {/* No `htmlFor`: the field is a contenteditable, which a label cannot point at. */}
-                <Label>Prompt</Label>
-                <div className="flex items-center gap-1">
-                  <AiGenerateButton mode="tags" kind={subject.kind} source={subject.description} onChange={handlePrompt} />
-                  <span className="mx-0.5 h-4 w-px bg-border" aria-hidden />
-                  <TagHistoryButtons history={promptHistory} />
-                </div>
-              </div>
-              {/* The placeholder is the preset's own prefix, so an empty field reads as "this is what you
-                  already get" rather than "nothing is being sent". */}
-              <TagChipField
-                value={prompt}
-                onChange={handlePrompt}
-                placeholders={[]}
-                ariaLabel="Prompt"
-                placeholder={alwaysSent(imagePositivePrompt) ?? 'comma-separated visual tags…'}
-              />
-            </div>
-            <div className="grid gap-1.5">
-              <div className="flex items-center justify-between">
-                {/* No `htmlFor`: the field is a contenteditable, which a label cannot point at. */}
-                <Label>Negative prompt</Label>
-                {/* No generate button: the model writes what a picture should contain, never what it
-                    shouldn't — that list is the author's taste and the preset's shared negatives. */}
-                <div className="flex items-center gap-1">
-                  <TagHistoryButtons history={negativeHistory} />
-                </div>
-              </div>
-              <TagChipField
-                value={negative}
-                onChange={setNegative}
-                placeholders={[]}
-                ariaLabel="Negative prompt"
-                placeholder={alwaysSent(imageNegativePrompt) ?? 'tags to avoid…'}
-              />
-            </div>
+            {/* The placeholder is the preset's own prefix, so an empty field reads as "this is what you
+                already get" rather than "nothing is being sent". */}
+            <TagField
+              label="Prompt"
+              value={prompt}
+              onChange={handlePrompt}
+              placeholder={alwaysSent(imagePositivePrompt) ?? 'comma-separated visual tags…'}
+              aside={<AiGenerateButton mode="tags" kind={subject.kind} source={subject.description} onChange={handlePrompt} />}
+            />
+            {/* No generate button: the model writes what a picture should contain, never what it
+                shouldn't — that list is the author's taste and the preset's shared negatives. */}
+            <TagField
+              label="Negative prompt"
+              value={negative}
+              onChange={setNegative}
+              placeholder={alwaysSent(imageNegativePrompt) ?? 'tags to avoid…'}
+            />
 
             {/* Providers that don't report progress (OpenAI) still need to look busy. */}
             {generating && progress === null && (

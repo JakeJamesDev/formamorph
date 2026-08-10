@@ -2,8 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import { ChevronLeft, ChevronRight, Dices, Loader2, Square, Trash2, Sparkles } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Progress } from '@/components/ui/progress';
-import { Label } from '@/components/ui/label';
-import TagChipField from '@/components/prompt/TagChipField';
+import TagField from '@/components/prompt/TagField';
 import { ImageZoomViewer } from '@/components/ImageZoomViewer';
 
 /**
@@ -154,11 +153,9 @@ export const SceneImagePanel = ({
         <div className="flex flex-col gap-1">
           {/* The same Danbooru autocomplete the editor's Image Tags field uses — this is where tags get
               hand-fixed, so it is exactly where completion is worth having. */}
-          <Label className="sr-only">Scene tags</Label>
-          <TagChipField
+          <TagField
             value={draft}
             onChange={setDraft}
-            placeholders={[]}
             ariaLabel="Scene tags"
             placeholder="comma-separated tags…"
           />

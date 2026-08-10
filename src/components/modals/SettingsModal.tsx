@@ -7,6 +7,7 @@ import { LocalModelPanel } from '@/components/modals/LocalModelPanel';
 import LlmSetupGuide from '@/components/modals/LlmSetupGuide';
 import { SETTINGS_TABS } from '@/components/modals/settingsTabs';
 import { Row, CheckRow, Section, SubGroup, RowLabel, HintInfo } from '@/components/SettingsRows';
+import TagField from '@/components/prompt/TagField';
 import { reasoningTabs, reasoningPromptTabs, defaultPromptReasoning, defaultReasoningBudgetPct, REASONING_CONTROL_KINDS, type PromptReasoning } from '@/lib/reasoningEffort';
 import { ExportPresetDialog, ImportPresetDialog } from '@/components/modals/PresetShareDialogs';
 import { type SharedPreset } from '@/lib/promptPresetShare';
@@ -1920,11 +1921,21 @@ You can always draw a single scene by hand from the button above the story inste
               </Section>
 
               <Section title="Image">
-              <Row label="Prompt Prefix" htmlFor="imagePositivePrompt" hint="Prepended to every generated prompt (quality/style tags). Leave blank for none.">
-                <Textarea id="imagePositivePrompt" rows={3} value={imagePositivePrompt} onChange={(e) => setImagePositivePrompt(e.target.value)} placeholder="e.g. masterpiece, best quality" />
+              <Row label="Prompt Prefix" hint="Prepended to every generated prompt (quality/style tags). Leave blank for none.">
+                <TagField
+                  value={imagePositivePrompt}
+                  onChange={setImagePositivePrompt}
+                  ariaLabel="Prompt Prefix"
+                  placeholder="e.g. masterpiece, best quality"
+                />
               </Row>
-              <Row label="Negative Prompt" htmlFor="imageNegativePrompt">
-                <Textarea id="imageNegativePrompt" rows={3} value={imageNegativePrompt} onChange={(e) => setImageNegativePrompt(e.target.value)} />
+              <Row label="Negative Prompt">
+                <TagField
+                  value={imageNegativePrompt}
+                  onChange={setImageNegativePrompt}
+                  ariaLabel="Negative Prompt"
+                  placeholder="tags to avoid…"
+                />
               </Row>
               <Row center label="Portrait (W × H)">
                 <div className="flex items-center gap-2">

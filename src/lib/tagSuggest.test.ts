@@ -56,6 +56,13 @@ describe('replaceActiveTag', () => {
     expect(value.slice(0, caret)).toBe('1girl, blonde hair');
   });
 
+  it('appends a separator at the end of a line, where none is waiting either', () => {
+    // A tag line broken across rows ends each row the same way the value ends: with nothing after the tag.
+    const { value, caret } = replaceActiveTag('1girl, blon\nsolo', 11, 'blonde hair');
+    expect(value).toBe('1girl, blonde hair, \nsolo');
+    expect(value.slice(0, caret)).toBe('1girl, blonde hair, ');
+  });
+
   it('leaves a placeholder token elsewhere in the value untouched', () => {
     const token = '{{ph:hair:world:p1}}';
     const { value } = replaceActiveTag(`1girl, ${token}, blon`, `1girl, ${token}, blon`.length, 'blonde hair');

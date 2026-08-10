@@ -31,12 +31,20 @@ export function activeTagToken(value: string, caret: number): { start: number; e
 }
 
 /**
- * Replace the tag the caret sits in with `tag`, reporting where the caret should land. A trailing `", "` is
- * appended only when the replaced tag was the last one, so picking a suggestion mid-list keeps the separator
- * that is already there.
+ * Whether a completion ending at `end` has to bring its own `", "`. True wherever no separator is waiting —
+ * the end of the value, and the end of a line — so the caret is always left ready for the next tag. A tag
+ * followed by a comma already has one, and a second would only be a hole to type around.
+ */
+export function needsTrailingSeparator(value: string, end: number): boolean {
+  return end >= value.length || value[end] === '\n';
+}
+
+/**
+ * Replace the tag the caret sits in with `tag`, reporting where the caret should land. A trailing `", "`
+ * comes with it wherever the list does not already have one there.
  */
 export function replaceActiveTag(value: string, caret: number, tag: string): { value: string; caret: number } {
   const { start, end } = activeTagToken(value, caret);
-  const insert = end >= value.length ? `${tag}, ` : tag;
+  const insert = needsTrailingSeparator(value, end) ? `${tag}, ` : tag;
   return { value: value.slice(0, start) + insert + value.slice(end), caret: start + insert.length };
 }

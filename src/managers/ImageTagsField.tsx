@@ -14,9 +14,7 @@ import {
 } from "@/components/ui/dialog";
 import { Plus, Star } from "lucide-react";
 import AiGenerateButton from "@/components/AiGenerateButton";
-import TagHistoryButtons from "@/components/TagHistoryButtons";
-import { useTagHistory } from "@/lib/useTagHistory";
-import TagChipField from "@/components/prompt/TagChipField";
+import TagField from "@/components/prompt/TagField";
 import { ConfirmDialog } from "@/components/ConfirmDialog";
 import { ImageUpload } from '../lib/UtilityComponents';
 import { isRemoteImage } from '@/lib/imageBytes';
@@ -163,9 +161,6 @@ const ImageTagsField = ({ label, images, onImagesChange, slots = 1, embeddedLimi
   const settlePlacement = useRef<((placed: boolean) => void) | null>(null);
   // Booru tags are Advanced-only; so is the offer to adopt an uploaded image's embedded prompt as them.
   const { advanced } = useEditorMode();
-  // The tag inputs are plain controlled fields with no history of their own, so it lives here — stepped by
-  // tag, with a generation (or an adopted embedded prompt) as one step.
-  const tagHistory = useTagHistory(tags ?? '', onTagsChange);
   // The batch consent prompt for a multi-file drop. Each ImageUpload still owns the single-file one.
   const { promptImagesBatch, dialog: batchDialog } = useDownscalePrompt();
 
@@ -392,23 +387,14 @@ const ImageTagsField = ({ label, images, onImagesChange, slots = 1, embeddedLimi
         onCancel={() => setPendingPrompt(null)}
       />
       {advanced && (
-      <>
-      <div className="flex items-center justify-between">
-        <Label className="leading-none">Image Tags</Label>
-        <div className="flex items-center gap-1">
-          <AiGenerateButton mode="tags" kind={kind} source={description} onChange={onTagsChange} />
-          <span className="mx-0.5 h-4 w-px bg-border" aria-hidden />
-          <TagHistoryButtons history={tagHistory} />
-        </div>
-      </div>
-      <TagChipField
-        value={tags || ''}
-        onChange={onTagsChange}
-        placeholders={placeholders}
-        placeholder="booru tags, comma separated"
-        ariaLabel="Image Tags"
-      />
-      </>
+        <TagField
+          label="Image Tags"
+          value={tags || ''}
+          onChange={onTagsChange}
+          placeholders={placeholders}
+          placeholder="booru tags, comma separated"
+          aside={<AiGenerateButton mode="tags" kind={kind} source={description} onChange={onTagsChange} />}
+        />
       )}
       {/* A generated picture always arrives as bytes, so it answers to the embedded allowance: it fills a free
           slot, and once there is none it replaces one the author picks. */}
