@@ -623,13 +623,31 @@
 /* World Editor find & replace — the current hit. Focus stays in the find bar, so a field can't paint a
    selection; the ring marks which field holds the hit and the highlight marks where inside a prose one.
    Amber rather than the primary: primary is a near-neutral that reads as an ordinary focus ring, and this
-   has to say "the thing you searched for is here" at a glance in either theme. */
+   has to say "the thing you searched for is here" at a glance in either theme.
+   Inset rather than an outline: the editor's panels are ScrollArea viewports with `overflow: hidden`, which
+   clips anything drawn outside a field's box, and a field with no border of its own had nothing to show. */
 .editor-find-target {
-  outline: 2px solid hsl(var(--warning));
-  outline-offset: 1px;
+  box-shadow: inset 0 0 0 2px hsl(var(--warning));
   border-radius: calc(var(--radius) - 2px);
 }
 ::highlight(editor-find-match) {
   background-color: hsl(var(--warning) / 0.4);
   color: hsl(var(--foreground));
+}
+/* The matched run inside a plain input or textarea, painted by a mirror of the control sitting over it —
+   `::highlight()` reaches contenteditable text nodes but cannot reach a form control's internals. */
+.editor-find-mirror {
+  position: absolute;
+  z-index: 1;
+  margin: 0;
+  overflow: hidden;
+  pointer-events: none;
+  color: transparent;
+  background: none;
+  border-color: transparent;
+}
+.editor-find-mirror mark {
+  color: transparent;
+  background-color: hsl(var(--warning) / 0.4);
+  border-radius: 2px;
 }

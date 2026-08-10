@@ -122,7 +122,8 @@ export default function EditorFindBar({
 
   return (
     <div
-      className="absolute right-4 top-2 z-20 w-[min(30rem,calc(100%-2rem))] rounded-md border bg-popover p-2 shadow-lg"
+      // Left, not right: the detail pane holds most of what a search finds, and it is the right-hand half.
+      className="absolute left-4 top-2 z-20 w-[min(30rem,calc(100%-2rem))] rounded-md border bg-popover p-2 shadow-lg"
       data-editor-find-skip
       onKeyDown={onKeyDown}
       role="search"
