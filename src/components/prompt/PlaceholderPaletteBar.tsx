@@ -28,7 +28,9 @@ const PlaceholderPaletteBar = ({ placeholders, className }: {
   if (!items.length) return null;
 
   return (
-    <div className={cn('sticky top-0 z-10 -mx-1 mb-2 border-b bg-background/95 px-1 py-1.5 backdrop-blur', className)}>
+    // Insertable placeholders, not a field's contents — the find bar must not offer one of these as the
+    // place a hit on a placeholder's name lives.
+    <div data-editor-find-skip className={cn('sticky top-0 z-10 -mx-1 mb-2 border-b bg-background/95 px-1 py-1.5 backdrop-blur', className)}>
       <div className="flex items-start gap-2">
         <button
           type="button"

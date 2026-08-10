@@ -357,7 +357,8 @@ function VariableToolbar({ vocab, interactive }: {
     // material while reading a prompt, and three rows of it cost more screen than the editor can spare.
     // `min-w-0` lets the strip size to its parent rather than to its chips; both halves of that need it,
     // since a flex item stuck at content width has nothing to scroll within and nothing to wrap into.
-    <div className="flex items-center gap-1 min-w-0 overflow-x-auto sm:flex-wrap sm:overflow-visible [scrollbar-width:none] [&::-webkit-scrollbar]{display:none}">
+    // Insertable tokens, not this field's contents — see the palette bar for why the find bar skips them.
+    <div data-editor-find-skip className="flex items-center gap-1 min-w-0 overflow-x-auto sm:flex-wrap sm:overflow-visible [scrollbar-width:none] [&::-webkit-scrollbar]{display:none}">
       <span className="text-meta text-muted-foreground mr-1 flex-shrink-0">Insert:</span>
       {items.map((v) => (
         <button
@@ -878,7 +879,13 @@ const PromptField = ({ value, onChange, variables = [], vocabulary, previewValue
   );
 
   const body = (
-    <div ref={measureRef} className={cn('flex flex-col flex-1 min-h-0 gap-2', className)}>
+    // The caption doubles as the field's identity for the World Editor's find bar, which otherwise has only
+    // the text to go on — and two fields on one panel routinely hold the very same text.
+    <div
+      ref={measureRef}
+      data-find-field={typeof label === 'string' ? label : undefined}
+      className={cn('flex flex-col flex-1 min-h-0 gap-2', className)}
+    >
       {/* Above the chrome, not below it: the Options panel shows the same notice with nothing above it, so
           anywhere else here makes it jump as you move between a prompt's sub-tabs. */}
       {readOnlyNotice}
