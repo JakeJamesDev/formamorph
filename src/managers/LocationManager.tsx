@@ -43,6 +43,14 @@ const LocationManager = ({ location }: { location: GameLocation }) => {
       </div>
       <PlaceholderField
         label="Player-Facing Description"
+        labelAside={(
+          <AiGenerateButton
+            mode="playerDesc"
+            source={editingLocation.aiDescription}
+            onChange={(s) => handleChange('playerDescription', s)}
+            kind="location"
+          />
+        )}
         value={editingLocation.playerDescription || ''}
         onChange={(v) => handleChange('playerDescription', v)}
         placeholders={placeholders}
@@ -50,6 +58,14 @@ const LocationManager = ({ location }: { location: GameLocation }) => {
       />
       <PlaceholderField
         label="AI-Facing Description"
+        labelAside={(
+          <AiGenerateButton
+            mode="aiDesc"
+            source={editingLocation.playerDescription}
+            onChange={(s) => handleChange('aiDescription', s)}
+            kind="location"
+          />
+        )}
         value={editingLocation.aiDescription || ''}
         onChange={(v) => handleChange('aiDescription', v)}
         placeholders={placeholders}
