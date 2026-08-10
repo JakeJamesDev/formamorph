@@ -6,7 +6,7 @@ import {
   type LexicalNode, type NodeKey, type SerializedLexicalNode, type Spread,
 } from 'lexical';
 import { useLexicalComposerContext } from '@lexical/react/LexicalComposerContext';
-import { Chip } from '@/components/Chip';
+import { Chip, ChipRenameInput } from '@/components/Chip';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
 import { Checkbox } from '@/components/ui/checkbox';
@@ -55,6 +55,7 @@ function VariableChip({ nodeKey, token }: { nodeKey: NodeKey; token: string }) {
   const dragKey = useContext(PromptDragContext);
   const vocab = useContext(ChipVocabularyContext);
   const [open, setOpen] = useState(false);
+  const [renaming, setRenaming] = useState(false);
   // A read-only editor (e.g. the Default preset) may still show the pop-out to view the chip's mode, but
   // can't change or remove it. Track editability so switching presets re-renders the chip accordingly.
   const [editable, setEditable] = useState(editor.isEditable());
@@ -119,10 +120,31 @@ function VariableChip({ nodeKey, token }: { nodeKey: NodeKey; token: string }) {
     }
   };
 
+  // Double-click renames what the chip stands for, the same gesture that renames a keyword chip. It ends
+  // the pop-out the first click of the pair opened, so the two never fight over the chip.
+  const renameable = editable && known && !!vocab.rename;
+  const startRename = () => { setOpen(false); setRenaming(true); };
+  if (renaming) {
+    return (
+      <ChipRenameInput
+        value={vocab.label(token)}
+        ariaLabel={`Rename ${vocab.label(token)}`}
+        style={color ? { backgroundColor: color, color: '#000' } : undefined}
+        onCommit={(next) => { setRenaming(false); vocab.rename?.(token, next); }}
+        onCancel={() => setRenaming(false)}
+      />
+    );
+  }
+
   return (
     <Popover open={open} onOpenChange={setOpen}>
       <PopoverTrigger asChild>
-        <span draggable={editable} onDragStart={editable ? handleDragStart : undefined} className="inline-block align-baseline">
+        <span
+          draggable={editable}
+          onDragStart={editable ? handleDragStart : undefined}
+          onDoubleClick={renameable ? startRename : undefined}
+          className="inline-block align-baseline"
+        >
           <Chip
             label={label}
             title={hint ? `${vocab.label(token)} — ${hint}` : undefined}

@@ -76,6 +76,20 @@ Three things the spec got wrong, found by verifying in the live editor:
 
 The bar sits at the **top left** of the editor area — the detail pane holds most of what a search finds and it is the right-hand half.
 
+## Round 3 — Built 2026-08-10
+
+Five fixes, causes confirmed by reproduction before any code changed:
+
+1. **Stale highlight while typing.** The navigate effect re-fires on `fieldKey`/`itemId`/`start` only ([EditorFindBar.tsx:73](../src/components/editor/EditorFindBar.tsx:73)); extending the query ("cit" → "city") keeps the same start, so the marker keeps the old length and never re-reveals. Fix: include the matched text in the effect's identity so every query change re-reveals.
+2. **Ctrl+F / Ctrl+H also opens browser find.** The shortcut listener is bubble-phase on `window` ([WorldEditor.tsx:182](../src/views/WorldEditor.tsx:182)); when focus sits in a component that stops keydown propagation (Lexical fields do), our `preventDefault` never runs. Fix: register with `capture: true`.
+3. **Aa / W toggles show no state.** They're Radix `ToggleGroupItem`s in a `type="multiple"` group that's never given a `value`, so Radix's own always-off state overrides the hand-set `data-state` — they never render pressed. Fix: replace with a real split button — two segments sharing a border with a separator between, an enabled segment turning `bg-primary text-primary-foreground`.
+4. **Placeholder-replace in Values/Tags silently does nothing.** Confirmed with the user: the field was Placeholder Values. `replaceCurrent` on a non-chip field gets `insert === null` and just steps ([EditorFindBar.tsx:95](../src/components/editor/EditorFindBar.tsx:95)) — with one match, visibly nothing. (Chip-capable chip lists are fine: verified live that an alias becomes a mixed chip-in-chip tag.) Fix: **notice + step** — the bar shows "*<Field>* can't hold a chip — skipped", mirroring Replace All's report.
+5. **Double-click renames a placeholder chip.** Committing an inline edit renames the placeholder itself, everywhere. Wired through a new optional `ChipVocabulary.rename`, supplied by `usePlaceholderChipVocabulary` — a hook that reads whatever `PlaceholderStore` is bound, so no field has to thread an updater down to its chips and chips outside an editor are simply not renameable. Two things this turned up:
+   - The Values chips were broken for a reason unrelated to renaming: `PlaceholderManager` wrapped a chip in `PopoverAnchor` **only while its weight pop-out was open**, so the first click replaced the chip's DOM node and the second landed on a different element. Every chip now gets the same wrapper and the pop-out hangs off a `virtualRef`.
+   - The palette inserts on mouse-down, so the first half of a double-click had already dropped a chip into the claimed field. `ChipInsertTarget` now also exposes `undo`, and the rename takes that insert back through the field's own history. Waiting to see whether a second click arrives was rejected: it would delay every insert to serve the rarer gesture.
+
+   Single click keeps its meanings (World/Unique pop-out; weights pop-out). KeywordChips *tags* keep double-click-edits-the-tag — deliberately unchanged.
+
 ## Settled Calls
 
 1. **Placeholder-replace mode hides in Simple editor mode** — consistent with the `advancedOnly` Placeholders tab. Simple mode gets text replace only.

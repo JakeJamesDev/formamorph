@@ -3,6 +3,7 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import {
   $getRoot, $getSelection, $isRangeSelection, $isElementNode, $createParagraphNode,
+  UNDO_COMMAND,
   type LexicalEditor,
 } from 'lexical';
 import { useLexicalComposerContext } from '@lexical/react/LexicalComposerContext';
@@ -38,14 +39,18 @@ function insertChipAtCaret(editor: LexicalEditor, vocab: ChipVocabulary, palette
 
 interface TargetState {
   insert: ((paletteToken: string) => void) | null;
+  /** Take back the last insert, through the target field's own history — what Ctrl+Z there would do.
+   *  Lets a gesture that begins with a click undo that click's effect once it turns out to be something
+   *  else (double-clicking a palette chip to rename it). */
+  undo: (() => void) | null;
   /** `root` is the field's editable element, used to tell focus moving *within* the field from focus
    *  leaving it for something that can't take a chip. */
-  claim: (key: symbol, fn: (paletteToken: string) => void, root: HTMLElement | null) => void;
+  claim: (key: symbol, fn: (paletteToken: string) => void, undo: () => void, root: HTMLElement | null) => void;
   /** Drops the claim only if `key` still holds it, so a field unmounting can't steal focus from its successor. */
   release: (key: symbol) => void;
 }
 
-const ChipInsertTargetContext = createContext<TargetState>({ insert: null, claim: () => {}, release: () => {} });
+const ChipInsertTargetContext = createContext<TargetState>({ insert: null, undo: null, claim: () => {}, release: () => {} });
 
 export function useChipInsertTarget(): TargetState {
   return useContext(ChipInsertTargetContext);
@@ -53,14 +58,14 @@ export function useChipInsertTarget(): TargetState {
 
 /** Wraps a panel so every chip field inside it shares one insert target. */
 export function ChipInsertTargetProvider({ children }: { children: ReactNode }) {
-  const [target, setTarget] = useState<{ key: symbol; insert: (t: string) => void } | null>(null);
+  const [target, setTarget] = useState<{ key: symbol; insert: (t: string) => void; undo: () => void } | null>(null);
   const holder = useRef<symbol | null>(null);
   const holderRoot = useRef<HTMLElement | null>(null);
 
-  const claim = useCallback((key: symbol, insert: (t: string) => void, root: HTMLElement | null) => {
+  const claim = useCallback((key: symbol, insert: (t: string) => void, undo: () => void, root: HTMLElement | null) => {
     holder.current = key;
     holderRoot.current = root;
-    setTarget({ key, insert });
+    setTarget({ key, insert, undo });
   }, []);
 
   const release = useCallback((key: symbol) => {
@@ -94,7 +99,7 @@ export function ChipInsertTargetProvider({ children }: { children: ReactNode }) 
   }, []);
 
   const value = useMemo<TargetState>(
-    () => ({ insert: target?.insert ?? null, claim, release }),
+    () => ({ insert: target?.insert ?? null, undo: target?.undo ?? null, claim, release }),
     [target, claim, release],
   );
 
@@ -116,7 +121,12 @@ export function ChipInsertTargetPlugin({ vocab }: { vocab: ChipVocabulary }) {
   vocabRef.current = vocab;
 
   useEffect(() => {
-    const take = () => claim(key, (token) => insertChipAtCaret(editor, vocabRef.current, token), editor.getRootElement());
+    const take = () => claim(
+      key,
+      (token) => insertChipAtCaret(editor, vocabRef.current, token),
+      () => editor.dispatchCommand(UNDO_COMMAND, undefined),
+      editor.getRootElement(),
+    );
     // A DOM focusin listener on the root rather than Lexical's FOCUS_COMMAND: the command is dispatched by
     // the text plugin's own handler and does not fire for every route into the field (a programmatic focus,
     // or a click that lands on a chip decorator rather than the text). focusin bubbles from all of them.

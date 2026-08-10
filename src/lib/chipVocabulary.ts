@@ -1,5 +1,6 @@
 import { randomUUID } from "@/lib/uuid";
-import { createContext } from 'react';
+import { createContext, useMemo } from 'react';
+import { usePlaceholderStoreOptional } from '@/contexts/PlaceholderStoreContext';
 import type { Placeholder } from '@/types';
 import type { PromptSegment } from './promptTemplate';
 import { parsePromptTemplate } from './promptTemplate';
@@ -47,6 +48,9 @@ export interface ChipVocabulary {
   palette(): { token: string; label: string; color?: string }[];
   /** Prepare a palette token for a fresh insertion (placeholders re-mint their placement id). */
   freshInsertToken(token: string): string;
+  /** Rename what the chip stands for, everywhere it is used. Present only where the family is authored and
+   *  a store is bound to write to — prompt variables are fixed, so they never offer it. */
+  rename?(token: string, next: string): void;
 }
 
 /** Vocabulary backed by the static prompt-variable registry. `palette` is the subset a given prompt offers. */
@@ -135,9 +139,20 @@ export function plainVocabulary(): ChipVocabulary {
 
 /** Vocabulary backed by a world's placeholders. A chip's World/Unique axis only appears once the placeholder
  *  has 2+ values (a single-value Variable has nothing to randomize). */
-export function placeholderVocabulary(placeholders: Placeholder[]): ChipVocabulary {
+export function placeholderVocabulary(
+  placeholders: Placeholder[],
+  /** Writes a renamed placeholder back. Omit where placeholders are only being displayed. */
+  onRename?: (placeholder: Placeholder) => void,
+): ChipVocabulary {
   const byId = new Map(placeholders.map((p) => [p.id, p]));
   return {
+    rename: onRename && ((token, next) => {
+      const id = decodePlaceholderToken(token)?.id;
+      const ph = id ? byId.get(id) : undefined;
+      const name = next.trim();
+      // A chip labels itself with the name, so an empty one would leave nothing to grab hold of.
+      if (ph && name && name !== ph.name) onRename({ ...ph, name });
+    }),
     parse: parsePlaceholderText,
     isKnown: (t) => decodePlaceholderToken(t) != null,
     label: (t) => {
@@ -182,6 +197,19 @@ export function placeholderVocabulary(placeholders: Placeholder[]): ChipVocabula
       return d ? encodePlaceholderToken({ ...d, placementId: randomUUID() }) : t;
     },
   };
+}
+
+/**
+ * The placeholder vocabulary for a field, wired to rename through whatever placeholder store is bound.
+ *
+ * Reading the store here rather than taking it as a prop is what keeps double-click-to-rename working the
+ * same in every field without each call site having to thread an updater down to its chips. Outside an
+ * editor no store is bound, and the chips are simply not renameable.
+ */
+export function usePlaceholderChipVocabulary(placeholders: Placeholder[]): ChipVocabulary {
+  const store = usePlaceholderStoreOptional();
+  const update = store?.updatePlaceholder;
+  return useMemo(() => placeholderVocabulary(placeholders, update), [placeholders, update]);
 }
 
 /** The editor reads its vocabulary here. Defaults to the prompt family (empty palette) so existing prompt

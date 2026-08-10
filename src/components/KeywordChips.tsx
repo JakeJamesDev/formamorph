@@ -1,4 +1,4 @@
-import { useMemo, useState, type ChangeEvent, type ClipboardEvent, type KeyboardEvent, type ReactNode } from 'react';
+import { useState, type ChangeEvent, type ClipboardEvent, type KeyboardEvent, type ReactNode } from 'react';
 import {
   DndContext,
   closestCenter,
@@ -17,7 +17,7 @@ import {
 import { commaSplitCandidate, splitPastedChips, replaceChipValue } from '@/components/Chip';
 import { EditableChip } from '@/components/EditableChip';
 import ChipInput from '@/components/prompt/ChipInput';
-import { placeholderVocabulary } from '@/lib/chipVocabulary';
+import { usePlaceholderChipVocabulary } from '@/lib/chipVocabulary';
 import { hasPlaceholders } from '@/lib/placeholders';
 import { PLACEHOLDER_TRIGGER, placeholderHint } from '@/lib/placeholderInsert';
 import type { Placeholder } from '@/types';
@@ -37,6 +37,8 @@ import PlaceholderText from '@/components/prompt/PlaceholderText';
  * as pills (double-click to edit it in place). Omit the prop for lists that must stay literal — placeholder values themselves, since resolution
  * is single-pass and a chip inside one would never expand.
  */
+const NO_PLACEHOLDERS: Placeholder[] = [];
+
 export function KeywordChips({
   keywords,
   onChange,
@@ -63,7 +65,8 @@ export function KeywordChips({
 }) {
   const [inputValue, setInputValue] = useState('');
   const chipsEnabled = !!placeholders?.length;
-  const vocab = useMemo(() => placeholderVocabulary(placeholders ?? []), [placeholders]);
+  // A stable empty list, so a tag list with no placeholders doesn't rebuild its vocabulary every render.
+  const vocab = usePlaceholderChipVocabulary(placeholders ?? NO_PLACEHOLDERS);
   // The last committed chip that reads like a comma-separated list, with the segments it would become.
   const [splitOffer, setSplitOffer] = useState<{ chip: string; parts: string[] } | null>(null);
   const sensors = useSensors(

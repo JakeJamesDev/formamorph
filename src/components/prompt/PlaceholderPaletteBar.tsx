@@ -1,7 +1,7 @@
-import { useMemo } from 'react';
+import { useMemo, useState } from 'react';
 import { ChevronDown, ChevronRight } from 'lucide-react';
-import { CHIP_BASE } from '@/components/Chip';
-import { placeholderVocabulary } from '@/lib/chipVocabulary';
+import { CHIP_BASE, ChipRenameInput } from '@/components/Chip';
+import { usePlaceholderChipVocabulary } from '@/lib/chipVocabulary';
 import { usePaletteCollapsed } from '@/lib/usePaletteCollapsed';
 import { cn } from '@/lib/utils';
 import type { Placeholder } from '@/types';
@@ -21,8 +21,19 @@ const PlaceholderPaletteBar = ({ placeholders, className }: {
   className?: string;
 }) => {
   const [collapsed, setCollapsed] = usePaletteCollapsed();
-  const { insert } = useChipInsertTarget();
-  const items = useMemo(() => placeholderVocabulary(placeholders).palette(), [placeholders]);
+  const { insert, undo } = useChipInsertTarget();
+  const vocab = usePlaceholderChipVocabulary(placeholders);
+  const items = useMemo(() => vocab.palette(), [vocab]);
+  const [renaming, setRenaming] = useState<string | null>(null);
+
+  // Inserting happens on mouse-down, so the first half of a double-click has already dropped a chip into the
+  // claimed field by the time the gesture turns out to be a rename. Taking it back through that field's own
+  // history leaves the text exactly as it was — the alternative, waiting to see whether a second click
+  // arrives, would put a delay on every insert to serve the rarer gesture.
+  const startRename = (token: string) => {
+    undo?.();
+    setRenaming(token);
+  };
 
   // Nothing defined means nothing to insert; the strip would be a header explaining its own emptiness.
   if (!items.length) return null;
@@ -44,7 +55,16 @@ const PlaceholderPaletteBar = ({ placeholders, className }: {
         </button>
         {!collapsed && (
           <div className="flex min-w-0 flex-1 flex-wrap items-center gap-1">
-            {items.map((item) => (
+            {items.map((item) => (renaming === item.token ? (
+              <ChipRenameInput
+                key={item.token}
+                value={item.label}
+                ariaLabel={`Rename ${item.label}`}
+                style={{ backgroundColor: item.color, color: '#000' }}
+                onCommit={(next) => { setRenaming(null); vocab.rename?.(item.token, next); }}
+                onCancel={() => setRenaming(null)}
+              />
+            ) : (
               <button
                 key={item.token}
                 type="button"
@@ -59,7 +79,10 @@ const PlaceholderPaletteBar = ({ placeholders, className }: {
                 // only clicking goes inert — dimmed to say so, while the chip stays draggable.
                 aria-disabled={!insert}
                 // Keep the target field's focus and selection: the insert reads its caret to know where to land.
-                onMouseDown={(e) => { e.preventDefault(); insert?.(item.token); }}
+                // `detail > 1` is the second press of a double-click: that one is starting a rename, not
+                // asking for another copy.
+                onMouseDown={(e) => { e.preventDefault(); if (e.detail < 2) insert?.(item.token); }}
+                onDoubleClick={vocab.rename ? () => startRename(item.token) : undefined}
                 title={insert ? `Insert ${item.label}, or drag it into a field` : `Drag ${item.label} into a field, or click into one first`}
                 className={cn(
                   CHIP_BASE,
@@ -70,7 +93,7 @@ const PlaceholderPaletteBar = ({ placeholders, className }: {
               >
                 {item.label}
               </button>
-            ))}
+            )))}
           </div>
         )}
       </div>

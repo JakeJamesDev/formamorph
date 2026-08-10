@@ -41,6 +41,11 @@ export const usePlaceholderStore = (): PlaceholderStore => {
   return store;
 };
 
+/** The store if one is bound, `null` otherwise — for widgets that also render outside an editor, where a
+ *  placeholder is only ever displayed and there is nothing to write back to. */
+// eslint-disable-next-line react-refresh/only-export-components
+export const usePlaceholderStoreOptional = (): PlaceholderStore | null => useContext(PlaceholderStoreContext);
+
 /** Provides a `PlaceholderStore` to the placeholder-editing widgets below it. */
 export const PlaceholderStoreProvider = ({ value, children }: { value: PlaceholderStore; children: ReactNode }) => (
   <PlaceholderStoreContext.Provider value={value}>{children}</PlaceholderStoreContext.Provider>

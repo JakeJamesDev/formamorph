@@ -1,6 +1,6 @@
 /* eslint-disable react-refresh/only-export-components -- this module intentionally exports the chip
    components alongside the shared CHIP_BASE constant and paste helpers. */
-import { type CSSProperties, type ReactNode } from "react";
+import { useRef, useState, type CSSProperties, type ReactNode } from "react";
 import { X } from "lucide-react";
 import { useSortable } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
@@ -94,6 +94,48 @@ export function Chip({ label, removeLabel, onRemove, className, innerRef, style,
 }
 
 /** A draggable chip (only valid inside a SortableContext). The chip's `id` is its label. */
+/**
+ * A chip that has become a text box: same size and colors, so renaming happens in place rather than in a
+ * dialog. Enter or blur commits, Escape abandons, and an empty value is treated as abandoning — a chip
+ * labels itself with its name, so committing nothing would leave nothing to grab hold of.
+ */
+export function ChipRenameInput({ value, onCommit, onCancel, ariaLabel, style }: {
+  value: string;
+  onCommit: (next: string) => void;
+  onCancel: () => void;
+  ariaLabel: string;
+  style?: CSSProperties;
+}) {
+  const [text, setText] = useState(value);
+  const done = useRef(false);
+  const finish = (next: string) => {
+    if (done.current) return;
+    done.current = true;
+    const trimmed = next.trim();
+    if (trimmed && trimmed !== value) onCommit(trimmed);
+    else onCancel();
+  };
+  return (
+    <input
+      autoFocus
+      value={text}
+      aria-label={ariaLabel}
+      style={style}
+      onChange={(e) => setText(e.target.value)}
+      onFocus={(e) => e.currentTarget.select()}
+      onBlur={() => finish(text)}
+      onKeyDown={(e) => {
+        e.stopPropagation();
+        if (e.key === 'Enter') { e.preventDefault(); finish(text); }
+        if (e.key === 'Escape') { e.preventDefault(); done.current = true; onCancel(); }
+      }}
+      // Sized to its content so the row doesn't jump when a chip becomes a field.
+      size={Math.max(text.length, 3)}
+      className={cn(CHIP_BASE, 'min-w-[3ch] max-w-full rounded border bg-secondary text-secondary-foreground outline-none ring-1 ring-ring')}
+    />
+  );
+}
+
 export function SortableChip({ id, onRemove }: { id: string; onRemove: (label: string) => void }) {
   const { setNodeRef, transform, transition, isDragging, attributes, listeners } = useSortable({ id });
   return (
