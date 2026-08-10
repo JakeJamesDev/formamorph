@@ -127,6 +127,7 @@ function VariableChip({ nodeKey, token }: { nodeKey: NodeKey; token: string }) {
   if (renaming) {
     return (
       <ChipRenameInput
+        withRemove={editable}
         value={vocab.label(token)}
         ariaLabel={`Rename ${vocab.label(token)}`}
         style={color ? { backgroundColor: color, color: '#000' } : undefined}

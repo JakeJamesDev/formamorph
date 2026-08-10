@@ -204,7 +204,8 @@ const WorldEditorInner = ({ onClose, embedded = false, backButton }: {
   }, [findOpen, visibleTabs, worldOverview, stats, entities, entityGroups, locations, traits, traitGroups,
       dictionaries, placeholders, updateWorldOverview, updateStat, updateEntity, updateEntityGroup,
       updateLocation, updateTrait, updateTraitGroup, updateDictionary, updateDictionaryEntry, updatePlaceholder]);
-  const navigateToMatch = useCallback((match: SearchMatch) => {
+  const navigateToMatch = useCallback((match: SearchMatch | null) => {
+    if (!match) { clearEditorMatch(); return; }
     setActiveTab(match.target.tab);
     setSelectedItemId(match.target.itemId);
     const hit = {

@@ -2,7 +2,7 @@ import { useLayoutEffect, useMemo, useRef, useState, type ReactNode } from "reac
 import { useSortable } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 import { cn } from "@/lib/utils";
-import { Chip, CHIP_BASE } from "./Chip";
+import { Chip, CHIP_BASE, CHIP_REMOVE_RESERVE, ChipFieldSizer } from "./Chip";
 import { SuggestionList } from "./SuggestionList";
 import ChipInput from "@/components/prompt/ChipInput";
 import { placeholderVocabulary } from "@/lib/chipVocabulary";
@@ -104,9 +104,10 @@ export function EditableChip({ value, onCommit, onRemove, sortable = false, getS
           onCancel={cancel}
           ariaLabel={`Edit ${accessibleName}`}
           // `w-auto` beats ChipInput's own `w-full`: this one sits inline among chips and should be as wide
-          // as what is in it. The 3ch floor is the same one the plain text input it replaces used, so an
-          // empty field is still big enough to click into.
-          className="min-h-0 w-auto min-w-[3ch] max-w-full rounded border bg-secondary px-1.5 py-0.5 text-meta"
+          // as what is in it — the chips it may contain rule out measuring it as plain text. The 3ch floor
+          // is the same one the plain text input it replaces used, so an empty field is still big enough to
+          // click into, and the reserve stands in for the × this editor drops.
+          className={cn('min-h-0 w-auto min-w-[3ch] max-w-full rounded border bg-secondary pl-1.5 py-0.5 text-meta', CHIP_REMOVE_RESERVE)}
         />
       </span>
     );
@@ -114,22 +115,24 @@ export function EditableChip({ value, onCommit, onRemove, sortable = false, getS
 
   if (editing) {
     return (
-      <span className="relative inline-flex max-w-full">
+      // Sized by a twin of the text rather than by counting characters, so the chip keeps its width when it
+      // becomes a field — the same way the chip-editor form above sizes itself to its content.
+      <ChipFieldSizer text={text} withRemove>
         <input
           ref={inputRef}
+          // See ChipFieldSizer: the twin sets the width, so the input must not impose its own.
+          size={1}
           value={text}
           onChange={(e) => { setText(e.target.value); setActive(0); }}
           onKeyDown={onKeyDown}
           onBlur={() => finish(text)}
-          // Grows with the text, but never past the field — a long keyword would otherwise run off a phone screen.
-          style={{ width: `${Math.max(text.length + 1, 3)}ch`, maxWidth: "100%" }}
-          className={cn(CHIP_BASE, "border bg-secondary text-secondary-foreground outline-none ring-1 ring-ring")}
+          className={cn(CHIP_BASE, "col-start-1 row-start-1 w-full min-w-0 border bg-secondary text-secondary-foreground outline-none ring-1 ring-ring")}
           aria-label={`Edit ${accessibleName}`}
         />
         {suggestions.length > 0 && (
           <SuggestionList items={suggestions} active={active} onPick={finish} onHover={setActive} className="left-0 top-full min-w-[160px]" />
         )}
-      </span>
+      </ChipFieldSizer>
     );
   }
 
