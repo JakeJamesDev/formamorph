@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { render, screen, fireEvent, waitFor } from '@testing-library/react';
+import { render, screen, fireEvent, waitFor, act } from '@testing-library/react';
 import { GenerateImageButton } from './GenerateImageButton';
 
 // The dialog reads the whole image-gen settings block; only the endpoint/provider fields matter here.
@@ -77,5 +77,54 @@ describe('GenerateImageButton cancel', () => {
     openDialog();
     fireEvent.click(screen.getByRole('button', { name: /^Generate$/ }));
     expect(await screen.findByText(/Generating…/)).toBeInTheDocument();
+  });
+});
+
+describe('GenerateImageButton preview pane', () => {
+  beforeEach(() => { generateImage.mockReset(); });
+
+  it('opens on an empty frame rather than nothing, so the dialog is already its final size', () => {
+    render(<GenerateImageButton {...props} tags="1girl" />);
+    openDialog();
+    expect(screen.getByText('The image appears here.')).toBeInTheDocument();
+    expect(screen.queryByRole('img')).toBeNull();
+  });
+
+  it('shows the provider’s in-progress frames in the pane, then the finished picture', async () => {
+    let report: ((p: { progress: number; preview?: string }) => void) | undefined;
+    let finish: ((url: string) => void) | undefined;
+    generateImage.mockImplementation((_p: unknown, _params: unknown, opts: { onProgress: (p: { progress: number; preview?: string }) => void }) => {
+      report = opts.onProgress;
+      return new Promise<string>((resolve) => { finish = resolve; });
+    });
+
+    render(<GenerateImageButton {...props} tags="1girl" />);
+    openDialog();
+    fireEvent.click(screen.getByRole('button', { name: /^Generate$/ }));
+
+    await waitFor(() => expect(report).toBeDefined());
+    act(() => report!({ progress: 0.4, preview: 'data:image/webp;base64,MID' }));
+
+    // The half-done frame is in the pane, and the bar reports on it there rather than beside the controls.
+    const mid = screen.getByAltText('Generating…');
+    expect(mid).toHaveAttribute('src', 'data:image/webp;base64,MID');
+    expect(screen.getByText('40%')).toBeInTheDocument();
+    // Out of flow and fitted to the pane: a latent preview is a couple of hundred pixels, so at its own
+    // size it is a stamp — and in flow a large one would grow the row and shift the dialog as it landed.
+    expect(mid.className.split(/\s+/)).toEqual(
+      expect.arrayContaining(['absolute', 'inset-0', 'h-full', 'w-full', 'object-contain']),
+    );
+
+    act(() => finish!('data:image/webp;base64,DONE'));
+
+    const done = await screen.findByAltText('Generated preview');
+    expect(done).toHaveAttribute('src', 'data:image/webp;base64,DONE');
+    // Still zoomable: the pane is bigger than the old thumbnail but no substitute for full size.
+    expect(done.className).toMatch(/cursor-zoom-in/);
+    // Sized by the pane exactly as the frames were, so the finished picture replacing them moves nothing.
+    expect(done.className.split(/\s+/)).toEqual(
+      expect.arrayContaining(['absolute', 'inset-0', 'h-full', 'w-full', 'object-contain']),
+    );
+    expect(screen.queryByText('The image appears here.')).toBeNull();
   });
 });

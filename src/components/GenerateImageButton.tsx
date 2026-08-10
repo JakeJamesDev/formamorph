@@ -14,11 +14,82 @@ import { type ImageSubjectKind } from '@/lib/imagePrompt';
 import { generateImage, buildImageRequest } from '@/lib/imageGen';
 import { type ImageCap } from '@/lib/imageOptim';
 import { useDownscalePrompt } from '@/lib/useDownscalePrompt';
+import { cn } from '@/lib/utils';
 
 /** The preset's own prefix as hint text. Labelled, because an empty box showing tags reads as "nothing is
  *  being sent" rather than "this is what you already get on top of whatever you type". */
 const alwaysSent = (presetPrompt: string) =>
   (presetPrompt.trim() ? `Always Sent: ${presetPrompt.trim()}` : undefined);
+
+/** The shape the picture will come out as — the same split that picks the generation's dimensions. The
+ *  frame is grown along whichever axis the pane binds on (a tall pane for a portrait, a wide one for a
+ *  landscape) and capped on the other, so it fills the pane without ever overflowing it. */
+const EMPTY_FRAME = {
+  portrait: 'aspect-[3/4] h-full max-w-full',
+  landscape: 'aspect-video w-full max-h-full',
+};
+
+/**
+ * The dialog's right half: one picture at the height the dialog can give it, rather than the thumbnail a
+ * single column had room for. Holds every state the run passes through — the empty frame, the in-progress
+ * frames, the bar, and the finished picture — so the left half stays purely the controls.
+ *
+ * On a phone the two halves stack and this becomes a band beneath them: an empty frame at full aspect would
+ * push the prompt fields off the screen before there is anything to look at.
+ */
+const PreviewPane = ({ shape, generating, progress, frame, preview, onZoom }: {
+  shape: 'portrait' | 'landscape';
+  generating: boolean;
+  progress: number | null;
+  frame: string | null;
+  preview: string | null;
+  onZoom: () => void;
+}) => {
+  // The finished picture wins; until it lands, whatever the provider last sent.
+  const shown = preview ?? (generating ? frame : null);
+  return (
+    <div
+      className={cn(
+        'relative flex min-h-0 items-center justify-center overflow-hidden rounded-md border bg-muted/30',
+        shown ? 'max-sm:h-[45vh]' : 'border-dashed max-sm:h-48',
+      )}
+    >
+      {shown ? (
+        // Taken out of flow, so the picture is sized by the pane and never the other way about: in flow, a
+        // tall result grows the row it sits in and the whole dialog steps sideways as each one lands.
+        // `object-contain` fits it inside those bounds whatever shape it is, without cropping or distorting.
+        <img
+          src={shown}
+          alt={preview ? 'Generated preview' : 'Generating…'}
+          onClick={preview ? onZoom : undefined}
+          className={cn(
+            'absolute inset-0 h-full w-full object-contain',
+            preview ? 'cursor-zoom-in' : 'opacity-90',
+          )}
+        />
+      ) : (
+        // Drawn at the shape the picture will be, so the empty dialog already reads as the frame it will fill.
+        <div className={cn('flex max-h-full items-center justify-center rounded border border-dashed p-4 text-center', EMPTY_FRAME[shape])}>
+          {generating ? (
+            <span className="flex items-center gap-2 text-meta text-muted-foreground">
+              <Loader2 className="h-4 w-4 animate-spin" /> Generating…
+            </span>
+          ) : (
+            <span className="text-meta text-muted-foreground">The image appears here.</span>
+          )}
+        </div>
+      )}
+      {/* Over the picture rather than beside it: a bar that reflowed the pane would move the frame it is
+          reporting on. Providers that report nothing (OpenAI) leave `progress` null and get the spinner. */}
+      {generating && progress !== null && (
+        <div className="absolute inset-x-0 bottom-0 grid gap-1 bg-overlay/70 p-2">
+          <Progress value={progress * 100} />
+          <span className="text-right text-meta text-white">{Math.round(progress * 100)}%</span>
+        </div>
+      )}
+    </div>
+  );
+};
 
 /**
  * "Generate with AI" affordance shown beside an ImageUpload. Opens a dialog that prefills an SD-style
@@ -144,7 +215,9 @@ export function GenerateImageButton({ subject, cap, onChange, tags, onTagsChange
       </Button>
 
       <Dialog open={open} onOpenChange={closeDialog}>
-        <DialogContent className="sm:max-w-[560px]">
+        {/* Two columns wide enough for the picture to be worth looking at, and a height cap so the pane has
+            something definite to stretch against. */}
+        <DialogContent className="flex max-h-[85vh] flex-col sm:max-w-[900px]">
           <DialogHeader>
             <DialogTitle>Generate image</DialogTitle>
             <div className="flex items-center justify-between gap-3">
@@ -161,7 +234,11 @@ export function GenerateImageButton({ subject, cap, onChange, tags, onTagsChange
             </div>
           </DialogHeader>
 
-          <div className="grid gap-3">
+          {/* Controls left, picture right; stacked below `sm`, where two columns have no room. `min-h-0` on
+              both the row and the column is what lets the left half scroll instead of forcing the dialog
+              past its cap and squashing the pane. */}
+          <div className="grid min-h-0 flex-1 gap-4 sm:grid-cols-2">
+          <div className="grid min-h-0 content-start gap-3 overflow-y-auto">
             <div className="grid gap-1.5">
               <Label htmlFor="gen-preset">Preset</Label>
               <Select value={activeImageEndpointPresetId} onValueChange={selectImageEndpointPreset}>
@@ -193,34 +270,18 @@ export function GenerateImageButton({ subject, cap, onChange, tags, onTagsChange
               placeholder={alwaysSent(imageNegativePrompt) ?? 'tags to avoid…'}
             />
 
-            {/* Providers that don't report progress (OpenAI) still need to look busy. */}
-            {generating && progress === null && (
-              <div className="flex items-center gap-2 text-meta text-muted-foreground">
-                <Loader2 className="h-4 w-4 animate-spin" /> Generating…
-              </div>
-            )}
-            {/* Progress bar — progress stays null for providers that don't report (OpenAI). */}
-            {generating && progress !== null && (
-              <div className="grid gap-1">
-                <Progress value={progress * 100} />
-                <span className="text-meta text-muted-foreground text-right">{Math.round(progress * 100)}%</span>
-              </div>
-            )}
-            {/* Live in-progress frame until the final image arrives. */}
-            {generating && previewFrame && !preview && (
-              <img src={previewFrame} alt="Generating…" className="mx-auto max-h-64 rounded-md border opacity-90" />
-            )}
-
-            {preview && (
-              <img
-                src={preview}
-                alt="Generated preview"
-                className="mx-auto max-h-64 rounded-md border cursor-zoom-in"
-                onClick={() => setZoomOpen(true)}
-              />
-            )}
-            {preview && <ImageZoomViewer src={preview} alt="Generated preview" open={zoomOpen} onOpenChange={setZoomOpen} />}
           </div>
+
+          <PreviewPane
+            shape={subject.kind === 'character' ? 'portrait' : 'landscape'}
+            generating={generating}
+            progress={progress}
+            frame={previewFrame}
+            preview={preview}
+            onZoom={() => setZoomOpen(true)}
+          />
+          </div>
+          {preview && <ImageZoomViewer src={preview} alt="Generated preview" open={zoomOpen} onOpenChange={setZoomOpen} />}
 
           <DialogFooter className="flex flex-col sm:flex-row gap-2">
             <Button type="button" variant="outline" onClick={() => closeDialog(false)}>Cancel</Button>
