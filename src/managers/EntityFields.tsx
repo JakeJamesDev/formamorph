@@ -60,6 +60,14 @@ const EntityFields = ({ value, onChange, placeholders = [], locationOptions, sel
       )}
       <PlaceholderField
         label="Player-Facing Description"
+        labelAside={(
+          <AiGenerateButton
+            mode="playerDesc"
+            source={value.aiDescription}
+            onChange={(s) => onChange('playerDescription', s)}
+            kind="character"
+          />
+        )}
         value={value.playerDescription || ''}
         onChange={(v) => onChange('playerDescription', v)}
         placeholders={placeholders}
@@ -67,6 +75,14 @@ const EntityFields = ({ value, onChange, placeholders = [], locationOptions, sel
       />
       <PlaceholderField
         label="AI-Facing Description"
+        labelAside={(
+          <AiGenerateButton
+            mode="aiDesc"
+            source={value.playerDescription}
+            onChange={(s) => onChange('aiDescription', s)}
+            kind="character"
+          />
+        )}
         value={value.aiDescription || ''}
         onChange={(v) => onChange('aiDescription', v)}
         placeholders={placeholders}
