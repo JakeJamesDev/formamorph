@@ -99,6 +99,16 @@ Five fixes, causes confirmed by reproduction before any code changed:
 5. **Inventory order must match panel order.** Two mismatches found: Entity had `type` before the descriptions (panel shows Name, Aliases, Player-Facing, AI-Facing, AI Summary, *then* Type) — fix to `name, aliases, playerDescription, aiDescription, aiSummary, type, imageTags`. Overview had `tags` last (panel shows Name, Author, Tags on the left, then Description, System Prompt, Readme on the right) — move `tags` after `author`. All other collections verified in panel order already.
 6. **Replace editbox width matches Find's.** After the inset work, lay the two rows in one grid — `[auto chevron] [minmax(0,1fr) editbox] [auto trailing]` — so the shared 1fr column makes both editboxes identical and the `auto` trailing column sizes to the wider group (find's counter + 3 buttons vs replace's 2). The replace row leaves the chevron cell empty instead of hand-padding `pl-8`.
 
+## Round 5 — Built 2026-08-10 (presentation)
+
+- **Where a hit is** shows as a breadcrumb pill: crosshair, then `Tab › Item › Field`, at the editbox's text size. The tab leads because a search crosses all of them and that was the one thing the old line never said. It replaced a loose line of text that read as debug output and was indistinguishable from the notice sharing that slot.
+- **Mobile** drops the breadcrumb for the count alone (`1 / 10`), on its own row, indented to the editbox like desktop, at the editbox's size. Where the hit is needs more width than a 375px row has, and a truncated `Assault Chas… · AI-Facing De…` says less than nothing. The count leaves the find row there, which is what widens the editboxes.
+- **The heading is `sr-only` on mobile**; the advanced-features marker is a dot on the Advanced switch rather than an ℹ️ beside it, on every viewport.
+- **The replace-mode cell never fills.** It swaps between two modes and neither is the off one; only the Aa/W toggles fill, because on/off is what they are. Hints are `Find` and `Replace`; the picker reads `Choose Placeholder`, muted until one is chosen.
+- **The bar is inset equally** (`left-4 top-4`) so its corner sits on the panel's corner.
+- **The list scrolls to the selection** — `EditorRow` marks the selected row and the reveal brings it into view alongside the field.
+- **The reveal centres the hit's own rect**, not the field. A prose field grows to fit its text rather than scrolling it, so a long one is taller than the panel and centring *it* put the match off screen. Form controls do scroll their text, so those are moved to the mark first and the mirror is synced then and there — the field's `scroll` event arrives a frame later, too late for the rect measured on the next line.
+
 ## Settled Calls
 
 1. **Placeholder-replace mode hides in Simple editor mode** — consistent with the `advancedOnly` Placeholders tab. Simple mode gets text replace only.
