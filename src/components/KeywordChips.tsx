@@ -180,6 +180,10 @@ export function KeywordChips({
           </SortableContext>
         </DndContext>
         {chipsEnabled ? (
+          // The growth lives out here, on the flex item itself. Passed through `className` it reaches the
+          // editable instead, whose wrapper then shrink-wraps — leaving the editor a eighth of the box wide
+          // and the rest of it looking like a field that ignores clicks.
+          <div className="min-w-[8rem] flex-grow">
           <ChipInput
             value={inputValue}
             onChange={(v) => { setInputValue(v); setSplitOffer(null); }}
@@ -189,9 +193,10 @@ export function KeywordChips({
             onBlur={() => { if (inputValue.trim()) { addKeyword(inputValue); setInputValue(''); } }}
             placeholder={placeholderHint(keywords.length === 0 ? placeholder : 'Add keyword...', true)}
             ariaLabel={keywords.length === 0 ? placeholder : 'Add keyword'}
-            // Sits inside the chip box, so it drops the bordered-input shell and just claims the free width.
-            className="min-h-0 min-w-[8rem] flex-grow border-0 bg-transparent px-0 py-0 focus-visible:ring-0"
+            // Sits inside the chip box, so it drops the bordered-input shell; the width comes from the wrapper.
+            className="min-h-0 w-full border-0 bg-transparent px-0 py-0 focus-visible:ring-0"
           />
+          </div>
         ) : (
           <input
             value={inputValue}
