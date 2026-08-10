@@ -135,14 +135,16 @@ function locate(root: HTMLElement, hit: MatchLocation): { field: Field; at: numb
     const content = contentOf(field);
     if (!content.includes(hit.matchText)) continue;
     const shown = loose(content);
-    // The caption wins outright where a field carries one: two fields on a panel holding identical text is
-    // ordinary (an AI description seeded from the player-facing one), and no reading of the text can tell
-    // those apart. Otherwise exact text beats near, and near beats merely containing the word — a prose
-    // field can only ever be near, rendering markdown and chips rather than the source it stores.
+    // Ranked, because text alone is regularly ambiguous. Being the right *kind* of control counts most: a
+    // chip-list entry so often repeats its item's name word for word that the name field would otherwise
+    // win every time. Then the caption, which is the only thing separating two prose fields holding the
+    // same text. Then exact text over a shared opening — a prose field can only ever share an opening,
+    // rendering markdown and chips rather than the source it stores.
     const captioned = field.closest('[data-find-field]')?.getAttribute('data-find-field');
-    const score = captioned && hit.fieldLabel && captioned.startsWith(hit.fieldLabel) ? Number.MAX_SAFE_INTEGER
-      : shown === wanted ? Number.MAX_SAFE_INTEGER - 1
-      : commonPrefix(shown, wanted);
+    const score =
+      (field.hasAttribute('data-chip') === !!hit.inChipList ? KIND_MATCH : 0)
+      + (captioned && hit.fieldLabel && captioned.startsWith(hit.fieldLabel) ? CAPTION_MATCH : 0)
+      + (shown === wanted ? EXACT_TEXT : commonPrefix(shown, wanted));
     if (best && score <= best.score) continue;
     const at = nthIndexOf(content, hit.matchText, nth);
     best = { field, at: at >= 0 ? at : content.indexOf(hit.matchText), score };
@@ -179,6 +181,8 @@ export interface MatchLocation {
   matchText: string;
   start: number;
   fieldLabel?: string;
+  /** True when the hit belongs to one entry of a chip list rather than to a text box. */
+  inChipList?: boolean;
 }
 
 /** A Range over `[at, at + length)` of a prose field, walking its text nodes to the offset. */
@@ -201,6 +205,12 @@ function rangeAt(field: HTMLElement, at: number, length: number): Range | null {
   }
   return null;
 }
+
+// Ranked scoring bands, each far enough above the next that a lower one can only ever break a tie.
+// `commonPrefix` is bounded by the field's own length, so it stays under the smallest band.
+const KIND_MATCH = 1e12;
+const CAPTION_MATCH = 1e9;
+const EXACT_TEXT = 1e6;
 
 /** Retry budget: the first hit after opening a tab waits on that panel's first mount, the slowest case. */
 const RETRY_LIMIT = 30;
