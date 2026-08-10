@@ -542,7 +542,7 @@ const MainMenu = ({ onStartGame, onLoadSaveGame, onReplayIntro, introActive = fa
 
   // Reload the world grid from storage. Reused on mount and after the World Editor modal closes so the
   // grid reflects renames/edits/deletes without remounting MainMenu (mirrors refreshDictionaries/Entities).
-  const refreshWorlds = useCallback(async () => {
+  const refreshWorlds = useCallback(async (): Promise<WorldRecord[]> => {
     try {
       await WorldStorageService.initialize();
       const worldMetadata = await WorldStorageService.getWorldMetadata();
@@ -551,13 +551,38 @@ const MainMenu = ({ onStartGame, onLoadSaveGame, onReplayIntro, introActive = fa
         isLoading: false,
         defaultName: DEFAULT_WORLDS.find(dw => dw.id === world.id)?.defaultName || world.name
       }));
-      setWorlds(applyWorldOrder(mapped, loadWorldOrder()));
+      const ordered = applyWorldOrder(mapped, loadWorldOrder());
+      setWorlds(ordered);
+      // Returned as well as set: a caller that has to re-derive something from the fresh list can't read it
+      // back out of state in the same tick.
+      return ordered;
     } catch (error) {
       console.error('Error loading worlds:', error);
+      return [];
     } finally {
       setIsLoadingWorlds(false);
     }
   }, []);
+
+  /**
+   * Rebuild the open world's card from storage — the same composition `handleWorldSelection` makes, minus
+   * opening it.
+   *
+   * The card stays open behind the World Editor, so it is the first thing seen on the way back out. Held as
+   * the state it was in when it was opened, it went on showing the old name, description and thumbnail until
+   * it was closed and reopened.
+   */
+  const resyncSelectedWorld = useCallback(async (list: WorldRecord[], worldId: string) => {
+    try {
+      const record = list.find(w => w.id === worldId);
+      const worldData = await WorldStorageService.getWorldData(worldId);
+      if (!record || !worldData) return;
+      const { world: migrated } = loadWorldData(worldData as World, true);
+      setSelectedWorld({ ...record, data: migrated });
+    } catch (error) {
+      console.error('Error refreshing world details:', error);
+    }
+  }, [loadWorldData]);
 
   // Seed missing default worlds and auto-update unedited ones to the newest bundled version. Runs every
   // launch (cheap when nothing changed); only a first-run seed toasts success/failure, while an in-place
@@ -2331,7 +2356,15 @@ const MainMenu = ({ onStartGame, onLoadSaveGame, onReplayIntro, introActive = fa
           className="max-w-none w-screen h-dvh sm:max-w-none left-0 top-0 translate-x-0 translate-y-0 rounded-none sm:rounded-none p-0 gap-0 flex flex-col data-[state=open]:!slide-in-from-top-0 data-[state=open]:!slide-in-from-left-0 data-[state=closed]:!slide-out-to-top-0 data-[state=closed]:!slide-out-to-left-0"
         >
           <DialogTitle className="sr-only">World Editor</DialogTitle>
-          <WorldEditor embedded backButton onClose={() => { setShowWorldEditor(false); refreshWorlds(); }} />
+          <WorldEditor
+            embedded
+            backButton
+            onClose={() => {
+              setShowWorldEditor(false);
+              const openId = selectedWorld?.id;
+              void refreshWorlds().then((list) => (openId ? resyncSelectedWorld(list, openId) : undefined));
+            }}
+          />
         </DialogContent>
       </Dialog>
 
