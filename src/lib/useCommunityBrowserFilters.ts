@@ -1,48 +1,189 @@
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo, useCallback, useRef, type Dispatch, type SetStateAction } from "react";
 import { sanitizeTag, collectSanitizedTags } from "@/lib/tagUtils";
 import { type DownloadState } from "@/lib/downloadState";
 import { toEpoch } from "@/lib/thumbnailCache";
-import { kindOf, type CatalogKind } from "@/lib/catalogKinds";
+import { kindOf, CATALOG_KINDS, type CatalogKind } from "@/lib/catalogKinds";
+import { asStatusFacet, matchesStatusFacets, type StatusFacet } from "@/lib/communityStatusFacets";
+import { extractFilterPrefixes } from "@/lib/filterPrefixes";
 import { type WorldRecord } from "@/components/WorldDetails";
 
 const DEFAULT_PAGE_SIZE = 12;
 const ROWS_PER_PAGE = 3; // the grid shows this many full rows per page…
 const PORTRAIT_PAGE_SIZE = 10; // …except a flat count in portrait orientation.
 
+const FILTERS_KEY = 'FORMAMORPH_communityFilters';
+
 /** Columns the responsive grid renders at width `w` — mirrors the Tailwind sm/md/lg/xl breakpoints
  *  on the grid class so the page size matches what's actually visible. */
 const gridColumns = (w: number): number =>
   w >= 1280 ? 5 : w >= 1024 ? 4 : w >= 768 ? 3 : w >= 640 ? 2 : 1;
 
+/** One kind tab's browse settings. Each tab keeps its own: a tag that exists on worlds usually doesn't on
+ *  dictionaries, so carrying the filter across would silently empty the tab being switched to. */
+interface KindFilters {
+  authorFilter: string[];
+  tagFilter: string[];
+  tagMode: 'any' | 'all';
+  statusFilter: StatusFacet[];
+  sortField: string; // updated_at | created_at | downloads | likes
+  sortOrder: string; // asc | desc
+  sortUpdatesFirst: boolean; // float listings with an update to the front
+}
+
+const emptyFilters = (): KindFilters => ({
+  authorFilter: [],
+  tagFilter: [],
+  tagMode: 'any',
+  statusFilter: [],
+  sortField: 'updated_at',
+  sortOrder: 'desc',
+  sortUpdatesFirst: true,
+});
+
+const emptyByKind = (): Record<CatalogKind, KindFilters> =>
+  Object.fromEntries(CATALOG_KINDS.map((k) => [k, emptyFilters()])) as Record<CatalogKind, KindFilters>;
+
+const stringList = (value: unknown): string[] =>
+  Array.isArray(value) ? value.map((v) => String(v)).filter(Boolean) : [];
+
+/** Rebuild the stored settings field by field, so a hand-edited or outdated key can only ever lose
+ *  settings rather than seed the pipeline with a shape it doesn't understand. */
+function readStoredFilters(): Record<CatalogKind, KindFilters> {
+  const out = emptyByKind();
+  try {
+    const raw = JSON.parse(localStorage.getItem(FILTERS_KEY) || '{}');
+    if (!raw || typeof raw !== 'object') return out;
+    for (const kind of CATALOG_KINDS) {
+      const saved = (raw as Record<string, unknown>)[kind];
+      if (!saved || typeof saved !== 'object') continue;
+      const s = saved as Record<string, unknown>;
+      out[kind] = {
+        authorFilter: stringList(s.authorFilter),
+        tagFilter: stringList(s.tagFilter).map(sanitizeTag).filter(Boolean),
+        tagMode: s.tagMode === 'all' ? 'all' : 'any',
+        statusFilter: stringList(s.statusFilter)
+          .map(asStatusFacet)
+          .filter((f): f is StatusFacet => f !== null),
+        sortField: typeof s.sortField === 'string' ? s.sortField : 'updated_at',
+        sortOrder: s.sortOrder === 'asc' ? 'asc' : 'desc',
+        sortUpdatesFirst: s.sortUpdatesFirst !== false,
+      };
+    }
+  } catch { /* a corrupt key falls back to the defaults, which the write effect then rewrites */ }
+  return out;
+}
+
 /**
- * The Community Creations browse pipeline: search/author/tag/sort filters, client-side hide preferences
- * (persisted), and pagination sized to the responsive grid. Derives the filtered/sorted/paged list from
- * the catalog.
+ * The Community Creations browse pipeline: search/author/tag/status/sort filters, client-side hide
+ * preferences (persisted), and pagination sized to the responsive grid. Derives the filtered/sorted/paged
+ * list from the catalog.
  *
  * `kind` scopes the whole pipeline: the catalog holds every kind in one list, so it's narrowed once here
- * and everything downstream — authors, tags, search, sort, paging — follows without needing to know.
+ * and everything downstream — authors, tags, search, sort, paging — follows without needing to know. The
+ * filter settings are held per kind and restored between sessions; the search box deliberately isn't, since
+ * text left over from a previous session reads as an empty catalog rather than as a filter.
  *
- * `downloadStateOf` powers the "updates first" sort. It's a function rather than a map of local copies
- * because each kind keeps its copies in its own library: handing this one library's map would silently
- * make the sort a no-op on the other tabs, which is exactly what it did.
+ * `downloadStateOf` powers the "updates first" sort and the download-related status facets. It's a function
+ * rather than a map of local copies because each kind keeps its copies in its own library: handing this one
+ * library's map would silently make the sort a no-op on the other tabs, which is exactly what it did.
+ *
+ * `viewerId` is the signed-in account, which the Liked and Mine facets need; without one they match nothing.
  */
 export function useCommunityBrowserFilters(
   remoteWorlds: WorldRecord[],
   downloadStateOf: (record: WorldRecord) => DownloadState,
   open: boolean,
   kind: CatalogKind = 'world',
+  viewerId?: string,
 ) {
   const [searchQuery, setSearchQuery] = useState('');
-  const [authorFilter, setAuthorFilter] = useState<string[]>([]);
-  const [tagFilter, setTagFilter] = useState<string[]>([]);
-  const [tagMode, setTagMode] = useState<'any' | 'all'>('any');
-  const [sortField, setSortField] = useState('updated_at'); // updated_at | created_at | downloads | likes
-  const [sortOrder, setSortOrder] = useState('desc'); // asc | desc
-  const [sortUpdatesFirst, setSortUpdatesFirst] = useState(true); // float worlds with an update to the front
+  const [filtersByKind, setFiltersByKind] = useState<Record<CatalogKind, KindFilters>>(readStoredFilters);
   const [currentPage, setCurrentPage] = useState(1);
   const [pageSize, setPageSize] = useState(DEFAULT_PAGE_SIZE);
 
-  // Community-browser hide preferences (client-side, persisted in localStorage)
+  useEffect(() => {
+    localStorage.setItem(FILTERS_KEY, JSON.stringify(filtersByKind));
+  }, [filtersByKind]);
+
+  const filters = filtersByKind[kind] ?? emptyFilters();
+
+  // One setter per field, each writing through to the kind being browsed. `kind` is read from a ref so the
+  // setters keep a stable identity — they are dependencies of the memo below, which sorts the whole catalog.
+  const kindRef = useRef(kind);
+  kindRef.current = kind;
+  const patch = useCallback((change: Partial<KindFilters>) => {
+    const k = kindRef.current;
+    setFiltersByKind((prev) => ({ ...prev, [k]: { ...(prev[k] ?? emptyFilters()), ...change } }));
+  }, []);
+  const setterFor = useCallback(<K extends keyof KindFilters>(field: K): Dispatch<SetStateAction<KindFilters[K]>> =>
+    (value) => {
+      const k = kindRef.current;
+      setFiltersByKind((prev) => {
+        const current = prev[k] ?? emptyFilters();
+        const next = typeof value === 'function'
+          ? (value as (prev: KindFilters[K]) => KindFilters[K])(current[field])
+          : value;
+        return { ...prev, [k]: { ...current, [field]: next } };
+      });
+    }, []);
+
+  const setAuthorFilter = useMemo(() => setterFor('authorFilter'), [setterFor]);
+  const setTagFilter = useMemo(() => setterFor('tagFilter'), [setterFor]);
+  const setTagMode = useMemo(() => setterFor('tagMode'), [setterFor]);
+  const setStatusFilter = useMemo(() => setterFor('statusFilter'), [setterFor]);
+  const setSortField = useMemo(() => setterFor('sortField'), [setterFor]);
+  const setSortOrder = useMemo(() => setterFor('sortOrder'), [setterFor]);
+  const setSortUpdatesFirst = useMemo(() => setterFor('sortUpdatesFirst'), [setterFor]);
+
+  const toggleStatus = useCallback((facet: StatusFacet) => {
+    setStatusFilter((prev) => (prev.includes(facet) ? prev.filter((f) => f !== facet) : [...prev, facet]));
+  }, [setStatusFilter]);
+
+  /** Clear this tab's include filters. Sort is left alone — it is a view preference, not a narrowing, and
+   *  resetting it would move the grid under a reader who only wanted their filters gone. */
+  const clearFilters = useCallback(() => {
+    setSearchQuery('');
+    patch({ authorFilter: [], tagFilter: [], statusFilter: [] });
+  }, [patch]);
+
+  const {
+    authorFilter, tagFilter, tagMode, statusFilter, sortField, sortOrder, sortUpdatesFirst,
+  } = filters;
+
+  /**
+   * Search-box input, with any finished `author:`/`tag:`/`status:` token lifted out into a filter chip.
+   *
+   * Typed filters become the same chips the popover adds rather than a second, invisible way to narrow the
+   * list: one place shows everything currently applied.
+   *
+   * `commit` is set when Enter is pressed, which also finishes the token still under the cursor.
+   */
+  const applySearchInput = useCallback((raw: string, commit = false) => {
+    const { prefixes, rest } = extractFilterPrefixes(raw, commit);
+    setSearchQuery(rest);
+    if (!prefixes.length) return;
+    const k = kindRef.current;
+    setFiltersByKind((prev) => {
+      const current = prev[k] ?? emptyFilters();
+      const next = { ...current };
+      for (const prefix of prefixes) {
+        if (prefix.kind === 'author') {
+          if (!next.authorFilter.some((a) => a.toLowerCase() === prefix.value.toLowerCase())) {
+            next.authorFilter = [...next.authorFilter, prefix.value];
+          }
+        } else if (prefix.kind === 'tag') {
+          const tag = sanitizeTag(prefix.value);
+          if (tag && !next.tagFilter.includes(tag)) next.tagFilter = [...next.tagFilter, tag];
+        } else if (!next.statusFilter.includes(prefix.value)) {
+          next.statusFilter = [...next.statusFilter, prefix.value];
+        }
+      }
+      return { ...prev, [k]: next };
+    });
+  }, []);
+
+  // Community-browser hide preferences (client-side, persisted in localStorage). Global across the kind
+  // tabs, unlike the filters above: hiding an author is "never show me this", not a way to browse.
   const [hiddenWorldIds, setHiddenWorldIds] = useState<string[]>(() => {
     try { return JSON.parse(localStorage.getItem('FORMAMORPH_hiddenWorldIds') || '[]'); }
     catch { return []; }
@@ -133,9 +274,10 @@ export function useCommunityBrowserFilters(
     [kindWorlds, hiddenTags],
   );
 
-  // Client-side browse pipeline: hide filters → text search → author/tag include filters → sort.
-  // With "updates first" on, worlds with an available update are floated to the front, each group
-  // then ordered by the chosen sort field/direction.
+  // Client-side browse pipeline: hide filters → text search → author/tag/status include filters → sort.
+  // Every include filter must hold — status facets stack with each other and with author and tag alike.
+  // With "updates first" on, listings with an available update are floated to the front, each group then
+  // ordered by the chosen sort field/direction.
   const filteredRemoteWorlds = useMemo(() => {
     const q = searchQuery.trim().toLowerCase();
     const authors = authorFilter.map((a) => a.toLowerCase());
@@ -152,6 +294,9 @@ export function useCommunityBrowserFilters(
         const ok = tagMode === 'all' ? tags.every((t) => worldTags.has(t)) : tags.some((t) => worldTags.has(t));
         if (!ok) return false;
       }
+      if (statusFilter.length && !matchesStatusFacets(world, statusFilter, downloadStateOf(world), viewerId)) {
+        return false;
+      }
       return true;
     });
     const dir = sortOrder === 'asc' ? 1 : -1;
@@ -167,10 +312,16 @@ export function useCommunityBrowserFilters(
       const bv = sortField === 'downloads' ? (b.downloads || 0) : toEpoch(b[sortField]);
       return (av - bv) * dir;
     });
-  }, [kindWorlds, searchQuery, authorFilter, tagFilter, tagMode, hiddenWorldIds, hiddenTags, hiddenAuthors, sortField, sortOrder, sortUpdatesFirst, downloadStateOf]);
+  }, [kindWorlds, searchQuery, authorFilter, tagFilter, tagMode, statusFilter, viewerId, hiddenWorldIds, hiddenTags, hiddenAuthors, sortField, sortOrder, sortUpdatesFirst, downloadStateOf]);
 
   const totalPages = Math.max(1, Math.ceil(filteredRemoteWorlds.length / pageSize));
   const pagedRemoteWorlds = filteredRemoteWorlds.slice((currentPage - 1) * pageSize, currentPage * pageSize);
+
+  /** How many narrowings are in force on this tab — what the mobile "Filters" badge counts. Hides are
+   *  included: an empty-looking grid is as often a hide as a filter. */
+  const activeFilterCount =
+    authorFilter.length + tagFilter.length + statusFilter.length
+    + hiddenWorldIds.length + hiddenTags.length + hiddenAuthors.length;
 
   // Page size = 3 rows of however many columns the grid renders at the current viewport, except a flat
   // count in portrait orientation.
@@ -189,17 +340,19 @@ export function useCommunityBrowserFilters(
 
   // Reset to page 1 when the result set changes; clamp if hiding shrinks it below the current page.
   // `kind` included: switching tabs shortens the list, so a page-5 view would otherwise land on nothing.
-  useEffect(() => { setCurrentPage(1); }, [searchQuery, authorFilter, tagFilter, tagMode, sortField, sortOrder, kind]);
+  useEffect(() => { setCurrentPage(1); }, [searchQuery, authorFilter, tagFilter, tagMode, statusFilter, sortField, sortOrder, kind]);
   useEffect(() => { if (currentPage > totalPages) setCurrentPage(totalPages); }, [currentPage, totalPages]);
 
   return {
-    searchQuery, setSearchQuery,
+    searchQuery, setSearchQuery, applySearchInput,
     authorFilter, setAuthorFilter,
     tagFilter, setTagFilter,
     tagMode, setTagMode,
+    statusFilter, setStatusFilter, toggleStatus,
     sortField, setSortField,
     sortOrder, setSortOrder,
     sortUpdatesFirst, setSortUpdatesFirst,
+    clearFilters, activeFilterCount,
     currentPage, setCurrentPage,
     hiddenWorldIds, hiddenTags, hiddenAuthors,
     hideRemoteWorld, hideRemoteTag, hideRemoteAuthor,

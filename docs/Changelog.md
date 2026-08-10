@@ -14,6 +14,14 @@ _Unreleased — new work accumulates here until it earns a version bump. The nex
 
 ### Minor Changes
 
+#### ➕ Added
+
+- **👤 User-facing**
+  - **Community Creations can show only the worlds you've liked.** Liking something was a way to say thanks to its author; it is now also a way to find it again. **Add Filter** opens a panel with a **Status** group: **Liked**, **Downloaded**, **Not Downloaded**, **Has Update**, and **Mine**. They stack — Liked plus Has Update is the shortlist of your favorites with a new version waiting. Liked and Mine need an account, so they aren't offered when you're signed out.
+  - **Every filter you've applied is now visible in one row, as chips you can remove.** Authors and tags used to live in two separate boxes and status had nowhere to go at all; they are now one bar under the search box, each filter a chip with an ×, and a **Clear** that drops them all at once. Whether two tags mean *any of* or *all of* is written on the row itself rather than remembered from a panel.
+  - **Filters and sort stay put between visits, per tab.** Worlds, Entities and Dictionaries each remember their own filters, so a tag that only exists on worlds no longer empties the Dictionaries tab when you switch. The search box is deliberately the exception and always starts empty — text left over from last time reads as an empty catalog rather than as a filter. An empty grid now says your filters are what emptied it.
+  - **Filters can be typed.** `author:`, `tag:` and `status:` in the search box become filter chips as you finish each one, so `tag:horror status:liked` gets there without opening the panel. Quote a name with spaces — `author:"Wren Hallow"`.
+
 #### 🔧 Fixed
 
 - **👤 User-facing**

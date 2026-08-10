@@ -53,6 +53,7 @@ import { getDownloadState, type DownloadState } from '@/lib/downloadState';
 import { type WorldRecord } from "@/components/WorldDetails";
 import { RemoteWorldDetailsModal } from "@/components/community/RemoteWorldDetailsModal";
 import { RemoteWorldCard } from "@/components/community/RemoteWorldCard";
+import { CommunityFilterBar } from "@/components/community/CommunityFilterBar";
 
 // Persisted preference to force the single-column (portrait) layout of the details modal at any width.
 // Key string kept as-is so an existing user's saved preference survives the rename.
@@ -188,15 +189,22 @@ const CommunityCreationsBrowser = ({
   const quarantinedCount = remoteWorlds.filter(isQuarantined).length;
 
   const {
-    searchQuery, setSearchQuery, authorFilter, setAuthorFilter, tagFilter, setTagFilter,
-    tagMode, setTagMode, sortField, setSortField, sortOrder, setSortOrder,
+    searchQuery, applySearchInput, authorFilter, setAuthorFilter, tagFilter, setTagFilter,
+    tagMode, setTagMode, statusFilter, toggleStatus, clearFilters, activeFilterCount,
+    sortField, setSortField, sortOrder, setSortOrder,
     sortUpdatesFirst, setSortUpdatesFirst, currentPage, setCurrentPage,
     hiddenWorldIds, hiddenTags, hiddenAuthors,
     hideRemoteWorld, hideRemoteTag, hideRemoteAuthor,
     setHiddenTagsList, setHiddenAuthorsList,
     resetHiddenWorlds, unhideWorld, hiddenWorldName,
     allAuthors, allTags, filteredRemoteWorlds, totalPages, pagedRemoteWorlds,
-  } = useCommunityBrowserFilters(catalogInView, downloadStateForRecord, open, browseKind);
+  } = useCommunityBrowserFilters(
+    catalogInView, downloadStateForRecord, open, browseKind,
+    currentUser?.id ? String(currentUser.id) : undefined,
+  );
+
+  /** Whether anything is narrowing the grid — what tells an empty result from an empty catalog. */
+  const anyFilterApplied = Boolean(searchQuery) || activeFilterCount > 0;
 
   // Admin-only, and only once something is actually quarantined: a toggle that can only ever show an
   // empty list is a control that teaches nothing.
@@ -217,8 +225,6 @@ const CommunityCreationsBrowser = ({
   // On mobile the sort/filter controls collapse behind a "Filters" toggle; on desktop they stay inline.
   const isMobile = useIsMobile();
   const [filtersOpen, setFiltersOpen] = useState(false);
-  const activeFilterCount =
-    authorFilter.length + tagFilter.length + hiddenWorldIds.length + hiddenTags.length + hiddenAuthors.length;
 
   // Numbered page links with first/last anchors + ellipsis (matches the in-game transcript pager).
 
@@ -365,11 +371,19 @@ const CommunityCreationsBrowser = ({
   const searchControl = (
     <div className="relative flex-grow min-w-[200px]">
       <Search className="absolute left-2 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+      {/* `author:`/`tag:`/`status:` typed here become filter chips — see the hook's applySearchInput.
+          Enter finishes the token under the cursor, a space finishes it as you keep typing. */}
       <Input
-        placeholder={`Search ${KIND_LABELS[browseKind].many.toLowerCase()}...`}
+        placeholder={`Search ${KIND_LABELS[browseKind].many.toLowerCase()}… or type author:, tag:, status:`}
         className="pl-8"
         value={searchQuery}
-        onChange={(e) => setSearchQuery(e.target.value)}
+        onChange={(e) => applySearchInput(e.target.value)}
+        onKeyDown={(e) => {
+          if (e.key === 'Enter' && !e.nativeEvent.isComposing) {
+            e.preventDefault();
+            applySearchInput(e.currentTarget.value, true);
+          }
+        }}
       />
     </div>
   );
@@ -408,28 +422,6 @@ const CommunityCreationsBrowser = ({
       >
         {sortOrder === 'desc' ? <ArrowDownWideNarrow className="h-4 w-4" /> : <ArrowUpNarrowWide className="h-4 w-4" />}
       </Button>
-    </div>
-  );
-
-  const authorsControl = (
-    <div className="flex items-center gap-2">
-      <Button variant="outline" size="sm" className="shrink-0 pointer-events-none" tabIndex={-1}>Authors:</Button>
-      <TokenAutocomplete values={authorFilter} onChange={setAuthorFilter} options={allAuthors} placeholder="author…" />
-    </div>
-  );
-
-  const tagsControl = (
-    <div className="flex items-center gap-2">
-      <Button
-        variant="outline"
-        size="sm"
-        className="shrink-0 w-[92px]"
-        onClick={() => setTagMode((m) => (m === 'any' ? 'all' : 'any'))}
-        title="Toggle match: Any vs All"
-      >
-        {tagMode === 'any' ? 'Any' : 'All'} Tags:
-      </Button>
-      <TokenAutocomplete values={tagFilter} onChange={setTagFilter} options={allTags} placeholder="tag…" />
     </div>
   );
 
@@ -489,6 +481,28 @@ const CommunityCreationsBrowser = ({
       />
       Updates first
     </label>
+  );
+
+  // Hidden and updates-first ride along inside the bar: they narrow or reorder the same grid, and a second
+  // row for two controls reads as a second, unrelated set of filters.
+  const filterBar = (
+    <CommunityFilterBar
+      authorFilter={authorFilter}
+      setAuthorFilter={setAuthorFilter}
+      tagFilter={tagFilter}
+      setTagFilter={setTagFilter}
+      tagMode={tagMode}
+      setTagMode={setTagMode}
+      statusFilter={statusFilter}
+      toggleStatus={toggleStatus}
+      clearFilters={clearFilters}
+      allAuthors={allAuthors}
+      allTags={allTags}
+      signedIn={isAuthenticated}
+    >
+      {hiddenControl}
+      {updatesControl}
+    </CommunityFilterBar>
   );
 
   return (
@@ -551,18 +565,10 @@ const CommunityCreationsBrowser = ({
               {isMobile ? (
                 <CollapsibleContent className="space-y-3">
                   {sortControl}
-                  {authorsControl}
-                  {tagsControl}
-                  {hiddenControl}
-                  {updatesControl}
+                  {filterBar}
                 </CollapsibleContent>
               ) : (
-                <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
-                  {authorsControl}
-                  {tagsControl}
-                  {hiddenControl}
-                  {updatesControl}
-                </div>
+                filterBar
               )}
             </div>
           </Collapsible>
@@ -589,10 +595,12 @@ const CommunityCreationsBrowser = ({
                 ))
               ) : filteredRemoteWorlds.length === 0 ? (
                 <div className="col-span-full text-center py-12 text-muted-foreground">
+                  {/* Filters now outlive the session, so an empty grid names them rather than reading as an
+                      empty catalog. */}
                   {quarantinedOnly ?
                     `No ${KIND_LABELS[browseKind].many.toLowerCase()} are quarantined.` :
-                    searchQuery ?
-                      `No ${KIND_LABELS[browseKind].many.toLowerCase()} found matching your criteria.` :
+                    anyFilterApplied ?
+                      `No ${KIND_LABELS[browseKind].many.toLowerCase()} match your filters. Clear them to see everything.` :
                       `No ${KIND_LABELS[browseKind].many.toLowerCase()} available. Be the first to publish one!`}
                 </div>
               ) : (
