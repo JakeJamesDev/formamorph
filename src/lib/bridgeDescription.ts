@@ -30,12 +30,12 @@ export function bridgePrompt(direction: BridgeDirection, kind: BridgeKind): stri
       + `Write flowing prose covering ${facets}, in the same voice a game would use to introduce ${noun}. `
       + 'Keep only what a player would learn by looking. Details the note holds back — secrets, plans, '
       + 'private history, author bookkeeping — stay out. '
-      + 'Write 2 to 4 sentences, shorter than the note. Output only the description.'
+      + 'Write 2 to 4 sentences, shorter than the note. Open on the description itself, with no title, label or heading above it.'
     : `You are the game's continuity writer, expanding a player-facing blurb about ${noun} into the reference `
-      + 'note the narrator uses. '
+      + 'the narrator uses. '
       + `Write plain declarative prose covering ${facets}, plus behavior and relationships the blurb implies. `
       + 'Stay consistent with every fact the blurb states, and keep additions to what it already suggests. '
-      + 'Write 3 to 6 sentences. Output only the note.';
+      + 'Write 3 to 6 sentences. Open on the description itself, with no title, label or heading above it.';
 }
 
 interface ChatCompletion {
