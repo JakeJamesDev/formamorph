@@ -229,7 +229,7 @@ const WorldNotice = ({ tone, icon: Icon, children, actionLabel, actionIcon: Acti
 const MainMenu = ({ onStartGame, onLoadSaveGame, onReplayIntro, introActive = false }: MainMenuProps) => {
   const {
     traits: rawTraits, traitGroups: rawTraitGroups, stats: rawStats, placeholders, loadWorldData,
-    dictionaries: worldBooks,
+    dictionaries: worldBooks, getWorldData,
   } = useGameData();
   const { beginSession, endSession } = usePlaceholderSession();
   const { showReadme, setShowReadme } = useReadmeVisibility();
@@ -564,25 +564,36 @@ const MainMenu = ({ onStartGame, onLoadSaveGame, onReplayIntro, introActive = fa
     }
   }, []);
 
+  // Always the newest reader of the editor's store, for the resync below to call after the store has settled.
+  const getWorldDataRef = useRef(getWorldData);
+  getWorldDataRef.current = getWorldData;
+
   /**
-   * Rebuild the open world's card from storage — the same composition `handleWorldSelection` makes, minus
-   * opening it.
+   * Bring the open world's card up to date with the edits just made to it.
    *
-   * The card stays open behind the World Editor, so it is the first thing seen on the way back out. Held as
-   * the state it was in when it was opened, it went on showing the old name, description and thumbnail until
-   * it was closed and reopened.
+   * The card stays mounted behind the World Editor, so it is the first thing seen on the way back out —
+   * and held as the state it was opened in, it went on showing the pre-edit name, description and
+   * thumbnail until it was closed and clicked again.
+   *
+   * The record's own fields come from the metadata the grid refresh just fetched — that read carries no
+   * world payload, so it is cheap and it keeps `editedAt` and friends honest. Only `data` is taken from
+   * the editor's store instead of read back: on a world carrying real images that read is a `JSON.parse`
+   * over megabytes of base64, long enough to paint the stale card first and correct it a moment later,
+   * which is the flicker this exists to avoid. Same composition `handleWorldSelection` makes; the disk
+   * round-trip for the payload is the only part swapped out.
+   *
+   * **The invariant this rests on:** at the moment the editor closes, the store equals what is on disk —
+   * Save persists it, and Exit Without Saving has already run `discardChanges` to roll it back. A future
+   * exit path that leaves the two apart (an autosave, a recovery flow) has to read the payload back here.
    */
-  const resyncSelectedWorld = useCallback(async (list: WorldRecord[], worldId: string) => {
-    try {
-      const record = list.find(w => w.id === worldId);
-      const worldData = await WorldStorageService.getWorldData(worldId);
-      if (!record || !worldData) return;
-      const { world: migrated } = loadWorldData(worldData as World, true);
-      setSelectedWorld({ ...record, data: migrated });
-    } catch (error) {
-      console.error('Error refreshing world details:', error);
-    }
-  }, [loadWorldData]);
+  const resyncSelectedWorld = useCallback((list: WorldRecord[], worldId: string) => {
+    const record = list.find(w => w.id === worldId);
+    if (!record) return;
+    // Through the ref, never the captured `getWorldData`: on the Exit Without Saving path `discardChanges`
+    // rolls the store back in the same handler that calls `onClose`, so the closure this ran from predates
+    // the rollback and would put the abandoned edits on the card.
+    setSelectedWorld({ ...record, data: getWorldDataRef.current() });
+  }, []);
 
   // Seed missing default worlds and auto-update unedited ones to the newest bundled version. Runs every
   // launch (cheap when nothing changed); only a first-run seed toasts success/failure, while an in-place
