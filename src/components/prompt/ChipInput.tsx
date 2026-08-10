@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import {
   $getRoot, $createTextNode, $selectAll, LineBreakNode,
   KEY_ENTER_COMMAND, KEY_ESCAPE_COMMAND, COMMAND_PRIORITY_LOW,
@@ -160,6 +160,16 @@ function Surface({ placeholder, ariaLabel, className, multiline }: {
   const editableRef = useRef<HTMLDivElement | null>(null);
   const cssFloor = useRef<number | null>(null);
   const [hintFloor, setHintFloor] = useState<number | null>(null);
+  // The hint is positioned off the editable's own padding rather than a fixed inset: a host that trims that
+  // padding away (the tag box, whose field sits flush inside the chips) would otherwise show its hint
+  // indented from the spot the caret actually starts at.
+  const [pad, setPad] = useState<{ left: number; right: number } | null>(null);
+  useLayoutEffect(() => {
+    const editable = editableRef.current;
+    if (!editable) return;
+    const style = getComputedStyle(editable);
+    setPad({ left: parseFloat(style.paddingLeft) || 0, right: parseFloat(style.paddingRight) || 0 });
+  }, [className]);
 
   const measure = useCallback((hint: HTMLDivElement | null) => {
     const editable = editableRef.current;
@@ -199,9 +209,10 @@ function Surface({ placeholder, ariaLabel, className, multiline }: {
           // top-left and free to wrap, the way every other multi-line field's hint does.
           <div
             ref={multiline ? hintRef : undefined}
+            style={pad ? { left: pad.left, right: pad.right } : undefined}
             className={cn(
-              'pointer-events-none absolute left-3 text-helper text-muted-foreground',
-              multiline ? 'top-2 right-3' : 'top-1/2 -translate-y-1/2 truncate',
+              'pointer-events-none absolute left-3 right-3 text-helper text-muted-foreground',
+              multiline ? 'top-2' : 'top-1/2 -translate-y-1/2 truncate',
             )}
           >
             {placeholder}

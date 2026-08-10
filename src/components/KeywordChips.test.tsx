@@ -6,6 +6,17 @@ import { KeywordChips } from './KeywordChips';
 const field = () => screen.getByRole('textbox');
 
 describe('KeywordChips', () => {
+  it('gives the chip editor the free width, so the whole box takes a click', () => {
+    // jsdom lays nothing out, so this guards the structure the width comes from rather than the width:
+    // the growth belongs to the flex item, and `className` reaches the editable *inside* it. Put the
+    // growth on the editable and its wrapper shrink-wraps to 8rem, leaving most of the box dead to clicks.
+    render(<KeywordChips keywords={[]} onChange={vi.fn()} placeholders={[{ id: 'p1', name: 'Town', kind: 'variable', values: [] } as never]} />);
+    const editable = screen.getByRole('textbox');
+    const item = editable.parentElement!.parentElement!;
+    expect(item.className.split(/\s+/)).toEqual(expect.arrayContaining(['flex-grow', 'min-w-[8rem]']));
+    expect(editable.className.split(/\s+/)).toContain('w-full');
+  });
+
   it('commits a chip on Enter', async () => {
     const user = userEvent.setup();
     const onChange = vi.fn();
