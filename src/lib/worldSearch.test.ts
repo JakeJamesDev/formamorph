@@ -72,6 +72,21 @@ describe('collectSearchTargets', () => {
     expect(writes).toEqual([['entity', expect.objectContaining({ aliases: ['the Sparrow', 'Mira of Fen'] })]]);
   });
 
+  it('marks array entries as chip-list entries and scalars as not', () => {
+    // What tells a keyword apart from an entry name that repeats it word for word — the two hold identical
+    // text, so only the kind of control the hit lives in can separate them.
+    const { src } = sources({
+      dictionaries: [{
+        id: 'd1', name: 'Lore',
+        entries: [{ id: 'x1', name: 'Warp Sigil', key: ['Warp Sigil'], value: 'A mark.' }],
+      }],
+    });
+    // The book carries a `name` too, so pick the entry's by its owner.
+    const targets = collectSearchTargets(src).filter((t) => t.itemLabel === 'Warp Sigil');
+    expect(targetFor(targets, 'key[0]')).toMatchObject({ value: 'Warp Sigil', inChipList: true });
+    expect(targetFor(targets, 'name')).toMatchObject({ value: 'Warp Sigil', inChipList: false });
+  });
+
   it('marks a regex dictionary entry as unable to hold a chip', () => {
     const book = (useRegex: boolean): Dictionary => ({
       id: 'd1', name: 'Lore',

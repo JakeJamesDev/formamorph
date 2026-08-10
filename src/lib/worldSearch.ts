@@ -42,6 +42,10 @@ export interface SearchTarget {
   fieldLabel: string;
   /** Whether the field renders placeholder chips, and so can accept a chip replacement. */
   chipCapable: boolean;
+  /** Whether this is one entry of a chip list rather than a text box. Every string-array field in the
+   *  editor is edited as chips, and an entry often repeats its item's name verbatim — so which of the two
+   *  a hit belongs to cannot be read off the text. */
+  inChipList: boolean;
   value: string;
   write: (next: string) => void;
 }
@@ -110,10 +114,11 @@ export function collectSearchTargets(src: SearchSources): SearchTarget[] {
       fieldLabel: string,
       value: string | undefined,
       set: (record: T, next: string) => T,
+      inChipList = false,
     ) => {
       if (!value) return;
       targets.push({
-        ...where, fieldKey, fieldLabel, value, itemKey, record,
+        ...where, fieldKey, fieldLabel, value, itemKey, record, inChipList,
         applyTo: (draft, next) => set(draft as T, next),
         commit: (draft) => commit(draft as T),
         write: (next) => commit(set(record, next)),
@@ -131,7 +136,7 @@ export function collectSearchTargets(src: SearchSources): SearchTarget[] {
       values?.forEach((entry, i) => {
         if (!entry) return;
         add(where, `${fieldKey}[${i}]`, fieldLabel, entry, (draft, next) =>
-          set(draft, read(draft).map((v, j) => (j === i ? next : v))));
+          set(draft, read(draft).map((v, j) => (j === i ? next : v))), true);
       });
     };
     return { add, addEach };

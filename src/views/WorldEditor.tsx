@@ -210,6 +210,7 @@ const WorldEditorInner = ({ onClose, embedded = false, backButton }: {
       matchText: match.target.value.slice(match.start, match.end),
       start: match.start,
       fieldLabel: match.target.fieldLabel,
+      inChipList: match.target.inChipList,
     };
     setTimeout(() => revealEditorMatch(editorRootRef.current, hit), 0);
   }, []);
