@@ -240,7 +240,7 @@ export default function EditorFindBar({
             ref={searchRef}
             value={query}
             onChange={(e) => setQuery(e.target.value)}
-            placeholder="Find in world"
+            placeholder="Find"
             className="h-8 pr-[4.25rem] focus-visible:ring-0"
           />
           {/* One bordered control split in two rather than a ToggleGroup: the group owns its items' pressed
@@ -320,7 +320,7 @@ export default function EditorFindBar({
                 <Input
                   value={replaceText}
                   onChange={(e) => setReplaceText(e.target.value)}
-                  placeholder="Replace with"
+                  placeholder="Replace"
                   className={cn('h-8 focus-visible:ring-0', allowPlaceholderReplace && 'pr-10')}
                 />
               )}
@@ -361,12 +361,12 @@ export default function EditorFindBar({
           search crosses all of them and which one a hit is on is the first thing to know. */}
       {!isMobile && current && (
         <div className="mt-1 flex pl-8">
-          <span className="inline-flex min-w-0 items-center gap-1 rounded border bg-secondary/50 px-2 py-0.5 text-meta text-muted-foreground">
-            <Crosshair className="h-3 w-3 shrink-0" />
+          <span className="inline-flex min-w-0 items-center gap-1 rounded border bg-secondary/50 px-2 py-0.5 text-label text-muted-foreground">
+            <Crosshair className="h-3.5 w-3.5 shrink-0" />
             <span className="shrink-0">{tabLabel(current.target.tab)}</span>
-            <ChevronRight className="h-3 w-3 shrink-0 opacity-60" />
+            <ChevronRight className="h-3.5 w-3.5 shrink-0 opacity-60" />
             <span className="truncate">{current.target.itemLabel}</span>
-            <ChevronRight className="h-3 w-3 shrink-0 opacity-60" />
+            <ChevronRight className="h-3.5 w-3.5 shrink-0 opacity-60" />
             <span className="truncate">{current.target.fieldLabel}</span>
           </span>
         </div>
