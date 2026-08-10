@@ -30,7 +30,9 @@ const alwaysSent = (presetPrompt: string) =>
 export function GenerateImageButton({ subject, cap, onChange, tags, onTagsChange }: {
   subject: { description: string; kind: ImageSubjectKind };
   cap: ImageCap;
-  onChange: (dataUrl: string) => void;
+  /** Takes the finished picture. Returning `false` (or a promise of it) means the caller did not keep it, and
+   *  this dialog stays open on its preview rather than closing over a picture that went nowhere. */
+  onChange: (dataUrl: string) => void | boolean | Promise<void | boolean>;
   /** Authored booru tags to seed the prompt from (entities/locations). Absent ⇒ local scratch. */
   tags?: string;
   /** Persist prompt edits back to the authored tags field. Absent ⇒ prompt stays local (world thumbnail). */
@@ -59,12 +61,16 @@ export function GenerateImageButton({ subject, cap, onChange, tags, onTagsChange
   const [previewFrame, setPreviewFrame] = useState<string | null>(null);
   const [preview, setPreview] = useState<string | null>(null);
   const [zoomOpen, setZoomOpen] = useState(false);
+  // An accepted picture the caller is still deciding what to do with. Its own dialog is on top; ours must not
+  // take a second accept underneath it.
+  const [placing, setPlacing] = useState(false);
   const abortRef = useRef<AbortController | null>(null);
 
   const openDialog = () => {
     abortRef.current?.abort(); // drop any run left in flight so the dialog never reopens mid-generation
     abortRef.current = null;
     setGenerating(false);
+    setPlacing(false);
     setPreview(null);
     setPreviewFrame(null);
     setProgress(null);
@@ -113,10 +119,17 @@ export function GenerateImageButton({ subject, cap, onChange, tags, onTagsChange
 
   const accept = async () => {
     if (!preview) return;
-    // Ask before optimizing (same consent flow as uploads); within-cap resolves with no popup, Cancel keeps full-size.
-    const finalUrl = await promptImage(preview, cap);
-    onChange(finalUrl);
-    setOpen(false);
+    setPlacing(true);
+    try {
+      // Ask before optimizing (same consent flow as uploads); within-cap resolves with no popup, Cancel keeps full-size.
+      const finalUrl = await promptImage(preview, cap);
+      // The caller may ask something of its own first — which slot to overwrite — so this can take a while,
+      // and can come back refused. Only a kept picture closes the dialog.
+      if (await onChange(finalUrl) === false) return;
+      setOpen(false);
+    } finally {
+      setPlacing(false);
+    }
   };
 
   const closeDialog = (o: boolean) => {
@@ -241,11 +254,11 @@ export function GenerateImageButton({ subject, cap, onChange, tags, onTagsChange
                 <Square className="h-4 w-4" /> Stop
               </Button>
             ) : (
-              <Button type="button" variant="secondary" onClick={generate}>
+              <Button type="button" variant="secondary" onClick={generate} disabled={placing}>
                 <Sparkles className="h-4 w-4" /> {preview ? 'Regenerate' : 'Generate'}
               </Button>
             )}
-            <Button type="button" onClick={accept} disabled={!preview}>Use image</Button>
+            <Button type="button" onClick={accept} disabled={!preview || placing}>Use image</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>

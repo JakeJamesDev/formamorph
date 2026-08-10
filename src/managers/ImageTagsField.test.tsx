@@ -112,13 +112,14 @@ describe('ImageTagsField embedded allowance', () => {
     expect(emptyRow()?.getAttribute('data-allow-upload')).toBe('false');
   });
 
-  it('withdraws Generate when it would spend an allowance that is gone', () => {
-    // Primary is a link, so generating would add a third set of bytes rather than replace one.
+  it('keeps Generate with the allowance spent behind a linked primary', () => {
+    // The picture it replaces is the author's pick, so a linked primary is no longer the deciding slot: the
+    // two carrying bytes are both replaceable, and one of them is where a generated picture can land.
     gallery([LINK_A, DATA_A, DATA_B]);
-    expect(screen.queryByText('generate')).toBeNull();
+    expect(screen.getByText('generate')).toBeTruthy();
   });
 
-  it('keeps Generate when it would only overwrite the primary’s own bytes', () => {
+  it('keeps Generate when it would only overwrite a picture’s own bytes', () => {
     gallery([DATA_A, DATA_B]);
     expect(screen.getByText('generate')).toBeTruthy();
   });
