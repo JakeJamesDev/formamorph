@@ -69,17 +69,24 @@ for (let i = start + 1; i < end; i++) {
     continue;
   }
   // Indented bullet under a 👤 group with a known change type = an entry; take its bold lead, dropping any
-  // trailing period so the one-line notes read uniformly (bullets aren't full sentences).
+  // trailing period so the one-line notes read uniformly (bullets aren't full sentences). A deeper indent
+  // is a sub-item of the entry above it and stays nested in the notes, so a long entry can be broken into
+  // parts instead of reading as a wall of text. One level only — deeper reads as noise in release notes.
   if (audienceIsUser && currentType) {
-    const m = /^\s{2,}-\s+\*\*(.+?)\*\*/.exec(line);
-    if (m) buckets[currentType].push(m[1].replace(/\*\*/g, '').trim().replace(/\.$/, ''));
+    const m = /^(\s{2,})-\s+\*\*(.+?)\*\*/.exec(line);
+    if (m) {
+      buckets[currentType].push({
+        depth: m[1].length >= 4 ? 1 : 0,
+        text: m[2].replace(/\*\*/g, '').trim().replace(/\.$/, ''),
+      });
+    }
   }
 }
 
 const out = [];
 for (const { key } of TYPES) {
   if (buckets[key].length) {
-    out.push(`### ${key}`, '', ...buckets[key].map((h) => `- ${h}`), '');
+    out.push(`### ${key}`, '', ...buckets[key].map((e) => `${'  '.repeat(e.depth)}- ${e.text}`), '');
   }
 }
 process.stdout.write(out.length ? out.join('\n').trimEnd() + '\n' : '- Maintenance and internal improvements.\n');
