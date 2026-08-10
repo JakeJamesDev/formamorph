@@ -97,7 +97,12 @@ const PlaceholderManager = ({ placeholder }: { placeholder: Placeholder }) => {
             keywords={editing.values}
             onChange={setValues}
             placeholder="e.g. Red — press Enter for each"
-            onChipClick={count > 1 ? (v) => { anchor.current = chipEls.current.get(v) ?? null; setOpenValue(v); } : undefined}
+            // Toggles, like the placeholder chips' own pop-out: without this, clicking the open chip
+            // re-opened it and the only way out was clicking somewhere else entirely.
+            onChipClick={count > 1 ? (v) => {
+              anchor.current = chipEls.current.get(v) ?? null;
+              setOpenValue((prev) => (prev === v ? null : v));
+            } : undefined}
             chipSuffix={showChances ? (v) => `(${pct(v)})` : undefined}
             // Every chip gets the same wrapper whether or not it is the open one, so its DOM node survives
             // the click that opens the pop-out.
@@ -110,7 +115,15 @@ const PlaceholderManager = ({ placeholder }: { placeholder: Placeholder }) => {
               </span>
             )}
           />
-          <PopoverContent className="w-60 space-y-2" align="start">
+          <PopoverContent
+            className="w-60 space-y-2"
+            align="start"
+            // The open chip closes itself on click. Letting the dismiss fire as well would close it on the
+            // press and reopen it on the release, which is why clicking it again appeared to do nothing.
+            onPointerDownOutside={(e) => {
+              if (openValue !== null && chipEls.current.get(openValue)?.contains(e.target as Node)) e.preventDefault();
+            }}
+          >
             {openValue !== null && (
               <>
                 <p className="truncate text-label font-medium">{openValue}</p>
