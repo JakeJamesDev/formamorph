@@ -90,6 +90,15 @@ Five fixes, causes confirmed by reproduction before any code changed:
 
    Single click keeps its meanings (World/Unique pop-out; weights pop-out). KeywordChips *tags* keep double-click-edits-the-tag — deliberately unchanged.
 
+## Round 4 — Built 2026-08-10
+
+1. **Palette inserts only into the field the caret is in now.** The claim is released on `focusout`, but **settled on the next tick against `document.activeElement`** rather than read from `relatedTarget`: a chip editor hands focus around inside itself while restoring its selection, and each of those blurs reports going nowhere, so trusting `relatedTarget` dropped the claim the instant the field took focus. Asking where focus actually landed, once it has landed, separates a real departure from that shuffle and also covers focus falling to `body`, which reports no incoming element either.
+2. **Values-chip weight pop-out toggles.** Two causes, not one: `onChipClick` always *set* `openValue`, and — once that was a toggle — Radix still dismissed on the pointer-down before the click could close it, so the pop-out shut and reopened in one gesture. `onPointerDownOutside` now ignores a press on the chip that is already open, leaving the close to the chip's own click.
+3. **Inset the bar's controls into their editboxes**, copying the image-URL widget ([UtilityComponents.tsx:239](../src/lib/UtilityComponents.tsx:239)): input gets `pr-*` + `focus-visible:ring-0`, the control sits `absolute inset-y-0 right-0` with only a left divider border, and a `group-focus-within` ring overlay spans both cells. Applies to: **Aa/W split button** → right edge of the find input; **mode toggle** ("Replacing with…") → right edge of the replace editbox, in both text mode (the input) and placeholder mode (the picker trigger).
+4. **"No results" turns `text-destructive`** in the counter.
+5. **Inventory order must match panel order.** Two mismatches found: Entity had `type` before the descriptions (panel shows Name, Aliases, Player-Facing, AI-Facing, AI Summary, *then* Type) — fix to `name, aliases, playerDescription, aiDescription, aiSummary, type, imageTags`. Overview had `tags` last (panel shows Name, Author, Tags on the left, then Description, System Prompt, Readme on the right) — move `tags` after `author`. All other collections verified in panel order already.
+6. **Replace editbox width matches Find's.** After the inset work, lay the two rows in one grid — `[auto chevron] [minmax(0,1fr) editbox] [auto trailing]` — so the shared 1fr column makes both editboxes identical and the `auto` trailing column sizes to the wider group (find's counter + 3 buttons vs replace's 2). The replace row leaves the chevron cell empty instead of hand-padding `pl-8`.
+
 ## Settled Calls
 
 1. **Placeholder-replace mode hides in Simple editor mode** — consistent with the `advancedOnly` Placeholders tab. Simple mode gets text replace only.

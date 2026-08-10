@@ -91,7 +91,8 @@ type DictionaryEntryWithBook = Dictionary['entries'][number];
 const untitled = (name: string | undefined, fallback: string) => name?.trim() || fallback;
 
 /**
- * Every authored string the editor can navigate to, in tab order.
+ * Every authored string the editor can navigate to, in tab order — and within an item, in the order its
+ * panel lays the fields out, so stepping through hits runs down the panel rather than jumping about.
  *
  * Deliberately absent: ids and id-arrays, image/media payloads, enum-ish fields, stat `code`, and anything
  * with no editor field to jump to — legacy `GameLocation.description`, `Entity.tags`, `Dictionary.tags`,
@@ -150,11 +151,11 @@ export function collectSearchTargets(src: SearchSources): SearchTarget[] {
     const { add, addEach } = bind('overview', ov, src.updateWorldOverview);
     add({ ...ovWhere, chipCapable: false }, 'name', 'World Name', ov.name, (r, v) => ({ ...r, name: v }));
     add({ ...ovWhere, chipCapable: false }, 'author', 'Author', ov.author, (r, v) => ({ ...r, author: v }));
+    addEach({ ...ovWhere, chipCapable: false }, 'tags', 'Tags', ov.tags, (r, v) => ({ ...r, tags: v }), (r) => r.tags ?? []);
     // Uses the plain prompt vocabulary rather than the placeholder one, so a chip here stays inert text.
     add({ ...ovWhere, chipCapable: false }, 'description', 'World Description', ov.description, (r, v) => ({ ...r, description: v }));
     add({ ...ovWhere, chipCapable: true }, 'systemPrompt', 'System Prompt Addition', ov.systemPrompt, (r, v) => ({ ...r, systemPrompt: v }));
     add({ ...ovWhere, chipCapable: true }, 'readme', 'Readme', ov.readme, (r, v) => ({ ...r, readme: v }));
-    addEach({ ...ovWhere, chipCapable: false }, 'tags', 'Tags', ov.tags, (r, v) => ({ ...r, tags: v }), (r) => r.tags ?? []);
   }
 
   // ── Stats ─────────────────────────────────────────────────────────────────
@@ -175,10 +176,10 @@ export function collectSearchTargets(src: SearchSources): SearchTarget[] {
     const { add, addEach } = bind(`entity:${entity.id}`, entity, src.updateEntity);
     add({ ...where, chipCapable: true }, 'name', 'Name', entity.name, (r, v) => ({ ...r, name: v }));
     addEach({ ...where, chipCapable: true }, 'aliases', 'Aliases', entity.aliases, (r, v) => ({ ...r, aliases: v }), (r) => r.aliases ?? []);
-    add({ ...where, chipCapable: false }, 'type', 'Type', entity.type, (r, v) => ({ ...r, type: v }));
     add({ ...where, chipCapable: true }, 'playerDescription', 'Player-Facing Description', entity.playerDescription, (r, v) => ({ ...r, playerDescription: v }));
     add({ ...where, chipCapable: true }, 'aiDescription', 'AI-Facing Description', entity.aiDescription, (r, v) => ({ ...r, aiDescription: v }));
     add({ ...where, chipCapable: true }, 'aiSummary', 'AI-Facing Summary', entity.aiSummary, (r, v) => ({ ...r, aiSummary: v }));
+    add({ ...where, chipCapable: false }, 'type', 'Type', entity.type, (r, v) => ({ ...r, type: v }));
     add({ ...where, chipCapable: false }, 'imageTags', 'Image Tags', entity.imageTags, (r, v) => ({ ...r, imageTags: v }));
   });
   src.entityGroups.forEach((group) => {

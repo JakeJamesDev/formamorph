@@ -12,8 +12,12 @@ import { $createVariableNode } from './VariableNode';
 
 /**
  * Which chip field a shared palette inserts into. One palette serves every field in a panel, so it needs a
- * target: the field that most recently held focus keeps the claim even after the palette itself is clicked,
- * which is what lets a click on a chip land where the author was last typing.
+ * target: the field holding the caret, which keeps its claim across the palette click itself because that
+ * click never takes focus (the palette calls `preventDefault` on mouse-down).
+ *
+ * The claim ends the moment the caret leaves the field, rather than lingering with whichever field held it
+ * last. Lingering made every palette chip live at all times, which cost the chips their own gestures —
+ * double-clicking one to rename it fired an insert into a field the author had long since left.
  */
 
 /** Drop a fresh chip at the caret, or at the end of the field when it has no selection yet. */
@@ -75,27 +79,29 @@ export function ChipInsertTargetProvider({ children }: { children: ReactNode }) 
     setTarget(null);
   }, []);
 
-  // Drop the claim when the author moves to something a chip can't go into — a plain input, a textarea, a
-  // number box. Without this the palette stays lit after clicking into an ordinary field and its chips would
-  // land back in whichever chip field was focused last, which is not where the author is looking.
+  // Drop the claim as soon as the caret leaves the field. `focusout` rather than `focusin`, because focus
+  // falling to nothing at all — clicking blank panel background — fires no `focusin` and would otherwise
+  // leave the palette lit with no caret to insert at.
   //
-  // Only a focused *editable* releases: clicking a button, a tab or the palette itself must not, since
-  // reaching the palette necessarily moves focus off the field it is about to insert into.
+  // Deliberately ignores a `relatedTarget` that cannot hold focus: the palette's own mouse-down prevents
+  // the default focus change, so the click that inserts never reaches here.
   useEffect(() => {
-    const onFocusIn = (e: FocusEvent) => {
-      const el = e.target as HTMLElement | null;
-      if (!el || !holder.current) return;
-      if (holderRoot.current?.contains(el)) return; // still inside the claiming field
-      const editable = el.isContentEditable
-        || el.tagName === 'INPUT'
-        || el.tagName === 'TEXTAREA';
-      if (!editable) return;
-      holder.current = null;
-      holderRoot.current = null;
-      setTarget(null);
+    const onFocusOut = () => {
+      if (!holder.current) return;
+      // Settled on the next tick rather than read from `relatedTarget`: a chip editor hands focus around
+      // inside itself while restoring its selection, and each of those blurs reports going nowhere. Asking
+      // where focus actually landed, once it has landed, tells a real departure from that shuffle — and
+      // covers focus falling to nothing at all, which reports no incoming element either way.
+      setTimeout(() => {
+        if (!holder.current) return;
+        if (holderRoot.current?.contains(document.activeElement)) return;
+        holder.current = null;
+        holderRoot.current = null;
+        setTarget(null);
+      }, 0);
     };
-    document.addEventListener('focusin', onFocusIn);
-    return () => document.removeEventListener('focusin', onFocusIn);
+    document.addEventListener('focusout', onFocusOut);
+    return () => document.removeEventListener('focusout', onFocusOut);
   }, []);
 
   const value = useMemo<TargetState>(

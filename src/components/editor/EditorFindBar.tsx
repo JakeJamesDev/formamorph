@@ -34,11 +34,31 @@ interface EditorFindBarProps {
   onClose: () => void;
 }
 
-/** One half of the match-options split button: primary while its option is on. */
-function MatchToggle({ on, onClick, label, children }: {
+/**
+ * An editbox with its own controls parked along its right edge, sharing the field's frame — the image-URL
+ * widget's arrangement. The field draws no focus ring of its own; the overlay below paints one across the
+ * whole widget, so it reads as one control rather than stopping at a divider.
+ */
+function FieldWithTrailing({ children }: { children: ReactNode }) {
+  return (
+    <div className="group relative min-w-0">
+      {children}
+      <span
+        aria-hidden
+        className="pointer-events-none absolute inset-0 rounded-md ring-ring ring-inset group-focus-within:ring-2"
+      />
+    </div>
+  );
+}
+
+/** A cell along a field's right edge: primary while its option is on, divided from what precedes it. */
+function MatchToggle({ on, onClick, label, className, last, children }: {
   on: boolean;
   onClick: () => void;
   label: string;
+  className?: string;
+  /** Rounds the outer corners to sit flush in the field's own frame. */
+  last?: boolean;
   children: ReactNode;
 }) {
   return (
@@ -49,8 +69,10 @@ function MatchToggle({ on, onClick, label, children }: {
       aria-label={label}
       title={label}
       className={cn(
-        'flex h-8 w-8 items-center justify-center transition-colors',
+        'flex h-8 w-8 items-center justify-center border-l border-l-input transition-colors',
+        last && 'rounded-r-md',
         on ? 'bg-primary text-primary-foreground' : 'text-muted-foreground hover:bg-accent hover:text-foreground',
+        className,
       )}
     >
       {children}
@@ -163,7 +185,10 @@ export default function EditorFindBar({
       role="search"
       aria-label="Find and replace in world"
     >
-      <div className="flex items-center gap-1">
+      {/* Both rows share one grid, so the two editboxes are the same width however wide their trailing
+          buttons are: the middle column carries both, and the last column sizes to whichever row needs more.
+          The replace row simply leaves the disclosure cell empty rather than being padded to line up. */}
+      <div className="grid grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-x-1 gap-y-2">
         <Button
           variant="ghost"
           size="icon"
@@ -174,105 +199,116 @@ export default function EditorFindBar({
         >
           {showReplace ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
         </Button>
-        <Input
-          ref={searchRef}
-          value={query}
-          onChange={(e) => setQuery(e.target.value)}
-          placeholder="Find in world"
-          className="h-8"
-        />
-        {/* One bordered control split in two rather than a ToggleGroup: the group owns its items' pressed
-            state, so a pair driven by their own booleans rendered permanently unpressed. */}
-        <div className="flex shrink-0 items-center overflow-hidden rounded-md border" role="group" aria-label="Match options">
-          <MatchToggle on={matchCase} onClick={() => setMatchCase((v) => !v)} label="Match case">
-            <CaseSensitive className="h-4 w-4" />
-          </MatchToggle>
-          <span className="h-8 w-px shrink-0 bg-border" aria-hidden />
-          <MatchToggle on={wholeWord} onClick={() => setWholeWord((v) => !v)} label="Match whole word">
-            <WholeWord className="h-4 w-4" />
-          </MatchToggle>
+        <FieldWithTrailing>
+          <Input
+            ref={searchRef}
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
+            placeholder="Find in world"
+            className="h-8 pr-[4.25rem] focus-visible:ring-0"
+          />
+          {/* One bordered control split in two rather than a ToggleGroup: the group owns its items' pressed
+              state, so a pair driven by their own booleans rendered permanently unpressed. */}
+          <div className="absolute inset-y-0 right-0 flex items-center" role="group" aria-label="Match options">
+            <MatchToggle on={matchCase} onClick={() => setMatchCase((v) => !v)} label="Match case">
+              <CaseSensitive className="h-4 w-4" />
+            </MatchToggle>
+            <MatchToggle on={wholeWord} onClick={() => setWholeWord((v) => !v)} label="Match whole word" last>
+              <WholeWord className="h-4 w-4" />
+            </MatchToggle>
+          </div>
+        </FieldWithTrailing>
+        <div className="flex items-center gap-1">
+          <span
+            className={cn('w-20 text-center text-meta', matches.length || !debounced ? 'text-muted-foreground' : 'text-destructive')}
+            aria-live="polite"
+          >
+            {debounced ? (matches.length ? `${Math.min(index, matches.length - 1) + 1} / ${matches.length}` : 'No results') : ''}
+          </span>
+          <Button variant="ghost" size="icon" className="h-7 w-7 shrink-0" onClick={() => step(-1)} disabled={!matches.length} aria-label="Previous match">
+            <ChevronUp className="h-4 w-4" />
+          </Button>
+          <Button variant="ghost" size="icon" className="h-7 w-7 shrink-0" onClick={() => step(1)} disabled={!matches.length} aria-label="Next match">
+            <ChevronDown className="h-4 w-4" />
+          </Button>
+          <Button variant="ghost" size="icon" className="h-7 w-7 shrink-0" onClick={onClose} aria-label="Close find">
+            <X className="h-4 w-4" />
+          </Button>
         </div>
-        <span className="w-20 shrink-0 text-center text-caption text-muted-foreground" aria-live="polite">
-          {debounced ? (matches.length ? `${Math.min(index, matches.length - 1) + 1} / ${matches.length}` : 'No results') : ''}
-        </span>
-        <Button variant="ghost" size="icon" className="h-7 w-7 shrink-0" onClick={() => step(-1)} disabled={!matches.length} aria-label="Previous match">
-          <ChevronUp className="h-4 w-4" />
-        </Button>
-        <Button variant="ghost" size="icon" className="h-7 w-7 shrink-0" onClick={() => step(1)} disabled={!matches.length} aria-label="Next match">
-          <ChevronDown className="h-4 w-4" />
-        </Button>
-        <Button variant="ghost" size="icon" className="h-7 w-7 shrink-0" onClick={onClose} aria-label="Close find">
-          <X className="h-4 w-4" />
-        </Button>
+
+        {showReplace && (
+          <>
+            <span aria-hidden />
+            <FieldWithTrailing>
+              {placeholderMode ? (
+                <Popover open={pickerOpen} onOpenChange={setPickerOpen}>
+                  <PopoverTrigger asChild>
+                    <Button variant="outline" size="sm" className={cn('h-8 w-full justify-start font-normal focus-visible:ring-0', allowPlaceholderReplace && 'pr-10')}>
+                      {chip ? chip.name : 'Choose a placeholder'}
+                    </Button>
+                  </PopoverTrigger>
+                  <PopoverContent align="start" className="w-64 p-1">
+                    <div className="max-h-56 overflow-y-auto">
+                      {placeholders.map((p) => (
+                        <button
+                          key={p.id}
+                          type="button"
+                          className="flex w-full items-center rounded-sm px-2 py-1.5 text-left text-label hover:bg-accent"
+                          onClick={() => { setChipId(p.id); setPickerOpen(false); }}
+                        >
+                          {p.name}
+                        </button>
+                      ))}
+                    </div>
+                    <button
+                      type="button"
+                      className="mt-1 flex w-full items-center gap-2 rounded-sm border-t px-2 py-1.5 text-label hover:bg-accent"
+                      onClick={createPlaceholder}
+                    >
+                      <Plus className="h-4 w-4" />
+                      Create “{query.trim() || 'New Placeholder'}”
+                    </button>
+                  </PopoverContent>
+                </Popover>
+              ) : (
+                <Input
+                  value={replaceText}
+                  onChange={(e) => setReplaceText(e.target.value)}
+                  placeholder="Replace with"
+                  className={cn('h-8 focus-visible:ring-0', allowPlaceholderReplace && 'pr-10')}
+                />
+              )}
+              {/* Which kind of thing a replacement is, parked in the box it applies to. */}
+              {allowPlaceholderReplace && (
+                <MatchToggle
+                  on={placeholderMode}
+                  onClick={() => setMode((m) => (m === 'text' ? 'placeholder' : 'text'))}
+                  label={mode === 'text' ? 'Replace with a placeholder instead' : 'Replace with text instead'}
+                  className="absolute inset-y-0 right-0"
+                  last
+                >
+                  {mode === 'text' ? <Type className="h-4 w-4" /> : <span className="text-meta font-semibold">{'{}'}</span>}
+                </MatchToggle>
+              )}
+            </FieldWithTrailing>
+            <div className="flex items-center gap-1">
+              <Button variant="ghost" size="icon" className="h-7 w-7 shrink-0" onClick={replaceCurrent} disabled={!canReplace} aria-label="Replace" title="Replace">
+                <Replace className="h-4 w-4" />
+              </Button>
+              <Button variant="ghost" size="icon" className="h-7 w-7 shrink-0" onClick={() => setConfirmAll(true)} disabled={!canReplace} aria-label="Replace all" title="Replace all">
+                <ReplaceAll className="h-4 w-4" />
+              </Button>
+            </div>
+          </>
+        )}
       </div>
 
-      {showReplace && (
-        <div className="mt-2 flex items-center gap-1 pl-8">
-          {allowPlaceholderReplace && (
-            <Button
-              variant="ghost"
-              size="icon"
-              className="h-7 w-7 shrink-0"
-              onClick={() => setMode((m) => (m === 'text' ? 'placeholder' : 'text'))}
-              aria-label={mode === 'text' ? 'Replace with a placeholder instead' : 'Replace with text instead'}
-              title={mode === 'text' ? 'Replacing with text' : 'Replacing with a placeholder'}
-            >
-              {mode === 'text' ? <Type className="h-4 w-4" /> : <span className="text-caption font-semibold">{'{}'}</span>}
-            </Button>
-          )}
-          {placeholderMode ? (
-            <Popover open={pickerOpen} onOpenChange={setPickerOpen}>
-              <PopoverTrigger asChild>
-                <Button variant="outline" size="sm" className="h-8 flex-1 justify-start font-normal">
-                  {chip ? chip.name : 'Choose a placeholder'}
-                </Button>
-              </PopoverTrigger>
-              <PopoverContent align="start" className="w-64 p-1">
-                <div className="max-h-56 overflow-y-auto">
-                  {placeholders.map((p) => (
-                    <button
-                      key={p.id}
-                      type="button"
-                      className="flex w-full items-center rounded-sm px-2 py-1.5 text-left text-label hover:bg-accent"
-                      onClick={() => { setChipId(p.id); setPickerOpen(false); }}
-                    >
-                      {p.name}
-                    </button>
-                  ))}
-                </div>
-                <button
-                  type="button"
-                  className="mt-1 flex w-full items-center gap-2 rounded-sm border-t px-2 py-1.5 text-label hover:bg-accent"
-                  onClick={createPlaceholder}
-                >
-                  <Plus className="h-4 w-4" />
-                  Create “{query.trim() || 'New Placeholder'}”
-                </button>
-              </PopoverContent>
-            </Popover>
-          ) : (
-            <Input
-              value={replaceText}
-              onChange={(e) => setReplaceText(e.target.value)}
-              placeholder="Replace with"
-              className="h-8"
-            />
-          )}
-          <Button variant="ghost" size="icon" className="h-7 w-7 shrink-0" onClick={replaceCurrent} disabled={!canReplace} aria-label="Replace" title="Replace">
-            <Replace className="h-4 w-4" />
-          </Button>
-          <Button variant="ghost" size="icon" className="h-7 w-7 shrink-0" onClick={() => setConfirmAll(true)} disabled={!canReplace} aria-label="Replace all" title="Replace all">
-            <ReplaceAll className="h-4 w-4" />
-          </Button>
-        </div>
-      )}
-
       {current && (
-        <p className="mt-1 truncate pl-8 text-caption text-muted-foreground">
+        <p className="mt-1 truncate pl-8 text-meta text-muted-foreground">
           {current.target.itemLabel} · {current.target.fieldLabel}
         </p>
       )}
-      {notice && <p className="mt-1 pl-8 text-caption text-muted-foreground">{notice}</p>}
+      {notice && <p className="mt-1 pl-8 text-meta text-muted-foreground">{notice}</p>}
 
       <AlertDialog open={confirmAll} onOpenChange={setConfirmAll}>
         <AlertDialogContent>
