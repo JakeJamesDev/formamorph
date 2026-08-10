@@ -638,7 +638,7 @@ const WorldEditorInner = ({ onClose, embedded = false, backButton }: {
           <ArrowLeft className="h-4 w-4" />
         </Button>
       )}
-      {/* A phone has just come from tapping this world open, and the row needs every pixel for the controls
+      {/* On mobile you have just come from tapping this world open, and the row needs every pixel for the controls
           that do something — so the heading is read out but not drawn there. */}
       <CardTitle className={isMobile ? 'sr-only' : undefined}>World Editor</CardTitle>
       <Button
@@ -666,7 +666,7 @@ const WorldEditorInner = ({ onClose, embedded = false, backButton }: {
             className={cn('relative', isMobile && 'px-2 py-1')}
             // The marker rides the switch that acts on it rather than sitting beside it as its own icon:
             // it says "there is more through here", which is exactly what this control does, and a row on a
-            // phone has no room for a second thing saying so.
+            // mobile has no room for a second thing saying so.
             title={hasHiddenData ? 'This world uses advanced features. Switch to Advanced to see them.' : undefined}
           >
             Advanced
@@ -818,7 +818,7 @@ const WorldEditorInner = ({ onClose, embedded = false, backButton }: {
               <CardHeader className="space-y-0 pb-2 px-2">{headerBar}</CardHeader>
               <CardContent className="flex-grow flex flex-col overflow-hidden px-2 pt-2">
                 <Tabs value={activeTab} onValueChange={setActiveTab} className="flex-grow flex flex-col min-h-0">
-                  {/* The tab strip doesn't fit a phone, so it scrolls horizontally. */}
+                  {/* The tab strip doesn't fit mobile, so it scrolls horizontally. */}
                   <div className="overflow-x-auto flex-shrink-0">{tabsList}</div>
                   {addSearchBar}
                   {tabPanels(activeTab === "overview" ? (

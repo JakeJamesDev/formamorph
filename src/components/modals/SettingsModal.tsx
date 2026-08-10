@@ -777,7 +777,7 @@ export const SettingsModal = ({ isOpen, onOpenChange, previewValues, initialTab,
   // A built-in can't be edited, so the way forward is a copy of it. `addPreset` already clones the active
   // values and selects the result, so this is the whole gesture — no dialog in the way.
   const duplicateForEditing = () => addPreset(`${activePresetName} (copy)`);
-  // Short enough for one line on a phone; the notice puts the whole sentence on hover.
+  // Short enough for one line on mobile; the notice puts the whole sentence on hover.
   const readOnlyReason = activePresetIsBuiltIn ? `${activePresetName} is read-only` : undefined;
 
   // AI Endpoints → Image preset name dialog (mirrors the prompt preset one; all presets editable).
@@ -1069,7 +1069,7 @@ export const SettingsModal = ({ isOpen, onOpenChange, previewValues, initialTab,
         // the side-by-side panes, and those now belong to full screen.
         className={cn(
           'flex flex-col overflow-hidden sm:max-w-[900px]',
-          // A phone has no room to spend on the frame around a settings panel — fill the screen.
+          // Mobile has no room to spend on the frame around a settings panel — fill the screen.
           dialogFullHeightMobile,
           'max-sm:w-screen max-sm:max-w-none max-sm:rounded-none max-sm:border-0 sm:h-[90dvh]',
         )}
@@ -1078,7 +1078,7 @@ export const SettingsModal = ({ isOpen, onOpenChange, previewValues, initialTab,
           <DialogTitle className="flex items-center gap-2"><Settings className="h-4 w-4" /> Settings</DialogTitle>
         </DialogHeader>
         <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full flex flex-col flex-1 min-h-0">
-          {/* The tab labels don't fit a narrow phone, so below sm the tab strip becomes a dropdown of the
+          {/* The tab labels don't fit narrow mobile, so below sm the tab strip becomes a dropdown of the
               active tab; sm+ keeps the full row. Both drive the same activeTab state. */}
           <Select value={activeTab} onValueChange={setActiveTab}>
             <SelectTrigger className="w-full flex-shrink-0 sm:hidden">
@@ -2169,7 +2169,7 @@ You can always draw a single scene by hand from the button above the story inste
                 says what each prompt is for. `Tabs` still owns the panel switching — only its list is gone. */}
             <Tabs value={activePromptTab} onValueChange={selectPromptTab} className="w-full flex flex-1 min-h-0 gap-4 flex-col md:flex-row">
               {/* Narrow: one dropdown carrying prompt + surface, since a rail and an editor can't share
-                  a phone's width. Same collapse the top-level Settings tabs already do. */}
+                  mobile width. Same collapse the top-level Settings tabs already do. */}
               <div className="md:hidden flex-shrink-0">
                 {/* Prompt and surface entries live in one list but must not share a value string, or
                     Radix matches both and renders their labels concatenated. */}

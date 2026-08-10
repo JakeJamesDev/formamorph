@@ -8,7 +8,7 @@ Editing a 1,500px prompt in a 384px window (26% visible on desktop, 10% on mobil
 
 - **B2** — Edit and Preview become two scroll-synced panes side by side where there's width.
 - **S2** — every `PromptField` gains a maximize button opening the same field fullscreen.
-- **M2** — on phones, focusing a cramped inline editor opens that fullscreen automatically, with **M3**'s swipe between Edit and Preview inside it.
+- **M2** — on mobile, focusing a cramped inline editor opens that fullscreen automatically, with **M3**'s swipe between Edit and Preview inside it.
 
 ## Decisions (interviewed & confirmed)
 
@@ -25,12 +25,12 @@ The heart is a `PromptField` refactor from "two tabs" to "two panes + one layout
 
 1. **Panes.** Edit (Lexical chips) and Preview (rendered) become layout-independent children sharing the existing `ScrollAnchor` proxy — the same height-independent anchor that today survives tab switches becomes a live bidirectional sync (scrolling either pane updates the proxy; the other follows).
 2. **Layout modes**, chosen per render:
-   - `split` — panes side by side. Auto when the field's own container width gives each pane ≥ ~420px (a `ResizeObserver` on the field, **not** `useIsMobile` — a shrunken desktop window falls back to tabs, and phones fall out for free).
+   - `split` — panes side by side. Auto when the field's own container width gives each pane ≥ ~420px (a `ResizeObserver` on the field, **not** `useIsMobile` — a shrunken desktop window falls back to tabs, and mobile falls out for free).
    - `tabs` — today's toggle, for narrow containers and as the manual override.
-   - `fullscreen` — the same component re-rendered in an overlay (Radix Dialog, ~95vw/95dvh); inside it the same auto gating applies, so a desktop fullscreen shows the split and a phone fullscreen shows swipeable panes.
+   - `fullscreen` — the same component re-rendered in an overlay (Radix Dialog, ~95vw/95dvh); inside it the same auto gating applies, so a desktop fullscreen shows the split and a mobile fullscreen shows swipeable panes.
 3. **Manual override** — a toolbar toggle (split ⇄ tabs) stored once globally (localStorage); auto stays the default until the user touches it.
 4. **Swipe (mobile fullscreen)** — horizontal swipe between the two panes with pane dots; the shared anchor lands the target pane at the same content position. Reuse the existing swipe-pane conventions (SwipeImage / mobile drawers) rather than a new gesture lib.
-5. **Auto-fullscreen on focus** — phones only (here `useIsMobile` *is* right — it's about the device's editing ergonomics, not container width): focusing an inline `PromptField` opens the fullscreen with the caret preserved; closing returns to the inline field. The ⛶ button still exists everywhere.
+5. **Auto-fullscreen on focus** — mobile only (here `useIsMobile` *is* right — it's about the device's editing ergonomics, not container width): focusing an inline `PromptField` opens the fullscreen with the caret preserved; closing returns to the inline field. The ⛶ button still exists everywhere.
 
 ### Surfaces touched
 

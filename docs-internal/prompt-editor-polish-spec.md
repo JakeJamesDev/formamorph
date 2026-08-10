@@ -32,7 +32,7 @@ Two maps exist today and will drift: `samplePreviewValues.ts` and GameViewer's `
 - `PromptField` gains controlled-fullscreen props (`fullscreen`, `onFullscreenChange`); uncontrolled behavior (internal state) remains for call sites without chrome of their own (world editor, dictionary entries).
 - The Prompts tab intercepts the field's maximize: fullscreen becomes a Settings-level overlay (nested Radix dialog, same as the field uses today) containing the **whole rail + editor layout** — rail on the left, field filling the rest, preset row included so Duplicate & Edit and preset switching work without leaving fullscreen.
 - Mobile fullscreen keeps the field-only presentation (a rail has no room there; the dropdown row rides along instead).
-- Auto-fullscreen-on-focus (phones) keeps working through the same controlled path.
+- Auto-fullscreen-on-focus (mobile) keeps working through the same controlled path.
 
 ## 4. Caret-follow in the preview
 

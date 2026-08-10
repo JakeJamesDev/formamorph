@@ -37,7 +37,7 @@ describe('full-height dialog shells anchor to the top', () => {
   it('leaves the centered window in place above the sm breakpoint', () => {
     const classes = classesFor(dialogFullHeightMobile);
 
-    // This shell is only full-height on a phone, so the wide-screen dialog must still be centered.
+    // This shell is only full-height on mobile, so the wide-screen dialog must still be centered.
     expect(classes).toContain('top-[50%]');
     expect(classes).toContain('translate-y-[-50%]');
     expect(classes).toContain('max-sm:top-[var(--app-top,0px)]');

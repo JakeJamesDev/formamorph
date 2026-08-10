@@ -6,7 +6,7 @@
 
 | Question | Decision |
 |---|---|
-| Rail on narrow screens | **Dropdown on mobile** — rail at desktop widths, collapsing to a single dropdown row below the threshold. This deliberately revives the previously-excluded M1 and kills the 106px wrapped tab bar on phones. |
+| Rail on narrow screens | **Dropdown on mobile** — rail at desktop widths, collapsing to a single dropdown row below the threshold. This deliberately revives the previously-excluded M1 and kills the 106px wrapped tab bar on mobile. |
 | Rail structure | **Grouped tree.** Prompts grouped (Story / Trackers / Memory / Images), each expanding to its surfaces (System Prompt / User Message / Messages / Options). The two chrome rows — 13 wrapped prompt tabs and the view toggle — disappear entirely. |
 | Read-only built-ins | **Notice + duplicate button.** A visible "Built-in presets can't be edited" line with a button that clones the active preset as a user preset, selects it, and lands in editing. |
 | Out-of-game preview | **Generic sample data**, labeled. Hand-written neutral snippets shaped like real context (never real world content — see [[prompt-examples-generic-only]]'s spirit: placeholder-form, not lifted values). Preview shows a "sample data" badge so nobody mistakes it for their world. |

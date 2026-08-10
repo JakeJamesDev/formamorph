@@ -26,13 +26,13 @@ test.describe('pane chrome is gated on the device, not just the width', () => {
     await expect(chrome.previewTab(page)).toBeVisible();
   });
 
-  test('phone full screen swaps the tab bar for the swipe dots', async ({ page }, testInfo) => {
-    test.skip(testInfo.project.name !== MOBILE, 'phone-only gate');
+  test('mobile full screen swaps the tab bar for the swipe dots', async ({ page }, testInfo) => {
+    test.skip(testInfo.project.name !== MOBILE, 'mobile-only gate');
     await openApp(page);
     await openPromptEditor(page);
     await chrome.enterFullscreen(page).click();
 
-    // The other side of the same gate: on a phone the gesture is the control, so the tab bar is gone.
+    // The other side of the same gate: on mobile the gesture is the control, so the tab bar is gone.
     await expect(chrome.editTab(page)).toHaveCount(0);
   });
 });
@@ -57,7 +57,7 @@ test.describe('full screen measures the viewport it fills', () => {
   });
 
   test('the two panes really sit side by side', async ({ page }, testInfo) => {
-    test.skip(testInfo.project.name !== DESKTOP, 'a phone never splits');
+    test.skip(testInfo.project.name !== DESKTOP, 'mobile never splits');
     await openApp(page, splitMode('split'));
     await openPromptEditor(page);
     await chrome.enterFullscreen(page).click();
@@ -143,13 +143,13 @@ test.describe('the preview follows the caret', () => {
 });
 
 test.describe('focus never opens or re-opens full screen by itself', () => {
-  // A phone raises its keyboard whenever the caret lands in the editor, so anything that moves focus
+  // Mobile raises its keyboard whenever the caret lands in the editor, so anything that moves focus
   // there without being asked raises it too. There is no soft keyboard to drive in a browser test, so
   // these measure the mechanism instead: who holds focus, and what that does to the full-screen state.
   // Together they are the loop that made the keyboard impossible to dismiss — each link, not the symptom.
 
   test('focus alone does not open full screen', async ({ page }, testInfo) => {
-    test.skip(testInfo.project.name !== MOBILE, 'only phones auto-open');
+    test.skip(testInfo.project.name !== MOBILE, 'only mobile auto-opens');
     await openApp(page);
     await openPromptEditor(page);
     const editor = page.locator('[contenteditable]').first();
@@ -161,7 +161,7 @@ test.describe('focus never opens or re-opens full screen by itself', () => {
   });
 
   test('a tap still opens full screen', async ({ page }, testInfo) => {
-    test.skip(testInfo.project.name !== MOBILE, 'only phones auto-open');
+    test.skip(testInfo.project.name !== MOBILE, 'only mobile auto-opens');
     await openApp(page);
     await openPromptEditor(page);
 
@@ -176,7 +176,7 @@ test.describe('focus never opens or re-opens full screen by itself', () => {
     await chrome.enterFullscreen(page).click();
     await expect(page.getByRole('dialog', { name: 'Prompts' })).toBeVisible();
 
-    // Radix focuses a dialog's first focusable on open. Landing in the editor raises a phone's keyboard
+    // Radix focuses a dialog's first focusable on open. Landing in the editor raises the mobile keyboard
     // before the reader has asked to type anything.
     const inEditor = await page.evaluate(() => !!document.activeElement?.hasAttribute('contenteditable'));
     expect(inEditor).toBe(false);
@@ -207,7 +207,7 @@ test.describe('focus never opens or re-opens full screen by itself', () => {
 
 test.describe('a dropdown does not resize as you scroll it', () => {
   test('reaching either end leaves every option where it was', async ({ page }, testInfo) => {
-    test.skip(testInfo.project.name !== MOBILE, 'the prompt picker is the phone-width control');
+    test.skip(testInfo.project.name !== MOBILE, 'the prompt picker is the mobile-width control');
     await openApp(page);
     await openPromptEditor(page);
 

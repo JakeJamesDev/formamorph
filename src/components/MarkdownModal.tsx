@@ -28,7 +28,7 @@ export function MarkdownModal({ open, onOpenChange, title, text, tabs, footer }:
         </DialogHeader>
         {tabs?.length ? (
           <Tabs defaultValue={tabs[0].label} className="min-h-0 flex flex-col">
-            {/* Centered, not start-aligned: these bars wrap to 2+ rows on a phone, and a left-aligned
+            {/* Centered, not start-aligned: these bars wrap to 2+ rows on mobile, and a left-aligned
                 ragged last row reads as broken. `self-center` centers the bar itself, `justify-center`
                 centers the triggers within it (which is what tidies the wrapped row). */}
             <TabsList className="flex flex-wrap h-auto justify-center gap-1 self-center">

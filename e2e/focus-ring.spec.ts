@@ -83,9 +83,9 @@ test.describe('focus ring', () => {
   });
 
   test('stays legible on a filled control in both themes', async ({ page }, testInfo) => {
-    // Ring color is a theme concern, identical at every viewport; the phone only differs in hiding this
+    // Ring color is a theme concern, identical at every viewport; mobile only differs in hiding this
     // particular button behind the Menu, which would test the layout rather than the color.
-    test.skip(testInfo.project.name !== 'desktop', 'phone keeps the primary action behind the Menu');
+    test.skip(testInfo.project.name !== 'desktop', 'mobile keeps the primary action behind the Menu');
     for (const theme of ['light', 'dark'] as const) {
       await openApp(page, { FORMAMORPH_theme: theme });
       await page.keyboard.press('Tab');

@@ -17,7 +17,7 @@ export function ReadOnlyNotice({ reason, onRequestEdit, className }: {
   return (
     <div
       className={cn(
-        // Stays at meta on a phone: the line never wraps, and at helper size even the shortest reason
+        // Stays at meta on mobile: the line never wraps, and at helper size even the shortest reason
         // ("Default is read-only") loses its last characters to the ellipsis.
         'flex flex-shrink-0 items-center gap-2 rounded-md border border-border bg-muted/50 px-2 py-1 text-meta sm:text-helper text-muted-foreground',
         className,
@@ -25,7 +25,7 @@ export function ReadOnlyNotice({ reason, onRequestEdit, className }: {
       title={reason}
     >
       <Lock className="h-3.5 w-3.5 shrink-0" />
-      {/* One line, never wrapped: at phone width the full sentence took two rows off the editor. */}
+      {/* One line, never wrapped: at mobile width the full sentence took two rows off the editor. */}
       <span className="min-w-0 flex-1 truncate">{reason}</span>
       {onRequestEdit && (
         <Button variant="outline" size="sm" className="h-7 shrink-0 px-2" onClick={onRequestEdit}>
