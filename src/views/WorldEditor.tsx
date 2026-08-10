@@ -17,7 +17,10 @@ import { Input } from "@/components/ui/input";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { Download, Plus, ArrowLeft, Save, FolderPlus, FilePlus, ImageDown, BookPlus, UserPlus, Loader2, Info } from "lucide-react";
+import { Download, Plus, ArrowLeft, Save, FolderPlus, FilePlus, ImageDown, BookPlus, UserPlus, Loader2, Info, Search } from "lucide-react";
+import EditorFindBar from '@/components/editor/EditorFindBar';
+import { collectSearchTargets, type SearchMatch } from '@/lib/worldSearch';
+import { revealEditorMatch, clearEditorMatch } from '@/lib/editorFieldFocus';
 import { Panel, PanelGroup, PanelResizeHandle } from 'react-resizable-panels';
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { ListDetail } from "@/components/ui/list-detail";
@@ -94,11 +97,13 @@ const WorldEditorInner = ({ onClose, embedded = false, backButton }: {
 }) => {
   const showBackButton = backButton ?? !embedded;
   const {
-    updateWorldOverview, worldId,
+    updateWorldOverview, worldId, worldOverview,
     loadWorldData, getWorldData,
     stats, locations, entities, entityGroups, traits, traitGroups, statUpdates, dictionaries, placeholders,
     addStat, addLocation, addEntity, addTrait, addStatUpdate, addDictionary,
     addTraitGroup, addEntityGroup, addPlaceholder,
+    updateStat, updateEntity, updateEntityGroup, updateLocation, updateTrait, updateTraitGroup,
+    updateDictionary, updateDictionaryEntry, updatePlaceholder,
     removeStat, removeEntity, removeTrait, removeStatUpdate,
     setStats, setLocations, setEntities, setTraits, setTraitGroups, setStatUpdates,
     isWorldDirty, saveWorld: saveWorldCtx, discardChanges
@@ -159,6 +164,55 @@ const WorldEditorInner = ({ onClose, embedded = false, backButton }: {
   }, [devRoute?.tab]);
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedItemId, setSelectedItemId] = useState<string | null>(null);
+
+  // ── Find & replace ────────────────────────────────────────────────────────
+  const [findOpen, setFindOpen] = useState(false);
+  const [findWithReplace, setFindWithReplace] = useState(false);
+  // Overview's fields sit in the list pane and every other tab's in the detail pane, so the hit lookup
+  // spans the whole editor and skips the two boxes that aren't world text (the find bar, the list filter).
+  const editorRootRef = useRef<HTMLDivElement>(null);
+  const openFind = useCallback((withReplace: boolean) => {
+    setFindWithReplace(withReplace);
+    setFindOpen(true);
+  }, []);
+  const closeFind = useCallback(() => {
+    setFindOpen(false);
+    clearEditorMatch();
+  }, []);
+  useEffect(() => {
+    const onKey = (event: KeyboardEvent) => {
+      if (!(event.ctrlKey || event.metaKey)) return;
+      const key = event.key.toLowerCase();
+      if (key !== 'f' && key !== 'h') return;
+      event.preventDefault();
+      openFind(key === 'h');
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [openFind]);
+  // A hit on a tab this mode hides has nowhere to navigate to, so it isn't a hit.
+  const searchTargets = useMemo(() => {
+    if (!findOpen) return [];
+    const reachable = new Set<string>(visibleTabs.map((t) => t.value));
+    return collectSearchTargets({
+      worldOverview, stats, entities, entityGroups, locations, traits, traitGroups, dictionaries, placeholders,
+      updateWorldOverview, updateStat, updateEntity, updateEntityGroup, updateLocation, updateTrait,
+      updateTraitGroup, updateDictionary, updateDictionaryEntry, updatePlaceholder,
+    }).filter((t) => reachable.has(t.tab));
+  }, [findOpen, visibleTabs, worldOverview, stats, entities, entityGroups, locations, traits, traitGroups,
+      dictionaries, placeholders, updateWorldOverview, updateStat, updateEntity, updateEntityGroup,
+      updateLocation, updateTrait, updateTraitGroup, updateDictionary, updateDictionaryEntry, updatePlaceholder]);
+  const navigateToMatch = useCallback((match: SearchMatch) => {
+    setActiveTab(match.target.tab);
+    setSelectedItemId(match.target.itemId);
+    const hit = {
+      value: match.target.value,
+      matchText: match.target.value.slice(match.start, match.end),
+      start: match.start,
+    };
+    setTimeout(() => revealEditorMatch(editorRootRef.current, hit), 0);
+  }, []);
+  useEffect(() => clearEditorMatch, []);
   const isMobile = useIsMobile();
   const [showExitPrompt, setShowExitPrompt] = useState(false);
   const [addMenuOpen, setAddMenuOpen] = useState(false);
@@ -581,6 +635,16 @@ const WorldEditorInner = ({ onClose, embedded = false, backButton }: {
           <Info className="h-4 w-4" aria-label="This world uses advanced features" />
         </span>
       )}
+      <Button
+        variant="ghost"
+        size="icon"
+        className={hasHiddenData ? undefined : 'ml-auto'}
+        onClick={() => openFind(false)}
+        aria-label="Find and replace"
+        title="Find and replace (Ctrl+F)"
+      >
+        <Search className="h-4 w-4" />
+      </Button>
       <TutorialPopover entry={tutorial} onDismiss={dismissTutorial}>
         <ToggleGroup
           type="single"
@@ -588,7 +652,7 @@ const WorldEditorInner = ({ onClose, embedded = false, backButton }: {
           // Using the switch is itself the lesson, so it retires the tutorial as surely as the button does.
           onValueChange={(v) => { if (v) { dismissTutorial(); setMode(v as EditorMode); } }}
           aria-label="Editor mode"
-          className={`${isMobile ? "h-8" : ""} ${hasHiddenData ? "" : "ml-auto"}`.trim() || undefined}
+          className={isMobile ? "h-8" : undefined}
         >
           <ToggleGroupItem value="simple" className={isMobile ? "px-2 py-1" : undefined}>Simple</ToggleGroupItem>
           <ToggleGroupItem value="advanced" className={isMobile ? "px-2 py-1" : undefined}>Advanced</ToggleGroupItem>
@@ -644,6 +708,7 @@ const WorldEditorInner = ({ onClose, embedded = false, backButton }: {
         </Button>
       )}
       <Input
+        data-editor-find-skip
         placeholder={activeTab === "dictionary" ? "Name a new dictionary" : `Search or add new ${activeTab}`}
         value={searchTerm}
         onChange={(e) => setSearchTerm(e.target.value)}
@@ -713,7 +778,19 @@ const WorldEditorInner = ({ onClose, embedded = false, backButton }: {
           pauseOnHover
         />
       )}
-      <div className="flex-grow flex overflow-hidden">
+      <div className="relative flex-grow flex overflow-hidden" ref={editorRootRef}>
+        {findOpen && (
+          <EditorFindBar
+            targets={searchTargets}
+            placeholders={placeholders}
+            // Follows the Placeholders tab, which Simple mode hides.
+            allowPlaceholderReplace={advanced}
+            startWithReplace={findWithReplace}
+            onNavigate={navigateToMatch}
+            onAddPlaceholder={addPlaceholder}
+            onClose={closeFind}
+          />
+        )}
         {isMobile ? (
           <div className="h-full w-full">
             <Card className="h-full flex flex-col rounded-none border-x-0">
