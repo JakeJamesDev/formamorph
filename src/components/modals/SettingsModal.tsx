@@ -11,7 +11,8 @@ import { settingsUseAdvancedValues } from '@/lib/settingsAdvancedData';
 import { TutorialPopover } from '@/components/TutorialPopover';
 import { useDevRoute } from '@/lib/devRouter';
 import { Row, CheckRow, Section, SubGroup, HintInfo } from '@/components/SettingsRows';
-import { SETTINGS_COPY, SETTINGS_BUTTONS, SETTINGS_CONFIRMS, type SettingCopy, type SettingCopyKey } from '@/components/modals/settingsCopy';
+import { SETTINGS_COPY, SETTINGS_BUTTONS, SETTINGS_CONFIRMS } from '@/components/modals/settingsCopy';
+import { rowCopy } from '@/components/modals/settingsRowCopy';
 import TagField from '@/components/prompt/TagField';
 import { reasoningTabs, reasoningPromptTabs, defaultPromptReasoning, defaultReasoningBudgetPct, REASONING_CONTROL_KINDS, type PromptReasoning } from '@/lib/reasoningEffort';
 import { ExportPresetDialog, ImportPresetDialog } from '@/components/modals/PresetShareDialogs';
@@ -62,18 +63,6 @@ import ImageSetupGuide from './ImageSetupGuide';
 import ComfyWorkflowGuide from './ComfyWorkflowGuide';
 import { DEFAULT_TAG_PROMPT, SUBJECT_GUIDANCE } from '@/lib/imagePrompt';
 import { resetTutorials, useSeenTutorialCount, useTutorial } from '@/lib/tutorials';
-
-/** Spreads one setting's copy onto a `Row` or `CheckRow`, so a call site names the setting and nothing
- *  else — the label, description, badge and `ⓘ` all come from `settingsCopy`, where they are guarded. */
-function copy(key: SettingCopyKey) {
-  const c: SettingCopy = SETTINGS_COPY[key];
-  return {
-    label: c.label,
-    hint: c.description,
-    experimental: c.experimental,
-    info: c.info ? <HintInfo>{c.info}</HintInfo> : undefined,
-  };
-}
 
 // Segmented-control options: a short tab label plus the helper text shown below the selected one.
 const THEME_OPTIONS: { value: 'light' | 'dark' | 'system'; label: string; help: string }[] = [
@@ -944,7 +933,7 @@ export const SettingsModal = ({ isOpen, onOpenChange, previewValues, initialTab,
     choices: { label: 'Choices', reset: () => setChoicesPrompt(defaultChoicesPrompt) },
     statupdates: { label: 'Stat Updates', reset: () => setStatUpdatesPrompt(defaultStatUpdatesPrompt) },
     location: { label: 'Location Change', reset: () => setLocationChangePromptText(defaultLocationChangePrompt) },
-    summary: { label: 'Summary', reset: () => setSummaryPrompt(defaultSummaryPrompt) },
+    summary: { label: 'Summaries', reset: () => setSummaryPrompt(defaultSummaryPrompt) },
     timepassed: { label: 'Clock', reset: () => setTimePassedPrompt(defaultTimePassedPrompt) },
     timeopening: { label: 'Opening', reset: () => setOpeningTimePrompt(defaultOpeningTimePrompt) },
     scenetags: { label: 'Scene Tags', reset: () => setSceneTagsPrompt(defaultSceneTagsPrompt) },
@@ -1219,7 +1208,7 @@ export const SettingsModal = ({ isOpen, onOpenChange, previewValues, initialTab,
             <ScrollArea className="flex-1 min-h-0">
             <div className="grid gap-6 py-4">
               <Section title="Appearance">
-              <Row top {...copy('theme')}>
+              <Row top {...rowCopy('theme')}>
                 <div>
                   <ToggleGroup
                     type="single"
@@ -1246,7 +1235,7 @@ export const SettingsModal = ({ isOpen, onOpenChange, previewValues, initialTab,
                   </div>
                 </div>
               </Row>
-              <Row center htmlFor="themeColor" {...copy('themeColor')}>
+              <Row center htmlFor="themeColor" {...rowCopy('themeColor')}>
                 <div className="flex items-center gap-3">
                   <Select value={themeColor} onValueChange={(v) => setThemeColor(v as ThemeColor)}>
                     <SelectTrigger id="themeColor" className="w-48">
@@ -1261,7 +1250,7 @@ export const SettingsModal = ({ isOpen, onOpenChange, previewValues, initialTab,
                   <ThemePreviewButton />
                 </div>
               </Row>
-              <Row center htmlFor="fontFamily" {...copy('font')}>
+              <Row center htmlFor="fontFamily" {...rowCopy('font')}>
                 <div className="flex items-center gap-3">
                   <Select value={fontFamily} onValueChange={(v) => setFontFamily(v as FontChoice)}>
                     <SelectTrigger id="fontFamily" className="w-48">
@@ -1284,17 +1273,17 @@ export const SettingsModal = ({ isOpen, onOpenChange, previewValues, initialTab,
                 htmlFor="bgmEnabled"
                 checked={bgmEnabled}
                 onChange={setBgmEnabled}
-                {...copy('backgroundMusic')}
+                {...rowCopy('backgroundMusic')}
               />
               <CheckRow
                 htmlFor="locationBackground"
                 checked={locationBackground}
                 onChange={setLocationBackground}
-                {...copy('locationBackground')}
+                {...rowCopy('locationBackground')}
               />
               {locationBackground && (
                 <SubGroup>
-                <Row center {...copy('backgroundFade')}>
+                <Row center {...rowCopy('backgroundFade')}>
                   <div className="flex items-center gap-3">
                     <Slider
                       value={[backgroundOverlay]}
@@ -1314,10 +1303,10 @@ export const SettingsModal = ({ isOpen, onOpenChange, previewValues, initialTab,
               </Section>
 
               <Section title="Narration">
-              <Row center {...copy('narrationReveal')}>
+              <Row center {...rowCopy('narrationReveal')}>
                 <RevealAnimationDemoButton />
               </Row>
-              <Row top {...copy('aiLanguage')}>
+              <Row top {...rowCopy('aiLanguage')}>
                 <TokenAutocomplete
                   single
                   openOnFocus
@@ -1328,7 +1317,7 @@ export const SettingsModal = ({ isOpen, onOpenChange, previewValues, initialTab,
                 />
               </Row>
               {advanced && (
-              <Row top {...copy('paragraphLimit')}>
+              <Row top {...rowCopy('paragraphLimit')}>
                 <div>
                   <ToggleGroup
                     type="single"
@@ -1362,15 +1351,15 @@ export const SettingsModal = ({ isOpen, onOpenChange, previewValues, initialTab,
                 htmlFor="markdownOutput"
                 checked={markdownOutput}
                 onChange={setMarkdownOutput}
-                {...copy('markdownFormatting')}
+                {...rowCopy('markdownFormatting')}
               />
               )}
               </Section>
 
-              {/* Keeps the word "Accessibility" as a section so the term stays findable, now that these
-                  rows sit with the rest of what the story looks like rather than on a tab of their own. */}
+              {/* These rows sit with the rest of what the story looks like; the section keeps the word
+                  "Accessibility" so the term stays findable. */}
               <Section title="Accessibility" hint="Applies to the story text only, not the rest of the app.">
-              <Row top htmlFor="narrationFont" {...copy('narrationFont')}>
+              <Row top htmlFor="narrationFont" {...rowCopy('narrationFont')}>
                 <Select value={narrationFont} onValueChange={(v) => setNarrationFont(v as NarrationFont)}>
                   <SelectTrigger id="narrationFont" className="w-56">
                     <SelectValue />
@@ -1384,7 +1373,7 @@ export const SettingsModal = ({ isOpen, onOpenChange, previewValues, initialTab,
                   </SelectContent>
                 </Select>
               </Row>
-              <Row center {...copy('narrationTextSize')}>
+              <Row center {...rowCopy('narrationTextSize')}>
                 <div className="flex items-center gap-3">
                   <Slider
                     value={[narrationScale]}
@@ -1399,7 +1388,7 @@ export const SettingsModal = ({ isOpen, onOpenChange, previewValues, initialTab,
                   </span>
                 </div>
               </Row>
-              <Row center {...copy('lineSpacing')}>
+              <Row center {...rowCopy('lineSpacing')}>
                 <div className="flex items-center gap-3">
                   <Slider
                     value={[narrationLineHeight]}
@@ -1440,13 +1429,13 @@ export const SettingsModal = ({ isOpen, onOpenChange, previewValues, initialTab,
                 htmlFor="showReasoning"
                 checked={showReasoning}
                 onChange={setShowReasoning}
-                {...copy('showReasoning')}
+                {...rowCopy('showReasoning')}
               />
               <CheckRow
                 htmlFor="showSilentRequests"
                 checked={showSilentRequests}
                 onChange={setShowSilentRequests}
-                {...copy('showSilentRequests')}
+                {...rowCopy('showSilentRequests')}
               />
               </Section>
               )}
@@ -1460,7 +1449,7 @@ export const SettingsModal = ({ isOpen, onOpenChange, previewValues, initialTab,
               <Section title="Turn Extras" hint="Optional passes that run alongside each turn's narration.">
               {/* Enable/disable the optional per-turn requests. Synced with the System Prompts tab, which
                   shows a prompt's editor tab only while it's enabled here. */}
-              <Row {...copy('systemPrompts')}>
+              <Row {...rowCopy('systemPrompts')}>
                 <div className="flex flex-wrap gap-x-4 gap-y-2">
                   <label htmlFor="choicesEnabled" className="flex items-center gap-2 text-label cursor-pointer">
                     <Checkbox
@@ -1498,14 +1487,14 @@ export const SettingsModal = ({ isOpen, onOpenChange, previewValues, initialTab,
                   htmlFor="locationAutoApply"
                   checked={locationAutoApply}
                   onChange={setLocationAutoApply}
-                  {...copy('moveAutomatically')}
+                  {...rowCopy('moveAutomatically')}
                 />
                 </SubGroup>
               )}
               </Section>
 
               <Section title="Reasoning">
-              <Row top {...copy('thinking')}>
+              <Row top {...rowCopy('thinking')}>
                 <div>
                   <OptionSwitcher value={thinkingMode} onChange={(v) => setThinkingMode(v as ThinkingMode)} options={THINKING_OPTIONS} />
                   {/* Stacked like Paragraph Limit so switching thinking modes doesn't reflow the layout. */}
@@ -1525,7 +1514,7 @@ export const SettingsModal = ({ isOpen, onOpenChange, previewValues, initialTab,
                   unbounded. Feeds both the hard cap and the <ACTIVE CHARACTER GUIDANCE> chip in the director prompt. */}
               {advanced && thinkingMode === 'staged' && (
                 <SubGroup>
-                <Row top {...copy('limitActiveCharacters')}>
+                <Row top {...rowCopy('limitActiveCharacters')}>
                   <div className="flex items-center gap-3">
                     <Checkbox
                       checked={limitActiveCharacters}
@@ -1556,7 +1545,7 @@ export const SettingsModal = ({ isOpen, onOpenChange, previewValues, initialTab,
                 const reasoningOptions = reasoningTabs(supportedReasoningEfforts);
                 return (
                   <SubGroup>
-                  <Row top {...copy('nativeReasoning')}>
+                  <Row top {...rowCopy('nativeReasoning')}>
                     <div>
                       <OptionSwitcher value={reasoningEffort} onChange={(v) => setReasoningEffort(v as ReasoningEffort)} options={reasoningOptions} />
                       <div className="grid mt-2">
@@ -1582,7 +1571,7 @@ export const SettingsModal = ({ isOpen, onOpenChange, previewValues, initialTab,
                 htmlFor="memoryDigests"
                 checked={memoryDigests}
                 onChange={setMemoryDigests}
-                {...copy('memorySummaries')}
+                {...rowCopy('memorySummaries')}
               />
               {memoryDigests && (
                 <SubGroup>
@@ -1590,12 +1579,12 @@ export const SettingsModal = ({ isOpen, onOpenChange, previewValues, initialTab,
                   htmlFor="semanticMemory"
                   checked={semanticMemory}
                   onChange={handleSemanticMemoryToggle}
-                  {...copy('semanticMemory')}
+                  {...rowCopy('semanticMemory')}
                 />
                 {semanticMemory && (
                   <SubGroup>
                   {/* Always-on top-K cap: derived checkbox (cap > 0), enabling seeds a sensible default. */}
-                  <Row top {...copy('memoryCap')}>
+                  <Row top {...rowCopy('memoryCap')}>
                     <div className="flex items-center gap-3">
                       <Checkbox
                         checked={semanticBandCap > 0}
@@ -1615,7 +1604,7 @@ export const SettingsModal = ({ isOpen, onOpenChange, previewValues, initialTab,
                     htmlFor="semanticRehydration"
                     checked={semanticRehydration}
                     onChange={setSemanticRehydration}
-                    {...copy('sceneRecall')}
+                    {...rowCopy('sceneRecall')}
                   />
                   </SubGroup>
                 )}
@@ -1623,13 +1612,13 @@ export const SettingsModal = ({ isOpen, onOpenChange, previewValues, initialTab,
                   htmlFor="timeContext"
                   checked={timeContext}
                   onChange={setTimeContext}
-                  {...copy('timeInMemory')}
+                  {...rowCopy('timeInMemory')}
                 />
                 <CheckRow
                   htmlFor="aiClock"
                   checked={aiClock}
                   onChange={setAiClock}
-                  {...copy('measuredClock')}
+                  {...rowCopy('measuredClock')}
                 />
                 </SubGroup>
               )}
@@ -1637,7 +1626,7 @@ export const SettingsModal = ({ isOpen, onOpenChange, previewValues, initialTab,
                 htmlFor="semanticLore"
                 checked={semanticLore}
                 onChange={handleSemanticLoreToggle}
-                {...copy('semanticLore')}
+                {...rowCopy('semanticLore')}
               />
               {embedLoading && (
                 <Row center>
@@ -1672,7 +1661,7 @@ export const SettingsModal = ({ isOpen, onOpenChange, previewValues, initialTab,
                 htmlFor="describeCharacters"
                 checked={describeCharacters}
                 onChange={setDescribeCharacters}
-                {...copy('describeNewCharacters')}
+                {...rowCopy('describeNewCharacters')}
               />
               {/* Diaries are only read by the staged character pass, so the option only appears in that mode. */}
               {thinkingMode === 'staged' && (
@@ -1681,7 +1670,7 @@ export const SettingsModal = ({ isOpen, onOpenChange, previewValues, initialTab,
                   htmlFor="characterDiaries"
                   checked={characterDiaries}
                   onChange={setCharacterDiaries}
-                  {...copy('characterDiaries')}
+                  {...rowCopy('characterDiaries')}
                 />
                 {characterDiaries && semanticMemory && (
                   <SubGroup>
@@ -1689,7 +1678,7 @@ export const SettingsModal = ({ isOpen, onOpenChange, previewValues, initialTab,
                     htmlFor="semanticDiaries"
                     checked={semanticDiaries}
                     onChange={setSemanticDiaries}
-                    {...copy('diaryRecall')}
+                    {...rowCopy('diaryRecall')}
                   />
                   </SubGroup>
                 )}
@@ -1699,7 +1688,7 @@ export const SettingsModal = ({ isOpen, onOpenChange, previewValues, initialTab,
               </>)}
 
               <Section title="Choices">
-              <Row center {...copy('continueTheStory')}>
+              <Row center {...rowCopy('continueTheStory')}>
                 <OptionSwitcher
                   value={continueChoiceMode}
                   onChange={(v) => setContinueChoiceMode(v as ContinueChoiceMode)}
@@ -1714,7 +1703,7 @@ export const SettingsModal = ({ isOpen, onOpenChange, previewValues, initialTab,
                 htmlFor="concurrentTurnRequests"
                 checked={concurrentTurnRequests}
                 onChange={setConcurrentTurnRequests}
-                {...copy('concurrentRequests')}
+                {...rowCopy('concurrentRequests')}
               />
               </Section>
               )}
@@ -1779,7 +1768,7 @@ export const SettingsModal = ({ isOpen, onOpenChange, previewValues, initialTab,
               <>
               <ScrollArea className="flex-1 min-h-0">
                 <div className="grid gap-4 py-4">
-              <Row center htmlFor="endpointUrl" {...copy('endpointUrl')}>
+              <Row center htmlFor="endpointUrl" {...rowCopy('endpointUrl')}>
                 <div className="grid gap-1">
                   <Input
                     id="endpointUrl"
@@ -1804,7 +1793,7 @@ export const SettingsModal = ({ isOpen, onOpenChange, previewValues, initialTab,
                   {SETTINGS_BUTTONS.troubleConnecting}
                 </button>
               </Row>
-              <Row center htmlFor="apiToken" {...copy('apiToken')}>
+              <Row center htmlFor="apiToken" {...rowCopy('apiToken')}>
                 <Input
                   id="apiToken"
                   type="password"
@@ -1814,7 +1803,7 @@ export const SettingsModal = ({ isOpen, onOpenChange, previewValues, initialTab,
                   className={activeTextEndpointPresetIsBuiltIn ? 'opacity-60 cursor-not-allowed' : undefined}
                 />
               </Row>
-              <Row center htmlFor="modelName" {...copy('modelName')}>
+              <Row center htmlFor="modelName" {...rowCopy('modelName')}>
                 <Input
                   id="modelName"
                   value={modelName}
@@ -1824,7 +1813,7 @@ export const SettingsModal = ({ isOpen, onOpenChange, previewValues, initialTab,
                 />
               </Row>
               {advanced && (<>
-              <Row center htmlFor="contextWindow" {...copy('contextWindow')}>
+              <Row center htmlFor="contextWindow" {...rowCopy('contextWindow')}>
                 <div className="flex items-start gap-2">
                   <Input
                     id="contextWindow"
@@ -1848,7 +1837,7 @@ export const SettingsModal = ({ isOpen, onOpenChange, previewValues, initialTab,
                   {contextStatus.text}
                 </div>
               </Row>
-              <Row center htmlFor="maxTokens" {...copy('maxOutputTokens')}>
+              <Row center htmlFor="maxTokens" {...rowCopy('maxOutputTokens')}>
                 <Input
                   id="maxTokens"
                   type="number"
@@ -1922,7 +1911,7 @@ export const SettingsModal = ({ isOpen, onOpenChange, previewValues, initialTab,
                 htmlFor="imageGenEnabled"
                 checked={!imageGenDisabled}
                 onChange={(v) => setImageGenDisabled(!v)}
-                {...copy('enableImageGeneration')}
+                {...rowCopy('enableImageGeneration')}
               />
             </div>
             {!imageGenDisabled && (<>
@@ -1931,13 +1920,13 @@ export const SettingsModal = ({ isOpen, onOpenChange, previewValues, initialTab,
                 htmlFor="sceneImageAuto"
                 checked={sceneImageAuto}
                 onChange={setSceneImageAuto}
-                {...copy('sceneImages')}
+                {...rowCopy('sceneImages')}
               />
             </div>
             <ScrollArea className="flex-1 min-h-0">
             <div className="grid gap-6">
               <Section title="Connection">
-              <Row center htmlFor="imageProvider" {...copy('imageProvider')}>
+              <Row center htmlFor="imageProvider" {...rowCopy('imageProvider')}>
                 <Select value={imageProvider} onValueChange={(v) => setImageProvider(v as typeof imageProvider)}>
                   <SelectTrigger id="imageProvider">
                     <SelectValue />
@@ -1957,7 +1946,7 @@ export const SettingsModal = ({ isOpen, onOpenChange, previewValues, initialTab,
                   <Button variant="outline" size="sm" onClick={() => setShowImageSetup(true)}>{SETTINGS_BUTTONS.howToSetUp}</Button>
                 </div>
               </Row>
-              <Row center htmlFor="imageEndpoint" {...copy('imageEndpointUrl')}>
+              <Row center htmlFor="imageEndpoint" {...rowCopy('imageEndpointUrl')}>
                 <Input
                   id="imageEndpoint"
                   value={imageEndpoint}
@@ -1965,10 +1954,10 @@ export const SettingsModal = ({ isOpen, onOpenChange, previewValues, initialTab,
                   placeholder={DEFAULT_ENDPOINT_BY_PROVIDER[imageProvider] || 'https://api.openai.com'}
                 />
               </Row>
-              <Row center htmlFor="imageApiToken" {...copy('imageApiToken')}>
+              <Row center htmlFor="imageApiToken" {...rowCopy('imageApiToken')}>
                 <Input id="imageApiToken" type="password" value={imageApiToken} onChange={(e) => setImageApiToken(e.target.value)} />
               </Row>
-              <Row center htmlFor="imageModel" {...copy('imageModel')}>
+              <Row center htmlFor="imageModel" {...rowCopy('imageModel')}>
                 {imageProvider === 'comfyui' ? (
                   <TokenAutocomplete
                     single
@@ -1999,7 +1988,7 @@ export const SettingsModal = ({ isOpen, onOpenChange, previewValues, initialTab,
               </Section>
 
               <Section title="Image">
-              <Row {...copy('promptPrefix')}>
+              <Row {...rowCopy('promptPrefix')}>
                 <TagField
                   value={imagePositivePrompt}
                   onChange={setImagePositivePrompt}
@@ -2007,7 +1996,7 @@ export const SettingsModal = ({ isOpen, onOpenChange, previewValues, initialTab,
                   placeholder="e.g. masterpiece, best quality"
                 />
               </Row>
-              <Row {...copy('negativePrompt')}>
+              <Row {...rowCopy('negativePrompt')}>
                 <TagField
                   value={imageNegativePrompt}
                   onChange={setImageNegativePrompt}
@@ -2016,14 +2005,14 @@ export const SettingsModal = ({ isOpen, onOpenChange, previewValues, initialTab,
                 />
               </Row>
               {advanced && (<>
-              <Row center {...copy('portraitSize')}>
+              <Row center {...rowCopy('portraitSize')}>
                 <div className="flex items-center gap-2">
                   <Input aria-label="Portrait width" type="number" min={64} step={64} value={imagePortraitWidth} onChange={(e) => setImagePortraitWidth(numInput(e.target.value, 64))} className="w-28" />
                   <span className="text-muted-foreground">×</span>
                   <Input aria-label="Portrait height" type="number" min={64} step={64} value={imagePortraitHeight} onChange={(e) => setImagePortraitHeight(numInput(e.target.value, 64))} className="w-28" />
                 </div>
               </Row>
-              <Row center {...copy('landscapeSize')}>
+              <Row center {...rowCopy('landscapeSize')}>
                 <div className="flex items-center gap-2">
                   <Input aria-label="Landscape width" type="number" min={64} step={64} value={imageLandscapeWidth} onChange={(e) => setImageLandscapeWidth(numInput(e.target.value, 64))} className="w-28" />
                   <span className="text-muted-foreground">×</span>
@@ -2031,13 +2020,13 @@ export const SettingsModal = ({ isOpen, onOpenChange, previewValues, initialTab,
                 </div>
               </Row>
               </>)}
-              <Row center {...copy('stepsCfg')}>
+              <Row center {...rowCopy('stepsCfg')}>
                 <div className="flex items-center gap-2">
                   <Input aria-label="Steps" type="number" min={1} value={imageSteps} onChange={(e) => setImageSteps(numInput(e.target.value, 1))} className="w-28" />
                   <Input aria-label="CFG scale" type="number" min={0} step={0.5} value={imageCfg} onChange={(e) => setImageCfg(numInput(e.target.value, 0))} className="w-28" />
                 </div>
               </Row>
-              <Row center htmlFor="imageSampler" {...copy('imageSampler')}>
+              <Row center htmlFor="imageSampler" {...rowCopy('imageSampler')}>
                 {imageProvider === 'comfyui' ? (
                   <TokenAutocomplete
                     single
@@ -2056,7 +2045,7 @@ export const SettingsModal = ({ isOpen, onOpenChange, previewValues, initialTab,
                   htmlFor="imageAdetailer"
                   checked={imageAdetailer}
                   onChange={setImageAdetailer}
-                  {...copy('faceFix')}
+                  {...rowCopy('faceFix')}
                   // The description holds still across providers; only what it costs you differs.
                   info={<HintInfo>{imageProvider === 'a1111'
                     ? 'Fixes faces and hands. Requires the **ADetailer** extension installed on your A1111/Forge server.'
@@ -2066,7 +2055,7 @@ export const SettingsModal = ({ isOpen, onOpenChange, previewValues, initialTab,
               {advanced && imageProvider === 'comfyui' && (
                 <Row
                   htmlFor="imageWorkflow"
-                  {...copy('imageWorkflow')}
+                  {...rowCopy('imageWorkflow')}
                   info={<HintInfo>{`Tokens Formamorph fills in:
 
 \`%prompt%\` \`%negative%\` \`%ckpt%\` \`%width%\` \`%height%\` \`%steps%\` \`%cfg%\` \`%seed%\` \`%sampler%\``}</HintInfo>}
@@ -2094,7 +2083,7 @@ export const SettingsModal = ({ isOpen, onOpenChange, previewValues, initialTab,
                 </Row>
               )}
               {advanced && imageProvider === 'invokeai' && (
-                <Row htmlFor="imageInvokeBoard" {...copy('invokeBoard')}>
+                <Row htmlFor="imageInvokeBoard" {...rowCopy('invokeBoard')}>
                   <Select
                     value={imageInvokeBoard || UNCATEGORIZED_BOARD}
                     onValueChange={(v) => setImageInvokeBoard(v === UNCATEGORIZED_BOARD ? '' : v)}
@@ -2123,7 +2112,7 @@ export const SettingsModal = ({ isOpen, onOpenChange, previewValues, initialTab,
                 <>
                   <Row
                     htmlFor="imageInvokeEncoder"
-                    {...copy('invokeEncoder')}
+                    {...rowCopy('invokeEncoder')}
                     // Which encoder the base needs varies; that it needs one does not.
                     info={<HintInfo>{invokeSubmodelBase === 'anima'
                       ? 'Anima needs a **Qwen3 0.6B** text encoder. Leave blank to auto-pick.'
@@ -2140,8 +2129,7 @@ export const SettingsModal = ({ isOpen, onOpenChange, previewValues, initialTab,
                   </Row>
                   <Row
                     htmlFor="imageInvokeVae"
-                    {...copy('invokeVae')}
-                    label={invokeSubmodelBase === 'anima' ? 'Anima VAE' : 'Z-Image VAE'}
+                    {...rowCopy(invokeSubmodelBase === 'anima' ? 'invokeVaeAnima' : 'invokeVaeZImage')}
                     info={<HintInfo>{invokeSubmodelBase === 'anima'
                       ? 'Anima needs a **QwenImage/Wan 2.1** VAE — a FLUX VAE also works. Leave blank to auto-pick.'
                       : 'Z-Image needs a **FLUX-type** VAE, such as the FLUX.1-schnell VAE. Leave blank to auto-pick.'}</HintInfo>}
@@ -2671,7 +2659,7 @@ export const SettingsModal = ({ isOpen, onOpenChange, previewValues, initialTab,
                 htmlFor="autosaveEnabled"
                 checked={autosaveEnabled}
                 onChange={setAutosaveEnabled}
-                {...copy('autosave')}
+                {...rowCopy('autosave')}
               />
               </Section>
 

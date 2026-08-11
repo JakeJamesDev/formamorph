@@ -58,7 +58,7 @@ describe('settings copy', () => {
   });
 
   it('titles every setting label', () => {
-    // R4 — the casing split between neighbouring rows is the most visible inconsistency in the modal.
+    // R4 — a casing split between neighboring rows is the most visible inconsistency a reader meets.
     const bad = entries.flatMap(([k, c]) => {
       const v = titleCaseViolations(c.label);
       return v.length ? [`${k}: ${c.label} → ${v.join(', ')}`] : [];
@@ -67,7 +67,7 @@ describe('settings copy', () => {
   });
 
   it('titles every button label and confirmation title', () => {
-    // R4 — `How to get this` sat beside `How to Set Up`; both are guarded now.
+    // R4 — buttons sit beside each other, so one in sentence case is read against its neighbor.
     const bad = [
       ...Object.entries(SETTINGS_BUTTONS).map(([k, label]) => [k, label] as const),
       ...Object.entries(SETTINGS_CONFIRMS).map(([k, c]) => [k, c.title] as const),
@@ -79,7 +79,7 @@ describe('settings copy', () => {
   });
 
   it('carries experimental as a flag rather than a word in the copy', () => {
-    // R6 — the badge says it once; seven descriptions each opening with "Experimental." said it seven times.
+    // R6 — the badge carries this, so the description spends all twelve words on what the setting does.
     const bad = entries.filter(([, c]) => /experimental/i.test(c.description));
     expect(bad.map(([k]) => k)).toEqual([]);
   });
