@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, dialogFullHeight } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, dialogFullHeight, dialogCenteredAnimation } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import PromptField from "@/components/prompt/PromptField";
 import { plainVocabulary } from "@/lib/chipVocabulary";
@@ -43,12 +43,13 @@ export const EditTextModal = ({
       <DialogContent
         ref={morphRef}
         hideClose
-        // The stock zoom-and-slide writes `transform` too, and this window animates its own resize. Two
-        // owners of one property means whichever runs second wins, mid-trip.
+        // The stock slide is a half-width offset that assumes a transform-centered dialog; this one is
+        // centered by margins, so it opens and closes on the zoom and fade alone.
         unanimated
         aria-describedby={undefined}
         className={cn(
           'flex flex-col',
+          dialogCenteredAnimation,
           // Centered by margins, not by `translate(-50%, -50%)` as a dialog normally is. This one is the
           // only window that animates *itself* between two sizes, and a trip that has to compose with a
           // centering transform inherits every other thing writing to that property. Margin centering

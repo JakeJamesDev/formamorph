@@ -52,9 +52,12 @@ export function useMorphResize(key: string | number): (element: HTMLElement | nu
     if (!box || !from || reduceMotion) return;
     // Before measuring: anything a previous trip left on the element would be read back as if it were the
     // element's own resting position.
+    // A CSS animation writing `transform` beats an inline one, and `animate-in` holds its last keyframe
+    // for good (`fill-mode: both`) — so the box's own open animation would swallow every trip after it.
+    box.style.animation = 'none';
     const base = baseTransform(box);
     const inverted = invertOnto(box, from);
-    if (!inverted) return;
+    if (!inverted) { box.style.animation = ''; return; }
 
     box.style.transformOrigin = 'top left';
     box.style.transition = 'none';
@@ -71,6 +74,7 @@ export function useMorphResize(key: string | number): (element: HTMLElement | nu
       box.style.transition = '';
       box.style.transform = '';
       box.style.transformOrigin = '';
+      box.style.animation = '';
     }, ENTER_MS + 100);
   }, [key, reduceMotion]);
 
