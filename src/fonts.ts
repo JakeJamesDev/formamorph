@@ -1,4 +1,4 @@
-// Self-hosted webfonts for the Font setting (Settings → Presentation). Bundled via Fontsource so the app
+// Self-hosted webfonts for the Font setting (Settings → Display). Bundled via Fontsource so the app
 // works offline (desktop/Steam) with no Google CDN request. All @font-face rules carry a `unicode-range`,
 // so declaring them here ships the files but the browser only DOWNLOADS a face when text actually uses it
 // — i.e. only the selected font's Latin subset (non-Latin subsets load lazily if narration needs them).
@@ -33,7 +33,7 @@ import '@fontsource/poppins/latin-700-italic.css';
 import '@fontsource-variable/jetbrains-mono/index.css';
 import '@fontsource-variable/jetbrains-mono/wght-italic.css';
 
-// Accessibility fonts (Settings → Accessibility): dyslexia (OpenDyslexic), low-vision (Atkinson
+// Accessibility fonts (Settings → Display → Accessibility): dyslexia (OpenDyslexic), low-vision (Atkinson
 // Hyperlegible), reading-fluency (Lexend, variable), literacy (Andika). Latin subset, regular/bold + italic.
 import '@fontsource-variable/lexend/index.css';
 import '@fontsource/atkinson-hyperlegible/latin-400.css';

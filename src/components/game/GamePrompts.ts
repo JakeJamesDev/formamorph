@@ -505,7 +505,7 @@ export function planDirective(plan: string): string {
 // The "staged" thinking pipeline (thinkingMode === 'staged') runs three planning passes before
 // game-text: the director picks the cast + continuation, each character states its motivation, and the
 // storyboarder consolidates them into the plan injected into the narration request. These ship as the
-// defaults for the editable Director/Character/Storyboard prompts (Settings → System Prompts).
+// defaults for the editable Director/Character/Storyboard prompts (Settings → Output → Turn Extras).
 
 // Pass 1: pick who is in the scene and what is carrying over. Output is parsed into a cast list.
 export const defaultDirectorPrompt = `You are the director of an interactive roleplay. Before the scene is written, set the stage: describe where we are and who is here. Do not write the narration.

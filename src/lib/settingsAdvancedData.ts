@@ -20,14 +20,14 @@ import {
 import type { ParagraphLimit, ReasoningEffort } from '@/contexts/SettingsContext';
 
 export interface SettingsAdvancedInput {
-  // Presentation → Narration
+  // Display → Narration
   paragraphLimit: ParagraphLimit;
   markdownOutput: boolean;
-  // Generation → Reasoning
+  // Output → Reasoning
   reasoningEffort: ReasoningEffort;
   limitActiveCharacters: boolean;
   activeCharacterLimit: number;
-  // Generation → Memory
+  // Output → Memory
   memoryDigests: boolean;
   semanticMemory: boolean;
   semanticBandCap: number;
@@ -35,17 +35,19 @@ export interface SettingsAdvancedInput {
   timeContext: boolean;
   aiClock: boolean;
   semanticLore: boolean;
+  // Output → Characters
   characterDiaries: boolean;
   semanticDiaries: boolean;
   /** Its shipped default is seeded from `characterDiaries`, so it is compared against that, not a constant. */
   describeCharacters: boolean;
-  // Generation → Performance / Inspection
+  // Output → Performance
   concurrentTurnRequests: boolean;
+  // Display → Inspection
   showReasoning: boolean;
   showSilentRequests: boolean;
-  // AI Endpoints → Text
+  // Endpoints → Text
   maxTokens: number;
-  // AI Endpoints → Image
+  // Endpoints → Image
   imagePortraitWidth: number;
   imagePortraitHeight: number;
   imageLandscapeWidth: number;

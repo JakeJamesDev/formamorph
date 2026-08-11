@@ -126,7 +126,7 @@ export function markTutorialSeen(id: string) {
 // until its screen is left and come back to.
 let resetGeneration = 0;
 
-/** Clears every dismissal, re-arming all tutorials for the next visit (Settings → Reset Tutorials). */
+/** Clears every dismissal, re-arming all tutorials for the next visit (Settings → Data → Storage → Reset Tutorials). */
 export function resetTutorials() {
   resetGeneration += 1;
   publish([]);
