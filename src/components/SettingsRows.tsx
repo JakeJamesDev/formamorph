@@ -64,16 +64,19 @@ export function SubGroup({ children }: { children: ReactNode }) {
   return <div className="grid gap-4">{children}</div>;
 }
 
-/** The label cell for the hand-rolled two-column setting rows (the ones that don't fit `Row`/`CheckRow`).
- *  Owns the `text-left sm:text-right` alignment so it can't be forgotten per-row and drift out of line.
- *  `top` top-aligns against a multi-line control (else it centers on a single line); `muted` dims it.
- *  `info` renders an affordance (e.g. `HintInfo`) right after the label text, so a row's detail control
- *  sits in a consistent column at the label boundary rather than trailing variable-length lead text.
+/** The label cell every settings row draws through — `Row` and `CheckRow` both delegate here, so the
+ *  `text-left sm:text-right` alignment can't be forgotten per-row and drift out of line.
+ *  Vertical alignment against the control: `top` for a tall control (a ToggleGroup, a stacked field),
+ *  `pad` for a field or slider, `center` when the grid already centers the row, and none of the three for
+ *  a checkbox (whose small box the label centers on).
+ *  `muted` dims it. `info` renders an affordance (e.g. `HintInfo`) right after the label text, so a row's
+ *  detail control sits in a consistent column at the label boundary rather than trailing lead text.
  *  Renders a `<label>` when `htmlFor` is given, else a `<span>` (for non-interactive controls). */
-export function RowLabel({ htmlFor, top, muted, info, children }: {
-  htmlFor?: string; top?: boolean; muted?: boolean; info?: ReactNode; children: ReactNode;
+export function RowLabel({ htmlFor, top, pad, center, muted, info, children }: {
+  htmlFor?: string; top?: boolean; pad?: boolean; center?: boolean; muted?: boolean; info?: ReactNode; children: ReactNode;
 }) {
-  const cls = `text-left sm:text-right ${top ? 'pt-2' : 'leading-4'}${muted ? ' text-muted-foreground' : ''}`;
+  const align = top ? 'pt-2' : pad ? 'pt-1' : center ? '' : 'leading-4';
+  const cls = `text-left sm:text-right ${align}${muted ? ' text-muted-foreground' : ''}`;
   const label = htmlFor
     ? <label htmlFor={htmlFor} className={info ? 'text-left sm:text-right' : cls}>{children}</label>
     : <span className={info ? 'text-left sm:text-right' : cls}>{children}</span>;
@@ -81,21 +84,32 @@ export function RowLabel({ htmlFor, top, muted, info, children }: {
   // The label keeps its text alignment; the flex cell owns the vertical align + muting and right-anchors
   // the [label · info] pair, so the info icon lands in the same column on every row.
   return (
-    <div className={`flex items-center justify-start sm:justify-end gap-1.5 ${top ? 'pt-2' : 'leading-4'}${muted ? ' text-muted-foreground' : ''}`}>
+    <div className={`flex items-center justify-start sm:justify-end gap-1.5 ${align}${muted ? ' text-muted-foreground' : ''}`}>
       {label}
       {info}
     </div>
   );
 }
 
-/** A label + control row on the settings tabs' two-column grid. `center` vertically centers the label
- *  against a single-line control; the default top-aligns it (for controls with a hint or multiple lines). */
-export function Row({ label, htmlFor, children, hint, center }: {
-  label: string; htmlFor?: string; children: ReactNode; hint?: string; center?: boolean;
+/**
+ * A label + control row on the settings tabs' two-column grid — the one shape every non-checkbox setting
+ * uses, so a tab reads as a single column of controls rather than a pile of bespoke grids.
+ *
+ * Vertical alignment: `center` for a single-line control, `top` for a tall one (a ToggleGroup, a stacked
+ * field), the default for a field or slider. Omitting `label` leaves the label cell empty, which is how a
+ * row that is only a button or a status line still lands in the control column.
+ */
+export function Row({ label, htmlFor, children, hint, center, top, info, muted }: {
+  label?: string; htmlFor?: string; children: ReactNode; hint?: string;
+  center?: boolean; top?: boolean; info?: ReactNode; muted?: boolean;
 }) {
   return (
     <div className={`grid grid-cols-1 sm:grid-cols-[minmax(0,1fr)_minmax(0,3fr)] ${center ? 'sm:items-center' : 'items-start'} gap-4`}>
-      <label htmlFor={htmlFor} className={center ? 'text-left sm:text-right' : 'text-left sm:text-right pt-1'}>{label}</label>
+      {label === undefined
+        // Holds the column open on wide screens only: on mobile the grid is one column, where an empty
+        // cell would just be a gap above the control.
+        ? <span className="hidden sm:block" />
+        : <RowLabel htmlFor={htmlFor} top={top} center={center} pad={!center && !top} muted={muted} info={info}>{label}</RowLabel>}
       <div className="space-y-1">
         {children}
         {hint && <Hint>{hint}</Hint>}

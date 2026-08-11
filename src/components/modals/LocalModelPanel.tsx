@@ -114,13 +114,12 @@ export function LocalModelPanel() {
       {/* GPU memory + engine status, shared with the model-manager popup. */}
       <GpuMemoryBox stats={vram} {...resolveOwnVram(vram, engine.engineVramMB)} />
 
-      <div className="grid grid-cols-1 sm:grid-cols-[1fr_3fr] sm:items-center gap-4">
-        <label className="text-left sm:text-right">Local Model</label>
+      <Row center label="Local Model">
         <div className="flex items-center gap-3">
           <Button type="button" variant="outline" onClick={() => setShowManager(true)}>Manage models…</Button>
           <EngineStatusLine engine={engine} />
         </div>
-      </div>
+      </Row>
 
       {/* Simple rows — always visible */}
       <Row label="Context Size" htmlFor="localContextSize" hint="How much the model keeps in context — also its VRAM cost. Capped at the loaded model's trained maximum. Applies on reload.">
