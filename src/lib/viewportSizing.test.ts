@@ -30,6 +30,18 @@ describe('keyboard-aware viewport sizing', () => {
     }
   });
 
+  it('never lets a dialog’s desktop height outrank its keyboard-aware mobile height', () => {
+    // `dialogFullHeightMobile` is a `max-sm:` rule, so an unscoped `h-[85dvh]` beside it wins on width
+    // alone and the dialog keeps measuring a viewport unit that ignores the on-screen keyboard — the
+    // fields inside it are then crushed to nothing. A fixed desktop height has to be `sm:`-scoped.
+    for (const file of ['src/components/modals/StatCodeTemplateDialog.tsx']) {
+      const src = read(file);
+      if (!src.includes('dialogFullHeightMobile')) continue;
+      expect(src, `${file} pairs an unscoped dvh height with the mobile rule`)
+        .not.toMatch(/(?<!sm:)\bh-\[\d+dvh\]/);
+    }
+  });
+
   it('defines the frame against the measured rect, with a whole-viewport fallback', () => {
     const css = read('src/index.css');
     const block = /\.app-viewport\s*\{([^}]*)\}/.exec(css)?.[1] ?? '';

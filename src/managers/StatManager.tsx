@@ -3,7 +3,6 @@ import { useState, useEffect, useMemo, useCallback } from "react";
 import { useGameData } from "@/contexts/GameDataContext";
 import { useEditingDraft } from "@/lib/useEditingDraft";
 import { Input } from "@/components/ui/input";
-import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -18,6 +17,7 @@ import {
 import { CollapsibleSection } from "@/components/ui/collapsible-section";
 import { executeStatCode } from "@/lib/statCodeExecutor";
 import { StatCodeTemplateDialog } from "@/components/modals/StatCodeTemplateDialog";
+import { CodeArea } from "@/components/prompt/CodeArea";
 import { MultiSelect } from "@/components/ui/multi-select";
 import { PlaceholderNameField } from "@/components/prompt/PlaceholderField";
 import { useBodyMorphSources } from "@/lib/useBodyMorphNames";
@@ -412,18 +412,19 @@ const StatManager = ({ stat }: { stat: Stat }) => {
               open={templatesOpen}
               onOpenChange={setTemplatesOpen}
               stats={stats}
+              currentStatId={stat.id}
               hasExistingCode={!!editingStat.code?.trim()}
               onInsert={(code) => handleChange("code", code)}
             />
 
-            <Textarea
+            <CodeArea
               value={editingStat.code || ""}
-              onChange={(e) => handleChange("code", e.target.value)}
+              onChange={(code) => handleChange("code", code)}
+              ariaLabel="Stat code"
               placeholder="// Example: Return the average of Health and Strength stats
 const health = stats.find(s => s.name === 'Health')?.value || 0;
 const strength = stats.find(s => s.name === 'Strength')?.value || 0;
 return (health + strength) / 2;"
-              className="font-mono text-label"
               rows={6}
             />
 

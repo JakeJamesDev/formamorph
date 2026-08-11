@@ -102,6 +102,88 @@ Sandbox facts the code must respect:
 4. Dialog + StatManager wiring + devRoute
 5. Four gates + `graphify update .`
 
+## Round 2 — dialog rework (BUILT 2026-08-10, all four gates green)
+
+User testing of the first build found six issues; the fixes below. Review also found: the import
+file input never resets (same file can't be imported twice), Delete has no confirm, slot names
+render as raw camelCase labels, and `stat` slots offer the stat being edited.
+
+### Layout (mobile overflow · desktop height · frozen footer)
+
+Adopt the `EditTextModal` height pattern:
+
+- `DialogContent` gets `max-w-3xl h-[85dvh]` plus `dialogFullHeightMobile` (full height on
+  mobile, matching every other full-page editor). Height is now **fixed**, not content-driven —
+  this alone fixes "too tall on mobile" and "too short on desktop."
+- Internal structure becomes three rows: header / body (`flex-1 min-h-0`) / **frozen footer**.
+  The footer holds Duplicate-or-Edit/Delete + Insert Code, so the action buttons never reflow
+  with the selected template.
+- Left list: `ScrollArea` fills the row height (`h-full`, dropping the fixed `h-72`); right pane
+  scrolls independently (`overflow-y-auto`). The code preview grows with the pane instead of
+  capping at `max-h-40`.
+- Mobile (single column): list collapses to a `Select`-style template picker above the form, so
+  the picker + form + preview stack fits and scrolls.
+
+### Library controls (New / Import / Export feel bolted on)
+
+Move all three into the list, where the library actually lives:
+
+- **New** becomes a dashed **+ New Template** row at the end of the My Templates section — the
+  list-native affordance for "add one of these."
+- **Import / Export** become two icon buttons on the "My Templates" section header row
+  (Upload/Download icons, tooltipped). One system: everything about the library is in the list;
+  everything about the *selected* template is in the right pane and footer.
+
+### Template editor (Edit | Preview + real creation-form preview)
+
+Replace the "Fields this template will ask for:" sentence with the familiar tab pair:
+
+- **Edit tab:** name, description, code.
+- **Preview tab:** the *actual* creation interface — the same slot-form component and generated-
+  code preview the picker shows, live against the current world's stats. Malformed slots render
+  the form-level error exactly as an author would hit it. This is free: `SlotField` + the
+  preview pane already exist; the tab just mounts them on the draft.
+
+### Code editing affordances (undo / redo / fullscreen / toolbar)
+
+**Toolbar layout follows `PromptField`'s chrome exactly** (verified against it, not invented): a left
+group that wraps — caption, then the insert menus — and a right group holding Undo, Redo, a
+`mx-0.5 w-px self-stretch bg-border` rule, then the full-screen toggle last. Labels match too
+(`Edit full screen` / `Exit full screen`).
+
+**Full screen raises an overlay containing only the editor**, never grows the host panel. The hosted
+mode originally specced (caller grows its own dialog) was built and then removed: it moved the dialog's
+own buttons out from under the author, and the same button then meant two different things depending on
+where the field sat.
+
+**Mobile height, the bug that made this urgent:** `dialogFullHeightMobile` is a `max-sm:` rule, so an
+unscoped `h-[85dvh]` beside it wins on width alone. The dialog then measured a viewport unit that
+ignores the on-screen keyboard, and the fields under it were crushed to nothing. The desktop height is
+now `sm:`-scoped, and `viewportSizing.test.ts` guards the pairing. The field also keeps a `min-h`
+floor rather than `min-h-0`, so what remains scrolls instead of collapsing.
+
+**Decided 2026-08-10: a small `CodeArea` component** — textarea + toolbar. Undo/redo via an own
+debounced-snapshot history stack (the `ImageTagsField` precedent; native textarea undo breaks
+on programmatic writes like Insert). Fullscreen toggles the dialog through `dialogFullHeight`
+(the `EditTextModal` precedent). Toolbar = history pair, fullscreen, plus the *guidance* piece:
+an **Insert Slot** menu (pick a type → `{{name:type}}` at the caret, caret on `name`) and an
+**Insert Variable** menu listing the six clock vars and a `stats.find(...)` lookup snippet.
+**StatManager's own code box adopts `CodeArea` in the same change** (its Insert Variable menu,
+minus the slot menu — slots are template syntax, not stat-code syntax). PromptField-with-a-code-
+mode was considered and rejected: suppressing chip/markdown/vocabulary behavior in a heavily-
+shared Lexical component is bigger and riskier than a contained new control.
+
+### Small fixes riding along
+
+- Reset the import `<input type=file>` value after reading, so the same file imports twice.
+- **Delete gets a confirm dialog** (decided over an undo toast — matches the app's other
+  destructive ops).
+- **Insert over a non-empty code field gets a confirm dialog** ("Replace the existing code?"),
+  restoring the original spec's call; the notice-line-only behavior that shipped is replaced.
+- Humanize slot names for form labels (`ratePerHour` → "Rate Per Hour") to meet title case.
+- `stat` slots list every stat *except* the one being edited.
+- Deduplicate the user-list sort (sort once where the list is derived).
+
 ## Open questions (decided)
 
 - Merged 8-template roster over the literal 11 (mirror pairs collapse via signed slots) — decided 2026-08-10.

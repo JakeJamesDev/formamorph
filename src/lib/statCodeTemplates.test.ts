@@ -5,6 +5,7 @@
 import { describe, it, expect } from 'vitest';
 import {
   parseTemplateSlots,
+  humanizeSlotName,
   defaultSlotValues,
   validateSlotValues,
   fillTemplate,
@@ -58,6 +59,31 @@ describe('parseTemplateSlots', () => {
     expect(parseTemplateSlots('{{a:choice()}}').errors).toEqual([
       'Slot "a" is a choice but lists no options.',
     ]);
+  });
+});
+
+describe('humanizeSlotName', () => {
+  it('turns a code identifier into a title-case caption', () => {
+    expect(humanizeSlotName('ratePerHour')).toBe('Rate Per Hour');
+    expect(humanizeSlotName('source')).toBe('Source');
+    expect(humanizeSlotName('total_hours')).toBe('Total Hours');
+    expect(humanizeSlotName('firstStat')).toBe('First Stat');
+  });
+
+  it('leaves an already-readable name alone', () => {
+    expect(humanizeSlotName('Threshold')).toBe('Threshold');
+  });
+});
+
+describe('built-in slot captions', () => {
+  it('read as captions rather than identifiers', () => {
+    const captions = BUILT_IN_TEMPLATES.flatMap(template =>
+      parseTemplateSlots(template.code).slots.map(slot => humanizeSlotName(slot.name)));
+    // Every caption starts capitalized and none still carries a camelCase hump.
+    for (const caption of captions) {
+      expect(caption).toMatch(/^[A-Z]/);
+      expect(caption).not.toMatch(/[a-z][A-Z]/);
+    }
   });
 });
 

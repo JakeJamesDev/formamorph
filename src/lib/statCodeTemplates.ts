@@ -89,6 +89,18 @@ export function parseTemplateSlots(code: string): ParsedTemplate {
   return { slots, errors };
 }
 
+/** A slot's name as a form caption: `ratePerHour` reads as "Rate Per Hour". Templates name slots the way
+ *  code names things, and a raw identifier as a field label is both unfriendly and off the title-case
+ *  style every other caption follows. */
+export function humanizeSlotName(name: string): string {
+  return name
+    .replace(/([a-z0-9])([A-Z])/g, '$1 $2')
+    .replace(/[_-]+/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim()
+    .replace(/\b\w/g, (character) => character.toUpperCase());
+}
+
 /** The starting form state for a template: each slot's declared default, or a sensible empty value. */
 export function defaultSlotValues(slots: TemplateSlot[]): Record<string, string> {
   const values: Record<string, string> = {};
