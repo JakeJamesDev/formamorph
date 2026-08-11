@@ -331,7 +331,7 @@ The rule: **if the AI is told it, it can fire a trigger.** A **turn** is one act
 | **Your notes** and the **action** you just took | Always |
 | **Earlier turns** — your actions and the AI's replies | Up to the entry's **Scan depth** |
 
-> 💡 Keywords match **the exact wording the AI is given**. Where a block is sent as a *summary*, the summary is what's matched — so a keyword that appears only in an entity's full description won't fire if the AI was sent the short version. Check which form your prompt sends in **Settings → System Prompts**.
+> 💡 Keywords match **the exact wording the AI is given**. Where a block is sent as a *summary*, the summary is what's matched — so a keyword that appears only in an entity's full description won't fire if the AI was sent the short version. Check which form your prompt sends in **Settings → Output → Turn Extras**.
 
 Text that appears on **every** turn is deliberately **excluded** — your world description, stats, traits, and formatting guidance. Terms inside them would fire their entries constantly and defeat the point.
 

@@ -34,7 +34,7 @@ export function reasoningTabs(
   return [{ value: 'auto' as ReasoningEffort, label: REASONING_LABELS.auto }, ...ordered.map((v) => ({ value: v, label: REASONING_LABELS[v] }))];
 }
 
-/** A prompt's per-prompt reasoning choice: `global` inherits the endpoint-wide level (Settings → Generation →
+/** A prompt's per-prompt reasoning choice: `global` inherits the endpoint-wide level (Settings → Output → Reasoning →
  *  Native Reasoning); otherwise it's an explicit level. Only narration and choices expose this — see
  *  `REASONING_CONTROL_KINDS`; every other prompt is hardwired to `none` under Native mode. */
 export type PromptReasoning = 'global' | ReasoningEffortField;

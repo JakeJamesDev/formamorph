@@ -44,7 +44,7 @@ export interface PromptVariable {
   affixable?: boolean;
 }
 
-/** Every prompt editor maps to one of these kinds (mirrors the Settings → System Prompts sub-tabs). */
+/** Every prompt editor maps to one of these kinds (mirrors the Settings → Output → Turn Extras toggles). */
 export type PromptKind = 'narration' | 'thinking' | 'choices' | 'statupdates' | 'location' | 'summary' | 'diary' | 'director' | 'character' | 'storyboard' | 'timepassed' | 'timeopening' | 'scenetags';
 
 const SUMMARY_VARIANT: PromptVariant = {
@@ -148,7 +148,7 @@ const CHARACTER: PromptVariable = { token: '<CHARACTER NAME>', label: 'Character
 // game text), distinct from the world/context tokens above.
 const PLAYER_ACTION: PromptVariable = { token: '<PLAYER ACTION>', label: 'Player Action', color: HIGHLIGHT_PALETTE[9] };
 const NARRATION: PromptVariable = { token: '<NARRATION>', label: 'Narration', color: HIGHLIGHT_PALETTE[10] };
-// Image-gen tag prompt only (Settings → AI Endpoints → Tag Prompt): expands to per-kind guidance. Registered
+// Image-gen tag prompt only (Settings → Endpoints → Tag Prompt): expands to per-kind guidance. Registered
 // here so the shared prompt parser/chip recognize it; it is never offered in a game prompt's toolbar.
 export const SUBJECT: PromptVariable = { token: '<SUBJECT>', label: 'Subject', color: HIGHLIGHT_PALETTE[12] };
 

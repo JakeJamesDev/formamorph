@@ -730,7 +730,7 @@ function useProvideSettings() {
     setPresetStore((s) => updateReasoningBudget(s, kind, value));
   }, [setPresetStore]);
 
-  // Preset management (Settings → System Prompts selector).
+  // Preset management (Settings → Prompts selector).
   const activePresetId = effectiveStore.activeId;
   const activePresetIsBuiltIn = isBuiltInActive(effectiveStore);
   const activeSectionStyle = activeStyle(effectiveStore);
@@ -832,7 +832,7 @@ function useProvideSettings() {
   // text is finished and blocks the next action while it runs (one GPU, and a diffusion pass alongside the
   // language model spills it to CPU), so it is a deliberate opt-in rather than a default cost.
   const [sceneImageAuto, setSceneImageAuto] = usePersistentState<boolean>(`${APP_ID}_sceneImageAuto`, DEFAULT_SCENE_IMAGE_AUTO, boolCodec);
-  // Image generation config (Settings → AI Endpoints → Image). Lives in named, freely-editable presets so
+  // Image generation config (Settings → Endpoints → Image). Lives in named, freely-editable presets so
   // the user can keep several image-server configs. The active preset's values back the fields below; the
   // public getter/setter names are unchanged so consumers (GenerateImageButton) don't care about presets.
   const initialImageStore = useRef<ImageEndpointPresetStore | null>(null);
@@ -880,7 +880,7 @@ function useProvideSettings() {
     });
     // eslint-disable-next-line react-hooks/exhaustive-deps -- register the dev hook once; setImagePresetStore is stable
   }, []);
-  // Preset management (Settings → AI Endpoints → Image selector). Every preset is editable, including Default.
+  // Preset management (Settings → Endpoints → Image selector). Every preset is editable, including Default.
   const imageEndpointPresets = imagePresetStore.presets.map((p) => ({ id: p.id, name: p.name }));
   const activeImageEndpointPresetId = imagePresetStore.activeId;
   const activeImageEndpointPresetName =
@@ -895,7 +895,7 @@ function useProvideSettings() {
   const deleteImageEndpointPreset = (id: string) => setImagePresetStore((s) => imageDeletePreset(s, id));
   const resetImageEndpointPreset = (id: string) => setImagePresetStore((s) => imageResetPreset(s, id));
 
-  // Preset management (Settings → AI Endpoints → Text selector). The immutable "Default" built-in is virtual
+  // Preset management (Settings → Endpoints → Text selector). The immutable "Default" built-in is virtual
   // (never stored) and read-only; user presets are freely editable. Mirrors the prompt-preset UX.
   const builtinTextEndpointPresets = builtinTextPresets();
   const textEndpointPresets = textPresetStore.presets.map((p) => ({ id: p.id, name: p.name }));
@@ -1014,7 +1014,7 @@ function useProvideSettings() {
     )
   );
 
-  // User-editable prompt that turns a subject's description into booru tags (Settings → AI Endpoints → Tag Prompt).
+  // User-editable prompt that turns a subject's description into booru tags (Settings → Endpoints → Tag Prompt).
   const [imageTagPrompt, setImageTagPrompt] = usePersistentState<string>(`${APP_ID}_imageTagPrompt`, DEFAULT_TAG_PROMPT, stringCodec);
 
   const [vramHelperUrl, setVramHelperUrl] = usePersistentState<string>(`${APP_ID}_vramHelperUrl`, 'http://localhost:5179', stringCodec);

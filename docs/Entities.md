@@ -43,7 +43,7 @@ That keeps your Entities panel to the people actually in the room with you.
 
 ## Descriptions
 
-Settings → **Generation** → **Describe New Characters**
+Settings → **Output** → **Characters** → **Describe New Characters**
 
 Turn this on and each invented character also gets a written description, so you can open them from the Entities panel and read who they are, the same as an authored character.
 

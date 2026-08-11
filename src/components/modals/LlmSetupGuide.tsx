@@ -61,7 +61,7 @@ const LlmSetupGuide = ({
             <li>
               <strong>Is the Endpoint URL correct?</strong>
               <p className="text-muted-foreground">
-                In <strong>Settings → Endpoint</strong> it should point at your server&apos;s address, e.g.{" "}
+                In <strong>Settings → Endpoints</strong> it should point at your server&apos;s address, e.g.{" "}
                 <Code>http://localhost:1234</Code> — pasting what LM Studio or Ollama shows you is enough, we fill
                 in the rest. Double-check the host and port.
               </p>

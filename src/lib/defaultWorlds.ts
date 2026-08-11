@@ -36,7 +36,7 @@ export function readDeletedDefaultWorlds(): Set<string> {
 
 /**
  * Record that the player deleted a default world, so the seeder leaves it alone from now on — including when
- * the bundled copy later changes. Undone only by `clearDeletedDefaultWorlds` (Settings → Accessibility).
+ * the bundled copy later changes. Undone only by `clearDeletedDefaultWorlds` (Settings → Data → Storage).
  */
 export function tombstoneDefaultWorld(id: string): void {
   if (!isDefaultWorldId(id)) return;
@@ -51,7 +51,7 @@ export function tombstoneDefaultWorld(id: string): void {
 }
 
 /** Forget every deletion, so the next seed pass re-creates the missing defaults. The escape hatch behind
- *  Settings → Accessibility → Restore default worlds. */
+ *  Settings → Data → Storage → Restore Default Worlds. */
 export function clearDeletedDefaultWorlds(): void {
   try {
     localStorage.removeItem(DELETED_DEFAULTS_KEY);

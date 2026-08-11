@@ -133,7 +133,7 @@ Only story-invented entries can be removed. The world's own cast belongs to the 
 
 **Descriptions**
 
-Settings → Generation → **Describe New Characters** gives each invented character a written description you can open from here. Everything else on this list works whether that's on or off.`,
+Settings → Output → Characters → **Describe New Characters** gives each invented character a written description you can open from here. Everything else on this list works whether that's on or off.`,
   },
   'worldEditor.locations': {
     title: 'Locations',

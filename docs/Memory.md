@@ -87,7 +87,7 @@ The character panel's clock reads the same way — **Day 1, morning** rather tha
 > [!NOTE]
 > **Nothing is stamped while Measured Clock is off.** Without it every turn costs a flat hour whatever happened in it, so a date would really just be a turn count wearing a costume. Switch it on partway through a story and the earlier turns are dated at that flat hour — roughly wrong in scale, but still in the right order.
 
-Both settings live under Settings → Generation → Memory. **Measured Clock** decides whether time is measured at all; **Time in Memory** decides whether the AI is told.
+Both settings live under Settings → Output → Memory. **Measured Clock** decides whether time is measured at all; **Time in Memory** decides whether the AI is told.
 
 ### Where the clock starts
 
