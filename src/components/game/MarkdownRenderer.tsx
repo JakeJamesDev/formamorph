@@ -1,5 +1,7 @@
 import { memo, type ComponentProps } from 'react';
 import { Streamdown } from 'streamdown';
+import { createCodePlugin } from '@streamdown/code';
+import { markdownCodeThemes } from '@/lib/markdownCodeTheme';
 import remarkGfm from 'remark-gfm';
 import remarkBreaks from 'remark-breaks';
 import { remarkSubSuper } from '@/lib/remarkSubSuper';
@@ -14,6 +16,12 @@ const REMARK_PLUGINS: ComponentProps<typeof Streamdown>['remarkPlugins'] =
 // Streamdown boxes every table in a bordered card inside a second bordered scroller. Our markdown
 // surfaces are already panels, so that reads as a box in a box. Keep the scroller and the solid fill
 // that sets rows off against a translucent panel; drop the borders.
+// Streamdown ships no highlighter of its own; the code plugin supplies Shiki, themed off the app's
+// palette so a fence matches the stat-code editor.
+const PLUGINS: ComponentProps<typeof Streamdown>['plugins'] = {
+  code: createCodePlugin({ themes: markdownCodeThemes }),
+};
+
 const COMPONENTS: ComponentProps<typeof Streamdown>['components'] = {
   table: ({ node: _node, className, children, ...props }) => (
     <div
@@ -48,6 +56,7 @@ export const MarkdownRenderer = memo(function MarkdownRenderer(
       <Streamdown
         remarkPlugins={REMARK_PLUGINS}
         components={COMPONENTS}
+        plugins={PLUGINS}
         controls={false}
         // Committed text renders straight from the parsed blocks. Streamdown's `streaming` mode routes
         // them through state committed in a transition, which leaves finished text a render behind —

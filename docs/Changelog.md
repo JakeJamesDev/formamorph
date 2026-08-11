@@ -2,7 +2,7 @@
 
 All notable changes to Formamorph. This fork's first line is **2.0.0** — a full TypeScript rebuild of the upstream JavaScript app ([FieryLionite's Formamorph](https://fierylion.itch.io/formamorph), ~v1.2) — with feature parity as the baseline plus new features on top.
 
-> ✅ **2.0.0 – 2.11.1 are released** (collapsed below). New work lands under **🚧 In Progress** — an unnumbered section, so changes accumulate without pinning a version. When a batch earns a release its section is marked **Released** and collapsed, and a fresh In Progress opens. `package.json` reads **2.11.1** — the latest released version.
+> ✅ **2.0.0 – 2.12.0 are released** (collapsed below). New work lands under **🚧 In Progress** — an unnumbered section, so changes accumulate without pinning a version. When a batch earns a release its section is marked **Released** and collapsed, and a fresh In Progress opens. `package.json` reads **2.12.0** — the latest released version.
 
 Each release groups changes as **Major** / **Minor**, then **Added** / **Removed** / **Fixed**, and within those by audience: 👤 user-facing · 🛠️ developer tooling · ⚙️ backend.
 
@@ -10,7 +10,12 @@ Each release groups changes as **Major** / **Minor**, then **Added** / **Removed
 
 ## 🚧 In Progress
 
-_Unreleased — new work accumulates here until it earns a version bump. The next batch will pin its own version; `package.json` reads **2.11.1** (just released below)._
+_Unreleased — new work accumulates here until it earns a version bump. The next batch will pin its own version; `package.json` reads **2.12.0** (just released below)._
+
+---
+
+<details>
+<summary><strong>✅ 2.12.0 — Released 2026-08-11</strong> — stat code gets a real editor with templates, completion and live error marks; Community Creations gains status filters, typed filters and a first-run tour; and full-screen editors grow out of the field you were typing in (click to expand)</summary>
 
 ### Minor Changes
 
@@ -37,6 +42,7 @@ _Unreleased — new work accumulates here until it earns a version bump. The nex
 #### 🔧 Fixed
 
 - **👤 User-facing**
+  - **Code in a help popup or a world's Readme is colored again.** Every code block the app renders as markdown — the examples in the **?** popups, a world's Readme, the changelog — came out as one flat block of grey text, keywords and strings and comments all alike, which is exactly the text a code example is hardest to read as. The markdown renderer had lost its syntax highlighter in a library update; the highlighting is back, in both themes, and painted from the same colors the stat-code editor uses — so an example in a help popup and the box you retype it into no longer disagree about what a keyword looks like.
   - **Import and Export buttons finally point the way the file is going.** Export carried a download arrow and Import carried the same arrow again, left over from when they were called Download and Upload. Direction is now read from the app's side: a file **arrives** on Import (down) and **leaves** on Export (up). Every place that offers either now agrees — worlds, entities, dictionaries, avatars, saves, stat-code templates and **Export Story**. The stat-code template pair was the plainest case: its Import and Export sit side by side and pointed opposite to the arrows now used. Publish keeps a cloud so it never reads as a plain file save, **Make Available Offline** shows a picture coming down, and in Community Creations the three things the button can do are now three different marks rather than two: a cloud with a down arrow to fetch something new, a sync mark when a newer version is waiting, and a backup mark to pull down the version you already have. The details window shows the same mark as the card it opened from, where before it offered the words alone. **Duplicate World** carries the copy icon.
   - **Community Creations gives two more rows of worlds back on mobile.** Its header took four rows before the first card — the screen's own name, then the Worlds/Entities/Dictionaries tabs, then search, then the filter toggle. The title comes off (the header is the only thing on screen, so it named what you were already looking at), search and refresh take its row, and the tabs share the next row with a right-aligned **Filters**. Two rows instead of four, and the wide layout is untouched.
   - **The Aliases field says its two rules and leaves the rest to the ? button.** It explained itself three times over — a hint in the empty box, a paragraph underneath, and the **?** popup that covers all of it properly with examples. The paragraph is gone and the hint is down to what you need while typing: press Enter after each, and they're case-sensitive.
@@ -48,6 +54,8 @@ _Unreleased — new work accumulates here until it earns a version bump. The nex
 
 - **🛠️ Developer tooling**
   - **The icon set is 18 months newer, so around forty icons are redrawn.** Formamorph was pinned to a version of its icon library from August 2024. Menus, hearts, stars, speaker and playback marks and about three dozen others are the same symbols drawn to the library's current proportions. The GitHub mark is now drawn in-app, since the library stopped shipping company logos.
+
+</details>
 
 ---
 

@@ -689,6 +689,18 @@
 .tok-variable { color: hsl(var(--code-variable)); }
 .tok-punctuation { color: hsl(var(--code-punctuation)); }
 .tok-invalid { color: hsl(var(--destructive)); text-decoration: underline wavy; }
+/* Markdown code fences are highlighted by Shiki against the same palette (see markdownCodeTheme.ts).
+   Shiki hands bold and italic over as custom properties, which Streamdown copies onto the span without
+   ever reading them — so the fence loses the bold declarations and italic comments the editor has. */
+[data-streamdown="code-block-body"] span {
+  font-weight: var(--shiki-light-font-weight, inherit);
+  font-style: var(--shiki-light-font-style, inherit);
+}
+.dark [data-streamdown="code-block-body"] span {
+  font-weight: var(--shiki-dark-font-weight, inherit);
+  font-style: var(--shiki-dark-font-style, inherit);
+}
+
 /* A slot is a fill-in point, not code — it reads as a chip so it can't be mistaken for a literal. */
 .tok-slot {
   color: hsl(var(--code-slot));
