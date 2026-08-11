@@ -53,11 +53,12 @@ import {
 import type { AIRequestType } from '../types';
 import type { ParagraphLimit } from '../lib/outputLength';
 import { detectSupportedReasoningEfforts, detectReasoningCapability, isReasoningEngaged, type ReasoningEffortField, type PromptReasoning } from '../lib/reasoningEffort';
+import type { SettingsTabId } from '@/components/modals/settingsTabs';
 
 /** A request to open the Settings modal at a given tab (and, for `endpoints`, a given sub-tab). The nonce
  *  distinguishes two identical requests so the second one still re-opens the modal. */
 export interface SettingsOpenRequest {
-  tab: string;
+  tab: SettingsTabId;
   endpointTab?: string;
   nonce: string;
 }
@@ -1093,7 +1094,7 @@ function useProvideSettings() {
   // the modal — it's mounted by MainMenu/GameViewer — so they park a request here and the owning view acts
   // on it. Not persisted; the nonce makes a repeat request for the same tab fire again.
   const [settingsRequest, setSettingsRequest] = useState<SettingsOpenRequest | null>(null);
-  const requestSettings = useCallback((tab: string, endpointTab?: string) => {
+  const requestSettings = useCallback((tab: SettingsTabId, endpointTab?: string) => {
     setSettingsRequest({ tab, endpointTab, nonce: randomUUID() });
   }, []);
   const clearSettingsRequest = useCallback(() => setSettingsRequest(null), []);

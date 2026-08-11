@@ -38,6 +38,7 @@ import { useWorldPromptPresets } from "@/lib/worldPromptPreset";
 import { EntityModal } from "../components/modals/EntityModal";
 import { LocationModal } from "../components/modals/LocationModal";
 import { SettingsModal } from "../components/modals/SettingsModal";
+import { asSettingsTab, type SettingsTabId } from "../components/modals/settingsTabs";
 import { FeedbackDialog } from "@/components/menu/FeedbackDialog";
 import { COMMUNITY_ENABLED } from "@/lib/featureFlags";
 import AuthService from "@/services/AuthService";
@@ -673,7 +674,7 @@ const GameViewer = ({
   // Filing needs an account, so the in-game entry point is only offered to someone signed in.
   const [showBugReport, setShowBugReport] = useState(false);
   const canReportBug = COMMUNITY_ENABLED && Boolean(AuthService.token);
-  const [settingsTab, setSettingsTab] = useState<string | undefined>(undefined);
+  const [settingsTab, setSettingsTab] = useState<SettingsTabId | undefined>(undefined);
   const [settingsEndpointTab, setSettingsEndpointTab] = useState<string | undefined>(undefined);
   useSettingsOpenRequest((tab, endpointTab) => {
     setSettingsTab(tab);
@@ -4823,7 +4824,7 @@ ${playerNotes || NONE_PLACEHOLDER}
         isOpen={isSettingsOpen}
         onOpenChange={(v) => { setIsSettingsOpen(v); if (!v) { setSettingsTab(undefined); setSettingsEndpointTab(undefined); } }}
         previewValues={promptPreviewValues}
-        initialTab={settingsTab ?? devRoute?.tab}
+        initialTab={settingsTab ?? asSettingsTab(devRoute?.tab)}
         initialEndpointTab={settingsEndpointTab}
         initialPromptTab={devRoute?.subtab}
       />
