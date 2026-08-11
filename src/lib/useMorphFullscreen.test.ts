@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { act, renderHook } from '@testing-library/react';
-import { useMorphFullscreen } from './useMorphFullscreen';
+import { useMorphFullscreen, useMorphResize } from './useMorphFullscreen';
 
 const rect = (left: number, top: number, width: number, height: number) => ({
   left, top, width, height, right: left + width, bottom: top + height, x: left, y: top,
@@ -218,5 +218,37 @@ describe('useMorphFullscreen', () => {
 
     act(() => result.current.close());
     expect(result.current.contentClassName).toContain('fade-out-0');
+  });
+});
+
+describe('useMorphResize', () => {
+  beforeEach(() => {
+    vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout', 'requestAnimationFrame', 'cancelAnimationFrame'] });
+    reduceMotion(false);
+  });
+  afterEach(() => vi.useRealTimers());
+
+  it('takes the box out of its own CSS animation for the trip, and hands it back after', () => {
+    // The window that resizes itself also has an open animation, and `animate-in` keeps its last keyframe
+    // applied for good. A CSS animation writing `transform` outranks an inline one, so leaving it in place
+    // means every resize after the first open is silently swallowed.
+    const { boxEl, writes } = makeElements();
+    // The old rect is read during render, before the commit that resizes the element — so only that first
+    // measurement sees the windowed size; everything after it is the grown box.
+    let measured = 0;
+    boxEl.getBoundingClientRect = () => (measured++ === 0 ? rect(0, 0, 400, 300) : rect(0, 0, 1000, 800));
+
+    const { result, rerender } = renderHook(({ key }: { key: string }) => useMorphResize(key), {
+      initialProps: { key: 'window' },
+    });
+    act(() => result.current(boxEl));
+
+    rerender({ key: 'full' });
+
+    expect(boxEl.style.animation).toBe('none');
+    expect(writes[writes.length - 1]).toBe('translate(0px, 0px) scale(0.4, 0.375)');
+
+    act(() => vi.advanceTimersByTime(400));
+    expect(boxEl.style.animation).toBe('');
   });
 });
