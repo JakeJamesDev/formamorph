@@ -4,7 +4,7 @@ import { Popover, PopoverTrigger, PopoverContent } from "@/components/ui/popover
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Checkbox } from "@/components/ui/checkbox";
-import { Menu, Save, FolderOpen, SquarePen, Braces, Settings, MessageSquarePlus, DoorOpen } from "lucide-react";
+import { Menu, Save, FolderOpen, SquarePen, ScrollText, Settings, MessageSquarePlus, DoorOpen } from "lucide-react";
 import { ConfirmDialog } from '../ConfirmDialog';
 import { getAllSaveRecords } from './dbUtils';
 import { useDevRoute } from '../../lib/devRouter';
@@ -117,7 +117,7 @@ export const MenuModal = ({ onSettingsClick, onReportBug, onSave, onLoad, worldO
             )}
             {onShowAiContext && (
               <Button variant="ghost" className="w-full justify-start" onClick={() => { setMenuOpen(false); onShowAiContext(); }}>
-                <Braces className="mr-2 h-4 w-4" /> AI Context
+                <ScrollText className="mr-2 h-4 w-4" /> AI Context
               </Button>
             )}
             <Button variant="ghost" className="w-full justify-start" onClick={() => { setMenuOpen(false); onSettingsClick(); }}>

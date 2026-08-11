@@ -22,7 +22,8 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Collapsible, CollapsibleTrigger, CollapsibleContent } from "@/components/ui/collapsible";
 import { Pager } from "@/components/ui/pagination";
-import { Music, SquarePen, Database, ScrollText, ChevronDown, ChevronRight, ChevronsDownUp, ChevronsUpDown, Search, Eye, EyeOff, Download, Braces } from "lucide-react";
+import { Music, SquarePen, Database, ScrollText, ChevronDown, ChevronRight, ChevronsDownUp, ChevronsUpDown, Search, Eye, EyeOff } from "lucide-react";
+import { ActionIcon } from '@/lib/actionIcons';
 import IndeterminateProgress from "../components/ui/indeterminate-progress";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
@@ -4489,7 +4490,7 @@ ${playerNotes || NONE_PLACEHOLDER}
               <>
                 <DialogHeader className="flex-shrink-0">
                   <div className="flex items-center justify-between gap-2 pr-8">
-                    <DialogTitle className="flex items-center gap-2"><Braces className="h-4 w-4" /> AI context</DialogTitle>
+                    <DialogTitle className="flex items-center gap-2"><ScrollText className="h-4 w-4" /> AI context</DialogTitle>
                     <Button
                       variant="outline"
                       size="sm"
@@ -4498,7 +4499,7 @@ ${playerNotes || NONE_PLACEHOLDER}
                       disabled={debugTurns.length === 0}
                       title="Download the full turn history as JSON"
                     >
-                      <Download className="h-4 w-4" />
+                      <ActionIcon.export className="h-4 w-4" />
                       Export
                     </Button>
                   </div>

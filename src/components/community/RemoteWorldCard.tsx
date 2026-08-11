@@ -1,4 +1,5 @@
-import { EyeOff, Download, MessageSquare, RefreshCw, CircleArrowUp, Trash2, ShieldAlert, ShieldCheck } from "lucide-react";
+import { EyeOff, Download, MessageSquare, Trash2, ShieldAlert, ShieldCheck } from "lucide-react";
+import { ActionIcon } from "@/lib/actionIcons";
 import { Progress } from "@/components/ui/progress";
 import IndeterminateProgress from "@/components/ui/indeterminate-progress";
 import { cn } from "@/lib/utils";
@@ -127,12 +128,10 @@ export function RemoteWorldCard({
           title={dlState === 'update' ? "Update available — download the newer version" : dlState === 'refresh' ? `Re-download this ${noun}` : `Download this ${noun}`}
           aria-label={dlState === 'update' ? "Update available" : dlState === 'refresh' ? `Re-download this ${noun}` : `Download this ${noun}`}
         >
-          {dlState === 'update' ? (
-            <CircleArrowUp className="h-8 w-8" />
-          ) : dlState === 'refresh' ? (
-            <RefreshCw className="h-8 w-8" />
+          {dlState === 'update' || dlState === 'refresh' ? (
+            <ActionIcon.cloudUpdate className="h-8 w-8" />
           ) : (
-            <Download className="h-8 w-8" />
+            <ActionIcon.cloudDownload className="h-8 w-8" />
           )}
         </button>
       )}

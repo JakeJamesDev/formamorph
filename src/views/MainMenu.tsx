@@ -16,7 +16,8 @@ import 'react-toastify/dist/ReactToastify.css';
 import { Button } from "@/components/ui/button";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import {ConfirmDialog} from "@/components/ConfirmDialog";
-import {FilePlus2, DoorOpen, Pencil, Github, AlertTriangle, Code, User, Shield, Import, Globe, LayoutGrid, GalleryThumbnails, Columns2, RectangleVertical, Menu, Earth, BookOpen, Upload, ChevronLast, MoreHorizontal, PersonStanding, MessageSquarePlus, Download, FolderOpen, Archive, Settings, CloudDownload, ScrollText, type LucideIcon } from "lucide-react";
+import {FilePlus2, DoorOpen, Pencil, AlertTriangle, Code, User, Shield, Globe, LayoutGrid, GalleryThumbnails, Columns2, RectangleVertical, Menu, Earth, BookOpen, ChevronLast, MoreHorizontal, PersonStanding, MessageSquarePlus, FolderOpen, Archive, Settings, ScrollText, type LucideIcon } from "lucide-react";
+import { ActionIcon } from '@/lib/actionIcons';
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { ImageZoomViewer } from "@/components/ImageZoomViewer";
 import { cn } from "@/lib/utils";
@@ -119,6 +120,7 @@ import { useReadmeVisibility } from "@/lib/useReadmeVisibility";
 import { hasWorldNarrationPrompt, worldNarrationPrompt, useWorldPromptOptOut } from "@/lib/worldPrompt";
 import { useWorldPromptPresets, GLOBAL_PRESET_VALUE } from "@/lib/worldPromptPreset";
 import PatreonIcon from "@/components/PatreonIcon";
+import GithubIcon from "@/components/GithubIcon";
 import { describePlaceholders } from '@/lib/placeholders';
 
 interface MainMenuProps {
@@ -1310,7 +1312,7 @@ const MainMenu = ({ onStartGame, onLoadSaveGame, onReplayIntro, introActive = fa
           else if (cardType === 'models') modelImportRef.current?.click();
         }}
       >
-        <Import className="mr-2 h-4 w-4" /> Import {cardNoun}
+        <ActionIcon.import className="mr-2 h-4 w-4" /> Import {cardNoun}
       </GradientButton>
 
       {isAuthenticated && isStaff(currentUser) && (
@@ -1820,7 +1822,7 @@ const MainMenu = ({ onStartGame, onLoadSaveGame, onReplayIntro, introActive = fa
                   rel="noopener noreferrer"
                   className="flex items-center gap-2 rounded px-2 py-1.5 text-label hover:bg-accent"
                 >
-                  <Github className="h-4 w-4" /> GitHub
+                  <GithubIcon className="h-4 w-4" /> GitHub
                 </a>
                 <a
                   href="https://github.com/FieryLionite/formamorph"
@@ -1850,7 +1852,7 @@ const MainMenu = ({ onStartGame, onLoadSaveGame, onReplayIntro, introActive = fa
                 className="p-3 bg-secondary text-secondary-foreground rounded-full shadow-lg hover:bg-secondary/80 transition-colors"
                 aria-label="GitHub Repository"
               >
-                <Github className="h-6 w-6" />
+                <GithubIcon className="h-6 w-6" />
               </a>
             </>
           )}
@@ -1986,14 +1988,14 @@ const MainMenu = ({ onStartGame, onLoadSaveGame, onReplayIntro, introActive = fa
                     tone="purpleSoft"
                     onClick={() => handleDuplicateWorld()}
                   >
-                    <FilePlus2 className="mr-2 h-4 w-4" /> Duplicate World
+                    <ActionIcon.copy className="mr-2 h-4 w-4" /> Duplicate World
                   </WorldActionButton>
 
                   <WorldActionButton
                     tone="emeraldSoft"
                     onClick={() => { if (selectedWorld) void exportWorld(selectedWorld.data); }}
                   >
-                    <Download className="mr-2 h-4 w-4" /> Export World
+                    <ActionIcon.export className="mr-2 h-4 w-4" /> Export World
                   </WorldActionButton>
 
                   {/* Only worth offering for a world that links its pictures — one storing its own has nothing
@@ -2004,7 +2006,7 @@ const MainMenu = ({ onStartGame, onLoadSaveGame, onReplayIntro, introActive = fa
                       disabled={warmingOffline}
                       onClick={() => handleMakeAvailableOffline()}
                     >
-                      <CloudDownload className="mr-2 h-4 w-4" /> Make Available Offline
+                      <ActionIcon.availableOffline className="mr-2 h-4 w-4" /> Make Available Offline
                     </WorldActionButton>
                   )}
 
@@ -2013,7 +2015,7 @@ const MainMenu = ({ onStartGame, onLoadSaveGame, onReplayIntro, introActive = fa
                       tone="redSoft"
                       onClick={() => selectedWorld && openPublish(worldPublishPayload(selectedWorld.data))}
                     >
-                      <Upload className="mr-2 h-4 w-4" /> Publish World
+                      <ActionIcon.publish className="mr-2 h-4 w-4" /> Publish World
                     </WorldActionButton>
                   )}
                 </div>

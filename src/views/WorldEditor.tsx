@@ -17,7 +17,8 @@ import { Input } from "@/components/ui/input";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { Download, Plus, ArrowLeft, Save, FolderPlus, FilePlus, ImageDown, BookPlus, UserPlus, Loader2, Search } from "lucide-react";
+import { Plus, ArrowLeft, Save, FolderPlus, FilePlus, ImageDown, BookPlus, UserPlus, Loader2, Search } from "lucide-react";
+import { ActionIcon } from '@/lib/actionIcons';
 import { cn } from "@/lib/utils";
 import EditorFindBar from '@/components/editor/EditorFindBar';
 import { collectSearchTargets, type SearchMatch } from '@/lib/worldSearch';
@@ -744,7 +745,7 @@ const WorldEditorInner = ({ onClose, embedded = false, backButton }: {
       <div className="flex gap-2">
         {exportContext && (
           <Button variant="outline" size="sm" onClick={exportContext.onClick} disabled={exportContext.disabled}>
-            <Download className="h-4 w-4 mr-2 shrink-0" />
+            <ActionIcon.export className="h-4 w-4 mr-2 shrink-0" />
             <span className="truncate max-w-[14rem]">{exportContext.label}</span>
           </Button>
         )}

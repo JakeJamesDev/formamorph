@@ -2,7 +2,8 @@ import { useState, type ReactNode } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Download, Save, Upload } from 'lucide-react';
+import { Save } from 'lucide-react';
+import { ActionIcon } from '@/lib/actionIcons';
 import { UnsavedChangesDialog } from '@/components/UnsavedChangesDialog';
 
 interface EditorModalShellProps {
@@ -74,13 +75,13 @@ const EditorModalShell = ({
                 ))}
                 <div className="px-4 py-3 border-t shrink-0 flex justify-between gap-2">
                   <Button variant="outline" size="sm" onClick={onExport}>
-                    <Download className="h-4 w-4 mr-2" /> Export
+                    <ActionIcon.export className="h-4 w-4 mr-2" /> Export
                   </Button>
                   <div className="flex gap-2">
                     {onPublish && (
                       // Publishes what's on screen, saved or not — the same thing Save would write.
                       <Button variant="outline" size="sm" onClick={onPublish}>
-                        <Upload className="h-4 w-4 mr-2" /> Publish
+                        <ActionIcon.publish className="h-4 w-4 mr-2" /> Publish
                       </Button>
                     )}
                     <Button size="sm" onClick={onSave} disabled={!hasUnsavedChanges}>
