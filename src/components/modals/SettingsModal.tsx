@@ -1,11 +1,15 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { useSettings, type ThinkingMode, type ReasoningEffort, type ParagraphLimit } from '@/contexts/SettingsContext';
 import { DEFAULT_ENDPOINT, DEFAULT_API_TOKEN, DEFAULT_MODEL_NAME, DEFAULT_MAX_TOKENS, THEME_COLORS, FONT_OPTIONS, NARRATION_FONT_OPTIONS, DEFAULT_NARRATION_SCALE, DEFAULT_NARRATION_LINE_HEIGHT, CONTINUE_CHOICE_MODES, type ContinueChoiceMode, type ThemeColor, type FontChoice, type NarrationFont } from '@/contexts/settingsDefaults';
 import { useTheme } from '../theme-provider';
 import { ThemePreviewButton } from '@/components/ThemePreviewDialog';
 import { LocalModelPanel } from '@/components/modals/LocalModelPanel';
 import LlmSetupGuide from '@/components/modals/LlmSetupGuide';
-import { SETTINGS_TABS } from '@/components/modals/settingsTabs';
+import { settingsTabsFor } from '@/components/modals/settingsTabs';
+import { readSettingsMode, writeSettingsMode, type SettingsMode } from '@/lib/settingsMode';
+import { settingsUseAdvancedValues } from '@/lib/settingsAdvancedData';
+import { TutorialPopover } from '@/components/TutorialPopover';
+import { useDevRoute } from '@/lib/devRouter';
 import { Row, CheckRow, Section, SubGroup, RowLabel, HintInfo } from '@/components/SettingsRows';
 import TagField from '@/components/prompt/TagField';
 import { reasoningTabs, reasoningPromptTabs, defaultPromptReasoning, defaultReasoningBudgetPct, REASONING_CONTROL_KINDS, type PromptReasoning } from '@/lib/reasoningEffort';
@@ -57,7 +61,7 @@ import { COMMON_LANGUAGES } from '@/lib/languages';
 import ImageSetupGuide from './ImageSetupGuide';
 import ComfyWorkflowGuide from './ComfyWorkflowGuide';
 import { DEFAULT_TAG_PROMPT, SUBJECT_GUIDANCE } from '@/lib/imagePrompt';
-import { resetTutorials, useSeenTutorialCount } from '@/lib/tutorials';
+import { resetTutorials, useSeenTutorialCount, useTutorial } from '@/lib/tutorials';
 
 // Segmented-control options: a short tab label plus the helper text shown below the selected one.
 const THEME_OPTIONS: { value: 'light' | 'dark' | 'system'; label: string; help: string }[] = [
@@ -428,7 +432,7 @@ function PromptsShell({ fullscreen, sourceRef, children }: {
   );
 }
 
-export const SettingsModal = ({ isOpen, onOpenChange, previewValues, initialTab, initialEndpointTab, initialPromptTab, onWorldsRestored }: {
+export const SettingsModal = ({ isOpen, onOpenChange, previewValues, initialTab, initialEndpointTab, initialPromptTab, onWorldsRestored, forcedMode }: {
   isOpen: boolean;
   onOpenChange: (open: boolean) => void;
   /** Called after Restore Default Worlds re-seeds, so a world list on screen can refresh. */
@@ -442,9 +446,44 @@ export const SettingsModal = ({ isOpen, onOpenChange, previewValues, initialTab,
   initialEndpointTab?: string;
   /** DEV dev-router: which prompt under the Prompts tab to open (e.g. 'narration', 'thinking'). */
   initialPromptTab?: string;
+  /** Overrides the stored Simple/Advanced preference (the dev-router's `mode` param; tests set it directly). */
+  forcedMode?: SettingsMode;
 }) => {
-  const [activeTab, setActiveTab] = useState<string>(initialTab ?? SETTINGS_TABS[0].value);
+  const devRoute = useDevRoute();
+  const routeMode = import.meta.env.DEV && (devRoute?.mode === 'simple' || devRoute?.mode === 'advanced')
+    ? devRoute.mode
+    : undefined;
+  // Asking for a tab Simple hides is asking for Advanced: `goto('settings', { tab: 'prompts' })` and the
+  // image dialog's jump to the Tag Prompt editor both name a destination, and landing somewhere else
+  // instead is the dev-router failure that is hardest to notice.
+  const wantsAdvancedTab = (!!initialTab && settingsTabsFor(false).every((t) => t.value !== initialTab))
+    || initialEndpointTab === 'img-tagprompt';
+  const [mode, setModeState] = useState<SettingsMode>(() =>
+    forcedMode ?? routeMode ?? (wantsAdvancedTab ? 'advanced' : readSettingsMode()));
+  const setMode = useCallback((next: SettingsMode) => { setModeState(next); writeSettingsMode(next); }, []);
+  const advanced = mode === 'advanced';
+  // Each parsed route is a fresh object, so a `goto` with the mode already showing still re-applies it —
+  // a mount-time seed alone would miss that once the switch had been clicked.
+  const lastRoute = useRef(devRoute);
+  useEffect(() => {
+    if (lastRoute.current === devRoute) return;
+    lastRoute.current = devRoute;
+    if (routeMode) setModeState(routeMode);
+    else if (wantsAdvancedTab) setModeState('advanced');
+  }, [devRoute, routeMode, wantsAdvancedTab]);
+  useEffect(() => { if (forcedMode) setModeState(forcedMode); }, [forcedMode]);
+  const visibleTabs = useMemo(() => settingsTabsFor(advanced), [advanced]);
+  const { active: tutorial, nav: tutorialNav, dismiss } = useTutorial('settings', { active: isOpen });
+  const dismissTutorial = useCallback(() => { if (tutorial) dismiss(tutorial.id); }, [tutorial, dismiss]);
+  const [activeTab, setActiveTab] = useState<string>(initialTab ?? visibleTabs[0].value);
   const [endpointTab, setEndpointTab] = useState<string>(initialEndpointTab ?? 'text-endpoint');
+  // Switching to Simple while standing on a hidden tab would blank the panel with no way back to it.
+  useEffect(() => {
+    if (!visibleTabs.some((t) => t.value === activeTab)) setActiveTab(visibleTabs[0].value);
+  }, [visibleTabs, activeTab]);
+  useEffect(() => {
+    if (!advanced && endpointTab === 'img-tagprompt') setEndpointTab('text-endpoint');
+  }, [advanced, endpointTab]);
   // Deleted-default count, refreshed whenever the modal opens: localStorage isn't reactive, and the player
   // may have deleted a world since it last rendered.
   const [deletedDefaultCount, setDeletedDefaultCount] = useState(0);
@@ -1066,6 +1105,22 @@ export const SettingsModal = ({ isOpen, onOpenChange, previewValues, initialTab,
       }
     : null;
 
+  // Only meaningful in Simple mode, where the settings it reports on are the ones out of sight. Most hidden
+  // rows sit behind a switch Simple still shows (Thinking, the image Provider), so Advanced can always reach
+  // them. Native Reasoning is the exception: an endpoint that rejects every effort level has no such row to
+  // reach, so a stored level there is left out rather than promising one.
+  const hasHiddenValues = !advanced && settingsUseAdvancedValues({
+    paragraphLimit, markdownOutput, limitActiveCharacters, activeCharacterLimit,
+    ...(reasoningUnsupported ? {} : { reasoningEffort }),
+    memoryDigests, semanticMemory, semanticBandCap, semanticRehydration, timeContext, aiClock,
+    semanticLore, describeCharacters, characterDiaries, semanticDiaries,
+    concurrentTurnRequests, showReasoning, showSilentRequests, maxTokens,
+    imagePortraitWidth, imagePortraitHeight, imageLandscapeWidth, imageLandscapeHeight,
+    imageWorkflowCustom: imageWorkflow !== DEFAULT_COMFY_WORKFLOW,
+    imageInvokeBoard, imageInvokeEncoder, imageInvokeVae,
+    promptPresetCustom: !activePresetIsBuiltIn,
+  });
+
   return (
     <>
     <Dialog open={isOpen} onOpenChange={onOpenChange}>
@@ -1084,7 +1139,37 @@ export const SettingsModal = ({ isOpen, onOpenChange, previewValues, initialTab,
         )}
       >
         <DialogHeader className="flex-shrink-0">
-          <DialogTitle className="flex items-center gap-2"><Settings className="h-4 w-4" /> Settings</DialogTitle>
+          {/* The close cross is absolutely placed over this row, so the switch is kept clear of it. */}
+          <div className="flex items-center gap-4 pr-8">
+            <DialogTitle className="flex items-center gap-2"><Settings className="h-4 w-4" /> Settings</DialogTitle>
+            <TutorialPopover entry={tutorial} nav={tutorialNav}>
+              <ToggleGroup
+                type="single"
+                value={mode}
+                // Using the switch is itself the lesson, so it retires the tutorial as surely as the button does.
+                onValueChange={(v) => { if (v) { dismissTutorial(); setMode(v as SettingsMode); } }}
+                aria-label="Settings mode"
+                className="ml-auto h-8"
+              >
+                <ToggleGroupItem value="simple" className="px-2 py-1">Simple</ToggleGroupItem>
+                <ToggleGroupItem
+                  value="advanced"
+                  className="relative px-2 py-1"
+                  // The marker rides the switch that acts on it: it says "there is more through here",
+                  // which is exactly what this control does.
+                  title={hasHiddenValues ? 'Some hidden settings are off their defaults. Switch to Advanced to see them.' : undefined}
+                >
+                  Advanced
+                  {hasHiddenValues && (
+                    <span
+                      aria-label="Hidden settings are off their defaults"
+                      className="absolute right-0.5 top-0.5 h-1.5 w-1.5 rounded-full bg-primary"
+                    />
+                  )}
+                </ToggleGroupItem>
+              </ToggleGroup>
+            </TutorialPopover>
+          </div>
         </DialogHeader>
         <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full flex flex-col flex-1 min-h-0">
           {/* The tab labels don't fit narrow mobile, so below sm the tab strip becomes a dropdown of the
@@ -1094,13 +1179,15 @@ export const SettingsModal = ({ isOpen, onOpenChange, previewValues, initialTab,
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
-              {SETTINGS_TABS.map((t) => (
+              {visibleTabs.map((t) => (
                 <SelectItem key={t.value} value={t.value}>{t.label}</SelectItem>
               ))}
             </SelectContent>
           </Select>
-          <TabsList className="hidden w-full grid-cols-5 flex-shrink-0 sm:grid">
-            {SETTINGS_TABS.map((t) => (
+          <TabsList
+            className={cn('hidden w-full flex-shrink-0 sm:grid', advanced ? 'grid-cols-5' : 'grid-cols-4')}
+          >
+            {visibleTabs.map((t) => (
               <TabsTrigger key={t.value} value={t.value}>{t.label}</TabsTrigger>
             ))}
           </TabsList>
@@ -1246,6 +1333,7 @@ Pick a suggestion, type your own, or even a **style** — like *formal English* 
                   />
                 </div>
               </div>
+              {advanced && (
               <div className="grid grid-cols-1 sm:grid-cols-[minmax(0,1fr)_minmax(0,3fr)] items-start gap-4">
                 <RowLabel top>Paragraph Limit</RowLabel>
                 <div>
@@ -1275,6 +1363,8 @@ Pick a suggestion, type your own, or even a **style** — like *formal English* 
                   </div>
                 </div>
               </div>
+              )}
+              {advanced && (
               <CheckRow
                 label="Markdown Formatting"
                 htmlFor="markdownOutput"
@@ -1285,6 +1375,7 @@ Pick a suggestion, type your own, or even a **style** — like *formal English* 
 
 Works best when **Paragraph Limit** isn't set to *Single*.`}</HintInfo>}
               />
+              )}
               </Section>
             </div>
             </ScrollArea>
@@ -1365,7 +1456,7 @@ Skips the "Move to…?" confirmation.`}</HintInfo>}
               </div>
               {/* Staged only: cap how many characters the director stages per turn (each is its own pass). Off =
                   unbounded. Feeds both the hard cap and the <ACTIVE CHARACTER GUIDANCE> chip in the director prompt. */}
-              {thinkingMode === 'staged' && (
+              {advanced && thinkingMode === 'staged' && (
                 <SubGroup>
                 <div className="grid grid-cols-1 sm:grid-cols-[minmax(0,1fr)_minmax(0,3fr)] items-start gap-4">
                   <RowLabel top info={
@@ -1396,7 +1487,7 @@ Skips the "Move to…?" confirmation.`}</HintInfo>}
               )}
               {/* Native mode passes reasoning_effort straight through; shown only there since the guided modes drive
                   their own thinking. The levels are whichever the active endpoint accepts (detected on connect). */}
-              {thinkingMode === 'off' && reasoningUnsupported && (
+              {advanced && thinkingMode === 'off' && reasoningUnsupported && (
                 <SubGroup>
                 <div className="grid grid-cols-1 sm:grid-cols-[minmax(0,1fr)_minmax(0,3fr)] items-start gap-4">
                   <RowLabel top muted>Native Reasoning</RowLabel>
@@ -1406,7 +1497,7 @@ Skips the "Move to…?" confirmation.`}</HintInfo>}
                 </div>
                 </SubGroup>
               )}
-              {thinkingMode === 'off' && !reasoningUnsupported && (() => {
+              {advanced && thinkingMode === 'off' && !reasoningUnsupported && (() => {
                 const reasoningOptions = reasoningTabs(supportedReasoningEfforts);
                 return (
                   <SubGroup>
@@ -1431,6 +1522,7 @@ Skips the "Move to…?" confirmation.`}</HintInfo>}
               })()}
               </Section>
 
+              {advanced && (<>
               <Section title="Memory" hint="What the AI carries forward from earlier turns.">
               <CheckRow
                 label="Memory Summaries"
@@ -1640,16 +1732,17 @@ Captured and saved either way, so turning it on reveals it on past turns too.`}<
 An inspection aid for authoring and debugging; off by default.`}</HintInfo>}
               />
               </Section>
+              </>)}
             </div>
             </ScrollArea>
           </TabsContent>
 
           <TabsContent value="endpoints" className="py-4 px-2 flex-1 min-h-0 data-[state=active]:flex flex-col">
             <Tabs value={activeEndpointTab} onValueChange={setEndpointTab} className="flex flex-col flex-1 min-h-0">
-              <TabsList className={`grid w-full flex-shrink-0 ${imageGenDisabled ? 'grid-cols-2' : 'grid-cols-3'}`}>
+              <TabsList className={`grid w-full flex-shrink-0 ${imageGenDisabled || !advanced ? 'grid-cols-2' : 'grid-cols-3'}`}>
                 <TabsTrigger value="text-endpoint">Text</TabsTrigger>
                 <TabsTrigger value="img-endpoint">Image</TabsTrigger>
-                {!imageGenDisabled && <TabsTrigger value="img-tagprompt">Tag Prompt</TabsTrigger>}
+                {!imageGenDisabled && advanced && <TabsTrigger value="img-tagprompt">Tag Prompt</TabsTrigger>}
               </TabsList>
               <TabsContent value="text-endpoint" className="flex-1 min-h-0 data-[state=active]:flex flex-col">
               {/* Preset selector: swaps the whole endpoint field set. The read-only built-ins are the shared
@@ -1745,6 +1838,7 @@ An inspection aid for authoring and debugging; off by default.`}</HintInfo>}
                   className={activeTextEndpointPresetIsBuiltIn ? 'opacity-60 cursor-not-allowed' : undefined}
                 />
               </Row>
+              {advanced && (<>
               <Row center label="Context Window (tokens)" htmlFor="contextWindow">
                 <div className="flex items-start gap-2">
                   <Input
@@ -1780,6 +1874,7 @@ An inspection aid for authoring and debugging; off by default.`}</HintInfo>}
                   className={activeTextEndpointPresetIsBuiltIn ? 'opacity-60 cursor-not-allowed' : undefined}
                 />
               </Row>
+              </>)}
               <div className="flex justify-start">
                 <ConfirmDialog
                   title="Reset AI Endpoint"
@@ -1946,6 +2041,7 @@ You can always draw a single scene by hand from the button above the story inste
                   placeholder="tags to avoid…"
                 />
               </Row>
+              {advanced && (<>
               <Row center label="Portrait (W × H)">
                 <div className="flex items-center gap-2">
                   <Input aria-label="Portrait width" type="number" min={64} step={64} value={imagePortraitWidth} onChange={(e) => setImagePortraitWidth(numInput(e.target.value, 64))} className="w-28" />
@@ -1962,6 +2058,7 @@ You can always draw a single scene by hand from the button above the story inste
                   <span className="text-helper text-muted-foreground">locations &amp; thumbnail</span>
                 </div>
               </Row>
+              </>)}
               <Row center label="Steps / CFG">
                 <div className="flex items-center gap-2">
                   <Input aria-label="Steps" type="number" min={1} value={imageSteps} onChange={(e) => setImageSteps(numInput(e.target.value, 1))} className="w-28" />
@@ -1993,7 +2090,7 @@ You can always draw a single scene by hand from the button above the story inste
                     : 'Re-render the face at full resolution in a second pass. Roughly doubles generation time; SDXL and SD1.5 only.'}
                 />
               )}
-              {imageProvider === 'comfyui' && (
+              {advanced && imageProvider === 'comfyui' && (
                 <Row label="Workflow (API format)" htmlFor="imageWorkflow">
                   <div className="grid gap-1.5">
                     <Textarea
@@ -2023,7 +2120,7 @@ You can always draw a single scene by hand from the button above the story inste
                   </div>
                 </Row>
               )}
-              {imageProvider === 'invokeai' && (
+              {advanced && imageProvider === 'invokeai' && (
                 <Row label="Board" htmlFor="imageInvokeBoard" hint="Which InvokeAI gallery board generated images are filed under. Uncategorized is InvokeAI's default.">
                   <Select
                     value={imageInvokeBoard || UNCATEGORIZED_BOARD}
@@ -2049,7 +2146,7 @@ You can always draw a single scene by hand from the button above the story inste
               )}
               {/* Z-Image and Anima both load a Qwen3 encoder + VAE alongside the checkpoint; the options
                   are narrowed to the ones that architecture can actually use. */}
-              {imageProvider === 'invokeai' && invokeSubmodelBase && (
+              {advanced && imageProvider === 'invokeai' && invokeSubmodelBase && (
                 <>
                   <Row
                     label="Qwen3 Encoder"
@@ -2090,7 +2187,7 @@ You can always draw a single scene by hand from the button above the story inste
             </ScrollArea>
             </>)}
               </TabsContent>
-              {!imageGenDisabled && (
+              {!imageGenDisabled && advanced && (
               <TabsContent value="img-tagprompt" className="pt-4 flex-1 min-h-0 data-[state=active]:flex flex-col gap-2">
                 <p className="text-helper text-muted-foreground flex-shrink-0">
                   The prompt sent to your text model to turn a subject’s description into booru tags. The
@@ -2120,6 +2217,7 @@ You can always draw a single scene by hand from the button above the story inste
             />
           </TabsContent>
 
+          {advanced && (
           <TabsContent ref={promptsPanelRef} value="prompts" className="pt-4 px-2 pb-4 flex-1 min-h-0 data-[state=active]:flex flex-col gap-4">
             <PromptsShell fullscreen={promptsFullscreen} sourceRef={promptsPanelRef}>
             {/* Preset selector: the whole prompt set switches together. Built-in presets (Default, Simple)
@@ -2586,6 +2684,7 @@ You can always draw a single scene by hand from the button above the story inste
             />
             </PromptsShell>
           </TabsContent>
+          )}
 
           <TabsContent value="accessibility" className="px-2 flex-1 min-h-0 data-[state=active]:flex flex-col">
             <ScrollArea className="flex-1 min-h-0">
@@ -2687,6 +2786,7 @@ Includes faces tuned for **dyslexia**, **low vision**, and reading.`}</HintInfo>
                 onChange={setAutosaveEnabled}
                 hint="Automatically saves your game after every turn to a per-world “Autosave” slot, starting once the opening scene finishes. It never touches your manual saves and shows in Load with an “Auto” tag. Turn off to save only manually."
               />
+              {advanced && (<>
               <div className="grid grid-cols-1 sm:grid-cols-[minmax(0,1fr)_minmax(0,3fr)] gap-4">
                 <div className="hidden sm:block" />
                 <div>
@@ -2725,8 +2825,12 @@ Includes faces tuned for **dyslexia**, **low vision**, and reading.`}</HintInfo>
                   </p>
                 </div>
               </div>
+              </>)}
               </Section>
 
+              {/* Housekeeping actions rather than settings, and every one of them is a "put it back" a
+                  normal player never needs — so Simple keeps the whole section out of the way. */}
+              {advanced && (
               <Section title="Help">
               <div className="grid grid-cols-1 sm:grid-cols-[minmax(0,1fr)_minmax(0,3fr)] gap-4">
                 <div className="hidden sm:block" />
@@ -2748,6 +2852,7 @@ Includes faces tuned for **dyslexia**, **low vision**, and reading.`}</HintInfo>
                 </div>
               </div>
               </Section>
+              )}
             </div>
             </ScrollArea>
           </TabsContent>

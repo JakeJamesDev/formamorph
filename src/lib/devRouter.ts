@@ -25,7 +25,7 @@ export interface DevRoute {
   fixture?: string;
   /** On-screen diagnostic overlay to pin over the app — `viewport` is the only one so far. */
   probe?: string;
-  /** World Editor chrome mode — `simple` or `advanced`. */
+  /** Simple/Advanced chrome mode — `simple` or `advanced`. Honored by the World Editor and Settings. */
   mode?: string;
 }
 
