@@ -43,14 +43,22 @@ export const EditTextModal = ({
       <DialogContent
         ref={morphRef}
         hideClose
+        // The stock zoom-and-slide writes `transform` too, and this window animates its own resize. Two
+        // owners of one property means whichever runs second wins, mid-trip.
+        unanimated
         aria-describedby={undefined}
         className={cn(
           'flex flex-col',
+          // Centered by margins, not by `translate(-50%, -50%)` as a dialog normally is. This one is the
+          // only window that animates *itself* between two sizes, and a trip that has to compose with a
+          // centering transform inherits every other thing writing to that property. Margin centering
+          // leaves `transform` free for the animation alone.
+          'inset-0 m-auto translate-x-0 translate-y-0',
           // Growing this dialog rather than letting the field raise its own overlay: an overlay inside a
           // dialog is a window on top of a window, and the buttons that save the edit would be under it.
           // A fixed height, not a max: the window keeps its size and the editor scrolls inside it, so a long
           // turn and a short one open the same box.
-          fullscreen ? `${dialogFullHeight} max-w-none w-screen left-0 translate-x-0 rounded-none` : 'sm:max-w-[760px] h-[85dvh]',
+          fullscreen ? `${dialogFullHeight} max-w-none w-screen rounded-none` : 'sm:max-w-[760px] h-[85dvh]',
         )}
       >
         <DialogHeader>
