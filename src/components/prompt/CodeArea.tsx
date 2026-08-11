@@ -55,6 +55,8 @@ interface CodeAreaProps {
   label?: ReactNode;
   /** Offer the `{{slot}}` menu. Template editing only. */
   slots?: boolean;
+  /** The world's stat names, completed inside string literals — the one place a typo fails silently. */
+  statNames?: readonly string[];
   /** What the code produces. Given this, the field grows the Edit | Preview pair, which becomes a
    *  side-by-side split once full screen has the width for it. */
   preview?: ReactNode;
@@ -67,7 +69,7 @@ interface CodeAreaProps {
 function CodeAreaBody({
   value, onChange, ariaLabel, placeholder, label, slots, preview, className, rows = 8, fullscreen,
   onToggleFullscreen, session, active, expose,
-}: CodeAreaProps & {
+}: Omit<CodeAreaProps, 'statNames'> & {
   fullscreen: boolean;
   onToggleFullscreen: () => void;
   /** The one editor both copies take turns hosting. Null until its chunk has loaded. */
@@ -254,6 +256,7 @@ export function CodeArea(props: CodeAreaProps) {
         ariaLabel,
         placeholder,
         slots,
+        statNames: latest.current.statNames,
         onChange: (next) => latest.current.onChange(next),
         onUpdate,
       });
@@ -266,6 +269,8 @@ export function CodeArea(props: CodeAreaProps) {
   useEffect(() => { session?.setValue(props.value); }, [session, props.value]);
   // A gutter is worth its width only where there is width to spare.
   useEffect(() => { session?.setLineNumbers(morph.mounted); }, [session, morph.mounted]);
+  // Stats are renamed and added while a code field is open, so the completions follow the list.
+  useEffect(() => { session?.setStatNames(props.statNames ?? []); }, [session, props.statNames]);
 
   return (
     <>
