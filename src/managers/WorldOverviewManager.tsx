@@ -14,7 +14,7 @@ import { GenerateImageButton } from '../components/GenerateImageButton';
 import { ModelDetailsPanel } from '../components/modals/ModelDetailsPanel';
 import { readVrmMeta } from '../lib/vrmMeta';
 import { downloadBlob } from '@/lib/downloadBlob';
-import { Download } from 'lucide-react';
+import { ActionIcon } from '@/lib/actionIcons';
 import type { VrmLicense } from '@/types';
 
 /**
@@ -68,7 +68,7 @@ const PlayerVrmPreview = ({ data, fileName, open, onClose }: { data: string; fil
       onClose={onClose}
       footer={
         <Button variant="outline" size="sm" className="w-full" onClick={handleExport} disabled={!blob}>
-          <Download className="mr-2 h-4 w-4" /> Export Avatar
+          <ActionIcon.export className="mr-2 h-4 w-4" /> Export Avatar
         </Button>
       }
     />

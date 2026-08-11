@@ -20,7 +20,8 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { TokenAutocomplete } from "@/components/TokenAutocomplete";
 import { COMMON_LANGUAGES } from "@/lib/languages";
-import { Send, RefreshCw, Pencil, Languages, Loader2, Headphones, Square, ChevronUp, ChevronDown, X, Download, Trash2, Image as ImageIcon, Dices, MoreHorizontal } from "lucide-react";
+import { Send, RefreshCw, Pencil, Languages, Loader2, Headphones, Square, ChevronUp, ChevronDown, X, Trash2, Image as ImageIcon, Dices, MoreHorizontal } from "lucide-react";
+import { ActionIcon } from "@/lib/actionIcons";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Separator } from "@/components/ui/separator";
 import { CONTINUE_CHOICE } from "@/lib/choices";
@@ -739,7 +740,7 @@ export const MiddlePanel = ({
                       className="justify-start gap-2 text-meta h-8"
                       onClick={() => { setToolMenuOpen(false); onExportStory(); }}
                     >
-                      <Download className="h-4 w-4" />
+                      <ActionIcon.export className="h-4 w-4" />
                       Export Story
                     </Button>
                   </div>

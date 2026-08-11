@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { Button } from '@/components/ui/button';
-import { Download } from 'lucide-react';
+import { ActionIcon } from '@/lib/actionIcons';
 import { ModelDetailsPanel } from './ModelDetailsPanel';
 import ModelStorageService from '@/services/ModelStorageService';
 import { downloadBlob } from '@/lib/downloadBlob';
@@ -64,7 +64,7 @@ export function ModelDetailsModal({ model, onClose }: {
       onClose={onClose}
       footer={
         <Button variant="outline" size="sm" className="w-full" onClick={handleExport} disabled={!blob}>
-          <Download className="mr-2 h-4 w-4" /> Export Avatar
+          <ActionIcon.export className="mr-2 h-4 w-4" /> Export Avatar
         </Button>
       }
     />

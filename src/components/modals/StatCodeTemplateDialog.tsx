@@ -8,7 +8,8 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Copy, Download, Pencil, Plus, Trash2, Upload } from 'lucide-react';
+import { Copy, Pencil, Plus, Trash2 } from 'lucide-react';
+import { ActionIcon } from '@/lib/actionIcons';
 import { toast } from 'react-toastify';
 import { downloadBlob } from '@/lib/downloadBlob';
 import { filesFrom } from '@/lib/importFiles';
@@ -337,7 +338,7 @@ export function StatCodeTemplateDialog({ open, onOpenChange, stats, currentStatI
                           className="rounded p-1 text-muted-foreground hover:bg-accent hover:text-foreground"
                           onClick={() => fileRef.current?.click()}
                         >
-                          <Upload className="h-3.5 w-3.5" />
+                          <ActionIcon.import className="h-3.5 w-3.5" />
                         </button>
                         <button
                           type="button" title="Export templates" aria-label="Export templates"
@@ -345,7 +346,7 @@ export function StatCodeTemplateDialog({ open, onOpenChange, stats, currentStatI
                           className="rounded p-1 text-muted-foreground hover:bg-accent hover:text-foreground disabled:pointer-events-none disabled:opacity-40"
                           onClick={exportPack}
                         >
-                          <Download className="h-3.5 w-3.5" />
+                          <ActionIcon.export className="h-3.5 w-3.5" />
                         </button>
                       </span>
                     </div>

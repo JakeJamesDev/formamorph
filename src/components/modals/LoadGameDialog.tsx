@@ -3,7 +3,8 @@ import { downloadBlob } from "@/lib/downloadBlob";
 import React from 'react';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
-import { Download, Import, Loader2, X, GripVertical, Folder, FolderOpen, ChevronLeft } from "lucide-react";
+import { Loader2, X, GripVertical, Folder, FolderOpen, ChevronLeft } from "lucide-react";
+import { ActionIcon } from "@/lib/actionIcons";
 import {
   DndContext, closestCenter, PointerSensor, KeyboardSensor, useSensor, useSensors, type DragEndEvent,
 } from '@dnd-kit/core';
@@ -116,7 +117,7 @@ function SortableSaveRow({ row, disabled, busy, onLoad, onExport, onDelete }: {
         title="Export save"
         onClick={(e) => { e.stopPropagation(); onExport(row); }}
       >
-        <Download className="h-3.5 w-3.5" />
+        <ActionIcon.export className="h-3.5 w-3.5" />
       </Button>
       <Button
         variant="ghost"
@@ -492,7 +493,7 @@ export function LoadGameDialog({ open, onOpenChange, current, onLoad, title, ico
                 className="w-full flex items-center justify-center gap-2"
                 onClick={() => document.getElementById('save-upload')?.click()}
               >
-                <Import className="h-4 w-4" />
+                <ActionIcon.import className="h-4 w-4" />
                 <span>Import</span>
               </Button>
             </div>
