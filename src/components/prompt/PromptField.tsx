@@ -21,7 +21,8 @@ import {
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Label } from '@/components/ui/label';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Dialog, DialogContent, dialogFullHeight } from '@/components/ui/dialog';
+import { FullscreenShell } from '@/components/FullscreenShell';
+import { useMorphFullscreen } from '@/lib/useMorphFullscreen';
 import { ReadOnlyNotice } from './ReadOnlyNotice';
 import { CHIP_BASE } from '@/components/Chip';
 import { MarkdownRenderer } from '@/components/game/MarkdownRenderer';
@@ -610,9 +611,26 @@ const PromptField = ({ value, onChange, variables = [], vocabulary, previewValue
   const [splitMode, setSplitMode] = usePromptSplitMode();
   // Fullscreen is either ours or the caller's; `hostedFullscreen` means the caller renders the overlay.
   const hostedFullscreen = !!onRequestFullscreen;
-  const [ownFullscreen, setOwnFullscreen] = useState(false);
-  const fullscreen = hostedFullscreen ? !!fullscreenProp : ownFullscreen;
-  const toggleFullscreen = () => (onRequestFullscreen ? onRequestFullscreen() : setOwnFullscreen((f) => !f));
+  // The field hands its body to the overlay rather than leaving a copy behind, so the morph measures this
+  // wrapper on the way in and remembers it for the way back.
+  const bodyRef = useRef<HTMLDivElement | null>(null);
+  const morph = useMorphFullscreen(bodyRef);
+  // `mounted` and not `phase === 'open'`: the body has to stay inside the overlay while it shrinks, or
+  // there would be nothing travelling.
+  const fullscreen = hostedFullscreen ? !!fullscreenProp : morph.mounted;
+  // The field's height, held open while its body is away in the overlay. Without it the panel this sits in
+  // gets shorter by exactly one editor, and the browser clamps its scroll to the new bottom — so opening
+  // full screen jumped the page behind it, and closing jumped it back.
+  const [heldHeight, setHeldHeight] = useState<number | null>(null);
+  const toggleFullscreen = () => {
+    if (onRequestFullscreen) return onRequestFullscreen();
+    // `offsetHeight`, not the bounding rect: the rect is in *painted* pixels, so under a page zoom or any
+    // ancestor scale it comes back already multiplied. Feeding that number back as a CSS height gets it
+    // scaled a second time and the spacer lands short — which is the panel shrinking, and the scroll
+    // jumping, all over again.
+    if (!morph.mounted) setHeldHeight(bodyRef.current?.offsetHeight ?? null);
+    morph.toggle();
+  };
   const isMobile = useIsMobile();
   // Fullscreen measures the viewport, not the inline slot it was opened from.
   const effectiveWidth = fullscreen ? (typeof window !== 'undefined' ? window.innerWidth - 48 : 0) : containerWidth;
@@ -882,7 +900,7 @@ const PromptField = ({ value, onChange, variables = [], vocabulary, previewValue
     // The caption doubles as the field's identity for the World Editor's find bar, which otherwise has only
     // the text to go on — and two fields on one panel routinely hold the very same text.
     <div
-      ref={measureRef}
+      ref={(element) => { measureRef(element); bodyRef.current = element; }}
       data-find-field={typeof label === 'string' ? label : undefined}
       className={cn('flex flex-col flex-1 min-h-0 gap-2', className)}
     >
@@ -890,7 +908,13 @@ const PromptField = ({ value, onChange, variables = [], vocabulary, previewValue
           anywhere else here makes it jump as you move between a prompt's sub-tabs. */}
       {readOnlyNotice}
       {label && markdown && (
-        <div className="flex items-center justify-between gap-2 flex-shrink-0">
+        // A markdown field's caption gets its own row because the formatting toolbar takes the slot it
+        // would otherwise sit in — and at full screen on mobile that row is the window's heading, so it
+        // centers there the way every other full-screen heading does.
+        <div className={cn(
+          'flex items-center justify-between gap-2 flex-shrink-0',
+          fullscreen && 'max-sm:justify-center',
+        )}>
           <Label className="leading-none">{label}</Label>
           {labelAside}
         </div>
@@ -909,16 +933,16 @@ const PromptField = ({ value, onChange, variables = [], vocabulary, previewValue
             plain portaled div inherits that and renders dead, under Radix's own overlay. Letting Radix
             own the stack also gives the fullscreen its focus trap and Escape for free. */}
         {fullscreen && !hostedFullscreen ? (
-          <Dialog open onOpenChange={(o) => { if (!o) setOwnFullscreen(false); }}>
-            <DialogContent
-              hideClose
-              aria-describedby={undefined}
-              aria-label={ariaLabel ?? 'Prompt editor'}
-              className={cn(dialogFullHeight, 'flex w-screen max-w-none flex-col gap-2 rounded-none border-0 p-4 sm:rounded-none')}
+          <>
+            <div aria-hidden className="flex-shrink-0" style={{ height: heldHeight ?? undefined }} />
+            <FullscreenShell
+              morph={morph}
+              title={ariaLabel ?? 'Prompt editor'}
+              returnFocus={() => bodyRef.current?.querySelector<HTMLElement>('button[aria-label="Edit full screen"]')}
             >
               {body}
-            </DialogContent>
-          </Dialog>
+            </FullscreenShell>
+          </>
         ) : (
           body
         )}

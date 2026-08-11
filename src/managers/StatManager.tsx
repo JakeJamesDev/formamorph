@@ -421,6 +421,9 @@ const StatManager = ({ stat }: { stat: Stat }) => {
               value={editingStat.code || ""}
               onChange={(code) => handleChange("code", code)}
               ariaLabel="Stat code"
+              // Its caption is the section heading, which full screen leaves behind — so the field names
+              // itself in the toolbar and stays labeled in both states.
+              label="Code"
               placeholder="// Example: Return the average of Health and Strength stats
 const health = stats.find(s => s.name === 'Health')?.value || 0;
 const strength = stats.find(s => s.name === 'Strength')?.value || 0;

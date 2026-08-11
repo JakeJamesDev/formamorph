@@ -53,7 +53,9 @@ describe('useMorphFullscreen', () => {
 
     // 200/1000 and 60/800 wide, offset by the source's own corner — the overlay is laid out full size and
     // pulled back onto the field, never sized to it.
-    expect(writes).toEqual(['translate(20px, 40px) scale(0.2, 0.075)']);
+    // Clearing writes are skipped: the trip wipes any leftover transform before measuring, so the element's
+    // own resting position is what gets read rather than where a previous trip left it.
+    expect(writes.filter(Boolean)).toEqual(['translate(20px, 40px) scale(0.2, 0.075)']);
     // And it is still sitting there after the commit. Releasing in the same frame the overlay was portaled
     // into the document skips the animation outright — the browser has no painted start to transition
     // from, so the box arrives at full size instantly.
@@ -87,6 +89,75 @@ describe('useMorphFullscreen', () => {
     act(() => vi.advanceTimersByTime(400));
     expect(result.current.mounted).toBe(false);
     expect(result.current.phase).toBe('closed');
+  });
+
+  it('shrinks back to where the editor came from even after handing it to the overlay', () => {
+    // Some callers move their editor into the window rather than leaving a copy behind, so on the way out
+    // the source element is a child of the very box being animated. Measuring it then reports the overlay's
+    // own rect, the trip inverts onto where the box already is, and the close collapses to a plain fade.
+    const { sourceEl, boxEl, writes } = makeElements();
+    const { result } = renderHook(() => useMorphFullscreen({ current: sourceEl }));
+    act(() => result.current.open());
+    act(() => result.current.boxRef(boxEl));
+    act(() => vi.advanceTimersByTime(400));
+
+    boxEl.appendChild(sourceEl);
+    sourceEl.getBoundingClientRect = () => rect(0, 0, 1000, 800);
+
+    act(() => result.current.close());
+    act(() => vi.advanceTimersByTime(50));
+    expect(writes[writes.length - 1]).toBe('translate(20px, 40px) scale(0.2, 0.075)');
+  });
+
+  it('puts the panels behind it back where they were reading, however they got moved', () => {
+    // Closing hands focus around — the host dialog's trap, then the browser revealing whatever ended up
+    // focused — and each of those scrolls the panel underneath. None of them are ours to prevent, so the
+    // position the window opened from is simply restored.
+    const { sourceEl, boxEl } = makeElements();
+    const pane = document.createElement('div');
+    Object.defineProperty(pane, 'scrollHeight', { value: 1405, configurable: true });
+    Object.defineProperty(pane, 'clientHeight', { value: 853, configurable: true });
+    pane.appendChild(sourceEl);
+    document.body.appendChild(pane);
+    pane.scrollTop = 100;
+
+    const { result } = renderHook(() => useMorphFullscreen({ current: sourceEl }));
+    act(() => result.current.open());
+    act(() => result.current.boxRef(boxEl));
+    act(() => vi.advanceTimersByTime(400));
+
+    act(() => result.current.close());
+    act(() => vi.advanceTimersByTime(400));
+    pane.scrollTop = 0; // whatever took focus on the way out drags the panel to the top
+    act(() => vi.advanceTimersByTime(200));
+
+    expect(pane.scrollTop).toBe(100);
+    pane.remove();
+  });
+
+  it('keeps a centered box centered while it travels', () => {
+    // A windowed dialog is centered *by* a transform. Assigning the trip straight to `transform` threw that
+    // away, and the box sat at the raw left:50%/top:50% corner — off in one screen quadrant — until the
+    // animation ended and the class took over again.
+    const { sourceEl, boxEl, writes } = makeElements();
+    const centering = 'matrix(1, 0, 0, 1, -380, -418)';
+    boxEl.style.setProperty('transform', centering);
+    // The recorder's getter reports the last write, which is what `getComputedStyle` stands in for here.
+    Object.defineProperty(window, 'getComputedStyle', {
+      configurable: true,
+      value: (el: Element) => (el === boxEl ? { transform: centering } : { transform: 'none' }),
+    });
+
+    writes.length = 0; // drop the setup write, so the first entry is the trip's own
+    const { result } = renderHook(() => useMorphFullscreen({ current: sourceEl }));
+    act(() => result.current.open());
+    act(() => result.current.boxRef(boxEl));
+
+    // The centering leads, so it is applied outermost: the box is placed where its styles intend, and the
+    // trip moves it from there. The other order scales the centering offset along with the box.
+    expect(writes.filter(Boolean)[0]).toBe(`${centering} translate(20px, 40px) scale(0.2, 0.075)`);
+    act(() => vi.advanceTimersByTime(50));
+    expect(writes[writes.length - 1]).toBe(centering);
   });
 
   it('opens without travelling when the reader asked for less motion', () => {

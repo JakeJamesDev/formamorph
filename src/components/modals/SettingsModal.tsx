@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useSettings, type ThinkingMode, type ReasoningEffort, type ParagraphLimit } from '@/contexts/SettingsContext';
 import { DEFAULT_ENDPOINT, DEFAULT_API_TOKEN, DEFAULT_MODEL_NAME, DEFAULT_MAX_TOKENS, THEME_COLORS, FONT_OPTIONS, NARRATION_FONT_OPTIONS, DEFAULT_NARRATION_SCALE, DEFAULT_NARRATION_LINE_HEIGHT, CONTINUE_CHOICE_MODES, type ContinueChoiceMode, type ThemeColor, type FontChoice, type NarrationFont } from '@/contexts/settingsDefaults';
 import { useTheme } from '../theme-provider';
@@ -16,8 +16,10 @@ import { normalizeEndpointUrl, endpointUrlWasCompleted } from '@/lib/endpointUrl
 import { computePromptTabAvailability } from '@/lib/promptTabAvailability';
 import { visibleGroups, SURFACE_LABELS, PROMPT_DESCRIPTIONS, type PromptSurface } from '@/lib/promptGroups';
 import { Settings } from "lucide-react";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, dialogFullHeight, dialogFullHeightMobile } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, dialogFullHeightMobile } from "@/components/ui/dialog";
 import { cn } from "@/lib/utils";
+import { FullscreenShell } from "@/components/FullscreenShell";
+import { useMorphFullscreen } from "@/lib/useMorphFullscreen";
 import { composePreviewValues } from "@/lib/previewValuePool";
 import { Button } from "@/components/ui/button";
 import { RevealAnimationDemoButton } from "@/components/RevealAnimationDemo";
@@ -400,23 +402,29 @@ function PromptOptionsPanel({ endpoint, verbatim, reasoning, reasoningBudget, sa
  * Toggling re-parents the panel into the overlay, so the editor is rebuilt from its value: the text is
  * safe (it is controlled) but the undo stack starts fresh on either side of the toggle.
  */
-function PromptsShell({ fullscreen, onClose, children }: {
+function PromptsShell({ fullscreen, sourceRef, children }: {
   fullscreen: boolean;
-  onClose: () => void;
+  /** The tab panel the rail sits in — what the window grows out of and shrinks back into. */
+  sourceRef: React.RefObject<HTMLElement | null>;
   children: React.ReactNode;
 }) {
-  if (!fullscreen) return <>{children}</>;
+  // The caller owns the flag, so the morph follows it rather than the other way round. The rail has no
+  // wrapper of its own — its children are flex items of the tab panel — so the panel is what it grows from.
+  const morph = useMorphFullscreen(sourceRef);
+  useEffect(() => { if (fullscreen) morph.open(); else morph.close(); }, [fullscreen]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  if (!morph.mounted) return <>{children}</>;
+  // A panel, not a field: nothing inside it carries a caption, so this is the one window that has to name
+  // itself.
   return (
-    <Dialog open onOpenChange={(o) => { if (!o) onClose(); }}>
-      <DialogContent
-        hideClose
-        aria-describedby={undefined}
-        aria-label="Prompts"
-        className={cn(dialogFullHeight, 'flex w-screen max-w-none flex-col gap-4 rounded-none border-0 p-4 sm:rounded-none')}
-      >
-        {children}
-      </DialogContent>
-    </Dialog>
+    <FullscreenShell
+      morph={morph}
+      title="Prompts"
+      showTitle
+      returnFocus={() => sourceRef.current?.querySelector<HTMLElement>('button[aria-label="Edit full screen"]')}
+    >
+      {children}
+    </FullscreenShell>
   );
 }
 
@@ -906,6 +914,7 @@ export const SettingsModal = ({ isOpen, onOpenChange, previewValues, initialTab,
   const [promptView, setPromptView] = useState<'system' | 'user' | 'messages' | 'options'>('system');
   // Fullscreen for the whole Prompts panel (rail included), not for one field — see PromptsShell.
   const [promptsFullscreen, setPromptsFullscreen] = useState(false);
+  const promptsPanelRef = useRef<HTMLDivElement | null>(null);
   const selectPromptTab = (t: string) => { setPromptTab(t); setPromptView('system'); };
   // The rail's groups, with prompts whose feature is off already removed.
   const railGroups = visibleGroups(promptAvailable);
@@ -2111,8 +2120,8 @@ You can always draw a single scene by hand from the button above the story inste
             />
           </TabsContent>
 
-          <TabsContent value="prompts" className="pt-4 px-2 pb-4 flex-1 min-h-0 data-[state=active]:flex flex-col gap-4">
-            <PromptsShell fullscreen={promptsFullscreen} onClose={() => setPromptsFullscreen(false)}>
+          <TabsContent ref={promptsPanelRef} value="prompts" className="pt-4 px-2 pb-4 flex-1 min-h-0 data-[state=active]:flex flex-col gap-4">
+            <PromptsShell fullscreen={promptsFullscreen} sourceRef={promptsPanelRef}>
             {/* Preset selector: the whole prompt set switches together. Built-in presets (Default, Simple)
                 are read-only and differ only in section-header style. */}
             <div className="flex items-center gap-2 flex-shrink-0">

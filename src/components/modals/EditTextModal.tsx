@@ -5,6 +5,7 @@ import PromptField from "@/components/prompt/PromptField";
 import { plainVocabulary } from "@/lib/chipVocabulary";
 import { cn } from "@/lib/utils";
 import { useResetOnOpen } from "@/lib/useResetOnOpen";
+import { useMorphResize } from "@/lib/useMorphFullscreen";
 
 // Narration is prose, not a template: `plainVocabulary` chips nothing, so a brace the AI happened to write
 // stays the text it is.
@@ -23,6 +24,9 @@ export const EditTextModal = ({
 }) => {
   const [editedText, setEditedText] = useState(text);
   const [fullscreen, setFullscreen] = useState(false);
+  // This window grows in place rather than raising a second one over itself, so the trip is the dialog
+  // travelling between its own two sizes — the same animation, measured on one element.
+  const morphRef = useMorphResize(fullscreen ? 'full' : 'window');
 
   // Reseed from `text` on each open, not on `text` changing — otherwise cancelling and reopening the same
   // page (unchanged `text`) would leave the discarded edits sitting in the editor. Fullscreen resets with
@@ -37,6 +41,8 @@ export const EditTextModal = ({
   return (
     <Dialog open={isOpen} onOpenChange={onOpenChange}>
       <DialogContent
+        ref={morphRef}
+        hideClose
         aria-describedby={undefined}
         className={cn(
           'flex flex-col',
@@ -48,7 +54,7 @@ export const EditTextModal = ({
         )}
       >
         <DialogHeader>
-          <DialogTitle>Edit Text</DialogTitle>
+          <DialogTitle className="text-label">Edit Text</DialogTitle>
         </DialogHeader>
         {/* No margins of its own: the dialog's own `gap-4` spaces header, editor and footer evenly, where
             extra margin here stacked on top of it. */}

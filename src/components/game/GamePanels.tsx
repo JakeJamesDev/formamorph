@@ -89,6 +89,7 @@ export const LeftPanel = ({ entities, onEntityClick, onRegenerateMemory }: {
     setDiscoveredEntities,
     setSuppressedCharacterNames,
     setVisibleEntities,
+    setIsEditMode,
   } = useGameplay();
   // The discovered character awaiting delete confirmation, or null.
   const [pendingRemoval, setPendingRemoval] = useState<string | null>(null);
@@ -163,10 +164,15 @@ export const LeftPanel = ({ entities, onEntityClick, onRegenerateMemory }: {
       setLeftTab('memory');
       return;
     }
+    // The narration editor is otherwise only reachable mid-game, behind a played turn.
+    if (devRoute?.modal === 'editText') {
+      setIsEditMode(true);
+      return;
+    }
     if (!devRoute?.modal && devRoute?.tab && (GAME_LEFT_PANEL_TABS as readonly string[]).includes(devRoute.tab)) {
       setLeftTab(devRoute.tab);
     }
-  }, [devRoute?.modal, devRoute?.tab]);
+  }, [devRoute?.modal, devRoute?.tab, setIsEditMode]);
 
   const modelViewer = characterData ? (
     // Mobile: fill the whole panel. Landscape: a fixed 1.2 aspect box sitting atop the panel.

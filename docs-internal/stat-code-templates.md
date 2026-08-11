@@ -184,7 +184,52 @@ the return trip a fresh measurement rather than a remembered rect.
 - Degrades to a plain mount under `prefers-reduced-motion`, or when the source has no area (the Preview
   tab unmounts the textarea, so this is reachable, not theoretical).
 
-Not yet applied to `PromptField`'s own full screen — deliberately one surface first.
+### Unified across every full-screen surface (BUILT 2026-08-11)
+
+`FullscreenShell` (`src/components/FullscreenShell.tsx`) now owns the window: the full-height classes, the
+header, `hideClose`, `unanimated`, and the morph wiring. It replaced four hand-rolled copies that disagreed
+on all four. `FullscreenShell.test.tsx` guards it — each surface must render `<FullscreenShell` and must not
+reach for `dialogFullHeight` itself.
+
+- **No close button anywhere.** It duplicated the toolbar's own toggle. Escape still closes.
+- **Headings only where nothing else names the box.** A markdown `PromptField` already puts its caption on
+  its own row (the formatting toolbar takes the inline slot) and that row travels into full screen, so the
+  shell adds nothing; `CodeArea`'s caption rides in its toolbar the same way. Only Settings → Prompts, a
+  panel with no caption at all, sets `showTitle`. The title is always rendered — `sr-only` when hidden —
+  because a Radix dialog without one is unnamed to a screen reader.
+- **Centering** is `max-sm:justify-center` on the markdown label row when full screen, plus `DialogHeader`'s
+  own `text-center sm:text-left`. Inline layouts are untouched.
+- **The source rect is snapshotted on toggle, not read at trip time.** `PromptField` hands its body to the
+  overlay instead of leaving a copy behind, so by the return trip there is nothing left to measure.
+  Surfaces whose source survives (`CodeArea`) re-snapshot on the way out, so a scroll between the two
+  cannot strand the animation.
+- **`useMorphResize`** is the one-element variant, for Edit Text — it grows in place because its footer
+  holds the save, and an overlay would cover the buttons that commit the edit. The old rect is read during
+  render, since by the layout effect the element has already been resized.
+- **Never re-snapshot a source that now lives inside the overlay.** `close()` re-measures so a scroll can't
+  strand the trip — but for `PromptField` the source *is* the body it just handed over, so the measurement
+  came back as the overlay's own rect, the trip inverted onto where the box already was, and closing
+  collapsed to the content fade. `snapshot()` skips when `boxEl.contains(source)`.
+- **Focus is moved by hand, with `preventScroll`.** The dialog primitive focuses the first control inside
+  the window; since the window opens sitting on the field it came from, revealing that control scrolled the
+  panel. `onOpenAutoFocus`/`onCloseAutoFocus` are both prevented and focus is placed manually.
+- **A spacer holds the field's height while its body is away.** `PromptField` moves rather than copies, so
+  the panel lost one editor's height and the browser clamped its scroll to the new bottom — measured
+  jumping 462 → 162 on open and back on close, now steady at 461.
+- **The trip composes with the element's own transform, base first.** A windowed dialog is centered *by*
+  `translate(-50%, -50%)`; assigning `transform` threw that away and dropped the box at the raw
+  `left:50%/top:50%` corner until the animation cleared. Base leads so it applies outermost — the reverse
+  order scales the centering offset along with the box and lands it somewhere else again.
+- **Closing restores the scroll of every panel behind the window.** Focus moves as the window closes — the
+  host dialog's trap, the browser's reveal-the-focused-element, animated by the panel's own
+  `scroll-behavior` — and `preventScroll` only covers focus calls we make. The read position is knowable,
+  so it is recorded on open and put back on close (at settle, next frame, and 120ms, since the hand-off
+  spans several frames). Diagnosed from a user-captured scroll trace: 21 smooth frames to 100, then a snap
+  to 0, with `scrollHeight` constant throughout — which ruled out the height-hold entirely.
+- Edit Text is reachable at `#dev?view=gameViewer&modal=editText` (pair with `fixture=whiteRoom` for a
+  game already in progress).
+- Settings → Prompts still lifts the whole rail (its list is the point); its source is the tab panel, which
+  keeps a real rect via `flex-1` even once its children have moved into the overlay.
 
 ### Code editing affordances (undo / redo / fullscreen / toolbar)
 
