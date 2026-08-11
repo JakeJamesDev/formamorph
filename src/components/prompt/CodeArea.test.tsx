@@ -1,12 +1,14 @@
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, beforeEach } from 'vitest';
 import { useState } from 'react';
-import { render, screen } from '@testing-library/react';
+import { render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { CodeArea } from './CodeArea';
 
 /** The field is controlled by its parent everywhere it's used, so the harness owns the value too —
  *  testing it uncontrolled would exercise a wiring nothing ships. */
-function Harness({ slots = false, onValue }: { slots?: boolean; onValue?: (v: string) => void }) {
+function Harness({ slots = false, preview = false, onValue }: {
+  slots?: boolean; preview?: boolean; onValue?: (v: string) => void;
+}) {
   const [value, setValue] = useState('');
   return (
     <CodeArea
@@ -14,6 +16,7 @@ function Harness({ slots = false, onValue }: { slots?: boolean; onValue?: (v: st
       onChange={(next) => { setValue(next); onValue?.(next); }}
       ariaLabel="Stat code"
       slots={slots}
+      preview={preview ? <p>what this makes</p> : undefined}
     />
   );
 }
@@ -21,6 +24,9 @@ function Harness({ slots = false, onValue }: { slots?: boolean; onValue?: (v: st
 const area = () => screen.getByLabelText('Stat code') as HTMLTextAreaElement;
 
 describe('CodeArea', () => {
+  // The split preference is shared and persisted, so one test's toggle would otherwise decide the next.
+  beforeEach(() => localStorage.clear());
+
   it('undoes a word at a time rather than the whole line', async () => {
     const user = userEvent.setup();
     render(<Harness />);
@@ -133,6 +139,39 @@ describe('CodeArea', () => {
 
     await user.click(screen.getByLabelText('Exit full screen'));
     expect(screen.queryByRole('dialog')).toBeNull();
+  });
+
+  it('grows the Edit | Preview pair only when there is something to preview', () => {
+    const { unmount } = render(<Harness />);
+    expect(screen.queryByRole('tab', { name: 'Preview' })).toBeNull();
+    unmount();
+
+    render(<Harness preview />);
+    expect(screen.getByRole('tab', { name: 'Edit' })).toBeInTheDocument();
+    expect(screen.getByRole('tab', { name: 'Preview' })).toBeInTheDocument();
+    expect(screen.queryByText('what this makes')).toBeNull();
+  });
+
+  it('shows the preview on its tab', async () => {
+    const user = userEvent.setup();
+    render(<Harness preview />);
+    await user.click(screen.getByRole('tab', { name: 'Preview' }));
+    expect(screen.getByText('what this makes')).toBeInTheDocument();
+  });
+
+  it('carries the pair into full screen as a split, and back to one pane on request', async () => {
+    const user = userEvent.setup();
+    render(<Harness preview />);
+    await user.click(screen.getByLabelText('Edit full screen'));
+
+    // Wide enough to halve, so the split is what opens — both panes readable without a tab click.
+    const overlay = screen.getByRole('dialog');
+    expect(overlay).toHaveTextContent('what this makes');
+    expect(within(overlay).queryByRole('tab', { name: 'Preview' })).toBeNull();
+
+    await user.click(within(overlay).getByLabelText('Show one pane at a time'));
+    expect(within(overlay).getByRole('tab', { name: 'Preview' })).toBeInTheDocument();
+    expect(within(overlay).queryByText('what this makes')).toBeNull();
   });
 
   it('puts history and the view control together on the right, after what gets inserted', () => {

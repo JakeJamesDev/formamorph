@@ -1,10 +1,12 @@
 import { useCallback, useLayoutEffect, useRef, useState, type ReactNode } from 'react';
-import { Maximize2, Minimize2, Redo2, Undo2, Braces, Variable } from 'lucide-react';
+import { Columns2, Maximize2, Minimize2, Redo2, Square, Undo2, Braces, Variable } from 'lucide-react';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, dialogFullHeight } from '@/components/ui/dialog';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
 import { TOOLBAR_BTN } from '@/components/prompt/toolbarStyles';
+import { resolveLayout, usePromptSplitMode, useContainerWidth, MIN_PANE_WIDTH } from '@/lib/promptLayout';
 import { cn } from '@/lib/utils';
 import {
   canRedo, canUndo, commitHistory, initHistory, redoHistory, undoHistory, type HistoryState,
@@ -63,6 +65,9 @@ interface CodeAreaProps {
   label?: ReactNode;
   /** Offer the `{{slot}}` menu. Template editing only. */
   slots?: boolean;
+  /** What the code produces. Given this, the field grows the Edit | Preview pair, which becomes a
+   *  side-by-side split once full screen has the width for it. */
+  preview?: ReactNode;
   className?: string;
   rows?: number;
 }
@@ -70,9 +75,15 @@ interface CodeAreaProps {
 /** Toolbar + textarea. Split out so the fullscreen overlay can mount a second copy against the same
  *  value without the outer component recursing into itself. */
 function CodeAreaBody({
-  value, onChange, ariaLabel, placeholder, label, slots, className, rows = 8, fullscreen, onToggleFullscreen,
+  value, onChange, ariaLabel, placeholder, label, slots, preview, className, rows = 8, fullscreen, onToggleFullscreen,
 }: CodeAreaProps & { fullscreen: boolean; onToggleFullscreen: () => void }) {
   const areaRef = useRef<HTMLTextAreaElement | null>(null);
+  const [measureRef, containerWidth] = useContainerWidth();
+  const [splitMode, setSplitMode] = usePromptSplitMode();
+  // Full screen measures the window it just took over, not the slot the field was opened from.
+  const effectiveWidth = fullscreen ? (typeof window !== 'undefined' ? window.innerWidth - 48 : 0) : containerWidth;
+  const showTabs = !!preview;
+  const split = resolveLayout(splitMode, effectiveWidth, showTabs, fullscreen) === 'split';
   const snap = (v: string, start = 0, end = 0) => ({ value: v, selectionStart: start, selectionEnd: end });
   const historyRef = useRef<HistoryState>(initHistory(snap(value)));
   const ownRef = useRef(value);
@@ -126,8 +137,28 @@ function CodeAreaBody({
     forceUpdate((n) => n + 1);
   };
 
+  const editSurface = (
+    <Textarea
+      ref={areaRef}
+      value={value}
+      onChange={(event) => onChange(event.target.value)}
+      placeholder={placeholder}
+      aria-label={ariaLabel}
+      rows={rows}
+      // A floor, not `min-h-0`: in a height-pinned pane the field is a flex child, and with the
+      // on-screen keyboard eating most of `--app-h` a zero minimum lets it collapse to nothing.
+      // Keeping a usable minimum makes the pane around it scroll instead.
+      className="font-mono text-label flex-1 min-h-[6rem] resize-none"
+    />
+  );
+  const previewSurface = (
+    <div className="h-full min-h-[6rem] overflow-auto rounded-md border border-input bg-muted/40 px-3 py-2">
+      {preview}
+    </div>
+  );
+
   return (
-    <div className={cn('flex flex-col gap-1 min-h-0', className)}>
+    <div ref={measureRef} className={cn('flex flex-col gap-1 min-h-0', className)}>
       {/* Same three-part chrome as PromptField: what you insert on the left, the field's own history and
           view controls on the right, one rule between them. */}
       <div className="flex items-center gap-1 flex-shrink-0">
@@ -152,6 +183,17 @@ function CodeAreaBody({
             <Redo2 className="h-4 w-4" />
           </button>
           <span className="mx-0.5 w-px self-stretch bg-border" />
+          {showTabs && fullscreen && effectiveWidth - 12 >= MIN_PANE_WIDTH * 2 && (
+            <button
+              type="button"
+              onMouseDown={(event) => { event.preventDefault(); setSplitMode(split ? 'tabs' : 'split'); }}
+              title={split ? 'Show one pane at a time' : 'Show edit and preview side by side'}
+              aria-label={split ? 'Show one pane at a time' : 'Show edit and preview side by side'}
+              className={TOOLBAR_BTN}
+            >
+              {split ? <Square className="h-4 w-4" /> : <Columns2 className="h-4 w-4" />}
+            </button>
+          )}
           <button
             type="button"
             title={fullscreen ? 'Exit full screen' : 'Edit full screen'}
@@ -163,18 +205,25 @@ function CodeAreaBody({
           </button>
         </div>
       </div>
-      <Textarea
-        ref={areaRef}
-        value={value}
-        onChange={(event) => onChange(event.target.value)}
-        placeholder={placeholder}
-        aria-label={ariaLabel}
-        rows={rows}
-        // A floor, not `min-h-0`: in a height-pinned pane the field is a flex child, and with the
-        // on-screen keyboard eating most of `--app-h` a zero minimum lets it collapse to nothing.
-        // Keeping a usable minimum makes the pane around it scroll instead.
-        className="font-mono text-label flex-1 min-h-[6rem] resize-none"
-      />
+      {!showTabs ? editSurface : split ? (
+        <div className="flex-1 min-h-0 flex gap-3">
+          <div className="flex-1 min-w-0 flex flex-col">{editSurface}</div>
+          <div className="flex-1 min-w-0 flex flex-col">{previewSurface}</div>
+        </div>
+      ) : (
+        <Tabs defaultValue="edit" className="flex flex-col flex-1 min-h-0">
+          <TabsList className="grid w-full grid-cols-2 flex-shrink-0">
+            <TabsTrigger value="edit">Edit</TabsTrigger>
+            <TabsTrigger value="preview">Preview</TabsTrigger>
+          </TabsList>
+          <TabsContent value="edit" className="mt-2 flex-1 min-h-0 data-[state=active]:flex flex-col">
+            {editSurface}
+          </TabsContent>
+          <TabsContent value="preview" className="mt-2 flex-1 min-h-0 data-[state=active]:flex flex-col">
+            {previewSurface}
+          </TabsContent>
+        </Tabs>
+      )}
     </div>
   );
 }
