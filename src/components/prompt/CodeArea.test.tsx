@@ -6,8 +6,8 @@ import { CodeArea } from './CodeArea';
 
 /** The field is controlled by its parent everywhere it's used, so the harness owns the value too —
  *  testing it uncontrolled would exercise a wiring nothing ships. */
-function Harness({ slots = false, preview = false, initial = '' }: {
-  slots?: boolean; preview?: boolean; initial?: string;
+function Harness({ slots = false, preview = false, initial = '', statNames }: {
+  slots?: boolean; preview?: boolean; initial?: string; statNames?: string[];
 }) {
   const [value, setValue] = useState(initial);
   return (
@@ -16,6 +16,7 @@ function Harness({ slots = false, preview = false, initial = '' }: {
         value={value}
         onChange={setValue}
         ariaLabel="Stat code"
+        statNames={statNames}
         slots={slots}
         preview={preview ? <p>what this makes</p> : undefined}
       />
@@ -264,6 +265,70 @@ describe('CodeArea', () => {
     await user.click(within(overlay).getByLabelText('Show one pane at a time'));
     expect(within(overlay).getByRole('tab', { name: 'Preview' })).toBeInTheDocument();
     expect(within(overlay).queryByText('what this makes')).toBeNull();
+  });
+
+  /** The popup CodeMirror raises for completions, once it has one to raise. */
+  const popup = () => document.querySelector('.cm-tooltip-autocomplete') as HTMLElement | null;
+
+  it('offers the sandbox’s own names as they are typed, and applies the one picked', async () => {
+    const user = userEvent.setup();
+    render(<Harness />);
+    await user.click(await editor());
+    await user.keyboard('return elap');
+
+    await waitFor(() => expect(popup()).toBeTruthy());
+    // The matched prefix is its own span, so the entry is found by what it reads as, not by one text node.
+    const option = within(popup()!).getAllByRole('option')
+      .find(entry => entry.textContent?.startsWith('elapsedHours'));
+    await user.click(option!);
+
+    expect(owned()).toBe('return elapsedHours');
+  });
+
+  it('offers the world’s stat names inside a string literal', async () => {
+    const user = userEvent.setup();
+    render(<Harness statNames={['Health', 'Stamina']} />);
+    await user.click(await editor());
+    await user.keyboard('return "');
+
+    await waitFor(() => expect(popup()).toBeTruthy());
+    expect(within(popup()!).getByText('Stamina')).toBeInTheDocument();
+  });
+
+  // Story 5 of the parent spec: Escape is the way out of the field, and the popup must not spend it.
+  it('closes the popup on Escape, and still hands the next Tab back after a second one', async () => {
+    const user = userEvent.setup();
+    render(<Harness />);
+    await user.click(await editor());
+    await user.keyboard('return elap');
+    await waitFor(() => expect(popup()).toBeTruthy());
+
+    await user.keyboard('{Escape}');
+    await waitFor(() => expect(popup()).toBeNull());
+    // That Escape went to the list, so this Tab still indents — the field is not yet being left.
+    await user.tab();
+    expect(owned()).toBe('  return elap');
+
+    await user.keyboard('{Escape}');
+    await user.tab();
+    expect(owned()).toBe('  return elap');
+  });
+
+  it('underlines a name the sandbox does not provide', async () => {
+    render(<Harness initial="return elapsedHrs;" />);
+    const field = await editor();
+    await waitFor(
+      () => expect(field.querySelector('.cm-lintRange-error')?.textContent).toBe('elapsedHrs'),
+      { timeout: 3000 },
+    );
+  });
+
+  it('leaves valid code unmarked', async () => {
+    render(<Harness initial="return elapsedHours;" />);
+    const field = await editor();
+    // Long enough for the linter's own delay to have run and found nothing.
+    await waitFor(() => expect(field.closest('.cm-editor')?.querySelector('.cm-gutter-lint')).toBeTruthy());
+    await waitFor(() => expect(field.querySelector('.cm-lintRange-error')).toBeNull(), { timeout: 3000 });
   });
 
   it('puts history and the view control together on the right, after what gets inserted', async () => {

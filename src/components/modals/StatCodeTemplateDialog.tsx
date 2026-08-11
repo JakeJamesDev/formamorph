@@ -178,6 +178,13 @@ export function StatCodeTemplateDialog({ open, onOpenChange, stats, currentStatI
     () => stats.filter(stat => stat.id !== currentStatId),
     [stats, currentStatId],
   );
+  // Every stat, not the pickable ones: a slot picker must not offer the stat being edited (a formula
+  // reading its own value from the list is a loop), but code written by hand reads it through
+  // `currentStatId` all the time, so its name belongs in the completions.
+  const statNames = useMemo(
+    () => stats.map(stat => stat.name).filter((name): name is string => !!name),
+    [stats],
+  );
   const parsed = useMemo(() => parseTemplateSlots(selected?.code ?? ''), [selected?.code]);
 
   // Each newly selected template starts from its own declared defaults rather than inheriting the last
@@ -295,6 +302,7 @@ export function StatCodeTemplateDialog({ open, onOpenChange, stats, currentStatI
                 onChange={(code) => setDraft({ ...draft, code })}
                 label="Code"
                 ariaLabel="Template code"
+                statNames={statNames}
                 slots
                 className="flex-1"
                 preview={(

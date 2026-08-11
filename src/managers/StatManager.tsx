@@ -59,6 +59,13 @@ const StatManager = ({ stat }: { stat: Stat }) => {
     return buildMorphGroups(morphSources, taken);
   }, [morphSources, stats, stat.id]);
 
+  // What a `stats.find(s => s.name === '…')` lookup can legitimately match, for the code field's
+  // string-literal completions.
+  const statNames = useMemo(
+    () => stats.map(entry => entry.name).filter((name): name is string => !!name),
+    [stats],
+  );
+
   // Open the code section by default when the selected stat carries code (the draft sync itself is
   // handled by useEditingDraft).
   useEffect(() => {
@@ -421,6 +428,7 @@ const StatManager = ({ stat }: { stat: Stat }) => {
               value={editingStat.code || ""}
               onChange={(code) => handleChange("code", code)}
               ariaLabel="Stat code"
+              statNames={statNames}
               // Its caption is the section heading, which full screen leaves behind — so the field names
               // itself in the toolbar and stays labeled in both states.
               label="Code"
