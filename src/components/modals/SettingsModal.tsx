@@ -10,7 +10,7 @@ import { readSettingsMode, writeSettingsMode, type SettingsMode } from '@/lib/se
 import { settingsUseAdvancedValues } from '@/lib/settingsAdvancedData';
 import { TutorialPopover } from '@/components/TutorialPopover';
 import { useDevRoute } from '@/lib/devRouter';
-import { Row, CheckRow, Section, SubGroup, RowLabel, HintInfo } from '@/components/SettingsRows';
+import { Row, CheckRow, Section, SubGroup, HintInfo } from '@/components/SettingsRows';
 import TagField from '@/components/prompt/TagField';
 import { reasoningTabs, reasoningPromptTabs, defaultPromptReasoning, defaultReasoningBudgetPct, REASONING_CONTROL_KINDS, type PromptReasoning } from '@/lib/reasoningEffort';
 import { ExportPresetDialog, ImportPresetDialog } from '@/components/modals/PresetShareDialogs';
@@ -30,7 +30,6 @@ import { RevealAnimationDemoButton } from "@/components/RevealAnimationDemo";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Checkbox } from "@/components/ui/checkbox";
-import { Label } from "@/components/ui/label";
 import { Progress } from "@/components/ui/progress";
 import { loadEmbeddingModel, disposeEmbeddingModel, type EmbeddingLoadProgress } from '@/lib/embeddingWorkerClient';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -1196,8 +1195,7 @@ export const SettingsModal = ({ isOpen, onOpenChange, previewValues, initialTab,
             <ScrollArea className="flex-1 min-h-0">
             <div className="grid gap-6 py-4">
               <Section title="Appearance">
-              <div className="grid grid-cols-1 sm:grid-cols-[minmax(0,1fr)_minmax(0,3fr)] items-start gap-4">
-                <RowLabel top>Theme</RowLabel>
+              <Row top label="Theme">
                 <div>
                   <ToggleGroup
                     type="single"
@@ -1223,9 +1221,8 @@ export const SettingsModal = ({ isOpen, onOpenChange, previewValues, initialTab,
                     ))}
                   </div>
                 </div>
-              </div>
-              <div className="grid grid-cols-1 sm:grid-cols-[minmax(0,1fr)_minmax(0,3fr)] items-center gap-4">
-                <RowLabel htmlFor="themeColor">Theme Color</RowLabel>
+              </Row>
+              <Row center label="Theme Color" htmlFor="themeColor">
                 <div className="flex items-center gap-3">
                   <Select value={themeColor} onValueChange={(v) => setThemeColor(v as ThemeColor)}>
                     <SelectTrigger id="themeColor" className="w-48">
@@ -1240,9 +1237,8 @@ export const SettingsModal = ({ isOpen, onOpenChange, previewValues, initialTab,
                   <ThemePreviewButton />
                   <span className="text-helper text-muted-foreground">Recolors the whole app; applies to both light and dark.</span>
                 </div>
-              </div>
-              <div className="grid grid-cols-1 sm:grid-cols-[minmax(0,1fr)_minmax(0,3fr)] items-center gap-4">
-                <RowLabel htmlFor="fontFamily">Font</RowLabel>
+              </Row>
+              <Row center label="Font" htmlFor="fontFamily">
                 <div className="flex items-center gap-3">
                   <Select value={fontFamily} onValueChange={(v) => setFontFamily(v as FontChoice)}>
                     <SelectTrigger id="fontFamily" className="w-48">
@@ -1258,35 +1254,31 @@ export const SettingsModal = ({ isOpen, onOpenChange, previewValues, initialTab,
                   </Select>
                   <span className="text-helper text-muted-foreground">The typeface for the whole app.</span>
                 </div>
-              </div>
+              </Row>
               </Section>
 
               <Section title="Scene">
-              <div className="grid grid-cols-1 sm:grid-cols-[minmax(0,1fr)_minmax(0,3fr)] items-center gap-4">
-                <RowLabel htmlFor="bgmEnabled">Background Music</RowLabel>
-                <div className="flex items-center">
-                  <Checkbox
-                    id="bgmEnabled"
-                    checked={bgmEnabled}
-                    onCheckedChange={(c) => setBgmEnabled(c === true)}
-                  />
-                </div>
-              </div>
-              <div className="grid grid-cols-1 sm:grid-cols-[minmax(0,1fr)_minmax(0,3fr)] items-center gap-4">
-                <RowLabel htmlFor="locationBackground">Location Background</RowLabel>
-                <div className="flex items-center gap-3">
-                  <Checkbox
-                    id="locationBackground"
-                    checked={locationBackground}
-                    onCheckedChange={(c) => setLocationBackground(c === true)}
-                  />
-                  <span className="text-helper text-muted-foreground">Show the location image behind the game. Off uses a blank themed background.</span>
-                </div>
-              </div>
+              <CheckRow
+                label="Background Music"
+                htmlFor="bgmEnabled"
+                checked={bgmEnabled}
+                onChange={setBgmEnabled}
+                hint=""
+              />
+              <CheckRow
+                label="Location Background"
+                htmlFor="locationBackground"
+                checked={locationBackground}
+                onChange={setLocationBackground}
+                hint="Show the location image behind the game. Off uses a blank themed background."
+              />
               {locationBackground && (
                 <SubGroup>
-                <div className="grid grid-cols-1 sm:grid-cols-[minmax(0,1fr)_minmax(0,3fr)] items-center gap-4">
-                  <RowLabel>Background Fade</RowLabel>
+                <Row
+                  center
+                  label="Background Fade"
+                  hint="Fades the location image toward the background color for readability. 0% shows the full image."
+                >
                   <div className="flex items-center gap-3">
                     <Slider
                       value={[backgroundOverlay]}
@@ -1300,42 +1292,34 @@ export const SettingsModal = ({ isOpen, onOpenChange, previewValues, initialTab,
                       {Math.round(backgroundOverlay * 100)}%
                     </span>
                   </div>
-                  <p className="text-helper text-muted-foreground sm:col-start-2">
-                    Fades the location image toward the background color for readability. 0% shows the full image.
-                  </p>
-                </div>
+                </Row>
                 </SubGroup>
               )}
               </Section>
 
               <Section title="Narration">
-              <div className="grid grid-cols-1 sm:grid-cols-[minmax(0,1fr)_minmax(0,3fr)] items-center gap-4">
-                <RowLabel>Narration Reveal</RowLabel>
+              <Row center label="Narration Reveal">
                 <div className="flex items-center gap-2">
                   <RevealAnimationDemoButton />
                   <span className="text-helper text-muted-foreground">How each sentence appears as it streams.</span>
                 </div>
-              </div>
-              <div className="grid grid-cols-1 sm:grid-cols-[minmax(0,1fr)_minmax(0,3fr)] items-start gap-4">
-                <RowLabel top info={
-                  <HintInfo>{`The language the AI writes narration and choices in.
+              </Row>
+              <Row top label="AI Language" info={
+                <HintInfo>{`The language the AI writes narration and choices in.
 
 Pick a suggestion, type your own, or even a **style** — like *formal English* or *pirate speak*.`}</HintInfo>
-                }>AI Language</RowLabel>
-                <div>
-                  <TokenAutocomplete
-                    single
-                    openOnFocus
-                    values={language ? [language] : []}
-                    onChange={(vals) => setLanguage(vals[0] ?? '')}
-                    options={COMMON_LANGUAGES}
-                    placeholder="Language or style…"
-                  />
-                </div>
-              </div>
+              }>
+                <TokenAutocomplete
+                  single
+                  openOnFocus
+                  values={language ? [language] : []}
+                  onChange={(vals) => setLanguage(vals[0] ?? '')}
+                  options={COMMON_LANGUAGES}
+                  placeholder="Language or style…"
+                />
+              </Row>
               {advanced && (
-              <div className="grid grid-cols-1 sm:grid-cols-[minmax(0,1fr)_minmax(0,3fr)] items-start gap-4">
-                <RowLabel top>Paragraph Limit</RowLabel>
+              <Row top label="Paragraph Limit">
                 <div>
                   <ToggleGroup
                     type="single"
@@ -1362,7 +1346,7 @@ Pick a suggestion, type your own, or even a **style** — like *formal English* 
                     ))}
                   </div>
                 </div>
-              </div>
+              </Row>
               )}
               {advanced && (
               <CheckRow
@@ -1387,8 +1371,7 @@ Works best when **Paragraph Limit** isn't set to *Single*.`}</HintInfo>}
               <Section title="Turn Extras" hint="Optional passes that run alongside each turn's narration.">
               {/* Enable/disable the optional per-turn requests. Synced with the System Prompts tab, which
                   shows a prompt's editor tab only while it's enabled here. */}
-              <div className="grid grid-cols-1 sm:grid-cols-[minmax(0,1fr)_minmax(0,3fr)] items-start gap-4">
-                <RowLabel>System Prompts</RowLabel>
+              <Row label="System Prompts">
                 <div className="flex flex-wrap gap-x-4 gap-y-2">
                   <label htmlFor="choicesEnabled" className="flex items-center gap-2 text-label cursor-pointer">
                     <Checkbox
@@ -1418,7 +1401,7 @@ Works best when **Paragraph Limit** isn't set to *Single*.`}</HintInfo>}
                     Location Change
                   </label>
                 </div>
-              </div>
+              </Row>
               {/* Auto-apply detected location changes — its own row, only shown while Location Change is on. */}
               {locationChangeEnabled && (
                 <SubGroup>
@@ -1437,8 +1420,7 @@ Skips the "Move to…?" confirmation.`}</HintInfo>}
               </Section>
 
               <Section title="Reasoning" hint="How the AI plans a turn before writing it.">
-              <div className="grid grid-cols-1 sm:grid-cols-[minmax(0,1fr)_minmax(0,3fr)] items-start gap-4">
-                <RowLabel top>Thinking</RowLabel>
+              <Row top label="Thinking">
                 <div>
                   <OptionSwitcher value={thinkingMode} onChange={(v) => setThinkingMode(v as ThinkingMode)} options={THINKING_OPTIONS} />
                   {/* Stacked like Paragraph Limit so switching thinking modes doesn't reflow the layout. */}
@@ -1453,56 +1435,53 @@ Skips the "Move to…?" confirmation.`}</HintInfo>}
                     ))}
                   </div>
                 </div>
-              </div>
+              </Row>
               {/* Staged only: cap how many characters the director stages per turn (each is its own pass). Off =
                   unbounded. Feeds both the hard cap and the <ACTIVE CHARACTER GUIDANCE> chip in the director prompt. */}
               {advanced && thinkingMode === 'staged' && (
                 <SubGroup>
-                <div className="grid grid-cols-1 sm:grid-cols-[minmax(0,1fr)_minmax(0,3fr)] items-start gap-4">
-                  <RowLabel top info={
+                <Row
+                  top
+                  label="Limit Active Characters"
+                  hint="Cap characters the director stages per turn."
+                  info={
                     <HintInfo>{`Caps how many characters the director stages each turn.
 
 - Each staged character adds its **own request**
 - Off lets the scene use as many as it calls for`}</HintInfo>
-                  }>Limit Active Characters</RowLabel>
-                  <div className="space-y-2">
-                    <div className="flex items-center gap-3">
-                      <Checkbox
-                        checked={limitActiveCharacters}
-                        onCheckedChange={(v) => setLimitActiveCharacters(v === true)}
-                      />
-                      <Input
-                        type="number"
-                        min={1}
-                        value={activeCharacterLimit}
-                        disabled={!limitActiveCharacters}
-                        onChange={(e) => setActiveCharacterLimit(Math.max(1, parseInt(e.target.value) || 1))}
-                        className="w-20"
-                      />
-                    </div>
-                    <span className="text-helper text-muted-foreground">Cap characters the director stages per turn.</span>
+                  }
+                >
+                  <div className="flex items-center gap-3">
+                    <Checkbox
+                      checked={limitActiveCharacters}
+                      onCheckedChange={(v) => setLimitActiveCharacters(v === true)}
+                    />
+                    <Input
+                      type="number"
+                      min={1}
+                      value={activeCharacterLimit}
+                      disabled={!limitActiveCharacters}
+                      onChange={(e) => setActiveCharacterLimit(Math.max(1, parseInt(e.target.value) || 1))}
+                      className="w-20"
+                    />
                   </div>
-                </div>
+                </Row>
                 </SubGroup>
               )}
               {/* Native mode passes reasoning_effort straight through; shown only there since the guided modes drive
                   their own thinking. The levels are whichever the active endpoint accepts (detected on connect). */}
               {advanced && thinkingMode === 'off' && reasoningUnsupported && (
                 <SubGroup>
-                <div className="grid grid-cols-1 sm:grid-cols-[minmax(0,1fr)_minmax(0,3fr)] items-start gap-4">
-                  <RowLabel top muted>Native Reasoning</RowLabel>
-                  <div className="pt-2">
-                    <span className="text-helper text-muted-foreground">This model doesn&apos;t support reasoning, so there&apos;s nothing to configure.</span>
-                  </div>
-                </div>
+                <Row top muted label="Native Reasoning">
+                  <p className="pt-2 text-helper text-muted-foreground">This model doesn&apos;t support reasoning, so there&apos;s nothing to configure.</p>
+                </Row>
                 </SubGroup>
               )}
               {advanced && thinkingMode === 'off' && !reasoningUnsupported && (() => {
                 const reasoningOptions = reasoningTabs(supportedReasoningEfforts);
                 return (
                   <SubGroup>
-                  <div className="grid grid-cols-1 sm:grid-cols-[minmax(0,1fr)_minmax(0,3fr)] items-start gap-4">
-                    <RowLabel top>Native Reasoning</RowLabel>
+                  <Row top label="Native Reasoning">
                     <div>
                       <OptionSwitcher value={reasoningEffort} onChange={(v) => setReasoningEffort(v as ReasoningEffort)} options={reasoningOptions} />
                       <div className="grid mt-2">
@@ -1516,7 +1495,7 @@ Skips the "Move to…?" confirmation.`}</HintInfo>}
                         ))}
                       </div>
                     </div>
-                  </div>
+                  </Row>
                   </SubGroup>
                 );
               })()}
@@ -1551,15 +1530,18 @@ Runs an extra request per turn; edit its prompt under **Prompts → Summary**.`}
                 {semanticMemory && (
                   <SubGroup>
                   {/* Always-on top-K cap: derived checkbox (cap > 0), enabling seeds a sensible default. */}
-                  <div className="grid grid-cols-1 sm:grid-cols-[minmax(0,1fr)_minmax(0,3fr)] items-start gap-4">
-                    <RowLabel top info={
+                  <Row
+                    top
+                    label="Memory Cap"
+                    hint="Cap how many memories ride along each turn."
+                    info={
                       <HintInfo>{`Keeps only this many memories in view each turn — the ones most relevant to your action — even when more would fit.
 
 - Smaller, sharper prompts on long stories
 - The story opening and newest memories always stay
 - Off carries everything that fits`}</HintInfo>
-                    }>Memory Cap</RowLabel>
-                  <div className="space-y-2">
+                    }
+                  >
                     <div className="flex items-center gap-3">
                       <Checkbox
                         checked={semanticBandCap > 0}
@@ -1574,9 +1556,7 @@ Runs an extra request per turn; edit its prompt under **Prompts → Summary**.`}
                         className="w-20"
                       />
                     </div>
-                    <span className="text-helper text-muted-foreground">Cap how many memories ride along each turn.</span>
-                  </div>
-                  </div>
+                  </Row>
                   <CheckRow
                     label="Scene Recall"
                     htmlFor="semanticRehydration"
@@ -1629,8 +1609,7 @@ Runs an extra request per turn; edit its prompt under **Prompts → Summary**.`}
 - Uses the same on-device model as Semantic Memory (~23 MB on first enable)`}</HintInfo>}
               />
               {embedLoading && (
-                <div className="grid grid-cols-1 sm:grid-cols-[minmax(0,1fr)_minmax(0,3fr)] items-center gap-4">
-                  <span />
+                <Row center>
                   <div className="flex items-center gap-2">
                     <Progress
                       className="h-2 flex-1"
@@ -1642,16 +1621,15 @@ Runs an extra request per turn; edit its prompt under **Prompts → Summary**.`}
                         : 'Preparing…'}
                     </span>
                   </div>
-                </div>
+                </Row>
               )}
               {embedError && !embedLoading && (semanticMemory || semanticLore) && (
-                <div className="grid grid-cols-1 sm:grid-cols-[minmax(0,1fr)_minmax(0,3fr)] items-center gap-4">
-                  <span />
+                <Row center>
                   <div className="flex items-center gap-2">
                     <span className="text-helper text-destructive">Model download failed: {embedError}</span>
                     <Button variant="outline" size="sm" onClick={startEmbeddingDownload}>Retry</Button>
                   </div>
-                </div>
+                </Row>
               )}
               {/* Descriptions work from the narration alone, so unlike diaries this is offered in every mode. */}
               <CheckRow
@@ -1809,8 +1787,7 @@ An inspection aid for authoring and debugging; off by default.`}</HintInfo>}
                   )}
                 </div>
               </Row>
-              <div className="grid grid-cols-1 sm:grid-cols-[minmax(0,1fr)_minmax(0,3fr)] gap-4">
-                <div className="hidden sm:block" />
+              <Row>
                 <button
                   type="button"
                   className="justify-self-start text-helper text-muted-foreground underline hover:text-foreground"
@@ -1818,7 +1795,7 @@ An inspection aid for authoring and debugging; off by default.`}</HintInfo>}
                 >
                   Trouble connecting?
                 </button>
-              </div>
+              </Row>
               <Row center label="API Token" htmlFor="apiToken">
                 <Input
                   id="apiToken"
@@ -1858,12 +1835,11 @@ An inspection aid for authoring and debugging; off by default.`}</HintInfo>}
                   </Button>
                 </div>
               </Row>
-              <div className="grid grid-cols-1 sm:grid-cols-[minmax(0,1fr)_minmax(0,3fr)] gap-4">
-                <div className="hidden sm:block" />
+              <Row>
                 <div className={contextStatus.red ? 'text-helper text-destructive' : 'text-helper text-muted-foreground'}>
                   {contextStatus.text}
                 </div>
-              </div>
+              </Row>
               <Row center label="Max Output Tokens" htmlFor="maxTokens">
                 <Input
                   id="maxTokens"
@@ -1932,32 +1908,31 @@ An inspection aid for authoring and debugging; off by default.`}</HintInfo>}
               </Select>
               <Button variant="outline" size="sm" onClick={() => setImagePresetDialog({ mode: 'rename' })}>Rename</Button>
             </div>
-            {/* Global kill switch: hides every "Generate with AI" image button, and everything below it here. */}
-            <div className="flex items-center gap-2 flex-shrink-0">
-              <Checkbox
-                id="imageGenEnabled"
+            {/* Global kill switch: hides every "Generate with AI" image button, and everything below it here.
+                On the same row grid as Face Fix further down, so all three checkboxes share a label column. */}
+            <div className="flex-shrink-0">
+              <CheckRow
+                label="Enable Image Generation"
+                htmlFor="imageGenEnabled"
                 checked={!imageGenDisabled}
-                onCheckedChange={(c) => setImageGenDisabled(c !== true)}
-                className="shrink-0"
+                onChange={(v) => setImageGenDisabled(!v)}
+                hint="Shows the “Generate with AI” buttons."
               />
-              <Label htmlFor="imageGenEnabled" className="text-label font-normal">Enable Image Generation</Label>
-              <span className="text-helper text-muted-foreground">Shows the &ldquo;Generate with AI&rdquo; buttons.</span>
             </div>
             {!imageGenDisabled && (<>
-            <div className="flex items-center gap-2 flex-shrink-0">
-              <Checkbox
-                id="sceneImageAuto"
+            <div className="flex-shrink-0">
+              <CheckRow
+                label="Scene Images"
+                htmlFor="sceneImageAuto"
                 checked={sceneImageAuto}
-                onCheckedChange={(c) => setSceneImageAuto(c === true)}
-                className="shrink-0"
-              />
-              <Label htmlFor="sceneImageAuto" className="text-label font-normal">Scene Images</Label>
-              <HintInfo>{`Draws a picture of every turn without being asked.
+                onChange={setSceneImageAuto}
+                hint="Draw every turn automatically (slower turns)."
+                info={<HintInfo>{`Draws a picture of every turn without being asked.
 
 The image renders **after** the turn's text is done and holds your next action until it finishes — one graphics card can't run the artist and the writer at once. Expect each turn to take as long as your image server needs.
 
-You can always draw a single scene by hand from the button above the story instead.`}</HintInfo>
-              <span className="text-helper text-muted-foreground">Draw every turn automatically (slower turns).</span>
+You can always draw a single scene by hand from the button above the story instead.`}</HintInfo>}
+              />
             </div>
             <ScrollArea className="flex-1 min-h-0">
             <div className="grid gap-6">
@@ -1977,12 +1952,11 @@ You can always draw a single scene by hand from the button above the story inste
                   </SelectContent>
                 </Select>
               </Row>
-              <div className="grid grid-cols-1 sm:grid-cols-[minmax(0,1fr)_minmax(0,3fr)] gap-4">
-                <div className="hidden sm:block" />
+              <Row>
                 <div>
                   <Button variant="outline" size="sm" onClick={() => setShowImageSetup(true)}>How to Set Up</Button>
                 </div>
-              </div>
+              </Row>
               <Row center label="Endpoint URL" htmlFor="imageEndpoint">
                 <Input
                   id="imageEndpoint"
@@ -2690,29 +2664,25 @@ You can always draw a single scene by hand from the button above the story inste
             <ScrollArea className="flex-1 min-h-0">
             <div className="grid gap-6 py-4">
               <Section title="Reading" hint="Applies to the story text only, not the rest of the app.">
-              <div className="grid grid-cols-1 sm:grid-cols-[minmax(0,1fr)_minmax(0,3fr)] items-start gap-4">
-                <RowLabel htmlFor="narrationFont" top info={
-                  <HintInfo>{`A separate font for the story text, defaulting to the app font.
+              <Row top label="Narration Font" htmlFor="narrationFont" info={
+                <HintInfo>{`A separate font for the story text, defaulting to the app font.
 
 Includes faces tuned for **dyslexia**, **low vision**, and reading.`}</HintInfo>
-                }>Narration Font</RowLabel>
-                <div>
-                  <Select value={narrationFont} onValueChange={(v) => setNarrationFont(v as NarrationFont)}>
-                    <SelectTrigger id="narrationFont" className="w-56">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {NARRATION_FONT_OPTIONS.map((o) => (
-                        <SelectItem key={o.value} value={o.value} style={{ fontFamily: o.stack || undefined }}>
-                          {o.label}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-              </div>
-              <div className="grid grid-cols-1 sm:grid-cols-[minmax(0,1fr)_minmax(0,3fr)] items-center gap-4">
-                <RowLabel>Narration Text Size</RowLabel>
+              }>
+                <Select value={narrationFont} onValueChange={(v) => setNarrationFont(v as NarrationFont)}>
+                  <SelectTrigger id="narrationFont" className="w-56">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {NARRATION_FONT_OPTIONS.map((o) => (
+                      <SelectItem key={o.value} value={o.value} style={{ fontFamily: o.stack || undefined }}>
+                        {o.label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </Row>
+              <Row center label="Narration Text Size">
                 <div className="flex items-center gap-3">
                   <Slider
                     value={[narrationScale]}
@@ -2726,9 +2696,8 @@ Includes faces tuned for **dyslexia**, **low vision**, and reading.`}</HintInfo>
                     {Math.round(narrationScale * 100)}%
                   </span>
                 </div>
-              </div>
-              <div className="grid grid-cols-1 sm:grid-cols-[minmax(0,1fr)_minmax(0,3fr)] items-center gap-4">
-                <RowLabel>Line Spacing</RowLabel>
+              </Row>
+              <Row center label="Line Spacing">
                 <div className="flex items-center gap-3">
                   <Slider
                     value={[narrationLineHeight]}
@@ -2742,9 +2711,8 @@ Includes faces tuned for **dyslexia**, **low vision**, and reading.`}</HintInfo>
                     {narrationLineHeight.toFixed(2)}
                   </span>
                 </div>
-              </div>
-              <div className="grid grid-cols-1 sm:grid-cols-[minmax(0,1fr)_minmax(0,3fr)] gap-4">
-                <div className="hidden sm:block" />
+              </Row>
+              <Row>
                 <div>
                   <ConfirmDialog
                     title="Reset size & spacing"
@@ -2760,22 +2728,21 @@ Includes faces tuned for **dyslexia**, **low vision**, and reading.`}</HintInfo>
                     </Button>
                   </ConfirmDialog>
                 </div>
-              </div>
+              </Row>
               </Section>
 
               <Section title="Choices">
-              <div className="grid grid-cols-1 sm:grid-cols-[minmax(0,1fr)_minmax(0,3fr)] items-center gap-4">
-                <RowLabel info={
-                  <HintInfo>{`Adds a **[Continue the Story]** button under the choices. It fills the action box with that text, so you can take a turn without writing anything — the story reads it as a nudge to keep going rather than something your character does.
+              <Row center label="Continue the Story" info={
+                <HintInfo>{`Adds a **[Continue the Story]** button under the choices. It fills the action box with that text, so you can take a turn without writing anything — the story reads it as a nudge to keep going rather than something your character does.
 
 **Always** keeps the button even with the Choices request switched off.`}</HintInfo>
-                }>Continue the Story</RowLabel>
+              }>
                 <OptionSwitcher
                   value={continueChoiceMode}
                   onChange={(v) => setContinueChoiceMode(v as ContinueChoiceMode)}
                   options={CONTINUE_CHOICE_MODES}
                 />
-              </div>
+              </Row>
               </Section>
 
               <Section title="Saves & Worlds">
@@ -2787,8 +2754,7 @@ Includes faces tuned for **dyslexia**, **low vision**, and reading.`}</HintInfo>
                 hint="Automatically saves your game after every turn to a per-world “Autosave” slot, starting once the opening scene finishes. It never touches your manual saves and shows in Load with an “Auto” tag. Turn off to save only manually."
               />
               {advanced && (<>
-              <div className="grid grid-cols-1 sm:grid-cols-[minmax(0,1fr)_minmax(0,3fr)] gap-4">
-                <div className="hidden sm:block" />
+              <Row>
                 <div>
                   <ConfirmDialog
                     title="Restore default worlds"
@@ -2805,9 +2771,8 @@ Includes faces tuned for **dyslexia**, **low vision**, and reading.`}</HintInfo>
                       : `Re-creates ${deletedDefaultCount} deleted bundled world${deletedDefaultCount > 1 ? 's' : ''} at their latest version.`}
                   </p>
                 </div>
-              </div>
-              <div className="grid grid-cols-1 sm:grid-cols-[minmax(0,1fr)_minmax(0,3fr)] gap-4">
-                <div className="hidden sm:block" />
+              </Row>
+              <Row>
                 <div>
                   <ConfirmDialog
                     title="Clear cached images"
@@ -2824,7 +2789,7 @@ Includes faces tuned for **dyslexia**, **low vision**, and reading.`}</HintInfo>
                       : `${formatBytes(cachedBytes)} of linked images kept on this device so they work offline.`}
                   </p>
                 </div>
-              </div>
+              </Row>
               </>)}
               </Section>
 
@@ -2832,8 +2797,7 @@ Includes faces tuned for **dyslexia**, **low vision**, and reading.`}</HintInfo>
                   normal player never needs — so Simple keeps the whole section out of the way. */}
               {advanced && (
               <Section title="Help">
-              <div className="grid grid-cols-1 sm:grid-cols-[minmax(0,1fr)_minmax(0,3fr)] gap-4">
-                <div className="hidden sm:block" />
+              <Row>
                 <div>
                   <ConfirmDialog
                     title="Reset tutorials"
@@ -2850,7 +2814,7 @@ Includes faces tuned for **dyslexia**, **low vision**, and reading.`}</HintInfo>
                       : `Brings back ${seenTutorialCount} dismissed tutorial${seenTutorialCount > 1 ? 's' : ''}.`}
                   </p>
                 </div>
-              </div>
+              </Row>
               </Section>
               )}
             </div>
