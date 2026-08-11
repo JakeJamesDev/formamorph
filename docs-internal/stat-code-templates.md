@@ -155,6 +155,37 @@ prompt fields rather than a second one to learn.
 The template editor therefore has no tabs of its own: name and description stay put, and the code field
 carries the pair, with the creation form as its preview.
 
+### Full screen grows out of the field (BUILT 2026-08-10)
+
+`useMorphFullscreen` (`src/lib/useMorphFullscreen.ts`) is a FLIP: the overlay is laid out at full size,
+transformed back onto the source textarea's rect, then released, so only `transform` animates. 260ms in
+on `cubic-bezier(0.2, 0, 0, 1)`, 190ms out. The inline field stays mounted underneath, which is what makes
+the return trip a fresh measurement rather than a remembered rect.
+
+- The box morphs; the **contents cross-fade** (`animate-in fade-in-0 delay-100`). Scaling the children
+  with the box reads as the text stretching — the container-transform rule.
+- `DialogContent` gained an `unanimated` prop. Radix's stock `zoom-in-95`/`slide-in-*` rewrite `transform`
+  every frame, so a caller's own FLIP is erased as fast as it is written.
+- Exit is ours to sequence: `mounted` stays true through `leaving` and only drops when the trip settles,
+  since Radix would otherwise unmount the element mid-shrink.
+- **The entering trip starts from the ref callback, not the layout effect.** Radix portals the content in,
+  so `DialogContent`'s ref lands *after* the parent's layout effect — `boxEl.current` is still null there.
+  This is what made it one-directional: leaving measured a long-attached box and worked; entering measured
+  nothing, fell through to `settle()`, and never animated at all. Verified by instrumenting the running
+  app (`hasBox: false` on `entering`, true on `leaving`) rather than reasoned about. The first jsdom test
+  missed it by attaching `boxRef` before calling `open()` — an ordering React never produces.
+- **The release waits for a painted frame** (double `requestAnimationFrame`). Layout is not paint: a
+  transition declared alongside an element's first style computation does not run.
+- **The settle timer is armed before the frame, not inside it.** A hidden tab suspends rAF entirely, so a
+  settle chained off the release never fires and the overlay sits parked on top of the field for good.
+  Landing early costs the animation, not the end state. Found by the preview pane doing exactly this.
+- A `setTimeout` settles it, not `transitionend` — a transition that never fires (background tab, display
+  change) would strand the overlay mid-shrink with no way back.
+- Degrades to a plain mount under `prefers-reduced-motion`, or when the source has no area (the Preview
+  tab unmounts the textarea, so this is reachable, not theoretical).
+
+Not yet applied to `PromptField`'s own full screen — deliberately one surface first.
+
 ### Code editing affordances (undo / redo / fullscreen / toolbar)
 
 **Toolbar layout follows `PromptField`'s chrome exactly** (verified against it, not invented): a left
