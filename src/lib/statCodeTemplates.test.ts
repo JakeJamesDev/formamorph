@@ -7,6 +7,7 @@ import {
   parseTemplateSlots,
   humanizeSlotName,
   defaultSlotValues,
+  resolveSlotValue,
   validateSlotValues,
   fillTemplate,
   isBuiltInTemplate,
@@ -94,6 +95,35 @@ describe('defaultSlotValues', () => {
   });
 });
 
+describe('resolveSlotValue', () => {
+  const slotsOf = (code: string) => parseTemplateSlots(code).slots;
+
+  it('stands for the declared default until the slot has been answered', () => {
+    const [rate] = slotsOf('{{ratePerHour:number=-5}}');
+    expect(resolveSlotValue(rate, {})).toBe('-5');
+  });
+
+  it('returns the answer once there is one', () => {
+    const [rate] = slotsOf('{{ratePerHour:number=-5}}');
+    expect(resolveSlotValue(rate, { ratePerHour: '2' })).toBe('2');
+  });
+
+  // Clearing a field is the same as never having answered it — a template that declares a default has
+  // no way to say "deliberately blank", and the code it generates uses the default either way.
+  it('returns a cleared field to what the template asked for', () => {
+    const [rate] = slotsOf('{{ratePerHour:number=-5}}');
+    expect(resolveSlotValue(rate, { ratePerHour: '' })).toBe('-5');
+    expect(resolveSlotValue(rate, { ratePerHour: '   ' })).toBe('-5');
+  });
+
+  it('falls to the type’s own first option where the template declared nothing', () => {
+    const [when, pick, which] = slotsOf('{{when:daypart}} {{pick:choice(x|y)}} {{which:stat}}');
+    expect(resolveSlotValue(when, {})).toBe(DAYPART_OPTIONS[0]);
+    expect(resolveSlotValue(pick, {})).toBe('x');
+    expect(resolveSlotValue(which, {})).toBe('');
+  });
+});
+
 describe('validateSlotValues', () => {
   const { slots } = parseTemplateSlots('{{a:number}} {{b:choice(x|y)}} {{c:stat}}');
 
@@ -107,6 +137,13 @@ describe('validateSlotValues', () => {
       b: 'Not one of the options',
       c: 'Required',
     });
+  });
+
+  // A slot the template gave a default is answered from the moment it is written, so an author typing
+  // one into their code must not be told they left it out.
+  it('asks nothing of a slot that declares its own default', () => {
+    const { slots: withDefaults } = parseTemplateSlots('{{a:number=-5}} {{b:choice(x|y)=y}} {{c:stat}}');
+    expect(validateSlotValues(withDefaults, {})).toEqual({ c: 'Required' });
   });
 });
 
@@ -125,6 +162,10 @@ describe('fillTemplate', () => {
 
   it('falls back to the declared default when a value is missing', () => {
     expect(fillTemplate('{{n:number=12}}', {})).toBe('12');
+  });
+
+  it('reads a cleared value as the default too, so the code matches the form', () => {
+    expect(fillTemplate('{{n:number=12}}', { n: '' })).toBe('12');
   });
 
   it('substitutes every occurrence of a repeated slot', () => {

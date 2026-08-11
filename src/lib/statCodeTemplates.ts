@@ -110,13 +110,27 @@ export function humanizeSlotName(name: string): string {
     .replace(/\b\w/g, (character) => character.toUpperCase());
 }
 
+/** Where a slot starts before anyone has answered it: what it declared, or its type's own first option. */
+const slotStartingPoint = (slot: TemplateSlot): string => slot.defaultValue
+  ?? (slot.type === 'daypart' ? DAYPART_OPTIONS[0] : slot.type === 'choice' ? (slot.options?.[0] ?? '') : '');
+
+/**
+ * What a slot stands for given the answers so far. Blank and unanswered are the same thing: a template
+ * that declares a default has no way to express "deliberately empty", so clearing a field returns it to
+ * what the template asked for rather than to nothing.
+ *
+ * Every surface reads a slot through here — the form, its validation, and the code it generates — so the
+ * value an author sees in the field is the one that ends up in the code.
+ */
+export function resolveSlotValue(slot: TemplateSlot, values: Record<string, string>): string {
+  const answer = (values[slot.name] ?? '').trim();
+  return answer !== '' ? answer : slotStartingPoint(slot);
+}
+
 /** The starting form state for a template: each slot's declared default, or a sensible empty value. */
 export function defaultSlotValues(slots: TemplateSlot[]): Record<string, string> {
   const values: Record<string, string> = {};
-  for (const slot of slots) {
-    values[slot.name] = slot.defaultValue
-      ?? (slot.type === 'daypart' ? DAYPART_OPTIONS[0] : slot.type === 'choice' ? (slot.options?.[0] ?? '') : '');
-  }
+  for (const slot of slots) values[slot.name] = slotStartingPoint(slot);
   return values;
 }
 
@@ -144,7 +158,7 @@ function renderSlot(slot: TemplateSlot, raw: string): string {
 export function validateSlotValues(slots: TemplateSlot[], values: Record<string, string>): Record<string, string> {
   const problems: Record<string, string> = {};
   for (const slot of slots) {
-    const value = (values[slot.name] ?? '').trim();
+    const value = resolveSlotValue(slot, values);
     if (value === '') {
       problems[slot.name] = 'Required';
     } else if (slot.type === 'number' && !Number.isFinite(Number(value))) {
@@ -156,8 +170,8 @@ export function validateSlotValues(slots: TemplateSlot[], values: Record<string,
   return problems;
 }
 
-/** Fill a template's slots and return runnable sandbox code. Unfilled slots fall back to their declared
- *  default so a partially completed form still previews. */
+/** Fill a template's slots and return runnable sandbox code. Unfilled slots stand for their declared
+ *  default, so a partially completed form still previews. */
 export function fillTemplate(code: string, values: Record<string, string>): string {
   const { slots } = parseTemplateSlots(code);
   const byName = new Map(slots.map(slot => [slot.name, slot]));
@@ -165,8 +179,7 @@ export function fillTemplate(code: string, values: Record<string, string>): stri
   return (code || '').replace(SLOT_PATTERN, (_match, name: string) => {
     const slot = byName.get(name);
     if (!slot) return '';
-    const raw = values[name] ?? slot.defaultValue ?? '';
-    return renderSlot(slot, raw);
+    return renderSlot(slot, resolveSlotValue(slot, values));
   });
 }
 

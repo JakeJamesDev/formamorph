@@ -696,3 +696,12 @@
   border-radius: 3px;
   font-weight: 600;
 }
+/* In the editor the JavaScript grammar still tokenizes inside a slot, and what it makes of the parts
+   changes with where the slot sits — a name is untokenized on its own line and a definition inside an
+   expression. Those inner spans must not out-colour the chip, or a slot looks different per position. */
+.tok-slot * {
+  color: inherit;
+  background: none;
+  font-weight: inherit;
+  font-style: inherit;
+}

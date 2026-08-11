@@ -240,8 +240,10 @@ export function createCodeSession(options: CodeSessionOptions): CodeSession {
         // against the window instead — otherwise the box, the panel it scrolls in, or the dialog around
         // it cuts the popup off wherever the caret happens to be low.
         tooltips({ position: 'fixed', parent: typeof document === 'undefined' ? undefined : document.body }),
-        lineNumbers(),
+        // Marks first, then numbers: gutters sit in the order they are registered, and the marks belong
+        // on the outside edge where nothing shifts them as the line count grows a digit.
         gutter.of([]),
+        lineNumbers(),
         tabKeys,
         // `autocompletion()` installs `completionKeymap` at the top precedence itself, which is what puts
         // the popup ahead of the Escape binding above.
